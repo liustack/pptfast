@@ -34,7 +34,10 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
 export async function runValidate(irPath: string): Promise<string> {
   const raw = await loadIrFile(irPath)
   const v = validateIr(raw)
-  if (!v.ok) throw new PptfastError(`invalid IR (${v.errors.length} issues):\n${formatIssues(v.errors)}`)
+  if (!v.ok)
+    throw new PptfastError(
+      `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
+    )
   return `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
 }
 
@@ -52,6 +55,7 @@ export async function runPreview(irPath: string, outDir: string): Promise<string
   const raw = await loadIrFile(irPath)
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
+  await resolveLocalAssets(v.ir!, dirname(resolve(irPath)))
   await mkdir(outDir, { recursive: true })
   const ir = v.ir!
   for (let i = 0; i < ir.slides.length; i++) {

@@ -6,6 +6,12 @@ import { describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import { runPreview, runRender, runSchema, runThemes, runValidate } from "./commands"
 
+// 1x1 红色 PNG
+const PNG_1PX = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+)
+
 const VALID_IR = {
   version: "2",
   filename: "cli-test",
@@ -16,12 +22,25 @@ const VALID_IR = {
   ],
 }
 
+const IR_WITH_LOCAL_ASSET = {
+  version: "2",
+  filename: "cli-test-asset",
+  theme: { id: "tech" },
+  assets: { images: { logo: { src: "logo.png" } } },
+  slides: [
+    { type: "cover", heading: "CLI" },
+    { type: "content", heading: "Body", blocks: [{ type: "image", asset_id: "logo" }] },
+  ],
+}
+
 let dir: string
 beforeAll(async () => {
   installNodePlatform()
   dir = await mkdtemp(join(tmpdir(), "pptfast-cli-"))
   await writeFile(join(dir, "deck.json"), JSON.stringify(VALID_IR))
   await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "2" }))
+  await writeFile(join(dir, "logo.png"), PNG_1PX)
+  await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
 })
 
 describe("runValidate", () => {
@@ -61,5 +80,12 @@ describe("runPreview", () => {
     expect(files.sort()).toEqual(["001-cover.svg", "002-content.svg"])
     const svg = await readFile(join(out, "002-content.svg"), "utf8")
     expect(svg).toContain("hello from the CLI test")
+  })
+
+  it("inlines local image assets as data URIs", async () => {
+    const out = join(dir, "svgs-asset")
+    await runPreview(join(dir, "deck-with-asset.json"), out)
+    const svg = await readFile(join(out, "002-content.svg"), "utf8")
+    expect(svg).toContain("data:image/png;base64")
   })
 })
