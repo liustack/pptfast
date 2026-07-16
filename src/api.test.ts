@@ -28,6 +28,27 @@ describe("validateIr", () => {
     expect(r.errors[0]?.page).toBe(1)
     expect(r.errors[0]?.path.startsWith("slides.0")).toBe(true)
   })
+
+  it("rejects a schema-valid cover slide with no heading (content-quality gate)", () => {
+    const bad = {
+      ...raw,
+      slides: [{ type: "cover" }, raw.slides[1]],
+    }
+    const r = validateIr(bad)
+    expect(r.ok).toBe(false)
+    expect(r.errors.length).toBeGreaterThan(0)
+    expect(r.errors[0]?.path).toBe("slides.0")
+    expect(r.errors[0]?.page).toBe(1)
+    // readable, English (public error surface — see describeQualityIssue in api.ts)
+    expect(r.errors[0]?.message).toMatch(/heading/i)
+    expect(r.errors[0]?.message).not.toMatch(/[一-鿿]/)
+  })
+
+  it("rejects an empty deck", () => {
+    const r = validateIr({ ...raw, slides: [] })
+    expect(r.ok).toBe(false)
+    expect(r.errors).toEqual([{ path: "slides", message: "deck has no slides" }])
+  })
 })
 
 describe("renderSlideSvg", () => {
