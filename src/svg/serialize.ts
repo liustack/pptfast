@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import type React from "react"
+import { getPlatform } from "../platform/registry"
 
 /**
  * Serialize an SVG React tree (a full `<svg>` root) to standalone markup.
@@ -18,7 +19,13 @@ export function renderSvgMarkup(node: React.ReactElement): string {
 
 /** Parse serialized slide markup back into an `<svg>` root element for svgToOps. */
 export function parseSvgRoot(markup: string): Element {
-  const doc = new DOMParser().parseFromString(markup, "image/svg+xml")
+  const Parser = getPlatform().domParser ?? globalThis.DOMParser
+  if (!Parser) {
+    throw new Error(
+      'DOMParser unavailable — in Node, call installNodePlatform() from "pptfast/node" first (the pptfast CLI does this automatically)'
+    )
+  }
+  const doc = new Parser().parseFromString(markup, "image/svg+xml")
   const err = doc.querySelector("parsererror")
   if (err) throw new Error(`failed to parse slide svg: ${err.textContent ?? ""}`)
   return doc.documentElement

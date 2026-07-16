@@ -81,10 +81,15 @@ function createMockCanvas2dContext(): CanvasRenderingContext2D {
 
 // jsdom intentionally does not implement canvas without the optional native
 // canvas package. The app only needs a quiet 2d context for chart/color tests.
-Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-  configurable: true,
-  value(contextId: string) {
-    if (contextId === '2d') return createMockCanvas2dContext()
-    return null
-  },
-})
+// Guarded: files with `@vitest-environment node` (Task 4 node smoke test) run
+// this same setup file with no DOM globals at all — HTMLCanvasElement would
+// throw a ReferenceError before the test body ever executes.
+if (typeof HTMLCanvasElement !== 'undefined') {
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    configurable: true,
+    value(contextId: string) {
+      if (contextId === '2d') return createMockCanvas2dContext()
+      return null
+    },
+  })
+}

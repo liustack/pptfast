@@ -12,6 +12,7 @@
  */
 import type { PptxIR } from "@/ir"
 import { PptfastError } from "../errors"
+import { getPlatform } from "./registry"
 
 /**
  * 手工构造 data URL（不走 FileReader）：MIME 取 Content-Type，兜底 image/png。
@@ -101,7 +102,8 @@ async function normalizeAssetDataUrl(id: string, dataUrl: string): Promise<strin
   const mime = dataUrlMime(dataUrl)
   if (!mime.startsWith("image/") || OFFICE_SAFE_MIME.has(mime)) return dataUrl
   try {
-    return await reencodeToPng(dataUrl)
+    const recode = getPlatform().recodeImageToPng
+    return recode ? await recode(dataUrl) : await reencodeToPng(dataUrl)
   } catch (e) {
     throw new PptfastError(
       `背景/插图资产 "${id}" 格式转换失败（${mime}→png：${e instanceof Error ? e.message : String(e)}），无法生成完整的 PPT，请重试或重新生成图片`,

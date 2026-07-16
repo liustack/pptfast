@@ -239,7 +239,7 @@ export async function applyGradientFills(
     return pptx instanceof Blob ? pptx : new Blob([pptx as BlobPart], { type: PPTX_MIME })
   }
 
-  const zip = await JSZip.loadAsync(pptx)
+  const zip = await JSZip.loadAsync(pptx instanceof Blob ? await pptx.arrayBuffer() : pptx)
   const slidePaths = Object.keys(zip.files).filter(
     (p) => SLIDE_PART_RE.test(p) && !zip.files[p].dir,
   )

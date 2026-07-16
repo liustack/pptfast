@@ -1,4 +1,5 @@
 import { measureTextUnits } from "../../lib/svg-text-layout"
+import { getPlatform } from "../../platform/registry"
 
 export interface OverflowIssue {
   kind: "h-overflow" | "v-overflow" | "page-overflow"
@@ -32,7 +33,13 @@ function parseNums(attr: string | null): number[] {
 }
 
 export function auditSvgMarkup(markup: string): OverflowIssue[] {
-  const doc = new DOMParser().parseFromString(markup, "image/svg+xml")
+  const Parser = getPlatform().domParser ?? globalThis.DOMParser
+  if (!Parser) {
+    throw new Error(
+      'DOMParser unavailable — in Node, call installNodePlatform() from "pptfast/node" first (the pptfast CLI does this automatically)'
+    )
+  }
+  const doc = new Parser().parseFromString(markup, "image/svg+xml")
   const root = doc.documentElement
   const issues: OverflowIssue[] = []
 

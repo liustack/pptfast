@@ -96,7 +96,7 @@ export async function applySlideTransitions(
   if (effect === "none") return asBlob
 
   try {
-    const zip = await JSZip.loadAsync(pptx)
+    const zip = await JSZip.loadAsync(await asBlob.arrayBuffer())
     const slidePaths = Object.keys(zip.files).filter(
       (p) => SLIDE_PART_RE.test(p) && !zip.files[p].dir
     )
@@ -466,7 +466,7 @@ export async function applyElementAnimations(
   const asBlob = pptx instanceof Blob ? pptx : new Blob([pptx as BlobPart], { type: PPTX_MIME })
 
   try {
-    const zip = await JSZip.loadAsync(pptx)
+    const zip = await JSZip.loadAsync(await asBlob.arrayBuffer())
     const slidePaths = Object.keys(zip.files)
       .filter((p) => SLIDE_PART_RE.test(p) && !zip.files[p].dir)
       .sort((a, b) => slidePartNumber(a) - slidePartNumber(b))

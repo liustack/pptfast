@@ -14,7 +14,7 @@ import JSZip from "jszip"
  */
 export async function dedupePptxMedia(blob: Blob): Promise<Blob> {
   try {
-    const zip = await JSZip.loadAsync(blob)
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer())
 
     const mediaFiles = Object.keys(zip.files).filter(
       (p) => p.startsWith("ppt/media/") && !zip.files[p].dir,
