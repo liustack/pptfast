@@ -1,4 +1,3 @@
-// src/shared/schemas/pptx-ir.ts
 import { z } from "zod"
 import { PPTX_ICON_NAMES } from "@/icons"
 

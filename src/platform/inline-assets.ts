@@ -85,7 +85,7 @@ async function reencodeToPng(dataUrl: string): Promise<string> {
   const canvas = document.createElement("canvas")
   const ctx2d = canvas.getContext("2d")
   if (!ctx2d || typeof canvas.toDataURL !== "function") {
-    throw new Error("canvas 不可用，无法重编码")
+    throw new Error("canvas unavailable, cannot re-encode")
   }
   const img = await decodeDataUrlImage(dataUrl)
   if (!img.naturalWidth) throw new Error("image decode failed")
@@ -93,7 +93,7 @@ async function reencodeToPng(dataUrl: string): Promise<string> {
   canvas.height = img.naturalHeight
   ctx2d.drawImage(img, 0, 0)
   const png = canvas.toDataURL("image/png")
-  if (!png.startsWith("data:image/png")) throw new Error("png encode failed")
+  if (!png.startsWith("data:image/png")) throw new Error("PNG encode failed")
   return png
 }
 
@@ -106,7 +106,7 @@ async function normalizeAssetDataUrl(id: string, dataUrl: string): Promise<strin
     return recode ? await recode(dataUrl) : await reencodeToPng(dataUrl)
   } catch (e) {
     throw new PptfastError(
-      `背景/插图资产 "${id}" 格式转换失败（${mime}→png：${e instanceof Error ? e.message : String(e)}），无法生成完整的 PPT，请重试或重新生成图片`,
+      `background/illustration asset "${id}" format conversion failed (${mime}→png: ${e instanceof Error ? e.message : String(e)}), cannot produce a complete PPT — please retry or regenerate the image`,
     )
   }
 }
@@ -176,7 +176,7 @@ export async function inlinePptxAssets(ir: PptxIR): Promise<PptxIR> {
         dataUrl = await responseToDataUrl(resp)
       } catch (e) {
         throw new PptfastError(
-          `背景/插图资产 "${id}" 获取失败（${e instanceof Error ? e.message : String(e)}），无法生成完整的 PPT，请重试或重新生成图片`,
+          `background/illustration asset "${id}" fetch failed (${e instanceof Error ? e.message : String(e)}), cannot produce a complete PPT — please retry or regenerate the image`,
         )
       }
       dataUrl = await normalizeAssetDataUrl(id, dataUrl)

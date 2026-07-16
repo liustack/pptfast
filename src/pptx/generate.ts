@@ -21,10 +21,10 @@ import { dedupePptxMedia } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
 
 export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
-  // The backend delivers the IR inside a generated_file envelope
-  // ({ kind: "pptx", ...IR }). `kind` is the file-type discriminator, not an IR
-  // field — the strict PptxIRSchema rejects it ("Unrecognized key: kind"), which
-  // otherwise fails every pptx download. Strip it before the strict parse.
+  // `kind` is an optional file-type discriminator some callers attach to the
+  // IR (e.g. `{ kind: "pptx", ...IR }`), not an IR field — the strict
+  // PptxIRSchema rejects unrecognized keys, so strip it before the strict
+  // parse rather than failing every caller that includes it.
   const { kind: _kind, ...irInput } = input as PptxIR & { kind?: unknown }
   // 导出需要真实字节：把签名 URL 资产取回内联成 data URL（预览不需要这一步）
   const ir = await inlinePptxAssets(PptxIRSchema.parse(irInput))

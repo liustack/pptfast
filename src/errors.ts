@@ -1,2 +1,2 @@
-/** Base error for all pptfast failures (validation, rendering, export). */
+/** Error class thrown by pptfast's public API surface (validation, rendering, export). */
 export class PptfastError extends Error {}
