@@ -80,6 +80,19 @@ if (sharpMod) {
   for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide2.xml"]) {
     if (!webpZip.file(f)) throw new Error(`e2e: webp leg produced malformed pptx — missing ${f}`)
   }
+  // The renderer silently draws an "image missing" placeholder for unresolved
+  // assets instead of failing — so the zip-membership checks above pass even
+  // if resolveLocalAssets/recodeWithSharp silently degrades to a no-op. Assert
+  // the image was actually embedded: a media part exists, and the slide that
+  // holds the image block (slide2 — see webpDeck above) references it via
+  // r:embed, not just a decorative shape.
+  if (!Object.keys(webpZip.files).some((k) => k.startsWith("ppt/media/"))) {
+    throw new Error("e2e: webp leg — no ppt/media/* part found, image was not embedded")
+  }
+  const webpSlide2 = await webpZip.file("ppt/slides/slide2.xml")!.async("string")
+  if (!webpSlide2.includes("r:embed")) {
+    throw new Error("e2e: webp leg — slide2.xml has no r:embed reference, image was not embedded")
+  }
   console.log("webp asset leg OK (sharp recode path exercised)")
 }
 
