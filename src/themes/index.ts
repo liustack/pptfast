@@ -19,10 +19,11 @@ import { HERITAGE_TOKENS } from "./heritage";
 
 /**
  * The 13 canonical themes, registered/renderable. 场景化命名：对外 theme.id
- * 按内容场景命名（consulting 商务咨询 / enterprise 企业蓝 / academic 学术教育 /
- * insight 深度洞察 / campaign 活力营销 / bloom 柔美庆典 / classroom 教学课堂 /
- * ink 水墨国风 / tech 科技产品 / runway 时尚秀场 / journal 人文期刊 / luxe 高端品牌 /
- * heritage 典藏传承）。pptfast 是独立分叉，无存量 deck 兼容包袱，不维护 legacy id
+ * 按内容场景命名（consulting Business Consulting / enterprise Enterprise /
+ * academic Academic / insight Financial Insight / campaign Marketing Campaign /
+ * bloom Soft Bloom / classroom Classroom / ink Ink Wash / tech Tech /
+ * runway Fashion Runway / journal Editorial Journal / luxe Luxe /
+ * heritage Heritage）。pptfast 是独立分叉，无存量 deck 兼容包袱，不维护 legacy id
  * 映射表（resolveThemeId 对未知 id 一律回落 consulting）。
  */
 export const CANONICAL_THEME_IDS = [
@@ -43,21 +44,21 @@ export const CANONICAL_THEME_IDS = [
 
 export type CanonicalThemeId = (typeof CANONICAL_THEME_IDS)[number];
 
-/** 场景 id → 中文场景名（plan 卡片徽章等对用户展示处用）。 */
+/** 场景 id → 英文场景名（plan 卡片徽章等对用户展示处用，接口统一英文）。 */
 export const THEME_LABELS: Record<CanonicalThemeId, string> = {
-  consulting: "商务咨询",
-  academic: "学术教育",
-  insight: "深度洞察",
-  campaign: "活力营销",
-  bloom: "柔美庆典",
-  classroom: "教学课堂",
-  ink: "水墨国风",
-  tech: "科技产品",
-  runway: "时尚秀场",
-  journal: "人文期刊",
-  enterprise: "企业蓝",
-  luxe: "高端品牌",
-  heritage: "典藏传承",
+  consulting: "Business Consulting",
+  academic: "Academic",
+  insight: "Financial Insight",
+  campaign: "Marketing Campaign",
+  bloom: "Soft Bloom",
+  classroom: "Classroom",
+  ink: "Ink Wash",
+  tech: "Tech",
+  runway: "Fashion Runway",
+  journal: "Editorial Journal",
+  enterprise: "Enterprise",
+  luxe: "Luxe",
+  heritage: "Heritage",
 };
 
 /** Map any theme id onto a canonical, registered theme id. Unknown ids fall back to consulting. */
