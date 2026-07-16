@@ -4,3 +4,4 @@ dist/
 skills/**/outputs/
 *.log
 .DS_Store
+.e2e-out/

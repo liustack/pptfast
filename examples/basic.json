@@ -1,0 +1,40 @@
+{
+  "version": "2",
+  "filename": "pptfast-basic-demo",
+  "theme": { "id": "consulting" },
+  "meta": { "organization": "pptfast", "date": "2026-07-17" },
+  "slides": [
+    { "type": "cover", "heading": "pptfast", "subheading": "Stable, editable PPTX from a semantic IR" },
+    { "type": "chapter", "heading": "Why an IR" },
+    {
+      "type": "content",
+      "heading": "Design goals",
+      "blocks": [
+        {
+          "type": "bullets",
+          "items": [
+            "Raise the floor of AI-generated decks",
+            "Native DrawingML output — every shape stays editable",
+            "Design tokens plus an archetype library, not freeform drawing"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "At a glance",
+      "variant": "kpi_focus",
+      "blocks": [
+        {
+          "type": "kpi_cards",
+          "items": [
+            { "value": "13", "label": "built-in themes" },
+            { "value": "19", "label": "semantic block types" },
+            { "value": "1", "label": "single SVG source per slide" }
+          ]
+        }
+      ]
+    },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}
