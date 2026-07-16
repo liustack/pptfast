@@ -9,7 +9,7 @@ DrawingML out.
 
 Freeform SVG/HTML-to-PPTX pipelines have a high ceiling but an unstable floor — a weak model (or a strong one having an off turn) produces a deck that's broken, off-brand, or unreadable. pptfast trades freeform drawing for a controlled vocabulary: a semantic IR (zod schema), 13 built-in themes driven by design tokens, an archetype/block layout library with seeded variety, and native DrawingML output where every shape stays editable — not a picture pasted onto a slide.
 
-A deck is really five things: a content model, a narrative, a 2D layout, a visual style, and motion. pptfast owns the last four — you (or your agent) own the content model by writing the IR.
+A deck is really five things: a content model, a 2D layout, a visual style, motion, and a narrative. pptfast owns the last four — you (or your agent) own the content model by writing the IR.
 
 ## Install
 
@@ -28,7 +28,7 @@ node dist/cli.js --help
 node dist/cli.js validate examples/basic.json
 # → OK — 5 slides, theme "consulting"
 node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, 29381 bytes)
+# → wrote out/basic.pptx (5 slides, ~29 KB)
 node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
 node dist/cli.js preview examples/basic.json -o out/svgs   # SVG per slide, for a visual self-check
 ```
@@ -56,7 +56,7 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 
 ## The IR
 
-Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) is `version`, `theme`, `meta`, `assets`, and an ordered list of `slides`; each slide has a `type` (`cover`, `chapter`, `content`, `ending`) and, for content slides, a list of typed `blocks` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` maps ids to image sources that blocks reference by `asset_id`, so the same image can be reused across slides without duplication.
+Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) is a required `filename`, `version`, `theme`, `meta`, `assets`, an optional `brand`, and an ordered list of `slides`; each slide has a `type` (`cover`, `chapter`, `content`, `ending`) and, for content slides, a list of typed `blocks` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — blocks reference images by `asset_id`, so the same image can be reused across slides without duplication.
 
 ## Themes
 
