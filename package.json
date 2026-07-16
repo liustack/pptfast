@@ -4,15 +4,27 @@
   "description": "Stable, editable PPTX generation for AI agents — semantic IR in, native DrawingML out",
   "type": "module",
   "license": "MIT",
-  "bin": { "pptfast": "./dist/cli.js" },
+  "bin": {
+    "pptfast": "./dist/cli.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./node": { "types": "./dist/node.d.ts", "import": "./dist/node.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    }
   },
-  "files": ["dist"],
-  "engines": { "node": ">=18" },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
@@ -23,9 +35,22 @@
     "e2e": "pnpm build && tsx scripts/e2e.mts",
     "docs:list": "node scripts/docs-list.js"
   },
-  "keywords": ["pptx", "powerpoint", "presentation", "ai", "agent", "claude", "svg", "drawingml", "cli"],
+  "keywords": [
+    "pptx",
+    "powerpoint",
+    "presentation",
+    "ai",
+    "agent",
+    "claude",
+    "svg",
+    "drawingml",
+    "cli"
+  ],
   "author": "Leon Liu",
-  "repository": { "type": "git", "url": "git+https://github.com/liustack/pptfast.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liustack/pptfast.git"
+  },
   "dependencies": {
     "commander": "^13.1.0",
     "dagre": "^0.8.5",
@@ -36,7 +61,9 @@
     "react-dom": "^19.2.4",
     "zod": "^4.3.6"
   },
-  "optionalDependencies": { "sharp": "^0.34.4" },
+  "optionalDependencies": {
+    "sharp": "^0.34.4"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -46,6 +73,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.0",
+    "eslint-plugin-react-refresh": "^0.5.3",
     "jsdom": "^29.0.2",
     "lucide-react": "^1.7.0",
     "tsup": "^8.5.1",

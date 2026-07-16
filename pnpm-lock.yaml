@@ -57,6 +57,9 @@ importers:
       eslint:
         specifier: ^9.39.0
         version: 9.39.5
+      eslint-plugin-react-refresh:
+        specifier: ^0.5.3
+        version: 0.5.3(eslint@9.39.5)
       jsdom:
         specifier: ^29.0.2
         version: 29.1.1
@@ -1341,6 +1344,11 @@ packages:
   escape-string-regexp@4.0.0:
     resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
     engines: {node: '>=10'}
+
+  eslint-plugin-react-refresh@0.5.3:
+    resolution: {integrity: sha512-5EMmLCV98Pi4o/f/3DP/v/tNqLHMIc9I8LKClNDWhZ9JTho89/kQcitCXQBMG7sAfVRK0Ie3T2EDOzp1YXYiVA==}
+    peerDependencies:
+      eslint: ^9 || ^10
 
   eslint-scope@8.4.0:
     resolution: {integrity: sha512-sNXOfKCn74rt8RICKMvJS7XKV/Xk9kA7DyJr8mJik3S7Cwgy3qlkkmyS2uQB3jiJg6VNdZd/pDBJu0nvG2NlTg==}
@@ -3160,6 +3168,10 @@ snapshots:
       '@esbuild/win32-x64': 0.28.1
 
   escape-string-regexp@4.0.0: {}
+
+  eslint-plugin-react-refresh@0.5.3(eslint@9.39.5):
+    dependencies:
+      eslint: 9.39.5
 
   eslint-scope@8.4.0:
     dependencies:
