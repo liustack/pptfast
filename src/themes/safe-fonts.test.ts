@@ -18,12 +18,4 @@ describe("themes resolve to Windows-safe fonts", () => {
       expect(SAFE_FONTS.has(mono.toLowerCase()), `${id} mono=${mono}`).toBe(true)
     })
   }
-
-  it("ikb-swiss (legacy id, mapped to tech) heading resolves to a CJK-capable face", () => {
-    // ikb-swiss's own tokens were hard-deleted in the theme redesign;
-    // resolveThemeId now maps this id onto tech, whose 雅黑-first stack
-    // still avoids the Arial-tofu failure this test originally guarded.
-    const t = getTheme("ikb-swiss")
-    expect(resolveFontFace(t.fonts.heading, "heading")).toBe("Microsoft YaHei")
-  })
 })

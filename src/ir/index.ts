@@ -4,38 +4,18 @@ import { PPTX_ICON_NAMES } from "@/icons"
 
 export const THEME_IDS = [
   "consulting",
-  "insight", // 2026-07-10：原 creative 改名（深底红金=财经信息图，creative 名让位真创意子类）
-  "campaign", // 2026-07-13：活力营销（深紫多彩笔刷，memphis 拆分 A）
-  "bloom", // 2026-07-13：柔美庆典（紫粉杏水彩，memphis 拆分 B）
-  "classroom", // 2026-07-13：教学课堂（莫兰迪灰调，第 13 主题）
-  "memphis", // legacy：2026-07-13 拆分退役，渲染兜底到 campaign
-  "ink", // 2026-07-10：水墨国风（宣纸底+墨黑+朱砂+楷体）
+  "enterprise",
   "academic",
-  "enterprise", // 2026-07-10：原 custom→gallery→avant 最终定名（企业蓝，白墙 IKB 单色系）
+  "insight",
+  "campaign",
+  "bloom",
+  "classroom",
+  "ink",
   "tech",
-  "runway", // 2026-07-10 拆分：时尚秀场（超大排印+满版色块），人文气质拆去 journal
-  "journal", // 2026-07-10：原 magazine 人文期刊纯改名（暖纸+砖红+宋体报头）
-  "luxe", // 2026-07-10：原 retail 黑金重定位改名（零版式代码先例保持）
-  "heritage", // 2026-07-10：第 8 主题（勃艮第×焦糖典藏传承），零版式代码
-  // Legacy ids: retired, kept here only so pre-existing stored decks still
-  // validate（缺了会整卡降级成「旧版本生成」）。Rendering maps them onto the
-  // canonical themes via resolveThemeId() (themes/index.ts). 三代退役 id：
-  // 主题重设计一代（ikb-swiss/anthropic-clay）+ 场景化改名一代（2026-07-08，
-  // 风格名 mckinsey-navy 等）+ 2026-07-10 一代（retail→luxe、custom→gallery）。
-  "mckinsey-navy",
-  "bcg-emerald",
-  "editorial-dark",
-  "bento-tech",
-  "editorial-serif",
-  "anthropic-clay",
-  "ikb-swiss",
-  "retail",
-  "custom",
-  "gallery",
-  "avant",
-  "magazine",
-  "creative",
-  "doodle",
+  "runway",
+  "journal",
+  "luxe",
+  "heritage",
 ] as const
 
 const Hex = z.string().regex(/^#[0-9A-Fa-f]{3,8}$/)

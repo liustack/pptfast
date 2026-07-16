@@ -45,15 +45,15 @@ function svg(node: React.ReactElement) {
 }
 
 describe("MasterChrome footer suppression (P2 Task 25: manifest-driven chrome.suppressFooterOnCardContent)", () => {
-  it("custom 主题：content 页 + 卡片背景图 → 页脚整体消失（存量语义，manifest 驱动）", () => {
-    const doc = ir("custom", [cardBgContentSlide])
+  it("enterprise 主题：content 页 + 卡片背景图 → 页脚整体消失（manifest 驱动）", () => {
+    const doc = ir("enterprise", [cardBgContentSlide])
     const { container } = svg(<MasterChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
     expect(container.querySelector("line")).toBeNull()
     expect(container.textContent).not.toContain("ACME")
     expect(container.textContent).not.toContain("v1")
   })
 
-  it.each(["consulting", "creative", "academic", "tech", "magazine"] as const)(
+  it.each(["consulting", "insight", "academic", "tech", "journal"] as const)(
     "%s 主题：同样的 content 页 + 卡片背景图 → 页脚正常显示（未设 chrome.suppressFooterOnCardContent，不受影响）",
     (themeId) => {
       const doc = ir(themeId, [cardBgContentSlide])

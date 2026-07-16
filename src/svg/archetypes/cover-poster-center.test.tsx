@@ -40,8 +40,8 @@ function render(body: React.ReactElement): { markup: string; root: Element } {
 
 describe("PosterCenterCover", () => {
   it("creative tokens 下标题居中、短横条走 primary（RED≡primary）且无旧 baked hex 残留（观感等价档）", () => {
-    const ctx = buildCtx(getTheme("creative"), {})
-    const out = renderSvgMarkup(<PosterCenterCover ir={ir("creative")} slide={slide} index={0} ctx={ctx} />)
+    const ctx = buildCtx(getTheme("insight"), {})
+    const out = renderSvgMarkup(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("创意提案")
     expect(out).toContain('text-anchor="middle"')
     expect(out).toContain("#E63946") // RED 经 ctx.colors.primary 而来，与 creative primary 逐字节相同
@@ -56,7 +56,7 @@ describe("PosterCenterCover", () => {
   })
 
   it("accent 短横条精确坐标(width=60/height=4)走 primary、副标题居中、底部合并 meta 行含组织/密级/日期", () => {
-    const ctx = buildCtx(getTheme("creative"), {})
+    const ctx = buildCtx(getTheme("insight"), {})
     const fullSlide: Slide = {
       type: "cover",
       heading: "年度财务报告",
@@ -66,7 +66,7 @@ describe("PosterCenterCover", () => {
     const fullIr: PptxIR = {
       version: "2",
       filename: "deck.pptx",
-      theme: { id: "creative" },
+      theme: { id: "insight" },
       meta: { organization: "DarkCo", confidentiality: "internal", version: "v2", date: "2026" },
       assets: { images: {} },
       slides: [fullSlide],
@@ -98,8 +98,8 @@ describe("PosterCenterCover", () => {
   })
 
   it("Cover 元素避开四角 MasterChrome logo 条带", () => {
-    const ctx = buildCtx(getTheme("creative"), {})
-    const { root } = render(<PosterCenterCover ir={ir("creative")} slide={slide} index={0} ctx={ctx} />)
+    const ctx = buildCtx(getTheme("insight"), {})
+    const { root } = render(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     const accentBar = Array.from(root.querySelectorAll("rect")).find(
       (r) => r.getAttribute("width") === "60" && r.getAttribute("height") === "4",
     )!
@@ -115,8 +115,8 @@ describe("PosterCenterCover", () => {
   })
 
   it("Cover 页通过 subset 校验", () => {
-    const ctx = buildCtx(getTheme("creative"), {})
-    const { root } = render(<PosterCenterCover ir={ir("creative")} slide={slide} index={0} ctx={ctx} />)
+    const ctx = buildCtx(getTheme("insight"), {})
+    const { root } = render(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
   })
 })

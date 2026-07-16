@@ -6,7 +6,7 @@ describe("theme registry v2", () => {
   it("has enterprise (ex-custom/gallery/avant), not retired ids", () => {
     expect(THEME_TOKENS["enterprise"]).toBeTruthy();
     expect((THEME_TOKENS as any)["stripe-purple"]).toBeUndefined();
-    // 2026-07-10 custom→gallery→avant：旧 id 均非 canonical（legacy map 兜底）
+    // 无 legacy id 兜底：这些旧 id 均非 canonical，不在 THEME_TOKENS 里注册
     expect((THEME_TOKENS as any)["custom"]).toBeUndefined();
     expect((THEME_TOKENS as any)["gallery"]).toBeUndefined();
     expect((THEME_TOKENS as any)["avant"]).toBeUndefined();

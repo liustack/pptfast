@@ -52,8 +52,8 @@ const ir = (theme: string, slide: Slide): PptxIR =>
 // 锚点 + 内容存在 + 归并掉的孤儿色不再出现，而非逐字节 toBe。
 describe("PosterEnding", () => {
   it("creative tokens 下居中标题、accent 短横条走 primary（RED≡primary）、meta 合并行走 muted，heading 存在时不触发任何兜底", () => {
-    const ctx = buildCtx(getTheme("creative"), {})
-    const deck = ir("creative", endingWithHeading)
+    const ctx = buildCtx(getTheme("insight"), {})
+    const deck = ir("insight", endingWithHeading)
     const out = renderSvgMarkup(
       <PosterEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
     )
@@ -100,8 +100,8 @@ describe("PosterEnding", () => {
   })
 
   it("creative tokens 下无 heading 时主标题兜底“提问与讨论”，且连带触发副标题兜底“Questions & Discussion”", () => {
-    const ctx = buildCtx(getTheme("creative"), {})
-    const deck = ir("creative", endingBare)
+    const ctx = buildCtx(getTheme("insight"), {})
+    const deck = ir("insight", endingBare)
     const out = renderSvgMarkup(<PosterEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
 
     expect(out).toContain("提问与讨论")
@@ -114,9 +114,9 @@ describe("PosterEnding", () => {
   // && (...)}` 因而完全不渲染该 <text> 元素。这与 endingBare（heading 和
   // subheading 都缺省，触发 Q&A 兜底）是两条不同的分支，此前未被单独断言过。
   it("heading 存在但 subheading 缺省：既不渲染用户副标题，也不触发 Q&A 连带兜底（不同于 heading 也缺省的 endingBare 分支）", () => {
-    const ctx = buildCtx(getTheme("creative"), {})
+    const ctx = buildCtx(getTheme("insight"), {})
     const slide: Slide = { type: "ending", heading: "感谢聆听", blocks: [] } as Slide
-    const deck = ir("creative", slide)
+    const deck = ir("insight", slide)
     const out = renderSvgMarkup(<PosterEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
 
     expect(out).toContain("感谢聆听")
@@ -139,8 +139,8 @@ describe("PosterEnding", () => {
 
   it("shrinks a pathologically long custom heading instead of overflowing", () => {
     const longSlide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
-    const ctx = buildCtx(getTheme("creative"), {})
-    const deck = ir("creative", longSlide)
+    const ctx = buildCtx(getTheme("insight"), {})
+    const deck = ir("insight", longSlide)
     const { root } = render(<PosterEnding ir={deck} slide={longSlide} index={0} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
   })
@@ -154,13 +154,13 @@ describe("PosterEnding", () => {
       // is the same construction under token replacement.
       const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明", blocks: [] } as Slide
       const oneLineSlide: Slide = { type: "ending", heading: "提问与讨论", blocks: [] } as Slide
-      const ctx = buildCtx(getTheme("creative"), {})
+      const ctx = buildCtx(getTheme("insight"), {})
 
       const { root: twoLineRoot } = render(
-        <PosterEnding ir={ir("creative", twoLineSlide)} slide={twoLineSlide} index={0} ctx={ctx} />,
+        <PosterEnding ir={ir("insight", twoLineSlide)} slide={twoLineSlide} index={0} ctx={ctx} />,
       )
       const { root: oneLineRoot } = render(
-        <PosterEnding ir={ir("creative", oneLineSlide)} slide={oneLineSlide} index={0} ctx={ctx} />,
+        <PosterEnding ir={ir("insight", oneLineSlide)} slide={oneLineSlide} index={0} ctx={ctx} />,
       )
 
       const twoLineHeadingTexts = Array.from(twoLineRoot.querySelectorAll("text")).filter(
@@ -194,8 +194,8 @@ describe("PosterEnding", () => {
 
     it("user-reported repro heading ('从今天开始，用声明式管理你的集群') renders with the whole downstream chain within the page", () => {
       const slide: Slide = { type: "ending", heading: "从今天开始，用声明式管理你的集群", blocks: [] } as Slide
-      const ctx = buildCtx(getTheme("creative"), {})
-      const { root } = render(<PosterEnding ir={ir("creative", slide)} slide={slide} index={0} ctx={ctx} />)
+      const ctx = buildCtx(getTheme("insight"), {})
+      const { root } = render(<PosterEnding ir={ir("insight", slide)} slide={slide} index={0} ctx={ctx} />)
       const allYs = Array.from(root.querySelectorAll("text")).map((t) => Number(t.getAttribute("y")))
       expect(Math.max(...allYs)).toBeLessThanOrEqual(714)
     })

@@ -181,26 +181,6 @@ describe("asset background auto scrim (image-layouts P1)", () => {
     expect(scrims).toHaveLength(1)
   })
 
-  it("legacy custom id（现 gallery）：压图页同享设计主题接管，不再裸背景+overlay 直通", () => {
-    // 2026-07-10 custom→gallery 改造：原「custom 裸背景 + 模型 overlay
-    // 直通」特判删除，所有主题（含存量 custom deck 经 legacy map 落
-    // gallery）统一走设计主题路径——cover 压图页 ImageCoverPage 接管，
-    // 模型 overlay 被忽略（方向常与主题文字色相反）。
-    const { container } = render(
-      <FullSlideSvg ir={withAsset("custom")} slide={bgSlide} index={0} />,
-    )
-    const rects = Array.from(container.querySelectorAll("rect"))
-    const modelOverlay = rects.find(
-      (r) => r.getAttribute("fill") === "#000000" && r.getAttribute("fill-opacity") === "0.3",
-    )
-    expect(modelOverlay).toBeUndefined()
-    // ImageCoverPage 的暗遮罩存在（低透明度分段遮罩）
-    const darkScrim = rects.filter((r) => {
-      const o = r.getAttribute("fill-opacity")
-      return o !== null && Number(o) > 0 && Number(o) <= 0.35
-    })
-    expect(darkScrim.length).toBeGreaterThan(0)
-  })
 })
 
 describe("image_grid / image_compare export round-trip (image-layouts P2)", () => {
@@ -328,10 +308,10 @@ describe("manifest 四页型分发泛化 (P2)", () => {
     expect(["bento-panel", "two-column"]).toContain(id)
   })
 
-  it("ending 命中 archetype（magazine → masthead-ending，Wave 4 Task 23 已接线）", () => {
+  it("ending 命中 archetype（journal → masthead-ending，Wave 4 Task 23 已接线）", () => {
     const endingSlide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
     const { container } = render(
-      <FullSlideSvg ir={mkIr("magazine", endingSlide)} slide={endingSlide} index={0} />,
+      <FullSlideSvg ir={mkIr("journal", endingSlide)} slide={endingSlide} index={0} />,
     )
     expect(container.querySelector('[data-archetype="masthead-ending"]')).not.toBeNull()
   })
@@ -387,10 +367,10 @@ describe("content 页轮换 (P3 Item ②)", () => {
     expect(["rail-numbered", "two-column"]).toContain(a2)
   })
 
-  it("单元素允许集主题零回归（magazine content 恒 narrow-column，不受轮换影响）", () => {
+  it("单元素允许集主题零回归（journal content 恒 narrow-column，不受轮换影响）", () => {
     const magDeck: PptxIR = {
       ...deck,
-      theme: { id: "magazine" },
+      theme: { id: "journal" },
     } as unknown as PptxIR
     const { container } = render(
       <FullSlideSvg ir={magDeck} slide={magDeck.slides[2]} index={2} />,

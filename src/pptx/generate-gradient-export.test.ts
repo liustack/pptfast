@@ -69,14 +69,14 @@ describe("generatePptxBlob real theme decor gradients", () => {
     expect(await slideXml(blob)).toContain("a:gradFill")
   }, 30000)
 
-  it("custom's decor gradient field is skipped (not present) when a slide has a background image", async () => {
+  it("enterprise's decor gradient field is skipped (not present) when a slide has a background image", async () => {
     const { generatePptxBlob } = await import("./generate")
     const RED_PNG =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     const ir: PptxIR = {
       version: "2",
       filename: "decor-gradient-bg.pptx",
-      theme: { id: "custom" },
+      theme: { id: "enterprise" },
       meta: {},
       assets: { images: { bg: { src: RED_PNG } } },
       slides: [

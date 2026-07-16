@@ -122,12 +122,7 @@ describe("THEME_MANIFESTS", () => {
     // 可选」的类型语义仍成立，但生产 manifest 已无留空主题。
     expect(r.motif).toBe("luxe-motif")
   })
-  it("legacy id 经 resolve 拿到承接主题的清单", () => {
-    expect(getManifest("mckinsey-navy")).toBe(THEME_MANIFESTS.consulting)
-    // 2026-07-10 第三代退役：retail→luxe、custom→gallery→avant→enterprise
-    expect(getManifest("retail")).toBe(THEME_MANIFESTS.luxe)
-    expect(getManifest("custom")).toBe(THEME_MANIFESTS.enterprise)
-    expect(getManifest("gallery")).toBe(THEME_MANIFESTS.enterprise)
-    expect(getManifest("avant")).toBe(THEME_MANIFESTS.enterprise)
+  it("未知 id 经 resolve 回落 consulting 的清单", () => {
+    expect(getManifest("nonexistent-theme")).toBe(THEME_MANIFESTS.consulting)
   })
 })

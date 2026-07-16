@@ -46,8 +46,8 @@ describe("PosterChapter", () => {
     // big-number spacing」一案——PosterChapter 与旧 EditorialDarkChapter 是
     // 同一份构图逻辑做 token 替换，几何值不变，这里固化为字面量而非与已删除
     // 的旧模板逐字节比较。
-    const ctx = buildCtx(getTheme("creative"), {})
-    const deck = ir("creative")
+    const ctx = buildCtx(getTheme("insight"), {})
+    const deck = ir("insight")
 
     const { root: root1 } = render(<PosterChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
     const number1 = Array.from(root1.querySelectorAll("text")).find((t) => t.textContent === "01")!
@@ -79,12 +79,12 @@ describe("PosterChapter", () => {
     const deck: PptxIR = {
       version: "2",
       filename: "x.pptx",
-      theme: { id: "creative" },
+      theme: { id: "insight" },
       meta: {},
       assets: { images: {} },
       slides: [longSlide],
     } as unknown as PptxIR
-    const ctx = buildCtx(getTheme("creative"), {})
+    const ctx = buildCtx(getTheme("insight"), {})
     const { root } = render(<PosterChapter ir={deck} slide={longSlide} index={0} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
 

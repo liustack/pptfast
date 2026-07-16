@@ -35,8 +35,8 @@ describe("pptx-ir v2", () => {
       expect(r.data.assets).toEqual({ images: {} })
     }
   })
-  it("custom is a theme id, stripe-purple is not", () => {
-    expect(THEME_IDS).toContain("custom")
+  it("consulting is a theme id, stripe-purple is not", () => {
+    expect(THEME_IDS).toContain("consulting")
     expect(THEME_IDS).not.toContain("stripe-purple")
   })
 })
