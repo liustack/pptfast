@@ -1,1 +1,70 @@
-export {}
+#!/usr/bin/env node
+import { Command } from "commander"
+import { installNodePlatform } from "./platform/node"
+import { runPreview, runRender, runSchema, runThemes, runValidate } from "./cli/commands"
+import { VERSION } from "./version"
+
+installNodePlatform()
+
+const program = new Command()
+program
+  .name("pptfast")
+  .description("Stable, editable PPTX generation for AI agents — semantic IR in, native DrawingML out")
+  .version(VERSION)
+
+function fail(e: unknown): never {
+  console.error(e instanceof Error ? e.message : String(e))
+  process.exit(1)
+}
+
+program
+  .command("render")
+  .description("Render an IR JSON file to a .pptx")
+  .argument("<ir.json>", "path to the IR file")
+  .requiredOption("-o, --output <file>", "output .pptx path")
+  .option("--theme <id>", "override the deck theme (see `pptfast themes`)")
+  .action(async (ir: string, opts: { output: string; theme?: string }) => {
+    try {
+      console.log(await runRender(ir, opts))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program
+  .command("validate")
+  .description("Validate an IR JSON file against the schema")
+  .argument("<ir.json>")
+  .action(async (ir: string) => {
+    try {
+      console.log(await runValidate(ir))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program
+  .command("schema")
+  .description("Print the IR JSON Schema (feed this to a model before it writes IR)")
+  .action(() => console.log(runSchema()))
+
+program
+  .command("themes")
+  .description("List built-in themes")
+  .option("--json", "machine-readable output")
+  .action((opts: { json?: boolean }) => console.log(runThemes(Boolean(opts.json))))
+
+program
+  .command("preview")
+  .description("Render each slide to an SVG file for visual self-check")
+  .argument("<ir.json>")
+  .requiredOption("-o, --output <dir>", "output directory")
+  .action(async (ir: string, opts: { output: string }) => {
+    try {
+      console.log(await runPreview(ir, opts.output))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program.parseAsync().catch(fail)
