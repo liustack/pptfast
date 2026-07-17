@@ -59,17 +59,10 @@ export interface ThemeShape {
   gapScale?: number
 }
 
-export interface ThemeOverride {
-  primary?: string;
-  accent?: string;
-  font_heading?: string[];
-  font_body?: string[];
-}
-
 /**
- * Deep-partial brand override (v0.2, zod-validated as IR theme.tokens).
- * Applied after ThemeOverride — see themes/index.ts getTheme. Absent tokens
- * return the base reference untouched (zero observable change).
+ * Deep-partial brand override (zod-validated as IR style.tokens — see
+ * ir/index.ts TokensOverrideSchema). See themes/index.ts getTheme. Absent
+ * tokens return the base reference untouched (zero observable change).
  */
 export function applyTokensOverride(
   base: ThemeTokens,
@@ -81,25 +74,5 @@ export function applyTokensOverride(
     colors: { ...base.colors, ...tokens.colors },
     fonts: { ...base.fonts, ...tokens.fonts },
     shape: tokens.shape ? { ...base.shape, ...tokens.shape } : base.shape,
-  };
-}
-
-export function applyOverride(
-  base: ThemeTokens,
-  override?: ThemeOverride,
-): ThemeTokens {
-  if (!override) return base;
-  return {
-    ...base,
-    colors: {
-      ...base.colors,
-      primary: override.primary ?? base.colors.primary,
-      accent: override.accent ?? base.colors.accent,
-    },
-    fonts: {
-      ...base.fonts,
-      heading: override.font_heading ?? base.fonts.heading,
-      body: override.font_body ?? base.fonts.body,
-    },
   };
 }

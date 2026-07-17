@@ -3,9 +3,9 @@ import { PptxIRSchema } from "@/ir"
 import { generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
 
 const raw = {
-  version: "2",
+  version: "3",
   filename: "api-test",
-  theme: { id: "consulting" },
+  style: { id: "consulting" },
   slides: [
     { type: "cover", heading: "Hello" },
     { type: "content", heading: "Points", blocks: [{ type: "bullets", items: ["a", "b"] }] },
@@ -18,6 +18,19 @@ describe("validateIr", () => {
     expect(r.ok).toBe(true)
     expect(r.errors).toEqual([])
     expect(r.ir?.slides[0]?.blocks).toEqual([])
+  })
+
+  it("gives a migration message for IR v2 input", () => {
+    const v = validateIr({ version: "2", filename: "x", theme: { id: "tech" }, slides: [] })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.message).toMatch(/rename theme to style/)
+  })
+
+  it("hard-rejects an unknown style id with the available list", () => {
+    const v = validateIr({ style: { id: "neon" }, slides: [{ heading: "x" }] })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/available:.*consulting/)
   })
 
   it("maps slide-scoped issues to 1-based page numbers", () => {

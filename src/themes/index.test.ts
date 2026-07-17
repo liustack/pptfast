@@ -14,9 +14,9 @@ describe("getTheme", () => {
     }
   });
 
-  it("override 覆盖 primary 但保留灰阶", () => {
+  it("tokens 覆盖 primary 但保留灰阶", () => {
     const original = getTheme("tech");
-    const overridden = getTheme("tech", { primary: "#FF0000" });
+    const overridden = getTheme("tech", { colors: { primary: "#FF0000" } });
     expect(overridden.colors.primary).toBe("#FF0000");
     expect(overridden.colors.muted).toBe(original.colors.muted);
   });

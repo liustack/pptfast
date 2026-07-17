@@ -95,19 +95,14 @@ describe("THEME_MANIFESTS", () => {
         content: ["banner-heading", "two-column"],
         ending: ["banner-ending"],
       },
-      chrome: { suppressFooterOnCardContent: true },
       motif: "enterprise-motif",
     })
   })
 
-  it("chrome 开关归属：enterprise 设 suppressFooterOnCardContent、ink 设 suppressFooterRule（版框防双线），其余九主题不设", () => {
-    expect(THEME_MANIFESTS.enterprise.chrome).toEqual({ suppressFooterOnCardContent: true })
-    expect(THEME_MANIFESTS.ink.chrome).toEqual({ suppressFooterRule: true })
-    for (const themeId of ["consulting", "insight", "academic", "tech", "runway", "journal", "luxe", "heritage", "campaign", "bloom"] as const) {
-      expect(THEME_MANIFESTS[themeId].chrome, themeId).toBeUndefined()
-    }
-  })
-
+  // chrome 开关（suppressFooterOnCardContent / suppressFooterRule）W1 从
+  // manifest 拆到 style 的 master 配置——归属断言随之搬到
+  // themes/styles.test.ts（STYLE_DEFINITIONS.enterprise.master /
+  // STYLE_DEFINITIONS.ink.master），manifest 现在只管 archetypes + motif。
 
   it("luxe（原 retail，黑金）复用现有 archetype（零版式代码），motif 全覆盖后配烫金细线", () => {
     const r = THEME_MANIFESTS.luxe

@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest"
 import { slideToSvgMarkup, slideToOps } from "./render-slide"
 import { parseSvgRoot } from "./serialize"
 import { assertSubset } from "./subset-validate"
-import { THEME_IDS, type PptxIR, type Slide, type Block } from "@/ir"
+import { BUILTIN_STYLE_IDS, type PptxIR, type Slide, type Block } from "@/ir"
 
 // One content slide exercising every block renderer in a single pass.
 const allBlocks: Block[] = [
@@ -35,7 +35,7 @@ const allBlocks: Block[] = [
   { type: "citation", sources: [{ label: "来源", url: "https://e.x" }] },
 ]
 
-function deck(themeId: (typeof THEME_IDS)[number]): { ir: PptxIR; slides: Slide[] } {
+function deck(themeId: (typeof BUILTIN_STYLE_IDS)[number]): { ir: PptxIR; slides: Slide[] } {
   const slides: Slide[] = [
     { type: "cover", heading: "封面标题", subheading: "副标题", blocks: [] },
     { type: "chapter", heading: "第一章", blocks: [] },
@@ -43,9 +43,9 @@ function deck(themeId: (typeof THEME_IDS)[number]): { ir: PptxIR; slides: Slide[
     { type: "ending", heading: "谢谢", blocks: [] },
   ]
   const ir: PptxIR = {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: themeId },
+    style: { id: themeId },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1", date: "2026" },
     assets: { images: { hero: { src: "data:image/png;base64,AAAA" } } },
     slides,
@@ -54,7 +54,7 @@ function deck(themeId: (typeof THEME_IDS)[number]): { ir: PptxIR; slides: Slide[
 }
 
 describe("single-source export across every theme and slide type", () => {
-  for (const themeId of THEME_IDS) {
+  for (const themeId of BUILTIN_STYLE_IDS) {
     it(`${themeId}: every slide is subset-clean and round-trips to ops`, () => {
       const { ir, slides } = deck(themeId)
       slides.forEach((slide, index) => {

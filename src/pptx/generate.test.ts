@@ -53,9 +53,9 @@ function makeSlide(type: Slide["type"], heading?: string): Slide {
 // rendering) clear of that gradient-patch path entirely.
 function makeIR(slides: Slide[], themeId = "consulting"): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "test.pptx",
-    theme: { id: themeId as PptxIR["theme"]["id"] },
+    style: { id: themeId as PptxIR["style"]["id"] },
     meta: {},
     assets: { images: {} },
     slides,
@@ -102,15 +102,6 @@ describe("generatePptxBlob (single-source svg pipeline)", () => {
     for (const call of pptx.defineSlideMaster.mock.calls) {
       expect(call[0].slideNumber).toBeUndefined()
     }
-  })
-
-  it("applies a theme override without error", async () => {
-    const { generatePptxBlob } = await import("./generate")
-    const ir = makeIR([makeSlide("content")], "consulting")
-    ir.theme.override = { primary: "#FF0000" }
-
-    const blob = await generatePptxBlob(ir)
-    expect(blob).toBeInstanceOf(Blob)
   })
 
   it("accepts a generated_file envelope carrying 'kind' (strips it before strict parse)", async () => {

@@ -32,9 +32,9 @@ const noSub: Slide = {
 
 function ir(slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: "consulting" },
+    style: { id: "consulting" },
     meta: {},
     assets: { images: {} },
     slides,
@@ -43,7 +43,7 @@ function ir(slides: Slide[]): PptxIR {
 
 function render(slide: Slide, slides: Slide[], index: number): string {
   const deck = ir(slides)
-  const ctx = buildCtx(getTheme(deck.theme.id), deck.assets.images)
+  const ctx = buildCtx(getTheme(deck.style.id), deck.assets.images)
   return renderSvgMarkup(
     <TwoColumnContent ir={deck} slide={slide} index={index} ctx={ctx} />,
   )

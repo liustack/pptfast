@@ -1,7 +1,7 @@
 {
-  "version": "2",
+  "version": "3",
   "filename": "pptfast-basic-demo",
-  "theme": { "id": "consulting" },
+  "style": { "id": "consulting" },
   "meta": { "organization": "pptfast", "date": "2026-07-17" },
   "slides": [
     { "type": "cover", "heading": "pptfast", "subheading": "Stable, editable PPTX from a semantic IR" },

@@ -9,7 +9,7 @@ import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = { type: "cover", heading: "创意提案", subheading: "一次品牌焕新实验", blocks: [] } as Slide
 const ir = (theme: string): PptxIR =>
-  ({ version: "2", filename: "x.pptx", theme: { id: theme }, meta: { organization: "品牌组" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
+  ({ version: "3", filename: "x.pptx", style: { id: theme }, meta: { organization: "品牌组" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 
 // MasterChrome's brand logo bands (MasterChrome.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br). Ported from
@@ -64,9 +64,9 @@ describe("PosterCenterCover", () => {
       blocks: [],
     } as Slide
     const fullIr: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "deck.pptx",
-      theme: { id: "insight" },
+      style: { id: "insight" },
       meta: { organization: "DarkCo", confidentiality: "internal", version: "v2", date: "2026" },
       assets: { images: {} },
       slides: [fullSlide],

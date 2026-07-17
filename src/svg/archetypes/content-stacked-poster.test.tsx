@@ -64,9 +64,9 @@ const threeBlockSlide: Slide = {
 
 function ir(theme: string, slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides,

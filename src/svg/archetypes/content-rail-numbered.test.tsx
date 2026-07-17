@@ -57,9 +57,9 @@ const content2a: Slide = {
 
 const ir = (theme: string): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [chapter1, content1a, content1b, chapter2, content2a],
@@ -110,9 +110,9 @@ describe("RailNumberedContent", () => {
     const bare: Slide = { type: "content", variant: "single", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
     const soloChapter: Slide = { type: "chapter", heading: "唯一章节", blocks: [] } as Slide
     const deck: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      style: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [soloChapter, bare],
@@ -239,9 +239,9 @@ describe("RailNumberedContent", () => {
       ],
     } as Slide
     const doc: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      style: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -264,9 +264,9 @@ describe("RailNumberedContent", () => {
       blocks: [{ type: "paragraph", text: "概要。" }],
     } as Slide
     const doc: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      style: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -306,9 +306,9 @@ describe("RailNumberedContent", () => {
       blocks: [{ type: "paragraph", text: "核心概要。" }],
     } as Slide
     const doc: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      style: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],

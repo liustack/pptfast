@@ -2,12 +2,12 @@ import { readFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { THEME_IDS, TokensOverrideSchema } from "../ir"
+import { BUILTIN_STYLE_IDS, TokensOverrideSchema } from "../ir"
 
 /** Project-level deck defaults. Precedence: CLI flag > config > IR (see commands.ts applyDeckConfig). */
 const ConfigSchema = z
   .object({
-    theme: z.enum(THEME_IDS).optional(),
+    theme: z.enum(BUILTIN_STYLE_IDS).optional(),
     tokens: TokensOverrideSchema.optional(),
   })
   .strict()

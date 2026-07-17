@@ -12,6 +12,6 @@ export {
   type ValidationIssue,
   type ThemeInfo,
 } from "./api"
-export { PptxIRSchema, TokensOverrideSchema, THEME_IDS } from "./ir"
+export { PptxIRSchema, TokensOverrideSchema, BUILTIN_STYLE_IDS } from "./ir"
 export type { PptxIR, Slide, Block, Meta, Assets, BackgroundSpec, TokensOverride } from "./ir"
 export { installPlatform, type PptfastPlatform } from "./platform/registry"

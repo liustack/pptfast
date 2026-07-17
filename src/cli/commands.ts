@@ -29,7 +29,7 @@ async function loadTokensFile(path: string): Promise<TokensOverride> {
 /**
  * Resolve deck defaults onto the raw (pre-validation) IR.
  * Precedence: CLI flag > pptfast.config.json (walked up from cwd) > IR.
- * `--theme` only swaps theme.id — IR-authored override/tokens survive.
+ * `--theme` only swaps style.id — IR-authored tokens survive.
  */
 export async function applyDeckConfig(
   raw: unknown,
@@ -37,17 +37,17 @@ export async function applyDeckConfig(
 ): Promise<void> {
   if (typeof raw !== "object" || raw === null) return // schema error surfaces in validateIr
   const deck = raw as Record<string, unknown>
-  const irTheme =
-    typeof deck.theme === "object" && deck.theme !== null
-      ? (deck.theme as Record<string, unknown>)
+  const irStyle =
+    typeof deck.style === "object" && deck.style !== null
+      ? (deck.style as Record<string, unknown>)
       : {}
   const hit = await findConfig(opts.cwd)
-  const theme = opts.theme ?? hit?.config.theme ?? irTheme.id
+  const theme = opts.theme ?? hit?.config.theme ?? irStyle.id
   const tokens = opts.tokensPath
     ? await loadTokensFile(opts.tokensPath)
-    : (hit?.config.tokens ?? irTheme.tokens)
+    : (hit?.config.tokens ?? irStyle.tokens)
   if (theme === undefined && tokens === undefined) return
-  deck.theme = { ...irTheme, id: theme, ...(tokens !== undefined ? { tokens } : {}) }
+  deck.style = { ...irStyle, id: theme, ...(tokens !== undefined ? { tokens } : {}) }
 }
 
 export interface RenderOptions {
@@ -82,7 +82,7 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
     throw new PptfastError(
       `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
     )
-  return `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
+  return `OK — ${v.ir!.slides.length} slides, style "${v.ir!.style.id}"`
 }
 
 export function runSchema(tokens = false): string {

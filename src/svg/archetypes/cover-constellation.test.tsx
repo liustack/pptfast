@@ -15,9 +15,9 @@ const slide: Slide = {
 } as Slide
 const ir = (theme: string): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: { organization: "测试实验室", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],

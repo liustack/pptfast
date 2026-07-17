@@ -6,9 +6,9 @@ import { generatePptxBlob } from "@/pptx/generate"
 import { installNodePlatform } from "./node"
 
 const ir = PptxIRSchema.parse({
-  version: "2",
+  version: "3",
   filename: "smoke",
-  theme: { id: "consulting" },
+  style: { id: "consulting" },
   slides: [
     { type: "cover", heading: "pptfast smoke", subheading: "node render path" },
     { type: "content", heading: "Bullets", blocks: [{ type: "bullets", items: ["one", "two", "three"] }] },

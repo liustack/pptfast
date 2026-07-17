@@ -45,9 +45,9 @@ const endingWithHeadingAndBg: Slide = {
 
 function ir(theme: string, slide: Slide, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {
       organization: "维岚科技",
       authors: [{ name: "李雷", role: "顾问" }],

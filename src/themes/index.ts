@@ -1,10 +1,5 @@
 import type { TokensOverride } from "@/ir";
-import {
-  applyOverride,
-  applyTokensOverride,
-  type ThemeOverride,
-  type ThemeTokens,
-} from "./tokens";
+import { applyTokensOverride, type ThemeTokens } from "./tokens";
 import { CONSULTING_TOKENS } from "./consulting";
 import { ENTERPRISE_TOKENS } from "./enterprise";
 import { ACADEMIC_TOKENS } from "./academic";
@@ -86,22 +81,17 @@ export const THEME_TOKENS: Record<CanonicalThemeId, ThemeTokens> = {
   heritage: HERITAGE_TOKENS,
 };
 
-/** Resolve a theme: base tokens → narrow `override` → deep `tokens` (tokens wins). */
-export function getTheme(
-  id: string,
-  override?: ThemeOverride,
-  tokens?: TokensOverride,
-): ThemeTokens {
+/** Resolve a style's theme tokens: base tokens → deep `tokens` override. */
+export function getTheme(id: string, tokens?: TokensOverride): ThemeTokens {
   const base = THEME_TOKENS[resolveThemeId(id)];
-  if (!base) throw new Error(`Unknown theme id: ${id}`);
-  return applyTokensOverride(applyOverride(base, override), tokens);
+  if (!base) throw new Error(`Unknown style id: ${id}`);
+  return applyTokensOverride(base, tokens);
 }
 
 export type {
   ThemeTokens,
   ThemeColors,
   ThemeFonts,
-  ThemeOverride,
   LayoutType,
 } from "./tokens";
-export { applyOverride, applyTokensOverride } from "./tokens";
+export { applyTokensOverride } from "./tokens";

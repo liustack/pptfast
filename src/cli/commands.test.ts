@@ -13,9 +13,9 @@ const PNG_1PX = Buffer.from(
 )
 
 const VALID_IR = {
-  version: "2",
+  version: "3",
   filename: "cli-test",
-  theme: { id: "tech" },
+  style: { id: "tech" },
   slides: [
     { type: "cover", heading: "CLI" },
     { type: "content", heading: "Body", blocks: [{ type: "paragraph", text: "hello from the CLI test" }] },
@@ -23,9 +23,9 @@ const VALID_IR = {
 }
 
 const IR_WITH_LOCAL_ASSET = {
-  version: "2",
+  version: "3",
   filename: "cli-test-asset",
-  theme: { id: "tech" },
+  style: { id: "tech" },
   assets: { images: { logo: { src: "logo.png" } } },
   slides: [
     { type: "cover", heading: "CLI" },
@@ -38,7 +38,7 @@ beforeAll(async () => {
   installNodePlatform()
   dir = await mkdtemp(join(tmpdir(), "pptfast-cli-"))
   await writeFile(join(dir, "deck.json"), JSON.stringify(VALID_IR))
-  await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "2" }))
+  await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "3" }))
   await writeFile(join(dir, "logo.png"), PNG_1PX)
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
 })
@@ -111,7 +111,7 @@ describe("applyDeckConfig resolution (flag > config > IR)", () => {
     await writeFile(join(d, "brand.json"), JSON.stringify({ colors: { primary: "#0B5FFF" } }))
     const raw: any = structuredClone(VALID_IR)
     await applyDeckConfig(raw, { tokensPath: join(d, "brand.json"), cwd: d })
-    expect(raw.theme.tokens.colors.primary).toBe("#0B5FFF")
+    expect(raw.style.tokens.colors.primary).toBe("#0B5FFF")
   })
 
   it("config tokens and theme apply when no flags are given", async () => {
@@ -122,18 +122,18 @@ describe("applyDeckConfig resolution (flag > config > IR)", () => {
     )
     const raw: any = structuredClone(VALID_IR)
     await applyDeckConfig(raw, { cwd: d })
-    expect(raw.theme.id).toBe("ink")
-    expect(raw.theme.tokens.colors.primary).toBe("#111111")
+    expect(raw.style.id).toBe("ink")
+    expect(raw.style.tokens.colors.primary).toBe("#111111")
   })
 
   it("--theme flag beats config and keeps IR-authored tokens", async () => {
     const d = await freshDir()
     await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "ink" }))
     const raw: any = structuredClone(VALID_IR)
-    raw.theme = { id: "tech", tokens: { colors: { primary: "#ABCDEF" } } }
+    raw.style = { id: "tech", tokens: { colors: { primary: "#ABCDEF" } } }
     await applyDeckConfig(raw, { theme: "consulting", cwd: d })
-    expect(raw.theme.id).toBe("consulting")
-    expect(raw.theme.tokens.colors.primary).toBe("#ABCDEF")
+    expect(raw.style.id).toBe("consulting")
+    expect(raw.style.tokens.colors.primary).toBe("#ABCDEF")
   })
 
   it("leaves the IR untouched when there is no flag and no config", async () => {
@@ -152,11 +152,11 @@ describe("applyDeckConfig resolution (flag > config > IR)", () => {
     ).rejects.toThrow(/brand\.json/)
   })
 
-  it("runValidate reports the config-resolved theme", async () => {
+  it("runValidate reports the config-resolved style", async () => {
     const d = await freshDir()
     await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "ink" }))
     await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
-    await expect(runValidate(join(d, "deck.json"), d)).resolves.toMatch(/theme "ink"/)
+    await expect(runValidate(join(d, "deck.json"), d)).resolves.toMatch(/style "ink"/)
   })
 })
 

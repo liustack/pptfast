@@ -1,7 +1,11 @@
 import { z } from "zod"
 import { PPTX_ICON_NAMES } from "@/icons"
 
-export const THEME_IDS = [
+// Built-in style ids — a registered, renderable subset, not a closed universe:
+// v0.4's style registry can install more without a schema change (style.id
+// below is an open z.string(), the installed-style check lives in
+// api.ts validateIr).
+export const BUILTIN_STYLE_IDS = [
   "consulting",
   "enterprise",
   "academic",
@@ -44,14 +48,14 @@ const BackgroundSpecSchema = z.discriminatedUnion("kind", [
     .strict(),
 ])
 
-// ── Theme / Meta / Assets / Brand ──
+// ── Style / Meta / Assets / Brand ──
 
 /**
- * v0.2 brand-token override: deep-partial palette/fonts/shape merged over the
- * built-in theme (base → theme.override → theme.tokens, tokens wins — see
- * themes/index.ts getTheme). Scope is deliberately palette-level (spec §11):
- * no defaultBackgrounds or manifest overrides until v0.3. gapScale range
- * mirrors the documented sane range in themes/tokens.ts ThemeShape.
+ * Brand-token override (style.tokens): deep-partial palette/fonts/shape
+ * merged over the built-in theme (see themes/index.ts getTheme). Scope is
+ * deliberately palette-level (spec §11): no defaultBackgrounds or manifest
+ * overrides. gapScale range mirrors the documented sane range in
+ * themes/tokens.ts ThemeShape.
  */
 export const TokensOverrideSchema = z
   .object({
@@ -107,19 +111,13 @@ export const MasterConfigSchema = z
 
 export type MasterConfig = z.infer<typeof MasterConfigSchema>
 
-const ThemeSchema = z
+const StyleSchema = z
   .object({
-    id: z.enum(THEME_IDS),
-    override: z
-      .object({
-        primary: Hex.optional(),
-        accent: Hex.optional(),
-        font_heading: z.array(z.string()).optional(),
-        font_body: z.array(z.string()).optional(),
-      })
-      .strict()
-      .optional(),
+    // Open string, not an enum — installed-style check happens in validateIr
+    // so a v0.4 registry can add styles without a schema change (spec §4).
+    id: z.string().default("consulting"),
     tokens: TokensOverrideSchema.optional(),
+    master: MasterConfigSchema.optional(),
   })
   .strict()
 
@@ -187,7 +185,7 @@ const BrandSchema = z
   })
   .strict()
 
-// ── Blocks（19 种）──
+// ── Blocks（24 种）──
 
 const BlockSchema = z.discriminatedUnion("type", [
   z
@@ -555,7 +553,7 @@ const BlockSchema = z.discriminatedUnion("type", [
 
 const SlideSchema = z
   .object({
-    type: z.enum(["cover", "chapter", "content", "ending"]),
+    type: z.enum(["cover", "chapter", "content", "ending"]).default("content"),
     variant: z
       .enum([
         "single",
@@ -606,9 +604,9 @@ const SlideSchema = z
 
 export const PptxIRSchema = z
   .object({
-    version: z.literal("2"),
-    filename: z.string(),
-    theme: ThemeSchema,
+    version: z.literal("3").default("3"),
+    filename: z.string().default("presentation"),
+    style: StyleSchema.default({ id: "consulting" }),
     meta: MetaSchema.default({}),
     assets: AssetsSchema.default({ images: {} }),
     brand: BrandSchema.optional(),

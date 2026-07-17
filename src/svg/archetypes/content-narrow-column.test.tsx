@@ -35,9 +35,9 @@ const content: Slide = {
 
 const ir = (theme: string, slides: Slide[] = [chapter, content]): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides,

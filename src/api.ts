@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
-import { PptxIRSchema, TokensOverrideSchema, type PptxIR } from "./ir"
+import { BUILTIN_STYLE_IDS, PptxIRSchema, TokensOverrideSchema, type PptxIR } from "./ir"
 import { generatePptxBlob } from "./pptx/generate"
 import { CAPACITY } from "./svg/audit/capacity"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
@@ -29,7 +29,7 @@ export interface ValidateResult {
  * asserts on the Chinese wording directly). Unknown/future codes fall back to
  * a generic English string rather than leaking the untranslated Chinese text.
  */
-function describeQualityIssue(issue: QualityIssue, themeId: string): string {
+function describeQualityIssue(issue: QualityIssue, styleId: string): string {
   switch (issue.code) {
     case "empty_deck":
       return "deck has no slides"
@@ -38,7 +38,7 @@ function describeQualityIssue(issue: QualityIssue, themeId: string): string {
     case "long_heading":
       return `heading exceeds ${CAPACITY.headingMaxChars} characters — tighten it into a short, assertive phrase`
     case "density": {
-      const limit = CAPACITY.maxBlocksPerSlideOverrides[themeId] ?? CAPACITY.maxBlocksPerSlide
+      const limit = CAPACITY.maxBlocksPerSlideOverrides[styleId] ?? CAPACITY.maxBlocksPerSlide
       return `too many blocks on this slide (max ~${limit}) — split into multiple slides`
     }
     case "bullets_overflow":
@@ -66,6 +66,21 @@ function describeQualityIssue(issue: QualityIssue, themeId: string): string {
  * hoped-for prompt compliance.
  */
 export function validateIr(input: unknown): ValidateResult {
+  // IR v2 friendly migration message (dev-channel scope, spec §8 W1 row: only
+  // the mapping this wave completed — theme→style. Later waves append their
+  // own mapping to this same message as blocks→components / variant→block land).
+  if (typeof input === "object" && input !== null && (input as Record<string, unknown>).version === "2") {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "version",
+          message:
+            'IR v2 is not supported by pptfast 0.3 — set version to "3" and rename theme to style (theme.override is gone, use style.tokens)',
+        },
+      ],
+    }
+  }
   const r = PptxIRSchema.safeParse(input)
   if (!r.success) {
     const errors = r.error.issues.map((issue) => {
@@ -75,14 +90,28 @@ export function validateIr(input: unknown): ValidateResult {
     })
     return { ok: false, errors }
   }
+  // Installed-style check (schema layer keeps style.id open — see StyleSchema
+  // in ir/index.ts — so this hard gate is the only place an unknown id is
+  // actually rejected, with the available list in the message).
+  if (!(BUILTIN_STYLE_IDS as readonly string[]).includes(r.data.style.id)) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "style.id",
+          message: `unknown style "${r.data.style.id}" — available: ${BUILTIN_STYLE_IDS.join(", ")} (see \`pptfast styles\`)`,
+        },
+      ],
+    }
+  }
   const quality = checkIrQuality(r.data)
   if (quality.length === 0) return { ok: true, ir: r.data, errors: [] }
   const errors: ValidationIssue[] = quality.map((issue) =>
     issue.code === "empty_deck"
-      ? { path: "slides", message: describeQualityIssue(issue, r.data.theme.id) }
+      ? { path: "slides", message: describeQualityIssue(issue, r.data.style.id) }
       : {
           path: `slides.${issue.slide}`,
-          message: describeQualityIssue(issue, r.data.theme.id),
+          message: describeQualityIssue(issue, r.data.style.id),
           page: issue.slide + 1,
         },
   )

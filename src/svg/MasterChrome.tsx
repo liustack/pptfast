@@ -1,7 +1,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import type { BlockCtx } from "./blocks/types"
 import { CONF_LABEL } from "../lib/conf-labels"
-import { getManifest } from "../themes/manifest"
+import { resolveMaster } from "../themes/styles"
 import { cachedDeckSeed, pickBySeed } from "./variety"
 
 /**
@@ -40,13 +40,14 @@ export function MasterChrome({
   const border = ctx.colors.border ?? ctx.colors.muted
   const font = ctx.fonts.body
 
-  // 背景图 + 卡片态 content 页整页抑制页脚——是否生效由 manifest.chrome
-  // 驱动（P2 Task 25：custom 主题的存量语义，其余五主题不设 = 默认 false）。
+  // 背景图 + 卡片态 content 页整页抑制页脚——是否生效由 style 的 master 配置
+  // 驱动（W1 从 manifest.chrome 拆出，见 themes/styles.ts resolveMaster；
+  // enterprise 持有 suppressFooterOnCardContent，其余主题不设 = 默认 false）。
   const bgAsset =
     slide.background?.kind === "asset" ? assets.images[slide.background.asset_id] : null
-  const chrome = getManifest(ir.theme.id).chrome
+  const master = resolveMaster(ir.style.id, ir.style.master)
   const cardBgSuppressesFooter =
-    Boolean(chrome?.suppressFooterOnCardContent) &&
+    Boolean(master.suppressFooterOnCardContent) &&
     slide.type === "content" &&
     !!(bgAsset?.src && !bgAsset.error)
 
@@ -81,9 +82,9 @@ export function MasterChrome({
 
       {showFooter && (
         <>
-          {/* 分隔线可被 manifest.chrome.suppressFooterRule 抑制（主题自带
+          {/* 分隔线可被 style 的 master.suppressFooterRule 抑制（主题自带
               版框线时避免双线，ink 先例，2026-07-10 用户裁决） */}
-          {!chrome?.suppressFooterRule && (
+          {!master.suppressFooterRule && (
             <line x1="56" y1="664" x2="1224" y2="664" stroke={border} strokeWidth="1.2" />
           )}
           {/* meta 两端排布（2026-07-10 用户裁决：时间居中而右侧空很奇怪）：

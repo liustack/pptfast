@@ -16,9 +16,9 @@ const slide: Slide = {
 
 // Mirror the exporter: the slide is a member of ir.slides at `index`.
 const ir: PptxIR = {
-  version: "2",
+  version: "3",
   filename: "deck.pptx",
-  theme: { id: "academic" },
+  style: { id: "academic" },
   meta: { organization: "ACME" },
   assets: { images: {} },
   slides: [slide],

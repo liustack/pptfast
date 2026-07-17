@@ -40,9 +40,9 @@ const coverWithBrokenAssetBg: Slide = {
 
 function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images },
     slides: [coverSlide],

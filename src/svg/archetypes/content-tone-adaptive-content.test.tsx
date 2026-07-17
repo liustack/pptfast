@@ -57,9 +57,9 @@ const contentWithBg: Slide = {
 
 function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1" },
     assets: { images },
     slides: [chapter, content],
@@ -113,9 +113,9 @@ describe("ToneAdaptiveContent", () => {
     const bare: Slide = { type: "content", variant: "single", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
     const bareWithBg: Slide = { ...bare, background: { kind: "asset", asset_id: "bg", fit: "cover" } } as Slide
     const deck: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "custom" },
+      style: { id: "custom" },
       meta: {},
       assets: { images: bgImages },
       slides: [bare],
@@ -193,9 +193,9 @@ describe("ToneAdaptiveContent", () => {
       background: { kind: "asset", asset_id: "bg", fit: "cover" },
     } as Slide
     const deck: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "custom" },
+      style: { id: "custom" },
       meta: {},
       assets: { images: bgImages },
       slides: [bgSlide],
@@ -227,9 +227,9 @@ describe("ToneAdaptiveContent", () => {
       blocks: [{ type: "paragraph", text: "文本。" }],
     } as Slide
     const deck: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "custom" },
+      style: { id: "custom" },
       meta: {},
       assets: { images: {} },
       slides: [longSlide],
@@ -269,9 +269,9 @@ describe("ToneAdaptiveContent", () => {
 
     function buildDeck(slide: Slide, images: PptxIR["assets"]["images"] = {}): PptxIR {
       return {
-        version: "2",
+        version: "3",
         filename: "x.pptx",
-        theme: { id: "custom" },
+        style: { id: "custom" },
         meta: {},
         assets: { images },
         slides: [slide],
@@ -395,9 +395,9 @@ describe("ToneAdaptiveContent", () => {
       const tokens = LEGACY_CUSTOM_TOKENS
       const ctx = buildCtx(tokens, {})
       const deck: PptxIR = {
-        version: "2",
+        version: "3",
         filename: "x.pptx",
-        theme: { id: "custom" },
+        style: { id: "custom" },
         meta: {},
         assets: { images: {} },
         slides: [chapterFirst, withSection],
@@ -419,9 +419,9 @@ describe("ToneAdaptiveContent", () => {
         background: { kind: "asset", asset_id: "bg", fit: "cover" },
       } as Slide
       const deck: PptxIR = {
-        version: "2",
+        version: "3",
         filename: "x.pptx",
-        theme: { id: "custom" },
+        style: { id: "custom" },
         meta: {},
         assets: { images: bgImages },
         slides: [chapterFirst, bgSlide],
@@ -450,9 +450,9 @@ describe("ToneAdaptiveContent", () => {
       const tokens = LEGACY_CUSTOM_TOKENS
       const ctx = buildCtx(tokens, {})
       const deck: PptxIR = {
-        version: "2",
+        version: "3",
         filename: "x.pptx",
-        theme: { id: "custom" },
+        style: { id: "custom" },
         meta: {},
         assets: { images: {} },
         slides: [slide],
@@ -484,9 +484,9 @@ describe("ToneAdaptiveContent", () => {
         background: { kind: "asset", asset_id: "bg", fit: "cover" },
       } as Slide
       const deck: PptxIR = {
-        version: "2",
+        version: "3",
         filename: "x.pptx",
-        theme: { id: "custom" },
+        style: { id: "custom" },
         meta: {},
         assets: { images: bgImages },
         slides: [bgSlide],

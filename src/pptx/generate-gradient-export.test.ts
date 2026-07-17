@@ -22,11 +22,11 @@ function slide(type: Slide["type"]): Slide {
   }
 }
 
-function makeIR(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
+function makeIR(themeId: PptxIR["style"]["id"], slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "decor-gradient.pptx",
-    theme: { id: themeId },
+    style: { id: themeId },
     meta: {},
     assets: { images: {} },
     slides,
@@ -74,9 +74,9 @@ describe("generatePptxBlob real theme decor gradients", () => {
     const RED_PNG =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     const ir: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "decor-gradient-bg.pptx",
-      theme: { id: "enterprise" },
+      style: { id: "enterprise" },
       meta: {},
       assets: { images: { bg: { src: RED_PNG } } },
       slides: [

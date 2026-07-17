@@ -21,9 +21,9 @@ const endingBare: Slide = { type: "ending", blocks: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: { organization: "维岚科技", date: "2026-07-09" },
     assets: { images: {} },
     slides: [slide],

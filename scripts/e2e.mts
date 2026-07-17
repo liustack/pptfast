@@ -80,9 +80,9 @@ if (sharpMod) {
   await sharpMod(PNG_1PX).webp().toFile(webpPath)
 
   const webpDeck = {
-    version: "2",
+    version: "3",
     filename: "pptfast-webp-smoke",
-    theme: { id: "consulting" },
+    style: { id: "consulting" },
     assets: { images: { smoke: { src: "smoke.webp" } } },
     slides: [
       { type: "cover", heading: "webp smoke" },

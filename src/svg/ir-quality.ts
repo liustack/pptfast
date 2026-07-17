@@ -143,7 +143,7 @@ export function checkIrQuality(ir: PptxIR): QualityIssue[] {
   }
 
   for (let i = 0; i < ir.slides.length; i++) {
-    issues.push(...checkSlide(ir.slides[i], i, ir.theme.id))
+    issues.push(...checkSlide(ir.slides[i], i, ir.style.id))
   }
 
   return issues

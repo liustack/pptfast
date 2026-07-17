@@ -108,13 +108,13 @@ export function FullSlideSvg({
   className,
   preserveAspectRatio,
 }: FullSlideSvgProps) {
-  const tokens = getTheme(ir.theme.id, ir.theme.override, ir.theme.tokens)
+  const tokens = getTheme(ir.style.id, ir.style.tokens)
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.blocks : undefined,
   )
-  const manifest = getManifest(ir.theme.id)
+  const manifest = getManifest(ir.style.id)
   // motif 分发（P2 Task 24→Wave5 收尾）：全走 manifest.motif（六主题四页型
   // 已全量接线，旧 templates/<theme>.tsx 的 Decor 回落已随 templates 删除）。
   const Decor = manifest.motif ? MOTIF_ARCHETYPES[manifest.motif] : undefined

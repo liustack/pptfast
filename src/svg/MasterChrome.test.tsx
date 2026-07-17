@@ -19,11 +19,11 @@ const ctx: BlockCtx = {
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
 }
 
-function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
+function ir(themeId: PptxIR["style"]["id"], slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: themeId },
+    style: { id: themeId },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1", date: "2026" },
     assets: {
       images: { bg: { src: "data:image/png;base64,iVBOR", alt: "背景" } },
@@ -44,8 +44,8 @@ function svg(node: React.ReactElement) {
   return render(<svg>{node}</svg>)
 }
 
-describe("MasterChrome footer suppression (P2 Task 25: manifest-driven chrome.suppressFooterOnCardContent)", () => {
-  it("enterprise 主题：content 页 + 卡片背景图 → 页脚整体消失（manifest 驱动）", () => {
+describe("MasterChrome footer suppression (W1: style master.suppressFooterOnCardContent via resolveMaster)", () => {
+  it("enterprise 主题：content 页 + 卡片背景图 → 页脚整体消失（style master 驱动）", () => {
     const doc = ir("enterprise", [cardBgContentSlide])
     const { container } = svg(<MasterChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
     expect(container.querySelector("line")).toBeNull()
@@ -54,7 +54,7 @@ describe("MasterChrome footer suppression (P2 Task 25: manifest-driven chrome.su
   })
 
   it.each(["consulting", "insight", "academic", "tech", "journal"] as const)(
-    "%s 主题：同样的 content 页 + 卡片背景图 → 页脚正常显示（未设 chrome.suppressFooterOnCardContent，不受影响）",
+    "%s 主题：同样的 content 页 + 卡片背景图 → 页脚正常显示（未设 master.suppressFooterOnCardContent，不受影响）",
     (themeId) => {
       const doc = ir(themeId, [cardBgContentSlide])
       const { container } = svg(<MasterChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)

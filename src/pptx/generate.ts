@@ -35,7 +35,7 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   pptx.defineLayout({ name: "LAYOUT_WIDE", width: 13.33, height: 7.5 })
   pptx.layout = "LAYOUT_WIDE"
 
-  const tokens = getTheme(ir.theme.id, ir.theme.override, ir.theme.tokens)
+  const tokens = getTheme(ir.style.id, ir.style.tokens)
   defineMastersForIR(pptx, tokens)
 
   const gradientPatches: GradientFillPatch[] = []

@@ -19,9 +19,9 @@ const endingBare: Slide = { type: "ending", blocks: [] } as Slide
 
 function ir(slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "f.pptx",
-    theme: { id: "runway" },
+    style: { id: "runway" },
     meta: { organization: "时尚编辑部", date: "2026-10" },
     assets: { images: {} },
     slides,

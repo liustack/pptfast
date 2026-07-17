@@ -54,9 +54,9 @@ function ir(
   opts?: { brand?: PptxIR["brand"]; assets?: PptxIR["assets"] },
 ): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: "consulting" },
+    style: { id: "consulting" },
     meta: {},
     assets: opts?.assets ?? { images: {} },
     brand: opts?.brand,

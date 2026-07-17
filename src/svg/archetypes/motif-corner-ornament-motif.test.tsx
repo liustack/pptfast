@@ -18,9 +18,9 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
 
 function mkIr(theme: string, filename: string): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename,
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [coverSlide],

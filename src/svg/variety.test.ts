@@ -4,9 +4,9 @@ import { deckSeed, pickBySeed, pickBySeedRotating } from "./variety"
 
 function ir(filename: string, headings: string[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename,
-    theme: { id: "consulting" },
+    style: { id: "consulting" },
     meta: {},
     assets: { images: {} },
     slides: headings.map((heading) => ({ type: "content", heading, blocks: [] })),

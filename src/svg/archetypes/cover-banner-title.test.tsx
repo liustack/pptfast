@@ -8,7 +8,7 @@ import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "面向 2027 的三个决定", blocks: [] } as Slide
 const ir = (theme: string): PptxIR =>
-  ({ version: "2", filename: "x.pptx", theme: { id: theme }, meta: { organization: "测试部", date: "2026-07" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
+  ({ version: "3", filename: "x.pptx", style: { id: theme }, meta: { organization: "测试部", date: "2026-07" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 
 // Captured verbatim from the legacy `MckinseyNavyCover` (templates/consulting.tsx)
 // for this exact fixture (consulting tokens, org="测试部", date="2026-07") before

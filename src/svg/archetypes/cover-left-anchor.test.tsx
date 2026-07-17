@@ -32,9 +32,9 @@ const slide: Slide = {
 } as Slide
 const ir = (theme: string): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: { organization: "测试所", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],
@@ -149,9 +149,9 @@ describe("LeftAnchorCover", () => {
   it("confidentiality 徽标 (1064,104,120,48) 避让 MasterChrome 四个 logo 带（迁移自 academic.test.tsx）", () => {
     const ctx = buildCtx(getTheme("academic"), {})
     const deck: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      style: { id: "academic" },
       meta: { organization: "测试所", date: "2026-07", confidentiality: "internal" },
       assets: { images: {} },
       slides: [slide],
