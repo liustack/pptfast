@@ -15,18 +15,18 @@ See `docs/architecture.md` for the full five-dimension model and render-chain di
 
 - `src/index.ts` dependency closure must stay free of Node-only deps (commander/linkedom/sharp only under `src/cli*` and `src/platform/node.ts`)
 - Migrated code keeps its Chinese comments — do not translate wholesale, do not refactor while migrating
-- Path alias `@/*` → `src/*`（tsconfig paths + vitest alias 双处，改一处必改另一处）
+- Path alias `@/*` → `src/*` (declared in both tsconfig paths and the vitest alias — when you change one, change the other)
 
 ## Commands
 
-`pnpm check`（typecheck+lint+test，默认验收）/ `pnpm e2e`（build+CLI 端到端+soffice 目检）/ `pnpm docs:list`
+`pnpm check` (typecheck+lint+test, default acceptance gate) / `pnpm e2e` (build + CLI end-to-end + soffice visual check) / `pnpm docs:list`
 
 ## Workflow
 
-- topic branch（`feat/` `fix/` `docs/` `chore/` 前缀）→ merge to main，conventional commits，原子提交
-- 快照失败禁止盲目 `-u`：先查根因，快照差异 = 行为变化
-- 涉及导出 XML 结构的改动，发布前须过 PowerPoint 修复弹窗探测（`docs/testing.md`）
+- Topic branch (`feat/` `fix/` `docs/` `chore/` prefix) → merge to main. Conventional commits, atomic commits
+- Never blindly pass `-u` on snapshot failures: find the root cause first — a snapshot diff means a behavior change
+- Changes touching exported XML structure must pass the PowerPoint repair-dialog probe before release (`docs/testing.md`)
 
 ## Operational Docs (docs/)
 
-front-matter（`summary`/`read_when`），新文档前先 `pnpm docs:list` 查重。
+Each doc carries front-matter (`summary`/`read_when`). Run `pnpm docs:list` to check for duplicates before adding a new doc.

@@ -1,12 +1,12 @@
 # CLAUDE.md
 
-1. 读 [AGENTS.md](AGENTS.md)
-2. 跑 `pnpm docs:list`，按任务读对应 `docs/*.md`
+1. Read [AGENTS.md](AGENTS.md)
+2. Run `pnpm docs:list`, then read the `docs/*.md` relevant to the task
 
-## 铁律
+## Iron rules
 
-1. 动 main 前必开 topic branch（`feat/` `fix/` `refactor/` `docs/` `chore/` 前缀）
-2. `pnpm check` 默认验收，动渲染链加跑 `pnpm e2e`
-3. `src/index.ts` 闭包禁 Node-only 依赖（commander/linkedom/sharp 只准在 `src/cli*` 与 `src/platform/node.ts`）
-4. 快照失败禁止盲 `-u`，先查根因
-5. 公共接口（CLI 输出/错误消息/README/JSDoc）英文，迁移来的中文注释保留
+1. Open a topic branch (`feat/` `fix/` `refactor/` `docs/` `chore/` prefix) before touching main
+2. `pnpm check` is the default acceptance gate. Also run `pnpm e2e` when the render chain changes
+3. The `src/index.ts` dependency closure must stay free of Node-only deps (commander/linkedom/sharp are only allowed under `src/cli*` and `src/platform/node.ts`)
+4. Never blindly pass `-u` on snapshot failures. Find the root cause first
+5. Public surfaces (CLI output/error messages/README/JSDoc) are in English. Chinese comments in migrated code stay as-is
