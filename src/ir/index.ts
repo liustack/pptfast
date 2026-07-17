@@ -1,11 +1,11 @@
 import { z } from "zod"
 import { PPTX_ICON_NAMES } from "@/icons"
 
-// Built-in style ids — a registered, renderable subset, not a closed universe:
-// v0.4's style registry can install more without a schema change (style.id
-// below is an open z.string(), the installed-style check lives in
+// Built-in theme ids — a registered, renderable subset, not a closed universe:
+// v0.4's theme registry can install more without a schema change (theme.id
+// below is an open z.string(), the installed-theme check lives in
 // api.ts validateIr).
-export const BUILTIN_STYLE_IDS = [
+export const BUILTIN_THEME_IDS = [
   "consulting",
   "enterprise",
   "academic",
@@ -48,16 +48,16 @@ const BackgroundSpecSchema = z.discriminatedUnion("kind", [
     .strict(),
 ])
 
-// ── Style / Meta / Assets / Brand ──
+// ── Theme / Meta / Assets / Brand ──
 
 /**
- * Brand-token override (style.tokens): deep-partial palette/fonts/shape
- * merged over the built-in theme (see themes/index.ts getTheme). Scope is
+ * Style-token override (theme.style): deep-partial palette/fonts/shape
+ * merged over the built-in theme (see themes/index.ts resolveStyle). Scope is
  * deliberately palette-level (spec §11): no defaultBackgrounds or manifest
  * overrides. gapScale range mirrors the documented sane range in
- * themes/tokens.ts ThemeShape.
+ * themes/tokens.ts StyleShape.
  */
-export const TokensOverrideSchema = z
+export const StyleOverrideSchema = z
   .object({
     colors: z
       .object({
@@ -93,31 +93,31 @@ export const TokensOverrideSchema = z
   })
   .strict()
 
-export type TokensOverride = z.infer<typeof TokensOverrideSchema>
+export type StyleOverride = z.infer<typeof StyleOverrideSchema>
 
 /**
- * Master (logical slide-master) config: brand-chrome behavior owned by a style.
+ * Brand (logical slide-master) config: brand-chrome behavior owned by a theme.
  * W1 scope = exactly the two flags migrated from the old manifest.chrome.
  * Single source of truth — the TS type is inferred, never hand-written.
  */
-export const MasterConfigSchema = z
+export const BrandConfigSchema = z
   .object({
     /** Suppress the footer entirely on content slides with a card background (enterprise legacy semantics). */
     suppressFooterOnCardContent: z.boolean().optional(),
-    /** Skip the footer divider line — for styles that draw their own frame (ink). */
+    /** Skip the footer divider line — for themes that draw their own frame (ink). */
     suppressFooterRule: z.boolean().optional(),
   })
   .strict()
 
-export type MasterConfig = z.infer<typeof MasterConfigSchema>
+export type BrandConfig = z.infer<typeof BrandConfigSchema>
 
-const StyleSchema = z
+export const ThemeSchema = z
   .object({
-    // Open string, not an enum — installed-style check happens in validateIr
-    // so a v0.4 registry can add styles without a schema change (spec §4).
+    // Open string, not an enum — installed-theme check happens in validateIr
+    // so a v0.4 registry can add themes without a schema change (spec §4).
     id: z.string().default("consulting"),
-    tokens: TokensOverrideSchema.optional(),
-    master: MasterConfigSchema.optional(),
+    style: StyleOverrideSchema.optional(),
+    brand: BrandConfigSchema.optional(),
   })
   .strict()
 
@@ -606,7 +606,7 @@ export const PptxIRSchema = z
   .object({
     version: z.literal("3").default("3"),
     filename: z.string().default("presentation"),
-    style: StyleSchema.default({ id: "consulting" }),
+    theme: ThemeSchema.default({ id: "consulting" }),
     meta: MetaSchema.default({}),
     assets: AssetsSchema.default({ images: {} }),
     brand: BrandSchema.optional(),

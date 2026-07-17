@@ -1,29 +1,29 @@
-import type { MasterConfig } from "@/ir"
-import type { ThemeTokens } from "./tokens"
-import { CANONICAL_STYLE_IDS, THEME_TOKENS, resolveThemeId, type CanonicalStyleId } from "./index"
+import type { BrandConfig } from "@/ir"
+import type { StyleTokens } from "./tokens"
+import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId, type CanonicalThemeId } from "./index"
 
-/** A style = distributable bundle: theme (tokens) + master (brand chrome) + affinity tags (filled in W4). */
-export interface StyleDefinition {
-  id: CanonicalStyleId
-  theme: ThemeTokens
-  master: MasterConfig
+/** A theme = distributable bundle: `theme` (style tokens) + `master` (brand chrome) + affinity tags (filled in W4). */
+export interface ThemeDefinition {
+  id: CanonicalThemeId
+  theme: StyleTokens
+  master: BrandConfig
   tags: readonly string[]
 }
 
-const MASTERS: Partial<Record<CanonicalStyleId, MasterConfig>> = {
+const MASTERS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
   enterprise: { suppressFooterOnCardContent: true },
   ink: { suppressFooterRule: true },
 }
 
-export const STYLE_DEFINITIONS: Record<CanonicalStyleId, StyleDefinition> = Object.fromEntries(
-  CANONICAL_STYLE_IDS.map((id) => [
+export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(
+  CANONICAL_THEME_IDS.map((id) => [
     id,
-    { id, theme: THEME_TOKENS[id], master: MASTERS[id] ?? {}, tags: [] as const },
+    { id, theme: THEME_STYLES[id], master: MASTERS[id] ?? {}, tags: [] as const },
   ]),
-) as unknown as Record<CanonicalStyleId, StyleDefinition>
+) as unknown as Record<CanonicalThemeId, ThemeDefinition>
 
-/** Style master + optional IR-level override (shallow merge, override wins). */
-export function resolveMaster(id: string, override?: MasterConfig): MasterConfig {
-  const base = STYLE_DEFINITIONS[resolveThemeId(id)].master
+/** Theme brand config + optional IR-level override (shallow merge, override wins). */
+export function resolveBrand(id: string, override?: BrandConfig): BrandConfig {
+  const base = THEME_DEFINITIONS[resolveThemeId(id)].master
   return override ? { ...base, ...override } : base
 }

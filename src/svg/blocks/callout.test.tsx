@@ -4,7 +4,7 @@ import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { callout } from "./callout"
 import type { BlockCtx } from "./types"
-import { CANONICAL_STYLE_IDS, getTheme } from "../../styles"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../styles"
 import { buildCtx } from "../FullSlideSvg"
 
 const ctx: BlockCtx = {
@@ -112,8 +112,8 @@ describe("callout card stroke (Task 5d)", () => {
   })
 
   it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
-    for (const id of CANONICAL_STYLE_IDS) {
-      const themeCtx = buildCtx(getTheme(id), {})
+    for (const id of CANONICAL_THEME_IDS) {
+      const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(callout.render(block, { x: 80, y: 100, w: 1120 }, themeCtx))
       const bgRect = container.querySelectorAll("rect")[0]
       if (id === "enterprise" || id === "runway") {

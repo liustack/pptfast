@@ -51,7 +51,7 @@
 import { describe, it, expect } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme, type CanonicalStyleId } from "../../styles"
+import { resolveStyle, type CanonicalThemeId } from "../../styles"
 import type { PptxIR, Slide } from "@/ir"
 import { CONTENT_ARCHETYPES } from "./index-content"
 import type { ContentArchetype } from "./types"
@@ -60,7 +60,7 @@ import { THEME_MANIFESTS } from "../../styles/manifest"
 /** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板）：
  * 数据源从 SVG_TEMPLATES[id].Content 改为经 manifest 解析该主题的 content
  * archetype（六主题各 1 个），验证的「副题间距 >=14px」共享助手不变。 */
-function contentArchetypeFor(themeId: CanonicalStyleId): ContentArchetype {
+function contentArchetypeFor(themeId: CanonicalThemeId): ContentArchetype {
   const id = THEME_MANIFESTS[themeId].archetypes.content[0]
   return CONTENT_ARCHETYPES[id]
 }
@@ -72,11 +72,11 @@ const HEADING_ONE_LINE = "三大支柱"
 const HEADING_TWO_LINE = "声明期望副本数，控制器驱动滚动更新与一键回滚，故障自愈无需人工介入"
 const SUBHEADING = "效率提升三成，风险敞口下降"
 
-function ir(themeId: CanonicalStyleId, slides: Slide[]): PptxIR {
+function ir(themeId: CanonicalThemeId, slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
-    style: { id: themeId },
+    theme: { id: themeId },
     meta: { organization: "ACME" },
     assets: { images: {} },
     slides,
@@ -125,7 +125,7 @@ function subheadingGlyphTop(subheadingY: number): number {
 }
 
 interface ThemeCase {
-  id: CanonicalStyleId
+  id: CanonicalThemeId
   isTitleLine: (el: Element) => boolean
   /** Renders a Content slide (given heading + blocks) whose subheadingY was touched by the S3b formula. */
   renderContent: (contentArch: ContentArchetype, ctx: ReturnType<typeof buildCtx>, heading: string) => Element
@@ -223,7 +223,7 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
       ["2-line heading (real fitHeadingLines wrap)", HEADING_TWO_LINE],
     ])("%s: gap between title glyph bottom and subheading glyph top is >=14px", (_label, heading) => {
       const contentArch = contentArchetypeFor(theme.id)
-      const tokens = getTheme(theme.id)
+      const tokens = resolveStyle(theme.id)
       const ctx = buildCtx(tokens, {})
       const root = theme.renderContent(contentArch, ctx, heading)
 
@@ -242,7 +242,7 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
       ["2-line heading, real fitHeadingLines wrap (132px banner)", HEADING_TWO_LINE],
     ])("%s", (_label, heading) => {
       const contentArch = contentArchetypeFor("consulting")
-      const tokens = getTheme("consulting")
+      const tokens = resolveStyle("consulting")
       const ctx = buildCtx(tokens, {})
       const slide: Slide = {
         type: "content",

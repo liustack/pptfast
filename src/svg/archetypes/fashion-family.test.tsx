@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { FashionMastheadCover } from "./cover-fashion-masthead"
 import { FashionChapter } from "./chapter-fashion-chapter"
 import { FashionEnding } from "./ending-fashion-ending"
@@ -21,14 +21,14 @@ function ir(slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "f.pptx",
-    style: { id: "runway" },
+    theme: { id: "runway" },
     meta: { organization: "时尚编辑部", date: "2026-10" },
     assets: { images: {} },
     slides,
   } as PptxIR
 }
 
-const ctx = buildCtx(getTheme("runway"), {})
+const ctx = buildCtx(resolveStyle("runway"), {})
 
 describe("fashion 家族（runway）", () => {
   it("cover：满版 primary 色块 + readableOn 白字报头 + accent 色带", () => {

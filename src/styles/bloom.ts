@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * bloom（柔美庆典）——2026-07-13 memphis 拆分主题 B（用户拍板：命名
@@ -14,7 +14,7 @@ import type { ThemeTokens } from "./tokens";
  * 的先例约束满足）。
  * chartPalette 即水彩四色（motif 零 hex 纪律）。
  */
-export const BLOOM_TOKENS: ThemeTokens = {
+export const BLOOM_TOKENS: StyleTokens = {
   id: "bloom",
   colors: {
     bg: "#F6F1EA", // 暖奶白

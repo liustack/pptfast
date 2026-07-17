@@ -1,8 +1,8 @@
-import type { BackgroundSpec, TokensOverride } from "@/ir";
+import type { BackgroundSpec, StyleOverride } from "@/ir";
 
 export type LayoutType = "cover" | "chapter" | "content" | "ending";
 
-export interface ThemeColors {
+export interface StyleColors {
   bg: string;
   surface: string;
   panel?: string;
@@ -32,18 +32,18 @@ export interface ThemeColors {
   cardStroke?: string;
 }
 
-export interface ThemeFonts {
+export interface StyleFonts {
   heading: string[];
   body: string[];
   mono?: string[];
 }
 
-export interface ThemeTokens {
+export interface StyleTokens {
   id: string;
   allowCustomBackground?: boolean;
-  colors: ThemeColors;
-  fonts: ThemeFonts;
-  shape?: ThemeShape;
+  colors: StyleColors;
+  fonts: StyleFonts;
+  shape?: StyleShape;
   defaultBackgrounds: Record<LayoutType, BackgroundSpec>;
 }
 
@@ -52,7 +52,7 @@ export interface ThemeTokens {
  * .issues/specs/2026-07-10-pptx-theme-detail-tokens-design.md）。
  * 全部可选——缺省时各消费点沿用自己的 baked 值（零观感）。
  */
-export interface ThemeShape {
+export interface StyleShape {
   /** 卡片/横幅圆角 px（统一值）。缺省=各消费点原 baked 值（kpi 8/architecture 6/白卡 14 等）。 */
   radius?: number
   /** 块间距缩放（1=现 BLOCK_GAP）。建议范围 [0.8, 1.3]。 */
@@ -60,19 +60,19 @@ export interface ThemeShape {
 }
 
 /**
- * Deep-partial brand override (zod-validated as IR style.tokens — see
- * ir/index.ts TokensOverrideSchema). See themes/index.ts getTheme. Absent
- * tokens return the base reference untouched (zero observable change).
+ * Deep-partial style override (zod-validated as IR theme.style — see
+ * ir/index.ts StyleOverrideSchema). See themes/index.ts resolveStyle. Absent
+ * override returns the base reference untouched (zero observable change).
  */
-export function applyTokensOverride(
-  base: ThemeTokens,
-  tokens?: TokensOverride,
-): ThemeTokens {
-  if (!tokens) return base;
+export function applyStyleOverride(
+  base: StyleTokens,
+  override?: StyleOverride,
+): StyleTokens {
+  if (!override) return base;
   return {
     ...base,
-    colors: { ...base.colors, ...tokens.colors },
-    fonts: { ...base.fonts, ...tokens.fonts },
-    shape: tokens.shape ? { ...base.shape, ...tokens.shape } : base.shape,
+    colors: { ...base.colors, ...override.colors },
+    fonts: { ...base.fonts, ...override.fonts },
+    shape: override.shape ? { ...base.shape, ...override.shape } : base.shape,
   };
 }

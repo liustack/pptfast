@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * enterprise（企业蓝）——原 custom→gallery→avant 的最终定名
@@ -20,7 +20,7 @@ import type { ThemeTokens } from "./tokens";
  * **零版式代码**：全部借用现有 archetype（split-diagonal 在 IKB 上
  * readableOn 出白字，banner-heading 横幅 baked 白字在 IKB 上对比充足）。
  */
-export const ENTERPRISE_TOKENS: ThemeTokens = {
+export const ENTERPRISE_TOKENS: StyleTokens = {
   id: "enterprise",
   colors: {
     bg: "#FFFFFF", // 画廊白墙

@@ -6,7 +6,7 @@ import { assertSubset } from "../subset-validate"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { steps } from "./steps"
 import type { BlockCtx } from "./types"
-import { CANONICAL_STYLE_IDS, getTheme } from "../../styles"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../styles"
 import { buildCtx } from "../FullSlideSvg"
 
 const ctx: BlockCtx = {
@@ -233,8 +233,8 @@ describe("steps card stroke (fix wave, T5 follow-up)", () => {
   })
 
   it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
-    for (const id of CANONICAL_STYLE_IDS) {
-      const themeCtx = buildCtx(getTheme(id), {})
+    for (const id of CANONICAL_THEME_IDS) {
+      const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(steps.render(threeSteps, { x: 0, y: 0, w: 1088 }, themeCtx))
       const card = cardRects(container)[0]
       if (id === "enterprise" || id === "runway") {

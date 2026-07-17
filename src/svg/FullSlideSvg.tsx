@@ -1,13 +1,13 @@
 import type React from "react"
 import type { Block, PptxIR, Slide } from "@/ir"
-import type { ThemeTokens } from "../styles/tokens"
-import { getTheme } from "../styles"
+import type { StyleTokens } from "../styles/tokens"
+import { resolveStyle } from "../styles"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { BlockCtx } from "./blocks/types"
 import type { SvgTemplateProps } from "./archetypes/types"
 import { Background } from "./Background"
-import { MasterChrome } from "./MasterChrome"
+import { BrandChrome } from "./BrandChrome"
 import { SlideDecor } from "./SlideDecor"
 import {
   ImageAnnotatePage,
@@ -34,7 +34,7 @@ import { cachedDeckSeed, pickBySeedRotating } from "./variety"
  */
  
 export function buildCtx(
-  tokens: ThemeTokens,
+  tokens: StyleTokens,
   images: PptxIR["assets"]["images"],
   blocks?: Block[],
 ): BlockCtx {
@@ -108,13 +108,13 @@ export function FullSlideSvg({
   className,
   preserveAspectRatio,
 }: FullSlideSvgProps) {
-  const tokens = getTheme(ir.style.id, ir.style.tokens)
+  const tokens = resolveStyle(ir.theme.id, ir.theme.style)
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.blocks : undefined,
   )
-  const manifest = getManifest(ir.style.id)
+  const manifest = getManifest(ir.theme.id)
   // motif 分发（P2 Task 24→Wave5 收尾）：全走 manifest.motif（六主题四页型
   // 已全量接线，旧 templates/<theme>.tsx 的 Decor 回落已随 templates 删除）。
   const Decor = manifest.motif ? MOTIF_ARCHETYPES[manifest.motif] : undefined
@@ -200,7 +200,7 @@ export function FullSlideSvg({
       ) : null /* 不可达：非 takeover 时 resolveArchetype 恒命中（六主题四页型
         allowed 全非空，manifest.test「Wave 5 前置门」锁死）。空集才返回 null，
         渲空白而非崩溃是防御性兜底，正常运行不会到这里。 */}
-      <MasterChrome ir={ir} slide={slide} ctx={ctx} />
+      <BrandChrome ir={ir} slide={slide} ctx={ctx} />
     </svg>
   )
 }

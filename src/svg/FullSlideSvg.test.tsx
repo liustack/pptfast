@@ -12,7 +12,7 @@ function ir(slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
-    style: { id: "academic" },
+    theme: { id: "academic" },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1", date: "2026" },
     assets: { images: {} },
     slides,
@@ -139,7 +139,7 @@ describe("asset background auto scrim (image-layouts P1)", () => {
   }
   const withAsset = (themeId: string): PptxIR => ({
     ...ir([bgSlide]),
-    style: { id: themeId as PptxIR["style"]["id"] },
+    theme: { id: themeId as PptxIR["theme"]["id"] },
     assets: { images: { bg1: { src: "data:image/png;base64,AAAA" } } },
   })
 
@@ -239,7 +239,7 @@ describe("image_grid / image_compare export round-trip (image-layouts P2)", () =
 describe("manifest cover dispatch (P1)", () => {
   const coverSlide: Slide = { type: "cover", heading: "标题", blocks: [] } as Slide
   const mkIr = (theme: string): PptxIR =>
-    ({ version: "3", filename: "m.pptx", style: { id: theme }, meta: {}, assets: { images: {} }, slides: [coverSlide] }) as unknown as PptxIR
+    ({ version: "3", filename: "m.pptx", theme: { id: theme }, meta: {}, assets: { images: {} }, slides: [coverSlide] }) as unknown as PptxIR
 
   it("consulting cover 命中允许集成员（split-diagonal 铺开后 3 元素，seed 决定具体落点）", () => {
     const { container } = render(<FullSlideSvg ir={mkIr("consulting")} slide={coverSlide} index={0} />)
@@ -280,7 +280,7 @@ describe("manifest 四页型分发泛化 (P2)", () => {
     ({
       version: "3",
       filename: "m.pptx",
-      style: { id: theme },
+      theme: { id: theme },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -337,7 +337,7 @@ describe("content 页轮换 (P3 Item ②)", () => {
   const deck: PptxIR = {
     version: "3",
     filename: "rotation.pptx",
-    style: { id: "academic" },
+    theme: { id: "academic" },
     meta: {},
     assets: { images: {} },
     slides: [
@@ -370,7 +370,7 @@ describe("content 页轮换 (P3 Item ②)", () => {
   it("单元素允许集主题零回归（journal content 恒 narrow-column，不受轮换影响）", () => {
     const magDeck: PptxIR = {
       ...deck,
-      style: { id: "journal" },
+      theme: { id: "journal" },
     } as unknown as PptxIR
     const { container } = render(
       <FullSlideSvg ir={magDeck} slide={magDeck.slides[2]} index={2} />,

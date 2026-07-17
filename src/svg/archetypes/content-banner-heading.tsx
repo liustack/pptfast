@@ -61,9 +61,9 @@ const SOURCE_LINE_Y = 648
 const CONTENT_RECT_BOTTOM = 620
 
 // Kicker (section-name label) sits above the banner, fully inside
-// MasterChrome's tl/tr logo bands' y-range (48-88) regardless of BANNER_Y.
+// BrandChrome's tl/tr logo bands' y-range (48-88) regardless of BANNER_Y.
 // `brand.logo_asset_id` is unset (no image at all) unless a deck explicitly
-// opts a logo into `position: "tl"` — so `hasTlLogo` mirrors MasterChrome's
+// opts a logo into `position: "tl"` — so `hasTlLogo` mirrors BrandChrome's
 // own `logo?.src && !logo.error` gate to check the *real* IR instead of
 // assuming the worst: align with the banner's own left edge (BANNER_X)
 // whenever no tl logo actually resolves, and only fall back to the sideways
@@ -203,7 +203,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
       {/* Content blocks below the banner (was a divider + foreignObject) */}
       <SvgContent variant={slide.variant} blocks={slide.blocks} rect={contentRect} ctx={ctx} />
 
-      {/* Footnote only — MasterChrome already renders the y=664 footer
+      {/* Footnote only — BrandChrome already renders the y=664 footer
        * hairline for content pages, so this archetype must not draw its own
        * source line at y=648 (16px apart, doubled hairline). */}
       {footnote && (

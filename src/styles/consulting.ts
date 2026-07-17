@@ -1,6 +1,6 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
-export const CONSULTING_TOKENS: ThemeTokens = {
+export const CONSULTING_TOKENS: StyleTokens = {
   id: "consulting",
   colors: {
     bg: "#F7F7F2",

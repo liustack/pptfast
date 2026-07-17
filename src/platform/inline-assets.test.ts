@@ -10,7 +10,7 @@ function ir(images: Record<string, { src: string }>): PptxIR {
   return {
     version: "3",
     filename: "t.pptx",
-    style: { id: "enterprise" },
+    theme: { id: "enterprise" },
     meta: {},
     assets: { images },
     slides: [

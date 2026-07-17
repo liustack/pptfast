@@ -1,32 +1,32 @@
 
 import { describe, it, expect } from "vitest"
-import { parsePptxIR, BUILTIN_STYLE_IDS } from "./index"
+import { parsePptxIR, BUILTIN_THEME_IDS } from "./index"
 
 const minimal = () => ({
   version: "3", filename: "d.pptx",
-  style: { id: "consulting" }, meta: { organization: "ACME" },
+  theme: { id: "consulting" }, meta: { organization: "ACME" },
   assets: { images: {} },
   slides: [{ type: "cover", heading: "标题" }],
 })
 
-describe("IR v3 style field", () => {
-  it("accepts style with tokens and master overrides", () => {
+describe("IR v3 theme field", () => {
+  it("accepts theme with style and brand overrides", () => {
     const d: any = minimal()
-    d.style = {
+    d.theme = {
       id: "ink",
-      tokens: { colors: { primary: "#0B5FFF" } },
-      master: { suppressFooterRule: false },
+      style: { colors: { primary: "#0B5FFF" } },
+      brand: { suppressFooterRule: false },
     }
     expect(parsePptxIR(d).success).toBe(true)
   })
-  it("rejects the v2 theme field (strict)", () => {
+  it("rejects the retired top-level style field (strict)", () => {
     const d: any = minimal()
-    d.theme = { id: "consulting" }
+    d.style = { id: "consulting" }
     expect(parsePptxIR(d).success).toBe(false)
   })
   it("rejects the dropped override field", () => {
     const d: any = minimal()
-    d.style = { id: "consulting", override: { primary: "#123456" } }
+    d.theme = { id: "consulting", override: { primary: "#123456" } }
     expect(parsePptxIR(d).success).toBe(false)
   })
 })
@@ -38,16 +38,16 @@ describe("IR v3 omission defaults (weak-model friendly)", () => {
     if (r.success) {
       expect(r.data.version).toBe("3")
       expect(r.data.filename).toBe("presentation")
-      expect(r.data.style.id).toBe("consulting")
+      expect(r.data.theme.id).toBe("consulting")
       expect(r.data.slides[0]!.type).toBe("content")
     }
   })
-  it("style with tokens but no id defaults to consulting", () => {
+  it("theme with style but no id defaults to consulting", () => {
     const d: any = minimal()
-    d.style = { tokens: { colors: { primary: "#0B5FFF" } } }
+    d.theme = { style: { colors: { primary: "#0B5FFF" } } }
     const r = parsePptxIR(d)
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.style.id).toBe("consulting")
+    if (r.success) expect(r.data.theme.id).toBe("consulting")
   })
   it("a wrong value is still a hard error (omission ≠ typo)", () => {
     const d: any = minimal()
@@ -82,9 +82,9 @@ describe("pptx-ir v3", () => {
       expect(r.data.assets).toEqual({ images: {} })
     }
   })
-  it("consulting is a built-in style id, stripe-purple is not", () => {
-    expect(BUILTIN_STYLE_IDS).toContain("consulting")
-    expect(BUILTIN_STYLE_IDS).not.toContain("stripe-purple")
+  it("consulting is a built-in theme id, stripe-purple is not", () => {
+    expect(BUILTIN_THEME_IDS).toContain("consulting")
+    expect(BUILTIN_THEME_IDS).not.toContain("stripe-purple")
   })
 })
 
@@ -314,12 +314,12 @@ describe("verdict_banner block", () => {
   })
 })
 
-describe("style.tokens override", () => {
+describe("theme.style override", () => {
   it("accepts a palette/fonts/shape override", () => {
     const d: any = minimal()
-    d.style = {
+    d.theme = {
       id: "consulting",
-      tokens: {
+      style: {
         colors: { primary: "#0B5FFF", chartPalette: ["#111111", "#222222"] },
         fonts: { heading: ["Inter"] },
         shape: { radius: 10, gapScale: 1.1 },
@@ -329,17 +329,17 @@ describe("style.tokens override", () => {
   })
   it("rejects a non-hex color", () => {
     const d: any = minimal()
-    d.style = { id: "consulting", tokens: { colors: { primary: "blue" } } }
+    d.theme = { id: "consulting", style: { colors: { primary: "blue" } } }
     expect(parsePptxIR(d).success).toBe(false)
   })
   it("rejects unknown keys (strict)", () => {
     const d: any = minimal()
-    d.style = { id: "consulting", tokens: { colours: {} } }
+    d.theme = { id: "consulting", style: { colours: {} } }
     expect(parsePptxIR(d).success).toBe(false)
   })
   it("rejects gapScale outside the documented range", () => {
     const d: any = minimal()
-    d.style = { id: "consulting", tokens: { shape: { gapScale: 2 } } }
+    d.theme = { id: "consulting", style: { shape: { gapScale: 2 } } }
     expect(parsePptxIR(d).success).toBe(false)
   })
 })

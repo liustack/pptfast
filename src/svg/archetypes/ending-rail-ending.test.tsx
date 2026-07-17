@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { assertSubset } from "../subset-validate"
 import { RailEnding } from "./ending-rail-ending"
 import type { PptxIR, Slide } from "@/ir"
@@ -26,7 +26,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {
       organization: "维岚科技",
       contact: { email: "hi@weilan.example", website: "weilan.example" },
@@ -43,7 +43,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
 // 例外一样）跨主题稳定出现，而非逐字节 toBe。
 describe("RailEnding", () => {
   it("academic tokens 下渲染角块 + 联系区块 + 未隐形的孤儿装饰色（COPYRIGHT_FAINT），heading 存在时不兜底", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic", endingWithHeading)
     const out = renderSvgMarkup(
       <RailEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
@@ -72,7 +72,7 @@ describe("RailEnding", () => {
   })
 
   it("tech tokens 下用 tech 的 primary/accent/text/muted/border，academic 烤色不残留，COPYRIGHT_FAINT 装饰色跨主题保持不变（证明 token 化成立）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", endingWithHeading)
     const out = renderSvgMarkup(
       <RailEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
@@ -95,7 +95,7 @@ describe("RailEnding", () => {
   })
 
   it("academic tokens 下无 heading 时标题兜底为“谢谢”，副标题没有独立兜底文案（不渲染任何斜体副标题元素）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic", endingBare)
     const out = renderSvgMarkup(<RailEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
 
@@ -111,7 +111,7 @@ describe("RailEnding", () => {
   // subheading"这一常见组合下，副标题槽位不渲染任何元素，且不影响标题正常
   // 渲染。
   it("heading 存在但 subheading 缺省：标题正常渲染，副标题槽位不渲染任何元素", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = { type: "ending", heading: "衷心感谢", blocks: [] } as Slide
     const deck = ir("academic", slide)
     const out = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
@@ -122,7 +122,7 @@ describe("RailEnding", () => {
   })
 
   it("标题过长时收缩字号、不整段输出原文，Ending body 通过 subset validation（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
     const deck = ir("academic", slide)
     const markup = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
@@ -135,7 +135,7 @@ describe("RailEnding", () => {
 
   describe("两行标题重排（S3b addendum，迁移自 academic.test.tsx 的 'Ending: two-line title reflow' 分支）", () => {
     it("1 行标题：headingY=356，hairline y1=476（S3b 修复前的基线值，未触发重排逻辑）", () => {
-      const ctx = buildCtx(getTheme("academic"), {})
+      const ctx = buildCtx(resolveStyle("academic"), {})
       const slide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
       const deck = ir("academic", slide)
       const markup = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
@@ -149,7 +149,7 @@ describe("RailEnding", () => {
     })
 
     it("2 行标题最坏情形（“从今天开始用声”，nominal 120px 字号下恰好换行的最大 lineHeight）：首行上移封顶 88px，hairline 间距收紧到 100，末行/所有文字 y 均不越过页面底部", () => {
-      const ctx = buildCtx(getTheme("academic"), {})
+      const ctx = buildCtx(resolveStyle("academic"), {})
       const slide: Slide = { type: "ending", heading: "从今天开始用声", blocks: [] } as Slide
       const deck = ir("academic", slide)
       const markup = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)

@@ -1,7 +1,7 @@
 {
   "version": "3",
   "filename": "pptfast-basic-demo",
-  "style": { "id": "consulting" },
+  "theme": { "id": "consulting" },
   "meta": { "organization": "pptfast", "date": "2026-07-17" },
   "slides": [
     { "type": "cover", "heading": "pptfast", "subheading": "Stable, editable PPTX from a semantic IR" },
@@ -28,7 +28,7 @@
         {
           "type": "kpi_cards",
           "items": [
-            { "value": "13", "label": "built-in styles" },
+            { "value": "13", "label": "built-in themes" },
             { "value": "19", "label": "semantic block types" },
             { "value": "1", "label": "single SVG source per slide" }
           ]

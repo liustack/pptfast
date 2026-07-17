@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { EditorialMastheadCover } from "./cover-editorial-masthead"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -17,7 +17,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: { organization: "测试实验室", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],
@@ -33,20 +33,20 @@ const MAGAZINE_EXPECTED =
 
 describe("EditorialMastheadCover", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，档案来自旧 EditorialSerifCover）", () => {
-    const ctx = buildCtx(getTheme("journal"), {})
+    const ctx = buildCtx(resolveStyle("journal"), {})
     const next = renderSvgMarkup(<EditorialMastheadCover ir={ir("journal")} slide={slide} index={0} ctx={ctx} />)
     expect(next).toBe(MAGAZINE_EXPECTED)
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(<EditorialMastheadCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("#FFC72C") // consulting accent
     expect(out).not.toContain("#C0392B") // magazine accent 不得残留
   })
 
   it("passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx(getTheme("journal"), {})
+    const ctx = buildCtx(resolveStyle("journal"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <EditorialMastheadCover ir={ir("journal")} slide={slide} index={0} ctx={ctx} />
@@ -58,7 +58,7 @@ describe("EditorialMastheadCover", () => {
   })
 
   it("centers the serif hero title and draws the accent underline beneath it", () => {
-    const ctx = buildCtx(getTheme("journal"), {})
+    const ctx = buildCtx(resolveStyle("journal"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <EditorialMastheadCover ir={ir("journal")} slide={slide} index={0} ctx={ctx} />

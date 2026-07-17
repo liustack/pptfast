@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "../../styles/tokens";
+import type { StyleTokens } from "../../styles/tokens";
 
 /**
  * 测试专用 fixture：退役前的 custom 主题 tokens 快照（2026-07-10
@@ -6,11 +6,11 @@ import type { ThemeTokens } from "../../styles/tokens";
  *
  * tone-adaptive 家族的逐字节输出锁的语义是「P2 迁移自旧 CustomDecor /
  * custom.tsx 输出逐字节一致」——该历史保证是针对**当时的 custom tokens**
- * 成立的。gallery 换成克莱因蓝色板后 `getTheme("custom")` 已解析到新色板，
- * 锁若跟着 getTheme 走就失去「与迁移前一致」的锚点。故锁固定引用本快照，
+ * 成立的。gallery 换成克莱因蓝色板后 `resolveStyle("custom")` 已解析到新色板，
+ * 锁若跟着 resolveStyle 走就失去「与迁移前一致」的锚点。故锁固定引用本快照，
  * 不随 canonical 主题演化漂移。生产代码不得 import 本文件。
  */
-export const LEGACY_CUSTOM_TOKENS: ThemeTokens = {
+export const LEGACY_CUSTOM_TOKENS: StyleTokens = {
   id: "custom",
   colors: {
     bg: "#FFFFFF",

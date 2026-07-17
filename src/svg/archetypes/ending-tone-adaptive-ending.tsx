@@ -28,7 +28,7 @@ import { fitHeadingLines } from "../heading-fit"
  *     引用）。
  *   - 源文件私有常量 `BORDER` → `ctx.colors.border ?? ctx.colors.muted` ——
  *     精确匹配，用于分隔线。`??` 兜底沿用 cover-left-anchor.tsx /
- *     ending-rail-ending.tsx 的既有写法（`border` 在 `ThemeColors` 上是可
+ *     ending-rail-ending.tsx 的既有写法（`border` 在 `StyleColors` 上是可
  *     选字段）。
  *   - brief 提示"169 行附近"另有一个灰阶需核实归属（`CustomDecor` 的模块
  *     级常量 `BG_MIXED_6PCT_BLACK`，templates/custom.tsx 第 783 行）：Step A

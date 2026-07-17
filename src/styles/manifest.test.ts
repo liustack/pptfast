@@ -101,8 +101,8 @@ describe("THEME_MANIFESTS", () => {
 
   // chrome 开关（suppressFooterOnCardContent / suppressFooterRule）W1 从
   // manifest 拆到 style 的 master 配置——归属断言随之搬到
-  // themes/styles.test.ts（STYLE_DEFINITIONS.enterprise.master /
-  // STYLE_DEFINITIONS.ink.master），manifest 现在只管 archetypes + motif。
+  // themes/styles.test.ts（THEME_DEFINITIONS.enterprise.master /
+  // THEME_DEFINITIONS.ink.master），manifest 现在只管 archetypes + motif。
 
   it("luxe（原 retail，黑金）复用现有 archetype（零版式代码），motif 全覆盖后配烫金细线", () => {
     const r = THEME_MANIFESTS.luxe

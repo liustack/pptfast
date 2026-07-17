@@ -23,7 +23,7 @@ function deck(slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "d.pptx",
-    style: { id: "consulting" },
+    theme: { id: "consulting" },
     meta: {},
     assets: { images: {} },
     slides,

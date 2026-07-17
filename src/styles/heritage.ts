@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * heritage（典藏传承）——第 8 主题（2026-07-10 用户从视觉伴侣六方向中
@@ -12,7 +12,7 @@ import type { ThemeTokens } from "./tokens";
  * cover/chapter + consulting 家族 content/ending + two-column 轮换）——
  * 酒红横幅上 baked 白字对比度充足（deep red ≈ 0.06 明度）。
  */
-export const HERITAGE_TOKENS: ThemeTokens = {
+export const HERITAGE_TOKENS: StyleTokens = {
   id: "heritage",
   colors: {
     bg: "#F6F2EC", // putty 暖米

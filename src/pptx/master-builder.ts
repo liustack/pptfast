@@ -8,12 +8,12 @@
  * keep it; the SVG preview draws its own static page number instead.
  */
 import type pptxgen from "pptxgenjs"
-import type { ThemeTokens, LayoutType } from "../styles"
+import type { StyleTokens, LayoutType } from "../styles"
 
 const SLIDE_TYPES: LayoutType[] = ["cover", "chapter", "content", "ending"]
 
 /** Define one master per slide type. 页码占位已删（2026-07-09 用户裁决）。 */
-export function defineMastersForIR(pptx: pptxgen, _tokens: ThemeTokens) {
+export function defineMastersForIR(pptx: pptxgen, _tokens: StyleTokens) {
   for (const type of SLIDE_TYPES) {
     pptx.defineSlideMaster({ title: type })
   }

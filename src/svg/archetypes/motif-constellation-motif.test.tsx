@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { ConstellationMotif } from "./motif-constellation-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -33,7 +33,7 @@ function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images },
     slides: [coverSlide],
@@ -49,7 +49,7 @@ function render(body: React.ReactElement): Element {
   return parseSvgRoot(markup)
 }
 
-// MasterChrome's brand logo bands — same constants templates/tech.test.tsx
+// BrandChrome's brand logo bands — same constants templates/tech.test.tsx
 // used to verify the ending signature motif never collides with the corner
 // logos.
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -92,7 +92,7 @@ describe("ConstellationMotif", () => {
   ] as const)(
     "tech tokens 下 %s slide（无显式背景）与旧 BentoTechDecor 输出逐字节一致",
     (_label, slide, expected) => {
-      const ctx = buildCtx(getTheme("tech"), {})
+      const ctx = buildCtx(resolveStyle("tech"), {})
       const deck = ir("tech")
 
       const next = renderSvgMarkup(<ConstellationMotif ir={deck} slide={slide} ctx={ctx} />)
@@ -101,7 +101,7 @@ describe("ConstellationMotif", () => {
   )
 
   it("装饰几何：无显式背景时渲染 1 个 135° 对角渐变 + 1 个满页 rect，跨 slide.type 装饰未隐形", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech")
 
     for (const slide of [coverSlide, chapterSlide, contentSlide, endingSlide]) {
@@ -132,7 +132,7 @@ describe("ConstellationMotif", () => {
   })
 
   it("只有 ending 额外叠加 3 点签名星座（polyline + 3 circle，accent 色），cover/chapter/content 都没有", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech")
 
     for (const slide of [coverSlide, chapterSlide, contentSlide]) {
@@ -154,8 +154,8 @@ describe("ConstellationMotif", () => {
     expect(line.getAttribute("stroke-opacity")).toBe("0.25")
   })
 
-  it("ending's smaller signature motif sits clear of all four MasterChrome logo bands", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+  it("ending's smaller signature motif sits clear of all four BrandChrome logo bands", () => {
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech")
     const root = render(<ConstellationMotif ir={deck} slide={endingSlide} ctx={ctx} />)
     const dots = Array.from(root.querySelectorAll("circle"))
@@ -174,8 +174,8 @@ describe("ConstellationMotif", () => {
   })
 
   it("hasExplicitBackground 三种显式背景（color/gradient/有效 asset）均跳过渲染，返回空 fragment（与旧 BentoTechDecor 逐字节等价）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
-    const ctxWithImg = buildCtx(getTheme("tech"), bgImages)
+    const ctx = buildCtx(resolveStyle("tech"), {})
+    const ctxWithImg = buildCtx(resolveStyle("tech"), bgImages)
     const deckPlain = ir("tech")
     const deckWithImg = ir("tech", bgImages)
 
@@ -192,7 +192,7 @@ describe("ConstellationMotif", () => {
   })
 
   it("asset 背景解析失败（缺资源）时 hasExplicitBackground 仍判假，退回渲染渐变场——与旧 BentoTechDecor 行为一致", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech")
 
     const next = renderSvgMarkup(<ConstellationMotif ir={deck} slide={coverWithBrokenAssetBg} ctx={ctx} />)
@@ -201,14 +201,14 @@ describe("ConstellationMotif", () => {
   })
 
   it("Decor markup passes assertSubset (fill=url() resolves to a declared gradient)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech")
     const root = render(<ConstellationMotif ir={deck} slide={coverSlide} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
   })
 
   it("consulting tokens 下 ending 星座随主题走 ctx.colors.accent（证明真正 token 化），装饰性孤儿渐变色跨主题保持不变（未被并入任何 consulting token）", () => {
-    const consultingTheme = getTheme("consulting")
+    const consultingTheme = resolveStyle("consulting")
     const ctx = buildCtx(consultingTheme, {})
     const deck = ir("consulting")
     const out = renderSvgMarkup(<ConstellationMotif ir={deck} slide={endingSlide} ctx={ctx} />)

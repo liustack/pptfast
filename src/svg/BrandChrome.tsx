@@ -1,7 +1,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import type { BlockCtx } from "./blocks/types"
 import { CONF_LABEL } from "../lib/conf-labels"
-import { resolveMaster } from "../styles/styles"
+import { resolveBrand } from "../styles/styles"
 import { cachedDeckSeed, pickBySeed } from "./variety"
 
 /**
@@ -10,7 +10,7 @@ import { cachedDeckSeed, pickBySeed } from "./variety"
  * the single-source svg (and thus exported). 页码已整体移除（2026-07-09 用户
  * 裁决「页码区块完全多此一举」）：预览静态页码与导出的原生动态页码一并删。
  */
-export function MasterChrome({
+export function BrandChrome({
   ir,
   slide,
   ctx,
@@ -40,12 +40,12 @@ export function MasterChrome({
   const border = ctx.colors.border ?? ctx.colors.muted
   const font = ctx.fonts.body
 
-  // 背景图 + 卡片态 content 页整页抑制页脚——是否生效由 style 的 master 配置
-  // 驱动（W1 从 manifest.chrome 拆出，见 themes/styles.ts resolveMaster；
+  // 背景图 + 卡片态 content 页整页抑制页脚——是否生效由 theme 的 brand 配置
+  // 驱动（W1 从 manifest.chrome 拆出，见 themes/styles.ts resolveBrand；
   // enterprise 持有 suppressFooterOnCardContent，其余主题不设 = 默认 false）。
   const bgAsset =
     slide.background?.kind === "asset" ? assets.images[slide.background.asset_id] : null
-  const master = resolveMaster(ir.style.id, ir.style.master)
+  const master = resolveBrand(ir.theme.id, ir.theme.brand)
   const cardBgSuppressesFooter =
     Boolean(master.suppressFooterOnCardContent) &&
     slide.type === "content" &&
@@ -82,7 +82,7 @@ export function MasterChrome({
 
       {showFooter && (
         <>
-          {/* 分隔线可被 style 的 master.suppressFooterRule 抑制（主题自带
+          {/* 分隔线可被 theme 的 brand.suppressFooterRule 抑制（主题自带
               版框线时避免双线，ink 先例，2026-07-10 用户裁决） */}
           {!master.suppressFooterRule && (
             <line x1="56" y1="664" x2="1224" y2="664" stroke={border} strokeWidth="1.2" />

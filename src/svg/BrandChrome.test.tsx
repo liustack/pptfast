@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import { MasterChrome } from "./MasterChrome"
+import { BrandChrome } from "./BrandChrome"
 import type { PptxIR, Slide } from "@/ir"
 import type { BlockCtx } from "./blocks/types"
 
@@ -19,11 +19,11 @@ const ctx: BlockCtx = {
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
 }
 
-function ir(themeId: PptxIR["style"]["id"], slides: Slide[]): PptxIR {
+function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
-    style: { id: themeId },
+    theme: { id: themeId },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1", date: "2026" },
     assets: {
       images: { bg: { src: "data:image/png;base64,iVBOR", alt: "背景" } },
@@ -44,20 +44,20 @@ function svg(node: React.ReactElement) {
   return render(<svg>{node}</svg>)
 }
 
-describe("MasterChrome footer suppression (W1: style master.suppressFooterOnCardContent via resolveMaster)", () => {
-  it("enterprise 主题：content 页 + 卡片背景图 → 页脚整体消失（style master 驱动）", () => {
+describe("BrandChrome footer suppression (W1: theme brand.suppressFooterOnCardContent via resolveBrand)", () => {
+  it("enterprise 主题：content 页 + 卡片背景图 → 页脚整体消失（theme brand 驱动）", () => {
     const doc = ir("enterprise", [cardBgContentSlide])
-    const { container } = svg(<MasterChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
+    const { container } = svg(<BrandChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
     expect(container.querySelector("line")).toBeNull()
     expect(container.textContent).not.toContain("ACME")
     expect(container.textContent).not.toContain("v1")
   })
 
   it.each(["consulting", "insight", "academic", "tech", "journal"] as const)(
-    "%s 主题：同样的 content 页 + 卡片背景图 → 页脚正常显示（未设 master.suppressFooterOnCardContent，不受影响）",
+    "%s 主题：同样的 content 页 + 卡片背景图 → 页脚正常显示（未设 brand.suppressFooterOnCardContent，不受影响）",
     (themeId) => {
       const doc = ir(themeId, [cardBgContentSlide])
-      const { container } = svg(<MasterChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
+      const { container } = svg(<BrandChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
       expect(container.querySelector("line")).not.toBeNull()
       expect(container.textContent).toContain("ACME")
       expect(container.textContent).toContain("v1")

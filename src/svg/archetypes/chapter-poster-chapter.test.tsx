@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { PosterChapter } from "./chapter-poster-chapter"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -25,7 +25,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: { organization: "创意组" },
     assets: { images: {} },
     slides: [chapter1, content, chapter2],
@@ -46,7 +46,7 @@ describe("PosterChapter", () => {
     // big-number spacing」一案——PosterChapter 与旧 EditorialDarkChapter 是
     // 同一份构图逻辑做 token 替换，几何值不变，这里固化为字面量而非与已删除
     // 的旧模板逐字节比较。
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const deck = ir("insight")
 
     const { root: root1 } = render(<PosterChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
@@ -79,12 +79,12 @@ describe("PosterChapter", () => {
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "insight" },
+      theme: { id: "insight" },
       meta: {},
       assets: { images: {} },
       slides: [longSlide],
     } as unknown as PptxIR
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const { root } = render(<PosterChapter ir={deck} slide={longSlide} index={0} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
 
@@ -101,7 +101,7 @@ describe("PosterChapter", () => {
   })
 
   it("consulting tokens 下用 consulting 的 primary/border/muted 色，creative 的烤死色不残留（token 化成立）", () => {
-    const consultingTheme = getTheme("consulting")
+    const consultingTheme = resolveStyle("consulting")
     const ctx = buildCtx(consultingTheme, {})
     const deck = ir("consulting")
     const out = renderSvgMarkup(<PosterChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)

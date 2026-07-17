@@ -5,11 +5,11 @@ import type { PptxIR, Slide } from "@/ir"
 
 // ── helpers ──
 
-function makeIR(slides: Slide[], themeId: PptxIR["style"]["id"] = "consulting"): PptxIR {
+function makeIR(slides: Slide[], themeId: PptxIR["theme"]["id"] = "consulting"): PptxIR {
   return {
     version: "3",
     filename: "test.pptx",
-    style: { id: themeId },
+    theme: { id: themeId },
     meta: {},
     assets: { images: {} },
     slides,

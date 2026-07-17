@@ -5,7 +5,7 @@ import type {
   EndingArchetypeId,
   MotifArchetypeId,
 } from "../svg/archetypes/types"
-import { resolveThemeId, type CanonicalStyleId } from "./index"
+import { resolveThemeId, type CanonicalThemeId } from "./index"
 
 /**
  * Personality manifest（spec §3.3）：主题的「选择权」配置——允许哪些
@@ -23,7 +23,7 @@ export interface PersonalityManifest {
   motif?: MotifArchetypeId
 }
 
-export const THEME_MANIFESTS: Record<CanonicalStyleId, PersonalityManifest> = {
+export const THEME_MANIFESTS: Record<CanonicalThemeId, PersonalityManifest> = {
   // Wave 4 Task 23：六主题四页型 + motif 全量接线（迁移完成、观感不变）。
   // consulting 的 cover 保留双元素 ["banner-title","poster-center"]——P2 首个
   // 增量（2026-07-09）已人工审通过的多样性增量，不在本任务收窄回单元素。
@@ -169,7 +169,7 @@ export const THEME_MANIFESTS: Record<CanonicalStyleId, PersonalityManifest> = {
       ending: ["banner-ending"],
     },
     motif: "ink-motif",
-    // ink-motif 自带古籍版框线，MasterChrome 的页脚分隔线会形成双线
+    // ink-motif 自带古籍版框线，BrandChrome 的页脚分隔线会形成双线
     // （2026-07-10 用户截图指出）——style 的 master.suppressFooterRule
     // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/styles.ts），meta 文字照排。
   },

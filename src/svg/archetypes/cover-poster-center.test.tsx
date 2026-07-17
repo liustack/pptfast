@@ -3,15 +3,15 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { PosterCenterCover } from "./cover-poster-center"
 import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = { type: "cover", heading: "创意提案", subheading: "一次品牌焕新实验", blocks: [] } as Slide
 const ir = (theme: string): PptxIR =>
-  ({ version: "3", filename: "x.pptx", style: { id: theme }, meta: { organization: "品牌组" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
+  ({ version: "3", filename: "x.pptx", theme: { id: theme }, meta: { organization: "品牌组" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 
-// MasterChrome's brand logo bands (MasterChrome.tsx logoBox: image at
+// BrandChrome's brand logo bands (BrandChrome.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br). Ported from
 // templates/creative.test.tsx — the poster grammar's entire premise is
 // centering everything on x=640 so its x-extent stays within [190,1090],
@@ -40,7 +40,7 @@ function render(body: React.ReactElement): { markup: string; root: Element } {
 
 describe("PosterCenterCover", () => {
   it("creative tokens 下标题居中、短横条走 primary（RED≡primary）且无旧 baked hex 残留（观感等价档）", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const out = renderSvgMarkup(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("创意提案")
     expect(out).toContain('text-anchor="middle"')
@@ -49,14 +49,14 @@ describe("PosterCenterCover", () => {
     expect(out).not.toContain("#666670") // META_MUTED 并入 muted 后不得残留
   })
   it("consulting tokens 下用 consulting 的 primary 色（token 化成立）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(<PosterCenterCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("#051C2C") // consulting primary
     expect(out).not.toContain("#E63946") // creative primary 不得残留
   })
 
   it("accent 短横条精确坐标(width=60/height=4)走 primary、副标题居中、底部合并 meta 行含组织/密级/日期", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const fullSlide: Slide = {
       type: "cover",
       heading: "年度财务报告",
@@ -66,7 +66,7 @@ describe("PosterCenterCover", () => {
     const fullIr: PptxIR = {
       version: "3",
       filename: "deck.pptx",
-      style: { id: "insight" },
+      theme: { id: "insight" },
       meta: { organization: "DarkCo", confidentiality: "internal", version: "v2", date: "2026" },
       assets: { images: {} },
       slides: [fullSlide],
@@ -97,8 +97,8 @@ describe("PosterCenterCover", () => {
     expect(markup).toContain("内部")
   })
 
-  it("Cover 元素避开四角 MasterChrome logo 条带", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+  it("Cover 元素避开四角 BrandChrome logo 条带", () => {
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const { root } = render(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     const accentBar = Array.from(root.querySelectorAll("rect")).find(
       (r) => r.getAttribute("width") === "60" && r.getAttribute("height") === "4",
@@ -115,7 +115,7 @@ describe("PosterCenterCover", () => {
   })
 
   it("Cover 页通过 subset 校验", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const { root } = render(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
   })

@@ -2,12 +2,12 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { assertSubset } from "../subset-validate"
 import { RailMotif } from "./motif-rail-motif"
 import type { PptxIR, Slide } from "@/ir"
 
-// MasterChrome's bl/br brand logo bands (see templates/academic.test.tsx's
+// BrandChrome's bl/br brand logo bands (see templates/academic.test.tsx's
 // own LOGO_BANDS / "documents (not asserts false)" precedent) — the arc's
 // originating full circle is centered exactly on the page's bottom-right
 // corner, so it deliberately bleeds into BR_LOGO by construction.
@@ -29,7 +29,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [coverSlide],
@@ -56,7 +56,7 @@ describe("RailMotif", () => {
   ] as const)(
     "academic tokens 下 %s slide 输出与迁移前的 BcgEmeraldDecor 逐字节一致（档位一）",
     (label, slide) => {
-      const ctx = buildCtx(getTheme("academic"), {})
+      const ctx = buildCtx(resolveStyle("academic"), {})
       const deck = ir("academic")
 
       const next = renderSvgMarkup(<RailMotif ir={deck} slide={slide} ctx={ctx} />)
@@ -65,7 +65,7 @@ describe("RailMotif", () => {
   )
 
   it("Decor body passes subset validation (no gradients, plain shapes)（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
@@ -78,13 +78,13 @@ describe("RailMotif", () => {
 
   // The arc's originating full circle is centered exactly on the page's
   // bottom-right corner, so only its visible quarter-disc is drawn — its
-  // bounding box deliberately bleeds into MasterChrome's br logo band, same
+  // bounding box deliberately bleeds into BrandChrome's br logo band, same
   // precedent as the badge/rail-node non-overlap checks above (a solid-fill
   // area under an opaque logo loses no information, see
   // templates/academic.test.tsx's own "documents (not asserts false)" case).
   // Documented here, not silently skipped.
   it("documents (not asserts false) that the arc overlaps the br logo band by design（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
@@ -98,7 +98,7 @@ describe("RailMotif", () => {
   })
 
   it("装饰几何：cover 不渲染任何 path，chapter/content/ending 各渲染一段同弧形 path（装饰未隐形）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic")
 
     function renderMotif(slide: Slide): Element {
@@ -135,7 +135,7 @@ describe("RailMotif", () => {
   })
 
   it("tech tokens 下用 tech 的 primary 驱动 content/ending 弧形色（证明 token 化成立，无 baked hex），chapter 白字例外跨主题稳定", () => {
-    const techTheme = getTheme("tech")
+    const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
 

@@ -2,12 +2,12 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { assertSubset } from "../subset-validate"
 import { RailNumberedContent } from "./content-rail-numbered"
 import type { PptxIR, Slide } from "@/ir"
 
-// MasterChrome's brand logo bands (see templates/academic.test.tsx's own
+// BrandChrome's brand logo bands (see templates/academic.test.tsx's own
 // LOGO_BANDS) — any theme chrome placed near a page corner must stay clear
 // of these; the number badge sits top-left (BADGE_Y=96, not 64, specifically
 // to clear TL_LOGO).
@@ -59,7 +59,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [chapter1, content1a, content1b, chapter2, content2a],
@@ -83,7 +83,7 @@ const EXPECTED_CONTENT_BARE =
 
 describe("RailNumberedContent", () => {
   it("academic tokens 下输出与迁移前的 BCGEmeraldContent 逐字节一致（档位一，含跨章节编号 + 多 block/subheading/footnote）", () => {
-    const ctx = buildCtx({ ...getTheme("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const deck = ir("academic")
 
     const next1a = renderSvgMarkup(<RailNumberedContent ir={deck} slide={content1a} index={1} ctx={ctx} />)
@@ -106,13 +106,13 @@ describe("RailNumberedContent", () => {
   })
 
   it("单块 slide（无 subheading/footnote，单章节 deck）同样逐字节一致", () => {
-    const ctx = buildCtx({ ...getTheme("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const bare: Slide = { type: "content", variant: "single", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
     const soloChapter: Slide = { type: "chapter", heading: "唯一章节", blocks: [] } as Slide
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "academic" },
+      theme: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [soloChapter, bare],
@@ -124,7 +124,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("renders the left rail track, a progress node, the number badge (clear of all four logo bands) and no foreignObject（迁移自 academic.test.tsx 的 numbered-rail grammar 断言）", () => {
-    const ctx = buildCtx({ ...getTheme("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const deck = ir("academic")
     const markup = renderSvgMarkup(<RailNumberedContent ir={deck} slide={content1a} index={1} ctx={ctx} />)
     const root = parseSvgRoot(
@@ -144,7 +144,7 @@ describe("RailNumberedContent", () => {
     expect(rail?.getAttribute("fill")).toBe(ctx.colors.primary)
 
     // number badge: rect(96, 96, 64, 32) rx=6 — y=96 (not 64) keeps it clear
-    // of MasterChrome's tl logo band (x 64-160, y 48-88)
+    // of BrandChrome's tl logo band (x 64-160, y 48-88)
     const badge = Array.from(root.querySelectorAll("rect")).find(
       (r) =>
         r.getAttribute("x") === "96" &&
@@ -168,7 +168,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("shrinks the number badge label through fitSvgLine instead of overflowing the 64px-wide badge（迁移自 academic.test.tsx，12/10 常规场景 + 100/1000 极端收缩场景）", () => {
-    const ctx = buildCtx({ ...getTheme("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
 
     // Common two-digit-on-both-sides shape ("12.10") still renders at the
     // nominal 14px size — the fit fallback is a safety net, not a change to
@@ -228,7 +228,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("Content body passes subset validation（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx({ ...getTheme("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -241,7 +241,7 @@ describe("RailNumberedContent", () => {
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "academic" },
+      theme: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -254,7 +254,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("超长标题（40+ 字）经 fitHeadingLines 收缩/换行渲染，不整段输出原文，通过 subset validation（补齐迁移前遗漏的长标题边缘场景）", () => {
-    const ctx = buildCtx({ ...getTheme("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const CJK_LONG =
       "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
     const slide: Slide = {
@@ -266,7 +266,7 @@ describe("RailNumberedContent", () => {
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "academic" },
+      theme: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -295,7 +295,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("overly long subheading shrinks to 16px then truncates with an ellipsis（迁移自 academic.test.tsx 的 Content subheading Task 5 分支）", () => {
-    const ctx = buildCtx({ ...getTheme("academic"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const CJK_LONG =
       "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
     const slide: Slide = {
@@ -308,7 +308,7 @@ describe("RailNumberedContent", () => {
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "academic" },
+      theme: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -326,7 +326,7 @@ describe("RailNumberedContent", () => {
   })
 
   it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），徽章白字例外跨主题稳定", () => {
-    const techTheme = getTheme("tech")
+    const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
     const out = renderSvgMarkup(<RailNumberedContent ir={deck} slide={content1a} index={1} ctx={ctx} />)

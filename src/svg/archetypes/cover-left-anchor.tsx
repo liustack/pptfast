@@ -21,7 +21,7 @@ import { CONF_LABEL } from "../../lib/conf-labels"
  *   - 源文件私有常量 `MUTED` → `ctx.colors.muted` —— 精确匹配。
  *   - 源文件私有常量 `HAIRLINE` → `ctx.colors.border ?? ctx.colors.muted` ——
  *     精确匹配 academic 的 border 字段，`??` 兜底沿用 cover-banner-title.tsx
- *     的既有写法（`border` 在 ThemeColors 上是可选字段）。
+ *     的既有写法（`border` 在 StyleColors 上是可选字段）。
  *
  * 装饰色豁免（修订，取代最初的"孤儿色并入 primary"方案——见下方修复记录）：
  * 源文件私有常量 `TRIANGLE_DEEP` 是色块角落三角形的填色，其自身注释写明是
@@ -162,7 +162,7 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
       </g>
 
       {/* Confidentiality badge (top right, over the white panel). y=104 keeps
-          it clear of MasterChrome's tr logo band (x 1120-1216, y 48-88) —
+          it clear of BrandChrome's tr logo band (x 1120-1216, y 48-88) —
           same safety margin as consulting's y=100 equivalent badge. */}
       {confLabel && (
         <g>

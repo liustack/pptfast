@@ -2,13 +2,13 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { assertSubset } from "../subset-validate"
 import { fitHeadingLines } from "../heading-fit"
 import { LeftAnchorCover } from "./cover-left-anchor"
 import type { PptxIR, Slide } from "@/ir"
 
-// MasterChrome's brand logo bands (see templates/academic.test.tsx's own
+// BrandChrome's brand logo bands (see templates/academic.test.tsx's own
 // LOGO_BANDS) — the confidentiality badge sits top-right (y=104, not 64,
 // specifically to clear TR_LOGO).
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -34,7 +34,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: { organization: "测试所", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],
@@ -47,7 +47,7 @@ const ir = (theme: string): PptxIR =>
 // hex（同白字例外一样）跨主题稳定出现，而非逐字节 toBe。
 describe("LeftAnchorCover", () => {
   it("academic tokens 下渲染左侧色块 + 白字标题 + 未隐形的装饰三角（TRIANGLE_DEEP）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
 
     // 标题文本存在
@@ -65,7 +65,7 @@ describe("LeftAnchorCover", () => {
   })
 
   it("tech tokens 下用 tech 的 primary/accent 色，装饰三角 / 白字两处豁免跨主题保持不变（证明 token 化成立）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
 
     expect(out).toContain("#2DD4E6") // tech primary === accent
@@ -77,7 +77,7 @@ describe("LeftAnchorCover", () => {
   })
 
   it("org 文本渲染在右侧白面板（translate(576,168)），Cover body 通过 subset validation（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("测试所")
 
@@ -97,7 +97,7 @@ describe("LeftAnchorCover", () => {
 
     it("wraps to 3 lines and shrinks to fontSize=47 — matches fitHeadingLines(maxWidth=360) directly", () => {
       const reportedSlide: Slide = { type: "cover", heading: REPORTED_HEADING, blocks: [] } as Slide
-      const ctx = buildCtx(getTheme("academic"), {})
+      const ctx = buildCtx(resolveStyle("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={reportedSlide} index={0} ctx={ctx} />,
       )
@@ -124,7 +124,7 @@ describe("LeftAnchorCover", () => {
       const longer =
         "DSpark：让大规模语言模型推理速度提升 60-85% 的关键工程突破与实践路径"
       const longerSlide: Slide = { type: "cover", heading: longer, blocks: [] } as Slide
-      const ctx = buildCtx(getTheme("academic"), {})
+      const ctx = buildCtx(resolveStyle("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={longerSlide} index={0} ctx={ctx} />,
       )
@@ -146,12 +146,12 @@ describe("LeftAnchorCover", () => {
     })
   })
 
-  it("confidentiality 徽标 (1064,104,120,48) 避让 MasterChrome 四个 logo 带（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+  it("confidentiality 徽标 (1064,104,120,48) 避让 BrandChrome 四个 logo 带（迁移自 academic.test.tsx）", () => {
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "academic" },
+      theme: { id: "academic" },
       meta: { organization: "测试所", date: "2026-07", confidentiality: "internal" },
       assets: { images: {} },
       slides: [slide],
@@ -189,7 +189,7 @@ describe("LeftAnchorCover", () => {
   // templates/academic.test.tsx's own "documents (not asserts false)" case).
   // Documented here, not silently skipped.
   it("documents (not asserts false) that the corner triangle overlaps the bl logo band by design（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
     const root = parseSvgRoot(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,

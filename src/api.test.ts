@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
-import { generatePptx, irJsonSchema, listStyles, renderSlideSvg, validateIr } from "./api"
+import { generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
 
 const raw = {
   version: "3",
   filename: "api-test",
-  style: { id: "consulting" },
+  theme: { id: "consulting" },
   slides: [
     { type: "cover", heading: "Hello" },
     { type: "content", heading: "Points", blocks: [{ type: "bullets", items: ["a", "b"] }] },
@@ -24,11 +24,11 @@ describe("validateIr", () => {
     const v = validateIr({ version: "2", filename: "x", theme: { id: "tech" }, slides: [] })
     expect(v.ok).toBe(false)
     expect(v.errors).toHaveLength(1)
-    expect(v.errors[0]!.message).toMatch(/rename theme to style/)
+    expect(v.errors[0]!.message).toMatch(/use theme\.style/)
   })
 
-  it("hard-rejects an unknown style id with the available list", () => {
-    const v = validateIr({ style: { id: "neon" }, slides: [{ heading: "x" }] })
+  it("hard-rejects an unknown theme id with the available list", () => {
+    const v = validateIr({ theme: { id: "neon" }, slides: [{ heading: "x" }] })
     expect(v.ok).toBe(false)
     expect(v.errors[0]!.message).toMatch(/available:.*consulting/)
   })
@@ -90,9 +90,9 @@ describe("generatePptx", () => {
   })
 })
 
-describe("listStyles", () => {
-  it("lists 13 canonical styles with labels and color tokens", () => {
-    const styles = listStyles()
+describe("listThemes", () => {
+  it("lists 13 canonical themes with labels and color tokens", () => {
+    const styles = listThemes()
     expect(styles).toHaveLength(13)
     expect(styles.map((t) => t.id)).toContain("consulting")
     for (const t of styles) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander"
 import { installNodePlatform } from "./platform/node"
-import { runInit, runPreview, runRender, runSchema, runStyles, runValidate } from "./cli/commands"
+import { runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./cli/commands"
 import { checkForUpdate, createSelfUpdater } from "./cli/update"
 import { VERSION } from "./version"
 
@@ -23,11 +23,11 @@ program
   .description("Render an IR JSON file to a .pptx")
   .argument("<ir.json>", "path to the IR file")
   .requiredOption("-o, --output <file>", "output .pptx path")
-  .option("--style <id>", "override the deck style (see `pptfast styles`)")
-  .option("--tokens <path>", "brand tokens JSON overriding the style's palette (see `pptfast schema --tokens`)")
-  .action(async (ir: string, opts: { output: string; style?: string; tokens?: string }) => {
+  .option("--theme <id>", "override the deck theme (see `pptfast themes`)")
+  .option("--style <path>", "style overrides JSON re-coloring the theme (see `pptfast schema --style`)")
+  .action(async (ir: string, opts: { output: string; theme?: string; style?: string }) => {
     try {
-      console.log(await runRender(ir, { output: opts.output, style: opts.style, tokensPath: opts.tokens }))
+      console.log(await runRender(ir, { output: opts.output, theme: opts.theme, stylePath: opts.style }))
     } catch (e) {
       fail(e)
     }
@@ -48,14 +48,14 @@ program
 program
   .command("schema")
   .description("Print the IR JSON Schema (feed this to a model before it writes IR)")
-  .option("--tokens", "print the brand-tokens override schema instead")
-  .action((opts: { tokens?: boolean }) => console.log(runSchema(Boolean(opts.tokens))))
+  .option("--style", "print the style-override schema instead")
+  .action((opts: { style?: boolean }) => console.log(runSchema(Boolean(opts.style))))
 
 program
-  .command("styles")
-  .description("List built-in styles")
+  .command("themes")
+  .description("List built-in themes")
   .option("--json", "machine-readable output")
-  .action((opts: { json?: boolean }) => console.log(runStyles(Boolean(opts.json))))
+  .action((opts: { json?: boolean }) => console.log(runThemes(Boolean(opts.json))))
 
 program
   .command("init")

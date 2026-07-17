@@ -52,7 +52,7 @@ const TONE_COLORS: Record<
 
 /**
  * Perceived brightness (0-255) of a `#RRGGBB` hex color — a simple weighted-RGB
- * relative luminance. `ThemeColors` (themes/tokens.ts) has no explicit
+ * relative luminance. `StyleColors` (themes/tokens.ts) has no explicit
  * dark/light flag, and no luminance/brightness utility exists elsewhere in the
  * repo (checked before writing this), so this is the "relative luminance 简式"
  * fallback the brief calls for. Only used to pick the tone's light/dark variant

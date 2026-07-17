@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * campaign（活力营销）——2026-07-13 memphis 拆分主题 A（用户拍板：场景
@@ -14,7 +14,7 @@ import type { ThemeTokens } from "./tokens";
  * chartPalette 即笔刷四色（motif 从 ctx 取色的零 hex 纪律：图表与装饰
  * 同色语言）。
  */
-export const CAMPAIGN_TOKENS: ThemeTokens = {
+export const CAMPAIGN_TOKENS: StyleTokens = {
   id: "campaign",
   colors: {
     bg: "#3D2E78", // 深紫

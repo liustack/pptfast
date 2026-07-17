@@ -124,7 +124,7 @@ function deck(slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "stress.pptx",
-    style: { id: "consulting" },
+    theme: { id: "consulting" },
     meta: { organization: "压力测试" },
     assets: { images: {} },
     slides,

@@ -10,7 +10,7 @@ import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
  * 压图页与出血 split 页（图片排版 polish，2026-07-09 用户反馈驱动）。
  *
  * 模板文字色是各主题 baked 常量、无法反色，因此压图场景不走模板 Body，
- * 由这里的 bespoke 全页版式接管（MasterChrome/Decor 照常）——参考 ppt-master
+ * 由这里的 bespoke 全页版式接管（BrandChrome/Decor 照常）——参考 ppt-master
  * 的压图页版式本就趋同：暗遮罩 + 白字大标题，主题个性保留在 accent 细节。
  */
 const W = CANVAS_W_PX
@@ -58,7 +58,7 @@ export function ImageCoverPage({
     maxLines: 2,
     lineHeightRatio: 1.25,
   })
-  // 左下构图：从底部往上倒推（页脚区 ~88px 留给 MasterChrome）
+  // 左下构图：从底部往上倒推（页脚区 ~88px 留给 BrandChrome）
   const subH = sub.lines.length ? sub.lines.length * sub.lineHeight + 18 : 0
   const titleH = title.lines.length * title.lineHeight
   const baseY = H - 118 - subH
@@ -150,7 +150,7 @@ export function ImageCoverPage({
 const SPLIT_IMG_W = 540
 const SPLIT_TEXT_X = 620
 const SPLIT_TEXT_W = W - SPLIT_TEXT_X - 96
-/** 图列垂直通栏（2026-07-09 用户裁决）：MasterChrome 对 image_split 页
+/** 图列垂直通栏（2026-07-09 用户裁决）：BrandChrome 对 image_split 页
  * 已整页抑制页脚，无压图问题。 */
 const SPLIT_IMG_H = H
 
@@ -660,7 +660,7 @@ export function ImageBottomPage({
     lineHeightRatio: 1.3,
   })
   // 底图垂直通栏到页缘（2026-07-09 用户裁决：绝不拉伸，slice 裁剪出血）。
-  // meta 页脚由 MasterChrome 以遮罩浮层压图渲染，caption 条相应上移让位。
+  // meta 页脚由 BrandChrome 以遮罩浮层压图渲染，caption 条相应上移让位。
   const meta = ir.meta
   const hasMetaFooter = Boolean(
     meta.confidentiality || meta.organization || meta.version || meta.date,

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { ToneAdaptiveMotif } from "./motif-tone-adaptive-motif"
 import type { PptxIR, Slide } from "@/ir"
 import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
@@ -42,7 +42,7 @@ function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images },
     slides: [coverSlide],
@@ -163,7 +163,7 @@ describe("ToneAdaptiveMotif", () => {
   })
 
   it("tech tokens 下渐变起点随主题走 ctx.colors.bg（证明真正 token 化），装饰性孤儿色 #F0F0F0 跨主题保持不变（未被并入任何 tech token）", () => {
-    const techTheme = getTheme("tech")
+    const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
     const out = renderSvgMarkup(<ToneAdaptiveMotif ir={deck} slide={coverSlide} ctx={ctx} />)

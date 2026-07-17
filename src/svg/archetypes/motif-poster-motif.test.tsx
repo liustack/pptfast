@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../styles"
 import { PosterMotif } from "./motif-poster-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -12,7 +12,7 @@ const chapterSlide: Slide = { type: "chapter", heading: "章节", blocks: [] } a
 const contentSlide: Slide = { type: "content", variant: "single", heading: "内容", blocks: [] } as Slide
 const endingSlide: Slide = { type: "ending", blocks: [] } as Slide
 
-// MasterChrome's brand logo bands (MasterChrome.tsx logoBox).
+// BrandChrome's brand logo bands (BrandChrome.tsx logoBox).
 const LOGO_BANDS = [
   { x: 64, y: 48, w: 96, h: 40 },
   { x: 1120, y: 48, w: 96, h: 40 },
@@ -31,7 +31,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [coverSlide],
@@ -58,7 +58,7 @@ function motifCircles(deck: PptxIR, ctx: ReturnType<typeof buildCtx>, slide: Sli
  */
 describe("PosterMotif（v2 光晕移除后）", () => {
   it("任何页型都不再渲染径向光晕（无 radialGradient、无 url(#) 填充圆）", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const deck = ir("insight")
     for (const slide of [coverSlide, chapterSlide, contentSlide, endingSlide]) {
       const { markup } = render(<PosterMotif ir={deck} slide={slide} ctx={ctx} />)
@@ -68,13 +68,13 @@ describe("PosterMotif（v2 光晕移除后）", () => {
   })
 
   it("cover 渲染同心光点签名（实心点 + 两圈描边环），chapter/content/ending 什么都不画", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const deck = ir("insight")
 
     const cover = motifCircles(deck, ctx, coverSlide)
     expect(cover.map((c) => c.getAttribute("r")).sort()).toEqual(["12", "18", "6"])
     const dot = cover.find((c) => c.getAttribute("r") === "6")!
-    expect(dot.getAttribute("fill")).toBe(getTheme("insight").colors.accent)
+    expect(dot.getAttribute("fill")).toBe(resolveStyle("insight").colors.accent)
 
     for (const slide of [chapterSlide, contentSlide, endingSlide]) {
       expect(motifCircles(deck, ctx, slide)).toHaveLength(0)
@@ -82,7 +82,7 @@ describe("PosterMotif（v2 光晕移除后）", () => {
   })
 
   it("consulting tokens 下光点走 consulting 自己的 accent，insight 烤死色不残留（token 化）", () => {
-    const consultingTheme = getTheme("consulting")
+    const consultingTheme = resolveStyle("consulting")
     const ctx = buildCtx(consultingTheme, {})
     const deck = ir("consulting")
     const coverOut = renderSvgMarkup(<PosterMotif ir={deck} slide={coverSlide} ctx={ctx} />)
@@ -90,8 +90,8 @@ describe("PosterMotif（v2 光晕移除后）", () => {
     expect(coverOut).not.toContain("#D4A57C")
   })
 
-  it("光点位置随 seed 变体镜像（a/c 左下、b 右下），且始终避开 MasterChrome 四个 logo 带", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+  it("光点位置随 seed 变体镜像（a/c 左下、b 右下），且始终避开 BrandChrome 四个 logo 带", () => {
+    const ctx = buildCtx(resolveStyle("insight"), {})
     // 探测三个变体的 deck（filename 决定 seed）
     const seen = new Set<string>()
     for (let i = 0; i < 40 && seen.size < 2; i++) {
@@ -113,7 +113,7 @@ describe("PosterMotif（v2 光晕移除后）", () => {
   })
 
   it("Decor body passes subset validation", () => {
-    const ctx = buildCtx(getTheme("insight"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const deck = ir("insight")
     const { root } = render(<PosterMotif ir={deck} slide={coverSlide} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
