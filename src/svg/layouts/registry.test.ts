@@ -134,10 +134,16 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
     expect(grid?.capacity).toBe(6)
   })
 
-  it("body slots stay uncounted (capacity left for W3)", () => {
+  it("bento-panel's body slot mirrors its own grid capacity (6), not the flat single-stack default (W2 task 5)", () => {
+    const body = LAYOUT_REGISTRY["bento-panel"].slots.find((s) => s.name === "body")
+    expect(body?.capacity).toBe(6)
+  })
+
+  it("the remaining 6 content archetypes' body slots carry capacity 4 (W2 task 5 — mirrors CAPACITY.maxBlocksPerSlide's flat single-stack default, see registry.ts's CONTENT_LAYOUTS header comment)", () => {
     for (const id of Object.keys(CONTENT_ARCHETYPES)) {
+      if (id === "bento-panel") continue
       const body = LAYOUT_REGISTRY[id].slots.find((s) => s.name === "body")
-      expect(body?.capacity, `"${id}" body slot should not have a capacity yet`).toBeUndefined()
+      expect(body?.capacity, `"${id}" body slot should carry capacity 4`).toBe(4)
     }
   })
 })

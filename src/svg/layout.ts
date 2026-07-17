@@ -1,5 +1,6 @@
 import type { Component, Slide } from "@/ir"
 import type { ComponentBox, ComponentCtx } from "./components/types"
+import { STRETCHABLE_TYPES } from "./component-traits"
 import { measureComponent } from "./components"
 
 export type Arrangement = NonNullable<Slide["arrangement"]>
@@ -133,8 +134,6 @@ export function stackBottom(placed: PlacedComponent[], ctx: ComponentCtx): numbe
   )
 }
 
-/** 卡壳类 component：布局可把列内剩余高度分给它们本体拉伸（密度铺满）。 */
-const STRETCHABLE_TYPES = new Set<Component["type"]>(["kpi_cards", "icon_cards", "row_cards"])
 /** 单个卡片 component 至多拉到测量高度的这个倍数，防止矮内容页卡片畸高。 */
 const STRETCH_CAP_RATIO = 1.7
 /** 剩余低于此值不做拉伸——与 SURPLUS_MIN_REMAINING 同值，保持「剩余 ≤80px

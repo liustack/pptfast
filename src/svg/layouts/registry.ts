@@ -444,10 +444,39 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Content archetypes (7) — the only family that reads `slide.components`, so
-// every entry carries a `body` slot (capacity intentionally left for W3/
-// task 5) plus its own header chrome, and declares `arrangements` (inventory
-// decision #2: archetypes that don't obey the author's arrangement still
-// truthfully declare which arrangement(s) they honor, behavior unchanged).
+// every entry carries a `body` slot plus its own header chrome, and declares
+// `arrangements` (inventory decision #2: archetypes that don't obey the
+// author's arrangement still truthfully declare which arrangement(s) they
+// honor, behavior unchanged).
+//
+// `body` slot `capacity` (W2 task 5 — filling the placeholder task 1 left
+// here): declarative authoring-time metadata only, same convention as the
+// `hero`/`strip`/`grid`/`annotation` slots below — nothing in the render
+// chain consumes it yet (W3's `min(delivery editorial budget, layout
+// capacity)` gate is the intended consumer). Numbers are the geometry-honest
+// per-layout component count, sourced from `audit/capacity.ts`'s own
+// CAPACITY table (not invented fresh) rather than the inventory's raw notes:
+//   - single-stack layouts — narrow-column/rail-numbered/banner-heading/
+//     tone-adaptive-content, plus stacked-poster's degrade path (this file's
+//     own comment on that entry already establishes it behaves like the
+//     other four "all" archetypes once it falls back to SvgContent): 4,
+//     mirroring `CAPACITY.maxBlocksPerSlide` — audit/capacity.ts's flat,
+//     theme-independent default (`floor(minRectH / perBlock)`, the shared
+//     derivation for every linear-stack theme).
+//   - two-column: 4 too — the arrangement splits components into 2 narrower
+//     columns (`(rect.w - COLUMN_GAP) / 2`, layout.ts) but shares the same
+//     content-height budget as the single-stack layouts, not a taller one,
+//     so two columns doesn't earn a higher total than one.
+//   - bento-panel: 6, matching this same archetype's own `grid` slot
+//     capacity below — not the flat default. `layoutBento`'s hard 6-cell
+//     ceiling (bento-layout.ts: "the bento grid only ever has 6 cells") and
+//     `CAPACITY.maxBlocksPerSlideOverrides.tech = 6` (audit/capacity.ts,
+//     theme-keyed today, W3's future archetype-keyed home) both land on the
+//     same number for the same non-linear grid geometry independently.
+//     `body` is bento-panel's *degraded* single-stack rendering of the exact
+//     same component sequence the grid would otherwise hold (see that
+//     entry's own comment), so it shares the grid's number rather than a
+//     lesser invented one.
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   "narrow-column": {
@@ -464,7 +493,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "kicker", accepts: CHROME },
       { name: "heading", accepts: CHROME },
       { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any" },
+      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
       { name: "watermark", accepts: CHROME },
       { name: "meta", accepts: CHROME },
     ],
@@ -483,7 +512,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "heading", accepts: CHROME },
       { name: "subheading", accepts: CHROME },
       { name: "rule", accepts: CHROME },
-      { name: "body", accepts: "any" },
+      { name: "body", accepts: "any", capacity: 4 }, // two narrower columns, same height budget — see file header derivation
     ],
     arrangements: ["two_column"],
   },
@@ -500,7 +529,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "kicker", accepts: CHROME },
       { name: "heading", accepts: CHROME },
       { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any" },
+      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
       { name: "meta", accepts: CHROME },
     ],
     arrangements: "all",
@@ -517,7 +546,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "kicker", accepts: CHROME },
       { name: "heading", accepts: CHROME },
       { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any" },
+      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
       { name: "meta", accepts: CHROME },
     ],
     arrangements: "all",
@@ -545,7 +574,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "rule", accepts: CHROME },
       { name: "heading", accepts: CHROME },
       { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any" },
+      { name: "body", accepts: "any", capacity: 4 }, // single-stack degrade path — see file header derivation
       { name: "hero", accepts: "any", capacity: 1 },
       { name: "strip", accepts: "any", capacity: 1 },
       { name: "meta", accepts: CHROME },
@@ -568,7 +597,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "kicker", accepts: CHROME },
       { name: "heading", accepts: CHROME },
       { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any" },
+      { name: "body", accepts: "any", capacity: 6 }, // mirrors this archetype's own grid capacity — see file header derivation
       { name: "grid", accepts: "any", capacity: 6 },
       { name: "meta", accepts: CHROME },
     ],
@@ -588,7 +617,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "heading", accepts: CHROME },
       { name: "subheading", accepts: CHROME },
       { name: "rule", accepts: CHROME },
-      { name: "body", accepts: "any" },
+      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
       { name: "meta", accepts: CHROME },
     ],
     arrangements: "all",

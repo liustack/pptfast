@@ -1,4 +1,5 @@
 import type { Component } from "@/ir"
+import { SELF_VISUAL_TYPES } from "./component-traits"
 import type { ContentRect } from "./layout"
 
 /** Gap (px) between bento cards, both horizontal and vertical. */
@@ -196,24 +197,6 @@ export function layoutBento(
   const { cells } = layoutBento(units.slice(0, 6), rect)
   return { cells, overflow: units.slice(6) }
 }
-
-/**
- * Component types that already paint their own card/frame — callout's
- * left-bar-and-fill, code's dark panel, comparison's header row + rule
- * lines, quote's decorative mark/attribution treatment, verdict_banner's own
- * bordered/tinted conclusion strip. Lives here (not only in
- * `templates/tech.tsx`, which also renders against this exact set)
- * because `heroWeight` below needs the identical classification to rank a
- * self-visual component's hero weight — a single shared source of truth so the
- * "which components are self-visual" list can't drift between the two files.
- */
-export const SELF_VISUAL_TYPES = new Set([
-  "callout",
-  "code",
-  "comparison",
-  "quote",
-  "verdict_banner",
-])
 
 /**
  * "Visual weight" tiers consumed by `sortUnitsByHeroWeight`. `chart` and

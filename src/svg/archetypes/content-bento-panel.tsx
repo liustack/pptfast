@@ -9,11 +9,11 @@ import {
   layoutBento,
   explodeIntoUnits,
   sortUnitsByHeroWeight,
-  SELF_VISUAL_TYPES,
   type BentoCell,
   type KpiItem,
   type IconCardItem,
 } from "../bento-layout"
+import { PASSTHROUGH_SHELL_TYPES, SCALABLE_TYPES, SELF_VISUAL_TYPES } from "../component-traits"
 import { measureComponent, renderComponent } from "../components"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
@@ -53,7 +53,11 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * `BENTO_CARD_BOTTOM_PAD`/`SCALABLE_TYPES`/`PASSTHROUGH_SHELL_TYPES` 与全部
  * `BENTO_KPI_*`/`SINGLE_KPI_CARD_*`/`SINGLE_ICON_CARD_*`/
  * `BENTO_ICON_CARD_*` 尺寸常量。`SELF_VISUAL_TYPES` 本身已是 `../bento-layout`
- * 导出的公共模块（非 templates 私有），照常 import，不复制。
+ * 导出的公共模块（非 templates 私有），照常 import，不复制。（W2 任务 5 起，
+ * `SCALABLE_TYPES`/`PASSTHROUGH_SHELL_TYPES` 同样迁出本文件、与
+ * `SELF_VISUAL_TYPES` 一并并入 `../component-traits` 单一注册表，不再是本文件
+ * 私有——三者现从该文件 import，成员逐一等值锁定，见
+ * `component-traits.test.ts`。）
  *
  * 依赖公共模块核实（Step A 关键项）：Step A 对 227-702 行 ∪ 959-1163 行区间
  * 逐一核对每个引用标识符的定义来源——`layoutBento`/`explodeIntoUnits`/
@@ -98,49 +102,13 @@ const BENTO_CARD_STROKE_WIDTH = "1"
 const BENTO_CARD_TOP_PAD = 24
 const BENTO_CARD_BOTTOM_PAD = 16
 
-// Component types whose content is a rendered graphic (no text-fit / truncation
-// semantics of its own) rather than reflowable text — safe to shrink
-// uniformly to fit a card's budget instead of forcing the whole slide to
-// degrade out of the bento grammar.
-const SCALABLE_TYPES = new Set(["chart", "image"])
-
-// Component types that already paint their own card/frame — callout's
-// left-bar-and-fill, code's dark panel, comparison's header row + rule
-// lines, quote's decorative mark/attribution treatment, verdict_banner's own
-// bordered/tinted conclusion strip. Stacking bento's own outline shell
-// underneath one of these is a redundant "卡中卡" (card-in-a-card): the
-// component's own chrome is the card. These render bare inside their bento cell
-// instead — the cell's box *is* their render rect, with no extra inset
-// padding or shell paint.
-//
-// `SELF_VISUAL_TYPES` itself now lives in `../bento-layout` (Task 3):
-// `sortUnitsByHeroWeight`'s hero-ranking needs the exact same classification
-// to rank a self-visual component, so it's a single shared set rather than two
-// lists that could drift.
-
-// Task 2's "双壳治理" (double-shell governance): steps/flowchart/architecture/
-// timeline each already draw their own internal chrome per node — steps'
-// numbered-badge cards, flowchart's bordered node boxes, architecture's
-// filled layer bands, timeline's axis/dots — so a bento panel+stroke shell
-// painted *behind* the whole diagram is a redundant second shell around an
-// already-carded picture. Unlike `SELF_VISUAL_TYPES`, these still render
-// through `renderCell`'s ordinary-component branch (same grid box, same
-// BENTO_CARD_PAD/TOP_PAD/BOTTOM_PAD content inset, same audit annotations) —
-// they aren't single-component-centered via `SvgContent` — only the shell rect
-// itself is skipped (no fill, no stroke; effectively an invisible cell). Kept
-// as a separate set rather than folded into `SELF_VISUAL_TYPES` because that
-// set's *rendering path* (bare via `SvgContent`) is deliberately unchanged
-// here — only the shell paint differs.
-const PASSTHROUGH_SHELL_TYPES = new Set([
-  "steps",
-  "flowchart",
-  "architecture",
-  "timeline",
-  // 重设计（2026-07-09）：段落被装进空壳大卡是真机审计的三大丑点之一——
-  // 纯文本以无框形态存在（现代 bento 通行做法），与卡片形成疏密对比。
-  "paragraph",
-  "quote",
-])
+// `SCALABLE_TYPES`/`SELF_VISUAL_TYPES`/`PASSTHROUGH_SHELL_TYPES` (imported
+// above) now live in `../component-traits` (W2 task 5 unification of the 5
+// component-classification sets scattered across layout.ts/bento-layout.ts/
+// this file/content-stacked-poster.tsx/AssertionEvidence.tsx) — not
+// redefined here. See that file for the full "why" on each set, including
+// the "卡中卡" (card-in-a-card) and "双壳治理" (double-shell governance)
+// rationale this file used to carry locally.
 
 /* ── KPI single-card rendering (bento's own, not kpi.tsx's row layout) ──
  * kpi.tsx lays out N items side-by-side in one wide card — bento explodes

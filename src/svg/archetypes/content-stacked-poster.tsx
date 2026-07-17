@@ -4,6 +4,7 @@ import type { SvgTemplateProps } from "./types"
 import type { ContentRect } from "../layout"
 import type { ComponentCtx } from "../components/types"
 import { SvgContent } from "../SvgContent"
+import { SCALABLE_TYPES } from "../component-traits"
 import { measureComponent, renderComponent } from "../components"
 import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
@@ -112,13 +113,15 @@ const SUBHEADING_MIN_FONT_SIZE = 16
 const SUBHEADING_SLOT = 34
 const SUBHEADING_SLOT_STACKED = 46
 
-// Component types whose content is a rendered graphic (chart/image) rather than
-// reflowable text — safe to uniformly scale to *fill* a poster slot (both
-// enlarging and shrinking), unlike text components which can't scale without
-// becoming illegible. Poster mode additionally allows scaling *up* (bento
-// only ever shrinks) since the hero is meant to read as a dominant image,
-// capped at 1.3x so it stays close to the page's usual safe margin.
-const SCALABLE_TYPES = new Set(["chart", "image"])
+// `SCALABLE_TYPES` (imported above) now lives in `../component-traits` (W2
+// task 5 — content-bento-panel.tsx independently defined this exact same
+// set before this task; component-traits.test.ts pins the pre-merge
+// equivalence proof). Poster mode's own behavior — scaling *up* to *fill* a
+// slot (both enlarging and shrinking), unlike text components which can't
+// scale without becoming illegible, capped at HERO_SCALE_MAX so it stays
+// close to the page's usual safe margin (bento only ever shrinks) — lives
+// here, in `renderPosterSlot`/`componentFitsSlot` below; only the
+// *classification* moved, not the scaling logic.
 const HERO_SCALE_MAX = 1.3
 
 /**

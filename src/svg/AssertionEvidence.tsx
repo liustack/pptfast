@@ -1,16 +1,9 @@
 import { Fragment } from "react"
 import type { Component } from "@/ir"
 import type { ComponentCtx } from "./components/types"
+import { EVIDENCE_TYPES } from "./component-traits"
 import { renderComponent, measureComponent } from "./components"
 import { BLOCK_GAP, layoutContentFit, type ContentRect } from "./layout"
-
-/** Component types considered "evidence" in priority order. */
-const EVIDENCE_TYPES = [
-  "chart",
-  "image",
-  "comparison",
-  "kpi_cards",
-] as const satisfies readonly Component["type"][]
 
 /**
  * `assertion_evidence` arrangement — "full-sentence heading + single enlarged evidence".
