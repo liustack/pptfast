@@ -13,7 +13,7 @@
 ## 安装
 
 ```bash
-npm install -g pptfast
+npm install -g @liustack/pptfast
 pptfast --help
 ```
 
@@ -33,8 +33,8 @@ node dist/cli.js preview examples/basic.json -o out/svgs   # 每页一张 SVG，
 也可以直接调用 SDK（Node 环境下渲染前需先调用一次 `installNodePlatform()`，CLI 内部已经帮你调过）：
 
 ```ts
-import { installNodePlatform } from "pptfast/node"
-import { generatePptx } from "pptfast"
+import { installNodePlatform } from "@liustack/pptfast/node"
+import { generatePptx } from "@liustack/pptfast"
 
 installNodePlatform()
 const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文件

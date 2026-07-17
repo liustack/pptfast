@@ -14,7 +14,7 @@ A deck is really five things: a content model, a 2D layout, a visual style, moti
 ## Install
 
 ```bash
-npm install -g pptfast
+npm install -g @liustack/pptfast
 pptfast --help
 ```
 
@@ -35,8 +35,8 @@ Or drive the SDK directly (Node requires `installNodePlatform()` once, before
 any render call — the CLI does this for you):
 
 ```ts
-import { installNodePlatform } from "pptfast/node"
-import { generatePptx } from "pptfast"
+import { installNodePlatform } from "@liustack/pptfast/node"
+import { generatePptx } from "@liustack/pptfast"
 
 installNodePlatform()
 const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
