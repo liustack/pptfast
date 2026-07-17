@@ -9,7 +9,7 @@
 import type pptxgen from "pptxgenjs"
 import { PptxIRSchema, type PptxIR } from "@/ir"
 import { inlinePptxAssets } from "../platform/inline-assets"
-import { getTheme } from "@/styles"
+import { resolveStyle } from "@/themes"
 import { defineMastersForIR } from "./master-builder"
 import {
   renderOps,
@@ -35,7 +35,7 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   pptx.defineLayout({ name: "LAYOUT_WIDE", width: 13.33, height: 7.5 })
   pptx.layout = "LAYOUT_WIDE"
 
-  const tokens = getTheme(ir.style.id, ir.style.tokens)
+  const tokens = resolveStyle(ir.theme.id, ir.theme.style)
   defineMastersForIR(pptx, tokens)
 
   const gradientPatches: GradientFillPatch[] = []

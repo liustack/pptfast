@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { BannerChapter } from "./chapter-banner-chapter"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -26,7 +26,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [chapter1, content, chapter2],
@@ -40,7 +40,7 @@ const LEGACY_CHAPTER2_MARKUP = `<text x="1224" y="650" font-family="Georgia, Son
 
 describe("BannerChapter", () => {
   it("consulting tokens 下与旧 MckinseyNavyChapter 输出逐字节一致（档位一，含多 chapter 序号）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
 
     const next1 = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
@@ -58,7 +58,7 @@ describe("BannerChapter", () => {
   // 隐含验证了这些数字（字面量里就是 404/460/452），这里显式断言，避免
   // 「值虽正确但没有可读断言」。
   it("单行标题时 heading/subheading/hairline 落在固定基线 y=404/460/452 上", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const markup = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)
@@ -80,12 +80,12 @@ describe("BannerChapter", () => {
   // instead of overflowing」（旧文件 consulting.test.tsx L347-371）：超长
   // heading 必须被压缩换行/缩字号，不能原样溢出。
   it("超长标题被压缩到 <=2 行且字号收缩（40-84px 之间），不会原样溢出", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "consulting" },
+      theme: { id: "consulting" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -107,7 +107,7 @@ describe("BannerChapter", () => {
   })
 
   it("tech tokens 下用 tech 的 accent 色画装饰线，consulting 的烤死色不残留；白字例外跨主题稳定", () => {
-    const techTheme = getTheme("tech")
+    const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
     const out = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)

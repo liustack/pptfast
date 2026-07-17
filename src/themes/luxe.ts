@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * luxe（高端品牌）——原 retail 主题改名+黑金重定位（2026-07-10 用户视觉
@@ -14,7 +14,7 @@ import type { ThemeTokens } from "./tokens";
  * 不可读——manifest 的 content 集**禁配 banner-heading**，用深底安全的
  * stacked-poster/two-column。
  */
-export const LUXE_TOKENS: ThemeTokens = {
+export const LUXE_TOKENS: StyleTokens = {
   id: "luxe",
   colors: {
     bg: "#161310", // 深炭

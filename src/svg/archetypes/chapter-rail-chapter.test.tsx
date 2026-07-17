@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { assertSubset } from "../subset-validate"
 import { RailChapter } from "./chapter-rail-chapter"
 import type { PptxIR, Slide } from "@/ir"
@@ -27,7 +27,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [chapter1, content, chapter2],
@@ -45,7 +45,7 @@ const EXPECTED_CHAPTER2 =
 
 describe("RailChapter", () => {
   it("academic tokens 下输出与迁移前的 BCGEmeraldChapter 逐字节一致（档位一，含多 chapter 序号）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic")
 
     const next1 = renderSvgMarkup(<RailChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
@@ -58,12 +58,12 @@ describe("RailChapter", () => {
   })
 
   it("章节标题过长时收缩到 <=2 行、字号落在 [40,84) 区间，不整段输出原文（迁移自 academic.test.tsx 的 Chapter 长标题分支）", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "academic" },
+      theme: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],
@@ -87,7 +87,7 @@ describe("RailChapter", () => {
   })
 
   it("tech tokens 下白字例外跨主题稳定（不被 tech 的 colors.surface/primary 替换——见文件头'逐字节陷阱'说明）", () => {
-    const techTheme = getTheme("tech")
+    const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
     const out = renderSvgMarkup(<RailChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)

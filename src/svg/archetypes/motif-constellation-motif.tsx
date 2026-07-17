@@ -95,7 +95,7 @@ const GRADIENT_FIELD_ID = "decor-tech-field"
 
 /**
  * Ending's small signature motif — 3 fixed points, all y >= 108 (clear of
- * MasterChrome's tr logo band at `y:48-88`). Uniform r=3 and a fainter line
+ * BrandChrome's tr logo band at `y:48-88`). Uniform r=3 and a fainter line
  * (opacity 0.25) — deliberately quieter than Cover's own (larger) motif
  * since Ending still carries a heading/meta stack, not a mostly-empty hero
  * layout. Content dropped this motif outright (its top-right corner

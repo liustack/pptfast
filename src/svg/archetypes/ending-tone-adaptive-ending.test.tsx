@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { ToneAdaptiveEnding } from "./ending-tone-adaptive-ending"
 import type { PptxIR, Slide } from "@/ir"
 import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
@@ -47,7 +47,7 @@ function ir(theme: string, slide: Slide, images: PptxIR["assets"]["images"] = {}
   return {
     version: "3",
     filename: "deck.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {
       organization: "维岚科技",
       authors: [{ name: "李雷", role: "顾问" }],
@@ -182,7 +182,7 @@ describe("ToneAdaptiveEnding", () => {
   })
 
   it("tech tokens 下（无背景图）用 tech 的 text/muted/border，custom 自己的烤色不再出现（证明真正 token 化）", () => {
-    const tokens = getTheme("tech")
+    const tokens = resolveStyle("tech")
     const ctx = buildCtx(tokens, {})
     const deck = ir("tech", endingWithHeading)
     const out = renderSvgMarkup(
@@ -206,7 +206,7 @@ describe("ToneAdaptiveEnding", () => {
   })
 
   it("withBg 分支跨主题：白字/黑幕豁免固定为纯白/纯黑，不随主题变化", () => {
-    const tokens = getTheme("tech")
+    const tokens = resolveStyle("tech")
     const ctxWithImg = buildCtx(tokens, bgImages)
     const deck = ir("tech", endingWithHeadingAndBg, bgImages)
     const out = renderSvgMarkup(

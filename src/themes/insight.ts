@@ -1,9 +1,9 @@
 // insight（深度洞察）——原 creative 改名（2026-07-10 用户裁决：深底红金
 // 气质其实是 Bloomberg/Economist 财经信息图风，不配叫 creative；真正的
 // 创意子类由 doodle/ink 两新主题承接）。tokens 全套不动，观感零变化。
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
-export const INSIGHT_TOKENS: ThemeTokens = {
+export const INSIGHT_TOKENS: StyleTokens = {
   id: "insight",
   colors: {
     bg: "#0A0A0C",

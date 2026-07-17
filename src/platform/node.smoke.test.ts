@@ -8,7 +8,7 @@ import { installNodePlatform } from "./node"
 const ir = PptxIRSchema.parse({
   version: "3",
   filename: "smoke",
-  style: { id: "consulting" },
+  theme: { id: "consulting" },
   slides: [
     { type: "cover", heading: "pptfast smoke", subheading: "node render path" },
     { type: "content", heading: "Bullets", blocks: [{ type: "bullets", items: ["one", "two", "three"] }] },

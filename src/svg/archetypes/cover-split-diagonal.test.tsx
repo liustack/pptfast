@@ -2,8 +2,8 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
-import { THEME_MANIFESTS } from "../../styles/manifest"
+import { resolveStyle } from "../../themes"
+import { THEME_MANIFESTS } from "../../themes/manifest"
 import { SplitDiagonalCover, readableOn } from "./cover-split-diagonal"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -17,7 +17,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: { organization: "测试部", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],
@@ -25,14 +25,14 @@ const ir = (theme: string): PptxIR =>
 
 describe("SplitDiagonalCover", () => {
   it("academic tokens 下：标题存在、色块用 ctx.colors.primary", () => {
-    const ctx = buildCtx(getTheme("academic"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const out = renderSvgMarkup(<SplitDiagonalCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("对角分割封面")
     expect(out).toContain(ctx.colors.primary) // #006A4E
   })
 
   it("tech tokens 下：色块颜色随 tokens 变化（证明零烤色）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const out = renderSvgMarkup(<SplitDiagonalCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("#2DD4E6") // tech primary
     expect(out).not.toContain("#006A4E") // academic primary 不得残留

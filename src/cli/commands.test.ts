@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { applyDeckConfig, runInit, runPreview, runRender, runSchema, runStyles, runValidate } from "./commands"
+import { applyDeckConfig, runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./commands"
 
 // 1x1 红色 PNG
 const PNG_1PX = Buffer.from(
@@ -15,7 +15,7 @@ const PNG_1PX = Buffer.from(
 const VALID_IR = {
   version: "3",
   filename: "cli-test",
-  style: { id: "tech" },
+  theme: { id: "tech" },
   slides: [
     { type: "cover", heading: "CLI" },
     { type: "content", heading: "Body", blocks: [{ type: "paragraph", text: "hello from the CLI test" }] },
@@ -25,7 +25,7 @@ const VALID_IR = {
 const IR_WITH_LOCAL_ASSET = {
   version: "3",
   filename: "cli-test-asset",
-  style: { id: "tech" },
+  theme: { id: "tech" },
   assets: { images: { logo: { src: "logo.png" } } },
   slides: [
     { type: "cover", heading: "CLI" },
@@ -53,22 +53,22 @@ describe("runValidate", () => {
 })
 
 describe("runRender", () => {
-  it("writes a pptx file and honors --style override", async () => {
+  it("writes a pptx file and honors --theme override", async () => {
     const out = join(dir, "out.pptx")
-    const msg = await runRender(join(dir, "deck.json"), { output: out, style: "consulting" })
+    const msg = await runRender(join(dir, "deck.json"), { output: out, theme: "consulting" })
     expect(msg).toContain("2 slides")
     const bytes = await readFile(out)
     expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
   })
 })
 
-describe("runSchema / runStyles", () => {
+describe("runSchema / runThemes", () => {
   it("prints JSON Schema", () => {
     expect(JSON.parse(runSchema())).toHaveProperty("$schema")
   })
-  it("prints 13 styles, json mode parses", () => {
-    expect(runStyles(false).split("\n")).toHaveLength(13)
-    expect(JSON.parse(runStyles(true))).toHaveLength(13)
+  it("prints 13 themes, json mode parses", () => {
+    expect(runThemes(false).split("\n")).toHaveLength(13)
+    expect(JSON.parse(runThemes(true))).toHaveLength(13)
   })
 })
 
@@ -90,8 +90,8 @@ describe("runPreview", () => {
   })
 })
 
-describe("runSchema --tokens", () => {
-  it("prints the TokensOverride schema", () => {
+describe("runSchema --style", () => {
+  it("prints the StyleOverride schema", () => {
     const s = JSON.parse(runSchema(true)) as { properties?: Record<string, unknown> }
     expect(Object.keys(s.properties ?? {})).toEqual(
       expect.arrayContaining(["colors", "fonts", "shape"]),
@@ -102,38 +102,38 @@ describe("runSchema --tokens", () => {
 describe("applyDeckConfig resolution (flag > config > IR)", () => {
   const freshDir = () => mkdtemp(join(tmpdir(), "pptfast-deckcfg-"))
 
-  it("--tokens file wins over config tokens", async () => {
+  it("--style file wins over config style", async () => {
     const d = await freshDir()
     await writeFile(
       join(d, "pptfast.config.json"),
-      JSON.stringify({ tokens: { colors: { primary: "#111111" } } }),
+      JSON.stringify({ style: { colors: { primary: "#111111" } } }),
     )
-    await writeFile(join(d, "brand.json"), JSON.stringify({ colors: { primary: "#0B5FFF" } }))
+    await writeFile(join(d, "style.json"), JSON.stringify({ colors: { primary: "#0B5FFF" } }))
     const raw: any = structuredClone(VALID_IR)
-    await applyDeckConfig(raw, { tokensPath: join(d, "brand.json"), cwd: d })
-    expect(raw.style.tokens.colors.primary).toBe("#0B5FFF")
+    await applyDeckConfig(raw, { stylePath: join(d, "style.json"), cwd: d })
+    expect(raw.theme.style.colors.primary).toBe("#0B5FFF")
   })
 
-  it("config tokens and style apply when no flags are given", async () => {
+  it("config theme and style apply when no flags are given", async () => {
     const d = await freshDir()
     await writeFile(
       join(d, "pptfast.config.json"),
-      JSON.stringify({ style: "ink", tokens: { colors: { primary: "#111111" } } }),
+      JSON.stringify({ theme: "ink", style: { colors: { primary: "#111111" } } }),
     )
     const raw: any = structuredClone(VALID_IR)
     await applyDeckConfig(raw, { cwd: d })
-    expect(raw.style.id).toBe("ink")
-    expect(raw.style.tokens.colors.primary).toBe("#111111")
+    expect(raw.theme.id).toBe("ink")
+    expect(raw.theme.style.colors.primary).toBe("#111111")
   })
 
-  it("--style flag beats config and keeps IR-authored tokens", async () => {
+  it("--theme flag beats config and keeps IR-authored style", async () => {
     const d = await freshDir()
-    await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ style: "ink" }))
+    await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "ink" }))
     const raw: any = structuredClone(VALID_IR)
-    raw.style = { id: "tech", tokens: { colors: { primary: "#ABCDEF" } } }
-    await applyDeckConfig(raw, { style: "consulting", cwd: d })
-    expect(raw.style.id).toBe("consulting")
-    expect(raw.style.tokens.colors.primary).toBe("#ABCDEF")
+    raw.theme = { id: "tech", style: { colors: { primary: "#ABCDEF" } } }
+    await applyDeckConfig(raw, { theme: "consulting", cwd: d })
+    expect(raw.theme.id).toBe("consulting")
+    expect(raw.theme.style.colors.primary).toBe("#ABCDEF")
   })
 
   it("leaves the IR untouched when there is no flag and no config", async () => {
@@ -143,20 +143,20 @@ describe("applyDeckConfig resolution (flag > config > IR)", () => {
     expect(raw).toEqual(VALID_IR)
   })
 
-  it("rejects an invalid --tokens file with the file path in the message", async () => {
+  it("rejects an invalid --style file with the file path in the message", async () => {
     const d = await freshDir()
-    await writeFile(join(d, "brand.json"), JSON.stringify({ colors: { primary: "nope" } }))
+    await writeFile(join(d, "style.json"), JSON.stringify({ colors: { primary: "nope" } }))
     const raw: any = structuredClone(VALID_IR)
     await expect(
-      applyDeckConfig(raw, { tokensPath: join(d, "brand.json"), cwd: d }),
-    ).rejects.toThrow(/brand\.json/)
+      applyDeckConfig(raw, { stylePath: join(d, "style.json"), cwd: d }),
+    ).rejects.toThrow(/style\.json/)
   })
 
-  it("runValidate reports the config-resolved style", async () => {
+  it("runValidate reports the config-resolved theme", async () => {
     const d = await freshDir()
-    await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ style: "ink" }))
+    await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "ink" }))
     await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
-    await expect(runValidate(join(d, "deck.json"), d)).resolves.toMatch(/style "ink"/)
+    await expect(runValidate(join(d, "deck.json"), d)).resolves.toMatch(/theme "ink"/)
   })
 })
 
@@ -166,8 +166,8 @@ describe("runInit", () => {
     const msg = await runInit(d)
     expect(msg).toContain("pptfast.config.json")
     const written = JSON.parse(await readFile(join(d, "pptfast.config.json"), "utf8"))
-    expect(written.style).toBe("consulting")
-    expect(written.tokens.colors.primary).toMatch(/^#/)
+    expect(written.theme).toBe("consulting")
+    expect(written.style.colors.primary).toMatch(/^#/)
   })
 
   it("refuses to overwrite an existing config", async () => {

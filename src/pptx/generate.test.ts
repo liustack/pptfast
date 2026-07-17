@@ -55,7 +55,7 @@ function makeIR(slides: Slide[], themeId = "consulting"): PptxIR {
   return {
     version: "3",
     filename: "test.pptx",
-    style: { id: themeId as PptxIR["style"]["id"] },
+    theme: { id: themeId as PptxIR["theme"]["id"] },
     meta: {},
     assets: { images: {} },
     slides,

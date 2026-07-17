@@ -28,7 +28,7 @@ export function InkMotif({ slide, ir, ctx }: DecorProps) {
       {slide.type !== "chapter" && (
         <>
           <line x1={48} y1={34} x2={1232} y2={34} stroke={colors.border} strokeWidth={1.5} />
-          {/* 底线放 MasterChrome 分隔线的语义位（y=664）——meta 文字 baseline
+          {/* 底线放 BrandChrome 分隔线的语义位（y=664）——meta 文字 baseline
               在 700，底线再低会穿字（2026-07-10 用户截图：688 时字线融在一起） */}
           <line x1={48} y1={664} x2={1232} y2={664} stroke={colors.border} strokeWidth={1.5} />
         </>

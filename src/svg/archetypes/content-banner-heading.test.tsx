@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { BannerHeadingContent } from "./content-banner-heading"
 import type { PptxIR, Slide } from "@/ir"
 
-// MasterChrome's brand logo bands (see templates/consulting.test.tsx's own
+// BrandChrome's brand logo bands (see templates/consulting.test.tsx's own
 // LOGO_BANDS block) — re-declared here (self-contained, no cross-import from
 // the legacy test file) for the kicker/banner logo-avoidance backfills below.
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -56,7 +56,7 @@ function ir(
   return {
     version: "3",
     filename: "x.pptx",
-    style: { id: "consulting" },
+    theme: { id: "consulting" },
     meta: {},
     assets: opts?.assets ?? { images: {} },
     brand: opts?.brand,
@@ -74,7 +74,7 @@ const LEGACY_TLLOGO_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg"><text x="1
 
 describe("BannerHeadingContent", () => {
   it("consulting tokens 下与旧 MckinseyNavyContent 输出逐字节一致（档位一，含单/双行 banner、subheading、footnote、跨章节 kicker）", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide])
 
     const next = renderSvgMarkup(<BannerHeadingContent ir={deck} slide={bannerSlide} index={1} ctx={ctx} />)
@@ -90,7 +90,7 @@ describe("BannerHeadingContent", () => {
   })
 
   it("brand 无 tl logo 时 kicker 逐字节一致，真实 tl logo 存在时侧移 dodge 也逐字节一致（hasTlLogo 随迁 helper 验证）", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
 
     function renderKickerNext(deck: PptxIR): { next: string; kickerX: string | null } {
       const next = renderSvgMarkup(
@@ -123,7 +123,7 @@ describe("BannerHeadingContent", () => {
   // （旧文件 consulting.test.tsx L220-227）：logo 存在但不在 tl 位时，仍视为
   // 无 tl logo，kicker 对齐 banner 左边。
   it("brand logo 存在但不是 tl 位（默认 br）：kicker 仍对齐 banner 左边，不触发侧移 dodge", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide], {
       brand: { logo_asset_id: "logo1" },
       assets: { images: { logo1: { src: "data:image/png;base64,AAAA" } } },
@@ -142,10 +142,10 @@ describe("BannerHeadingContent", () => {
 
   // 回填旧测试「tl brand entry present but the asset failed to load」（旧文件
   // consulting.test.tsx L251-258）：tl 位 logo 资产加载失败（asset.error）时
-  // 视为无 logo（镜像 MasterChrome 自己的 `!logo.error` 判定），kicker 对齐
+  // 视为无 logo（镜像 BrandChrome 自己的 `!logo.error` 判定），kicker 对齐
   // banner。
   it("tl 位 logo 资产加载失败（asset.error）：视为无 logo，kicker 对齐 banner", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const deck = ir([chapter1, bannerSlide], {
       brand: { logo_asset_id: "logo1", position: "tl" },
       assets: { images: { logo1: { src: "data:image/png;base64,AAAA", error: "404" } } },
@@ -167,7 +167,7 @@ describe("BannerHeadingContent", () => {
   // banner 高度随 1/2 行变化（88 vs 132），content rect 的 y 相应下移
   // （bannerBottom + 32，无 subheading）。
   it("banner 2 行时高度变为 132（1 行为 88），content rect 的 y 随 bannerBottom + 32 下移", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const shortSlide: Slide = {
       type: "content",
       variant: "single",
@@ -218,10 +218,10 @@ describe("BannerHeadingContent", () => {
 
   // 回填旧测试「Content does not draw its own source hairline ... footnote
   // stays below it」（旧文件 consulting.test.tsx L171-192）：本 archetype 不
-  // 画自己的 y=648 源信息 hairline（MasterChrome 已经画了），footnote 落在
+  // 画自己的 y=648 源信息 hairline（BrandChrome 已经画了），footnote 落在
   // 其下方。
   it("不画自己的 y=648 源信息 hairline，footnote 落在其下方", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -248,7 +248,7 @@ describe("BannerHeadingContent", () => {
   // 角落（色块，不含文字），但 banner 内的 heading 文字必须始终清空四个
   // logo 带。
   it("banner 实心填色可触碰 tl/tr logo 带角落（色块无文字），但 heading 文字永远清空四个 logo 带", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -293,7 +293,7 @@ describe("BannerHeadingContent", () => {
   // 回填旧测试「Content body passes subset validation」（旧文件
   // consulting.test.tsx L75-93）。
   it("输出通过 subset validation", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -313,7 +313,7 @@ describe("BannerHeadingContent", () => {
   })
 
   it("banner 结构断言：全宽 primary 填色矩形承载纯白居中标题（横幅式 content，非 kicker+标题+分隔线语法）", () => {
-    const ctx = buildCtx({ ...getTheme("consulting"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const deck = ir([bannerSlide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -347,7 +347,7 @@ describe("BannerHeadingContent", () => {
   })
 
   it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），banner 白字例外跨主题稳定", () => {
-    const techTheme = getTheme("tech")
+    const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir([chapter1, bannerSlide])
     const out = renderSvgMarkup(<BannerHeadingContent ir={deck} slide={bannerSlide} index={1} ctx={ctx} />)

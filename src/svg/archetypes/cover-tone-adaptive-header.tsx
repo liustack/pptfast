@@ -30,7 +30,7 @@ import { CONF_LABEL } from "../../lib/conf-labels"
  *     `colors.muted`，行为等价——因为该 JSX 分支本就只在 `!withBg` 下渲染，
  *     `MUTED` 与派生变量在那里数值恒等）。
  *   - 源文件私有常量 `BORDER` → `ctx.colors.border` —— 精确匹配，用于无背
- *     景图模式下的底部分隔线。`border` 在 `ThemeColors` 上是可选字段，
+ *     景图模式下的底部分隔线。`border` 在 `StyleColors` 上是可选字段，
  *     `?? colors.muted` 兜底沿用 cover-left-anchor.tsx 的既有写法。
  *
  * withBg 白字/黑幕豁免（Global Constraints 产品逻辑白字豁免，同

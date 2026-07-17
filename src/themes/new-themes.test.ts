@@ -2,17 +2,17 @@ import { describe, it, expect } from "vitest"
 import { resolveFontFace } from "../svg/fonts"
 import { TECH_TOKENS } from "./tech"
 import { JOURNAL_TOKENS } from "./journal"
-import type { ThemeTokens } from "./tokens"
+import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
-// registered both in index.ts / BUILTIN_STYLE_IDS. These tests still import the
-// token constants directly (rather than going through getTheme()) since
+// registered both in index.ts / BUILTIN_THEME_IDS. These tests still import the
+// token constants directly (rather than going through resolveStyle()) since
 // they're asserting the raw token shape, not the registry wiring — that's
 // covered separately by themes/index.test.ts and
 // svg/legacy-theme-mapping.test.tsx.
 describe("tech tokens", () => {
-  it("satisfies the ThemeTokens shape", () => {
-    const t: ThemeTokens = TECH_TOKENS
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = TECH_TOKENS
     expect(t.id).toBe("tech")
   })
 
@@ -28,8 +28,8 @@ describe("tech tokens", () => {
 })
 
 describe("journal (ex-magazine) tokens", () => {
-  it("satisfies the ThemeTokens shape", () => {
-    const t: ThemeTokens = JOURNAL_TOKENS
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = JOURNAL_TOKENS
     expect(t.id).toBe("journal")
   })
 

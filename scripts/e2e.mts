@@ -32,12 +32,12 @@ if (!slide1.includes("pptfast")) throw new Error("e2e: cover heading text not fo
 // 3) preview command
 console.log(sh("node", ["dist/cli.js", "preview", "examples/basic.json", "-o", join(OUT, "svgs")]))
 
-// 3b) --tokens override must reach the DrawingML (hex appears uppercase, no "#")
-const tokensPath = join(OUT, "tokens.json")
-writeFileSync(tokensPath, JSON.stringify({ colors: { primary: "#0B5FFF" } }))
+// 3b) --style override must reach the DrawingML (hex appears uppercase, no "#")
+const stylePath = join(OUT, "style.json")
+writeFileSync(stylePath, JSON.stringify({ colors: { primary: "#0B5FFF" } }))
 const brandedPath = join(OUT, "branded.pptx")
 console.log(
-  sh("node", ["dist/cli.js", "render", "examples/basic.json", "-o", brandedPath, "--tokens", tokensPath]),
+  sh("node", ["dist/cli.js", "render", "examples/basic.json", "-o", brandedPath, "--style", stylePath]),
 )
 const brandedZip = await JSZip.loadAsync(readFileSync(brandedPath))
 const brandedSlideXml = (
@@ -48,8 +48,8 @@ const brandedSlideXml = (
   )
 ).join("")
 if (!brandedSlideXml.includes("0B5FFF"))
-  throw new Error("e2e: --tokens primary color not found in any branded slide XML")
-console.log("tokens override leg OK (--tokens color reached DrawingML)")
+  throw new Error("e2e: --style primary color not found in any branded slide XML")
+console.log("style override leg OK (--style color reached DrawingML)")
 
 // 4) optional visual gate: LibreOffice PDF conversion (skipped when unavailable)
 try {
@@ -82,7 +82,7 @@ if (sharpMod) {
   const webpDeck = {
     version: "3",
     filename: "pptfast-webp-smoke",
-    style: { id: "consulting" },
+    theme: { id: "consulting" },
     assets: { images: { smoke: { src: "smoke.webp" } } },
     slides: [
       { type: "cover", heading: "webp smoke" },

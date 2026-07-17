@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { ConstellationEnding } from "./ending-constellation-ending"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -23,7 +23,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: { organization: "维岚科技", date: "2026-07-09" },
     assets: { images: {} },
     slides: [slide],
@@ -36,7 +36,7 @@ const irNoMeta = (theme: string, slide: Slide): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [slide],
@@ -51,7 +51,7 @@ const ENDING_TECH_BARE_MARKUP =
 
 describe("ConstellationEnding", () => {
   it("tech tokens 下与旧 BentoTechEnding 输出逐字节一致（档位一，有 heading，不兜底）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", endingWithHeading)
 
     const next = renderSvgMarkup(
@@ -63,7 +63,7 @@ describe("ConstellationEnding", () => {
   })
 
   it("tech tokens 下无 heading 时与旧 BentoTechEnding 输出逐字节一致（档位一，兜底 + 句号拆分）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", endingBare)
 
     const next = renderSvgMarkup(
@@ -76,7 +76,7 @@ describe("ConstellationEnding", () => {
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", endingBare)
     const out = renderSvgMarkup(<ConstellationEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
     expect(out).toContain("#051C2C") // consulting text
@@ -86,7 +86,7 @@ describe("ConstellationEnding", () => {
   })
 
   it("renders markup that passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", endingWithHeading)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -103,7 +103,7 @@ describe("ConstellationEnding", () => {
     // replaced by a plain 60x3 accent bar (no card) plus bare centered meta
     // text.
     const slide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
 
     const docWithMeta = ir("tech", slide)
     const markupWithMeta = renderSvgMarkup(
@@ -144,7 +144,7 @@ describe("ConstellationEnding", () => {
       subheading: "感谢聆听与支持",
       blocks: [],
     } as Slide
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const doc = ir("tech", slide)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -178,7 +178,7 @@ describe("ConstellationEnding", () => {
 
   it("a heading that doesn't end in '。' renders unchanged — no split accent tspan", () => {
     const customSlide: Slide = { type: "ending", heading: "Thank you", blocks: [] } as Slide
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const customDoc = ir("tech", customSlide)
     const customMarkup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -199,7 +199,7 @@ describe("ConstellationEnding", () => {
     // Ending, so anchoring the last line is unconditionally safe.
     const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明式管理你的", blocks: [] } as Slide
     const oneLineSlide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
 
     const twoLineRoot = parseSvgRoot(
       renderSvgMarkup(

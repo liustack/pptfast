@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { ConstellationChapter } from "./chapter-constellation-chapter"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -23,7 +23,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [chapter1, content, chapter2],
@@ -41,7 +41,7 @@ const CHAPTER_TECH_2_MARKUP =
 
 describe("ConstellationChapter", () => {
   it("tech tokens 下与旧 BentoTechChapter 输出逐字节一致（档位一，含章节序号）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech")
 
     const next1 = renderSvgMarkup(
@@ -58,7 +58,7 @@ describe("ConstellationChapter", () => {
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const out = renderSvgMarkup(
       <ConstellationChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />,
@@ -68,7 +68,7 @@ describe("ConstellationChapter", () => {
   })
 
   it("renders markup that passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -89,7 +89,7 @@ describe("ConstellationChapter", () => {
     } as Slide
     // Single-chapter deck so chapterNumberFor derives "01" unambiguously.
     const soloDeck: PptxIR = { ...ir("tech"), slides: [slide] }
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <ConstellationChapter ir={soloDeck} slide={slide} index={0} ctx={ctx} />
@@ -108,7 +108,7 @@ describe("ConstellationChapter", () => {
   it("shrinks a pathologically long heading instead of overflowing", () => {
     const slide: Slide = { type: "chapter", heading: CJK_LONG, blocks: [] } as Slide
     const deck: PptxIR = { ...ir("tech"), slides: [slide] }
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <ConstellationChapter ir={deck} slide={slide} index={0} ctx={ctx} />

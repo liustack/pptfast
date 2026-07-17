@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * runway（时尚秀场）——2026-07-10 拆分后的新主题（初名 magazine，用户
@@ -12,7 +12,7 @@ import type { ThemeTokens } from "./tokens";
  * 报头字体保持衬线（SimSun 承载 CJK，Didot 类报头是时尚杂志国际惯例），
  * 正文无衬线。
  */
-export const RUNWAY_TOKENS: ThemeTokens = {
+export const RUNWAY_TOKENS: StyleTokens = {
   id: "runway",
   colors: {
     bg: "#FFFFFF",

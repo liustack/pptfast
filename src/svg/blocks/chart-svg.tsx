@@ -78,7 +78,7 @@ function chartGradientId(prefix: string, w: number, h: number, seed: unknown): s
  * Scale a `#RRGGBB` hex color's channels to `factor` of their original value
  * (e.g. 0.7 → a darker 70%-brightness shade). Theme tokens are always baked
  * hex by the time they reach block renderers (`themes/tokens.ts`'s
- * `ThemeColors`), so no other CSS color syntax needs handling here.
+ * `StyleColors`), so no other CSS color syntax needs handling here.
  */
 function scaleHexBrightness(hex: string, factor: number): string {
   const match = /^#([0-9a-fA-F]{6})$/.exec(hex)

@@ -1,7 +1,7 @@
  
 import { describe, it, expect, vi } from "vitest"
 import { defineMastersForIR } from "./master-builder"
-import { getTheme } from "../styles"
+import { resolveStyle } from "../themes"
 
 function fakePptx() {
   const masters: any[] = []
@@ -12,7 +12,7 @@ function fakePptx() {
 }
 
 describe("defineMastersForIR (slim, single-source era)", () => {
-  const tokens = getTheme("tech")
+  const tokens = resolveStyle("tech")
 
   it("defines one master per slide type", () => {
     const pptx = fakePptx()

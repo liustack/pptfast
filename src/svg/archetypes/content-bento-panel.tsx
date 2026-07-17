@@ -2,7 +2,7 @@
 import type React from "react"
 import type { SvgTemplateProps } from "./types"
 import type { ContentRect } from "../layout"
-import type { ThemeColors } from "../../styles/tokens"
+import type { StyleColors } from "../../themes/tokens"
 import type { BlockCtx } from "../blocks/types"
 import { SvgContent } from "../SvgContent"
 import {
@@ -444,7 +444,7 @@ function renderKpiCard(
   item: KpiItem,
   box: { x: number; y: number; w: number; h: number },
   ctx: BlockCtx,
-  colors: ThemeColors
+  colors: StyleColors
 ): React.ReactElement {
   return (
     <>
@@ -502,7 +502,7 @@ function renderIconCard(
   item: IconCardItem,
   box: { x: number; y: number; w: number; h: number },
   ctx: BlockCtx,
-  colors: ThemeColors
+  colors: StyleColors
 ): React.ReactElement {
   const innerX = box.x + BENTO_CARD_PAD
   const innerW = box.w - BENTO_CARD_PAD * 2
@@ -583,7 +583,7 @@ function renderCell(
   cell: BentoCell,
   i: number,
   ctx: BlockCtx,
-  colors: ThemeColors
+  colors: StyleColors
 ): React.ReactElement {
   const { unit, box } = cell
   // Card-level rect (h = box.h) so svg-audit's v-overflow check treats each

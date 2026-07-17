@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * classroom（教学课堂）——2026-07-13 第 13 主题（用户参考三张莫兰迪教学
@@ -15,7 +15,7 @@ import type { ThemeTokens } from "./tokens";
  * （luxe 先例），rail-numbered 徽章数字白字在雾蓝上是小元素大字重可读。
  * chartPalette 即莫兰迪装饰四色（motif 零 hex 纪律）。
  */
-export const CLASSROOM_TOKENS: ThemeTokens = {
+export const CLASSROOM_TOKENS: StyleTokens = {
   id: "classroom",
   colors: {
     bg: "#F4F1EB", // 米白纸调

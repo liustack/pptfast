@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { ToneAdaptiveContent } from "./content-tone-adaptive-content"
 import type { PptxIR, Slide } from "@/ir"
 import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
@@ -59,7 +59,7 @@ function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1" },
     assets: { images },
     slides: [chapter, content],
@@ -115,7 +115,7 @@ describe("ToneAdaptiveContent", () => {
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "custom" },
+      theme: { id: "custom" },
       meta: {},
       assets: { images: bgImages },
       slides: [bare],
@@ -131,7 +131,7 @@ describe("ToneAdaptiveContent", () => {
   })
 
   it("tech tokens 下用 tech 的 text/muted/border/accent 色（证明 token 化成立，无 baked hex）", () => {
-    const tokens = getTheme("tech")
+    const tokens = resolveStyle("tech")
     const ctx = buildCtx(tokens, {})
     const deck = ir("tech")
     const out = renderSvgMarkup(<ToneAdaptiveContent ir={deck} slide={content} index={1} ctx={ctx} />)
@@ -151,7 +151,7 @@ describe("ToneAdaptiveContent", () => {
   })
 
   it("跨主题 withBg 分支：白色卡片豁免跨主题保持不变，卡片内文字仍随主题走 colors.text（不切白字）", () => {
-    const tokens = getTheme("tech")
+    const tokens = resolveStyle("tech")
     const ctxWithImg = buildCtx(tokens, bgImages)
     const deck = ir("tech", bgImages)
     const out = renderSvgMarkup(
@@ -195,7 +195,7 @@ describe("ToneAdaptiveContent", () => {
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "custom" },
+      theme: { id: "custom" },
       meta: {},
       assets: { images: bgImages },
       slides: [bgSlide],
@@ -229,7 +229,7 @@ describe("ToneAdaptiveContent", () => {
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
-      style: { id: "custom" },
+      theme: { id: "custom" },
       meta: {},
       assets: { images: {} },
       slides: [longSlide],
@@ -271,7 +271,7 @@ describe("ToneAdaptiveContent", () => {
       return {
         version: "3",
         filename: "x.pptx",
-        style: { id: "custom" },
+        theme: { id: "custom" },
         meta: {},
         assets: { images },
         slides: [slide],
@@ -397,7 +397,7 @@ describe("ToneAdaptiveContent", () => {
       const deck: PptxIR = {
         version: "3",
         filename: "x.pptx",
-        style: { id: "custom" },
+        theme: { id: "custom" },
         meta: {},
         assets: { images: {} },
         slides: [chapterFirst, withSection],
@@ -421,7 +421,7 @@ describe("ToneAdaptiveContent", () => {
       const deck: PptxIR = {
         version: "3",
         filename: "x.pptx",
-        style: { id: "custom" },
+        theme: { id: "custom" },
         meta: {},
         assets: { images: bgImages },
         slides: [chapterFirst, bgSlide],
@@ -452,7 +452,7 @@ describe("ToneAdaptiveContent", () => {
       const deck: PptxIR = {
         version: "3",
         filename: "x.pptx",
-        style: { id: "custom" },
+        theme: { id: "custom" },
         meta: {},
         assets: { images: {} },
         slides: [slide],
@@ -486,7 +486,7 @@ describe("ToneAdaptiveContent", () => {
       const deck: PptxIR = {
         version: "3",
         filename: "x.pptx",
-        style: { id: "custom" },
+        theme: { id: "custom" },
         meta: {},
         assets: { images: bgImages },
         slides: [bgSlide],

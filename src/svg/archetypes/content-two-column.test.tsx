@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { TwoColumnContent } from "./content-two-column"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -34,7 +34,7 @@ function ir(slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "x.pptx",
-    style: { id: "consulting" },
+    theme: { id: "consulting" },
     meta: {},
     assets: { images: {} },
     slides,
@@ -43,7 +43,7 @@ function ir(slides: Slide[]): PptxIR {
 
 function render(slide: Slide, slides: Slide[], index: number): string {
   const deck = ir(slides)
-  const ctx = buildCtx(getTheme(deck.style.id), deck.assets.images)
+  const ctx = buildCtx(resolveStyle(deck.theme.id), deck.assets.images)
   return renderSvgMarkup(
     <TwoColumnContent ir={deck} slide={slide} index={index} ctx={ctx} />,
   )

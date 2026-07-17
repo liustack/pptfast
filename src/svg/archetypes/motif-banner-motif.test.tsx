@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { BannerMotif } from "./motif-banner-motif"
 import type { PptxIR, Slide } from "@/ir"
 
-// MasterChrome's brand logo bands (see templates/consulting.test.tsx's own
+// BrandChrome's brand logo bands (see templates/consulting.test.tsx's own
 // LOGO_BANDS block) — re-declared here (self-contained, no cross-import from
 // the legacy test file) for the logo-avoidance backfill below.
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -32,7 +32,7 @@ const ir = (theme: string): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [coverSlide],
@@ -60,7 +60,7 @@ describe("BannerMotif", () => {
   ] as const)(
     "consulting tokens 下 %s slide 与旧 MckinseyNavyDecor 输出逐字节一致（档位一）",
     (label, slide) => {
-      const ctx = buildCtx(getTheme("consulting"), {})
+      const ctx = buildCtx(resolveStyle("consulting"), {})
       const deck = ir("consulting")
 
       const next = renderSvgMarkup(<BannerMotif ir={deck} slide={slide} ctx={ctx} />)
@@ -69,7 +69,7 @@ describe("BannerMotif", () => {
   )
 
   it("装饰几何：cover/chapter 各渲染 5 条竖线 + 2 条横线的极淡网格（跳过标题带的第 3 条候选横线），content/ending 无任何装饰（跨 slide.type 验证装饰未被误删或误增）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
 
     function renderMotif(slide: Slide): Element {
@@ -114,7 +114,7 @@ describe("BannerMotif", () => {
   })
 
   it("tech tokens 下用 tech 的 border（缺省则 muted）驱动 cover 网格描边色（证明 token 化成立，无 baked hex），chapter 白字例外跨主题稳定", () => {
-    const techTheme = getTheme("tech")
+    const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
 
@@ -134,7 +134,7 @@ describe("BannerMotif", () => {
   // 回填旧测试「the grid (verticals clipped to y 100-620) sits clear of the
   // four logo bands」（旧文件 consulting.test.tsx L628-641）。
   it("网格线（竖线截取在 y 100-620）与四个 logo 带互不重叠", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
@@ -158,7 +158,7 @@ describe("BannerMotif", () => {
   // 回填旧测试「Decor body passes subset validation」（旧文件
   // consulting.test.tsx L643-646）。
   it("Decor 输出通过 subset validation", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">

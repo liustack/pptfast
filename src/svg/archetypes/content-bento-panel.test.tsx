@@ -5,7 +5,7 @@ import { assertSubset } from "../subset-validate"
 import { auditSvgMarkup } from "../audit/svg-audit"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { BentoPanelContent } from "./content-bento-panel"
 import type { Block, PptxIR, Slide } from "@/ir"
 
@@ -16,7 +16,7 @@ function ir(theme: string, slides: Slide[]): PptxIR {
   return {
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides,
@@ -89,7 +89,7 @@ const OVERFLOW_TECH_MARKUP =
 
 describe("BentoPanelContent", () => {
   it("tech tokens 下与旧 BentoTechContent 输出逐字节一致（档位一——kpi_cards+icon_cards 混排拼盘，4-cell 网格）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", [bentoSlide])
 
     const next = renderSvgMarkup(
@@ -116,7 +116,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("tech tokens 下单个孤立 KPI 项与旧模板逐字节一致——居中小卡退化路径（非满 rect 空壳）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", [soloKpiSlide])
 
     const next = renderSvgMarkup(
@@ -140,7 +140,7 @@ describe("BentoPanelContent", () => {
   })
 
   it(">6 单元时降级为 SvgContent 单栈布局，与旧模板逐字节一致（bento 网格上限）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const overflowBlocks: Block[] = Array.from({ length: 7 }, (_, i) => ({
       type: "bullets" as const,
       items: [`要点 ${i}`],
@@ -164,7 +164,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("consulting tokens 下用 consulting 自己的 surface/accent/text/muted（证明 token 化成立），tech 烤死色不残留", () => {
-    const consultingTheme = getTheme("consulting")
+    const consultingTheme = resolveStyle("consulting")
     const ctx = buildCtx(consultingTheme, {})
     const deck = ir("consulting", [bentoSlide])
     const out = renderSvgMarkup(
@@ -188,7 +188,7 @@ describe("BentoPanelContent", () => {
   // ── 以下为从 templates/tech.test.tsx 回填的 Content/bento 场景覆盖 ──
 
   it("passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -207,7 +207,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("4 blocks 精确产出 4 个 data-audit-box 卡片，每张都是细描边卡（fill=surface, stroke=accent@0.3, rx=6），无角标", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -243,7 +243,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("explodes a 4-item kpi_cards block into 4 individual bento cards, each showing its own value", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const kpiBlock4: Block = {
       type: "kpi_cards",
       items: [
@@ -284,7 +284,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("explodes a 3-item icon_cards block into 3 individual bento cards, each showing icon/title/text at 22px bold titles", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const iconCardsBlock3: Block = {
       type: "icon_cards",
       items: [
@@ -335,7 +335,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("keeps a steps block as one whole bento cell, not exploded into per-item cards", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const stepsBlock: Block = {
       type: "steps",
       items: [
@@ -410,7 +410,7 @@ describe("BentoPanelContent", () => {
   ] as const)(
     "renders a %s block bare in the grid (double-shell governance) — no outline shell, own chrome intact",
     (_label, block, expectedText) => {
-      const ctx = buildCtx(getTheme("tech"), {})
+      const ctx = buildCtx(resolveStyle("tech"), {})
       const paragraphBlock: Block = para("普通块仍然有卡壳")
       const slide: Slide = {
         type: "content",
@@ -447,7 +447,7 @@ describe("BentoPanelContent", () => {
   )
 
   it("keeps each exploded KPI card's label baseline >=30px below its value baseline (no label/value overlap)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const kpiBlock4: Block = {
       type: "kpi_cards",
       items: [
@@ -488,7 +488,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("renders each exploded KPI card's value at display-level size (72px hero tier) in colors.accent, plus a restrained glow accent past it", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const kpiBlock4: Block = {
       type: "kpi_cards",
       items: [
@@ -549,7 +549,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("bumps a KPI card's value to the 72px hero size in a full-height cell, and reserves extra glow clearance from a co-present delta arrow", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     // 2-unit grid: both cells span the bento rect's full height — comfortably
     // over the hero threshold, so both items earn the 72px tier. Item 0 has
     // no icon + a long, unit-less value (forces fitSvgLine to shrink until
@@ -632,7 +632,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("mixes an exploded 2-item kpi_cards block with a chart block into a 3-unit bento grid", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const kpiBlock2: Block = {
       type: "kpi_cards",
       items: [
@@ -670,7 +670,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("centers a lone KPI item's value vertically in a tall bento cell (2-unit grid, mixed with a paragraph)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const kpiBlock1: Block = {
       type: "kpi_cards",
       items: [{ value: "88", label: "达成率" }],
@@ -704,7 +704,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("lays out exactly 5 blocks as a 3+2 bento grid (no degrade) — verifies capacity.ts's per-theme 5/6 override", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const texts = Array.from({ length: 5 }, (_, i) => `要点 ${i}`)
     const blocks = texts.map(para)
     const slide: Slide = {
@@ -732,7 +732,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("lays out exactly 6 blocks as a 3x2 bento grid (no degrade)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const texts = Array.from({ length: 6 }, (_, i) => `要点 ${i}`)
     const blocks = texts.map(para)
     const slide: Slide = {
@@ -759,7 +759,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("lays out 6 short bullets blocks as a real 3x2 grid — 6 panel cards, zero-overflow audit clean", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const blocks: Block[] = Array.from({ length: 6 }, (_, i) => ({
       type: "bullets" as const,
       items: [`要点 ${i}-A`, `要点 ${i}-B`],
@@ -786,7 +786,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("renders self-visual blocks (callout/code) bare in the grid — no outline shell, no accent stripe", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const calloutBlock: Block = {
       type: "callout",
       variant: "tip",
@@ -830,7 +830,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("renders a verdict_banner bare in the grid — no outline shell, no accent stripe (joins SELF_VISUAL_TYPES)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const verdictBlock: Block = {
       type: "verdict_banner",
       tone: "positive",
@@ -871,7 +871,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("renders a single ordinary block with no shell card — bare, centered in the bento rect", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -897,7 +897,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("keeps a single KPI item as one modest centered card (400 wide), not a rect-filling shell", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const kpiBlock1: Block = {
       type: "kpi_cards",
       items: [{ value: "42", unit: "%", label: "唯一指标", delta: "up" }],
@@ -935,7 +935,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("degrades when a single card's block content overflows its height budget (4 blocks, one tall)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     // 6 long bullet items in a single card: even a single unwrapped line per
     // item already exceeds a bento cell's content budget, and these CJK
     // sentences are long enough to wrap to 2 lines in the narrower cells too.
@@ -964,7 +964,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("scales an oversized chart block to fit its card instead of degrading (4 blocks, chart in a quarter-height cell)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const chartBlock: Block = {
       type: "chart",
       chart_type: "bar",
@@ -1010,7 +1010,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("each bento card carries both a data-audit-box (h-overflow) and a card-level data-audit-rect (v-overflow)", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -1039,7 +1039,7 @@ describe("BentoPanelContent", () => {
   })
 
   it("heading converges a pathologically long (48-char) heading to <44pt or 2 lines", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const longHeading = "微服务架构下分布式事务一致性保障机制补偿策略设计".repeat(3).slice(0, 48)
     expect(longHeading.length).toBe(48)
     const slide: Slide = {
@@ -1085,7 +1085,7 @@ describe("BentoPanelContent", () => {
     }
 
     it("no subheading: bento rect y stays at the pre-subheading formula (headingLastY + 36)", () => {
-      const ctx = buildCtx(getTheme("tech"), {})
+      const ctx = buildCtx(resolveStyle("tech"), {})
       const doc = ir("tech", [base])
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
@@ -1098,7 +1098,7 @@ describe("BentoPanelContent", () => {
     })
 
     it("with subheading: renders in colors.accent below the heading, and pushes the bento grid down 46 (S3b: headingLastY+42)", () => {
-      const ctx = buildCtx(getTheme("tech"), {})
+      const ctx = buildCtx(resolveStyle("tech"), {})
       const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
       const doc = ir("tech", [slide])
       const markup = renderSvgMarkup(
@@ -1117,7 +1117,7 @@ describe("BentoPanelContent", () => {
     })
 
     it("emphasis markup: ** ** segments invert to colors.text at fontWeight 700", () => {
-      const ctx = buildCtx(getTheme("tech"), {})
+      const ctx = buildCtx(resolveStyle("tech"), {})
       const slide: Slide = { ...base, subheading: "**效率提升三成**，风险敞口下降" } as Slide
       const doc = ir("tech", [slide])
       const markup = renderSvgMarkup(
@@ -1138,7 +1138,7 @@ describe("BentoPanelContent", () => {
     })
 
     it("overly long subheading shrinks to 16px then truncates", () => {
-      const ctx = buildCtx(getTheme("tech"), {})
+      const ctx = buildCtx(resolveStyle("tech"), {})
       const slide: Slide = { ...base, subheading: CJK_LONG.repeat(2) } as Slide
       const doc = ir("tech", [slide])
       const markup = renderSvgMarkup(

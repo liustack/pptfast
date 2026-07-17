@@ -31,7 +31,7 @@ describe("overflow audit baseline", () => {
   for (const theme of THEMES) {
     for (const [name, deck] of Object.entries(STRESS_DECKS)) {
       it(`${theme} / ${name}`, () => {
-        const ir = { ...deck, style: { ...deck.style, id: theme } }
+        const ir = { ...deck, theme: { ...deck.theme, id: theme } }
         const issues = ir.slides.flatMap((slide, i) =>
           auditSvgMarkup(slideToSvgMarkup(ir, slide, i)).map(
             (iss) => `s${i} ${iss.kind} ${iss.text}`,

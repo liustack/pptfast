@@ -52,7 +52,7 @@
  *   （改为编号导轨式：`SvgContent` 矩形 `y = 标题末行 + 36`、`h = 640 - y`，
  *   标题与徽章行垂直居中在固定枢轴 `BADGE_CENTER_Y` 上）。**Fix wave 1
  *   （2026-07-06，见 templates/academic.test.tsx 同批断言）**：编号徽章
- *   `BADGE_Y` 从 64 下移到 96（避让 MasterChrome 左上 logo 带 x 64-160 /
+ *   `BADGE_Y` 从 64 下移到 96（避让 BrandChrome 左上 logo 带 x 64-160 /
  *   y 48-88），`BADGE_CENTER_Y = BADGE_Y + BADGE_H/2` 随之从 80 变为
  *   112——最坏场景仍是 2 行标题、`minPt = 24`：
  *   `lineHeight = round(24 * 1.08) = 26`，`headingFudge = round(24 * 0.32)

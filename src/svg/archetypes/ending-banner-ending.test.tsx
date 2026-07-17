@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { BannerEnding } from "./ending-banner-ending"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -27,7 +27,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {
       organization: "维岚科技",
       authors: [{ name: "张三", role: "顾问" }],
@@ -45,7 +45,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
 // 例外一样）跨主题稳定出现，而非逐字节 toBe。
 describe("BannerEnding", () => {
   it("consulting tokens 下渲染 org 标 + 联系区块 + 未隐形的孤儿装饰色（COPYRIGHT_FAINT），heading 存在时不兜底", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", endingWithHeading)
     const out = renderSvgMarkup(
       <BannerEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
@@ -77,7 +77,7 @@ describe("BannerEnding", () => {
   })
 
   it("tech tokens 下用 tech 的 primary/accent/muted，consulting 烤色不残留，COPYRIGHT_FAINT 装饰色跨主题保持不变（证明 token 化成立）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", endingWithHeading)
     const out = renderSvgMarkup(
       <BannerEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
@@ -97,7 +97,7 @@ describe("BannerEnding", () => {
   })
 
   it("consulting tokens 下无 heading 时标题兜底为“Thank you.”，副题兜底“谢谢。”（双重兜底）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", endingBare)
     const out = renderSvgMarkup(<BannerEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
 
@@ -109,7 +109,7 @@ describe("BannerEnding", () => {
   // overflowing」（旧文件 consulting.test.tsx L373-384）：超长 heading 必须被
   // 压缩，不能原样溢出，且 assertSubset 通过。
   it("超长 heading 会被压缩（assertSubset 通过），不会原样渲染整段长文本", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
     const deck = ir("consulting", slide)
     const markup = renderSvgMarkup(
@@ -126,7 +126,7 @@ describe("BannerEnding", () => {
   // 1 行分支（旧文件 consulting.test.tsx L387-402）：单行 heading 时
   // headingY=356、分隔线间距=164（修复前的基准行为不变）。
   it("单行 heading：headingY=356、分隔线间距=164", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = { type: "ending", heading: "Thank you.", blocks: [] } as Slide
     const deck = ir("consulting", slide)
     const markup = renderSvgMarkup(
@@ -146,7 +146,7 @@ describe("BannerEnding", () => {
   // 首行上移（封顶 85px）、分隔线间距收紧到 128、且所有文字 y 不超出页面
   // （<=714）。
   it("2 行 heading 最坏情形（恰好 2 行、132px 未收缩）：首行上移封顶 85、分隔线间距收紧为 128、版权不超出页面", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = { type: "ending", heading: "从今天开始用声明式", blocks: [] } as Slide
     const deck = ir("consulting", slide)
     const markup = renderSvgMarkup(

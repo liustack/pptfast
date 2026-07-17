@@ -2,18 +2,18 @@ import { readFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { BUILTIN_STYLE_IDS, TokensOverrideSchema } from "../ir"
+import { BUILTIN_THEME_IDS, StyleOverrideSchema } from "../ir"
 
 /**
  * Project-level deck defaults. Precedence: CLI flag > config > IR (see commands.ts applyDeckConfig).
- * `style` is kept an open string at the schema layer (mirrors StyleSchema in
- * ir/index.ts) — the installed-style check runs post-parse in findConfig, the
+ * `theme` is kept an open string at the schema layer (mirrors ThemeSchema in
+ * ir/index.ts) — the installed-theme check runs post-parse in findConfig, the
  * same "unknown → PptfastError with the available list" UX as validateIr.
  */
 const ConfigSchema = z
   .object({
-    style: z.string().optional(),
-    tokens: TokensOverrideSchema.optional(),
+    theme: z.string().optional(),
+    style: StyleOverrideSchema.optional(),
   })
   .strict()
 
@@ -49,9 +49,9 @@ export async function findConfig(
           .join("\n")
         throw new PptfastError(`invalid ${candidate}:\n${detail}`)
       }
-      if (r.data.style !== undefined && !(BUILTIN_STYLE_IDS as readonly string[]).includes(r.data.style)) {
+      if (r.data.theme !== undefined && !(BUILTIN_THEME_IDS as readonly string[]).includes(r.data.theme)) {
         throw new PptfastError(
-          `${candidate}: unknown style "${r.data.style}" — available: ${BUILTIN_STYLE_IDS.join(", ")} (see \`pptfast styles\`)`,
+          `${candidate}: unknown theme "${r.data.theme}" — available: ${BUILTIN_THEME_IDS.join(", ")} (see \`pptfast themes\`)`,
         )
       }
       return { path: candidate, config: r.data }

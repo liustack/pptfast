@@ -30,7 +30,7 @@ describe("resolveLocalAssets", () => {
     const ir = PptxIRSchema.parse({
       version: "3",
       filename: "t",
-      style: { id: "consulting" },
+      theme: { id: "consulting" },
       assets: { images: { logo: { src: "logo.png" } } },
       slides: [{ type: "cover", heading: "x" }],
     })
@@ -42,7 +42,7 @@ describe("resolveLocalAssets", () => {
     const ir = PptxIRSchema.parse({
       version: "3",
       filename: "t",
-      style: { id: "consulting" },
+      theme: { id: "consulting" },
       assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "https://x.test/i.png" } } },
       slides: [{ type: "cover", heading: "x" }],
     })
@@ -55,7 +55,7 @@ describe("resolveLocalAssets", () => {
     const ir = PptxIRSchema.parse({
       version: "3",
       filename: "t",
-      style: { id: "consulting" },
+      theme: { id: "consulting" },
       assets: { images: { gone: { src: "missing.png" } } },
       slides: [{ type: "cover", heading: "x" }],
     })

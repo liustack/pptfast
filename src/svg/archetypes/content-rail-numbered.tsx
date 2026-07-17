@@ -63,7 +63,7 @@ const RAIL_W = 4
 const RAIL_H = 544
 const RAIL_NODE_R = 7
 
-// BADGE_Y=96 (not 64) keeps the badge clear of MasterChrome's tl logo band
+// BADGE_Y=96 (not 64) keeps the badge clear of BrandChrome's tl logo band
 // (x 64-160, y 48-88) — mirrors the Cover confLabel fix (see
 // cover-left-anchor.tsx's own y=104 equivalent).
 const BADGE_X = 96
@@ -217,7 +217,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
       {/* Content blocks below the title row (was a divider + foreignObject) */}
       <SvgContent variant={slide.variant} blocks={slide.blocks} rect={contentRect} ctx={ctx} />
 
-      {/* Footnote only — MasterChrome already renders the y=664 footer
+      {/* Footnote only — BrandChrome already renders the y=664 footer
        * hairline for content pages, so this archetype must not draw its own
        * line down there (see consulting.tsx's fix-wave note on the same
        * double-hairline bug). */}

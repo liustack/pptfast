@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { CornerOrnamentMotif } from "./motif-corner-ornament-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -20,7 +20,7 @@ function mkIr(theme: string, filename: string): PptxIR {
   return {
     version: "3",
     filename,
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [coverSlide],
@@ -38,7 +38,7 @@ function probeVariantA(theme: string): string {
 
 const ir = (theme: string): PptxIR => mkIr(theme, probeVariantA(theme))
 
-// MasterChrome's brand logo bands (MasterChrome.tsx logoBox: image at
+// BrandChrome's brand logo bands (BrandChrome.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br). Aligned with the same
 // constants/pattern used by academic.test.tsx and creative.test.tsx.
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
@@ -85,7 +85,7 @@ describe("CornerOrnamentMotif", () => {
   ] as const)(
     "magazine tokens 下 %s slide 与固化的基准 markup 逐字节一致（档位一，档案来自旧 EditorialSerifDecor）",
     (label, slide) => {
-      const ctx = buildCtx(getTheme("journal"), {})
+      const ctx = buildCtx(resolveStyle("journal"), {})
       const deck = ir("journal")
 
       const next = renderSvgMarkup(<CornerOrnamentMotif ir={deck} slide={slide} ctx={ctx} />)
@@ -94,7 +94,7 @@ describe("CornerOrnamentMotif", () => {
   )
 
   it("cover/chapter 渲染四角共 16 段 line，content/ending 只渲染右上角共 4 段 line（装饰几何）", () => {
-    const ctx = buildCtx(getTheme("journal"), {})
+    const ctx = buildCtx(resolveStyle("journal"), {})
     const deck = ir("journal")
 
     function renderMotif(slide: Slide): Element {
@@ -124,7 +124,7 @@ describe("CornerOrnamentMotif", () => {
   })
 
   it("every ornament uses the theme's divider/border color at 1px", () => {
-    const ctx = buildCtx(getTheme("journal"), {})
+    const ctx = buildCtx(resolveStyle("journal"), {})
     const deck = ir("journal")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
@@ -153,7 +153,7 @@ describe("CornerOrnamentMotif", () => {
   })
 
   it("body passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx(getTheme("journal"), {})
+    const ctx = buildCtx(resolveStyle("journal"), {})
     const deck = ir("journal")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
@@ -165,7 +165,7 @@ describe("CornerOrnamentMotif", () => {
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const out = renderSvgMarkup(<CornerOrnamentMotif ir={deck} slide={coverSlide} ctx={ctx} />)
     expect(out).toContain("#D5D5CB") // consulting border

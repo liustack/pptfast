@@ -38,7 +38,7 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  *     下方"两分支同色，非白字豁免"一节），两处原样映射为 `colors.muted`。
  *   - 源文件私有常量 `BORDER` → `ctx.colors.border ?? ctx.colors.muted` ——
  *     精确匹配，两分支各一处 divider 第二段描边。`??` 兜底沿用
- *     ending-tone-adaptive-ending.tsx 的既有写法（`border` 在 `ThemeColors`
+ *     ending-tone-adaptive-ending.tsx 的既有写法（`border` 在 `StyleColors`
  *     上是可选字段）。
  *   - `ctx.colors.accent`/`ctx.colors.text`：函数体内已直接消费（两分支的
  *     section label、subheading 及其 `renderEmphasisTspans` 强调段落、

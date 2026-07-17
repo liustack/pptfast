@@ -28,7 +28,7 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
  *     消费的烤死常量集合不同，需逐函数实测，不能凭文件头统一替换表）。
  *   - `DIVIDER` 逐十六进制核对 consulting 的 `colors.border` 字段，精确
  *     匹配 → 映射为 `ctx.colors.border ?? ctx.colors.muted`（`border` 是
- *     `ThemeColors` 里的可选字段，`?? muted` 的兜底写法与
+ *     `StyleColors` 里的可选字段，`?? muted` 的兜底写法与
  *     cover-banner-title.tsx / motif-corner-ornament-motif.tsx 先例一致，
  *     纯为类型层面兜底——consulting 自己的 token 表里 `border` 始终有值）。
  *   - chapter 分支的 grid 描边色是纯白字面量，处理见下方"白字例外"，

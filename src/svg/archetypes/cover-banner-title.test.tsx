@@ -2,13 +2,13 @@
 import { describe, expect, it } from "vitest"
 import { parseSvgRoot, renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { BannerTitleCover } from "./cover-banner-title"
 import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "面向 2027 的三个决定", blocks: [] } as Slide
 const ir = (theme: string): PptxIR =>
-  ({ version: "3", filename: "x.pptx", style: { id: theme }, meta: { organization: "测试部", date: "2026-07" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
+  ({ version: "3", filename: "x.pptx", theme: { id: theme }, meta: { organization: "测试部", date: "2026-07" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 
 // Captured verbatim from the legacy `MckinseyNavyCover` (templates/consulting.tsx)
 // for this exact fixture (consulting tokens, org="测试部", date="2026-07") before
@@ -39,7 +39,7 @@ describe("BannerTitleCover", () => {
   // 要求与旧模板逐字节相同，因为这次几何差异是有意的正确性修复，不是迁移
   // 期间的意外行为漂移。
   it("consulting tokens 下与旧 MckinseyNavyCover 观感等价（2026-07-09 有意偏离旧模板修叠压 bug，不再逐字节锁）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const legacy = LEGACY_COVER_MARKUP
     const next = renderSvgMarkup(<BannerTitleCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
 
@@ -61,14 +61,14 @@ describe("BannerTitleCover", () => {
   })
 
   it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex）", () => {
-    const ctx = buildCtx(getTheme("tech"), {})
+    const ctx = buildCtx(resolveStyle("tech"), {})
     const out = renderSvgMarkup(<BannerTitleCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("#2DD4E6") // tech accent
     expect(out).not.toContain("#FFC72C") // consulting accent 不得残留
   })
 
   it("修复后 accent 条与副题首行不再叠压（accent 条底边 y 明显小于副题首行 y，留出副题字号的可视 ascent + 目标间距）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
         <BannerTitleCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />

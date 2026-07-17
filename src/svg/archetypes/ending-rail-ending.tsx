@@ -30,7 +30,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  *   - 源文件私有常量 `MUTED`      → `colors.muted`   —— 精确匹配。
  *   - 源文件私有常量 `HAIRLINE`   → `colors.border ?? colors.muted` ——
  *     精确匹配 academic 的 `border` 字段，`??` 兜底沿用
- *     cover-left-anchor.tsx 的既有写法（`border` 在 `ThemeColors` 上是可选
+ *     cover-left-anchor.tsx 的既有写法（`border` 在 `StyleColors` 上是可选
  *     字段）。
  *
  * 孤儿色处理（**档位二・观感等价**，唯一孤儿色）：版权行 fill 用的一个内联

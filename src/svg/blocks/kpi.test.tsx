@@ -4,7 +4,7 @@ import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { kpi } from "./kpi"
 import type { BlockCtx } from "./types"
-import { CANONICAL_STYLE_IDS, getTheme } from "../../styles"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../FullSlideSvg"
 
 const ctx: BlockCtx = {
@@ -184,8 +184,8 @@ describe("kpi card stroke (Task 5d)", () => {
   })
 
   it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
-    for (const id of CANONICAL_STYLE_IDS) {
-      const themeCtx = buildCtx(getTheme(id), {})
+    for (const id of CANONICAL_THEME_IDS) {
+      const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(kpi.render(block, { x: 0, y: 0, w: 1120 }, themeCtx))
       const rect = container.querySelector("rect")!
       if (id === "enterprise" || id === "runway") {

@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * ink（水墨国风）——2026-07-10 用户裁决新增的「真创意」子类之二（用户
@@ -6,7 +6,7 @@ import type { ThemeTokens } from "./tokens";
  * 在 CJK 导出安全白名单内），面向传统文化/节日/国潮/茶酒场景。专属
  * ink-motif 画古籍双线框 + 朱砂印章 + 淡墨山形。
  */
-export const INK_TOKENS: ThemeTokens = {
+export const INK_TOKENS: StyleTokens = {
   id: "ink",
   colors: {
     bg: "#F5F0E6", // 宣纸米

@@ -24,7 +24,7 @@ import { CONF_LABEL } from "../../lib/conf-labels"
  * 锚点（P1 计划替换表原写 RED→accent 系笔误）。
  *
  * 全黑全居中"海报"式主视觉：超大标题、短横条、斜体副标题、底部单行合并
- * meta——取代了旧版散落四角的元信息（原本还挤在 MasterChrome 的 logo 条带
+ * meta——取代了旧版散落四角的元信息（原本还挤在 BrandChrome 的 logo 条带
  * x 64-160/1120-1216, y 48-88 内）。把每个元素都居中在 CENTER_X 上，能让
  * 其 x 延伸范围稳定落在 [190,1090]，无论 y 是多少都避开四个 logo 条带。
  */

@@ -47,7 +47,7 @@ describe("generatePptxBlob v2 master wiring", () => {
     const ir: PptxIR = {
       version: "3",
       filename: "master.pptx",
-      style: { id: "consulting" },
+      theme: { id: "consulting" },
       meta: {},
       assets: { images: {} },
       slides: [

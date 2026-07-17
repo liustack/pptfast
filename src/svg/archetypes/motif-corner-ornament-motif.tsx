@@ -11,7 +11,7 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
  * concentric "L" brackets (an outer + a 4px-inset inner one, "双线"), each
  * leg 20px long, the outer bracket's corner sitting 40px in from the page
  * edge — margin(40) + gap(4) + length(20) = 64 exactly matches
- * MasterChrome's logo bands' own inner edge (x 64/1216, tl/tr), a tangent
+ * BrandChrome's logo bands' own inner edge (x 64/1216, tl/tr), a tangent
  * not an overlap. Extracted from 源 templates/magazine.tsx 的
  * `EditorialSerifDecor`（511-524 行）+ 私有 helper `CornerOrnament`
  * （484-509 行，随其常量 `ORNAMENT_MARGIN`/`ORNAMENT_LEN`/`ORNAMENT_GAP`

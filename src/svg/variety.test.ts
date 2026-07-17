@@ -6,7 +6,7 @@ function ir(filename: string, headings: string[]): PptxIR {
   return {
     version: "3",
     filename,
-    style: { id: "consulting" },
+    theme: { id: "consulting" },
     meta: {},
     assets: { images: {} },
     slides: headings.map((heading) => ({ type: "content", heading, blocks: [] })),

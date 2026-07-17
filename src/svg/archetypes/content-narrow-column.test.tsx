@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { NarrowColumnContent } from "./content-narrow-column"
 import type { Block, PptxIR, Slide } from "@/ir"
 
@@ -37,7 +37,7 @@ const ir = (theme: string, slides: Slide[] = [chapter, content]): PptxIR =>
   ({
     version: "3",
     filename: "x.pptx",
-    style: { id: theme },
+    theme: { id: theme },
     meta: {},
     assets: { images: {} },
     slides,
@@ -54,7 +54,7 @@ const MAGAZINE_EXPECTED_BARE =
 
 describe("NarrowColumnContent", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，含多种 block/kicker/subheading/footnote，档案来自旧 EditorialSerifContent）", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const deck = ir("journal")
 
     const next = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={content} index={1} ctx={ctx} />)
@@ -69,7 +69,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("单块 slide（无 subheading/footnote）同样与固化基准逐字节一致", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const bare: Slide = { type: "content", variant: "single", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
     const deck = ir("journal", [bare])
 
@@ -78,7 +78,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
-    const ctx = buildCtx(getTheme("consulting"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const out = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={content} index={1} ctx={ctx} />)
     expect(out).toContain("#FFC72C") // consulting accent
@@ -87,7 +87,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const deck = ir("journal")
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -100,7 +100,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("lays blocks into the deliberately narrow 880-wide column (not the full 1088 width)", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       variant: "single",
@@ -124,7 +124,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("renders a large, 30%-opacity, zero-padded page number anchored to the right gutter", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const slide: Slide = { type: "content", variant: "single", heading: "标题", blocks: [para("一")] } as Slide
     // 9th slide (index 8) => page label "09"
     const slides = Array.from({ length: 9 }, () => ({ ...slide }))
@@ -154,7 +154,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("converges a pathologically long (48-char) heading to <32pt or 2 lines within the 880 column", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const longHeading = "微服务架构下分布式事务一致性保障机制补偿策略设计".repeat(3).slice(0, 48)
     expect(longHeading.length).toBe(48)
     const slide: Slide = {
@@ -184,7 +184,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("kicker fits an overlong section name instead of overflowing at fixed 16px", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const chapterSlide: Slide = { type: "chapter", heading: CJK_LONG.repeat(2), blocks: [] } as Slide
     const contentSlide: Slide = {
       type: "content",
@@ -209,7 +209,7 @@ describe("NarrowColumnContent", () => {
   })
 
   it("footnote stays within the 980-wide budget instead of colliding with the page number", () => {
-    const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+    const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const longFootnote = "数据来源：" + "内部报告与季度审计草案汇总说明".repeat(6)
     const slide: Slide = {
       type: "content",
@@ -246,7 +246,7 @@ describe("NarrowColumnContent", () => {
     }
 
     it("no subheading: narrow column y stays at the pre-subheading formula (headingLastY + 40)", () => {
-      const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
       const deck = ir("journal", [base])
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">
@@ -259,7 +259,7 @@ describe("NarrowColumnContent", () => {
     })
 
     it("with subheading: italic accent text below the heading, and pushes the narrow column down 68 (S3b: headingLastY+64)", () => {
-      const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
       const deck = ir("journal", [slide])
       const markup = renderSvgMarkup(
@@ -278,7 +278,7 @@ describe("NarrowColumnContent", () => {
     })
 
     it("emphasis markup: ** ** segments invert to colors.text at fontWeight 700, staying italic", () => {
-      const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: "**效率提升三成**，风险敞口下降" } as Slide
       const deck = ir("journal", [slide])
       const markup = renderSvgMarkup(
@@ -303,7 +303,7 @@ describe("NarrowColumnContent", () => {
     })
 
     it("overly long subheading shrinks to 16px then truncates", () => {
-      const ctx = buildCtx({ ...getTheme("journal"), shape: undefined }, {})
+      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: CJK_LONG.repeat(2) } as Slide
       const deck = ir("journal", [slide])
       const markup = renderSvgMarkup(

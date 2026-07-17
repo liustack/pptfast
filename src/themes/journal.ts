@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "./tokens";
+import type { StyleTokens } from "./tokens";
 
 /**
  * journal（人文期刊）——原 magazine 主题纯改名（2026-07-10 用户裁决拆分：
@@ -8,7 +8,7 @@ import type { ThemeTokens } from "./tokens";
  * anthropic-clay 旧 deck 的 legacy 链随迁指向本主题。
  */
 
-export const JOURNAL_TOKENS: ThemeTokens = {
+export const JOURNAL_TOKENS: StyleTokens = {
   id: "journal",
   colors: {
     bg: "#FAF7F2",
