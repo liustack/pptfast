@@ -6,6 +6,7 @@ import {
   irJsonSchema,
   listThemes,
   renderSlideSvg,
+  tokensJsonSchema,
   validateIr,
 } from "../api"
 import { PptfastError } from "../errors"
@@ -41,8 +42,8 @@ export async function runValidate(irPath: string): Promise<string> {
   return `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
 }
 
-export function runSchema(): string {
-  return JSON.stringify(irJsonSchema(), null, 2)
+export function runSchema(tokens = false): string {
+  return JSON.stringify(tokens ? tokensJsonSchema() : irJsonSchema(), null, 2)
 }
 
 export function runThemes(asJson: boolean): string {

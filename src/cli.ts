@@ -46,7 +46,8 @@ program
 program
   .command("schema")
   .description("Print the IR JSON Schema (feed this to a model before it writes IR)")
-  .action(() => console.log(runSchema()))
+  .option("--tokens", "print the brand-tokens override schema instead")
+  .action((opts: { tokens?: boolean }) => console.log(runSchema(Boolean(opts.tokens))))
 
 program
   .command("themes")

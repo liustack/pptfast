@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
-import { PptxIRSchema, type PptxIR } from "./ir"
+import { PptxIRSchema, TokensOverrideSchema, type PptxIR } from "./ir"
 import { generatePptxBlob } from "./pptx/generate"
 import { CAPACITY } from "./svg/audit/capacity"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
@@ -130,4 +130,9 @@ export function listThemes(): ThemeInfo[] {
 /** JSON Schema for the IR — feed this to a model before it writes IR. */
 export function irJsonSchema(): Record<string, unknown> {
   return z.toJSONSchema(PptxIRSchema) as Record<string, unknown>
+}
+
+/** JSON Schema for brand-token overrides (IR theme.tokens, --tokens files, config "tokens"). */
+export function tokensJsonSchema(): Record<string, unknown> {
+  return z.toJSONSchema(TokensOverrideSchema) as Record<string, unknown>
 }

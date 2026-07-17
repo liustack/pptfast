@@ -89,3 +89,12 @@ describe("runPreview", () => {
     expect(svg).toContain("data:image/png;base64")
   })
 })
+
+describe("runSchema --tokens", () => {
+  it("prints the TokensOverride schema", () => {
+    const s = JSON.parse(runSchema(true)) as { properties?: Record<string, unknown> }
+    expect(Object.keys(s.properties ?? {})).toEqual(
+      expect.arrayContaining(["colors", "fonts", "shape"]),
+    )
+  })
+})
