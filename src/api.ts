@@ -161,7 +161,7 @@ export function irJsonSchema(): Record<string, unknown> {
   return z.toJSONSchema(PptxIRSchema) as Record<string, unknown>
 }
 
-/** JSON Schema for brand-token overrides (IR theme.tokens, --tokens files, config "tokens"). */
+/** JSON Schema for brand-token overrides (IR style.tokens, --tokens files, config "tokens"). */
 export function tokensJsonSchema(): Record<string, unknown> {
   return z.toJSONSchema(TokensOverrideSchema) as Record<string, unknown>
 }

@@ -24,7 +24,7 @@ program
   .argument("<ir.json>", "path to the IR file")
   .requiredOption("-o, --output <file>", "output .pptx path")
   .option("--style <id>", "override the deck style (see `pptfast styles`)")
-  .option("--tokens <path>", "brand tokens JSON overriding the theme palette (see `pptfast schema --tokens`)")
+  .option("--tokens <path>", "brand tokens JSON overriding the style's palette (see `pptfast schema --tokens`)")
   .action(async (ir: string, opts: { output: string; style?: string; tokens?: string }) => {
     try {
       console.log(await runRender(ir, { output: opts.output, style: opts.style, tokensPath: opts.tokens }))
