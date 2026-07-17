@@ -2,15 +2,15 @@ import type { BrandConfig } from "@/ir"
 import type { StyleTokens } from "./tokens"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId, type CanonicalThemeId } from "./index"
 
-/** A theme = distributable bundle: `theme` (style tokens) + `master` (brand chrome) + affinity tags (filled in W4). */
+/** A theme = distributable bundle: `style` (style tokens) + `brand` (brand chrome) + affinity tags (filled in W4). */
 export interface ThemeDefinition {
   id: CanonicalThemeId
-  theme: StyleTokens
-  master: BrandConfig
+  style: StyleTokens
+  brand: BrandConfig
   tags: readonly string[]
 }
 
-const MASTERS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
+const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
   enterprise: { suppressFooterOnCardContent: true },
   ink: { suppressFooterRule: true },
 }
@@ -18,12 +18,12 @@ const MASTERS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(
   CANONICAL_THEME_IDS.map((id) => [
     id,
-    { id, theme: THEME_STYLES[id], master: MASTERS[id] ?? {}, tags: [] as const },
+    { id, style: THEME_STYLES[id], brand: BRANDS[id] ?? {}, tags: [] as const },
   ]),
 ) as unknown as Record<CanonicalThemeId, ThemeDefinition>
 
 /** Theme brand config + optional IR-level override (shallow merge, override wins). */
 export function resolveBrand(id: string, override?: BrandConfig): BrandConfig {
-  const base = THEME_DEFINITIONS[resolveThemeId(id)].master
+  const base = THEME_DEFINITIONS[resolveThemeId(id)].brand
   return override ? { ...base, ...override } : base
 }

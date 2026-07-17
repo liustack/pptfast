@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
-import { resolveStyle } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { NarrowColumnContent } from "./content-narrow-column"
 import type { Block, PptxIR, Slide } from "@/ir"
 

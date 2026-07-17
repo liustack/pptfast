@@ -4,7 +4,7 @@ import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { kpi } from "./kpi"
 import type { BlockCtx } from "./types"
-import { CANONICAL_THEME_IDS, resolveStyle } from "../../styles"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../FullSlideSvg"
 
 const ctx: BlockCtx = {

@@ -51,11 +51,11 @@
 import { describe, it, expect } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { resolveStyle, type CanonicalThemeId } from "../../styles"
+import { resolveStyle, type CanonicalThemeId } from "../../themes"
 import type { PptxIR, Slide } from "@/ir"
 import { CONTENT_ARCHETYPES } from "./index-content"
 import type { ContentArchetype } from "./types"
-import { THEME_MANIFESTS } from "../../styles/manifest"
+import { THEME_MANIFESTS } from "../../themes/manifest"
 
 /** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板）：
  * 数据源从 SVG_TEMPLATES[id].Content 改为经 manifest 解析该主题的 content

@@ -8,7 +8,7 @@
  * keep it; the SVG preview draws its own static page number instead.
  */
 import type pptxgen from "pptxgenjs"
-import type { StyleTokens, LayoutType } from "../styles"
+import type { StyleTokens, LayoutType } from "../themes"
 
 const SLIDE_TYPES: LayoutType[] = ["cover", "chapter", "content", "ending"]
 

@@ -5,7 +5,7 @@ import { generatePptxBlob } from "./pptx/generate"
 import { CAPACITY } from "./svg/audit/capacity"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { slideToSvgMarkup } from "./svg/render-slide"
-import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_STYLES } from "./styles"
+import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_STYLES } from "./themes"
 
 export interface ValidationIssue {
   path: string

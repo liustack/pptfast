@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { parseSvgRoot, renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { resolveStyle } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { BannerTitleCover } from "./cover-banner-title"
 import type { PptxIR, Slide } from "@/ir"
 

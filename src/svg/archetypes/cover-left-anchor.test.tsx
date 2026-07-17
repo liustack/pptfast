@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { resolveStyle } from "../../styles"
+import { resolveStyle } from "../../themes"
 import { assertSubset } from "../subset-validate"
 import { fitHeadingLines } from "../heading-fit"
 import { LeftAnchorCover } from "./cover-left-anchor"

@@ -6,7 +6,7 @@ import { assertSubset } from "../subset-validate"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { iconCards, iconCardContentHeight } from "./icon-cards"
 import type { BlockCtx } from "./types"
-import { CANONICAL_THEME_IDS, resolveStyle } from "../../styles"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../FullSlideSvg"
 
 const ctx: BlockCtx = {

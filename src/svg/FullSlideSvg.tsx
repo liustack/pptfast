@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Block, PptxIR, Slide } from "@/ir"
-import type { StyleTokens } from "../styles/tokens"
-import { resolveStyle } from "../styles"
+import type { StyleTokens } from "../themes/tokens"
+import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { BlockCtx } from "./blocks/types"
@@ -16,7 +16,7 @@ import {
   ImageSplitPage,
   ImageTopPage,
 } from "./ImagePages"
-import { getManifest, type PersonalityManifest } from "../styles/manifest"
+import { getManifest, type PersonalityManifest } from "../themes/manifest"
 import { COVER_ARCHETYPES } from "./archetypes"
 import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "./archetypes/index-content"

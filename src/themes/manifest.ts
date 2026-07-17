@@ -170,8 +170,8 @@ export const THEME_MANIFESTS: Record<CanonicalThemeId, PersonalityManifest> = {
     },
     motif: "ink-motif",
     // ink-motif 自带古籍版框线，BrandChrome 的页脚分隔线会形成双线
-    // （2026-07-10 用户截图指出）——style 的 master.suppressFooterRule
-    // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/styles.ts），meta 文字照排。
+    // （2026-07-10 用户截图指出）——style 的 brand.suppressFooterRule
+    // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/definitions.ts），meta 文字照排。
   },
   // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty，零版式代码——
   // 沿用原 retail v1 验证过的浅底混搭（creative cover/chapter + consulting

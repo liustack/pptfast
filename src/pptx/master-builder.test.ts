@@ -1,7 +1,7 @@
  
 import { describe, it, expect, vi } from "vitest"
 import { defineMastersForIR } from "./master-builder"
-import { resolveStyle } from "../styles"
+import { resolveStyle } from "../themes"
 
 function fakePptx() {
   const masters: any[] = []
