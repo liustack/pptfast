@@ -1,6 +1,5 @@
 import { z } from "zod"
 import { PPTX_ICON_NAMES } from "@/icons"
-import { AUDIENCE_VALUES, DELIVERY_VALUES, MODE_VALUES } from "./scenario-values"
 
 // Built-in theme ids — a registered, renderable subset, not a closed universe:
 // v0.4's theme registry can install more without a schema change (theme.id
@@ -607,30 +606,30 @@ const SlideSchema = z
 
 /**
  * Object half of the top-level `scenario` field's `string | object` union
- * (see {@link PptxIRSchema}) — each axis independently optional, so a
- * partial override (e.g. just `{ audience: "executive" }`) is legal input.
- * An omitted axis defaults per `resolveScenario`'s per-axis chain (spec §5,
- * `src/scenario`); a *present* unrecognized axis value or an unrecognized
- * key is rejected right here at the schema layer — unlike the preset-name
- * string branch (and this file's `theme.id`), which stays an open,
- * unconstrained `z.string()` on purpose, its validity checked later in
- * `validateIr` (`resolveScenario`'s job) so a value can list the available
- * presets in its error message without a schema change.
+ * (see {@link PptxIRSchema}) — deliberately as open as a record gets: any
+ * string key, any value. Same open-schema/closed-semantic split as the
+ * preset-name string branch (and this file's `theme.id`): the *actual*
+ * constraint — only `mode`/`delivery`/`audience` are legal keys, each with
+ * its own closed enum — is enforced later, in `validateIr`, by
+ * `resolveScenario` (`src/scenario`), not here.
  *
- * Enum members come from `./scenario-values`, a leaf module with no
- * imports — not from `src/scenario`, which derives its own
- * `Mode`/`Delivery`/`Audience` types from those exact same tuples. That
- * keeps this schema and `resolveScenario` reading one shared source instead
- * of `src/ir` importing from `src/scenario` (see the leaf module's
- * docstring for why that direction risks a cycle).
+ * This was originally a `.strict()` object with a `z.enum(...)` per axis,
+ * closed right at the schema layer — wrong inside a `z.union([...])`: zod
+ * reports a failing union branch as one opaque `invalid_union` issue, not
+ * that branch's own specific issue, so an axis-value typo or an unknown key
+ * never surfaced `resolveScenario`'s available-values message — every
+ * rejection collapsed to the same useless
+ * `{ path: "scenario", message: "Invalid input" }` (W3 task-2 review
+ * finding). Loosening this branch to a plain record makes the schema layer
+ * responsible for exactly one thing — string vs. object vs. neither — so an
+ * object input always parses far enough for `validateIr`'s existing
+ * `resolveScenario` try/catch to run and produce a specific, listable
+ * message, the same way it already did for an unknown preset-name string.
+ * `resolveScenario` itself still reads `./scenario-values`'s
+ * `MODE_VALUES`/`DELIVERY_VALUES`/`AUDIENCE_VALUES` tuples for its runtime
+ * checks — this schema no longer needs to import them at all.
  */
-const ScenarioAxesInputSchema = z
-  .object({
-    mode: z.enum(MODE_VALUES).optional(),
-    delivery: z.enum(DELIVERY_VALUES).optional(),
-    audience: z.enum(AUDIENCE_VALUES).optional(),
-  })
-  .strict()
+const ScenarioAxesInputSchema = z.record(z.string(), z.unknown())
 
 // ── 顶层 IR ──
 
@@ -638,16 +637,23 @@ export const PptxIRSchema = z
   .object({
     version: z.literal("3").default("3"),
     filename: z.string().default("presentation"),
-    // Preset id string (open — validity checked in validateIr, same
-    // open-schema/closed-semantic pattern as this object's own theme.id
-    // field) or a partial per-axis override object (closed — see
-    // ScenarioAxesInputSchema above). Omitted entirely = the `general`
+    // Preset id string or a partial per-axis override object — both
+    // branches are open at the schema layer now (validity checked in
+    // validateIr, same open-schema/closed-semantic pattern as this object's
+    // own theme.id field; see ScenarioAxesInputSchema above for why the
+    // object branch reads this way too). Omitted entirely = the `general`
     // preset (briefing × balanced × public, spec §5). Deliberately has no
     // `.default(...)`: the resolved ScenarioAxes is never written back into
     // the IR — validateIr and (W4) the render path each call
     // `resolveScenario` themselves (pure, cheap) rather than this schema
     // baking a materialized default in, which would drift the parsed-output
     // shape the moment SCENARIO_PRESETS.general's axes changed.
+    //
+    // Type note: this infers as `string | Record<string, unknown> |
+    // undefined` on PptxIR — wider than the "mode/delivery/audience" shape
+    // one might expect. `resolveScenario` (src/scenario) is the semantic
+    // authority for that narrower shape; treat this field's static type as
+    // shape-only and go there for what's actually valid.
     scenario: z.union([z.string(), ScenarioAxesInputSchema]).optional(),
     theme: ThemeSchema.default({ id: "consulting" }),
     meta: MetaSchema.default({}),

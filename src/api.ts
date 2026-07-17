@@ -149,17 +149,28 @@ export function validateIr(input: unknown): ValidateResult {
   }
   const layoutErrors = checkLayoutApplicability(r.data)
   if (layoutErrors.length > 0) return { ok: false, errors: layoutErrors }
-  // Scenario resolution (spec §5's defaults chain, W3 task 2). The axes-object
-  // branch is already enum-closed by the schema (ScenarioAxesInputSchema in
-  // ir/index.ts), so the only way resolveScenario can still throw here is an
-  // unrecognized *preset name* string — presets stay an open z.string() at
-  // the schema layer, the same open-schema/closed-semantic pattern as
-  // theme.id above. The resolved axes are not written back onto r.data (see
-  // the scenario field's docstring in ir/index.ts) — they are only threaded
-  // into checkIrQuality below for task 3 to consume.
+  // Scenario resolution (spec §5's defaults chain, W3 task 2). Both branches
+  // of the schema's `scenario` union (ScenarioAxesInputSchema in ir/index.ts)
+  // are open now — a preset-name string and an axes object alike — the same
+  // open-schema/closed-semantic pattern as theme.id above, so resolveScenario
+  // is the *sole* place any scenario semantics (unrecognized preset name,
+  // unrecognized axis key, unrecognized axis value) get rejected. This one
+  // try/catch is therefore the only path that can produce a `scenario`
+  // ValidationIssue, for all of those cases — deliberate, per the W3 task-2
+  // review finding: nesting a schema-closed enum object inside a z.union
+  // meant a failing branch reported as one opaque zod `invalid_union` issue
+  // ("Invalid input", no specifics), never resolveScenario's own
+  // available-values message. r.data.scenario's inferred type
+  // (`string | Record<string, unknown> | undefined`) is wider than
+  // resolveScenario's declared parameter — safe to narrow here because
+  // resolveScenario validates every key and value itself at runtime
+  // regardless of what the schema let through (its own test suite pins
+  // that). The resolved axes are not written back onto r.data (see the
+  // scenario field's docstring in ir/index.ts) — they are only threaded into
+  // checkIrQuality below for task 3 to consume.
   let resolvedAxes: ScenarioAxes
   try {
-    resolvedAxes = resolveScenario(r.data.scenario)
+    resolvedAxes = resolveScenario(r.data.scenario as string | Partial<ScenarioAxes> | undefined)
   } catch (err) {
     if (!(err instanceof PptfastError)) throw err
     return { ok: false, errors: [{ path: "scenario", message: err.message }] }

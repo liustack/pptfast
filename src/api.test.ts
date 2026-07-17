@@ -162,6 +162,38 @@ describe("scenario field (W3 task 2)", () => {
     const v = validateIr(raw)
     expect(v.ok).toBe(true)
   })
+
+  // W3 task-2 review fix: the axes-object branch used to be schema-closed
+  // (a strict z.enum per axis) nested inside a z.union, which zod reports as
+  // one opaque invalid_union issue on a failing branch — every one of these
+  // would have collapsed to the same useless
+  // { path: "scenario", message: "Invalid input" } instead of surfacing
+  // resolveScenario's specific, available-values message. The schema now
+  // only shape-checks (string vs. object vs. neither — see
+  // src/ir/index.test.ts's "IR v3 scenario field" describe block for that
+  // layer's coverage); these pin the message content actually reaching the
+  // caller through validateIr's resolveScenario try/catch.
+  it("hard-rejects a bad axis value inside the axes object, listing valid values", () => {
+    const v = validateIr({ ...raw, scenario: { mode: "pyramidal" } })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.path).toBe("scenario")
+    expect(v.errors[0]!.page).toBeUndefined()
+    expect(v.errors[0]!.message).toMatch(/unknown mode/)
+    expect(v.errors[0]!.message).toMatch(/pyramid/)
+  })
+
+  it("hard-rejects an unknown key on the axes object, listing valid keys", () => {
+    const v = validateIr({ ...raw, scenario: { speed: "fast" } })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.path).toBe("scenario")
+    expect(v.errors[0]!.page).toBeUndefined()
+    expect(v.errors[0]!.message).toMatch(/unknown scenario axis/)
+    expect(v.errors[0]!.message).toMatch(/mode/)
+    expect(v.errors[0]!.message).toMatch(/delivery/)
+    expect(v.errors[0]!.message).toMatch(/audience/)
+  })
 })
 
 describe("renderSlideSvg", () => {
