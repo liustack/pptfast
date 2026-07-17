@@ -108,7 +108,7 @@ export function FullSlideSvg({
   className,
   preserveAspectRatio,
 }: FullSlideSvgProps) {
-  const tokens = getTheme(ir.theme.id, ir.theme.override)
+  const tokens = getTheme(ir.theme.id, ir.theme.override, ir.theme.tokens)
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
