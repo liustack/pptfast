@@ -300,15 +300,17 @@ export function resolveScenario(input: string | Partial<ScenarioAxes> | undefine
     }
   }
 
-  const mode = input.mode ?? DEFAULT_SCENARIO.mode
+  // `=== undefined` (not `??`): omission gets the default, but an explicit
+  // `null` is a written-wrong value and must hard-error like any other typo.
+  const mode = input.mode === undefined ? DEFAULT_SCENARIO.mode : input.mode
   if (!MODE_VALUES.includes(mode)) {
     throw new PptfastError(`unknown mode "${mode}" — available: ${MODE_VALUES.join(", ")}`)
   }
-  const delivery = input.delivery ?? DEFAULT_SCENARIO.delivery
+  const delivery = input.delivery === undefined ? DEFAULT_SCENARIO.delivery : input.delivery
   if (!DELIVERY_VALUES.includes(delivery)) {
     throw new PptfastError(`unknown delivery "${delivery}" — available: ${DELIVERY_VALUES.join(", ")}`)
   }
-  const audience = input.audience ?? DEFAULT_SCENARIO.audience
+  const audience = input.audience === undefined ? DEFAULT_SCENARIO.audience : input.audience
   if (!AUDIENCE_VALUES.includes(audience)) {
     throw new PptfastError(`unknown audience "${audience}" — available: ${AUDIENCE_VALUES.join(", ")}`)
   }

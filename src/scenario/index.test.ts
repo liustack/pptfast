@@ -287,4 +287,16 @@ describe("resolveScenario", () => {
     expect(() => resolveScenario(bad)).toThrow(/unknown scenario axis "mdoe"/)
     expect(() => resolveScenario(bad)).toThrow(/available:.*mode.*delivery.*audience/)
   })
+
+  it("an explicit null axis value throws instead of silently defaulting (null ≠ omission)", () => {
+    const bad = { mode: null } as unknown as Partial<ScenarioAxes>
+    expect(() => resolveScenario(bad)).toThrow(PptfastError)
+    expect(() => resolveScenario(bad)).toThrow(/unknown mode "null" — available:.*pyramid/)
+    expect(() => resolveScenario({ delivery: null } as unknown as Partial<ScenarioAxes>)).toThrow(
+      /unknown delivery "null"/,
+    )
+    expect(() => resolveScenario({ audience: null } as unknown as Partial<ScenarioAxes>)).toThrow(
+      /unknown audience "null"/,
+    )
+  })
 })
