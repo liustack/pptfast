@@ -6,9 +6,9 @@ import { PptfastError } from "../errors"
 // rendering or selection yet — this wave (W3 task 1) only lays the axes
 // types, the mode/delivery data tables, the named presets, and the
 // omission-defaults resolver described by spec §5. Weighted layout/component
-// selection off `MODE_DEFINITIONS.tendencies` is W4's job; wiring
-// `DELIVERY_BUDGETS` into the content-quality gate is this wave's task 3;
-// putting `scenario` on the IR itself is a later task.
+// selection off `MODE_DEFINITIONS.tendencies` is W4's job. Wiring
+// `DELIVERY_BUDGETS` into the content-quality gate is this wave's task 3.
+// Putting `scenario` on the IR itself is a later task.
 
 /**
  * Narrative argument style (spec §5's five-way mode classification). Each
@@ -28,24 +28,18 @@ export type Delivery = "text" | "balanced" | "presentation"
 /**
  * Tone anchor only (spec §5: audience is tone-anchoring only, no rendering
  * effect on the IR yet). Reserved for a future lint pass (e.g. executive ×
- * long paragraphs → suggest kpi_cards/verdict_banner instead); the rule set
+ * long paragraphs → suggest kpi_cards/verdict_banner instead). The rule set
  * itself is explicitly out of scope this wave (spec §10 open questions).
  */
 export type Audience = "executive" | "technical" | "customer" | "public"
 
 export interface ScenarioAxes {
-  mode: Mode
-  delivery: Delivery
-  audience: Audience
+  readonly mode: Mode
+  readonly delivery: Delivery
+  readonly audience: Audience
 }
 
-/** All valid {@link Mode} values, in spec §5 table order. */
-export const MODE_VALUES: readonly Mode[] = ["pyramid", "narrative", "instructional", "showcase", "briefing"]
-
-/** All valid {@link Delivery} values, in spec §5 table order. */
-export const DELIVERY_VALUES: readonly Delivery[] = ["text", "balanced", "presentation"]
-
-/** All valid {@link Audience} values. */
+/** All valid {@link Audience} values (no backing record — audience is tone-only, spec §5). */
 export const AUDIENCE_VALUES: readonly Audience[] = ["executive", "technical", "customer", "public"]
 
 // ── Mode definitions (data only — W4 consumes for weighted selection) ────
@@ -122,6 +116,9 @@ export const MODE_DEFINITIONS: Record<Mode, ModeDefinition> = {
   },
 }
 
+/** All valid {@link Mode} values, in spec §5 table order (derived from {@link MODE_DEFINITIONS}). */
+export const MODE_VALUES: readonly Mode[] = Object.keys(MODE_DEFINITIONS) as readonly Mode[]
+
 // ── Delivery budgets (editorial half of the dual-attribute capacity split) ─
 
 export interface DeliveryBudget {
@@ -153,7 +150,7 @@ export interface DeliveryBudget {
      * `svg/audit/capacity.ts` (`measureTextUnits`, CJK weight = 1.0) — a
      * visual-width-weighted character count, not a raw `.length`. That
      * existing constant (53) is the physical per-line geometry ceiling
-     * (derived from render geometry, a hard safety net); this one is the
+     * (derived from render geometry, a hard safety net). This one is the
      * tighter *editorial* budget from spec §5's delivery table. Task 3's
      * quality gate consumes both together per the dual-attribute split
      * documented on {@link DeliveryBudget.maxComponentsPerSlide}.
@@ -173,6 +170,9 @@ export const DELIVERY_BUDGETS: Record<Delivery, DeliveryBudget> = {
   presentation: { bodyBaselinePx: 32, maxComponentsPerSlide: 3, bullets: { maxItems: 4, maxUnitsPerItem: 30 } },
 }
 
+/** All valid {@link Delivery} values, in spec §5 table order (derived from {@link DELIVERY_BUDGETS}). */
+export const DELIVERY_VALUES: readonly Delivery[] = Object.keys(DELIVERY_BUDGETS) as readonly Delivery[]
+
 // ── Named presets (spec §5, "named presets") ────────────────────────────
 
 export interface ScenarioPreset {
@@ -181,7 +181,7 @@ export interface ScenarioPreset {
   /**
    * Soft theme recommendations — a suggestion, never a hard constraint
    * (spec §5). Surfaced in workflow step ① so an agent can open with a
-   * themed proposal; the user may still pick any theme. Every entry here
+   * themed proposal — the user may still pick any theme. Every entry here
    * must be a real `BUILTIN_THEME_IDS` member (`ir/index.ts`) — enforced by
    * this module's test suite, which imports and tests against it.
    */
@@ -192,37 +192,37 @@ export interface ScenarioPreset {
 export const SCENARIO_PRESETS: Record<string, ScenarioPreset> = {
   general: {
     id: "general",
-    axes: { mode: "briefing", delivery: "balanced", audience: "public" },
+    axes: Object.freeze({ mode: "briefing", delivery: "balanced", audience: "public" }),
     themeRecommendations: ["consulting"],
   },
   "boardroom-report": {
     id: "boardroom-report",
-    axes: { mode: "pyramid", delivery: "presentation", audience: "executive" },
+    axes: Object.freeze({ mode: "pyramid", delivery: "presentation", audience: "executive" }),
     themeRecommendations: ["consulting", "enterprise", "insight"],
   },
   pitch: {
     id: "pitch",
-    axes: { mode: "pyramid", delivery: "presentation", audience: "customer" },
+    axes: Object.freeze({ mode: "pyramid", delivery: "presentation", audience: "customer" }),
     themeRecommendations: ["consulting", "tech", "campaign"],
   },
   training: {
     id: "training",
-    axes: { mode: "instructional", delivery: "balanced", audience: "technical" },
+    axes: Object.freeze({ mode: "instructional", delivery: "balanced", audience: "technical" }),
     themeRecommendations: ["classroom", "academic", "tech"],
   },
   "product-launch": {
     id: "product-launch",
-    axes: { mode: "showcase", delivery: "presentation", audience: "customer" },
+    axes: Object.freeze({ mode: "showcase", delivery: "presentation", audience: "customer" }),
     themeRecommendations: ["campaign", "runway", "tech"],
   },
   "weekly-brief": {
     id: "weekly-brief",
-    axes: { mode: "briefing", delivery: "text", audience: "technical" },
+    axes: Object.freeze({ mode: "briefing", delivery: "text", audience: "technical" }),
     themeRecommendations: ["enterprise", "consulting"],
   },
   "annual-review": {
     id: "annual-review",
-    axes: { mode: "narrative", delivery: "balanced", audience: "public" },
+    axes: Object.freeze({ mode: "narrative", delivery: "balanced", audience: "public" }),
     themeRecommendations: ["journal", "heritage", "insight"],
   },
 }
@@ -232,7 +232,7 @@ export const SCENARIO_PRESETS: Record<string, ScenarioPreset> = {
  * global default when scenario is omitted entirely (spec §5's defaults
  * chain).
  */
-export const DEFAULT_SCENARIO: ScenarioAxes = SCENARIO_PRESETS.general.axes
+export const DEFAULT_SCENARIO: ScenarioAxes = Object.freeze(SCENARIO_PRESETS.general.axes)
 
 // ── resolveScenario (spec §5's defaults chain) ──────────────────────────
 
@@ -249,7 +249,7 @@ const AXIS_KEYS = ["mode", "delivery", "audience"] as const
  * - a preset id string → that preset's axes (unknown id throws
  *   {@link PptfastError}, listing the available preset ids)
  * - a partial axes object → each axis defaults independently
- *   (mode → "briefing", delivery → "balanced", audience → "public"; these
+ *   (mode → "briefing", delivery → "balanced", audience → "public" — these
  *   happen to equal `DEFAULT_SCENARIO`'s values because `general` *is* that
  *   exact combination, but the fallback here is per-axis, not "any omitted
  *   axis falls back to the whole default object")
@@ -263,13 +263,12 @@ export function resolveScenario(input: string | Partial<ScenarioAxes> | undefine
   if (input === undefined) return DEFAULT_SCENARIO
 
   if (typeof input === "string") {
-    const preset = SCENARIO_PRESETS[input]
-    if (!preset) {
+    if (!Object.hasOwn(SCENARIO_PRESETS, input)) {
       throw new PptfastError(
         `unknown scenario preset "${input}" — available: ${Object.keys(SCENARIO_PRESETS).join(", ")}`,
       )
     }
-    return preset.axes
+    return SCENARIO_PRESETS[input].axes
   }
 
   for (const key of Object.keys(input)) {

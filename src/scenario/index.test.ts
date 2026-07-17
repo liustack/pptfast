@@ -223,6 +223,19 @@ describe("resolveScenario", () => {
     expect(() => resolveScenario("not-a-real-preset")).toThrow(/available:.*general/)
   })
 
+  it("a preset id shadowing an inherited Object.prototype member throws instead of silently resolving", () => {
+    // Own-property guard regression probe: SCENARIO_PRESETS is a plain object
+    // literal, so a naive `SCENARIO_PRESETS[input]` lookup resolves these to
+    // truthy inherited members (the Object constructor, Object.prototype)
+    // instead of undefined — silently returning `preset.axes` as undefined
+    // rather than throwing. "__proto__" is doubly special: assigning it in an
+    // object literal sets the prototype rather than creating an own property,
+    // so `Object.hasOwn(SCENARIO_PRESETS, "__proto__")` correctly reports
+    // false too.
+    expect(() => resolveScenario("constructor")).toThrow(/available/)
+    expect(() => resolveScenario("__proto__")).toThrow(/available/)
+  })
+
   it("an empty partial-axes object defaults every axis independently", () => {
     expect(resolveScenario({})).toEqual({ mode: "briefing", delivery: "balanced", audience: "public" })
   })
