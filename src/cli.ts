@@ -2,6 +2,7 @@
 import { Command } from "commander"
 import { installNodePlatform } from "./platform/node"
 import { runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./cli/commands"
+import { checkForUpdate, createSelfUpdater } from "./cli/update"
 import { VERSION } from "./version"
 
 installNodePlatform()
@@ -75,6 +76,35 @@ program
   .action(async (ir: string, opts: { output: string }) => {
     try {
       console.log(await runPreview(ir, opts.output))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program
+  .command("check-update")
+  .description("Check npm for a newer pptfast release")
+  .action(async () => {
+    const info = await checkForUpdate({ currentVersion: VERSION })
+    if (!info.checked) fail(new Error(`update check failed: ${info.error}`))
+    console.log(
+      info.updateAvailable
+        ? `update available: ${info.currentVersion} → ${info.latestVersion} (run \`pptfast self-update\`)`
+        : `pptfast ${info.currentVersion} is up to date`,
+    )
+  })
+
+program
+  .command("self-update")
+  .description("Update the global pptfast install to the latest release")
+  .action(async () => {
+    try {
+      const result = await createSelfUpdater()({ currentVersion: VERSION })
+      console.log(
+        result.updated
+          ? `updated: ${result.currentVersion} → ${result.latestVersion}`
+          : `already at the latest version (${result.currentVersion})`,
+      )
     } catch (e) {
       fail(e)
     }
