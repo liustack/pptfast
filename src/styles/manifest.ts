@@ -5,7 +5,7 @@ import type {
   EndingArchetypeId,
   MotifArchetypeId,
 } from "../svg/archetypes/types"
-import { resolveThemeId, type CanonicalThemeId } from "./index"
+import { resolveThemeId, type CanonicalStyleId } from "./index"
 
 /**
  * Personality manifest（spec §3.3）：主题的「选择权」配置——允许哪些
@@ -21,16 +21,9 @@ export interface PersonalityManifest {
   }
   /** Motif：单值，非 allowed-set（spec §3.3 示意 YAML 的形态）。undefined = 该主题无 motif 装饰（Wave 5 后六主题均已设 motif）。 */
   motif?: MotifArchetypeId
-  /** MasterChrome 页脚行为的主题级开关（P2 Task 25）。undefined = 各字段默认 false。 */
-  chrome?: {
-    /** content 页背景图 + 卡片态时整页抑制页脚（custom 主题的存量语义）。默认 false。 */
-    suppressFooterOnCardContent?: boolean
-    /** 不画页脚分隔线（meta 文字照排）——主题自带版框线时避免双线（ink，2026-07-10）。默认 false。 */
-    suppressFooterRule?: boolean
-  }
 }
 
-export const THEME_MANIFESTS: Record<CanonicalThemeId, PersonalityManifest> = {
+export const THEME_MANIFESTS: Record<CanonicalStyleId, PersonalityManifest> = {
   // Wave 4 Task 23：六主题四页型 + motif 全量接线（迁移完成、观感不变）。
   // consulting 的 cover 保留双元素 ["banner-title","poster-center"]——P2 首个
   // 增量（2026-07-09）已人工审通过的多样性增量，不在本任务收窄回单元素。
@@ -111,9 +104,6 @@ export const THEME_MANIFESTS: Record<CanonicalThemeId, PersonalityManifest> = {
       content: ["banner-heading", "two-column"],
       ending: ["banner-ending"],
     },
-    // 原 custom 存量语义（P2 Task 25）：content 页背景图 + 卡片态时整页
-    // 抑制页脚。存量 custom/gallery deck 经 legacy map 落到本主题，保留。
-    chrome: { suppressFooterOnCardContent: true },
     // 2026-07-10 motif 全覆盖：IKB 方块秩序
     motif: "enterprise-motif",
   },
@@ -180,8 +170,8 @@ export const THEME_MANIFESTS: Record<CanonicalThemeId, PersonalityManifest> = {
     },
     motif: "ink-motif",
     // ink-motif 自带古籍版框线，MasterChrome 的页脚分隔线会形成双线
-    // （2026-07-10 用户截图指出）——抑制分隔线，meta 文字照排。
-    chrome: { suppressFooterRule: true },
+    // （2026-07-10 用户截图指出）——style 的 master.suppressFooterRule
+    // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/styles.ts），meta 文字照排。
   },
   // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty，零版式代码——
   // 沿用原 retail v1 验证过的浅底混搭（creative cover/chapter + consulting

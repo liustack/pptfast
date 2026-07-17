@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { measureBlock } from "../blocks"
 import { StackedPosterContent } from "./content-stacked-poster"
 import type { PptxIR, Slide } from "@/ir"
@@ -64,9 +64,9 @@ const threeBlockSlide: Slide = {
 
 function ir(theme: string, slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides,

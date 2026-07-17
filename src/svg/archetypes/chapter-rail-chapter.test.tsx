@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { assertSubset } from "../subset-validate"
 import { RailChapter } from "./chapter-rail-chapter"
 import type { PptxIR, Slide } from "@/ir"
@@ -25,9 +25,9 @@ const chapter2: Slide = {
 
 const ir = (theme: string): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [chapter1, content, chapter2],
@@ -61,9 +61,9 @@ describe("RailChapter", () => {
     const ctx = buildCtx(getTheme("academic"), {})
     const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
     const doc: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "academic" },
+      style: { id: "academic" },
       meta: {},
       assets: { images: {} },
       slides: [slide],

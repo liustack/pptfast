@@ -11,7 +11,7 @@ pptfast turns a JSON IR (intermediate representation) into a native DrawingML `.
 
 ```bash
 pptfast --version || npm install -g @liustack/pptfast
-pptfast check-update   # stay current — the schema and themes evolve
+pptfast check-update   # stay current — the schema and styles evolve
 ```
 
 ## Workflow
@@ -20,7 +20,7 @@ pptfast check-update   # stay current — the schema and themes evolve
 
 ```bash
 pptfast schema          # IR JSON Schema: the single source of truth
-pptfast themes --json   # built-in themes (id + label)
+pptfast styles --json   # built-in styles (id + label)
 ```
 
 Never write IR from memory of a previous session or from this file — the schema evolves and `schema` output always wins.
@@ -30,7 +30,7 @@ Never write IR from memory of a previous session or from this file — the schem
 Propose and confirm before writing any IR:
 
 - Slide count and narrative rhythm (cover → chapters → content runs → ending)
-- Theme id (pick from `themes` output to match the deck's tone)
+- Style id (pick from `styles` output to match the deck's tone)
 - What source material maps to which slides
 
 **After the user confirms, do not re-plan.** Restructuring a confirmed outline silently wastes the user's review. If new information genuinely forces a change, say so and re-confirm first.
@@ -51,9 +51,9 @@ Every error carries a 1-based page number and a concrete fix. Fix the IR and re-
 pptfast render deck.json -o deck.pptx
 ```
 
-`--theme <id>` overrides the deck theme without editing the IR.
+`--style <id>` overrides the deck style without editing the IR.
 
-If the project has a `pptfast.config.json`, its theme/tokens are project-wide brand defaults — do not fight them with `--theme` unless the user asks.
+If the project has a `pptfast.config.json`, its style/tokens are project defaults — do not fight them with `--style` unless the user asks.
 
 ### Step 5 — Optional visual self-check
 
@@ -90,7 +90,7 @@ A slide is a fixed-size canvas. Draft to fit on the first pass: few blocks per s
 
 ### Decor
 
-Set slide `decor` only when the user explicitly asks for decorative flourish. Default is none — themes already carry their own motifs.
+Set slide `decor` only when the user explicitly asks for decorative flourish. Default is none — styles already carry their own motifs.
 
 ## Rules
 

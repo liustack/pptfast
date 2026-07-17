@@ -4,7 +4,7 @@ import {
   formatIssues,
   generatePptx,
   irJsonSchema,
-  listThemes,
+  listStyles,
   renderSlideSvg,
   tokensJsonSchema,
   validateIr,
@@ -29,30 +29,30 @@ async function loadTokensFile(path: string): Promise<TokensOverride> {
 /**
  * Resolve deck defaults onto the raw (pre-validation) IR.
  * Precedence: CLI flag > pptfast.config.json (walked up from cwd) > IR.
- * `--theme` only swaps theme.id — IR-authored override/tokens survive.
+ * `--style` only swaps style.id — IR-authored tokens survive.
  */
 export async function applyDeckConfig(
   raw: unknown,
-  opts: { theme?: string; tokensPath?: string; cwd: string },
+  opts: { style?: string; tokensPath?: string; cwd: string },
 ): Promise<void> {
   if (typeof raw !== "object" || raw === null) return // schema error surfaces in validateIr
   const deck = raw as Record<string, unknown>
-  const irTheme =
-    typeof deck.theme === "object" && deck.theme !== null
-      ? (deck.theme as Record<string, unknown>)
+  const irStyle =
+    typeof deck.style === "object" && deck.style !== null
+      ? (deck.style as Record<string, unknown>)
       : {}
   const hit = await findConfig(opts.cwd)
-  const theme = opts.theme ?? hit?.config.theme ?? irTheme.id
+  const style = opts.style ?? hit?.config.style ?? irStyle.id
   const tokens = opts.tokensPath
     ? await loadTokensFile(opts.tokensPath)
-    : (hit?.config.tokens ?? irTheme.tokens)
-  if (theme === undefined && tokens === undefined) return
-  deck.theme = { ...irTheme, id: theme, ...(tokens !== undefined ? { tokens } : {}) }
+    : (hit?.config.tokens ?? irStyle.tokens)
+  if (style === undefined && tokens === undefined) return
+  deck.style = { ...irStyle, id: style, ...(tokens !== undefined ? { tokens } : {}) }
 }
 
 export interface RenderOptions {
   output: string
-  theme?: string
+  style?: string
   tokensPath?: string
   cwd?: string
 }
@@ -60,7 +60,7 @@ export interface RenderOptions {
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const raw = await loadIrFile(irPath)
   await applyDeckConfig(raw, {
-    theme: opts.theme,
+    style: opts.style,
     tokensPath: opts.tokensPath,
     cwd: opts.cwd ?? process.cwd(),
   })
@@ -82,21 +82,21 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
     throw new PptfastError(
       `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
     )
-  return `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
+  return `OK — ${v.ir!.slides.length} slides, style "${v.ir!.style.id}"`
 }
 
 export function runSchema(tokens = false): string {
   return JSON.stringify(tokens ? tokensJsonSchema() : irJsonSchema(), null, 2)
 }
 
-export function runThemes(asJson: boolean): string {
-  const themes = listThemes()
-  if (asJson) return JSON.stringify(themes, null, 2)
-  return themes.map((t) => `${t.id.padEnd(12)} ${t.label}`).join("\n")
+export function runStyles(asJson: boolean): string {
+  const styles = listStyles()
+  if (asJson) return JSON.stringify(styles, null, 2)
+  return styles.map((t) => `${t.id.padEnd(12)} ${t.label}`).join("\n")
 }
 
 const CONFIG_TEMPLATE = {
-  theme: "consulting",
+  style: "consulting",
   tokens: {
     colors: { primary: "#0B5FFF", accent: "#FF6A00" },
   },
@@ -113,7 +113,7 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
     }
     throw e
   }
-  return `wrote ${target} — themes: \`pptfast themes\`, tokens schema: \`pptfast schema --tokens\``
+  return `wrote ${target} — styles: \`pptfast styles\`, tokens schema: \`pptfast schema --tokens\``
 }
 
 export async function runPreview(irPath: string, outDir: string, cwd = process.cwd()): Promise<string> {

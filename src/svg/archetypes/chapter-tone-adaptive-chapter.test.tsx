@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { ToneAdaptiveChapter } from "./chapter-tone-adaptive-chapter"
 import type { PptxIR, Slide } from "@/ir"
 import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
@@ -49,9 +49,9 @@ const chapter1WithBg: Slide = {
 
 function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images },
     slides: [chapter1, content, chapter2],

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { CornerOrnamentMotif } from "./motif-corner-ornament-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -18,9 +18,9 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
 
 function mkIr(theme: string, filename: string): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename,
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [coverSlide],

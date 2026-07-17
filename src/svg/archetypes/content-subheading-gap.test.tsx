@@ -51,16 +51,16 @@
 import { describe, it, expect } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme, type CanonicalThemeId } from "../../themes"
+import { getTheme, type CanonicalStyleId } from "../../styles"
 import type { PptxIR, Slide } from "@/ir"
 import { CONTENT_ARCHETYPES } from "./index-content"
 import type { ContentArchetype } from "./types"
-import { THEME_MANIFESTS } from "../../themes/manifest"
+import { THEME_MANIFESTS } from "../../styles/manifest"
 
 /** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板）：
  * 数据源从 SVG_TEMPLATES[id].Content 改为经 manifest 解析该主题的 content
  * archetype（六主题各 1 个），验证的「副题间距 >=14px」共享助手不变。 */
-function contentArchetypeFor(themeId: CanonicalThemeId): ContentArchetype {
+function contentArchetypeFor(themeId: CanonicalStyleId): ContentArchetype {
   const id = THEME_MANIFESTS[themeId].archetypes.content[0]
   return CONTENT_ARCHETYPES[id]
 }
@@ -72,11 +72,11 @@ const HEADING_ONE_LINE = "三大支柱"
 const HEADING_TWO_LINE = "声明期望副本数，控制器驱动滚动更新与一键回滚，故障自愈无需人工介入"
 const SUBHEADING = "效率提升三成，风险敞口下降"
 
-function ir(themeId: CanonicalThemeId, slides: Slide[]): PptxIR {
+function ir(themeId: CanonicalStyleId, slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: themeId },
+    style: { id: themeId },
     meta: { organization: "ACME" },
     assets: { images: {} },
     slides,
@@ -125,7 +125,7 @@ function subheadingGlyphTop(subheadingY: number): number {
 }
 
 interface ThemeCase {
-  id: CanonicalThemeId
+  id: CanonicalStyleId
   isTitleLine: (el: Element) => boolean
   /** Renders a Content slide (given heading + blocks) whose subheadingY was touched by the S3b formula. */
   renderContent: (contentArch: ContentArchetype, ctx: ReturnType<typeof buildCtx>, heading: string) => Element

@@ -2,8 +2,8 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
-import { THEME_MANIFESTS } from "../../themes/manifest"
+import { getTheme } from "../../styles"
+import { THEME_MANIFESTS } from "../../styles/manifest"
 import { SplitDiagonalCover, readableOn } from "./cover-split-diagonal"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -15,9 +15,9 @@ const slide: Slide = {
 } as Slide
 const ir = (theme: string): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: { organization: "测试部", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],

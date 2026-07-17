@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { NarrowColumnContent } from "./content-narrow-column"
 import type { Block, PptxIR, Slide } from "@/ir"
 
@@ -35,9 +35,9 @@ const content: Slide = {
 
 const ir = (theme: string, slides: Slide[] = [chapter, content]): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides,

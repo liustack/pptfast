@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { ConstellationMotif } from "./motif-constellation-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -31,9 +31,9 @@ const coverWithBrokenAssetBg: Slide = {
 
 function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "deck.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images },
     slides: [coverSlide],

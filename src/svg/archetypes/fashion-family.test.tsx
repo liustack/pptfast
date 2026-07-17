@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { FashionMastheadCover } from "./cover-fashion-masthead"
 import { FashionChapter } from "./chapter-fashion-chapter"
 import { FashionEnding } from "./ending-fashion-ending"
@@ -19,9 +19,9 @@ const endingBare: Slide = { type: "ending", blocks: [] } as Slide
 
 function ir(slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "f.pptx",
-    theme: { id: "runway" },
+    style: { id: "runway" },
     meta: { organization: "时尚编辑部", date: "2026-10" },
     assets: { images: {} },
     slides,

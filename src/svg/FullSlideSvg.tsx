@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Block, PptxIR, Slide } from "@/ir"
-import type { ThemeTokens } from "../themes/tokens"
-import { getTheme } from "../themes"
+import type { ThemeTokens } from "../styles/tokens"
+import { getTheme } from "../styles"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { BlockCtx } from "./blocks/types"
@@ -16,7 +16,7 @@ import {
   ImageSplitPage,
   ImageTopPage,
 } from "./ImagePages"
-import { getManifest, type PersonalityManifest } from "../themes/manifest"
+import { getManifest, type PersonalityManifest } from "../styles/manifest"
 import { COVER_ARCHETYPES } from "./archetypes"
 import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
@@ -108,13 +108,13 @@ export function FullSlideSvg({
   className,
   preserveAspectRatio,
 }: FullSlideSvgProps) {
-  const tokens = getTheme(ir.theme.id, ir.theme.override, ir.theme.tokens)
+  const tokens = getTheme(ir.style.id, ir.style.tokens)
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.blocks : undefined,
   )
-  const manifest = getManifest(ir.theme.id)
+  const manifest = getManifest(ir.style.id)
   // motif 分发（P2 Task 24→Wave5 收尾）：全走 manifest.motif（六主题四页型
   // 已全量接线，旧 templates/<theme>.tsx 的 Decor 回落已随 templates 删除）。
   const Decor = manifest.motif ? MOTIF_ARCHETYPES[manifest.motif] : undefined

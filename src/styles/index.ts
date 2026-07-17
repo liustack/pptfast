@@ -1,10 +1,5 @@
 import type { TokensOverride } from "@/ir";
-import {
-  applyOverride,
-  applyTokensOverride,
-  type ThemeOverride,
-  type ThemeTokens,
-} from "./tokens";
+import { applyTokensOverride, type ThemeTokens } from "./tokens";
 import { CONSULTING_TOKENS } from "./consulting";
 import { ENTERPRISE_TOKENS } from "./enterprise";
 import { ACADEMIC_TOKENS } from "./academic";
@@ -28,7 +23,7 @@ import { HERITAGE_TOKENS } from "./heritage";
  * heritage Heritage）。pptfast 是独立分叉，无存量 deck 兼容包袱，不维护 legacy id
  * 映射表（resolveThemeId 对未知 id 一律回落 consulting）。
  */
-export const CANONICAL_THEME_IDS = [
+export const CANONICAL_STYLE_IDS = [
   "consulting",
   "enterprise",
   "academic",
@@ -44,10 +39,10 @@ export const CANONICAL_THEME_IDS = [
   "heritage",
 ] as const;
 
-export type CanonicalThemeId = (typeof CANONICAL_THEME_IDS)[number];
+export type CanonicalStyleId = (typeof CANONICAL_STYLE_IDS)[number];
 
 /** 场景 id → 英文场景名（plan 卡片徽章等对用户展示处用，接口统一英文）。 */
-export const THEME_LABELS: Record<CanonicalThemeId, string> = {
+export const STYLE_LABELS: Record<CanonicalStyleId, string> = {
   consulting: "Business Consulting",
   academic: "Academic",
   insight: "Financial Insight",
@@ -64,13 +59,13 @@ export const THEME_LABELS: Record<CanonicalThemeId, string> = {
 };
 
 /** Map any theme id onto a canonical, registered theme id. Unknown ids fall back to consulting. */
-export function resolveThemeId(id: string): CanonicalThemeId {
-  return (CANONICAL_THEME_IDS as readonly string[]).includes(id)
-    ? (id as CanonicalThemeId)
+export function resolveThemeId(id: string): CanonicalStyleId {
+  return (CANONICAL_STYLE_IDS as readonly string[]).includes(id)
+    ? (id as CanonicalStyleId)
     : "consulting";
 }
 
-export const THEME_TOKENS: Record<CanonicalThemeId, ThemeTokens> = {
+export const THEME_TOKENS: Record<CanonicalStyleId, ThemeTokens> = {
   consulting: CONSULTING_TOKENS,
   enterprise: ENTERPRISE_TOKENS,
   academic: ACADEMIC_TOKENS,
@@ -86,22 +81,17 @@ export const THEME_TOKENS: Record<CanonicalThemeId, ThemeTokens> = {
   heritage: HERITAGE_TOKENS,
 };
 
-/** Resolve a theme: base tokens → narrow `override` → deep `tokens` (tokens wins). */
-export function getTheme(
-  id: string,
-  override?: ThemeOverride,
-  tokens?: TokensOverride,
-): ThemeTokens {
+/** Resolve a style's theme tokens: base tokens → deep `tokens` override. */
+export function getTheme(id: string, tokens?: TokensOverride): ThemeTokens {
   const base = THEME_TOKENS[resolveThemeId(id)];
-  if (!base) throw new Error(`Unknown theme id: ${id}`);
-  return applyTokensOverride(applyOverride(base, override), tokens);
+  if (!base) throw new Error(`Unknown style id: ${id}`);
+  return applyTokensOverride(base, tokens);
 }
 
 export type {
   ThemeTokens,
   ThemeColors,
   ThemeFonts,
-  ThemeOverride,
   LayoutType,
 } from "./tokens";
-export { applyOverride, applyTokensOverride } from "./tokens";
+export { applyTokensOverride } from "./tokens";

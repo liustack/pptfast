@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest"
 import { getTheme } from "./index"
 import { renderSlideSvg, validateIr } from "../api"
 
-describe("theme.tokens override merging", () => {
+describe("style.tokens override merging", () => {
   it("merges palette/fonts/shape over the base theme", () => {
-    const t = getTheme("consulting", undefined, {
+    const t = getTheme("consulting", {
       colors: { primary: "#0B5FFF", chartPalette: ["#111111"] },
       fonts: { heading: ["Inter"] },
       shape: { radius: 10 },
@@ -16,20 +16,15 @@ describe("theme.tokens override merging", () => {
     expect(t.colors.bg).toBe(getTheme("consulting").colors.bg)
   })
 
-  it("tokens wins over the narrow theme.override", () => {
-    const t = getTheme("consulting", { primary: "#222222" }, { colors: { primary: "#333333" } })
-    expect(t.colors.primary).toBe("#333333")
-  })
-
   it("no tokens keeps the identical base reference (zero-cost default)", () => {
-    expect(getTheme("consulting", undefined, undefined)).toBe(getTheme("consulting"))
+    expect(getTheme("consulting", undefined)).toBe(getTheme("consulting"))
   })
 
-  it("theme.tokens reaches the rendered SVG", () => {
+  it("style.tokens reaches the rendered SVG", () => {
     const v = validateIr({
-      version: "2",
+      version: "3",
       filename: "t.pptx",
-      theme: { id: "consulting", tokens: { colors: { primary: "#0B5FFF" } } },
+      style: { id: "consulting", tokens: { colors: { primary: "#0B5FFF" } } },
       slides: [{ type: "cover", heading: "Hello Tokens" }],
     })
     expect(v.ok).toBe(true)

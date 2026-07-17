@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { BannerHeadingContent } from "./content-banner-heading"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -54,9 +54,9 @@ function ir(
   opts?: { brand?: PptxIR["brand"]; assets?: PptxIR["assets"] },
 ): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: "consulting" },
+    style: { id: "consulting" },
     meta: {},
     assets: opts?.assets ?? { images: {} },
     brand: opts?.brand,

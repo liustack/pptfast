@@ -5,7 +5,7 @@ import { JOURNAL_TOKENS } from "./journal"
 import type { ThemeTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
-// registered both in index.ts / THEME_IDS. These tests still import the
+// registered both in index.ts / BUILTIN_STYLE_IDS. These tests still import the
 // token constants directly (rather than going through getTheme()) since
 // they're asserting the raw token shape, not the registry wiring — that's
 // covered separately by themes/index.test.ts and

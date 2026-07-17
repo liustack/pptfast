@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { THEME_IDS } from "@/ir"
+import { BUILTIN_STYLE_IDS } from "@/ir"
 import { getTheme } from "./index"
 import { resolveFontFace, SAFE_FONTS } from "../svg/fonts"
 
@@ -7,7 +7,7 @@ import { resolveFontFace, SAFE_FONTS } from "../svg/fonts"
 // theme resolves heading/body/mono to a font that ships on a stock Windows, so a
 // generated deck never opens with a substituted (and reflowed) font.
 describe("themes resolve to Windows-safe fonts", () => {
-  for (const id of THEME_IDS) {
+  for (const id of BUILTIN_STYLE_IDS) {
     it(`${id}: heading, body and mono all resolve into the safe set`, () => {
       const t = getTheme(id)
       const heading = resolveFontFace(t.fonts.heading, "heading")

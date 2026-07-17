@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { ConstellationChapter } from "./chapter-constellation-chapter"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -21,9 +21,9 @@ const chapter2: Slide = {
 
 const ir = (theme: string): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides: [chapter1, content, chapter2],

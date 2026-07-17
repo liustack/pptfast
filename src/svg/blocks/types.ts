@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Block } from "@/ir"
-import type { ThemeColors } from "../../themes/tokens"
+import type { ThemeColors } from "../../styles/tokens"
 
 /**
  * Render context threaded through every SVG block. Colors are hex strings from
@@ -13,7 +13,7 @@ export interface BlockCtx {
   colors: ThemeColors
   fonts: { heading: string; body: string; mono: string }
   /** 主题细节 shape token（radius/gapScale），缺省=各消费点 baked 值。 */
-  shape?: import("../../themes/tokens").ThemeShape
+  shape?: import("../../styles/tokens").ThemeShape
   /** Resolved asset map (from `ir.assets.images`) for image-bearing blocks. */
   images?: Record<string, { src: string; alt?: string }>
   /**

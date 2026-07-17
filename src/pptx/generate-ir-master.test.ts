@@ -45,9 +45,9 @@ describe("generatePptxBlob v2 master wiring", () => {
     // consulting's decor is solid-fill only, keeping this master-wiring
     // test clear of that path entirely.
     const ir: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "master.pptx",
-      theme: { id: "consulting" },
+      style: { id: "consulting" },
       meta: {},
       assets: { images: {} },
       slides: [

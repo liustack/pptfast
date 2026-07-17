@@ -1,16 +1,63 @@
- 
+
 import { describe, it, expect } from "vitest"
-import { parsePptxIR, THEME_IDS } from "./index"
+import { parsePptxIR, BUILTIN_STYLE_IDS } from "./index"
 
 const minimal = () => ({
-  version: "2", filename: "d.pptx",
-  theme: { id: "consulting" }, meta: { organization: "ACME" },
+  version: "3", filename: "d.pptx",
+  style: { id: "consulting" }, meta: { organization: "ACME" },
   assets: { images: {} },
   slides: [{ type: "cover", heading: "标题" }],
 })
 
-describe("pptx-ir v2", () => {
-  it("parses minimal v2", () => {
+describe("IR v3 style field", () => {
+  it("accepts style with tokens and master overrides", () => {
+    const d: any = minimal()
+    d.style = {
+      id: "ink",
+      tokens: { colors: { primary: "#0B5FFF" } },
+      master: { suppressFooterRule: false },
+    }
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects the v2 theme field (strict)", () => {
+    const d: any = minimal()
+    d.theme = { id: "consulting" }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects the dropped override field", () => {
+    const d: any = minimal()
+    d.style = { id: "consulting", override: { primary: "#123456" } }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("IR v3 omission defaults (weak-model friendly)", () => {
+  it("a bare slides-only deck parses with all defaults", () => {
+    const r = parsePptxIR({ slides: [{ heading: "只有一页", blocks: [] }] })
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.version).toBe("3")
+      expect(r.data.filename).toBe("presentation")
+      expect(r.data.style.id).toBe("consulting")
+      expect(r.data.slides[0]!.type).toBe("content")
+    }
+  })
+  it("style with tokens but no id defaults to consulting", () => {
+    const d: any = minimal()
+    d.style = { tokens: { colors: { primary: "#0B5FFF" } } }
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.style.id).toBe("consulting")
+  })
+  it("a wrong value is still a hard error (omission ≠ typo)", () => {
+    const d: any = minimal()
+    d.version = "4"
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("pptx-ir v3", () => {
+  it("parses minimal v3", () => {
     const r = parsePptxIR(minimal()); expect(r.success).toBe(true)
   })
   it("slide carries type/variant, no layout_ref", () => {
@@ -35,9 +82,9 @@ describe("pptx-ir v2", () => {
       expect(r.data.assets).toEqual({ images: {} })
     }
   })
-  it("consulting is a theme id, stripe-purple is not", () => {
-    expect(THEME_IDS).toContain("consulting")
-    expect(THEME_IDS).not.toContain("stripe-purple")
+  it("consulting is a built-in style id, stripe-purple is not", () => {
+    expect(BUILTIN_STYLE_IDS).toContain("consulting")
+    expect(BUILTIN_STYLE_IDS).not.toContain("stripe-purple")
   })
 })
 
@@ -267,10 +314,10 @@ describe("verdict_banner block", () => {
   })
 })
 
-describe("theme.tokens override (v0.2)", () => {
+describe("style.tokens override", () => {
   it("accepts a palette/fonts/shape override", () => {
     const d: any = minimal()
-    d.theme = {
+    d.style = {
       id: "consulting",
       tokens: {
         colors: { primary: "#0B5FFF", chartPalette: ["#111111", "#222222"] },
@@ -282,17 +329,17 @@ describe("theme.tokens override (v0.2)", () => {
   })
   it("rejects a non-hex color", () => {
     const d: any = minimal()
-    d.theme = { id: "consulting", tokens: { colors: { primary: "blue" } } }
+    d.style = { id: "consulting", tokens: { colors: { primary: "blue" } } }
     expect(parsePptxIR(d).success).toBe(false)
   })
   it("rejects unknown keys (strict)", () => {
     const d: any = minimal()
-    d.theme = { id: "consulting", tokens: { colours: {} } }
+    d.style = { id: "consulting", tokens: { colours: {} } }
     expect(parsePptxIR(d).success).toBe(false)
   })
   it("rejects gapScale outside the documented range", () => {
     const d: any = minimal()
-    d.theme = { id: "consulting", tokens: { shape: { gapScale: 2 } } }
+    d.style = { id: "consulting", tokens: { shape: { gapScale: 2 } } }
     expect(parsePptxIR(d).success).toBe(false)
   })
 })

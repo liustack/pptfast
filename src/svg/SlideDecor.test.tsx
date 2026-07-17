@@ -21,9 +21,9 @@ const ctx: BlockCtx = {
 
 function deck(slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "d.pptx",
-    theme: { id: "consulting" },
+    style: { id: "consulting" },
     meta: {},
     assets: { images: {} },
     slides,

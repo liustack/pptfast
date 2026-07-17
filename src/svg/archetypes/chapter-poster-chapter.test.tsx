@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { PosterChapter } from "./chapter-poster-chapter"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -23,9 +23,9 @@ const chapter2: Slide = {
 
 const ir = (theme: string): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: { organization: "创意组" },
     assets: { images: {} },
     slides: [chapter1, content, chapter2],
@@ -77,9 +77,9 @@ describe("PosterChapter", () => {
   it("shrinks a pathologically long heading onto <=2 lines instead of overflowing, at 800-weight", () => {
     const longSlide: Slide = { type: "chapter", heading: CJK_LONG, blocks: [] } as Slide
     const deck: PptxIR = {
-      version: "2",
+      version: "3",
       filename: "x.pptx",
-      theme: { id: "insight" },
+      style: { id: "insight" },
       meta: {},
       assets: { images: {} },
       slides: [longSlide],

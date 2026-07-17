@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { generatePptxBlob } from "./generate"
-import { THEME_IDS, type PptxIR, type Block } from "@/ir"
+import { BUILTIN_STYLE_IDS, type PptxIR, type Block } from "@/ir"
 
 const blocks: Block[] = [
   { type: "kpi_cards", items: [
@@ -17,12 +17,12 @@ const blocks: Block[] = [
 ]
 
 describe("all themes export v2 (download path)", () => {
-  for (const id of THEME_IDS) {
+  for (const id of BUILTIN_STYLE_IDS) {
     it(`${id} generates a non-empty blob without throwing`, async () => {
       const ir: PptxIR = {
-        version: "2",
+        version: "3",
         filename: `${id}.pptx`,
-        theme: { id },
+        style: { id },
         meta: {},
         assets: { images: {} },
         slides: [

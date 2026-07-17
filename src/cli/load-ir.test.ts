@@ -28,9 +28,9 @@ describe("resolveLocalAssets", () => {
     const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
     await writeFile(join(dir, "logo.png"), PNG_1PX)
     const ir = PptxIRSchema.parse({
-      version: "2",
+      version: "3",
       filename: "t",
-      theme: { id: "consulting" },
+      style: { id: "consulting" },
       assets: { images: { logo: { src: "logo.png" } } },
       slides: [{ type: "cover", heading: "x" }],
     })
@@ -40,9 +40,9 @@ describe("resolveLocalAssets", () => {
 
   it("leaves data URIs and http(s) URLs untouched", async () => {
     const ir = PptxIRSchema.parse({
-      version: "2",
+      version: "3",
       filename: "t",
-      theme: { id: "consulting" },
+      style: { id: "consulting" },
       assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "https://x.test/i.png" } } },
       slides: [{ type: "cover", heading: "x" }],
     })
@@ -53,9 +53,9 @@ describe("resolveLocalAssets", () => {
 
   it("fails loud with the resolved path for a missing file", async () => {
     const ir = PptxIRSchema.parse({
-      version: "2",
+      version: "3",
       filename: "t",
-      theme: { id: "consulting" },
+      style: { id: "consulting" },
       assets: { images: { gone: { src: "missing.png" } } },
       slides: [{ type: "cover", heading: "x" }],
     })

@@ -5,7 +5,7 @@ import { assertSubset } from "../subset-validate"
 import { auditSvgMarkup } from "../audit/svg-audit"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { BentoPanelContent } from "./content-bento-panel"
 import type { Block, PptxIR, Slide } from "@/ir"
 
@@ -14,9 +14,9 @@ const CJK_LONG =
 
 function ir(theme: string, slides: Slide[]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {},
     assets: { images: {} },
     slides,

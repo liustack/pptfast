@@ -4,7 +4,7 @@ import { chapterNumberFor, sectionNameFor, pageInfo, contentIndexInChapter } fro
 import type { PptxIR } from "@/ir"
 
 const ir = (types: string[]): PptxIR =>
-  ({ version: "2", filename: "d.pptx", theme: { id: "consulting" }, meta: {},
+  ({ version: "3", filename: "d.pptx", style: { id: "consulting" }, meta: {},
      assets: { images: {} },
      slides: types.map((t, i) => ({ type: t as any, heading: `H${i}`, blocks: [] })) }) as PptxIR
 

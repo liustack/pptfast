@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { assertSubset } from "../subset-validate"
 import { RailEnding } from "./ending-rail-ending"
 import type { PptxIR, Slide } from "@/ir"
@@ -24,9 +24,9 @@ const endingBare: Slide = { type: "ending", blocks: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
   ({
-    version: "2",
+    version: "3",
     filename: "x.pptx",
-    theme: { id: theme },
+    style: { id: theme },
     meta: {
       organization: "维岚科技",
       contact: { email: "hi@weilan.example", website: "weilan.example" },

@@ -23,9 +23,9 @@ function slide(type: Slide["type"]): Slide {
 
 function makeIR(slides: Slide[], animation?: Meta["animation"]): PptxIR {
   return {
-    version: "2",
+    version: "3",
     filename: "animations.pptx",
-    theme: { id: "consulting" },
+    style: { id: "consulting" },
     meta: animation ? { animation } : {},
     assets: { images: {} },
     slides,
