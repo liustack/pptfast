@@ -276,8 +276,20 @@ export function registerTheme(def: ThemeDefinition): void {
     }
     for (const id of ids) {
       const layout = getLayout(id)
-      if (!layout || !layout.slideTypes.includes(slideType)) {
+      if (!layout) {
         throw new PptfastError(`theme "${def.id}" layouts.${slideType} references unknown layout id "${id}"`)
+      }
+      // Curated sets feed the auto-selection path, which assumes archetype ids
+      // only — a takeover id here would crash at render (undefined component).
+      if (layout.kind !== "archetype") {
+        throw new PptfastError(
+          `theme "${def.id}" layouts.${slideType}: "${id}" is a ${layout.kind} layout — curated sets may only contain archetype layouts`,
+        )
+      }
+      if (!layout.slideTypes.includes(slideType)) {
+        throw new PptfastError(
+          `theme "${def.id}" layouts.${slideType}: layout "${id}" is not valid for "${slideType}" slides`,
+        )
       }
     }
   }

@@ -282,7 +282,24 @@ describe("registerTheme", () => {
           },
         }),
       ),
-    ).toThrow(/two-column/)
+    ).toThrow(/layout "two-column" is not valid for "cover" slides/)
+  })
+
+  it("rejects a takeover layout id in a curated set (auto-selection assumes archetypes — render would crash)", () => {
+    // image-split is kind "takeover" with slideTypes ["content"] — slide-type
+    // matching alone would let it through, the kind check must stop it.
+    expect(() =>
+      registerTheme(
+        testTheme({
+          layouts: {
+            cover: ["poster-center"],
+            chapter: ["banner-chapter"],
+            content: ["image-split"],
+            ending: ["banner-ending"],
+          },
+        }),
+      ),
+    ).toThrow(/"image-split" is a takeover layout — curated sets may only contain archetype layouts/)
   })
 
   it("rejects a theme missing layout coverage for one of the four slide types", () => {
