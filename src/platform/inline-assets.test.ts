@@ -14,8 +14,8 @@ function ir(images: Record<string, { src: string }>): PptxIR {
     meta: {},
     assets: { images },
     slides: [
-      { type: "cover", heading: "标题", blocks: [] },
-      { type: "ending", blocks: [] },
+      { type: "cover", heading: "标题", components: [] },
+      { type: "ending", components: [] },
     ],
   } as PptxIR
 }

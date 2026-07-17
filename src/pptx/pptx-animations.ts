@@ -1,5 +1,5 @@
 import JSZip from "jszip"
-import type { Block } from "@/ir"
+import type { Component } from "@/ir"
 
 /**
  * Deck-level slide-transition effect (S1 in the wave-C plan). `"none"` opts a
@@ -120,7 +120,7 @@ export async function applySlideTransitions(
 }
 
 // ============================================================================
-// S3 — per-block entrance animations (opt-in, meta.animation.elements="auto")
+// S3 — per-component entrance animations (opt-in, meta.animation.elements="auto")
 // ============================================================================
 
 /**
@@ -130,7 +130,7 @@ export async function applySlideTransitions(
  * two *different* markers can never be a substring of one another (unlike,
  * say, `"blk0-2"` inside `"blk0-20"`) because same-length strings are only
  * substrings of each other when they're identical. Four digits comfortably
- * covers any realistic deck (thousands of slides/blocks); if a deck ever
+ * covers any realistic deck (thousands of slides/components); if a deck ever
  * exceeded it the marker just gets wider and stays internally consistent —
  * it would only collide with a *different* over-9999 index, not with any
  * normal one.
@@ -141,24 +141,24 @@ function pad4(n: number): string {
 
 /**
  * The `blk{slideIndex}-{blockIndex}` token `renderOps` (svg2pptx/render.ts)
- * folds into a block-tagged shape's `objectName`, and this module's own
- * `collectSpidsForBlock` searches for to reverse-lookup that block's spids
+ * folds into a component-tagged shape's `objectName`, and this module's own
+ * `collectSpidsForBlock` searches for to reverse-lookup that component's spids
  * from the exported slide XML's `<p:cNvPr id="…" name="…">` entries.
  */
 export function blockMarker(slideIndex: number, blockIndex: number): string {
   return `blk${pad4(slideIndex)}-${pad4(blockIndex)}`
 }
 
-/** Semantic entrance effect chosen per block type (wave-C plan, S3). */
+/** Semantic entrance effect chosen per component type (wave-C plan, S3). */
 export type ElementAnimationEffect = "fade" | "wipe" | "fly"
 
 /**
- * Block type → entrance effect, per the wave-C plan's S3 semantic mapping:
+ * Component type → entrance effect, per the wave-C plan's S3 semantic mapping:
  * `chart` → wipe, `steps` → fly, everything else (`kpi_cards`/`icon_cards`/
- * `verdict_banner` explicitly called out in the plan, plus every other block
+ * `verdict_banner` explicitly called out in the plan, plus every other component
  * type) → fade.
  */
-export function blockAnimationEffect(blockType: Block["type"]): ElementAnimationEffect {
+export function blockAnimationEffect(blockType: Component["type"]): ElementAnimationEffect {
   if (blockType === "chart") return "wipe"
   if (blockType === "steps") return "fly"
   return "fade"
@@ -185,7 +185,7 @@ export function blockAnimationEffect(blockType: Block["type"]): ElementAnimation
  *   4 — "Peek In, From Bottom" in PowerPoint's own gallery), and `fly` here
  *   is ppt-master's `cut` (`slide(fromLeft)`, presetID 42, subtype 8 —
  *   "Cut In, From Left"). The OOXML bytes are exactly what that blueprint
- *   ships; only which of *our* semantic block types triggers them differs.
+ *   ships; only which of *our* semantic component types triggers them differs.
  */
 const ELEMENT_EFFECT_PRESET: Record<
   ElementAnimationEffect,
@@ -196,7 +196,7 @@ const ELEMENT_EFFECT_PRESET: Record<
   fly: { filter: "slide(fromLeft)", presetID: 42, presetSubtype: 8 },
 }
 
-/** One block's entrance: the shapes (spids) that enter together, and how. */
+/** One component's entrance: the shapes (spids) that enter together, and how. */
 export interface ElementAnimationEntry {
   effect: ElementAnimationEffect
   /** Shape ids from `<p:cNvPr id="…">`, in document order. */
@@ -220,10 +220,10 @@ function setAnimEffectPairXml(spid: number, filter: string, nextId: () => number
 }
 
 /**
- * One block's `<p:par>`, chained `delayMs` after the shared outer wrapper
- * begins. Single-spid blocks match the DSpark sample's own structure
+ * One component's `<p:par>`, chained `delayMs` after the shared outer wrapper
+ * begins. Single-spid components match the DSpark sample's own structure
  * byte-for-byte (modulo ids/delay/filter): wrapper → presetID leaf
- * (`nodeType="afterEffect"`) → one set+animEffect pair. Multi-spid blocks
+ * (`nodeType="afterEffect"`) → one set+animEffect pair. Multi-spid components
  * ("块内 shape 同时入场" — S3) add one `nodeType="withEffect"` leaf per spid,
  * *siblings* directly under this wrapper — `withEffect` (not `afterEffect`)
  * because these targets start *together*, not chained after one another.
@@ -284,18 +284,18 @@ function blockParXml(
 
 /**
  * Generate a `<p:timing>` fragment: one `mainSeq` containing one `par` per
- * block, chained `staggerMs` apart (S3's "块间 after-previous 错峰 200ms"),
+ * component, chained `staggerMs` apart (S3's "块间 after-previous 错峰 200ms"),
  * each internally doing "set visibility → animEffect" per spid (S3's unit
  * test alignment target). Structurally mirrors the DSpark sample deck's own
  * `ppt/slides/slide3.xml` `<p:timing>` tree: `tmRoot` (id 1) → `mainSeq`
  * (id 2, `concurrent="1" nextAc="seek"`) → one shared outer wrapper (id 3,
  * `delay="indefinite"` + `onBegin` on the mainSeq id) → one chained `<p:par>`
- * per block → `<p:prevCondLst>`/`<p:nextCondLst>` siblings on `<p:seq>` and a
+ * per component → `<p:prevCondLst>`/`<p:nextCondLst>` siblings on `<p:seq>` and a
  * trailing `<p:bldLst>` — all present in the sample and reproduced here
  * verbatim (see this file's `pptx-animations.test.ts` for the structural
  * diff against the unpacked sample).
  *
- * Entries with no spids (block never got rendered — dropped by overflow, or
+ * Entries with no spids (component never got rendered — dropped by overflow, or
  * the theme routed it through a path that predates this feature) are
  * dropped silently; if *nothing* has spids, returns `""` so the caller skips
  * injection for that slide entirely rather than writing an empty, pointless
@@ -411,8 +411,8 @@ function collectSpidsForBlock(xml: string, marker: string): number[] {
 }
 
 /**
- * Order a slide's block indices for the entrance sequence: original
- * `slide.blocks` order, except `verdict_banner` block(s) move to the end
+ * Order a slide's component indices for the entrance sequence: original
+ * `slide.components` order, except `verdict_banner` component(s) move to the end
  * regardless of where they sit in that order (S3: "顺序压轴：verdict 块排
  * 最后不论块序"). Stable otherwise.
  *
@@ -423,7 +423,7 @@ function collectSpidsForBlock(xml: string, marker: string): number[] {
  * doesn't import this module's *values* at runtime (bundle isolation),
  * only compares against them in tests.
  */
-export function orderedBlockIndices(blockTypes: readonly Block["type"][]): number[] {
+export function orderedBlockIndices(blockTypes: readonly Component["type"][]): number[] {
   const indices = blockTypes.map((_, i) => i)
   const normal = indices.filter((i) => blockTypes[i] !== "verdict_banner")
   const verdict = indices.filter((i) => blockTypes[i] === "verdict_banner")
@@ -431,20 +431,20 @@ export function orderedBlockIndices(blockTypes: readonly Block["type"][]): numbe
 }
 
 /**
- * Patch a finished `.pptx`'s slide XML, injecting each slide's per-block
+ * Patch a finished `.pptx`'s slide XML, injecting each slide's per-component
  * entrance-animation `<p:timing>` tree (wave-C S3). Same JSZip-write-after-patch
  * shape as `applySlideTransitions` above (open the zip, rewrite parts, re-zip);
  * defensive like it too — a bad/non-zip input just comes back unchanged, since
  * a missed injection has no worse failure mode than "no animation," not a
  * wrong visual.
  *
- * `slidesBlockTypes[i]` is slide `i`'s `slide.blocks.map(b => b.type)`, in
+ * `slidesBlockTypes[i]` is slide `i`'s `slide.components.map(b => b.type)`, in
  * original IR order — the same order `blockMarker`'s `blockIndex` was
  * assigned against when `renderOps` tagged each shape's `objectName`
  * (svg2pptx/render.ts). Callers should only invoke this when
  * `meta.animation.elements === "auto"`; there is no internal on/off switch
  * here; an empty `slidesBlockTypes[i]` (cover/chapter/ending slides, or any
- * slide with no blocks) just skips that slide.
+ * slide with no components) just skips that slide.
  *
  * Insertion point matches `applySlideTransitions`: immediately before each
  * slide part's closing `</p:sld>`. Per ECMA-376's `CT_Slide` child order
@@ -460,7 +460,7 @@ export function orderedBlockIndices(blockTypes: readonly Block["type"][]): numbe
  */
 export async function applyElementAnimations(
   pptx: Blob | ArrayBuffer | Uint8Array,
-  slidesBlockTypes: ReadonlyArray<ReadonlyArray<Block["type"]>>,
+  slidesBlockTypes: ReadonlyArray<ReadonlyArray<Component["type"]>>,
   staggerMs = 200,
 ): Promise<Blob> {
   const asBlob = pptx instanceof Blob ? pptx : new Blob([pptx as BlobPart], { type: PPTX_MIME })

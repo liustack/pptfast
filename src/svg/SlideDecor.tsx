@@ -1,5 +1,5 @@
 import type { PptxIR, Slide } from "@/ir"
-import type { BlockCtx } from "./blocks/types"
+import type { ComponentCtx } from "./components/types"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 
 /**
@@ -33,7 +33,7 @@ export function SlideDecor({
   ir: PptxIR
   slide: Slide
   index: number
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
   const decor = slide.decor
   if (!decor) return null

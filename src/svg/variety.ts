@@ -1,7 +1,7 @@
 import type { PptxIR } from "@/ir"
 
 /**
- * djb2 哈希（与 blocks/chart-svg.tsx 的 stableHash 同算法，那处是文件私有
+ * djb2 哈希（与 components/chart-svg.tsx 的 stableHash 同算法，那处是文件私有
  * 未导出，此处按同样理由本地实现）。恒返回非负整数。
  */
 function stableHash(s: string): number {

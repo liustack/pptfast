@@ -26,16 +26,15 @@ function rectsOverlap(
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
 
-const chapter1: Slide = { type: "chapter", heading: "第一部分：研究背景", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一部分：研究背景", components: [] } as Slide
 // Single-line banner, with subheading + footnote so both optional slots
 // (SUBHEADING_SLOT / footnote) exercise their non-empty branches.
 const bannerSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "结论先行：断言横幅",
   subheading: "**核心结论**：证据链完整",
   footnote: "数据来源：内部埋点，2026Q2",
-  blocks: [
+  components: [
     { type: "paragraph", text: "本节陈述关键论断。" },
     { type: "bullets", items: ["论据一", "论据二", "论据三"], style: "default" },
   ],
@@ -44,9 +43,8 @@ const bannerSlide: Slide = {
 // slot-skipping branch also gets covered.
 const longSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: CJK_LONG,
-  blocks: [{ type: "paragraph", text: "支撑论据。" }],
+  components: [{ type: "paragraph", text: "支撑论据。" }],
 } as Slide
 
 function ir(
@@ -170,15 +168,13 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const shortSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论先行",
-      blocks: [{ type: "paragraph", text: "支撑论据。" }],
+      components: [{ type: "paragraph", text: "支撑论据。" }],
     } as Slide
     const longHeadingSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: CJK_LONG,
-      blocks: [{ type: "paragraph", text: "支撑论据。" }],
+      components: [{ type: "paragraph", text: "支撑论据。" }],
     } as Slide
 
     function render(slide: Slide): Element {
@@ -224,9 +220,8 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论先行",
-      blocks: [{ type: "paragraph", text: "支撑论据。" }],
+      components: [{ type: "paragraph", text: "支撑论据。" }],
       footnote: "数据来源：内部",
     } as Slide
     const markup = renderSvgMarkup(
@@ -251,9 +246,8 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论先行",
-      blocks: [{ type: "paragraph", text: "支撑论据。" }],
+      components: [{ type: "paragraph", text: "支撑论据。" }],
     } as Slide
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -296,9 +290,8 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "验证子集",
-      blocks: [
+      components: [
         { type: "paragraph", text: "文本段落。" },
         { type: "bullets", items: ["项目一", "项目二"], style: "default" },
       ],
@@ -341,7 +334,7 @@ describe("BannerHeadingContent", () => {
     // round(34*0.32)）。
     expect(heading.getAttribute("y")).toBe("127")
 
-    // Content blocks below the banner, not inside a foreignObject.
+    // Content components below the banner, not inside a foreignObject.
     expect(markup).not.toContain("foreignObject")
     expect(markup).toContain("论据一")
   })

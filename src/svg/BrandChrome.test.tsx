@@ -3,9 +3,9 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { BrandChrome } from "./BrandChrome"
 import type { PptxIR, Slide } from "@/ir"
-import type { BlockCtx } from "./blocks/types"
+import type { ComponentCtx } from "./components/types"
 
-const ctx: BlockCtx = {
+const ctx: ComponentCtx = {
   colors: {
     bg: "#FFFFFF",
     surface: "#F4F4F4",
@@ -34,9 +34,8 @@ function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
 
 const cardBgContentSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "带背景卡片",
-  blocks: [{ type: "paragraph", text: "卡内文字。" }],
+  components: [{ type: "paragraph", text: "卡内文字。" }],
   background: { kind: "asset", asset_id: "bg", fit: "cover" },
 }
 

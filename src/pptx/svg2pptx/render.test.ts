@@ -164,7 +164,7 @@ describe("renderOps", () => {
   })
 })
 
-describe("renderOp block marker (wave-C S3)", () => {
+describe("renderOp component marker (wave-C S3)", () => {
   it("does nothing when the op has no blockIndex, even with a slideIndex passed", () => {
     const slide = recorder()
     renderOp(

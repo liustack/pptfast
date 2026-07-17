@@ -9,7 +9,7 @@ function ir(filename: string, headings: string[]): PptxIR {
     theme: { id: "consulting" },
     meta: {},
     assets: { images: {} },
-    slides: headings.map((heading) => ({ type: "content", heading, blocks: [] })),
+    slides: headings.map((heading) => ({ type: "content", heading, components: [] })),
   } as unknown as PptxIR
 }
 

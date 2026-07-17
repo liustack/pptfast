@@ -12,10 +12,10 @@ import type { PptxIR, Slide } from "@/ir"
 // fashion 家族（runway 专属新表达，2026-07-10）基本行为锁：满版色块、
 // readableOn 自适应前景、出血 data-bleed 声明、subset-clean。
 
-const cover: Slide = { type: "cover", heading: "秋冬特辑", subheading: "解构与重塑", blocks: [] } as Slide
-const chapter: Slide = { type: "chapter", heading: "廓形的反叛", blocks: [] } as Slide
-const ending: Slide = { type: "ending", heading: "下期预告", subheading: "十月刊", blocks: [] } as Slide
-const endingBare: Slide = { type: "ending", blocks: [] } as Slide
+const cover: Slide = { type: "cover", heading: "秋冬特辑", subheading: "解构与重塑", components: [] } as Slide
+const chapter: Slide = { type: "chapter", heading: "廓形的反叛", components: [] } as Slide
+const ending: Slide = { type: "ending", heading: "下期预告", subheading: "十月刊", components: [] } as Slide
+const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 function ir(slides: Slide[]): PptxIR {
   return {

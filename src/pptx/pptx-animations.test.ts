@@ -134,16 +134,16 @@ describe("applySlideTransitions", () => {
 })
 
 // ============================================================================
-// S3 — per-block entrance animations (opt-in, meta.animation.elements="auto")
+// S3 — per-component entrance animations (opt-in, meta.animation.elements="auto")
 // ============================================================================
 
 describe("blockMarker", () => {
-  it("zero-pads slide/block indices to 4 digits", () => {
+  it("zero-pads slide/component indices to 4 digits", () => {
     expect(blockMarker(0, 2)).toBe("blk0000-0002")
     expect(blockMarker(3, 12)).toBe("blk0003-0012")
   })
 
-  it("never produces a marker that is a substring of a different marker (10+ blocks/slides)", () => {
+  it("never produces a marker that is a substring of a different marker (10+ components/slides)", () => {
     // blk0-2 would be a naive substring of blk0-20 without fixed-width
     // padding — this is exactly the false-positive `collectSpidsForBlock`'s
     // `.includes()` check must never hit.
@@ -173,7 +173,7 @@ describe("blockAnimationEffect", () => {
     expect(blockAnimationEffect("verdict_banner")).toBe("fade")
   })
 
-  it("defaults every other block type to fade", () => {
+  it("defaults every other component type to fade", () => {
     expect(blockAnimationEffect("paragraph")).toBe("fade")
     expect(blockAnimationEffect("bullets")).toBe("fade")
     expect(blockAnimationEffect("quote")).toBe("fade")
@@ -213,8 +213,8 @@ describe("elementTimingXml", () => {
     expect(xml).toContain('<p:bldP spid="16" grpId="0"/>')
   })
 
-  it("a single-spid block's par is set-visibility → animEffect, matching the sample's fade block exactly", () => {
-    // Sample's spid=16 block (presetID=10/entr/0, filter="fade", dur 400):
+  it("a single-spid component's par is set-visibility → animEffect, matching the sample's fade component exactly", () => {
+    // Sample's spid=16 component (presetID=10/entr/0, filter="fade", dur 400):
     const xml = elementTimingXml([{ effect: "fade", spids: [16] }])
     expect(xml).toContain(
       '<p:cTn id="5" presetID="10" presetClass="entr" presetSubtype="0" fill="hold" nodeType="afterEffect">',
@@ -233,7 +233,7 @@ describe("elementTimingXml", () => {
     expect(xml.indexOf('spid="16"')).toBeLessThan(xml.lastIndexOf('spid="16"'))
   })
 
-  it("stages blocks 200ms apart by default (S3: 块间 after-previous 错峰 200ms)", () => {
+  it("stages components 200ms apart by default (S3: 块间 after-previous 错峰 200ms)", () => {
     const xml = elementTimingXml([
       { effect: "fade", spids: [16] },
       { effect: "wipe", spids: [26] },
@@ -262,9 +262,9 @@ describe("elementTimingXml", () => {
     expect(fly).toContain('presetID="42" presetClass="entr" presetSubtype="8"')
   })
 
-  it("aggregates multiple spids in one block into simultaneous withEffect pars, siblings directly under the block wrapper (no extra grouping layer)", () => {
+  it("aggregates multiple spids in one component into simultaneous withEffect pars, siblings directly under the component wrapper (no extra grouping layer)", () => {
     const xml = elementTimingXml([{ effect: "fade", spids: [10, 11, 12] }])
-    // No chained "afterEffect" leaf for a multi-spid block — every leaf is withEffect.
+    // No chained "afterEffect" leaf for a multi-spid component — every leaf is withEffect.
     expect(xml).not.toContain("nodeType=\"afterEffect\"")
     expect((xml.match(/nodeType="withEffect"/g) ?? []).length).toBe(3)
     for (const spid of [10, 11, 12]) {
@@ -272,7 +272,7 @@ describe("elementTimingXml", () => {
       expect(xml).toContain(`<p:tgtEl><p:spTgt spid="${spid}"/></p:tgtEl></p:cBhvr></p:animEffect>`)
       expect(xml).toContain(`<p:bldP spid="${spid}" grpId="0"/>`)
     }
-    // The block wrapper (id="4", delay=0 — the only block, so no stagger)
+    // The component wrapper (id="4", delay=0 — the only component, so no stagger)
     // parents all three withEffect leaves directly — there is no
     // intermediate "group" <p:par> any more (that used to be id="5" wrapping
     // ids 6/9/12; now id="4" wraps ids 5/8/11 with nothing in between).
@@ -284,12 +284,12 @@ describe("elementTimingXml", () => {
 
   it("drops entries with no spids but keeps staging the ones that do have them", () => {
     const xml = elementTimingXml([
-      { effect: "fade", spids: [] }, // dropped — block never got rendered
+      { effect: "fade", spids: [] }, // dropped — component never got rendered
       { effect: "wipe", spids: [26] },
     ])
     expect(xml).not.toBe("")
     expect(xml).toContain('spid="26"')
-    // The surviving (only) block still starts at delay=0 — the dropped one
+    // The surviving (only) component still starts at delay=0 — the dropped one
     // doesn't leave a gap in the stagger sequence.
     expect(xml).toContain('<p:cTn id="4" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst>')
   })
@@ -307,13 +307,13 @@ describe("elementTimingXml", () => {
 
 // ============================================================================
 // Critical fix regression: PowerPoint's mainSeq par-nesting convention is
-// exactly 3 levels deep (click par → block par → effect par). A prior
+// exactly 3 levels deep (click par → component par → effect par). A prior
 // revision of `blockParXml` inserted a 4th, redundant "group" `<p:par>`
-// around a multi-spid block's withEffect leaves — real PowerPoint (verified
+// around a multi-spid component's withEffect leaves — real PowerPoint (verified
 // with a live automation probe, not just a schema reading) refuses to open
 // the resulting file, throwing up its "repair" dialog on every launch, on
-// every deck that had at least one multi-shape block (i.e. almost every
-// real deck: `chart`/`steps`/`kpi_cards`/`icon_cards` blocks routinely
+// every deck that had at least one multi-shape component (i.e. almost every
+// real deck: `chart`/`steps`/`kpi_cards`/`icon_cards` components routinely
 // explode into several shapes). This guard walks the actual parsed DOM tree
 // — not a string/regex search — specifically so it can't be fooled by
 // attribute-order or whitespace changes and keeps catching this exact class
@@ -342,17 +342,17 @@ describe("mainSeq par-nesting depth — PowerPoint compatibility guard", () => {
     return max
   }
 
-  it("stays at 3 levels for a single-spid block (click → block → afterEffect leaf)", () => {
+  it("stays at 3 levels for a single-spid component (click → component → afterEffect leaf)", () => {
     const xml = elementTimingXml([{ effect: "fade", spids: [16] }])
     expect(maxParDepthUnderMainSeq(xml)).toBe(3)
   })
 
-  it("stays at 3 levels for a multi-spid block — the withEffect leaves must NOT get an extra grouping par", () => {
+  it("stays at 3 levels for a multi-spid component — the withEffect leaves must NOT get an extra grouping par", () => {
     const xml = elementTimingXml([{ effect: "fade", spids: [10, 11, 12] }])
     expect(maxParDepthUnderMainSeq(xml)).toBe(3)
   })
 
-  it("stays at 3 levels across several staged blocks mixing single- and multi-spid", () => {
+  it("stays at 3 levels across several staged components mixing single- and multi-spid", () => {
     const xml = elementTimingXml([
       { effect: "fade", spids: [1, 2] },
       { effect: "wipe", spids: [3] },
@@ -365,8 +365,8 @@ describe("mainSeq par-nesting depth — PowerPoint compatibility guard", () => {
     const shapes = [
       { id: 2, name: "svg2pptx-a-blk0000-0000" },
       { id: 3, name: "svg2pptx-b-blk0000-0000" },
-      { id: 4, name: "svg2pptx-c-blk0000-0000" }, // block 0: 3 spids (multi)
-      { id: 5, name: "svg2pptx-d-blk0000-0001" }, // block 1: 1 spid (single)
+      { id: 4, name: "svg2pptx-c-blk0000-0000" }, // component 0: 3 spids (multi)
+      { id: 5, name: "svg2pptx-d-blk0000-0001" }, // component 1: 1 spid (single)
     ]
     const zip = new JSZip()
     zip.file(
@@ -430,8 +430,8 @@ describe("applyElementAnimations", () => {
   it("injects a <p:timing> built from the shapes' blk markers", async () => {
     const input = await buildAnimatedPptx([
       [
-        { id: 2, name: "svg2pptx-abc123-blk0000-0000" }, // block 0 (paragraph → fade)
-        { id: 5, name: "svg2pptx-gradient-xyz-0-blk0000-0001" }, // block 1 (chart → wipe), gradient marker coexisting
+        { id: 2, name: "svg2pptx-abc123-blk0000-0000" }, // component 0 (paragraph → fade)
+        { id: 5, name: "svg2pptx-gradient-xyz-0-blk0000-0001" }, // component 1 (chart → wipe), gradient marker coexisting
       ],
     ])
     const out = await applyElementAnimations(input, [["paragraph", "chart"]])
@@ -443,7 +443,7 @@ describe("applyElementAnimations", () => {
     expect(xml).toContain('filter="wipe(down)"')
   })
 
-  it("aggregates multiple shapes sharing the same block marker into one par", async () => {
+  it("aggregates multiple shapes sharing the same component marker into one par", async () => {
     const input = await buildAnimatedPptx([
       [
         { id: 2, name: "svg2pptx-a-blk0000-0000" },
@@ -457,24 +457,24 @@ describe("applyElementAnimations", () => {
     expect((xml.match(/nodeType="withEffect"/g) ?? []).length).toBe(3)
   })
 
-  it("orders verdict_banner last regardless of its position in slide.blocks", async () => {
+  it("orders verdict_banner last regardless of its position in slide.components", async () => {
     const input = await buildAnimatedPptx([
       [
-        { id: 2, name: "svg2pptx-a-blk0000-0000" }, // verdict_banner, block index 0
-        { id: 3, name: "svg2pptx-b-blk0000-0001" }, // paragraph, block index 1
+        { id: 2, name: "svg2pptx-a-blk0000-0000" }, // verdict_banner, component index 0
+        { id: 3, name: "svg2pptx-b-blk0000-0001" }, // paragraph, component index 1
       ],
     ])
     const out = await applyElementAnimations(input, [["verdict_banner", "paragraph"]])
     const [xml] = await orderedSlideXmls(out)
     // paragraph (spid 3) must be staged before verdict_banner (spid 2) despite
-    // being block index 1 (after verdict_banner's index 0).
+    // being component index 1 (after verdict_banner's index 0).
     expect(xml.indexOf('spid="3"')).toBeLessThan(xml.indexOf('spid="2"'))
     // verdict_banner is fade, staged last → its wrapper carries the later delay.
     expect(xml).toContain('<p:cTn id="4" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst>')
     expect(xml).toContain('fill="hold"><p:stCondLst><p:cond delay="200"/></p:stCondLst>')
   })
 
-  it("skips slides with no blocks (cover/chapter/ending) without touching their XML", async () => {
+  it("skips slides with no components (cover/chapter/ending) without touching their XML", async () => {
     const input = await buildAnimatedPptx([[], [{ id: 2, name: "svg2pptx-a-blk0001-0000" }]])
     const out = await applyElementAnimations(input, [[], ["paragraph"]])
     const [cover, content] = await orderedSlideXmls(out)
@@ -482,7 +482,7 @@ describe("applyElementAnimations", () => {
     expect(content).toContain("<p:timing>")
   })
 
-  it("skips a slide entirely when none of its blocks' markers are found (nothing was tagged)", async () => {
+  it("skips a slide entirely when none of its components' markers are found (nothing was tagged)", async () => {
     const input = await buildAnimatedPptx([[{ id: 2, name: "Shape 1" }]]) // no blk marker at all
     const out = await applyElementAnimations(input, [["paragraph"]])
     const [xml] = await orderedSlideXmls(out)
@@ -534,17 +534,17 @@ describe("applyElementAnimations — pptxgenjs placeholder id collision", () => 
   // as the slide's *last* shape whenever the slide's master has `slideNumber`
   // set (every `content`-type master — `master-builder.ts`), independent of
   // the STEP1-3 per-shape id counter (`idx + 2`, sequential from 2). A
-  // content slide with >=24 real block shapes — routine for a chart+steps
+  // content slide with >=24 real component shapes — routine for a chart+steps
   // combo, see `pptx-generate-animations.test.ts`'s real-pipeline repro —
   // pushes that counter to 25 too, so pptxgenjs's own output can carry two
   // `<p:cNvPr id="25">` elements in one slide part before this module's fix.
   function slideWithPlaceholderCollision(): Array<{ id: number; name: string }> {
     const chartShapes = Array.from({ length: 14 }, (_, i) => ({
-      id: i + 2, // ids 2..15 — block 0 (chart)
+      id: i + 2, // ids 2..15 — component 0 (chart)
       name: `svg2pptx-chart${i}-blk0000-0000`,
     }))
     const stepsShapes = Array.from({ length: 10 }, (_, i) => ({
-      id: i + 16, // ids 16..25 — block 1 (steps); last one collides below
+      id: i + 16, // ids 16..25 — component 1 (steps); last one collides below
       name: `svg2pptx-steps${i}-blk0000-0001`,
     }))
     // pptxgenjs STEP4's own hardcoded shape: no blk marker, id fixed at 25

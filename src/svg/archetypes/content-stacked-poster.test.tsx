@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
-import { measureBlock } from "../blocks"
+import { measureComponent } from "../components"
 import { StackedPosterContent } from "./content-stacked-poster"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -29,33 +29,30 @@ function rectsOverlap(
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }
 
-const chapter1: Slide = { type: "chapter", heading: "第一章", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一章", components: [] } as Slide
 
 // 1 块：海报路径的单主视觉 rect。
-const oneBlockSlide: Slide = {
+const oneComponentSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "核心指标",
-  blocks: [{ type: "paragraph", text: "本季度表现优异。" }],
+  components: [{ type: "paragraph", text: "本季度表现优异。" }],
 } as Slide
 
 // 2 块：海报路径的主视觉 + 标注条。
-const twoBlockSlide: Slide = {
+const twoComponentSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "双栏演示",
-  blocks: [
+  components: [
     { type: "paragraph", text: "主视觉说明文字。" },
     { type: "paragraph", text: "补充说明。" },
   ],
 } as Slide
 
 // >=3 块：降级为原始左对齐堆叠构图。
-const threeBlockSlide: Slide = {
+const threeComponentSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "多块降级",
-  blocks: [
+  components: [
     { type: "paragraph", text: "第一段。" },
     { type: "bullets", items: ["要点一", "要点二"], style: "default" },
     { type: "paragraph", text: "第三段。" },
@@ -94,9 +91,9 @@ function parseAudit(attr: string | null | undefined): { x: number; y: number; w:
 describe("StackedPosterContent", () => {
   it("creative tokens 下 1 块：居中海报——muted kicker、accent 短横条走 primary、800-weight 居中标题（text）、单个主视觉 rect 到 y=640", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const deck = ir("insight", [chapter1, oneBlockSlide])
+    const deck = ir("insight", [chapter1, oneComponentSlide])
     const { markup, root } = render(
-      <StackedPosterContent ir={deck} slide={oneBlockSlide} index={1} ctx={ctx} />,
+      <StackedPosterContent ir={deck} slide={oneComponentSlide} index={1} ctx={ctx} />,
     )
     expect(markup).not.toContain("foreignObject")
     expect(markup).toContain("核心指标")
@@ -129,7 +126,7 @@ describe("StackedPosterContent", () => {
     )
     expect(primaryTexts.length).toBe(0)
 
-    // Single hero rect, x=190 w=900, bottom fixed at 640 (1-block mode).
+    // Single hero rect, x=190 w=900, bottom fixed at 640 (1-component mode).
     const heroGroup = Array.from(root.querySelectorAll("g")).find((g) =>
       g.getAttribute("data-audit-rect")?.startsWith("190,"),
     )!
@@ -138,14 +135,14 @@ describe("StackedPosterContent", () => {
     expect(heroRect.w).toBe(900)
     expect(heroRect.y! + heroRect.h!).toBe(640)
 
-    // No bottom strip / divider in 1-block mode.
+    // No bottom strip / divider in 1-component mode.
     expect(root.querySelector('line[y1="520"]')).toBeNull()
   })
 
   it("creative tokens 下 2 块：主视觉在 y=520 让位，border 分隔线，标注条 rect y=532->640", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const deck = ir("insight", [twoBlockSlide])
-    const { root } = render(<StackedPosterContent ir={deck} slide={twoBlockSlide} index={0} ctx={ctx} />)
+    const deck = ir("insight", [twoComponentSlide])
+    const { root } = render(<StackedPosterContent ir={deck} slide={twoComponentSlide} index={0} ctx={ctx} />)
 
     const heroGroup = Array.from(root.querySelectorAll("g")).find((g) =>
       g.getAttribute("data-audit-rect")?.startsWith("190,"),
@@ -171,9 +168,9 @@ describe("StackedPosterContent", () => {
 
   it("creative tokens 下 ≥3 块：降级为左对齐 kicker(primary)/500-weight 标题(text)/border 分隔线/满宽堆叠，无海报短横条", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const deck = ir("insight", [chapter1, threeBlockSlide])
+    const deck = ir("insight", [chapter1, threeComponentSlide])
     const { markup, root } = render(
-      <StackedPosterContent ir={deck} slide={threeBlockSlide} index={1} ctx={ctx} />,
+      <StackedPosterContent ir={deck} slide={threeComponentSlide} index={1} ctx={ctx} />,
     )
     expect(markup).toContain("多块降级")
 
@@ -209,10 +206,28 @@ describe("StackedPosterContent", () => {
     ).toBeUndefined()
   })
 
+  it("degrade path (≥3 components) honors a non-default arrangement — W2 task 3: registry declares arrangements \"all\" for this archetype because the degrade path passes slide.arrangement straight through unchanged", () => {
+    const twoColThreeComponentSlide: Slide = { ...threeComponentSlide, arrangement: "two_column" } as Slide
+    const ctx = buildCtx(resolveStyle("insight"), {})
+    const deck = ir("insight", [chapter1, twoColThreeComponentSlide])
+    const { root } = render(
+      <StackedPosterContent ir={deck} slide={twoColThreeComponentSlide} index={1} ctx={ctx} />,
+    )
+    // two_column splits the 3 components into two x-columns (ceil(3/2)=2 left,
+    // 1 right) instead of one full-width (x=56, w=1168) stack.
+    const boxes = Array.from(root.querySelectorAll("g[data-audit-box]")).map((g) =>
+      parseAudit(g.getAttribute("data-audit-box")),
+    )
+    expect(boxes.length).toBe(3)
+    const xs = new Set(boxes.map((b) => b.x))
+    expect(xs.size).toBe(2)
+    for (const b of boxes) expect(b.w).toBeLessThan(1168)
+  })
+
   it("footnote 存在时海报/降级两条路径都走 muted（孤儿色 META_MUTED 已并入，#666670 不残留）", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
 
-    const posterFootnoteSlide: Slide = { ...oneBlockSlide, footnote: "数据来源：内部审计" } as Slide
+    const posterFootnoteSlide: Slide = { ...oneComponentSlide, footnote: "数据来源：内部审计" } as Slide
     const { markup: posterOut, root: posterRoot } = render(
       <StackedPosterContent ir={ir("insight", [posterFootnoteSlide])} slide={posterFootnoteSlide} index={0} ctx={ctx} />,
     )
@@ -220,7 +235,7 @@ describe("StackedPosterContent", () => {
     expect(posterFootnote.getAttribute("fill")).toBe(ctx.colors.muted)
     expect(posterOut).not.toContain("#666670")
 
-    const degradeFootnoteSlide: Slide = { ...threeBlockSlide, footnote: "数据来源：内部审计" } as Slide
+    const degradeFootnoteSlide: Slide = { ...threeComponentSlide, footnote: "数据来源：内部审计" } as Slide
     const { markup: degradeOut, root: degradeRoot } = render(
       <StackedPosterContent ir={ir("insight", [degradeFootnoteSlide])} slide={degradeFootnoteSlide} index={0} ctx={ctx} />,
     )
@@ -231,8 +246,8 @@ describe("StackedPosterContent", () => {
 
   it("consulting tokens 下用 consulting 自己的 primary/text/muted/border，creative 烤死色不残留（token 化成立）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
-    const deck = ir("consulting", [chapter1, oneBlockSlide])
-    const out = renderSvgMarkup(<StackedPosterContent ir={deck} slide={oneBlockSlide} index={1} ctx={ctx} />)
+    const deck = ir("consulting", [chapter1, oneComponentSlide])
+    const out = renderSvgMarkup(<StackedPosterContent ir={deck} slide={oneComponentSlide} index={1} ctx={ctx} />)
 
     expect(out).toContain("#051C2C") // consulting primary（也是 text），accent 短横条 + 标题
     expect(out).toContain("#6C6C6C") // consulting muted，kicker（需要前置 chapter 才会渲染）
@@ -245,19 +260,18 @@ describe("StackedPosterContent", () => {
     expect(out).not.toContain("#666670")
 
     const degradeOut = renderSvgMarkup(
-      <StackedPosterContent ir={ir("consulting", [threeBlockSlide])} slide={threeBlockSlide} index={0} ctx={ctx} />,
+      <StackedPosterContent ir={ir("consulting", [threeComponentSlide])} slide={threeComponentSlide} index={0} ctx={ctx} />,
     )
     expect(degradeOut).toContain("#D5D5CB") // consulting border，降级路径的分隔线
     expect(degradeOut).not.toContain("#2A2A2E")
   })
 
-  it("1 scalable (chart) block: uniformly scales to fill the hero, capped at 1.3x", () => {
+  it("1 scalable (chart) component: uniformly scales to fill the hero, capped at 1.3x", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const chartSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "增长趋势",
-      blocks: [
+      components: [
         {
           type: "chart",
           chart_type: "bar",
@@ -294,9 +308,9 @@ describe("StackedPosterContent", () => {
     expect(box.x).toBeGreaterThanOrEqual(54)
   })
 
-  it("1 block + footnote: hero rect shrinks to bottom=600, leaving room above the y=656 footnote", () => {
+  it("1 component + footnote: hero rect shrinks to bottom=600, leaving room above the y=656 footnote", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { ...oneBlockSlide, footnote: "数据来源：内部审计" } as Slide
+    const slide: Slide = { ...oneComponentSlide, footnote: "数据来源：内部审计" } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
 
     const heroGroup = Array.from(root.querySelectorAll("g")).find((g) =>
@@ -311,9 +325,9 @@ describe("StackedPosterContent", () => {
     expect(footnote.getAttribute("y")).toBe("656")
   })
 
-  it("2 blocks + footnote: strip bottom shrinks to 600 while the hero/divider split (520) stays put", () => {
+  it("2 components + footnote: strip bottom shrinks to 600 while the hero/divider split (520) stays put", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { ...twoBlockSlide, footnote: "数据来源：内部审计" } as Slide
+    const slide: Slide = { ...twoComponentSlide, footnote: "数据来源：内部审计" } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
 
     // The hero/strip split (divider) is unrelated to footnote room — it
@@ -336,13 +350,12 @@ describe("StackedPosterContent", () => {
     expect(stripRect.y! + stripRect.h!).toBe(600) // 640 - 40, not the fixed 640
   })
 
-  it("a 2-block deck whose second block can't fit the 108px caption strip degrades to the full-width stack", () => {
+  it("a 2-component deck whose second component can't fit the 108px caption strip degrades to the full-width stack", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "溢出降级",
-      blocks: [
+      components: [
         { type: "paragraph", text: "主视觉。" },
         {
           type: "bullets",
@@ -363,9 +376,9 @@ describe("StackedPosterContent", () => {
     expect(posterRect).toBeUndefined()
   })
 
-  it("a 0-block content slide degrades without crashing", () => {
+  it("a 0-component content slide degrades without crashing", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { type: "content", variant: "single", heading: "空白页", blocks: [] } as Slide
+    const slide: Slide = { type: "content", heading: "空白页", components: [] } as Slide
     expect(() =>
       render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />),
     ).not.toThrow()
@@ -375,9 +388,8 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "版位安全校验",
-      blocks: [
+      components: [
         { type: "paragraph", text: "第一块。" },
         { type: "paragraph", text: "第二块。" },
       ],
@@ -407,21 +419,19 @@ describe("StackedPosterContent", () => {
     }
   })
 
-  it("Content body passes subset validation in both 1-block and 2-block mode", () => {
+  it("Content body passes subset validation in both 1-component and 2-component mode", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const oneBlock: Slide = {
+    const oneComponent: Slide = {
       type: "content",
-      variant: "single",
       heading: "验证子集",
-      blocks: [{ type: "bullets", items: ["项目一", "项目二"], style: "default" }],
+      components: [{ type: "bullets", items: ["项目一", "项目二"], style: "default" }],
     } as Slide
-    const twoBlocks: Slide = {
+    const twoComponents: Slide = {
       type: "content",
-      variant: "single",
       heading: "验证子集双块",
-      blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
+      components: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
     } as Slide
-    for (const slide of [oneBlock, twoBlocks]) {
+    for (const slide of [oneComponent, twoComponents]) {
       const { root } = render(
         <StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
       )
@@ -433,9 +443,8 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: CJK_LONG,
-      blocks: [{ type: "paragraph", text: "概要。" }],
+      components: [{ type: "paragraph", text: "概要。" }],
     } as Slide
     // render() itself must not throw for a pathologically long heading.
     const { markup, root } = render(
@@ -465,9 +474,8 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: CJK_LONG,
-      blocks: [
+      components: [
         { type: "paragraph", text: "第一段。" },
         { type: "bullets", items: ["要点一", "要点二"], style: "default" },
         { type: "paragraph", text: "第三段。" },
@@ -508,7 +516,7 @@ describe("StackedPosterContent subheading", () => {
   it("poster path, no subheading: hero rect bottom edge stays at the pre-subheading formula", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const { root } = render(
-      <StackedPosterContent ir={ir("insight", [oneBlockSlide])} slide={oneBlockSlide} index={0} ctx={ctx} />,
+      <StackedPosterContent ir={ir("insight", [oneComponentSlide])} slide={oneComponentSlide} index={0} ctx={ctx} />,
     )
     const heroGroup = Array.from(root.querySelectorAll("g")).find((g) =>
       g.getAttribute("data-audit-rect")?.startsWith("190,"),
@@ -526,7 +534,7 @@ describe("StackedPosterContent subheading", () => {
 
   it("poster path, with subheading: centered accent text at titleLastY+46, heroY (and hero rect fits gate) shift down 34", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { ...oneBlockSlide, subheading: "效率提升三成，风险敞口下降" } as Slide
+    const slide: Slide = { ...oneComponentSlide, subheading: "效率提升三成，风险敞口下降" } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
     const sub = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("效率提升三成"),
@@ -546,7 +554,7 @@ describe("StackedPosterContent subheading", () => {
 
   it("emphasis markup: ** ** segments invert to colors.text at fontWeight 700 in the poster subheading", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { ...oneBlockSlide, subheading: "**效率提升三成**，风险敞口下降" } as Slide
+    const slide: Slide = { ...oneComponentSlide, subheading: "**效率提升三成**，风险敞口下降" } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
     const tspan = Array.from(root.querySelectorAll("tspan")).find((t) =>
       (t.textContent ?? "").includes("效率提升三成"),
@@ -561,7 +569,7 @@ describe("StackedPosterContent subheading", () => {
 
   it("overly long poster subheading shrinks to 16px then truncates", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { ...oneBlockSlide, subheading: CJK_LONG.repeat(2) } as Slide
+    const slide: Slide = { ...oneComponentSlide, subheading: CJK_LONG.repeat(2) } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
     const sub = Array.from(root.querySelectorAll("text")).find(
       (t) => (t.textContent ?? "").includes("微服务") && t.getAttribute("text-anchor") === "middle",
@@ -571,22 +579,21 @@ describe("StackedPosterContent subheading", () => {
     expect(sub.textContent).not.toBe(CJK_LONG.repeat(2))
   })
 
-  it("a block that fits the old (no-subheading) hero budget stops fitting once the subheading eats 34px — falls back to the stacked layout", () => {
+  it("a component that fits the old (no-subheading) hero budget stops fitting once the subheading eats 34px — falls back to the stacked layout", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    // HERO_W=900; posterBottom=640 (no footnote, 1 block ⇒ not isPair).
+    // HERO_W=900; posterBottom=640 (no footnote, 1 component ⇒ not isPair).
     // No-subheading heroY = titleLastY(184)+HERO_TITLE_GAP(48) = 232 ⇒
     // budget 408. With-subheading heroY = 232+34 = 266 ⇒ budget 374.
     // This paragraph measures 392px at width 900 — fits 408, not 374.
     const text = CJK_LONG.repeat(15).slice(0, 600)
-    const block: Slide["blocks"][number] = { type: "paragraph", text }
-    expect(measureBlock(block, 900, ctx)).toBeGreaterThan(374)
-    expect(measureBlock(block, 900, ctx)).toBeLessThanOrEqual(408)
+    const component: Slide["components"][number] = { type: "paragraph", text }
+    expect(measureComponent(component, 900, ctx)).toBeGreaterThan(374)
+    expect(measureComponent(component, 900, ctx)).toBeLessThanOrEqual(408)
 
     const withoutSubheading: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
-      blocks: [block],
+      components: [component],
     } as Slide
     const withSubheading: Slide = { ...withoutSubheading, subheading: "效率提升三成" } as Slide
 
@@ -619,7 +626,7 @@ describe("StackedPosterContent subheading", () => {
   it("degrade path, no subheading: content rect y stays at the pre-subheading formula (180 + headingExtra)", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const { root } = render(
-      <StackedPosterContent ir={ir("insight", [threeBlockSlide])} slide={threeBlockSlide} index={0} ctx={ctx} />,
+      <StackedPosterContent ir={ir("insight", [threeComponentSlide])} slide={threeComponentSlide} index={0} ctx={ctx} />,
     )
     const rect = Array.from(root.querySelectorAll("g")).find((g) =>
       g.getAttribute("data-audit-rect")?.startsWith("56,"),
@@ -636,7 +643,7 @@ describe("StackedPosterContent subheading", () => {
 
   it("degrade path, with subheading: left-aligned accent text at headingLastY+50, content rect shifts down 46", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { ...threeBlockSlide, subheading: "效率提升三成，风险敞口下降" } as Slide
+    const slide: Slide = { ...threeComponentSlide, subheading: "效率提升三成，风险敞口下降" } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
     const sub = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("效率提升三成"),

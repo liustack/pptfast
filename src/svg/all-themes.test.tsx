@@ -3,11 +3,11 @@ import { describe, it, expect } from "vitest"
 import { slideToSvgMarkup, slideToOps } from "./render-slide"
 import { parseSvgRoot } from "./serialize"
 import { assertSubset } from "./subset-validate"
-import { BUILTIN_THEME_IDS, type PptxIR, type Slide, type Block } from "@/ir"
+import { BUILTIN_THEME_IDS, type PptxIR, type Slide, type Component } from "@/ir"
 
-// One content slide exercising every block renderer in a single pass.
-const allBlocks: Block[] = [
-  { type: "paragraph", text: "本页用于覆盖所有 block 类型的导出往返。" },
+// One content slide exercising every component renderer in a single pass.
+const allComponents: Component[] = [
+  { type: "paragraph", text: "本页用于覆盖所有 component 类型的导出往返。" },
   { type: "bullets", items: ["要点一", "要点二"], style: "numbered" },
   { type: "quote", text: "引用一句话。", attribution: "某人" },
   { type: "callout", variant: "tip", text: "提示信息。" },
@@ -37,10 +37,10 @@ const allBlocks: Block[] = [
 
 function deck(themeId: (typeof BUILTIN_THEME_IDS)[number]): { ir: PptxIR; slides: Slide[] } {
   const slides: Slide[] = [
-    { type: "cover", heading: "封面标题", subheading: "副标题", blocks: [] },
-    { type: "chapter", heading: "第一章", blocks: [] },
-    { type: "content", variant: "single", heading: "正文页", blocks: allBlocks, footnote: "注脚" },
-    { type: "ending", heading: "谢谢", blocks: [] },
+    { type: "cover", heading: "封面标题", subheading: "副标题", components: [] },
+    { type: "chapter", heading: "第一章", components: [] },
+    { type: "content", heading: "正文页", components: allComponents, footnote: "注脚" },
+    { type: "ending", heading: "谢谢", components: [] },
   ]
   const ir: PptxIR = {
     version: "3",

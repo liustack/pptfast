@@ -4,10 +4,10 @@ import { renderSvgMarkup, parseSvgRoot } from "./serialize"
 import { SvgContent } from "./SvgContent"
 import { svgToOps } from "../pptx/svg2pptx/dispatch"
 import { SLIDE_W_IN } from "../constants"
-import type { BlockCtx } from "./blocks/types"
-import type { Block } from "@/ir"
+import type { ComponentCtx } from "./components/types"
+import type { Component } from "@/ir"
 
-const ctx: BlockCtx = {
+const ctx: ComponentCtx = {
   colors: {
     bg: "#FFF",
     surface: "#EEE",
@@ -20,7 +20,7 @@ const ctx: BlockCtx = {
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
 }
 
-const blocks: Block[] = [
+const components: Component[] = [
   { type: "paragraph", text: "引言段落用于验证往返。" },
   { type: "bullets", items: ["甲", "乙"] },
 ]
@@ -28,7 +28,7 @@ const blocks: Block[] = [
 describe("serialize bridge (React SVG → ops)", () => {
   const node = (
     <svg viewBox="0 0 1280 720">
-      <SvgContent variant="single" blocks={blocks} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
+      <SvgContent arrangement="single" components={components} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
     </svg>
   )
 

@@ -18,7 +18,7 @@ function slide(type: Slide["type"]): Slide {
   return {
     type,
     heading: "渐变装饰验证",
-    blocks: type === "content" || type === "ending" ? [{ type: "paragraph", text: "正文" }] : [],
+    components: type === "content" || type === "ending" ? [{ type: "paragraph", text: "正文" }] : [],
   }
 }
 
@@ -53,9 +53,8 @@ describe("generatePptxBlob real theme decor gradients", () => {
     const { generatePptxBlob } = await import("./generate")
     const chartSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "渐变柱",
-      blocks: [
+      components: [
         {
           type: "chart",
           chart_type: "bar",
@@ -80,7 +79,7 @@ describe("generatePptxBlob real theme decor gradients", () => {
       meta: {},
       assets: { images: { bg: { src: RED_PNG } } },
       slides: [
-        { type: "cover", heading: "背景图覆盖", blocks: [], background: { kind: "asset", asset_id: "bg" } },
+        { type: "cover", heading: "背景图覆盖", components: [], background: { kind: "asset", asset_id: "bg" } },
       ],
     }
     const blob = await generatePptxBlob(ir)

@@ -18,7 +18,7 @@ const VALID_IR = {
   theme: { id: "tech" },
   slides: [
     { type: "cover", heading: "CLI" },
-    { type: "content", heading: "Body", blocks: [{ type: "paragraph", text: "hello from the CLI test" }] },
+    { type: "content", heading: "Body", components: [{ type: "paragraph", text: "hello from the CLI test" }] },
   ],
 }
 
@@ -29,7 +29,7 @@ const IR_WITH_LOCAL_ASSET = {
   assets: { images: { logo: { src: "logo.png" } } },
   slides: [
     { type: "cover", heading: "CLI" },
-    { type: "content", heading: "Body", blocks: [{ type: "image", asset_id: "logo" }] },
+    { type: "content", heading: "Body", components: [{ type: "image", asset_id: "logo" }] },
   ],
 }
 

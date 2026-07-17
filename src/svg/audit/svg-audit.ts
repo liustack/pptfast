@@ -55,7 +55,7 @@ export function auditSvgMarkup(markup: string): OverflowIssue[] {
     // Compose (ox,oy,os) — "absolute = (ox,oy) + os * local" — with this
     // element's own translate/scale, in the SVG-transform-list order
     // (translate applied to local coordinates, then the accumulated parent
-    // transform), so any block scaled to fit (bento cards) still gets
+    // transform), so any component scaled to fit (bento cards) still gets
     // correctly-scaled text metrics rather than false-positive overflow.
     const ax = ox + os * dx
     const ay = oy + os * dy

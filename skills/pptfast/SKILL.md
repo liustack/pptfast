@@ -43,7 +43,7 @@ Grow one IR JSON file incrementally. After each batch:
 pptfast validate deck.json
 ```
 
-Every error carries a 1-based page number and a concrete fix. Fix the IR and re-validate until it prints `OK`. Do not argue with the gate — its limits come from real render geometry (headings that overflow, blocks that cannot fit), not style preference.
+Every error carries a 1-based page number and a concrete fix. Fix the IR and re-validate until it prints `OK`. Do not argue with the gate — its limits come from real render geometry (headings that overflow, components that cannot fit), not style preference.
 
 ### Step 4 — Render
 
@@ -65,7 +65,7 @@ Writes one standalone SVG per slide. Read a few (they are plain text files) to s
 
 ## Content methodology
 
-### Block selection
+### Component selection
 
 | Content shape | Use | Not |
 |---|---|---|
@@ -82,11 +82,11 @@ Writes one standalone SVG per slide. Read a few (they are plain text files) to s
 
 ### Image slides
 
-Declare images once in `assets.images` and reference them by `asset_id` — double-check every `asset_id` spelling, a wrong key renders a silent placeholder instead of failing. For a slide built around an image, pick a variant from the catalog: `image_split` (half-page image + side text, `image_side: left|right`), `image_top` (full-bleed top image + text columns below), `image_bottom` (text above, image below), `image_annotate` (center image + radiating callouts taken from the first 4 bullets). **On any image variant, the first block must be an `image` block** — it is the image source.
+Declare images once in `assets.images` and reference them by `asset_id` — double-check every `asset_id` spelling, a wrong key renders a silent placeholder instead of failing. An explicit `layout` id always wins over pptfast's auto-selection, which otherwise picks from the theme's curated set — for a slide built around an image, set `layout` to one of the image takeovers: `image-split` (half-page image + side text, `image_side: left|right`), `image-top` (full-bleed top image + text columns below), `image-bottom` (text above, image below), `image-annotate` (center image + radiating callouts taken from the first 4 bullets). **With any image layout, the first component must be an `image` component** — it is the image source.
 
 ### Capacity
 
-A slide is a fixed-size canvas. Draft to fit on the first pass: few blocks per slide, short assertive headings, bullet items within about two lines. When in doubt, split into two slides — `validate` reports the exact limits when you exceed them, but writing to fit beats fix-up loops.
+A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. When in doubt, split into two slides — `validate` reports the exact limits when you exceed them, but writing to fit beats fix-up loops.
 
 ### Decor
 
@@ -95,5 +95,5 @@ Set slide `decor` only when the user explicitly asks for decorative flourish. De
 ## Rules
 
 - Never edit or post-process the generated `.pptx`
-- Never bypass a `validate` error by deleting the content it flagged — restructure it (split the slide, tighten the heading, pick a denser block type)
+- Never bypass a `validate` error by deleting the content it flagged — restructure it (split the slide, tighten the heading, pick a denser component type)
 - Public deck text follows the user's language, IR structural fields are always the English enum values from the schema

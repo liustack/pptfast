@@ -1,30 +1,31 @@
-import type { Block } from "@/ir"
+import type { Component } from "@/ir"
+import { SELF_VISUAL_TYPES } from "./component-traits"
 import type { ContentRect } from "./layout"
 
 /** Gap (px) between bento cards, both horizontal and vertical. */
 export const BENTO_GAP = 16
 
-type KpiCardsBlock = Extract<Block, { type: "kpi_cards" }>
+type KpiCardsComponent = Extract<Component, { type: "kpi_cards" }>
 /** A single `kpi_cards` item, keyed off the schema so `icon`/`delta` stay in sync. */
-export type KpiItem = KpiCardsBlock["items"][number]
+export type KpiItem = KpiCardsComponent["items"][number]
 
-type IconCardsBlock = Extract<Block, { type: "icon_cards" }>
+type IconCardsComponent = Extract<Component, { type: "icon_cards" }>
 /** A single `icon_cards` item, keyed off the schema so `icon` stays in sync. */
-export type IconCardItem = IconCardsBlock["items"][number]
+export type IconCardItem = IconCardsComponent["items"][number]
 
 /**
- * A single bento tile: either a whole block, or one item exploded out of a
- * `kpi_cards`/`icon_cards` block (see `explodeIntoUnits`) — each item gets
- * its own card instead of the whole block sharing a single card. The
- * exploded variants still carry their *source* block (not just the one
+ * A single bento tile: either a whole component, or one item exploded out of a
+ * `kpi_cards`/`icon_cards` component (see `explodeIntoUnits`) — each item gets
+ * its own card instead of the whole component sharing a single card. The
+ * exploded variants still carry their *source* component (not just the one
  * item) — `renderCell` (`templates/tech.tsx`) needs it to resolve
  * `ctx.blockIndex` and tag the cell `data-blk`, since exploded units bypass
- * `renderBlock` (the usual tagging chokepoint) entirely.
+ * `renderComponent` (the usual tagging chokepoint) entirely.
  */
 export type BentoUnit =
-  | { kind: "block"; block: Block }
-  | { kind: "kpi-item"; item: KpiItem; block: KpiCardsBlock }
-  | { kind: "icon-card-item"; item: IconCardItem; block: IconCardsBlock }
+  | { kind: "component"; component: Component }
+  | { kind: "kpi-item"; item: KpiItem; component: KpiCardsComponent }
+  | { kind: "icon-card-item"; item: IconCardItem; component: IconCardsComponent }
 
 /** A unit paired with the page-coordinate card box the bento layout assigned it. */
 export interface BentoCell {
@@ -33,25 +34,25 @@ export interface BentoCell {
 }
 
 /**
- * Explode a slide's blocks into bento tiles: every `kpi_cards`/`icon_cards`
- * block becomes one `kpi-item`/`icon-card-item` unit per item (so each item
+ * Explode a slide's components into bento tiles: every `kpi_cards`/`icon_cards`
+ * component becomes one `kpi-item`/`icon-card-item` unit per item (so each item
  * reads as its own card instead of a card-in-a-card row squeezed into one
- * bento cell), every other block type passes through as a single `block`
- * unit unchanged. Order is preserved — a block's items land at that block's
- * position in the sequence. A `kpi_cards` block with zero items contributes
+ * bento cell), every other component type passes through as a single `component`
+ * unit unchanged. Order is preserved — a component's items land at that component's
+ * position in the sequence. A `kpi_cards` component with zero items contributes
  * no units (`icon_cards` schema-enforces >=2 items, so it always contributes
  * at least 2).
  */
-export function explodeIntoUnits(blocks: Block[]): BentoUnit[] {
+export function explodeIntoUnits(components: Component[]): BentoUnit[] {
   const units: BentoUnit[] = []
-  for (const block of blocks) {
-    if (block.type === "kpi_cards") {
-      for (const item of block.items) units.push({ kind: "kpi-item", item, block })
-    } else if (block.type === "icon_cards") {
-      for (const item of block.items)
-        units.push({ kind: "icon-card-item", item, block })
+  for (const component of components) {
+    if (component.type === "kpi_cards") {
+      for (const item of component.items) units.push({ kind: "kpi-item", item, component })
+    } else if (component.type === "icon_cards") {
+      for (const item of component.items)
+        units.push({ kind: "icon-card-item", item, component })
     } else {
-      units.push({ kind: "block", block })
+      units.push({ kind: "component", component })
     }
   }
   return units
@@ -198,44 +199,26 @@ export function layoutBento(
 }
 
 /**
- * Block types that already paint their own card/frame — callout's
- * left-bar-and-fill, code's dark panel, comparison's header row + rule
- * lines, quote's decorative mark/attribution treatment, verdict_banner's own
- * bordered/tinted conclusion strip. Lives here (not only in
- * `templates/tech.tsx`, which also renders against this exact set)
- * because `heroWeight` below needs the identical classification to rank a
- * self-visual block's hero weight — a single shared source of truth so the
- * "which blocks are self-visual" list can't drift between the two files.
- */
-export const SELF_VISUAL_TYPES = new Set([
-  "callout",
-  "code",
-  "comparison",
-  "quote",
-  "verdict_banner",
-])
-
-/**
  * "Visual weight" tiers consumed by `sortUnitsByHeroWeight`. `chart` and
  * `kpi-item` are *tied* at the top (the brief's "chart ≥ kpi-item" — both
  * are hero-worthy; when a slide has both, original IR order breaks the tie,
  * not a hard chart-over-kpi rule). `icon-card-item` ranks next, a
- * self-visual block (already carries its own chrome/tone — see
- * `SELF_VISUAL_TYPES`) above a plain block, which ranks lowest.
+ * self-visual component (already carries its own chrome/tone — see
+ * `SELF_VISUAL_TYPES`) above a plain component, which ranks lowest.
  */
 const HERO_WEIGHT = {
   chartOrKpi: 3,
   iconCard: 2,
   selfVisual: 1,
-  block: 0,
+  component: 0,
 } as const
 
 function heroWeight(unit: BentoUnit): number {
   if (unit.kind === "kpi-item") return HERO_WEIGHT.chartOrKpi
   if (unit.kind === "icon-card-item") return HERO_WEIGHT.iconCard
-  if (unit.block.type === "chart") return HERO_WEIGHT.chartOrKpi
-  if (SELF_VISUAL_TYPES.has(unit.block.type)) return HERO_WEIGHT.selfVisual
-  return HERO_WEIGHT.block
+  if (unit.component.type === "chart") return HERO_WEIGHT.chartOrKpi
+  if (SELF_VISUAL_TYPES.has(unit.component.type)) return HERO_WEIGHT.selfVisual
+  return HERO_WEIGHT.component
 }
 
 /**
@@ -293,8 +276,8 @@ const CELL_AREA_RANK: Record<number, number[]> = {
  *   leftover cell indices are sorted back into ascending order first — this
  *   keeps that tier's units in the same relative left-to-right/
  *   top-to-bottom order they started in, rather than being scattered by
- *   `rank`'s ordering. (Worked example: 1 chart among 3 equal-weight blocks
- *   must promote only the chart into the biggest cell, leaving the 3 blocks
+ *   `rank`'s ordering. (Worked example: 1 chart among 3 equal-weight components
+ *   must promote only the chart into the biggest cell, leaving the 3 components
  *   in their original relative order in the remaining cells — see this
  *   file's tests.)
  *

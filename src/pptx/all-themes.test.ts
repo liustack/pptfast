@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { generatePptxBlob } from "./generate"
-import { BUILTIN_THEME_IDS, type PptxIR, type Block } from "@/ir"
+import { BUILTIN_THEME_IDS, type PptxIR, type Component } from "@/ir"
 
-const blocks: Block[] = [
+const components: Component[] = [
   { type: "kpi_cards", items: [
     { value: "99.95", unit: "%", label: "可用率", delta: "up" },
     { value: "2,847", label: "运行 Pod" },
@@ -26,10 +26,10 @@ describe("all themes export v2 (download path)", () => {
         meta: {},
         assets: { images: {} },
         slides: [
-          { type: "cover", heading: "封面标题", subheading: "副标题", blocks: [] },
-          { type: "chapter", heading: "第一章", blocks: [] },
-          { type: "content", heading: "数据页", blocks, footnote: "来源：测试" },
-          { type: "ending", heading: "Questions", blocks: [] },
+          { type: "cover", heading: "封面标题", subheading: "副标题", components: [] },
+          { type: "chapter", heading: "第一章", components: [] },
+          { type: "content", heading: "数据页", components, footnote: "来源：测试" },
+          { type: "ending", heading: "Questions", components: [] },
         ],
       }
       const blob = await generatePptxBlob(ir)

@@ -33,7 +33,7 @@ describe("IR v3 theme field", () => {
 
 describe("IR v3 omission defaults (weak-model friendly)", () => {
   it("a bare slides-only deck parses with all defaults", () => {
-    const r = parsePptxIR({ slides: [{ heading: "只有一页", blocks: [] }] })
+    const r = parsePptxIR({ slides: [{ heading: "只有一页", components: [] }] })
     expect(r.success).toBe(true)
     if (r.success) {
       expect(r.data.version).toBe("3")
@@ -60,10 +60,25 @@ describe("pptx-ir v3", () => {
   it("parses minimal v3", () => {
     const r = parsePptxIR(minimal()); expect(r.success).toBe(true)
   })
-  it("slide carries type/variant, no layout_ref", () => {
+  it("slide carries type/arrangement, no layout_ref", () => {
     const d: any = minimal()
-    d.slides = [{ type: "content", variant: "two_column", heading: "x", blocks: [] }]
+    d.slides = [{ type: "content", arrangement: "two_column", heading: "x", components: [] }]
     expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("slide accepts an explicit layout id as an open string (registry existence is a validateIr gate, not a schema enum)", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", layout: "image-split", heading: "x", components: [] }]
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects the retired variant field (strict schema — W2 task 3 split it into layout + arrangement)", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", variant: "two_column", heading: "x", components: [] }]
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an arrangement value from the old image-takeover family (those 4 promoted to layout, not arrangement)", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", arrangement: "image_split", heading: "x", components: [] }]
+    expect(parsePptxIR(d).success).toBe(false)
   })
   it("rejects layouts / layout_ref", () => {
     const d: any = minimal(); d.layouts = { cover: { type: "cover" } }
@@ -88,14 +103,14 @@ describe("pptx-ir v3", () => {
   })
 })
 
-describe("expressive blocks: roadmap / matrix / insight_panel", () => {
-  const withBlocks = (blocks: any[]) => {
+describe("expressive components: roadmap / matrix / insight_panel", () => {
+  const withComponents = (components: any[]) => {
     const d: any = minimal()
-    d.slides = [{ type: "content", heading: "h", blocks }]
+    d.slides = [{ type: "content", heading: "h", components }]
     return d
   }
   it("parses roadmap with period + label:value rows", () => {
-    const d = withBlocks([
+    const d = withComponents([
       {
         type: "roadmap",
         items: [
@@ -107,11 +122,11 @@ describe("expressive blocks: roadmap / matrix / insight_panel", () => {
     expect(parsePptxIR(d).success).toBe(true)
   })
   it("rejects roadmap with a single item (min 2)", () => {
-    const d = withBlocks([{ type: "roadmap", items: [{ title: "只有一个" }] }])
+    const d = withComponents([{ type: "roadmap", items: [{ title: "只有一个" }] }])
     expect(parsePptxIR(d).success).toBe(false)
   })
   it("parses matrix with axis titles + tone-coded items", () => {
-    const d = withBlocks([
+    const d = withComponents([
       {
         type: "matrix",
         x_title: "需求确定性",
@@ -126,13 +141,13 @@ describe("expressive blocks: roadmap / matrix / insight_panel", () => {
     expect(parsePptxIR(d).success).toBe(true)
   })
   it("rejects matrix with an unknown tone (strict enum)", () => {
-    const d = withBlocks([
+    const d = withComponents([
       { type: "matrix", cols: 2, items: [{ title: "a", tone: "danger" }, { title: "b" }] },
     ])
     expect(parsePptxIR(d).success).toBe(false)
   })
   it("parses insight_panel with rows + footnote", () => {
-    const d = withBlocks([
+    const d = withComponents([
       {
         type: "insight_panel",
         title: "策略推演｜三类资本纪律",
@@ -143,7 +158,7 @@ describe("expressive blocks: roadmap / matrix / insight_panel", () => {
     expect(parsePptxIR(d).success).toBe(true)
   })
   it("rejects insight_panel with an unknown field (strict)", () => {
-    const d = withBlocks([
+    const d = withComponents([
       { type: "insight_panel", title: "t", rows: [{ label: "a", text: "b" }], extra: 1 },
     ])
     expect(parsePptxIR(d).success).toBe(false)
@@ -176,8 +191,8 @@ describe("meta.animation (deck-level switch, wave-C S1)", () => {
   })
 })
 
-describe("icon_cards block", () => {
-  const iconCardsBlock = (n: number) => ({
+describe("icon_cards component", () => {
+  const iconCardsComponent = (n: number) => ({
     type: "icon_cards",
     items: Array.from({ length: n }, (_, i) => ({
       icon: "rocket",
@@ -189,36 +204,36 @@ describe("icon_cards block", () => {
   it("accepts 2-4 items", () => {
     for (const n of [2, 3, 4]) {
       const d: any = minimal()
-      d.slides = [{ type: "content", blocks: [iconCardsBlock(n)] }]
+      d.slides = [{ type: "content", components: [iconCardsComponent(n)] }]
       expect(parsePptxIR(d).success).toBe(true)
     }
   })
 
   it("rejects fewer than 2 items", () => {
     const d: any = minimal()
-    d.slides = [{ type: "content", blocks: [iconCardsBlock(1)] }]
+    d.slides = [{ type: "content", components: [iconCardsComponent(1)] }]
     expect(parsePptxIR(d).success).toBe(false)
   })
 
   it("accepts 6 items (2026-07-11 六宫格扩容), rejects more than 6", () => {
     const d: any = minimal()
-    d.slides = [{ type: "content", blocks: [iconCardsBlock(6)] }]
+    d.slides = [{ type: "content", components: [iconCardsComponent(6)] }]
     expect(parsePptxIR(d).success).toBe(true)
-    d.slides = [{ type: "content", blocks: [iconCardsBlock(7)] }]
+    d.slides = [{ type: "content", components: [iconCardsComponent(7)] }]
     expect(parsePptxIR(d).success).toBe(false)
   })
 
   it("rejects an icon outside the catalogued enum", () => {
     const d: any = minimal()
-    const block = iconCardsBlock(2)
-    block.items[0].icon = "not-a-real-icon"
-    d.slides = [{ type: "content", blocks: [block] }]
+    const component = iconCardsComponent(2)
+    component.items[0].icon = "not-a-real-icon"
+    d.slides = [{ type: "content", components: [component] }]
     expect(parsePptxIR(d).success).toBe(false)
   })
 })
 
-describe("steps block", () => {
-  const stepsBlock = (n: number) => ({
+describe("steps component", () => {
+  const stepsComponent = (n: number) => ({
     type: "steps",
     items: Array.from({ length: n }, (_, i) => ({
       title: `步骤 ${i}`,
@@ -229,34 +244,34 @@ describe("steps block", () => {
   it("accepts 2-5 items", () => {
     for (const n of [2, 3, 4, 5]) {
       const d: any = minimal()
-      d.slides = [{ type: "content", blocks: [stepsBlock(n)] }]
+      d.slides = [{ type: "content", components: [stepsComponent(n)] }]
       expect(parsePptxIR(d).success).toBe(true)
     }
   })
 
   it("rejects fewer than 2 items", () => {
     const d: any = minimal()
-    d.slides = [{ type: "content", blocks: [stepsBlock(1)] }]
+    d.slides = [{ type: "content", components: [stepsComponent(1)] }]
     expect(parsePptxIR(d).success).toBe(false)
   })
 
   it("rejects more than 5 items", () => {
     const d: any = minimal()
-    d.slides = [{ type: "content", blocks: [stepsBlock(6)] }]
+    d.slides = [{ type: "content", components: [stepsComponent(6)] }]
     expect(parsePptxIR(d).success).toBe(false)
   })
 
   it("rejects an unknown field on an item (strict)", () => {
     const d: any = minimal()
-    const block = stepsBlock(2)
-    ;(block.items[0] as any).icon = "rocket"
-    d.slides = [{ type: "content", blocks: [block] }]
+    const component = stepsComponent(2)
+    ;(component.items[0] as any).icon = "rocket"
+    d.slides = [{ type: "content", components: [component] }]
     expect(parsePptxIR(d).success).toBe(false)
   })
 })
 
-describe("verdict_banner block", () => {
-  const verdictBannerBlock = (
+describe("verdict_banner component", () => {
+  const verdictBannerComponent = (
     tone: string,
     extra: Record<string, unknown> = {}
   ) => ({
@@ -269,7 +284,7 @@ describe("verdict_banner block", () => {
   it("accepts all three tone values", () => {
     for (const tone of ["positive", "warning", "neutral"]) {
       const d: any = minimal()
-      d.slides = [{ type: "content", blocks: [verdictBannerBlock(tone)] }]
+      d.slides = [{ type: "content", components: [verdictBannerComponent(tone)] }]
       expect(parsePptxIR(d).success).toBe(true)
     }
   })
@@ -279,7 +294,7 @@ describe("verdict_banner block", () => {
     d.slides = [
       {
         type: "content",
-        blocks: [verdictBannerBlock("positive", { icon: "rocket" })],
+        components: [verdictBannerComponent("positive", { icon: "rocket" })],
       },
     ]
     expect(parsePptxIR(d).success).toBe(true)
@@ -287,7 +302,7 @@ describe("verdict_banner block", () => {
 
   it("rejects a tone outside the enum", () => {
     const d: any = minimal()
-    d.slides = [{ type: "content", blocks: [verdictBannerBlock("danger")] }]
+    d.slides = [{ type: "content", components: [verdictBannerComponent("danger")] }]
     expect(parsePptxIR(d).success).toBe(false)
   })
 
@@ -296,18 +311,18 @@ describe("verdict_banner block", () => {
     d.slides = [
       {
         type: "content",
-        blocks: [verdictBannerBlock("positive", { icon: "not-a-real-icon" })],
+        components: [verdictBannerComponent("positive", { icon: "not-a-real-icon" })],
       },
     ]
     expect(parsePptxIR(d).success).toBe(false)
   })
 
-  it("rejects an unknown field on the block (strict)", () => {
+  it("rejects an unknown field on the component (strict)", () => {
     const d: any = minimal()
     d.slides = [
       {
         type: "content",
-        blocks: [verdictBannerBlock("positive", { variant: "loud" })],
+        components: [verdictBannerComponent("positive", { variant: "loud" })],
       },
     ]
     expect(parsePptxIR(d).success).toBe(false)

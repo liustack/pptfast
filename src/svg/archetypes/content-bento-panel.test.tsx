@@ -7,7 +7,7 @@ import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { BentoPanelContent } from "./content-bento-panel"
-import type { Block, PptxIR, Slide } from "@/ir"
+import type { Component, PptxIR, Slide } from "@/ir"
 
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
@@ -23,7 +23,7 @@ function ir(theme: string, slides: Slide[]): PptxIR {
   } as unknown as PptxIR
 }
 
-function para(text: string): Block {
+function para(text: string): Component {
   // bento 中"有壳普通块"的代表——paragraph 已去框（passthrough，见
   // PASSTHROUGH_SHELL_TYPES），改用 bullets（仍走 bento shell），同
   // templates/tech.test.tsx 的先例。
@@ -46,14 +46,14 @@ function isBentoOutlineShell(r: Element): boolean {
 
 // "Bento 拼盘"：kpi_cards（2 item）+ icon_cards（2 item）混排——explodeIntoUnits
 // 把两个块各自炸成独立单元，4 个单元落进 4-cell 网格档（不是 2 个块 = 2 个格）。
-const kpiBlock: Block = {
+const kpiComponent: Component = {
   type: "kpi_cards",
   items: [
     { value: "128", unit: "ms", label: "P99 延迟", delta: "down" },
     { value: "99.95", unit: "%", label: "可用率" },
   ],
 }
-const iconCardsBlock: Block = {
+const iconCardsComponent: Component = {
   type: "icon_cards",
   items: [
     { icon: "rocket", title: "增长优先", text: "以最快速度验证市场假设" },
@@ -62,20 +62,18 @@ const iconCardsBlock: Block = {
 }
 const bentoSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "架构拼盘",
   subheading: "**核心指标**一屏可见",
   footnote: "数据来源：监控平台",
-  blocks: [kpiBlock, iconCardsBlock],
+  components: [kpiComponent, iconCardsComponent],
 } as Slide
 
 // 单个孤立 KPI 项：走 onlyUnit 的居中小卡退化路径（SINGLE_KPI_CARD_W/H），
 // 而非满 rect 空壳大卡。
 const soloKpiSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "单指标",
-  blocks: [{ type: "kpi_cards", items: [{ value: "88", label: "达成率" }] }],
+  components: [{ type: "kpi_cards", items: [{ value: "88", label: "达成率" }] }],
 } as Slide
 
 // Captured once from the (now-retired) legacy `BentoTechContent` — locks the
@@ -106,8 +104,8 @@ describe("BentoPanelContent", () => {
     )
     // 2 个 kpi item + 2 个 icon-card item = 4 个 bento 单元（不是 2 个块 = 2 格）。
     expect(root.querySelectorAll("[data-audit-box]")).toHaveLength(4)
-    for (const item of kpiBlock.items) expect(next).toContain(item.value)
-    for (const item of iconCardsBlock.items) {
+    for (const item of kpiComponent.items) expect(next).toContain(item.value)
+    for (const item of iconCardsComponent.items) {
       expect(next).toContain(item.title)
       expect(next).toContain(item.text)
     }
@@ -141,16 +139,15 @@ describe("BentoPanelContent", () => {
 
   it(">6 单元时降级为 SvgContent 单栈布局，与旧模板逐字节一致（bento 网格上限）", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const overflowBlocks: Block[] = Array.from({ length: 7 }, (_, i) => ({
+    const overflowComponents: Component[] = Array.from({ length: 7 }, (_, i) => ({
       type: "bullets" as const,
       items: [`要点 ${i}`],
       style: "default" as const,
     }))
     const overflowSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "七项要点",
-      blocks: overflowBlocks,
+      components: overflowComponents,
     } as Slide
     const deck = ir("tech", [overflowSlide])
 
@@ -191,9 +188,8 @@ describe("BentoPanelContent", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
-      blocks: [para("一"), para("二"), para("三"), para("四")],
+      components: [para("一"), para("二"), para("三"), para("四")],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -206,13 +202,12 @@ describe("BentoPanelContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("4 blocks 精确产出 4 个 data-audit-box 卡片，每张都是细描边卡（fill=surface, stroke=accent@0.3, rx=6），无角标", () => {
+  it("4 components 精确产出 4 个 data-audit-box 卡片，每张都是细描边卡（fill=surface, stroke=accent@0.3, rx=6），无角标", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
-      blocks: [para("一"), para("二"), para("三"), para("四")],
+      components: [para("一"), para("二"), para("三"), para("四")],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -242,9 +237,9 @@ describe("BentoPanelContent", () => {
     })
   })
 
-  it("explodes a 4-item kpi_cards block into 4 individual bento cards, each showing its own value", () => {
+  it("explodes a 4-item kpi_cards component into 4 individual bento cards, each showing its own value", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const kpiBlock4: Block = {
+    const kpiComponent4: Component = {
       type: "kpi_cards",
       items: [
         { value: "128", unit: "%", label: "同比增长", delta: "up" },
@@ -255,9 +250,8 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
-      blocks: [kpiBlock4],
+      components: [kpiComponent4],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -268,11 +262,11 @@ describe("BentoPanelContent", () => {
     const root = parseSvgRoot(markup)
     expect(() => assertSubset(root)).not.toThrow()
 
-    // One kpi_cards block with 4 items still yields 4 bento cards (not 1
+    // One kpi_cards component with 4 items still yields 4 bento cards (not 1
     // card containing a 4-up row, as kpi.tsx's own layout would produce).
     const boxes = root.querySelectorAll("[data-audit-box]")
     expect(boxes.length).toBe(4)
-    for (const item of kpiBlock4.items) {
+    for (const item of kpiComponent4.items) {
       expect(markup).toContain(item.value)
       expect(markup).toContain(item.label)
     }
@@ -283,9 +277,9 @@ describe("BentoPanelContent", () => {
     expect(stripes).toHaveLength(0)
   })
 
-  it("explodes a 3-item icon_cards block into 3 individual bento cards, each showing icon/title/text at 22px bold titles", () => {
+  it("explodes a 3-item icon_cards component into 3 individual bento cards, each showing icon/title/text at 22px bold titles", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const iconCardsBlock3: Block = {
+    const iconCardsComponent3: Component = {
       type: "icon_cards",
       items: [
         { icon: "rocket", title: "增长优先", text: "以最快速度验证市场假设" },
@@ -295,9 +289,8 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "三大原则",
-      blocks: [iconCardsBlock3],
+      components: [iconCardsComponent3],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -308,12 +301,12 @@ describe("BentoPanelContent", () => {
     const root = parseSvgRoot(markup)
     expect(() => assertSubset(root)).not.toThrow()
 
-    // One icon_cards block with 3 items yields 3 bento cards (not 1 card
+    // One icon_cards component with 3 items yields 3 bento cards (not 1 card
     // containing a 3-up row, as icon-cards.tsx's own standalone layout
     // would produce).
     const boxes = root.querySelectorAll("[data-audit-box]")
     expect(boxes.length).toBe(3)
-    for (const item of iconCardsBlock3.items) {
+    for (const item of iconCardsComponent3.items) {
       expect(markup).toContain(item.title)
       expect(markup).toContain(item.text)
     }
@@ -324,7 +317,7 @@ describe("BentoPanelContent", () => {
     expect(stripes).toHaveLength(0)
 
     // Bento's icon-card title is 22px/font-weight 600 (bento-only bump; the
-    // shared blocks/icon-cards.tsx row layout keeps 20px for other themes).
+    // shared components/icon-cards.tsx row layout keeps 20px for other themes).
     const titles = Array.from(root.querySelectorAll("text")).filter(
       (t) => t.getAttribute("font-weight") === "600",
     )
@@ -334,9 +327,9 @@ describe("BentoPanelContent", () => {
     })
   })
 
-  it("keeps a steps block as one whole bento cell, not exploded into per-item cards", () => {
+  it("keeps a steps component as one whole bento cell, not exploded into per-item cards", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const stepsBlock: Block = {
+    const stepsComponent: Component = {
       type: "steps",
       items: [
         { title: "步骤一", text: "说明一" },
@@ -346,9 +339,8 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "操作流程",
-      blocks: [stepsBlock, para("补充说明")],
+      components: [stepsComponent, para("补充说明")],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -359,12 +351,12 @@ describe("BentoPanelContent", () => {
     const root = parseSvgRoot(markup)
     expect(() => assertSubset(root)).not.toThrow()
 
-    // steps block (3 items) + 1 paragraph = 2 units → the 2-unit grid tier,
+    // steps component (3 items) + 1 paragraph = 2 units → the 2-unit grid tier,
     // NOT 4 units (which explodeIntoUnits would produce if steps were
     // exploded like kpi_cards/icon_cards).
     const cells = root.querySelectorAll("[data-audit-box][data-audit-rect]")
     expect(cells.length).toBe(2)
-    for (const item of stepsBlock.items) {
+    for (const item of stepsComponent.items) {
       expect(markup).toContain(item.title)
       expect(markup).toContain(item.text)
     }
@@ -375,7 +367,7 @@ describe("BentoPanelContent", () => {
     expect(bentoShells).toHaveLength(1)
   })
 
-  const flowchartBlock: Block = {
+  const flowchartComponent: Component = {
     type: "flowchart",
     nodes: [
       { id: "a", label: "开始", kind: "round" },
@@ -388,14 +380,14 @@ describe("BentoPanelContent", () => {
     ],
     direction: "TB",
   }
-  const architectureBlock: Block = {
+  const architectureComponent: Component = {
     type: "architecture",
     layers: [
       { title: "展现层", items: ["React"] },
       { title: "逻辑层", items: ["Zustand"] },
     ],
   }
-  const timelineBlock: Block = {
+  const timelineComponent: Component = {
     type: "timeline",
     milestones: [
       { date: "2024-01", title: "启动" },
@@ -404,19 +396,18 @@ describe("BentoPanelContent", () => {
   }
 
   it.each([
-    ["flowchart", flowchartBlock, "处理"],
-    ["architecture", architectureBlock, "展现层"],
-    ["timeline", timelineBlock, "启动"],
+    ["flowchart", flowchartComponent, "处理"],
+    ["architecture", architectureComponent, "展现层"],
+    ["timeline", timelineComponent, "启动"],
   ] as const)(
-    "renders a %s block bare in the grid (double-shell governance) — no outline shell, own chrome intact",
-    (_label, block, expectedText) => {
+    "renders a %s component bare in the grid (double-shell governance) — no outline shell, own chrome intact",
+    (_label, component, expectedText) => {
       const ctx = buildCtx(resolveStyle("tech"), {})
-      const paragraphBlock: Block = para("普通块仍然有卡壳")
+      const paragraphComponent: Component = para("普通块仍然有卡壳")
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading: "双壳治理",
-        blocks: [block, paragraphBlock],
+        components: [component, paragraphComponent],
       } as Slide
       const doc = ir("tech", [slide])
       const markup = renderSvgMarkup(
@@ -427,7 +418,7 @@ describe("BentoPanelContent", () => {
       const root = parseSvgRoot(markup)
       expect(() => assertSubset(root)).not.toThrow()
 
-      // 2 units (the diagram block + 1 paragraph) → 2 bento cells, both
+      // 2 units (the diagram component + 1 paragraph) → 2 bento cells, both
       // still carrying the grid box/audit annotations.
       const cells = root.querySelectorAll("[data-audit-box][data-audit-rect]")
       expect(cells.length).toBe(2)
@@ -448,7 +439,7 @@ describe("BentoPanelContent", () => {
 
   it("keeps each exploded KPI card's label baseline >=30px below its value baseline (no label/value overlap)", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const kpiBlock4: Block = {
+    const kpiComponent4: Component = {
       type: "kpi_cards",
       items: [
         { value: "99.95", unit: "%", label: "可用率" },
@@ -459,9 +450,8 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
-      blocks: [kpiBlock4],
+      components: [kpiComponent4],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -489,7 +479,7 @@ describe("BentoPanelContent", () => {
 
   it("renders each exploded KPI card's value at display-level size (72px hero tier) in colors.accent, plus a restrained glow accent past it", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const kpiBlock4: Block = {
+    const kpiComponent4: Component = {
       type: "kpi_cards",
       items: [
         { value: "88", label: "达成率", icon: "target", delta: "up" },
@@ -500,9 +490,8 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
-      blocks: [kpiBlock4],
+      components: [kpiComponent4],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -557,7 +546,7 @@ describe("BentoPanelContent", () => {
     // glow cluster's *natural* position past the right-edge clamp) + a delta
     // arrow — the combination that used to let the outer glow ring visually
     // collide with the delta arrow.
-    const kpiBlock2: Block = {
+    const kpiComponent2: Component = {
       type: "kpi_cards",
       items: [
         {
@@ -570,9 +559,8 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
-      blocks: [kpiBlock2],
+      components: [kpiComponent2],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -631,25 +619,24 @@ describe("BentoPanelContent", () => {
     expect(ringRight).toBeLessThan(deltaLeftEdge)
   })
 
-  it("mixes an exploded 2-item kpi_cards block with a chart block into a 3-unit bento grid", () => {
+  it("mixes an exploded 2-item kpi_cards component with a chart component into a 3-unit bento grid", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const kpiBlock2: Block = {
+    const kpiComponent2: Component = {
       type: "kpi_cards",
       items: [
         { value: "12", label: "转化率" },
         { value: "88", label: "满意度" },
       ],
     }
-    const chartBlock: Block = {
+    const chartComponent: Component = {
       type: "chart",
       chart_type: "bar",
       series: [{ name: "S1", data: [{ x: "A", y: 10 }] }],
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "混合拼盘",
-      blocks: [kpiBlock2, chartBlock],
+      components: [kpiComponent2, chartComponent],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -660,26 +647,25 @@ describe("BentoPanelContent", () => {
     const root = parseSvgRoot(markup)
     expect(() => assertSubset(root)).not.toThrow()
 
-    // 2 kpi items + 1 chart block = 3 bento cells (the 3-unit grid tier),
-    // not 2 cells (1 kpi_cards block + 1 chart block).
+    // 2 kpi items + 1 chart component = 3 bento cells (the 3-unit grid tier),
+    // not 2 cells (1 kpi_cards component + 1 chart component).
     const boxes = root.querySelectorAll("[data-audit-box]")
     expect(boxes.length).toBe(3)
-    for (const item of kpiBlock2.items) {
+    for (const item of kpiComponent2.items) {
       expect(markup).toContain(item.value)
     }
   })
 
   it("centers a lone KPI item's value vertically in a tall bento cell (2-unit grid, mixed with a paragraph)", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const kpiBlock1: Block = {
+    const kpiComponent1: Component = {
       type: "kpi_cards",
       items: [{ value: "88", label: "达成率" }],
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "双元混排",
-      blocks: [kpiBlock1, para("这里是配对展示的另一块说明文字。")],
+      components: [kpiComponent1, para("这里是配对展示的另一块说明文字。")],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -703,15 +689,14 @@ describe("BentoPanelContent", () => {
     expect(valueY).toBeGreaterThan(by + bh * 0.25)
   })
 
-  it("lays out exactly 5 blocks as a 3+2 bento grid (no degrade) — verifies capacity.ts's per-theme 5/6 override", () => {
+  it("lays out exactly 5 components as a 3+2 bento grid (no degrade) — verifies capacity.ts's per-theme 5/6 override", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const texts = Array.from({ length: 5 }, (_, i) => `要点 ${i}`)
-    const blocks = texts.map(para)
+    const components = texts.map(para)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "五项要点",
-      blocks,
+      components,
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -731,15 +716,14 @@ describe("BentoPanelContent", () => {
     expect(auditSvgMarkup(markup)).toEqual([])
   })
 
-  it("lays out exactly 6 blocks as a 3x2 bento grid (no degrade)", () => {
+  it("lays out exactly 6 components as a 3x2 bento grid (no degrade)", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const texts = Array.from({ length: 6 }, (_, i) => `要点 ${i}`)
-    const blocks = texts.map(para)
+    const components = texts.map(para)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "六项要点",
-      blocks,
+      components,
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -758,17 +742,16 @@ describe("BentoPanelContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("lays out 6 short bullets blocks as a real 3x2 grid — 6 panel cards, zero-overflow audit clean", () => {
+  it("lays out 6 short bullets components as a real 3x2 grid — 6 panel cards, zero-overflow audit clean", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const blocks: Block[] = Array.from({ length: 6 }, (_, i) => ({
+    const components: Component[] = Array.from({ length: 6 }, (_, i) => ({
       type: "bullets" as const,
       items: [`要点 ${i}-A`, `要点 ${i}-B`],
     }))
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "六项要点",
-      blocks,
+      components,
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -785,24 +768,23 @@ describe("BentoPanelContent", () => {
     expect(auditSvgMarkup(markup)).toEqual([])
   })
 
-  it("renders self-visual blocks (callout/code) bare in the grid — no outline shell, no accent stripe", () => {
+  it("renders self-visual components (callout/code) bare in the grid — no outline shell, no accent stripe", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const calloutBlock: Block = {
+    const calloutComponent: Component = {
       type: "callout",
       variant: "tip",
       text: "自带视觉的提示块。",
     }
-    const codeBlock: Block = {
+    const codeComponent: Component = {
       type: "code",
       language: "ts",
       code: "const a = 1",
     }
-    const paragraphBlock: Block = para("普通块仍然有卡壳")
+    const paragraphComponent: Component = para("普通块仍然有卡壳")
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "卡壳感知",
-      blocks: [calloutBlock, codeBlock, paragraphBlock],
+      components: [calloutComponent, codeComponent, paragraphComponent],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -831,17 +813,16 @@ describe("BentoPanelContent", () => {
 
   it("renders a verdict_banner bare in the grid — no outline shell, no accent stripe (joins SELF_VISUAL_TYPES)", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const verdictBlock: Block = {
+    const verdictComponent: Component = {
       type: "verdict_banner",
       tone: "positive",
       text: "自带视觉的结论条。",
     }
-    const paragraphBlock: Block = para("普通块仍然有卡壳")
+    const paragraphComponent: Component = para("普通块仍然有卡壳")
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论条卡壳感知",
-      blocks: [verdictBlock, paragraphBlock],
+      components: [verdictComponent, paragraphComponent],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -870,13 +851,12 @@ describe("BentoPanelContent", () => {
     expect(bannerRect?.getAttribute("fill")).toBe("#4FBF8B")
   })
 
-  it("renders a single ordinary block with no shell card — bare, centered in the bento rect", () => {
+  it("renders a single ordinary component with no shell card — bare, centered in the bento rect", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "唯一要点",
-      blocks: [para("独占一页的普通块。")],
+      components: [para("独占一页的普通块。")],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -886,7 +866,7 @@ describe("BentoPanelContent", () => {
     )
     const root = parseSvgRoot(markup)
     expect(() => assertSubset(root)).not.toThrow()
-    // No bento shell (surface fill) and no accent stripe — a lone block is
+    // No bento shell (surface fill) and no accent stripe — a lone component is
     // not stretched into a page-filling empty card.
     expect(markup).not.toContain(`fill="${ctx.colors.surface}"`)
     const stripes = Array.from(root.querySelectorAll("rect")).filter(
@@ -898,15 +878,14 @@ describe("BentoPanelContent", () => {
 
   it("keeps a single KPI item as one modest centered card (400 wide), not a rect-filling shell", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const kpiBlock1: Block = {
+    const kpiComponent1: Component = {
       type: "kpi_cards",
       items: [{ value: "42", unit: "%", label: "唯一指标", delta: "up" }],
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "单一指标",
-      blocks: [kpiBlock1],
+      components: [kpiComponent1],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -934,7 +913,7 @@ describe("BentoPanelContent", () => {
     expect(markup).toContain("唯一指标")
   })
 
-  it("degrades when a single card's block content overflows its height budget (4 blocks, one tall)", () => {
+  it("degrades when a single card's component content overflows its height budget (4 components, one tall)", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     // 6 long bullet items in a single card: even a single unwrapped line per
     // item already exceeds a bento cell's content budget, and these CJK
@@ -943,12 +922,11 @@ describe("BentoPanelContent", () => {
       { length: 6 },
       (_, i) => `${CJK_LONG}——补充说明第 ${i} 条落地细则与验收标准`,
     )
-    const blocks: Block[] = [para("一"), { type: "bullets", items: longItems, style: "default" }, para("三"), para("四")]
+    const components: Component[] = [para("一"), { type: "bullets", items: longItems, style: "default" }, para("三"), para("四")]
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
-      blocks,
+      components,
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -956,16 +934,16 @@ describe("BentoPanelContent", () => {
         <BentoPanelContent ir={doc} slide={slide} index={0} ctx={ctx} />
       </svg>,
     )
-    // Same degrade signature as the >=5-block overflow case: no bento card
+    // Same degrade signature as the >=5-component overflow case: no bento card
     // background, full content preserved.
     expect(markup).not.toContain(`fill="${ctx.colors.surface}"`)
     const root = parseSvgRoot(markup)
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("scales an oversized chart block to fit its card instead of degrading (4 blocks, chart in a quarter-height cell)", () => {
+  it("scales an oversized chart component to fit its card instead of degrading (4 components, chart in a quarter-height cell)", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
-    const chartBlock: Block = {
+    const chartComponent: Component = {
       type: "chart",
       chart_type: "bar",
       series: [
@@ -978,12 +956,11 @@ describe("BentoPanelContent", () => {
         },
       ],
     }
-    const blocks: Block[] = [para("概览"), chartBlock, para("结论"), para("展望")]
+    const components: Component[] = [para("概览"), chartComponent, para("结论"), para("展望")]
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四项要点",
-      blocks,
+      components,
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -1013,9 +990,8 @@ describe("BentoPanelContent", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
-      blocks: [para("一"), para("二"), para("三"), para("四")],
+      components: [para("一"), para("二"), para("三"), para("四")],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -1044,9 +1020,8 @@ describe("BentoPanelContent", () => {
     expect(longHeading.length).toBe(48)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: longHeading,
-      blocks: [para("概要")],
+      components: [para("概要")],
     } as Slide
     const doc = ir("tech", [slide])
     const markup = renderSvgMarkup(
@@ -1072,9 +1047,8 @@ describe("BentoPanelContent", () => {
   describe("Content subheading (Task 5)", () => {
     const base: Slide = {
       type: "content",
-      variant: "single",
       heading: "三大支柱",
-      blocks: [para("一"), para("二")],
+      components: [para("一"), para("二")],
     } as Slide
 
     function bentoRectY(root: Element): number {

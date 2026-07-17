@@ -14,13 +14,13 @@ const CJK_LONG =
 // `chapterNumberFor`/`totalChapters` have something to derive from — index 0
 // is chapter "01", index 2 is chapter "02" out of 2 total chapters (drives
 // the horizontal progress dot row's track + node position).
-const chapter1: Slide = { type: "chapter", heading: "第一部分：研究背景", blocks: [] } as Slide
-const content: Slide = { type: "content", heading: "现状", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一部分：研究背景", components: [] } as Slide
+const content: Slide = { type: "content", heading: "现状", components: [] } as Slide
 const chapter2: Slide = {
   type: "chapter",
   heading: "第二部分：方法与证据",
   subheading: "面向可复现的实证研究",
-  blocks: [],
+  components: [],
 } as Slide
 
 const ir = (theme: string): PptxIR =>
@@ -59,7 +59,7 @@ describe("RailChapter", () => {
 
   it("章节标题过长时收缩到 <=2 行、字号落在 [40,84) 区间，不整段输出原文（迁移自 academic.test.tsx 的 Chapter 长标题分支）", () => {
     const ctx = buildCtx(resolveStyle("academic"), {})
-    const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
+    const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, components: [] } as Slide
     const doc: PptxIR = {
       version: "3",
       filename: "x.pptx",

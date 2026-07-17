@@ -1,7 +1,7 @@
 import { Fragment } from "react"
-import type { Block } from "@/ir"
-import type { BlockCtx } from "./blocks/types"
-import { renderBlock } from "./blocks"
+import type { Component } from "@/ir"
+import type { ComponentCtx } from "./components/types"
+import { renderComponent } from "./components"
 import { layoutContentFit, type ContentRect } from "./layout"
 import {
   fitSvgLine,
@@ -9,7 +9,7 @@ import {
   truncateToUnits,
 } from "../lib/svg-text-layout"
 
-type KpiCardsBlock = Extract<Block, { type: "kpi_cards" }>
+type KpiCardsComponent = Extract<Component, { type: "kpi_cards" }>
 
 const HERO_SIZE = 200
 const HERO_MIN_FONT_SIZE = 48
@@ -17,33 +17,33 @@ const LABEL_FONT_SIZE = 28
 const LABEL_MIN_FONT_SIZE = 14
 
 /**
- * `big_number` variant — a "giant metric stage": the first KPI's value fills the
- * top as a hero number, with its label beneath and the remaining blocks stacked
+ * `big_number` arrangement — a "giant metric stage": the first KPI's value fills the
+ * top as a hero number, with its label beneath and the remaining components stacked
  * below as supporting context. Gives a deck visual rhythm (a breather page that
  * lands one number hard) instead of every content page looking the same.
  */
 export function BigNumber({
-  blocks,
+  components,
   rect,
   ctx,
 }: {
-  blocks: Block[]
+  components: Component[]
   rect: ContentRect
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
-  const kpi = blocks.find(
-    (b): b is KpiCardsBlock => b.type === "kpi_cards" && b.items.length > 0,
+  const kpi = components.find(
+    (b): b is KpiCardsComponent => b.type === "kpi_cards" && b.items.length > 0,
   )
   const hero = kpi?.items[0]
-  const others = blocks.filter((b) => b !== kpi)
+  const others = components.filter((b) => b !== kpi)
 
-  // Supporting blocks sit below the hero block.
-  const heroBlockH = Math.round(HERO_SIZE * 1.25)
+  // Supporting components sit below the hero component.
+  const heroComponentH = Math.round(HERO_SIZE * 1.25)
   const supportRect: ContentRect = {
     x: rect.x,
-    y: rect.y + (hero ? heroBlockH : 0),
+    y: rect.y + (hero ? heroComponentH : 0),
     w: rect.w,
-    h: Math.max(0, rect.h - (hero ? heroBlockH : 0)),
+    h: Math.max(0, rect.h - (hero ? heroComponentH : 0)),
   }
   const { placed, dropped } = layoutContentFit("single", others, supportRect, ctx)
   const valueBaseline = rect.y + HERO_SIZE * 0.85
@@ -121,7 +121,7 @@ export function BigNumber({
         </g>
       )}
       {placed.map((p, i) => (
-        <Fragment key={i}>{renderBlock(p.block, p.box, ctx)}</Fragment>
+        <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
       {dropped > 0 && (
         <text

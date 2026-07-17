@@ -1,10 +1,11 @@
 // GF/svg/archetypes/content-stacked-poster.tsx
-import type { Block } from "@/ir"
+import type { Component } from "@/ir"
 import type { SvgTemplateProps } from "./types"
 import type { ContentRect } from "../layout"
-import type { BlockCtx } from "../blocks/types"
+import type { ComponentCtx } from "../components/types"
 import { SvgContent } from "../SvgContent"
-import { measureBlock, renderBlock } from "../blocks"
+import { SCALABLE_TYPES } from "../component-traits"
+import { measureComponent, renderComponent } from "../components"
 import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
@@ -14,7 +15,7 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * stacked-poster content archetype（spec §3.2，Wave 3 Task 20）：creative
  * 主题 content 页型的"换骨"语法——不是「kicker + 标题 + 分隔线 +
  * 满宽内容」，而是全居中"海报"：共享的居中 kicker（88 行小号 muted 章节标签 +
- * 104 行 accent 短横条）+ 800-weight 居中大标题，随 block 数分三档：
+ * 104 行 accent 短横条）+ 800-weight 居中大标题，随 component 数分三档：
  *   - 1 块：单个居中"主视觉" rect（x=190 w=900），从标题一路延伸到 y=640。
  *   - 2 块：同一主视觉 rect 在 y=520 让位，hairline 分隔线，第二块进
  *     "标注条" rect（x=190 w=900，y=532→640）。
@@ -25,10 +26,10 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * 用 `grep -n` 实测边界——比 brief 给出的 522-696 短，695 行为空行，696 行
  * 起是紧随其后的 Ending 页型模块注释，不属于本函数体）提炼，随迁其消费的
  * 三个私有 helper：
- *   - `renderPosterSlot`（347-365 行）：把单个 block 渲染进一个海报"槽位"
+ *   - `renderPosterSlot`（347-365 行）：把单个 component 渲染进一个海报"槽位"
  *     （主视觉或标注条），chart/image 类走 bento 同款的等比缩放到填满槽位
  *     （额外允许放大，封顶 1.3x），其余类型走 `SvgContent`。
- *   - `blockFitsSlot`（374-377 行）：判断某个 block 是否能不溢出地放进给定
+ *   - `componentFitsSlot`（374-377 行）：判断某个 component 是否能不溢出地放进给定
  *     槽位——可缩放类型恒真，其余类型比较其在槽位宽度下的自然高度与槽位
  *     高度。
  *   - `renderStackedContent`（383-520 行）：Step A 复核确认本函数（≥3 块等
@@ -85,17 +86,17 @@ const TITLE_Y = 184
 const HERO_X = 190
 const HERO_W = 900
 const HERO_TITLE_GAP = 48
-// Full-budget poster bottom edge (1-block hero rect's floor, and 2-block
+// Full-budget poster bottom edge (1-component hero rect's floor, and 2-component
 // caption strip's floor) — every value below that used to be a bare `640`
 // keys off this single constant, so the footnote shrink (see `posterBottom`
 // below) only has one spot to touch.
 const POSTER_BOTTOM_BASE = 640
 // When `slide.footnote` is set, the poster/strip floor pulls up by this much
 // so the footnote (rendered at y=656, per the old stacked path's 420-vs-460
-// contentH precedent) gets clear room instead of the full-budget block
+// contentH precedent) gets clear room instead of the full-budget component
 // running straight into it.
 const POSTER_BOTTOM_FOOTNOTE_SHRINK = 40
-const HERO_BOTTOM_HALF = 520 // 2-block: hero gives up the bottom 120px
+const HERO_BOTTOM_HALF = 520 // 2-component: hero gives up the bottom 120px
 const STRIP_DIVIDER_Y = 520
 const STRIP_Y = 532
 
@@ -112,29 +113,31 @@ const SUBHEADING_MIN_FONT_SIZE = 16
 const SUBHEADING_SLOT = 34
 const SUBHEADING_SLOT_STACKED = 46
 
-// Block types whose content is a rendered graphic (chart/image) rather than
-// reflowable text — safe to uniformly scale to *fill* a poster slot (both
-// enlarging and shrinking), unlike text blocks which can't scale without
-// becoming illegible. Poster mode additionally allows scaling *up* (bento
-// only ever shrinks) since the hero is meant to read as a dominant image,
-// capped at 1.3x so it stays close to the page's usual safe margin.
-const SCALABLE_TYPES = new Set(["chart", "image"])
+// `SCALABLE_TYPES` (imported above) now lives in `../component-traits` (W2
+// task 5 — content-bento-panel.tsx independently defined this exact same
+// set before this task; component-traits.test.ts pins the pre-merge
+// equivalence proof). Poster mode's own behavior — scaling *up* to *fill* a
+// slot (both enlarging and shrinking), unlike text components which can't
+// scale without becoming illegible, capped at HERO_SCALE_MAX so it stays
+// close to the page's usual safe margin (bento only ever shrinks) — lives
+// here, in `renderPosterSlot`/`componentFitsSlot` below; only the
+// *classification* moved, not the scaling logic.
 const HERO_SCALE_MAX = 1.3
 
 /**
- * Render a single block into `rect` as one poster "slot" (hero or caption
- * strip). Scalable blocks (chart/image) get bento's uniform-scale-to-fit
+ * Render a single component into `rect` as one poster "slot" (hero or caption
+ * strip). Scalable components (chart/image) get bento's uniform-scale-to-fit
  * technique, generalized to also scale *up* to HERO_SCALE_MAX so the slot is
  * always filled; everything else goes through `SvgContent`, which already
- * vertically centers a lone block — so every slot gets exactly one
+ * vertically centers a lone component — so every slot gets exactly one
  * `data-audit-rect` wrapper either way.
  */
-function renderPosterSlot(block: Block, rect: ContentRect, ctx: BlockCtx) {
-  if (!SCALABLE_TYPES.has(block.type)) {
-    return <SvgContent variant="single" blocks={[block]} rect={rect} ctx={ctx} />
+function renderPosterSlot(component: Component, rect: ContentRect, ctx: ComponentCtx) {
+  if (!SCALABLE_TYPES.has(component.type)) {
+    return <SvgContent arrangement="single" components={[component]} rect={rect} ctx={ctx} />
   }
   const auditRect = `${rect.x},${rect.y},${rect.w},${rect.h}`
-  const measured = measureBlock(block, rect.w, ctx)
+  const measured = measureComponent(component, rect.w, ctx)
   const scale = measured > 0 ? Math.min(rect.h / measured, HERO_SCALE_MAX) : 1
   const scaledW = rect.w * scale
   const offsetX = rect.x + (rect.w - scaledW) / 2
@@ -142,23 +145,23 @@ function renderPosterSlot(block: Block, rect: ContentRect, ctx: BlockCtx) {
     <g data-audit-rect={auditRect}>
       <g data-audit-box={`${offsetX},${rect.y},${scaledW}`}>
         <g transform={`translate(${offsetX},${rect.y}) scale(${scale})`}>
-          {renderBlock(block, { x: 0, y: 0, w: rect.w }, ctx)}
+          {renderComponent(component, { x: 0, y: 0, w: rect.w }, ctx)}
         </g>
       </g>
     </g>
   )
 }
 
-/** Whether `block` will fit `rect` without overflowing. Scalable types always
+/** Whether `component` will fit `rect` without overflowing. Scalable types always
  * "fit" (they scale to the slot by construction); everything else needs its
  * natural height, at the slot's width, to stay within budget. */
-function blockFitsSlot(block: Block, rect: ContentRect, ctx: BlockCtx): boolean {
-  if (SCALABLE_TYPES.has(block.type)) return true
-  return measureBlock(block, rect.w, ctx) <= rect.h
+function componentFitsSlot(component: Component, rect: ContentRect, ctx: ComponentCtx): boolean {
+  if (SCALABLE_TYPES.has(component.type)) return true
+  return measureComponent(component, rect.w, ctx) <= rect.h
 }
 
 /** The original (pre-poster) left-aligned content construction — the
- * degrade path (>=3 blocks, no blocks, or a hero/strip block too tall for its
+ * degrade path (>=3 components, no components, or a hero/strip component too tall for its
  * slot), kept byte-identical (modulo the token replacement table above) so
  * its geometry is unaffected by this theme's grammar change. */
 function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
@@ -255,10 +258,10 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
         </text>
       )}
 
-      {/* Content blocks (was a foreignObject) */}
+      {/* Content components (was a foreignObject) */}
       <SvgContent
-        variant={slide.variant}
-        blocks={slide.blocks}
+        arrangement={slide.arrangement}
+        components={slide.components}
         rect={{ x: 56, y: contentRectY, w: 1168, h: contentRectH }}
         ctx={ctx}
       />
@@ -300,7 +303,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
   })
   const subheadingY = titleLastY + 46
   const heroY = titleLastY + HERO_TITLE_GAP + (subheading ? SUBHEADING_SLOT : 0)
-  const isPair = slide.blocks.length === 2
+  const isPair = slide.components.length === 2
   // Mirrors the stacked degrade path's `contentH = footnote ? 420 : 460`:
   // shrink the poster's full-budget floor when a footnote is present so it
   // doesn't run straight into the footnote rendered at y=656.
@@ -321,16 +324,16 @@ export function StackedPosterContent(props: SvgTemplateProps) {
     h: Math.max(0, posterBottom - STRIP_Y),
   }
 
-  // Poster grammar only ever applies to exactly 1 or 2 blocks that actually
-  // fit their hero/strip slot — >=3 blocks, 0 blocks, or a slot-busting block
+  // Poster grammar only ever applies to exactly 1 or 2 components that actually
+  // fit their hero/strip slot — >=3 components, 0 components, or a slot-busting component
   // (e.g. a many-item bullets list too tall for the 108px caption strip) all
   // fall back to the original full-width stack, which has its own, much more
   // generous, content rect.
   const fits =
-    slide.blocks.length > 0 &&
-    slide.blocks.length <= 2 &&
-    blockFitsSlot(slide.blocks[0], heroRect, ctx) &&
-    (!isPair || blockFitsSlot(slide.blocks[1], stripRect, ctx))
+    slide.components.length > 0 &&
+    slide.components.length <= 2 &&
+    componentFitsSlot(slide.components[0], heroRect, ctx) &&
+    (!isPair || componentFitsSlot(slide.components[1], stripRect, ctx))
   if (!fits) return renderStackedContent(props)
 
   const section = sectionNameFor(ir.slides, index)
@@ -414,7 +417,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
       )}
 
       {/* Hero slot */}
-      {renderPosterSlot(slide.blocks[0], heroRect, ctx)}
+      {renderPosterSlot(slide.components[0], heroRect, ctx)}
 
       {isPair && (
         <>
@@ -426,7 +429,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
             stroke={ctx.colors.border}
             strokeWidth="1.4"
           />
-          {renderPosterSlot(slide.blocks[1], stripRect, ctx)}
+          {renderPosterSlot(slide.components[1], stripRect, ctx)}
         </>
       )}
 

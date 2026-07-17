@@ -151,9 +151,9 @@ const MetaSchema = z
       .optional(),
     copyright: z.string().optional(),
     // Deck-level animation switch (波次 C). Omitted entirely = default
-    // behavior: page-transition fade on, per-block entrance animations off.
+    // behavior: page-transition fade on, per-component entrance animations off.
     // `transition: "none"` opts a deck out of the default fade transition.
-    // `elements: "auto"` opts into per-block entrance animations (S3, wired —
+    // `elements: "auto"` opts into per-component entrance animations (S3, wired —
     // see `pptx-generate.ts`'s `applyElementAnimations` call, gated on this
     // exact flag).
     animation: z
@@ -185,9 +185,9 @@ const BrandSchema = z
   })
   .strict()
 
-// ── Blocks（24 种）──
+// ── Components（24 种）──
 
-const BlockSchema = z.discriminatedUnion("type", [
+const ComponentSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("bullets"),
@@ -554,7 +554,19 @@ const BlockSchema = z.discriminatedUnion("type", [
 const SlideSchema = z
   .object({
     type: z.enum(["cover", "chapter", "content", "ending"]).default("content"),
-    variant: z
+    // Layout registry id（archetype 或 takeover 皆可，src/svg/layouts/registry.ts
+    // 的 LAYOUT_REGISTRY 键）。schema 层是开放 string——已注册 + slideTypes 适用
+    // 是 validateIr 的硬门（api.ts，报错带可用清单与页号），同 theme.id「schema
+    // 开放、validate 收口」的分层哲学（spec §6）。省略 = resolveArchetype 按
+    // 主题 allowed 集 + deck seed 自动轮换选型。4 个图文接管 id
+    // （image-split/image-top/image-bottom/image-annotate，原「图文范式族」
+    // P3～2026-07-09 研究 ppt-master showcase 借鉴的 image_split/image_top/
+    // image_bottom/image_annotate 四个 variant 值）的具体版式行为详见
+    // registry.ts 对应条目，不在这里重复。
+    layout: z.string().optional(),
+    // Body-arrangement（W2 任务 3：从旧 variant 字段拆出——上面 4 个图文接管值
+    // 升格进 layout，其余 9 个身体排布值原样保留，语义逐条不变）。
+    arrangement: z
       .enum([
         "single",
         "two_column",
@@ -564,16 +576,6 @@ const SlideSchema = z
         "quote",
         "big_number",
         "assertion_evidence",
-        // 图片排版 P3：半版大图 + 侧栏文字（第一个 image 块为图源）
-        "image_split",
-        // 图文范式族（2026-07-09，研究 ppt-master showcase）：
-        // image_top = 顶图三栏（上半全幅出血图 + 下方文字分列）
-        // image_bottom = 上文下图（对称对话）
-        // image_annotate = 中心图 + 四角放射标注（showcase P16 矩形版，
-        // 不依赖 clipPath。bullets 前 4 条按「：」拆标题/说明做标注）
-        "image_top",
-        "image_bottom",
-        "image_annotate",
         // aside（2026-07-12 借鉴财经简报 EDITORIAL NOTE）：主内容 2/3 +
         // 观点侧栏 1/3——末位块进侧栏（放 callout/quote/kpi 巨号观点），
         // 数据与观点并置。<2 块退化 single。
@@ -582,7 +584,7 @@ const SlideSchema = z
       .optional(),
     heading: z.string().optional(),
     subheading: z.string().optional(),
-    blocks: z.array(BlockSchema).default([]),
+    components: z.array(ComponentSchema).default([]),
     background: BackgroundSpecSchema.optional(),
     // 图片排版 P4：受控装饰原语——模型只有选择权（kind + 强度 + corner_tag
     // 的文本），绘制由渲染层手写 SVG 按主题 token 着色，不接受任意图形。
@@ -615,14 +617,14 @@ export const PptxIRSchema = z
   .strict()
 
 export type PptxIR = z.infer<typeof PptxIRSchema>
-export type Block = z.infer<typeof BlockSchema>
+export type Component = z.infer<typeof ComponentSchema>
 export type BackgroundSpec = z.infer<typeof BackgroundSpecSchema>
 export type Slide = z.infer<typeof SlideSchema>
 export type Assets = z.infer<typeof AssetsSchema>
 export type Meta = z.infer<typeof MetaSchema>
 export type Brand = z.infer<typeof BrandSchema>
 
-// Block sub-types (extracted from BlockSchema union members)
+// Component sub-types (extracted from ComponentSchema union members)
 export type KpiItem = {
   value: string
   unit?: string

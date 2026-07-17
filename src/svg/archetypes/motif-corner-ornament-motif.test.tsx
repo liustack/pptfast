@@ -7,10 +7,10 @@ import { resolveStyle } from "../../themes"
 import { CornerOrnamentMotif } from "./motif-corner-ornament-motif"
 import type { PptxIR, Slide } from "@/ir"
 
-const coverSlide: Slide = { type: "cover", heading: "封面", blocks: [] } as Slide
-const chapterSlide: Slide = { type: "chapter", heading: "章节", blocks: [] } as Slide
-const contentSlide: Slide = { type: "content", variant: "single", heading: "内容", blocks: [] } as Slide
-const endingSlide: Slide = { type: "ending", blocks: [] } as Slide
+const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
+const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
+const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
+const endingSlide: Slide = { type: "ending", components: [] } as Slide
 
 // 2026-07-10 构图变体引入后，逐字节锁锚定 variant a（原构图）——运行时
 // probe 一个命中 a 的 filename（fixture 自适应，变体算法调整也不会脆断）。

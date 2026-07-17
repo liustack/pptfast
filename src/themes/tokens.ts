@@ -20,8 +20,8 @@ export interface StyleColors {
   accentPool?: string[];
   /**
    * Optional hairline stroke color for the shared "surface card" shells
-   * (kpi_cards / icon_cards / callout — see blocks/kpi.tsx,
-   * blocks/icon-cards.tsx, blocks/callout.tsx). Those block renderers are
+   * (kpi_cards / icon_cards / callout — see components/kpi.tsx,
+   * components/icon-cards.tsx, components/callout.tsx). Those component renderers are
    * shared across every theme and must stay theme-agnostic (no
    * `if (themeId === ...)` branching), so a theme that wants its cards
    * outlined sets this token instead — the renderers just consult it and add

@@ -13,13 +13,13 @@ const CJK_LONG =
 // Deck with two chapter slides (separated by a content slide) so
 // `chapterNumberFor` has something to derive — index 0 is chapter "01",
 // index 2 is chapter "02".
-const chapter1: Slide = { type: "chapter", heading: "第一部分：市场洞察", blocks: [] } as Slide
-const content: Slide = { type: "content", heading: "现状", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一部分：市场洞察", components: [] } as Slide
+const content: Slide = { type: "content", heading: "现状", components: [] } as Slide
 const chapter2: Slide = {
   type: "chapter",
   heading: "第二部分：技术路线图",
   subheading: "面向 2027 的演进方向",
-  blocks: [],
+  components: [],
 } as Slide
 
 const ir = (theme: string, slides: Slide[] = [chapter1, content, chapter2]): PptxIR =>
@@ -77,7 +77,7 @@ describe("MastheadChapter", () => {
 
   it("keeps the watermark digit (anchored x=1184, end) horizontally clear of the title (maxWidth 720)", () => {
     const ctx = buildCtx(resolveStyle("journal"), {})
-    const slide: Slide = { type: "chapter", heading: "增长战略", subheading: "从 0 到 1", blocks: [] } as Slide
+    const slide: Slide = { type: "chapter", heading: "增长战略", subheading: "从 0 到 1", components: [] } as Slide
     const deck = ir("journal", [slide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -101,7 +101,7 @@ describe("MastheadChapter", () => {
 
   it("shrinks a pathologically long heading instead of overflowing", () => {
     const ctx = buildCtx(resolveStyle("journal"), {})
-    const slide: Slide = { type: "chapter", heading: CJK_LONG, blocks: [] } as Slide
+    const slide: Slide = { type: "chapter", heading: CJK_LONG, components: [] } as Slide
     const deck = ir("journal", [slide])
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">

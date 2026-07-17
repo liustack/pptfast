@@ -28,7 +28,7 @@ const slide: Slide = {
   type: "cover",
   heading: "创新前沿",
   subheading: "面向未来的实证研究",
-  blocks: [],
+  components: [],
 } as Slide
 const ir = (theme: string): PptxIR =>
   ({
@@ -96,7 +96,7 @@ describe("LeftAnchorCover", () => {
     const REPORTED_HEADING = "DSpark：让大模型推理快 60-85% 的工程突破"
 
     it("wraps to 3 lines and shrinks to fontSize=47 — matches fitHeadingLines(maxWidth=360) directly", () => {
-      const reportedSlide: Slide = { type: "cover", heading: REPORTED_HEADING, blocks: [] } as Slide
+      const reportedSlide: Slide = { type: "cover", heading: REPORTED_HEADING, components: [] } as Slide
       const ctx = buildCtx(resolveStyle("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={reportedSlide} index={0} ctx={ctx} />,
@@ -123,7 +123,7 @@ describe("LeftAnchorCover", () => {
     it("a longer stress title that wraps further also stays within the same maxWidth budget (no per-title exception)", () => {
       const longer =
         "DSpark：让大规模语言模型推理速度提升 60-85% 的关键工程突破与实践路径"
-      const longerSlide: Slide = { type: "cover", heading: longer, blocks: [] } as Slide
+      const longerSlide: Slide = { type: "cover", heading: longer, components: [] } as Slide
       const ctx = buildCtx(resolveStyle("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={longerSlide} index={0} ctx={ctx} />,

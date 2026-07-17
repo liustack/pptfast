@@ -54,7 +54,7 @@ describe("generatePptxBlob v2 master wiring", () => {
         {
           type: "content",
           heading: "Title",
-          blocks: [{ type: "paragraph", text: "Body" }],
+          components: [{ type: "paragraph", text: "Body" }],
         },
       ],
     }

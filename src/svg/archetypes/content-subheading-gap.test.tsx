@@ -54,14 +54,19 @@ import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle, type CanonicalThemeId } from "../../themes"
 import type { PptxIR, Slide } from "@/ir"
 import { CONTENT_ARCHETYPES } from "./index-content"
-import type { ContentArchetype } from "./types"
-import { THEME_MANIFESTS } from "../../themes/manifest"
+import type { ContentArchetype, ContentArchetypeId } from "./types"
+import { THEME_DEFINITIONS } from "../../themes/definitions"
 
-/** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板）：
- * 数据源从 SVG_TEMPLATES[id].Content 改为经 manifest 解析该主题的 content
- * archetype（六主题各 1 个），验证的「副题间距 >=14px」共享助手不变。 */
+/** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板，W2 任务 2
+ * 数据源改为 THEME_DEFINITIONS）：数据源从 SVG_TEMPLATES[id].Content 改为经
+ * theme 定义解析该主题的 content archetype（各主题至少 1 个），验证的「副题
+ * 间距 >=14px」共享助手不变。 */
 function contentArchetypeFor(themeId: CanonicalThemeId): ContentArchetype {
-  const id = THEME_MANIFESTS[themeId].archetypes.content[0]
+  // layouts.content 的 id 是通用 string（W2 任务 2 起不再分页型细分 ID 联合
+  // 类型），CONTENT_ARCHETYPES 仍是窄 Record<ContentArchetypeId,...>——这里
+  // 的 cast 只是类型层面收窄，运行时值不变（清单-注册表一致性锁已守住这个
+  // 不变式，definitions.test.ts）。
+  const id = THEME_DEFINITIONS[themeId].layouts.content[0] as ContentArchetypeId
   return CONTENT_ARCHETYPES[id]
 }
 
@@ -127,7 +132,7 @@ function subheadingGlyphTop(subheadingY: number): number {
 interface ThemeCase {
   id: CanonicalThemeId
   isTitleLine: (el: Element) => boolean
-  /** Renders a Content slide (given heading + blocks) whose subheadingY was touched by the S3b formula. */
+  /** Renders a Content slide (given heading + components) whose subheadingY was touched by the S3b formula. */
   renderContent: (contentArch: ContentArchetype, ctx: ReturnType<typeof buildCtx>, heading: string) => Element
 }
 
@@ -138,10 +143,9 @@ const CJK_THEME_CASES: ThemeCase[] = [
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "核心概要。" }],
+        components: [{ type: "paragraph", text: "核心概要。" }],
       }
       return render(contentArch({ ir: ir("academic", [slide]), slide, index: 0, ctx }))
     },
@@ -152,10 +156,9 @@ const CJK_THEME_CASES: ThemeCase[] = [
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
+        components: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
       }
       return render(contentArch({ ir: ir("tech", [slide]), slide, index: 0, ctx }))
     },
@@ -170,10 +173,9 @@ const CJK_THEME_CASES: ThemeCase[] = [
       // No background asset -> the (simpler) no-bg branch.
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "围绕三个方向推进。" }],
+        components: [{ type: "paragraph", text: "围绕三个方向推进。" }],
       }
       const tone = CONTENT_ARCHETYPES["tone-adaptive-content"]
       return render(tone({ ir: ir("enterprise", [slide]), slide, index: 0, ctx }))
@@ -183,15 +185,14 @@ const CJK_THEME_CASES: ThemeCase[] = [
     id: "insight",
     isTitleLine: (el) => el.getAttribute("font-weight") === "500",
     renderContent: (contentArch, ctx, heading) => {
-      // >=3 blocks forces the degrade (stacked) path — the one S3b actually
+      // >=3 components forces the degrade (stacked) path — the one S3b actually
       // moved (+38->+50); the poster path's own +46 is a separate regression
       // lock (see creative.test.tsx's "poster path, with subheading").
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
-        blocks: [
+        components: [
           { type: "paragraph", text: "第一段。" },
           { type: "bullets", items: ["要点一", "要点二"] },
           { type: "paragraph", text: "第三段。" },
@@ -206,10 +207,9 @@ const CJK_THEME_CASES: ThemeCase[] = [
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
+        components: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
       }
       return render(contentArch({ ir: ir("journal", [slide]), slide, index: 0, ctx }))
     },
@@ -246,10 +246,9 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
       const ctx = buildCtx(tokens, {})
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "支撑论据。" }],
+        components: [{ type: "paragraph", text: "支撑论据。" }],
       }
       const root = render(contentArch({ ir: ir("consulting", [slide]), slide, index: 0, ctx }))
 

@@ -13,13 +13,13 @@ const CJK_LONG =
 // Deck with two chapter slides (separated by a content slide) so
 // `chapterNumberFor` has something to derive from — index 0 is chapter "01",
 // index 2 is chapter "02" out of 2 total chapters.
-const chapter1: Slide = { type: "chapter", heading: "第一章：市场洞察", blocks: [] } as Slide
-const content: Slide = { type: "content", heading: "现状", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一章：市场洞察", components: [] } as Slide
+const content: Slide = { type: "content", heading: "现状", components: [] } as Slide
 const chapter2: Slide = {
   type: "chapter",
   heading: "第二章：战略选择与路径",
   subheading: "面向 2027 的三个决定",
-  blocks: [],
+  components: [],
 } as Slide
 
 const ir = (theme: string): PptxIR =>
@@ -81,7 +81,7 @@ describe("BannerChapter", () => {
   // heading 必须被压缩换行/缩字号，不能原样溢出。
   it("超长标题被压缩到 <=2 行且字号收缩（40-84px 之间），不会原样溢出", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
-    const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
+    const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, components: [] } as Slide
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",

@@ -56,7 +56,7 @@ function makeSlide(): Slide {
   return {
     type: "content",
     heading: "标题",
-    blocks: [{ type: "paragraph", text: "正文内容" }],
+    components: [{ type: "paragraph", text: "正文内容" }],
   }
 }
 

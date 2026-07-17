@@ -128,7 +128,7 @@ describe("scale transform at leaves", () => {
   })
 })
 
-// Wave-C S3: `blocks/index.tsx`'s `renderBlock` tags a block's output with
+// Wave-C S3: `components/index.tsx`'s `renderComponent` tags a component's output with
 // `<g data-blk="N">` when `meta.animation.elements === "auto"`. This is the
 // export-side half of that contract — every leaf under such a `<g>` must
 // carry `blockIndex` on its op.

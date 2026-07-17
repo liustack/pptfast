@@ -11,7 +11,7 @@ const ir = PptxIRSchema.parse({
   theme: { id: "consulting" },
   slides: [
     { type: "cover", heading: "pptfast smoke", subheading: "node render path" },
-    { type: "content", heading: "Bullets", blocks: [{ type: "bullets", items: ["one", "two", "three"] }] },
+    { type: "content", heading: "Bullets", components: [{ type: "bullets", items: ["one", "two", "three"] }] },
     { type: "ending", heading: "Thanks" },
   ],
 })
