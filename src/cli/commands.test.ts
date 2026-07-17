@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { runPreview, runRender, runSchema, runThemes, runValidate } from "./commands"
+import { applyDeckConfig, runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./commands"
 
 // 1x1 红色 PNG
 const PNG_1PX = Buffer.from(
@@ -87,5 +87,92 @@ describe("runPreview", () => {
     await runPreview(join(dir, "deck-with-asset.json"), out)
     const svg = await readFile(join(out, "002-content.svg"), "utf8")
     expect(svg).toContain("data:image/png;base64")
+  })
+})
+
+describe("runSchema --tokens", () => {
+  it("prints the TokensOverride schema", () => {
+    const s = JSON.parse(runSchema(true)) as { properties?: Record<string, unknown> }
+    expect(Object.keys(s.properties ?? {})).toEqual(
+      expect.arrayContaining(["colors", "fonts", "shape"]),
+    )
+  })
+})
+
+describe("applyDeckConfig resolution (flag > config > IR)", () => {
+  const freshDir = () => mkdtemp(join(tmpdir(), "pptfast-deckcfg-"))
+
+  it("--tokens file wins over config tokens", async () => {
+    const d = await freshDir()
+    await writeFile(
+      join(d, "pptfast.config.json"),
+      JSON.stringify({ tokens: { colors: { primary: "#111111" } } }),
+    )
+    await writeFile(join(d, "brand.json"), JSON.stringify({ colors: { primary: "#0B5FFF" } }))
+    const raw: any = structuredClone(VALID_IR)
+    await applyDeckConfig(raw, { tokensPath: join(d, "brand.json"), cwd: d })
+    expect(raw.theme.tokens.colors.primary).toBe("#0B5FFF")
+  })
+
+  it("config tokens and theme apply when no flags are given", async () => {
+    const d = await freshDir()
+    await writeFile(
+      join(d, "pptfast.config.json"),
+      JSON.stringify({ theme: "ink", tokens: { colors: { primary: "#111111" } } }),
+    )
+    const raw: any = structuredClone(VALID_IR)
+    await applyDeckConfig(raw, { cwd: d })
+    expect(raw.theme.id).toBe("ink")
+    expect(raw.theme.tokens.colors.primary).toBe("#111111")
+  })
+
+  it("--theme flag beats config and keeps IR-authored tokens", async () => {
+    const d = await freshDir()
+    await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "ink" }))
+    const raw: any = structuredClone(VALID_IR)
+    raw.theme = { id: "tech", tokens: { colors: { primary: "#ABCDEF" } } }
+    await applyDeckConfig(raw, { theme: "consulting", cwd: d })
+    expect(raw.theme.id).toBe("consulting")
+    expect(raw.theme.tokens.colors.primary).toBe("#ABCDEF")
+  })
+
+  it("leaves the IR untouched when there is no flag and no config", async () => {
+    const d = await freshDir()
+    const raw: any = structuredClone(VALID_IR)
+    await applyDeckConfig(raw, { cwd: d })
+    expect(raw).toEqual(VALID_IR)
+  })
+
+  it("rejects an invalid --tokens file with the file path in the message", async () => {
+    const d = await freshDir()
+    await writeFile(join(d, "brand.json"), JSON.stringify({ colors: { primary: "nope" } }))
+    const raw: any = structuredClone(VALID_IR)
+    await expect(
+      applyDeckConfig(raw, { tokensPath: join(d, "brand.json"), cwd: d }),
+    ).rejects.toThrow(/brand\.json/)
+  })
+
+  it("runValidate reports the config-resolved theme", async () => {
+    const d = await freshDir()
+    await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "ink" }))
+    await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
+    await expect(runValidate(join(d, "deck.json"), d)).resolves.toMatch(/theme "ink"/)
+  })
+})
+
+describe("runInit", () => {
+  it("writes a config template into cwd", async () => {
+    const d = await mkdtemp(join(tmpdir(), "pptfast-init-"))
+    const msg = await runInit(d)
+    expect(msg).toContain("pptfast.config.json")
+    const written = JSON.parse(await readFile(join(d, "pptfast.config.json"), "utf8"))
+    expect(written.theme).toBe("consulting")
+    expect(written.tokens.colors.primary).toMatch(/^#/)
+  })
+
+  it("refuses to overwrite an existing config", async () => {
+    const d = await mkdtemp(join(tmpdir(), "pptfast-init-"))
+    await runInit(d)
+    await expect(runInit(d)).rejects.toThrow(/exists/)
   })
 })

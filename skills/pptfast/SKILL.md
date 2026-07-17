@@ -52,6 +52,8 @@ pptfast render deck.json -o deck.pptx
 
 `--theme <id>` overrides the deck theme without editing the IR.
 
+If the project has a `pptfast.config.json`, its theme/tokens are project-wide brand defaults — do not fight them with `--theme` unless the user asks.
+
 ### Step 5 — Optional visual self-check
 
 ```bash

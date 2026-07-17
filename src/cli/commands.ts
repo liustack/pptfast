@@ -6,21 +6,64 @@ import {
   irJsonSchema,
   listThemes,
   renderSlideSvg,
+  tokensJsonSchema,
   validateIr,
 } from "../api"
 import { PptfastError } from "../errors"
+import { TokensOverrideSchema, type TokensOverride } from "../ir"
+import { CONFIG_FILENAME, findConfig } from "./config"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
+
+async function loadTokensFile(path: string): Promise<TokensOverride> {
+  const raw = await loadIrFile(path)
+  const r = TokensOverrideSchema.safeParse(raw)
+  if (!r.success) {
+    const detail = r.error.issues
+      .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("\n")
+    throw new PptfastError(`invalid tokens file ${path}:\n${detail}`)
+  }
+  return r.data
+}
+
+/**
+ * Resolve deck defaults onto the raw (pre-validation) IR.
+ * Precedence: CLI flag > pptfast.config.json (walked up from cwd) > IR.
+ * `--theme` only swaps theme.id — IR-authored override/tokens survive.
+ */
+export async function applyDeckConfig(
+  raw: unknown,
+  opts: { theme?: string; tokensPath?: string; cwd: string },
+): Promise<void> {
+  if (typeof raw !== "object" || raw === null) return // schema error surfaces in validateIr
+  const deck = raw as Record<string, unknown>
+  const irTheme =
+    typeof deck.theme === "object" && deck.theme !== null
+      ? (deck.theme as Record<string, unknown>)
+      : {}
+  const hit = await findConfig(opts.cwd)
+  const theme = opts.theme ?? hit?.config.theme ?? irTheme.id
+  const tokens = opts.tokensPath
+    ? await loadTokensFile(opts.tokensPath)
+    : (hit?.config.tokens ?? irTheme.tokens)
+  if (theme === undefined && tokens === undefined) return
+  deck.theme = { ...irTheme, id: theme, ...(tokens !== undefined ? { tokens } : {}) }
+}
 
 export interface RenderOptions {
   output: string
   theme?: string
+  tokensPath?: string
+  cwd?: string
 }
 
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const raw = await loadIrFile(irPath)
-  if (opts.theme && typeof raw === "object" && raw !== null) {
-    ;(raw as Record<string, unknown>).theme = { id: opts.theme }
-  }
+  await applyDeckConfig(raw, {
+    theme: opts.theme,
+    tokensPath: opts.tokensPath,
+    cwd: opts.cwd ?? process.cwd(),
+  })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, dirname(resolve(irPath)))
@@ -31,8 +74,9 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
 }
 
 /** Returns human-readable report. Throws PptfastError when invalid (CLI exit 1). */
-export async function runValidate(irPath: string): Promise<string> {
+export async function runValidate(irPath: string, cwd = process.cwd()): Promise<string> {
   const raw = await loadIrFile(irPath)
+  await applyDeckConfig(raw, { cwd })
   const v = validateIr(raw)
   if (!v.ok)
     throw new PptfastError(
@@ -41,8 +85,8 @@ export async function runValidate(irPath: string): Promise<string> {
   return `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
 }
 
-export function runSchema(): string {
-  return JSON.stringify(irJsonSchema(), null, 2)
+export function runSchema(tokens = false): string {
+  return JSON.stringify(tokens ? tokensJsonSchema() : irJsonSchema(), null, 2)
 }
 
 export function runThemes(asJson: boolean): string {
@@ -51,8 +95,30 @@ export function runThemes(asJson: boolean): string {
   return themes.map((t) => `${t.id.padEnd(12)} ${t.label}`).join("\n")
 }
 
-export async function runPreview(irPath: string, outDir: string): Promise<string> {
+const CONFIG_TEMPLATE = {
+  theme: "consulting",
+  tokens: {
+    colors: { primary: "#0B5FFF", accent: "#FF6A00" },
+  },
+} as const
+
+/** Scaffold pptfast.config.json in cwd. Never overwrites. */
+export async function runInit(cwd = process.cwd()): Promise<string> {
+  const target = join(cwd, CONFIG_FILENAME)
+  try {
+    await writeFile(target, JSON.stringify(CONFIG_TEMPLATE, null, 2) + "\n", { flag: "wx" })
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new PptfastError(`${target} already exists — edit it instead`)
+    }
+    throw e
+  }
+  return `wrote ${target} — themes: \`pptfast themes\`, tokens schema: \`pptfast schema --tokens\``
+}
+
+export async function runPreview(irPath: string, outDir: string, cwd = process.cwd()): Promise<string> {
   const raw = await loadIrFile(irPath)
+  await applyDeckConfig(raw, { cwd })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, dirname(resolve(irPath)))

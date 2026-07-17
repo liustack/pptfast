@@ -32,6 +32,25 @@ if (!slide1.includes("pptfast")) throw new Error("e2e: cover heading text not fo
 // 3) preview command
 console.log(sh("node", ["dist/cli.js", "preview", "examples/basic.json", "-o", join(OUT, "svgs")]))
 
+// 3b) --tokens override must reach the DrawingML (hex appears uppercase, no "#")
+const tokensPath = join(OUT, "tokens.json")
+writeFileSync(tokensPath, JSON.stringify({ colors: { primary: "#0B5FFF" } }))
+const brandedPath = join(OUT, "branded.pptx")
+console.log(
+  sh("node", ["dist/cli.js", "render", "examples/basic.json", "-o", brandedPath, "--tokens", tokensPath]),
+)
+const brandedZip = await JSZip.loadAsync(readFileSync(brandedPath))
+const brandedSlideXml = (
+  await Promise.all(
+    Object.keys(brandedZip.files)
+      .filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k))
+      .map((k) => brandedZip.file(k)!.async("string")),
+  )
+).join("")
+if (!brandedSlideXml.includes("0B5FFF"))
+  throw new Error("e2e: --tokens primary color not found in any branded slide XML")
+console.log("tokens override leg OK (--tokens color reached DrawingML)")
+
 // 4) optional visual gate: LibreOffice PDF conversion (skipped when unavailable)
 try {
   sh("soffice", ["--headless", "--convert-to", "pdf", "--outdir", OUT, pptxPath])

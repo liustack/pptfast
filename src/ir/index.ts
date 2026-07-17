@@ -46,6 +46,51 @@ const BackgroundSpecSchema = z.discriminatedUnion("kind", [
 
 // ── Theme / Meta / Assets / Brand ──
 
+/**
+ * v0.2 brand-token override: deep-partial palette/fonts/shape merged over the
+ * built-in theme (base → theme.override → theme.tokens, tokens wins — see
+ * themes/index.ts getTheme). Scope is deliberately palette-level (spec §11):
+ * no defaultBackgrounds or manifest overrides until v0.3. gapScale range
+ * mirrors the documented sane range in themes/tokens.ts ThemeShape.
+ */
+export const TokensOverrideSchema = z
+  .object({
+    colors: z
+      .object({
+        bg: Hex.optional(),
+        surface: Hex.optional(),
+        panel: Hex.optional(),
+        primary: Hex.optional(),
+        accent: Hex.optional(),
+        text: Hex.optional(),
+        muted: Hex.optional(),
+        border: Hex.optional(),
+        chartPalette: z.array(Hex).min(1).optional(),
+        accentPool: z.array(Hex).min(1).optional(),
+        cardStroke: Hex.optional(),
+      })
+      .strict()
+      .optional(),
+    fonts: z
+      .object({
+        heading: z.array(z.string()).min(1).optional(),
+        body: z.array(z.string()).min(1).optional(),
+        mono: z.array(z.string()).min(1).optional(),
+      })
+      .strict()
+      .optional(),
+    shape: z
+      .object({
+        radius: z.number().min(0).max(32).optional(),
+        gapScale: z.number().min(0.8).max(1.3).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+
+export type TokensOverride = z.infer<typeof TokensOverrideSchema>
+
 const ThemeSchema = z
   .object({
     id: z.enum(THEME_IDS),
@@ -58,6 +103,7 @@ const ThemeSchema = z
       })
       .strict()
       .optional(),
+    tokens: TokensOverrideSchema.optional(),
   })
   .strict()
 

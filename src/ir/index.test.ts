@@ -266,3 +266,33 @@ describe("verdict_banner block", () => {
     expect(parsePptxIR(d).success).toBe(false)
   })
 })
+
+describe("theme.tokens override (v0.2)", () => {
+  it("accepts a palette/fonts/shape override", () => {
+    const d: any = minimal()
+    d.theme = {
+      id: "consulting",
+      tokens: {
+        colors: { primary: "#0B5FFF", chartPalette: ["#111111", "#222222"] },
+        fonts: { heading: ["Inter"] },
+        shape: { radius: 10, gapScale: 1.1 },
+      },
+    }
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects a non-hex color", () => {
+    const d: any = minimal()
+    d.theme = { id: "consulting", tokens: { colors: { primary: "blue" } } }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects unknown keys (strict)", () => {
+    const d: any = minimal()
+    d.theme = { id: "consulting", tokens: { colours: {} } }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects gapScale outside the documented range", () => {
+    const d: any = minimal()
+    d.theme = { id: "consulting", tokens: { shape: { gapScale: 2 } } }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})

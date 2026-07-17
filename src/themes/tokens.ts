@@ -1,4 +1,4 @@
-import type { BackgroundSpec } from "@/ir";
+import type { BackgroundSpec, TokensOverride } from "@/ir";
 
 export type LayoutType = "cover" | "chapter" | "content" | "ending";
 
@@ -64,6 +64,24 @@ export interface ThemeOverride {
   accent?: string;
   font_heading?: string[];
   font_body?: string[];
+}
+
+/**
+ * Deep-partial brand override (v0.2, zod-validated as IR theme.tokens).
+ * Applied after ThemeOverride — see themes/index.ts getTheme. Absent tokens
+ * return the base reference untouched (zero observable change).
+ */
+export function applyTokensOverride(
+  base: ThemeTokens,
+  tokens?: TokensOverride,
+): ThemeTokens {
+  if (!tokens) return base;
+  return {
+    ...base,
+    colors: { ...base.colors, ...tokens.colors },
+    fonts: { ...base.fonts, ...tokens.fonts },
+    shape: tokens.shape ? { ...base.shape, ...tokens.shape } : base.shape,
+  };
 }
 
 export function applyOverride(
