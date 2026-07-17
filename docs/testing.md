@@ -42,10 +42,17 @@ well-formedness; a file that opens fine in `soffice` can still trigger
 PowerPoint's "we found a problem with some content" repair dialog. Before
 publishing a release that touched the export XML (`src/pptx/`, especially
 `svg2pptx/` or the animation/gradient JSZip patches), run a local repair-dialog
-probe on a real macOS + PowerPoint install: script PowerPoint via AppleScript
-to quit, reopen the generated `.pptx`, and poll for the repair dialog's button
-over a fixed window (~40s per file is enough for PowerPoint to either finish
-opening cleanly or surface the dialog). A clean open across the example decks
+probe on a real macOS + PowerPoint install:
+
+```bash
+pnpm e2e   # produce .e2e-out/*.pptx first
+osascript scripts/ppt-repair-check.applescript "$PWD/.e2e-out/basic.pptx"   # → OK
+osascript scripts/ppt-repair-check.applescript "$PWD/.e2e-out/webp.pptx"    # → OK
+```
+
+The script quits PowerPoint, opens the file, and polls for the repair dialog
+(`REPAIR_DIALOG`), a repaired-title window (`REPAIRED_TITLE`), a clean open
+(`OK`), or `TIMEOUT` (~30s per file). A clean open across the example decks
 is the release gate — no automated substitute reliably catches this class of
 bug, since neither LibreOffice nor pptxgenjs's own validation reproduces
 PowerPoint's parser.
