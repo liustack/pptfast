@@ -141,14 +141,14 @@ export async function generatePptx(input: unknown): Promise<Uint8Array> {
   return new Uint8Array(await blob.arrayBuffer())
 }
 
-export interface ThemeInfo {
+export interface StyleInfo {
   id: string
   label: string
   colors: Record<string, unknown>
 }
 
-/** Built-in theme catalog with labels and color tokens. */
-export function listThemes(): ThemeInfo[] {
+/** Built-in style catalog with labels and theme color tokens. */
+export function listStyles(): StyleInfo[] {
   return CANONICAL_THEME_IDS.map((id) => ({
     id,
     label: THEME_LABELS[id],

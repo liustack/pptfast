@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
-import { generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { generatePptx, irJsonSchema, listStyles, renderSlideSvg, validateIr } from "./api"
 
 const raw = {
   version: "3",
@@ -90,12 +90,12 @@ describe("generatePptx", () => {
   })
 })
 
-describe("listThemes", () => {
-  it("lists 13 canonical themes with labels and color tokens", () => {
-    const themes = listThemes()
-    expect(themes).toHaveLength(13)
-    expect(themes.map((t) => t.id)).toContain("consulting")
-    for (const t of themes) {
+describe("listStyles", () => {
+  it("lists 13 canonical styles with labels and color tokens", () => {
+    const styles = listStyles()
+    expect(styles).toHaveLength(13)
+    expect(styles.map((t) => t.id)).toContain("consulting")
+    for (const t of styles) {
       expect(t.label.length).toBeGreaterThan(0)
       expect(Object.keys(t.colors).length).toBeGreaterThan(0)
     }

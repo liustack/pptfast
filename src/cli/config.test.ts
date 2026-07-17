@@ -16,12 +16,12 @@ describe("findConfig", () => {
 
   it("finds pptfast.config.json in a parent directory", async () => {
     const root = await tmp()
-    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ theme: "tech" }))
+    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ style: "tech" }))
     const nested = join(root, "a", "b")
     await mkdir(nested, { recursive: true })
     const hit = await findConfig(nested)
     expect(hit?.path).toBe(join(root, "pptfast.config.json"))
-    expect(hit?.config.theme).toBe("tech")
+    expect(hit?.config.style).toBe("tech")
   })
 
   it("rejects unknown keys with the config path in the message", async () => {
@@ -30,10 +30,10 @@ describe("findConfig", () => {
     await expect(findConfig(root)).rejects.toThrow(/pptfast\.config\.json/)
   })
 
-  it("rejects an unknown theme id", async () => {
+  it("rejects an unknown style id", async () => {
     const root = await tmp()
-    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ theme: "neon" }))
-    await expect(findConfig(root)).rejects.toThrow(/theme/)
+    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ style: "neon" }))
+    await expect(findConfig(root)).rejects.toThrow(/style/)
   })
 
   it("validates tokens with the shared schema", async () => {

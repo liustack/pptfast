@@ -5,13 +5,13 @@ export {
   formatIssues,
   renderSlideSvg,
   generatePptx,
-  listThemes,
+  listStyles,
   irJsonSchema,
   tokensJsonSchema,
   type ValidateResult,
   type ValidationIssue,
-  type ThemeInfo,
+  type StyleInfo,
 } from "./api"
-export { PptxIRSchema, TokensOverrideSchema, BUILTIN_STYLE_IDS } from "./ir"
-export type { PptxIR, Slide, Block, Meta, Assets, BackgroundSpec, TokensOverride } from "./ir"
+export { PptxIRSchema, TokensOverrideSchema, BUILTIN_STYLE_IDS, MasterConfigSchema } from "./ir"
+export type { PptxIR, Slide, Block, Meta, Assets, BackgroundSpec, TokensOverride, MasterConfig } from "./ir"
 export { installPlatform, type PptfastPlatform } from "./platform/registry"
