@@ -30,8 +30,17 @@ export interface ValidateResult {
  * changing `ir-quality.ts` itself (and its already-green test suite, which
  * asserts on the Chinese wording directly). Unknown/future codes fall back to
  * a generic English string rather than leaking the untranslated Chinese text.
+ *
+ * `density` / `bullets_overflow` / `bullet_item_long` (W3 task 3, spec §5):
+ * the effective threshold is now scenario-aware (delivery editorial budget,
+ * `density` additionally minned against the resolved layout's geometric
+ * capacity — spec §5's dual-attribute capacity split), so the number can no
+ * longer be read off a flat constant here. `checkIrQuality` resolves both
+ * `min()` candidates once (the single place that runs the layout-selection
+ * path render also uses) and attaches them to the issue via `density` /
+ * `bulletsBudget` — this function only formats what it's handed.
  */
-function describeQualityIssue(issue: QualityIssue, themeId: string): string {
+function describeQualityIssue(issue: QualityIssue): string {
   switch (issue.code) {
     case "empty_deck":
       return "deck has no slides"
@@ -40,13 +49,38 @@ function describeQualityIssue(issue: QualityIssue, themeId: string): string {
     case "long_heading":
       return `heading exceeds ${CAPACITY.headingMaxChars} characters — tighten it into a short, assertive phrase`
     case "density": {
-      const limit = CAPACITY.maxBlocksPerSlideOverrides[themeId] ?? CAPACITY.maxBlocksPerSlide
-      return `too many components on this slide (max ~${limit}) — split into multiple slides`
+      const d = issue.density
+      // Defensive fallback only — checkIrQuality always attaches `density`
+      // alongside a "density" code (same total-function posture as the rest
+      // of this file's `?.`/`??` guards); never actually hit.
+      if (!d) return "too many components on this slide — split into multiple slides"
+      const { limit, delivery, deliveryBudget, layoutId, layoutCapacity } = d
+      if (layoutCapacity === undefined || layoutCapacity === deliveryBudget) {
+        // No geometric term (image-cover bypass or a takeover with no body
+        // capacity), or it agrees with the editorial budget — nothing extra
+        // to disambiguate, name the delivery alone.
+        return `too many components on this slide (max ${limit} for ${delivery} delivery) — split into multiple slides`
+      }
+      return layoutCapacity > deliveryBudget
+        ? // Delivery is the binding side, but the layout itself allows more —
+          // name both so a generous-looking layout (e.g. bento-panel's 6)
+          // doesn't read as a bug.
+          `too many components on this slide (max ${limit} — ${layoutId} fits ${layoutCapacity} but ${delivery} delivery caps at ${limit}) — split into multiple slides`
+        : // The layout's own capacity is the binding side.
+          `too many components on this slide (max ${limit} — ${layoutId} layout's capacity is tighter than ${delivery} delivery's ${deliveryBudget}) — split into multiple slides`
     }
-    case "bullets_overflow":
-      return `bullet list has too many items (max ${CAPACITY.bullets.maxItems}) — trim it or split into multiple slides`
-    case "bullet_item_long":
-      return "a bullet item is too long — keep it within about 2 lines"
+    case "bullets_overflow": {
+      const b = issue.bulletsBudget
+      return b
+        ? `bullet list has too many items (max ${b.maxItems} for ${b.delivery} delivery) — trim it or split into multiple slides`
+        : "bullet list has too many items — trim it or split into multiple slides"
+    }
+    case "bullet_item_long": {
+      const b = issue.bulletsBudget
+      return b
+        ? `a bullet item is too long for ${b.delivery} delivery — keep it within about 2 lines`
+        : "a bullet item is too long — keep it within about 2 lines"
+    }
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     default:
@@ -179,10 +213,10 @@ export function validateIr(input: unknown): ValidateResult {
   if (quality.length === 0) return { ok: true, ir: r.data, errors: [] }
   const errors: ValidationIssue[] = quality.map((issue) =>
     issue.code === "empty_deck"
-      ? { path: "slides", message: describeQualityIssue(issue, r.data.theme.id) }
+      ? { path: "slides", message: describeQualityIssue(issue) }
       : {
           path: `slides.${issue.slide}`,
-          message: describeQualityIssue(issue, r.data.theme.id),
+          message: describeQualityIssue(issue),
           page: issue.slide + 1,
         },
   )

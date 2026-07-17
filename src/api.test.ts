@@ -137,6 +137,117 @@ describe("validateIr", () => {
   })
 })
 
+describe("describeQualityIssue: density/bullets English messages (W3 task 3, spec §5)", () => {
+  // Each message must name whichever side(s) of min(delivery editorial
+  // budget, resolved layout capacity) actually bound the limit — see
+  // ir-quality.ts's `density`/`bulletsBudget` QualityIssue fields and this
+  // file's own describeQualityIssue. Reached only through validateIr (the
+  // function itself is private), same convention as the existing
+  // "readable, English" missing-heading test above.
+  // `n` is the slide's total component count (what the density gate counts
+  // against); `withImage` prepends one `image` component (counted as one of
+  // `n`) so a pinned takeover layout actually takes over (findImageComponent
+  // must find something) instead of falling through to archetype auto-pick.
+  const denseSlide = (n: number, opts: { layout?: string; withImage?: boolean } = {}) => ({
+    type: "content" as const,
+    heading: "Dense",
+    layout: opts.layout,
+    components: [
+      ...(opts.withImage ? [{ type: "image" as const, asset_id: "a" }] : []),
+      ...Array.from({ length: opts.withImage ? n - 1 : n }, (_, i) => ({ type: "paragraph" as const, text: String(i) })),
+    ],
+  })
+  const densityMessage = (v: ReturnType<typeof validateIr>) =>
+    v.errors.find((e) => e.message.includes("too many components"))?.message
+
+  it("no geometric term (takeover layout): names the delivery alone", () => {
+    const v = validateIr({
+      ...raw,
+      scenario: { delivery: "presentation" },
+      slides: [raw.slides[0], denseSlide(4, { layout: "image-top", withImage: true })],
+    })
+    expect(v.ok).toBe(false)
+    expect(densityMessage(v)).toBe(
+      "too many components on this slide (max 3 for presentation delivery) — split into multiple slides",
+    )
+  })
+
+  it("tied capacities (explicit generic layout, balanced): names the delivery alone", () => {
+    const v = validateIr({
+      ...raw,
+      scenario: { delivery: "balanced" },
+      slides: [raw.slides[0], denseSlide(5, { layout: "two-column" })],
+    })
+    expect(v.ok).toBe(false)
+    expect(densityMessage(v)).toBe(
+      "too many components on this slide (max 4 for balanced delivery) — split into multiple slides",
+    )
+  })
+
+  it("delivery binds but the layout allows more (bento-panel exception): names both sides", () => {
+    const v = validateIr({
+      ...raw,
+      theme: { id: "tech" },
+      scenario: { delivery: "balanced" },
+      slides: [raw.slides[0], denseSlide(5, { layout: "bento-panel" })],
+    })
+    expect(v.ok).toBe(false)
+    expect(densityMessage(v)).toBe(
+      "too many components on this slide (max 4 — bento-panel fits 6 but balanced delivery caps at 4) — split into multiple slides",
+    )
+  })
+
+  it("the layout's own capacity is the binding side (text delivery, generic layout): names the layout", () => {
+    const v = validateIr({
+      ...raw,
+      scenario: { delivery: "text" },
+      slides: [raw.slides[0], denseSlide(5, { layout: "two-column" })],
+    })
+    expect(v.ok).toBe(false)
+    expect(densityMessage(v)).toBe(
+      "too many components on this slide (max 4 — two-column layout's capacity is tighter than text delivery's 5) — split into multiple slides",
+    )
+  })
+
+  it("bullets_overflow names the delivery", () => {
+    const v = validateIr({
+      ...raw,
+      scenario: { delivery: "balanced" },
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "List",
+          components: [{ type: "bullets", items: ["a", "b", "c", "d", "e", "f"] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.find((e) => e.message.includes("too many items"))?.message).toBe(
+      "bullet list has too many items (max 5 for balanced delivery) — trim it or split into multiple slides",
+    )
+  })
+
+  it("bullet_item_long names the delivery", () => {
+    const v = validateIr({
+      ...raw,
+      scenario: { delivery: "text" },
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "List",
+          components: [{ type: "bullets", items: ["长".repeat(49)] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.find((e) => e.message.includes("too long"))?.message).toBe(
+      "a bullet item is too long for text delivery — keep it within about 2 lines",
+    )
+  })
+})
+
 describe("scenario field (W3 task 2)", () => {
   it("hard-rejects an unknown scenario preset name, listing available presets", () => {
     const v = validateIr({ ...raw, scenario: "not-a-real-preset" })
