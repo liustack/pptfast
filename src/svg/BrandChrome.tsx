@@ -45,9 +45,9 @@ export function BrandChrome({
   // enterprise 持有 suppressFooterOnCardContent，其余主题不设 = 默认 false）。
   const bgAsset =
     slide.background?.kind === "asset" ? assets.images[slide.background.asset_id] : null
-  const master = resolveBrand(ir.theme.id, ir.theme.brand)
+  const brandConfig = resolveBrand(ir.theme.id, ir.theme.brand)
   const cardBgSuppressesFooter =
-    Boolean(master.suppressFooterOnCardContent) &&
+    Boolean(brandConfig.suppressFooterOnCardContent) &&
     slide.type === "content" &&
     !!(bgAsset?.src && !bgAsset.error)
 
@@ -84,7 +84,7 @@ export function BrandChrome({
         <>
           {/* 分隔线可被 theme 的 brand.suppressFooterRule 抑制（主题自带
               版框线时避免双线，ink 先例，2026-07-10 用户裁决） */}
-          {!master.suppressFooterRule && (
+          {!brandConfig.suppressFooterRule && (
             <line x1="56" y1="664" x2="1224" y2="664" stroke={border} strokeWidth="1.2" />
           )}
           {/* meta 两端排布（2026-07-10 用户裁决：时间居中而右侧空很奇怪）：

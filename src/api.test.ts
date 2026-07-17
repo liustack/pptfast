@@ -92,10 +92,10 @@ describe("generatePptx", () => {
 
 describe("listThemes", () => {
   it("lists 13 canonical themes with labels and color tokens", () => {
-    const styles = listThemes()
-    expect(styles).toHaveLength(13)
-    expect(styles.map((t) => t.id)).toContain("consulting")
-    for (const t of styles) {
+    const themes = listThemes()
+    expect(themes).toHaveLength(13)
+    expect(themes.map((t) => t.id)).toContain("consulting")
+    for (const t of themes) {
       expect(t.label.length).toBeGreaterThan(0)
       expect(Object.keys(t.colors).length).toBeGreaterThan(0)
     }
