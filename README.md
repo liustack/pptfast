@@ -13,14 +13,12 @@ A deck is really five things: a content model, a 2D layout, a visual style, moti
 
 ## Install
 
-Not yet published to npm (tracked for v0.2 — see [Roadmap](#roadmap)). For
-now, build from source:
-
 ```bash
-git clone https://github.com/liustack/pptfast.git
-cd pptfast && pnpm install && pnpm build
-node dist/cli.js --help
+npm install -g pptfast
+pptfast --help
 ```
+
+Node >= 18. Or build from source: `git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`.
 
 ## Quick start
 
@@ -84,7 +82,7 @@ The recommended loop for an agent generating a deck: read `pptfast schema` to le
 
 ## Roadmap
 
-- **v0.2** — Claude Code plugin + skills wrapping the render loop, design token overrides (`--tokens`), first npm publish.
+- **v0.2** — Claude Code plugin + skills wrapping the render loop, design token overrides (`--tokens`), `init`/self-update commands.
 - **v0.3** — theme-customization skill (brand colors → tokens), custom manifest slots, 1.0.
 - **v0.4** — richer motion (more entrance animations), Office real-device testing, web playground.
 

@@ -20,7 +20,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.zh-CN.md"
   ],
   "engines": {
     "node": ">=18"
@@ -33,7 +34,8 @@
     "test:watch": "vitest",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "e2e": "pnpm build && tsx scripts/e2e.mts",
-    "docs:list": "node scripts/docs-list.js"
+    "docs:list": "node scripts/docs-list.js",
+    "prepublishOnly": "pnpm check && pnpm build"
   },
   "keywords": [
     "pptx",
