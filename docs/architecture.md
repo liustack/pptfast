@@ -2,7 +2,7 @@
 summary: 'Architecture: five-dimension model, single-source SVG render chain, platform seam'
 read_when:
   - first time in this repo
-  - adding themes/blocks/archetypes
+  - adding themes/components/layouts
   - touching the export pipeline
 ---
 
@@ -16,9 +16,9 @@ another (layout code stays style-agnostic).
 
 | Dimension | Owning layer | Location |
 |---|---|---|
-| Content model | IR (zod schema, semantic blocks) | `src/ir/` |
-| 2D layout | archetypes + blocks + capacity tables + seeded variety | `src/svg/` |
-| Visual style | style tokens + manifest (13 built-in themes) | `src/themes/` |
+| Content model | IR (zod schema, semantic components) | `src/ir/` |
+| 2D layout | layout registry (archetypes + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
+| Visual style | style tokens + theme definitions (curated layout sets + motif, 13 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
 | Narrative | two-phase plan→fill skill methodology (v0.2) | `skills/` |
 
@@ -60,5 +60,5 @@ and tokens in `CANONICAL_THEME_IDS` / `THEME_STYLES` (`src/themes/index.ts`)
 and its id in `BUILTIN_THEME_IDS` (`src/ir/index.ts`). `THEME_DEFINITIONS`
 (`src/themes/definitions.ts`) derives the theme entry from those
 automatically — add a `BRANDS` entry there only if the theme needs
-non-default brand chrome. Archetypes and blocks read only from tokens, so no
-archetype file changes.
+non-default brand chrome. Archetypes and components read only from tokens, so
+no archetype file changes.

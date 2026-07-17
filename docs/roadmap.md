@@ -14,7 +14,7 @@ Realign the vocabulary around a Keynote-style, no-master model and re-home struc
 - **theme** = the distributable, top-level unit: `style` + `brand` + a curated set of layouts — the 13 built-ins become themes, and a style override re-colors a theme
 - **theme.style** = pure design tokens (color/type/radius/icon flavor/spacing scale) — aligned with both the PPTX theme and the shadcn theme
 - **theme.brand** = identity chrome (logo/footer/page number/watermark/cover signature), filled into a layout's optional slots. No slideMaster concept: a layout with no slot for a given brand element simply omits it (graceful degradation) — chrome has always been drawn straight into the flat per-slide SVG, so the model now matches the implementation
-- **layout** = page-level template with named slots (absorbs today's archetype + variant pair), **component** = the atomic units that fill slots (today's content blocks, decorations, icons)
+- **layout** = page-level template with named slots — shipped as an explicit registry (30 archetypes + 4 image takeovers), replacing the old archetype/variant split. **component** = the atomic units that fill slots — shipped for content (the IR's `components`, renamed from `blocks`). Unifying decoration/media/icon elements under the same concept is still ahead
 - **scenario** = narrative axes (mode × delivery × audience) that own structural selection: a theme's curated layouts set the hard boundary (what this theme supports), scenario applies soft weighting inside it — never a hard whitelist
 - Plan artifact (`deck.plan.json`) as a CLI-gated first-class citizen, page-level generation and revision, static HTML preview bundle
 
