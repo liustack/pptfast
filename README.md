@@ -62,11 +62,12 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 
 | Command | Does |
 |---|---|
-| `render <ir.json> -o <out.pptx> [--theme <id>]` | Validate + render to a `.pptx` |
+| `render <ir.json> -o <out.pptx> [--theme <id>] [--tokens <file>]` | Validate + render to a `.pptx` |
 | `validate <ir.json>` | Check the IR, print page-scoped errors |
-| `schema` | Print the IR JSON Schema |
+| `schema [--tokens]` | Print the IR JSON Schema (or the brand-tokens schema) |
 | `themes [--json]` | List the 13 built-in themes |
 | `preview <ir.json> -o <dir>` | Render each slide to a standalone SVG |
+| `init` | Scaffold `pptfast.config.json` |
 
 ## The IR
 
@@ -91,6 +92,19 @@ Each theme is a token set (color, type, motif) plus a manifest of which archetyp
 | `journal` | Editorial Journal |
 | `luxe` | Luxe |
 | `heritage` | Heritage |
+
+## Brand tokens & project config
+
+Override the built-in palette without forking a theme: write a tokens JSON
+(schema: `pptfast schema --tokens`) and pass it per-render
+(`--tokens brand.json`), or pin it project-wide in a `pptfast.config.json`
+(found by walking up from cwd, scaffold one with `pptfast init`).
+Precedence: CLI flag > config file > IR. The IR itself can carry the same
+override in `theme.tokens` for fully self-contained decks.
+
+```json
+{ "theme": "consulting", "tokens": { "colors": { "primary": "#0B5FFF", "accent": "#FF6A00" } } }
+```
 
 ## For AI agents
 
