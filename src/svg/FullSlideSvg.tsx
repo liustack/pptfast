@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Block, PptxIR, Slide } from "@/ir"
 import type { StyleTokens } from "../themes/tokens"
-import { resolveStyle } from "../themes"
+import { resolveStyle, resolveThemeId } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { BlockCtx } from "./blocks/types"
@@ -16,7 +16,7 @@ import {
   ImageSplitPage,
   ImageTopPage,
 } from "./ImagePages"
-import { getManifest, type PersonalityManifest } from "../themes/manifest"
+import { THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
 import { COVER_ARCHETYPES } from "./archetypes"
 import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
@@ -71,22 +71,23 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
 }
 
 /**
- * manifest archetype 分发泛化（P2 Task 24，spec §4.2 strangler）：四页型共用
- * 「查 manifest allowed set → 按 deck seed 在集合内挑一个 → 查对应页型的
- * 注册表」这段逻辑。allowed 空集返回 null（Wave 5 删旧模板后：六主题四页型
- * 已全量接线、allowed 恒非空，manifest.test「Wave 5 前置门」锁死该前提，
- * 故 null 分支不可达；保留只为类型完备与防御未来配置 bug）。salt 沿用 P1 的
+ * theme.layouts archetype 分发泛化（P2 Task 24，spec §4.2→v0.3 spec §6
+ * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 在
+ * 集合内挑一个 → 查对应页型的注册表」这段逻辑。allowed 空集返回 null（Wave 5
+ * 删旧模板后：十三主题四页型已全量接线、allowed 恒非空，definitions.test
+ * 「Wave 5 前置门」锁死该前提，故 null 分支不可达；保留只为类型完备与防御
+ * 未来配置 bug）。salt 沿用 P1 的
  * `"cover-archetype"`
  * 字符串形状（`${slideType}-archetype`），对 cover 页型逐字节保持同一个
  * seed 输入，不改变既有 deck 的 archetype 选择结果。
  */
 function resolveArchetype(
   slideType: Slide["type"],
-  manifest: PersonalityManifest,
+  layouts: ThemeDefinition["layouts"],
   seed: number,
   typeOrdinal: number,
 ): { id: string; Component: PageArchetype } | null {
-  const allowed: readonly string[] = manifest.archetypes[slideType]
+  const allowed: readonly string[] = layouts[slideType]
   if (allowed.length === 0) return null
   // P3 Item ②：按「该页在同类型页面里的序号」轮换（pickBySeedRotating），
   // allowed 有 2+ 元素时同 deck 相邻 content 页拿到不同 archetype 打破雷同。
@@ -114,10 +115,11 @@ export function FullSlideSvg({
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.blocks : undefined,
   )
-  const manifest = getManifest(ir.theme.id)
-  // motif 分发（P2 Task 24→Wave5 收尾）：全走 manifest.motif（六主题四页型
-  // 已全量接线，旧 templates/<theme>.tsx 的 Decor 回落已随 templates 删除）。
-  const Decor = manifest.motif ? MOTIF_ARCHETYPES[manifest.motif] : undefined
+  const themeDef = THEME_DEFINITIONS[resolveThemeId(ir.theme.id)]
+  // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS）：
+  // 全走 theme 定义的 motif（十三主题四页型已全量接线，旧 templates/<theme>.tsx
+  // 的 Decor 回落已随 templates 删除）。
+  const Decor = themeDef.motif ? MOTIF_ARCHETYPES[themeDef.motif] : undefined
   let bgSpec = slide.background ?? tokens.defaultBackgrounds[slide.type]
   // 压图页接管（图片排版 polish，2026-07-09 用户反馈）：cover/chapter 的
   // asset 背景 → 暗遮罩 + 白字 bespoke 版式（ImageCoverPage）——图保持清晰
@@ -154,10 +156,11 @@ export function FullSlideSvg({
     slide.variant === "image_bottom" ||
     slide.variant === "image_annotate"
   const splitTakeover = imageFamilyVariant && hasImageBlock
-  // manifest archetype 层（P1 cover-only → P2 Task 24 泛化四页型，spec §4.2
-  // strangler）：允许集非空才接管（六主题四页型 Wave 5 后恒非空）。image 接管优先级更高
-  // （压图页/图文版式语义不归 archetype 管，imageCoverTakeover 仅 cover/
-  // chapter 生效、splitTakeover 对所有页型生效，两条优先级原样保留）。
+  // theme.layouts archetype 层（P1 cover-only → P2 Task 24 泛化四页型，spec
+  // §4.2→v0.3 spec §6 strangler）：允许集非空才接管（十三主题四页型 Wave 5 后
+  // 恒非空）。image 接管优先级更高（压图页/图文版式语义不归 archetype 管，
+  // imageCoverTakeover 仅 cover/chapter 生效、splitTakeover 对所有页型生效，
+  // 两条优先级原样保留）。
   // 同类型页序（P3 Item ②轮换用）：该页在整个 deck 同 slide.type 页面里是第
   // 几个（0 起）。content 页据此在允许集内轮换，打破同 deck 内 content 页雷同。
   let typeOrdinal = 0
@@ -167,7 +170,7 @@ export function FullSlideSvg({
   const archetype =
     imageCoverTakeover || splitTakeover
       ? null
-      : resolveArchetype(slide.type, manifest, cachedDeckSeed(ir), typeOrdinal)
+      : resolveArchetype(slide.type, themeDef.layouts, cachedDeckSeed(ir), typeOrdinal)
 
   return (
     <svg
@@ -197,8 +200,8 @@ export function FullSlideSvg({
         <g data-archetype={archetype.id}>
           <archetype.Component ir={ir} slide={slide} index={index} ctx={ctx} />
         </g>
-      ) : null /* 不可达：非 takeover 时 resolveArchetype 恒命中（六主题四页型
-        allowed 全非空，manifest.test「Wave 5 前置门」锁死）。空集才返回 null，
+      ) : null /* 不可达：非 takeover 时 resolveArchetype 恒命中（十三主题四页型
+        allowed 全非空，definitions.test「Wave 5 前置门」锁死）。空集才返回 null，
         渲空白而非崩溃是防御性兜底，正常运行不会到这里。 */}
       <BrandChrome ir={ir} slide={slide} ctx={ctx} />
     </svg>

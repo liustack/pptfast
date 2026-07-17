@@ -316,7 +316,7 @@ describe("manifest 四页型分发泛化 (P2)", () => {
     expect(container.querySelector('[data-archetype="masthead-ending"]')).not.toBeNull()
   })
 
-  it("motif 命中：Decor 优先取 getManifest().motif 对应的 MOTIF_ARCHETYPES 组件（consulting → banner-motif）", () => {
+  it("motif 命中：Decor 优先取 THEME_DEFINITIONS 对应主题的 motif 对应的 MOTIF_ARCHETYPES 组件（consulting → banner-motif）", () => {
     // MOTIF_ARCHETYPES 是模块单例对象，spy 其上的属性能直接证明 FullSlideSvg
     // 内部确实调用了这张注册表（而不是巧合产出等价 markup——strangler 抽取
     // 本就要求新旧输出逐字节等价，纯 DOM diff 无法区分调用来源）。

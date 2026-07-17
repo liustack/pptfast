@@ -54,14 +54,19 @@ import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle, type CanonicalThemeId } from "../../themes"
 import type { PptxIR, Slide } from "@/ir"
 import { CONTENT_ARCHETYPES } from "./index-content"
-import type { ContentArchetype } from "./types"
-import { THEME_MANIFESTS } from "../../themes/manifest"
+import type { ContentArchetype, ContentArchetypeId } from "./types"
+import { THEME_DEFINITIONS } from "../../themes/definitions"
 
-/** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板）：
- * 数据源从 SVG_TEMPLATES[id].Content 改为经 manifest 解析该主题的 content
- * archetype（六主题各 1 个），验证的「副题间距 >=14px」共享助手不变。 */
+/** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板，W2 任务 2
+ * 数据源改为 THEME_DEFINITIONS）：数据源从 SVG_TEMPLATES[id].Content 改为经
+ * theme 定义解析该主题的 content archetype（各主题至少 1 个），验证的「副题
+ * 间距 >=14px」共享助手不变。 */
 function contentArchetypeFor(themeId: CanonicalThemeId): ContentArchetype {
-  const id = THEME_MANIFESTS[themeId].archetypes.content[0]
+  // layouts.content 的 id 是通用 string（W2 任务 2 起不再分页型细分 ID 联合
+  // 类型），CONTENT_ARCHETYPES 仍是窄 Record<ContentArchetypeId,...>——这里
+  // 的 cast 只是类型层面收窄，运行时值不变（清单-注册表一致性锁已守住这个
+  // 不变式，definitions.test.ts）。
+  const id = THEME_DEFINITIONS[themeId].layouts.content[0] as ContentArchetypeId
   return CONTENT_ARCHETYPES[id]
 }
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
-import { THEME_MANIFESTS } from "../../themes/manifest"
+import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { SplitDiagonalCover, readableOn } from "./cover-split-diagonal"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -55,14 +55,14 @@ describe("SplitDiagonalCover", () => {
   })
 })
 
-describe("split-diagonal manifest 吸纳（新表达一次全主题生效）", () => {
+describe("split-diagonal theme.layouts 吸纳（新表达一次全主题生效）", () => {
   it("academic 与 tech 的 cover 允许集都含 split-diagonal", () => {
-    expect(THEME_MANIFESTS.academic.archetypes.cover).toContain("split-diagonal")
-    expect(THEME_MANIFESTS.tech.archetypes.cover).toContain("split-diagonal")
+    expect(THEME_DEFINITIONS.academic.layouts.cover).toContain("split-diagonal")
+    expect(THEME_DEFINITIONS.tech.layouts.cover).toContain("split-diagonal")
   })
 
   it("未吸纳的主题不含（journal/runway 的报头体是招牌，斜切不符，铺开裁决后的例外）", () => {
-    expect(THEME_MANIFESTS.journal.archetypes.cover).not.toContain("split-diagonal")
-    expect(THEME_MANIFESTS.runway.archetypes.cover).not.toContain("split-diagonal")
+    expect(THEME_DEFINITIONS.journal.layouts.cover).not.toContain("split-diagonal")
+    expect(THEME_DEFINITIONS.runway.layouts.cover).not.toContain("split-diagonal")
   })
 })
