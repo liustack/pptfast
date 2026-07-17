@@ -11,6 +11,7 @@ pptfast turns a JSON IR (intermediate representation) into a native DrawingML `.
 
 ```bash
 pptfast --version || npm install -g @liustack/pptfast
+pptfast check-update   # stay current — the schema and themes evolve
 ```
 
 ## Workflow

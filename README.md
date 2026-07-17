@@ -68,6 +68,7 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 | `themes [--json]` | List the 13 built-in themes |
 | `preview <ir.json> -o <dir>` | Render each slide to a standalone SVG |
 | `init` | Scaffold `pptfast.config.json` |
+| `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
 ## The IR
 
