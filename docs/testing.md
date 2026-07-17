@@ -26,7 +26,7 @@ read_when:
 
 `pnpm check` runs typecheck + lint + `pnpm test` and is the default merge gate.
 `pnpm e2e` is not part of `pnpm check` (it needs a build and is slower) — run
-it whenever the render chain (`src/svg/`, `src/pptx/`, `src/themes/`) changes.
+it whenever the render chain (`src/svg/`, `src/pptx/`, `src/styles/`) changes.
 
 ## Snapshot policy
 
@@ -38,7 +38,7 @@ review.
 ## PowerPoint repair-dialog gate
 
 Native PowerPoint is stricter than LibreOffice and pptxgenjs about DrawingML
-well-formedness; a file that opens fine in `soffice` can still trigger
+well-formedness. A file that opens fine in `soffice` can still trigger
 PowerPoint's "we found a problem with some content" repair dialog. Before
 publishing a release that touched the export XML (`src/pptx/`, especially
 `svg2pptx/` or the animation/gradient JSZip patches), run a local repair-dialog
