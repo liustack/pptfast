@@ -71,7 +71,9 @@ export interface LayoutSlot {
   name: SlotName
   /** component type names this slot accepts, or "any" */
   accepts: readonly string[] | "any"
-  /** editorial capacity (authoring-time gate material for W3) — absent = uncounted chrome slot */
+  /** declarative editorial capacity — how many components this slot holds. W3's
+   *  min(delivery editorial budget, layout capacity) gate is the consumer —
+   *  absent = chrome slot, not subject to counting. */
   capacity?: number
   /** for image slots: today's two coexisting conventions (inventory §variant 速查) */
   selection?: "first" | "all"

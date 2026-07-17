@@ -75,20 +75,24 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
 /**
  * theme.layouts archetype 分发泛化（P2 Task 24，spec §4.2→v0.3 spec §6
  * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 在
- * 集合内挑一个 → 查对应页型的注册表」这段逻辑。allowed 空集返回 null（Wave 5
- * 删旧模板后：十三主题四页型已全量接线、allowed 恒非空，definitions.test
- * 「Wave 5 前置门」锁死该前提，故 null 分支不可达；保留只为类型完备与防御
- * 未来配置 bug）。salt 沿用 P1 的
+ * 集合内挑一个 → 查对应页型的注册表」这段逻辑——仅在没有命中下方显式 pin 短路
+ * 时才跑。allowed 空集返回 null（Wave 5 删旧模板后：十三主题四页型已全量接线、
+ * allowed 恒非空，definitions.test「Wave 5 前置门」锁死该前提，故 null 分支
+ * 不可达；保留只为类型完备与防御未来配置 bug）。salt 沿用 P1 的
  * `"cover-archetype"`
  * 字符串形状（`${slideType}-archetype`），对 cover 页型逐字节保持同一个
  * seed 输入，不改变既有 deck 的 archetype 选择结果。
  *
- * `requestedLayout`（W2 任务 3 新能力，即 `slide.layout`）显式指定短路：命中
- * 一个属于该主题此页型允许集的 archetype id 时直接采用，跳过 seed 轮换。
- * validate 已挡「未注册 id」与「slideTypes 不适用」两类硬错误（api.ts
- * checkLayoutApplicability），这里再挡一层「合法 archetype 但不在这个主题
- * 允许集里」的软性不适用——同 `resolveThemeId` 的全函数哲学：不认识/不适用
- * 就退回默认选型行为，不抛错、不强渲染这个主题没设计过的版式。
+ * `requestedLayout`（W2 任务 3 新能力，即 `slide.layout`）显式指定短路：spec
+ * §3「要版式完全不动就显式写 layout 字段（显式指定不经选型）」——命中一个
+ * `kind: "archetype"` 且 `slideTypes` 覆盖这个页型的 id 就无条件直接采用，
+ * 即使它不在这个主题的策展允许集里（§6 的 theme.layouts 硬边界只圈「未显式
+ * 指定 layout 时」的自动选型五步流程，管不到显式 pin——显式 pin 的意图正是
+ * 「不管主题策展与否，我就要这个版式」）。validate 已挡「未注册 id」与
+ * 「slideTypes 不适用」两类硬错误（api.ts checkLayoutApplicability），下面
+ * 这层判断只是给未经 validate 就直达渲染的调用兜底：命中不了 archetype 分支
+ * 的 id（未注册 / kind 是 takeover / slideTypes 不适用）才退回允许集 + seed
+ * 选型——同 `resolveThemeId` 的全函数哲学，不抛错、不崩渲染。
  */
 function resolveArchetype(
   slideType: Slide["type"],
@@ -97,15 +101,14 @@ function resolveArchetype(
   typeOrdinal: number,
   requestedLayout: string | undefined,
 ): { id: string; Component: PageArchetype } | null {
+  if (requestedLayout) {
+    const def = getLayout(requestedLayout)
+    if (def?.kind === "archetype" && def.slideTypes.includes(slideType)) {
+      return { id: requestedLayout, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][requestedLayout] }
+    }
+  }
   const allowed: readonly string[] = layouts[slideType]
   if (allowed.length === 0) return null
-  if (
-    requestedLayout &&
-    getLayout(requestedLayout)?.kind === "archetype" &&
-    allowed.includes(requestedLayout)
-  ) {
-    return { id: requestedLayout, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][requestedLayout] }
-  }
   // P3 Item ②：按「该页在同类型页面里的序号」轮换（pickBySeedRotating），
   // allowed 有 2+ 元素时同 deck 相邻 content 页拿到不同 archetype 打破雷同。
   // typeOrdinal=0 与 pickBySeed 起点一致，故单页型（cover/chapter/ending 通常

@@ -60,5 +60,7 @@ and tokens in `CANONICAL_THEME_IDS` / `THEME_STYLES` (`src/themes/index.ts`)
 and its id in `BUILTIN_THEME_IDS` (`src/ir/index.ts`). `THEME_DEFINITIONS`
 (`src/themes/definitions.ts`) derives the theme entry from those
 automatically — add a `BRANDS` entry there only if the theme needs
-non-default brand chrome. Archetypes and components read only from tokens, so
-no archetype file changes.
+non-default brand chrome. A new theme also needs a `layouts` entry in
+`LAYOUTS` (`src/themes/definitions.ts`) — that record stays total over
+`CanonicalThemeId`, so a missing entry fails to compile. Archetypes and
+components read only from tokens, so no archetype file changes.

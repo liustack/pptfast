@@ -72,7 +72,7 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 
 ## The IR
 
-Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"3"`), `filename`, `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id — omit it and pptfast auto-selects one), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication.
+Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"3"`), `filename`, `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one from the theme's curated set), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication.
 
 ## Themes
 
@@ -114,7 +114,7 @@ The recommended loop for an agent generating a deck: read `pptfast schema` to le
 ## Roadmap
 
 - **v0.2** — Claude Code plugin + skill wrapping the render loop (shipped), design token overrides (`--style`), `init`/self-update commands.
-- **v0.3** — theme-customization skill (brand colors → style), custom manifest slots, 1.0.
+- **v0.3** — theme-customization skill (brand colors → style), custom theme slots, 1.0.
 - **v0.4** — richer motion (more entrance animations), Office real-device testing, web playground.
 
 ## Credits

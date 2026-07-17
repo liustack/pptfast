@@ -403,11 +403,13 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
     }
   })
 
-  it("falls back to seed-pick (never crashes) when the id is a real archetype but not part of this theme's allowed family", () => {
+  it("honors the pin even outside the theme's curated family (spec §3: explicit layout bypasses selection unconditionally)", () => {
     // "narrow-column" is journal's own content archetype — not in tech's
-    // allowed content set (["bento-panel", "two-column"]) — resolveArchetype
-    // must defensively fall back rather than render an archetype tech was
-    // never designed to host (total-function philosophy, like resolveThemeId).
+    // curated content set (["bento-panel", "two-column"]). Per spec §3 ("要
+    // 版式完全不动就显式写 layout 字段（显式指定不经选型）"), an explicit
+    // `layout` always wins over the theme's curated allowed set — it is not
+    // a soft preference that only applies within the family, so this must
+    // render narrow-column rather than falling back to tech's own set.
     const slide: Slide = {
       type: "content",
       layout: "narrow-column",
@@ -415,8 +417,33 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
       components: [{ type: "paragraph", text: "正文" }],
     } as Slide
     const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
-    const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
-    expect(["bento-panel", "two-column"]).toContain(id)
+    expect(container.querySelector('[data-archetype="narrow-column"]')).not.toBeNull()
+  })
+
+  it("falls back to seed-pick (totality safety net) when the pinned id cannot be an archetype for this slide type — unregistered, wrong kind, or wrong slideTypes", () => {
+    // validateIr's checkLayoutApplicability (api.ts) rejects all three of
+    // these at the validate boundary for a validated IR — registry
+    // existence and slideTypes applicability are both hard errors there.
+    // This exercises the render-side defensive fallback that must still
+    // hold for IRs that reach FullSlideSvg without going through validate
+    // first (SDK callers, preview-without-validate): an id resolveArchetype
+    // cannot honor never crashes the render, it just degrades to seed-pick
+    // — the same total-function philosophy as resolveThemeId.
+    for (const badLayout of [
+      "not-a-real-layout", // unregistered
+      "image-split", // registered, but kind "takeover" not "archetype" (and no image component below, so splitTakeover doesn't intercept first)
+      "banner-title", // registered archetype, but slideTypes is ["cover"] — not applicable to "content"
+    ]) {
+      const slide: Slide = {
+        type: "content",
+        layout: badLayout,
+        heading: "标题",
+        components: [{ type: "paragraph", text: "正文" }],
+      } as Slide
+      const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
+      const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
+      expect(["bento-panel", "two-column"]).toContain(id)
+    }
   })
 
   it("falls back to seed-pick when slide.layout is undefined (no regression to the pre-existing dispatch)", () => {
