@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { describe, expect, it, beforeEach, vi } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
 

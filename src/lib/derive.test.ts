@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { describe, it, expect } from "vitest"
 import { chapterNumberFor, sectionNameFor, pageInfo, contentIndexInChapter } from "./derive"
 import type { PptxIR } from "@/ir"

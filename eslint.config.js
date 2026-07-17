@@ -19,7 +19,7 @@ export default tseslint.config(
     // 认得注释里引用的规则名，避免 "Definition for rule ... was not found"。
     plugins: { "react-refresh": reactRefresh },
     rules: {
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": "off", // SSR-only 库无 HMR，规则不适用（插件仅为识别迁移注释中的规则名）
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" },

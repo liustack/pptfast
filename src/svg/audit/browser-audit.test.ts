@@ -24,7 +24,7 @@ function stubBBoxes(
   const texts = Array.from(root.querySelectorAll("text"))
   texts.forEach((el, i) => {
     const bbox = boxes[i]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ;(el as any).getBBox = () => bbox
   })
 }

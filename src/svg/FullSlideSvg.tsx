@@ -32,7 +32,7 @@ import { cachedDeckSeed, pickBySeedRotating } from "./variety"
  * is what keeps the default export path byte-identical (see `BlockCtx`'s
  * doc comment).
  */
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export function buildCtx(
   tokens: ThemeTokens,
   images: PptxIR["assets"]["images"],
