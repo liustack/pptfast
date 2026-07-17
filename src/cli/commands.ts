@@ -11,7 +11,7 @@ import {
 } from "../api"
 import { PptfastError } from "../errors"
 import { TokensOverrideSchema, type TokensOverride } from "../ir"
-import { findConfig } from "./config"
+import { CONFIG_FILENAME, findConfig } from "./config"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 
 async function loadTokensFile(path: string): Promise<TokensOverride> {
@@ -93,6 +93,27 @@ export function runThemes(asJson: boolean): string {
   const themes = listThemes()
   if (asJson) return JSON.stringify(themes, null, 2)
   return themes.map((t) => `${t.id.padEnd(12)} ${t.label}`).join("\n")
+}
+
+const CONFIG_TEMPLATE = {
+  theme: "consulting",
+  tokens: {
+    colors: { primary: "#0B5FFF", accent: "#FF6A00" },
+  },
+} as const
+
+/** Scaffold pptfast.config.json in cwd. Never overwrites. */
+export async function runInit(cwd = process.cwd()): Promise<string> {
+  const target = join(cwd, CONFIG_FILENAME)
+  try {
+    await writeFile(target, JSON.stringify(CONFIG_TEMPLATE, null, 2) + "\n", { flag: "wx" })
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new PptfastError(`${target} already exists — edit it instead`)
+    }
+    throw e
+  }
+  return `wrote ${target} — themes: \`pptfast themes\`, tokens schema: \`pptfast schema --tokens\``
 }
 
 export async function runPreview(irPath: string, outDir: string, cwd = process.cwd()): Promise<string> {

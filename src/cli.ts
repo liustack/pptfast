@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander"
 import { installNodePlatform } from "./platform/node"
-import { runPreview, runRender, runSchema, runThemes, runValidate } from "./cli/commands"
+import { runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./cli/commands"
 import { VERSION } from "./version"
 
 installNodePlatform()
@@ -55,6 +55,17 @@ program
   .description("List built-in themes")
   .option("--json", "machine-readable output")
   .action((opts: { json?: boolean }) => console.log(runThemes(Boolean(opts.json))))
+
+program
+  .command("init")
+  .description("Scaffold a pptfast.config.json in the current directory")
+  .action(async () => {
+    try {
+      console.log(await runInit())
+    } catch (e) {
+      fail(e)
+    }
+  })
 
 program
   .command("preview")

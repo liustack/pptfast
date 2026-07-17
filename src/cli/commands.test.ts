@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { applyDeckConfig, runPreview, runRender, runSchema, runThemes, runValidate } from "./commands"
+import { applyDeckConfig, runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./commands"
 
 // 1x1 红色 PNG
 const PNG_1PX = Buffer.from(
@@ -157,5 +157,22 @@ describe("applyDeckConfig resolution (flag > config > IR)", () => {
     await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "ink" }))
     await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
     await expect(runValidate(join(d, "deck.json"), d)).resolves.toMatch(/theme "ink"/)
+  })
+})
+
+describe("runInit", () => {
+  it("writes a config template into cwd", async () => {
+    const d = await mkdtemp(join(tmpdir(), "pptfast-init-"))
+    const msg = await runInit(d)
+    expect(msg).toContain("pptfast.config.json")
+    const written = JSON.parse(await readFile(join(d, "pptfast.config.json"), "utf8"))
+    expect(written.theme).toBe("consulting")
+    expect(written.tokens.colors.primary).toMatch(/^#/)
+  })
+
+  it("refuses to overwrite an existing config", async () => {
+    const d = await mkdtemp(join(tmpdir(), "pptfast-init-"))
+    await runInit(d)
+    await expect(runInit(d)).rejects.toThrow(/exists/)
   })
 })
