@@ -91,6 +91,22 @@ export const TokensOverrideSchema = z
 
 export type TokensOverride = z.infer<typeof TokensOverrideSchema>
 
+/**
+ * Master (logical slide-master) config: brand-chrome behavior owned by a style.
+ * W1 scope = exactly the two flags migrated from the old manifest.chrome.
+ * Single source of truth — the TS type is inferred, never hand-written.
+ */
+export const MasterConfigSchema = z
+  .object({
+    /** Suppress the footer entirely on content slides with a card background (enterprise legacy semantics). */
+    suppressFooterOnCardContent: z.boolean().optional(),
+    /** Skip the footer divider line — for styles that draw their own frame (ink). */
+    suppressFooterRule: z.boolean().optional(),
+  })
+  .strict()
+
+export type MasterConfig = z.infer<typeof MasterConfigSchema>
+
 const ThemeSchema = z
   .object({
     id: z.enum(THEME_IDS),
