@@ -10,9 +10,9 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 117 files / 1228 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 122 files / 1271 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/block,
-   the svg2pptx element converters, theme tokens, and the animation/gradient/
+   the svg2pptx element converters, style tokens, and the animation/gradient/
    media-dedupe JSZip patches. Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against
@@ -26,7 +26,7 @@ read_when:
 
 `pnpm check` runs typecheck + lint + `pnpm test` and is the default merge gate.
 `pnpm e2e` is not part of `pnpm check` (it needs a build and is slower) — run
-it whenever the render chain (`src/svg/`, `src/pptx/`, `src/styles/`) changes.
+it whenever the render chain (`src/svg/`, `src/pptx/`, `src/themes/`) changes.
 
 ## Snapshot policy
 

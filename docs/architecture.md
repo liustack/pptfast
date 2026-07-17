@@ -2,7 +2,7 @@
 summary: 'Architecture: five-dimension model, single-source SVG render chain, platform seam'
 read_when:
   - first time in this repo
-  - adding styles/blocks/archetypes
+  - adding themes/blocks/archetypes
   - touching the export pipeline
 ---
 
@@ -18,7 +18,7 @@ another (layout code stays style-agnostic).
 |---|---|---|
 | Content model | IR (zod schema, semantic blocks) | `src/ir/` |
 | 2D layout | archetypes + blocks + capacity tables + seeded variety | `src/svg/` |
-| Visual style | design tokens + manifest (13 built-in styles) | `src/styles/` |
+| Visual style | style tokens + manifest (13 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
 | Narrative | two-phase plan→fill skill methodology (v0.2) | `skills/` |
 
@@ -52,10 +52,13 @@ component — the SDK has no second, cheaper rendering path to fall out of sync.
 `installNodePlatform()` — the CLI calls it on startup. SDK consumers running in
 Node must call it themselves before rendering.
 
-## Adding a style
+## Adding a theme
 
-A new style is tokens + a master config, never new render code: add a
-`ThemeTokens` object under `src/styles/`, register it in `STYLE_DEFINITIONS`
-(`src/styles/styles.ts`) and its id in `BUILTIN_STYLE_IDS`
-(`src/ir/index.ts`). Archetypes and blocks read only from tokens, so no
+A new theme is style tokens + an optional brand config, never new render
+code: add a `StyleTokens` object under `src/themes/`, then register its id
+and tokens in `CANONICAL_THEME_IDS` / `THEME_STYLES` (`src/themes/index.ts`)
+and its id in `BUILTIN_THEME_IDS` (`src/ir/index.ts`). `THEME_DEFINITIONS`
+(`src/themes/definitions.ts`) derives the theme entry from those
+automatically — add a `BRANDS` entry there only if the theme needs
+non-default brand chrome. Archetypes and blocks read only from tokens, so no
 archetype file changes.
