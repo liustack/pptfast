@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.issues/
+skills/**/outputs/
+*.log
+.DS_Store
+.e2e-out/

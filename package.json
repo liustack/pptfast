@@ -1,0 +1,87 @@
+{
+  "name": "pptfast",
+  "version": "0.1.0",
+  "description": "Stable, editable PPTX generation for AI agents — semantic IR in, native DrawingML out",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "pptfast": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.zh-CN.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src scripts --no-error-on-unmatched-pattern",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "e2e": "pnpm build && tsx scripts/e2e.mts",
+    "docs:list": "node scripts/docs-list.js",
+    "prepublishOnly": "pnpm check && pnpm build"
+  },
+  "keywords": [
+    "pptx",
+    "powerpoint",
+    "presentation",
+    "ai",
+    "agent",
+    "claude",
+    "svg",
+    "drawingml",
+    "cli"
+  ],
+  "author": "Leon Liu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liustack/pptfast.git"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "dagre": "^0.8.5",
+    "jszip": "3.10.1",
+    "linkedom": "^0.18.12",
+    "pptxgenjs": "^4.0.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.34.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/dagre": "^0.7.54",
+    "@types/node": "^22.19.7",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "jsdom": "^29.0.2",
+    "lucide-react": "^1.7.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^4.1.4"
+  }
+}

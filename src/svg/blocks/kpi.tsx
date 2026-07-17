@@ -1,0 +1,192 @@
+import type { Block } from "@/ir"
+import {
+  fitSvgLine,
+  measureTextUnits,
+  truncateToUnits,
+} from "../../lib/svg-text-layout"
+import { Icon } from "../icons"
+import type { SvgBlock } from "./types"
+
+type KpiBlock = Extract<Block, { type: "kpi_cards" }>
+
+const GAP = 16
+const CARD_H = 120
+
+// Exported for tech.tsx's own per-item KPI cards (`renderKpiCard` in
+// templates/tech.tsx) — same delta arrow/color mapping, just laid out
+// into a compact bento cell instead of this file's wide row card.
+export function deltaProps(delta: "up" | "down" | "flat") {
+  if (delta === "up") return { arrow: "↑", color: "#16A34A" }
+  if (delta === "down") return { arrow: "↓", color: "#DC2626" }
+  return { arrow: "→", color: "" } // color filled by caller with ctx.colors.muted
+}
+
+// Exported for tech.tsx's `renderKpiCardBody` — same value/unit width
+// split technique (see the comment at its call site below), reused verbatim
+// so the two KPI renderers can't drift on this overflow-safety math.
+export function splitKpiValueWidths(
+  value: string,
+  unit: string | undefined,
+  availableWidth: number,
+): { valueMaxWidth: number; unitMaxWidth: number } {
+  const valueUnits = measureTextUnits(value)
+  const unitUnits = unit ? measureTextUnits(unit) : 0
+  const valueMaxWidth =
+    unitUnits > 0 && valueUnits > 0
+      ? Math.floor((availableWidth * valueUnits) / (valueUnits + unitUnits))
+      : availableWidth
+  return { valueMaxWidth, unitMaxWidth: availableWidth - valueMaxWidth }
+}
+
+/**
+ * 弱模型冗余单位去重（2026-07-10 无图矩阵真机抓到：tech 4/4、magazine 1/4
+ * KPI 卡渲成「35%%」）：模型常把 "35%" 填进 value 后又把 "%" 填进 unit，
+ * 拼接即重复。value 已以 unit 结尾时丢弃 unit。导出供 bento KPI 卡
+ * （content-bento-panel）同源复用，两条 KPI 渲染路径不漂移。
+ */
+export function dedupeKpiUnit(
+  value: string,
+  unit: string | undefined,
+): string | undefined {
+  if (!unit) return unit
+  const u = unit.trim()
+  return u && value.trim().endsWith(u) ? undefined : unit
+}
+
+/** 任一 item 带 source 来源行时卡加高（label 下再排一行 11px 小字）。 */
+function baseCardH(block: KpiBlock): number {
+  return block.items.some((it) => it.source) ? CARD_H + 18 : CARD_H
+}
+
+export const kpi: SvgBlock<KpiBlock> = {
+  measure(block) {
+    return baseCardH(block)
+  },
+  render(block, box, ctx) {
+    const n = block.items.length
+    const cardW = (box.w - GAP * (n - 1)) / n
+    const measured = baseCardH(block)
+    // 密度拉伸（box.h 由布局分配）：卡片撑到分配高度，内容组垂直居中
+    const cardH = Math.max(measured, box.h ?? measured)
+    const contentShift = (cardH - measured) / 2
+    return (
+      <g transform={`translate(${box.x},${box.y})`}>
+        {block.items.map((item, i) => {
+          const cardX = i * (cardW + GAP)
+          const dp = item.delta ? deltaProps(item.delta) : null
+          const deltaColor = dp
+            ? dp.color || ctx.colors.muted
+            : ctx.colors.muted
+          // The overflow auditor measures a `<text>`'s whole textContent
+          // (value + unit tspan concatenated) at the outer element's
+          // font-size — it can't see that the unit tspan renders smaller. So
+          // the value's width budget is shrunk in proportion to how much of
+          // the combined text the unit accounts for, instead of a flat
+          // pixel reserve, to keep the auditor's (over)estimate inside the
+          // card. The unit itself has no length limit from the schema, so
+          // its actual rendered text is separately truncated to fit the
+          // width share it was allotted at its own (smaller) font size —
+          // together the two bounds keep the card from overflowing at any
+          // value/unit length.
+          const valueStr = String(item.value)
+          const unit = dedupeKpiUnit(valueStr, item.unit)
+          const availableWidth = cardW - 40
+          const { valueMaxWidth, unitMaxWidth } = splitKpiValueWidths(
+            valueStr,
+            unit,
+            availableWidth,
+          )
+          const fittedValue = fitSvgLine(valueStr, {
+            maxWidth: valueMaxWidth,
+            fontSize: 40,
+            minFontSize: 22,
+          })
+          const unitFontSize = Math.round(fittedValue.fontSize * 0.45)
+          const fittedUnit = unit
+            ? truncateToUnits(unit, unitMaxWidth / unitFontSize)
+            : null
+          const fittedLabel = fitSvgLine(item.label, {
+            maxWidth: cardW - 40,
+            fontSize: 16,
+            minFontSize: 12,
+          })
+          return (
+            <g key={i}>
+              <rect
+                x={cardX}
+                y={0}
+                width={cardW}
+                height={cardH}
+                rx={ctx.shape?.radius ?? 8}
+                fill={ctx.colors.surface}
+                {...(ctx.colors.cardStroke
+                  ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 }
+                  : {})}
+              />
+              {item.icon && (
+                <Icon
+                  name={item.icon}
+                  x={cardX + 20}
+                  y={12 + contentShift}
+                  size={18}
+                  color={ctx.colors.primary}
+                />
+              )}
+              <text
+                x={cardX + 20}
+                y={(item.icon ? 64 : 58) + contentShift}
+                fontSize={fittedValue.fontSize}
+                fontWeight="bold"
+                fill={ctx.colors.text}
+                fontFamily={ctx.fonts.heading}
+                dominantBaseline="alphabetic"
+              >
+                {fittedValue.text}
+                {fittedUnit != null && (
+                  <tspan fontSize={unitFontSize} fill={ctx.colors.muted}>
+                    {fittedUnit}
+                  </tspan>
+                )}
+              </text>
+              {dp && (
+                <text
+                  x={cardX + cardW - 20}
+                  y={36 + contentShift}
+                  textAnchor="end"
+                  fontSize={20}
+                  fill={deltaColor}
+                  dominantBaseline="alphabetic"
+                >
+                  {dp.arrow}
+                </text>
+              )}
+              <text
+                x={cardX + 20}
+                y={96 + contentShift}
+                fontSize={fittedLabel.fontSize}
+                fill={ctx.colors.muted}
+                fontFamily={ctx.fonts.body}
+                dominantBaseline="alphabetic"
+              >
+                {fittedLabel.text}
+              </text>
+              {item.source && (
+                <text
+                  x={cardX + 20}
+                  y={114 + contentShift}
+                  fontSize={11}
+                  fill={ctx.colors.muted}
+                  fillOpacity={0.7}
+                  fontFamily={ctx.fonts.body}
+                  dominantBaseline="alphabetic"
+                >
+                  {fitSvgLine(item.source, { maxWidth: cardW - 40, fontSize: 11, minFontSize: 9 }).text}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </g>
+    )
+  },
+}
