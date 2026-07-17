@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
 import { generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 const raw = {
   version: "3",
@@ -304,6 +305,76 @@ describe("scenario field (W3 task 2)", () => {
     expect(v.errors[0]!.message).toMatch(/mode/)
     expect(v.errors[0]!.message).toMatch(/delivery/)
     expect(v.errors[0]!.message).toMatch(/audience/)
+  })
+})
+
+describe("registerTheme end-to-end (W3 task 4)", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  function registeredTheme(id: string): ThemeDefinition {
+    return {
+      id,
+      style: {
+        id,
+        colors: {
+          bg: "#123ABC",
+          surface: "#FFFFFF",
+          primary: "#123ABC",
+          accent: "#FF00AA",
+          text: "#101010",
+          muted: "#666666",
+          chartPalette: ["#123ABC", "#FF00AA"],
+        },
+        fonts: { heading: ["Arial"], body: ["Arial"] },
+        defaultBackgrounds: {
+          cover: { kind: "color", value: "#123ABC" },
+          chapter: { kind: "color", value: "#123ABC" },
+          content: { kind: "color", value: "#123ABC" },
+          ending: { kind: "color", value: "#123ABC" },
+        },
+      },
+      brand: {},
+      tags: [],
+      // Narrow (single-archetype) curated set per slide type — proves
+      // selection actually respects the registered theme's own curation
+      // rather than falling back to consulting's allowed set.
+      layouts: {
+        cover: ["poster-center"],
+        chapter: ["banner-chapter"],
+        content: ["two-column"],
+        ending: ["banner-ending"],
+      },
+    }
+  }
+
+  it("a registered theme's style and curated layout take effect end-to-end (validateIr → renderSlideSvg)", () => {
+    registerTheme(registeredTheme("acme-registered"))
+    const v = validateIr({
+      version: "3",
+      filename: "registered-theme-test",
+      theme: { id: "acme-registered" },
+      slides: [{ type: "cover", heading: "Hello from a registered theme" }],
+    })
+    expect(v.ok).toBe(true)
+
+    const svg = renderSlideSvg(v.ir!, 0)
+    // distinctive primary color from the registered theme's own style tokens
+    expect(svg).toContain("#123ABC")
+    // respects the registered theme's narrow (single-entry) curated cover layout
+    expect(svg).toContain('data-archetype="poster-center"')
+  })
+
+  it("validateIr accepts a registered theme id and still rejects an unknown id with the enlarged available list", () => {
+    registerTheme(registeredTheme("acme-registered-2"))
+
+    const accepted = validateIr({ ...raw, theme: { id: "acme-registered-2" } })
+    expect(accepted.ok).toBe(true)
+
+    const rejected = validateIr({ ...raw, theme: { id: "still-not-a-theme" } })
+    expect(rejected.ok).toBe(false)
+    expect(rejected.errors[0]!.message).toMatch(/available:.*acme-registered-2/)
   })
 })
 

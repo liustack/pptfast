@@ -16,8 +16,8 @@
  * call it.
  */
 import type { PptxIR, Slide } from "@/ir"
-import { resolveStyle, resolveThemeId } from "../themes"
-import { THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
+import { resolveStyle } from "../themes"
+import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { findImageComponent } from "./layouts/find-image"
 import { getLayout } from "./layouts/registry"
 import { cachedDeckSeed, pickBySeedRotating } from "./variety"
@@ -96,7 +96,7 @@ export function resolveEffectiveLayoutId(ir: PptxIR, slide: Slide, index: number
     }
   }
 
-  const themeDef = THEME_DEFINITIONS[resolveThemeId(ir.theme.id)]
+  const themeDef = getThemeDefinition(ir.theme.id)
   let typeOrdinal = 0
   for (let i = 0; i < index && i < ir.slides.length; i++) {
     if (ir.slides[i].type === slide.type) typeOrdinal++

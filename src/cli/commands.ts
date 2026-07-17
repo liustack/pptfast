@@ -11,6 +11,7 @@ import {
 } from "../api"
 import { PptfastError } from "../errors"
 import { StyleOverrideSchema, type StyleOverride } from "../ir"
+import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS } from "../scenario"
 import { CONFIG_FILENAME, findConfig } from "./config"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 
@@ -93,6 +94,41 @@ export function runThemes(asJson: boolean): string {
   const themes = listThemes()
   if (asJson) return JSON.stringify(themes, null, 2)
   return themes.map((t) => `${t.id.padEnd(12)} ${t.label}`).join("\n")
+}
+
+/**
+ * List the named scenario presets (spec §5): mode/delivery/audience axes +
+ * soft theme recommendations — never a hard constraint, see
+ * `ScenarioPreset.themeRecommendations`'s own doc comment in `scenario/index.ts`.
+ * `--json` hands back the full machine-readable payload an agent would want
+ * before picking a scenario: every preset, plus the raw mode/delivery/audience
+ * tables those presets are built from (`MODE_DEFINITIONS`/`DELIVERY_BUDGETS`
+ * carry data this wave doesn't yet consume for selection — W4's job — but are
+ * still useful for a caller inspecting what each axis value means).
+ */
+export function runScenarios(asJson: boolean): string {
+  if (asJson) {
+    return JSON.stringify(
+      {
+        presets: SCENARIO_PRESETS,
+        modes: MODE_DEFINITIONS,
+        deliveries: DELIVERY_BUDGETS,
+        audiences: AUDIENCE_VALUES,
+      },
+      null,
+      2,
+    )
+  }
+  const rows = Object.values(SCENARIO_PRESETS).map((p) => ({
+    id: p.id,
+    axes: `${p.axes.mode}/${p.axes.delivery}/${p.axes.audience}`,
+    themes: p.themeRecommendations.join(", "),
+  }))
+  const idWidth = Math.max(...rows.map((r) => r.id.length))
+  const axesWidth = Math.max(...rows.map((r) => r.axes.length))
+  return rows
+    .map((r) => `${r.id.padEnd(idWidth + 2)}${r.axes.padEnd(axesWidth + 2)}${r.themes}`)
+    .join("\n")
 }
 
 const CONFIG_TEMPLATE = {

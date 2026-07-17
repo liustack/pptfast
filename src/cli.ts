@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander"
 import { installNodePlatform } from "./platform/node"
-import { runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./cli/commands"
+import { runInit, runPreview, runRender, runScenarios, runSchema, runThemes, runValidate } from "./cli/commands"
 import { checkForUpdate, createSelfUpdater } from "./cli/update"
 import { VERSION } from "./version"
 
@@ -56,6 +56,12 @@ program
   .description("List built-in themes")
   .option("--json", "machine-readable output")
   .action((opts: { json?: boolean }) => console.log(runThemes(Boolean(opts.json))))
+
+program
+  .command("scenarios")
+  .description("List named scenario presets (mode/delivery/audience axes + theme recommendations)")
+  .option("--json", "machine-readable output")
+  .action((opts: { json?: boolean }) => console.log(runScenarios(Boolean(opts.json))))
 
 program
   .command("init")

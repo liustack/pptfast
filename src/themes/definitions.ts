@@ -1,11 +1,22 @@
 import type { BrandConfig, Slide } from "@/ir"
+import { PptfastError } from "../errors"
 import type { MotifArchetypeId } from "../svg/archetypes/types"
+import { getLayout } from "../svg/layouts/registry"
+import { REGISTERED_THEMES } from "./registered-themes"
 import type { StyleTokens } from "./tokens"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId, type CanonicalThemeId } from "./index"
 
-/** A theme = distributable bundle: `style` (style tokens) + `brand` (brand chrome) + affinity tags (filled in W4). */
+/**
+ * A theme = distributable bundle: `style` (style tokens) + `brand` (brand
+ * chrome) + affinity tags (filled in W4).
+ *
+ * `id` is a plain `string`, not `CanonicalThemeId` — the 13 builtins satisfy
+ * this (`CanonicalThemeId` is a subtype of `string`), but `registerTheme`
+ * below (W3 task 4's SDK registration seam) must also accept ids outside that
+ * closed union.
+ */
 export interface ThemeDefinition {
-  id: CanonicalThemeId
+  id: string
   style: StyleTokens
   brand: BrandConfig
   tags: readonly string[]
@@ -215,6 +226,86 @@ export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Obje
 
 /** Theme brand config + optional IR-level override (shallow merge, override wins). */
 export function resolveBrand(id: string, override?: BrandConfig): BrandConfig {
-  const base = THEME_DEFINITIONS[resolveThemeId(id)].brand
+  const base = getThemeDefinition(id).brand
   return override ? { ...base, ...override } : base
+}
+
+// ── Theme registration seam (W3 task 4, spec §4/roadmap "theme ecosystem")
+// ─────────────────────────────────────────────────────────────────────────
+//
+// This is deliberately *not* the v0.4 registry protocol (no distribution,
+// no manifest fetch, no `pptfast theme add <url>`) — just the runtime SDK
+// seam a v0.4 registry client (or any embedder) would call into: hand
+// `registerTheme` a fully-formed `ThemeDefinition` and it becomes visible to
+// every internal theme lookup (installed-check, selection, resolveStyle,
+// resolveBrand) exactly like a builtin, with no second code path.
+
+const REGISTERABLE_SLIDE_TYPES: readonly Slide["type"][] = ["cover", "chapter", "content", "ending"]
+
+/**
+ * Register a theme at runtime (SDK seam, not the v0.4 distribution
+ * protocol). Validates just enough to keep the render chain from silently
+ * breaking on a malformed registration — not a full schema:
+ *
+ * - `id` must not collide with a builtin or an already-registered theme.
+ * - `layouts` must cover all four slide types, each with at least one layout
+ *   id that is both registered in `LAYOUT_REGISTRY` and valid for that slide
+ *   type (the same registry `resolveArchetypeId`/`FullSlideSvg` select from —
+ *   a theme never ships new render code, only a curated subset of the
+ *   existing 30 archetypes + 4 takeovers, per `docs/architecture.md`'s
+ *   "Adding a theme" section).
+ * - `style` must be present (a JS caller can bypass the TS type).
+ *
+ * Once registered, the theme participates in `getInstalledThemeIds`,
+ * `getThemeDefinition` (hence `effective-layout.ts`/`FullSlideSvg`'s
+ * selection and `resolveBrand`), and `themes/index.ts`'s `resolveStyle` —
+ * every internal theme lookup, with no separate "registered theme" branch
+ * for callers to remember.
+ */
+export function registerTheme(def: ThemeDefinition): void {
+  if ((CANONICAL_THEME_IDS as readonly string[]).includes(def.id) || REGISTERED_THEMES.has(def.id)) {
+    throw new PptfastError(`theme "${def.id}" is already installed`)
+  }
+  if (!def.style) {
+    throw new PptfastError(`theme "${def.id}" is missing style tokens`)
+  }
+  for (const slideType of REGISTERABLE_SLIDE_TYPES) {
+    const ids = def.layouts[slideType]
+    if (!ids || ids.length === 0) {
+      throw new PptfastError(`theme "${def.id}" must declare at least one layout for "${slideType}" slides`)
+    }
+    for (const id of ids) {
+      const layout = getLayout(id)
+      if (!layout || !layout.slideTypes.includes(slideType)) {
+        throw new PptfastError(`theme "${def.id}" layouts.${slideType} references unknown layout id "${id}"`)
+      }
+    }
+  }
+  REGISTERED_THEMES.set(def.id, def)
+}
+
+/** Every installed theme id: the 13 builtins, then registered themes in registration order. */
+export function getInstalledThemeIds(): readonly string[] {
+  return [...CANONICAL_THEME_IDS, ...REGISTERED_THEMES.keys()]
+}
+
+/**
+ * Resolve a theme id to its full definition — a registered theme first, then
+ * the builtin fallback (`THEME_DEFINITIONS[resolveThemeId(id)]`, which itself
+ * folds an unrecognized id to consulting). The one lookup every internal
+ * consumer that used to read `THEME_DEFINITIONS[resolveThemeId(id)]`
+ * directly (`effective-layout.ts`, `FullSlideSvg.tsx`) now calls instead, so
+ * a registered theme's curated layouts actually drive selection end-to-end.
+ */
+export function getThemeDefinition(id: string): ThemeDefinition {
+  return REGISTERED_THEMES.get(id) ?? THEME_DEFINITIONS[resolveThemeId(id)]
+}
+
+/**
+ * Test-only: clear every registered theme. Deliberately not exported from
+ * `src/index.ts` (the public SDK barrel) — a `__`-prefixed, clearly
+ * test-only name signals the same at the call site.
+ */
+export function __resetRegisteredThemes(): void {
+  REGISTERED_THEMES.clear()
 }

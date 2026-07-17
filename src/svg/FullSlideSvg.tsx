@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Component, PptxIR, Slide } from "@/ir"
 import type { StyleTokens } from "../themes/tokens"
-import { resolveStyle, resolveThemeId } from "../themes"
+import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { ComponentCtx } from "./components/types"
@@ -18,7 +18,7 @@ import {
 } from "./ImagePages"
 import { findImageComponent } from "./layouts/find-image"
 import { getLayout } from "./layouts/registry"
-import { THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
+import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { COVER_ARCHETYPES } from "./archetypes"
 import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
@@ -113,8 +113,9 @@ export function FullSlideSvg({
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.components : undefined,
   )
-  const themeDef = THEME_DEFINITIONS[resolveThemeId(ir.theme.id)]
-  // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS）：
+  const themeDef = getThemeDefinition(ir.theme.id)
+  // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，
+  // W3 任务 4 起经 getThemeDefinition 统一查找——registered theme 同样生效）：
   // 全走 theme 定义的 motif（十三主题四页型已全量接线，旧 templates/<theme>.tsx
   // 的 Decor 回落已随 templates 删除）。
   const Decor = themeDef.motif ? MOTIF_ARCHETYPES[themeDef.motif] : undefined

@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
-import { BUILTIN_THEME_IDS, PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
+import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
 import { generatePptxBlob } from "./pptx/generate"
 import { resolveScenario, type ScenarioAxes } from "./scenario"
 import { CAPACITY } from "./svg/audit/capacity"
@@ -8,6 +8,7 @@ import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { getLayout, layoutsForSlideType } from "./svg/layouts/registry"
 import { slideToSvgMarkup } from "./svg/render-slide"
 import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_STYLES } from "./themes"
+import { getInstalledThemeIds } from "./themes/definitions"
 
 export interface ValidationIssue {
   path: string
@@ -169,14 +170,18 @@ export function validateIr(input: unknown): ValidateResult {
   }
   // Installed-theme check (schema layer keeps theme.id open — see ThemeSchema
   // in ir/index.ts — so this hard gate is the only place an unknown id is
-  // actually rejected, with the available list in the message).
-  if (!(BUILTIN_THEME_IDS as readonly string[]).includes(r.data.theme.id)) {
+  // actually rejected, with the available list in the message). Installed =
+  // the 13 builtins + anything registered via themes/definitions.ts's
+  // registerTheme (W3 task 4's SDK seam) — a strict superset of the old
+  // BUILTIN_THEME_IDS-only check, same error shape.
+  const installedThemeIds = getInstalledThemeIds()
+  if (!installedThemeIds.includes(r.data.theme.id)) {
     return {
       ok: false,
       errors: [
         {
           path: "theme.id",
-          message: `unknown theme "${r.data.theme.id}" — available: ${BUILTIN_THEME_IDS.join(", ")} (see \`pptfast themes\`)`,
+          message: `unknown theme "${r.data.theme.id}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
         },
       ],
     }
