@@ -5,7 +5,7 @@ import type {
   EndingArchetypeId,
   MotifArchetypeId,
 } from "../svg/archetypes/types"
-import { resolveThemeId, type CanonicalThemeId } from "./index"
+import { resolveThemeId, type CanonicalStyleId } from "./index"
 
 /**
  * Personality manifest（spec §3.3）：主题的「选择权」配置——允许哪些
@@ -23,7 +23,7 @@ export interface PersonalityManifest {
   motif?: MotifArchetypeId
 }
 
-export const THEME_MANIFESTS: Record<CanonicalThemeId, PersonalityManifest> = {
+export const THEME_MANIFESTS: Record<CanonicalStyleId, PersonalityManifest> = {
   // Wave 4 Task 23：六主题四页型 + motif 全量接线（迁移完成、观感不变）。
   // consulting 的 cover 保留双元素 ["banner-title","poster-center"]——P2 首个
   // 增量（2026-07-09）已人工审通过的多样性增量，不在本任务收窄回单元素。

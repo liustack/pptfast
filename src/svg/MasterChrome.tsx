@@ -1,7 +1,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import type { BlockCtx } from "./blocks/types"
 import { CONF_LABEL } from "../lib/conf-labels"
-import { resolveMaster } from "../themes/styles"
+import { resolveMaster } from "../styles/styles"
 import { cachedDeckSeed, pickBySeed } from "./variety"
 
 /**

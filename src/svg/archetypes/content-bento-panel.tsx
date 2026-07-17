@@ -2,7 +2,7 @@
 import type React from "react"
 import type { SvgTemplateProps } from "./types"
 import type { ContentRect } from "../layout"
-import type { ThemeColors } from "../../themes/tokens"
+import type { ThemeColors } from "../../styles/tokens"
 import type { BlockCtx } from "../blocks/types"
 import { SvgContent } from "../SvgContent"
 import {

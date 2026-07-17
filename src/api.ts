@@ -5,7 +5,7 @@ import { generatePptxBlob } from "./pptx/generate"
 import { CAPACITY } from "./svg/audit/capacity"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { slideToSvgMarkup } from "./svg/render-slide"
-import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_TOKENS } from "./themes"
+import { CANONICAL_STYLE_IDS, STYLE_LABELS, THEME_TOKENS } from "./styles"
 
 export interface ValidationIssue {
   path: string
@@ -149,9 +149,9 @@ export interface StyleInfo {
 
 /** Built-in style catalog with labels and theme color tokens. */
 export function listStyles(): StyleInfo[] {
-  return CANONICAL_THEME_IDS.map((id) => ({
+  return CANONICAL_STYLE_IDS.map((id) => ({
     id,
-    label: THEME_LABELS[id],
+    label: STYLE_LABELS[id],
     colors: { ...THEME_TOKENS[id].colors } as Record<string, unknown>,
   }))
 }

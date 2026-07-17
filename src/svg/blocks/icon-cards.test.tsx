@@ -6,7 +6,7 @@ import { assertSubset } from "../subset-validate"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { iconCards, iconCardContentHeight } from "./icon-cards"
 import type { BlockCtx } from "./types"
-import { CANONICAL_THEME_IDS, getTheme } from "../../themes"
+import { CANONICAL_STYLE_IDS, getTheme } from "../../styles"
 import { buildCtx } from "../FullSlideSvg"
 
 const ctx: BlockCtx = {
@@ -235,7 +235,7 @@ describe("icon_cards card stroke (Task 5d)", () => {
   })
 
   it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
-    for (const id of CANONICAL_THEME_IDS) {
+    for (const id of CANONICAL_STYLE_IDS) {
       const themeCtx = buildCtx(getTheme(id), {})
       const { container } = svg(iconCards.render(block, { x: 0, y: 0, w: 1088 }, themeCtx))
       const card = cardRects(container)[0]

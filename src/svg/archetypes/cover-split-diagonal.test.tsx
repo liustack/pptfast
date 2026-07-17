@@ -2,8 +2,8 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
-import { THEME_MANIFESTS } from "../../themes/manifest"
+import { getTheme } from "../../styles"
+import { THEME_MANIFESTS } from "../../styles/manifest"
 import { SplitDiagonalCover, readableOn } from "./cover-split-diagonal"
 import type { PptxIR, Slide } from "@/ir"
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { CANONICAL_THEME_IDS, THEME_TOKENS } from "./index"
+import { CANONICAL_STYLE_IDS, THEME_TOKENS } from "./index"
 import { STYLE_DEFINITIONS, resolveMaster } from "./styles"
 
 describe("STYLE_DEFINITIONS", () => {
   it("covers all 13 canonical ids with theme tokens and master", () => {
-    for (const id of CANONICAL_THEME_IDS) {
+    for (const id of CANONICAL_STYLE_IDS) {
       const def = STYLE_DEFINITIONS[id]
       expect(def.id).toBe(id)
       expect(def.theme).toBe(THEME_TOKENS[id])

@@ -1,4 +1,4 @@
-import type { ThemeTokens } from "../../themes/tokens";
+import type { ThemeTokens } from "../../styles/tokens";
 
 /**
  * 测试专用 fixture：退役前的 custom 主题 tokens 快照（2026-07-10

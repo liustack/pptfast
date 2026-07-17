@@ -9,7 +9,7 @@
 import type pptxgen from "pptxgenjs"
 import { PptxIRSchema, type PptxIR } from "@/ir"
 import { inlinePptxAssets } from "../platform/inline-assets"
-import { getTheme } from "@/themes"
+import { getTheme } from "@/styles"
 import { defineMastersForIR } from "./master-builder"
 import {
   renderOps,

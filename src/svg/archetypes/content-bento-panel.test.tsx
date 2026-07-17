@@ -5,7 +5,7 @@ import { assertSubset } from "../subset-validate"
 import { auditSvgMarkup } from "../audit/svg-audit"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
-import { getTheme } from "../../themes"
+import { getTheme } from "../../styles"
 import { BentoPanelContent } from "./content-bento-panel"
 import type { Block, PptxIR, Slide } from "@/ir"
 
