@@ -2,6 +2,7 @@ import { z } from "zod"
 import { PptfastError } from "./errors"
 import { BUILTIN_THEME_IDS, PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
 import { generatePptxBlob } from "./pptx/generate"
+import { resolveScenario, type ScenarioAxes } from "./scenario"
 import { CAPACITY } from "./svg/audit/capacity"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { getLayout, layoutsForSlideType } from "./svg/layouts/registry"
@@ -92,17 +93,19 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
 }
 
 /**
- * Validate raw JSON against the IR schema, then — once it parses — run the
- * content-quality gate (`checkIrQuality`) against the parsed IR. Both stages
- * must pass for `ok: true`. Quality findings are reported the same way as
- * schema errors (page-scoped, 1-based). `checkIrQuality` itself tags findings
- * "warn" vs "error", but that split was designed for its original consumer
- * (surfacing informational warnings in a UI after generation, per its own
- * docstring) — here it is the pre-generation hard gate, so any finding blocks
- * (`ok: false`), not only "error"-severity ones. Treating "warn" findings
- * (e.g. a cover with no heading) as advisory-only would defeat the point of
- * wiring this in: the spec's core principle is a hard protocol gate, not
- * hoped-for prompt compliance.
+ * Validate raw JSON against the IR schema, then — once it parses — resolve
+ * `scenario` (`resolveScenario`, spec §5: an unrecognized preset name is a
+ * `scenario`-path error, page-less) and run the content-quality gate
+ * (`checkIrQuality`, passed the resolved axes) against the parsed IR. All
+ * stages must pass for `ok: true`. Quality findings are reported the same
+ * way as schema errors (page-scoped, 1-based). `checkIrQuality` itself tags
+ * findings "warn" vs "error", but that split was designed for its original
+ * consumer (surfacing informational warnings in a UI after generation, per
+ * its own docstring) — here it is the pre-generation hard gate, so any
+ * finding blocks (`ok: false`), not only "error"-severity ones. Treating
+ * "warn" findings (e.g. a cover with no heading) as advisory-only would
+ * defeat the point of wiring this in: the spec's core principle is a hard
+ * protocol gate, not hoped-for prompt compliance.
  */
 export function validateIr(input: unknown): ValidateResult {
   // IR v2 friendly migration message (dev-channel scope, spec §8: W1 started
@@ -146,7 +149,22 @@ export function validateIr(input: unknown): ValidateResult {
   }
   const layoutErrors = checkLayoutApplicability(r.data)
   if (layoutErrors.length > 0) return { ok: false, errors: layoutErrors }
-  const quality = checkIrQuality(r.data)
+  // Scenario resolution (spec §5's defaults chain, W3 task 2). The axes-object
+  // branch is already enum-closed by the schema (ScenarioAxesInputSchema in
+  // ir/index.ts), so the only way resolveScenario can still throw here is an
+  // unrecognized *preset name* string — presets stay an open z.string() at
+  // the schema layer, the same open-schema/closed-semantic pattern as
+  // theme.id above. The resolved axes are not written back onto r.data (see
+  // the scenario field's docstring in ir/index.ts) — they are only threaded
+  // into checkIrQuality below for task 3 to consume.
+  let resolvedAxes: ScenarioAxes
+  try {
+    resolvedAxes = resolveScenario(r.data.scenario)
+  } catch (err) {
+    if (!(err instanceof PptfastError)) throw err
+    return { ok: false, errors: [{ path: "scenario", message: err.message }] }
+  }
+  const quality = checkIrQuality(r.data, resolvedAxes)
   if (quality.length === 0) return { ok: true, ir: r.data, errors: [] }
   const errors: ValidationIssue[] = quality.map((issue) =>
     issue.code === "empty_deck"

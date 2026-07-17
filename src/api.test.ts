@@ -137,6 +137,33 @@ describe("validateIr", () => {
   })
 })
 
+describe("scenario field (W3 task 2)", () => {
+  it("hard-rejects an unknown scenario preset name, listing available presets", () => {
+    const v = validateIr({ ...raw, scenario: "not-a-real-preset" })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.path).toBe("scenario")
+    expect(v.errors[0]!.page).toBeUndefined()
+    expect(v.errors[0]!.message).toMatch(/unknown scenario preset/)
+    expect(v.errors[0]!.message).toMatch(/available:.*general/)
+  })
+
+  it("accepts a valid scenario preset string", () => {
+    const v = validateIr({ ...raw, scenario: "boardroom-report" })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts a partial scenario axes object", () => {
+    const v = validateIr({ ...raw, scenario: { mode: "pyramid" } })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts an omitted scenario field (defaults to general, no error)", () => {
+    const v = validateIr(raw)
+    expect(v.ok).toBe(true)
+  })
+})
+
 describe("renderSlideSvg", () => {
   it("renders one slide to standalone SVG markup", () => {
     const ir = PptxIRSchema.parse(raw)

@@ -329,6 +329,54 @@ describe("verdict_banner component", () => {
   })
 })
 
+describe("IR v3 scenario field (W3 task 2)", () => {
+  it("accepts a preset id string", () => {
+    const d: any = minimal()
+    d.scenario = "boardroom-report"
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toBe("boardroom-report")
+  })
+
+  it("accepts a partial axes object", () => {
+    const d: any = minimal()
+    d.scenario = { mode: "pyramid", audience: "executive" }
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toEqual({ mode: "pyramid", audience: "executive" })
+  })
+
+  it("accepts omission — scenario stays undefined, no default is baked in by the schema", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toBeUndefined()
+  })
+
+  it("strict-rejects an unknown key on the axes object", () => {
+    const d: any = minimal()
+    d.scenario = { mode: "pyramid", speed: "fast" }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects a wrong type for an axis value", () => {
+    const d: any = minimal()
+    d.scenario = { mode: 123 }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an axis value outside the enum (typo)", () => {
+    const d: any = minimal()
+    d.scenario = { mode: "pyramidal" }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects a scenario value that is neither a preset string nor an axes object", () => {
+    const d: any = minimal()
+    d.scenario = 42
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("theme.style override", () => {
   it("accepts a palette/fonts/shape override", () => {
     const d: any = minimal()

@@ -6,6 +6,7 @@
  */
 
 import type { PptxIR, Slide } from "@/ir"
+import { resolveScenario, type ScenarioAxes } from "@/scenario"
 import { CAPACITY } from "./audit/capacity"
 import { measureTextUnits } from "../lib/svg-text-layout"
 
@@ -128,7 +129,18 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
 
 // ── entry ──
 
-export function checkIrQuality(ir: PptxIR): QualityIssue[] {
+/**
+ * `resolvedAxes` (added W3 task 2) carries the caller's already-resolved
+ * {@link ScenarioAxes} (spec §5) for task 3's scenario-aware density/bullets
+ * thresholds — wiring it into this function's own checks is task 3's diff,
+ * not this one's (see `.issues/plans/2026-07-18-pptfast-v03-w3-scenario.md`
+ * task 3). `api.ts`'s `validateIr` already resolves scenario for its own
+ * error handling and threads the result through here so task 3 doesn't have
+ * to touch that call site too. Defaults to the `general` preset's axes so
+ * this file's own single-argument test call sites keep compiling and
+ * behaving byte-for-byte the same.
+ */
+export function checkIrQuality(ir: PptxIR, _resolvedAxes: ScenarioAxes = resolveScenario(undefined)): QualityIssue[] {
   const issues: QualityIssue[] = []
 
   // empty deck

@@ -1,4 +1,11 @@
 import { PptfastError } from "../errors"
+// MODE_VALUES / DELIVERY_VALUES / AUDIENCE_VALUES (re-exported below, next to
+// Mode/Delivery/Audience's own spec-table-order doc comments) live in
+// ../ir/scenario-values, not here — see that leaf module's docstring for why
+// src/ir owns the shared tuples instead of src/scenario (short version: this
+// module's own test suite already imports BUILTIN_THEME_IDS from src/ir, so
+// src/ir importing these tuples back from here would risk a cycle).
+import { AUDIENCE_VALUES, DELIVERY_VALUES, MODE_VALUES } from "../ir/scenario-values"
 
 // ── Axes (spec §5, "scenario and plan layer") ──────────────────────────
 //
@@ -16,14 +23,14 @@ import { PptfastError } from "../errors"
  * consumed by W4's weighted selection — nothing consumes it this wave) and
  * a rhythm policy (consumed by W5's plan-validate rotation gate).
  */
-export type Mode = "pyramid" | "narrative" | "instructional" | "showcase" | "briefing"
+export type Mode = (typeof MODE_VALUES)[number]
 
 /**
  * Content density budget + typographic baseline (spec §5 delivery table).
  * See {@link DeliveryBudget} for the dual-attribute capacity split this axis
  * is one half of.
  */
-export type Delivery = "text" | "balanced" | "presentation"
+export type Delivery = (typeof DELIVERY_VALUES)[number]
 
 /**
  * Tone anchor only (spec §5: audience is tone-anchoring only, no rendering
@@ -31,7 +38,7 @@ export type Delivery = "text" | "balanced" | "presentation"
  * long paragraphs → suggest kpi_cards/verdict_banner instead). The rule set
  * itself is explicitly out of scope this wave (spec §10 open questions).
  */
-export type Audience = "executive" | "technical" | "customer" | "public"
+export type Audience = (typeof AUDIENCE_VALUES)[number]
 
 export interface ScenarioAxes {
   readonly mode: Mode
@@ -39,8 +46,13 @@ export interface ScenarioAxes {
   readonly audience: Audience
 }
 
-/** All valid {@link Audience} values (no backing record — audience is tone-only, spec §5). */
-export const AUDIENCE_VALUES: readonly Audience[] = ["executive", "technical", "customer", "public"]
+/**
+ * All valid {@link Audience} values (no backing record — audience is
+ * tone-only, spec §5). Re-exported from `../ir/scenario-values`, this
+ * module's single source of truth for the three axes' value tuples (see the
+ * import at the top of this file).
+ */
+export { AUDIENCE_VALUES }
 
 // ── Mode definitions (data only — W4 consumes for weighted selection) ────
 
@@ -116,8 +128,13 @@ export const MODE_DEFINITIONS: Record<Mode, ModeDefinition> = {
   },
 }
 
-/** All valid {@link Mode} values, in spec §5 table order (derived from {@link MODE_DEFINITIONS}). */
-export const MODE_VALUES: readonly Mode[] = Object.keys(MODE_DEFINITIONS) as readonly Mode[]
+/**
+ * All valid {@link Mode} values, in spec §5 table order. Re-exported from
+ * `../ir/scenario-values` — this module's `Mode` type derives from that same
+ * tuple, and {@link MODE_DEFINITIONS} above is typed `Record<Mode, ...>`, so
+ * TypeScript itself enforces that it has exactly these keys.
+ */
+export { MODE_VALUES }
 
 // ── Delivery budgets (editorial half of the dual-attribute capacity split) ─
 
@@ -170,8 +187,14 @@ export const DELIVERY_BUDGETS: Record<Delivery, DeliveryBudget> = {
   presentation: { bodyBaselinePx: 32, maxComponentsPerSlide: 3, bullets: { maxItems: 4, maxUnitsPerItem: 30 } },
 }
 
-/** All valid {@link Delivery} values, in spec §5 table order (derived from {@link DELIVERY_BUDGETS}). */
-export const DELIVERY_VALUES: readonly Delivery[] = Object.keys(DELIVERY_BUDGETS) as readonly Delivery[]
+/**
+ * All valid {@link Delivery} values, in spec §5 table order. Re-exported
+ * from `../ir/scenario-values` — this module's `Delivery` type derives from
+ * that same tuple, and {@link DELIVERY_BUDGETS} above is typed
+ * `Record<Delivery, ...>`, so TypeScript itself enforces that it has exactly
+ * these keys.
+ */
+export { DELIVERY_VALUES }
 
 // ── Named presets (spec §5, "named presets") ────────────────────────────
 
