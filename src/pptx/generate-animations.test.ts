@@ -84,7 +84,6 @@ describe("generatePptxBlob deck-level transition switch", () => {
 function multiBlockContentSlide(): Slide {
   return {
     type: "content",
-    variant: "single",
     heading: "多块动画验证",
     blocks: [
       { type: "paragraph", text: "开场段落" }, // block 0 → fade
@@ -195,7 +194,6 @@ describe("generatePptxBlob per-block entrance animations (wave-C S3)", () => {
 function overflowShapeContentSlide(): Slide {
   return {
     type: "content",
-    variant: "single",
     heading: "多形状 id 碰撞回归",
     blocks: [
       { type: "paragraph", text: "开场段落，占一个 fade 块。" }, // block 0 → fade

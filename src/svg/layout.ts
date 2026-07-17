@@ -2,7 +2,7 @@ import type { Block, Slide } from "@/ir"
 import type { BlockBox, BlockCtx } from "./blocks/types"
 import { measureBlock } from "./blocks"
 
-export type Variant = NonNullable<Slide["variant"]>
+export type Arrangement = NonNullable<Slide["arrangement"]>
 
 /** The content region rect (px) a slide gives its blocks to lay out within. */
 export interface ContentRect {
@@ -55,15 +55,15 @@ function stackFrom(
   return { placed, endY: blocks.length ? cursor - gap : y }
 }
 
-/** Lay out a content slide's blocks into page-coordinate boxes per variant. */
+/** Lay out a content slide's blocks into page-coordinate boxes per arrangement. */
 export function layoutContent(
-  variant: Variant | undefined,
+  arrangement: Arrangement | undefined,
   blocks: Block[],
   rect: ContentRect,
   ctx: BlockCtx,
   gap: number = BLOCK_GAP,
 ): PlacedBlock[] {
-  let v = variant ?? "single"
+  let v = arrangement ?? "single"
   // 双列类版式只有 1 个块时退化为单栏全宽，否则内容被塞进半宽列浪费一半版面
   if ((v === "two_column" || v === "image_focus" || v === "aside") && blocks.length < 2) {
     v = "single"
@@ -278,7 +278,7 @@ function distributeSurplus(
  * the audit annotations follow automatically.
  */
 export function layoutContentFit(
-  variant: Variant | undefined,
+  arrangement: Arrangement | undefined,
   blocks: Block[],
   rect: ContentRect,
   ctx: BlockCtx,
@@ -291,7 +291,7 @@ export function layoutContentFit(
       ? [Math.round(BLOCK_GAP * ctx.shape.gapScale), ...GAP_TIERS.slice(1)]
       : GAP_TIERS
   for (const gap of scaledTiers) {
-    const placed = layoutContent(variant, blocks, rect, ctx, gap)
+    const placed = layoutContent(arrangement, blocks, rect, ctx, gap)
     const bottom = stackBottom(placed, ctx)
     if (bottom <= rect.y + rect.h + 1) {
       // 先做卡片密度拉伸（吃大头），剩余交给间距呼吸
@@ -300,7 +300,7 @@ export function layoutContentFit(
       return { placed: distributeSurplus(grown, rect, gap, grownBottom), dropped: 0 }
     }
   }
-  const placed = layoutContent(variant, blocks, rect, ctx, GAP_TIERS[GAP_TIERS.length - 1])
+  const placed = layoutContent(arrangement, blocks, rect, ctx, GAP_TIERS[GAP_TIERS.length - 1])
   const kept = placed.filter(
     (p) => p.box.y + measureBlock(p.block, p.box.w, ctx) <= rect.y + rect.h + 1,
   )

@@ -201,7 +201,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
       )}
 
       {/* Content blocks below the banner (was a divider + foreignObject) */}
-      <SvgContent variant={slide.variant} blocks={slide.blocks} rect={contentRect} ctx={ctx} />
+      <SvgContent arrangement={slide.arrangement} blocks={slide.blocks} rect={contentRect} ctx={ctx} />
 
       {/* Footnote only — BrandChrome already renders the y=664 footer
        * hairline for content pages, so this archetype must not draw its own

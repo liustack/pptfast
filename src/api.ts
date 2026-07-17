@@ -4,6 +4,7 @@ import { BUILTIN_THEME_IDS, PptxIRSchema, StyleOverrideSchema, type PptxIR } fro
 import { generatePptxBlob } from "./pptx/generate"
 import { CAPACITY } from "./svg/audit/capacity"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
+import { getLayout, layoutsForSlideType } from "./svg/layouts/registry"
 import { slideToSvgMarkup } from "./svg/render-slide"
 import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_STYLES } from "./themes"
 
@@ -46,10 +47,48 @@ function describeQualityIssue(issue: QualityIssue, themeId: string): string {
     case "bullet_item_long":
       return "a bullet item is too long — keep it within about 2 lines"
     case "big_number_no_kpi":
-      return "big_number variant is missing a kpi_cards block"
+      return "big_number arrangement is missing a kpi_cards block"
     default:
       return `content quality issue (${issue.code})`
   }
+}
+
+/**
+ * Layout applicability hard gate (W2 task 3, spec §6): when a slide names an
+ * explicit `layout`, it must (a) exist in `LAYOUT_REGISTRY` and (b) declare
+ * that slide's `type` in its `slideTypes`. (b) is what fixes the "cover
+ * hijack" flaw the W2 pre-flight inventory flagged — before this task, a
+ * cover slide could set `variant: "image_top"` (a content-only takeover) and
+ * get silently hijacked by it at render time; now it's a validate error with
+ * the slide's page number, same shape as every other validation issue.
+ *
+ * Deliberately does *not* check `arrangement` against the layout's declared
+ * `arrangements` — that compatibility stays declarative metadata this wave
+ * (W3 decides its gate semantics, spec §8 W2 row).
+ */
+function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
+  const errors: ValidationIssue[] = []
+  ir.slides.forEach((slide, i) => {
+    if (slide.layout === undefined) return
+    const def = getLayout(slide.layout)
+    const available = layoutsForSlideType(slide.type)
+      .map((l) => l.id)
+      .join(", ")
+    if (!def) {
+      errors.push({
+        path: `slides.${i}.layout`,
+        page: i + 1,
+        message: `unknown layout "${slide.layout}" — available for "${slide.type}" slides: ${available}`,
+      })
+    } else if (!def.slideTypes.includes(slide.type)) {
+      errors.push({
+        path: `slides.${i}.layout`,
+        page: i + 1,
+        message: `layout "${slide.layout}" is not valid for "${slide.type}" slides — available: ${available}`,
+      })
+    }
+  })
+  return errors
 }
 
 /**
@@ -66,10 +105,10 @@ function describeQualityIssue(issue: QualityIssue, themeId: string): string {
  * hoped-for prompt compliance.
  */
 export function validateIr(input: unknown): ValidateResult {
-  // IR v2 friendly migration message (dev-channel scope, spec §8 W1 row: only
-  // the mapping this wave completed — v2/v3 share the top-level `theme` field,
-  // only its override sub-key renamed. Later waves append their own mapping
-  // to this same message as blocks→components / variant→block land).
+  // IR v2 friendly migration message (dev-channel scope, spec §8: W1 started
+  // it with the theme.override→theme.style mapping, W2 task 3 appends the
+  // second — variant split into layout + arrangement. A later wave appends
+  // its own mapping to this same message when blocks→components lands).
   if (typeof input === "object" && input !== null && (input as Record<string, unknown>).version === "2") {
     return {
       ok: false,
@@ -77,7 +116,7 @@ export function validateIr(input: unknown): ValidateResult {
         {
           path: "version",
           message:
-            'IR v2 is not supported by pptfast 0.3 — set version to "3" (theme.override is gone, use theme.style)',
+            'IR v2 is not supported by pptfast 0.3 — set version to "3" (theme.override is gone, use theme.style. variant is split into layout and arrangement)',
         },
       ],
     }
@@ -105,6 +144,8 @@ export function validateIr(input: unknown): ValidateResult {
       ],
     }
   }
+  const layoutErrors = checkLayoutApplicability(r.data)
+  if (layoutErrors.length > 0) return { ok: false, errors: layoutErrors }
   const quality = checkIrQuality(r.data)
   if (quality.length === 0) return { ok: true, ir: r.data, errors: [] }
   const errors: ValidationIssue[] = quality.map((issue) =>

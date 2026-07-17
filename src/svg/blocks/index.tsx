@@ -149,7 +149,7 @@ function renderBlockContent(block: Block, box: BlockBox, ctx: BlockCtx): React.R
  * `elements === "auto"` only — see `BlockCtx.blockIndex`'s doc comment), the
  * content is wrapped in one more `<g data-blk="{index}">` so
  * `svg2pptx/dispatch.ts` can tag every shape underneath with its source
- * block. This is the single chokepoint every template/variant renders a
+ * block. This is the single chokepoint every template/arrangement renders a
  * block through (`SvgContent`, `BigNumber`, `AssertionEvidence`,
  * tech's own non-exploded-block cell, creative's poster slot),
  * so tagging happens here once rather than at each call site — the one

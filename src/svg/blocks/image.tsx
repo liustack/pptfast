@@ -7,7 +7,7 @@ type ImageBlock = Extract<Block, { type: "image" }>
 /**
  * Cap on the image's own height (px), independent of caption. The smallest
  * theme content-rect height is ~380px minus the caption's ~32px allowance —
- * uncapped `w * 0.5` at a full-width single-variant image (≈560-600px)
+ * uncapped `w * 0.5` at a full-width single-arrangement image (≈560-600px)
  * exceeds every theme's content rect, so `layoutContentFit`'s overflow guard
  * drops the block entirely, rendering a blank slide. The SVG `<image>`'s
  * default `preserveAspectRatio` (xMidYMid meet) letterboxes gracefully when

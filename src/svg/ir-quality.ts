@@ -113,8 +113,8 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
     })
   }
 
-  // big_number variant without kpi_cards block
-  if (slide.variant === "big_number" && !hasKpiCardsBlock(slide)) {
+  // big_number arrangement without kpi_cards block
+  if (slide.arrangement === "big_number" && !hasKpiCardsBlock(slide)) {
     issues.push({
       slide: index,
       severity: "warn",

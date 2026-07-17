@@ -13,7 +13,7 @@ const EVIDENCE_TYPES = [
 ] as const satisfies readonly Block["type"][]
 
 /**
- * `assertion_evidence` variant — "full-sentence heading + single enlarged evidence".
+ * `assertion_evidence` arrangement — "full-sentence heading + single enlarged evidence".
  *
  * The slide heading (rendered by the template layer) states an assertion. The
  * content area picks the single strongest evidence block (chart > image >

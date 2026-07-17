@@ -215,7 +215,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
 
         {/* Content area inside card (SvgContent replaces foreignObject) */}
         <SvgContent
-          variant={slide.variant}
+          arrangement={slide.arrangement}
           blocks={slide.blocks}
           rect={{ x: 92, y: contentRectY, w: 1096, h: contentRectH }}
           ctx={ctx}
@@ -354,7 +354,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
 
       {/* Content blocks (SvgContent replaces foreignObject) */}
       <SvgContent
-        variant={slide.variant}
+        arrangement={slide.arrangement}
         blocks={slide.blocks}
         rect={{ x: 64, y: contentRectY, w: 1152, h: contentRectH }}
         ctx={ctx}

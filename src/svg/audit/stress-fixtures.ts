@@ -166,7 +166,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       { type: "chapter", heading: CJK_LONG, subheading: MIXED_LONG, blocks: [] },
       {
         type: "content",
-        variant: "single",
         heading: CJK_LONG_WITH_DASH,
         subheading: MIXED_LONG,
         blocks: [],
@@ -191,7 +190,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   bullets: deck([
     {
       type: "content",
-      variant: "single",
       heading: "要点压力测试",
       blocks: [
         {
@@ -210,7 +208,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "two_column",
+      arrangement: "two_column",
       heading: "要点双栏压力测试",
       blocks: [
         {
@@ -230,11 +228,11 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   // kpi: a 4-card kpi_focus page plus a big_number hero page, both with
   // extreme value/unit/label lengths — plus a big_number page whose hero is
   // followed by ordinary supporting blocks (2 bullets + 1 long paragraph),
-  // stress-testing the bespoke variant's supporting-block stacking path.
+  // stress-testing the bespoke arrangement's supporting-block stacking path.
   kpi: deck([
     {
       type: "content",
-      variant: "kpi_focus",
+      arrangement: "kpi_focus",
       heading: "KPI 压力测试",
       blocks: [
         {
@@ -265,7 +263,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "big_number",
+      arrangement: "big_number",
       heading: "大数字压力测试",
       blocks: [
         {
@@ -276,7 +274,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "big_number",
+      arrangement: "big_number",
       heading: "大数字支撑内容压力测试",
       blocks: [
         {
@@ -305,7 +303,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   citation: deck([
     {
       type: "content",
-      variant: "single",
       heading: "引用压力测试",
       blocks: [
         {
@@ -336,7 +333,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   paragraph_stack: deck([
     {
       type: "content",
-      variant: "single",
       heading: "段落堆叠压力测试",
       blocks: Array.from(
         { length: 6 },
@@ -353,7 +349,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   diagram: deck([
     {
       type: "content",
-      variant: "single",
       heading: "流程图压力测试",
       blocks: [
         {
@@ -372,7 +367,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "single",
       heading: "架构图压力测试",
       blocks: [
         {
@@ -392,7 +386,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "single",
       heading: "时间线压力测试",
       blocks: [
         {
@@ -412,12 +405,12 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
 
   // chart: two_column page with two charts, series/category names truncated
   // to 24 chars per the brief — plus an assertion_evidence page (chart
-  // evidence + 2 long supporting blocks) stress-testing the bespoke variant's
+  // evidence + 2 long supporting blocks) stress-testing the bespoke arrangement's
   // supporting-block stacking path.
   chart: deck([
     {
       type: "content",
-      variant: "two_column",
+      arrangement: "two_column",
       heading: "图表压力测试",
       blocks: [
         {
@@ -460,7 +453,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "assertion_evidence",
+      arrangement: "assertion_evidence",
       heading: "论证证据支撑内容压力测试",
       blocks: [
         {
@@ -497,7 +490,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   comparison_quote_code: deck([
     {
       type: "content",
-      variant: "single",
       heading: "对比表压力测试",
       blocks: [
         {
@@ -512,7 +504,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "quote",
+      arrangement: "quote",
       heading: "引言压力测试",
       blocks: [
         {
@@ -524,7 +516,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "code",
+      arrangement: "code",
       heading: "代码压力测试",
       blocks: [
         {
@@ -536,7 +528,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "single",
       heading: "标注压力测试",
       blocks: [
         {
@@ -548,7 +539,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "single",
       heading: "配图压力测试",
       blocks: [
         {
@@ -573,7 +563,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   new_blocks_stress: deck([
     {
       type: "content",
-      variant: "single",
       heading: "图标卡片压力测试",
       blocks: [
         {
@@ -588,12 +577,11 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       ],
     },
     {
-      // Full-width single variant: 5 items keeps cardW well above
+      // Full-width single arrangement: 5 items keeps cardW well above
       // MIN_CARD_W(180) on 5 of 6 themes (only magazine's narrower
       // COLUMN_W=880 already tips into vertical mode here), so this page
       // targets the *horizontal* card layout's own narrow per-card width.
       type: "content",
-      variant: "single",
       heading: "步骤压力测试（横排）",
       blocks: [
         {
@@ -610,7 +598,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       // n=5 vertical-degrade threshold (needsVerticalLayout: 5*180+4*40=1060)
       // on every theme — this page targets the *vertical* (degraded) mode.
       type: "content",
-      variant: "two_column",
+      arrangement: "two_column",
       heading: "步骤压力测试（纵排降级）",
       blocks: [
         {
@@ -631,7 +619,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "single",
       heading: "结论横幅压力测试",
       blocks: [
         {
@@ -644,7 +631,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "single",
       heading: "混排内容压力测试",
       subheading: MIXED_LONG,
       blocks: [
@@ -688,7 +674,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   flowchart_edge_labels: deck([
     {
       type: "content",
-      variant: "single",
       heading: "流程图边标签压力测试（纵向）",
       blocks: [
         {
@@ -710,7 +695,6 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
     {
       type: "content",
-      variant: "single",
       heading: "流程图边标签压力测试（横向）",
       blocks: [
         {

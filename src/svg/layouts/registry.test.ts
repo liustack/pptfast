@@ -101,13 +101,22 @@ describe("content family: body slot + declared arrangements", () => {
     expect(LAYOUT_REGISTRY["two-column"].arrangements).toEqual(["two_column"])
   })
 
-  it("bento-panel and stacked-poster only honor single (hardcoded/conditional, per inventory)", () => {
+  it("bento-panel only honors single (hardcoded, per inventory)", () => {
     expect(LAYOUT_REGISTRY["bento-panel"].arrangements).toEqual(["single"])
-    expect(LAYOUT_REGISTRY["stacked-poster"].arrangements).toEqual(["single"])
   })
 
-  it("the remaining four variant-respecting archetypes declare arrangements: \"all\"", () => {
-    for (const id of ["banner-heading", "narrow-column", "rail-numbered", "tone-adaptive-content"]) {
+  it("stacked-poster declares arrangements \"all\" (W2 task 3 adjudication: its degrade path passes slide.arrangement straight through unchanged, same as the four plain pass-through archetypes — the conditional hero/strip takeover only applies to 1-2 fitting blocks)", () => {
+    expect(LAYOUT_REGISTRY["stacked-poster"].arrangements).toBe("all")
+  })
+
+  it("the remaining five arrangement-respecting archetypes declare arrangements: \"all\"", () => {
+    for (const id of [
+      "banner-heading",
+      "narrow-column",
+      "rail-numbered",
+      "tone-adaptive-content",
+      "stacked-poster",
+    ]) {
       expect(LAYOUT_REGISTRY[id].arrangements).toBe("all")
     }
   })

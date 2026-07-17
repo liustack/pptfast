@@ -28,7 +28,7 @@ describe("SvgContent", () => {
   it("renders one positioned group per block within an svg", () => {
     const { container } = render(
       <svg viewBox="0 0 1280 720">
-        <SvgContent variant="single" blocks={blocks} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
+        <SvgContent arrangement="single" blocks={blocks} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
       </svg>,
     )
     // paragraph text + 2 bullet markers + 2 bullet texts
@@ -75,7 +75,7 @@ describe("SvgContent", () => {
     const markup = renderToStaticMarkup(
       <svg>
         <SvgContent
-          variant="big_number"
+          arrangement="big_number"
           blocks={[{ type: "kpi_cards", items: [{ value: "18", label: "成本下降" }] }]}
           rect={{ x: 96, y: 176, w: 1088, h: 424 }}
           ctx={ctx}

@@ -27,7 +27,7 @@ const blocks: Block[] = [
 function renderBig(b: Block[]) {
   return render(
     <svg viewBox="0 0 1280 720">
-      <SvgContent variant="big_number" blocks={b} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
+      <SvgContent arrangement="big_number" blocks={b} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
     </svg>,
   )
 }

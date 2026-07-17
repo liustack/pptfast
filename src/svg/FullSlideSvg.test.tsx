@@ -22,7 +22,6 @@ function ir(slides: Slide[]): PptxIR {
 const coverSlide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "增长与韧性", blocks: [] }
 const contentSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "三大支柱",
   blocks: [
     { type: "paragraph", text: "我们围绕三个方向推进。" },
@@ -201,7 +200,6 @@ describe("image_grid / image_compare export round-trip (image-layouts P2)", () =
   it("image_grid serializes to an export-safe svg with 2 image ops", () => {
     const ops = roundTrip({
       type: "content",
-      variant: "single",
       heading: "图片网格",
       blocks: [
         {
@@ -219,7 +217,6 @@ describe("image_grid / image_compare export round-trip (image-layouts P2)", () =
   it("image_compare serializes with 2 image ops and label text", () => {
     const ops = roundTrip({
       type: "content",
-      variant: "single",
       heading: "前后对比",
       blocks: [
         {
@@ -262,7 +259,7 @@ describe("manifest cover dispatch (P1)", () => {
   it("cover + image_split（schema 合法组合）仍走图文版式接管，优先级高于 manifest archetype", () => {
     const splitCover: Slide = {
       ...coverSlide,
-      variant: "image_split",
+      layout: "image-split",
       blocks: [{ type: "image", asset_id: "a" }],
     } as unknown as Slide
     const ir = {
@@ -297,7 +294,6 @@ describe("manifest 四页型分发泛化 (P2)", () => {
   it("content 命中 archetype（tech → 允许集成员，P3 Item ② 后含 bento-panel/two-column）", () => {
     const contentSlide2: Slide = {
       type: "content",
-      variant: "single",
       heading: "内容页",
       blocks: [{ type: "paragraph", text: "正文" }],
     } as Slide
@@ -332,7 +328,7 @@ describe("content 页轮换 (P3 Item ②)", () => {
   // academic content 允许集 = ["rail-numbered", "two-column"]（P3 Item ② 吸纳），
   // 同 deck 内相邻 content 页应按 typeOrdinal 轮换到不同 archetype。
   const contentPage = (heading: string): Slide =>
-    ({ type: "content", variant: "single", heading, blocks: [{ type: "paragraph", text: "正文" }] }) as Slide
+    ({ type: "content", heading, blocks: [{ type: "paragraph", text: "正文" }] }) as Slide
 
   const deck: PptxIR = {
     version: "3",
@@ -376,5 +372,56 @@ describe("content 页轮换 (P3 Item ②)", () => {
       <FullSlideSvg ir={magDeck} slide={magDeck.slides[2]} index={2} />,
     )
     expect(container.querySelector('[data-archetype="narrow-column"]')).not.toBeNull()
+  })
+})
+
+describe("slide.layout explicit archetype short-circuit (W2 task 3 new capability)", () => {
+  const mkIr = (theme: string, slide: Slide): PptxIR =>
+    ({
+      version: "3",
+      filename: "m.pptx",
+      theme: { id: theme },
+      meta: {},
+      assets: { images: {} },
+      slides: [slide],
+    }) as unknown as PptxIR
+
+  it("uses the exact requested archetype id, bypassing seed selection, when it belongs to the theme's allowed family", () => {
+    // consulting's cover allowed set has 3 members — a seed-pick could land
+    // on any of them, so a deterministic hit on the requested id proves the
+    // short-circuit fired rather than a lucky seed roll.
+    const slide: Slide = { type: "cover", heading: "标题", layout: "poster-center", blocks: [] } as Slide
+    const { container } = render(<FullSlideSvg ir={mkIr("consulting", slide)} slide={slide} index={0} />)
+    expect(container.querySelector('[data-archetype="poster-center"]')).not.toBeNull()
+  })
+
+  it("uses the requested id for every member of a multi-element allowed set, not just one", () => {
+    for (const id of ["banner-title", "poster-center", "split-diagonal"]) {
+      const slide: Slide = { type: "cover", heading: "标题", layout: id, blocks: [] } as Slide
+      const { container } = render(<FullSlideSvg ir={mkIr("consulting", slide)} slide={slide} index={0} />)
+      expect(container.querySelector(`[data-archetype="${id}"]`)).not.toBeNull()
+    }
+  })
+
+  it("falls back to seed-pick (never crashes) when the id is a real archetype but not part of this theme's allowed family", () => {
+    // "narrow-column" is journal's own content archetype — not in tech's
+    // allowed content set (["bento-panel", "two-column"]) — resolveArchetype
+    // must defensively fall back rather than render an archetype tech was
+    // never designed to host (total-function philosophy, like resolveThemeId).
+    const slide: Slide = {
+      type: "content",
+      layout: "narrow-column",
+      heading: "标题",
+      blocks: [{ type: "paragraph", text: "正文" }],
+    } as Slide
+    const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
+    const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
+    expect(["bento-panel", "two-column"]).toContain(id)
+  })
+
+  it("falls back to seed-pick when slide.layout is undefined (no regression to the pre-existing dispatch)", () => {
+    const slide: Slide = { type: "cover", heading: "标题", blocks: [] } as Slide
+    const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
+    expect(container.querySelector('[data-archetype="constellation"]')).not.toBeNull()
   })
 })

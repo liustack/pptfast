@@ -34,7 +34,6 @@ function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
 
 const cardBgContentSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "带背景卡片",
   blocks: [{ type: "paragraph", text: "卡内文字。" }],
   background: { kind: "asset", asset_id: "bg", fit: "cover" },

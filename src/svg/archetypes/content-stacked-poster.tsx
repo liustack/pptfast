@@ -131,7 +131,7 @@ const HERO_SCALE_MAX = 1.3
  */
 function renderPosterSlot(block: Block, rect: ContentRect, ctx: BlockCtx) {
   if (!SCALABLE_TYPES.has(block.type)) {
-    return <SvgContent variant="single" blocks={[block]} rect={rect} ctx={ctx} />
+    return <SvgContent arrangement="single" blocks={[block]} rect={rect} ctx={ctx} />
   }
   const auditRect = `${rect.x},${rect.y},${rect.w},${rect.h}`
   const measured = measureBlock(block, rect.w, ctx)
@@ -257,7 +257,7 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 
       {/* Content blocks (was a foreignObject) */}
       <SvgContent
-        variant={slide.variant}
+        arrangement={slide.arrangement}
         blocks={slide.blocks}
         rect={{ x: 56, y: contentRectY, w: 1168, h: contentRectH }}
         ctx={ctx}

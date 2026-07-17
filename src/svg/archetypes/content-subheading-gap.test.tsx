@@ -143,7 +143,6 @@ const CJK_THEME_CASES: ThemeCase[] = [
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
         blocks: [{ type: "paragraph", text: "核心概要。" }],
@@ -157,7 +156,6 @@ const CJK_THEME_CASES: ThemeCase[] = [
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
         blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
@@ -175,7 +173,6 @@ const CJK_THEME_CASES: ThemeCase[] = [
       // No background asset -> the (simpler) no-bg branch.
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
         blocks: [{ type: "paragraph", text: "围绕三个方向推进。" }],
@@ -193,7 +190,6 @@ const CJK_THEME_CASES: ThemeCase[] = [
       // lock (see creative.test.tsx's "poster path, with subheading").
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
         blocks: [
@@ -211,7 +207,6 @@ const CJK_THEME_CASES: ThemeCase[] = [
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
         blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
@@ -251,7 +246,6 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
       const ctx = buildCtx(tokens, {})
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading,
         subheading: SUBHEADING,
         blocks: [{ type: "paragraph", text: "支撑论据。" }],

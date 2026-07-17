@@ -28,7 +28,7 @@ const blocks: Block[] = [
 describe("serialize bridge (React SVG → ops)", () => {
   const node = (
     <svg viewBox="0 0 1280 720">
-      <SvgContent variant="single" blocks={blocks} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
+      <SvgContent arrangement="single" blocks={blocks} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
     </svg>
   )
 

@@ -39,7 +39,7 @@ function deck(themeId: (typeof BUILTIN_THEME_IDS)[number]): { ir: PptxIR; slides
   const slides: Slide[] = [
     { type: "cover", heading: "封面标题", subheading: "副标题", blocks: [] },
     { type: "chapter", heading: "第一章", blocks: [] },
-    { type: "content", variant: "single", heading: "正文页", blocks: allBlocks, footnote: "注脚" },
+    { type: "content", heading: "正文页", blocks: allBlocks, footnote: "注脚" },
     { type: "ending", heading: "谢谢", blocks: [] },
   ]
   const ir: PptxIR = {

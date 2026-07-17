@@ -52,9 +52,10 @@ export type SlotName =
   | "meta"
   | "decor"
 
-/** Body-arrangement enum (today's `Variant`, minus the 4 image variants that
- * W2 promotes to first-class takeover layouts — see `TAKEOVER_LAYOUTS`
- * below). snake_case, matching component-type naming convention. */
+/** Body-arrangement enum (the retired `variant` field's 9-value non-image
+ * subset — W2 task 3 split the other 4 image values off into first-class
+ * takeover layouts — see `TAKEOVER_LAYOUTS` below). snake_case, matching
+ * component-type naming convention. */
 export type Arrangement =
   | "single"
   | "two_column"
@@ -82,8 +83,9 @@ export interface LayoutDefinition {
   slideTypes: readonly SlideType[]
   slots: readonly LayoutSlot[]
   /** content archetypes only: which body arrangements this layout honors
-   *  (inventory: 4 个尊重全部 → "all"，two-column → ["two_column"]，
-   *  bento-panel → ["single"]，stacked-poster → ["single"] + 注释说明条件接管) */
+   *  (inventory's 4 直接尊重全部 + stacked-poster（W2 任务 3 裁决，条件接管
+   *  路径见其注释）共 5 个 → "all"，two-column → ["two_column"]，
+   *  bento-panel → ["single"]) */
   arrangements?: readonly Arrangement[] | "all"
 }
 
@@ -444,14 +446,15 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 // Content archetypes (7) — the only family that reads `slide.blocks`, so
 // every entry carries a `body` slot (capacity intentionally left for W3/
 // task 5) plus its own header chrome, and declares `arrangements` (inventory
-// decision #2: archetypes that don't obey the author's variant still
+// decision #2: archetypes that don't obey the author's arrangement still
 // truthfully declare which arrangement(s) they honor, behavior unchanged).
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   "narrow-column": {
     // content-narrow-column.tsx: top hairline, italic kicker, heading,
-    // subheading, narrow SvgContent body (variant passed through unchanged),
-    // large muted page-number watermark in the right gutter, italic footnote
+    // subheading, narrow SvgContent body (arrangement passed through
+    // unchanged), large muted page-number watermark in the right gutter,
+    // italic footnote
     // (meta).
     id: "narrow-column",
     kind: "archetype",
@@ -469,10 +472,9 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "two-column": {
     // content-two-column.tsx: kicker, heading, subheading, accent bar +
-    // hairline rule, SvgContent body — hardcodes variant="two_column"
-    // (content-two-column.tsx:102; the file's own comment claims it doesn't
-    // override slide.variant, but the code does — inventory-confirmed
-    // comment/behavior mismatch). No footnote/meta render at all.
+    // hairline rule, SvgContent body — hardcodes arrangement="two_column"
+    // (content-two-column.tsx:102) regardless of slide.arrangement. No
+    // footnote/meta render at all.
     id: "two-column",
     kind: "archetype",
     slideTypes: ["content"],
@@ -488,7 +490,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   "rail-numbered": {
     // content-rail-numbered.tsx: fixed left progress track + node (rail),
     // "{chapter}.{n}" number badge replacing the usual kicker, heading,
-    // subheading, SvgContent body (variant passed through), italic footnote
+    // subheading, SvgContent body (arrangement passed through), italic footnote
     // (meta).
     id: "rail-numbered",
     kind: "archetype",
@@ -506,7 +508,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   "banner-heading": {
     // content-banner-heading.tsx: section-name kicker, heading set inside a
     // filled "assertion banner" (the banner rect *is* the heading treatment
-    // — no separate rule), subheading, SvgContent body (variant passed
+    // — no separate rule), subheading, SvgContent body (arrangement passed
     // through), italic footnote (meta).
     id: "banner-heading",
     kind: "archetype",
@@ -522,12 +524,14 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "stacked-poster": {
     // content-stacked-poster.tsx: centered kicker + accent rule, heading,
-    // subheading, and a `body` slot whose arrangement is declared "single"
-    // — the *degrade* path (>=3 blocks, 0 blocks, or an overflowing hero/
-    // strip candidate) actually passes `slide.variant` straight through to
-    // SvgContent unchanged, so "single" here is the deliberately
-    // conservative, truthful-but-simplified declaration (inventory decision
-    // #2), not a literal claim that only "single" ever reaches SvgContent.
+    // subheading, and a `body` slot — the *degrade* path (>=3 blocks, 0
+    // blocks, or an overflowing hero/strip candidate) passes
+    // `slide.arrangement` straight through to SvgContent unchanged, so this
+    // archetype honors every arrangement exactly like the four plain "all"
+    // archetypes below (W2 task 3 adjudication: the inventory's original
+    // "single" was a conservative placeholder pending this call, not a
+    // literal claim that only "single" ever reaches SvgContent — see the
+    // registry test's dedicated degrade-path-with-two_column assertion).
     // Exactly 1-2 fitting blocks instead take the bespoke poster path,
     // which bypasses arrangement entirely: block[0] always renders in a
     // dedicated `hero` slot (capacity 1), and block[1] — only when there are
@@ -546,15 +550,17 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "strip", accepts: "any", capacity: 1 },
       { name: "meta", accepts: CHROME },
     ],
-    arrangements: ["single"],
+    arrangements: "all",
   },
   "bento-panel": {
     // content-bento-panel.tsx: kicker, heading, subheading, and a `body`
     // slot that alternates between a plain single-block/degraded stack and
     // a dedicated `grid` slot — up to 6 bento cells (bento-layout.ts:193-194,
     // "the bento grid only ever has 6 cells"), hero-weight-ordered. All
-    // three internal SvgContent calls hardcode variant="single" (inventory:
-    // "bento-panel 三处调用全部硬编码 variant=single"). Italic footnote (meta).
+    // three internal SvgContent calls hardcode arrangement="single"
+    // (inventory: "bento-panel 三处调用全部硬编码 variant=single" — the
+    // inventory's own finding predates the W2 task 3 field rename). Italic
+    // footnote (meta).
     id: "bento-panel",
     kind: "archetype",
     slideTypes: ["content"],
@@ -570,7 +576,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "tone-adaptive-content": {
     // content-tone-adaptive-content.tsx: kicker, heading, subheading, accent
-    // bar + hairline rule, SvgContent body (variant passed through
+    // bar + hairline rule, SvgContent body (arrangement passed through
     // unchanged in both branches), meta (footer meta row inside the white
     // card when a bg image is present, or an italic footnote when not —
     // same slot, two renderings).
@@ -590,15 +596,18 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Image takeover layouts (4) — today's page-level `image_split`/`image_top`/
-// `image_bottom`/`image_annotate` variants (FullSlideSvg.tsx:150-202):
-// bespoke full-page compositions that intercept *before* any archetype
-// runs, implemented by src/svg/ImagePages.tsx. `slideTypes` is written as
-// `["content"]` to match what these variants are actually reachable from
-// today (they're schema-legal on any slide type — cover/chapter slides can
-// set them too and get silently hijacked, a confirmed bug the inventory
-// flags — task 3's applicability gate is what fixes it; this registry entry
-// just states the intended/target applicability, it enforces nothing yet).
+// Image takeover layouts (4) — `slide.layout` ids for the page-level
+// `image-split`/`image-top`/`image-bottom`/`image-annotate` takeovers
+// (FullSlideSvg.tsx's splitTakeover branch, keyed off `getLayout(slide.
+// layout)?.kind === "takeover"` since W2 task 3 — originally 4 snake_case
+// `slide.variant` values): bespoke full-page compositions that intercept
+// *before* any archetype runs, implemented by src/svg/ImagePages.tsx.
+// `slideTypes` is written as `["content"]`, and task 3's applicability gate
+// (api.ts `checkLayoutApplicability`) now enforces it as a validate hard
+// error — before that gate existed, these ids were schema-legal on any
+// slide type and a cover/chapter slide setting one got silently hijacked
+// at render (the confirmed bug the inventory flagged; this registry entry
+// used to just state the intended applicability without enforcing it).
 // ─────────────────────────────────────────────────────────────────────────
 const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   "image-split": {

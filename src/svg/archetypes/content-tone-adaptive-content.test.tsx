@@ -37,7 +37,6 @@ const EXPECTED_CONTENT_BARE_WITH_BG =
 const chapter: Slide = { type: "chapter", heading: "第一部分：产品概览", blocks: [] } as Slide
 const content: Slide = {
   type: "content",
-  variant: "single",
   heading: "双色态：从纸面到屏幕",
   subheading: "**核心结论**：适配任意底色",
   footnote: "数据来源：内部埋点，2026Q2",
@@ -110,7 +109,7 @@ describe("ToneAdaptiveContent", () => {
 
   it("单块 slide（无 subheading/footnote/kicker）两分支输出锁定", () => {
     const tokens = LEGACY_CUSTOM_TOKENS
-    const bare: Slide = { type: "content", variant: "single", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
+    const bare: Slide = { type: "content", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
     const bareWithBg: Slide = { ...bare, background: { kind: "asset", asset_id: "bg", fit: "cover" } } as Slide
     const deck: PptxIR = {
       version: "3",
@@ -187,7 +186,6 @@ describe("ToneAdaptiveContent", () => {
     const tokens = LEGACY_CUSTOM_TOKENS
     const bgSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "带背景卡片",
       blocks: [{ type: "paragraph", text: "卡内文字。" }],
       background: { kind: "asset", asset_id: "bg", fit: "cover" },
@@ -222,7 +220,6 @@ describe("ToneAdaptiveContent", () => {
     const ctx = buildCtx(tokens, {})
     const longSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: CJK_LONG,
       blocks: [{ type: "paragraph", text: "文本。" }],
     } as Slide
@@ -258,7 +255,6 @@ describe("ToneAdaptiveContent", () => {
   describe("subheading (Task 5)", () => {
     const noBgBase: Slide = {
       type: "content",
-      variant: "single",
       heading: "三大支柱",
       blocks: [{ type: "paragraph", text: "围绕三个方向推进。" }],
     } as Slide
@@ -380,7 +376,6 @@ describe("ToneAdaptiveContent", () => {
     const chapterFirst: Slide = { type: "chapter", heading: "第一章", blocks: [] } as Slide
     const withSection: Slide = {
       type: "content",
-      variant: "single",
       heading: "三大支柱",
       blocks: [{ type: "paragraph", text: "正文。" }],
     } as Slide
@@ -441,7 +436,6 @@ describe("ToneAdaptiveContent", () => {
   describe("title accent bar (Task 5c, candidate ①)", () => {
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "三大支柱",
       blocks: [{ type: "paragraph", text: "正文。" }],
     } as Slide

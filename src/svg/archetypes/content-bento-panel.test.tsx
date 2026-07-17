@@ -62,7 +62,6 @@ const iconCardsBlock: Block = {
 }
 const bentoSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "架构拼盘",
   subheading: "**核心指标**一屏可见",
   footnote: "数据来源：监控平台",
@@ -73,7 +72,6 @@ const bentoSlide: Slide = {
 // 而非满 rect 空壳大卡。
 const soloKpiSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "单指标",
   blocks: [{ type: "kpi_cards", items: [{ value: "88", label: "达成率" }] }],
 } as Slide
@@ -148,7 +146,6 @@ describe("BentoPanelContent", () => {
     }))
     const overflowSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "七项要点",
       blocks: overflowBlocks,
     } as Slide
@@ -191,7 +188,6 @@ describe("BentoPanelContent", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
       blocks: [para("一"), para("二"), para("三"), para("四")],
     } as Slide
@@ -210,7 +206,6 @@ describe("BentoPanelContent", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
       blocks: [para("一"), para("二"), para("三"), para("四")],
     } as Slide
@@ -255,7 +250,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
       blocks: [kpiBlock4],
     } as Slide
@@ -295,7 +289,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "三大原则",
       blocks: [iconCardsBlock3],
     } as Slide
@@ -346,7 +339,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "操作流程",
       blocks: [stepsBlock, para("补充说明")],
     } as Slide
@@ -414,7 +406,6 @@ describe("BentoPanelContent", () => {
       const paragraphBlock: Block = para("普通块仍然有卡壳")
       const slide: Slide = {
         type: "content",
-        variant: "single",
         heading: "双壳治理",
         blocks: [block, paragraphBlock],
       } as Slide
@@ -459,7 +450,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
       blocks: [kpiBlock4],
     } as Slide
@@ -500,7 +490,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
       blocks: [kpiBlock4],
     } as Slide
@@ -570,7 +559,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
       blocks: [kpiBlock2],
     } as Slide
@@ -647,7 +635,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "混合拼盘",
       blocks: [kpiBlock2, chartBlock],
     } as Slide
@@ -677,7 +664,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "双元混排",
       blocks: [kpiBlock1, para("这里是配对展示的另一块说明文字。")],
     } as Slide
@@ -709,7 +695,6 @@ describe("BentoPanelContent", () => {
     const blocks = texts.map(para)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "五项要点",
       blocks,
     } as Slide
@@ -737,7 +722,6 @@ describe("BentoPanelContent", () => {
     const blocks = texts.map(para)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "六项要点",
       blocks,
     } as Slide
@@ -766,7 +750,6 @@ describe("BentoPanelContent", () => {
     }))
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "六项要点",
       blocks,
     } as Slide
@@ -800,7 +783,6 @@ describe("BentoPanelContent", () => {
     const paragraphBlock: Block = para("普通块仍然有卡壳")
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "卡壳感知",
       blocks: [calloutBlock, codeBlock, paragraphBlock],
     } as Slide
@@ -839,7 +821,6 @@ describe("BentoPanelContent", () => {
     const paragraphBlock: Block = para("普通块仍然有卡壳")
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论条卡壳感知",
       blocks: [verdictBlock, paragraphBlock],
     } as Slide
@@ -874,7 +855,6 @@ describe("BentoPanelContent", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "唯一要点",
       blocks: [para("独占一页的普通块。")],
     } as Slide
@@ -904,7 +884,6 @@ describe("BentoPanelContent", () => {
     }
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "单一指标",
       blocks: [kpiBlock1],
     } as Slide
@@ -946,7 +925,6 @@ describe("BentoPanelContent", () => {
     const blocks: Block[] = [para("一"), { type: "bullets", items: longItems, style: "default" }, para("三"), para("四")]
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
       blocks,
     } as Slide
@@ -981,7 +959,6 @@ describe("BentoPanelContent", () => {
     const blocks: Block[] = [para("概览"), chartBlock, para("结论"), para("展望")]
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四项要点",
       blocks,
     } as Slide
@@ -1013,7 +990,6 @@ describe("BentoPanelContent", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
       blocks: [para("一"), para("二"), para("三"), para("四")],
     } as Slide
@@ -1044,7 +1020,6 @@ describe("BentoPanelContent", () => {
     expect(longHeading.length).toBe(48)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: longHeading,
       blocks: [para("概要")],
     } as Slide
@@ -1072,7 +1047,6 @@ describe("BentoPanelContent", () => {
   describe("Content subheading (Task 5)", () => {
     const base: Slide = {
       type: "content",
-      variant: "single",
       heading: "三大支柱",
       blocks: [para("一"), para("二")],
     } as Slide

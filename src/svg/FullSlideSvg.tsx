@@ -16,6 +16,8 @@ import {
   ImageSplitPage,
   ImageTopPage,
 } from "./ImagePages"
+import { findImageComponent } from "./layouts/find-image"
+import { getLayout } from "./layouts/registry"
 import { THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
 import { COVER_ARCHETYPES } from "./archetypes"
 import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
@@ -80,15 +82,30 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
  * `"cover-archetype"`
  * 字符串形状（`${slideType}-archetype`），对 cover 页型逐字节保持同一个
  * seed 输入，不改变既有 deck 的 archetype 选择结果。
+ *
+ * `requestedLayout`（W2 任务 3 新能力，即 `slide.layout`）显式指定短路：命中
+ * 一个属于该主题此页型允许集的 archetype id 时直接采用，跳过 seed 轮换。
+ * validate 已挡「未注册 id」与「slideTypes 不适用」两类硬错误（api.ts
+ * checkLayoutApplicability），这里再挡一层「合法 archetype 但不在这个主题
+ * 允许集里」的软性不适用——同 `resolveThemeId` 的全函数哲学：不认识/不适用
+ * 就退回默认选型行为，不抛错、不强渲染这个主题没设计过的版式。
  */
 function resolveArchetype(
   slideType: Slide["type"],
   layouts: ThemeDefinition["layouts"],
   seed: number,
   typeOrdinal: number,
+  requestedLayout: string | undefined,
 ): { id: string; Component: PageArchetype } | null {
   const allowed: readonly string[] = layouts[slideType]
   if (allowed.length === 0) return null
+  if (
+    requestedLayout &&
+    getLayout(requestedLayout)?.kind === "archetype" &&
+    allowed.includes(requestedLayout)
+  ) {
+    return { id: requestedLayout, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][requestedLayout] }
+  }
   // P3 Item ②：按「该页在同类型页面里的序号」轮换（pickBySeedRotating），
   // allowed 有 2+ 元素时同 deck 相邻 content 页拿到不同 archetype 打破雷同。
   // typeOrdinal=0 与 pickBySeed 起点一致，故单页型（cover/chapter/ending 通常
@@ -146,16 +163,13 @@ export function FullSlideSvg({
             : tokens.colors.surface
     }
   }
-  // 图文范式族接管（image_split/image_top/image_bottom）：出血图 bespoke
-  // 版式，heading 由版式自画，跳过模板 Body 防重复标题。无 image 块回落
-  // 模板路径。
-  const hasImageBlock = slide.blocks.some((b) => b.type === "image")
-  const imageFamilyVariant =
-    slide.variant === "image_split" ||
-    slide.variant === "image_top" ||
-    slide.variant === "image_bottom" ||
-    slide.variant === "image_annotate"
-  const splitTakeover = imageFamilyVariant && hasImageBlock
+  // 图文范式族接管（image-split/image-top/image-bottom/image-annotate，W2
+  // 任务 3：分派钥匙由 slide.variant 改为 slide.layout，4 个版式各自的行为
+  // 不变）：出血图 bespoke 版式，heading 由版式自画，跳过模板 Body 防重复
+  // 标题。无 image 块回落模板路径。
+  const requestedLayoutDef = slide.layout ? getLayout(slide.layout) : undefined
+  const isTakeoverLayout = requestedLayoutDef?.kind === "takeover"
+  const splitTakeover = isTakeoverLayout && findImageComponent(slide) != null
   // theme.layouts archetype 层（P1 cover-only → P2 Task 24 泛化四页型，spec
   // §4.2→v0.3 spec §6 strangler）：允许集非空才接管（十三主题四页型 Wave 5 后
   // 恒非空）。image 接管优先级更高（压图页/图文版式语义不归 archetype 管，
@@ -170,7 +184,7 @@ export function FullSlideSvg({
   const archetype =
     imageCoverTakeover || splitTakeover
       ? null
-      : resolveArchetype(slide.type, themeDef.layouts, cachedDeckSeed(ir), typeOrdinal)
+      : resolveArchetype(slide.type, themeDef.layouts, cachedDeckSeed(ir), typeOrdinal, slide.layout)
 
   return (
     <svg
@@ -188,11 +202,11 @@ export function FullSlideSvg({
       <SlideDecor ir={ir} slide={slide} index={index} ctx={ctx} />
       {imageCoverTakeover ? (
         <ImageCoverPage ir={ir} slide={slide} index={index} ctx={ctx} />
-      ) : splitTakeover && slide.variant === "image_top" ? (
+      ) : splitTakeover && slide.layout === "image-top" ? (
         <ImageTopPage ir={ir} slide={slide} ctx={ctx} />
-      ) : splitTakeover && slide.variant === "image_bottom" ? (
+      ) : splitTakeover && slide.layout === "image-bottom" ? (
         <ImageBottomPage ir={ir} slide={slide} ctx={ctx} />
-      ) : splitTakeover && slide.variant === "image_annotate" ? (
+      ) : splitTakeover && slide.layout === "image-annotate" ? (
         <ImageAnnotatePage ir={ir} slide={slide} ctx={ctx} />
       ) : splitTakeover ? (
         <ImageSplitPage ir={ir} slide={slide} ctx={ctx} />

@@ -3,6 +3,7 @@ import type { PptxIR, Slide } from "@/ir"
 import type { BlockCtx } from "./blocks/types"
 import { renderBlock } from "./blocks"
 import { layoutContentFit, stackBottom } from "./layout"
+import { findImageComponent } from "./layouts/find-image"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
 
@@ -168,9 +169,7 @@ export function ImageSplitPage({
   slide: Slide
   ctx: BlockCtx
 }) {
-  const imageBlock = slide.blocks.find(
-    (b): b is Extract<Slide["blocks"][number], { type: "image" }> => b.type === "image",
-  )
+  const imageBlock = findImageComponent(slide)
   if (!imageBlock) return null
   // 图文范式族（ppt-master P04 右图出血）：image_side=right 时整页镜像——
   // 图列贴右缘、文字区在左。
@@ -330,9 +329,7 @@ export function ImageTopPage({
   slide: Slide
   ctx: BlockCtx
 }) {
-  const imageBlock = slide.blocks.find(
-    (b): b is Extract<Slide["blocks"][number], { type: "image" }> => b.type === "image",
-  )
+  const imageBlock = findImageComponent(slide)
   if (!imageBlock) return null
   const src = ctx.images?.[imageBlock.asset_id]?.src
   const rest = slide.blocks.filter((b) => b !== imageBlock)
@@ -471,9 +468,7 @@ export function ImageAnnotatePage({
   slide: Slide
   ctx: BlockCtx
 }) {
-  const imageBlock = slide.blocks.find(
-    (b): b is Extract<Slide["blocks"][number], { type: "image" }> => b.type === "image",
-  )
+  const imageBlock = findImageComponent(slide)
   if (!imageBlock) return null
   const src = ctx.images?.[imageBlock.asset_id]?.src
   const bulletsBlock = slide.blocks.find(
@@ -640,9 +635,7 @@ export function ImageBottomPage({
   slide: Slide
   ctx: BlockCtx
 }) {
-  const imageBlock = slide.blocks.find(
-    (b): b is Extract<Slide["blocks"][number], { type: "image" }> => b.type === "image",
-  )
+  const imageBlock = findImageComponent(slide)
   if (!imageBlock) return null
   const src = ctx.images?.[imageBlock.asset_id]?.src
   const rest = slide.blocks.filter((b) => b !== imageBlock)

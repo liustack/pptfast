@@ -51,16 +51,16 @@ export function BrandChrome({
     slide.type === "content" &&
     !!(bgAsset?.src && !bgAsset.error)
 
-  // image_split 通栏页（2026-07-09 用户裁决图列垂直铺满）：图占整列到页底，
+  // image-split 通栏页（2026-07-09 用户裁决图列垂直铺满）：图占整列到页底，
   // 页脚分隔线与文字会压图——同 cardBgSuppressesFooter 先例整页抑制页脚
   // （org 已在该版式的 kicker 里，无信息损失）。
   const imageSplitBleed =
-    slide.variant === "image_split" && slide.blocks.some((b) => b.type === "image")
+    slide.layout === "image-split" && slide.blocks.some((b) => b.type === "image")
 
-  // image_bottom 通栏页（2026-07-09 用户裁决）：底图铺满页缘，meta 信息
+  // image-bottom 通栏页（2026-07-09 用户裁决）：底图铺满页缘，meta 信息
   // 改用遮罩浮层 footer（暗条白字压图），无 meta 则什么都不画。
   const imageBottomBleed =
-    slide.variant === "image_bottom" && slide.blocks.some((b) => b.type === "image")
+    slide.layout === "image-bottom" && slide.blocks.some((b) => b.type === "image")
 
   const showFooter =
     slide.type === "content" && !cardBgSuppressesFooter && !imageSplitBleed && !imageBottomBleed

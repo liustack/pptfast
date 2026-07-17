@@ -22,7 +22,6 @@ function para(text: string): Block {
 const chapter: Slide = { type: "chapter", heading: "第一部分：市场洞察", blocks: [] } as Slide
 const content: Slide = {
   type: "content",
-  variant: "single",
   heading: "窄栏叙事：从数据到洞察",
   subheading: "**核心结论**：留存率显著提升",
   footnote: "数据来源：内部埋点，2026Q2",
@@ -70,7 +69,7 @@ describe("NarrowColumnContent", () => {
 
   it("单块 slide（无 subheading/footnote）同样与固化基准逐字节一致", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-    const bare: Slide = { type: "content", variant: "single", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
+    const bare: Slide = { type: "content", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
     const deck = ir("journal", [bare])
 
     const next = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={bare} index={0} ctx={ctx} />)
@@ -103,7 +102,6 @@ describe("NarrowColumnContent", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "窄栏叙事",
       blocks: [para("一"), para("二"), para("三")],
     } as Slide
@@ -125,7 +123,7 @@ describe("NarrowColumnContent", () => {
 
   it("renders a large, 30%-opacity, zero-padded page number anchored to the right gutter", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-    const slide: Slide = { type: "content", variant: "single", heading: "标题", blocks: [para("一")] } as Slide
+    const slide: Slide = { type: "content", heading: "标题", blocks: [para("一")] } as Slide
     // 9th slide (index 8) => page label "09"
     const slides = Array.from({ length: 9 }, () => ({ ...slide }))
     const deck = ir("journal", slides)
@@ -159,7 +157,6 @@ describe("NarrowColumnContent", () => {
     expect(longHeading.length).toBe(48)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: longHeading,
       blocks: [para("概要")],
     } as Slide
@@ -188,7 +185,6 @@ describe("NarrowColumnContent", () => {
     const chapterSlide: Slide = { type: "chapter", heading: CJK_LONG.repeat(2), blocks: [] } as Slide
     const contentSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "小节标题",
       blocks: [para("一")],
     } as Slide
@@ -213,7 +209,6 @@ describe("NarrowColumnContent", () => {
     const longFootnote = "数据来源：" + "内部报告与季度审计草案汇总说明".repeat(6)
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "标题",
       blocks: [para("一")],
       footnote: longFootnote,
@@ -235,7 +230,6 @@ describe("NarrowColumnContent", () => {
   describe("subheading (Task 5)", () => {
     const base: Slide = {
       type: "content",
-      variant: "single",
       heading: "四大支柱",
       blocks: [para("一"), para("二")],
     } as Slide

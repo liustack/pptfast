@@ -60,10 +60,25 @@ describe("pptx-ir v3", () => {
   it("parses minimal v3", () => {
     const r = parsePptxIR(minimal()); expect(r.success).toBe(true)
   })
-  it("slide carries type/variant, no layout_ref", () => {
+  it("slide carries type/arrangement, no layout_ref", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", arrangement: "two_column", heading: "x", blocks: [] }]
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("slide accepts an explicit layout id as an open string (registry existence is a validateIr gate, not a schema enum)", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", layout: "image-split", heading: "x", blocks: [] }]
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects the retired variant field (strict schema — W2 task 3 split it into layout + arrangement)", () => {
     const d: any = minimal()
     d.slides = [{ type: "content", variant: "two_column", heading: "x", blocks: [] }]
-    expect(parsePptxIR(d).success).toBe(true)
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an arrangement value from the old image-takeover family (those 4 promoted to layout, not arrangement)", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", arrangement: "image_split", heading: "x", blocks: [] }]
+    expect(parsePptxIR(d).success).toBe(false)
   })
   it("rejects layouts / layout_ref", () => {
     const d: any = minimal(); d.layouts = { cover: { type: "cover" } }

@@ -554,7 +554,19 @@ const BlockSchema = z.discriminatedUnion("type", [
 const SlideSchema = z
   .object({
     type: z.enum(["cover", "chapter", "content", "ending"]).default("content"),
-    variant: z
+    // Layout registry id（archetype 或 takeover 皆可，src/svg/layouts/registry.ts
+    // 的 LAYOUT_REGISTRY 键）。schema 层是开放 string——已注册 + slideTypes 适用
+    // 是 validateIr 的硬门（api.ts，报错带可用清单与页号），同 theme.id「schema
+    // 开放、validate 收口」的分层哲学（spec §6）。省略 = resolveArchetype 按
+    // 主题 allowed 集 + deck seed 自动轮换选型。4 个图文接管 id
+    // （image-split/image-top/image-bottom/image-annotate，原「图文范式族」
+    // P3～2026-07-09 研究 ppt-master showcase 借鉴的 image_split/image_top/
+    // image_bottom/image_annotate 四个 variant 值）的具体版式行为详见
+    // registry.ts 对应条目，不在这里重复。
+    layout: z.string().optional(),
+    // Body-arrangement（W2 任务 3：从旧 variant 字段拆出——上面 4 个图文接管值
+    // 升格进 layout，其余 9 个身体排布值原样保留，语义逐条不变）。
+    arrangement: z
       .enum([
         "single",
         "two_column",
@@ -564,16 +576,6 @@ const SlideSchema = z
         "quote",
         "big_number",
         "assertion_evidence",
-        // 图片排版 P3：半版大图 + 侧栏文字（第一个 image 块为图源）
-        "image_split",
-        // 图文范式族（2026-07-09，研究 ppt-master showcase）：
-        // image_top = 顶图三栏（上半全幅出血图 + 下方文字分列）
-        // image_bottom = 上文下图（对称对话）
-        // image_annotate = 中心图 + 四角放射标注（showcase P16 矩形版，
-        // 不依赖 clipPath。bullets 前 4 条按「：」拆标题/说明做标注）
-        "image_top",
-        "image_bottom",
-        "image_annotate",
         // aside（2026-07-12 借鉴财经简报 EDITORIAL NOTE）：主内容 2/3 +
         // 观点侧栏 1/3——末位块进侧栏（放 callout/quote/kpi 巨号观点），
         // 数据与观点并置。<2 块退化 single。

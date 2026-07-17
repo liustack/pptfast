@@ -15,7 +15,6 @@ import type { PptxIR, Slide } from "@/ir"
 const chapter1: Slide = { type: "chapter", heading: "第一部分：市场洞察", blocks: [] } as Slide
 const withSub: Slide = {
   type: "content",
-  variant: "single",
   heading: "三大卖点驱动转化",
   subheading: "从种草到复购的完整链路",
   blocks: [
@@ -25,7 +24,6 @@ const withSub: Slide = {
 } as Slide
 const noSub: Slide = {
   type: "content",
-  variant: "single",
   heading: "渠道组合与节奏",
   blocks: [{ type: "paragraph", text: "单块内容。" }],
 } as Slide

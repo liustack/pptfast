@@ -25,6 +25,7 @@ describe("validateIr", () => {
     expect(v.ok).toBe(false)
     expect(v.errors).toHaveLength(1)
     expect(v.errors[0]!.message).toMatch(/use theme\.style/)
+    expect(v.errors[0]!.message).toMatch(/variant is split into layout and arrangement/)
   })
 
   it("hard-rejects an unknown theme id with the available list", () => {
@@ -61,6 +62,77 @@ describe("validateIr", () => {
     const r = validateIr({ ...raw, slides: [] })
     expect(r.ok).toBe(false)
     expect(r.errors).toEqual([{ path: "slides", message: "deck has no slides" }])
+  })
+
+  describe("layout applicability gate (W2 task 3)", () => {
+    it("rejects a cover slide carrying a content-only takeover layout id (cover-hijack fix)", () => {
+      const v = validateIr({
+        ...raw,
+        slides: [{ type: "cover", heading: "Hello", layout: "image-top" }, raw.slides[1]],
+      })
+      expect(v.ok).toBe(false)
+      expect(v.errors[0]!.page).toBe(1)
+      expect(v.errors[0]!.message).toMatch(/image-top/)
+      expect(v.errors[0]!.message).toMatch(/cover/)
+    })
+
+    it("rejects an unknown layout id, listing the available ids for that slide type", () => {
+      const v = validateIr({
+        ...raw,
+        slides: [raw.slides[0], { type: "content", heading: "x", layout: "not-a-real-layout", blocks: [] }],
+      })
+      expect(v.ok).toBe(false)
+      expect(v.errors[0]!.page).toBe(2)
+      expect(v.errors[0]!.message).toMatch(/not-a-real-layout/)
+      expect(v.errors[0]!.message).toMatch(/available/)
+    })
+
+    it("accepts a content slide naming a valid takeover layout id", () => {
+      const v = validateIr({
+        ...raw,
+        slides: [
+          raw.slides[0],
+          {
+            type: "content",
+            heading: "Split",
+            layout: "image-split",
+            blocks: [{ type: "image", asset_id: "a" }],
+          },
+        ],
+      })
+      expect(v.ok).toBe(true)
+    })
+
+    it("accepts a content slide naming a valid archetype layout id", () => {
+      const v = validateIr({
+        ...raw,
+        slides: [
+          raw.slides[0],
+          { type: "content", heading: "Bento", layout: "bento-panel", blocks: [{ type: "paragraph", text: "x" }] },
+        ],
+      })
+      expect(v.ok).toBe(true)
+    })
+
+    it("does not gate on arrangement-vs-layout compatibility (declarative this wave, W3 decides)", () => {
+      // "two-column" only *declares* arrangements: ["two_column"], but the
+      // gate must not enforce that yet — only registry existence +
+      // slideTypes applicability are hard errors this task.
+      const v = validateIr({
+        ...raw,
+        slides: [
+          raw.slides[0],
+          {
+            type: "content",
+            heading: "Mismatched on purpose",
+            layout: "two-column",
+            arrangement: "quote",
+            blocks: [{ type: "paragraph", text: "x" }],
+          },
+        ],
+      })
+      expect(v.ok).toBe(true)
+    })
   })
 })
 

@@ -13,8 +13,8 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * content 页轮换到它时视觉分化明显。
  *
  * 纯新写（非提炼），token 驱动（颜色/字体只来自 ctx），零 theme id、零主题色
- * hex。不覆写 slide.variant——强制走 two_column 铺排是本 archetype 的语义
- * （blocks<2 时 SvgContent 的 two_column 自动回落单栏，安全）。
+ * hex。强制走 two_column 铺排、不透传 slide.arrangement 是本 archetype 的
+ * 语义（blocks<2 时 SvgContent 的 two_column 自动回落单栏，安全）。
  */
 export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
@@ -99,7 +99,7 @@ export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 
       {/* 双栏内容区 */}
       <SvgContent
-        variant="two_column"
+        arrangement="two_column"
         blocks={slide.blocks}
         rect={{ x: 96, y: contentY, w: 1088, h: Math.max(120, contentH) }}
         ctx={ctx}

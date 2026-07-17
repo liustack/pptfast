@@ -317,7 +317,7 @@ describe("checkIrQuality", () => {
       {
         type: "content",
         heading: "大数字",
-        variant: "big_number",
+        arrangement: "big_number",
         blocks: [{ type: "paragraph", text: "oops" }],
       },
     ])
@@ -329,7 +329,7 @@ describe("checkIrQuality", () => {
       {
         type: "content",
         heading: "大数字",
-        variant: "big_number",
+        arrangement: "big_number",
         blocks: [
           {
             type: "kpi_cards",

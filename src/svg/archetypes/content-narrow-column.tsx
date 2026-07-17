@@ -159,7 +159,7 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
       )}
 
       <SvgContent
-        variant={slide.variant}
+        arrangement={slide.arrangement}
         blocks={slide.blocks}
         rect={{ x: COLUMN_X, y: columnY, w: COLUMN_W, h: columnH }}
         ctx={ctx}

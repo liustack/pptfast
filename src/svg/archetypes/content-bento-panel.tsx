@@ -634,7 +634,7 @@ function renderCell(
     return (
       <SvgContent
         key={i}
-        variant="single"
+        arrangement="single"
         blocks={[block]}
         rect={box}
         ctx={ctx}
@@ -782,7 +782,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   } else if (onlyUnit) {
     body = (
       <SvgContent
-        variant="single"
+        arrangement="single"
         blocks={[onlyUnit.block]}
         rect={bentoRect}
         ctx={ctx}
@@ -817,7 +817,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       units.length > 6 || cells.some((cell) => cellOverBudget(cell, ctx))
     body = degraded ? (
       <SvgContent
-        variant="single"
+        arrangement="single"
         blocks={slide.blocks}
         rect={bentoRect}
         ctx={ctx}

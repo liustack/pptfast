@@ -4,7 +4,7 @@
 
 A five-slide demo deck exercising the core slide types and blocks: `cover`,
 `chapter`, `content` (with a `bullets` block), `content` with the
-`kpi_focus` variant (`kpi_cards` block), and `ending`. Theme: `consulting`.
+`kpi_focus` arrangement (`kpi_cards` block), and `ending`. Theme: `consulting`.
 
 Build the CLI once, then run any of the commands below from the repo root:
 

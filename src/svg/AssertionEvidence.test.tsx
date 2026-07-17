@@ -24,7 +24,7 @@ function renderAE(b: Block[]) {
   return render(
     <svg viewBox="0 0 1280 720">
       <SvgContent
-        variant="assertion_evidence"
+        arrangement="assertion_evidence"
         blocks={b}
         rect={rect}
         ctx={ctx}

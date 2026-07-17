@@ -17,7 +17,7 @@ const LABEL_FONT_SIZE = 28
 const LABEL_MIN_FONT_SIZE = 14
 
 /**
- * `big_number` variant — a "giant metric stage": the first KPI's value fills the
+ * `big_number` arrangement — a "giant metric stage": the first KPI's value fills the
  * top as a hero number, with its label beneath and the remaining blocks stacked
  * below as supporting context. Gives a deck visual rhythm (a breather page that
  * lands one number hard) instead of every content page looking the same.

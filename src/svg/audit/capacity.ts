@@ -31,7 +31,7 @@
  *   依赖的 380px 基准（该基准现由 academic 单独提供，见下），故
  *   `maxBlocksPerSlide`/`bullets.maxItems` 均不受影响。
  * - **magazine 窄栏复核（Task 6，2026-07-06 已做）**：内容栏刻意收窄到
- *   880（`magazine.tsx` `COLUMN_W`，杂志窄栏版式），且 `variant` 原样
+ *   880（`magazine.tsx` `COLUMN_W`，杂志窄栏版式），且 `arrangement` 原样
  *   透传给 `SvgContent`——`two_column` 页会把这 880 再按下面的
  *   `(rect.w - COLUMN_GAP) / 2` 切成两栏，得到 `(880 - 32) / 2 = 424px`，比
  *   下面 two_column 单列基准 532px 更窄。已用 `audit-baseline.test.ts` 的
@@ -46,7 +46,7 @@
  *   全宽）在完全不需要的地方多报 `bullet_item_long` 警告——用渲染期已验证
  *   兜底的安全，换一个只在极端主题×版式组合下才有意义的更紧软警告阈值，不
  *   划算。若未来要做主题感知的精确预算，应先把 `ir-quality.ts` 改造成按
- *   `(theme, variant)` 查表，而不是在这里硬调一个全局数字。
+ *   `(theme, arrangement)` 查表，而不是在这里硬调一个全局数字。
  * - 内容区最窄高度（含 footnote 时收窄）：academic 此前的
  *   `contentH = slide.footnote ? 380 : 400` → 380px 已随 Task 2 换骨废弃
  *   （改为编号导轨式：`SvgContent` 矩形 `y = 标题末行 + 36`、`h = 640 - y`，

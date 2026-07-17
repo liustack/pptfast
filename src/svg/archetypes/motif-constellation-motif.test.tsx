@@ -9,7 +9,7 @@ import type { PptxIR, Slide } from "@/ir"
 
 const coverSlide: Slide = { type: "cover", heading: "封面", blocks: [] } as Slide
 const chapterSlide: Slide = { type: "chapter", heading: "章节", blocks: [] } as Slide
-const contentSlide: Slide = { type: "content", variant: "single", heading: "内容", blocks: [] } as Slide
+const contentSlide: Slide = { type: "content", heading: "内容", blocks: [] } as Slide
 const endingSlide: Slide = { type: "ending", blocks: [] } as Slide
 
 const bgImages: PptxIR["assets"]["images"] = {

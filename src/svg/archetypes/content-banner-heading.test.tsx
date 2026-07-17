@@ -31,7 +31,6 @@ const chapter1: Slide = { type: "chapter", heading: "第一部分：研究背景
 // (SUBHEADING_SLOT / footnote) exercise their non-empty branches.
 const bannerSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "结论先行：断言横幅",
   subheading: "**核心结论**：证据链完整",
   footnote: "数据来源：内部埋点，2026Q2",
@@ -44,7 +43,6 @@ const bannerSlide: Slide = {
 // slot-skipping branch also gets covered.
 const longSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: CJK_LONG,
   blocks: [{ type: "paragraph", text: "支撑论据。" }],
 } as Slide
@@ -170,13 +168,11 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const shortSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论先行",
       blocks: [{ type: "paragraph", text: "支撑论据。" }],
     } as Slide
     const longHeadingSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: CJK_LONG,
       blocks: [{ type: "paragraph", text: "支撑论据。" }],
     } as Slide
@@ -224,7 +220,6 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论先行",
       blocks: [{ type: "paragraph", text: "支撑论据。" }],
       footnote: "数据来源：内部",
@@ -251,7 +246,6 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "结论先行",
       blocks: [{ type: "paragraph", text: "支撑论据。" }],
     } as Slide
@@ -296,7 +290,6 @@ describe("BannerHeadingContent", () => {
     const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "验证子集",
       blocks: [
         { type: "paragraph", text: "文本段落。" },

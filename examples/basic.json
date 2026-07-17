@@ -23,7 +23,7 @@
     {
       "type": "content",
       "heading": "At a glance",
-      "variant": "kpi_focus",
+      "arrangement": "kpi_focus",
       "blocks": [
         {
           "type": "kpi_cards",

@@ -34,7 +34,6 @@ const chapter1: Slide = { type: "chapter", heading: "第一章", blocks: [] } as
 // 1 块：海报路径的单主视觉 rect。
 const oneBlockSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "核心指标",
   blocks: [{ type: "paragraph", text: "本季度表现优异。" }],
 } as Slide
@@ -42,7 +41,6 @@ const oneBlockSlide: Slide = {
 // 2 块：海报路径的主视觉 + 标注条。
 const twoBlockSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "双栏演示",
   blocks: [
     { type: "paragraph", text: "主视觉说明文字。" },
@@ -53,7 +51,6 @@ const twoBlockSlide: Slide = {
 // >=3 块：降级为原始左对齐堆叠构图。
 const threeBlockSlide: Slide = {
   type: "content",
-  variant: "single",
   heading: "多块降级",
   blocks: [
     { type: "paragraph", text: "第一段。" },
@@ -209,6 +206,24 @@ describe("StackedPosterContent", () => {
     ).toBeUndefined()
   })
 
+  it("degrade path (≥3 blocks) honors a non-default arrangement — W2 task 3: registry declares arrangements \"all\" for this archetype because the degrade path passes slide.arrangement straight through unchanged", () => {
+    const twoColThreeBlockSlide: Slide = { ...threeBlockSlide, arrangement: "two_column" } as Slide
+    const ctx = buildCtx(resolveStyle("insight"), {})
+    const deck = ir("insight", [chapter1, twoColThreeBlockSlide])
+    const { root } = render(
+      <StackedPosterContent ir={deck} slide={twoColThreeBlockSlide} index={1} ctx={ctx} />,
+    )
+    // two_column splits the 3 blocks into two x-columns (ceil(3/2)=2 left,
+    // 1 right) instead of one full-width (x=56, w=1168) stack.
+    const boxes = Array.from(root.querySelectorAll("g[data-audit-box]")).map((g) =>
+      parseAudit(g.getAttribute("data-audit-box")),
+    )
+    expect(boxes.length).toBe(3)
+    const xs = new Set(boxes.map((b) => b.x))
+    expect(xs.size).toBe(2)
+    for (const b of boxes) expect(b.w).toBeLessThan(1168)
+  })
+
   it("footnote 存在时海报/降级两条路径都走 muted（孤儿色 META_MUTED 已并入，#666670 不残留）", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
 
@@ -255,7 +270,6 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const chartSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "增长趋势",
       blocks: [
         {
@@ -340,7 +354,6 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "溢出降级",
       blocks: [
         { type: "paragraph", text: "主视觉。" },
@@ -365,7 +378,7 @@ describe("StackedPosterContent", () => {
 
   it("a 0-block content slide degrades without crashing", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { type: "content", variant: "single", heading: "空白页", blocks: [] } as Slide
+    const slide: Slide = { type: "content", heading: "空白页", blocks: [] } as Slide
     expect(() =>
       render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />),
     ).not.toThrow()
@@ -375,7 +388,6 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: "版位安全校验",
       blocks: [
         { type: "paragraph", text: "第一块。" },
@@ -411,13 +423,11 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const oneBlock: Slide = {
       type: "content",
-      variant: "single",
       heading: "验证子集",
       blocks: [{ type: "bullets", items: ["项目一", "项目二"], style: "default" }],
     } as Slide
     const twoBlocks: Slide = {
       type: "content",
-      variant: "single",
       heading: "验证子集双块",
       blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
     } as Slide
@@ -433,7 +443,6 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: CJK_LONG,
       blocks: [{ type: "paragraph", text: "概要。" }],
     } as Slide
@@ -465,7 +474,6 @@ describe("StackedPosterContent", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
-      variant: "single",
       heading: CJK_LONG,
       blocks: [
         { type: "paragraph", text: "第一段。" },
@@ -584,7 +592,6 @@ describe("StackedPosterContent subheading", () => {
 
     const withoutSubheading: Slide = {
       type: "content",
-      variant: "single",
       heading: "核心指标",
       blocks: [block],
     } as Slide

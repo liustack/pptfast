@@ -1,13 +1,12 @@
 import type { Block } from "@/ir"
 import type { BlockCtx } from "./blocks/types"
 import { measureBlock, renderBlock } from "./blocks"
-import { asideSplit, layoutContentFit, type ContentRect, type Variant } from "./layout"
+import { asideSplit, layoutContentFit, type ContentRect, type Arrangement } from "./layout"
 import { AssertionEvidence } from "./AssertionEvidence"
 import { BigNumber } from "./BigNumber"
-import { ImageSplit } from "./ImageSplit"
 
 export interface SvgContentProps {
-  variant?: Variant
+  arrangement?: Arrangement
   blocks: Block[]
   rect: ContentRect
   ctx: BlockCtx
@@ -18,33 +17,25 @@ export interface SvgContentProps {
  * and renders each as a positioned `<g>`. Emits pure SVG (no foreignObject) so
  * the same output drives both preview and the svg2pptx exporter.
  */
-export function SvgContent({ variant, blocks, rect, ctx }: SvgContentProps) {
+export function SvgContent({ arrangement, blocks, rect, ctx }: SvgContentProps) {
   const auditRect = `${rect.x},${rect.y},${rect.w},${rect.h}`
   // `big_number` is a bespoke hero-metric layout rather than block stacking.
-  if (variant === "big_number") {
+  if (arrangement === "big_number") {
     return (
       <g data-audit-rect={auditRect}>
         <BigNumber blocks={blocks} rect={rect} ctx={ctx} />
       </g>
     )
   }
-  // `image_split`：半版全高大图 + 侧栏文字（图片排版 P3）。
-  if (variant === "image_split") {
-    return (
-      <g data-audit-rect={auditRect}>
-        <ImageSplit blocks={blocks} rect={rect} ctx={ctx} />
-      </g>
-    )
-  }
   // `assertion_evidence` enlarges a single evidence block to fill the content area.
-  if (variant === "assertion_evidence") {
+  if (arrangement === "assertion_evidence") {
     return (
       <g data-audit-rect={auditRect}>
         <AssertionEvidence blocks={blocks} rect={rect} ctx={ctx} />
       </g>
     )
   }
-  const { placed, dropped } = layoutContentFit(variant, blocks, rect, ctx)
+  const { placed, dropped } = layoutContentFit(arrangement, blocks, rect, ctx)
   // 单块页（一张图/一张表占整页）垂直分布：38% 黄金位（2026-07-10 用户
   // 裁决）——50% 居中时矮块在高内容区里上下各悬 150px+，标题与内容断裂
   // 感明显（无图矩阵真机审出的跨主题共性）。重心偏上贴近标题，底部自然
@@ -60,7 +51,7 @@ export function SvgContent({ variant, blocks, rect, ctx }: SvgContentProps) {
   // aside 版式的侧栏分隔竖线（几何与 layoutContent 同源 asideSplit）——
   // 退化条件与 layoutContent 一致（<2 块走 single 不画线）。
   const asideDivider =
-    variant === "aside" && blocks.length >= 2 ? asideSplit(rect).dividerX : null
+    arrangement === "aside" && blocks.length >= 2 ? asideSplit(rect).dividerX : null
   return (
     <g data-audit-rect={auditRect}>
       {asideDivider != null && (

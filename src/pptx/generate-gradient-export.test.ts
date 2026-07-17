@@ -53,7 +53,6 @@ describe("generatePptxBlob real theme decor gradients", () => {
     const { generatePptxBlob } = await import("./generate")
     const chartSlide: Slide = {
       type: "content",
-      variant: "single",
       heading: "渐变柱",
       blocks: [
         {
