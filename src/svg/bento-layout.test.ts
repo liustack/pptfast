@@ -36,24 +36,24 @@ function selfVisualUnit(text: string): BentoUnit {
   }
 }
 
-const KPI_UNIT_SOURCE_BLOCK: Extract<Component, { type: "kpi_cards" }> = {
+const KPI_UNIT_SOURCE_COMPONENT: Extract<Component, { type: "kpi_cards" }> = {
   type: "kpi_cards",
   items: [],
 }
-const ICON_CARD_UNIT_SOURCE_BLOCK: Extract<Component, { type: "icon_cards" }> = {
+const ICON_CARD_UNIT_SOURCE_COMPONENT: Extract<Component, { type: "icon_cards" }> = {
   type: "icon_cards",
   items: [],
 }
 
 function kpiUnit(value: string): BentoUnit {
-  return { kind: "kpi-item", item: { value, label: "标签" }, component: KPI_UNIT_SOURCE_BLOCK }
+  return { kind: "kpi-item", item: { value, label: "标签" }, component: KPI_UNIT_SOURCE_COMPONENT }
 }
 
 function iconCardUnit(title: string): BentoUnit {
   return {
     kind: "icon-card-item",
     item: { icon: "rocket", title, text: "说明" },
-    component: ICON_CARD_UNIT_SOURCE_BLOCK,
+    component: ICON_CARD_UNIT_SOURCE_COMPONENT,
   }
 }
 

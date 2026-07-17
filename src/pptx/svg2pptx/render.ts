@@ -260,9 +260,9 @@ export async function applyGradientFills(
         )
       }
 
-      const component = xml.slice(spStart, spEnd)
+      const spXml = xml.slice(spStart, spEnd)
       let replaced = false
-      const patched = component.replace(SOLID_FILL_RE, () => {
+      const patched = spXml.replace(SOLID_FILL_RE, () => {
         replaced = true
         return patch.xml
       })
