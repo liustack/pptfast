@@ -17,7 +17,7 @@ function slide(type: Slide["type"]): Slide {
   return {
     type,
     heading: "动画开关验证",
-    blocks: type === "content" || type === "ending" ? [{ type: "paragraph", text: "正文" }] : [],
+    components: type === "content" || type === "ending" ? [{ type: "paragraph", text: "正文" }] : [],
   }
 }
 
@@ -73,7 +73,7 @@ describe("generatePptxBlob deck-level transition switch", () => {
 })
 
 /**
- * End-to-end check (wave-C S3): a content slide with several block types
+ * End-to-end check (wave-C S3): a content slide with several component types
  * and `meta.animation.elements === "auto"` gets, through the *real*
  * `generatePptxBlob` pipeline (real pptxgenjs, no mocks), a genuine
  * `<p:timing>` tree built from `blk{slideIndex}-{blockIndex}` objectName
@@ -81,30 +81,30 @@ describe("generatePptxBlob deck-level transition switch", () => {
  * numeric slide-part sorting, not the lexicographic default some earlier
  * test helpers use (`slide1.xml` vs `slide10.xml`).
  */
-function multiBlockContentSlide(): Slide {
+function multiComponentContentSlide(): Slide {
   return {
     type: "content",
     heading: "多块动画验证",
-    blocks: [
-      { type: "paragraph", text: "开场段落" }, // block 0 → fade
+    components: [
+      { type: "paragraph", text: "开场段落" }, // component 0 → fade
       {
         type: "chart",
         chart_type: "bar",
         series: [{ name: "S1", data: [{ x: "A", y: 1 }] }],
-      }, // block 1 → wipe
+      }, // component 1 → wipe
       {
         type: "verdict_banner",
         tone: "positive",
         text: "结论压轴",
-      }, // block 2 → fade, staged last regardless of index
+      }, // component 2 → fade, staged last regardless of index
     ],
   }
 }
 
-describe("generatePptxBlob per-block entrance animations (wave-C S3)", () => {
+describe("generatePptxBlob per-component entrance animations (wave-C S3)", () => {
   it('meta.animation.elements omitted: no blk-marker objectNames and no <p:timing> anywhere (default stays untouched)', async () => {
     const { generatePptxBlob } = await import("./generate")
-    const blob = await generatePptxBlob(makeIR([multiBlockContentSlide()]))
+    const blob = await generatePptxBlob(makeIR([multiComponentContentSlide()]))
     for (const xml of await slideXmls(blob)) {
       expect(xml).not.toContain("<p:timing>")
       expect(xml).not.toContain("-blk")
@@ -114,7 +114,7 @@ describe("generatePptxBlob per-block entrance animations (wave-C S3)", () => {
   it('meta.animation.elements: "none" explicitly: same as omitted — no injection', async () => {
     const { generatePptxBlob } = await import("./generate")
     const blob = await generatePptxBlob(
-      makeIR([multiBlockContentSlide()], { elements: "none" })
+      makeIR([multiComponentContentSlide()], { elements: "none" })
     )
     for (const xml of await slideXmls(blob)) {
       expect(xml).not.toContain("<p:timing>")
@@ -125,7 +125,7 @@ describe("generatePptxBlob per-block entrance animations (wave-C S3)", () => {
   it('meta.animation.elements: "auto": injects a <p:timing> tree with the right semantic effects, verdict last', async () => {
     const { generatePptxBlob } = await import("./generate")
     const blob = await generatePptxBlob(
-      makeIR([slide("cover"), multiBlockContentSlide()], { elements: "auto" })
+      makeIR([slide("cover"), multiComponentContentSlide()], { elements: "auto" })
     )
     const zip = await JSZip.loadAsync(await blob.arrayBuffer())
     const paths = Object.keys(zip.files)
@@ -133,7 +133,7 @@ describe("generatePptxBlob per-block entrance animations (wave-C S3)", () => {
       .sort((a, b) => Number(/slide(\d+)/.exec(a)![1]) - Number(/slide(\d+)/.exec(b)![1]))
     const xmls = await Promise.all(paths.map((p) => zip.files[p].async("string")))
 
-    // Cover slide has no blocks → untouched.
+    // Cover slide has no components → untouched.
     expect(xmls[0]).not.toContain("<p:timing>")
 
     // Content slide: real <p:timing> tree, all three semantic effects present.
@@ -149,9 +149,9 @@ describe("generatePptxBlob per-block entrance animations (wave-C S3)", () => {
     expect(content).toMatch(/name="svg2pptx-[a-z0-9]+-blk0001-0001"/)
     expect(content).toMatch(/name="svg2pptx-[a-z0-9]+-blk0001-0002"/)
 
-    // Three blocks staged 200ms apart (0/200/400) — chart may itself have
+    // Three components staged 200ms apart (0/200/400) — chart may itself have
     // multiple shapes (axis/bars/labels), each its own delay=0 effect par
-    // inside the block wrapper, so this dedupes to the *distinct* stage
+    // inside the component wrapper, so this dedupes to the *distinct* stage
     // delays rather than asserting an exact flat count of `fill="hold"` cTns.
     const timing = content.slice(content.indexOf("<p:timing>"))
     const delays = Array.from(
@@ -163,7 +163,7 @@ describe("generatePptxBlob per-block entrance animations (wave-C S3)", () => {
   it("degrades gracefully (soffice-safe) when static XML has no real shapes to tag", async () => {
     const { generatePptxBlob } = await import("./generate")
     const blob = await generatePptxBlob(
-      makeIR([slide("cover")], { elements: "auto" }) // cover has zero blocks
+      makeIR([slide("cover")], { elements: "auto" }) // cover has zero components
     )
     for (const xml of await slideXmls(blob)) {
       expect(xml).not.toContain("<p:timing>")
@@ -195,8 +195,8 @@ function overflowShapeContentSlide(): Slide {
   return {
     type: "content",
     heading: "多形状 id 碰撞回归",
-    blocks: [
-      { type: "paragraph", text: "开场段落，占一个 fade 块。" }, // block 0 → fade
+    components: [
+      { type: "paragraph", text: "开场段落，占一个 fade 块。" }, // component 0 → fade
       {
         type: "chart",
         chart_type: "bar",
@@ -206,7 +206,7 @@ function overflowShapeContentSlide(): Slide {
             data: Array.from({ length: 6 }, (_, i) => ({ x: `C${i}`, y: i + 1 })),
           },
         ],
-      }, // block 1 → wipe, ~20 shapes (bars/gridlines/labels/gradients)
+      }, // component 1 → wipe, ~20 shapes (bars/gridlines/labels/gradients)
       {
         type: "steps",
         items: [
@@ -214,12 +214,12 @@ function overflowShapeContentSlide(): Slide {
           { title: "第二步", text: "简短" },
           { title: "第三步", text: "简短" },
         ],
-      }, // block 2 → fly, ~15 shapes (cards/badges/labels/arrows)
+      }, // component 2 → fly, ~15 shapes (cards/badges/labels/arrows)
     ],
   }
 }
 
-describe("generatePptxBlob per-block entrance animations — shape-id collision regression", () => {
+describe("generatePptxBlob per-component entrance animations — shape-id collision regression", () => {
   it("crosses pptxgenjs's hardcoded slide-number placeholder id with zero duplicate shape ids and unambiguous spid references", async () => {
     const { generatePptxBlob } = await import("./generate")
     const blob = await generatePptxBlob(
@@ -246,7 +246,7 @@ describe("generatePptxBlob per-block entrance animations — shape-id collision 
     expect(new Set(shapes.map((s) => s.id)).size).toBe(shapes.length)
 
     // Every spid the injected <p:timing> tree targets resolves to exactly
-    // one shape, and it's always a real, block-tagged one — never
+    // one shape, and it's always a real, component-tagged one — never
     // pptxgenjs's slide-number placeholder (which carries no blk marker).
     const nameById = new Map(shapes.map((s) => [s.id, s.name]))
     const referencedSpids = Array.from(xml.matchAll(/<p:spTgt spid="(\d+)"/g)).map((m) =>

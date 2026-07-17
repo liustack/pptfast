@@ -7,7 +7,7 @@ import { resolveStyle } from "../../themes"
 import { PosterCenterCover } from "./cover-poster-center"
 import type { PptxIR, Slide } from "@/ir"
 
-const slide: Slide = { type: "cover", heading: "创意提案", subheading: "一次品牌焕新实验", blocks: [] } as Slide
+const slide: Slide = { type: "cover", heading: "创意提案", subheading: "一次品牌焕新实验", components: [] } as Slide
 const ir = (theme: string): PptxIR =>
   ({ version: "3", filename: "x.pptx", theme: { id: theme }, meta: { organization: "品牌组" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 
@@ -61,7 +61,7 @@ describe("PosterCenterCover", () => {
       type: "cover",
       heading: "年度财务报告",
       subheading: "信息安全与增长",
-      blocks: [],
+      components: [],
     } as Slide
     const fullIr: PptxIR = {
       version: "3",

@@ -9,7 +9,7 @@
     {
       "type": "content",
       "heading": "Design goals",
-      "blocks": [
+      "components": [
         {
           "type": "bullets",
           "items": [
@@ -24,12 +24,12 @@
       "type": "content",
       "heading": "At a glance",
       "arrangement": "kpi_focus",
-      "blocks": [
+      "components": [
         {
           "type": "kpi_cards",
           "items": [
             { "value": "13", "label": "built-in themes" },
-            { "value": "19", "label": "semantic block types" },
+            { "value": "19", "label": "semantic component types" },
             { "value": "1", "label": "single SVG source per slide" }
           ]
         }

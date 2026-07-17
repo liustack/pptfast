@@ -214,8 +214,8 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
         </text>
       )}
 
-      {/* Content blocks below the title row (was a divider + foreignObject) */}
-      <SvgContent arrangement={slide.arrangement} blocks={slide.blocks} rect={contentRect} ctx={ctx} />
+      {/* Content components below the title row (was a divider + foreignObject) */}
+      <SvgContent arrangement={slide.arrangement} components={slide.components} rect={contentRect} ctx={ctx} />
 
       {/* Footnote only — BrandChrome already renders the y=664 footer
        * hairline for content pages, so this archetype must not draw its own

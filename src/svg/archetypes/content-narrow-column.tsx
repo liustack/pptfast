@@ -8,7 +8,7 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 
 /**
  * narrow-column content archetype（spec §3.2，Wave 3 Task 17）：trades the
- * usual full-width block stack for a magazine-style narrow column (w=880 of
+ * usual full-width component stack for a magazine-style narrow column (w=880 of
  * the page's 1088 content width), leaving a deliberate 208px whitespace
  * gutter on the right that carries only a large muted serif page number.
  * Kicker (section name) sits italic+accent above the heading; an optional
@@ -160,7 +160,7 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
 
       <SvgContent
         arrangement={slide.arrangement}
-        blocks={slide.blocks}
+        components={slide.components}
         rect={{ x: COLUMN_X, y: columnY, w: COLUMN_W, h: columnH }}
         ctx={ctx}
       />

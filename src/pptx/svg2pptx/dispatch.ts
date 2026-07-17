@@ -157,9 +157,9 @@ function walk(
   const own = el.getAttribute("transform")
   const ctm = own ? multiply(parent, parseTransform(own)) : parent
 
-  // Wave-C S3 (elements === "auto" only): `blocks/index.tsx`'s `renderBlock`
-  // wraps a block's content in `<g data-blk="{index}">`. Once entered, every
-  // descendant leaf inherits that index — a block can nest its own `<g>`s
+  // Wave-C S3 (elements === "auto" only): `components/index.tsx`'s `renderComponent`
+  // wraps a component's content in `<g data-blk="{index}">`. Once entered, every
+  // descendant leaf inherits that index — a component can nest its own `<g>`s
   // (icon groups, card rows) without losing the tag — until a *different*
   // `data-blk` is encountered, which overrides it for its own subtree.
   const dataBlk = el.getAttribute("data-blk")

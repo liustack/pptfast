@@ -132,7 +132,7 @@ function subheadingGlyphTop(subheadingY: number): number {
 interface ThemeCase {
   id: CanonicalThemeId
   isTitleLine: (el: Element) => boolean
-  /** Renders a Content slide (given heading + blocks) whose subheadingY was touched by the S3b formula. */
+  /** Renders a Content slide (given heading + components) whose subheadingY was touched by the S3b formula. */
   renderContent: (contentArch: ContentArchetype, ctx: ReturnType<typeof buildCtx>, heading: string) => Element
 }
 
@@ -145,7 +145,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
         type: "content",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "核心概要。" }],
+        components: [{ type: "paragraph", text: "核心概要。" }],
       }
       return render(contentArch({ ir: ir("academic", [slide]), slide, index: 0, ctx }))
     },
@@ -158,7 +158,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
         type: "content",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
+        components: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
       }
       return render(contentArch({ ir: ir("tech", [slide]), slide, index: 0, ctx }))
     },
@@ -175,7 +175,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
         type: "content",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "围绕三个方向推进。" }],
+        components: [{ type: "paragraph", text: "围绕三个方向推进。" }],
       }
       const tone = CONTENT_ARCHETYPES["tone-adaptive-content"]
       return render(tone({ ir: ir("enterprise", [slide]), slide, index: 0, ctx }))
@@ -185,14 +185,14 @@ const CJK_THEME_CASES: ThemeCase[] = [
     id: "insight",
     isTitleLine: (el) => el.getAttribute("font-weight") === "500",
     renderContent: (contentArch, ctx, heading) => {
-      // >=3 blocks forces the degrade (stacked) path — the one S3b actually
+      // >=3 components forces the degrade (stacked) path — the one S3b actually
       // moved (+38->+50); the poster path's own +46 is a separate regression
       // lock (see creative.test.tsx's "poster path, with subheading").
       const slide: Slide = {
         type: "content",
         heading,
         subheading: SUBHEADING,
-        blocks: [
+        components: [
           { type: "paragraph", text: "第一段。" },
           { type: "bullets", items: ["要点一", "要点二"] },
           { type: "paragraph", text: "第三段。" },
@@ -209,7 +209,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
         type: "content",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
+        components: [{ type: "paragraph", text: "一" }, { type: "paragraph", text: "二" }],
       }
       return render(contentArch({ ir: ir("journal", [slide]), slide, index: 0, ctx }))
     },
@@ -248,7 +248,7 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
         type: "content",
         heading,
         subheading: SUBHEADING,
-        blocks: [{ type: "paragraph", text: "支撑论据。" }],
+        components: [{ type: "paragraph", text: "支撑论据。" }],
       }
       const root = render(contentArch({ ir: ir("consulting", [slide]), slide, index: 0, ctx }))
 

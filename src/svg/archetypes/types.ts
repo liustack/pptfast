@@ -1,6 +1,6 @@
 import type React from "react"
 import type { PptxIR, Slide } from "@/ir"
-import type { BlockCtx } from "../blocks/types"
+import type { ComponentCtx } from "../components/types"
 
 /**
  * Props every archetype receives（原 templates/types.ts 的 SvgTemplateProps，
@@ -10,7 +10,7 @@ export interface SvgTemplateProps {
   ir: PptxIR
   slide: Slide
   index: number
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }
 
 /**
@@ -20,7 +20,7 @@ export interface SvgTemplateProps {
 export interface DecorProps {
   ir: PptxIR
   slide: Slide
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }
 
 /**

@@ -33,7 +33,7 @@ const slide: Slide = {
   type: "cover",
   heading: "年度战略回顾",
   subheading: "增长与韧性",
-  blocks: [],
+  components: [],
 } as Slide
 
 const bgImages: PptxIR["assets"]["images"] = {
@@ -114,7 +114,7 @@ describe("ToneAdaptiveHeaderCover", () => {
   it("shrinks a pathologically long subheading instead of overflowing", () => {
     const tokens = LEGACY_CUSTOM_TOKENS
     const ctx = buildCtx(tokens, {})
-    const longSlide: Slide = { type: "cover", heading: "标题", subheading: CJK_LONG, blocks: [] } as Slide
+    const longSlide: Slide = { type: "cover", heading: "标题", subheading: CJK_LONG, components: [] } as Slide
     const doc = ir("custom")
     const markup = renderSvgMarkup(
       wrap(<ToneAdaptiveHeaderCover ir={doc} slide={longSlide} index={0} ctx={ctx} />),

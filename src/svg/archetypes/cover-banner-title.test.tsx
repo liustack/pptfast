@@ -6,7 +6,7 @@ import { resolveStyle } from "../../themes"
 import { BannerTitleCover } from "./cover-banner-title"
 import type { PptxIR, Slide } from "@/ir"
 
-const slide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "面向 2027 的三个决定", blocks: [] } as Slide
+const slide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "面向 2027 的三个决定", components: [] } as Slide
 const ir = (theme: string): PptxIR =>
   ({ version: "3", filename: "x.pptx", theme: { id: theme }, meta: { organization: "测试部", date: "2026-07" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 

@@ -3,9 +3,9 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { SlideDecor } from "./SlideDecor"
 import type { PptxIR, Slide } from "@/ir"
-import type { BlockCtx } from "./blocks/types"
+import type { ComponentCtx } from "./components/types"
 
-const ctx: BlockCtx = {
+const ctx: ComponentCtx = {
   colors: {
     bg: "#FFFFFF",
     surface: "#F4F4F4",
@@ -36,7 +36,7 @@ function svg(node: React.ReactElement) {
 
 describe("SlideDecor (image-layouts P4 受控装饰原语)", () => {
   it("renders nothing without an explicit decor", () => {
-    const slide: Slide = { type: "content", heading: "无饰", blocks: [] }
+    const slide: Slide = { type: "content", heading: "无饰", components: [] }
     const { container } = svg(
       <SlideDecor ir={deck([slide])} slide={slide} index={0} ctx={ctx} />,
     )
@@ -45,9 +45,9 @@ describe("SlideDecor (image-layouts P4 受控装饰原语)", () => {
 
   it("big_number derives the chapter ordinal from deck position", () => {
     const slides: Slide[] = [
-      { type: "cover", heading: "封", blocks: [] },
-      { type: "chapter", heading: "一", blocks: [] },
-      { type: "chapter", heading: "二", blocks: [], decor: { kind: "big_number" } },
+      { type: "cover", heading: "封", components: [] },
+      { type: "chapter", heading: "一", components: [] },
+      { type: "chapter", heading: "二", components: [], decor: { kind: "big_number" } },
     ]
     const { container } = svg(
       <SlideDecor ir={deck(slides)} slide={slides[2]} index={2} ctx={ctx} />,
@@ -59,7 +59,7 @@ describe("SlideDecor (image-layouts P4 受控装饰原语)", () => {
     const tagged: Slide = {
       type: "content",
       heading: "x",
-      blocks: [],
+      components: [],
       decor: { kind: "corner_tag", text: "巡检专刊" },
     }
     const { container } = svg(
@@ -78,7 +78,7 @@ describe("SlideDecor (image-layouts P4 受控装饰原语)", () => {
     const mk = (intensity: "subtle" | "normal"): Slide => ({
       type: "content",
       heading: "x",
-      blocks: [],
+      components: [],
       decor: { kind: "geo_dots", intensity },
     })
     const subtle = svg(
@@ -95,7 +95,7 @@ describe("SlideDecor (image-layouts P4 受控装饰原语)", () => {
   it.each(["rule_line", "quote_marks", "geo_dots"] as const)(
     "%s renders themed shapes",
     (kind) => {
-      const slide: Slide = { type: "content", heading: "x", blocks: [], decor: { kind } }
+      const slide: Slide = { type: "content", heading: "x", components: [], decor: { kind } }
       const { container } = svg(
         <SlideDecor ir={deck([slide])} slide={slide} index={0} ctx={ctx} />,
       )

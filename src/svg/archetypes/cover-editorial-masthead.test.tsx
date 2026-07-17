@@ -11,7 +11,7 @@ const slide: Slide = {
   type: "cover",
   heading: "数据驱动的增长引擎",
   subheading: "面向 2027 的技术路线图",
-  blocks: [],
+  components: [],
 } as Slide
 const ir = (theme: string): PptxIR =>
   ({

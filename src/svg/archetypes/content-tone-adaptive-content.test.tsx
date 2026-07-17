@@ -31,16 +31,16 @@ const EXPECTED_CONTENT_BARE_WITH_BG =
   '<rect x="48" y="44" width="1184" height="632" rx="14" fill="#FFFFFF"></rect><text x="92" y="168" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="44" font-weight="700" fill="#18181B" dominant-baseline="alphabetic">简报</text><line x1="92" y1="198" x2="140" y2="198" stroke="#3F3F46" stroke-width="4"></line><line x1="140" y1="198" x2="1188" y2="198" stroke="#E4E4E7" stroke-width="1.6"></line><g data-audit-rect="92,216,1096,400"><g data-audit-box="92,357.36,1096"><g transform="translate(92,357.36)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#18181B" dominant-baseline="alphabetic">一</text></g></g></g><text x="92" y="636" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" dominant-baseline="alphabetic"></text>'
 
 // Deck with a preceding chapter so `sectionNameFor`/`chapterNumberFor` resolve
-// a kicker for the content slide, and a content slide carrying multiple block
+// a kicker for the content slide, and a content slide carrying multiple component
 // types plus subheading/footnote to exercise every conditional slot both
 // branches render.
-const chapter: Slide = { type: "chapter", heading: "第一部分：产品概览", blocks: [] } as Slide
+const chapter: Slide = { type: "chapter", heading: "第一部分：产品概览", components: [] } as Slide
 const content: Slide = {
   type: "content",
   heading: "双色态：从纸面到屏幕",
   subheading: "**核心结论**：适配任意底色",
   footnote: "数据来源：内部埋点，2026Q2",
-  blocks: [
+  components: [
     { type: "paragraph", text: "本节演示 custom 主题的双色态排版。" },
     { type: "bullets", items: ["无背景图走墨色文字", "有背景图走浮动白卡", "两者色语义一致"], style: "default" },
   ],
@@ -73,7 +73,7 @@ function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
 // hex，而是真正走 ctx.colors。
 describe("ToneAdaptiveContent", () => {
   describe("custom tokens 下输出锁定（迁移前已与旧 CustomContent 逐字节核对一致）", () => {
-    it("无背景图分支（多 block + subheading + footnote + kicker）", () => {
+    it("无背景图分支（多 component + subheading + footnote + kicker）", () => {
       const tokens = LEGACY_CUSTOM_TOKENS
       const ctx = buildCtx(tokens, {})
       const deck = ir("custom")
@@ -109,7 +109,7 @@ describe("ToneAdaptiveContent", () => {
 
   it("单块 slide（无 subheading/footnote/kicker）两分支输出锁定", () => {
     const tokens = LEGACY_CUSTOM_TOKENS
-    const bare: Slide = { type: "content", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
+    const bare: Slide = { type: "content", heading: "简报", components: [{ type: "paragraph", text: "一" }] } as Slide
     const bareWithBg: Slide = { ...bare, background: { kind: "asset", asset_id: "bg", fit: "cover" } } as Slide
     const deck: PptxIR = {
       version: "3",
@@ -187,7 +187,7 @@ describe("ToneAdaptiveContent", () => {
     const bgSlide: Slide = {
       type: "content",
       heading: "带背景卡片",
-      blocks: [{ type: "paragraph", text: "卡内文字。" }],
+      components: [{ type: "paragraph", text: "卡内文字。" }],
       background: { kind: "asset", asset_id: "bg", fit: "cover" },
     } as Slide
     const deck: PptxIR = {
@@ -221,7 +221,7 @@ describe("ToneAdaptiveContent", () => {
     const longSlide: Slide = {
       type: "content",
       heading: CJK_LONG,
-      blocks: [{ type: "paragraph", text: "文本。" }],
+      components: [{ type: "paragraph", text: "文本。" }],
     } as Slide
     const deck: PptxIR = {
       version: "3",
@@ -256,7 +256,7 @@ describe("ToneAdaptiveContent", () => {
     const noBgBase: Slide = {
       type: "content",
       heading: "三大支柱",
-      blocks: [{ type: "paragraph", text: "围绕三个方向推进。" }],
+      components: [{ type: "paragraph", text: "围绕三个方向推进。" }],
     } as Slide
     const withBgBase: Slide = {
       ...noBgBase,
@@ -373,11 +373,11 @@ describe("ToneAdaptiveContent", () => {
   // Ported from templates/custom.test.tsx's describe "Content kicker (Task
   // 5b: accent, not muted)".
   describe("kicker (Task 5b: accent, not muted)", () => {
-    const chapterFirst: Slide = { type: "chapter", heading: "第一章", blocks: [] } as Slide
+    const chapterFirst: Slide = { type: "chapter", heading: "第一章", components: [] } as Slide
     const withSection: Slide = {
       type: "content",
       heading: "三大支柱",
-      blocks: [{ type: "paragraph", text: "正文。" }],
+      components: [{ type: "paragraph", text: "正文。" }],
     } as Slide
 
     function findKicker(root: Element): Element {
@@ -437,7 +437,7 @@ describe("ToneAdaptiveContent", () => {
     const slide: Slide = {
       type: "content",
       heading: "三大支柱",
-      blocks: [{ type: "paragraph", text: "正文。" }],
+      components: [{ type: "paragraph", text: "正文。" }],
     } as Slide
 
     it("no-bg branch: divider splits into a 48px accent lead-in + thin remainder spanning the original x1..x2", () => {
@@ -511,8 +511,8 @@ describe("ToneAdaptiveContent", () => {
 // specifically (the emphasis-reversal contrast bug the comment references).
 // `cardStroke` has no natural home among the five custom archetypes — none of
 // them render a card-shell that consumes it (it's consumed by
-// blocks/kpi.tsx, blocks/icon-cards.tsx, blocks/callout.tsx,
-// blocks/steps.tsx, all outside this migration's file scope) — kept here
+// components/kpi.tsx, components/icon-cards.tsx, components/callout.tsx,
+// components/steps.tsx, all outside this migration's file scope) — kept here
 // rather than dropped so the custom theme's token value isn't left untested
 // once templates/custom.test.tsx is deleted.
 describe("custom theme tokens (Task 5b/5d)", () => {

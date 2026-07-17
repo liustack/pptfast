@@ -31,12 +31,12 @@ const EXPECTED_CHAPTER_WITH_BG =
 // Deck with two chapter slides (separated by a content slide) so
 // `chapterNumberFor` has something to derive from — index 0 is chapter "01",
 // index 2 is chapter "02" out of the deck (章节序号水印 + 多 chapter index 覆盖).
-const chapter1: Slide = { type: "chapter", heading: "第一部分：市场回顾", blocks: [] } as Slide
-const content: Slide = { type: "content", heading: "现状", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一部分：市场回顾", components: [] } as Slide
+const content: Slide = { type: "content", heading: "现状", components: [] } as Slide
 const chapter2: Slide = {
   type: "chapter",
   heading: "第二部分：策略与执行路径",
-  blocks: [],
+  components: [],
 } as Slide
 
 const bgImages: PptxIR["assets"]["images"] = {
@@ -117,7 +117,7 @@ describe("ToneAdaptiveChapter", () => {
   it("shrinks a pathologically long heading onto <=2 lines instead of overflowing", () => {
     const tokens = LEGACY_CUSTOM_TOKENS
     const ctx = buildCtx(tokens, {})
-    const longSlide: Slide = { type: "chapter", heading: CJK_LONG, blocks: [] } as Slide
+    const longSlide: Slide = { type: "chapter", heading: CJK_LONG, components: [] } as Slide
     const deck = ir("custom")
     const markup = renderSvgMarkup(
       wrap(<ToneAdaptiveChapter ir={deck} slide={longSlide} index={0} ctx={ctx} />),

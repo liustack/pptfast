@@ -2,10 +2,10 @@
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { SvgContent } from "./SvgContent"
-import type { BlockCtx } from "./blocks/types"
-import type { Block } from "@/ir"
+import type { ComponentCtx } from "./components/types"
+import type { Component } from "@/ir"
 
-const ctx: BlockCtx = {
+const ctx: ComponentCtx = {
   colors: {
     bg: "#FFF",
     surface: "#EEE",
@@ -20,12 +20,12 @@ const ctx: BlockCtx = {
 
 const rect = { x: 80, y: 200, w: 1120, h: 460 }
 
-function renderAE(b: Block[]) {
+function renderAE(b: Component[]) {
   return render(
     <svg viewBox="0 0 1280 720">
       <SvgContent
         arrangement="assertion_evidence"
-        blocks={b}
+        components={b}
         rect={rect}
         ctx={ctx}
       />
@@ -34,8 +34,8 @@ function renderAE(b: Block[]) {
 }
 
 describe("assertion_evidence variant", () => {
-  it("renders a chart block as the enlarged evidence (rect/path shapes present)", () => {
-    const blocks: Block[] = [
+  it("renders a chart component as the enlarged evidence (rect/path shapes present)", () => {
+    const components: Component[] = [
       { type: "paragraph", text: "补充说明文字。" },
       {
         type: "chart",
@@ -43,11 +43,11 @@ describe("assertion_evidence variant", () => {
         series: [{ name: "Q1", data: [{ x: "A", y: 10 }, { x: "B", y: 20 }] }],
       },
     ]
-    const { container } = renderAE(blocks)
+    const { container } = renderAE(components)
     // Chart renders rect elements (bars) — should be present
     const rects = container.querySelectorAll("rect")
     expect(rects.length).toBeGreaterThanOrEqual(1)
-    // The chart evidence block should be vertically centred: its g transform
+    // The chart evidence component should be vertically centred: its g transform
     // y-offset should be greater than rect.y (pushed down to centre).
     const groups = Array.from(container.querySelectorAll("g[transform]"))
     const chartGroup = groups.find((g) => {
@@ -60,7 +60,7 @@ describe("assertion_evidence variant", () => {
   })
 
   it("picks chart over image when both are present (priority order)", () => {
-    const blocks: Block[] = [
+    const components: Component[] = [
       { type: "image", asset_id: "img1", fit: "contain" },
       {
         type: "chart",
@@ -68,18 +68,18 @@ describe("assertion_evidence variant", () => {
         series: [{ name: "S", data: [{ x: "X", y: 50 }, { x: "Y", y: 50 }] }],
       },
     ]
-    const { container } = renderAE(blocks)
+    const { container } = renderAE(components)
     // Chart renders paths (pie slices) — should be present
     const paths = container.querySelectorAll("path")
     expect(paths.length).toBeGreaterThanOrEqual(1)
   })
 
-  it("falls back to normal single-column rendering when no evidence block type exists", () => {
-    const blocks: Block[] = [
+  it("falls back to normal single-column rendering when no evidence component type exists", () => {
+    const components: Component[] = [
       { type: "paragraph", text: "纯文字断言页。" },
       { type: "bullets", items: ["要点一", "要点二"], style: "default" },
     ]
-    const { container } = renderAE(blocks)
+    const { container } = renderAE(components)
     // paragraph + bullets rendered normally
     expect(container.textContent).toContain("纯文字断言页")
     expect(container.textContent).toContain("要点一")
@@ -87,21 +87,21 @@ describe("assertion_evidence variant", () => {
     expect(container.querySelectorAll("circle").length).toBe(2)
   })
 
-  it("renders empty content gracefully when blocks array is empty", () => {
+  it("renders empty content gracefully when components array is empty", () => {
     const { container } = renderAE([])
     // No crash, no text content
     expect(container.querySelectorAll("text").length).toBe(0)
   })
 
-  it("centres a single chart evidence block vertically in the rect", () => {
-    const blocks: Block[] = [
+  it("centres a single chart evidence component vertically in the rect", () => {
+    const components: Component[] = [
       {
         type: "chart",
         chart_type: "bar",
         series: [{ name: "Q1", data: [{ x: "A", y: 30 }] }],
       },
     ]
-    const { container } = renderAE(blocks)
+    const { container } = renderAE(components)
     // Chart has CHART_H = 240. Rect h = 460. Expected centred y = 200 + (460-240)/2 = 310.
     const groups = Array.from(container.querySelectorAll("g[transform]"))
     const transforms = groups.map((g) => g.getAttribute("transform") ?? "")

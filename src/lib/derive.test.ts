@@ -6,7 +6,7 @@ import type { PptxIR } from "@/ir"
 const ir = (types: string[]): PptxIR =>
   ({ version: "3", filename: "d.pptx", theme: { id: "consulting" }, meta: {},
      assets: { images: {} },
-     slides: types.map((t, i) => ({ type: t as any, heading: `H${i}`, blocks: [] })) }) as PptxIR
+     slides: types.map((t, i) => ({ type: t as any, heading: `H${i}`, components: [] })) }) as PptxIR
 
 describe("derive", () => {
   const deck = ir(["cover", "chapter", "content", "content", "chapter", "content", "ending"])

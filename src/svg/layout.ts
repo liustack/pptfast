@@ -1,10 +1,10 @@
-import type { Block, Slide } from "@/ir"
-import type { BlockBox, BlockCtx } from "./blocks/types"
-import { measureBlock } from "./blocks"
+import type { Component, Slide } from "@/ir"
+import type { ComponentBox, ComponentCtx } from "./components/types"
+import { measureComponent } from "./components"
 
 export type Arrangement = NonNullable<Slide["arrangement"]>
 
-/** The content region rect (px) a slide gives its blocks to lay out within. */
+/** The content region rect (px) a slide gives its components to lay out within. */
 export interface ContentRect {
   x: number
   y: number
@@ -12,13 +12,13 @@ export interface ContentRect {
   h: number
 }
 
-/** A block paired with the page-coordinate box the layout assigned it. */
-export interface PlacedBlock {
-  block: Block
-  box: BlockBox
+/** A component paired with the page-coordinate box the layout assigned it. */
+export interface PlacedComponent {
+  component: Component
+  box: ComponentBox
 }
 
-/** Vertical gap (px) between stacked blocks. */
+/** Vertical gap (px) between stacked components. */
 export const BLOCK_GAP = 16
 /** Horizontal gap (px) between layout columns. */
 export const COLUMN_GAP = 32
@@ -37,35 +37,35 @@ export function asideSplit(rect: ContentRect): {
   return { mainW, asideX, asideW, dividerX: rect.x + mainW + COLUMN_GAP / 2 }
 }
 
-/** Stack blocks top-to-bottom from (x,y) at width w; report the next free y. */
+/** Stack components top-to-bottom from (x,y) at width w; report the next free y. */
 function stackFrom(
-  blocks: Block[],
+  components: Component[],
   x: number,
   y: number,
   w: number,
-  ctx: BlockCtx,
+  ctx: ComponentCtx,
   gap: number = BLOCK_GAP,
-): { placed: PlacedBlock[]; endY: number } {
+): { placed: PlacedComponent[]; endY: number } {
   let cursor = y
-  const placed: PlacedBlock[] = []
-  for (const block of blocks) {
-    placed.push({ block, box: { x, y: cursor, w } })
-    cursor += measureBlock(block, w, ctx) + gap
+  const placed: PlacedComponent[] = []
+  for (const component of components) {
+    placed.push({ component, box: { x, y: cursor, w } })
+    cursor += measureComponent(component, w, ctx) + gap
   }
-  return { placed, endY: blocks.length ? cursor - gap : y }
+  return { placed, endY: components.length ? cursor - gap : y }
 }
 
-/** Lay out a content slide's blocks into page-coordinate boxes per arrangement. */
+/** Lay out a content slide's components into page-coordinate boxes per arrangement. */
 export function layoutContent(
   arrangement: Arrangement | undefined,
-  blocks: Block[],
+  components: Component[],
   rect: ContentRect,
-  ctx: BlockCtx,
+  ctx: ComponentCtx,
   gap: number = BLOCK_GAP,
-): PlacedBlock[] {
+): PlacedComponent[] {
   let v = arrangement ?? "single"
   // 双列类版式只有 1 个块时退化为单栏全宽，否则内容被塞进半宽列浪费一半版面
-  if ((v === "two_column" || v === "image_focus" || v === "aside") && blocks.length < 2) {
+  if ((v === "two_column" || v === "image_focus" || v === "aside") && components.length < 2) {
     v = "single"
   }
   switch (v) {
@@ -73,16 +73,16 @@ export function layoutContent(
       // 主内容 2/3 + 观点侧栏 1/3（末位块进侧栏）——财经简报的
       // EDITORIAL NOTE 语义：数据与观点并置（2026-07-12 借鉴）。
       const { mainW, asideX, asideW } = asideSplit(rect)
-      const main = stackFrom(blocks.slice(0, -1), rect.x, rect.y, mainW, ctx, gap)
-      const aside = stackFrom(blocks.slice(-1), asideX, rect.y, asideW, ctx, gap)
+      const main = stackFrom(components.slice(0, -1), rect.x, rect.y, mainW, ctx, gap)
+      const aside = stackFrom(components.slice(-1), asideX, rect.y, asideW, ctx, gap)
       return [...main.placed, ...aside.placed]
     }
     case "two_column": {
       const colW = (rect.w - COLUMN_GAP) / 2
-      const mid = Math.ceil(blocks.length / 2)
-      const left = stackFrom(blocks.slice(0, mid), rect.x, rect.y, colW, ctx, gap)
+      const mid = Math.ceil(components.length / 2)
+      const left = stackFrom(components.slice(0, mid), rect.x, rect.y, colW, ctx, gap)
       const right = stackFrom(
-        blocks.slice(mid),
+        components.slice(mid),
         rect.x + colW + COLUMN_GAP,
         rect.y,
         colW,
@@ -93,15 +93,15 @@ export function layoutContent(
     }
     case "image_focus": {
       const colW = (rect.w - COLUMN_GAP) / 2
-      const imgs = blocks.filter((b) => b.type === "image")
-      const rest = blocks.filter((b) => b.type !== "image")
+      const imgs = components.filter((b) => b.type === "image")
+      const rest = components.filter((b) => b.type !== "image")
       const left = stackFrom(imgs, rect.x, rect.y, colW, ctx, gap)
       const right = stackFrom(rest, rect.x + colW + COLUMN_GAP, rect.y, colW, ctx, gap)
       return [...left.placed, ...right.placed]
     }
     case "kpi_focus": {
-      const kpis = blocks.filter((b) => b.type === "kpi_cards")
-      const rest = blocks.filter((b) => b.type !== "kpi_cards")
+      const kpis = components.filter((b) => b.type === "kpi_cards")
+      const rest = components.filter((b) => b.type !== "kpi_cards")
       const top = stackFrom(kpis, rect.x, rect.y, rect.w, ctx, gap)
       const restY = top.endY + (kpis.length ? gap : 0)
       const bottom = stackFrom(rest, rect.x, restY, rect.w, ctx, gap)
@@ -109,33 +109,33 @@ export function layoutContent(
     }
     case "quote": {
       // Measure the stack, then center it vertically in the rect.
-      const measured = stackFrom(blocks, rect.x, 0, rect.w, ctx, gap)
+      const measured = stackFrom(components, rect.x, 0, rect.w, ctx, gap)
       const totalH = measured.endY
       const offsetY = rect.y + Math.max(0, (rect.h - totalH) / 2)
-      return stackFrom(blocks, rect.x, offsetY, rect.w, ctx, gap).placed
+      return stackFrom(components, rect.x, offsetY, rect.w, ctx, gap).placed
     }
     case "code":
     case "single":
     default:
-      return stackFrom(blocks, rect.x, rect.y, rect.w, ctx, gap).placed
+      return stackFrom(components, rect.x, rect.y, rect.w, ctx, gap).placed
   }
 }
 
-/** Gap tiers tried in order (widest first) before resorting to dropping blocks. */
+/** Gap tiers tried in order (widest first) before resorting to dropping components. */
 const GAP_TIERS = [BLOCK_GAP, 10, 6]
 
-/** The lowest bottom edge (page px) any placed block's content reaches.
- * 拉伸过的 block（box.h）以分配高度为准。 */
-export function stackBottom(placed: PlacedBlock[], ctx: BlockCtx): number {
+/** The lowest bottom edge (page px) any placed component's content reaches.
+ * 拉伸过的 component（box.h）以分配高度为准。 */
+export function stackBottom(placed: PlacedComponent[], ctx: ComponentCtx): number {
   return placed.reduce(
-    (max, p) => Math.max(max, p.box.y + (p.box.h ?? measureBlock(p.block, p.box.w, ctx))),
+    (max, p) => Math.max(max, p.box.y + (p.box.h ?? measureComponent(p.component, p.box.w, ctx))),
     0,
   )
 }
 
-/** 卡壳类 block：布局可把列内剩余高度分给它们本体拉伸（密度铺满）。 */
-const STRETCHABLE_TYPES = new Set<Block["type"]>(["kpi_cards", "icon_cards", "row_cards"])
-/** 单个卡片 block 至多拉到测量高度的这个倍数，防止矮内容页卡片畸高。 */
+/** 卡壳类 component：布局可把列内剩余高度分给它们本体拉伸（密度铺满）。 */
+const STRETCHABLE_TYPES = new Set<Component["type"]>(["kpi_cards", "icon_cards", "row_cards"])
+/** 单个卡片 component 至多拉到测量高度的这个倍数，防止矮内容页卡片畸高。 */
 const STRETCH_CAP_RATIO = 1.7
 /** 剩余低于此值不做拉伸——与 SURPLUS_MIN_REMAINING 同值，保持「剩余 ≤80px
  * 时整个后处理链 byte-identical」的回归锁语义。 */
@@ -143,16 +143,16 @@ const STRETCH_MIN_REMAINING = 80
 
 /**
  * 卡片密度拉伸（2026-07-11 用户「带卡片的区块页面总是空腔」痛点）：布局
- * 成功后，把每列底部的剩余高度分给列内卡壳类 block（box.h = 测量高 +
- * 份额，封顶 STRETCH_CAP_RATIO×），列内后续 block 相应下移。剩余没吃完
+ * 成功后，把每列底部的剩余高度分给列内卡壳类 component（box.h = 测量高 +
+ * 份额，封顶 STRETCH_CAP_RATIO×），列内后续 component 相应下移。剩余没吃完
  * 的部分留给 distributeSurplus 继续做间距呼吸。与 distributeSurplus 同款
  * 列条件：列首块必须贴 rect 顶（quote 居中版式不动）。
  */
 function growStretchables(
-  placed: PlacedBlock[],
+  placed: PlacedComponent[],
   rect: ContentRect,
-  ctx: BlockCtx,
-): PlacedBlock[] {
+  ctx: ComponentCtx,
+): PlacedComponent[] {
   if (placed.length === 0) return placed
   const columns = new Map<number, number[]>()
   placed.forEach((p, i) => {
@@ -165,21 +165,21 @@ function growStretchables(
   for (const idxs of columns.values()) {
     if (Math.abs(placed[idxs[0]].box.y - rect.y) > 0.5) continue
     const colBottom = idxs.reduce(
-      (max, i) => Math.max(max, placed[i].box.y + measureBlock(placed[i].block, placed[i].box.w, ctx)),
+      (max, i) => Math.max(max, placed[i].box.y + measureComponent(placed[i].component, placed[i].box.w, ctx)),
       0,
     )
     const remaining = rect.y + rect.h - colBottom
     if (remaining <= STRETCH_MIN_REMAINING) continue
-    const stretchIdxs = idxs.filter((i) => STRETCHABLE_TYPES.has(placed[i].block.type))
+    const stretchIdxs = idxs.filter((i) => STRETCHABLE_TYPES.has(placed[i].component.type))
     if (stretchIdxs.length === 0) continue
-    const perBlock = remaining / stretchIdxs.length
+    const perComponent = remaining / stretchIdxs.length
     let shift = 0
     for (const i of idxs) {
       const p = next[i]
       if (shift > 0) next[i] = { ...p, box: { ...p.box, y: p.box.y + shift } }
-      if (STRETCHABLE_TYPES.has(p.block.type)) {
-        const measured = measureBlock(p.block, p.box.w, ctx)
-        const granted = Math.min(perBlock, measured * (STRETCH_CAP_RATIO - 1))
+      if (STRETCHABLE_TYPES.has(p.component.type)) {
+        const measured = measureComponent(p.component, p.box.w, ctx)
+        const granted = Math.min(perComponent, measured * (STRETCH_CAP_RATIO - 1))
         if (granted > 1) {
           next[i] = {
             ...next[i],
@@ -203,14 +203,14 @@ const SURPLUS_GAP_CAP_RATIO = 1.5
 
 /**
  * "Breathing room, not falling apart" (wave-B S4): once a working gap tier
- * lays every block out top-aligned, a short slide can leave a large dead
- * strip below the last block. Spend `SURPLUS_SHARE` of that leftover growing
- * the gaps *between* blocks — evenly, capped so no single gap balloons past
+ * lays every component out top-aligned, a short slide can leave a large dead
+ * strip below the last component. Spend `SURPLUS_SHARE` of that leftover growing
+ * the gaps *between* components — evenly, capped so no single gap balloons past
  * `SURPLUS_GAP_CAP_RATIO`× its original size — and leave the rest as bottom
  * margin.
  *
- * Operates per stacked column (blocks sharing the same `box.x` — `stackFrom`
- * assigns one x per column and pushes each column's blocks contiguously, so
+ * Operates per stacked column (components sharing the same `box.x` — `stackFrom`
+ * assigns one x per column and pushes each column's components contiguously, so
  * `two_column`/`image_focus`'s two columns and `kpi_focus`'s
  * hoisted-then-rest column each contribute their own gaps), but the leftover
  * budget and the per-gap increment are both computed once, globally, and
@@ -218,18 +218,18 @@ const SURPLUS_GAP_CAP_RATIO = 1.5
  * the same amount, not that each column re-derives its own share.
  *
  * Left untouched (returns `placed` unchanged, same object references):
- *  - fewer than 2 placed blocks (no gap exists to grow)
+ *  - fewer than 2 placed components (no gap exists to grow)
  *  - `remaining <= SURPLUS_MIN_REMAINING` (regression lock: byte-identical)
- *  - a column whose first block isn't flush with the rect's top edge (e.g.
+ *  - a column whose first component isn't flush with the rect's top edge (e.g.
  *    `quote`, which already centers its whole stack — growing its internal
  *    gaps after the fact would just push it off-center instead of "breathing")
  */
 function distributeSurplus(
-  placed: PlacedBlock[],
+  placed: PlacedComponent[],
   rect: ContentRect,
   gap: number,
   bottom: number,
-): PlacedBlock[] {
+): PlacedComponent[] {
   if (placed.length < 2) return placed
   const remaining = rect.y + rect.h - bottom
   if (remaining <= SURPLUS_MIN_REMAINING) return placed
@@ -265,7 +265,7 @@ function distributeSurplus(
 
 /**
  * Vertical overflow guard: retries `layoutContent` with progressively tighter
- * gaps, then — if the tightest gap still overflows — keeps only the blocks
+ * gaps, then — if the tightest gap still overflows — keeps only the components
  * whose bottom edge fits the rect and reports how many were dropped so the
  * caller can render a "+N 项未展示" marker. Quality gates upstream (ir-quality
  * warn, backend lint) are meant to keep real decks from ever reaching the
@@ -279,10 +279,10 @@ function distributeSurplus(
  */
 export function layoutContentFit(
   arrangement: Arrangement | undefined,
-  blocks: Block[],
+  components: Component[],
   rect: ContentRect,
-  ctx: BlockCtx,
-): { placed: PlacedBlock[]; dropped: number } {
+  ctx: ComponentCtx,
+): { placed: PlacedComponent[]; dropped: number } {
   // gapScale（shape token，2026-07-10）：只作用于首选档（BLOCK_GAP×scale），
   // 紧缩 fallback 档（10/6）不乘——主题偏好只影响有余量时的呼吸感，空间
   // 紧张时的回落行为全主题一致。
@@ -291,7 +291,7 @@ export function layoutContentFit(
       ? [Math.round(BLOCK_GAP * ctx.shape.gapScale), ...GAP_TIERS.slice(1)]
       : GAP_TIERS
   for (const gap of scaledTiers) {
-    const placed = layoutContent(arrangement, blocks, rect, ctx, gap)
+    const placed = layoutContent(arrangement, components, rect, ctx, gap)
     const bottom = stackBottom(placed, ctx)
     if (bottom <= rect.y + rect.h + 1) {
       // 先做卡片密度拉伸（吃大头），剩余交给间距呼吸
@@ -300,12 +300,12 @@ export function layoutContentFit(
       return { placed: distributeSurplus(grown, rect, gap, grownBottom), dropped: 0 }
     }
   }
-  const placed = layoutContent(arrangement, blocks, rect, ctx, GAP_TIERS[GAP_TIERS.length - 1])
+  const placed = layoutContent(arrangement, components, rect, ctx, GAP_TIERS[GAP_TIERS.length - 1])
   const kept = placed.filter(
-    (p) => p.box.y + measureBlock(p.block, p.box.w, ctx) <= rect.y + rect.h + 1,
+    (p) => p.box.y + measureComponent(p.component, p.box.w, ctx) <= rect.y + rect.h + 1,
   )
   // A slide degraded to nothing but the "+N 项未展示" marker is worse than
-  // one with a single overflowing block — keep the first placed block even
+  // one with a single overflowing component — keep the first placed component even
   // if it alone doesn't fit the rect (upstream quality gates make this rare).
   // 保留块带上剩余可用高（box.h < 测量高 = 截断预算，2026-07-11 存量
   // deck 5 项长卡画出页外实锤）：可分割块（row_cards）据此块内截断并

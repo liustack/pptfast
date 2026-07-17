@@ -12,12 +12,12 @@ import type { PptxIR, Slide } from "@/ir"
 // 自查发现它曾静默丢 slide.subheading（信息丢失，真机可见），本文件先以
 // 失败测试锁住该行为再修复。
 
-const chapter1: Slide = { type: "chapter", heading: "第一部分：市场洞察", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一部分：市场洞察", components: [] } as Slide
 const withSub: Slide = {
   type: "content",
   heading: "三大卖点驱动转化",
   subheading: "从种草到复购的完整链路",
-  blocks: [
+  components: [
     { type: "bullets", items: ["要点一", "要点二"] },
     { type: "paragraph", text: "右栏段落。" },
   ],
@@ -25,7 +25,7 @@ const withSub: Slide = {
 const noSub: Slide = {
   type: "content",
   heading: "渠道组合与节奏",
-  blocks: [{ type: "paragraph", text: "单块内容。" }],
+  components: [{ type: "paragraph", text: "单块内容。" }],
 } as Slide
 
 function ir(slides: Slide[]): PptxIR {

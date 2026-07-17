@@ -37,7 +37,7 @@ function makeSlide(type: Slide["type"], heading?: string): Slide {
   return {
     type,
     heading: heading ?? `${type} 标题`,
-    blocks: [{ type: "paragraph", text: `${type} 正文内容` }],
+    components: [{ type: "paragraph", text: `${type} 正文内容` }],
   }
 }
 

@@ -8,7 +8,7 @@ const raw = {
   theme: { id: "consulting" },
   slides: [
     { type: "cover", heading: "Hello" },
-    { type: "content", heading: "Points", blocks: [{ type: "bullets", items: ["a", "b"] }] },
+    { type: "content", heading: "Points", components: [{ type: "bullets", items: ["a", "b"] }] },
   ],
 }
 
@@ -17,7 +17,7 @@ describe("validateIr", () => {
     const r = validateIr(raw)
     expect(r.ok).toBe(true)
     expect(r.errors).toEqual([])
-    expect(r.ir?.slides[0]?.blocks).toEqual([])
+    expect(r.ir?.slides[0]?.components).toEqual([])
   })
 
   it("gives a migration message for IR v2 input", () => {
@@ -26,6 +26,7 @@ describe("validateIr", () => {
     expect(v.errors).toHaveLength(1)
     expect(v.errors[0]!.message).toMatch(/use theme\.style/)
     expect(v.errors[0]!.message).toMatch(/variant is split into layout and arrangement/)
+    expect(v.errors[0]!.message).toMatch(/blocks are now components/)
   })
 
   it("hard-rejects an unknown theme id with the available list", () => {
@@ -79,7 +80,7 @@ describe("validateIr", () => {
     it("rejects an unknown layout id, listing the available ids for that slide type", () => {
       const v = validateIr({
         ...raw,
-        slides: [raw.slides[0], { type: "content", heading: "x", layout: "not-a-real-layout", blocks: [] }],
+        slides: [raw.slides[0], { type: "content", heading: "x", layout: "not-a-real-layout", components: [] }],
       })
       expect(v.ok).toBe(false)
       expect(v.errors[0]!.page).toBe(2)
@@ -96,7 +97,7 @@ describe("validateIr", () => {
             type: "content",
             heading: "Split",
             layout: "image-split",
-            blocks: [{ type: "image", asset_id: "a" }],
+            components: [{ type: "image", asset_id: "a" }],
           },
         ],
       })
@@ -108,7 +109,7 @@ describe("validateIr", () => {
         ...raw,
         slides: [
           raw.slides[0],
-          { type: "content", heading: "Bento", layout: "bento-panel", blocks: [{ type: "paragraph", text: "x" }] },
+          { type: "content", heading: "Bento", layout: "bento-panel", components: [{ type: "paragraph", text: "x" }] },
         ],
       })
       expect(v.ok).toBe(true)
@@ -127,7 +128,7 @@ describe("validateIr", () => {
             heading: "Mismatched on purpose",
             layout: "two-column",
             arrangement: "quote",
-            blocks: [{ type: "paragraph", text: "x" }],
+            components: [{ type: "paragraph", text: "x" }],
           },
         ],
       })

@@ -28,12 +28,12 @@ describe("checkIrQuality", () => {
       {
         type: "cover",
         heading: "标题",
-        blocks: [],
+        components: [],
       },
       {
         type: "content",
         heading: "内容页",
-        blocks: [
+        components: [
           { type: "bullets", items: ["a", "b", "c"] },
           { type: "paragraph", text: "hello" },
         ],
@@ -53,12 +53,12 @@ describe("checkIrQuality", () => {
 
   // ── density ──
 
-  it(`warns when content slide has >${CAPACITY.maxBlocksPerSlide} blocks`, () => {
+  it(`warns when content slide has >${CAPACITY.maxBlocksPerSlide} components`, () => {
     const ir = makeIR([
       {
         type: "content",
         heading: "密集页",
-        blocks: Array.from({ length: CAPACITY.maxBlocksPerSlide + 1 }, (_, i) => ({
+        components: Array.from({ length: CAPACITY.maxBlocksPerSlide + 1 }, (_, i) => ({
           type: "paragraph" as const,
           text: String(i),
         })),
@@ -67,12 +67,12 @@ describe("checkIrQuality", () => {
     expect(codes(checkIrQuality(ir))).toContain("density")
   })
 
-  it(`does NOT warn density for exactly ${CAPACITY.maxBlocksPerSlide} blocks`, () => {
+  it(`does NOT warn density for exactly ${CAPACITY.maxBlocksPerSlide} components`, () => {
     const ir = makeIR([
       {
         type: "content",
         heading: "刚好页",
-        blocks: Array.from({ length: CAPACITY.maxBlocksPerSlide }, (_, i) => ({
+        components: Array.from({ length: CAPACITY.maxBlocksPerSlide }, (_, i) => ({
           type: "paragraph" as const,
           text: String(i),
         })),
@@ -81,8 +81,8 @@ describe("checkIrQuality", () => {
     expect(codes(checkIrQuality(ir))).not.toContain("density")
   })
 
-  it("does NOT warn density for tech content slide at its own (higher) 6-block threshold", () => {
-    // tech's card-grid geometry supports more blocks/page than the
+  it("does NOT warn density for tech content slide at its own (higher) 6-component threshold", () => {
+    // tech's card-grid geometry supports more components/page than the
     // linear-stack themes the flat default was derived from — verified by
     // real zero-overflow rendering in templates/tech.test.tsx.
     const bentoLimit = CAPACITY.maxBlocksPerSlideOverrides["tech"]
@@ -91,7 +91,7 @@ describe("checkIrQuality", () => {
         {
           type: "content",
           heading: "拼盘页",
-          blocks: Array.from({ length: bentoLimit }, (_, i) => ({
+          components: Array.from({ length: bentoLimit }, (_, i) => ({
             type: "paragraph" as const,
             text: String(i),
           })),
@@ -102,14 +102,14 @@ describe("checkIrQuality", () => {
     expect(codes(checkIrQuality(ir))).not.toContain("density")
   })
 
-  it("warns density for a tech content slide that exceeds its own 6-block threshold", () => {
+  it("warns density for a tech content slide that exceeds its own 6-component threshold", () => {
     const bentoLimit = CAPACITY.maxBlocksPerSlideOverrides["tech"]
     const ir = makeIR(
       [
         {
           type: "content",
           heading: "超载拼盘页",
-          blocks: Array.from({ length: bentoLimit + 1 }, (_, i) => ({
+          components: Array.from({ length: bentoLimit + 1 }, (_, i) => ({
             type: "paragraph" as const,
             text: String(i),
           })),
@@ -124,13 +124,13 @@ describe("checkIrQuality", () => {
     )
   })
 
-  it("still warns a non-bento theme at the flat 4-block threshold even though tech's is 6", () => {
+  it("still warns a non-bento theme at the flat 4-component threshold even though tech's is 6", () => {
     const ir = makeIR(
       [
         {
           type: "content",
           heading: "普通主题页",
-          blocks: Array.from({ length: CAPACITY.maxBlocksPerSlide + 1 }, (_, i) => ({
+          components: Array.from({ length: CAPACITY.maxBlocksPerSlide + 1 }, (_, i) => ({
             type: "paragraph" as const,
             text: String(i),
           })),
@@ -141,12 +141,12 @@ describe("checkIrQuality", () => {
     expect(codes(checkIrQuality(ir))).toContain("density")
   })
 
-  it(`does NOT warn density for non-content slide with >${CAPACITY.maxBlocksPerSlide} blocks`, () => {
+  it(`does NOT warn density for non-content slide with >${CAPACITY.maxBlocksPerSlide} components`, () => {
     const ir = makeIR([
       {
         type: "cover",
         heading: "封面",
-        blocks: [
+        components: [
           { type: "paragraph", text: "1" },
           { type: "paragraph", text: "2" },
           { type: "paragraph", text: "3" },
@@ -161,12 +161,12 @@ describe("checkIrQuality", () => {
 
   // ── bullets_overflow ──
 
-  it(`warns when a bullets block has >${CAPACITY.bullets.maxItems} items`, () => {
+  it(`warns when a bullets component has >${CAPACITY.bullets.maxItems} items`, () => {
     const ir = makeIR([
       {
         type: "content",
         heading: "列表页",
-        blocks: [
+        components: [
           {
             type: "bullets",
             items: Array.from(
@@ -185,7 +185,7 @@ describe("checkIrQuality", () => {
       {
         type: "content",
         heading: "列表页",
-        blocks: [
+        components: [
           {
             type: "bullets",
             items: Array.from(
@@ -207,7 +207,7 @@ describe("checkIrQuality", () => {
       {
         type: "content",
         heading: "列表页",
-        blocks: [{ type: "bullets", items: [long] }],
+        components: [{ type: "bullets", items: [long] }],
       },
     ])
     const issues = checkIrQuality(ir)
@@ -223,7 +223,7 @@ describe("checkIrQuality", () => {
       {
         type: "content",
         heading: "列表页",
-        blocks: [{ type: "bullets", items: [ok] }],
+        components: [{ type: "bullets", items: [ok] }],
       },
     ])
     expect(codes(checkIrQuality(ir))).not.toContain("bullet_item_long")
@@ -235,7 +235,7 @@ describe("checkIrQuality", () => {
     const ir = makeIR([
       {
         type: "content",
-        blocks: [{ type: "paragraph", text: "hi" }],
+        components: [{ type: "paragraph", text: "hi" }],
       },
     ])
     expect(codes(checkIrQuality(ir))).toContain("missing_heading")
@@ -245,7 +245,7 @@ describe("checkIrQuality", () => {
     const ir = makeIR([
       {
         type: "cover",
-        blocks: [],
+        components: [],
       },
     ])
     expect(codes(checkIrQuality(ir))).toContain("missing_heading")
@@ -255,7 +255,7 @@ describe("checkIrQuality", () => {
     const ir = makeIR([
       {
         type: "chapter",
-        blocks: [],
+        components: [],
       },
     ])
     expect(codes(checkIrQuality(ir))).toContain("missing_heading")
@@ -265,7 +265,7 @@ describe("checkIrQuality", () => {
     const ir = makeIR([
       {
         type: "ending",
-        blocks: [],
+        components: [],
       },
     ])
     expect(codes(checkIrQuality(ir))).not.toContain("missing_heading")
@@ -275,7 +275,7 @@ describe("checkIrQuality", () => {
     const ir = makeIR([
       {
         type: "content",
-        blocks: [{ type: "image", asset_id: "hero", fit: "cover" }],
+        components: [{ type: "image", asset_id: "hero", fit: "cover" }],
       },
     ])
     expect(codes(checkIrQuality(ir))).not.toContain("missing_heading")
@@ -289,7 +289,7 @@ describe("checkIrQuality", () => {
         type: "content",
         heading:
           "这是一个超过四十个字符的标题用来测试标题过长告警功能是否正常工作的完整长句子啊你好世界。这句真的很长",
-        blocks: [],
+        components: [],
       },
     ])
     const issues = checkIrQuality(ir)
@@ -304,7 +304,7 @@ describe("checkIrQuality", () => {
       {
         type: "content",
         heading: "a".repeat(CAPACITY.headingMaxChars),
-        blocks: [],
+        components: [],
       },
     ])
     expect(codes(checkIrQuality(ir))).not.toContain("long_heading")
@@ -312,13 +312,13 @@ describe("checkIrQuality", () => {
 
   // ── big_number_no_kpi ──
 
-  it("warns when big_number variant lacks kpi_cards block", () => {
+  it("warns when big_number variant lacks kpi_cards component", () => {
     const ir = makeIR([
       {
         type: "content",
         heading: "大数字",
         arrangement: "big_number",
-        blocks: [{ type: "paragraph", text: "oops" }],
+        components: [{ type: "paragraph", text: "oops" }],
       },
     ])
     expect(codes(checkIrQuality(ir))).toContain("big_number_no_kpi")
@@ -330,7 +330,7 @@ describe("checkIrQuality", () => {
         type: "content",
         heading: "大数字",
         arrangement: "big_number",
-        blocks: [
+        components: [
           {
             type: "kpi_cards",
             items: [{ value: "99%", label: "完成率" }],
@@ -347,8 +347,8 @@ describe("checkIrQuality", () => {
     const ir = makeIR([
       {
         type: "content",
-        // no heading + >maxBlocksPerSlide blocks + bullets overflow
-        blocks: [
+        // no heading + >maxBlocksPerSlide components + bullets overflow
+        components: [
           { type: "bullets", items: ["1", "2", "3", "4", "5", "6", "7", "8", "9"] },
           { type: "paragraph", text: "a" },
           { type: "paragraph", text: "b" },
@@ -368,11 +368,11 @@ describe("checkIrQuality", () => {
 
   it("reports correct slide index (0-based)", () => {
     const ir = makeIR([
-      { type: "cover", heading: "OK", blocks: [] },
+      { type: "cover", heading: "OK", components: [] },
       {
         type: "content",
         // no heading
-        blocks: [{ type: "paragraph", text: "x" }],
+        components: [{ type: "paragraph", text: "x" }],
       },
     ])
     const issues = checkIrQuality(ir)

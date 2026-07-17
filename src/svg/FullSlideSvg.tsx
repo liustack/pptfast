@@ -1,10 +1,10 @@
 import type React from "react"
-import type { Block, PptxIR, Slide } from "@/ir"
+import type { Component, PptxIR, Slide } from "@/ir"
 import type { StyleTokens } from "../themes/tokens"
 import { resolveStyle, resolveThemeId } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
-import type { BlockCtx } from "./blocks/types"
+import type { ComponentCtx } from "./components/types"
 import type { SvgTemplateProps } from "./archetypes/types"
 import { Background } from "./Background"
 import { BrandChrome } from "./BrandChrome"
@@ -27,19 +27,19 @@ import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { cachedDeckSeed, pickBySeedRotating } from "./variety"
 
 /**
- * Resolve theme tokens + asset map into the render context blocks/templates use.
- * `blocks`, when passed, seeds `ctx.blockIndex` (block reference → its
- * position in that array) for wave-C S3's per-block entrance-animation
+ * Resolve theme tokens + asset map into the render context components/templates use.
+ * `components`, when passed, seeds `ctx.blockIndex` (component reference → its
+ * position in that array) for wave-C S3's per-component entrance-animation
  * tagging — omit it (the default) to keep `ctx.blockIndex` undefined, which
- * is what keeps the default export path byte-identical (see `BlockCtx`'s
+ * is what keeps the default export path byte-identical (see `ComponentCtx`'s
  * doc comment).
  */
  
 export function buildCtx(
   tokens: StyleTokens,
   images: PptxIR["assets"]["images"],
-  blocks?: Block[],
-): BlockCtx {
+  components?: Component[],
+): ComponentCtx {
   return {
     colors: tokens.colors,
     shape: tokens.shape,
@@ -49,7 +49,7 @@ export function buildCtx(
       mono: resolveFontStack(tokens.fonts.mono ?? [], "mono"),
     },
     images,
-    blockIndex: blocks ? new Map(blocks.map((block, i) => [block, i])) : undefined,
+    blockIndex: components ? new Map(components.map((component, i) => [component, i])) : undefined,
   }
 }
 
@@ -130,7 +130,7 @@ export function FullSlideSvg({
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
-    ir.meta.animation?.elements === "auto" ? slide.blocks : undefined,
+    ir.meta.animation?.elements === "auto" ? slide.components : undefined,
   )
   const themeDef = THEME_DEFINITIONS[resolveThemeId(ir.theme.id)]
   // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS）：

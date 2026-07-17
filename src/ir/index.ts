@@ -151,9 +151,9 @@ const MetaSchema = z
       .optional(),
     copyright: z.string().optional(),
     // Deck-level animation switch (波次 C). Omitted entirely = default
-    // behavior: page-transition fade on, per-block entrance animations off.
+    // behavior: page-transition fade on, per-component entrance animations off.
     // `transition: "none"` opts a deck out of the default fade transition.
-    // `elements: "auto"` opts into per-block entrance animations (S3, wired —
+    // `elements: "auto"` opts into per-component entrance animations (S3, wired —
     // see `pptx-generate.ts`'s `applyElementAnimations` call, gated on this
     // exact flag).
     animation: z
@@ -185,9 +185,9 @@ const BrandSchema = z
   })
   .strict()
 
-// ── Blocks（24 种）──
+// ── Components（24 种）──
 
-const BlockSchema = z.discriminatedUnion("type", [
+const ComponentSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("bullets"),
@@ -584,7 +584,7 @@ const SlideSchema = z
       .optional(),
     heading: z.string().optional(),
     subheading: z.string().optional(),
-    blocks: z.array(BlockSchema).default([]),
+    components: z.array(ComponentSchema).default([]),
     background: BackgroundSpecSchema.optional(),
     // 图片排版 P4：受控装饰原语——模型只有选择权（kind + 强度 + corner_tag
     // 的文本），绘制由渲染层手写 SVG 按主题 token 着色，不接受任意图形。
@@ -617,14 +617,14 @@ export const PptxIRSchema = z
   .strict()
 
 export type PptxIR = z.infer<typeof PptxIRSchema>
-export type Block = z.infer<typeof BlockSchema>
+export type Component = z.infer<typeof ComponentSchema>
 export type BackgroundSpec = z.infer<typeof BackgroundSpecSchema>
 export type Slide = z.infer<typeof SlideSchema>
 export type Assets = z.infer<typeof AssetsSchema>
 export type Meta = z.infer<typeof MetaSchema>
 export type Brand = z.infer<typeof BrandSchema>
 
-// Block sub-types (extracted from BlockSchema union members)
+// Component sub-types (extracted from ComponentSchema union members)
 export type KpiItem = {
   value: string
   unit?: string

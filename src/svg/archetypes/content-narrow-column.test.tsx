@@ -6,26 +6,26 @@ import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { NarrowColumnContent } from "./content-narrow-column"
-import type { Block, PptxIR, Slide } from "@/ir"
+import type { Component, PptxIR, Slide } from "@/ir"
 
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
 
-function para(text: string): Block {
+function para(text: string): Component {
   return { type: "paragraph", text }
 }
 
 // Deck with a preceding chapter so `sectionNameFor` resolves a kicker for
-// the content slide, and a content slide carrying multiple block types
+// the content slide, and a content slide carrying multiple component types
 // (paragraph + bullets + quote) plus subheading/footnote to exercise every
 // conditional slot the archetype renders.
-const chapter: Slide = { type: "chapter", heading: "第一部分：市场洞察", blocks: [] } as Slide
+const chapter: Slide = { type: "chapter", heading: "第一部分：市场洞察", components: [] } as Slide
 const content: Slide = {
   type: "content",
   heading: "窄栏叙事：从数据到洞察",
   subheading: "**核心结论**：留存率显著提升",
   footnote: "数据来源：内部埋点，2026Q2",
-  blocks: [
+  components: [
     { type: "paragraph", text: "本季度用户留存呈现持续上行趋势。" },
     { type: "bullets", items: ["留存率 +12%", "活跃时长 +8%", "流失率 -5%"], style: "default" },
     { type: "quote", text: "增长的本质是留住已经信任你的人。", attribution: "内部访谈" },
@@ -52,13 +52,13 @@ const MAGAZINE_EXPECTED_BARE =
   '<line x1="96" y1="88" x2="1184" y2="88" stroke="#E4DCD0" stroke-width="1.2"></line><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#1F1F1F" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,230,880,410"><g data-audit-box="96,375.15999999999997,880"><g transform="translate(96,375.15999999999997)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1F1F1F" dominant-baseline="alphabetic">一</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#6E6259" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">01</text>'
 
 describe("NarrowColumnContent", () => {
-  it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，含多种 block/kicker/subheading/footnote，档案来自旧 EditorialSerifContent）", () => {
+  it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，含多种 component/kicker/subheading/footnote，档案来自旧 EditorialSerifContent）", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const deck = ir("journal")
 
     const next = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={content} index={1} ctx={ctx} />)
     expect(next).toBe(MAGAZINE_EXPECTED)
-    // Sanity: the multi-block content, kicker (section name), subheading and
+    // Sanity: the multi-component content, kicker (section name), subheading and
     // footnote all actually rendered, not silently dropped.
     expect(next).toContain("第一部分：市场洞察")
     expect(next).toContain("留存率 +12%")
@@ -69,7 +69,7 @@ describe("NarrowColumnContent", () => {
 
   it("单块 slide（无 subheading/footnote）同样与固化基准逐字节一致", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-    const bare: Slide = { type: "content", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
+    const bare: Slide = { type: "content", heading: "简报", components: [{ type: "paragraph", text: "一" }] } as Slide
     const deck = ir("journal", [bare])
 
     const next = renderSvgMarkup(<NarrowColumnContent ir={deck} slide={bare} index={0} ctx={ctx} />)
@@ -98,12 +98,12 @@ describe("NarrowColumnContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("lays blocks into the deliberately narrow 880-wide column (not the full 1088 width)", () => {
+  it("lays components into the deliberately narrow 880-wide column (not the full 1088 width)", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
     const slide: Slide = {
       type: "content",
       heading: "窄栏叙事",
-      blocks: [para("一"), para("二"), para("三")],
+      components: [para("一"), para("二"), para("三")],
     } as Slide
     const deck = ir("journal", [slide])
     const markup = renderSvgMarkup(
@@ -123,7 +123,7 @@ describe("NarrowColumnContent", () => {
 
   it("renders a large, 30%-opacity, zero-padded page number anchored to the right gutter", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-    const slide: Slide = { type: "content", heading: "标题", blocks: [para("一")] } as Slide
+    const slide: Slide = { type: "content", heading: "标题", components: [para("一")] } as Slide
     // 9th slide (index 8) => page label "09"
     const slides = Array.from({ length: 9 }, () => ({ ...slide }))
     const deck = ir("journal", slides)
@@ -158,7 +158,7 @@ describe("NarrowColumnContent", () => {
     const slide: Slide = {
       type: "content",
       heading: longHeading,
-      blocks: [para("概要")],
+      components: [para("概要")],
     } as Slide
     const deck = ir("journal", [slide])
     const markup = renderSvgMarkup(
@@ -182,11 +182,11 @@ describe("NarrowColumnContent", () => {
 
   it("kicker fits an overlong section name instead of overflowing at fixed 16px", () => {
     const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
-    const chapterSlide: Slide = { type: "chapter", heading: CJK_LONG.repeat(2), blocks: [] } as Slide
+    const chapterSlide: Slide = { type: "chapter", heading: CJK_LONG.repeat(2), components: [] } as Slide
     const contentSlide: Slide = {
       type: "content",
       heading: "小节标题",
-      blocks: [para("一")],
+      components: [para("一")],
     } as Slide
     const deck = ir("journal", [chapterSlide, contentSlide])
     const markup = renderSvgMarkup(
@@ -210,7 +210,7 @@ describe("NarrowColumnContent", () => {
     const slide: Slide = {
       type: "content",
       heading: "标题",
-      blocks: [para("一")],
+      components: [para("一")],
       footnote: longFootnote,
     } as Slide
     const deck = ir("journal", [slide])
@@ -231,7 +231,7 @@ describe("NarrowColumnContent", () => {
     const base: Slide = {
       type: "content",
       heading: "四大支柱",
-      blocks: [para("一"), para("二")],
+      components: [para("一"), para("二")],
     } as Slide
 
     function columnRectY(root: Element): number {

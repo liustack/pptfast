@@ -29,13 +29,13 @@ function rectsOverlap(
 // (badge "1.1"/"1.2"/"2.1", not a running "1"/"2"/"3") and the rail node's
 // proportional position (`(chapter-1)/(totalChapters-1)`) actually moves
 // between chapter 1 (top) and chapter 2 (bottom) content slides.
-const chapter1: Slide = { type: "chapter", heading: "第一部分：研究背景", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一部分：研究背景", components: [] } as Slide
 const content1a: Slide = {
   type: "content",
   heading: "编号导轨：从章节到小节",
   subheading: "**核心结论**：证据链完整",
   footnote: "数据来源：内部埋点，2026Q2",
-  blocks: [
+  components: [
     { type: "paragraph", text: "本节梳理研究背景与既有文献。" },
     { type: "bullets", items: ["假设一成立", "假设二部分成立", "假设三待验证"], style: "default" },
   ],
@@ -43,13 +43,13 @@ const content1a: Slide = {
 const content1b: Slide = {
   type: "content",
   heading: "同一章节的第二小节",
-  blocks: [{ type: "paragraph", text: "承接上一小节继续展开。" }],
+  components: [{ type: "paragraph", text: "承接上一小节继续展开。" }],
 } as Slide
-const chapter2: Slide = { type: "chapter", heading: "第二部分：方法与证据", blocks: [] } as Slide
+const chapter2: Slide = { type: "chapter", heading: "第二部分：方法与证据", components: [] } as Slide
 const content2a: Slide = {
   type: "content",
   heading: "第二章节的首个小节",
-  blocks: [{ type: "paragraph", text: "方法论概述。" }],
+  components: [{ type: "paragraph", text: "方法论概述。" }],
 } as Slide
 
 const ir = (theme: string): PptxIR =>
@@ -79,7 +79,7 @@ const EXPECTED_CONTENT_BARE =
   '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="96" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,332.38,1088"><g transform="translate(96,332.38)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">一</text></g></g></g>'
 
 describe("RailNumberedContent", () => {
-  it("academic tokens 下输出与迁移前的 BCGEmeraldContent 逐字节一致（档位一，含跨章节编号 + 多 block/subheading/footnote）", () => {
+  it("academic tokens 下输出与迁移前的 BCGEmeraldContent 逐字节一致（档位一，含跨章节编号 + 多 component/subheading/footnote）", () => {
     const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const deck = ir("academic")
 
@@ -104,8 +104,8 @@ describe("RailNumberedContent", () => {
 
   it("单块 slide（无 subheading/footnote，单章节 deck）同样逐字节一致", () => {
     const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
-    const bare: Slide = { type: "content", heading: "简报", blocks: [{ type: "paragraph", text: "一" }] } as Slide
-    const soloChapter: Slide = { type: "chapter", heading: "唯一章节", blocks: [] } as Slide
+    const bare: Slide = { type: "content", heading: "简报", components: [{ type: "paragraph", text: "一" }] } as Slide
+    const soloChapter: Slide = { type: "chapter", heading: "唯一章节", components: [] } as Slide
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
@@ -173,12 +173,12 @@ describe("RailNumberedContent", () => {
     const manyChapters12 = Array.from({ length: 12 }, (_, i) => ({
       type: "chapter" as const,
       heading: `第${i + 1}章`,
-      blocks: [],
+      components: [],
     }))
     const tenContent = Array.from({ length: 10 }, (_, i) => ({
       type: "content" as const,
       heading: `内容${i + 1}`,
-      blocks: [],
+      components: [],
     }))
     const doc12 = ir("academic")
     doc12.slides = [...manyChapters12, ...tenContent]
@@ -199,12 +199,12 @@ describe("RailNumberedContent", () => {
     const manyChapters100 = Array.from({ length: 100 }, (_, i) => ({
       type: "chapter" as const,
       heading: `第${i + 1}章`,
-      blocks: [],
+      components: [],
     }))
     const thousandContent = Array.from({ length: 1000 }, (_, i) => ({
       type: "content" as const,
       heading: `内容${i + 1}`,
-      blocks: [],
+      components: [],
     }))
     const doc100 = ir("academic")
     doc100.slides = [...manyChapters100, ...thousandContent]
@@ -227,7 +227,7 @@ describe("RailNumberedContent", () => {
     const slide: Slide = {
       type: "content",
       heading: "验证子集",
-      blocks: [
+      components: [
         { type: "paragraph", text: "文本段落。" },
         { type: "bullets", items: ["项目一", "项目二"], style: "default" },
       ],
@@ -254,7 +254,7 @@ describe("RailNumberedContent", () => {
     const slide: Slide = {
       type: "content",
       heading: CJK_LONG,
-      blocks: [{ type: "paragraph", text: "概要。" }],
+      components: [{ type: "paragraph", text: "概要。" }],
     } as Slide
     const doc: PptxIR = {
       version: "3",
@@ -295,7 +295,7 @@ describe("RailNumberedContent", () => {
       type: "content",
       heading: "三大支柱",
       subheading: CJK_LONG.repeat(2),
-      blocks: [{ type: "paragraph", text: "核心概要。" }],
+      components: [{ type: "paragraph", text: "核心概要。" }],
     } as Slide
     const doc: PptxIR = {
       version: "3",

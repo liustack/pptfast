@@ -12,12 +12,12 @@ import type { PptxIR, Slide } from "@/ir"
 const endingWithHeading: Slide = {
   type: "ending",
   heading: "感谢聆听",
-  blocks: [],
+  components: [],
 } as Slide
 
 // 无 heading 的 ending：触发 heading 兜底"谢谢。"，其结尾句号被
 // splitTrailingPeriod 拆出，单独渲染为 accent 色的 tspan。
-const endingBare: Slide = { type: "ending", blocks: [] } as Slide
+const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
   ({
@@ -102,7 +102,7 @@ describe("ConstellationEnding", () => {
     // Post-launch revision: the old bordered/filled meta "card" is gone —
     // replaced by a plain 60x3 accent bar (no card) plus bare centered meta
     // text.
-    const slide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
     const ctx = buildCtx(resolveStyle("tech"), {})
 
     const docWithMeta = ir("tech", slide)
@@ -142,7 +142,7 @@ describe("ConstellationEnding", () => {
       type: "ending",
       heading: "谢谢",
       subheading: "感谢聆听与支持",
-      blocks: [],
+      components: [],
     } as Slide
     const ctx = buildCtx(resolveStyle("tech"), {})
     const doc = ir("tech", slide)
@@ -161,7 +161,7 @@ describe("ConstellationEnding", () => {
     // No org/contact/date either, so the signature bar + meta text (which
     // also renders centered muted text) is omitted entirely — isolates the
     // assertion to just the subheading line, and confirms no orphaned bar.
-    const slideNoSub: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
+    const slideNoSub: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
     const docNoSub = irNoMeta("tech", slideNoSub)
     const markupNoSub = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -177,7 +177,7 @@ describe("ConstellationEnding", () => {
   })
 
   it("a heading that doesn't end in '。' renders unchanged — no split accent tspan", () => {
-    const customSlide: Slide = { type: "ending", heading: "Thank you", blocks: [] } as Slide
+    const customSlide: Slide = { type: "ending", heading: "Thank you", components: [] } as Slide
     const ctx = buildCtx(resolveStyle("tech"), {})
     const customDoc = ir("tech", customSlide)
     const customMarkup = renderSvgMarkup(
@@ -197,8 +197,8 @@ describe("ConstellationEnding", () => {
     // forces wrapping here (maxWidth=1088/fontSize=88) while staying at the
     // *nominal* 88px (not shrunk). Nothing renders above the heading in this
     // Ending, so anchoring the last line is unconditionally safe.
-    const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明式管理你的", blocks: [] } as Slide
-    const oneLineSlide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
+    const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明式管理你的", components: [] } as Slide
+    const oneLineSlide: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
     const ctx = buildCtx(resolveStyle("tech"), {})
 
     const twoLineRoot = parseSvgRoot(

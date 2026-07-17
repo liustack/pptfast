@@ -16,12 +16,12 @@ const endingWithHeading: Slide = {
   type: "ending",
   heading: "衷心感谢",
   subheading: "感谢参与本次评审",
-  blocks: [],
+  components: [],
 } as Slide
 
 // 无 heading（也无 subheading）的 ending：触发双重兜底——标题兜底
 // "Thank you."，副题兜底"谢谢。"。
-const endingBare: Slide = { type: "ending", blocks: [] } as Slide
+const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
   ({
@@ -110,7 +110,7 @@ describe("BannerEnding", () => {
   // 压缩，不能原样溢出，且 assertSubset 通过。
   it("超长 heading 会被压缩（assertSubset 通过），不会原样渲染整段长文本", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
-    const slide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, components: [] } as Slide
     const deck = ir("consulting", slide)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -127,7 +127,7 @@ describe("BannerEnding", () => {
   // headingY=356、分隔线间距=164（修复前的基准行为不变）。
   it("单行 heading：headingY=356、分隔线间距=164", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
-    const slide: Slide = { type: "ending", heading: "Thank you.", blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: "Thank you.", components: [] } as Slide
     const deck = ir("consulting", slide)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -147,7 +147,7 @@ describe("BannerEnding", () => {
   // （<=714）。
   it("2 行 heading 最坏情形（恰好 2 行、132px 未收缩）：首行上移封顶 85、分隔线间距收紧为 128、版权不超出页面", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
-    const slide: Slide = { type: "ending", heading: "从今天开始用声明式", blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: "从今天开始用声明式", components: [] } as Slide
     const deck = ir("consulting", slide)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">

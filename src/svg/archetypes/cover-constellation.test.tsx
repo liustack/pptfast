@@ -11,7 +11,7 @@ const slide: Slide = {
   type: "cover",
   heading: "数据驱动的增长引擎",
   subheading: "面向 2027 的技术路线图",
-  blocks: [],
+  components: [],
 } as Slide
 const ir = (theme: string): PptxIR =>
   ({
@@ -27,7 +27,7 @@ const ir = (theme: string): PptxIR =>
 // templates/tech.test.tsx's Decor describe block used for the motif's own
 // structural/logo-clearance checks (a subheading would add an accent bar
 // <rect>, which the motif-shape assertions below don't want to see).
-const minimalSlide: Slide = { type: "cover", heading: "封面", blocks: [] } as Slide
+const minimalSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
 
 // Captured once from the (now-retired) legacy `BentoTechCover` — locks the
 // byte-identical output the port preserved, without importing templates/.

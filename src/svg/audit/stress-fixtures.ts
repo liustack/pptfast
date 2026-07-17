@@ -1,6 +1,6 @@
 import type {
   ArchitectureLayer,
-  Block,
+  Component,
   FlowEdge,
   FlowNode,
   PptxIR,
@@ -44,7 +44,7 @@ const CHART_LABEL = MIXED_LONG.slice(0, 24)
 /**
  * icon_cards/steps `text` field stress content: long enough to push
  * `layoutSvgText`'s 2-line font-shrink past its own floor (1px/unit — see
- * `blocks/icon-cards.tsx`'s `layoutIconCard` / `blocks/steps.tsx`'s
+ * `components/icon-cards.tsx`'s `layoutIconCard` / `components/steps.tsx`'s
  * `layoutStepItem`). A near-miss length wouldn't exercise the fit-fallback
  * this deck is stress-testing; this repeat count decisively does (verified
  * against the narrowest per-card content width across all 6 themes).
@@ -162,20 +162,20 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   // dual-gate rendering pipeline for the first time.
   heading: {
     ...deck([
-      { type: "cover", heading: CJK_LONG, subheading: MIXED_LONG, blocks: [] },
-      { type: "chapter", heading: CJK_LONG, subheading: MIXED_LONG, blocks: [] },
+      { type: "cover", heading: CJK_LONG, subheading: MIXED_LONG, components: [] },
+      { type: "chapter", heading: CJK_LONG, subheading: MIXED_LONG, components: [] },
       {
         type: "content",
         heading: CJK_LONG_WITH_DASH,
         subheading: MIXED_LONG,
-        blocks: [],
+        components: [],
       },
-      { type: "ending", heading: CJK_LONG, subheading: MIXED_LONG, blocks: [] },
+      { type: "ending", heading: CJK_LONG, subheading: MIXED_LONG, components: [] },
       {
         type: "ending",
         heading: ENDING_TIGHT_HEADING,
         subheading: MIXED_LONG,
-        blocks: [],
+        components: [],
       },
     ]),
     meta: {
@@ -191,7 +191,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "要点压力测试",
-      blocks: [
+      components: [
         {
           type: "bullets",
           style: "numbered",
@@ -210,7 +210,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       arrangement: "two_column",
       heading: "要点双栏压力测试",
-      blocks: [
+      components: [
         {
           type: "bullets",
           style: "checklist",
@@ -227,14 +227,14 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
 
   // kpi: a 4-card kpi_focus page plus a big_number hero page, both with
   // extreme value/unit/label lengths — plus a big_number page whose hero is
-  // followed by ordinary supporting blocks (2 bullets + 1 long paragraph),
-  // stress-testing the bespoke arrangement's supporting-block stacking path.
+  // followed by ordinary supporting components (2 bullets + 1 long paragraph),
+  // stress-testing the bespoke arrangement's supporting-component stacking path.
   kpi: deck([
     {
       type: "content",
       arrangement: "kpi_focus",
       heading: "KPI 压力测试",
-      blocks: [
+      components: [
         {
           type: "kpi_cards",
           items: [
@@ -265,7 +265,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       arrangement: "big_number",
       heading: "大数字压力测试",
-      blocks: [
+      components: [
         {
           type: "kpi_cards",
           items: [{ value: "1,234,567.89", unit: "次/秒", label: MIXED_LONG }],
@@ -276,7 +276,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       arrangement: "big_number",
       heading: "大数字支撑内容压力测试",
-      blocks: [
+      components: [
         {
           type: "kpi_cards",
           items: [{ value: "1,234,567.89", unit: "次/秒", label: MIXED_LONG }],
@@ -304,7 +304,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "引用压力测试",
-      blocks: [
+      components: [
         {
           type: "citation",
           sources: [
@@ -334,9 +334,9 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "段落堆叠压力测试",
-      blocks: Array.from(
+      components: Array.from(
         { length: 6 },
-        (): Block => ({
+        (): Component => ({
           type: "paragraph",
           text: `${CJK_LONG}${CJK_LONG}${CJK_LONG}`,
         })
@@ -350,7 +350,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "流程图压力测试",
-      blocks: [
+      components: [
         {
           type: "flowchart",
           direction: "TB",
@@ -368,7 +368,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "架构图压力测试",
-      blocks: [
+      components: [
         {
           type: "architecture",
           // architecture items are never wrapped/truncated by the renderer, so
@@ -387,7 +387,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "时间线压力测试",
-      blocks: [
+      components: [
         {
           type: "timeline",
           milestones: Array.from(
@@ -405,14 +405,14 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
 
   // chart: two_column page with two charts, series/category names truncated
   // to 24 chars per the brief — plus an assertion_evidence page (chart
-  // evidence + 2 long supporting blocks) stress-testing the bespoke arrangement's
-  // supporting-block stacking path.
+  // evidence + 2 long supporting components) stress-testing the bespoke arrangement's
+  // supporting-component stacking path.
   chart: deck([
     {
       type: "content",
       arrangement: "two_column",
       heading: "图表压力测试",
-      blocks: [
+      components: [
         {
           type: "chart",
           chart_type: "bar",
@@ -455,7 +455,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       arrangement: "assertion_evidence",
       heading: "论证证据支撑内容压力测试",
-      blocks: [
+      components: [
         {
           type: "chart",
           chart_type: "bar",
@@ -491,7 +491,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "对比表压力测试",
-      blocks: [
+      components: [
         {
           type: "comparison",
           columns: [MIXED_LONG, MIXED_LONG, MIXED_LONG, MIXED_LONG],
@@ -506,7 +506,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       arrangement: "quote",
       heading: "引言压力测试",
-      blocks: [
+      components: [
         {
           type: "quote",
           text: `${CJK_LONG} ${CJK_LONG} ${CJK_LONG} ${PUNCTUATION_STRESS}`,
@@ -518,7 +518,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       arrangement: "code",
       heading: "代码压力测试",
-      blocks: [
+      components: [
         {
           type: "code",
           language: "ts",
@@ -529,7 +529,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "标注压力测试",
-      blocks: [
+      components: [
         {
           type: "callout",
           variant: "warn",
@@ -540,7 +540,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "配图压力测试",
-      blocks: [
+      components: [
         {
           type: "image",
           asset_id: "missing",
@@ -551,20 +551,20 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
   ]),
 
-  // new_blocks_stress: icon_cards (4-item schema max, extreme title+text —
+  // new_components_stress: icon_cards (4-item schema max, extreme title+text —
   // triggers both fitSvgLine's single-line truncation and layoutSvgText's
   // 2-line shrink), steps (5-item schema max in a two_column page, narrow
   // enough on every theme to force the horizontal-degrades-to-vertical
   // width threshold — see steps.tsx's needsVerticalLayout), verdict_banner
   // (extreme text + icon + an embedded **强调** run), and a mixed page
   // (icon_cards + verdict_banner sharing a page with a long subheading, so
-  // the subheading's fixed content-rect budget interacts with real block
-  // content instead of the "heading" deck's blocks:[] empty pages).
-  new_blocks_stress: deck([
+  // the subheading's fixed content-rect budget interacts with real component
+  // content instead of the "heading" deck's components:[] empty pages).
+  new_components_stress: deck([
     {
       type: "content",
       heading: "图标卡片压力测试",
-      blocks: [
+      components: [
         {
           type: "icon_cards",
           items: [
@@ -583,7 +583,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       // targets the *horizontal* card layout's own narrow per-card width.
       type: "content",
       heading: "步骤压力测试（横排）",
-      blocks: [
+      components: [
         {
           type: "steps",
           items: Array.from({ length: 5 }, () => ({
@@ -600,7 +600,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       arrangement: "two_column",
       heading: "步骤压力测试（纵排降级）",
-      blocks: [
+      components: [
         {
           type: "steps",
           items: Array.from({ length: 5 }, () => ({
@@ -620,7 +620,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "结论横幅压力测试",
-      blocks: [
+      components: [
         {
           type: "verdict_banner",
           text: VERDICT_TEXT_STRESS,
@@ -633,7 +633,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       type: "content",
       heading: "混排内容压力测试",
       subheading: MIXED_LONG,
-      blocks: [
+      components: [
         {
           type: "icon_cards",
           items: [
@@ -675,7 +675,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "流程图边标签压力测试（纵向）",
-      blocks: [
+      components: [
         {
           type: "flowchart",
           direction: "TB",
@@ -696,7 +696,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     {
       type: "content",
       heading: "流程图边标签压力测试（横向）",
-      blocks: [
+      components: [
         {
           type: "flowchart",
           direction: "LR",

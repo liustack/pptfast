@@ -1,7 +1,7 @@
 import { Fragment } from "react"
 import type { PptxIR, Slide } from "@/ir"
-import type { BlockCtx } from "./blocks/types"
-import { renderBlock } from "./blocks"
+import type { ComponentCtx } from "./components/types"
+import { renderComponent } from "./components"
 import { layoutContentFit, stackBottom } from "./layout"
 import { findImageComponent } from "./layouts/find-image"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
@@ -40,7 +40,7 @@ export function ImageCoverPage({
   ir: PptxIR
   slide: Slide
   index: number
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
   const accent = ctx.colors.accent
   const isChapter = slide.type === "chapter"
@@ -157,7 +157,7 @@ const SPLIT_IMG_H = H
 
 /**
  * image_split 出血版式：左列全高出血大图（页顶到页底、贴左缘，无框线），
- * 右栏 kicker + 大标题 + accent 短线 + 副题 + blocks 的排印层次。
+ * 右栏 kicker + 大标题 + accent 短线 + 副题 + components 的排印层次。
  * 无 image 块时回落 null（调用方走模板正常路径）。
  */
 export function ImageSplitPage({
@@ -167,17 +167,17 @@ export function ImageSplitPage({
 }: {
   ir: PptxIR
   slide: Slide
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
-  const imageBlock = findImageComponent(slide)
-  if (!imageBlock) return null
+  const imageComponent = findImageComponent(slide)
+  if (!imageComponent) return null
   // 图文范式族（ppt-master P04 右图出血）：image_side=right 时整页镜像——
   // 图列贴右缘、文字区在左。
   const rightSide = slide.image_side === "right"
   const imgX = rightSide ? W - SPLIT_IMG_W : 0
   const textX = rightSide ? 96 : SPLIT_TEXT_X
-  const src = ctx.images?.[imageBlock.asset_id]?.src
-  const rest = slide.blocks.filter((b) => b !== imageBlock)
+  const src = ctx.images?.[imageComponent.asset_id]?.src
+  const rest = slide.components.filter((b) => b !== imageComponent)
   const org = ir.meta.organization
 
   // fontWeight 600 而非 700：magazine/creative 的衬线 heading（SimSun/Lora）
@@ -203,12 +203,12 @@ export function ImageSplitPage({
   cursor += 30
   const subY = cursor + 6
   if (sub.lines.length) cursor += sub.lines.length * sub.lineHeight + 24
-  const blocksTop = cursor + 8
-  const blocksH = H - 96 - blocksTop
+  const componentsTop = cursor + 8
+  const componentsH = H - 96 - componentsTop
   const { placed, dropped } = layoutContentFit(
     "single",
     rest,
-    { x: textX, y: blocksTop, w: SPLIT_TEXT_W, h: Math.max(120, blocksH) },
+    { x: textX, y: componentsTop, w: SPLIT_TEXT_W, h: Math.max(120, componentsH) },
     ctx,
   )
 
@@ -226,9 +226,9 @@ export function ImageSplitPage({
       ) : (
         <rect x={imgX} y={0} width={SPLIT_IMG_W} height={SPLIT_IMG_H} fill={ctx.colors.surface} />
       )}
-      {imageBlock.caption &&
+      {imageComponent.caption &&
         (() => {
-          const fitted = fitSvgLine(imageBlock.caption, {
+          const fitted = fitSvgLine(imageComponent.caption, {
             maxWidth: SPLIT_IMG_W - 48,
             fontSize: 15,
             minFontSize: 12,
@@ -293,7 +293,7 @@ export function ImageSplitPage({
         </text>
       ))}
       {placed.map((p, i) => (
-        <Fragment key={i}>{renderBlock(p.block, p.box, ctx)}</Fragment>
+        <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
       {dropped > 0 && (
         <text
@@ -317,7 +317,7 @@ const BAND_PAD_X = 96
 
 /**
  * image_top 顶图分栏（ppt-master P05）：上半全幅出血图（贴顶三边）+
- * 图下细标题行 + 下方文字 blocks 自动分列（2-3 块横排，1 块单栏）。
+ * 图下细标题行 + 下方文字 components 自动分列（2-3 块横排，1 块单栏）。
  * 无 image 块回落 null（调用方走模板路径）。
  */
 export function ImageTopPage({
@@ -327,12 +327,12 @@ export function ImageTopPage({
 }: {
   ir: PptxIR
   slide: Slide
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
-  const imageBlock = findImageComponent(slide)
-  if (!imageBlock) return null
-  const src = ctx.images?.[imageBlock.asset_id]?.src
-  const rest = slide.blocks.filter((b) => b !== imageBlock)
+  const imageComponent = findImageComponent(slide)
+  if (!imageComponent) return null
+  const src = ctx.images?.[imageComponent.asset_id]?.src
+  const rest = slide.components.filter((b) => b !== imageComponent)
 
   const title = layoutSvgText(slide.heading, {
     maxWidth: W - BAND_PAD_X * 2 - 120,
@@ -341,8 +341,8 @@ export function ImageTopPage({
     lineHeightRatio: 1.2,
   })
   const bandY = TOP_IMG_H + 52
-  const blocksTop = bandY + 34
-  const blocksH = H - 84 - blocksTop
+  const componentsTop = bandY + 34
+  const componentsH = H - 84 - componentsTop
   // 2-3 个文字块横向分列（P05 三栏），单块全宽
   const n = Math.max(1, Math.min(rest.length, 3))
   const colGap = 40
@@ -350,9 +350,9 @@ export function ImageTopPage({
   const cols = rest.slice(0, 3).map((b, i) => {
     const rect = {
       x: BAND_PAD_X + i * (colW + colGap),
-      y: blocksTop,
+      y: componentsTop,
       w: colW,
-      h: Math.max(100, blocksH),
+      h: Math.max(100, componentsH),
     }
     const { placed } = layoutContentFit("single", [b], rect, ctx)
     return placed
@@ -392,7 +392,7 @@ export function ImageTopPage({
       {cols.map((placed, ci) => (
         <Fragment key={ci}>
           {placed.map((p, i) => (
-            <Fragment key={i}>{renderBlock(p.block, p.box, ctx)}</Fragment>
+            <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
           ))}
         </Fragment>
       ))}
@@ -466,15 +466,15 @@ export function ImageAnnotatePage({
 }: {
   ir: PptxIR
   slide: Slide
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
-  const imageBlock = findImageComponent(slide)
-  if (!imageBlock) return null
-  const src = ctx.images?.[imageBlock.asset_id]?.src
-  const bulletsBlock = slide.blocks.find(
-    (b): b is Extract<Slide["blocks"][number], { type: "bullets" }> => b.type === "bullets",
+  const imageComponent = findImageComponent(slide)
+  if (!imageComponent) return null
+  const src = ctx.images?.[imageComponent.asset_id]?.src
+  const bulletsComponent = slide.components.find(
+    (b): b is Extract<Slide["components"][number], { type: "bullets" }> => b.type === "bullets",
   )
-  const annotations = (bulletsBlock?.items ?? []).slice(0, 4).map(splitAnnotation)
+  const annotations = (bulletsComponent?.items ?? []).slice(0, 4).map(splitAnnotation)
 
   const title = layoutSvgText(slide.heading, {
     maxWidth: 900,
@@ -541,7 +541,7 @@ export function ImageAnnotatePage({
       ) : (
         <rect x={ANN_IMG_X} y={ANN_IMG_Y} width={ANN_IMG_W} height={ANN_IMG_H} fill={ctx.colors.surface} />
       )}
-      {imageBlock.caption && (
+      {imageComponent.caption && (
         <text
           x={W / 2}
           y={ANN_IMG_Y + ANN_IMG_H + ANN_FRAME_PAD + 30}
@@ -551,7 +551,7 @@ export function ImageAnnotatePage({
           fill={ctx.colors.muted}
           dominantBaseline="alphabetic"
         >
-          {fitSvgLine(imageBlock.caption, { maxWidth: 620, fontSize: 14, minFontSize: 12 }).text}
+          {fitSvgLine(imageComponent.caption, { maxWidth: 620, fontSize: 14, minFontSize: 12 }).text}
         </text>
       )}
       {annotations.map((ann, i) => {
@@ -624,7 +624,7 @@ const MAX_BOTTOM_IMG = 360
 
 /**
  * image_bottom 上文下图（ppt-master P15 对等对话）：上半 heading/副题/
- * blocks 居中排布，下半全幅出血图（贴底三边）。
+ * components 居中排布，下半全幅出血图（贴底三边）。
  */
 export function ImageBottomPage({
   ir,
@@ -633,12 +633,12 @@ export function ImageBottomPage({
 }: {
   ir: PptxIR
   slide: Slide
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
-  const imageBlock = findImageComponent(slide)
-  if (!imageBlock) return null
-  const src = ctx.images?.[imageBlock.asset_id]?.src
-  const rest = slide.blocks.filter((b) => b !== imageBlock)
+  const imageComponent = findImageComponent(slide)
+  if (!imageComponent) return null
+  const src = ctx.images?.[imageComponent.asset_id]?.src
+  const rest = slide.components.filter((b) => b !== imageComponent)
 
   const title = layoutSvgText(slide.heading, {
     maxWidth: 900,
@@ -666,7 +666,7 @@ export function ImageBottomPage({
   cursor += 26
   const subY = cursor + 4
   if (sub.lines.length) cursor += sub.lines.length * sub.lineHeight + 18
-  const blocksTop = cursor + 6
+  const componentsTop = cursor + 6
   // 内容优先（2026-07-14 用户截图：固定底图高把正文区压太小、numbered
   // 内容溢进图片被裁）：正文先排在「到最小底图上缘」的大区，图片起点落
   // 正文实际底部下方，图高 MIN_BOTTOM_IMG..MAX_BOTTOM_IMG 自适应——短内容
@@ -675,10 +675,10 @@ export function ImageBottomPage({
   const { placed } = layoutContentFit(
     "single",
     rest,
-    { x: 240, y: blocksTop, w: W - 480, h: Math.max(60, contentZoneBottom - blocksTop) },
+    { x: 240, y: componentsTop, w: W - 480, h: Math.max(60, contentZoneBottom - componentsTop) },
     ctx,
   )
-  const contentBottom = placed.length ? stackBottom(placed, ctx) : blocksTop
+  const contentBottom = placed.length ? stackBottom(placed, ctx) : componentsTop
   const imgTop = Math.min(
     Math.max(contentBottom + 24, H - MAX_BOTTOM_IMG),
     H - MIN_BOTTOM_IMG,
@@ -718,7 +718,7 @@ export function ImageBottomPage({
         </text>
       ))}
       {placed.map((p, i) => (
-        <Fragment key={i}>{renderBlock(p.block, p.box, ctx)}</Fragment>
+        <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
       {src ? (
         <image
@@ -732,9 +732,9 @@ export function ImageBottomPage({
       ) : (
         <rect x={0} y={imgTop} width={W} height={imgH} fill={ctx.colors.surface} />
       )}
-      {imageBlock.caption &&
+      {imageComponent.caption &&
         (() => {
-          const fitted = fitSvgLine(imageBlock.caption, {
+          const fitted = fitSvgLine(imageComponent.caption, {
             maxWidth: W - 240,
             fontSize: 15,
             minFontSize: 12,

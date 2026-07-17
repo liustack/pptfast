@@ -46,7 +46,7 @@ function randomToken(): string {
  * (mutating `opts` in place), if `op` carries a `blockIndex` (set by
  * `svg2pptx/dispatch.ts`'s `walk` when this op's source `<g>` was tagged
  * `data-blk` — only happens when `meta.animation.elements === "auto"`, see
- * `BlockCtx.blockIndex`'s doc comment). A no-op whenever `op.blockIndex` or
+ * `ComponentCtx.blockIndex`'s doc comment). A no-op whenever `op.blockIndex` or
  * `slideIndex` is absent, which is always true on the default (`elements`
  * unset/`"none"`) export path — the whole point being that path never emits
  * `data-blk` in the first place, so this never fires and `objectName` stays
@@ -56,7 +56,7 @@ function randomToken(): string {
  * `objectName` so the two markers coexist on one shape (S3: "与渐变的
  * objectName 标记兼容共存"); when there's no existing name, a fresh one is
  * minted the same way the gradient patch does (`svg2pptx-` + a random token)
- * so every block-tagged shape still gets a legible, distinguishable name in
+ * so every component-tagged shape still gets a legible, distinguishable name in
  * PowerPoint's Selection Pane.
  */
 function withBlockMarker(
@@ -92,8 +92,8 @@ function runToProp(run: TextRunData): { text: string; options: Record<string, un
  * once the whole presentation has been written to a .pptx zip.
  *
  * `slideIndex` is this op's slide's 0-based position in the deck — only used
- * (via `withBlockMarker`) to fold wave-C S3's block marker into `objectName`
- * when `op.blockIndex` is set; omit it and block-tagged ops just keep
+ * (via `withBlockMarker`) to fold wave-C S3's component marker into `objectName`
+ * when `op.blockIndex` is set; omit it and component-tagged ops just keep
  * whatever `objectName` they'd otherwise get (i.e. the gradient patch's, or
  * none).
  */
@@ -260,9 +260,9 @@ export async function applyGradientFills(
         )
       }
 
-      const block = xml.slice(spStart, spEnd)
+      const component = xml.slice(spStart, spEnd)
       let replaced = false
-      const patched = block.replace(SOLID_FILL_RE, () => {
+      const patched = component.replace(SOLID_FILL_RE, () => {
         replaced = true
         return patch.xml
       })

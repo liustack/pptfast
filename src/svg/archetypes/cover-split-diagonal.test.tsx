@@ -11,7 +11,7 @@ const slide: Slide = {
   type: "cover",
   heading: "对角分割封面",
   subheading: "斜切线上的标题",
-  blocks: [],
+  components: [],
 } as Slide
 const ir = (theme: string): PptxIR =>
   ({

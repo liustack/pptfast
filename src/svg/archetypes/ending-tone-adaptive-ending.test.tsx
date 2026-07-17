@@ -29,11 +29,11 @@ const EXPECTED_ENDING_WITH_HEADING_WITH_BG =
   '<rect width="1280" height="720" fill="#000000" opacity="0.32"></rect><text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.8" letter-spacing="3" dominant-baseline="alphabetic">维岚科技</text><text x="64" y="396" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="100" font-weight="700" fill="#FFFFFF" letter-spacing="-2" dominant-baseline="alphabetic">衷心感谢</text><line x1="64" y1="520" x2="1216" y2="520" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.6"></line><text x="64" y="572" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.6" letter-spacing="4" dominant-baseline="alphabetic">联系</text><text x="64" y="608" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="28" fill="#FFFFFF" dominant-baseline="alphabetic">李雷 · hi@weilan.example · weilan.example</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.55" dominant-baseline="alphabetic">© 2026 维岚科技 保留所有权利</text>'
 
 // 有 heading 的 ending：标题原样渲染，不触发 `slide.heading || "谢谢"` 兜底。
-const endingWithHeading: Slide = { type: "ending", heading: "衷心感谢", blocks: [] } as Slide
+const endingWithHeading: Slide = { type: "ending", heading: "衷心感谢", components: [] } as Slide
 
 // 无 heading 的 ending：触发标题兜底"谢谢"——注意源函数（见文件头「副题兜底
 // 语义」）完全没有 subheading 分支，无副题可兜底。
-const endingBare: Slide = { type: "ending", blocks: [] } as Slide
+const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const bgImages: PptxIR["assets"]["images"] = {
   bg: { src: "data:image/png;base64,iVBOR", alt: "背景" },
@@ -128,7 +128,7 @@ describe("ToneAdaptiveEnding", () => {
   it("shrinks a pathologically long custom heading instead of overflowing", () => {
     const tokens = LEGACY_CUSTOM_TOKENS
     const ctx = buildCtx(tokens, {})
-    const longSlide: Slide = { type: "ending", heading: CJK_LONG, blocks: [] } as Slide
+    const longSlide: Slide = { type: "ending", heading: CJK_LONG, components: [] } as Slide
     const deck = ir("custom", longSlide)
     const markup = renderSvgMarkup(
       wrap(<ToneAdaptiveEnding ir={deck} slide={longSlide} index={0} ctx={ctx} />),
@@ -144,8 +144,8 @@ describe("ToneAdaptiveEnding", () => {
       // "从今天开始用声明式管理你" (12 CJK chars) is the shortest input that
       // forces wrapping here (maxWidth=1152/fontSize=100) while staying at
       // the *nominal* 100px (not shrunk) — the worst case for lineHeight.
-      const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明式管理你", blocks: [] } as Slide
-      const oneLineSlide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
+      const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明式管理你", components: [] } as Slide
+      const oneLineSlide: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
       const tokens = LEGACY_CUSTOM_TOKENS
       const ctx = buildCtx(tokens, {})
 

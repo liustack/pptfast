@@ -60,10 +60,10 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
     gradientBlob,
     ir.meta.animation?.transition ?? "fade"
   )
-  // Per-block entrance animations (wave-C S3): opt-in only, default off.
+  // Per-component entrance animations (wave-C S3): opt-in only, default off.
   // `renderOps` above only tagged shapes with a `blk{slideIndex}-{blockIndex}`
   // objectName marker when `elements === "auto"` (`FullSlideSvg` only builds
-  // `ctx.blockIndex` in that case — see `BlockCtx`'s doc comment), so calling
+  // `ctx.blockIndex` in that case — see `ComponentCtx`'s doc comment), so calling
   // `applyElementAnimations` is gated the same way here: every other deck
   // skips this JSZip pass entirely, keeping the default export path exactly
   // what it was before this feature existed.
@@ -71,7 +71,7 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
     ir.meta.animation?.elements === "auto"
       ? await applyElementAnimations(
           transitionBlob,
-          ir.slides.map((slide) => slide.blocks.map((block) => block.type))
+          ir.slides.map((slide) => slide.components.map((component) => component.type))
         )
       : transitionBlob
   // Collapse identical embedded media (e.g. a shared background image) to one part.

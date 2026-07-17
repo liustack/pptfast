@@ -40,14 +40,14 @@ function describeQualityIssue(issue: QualityIssue, themeId: string): string {
       return `heading exceeds ${CAPACITY.headingMaxChars} characters — tighten it into a short, assertive phrase`
     case "density": {
       const limit = CAPACITY.maxBlocksPerSlideOverrides[themeId] ?? CAPACITY.maxBlocksPerSlide
-      return `too many blocks on this slide (max ~${limit}) — split into multiple slides`
+      return `too many components on this slide (max ~${limit}) — split into multiple slides`
     }
     case "bullets_overflow":
       return `bullet list has too many items (max ${CAPACITY.bullets.maxItems}) — trim it or split into multiple slides`
     case "bullet_item_long":
       return "a bullet item is too long — keep it within about 2 lines"
     case "big_number_no_kpi":
-      return "big_number arrangement is missing a kpi_cards block"
+      return "big_number arrangement is missing a kpi_cards component"
     default:
       return `content quality issue (${issue.code})`
   }
@@ -106,9 +106,9 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
  */
 export function validateIr(input: unknown): ValidateResult {
   // IR v2 friendly migration message (dev-channel scope, spec §8: W1 started
-  // it with the theme.override→theme.style mapping, W2 task 3 appends the
-  // second — variant split into layout + arrangement. A later wave appends
-  // its own mapping to this same message when blocks→components lands).
+  // it with the theme.override→theme.style mapping, W2 task 3 appended the
+  // second — variant split into layout + arrangement — and W2 task 4 appends
+  // the third and last one for this wave here: blocks are now components).
   if (typeof input === "object" && input !== null && (input as Record<string, unknown>).version === "2") {
     return {
       ok: false,
@@ -116,7 +116,7 @@ export function validateIr(input: unknown): ValidateResult {
         {
           path: "version",
           message:
-            'IR v2 is not supported by pptfast 0.3 — set version to "3" (theme.override is gone, use theme.style. variant is split into layout and arrangement)',
+            'IR v2 is not supported by pptfast 0.3 — set version to "3" (theme.override is gone, use theme.style. variant is split into layout and arrangement. blocks are now components)',
         },
       ],
     }

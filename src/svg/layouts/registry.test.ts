@@ -83,7 +83,7 @@ describe("content family: body slot + declared arrangements", () => {
     })
   }
 
-  it("cover/chapter/ending archetypes never read blocks, so none declare a body slot", () => {
+  it("cover/chapter/ending archetypes never read components, so none declare a body slot", () => {
     for (const { registry, slideType } of FAMILIES) {
       if (slideType === "content") continue
       for (const id of Object.keys(registry)) {
@@ -105,7 +105,7 @@ describe("content family: body slot + declared arrangements", () => {
     expect(LAYOUT_REGISTRY["bento-panel"].arrangements).toEqual(["single"])
   })
 
-  it("stacked-poster declares arrangements \"all\" (W2 task 3 adjudication: its degrade path passes slide.arrangement straight through unchanged, same as the four plain pass-through archetypes — the conditional hero/strip takeover only applies to 1-2 fitting blocks)", () => {
+  it("stacked-poster declares arrangements \"all\" (W2 task 3 adjudication: its degrade path passes slide.arrangement straight through unchanged, same as the four plain pass-through archetypes — the conditional hero/strip takeover only applies to 1-2 fitting components)", () => {
     expect(LAYOUT_REGISTRY["stacked-poster"].arrangements).toBe("all")
   })
 

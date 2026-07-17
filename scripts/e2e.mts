@@ -86,7 +86,7 @@ if (sharpMod) {
     assets: { images: { smoke: { src: "smoke.webp" } } },
     slides: [
       { type: "cover", heading: "webp smoke" },
-      { type: "content", heading: "Body", blocks: [{ type: "image", asset_id: "smoke" }] },
+      { type: "content", heading: "Body", components: [{ type: "image", asset_id: "smoke" }] },
     ],
   }
   const webpDeckPath = join(OUT, "webp-deck.json")
@@ -103,7 +103,7 @@ if (sharpMod) {
   // assets instead of failing — so the zip-membership checks above pass even
   // if resolveLocalAssets/recodeWithSharp silently degrades to a no-op. Assert
   // the image was actually embedded: a media part exists, and the slide that
-  // holds the image block (slide2 — see webpDeck above) references it via
+  // holds the image component (slide2 — see webpDeck above) references it via
   // r:embed, not just a decorative shape.
   if (!Object.keys(webpZip.files).some((k) => k.startsWith("ppt/media/"))) {
     throw new Error("e2e: webp leg — no ppt/media/* part found, image was not embedded")

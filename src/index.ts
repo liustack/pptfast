@@ -13,5 +13,5 @@ export {
   type ThemeInfo,
 } from "./api"
 export { PptxIRSchema, ThemeSchema, StyleOverrideSchema, BUILTIN_THEME_IDS, BrandConfigSchema } from "./ir"
-export type { PptxIR, Slide, Block, Meta, Assets, BackgroundSpec, StyleOverride, BrandConfig } from "./ir"
+export type { PptxIR, Slide, Component, Meta, Assets, BackgroundSpec, StyleOverride, BrandConfig } from "./ir"
 export { installPlatform, type PptfastPlatform } from "./platform/registry"

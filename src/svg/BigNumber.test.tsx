@@ -2,11 +2,11 @@
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { SvgContent } from "./SvgContent"
-import type { BlockCtx } from "./blocks/types"
-import type { Block } from "@/ir"
+import type { ComponentCtx } from "./components/types"
+import type { Component } from "@/ir"
 import { measureTextUnits } from "../lib/svg-text-layout"
 
-const ctx: BlockCtx = {
+const ctx: ComponentCtx = {
   colors: {
     bg: "#FFF",
     surface: "#EEE",
@@ -19,22 +19,22 @@ const ctx: BlockCtx = {
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
 }
 
-const blocks: Block[] = [
+const components: Component[] = [
   { type: "kpi_cards", items: [{ value: "82", unit: "%", label: "市场渗透率" }] },
   { type: "paragraph", text: "受益于渠道下沉。" },
 ]
 
-function renderBig(b: Block[]) {
+function renderBig(b: Component[]) {
   return render(
     <svg viewBox="0 0 1280 720">
-      <SvgContent arrangement="big_number" blocks={b} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
+      <SvgContent arrangement="big_number" components={b} rect={{ x: 80, y: 264, w: 1120, h: 400 }} ctx={ctx} />
     </svg>,
   )
 }
 
 describe("big_number variant", () => {
   it("renders the first kpi value as a giant hero number with its label", () => {
-    const { container } = renderBig(blocks)
+    const { container } = renderBig(components)
     const texts = Array.from(container.querySelectorAll("text"))
     const hero = texts.find((t) => (t.textContent ?? "").includes("82"))
     expect(hero).toBeTruthy()
@@ -47,7 +47,7 @@ describe("big_number variant", () => {
   })
 
   it("shrinks an overlong hero value and label to fit the content rect", () => {
-    const longBlocks: Block[] = [
+    const longComponents: Component[] = [
       {
         type: "kpi_cards",
         items: [
@@ -60,7 +60,7 @@ describe("big_number variant", () => {
         ],
       },
     ]
-    const { container } = renderBig(longBlocks)
+    const { container } = renderBig(longComponents)
     const texts = Array.from(container.querySelectorAll("text"))
     const hero = texts.find((t) => (t.textContent ?? "").includes("1,234,567.89"))!
     const heroFontSize = Number(hero.getAttribute("font-size"))
@@ -80,7 +80,7 @@ describe("big_number variant", () => {
     // measures the whole <text>'s textContent at the outer (value) font-size.
     // A long unit truncated only against its own (smaller) rendered size can
     // still make that concatenated-at-outer-size estimate blow past rect.w.
-    const longUnitBlocks: Block[] = [
+    const longUnitComponents: Component[] = [
       {
         type: "kpi_cards",
         items: [
@@ -93,7 +93,7 @@ describe("big_number variant", () => {
         ],
       },
     ]
-    const { container } = renderBig(longUnitBlocks)
+    const { container } = renderBig(longUnitComponents)
     const texts = Array.from(container.querySelectorAll("text"))
     const hero = texts.find((t) => (t.textContent ?? "").includes("1"))!
     const outerFontSize = Number(hero.getAttribute("font-size"))
@@ -104,7 +104,7 @@ describe("big_number variant", () => {
     expect(unitTspan.textContent).toMatch(/…$/)
   })
 
-  it("falls back to normal stacking when there is no kpi block", () => {
+  it("falls back to normal stacking when there is no kpi component", () => {
     const { container } = renderBig([{ type: "paragraph", text: "无指标的页。" }])
     // no giant number; paragraph rendered normally
     const big = Array.from(container.querySelectorAll("text")).some(

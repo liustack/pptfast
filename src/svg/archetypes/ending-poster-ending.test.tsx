@@ -24,13 +24,13 @@ const endingWithHeading: Slide = {
   type: "ending",
   heading: "感谢聆听",
   subheading: "期待与你继续探讨",
-  blocks: [],
+  components: [],
 } as Slide
 
 // 无 heading（也无 subheading）的 ending：主标题兜底"提问与讨论"，且
 // slide.heading 缺省触发副标题连带兜底"Questions & Discussion"（见文件头
 // "副题兜底语义"，仅 heading 也缺省才兜底副题）。
-const endingBare: Slide = { type: "ending", blocks: [] } as Slide
+const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
   ({
@@ -115,7 +115,7 @@ describe("PosterEnding", () => {
   // subheading 都缺省，触发 Q&A 兜底）是两条不同的分支，此前未被单独断言过。
   it("heading 存在但 subheading 缺省：既不渲染用户副标题，也不触发 Q&A 连带兜底（不同于 heading 也缺省的 endingBare 分支）", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
-    const slide: Slide = { type: "ending", heading: "感谢聆听", blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: "感谢聆听", components: [] } as Slide
     const deck = ir("insight", slide)
     const out = renderSvgMarkup(<PosterEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
 
@@ -138,7 +138,7 @@ describe("PosterEnding", () => {
   })
 
   it("shrinks a pathologically long custom heading instead of overflowing", () => {
-    const longSlide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
+    const longSlide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, components: [] } as Slide
     const ctx = buildCtx(resolveStyle("insight"), {})
     const deck = ir("insight", longSlide)
     const { root } = render(<PosterEnding ir={deck} slide={longSlide} index={0} ctx={ctx} />)
@@ -152,8 +152,8 @@ describe("PosterEnding", () => {
       // staying at the *nominal* 150px (not shrunk) — ported verbatim from
       // templates/creative.test.tsx, same fixture/formula since PosterEnding
       // is the same construction under token replacement.
-      const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明", blocks: [] } as Slide
-      const oneLineSlide: Slide = { type: "ending", heading: "提问与讨论", blocks: [] } as Slide
+      const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明", components: [] } as Slide
+      const oneLineSlide: Slide = { type: "ending", heading: "提问与讨论", components: [] } as Slide
       const ctx = buildCtx(resolveStyle("insight"), {})
 
       const { root: twoLineRoot } = render(
@@ -193,7 +193,7 @@ describe("PosterEnding", () => {
     })
 
     it("user-reported repro heading ('从今天开始，用声明式管理你的集群') renders with the whole downstream chain within the page", () => {
-      const slide: Slide = { type: "ending", heading: "从今天开始，用声明式管理你的集群", blocks: [] } as Slide
+      const slide: Slide = { type: "ending", heading: "从今天开始，用声明式管理你的集群", components: [] } as Slide
       const ctx = buildCtx(resolveStyle("insight"), {})
       const { root } = render(<PosterEnding ir={ir("insight", slide)} slide={slide} index={0} ctx={ctx} />)
       const allYs = Array.from(root.querySelectorAll("text")).map((t) => Number(t.getAttribute("y")))

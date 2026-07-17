@@ -3,7 +3,7 @@ import type React from "react"
 import type { SvgTemplateProps } from "./types"
 import type { ContentRect } from "../layout"
 import type { StyleColors } from "../../themes/tokens"
-import type { BlockCtx } from "../blocks/types"
+import type { ComponentCtx } from "../components/types"
 import { SvgContent } from "../SvgContent"
 import {
   layoutBento,
@@ -14,7 +14,7 @@ import {
   type KpiItem,
   type IconCardItem,
 } from "../bento-layout"
-import { measureBlock, renderBlock } from "../blocks"
+import { measureComponent, renderComponent } from "../components"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import {
@@ -23,14 +23,14 @@ import {
   truncateToUnits,
 } from "../../lib/svg-text-layout"
 import { Icon } from "../icons"
-import { dedupeKpiUnit, deltaProps, splitKpiValueWidths } from "../blocks/kpi"
-import { iconCardContentHeight, renderIconCardBody } from "../blocks/icon-cards"
+import { dedupeKpiUnit, deltaProps, splitKpiValueWidths } from "../components/kpi"
+import { iconCardContentHeight, renderIconCardBody } from "../components/icon-cards"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 
 /**
  * bento-panel content archetype（spec §3.2，Wave 3 Task 22，本 wave 体量最大
  * 的一个）：tech 主题 content 页型的"换骨"语法——不是「kicker + 标题 + 分隔线 +
- * 满宽内容」，而是把 block 序列炸成一组不等宽的 bento 卡片网格（最多 6 格），
+ * 满宽内容」，而是把 component 序列炸成一组不等宽的 bento 卡片网格（最多 6 格），
  * `kpi_cards`/`icon_cards` 先炸成逐 item 独立卡片，再按"英雄权重"重排进最大
  * 的网格位。自 templates/tech.tsx 的 `BentoTechContent`（959-1163 行，Step A
  * 用 `grep -n` 实测边界——与 brief 给出的 959-1173 略有出入：959-1163 是函数
@@ -59,13 +59,13 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * 逐一核对每个引用标识符的定义来源——`layoutBento`/`explodeIntoUnits`/
  * `sortUnitsByHeroWeight`/`SELF_VISUAL_TYPES`/`BentoCell`/`KpiItem`/
  * `IconCardItem` 均定义于 `../bento-layout`（已导出的公共模块）；
- * `measureBlock`/`renderBlock` 定义于 `../blocks`；`sectionNameFor` 定义于
+ * `measureComponent`/`renderComponent` 定义于 `../components`；`sectionNameFor` 定义于
  * `../../lib/derive`（`chapterNumberFor` 未被本区间引用，未
  * import——那是 `BentoTechChapter` 专属）；`fitHeadingLines` 定义于
  * `../heading-fit`；`fitSvgLine`/`measureTextUnits`/`truncateToUnits` 定义于
  * `../../lib/svg-text-layout`；`Icon` 定义于 `../icons`；
- * `deltaProps`/`splitKpiValueWidths` 定义于 `../blocks/kpi`；
- * `iconCardContentHeight`/`renderIconCardBody` 定义于 `../blocks/icon-cards`；
+ * `deltaProps`/`splitKpiValueWidths` 定义于 `../components/kpi`；
+ * `iconCardContentHeight`/`renderIconCardBody` 定义于 `../components/icon-cards`；
  * `fitEmphasisLine`/`renderEmphasisTspans` 定义于 `../emphasis`——全部是已
  * 公开导出的模块，没有任何一个又回头依赖 `templates/tech.tsx` 文件私有的
  * 其它符号（`CONF_LABEL`/`chapterNumberFor` 等 Cover/Chapter 专属依赖均未
@@ -86,36 +86,36 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 const BENTO_CARD_RADIUS = 6
 const BENTO_CARD_PAD = 20
 // Task 2's outline-card treatment: every bento shell (KPI/icon_cards
-// exploded tile, ordinary block cell) shares this fill/stroke — no separate
+// exploded tile, ordinary component cell) shares this fill/stroke — no separate
 // per-card-kind styling. `colors.panel` (bento's old distinct card-fill tier)
 // was retired in Task 1, so this is a literal `colors.surface`, not a
 // `colors.panel ?? colors.surface` fallback.
 const BENTO_CARD_STROKE_OPACITY = "0.3"
 const BENTO_CARD_STROKE_WIDTH = "1"
-// Content budget inside a card: renderBlock starts at box.y + BENTO_CARD_TOP_PAD
+// Content budget inside a card: renderComponent starts at box.y + BENTO_CARD_TOP_PAD
 // (clears the card's rounded top edge/stroke) and leaves BENTO_CARD_BOTTOM_PAD
 // of breathing room at the bottom before the card's own rounded edge.
 const BENTO_CARD_TOP_PAD = 24
 const BENTO_CARD_BOTTOM_PAD = 16
 
-// Block types whose content is a rendered graphic (no text-fit / truncation
+// Component types whose content is a rendered graphic (no text-fit / truncation
 // semantics of its own) rather than reflowable text — safe to shrink
 // uniformly to fit a card's budget instead of forcing the whole slide to
 // degrade out of the bento grammar.
 const SCALABLE_TYPES = new Set(["chart", "image"])
 
-// Block types that already paint their own card/frame — callout's
+// Component types that already paint their own card/frame — callout's
 // left-bar-and-fill, code's dark panel, comparison's header row + rule
 // lines, quote's decorative mark/attribution treatment, verdict_banner's own
 // bordered/tinted conclusion strip. Stacking bento's own outline shell
 // underneath one of these is a redundant "卡中卡" (card-in-a-card): the
-// block's own chrome is the card. These render bare inside their bento cell
+// component's own chrome is the card. These render bare inside their bento cell
 // instead — the cell's box *is* their render rect, with no extra inset
 // padding or shell paint.
 //
 // `SELF_VISUAL_TYPES` itself now lives in `../bento-layout` (Task 3):
 // `sortUnitsByHeroWeight`'s hero-ranking needs the exact same classification
-// to rank a self-visual block, so it's a single shared set rather than two
+// to rank a self-visual component, so it's a single shared set rather than two
 // lists that could drift.
 
 // Task 2's "双壳治理" (double-shell governance): steps/flowchart/architecture/
@@ -124,9 +124,9 @@ const SCALABLE_TYPES = new Set(["chart", "image"])
 // filled layer bands, timeline's axis/dots — so a bento panel+stroke shell
 // painted *behind* the whole diagram is a redundant second shell around an
 // already-carded picture. Unlike `SELF_VISUAL_TYPES`, these still render
-// through `renderCell`'s ordinary-block branch (same grid box, same
+// through `renderCell`'s ordinary-component branch (same grid box, same
 // BENTO_CARD_PAD/TOP_PAD/BOTTOM_PAD content inset, same audit annotations) —
-// they aren't single-block-centered via `SvgContent` — only the shell rect
+// they aren't single-component-centered via `SvgContent` — only the shell rect
 // itself is skipped (no fill, no stroke; effectively an invisible cell). Kept
 // as a separate set rather than folded into `SELF_VISUAL_TYPES` because that
 // set's *rendering path* (bare via `SvgContent`) is deliberately unchanged
@@ -148,7 +148,7 @@ const PASSTHROUGH_SHELL_TYPES = new Set([
  * icon/value/unit/label/delta layout sized to a bento cell rather than a
  * fixed 120px-tall row card. Placement semantics (value+unit tspan split,
  * delta arrow, icon slot) intentionally mirror kpi.tsx's — `deltaProps` and
- * `splitKpiValueWidths` are imported straight from ../blocks/kpi.tsx (not
+ * `splitKpiValueWidths` are imported straight from ../components/kpi.tsx (not
  * re-implemented here) so the two renderers can't drift on that math; only
  * the sizing constants below and the centered-in-cell layout are bento's own.
  */
@@ -197,7 +197,7 @@ const BENTO_KPI_GLOW_GAP = 12
 // glow cluster inside the card's own right padding — it didn't know a delta
 // arrow (drawn separately, right-anchored at the same padding edge, see the
 // `dp &&` text below) also lives in that corner. With no icon, the value's
-// row sits at the same height as the delta row (no icon block pushing it
+// row sits at the same height as the delta row (no icon component pushing it
 // down), so a long value that shrinks to the clamp puts ring2 right where
 // the delta arrow renders. Reserve extra clearance in the clamp whenever a
 // delta is present (regardless of icon — icon presence only changes whether
@@ -225,7 +225,7 @@ const BENTO_KPI_HERO_GLOW_RING2_R = 14
 
 // A lone KPI item on an otherwise-empty Content page still reads as "one
 // card", not a giant shell stretched to the full bento rect (that's exactly
-// the empty-shell-card look this redesign removes for plain blocks) — fixed
+// the empty-shell-card look this redesign removes for plain components) — fixed
 // at a modest width and centered instead of filling the rect.
 const SINGLE_KPI_CARD_W = 400
 const SINGLE_KPI_CARD_H = 160
@@ -245,21 +245,21 @@ const SINGLE_KPI_CARD_H = 160
  * given cell renders at.
  */
 function kpiContentHeight(hasIcon: boolean, hero: boolean): number {
-  const iconBlockH = hasIcon ? BENTO_KPI_ICON_SIZE + BENTO_KPI_ICON_GAP : 0
+  const iconComponentH = hasIcon ? BENTO_KPI_ICON_SIZE + BENTO_KPI_ICON_GAP : 0
   const valueSize = hero ? BENTO_KPI_HERO_VALUE_SIZE : BENTO_KPI_VALUE_SIZE
   const valueLabelGap = hero
     ? BENTO_KPI_HERO_VALUE_LABEL_GAP
     : BENTO_KPI_VALUE_LABEL_GAP
-  return iconBlockH + valueSize + valueLabelGap
+  return iconComponentH + valueSize + valueLabelGap
 }
 
 /**
  * Render one KPI item's content (icon/value/unit/label/delta/glow) inside
  * `box`, at bento card padding. Does not paint the card shell (surface fill +
  * accent stroke) — callers compose that separately, mirroring how ordinary
- * block cells separate "shell" from "content".
+ * component cells separate "shell" from "content".
  *
- * The content block is vertically centered in the card's fit budget (not
+ * The content component is vertically centered in the card's fit budget (not
  * anchored to the top) — a KPI item exploded into a 2/3-unit bento tier
  * lands in a tall cell (h up to ~454px) while its own content is a fixed
  * ~113px, so top-anchoring left a large dead gap below it. Centering shifts
@@ -272,12 +272,12 @@ function kpiContentHeight(hasIcon: boolean, hero: boolean): number {
 function renderKpiCardBody(
   item: KpiItem,
   box: { x: number; y: number; w: number; h: number },
-  ctx: BlockCtx
+  ctx: ComponentCtx
 ): React.ReactElement {
   const innerX = box.x + BENTO_CARD_PAD
   const innerW = box.w - BENTO_CARD_PAD * 2
   const hasIcon = Boolean(item.icon)
-  const iconBlockH = hasIcon ? BENTO_KPI_ICON_SIZE + BENTO_KPI_ICON_GAP : 0
+  const iconComponentH = hasIcon ? BENTO_KPI_ICON_SIZE + BENTO_KPI_ICON_GAP : 0
 
   // Task 3 "视觉主角": a hero-sized cell (see BENTO_KPI_HERO_MIN_CELL_H's own
   // comment) bumps the value one more display step, 56->72, with the glow
@@ -305,12 +305,12 @@ function renderKpiCardBody(
   const deltaColor = dp ? dp.color || ctx.colors.muted : ctx.colors.muted
 
   // Same value/unit width-split technique as kpi.tsx (shared via
-  // `splitKpiValueWidths`, see blocks/kpi.tsx): the overflow auditor
+  // `splitKpiValueWidths`, see components/kpi.tsx): the overflow auditor
   // measures a <text>'s whole textContent at the outer element's font-size,
   // so the value's width budget is shrunk in proportion to the unit's share
   // of the combined text instead of a flat pixel reserve.
   const valueStr = String(item.value)
-  // 冗余单位去重（同 blocks/kpi.tsx：value 已含 unit 结尾时丢弃，防 "35%%"）。
+  // 冗余单位去重（同 components/kpi.tsx：value 已含 unit 结尾时丢弃，防 "35%%"）。
   const unit = dedupeKpiUnit(valueStr, item.unit)
   const { valueMaxWidth, unitMaxWidth } = splitKpiValueWidths(
     valueStr,
@@ -332,7 +332,7 @@ function renderKpiCardBody(
     minFontSize: BENTO_KPI_LABEL_MIN_SIZE,
   })
 
-  const valueBaselineY = innerY + iconBlockH + valueSize
+  const valueBaselineY = innerY + iconComponentH + valueSize
   const labelBaselineY = valueBaselineY + valueLabelGap
 
   // Glow cluster anchor: just past the value(+unit) text's estimated right
@@ -443,7 +443,7 @@ function renderKpiCardBody(
 function renderKpiCard(
   item: KpiItem,
   box: { x: number; y: number; w: number; h: number },
-  ctx: BlockCtx,
+  ctx: ComponentCtx,
   colors: StyleColors
 ): React.ReactElement {
   return (
@@ -470,7 +470,7 @@ function renderKpiCard(
  * `icon_cards` items explode the same way `kpi_cards` items do (see
  * `explodeIntoUnits`) — each item earns its own bento tile. Unlike the KPI
  * path, the card's *content* drawing (icon/title/text placement + text-fit)
- * is genuinely shared with `blocks/icon-cards.tsx` via `renderIconCardBody`/
+ * is genuinely shared with `components/icon-cards.tsx` via `renderIconCardBody`/
  * `iconCardContentHeight` rather than reimplemented here — only the shell
  * (Task 2 outline: surface fill + accent stroke, no corner stripe) and this
  * cell's own padding convention are bento's own, matching every other bento
@@ -486,7 +486,7 @@ const SINGLE_ICON_CARD_W = 480
 const SINGLE_ICON_CARD_H = 200
 
 // Task 2 "层级拉开": bento's icon-card title bumps 20 -> 22px, bento-only —
-// `blocks/icon-cards.tsx`'s own standalone row layout (used by the other 5
+// `components/icon-cards.tsx`'s own standalone row layout (used by the other 5
 // themes) keeps its default 20px. Threaded through as an explicit
 // `titleFontSize` opt (see `renderIconCardBody`/`iconCardContentHeight`'s
 // signatures in that file) rather than changing that file's module-level
@@ -501,7 +501,7 @@ const BENTO_ICON_CARD_ICON_SIZE = 30
 function renderIconCard(
   item: IconCardItem,
   box: { x: number; y: number; w: number; h: number },
-  ctx: BlockCtx,
+  ctx: ComponentCtx,
   colors: StyleColors
 ): React.ReactElement {
   const innerX = box.x + BENTO_CARD_PAD
@@ -540,11 +540,11 @@ function renderIconCard(
  * degrade gate as before, generalized to `BentoUnit`s: a KPI item's budget
  * is its fixed content height (see `kpiContentHeight`); an icon-card item's
  * budget is `iconCardContentHeight` against the card's padded inner width
- * (shared with `blocks/icon-cards.tsx`, same split as the KPI case); a
- * self-visual block's budget is its own box (no shell padding to subtract,
- * since it renders bare — see `SELF_VISUAL_TYPES`); an ordinary block's
- * budget is `measureBlock` against the card's padded inner box. */
-function cellOverBudget(cell: BentoCell, ctx: BlockCtx): boolean {
+ * (shared with `components/icon-cards.tsx`, same split as the KPI case); a
+ * self-visual component's budget is its own box (no shell padding to subtract,
+ * since it renders bare — see `SELF_VISUAL_TYPES`); an ordinary component's
+ * budget is `measureComponent` against the card's padded inner box. */
+function cellOverBudget(cell: BentoCell, ctx: ComponentCtx): boolean {
   const { unit, box } = cell
   if (unit.kind === "kpi-item") {
     const budgetH = box.h - BENTO_CARD_TOP_PAD - BENTO_CARD_BOTTOM_PAD
@@ -564,25 +564,25 @@ function cellOverBudget(cell: BentoCell, ctx: BlockCtx): boolean {
       }) > budgetH
     )
   }
-  if (SCALABLE_TYPES.has(unit.block.type)) return false
-  if (SELF_VISUAL_TYPES.has(unit.block.type)) {
-    return measureBlock(unit.block, box.w, ctx) > box.h
+  if (SCALABLE_TYPES.has(unit.component.type)) return false
+  if (SELF_VISUAL_TYPES.has(unit.component.type)) {
+    return measureComponent(unit.component, box.w, ctx) > box.h
   }
   const budgetH = box.h - BENTO_CARD_TOP_PAD - BENTO_CARD_BOTTOM_PAD
-  return measureBlock(unit.block, box.w - BENTO_CARD_PAD * 2, ctx) > budgetH
+  return measureComponent(unit.component, box.w - BENTO_CARD_PAD * 2, ctx) > budgetH
 }
 
 /** Render one bento cell — shell (Task 2 outline: surface fill + accent
- * stroke, no corner stripe) plus its unit's content. Non-scalable blocks that
+ * stroke, no corner stripe) plus its unit's content. Non-scalable components that
  * are over budget never reach here (the `degraded` gate in
- * `BentoPanelContent` catches them first); scalable blocks (chart/image) are
- * uniformly shrunk to fit instead; `PASSTHROUGH_SHELL_TYPES` blocks
+ * `BentoPanelContent` catches them first); scalable components (chart/image) are
+ * uniformly shrunk to fit instead; `PASSTHROUGH_SHELL_TYPES` components
  * (steps/flowchart/architecture/timeline) skip the shell rect entirely (see
  * that set's own doc comment — "双壳治理"). */
 function renderCell(
   cell: BentoCell,
   i: number,
-  ctx: BlockCtx,
+  ctx: ComponentCtx,
   colors: StyleColors
 ): React.ReactElement {
   const { unit, box } = cell
@@ -596,15 +596,15 @@ function renderCell(
     "data-audit-box": `${box.x},${box.y},${box.w}`,
     "data-audit-rect": `${box.x},${box.y},${box.w},${box.h}`,
   }
-  // Wave-C S3: every unit variant now carries its source `block` (see
+  // Wave-C S3: every unit variant now carries its source `component` (see
   // `BentoUnit`'s doc comment). kpi-item/icon-card-item cells call
-  // `renderKpiCard`/`renderIconCard` directly below instead of `renderBlock`
-  // (the usual `data-blk` tagging chokepoint — see `blocks/index.tsx`), so
+  // `renderKpiCard`/`renderIconCard` directly below instead of `renderComponent`
+  // (the usual `data-blk` tagging chokepoint — see `components/index.tsx`), so
   // this cell's own wrapping `<g>` is their only tagging point. The plain
-  // "block" branch further down does *not* need this: it calls `renderBlock`
+  // "component" branch further down does *not* need this: it calls `renderComponent`
   // itself, which already tags its own output — adding it here too would
   // just double-nest the identical marker.
-  const blk = ctx.blockIndex?.get(unit.block)
+  const blk = ctx.blockIndex?.get(unit.component)
   const blkAttr = blk != null ? { "data-blk": blk } : {}
 
   if (unit.kind === "kpi-item") {
@@ -623,19 +623,19 @@ function renderCell(
     )
   }
 
-  const { block } = unit
-  if (SELF_VISUAL_TYPES.has(block.type)) {
-    // These blocks already paint their own card/frame — stacking bento's own
+  const { component } = unit
+  if (SELF_VISUAL_TYPES.has(component.type)) {
+    // These components already paint their own card/frame — stacking bento's own
     // outline shell underneath would be the exact "卡中卡" nesting this
     // redesign removes. `SvgContent` already knows how to center a lone
-    // block in a rect (and carries its own overflow guard as a safety net),
+    // component in a rect (and carries its own overflow guard as a safety net),
     // so reuse it verbatim with the cell's box as the render rect instead of
     // hand-rolling a bare-render/centering path here.
     return (
       <SvgContent
         key={i}
         arrangement="single"
-        blocks={[block]}
+        components={[component]}
         rect={box}
         ctx={ctx}
       />
@@ -645,20 +645,20 @@ function renderCell(
   const innerX = box.x + BENTO_CARD_PAD
   const innerW = box.w - BENTO_CARD_PAD * 2
   const budgetH = box.h - BENTO_CARD_TOP_PAD - BENTO_CARD_BOTTOM_PAD
-  const measured = measureBlock(block, innerW, ctx)
+  const measured = measureComponent(component, innerW, ctx)
   // 重设计（2026-07-09）：内容垂直居中（原顶锚让短内容下方大片空洞）
   const centerOffset = Math.max(0, (budgetH - measured) / 2)
   const innerY = box.y + BENTO_CARD_TOP_PAD + centerOffset
   const scale =
-    SCALABLE_TYPES.has(block.type) && measured > budgetH && measured > 0
+    SCALABLE_TYPES.has(component.type) && measured > budgetH && measured > 0
       ? budgetH / measured
       : 1
   // steps/flowchart/architecture/timeline already draw their own internal
   // chrome (numbered-badge cards, bordered nodes, filled layer bands,
   // axis/dots) — painting bento's own shell underneath would be a redundant
   // second shell around an already-carded diagram. The cell's box/padding/
-  // audit annotations are otherwise identical to any other ordinary block.
-  const passthroughShell = PASSTHROUGH_SHELL_TYPES.has(block.type)
+  // audit annotations are otherwise identical to any other ordinary component.
+  const passthroughShell = PASSTHROUGH_SHELL_TYPES.has(component.type)
 
   return (
     <g key={i} {...auditAttrs}>
@@ -677,16 +677,16 @@ function renderCell(
         />
       )}
       {scale >= 1 ? (
-        renderBlock(block, { x: innerX, y: innerY, w: innerW }, ctx)
+        renderComponent(component, { x: innerX, y: innerY, w: innerW }, ctx)
       ) : (
-        // Render the block at its natural (unscaled) width, then shrink the
+        // Render the component at its natural (unscaled) width, then shrink the
         // whole group uniformly and re-center it horizontally in the card's
         // inner width — the scaled-down width (innerW * scale) is narrower
         // than innerW, so the gap is split evenly on both sides.
         <g
           transform={`translate(${innerX + (innerW - innerW * scale) / 2},${innerY}) scale(${scale})`}
         >
-          {renderBlock(block, { x: 0, y: 0, w: innerW }, ctx)}
+          {renderComponent(component, { x: 0, y: 0, w: innerW }, ctx)}
         </g>
       )}
     </g>
@@ -744,16 +744,16 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     h: Math.max(0, 640 - (headingLastY + 36 + subheadingBudget)),
   }
 
-  // Explode kpi_cards blocks into one bento tile per item *before* the grid
+  // Explode kpi_cards components into one bento tile per item *before* the grid
   // math runs — the grid's input is a mixed sequence of units (KPI items +
-  // ordinary blocks), not raw `slide.blocks`.
-  const units = explodeIntoUnits(slide.blocks)
+  // ordinary components), not raw `slide.components`.
+  const units = explodeIntoUnits(slide.components)
 
   // A single-unit page never earns the bento *grid* grammar (there's
-  // nothing to arrange into a grid), and a lone ordinary block additionally
+  // nothing to arrange into a grid), and a lone ordinary component additionally
   // drops the shell card entirely — rendering a full-bento-rect panel
-  // around one block is exactly the "整页空壳巨卡" (page-filling empty-shell
-  // card) this redesign removes. `SvgContent` already centers a lone block
+  // around one component is exactly the "整页空壳巨卡" (page-filling empty-shell
+  // card) this redesign removes. `SvgContent` already centers a lone component
   // in a rect, so this is the same degrade path used below, just not
   // labeled a degrade (nothing is overflowing). A lone KPI item is the one
   // exception: it keeps a card look, just a modest centered one instead of
@@ -770,7 +770,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     body = renderCell({ unit: onlyUnit, box }, 0, ctx, colors)
   } else if (onlyUnit && onlyUnit.kind === "icon-card-item") {
     // Unreachable in practice — `icon_cards.items` schema-enforces >=2, so
-    // an `icon_cards` block always explodes into >=2 units — but the type
+    // an `icon_cards` component always explodes into >=2 units — but the type
     // union still needs an explicit branch (see `SINGLE_ICON_CARD_W/H`).
     const box = {
       x: bentoRect.x + (bentoRect.w - SINGLE_ICON_CARD_W) / 2,
@@ -783,14 +783,14 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     body = (
       <SvgContent
         arrangement="single"
-        blocks={[onlyUnit.block]}
+        components={[onlyUnit.component]}
         rect={bentoRect}
         ctx={ctx}
       />
     )
   } else {
     // Task 3 "视觉主角": reorder units by hero weight (chart/kpi-item highest,
-    // then icon-card-item, then a self-visual block, then a plain block)
+    // then icon-card-item, then a self-visual component, then a plain component)
     // *before* the grid math runs, so the highest-weight unit(s) land in
     // whichever cell(s) `layoutBento` makes largest for this unit count —
     // `layoutBento` itself stays kind-agnostic; only its input order changes.
@@ -804,9 +804,9 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     //    bolting on an ad-hoc "+N" card, abandon the bento grammar for this
     //    slide entirely.
     //  - any unit's content overflows its card's fit budget (see
-    //    `cellOverBudget`) — a text block can't scroll or truncate, so an
-    //    over-height block would either overflow the rounded card or get
-    //    silently clipped. A scalable block (chart/image) instead gets
+    //    `cellOverBudget`) — a text component can't scroll or truncate, so an
+    //    over-height component would either overflow the rounded card or get
+    //    silently clipped. A scalable component (chart/image) instead gets
     //    uniformly shrunk to fit at render time below, so it never forces
     //    this degrade; a KPI item's fixed-height content practically never
     //    does either.
@@ -818,7 +818,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     body = degraded ? (
       <SvgContent
         arrangement="single"
-        blocks={slide.blocks}
+        components={slide.components}
         rect={bentoRect}
         ctx={ctx}
       />

@@ -13,17 +13,17 @@
  * code won (see the task report for the one confirmed case: image-annotate).
  *
  * Slot `accepts` convention used throughout this file:
- *  - `[]` (empty array): the slot is *not* fed by an authored block/component
+ *  - `[]` (empty array): the slot is *not* fed by an authored component
  *    — it's derived straight from slide-level scalar fields (`slide.heading`,
  *    `slide.subheading`), `ir.meta.*` (organization/date/version/contact/
  *    copyright/confidentiality), or pure computed geometry (chapter-number
  *    watermarks, rail progress dots, decorative motifs inline in the
  *    archetype file). There is nothing here for an author to place.
- *  - `"any"`: the slot renders whatever `Block`s it's handed, unfiltered
+ *  - `"any"`: the slot renders whatever `Component`s it's handed, unfiltered
  *    (`SvgContent`'s body, bento's grid, stacked-poster's hero/strip).
- *  - a literal component-type list: the slot requires that specific block
+ *  - a literal component-type list: the slot requires that specific component
  *    type (`image`, `bullets`) — used only by the 4 takeover layouts, which
- *    `Array.find` a specific block type out of `slide.blocks`.
+ *    `Array.find` a specific component type out of `slide.components`.
  */
 
 export type SlideType = "cover" | "chapter" | "content" | "ending"
@@ -90,11 +90,11 @@ export interface LayoutDefinition {
 }
 
 /** Chrome slots (label/rule/meta/decor/watermark/rail) are never fed by an
- * authored block — see the file header's `accepts` convention. */
+ * authored component — see the file header's `accepts` convention. */
 const CHROME: readonly string[] = []
 
 // ─────────────────────────────────────────────────────────────────────────
-// Cover archetypes (8) — cover/chapter/ending never read `slide.blocks`
+// Cover archetypes (8) — cover/chapter/ending never read `slide.components`
 // (inventory headline finding, confirmed file-by-file below), so none of
 // them declare a `body` slot.
 // ─────────────────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ const COVER_LAYOUTS: Record<string, LayoutDefinition> = {
 // ─────────────────────────────────────────────────────────────────────────
 // Chapter archetypes (8) — every one carries a chapter-number `watermark`
 // (translucent or opaque numeral; inventory's "watermark numerals" example),
-// paired with `heading`. No body slot (chapter never reads blocks).
+// paired with `heading`. No body slot (chapter never reads components).
 // ─────────────────────────────────────────────────────────────────────────
 const CHAPTER_LAYOUTS: Record<string, LayoutDefinition> = {
   "masthead-chapter": {
@@ -340,7 +340,7 @@ const CHAPTER_LAYOUTS: Record<string, LayoutDefinition> = {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Ending archetypes (7) — heading + meta (contact/copyright/org) is the
-// universal pair; no body slot (ending never reads blocks).
+// universal pair; no body slot (ending never reads components).
 // ─────────────────────────────────────────────────────────────────────────
 const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
   "masthead-ending": {
@@ -443,7 +443,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Content archetypes (7) — the only family that reads `slide.blocks`, so
+// Content archetypes (7) — the only family that reads `slide.components`, so
 // every entry carries a `body` slot (capacity intentionally left for W3/
 // task 5) plus its own header chrome, and declares `arrangements` (inventory
 // decision #2: archetypes that don't obey the author's arrangement still
@@ -524,17 +524,17 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "stacked-poster": {
     // content-stacked-poster.tsx: centered kicker + accent rule, heading,
-    // subheading, and a `body` slot — the *degrade* path (>=3 blocks, 0
-    // blocks, or an overflowing hero/strip candidate) passes
+    // subheading, and a `body` slot — the *degrade* path (>=3 components, 0
+    // components, or an overflowing hero/strip candidate) passes
     // `slide.arrangement` straight through to SvgContent unchanged, so this
     // archetype honors every arrangement exactly like the four plain "all"
     // archetypes below (W2 task 3 adjudication: the inventory's original
     // "single" was a conservative placeholder pending this call, not a
     // literal claim that only "single" ever reaches SvgContent — see the
     // registry test's dedicated degrade-path-with-two_column assertion).
-    // Exactly 1-2 fitting blocks instead take the bespoke poster path,
-    // which bypasses arrangement entirely: block[0] always renders in a
-    // dedicated `hero` slot (capacity 1), and block[1] — only when there are
+    // Exactly 1-2 fitting components instead take the bespoke poster path,
+    // which bypasses arrangement entirely: component[0] always renders in a
+    // dedicated `hero` slot (capacity 1), and component[1] — only when there are
     // exactly 2 — renders in a `strip` caption slot below a divider
     // (capacity 1). Footnote (meta) renders on both paths.
     id: "stacked-poster",
@@ -554,7 +554,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "bento-panel": {
     // content-bento-panel.tsx: kicker, heading, subheading, and a `body`
-    // slot that alternates between a plain single-block/degraded stack and
+    // slot that alternates between a plain single-component/degraded stack and
     // a dedicated `grid` slot — up to 6 bento cells (bento-layout.ts:193-194,
     // "the bento grid only ever has 6 cells"), hero-weight-ordered. All
     // three internal SvgContent calls hardcode arrangement="single"
@@ -612,8 +612,8 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   "image-split": {
     // ImagePages.tsx ImageSplitPage: full-height bleed image in a fixed
-    // column (first image block; optional caption overlay), kicker + heading
-    // + rule + subheading in the text column, then the remaining blocks as
+    // column (first image component; optional caption overlay), kicker + heading
+    // + rule + subheading in the text column, then the remaining components as
     // body — hardcoded arrangement "single" (layoutContentFit("single", ...),
     // ImagePages.tsx:209-214), not exposed via `arrangements` (takeover
     // kind, not archetype).
@@ -628,7 +628,7 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "image-top": {
     // ImagePages.tsx ImageTopPage: full-width top-band bleed image (first
-    // image block, no caption render), heading band, remaining blocks split
+    // image component, no caption render), heading band, remaining components split
     // into up to 3 columns as body — each column hardcoded "single"
     // (ImagePages.tsx:360).
     id: "image-top",
@@ -641,8 +641,8 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "image-bottom": {
     // ImagePages.tsx ImageBottomPage: centered heading/rule/subheading,
-    // remaining blocks as body (hardcoded "single", ImagePages.tsx:682-687),
-    // then a full-width bottom-band bleed image (first image block) with an
+    // remaining components as body (hardcoded "single", ImagePages.tsx:682-687),
+    // then a full-width bottom-band bleed image (first image component) with an
     // optional caption overlay.
     id: "image-bottom",
     kind: "takeover",
@@ -655,12 +655,12 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "image-annotate": {
     // ImagePages.tsx ImageAnnotatePage: centered heading + subheading,
-    // framed center image (first image block) with optional caption, and up
-    // to 4 corner annotations sourced from the *first bullets block's* items
-    // (bulletsBlock.items.slice(0, 4), ImagePages.tsx:479-482). Deliberate
+    // framed center image (first image component) with optional caption, and up
+    // to 4 corner annotations sourced from the *first bullets component's* items
+    // (bulletsComponent.items.slice(0, 4), ImagePages.tsx:479-482). Deliberate
     // deviation from the brief's base "image + body" takeover shape: unlike
     // the other 3 takeovers, this renderer never builds a `rest` of
-    // leftover blocks — nothing besides the found image + bullets block is
+    // leftover components — nothing besides the found image + bullets component is
     // read, so declaring a `body` slot here would claim capacity the code
     // does not actually offer. `annotation` is the real substitute for body
     // in this one takeover.

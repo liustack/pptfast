@@ -10,13 +10,13 @@ import type { PptxIR, Slide } from "@/ir"
 // Deck with two chapter slides (separated by a content slide) so
 // `chapterNumberFor` has something to derive — index 0 is chapter "01",
 // index 2 is chapter "02".
-const chapter1: Slide = { type: "chapter", heading: "第一部分：市场洞察", blocks: [] } as Slide
-const content: Slide = { type: "content", heading: "现状", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一部分：市场洞察", components: [] } as Slide
+const content: Slide = { type: "content", heading: "现状", components: [] } as Slide
 const chapter2: Slide = {
   type: "chapter",
   heading: "第二部分：技术路线图",
   subheading: "面向 2027 的演进方向",
-  blocks: [],
+  components: [],
 } as Slide
 
 const ir = (theme: string): PptxIR =>
@@ -85,7 +85,7 @@ describe("ConstellationChapter", () => {
       type: "chapter",
       heading: "增长战略",
       subheading: "从 0 到 1",
-      blocks: [],
+      components: [],
     } as Slide
     // Single-chapter deck so chapterNumberFor derives "01" unambiguously.
     const soloDeck: PptxIR = { ...ir("tech"), slides: [slide] }
@@ -106,7 +106,7 @@ describe("ConstellationChapter", () => {
   })
 
   it("shrinks a pathologically long heading instead of overflowing", () => {
-    const slide: Slide = { type: "chapter", heading: CJK_LONG, blocks: [] } as Slide
+    const slide: Slide = { type: "chapter", heading: CJK_LONG, components: [] } as Slide
     const deck: PptxIR = { ...ir("tech"), slides: [slide] }
     const ctx = buildCtx(resolveStyle("tech"), {})
     const markup = renderSvgMarkup(

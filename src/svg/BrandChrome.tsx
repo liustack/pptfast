@@ -1,5 +1,5 @@
 import type { PptxIR, Slide } from "@/ir"
-import type { BlockCtx } from "./blocks/types"
+import type { ComponentCtx } from "./components/types"
 import { CONF_LABEL } from "../lib/conf-labels"
 import { resolveBrand } from "../themes/definitions"
 import { cachedDeckSeed, pickBySeed } from "./variety"
@@ -17,7 +17,7 @@ export function BrandChrome({
 }: {
   ir: PptxIR
   slide: Slide
-  ctx: BlockCtx
+  ctx: ComponentCtx
 }) {
   const { meta, brand, assets } = ir
   const conf = meta.confidentiality
@@ -55,12 +55,12 @@ export function BrandChrome({
   // 页脚分隔线与文字会压图——同 cardBgSuppressesFooter 先例整页抑制页脚
   // （org 已在该版式的 kicker 里，无信息损失）。
   const imageSplitBleed =
-    slide.layout === "image-split" && slide.blocks.some((b) => b.type === "image")
+    slide.layout === "image-split" && slide.components.some((b) => b.type === "image")
 
   // image-bottom 通栏页（2026-07-09 用户裁决）：底图铺满页缘，meta 信息
   // 改用遮罩浮层 footer（暗条白字压图），无 meta 则什么都不画。
   const imageBottomBleed =
-    slide.layout === "image-bottom" && slide.blocks.some((b) => b.type === "image")
+    slide.layout === "image-bottom" && slide.components.some((b) => b.type === "image")
 
   const showFooter =
     slide.type === "content" && !cardBgSuppressesFooter && !imageSplitBleed && !imageBottomBleed

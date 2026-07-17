@@ -13,12 +13,12 @@ const CJK_LONG =
 // Deck with two chapter slides (separated by a content slide) so
 // `chapterNumberFor` has something to derive from — index 0 is chapter "01",
 // index 2 is chapter "02" out of 2 total chapters.
-const chapter1: Slide = { type: "chapter", heading: "第一章：品牌重塑", blocks: [] } as Slide
-const content: Slide = { type: "content", heading: "现状", blocks: [] } as Slide
+const chapter1: Slide = { type: "chapter", heading: "第一章：品牌重塑", components: [] } as Slide
+const content: Slide = { type: "content", heading: "现状", components: [] } as Slide
 const chapter2: Slide = {
   type: "chapter",
   heading: "第二章：视觉语言与传播路径",
-  blocks: [],
+  components: [],
 } as Slide
 
 const ir = (theme: string): PptxIR =>
@@ -75,7 +75,7 @@ describe("PosterChapter", () => {
   })
 
   it("shrinks a pathologically long heading onto <=2 lines instead of overflowing, at 800-weight", () => {
-    const longSlide: Slide = { type: "chapter", heading: CJK_LONG, blocks: [] } as Slide
+    const longSlide: Slide = { type: "chapter", heading: CJK_LONG, components: [] } as Slide
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",

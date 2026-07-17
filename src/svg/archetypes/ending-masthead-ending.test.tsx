@@ -12,12 +12,12 @@ import type { PptxIR, Slide } from "@/ir"
 const endingWithHeading: Slide = {
   type: "ending",
   heading: "感谢聆听",
-  blocks: [],
+  components: [],
 } as Slide
 
 // 无 heading 的 ending：触发双重兜底——heading 兜底"致谢"，subheading 兜底
 // "谢谢。"。
-const endingBare: Slide = { type: "ending", blocks: [] } as Slide
+const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
   ({
@@ -83,7 +83,7 @@ describe("MastheadEnding", () => {
 
   it("falls back to 「致谢」/「谢谢。」 when heading/subheading are absent, with italic centered fallback subheading", () => {
     const ctx = buildCtx(resolveStyle("journal"), {})
-    const slide: Slide = { type: "ending", heading: "", blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: "", components: [] } as Slide
     const deck = ir("journal", slide)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -102,7 +102,7 @@ describe("MastheadEnding", () => {
 
   it("renders an explicit subheading instead of the default when provided (heading present)", () => {
     const ctx = buildCtx(resolveStyle("journal"), {})
-    const slide: Slide = { type: "ending", heading: "致谢", subheading: "感谢聆听与支持", blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: "致谢", subheading: "感谢聆听与支持", components: [] } as Slide
     const deck = ir("journal", slide)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -121,8 +121,8 @@ describe("MastheadEnding", () => {
       // units/line) while staying at the *nominal* 76px (not shrunk).
       // 显式副题：2026-07-09 去重裁决后，有 heading 时副题不再兜底渲染，
       // 本测试锁的是副题基线几何，需自带副题。
-      const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明式管理你的整个", subheading: "感谢聆听", blocks: [] } as Slide
-      const oneLineSlide: Slide = { type: "ending", heading: "致谢", subheading: "感谢聆听", blocks: [] } as Slide
+      const twoLineSlide: Slide = { type: "ending", heading: "从今天开始用声明式管理你的整个", subheading: "感谢聆听", components: [] } as Slide
+      const oneLineSlide: Slide = { type: "ending", heading: "致谢", subheading: "感谢聆听", components: [] } as Slide
 
       const twoLineRoot = parseSvgRoot(
         renderSvgMarkup(

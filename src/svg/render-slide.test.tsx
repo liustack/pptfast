@@ -7,7 +7,7 @@ import type { PptxIR, Slide } from "@/ir"
 const slide: Slide = {
   type: "content",
   heading: "导出验证",
-  blocks: [
+  components: [
     { type: "paragraph", text: "段落用于导出 ops。" },
     { type: "bullets", items: ["甲", "乙"] },
   ],
@@ -44,7 +44,7 @@ describe("slideToOps export entry", () => {
     const flowSlide: Slide = {
       type: "content",
       heading: "流程",
-      blocks: [
+      components: [
         {
           type: "flowchart",
           direction: "TB",

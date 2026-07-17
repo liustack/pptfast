@@ -23,12 +23,12 @@ function charLen(s: string): number {
   return s.length
 }
 
-function hasKpiCardsBlock(slide: Slide): boolean {
-  return slide.blocks.some((b) => b.type === "kpi_cards")
+function hasKpiCardsComponent(slide: Slide): boolean {
+  return slide.components.some((b) => b.type === "kpi_cards")
 }
 
 /** Per-theme `maxBlocksPerSlide` (see the derivation comment in capacity.ts —
- * tech's card-grid geometry supports more blocks per page than the
+ * tech's card-grid geometry supports more components per page than the
  * linear-stack themes the flat default was derived from). */
 function maxBlocksPerSlideFor(themeId: string): number {
   return CAPACITY.maxBlocksPerSlideOverrides[themeId] ?? CAPACITY.maxBlocksPerSlide
@@ -36,14 +36,14 @@ function maxBlocksPerSlideFor(themeId: string): number {
 
 /**
  * A slide is considered a "background-only image page" if it has exactly one
- * block of type `image` and no heading. We skip the missing-heading check for
+ * component of type `image` and no heading. We skip the missing-heading check for
  * these because the image IS the content.
  */
 function isBackgroundImageOnly(slide: Slide): boolean {
   return (
     !slide.heading &&
-    slide.blocks.length === 1 &&
-    slide.blocks[0].type === "image"
+    slide.components.length === 1 &&
+    slide.components[0].type === "image"
   )
 }
 
@@ -63,10 +63,10 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
   }
 
   // A2: density cap — only for content slides. Threshold is theme-aware
-  // (tech's card grid tolerates more blocks per page than the
+  // (tech's card grid tolerates more components per page than the
   // linear-stack themes the flat default was derived from — see capacity.ts).
   const maxBlocksPerSlide = maxBlocksPerSlideFor(themeId)
-  if (slide.type === "content" && slide.blocks.length > maxBlocksPerSlide) {
+  if (slide.type === "content" && slide.components.length > maxBlocksPerSlide) {
     issues.push({
       slide: index,
       severity: "warn",
@@ -76,9 +76,9 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
   }
 
   // bullets overflow + per-item length
-  for (const block of slide.blocks) {
-    if (block.type !== "bullets") continue
-    if (block.items.length > CAPACITY.bullets.maxItems) {
+  for (const component of slide.components) {
+    if (component.type !== "bullets") continue
+    if (component.items.length > CAPACITY.bullets.maxItems) {
       issues.push({
         slide: index,
         severity: "warn",
@@ -86,7 +86,7 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
         message: `要点列表条目过多（>${CAPACITY.bullets.maxItems}），建议精简或拆页`,
       })
     }
-    for (const item of block.items) {
+    for (const item of component.items) {
       if (measureTextUnits(item) > CAPACITY.bullets.maxUnitsPerItem) {
         issues.push({
           slide: index,
@@ -113,8 +113,8 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
     })
   }
 
-  // big_number arrangement without kpi_cards block
-  if (slide.arrangement === "big_number" && !hasKpiCardsBlock(slide)) {
+  // big_number arrangement without kpi_cards component
+  if (slide.arrangement === "big_number" && !hasKpiCardsComponent(slide)) {
     issues.push({
       slide: index,
       severity: "warn",

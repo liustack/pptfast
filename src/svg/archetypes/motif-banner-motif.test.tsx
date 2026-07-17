@@ -23,10 +23,10 @@ function rectsOverlap(
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }
 
-const coverSlide: Slide = { type: "cover", heading: "封面", blocks: [] } as Slide
-const chapterSlide: Slide = { type: "chapter", heading: "章节", blocks: [] } as Slide
-const contentSlide: Slide = { type: "content", heading: "内容", blocks: [] } as Slide
-const endingSlide: Slide = { type: "ending", blocks: [] } as Slide
+const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
+const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
+const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
+const endingSlide: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string): PptxIR =>
   ({

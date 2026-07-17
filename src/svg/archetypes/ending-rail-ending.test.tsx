@@ -15,12 +15,12 @@ const endingWithHeading: Slide = {
   type: "ending",
   heading: "衷心感谢",
   subheading: "感谢参与本次评审",
-  blocks: [],
+  components: [],
 } as Slide
 
 // 无 heading（也无 subheading）的 ending：触发标题兜底"谢谢"——注意源函数
 // 只有标题一层兜底，副标题没有独立兜底文案（见文件头"副题兜底语义"）。
-const endingBare: Slide = { type: "ending", blocks: [] } as Slide
+const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
   ({
@@ -112,7 +112,7 @@ describe("RailEnding", () => {
   // 渲染。
   it("heading 存在但 subheading 缺省：标题正常渲染，副标题槽位不渲染任何元素", () => {
     const ctx = buildCtx(resolveStyle("academic"), {})
-    const slide: Slide = { type: "ending", heading: "衷心感谢", blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: "衷心感谢", components: [] } as Slide
     const deck = ir("academic", slide)
     const out = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
 
@@ -123,7 +123,7 @@ describe("RailEnding", () => {
 
   it("标题过长时收缩字号、不整段输出原文，Ending body 通过 subset validation（迁移自 academic.test.tsx）", () => {
     const ctx = buildCtx(resolveStyle("academic"), {})
-    const slide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, blocks: [] } as Slide
+    const slide: Slide = { type: "ending", heading: CJK_LONG, subheading: CJK_LONG, components: [] } as Slide
     const deck = ir("academic", slide)
     const markup = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
     const root = parseSvgRoot(
@@ -136,7 +136,7 @@ describe("RailEnding", () => {
   describe("两行标题重排（S3b addendum，迁移自 academic.test.tsx 的 'Ending: two-line title reflow' 分支）", () => {
     it("1 行标题：headingY=356，hairline y1=476（S3b 修复前的基线值，未触发重排逻辑）", () => {
       const ctx = buildCtx(resolveStyle("academic"), {})
-      const slide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
+      const slide: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
       const deck = ir("academic", slide)
       const markup = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
       const root = parseSvgRoot(
@@ -150,7 +150,7 @@ describe("RailEnding", () => {
 
     it("2 行标题最坏情形（“从今天开始用声”，nominal 120px 字号下恰好换行的最大 lineHeight）：首行上移封顶 88px，hairline 间距收紧到 100，末行/所有文字 y 均不越过页面底部", () => {
       const ctx = buildCtx(resolveStyle("academic"), {})
-      const slide: Slide = { type: "ending", heading: "从今天开始用声", blocks: [] } as Slide
+      const slide: Slide = { type: "ending", heading: "从今天开始用声", components: [] } as Slide
       const deck = ir("academic", slide)
       const markup = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
       const root = parseSvgRoot(

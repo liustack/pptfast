@@ -7,10 +7,10 @@ import { resolveStyle } from "../../themes"
 import { ConstellationMotif } from "./motif-constellation-motif"
 import type { PptxIR, Slide } from "@/ir"
 
-const coverSlide: Slide = { type: "cover", heading: "封面", blocks: [] } as Slide
-const chapterSlide: Slide = { type: "chapter", heading: "章节", blocks: [] } as Slide
-const contentSlide: Slide = { type: "content", heading: "内容", blocks: [] } as Slide
-const endingSlide: Slide = { type: "ending", blocks: [] } as Slide
+const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
+const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
+const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
+const endingSlide: Slide = { type: "ending", components: [] } as Slide
 
 const bgImages: PptxIR["assets"]["images"] = {
   bg: { src: "data:image/png;base64,iVBOR", alt: "背景" },

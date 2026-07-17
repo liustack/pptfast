@@ -19,11 +19,11 @@ function ir(slides: Slide[]): PptxIR {
   }
 }
 
-const coverSlide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "增长与韧性", blocks: [] }
+const coverSlide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "增长与韧性", components: [] }
 const contentSlide: Slide = {
   type: "content",
   heading: "三大支柱",
-  blocks: [
+  components: [
     { type: "paragraph", text: "我们围绕三个方向推进。" },
     { type: "bullets", items: ["效率", "增长", "韧性"], style: "default" },
     { type: "kpi_cards", items: [{ value: "37", unit: "%", label: "增长", delta: "up" }] },
@@ -42,7 +42,7 @@ describe("FullSlideSvg", () => {
     expect(container.textContent).toContain("年度战略回顾")
   })
 
-  it("renders content blocks and footer chrome for a content slide", () => {
+  it("renders content components and footer chrome for a content slide", () => {
     const doc = ir([contentSlide])
     const { container } = render(
       <FullSlideSvg ir={doc} slide={contentSlide} index={0} />,
@@ -75,7 +75,7 @@ describe("FullSlideSvg", () => {
   // ops with `blockIndex`, which `render.ts` then folds into the exported
   // shape's objectName. It must only ever appear when the deck explicitly
   // opts in — this is the SVG-layer half of the "static render stays
-  // byte-identical by default" contract (`BlockCtx.blockIndex`'s doc comment).
+  // byte-identical by default" contract (`ComponentCtx.blockIndex`'s doc comment).
   describe("data-blk tagging (wave-C S3)", () => {
     it("never emits data-blk when meta.animation is unset", () => {
       const doc = ir([contentSlide])
@@ -89,10 +89,10 @@ describe("FullSlideSvg", () => {
       expect(markup).not.toContain("data-blk")
     })
 
-    it('tags each block\'s content with data-blk="{index}" when elements is "auto"', () => {
+    it('tags each component\'s content with data-blk="{index}" when elements is "auto"', () => {
       const doc: PptxIR = { ...ir([contentSlide]), meta: { animation: { elements: "auto" } } }
       const markup = renderSvgMarkup(<FullSlideSvg ir={doc} slide={contentSlide} index={0} />)
-      // contentSlide has 3 blocks (paragraph, bullets, kpi_cards) at indices 0-2.
+      // contentSlide has 3 components (paragraph, bullets, kpi_cards) at indices 0-2.
       expect(markup).toContain('data-blk="0"')
       expect(markup).toContain('data-blk="1"')
       expect(markup).toContain('data-blk="2"')
@@ -129,7 +129,7 @@ describe("asset background auto scrim (image-layouts P1)", () => {
   const bgSlide: Slide = {
     type: "cover",
     heading: "压图封面",
-    blocks: [],
+    components: [],
     background: {
       kind: "asset",
       asset_id: "bg1",
@@ -165,7 +165,7 @@ describe("asset background auto scrim (image-layouts P1)", () => {
     const contentBg: Slide = {
       type: "content",
       heading: "正文压图",
-      blocks: [{ type: "paragraph", text: "文" }],
+      components: [{ type: "paragraph", text: "文" }],
       background: { kind: "asset", asset_id: "bg1" },
     }
     const ir2: PptxIR = { ...withAsset("academic"), slides: [contentBg] }
@@ -201,7 +201,7 @@ describe("image_grid / image_compare export round-trip (image-layouts P2)", () =
     const ops = roundTrip({
       type: "content",
       heading: "图片网格",
-      blocks: [
+      components: [
         {
           type: "image_grid",
           items: [
@@ -218,7 +218,7 @@ describe("image_grid / image_compare export round-trip (image-layouts P2)", () =
     const ops = roundTrip({
       type: "content",
       heading: "前后对比",
-      blocks: [
+      components: [
         {
           type: "image_compare",
           left: { asset_id: "g1", label: "改造前" },
@@ -234,7 +234,7 @@ describe("image_grid / image_compare export round-trip (image-layouts P2)", () =
 })
 
 describe("manifest cover dispatch (P1)", () => {
-  const coverSlide: Slide = { type: "cover", heading: "标题", blocks: [] } as Slide
+  const coverSlide: Slide = { type: "cover", heading: "标题", components: [] } as Slide
   const mkIr = (theme: string): PptxIR =>
     ({ version: "3", filename: "m.pptx", theme: { id: theme }, meta: {}, assets: { images: {} }, slides: [coverSlide] }) as unknown as PptxIR
 
@@ -260,7 +260,7 @@ describe("manifest cover dispatch (P1)", () => {
     const splitCover: Slide = {
       ...coverSlide,
       layout: "image-split",
-      blocks: [{ type: "image", asset_id: "a" }],
+      components: [{ type: "image", asset_id: "a" }],
     } as unknown as Slide
     const ir = {
       ...mkIr("consulting"),
@@ -284,7 +284,7 @@ describe("manifest 四页型分发泛化 (P2)", () => {
     }) as unknown as PptxIR
 
   it("chapter 命中 archetype（academic → rail-chapter，Wave 4 Task 23 已接线）", () => {
-    const chapterSlide: Slide = { type: "chapter", heading: "第一章", blocks: [] } as Slide
+    const chapterSlide: Slide = { type: "chapter", heading: "第一章", components: [] } as Slide
     const { container } = render(
       <FullSlideSvg ir={mkIr("academic", chapterSlide)} slide={chapterSlide} index={0} />,
     )
@@ -295,7 +295,7 @@ describe("manifest 四页型分发泛化 (P2)", () => {
     const contentSlide2: Slide = {
       type: "content",
       heading: "内容页",
-      blocks: [{ type: "paragraph", text: "正文" }],
+      components: [{ type: "paragraph", text: "正文" }],
     } as Slide
     const { container } = render(
       <FullSlideSvg ir={mkIr("tech", contentSlide2)} slide={contentSlide2} index={0} />,
@@ -305,7 +305,7 @@ describe("manifest 四页型分发泛化 (P2)", () => {
   })
 
   it("ending 命中 archetype（journal → masthead-ending，Wave 4 Task 23 已接线）", () => {
-    const endingSlide: Slide = { type: "ending", heading: "谢谢", blocks: [] } as Slide
+    const endingSlide: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
     const { container } = render(
       <FullSlideSvg ir={mkIr("journal", endingSlide)} slide={endingSlide} index={0} />,
     )
@@ -317,7 +317,7 @@ describe("manifest 四页型分发泛化 (P2)", () => {
     // 内部确实调用了这张注册表（而不是巧合产出等价 markup——strangler 抽取
     // 本就要求新旧输出逐字节等价，纯 DOM diff 无法区分调用来源）。
     const spy = vi.spyOn(MOTIF_ARCHETYPES, "banner-motif")
-    const slide: Slide = { type: "cover", heading: "标题", blocks: [] } as Slide
+    const slide: Slide = { type: "cover", heading: "标题", components: [] } as Slide
     render(<FullSlideSvg ir={mkIr("consulting", slide)} slide={slide} index={0} />)
     expect(spy).toHaveBeenCalled()
     spy.mockRestore()
@@ -328,7 +328,7 @@ describe("content 页轮换 (P3 Item ②)", () => {
   // academic content 允许集 = ["rail-numbered", "two-column"]（P3 Item ② 吸纳），
   // 同 deck 内相邻 content 页应按 typeOrdinal 轮换到不同 archetype。
   const contentPage = (heading: string): Slide =>
-    ({ type: "content", heading, blocks: [{ type: "paragraph", text: "正文" }] }) as Slide
+    ({ type: "content", heading, components: [{ type: "paragraph", text: "正文" }] }) as Slide
 
   const deck: PptxIR = {
     version: "3",
@@ -337,7 +337,7 @@ describe("content 页轮换 (P3 Item ②)", () => {
     meta: {},
     assets: { images: {} },
     slides: [
-      { type: "cover", heading: "封面", blocks: [] },
+      { type: "cover", heading: "封面", components: [] },
       contentPage("内容一"),
       contentPage("内容二"),
       contentPage("内容三"),
@@ -390,14 +390,14 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
     // consulting's cover allowed set has 3 members — a seed-pick could land
     // on any of them, so a deterministic hit on the requested id proves the
     // short-circuit fired rather than a lucky seed roll.
-    const slide: Slide = { type: "cover", heading: "标题", layout: "poster-center", blocks: [] } as Slide
+    const slide: Slide = { type: "cover", heading: "标题", layout: "poster-center", components: [] } as Slide
     const { container } = render(<FullSlideSvg ir={mkIr("consulting", slide)} slide={slide} index={0} />)
     expect(container.querySelector('[data-archetype="poster-center"]')).not.toBeNull()
   })
 
   it("uses the requested id for every member of a multi-element allowed set, not just one", () => {
     for (const id of ["banner-title", "poster-center", "split-diagonal"]) {
-      const slide: Slide = { type: "cover", heading: "标题", layout: id, blocks: [] } as Slide
+      const slide: Slide = { type: "cover", heading: "标题", layout: id, components: [] } as Slide
       const { container } = render(<FullSlideSvg ir={mkIr("consulting", slide)} slide={slide} index={0} />)
       expect(container.querySelector(`[data-archetype="${id}"]`)).not.toBeNull()
     }
@@ -412,7 +412,7 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
       type: "content",
       layout: "narrow-column",
       heading: "标题",
-      blocks: [{ type: "paragraph", text: "正文" }],
+      components: [{ type: "paragraph", text: "正文" }],
     } as Slide
     const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
     const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
@@ -420,7 +420,7 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
   })
 
   it("falls back to seed-pick when slide.layout is undefined (no regression to the pre-existing dispatch)", () => {
-    const slide: Slide = { type: "cover", heading: "标题", blocks: [] } as Slide
+    const slide: Slide = { type: "cover", heading: "标题", components: [] } as Slide
     const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
     expect(container.querySelector('[data-archetype="constellation"]')).not.toBeNull()
   })
