@@ -23,9 +23,10 @@ program
   .argument("<ir.json>", "path to the IR file")
   .requiredOption("-o, --output <file>", "output .pptx path")
   .option("--theme <id>", "override the deck theme (see `pptfast themes`)")
-  .action(async (ir: string, opts: { output: string; theme?: string }) => {
+  .option("--tokens <path>", "brand tokens JSON overriding the theme palette (see `pptfast schema --tokens`)")
+  .action(async (ir: string, opts: { output: string; theme?: string; tokens?: string }) => {
     try {
-      console.log(await runRender(ir, opts))
+      console.log(await runRender(ir, { output: opts.output, theme: opts.theme, tokensPath: opts.tokens }))
     } catch (e) {
       fail(e)
     }
