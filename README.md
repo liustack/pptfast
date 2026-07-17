@@ -20,6 +20,22 @@ pptfast --help
 
 Node >= 18. Or build from source: `git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`.
 
+### As a Claude Code plugin
+
+The repo doubles as a Claude Code plugin that ships the deck-generation skill:
+
+```
+/plugin marketplace add liustack/pptfast
+/plugin install pptfast@pptfast
+/reload-plugins
+```
+
+The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptfast`).
+
+### Other agents (Codex, etc.)
+
+[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) is a self-contained Markdown playbook — reference it from your agent's context (e.g. `AGENTS.md`) and it teaches the same schema → outline → validate → render loop.
+
 ## Quick start
 
 ```bash
@@ -78,11 +94,11 @@ Each theme is a token set (color, type, motif) plus a manifest of which archetyp
 
 ## For AI agents
 
-The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast render`. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. A Claude Code plugin that wraps this loop as a skill is planned for v0.2 (see Roadmap).
+The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast render`. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)).
 
 ## Roadmap
 
-- **v0.2** — Claude Code plugin + skills wrapping the render loop, design token overrides (`--tokens`), `init`/self-update commands.
+- **v0.2** — Claude Code plugin + skill wrapping the render loop (shipped), design token overrides (`--tokens`), `init`/self-update commands.
 - **v0.3** — theme-customization skill (brand colors → tokens), custom manifest slots, 1.0.
 - **v0.4** — richer motion (more entrance animations), Office real-device testing, web playground.
 
