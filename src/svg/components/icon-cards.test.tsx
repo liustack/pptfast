@@ -8,6 +8,7 @@ import { iconCards, iconCardContentHeight } from "./icon-cards"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../FullSlideSvg"
+import { LEGACY_ICON_NAMES } from "../../icons.legacy-names"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -288,5 +289,58 @@ describe("icon_cards component: text overflow fallback", () => {
     expect(bodyTexts.some((t) => (t.textContent ?? "").endsWith("…"))).toBe(
       true
     )
+  })
+})
+
+describe("icon_cards component: W2.5 full lucide catalog (new icons)", () => {
+  // Sampled from the icons the W2.5 regeneration added — absent from the
+  // pre-W2.5 curated 431 (icons.legacy-names.ts), present only once
+  // gen-pptx-icons.mts pulls in the full lucide set. Doesn't touch the
+  // existing pinned "rocket" fixtures above.
+  const NEW_ICON_NAMES = ["cat", "backpack", "glasses", "hand"]
+
+  function newIconCardsComponent() {
+    return {
+      type: "icon_cards" as const,
+      items: NEW_ICON_NAMES.map((icon, i) => ({
+        icon,
+        title: `新图标 ${i + 1}`,
+        text: "W2.5 全量目录抽样",
+      })),
+    }
+  }
+
+  it("samples icons outside the pre-W2.5 curated catalog", () => {
+    for (const name of NEW_ICON_NAMES) {
+      expect(LEGACY_ICON_NAMES).not.toContain(name)
+    }
+  })
+
+  it("renders a card for each newly imported icon with an accent bar and its title/text", () => {
+    const component = newIconCardsComponent()
+    const { container } = svg(
+      iconCards.render(component, { x: 0, y: 0, w: 1088 }, ctx)
+    )
+    const accentBars = Array.from(container.querySelectorAll("rect")).filter(
+      (r) => r.getAttribute("height") === "3"
+    )
+    expect(accentBars).toHaveLength(NEW_ICON_NAMES.length)
+
+    const texts = Array.from(container.querySelectorAll("text"))
+    for (const item of component.items) {
+      expect(texts.some((t) => t.textContent === item.title)).toBe(true)
+      expect(texts.some((t) => t.textContent === item.text)).toBe(true)
+    }
+  })
+
+  it("stays within the controlled SVG subset for every newly imported icon", () => {
+    const component = newIconCardsComponent()
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">
+        {iconCards.render(component, { x: 80, y: 100, w: 1088 }, ctx)}
+      </svg>
+    )
+    const root = parseSvgRoot(markup)
+    expect(() => assertSubset(root)).not.toThrow()
   })
 })

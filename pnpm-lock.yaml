@@ -63,9 +63,9 @@ importers:
       jsdom:
         specifier: ^29.0.2
         version: 29.1.1
-      lucide-react:
-        specifier: ^1.7.0
-        version: 1.24.0(react@19.2.7)
+      lucide:
+        specifier: ^1.25.0
+        version: 1.25.0
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(postcss@8.5.19)(tsx@4.23.1)(typescript@5.9.3)
@@ -1670,10 +1670,8 @@ packages:
     resolution: {integrity: sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g==}
     engines: {node: 20 || >=22}
 
-  lucide-react@1.24.0:
-    resolution: {integrity: sha512-YT6mBD8lGKkg4nM39enlm94/sfJIiW0YKUT60fBy4YK8tai31ylg1VhGNWxkpSKHo9UagfnZqwIff3HTDQwXeA==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  lucide@1.25.0:
+    resolution: {integrity: sha512-Pg/9Ga1xTbrnI6GY/7J9krIYmJIkAf3PkK6wPmsAeUtAQsBdGxs1+dfvLqjf9nPI5aFm9+VquT75JGpO3QXSpQ==}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -3477,9 +3475,7 @@ snapshots:
 
   lru-cache@11.5.2: {}
 
-  lucide-react@1.24.0(react@19.2.7):
-    dependencies:
-      react: 19.2.7
+  lucide@1.25.0: {}
 
   lz-string@1.5.0: {}
 
