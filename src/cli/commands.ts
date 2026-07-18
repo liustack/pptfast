@@ -19,6 +19,7 @@ import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
 import { assertSafeFileSegment, isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
+import { buildPreviewHtml } from "./preview-html"
 
 /** `findUserConfig()`'s own return shape, named here so it can be threaded as
  *  a parameter (`loadDeckTarget`/`applyDeckConfig` below) instead of each
@@ -497,6 +498,25 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
   return `wrote ${target} — themes: \`pptfast themes\`, style schema: \`pptfast schema --style\``
 }
 
+export interface PreviewOptions {
+  cwd?: string
+  /** `--html` (v0.3 W7 task 1, spec §7 workflow ⑤): also write a
+   *  self-contained `preview.html` alongside the per-slide SVG files —
+   *  every slide's already-rendered SVG inlined into one file (thumbnail
+   *  filmstrip + keyboard/click navigation, `buildPreviewHtml`,
+   *  `./preview-html.ts`) for a human (or an agent that can view HTML) to
+   *  flip through the whole deck at once instead of opening N separate SVG
+   *  files. Named `htmlOut` rather than `html` so `RenderOptions.draft`-style
+   *  option objects in this file all read as "what to produce", not
+   *  "whether this is HTML" (there is nothing else this bundle could be).
+   *  Known limitation (see `buildPreviewHtml`'s own doc comment,
+   *  `./preview-html.ts`): self-containment assumes every image asset is
+   *  local or already a `data:` URI — a remote `http(s):` asset src passes
+   *  through `resolveLocalAssets` untouched and lands in the bundle as a
+   *  live network reference, not an inlined file. */
+  htmlOut?: boolean
+}
+
 /**
  * `irPath` accepts a single IR/plan JSON file, a deck project directory, or
  * a bare deck name (same `loadDeckTarget` resolution `runRender` uses).
@@ -508,8 +528,15 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
  *
  * Appends the same field-alias {@link normalizedNote} `runValidate`/
  * `runRender` print (W5 whole-branch review finding 3).
+ *
+ * `opts.htmlOut` reuses each slide's already-rendered SVG string
+ * ({@link buildPreviewHtml}'s `slides[].svg`) rather than calling
+ * `renderSlideSvg` a second time — the `.svg` file on disk and the copy
+ * embedded in `preview.html` are then guaranteed byte-identical by
+ * construction, not just by the renderer being deterministic.
  */
-export async function runPreview(irPath: string, outDir: string, cwd = process.cwd()): Promise<string> {
+export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
+  const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
   const { raw, baseDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
   await applyDeckConfig(raw, { cwd, projectHit, userHit })
@@ -518,13 +545,33 @@ export async function runPreview(irPath: string, outDir: string, cwd = process.c
   await resolveLocalAssets(v.ir!, baseDir)
   await mkdir(outDir, { recursive: true })
   const ir = v.ir!
+  const svgs: string[] = []
   for (let i = 0; i < ir.slides.length; i++) {
+    const svg = renderSlideSvg(ir, i)
+    svgs.push(svg)
     const name = `${String(i + 1).padStart(3, "0")}-${ir.slides[i]!.type}.svg`
-    await writeFile(join(outDir, name), renderSlideSvg(ir, i))
+    await writeFile(join(outDir, name), svg)
   }
   const ok = `wrote ${ir.slides.length} SVG files to ${outDir}`
-  const note = normalizedNote(v.normalized)
-  return note ? `${ok}\n${note}` : ok
+  const notes: string[] = []
+  const aliasNote = normalizedNote(v.normalized)
+  if (aliasNote) notes.push(aliasNote)
+  if (opts.htmlOut) {
+    const htmlPath = join(outDir, "preview.html")
+    const html = buildPreviewHtml({
+      title: ir.filename,
+      slides: ir.slides.map((slide, i) => ({
+        index: i,
+        id: slide.id,
+        type: slide.type,
+        svg: svgs[i]!,
+        placeholder: slide.placeholder,
+      })),
+    })
+    await writeFile(htmlPath, html)
+    notes.push(`note: wrote self-contained preview to ${htmlPath}`)
+  }
+  return notes.length > 0 ? `${ok}\n${notes.join("\n")}` : ok
 }
 
 export interface AssembleOptions {

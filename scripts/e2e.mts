@@ -65,7 +65,41 @@ if (!slide1.includes("pptfast")) throw new Error("e2e: cover heading text not fo
 // 3) preview command
 console.log(sh("node", ["dist/cli.js", "preview", "examples/basic.json", "-o", join(OUT, "svgs")]))
 
-// 3b) --style override must reach the DrawingML (hex appears uppercase, no "#")
+// 3b) preview --html (W7 task 2, spec §7 workflow ⑤): the self-contained
+//     preview.html bundle must exist, embed every one of basic.json's 5
+//     slides' SVGs exactly once, carry the keyboard-nav JS, and stay
+//     self-contained — no http(s) reference anywhere except the SVG
+//     namespace URI. Same filtered assertion as the unit-level check
+//     (`src/cli/preview-html.test.ts`, "self-containment: no http(s)
+//     reference anywhere except known SVG/XML namespace URIs") — basic.json
+//     has no assets, so nothing here can fall into preview-html.ts's known
+//     remote-asset limitation.
+const htmlOutDir = join(OUT, "svgs-html")
+console.log(
+  sh("node", ["dist/cli.js", "preview", "examples/basic.json", "-o", htmlOutDir, "--html"]),
+)
+const previewHtmlPath = join(htmlOutDir, "preview.html")
+if (!existsSync(previewHtmlPath)) throw new Error(`e2e: preview --html leg — ${previewHtmlPath} was not written`)
+const previewHtml = readFileSync(previewHtmlPath, "utf8")
+const svgCount = previewHtml.match(/<svg\b/g)?.length ?? 0
+if (svgCount !== 5) {
+  throw new Error(`e2e: preview --html leg — expected exactly 5 embedded <svg, got ${svgCount}`)
+}
+if (!previewHtml.includes("ArrowLeft") || !previewHtml.includes("ArrowRight")) {
+  throw new Error("e2e: preview --html leg — keyboard-nav JS marker (ArrowLeft/ArrowRight) not found")
+}
+const KNOWN_NAMESPACE_URIS = new Set(["http://www.w3.org/2000/svg"])
+const httpMatches = previewHtml.match(/https?:\/\/[^\s"'<>)]+/g) ?? []
+const unexpectedHttp = httpMatches.filter((m) => !KNOWN_NAMESPACE_URIS.has(m))
+if (unexpectedHttp.length > 0) {
+  throw new Error(`e2e: preview --html leg — unexpected http(s) reference(s) in preview.html: ${unexpectedHttp.join(", ")}`)
+}
+if (httpMatches.length === 0) {
+  throw new Error("e2e: preview --html leg — expected at least the SVG namespace URI, found no http(s) substring at all")
+}
+console.log("preview --html leg OK (self-contained: 5 embedded svgs, keyboard-nav JS, no stray http(s) reference)")
+
+// 3c) --style override must reach the DrawingML (hex appears uppercase, no "#")
 const stylePath = join(OUT, "style.json")
 writeFileSync(stylePath, JSON.stringify({ colors: { primary: "#0B5FFF" } }))
 const brandedPath = join(OUT, "branded.pptx")
