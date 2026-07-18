@@ -158,9 +158,10 @@ program
   .description("Render each slide to an SVG file for visual self-check")
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .requiredOption("-o, --output <dir>", "output directory")
-  .action(async (target: string, opts: { output: string }) => {
+  .option("--html", "also write a self-contained preview.html (all slides inlined — thumbnail strip, keyboard navigation) for human review")
+  .action(async (target: string, opts: { output: string; html?: boolean }) => {
     try {
-      console.log(await runPreview(target, opts.output))
+      console.log(await runPreview(target, opts.output, { htmlOut: opts.html }))
     } catch (e) {
       fail(e)
     }

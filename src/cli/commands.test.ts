@@ -430,6 +430,44 @@ describe("runPreview", () => {
   })
 })
 
+describe("runPreview --html (W7 task 1)", () => {
+  it("does not write preview.html unless --html is requested", async () => {
+    const out = join(dir, "svgs-no-html")
+    await runPreview(join(dir, "deck.json"), out)
+    const files = await readdir(out)
+    expect(files).not.toContain("preview.html")
+  })
+
+  it("writes a self-contained preview.html with one <svg> embed per slide, alongside the per-slide SVG files, and notes it in the success message", async () => {
+    const out = join(dir, "svgs-html")
+    const msg = await runPreview(join(dir, "deck.json"), out, { htmlOut: true })
+    const files = await readdir(out)
+    expect(files.sort()).toEqual(["001-cover.svg", "002-content.svg", "preview.html"])
+    const html = await readFile(join(out, "preview.html"), "utf8")
+    expect(html.match(/<svg\b/g)).toHaveLength(2)
+    expect(msg).toContain(join(out, "preview.html"))
+  })
+
+  it("shows the 'unfilled' badge for a placeholder page (deck-directory input, same as SVG output)", async () => {
+    const out = join(dir, "svgs-html-placeholder")
+    await runPreview(join(dir, "deck-with-placeholder.json"), out, { htmlOut: true })
+    const html = await readFile(join(out, "preview.html"), "utf8")
+    expect(html).toContain(">unfilled<")
+  })
+
+  it("works for deck project directory input too (loadDeckTarget's dir branch)", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    const out = join(deckDir, "svgs-html")
+    await runPreview(deckDir, out, { htmlOut: true })
+    const html = await readFile(join(out, "preview.html"), "utf8")
+    // makeDeckPlan() has 5 pages, every one unfilled (no pages/ dir written) —
+    // assemble marks all 5 as placeholders, so all 5 badges should show.
+    expect(html.match(/<svg\b/g)).toHaveLength(5)
+    expect(html.match(/class="pf-badge"/g)).toHaveLength(5)
+  })
+})
+
 describe("runSchema --style", () => {
   it("prints the StyleOverride schema", () => {
     const s = JSON.parse(runSchema("style")) as { properties?: Record<string, unknown> }
