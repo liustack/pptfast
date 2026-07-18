@@ -63,7 +63,7 @@ describe("MastheadEnding", () => {
     const deck = ir("consulting", endingWithHeading)
     const out = renderSvgMarkup(<MastheadEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />)
     expect(out).toContain("#051C2C") // consulting text
-    expect(out).toContain("#6C6C6C") // consulting muted
+    expect(out).toContain("#6B6B6B") // consulting muted
     expect(out).not.toContain("#1F1F1F") // magazine text 不得残留
     expect(out).not.toContain("#6E6259") // magazine muted 不得残留
   })

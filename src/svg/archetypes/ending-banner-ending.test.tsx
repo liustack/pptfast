@@ -71,8 +71,9 @@ describe("BannerEnding", () => {
     expect(out).toContain("#FFC72C")
 
     // 孤儿装饰色原样保留、未被并入 muted——版权行在 consulting 下仍然可见，
-    // 与 colors.muted(#6C6C6C) 不同色，是它本该有的"更浅一档"视觉层级
-    // （#6C6C6C 本身合法出现在联系标签上，不是本断言要排除的对象）
+    // 与 colors.muted(#6B6B6B，post-v0.3 W8 fix round补测二次校准值) 不同色，
+    // 是它本该有的"更浅一档"视觉层级（#6B6B6B 本身合法出现在联系标签上，
+    // 不是本断言要排除的对象）
     expect(out).toContain("#8a8a86")
   })
 
