@@ -266,7 +266,7 @@ describe("runAudit (W6 task 2)", () => {
     const result = await runAudit(join(dir, "deck-low-contrast.json"))
     expect(result.hasFindings).toBe(true)
     expect(result.output).toMatch(/^page 1 \(p-body\): \[low-contrast\]/)
-    expect(result.output).toMatch(/\naudited 1 pages, 0 skipped, \d+ findings$/)
+    expect(result.output).toMatch(/\naudited 1 page, 0 skipped, \d+ findings$/)
   })
 
   it("--json mode on a findings deck sets hasFindings and includes the finding code", async () => {
@@ -282,7 +282,7 @@ describe("runAudit (W6 task 2)", () => {
 
   it("notes skipped placeholder pages in human output, unconditionally (not gated on dir-mode like runValidate)", async () => {
     const result = await runAudit(join(dir, "deck-with-placeholder.json"))
-    expect(result.output).toContain("audited 1 pages, 1 skipped, 0 findings")
+    expect(result.output).toContain("audited 1 page, 1 skipped, 0 findings")
     expect(result.output).toContain("note: 1 unfilled placeholder page: p-2 (page 2)")
   })
 
