@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import { Command } from "commander"
 import { installNodePlatform } from "./platform/node"
-import { runInit, runPreview, runRender, runScenarios, runSchema, runThemes, runValidate } from "./cli/commands"
+import {
+  runInit,
+  runPlanValidate,
+  runPreview,
+  runRender,
+  runScenarios,
+  runSchema,
+  runThemes,
+  runValidate,
+} from "./cli/commands"
 import { checkForUpdate, createSelfUpdater } from "./cli/update"
 import { VERSION } from "./version"
 
@@ -57,7 +66,23 @@ program
   .command("schema")
   .description("Print the IR JSON Schema (feed this to a model before it writes IR)")
   .option("--style", "print the style-override schema instead")
-  .action((opts: { style?: boolean }) => console.log(runSchema(Boolean(opts.style))))
+  .option("--plan", "print the deck plan schema instead")
+  .action((opts: { style?: boolean; plan?: boolean }) =>
+    console.log(runSchema(opts.plan ? "plan" : opts.style ? "style" : undefined)),
+  )
+
+const plan = program.command("plan").description("Deck plan commands (spec §5)")
+plan
+  .command("validate")
+  .description("Validate a deck plan JSON file against the schema and mode-aware hard gates")
+  .argument("<plan.json>")
+  .action(async (planPath: string) => {
+    try {
+      console.log(await runPlanValidate(planPath))
+    } catch (e) {
+      fail(e)
+    }
+  })
 
 program
   .command("themes")

@@ -11,7 +11,8 @@ import {
 } from "../api"
 import { PptfastError } from "../errors"
 import { StyleOverrideSchema, type StyleOverride } from "../ir"
-import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS } from "../scenario"
+import { formatPlanIssues, planJsonSchema, resolvePlanThemeId, validatePlan } from "../plan"
+import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS, resolveScenario, type ScenarioAxes } from "../scenario"
 import { CONFIG_FILENAME, findConfig } from "./config"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 
@@ -88,8 +89,31 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
   return `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
 }
 
-export function runSchema(style = false): string {
-  return JSON.stringify(style ? styleJsonSchema() : irJsonSchema(), null, 2)
+/**
+ * Validate a deck plan JSON file (W5 task 2: `pptfast plan validate`).
+ * `loadIrFile` is a generic "read + JSON-parse with a readable failure
+ * message" helper despite its IR-scoped name (`./load-ir.ts`) — reused as-is
+ * rather than duplicated, same pattern `runValidate` above uses for IR.
+ * Returns human-readable report. Throws PptfastError when invalid (CLI exit 1).
+ */
+export async function runPlanValidate(planPath: string): Promise<string> {
+  const raw = await loadIrFile(planPath)
+  const v = validatePlan(raw)
+  if (!v.ok) {
+    throw new PptfastError(
+      `invalid plan (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatPlanIssues(v.errors)}`,
+    )
+  }
+  const plan = v.plan!
+  // Safe to call unguarded: validatePlan already resolved this same
+  // expression successfully as part of its own hard-gate chain.
+  const axes = resolveScenario(plan.scenario as string | Partial<ScenarioAxes> | undefined)
+  return `OK — ${plan.pages.length} pages, scenario ${axes.mode}/${axes.delivery}/${axes.audience}, theme "${resolvePlanThemeId(plan)}"`
+}
+
+export function runSchema(mode?: "style" | "plan"): string {
+  const schema = mode === "style" ? styleJsonSchema() : mode === "plan" ? planJsonSchema() : irJsonSchema()
+  return JSON.stringify(schema, null, 2)
 }
 
 export function runThemes(asJson: boolean): string {

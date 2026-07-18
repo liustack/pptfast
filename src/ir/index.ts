@@ -121,7 +121,10 @@ export const ThemeSchema = z
   })
   .strict()
 
-const MetaSchema = z
+// Exported (not just used internally) so W5's plan schema can pass its own
+// `meta` field straight through to this exact schema instead of redefining
+// an equivalent shape that could drift from it (`src/plan/index.ts`).
+export const MetaSchema = z
   .object({
     organization: z.string().optional(),
     authors: z
@@ -549,6 +552,17 @@ const ComponentSchema = z.discriminatedUnion("type", [
     .strict(),
 ])
 
+/**
+ * All 24 component `type` discriminant values, derived from `ComponentSchema`
+ * itself (never hand-copied) so this list can't drift from the union above.
+ * Typed as plain `readonly string[]` rather than `Component["type"][]` —
+ * every consumer of this list (W5's plan `focus` vocabulary gate,
+ * `src/plan/index.ts`) tests membership of an arbitrary author-supplied
+ * string, and TS's `Array.includes` is invariant in its element type, so a
+ * narrower literal-union type would reject that call at the caller.
+ */
+export const COMPONENT_TYPES: readonly string[] = ComponentSchema.options.map((option) => option.shape.type.value)
+
 // ── Slide ──
 
 const SlideSchema = z
@@ -639,8 +653,13 @@ const SlideSchema = z
  * `resolveScenario` itself still reads `./scenario-values`'s
  * `MODE_VALUES`/`DELIVERY_VALUES`/`AUDIENCE_VALUES` tuples for its runtime
  * checks — this schema no longer needs to import them at all.
+ *
+ * Exported so W5's plan schema (`src/plan/index.ts`) can reuse this exact
+ * object branch for its own top-level `scenario` field — same
+ * open-schema/closed-semantic split, same `resolveScenario` consumer, one
+ * definition instead of two that could drift apart.
  */
-const ScenarioAxesInputSchema = z.record(z.string(), z.unknown())
+export const ScenarioAxesInputSchema = z.record(z.string(), z.unknown())
 
 // ── 顶层 IR ──
 

@@ -8,6 +8,7 @@ import { SCENARIO_PRESETS } from "../scenario"
 import {
   applyDeckConfig,
   runInit,
+  runPlanValidate,
   runPreview,
   runRender,
   runScenarios,
@@ -53,6 +54,20 @@ const IR_WITH_PLACEHOLDER = {
   ],
 }
 
+const VALID_PLAN = {
+  version: "1",
+  scenario: "boardroom-report",
+  theme: "consulting",
+  pages: [
+    { id: "p-cover", type: "cover", heading: "CLI Plan" },
+    { id: "p-kpi", type: "content", heading: "Body content page", rhythm: "anchor", focus: "kpi_cards" },
+    { id: "p-detail", type: "content", heading: "More detail" },
+    { id: "p-ending", type: "ending", heading: "Thanks" },
+  ],
+}
+
+const BAD_PLAN = { pages: [] }
+
 let dir: string
 beforeAll(async () => {
   installNodePlatform()
@@ -62,6 +77,8 @@ beforeAll(async () => {
   await writeFile(join(dir, "logo.png"), PNG_1PX)
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
   await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
+  await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
+  await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
 })
 
 describe("runValidate", () => {
@@ -70,6 +87,22 @@ describe("runValidate", () => {
   })
   it("throws with issue list for invalid IR", async () => {
     await expect(runValidate(join(dir, "bad.json"))).rejects.toThrow(/invalid IR/)
+  })
+})
+
+describe("runPlanValidate", () => {
+  it("reports OK with page count, resolved scenario, and theme for a valid plan", async () => {
+    await expect(runPlanValidate(join(dir, "plan.json"))).resolves.toBe(
+      'OK — 4 pages, scenario pyramid/presentation/executive, theme "consulting"',
+    )
+  })
+  it("throws with the issue list, including page ids, for an invalid plan", async () => {
+    await expect(runPlanValidate(join(dir, "bad-plan.json"))).rejects.toThrow(/invalid plan.*no pages/s)
+  })
+  it("throws a readable error for a file that is not valid JSON", async () => {
+    const badJsonPath = join(dir, "not-json-plan.json")
+    await writeFile(badJsonPath, "{ not json")
+    await expect(runPlanValidate(badJsonPath)).rejects.toThrow(/not valid JSON/)
   })
 })
 
@@ -159,9 +192,18 @@ describe("runPreview", () => {
 
 describe("runSchema --style", () => {
   it("prints the StyleOverride schema", () => {
-    const s = JSON.parse(runSchema(true)) as { properties?: Record<string, unknown> }
+    const s = JSON.parse(runSchema("style")) as { properties?: Record<string, unknown> }
     expect(Object.keys(s.properties ?? {})).toEqual(
       expect.arrayContaining(["colors", "fonts", "shape"]),
+    )
+  })
+})
+
+describe("runSchema --plan", () => {
+  it("prints the deck plan schema", () => {
+    const s = JSON.parse(runSchema("plan")) as { properties?: Record<string, unknown> }
+    expect(Object.keys(s.properties ?? {})).toEqual(
+      expect.arrayContaining(["version", "scenario", "theme", "pages"]),
     )
   })
 })

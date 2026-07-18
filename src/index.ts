@@ -12,7 +12,7 @@ export {
   type ValidationIssue,
   type ThemeInfo,
 } from "./api"
-export { PptxIRSchema, ThemeSchema, StyleOverrideSchema, BUILTIN_THEME_IDS, BrandConfigSchema } from "./ir"
+export { PptxIRSchema, ThemeSchema, StyleOverrideSchema, BUILTIN_THEME_IDS, BrandConfigSchema, COMPONENT_TYPES } from "./ir"
 export type { PptxIR, Slide, Component, Meta, Assets, BackgroundSpec, StyleOverride, BrandConfig } from "./ir"
 export { registerTheme, getInstalledThemeIds, getThemeDefinition } from "./themes/definitions"
 export type { ThemeDefinition } from "./themes/definitions"
@@ -34,3 +34,18 @@ export {
   type ScenarioPreset,
 } from "./scenario"
 export { installPlatform, type PptfastPlatform } from "./platform/registry"
+export {
+  validatePlan,
+  planJsonSchema,
+  formatPlanIssues,
+  resolvePlanThemeId,
+  DeckPlanSchema,
+  PlanPageSchema,
+  PLAN_PAGE_COUNT_RANGE,
+  type DeckPlan,
+  type PlanPage,
+  type PlanPageType,
+  type PlanRhythm,
+  type PlanValidateResult,
+  type PlanValidationIssue,
+} from "./plan"
