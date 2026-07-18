@@ -154,16 +154,15 @@ export interface DeliveryBudget {
    * Per-slide editorial budget (component count) — content discipline
    * ("how many things belong on this slide"), not geometry. Spec §5's
    * dual-attribute capacity split keeps *physical* capacity ("how many
-   * things fit in this layout's block regions") on block-region metadata
-   * instead — see `CAPACITY` in `svg/audit/capacity.ts`, unchanged by this
-   * task. This wave's task 3 quality gate takes `min(this budget, the
-   * resolved layout's block capacity)`.
+   * things fit in this layout's slots") on the layout registry's body-slot
+   * `capacity` metadata (`svg/layouts/registry.ts`). The W3 quality gate
+   * takes `min(this budget, the resolved layout's body capacity)`.
    */
   maxComponentsPerSlide: number
   bullets: {
     maxItems: number
     /**
-     * Same "unit" concept as `CAPACITY.bullets.maxUnitsPerItem` in
+     * Same "unit" concept the deleted `CAPACITY.bullets` used (now owned here) in
      * `svg/audit/capacity.ts` (`measureTextUnits`, CJK weight = 1.0) — a
      * visual-width-weighted character count, not a raw `.length`. That
      * existing constant (53) is the physical per-line geometry ceiling

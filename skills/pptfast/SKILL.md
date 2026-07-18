@@ -45,7 +45,7 @@ Grow one IR JSON file incrementally. After each batch:
 pptfast validate deck.json
 ```
 
-Every error carries a 1-based page number and a concrete fix. Fix the IR and re-validate until it prints `OK`. Do not argue with the gate — its limits come from real render geometry (headings that overflow, components that cannot fit), not style preference.
+Every error carries a 1-based page number and a concrete fix. Fix the IR and re-validate until it prints `OK`. Do not argue with the gate — some limits are hard render geometry (headings that overflow, a layout's physical capacity) and some are editorial budgets that scale with the deck's `delivery` axis (see Capacity below). The error message names which side is binding — restructure the content, or revisit the scenario with the user if the delivery budget is the constraint.
 
 ### Step 4 — Render
 

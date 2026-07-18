@@ -462,7 +462,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     tone-adaptive-content, plus stacked-poster's degrade path (this file's
 //     own comment on that entry already establishes it behaves like the
 //     other four "all" archetypes once it falls back to SvgContent): 4,
-//     mirroring `CAPACITY.maxBlocksPerSlide` — audit/capacity.ts's flat,
+//     mirroring the former `CAPACITY.maxBlocksPerSlide` (deleted in W3 — the editorial side now lives in DELIVERY_BUDGETS) — audit/capacity.ts's flat,
 //     theme-independent default (`floor(minRectH / perBlock)`, the shared
 //     derivation for every linear-stack theme).
 //   - two-column: 4 too — the arrangement splits components into 2 narrower
@@ -472,7 +472,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //   - bento-panel: 6, matching this same archetype's own `grid` slot
 //     capacity below — not the flat default. `layoutBento`'s hard 6-cell
 //     ceiling (bento-layout.ts: "the bento grid only ever has 6 cells") and
-//     `CAPACITY.maxBlocksPerSlideOverrides.tech = 6` (audit/capacity.ts,
+//     the former `CAPACITY.maxBlocksPerSlideOverrides.tech = 6` (deleted in W3, value preserved here) (audit/capacity.ts,
 //     theme-keyed today, W3's future archetype-keyed home) both land on the
 //     same number for the same non-linear grid geometry independently.
 //     `body` is bento-panel's *degraded* single-stack rendering of the exact
