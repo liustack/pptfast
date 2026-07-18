@@ -597,3 +597,82 @@ describe("colors.muted component-type coverage (task-2 fix round, backlog 5a com
     })
   }
 })
+
+// Recorded shortfalls (task-2 fix round, backlog 5a completeness sweep —
+// NOT silently exempted, NOT fixed this round; see the fix report's
+// "记录的缺口" section for the full writeup). Two colors.muted call sites
+// render at a reduced opacity WITHOUT routing through `accessibleOpacity`
+// (`src/svg/ink.ts`) — the helper this codebase already built for exactly
+// this shape of problem ("a dimmed ink tier can drop under the floor even
+// when the same ink at full opacity clears it comfortably", that function's
+// own doc comment) and already wired up at its two existing call sites
+// (`chapter-banner-chapter.tsx`/`chapter-rail-chapter.tsx`) — but never at
+// these two:
+//   - kpi.tsx's row-card `source` line: `fill={colors.muted}
+//     fillOpacity={0.7}`. Every raw (fill, background) pair this file
+//     checks already clears 4.5:1 post-recalibration, but blending muted at
+//     0.7 alpha toward `colors.surface` pulls the *effective* color close
+//     enough to the background that all 13 themes still fail.
+//   - numbered-cards.tsx's `sub` line: `fill={colors.muted}
+//     opacity={0.75}`. Same mechanism, 12/13 themes fail (campaign's
+//     post-matrix-recalibration muted moved light enough this round to
+//     clear even the 0.75-blended case too, a side effect, not a targeted
+//     fix).
+// Recalibrating colors.muted's *hex* to satisfy the 0.7-alpha case directly
+// (instead of fixing the opacity call site) was evaluated and rejected:
+// independently computed, the 4 themes with *no other* colors.muted issue
+// at all (academic/classroom/tech/journal) would still need to darken
+// ~16-19 percentage points of lightness to clear kpi.tsx's source line at
+// 0.7 alpha — an order of magnitude past every adjustment this round or the
+// prior one made (max 8.7pp, campaign) — landing muted's own raw contrast
+// around 11:1 against its card surface, next to colors.text's own
+// ~16-17:1 there. That stops reading as a *softer* secondary tier at all —
+// the exact invariant this token's calibration exists to protect. Fixing
+// this for real is a component-code change (route the call site through
+// `accessibleOpacity`), not a token-calibration one, and out of this task's
+// "extend the muted calibration" mandate — routing through it would also
+// drop the opacity to 1 on most themes as a rendering-visible consequence,
+// needing its own dedicated re-pin sweep. Recorded here (pinned, not
+// silently dropped) so a future change to either call site's opacity or to
+// colors.muted doesn't silently drift these counts without a conscious
+// update.
+describe("colors.muted known gaps (recorded shortfalls, not fixed this round — see fix report)", () => {
+  function findsMuted(themeId: (typeof CANONICAL_THEME_IDS)[number], slide: Slide): boolean {
+    const style = THEME_DEFINITIONS[themeId].style
+    return auditFindings(deckFor(themeId, slide)).some(
+      (f) => f.code === "low-contrast" && (f.detail as { fill?: string } | undefined)?.fill === style.colors.muted,
+    )
+  }
+
+  it("kpi.tsx row-card source line (fillOpacity 0.7): fails 4.5:1 on all 13 themes", () => {
+    const slide: Slide = {
+      type: "content",
+      heading: HEADING,
+      layout: "narrow-column",
+      components: [
+        {
+          type: "kpi_cards",
+          items: [{ value: "128", unit: "万", label: "季度营收", source: "来源: 内部财报" }],
+        },
+      ],
+    } as Slide
+    const affected = CANONICAL_THEME_IDS.filter((themeId) => findsMuted(themeId, slide))
+    expect(affected).toEqual([...CANONICAL_THEME_IDS])
+  })
+
+  it("numbered-cards.tsx sub line (opacity 0.75): fails 4.5:1 on 12/13 themes (all but campaign)", () => {
+    const slide: Slide = {
+      type: "content",
+      heading: HEADING,
+      layout: "narrow-column",
+      components: [
+        {
+          type: "numbered_cards",
+          items: [{ title: "要点一", text: "说明文字", sub: "补充信息" }],
+        },
+      ],
+    } as Slide
+    const affected = CANONICAL_THEME_IDS.filter((themeId) => findsMuted(themeId, slide))
+    expect(affected).toEqual(CANONICAL_THEME_IDS.filter((t) => t !== "campaign"))
+  })
+})
