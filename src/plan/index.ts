@@ -211,12 +211,47 @@ function checkBoundaryTypes(plan: DeckPlan): PlanValidationIssue[] {
 // ── hard gate: page id required + unique ────────────────────────────────
 
 /**
+ * Path-traversal-safety check (CWE-22 defense-in-depth, W5 whole-branch
+ * review finding 1) on a plan-authored page id — this id becomes `slide.id`
+ * at assemble time ({@link buildSlide} in `./assemble.ts`, step 5) and, from
+ * there, a `pages/<id>.json` / `assets/<id><ext>` file name if the resulting
+ * IR is ever disassembled again (`runDisassemble`'s page write and
+ * `writeOneAsset`, both via `assertSafeFileSegment` in `../cli/deck-dir.ts`
+ * — the actual write-time gates, and the only checks that matter for
+ * *every* id regardless of provenance, since a hand-authored bare IR skips
+ * this module entirely). Rejecting an unsafe id here too, at plan-validation
+ * time, is pure defense-in-depth: it means a plan-authored id is already
+ * safe by the time it could ever reach either sink.
+ *
+ * This module stays Node-free (`AGENTS.md`'s layout rule, this file's own
+ * top comment), so the check is duplicated as plain string logic instead of
+ * importing `assertSafeFileSegment` itself (which needs `node:path`'s
+ * `resolve`/`relative`) — same "duplicate a few lines rather than pull a
+ * Node-touching module into this closure" call {@link planHeadingLength}'s
+ * own doc comment makes just above. A single trailing path segment can only
+ * ever escape whatever directory it is joined under if it is itself
+ * absolute, contains a `/`/`\` separator, or is exactly `".."` —
+ * `assertSafeFileSegment`'s own doc comment walks through why those lexical
+ * checks alone are already sufficient (it additionally cross-checks via
+ * `resolve`/`relative` as belt-and-suspenders, not because the lexical
+ * checks alone fall short). Keep in sync with `assertSafeFileSegment` if
+ * either check's rules ever change.
+ */
+function isUnsafePageId(id: string): boolean {
+  return id.includes("/") || id.includes("\\") || id === ".."
+}
+
+/**
  * `id` is required at the schema level (`PlanPageSchema.id: z.string()`, no
  * `.optional()`) so a missing key is already a structural error by the time
  * this runs — what remains to check here is (a) an empty/whitespace-only
- * string, which the schema's plain `z.string()` lets through, and (b)
- * cross-page uniqueness, which no per-page schema can express. Kebab-case is
- * suggested by spec §5 but never enforced ("kebab-case suggested, not required").
+ * string, which the schema's plain `z.string()` lets through, (b) a value
+ * unsafe to use as a page/asset file name ({@link isUnsafePageId}, W5
+ * whole-branch review finding 1), and (c) cross-page uniqueness, which no
+ * per-page schema can express. Kebab-case is suggested by spec §5 but never
+ * enforced ("kebab-case suggested, not required") — neither (a) nor (b)
+ * narrows that: spaces, underscores, and uppercase all stay legal, only path
+ * separators and a bare `".."` are not.
  */
 function checkPageIds(plan: DeckPlan): PlanValidationIssue[] {
   const errors: PlanValidationIssue[] = []
@@ -224,6 +259,14 @@ function checkPageIds(plan: DeckPlan): PlanValidationIssue[] {
   plan.pages.forEach((page, i) => {
     if (page.id.trim() === "") {
       errors.push({ path: `pages.${i}.id`, message: `page ${i + 1} has an empty id — every page needs a non-empty, unique id` })
+      return
+    }
+    if (isUnsafePageId(page.id)) {
+      errors.push({
+        path: `pages.${i}.id`,
+        pageId: page.id,
+        message: `page id "${page.id}" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."`,
+      })
       return
     }
     const indices = seen.get(page.id)

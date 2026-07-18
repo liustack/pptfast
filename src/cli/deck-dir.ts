@@ -20,7 +20,7 @@
  * ```
  */
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises"
-import { basename, extname, isAbsolute, join, resolve } from "node:path"
+import { basename, extname, isAbsolute, join, relative, resolve } from "node:path"
 import { PptfastError } from "../errors"
 import { assembleDeck, type AssembleResult, type PageContent } from "../plan/assemble"
 import { decksRoot } from "./home"
@@ -29,6 +29,52 @@ import { EXT_BY_MIME, loadIrFile } from "./load-ir"
 const PLAN_FILENAME = "deck.plan.json"
 const PAGES_DIRNAME = "pages"
 const ASSETS_DIRNAME = "assets"
+
+// ── path-traversal safety (CWE-22 defense) ──────────────────────────────
+
+/**
+ * Rejects an `id` that is unsafe to join into a page/asset file path (W5
+ * whole-branch review finding 1, CRITICAL — reproduced by the reviewer
+ * against both call sites below). `slide.id` and `assets.images` keys are
+ * both open, unrestricted `z.string()` at the schema layer (`../ir/index.ts`
+ * — no format rule there by design, cross-slide/id rules are `validateIr`'s
+ * job, see `SlideSchema.id`'s own doc comment), so a hand-authored IR can set
+ * either to anything, including `"../../../../escape"` — and both
+ * {@link writeOneAsset} below and `runDisassemble`'s page write
+ * (`./commands.ts`) join that value straight into a write path with no
+ * check of their own before this task. Call this before building any path
+ * from an id sourced off a parsed IR.
+ *
+ * A value `join()`'d as (a possibly-suffixed) single trailing path segment
+ * can only ever escape `base` if it is itself absolute, contains a `/` or
+ * `\` separator (smuggling in extra segments, e.g. `"../../../escape"`), or
+ * is exactly `".."` (the one separator-free value that is still a traversal
+ * on its own, e.g. when a sink appends an empty suffix) — those lexical
+ * checks alone already make every call site in this file safe regardless of
+ * what it joins `id` under. `relative(base, resolve(base, id))` escaping
+ * `base` (starts with `".."`, or is itself absolute) is checked too, as
+ * defense-in-depth on top of the lexical checks, not a substitute for them —
+ * `base` here is a fixed stand-in directory rather than either real sink's
+ * actual `assetsDir`/`pagesDir`: the property under test ("can this id ever
+ * resolve outside whatever directory it's joined under") is a function of
+ * `id` alone once the lexical checks above hold, true for any base, so a
+ * real caller-supplied base would add no extra precision — see this
+ * function's own test suite for the two attack shapes this closes.
+ *
+ * `context` names the offending id's role (`"slide id"`, `"asset id"`) so
+ * the thrown message points at which field was unsafe.
+ */
+export function assertSafeFileSegment(id: string, context: string): void {
+  const safeBase = resolve("/pptfast-safe-base")
+  const rel = relative(safeBase, resolve(safeBase, id))
+  const safe =
+    !isAbsolute(id) && !id.includes("/") && !id.includes("\\") && id !== ".." && !rel.startsWith("..") && !isAbsolute(rel)
+  if (!safe) {
+    throw new PptfastError(
+      `${context} "${id}" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."`,
+    )
+  }
+}
 
 // ── bare-name / path resolution ─────────────────────────────────────────
 
@@ -116,12 +162,21 @@ export async function pathExists(path: string): Promise<boolean> {
  * this function reaching for either itself, so a command that already
  * needs one of them for other reasons (theme/style resolution) never reads
  * the same file twice.
+ *
+ * An empty or whitespace-only `arg` (W5 whole-branch review finding 4) is
+ * rejected up front rather than silently resolving to `cwd` itself — without
+ * this guard, `resolve(cwd, "")` returns `cwd` unchanged and `pathExists`
+ * always finds it (a directory always exists), so the empty string would
+ * otherwise quietly pass through as "the target is cwd", surfacing later as
+ * a confusing missing-`deck.plan.json` error instead of naming the actual
+ * problem (an empty target argument) up front.
  */
 export async function resolveDeckTarget(
   arg: string,
   config?: { decksDir?: string },
   cwd: string = process.cwd(),
 ): Promise<string> {
+  if (arg.trim() === "") throw new PptfastError("deck target must not be empty")
   if (arg.includes("/") || arg.includes("\\")) return resolve(cwd, arg)
   const local = resolve(cwd, arg)
   if (await pathExists(local)) return local
@@ -380,6 +435,11 @@ export async function writeDeckAssets(
 const DATA_URI_RE = /^data:([^;,]+);base64,(.*)$/s
 
 async function writeOneAsset(id: string, src: string, assetsDir: string, sourceBaseDir: string): Promise<void> {
+  // W5 whole-branch review finding 1: one guard at the top covers both
+  // write branches below (data-URI and local-file-copy) — `id` is the same
+  // value regardless of which branch runs, so there is nothing branch-
+  // specific about the check itself, only about what gets appended after it.
+  assertSafeFileSegment(id, "asset id")
   if (src.startsWith("data:")) {
     const match = DATA_URI_RE.exec(src)
     if (!match) {

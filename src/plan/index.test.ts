@@ -231,6 +231,28 @@ describe("hard gate: page id required + unique", () => {
       }),
     )
   })
+
+  describe("unsafe (path-traversal) page ids (W5 whole-branch review finding 1, CRITICAL, CWE-22 defense-in-depth)", () => {
+    it("rejects a page id containing '..' segments, naming the id on the issue", () => {
+      const errors = expectErrors(makePlan([cover(), content("../../../escape"), ending()]))
+      const err = errors.find((e) => /not a safe file name/.test(e.message))
+      expect(err).toBeDefined()
+      expect(err!.pageId).toBe("../../../escape")
+      expect(err!.message).toBe(
+        'page id "../../../escape" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."',
+      )
+    })
+
+    it("rejects a page id that is exactly '..'", () => {
+      const errors = expectErrors(makePlan([cover(), content(".."), ending()]))
+      expect(errors.some((e) => /not a safe file name/.test(e.message))).toBe(true)
+    })
+
+    it("rejects a page id containing a backslash", () => {
+      const errors = expectErrors(makePlan([cover(), content("..\\escape"), ending()]))
+      expect(errors.some((e) => /not a safe file name/.test(e.message))).toBe(true)
+    })
+  })
 })
 
 // ── hard gate: heading required + length ────────────────────────────────

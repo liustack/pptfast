@@ -3,7 +3,15 @@ import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/prom
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-import { isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
+import { PptfastError } from "../errors"
+import {
+  assertSafeFileSegment,
+  isDeckDirectory,
+  pathExists,
+  readDeckDir,
+  resolveDeckTarget,
+  writeDeckAssets,
+} from "./deck-dir"
 
 function tmp(): Promise<string> {
   return mkdtemp(join(tmpdir(), "pptfast-deckdir-"))
@@ -31,6 +39,39 @@ function makePlan(extra: Record<string, unknown> = {}): Record<string, unknown> 
 async function writeDeckPlan(dir: string, plan: unknown = makePlan()): Promise<void> {
   await writeFile(join(dir, "deck.plan.json"), JSON.stringify(plan))
 }
+
+describe("assertSafeFileSegment (W5 whole-branch review finding 1, CRITICAL, CWE-22)", () => {
+  it("accepts an ordinary id", () => {
+    expect(() => assertSafeFileSegment("p-kpi", "slide id")).not.toThrow()
+  })
+
+  it("accepts an id with spaces/underscores/uppercase — kebab-case is suggested, not required", () => {
+    expect(() => assertSafeFileSegment("P_Cover 1", "slide id")).not.toThrow()
+  })
+
+  it("rejects an id containing '../' segments, naming the id, its context, and the reason", () => {
+    expect(() => assertSafeFileSegment("../../../../escape", "slide id")).toThrow(PptfastError)
+    expect(() => assertSafeFileSegment("../../../../escape", "slide id")).toThrow(
+      'slide id "../../../../escape" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."',
+    )
+  })
+
+  it("rejects an id that is exactly '..'", () => {
+    expect(() => assertSafeFileSegment("..", "asset id")).toThrow(PptfastError)
+  })
+
+  it("rejects an absolute id", () => {
+    expect(() => assertSafeFileSegment("/etc/passwd", "asset id")).toThrow(PptfastError)
+  })
+
+  it("rejects an id containing a backslash", () => {
+    expect(() => assertSafeFileSegment("..\\..\\escape", "asset id")).toThrow(PptfastError)
+  })
+
+  it("names the context passed in, so the thrown message points at which field was unsafe", () => {
+    expect(() => assertSafeFileSegment("../x", "asset id")).toThrow(/^asset id "\.\.\/x"/)
+  })
+})
 
 describe("isDeckDirectory", () => {
   it("is true for a directory", async () => {
@@ -62,6 +103,15 @@ describe("resolveDeckTarget", () => {
   afterEach(() => {
     if (originalHome === undefined) delete process.env.PPTFAST_HOME
     else process.env.PPTFAST_HOME = originalHome
+  })
+
+  it("rejects an empty target (W5 whole-branch review finding 4)", async () => {
+    await expect(resolveDeckTarget("")).rejects.toThrow(PptfastError)
+    await expect(resolveDeckTarget("")).rejects.toThrow("deck target must not be empty")
+  })
+
+  it("rejects a whitespace-only target the same way", async () => {
+    await expect(resolveDeckTarget("   ")).rejects.toThrow("deck target must not be empty")
   })
 
   it("resolves a forward-slash path against cwd (explicit path always wins, W5 review fix: no longer returned unresolved)", async () => {
@@ -469,5 +519,42 @@ describe("writeDeckAssets (disassemble asset materialization, W5 review fix)", (
     expect(await readFile(join(outDir, "assets", "a.png"), "utf8")).toBe("AAA")
     expect(await readFile(join(outDir, "assets", "b.png"), "utf8")).toBe("BBB")
     expect(await readFile(join(outDir, "assets", "c.png"), "utf8")).toBe("CCC")
+  })
+
+  describe("path traversal defense (W5 whole-branch review finding 1, CRITICAL, CWE-22 — reproduced by the reviewer)", () => {
+    it("rejects a data-URI asset key containing '../' segments and writes nothing outside outDir", async () => {
+      const outDir = await tmp()
+      const payload = Buffer.from("hello-asset-bytes").toString("base64")
+      await expect(
+        writeDeckAssets({ "../../../escape": { src: `data:image/png;base64,${payload}` } }, outDir, outDir),
+      ).rejects.toThrow(
+        'asset id "../../../escape" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."',
+      )
+      // The exact path the pre-fix code would have written to (assetsDir
+      // joined with the malicious id + mime extension) must not exist.
+      const wouldEscapeTo = join(outDir, "assets", "../../../escape.png")
+      await expect(stat(wouldEscapeTo)).rejects.toThrow()
+    })
+
+    it("rejects a local-file-copy asset key containing '../' segments and writes nothing outside outDir", async () => {
+      const outDir = await tmp()
+      const sourceDir = await tmp()
+      await writeFile(join(sourceDir, "photo.jpg"), "real-bytes-ish")
+      await expect(
+        writeDeckAssets({ "../../../escape": { src: "photo.jpg" } }, outDir, sourceDir),
+      ).rejects.toThrow(
+        'asset id "../../../escape" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."',
+      )
+      const wouldEscapeTo = join(outDir, "assets", "../../../escape.jpg")
+      await expect(stat(wouldEscapeTo)).rejects.toThrow()
+    })
+
+    it("still accepts an ordinary (safe) asset id — happy path unchanged", async () => {
+      const outDir = await tmp()
+      const payload = Buffer.from("x").toString("base64")
+      const result = await writeDeckAssets({ logo: { src: `data:image/png;base64,${payload}` } }, outDir, outDir)
+      expect(result.count).toBe(1)
+      await expect(stat(join(outDir, "assets", "logo.png"))).resolves.toBeDefined()
+    })
   })
 })

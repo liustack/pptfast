@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import JSZip from "jszip"
 import { afterAll, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
@@ -261,6 +261,22 @@ describe("runRender", () => {
       expect(msg).toContain("2 slides")
       const bytes = await readFile(out)
       expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+    })
+  })
+
+  describe("field-alias note (W5 whole-branch review finding 3: README claimed render printed this note; it never actually did)", () => {
+    it("prints a note after the wrote-file summary listing the normalized field aliases", async () => {
+      const out = join(dir, "out-alias.pptx")
+      const msg = await runRender(join(dir, "deck-with-alias.json"), { output: out })
+      expect(msg).toMatch(/^wrote .*out-alias\.pptx/)
+      expect(msg).toContain("note: 1 field alias normalized")
+      expect(msg).toContain("slides[1].components[0].items[0]: title → label")
+    })
+
+    it("has no note line when there is nothing to normalize", async () => {
+      const out = join(dir, "out-no-alias.pptx")
+      const msg = await runRender(join(dir, "deck.json"), { output: out })
+      expect(msg).not.toContain("note:")
     })
   })
 })
@@ -859,6 +875,49 @@ describe("runDisassemble", () => {
       expect(msg).toContain("no pages")
       expect(msg).not.toContain(join(outDir, "pages"))
       await expect(stat(join(outDir, "pages"))).rejects.toThrow()
+    })
+  })
+
+  describe("path traversal defense (W5 whole-branch review finding 1, CRITICAL, CWE-22 — reproduced by the reviewer)", () => {
+    it("rejects a slide id containing '../' segments and writes nothing outside outDir", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      const maliciousIr = {
+        ...ROUNDTRIPPABLE_IR,
+        slides: ROUNDTRIPPABLE_IR.slides.map((s, i) => (i === 1 ? { ...s, id: "../../../../escape" } : s)),
+      }
+      await writeFile(irPath, JSON.stringify(maliciousIr))
+      const outDir = await makeDeckDir()
+
+      await expect(runDisassemble(irPath, outDir)).rejects.toThrow(
+        'slide id "../../../../escape" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."',
+      )
+
+      // The exact path the pre-fix code would have written to (pagesDir
+      // joined with the malicious id) must not exist.
+      const wouldEscapeTo = join(outDir, "pages", "../../../../escape.json")
+      await expect(stat(wouldEscapeTo)).rejects.toThrow()
+
+      // Nothing with the attacker's chosen name landed anywhere in outDir's
+      // ancestor chain either (scan a few levels up, the same chain a
+      // successful escape would have walked through).
+      let ancestor = outDir
+      for (let i = 0; i < 5; i++) {
+        ancestor = dirname(ancestor)
+        const entries = await readdir(ancestor).catch(() => [] as string[])
+        expect(entries).not.toContain("escape")
+        expect(entries).not.toContain("escape.json")
+      }
+    })
+
+    it("still disassembles a deck with only safe, explicit slide ids — happy path unchanged", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR))
+      const outDir = await makeDeckDir()
+      await runDisassemble(irPath, outDir)
+      const pageFiles = (await readdir(join(outDir, "pages"))).sort()
+      expect(pageFiles).toEqual(["s-body.json", "s-body2.json", "s-cover.json", "s-ending.json"])
     })
   })
 })

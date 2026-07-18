@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
-import { generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { formatIssues, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 const raw = {
@@ -210,6 +210,77 @@ describe("duplicate slide id gate (W5 task 1)", () => {
   it("accepts slides that omit id entirely (bare, pre-W5 IR)", () => {
     const v = validateIr(raw)
     expect(v.ok).toBe(true)
+  })
+
+  it("sets slideId to a representative duplicated id, without changing formatIssues' output (no page, W5 whole-branch review finding 2)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { ...raw.slides[0], id: "p-1" },
+        { ...raw.slides[1], id: "p-1" },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.slideId).toBe("p-1")
+    // page stays unset (deck-level issue, spans multiple slides) — formatIssues
+    // only appends the parenthesized id alongside a page number, so this
+    // issue's printed format is byte-identical to before this task.
+    expect(formatIssues(v.errors)).toBe(
+      'slides: duplicate slide id(s): "p-1" (pages 1, 2) — slide ids must be unique within a deck',
+    )
+  })
+})
+
+describe("ValidationIssue.slideId + formatIssues (W5 whole-branch review finding 2)", () => {
+  it("checkLayoutApplicability sets slideId, and formatIssues prints 'page N (id) — path: message'", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", id: "p-kpi", heading: "x", layout: "not-a-real-layout", components: [] },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBe("p-kpi")
+    expect(formatIssues(v.errors)).toBe(
+      `page 2 (p-kpi) — slides.1.layout: ${v.errors[0]!.message}`,
+    )
+  })
+
+  it("leaves the format unchanged (no parens) when the offending slide has no id", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", layout: "not-a-real-layout", components: [] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBeUndefined()
+    expect(formatIssues(v.errors)).toBe(`page 2 — slides.1.layout: ${v.errors[0]!.message}`)
+    expect(formatIssues(v.errors)).not.toContain("(")
+  })
+
+  it("the content-quality-gate translation reads slideId off the flagged slide itself, not any other slide in the deck", () => {
+    const v = validateIr({
+      ...raw,
+      // Slide 0 has an id, but slide 1 (the one missing a heading) does not
+      // — slideId must stay unset, not leak slide 0's id onto slide 1's issue.
+      slides: [{ ...raw.slides[0], id: "p-cover" }, { type: "content" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBeUndefined()
+  })
+
+  it("the content-quality-gate translation sets slideId when the flagged slide has an id", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", id: "p-body" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBe("p-body")
+    expect(formatIssues(v.errors)).toMatch(/^page 2 \(p-body\) — /)
   })
 })
 

@@ -223,7 +223,7 @@ writeFileSync(
         type: "kpi_cards",
         items: [
           { value: "13", label: "built-in themes" },
-          { value: "19", label: "semantic component types" },
+          { value: "24", label: "semantic component types" },
         ],
       },
     ],

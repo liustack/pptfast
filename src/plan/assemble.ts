@@ -349,6 +349,20 @@ const UNTITLED_HEADING = "Untitled"
  * and type — but, unlike a plan-assigned id, *not* stable across inserting
  * or reordering slides — out of scope here, since a bare IR with no `id` at
  * all has no stabler identity to fall back to in the first place).
+ *
+ * That generated `p-<ordinal>-<type>` id is safe by construction as a
+ * page/asset file-name segment (W5 whole-branch review finding 1, verified
+ * — not just asserted — rather than also routing it through
+ * `assertSafeFileSegment`, `../cli/deck-dir.ts`): `<ordinal>` is
+ * `index + 1`, always a plain non-negative integer, and `<type>` is a
+ * `Slide["type"]`, a closed schema enum (`"cover" | "chapter" | "content" |
+ * "ending"`, `SlideSchema.type` in `../ir/index.ts`) — neither half can ever
+ * contain a `/`, a `\`, or resolve to `".."`, so the joined id can't either.
+ * A carried-over `slide.id` (the `??` branch's other side) has no such
+ * guarantee — that is the one this function passes straight through
+ * unchecked, same as every other field {@link extractPageContent} copies —
+ * which is exactly why the write-time gate in `../cli/deck-dir.ts` (not this
+ * function) is what actually closes the vulnerability.
  */
 export function disassembleDeck(ir: PptxIR): { plan: DeckPlan; pages: Record<string, PageContent> } {
   const pages: Record<string, PageContent> = {}

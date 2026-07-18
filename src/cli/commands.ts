@@ -16,7 +16,7 @@ import { formatInvalidPlanError, planJsonSchema, resolvePlanThemeId, validatePla
 import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS, resolveScenario, type ScenarioAxes } from "../scenario"
 import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
-import { isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
+import { assertSafeFileSegment, isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 
 /** `findUserConfig()`'s own return shape, named here so it can be threaded as
@@ -208,6 +208,11 @@ export interface RenderOptions {
  * single file always has. `--draft` threads through unchanged either way
  * (`generatePptx`'s own gate, W5 task 1) — a deck project's own placeholder
  * pages are exactly what that gate exists to catch.
+ *
+ * Appends the same field-alias {@link normalizedNote} `runValidate` below
+ * prints (W5 whole-branch review finding 3 — the README already claimed
+ * `render` did this; it never actually threaded `v.normalized` through
+ * until now).
  */
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
@@ -220,7 +225,30 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   const bytes = await generatePptx(v.ir!, { draft: opts.draft })
   await mkdir(dirname(resolve(opts.output)), { recursive: true })
   await writeFile(opts.output, bytes)
-  return `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`
+  const ok = `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`
+  const note = normalizedNote(v.normalized)
+  return note ? `${ok}\n${note}` : ok
+}
+
+/**
+ * `"note: N field alias(es) normalized\n  path: alias → canonical\n..."` —
+ * the note line every one of `validateIr`'s callers appends after its own
+ * success line when `ValidateResult.normalized` (`../api.ts`) is non-empty,
+ * i.e. `validateIr` deterministically rewrote at least one synonym field
+ * name before parsing (W5 task 4 — kpi `title`→`label` and friends,
+ * `../ir/field-aliases.ts`). Extracted so `runRender`/`runPreview` (W5
+ * whole-branch review finding 3 — the README already claimed `validate`
+ * *and* `render` both printed this note; `render` never actually did, and
+ * `preview` is folded in here too for the same reason) can append the exact
+ * same note `runValidate` below has always printed, instead of each
+ * re-deriving the formatting a second and third time. `undefined` when
+ * nothing was normalized, the same "let the caller skip the line entirely"
+ * shape {@link placeholderNote} below already uses.
+ */
+function normalizedNote(normalized: string[] | undefined): string | undefined {
+  if (!normalized || normalized.length === 0) return undefined
+  const n = normalized.length
+  return `note: ${n} field alias${n === 1 ? "" : "es"} normalized\n${normalized.map((line) => `  ${line}`).join("\n")}`
 }
 
 /**
@@ -270,12 +298,8 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
     )
   const ok = `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
   const notes: string[] = []
-  if (v.normalized && v.normalized.length > 0) {
-    const n = v.normalized.length
-    notes.push(
-      `note: ${n} field alias${n === 1 ? "" : "es"} normalized\n${v.normalized.map((line) => `  ${line}`).join("\n")}`,
-    )
-  }
+  const aliasNote = normalizedNote(v.normalized)
+  if (aliasNote) notes.push(aliasNote)
   if (isDir) {
     const note = placeholderNote(v.ir!)
     if (note) notes.push(note)
@@ -378,6 +402,9 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
  * preview always lets everything through — an agent iterating on a
  * partially-filled deck needs to see whatever page it just wrote without
  * every other still-empty page blocking it.
+ *
+ * Appends the same field-alias {@link normalizedNote} `runValidate`/
+ * `runRender` print (W5 whole-branch review finding 3).
  */
 export async function runPreview(irPath: string, outDir: string, cwd = process.cwd()): Promise<string> {
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
@@ -392,7 +419,9 @@ export async function runPreview(irPath: string, outDir: string, cwd = process.c
     const name = `${String(i + 1).padStart(3, "0")}-${ir.slides[i]!.type}.svg`
     await writeFile(join(outDir, name), renderSlideSvg(ir, i))
   }
-  return `wrote ${ir.slides.length} SVG files to ${outDir}`
+  const ok = `wrote ${ir.slides.length} SVG files to ${outDir}`
+  const note = normalizedNote(v.normalized)
+  return note ? `${ok}\n${note}` : ok
 }
 
 export interface AssembleOptions {
@@ -505,6 +534,14 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
  * `pagesDir`/`assetsDir` are only named when at least one page/asset file
  * actually landed there (a plan-only deck with every slide a placeholder,
  * or an assetless deck, leaves either directory unwritten).
+ *
+ * Every page id is checked with {@link assertSafeFileSegment} (`./deck-dir.ts`)
+ * before any `pages/<id>.json` is written (W5 whole-branch review finding 1,
+ * CRITICAL — CWE-22): `slide.id` is an unrestricted string at the schema
+ * layer, so a hand-authored IR could otherwise set one to
+ * `"../../../../escape"` and write outside `outDir`. `writeDeckAssets` below
+ * (`./deck-dir.ts`) carries the matching check for asset keys, inside
+ * `writeOneAsset`.
  */
 export async function runDisassemble(irPath: string, outDir: string): Promise<string> {
   const raw = await loadIrFile(irPath)
@@ -526,6 +563,15 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
   const ids = Object.keys(pages)
   const pagesDir = join(outDir, "pages")
   if (ids.length > 0) {
+    // W5 whole-branch review finding 1 (CRITICAL, CWE-22): `id` is
+    // `slide.id` off the parsed input IR (`disassembleDeck` passes a bare
+    // `slide.id` through unchanged when present, `../plan/assemble.ts`) —
+    // unrestricted at the schema layer, so an id like
+    // `"../../../../escape"` would otherwise write outside `outDir`.
+    // Validated in its own pass, before any page file is written, so a
+    // single unsafe id blocks the whole batch rather than letting earlier
+    // (safe) ids partially land first.
+    for (const id of ids) assertSafeFileSegment(id, "slide id")
     await mkdir(pagesDir, { recursive: true })
     await Promise.all(
       ids.map((id) => {
