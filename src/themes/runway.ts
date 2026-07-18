@@ -20,7 +20,7 @@ export const RUNWAY_TOKENS: StyleTokens = {
     primary: "#0A0A0A", // 纯黑报头
     accent: "#D80027", // 正红（口红红）点缀
     text: "#111417",
-    muted: "#77787D",
+    muted: "#76767B", // post-v0.3 W8 fix round（backlog 5a）：明度下调校准 4.5:1（原 #77787D，保色相/饱和度）
     border: "#E8E8E8",
     cardStroke: "#E8E8E8", // 纯白底白卡靠描边区分
     chartPalette: ["#0A0A0A", "#D80027", "#77787D", "#C9C9CC"],

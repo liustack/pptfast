@@ -22,7 +22,7 @@ export const BLOOM_TOKENS: StyleTokens = {
     primary: "#6F6190", // 紫藤（标题/横幅）
     accent: "#D89A8E", // 杏粉
     text: "#4A4258", // 深紫灰
-    muted: "#9C93A8",
+    muted: "#756A84", // post-v0.3 W8 fix round（backlog 5a）：明度下调校准 4.5:1（原 #9C93A8，保色相/饱和度）
     border: "#E8E0D8",
     chartPalette: ["#8A7BA8", "#D89A8E", "#C9A0B0", "#A8B8CC"], // 紫藤/杏粉/干玫瑰/雾蓝=水彩四色
   },

@@ -25,42 +25,48 @@
 // those was tried while building this test and each surfaces a *different*,
 // pre-existing, cross-cutting issue unrelated to this task's defect class:
 //   - `colors.muted` (the org/meta/footnote/kicker token nearly every
-//     archetype uses) is marginally under the 4.5:1 body floor against
-//     several themes' own background — a theme-token-calibration gap, not
-//     an archetype assuming the wrong background. Confirmed empirically:
-//     the ratio is identical whether meta is sparse or rich, and shows up
-//     on `colors.muted`-bearing text in nearly every cover/content/ending
-//     archetype across ~8 of the 13 themes.
+//     archetype uses) used to be marginally under the 4.5:1 body floor
+//     against several themes' own backgrounds — a theme-token-calibration
+//     gap, not an archetype assuming the wrong background. **Fixed** in a
+//     later task (post-v0.3 W8 fix round, backlog item 5a —
+//     `.issues/notes/2026-07-18-post-v03-backlog.md` #5 — a minimal
+//     hue/saturation-preserving lightness recalibration across the 7
+//     affected themes' `colors.muted`, see each `themes/<id>.ts`'s own
+//     inline comment on that token) and locked in by the dedicated
+//     `colors.muted contrast` describe block below, which measures the
+//     real backgrounds this token actually renders against instead of this
+//     file's own deliberately meta-free fixtures. Kept out of *this* sweep's
+//     fixtures regardless, even post-fix — this sweep's own job is the W4
+//     defect class (an archetype assuming the wrong background for a token
+//     it bakes), and adding meta/footnote content here would just
+//     duplicate the dedicated block's coverage through a second, noisier
+//     path instead of adding any.
 //   - every `cover`/`ending` archetype's *subheading/subtitle* also reads
 //     `colors.muted` (unlike `chapter`/`content`, whose subheading uses
 //     `colors.text`/`colors.accent`/`colors.primary` — the tokens this
-//     task's own fix touches) — same token-calibration gap as the point
-//     above, confirmed at the exact same ratios (2.31-2.61:1) against
-//     bloom/classroom's own background.
+//     task's own fix touches) — same token now covered by the fix and
+//     dedicated block above, not a second gap.
 //   - `cover-left-anchor.tsx`'s (and `cover-banner-title.tsx`'s)
-//     multi-`<tspan>` author/date/version line: **fixed** in a later task
-//     (post-v0.3 backlog item 5b — `.issues/notes/2026-07-18-post-v03-backlog.md`
-//     #5 — `findContrastIssues` no longer drops a `<tspan>`'s owning
-//     `<text>`'s own x/y when the tspan carries none of its own; see that
-//     function's own doc comment in `deck-audit.ts` and the two dedicated
-//     regression tests in `deck-audit.test.ts`). Still left out of *this*
-//     fixture regardless: populating that meta line now correctly
-//     re-surfaces the exact same `colors.muted`-calibration gap as the two
-//     bullets above (on bloom/classroom specifically — confirmed while
-//     fixing item 5b) rather than a fresh issue, so including it here would
-//     just double-count the already-understood gap through a third code
-//     path instead of adding coverage.
+//     multi-`<tspan>` author/date/version line: attribution **fixed** in a
+//     later task (post-v0.3 backlog item 5b —
+//     `.issues/notes/2026-07-18-post-v03-backlog.md` #5 — `findContrastIssues`
+//     no longer drops a `<tspan>`'s owning `<text>`'s own x/y when the
+//     tspan carries none of its own; see that function's own doc comment in
+//     `deck-audit.ts` and the two dedicated regression tests in
+//     `deck-audit.test.ts`); the `colors.muted` values that line renders
+//     with are covered by the same fix/block as the two bullets above.
+//     Still left out of *this* fixture regardless, to keep this sweep's own
+//     scope narrow to the W4 defect class.
 //   - the five sources `deck-audit.test.ts`'s own "understood pre-existing
 //     low-contrast sources" block already documents and pins.
-// Recalibrating `colors.muted` per theme is out of this task's scope (a
-// theme-design call across 13 files) — still flagged as a follow-up
-// candidate rather than silently worked around here.
 import { beforeAll, describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
+import { resolveBackgroundHex } from "../FullSlideSvg"
+import { contrastRatio } from "../ink"
 
 beforeAll(() => {
   installNodePlatform()
@@ -328,18 +334,78 @@ describe("bento-panel kpi_cards contrast (W8 fix round, targeted — see comment
       // low-contrast: scoped to the kpi *value* text only (its detail.text
       // is exactly the item's numeric value string, "13"/"24"). A
       // same-slide low-contrast finding on the *label* text instead
-      // ("一号指标"/"二号指标", colors.muted) is the file header's own
-      // documented, pre-existing colors.muted theme-calibration gap (shows
-      // up on nearly every archetype, independent of layout or this task's
-      // defect) — not this task's defect class and not touched by this
-      // fix, so deliberately not asserted here, same as the header's own
-      // reasoning for excluding colors.muted from the main sweep above.
+      // ("一号指标"/"二号指标", colors.muted) used to be the file header's
+      // own documented, pre-existing colors.muted theme-calibration gap —
+      // **fixed** post-v0.3 W8 fix round (backlog item 5a, see the dedicated
+      // `colors.muted contrast` describe block below for the full 13-theme
+      // lock), so this now asserts zero exceptions too instead of leaving
+      // the gap undocumented-away.
       const valueFindings = findings.filter(
         (f) =>
           f.code === "low-contrast" &&
           ["13", "24"].includes((f.detail as { text?: string } | undefined)?.text ?? ""),
       )
       expect(valueFindings).toEqual([])
+      expect(findings.filter((f) => f.code === "low-contrast")).toEqual([])
+    })
+  }
+})
+
+// Dedicated 13-theme colors.muted contrast lock (post-v0.3 W8 fix round,
+// backlog item 5a — `.issues/notes/2026-07-18-post-v03-backlog.md` #5, the
+// other half of item 2 — see also task-1's handoff report for the 7
+// concrete combos this replaces). Unlike the sweep above (deliberately
+// meta-free, see the file header), this block deliberately populates the
+// content that reads `colors.muted` as a raw, unconditional fill — never
+// wrapped in `accessibleInk`, so it never self-heals the way e.g.
+// `chapter-masthead-chapter.tsx`'s subheading does — against every real
+// background this renderer actually paints behind it:
+//   - each theme's own cover/content/ending page background (its
+//     `defaultBackgrounds`, reduced the same way `FullSlideSvg.tsx` does).
+//     `chapter` is deliberately excluded: every chapter archetype either
+//     never reads `colors.muted` at all, or reads it through
+//     `accessibleInk` (`chapter-masthead-chapter.tsx`/`chapter-poster-
+//     chapter.tsx`/`chapter-constellation-chapter.tsx`/`chapter-roman-
+//     chapter.tsx` — confirmed by reading every chapter archetype file),
+//     which self-heals independently of this token's own calibration — so
+//     there is no real raw-fill surface to lock there.
+//   - the bento-panel kpi card's own real rendered surface, via an actual
+//     render (not a hand-coded hex) since that surface is
+//     `content-bento-panel.tsx`'s own internal implementation detail
+//     (its card fill), not a theme token this test should assume the shape
+//     of.
+describe("colors.muted contrast (post-v0.3 W8 fix round, backlog item 5a)", () => {
+  for (const themeId of CANONICAL_THEME_IDS) {
+    const style = THEME_DEFINITIONS[themeId].style
+    const muted = style.colors.muted
+
+    it(`${themeId}: colors.muted clears 4.5:1 against every real cover/content/ending page background`, () => {
+      for (const slideType of ["cover", "content", "ending"] as const) {
+        const bg = resolveBackgroundHex(style.defaultBackgrounds[slideType], style.colors.surface)
+        expect(contrastRatio(muted, bg), `${themeId} ${slideType} default bg ${bg}`).toBeGreaterThanOrEqual(4.5)
+      }
+    })
+
+    it(`${themeId}: colors.muted clears the required ratio against the bento-panel kpi card's own rendered surface (value+unit and label)`, () => {
+      const slide: Slide = {
+        type: "content",
+        heading: HEADING,
+        layout: "bento-panel",
+        components: [
+          {
+            type: "kpi_cards",
+            items: [
+              { value: "13", unit: "次/秒", label: "一号指标" },
+              { value: "24", unit: "次/秒", label: "二号指标" },
+            ],
+          },
+        ],
+      } as Slide
+      const findings = auditFindings(deckFor(themeId, slide))
+      const mutedFindings = findings.filter(
+        (f) => f.code === "low-contrast" && (f.detail as { fill?: string } | undefined)?.fill === muted,
+      )
+      expect(mutedFindings).toEqual([])
     })
   }
 })

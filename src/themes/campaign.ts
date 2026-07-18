@@ -22,7 +22,7 @@ export const CAMPAIGN_TOKENS: StyleTokens = {
     primary: "#F0559E", // 品红（主强调）
     accent: "#F7D23E", // 柠檬黄（次强调）
     text: "#FFFFFF",
-    muted: "#B8AFD9", // 浅紫灰
+    muted: "#BAB1DA", // 浅紫灰。post-v0.3 W8 fix round（backlog 5a）：明度上调校准 4.5:1（原 #B8AFD9，深底 #4A3A8E 卡面 4.448:1 微调至过，保色相/饱和度）
     border: "#5A4AA0",
     chartPalette: ["#F0559E", "#3EC1E8", "#F7D23E", "#7FE0C3"], // 品红/湖蓝/柠檬黄/薄荷=笔刷四色
   },

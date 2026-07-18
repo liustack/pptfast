@@ -23,7 +23,7 @@ export const CLASSROOM_TOKENS: StyleTokens = {
     primary: "#6E8E9E", // 雾蓝（标题/徽章）
     accent: "#D89A88", // 藕粉珊瑚
     text: "#48545C", // 灰蓝黑
-    muted: "#98A2A6",
+    muted: "#657075", // post-v0.3 W8 fix round（backlog 5a）：明度下调校准 4.5:1（原 #98A2A6，保色相/饱和度）
     border: "#E2DDD4",
     chartPalette: ["#7A98A6", "#D89A88", "#AEBCA4", "#C9B49C"], // 雾蓝/藕粉/灰绿薄荷/奶咖=莫兰迪装饰四色
   },
