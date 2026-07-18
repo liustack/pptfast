@@ -77,7 +77,14 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   return `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`
 }
 
-/** Returns human-readable report. Throws PptfastError when invalid (CLI exit 1). */
+/**
+ * Returns human-readable report. Throws PptfastError when invalid (CLI exit 1).
+ * When `validateIr` deterministically rewrote any synonym field names before
+ * parsing (W5 task 4 — kpi `title`→`label` and friends, `ir/field-aliases.ts`),
+ * appends them as a "note" line after the OK summary: visible so the caller
+ * knows their input got silently massaged, but never a reason to fail — a
+ * fixed alias never makes it into `v.errors`.
+ */
 export async function runValidate(irPath: string, cwd = process.cwd()): Promise<string> {
   const raw = await loadIrFile(irPath)
   await applyDeckConfig(raw, { cwd })
@@ -86,7 +93,10 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
     throw new PptfastError(
       `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
     )
-  return `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
+  const ok = `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
+  if (!v.normalized || v.normalized.length === 0) return ok
+  const n = v.normalized.length
+  return `${ok}\nnote: ${n} field alias${n === 1 ? "" : "es"} normalized\n${v.normalized.map((line) => `  ${line}`).join("\n")}`
 }
 
 /**

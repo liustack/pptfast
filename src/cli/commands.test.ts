@@ -54,6 +54,18 @@ const IR_WITH_PLACEHOLDER = {
   ],
 }
 
+// kpi_cards item uses "title" instead of "label" — W5 task 4's field-alias
+// normalizer should silently adopt it and runValidate should note it.
+const IR_WITH_FIELD_ALIAS = {
+  version: "3",
+  filename: "cli-test-alias",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover", heading: "CLI" },
+    { type: "content", heading: "Body", components: [{ type: "kpi_cards", items: [{ value: "42", title: "Revenue" }] }] },
+  ],
+}
+
 const VALID_PLAN = {
   version: "1",
   scenario: "boardroom-report",
@@ -77,6 +89,7 @@ beforeAll(async () => {
   await writeFile(join(dir, "logo.png"), PNG_1PX)
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
   await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
+  await writeFile(join(dir, "deck-with-alias.json"), JSON.stringify(IR_WITH_FIELD_ALIAS))
   await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
   await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
 })
@@ -87,6 +100,19 @@ describe("runValidate", () => {
   })
   it("throws with issue list for invalid IR", async () => {
     await expect(runValidate(join(dir, "bad.json"))).rejects.toThrow(/invalid IR/)
+  })
+})
+
+describe("runValidate field-alias note (W5 task 4)", () => {
+  it("prints a note after OK listing the normalized field aliases", async () => {
+    const report = await runValidate(join(dir, "deck-with-alias.json"))
+    expect(report).toMatch(/^OK — 2 slides/)
+    expect(report).toContain("note: 1 field alias normalized")
+    expect(report).toContain("slides[1].components[0].items[0]: title → label")
+  })
+  it("has no note line when there is nothing to normalize", async () => {
+    const report = await runValidate(join(dir, "deck.json"))
+    expect(report).not.toContain("note:")
   })
 })
 

@@ -138,6 +138,46 @@ describe("validateIr", () => {
   })
 })
 
+describe("field-alias normalization at the validate boundary (W5 task 4)", () => {
+  const withKpi = (item: Record<string, unknown>) => ({
+    ...raw,
+    slides: [raw.slides[0], { type: "content", heading: "KPIs", components: [{ type: "kpi_cards", items: [item] }] }],
+  })
+
+  it("normalizes a synonym field name before parsing and reports it on ValidateResult.normalized", () => {
+    const v = validateIr(withKpi({ value: "42", title: "Revenue" }))
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toEqual(["slides[1].components[0].items[0]: title → label"])
+    expect(v.ir?.slides[1]?.components[0]).toMatchObject({
+      type: "kpi_cards",
+      items: [{ value: "42", label: "Revenue" }],
+    })
+  })
+
+  it("omits `normalized` entirely when nothing needed rewriting", () => {
+    const v = validateIr(raw)
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toBeUndefined()
+  })
+
+  it("both alias and canonical present is left for zod strict to reject as an unrecognized key, not silently resolved", () => {
+    const v = validateIr(withKpi({ value: "42", label: "Real", title: "Ignored" }))
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    expect(v.errors.some((e) => e.message.includes("title"))).toBe(true)
+  })
+
+  it("still reports `normalized` on a failing result when normalization ran but a different gate then rejects the deck", () => {
+    // theme.id is invalid — unrelated to the kpi alias — but the alias
+    // rewrite happens first (before the schema parse) regardless, so it is
+    // still visible on the failing result: normalization is informational,
+    // not conditioned on the rest of the pipeline succeeding.
+    const v = validateIr({ ...withKpi({ value: "42", title: "Revenue" }), theme: { id: "not-a-theme" } })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toEqual(["slides[1].components[0].items[0]: title → label"])
+  })
+})
+
 describe("duplicate slide id gate (W5 task 1)", () => {
   it("hard-rejects a deck with duplicate slide ids, listing them (path 'slides', no page)", () => {
     const v = validateIr({

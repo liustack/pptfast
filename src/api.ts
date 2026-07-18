@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
 import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
+import { normalizeComponentAliases } from "./ir/field-aliases"
 import { generatePptxBlob } from "./pptx/generate"
 import { resolveScenario, type ScenarioAxes } from "./scenario"
 import { CAPACITY } from "./svg/audit/capacity"
@@ -21,6 +22,14 @@ export interface ValidateResult {
   ok: boolean
   ir?: PptxIR
   errors: ValidationIssue[]
+  /**
+   * Human-readable "`path`: `alias` → `canonical`" entries for every
+   * deterministic field-alias rewrite `validateIr` applied before parsing
+   * (W5 task 4, `ir/field-aliases.ts`'s `normalizeComponentAliases`) — e.g. a
+   * kpi item's `title` silently adopted as `label`. Present only when at
+   * least one rewrite happened; informational, never gates `ok` on its own.
+   */
+  normalized?: string[]
 }
 
 /**
@@ -166,6 +175,19 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
  * "warn" findings (e.g. a cover with no heading) as advisory-only would
  * defeat the point of wiring this in: the spec's core principle is a hard
  * protocol gate, not hoped-for prompt compliance.
+ *
+ * Before any of that, `normalizeComponentAliases` (W5 task 4,
+ * `ir/field-aliases.ts`) gets one deterministic pass at `input` — rewriting
+ * a known synonym field name (kpi `title`→`label`, quote `content`→`text`,
+ * …) only where the canonical key is absent, so the schema parse below never
+ * sees the alias as an "unrecognized key" in the first place. Ordering
+ * versus the v2 migration check right above it is unobservable (v2 IR uses
+ * `blocks`, never `components`, so the normalizer's slide/component walk is
+ * always a no-op on it) — it runs second here only so a doomed v2 input
+ * skips the extra walk. Purely informational: every rewrite is recorded as a
+ * human-readable `path: alias → canonical` string and threaded onto
+ * `ValidateResult.normalized` on *every* return path below via
+ * `withNormalized`, success or failure alike — it never itself gates `ok`.
  */
 export function validateIr(input: unknown): ValidateResult {
   // IR v2 friendly migration message (dev-channel scope, spec §8: W1 started
@@ -184,14 +206,18 @@ export function validateIr(input: unknown): ValidateResult {
       ],
     }
   }
-  const r = PptxIRSchema.safeParse(input)
+  const { value: normalizedInput, normalized } = normalizeComponentAliases(input)
+  const withNormalized = (result: ValidateResult): ValidateResult =>
+    normalized.length > 0 ? { ...result, normalized } : result
+
+  const r = PptxIRSchema.safeParse(normalizedInput)
   if (!r.success) {
     const errors = r.error.issues.map((issue) => {
       const path = issue.path.join(".")
       const m = /^slides\.(\d+)/.exec(path)
       return { path, message: issue.message, page: m ? Number(m[1]) + 1 : undefined }
     })
-    return { ok: false, errors }
+    return withNormalized({ ok: false, errors })
   }
   // Installed-theme check (schema layer keeps theme.id open — see ThemeSchema
   // in ir/index.ts — so this hard gate is the only place an unknown id is
@@ -201,7 +227,7 @@ export function validateIr(input: unknown): ValidateResult {
   // BUILTIN_THEME_IDS-only check, same error shape.
   const installedThemeIds = getInstalledThemeIds()
   if (!installedThemeIds.includes(r.data.theme.id)) {
-    return {
+    return withNormalized({
       ok: false,
       errors: [
         {
@@ -209,12 +235,12 @@ export function validateIr(input: unknown): ValidateResult {
           message: `unknown theme "${r.data.theme.id}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
         },
       ],
-    }
+    })
   }
   const layoutErrors = checkLayoutApplicability(r.data)
-  if (layoutErrors.length > 0) return { ok: false, errors: layoutErrors }
+  if (layoutErrors.length > 0) return withNormalized({ ok: false, errors: layoutErrors })
   const duplicateIdErrors = checkDuplicateSlideIds(r.data)
-  if (duplicateIdErrors.length > 0) return { ok: false, errors: duplicateIdErrors }
+  if (duplicateIdErrors.length > 0) return withNormalized({ ok: false, errors: duplicateIdErrors })
   // Scenario resolution (spec §5's defaults chain, W3 task 2). Both branches
   // of the schema's `scenario` union (ScenarioAxesInputSchema in ir/index.ts)
   // are open now — a preset-name string and an axes object alike — the same
@@ -239,10 +265,10 @@ export function validateIr(input: unknown): ValidateResult {
     resolvedAxes = resolveScenario(r.data.scenario as string | Partial<ScenarioAxes> | undefined)
   } catch (err) {
     if (!(err instanceof PptfastError)) throw err
-    return { ok: false, errors: [{ path: "scenario", message: err.message }] }
+    return withNormalized({ ok: false, errors: [{ path: "scenario", message: err.message }] })
   }
   const quality = checkIrQuality(r.data, resolvedAxes)
-  if (quality.length === 0) return { ok: true, ir: r.data, errors: [] }
+  if (quality.length === 0) return withNormalized({ ok: true, ir: r.data, errors: [] })
   const errors: ValidationIssue[] = quality.map((issue) =>
     issue.code === "empty_deck"
       ? { path: "slides", message: describeQualityIssue(issue) }
@@ -252,7 +278,7 @@ export function validateIr(input: unknown): ValidateResult {
           page: issue.slide + 1,
         },
   )
-  return { ok: false, errors }
+  return withNormalized({ ok: false, errors })
 }
 
 export function formatIssues(errors: ValidationIssue[]): string {
