@@ -356,6 +356,23 @@ export interface DeckDirResult extends AssembleResult {
  * standalone repro against this exact schema shape before writing this
  * comment. Rebuilding the object sidesteps the shared reference without
  * needing to touch the schema itself.
+ *
+ * The merged result is spliced in via a shallow clone of the whole `ir`
+ * object (`{ ...ir, assets: ... }`), not a `ir.assets = ...` reassignment
+ * onto the object `assembleDeck` returned (post-v0.3 W8 fix round, backlog
+ * item 4, `.issues/notes/2026-07-18-post-v03-backlog.md` #4): the earlier
+ * version mutated `assembleDeck`'s own return value in place, which is
+ * harmless *today* only because `variety.ts`'s `deckSeedCache` and
+ * `effective-layout.ts`'s `deckEffectiveLayoutIdsCache` — the only two
+ * consumers that key a `WeakMap` off an `ir` object's identity — never read
+ * `.assets` (confirmed by reading both cache-populating functions: they only
+ * touch `seed`/`filename`/`slides[].heading`/`.id`/`.type`/`.layout`/
+ * `.background`). Cloning instead of mutating means the object
+ * `assembleDeck` returned is never touched, and this function's own return
+ * value is a distinct identity no earlier reference could have already
+ * cached against — correct-by-construction regardless of what a future
+ * cache keys on, not just correct because of what today's two caches happen
+ * to skip.
  */
 export async function readDeckDir(dir: string): Promise<DeckDirResult> {
   const deckDir = resolve(dir)
@@ -363,8 +380,8 @@ export async function readDeckDir(dir: string): Promise<DeckDirResult> {
   const pages = await readPages(deckDir)
   const { ir, generatedSeed, materializedLayoutCount } = assembleDeck(plan, pages as Record<string, PageContent>)
   const images = await scanAssets(deckDir)
-  ir.assets = { images: { ...ir.assets.images, ...images } }
-  return { ir, generatedSeed, materializedLayoutCount, deckDir }
+  const merged = { ...ir, assets: { images: { ...ir.assets.images, ...images } } }
+  return { ir: merged, generatedSeed, materializedLayoutCount, deckDir }
 }
 
 // ── assets/ (write direction — disassemble) ─────────────────────────────
