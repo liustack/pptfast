@@ -77,13 +77,13 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 
 ## The IR
 
-Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"3"`), `filename`, an optional `scenario` (a preset id string or a partial axes object — see Scenarios below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one from the theme's curated set), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication.
+Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"3"`), `filename`, an optional `scenario` (a preset id string or a partial axes object — see Scenarios below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one, see Layout selection below), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication.
 
-A deck also carries an optional `seed` (an integer that keeps auto-selected layouts stable across revisions, derived deterministically the first time a plan is assembled when omitted — see Deck projects below). Any slide may set a stable `id` (what plan pages and validation error messages reference it by) and `placeholder: true` (a slide with no content yet — injected by `assemble` for a plan page nobody has filled in, skipped by the content-quality checks, and blocking `render` unless `--draft`). Field names that commonly drift between a model's output and the schema (25 synonym pairs across component types, e.g. kpi `title`→`label`, quote `content`→`text`) are silently normalized to the canonical name at validate time — `validate`/`render`/`preview` print a note listing what changed, never a hard error.
+A deck also carries an optional `seed` (an integer that keeps auto-selected layouts stable across revisions — see Layout selection below for how it's derived when omitted). Any slide may set a stable `id` (what plan pages and validation error messages reference it by) and `placeholder: true` (a slide with no content yet — injected by `assemble` for a plan page nobody has filled in, skipped by the content-quality checks, and blocking `render` unless `--draft`). Field names that commonly drift between a model's output and the schema (25 synonym pairs across component types, e.g. kpi `title`→`label`, quote `content`→`text`) are silently normalized to the canonical name at validate time — `validate`/`render`/`preview` print a note listing what changed, never a hard error.
 
 ## Themes
 
-A theme bundles a style (design tokens), a brand (identity chrome), and a curated layout set — the 13 built-ins below. Override the style (`--style`) to re-color a theme.
+A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 13 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — only 3 of the 13 exclude a single chapter layout (a runway-native design whose contrast doesn't clear those themes' accent color). Override the style (`--style`) to re-color a theme.
 
 | id | label |
 |---|---|
@@ -105,9 +105,29 @@ A theme bundles a style (design tokens), a brand (identity chrome), and a curate
 
 A scenario is three narrative axes, independent of theme (visual style), that set editorial discipline: `mode` (how the argument is built — `pyramid`, `narrative`, `instructional`, `showcase`, `briefing`), `delivery` (how dense the content is — `text`, `balanced`, `presentation`), and `audience` (a tone anchor — `executive`, `technical`, `customer`, `public`, no rendering effect yet). Set the IR's top-level `scenario` to a named preset string (e.g. `"boardroom-report"`) or a partial axes object (e.g. `{ "delivery": "presentation" }`) — an omitted axis, or an omitted `scenario` field entirely, falls back to `general` (`briefing` × `balanced` × `public`). An unknown preset name or axis value is a hard validate error listing what's available.
 
-`delivery` drives the content-quality gate: the per-slide component budget and the bullets budget (item count and per-item length) both tighten from `text` toward `presentation` — density is additionally capped by whichever layout the slide resolves to, whichever ceiling is tighter. `pptfast validate` reports the exact numbers that applied to each slide.
+`delivery` drives the content-quality gate and the body-text baseline (paragraph/bullets/callout only — every other component's own type scale and the heading system are unaffected): the per-slide component budget and the bullets budget (item count and per-item length) both tighten from `text` toward `presentation`, while the body font size grows the other way — density is additionally capped by whichever layout the slide resolves to, whichever ceiling is tighter.
+
+| delivery | body text | components / slide | bullets |
+|---|---|---|---|
+| `text` | 20px | 5 | up to 6 items, ~48 characters each |
+| `balanced` (the default) | 24px | 4 | up to 5 items, ~40 characters each |
+| `presentation` | 32px | 3 | up to 4 items, ~30 characters each |
+
+Bullets shrink below their tier's baseline to fit when needed, down to a 14px floor, before any overflow handling kicks in. `pptfast validate` reports the exact numbers that applied to each slide.
 
 Run `pptfast scenarios [--json]` to list the named presets (each carries soft theme recommendations — a starting suggestion, never a constraint) plus the raw axes tables.
+
+## Layout selection
+
+When a slide omits `layout`, pptfast resolves one automatically in five deterministic steps: the page type's full registry pool → components must fit the candidate's slots → the theme's layout set for that page type (full by default, see Themes above) → the scenario's `mode` softly upweights (×3) a handful of content-layout ids that suit that mode, everything else stays at a ×1 floor (cover/chapter/ending are never weighted — their character comes from the theme, not the mode) → a seeded weighted pick, swapped deterministically to the runner-up when it would repeat the immediately preceding slide's layout. An explicit `layout` always wins and skips every step above.
+
+The pick is fully deterministic — the same IR always resolves the same way, so preview and the final render never disagree. Staying stable *across revisions* (editing one page without reshuffling every other page's auto-picked layout) additionally needs a persisted `seed`, resolved in this order:
+
+1. An explicit `ir.seed` — full revision stability, always wins.
+2. A deck project's own seed: `pptfast assemble` derives one from the plan's filename and page ids the first time a plan omits `seed`, and prints a note with the value — copy it into `deck.plan.json`'s `seed` field to persist it.
+3. Neither set: a content hash of `filename` + every slide's `heading` (legacy-compatible) — editing any heading reshuffles every auto-picked layout deck-wide.
+
+`pptfast assemble` also writes every auto-picked `layout` back into the assembled `deck.json` (a page file's own explicit `layout` is left untouched) — the CLI notes how many pages it filled in.
 
 ## Style overrides & project config
 

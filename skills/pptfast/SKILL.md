@@ -37,6 +37,7 @@ Propose and confirm before writing any page content:
 - Theme id next, from the chosen scenario's `themeRecommendations` (or pick from `themes` output to match the deck's tone if none fit — a recommendation, never a constraint)
 - Draft `deck.plan.json`: one entry per page (`id`, `type`, `heading`, optionally `rhythm`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`
 - Run `pptfast plan validate deck.plan.json` and fix whatever it reports until it prints `OK` — the hard gates (boundary pages, heading length, rhythm rotation, page count vs. delivery) all fire here, before a single page is written
+- Once `plan validate` prints `OK`, set a `seed` (any integer) in `deck.plan.json` for revision stability — write one now, or run `pptfast assemble` once in phase 3 and copy the `generated seed …` value it prints into the plan. Without a persisted seed, editing one page's heading later can reshuffle every other page's auto-picked layout
 
 **After the user confirms the validated plan, do not re-plan.** Restructuring a confirmed plan (reordering, retyping, dropping pages) silently wastes the user's review. If new information genuinely forces a change, say so and re-confirm first, then re-run `plan validate`.
 
@@ -111,11 +112,11 @@ Once a deck project exists, a follow-up message routes into exactly one of three
 
 ### Image slides
 
-Declare images once in `assets.images` and reference them by `asset_id` — double-check every `asset_id` spelling, a wrong key renders a silent placeholder instead of failing. An explicit `layout` id always wins over pptfast's auto-selection, which otherwise picks from the theme's curated set — for a slide built around an image, set `layout` to one of the image takeovers: `image-split` (half-page image + side text, `image_side: left|right`), `image-top` (full-bleed top image + text columns below), `image-bottom` (text above, image below), `image-annotate` (center image + radiating callouts taken from the first 4 bullets). **With any image layout, the first component must be an `image` component** — it is the image source.
+Declare images once in `assets.images` and reference them by `asset_id` — double-check every `asset_id` spelling, a wrong key renders a silent placeholder instead of failing. An explicit `layout` id always wins over pptfast's auto-selection, which otherwise picks from the theme's layout set for that page type (the full registry set by default, unless the theme curates it narrower) — for a slide built around an image, set `layout` to one of the image takeovers: `image-split` (half-page image + side text, `image_side: left|right`), `image-top` (full-bleed top image + text columns below), `image-bottom` (text above, image below), `image-annotate` (center image + radiating callouts taken from the first 4 bullets). **With any image layout, the first component must be an `image` component** — it is the image source.
 
 ### Capacity
 
-A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. Component and bullets budgets scale with the deck's `delivery` axis (tightest for `presentation`, loosest for `text`) — `validate` reports the exact numbers that applied, not a flat constant. When in doubt, split into two slides — writing to fit beats fix-up loops.
+A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. Component and bullets budgets scale with the deck's `delivery` axis (tightest for `presentation`, loosest for `text`) — `validate` reports the exact numbers that applied, not a flat constant. Body text size scales the other way: `presentation` renders the largest body font (32px vs. `balanced`'s 24px and `text`'s 20px) even though it allows the fewest components, so a `presentation` slide needs fewer and shorter items, not just tighter ones. When in doubt, split into two slides — writing to fit beats fix-up loops.
 
 ### Decor
 
