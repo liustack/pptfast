@@ -1003,6 +1003,13 @@ describe("runDisassemble", () => {
       await expect(runDisassemble(irPath, outDir)).rejects.toThrow(
         'asset "logo": URL assets cannot be disassembled into a deck directory — inline it as a data URI or download it first',
       )
+      // Failure rollback (post-v0.3 W8 fix round, backlog item 8): unlike the
+      // path-traversal case above, this failure happens in writeDeckAssets,
+      // well after deck.plan.json and pages/*.json were both written
+      // successfully — the plan file this run itself created must not
+      // survive, or it would misrepresent this outDir as an already,
+      // successfully disassembled deck project.
+      await expect(stat(join(outDir, "deck.plan.json"))).rejects.toThrow()
     })
 
     it("copies a local file asset into assets/, resolving relative to the input IR's own directory", async () => {
@@ -1074,6 +1081,12 @@ describe("runDisassemble", () => {
         expect(entries).not.toContain("escape")
         expect(entries).not.toContain("escape.json")
       }
+
+      // Failure rollback (post-v0.3 W8 fix round, backlog item 8): the id
+      // check now runs before deck.plan.json is even written, so a failed
+      // run leaves no plan file at all — not a residual one that no longer
+      // matches what (if anything) landed in pages/.
+      await expect(stat(join(outDir, "deck.plan.json"))).rejects.toThrow()
     })
 
     it("still disassembles a deck with only safe, explicit slide ids — happy path unchanged", async () => {
@@ -1084,6 +1097,26 @@ describe("runDisassemble", () => {
       await runDisassemble(irPath, outDir)
       const pageFiles = (await readdir(join(outDir, "pages"))).sort()
       expect(pageFiles).toEqual(["s-body.json", "s-body2.json", "s-cover.json", "s-ending.json"])
+    })
+  })
+
+  describe("failure-rollback plan-file cleanup (post-v0.3 W8 fix round, backlog item 8)", () => {
+    it("never deletes a pre-existing deck.plan.json this call did not itself create", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR))
+      const outDir = await makeDeckDir()
+      const preExisting = JSON.stringify({ sentinel: "pre-existing plan, not written by this call" })
+      await writeFile(join(outDir, "deck.plan.json"), preExisting)
+
+      // The `wx` no-overwrite guard rejects before the rollback scope is
+      // ever entered — this is a "failed run" in the sense backlog item 8
+      // is about, but the plan file it fails on was never this call's own
+      // to delete.
+      await expect(runDisassemble(irPath, outDir)).rejects.toThrow(/already exists/)
+
+      const stillThere = await readFile(join(outDir, "deck.plan.json"), "utf8")
+      expect(stillThere).toBe(preExisting)
     })
   })
 })
