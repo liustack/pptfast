@@ -2,6 +2,7 @@
 import type { SvgTemplateProps } from "./types"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
+import { accessibleInk } from "../ink"
 
 /**
  * poster-chapter archetype（spec §3.2）：左对齐巨幅章节数字（accent 红）+
@@ -28,12 +29,34 @@ import { fitHeadingLines } from "../heading-fit"
  *   字段，无需 `?? muted` 兜底）。
  *   函数体内未出现 `META_MUTED`，无需归并。
  *
+ * 对比度自适应修复（W4 fix round，本轮扩大排查——不在 Important I1 原文的
+ * 窄口径扫描内，因为它只匹配 "Sample heading"/"Sample subheading" 字面文本，
+ * 本文件的巨幅章节数字和 org 标签都不是那两个字符串）：本文件对
+ * academic/classroom/consulting 三个 chapter 页型另开一档默认背景的主题有
+ * **三处**同根因失败，其中巨幅章节数字最严重——`colors.primary` 恰好就是
+ * 这三个主题各自的 `defaultBackgrounds.chapter`（三者的主题 token 表把
+ * "chapter 底色"直接设成了 primary 本身，同 rail-chapter.tsx 文件头记录的
+ * academic 先例），色号与色号相同，实测精确 1.00:1（三主题全部如此，同
+ * design decision 8 台账里已处置的 1.00:1 案例同一严重度）：
+ *   - org 标签（`colors.muted`，22px）：academic 1.18:1、classroom 1.34:1
+ *   - 巨幅章节数字（`colors.primary`，224px）：三主题均精确 1.00:1
+ *   - 标题（`colors.text`）：academic 2.41:1、classroom 同量级
+ * 三处统一改用 `accessibleInk(..., ctx.defaultBg, fontSize)`。这三个主题
+ * pre-W4 均未策展 poster-chapter（分别是 rail-chapter/rail-chapter/
+ * banner-chapter），是全集放开新暴露的组合，不影响任何既有钉值渲染。
+ * 分隔线（`colors.border`，纯描边非文字）不受 WCAG 文字对比度检查约束，
+ * 原样保留不改。
+ *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
 export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const chNum = chapterNumberFor(ir.slides, index)
   const label = String(chNum).padStart(2, "0")
   const org = ir.meta.organization
+  // `ctx.defaultBg` is optional (ComponentCtx's own doc comment: a
+  // hand-built ctx in a test may omit it) — falls back to the same
+  // `colors.bg` `buildCtx` itself defaults to.
+  const defaultBg = ctx.defaultBg ?? ctx.colors.bg
 
   const heading = fitHeadingLines(slide.heading, {
     maxWidth: 1168,
@@ -57,7 +80,7 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           y="56"
           fontFamily={ctx.fonts.body}
           fontSize="22"
-          fill={ctx.colors.muted}
+          fill={accessibleInk(ctx.colors.muted, defaultBg, 22)}
           textAnchor="end"
           letterSpacing="4"
           dominantBaseline="alphabetic"
@@ -83,7 +106,7 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         fontFamily={ctx.fonts.heading}
         fontSize="224"
         fontWeight="800"
-        fill={ctx.colors.primary}
+        fill={accessibleInk(ctx.colors.primary, defaultBg, 224)}
         letterSpacing="-8"
         dominantBaseline="alphabetic"
       >
@@ -99,7 +122,7 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           fontFamily={ctx.fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="800"
-          fill={ctx.colors.text}
+          fill={accessibleInk(ctx.colors.text, defaultBg, heading.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}

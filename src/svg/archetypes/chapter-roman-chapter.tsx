@@ -3,6 +3,7 @@ import type { SvgTemplateProps } from "./types"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { cachedDeckSeed, pickBySeed } from "../variety"
+import { accessibleInk } from "../ink"
 
 /**
  * roman-chapter archetype（2026-07-12 借鉴财经简报章节页，新表达非提炼）：
@@ -16,6 +17,27 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
  *   B 同心细环组：4 圈不等距细圆（唱片密纹）+ 单段 accent 短弧
  *   C 页缘切弧：更大的圆右缘出血只露左弧，弦切构图
  * 共享 archetype——manifest 决定谁用（先挂 insight）。
+ *
+ * 对比度自适应修复（W4 fix round，本轮扩大排查——同 chapter-poster-
+ * chapter.tsx 一样不在 Important I1 原文窄口径扫描内）：巨幅罗马数字 +
+ * 句点、org 标签、标题、副标题四处消费 `colors.primary`/`colors.muted`/
+ * `colors.text`，对 academic/classroom/consulting 三个 chapter 页型另开
+ * 一档默认背景的主题同 chapter-poster-chapter.tsx 先例失败（罗马数字与
+ * `colors.primary` 恰好等于三主题各自的 `defaultBackgrounds.chapter`，精确
+ * 1.00:1）。四处统一改用 `accessibleInk(..., ctx.defaultBg, fontSize)`。
+ * pre-W4 三主题均未策展 roman-chapter（仅 insight 策展过，其 chapter 默认
+ * 背景与「均匀」默认背景同色调，不受影响），是全集放开新暴露的组合。圆弧
+ * 装饰（`colors.border`/`colors.muted`/`accent` 描边，非文字）不受 WCAG
+ * 文字对比度检查约束，原样保留不改。
+ *
+ * 句点透明度修正（W4 fix round，全矩阵扫描发现）：罗马数字末尾句点原以
+ * `fillOpacity={0.85}` 略微调淡（纯排印修饰，无设计文档记录必须如此）。
+ * `accessibleInk` 按满不透明度验证 `romanInk` 达标，但句点渲染在 0.85
+ * 透明度下与背景混合后实际对比度会低于验证值——campaign（3.49→2.90）、
+ * classroom（3.58→2.98，均计算自渲染态而非估算）两个新可达组合因此跌破
+ * 3:1。改为满不透明度：句点观感几乎不变（0.85 本就是极轻微的调淡），且
+ * 与已验证的 `romanInk` 对比度保持一致，不再需要为透明度混合单独验证。
+ *
  * 纪律：零 theme id、零 hex（描边全部 ctx 色）。
  */
 /** 标准减法记数罗马数字转换（1-3999），非查表——章节数不设上限假设。
@@ -68,6 +90,13 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const seedBase = pickBySeed(cachedDeckSeed(ir), "roman-chapter-decor", [0, 1, 2])
   const variant = (["eclipse", "grooves", "chord"] as const)[(seedBase + chNum - 1) % 3]
   const accent = ctx.colors.primary
+  // `ctx.defaultBg` is optional (ComponentCtx's own doc comment: a
+  // hand-built ctx in a test may omit it) — falls back to the same
+  // `colors.bg` `buildCtx` itself defaults to.
+  const defaultBg = ctx.defaultBg ?? ctx.colors.bg
+  // 巨幅罗马数字满不透明度、非水印豁免——同 chapter-poster-chapter.tsx 先例，
+  // 需要对比度自适应而非固定 colors.primary（见文件头）。
+  const romanInk = accessibleInk(ctx.colors.primary, defaultBg, 176)
 
   return (
     <>
@@ -107,7 +136,7 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           y="56"
           fontFamily={ctx.fonts.body}
           fontSize="22"
-          fill={ctx.colors.muted}
+          fill={accessibleInk(ctx.colors.muted, defaultBg, 22)}
           textAnchor="end"
           letterSpacing="4"
           dominantBaseline="alphabetic"
@@ -123,13 +152,11 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         fontFamily={ctx.fonts.heading}
         fontSize="176"
         fontWeight="800"
-        fill={ctx.colors.primary}
+        fill={romanInk}
         dominantBaseline="alphabetic"
       >
         {toRoman(chNum)}
-        <tspan fill={ctx.colors.primary} fillOpacity={0.85}>
-          .
-        </tspan>
+        <tspan fill={romanInk}>.</tspan>
       </text>
 
       {/* 大标题 */}
@@ -141,7 +168,7 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           fontFamily={ctx.fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="800"
-          fill={ctx.colors.text}
+          fill={accessibleInk(ctx.colors.text, defaultBg, heading.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -157,7 +184,7 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
             fontFamily={ctx.fonts.body}
             fontSize="24"
             fontStyle="italic"
-            fill={ctx.colors.muted}
+            fill={accessibleInk(ctx.colors.muted, defaultBg, 24)}
             dominantBaseline="alphabetic"
           >
             {slide.subheading}
