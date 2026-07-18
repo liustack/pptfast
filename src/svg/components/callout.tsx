@@ -6,7 +6,6 @@ import type { SvgComponent } from "./types"
 
 type CalloutComponent = Extract<Component, { type: "callout" }>
 
-const FONT_SIZE = 20
 const LINE_RATIO = 1.4
 const PAD_Y = 16
 const BAR_WIDTH = 4
@@ -25,10 +24,15 @@ const VARIANT_ICON: Record<CalloutComponent["variant"], string> = {
   tip: "lightbulb",
 }
 
-function lay(text: string, w: number) {
+/**
+ * `fontSize` is `ctx.bodyFontPx` (W4 task 3, design decision 9) — the
+ * delivery-tier body baseline, not a fixed constant. `ICON_SIZE` above is a
+ * bespoke, unrelated pixel constant (icon glyph box) and stays untouched.
+ */
+function lay(text: string, w: number, fontSize: number) {
   return layoutSvgText(stripEmphasis(text), {
     maxWidth: w - 48,
-    fontSize: FONT_SIZE,
+    fontSize,
     maxLines: 99,
     lineHeightRatio: LINE_RATIO,
   })
@@ -41,12 +45,12 @@ function accentColor(variant: CalloutComponent["variant"], ctx: { colors: { prim
 }
 
 export const callout: SvgComponent<CalloutComponent> = {
-  measure(component, w) {
-    const l = lay(component.text, w)
+  measure(component, w, ctx) {
+    const l = lay(component.text, w, ctx.bodyFontPx)
     return Math.max(l.lines.length * l.lineHeight + 2 * PAD_Y, MIN_HEIGHT)
   },
   render(component, box, ctx) {
-    const l = lay(component.text, box.w)
+    const l = lay(component.text, box.w, ctx.bodyFontPx)
     const lineSegments = sliceEmphasisForLines(parseEmphasis(component.text), l.lines)
     const h = Math.max(l.lines.length * l.lineHeight + 2 * PAD_Y, MIN_HEIGHT)
     const accent = accentColor(component.variant, ctx)

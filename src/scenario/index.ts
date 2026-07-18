@@ -173,13 +173,17 @@ export { MODE_VALUES }
 export interface DeliveryBudget {
   /**
    * Body-text baseline, in px, at 1280×720 slide geometry (spec §5
-   * delivery table's body-baseline column). Declarative until W4 wires
-   * rendering: this wave (W3) only stores the number, no template reads it
-   * yet, and the current fixed-size rendering geometry (and its pinned
-   * snapshot tests) is unaffected. Spec §5's W3-decomposition amendment
-   * note is explicit that the body-baseline column is a render-level
-   * change, deferred to W4 alongside the theme.layouts full-set rollout
-   * (both land together as one controlled snapshot-baseline re-pin).
+   * delivery table's body-baseline column). Wired into rendering as of W4
+   * task 3 (design decision 9): `src/svg/FullSlideSvg.tsx` resolves
+   * `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`
+   * once and passes it into `buildCtx`, which stores it as
+   * `ComponentCtx.bodyFontPx` — the sole font-size input for the
+   * paragraph/bullets/callout trio ("正文" = continuous running text).
+   * Every other component's own bespoke type scale, the heading system, and
+   * quote's fixed 26px attribution line don't read this field. Since
+   * `balanced` (24px) is the scenario default, an omitted-scenario deck now
+   * renders body text at 24px, not the previous fixed 20px — the one-time,
+   * spec-sanctioned snapshot re-pin that landed alongside this wiring.
    */
   bodyBaselinePx: number
   /**

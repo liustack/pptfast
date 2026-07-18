@@ -1,6 +1,6 @@
 import type React from "react"
 import type { BackgroundSpec, Component, PptxIR, Slide } from "@/ir"
-import type { Mode } from "@/scenario"
+import { DELIVERY_BUDGETS, resolveScenario, type Mode, type ScenarioAxes } from "@/scenario"
 import type { StyleTokens } from "../themes/tokens"
 import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
@@ -66,12 +66,22 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * of the 13 built-in themes, and still a plausible same-family value on the
  * other 3 (`academic`/`classroom`/`consulting`, whose `chapter` background
  * alone diverges from their own `colors.bg`).
+ *
+ * `bodyFontPx` (W4 task 3, `ComponentCtx.bodyFontPx`'s own doc comment): the
+ * caller (`FullSlideSvg` below) always supplies the true
+ * `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`.
+ * Omitting it (as every `buildCtx(...)`-calling test in this repo except
+ * the paragraph/bullets/callout/three-tier suites does) falls back to
+ * `DELIVERY_BUDGETS.balanced.bodyBaselinePx` (24px) — the scenario default,
+ * so a test that doesn't care about body-text sizing still gets the
+ * ambient value a caller with an omitted/default scenario would.
  */
 export function buildCtx(
   tokens: StyleTokens,
   images: PptxIR["assets"]["images"],
   components?: Component[],
   defaultBg?: string,
+  bodyFontPx?: number,
 ): ComponentCtx {
   return {
     colors: tokens.colors,
@@ -84,6 +94,7 @@ export function buildCtx(
     images,
     blockIndex: components ? new Map(components.map((component, i) => [component, i])) : undefined,
     defaultBg: defaultBg ?? tokens.colors.bg,
+    bodyFontPx: bodyFontPx ?? DELIVERY_BUDGETS.balanced.bodyBaselinePx,
   }
 }
 
@@ -149,11 +160,23 @@ export function FullSlideSvg({
   // `ComponentCtx.defaultBg`'s own doc comment for why archetypes that
   // paint no panel of their own need this to pick readable ink.
   const defaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slide.type], tokens.colors.surface)
+  // W4 task 3 (design decision 9): the single injection seam for the
+  // paragraph/bullets/callout trio's body-text baseline — see
+  // `ComponentCtx.bodyFontPx`'s own doc comment for why this is required
+  // (not optional like `defaultBg` above) and why no component recomputes
+  // it. A second, independent `resolveScenario` call from `resolveIrMode`'s
+  // own (cheap, unmemoized — see that function's doc comment) below is
+  // expected, not a duplicated selection-logic copy: this projects
+  // `.delivery`, `resolveIrMode` projects `.mode`, off the same pure input.
+  const bodyFontPx =
+    DELIVERY_BUDGETS[resolveScenario(ir.scenario as string | Partial<ScenarioAxes> | undefined).delivery]
+      .bodyBaselinePx
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.components : undefined,
     defaultBg,
+    bodyFontPx,
   )
   const themeDef = getThemeDefinition(ir.theme.id)
   // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，

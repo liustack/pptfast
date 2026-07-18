@@ -6,6 +6,7 @@ import { callout } from "./callout"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../FullSlideSvg"
+import { DELIVERY_BUDGETS } from "@/scenario"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -18,6 +19,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#006A4E", "#00A878"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
+  bodyFontPx: DELIVERY_BUDGETS.balanced.bodyBaselinePx, // 24 — ambient default for tests that don't exercise a specific tier
 }
 
 function svg(node: React.ReactElement) {

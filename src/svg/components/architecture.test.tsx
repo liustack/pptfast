@@ -16,6 +16,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#006A4E"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
+  bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
 }
 
 function svg(node: React.ReactElement) {

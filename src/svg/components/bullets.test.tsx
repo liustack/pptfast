@@ -4,6 +4,7 @@ import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { bullets } from "./bullets"
 import type { ComponentCtx } from "./types"
+import { DELIVERY_BUDGETS } from "@/scenario"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -16,6 +17,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#006A4E"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
+  bodyFontPx: DELIVERY_BUDGETS.balanced.bodyBaselinePx, // 24 — ambient default for tests that don't exercise a specific tier
 }
 
 function svg(node: React.ReactElement) {

@@ -584,8 +584,14 @@ describe("StackedPosterContent subheading", () => {
     // HERO_W=900; posterBottom=640 (no footnote, 1 component ⇒ not isPair).
     // No-subheading heroY = titleLastY(184)+HERO_TITLE_GAP(48) = 232 ⇒
     // budget 408. With-subheading heroY = 232+34 = 266 ⇒ budget 374.
-    // This paragraph measures 392px at width 900 — fits 408, not 374.
-    const text = CJK_LONG.repeat(15).slice(0, 600)
+    // W4 task 3 re-pin: `ctx.bodyFontPx` defaults to balanced delivery's 24px
+    // (was a fixed 20px), so paragraph's line height is now 34px (was 28px)
+    // and this probe text's slice length was retuned so it still measures
+    // exactly 12 lines (408px at width 900) — comfortably inside the new
+    // valid (374, 408] straddle window (empirically the slice length must
+    // land in [408, 444] chars; 425 sits at its midpoint) — fits the
+    // no-subheading budget (408), not the with-subheading one (374).
+    const text = CJK_LONG.repeat(15).slice(0, 425)
     const component: Slide["components"][number] = { type: "paragraph", text }
     expect(measureComponent(component, 900, ctx)).toBeGreaterThan(374)
     expect(measureComponent(component, 900, ctx)).toBeLessThanOrEqual(408)

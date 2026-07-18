@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { paragraph } from "./paragraph"
 import type { ComponentCtx } from "./types"
+import { DELIVERY_BUDGETS } from "@/scenario"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -15,6 +16,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#006A4E", "#00A878"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
+  bodyFontPx: DELIVERY_BUDGETS.balanced.bodyBaselinePx, // 24 — ambient default for tests that don't exercise a specific tier
 }
 
 function svg(node: React.ReactElement) {
