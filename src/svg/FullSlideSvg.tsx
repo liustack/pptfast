@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Component, PptxIR, Slide } from "@/ir"
 import type { StyleTokens } from "../themes/tokens"
-import { resolveStyle, resolveThemeId } from "../themes"
+import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { ComponentCtx } from "./components/types"
@@ -18,13 +18,14 @@ import {
 } from "./ImagePages"
 import { findImageComponent } from "./layouts/find-image"
 import { getLayout } from "./layouts/registry"
-import { THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
+import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { COVER_ARCHETYPES } from "./archetypes"
 import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
-import { cachedDeckSeed, pickBySeedRotating } from "./variety"
+import { cachedDeckSeed } from "./variety"
+import { resolveArchetypeId } from "./effective-layout"
 
 /**
  * Resolve theme tokens + asset map into the render context components/templates use.
@@ -75,24 +76,13 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
 /**
  * theme.layouts archetype 分发泛化（P2 Task 24，spec §4.2→v0.3 spec §6
  * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 在
- * 集合内挑一个 → 查对应页型的注册表」这段逻辑——仅在没有命中下方显式 pin 短路
- * 时才跑。allowed 空集返回 null（Wave 5 删旧模板后：十三主题四页型已全量接线、
- * allowed 恒非空，definitions.test「Wave 5 前置门」锁死该前提，故 null 分支
- * 不可达；保留只为类型完备与防御未来配置 bug）。salt 沿用 P1 的
- * `"cover-archetype"`
- * 字符串形状（`${slideType}-archetype`），对 cover 页型逐字节保持同一个
- * seed 输入，不改变既有 deck 的 archetype 选择结果。
- *
- * `requestedLayout`（W2 任务 3 新能力，即 `slide.layout`）显式指定短路：spec
- * §3「要版式完全不动就显式写 layout 字段（显式指定不经选型）」——命中一个
- * `kind: "archetype"` 且 `slideTypes` 覆盖这个页型的 id 就无条件直接采用，
- * 即使它不在这个主题的策展允许集里（§6 的 theme.layouts 硬边界只圈「未显式
- * 指定 layout 时」的自动选型五步流程，管不到显式 pin——显式 pin 的意图正是
- * 「不管主题策展与否，我就要这个版式」）。validate 已挡「未注册 id」与
- * 「slideTypes 不适用」两类硬错误（api.ts checkLayoutApplicability），下面
- * 这层判断只是给未经 validate 就直达渲染的调用兜底：命中不了 archetype 分支
- * 的 id（未注册 / kind 是 takeover / slideTypes 不适用）才退回允许集 + seed
- * 选型——同 `resolveThemeId` 的全函数哲学，不抛错、不崩渲染。
+ * 集合内挑一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务
+ * 3，即 `slide.layout`）显式指定短路——完整选型算法（含 seed+ordinal 轮换、
+ * allowed 空集防御性回退）现由 `./effective-layout` 的 `resolveArchetypeId`
+ * 持有（W3 任务 3 抽取：`checkIrQuality` 的 density 门在 validate 期要跑同一条
+ * 选型路径，两处各自维护一份会有漂移风险，故只留一份）。这里只做 render 专属
+ * 的收尾——按选中 id 查这个文件自己的 `PAGE_ARCHETYPE_REGISTRIES` 取 JSX
+ * Component（validate 侧不需要、也不该关心这一步）。
  */
 function resolveArchetype(
   slideType: Slide["type"],
@@ -101,20 +91,8 @@ function resolveArchetype(
   typeOrdinal: number,
   requestedLayout: string | undefined,
 ): { id: string; Component: PageArchetype } | null {
-  if (requestedLayout) {
-    const def = getLayout(requestedLayout)
-    if (def?.kind === "archetype" && def.slideTypes.includes(slideType)) {
-      return { id: requestedLayout, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][requestedLayout] }
-    }
-  }
-  const allowed: readonly string[] = layouts[slideType]
-  if (allowed.length === 0) return null
-  // P3 Item ②：按「该页在同类型页面里的序号」轮换（pickBySeedRotating），
-  // allowed 有 2+ 元素时同 deck 相邻 content 页拿到不同 archetype 打破雷同。
-  // typeOrdinal=0 与 pickBySeed 起点一致，故单页型（cover/chapter/ending 通常
-  // 每 deck 1 个）与单元素允许集主题行为零回归。
-  const id = pickBySeedRotating(seed, `${slideType}-archetype`, allowed, typeOrdinal)
-  return { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
+  const id = resolveArchetypeId(slideType, layouts, seed, typeOrdinal, requestedLayout)
+  return id === null ? null : { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
 }
 
 /**
@@ -135,8 +113,9 @@ export function FullSlideSvg({
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.components : undefined,
   )
-  const themeDef = THEME_DEFINITIONS[resolveThemeId(ir.theme.id)]
-  // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS）：
+  const themeDef = getThemeDefinition(ir.theme.id)
+  // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，
+  // W3 任务 4 起经 getThemeDefinition 统一查找——registered theme 同样生效）：
   // 全走 theme 定义的 motif（十三主题四页型已全量接线，旧 templates/<theme>.tsx
   // 的 Decor 回落已随 templates 删除）。
   const Decor = themeDef.motif ? MOTIF_ARCHETYPES[themeDef.motif] : undefined

@@ -1,5 +1,6 @@
 import type { StyleOverride } from "@/ir";
 import { applyStyleOverride, type StyleTokens } from "./tokens";
+import { REGISTERED_THEMES } from "./registered-themes";
 import { CONSULTING_TOKENS } from "./consulting";
 import { ENTERPRISE_TOKENS } from "./enterprise";
 import { ACADEMIC_TOKENS } from "./academic";
@@ -81,9 +82,17 @@ export const THEME_STYLES: Record<CanonicalThemeId, StyleTokens> = {
   heritage: HERITAGE_TOKENS,
 };
 
-/** Resolve a theme's style tokens: base tokens → deep `style` override. */
+/**
+ * Resolve a theme's style tokens: base tokens → deep `style` override.
+ * A registered theme's own style tokens (see `themes/definitions.ts`'s
+ * `registerTheme`) win over the builtin fallback — same "registered lookup
+ * first, then builtin via resolveThemeId" precedence as that module's
+ * `getThemeDefinition` (see `registered-themes.ts`'s docstring for why this
+ * function reads that shared map directly instead of calling
+ * `getThemeDefinition` itself).
+ */
 export function resolveStyle(id: string, override?: StyleOverride): StyleTokens {
-  const base = THEME_STYLES[resolveThemeId(id)];
+  const base = REGISTERED_THEMES.get(id)?.style ?? THEME_STYLES[resolveThemeId(id)];
   if (!base) throw new Error(`Unknown theme id: ${id}`);
   return applyStyleOverride(base, override);
 }

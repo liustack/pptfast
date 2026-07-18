@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId } from "./index"
-import { THEME_DEFINITIONS, resolveBrand } from "./definitions"
+import {
+  __resetRegisteredThemes,
+  getInstalledThemeIds,
+  getThemeDefinition,
+  registerTheme,
+  resolveBrand,
+  THEME_DEFINITIONS,
+  type ThemeDefinition,
+} from "./definitions"
 import { COVER_ARCHETYPES } from "../svg/archetypes"
 import { CHAPTER_ARCHETYPES } from "../svg/archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../svg/archetypes/index-content"
@@ -181,5 +189,175 @@ describe("resolveBrand", () => {
   })
   it("falls back to consulting for unknown ids", () => {
     expect(resolveBrand("nope")).toEqual({})
+  })
+})
+
+// ── registerTheme (W3 task 4: theme registration seam) ──────────────────
+
+/** A structurally valid ThemeDefinition fixture — real LAYOUT_REGISTRY ids
+ *  (one archetype per slide type, each already applicable to that type per
+ *  registry.ts), a minimal-but-complete StyleTokens. `overrides` lets each
+ *  test tweak just the field it's exercising. */
+function testTheme(overrides: Partial<ThemeDefinition> = {}): ThemeDefinition {
+  return {
+    id: "acme",
+    style: {
+      id: "acme",
+      colors: {
+        bg: "#FFFFFF",
+        surface: "#F0F0F0",
+        primary: "#112233",
+        accent: "#AA00FF",
+        text: "#000000",
+        muted: "#888888",
+        chartPalette: ["#112233", "#AA00FF"],
+      },
+      fonts: { heading: ["Arial"], body: ["Arial"] },
+      defaultBackgrounds: {
+        cover: { kind: "color", value: "#FFFFFF" },
+        chapter: { kind: "color", value: "#FFFFFF" },
+        content: { kind: "color", value: "#FFFFFF" },
+        ending: { kind: "color", value: "#FFFFFF" },
+      },
+    },
+    brand: {},
+    tags: [],
+    layouts: {
+      cover: ["poster-center"],
+      chapter: ["banner-chapter"],
+      content: ["two-column"],
+      ending: ["banner-ending"],
+    },
+    ...overrides,
+  }
+}
+
+describe("registerTheme", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  it("registers a theme, visible to getThemeDefinition and getInstalledThemeIds", () => {
+    registerTheme(testTheme())
+    expect(getInstalledThemeIds()).toContain("acme")
+    expect(getThemeDefinition("acme").layouts.cover).toEqual(["poster-center"])
+  })
+
+  it("rejects a duplicate builtin id", () => {
+    expect(() => registerTheme(testTheme({ id: "consulting" }))).toThrow(
+      /theme "consulting" is already installed/,
+    )
+  })
+
+  it("rejects a duplicate already-registered id", () => {
+    registerTheme(testTheme())
+    expect(() => registerTheme(testTheme())).toThrow(/theme "acme" is already installed/)
+  })
+
+  it("rejects an unregistered layout id, naming the bad id", () => {
+    expect(() =>
+      registerTheme(
+        testTheme({
+          layouts: {
+            cover: ["not-a-real-layout"],
+            chapter: ["banner-chapter"],
+            content: ["two-column"],
+            ending: ["banner-ending"],
+          },
+        }),
+      ),
+    ).toThrow(/not-a-real-layout/)
+  })
+
+  it("rejects a layout id that exists but does not apply to the slide type", () => {
+    expect(() =>
+      registerTheme(
+        // "two-column" is a content-only archetype (registry.ts) — invalid under `cover`.
+        testTheme({
+          layouts: {
+            cover: ["two-column"],
+            chapter: ["banner-chapter"],
+            content: ["two-column"],
+            ending: ["banner-ending"],
+          },
+        }),
+      ),
+    ).toThrow(/layout "two-column" is not valid for "cover" slides/)
+  })
+
+  it("rejects a takeover layout id in a curated set (auto-selection assumes archetypes — render would crash)", () => {
+    // image-split is kind "takeover" with slideTypes ["content"] — slide-type
+    // matching alone would let it through, the kind check must stop it.
+    expect(() =>
+      registerTheme(
+        testTheme({
+          layouts: {
+            cover: ["poster-center"],
+            chapter: ["banner-chapter"],
+            content: ["image-split"],
+            ending: ["banner-ending"],
+          },
+        }),
+      ),
+    ).toThrow(/"image-split" is a takeover layout — curated sets may only contain archetype layouts/)
+  })
+
+  it("rejects a theme missing layout coverage for one of the four slide types", () => {
+    expect(() =>
+      registerTheme(
+        testTheme({
+          layouts: {
+            cover: ["poster-center"],
+            chapter: [],
+            content: ["two-column"],
+            ending: ["banner-ending"],
+          },
+        }),
+      ),
+    ).toThrow(/chapter/)
+  })
+
+  it("rejects a theme with no style tokens", () => {
+    expect(() =>
+      registerTheme(testTheme({ style: undefined as unknown as ThemeDefinition["style"] })),
+    ).toThrow(/missing style tokens/)
+  })
+})
+
+describe("getInstalledThemeIds", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  it("starts as exactly the 13 builtins", () => {
+    expect(getInstalledThemeIds()).toEqual(CANONICAL_THEME_IDS)
+  })
+
+  it("stable order: builtins first, then registration order", () => {
+    registerTheme(testTheme({ id: "zzz-first" }))
+    registerTheme(testTheme({ id: "aaa-second" }))
+    const ids = getInstalledThemeIds()
+    expect(ids.slice(0, CANONICAL_THEME_IDS.length)).toEqual(CANONICAL_THEME_IDS)
+    expect(ids.slice(CANONICAL_THEME_IDS.length)).toEqual(["zzz-first", "aaa-second"])
+  })
+})
+
+describe("getThemeDefinition", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  it("returns the registered definition for a registered id", () => {
+    registerTheme(testTheme())
+    expect(getThemeDefinition("acme")).toEqual(testTheme())
+  })
+
+  it("still falls back to consulting for an unknown id (registered or not)", () => {
+    registerTheme(testTheme())
+    expect(getThemeDefinition("still-unknown")).toBe(THEME_DEFINITIONS.consulting)
+  })
+
+  it("matches THEME_DEFINITIONS for a builtin id", () => {
+    expect(getThemeDefinition("tech")).toBe(THEME_DEFINITIONS.tech)
   })
 })

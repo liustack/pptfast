@@ -6,7 +6,9 @@
  */
 
 import type { PptxIR, Slide } from "@/ir"
+import { DELIVERY_BUDGETS, resolveScenario, type Delivery, type ScenarioAxes } from "@/scenario"
 import { CAPACITY } from "./audit/capacity"
+import { resolveEffectiveLayoutBodyCapacity } from "./effective-layout"
 import { measureTextUnits } from "../lib/svg-text-layout"
 
 export type QualityIssue = {
@@ -14,6 +16,26 @@ export type QualityIssue = {
   severity: "warn" | "error"
   code: string
   message: string
+  /**
+   * `code: "density"` only (W3 task 3, spec §5's dual-attribute capacity
+   * split): the two `min()` candidates plus enough to name them, computed
+   * once here via `resolveEffectiveLayoutBodyCapacity` — the same
+   * selection path `FullSlideSvg` renders through — so `api.ts`'s English
+   * translation layer (`describeQualityIssue`) can report which side bound
+   * without re-resolving the slide's effective layout itself (there must be
+   * exactly one place that does that resolution).
+   */
+  density?: {
+    limit: number
+    delivery: Delivery
+    deliveryBudget: number
+    layoutId: string | null
+    layoutCapacity: number | undefined
+  }
+  /** `code: "bullets_overflow"` / `"bullet_item_long"` only — the resolved
+   * delivery's bullets budget (spec §5 delivery table), for the same
+   * English-translation reason as `density` above. */
+  bulletsBudget?: { delivery: Delivery; maxItems: number; maxUnitsPerItem: number }
 }
 
 // ── helpers ──
@@ -25,13 +47,6 @@ function charLen(s: string): number {
 
 function hasKpiCardsComponent(slide: Slide): boolean {
   return slide.components.some((b) => b.type === "kpi_cards")
-}
-
-/** Per-theme `maxBlocksPerSlide` (see the derivation comment in capacity.ts —
- * tech's card-grid geometry supports more components per page than the
- * linear-stack themes the flat default was derived from). */
-function maxBlocksPerSlideFor(themeId: string): number {
-  return CAPACITY.maxBlocksPerSlideOverrides[themeId] ?? CAPACITY.maxBlocksPerSlide
 }
 
 /**
@@ -49,8 +64,9 @@ function isBackgroundImageOnly(slide: Slide): boolean {
 
 // ── per-slide checks ──
 
-function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[] {
+function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: ScenarioAxes): QualityIssue[] {
   const issues: QualityIssue[] = []
+  const budget = DELIVERY_BUDGETS[resolvedAxes.delivery]
 
   // A1-reverse: heading too long
   if (slide.heading && charLen(slide.heading) > CAPACITY.headingMaxChars) {
@@ -62,37 +78,58 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
     })
   }
 
-  // A2: density cap — only for content slides. Threshold is theme-aware
-  // (tech's card grid tolerates more components per page than the
-  // linear-stack themes the flat default was derived from — see capacity.ts).
-  const maxBlocksPerSlide = maxBlocksPerSlideFor(themeId)
-  if (slide.type === "content" && slide.components.length > maxBlocksPerSlide) {
-    issues.push({
-      slide: index,
-      severity: "warn",
-      code: "density",
-      message: `每页至多 ~${maxBlocksPerSlide} 个块，建议拆页`,
-    })
+  // A2: density cap — only for content slides. W3 task 3 (spec §5's
+  // dual-attribute capacity split): limit = min(this scenario's delivery
+  // editorial budget, the resolved layout's body-slot geometric capacity).
+  // The geometric half comes from `resolveEffectiveLayoutBodyCapacity`
+  // (`./effective-layout`) — the exact selection path `FullSlideSvg` renders
+  // through, never re-derived here, so what this gate flags is guaranteed to
+  // match what render would actually overflow. `layoutCapacity: undefined`
+  // (image-cover bypass, or a takeover with no `body` slot capacity — the 4
+  // image-family layouts) means no geometric term: only the editorial budget
+  // applies.
+  if (slide.type === "content") {
+    const { layoutId, capacity: layoutCapacity } = resolveEffectiveLayoutBodyCapacity(ir, slide, index)
+    const limit = Math.min(budget.maxComponentsPerSlide, layoutCapacity ?? Infinity)
+    if (slide.components.length > limit) {
+      issues.push({
+        slide: index,
+        severity: "warn",
+        code: "density",
+        message: `每页至多 ~${limit} 个块，建议拆页`,
+        density: {
+          limit,
+          delivery: resolvedAxes.delivery,
+          deliveryBudget: budget.maxComponentsPerSlide,
+          layoutId,
+          layoutCapacity,
+        },
+      })
+    }
   }
 
-  // bullets overflow + per-item length
+  // bullets overflow + per-item length — W3 task 3: budget now reads
+  // DELIVERY_BUDGETS (spec §5 delivery table) instead of the old flat
+  // CAPACITY.bullets.
   for (const component of slide.components) {
     if (component.type !== "bullets") continue
-    if (component.items.length > CAPACITY.bullets.maxItems) {
+    if (component.items.length > budget.bullets.maxItems) {
       issues.push({
         slide: index,
         severity: "warn",
         code: "bullets_overflow",
-        message: `要点列表条目过多（>${CAPACITY.bullets.maxItems}），建议精简或拆页`,
+        message: `要点列表条目过多（>${budget.bullets.maxItems}），建议精简或拆页`,
+        bulletsBudget: { delivery: resolvedAxes.delivery, ...budget.bullets },
       })
     }
     for (const item of component.items) {
-      if (measureTextUnits(item) > CAPACITY.bullets.maxUnitsPerItem) {
+      if (measureTextUnits(item) > budget.bullets.maxUnitsPerItem) {
         issues.push({
           slide: index,
           severity: "warn",
           code: "bullet_item_long",
           message: "单条要点过长，建议精简至 2 行内",
+          bulletsBudget: { delivery: resolvedAxes.delivery, ...budget.bullets },
         })
       }
     }
@@ -128,7 +165,20 @@ function checkSlide(slide: Slide, index: number, themeId: string): QualityIssue[
 
 // ── entry ──
 
-export function checkIrQuality(ir: PptxIR): QualityIssue[] {
+/**
+ * `resolvedAxes` (threaded W3 task 2, consumed by task 3) carries the
+ * caller's already-resolved {@link ScenarioAxes} (spec §5) for the
+ * scenario-aware density/bullets thresholds in {@link checkSlide} — density
+ * reads `resolvedAxes.delivery`'s editorial budget and mixes in the
+ * resolved layout's geometric capacity (spec §5's dual-attribute capacity
+ * split), bullets reads the same delivery's bullets budget. `api.ts`'s
+ * `validateIr` resolves scenario for its own error handling and passes the
+ * result through here so there is exactly one `resolveScenario` call per
+ * validate pass. Defaults to the `general` preset's axes so this file's own
+ * single-argument test call sites keep compiling and behave the same as
+ * every other caller that hasn't resolved a scenario of its own.
+ */
+export function checkIrQuality(ir: PptxIR, resolvedAxes: ScenarioAxes = resolveScenario(undefined)): QualityIssue[] {
   const issues: QualityIssue[] = []
 
   // empty deck
@@ -143,7 +193,7 @@ export function checkIrQuality(ir: PptxIR): QualityIssue[] {
   }
 
   for (let i = 0; i < ir.slides.length; i++) {
-    issues.push(...checkSlide(ir.slides[i], i, ir.theme.id))
+    issues.push(...checkSlide(ir, ir.slides[i], i, resolvedAxes))
   }
 
   return issues

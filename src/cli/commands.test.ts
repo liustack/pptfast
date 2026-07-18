@@ -4,7 +4,17 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { applyDeckConfig, runInit, runPreview, runRender, runSchema, runThemes, runValidate } from "./commands"
+import { SCENARIO_PRESETS } from "../scenario"
+import {
+  applyDeckConfig,
+  runInit,
+  runPreview,
+  runRender,
+  runScenarios,
+  runSchema,
+  runThemes,
+  runValidate,
+} from "./commands"
 
 // 1x1 红色 PNG
 const PNG_1PX = Buffer.from(
@@ -69,6 +79,35 @@ describe("runSchema / runThemes", () => {
   it("prints 13 themes, json mode parses", () => {
     expect(runThemes(false).split("\n")).toHaveLength(13)
     expect(JSON.parse(runThemes(true))).toHaveLength(13)
+  })
+})
+
+describe("runScenarios", () => {
+  const presetCount = Object.keys(SCENARIO_PRESETS).length
+
+  it("prints one row per preset in human mode, id/axes/theme recommendations", () => {
+    const lines = runScenarios(false).split("\n")
+    expect(lines).toHaveLength(presetCount)
+    const generalLine = lines.find((l) => l.startsWith("general"))
+    expect(generalLine).toBeDefined()
+    expect(generalLine).toMatch(/briefing\/balanced\/public/)
+    expect(generalLine).toMatch(/consulting/)
+  })
+
+  it("prints the full machine payload in json mode", () => {
+    const payload = JSON.parse(runScenarios(true)) as {
+      presets: Record<string, { axes: { mode: string; delivery: string; audience: string } }>
+      modes: Record<string, unknown>
+      deliveries: Record<string, unknown>
+      audiences: string[]
+    }
+    expect(Object.keys(payload.presets)).toHaveLength(presetCount)
+    expect(payload.presets.general?.axes).toEqual({ mode: "briefing", delivery: "balanced", audience: "public" })
+    expect(Object.keys(payload.modes)).toEqual(
+      expect.arrayContaining(["pyramid", "narrative", "instructional", "showcase", "briefing"]),
+    )
+    expect(Object.keys(payload.deliveries)).toEqual(expect.arrayContaining(["text", "balanced", "presentation"]))
+    expect(payload.audiences).toEqual(expect.arrayContaining(["executive", "technical", "customer", "public"]))
   })
 })
 

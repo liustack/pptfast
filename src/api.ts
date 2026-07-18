@@ -1,12 +1,14 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
-import { BUILTIN_THEME_IDS, PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
+import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
 import { generatePptxBlob } from "./pptx/generate"
+import { resolveScenario, type ScenarioAxes } from "./scenario"
 import { CAPACITY } from "./svg/audit/capacity"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { getLayout, layoutsForSlideType } from "./svg/layouts/registry"
 import { slideToSvgMarkup } from "./svg/render-slide"
 import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_STYLES } from "./themes"
+import { getInstalledThemeIds } from "./themes/definitions"
 
 export interface ValidationIssue {
   path: string
@@ -29,8 +31,17 @@ export interface ValidateResult {
  * changing `ir-quality.ts` itself (and its already-green test suite, which
  * asserts on the Chinese wording directly). Unknown/future codes fall back to
  * a generic English string rather than leaking the untranslated Chinese text.
+ *
+ * `density` / `bullets_overflow` / `bullet_item_long` (W3 task 3, spec §5):
+ * the effective threshold is now scenario-aware (delivery editorial budget,
+ * `density` additionally minned against the resolved layout's geometric
+ * capacity — spec §5's dual-attribute capacity split), so the number can no
+ * longer be read off a flat constant here. `checkIrQuality` resolves both
+ * `min()` candidates once (the single place that runs the layout-selection
+ * path render also uses) and attaches them to the issue via `density` /
+ * `bulletsBudget` — this function only formats what it's handed.
  */
-function describeQualityIssue(issue: QualityIssue, themeId: string): string {
+function describeQualityIssue(issue: QualityIssue): string {
   switch (issue.code) {
     case "empty_deck":
       return "deck has no slides"
@@ -39,13 +50,38 @@ function describeQualityIssue(issue: QualityIssue, themeId: string): string {
     case "long_heading":
       return `heading exceeds ${CAPACITY.headingMaxChars} characters — tighten it into a short, assertive phrase`
     case "density": {
-      const limit = CAPACITY.maxBlocksPerSlideOverrides[themeId] ?? CAPACITY.maxBlocksPerSlide
-      return `too many components on this slide (max ~${limit}) — split into multiple slides`
+      const d = issue.density
+      // Defensive fallback only — checkIrQuality always attaches `density`
+      // alongside a "density" code (same total-function posture as the rest
+      // of this file's `?.`/`??` guards); never actually hit.
+      if (!d) return "too many components on this slide — split into multiple slides"
+      const { limit, delivery, deliveryBudget, layoutId, layoutCapacity } = d
+      if (layoutCapacity === undefined || layoutCapacity === deliveryBudget) {
+        // No geometric term (image-cover bypass or a takeover with no body
+        // capacity), or it agrees with the editorial budget — nothing extra
+        // to disambiguate, name the delivery alone.
+        return `too many components on this slide (max ${limit} for ${delivery} delivery) — split into multiple slides`
+      }
+      return layoutCapacity > deliveryBudget
+        ? // Delivery is the binding side, but the layout itself allows more —
+          // name both so a generous-looking layout (e.g. bento-panel's 6)
+          // doesn't read as a bug.
+          `too many components on this slide (max ${limit} — ${layoutId} fits ${layoutCapacity} but ${delivery} delivery caps at ${limit}) — split into multiple slides`
+        : // The layout's own capacity is the binding side.
+          `too many components on this slide (max ${limit} — ${layoutId} layout's capacity is tighter than ${delivery} delivery's ${deliveryBudget}) — split into multiple slides`
     }
-    case "bullets_overflow":
-      return `bullet list has too many items (max ${CAPACITY.bullets.maxItems}) — trim it or split into multiple slides`
-    case "bullet_item_long":
-      return "a bullet item is too long — keep it within about 2 lines"
+    case "bullets_overflow": {
+      const b = issue.bulletsBudget
+      return b
+        ? `bullet list has too many items (max ${b.maxItems} for ${b.delivery} delivery) — trim it or split into multiple slides`
+        : "bullet list has too many items — trim it or split into multiple slides"
+    }
+    case "bullet_item_long": {
+      const b = issue.bulletsBudget
+      return b
+        ? `a bullet item is too long for ${b.delivery} delivery — keep it within about 2 lines`
+        : "a bullet item is too long — keep it within about 2 lines"
+    }
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     default:
@@ -92,17 +128,19 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
 }
 
 /**
- * Validate raw JSON against the IR schema, then — once it parses — run the
- * content-quality gate (`checkIrQuality`) against the parsed IR. Both stages
- * must pass for `ok: true`. Quality findings are reported the same way as
- * schema errors (page-scoped, 1-based). `checkIrQuality` itself tags findings
- * "warn" vs "error", but that split was designed for its original consumer
- * (surfacing informational warnings in a UI after generation, per its own
- * docstring) — here it is the pre-generation hard gate, so any finding blocks
- * (`ok: false`), not only "error"-severity ones. Treating "warn" findings
- * (e.g. a cover with no heading) as advisory-only would defeat the point of
- * wiring this in: the spec's core principle is a hard protocol gate, not
- * hoped-for prompt compliance.
+ * Validate raw JSON against the IR schema, then — once it parses — resolve
+ * `scenario` (`resolveScenario`, spec §5: an unrecognized preset name is a
+ * `scenario`-path error, page-less) and run the content-quality gate
+ * (`checkIrQuality`, passed the resolved axes) against the parsed IR. All
+ * stages must pass for `ok: true`. Quality findings are reported the same
+ * way as schema errors (page-scoped, 1-based). `checkIrQuality` itself tags
+ * findings "warn" vs "error", but that split was designed for its original
+ * consumer (surfacing informational warnings in a UI after generation, per
+ * its own docstring) — here it is the pre-generation hard gate, so any
+ * finding blocks (`ok: false`), not only "error"-severity ones. Treating
+ * "warn" findings (e.g. a cover with no heading) as advisory-only would
+ * defeat the point of wiring this in: the spec's core principle is a hard
+ * protocol gate, not hoped-for prompt compliance.
  */
 export function validateIr(input: unknown): ValidateResult {
   // IR v2 friendly migration message (dev-channel scope, spec §8: W1 started
@@ -132,28 +170,58 @@ export function validateIr(input: unknown): ValidateResult {
   }
   // Installed-theme check (schema layer keeps theme.id open — see ThemeSchema
   // in ir/index.ts — so this hard gate is the only place an unknown id is
-  // actually rejected, with the available list in the message).
-  if (!(BUILTIN_THEME_IDS as readonly string[]).includes(r.data.theme.id)) {
+  // actually rejected, with the available list in the message). Installed =
+  // the 13 builtins + anything registered via themes/definitions.ts's
+  // registerTheme (W3 task 4's SDK seam) — a strict superset of the old
+  // BUILTIN_THEME_IDS-only check, same error shape.
+  const installedThemeIds = getInstalledThemeIds()
+  if (!installedThemeIds.includes(r.data.theme.id)) {
     return {
       ok: false,
       errors: [
         {
           path: "theme.id",
-          message: `unknown theme "${r.data.theme.id}" — available: ${BUILTIN_THEME_IDS.join(", ")} (see \`pptfast themes\`)`,
+          message: `unknown theme "${r.data.theme.id}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
         },
       ],
     }
   }
   const layoutErrors = checkLayoutApplicability(r.data)
   if (layoutErrors.length > 0) return { ok: false, errors: layoutErrors }
-  const quality = checkIrQuality(r.data)
+  // Scenario resolution (spec §5's defaults chain, W3 task 2). Both branches
+  // of the schema's `scenario` union (ScenarioAxesInputSchema in ir/index.ts)
+  // are open now — a preset-name string and an axes object alike — the same
+  // open-schema/closed-semantic pattern as theme.id above, so resolveScenario
+  // is the *sole* place any scenario semantics (unrecognized preset name,
+  // unrecognized axis key, unrecognized axis value) get rejected. This one
+  // try/catch is therefore the only path that can produce a `scenario`
+  // ValidationIssue, for all of those cases — deliberate, per the W3 task-2
+  // review finding: nesting a schema-closed enum object inside a z.union
+  // meant a failing branch reported as one opaque zod `invalid_union` issue
+  // ("Invalid input", no specifics), never resolveScenario's own
+  // available-values message. r.data.scenario's inferred type
+  // (`string | Record<string, unknown> | undefined`) is wider than
+  // resolveScenario's declared parameter — safe to narrow here because
+  // resolveScenario validates every key and value itself at runtime
+  // regardless of what the schema let through (its own test suite pins
+  // that). The resolved axes are not written back onto r.data (see the
+  // scenario field's docstring in ir/index.ts) — they are only threaded into
+  // checkIrQuality below for task 3 to consume.
+  let resolvedAxes: ScenarioAxes
+  try {
+    resolvedAxes = resolveScenario(r.data.scenario as string | Partial<ScenarioAxes> | undefined)
+  } catch (err) {
+    if (!(err instanceof PptfastError)) throw err
+    return { ok: false, errors: [{ path: "scenario", message: err.message }] }
+  }
+  const quality = checkIrQuality(r.data, resolvedAxes)
   if (quality.length === 0) return { ok: true, ir: r.data, errors: [] }
   const errors: ValidationIssue[] = quality.map((issue) =>
     issue.code === "empty_deck"
-      ? { path: "slides", message: describeQualityIssue(issue, r.data.theme.id) }
+      ? { path: "slides", message: describeQualityIssue(issue) }
       : {
           path: `slides.${issue.slide}`,
-          message: describeQualityIssue(issue, r.data.theme.id),
+          message: describeQualityIssue(issue),
           page: issue.slide + 1,
         },
   )

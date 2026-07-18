@@ -329,6 +329,80 @@ describe("verdict_banner component", () => {
   })
 })
 
+// Schema layer only distinguishes string vs. object vs. neither for the
+// axes-object branch (W3 task-2 review fix) — key/value semantics (only
+// mode/delivery/audience, each a closed enum) are solely resolveScenario's
+// job, exercised through validateIr in api.test.ts's "scenario field"
+// describe block, not here. Nesting a schema-closed enum object inside a
+// z.union used to collapse every rejection into one opaque zod
+// `invalid_union` issue regardless of what was actually wrong — see
+// ScenarioAxesInputSchema's docstring in ir/index.ts for the full story.
+describe("IR v3 scenario field (W3 task 2)", () => {
+  it("accepts a preset id string", () => {
+    const d: any = minimal()
+    d.scenario = "boardroom-report"
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toBe("boardroom-report")
+  })
+
+  it("accepts a partial axes object", () => {
+    const d: any = minimal()
+    d.scenario = { mode: "pyramid", audience: "executive" }
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toEqual({ mode: "pyramid", audience: "executive" })
+  })
+
+  it("accepts omission — scenario stays undefined, no default is baked in by the schema", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toBeUndefined()
+  })
+
+  it("schema-accepts an unknown key on the axes object — resolveScenario rejects it (api.test.ts)", () => {
+    const d: any = minimal()
+    d.scenario = { mode: "pyramid", speed: "fast" }
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toEqual({ mode: "pyramid", speed: "fast" })
+  })
+
+  it("schema-accepts a wrong-type axis value — resolveScenario rejects it (api.test.ts)", () => {
+    const d: any = minimal()
+    d.scenario = { mode: 123 }
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toEqual({ mode: 123 })
+  })
+
+  it("schema-accepts an axis-value typo — resolveScenario rejects it (api.test.ts)", () => {
+    const d: any = minimal()
+    d.scenario = { mode: "pyramidal" }
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.scenario).toEqual({ mode: "pyramidal" })
+  })
+
+  it("rejects a scenario value that is neither a preset string nor an axes object (number)", () => {
+    const d: any = minimal()
+    d.scenario = 42
+    // Union type error (fails both branches structurally) — generic zod
+    // message is acceptable here, unlike the object-branch cases above:
+    // there is no per-axis semantic to report, "not a string and not an
+    // object" is the whole story.
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects a scenario value that is neither a preset string nor an axes object (array)", () => {
+    const d: any = minimal()
+    d.scenario = ["boardroom-report"]
+    // Arrays are not plain objects (z.record's isPlainObject check) and not
+    // strings, so this fails the union the same structural way as a number.
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("theme.style override", () => {
   it("accepts a palette/fonts/shape override", () => {
     const d: any = minimal()

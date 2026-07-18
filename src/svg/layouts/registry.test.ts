@@ -139,7 +139,7 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
     expect(body?.capacity).toBe(6)
   })
 
-  it("the remaining 6 content archetypes' body slots carry capacity 4 (W2 task 5 — mirrors CAPACITY.maxBlocksPerSlide's flat single-stack default, see registry.ts's CONTENT_LAYOUTS header comment)", () => {
+  it("the remaining 6 content archetypes' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3, see registry.ts's CONTENT_LAYOUTS header comment)", () => {
     for (const id of Object.keys(CONTENT_ARCHETYPES)) {
       if (id === "bento-panel") continue
       const body = LAYOUT_REGISTRY[id].slots.find((s) => s.name === "body")

@@ -2,13 +2,16 @@ import { readFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { BUILTIN_THEME_IDS, StyleOverrideSchema } from "../ir"
+import { StyleOverrideSchema } from "../ir"
+import { getInstalledThemeIds } from "../themes/definitions"
 
 /**
  * Project-level deck defaults. Precedence: CLI flag > config > IR (see commands.ts applyDeckConfig).
  * `theme` is kept an open string at the schema layer (mirrors ThemeSchema in
- * ir/index.ts) — the installed-theme check runs post-parse in findConfig, the
- * same "unknown → PptfastError with the available list" UX as validateIr.
+ * ir/index.ts) — the installed-theme check runs post-parse in findConfig
+ * against `getInstalledThemeIds()` (builtins + anything registered via
+ * `registerTheme`, W3 task 4), the same "unknown → PptfastError with the
+ * available list" UX as validateIr.
  */
 const ConfigSchema = z
   .object({
@@ -49,10 +52,13 @@ export async function findConfig(
           .join("\n")
         throw new PptfastError(`invalid ${candidate}:\n${detail}`)
       }
-      if (r.data.theme !== undefined && !(BUILTIN_THEME_IDS as readonly string[]).includes(r.data.theme)) {
-        throw new PptfastError(
-          `${candidate}: unknown theme "${r.data.theme}" — available: ${BUILTIN_THEME_IDS.join(", ")} (see \`pptfast themes\`)`,
-        )
+      if (r.data.theme !== undefined) {
+        const installedThemeIds = getInstalledThemeIds()
+        if (!installedThemeIds.includes(r.data.theme)) {
+          throw new PptfastError(
+            `${candidate}: unknown theme "${r.data.theme}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
+          )
+        }
       }
       return { path: candidate, config: r.data }
     }
