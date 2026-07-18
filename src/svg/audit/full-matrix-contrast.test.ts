@@ -215,3 +215,67 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
     })
   }
 })
+
+// Targeted addition (W8 fix round): kpi_cards flowing through bento-panel
+// specifically — deliberately *not* folded into `CONTENT_BODY` above.
+// `CONTENT_BODY` is shared by every content archetype across all 13 themes;
+// the file header already documents that kpi_cards was tried there once and
+// reverted because it drags in kpi.tsx's own unrelated, already-pinned
+// defect (`deck-audit.test.ts`'s "kpi.tsx's hardcoded delta-arrow red") into
+// every archetype that renders it via the shared row-layout component. This
+// defect is narrower: it lives only in `content-bento-panel.tsx`'s own
+// `renderKpiCardBody` (bento's per-item card renderer — a different code
+// path from kpi.tsx's row layout), reachable only when a kpi_cards
+// component explodes into bento-panel's own cards. A fixture scoped to
+// exactly that combination is sufficient and avoids reintroducing the noise
+// the shared fixture already proved unrelated.
+describe("bento-panel kpi_cards contrast (W8 fix round, targeted — see comment above)", () => {
+  // Values match the live repro that surfaced this defect (`pptfast audit`
+  // on a hand-built deck, W8 walkthrough): two kpi_cards items so the grid
+  // path (not the single-card degrade) renders both through renderKpiCard.
+  const KPI_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "bento-panel",
+    components: [
+      {
+        type: "kpi_cards",
+        items: [
+          { value: "13", label: "一号指标" },
+          { value: "24", label: "二号指标" },
+        ],
+      },
+    ],
+  } as Slide
+
+  // Sweep all 13 canonical themes rather than hand-picking the ones known to
+  // fail — this both proves the defect on the affected themes (red before
+  // the fix: bloom/classroom/consulting/heritage measure <3:1 between
+  // colors.accent and colors.surface at the kpi value's real render size,
+  // independently confirmed against each theme's own token file) and proves
+  // accessibleInk is a no-op everywhere else (the other 9 already clear the
+  // ratio), in one net.
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: kpi value text clears the required contrast ratio against its own card surface`, () => {
+      const findings = auditFindings(deckFor(themeId, KPI_SLIDE))
+      // Structural findings (overflow/out-of-bounds) would be a real bug on
+      // this trivial 2-item slide — asserted with zero exceptions.
+      expect(findings.filter((f) => f.code !== "low-contrast")).toEqual([])
+      // low-contrast: scoped to the kpi *value* text only (its detail.text
+      // is exactly the item's numeric value string, "13"/"24"). A
+      // same-slide low-contrast finding on the *label* text instead
+      // ("一号指标"/"二号指标", colors.muted) is the file header's own
+      // documented, pre-existing colors.muted theme-calibration gap (shows
+      // up on nearly every archetype, independent of layout or this task's
+      // defect) — not this task's defect class and not touched by this
+      // fix, so deliberately not asserted here, same as the header's own
+      // reasoning for excluding colors.muted from the main sweep above.
+      const valueFindings = findings.filter(
+        (f) =>
+          f.code === "low-contrast" &&
+          ["13", "24"].includes((f.detail as { text?: string } | undefined)?.text ?? ""),
+      )
+      expect(valueFindings).toEqual([])
+    })
+  }
+})
