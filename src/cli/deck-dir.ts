@@ -366,8 +366,9 @@ export interface DeckDirResult extends AssembleResult {
  * `effective-layout.ts`'s `deckEffectiveLayoutIdsCache` — the only two
  * consumers that key a `WeakMap` off an `ir` object's identity — never read
  * `.assets` (confirmed by reading both cache-populating functions: they only
- * touch `seed`/`filename`/`slides[].heading`/`.id`/`.type`/`.layout`/
- * `.background`). Cloning instead of mutating means the object
+ * touch `seed`/`filename`/`theme.id`/`theme.style`/`scenario`/
+ * `slides[].heading`/`.id`/`.type`/`.layout`/`.background`). Cloning
+ * instead of mutating means the object
  * `assembleDeck` returned is never touched, and this function's own return
  * value is a distinct identity no earlier reference could have already
  * cached against — correct-by-construction regardless of what a future
