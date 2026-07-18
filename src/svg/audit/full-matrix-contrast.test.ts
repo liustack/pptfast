@@ -481,8 +481,13 @@ type MutedSurfaceClass =
  *   covered by either of the above — has its own dedicated probe below.
  * - `"known-gap"`: a real, `auditDeck`-confirmed low-contrast finding this
  *   task's token-calibration discipline cannot close — recorded (pinned),
- *   not silently exempted. See the dedicated describe block below and the
- *   fix report.
+ *   not silently exempted, in its own dedicated describe block (a future
+ *   instance needs a new one — the two `kpi_cards`/`numbered_cards` cases
+ *   that originally justified this category were fixed post-v0.3 W8, see
+ *   the "colors.muted opacity-blend fix" describe block below, which pins
+ *   their resolved, zero-affected-themes state rather than the shortfall,
+ *   and reclassified out of `"known-gap"`, so no current entry uses this
+ *   value — see commit c523994 for the shape a from-scratch pin took).
  */
 const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   bullets: "no-muted-fill", // stroke-only divider fallback (bullets.tsx)
@@ -491,9 +496,16 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   callout: "no-muted-fill", // no colors.muted reference at all
   code: "no-muted-fill", // no colors.muted reference at all
   // kpi.tsx's row-card unit/label/delta-flat-fallback text is flat-surface
-  // (same colors.surface pair as bento-panel); its `source` line renders at
-  // fillOpacity=0.7 — a real, separate gap, see "known gaps" below.
-  kpi_cards: "known-gap",
+  // (same colors.surface pair as bento-panel) — its `source` line used to be
+  // a real, separate known-gap (fillOpacity=0.7 raw, pinned by commit
+  // c523994) — **fixed** post-v0.3 W8 fix round (task-2 review routed): the
+  // line now renders `accessibleOpacity(colors.muted, colors.surface, 11,
+  // 0.7)` (`kpi.tsx`'s own comment at that call site), which falls back to
+  // full opacity on all 13 themes (the 0.7-blended ratio never clears
+  // 4.5:1) — same (muted, surface) pair the bento-panel check below already
+  // locks at full opacity, so no longer a distinct surface to track. Locked
+  // by the "colors.muted opacity-blend fix" describe block below.
+  kpi_cards: "flat-surface",
   chart: "page-bg", // category/value/donut-center labels never sit on a component-painted rect (chart.tsx/chart-svg.tsx)
   // Edge-label chip (`fill={colors.bg}`, flowchart.tsx) is real geometry,
   // but every realistic label (including STRESS_DECKS's own
@@ -511,9 +523,17 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   row_cards: "flat-surface", // sub text on the card's colors.surface shell
   steps: "flat-surface", // description text on the card's colors.surface shell (horizontal mode); vertical mode has no card at all (page-bg, also covered)
   rings: "page-bg", // desc text, no card
-  // numbered-cards.tsx's `text` field is page-bg (covered); its `sub` field
-  // renders at opacity=0.75 — a real, separate gap, see "known gaps" below.
-  numbered_cards: "known-gap",
+  // numbered-cards.tsx's `text` field is page-bg (covered) — its `sub` field
+  // used to be a real, separate known-gap (opacity=0.75 raw, pinned by
+  // commit c523994) — **fixed** post-v0.3 W8 fix round (task-2 review
+  // routed): `sub` now renders `accessibleOpacity(colors.muted,
+  // ctx.defaultBg ?? ctx.colors.bg, sub.fontSize, 0.75)`
+  // (`numbered-cards.tsx`'s own comment at that call site), which falls back
+  // to full opacity on 12/13 themes and keeps 0.75 on campaign (already
+  // clears 4.5:1 there) — same page background `text` above it already sits
+  // on, so no longer a distinct surface to track. Locked by the
+  // "colors.muted opacity-blend fix" describe block below.
+  numbered_cards: "page-bg",
   // roadmap.tsx's row-label text sits on the card's colors.surface shell
   // (flat-surface) — but `renderCard`'s own accent bar
   // (`roundedTopBarPath`, an SVG arc `<path>`) triggers a pre-existing,
@@ -598,45 +618,52 @@ describe("colors.muted component-type coverage (task-2 fix round, backlog 5a com
   }
 })
 
-// Recorded shortfalls (task-2 fix round, backlog 5a completeness sweep —
-// NOT silently exempted, NOT fixed this round; see the fix report's
-// "记录的缺口" section for the full writeup). Two colors.muted call sites
-// render at a reduced opacity WITHOUT routing through `accessibleOpacity`
-// (`src/svg/ink.ts`) — the helper this codebase already built for exactly
-// this shape of problem ("a dimmed ink tier can drop under the floor even
-// when the same ink at full opacity clears it comfortably", that function's
-// own doc comment) and already wired up at its two existing call sites
-// (`chapter-banner-chapter.tsx`/`chapter-rail-chapter.tsx`) — but never at
-// these two:
+// colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review
+// routed — `.issues/notes/2026-07-18-post-v03-backlog.md`'s "9. task-2 覆盖
+// 小项" area). Two colors.muted call sites rendered at a reduced opacity
+// WITHOUT routing through `accessibleOpacity` (`src/svg/ink.ts`) — the
+// helper this codebase already built for exactly this shape of problem
+// ("a dimmed ink tier can drop under the floor even when the same ink at
+// full opacity clears it comfortably", that function's own doc comment)
+// and already wired up at its two existing call sites
+// (`chapter-banner-chapter.tsx`/`chapter-rail-chapter.tsx`) — but, until
+// this fix, never at these two:
 //   - kpi.tsx's row-card `source` line: `fill={colors.muted}
 //     fillOpacity={0.7}`. Every raw (fill, background) pair this file
 //     checks already clears 4.5:1 post-recalibration, but blending muted at
-//     0.7 alpha toward `colors.surface` pulls the *effective* color close
-//     enough to the background that all 13 themes still fail.
+//     0.7 alpha toward `colors.surface` pulled the *effective* color close
+//     enough to the background that all 13 themes failed.
 //   - numbered-cards.tsx's `sub` line: `fill={colors.muted}
-//     opacity={0.75}`. Same mechanism, 12/13 themes fail (campaign's
-//     post-matrix-recalibration muted moved light enough this round to
-//     clear even the 0.75-blended case too, a side effect, not a targeted
-//     fix).
-// Recalibrating colors.muted's *hex* to satisfy the 0.7-alpha case directly
-// (instead of fixing the opacity call site) was evaluated and rejected:
+//     opacity={0.75}`. Same mechanism, 12/13 themes failed (campaign's
+//     post-matrix-recalibration muted had already moved light enough to
+//     clear even the 0.75-blended case, a side effect, not a targeted fix).
+// This was first recorded rather than fixed (commit c523994) after
+// evaluating and rejecting a recalibrate-the-hex-instead approach:
 // independently computed, the 4 themes with *no other* colors.muted issue
 // at all (academic/classroom/tech/journal) would still need to darken
 // ~16-19 percentage points of lightness to clear kpi.tsx's source line at
-// 0.7 alpha — an order of magnitude past every adjustment this round or the
-// prior one made (max 8.7pp, campaign) — landing muted's own raw contrast
-// around 11:1 against its card surface, next to colors.text's own
+// 0.7 alpha — an order of magnitude past every adjustment either
+// recalibration round made (max 8.7pp, campaign) — landing muted's own raw
+// contrast around 11:1 against its card surface, next to colors.text's own
 // ~16-17:1 there. That stops reading as a *softer* secondary tier at all —
-// the exact invariant this token's calibration exists to protect. Fixing
-// this for real is a component-code change (route the call site through
-// `accessibleOpacity`), not a token-calibration one, and out of this task's
-// "extend the muted calibration" mandate — routing through it would also
-// drop the opacity to 1 on most themes as a rendering-visible consequence,
-// needing its own dedicated re-pin sweep. Recorded here (pinned, not
-// silently dropped) so a future change to either call site's opacity or to
-// colors.muted doesn't silently drift these counts without a conscious
-// update.
-describe("colors.muted known gaps (recorded shortfalls, not fixed this round — see fix report)", () => {
+// the exact invariant this token's calibration exists to protect.
+//
+// Fixed here instead: both call sites now route through
+// `accessibleOpacity(colors.muted, <real background>, <real rendered
+// fontSize>, <preferred opacity>)` — `colors.surface` for kpi.tsx (the
+// row-card's own shell), `ctx.defaultBg ?? ctx.colors.bg` for
+// numbered-cards.tsx (no card, sits on the page background like its `text`
+// field). Confirmed by measurement, not assumed: `accessibleOpacity` falls
+// back to full opacity for every theme whose blended ratio missed 4.5:1 —
+// all 13/13 for kpi.tsx, 12/13 for numbered-cards.tsx (campaign keeps its
+// preferred 0.75, already clearing the floor there without falling back) —
+// exactly the blast radius this comment's predecessor predicted when it
+// deferred the fix. `findsMuted` below (unchanged) now finds zero affected
+// themes for either call site. The two assertions were flipped from pinning
+// the pre-fix shortfall to locking the post-fix floor, not deleted, so a
+// future regression on either call site's opacity or on colors.muted itself
+// still fails this net instead of silently drifting past it.
+describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review routed)", () => {
   function findsMuted(themeId: (typeof CANONICAL_THEME_IDS)[number], slide: Slide): boolean {
     const style = THEME_DEFINITIONS[themeId].style
     return auditFindings(deckFor(themeId, slide)).some(
@@ -644,7 +671,7 @@ describe("colors.muted known gaps (recorded shortfalls, not fixed this round —
     )
   }
 
-  it("kpi.tsx row-card source line (fillOpacity 0.7): fails 4.5:1 on all 13 themes", () => {
+  it("kpi.tsx row-card source line (fillOpacity via accessibleOpacity): clears 4.5:1 on all 13 themes", () => {
     const slide: Slide = {
       type: "content",
       heading: HEADING,
@@ -657,10 +684,10 @@ describe("colors.muted known gaps (recorded shortfalls, not fixed this round —
       ],
     } as Slide
     const affected = CANONICAL_THEME_IDS.filter((themeId) => findsMuted(themeId, slide))
-    expect(affected).toEqual([...CANONICAL_THEME_IDS])
+    expect(affected).toEqual([])
   })
 
-  it("numbered-cards.tsx sub line (opacity 0.75): fails 4.5:1 on 12/13 themes (all but campaign)", () => {
+  it("numbered-cards.tsx sub line (opacity via accessibleOpacity): clears 4.5:1 on all 13 themes", () => {
     const slide: Slide = {
       type: "content",
       heading: HEADING,
@@ -673,6 +700,6 @@ describe("colors.muted known gaps (recorded shortfalls, not fixed this round —
       ],
     } as Slide
     const affected = CANONICAL_THEME_IDS.filter((themeId) => findsMuted(themeId, slide))
-    expect(affected).toEqual(CANONICAL_THEME_IDS.filter((t) => t !== "campaign"))
+    expect(affected).toEqual([])
   })
 })

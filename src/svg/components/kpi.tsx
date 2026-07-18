@@ -4,6 +4,7 @@ import {
   measureTextUnits,
   truncateToUnits,
 } from "../../lib/svg-text-layout"
+import { accessibleOpacity } from "../ink"
 import { Icon } from "../icons"
 import type { SvgComponent } from "./types"
 
@@ -176,7 +177,23 @@ export const kpi: SvgComponent<KpiComponent> = {
                   y={114 + contentShift}
                   fontSize={11}
                   fill={ctx.colors.muted}
-                  fillOpacity={0.7}
+                  // Post-v0.3 W8 fix round (backlog item "D", task-2 review
+                  // routed — pinned as a known gap in
+                  // `full-matrix-contrast.test.ts` by commit c523994 before
+                  // this fix landed): this line renders on the card's own
+                  // `colors.surface` shell (the `<rect fill={ctx.colors.
+                  // surface}>` above), not the page background, so contrast
+                  // is checked against that surface — same background
+                  // parameter `content-bento-panel.tsx`'s own KPI value text
+                  // uses for the same reason (see that file's header
+                  // comment). A flat 0.7 fillOpacity blended colors.muted
+                  // toward colors.surface close enough to fail 4.5:1 on all
+                  // 13 themes (the pinned measurement). accessibleOpacity
+                  // falls back to full opacity wherever the blend doesn't
+                  // clear the floor, `preferredOpacity` unchanged otherwise
+                  // — same pattern as chapter-banner-chapter.tsx/chapter-
+                  // rail-chapter.tsx's existing subheading call sites.
+                  fillOpacity={accessibleOpacity(ctx.colors.muted, ctx.colors.surface, 11, 0.7)}
                   fontFamily={ctx.fonts.body}
                   dominantBaseline="alphabetic"
                 >

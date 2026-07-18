@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
+import { accessibleOpacity } from "../ink"
 import type { ComponentCtx, SvgComponent } from "./types"
 
 type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
@@ -149,7 +150,21 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
                   }
                   fontSize={sub.fontSize}
                   fill={ctx.colors.muted}
-                  opacity={0.75}
+                  // Post-v0.3 W8 fix round (backlog item "D", task-2 review
+                  // routed — pinned as a known gap in
+                  // `full-matrix-contrast.test.ts` by commit c523994 before
+                  // this fix landed): this cell paints no background of its
+                  // own (only the accent left-edge rule above), so `sub`
+                  // sits directly on the page background like `text` above
+                  // it — `ctx.defaultBg ?? ctx.colors.bg`, the same fallback
+                  // `chapter-rail-chapter.tsx`/`chapter-banner-chapter.tsx`
+                  // already use. A flat 0.75 opacity blended colors.muted
+                  // toward that background close enough to fail 4.5:1 on
+                  // 12/13 themes (the pinned measurement — campaign's own
+                  // 0.75-blended ratio already cleared it). accessibleOpacity
+                  // falls back to full opacity wherever the blend doesn't
+                  // clear the floor, `preferredOpacity` unchanged otherwise.
+                  opacity={accessibleOpacity(ctx.colors.muted, ctx.defaultBg ?? ctx.colors.bg, sub.fontSize, 0.75)}
                   fontFamily={ctx.fonts.body}
                   dominantBaseline="alphabetic"
                 >
