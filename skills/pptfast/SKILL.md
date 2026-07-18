@@ -16,54 +16,73 @@ pptfast check-update   # stay current — the schema and themes evolve
 
 ## Workflow
 
-### Step 1 — Read the vocabulary (do this fresh every session)
+Six phases: read the vocabulary, plan and confirm, fill pages in batches, render, self-check, revise. For a very small deck (a handful of slides), skip the plan and write a single IR file directly, validating with `pptfast validate` — everything below still applies with "the deck project directory" read as "the IR file", minus phase 2's plan step.
+
+### Phase 1 — Read the vocabulary (do this fresh every session)
 
 ```bash
 pptfast schema             # IR JSON Schema: the single source of truth
+pptfast schema --plan      # deck plan schema
 pptfast scenarios --json   # named scenario presets (mode/delivery/audience axes + theme recommendations)
 pptfast themes --json      # built-in themes (id + label)
 ```
 
-Never write IR from memory of a previous session or from this file — the schema evolves and `schema`/`scenarios`/`themes` output always wins.
+Never write IR or a plan from memory of a previous session or from this file — the schema evolves and `schema`/`scenarios`/`themes` output always wins.
 
-### Step 2 — Align the outline with the user
+### Phase 2 — Plan and confirm
 
-Propose and confirm before writing any IR:
+Propose and confirm before writing any page content:
 
 - Scenario first: pick a named preset (or override individual axes) from `scenarios` output that matches the deck's purpose and audience — this is a decision layer above theme, not a visual choice
 - Theme id next, from the chosen scenario's `themeRecommendations` (or pick from `themes` output to match the deck's tone if none fit — a recommendation, never a constraint)
-- Slide count and narrative rhythm (cover → chapters → content runs → ending)
-- What source material maps to which slides
+- Draft `deck.plan.json`: one entry per page (`id`, `type`, `heading`, optionally `rhythm`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`
+- Run `pptfast plan validate deck.plan.json` and fix whatever it reports until it prints `OK` — the hard gates (boundary pages, heading length, rhythm rotation, page count vs. delivery) all fire here, before a single page is written
 
-**After the user confirms, do not re-plan.** Restructuring a confirmed outline silently wastes the user's review. If new information genuinely forces a change, say so and re-confirm first.
+**After the user confirms the validated plan, do not re-plan.** Restructuring a confirmed plan (reordering, retyping, dropping pages) silently wastes the user's review. If new information genuinely forces a change, say so and re-confirm first, then re-run `plan validate`.
 
-### Step 3 — Write IR in batches of at most 6 slides, validate each batch
+### Phase 3 — Fill pages in batches of at most 4, validate immediately
 
-Grow one IR JSON file incrementally. After each batch:
-
-```bash
-pptfast validate deck.json
-```
-
-Every error carries a 1-based page number and a concrete fix. Fix the IR and re-validate until it prints `OK`. Do not argue with the gate — some limits are hard render geometry (headings that overflow, a layout's physical capacity) and some are editorial budgets that scale with the deck's `delivery` axis (see Capacity below). The error message names which side is binding — restructure the content, or revisit the scenario with the user if the delivery budget is the constraint.
-
-### Step 4 — Render
+For each page in the confirmed plan, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote` — never `type`/`heading`, those are locked by the plan). After every batch of at most 4 pages:
 
 ```bash
-pptfast render deck.json -o deck.pptx
+pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken plan
+pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget, unknown theme
 ```
 
-`--theme <id>` overrides the deck theme without editing the IR. `--style <path>` layers a style-token override on top (re-color without forking a theme, schema: `pptfast schema --style`).
+Fix whatever either command reports and re-run until both print `OK`. A plan page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error.
+
+### Phase 4 — Render
+
+```bash
+pptfast render deck-dir/ -o deck.pptx
+```
+
+`--theme <id>` overrides the deck theme without editing the plan. `--style <path>` layers a style-token override on top (re-color without forking a theme, schema: `pptfast schema --style`). Render refuses a deck with unfilled placeholder pages unless you add `--draft` — reach for that only when the user explicitly wants a look before every page is done.
 
 If the project has a `pptfast.config.json`, its theme/style are project defaults — do not fight them with `--theme` unless the user asks.
 
-### Step 5 — Optional visual self-check
+### Phase 5 — Optional visual self-check
 
 ```bash
-pptfast preview deck.json -o preview/
+pptfast preview deck-dir/ -o preview/
 ```
 
-Writes one standalone SVG per slide. Read a few (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks.
+Writes one standalone SVG per slide, never gated on placeholder pages. Read a few (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks.
+
+### Phase 6 — Revision: edit one page, re-assemble
+
+A revision touches the smallest file that captures it:
+
+- Content change ("punch up the KPI page") → edit that page's `pages/<id>.json` only, then repeat phase 3's `assemble` + `validate` pair before re-rendering. Never regenerate pages nobody asked you to touch.
+- Structural change (reorder, add/remove a page, change a page's type or heading) → edit `deck.plan.json` instead, re-run `pptfast plan validate` first (phase 2's no-replanning rule still applies: only do this when the user actually asked for a structural change).
+
+## Routing a follow-up request
+
+Once a deck project exists, a follow-up message routes into exactly one of three branches — decide which before doing anything:
+
+1. **Edit a page** ("change slide 3", "make the KPI page punchier") → phase 6: edit that page's file, re-assemble, re-validate. Never touch pages nobody asked about.
+2. **A new deck** (a different topic, audience, or an explicit request to start over) → phase 1: a new deck project directory, fresh scenario/theme decision, fresh plan.
+3. **Unrelated to deck generation** (a question about the content, anything with no connection to slides) → do not invoke pptfast at all.
 
 ## Content methodology
 

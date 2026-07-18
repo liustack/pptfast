@@ -403,6 +403,63 @@ describe("IR v3 scenario field (W3 task 2)", () => {
   })
 })
 
+describe("IR v3 seed field (W5 task 1)", () => {
+  it("accepts an integer seed", () => {
+    const d: any = minimal()
+    d.seed = 12345
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("omits cleanly — stays undefined, no default baked in by the schema", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.seed).toBeUndefined()
+  })
+  it("rejects a non-integer seed", () => {
+    const d: any = minimal()
+    d.seed = 1.5
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("IR v3 slide id field (W5 task 1)", () => {
+  it("accepts a string id on a slide", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "cover", id: "p-1", heading: "x" }]
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("omits cleanly — stays undefined", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.slides[0]!.id).toBeUndefined()
+  })
+  it("schema alone does not reject duplicate ids across slides — uniqueness is validateIr's job (api.test.ts)", () => {
+    const d: any = minimal()
+    d.slides = [
+      { type: "cover", id: "dup", heading: "a" },
+      { type: "content", id: "dup", heading: "b", components: [] },
+    ]
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+})
+
+describe("IR v3 slide placeholder field (W5 task 1)", () => {
+  it("accepts placeholder: true", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", placeholder: true }]
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("omits cleanly — stays undefined", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.slides[0]!.placeholder).toBeUndefined()
+  })
+  it("rejects placeholder: false (z.literal(true) accepts only true)", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", placeholder: false }]
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("theme.style override", () => {
   it("accepts a palette/fonts/shape override", () => {
     const d: any = minimal()

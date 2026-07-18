@@ -121,7 +121,10 @@ export const ThemeSchema = z
   })
   .strict()
 
-const MetaSchema = z
+// Exported (not just used internally) so W5's plan schema can pass its own
+// `meta` field straight through to this exact schema instead of redefining
+// an equivalent shape that could drift from it (`src/plan/index.ts`).
+export const MetaSchema = z
   .object({
     organization: z.string().optional(),
     authors: z
@@ -178,7 +181,10 @@ const AssetsSchema = z
   .object({ images: z.record(z.string(), AssetSchema).default({}) })
   .strict()
 
-const BrandSchema = z
+// Exported (not just used internally) so W5's plan schema can pass its own
+// `brand` field straight through to this exact schema instead of redefining
+// an equivalent shape that could drift from it (`src/plan/index.ts`).
+export const BrandSchema = z
   .object({
     logo_asset_id: z.string().optional(),
     position: z.enum(["tl", "tr", "bl", "br"]).optional(),
@@ -549,11 +555,33 @@ const ComponentSchema = z.discriminatedUnion("type", [
     .strict(),
 ])
 
+/**
+ * All 24 component `type` discriminant values, derived from `ComponentSchema`
+ * itself (never hand-copied) so this list can't drift from the union above.
+ * Typed as plain `readonly string[]` rather than `Component["type"][]` —
+ * every consumer of this list (W5's plan `focus` vocabulary gate,
+ * `src/plan/index.ts`) tests membership of an arbitrary author-supplied
+ * string, and TS's `Array.includes` is invariant in its element type, so a
+ * narrower literal-union type would reject that call at the caller.
+ */
+export const COMPONENT_TYPES: readonly string[] = ComponentSchema.options.map((option) => option.shape.type.value)
+
 // ── Slide ──
 
 const SlideSchema = z
   .object({
     type: z.enum(["cover", "chapter", "content", "ending"]).default("content"),
+    // 稳定页标识（W5 plan/assemble 注入，裸 IR 可省）。schema 层不做跨 slide
+    // 校验——同 deck 内重复 id 是 validateIr 的硬错误（api.ts
+    // checkDuplicateSlideIds），错误列出重复的 id，不带页码（跨多页的
+    // deck 级问题，单一 page 字段放不下）。
+    id: z.string().optional(),
+    // assemble 对未填充页生成的占位标记（W5）。validateIr 放行占位页的
+    // schema 与内容质量检查（ir-quality.ts 的 checkIrQuality 跳过占位页
+    // 的所有内容规则——占位页无内容可判）。generatePptx 未传
+    // `{ draft: true }` 时对含占位页的 deck 硬拦（api.ts 的 draft
+    // gate），renderSlideSvg（预览）永远不拦。
+    placeholder: z.literal(true).optional(),
     // Layout registry id（archetype 或 takeover 皆可，src/svg/layouts/registry.ts
     // 的 LAYOUT_REGISTRY 键）。schema 层是开放 string——已注册 + slideTypes 适用
     // 是 validateIr 的硬门（api.ts，报错带可用清单与页号），同 theme.id「schema
@@ -628,8 +656,13 @@ const SlideSchema = z
  * `resolveScenario` itself still reads `./scenario-values`'s
  * `MODE_VALUES`/`DELIVERY_VALUES`/`AUDIENCE_VALUES` tuples for its runtime
  * checks — this schema no longer needs to import them at all.
+ *
+ * Exported so W5's plan schema (`src/plan/index.ts`) can reuse this exact
+ * object branch for its own top-level `scenario` field — same
+ * open-schema/closed-semantic split, same `resolveScenario` consumer, one
+ * definition instead of two that could drift apart.
  */
-const ScenarioAxesInputSchema = z.record(z.string(), z.unknown())
+export const ScenarioAxesInputSchema = z.record(z.string(), z.unknown())
 
 // ── 顶层 IR ──
 
@@ -659,6 +692,10 @@ export const PptxIRSchema = z
     meta: MetaSchema.default({}),
     assets: AssetsSchema.default({ images: {} }),
     brand: BrandSchema.optional(),
+    // 修订稳定性 seed（W5 由 assemble 从 plan 注入，W4 消费做取样选型）。与
+    // variety.ts 的内容哈希 deckSeed 正交、互不影响——缺省时 W4 前的选型/
+    // 渲染行为不变。
+    seed: z.number().int().optional(),
     slides: z.array(SlideSchema),
   })
   .strict()

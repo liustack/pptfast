@@ -1,7 +1,7 @@
 /** End-to-end: CLI renders the examples, output must be a well-formed pptx.
  *  Requires `pnpm build` first (wired via the `e2e` npm script). */
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import JSZip from "jszip"
 
@@ -10,6 +10,21 @@ mkdirSync(OUT, { recursive: true })
 
 function sh(cmd: string, args: string[]): string {
   return execFileSync(cmd, args, { encoding: "utf8" })
+}
+
+/** Runs `cmd args`, asserting a non-zero exit (CLI `fail()` — `process.exit(1)`
+ *  after printing to stderr), and returns stderr. Throws when the command
+ *  unexpectedly succeeds, or when it fails for a reason other than a normal
+ *  CLI exit (e.g. the binary itself could not be spawned — no `.status`). */
+function shExpectFail(cmd: string, args: string[]): string {
+  try {
+    execFileSync(cmd, args, { encoding: "utf8" })
+  } catch (e) {
+    const { status, stderr } = e as { status?: number; stderr?: string }
+    if (status === undefined) throw e
+    return stderr ?? ""
+  }
+  throw new Error(`e2e: expected "${cmd} ${args.join(" ")}" to fail, but it succeeded`)
 }
 
 // 1) render via the built CLI
@@ -114,5 +129,119 @@ if (sharpMod) {
   }
   console.log("webp asset leg OK (sharp recode path exercised)")
 }
+
+// 6) deck project directory leg (W5 task 6): a temp plan + pages directory,
+//    left with one unfilled page, must assemble as a placeholder, refuse a
+//    plain render (the draft gate), render fine under --draft with the
+//    placeholder as a real slide, then render normally once the page is filled.
+console.log("--- deck project directory leg ---")
+const deckDir = join(OUT, "deck-dir-demo")
+// Start from a clean slate every run — a leftover pages/p-roadmap.json from a
+// previous successful run would falsify the "starts as a placeholder" setup.
+rmSync(deckDir, { recursive: true, force: true })
+mkdirSync(join(deckDir, "pages"), { recursive: true })
+
+const deckPlan = {
+  version: "1",
+  scenario: "boardroom-report",
+  theme: "consulting",
+  filename: "pptfast-e2e-deck-dir",
+  pages: [
+    { id: "p-cover", type: "cover", heading: "pptfast Deck Directory Demo" },
+    { id: "p-goals", type: "content", heading: "Design goals" },
+    { id: "p-roadmap", type: "content", heading: "Roadmap ahead" },
+    { id: "p-ending", type: "ending", heading: "Thanks" },
+  ],
+}
+writeFileSync(join(deckDir, "deck.plan.json"), JSON.stringify(deckPlan))
+writeFileSync(join(deckDir, "pages", "p-cover.json"), JSON.stringify({}))
+writeFileSync(
+  join(deckDir, "pages", "p-goals.json"),
+  JSON.stringify({
+    // Short items on purpose — this plan's scenario ("boardroom-report")
+    // resolves to "presentation" delivery, the tightest bullets budget
+    // (DELIVERY_BUDGETS.presentation.bullets.maxUnitsPerItem, src/scenario/index.ts).
+    components: [
+      {
+        type: "bullets",
+        items: ["Every shape stays editable", "Design tokens, not freeform drawing"],
+      },
+    ],
+  }),
+)
+writeFileSync(join(deckDir, "pages", "p-ending.json"), JSON.stringify({}))
+// pages/p-roadmap.json is deliberately never written yet — that plan page
+// has no matching page file, so it must assemble as a placeholder.
+
+console.log(sh("node", ["dist/cli.js", "plan", "validate", join(deckDir, "deck.plan.json")]))
+
+const assembleOut = sh("node", ["dist/cli.js", "assemble", deckDir])
+console.log(assembleOut)
+if (!assembleOut.includes("(4 slides, 1 placeholder)")) {
+  throw new Error(`e2e: deck-dir leg — expected assemble to report exactly 1 placeholder, got: ${assembleOut}`)
+}
+if (!existsSync(join(deckDir, "deck.json"))) {
+  throw new Error("e2e: deck-dir leg — assemble did not write deck.json")
+}
+
+// render without --draft must refuse: one plan page (p-roadmap) is still an
+// unfilled placeholder.
+const draftGateStderr = shExpectFail("node", [
+  "dist/cli.js",
+  "render",
+  deckDir,
+  "-o",
+  join(OUT, "deck-dir-should-not-exist.pptx"),
+])
+if (!/placeholder/.test(draftGateStderr) || !/--draft/.test(draftGateStderr) || !/p-roadmap/.test(draftGateStderr)) {
+  throw new Error(`e2e: deck-dir leg — expected the draft-gate error naming p-roadmap, got: ${draftGateStderr}`)
+}
+console.log("deck-dir draft-gate leg OK (render without --draft refused)")
+
+// render --draft must succeed, with the placeholder rendered as a real slide
+// (its plan heading present, not skipped).
+const draftPptxPath = join(OUT, "deck-dir-draft.pptx")
+console.log(sh("node", ["dist/cli.js", "render", deckDir, "-o", draftPptxPath, "--draft"]))
+const draftZip = await JSZip.loadAsync(readFileSync(draftPptxPath))
+for (const f of ["ppt/slides/slide1.xml", "ppt/slides/slide2.xml", "ppt/slides/slide3.xml", "ppt/slides/slide4.xml"]) {
+  if (!draftZip.file(f)) throw new Error(`e2e: deck-dir leg — --draft render missing ${f}`)
+}
+const draftSlide3 = await draftZip.file("ppt/slides/slide3.xml")!.async("string")
+if (!draftSlide3.includes("Roadmap ahead")) {
+  throw new Error("e2e: deck-dir leg — placeholder page heading not found in slide3.xml under --draft")
+}
+console.log("deck-dir --draft leg OK (placeholder page rendered as a real slide)")
+
+// Fill in the missing page, re-assemble (0 placeholders now), then render
+// normally — no --draft needed once every page is filled.
+writeFileSync(
+  join(deckDir, "pages", "p-roadmap.json"),
+  JSON.stringify({
+    arrangement: "kpi_focus",
+    components: [
+      {
+        type: "kpi_cards",
+        items: [
+          { value: "13", label: "built-in themes" },
+          { value: "24", label: "semantic component types" },
+        ],
+      },
+    ],
+  }),
+)
+const reassembleOut = sh("node", ["dist/cli.js", "assemble", deckDir])
+console.log(reassembleOut)
+if (!reassembleOut.includes("(4 slides, 0 placeholders)")) {
+  throw new Error(`e2e: deck-dir leg — expected 0 placeholders after filling the page, got: ${reassembleOut}`)
+}
+
+const finalPptxPath = join(OUT, "deck-dir-final.pptx")
+console.log(sh("node", ["dist/cli.js", "render", deckDir, "-o", finalPptxPath]))
+const finalZip = await JSZip.loadAsync(readFileSync(finalPptxPath))
+const finalSlide3 = await finalZip.file("ppt/slides/slide3.xml")!.async("string")
+if (!finalSlide3.includes("13") || !finalSlide3.includes("built-in themes")) {
+  throw new Error("e2e: deck-dir leg — filled page content not found in slide3.xml after the normal render")
+}
+console.log("deck-dir leg OK (assemble + draft gate + fill + normal render)")
 
 console.log("e2e OK")

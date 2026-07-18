@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
-import { generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { formatIssues, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 const raw = {
@@ -135,6 +135,182 @@ describe("validateIr", () => {
       })
       expect(v.ok).toBe(true)
     })
+  })
+})
+
+describe("field-alias normalization at the validate boundary (W5 task 4)", () => {
+  const withKpi = (item: Record<string, unknown>) => ({
+    ...raw,
+    slides: [raw.slides[0], { type: "content", heading: "KPIs", components: [{ type: "kpi_cards", items: [item] }] }],
+  })
+
+  it("normalizes a synonym field name before parsing and reports it on ValidateResult.normalized", () => {
+    const v = validateIr(withKpi({ value: "42", title: "Revenue" }))
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toEqual(["slides[1].components[0].items[0]: title → label"])
+    expect(v.ir?.slides[1]?.components[0]).toMatchObject({
+      type: "kpi_cards",
+      items: [{ value: "42", label: "Revenue" }],
+    })
+  })
+
+  it("omits `normalized` entirely when nothing needed rewriting", () => {
+    const v = validateIr(raw)
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toBeUndefined()
+  })
+
+  it("both alias and canonical present is left for zod strict to reject as an unrecognized key, not silently resolved", () => {
+    const v = validateIr(withKpi({ value: "42", label: "Real", title: "Ignored" }))
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    expect(v.errors.some((e) => e.message.includes("title"))).toBe(true)
+  })
+
+  it("still reports `normalized` on a failing result when normalization ran but a different gate then rejects the deck", () => {
+    // theme.id is invalid — unrelated to the kpi alias — but the alias
+    // rewrite happens first (before the schema parse) regardless, so it is
+    // still visible on the failing result: normalization is informational,
+    // not conditioned on the rest of the pipeline succeeding.
+    const v = validateIr({ ...withKpi({ value: "42", title: "Revenue" }), theme: { id: "not-a-theme" } })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toEqual(["slides[1].components[0].items[0]: title → label"])
+  })
+})
+
+describe("duplicate slide id gate (W5 task 1)", () => {
+  it("hard-rejects a deck with duplicate slide ids, listing them (path 'slides', no page)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { ...raw.slides[0], id: "p-1" },
+        { ...raw.slides[1], id: "p-1" },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.path).toBe("slides")
+    expect(v.errors[0]!.page).toBeUndefined()
+    expect(v.errors[0]!.message).toBe(
+      'duplicate slide id(s): "p-1" (pages 1, 2) — slide ids must be unique within a deck',
+    )
+  })
+
+  it("accepts unique ids across slides", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { ...raw.slides[0], id: "p-1" },
+        { ...raw.slides[1], id: "p-2" },
+      ],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts slides that omit id entirely (bare, pre-W5 IR)", () => {
+    const v = validateIr(raw)
+    expect(v.ok).toBe(true)
+  })
+
+  it("sets slideId to a representative duplicated id, without changing formatIssues' output (no page, W5 whole-branch review finding 2)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { ...raw.slides[0], id: "p-1" },
+        { ...raw.slides[1], id: "p-1" },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.slideId).toBe("p-1")
+    // page stays unset (deck-level issue, spans multiple slides) — formatIssues
+    // only appends the parenthesized id alongside a page number, so this
+    // issue's printed format is byte-identical to before this task.
+    expect(formatIssues(v.errors)).toBe(
+      'slides: duplicate slide id(s): "p-1" (pages 1, 2) — slide ids must be unique within a deck',
+    )
+  })
+})
+
+describe("ValidationIssue.slideId + formatIssues (W5 whole-branch review finding 2)", () => {
+  it("checkLayoutApplicability sets slideId, and formatIssues prints 'page N (id) — path: message'", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", id: "p-kpi", heading: "x", layout: "not-a-real-layout", components: [] },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBe("p-kpi")
+    expect(formatIssues(v.errors)).toBe(
+      `page 2 (p-kpi) — slides.1.layout: ${v.errors[0]!.message}`,
+    )
+  })
+
+  it("leaves the format unchanged (no parens) when the offending slide has no id", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", layout: "not-a-real-layout", components: [] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBeUndefined()
+    expect(formatIssues(v.errors)).toBe(`page 2 — slides.1.layout: ${v.errors[0]!.message}`)
+    expect(formatIssues(v.errors)).not.toContain("(")
+  })
+
+  it("the content-quality-gate translation reads slideId off the flagged slide itself, not any other slide in the deck", () => {
+    const v = validateIr({
+      ...raw,
+      // Slide 0 has an id, but slide 1 (the one missing a heading) does not
+      // — slideId must stay unset, not leak slide 0's id onto slide 1's issue.
+      slides: [{ ...raw.slides[0], id: "p-cover" }, { type: "content" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBeUndefined()
+  })
+
+  it("the content-quality-gate translation sets slideId when the flagged slide has an id", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", id: "p-body" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.page).toBe(2)
+    expect(v.errors[0]!.slideId).toBe("p-body")
+    expect(formatIssues(v.errors)).toMatch(/^page 2 \(p-body\) — /)
+  })
+})
+
+describe("placeholder slide quality exemption (W5 task 1)", () => {
+  it("a placeholder slide with no heading passes validate", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", id: "p-2", placeholder: true }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("a normal (non-placeholder) empty content slide still fails the missing-heading gate", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => /heading/i.test(e.message))).toBe(true)
+  })
+
+  it("skips every content rule for a placeholder page, not only missing_heading", () => {
+    const overloaded = {
+      type: "content" as const,
+      placeholder: true as const,
+      heading: "标".repeat(100), // would trip long_heading if checked
+      components: Array.from({ length: 10 }, (_, i) => ({ type: "paragraph" as const, text: String(i) })), // would trip density
+    }
+    const v = validateIr({ ...raw, slides: [raw.slides[0], overloaded] })
+    expect(v.ok).toBe(true)
   })
 })
 
@@ -401,6 +577,50 @@ describe("generatePptx", () => {
 
   it("throws PptfastError with per-page details for invalid input", async () => {
     await expect(generatePptx({ nope: true })).rejects.toThrow(/invalid IR/)
+  })
+})
+
+describe("generatePptx draft gate (W5 task 1)", () => {
+  const withPlaceholder = {
+    ...raw,
+    slides: [raw.slides[0], { type: "content" as const, id: "p-2", placeholder: true as const }],
+  }
+
+  it("throws PptfastError listing the placeholder page number + id when draft is not passed", async () => {
+    await expect(generatePptx(withPlaceholder)).rejects.toThrow(
+      "deck has 1 unfilled placeholder page: p-2 (page 2) — fill them or pass --draft",
+    )
+  })
+
+  it("lists every placeholder page when there is more than one", async () => {
+    const twoPlaceholders = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content" as const, id: "p-2", placeholder: true as const },
+        { type: "content" as const, placeholder: true as const }, // no id — falls back to page-only ref
+      ],
+    }
+    await expect(generatePptx(twoPlaceholders)).rejects.toThrow(
+      "deck has 2 unfilled placeholder pages: p-2 (page 2), page 3 — fill them or pass --draft",
+    )
+  })
+
+  it("renders successfully when placeholders exist and { draft: true } is passed", async () => {
+    const bytes = await generatePptx(withPlaceholder, { draft: true })
+    expect(bytes.length).toBeGreaterThan(10_000)
+    expect([bytes[0], bytes[1]]).toEqual([0x50, 0x4b])
+  })
+
+  it("is unaffected when there are no placeholder pages, draft omitted", async () => {
+    const bytes = await generatePptx(raw)
+    expect(bytes.length).toBeGreaterThan(10_000)
+  })
+
+  it("renderSlideSvg never gates on placeholder pages (preview always allowed)", () => {
+    const v = validateIr(withPlaceholder)
+    expect(v.ok).toBe(true)
+    expect(() => renderSlideSvg(v.ir!, 1)).not.toThrow()
   })
 })
 

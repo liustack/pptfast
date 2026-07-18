@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
 import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
+import { normalizeComponentAliases } from "./ir/field-aliases"
 import { generatePptxBlob } from "./pptx/generate"
 import { resolveScenario, type ScenarioAxes } from "./scenario"
 import { CAPACITY } from "./svg/audit/capacity"
@@ -15,12 +16,33 @@ export interface ValidationIssue {
   message: string
   /** 1-based slide number when the issue is scoped to a slide. */
   page?: number
+  /**
+   * The offending slide's own `id` (`Slide.id`, `ir/index.ts`) — W5
+   * whole-branch review finding 2: the README already claimed "validation
+   * error messages reference [a slide] by [its] id"; this is what makes
+   * that true. Set by every page-scoped issue producer
+   * ({@link checkLayoutApplicability}, the content-quality-gate
+   * translation in {@link validateIr}, {@link checkDuplicateSlideIds})
+   * when the slide in question has an `id` — absent when the slide has
+   * none (bare, pre-W5 IR) or the issue is deck-level, not scoped to any
+   * single slide. {@link formatIssues} appends it in parens after the page
+   * number.
+   */
+  slideId?: string
 }
 
 export interface ValidateResult {
   ok: boolean
   ir?: PptxIR
   errors: ValidationIssue[]
+  /**
+   * Human-readable "`path`: `alias` → `canonical`" entries for every
+   * deterministic field-alias rewrite `validateIr` applied before parsing
+   * (W5 task 4, `ir/field-aliases.ts`'s `normalizeComponentAliases`) — e.g. a
+   * kpi item's `title` silently adopted as `label`. Present only when at
+   * least one rewrite happened; informational, never gates `ok` on its own.
+   */
+  normalized?: string[]
 }
 
 /**
@@ -114,17 +136,62 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
       errors.push({
         path: `slides.${i}.layout`,
         page: i + 1,
+        ...(slide.id !== undefined ? { slideId: slide.id } : {}),
         message: `unknown layout "${slide.layout}" — available for "${slide.type}" slides: ${available}`,
       })
     } else if (!def.slideTypes.includes(slide.type)) {
       errors.push({
         path: `slides.${i}.layout`,
         page: i + 1,
+        ...(slide.id !== undefined ? { slideId: slide.id } : {}),
         message: `layout "${slide.layout}" is not valid for "${slide.type}" slides — available: ${available}`,
       })
     }
   })
   return errors
+}
+
+/**
+ * Duplicate slide id hard gate (W5 task 1): `slide.id` is a stable page
+ * identity plan/assemble stamps on (spec-adjacent — see `ir/index.ts`'s
+ * `id` docstring), so two slides sharing one within the same deck is always
+ * an authoring/assemble bug, never legitimate input. One issue for the
+ * whole deck (`path: "slides"`, no `page` — the problem spans multiple
+ * slides, a single page number can't represent it), listing every
+ * duplicated id and the 1-based pages it appears on. Slides that omit `id`
+ * (bare, pre-W5 IR) are never compared — `undefined` is not a value that can
+ * collide with itself.
+ *
+ * `slideId` (W5 whole-branch review finding 2) is set to the *first*
+ * duplicated id, the same "representative id" shape `src/plan/index.ts`'s
+ * own deck/plan-wide checks already use (e.g. `checkAlternatePolicy`) for an
+ * issue that — unlike `checkLayoutApplicability`'s — is not itself scoped to
+ * one single slide: this issue can list more than one distinct duplicated id
+ * (`"a" (pages 1,2), "b" (pages 3,4)`), so a single `slideId` field is never
+ * more than a representative pointer into that list, not a full account of
+ * it — the `message` string remains the complete, authoritative accounting.
+ * `page` deliberately stays unset regardless (see above): `formatIssues`
+ * only appends `slideId` alongside a `page`, so this representative id does
+ * not, on its own, change this issue's printed format.
+ */
+function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
+  const pagesById = new Map<string, number[]>()
+  ir.slides.forEach((slide, i) => {
+    if (slide.id === undefined) return
+    const pages = pagesById.get(slide.id)
+    if (pages) pages.push(i + 1)
+    else pagesById.set(slide.id, [i + 1])
+  })
+  const duplicates = [...pagesById].filter(([, pages]) => pages.length > 1)
+  if (duplicates.length === 0) return []
+  const list = duplicates.map(([id, pages]) => `"${id}" (pages ${pages.join(", ")})`).join(", ")
+  return [
+    {
+      path: "slides",
+      slideId: duplicates[0]![0],
+      message: `duplicate slide id(s): ${list} — slide ids must be unique within a deck`,
+    },
+  ]
 }
 
 /**
@@ -141,6 +208,19 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
  * "warn" findings (e.g. a cover with no heading) as advisory-only would
  * defeat the point of wiring this in: the spec's core principle is a hard
  * protocol gate, not hoped-for prompt compliance.
+ *
+ * Before any of that, `normalizeComponentAliases` (W5 task 4,
+ * `ir/field-aliases.ts`) gets one deterministic pass at `input` — rewriting
+ * a known synonym field name (kpi `title`→`label`, quote `content`→`text`,
+ * …) only where the canonical key is absent, so the schema parse below never
+ * sees the alias as an "unrecognized key" in the first place. Ordering
+ * versus the v2 migration check right above it is unobservable (v2 IR uses
+ * `blocks`, never `components`, so the normalizer's slide/component walk is
+ * always a no-op on it) — it runs second here only so a doomed v2 input
+ * skips the extra walk. Purely informational: every rewrite is recorded as a
+ * human-readable `path: alias → canonical` string and threaded onto
+ * `ValidateResult.normalized` on *every* return path below via
+ * `withNormalized`, success or failure alike — it never itself gates `ok`.
  */
 export function validateIr(input: unknown): ValidateResult {
   // IR v2 friendly migration message (dev-channel scope, spec §8: W1 started
@@ -159,14 +239,18 @@ export function validateIr(input: unknown): ValidateResult {
       ],
     }
   }
-  const r = PptxIRSchema.safeParse(input)
+  const { value: normalizedInput, normalized } = normalizeComponentAliases(input)
+  const withNormalized = (result: ValidateResult): ValidateResult =>
+    normalized.length > 0 ? { ...result, normalized } : result
+
+  const r = PptxIRSchema.safeParse(normalizedInput)
   if (!r.success) {
     const errors = r.error.issues.map((issue) => {
       const path = issue.path.join(".")
       const m = /^slides\.(\d+)/.exec(path)
       return { path, message: issue.message, page: m ? Number(m[1]) + 1 : undefined }
     })
-    return { ok: false, errors }
+    return withNormalized({ ok: false, errors })
   }
   // Installed-theme check (schema layer keeps theme.id open — see ThemeSchema
   // in ir/index.ts — so this hard gate is the only place an unknown id is
@@ -176,7 +260,7 @@ export function validateIr(input: unknown): ValidateResult {
   // BUILTIN_THEME_IDS-only check, same error shape.
   const installedThemeIds = getInstalledThemeIds()
   if (!installedThemeIds.includes(r.data.theme.id)) {
-    return {
+    return withNormalized({
       ok: false,
       errors: [
         {
@@ -184,10 +268,12 @@ export function validateIr(input: unknown): ValidateResult {
           message: `unknown theme "${r.data.theme.id}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
         },
       ],
-    }
+    })
   }
   const layoutErrors = checkLayoutApplicability(r.data)
-  if (layoutErrors.length > 0) return { ok: false, errors: layoutErrors }
+  if (layoutErrors.length > 0) return withNormalized({ ok: false, errors: layoutErrors })
+  const duplicateIdErrors = checkDuplicateSlideIds(r.data)
+  if (duplicateIdErrors.length > 0) return withNormalized({ ok: false, errors: duplicateIdErrors })
   // Scenario resolution (spec §5's defaults chain, W3 task 2). Both branches
   // of the schema's `scenario` union (ScenarioAxesInputSchema in ir/index.ts)
   // are open now — a preset-name string and an axes object alike — the same
@@ -212,10 +298,16 @@ export function validateIr(input: unknown): ValidateResult {
     resolvedAxes = resolveScenario(r.data.scenario as string | Partial<ScenarioAxes> | undefined)
   } catch (err) {
     if (!(err instanceof PptfastError)) throw err
-    return { ok: false, errors: [{ path: "scenario", message: err.message }] }
+    return withNormalized({ ok: false, errors: [{ path: "scenario", message: err.message }] })
   }
   const quality = checkIrQuality(r.data, resolvedAxes)
-  if (quality.length === 0) return { ok: true, ir: r.data, errors: [] }
+  if (quality.length === 0) return withNormalized({ ok: true, ir: r.data, errors: [] })
+  // `issue.slide` indexes `r.data.slides` directly for every code but
+  // "empty_deck" (that branch never reaches here, see its own `slide: 0`
+  // bookkeeping in ir-quality.ts's checkIrQuality — an early return makes it
+  // the sole issue whenever it fires) — safe to read `.id` off it unguarded.
+  // `slideId` (W5 whole-branch review finding 2) set only when that slide
+  // itself has one, same as checkLayoutApplicability's own producer above.
   const errors: ValidationIssue[] = quality.map((issue) =>
     issue.code === "empty_deck"
       ? { path: "slides", message: describeQualityIssue(issue) }
@@ -223,14 +315,30 @@ export function validateIr(input: unknown): ValidateResult {
           path: `slides.${issue.slide}`,
           message: describeQualityIssue(issue),
           page: issue.slide + 1,
+          ...(r.data.slides[issue.slide]!.id !== undefined ? { slideId: r.data.slides[issue.slide]!.id } : {}),
         },
   )
-  return { ok: false, errors }
+  return withNormalized({ ok: false, errors })
 }
 
+/**
+ * `"page 2 (p-kpi) — path: message"` when the issue carries both a `page`
+ * and a `slideId` (W5 whole-branch review finding 2 — the README's own
+ * claim that a validation error "references [a slide] by [its] id", made
+ * true) — the parenthesized id is appended only alongside a `page` number,
+ * never on its own: a deck-level issue that happens to set a representative
+ * `slideId` with no `page` ({@link checkDuplicateSlideIds} above) keeps its
+ * pre-existing, unchanged format. Every other combination — `page` with no
+ * `slideId` (an id-less slide), or neither — is byte-identical to before
+ * this task.
+ */
 export function formatIssues(errors: ValidationIssue[]): string {
   return errors
-    .map((e) => (e.page ? `page ${e.page} — ${e.path}: ${e.message}` : `${e.path}: ${e.message}`))
+    .map((e) => {
+      if (!e.page) return `${e.path}: ${e.message}`
+      const idSuffix = e.slideId !== undefined ? ` (${e.slideId})` : ""
+      return `page ${e.page}${idSuffix} — ${e.path}: ${e.message}`
+    })
     .join("\n")
 }
 
@@ -243,10 +351,34 @@ export function renderSlideSvg(ir: PptxIR, slideIndex: number): string {
   return slideToSvgMarkup(ir, slide, slideIndex)
 }
 
+/**
+ * Draft gate (W5 task 1): `generatePptx` refuses to export a deck that still
+ * has unfilled `placeholder` pages unless the caller opts in with
+ * `{ draft: true }` — a placeholder page is assemble's stand-in for content
+ * nobody has written yet, so a plain export silently shipping it would be a
+ * worse failure mode than a loud one. `renderSlideSvg` (single-slide
+ * preview) deliberately never calls this — an agent iterating on a
+ * partially-filled deck needs to preview whatever page it just wrote without
+ * every other still-empty page blocking it.
+ */
+function checkDraftGate(ir: PptxIR): void {
+  const placeholders = ir.slides
+    .map((slide, i) => ({ slide, page: i + 1 }))
+    .filter(({ slide }) => slide.placeholder)
+  if (placeholders.length === 0) return
+  const refs = placeholders
+    .map(({ slide, page }) => (slide.id ? `${slide.id} (page ${page})` : `page ${page}`))
+    .join(", ")
+  throw new PptfastError(
+    `deck has ${placeholders.length} unfilled placeholder page${placeholders.length === 1 ? "" : "s"}: ${refs} — fill them or pass --draft`,
+  )
+}
+
 /** Full pipeline: validate → SVG → DrawingML → animation patches → pptx bytes. */
-export async function generatePptx(input: unknown): Promise<Uint8Array> {
+export async function generatePptx(input: unknown, opts?: { draft?: boolean }): Promise<Uint8Array> {
   const v = validateIr(input)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
+  if (!opts?.draft) checkDraftGate(v.ir!)
   const blob = await generatePptxBlob(v.ir!)
   return new Uint8Array(await blob.arrayBuffer())
 }

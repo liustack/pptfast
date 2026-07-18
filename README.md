@@ -62,18 +62,23 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 
 | Command | Does |
 |---|---|
-| `render <ir.json> -o <out.pptx> [--theme <id>] [--style <file>]` | Validate + render to a `.pptx` |
-| `validate <ir.json>` | Check the IR, print page-scoped errors |
-| `schema [--style]` | Print the IR JSON Schema (or the style-override schema) |
+| `render <target> -o <out.pptx> [--theme <id>] [--style <file>] [--draft]` | Validate + render to a `.pptx` — `target` is an IR JSON file, a deck project directory, or a bare deck name (see Deck projects) |
+| `validate <target>` | Check the IR, print page-scoped errors — same `target` forms as `render` |
+| `plan validate <plan.json>` | Check a deck plan against the schema and mode-aware hard gates (see Deck projects) |
+| `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
+| `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
+| `schema [--style \| --plan]` | Print the IR JSON Schema (or the style-override schema, or the deck plan schema) |
 | `themes [--json]` | List the 13 built-in themes |
 | `scenarios [--json]` | List named scenario presets (mode/delivery/audience axes + theme recommendations) |
-| `preview <ir.json> -o <dir>` | Render each slide to a standalone SVG |
+| `preview <target> -o <dir>` | Render each slide to a standalone SVG — same `target` forms as `render`, never gated on placeholder pages |
 | `init` | Scaffold `pptfast.config.json` |
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
 ## The IR
 
 Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"3"`), `filename`, an optional `scenario` (a preset id string or a partial axes object — see Scenarios below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one from the theme's curated set), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication.
+
+A deck also carries an optional `seed` (an integer that keeps auto-selected layouts stable across revisions, derived deterministically the first time a plan is assembled when omitted — see Deck projects below). Any slide may set a stable `id` (what plan pages and validation error messages reference it by) and `placeholder: true` (a slide with no content yet — injected by `assemble` for a plan page nobody has filled in, skipped by the content-quality checks, and blocking `render` unless `--draft`). Field names that commonly drift between a model's output and the schema (25 synonym pairs across component types, e.g. kpi `title`→`label`, quote `content`→`text`) are silently normalized to the canonical name at validate time — `validate`/`render`/`preview` print a note listing what changed, never a hard error.
 
 ## Themes
 
@@ -109,12 +114,30 @@ Override the built-in palette without forking a theme: write a style JSON
 (schema: `pptfast schema --style`) and pass it per-render
 (`--style brand.json`), or pin it project-wide in a `pptfast.config.json`
 (found by walking up from cwd, scaffold one with `pptfast init`).
-Precedence: CLI flag > config file > IR. The IR itself can carry the same
-override in `theme.style` for fully self-contained decks.
+Precedence: CLI flag > project config file > user config file > IR (Deck
+projects below has the full four-layer chain). The IR itself can carry the
+same override in `theme.style` for fully self-contained decks.
 
 ```json
 { "theme": "consulting", "style": { "colors": { "primary": "#0B5FFF", "accent": "#FF6A00" } } }
 ```
+
+## Deck projects
+
+A deck can be authored two ways, and every command that takes IR accepts either: a single **IR JSON file** (everything above), or a **deck project directory** — the same content split across files so an agent can plan a deck's structure first, then write and revise it page by page instead of holding one growing JSON blob in context.
+
+```
+my-deck/
+  deck.plan.json        the locked plan: page order, type, and heading for every page
+  pages/<page-id>.json  one file per filled page (components/layout/arrangement/background/image_side/footnote)
+  assets/                local images, auto-registered by filename (image id = filename without extension)
+```
+
+`deck.plan.json` validates on its own, before any page exists: `pptfast plan validate deck.plan.json` checks the schema plus mode-aware hard gates (boundary pages, heading length, rhythm rotation, page count vs. delivery). A plan page with no matching `pages/<id>.json` becomes a **placeholder** slide — heading only, not missing — so a partially-written deck always assembles and previews. `pptfast render` refuses to export a deck with unfilled placeholders unless you pass `--draft`. `pptfast preview` never gates on them.
+
+`pptfast assemble <dir>` materializes plan + pages + assets into a single IR JSON file (`deck.json` by default). `pptfast disassemble <ir.json> -o <dir>` does the reverse (documented-lossy — plan-only fields like `rhythm`/`focus` have no IR-side home to recover). `render`/`validate`/`preview` accept a directory directly too, assembling in memory first.
+
+Deck project directories can be referenced by a bare name instead of a path — `pptfast render my-deck -o out.pptx` resolves `my-deck` under `$PPTFAST_HOME/decks` (`$PPTFAST_HOME` defaults to `~/.pptfast`) when no local file or directory of that name exists. All deck defaults resolve in four layers, highest wins: CLI flag > project `pptfast.config.json` > user `~/.pptfast/config.json` > the deck's own values. Both config layers can set `decksDir` to redirect where bare names resolve — the project layer's value resolves against that config file's own directory (for a team that wants deck projects checked into the repo), the user layer's against `$PPTFAST_HOME`. Project wins when both are set.
 
 ## For AI agents
 

@@ -369,6 +369,36 @@ describe("checkIrQuality", () => {
     })
   })
 
+  // ── placeholder pages (W5 task 1): quality gate skips all content rules ──
+
+  it("a placeholder page reports no issues even though it is missing a heading", () => {
+    const ir = makeIR([{ type: "content", placeholder: true, components: [] }])
+    expect(checkIrQuality(ir)).toEqual([])
+  })
+
+  it("a placeholder page skips density/long_heading too, even when it looks overloaded", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        placeholder: true,
+        heading: "标".repeat(CAPACITY.headingMaxChars + 1),
+        components: paragraphs(20),
+      },
+    ])
+    expect(checkIrQuality(ir)).toEqual([])
+  })
+
+  it("does not let placeholder:true on one slide suppress a real issue on another slide", () => {
+    const ir = makeIR([
+      { type: "content", placeholder: true, components: [] },
+      { type: "content", components: [{ type: "paragraph", text: "hi" }] }, // no heading — real issue
+    ])
+    const issues = checkIrQuality(ir)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].slide).toBe(1)
+    expect(issues[0].code).toBe("missing_heading")
+  })
+
   // ── missing_heading ──
 
   it("warns when content slide has no heading", () => {
