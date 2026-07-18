@@ -271,6 +271,43 @@ describe("NarrowColumnContent", () => {
       expect(columnRectY(root)).toBe(190 + 40 + 68)
     })
 
+    it("W4 fix round Important I1：consulting 的 colors.accent（#FFC72C）对自己的 content 默认背景只有 ~1.45:1，副题不再是几乎不可读的黄字压米白底", () => {
+      const consultingTokens = resolveStyle("consulting")
+      const ctx = buildCtx(consultingTokens, {})
+      const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
+      const deck = ir("consulting", [slide])
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
+        </svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const sub = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("效率提升三成"),
+      )!
+      // Fell back to readableOn's neutral dark ink (colors.accent itself
+      // measures ~1.45:1 against consulting's own light content background
+      // — squarely in Important I1's cited 1.45-2.92:1 range).
+      expect(sub.getAttribute("fill")).toBe("#0A0E14")
+      expect(sub.getAttribute("fill")).not.toBe(consultingTokens.colors.accent)
+    })
+
+    it("journal（本文件唯一既有 pinned 主题）的副题保持 colors.accent 原值不变（既有 pinned 渲染的逐字节不变性）", () => {
+      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+      const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
+      const deck = ir("journal", [slide])
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
+        </svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const sub = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("效率提升三成"),
+      )!
+      expect(sub.getAttribute("fill")).toBe(ctx.colors.accent)
+    })
+
     it("emphasis markup: ** ** segments invert to colors.text at fontWeight 700, staying italic", () => {
       const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
       const slide: Slide = { ...base, subheading: "**效率提升三成**，风险敞口下降" } as Slide

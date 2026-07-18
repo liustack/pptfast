@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { assertSubset } from "../subset-validate"
+import { readableOn } from "../ink"
 import { RailNumberedContent } from "./content-rail-numbered"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -317,7 +318,7 @@ describe("RailNumberedContent", () => {
     expect(sub.textContent).not.toBe(CJK_LONG.repeat(2))
   })
 
-  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），徽章白字例外跨主题稳定", () => {
+  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），徽章对比度自适应出深字", () => {
     const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
@@ -331,8 +332,15 @@ describe("RailNumberedContent", () => {
     expect(out).not.toContain("#5D6B65") // academic MUTED
     expect(out).not.toContain("#006A4E") // academic primary（回归锁，本函数未烤死但仍确认没有意外硬编码）
 
-    // 白字例外：徽章文字固定纯白，不随主题变化
-    expect(out).toContain('fill="#FFFFFF"')
+    // W4 fix round: 徽章文字不再固定纯白——白字 on tech 亮青 primary
+    // （#2DD4E6）只有 ~1.80:1，全矩阵扫描确认精确 1.00:1（因为 audit 把徽章
+    // 误判到页面背景，见 full-matrix-contrast.test.ts 的 allowlist 说明；
+    // 真实渲染是 badge 自画的 primary 色块）。改用
+    // readableOn(colors.primary) 后 tech 落中性深墨。
+    const expectedInk = readableOn(techTheme.colors.primary)
+    expect(expectedInk).toBe("#0A0E14")
+    expect(out).toContain(`fill="${expectedInk}"`)
+    expect(out).not.toContain('fill="#FFFFFF"')
     expect(ctx.colors.text).not.toBe("#FFFFFF")
 
     // ctx 确实按主题切换生效：heading 字体走 tech 的解析结果

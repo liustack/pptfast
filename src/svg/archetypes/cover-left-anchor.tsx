@@ -3,13 +3,16 @@ import type { SvgTemplateProps } from "./types"
 import { fitHeadingLines } from "../heading-fit"
 import { layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { readableOn } from "../ink"
 
 /**
  * left-anchor cover archetype（spec §3.2）：左侧 40%宽通栏色块 + 右侧留白面板——
- * 色块内嵌白色主标题，org / 保密标 / 副标题 / meta 全部挪到右侧白面板。自
- * templates/academic.tsx 的 BCGEmeraldCover（62-234 行）提炼，无随迁 helper。
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量——本文件有两处豁免（白字 + 装饰
- * 深色三角），均在下方点名理由并有测试锁住，grep 清零门预期恰好命中这两处。
+ * 色块内嵌对比度自适应主标题，org / 保密标 / 副标题 / meta 全部挪到右侧白
+ * 面板。自 templates/academic.tsx 的 BCGEmeraldCover（62-234 行）提炼，无
+ * 随迁 helper。
+ * 纪律：本文件禁 theme id、禁颜色 hex 字面量——本文件有一处豁免（装饰深色
+ * 三角 `TRIANGLE_DEEP`，理由见下方），grep 清零门预期恰好命中这一处（标题
+ * 色改为 `readableOn` 调用后不再是字面量）。
  *
  * 替换表（Step B，逐十六进制核实，对照 themes/academic.ts 的 colors。
  * 十六进制值本身不抄进本注释——避免污染本文件的 grep 清零门，核实过程见
@@ -35,11 +38,18 @@ import { CONF_LABEL } from "../../lib/conf-labels"
  * 表），在测试里用同白字豁免一样的锁法断言其值出现在输出中。
  *
  * 白字例外（Global Constraints "产品逻辑白字"豁免，同 custom.tsx withBg 分支
- * 先例）：主标题固定画在不透明的 40%宽 `colors.primary` 色块内部，为保证在
- * 任意主题色下都可读，标题字色写死为纯白——这不是某个主题的烤死色（它不随
- * 主题变化，也不在任何 token 字段里），是"色块上必须白字"的结构性产品逻辑，
- * 故不进上面的替换表，予以保留并在测试里锁死（跨主题渲染时仍应固定为纯白，
- * 不会变成任何主题的 primary/accent/text）。
+ * 先例）——**W4 fix round 前**：主标题固定画在不透明的 40%宽 `colors.primary`
+ * 色块内部，标题字色曾写死为纯白，注释断言"任意主题色下都可读"。design
+ * decision 8 的实测推翻了这个断言：tech 偏亮的 `primary`（`#2DD4E6`）上白字
+ * 只有 ~1.80:1，一度靠策展排除（`COVER_WITHOUT_LEFT_ANCHOR`）处理。
+ *
+ * 对比度自适应修复（W4 fix round，根因处置）：标题改用
+ * `readableOn(colors.primary)`——色块本身就是标题唯一的背景来源（本文件自
+ * 画，不依赖页面级默认背景），`readableOn` 按 `colors.primary` 的相对明度
+ * 选中性黑/白。academic（本文件唯一 pre-W4 策展主题，`primary` 深绿）算出的
+ * 仍是纯白，逐字节不变；tech（`primary` 亮青）算出深墨黑，对比度 ~10.75:1，
+ * 使 `COVER_WITHOUT_LEFT_ANCHOR` 排除失去存在依据（见 definitions.ts 是否
+ * 保留该常量的裁定）。
  *
  * 修复记录（协调方 review 后订正）：初版把 `TRIANGLE_DEEP` 当孤儿色并入了
  * `colors.primary`，判定为"观感等价档的可接受降级"。协调方指出这个判断不
@@ -126,8 +136,9 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
           which always renders after Decor). */}
       <polygon points="0,720 0,520 200,720" fill={TRIANGLE_DEEP} />
 
-      {/* Heading set inside the block — fixed white (see file header's
-          "白字例外"), not a theme color. */}
+      {/* Heading set inside the block — contrast-adaptive ink off the
+          block's own primary fill (see file header's "白字例外"/W4 fix
+          round note), not a fixed literal. */}
       {title.lines.map((line, i) => (
         <text
           key={i}
@@ -136,7 +147,7 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
           fontFamily={fonts.heading}
           fontSize={title.fontSize}
           fontWeight="600"
-          fill="#FFFFFF"
+          fill={readableOn(colors.primary)}
           dominantBaseline="alphabetic"
         >
           {line}

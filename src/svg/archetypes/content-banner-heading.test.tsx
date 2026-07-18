@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
+import { accessibleInk, readableOn } from "../ink"
 import { BannerHeadingContent } from "./content-banner-heading"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -339,7 +340,7 @@ describe("BannerHeadingContent", () => {
     expect(markup).toContain("论据一")
   })
 
-  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），banner 白字例外跨主题稳定", () => {
+  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），banner 标题对比度自适应出深字", () => {
     const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir([chapter1, bannerSlide])
@@ -355,11 +356,33 @@ describe("BannerHeadingContent", () => {
     expect(out).not.toContain("#6C6C6C")
     expect(out).not.toContain("#D5D5CB")
 
-    // 白字例外：banner 标题固定纯白，不随主题变化
-    expect(out).toContain('fill="#FFFFFF"')
+    // W4 fix round: banner 标题不再固定纯白——design decision 8 的实测
+    // 发现白字 on tech 亮青 primary（#2DD4E6）只有 ~1.80:1（低于 3:1 大字
+    // 门槛），是全集放开新暴露的真实缺陷。改用 readableOn(colors.primary)
+    // 后 tech 落中性深墨（#0A0E14，对比度 ~10.75:1），不再出现纯白。
+    expect(out).toContain('fill="#0A0E14"')
+    expect(out).not.toContain('fill="#FFFFFF"')
     expect(ctx.colors.text).not.toBe("#FFFFFF")
 
     // ctx 确实按主题切换生效：标题字体走 tech 的解析结果
     expect(out).toContain(`font-family="${ctx.fonts.heading}"`)
+  })
+
+  it("luxe/campaign/classroom tokens 下 banner 标题走 readableOn(primary)、副标题走 accessibleInk——decision-7/8 排除是否仍需保留见 definitions.ts", () => {
+    // 三个既有 CONTENT_WITHOUT_BANNER_HEADING 排除主题。按 ../ink.ts 的同一
+    // 套函数独立算出期望值（不是重新推导 WCAG 公式，是验证本 archetype 确实
+    // 调用了它们，而不是仍然写死白字/colors.primary）。
+    for (const themeId of ["luxe", "campaign", "classroom"] as const) {
+      const tokens = resolveStyle(themeId)
+      const ctx = buildCtx(tokens, {})
+      const deck = ir([chapter1, bannerSlide])
+      const out = renderSvgMarkup(<BannerHeadingContent ir={deck} slide={bannerSlide} index={1} ctx={ctx} />)
+
+      const expectedHeadingInk = readableOn(tokens.colors.primary)
+      expect(out).toContain(`fill="${expectedHeadingInk}"`)
+
+      const expectedSubheadingInk = accessibleInk(tokens.colors.primary, ctx.defaultBg as string, 22)
+      expect(out).toContain(`fill="${expectedSubheadingInk}"`)
+    }
   })
 })

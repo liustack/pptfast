@@ -6,6 +6,7 @@ import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { accessibleInk, readableOn } from "../ink"
 
 /**
  * banner-heading content archetype（spec §3.2，Wave 3 Task 19）：consulting
@@ -33,16 +34,25 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * 完全 token 化，无需改动颜色表达式"。
  *
  * 白字例外（同 chapter-banner-chapter.tsx / content-rail-numbered.tsx 记录
- * 的同一类产品逻辑）：banner 标题文字固定写死纯白字面量——banner 底色是
- * 不透明的 `colors.primary`，为保证任意主题色下都可读，这不是随主题变化
- * 的烤死色，也不在任何 token 字段里，是"色块上必须白字"的结构性产品逻辑，
- * 不进替换表，予以保留并在测试里跨主题锁死。
+ * 的同一类产品逻辑）——**W4 fix round 前**：banner 标题文字曾固定写死纯白
+ * 字面量，注释断言"任意主题色下都可读"。design decision 8 的实测推翻了这个
+ * 断言：tech 偏亮的 `colors.primary`（`#2DD4E6`）上白字只有 ~1.80:1，一度靠
+ * 策展排除（`CONTENT_WITHOUT_BANNER_HEADING`）处理，luxe/campaign/classroom
+ * 三个更早的既有排除同一根因。
  *
- * **档位一・逐字节等价**（函数区间内无烤死主题常量需要映射，唯一的颜色
- * 字面量是上面点名并测试锁死的白字例外）。
+ * 对比度自适应修复（W4 fix round，根因处置）：banner 标题改用
+ * `readableOn(colors.primary)`——banner 本身就是标题唯一的背景来源（本文件
+ * 自画，不依赖页面级默认背景）。subheading（本就走"substitutes colors.
+ * primary" 的替换策略，见上方注释）进一步收紧为
+ * `accessibleInk(colors.primary, ctx.defaultBg, fontSize)`——campaign
+ * （3.49:1）/classroom（3.09:1）的 22px 副标题原来不满足 4.5:1 body 门槛，
+ * 现落回 `readableOn` 的中性墨色；consulting/enterprise/runway/bloom/
+ * heritage（pre-W4 既有五个策展主题）与 luxe/tech 原值均已通过校验，原样
+ * 返回、逐字节不变。四处历史排除是否因此失去存在依据，见
+ * definitions.ts 的裁定。
  *
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试
- * 锁死的 banner 标题纯白字面量，grep 清零门预期恰好命中这一处。
+ * 纪律：本文件禁 theme id、禁颜色 hex 字面量——heading/subheading 两处均已
+ * 改为 `../ink` 调用，grep 清零门预期不再命中任何纯白字面量。
  */
 
 const BANNER_X = 96
@@ -127,6 +137,17 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
     minFontSize: SUBHEADING_MIN_FONT_SIZE,
   })
   const subheadingY = bannerBottom + 24
+  // W4 fix round: keeps colors.primary when it already clears the
+  // size-appropriate ratio (every pre-W4-curated theme does — see file
+  // header), falls back to readableOn's neutral ink otherwise
+  // (campaign/classroom, this archetype's own decision-7 exclusions).
+  // Fallback value is never rendered when `subheading` is null.
+  // `ctx.defaultBg` is optional (`ComponentCtx`'s own doc comment: a
+  // hand-built ctx in a test may omit it) — falls back to the same
+  // `colors.bg` `buildCtx` itself defaults to.
+  const subheadingFill = subheading
+    ? accessibleInk(colors.primary, ctx.defaultBg ?? colors.bg, subheading.fontSize)
+    : colors.primary
 
   const contentRectY = bannerBottom + 32 + (subheading ? SUBHEADING_SLOT : 0)
   const contentRect = {
@@ -179,7 +200,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
           fontFamily={fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="600"
-          fill="#FFFFFF"
+          fill={readableOn(colors.primary)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -193,10 +214,10 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
           y={subheadingY}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
-          fill={colors.primary}
+          fill={subheadingFill}
           dominantBaseline="alphabetic"
         >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: colors.primary, fontWeight: "700" })}
+          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
         </text>
       )}
 

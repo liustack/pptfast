@@ -3,6 +3,7 @@ import { SvgContent } from "../SvgContent"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 
 /**
  * two-column content archetype（P3 Item ②，spec §3.2/§3.4）：跨主题通用的
@@ -15,6 +16,13 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * 纯新写（非提炼），token 驱动（颜色/字体只来自 ctx），零 theme id、零主题色
  * hex。强制走 two_column 铺排、不透传 slide.arrangement 是本 archetype 的
  * 语义（components<2 时 SvgContent 的 two_column 自动回落单栏，安全）。
+ *
+ * 对比度自适应修复（W4 fix round，全矩阵扫描发现——与 content-banner-
+ * heading.tsx/content-rail-numbered.tsx 同一枚"substitutes colors.primary
+ * for accent"缺陷模式，副题固定消费 `colors.primary` 未检查是否真的对当前
+ * content 默认背景达标）：classroom（3.09:1）、campaign（3.49:1）均未过
+ * 22px 副题所需的 4.5:1。改用 `accessibleInk(colors.primary, ctx.defaultBg,
+ * fontSize)`——通过校验的主题原样返回、逐字节不变。
  */
 export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
@@ -37,6 +45,9 @@ export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const subheading = slide.subheading
     ? fitSvgLine(slide.subheading, { maxWidth: 1088, fontSize: 22, minFontSize: 16 })
     : null
+  const subheadingFill = subheading
+    ? accessibleInk(colors.primary, ctx.defaultBg ?? colors.bg, subheading.fontSize)
+    : colors.primary
   const subheadingY = headingLastY + 42
   const accentY = (subheading ? subheadingY : headingLastY) + 22
   const ruleY = accentY + 22
@@ -86,7 +97,7 @@ export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
           y={subheadingY}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
-          fill={colors.primary}
+          fill={subheadingFill}
           dominantBaseline="alphabetic"
         >
           {subheading.text}

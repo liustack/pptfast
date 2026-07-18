@@ -10,6 +10,7 @@ import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { accessibleInk } from "../ink"
 
 /**
  * stacked-poster content archetype（spec §3.2，Wave 3 Task 20）：creative
@@ -67,6 +68,14 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * 不是对比性装饰色——并入 `ctx.colors.muted`。该函数区间内 `META_MUTED`
  * 有两个消费点（海报路径与降级路径各自的 footnote），均随之改为
  * `ctx.colors.muted`，接受 creative 下观感等价而非逐字节一致。
+ *
+ * 对比度自适应修复（W4 fix round，Important I1「content archetype 的
+ * subheading 出现同类回声」台账）：两条路径（poster / renderStackedContent
+ * 降级）的 subheading 都原样消费 `colors.accent`，同 content-narrow-
+ * column.tsx 先例——对 consulting/bloom/classroom/heritage/academic 五个
+ * 主题不达标。两处都改用 `accessibleInk(colors.accent, ctx.defaultBg,
+ * fontSize)`，通过校验的主题（含本文件原生 insight/creative 系）原样返回、
+ * 逐字节不变。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
@@ -196,6 +205,15 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   })
   const subheadingY = headingLastY + 50
   const subheadingBudget = subheading ? SUBHEADING_SLOT_STACKED : 0
+  // W4 fix round: keeps colors.accent when it already clears the
+  // size-appropriate ratio, falls back to readableOn's neutral ink
+  // otherwise (see file header). Fallback value is never rendered when
+  // `subheading` is null. `ctx.defaultBg` is optional (`ComponentCtx`'s own
+  // doc comment: a hand-built ctx in a test may omit it) — falls back to
+  // the same `colors.bg` `buildCtx` itself defaults to.
+  const subheadingFill = subheading
+    ? accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, subheading.fontSize)
+    : ctx.colors.accent
 
   const contentRectY = 180 + headingExtra + subheadingBudget
   const contentRectH = Math.max(120, contentH - headingExtra - subheadingBudget)
@@ -251,10 +269,10 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
           y={subheadingY}
           fontFamily={ctx.fonts.heading}
           fontSize={subheading.fontSize}
-          fill={ctx.colors.accent}
+          fill={subheadingFill}
           dominantBaseline="alphabetic"
         >
-          {renderEmphasisTspans(subheading.segments, { accent: ctx.colors.text, baseFill: ctx.colors.accent, fontWeight: "700" })}
+          {renderEmphasisTspans(subheading.segments, { accent: ctx.colors.text, baseFill: subheadingFill, fontWeight: "700" })}
         </text>
       )}
 
@@ -302,6 +320,15 @@ export function StackedPosterContent(props: SvgTemplateProps) {
     minFontSize: SUBHEADING_MIN_FONT_SIZE,
   })
   const subheadingY = titleLastY + 46
+  // W4 fix round: keeps colors.accent when it already clears the
+  // size-appropriate ratio, falls back to readableOn's neutral ink
+  // otherwise (see file header). Fallback value is never rendered when
+  // `subheading` is null. `ctx.defaultBg` is optional (`ComponentCtx`'s own
+  // doc comment: a hand-built ctx in a test may omit it) — falls back to
+  // the same `colors.bg` `buildCtx` itself defaults to.
+  const subheadingFill = subheading
+    ? accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, subheading.fontSize)
+    : ctx.colors.accent
   const heroY = titleLastY + HERO_TITLE_GAP + (subheading ? SUBHEADING_SLOT : 0)
   const isPair = slide.components.length === 2
   // Mirrors the stacked degrade path's `contentH = footnote ? 420 : 460`:
@@ -409,10 +436,10 @@ export function StackedPosterContent(props: SvgTemplateProps) {
           textAnchor="middle"
           fontFamily={ctx.fonts.heading}
           fontSize={subheading.fontSize}
-          fill={ctx.colors.accent}
+          fill={subheadingFill}
           dominantBaseline="alphabetic"
         >
-          {renderEmphasisTspans(subheading.segments, { accent: ctx.colors.text, baseFill: ctx.colors.accent, fontWeight: "700" })}
+          {renderEmphasisTspans(subheading.segments, { accent: ctx.colors.text, baseFill: subheadingFill, fontWeight: "700" })}
         </text>
       )}
 
