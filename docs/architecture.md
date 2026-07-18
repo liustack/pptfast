@@ -20,7 +20,7 @@ another (layout code stays style-agnostic).
 | 2D layout | layout registry (archetypes + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
 | Visual style | style tokens + theme definitions (curated layout sets + motif, 13 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
-| Narrative | two-phase plan→fill skill methodology (v0.2) | `skills/` |
+| Narrative | scenario axes (mode × delivery × audience, named presets) resolving editorial discipline, plus a two-phase plan→fill skill methodology for slide sequencing (a first-class plan artifact is still ahead) | `src/scenario/`, `skills/` |
 
 The core insight, carried over from the production system pptfast was extracted
 from: **visual variety comes from tokens × archetype library × seed — not

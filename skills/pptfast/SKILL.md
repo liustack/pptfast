@@ -19,18 +19,20 @@ pptfast check-update   # stay current — the schema and themes evolve
 ### Step 1 — Read the vocabulary (do this fresh every session)
 
 ```bash
-pptfast schema          # IR JSON Schema: the single source of truth
-pptfast themes --json   # built-in themes (id + label)
+pptfast schema             # IR JSON Schema: the single source of truth
+pptfast scenarios --json   # named scenario presets (mode/delivery/audience axes + theme recommendations)
+pptfast themes --json      # built-in themes (id + label)
 ```
 
-Never write IR from memory of a previous session or from this file — the schema evolves and `schema` output always wins.
+Never write IR from memory of a previous session or from this file — the schema evolves and `schema`/`scenarios`/`themes` output always wins.
 
 ### Step 2 — Align the outline with the user
 
 Propose and confirm before writing any IR:
 
+- Scenario first: pick a named preset (or override individual axes) from `scenarios` output that matches the deck's purpose and audience — this is a decision layer above theme, not a visual choice
+- Theme id next, from the chosen scenario's `themeRecommendations` (or pick from `themes` output to match the deck's tone if none fit — a recommendation, never a constraint)
 - Slide count and narrative rhythm (cover → chapters → content runs → ending)
-- Theme id (pick from `themes` output to match the deck's tone)
 - What source material maps to which slides
 
 **After the user confirms, do not re-plan.** Restructuring a confirmed outline silently wastes the user's review. If new information genuinely forces a change, say so and re-confirm first.
@@ -86,7 +88,7 @@ Declare images once in `assets.images` and reference them by `asset_id` — doub
 
 ### Capacity
 
-A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. When in doubt, split into two slides — `validate` reports the exact limits when you exceed them, but writing to fit beats fix-up loops.
+A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. Component and bullets budgets scale with the deck's `delivery` axis (tightest for `presentation`, loosest for `text`) — `validate` reports the exact numbers that applied, not a flat constant. When in doubt, split into two slides — writing to fit beats fix-up loops.
 
 ### Decor
 

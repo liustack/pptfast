@@ -66,13 +66,14 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 | `validate <ir.json>` | Check the IR, print page-scoped errors |
 | `schema [--style]` | Print the IR JSON Schema (or the style-override schema) |
 | `themes [--json]` | List the 13 built-in themes |
+| `scenarios [--json]` | List named scenario presets (mode/delivery/audience axes + theme recommendations) |
 | `preview <ir.json> -o <dir>` | Render each slide to a standalone SVG |
 | `init` | Scaffold `pptfast.config.json` |
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
 ## The IR
 
-Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"3"`), `filename`, `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one from the theme's curated set), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication.
+Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"3"`), `filename`, an optional `scenario` (a preset id string or a partial axes object — see Scenarios below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one from the theme's curated set), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication.
 
 ## Themes
 
@@ -93,6 +94,14 @@ A theme bundles a style (design tokens), a brand (identity chrome), and a curate
 | `journal` | Editorial Journal |
 | `luxe` | Luxe |
 | `heritage` | Heritage |
+
+## Scenarios
+
+A scenario is three narrative axes, independent of theme (visual style), that set editorial discipline: `mode` (how the argument is built — `pyramid`, `narrative`, `instructional`, `showcase`, `briefing`), `delivery` (how dense the content is — `text`, `balanced`, `presentation`), and `audience` (a tone anchor — `executive`, `technical`, `customer`, `public`, no rendering effect yet). Set the IR's top-level `scenario` to a named preset string (e.g. `"boardroom-report"`) or a partial axes object (e.g. `{ "delivery": "presentation" }`) — an omitted axis, or an omitted `scenario` field entirely, falls back to `general` (`briefing` × `balanced` × `public`). An unknown preset name or axis value is a hard validate error listing what's available.
+
+`delivery` drives the content-quality gate: the per-slide component budget and the bullets budget (item count and per-item length) both tighten from `text` toward `presentation` — density is additionally capped by whichever layout the slide resolves to, whichever ceiling is tighter. `pptfast validate` reports the exact numbers that applied to each slide.
+
+Run `pptfast scenarios [--json]` to list the named presets (each carries soft theme recommendations — a starting suggestion, never a constraint) plus the raw axes tables.
 
 ## Style overrides & project config
 
