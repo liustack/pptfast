@@ -26,7 +26,8 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
-      "prefer-const": "off"
+      "prefer-const": "off",
+      "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "separate-type-imports" }]
     }
   }
 )

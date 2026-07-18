@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import JSZip from "jszip"
+import type * as Sharp from "sharp"
 
 const OUT = ".e2e-out"
 mkdirSync(OUT, { recursive: true })
@@ -130,9 +131,9 @@ try {
 // 5) webp asset regression leg — locks the packaged bin's sharp recode path.
 //    dist/cli.js dynamic-imports "sharp" at runtime (tsup marks it external); this
 //    exercises that exact path against the built CLI, not just the vitest suite.
-let sharpMod: typeof import("sharp") | undefined
+let sharpMod: typeof Sharp.default | undefined
 try {
-  sharpMod = (await import("sharp")).default as unknown as typeof import("sharp")
+  sharpMod = (await import("sharp")).default as unknown as typeof Sharp.default
 } catch {
   console.log("sharp unavailable — webp asset leg skipped")
 }
