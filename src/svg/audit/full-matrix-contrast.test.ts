@@ -148,24 +148,36 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     // guard alone (`TEXT_SHAPE_GUARD["fashion-chapter"]`, "1-2 digits")
     // would silently wave through *any* future 1-2-digit finding under this
     // layout regardless of how far its ratio has drifted — this band closes
-    // that gap. Measured (2026-07-19, `pnpm exec tsx` against a real render
-    // of every theme whose curated chapter set still includes
-    // fashion-chapter — 10 of 13; bloom/classroom/heritage exclude it via
-    // `CHAPTER_WITHOUT_FASHION` — same fixture shape as this file's own
-    // chapter sweep below) watermark-digit ratios: runway 1.242 (lowest),
-    // academic 1.268, luxe 1.409, ink 1.425, journal 1.459, insight 1.539,
-    // tech 1.583, campaign 1.601, consulting 1.601, enterprise 1.753
-    // (highest). `ratioMin`/`ratioMax` round those two extremes outward by
-    // a small margin (~0.04-0.05, absorbing harmless token-value drift)
-    // without moving the ceiling anywhere close to the 3:1 floor this whole
-    // entry is about staying under. A finding whose ratio lands outside
-    // [1.2, 1.8] no longer matches the historically adjudicated band and
-    // fails the net as a real regression, even with matching theme/layout/
-    // text-shape.
+    // that gap. Originally measured (2026-07-19, `pnpm exec tsx` against a
+    // real render of every theme whose curated chapter set then included
+    // fashion-chapter — 10 of 13; bloom/classroom/heritage excluded it via
+    // `CHAPTER_WITHOUT_FASHION`) and **re-measured all 13/13** the same day
+    // after the post-v0.3 W8 fix round (backlog item 2) revoked that
+    // exclusion (`readableOn` moved from a fixed 0.4 luminance threshold to
+    // a real two-ink contrast comparison, which flips the archetype's own
+    // `fg = readableOn(ctx.colors.accent)` for academic/heritage — same
+    // fix also cleared the *heading* text that used to fail on
+    // bloom/classroom/heritage, the actual reason those three were
+    // curation-excluded — see `themes/definitions.ts`'s own history there).
+    // The watermark blend itself (`mixHex(accent, fg, 0.22)`) depends on
+    // `fg`, so every theme whose `fg` flipped got a new ratio too; every
+    // theme's ratio still lands inside the existing band. Current 13-theme
+    // spread: runway 1.242 (lowest), ink 1.424, luxe 1.448, journal 1.459,
+    // academic 1.498, heritage 1.498, classroom 1.537, bloom 1.537,
+    // insight 1.539, tech 1.583, campaign 1.600, consulting 1.601,
+    // enterprise 1.752 (highest). `ratioMin`/`ratioMax` round the original
+    // 10-theme extremes outward by a small margin (~0.04-0.05, absorbing
+    // harmless token-value drift) without moving the ceiling anywhere close
+    // to the 3:1 floor this whole entry is about staying under — both the
+    // original and the re-measured 13-theme spread fit inside it unchanged,
+    // so the numeric bounds themselves needed no adjustment. A finding
+    // whose ratio lands outside [1.2, 1.8] no longer matches the
+    // historically adjudicated band and fails the net as a real
+    // regression, even with matching theme/layout/text-shape.
     ratioMin: 1.2,
     ratioMax: 1.8,
     rationale:
-      "the chapter-number watermark digit (mixHex(accent, fg, 0.22) — chapter-fashion-chapter.tsx's own header calls it decorative by design) measures under 3:1 against every eligible theme's accent (runway's ~1.24:1 is the current lowest, enterprise's ~1.75:1 the current highest — see the ratioMin/ratioMax comment above for the full 10-theme spread) — a deliberately faint blend, not body text, blanket-allowlisted by content (a bare 1-2 digit chapter number) rather than enumerated per theme since the blend's whole point is to be faint everywhere it's used. The three themes whose fashion-chapter *heading*/label text (not just the watermark) also fails are curation-excluded in themes/definitions.ts instead (CHAPTER_WITHOUT_FASHION) — this entry never matches non-numeric text, so a real heading failure under this layout still fails the net. The added ratio band is a second, independent guard on top of that shape match, not a replacement for it.",
+      "the chapter-number watermark digit (mixHex(accent, fg, 0.22) — chapter-fashion-chapter.tsx's own header calls it decorative by design) measures under 3:1 against every theme's accent (runway's ~1.24:1 is the current lowest, enterprise's ~1.75:1 the current highest — see the ratioMin/ratioMax comment above for the full 13-theme spread) — a deliberately faint blend, not body text, blanket-allowlisted by content (a bare 1-2 digit chapter number) rather than enumerated per theme since the blend's whole point is to be faint everywhere it's used. Unlike when this entry was first written, no theme curation-excludes fashion-chapter any more (post-v0.3 W8 fix round revoked the last three exclusions once their *heading* text — the actual failure — cleared 3:1 under the fixed `readableOn`) — this entry now covers all 13 themes' watermark uniformly. It never matches non-numeric text, so a real heading failure under this layout still fails the net. The added ratio band is a second, independent guard on top of that shape match, not a replacement for it.",
   },
   {
     theme: "*",

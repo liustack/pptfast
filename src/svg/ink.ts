@@ -20,9 +20,19 @@
  * formula itself ever needs a fix.
  */
 
-/** `readableOn`'s luminance cutover point — see that function's own doc
- * comment for why 0.4, not the WCAG-exact ~0.3 a strict 3:1-on-white
- * threshold would imply. */
+/**
+ * `readableOn`'s tie-break-only fallback threshold (backlog item 2,
+ * `.issues/notes/2026-07-18-post-v03-backlog.md` #2 — post-v0.3 W8 fix
+ * round: the fixed 0.4 cutover this constant used to *drive* every
+ * `readableOn` decision is gone, replaced by a real two-ink contrast
+ * comparison below). Kept only for the near-zero-probability exact-tie case
+ * where `contrastRatio(darkInk, bg) === contrastRatio(lightInk, bg)` to the
+ * bit — an exact IEEE-754 tie requires `bg`'s luminance to land on one
+ * precise value (`sqrt((L_dark+0.05)*(L_light+0.05)) - 0.05`, not 0.4), so in
+ * practice this branch is unreachable by any of this renderer's real theme
+ * tokens; it exists so the tie case still resolves deterministically to the
+ * same answer this constant always gave, rather than an arbitrary `>`
+ * comparison direction. */
 const LUMINANCE_INK_THRESHOLD = 0.4
 
 /** font-size (px) at/above which text qualifies for the relaxed 3:1 ratio
@@ -73,19 +83,40 @@ export function requiredContrastRatio(fontSizePx: number): number {
   return fontSizePx >= LARGE_TEXT_MIN_PX ? CONTRAST_RATIO_LARGE : CONTRAST_RATIO_BODY
 }
 
+/** The two neutral inks `readableOn` ever returns — never a theme color, see
+ * that function's own doc comment. */
+const DARK_INK = "#0A0E14"
+const LIGHT_INK = "#FFFFFF"
+
 /**
  * A readable, theme-neutral ink for text painted directly on `bgHex` —
- * light background gets near-black ink, dark background gets white. The
- * 0.4 threshold (not the WCAG-exact ~0.3 luminance cutoff a strict 3:1
- * ratio against white would imply) deliberately leans toward white ink on
- * a large color block — an aesthetic call this function has made since
- * `cover-split-diagonal.tsx` introduced it, not a WCAG-conformance
- * guarantee by itself. Returns a neutral black/white pair, never a theme
- * color — see `accessibleInk` below for "keep the theme's own color when
- * it already works, only fall back to neutral ink when it doesn't."
+ * picks whichever of near-black/white actually measures the higher WCAG
+ * contrast ratio against `bgHex`, ties (see `LUMINANCE_INK_THRESHOLD`'s own
+ * doc comment) resolved by that constant's fixed 0.4 luminance cutover.
+ *
+ * Post-v0.3 W8 fix round (backlog item 2): the fixed-0.4-threshold
+ * predecessor of this function "deliberately leaned toward white ink on a
+ * large color block" (this function's own pre-fix doc comment) — an
+ * aesthetic call, not a WCAG-derived one, that in practice meant every
+ * background with luminance in (~0.19, 0.4] got white ink even though dark
+ * ink measures a *higher* contrast ratio there (near-black's own luminance
+ * is ~0.004, far closer to 0 than white's is to 1, so dark ink's contrast
+ * headroom against a mid-luminance background is larger — the two-ink
+ * comparison's break-even point is ~0.19, not 0.4). Real-contrast comparison
+ * replaces the fixed cutover entirely; every consumer already goes through
+ * this one function, so no call site needed updating.
+ *
+ * Returns a neutral black/white pair, never a theme color — see
+ * `accessibleInk` below for "keep the theme's own color when it already
+ * works, only fall back to neutral ink when it doesn't."
  */
 export function readableOn(bgHex: string): "#FFFFFF" | "#0A0E14" {
-  return relativeLuminance(bgHex) > LUMINANCE_INK_THRESHOLD ? "#0A0E14" : "#FFFFFF"
+  const darkContrast = contrastRatio(DARK_INK, bgHex)
+  const lightContrast = contrastRatio(LIGHT_INK, bgHex)
+  if (darkContrast === lightContrast) {
+    return relativeLuminance(bgHex) > LUMINANCE_INK_THRESHOLD ? DARK_INK : LIGHT_INK
+  }
+  return darkContrast > lightContrast ? DARK_INK : LIGHT_INK
 }
 
 /**
