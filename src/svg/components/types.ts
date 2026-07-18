@@ -17,6 +17,29 @@ export interface ComponentCtx {
   /** Resolved asset map (from `ir.assets.images`) for image-bearing components. */
   images?: Record<string, { src: string; alt?: string }>
   /**
+   * The theme's resolved default background color (hex) for the slide type
+   * currently rendering — `tokens.defaultBackgrounds[slide.type]` reduced to
+   * a representative hex (W4 fix round, `FullSlideSvg.tsx`'s
+   * `resolveBackgroundHex`). Consumed by `../ink`'s `readableOn`/
+   * `accessibleInk` in archetypes that paint no background panel of their
+   * own and so sit directly on whatever `Background.tsx` painted behind
+   * them (e.g. `chapter-rail-chapter.tsx`) — an archetype that paints its
+   * *own* panel (e.g. `content-banner-heading.tsx`'s banner rect) uses that
+   * panel's own color (`ctx.colors.primary`) instead, not this field.
+   *
+   * Optional, not required: `buildCtx` always sets it (falling back to
+   * `tokens.colors.bg` when its own 4th argument is omitted), but a sizable
+   * fraction of this repo's component-level tests construct a `ComponentCtx`
+   * object literal directly rather than through `buildCtx` (paragraph/kpi/
+   * chart/etc. — components that never read this field at all). Requiring
+   * it here would force every one of those unrelated test files to grow a
+   * throwaway value for a field they never touch. Consumers read
+   * `ctx.defaultBg ?? ctx.colors.bg` — the same fallback `buildCtx` itself
+   * applies, so a hand-built ctx without this field still resolves to a
+   * plausible value instead of `undefined`.
+   */
+  defaultBg?: string
+  /**
    * Component → its 0-based index in the slide's own `components` array. `renderComponent`
    * (and tech's exploded kpi/icon-card units, which bypass `renderComponent`
    * — see `bento-layout.ts`'s `BentoUnit.component`) consult this to tag their SVG

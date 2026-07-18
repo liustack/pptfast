@@ -1,6 +1,6 @@
 import type React from "react"
-import type { Component, PptxIR, Slide } from "@/ir"
-import { resolveScenario, type Mode, type ScenarioAxes } from "@/scenario"
+import type { BackgroundSpec, Component, PptxIR, Slide } from "@/ir"
+import type { Mode } from "@/scenario"
 import type { StyleTokens } from "../themes/tokens"
 import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
@@ -26,7 +26,29 @@ import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { cachedDeckSeed } from "./variety"
-import { resolveArchetypeId, resolveEffectiveLayoutId } from "./effective-layout"
+import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrMode } from "./effective-layout"
+
+/**
+ * Reduce a `BackgroundSpec` to one representative hex color — a color spec
+ * is already one; a gradient's `from` stop stands in for the whole band
+ * (every built-in gradient goes dark→darker or light→lighter, so which
+ * stop is picked never changes an ink decision made off it); an asset spec
+ * (a photo) has no single true color, so callers get `surfaceFallback`
+ * instead (mirrors the pre-existing `autoScrimColor` computation below,
+ * which this function now backs).
+ *
+ * Exported (W4 fix round) so archetype tests can build a `ComponentCtx`
+ * whose `defaultBg` matches a theme's *true* `defaultBackgrounds[slideType]`
+ * — required whenever the theme under test gives that slide type a
+ * different default than its own `colors.bg` (only `academic`/`classroom`/
+ * `consulting`'s `chapter` do, among the 13 built-ins), since `buildCtx`'s
+ * own same-named fallback (`colors.bg`) is wrong for exactly those three.
+ */
+export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: string): string {
+  if (spec.kind === "color") return spec.value
+  if (spec.kind === "gradient") return spec.from
+  return surfaceFallback
+}
 
 /**
  * Resolve theme tokens + asset map into the render context components/templates use.
@@ -35,12 +57,21 @@ import { resolveArchetypeId, resolveEffectiveLayoutId } from "./effective-layout
  * tagging — omit it (the default) to keep `ctx.blockIndex` undefined, which
  * is what keeps the default export path byte-identical (see `ComponentCtx`'s
  * doc comment).
+ *
+ * `defaultBg` (W4 fix round, `ComponentCtx`'s own doc comment): the caller
+ * (`FullSlideSvg` below) always supplies the true
+ * `tokens.defaultBackgrounds[slide.type]`, reduced to hex via
+ * `resolveBackgroundHex`. Omitting it (as every pre-existing test call site
+ * does) falls back to `tokens.colors.bg` — exact for every slide type on 10
+ * of the 13 built-in themes, and still a plausible same-family value on the
+ * other 3 (`academic`/`classroom`/`consulting`, whose `chapter` background
+ * alone diverges from their own `colors.bg`).
  */
- 
 export function buildCtx(
   tokens: StyleTokens,
   images: PptxIR["assets"]["images"],
   components?: Component[],
+  defaultBg?: string,
 ): ComponentCtx {
   return {
     colors: tokens.colors,
@@ -52,6 +83,7 @@ export function buildCtx(
     },
     images,
     blockIndex: components ? new Map(components.map((component, i) => [component, i])) : undefined,
+    defaultBg: defaultBg ?? tokens.colors.bg,
   }
 }
 
@@ -112,10 +144,16 @@ export function FullSlideSvg({
   preserveAspectRatio,
 }: FullSlideSvgProps) {
   const tokens = resolveStyle(ir.theme.id, ir.theme.style)
+  // W4 fix round: the theme's own default background for this slide type,
+  // independent of any per-slide `slide.background` override — see
+  // `ComponentCtx.defaultBg`'s own doc comment for why archetypes that
+  // paint no panel of their own need this to pick readable ink.
+  const defaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slide.type], tokens.colors.surface)
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.components : undefined,
+    defaultBg,
   )
   const themeDef = getThemeDefinition(ir.theme.id)
   // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，
@@ -140,13 +178,9 @@ export function FullSlideSvg({
     const { overlay: _ignored, ...withoutOverlay } = bgSpec
     bgSpec = withoutOverlay
     if (!imageCoverTakeover) {
-      const pageDefault = tokens.defaultBackgrounds[slide.type]
-      autoScrimColor =
-        pageDefault.kind === "color"
-          ? pageDefault.value
-          : pageDefault.kind === "gradient"
-            ? pageDefault.from
-            : tokens.colors.surface
+      // Same "reduce the page default to one hex" resolution `defaultBg`
+      // above already did — reused, not recomputed (`resolveBackgroundHex`).
+      autoScrimColor = defaultBg
     }
   }
   // 图文范式族接管（image-split/image-top/image-bottom/image-annotate，W2
@@ -167,7 +201,7 @@ export function FullSlideSvg({
   // 输入）：复用 `resolveEffectiveLayoutId` 对上一页的解算而非在这里另起一份
   // 折叠——同一 WeakMap 缓存的折叠结果，两处必然同源同值。
   const pageKey = slide.id ?? String(index)
-  const mode = resolveScenario(ir.scenario as string | Partial<ScenarioAxes> | undefined).mode
+  const mode = resolveIrMode(ir)
   const previousEffectiveLayoutId = index > 0 ? resolveEffectiveLayoutId(ir, ir.slides[index - 1], index - 1) : null
   const archetype =
     imageCoverTakeover || splitTakeover

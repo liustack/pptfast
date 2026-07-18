@@ -128,8 +128,14 @@ export function resolveArchetypeId(
  * comment on why); `resolveScenario` is the sole semantic authority that
  * narrows and validates it, so the cast here is the same one every other
  * caller already performs.
+ *
+ * Exported (W4 fix round, Minor M3) so `FullSlideSvg.tsx` can call this
+ * exact expression instead of keeping its own byte-identical copy — the
+ * duplication was boilerplate (the cast + `.mode` projection), not a second
+ * selection-logic implementation, but one shared call site is simpler than
+ * two that have to be kept in sync by hand.
  */
-function resolveIrMode(ir: PptxIR): Mode {
+export function resolveIrMode(ir: PptxIR): Mode {
   return resolveScenario(ir.scenario as string | Partial<ScenarioAxes> | undefined).mode
 }
 
@@ -221,28 +227,27 @@ function resolveDeckEffectiveLayoutIds(ir: PptxIR): readonly (string | null)[] {
  * Resolve the `LAYOUT_REGISTRY` id `FullSlideSvg` will actually render
  * `slide`'s body with, or `null` when render bypasses the registry entirely
  * (the background-image cover takeover). Public signature unchanged since
- * W3 (`ir`, `slide`, `index`), but the implementation now answers from the
- * memoized whole-deck fold above (`resolveDeckEffectiveLayoutIds`) — every
- * real caller passes `slide === ir.slides[index]` (render's `FullSlideSvg`,
- * `ir-quality.ts`'s per-slide loop, every SDK entry point), so that fold's
- * own per-index resolution already *is* the answer for `slide`. The
- * fallback branch below only exists for the (untested-in-practice, never
- * hit by any real call site) case of a caller passing an `index` outside
- * `ir.slides` or a `slide` that isn't that exact array element — it still
- * resolves correctly by calling the same single-slide step directly,
- * reusing the fold only for `previousEffectiveLayoutId` (adjacent
- * anti-repetition's one cross-slide input), so even that path can never
- * drift from the canonical mechanics in `resolveArchetypeId`.
+ * W3 (`ir`, `slide`, `index`); the implementation answers from the memoized
+ * whole-deck fold above (`resolveDeckEffectiveLayoutIds`).
+ *
+ * Trusts `slide === ir.slides[index]` rather than re-verifying it (W4 fix
+ * round, Minor M1): every real call site (render's `FullSlideSvg`,
+ * `ir-quality.ts`'s per-slide loop, every test in this repo) already
+ * satisfies that invariant, and this function isn't part of the public SDK
+ * barrel (`src/index.ts`) an external caller could violate it through. An
+ * earlier version carried a defensive fallback branch that re-derived the
+ * answer via `resolveOneEffectiveLayoutId` when the equality check failed —
+ * dead code (zero coverage, zero real trigger) that risked becoming a
+ * second, silently-drifting selection-logic copy of its own, which is
+ * exactly what this module's own file header warns against. `slide` stays
+ * in the signature for call-site stability even though the body no longer
+ * reads it.
  */
 export function resolveEffectiveLayoutId(ir: PptxIR, slide: Slide, index: number): string | null {
-  const deckIds = resolveDeckEffectiveLayoutIds(ir)
-  if (index >= 0 && index < ir.slides.length && ir.slides[index] === slide) {
-    return deckIds[index]
-  }
-  const seed = cachedDeckSeed(ir)
-  const mode = resolveIrMode(ir)
-  const previous = index > 0 ? (deckIds[index - 1] ?? null) : null
-  return resolveOneEffectiveLayoutId(ir, slide, seed, mode, slide.id ?? String(index), previous)
+  // `?? null`, not a recompute fallback: normalizes the (untested-in-practice)
+  // out-of-bounds-index case's array read to the declared return type,
+  // without re-deriving anything.
+  return resolveDeckEffectiveLayoutIds(ir)[index] ?? null
 }
 
 export interface EffectiveLayoutBodyCapacity {
