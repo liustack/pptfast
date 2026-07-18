@@ -4,7 +4,7 @@ import { renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
-import { SplitDiagonalCover, readableOn } from "./cover-split-diagonal"
+import { SplitDiagonalCover } from "./cover-split-diagonal"
 import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = {
@@ -38,21 +38,10 @@ describe("SplitDiagonalCover", () => {
     expect(out).not.toContain("#006A4E") // academic primary 不得残留
   })
 
-  it("色块上文字对比度自适应：深色 primary（academic 深绿）配浅字、浅色 primary（tech 亮青）配深字", () => {
-    // academic primary #006A4E 明度低 → 浅字
-    expect(readableOn("#006A4E")).toBe("#FFFFFF")
-    // tech primary #2DD4E6 明度高 → 深字
-    expect(readableOn("#2DD4E6")).toBe("#0A0E14")
-  })
-
-  it("HexColor 短写/带 alpha 形态（schema 允许 3~8 位）：#RGB 展开、#RRGGBBAA 裁 alpha", () => {
-    // 亮黄短写 #FFC ≡ #FFFFCC 明度高 → 深字（原实现按 0 明度错配白字的回归锁）
-    expect(readableOn("#FFC")).toBe("#0A0E14")
-    // 深绿带 alpha → 与 6 位判定一致
-    expect(readableOn("#006A4EFF")).toBe("#FFFFFF")
-    // 4 位 #RGBA：展开后裁 alpha
-    expect(readableOn("#FFCF")).toBe("#0A0E14")
-  })
+  // `readableOn`'s own contrast-adaptivity/hex-parsing unit tests moved to
+  // `src/svg/ink.test.ts` (W4 fix round: extracted into a shared module —
+  // see that file's own header). This describe block keeps only the
+  // component-level render assertions.
 })
 
 // W4 全集放开（design decision 7，spec §3「缺省 = 全集」）后，cover 页型在
