@@ -25,9 +25,17 @@ program
   .requiredOption("-o, --output <file>", "output .pptx path")
   .option("--theme <id>", "override the deck theme (see `pptfast themes`)")
   .option("--style <path>", "style overrides JSON re-coloring the theme (see `pptfast schema --style`)")
-  .action(async (ir: string, opts: { output: string; theme?: string; style?: string }) => {
+  .option("--draft", "allow unfilled placeholder pages (skip the draft gate)")
+  .action(async (ir: string, opts: { output: string; theme?: string; style?: string; draft?: boolean }) => {
     try {
-      console.log(await runRender(ir, { output: opts.output, theme: opts.theme, stylePath: opts.style }))
+      console.log(
+        await runRender(ir, {
+          output: opts.output,
+          theme: opts.theme,
+          stylePath: opts.style,
+          draft: opts.draft,
+        }),
+      )
     } catch (e) {
       fail(e)
     }

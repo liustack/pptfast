@@ -56,6 +56,8 @@ export interface RenderOptions {
   theme?: string
   stylePath?: string
   cwd?: string
+  /** Skip the unfilled-placeholder-pages gate (W5 task 1) — see `generatePptx` in `../api`. */
+  draft?: boolean
 }
 
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
@@ -68,7 +70,7 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, dirname(resolve(irPath)))
-  const bytes = await generatePptx(v.ir!)
+  const bytes = await generatePptx(v.ir!, { draft: opts.draft })
   await mkdir(dirname(resolve(opts.output)), { recursive: true })
   await writeFile(opts.output, bytes)
   return `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`

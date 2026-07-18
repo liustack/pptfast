@@ -43,6 +43,16 @@ const IR_WITH_LOCAL_ASSET = {
   ],
 }
 
+const IR_WITH_PLACEHOLDER = {
+  version: "3",
+  filename: "cli-test-placeholder",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover", heading: "CLI" },
+    { type: "content", id: "p-2", placeholder: true },
+  ],
+}
+
 let dir: string
 beforeAll(async () => {
   installNodePlatform()
@@ -51,6 +61,7 @@ beforeAll(async () => {
   await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "3" }))
   await writeFile(join(dir, "logo.png"), PNG_1PX)
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
+  await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
 })
 
 describe("runValidate", () => {
@@ -69,6 +80,23 @@ describe("runRender", () => {
     expect(msg).toContain("2 slides")
     const bytes = await readFile(out)
     expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+  })
+
+  describe("--draft threading (W5 task 1)", () => {
+    it("rejects a deck with an unfilled placeholder page when --draft is not passed", async () => {
+      const out = join(dir, "out-placeholder-blocked.pptx")
+      await expect(
+        runRender(join(dir, "deck-with-placeholder.json"), { output: out }),
+      ).rejects.toThrow(/unfilled placeholder page.*p-2.*--draft/s)
+    })
+
+    it("renders the deck when --draft is passed", async () => {
+      const out = join(dir, "out-placeholder-draft.pptx")
+      const msg = await runRender(join(dir, "deck-with-placeholder.json"), { output: out, draft: true })
+      expect(msg).toContain("2 slides")
+      const bytes = await readFile(out)
+      expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+    })
   })
 })
 

@@ -193,6 +193,10 @@ export function checkIrQuality(ir: PptxIR, resolvedAxes: ScenarioAxes = resolveS
   }
 
   for (let i = 0; i < ir.slides.length; i++) {
+    // placeholder 页（W5 assemble 对未填充页生成）无内容可判——跳过全部
+    // 内容规则（missing_heading/density/bullets_overflow 等），schema 校验
+    // 仍照常在 validateIr 里跑。
+    if (ir.slides[i].placeholder) continue
     issues.push(...checkSlide(ir, ir.slides[i], i, resolvedAxes))
   }
 
