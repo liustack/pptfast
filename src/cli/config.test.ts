@@ -10,6 +10,25 @@ function tmp(): Promise<string> {
   return mkdtemp(join(tmpdir(), "pptfast-config-"))
 }
 
+/**
+ * The exact message `JSON.parse` throws for `text` on whatever JS engine
+ * runs this test — used to build an exact-text expectation for config.ts's
+ * `<path> is not valid JSON: <message>` template (backlog item 7a,
+ * `.issues/notes/2026-07-18-post-v03-backlog.md` #7a) without hardcoding a
+ * V8-version-specific wording: `readConfigFile` (config.ts:104-108) embeds
+ * this exact same engine message verbatim, so deriving it live from the
+ * same `text` this test itself writes to disk keeps the assertion exact
+ * (not a loose substring) while staying correct across Node/V8 versions.
+ */
+function jsonParseErrorMessage(text: string): string {
+  try {
+    JSON.parse(text)
+  } catch (e) {
+    return (e as Error).message
+  }
+  throw new Error(`expected JSON.parse to throw for: ${text}`)
+}
+
 describe("findConfig", () => {
   afterEach(() => {
     __resetRegisteredThemes()
@@ -31,8 +50,13 @@ describe("findConfig", () => {
 
   it("rejects unknown keys with the config path in the message", async () => {
     const root = await tmp()
-    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ them: "tech" }))
-    await expect(findConfig(root)).rejects.toThrow(/pptfast\.config\.json/)
+    const configPath = join(root, "pptfast.config.json")
+    await writeFile(configPath, JSON.stringify({ them: "tech" }))
+    // Exact text (backlog item 7a, `.issues/notes/2026-07-18-post-v03-backlog.md`
+    // #7a): config.ts:110-114's real `invalid <path>:\n<field>: <message>`
+    // template, `(root)` because zod's `.strict()` unrecognized-key issue
+    // carries an empty `issue.path` (not scoped to the bad key itself).
+    await expect(findConfig(root)).rejects.toThrow(new Error(`invalid ${configPath}:\n(root): Unrecognized key: "them"`))
   })
 
   it("does not validate the theme id at read time (W5 review fix: moved to applyDeckConfig at resolution time — see commands.test.ts)", async () => {
@@ -81,17 +105,29 @@ describe("findConfig", () => {
 
   it("validates style with the shared schema", async () => {
     const root = await tmp()
-    await writeFile(
-      join(root, "pptfast.config.json"),
-      JSON.stringify({ style: { colors: { primary: "blue" } } }),
+    const configPath = join(root, "pptfast.config.json")
+    await writeFile(configPath, JSON.stringify({ style: { colors: { primary: "blue" } } }))
+    // Exact text (backlog item 7a): the shared StyleOverrideSchema's own
+    // hex-color pattern message, surfaced through config.ts:110-114's
+    // `invalid <path>:\n<field>: <message>` template with the real
+    // dotted field path `style.colors.primary`.
+    await expect(findConfig(root)).rejects.toThrow(
+      new Error(`invalid ${configPath}:\nstyle.colors.primary: Invalid string: must match pattern /^#[0-9A-Fa-f]{3,8}$/`),
     )
-    await expect(findConfig(root)).rejects.toThrow(/primary/)
   })
 
   it("rejects a config that is not valid JSON", async () => {
     const root = await tmp()
-    await writeFile(join(root, "pptfast.config.json"), "{ theme: tech }")
-    await expect(findConfig(root)).rejects.toThrow(/not valid JSON/)
+    const configPath = join(root, "pptfast.config.json")
+    const badJson = "{ theme: tech }"
+    await writeFile(configPath, badJson)
+    // Exact text (backlog item 7a): config.ts:107's real
+    // `<path> is not valid JSON: <message>` template — see
+    // jsonParseErrorMessage's own doc comment for why the suffix is derived
+    // live rather than hardcoded.
+    await expect(findConfig(root)).rejects.toThrow(
+      new Error(`${configPath} is not valid JSON: ${jsonParseErrorMessage(badJson)}`),
+    )
   })
 
   it("reads decksDir from a project pptfast.config.json (W5 task 6, controller addition A)", async () => {
@@ -148,8 +184,11 @@ describe("findUserConfig (W5 task 5: four-layer chain, user layer)", () => {
   it("rejects unknown keys with the config path in the message", async () => {
     const home = await tmp()
     process.env.PPTFAST_HOME = home
-    await writeFile(join(home, "config.json"), JSON.stringify({ them: "tech" }))
-    await expect(findUserConfig()).rejects.toThrow(/config\.json/)
+    const configPath = join(home, "config.json")
+    await writeFile(configPath, JSON.stringify({ them: "tech" }))
+    // Exact text (backlog item 7a) — same template and unrecognized-key
+    // message shape as the project-config case above, only the path differs.
+    await expect(findUserConfig()).rejects.toThrow(new Error(`invalid ${configPath}:\n(root): Unrecognized key: "them"`))
   })
 
   it("does not validate the theme id at read time (W5 review fix: moved to applyDeckConfig at resolution time — see commands.test.ts)", async () => {
@@ -163,8 +202,14 @@ describe("findUserConfig (W5 task 5: four-layer chain, user layer)", () => {
   it("rejects a config that is not valid JSON", async () => {
     const home = await tmp()
     process.env.PPTFAST_HOME = home
-    await writeFile(join(home, "config.json"), "{ theme: tech }")
-    await expect(findUserConfig()).rejects.toThrow(/not valid JSON/)
+    const configPath = join(home, "config.json")
+    const badJson = "{ theme: tech }"
+    await writeFile(configPath, badJson)
+    // Exact text (backlog item 7a) — see jsonParseErrorMessage's own doc
+    // comment for why the suffix is derived live rather than hardcoded.
+    await expect(findUserConfig()).rejects.toThrow(
+      new Error(`${configPath} is not valid JSON: ${jsonParseErrorMessage(badJson)}`),
+    )
   })
 
   it("accepts a config with only decksDir set (theme/style both optional)", async () => {
