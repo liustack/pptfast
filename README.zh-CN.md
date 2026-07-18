@@ -41,7 +41,7 @@ skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfas
 node dist/cli.js validate examples/basic.json
 # → OK — 5 slides, theme "consulting"
 node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, ~29 KB)
+# → wrote out/basic.pptx (5 slides, 29717 bytes)
 node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
 node dist/cli.js preview examples/basic.json -o out/svgs   # 每页一张 SVG，供人工目检
 ```
@@ -172,8 +172,8 @@ pptfast audit examples/basic.json
 ## 路线图
 
 - **v0.2**——封装该回路的 Claude Code plugin + skill（已落地）、design token 覆盖（`--style`）、`init`/自更新命令。
-- **v0.3**——主题定制 skill（品牌色 → style）、自定义主题插槽、1.0 版本。
-- **v0.4**——更丰富的动效（更多入场动画）、Office 真机实测、web playground。
+- **v0.3**——场景化叙事轴（mode/delivery/audience）、显式 layout + component 注册表与加权 seed 选型、deck plan/assemble 工作流、确定性几何审查、自包含 HTML 预览、六阶段 skill（已落地，schema 已冻结——见上文「IR」一节）。
+- **v0.4**——主题生态（可分发主题注册表、主题定制 skill、自定义品牌插槽）、更丰富的动效（更多入场动画）、Office 真机实测、web playground、1.0 版本。
 
 ## 致谢
 

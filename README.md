@@ -42,7 +42,7 @@ The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptf
 node dist/cli.js validate examples/basic.json
 # → OK — 5 slides, theme "consulting"
 node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, ~29 KB)
+# → wrote out/basic.pptx (5 slides, 29717 bytes)
 node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
 node dist/cli.js preview examples/basic.json -o out/svgs   # SVG per slide, for a visual self-check
 ```
@@ -180,8 +180,8 @@ The recommended loop for an agent generating a deck: read `pptfast schema` to le
 ## Roadmap
 
 - **v0.2** — Claude Code plugin + skill wrapping the render loop (shipped), design token overrides (`--style`), `init`/self-update commands.
-- **v0.3** — theme-customization skill (brand colors → style), custom theme slots, 1.0.
-- **v0.4** — richer motion (more entrance animations), Office real-device testing, web playground.
+- **v0.3** — scenario-driven narrative axes (mode/delivery/audience), an explicit layout + component registry with weighted seeded selection, the deck plan/assemble workflow, a deterministic geometry audit, a self-contained HTML preview, and the six-phase skill (shipped, schema frozen — see The IR above).
+- **v0.4** — theme ecosystem (distributable theme registry, theme-customization skill, custom brand slots), richer motion (more entrance animations), Office real-device testing, web playground, 1.0.
 
 ## Credits
 
