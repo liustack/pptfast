@@ -366,6 +366,16 @@ describe("render parity with FullSlideSvg", () => {
   const archetypePathCases: { label: string; themeId: string; slide: Slide }[] = [
     { label: "tech cover, auto-pick", themeId: "tech", slide: { type: "cover", heading: "x", components: [] } },
     {
+      // Backlog item 7c (`.issues/notes/2026-07-18-post-v03-backlog.md` #7c):
+      // this sweep previously covered cover/content/ending only — chapter
+      // had zero render-parity coverage even though it resolves through the
+      // exact same archetype path (image-cover takeover aside, already
+      // covered by the bypass case below).
+      label: "classroom chapter, auto-pick",
+      themeId: "classroom",
+      slide: { type: "chapter", heading: "x", components: [] },
+    },
+    {
       label: "academic content, auto-pick",
       themeId: "academic",
       slide: { type: "content", heading: "x", components: [{ type: "paragraph", text: "x" }] },
