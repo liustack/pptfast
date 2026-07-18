@@ -1,12 +1,14 @@
 // @vitest-environment node
-import { mkdtemp, readFile, readdir, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { describe, expect, it, beforeAll } from "vitest"
+import { afterAll, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import { SCENARIO_PRESETS } from "../scenario"
 import {
   applyDeckConfig,
+  runAssemble,
+  runDisassemble,
   runInit,
   runPlanValidate,
   runPreview,
@@ -81,6 +83,7 @@ const VALID_PLAN = {
 const BAD_PLAN = { pages: [] }
 
 let dir: string
+const originalPptfastHome = process.env.PPTFAST_HOME
 beforeAll(async () => {
   installNodePlatform()
   dir = await mkdtemp(join(tmpdir(), "pptfast-cli-"))
@@ -92,7 +95,75 @@ beforeAll(async () => {
   await writeFile(join(dir, "deck-with-alias.json"), JSON.stringify(IR_WITH_FIELD_ALIAS))
   await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
   await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
+  // Isolate every test in this file from whatever the real machine's
+  // ~/.pptfast happens to hold (W5 task 5: applyDeckConfig now reads the
+  // user config layer — findUserConfig — on every call). A fresh, never-
+  // populated directory means "missing = fine" (null) for every test below
+  // that does not opt into a custom user config via withPptfastHome.
+  process.env.PPTFAST_HOME = await mkdtemp(join(tmpdir(), "pptfast-cli-home-"))
 })
+
+afterAll(() => {
+  if (originalPptfastHome === undefined) delete process.env.PPTFAST_HOME
+  else process.env.PPTFAST_HOME = originalPptfastHome
+})
+
+/** Scopes a `PPTFAST_HOME` override to `fn`'s duration, restoring whatever
+ *  was set before (this file's own isolated default, per the `beforeAll`
+ *  above, for every caller in this file) even if `fn` throws. */
+async function withPptfastHome<T>(home: string, fn: () => Promise<T>): Promise<T> {
+  const prev = process.env.PPTFAST_HOME
+  process.env.PPTFAST_HOME = home
+  try {
+    return await fn()
+  } finally {
+    if (prev === undefined) delete process.env.PPTFAST_HOME
+    else process.env.PPTFAST_HOME = prev
+  }
+}
+
+/** 5 pages (cover + 3 content + ending) clears "presentation" delivery's
+ *  4-16 page-count floor (spec §5) with room to leave some unfilled — same
+ *  fixture-sizing rationale as `plan/assemble.test.ts`'s own `makePlan`. */
+function makeDeckPlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    version: "1",
+    scenario: "boardroom-report", // pyramid/presentation/executive
+    theme: "consulting",
+    filename: "q3-review",
+    pages: [
+      { id: "p-cover", type: "cover", heading: "Q3 Review" },
+      { id: "p-a", type: "content", heading: "Segment A" },
+      { id: "p-b", type: "content", heading: "Segment B" },
+      { id: "p-c", type: "content", heading: "Segment C" },
+      { id: "p-ending", type: "ending", heading: "Thanks" },
+    ],
+    ...extra,
+  }
+}
+
+function makeDeckDir(prefix = "pptfast-deck-"): Promise<string> {
+  return mkdtemp(join(tmpdir(), prefix))
+}
+
+/** IR shaped so `disassembleDeck`'s output can itself pass `validatePlan`'s
+ *  hard gates (first=cover/last=ending, explicit `presentation` delivery so
+ *  4 pages clears the page-count floor) — unlike `VALID_IR` above, which is
+ *  fine for a bare-IR round trip but was never meant to double as a valid
+ *  *plan* (no ending page), so re-assembling its disassembled output would
+ *  fail `checkBoundaryTypes` before ever reaching a render. */
+const ROUNDTRIPPABLE_IR = {
+  version: "3",
+  filename: "roundtrip-test",
+  theme: { id: "tech" },
+  scenario: { delivery: "presentation" },
+  slides: [
+    { id: "s-cover", type: "cover", heading: "Cover" },
+    { id: "s-body", type: "content", heading: "Body", components: [{ type: "paragraph", text: "hi" }] },
+    { id: "s-body2", type: "content", heading: "Body 2" },
+    { id: "s-ending", type: "ending", heading: "End" },
+  ],
+}
 
 describe("runValidate", () => {
   it("reports OK with slide count for valid IR", async () => {
@@ -309,5 +380,338 @@ describe("runInit", () => {
     const d = await mkdtemp(join(tmpdir(), "pptfast-init-"))
     await runInit(d)
     await expect(runInit(d)).rejects.toThrow(/exists/)
+  })
+})
+
+// ── W5 task 5: deck project directories ─────────────────────────────────
+
+describe("deck project directory workflow (W5 task 5)", () => {
+  it("walks the brief's end-to-end scenario: partial pages → assemble → draft render → fill → render", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(
+      join(deckDir, "pages", "p-a.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "Segment A detail" }] }),
+    )
+    await writeFile(
+      join(deckDir, "pages", "p-b.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "Segment B detail" }] }),
+    )
+    // Cover/ending have no fillable content of their own here, but still
+    // need a pages/ entry to count as "filled" — assembleDeck applies the
+    // same missing-page → placeholder rule to every page type, not just
+    // content pages (plan/assemble.ts's buildSlide has no type-based
+    // special case). p-c is deliberately left unfilled — 2 of 3 content
+    // pages present — so it is the *only* placeholder below.
+    await writeFile(join(deckDir, "pages", "p-cover.json"), "{}")
+    await writeFile(join(deckDir, "pages", "p-ending.json"), "{}")
+
+    // assemble → placeholder present, seed-generation note included (the
+    // plan omits `seed`).
+    const assembleMsg1 = await runAssemble(deckDir)
+    expect(assembleMsg1).toContain(join(deckDir, "deck.json"))
+    expect(assembleMsg1).toContain("5 slides")
+    expect(assembleMsg1).toContain("1 placeholder")
+    expect(assembleMsg1).toContain("to deck.plan.json for revision stability")
+    const seedMatch1 = /generated seed (\d+)/.exec(assembleMsg1)
+    expect(seedMatch1).not.toBeNull()
+
+    const assembled1 = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
+    expect(assembled1.slides.find((s: { id: string }) => s.id === "p-c").placeholder).toBe(true)
+    expect(assembled1.slides.find((s: { id: string }) => s.id === "p-a").placeholder).toBeUndefined()
+    expect(String(assembled1.seed)).toBe(seedMatch1![1])
+
+    // render (no --draft) on the directory hits the exact same draft gate
+    // single-file mode already has.
+    await expect(
+      runRender(deckDir, { output: join(deckDir, "blocked.pptx") }),
+    ).rejects.toThrow(/unfilled placeholder page.*p-c.*--draft/s)
+
+    // render --draft on the directory (in-memory assemble) succeeds.
+    const draftOut = join(deckDir, "draft.pptx")
+    const draftMsg = await runRender(deckDir, { output: draftOut, draft: true })
+    expect(draftMsg).toContain("5 slides")
+    const draftBytes = await readFile(draftOut)
+    expect(draftBytes.subarray(0, 2).toString("latin1")).toBe("PK")
+
+    // fill in the third page.
+    await writeFile(
+      join(deckDir, "pages", "p-c.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "Segment C detail" }] }),
+    )
+
+    // re-assemble is idempotent: the generated seed is stable (a function of
+    // the plan's filename + page-id sequence, never page content or fill
+    // state — plan/assemble.ts's generateSeed) and every page is now filled.
+    const assembleMsg2 = await runAssemble(deckDir)
+    expect(assembleMsg2).toContain("0 placeholders")
+    expect(assembleMsg2).toContain(`generated seed ${seedMatch1![1]}`)
+    const assembled2 = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
+    expect(assembled2.seed).toBe(assembled1.seed)
+    expect(assembled2.slides.find((s: { id: string }) => s.id === "p-c").placeholder).toBeUndefined()
+
+    // render without --draft now succeeds — no placeholders left.
+    const finalOut = join(deckDir, "final.pptx")
+    const finalMsg = await runRender(deckDir, { output: finalOut })
+    expect(finalMsg).toContain("5 slides")
+    const finalBytes = await readFile(finalOut)
+    expect(finalBytes.subarray(0, 2).toString("latin1")).toBe("PK")
+  })
+})
+
+describe("bare-name resolution through CLI commands (W5 task 5)", () => {
+  it("resolves a bare deck name to $PPTFAST_HOME/decks/<name> end to end", async () => {
+    const home = await makeDeckDir("pptfast-barehome-")
+    await withPptfastHome(home, async () => {
+      const deckDir = join(home, "decks", "q3-review")
+      await mkdir(deckDir, { recursive: true })
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      const cwd = await makeDeckDir("pptfast-barecwd-")
+      const msg = await runAssemble("q3-review", { cwd })
+      expect(msg).toContain(join(deckDir, "deck.json"))
+      const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
+      expect(written.slides).toHaveLength(5)
+    })
+  })
+
+  it("prefers a same-name local file over the deck home (explicit/local path always wins)", async () => {
+    const home = await makeDeckDir("pptfast-barehome2-")
+    await withPptfastHome(home, async () => {
+      const cwd = await makeDeckDir("pptfast-barecwd2-")
+      await writeFile(join(cwd, "deck.json"), JSON.stringify(VALID_IR))
+      // "deck.json" has no path separator, but exists locally under cwd —
+      // must resolve as that local file, not $PPTFAST_HOME/decks/deck.json.
+      await expect(runValidate("deck.json", cwd)).resolves.toMatch(/OK — 2 slides/)
+    })
+  })
+})
+
+describe("structural deck-directory errors surface through the CLI shell (W5 task 5)", () => {
+  it("surfaces an orphan page-file error through runValidate", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(join(deckDir, "pages", "not-a-real-page.json"), "{}")
+    await expect(runValidate(deckDir)).rejects.toThrow(/orphan page id "not-a-real-page"/)
+  })
+
+  it("surfaces a locked-field error through runRender", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(join(deckDir, "pages", "p-a.json"), JSON.stringify({ heading: "sneaky" }))
+    await expect(
+      runRender(deckDir, { output: join(deckDir, "out.pptx") }),
+    ).rejects.toThrow(/"heading" is locked by the plan/)
+  })
+
+  it("surfaces the missing-plan-file error through runPreview", async () => {
+    const deckDir = await makeDeckDir()
+    await expect(runPreview(deckDir, join(deckDir, "svgs"))).rejects.toThrow(/pptfast plan validate/)
+  })
+
+  it("surfaces an invalid-plan error through runAssemble", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify({ pages: [] }))
+    await expect(runAssemble(deckDir)).rejects.toThrow(/invalid plan.*no pages/s)
+  })
+})
+
+describe("runValidate prints a placeholder note only for deck-directory input (W5 task 5)", () => {
+  it("notes unfilled placeholder pages when validating a deck directory", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(
+      join(deckDir, "pages", "p-a.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "filled" }] }),
+    )
+    await writeFile(join(deckDir, "pages", "p-cover.json"), "{}")
+    await writeFile(join(deckDir, "pages", "p-ending.json"), "{}")
+    const report = await runValidate(deckDir)
+    expect(report).toMatch(/^OK — 5 slides/)
+    expect(report).toContain("note: 2 unfilled placeholder pages: p-b (page 3), p-c (page 4)")
+  })
+
+  it("never adds a placeholder note for single-file IR input, even with an authored placeholder slide", async () => {
+    const report = await runValidate(join(dir, "deck-with-placeholder.json"))
+    expect(report).toMatch(/^OK — 2 slides/)
+    expect(report).not.toContain("placeholder")
+  })
+})
+
+describe("assets/ auto-registration reaches rendered output (W5 task 5)", () => {
+  it("inlines a deck-dir asset as a data URI in the previewed SVG", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(
+      join(deckDir, "pages", "p-a.json"),
+      JSON.stringify({ components: [{ type: "image", asset_id: "logo" }] }),
+    )
+    await mkdir(join(deckDir, "assets"))
+    await writeFile(join(deckDir, "assets", "logo.png"), PNG_1PX)
+
+    const outDir = join(deckDir, "svgs")
+    await runPreview(deckDir, outDir)
+    // p-cover is slide 1 → "001-cover.svg", p-a is slide 2 → "002-content.svg"
+    // (runPreview's own `${padded index}-${slide.type}.svg` naming).
+    const svg = await readFile(join(outDir, "002-content.svg"), "utf8")
+    expect(svg).toContain("data:image/png;base64")
+  })
+})
+
+describe("runAssemble", () => {
+  it("writes deck.json to <dir>/deck.json by default and reports the placeholder count", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    const msg = await runAssemble(deckDir)
+    expect(msg).toContain(join(deckDir, "deck.json"))
+    expect(msg).toContain("5 slides")
+    expect(msg).toContain("5 placeholders") // no pages/ dir at all — every plan page unfilled
+    const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
+    expect(written.slides).toHaveLength(5)
+  })
+
+  it("writes to a custom -o path when given", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    const customOut = join(deckDir, "custom.json")
+    await runAssemble(deckDir, { output: customOut })
+    const written = JSON.parse(await readFile(customOut, "utf8"))
+    expect(written.slides).toHaveLength(5)
+  })
+
+  it("has no generated-seed note when the plan already sets seed", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
+    const msg = await runAssemble(deckDir)
+    expect(msg).not.toContain("note:")
+    const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
+    expect(written.seed).toBe(424242)
+  })
+
+  it("never modifies the user's plan file, even when it suggests writing a seed back", async () => {
+    const deckDir = await makeDeckDir()
+    const planPath = join(deckDir, "deck.plan.json")
+    const planText = JSON.stringify(makeDeckPlan())
+    await writeFile(planPath, planText)
+    await runAssemble(deckDir)
+    expect(await readFile(planPath, "utf8")).toBe(planText)
+  })
+})
+
+describe("runDisassemble", () => {
+  it("splits an IR file into deck.plan.json + pages/<id>.json", async () => {
+    const srcDir = await makeDeckDir()
+    const irPath = join(srcDir, "deck.json")
+    await writeFile(irPath, JSON.stringify(VALID_IR))
+    const outDir = await makeDeckDir()
+    const msg = await runDisassemble(irPath, outDir)
+    expect(msg).toContain(join(outDir, "deck.plan.json"))
+
+    const plan = JSON.parse(await readFile(join(outDir, "deck.plan.json"), "utf8"))
+    expect(plan.pages).toHaveLength(2)
+    expect(plan.theme).toBe("tech")
+
+    // VALID_IR's slides omit `id` — disassembleDeck synthesizes p-<ordinal>-<type>.
+    const pageFiles = (await readdir(join(outDir, "pages"))).sort()
+    expect(pageFiles).toEqual(["p-1-cover.json", "p-2-content.json"])
+  })
+
+  it("refuses to overwrite an existing deck.plan.json", async () => {
+    const srcDir = await makeDeckDir()
+    const irPath = join(srcDir, "deck.json")
+    await writeFile(irPath, JSON.stringify(VALID_IR))
+    const outDir = await makeDeckDir()
+    await runDisassemble(irPath, outDir)
+    await expect(runDisassemble(irPath, outDir)).rejects.toThrow(/already exists/)
+  })
+
+  it("round-trips through runRender on the resulting directory", async () => {
+    const srcDir = await makeDeckDir()
+    const irPath = join(srcDir, "deck.json")
+    await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR))
+    const outDir = await makeDeckDir()
+    await runDisassemble(irPath, outDir)
+    const renderMsg = await runRender(outDir, { output: join(outDir, "roundtrip.pptx") })
+    expect(renderMsg).toContain("4 slides")
+    const bytes = await readFile(join(outDir, "roundtrip.pptx"))
+    expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+  })
+})
+
+describe("applyDeckConfig four-layer chain (W5 task 5): user config layer", () => {
+  it("user config theme applies when there is no flag and no project config", async () => {
+    const projectDir = await makeDeckDir()
+    const home = await makeDeckDir()
+    await writeFile(join(home, "config.json"), JSON.stringify({ theme: "ink" }))
+    await withPptfastHome(home, async () => {
+      const raw: any = structuredClone(VALID_IR)
+      await applyDeckConfig(raw, { cwd: projectDir })
+      expect(raw.theme.id).toBe("ink")
+    })
+  })
+
+  it("project config wins over user config", async () => {
+    const projectDir = await makeDeckDir()
+    await writeFile(join(projectDir, "pptfast.config.json"), JSON.stringify({ theme: "tech" }))
+    const home = await makeDeckDir()
+    await writeFile(join(home, "config.json"), JSON.stringify({ theme: "ink" }))
+    await withPptfastHome(home, async () => {
+      const raw: any = structuredClone(VALID_IR)
+      await applyDeckConfig(raw, { cwd: projectDir })
+      expect(raw.theme.id).toBe("tech")
+    })
+  })
+
+  it("CLI flag wins over both project and user config", async () => {
+    const projectDir = await makeDeckDir()
+    await writeFile(join(projectDir, "pptfast.config.json"), JSON.stringify({ theme: "tech" }))
+    const home = await makeDeckDir()
+    await writeFile(join(home, "config.json"), JSON.stringify({ theme: "ink" }))
+    await withPptfastHome(home, async () => {
+      const raw: any = structuredClone(VALID_IR)
+      await applyDeckConfig(raw, { theme: "consulting", cwd: projectDir })
+      expect(raw.theme.id).toBe("consulting")
+    })
+  })
+
+  it("falls back to the IR-authored theme when no layer (flag/project/user) sets one", async () => {
+    const projectDir = await makeDeckDir()
+    const home = await makeDeckDir()
+    await withPptfastHome(home, async () => {
+      const raw: any = structuredClone(VALID_IR) // theme.id: "tech"
+      await applyDeckConfig(raw, { cwd: projectDir })
+      expect(raw.theme.id).toBe("tech")
+    })
+  })
+
+  it("user config style applies when no flag/project style is set", async () => {
+    const projectDir = await makeDeckDir()
+    const home = await makeDeckDir()
+    await writeFile(join(home, "config.json"), JSON.stringify({ style: { colors: { primary: "#654321" } } }))
+    await withPptfastHome(home, async () => {
+      const raw: any = structuredClone(VALID_IR)
+      await applyDeckConfig(raw, { cwd: projectDir })
+      expect(raw.theme.style.colors.primary).toBe("#654321")
+    })
+  })
+})
+
+describe("decksDir redirect (W5 task 5)", () => {
+  it("resolves a bare deck name under the user config's decksDir override", async () => {
+    const home = await makeDeckDir()
+    const teamDecks = await makeDeckDir("pptfast-teamdecks-")
+    await writeFile(join(home, "config.json"), JSON.stringify({ decksDir: teamDecks }))
+    await withPptfastHome(home, async () => {
+      const deckDir = join(teamDecks, "q3-review")
+      await mkdir(deckDir, { recursive: true })
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      const cwd = await makeDeckDir("pptfast-redirect-cwd-")
+      const msg = await runAssemble("q3-review", { cwd })
+      expect(msg).toContain(join(deckDir, "deck.json"))
+    })
   })
 })
