@@ -97,7 +97,7 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
  * Returns human-readable report. Throws PptfastError when invalid (CLI exit 1).
  */
 export async function runPlanValidate(planPath: string): Promise<string> {
-  const raw = await loadIrFile(planPath)
+  const raw = await loadIrFile(planPath, "plan")
   const v = validatePlan(raw)
   if (!v.ok) {
     throw new PptfastError(

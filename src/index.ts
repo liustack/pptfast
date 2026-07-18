@@ -49,3 +49,4 @@ export {
   type PlanValidateResult,
   type PlanValidationIssue,
 } from "./plan"
+export { assembleDeck, disassembleDeck, type PageContent, type AssembleResult } from "./plan/assemble"

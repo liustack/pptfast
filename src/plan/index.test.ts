@@ -472,6 +472,9 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
       const err = errors.find((e) => /stay a minority/.test(e.message))
       expect(err).toBeDefined()
       expect(err!.message).toMatch(/2 of 3/)
+      // Representative pageId (first anchor page), same shape as
+      // checkAlternatePolicy's own issue.
+      expect(err!.pageId).toBe("p-1")
     })
 
     it("is vacuously fine when no content page declares a rhythm", () => {

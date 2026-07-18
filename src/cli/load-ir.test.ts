@@ -20,6 +20,22 @@ describe("loadIrFile", () => {
     await writeFile(p, "{ not json")
     await expect(loadIrFile(p)).rejects.toThrow(/not valid JSON/)
   })
+
+  it("defaults kind to IR in both failure messages", async () => {
+    await expect(loadIrFile("/nowhere/missing.json")).rejects.toThrow(/cannot read IR file/)
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
+    const p = join(dir, "bad.json")
+    await writeFile(p, "{ not json")
+    await expect(loadIrFile(p)).rejects.toThrow(/^IR file .* is not valid JSON/)
+  })
+
+  it("uses a caller-supplied kind in both failure messages (e.g. runPlanValidate passing \"plan\")", async () => {
+    await expect(loadIrFile("/nowhere/missing.json", "plan")).rejects.toThrow(/cannot read plan file/)
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
+    const p = join(dir, "bad-plan.json")
+    await writeFile(p, "{ not json")
+    await expect(loadIrFile(p, "plan")).rejects.toThrow(/^plan file .* is not valid JSON/)
+  })
 })
 
 describe("resolveLocalAssets", () => {

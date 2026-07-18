@@ -430,6 +430,12 @@ function checkAnchorSparsePolicy(plan: DeckPlan, mode: Mode): PlanValidationIssu
   return [
     {
       path: "pages",
+      // First offending anchor page, same "representative pageId" shape
+      // checkAlternatePolicy's own issue carries (members[0]!.id there) —
+      // this gate's violation is deck-wide (a ratio, not one page), but a
+      // representative id still gives a CLI/agent caller something to jump
+      // to rather than only a bare "pages" path.
+      pageId: anchorPages[0]!.id,
       message:
         `${anchorPages.length} of ${declared.length} content pages with a declared rhythm are "anchor" ` +
         `(${pct}%: ${anchorPages.map((page) => page.id).join(", ")}) — mode "${mode}" requires "anchor" to ` +
