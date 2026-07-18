@@ -453,11 +453,11 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //
 // `body` slot `capacity` (W2 task 5 — filling the placeholder task 1 left
 // here): declarative authoring-time metadata only, same convention as the
-// `hero`/`strip`/`grid`/`annotation` slots below — nothing in the render
-// chain consumes it yet (W3's `min(delivery editorial budget, layout
-// capacity)` gate is the intended consumer). Numbers are the geometry-honest
-// per-layout component count, sourced from `audit/capacity.ts`'s own
-// CAPACITY table (not invented fresh) rather than the inventory's raw notes:
+// `hero`/`strip`/`grid`/`annotation` slots below — consumed since W3 by the
+// validate-layer `min(delivery editorial budget, layout capacity)` quality
+// gate (ir-quality.ts via effective-layout.ts). Numbers are the
+// geometry-honest per-layout component count, sourced from the pre-W3
+// CAPACITY table's derivations (not invented fresh):
 //   - single-stack layouts — narrow-column/rail-numbered/banner-heading/
 //     tone-adaptive-content, plus stacked-poster's degrade path (this file's
 //     own comment on that entry already establishes it behaves like the
@@ -472,8 +472,8 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //   - bento-panel: 6, matching this same archetype's own `grid` slot
 //     capacity below — not the flat default. `layoutBento`'s hard 6-cell
 //     ceiling (bento-layout.ts: "the bento grid only ever has 6 cells") and
-//     the former `CAPACITY.maxBlocksPerSlideOverrides.tech = 6` (deleted in W3, value preserved here) (audit/capacity.ts,
-//     theme-keyed today, W3's future archetype-keyed home) both land on the
+//     the former theme-keyed `CAPACITY.maxBlocksPerSlideOverrides.tech = 6`
+//     (deleted in W3 — this archetype-keyed entry is its home now) both land on the
 //     same number for the same non-linear grid geometry independently.
 //     `body` is bento-panel's *degraded* single-stack rendering of the exact
 //     same component sequence the grid would otherwise hold (see that

@@ -162,14 +162,13 @@ export interface DeliveryBudget {
   bullets: {
     maxItems: number
     /**
-     * Same "unit" concept the deleted `CAPACITY.bullets` used (now owned here) in
-     * `svg/audit/capacity.ts` (`measureTextUnits`, CJK weight = 1.0) — a
-     * visual-width-weighted character count, not a raw `.length`. That
-     * existing constant (53) is the physical per-line geometry ceiling
-     * (derived from render geometry, a hard safety net). This one is the
-     * tighter *editorial* budget from spec §5's delivery table. Task 3's
-     * quality gate consumes both together per the dual-attribute split
-     * documented on {@link DeliveryBudget.maxComponentsPerSlide}.
+     * Same "unit" concept the deleted `CAPACITY.bullets` used
+     * (`measureTextUnits`, CJK weight = 1.0) — a visual-width-weighted
+     * character count, not a raw `.length`. The old physical ceiling (53,
+     * derived from render geometry) was deleted in W3 without a replacement
+     * check because every delivery's editorial budget here (30/40/48) is
+     * already strictly tighter than it — the quality gate now applies
+     * exactly this one number per delivery.
      */
     maxUnitsPerItem: number
   }
