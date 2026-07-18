@@ -10,19 +10,25 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 126 files / 1467 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 131 files / 1760 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
-   the svg2pptx element converters, style tokens, and the animation/gradient/
-   media-dedupe JSZip patches. Snapshots pin rendered SVG/DrawingML output.
+   the svg2pptx element converters, style tokens, the animation/gradient/
+   media-dedupe JSZip patches, the deck plan schema and hard gates, and
+   assemble/disassemble plus the deck-project-directory CLI shell.
+   Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against
    real inputs, catching browser/Node DOM behavior drift early.
 3. **E2E** (`pnpm e2e`) — builds the package, drives the *built* CLI binary
    (`dist/cli.js`, not the vitest-transpiled source) through render/validate/
-   preview on `examples/basic.json`, asserts on the produced pptx's zip
-   structure (required XML parts, embedded text), and converts to PDF with
-   LibreOffice (`soffice`) when it's installed on the machine — a real render,
-   not a mock.
+   preview on `examples/basic.json`, a deck project directory leg (a temp
+   plan + pages directory left with one unfilled page → `assemble` reports it
+   as a placeholder → a plain `render` is refused → `render --draft` succeeds
+   with the placeholder as a real slide → filling the page and re-assembling
+   drops the placeholder count to zero → a plain `render` then succeeds too),
+   asserts on the produced pptx's zip structure (required XML parts, embedded
+   text), and converts to PDF with LibreOffice (`soffice`) when it's
+   installed on the machine — a real render, not a mock.
 
 `pnpm check` runs typecheck + lint + `pnpm test` and is the default merge gate.
 `pnpm e2e` is not part of `pnpm check` (it needs a build and is slower) — run

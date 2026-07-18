@@ -24,6 +24,12 @@ import { loadIrFile, resolveLocalAssets } from "./load-ir"
  *  callee re-fetching it — see `applyDeckConfig`'s own doc comment for why. */
 type UserConfigHit = Awaited<ReturnType<typeof findUserConfig>>
 
+/** `findConfig()`'s own return shape — the project-layer counterpart to
+ *  {@link UserConfigHit}, threaded the same way and for the same reason
+ *  (W5 task 6: `loadDeckTarget` now needs the project layer too, for
+ *  `decksDir` — see {@link resolveDecksDirSource}). */
+type ProjectConfigHit = Awaited<ReturnType<typeof findConfig>>
+
 async function loadStyleFile(path: string): Promise<StyleOverride> {
   const raw = await loadIrFile(path)
   const r = StyleOverrideSchema.safeParse(raw)
@@ -52,6 +58,38 @@ function describeThemeSource(
 }
 
 /**
+ * The `config` argument `resolveDeckTarget` (`./deck-dir.ts`) and its
+ * `decksRoot` (`./home.ts`) expect: an object exposing `decksDir`, resolved
+ * against whichever base that value's own layer implies. Project
+ * `pptfast.config.json`'s own `decksDir` (spec §7's project-level escape
+ * hatch, `ConfigSchema` in `./config.ts`, W5 task 6) wins over the user
+ * config's (`UserConfigSchema`) when both are set — same project-beats-user
+ * precedence as `theme`/`style` (see `applyDeckConfig` below) — but the two
+ * layers resolve against different bases (project against the config file's
+ * own directory, user against `pptfastHome()`, `decksRoot`'s one fixed
+ * base), so a winning project value is resolved to an absolute path *here*,
+ * before being handed down: `decksRoot`'s own
+ * `resolve(pptfastHome(), config?.decksDir ?? "decks")` then returns that
+ * absolute path unchanged (`path.resolve`'s own semantics for an absolute
+ * later segment) — the same "already-absolute short-circuits the base"
+ * behavior `decksRoot({ decksDir: "/elsewhere/decks" })` already exercises
+ * for the user layer, reused rather than reimplemented. Falls through to
+ * `userHit?.config` untouched when the project layer has no `decksDir` of
+ * its own — including when there is no project config at all — so the user
+ * layer (or, absent that too, `decksRoot`'s own built-in default) keeps
+ * working exactly as before this function existed.
+ */
+function resolveDecksDirSource(
+  projectHit: ProjectConfigHit,
+  userHit: UserConfigHit,
+): { decksDir?: string } | undefined {
+  if (projectHit?.config.decksDir !== undefined) {
+    return { decksDir: resolve(dirname(projectHit.path), projectHit.config.decksDir) }
+  }
+  return userHit?.config
+}
+
+/**
  * Resolve deck defaults onto the raw (pre-validation) IR.
  * Precedence (spec §7's four-layer chain, W5 task 5): CLI flag > project
  * `pptfast.config.json` (walked up from cwd) > user `~/.pptfast/config.json`
@@ -62,17 +100,15 @@ function describeThemeSource(
  * below, left `undefined` here for the schema to fill in). `--theme` only
  * swaps theme.id — IR-authored style survives.
  *
- * `opts.userHit` is the caller's own already-fetched `findUserConfig()`
- * result (`undefined` when the caller has not fetched it — this function
- * fetches it itself in that case, so it stays usable standalone). Every
- * real caller (`runRender`/`runValidate`/`runPreview` below) fetches it
- * exactly once and passes it to both this function and `loadDeckTarget` —
- * before this, each of those three commands read the user config file
- * twice per invocation (once in each helper), invisibly but wastefully.
- * Project config (`findConfig`) has no such duplication to begin with (only
- * this function ever reads it), but is fetched in the same `Promise.all` as
- * the user-config lookup regardless — two independent reads, no reason to
- * serialize them.
+ * `opts.projectHit`/`opts.userHit` are the caller's own already-fetched
+ * `findConfig(cwd)`/`findUserConfig()` results (`undefined` when the caller
+ * has not fetched one — this function fetches whichever is missing itself,
+ * so it stays usable standalone). Every real caller (`runRender`/
+ * `runValidate`/`runPreview` below) fetches both exactly once — `loadDeckTarget`
+ * needs the project layer too now, for `decksDir` (W5 task 6,
+ * {@link resolveDecksDirSource}) — and passes them to both this function and
+ * `loadDeckTarget`, so a command reads either config file at most once per
+ * invocation instead of once per helper that happens to need it.
  *
  * The installed-theme check used to run at config *read* time
  * (`readConfigFile`, `./config.ts`) — eagerly, against every layer's value,
@@ -84,7 +120,7 @@ function describeThemeSource(
  */
 export async function applyDeckConfig(
   raw: unknown,
-  opts: { theme?: string; stylePath?: string; cwd: string; userHit?: UserConfigHit },
+  opts: { theme?: string; stylePath?: string; cwd: string; projectHit?: ProjectConfigHit; userHit?: UserConfigHit },
 ): Promise<void> {
   if (typeof raw !== "object" || raw === null) return // schema error surfaces in validateIr
   const deck = raw as Record<string, unknown>
@@ -93,7 +129,7 @@ export async function applyDeckConfig(
       ? (deck.theme as Record<string, unknown>)
       : {}
   const [projectHit, userHit] = await Promise.all([
-    findConfig(opts.cwd),
+    opts.projectHit !== undefined ? Promise.resolve(opts.projectHit) : findConfig(opts.cwd),
     opts.userHit !== undefined ? Promise.resolve(opts.userHit) : findUserConfig(),
   ])
   const theme = opts.theme ?? projectHit?.config.theme ?? userHit?.config.theme ?? (irTheme.id as string | undefined)
@@ -117,7 +153,9 @@ export async function applyDeckConfig(
  * asset base directory" step for `runValidate`/`runRender`/`runPreview` (W5
  * task 5) — the one piece of logic those three commands would otherwise
  * triplicate. `arg` is resolved through `resolveDeckTarget` (path vs.
- * bare-name, spec §7) using the user config's `decksDir` when set, then
+ * bare-name, spec §7) using the effective `decksDir` source — project config
+ * when it sets one, else the user config's, else `resolveDeckTarget`'s own
+ * built-in default (W5 task 6, {@link resolveDecksDirSource}) — then
  * branches on whether the resolved target is a deck project directory:
  *
  * - directory → `readDeckDir` (assemble in memory — plan + pages/ + assets/,
@@ -134,16 +172,17 @@ export async function applyDeckConfig(
  * note on it (single-file mode must never grow that note, even for a
  * hand-authored IR that happens to set `placeholder: true` itself).
  *
- * `userHit` is the caller's own already-fetched `findUserConfig()` result
- * (see `applyDeckConfig`'s doc comment above for why this is threaded rather
- * than fetched here too).
+ * `projectHit`/`userHit` are the caller's own already-fetched
+ * `findConfig(cwd)`/`findUserConfig()` results (see `applyDeckConfig`'s doc
+ * comment above for why both are threaded rather than fetched here too).
  */
 async function loadDeckTarget(
   arg: string,
   cwd: string,
+  projectHit: ProjectConfigHit,
   userHit: UserConfigHit,
 ): Promise<{ raw: unknown; baseDir: string; isDir: boolean }> {
-  const target = await resolveDeckTarget(arg, userHit?.config, cwd)
+  const target = await resolveDeckTarget(arg, resolveDecksDirSource(projectHit, userHit), cwd)
   if (await isDeckDirectory(target)) {
     const { ir, deckDir } = await readDeckDir(target)
     return { raw: ir, baseDir: deckDir, isDir: true }
@@ -172,9 +211,9 @@ export interface RenderOptions {
  */
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
-  const userHit = await findUserConfig()
-  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, userHit)
-  await applyDeckConfig(raw, { theme: opts.theme, stylePath: opts.stylePath, cwd, userHit })
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { theme: opts.theme, stylePath: opts.stylePath, cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
@@ -221,9 +260,9 @@ function placeholderNote(ir: PptxIR): string | undefined {
  * fixed alias never makes it into `v.errors`.
  */
 export async function runValidate(irPath: string, cwd = process.cwd()): Promise<string> {
-  const userHit = await findUserConfig()
-  const { raw, isDir } = await loadDeckTarget(irPath, cwd, userHit)
-  await applyDeckConfig(raw, { cwd, userHit })
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, isDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok)
     throw new PptfastError(
@@ -341,9 +380,9 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
  * every other still-empty page blocking it.
  */
 export async function runPreview(irPath: string, outDir: string, cwd = process.cwd()): Promise<string> {
-  const userHit = await findUserConfig()
-  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, userHit)
-  await applyDeckConfig(raw, { cwd, userHit })
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
@@ -423,8 +462,8 @@ function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): P
  */
 export async function runAssemble(target: string, opts: AssembleOptions = {}): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
-  const userHit = await findUserConfig()
-  const dir = await resolveDeckTarget(target, userHit?.config, cwd)
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const dir = await resolveDeckTarget(target, resolveDecksDirSource(projectHit, userHit), cwd)
   if ((await pathExists(dir)) && !(await isDeckDirectory(dir))) {
     throw new PptfastError(`expected a deck project directory: ${dir}`)
   }

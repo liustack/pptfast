@@ -97,19 +97,25 @@ export async function pathExists(path: string): Promise<boolean> {
  * either way — `path.resolve` returns an absolute later segment as-is.
  *
  * Otherwise `arg` is treated as a deck name under `decksRoot(config)`
- * (`./home.ts` — `$PPTFAST_HOME/decks/<name>`, or the user config's
- * `decksDir` override) — but only when that candidate actually exists. When
- * *neither* the local path nor the deck-home candidate exists, this returns
- * the local (cwd-resolved) path rather than the deck-home guess: a bare arg
- * that was actually a typo'd local filename (`pptfast validate typo.json`)
- * should have its eventual "cannot read" error name the file the user
- * typed, not an unrelated `~/.pptfast/decks/typo.json` path they never
- * meant. `config` is the *user*-config layer specifically (the only layer
- * `decksDir` lives on, `./config.ts`'s `UserPptfastConfig`) — the caller
- * (`commands.ts`) fetches it once via `findUserConfig()` and passes it in
- * rather than this function reaching for it itself, so a command that
- * already needs the user config for other reasons (theme/style resolution)
- * doesn't read the file twice.
+ * (`./home.ts` — `$PPTFAST_HOME/decks/<name>`, or a `decksDir` override) —
+ * but only when that candidate actually exists. When *neither* the local
+ * path nor the deck-home candidate exists, this returns the local
+ * (cwd-resolved) path rather than the deck-home guess: a bare arg that was
+ * actually a typo'd local filename (`pptfast validate typo.json`) should
+ * have its eventual "cannot read" error name the file the user typed, not
+ * an unrelated `~/.pptfast/decks/typo.json` path they never meant. `config`
+ * is not either config layer's raw shape — it is the already-resolved
+ * effective `decksDir` source (project `pptfast.config.json`'s own value,
+ * spec §7's project-level escape hatch, W5 task 6, when it sets one, else
+ * the user config's, `./config.ts`'s `UserPptfastConfig`) computed once by
+ * the caller (`commands.ts`'s `resolveDecksDirSource`) and passed in here
+ * already resolved to an absolute path when it came from the project layer
+ * — this function itself has no reason to know there were ever two
+ * possible layers or bases, only the final answer. The caller fetches both
+ * config files at most once per command and passes them in rather than
+ * this function reaching for either itself, so a command that already
+ * needs one of them for other reasons (theme/style resolution) never reads
+ * the same file twice.
  */
 export async function resolveDeckTarget(
   arg: string,

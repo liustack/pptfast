@@ -993,3 +993,47 @@ describe("decksDir redirect (W5 task 5)", () => {
     })
   })
 })
+
+describe("decksDir redirect — project config precedence (W5 task 6, controller addition A)", () => {
+  it("a project pptfast.config.json's decksDir wins over the user config's, resolved against the project config file's own directory", async () => {
+    const home = await makeDeckDir()
+    const userDecks = await makeDeckDir("pptfast-userdecks-")
+    await writeFile(join(home, "config.json"), JSON.stringify({ decksDir: userDecks }))
+
+    const projectRoot = await makeDeckDir("pptfast-project-")
+    await writeFile(join(projectRoot, "pptfast.config.json"), JSON.stringify({ decksDir: "team-decks" }))
+    const projectDeckDir = join(projectRoot, "team-decks", "q3-review")
+    await mkdir(projectDeckDir, { recursive: true })
+    await writeFile(join(projectDeckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+
+    // Same bare name also resolves to something real under the user's
+    // decksDir, so this proves project wins on a genuine conflict, not just
+    // by being the only candidate that exists.
+    const userDeckDir = join(userDecks, "q3-review")
+    await mkdir(userDeckDir, { recursive: true })
+    await writeFile(join(userDeckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ filename: "wrong-deck" })))
+
+    await withPptfastHome(home, async () => {
+      const msg = await runAssemble("q3-review", { cwd: projectRoot })
+      expect(msg).toContain(join(projectDeckDir, "deck.json"))
+    })
+  })
+
+  it("falls back to the user config's decksDir when the project config exists but sets no decksDir of its own", async () => {
+    const home = await makeDeckDir()
+    const userDecks = await makeDeckDir("pptfast-userdecks-")
+    await writeFile(join(home, "config.json"), JSON.stringify({ decksDir: userDecks }))
+
+    const projectRoot = await makeDeckDir("pptfast-project-partial-")
+    await writeFile(join(projectRoot, "pptfast.config.json"), JSON.stringify({ theme: "tech" }))
+
+    const deckDir = join(userDecks, "q3-review")
+    await mkdir(deckDir, { recursive: true })
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+
+    await withPptfastHome(home, async () => {
+      const msg = await runAssemble("q3-review", { cwd: projectRoot })
+      expect(msg).toContain(join(deckDir, "deck.json"))
+    })
+  })
+})

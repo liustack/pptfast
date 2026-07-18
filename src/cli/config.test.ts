@@ -93,6 +93,20 @@ describe("findConfig", () => {
     await writeFile(join(root, "pptfast.config.json"), "{ theme: tech }")
     await expect(findConfig(root)).rejects.toThrow(/not valid JSON/)
   })
+
+  it("reads decksDir from a project pptfast.config.json (W5 task 6, controller addition A)", async () => {
+    const root = await tmp()
+    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ decksDir: "./team-decks" }))
+    const hit = await findConfig(root)
+    expect(hit?.config.decksDir).toBe("./team-decks")
+  })
+
+  it("accepts a project config with only decksDir set (theme/style both optional)", async () => {
+    const root = await tmp()
+    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ decksDir: "/team/decks" }))
+    const hit = await findConfig(root)
+    expect(hit?.config).toEqual({ decksDir: "/team/decks" })
+  })
 })
 
 describe("findUserConfig (W5 task 5: four-layer chain, user layer)", () => {

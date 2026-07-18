@@ -1,8 +1,8 @@
 /**
- * Deck plan schema + validation (spec §5 "plan 工件与硬门", W5 task 2).
+ * Deck plan schema + validation (spec §5 "plan artifact and hard gates", W5 task 2).
  *
  * A plan is a workflow artifact, not a render prerequisite (spec §5's
- * "逃生口": a bare IR v3 renders directly, plan validate is a separate,
+ * "escape hatch": a bare IR v3 renders directly, plan validate is a separate,
  * optional gate for the plan-authoring stage of the six-phase workflow).
  * This module stays pure and Node-free — no `fs`, no CLI concerns — so it
  * can sit in `src/index.ts`'s dependency closure exactly like `src/ir` and
@@ -48,7 +48,7 @@ export type PlanRhythm = (typeof RHYTHM_VALUES)[number]
  * a plan is the authoring artifact those fields get *locked* from at
  * assemble time (W5 task 3), so leaving either implicit here would defeat
  * the point. `rhythm`/`focus`/`summary` stay optional per spec §5's defaults
- * chain ("rhythm 省 → 按页位自动轮换。focus/summary/layout/slot 全可省").
+ * chain ("rhythm omitted → auto-rotates by page position — focus/summary/layout/slot can all be omitted").
  */
 export const PlanPageSchema = z
   .object({
@@ -57,13 +57,13 @@ export const PlanPageSchema = z
     heading: z.string(),
     /** One of the three rhythm values, or omitted entirely — an omitted
      *  rhythm is never a hard-gate violation on its own (see
-     *  {@link checkRhythmRotation}'s policy functions below); it gets
+     *  {@link checkRhythmRotation}'s policy functions below). It gets
      *  auto-alternated at assemble time (W5 task 3, not this task). */
     rhythm: z.enum(RHYTHM_VALUES).optional(),
     /** Optional authoring hint pointing fill/select at a preferred
      *  component type or layout id — see {@link checkFocusVocabulary}. */
     focus: z.string().optional(),
-    /** Free-text content anchor, "仅供填页自读" (spec §5) — read by a later
+    /** Free-text content anchor, "for the fill step's own reading only" (spec §5) — read by a later
      *  fill step, never validated or interpreted here. */
     summary: z.string().optional(),
   })
@@ -77,7 +77,7 @@ export type PlanPage = z.infer<typeof PlanPageSchema>
  * `scenario` field (`ir/index.ts`): the resolved value is never baked back
  * into the parsed shape, {@link validatePlan} (here) and, later, assemble
  * (W5 task 3) each resolve it themselves. `seed` is accepted but entirely
- * unexamined by this module — "validatePlan 不管" (spec's own wording):
+ * unexamined by this module — "not validatePlan's concern" (spec's own wording):
  * assemble generates and suggests writing one back on first materialization.
  */
 export const DeckPlanSchema = z
@@ -146,7 +146,7 @@ export function formatInvalidPlanError(errors: PlanValidationIssue[]): string {
 }
 
 /**
- * Plan-level theme default (spec §5's defaults chain: "theme 省 →
+ * Plan-level theme default (spec §5's defaults chain: "theme omitted →
  * consulting") — the same default IR's own `theme.id` field carries
  * (`ThemeSchema` in `ir/index.ts`). Exported so a caller already holding a
  * validated {@link DeckPlan} (the CLI's OK-summary line) doesn't re-derive
@@ -216,7 +216,7 @@ function checkBoundaryTypes(plan: DeckPlan): PlanValidationIssue[] {
  * this runs — what remains to check here is (a) an empty/whitespace-only
  * string, which the schema's plain `z.string()` lets through, and (b)
  * cross-page uniqueness, which no per-page schema can express. Kebab-case is
- * suggested by spec §5 but never enforced ("kebab 建议不强制").
+ * suggested by spec §5 but never enforced ("kebab-case suggested, not required").
  */
 function checkPageIds(plan: DeckPlan): PlanValidationIssue[] {
   const errors: PlanValidationIssue[] = []
@@ -409,9 +409,9 @@ function checkAlternatePolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[]
  * `anchor-open` policy (pyramid mode): only the deck's *first* content page
  * is checked — it must declare rhythm "anchor" if it declares a rhythm at
  * all. An unset rhythm on that first content page is not a violation (spec:
- * omission always defers to the later auto-fill step); every other content
- * page's rhythm is left alone by this policy, by design (spec's "只查开局"
- * — "only checks the opening"). Vacuously fine when the plan has no content
+ * omission always defers to the later auto-fill step). Every other content
+ * page's rhythm is left alone by this policy, by design (spec's own words:
+ * "only checks the opening"). Vacuously fine when the plan has no content
  * pages at all (e.g. cover → chapter → ending).
  */
 function checkAnchorOpenPolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[] {
@@ -432,11 +432,11 @@ function checkAnchorOpenPolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[
  * `anchor-sparse` policy (showcase mode): among content pages that declare a
  * rhythm, "anchor" must stay a minority (at most half). Showcase's own
  * rhythm *default* leans anchor-heavy (spec §5's rhythm-default column:
- * "anchor 为主" — applied by the later auto-alternation step when rhythm is
+ * "anchor-dominant" — applied by the later auto-alternation step when rhythm is
  * omitted), but this gate only ever looks at pages the author explicitly
  * marked — its job is guarding against an agent mechanically stamping
  * "anchor" on every page it writes. An anchor page is meant to read as a
- * deliberate, occasional high-impact beat; if every page claims that beat,
+ * deliberate, occasional high-impact beat. If every page claims that beat,
  * none of them keep it. Zero declared-rhythm content pages is not a
  * violation — there is nothing to compute a ratio over (same "absence never
  * violates" posture as every other policy here).
@@ -466,7 +466,7 @@ function checkAnchorSparsePolicy(plan: DeckPlan, mode: Mode): PlanValidationIssu
 
 /**
  * Dispatches to the resolved mode's rhythm-rotation rule (spec §5's plan
- * hard-gate section, "节奏轮换规则参数化到 mode" — a single universal "no 3
+ * hard-gate section, "rhythm-rotation rule parameterized by mode" — a single universal "no 3
  * same-rhythm pages in a row" rule would reject e.g. briefing's own correct
  * default, the exact self-contradiction the spec's codex-review pass
  * flagged, hence a per-`rhythmPolicy` rule set instead of one rule for
@@ -479,8 +479,8 @@ function checkRhythmRotation(plan: DeckPlan, mode: Mode): PlanValidationIssue[] 
     case "uniform-dense":
     case "repetition-ok":
       // Exempt entirely — uniform/repeated rhythm across content pages is
-      // these modes' own correct default (briefing's "均匀 dense",
-      // instructional's "dense 容忍，页间结构重复"), not a violation of
+      // these modes' own correct default (briefing's "uniform dense",
+      // instructional's "dense tolerated, structure repeats across pages"), not a violation of
       // anything a generic streak rule would otherwise flag.
       return []
     case "alternate":
@@ -504,7 +504,7 @@ function checkRhythmRotation(plan: DeckPlan, mode: Mode): PlanValidationIssue[] 
  * tuned against real usage). Independent of `DELIVERY_BUDGETS`
  * (`scenario/index.ts`, per-slide component-count/bullets editorial
  * budget) — this is a separate, deck-wide page-count concern the spec calls
- * out as its own hard gate ("页数与 delivery 建议区间").
+ * out as its own hard gate ("page count vs. delivery recommended range").
  */
 export const PLAN_PAGE_COUNT_RANGE: Record<Delivery, { min: number; max: number }> = {
   text: { min: 8, max: 30 },
@@ -549,7 +549,7 @@ function pageIdFromRawInput(input: unknown, index: number): string | undefined {
  * meant — e.g. rhythm-rotation and page-count both need a resolved
  * scenario, so nothing past the scenario/theme stage runs until that
  * resolves cleanly. Every plan-gate philosophy here is "hard block, no soft
- * warning" (spec §5's "逃生口" section — a plan that doesn't fit this shape
+ * warning" (spec §5's "escape hatch" section — a plan that doesn't fit this shape
  * should be authored as bare IR instead, not warned-and-shipped).
  */
 export function validatePlan(input: unknown): PlanValidateResult {
@@ -582,7 +582,7 @@ export function validatePlan(input: unknown): PlanValidateResult {
   // Scenario resolution (spec §5's defaults chain), same open-schema/
   // closed-semantic split as validateIr's own (api.ts) — see that
   // function's comment for the full rationale. `plan.scenario`'s inferred
-  // type is wider than `resolveScenario`'s parameter; safe to narrow here
+  // type is wider than `resolveScenario`'s parameter — safe to narrow here
   // because `resolveScenario` validates every key/value itself at runtime.
   let resolvedAxes: ScenarioAxes
   try {

@@ -22,11 +22,25 @@ import { userConfigPath } from "./home"
  * — the same "unknown → PptfastError with the available list" UX as
  * `validateIr`, just applied to the resolved value instead of unconditionally
  * to every layer.
+ *
+ * `decksDir` (W5 task 6, spec §7: a team that wants deck project
+ * directories checked into the repo instead of living under
+ * `~/.pptfast/decks` declares it here): a relative value resolves against
+ * *this config file's own directory* (wherever `findConfig`'s cwd walk-up
+ * found it) — never the CLI's cwd, and never `pptfastHome()`. Wins over the
+ * user config's own `decksDir` (`UserConfigSchema` below) when both are
+ * set, same project-beats-user precedence as `theme`/`style` above. The two
+ * layers resolve against different bases, so this schema alone can't
+ * express the final answer — `commands.ts`'s `resolveDecksDirSource`
+ * computes the already-resolved absolute path before handing it down to
+ * `./deck-dir.ts`'s `resolveDeckTarget` / `./home.ts`'s `decksRoot`, neither
+ * of which knows there are two possible bases, only the final one.
  */
 const ConfigSchema = z
   .object({
     theme: z.string().optional(),
     style: StyleOverrideSchema.optional(),
+    decksDir: z.string().optional(),
   })
   .strict()
 
@@ -34,15 +48,17 @@ export type PptfastConfig = z.infer<typeof ConfigSchema>
 
 /**
  * User-level config schema (spec §7's four-layer chain — the layer between
- * project config and the artifact's own value): the same two deck-default
- * fields as {@link ConfigSchema} plus `decksDir`, a user-identity concern
- * with no project-level equivalent (redirects `decksRoot`'s default,
- * `./home.ts`) — spec's own split: user-identity config belongs to the user
- * layer, project-branding config (style/tokens) belongs to the project
- * layer. Declared as its own flat object literal rather than
- * `ConfigSchema.extend(...)` — one extra field, not worth taking on zod's
- * extend-then-restrict chaining for a shape this small, and it keeps both
- * schemas readable independently.
+ * project config and the artifact's own value): the same three deck-default
+ * fields as {@link ConfigSchema} (`theme`/`style`/`decksDir`) — `decksDir`
+ * is no longer project-config-free as of W5 task 6 (see {@link ConfigSchema}'s
+ * own doc comment on that field), but the two layers still resolve it
+ * against different bases: this user layer always resolves against
+ * `pptfastHome()` (`./home.ts`'s `decksRoot`, this layer's one fixed
+ * location), the project layer against the project config file's own
+ * directory. Declared as its own flat object literal rather than
+ * `ConfigSchema.extend(...)` — a shape this small is not worth taking on
+ * zod's extend-then-restrict chaining, and it keeps both schemas readable
+ * independently.
  *
  * `decksDir`: a relative value resolves against this config file's own
  * directory (`./home.ts`'s `pptfastHome()` — the only directory a user
