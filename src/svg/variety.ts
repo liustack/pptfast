@@ -11,10 +11,16 @@ function stableHash(s: string): number {
 }
 
 /**
- * deck 级多样性种子：IR 内容的确定性哈希（spec §3.4）。不新增 IR 字段——
- * 预览/导出/重渲染天然一致，存量 deck 同样有稳定 seed。
+ * deck 级多样性种子（W4 seed 机制修订，spec §6：「确定性 ≠ 修订稳定性」）：
+ * `ir.seed`（显式，plan/assemble 注入，见 `ir/index.ts` 该字段自己的注释）
+ * 优先——同一 seed 在插页/改标题后仍逐字不变，这是显式 seed 存在的唯一意义。
+ * 未写 seed 时回落 IR 内容的确定性哈希（filename + 全部 heading），与 W4
+ * 之前的行为逐字节一致，裸 IR（无 plan/assemble 参与）向后兼容：预览/导出/
+ * 重渲染天然一致，但改任何一页标题都会重排全 deck 自动选型——这正是
+ * 「未显式 seed 时不承诺修订稳定性」的记录在案代价（spec §6），不是 bug。
  */
 export function deckSeed(ir: PptxIR): number {
+  if (ir.seed !== undefined) return ir.seed
   const parts = [ir.filename ?? "", ...ir.slides.map((s) => s.heading ?? "")]
   return stableHash(parts.join("\n"))
 }
@@ -53,20 +59,32 @@ export function pickBySeed<T>(seed: number, salt: string, items: readonly T[]): 
 }
 
 /**
- * 同 deck 内轮换选择（P3 Item ②，spec §3.4「相邻页轮换」）：allowed 有 2+
- * 元素时，按该页在同类型页面里的序号 `ordinal` 在集合内轮转——base 起点由
- * (seed,salt) 决定（deck 级随机性），ordinal 提供页面级步进，故同一 deck 相邻
- * content 页拿到集合内相邻的不同 archetype（打破 deck 内雷同）。ordinal=0 与
- * pickBySeed 起点一致，deck 级基准不变。rhythm 不参与（rhythm 是 ops-kb 规划
- * 期字段，不在渲染 IR 里，与 seed 正交，见 spec §3.4）。
+ * 加权版 `pickBySeed`（W4，spec §6 step 5）：整数权重，hash→[0,totalWeight)
+ * 区间走查——`weightOf` 给每个候选打一个正整数权重（调用方职责，本函数不做
+ * 权重语义校验），`items` 按声明顺序把各自的权重区间首尾相接铺成一条
+ * [0,totalWeight) 数轴，`(seed,salt)` 的雪崩哈希落在哪一段就选哪个（同一算法
+ * 思路的加权化：等权=1 时退化为 `hash % items.length`，与 `pickBySeed` 逐位
+ * 一致，见该函数自己的等权回归测试）。
  */
-export function pickBySeedRotating<T>(
+export function weightedPickBySeed<T>(
   seed: number,
   salt: string,
   items: readonly T[],
-  ordinal: number,
+  weightOf: (item: T) => number,
 ): T {
-  if (items.length === 0) throw new Error(`pickBySeedRotating: empty allowed set (salt=${salt})`)
-  const base = avalanche(stableHash(`${seed}:${salt}`)) % items.length
-  return items[(base + ordinal) % items.length]
+  if (items.length === 0) throw new Error(`weightedPickBySeed: empty allowed set (salt=${salt})`)
+  const weights = items.map(weightOf)
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+  const target = avalanche(stableHash(`${seed}:${salt}`)) % totalWeight
+  let cursor = 0
+  for (let i = 0; i < items.length; i++) {
+    cursor += weights[i]
+    if (target < cursor) return items[i]
+  }
+  // Unreachable when every weight is a positive integer (cursor reaches
+  // totalWeight on the last item, and target < totalWeight always — it's a
+  // `% totalWeight` result), so the loop always returns before falling
+  // through. Defensive only, same "total function" posture as this file's
+  // other pick functions.
+  return items[items.length - 1]
 }

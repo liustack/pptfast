@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest"
+import { MODE_VALUES, type Mode } from "@/scenario"
 import { COVER_ARCHETYPES } from "../archetypes"
 import { CHAPTER_ARCHETYPES } from "../archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../archetypes/index-ending"
-import { getLayout, LAYOUT_REGISTRY, layoutsForSlideType, type SlideType } from "./registry"
+import {
+  filterByScenariosOnly,
+  getLayout,
+  LAYOUT_REGISTRY,
+  layoutsForSlideType,
+  type LayoutDefinition,
+  type SlideType,
+} from "./registry"
 
 /**
  * The four real archetype registries paired with the `SlideType` their family
@@ -178,5 +186,47 @@ describe("layoutsForSlideType", () => {
     expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(7)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
     expect(contents).toHaveLength(11)
+  })
+})
+
+describe("filterByScenariosOnly (W4, spec §6 step 4's rare scenarios_only hard constraint)", () => {
+  // Synthetic fixtures, not real registry entries — the whole point of this
+  // being a standalone pure function (design decision 5) is that it can be
+  // unit-tested without any real LAYOUT_REGISTRY id or a live selection
+  // pass through `resolveArchetypeId`.
+  function synthetic(id: string, scenariosOnly?: readonly Mode[]): LayoutDefinition {
+    return { id, kind: "archetype", slideTypes: ["content"], slots: [], scenariosOnly }
+  }
+
+  it("keeps a layout whose scenariosOnly list includes the resolved mode", () => {
+    const defs = [synthetic("a", ["pyramid", "narrative"])]
+    expect(filterByScenariosOnly(defs, "pyramid")).toEqual(defs)
+  })
+
+  it("drops a layout whose scenariosOnly list excludes the resolved mode", () => {
+    const defs = [synthetic("a", ["pyramid"])]
+    expect(filterByScenariosOnly(defs, "briefing")).toEqual([])
+  })
+
+  it("keeps a layout with no scenariosOnly regardless of mode (unrestricted default — every built-in layout today)", () => {
+    const defs = [synthetic("a")]
+    for (const mode of MODE_VALUES) {
+      expect(filterByScenariosOnly(defs, mode)).toEqual(defs)
+    }
+  })
+
+  it("filters a mixed pool: keeps unrestricted + in-list members, drops out-of-list members, preserves order", () => {
+    const defs = [
+      synthetic("unrestricted"),
+      synthetic("in-list", ["showcase"]),
+      synthetic("out-of-list", ["pyramid"]),
+    ]
+    expect(filterByScenariosOnly(defs, "showcase").map((d) => d.id)).toEqual(["unrestricted", "in-list"])
+  })
+
+  it("real LAYOUT_REGISTRY entries: none set scenariosOnly yet (mechanism lands ahead of any real consumer, W4 design decision 5)", () => {
+    for (const def of Object.values(LAYOUT_REGISTRY)) {
+      expect(def.scenariosOnly, `"${def.id}" unexpectedly sets scenariosOnly`).toBeUndefined()
+    }
   })
 })

@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest"
 import { createElement } from "react"
 import { render } from "@testing-library/react"
 import type { PptxIR, Slide } from "@/ir"
+import { MODE_DEFINITIONS } from "@/scenario"
 import { FullSlideSvg } from "./FullSlideSvg"
 import { getLayout } from "./layouts/registry"
+import { cachedDeckSeed } from "./variety"
 import { THEME_DEFINITIONS } from "../themes/definitions"
 import {
   resolveArchetypeId,
@@ -42,40 +44,99 @@ describe("resolveArchetypeId", () => {
 
   it("an explicit pin within the allowed set is honored for every member (not just seed-consistent with one)", () => {
     for (const id of consultingLayouts.cover) {
-      expect(resolveArchetypeId("cover", consultingLayouts, 999, 0, id)).toBe(id)
+      expect(resolveArchetypeId("cover", consultingLayouts, 999, "0", id, "briefing", null)).toBe(id)
     }
   })
 
   it("an explicit pin outside the allowed set is still honored when it's a registered archetype applicable to the slide type (spec §3: explicit bypasses curation)", () => {
-    // "narrow-column" is journal's content archetype, not a member of tech's own curated set.
-    expect(resolveArchetypeId("content", THEME_DEFINITIONS.tech.layouts, 1, 0, "narrow-column")).toBe(
-      "narrow-column",
-    )
+    // "banner-heading" is luxe's one curated content exclusion (W4 design
+    // decision 7's contrast adjudication — see definitions.ts) — not a
+    // member of luxe's own curated set, proving an explicit pin still
+    // bypasses curation even for the one archetype a theme deliberately
+    // excludes (every other archetype id is now in every theme's full-set
+    // curated pool, so this exclusion is the only "outside the family"
+    // example left post-W4).
+    expect(
+      resolveArchetypeId("content", THEME_DEFINITIONS.luxe.layouts, 1, "0", "banner-heading", "briefing", null),
+    ).toBe("banner-heading")
   })
 
   it("falls back to seed-pick when the pin is unregistered, wrong kind, or has the wrong slideTypes", () => {
     for (const bad of ["not-a-real-layout", "image-split", "banner-title"]) {
-      const picked = resolveArchetypeId("content", THEME_DEFINITIONS.tech.layouts, 5, 0, bad)
-      expect(["bento-panel", "two-column"]).toContain(picked)
+      const picked = resolveArchetypeId("content", THEME_DEFINITIONS.tech.layouts, 5, "0", bad, "briefing", null)
+      expect(CONTENT_ARCHETYPE_IDS).toContain(picked)
     }
   })
 
   it("returns null for an empty allowed set with no pin (defensive fallback — unreachable for the 13 built-in themes)", () => {
     const empty = { cover: [], chapter: [], content: [], ending: [] }
-    expect(resolveArchetypeId("content", empty, 1, 0, undefined)).toBeNull()
+    expect(resolveArchetypeId("content", empty, 1, "0", undefined, "briefing", null)).toBeNull()
   })
 
-  it("is deterministic: the same (slideType, layouts, seed, ordinal, requested) always resolves the same id", () => {
-    const a = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, 1, undefined)
-    const b = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, 1, undefined)
+  it("is deterministic: the same (slideType, layouts, seed, pageKey, requested, mode, previous) always resolves the same id", () => {
+    const a = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, "1", undefined, "briefing", null)
+    const b = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, "1", undefined, "briefing", null)
     expect(a).toBe(b)
   })
 
-  it("rotates within a 2-element allowed set as typeOrdinal increases (P3 item 2)", () => {
-    const picks = [0, 1, 2, 3].map((o) => resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 7, o, undefined))
-    expect(picks[0]).not.toBe(picks[1])
-    expect(picks[1]).not.toBe(picks[2])
-    expect(picks[0]).toBe(picks[2])
+  it("pageKey (not an incrementing ordinal) drives the salt: different pageKey values surface more than one distinct pick", () => {
+    const picks = new Set(
+      Array.from({ length: 20 }, (_, i) =>
+        resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, String(i), undefined, "briefing", null),
+      ),
+    )
+    expect(picks.size).toBeGreaterThan(1)
+  })
+
+  it("scenario weighting: a mode's layoutTendencies members are picked more often than non-members (integration through resolveArchetypeId, W4 design decisions 1 + 6)", () => {
+    const tendencyIds = MODE_DEFINITIONS.pyramid.layoutTendencies // bento-panel/banner-heading/two-column, x3 weight
+    const N = 600
+    let tendencyHits = 0
+    // academic (not tech): a theme with zero W4 design-decision-8 curation
+    // exclusions, so its content pool is the unmodified full 7-id set and
+    // the expected ratio below doesn't quietly drift if a theme's
+    // exclusion list grows again later.
+    for (let i = 0; i < N; i++) {
+      const picked = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, i, String(i), undefined, "pyramid", null)!
+      if (tendencyIds.includes(picked)) tendencyHits++
+    }
+    // 3 ids at weight 3 (=9) vs 4 ids at weight 1 (=4) over the full 7-id
+    // content pool: expected tendency share = 9/13 ≈ 0.69. Wide bounds
+    // (not a tight equality) — this is a distribution smoke test proving
+    // the weighting is wired in, `weightedPickBySeed`'s own test owns the
+    // precise ratio assertion.
+    expect(tendencyHits / N).toBeGreaterThan(0.55)
+    expect(tendencyHits / N).toBeLessThan(0.85)
+  })
+
+  it("adjacent anti-repetition: when the raw pick equals previousEffectiveLayoutId and the pool has >1 member, redraws deterministically to a different id", () => {
+    // academic's content pool is the full 7-id set (never empty), so the
+    // raw pick (previous=null) is always a real id — feed that same id back
+    // in as previousEffectiveLayoutId and confirm W4 design decision 4's
+    // redraw fires and lands on a *different* member of the same pool.
+    const raw = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 1, "0", undefined, "briefing", null)
+    const withCollision = resolveArchetypeId(
+      "content",
+      THEME_DEFINITIONS.academic.layouts,
+      1,
+      "0",
+      undefined,
+      "briefing",
+      raw,
+    )
+    expect(withCollision).not.toBe(raw)
+    expect(CONTENT_ARCHETYPE_IDS).toContain(withCollision)
+  })
+
+  it("adjacent anti-repetition never fires for an explicit pin, even when it equals previousEffectiveLayoutId", () => {
+    expect(
+      resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 1, "0", "two-column", "briefing", "two-column"),
+    ).toBe("two-column")
+  })
+
+  it("adjacent anti-repetition does not redraw when the pool has exactly 1 member (no alternative to redraw to)", () => {
+    const single = { cover: [], chapter: [], content: ["two-column"], ending: [] }
+    expect(resolveArchetypeId("content", single, 1, "0", undefined, "briefing", "two-column")).toBe("two-column")
   })
 })
 
@@ -117,18 +178,22 @@ describe("resolveEffectiveLayoutId", () => {
       components: [{ type: "paragraph", text: "no image here" }],
     }
     const ir = makeIR([slide], "tech")
-    expect(["bento-panel", "two-column"]).toContain(resolveEffectiveLayoutId(ir, slide, 0))
+    expect(CONTENT_ARCHETYPE_IDS).toContain(resolveEffectiveLayoutId(ir, slide, 0))
   })
 
   it("an explicit archetype pin is honored even outside the theme's curated family", () => {
     const slide: Slide = {
       type: "content",
       heading: "x",
-      layout: "narrow-column",
+      layout: "banner-heading",
       components: [{ type: "paragraph", text: "x" }],
     }
-    const ir = makeIR([slide], "tech") // tech's own content set is ["bento-panel", "two-column"]
-    expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("narrow-column")
+    // luxe's own content set excludes banner-heading (W4 design decision 7's
+    // contrast adjudication, definitions.ts) — the one "outside the family"
+    // archetype left once every other theme×archetype content pair opened
+    // to the full set.
+    const ir = makeIR([slide], "luxe")
+    expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("banner-heading")
   })
 
   it("auto-pick lands within the theme's curated content allowed set", () => {
@@ -146,18 +211,86 @@ describe("resolveEffectiveLayoutId", () => {
     )
   })
 
-  it("typeOrdinal counts only same-type slides earlier in the deck — an interleaved chapter slide doesn't shift it", () => {
+  // ── salt stability (W4 design decision 2: ordinal rotation retired in
+  // favor of a stable pageKey = slide.id ?? String(index)) ──
+
+  it("a page with an explicit id resolves the same regardless of its position in the deck (insert/reorder doesn't disturb it)", () => {
+    // Revision stability (spec §6 seed ladder) needs BOTH halves: a stable
+    // page id *and* an explicit `ir.seed` — the content-hash seed fallback
+    // (no explicit seed) hashes every slide's heading, so inserting a page
+    // changes the seed itself regardless of any one page's own id. Same
+    // explicit seed on both decks isolates the one variable this test is
+    // actually about: pageKey stability under reorder.
+    const stable: Slide = {
+      type: "content",
+      id: "stable-page",
+      heading: "x",
+      components: [{ type: "paragraph", text: "x" }],
+    }
+    const irAtFront: PptxIR = { ...makeIR([stable], "academic"), seed: 777 }
+    const irAfterInsert: PptxIR = {
+      ...makeIR(
+        [
+          { type: "cover", heading: "c", components: [] },
+          { type: "chapter", heading: "ch", components: [] },
+          stable,
+        ],
+        "academic",
+      ),
+      seed: 777,
+    }
+    expect(resolveEffectiveLayoutId(irAtFront, stable, 0)).toBe(resolveEffectiveLayoutId(irAfterInsert, stable, 2))
+  })
+
+  it("a page with no id salts off its absolute index — matches resolveArchetypeId called directly with pageKey=String(index)", () => {
+    const slide: Slide = { type: "content", heading: "no-id-probe", components: [{ type: "paragraph", text: "x" }] }
+    const ir = makeIR([slide], "academic")
+    const expected = resolveArchetypeId(
+      "content",
+      THEME_DEFINITIONS.academic.layouts,
+      cachedDeckSeed(ir),
+      "0", // String(index) for the first (and only) slide
+      undefined,
+      "briefing", // resolveScenario(undefined) -> general -> briefing
+      null, // first slide, no previous
+    )
+    expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe(expected)
+  })
+
+  // ── adjacent anti-repetition (W4 design decision 4) ──
+
+  it("adjacent content pages never render the same auto-picked archetype back to back when the pool has more than one member", () => {
+    // A run of same-type auto-pick content pages, no explicit seed (content
+    // hash) — every consecutive pair must differ (or the theme's own pool
+    // has exactly 1 member, which none of the 13 built-ins do post-W4).
+    const slides: Slide[] = Array.from({ length: 6 }, (_, i) => ({
+      type: "content",
+      heading: `内容页 ${i}`,
+      components: [{ type: "paragraph", text: "x" }],
+    }))
+    const ir = makeIR(slides, "academic")
+    const ids = slides.map((slide, i) => resolveEffectiveLayoutId(ir, slide, i))
+    for (let i = 1; i < ids.length; i++) {
+      expect(ids[i], `slide ${i} repeated slide ${i - 1}'s pick "${ids[i - 1]}"`).not.toBe(ids[i - 1])
+    }
+  })
+
+  it("an explicit layout pin on one page is never rewritten by adjacent anti-repetition, even when it matches the previous page's auto-pick", () => {
     const slides: Slide[] = [
-      { type: "cover", heading: "c", components: [] },
-      { type: "content", heading: "p1", components: [{ type: "paragraph", text: "x" }] },
-      { type: "chapter", heading: "ch", components: [] },
-      { type: "content", heading: "p2", components: [{ type: "paragraph", text: "x" }] },
+      { type: "content", heading: "自动选型", layout: undefined, components: [{ type: "paragraph", text: "x" }] },
+      { type: "content", heading: "显式钉值", layout: "two-column", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir = makeIR(slides, "academic") // 2-element content set — ordinal 0 vs 1 always differ (see rotation test above)
-    const id0 = resolveEffectiveLayoutId(ir, slides[1], 1) // 1st content slide -> ordinal 0
-    const id1 = resolveEffectiveLayoutId(ir, slides[3], 3) // 2nd content slide -> ordinal 1 (chapter at index 2 doesn't count)
-    expect(id0).not.toBe(id1)
-    expect([id0, id1].every((id) => THEME_DEFINITIONS.academic.layouts.content.includes(id as string))).toBe(true)
+    const ir = makeIR(slides, "consulting")
+    // Whatever slide 0 auto-picks, slide 1's explicit "two-column" pin must
+    // survive untouched — even in the (structurally possible) case where
+    // slide 0 happened to land on "two-column" too.
+    expect(resolveEffectiveLayoutId(ir, slides[1], 1)).toBe("two-column")
+  })
+
+  it("the first slide has no previous page, so anti-repetition never applies to it", () => {
+    const slide: Slide = { type: "content", heading: "x", components: [{ type: "paragraph", text: "x" }] }
+    const ir = makeIR([slide], "academic")
+    expect(THEME_DEFINITIONS.academic.layouts.content).toContain(resolveEffectiveLayoutId(ir, slide, 0))
   })
 })
 
