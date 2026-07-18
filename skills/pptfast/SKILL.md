@@ -88,7 +88,7 @@ A revision touches the smallest file that captures it:
 
 Once a deck project exists, a follow-up message routes into exactly one of three branches — decide which before doing anything:
 
-1. **Edit a page** ("change slide 3", "make the KPI page punchier") → phase 6: edit that page's file, re-assemble, re-validate. Never touch pages nobody asked about.
+1. **Edit a page** ("change slide 3", "make the KPI page punchier") → phase 6: edit that page's file, re-assemble, re-validate, re-audit. Never touch pages nobody asked about.
 2. **A new deck** (a different topic, audience, or an explicit request to start over) → phase 1: a new deck project directory, fresh scenario/theme decision, fresh plan.
 3. **Unrelated to deck generation** (a question about the content, anything with no connection to slides) → do not invoke pptfast at all.
 

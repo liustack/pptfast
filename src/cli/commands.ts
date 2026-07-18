@@ -339,7 +339,9 @@ function formatAuditFinding(f: AuditFinding): string {
  */
 function formatAuditReport(report: AuditReport, ir: PptxIR): string {
   const lines = report.findings.map(formatAuditFinding)
-  lines.push(`audited ${report.pagesAudited} pages, ${report.pagesSkipped} skipped, ${report.findings.length} findings`)
+  lines.push(
+    `audited ${report.pagesAudited} page${report.pagesAudited === 1 ? "" : "s"}, ${report.pagesSkipped} skipped, ${report.findings.length} finding${report.findings.length === 1 ? "" : "s"}`,
+  )
   const note = placeholderNote(ir)
   if (note) lines.push(note)
   return lines.join("\n")
