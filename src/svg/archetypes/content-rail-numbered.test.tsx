@@ -334,7 +334,7 @@ describe("RailNumberedContent", () => {
 
     // W4 fix round: 徽章文字不再固定纯白——白字 on tech 亮青 primary
     // （#2DD4E6）只有 ~1.80:1，全矩阵扫描确认精确 1.00:1（因为 audit 把徽章
-    // 误判到页面背景，见 full-matrix-contrast.test.ts 的 allowlist 说明；
+    // 误判到页面背景，见 full-matrix-contrast.test.ts 的 allowlist 说明。
     // 真实渲染是 badge 自画的 primary 色块）。改用
     // readableOn(colors.primary) 后 tech 落中性深墨。
     const expectedInk = readableOn(techTheme.colors.primary)

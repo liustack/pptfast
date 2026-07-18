@@ -46,7 +46,7 @@ import { accessibleInk, readableOn } from "../ink"
  * primary" 的替换策略，见上方注释）进一步收紧为
  * `accessibleInk(colors.primary, ctx.defaultBg, fontSize)`——campaign
  * （3.49:1）/classroom（3.09:1）的 22px 副标题原来不满足 4.5:1 body 门槛，
- * 现落回 `readableOn` 的中性墨色；consulting/enterprise/runway/bloom/
+ * 现落回 `readableOn` 的中性墨色。consulting/enterprise/runway/bloom/
  * heritage（pre-W4 既有五个策展主题）与 luxe/tech 原值均已通过校验，原样
  * 返回、逐字节不变。四处历史排除是否因此失去存在依据，见
  * definitions.ts 的裁定。

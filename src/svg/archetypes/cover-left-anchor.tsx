@@ -47,7 +47,7 @@ import { readableOn } from "../ink"
  * `readableOn(colors.primary)`——色块本身就是标题唯一的背景来源（本文件自
  * 画，不依赖页面级默认背景），`readableOn` 按 `colors.primary` 的相对明度
  * 选中性黑/白。academic（本文件唯一 pre-W4 策展主题，`primary` 深绿）算出的
- * 仍是纯白，逐字节不变；tech（`primary` 亮青）算出深墨黑，对比度 ~10.75:1，
+ * 仍是纯白，逐字节不变。tech（`primary` 亮青）算出深墨黑，对比度 ~10.75:1，
  * 使 `COVER_WITHOUT_LEFT_ANCHOR` 排除失去存在依据（见 definitions.ts 是否
  * 保留该常量的裁定）。
  *

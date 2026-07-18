@@ -28,7 +28,7 @@ import { accessibleOpacity, readableOn } from "../ink"
  * 对比度自适应修复（W4 fix round，Critical C1）：主标题/副标题原先写死纯白
  * ——假设章节默认背景总是深色。全集放开后该假设对 bloom/enterprise/
  * heritage/ink/journal/runway 六个浅底章节主题不成立（runway/enterprise 精确
- * 1.00:1，白字压白底完全不可见；其余四个 1.05-1.14:1，米白/浅棕底同样远低于
+ * 1.00:1，白字压白底完全不可见。其余四个 1.05-1.14:1，米白/浅棕底同样远低于
  * 3:1 门槛）——同一缺陷模式已在 design decision 8 的台账记录过（consulting×
  * masthead-chapter、tech×left-anchor/banner-heading）。改用 `readableOn(ctx.
  * defaultBg)`：`ctx.defaultBg` 就是 FullSlideSvg 实际画在本页背后的那个

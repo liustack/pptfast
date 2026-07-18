@@ -79,7 +79,7 @@ describe("THEME_DEFINITIONS", () => {
   // 例外是 fix round 全矩阵扫描新发现的一类——bloom/classroom/heritage 的
   // chapter 排除 fashion-chapter（该 archetype 早已自带 readableOn 自适应
   // 取色，但其固定 0.4 明度阈值对这三个主题的 accent 色不够精确，产出
-  // <3:1；见 definitions.ts CHAPTER_WITHOUT_FASHION 的注释）。四个 FULL_*
+  // <3:1。见 definitions.ts CHAPTER_WITHOUT_FASHION 的注释）。四个 FULL_*
   // 常量是手工钉的字面数组（人审基线，不经 layoutsForSlideType 派生）——
   // 未来 registry 新增/删除 archetype 时，这里必须跟着人工重推，而不是无声
   // 通过。
