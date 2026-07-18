@@ -207,7 +207,7 @@ const MIN_BG_REGION_AREA = 8000
  */
 const MIN_BG_OPACITY = 0.5
 
-interface BgRegion {
+export interface BgRegion {
   x: number
   y: number
   w: number
@@ -221,14 +221,24 @@ interface BgRegion {
  * coordinate token from its `d` attribute and taking the min/max — not a
  * true path-geometry bbox (a concave polygon's bbox covers area outside the
  * shape; a curve's control points can extend past the curve itself), but a
- * simple, safe over-approximation. In this renderer's actual output, the
- * only large, opaque `<path>` fill ever used as a real background block
- * (`cover-split-diagonal.tsx`'s diagonal-cut colour panel, `"M 0,0 L 560,0
- * L 460,720 L 0,720 Z"`) is a straight-line polygon, for which this is
- * exact; every other filled path this renderer draws is either decorative
- * at low opacity (`motif-ink-motif.tsx`'s ink-wash strokes, excluded by
- * `MIN_BG_OPACITY` regardless) or `fill="none"` (excluded by the fill-parse
- * check at the call site) — so the imprecision never actually bites.
+ * simple, safe over-approximation.
+ *
+ * This over-approximation used to be assumed harmless renderer-wide ("every
+ * filled path is either low-opacity decoration or the one exact case") —
+ * wrong: `motif-campaign-motif.tsx`'s crayon-stroke paths are large,
+ * `>=MIN_BG_OPACITY`-effective-opacity, `#`-prefixed-fill paths whose sparse
+ * scattered-diamond geometry this function's min/max bbox wildly
+ * over-covers, and were it walked, would have registered as spurious opaque
+ * background regions (reviewer-measured 7-9 extra per campaign cover). The
+ * actual fix is `findContrastIssues`'s `data-decor` exclusion (see its own
+ * doc comment) — every motif/decor subtree (`FullSlideSvg.tsx`'s `<g
+ * data-decor>` wrapper around `themeDef.motif`'s output) is skipped for
+ * region-collection purposes entirely, so whatever this function returns for
+ * a path inside one never reaches a region. Outside a decor subtree, the
+ * only large, opaque `<path>` fill this renderer draws as a real background
+ * block is `cover-split-diagonal.tsx`'s diagonal-cut colour panel, `"M 0,0 L
+ * 560,0 L 460,720 L 0,720 Z"` — a straight-line polygon whose vertices *are*
+ * its extremes, for which this bbox is exact, not an approximation.
  */
 function pathBoundingBox(d: string): { x: number; y: number; w: number; h: number } | null {
   const nums = d.match(/-?\d*\.?\d+(?:e[+-]?\d+)?/gi)
@@ -304,8 +314,52 @@ function directText(el: Element): string {
  * asset-background scrim opaque enough to trust (`MIN_BG_OPACITY`) — while
  * a bare photo `<image>` with no (or too-faint) scrim correctly resolves to
  * "unknown" (`fill: null`) rather than a guess, and text over it is skipped.
+ *
+ * One more exclusion sits on top of the region model above: anything inside
+ * a `<g data-decor>` subtree (`FullSlideSvg.tsx`'s exact wrapper around
+ * `themeDef.motif`'s output — verified there, not assumed) never becomes a
+ * region, full stop, regardless of size/opacity/fill. Decoration is layered
+ * *over* the real background, not a stand-in for it — but nothing in this
+ * renderer's motif discipline stops a motif from drawing large, opaque-
+ * enough shapes: `motif-campaign-motif.tsx`'s crayon-stroke paths are
+ * exactly that (each stroke's core-density bucket alone renders at >=0.64
+ * effective opacity across every call site in that file, comfortably clear
+ * of `MIN_BG_OPACITY`), which would otherwise register as spurious
+ * background regions and could shadow the real background for any text that
+ * happens to sit inside their (`pathBoundingBox`-over-approximated)
+ * bounding box — see that function's own doc comment. `findOverlapIssues`
+ * needs no equivalent exclusion (decoration never carries
+ * `data-audit-box`), but this region walk sees every
+ * `<rect>`/`<image>`/`<path>` regardless of what drew it, so the exclusion
+ * has to be explicit here. Implemented as a boolean threaded through
+ * `visit`'s recursion (once a `data-decor` ancestor is entered it stays true
+ * for the whole subtree) rather than a string/regex pre-pass on `markup` —
+ * this function already fully parses to DOM, and regex-stripping a
+ * `<g>...</g>` span is unsound the moment the subtree nests further `<g>`
+ * elements of its own (every motif does), which would truncate at the first
+ * nested `</g>` instead of the matching one.
  */
 export function findContrastIssues(markup: string): ContrastIssue[] {
+  return runContrastWalk(markup).issues
+}
+
+/**
+ * Test-only: the background regions `findContrastIssues` collects while
+ * walking `markup`, exposed so the `data-decor` exclusion documented above
+ * can be asserted directly against a real render (a campaign-theme cover's
+ * motif, concretely) instead of only inferred through a contrast verdict.
+ * Not part of any public barrel — `deck-audit.ts`'s own exports are already
+ * SDK-internal/audit-package-only (see `findContrastIssues`'s and
+ * `findOverlapIssues`'s own "exported so it's directly unit-testable" doc
+ * notes) — the `__` prefix signals the narrower "test-only" intent at the
+ * call site the same way `themes/definitions.ts`'s `__resetRegisteredThemes`
+ * does.
+ */
+export function __collectBgRegions(markup: string): BgRegion[] {
+  return runContrastWalk(markup).regions
+}
+
+function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: BgRegion[] } {
   const root = parseSvg(markup)
   const issues: ContrastIssue[] = []
   const regions: BgRegion[] = []
@@ -327,6 +381,7 @@ export function findContrastIssues(markup: string): ContrastIssue[] {
     fontSize: number,
     fillOpacity: number,
     opacityProduct: number,
+    inDecor: boolean,
   ) => {
     const { dx, dy, scale } = parseTransform(el)
     const ax = ox + os * dx
@@ -344,6 +399,11 @@ export function findContrastIssues(markup: string): ContrastIssue[] {
     // SVG rendering (each ancestor's own opacity<1 further dims everything
     // inside it), so this accumulator multiplies rather than overrides.
     const currentOpacityProduct = opacityProduct * (ownOpacity !== null ? Number(ownOpacity) : 1)
+    // `data-decor` is `FullSlideSvg.tsx`'s exact wrapper around theme motif
+    // output — once entered it marks this element *and* every descendant
+    // (subtree exclusion, not just this node), same "sticky" accumulation
+    // pattern as `currentOpacityProduct` above.
+    const inDecorSubtree = inDecor || el.getAttribute("data-decor") !== null
 
     const tag = el.tagName.toLowerCase()
     if (tag === "rect" || tag === "image" || tag === "path") {
@@ -367,7 +427,10 @@ export function findContrastIssues(markup: string): ContrastIssue[] {
       }
       const w = localW * as
       const h = localH * as
-      if (w * h >= MIN_BG_REGION_AREA) {
+      // `!inDecorSubtree` — see findContrastIssues's own doc comment: a
+      // motif/decor shape never counts as a background region no matter how
+      // large or opaque it renders.
+      if (w * h >= MIN_BG_REGION_AREA && !inDecorSubtree) {
         if (tag === "image") {
           regions.push({ x: ax + x * as, y: ay + y * as, w, h, fill: null })
         } else {
@@ -426,12 +489,22 @@ export function findContrastIssues(markup: string): ContrastIssue[] {
     }
 
     for (const child of Array.from(el.children)) {
-      visit(child, ax, ay, as, currentFill, currentFontSize, currentFillOpacity, currentOpacityProduct)
+      visit(
+        child,
+        ax,
+        ay,
+        as,
+        currentFill,
+        currentFontSize,
+        currentFillOpacity,
+        currentOpacityProduct,
+        inDecorSubtree,
+      )
     }
   }
 
-  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1)
-  return issues
+  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false)
+  return { issues, regions }
 }
 
 function contrastMessage(issue: ContrastIssue): string {

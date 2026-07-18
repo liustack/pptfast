@@ -9,11 +9,13 @@
 import { readFileSync } from "node:fs"
 import { beforeAll, describe, expect, it } from "vitest"
 import { PptxIRSchema, type PptxIR, type Slide } from "@/ir"
+import { renderSlideSvg } from "../../api"
 import { installNodePlatform } from "../../platform/node"
 import {
   auditDeck,
   findContrastIssues,
   findOverlapIssues,
+  __collectBgRegions,
   type AuditFinding,
 } from "./deck-audit"
 import { STRESS_DECKS } from "./stress-fixtures"
@@ -374,6 +376,74 @@ describe("findContrastIssues — low-contrast", () => {
       <text x="96" y="600" font-size="20" fill="#FFFFFF">bespoke white cover text</text>
     </svg>`
     expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("locks the opacity-accumulation product for background regions: fill-opacity alone clearing MIN_BG_OPACITY is not enough if the opacity attribute drags the product below it", () => {
+    // Regression lock for findContrastIssues's `currentFillOpacity *
+    // currentOpacityProduct >= MIN_BG_OPACITY` region-eligibility check —
+    // reverting that to `currentFillOpacity >= MIN_BG_OPACITY` alone (i.e.
+    // dropping the `opacity`-attribute accumulation) makes this test fail
+    // (verified by temporarily reverting before finalizing this test, then
+    // restoring — see the task report's RED observation).
+    //
+    // The decoy rect's own fill-opacity (0.9) alone already clears
+    // MIN_BG_OPACITY (0.5) — a buggy fill-opacity-only check would treat it
+    // as opaque-enough. Its `opacity="0.4"` (compounding, per real SVG
+    // rendering) brings the *product* to 0.36, below threshold, so a
+    // correct implementation must exclude it as a background region. The
+    // white text sitting inside the decoy's bounds makes the verdict itself
+    // flip on whether the product logic actually ran: wrongly counted, the
+    // decoy's dark fill would resolve as "the background" and white-on-dark
+    // passes comfortably (zero findings); correctly excluded, resolution
+    // falls through to the real (near-white) page background underneath,
+    // and white-on-near-white fails WCAG — a finding, against that real bg.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="${BG}"/>
+      <rect x="0" y="0" width="400" height="400" fill="#051C2C" fill-opacity="0.9" opacity="0.4"/>
+      <text x="50" y="50" font-size="20" fill="#FFFFFF">text over the translucent decoy</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe(BG)
+  })
+})
+
+describe("findContrastIssues — decor/motif subtrees excluded from background-region collection", () => {
+  // Real-render regression lock (not synthetic markup, unlike the suite
+  // above) for the `data-decor` exclusion: reviewer measured 7-9 spurious
+  // background regions per slide on campaign-theme covers before this fix,
+  // dormant only because no test rendered a campaign cover through
+  // `findContrastIssues`'s region collector and looked. `campaign-motif`
+  // (`motif-campaign-motif.tsx`, `themeDef.motif` for the campaign theme)
+  // draws several large, >=0.64-effective-opacity crayon-stroke `<path>`s —
+  // exactly the shape `MIN_BG_REGION_AREA`/`MIN_BG_OPACITY` would otherwise
+  // accept as real backgrounds — inside the `<g data-decor>` wrapper
+  // `FullSlideSvg.tsx` renders around every theme motif's output.
+  //
+  // `layout: "split-diagonal"` pins the cover archetype deterministically
+  // (an explicit `slide.layout` short-circuits the seed-based pick per
+  // `resolveArchetypeId`'s own doc comment in `effective-layout.ts`) to
+  // `cover-split-diagonal.tsx` — chosen specifically because it exercises
+  // `pathBoundingBox`'s one remaining *exact* (non-decor) solid-path case
+  // side-by-side with the decor exclusion in the same render, tying both
+  // halves of this fix together. That gives an exact, hand-verified
+  // legitimate region count of 2 (read from source, not guessed): the
+  // campaign theme's solid `#3D2E78` full-page background
+  // (`Background.tsx`'s `spec.kind === "color"` branch paints exactly one
+  // `<rect>`) and `cover-split-diagonal.tsx`'s own `#F0559E` (`ctx.colors.
+  // primary`) diagonal color panel (its accent bar is 72x5=360px², under
+  // `MIN_BG_REGION_AREA`; its decorative circle isn't a rect/image/path at
+  // all — neither contributes a region). `BrandChrome` renders nothing for
+  // a cover slide with no `ir.brand` configured. If the decor exclusion
+  // regressed, this count would jump well past 2.
+  it("sees exactly the two legitimate background regions on a real campaign-theme cover, none from the motif", () => {
+    const ir = deck("campaign", [
+      { type: "cover", heading: "Launch Day", layout: "split-diagonal", components: [] },
+    ])
+    const markup = renderSlideSvg(ir, 0)
+    const regions = __collectBgRegions(markup)
+    expect(regions).toHaveLength(2)
+    expect(regions.map((r) => r.fill).sort()).toEqual(["#3D2E78", "#F0559E"])
   })
 })
 
