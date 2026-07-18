@@ -1109,6 +1109,34 @@ describe("runDisassemble", () => {
       await expect(stat(join(outDir, "deck.plan.json"))).rejects.toThrow()
     })
 
+    // Task-3 review, optional nit routed to this wave: the case above
+    // always starts from an `outDir` that `makeDeckDir()` (mkdtemp) already
+    // created, so it can't tell "the id check runs before mkdir" apart from
+    // "the id check runs before the plan write" — outDir existing either
+    // way. `runDisassemble` (commands.ts) runs the `assertSafeFileSegment`
+    // loop before its own `mkdir(outDir, { recursive: true })` call, so an
+    // unsafe id must fail without ever creating `outDir` at all when it
+    // does not already exist — a stronger, more direct check on that
+    // ordering than the existing case above can express.
+    it("rejects an unsafe slide id without ever creating outDir when it does not already exist", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      const maliciousIr = {
+        ...ROUNDTRIPPABLE_IR,
+        slides: ROUNDTRIPPABLE_IR.slides.map((s, i) => (i === 1 ? { ...s, id: "../../../../escape" } : s)),
+      }
+      await writeFile(irPath, JSON.stringify(maliciousIr))
+      const parent = await makeDeckDir()
+      const outDir = join(parent, "not-created-yet")
+      await expect(stat(outDir)).rejects.toThrow() // sanity: outDir does not exist before the call
+
+      await expect(runDisassemble(irPath, outDir)).rejects.toThrow(
+        'slide id "../../../../escape" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."',
+      )
+
+      await expect(stat(outDir)).rejects.toThrow() // still does not exist — the check ran before mkdir
+    })
+
     it("still disassembles a deck with only safe, explicit slide ids — happy path unchanged", async () => {
       const srcDir = await makeDeckDir()
       const irPath = join(srcDir, "deck.json")
