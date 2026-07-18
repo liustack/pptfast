@@ -12,6 +12,7 @@ import {
   resolveArchetypeId,
   resolveEffectiveLayoutBodyCapacity,
   resolveEffectiveLayoutId,
+  resolveIrMode,
 } from "./effective-layout"
 
 // ── helpers ──
@@ -403,6 +404,67 @@ describe("render parity with FullSlideSvg", () => {
       expect(resolveEffectiveLayoutId(ir, c.slide, 0)).toBe(renderedArchetypeId(ir, c.slide, 0))
     })
   }
+
+  // Backlog item 3 (`.issues/notes/2026-07-18-post-v03-backlog.md` #3): every
+  // case above is a single-page deck at index 0, where
+  // `previousEffectiveLayoutId` is always `null` — the adjacent
+  // anti-repetition redraw (W4 design decision 4) never fires in any
+  // render-parity case. The dedicated anti-repetition unit tests (this
+  // file's `resolveArchetypeId` describe block, and
+  // `FullSlideSvg.test.tsx`'s own "content 页相邻防重复") cover the
+  // mechanism itself, but never through an actual `FullSlideSvg` render at
+  // the page where the swap lands. This fixture closes that gap: a genuine
+  // multi-page collision, at index>0, run through the same render-parity
+  // check as every case above.
+  it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
+    // Seed 12 (found by brute-force search over this exact 2-page academic
+    // fixture, same method as plan/revision-stability.test.ts's own seed=3
+    // comment) is the smallest seed where the deck-wide fold naturally
+    // collides: page 0 auto-picks "two-column" (pageKey "0", no previous),
+    // and page 1's own raw weighted pick (pageKey "1", before
+    // anti-repetition) is *also* "two-column" — so W4 design decision 4's
+    // redraw fires and lands on "narrow-column", the deterministic
+    // runner-up (academic's content pool has 7 members, never empty).
+    const slides: Slide[] = [
+      { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
+      { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
+    ]
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 12 }
+
+    // Page 0: no previous page, ordinary auto-pick — sanity baseline for
+    // what page 1 would collide with.
+    expect(resolveEffectiveLayoutId(ir, slides[0], 0)).toBe("two-column")
+
+    // Page 1: the actual point of this test. Render parity on the one page
+    // where the swap-to-runner-up branch is live.
+    const resolved = resolveEffectiveLayoutId(ir, slides[1], 1)
+    expect(resolved).toBe(renderedArchetypeId(ir, slides[1], 1))
+
+    // Non-vacuity: prove the swap actually fired, not merely that render
+    // agrees with whatever validate happened to compute (which would also
+    // be true if the pool had collapsed to a single member, or if this
+    // seed simply never collided at all). `resolveArchetypeId` is called
+    // directly with `previousEffectiveLayoutId` forced to `null` — same
+    // seed/pageKey/pool/mode as the real page-1 resolution above, the only
+    // difference being that the anti-repetition redraw never runs — which
+    // recomputes page 1's *raw*, pre-redraw pick.
+    const unswappedRawPick = resolveArchetypeId(
+      "content",
+      THEME_DEFINITIONS.academic.layouts,
+      12,
+      "1",
+      undefined,
+      resolveIrMode(ir),
+      null,
+    )
+    // The raw pick collides with page 0's own resolved id — this is the
+    // actual collision the redraw exists to break.
+    expect(unswappedRawPick).toBe("two-column")
+    // The real (redrawn) resolution differs from that raw pick — the redraw
+    // branch, not some other code path, is what produced "narrow-column".
+    expect(resolved).not.toBe(unswappedRawPick)
+    expect(resolved).toBe("narrow-column")
+  })
 
   it("a takeover or image-cover bypass never renders [data-archetype] (the archetype branch is correctly skipped both sides)", () => {
     const bypassCases: { themeId: string; slide: Slide }[] = [
