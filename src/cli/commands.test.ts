@@ -616,6 +616,14 @@ describe("deck project directory workflow (W5 task 5)", () => {
     expect(assembleMsg1).toContain("to deck.plan.json for revision stability")
     const seedMatch1 = /generated seed (\d+)/.exec(assembleMsg1)
     expect(seedMatch1).not.toBeNull()
+    // Backlog item 9a (`.issues/notes/2026-07-18-post-v03-backlog.md` #9a):
+    // none of p-a/p-b/p-cover/p-ending's page files set an explicit
+    // `layout`, so this call also triggers the materialized-layout note —
+    // commands.ts:668-677 always pushes the seed note before the layout
+    // note when both apply; assert that relative order, not just that each
+    // note's text independently appears somewhere in the message.
+    const layoutNoteIndex1 = assembleMsg1.indexOf("auto-selected into deck.json")
+    expect(layoutNoteIndex1).toBeGreaterThan(seedMatch1!.index)
 
     const assembled1 = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
     expect(assembled1.slides.find((s: { id: string }) => s.id === "p-c").placeholder).toBe(true)
@@ -792,6 +800,18 @@ describe("runAssemble", () => {
     expect(msg).toContain("5 placeholders") // no pages/ dir at all — every plan page unfilled
     const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
     expect(written.slides).toHaveLength(5)
+
+    // Backlog item 9a: makeDeckPlan() here has neither an explicit `seed`
+    // nor any page pinning its own `layout`, so this default call triggers
+    // both assemble notes — the seed note (generated seed) and the
+    // materialized-layout note (auto-selected). commands.ts:668-677 always
+    // pushes the seed note first; assert that relative order holds in the
+    // actual message, not just that both notes' text appears somewhere.
+    const seedNoteIndex = msg.indexOf("note: generated seed")
+    const layoutNoteIndex = msg.indexOf("note:", seedNoteIndex + 1)
+    expect(seedNoteIndex).toBeGreaterThanOrEqual(0)
+    expect(layoutNoteIndex).toBeGreaterThan(seedNoteIndex)
+    expect(msg.slice(layoutNoteIndex)).toContain("auto-selected into deck.json")
   })
 
   it("writes to a custom -o path when given", async () => {
