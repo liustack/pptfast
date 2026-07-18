@@ -35,6 +35,6 @@
         }
       ]
     },
-    { "type": "ending", "heading": "Thanks" }
+    { "type": "ending", "heading": "Thanks", "layout": "banner-ending" }
   ]
 }

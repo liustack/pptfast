@@ -1,7 +1,7 @@
 import type { BrandConfig, Slide } from "@/ir"
 import { PptfastError } from "../errors"
 import type { MotifArchetypeId } from "../svg/archetypes/types"
-import { getLayout } from "../svg/layouts/registry"
+import { getLayout, layoutsForSlideType } from "../svg/layouts/registry"
 import { REGISTERED_THEMES } from "./registered-themes"
 import type { StyleTokens } from "./tokens"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId, type CanonicalThemeId } from "./index"
@@ -22,17 +22,99 @@ export interface ThemeDefinition {
   tags: readonly string[]
   /**
    * 主题的「选择权」配置（spec §3 theme.layouts 命名裁决；W2 任务 2 由
-   * src/themes/manifest.ts〔已删除〕的旧选择权类型原地迁居于此，值逐字未变）
-   * ——四页型各自允许哪些 archetype 参与自动选型。排印/色彩在 style，这里只
-   * 放集合。页型空集 = 该页型回落调用侧兜底（Wave 5 删旧模板后十三主题四页型
-   * 均非空）。id 是通用 string（不再按页型区分 archetype id 联合类型）：spec
-   * 时序修正——当前值仍是迁移前既有的策展子集，全集放开是 W4 的事，这里先保持
-   * 零行为变化。
+   * src/themes/manifest.ts〔已删除〕的旧选择权类型原地迁居于此）——四页型
+   * 各自允许哪些 archetype 参与自动选型。排印/色彩在 style，这里只放集合。
+   * **W4 全集放开**（spec §3「缺省 = 全集，策展收窄塑造个性」）：十三内置主题
+   * 四页型默认均为 {@link fullArchetypeSet} 的全集，除五处策展排除——design
+   * decision 7 的三处既有对比度裁定（luxe/campaign/classroom 的 content 排除
+   * banner-heading）+ design decision 8 本任务实现期新增的两处阳性裁定（tech
+   * 的 cover/content、consulting 的 chapter）——见 `LAYOUTS` 各自条目的注释。
+   * 页型空集 = 该页型回落调用侧兜底（十三主题四页型均非空，
+   * `definitions.test.ts` 锁死）。id 是通用 string（不再按页型区分 archetype
+   * id 联合类型）。
    */
   layouts: Record<Slide["type"], readonly string[]>
   /** Motif：单值，非 allowed-set（spec §3 示意）。undefined = 该主题无 motif 装饰（十三主题中 runway 留空，其余均已设）。 */
   motif?: MotifArchetypeId
 }
+
+/**
+ * Every registered *archetype* layout id applicable to `slideType`, in
+ * `LAYOUT_REGISTRY`'s own insertion order (W4, spec §3's curation default:
+ * "layouts 主题引用的 layout 精选集...缺省 = 全集"). Takeover layouts are
+ * excluded — `layoutsForSlideType("content")` also returns the 4 image
+ * takeovers (their `slideTypes` includes `"content"` too), but a curated
+ * auto-pick set may only ever contain archetypes (`registerTheme`'s own
+ * validation below enforces the same constraint on any caller-supplied
+ * set — takeovers are addressed only via an explicit `slide.layout` pin,
+ * never auto-selected).
+ */
+function fullArchetypeSet(slideType: Slide["type"]): readonly string[] {
+  return layoutsForSlideType(slideType)
+    .filter((layout) => layout.kind === "archetype")
+    .map((layout) => layout.id)
+}
+
+/** The full-set default for every slide type (W4) — one registry walk, shared by every builtin theme below and by `registerTheme`'s own per-slide-type default. */
+const FULL_LAYOUTS: Record<Slide["type"], readonly string[]> = {
+  cover: fullArchetypeSet("cover"),
+  chapter: fullArchetypeSet("chapter"),
+  content: fullArchetypeSet("content"),
+  ending: fullArchetypeSet("ending"),
+}
+
+/**
+ * The full content set minus `banner-heading`. `content-banner-heading.tsx`
+ * bakes its heading in white text inside a filled `colors.primary` banner —
+ * four of the thirteen built-in themes' `primary` computes too low a
+ * contrast ratio for that baked white:
+ * - luxe (champagne gold), campaign (magenta, ~3.2:1), classroom (dusty
+ *   blue, ~2.9:1) — W4 design decision 7's original "唯三例外", a
+ *   pre-existing human curation call carried into the full-set rollout
+ *   unchanged.
+ * - tech (bright cyan `#2DD4E6`, ~1.8:1) — a fourth instance of the exact
+ *   same defect pattern, found via design decision 8's audit-suite-positive
+ *   process during *this* task's own implementation (tech's content set was
+ *   never curated to include `banner-heading` before W4, so nothing had
+ *   exercised this combination until full-set auto-pick could reach it).
+ * A theme excludes, it never invents new render code (`docs/architecture.md`),
+ * so the fix is curation: drop the one archetype whose baked color pairing
+ * a theme's palette can't support, keep the other 6.
+ */
+const CONTENT_WITHOUT_BANNER_HEADING = FULL_LAYOUTS.content.filter((id) => id !== "banner-heading")
+
+/**
+ * The full cover set minus `left-anchor` — tech's one W4 design-decision-8
+ * exclusion (found via `pnpm check`'s audit suite going positive on this
+ * newly-reachable combo during this task's own implementation, not a
+ * pre-existing human curation call like the content trio above).
+ * `cover-left-anchor.tsx` bakes its heading in fixed white text inside a
+ * `colors.primary`-filled block, documented in that file's own header as a
+ * deliberate "readable under any theme color" exemption — tech's `primary`
+ * (`#2DD4E6`, a bright cyan) breaks that assumption: white-on-cyan measures
+ * ~1.8:1, far under the 3:1 large-text floor. Curation is the fix per design
+ * decision 8 ("策展是主动行为，禁止调阈值消音") — the archetype's own
+ * cross-theme white-text exemption stays as-is for the other 12 themes,
+ * whose `primary` colors are dark enough to support it.
+ */
+const COVER_WITHOUT_LEFT_ANCHOR = FULL_LAYOUTS.cover.filter((id) => id !== "left-anchor")
+
+/**
+ * The full chapter set minus `masthead-chapter` — consulting's one W4
+ * design-decision-8 exclusion (same provenance as {@link COVER_WITHOUT_LEFT_ANCHOR}
+ * — an audit-suite positive surfaced during this task's implementation).
+ * `chapter-masthead-chapter.tsx` draws its heading in `colors.text` with no
+ * background of its own (relies on the page-level default chapter
+ * background) — consulting is the one built-in theme whose `colors.text`
+ * (`#051C2C`) exactly equals its own `defaultBackgrounds.chapter`
+ * (`#051C2C`, `consulting.ts`), so the heading renders at a 1:1 contrast
+ * ratio (functionally invisible). Every other theme's `colors.text` /
+ * chapter-background pairing is fine; this is a one-theme token collision,
+ * not a flaw in the archetype's general design, so curation (not touching
+ * the archetype or consulting's `colors.text`, which content/cover/ending
+ * pages all read correctly) is the fix.
+ */
+const CHAPTER_WITHOUT_MASTHEAD = FULL_LAYOUTS.chapter.filter((id) => id !== "masthead-chapter")
 
 const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
   enterprise: { suppressFooterOnCardContent: true },
@@ -40,171 +122,141 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
 }
 
 /**
- * 每主题的 layouts + motif（W2 任务 2 从旧 manifest.ts 的主题清单常量原样
- * 迁居，字段名 archetypes→layouts，值逐字未变）。与 BRANDS 分开维护是因为
- * 这两块是全量 Record（十三主题每个都必须有非空 layouts），不像 BRANDS 那样
- * 是 Partial。
+ * 每主题的 layouts + motif。**W4 全集放开**（spec §3「缺省 = 全集，策展收窄
+ * 塑造个性」，design decision 7）：十三主题的 cover/chapter/content/ending
+ * 均是 {@link FULL_LAYOUTS} 对应页型的全集，本表下面各条目因此不再需要逐
+ * archetype 罗列——只保留仍然成立的策展叙事（motif/tokens 气质的由来）。
+ * W2 任务 2～W4 之前的窄策展集（chapter=1、ending=1、content=2、cover=1-3）
+ * 随本表一起退役：那段历史留在 git blame，不再复述于此。与 BRANDS 分开维护
+ * 是因为这两块是全量 Record（十三主题每个都必须有非空 layouts），不像
+ * BRANDS 那样是 Partial。
+ *
+ * **排除名单的两种来源**（均落在下面对应主题条目的注释里，不在这里汇总
+ * 复述）：
+ * 1. **design decision 7 的三处既有对比度裁定**（luxe/campaign/classroom 的
+ *    content 排除 banner-heading）——铺开前就已存在的人工策展结论，铺开时
+ *    原样保留。
+ * 2. **design decision 8 的阳性裁定**（本任务实现期新增，逐条见下面对应
+ *    主题条目）：全集放开后 `pnpm check`/`pnpm e2e` 跑出的新可达
+ *    theme×archetype 组合若报对比度问题，援引 1 的既有模式扩展该主题的
+ *    排除名单，而不是调审计阈值或改 archetype 本身——策展是主动行为。目前
+ *    三条：tech 的 cover 排除 left-anchor + content 排除 banner-heading
+ *    （两处都是"baked 白字 on colors.primary"在 tech 偏亮的 primary
+ *    #2DD4E6 上不成立，content 一侧与来源 1 的三主题同一缺陷模式、同一
+ *    CONTENT_WITHOUT_BANNER_HEADING 常量）、consulting 的 chapter 排除
+ *    masthead-chapter（该 archetype 的标题走 `colors.text`，与 consulting
+ *    自己的 chapter 默认背景撞成同色）。
  */
 const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif">> = {
-  // Wave 4 Task 23：六主题四页型 + motif 全量接线（迁移完成、观感不变）。
-  // consulting 的 cover 保留双元素 ["banner-title","poster-center"]——P2 首个
-  // 增量（2026-07-09）已人工审通过的多样性增量，不在本任务收窄回单元素。
-  // 其余五主题、以及 consulting 的 chapter/content/ending 均填各自「原生」
-  // 单 archetype：不引入跨主题多样化（P3 item①②的范围）。
+  // W4 design decision 8: chapter 排除 masthead-chapter（其标题 fill
+  // colors.text 与 consulting 自己的 chapter 默认背景同色 #051C2C，见
+  // CHAPTER_WITHOUT_MASTHEAD 的注释）。
   consulting: {
-    layouts: {
-      cover: ["banner-title", "poster-center", "split-diagonal"],
-      chapter: ["banner-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_MASTHEAD, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "banner-motif",
   },
   insight: {
-    layouts: {
-      cover: ["poster-center", "split-diagonal"],
-      // 2026-07-12 财经借鉴：章节页升级罗马数字+圆环光晕（roman-chapter）
-      chapter: ["roman-chapter"],
-      content: ["stacked-poster", "two-column"],
-      ending: ["poster-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "poster-motif",
   },
   academic: {
-    layouts: {
-      cover: ["left-anchor", "split-diagonal"],
-      chapter: ["rail-chapter"],
-      content: ["rail-numbered", "two-column"],
-      ending: ["rail-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "rail-motif",
   },
+  // W4 design decision 8: cover 排除 left-anchor（其白字例外假设"任意主题色
+  // 下都可读"，tech 偏亮的 primary #2DD4E6 上白字对比不足，见
+  // COVER_WITHOUT_LEFT_ANCHOR 的注释）。content 排除 banner-heading——同一枚
+  // "baked 白字 on colors.primary" 缺陷模式在 content-banner-heading.tsx 里
+  // 再现一次（#2DD4E6 上白字仍是 1.80:1），与 luxe/campaign/classroom 三个
+  // 既有例外的成因完全相同（同一 CONTENT_WITHOUT_BANNER_HEADING 常量），tech
+  // 是 W4 铺开后新发现的第四例，不是独立问题。
   tech: {
     layouts: {
-      cover: ["constellation", "split-diagonal"],
-      chapter: ["constellation-chapter"],
-      content: ["bento-panel", "two-column"],
-      ending: ["constellation-ending"],
+      cover: COVER_WITHOUT_LEFT_ANCHOR,
+      chapter: FULL_LAYOUTS.chapter,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_LAYOUTS.ending,
     },
     motif: "constellation-motif",
   },
-  // magazine（时尚杂志，2026-07-10 拆分）：与 journal 共享 masthead 报头
-  // 家族（同版式不同 tokens 气质大变），角饰是人文感故不带 motif。
-  // 2026-07-10 冲击力返工（用户否三个换皮色板）：冲击力=超大排印+满版
-  // 色块（检索背书），fashion-masthead/fashion-chapter 是 magazine 专属新表达。
-  // 2026-07-10 二轮返工（用户裁决「不同页型不能全白底」）：满版-留白节奏
-  // ——黑封面→红章节→白内容（黑横幅压顶）→黑结尾，黑红交替是杂志语法。
+  // runway（时尚杂志，2026-07-10 拆分）：冲击力=超大排印+满版色块（检索背书），
+  // fashion-masthead/fashion-chapter/fashion-ending 是 runway 专属新表达；
+  // journal 与其共享 masthead 报头家族但 tokens 气质大变。
   runway: {
-    layouts: {
-      cover: ["fashion-masthead"],
-      chapter: ["fashion-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["fashion-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // motif 刻意不配（2026-07-10 全覆盖时曾加「时尚编辑标记」，两版均被
-    // 用户裁难看后撤销）：runway 的语言=满版色块+超大排印+留白，content
-    // 页已有黑色大横幅，任何附加装饰都是画蛇添足——排印至上是终审裁决。
+    // 用户裁难看后撤销）：runway 的语言=满版色块+超大排印+留白，排印至上是
+    // 终审裁决——十三主题中唯一留空 motif 的一个。
   },
-  // journal（人文期刊，原 magazine 纯改名）：全套继承，观感零变化。
+  // journal（人文期刊，原 magazine 改名）：masthead 报头家族，角饰是人文感。
   journal: {
-    layouts: {
-      cover: ["editorial-masthead"],
-      chapter: ["masthead-chapter"],
-      content: ["narrow-column", "two-column"],
-      ending: ["masthead-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "corner-ornament-motif",
   },
-  // avant（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+炸橘的
-  // 高色彩版式组合——gallery v1 撞色弱的根因是 tone-adaptive 家族本身低
-  // 色彩，故版式整体换 IKB 斜切封面/巨号章节/横幅内容/大字结尾（banner
-  // 横幅 baked 白字在 IKB #002FA7 上对比充足）。motif 留空（白墙不加装饰）。
+  // enterprise（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+炸橘的
+  // 高色彩版式组合，banner 横幅 baked 白字在 IKB #002FA7 上对比充足（无需
+  // 排除 banner-heading）。
   enterprise: {
-    layouts: {
-      cover: ["split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：IKB 方块秩序
     motif: "enterprise-motif",
   },
-  // luxe（原 retail 黑金重定位，2026-07-10）：零版式代码——全借 creative
-  // 家族深底 poster 版式 + two-column 轮换 + split-diagonal（金斜切块封面，
-  // readableOn 出深字）。**content 禁配 banner-heading**：其横幅文字是
-  // baked 白字，香槟金横幅上白字不可读。motif 留空（验证可选性的先例保留）。
+  // luxe（原 retail 黑金重定位，2026-07-10）：黑金深底 poster 家族，
+  // readableOn 出深字。**content 排除 banner-heading**：其横幅文字是 baked
+  // 白字，香槟金横幅上白字不可读——三处排除中最早的一处，luxe 先例。
   luxe: {
     layouts: {
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["stacked-poster", "two-column"],
-      ending: ["poster-ending"],
+      cover: FULL_LAYOUTS.cover,
+      chapter: FULL_LAYOUTS.chapter,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_LAYOUTS.ending,
     },
     // 2026-07-10 motif 全覆盖：烫金细线（原 P3「motif 可选」验证品，补齐）
     motif: "luxe-motif",
   },
-  // campaign（活力营销，2026-07-13 memphis 拆分 A）：零版式代码——深紫
-  // 底多彩笔刷由专属 campaign-motif 承载，版式借 luxe 同款深底家族。
-  // 品红横幅白字对比不足（~3.2:1）——content 禁配 banner-heading（luxe 先例）。
+  // campaign（活力营销，2026-07-13 memphis 拆分 A）：深紫底多彩笔刷由专属
+  // campaign-motif 承载。**content 排除 banner-heading**：品红横幅白字对比
+  // 不足（~3.2:1，luxe 先例）。
   campaign: {
     layouts: {
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["stacked-poster", "two-column"],
-      ending: ["poster-ending"],
+      cover: FULL_LAYOUTS.cover,
+      chapter: FULL_LAYOUTS.chapter,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_LAYOUTS.ending,
     },
     motif: "campaign-motif",
   },
-  // classroom（教学课堂，2026-07-13 第 13 主题）：零版式代码——莫兰迪
-  // 灰调+平滑斑块手绘点线由专属 classroom-motif 承载，版式借 academic
-  // 的 rail 编号家族（圆徽章与参考图编号语言契合）。雾蓝横幅白字
-  // ~2.9:1 不足——content 禁配 banner-heading（luxe 先例）。
+  // classroom（教学课堂，2026-07-13 第 13 主题）：莫兰迪灰调+平滑斑块手绘
+  // 点线由专属 classroom-motif 承载。**content 排除 banner-heading**：雾蓝
+  // 横幅白字 ~2.9:1 不足（luxe 先例）。
   classroom: {
     layouts: {
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["rail-chapter"],
-      content: ["rail-numbered", "two-column"],
-      ending: ["rail-ending"],
+      cover: FULL_LAYOUTS.cover,
+      chapter: FULL_LAYOUTS.chapter,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_LAYOUTS.ending,
     },
     motif: "classroom-motif",
   },
-  // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：零版式代码——奶白底
-  // 水彩晕染+植物细线由专属 bloom-motif 承载，版式借 heritage 同款浅底
-  // 家族（紫藤横幅白字 ~6:1 可配 banner-heading）。
+  // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：奶白底水彩晕染+植物细线由
+  // 专属 bloom-motif 承载，紫藤横幅白字 ~6:1 可配 banner-heading（无需排除）。
   bloom: {
-    layouts: {
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "bloom-motif",
   },
-  // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：零版式代码——
-  // 宣纸/墨/朱砂/楷体靠 tokens + 专属 ink-motif（古籍版框+朱砂印章+淡墨
-  // 远山），content 用窄栏（文人排版）+two-column 轮换。
+  // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：宣纸/墨/朱砂/
+  // 楷体靠 tokens + 专属 ink-motif（古籍版框+朱砂印章+淡墨远山）。
   ink: {
-    layouts: {
-      cover: ["poster-center"],
-      chapter: ["poster-chapter"],
-      content: ["narrow-column", "two-column"],
-      ending: ["banner-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "ink-motif",
     // ink-motif 自带古籍版框线，BrandChrome 的页脚分隔线会形成双线
     // （2026-07-10 用户截图指出）——style 的 brand.suppressFooterRule
     // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/definitions.ts），meta 文字照排。
   },
-  // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty，零版式代码——
-  // 沿用原 retail v1 验证过的浅底混搭（creative cover/chapter + consulting
-  // content/ending + two-column 轮换）。酒红横幅上 baked 白字对比充足。
+  // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty 浅底混搭，酒红横幅
+  // 上 baked 白字对比充足（无需排除 banner-heading）。
   heritage: {
-    layouts: {
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：典藏纹饰（徽记/角花/页缘线）
     motif: "heritage-motif",
   },
@@ -243,17 +295,39 @@ export function resolveBrand(id: string, override?: BrandConfig): BrandConfig {
 const REGISTERABLE_SLIDE_TYPES: readonly Slide["type"][] = ["cover", "chapter", "content", "ending"]
 
 /**
+ * `registerTheme`'s input shape (W4, spec §3 "缺省 = 全集"): identical to
+ * {@link ThemeDefinition} except `layouts` is optional, and — when present —
+ * each of its four slide-type entries is independently optional too. A
+ * slide type this theme doesn't narrow (its own key omitted, or the whole
+ * `layouts` object omitted) defaults to that type's full registered-
+ * archetype set ({@link FULL_LAYOUTS}) — the exact same default every
+ * builtin theme in `LAYOUTS` above resolves to for a slide type it doesn't
+ * curate away from. `getThemeDefinition`/`REGISTERED_THEMES` still only ever
+ * hold the fully-resolved `ThemeDefinition` shape (`layouts` total over all
+ * four types) — `registerTheme` performs the defaulting once, here, so
+ * every downstream reader (`resolveArchetypeId` foremost) can keep assuming
+ * a total record and never re-derive "was this slide type curated or
+ * defaulted".
+ */
+export type ThemeRegistration = Omit<ThemeDefinition, "layouts"> & {
+  layouts?: Partial<Record<Slide["type"], readonly string[]>>
+}
+
+/**
  * Register a theme at runtime (SDK seam, not the v0.4 distribution
  * protocol). Validates just enough to keep the render chain from silently
  * breaking on a malformed registration — not a full schema:
  *
  * - `id` must not collide with a builtin or an already-registered theme.
- * - `layouts` must cover all four slide types, each with at least one layout
- *   id that is both registered in `LAYOUT_REGISTRY` and valid for that slide
- *   type (the same registry `resolveArchetypeId`/`FullSlideSvg` select from —
- *   a theme never ships new render code, only a curated subset of the
- *   existing 30 archetypes + 4 takeovers, per `docs/architecture.md`'s
- *   "Adding a theme" section).
+ * - each of the four slide types, once defaulted ({@link ThemeRegistration}),
+ *   must have at least one layout id that is both registered in
+ *   `LAYOUT_REGISTRY` and valid for that slide type (the same registry
+ *   `resolveArchetypeId`/`FullSlideSvg` select from — a theme never ships
+ *   new render code, only a curated subset of the existing 30 archetypes +
+ *   4 takeovers, per `docs/architecture.md`'s "Adding a theme" section). An
+ *   *explicit* empty array for a slide type still fails this check (the
+ *   default only kicks in when the key — or `layouts` itself — is omitted
+ *   entirely, `undefined`, never for a caller-supplied `[]`).
  * - `style` must be present (a JS caller can bypass the TS type).
  *
  * Once registered, the theme participates in `getInstalledThemeIds`,
@@ -262,16 +336,17 @@ const REGISTERABLE_SLIDE_TYPES: readonly Slide["type"][] = ["cover", "chapter", 
  * every internal theme lookup, with no separate "registered theme" branch
  * for callers to remember.
  */
-export function registerTheme(def: ThemeDefinition): void {
+export function registerTheme(def: ThemeRegistration): void {
   if ((CANONICAL_THEME_IDS as readonly string[]).includes(def.id) || REGISTERED_THEMES.has(def.id)) {
     throw new PptfastError(`theme "${def.id}" is already installed`)
   }
   if (!def.style) {
     throw new PptfastError(`theme "${def.id}" is missing style tokens`)
   }
+  const layouts = {} as Record<Slide["type"], readonly string[]>
   for (const slideType of REGISTERABLE_SLIDE_TYPES) {
-    const ids = def.layouts[slideType]
-    if (!ids || ids.length === 0) {
+    const ids = def.layouts?.[slideType] ?? FULL_LAYOUTS[slideType]
+    if (ids.length === 0) {
       throw new PptfastError(`theme "${def.id}" must declare at least one layout for "${slideType}" slides`)
     }
     for (const id of ids) {
@@ -292,8 +367,9 @@ export function registerTheme(def: ThemeDefinition): void {
         )
       }
     }
+    layouts[slideType] = ids
   }
-  REGISTERED_THEMES.set(def.id, def)
+  REGISTERED_THEMES.set(def.id, { ...def, layouts })
 }
 
 /** Every installed theme id: the 13 builtins, then registered themes in registration order. */

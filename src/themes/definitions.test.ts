@@ -8,12 +8,14 @@ import {
   resolveBrand,
   THEME_DEFINITIONS,
   type ThemeDefinition,
+  type ThemeRegistration,
 } from "./definitions"
 import { COVER_ARCHETYPES } from "../svg/archetypes"
 import { CHAPTER_ARCHETYPES } from "../svg/archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../svg/archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../svg/archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "../svg/archetypes/index-motif"
+import { layoutsForSlideType } from "../svg/layouts/registry"
 
 // 四页型注册表按 id 分发用的宽字符串索引视图（PAGE_ARCHETYPE_REGISTRIES 在
 // FullSlideSvg.tsx 用的同一模式）：THEME_DEFINITIONS.layouts 的 id 是通用
@@ -67,110 +69,202 @@ describe("THEME_DEFINITIONS", () => {
     }
   })
 
-  it("W2 任务 2：layouts/motif 值与迁移前旧 manifest 数据逐字一致（零行为变化，同值同轮换）", () => {
+  // W4 全集放开（design decision 7, spec §3「缺省 = 全集」）：这份基线
+  // 断言不再是「迁移零行为变化」——它现在钉的是 v0.3 的全集终态：十三主题的
+  // cover/chapter/content/ending 均为 LAYOUT_REGISTRY 对应页型的全部
+  // archetype，除五处例外——design decision 7 的三处既有对比度裁定
+  // （luxe/campaign/classroom 的 content 排除 banner-heading）+ design
+  // decision 8 本任务实现期新增的两处阳性裁定（tech 的 cover 排除
+  // left-anchor、consulting 的 chapter 排除 masthead-chapter）——均见
+  // definitions.ts LAYOUTS 各自条目的注释。四个 FULL_* 常量是手工钉的字面
+  // 数组（人审基线，不经 layoutsForSlideType 派生）——未来 registry 新增/
+  // 删除 archetype 时，这里必须跟着人工重推，而不是无声通过。
+  const FULL_COVER = [
+    "banner-title",
+    "poster-center",
+    "left-anchor",
+    "constellation",
+    "editorial-masthead",
+    "tone-adaptive-header",
+    "fashion-masthead",
+    "split-diagonal",
+  ]
+  const FULL_CHAPTER = [
+    "masthead-chapter",
+    "constellation-chapter",
+    "rail-chapter",
+    "banner-chapter",
+    "poster-chapter",
+    "roman-chapter",
+    "tone-adaptive-chapter",
+    "fashion-chapter",
+  ]
+  const FULL_CONTENT = [
+    "narrow-column",
+    "two-column",
+    "rail-numbered",
+    "banner-heading",
+    "stacked-poster",
+    "bento-panel",
+    "tone-adaptive-content",
+  ]
+  const FULL_ENDING = [
+    "masthead-ending",
+    "constellation-ending",
+    "rail-ending",
+    "banner-ending",
+    "poster-ending",
+    "tone-adaptive-ending",
+    "fashion-ending",
+  ]
+  const CONTENT_WITHOUT_BANNER_HEADING = [
+    "narrow-column",
+    "two-column",
+    "rail-numbered",
+    "stacked-poster",
+    "bento-panel",
+    "tone-adaptive-content",
+  ]
+  // design decision 8's two implementation-time exclusions (audit-suite
+  // positives on newly-reachable combos — see definitions.ts's own
+  // COVER_WITHOUT_LEFT_ANCHOR / CHAPTER_WITHOUT_MASTHEAD comments for the
+  // specific contrast findings).
+  const COVER_WITHOUT_LEFT_ANCHOR = [
+    "banner-title",
+    "poster-center",
+    "constellation",
+    "editorial-masthead",
+    "tone-adaptive-header",
+    "fashion-masthead",
+    "split-diagonal",
+  ]
+  const CHAPTER_WITHOUT_MASTHEAD = [
+    "constellation-chapter",
+    "rail-chapter",
+    "banner-chapter",
+    "poster-chapter",
+    "roman-chapter",
+    "tone-adaptive-chapter",
+    "fashion-chapter",
+  ]
+
+  it("W4 全集放开基线：十三主题的 cover/chapter/ending 与（除五例外）content 均为各页型全集", () => {
+    // consulting：design decision 8 排除 masthead-chapter（其标题
+    // colors.text 与 consulting 自己的 chapter 默认背景 #051C2C 撞色）。
     expect(THEME_DEFINITIONS.consulting.layouts).toEqual({
-      cover: ["banner-title", "poster-center", "split-diagonal"],
-      chapter: ["banner-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
+      cover: FULL_COVER,
+      chapter: CHAPTER_WITHOUT_MASTHEAD,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
+    expect(THEME_DEFINITIONS.consulting.layouts.chapter).not.toContain("masthead-chapter")
     expect(THEME_DEFINITIONS.consulting.motif).toBe("banner-motif")
 
     expect(THEME_DEFINITIONS.insight.layouts).toEqual({
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["roman-chapter"],
-      content: ["stacked-poster", "two-column"],
-      ending: ["poster-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.insight.motif).toBe("poster-motif")
 
     expect(THEME_DEFINITIONS.academic.layouts).toEqual({
-      cover: ["left-anchor", "split-diagonal"],
-      chapter: ["rail-chapter"],
-      content: ["rail-numbered", "two-column"],
-      ending: ["rail-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.academic.motif).toBe("rail-motif")
 
+    // tech：design decision 8 排除 left-anchor（cover，白字例外假设"任意
+    // 主题色下都可读"在 tech 偏亮的 primary #2DD4E6 上不成立）+ banner-heading
+    // （content，同一缺陷模式的第四例，与 luxe/campaign/classroom 共用
+    // CONTENT_WITHOUT_BANNER_HEADING）。
     expect(THEME_DEFINITIONS.tech.layouts).toEqual({
-      cover: ["constellation", "split-diagonal"],
-      chapter: ["constellation-chapter"],
-      content: ["bento-panel", "two-column"],
-      ending: ["constellation-ending"],
+      cover: COVER_WITHOUT_LEFT_ANCHOR,
+      chapter: FULL_CHAPTER,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_ENDING,
     })
+    expect(THEME_DEFINITIONS.tech.layouts.cover).not.toContain("left-anchor")
+    expect(THEME_DEFINITIONS.tech.layouts.content).not.toContain("banner-heading")
     expect(THEME_DEFINITIONS.tech.motif).toBe("constellation-motif")
 
     // runway：唯一留空 motif 的主题（排印至上的终审裁决，见 definitions.ts 注释）。
     expect(THEME_DEFINITIONS.runway.layouts).toEqual({
-      cover: ["fashion-masthead"],
-      chapter: ["fashion-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["fashion-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.runway.motif).toBeUndefined()
 
     expect(THEME_DEFINITIONS.journal.layouts).toEqual({
-      cover: ["editorial-masthead"],
-      chapter: ["masthead-chapter"],
-      content: ["narrow-column", "two-column"],
-      ending: ["masthead-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.journal.motif).toBe("corner-ornament-motif")
 
     expect(THEME_DEFINITIONS.enterprise.layouts).toEqual({
-      cover: ["split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.enterprise.motif).toBe("enterprise-motif")
 
+    // luxe/campaign/classroom：三处「唯三例外」——content 排除 banner-heading
+    // （既有对比度裁定，definitions.ts LAYOUTS 各自条目的注释保留原始数据）。
     expect(THEME_DEFINITIONS.luxe.layouts).toEqual({
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["stacked-poster", "two-column"],
-      ending: ["poster-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.luxe.layouts.content).not.toContain("banner-heading")
     expect(THEME_DEFINITIONS.luxe.motif).toBe("luxe-motif")
 
     expect(THEME_DEFINITIONS.campaign.layouts).toEqual({
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["stacked-poster", "two-column"],
-      ending: ["poster-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_ENDING,
     })
+    expect(THEME_DEFINITIONS.campaign.layouts.content).not.toContain("banner-heading")
     expect(THEME_DEFINITIONS.campaign.motif).toBe("campaign-motif")
 
     expect(THEME_DEFINITIONS.classroom.layouts).toEqual({
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["rail-chapter"],
-      content: ["rail-numbered", "two-column"],
-      ending: ["rail-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: CONTENT_WITHOUT_BANNER_HEADING,
+      ending: FULL_ENDING,
     })
+    expect(THEME_DEFINITIONS.classroom.layouts.content).not.toContain("banner-heading")
     expect(THEME_DEFINITIONS.classroom.motif).toBe("classroom-motif")
 
     expect(THEME_DEFINITIONS.bloom.layouts).toEqual({
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.bloom.motif).toBe("bloom-motif")
 
     expect(THEME_DEFINITIONS.ink.layouts).toEqual({
-      cover: ["poster-center"],
-      chapter: ["poster-chapter"],
-      content: ["narrow-column", "two-column"],
-      ending: ["banner-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.ink.motif).toBe("ink-motif")
 
     expect(THEME_DEFINITIONS.heritage.layouts).toEqual({
-      cover: ["poster-center", "split-diagonal"],
-      chapter: ["poster-chapter"],
-      content: ["banner-heading", "two-column"],
-      ending: ["banner-ending"],
+      cover: FULL_COVER,
+      chapter: FULL_CHAPTER,
+      content: FULL_CONTENT,
+      ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.heritage.motif).toBe("heritage-motif")
   })
@@ -194,11 +288,14 @@ describe("resolveBrand", () => {
 
 // ── registerTheme (W3 task 4: theme registration seam) ──────────────────
 
-/** A structurally valid ThemeDefinition fixture — real LAYOUT_REGISTRY ids
- *  (one archetype per slide type, each already applicable to that type per
- *  registry.ts), a minimal-but-complete StyleTokens. `overrides` lets each
- *  test tweak just the field it's exercising. */
-function testTheme(overrides: Partial<ThemeDefinition> = {}): ThemeDefinition {
+/** A structurally valid `ThemeRegistration` fixture — real LAYOUT_REGISTRY
+ *  ids (one archetype per slide type, each already applicable to that type
+ *  per registry.ts), a minimal-but-complete StyleTokens. `overrides` lets
+ *  each test tweak just the field it's exercising, including setting
+ *  `layouts` to `undefined` or a partial slide-type subset (W4: `layouts`
+ *  and each of its four entries are independently optional on the
+ *  registration input — see {@link ThemeRegistration}'s own doc comment). */
+function testTheme(overrides: Partial<ThemeRegistration> = {}): ThemeRegistration {
   return {
     id: "acme",
     style: {
@@ -321,6 +418,49 @@ describe("registerTheme", () => {
     expect(() =>
       registerTheme(testTheme({ style: undefined as unknown as ThemeDefinition["style"] })),
     ).toThrow(/missing style tokens/)
+  })
+
+  // ── W4: layouts (and each of its four slide-type entries) is optional,
+  // defaulting to the full registered-archetype set (spec §3 "缺省 = 全集")
+  // ──────────────────────────────────────────────────────────────────────
+
+  it("omitting layouts entirely defaults every slide type to its full registered-archetype set", () => {
+    registerTheme(testTheme({ layouts: undefined }))
+    const def = getThemeDefinition("acme")
+    for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
+      const expected = layoutsForSlideType(slideType)
+        .filter((l) => l.kind === "archetype")
+        .map((l) => l.id)
+      expect(def.layouts[slideType]).toEqual(expected)
+    }
+  })
+
+  it("curating only one slide type leaves the other three at their full-set default (explicit narrowing coexists with the new default)", () => {
+    registerTheme(testTheme({ layouts: { content: ["two-column", "narrow-column"] } }))
+    const def = getThemeDefinition("acme")
+    expect(def.layouts.content).toEqual(["two-column", "narrow-column"])
+    for (const slideType of ["cover", "chapter", "ending"] as const) {
+      const expected = layoutsForSlideType(slideType)
+        .filter((l) => l.kind === "archetype")
+        .map((l) => l.id)
+      expect(def.layouts[slideType]).toEqual(expected)
+    }
+  })
+
+  it("an explicit exclusion inside a curated slide type still narrows the pool (the same full-set-minus-one pattern the 3 built-in exceptions use)", () => {
+    const fullContent = layoutsForSlideType("content")
+      .filter((l) => l.kind === "archetype")
+      .map((l) => l.id)
+    registerTheme(testTheme({ layouts: { content: fullContent.filter((id) => id !== "banner-heading") } }))
+    const def = getThemeDefinition("acme")
+    expect(def.layouts.content).not.toContain("banner-heading")
+    expect(def.layouts.content).toHaveLength(fullContent.length - 1)
+  })
+
+  it("an explicit empty array for a slide type is still rejected — the full-set default only kicks in when the key is omitted, never for a caller-supplied []", () => {
+    expect(() => registerTheme(testTheme({ layouts: { content: [] } }))).toThrow(
+      /must declare at least one layout for "content" slides/,
+    )
   })
 })
 

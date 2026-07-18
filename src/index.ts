@@ -15,7 +15,7 @@ export {
 export { PptxIRSchema, ThemeSchema, StyleOverrideSchema, BUILTIN_THEME_IDS, BrandConfigSchema, COMPONENT_TYPES } from "./ir"
 export type { PptxIR, Slide, Component, Meta, Assets, BackgroundSpec, StyleOverride, BrandConfig } from "./ir"
 export { registerTheme, getInstalledThemeIds, getThemeDefinition } from "./themes/definitions"
-export type { ThemeDefinition } from "./themes/definitions"
+export type { ThemeDefinition, ThemeRegistration } from "./themes/definitions"
 export {
   resolveScenario,
   SCENARIO_PRESETS,

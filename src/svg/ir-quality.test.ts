@@ -90,10 +90,30 @@ describe("checkIrQuality", () => {
   // matrix below deliberately covers: all 3 deliveries, explicit vs.
   // auto-picked layout, the bento-panel capacity-6 exception (both
   // auto-picked and explicit-pinned), and takeover layouts (no geometric
-  // term at all). Content archetypes other than bento-panel all carry body
-  // capacity 4 (registry.test.ts pins this), so any non-tech theme's
-  // auto-pick — always a 2-member set of same-capacity archetypes — needs
-  // no seed-search to get a deterministic expected limit.
+  // term at all).
+  //
+  // W4 amendment: every built-in theme's content curated set is now a
+  // 6-7-archetype full set (`definitions.ts`) that *can* include bento-panel
+  // (capacity 6) for any auto-pick case, not just tech — the pre-W4 "every
+  // non-tech theme's content set is 2 same-capacity archetypes" premise this
+  // comment used to state is gone. In practice this only makes the
+  // *balanced*/*presentation* auto-pick cases below ambiguity-proof by
+  // arithmetic coincidence (delivery's own budget, 4 and 3 respectively, is
+  // <= bento-panel's capacity, so it binds either way — same expectedLimit
+  // regardless of which archetype gets picked); *text* delivery's budget (5)
+  // sits strictly between the two possible layout capacities (4 and 6), so
+  // it's the one case where the auto-picked archetype's identity actually
+  // changes the expected limit. The "journal / text" case below has been
+  // re-verified empirically against W4's weighted+anti-repetition algorithm
+  // (not assumed): for this fixture's exact heading/seed it still resolves
+  // to narrow-column (capacity 4), so `expectedLimit: 4` is unchanged — not
+  // a coincidence this test skipped updating, a fact confirmed by direct
+  // reproduction (`resolveEffectiveLayoutId`) during this task, not by
+  // re-deriving the seed/weighting mechanics inline here (same "must reuse,
+  // not reimplement" rule `findAutoPickHeading` below already documents).
+  // If a future change to the weighting/seed mechanics ever flips this
+  // specific fixture onto bento-panel, this is the one line in the matrix
+  // that would need `expectedLimit: 5`.
 
   describe("density gate matrix", () => {
     const cases: {
