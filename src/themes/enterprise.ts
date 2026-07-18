@@ -29,7 +29,7 @@ export const ENTERPRISE_TOKENS: StyleTokens = {
     primary: "#002FA7", // 国际克莱因蓝（IKB）
     accent: "#002FA7", // 点缀直接用 IKB 本色（2026-07-10 用户裁决），天蓝/蓝灰留给图表
     text: "#14161F",
-    muted: "#727682", // post-v0.3 W8 fix round（backlog 5a）：明度下调校准 4.5:1（原 #878B96，保色相/饱和度）
+    muted: "#5F626C", // post-v0.3 W8 fix round补测（backlog 5a，content-matrix 色调混合格底色缺口，task-2 审校发现）：明度再下调校准 4.5:1（原 #727682 为首轮校准值，更早为 #878B96，保色相/饱和度）
     border: "#E8E8EC",
     cardStroke: "#E4E4E9", // 白墙上白卡靠描边区分（沿自 custom 存量语义）
     chartPalette: ["#002FA7", "#5B8DEF", "#8FA3C8", "#C9D3E8"], // IKB→天蓝→蓝灰渐次（企业单色系）

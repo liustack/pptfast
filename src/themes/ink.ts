@@ -14,7 +14,7 @@ export const INK_TOKENS: StyleTokens = {
     primary: "#2B2B2B", // 墨
     accent: "#C3272B", // 朱砂
     text: "#262421",
-    muted: "#756C60", // post-v0.3 W8 fix round（backlog 5a）：明度下调校准 4.5:1（原 #8A8071，保色相/饱和度）
+    muted: "#686056", // post-v0.3 W8 fix round补测（backlog 5a，content-matrix 色调混合格底色缺口，task-2 审校发现）：明度再下调校准 4.5:1（原 #756C60 为首轮校准值，更早为 #8A8071，保色相/饱和度）
     border: "#DED5C2",
     chartPalette: ["#2B2B2B", "#C3272B", "#8A8071", "#B5A36F"],
   },

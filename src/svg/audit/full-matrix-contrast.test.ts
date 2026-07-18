@@ -60,7 +60,7 @@
 //   - the five sources `deck-audit.test.ts`'s own "understood pre-existing
 //     low-contrast sources" block already documents and pins.
 import { beforeAll, describe, expect, it } from "vitest"
-import type { PptxIR, Slide } from "@/ir"
+import { COMPONENT_TYPES, type PptxIR, type Slide } from "@/ir"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
@@ -404,6 +404,194 @@ describe("colors.muted contrast (post-v0.3 W8 fix round, backlog item 5a)", () =
       const findings = auditFindings(deckFor(themeId, slide))
       const mutedFindings = findings.filter(
         (f) => f.code === "low-contrast" && (f.detail as { fill?: string } | undefined)?.fill === muted,
+      )
+      expect(mutedFindings).toEqual([])
+    })
+  }
+})
+
+// Coverage-class completeness guard (task-2 fix round, backlog 5a review
+// finding — see task-2-review.md's Major finding and task-2-report.md's
+// "修复轮" section). The "colors.muted contrast" block above only ever
+// probes two backgrounds — each theme's own page background, and
+// content-bento-panel.tsx's kpi card surface — because those were the only
+// two real surfaces the original W8 recalibration's own probe methodology
+// happened to walk. `content-matrix`'s per-cell tone-blended background
+// (`mixHex(colors.surface, colors.muted|accent|primary, 0.08-0.16)`,
+// matrix.tsx's own `toneFill`) is a real, distinct third surface that probe
+// never rendered — confirmed independently: a real `matrix` component
+// through the real `auditDeck` pipeline reports genuine low-contrast
+// findings on 9/13 themes' `colors.muted`-filled tag text pre-fix,
+// including `consulting`, which the original recalibration never even
+// considered.
+//
+// The root defect wasn't "matrix specifically" — it was that the
+// validation net only ever exercises whichever backgrounds its own
+// hand-picked probe happened to walk, with nothing catching a component
+// (present or future) that paints a background the probe doesn't know
+// about. Recalibrating for matrix alone would close the *instance* and
+// leave the exact same blind spot open for the next component that paints
+// its own background. `MUTED_SURFACE_CLASS` below is the *class* closure:
+// every one of `COMPONENT_TYPES`' 24 entries — the schema's own source of
+// truth (`src/ir/index.ts`), never hand-copied — gets an explicit,
+// human-reviewed classification of *where* its `colors.muted` text (if
+// any) actually renders, backed by reading that component's real source.
+// A completeness assertion below fails the moment a future component type
+// ships without a classification decision — the honest version of "can't
+// silently escape": no clever auto-detection of `colors.muted` usage (an
+// AST/regex scan would be fragile and wouldn't know *which background* the
+// text lands on anyway), just an explicit map a human must extend, exactly
+// like this file's own `ALLOWLIST`/`TEXT_SHAPE_GUARD` above.
+type MutedSurfaceClass =
+  | "no-muted-fill"
+  | "page-bg"
+  | "flat-surface"
+  | "needs-fixture"
+  | "known-gap"
+
+/**
+ * Per-classification meaning (each backed by reading the component's real
+ * source — see the fix report for the full per-file audit trail):
+ *
+ * - `"no-muted-fill"`: never renders `colors.muted` as a `<text>`/`<tspan>`
+ *   fill. Some of these *do* reference `colors.muted` in their source, but
+ *   only as a `stroke` (e.g. `bullets.tsx`/`rings.tsx`/`comparison.tsx`'s
+ *   own `colors.border ?? colors.muted` divider/rule fallback) —
+ *   `findContrastIssues` only ever inspects `<text>`/`<tspan>` `fill`
+ *   (`deck-audit.ts`'s `runContrastWalk`), so a stroke-only or wholly
+ *   absent usage can never itself produce a `low-contrast` finding,
+ *   regardless of calibration.
+ * - `"page-bg"`: renders `colors.muted` text, but always directly over the
+ *   ambient slide background (no component-painted rect/path sits behind
+ *   it) — already covered by the "clears 4.5:1 against every real
+ *   cover/content/ending page background" check above, which is a pure
+ *   function of the two hex values and doesn't care which component
+ *   painted the text on top.
+ * - `"flat-surface"`: renders `colors.muted` text over a card/panel whose
+ *   fill is the *same*, unblended `colors.surface` token the bento-panel
+ *   check above already locks (`icon-cards.tsx`/`kpi.tsx`'s card shell/
+ *   `roadmap.tsx`'s card/`insight_panel.tsx`'s panel/`row-cards.tsx`'s
+ *   card/`steps.tsx`'s horizontal-mode card/`image*.tsx`'s missing-asset
+ *   placeholder rect all use `fill={ctx.colors.surface}` verbatim, grepped
+ *   and read individually) — re-rendering would just re-verify the
+ *   identical (muted, surface) hex pair the bento-panel block already
+ *   exercises, since contrast is a pure function of the two colors, not of
+ *   which component drew them.
+ * - `"needs-fixture"`: a real, distinct (fill, background) pair not
+ *   covered by either of the above — has its own dedicated probe below.
+ * - `"known-gap"`: a real, `auditDeck`-confirmed low-contrast finding this
+ *   task's token-calibration discipline cannot close — recorded (pinned),
+ *   not silently exempted. See the dedicated describe block below and the
+ *   fix report.
+ */
+const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
+  bullets: "no-muted-fill", // stroke-only divider fallback (bullets.tsx)
+  paragraph: "no-muted-fill", // no colors.muted reference at all
+  quote: "page-bg", // attribution line (quote.tsx), no card
+  callout: "no-muted-fill", // no colors.muted reference at all
+  code: "no-muted-fill", // no colors.muted reference at all
+  // kpi.tsx's row-card unit/label/delta-flat-fallback text is flat-surface
+  // (same colors.surface pair as bento-panel); its `source` line renders at
+  // fillOpacity=0.7 — a real, separate gap, see "known gaps" below.
+  kpi_cards: "known-gap",
+  chart: "page-bg", // category/value/donut-center labels never sit on a component-painted rect (chart.tsx/chart-svg.tsx)
+  // Edge-label chip (`fill={colors.bg}`, flowchart.tsx) is real geometry,
+  // but every realistic label (including STRESS_DECKS's own
+  // flowchart_edge_labels deck) keeps chipW*chipH far below
+  // deck-audit.ts's MIN_BG_REGION_AREA (8000px^2) — verified empirically,
+  // zero muted-attributable findings across all 13 themes — so it never
+  // registers as its own region and the audit resolves the edge label's
+  // background to the ambient page bg in practice, same as every other
+  // page-bg entry.
+  flowchart: "page-bg",
+  architecture: "no-muted-fill", // no colors.muted reference at all
+  timeline: "page-bg", // desc/date text, no card in either horizontal or vertical mode
+  comparison: "page-bg", // row-label (col 0) text; table body is deliberately unfilled (comparison.tsx's own comment)
+  icon_cards: "flat-surface", // description text on the card's colors.surface shell
+  row_cards: "flat-surface", // sub text on the card's colors.surface shell
+  steps: "flat-surface", // description text on the card's colors.surface shell (horizontal mode); vertical mode has no card at all (page-bg, also covered)
+  rings: "page-bg", // desc text, no card
+  // numbered-cards.tsx's `text` field is page-bg (covered); its `sub` field
+  // renders at opacity=0.75 — a real, separate gap, see "known gaps" below.
+  numbered_cards: "known-gap",
+  // roadmap.tsx's row-label text sits on the card's colors.surface shell
+  // (flat-surface) — but `renderCard`'s own accent bar
+  // (`roundedTopBarPath`, an SVG arc `<path>`) triggers a pre-existing,
+  // documented `pathBoundingBox` limitation in deck-audit.ts (see that
+  // function's own doc comment): extracting every numeric token from the
+  // arc's `d` string and taking min/max mis-reads the arc's radius/flag
+  // parameters as coordinates, inflating the accent bar's computed bbox
+  // from ~8px tall to ~the whole card — which then wins the background
+  // lookup for the row-label text underneath it (confirmed by dumping the
+  // real rendered markup: the row-label's true painted background is the
+  // card's white/`colors.surface` rect, not the accent bar's fill).
+  // Pre-existing, out of this task's scope to touch deck-audit.ts (matches
+  // this file's own `rail-numbered` ALLOWLIST entry's precedent of
+  // documenting rather than fixing an audit-tool limitation) — not a
+  // colors.muted defect, so not folded into calibration or into a
+  // "known-gap" pinned finding either.
+  roadmap: "flat-surface",
+  // The one real "needs-fixture" gap this fix round closes — see the
+  // dedicated describe block below.
+  matrix: "needs-fixture",
+  // insight_panel.tsx's footnote text sits on the panel's colors.surface
+  // shell (flat-surface) — same roundedTopBarPath phantom-background caveat
+  // as roadmap above (insight_panel.tsx uses the identical helper).
+  insight_panel: "flat-surface",
+  // The neutral-tone tint rect (`fill={tone}` where tone===colors.muted,
+  // verdict-banner.tsx) renders at fillOpacity=0.08 — below deck-audit.ts's
+  // MIN_BG_OPACITY (0.5) — so it never registers as a background region at
+  // all; muted-filled `**emphasis**` runs inside a neutral banner resolve
+  // against whatever the audit already sees as the ambient page background,
+  // verified empirically (zero muted-attributable findings, all 13 themes).
+  verdict_banner: "page-bg",
+  citation: "page-bg", // URL tspan, no card
+  image: "flat-surface", // missing-asset placeholder text on a colors.surface rect
+  image_grid: "flat-surface", // same missing-asset placeholder pattern
+  image_compare: "flat-surface", // same missing-asset placeholder pattern
+}
+
+describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
+  it("every COMPONENT_TYPES entry has a documented colors.muted surface classification", () => {
+    // Fails the moment the schema grows a 25th component type without a
+    // human deciding where (if anywhere) it paints colors.muted — the
+    // completeness guard the review asked for, deliberately dumb: a plain
+    // membership check against a hand-maintained map, not an attempt to
+    // auto-infer rendering behavior from source.
+    const undocumented = COMPONENT_TYPES.filter((type) => !(type in MUTED_SURFACE_CLASS))
+    expect(undocumented).toEqual([])
+  })
+
+  // The one "needs-fixture" entry: content-matrix's per-cell tone-blended
+  // background. Exercises all 3 `tone` branches (`toneFill`'s neutral/
+  // accent/info switch, matrix.tsx) with a `tag` on every item — `tag` is
+  // the only muted-filled text that lands on the tone-blended cell rect
+  // itself (`x_title`/`y_title` also read colors.muted, but sit on the
+  // ambient page background, already covered by the page-bg check above).
+  const MATRIX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "matrix",
+        cols: 2,
+        items: [
+          { title: "现金牛", tag: "稳定现金流", tone: "neutral" },
+          { title: "明星", tag: "高增长高份额", tone: "accent" },
+          { title: "问号", tag: "待验证方向", tone: "info" },
+          { title: "瘦狗", tag: "考虑退出", tone: "neutral" },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: matrix tag text clears 4.5:1 against every tone-blended cell background`, () => {
+      const style = THEME_DEFINITIONS[themeId].style
+      const findings = auditFindings(deckFor(themeId, MATRIX_SLIDE))
+      const mutedFindings = findings.filter(
+        (f) => f.code === "low-contrast" && (f.detail as { fill?: string } | undefined)?.fill === style.colors.muted,
       )
       expect(mutedFindings).toEqual([])
     })
