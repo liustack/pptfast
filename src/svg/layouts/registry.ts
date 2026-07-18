@@ -522,6 +522,16 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     same component sequence the grid would otherwise hold (see that
 //     entry's own comment), so it shares the grid's number rather than a
 //     lesser invented one.
+//     Final semantics (W4, recorded once the full-set rollout made
+//     bento-panel reachable from every theme, not just tech): this capacity-6
+//     ceiling never actually binds the `min(delivery editorial budget, layout
+//     capacity)` density gate. `DELIVERY_BUDGETS`'s loosest delivery
+//     (`text`) tops out at 5 components/slide — still under 6 — so every
+//     delivery's own editorial budget wins the `min()` for this archetype
+//     (5/4/3 for text/balanced/presentation, never 6). The number above is
+//     bento-panel's true geometric ceiling and stays for documentation and
+//     for any future delivery tier looser than 5, but no deck can reach it
+//     through today's gate.
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   "narrow-column": {
