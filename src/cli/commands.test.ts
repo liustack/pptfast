@@ -623,6 +623,7 @@ describe("deck project directory workflow (W5 task 5)", () => {
     // note when both apply; assert that relative order, not just that each
     // note's text independently appears somewhere in the message.
     const layoutNoteIndex1 = assembleMsg1.indexOf("auto-selected into deck.json")
+    expect(layoutNoteIndex1).toBeGreaterThanOrEqual(0)
     expect(layoutNoteIndex1).toBeGreaterThan(seedMatch1!.index)
 
     const assembled1 = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
