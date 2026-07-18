@@ -24,14 +24,16 @@ export interface ThemeDefinition {
    * 主题的「选择权」配置（spec §3 theme.layouts 命名裁决；W2 任务 2 由
    * src/themes/manifest.ts〔已删除〕的旧选择权类型原地迁居于此）——四页型
    * 各自允许哪些 archetype 参与自动选型。排印/色彩在 style，这里只放集合。
-   * **W4 全集放开**（spec §3「缺省 = 全集，策展收窄塑造个性」）：十三内置主题
-   * 四页型默认均为 {@link fullArchetypeSet} 的全集，除五处策展排除——design
-   * decision 7 的三处既有对比度裁定（luxe/campaign/classroom 的 content 排除
-   * banner-heading）+ design decision 8 本任务实现期新增的两处阳性裁定（tech
-   * 的 cover/content、consulting 的 chapter）——见 `LAYOUTS` 各自条目的注释。
-   * 页型空集 = 该页型回落调用侧兜底（十三主题四页型均非空，
-   * `definitions.test.ts` 锁死）。id 是通用 string（不再按页型区分 archetype
-   * id 联合类型）。
+   * **W4 全集放开**（spec §3「缺省 = 全集，策展收窄塑造个性」，design
+   * decision 7）：十三内置主题四页型默认均为 {@link fullArchetypeSet} 的
+   * 全集。design decision 7/8 曾经的六处对比度策展排除（luxe/campaign/
+   * classroom 的 content 排除 banner-heading、tech 的 cover/content、
+   * consulting 的 chapter）已在 W4 fix round 随对比度自适应 ink helper
+   * （`src/svg/ink.ts`）的根因修复全部撤销——目前仅剩 fix round 自身新发现
+   * 的三处（bloom/classroom/heritage 的 chapter 排除 fashion-chapter，见
+   * `CHAPTER_WITHOUT_FASHION` 的注释）。页型空集 = 该页型回落调用侧兜底
+   * （十三主题四页型均非空，`definitions.test.ts` 锁死）。id 是通用
+   * string（不再按页型区分 archetype id 联合类型）。
    */
   layouts: Record<Slide["type"], readonly string[]>
   /** Motif：单值，非 allowed-set（spec §3 示意）。undefined = 该主题无 motif 装饰（十三主题中 runway 留空，其余均已设）。 */
@@ -64,57 +66,28 @@ const FULL_LAYOUTS: Record<Slide["type"], readonly string[]> = {
 }
 
 /**
- * The full content set minus `banner-heading`. `content-banner-heading.tsx`
- * bakes its heading in white text inside a filled `colors.primary` banner —
- * four of the thirteen built-in themes' `primary` computes too low a
- * contrast ratio for that baked white:
- * - luxe (champagne gold), campaign (magenta, ~3.2:1), classroom (dusty
- *   blue, ~2.9:1) — W4 design decision 7's original "唯三例外", a
- *   pre-existing human curation call carried into the full-set rollout
- *   unchanged.
- * - tech (bright cyan `#2DD4E6`, ~1.8:1) — a fourth instance of the exact
- *   same defect pattern, found via design decision 8's audit-suite-positive
- *   process during *this* task's own implementation (tech's content set was
- *   never curated to include `banner-heading` before W4, so nothing had
- *   exercised this combination until full-set auto-pick could reach it).
- * A theme excludes, it never invents new render code (`docs/architecture.md`),
- * so the fix is curation: drop the one archetype whose baked color pairing
- * a theme's palette can't support, keep the other 6.
+ * The full chapter set minus `fashion-chapter` — three W4 fix-round
+ * exclusions (bloom/classroom/heritage; see `LAYOUTS` entries below).
+ * `chapter-fashion-chapter.tsx` (a runway-native archetype, untouched by
+ * this task except an import-path move) already picks its own ink via
+ * `readableOn(ctx.colors.accent)` — but `readableOn`'s fixed 0.4 luminance
+ * threshold doesn't guarantee the 3:1 large-text ratio the way a strict
+ * WCAG-derived cutoff (~0.3) would, for an accent color whose luminance
+ * lands in the 0.3-0.4 gap. Full-matrix scanning found three themes whose
+ * `colors.accent` falls there badly enough that the archetype's own
+ * "CHAPTER NN" label and heading text (not just its already-adjudicated
+ * decorative watermark digit — see `full-matrix-contrast.test.ts`'s
+ * allowlist) measure under 3:1: bloom (`#D89A8E`, 2.35:1), classroom
+ * (`#D89A88`, 2.36:1), heritage (`#C98A4B`, 2.91:1). `readableOn` itself is
+ * out of this task's scope to redesign (it backs every other archetype that
+ * already shipped with it, and the brief is explicit: adapt ink, don't
+ * invent a new color policy) — curation is the fix per design decision 8's
+ * standing rule ("策展是主动行为，禁止调阈值消音"), same disposition as
+ * every other exclusion in this file. None of the three curated
+ * `fashion-chapter` pre-W4 (only runway did), so this is a full-set-rollout
+ * new exposure, not a regression on any previously-shipped pairing.
  */
-const CONTENT_WITHOUT_BANNER_HEADING = FULL_LAYOUTS.content.filter((id) => id !== "banner-heading")
-
-/**
- * The full cover set minus `left-anchor` — tech's one W4 design-decision-8
- * exclusion (found via `pnpm check`'s audit suite going positive on this
- * newly-reachable combo during this task's own implementation, not a
- * pre-existing human curation call like the content trio above).
- * `cover-left-anchor.tsx` bakes its heading in fixed white text inside a
- * `colors.primary`-filled block, documented in that file's own header as a
- * deliberate "readable under any theme color" exemption — tech's `primary`
- * (`#2DD4E6`, a bright cyan) breaks that assumption: white-on-cyan measures
- * ~1.8:1, far under the 3:1 large-text floor. Curation is the fix per design
- * decision 8 ("策展是主动行为，禁止调阈值消音") — the archetype's own
- * cross-theme white-text exemption stays as-is for the other 12 themes,
- * whose `primary` colors are dark enough to support it.
- */
-const COVER_WITHOUT_LEFT_ANCHOR = FULL_LAYOUTS.cover.filter((id) => id !== "left-anchor")
-
-/**
- * The full chapter set minus `masthead-chapter` — consulting's one W4
- * design-decision-8 exclusion (same provenance as {@link COVER_WITHOUT_LEFT_ANCHOR}
- * — an audit-suite positive surfaced during this task's implementation).
- * `chapter-masthead-chapter.tsx` draws its heading in `colors.text` with no
- * background of its own (relies on the page-level default chapter
- * background) — consulting is the one built-in theme whose `colors.text`
- * (`#051C2C`) exactly equals its own `defaultBackgrounds.chapter`
- * (`#051C2C`, `consulting.ts`), so the heading renders at a 1:1 contrast
- * ratio (functionally invisible). Every other theme's `colors.text` /
- * chapter-background pairing is fine; this is a one-theme token collision,
- * not a flaw in the archetype's general design, so curation (not touching
- * the archetype or consulting's `colors.text`, which content/cover/ending
- * pages all read correctly) is the fix.
- */
-const CHAPTER_WITHOUT_MASTHEAD = FULL_LAYOUTS.chapter.filter((id) => id !== "masthead-chapter")
+const CHAPTER_WITHOUT_FASHION = FULL_LAYOUTS.chapter.filter((id) => id !== "fashion-chapter")
 
 const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
   enterprise: { suppressFooterOnCardContent: true },
@@ -131,28 +104,31 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 是因为这两块是全量 Record（十三主题每个都必须有非空 layouts），不像
  * BRANDS 那样是 Partial。
  *
- * **排除名单的两种来源**（均落在下面对应主题条目的注释里，不在这里汇总
- * 复述）：
- * 1. **design decision 7 的三处既有对比度裁定**（luxe/campaign/classroom 的
- *    content 排除 banner-heading）——铺开前就已存在的人工策展结论，铺开时
- *    原样保留。
- * 2. **design decision 8 的阳性裁定**（本任务实现期新增，逐条见下面对应
- *    主题条目）：全集放开后 `pnpm check`/`pnpm e2e` 跑出的新可达
- *    theme×archetype 组合若报对比度问题，援引 1 的既有模式扩展该主题的
- *    排除名单，而不是调审计阈值或改 archetype 本身——策展是主动行为。目前
- *    三条：tech 的 cover 排除 left-anchor + content 排除 banner-heading
- *    （两处都是"baked 白字 on colors.primary"在 tech 偏亮的 primary
- *    #2DD4E6 上不成立，content 一侧与来源 1 的三主题同一缺陷模式、同一
- *    CONTENT_WITHOUT_BANNER_HEADING 常量）、consulting 的 chapter 排除
- *    masthead-chapter（该 archetype 的标题走 `colors.text`，与 consulting
- *    自己的 chapter 默认背景撞成同色）。
+ * **W4 fix round（design decision 8 的根因处置收官）**：design decision 7 的
+ * 三处既有对比度裁定（luxe/campaign/classroom 的 content 排除
+ * banner-heading）与本任务实现期新增的三处阳性裁定（tech 的 cover/content、
+ * consulting 的 chapter）——共六处——全部源于同一枚缺陷模式：archetype 画在
+ * 一块自己不控制（或自画但未检查明度）的背景上、baked 死一个文字色。fix
+ * round 引入的对比度自适应 ink helper（`src/svg/ink.ts` 的
+ * `readableOn`/`accessibleInk`）从根上修复了这枚缺陷，六处例外逐一用
+ * `auditDeck` 复核（对应 archetype 现在自适应取色）后确认全部转为可读，予以
+ * 撤销——`LAYOUTS` 现在是十三主题的纯 {@link FULL_LAYOUTS} 全集（A 方案纯
+ * 终态），不再有任何 content/cover/chapter 排除残留于这六处。
+ *
+ * 唯一剩余的排除是 fix round 全矩阵扫描（`full-matrix-contrast.test.ts`）
+ * 新发现的一类：runway 专属 `fashion-chapter`/`fashion-masthead`/
+ * `fashion-ending` archetype 家族早在 2026-07-10 就自带
+ * `readableOn(ctx.colors.accent/primary)` 自适应取色（这是 fix round 提炼
+ * 的同一个 helper 的既有消费者，非本任务新写），但 `readableOn` 的固定
+ * 0.4 明度阈值不是严格 WCAG 意义上的 3:1 保证（真正的分界约 0.3）——对
+ * 少数主题的 accent/primary 明度恰好落在这个 0.3-0.4 缝隙，选中的中性色
+ * 仍然达不到 3:1。`readableOn` 本身不在本任务改动范围（brief 明确：自适应
+ * 取色不发明新策略，这个函数早已服务其它 archetype），故按同一策展惯例处置
+ * ——见 {@link CHAPTER_WITHOUT_FASHION} 的注释。
  */
 const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif">> = {
-  // W4 design decision 8: chapter 排除 masthead-chapter（其标题 fill
-  // colors.text 与 consulting 自己的 chapter 默认背景同色 #051C2C，见
-  // CHAPTER_WITHOUT_MASTHEAD 的注释）。
   consulting: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_MASTHEAD, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "banner-motif",
   },
   insight: {
@@ -163,24 +139,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "rail-motif",
   },
-  // W4 design decision 8: cover 排除 left-anchor（其白字例外假设"任意主题色
-  // 下都可读"，tech 偏亮的 primary #2DD4E6 上白字对比不足，见
-  // COVER_WITHOUT_LEFT_ANCHOR 的注释）。content 排除 banner-heading——同一枚
-  // "baked 白字 on colors.primary" 缺陷模式在 content-banner-heading.tsx 里
-  // 再现一次（#2DD4E6 上白字仍是 1.80:1），与 luxe/campaign/classroom 三个
-  // 既有例外的成因完全相同（同一 CONTENT_WITHOUT_BANNER_HEADING 常量），tech
-  // 是 W4 铺开后新发现的第四例，不是独立问题。
   tech: {
-    layouts: {
-      cover: COVER_WITHOUT_LEFT_ANCHOR,
-      chapter: FULL_LAYOUTS.chapter,
-      content: CONTENT_WITHOUT_BANNER_HEADING,
-      ending: FULL_LAYOUTS.ending,
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "constellation-motif",
   },
   // runway（时尚杂志，2026-07-10 拆分）：冲击力=超大排印+满版色块（检索背书），
-  // fashion-masthead/fashion-chapter/fashion-ending 是 runway 专属新表达；
+  // fashion-masthead/fashion-chapter/fashion-ending 是 runway 专属新表达。
   // journal 与其共享 masthead 报头家族但 tokens 气质大变。
   runway: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
@@ -202,46 +166,31 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     motif: "enterprise-motif",
   },
   // luxe（原 retail 黑金重定位，2026-07-10）：黑金深底 poster 家族，
-  // readableOn 出深字。**content 排除 banner-heading**：其横幅文字是 baked
-  // 白字，香槟金横幅上白字不可读——三处排除中最早的一处，luxe 先例。
+  // readableOn 出深字。
   luxe: {
-    layouts: {
-      cover: FULL_LAYOUTS.cover,
-      chapter: FULL_LAYOUTS.chapter,
-      content: CONTENT_WITHOUT_BANNER_HEADING,
-      ending: FULL_LAYOUTS.ending,
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：烫金细线（原 P3「motif 可选」验证品，补齐）
     motif: "luxe-motif",
   },
   // campaign（活力营销，2026-07-13 memphis 拆分 A）：深紫底多彩笔刷由专属
-  // campaign-motif 承载。**content 排除 banner-heading**：品红横幅白字对比
-  // 不足（~3.2:1，luxe 先例）。
+  // campaign-motif 承载。
   campaign: {
-    layouts: {
-      cover: FULL_LAYOUTS.cover,
-      chapter: FULL_LAYOUTS.chapter,
-      content: CONTENT_WITHOUT_BANNER_HEADING,
-      ending: FULL_LAYOUTS.ending,
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "campaign-motif",
   },
   // classroom（教学课堂，2026-07-13 第 13 主题）：莫兰迪灰调+平滑斑块手绘
-  // 点线由专属 classroom-motif 承载。**content 排除 banner-heading**：雾蓝
-  // 横幅白字 ~2.9:1 不足（luxe 先例）。
+  // 点线由专属 classroom-motif 承载。**chapter 排除 fashion-chapter**：见
+  // CHAPTER_WITHOUT_FASHION 的注释（W4 fix round 新发现，非 design
+  // decision 7/8 原有六处之一）。
   classroom: {
-    layouts: {
-      cover: FULL_LAYOUTS.cover,
-      chapter: FULL_LAYOUTS.chapter,
-      content: CONTENT_WITHOUT_BANNER_HEADING,
-      ending: FULL_LAYOUTS.ending,
-    },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_FASHION, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "classroom-motif",
   },
   // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：奶白底水彩晕染+植物细线由
-  // 专属 bloom-motif 承载，紫藤横幅白字 ~6:1 可配 banner-heading（无需排除）。
+  // 专属 bloom-motif 承载。**chapter 排除 fashion-chapter**：见
+  // CHAPTER_WITHOUT_FASHION 的注释。
   bloom: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_FASHION, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "bloom-motif",
   },
   // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：宣纸/墨/朱砂/
@@ -254,9 +203,10 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/definitions.ts），meta 文字照排。
   },
   // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty 浅底混搭，酒红横幅
-  // 上 baked 白字对比充足（无需排除 banner-heading）。
+  // 上 baked 白字对比充足。**chapter 排除 fashion-chapter**：见
+  // CHAPTER_WITHOUT_FASHION 的注释。
   heritage: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_FASHION, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：典藏纹饰（徽记/角花/页缘线）
     motif: "heritage-motif",
   },
