@@ -35,10 +35,11 @@ describe("findConfig", () => {
     await expect(findConfig(root)).rejects.toThrow(/pptfast\.config\.json/)
   })
 
-  it("rejects an unknown theme id", async () => {
+  it("does not validate the theme id at read time (W5 review fix: moved to applyDeckConfig at resolution time — see commands.test.ts)", async () => {
     const root = await tmp()
     await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ theme: "neon" }))
-    await expect(findConfig(root)).rejects.toThrow(/theme/)
+    const hit = await findConfig(root)
+    expect(hit?.config.theme).toBe("neon")
   })
 
   it("accepts a registered theme id (W3 task 4: installed-check widened to getInstalledThemeIds)", async () => {
@@ -137,11 +138,12 @@ describe("findUserConfig (W5 task 5: four-layer chain, user layer)", () => {
     await expect(findUserConfig()).rejects.toThrow(/config\.json/)
   })
 
-  it("rejects an unknown theme id", async () => {
+  it("does not validate the theme id at read time (W5 review fix: moved to applyDeckConfig at resolution time — see commands.test.ts)", async () => {
     const home = await tmp()
     process.env.PPTFAST_HOME = home
     await writeFile(join(home, "config.json"), JSON.stringify({ theme: "neon" }))
-    await expect(findUserConfig()).rejects.toThrow(/theme/)
+    const hit = await findUserConfig()
+    expect(hit?.config.theme).toBe("neon")
   })
 
   it("rejects a config that is not valid JSON", async () => {

@@ -1,7 +1,8 @@
 // @vitest-environment node
-import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
+import JSZip from "jszip"
 import { afterAll, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import { SCENARIO_PRESETS } from "../scenario"
@@ -162,6 +163,40 @@ const ROUNDTRIPPABLE_IR = {
     { id: "s-body", type: "content", heading: "Body", components: [{ type: "paragraph", text: "hi" }] },
     { id: "s-body2", type: "content", heading: "Body 2" },
     { id: "s-ending", type: "ending", heading: "End" },
+  ],
+}
+
+/** Same shape as {@link ROUNDTRIPPABLE_IR}, plus a data-URI image asset
+ *  referenced by `s-body`'s `image` component — the exact runtime-reproduced
+ *  "image decks round-trip to a missing image" scenario (W5 review fix,
+ *  finding 1): `runDisassemble` must materialize `assets/logo.png` from the
+ *  data URI so the later `runRender` on the disassembled directory actually
+ *  embeds the image again, not just produces a structurally valid pptx. */
+const ROUNDTRIPPABLE_IR_WITH_ASSET = {
+  version: "3",
+  filename: "roundtrip-asset-test",
+  theme: { id: "tech" },
+  scenario: { delivery: "presentation" },
+  assets: { images: { logo: { src: `data:image/png;base64,${PNG_1PX.toString("base64")}` } } },
+  slides: [
+    { id: "s-cover", type: "cover", heading: "Cover" },
+    { id: "s-body", type: "content", heading: "Body", components: [{ type: "image", asset_id: "logo" }] },
+    { id: "s-body2", type: "content", heading: "Body 2" },
+    { id: "s-ending", type: "ending", heading: "End" },
+  ],
+}
+
+/** Every slide is an unfilled placeholder — `disassembleDeck` produces zero
+ *  `pages/*.json` entries for this IR (W5 review fix, finding 8: the
+ *  `runDisassemble` summary must not claim to have written a `pages/`
+ *  directory that was never created). */
+const IR_ALL_PLACEHOLDERS = {
+  version: "3",
+  filename: "cli-test-all-placeholder",
+  theme: { id: "tech" },
+  slides: [
+    { id: "p-1", type: "cover", placeholder: true },
+    { id: "p-2", type: "content", placeholder: true },
   ],
 }
 
@@ -364,6 +399,25 @@ describe("applyDeckConfig resolution (flag > config > IR)", () => {
     await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
     await expect(runValidate(join(d, "deck.json"), d)).resolves.toMatch(/theme "ink"/)
   })
+
+  describe("theme validation moved to resolution time (W5 review fix, finding 6)", () => {
+    it("throws unknown-theme naming the config path when a stale project-config theme actually wins", async () => {
+      const d = await freshDir()
+      await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "not-a-real-theme" }))
+      const raw: any = structuredClone(VALID_IR)
+      await expect(applyDeckConfig(raw, { cwd: d })).rejects.toThrow(
+        /unknown theme "not-a-real-theme" \(from .*pptfast\.config\.json\)/,
+      )
+    })
+
+    it("--theme override bypasses a stale/unknown project-config theme entirely — no longer a read-time hard-fail", async () => {
+      const d = await freshDir()
+      await writeFile(join(d, "pptfast.config.json"), JSON.stringify({ theme: "not-a-real-theme" }))
+      const raw: any = structuredClone(VALID_IR)
+      await applyDeckConfig(raw, { theme: "consulting", cwd: d })
+      expect(raw.theme.id).toBe("consulting")
+    })
+  })
 })
 
 describe("runInit", () => {
@@ -485,6 +539,26 @@ describe("bare-name resolution through CLI commands (W5 task 5)", () => {
       await expect(runValidate("deck.json", cwd)).resolves.toMatch(/OK — 2 slides/)
     })
   })
+
+  it("a nonexistent bare-name typo's error names the local candidate, not an obscure deck-home guess (W5 review fix, finding 3)", async () => {
+    const home = await makeDeckDir("pptfast-barehome3-")
+    await withPptfastHome(home, async () => {
+      const cwd = await makeDeckDir("pptfast-barecwd3-")
+      // "typo.json" exists neither locally under cwd nor under the deck
+      // home — the error must name what the user actually typed (resolved
+      // under cwd), not $PPTFAST_HOME/decks/typo.json.
+      await expect(runValidate("typo.json", cwd)).rejects.toThrow(join(cwd, "typo.json"))
+    })
+  })
+
+  it("a separator-relative target resolves against the cwd param (W5 review fix, finding 4)", async () => {
+    const cwd = await makeDeckDir("pptfast-barecwd4-")
+    await mkdir(join(cwd, "sub"))
+    await writeFile(join(cwd, "sub", "deck.json"), JSON.stringify(VALID_IR))
+    // "./sub/deck.json" has a path separator — resolveDeckTarget must
+    // resolve it against the `cwd` param, not the real process.cwd().
+    await expect(runValidate("./sub/deck.json", cwd)).resolves.toMatch(/OK — 2 slides/)
+  })
 })
 
 describe("structural deck-directory errors surface through the CLI shell (W5 task 5)", () => {
@@ -600,6 +674,75 @@ describe("runAssemble", () => {
     await runAssemble(deckDir)
     expect(await readFile(planPath, "utf8")).toBe(planText)
   })
+
+  it("gives a friendly error for a file target instead of a confusing ENOTDIR (W5 review fix)", async () => {
+    const d = await makeDeckDir()
+    const filePath = join(d, "not-a-dir.json")
+    await writeFile(filePath, JSON.stringify(VALID_IR))
+    await expect(runAssemble(filePath)).rejects.toThrow(/expected a deck project directory/)
+  })
+
+  it("still surfaces the detailed missing-plan-file error for a target that does not exist at all", async () => {
+    const d = await makeDeckDir()
+    const missing = join(d, "does-not-exist")
+    await expect(runAssemble(missing)).rejects.toThrow(/pptfast plan validate/)
+  })
+
+  describe("cwd + output-relative-asset portability (W5 review fix)", () => {
+    it("resolves a relative -o against the cwd param, not the real process.cwd()", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      const otherCwd = await makeDeckDir()
+      const msg = await runAssemble(deckDir, { output: "custom-out.json", cwd: otherCwd })
+      const expected = join(otherCwd, "custom-out.json")
+      expect(msg).toContain(expected)
+      const written = JSON.parse(await readFile(expected, "utf8"))
+      expect(written.slides).toHaveLength(5)
+    })
+
+    it("rewrites relative asset srcs to stay correct when -o writes outside the deck directory", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await mkdir(join(deckDir, "pages"))
+      await writeFile(
+        join(deckDir, "pages", "p-a.json"),
+        JSON.stringify({ components: [{ type: "image", asset_id: "logo" }] }),
+      )
+      await mkdir(join(deckDir, "assets"))
+      await writeFile(join(deckDir, "assets", "logo.png"), PNG_1PX)
+
+      const elsewhere = await makeDeckDir("pptfast-assemble-elsewhere-")
+      const outPath = join(elsewhere, "out.json")
+      await runAssemble(deckDir, { output: outPath })
+
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      // No longer "assets/logo.png" (deckDir-relative) — must still resolve
+      // back to the real file from the OUTPUT file's own directory.
+      expect(written.assets.images.logo.src).not.toBe("assets/logo.png")
+      expect(resolve(elsewhere, written.assets.images.logo.src)).toBe(join(deckDir, "assets", "logo.png"))
+
+      // The real proof: rendering straight from the output location succeeds
+      // and actually embeds the image — a stale deckDir-relative src would
+      // fail to resolve from `elsewhere/`. --draft: only p-a was filled in
+      // above, the rest of makeDeckPlan()'s pages are unfilled placeholders,
+      // and that gate is orthogonal to what this test is checking.
+      const pptxPath = join(elsewhere, "out.pptx")
+      await runRender(outPath, { output: pptxPath, draft: true })
+      const zip = await JSZip.loadAsync(await readFile(pptxPath))
+      const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"))
+      expect(media.length).toBeGreaterThan(0)
+    })
+
+    it("leaves asset srcs untouched when -o stays inside the deck directory", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await mkdir(join(deckDir, "assets"))
+      await writeFile(join(deckDir, "assets", "logo.png"), PNG_1PX)
+      await runAssemble(deckDir, { output: join(deckDir, "custom.json") })
+      const written = JSON.parse(await readFile(join(deckDir, "custom.json"), "utf8"))
+      expect(written.assets.images.logo.src).toBe("assets/logo.png")
+    })
+  })
 })
 
 describe("runDisassemble", () => {
@@ -639,6 +782,84 @@ describe("runDisassemble", () => {
     expect(renderMsg).toContain("4 slides")
     const bytes = await readFile(join(outDir, "roundtrip.pptx"))
     expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+  })
+
+  describe("materializes assets/ (W5 review fix, finding 1: image decks used to round-trip to a missing image)", () => {
+    it("a data-URI asset round-trips through disassemble -> render and the image is embedded again", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR_WITH_ASSET))
+      const outDir = await makeDeckDir()
+
+      const msg = await runDisassemble(irPath, outDir)
+      expect(msg).toContain("1 asset file")
+
+      // The bytes actually landed on disk, decoded from the data URI.
+      const assetBytes = await readFile(join(outDir, "assets", "logo.png"))
+      expect(assetBytes.equals(PNG_1PX)).toBe(true)
+
+      // Full round trip: render the disassembled directory and confirm the
+      // image is actually embedded in the pptx zip — the exact "missing
+      // image" repro this fix closes, not just a structurally-valid pptx
+      // with the image silently dropped.
+      const pptxPath = join(outDir, "roundtrip-asset.pptx")
+      await runRender(outDir, { output: pptxPath })
+      const zip = await JSZip.loadAsync(await readFile(pptxPath))
+      const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"))
+      expect(media.length).toBeGreaterThan(0)
+    })
+
+    it("rejects a URL asset with a disassemble-specific error", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      const irWithUrlAsset = {
+        ...ROUNDTRIPPABLE_IR_WITH_ASSET,
+        assets: { images: { logo: { src: "https://example.com/logo.png" } } },
+      }
+      await writeFile(irPath, JSON.stringify(irWithUrlAsset))
+      const outDir = await makeDeckDir()
+      await expect(runDisassemble(irPath, outDir)).rejects.toThrow(
+        'asset "logo": URL assets cannot be disassembled into a deck directory — inline it as a data URI or download it first',
+      )
+    })
+
+    it("copies a local file asset into assets/, resolving relative to the input IR's own directory", async () => {
+      const srcDir = await makeDeckDir()
+      await writeFile(join(srcDir, "logo.png"), PNG_1PX)
+      const irPath = join(srcDir, "deck.json")
+      const irWithLocalAsset = {
+        ...ROUNDTRIPPABLE_IR_WITH_ASSET,
+        assets: { images: { logo: { src: "logo.png" } } },
+      }
+      await writeFile(irPath, JSON.stringify(irWithLocalAsset))
+      const outDir = await makeDeckDir()
+      await runDisassemble(irPath, outDir)
+      const written = await readFile(join(outDir, "assets", "logo.png"))
+      expect(written.equals(PNG_1PX)).toBe(true)
+    })
+
+    it("does not mention an assets/ dir in the summary when the IR has no assets", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(VALID_IR))
+      const outDir = await makeDeckDir()
+      const msg = await runDisassemble(irPath, outDir)
+      expect(msg).not.toContain("asset file")
+      await expect(stat(join(outDir, "assets"))).rejects.toThrow()
+    })
+  })
+
+  describe("summary message does not name an unwritten pages/ dir (W5 review fix, finding 8)", () => {
+    it("says 'no pages' rather than '0 page files to <dir>' when every slide is a placeholder", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(IR_ALL_PLACEHOLDERS))
+      const outDir = await makeDeckDir()
+      const msg = await runDisassemble(irPath, outDir)
+      expect(msg).toContain("no pages")
+      expect(msg).not.toContain(join(outDir, "pages"))
+      await expect(stat(join(outDir, "pages"))).rejects.toThrow()
+    })
   })
 })
 
@@ -698,6 +919,48 @@ describe("applyDeckConfig four-layer chain (W5 task 5): user config layer", () =
       expect(raw.theme.style.colors.primary).toBe("#654321")
     })
   })
+
+  describe("theme validation moved to resolution time (W5 review fix, finding 6)", () => {
+    it("throws unknown-theme naming the user-config path when a stale user-config theme actually wins (no flag, no project config)", async () => {
+      const projectDir = await makeDeckDir()
+      const home = await makeDeckDir()
+      await writeFile(join(home, "config.json"), JSON.stringify({ theme: "not-a-real-theme" }))
+      await withPptfastHome(home, async () => {
+        const raw: any = structuredClone(VALID_IR)
+        await expect(applyDeckConfig(raw, { cwd: projectDir })).rejects.toThrow(
+          /unknown theme "not-a-real-theme" \(from .*config\.json\)/,
+        )
+      })
+    })
+
+    // The key regression test: a stale/unknown theme sitting in the user's
+    // config used to hard-fail at config *read* time (inside findUserConfig,
+    // before this fix), even when a valid --theme flag should have overridden
+    // it. It must now succeed — the flag wins the chain, so the invalid
+    // user-config value never gets validated at all.
+    it("--theme override bypasses a stale/unknown user-config theme entirely", async () => {
+      const projectDir = await makeDeckDir()
+      const home = await makeDeckDir()
+      await writeFile(join(home, "config.json"), JSON.stringify({ theme: "not-a-real-theme" }))
+      await withPptfastHome(home, async () => {
+        const raw: any = structuredClone(VALID_IR)
+        await applyDeckConfig(raw, { theme: "consulting", cwd: projectDir })
+        expect(raw.theme.id).toBe("consulting")
+      })
+    })
+
+    it("a valid project config theme overrides a stale/unknown user-config theme (project still beats user, no validation error)", async () => {
+      const projectDir = await makeDeckDir()
+      await writeFile(join(projectDir, "pptfast.config.json"), JSON.stringify({ theme: "tech" }))
+      const home = await makeDeckDir()
+      await writeFile(join(home, "config.json"), JSON.stringify({ theme: "not-a-real-theme" }))
+      await withPptfastHome(home, async () => {
+        const raw: any = structuredClone(VALID_IR)
+        await applyDeckConfig(raw, { cwd: projectDir })
+        expect(raw.theme.id).toBe("tech")
+      })
+    })
+  })
 })
 
 describe("decksDir redirect (W5 task 5)", () => {
@@ -710,6 +973,21 @@ describe("decksDir redirect (W5 task 5)", () => {
       await mkdir(deckDir, { recursive: true })
       await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
       const cwd = await makeDeckDir("pptfast-redirect-cwd-")
+      const msg = await runAssemble("q3-review", { cwd })
+      expect(msg).toContain(join(deckDir, "deck.json"))
+    })
+  })
+
+  it("resolves a relative decksDir in the user config against the home dir, not the cwd (W5 review fix, finding 9)", async () => {
+    const home = await makeDeckDir()
+    await writeFile(join(home, "config.json"), JSON.stringify({ decksDir: "team-decks" }))
+    await withPptfastHome(home, async () => {
+      const deckDir = join(home, "team-decks", "q3-review")
+      await mkdir(deckDir, { recursive: true })
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      // cwd is deliberately unrelated to `home` — a cwd-relative (mis)read of
+      // decksDir would resolve to a directory under `cwd`, not find this one.
+      const cwd = await makeDeckDir("pptfast-redirect-relative-cwd-")
       const msg = await runAssemble("q3-review", { cwd })
       expect(msg).toContain(join(deckDir, "deck.json"))
     })

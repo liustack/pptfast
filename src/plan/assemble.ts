@@ -314,6 +314,21 @@ const UNTITLED_HEADING = "Untitled"
  *   flags owned by the *theme*) — not to be confused with the deck-level
  *   `brand` field below, a different, unrelated schema despite the shared
  *   name.
+ * - `ir.assets.images` is not part of this function's return value at all —
+ *   `{ plan, pages }` has no `assets` field, and this module stays zero-fs
+ *   by design (this file's own top comment), so it has no way to write an
+ *   `assets/` directory itself. Any `asset_id` reference inside a copied
+ *   `components`/`background` survives untouched ({@link extractPageContent}
+ *   copies both as-is), but the underlying image bytes are deliberately left
+ *   for the caller: the CLI shell closes that gap. `runDisassemble`
+ *   (`../cli/commands.ts`) walks the *input* IR's `ir.assets.images` itself
+ *   and materializes every entry into `<outDir>/assets/<id>.<ext>`
+ *   (`writeDeckAssets`, `../cli/deck-dir.ts`) so a later `readDeckDir`'s
+ *   `scanAssets` re-registers them exactly like any other deck-directory
+ *   asset. Skipping that shell-side step is not a doc-comment nuance — it
+ *   reproduces as a real bug: an image deck disassembles with every
+ *   `asset_id` left dangling, then re-assembles and renders with the image
+ *   silently missing.
  *
  * Round-trip-safe despite the above, worth calling out because of that name
  * collision: the top-level `brand` field (`BrandSchema` — `logo_asset_id` /

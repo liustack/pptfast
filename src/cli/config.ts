@@ -3,7 +3,6 @@ import { dirname, join, resolve } from "node:path"
 import { z } from "zod"
 import { PptfastError } from "../errors"
 import { StyleOverrideSchema } from "../ir"
-import { getInstalledThemeIds } from "../themes/definitions"
 import { userConfigPath } from "./home"
 
 /**
@@ -13,11 +12,16 @@ import { userConfigPath } from "./home"
  * carries (an authored IR's own `theme`, or the schema's own "consulting"
  * default when nothing anywhere sets one) — see `commands.ts`'s
  * `applyDeckConfig` for where all four layers actually get merged. `theme`
- * is kept an open string at the schema layer (mirrors ThemeSchema in
- * ir/index.ts) — the installed-theme check runs post-parse in
- * `readConfigFile` against `getInstalledThemeIds()` (builtins + anything
- * registered via `registerTheme`, W3 task 4), the same "unknown →
- * PptfastError with the available list" UX as validateIr.
+ * is kept an open string at this schema layer (mirrors `ThemeSchema` in
+ * `ir/index.ts`) on purpose: `readConfigFile` below no longer checks it
+ * against the installed set at read time — a config file's theme value
+ * might sit behind a CLI flag or another layer that never actually gets
+ * used, so rejecting it here would hard-fail a command over a value that
+ * was never going to apply. `applyDeckConfig` runs that check once, at
+ * resolution time, against whichever layer's value actually wins the chain
+ * — the same "unknown → PptfastError with the available list" UX as
+ * `validateIr`, just applied to the resolved value instead of unconditionally
+ * to every layer.
  */
 const ConfigSchema = z
   .object({
@@ -33,11 +37,20 @@ export type PptfastConfig = z.infer<typeof ConfigSchema>
  * project config and the artifact's own value): the same two deck-default
  * fields as {@link ConfigSchema} plus `decksDir`, a user-identity concern
  * with no project-level equivalent (redirects `decksRoot`'s default,
- * `./home.ts`) — spec's own split, "用户身份类配置...归用户层，项目品牌类
- * （style/tokens）归项目层". Declared as its own flat object literal rather
- * than `ConfigSchema.extend(...)` — one extra field, not worth taking on
- * zod's extend-then-restrict chaining for a shape this small, and it keeps
- * both schemas readable independently.
+ * `./home.ts`) — spec's own split: user-identity config belongs to the user
+ * layer, project-branding config (style/tokens) belongs to the project
+ * layer. Declared as its own flat object literal rather than
+ * `ConfigSchema.extend(...)` — one extra field, not worth taking on zod's
+ * extend-then-restrict chaining for a shape this small, and it keeps both
+ * schemas readable independently.
+ *
+ * `decksDir`: a relative value resolves against this config file's own
+ * directory (`./home.ts`'s `pptfastHome()` — the only directory a user
+ * config can ever live in, see `decksRoot`), never the CLI's cwd. No tilde
+ * expansion — a literal `~/decks` is the literal relative path segment
+ * `~/decks` under that base, not the home directory. The resulting (almost
+ * certainly missing) directory surfaces through whatever downstream error
+ * reads it, same as any other bad path.
  */
 const UserConfigSchema = z
   .object({
@@ -55,13 +68,13 @@ export const CONFIG_FILENAME = "pptfast.config.json"
  * Shared read+parse+validate body for both config layers (project and user)
  * — same failure posture either way: a missing file is `null` ("fine, no
  * config at this level"), invalid JSON or a failed schema parse is a hard
- * {@link PptfastError} naming `path`, and an unknown `theme` id is checked
- * against the installed set the same way `validateIr` checks IR's own
- * `theme.id`. `T` is constrained to `{ theme?: string }` only — the one
- * field this function itself inspects post-parse; the caller's schema is
- * free to carry more (`UserConfigSchema`'s `decksDir`).
+ * {@link PptfastError} naming `path`. Deliberately does *not* check `theme`
+ * against the installed set here — see {@link ConfigSchema}'s own doc
+ * comment for why that moved to `applyDeckConfig` (`../cli/commands.ts`) at
+ * resolution time instead, applied only to whichever layer's value actually
+ * wins the four-layer chain.
  */
-async function readConfigFile<T extends { theme?: string }>(
+async function readConfigFile<T>(
   path: string,
   schema: z.ZodType<T>,
 ): Promise<{ path: string; config: T } | null> {
@@ -83,14 +96,6 @@ async function readConfigFile<T extends { theme?: string }>(
       .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
       .join("\n")
     throw new PptfastError(`invalid ${path}:\n${detail}`)
-  }
-  if (r.data.theme !== undefined) {
-    const installedThemeIds = getInstalledThemeIds()
-    if (!installedThemeIds.includes(r.data.theme)) {
-      throw new PptfastError(
-        `${path}: unknown theme "${r.data.theme}" — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
-      )
-    }
   }
   return { path, config: r.data }
 }

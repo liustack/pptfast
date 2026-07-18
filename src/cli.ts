@@ -31,7 +31,7 @@ function fail(e: unknown): never {
 
 program
   .command("render")
-  .description("Render an IR/plan JSON file, deck project directory, or bare deck name to a .pptx")
+  .description("Render an IR JSON file, deck project directory, or bare deck name to a .pptx")
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .requiredOption("-o, --output <file>", "output .pptx path")
   .option("--theme <id>", "override the deck theme (see `pptfast themes`)")
@@ -54,7 +54,7 @@ program
 
 program
   .command("validate")
-  .description("Validate an IR/plan JSON file, deck project directory, or bare deck name against the schema")
+  .description("Validate an IR JSON file, deck project directory, or bare deck name against the schema")
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .action(async (target: string) => {
     try {

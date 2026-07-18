@@ -11,6 +11,27 @@ const MIME_BY_EXT: Record<string, string> = {
   ".gif": "image/gif",
 }
 
+/**
+ * Mime → extension (with leading dot), one canonical extension per mime
+ * ("image/jpeg" → ".jpg", not ".jpeg") — the reverse direction of
+ * {@link MIME_BY_EXT} above, plus `image/webp`, which that table
+ * deliberately omits: a local `.webp` file must keep taking the sharp
+ * recode-to-png path in {@link resolveLocalAssets} below (see the e2e
+ * "webp asset regression leg", `scripts/e2e.mts` — adding webp to
+ * `MIME_BY_EXT` would silently skip that path for local files). This table
+ * only serves the opposite direction — naming a file already decoded from a
+ * `data:` URI (`writeDeckAssets`, `./deck-dir.ts`'s disassemble asset
+ * materialization) — where a webp *payload* is a real possibility (e.g. an
+ * upload-derived asset already embedded as webp) with no local file or
+ * recode step involved at all.
+ */
+export const EXT_BY_MIME: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+}
+
 /** Read and JSON-parse a file with readable failure messages. `kind` names
  *  what the file is expected to hold (e.g. "plan") for both failure
  *  messages — defaults to "IR" for this function's original, still most

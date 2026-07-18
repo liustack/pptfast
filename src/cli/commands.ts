@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import {
   formatIssues,
   generatePptx,
@@ -14,9 +14,15 @@ import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { disassembleDeck, type PageContent } from "../plan/assemble"
 import { formatInvalidPlanError, planJsonSchema, resolvePlanThemeId, validatePlan } from "../plan"
 import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS, resolveScenario, type ScenarioAxes } from "../scenario"
+import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
-import { isDeckDirectory, readDeckDir, resolveDeckTarget } from "./deck-dir"
+import { isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
+
+/** `findUserConfig()`'s own return shape, named here so it can be threaded as
+ *  a parameter (`loadDeckTarget`/`applyDeckConfig` below) instead of each
+ *  callee re-fetching it — see `applyDeckConfig`'s own doc comment for why. */
+type UserConfigHit = Awaited<ReturnType<typeof findUserConfig>>
 
 async function loadStyleFile(path: string): Promise<StyleOverride> {
   const raw = await loadIrFile(path)
@@ -30,6 +36,21 @@ async function loadStyleFile(path: string): Promise<StyleOverride> {
   return r.data
 }
 
+/** Names which of the four precedence layers the (invalid) resolved `theme`
+ *  value came from, for {@link applyDeckConfig}'s unknown-theme error — a
+ *  config-file layer names its own path, `--theme` names itself, and the
+ *  IR's own default has no path to name at all. */
+function describeThemeSource(
+  opts: { theme?: string },
+  projectHit: { path: string; config: { theme?: string } } | null,
+  userHit: UserConfigHit,
+): string {
+  if (opts.theme !== undefined) return "--theme"
+  if (projectHit?.config.theme !== undefined) return projectHit.path
+  if (userHit?.config.theme !== undefined) return userHit.path
+  return "the deck's own theme"
+}
+
 /**
  * Resolve deck defaults onto the raw (pre-validation) IR.
  * Precedence (spec §7's four-layer chain, W5 task 5): CLI flag > project
@@ -40,10 +61,30 @@ async function loadStyleFile(path: string): Promise<StyleOverride> {
  * anywhere sets one — that bottom fallback is `irTheme.id`/`irTheme.style`
  * below, left `undefined` here for the schema to fill in). `--theme` only
  * swaps theme.id — IR-authored style survives.
+ *
+ * `opts.userHit` is the caller's own already-fetched `findUserConfig()`
+ * result (`undefined` when the caller has not fetched it — this function
+ * fetches it itself in that case, so it stays usable standalone). Every
+ * real caller (`runRender`/`runValidate`/`runPreview` below) fetches it
+ * exactly once and passes it to both this function and `loadDeckTarget` —
+ * before this, each of those three commands read the user config file
+ * twice per invocation (once in each helper), invisibly but wastefully.
+ * Project config (`findConfig`) has no such duplication to begin with (only
+ * this function ever reads it), but is fetched in the same `Promise.all` as
+ * the user-config lookup regardless — two independent reads, no reason to
+ * serialize them.
+ *
+ * The installed-theme check used to run at config *read* time
+ * (`readConfigFile`, `./config.ts`) — eagerly, against every layer's value,
+ * whether or not it would ever actually apply. It now runs here instead,
+ * once, against `theme` (the value that actually wins the four-layer
+ * chain): a stale/unknown theme sitting in a config layer that a `--theme`
+ * flag (or a higher-precedence config layer) overrides anyway must not
+ * hard-fail a command over a value nothing was ever going to use.
  */
 export async function applyDeckConfig(
   raw: unknown,
-  opts: { theme?: string; stylePath?: string; cwd: string },
+  opts: { theme?: string; stylePath?: string; cwd: string; userHit?: UserConfigHit },
 ): Promise<void> {
   if (typeof raw !== "object" || raw === null) return // schema error surfaces in validateIr
   const deck = raw as Record<string, unknown>
@@ -51,12 +92,22 @@ export async function applyDeckConfig(
     typeof deck.theme === "object" && deck.theme !== null
       ? (deck.theme as Record<string, unknown>)
       : {}
-  const projectHit = await findConfig(opts.cwd)
-  const userHit = await findUserConfig()
-  const theme = opts.theme ?? projectHit?.config.theme ?? userHit?.config.theme ?? irTheme.id
+  const [projectHit, userHit] = await Promise.all([
+    findConfig(opts.cwd),
+    opts.userHit !== undefined ? Promise.resolve(opts.userHit) : findUserConfig(),
+  ])
+  const theme = opts.theme ?? projectHit?.config.theme ?? userHit?.config.theme ?? (irTheme.id as string | undefined)
   const style = opts.stylePath
     ? await loadStyleFile(opts.stylePath)
     : (projectHit?.config.style ?? userHit?.config.style ?? irTheme.style)
+  if (theme !== undefined) {
+    const installedThemeIds = getInstalledThemeIds()
+    if (!installedThemeIds.includes(theme)) {
+      throw new PptfastError(
+        `unknown theme "${theme}" (from ${describeThemeSource(opts, projectHit, userHit)}) — available: ${installedThemeIds.join(", ")} (see \`pptfast themes\`)`,
+      )
+    }
+  }
   if (theme === undefined && style === undefined) return
   deck.theme = { ...irTheme, id: theme, ...(style !== undefined ? { style } : {}) }
 }
@@ -82,12 +133,16 @@ export async function applyDeckConfig(
  * `isDir` is threaded back so `runValidate` can gate its dir-only placeholder
  * note on it (single-file mode must never grow that note, even for a
  * hand-authored IR that happens to set `placeholder: true` itself).
+ *
+ * `userHit` is the caller's own already-fetched `findUserConfig()` result
+ * (see `applyDeckConfig`'s doc comment above for why this is threaded rather
+ * than fetched here too).
  */
 async function loadDeckTarget(
   arg: string,
   cwd: string,
+  userHit: UserConfigHit,
 ): Promise<{ raw: unknown; baseDir: string; isDir: boolean }> {
-  const userHit = await findUserConfig()
   const target = await resolveDeckTarget(arg, userHit?.config, cwd)
   if (await isDeckDirectory(target)) {
     const { ir, deckDir } = await readDeckDir(target)
@@ -117,8 +172,9 @@ export interface RenderOptions {
  */
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
-  const { raw, baseDir } = await loadDeckTarget(irPath, cwd)
-  await applyDeckConfig(raw, { theme: opts.theme, stylePath: opts.stylePath, cwd })
+  const userHit = await findUserConfig()
+  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, userHit)
+  await applyDeckConfig(raw, { theme: opts.theme, stylePath: opts.stylePath, cwd, userHit })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
@@ -165,8 +221,9 @@ function placeholderNote(ir: PptxIR): string | undefined {
  * fixed alias never makes it into `v.errors`.
  */
 export async function runValidate(irPath: string, cwd = process.cwd()): Promise<string> {
-  const { raw, isDir } = await loadDeckTarget(irPath, cwd)
-  await applyDeckConfig(raw, { cwd })
+  const userHit = await findUserConfig()
+  const { raw, isDir } = await loadDeckTarget(irPath, cwd, userHit)
+  await applyDeckConfig(raw, { cwd, userHit })
   const v = validateIr(raw)
   if (!v.ok)
     throw new PptfastError(
@@ -279,13 +336,14 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
  * a bare deck name (same `loadDeckTarget` resolution `runRender` uses).
  * Preview never gates on placeholder pages either way (single-file or
  * dir-mode) — `renderSlideSvg` itself never calls the draft gate, spec §7:
- * "preview 永远放行", an agent iterating on a partially-filled deck needs to
- * see whatever page it just wrote without every other still-empty page
- * blocking it.
+ * preview always lets everything through — an agent iterating on a
+ * partially-filled deck needs to see whatever page it just wrote without
+ * every other still-empty page blocking it.
  */
 export async function runPreview(irPath: string, outDir: string, cwd = process.cwd()): Promise<string> {
-  const { raw, baseDir } = await loadDeckTarget(irPath, cwd)
-  await applyDeckConfig(raw, { cwd })
+  const userHit = await findUserConfig()
+  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, userHit)
+  await applyDeckConfig(raw, { cwd, userHit })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
@@ -304,6 +362,30 @@ export interface AssembleOptions {
 }
 
 /**
+ * Rewrites every local (non-`data:`/non-`http(s)`) asset src so it keeps
+ * resolving correctly when the assembled IR is written to `outDir`, a
+ * different directory than the `deckDir` it was assembled from (`-o`
+ * pointing outside the deck project, `runAssemble` below). `readDeckDir`'s
+ * asset scan always produces a `deckDir`-relative src (`./deck-dir.ts`'s
+ * `scanAssets` — always `assets/<file>`), so writing the IR anywhere else
+ * unchanged would leave that src resolving against the *wrong* base the
+ * next time this file is loaded (`loadDeckTarget`'s single-file branch
+ * resolves relative asset srcs against the IR file's own directory, not
+ * where it happened to be assembled from). Rebuilds `assets.images` rather
+ * than mutating entries in place — the same "never mutate a live IR's asset
+ * map" caution `readDeckDir` itself documents (`./deck-dir.ts`).
+ */
+function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): PptxIR {
+  const images = Object.fromEntries(
+    Object.entries(ir.assets.images).map(([id, asset]) => {
+      if (asset.src.startsWith("data:") || /^https?:\/\//.test(asset.src)) return [id, asset] as const
+      return [id, { ...asset, src: relative(outDir, join(deckDir, asset.src)) }] as const
+    }),
+  )
+  return { ...ir, assets: { images } }
+}
+
+/**
  * `pptfast assemble <dir|name>` (W5 task 5): resolve `target` (path or bare
  * deck name, `resolveDeckTarget`) → `readDeckDir` (plan + pages/ + assets/ →
  * IR, `./deck-dir.ts`) → write the assembled IR as pretty-printed JSON,
@@ -313,6 +395,23 @@ export interface AssembleOptions {
  * `render`/`preview`'s job (each already applies the four-layer chain
  * whether given this same directory or the `deck.json` this command just
  * wrote).
+ *
+ * `target` must resolve to an actual directory: a target that exists but
+ * names a file gets a friendly `expected a deck project directory` error
+ * right here rather than reaching `readDeckDir` and failing deeper, with a
+ * confusing `ENOTDIR` message, trying to read `<file>/deck.plan.json`. A
+ * target that does not exist *at all* is deliberately let through to
+ * `readDeckDir` unchanged — its own missing-plan-file error already names
+ * the expected layout, strictly more helpful than this shorter message.
+ *
+ * `-o` resolves against `cwd` (the same fix `resolveDeckTarget` already
+ * needed — see that function's own doc comment) rather than the real
+ * `process.cwd()`, so a caller that threads a custom `cwd` gets the output
+ * where it actually asked for it. When the resolved output directory is not
+ * `deckDir` itself, every local asset src is rewritten
+ * ({@link withRewrittenAssetPaths}) to stay correct from the new location —
+ * otherwise `assets/logo.png` (correct relative to `deckDir`) would silently
+ * fail to resolve from wherever `-o` actually put the file.
  *
  * When the plan omitted `seed`, `readDeckDir` (via `assembleDeck`) generates
  * one deterministically and reports it as `generatedSeed` — surfaced here as
@@ -326,12 +425,17 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
   const cwd = opts.cwd ?? process.cwd()
   const userHit = await findUserConfig()
   const dir = await resolveDeckTarget(target, userHit?.config, cwd)
+  if ((await pathExists(dir)) && !(await isDeckDirectory(dir))) {
+    throw new PptfastError(`expected a deck project directory: ${dir}`)
+  }
   const { ir, generatedSeed, deckDir } = await readDeckDir(dir)
-  const outPath = opts.output ?? join(deckDir, "deck.json")
-  await mkdir(dirname(resolve(outPath)), { recursive: true })
-  await writeFile(outPath, JSON.stringify(ir, null, 2) + "\n")
-  const placeholderCount = ir.slides.filter((s) => s.placeholder).length
-  const summary = `wrote ${outPath} (${ir.slides.length} slides, ${placeholderCount} placeholder${placeholderCount === 1 ? "" : "s"})`
+  const outPath = opts.output ? resolve(cwd, opts.output) : join(deckDir, "deck.json")
+  const outDir = dirname(outPath)
+  const outIr = outDir === deckDir ? ir : withRewrittenAssetPaths(ir, deckDir, outDir)
+  await mkdir(outDir, { recursive: true })
+  await writeFile(outPath, JSON.stringify(outIr, null, 2) + "\n")
+  const placeholderCount = outIr.slides.filter((s) => s.placeholder).length
+  const summary = `wrote ${outPath} (${outIr.slides.length} slides, ${placeholderCount} placeholder${placeholderCount === 1 ? "" : "s"})`
   if (generatedSeed === undefined) return summary
   return `${summary}\nnote: generated seed ${generatedSeed} — add "seed": ${generatedSeed} to deck.plan.json for revision stability`
 }
@@ -340,15 +444,28 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
  * `pptfast disassemble <deck.json> -o <dir>` (W5 task 5): the CLI shell for
  * `disassembleDeck` (`../plan/assemble.ts`) — read + validate an IR file the
  * same way `runRender`/`runValidate` do, then write `deck.plan.json` +
- * `pages/<id>.json` for every non-placeholder page (pretty-printed; key
+ * `pages/<id>.json` for every non-placeholder page. Pretty-printed. Key
  * order is already stable because `disassembleDeck` builds every object
  * with the same fixed field order on every call, not by iterating the
- * input, so there is no separate "stable stringify" step to write). Refuses
+ * input, so there is no separate "stable stringify" step to write. Refuses
  * to overwrite an existing `deck.plan.json` — same `wx`-flag EEXIST guard as
  * `runInit`'s config scaffold — so re-running this command never silently
- * clobbers a deck project someone has since started filling in; page files
+ * clobbers a deck project someone has since started filling in. Page files
  * are freely (re)written since they only exist because this same command
- * produced them.
+ * produced them, and written concurrently (`Promise.all`) since each is an
+ * independent file.
+ *
+ * Also materializes `assets/` ({@link writeDeckAssets}, `./deck-dir.ts`) —
+ * `disassembleDeck` itself never touches `ir.assets.images` (see that
+ * function's own doc comment for the full accounting), so this is the step
+ * that actually closes the loop: without it, an image deck disassembles
+ * with every `asset_id` reference intact but no bytes behind it, then
+ * re-assembles and renders with the image silently missing.
+ *
+ * The summary never claims to have written a directory it did not create:
+ * `pagesDir`/`assetsDir` are only named when at least one page/asset file
+ * actually landed there (a plan-only deck with every slide a placeholder,
+ * or an assetless deck, leaves either directory unwritten).
  */
 export async function runDisassemble(irPath: string, outDir: string): Promise<string> {
   const raw = await loadIrFile(irPath)
@@ -371,10 +488,24 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
   const pagesDir = join(outDir, "pages")
   if (ids.length > 0) {
     await mkdir(pagesDir, { recursive: true })
-    for (const id of ids) {
-      const content: PageContent = pages[id]!
-      await writeFile(join(pagesDir, `${id}.json`), JSON.stringify(content, null, 2) + "\n")
-    }
+    await Promise.all(
+      ids.map((id) => {
+        const content: PageContent = pages[id]!
+        return writeFile(join(pagesDir, `${id}.json`), JSON.stringify(content, null, 2) + "\n")
+      }),
+    )
   }
-  return `wrote ${planPath} and ${ids.length} page file${ids.length === 1 ? "" : "s"} to ${pagesDir}`
+
+  const { count: assetCount, assetsDir } = await writeDeckAssets(
+    v.ir!.assets.images,
+    outDir,
+    dirname(resolve(irPath)),
+  )
+
+  const pagesNote =
+    ids.length > 0
+      ? `${ids.length} page file${ids.length === 1 ? "" : "s"} to ${pagesDir}`
+      : "no pages (every slide was a placeholder)"
+  const assetsNote = assetCount > 0 ? `, and ${assetCount} asset file${assetCount === 1 ? "" : "s"} to ${assetsDir}` : ""
+  return `wrote ${planPath}, ${pagesNote}${assetsNote}`
 }

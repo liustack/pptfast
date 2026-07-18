@@ -1,9 +1,9 @@
 // @vitest-environment node
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-import { isDeckDirectory, readDeckDir, resolveDeckTarget } from "./deck-dir"
+import { isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
 
 function tmp(): Promise<string> {
   return mkdtemp(join(tmpdir(), "pptfast-deckdir-"))
@@ -48,6 +48,12 @@ describe("isDeckDirectory", () => {
   it("is false for a path that does not exist", async () => {
     expect(await isDeckDirectory("/nowhere/at/all")).toBe(false)
   })
+
+  it("rethrows a non-ENOENT stat error instead of reading it as false (W5 review fix: ENOTDIR via a file as an intermediate segment)", async () => {
+    const base = await tmp()
+    await writeFile(join(base, "notadir"), "x")
+    await expect(isDeckDirectory(join(base, "notadir", "sub"))).rejects.toThrow()
+  })
 })
 
 describe("resolveDeckTarget", () => {
@@ -58,15 +64,17 @@ describe("resolveDeckTarget", () => {
     else process.env.PPTFAST_HOME = originalHome
   })
 
-  it("returns a forward-slash path unchanged (explicit path always wins)", async () => {
-    expect(await resolveDeckTarget("some/dir")).toBe("some/dir")
+  it("resolves a forward-slash path against cwd (explicit path always wins, W5 review fix: no longer returned unresolved)", async () => {
+    const cwd = await tmp()
+    expect(await resolveDeckTarget("some/dir", undefined, cwd)).toBe(resolve(cwd, "some/dir"))
   })
 
-  it("returns a backslash path unchanged", async () => {
-    expect(await resolveDeckTarget("some\\dir")).toBe("some\\dir")
+  it("resolves a backslash path against cwd", async () => {
+    const cwd = await tmp()
+    expect(await resolveDeckTarget("some\\dir", undefined, cwd)).toBe(resolve(cwd, "some\\dir"))
   })
 
-  it("returns an absolute path unchanged", async () => {
+  it("returns an absolute path unchanged (path.resolve keeps an absolute later segment as-is)", async () => {
     const dir = await tmp()
     expect(await resolveDeckTarget(dir)).toBe(dir)
   })
@@ -76,7 +84,7 @@ describe("resolveDeckTarget", () => {
     await writeFile(join(cwd, "deck.json"), "{}")
     // Resolved (not the bare "deck.json") — every downstream fs call resolves
     // a relative path against the *real* process.cwd(), which only matches
-    // this `cwd` parameter in production; see resolveDeckTarget's own doc
+    // this `cwd` parameter in production. See resolveDeckTarget's own doc
     // comment for why returning it unresolved would be a latent bug.
     expect(await resolveDeckTarget("deck.json", undefined, cwd)).toBe(join(cwd, "deck.json"))
   })
@@ -87,19 +95,70 @@ describe("resolveDeckTarget", () => {
     expect(await resolveDeckTarget("mydeck", undefined, cwd)).toBe(join(cwd, "mydeck"))
   })
 
-  it("resolves a bare name that does not exist locally to $PPTFAST_HOME/decks/<name>", async () => {
+  it("resolves a bare name that does not exist locally to $PPTFAST_HOME/decks/<name> when that candidate exists", async () => {
     const home = await tmp()
     process.env.PPTFAST_HOME = home
+    await mkdir(join(home, "decks", "q3-review"), { recursive: true })
     const cwd = await tmp()
     expect(await resolveDeckTarget("q3-review", undefined, cwd)).toBe(join(home, "decks", "q3-review"))
   })
 
-  it("honors config.decksDir as an override for the bare-name case", async () => {
+  it("honors config.decksDir as an override for the bare-name case, when that candidate exists", async () => {
     process.env.PPTFAST_HOME = await tmp()
+    const teamDecks = await tmp()
+    await mkdir(join(teamDecks, "q3-review"), { recursive: true })
     const cwd = await tmp()
-    expect(await resolveDeckTarget("q3-review", { decksDir: "/team/decks" }, cwd)).toBe(
-      join("/team/decks", "q3-review"),
-    )
+    expect(await resolveDeckTarget("q3-review", { decksDir: teamDecks }, cwd)).toBe(join(teamDecks, "q3-review"))
+  })
+
+  describe("typo'd bare-name fallback (W5 review fix: neither candidate exists)", () => {
+    it("returns the local (cwd-resolved) path, not a decksRoot guess, when neither candidate exists", async () => {
+      const home = await tmp()
+      process.env.PPTFAST_HOME = home
+      const cwd = await tmp()
+      // Neither `<cwd>/typo.json` nor `<home>/decks/typo.json` exists on disk.
+      expect(await resolveDeckTarget("typo.json", undefined, cwd)).toBe(join(cwd, "typo.json"))
+    })
+
+    it("still prefers an existing decksRoot candidate over the local path", async () => {
+      const home = await tmp()
+      process.env.PPTFAST_HOME = home
+      await mkdir(join(home, "decks", "q3-review"), { recursive: true })
+      const cwd = await tmp()
+      expect(await resolveDeckTarget("q3-review", undefined, cwd)).toBe(join(home, "decks", "q3-review"))
+    })
+  })
+
+  describe("non-ENOENT stat errors rethrow instead of silently falling back (W5 review fix)", () => {
+    it("rethrows when the local candidate's path is broken (ENOTDIR via a file as an intermediate segment)", async () => {
+      const base = await tmp()
+      await writeFile(join(base, "notadir"), "x")
+      const brokenCwd = join(base, "notadir")
+      await expect(resolveDeckTarget("bare-name", undefined, brokenCwd)).rejects.toThrow()
+    })
+  })
+})
+
+describe("pathExists", () => {
+  it("is true for a file", async () => {
+    const dir = await tmp()
+    const file = join(dir, "x.json")
+    await writeFile(file, "{}")
+    expect(await pathExists(file)).toBe(true)
+  })
+
+  it("is true for a directory", async () => {
+    expect(await pathExists(await tmp())).toBe(true)
+  })
+
+  it("is false for a path that does not exist", async () => {
+    expect(await pathExists("/nowhere/at/all")).toBe(false)
+  })
+
+  it("rethrows a non-ENOENT stat error (ENOTDIR via a file as an intermediate segment)", async () => {
+    const base = await tmp()
+    await writeFile(join(base, "notadir"), "x")
+    await expect(pathExists(join(base, "notadir", "sub"))).rejects.toThrow()
   })
 })
 
@@ -266,7 +325,7 @@ describe("readDeckDir", () => {
     // that omits `assets` (every deck — a plan never has one) starts out
     // sharing one `images: {}` object identity. Mutating it in place would
     // silently leak one deck's local images onto every other deck assembled
-    // in the same process; readDeckDir must rebuild `ir.assets` instead.
+    // in the same process. readDeckDir must rebuild `ir.assets` instead.
     it("does not leak asset registrations across separate readDeckDir calls", async () => {
       const dirA = await tmp()
       await writeDeckPlan(dirA)
@@ -280,5 +339,135 @@ describe("readDeckDir", () => {
       const resultB = await readDeckDir(dirB)
       expect(resultB.ir.assets.images).toEqual({})
     })
+  })
+
+  describe("non-ENOENT readdir errors hard-fail instead of reading as empty (W5 review fix)", () => {
+    // EACCES is hard to trigger portably in a test — a `pages`/`assets` PATH
+    // THAT IS A FILE (ENOTDIR) is the portable vehicle: readdir on a file
+    // path fails the same "not a directory" way a permission error would,
+    // without needing platform-specific chmod tricks.
+    it("readPages: rethrows when pages/ exists but is a file, not a directory", async () => {
+      const dir = await tmp()
+      await writeDeckPlan(dir)
+      await writeFile(join(dir, "pages"), "not a directory")
+      await expect(readDeckDir(dir)).rejects.toThrow(/cannot read pages\/ directory/)
+    })
+
+    it("scanAssets: rethrows when assets/ exists but is a file, not a directory", async () => {
+      const dir = await tmp()
+      await writeDeckPlan(dir)
+      await writeFile(join(dir, "assets"), "not a directory")
+      await expect(readDeckDir(dir)).rejects.toThrow(/cannot read assets\/ directory/)
+    })
+  })
+})
+
+describe("writeDeckAssets (disassemble asset materialization, W5 review fix)", () => {
+  it("decodes a base64 data URI and writes assets/<id>.<ext> from its mime", async () => {
+    const outDir = await tmp()
+    const payload = Buffer.from("hello-asset-bytes")
+    const result = await writeDeckAssets(
+      { logo: { src: `data:image/png;base64,${payload.toString("base64")}` } },
+      outDir,
+      outDir,
+    )
+    expect(result).toEqual({ count: 1, assetsDir: join(outDir, "assets") })
+    const written = await readFile(join(outDir, "assets", "logo.png"))
+    expect(written.equals(payload)).toBe(true)
+  })
+
+  it("maps mime to extension for png/jpeg/gif/webp — jpeg canonicalizes to .jpg", async () => {
+    const outDir = await tmp()
+    const payload = Buffer.from("x").toString("base64")
+    await writeDeckAssets(
+      {
+        a: { src: `data:image/png;base64,${payload}` },
+        b: { src: `data:image/jpeg;base64,${payload}` },
+        c: { src: `data:image/gif;base64,${payload}` },
+        d: { src: `data:image/webp;base64,${payload}` },
+      },
+      outDir,
+      outDir,
+    )
+    const files = (await readdir(join(outDir, "assets"))).sort()
+    expect(files).toEqual(["a.png", "b.jpg", "c.gif", "d.webp"])
+  })
+
+  it("throws for an unrecognized data URI mime, naming the asset", async () => {
+    const outDir = await tmp()
+    await expect(
+      writeDeckAssets({ weird: { src: "data:image/bmp;base64,eA==" } }, outDir, outDir),
+    ).rejects.toThrow(/asset "weird".*image\/bmp/s)
+  })
+
+  it("throws for a malformed (non-base64) data URI, naming the asset", async () => {
+    const outDir = await tmp()
+    await expect(
+      writeDeckAssets({ weird: { src: "data:image/png,not-base64-at-all" } }, outDir, outDir),
+    ).rejects.toThrow(/asset "weird"/)
+  })
+
+  it("copies a local file src (relative to sourceBaseDir) into assets/<id><origExt>", async () => {
+    const outDir = await tmp()
+    const sourceDir = await tmp()
+    await writeFile(join(sourceDir, "photo.jpg"), "real-bytes-ish")
+    const result = await writeDeckAssets({ pic: { src: "photo.jpg" } }, outDir, sourceDir)
+    expect(result.count).toBe(1)
+    const written = await readFile(join(outDir, "assets", "pic.jpg"), "utf8")
+    expect(written).toBe("real-bytes-ish")
+  })
+
+  it("copies an absolute local file src as-is (not resolved against sourceBaseDir)", async () => {
+    const outDir = await tmp()
+    const sourceDir = await tmp()
+    const elsewhere = await tmp()
+    await writeFile(join(elsewhere, "photo.jpg"), "real-bytes-ish")
+    await writeDeckAssets({ pic: { src: join(elsewhere, "photo.jpg") } }, outDir, sourceDir)
+    const written = await readFile(join(outDir, "assets", "pic.jpg"), "utf8")
+    expect(written).toBe("real-bytes-ish")
+  })
+
+  it("throws naming the asset and the path when a local source file cannot be read", async () => {
+    const outDir = await tmp()
+    const sourceDir = await tmp()
+    await expect(
+      writeDeckAssets({ pic: { src: "missing.png" } }, outDir, sourceDir),
+    ).rejects.toThrow(/asset "pic".*missing\.png/s)
+  })
+
+  it("throws a disassemble-specific error for a URL asset", async () => {
+    const outDir = await tmp()
+    await expect(
+      writeDeckAssets({ logo: { src: "https://example.com/logo.png" } }, outDir, outDir),
+    ).rejects.toThrow(
+      'asset "logo": URL assets cannot be disassembled into a deck directory — inline it as a data URI or download it first',
+    )
+  })
+
+  it("does not create assets/ when there are no image entries", async () => {
+    const outDir = await tmp()
+    const result = await writeDeckAssets({}, outDir, outDir)
+    expect(result).toEqual({ count: 0, assetsDir: join(outDir, "assets") })
+    await expect(stat(join(outDir, "assets"))).rejects.toThrow()
+  })
+
+  it("writes independent entries concurrently without cross-contamination", async () => {
+    const outDir = await tmp()
+    const sourceDir = await tmp()
+    await writeFile(join(sourceDir, "a.png"), "AAA")
+    await writeFile(join(sourceDir, "b.png"), "BBB")
+    const result = await writeDeckAssets(
+      {
+        a: { src: "a.png" },
+        b: { src: "b.png" },
+        c: { src: `data:image/png;base64,${Buffer.from("CCC").toString("base64")}` },
+      },
+      outDir,
+      sourceDir,
+    )
+    expect(result.count).toBe(3)
+    expect(await readFile(join(outDir, "assets", "a.png"), "utf8")).toBe("AAA")
+    expect(await readFile(join(outDir, "assets", "b.png"), "utf8")).toBe("BBB")
+    expect(await readFile(join(outDir, "assets", "c.png"), "utf8")).toBe("CCC")
   })
 })

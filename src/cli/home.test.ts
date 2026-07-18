@@ -52,6 +52,16 @@ describe("decksRoot", () => {
     process.env.PPTFAST_HOME = "/tmp/pptfast-home-c"
     expect(decksRoot({ decksDir: "/elsewhere/decks" })).toBe("/elsewhere/decks")
   })
+
+  it("resolves a relative decksDir against PPTFAST_HOME, not the cwd (W5 review fix)", () => {
+    process.env.PPTFAST_HOME = "/tmp/pptfast-home-relative"
+    expect(decksRoot({ decksDir: "team-decks" })).toBe(join("/tmp/pptfast-home-relative", "team-decks"))
+  })
+
+  it("does not expand a leading tilde in decksDir — it is one literal relative path segment", () => {
+    process.env.PPTFAST_HOME = "/tmp/pptfast-home-tilde"
+    expect(decksRoot({ decksDir: "~/team-decks" })).toBe(join("/tmp/pptfast-home-tilde", "~/team-decks"))
+  })
 })
 
 describe("userConfigPath", () => {
