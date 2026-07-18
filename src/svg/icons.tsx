@@ -38,24 +38,38 @@ function renderPrimitive(
   const [tag, attrs] = prim
   // 目录里 fill 只会是 "currentColor"（codegen 逐值校验）：散点类图标的
   // 实心小圆点，映射成图标颜色实心填充；其余原语保持 stroke-only。
+  //
+  // `key` is passed directly at each JSX call site below (`key={i}`), never
+  // inside this spread object (post-v0.3 W8 fix round, backlog item 11,
+  // `.issues/notes/2026-07-18-post-v03-backlog.md` #11): React 19 warns
+  // ("A props object containing a 'key' prop is being spread into JSX") the
+  // moment an object carrying an own `key` field is spread into an element,
+  // which every one of the 7 tag branches below did before this fix —
+  // confirmed via a real `renderToStaticMarkup` call
+  // (`icons.key-spread.test.tsx`, kept in its own file rather than folded
+  // into `icons.test.tsx` — see that file's header for why) firing the
+  // warning once per distinct tag pre-fix. Purely a prop-shape change —
+  // `key` was never read as a rendered attribute (React special-cases it
+  // out of the DOM regardless of where it's read from), so every case's
+  // rendered markup is byte-identical before and after.
   const common = {
-    key: i,
     stroke: color,
     ...STROKE_PROPS,
     ...(attrs.fill === "currentColor" ? { fill: color } : {}),
   }
   switch (tag) {
     case "path":
-      return <path {...common} d={attrs.d} />
+      return <path key={i} {...common} d={attrs.d} />
     case "circle":
-      return <circle {...common} cx={attrs.cx} cy={attrs.cy} r={attrs.r} />
+      return <circle key={i} {...common} cx={attrs.cx} cy={attrs.cy} r={attrs.r} />
     case "ellipse":
       return (
-        <ellipse {...common} cx={attrs.cx} cy={attrs.cy} rx={attrs.rx} ry={attrs.ry} />
+        <ellipse key={i} {...common} cx={attrs.cx} cy={attrs.cy} rx={attrs.rx} ry={attrs.ry} />
       )
     case "rect":
       return (
         <rect
+          key={i}
           {...common}
           x={attrs.x}
           y={attrs.y}
@@ -66,11 +80,11 @@ function renderPrimitive(
         />
       )
     case "line":
-      return <line {...common} x1={attrs.x1} y1={attrs.y1} x2={attrs.x2} y2={attrs.y2} />
+      return <line key={i} {...common} x1={attrs.x1} y1={attrs.y1} x2={attrs.x2} y2={attrs.y2} />
     case "polyline":
-      return <polyline {...common} points={attrs.points} />
+      return <polyline key={i} {...common} points={attrs.points} />
     case "polygon":
-      return <polygon {...common} points={attrs.points} />
+      return <polygon key={i} {...common} points={attrs.points} />
     default:
       throw new Error(`Icon: 目录含不支持的原语 <${tag}>`)
   }
