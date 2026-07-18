@@ -17,7 +17,15 @@ interface Rect extends Box { h: number }
 // composed as `translate(dx,dy) scale(s)` (uniform scale, e.g. bento-card
 // content scale-to-fit or icon scale) — never rotation or non-uniform scale,
 // so a single scalar is enough.
-function parseTransform(el: Element): { dx: number; dy: number; scale: number } {
+//
+// Exported (W6 task 1) so `deck-audit.ts`'s new contrast/overlap walkers —
+// which need this exact same transform accumulation over the exact same
+// markup, just for different attributes — reuse it instead of a third
+// copy-paste (a second already exists in `browser-audit.ts`, for the
+// documented reason that its function body must serialize standalone via
+// `.toString()`; `deck-audit.ts` has no such constraint, so importing is the
+// right call there). Pure, zero behavior change for every existing caller.
+export function parseTransform(el: Element): { dx: number; dy: number; scale: number } {
   const t = el.getAttribute("transform") ?? ""
   const tm = /translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)/.exec(t)
   const sm = /scale\(\s*(-?[\d.]+)/.exec(t)
@@ -28,7 +36,8 @@ function parseTransform(el: Element): { dx: number; dy: number; scale: number } 
   }
 }
 
-function parseNums(attr: string | null): number[] {
+/** Exported alongside `parseTransform` — see that function's doc comment. */
+export function parseNums(attr: string | null): number[] {
   return (attr ?? "").split(",").map(Number)
 }
 

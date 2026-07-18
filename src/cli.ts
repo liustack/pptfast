@@ -3,6 +3,7 @@ import { Command } from "commander"
 import { installNodePlatform } from "./platform/node"
 import {
   runAssemble,
+  runAudit,
   runDisassemble,
   runInit,
   runPlanValidate,
@@ -59,6 +60,23 @@ program
   .action(async (target: string) => {
     try {
       console.log(await runValidate(target))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program
+  .command("audit")
+  .description(
+    "Deterministic geometry audit (overflow, out-of-bounds, low-contrast, overlap) — exits 1 when it finds anything",
+  )
+  .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
+  .option("--json", "machine-readable output (the full AuditReport)")
+  .action(async (target: string, opts: { json?: boolean }) => {
+    try {
+      const { output, hasFindings } = await runAudit(target, { json: opts.json })
+      console.log(output)
+      if (hasFindings) process.exit(1)
     } catch (e) {
       fail(e)
     }

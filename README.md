@@ -64,6 +64,7 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 |---|---|
 | `render <target> -o <out.pptx> [--theme <id>] [--style <file>] [--draft]` | Validate + render to a `.pptx` — `target` is an IR JSON file, a deck project directory, or a bare deck name (see Deck projects) |
 | `validate <target>` | Check the IR, print page-scoped errors — same `target` forms as `render` |
+| `audit <target> [--json]` | Deterministic geometry review (overflow/out-of-bounds/low-contrast/overlap) — same `target` forms as `render`, exits 1 when it finds anything (see Auditing) |
 | `plan validate <plan.json>` | Check a deck plan against the schema and mode-aware hard gates (see Deck projects) |
 | `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
 | `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
@@ -139,9 +140,20 @@ my-deck/
 
 Deck project directories can be referenced by a bare name instead of a path — `pptfast render my-deck -o out.pptx` resolves `my-deck` under `$PPTFAST_HOME/decks` (`$PPTFAST_HOME` defaults to `~/.pptfast`) when no local file or directory of that name exists. All deck defaults resolve in four layers, highest wins: CLI flag > project `pptfast.config.json` > user `~/.pptfast/config.json` > the deck's own values. Both config layers can set `decksDir` to redirect where bare names resolve — the project layer's value resolves against that config file's own directory (for a team that wants deck projects checked into the repo), the user layer's against `$PPTFAST_HOME`. Project wins when both are set.
 
+## Auditing
+
+`pptfast audit <target> [--json]` renders every page off-screen and runs a deterministic geometry review — no LLM screenshot squinting, no variance. Four checks: **overflow** (text past its own box or column), **out-of-bounds** (past the page edge), **low-contrast** (WCAG relative-luminance ratio between text and its resolved background), and **overlap** (two components' regions substantially colliding). Advisory, not a hard gate — `validate` already rejects structurally invalid or over-dense decks. Audit catches what a valid deck can still get wrong at render time (an author-chosen near-background text color, two components whose combined content collides).
+
+Run it once every page is filled, on the same `target` forms as `validate`/`render` (file, deck project directory, or bare name). Human output groups findings by page (`page 3 (p-kpi): [low-contrast] …`, each message carries a fix suggestion) plus a summary line. `--json` prints the full machine-readable report. The exit code alone is agent-judgeable: `0` clean, `1` when it finds anything — fix the flagged page and re-run `audit` alone, no need to re-render. Skipped placeholder pages are noted, the same "not missing, just not written yet" treatment used everywhere else.
+
+```bash
+pptfast audit examples/basic.json
+# → audited 5 pages, 0 skipped, 0 findings
+```
+
 ## For AI agents
 
-The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast render`. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)).
+The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast audit` for the same kind of fixable-in-place feedback on what a *valid* deck can still get wrong at render time (overflow, low-contrast, overlap — exit code alone says whether it's clean), then `pptfast render`. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)).
 
 ## Roadmap
 

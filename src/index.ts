@@ -50,3 +50,4 @@ export {
   type PlanValidationIssue,
 } from "./plan"
 export { assembleDeck, disassembleDeck, type PageContent, type AssembleResult } from "./plan/assemble"
+export { auditDeck, type AuditReport, type AuditFinding } from "./svg/audit/deck-audit"
