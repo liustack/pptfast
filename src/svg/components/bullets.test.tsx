@@ -173,3 +173,62 @@ describe("bullets component emphasis", () => {
     expect(lastLineTspans.some((t) => t.getAttribute("fill") === "#00A878")).toBe(false)
   })
 })
+
+// W4 task 3 (design decision 9): bullets' shrink-to-MIN_FONT machinery must
+// keep working when it starts from a *higher* baseline than the old fixed
+// 20px — presentation delivery's 32px gives long items more room to shrink
+// from, not an excuse for the floor/wrap contract to stop applying.
+describe("bullets component presentation-delivery shrink (MIN_FONT floor)", () => {
+  const long =
+    "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练路径"
+
+  it("long bullets at the 32px presentation baseline shrink below it, floor at MIN_FONT=14, and never overflow", () => {
+    const presentationCtx: ComponentCtx = { ...ctx, bodyFontPx: DELIVERY_BUDGETS.presentation.bodyBaselinePx }
+    const component = { type: "bullets" as const, items: [long, long, long], style: "default" as const }
+    const w = 260
+    const { container } = svg(bullets.render(component, { x: 0, y: 0, w }, presentationCtx))
+    const texts = Array.from(container.querySelectorAll("text"))
+    expect(texts.length).toBeGreaterThan(3) // long CJK items wrap past 1 line each at this width
+
+    const sizes = texts.map((t) => Number(t.getAttribute("font-size")))
+    for (const size of sizes) {
+      // Shrink actually engaged: never renders at the bare 32px baseline for
+      // content this long at this width.
+      expect(size).toBeLessThan(32)
+      // The floor holds regardless of how far above it the starting
+      // baseline sits.
+      expect(size).toBeGreaterThanOrEqual(14)
+    }
+    // Every rendered line uses the identical unified size (bullets.tsx's own
+    // "don't render items at visually inconsistent sizes" contract).
+    expect(new Set(sizes).size).toBe(1)
+
+    // No overflow: measure() (used by callers to reserve vertical space)
+    // must still bound the actual rendered bottom extent at this tier —
+    // same invariant as the ambient-ctx "measure(component, w) matches the
+    // rendered height exactly" case above, re-verified at 32px starting
+    // baseline instead of the old fixed 20px.
+    const measured = bullets.measure(component, w, presentationCtx)
+    const ys = texts.map((t) => Number(t.getAttribute("y")))
+    expect(measured).toBeGreaterThanOrEqual(Math.max(...ys))
+  })
+
+  it("short items that need no shrink render at exactly each tier's bodyFontPx (proves it starts from ctx.bodyFontPx, not a stale constant)", () => {
+    // Wide box + short items ⇒ every item fits on one line comfortably at
+    // either baseline, so layoutSvgText's own shrink is a no-op and the
+    // rendered size must equal ctx.bodyFontPx exactly. A component that
+    // still hardcoded the old FONT_SIZE=20 constant would render "20" here
+    // even under presentationCtx — this test fails loudly in that case,
+    // unlike the shrink-engaged case above where both a correct and a
+    // stale-20 implementation can coincidentally land under the 32px cap.
+    const component = { type: "bullets" as const, items, style: "default" as const }
+    const w = 1120
+    for (const bodyFontPx of [DELIVERY_BUDGETS.text.bodyBaselinePx, DELIVERY_BUDGETS.presentation.bodyBaselinePx]) {
+      const tierCtx: ComponentCtx = { ...ctx, bodyFontPx }
+      const { container } = svg(bullets.render(component, { x: 0, y: 0, w }, tierCtx))
+      const sizes = Array.from(container.querySelectorAll("text")).map((t) => t.getAttribute("font-size"))
+      expect(sizes.length).toBeGreaterThan(0)
+      expect(sizes.every((s) => s === String(bodyFontPx))).toBe(true)
+    }
+  })
+})
