@@ -9,6 +9,7 @@ import { SCENARIO_PRESETS } from "../scenario"
 import {
   applyDeckConfig,
   runAssemble,
+  runAudit,
   runDisassemble,
   runInit,
   runPlanValidate,
@@ -57,6 +58,26 @@ const IR_WITH_PLACEHOLDER = {
   ],
 }
 
+// theme.style is a schema-open deep-partial override (validate-legal) — this
+// text color lands right next to consulting's own `colors.bg` (#F7F7F2),
+// which auditDeck's low-contrast check (not validateIr — schema/quality gates
+// have no opinion on color pairing) is the one thing that catches. Mirrors
+// deck-audit.test.ts's own "low-contrast via a real style-token override"
+// fixture (`src/svg/audit/deck-audit.test.ts`).
+const IR_LOW_CONTRAST = {
+  version: "3",
+  filename: "cli-test-low-contrast",
+  theme: { id: "consulting", style: { colors: { text: "#F5F5F0" } } },
+  slides: [
+    {
+      type: "content",
+      id: "p-body",
+      heading: "readable heading",
+      components: [{ type: "paragraph", text: "some body copy" }],
+    },
+  ],
+}
+
 // kpi_cards item uses "title" instead of "label" — W5 task 4's field-alias
 // normalizer should silently adopt it and runValidate should note it.
 const IR_WITH_FIELD_ALIAS = {
@@ -93,6 +114,7 @@ beforeAll(async () => {
   await writeFile(join(dir, "logo.png"), PNG_1PX)
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
   await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
+  await writeFile(join(dir, "deck-low-contrast.json"), JSON.stringify(IR_LOW_CONTRAST))
   await writeFile(join(dir, "deck-with-alias.json"), JSON.stringify(IR_WITH_FIELD_ALIAS))
   await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
   await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
@@ -219,6 +241,76 @@ describe("runValidate field-alias note (W5 task 4)", () => {
   it("has no note line when there is nothing to normalize", async () => {
     const report = await runValidate(join(dir, "deck.json"))
     expect(report).not.toContain("note:")
+  })
+})
+
+describe("runAudit (W6 task 2)", () => {
+  it("reports a clean deck with zero findings, exit-clean signal, and the plan's literal summary wording", async () => {
+    const result = await runAudit(join(dir, "deck.json"))
+    expect(result.hasFindings).toBe(false)
+    expect(result.output).toBe("audited 2 pages, 0 skipped, 0 findings")
+  })
+
+  it("--json mode returns the full AuditReport, unmodified", async () => {
+    const result = await runAudit(join(dir, "deck.json"), { json: true })
+    expect(result.hasFindings).toBe(false)
+    const report = JSON.parse(result.output) as { findings: unknown[]; pagesAudited: number; pagesSkipped: number }
+    expect(report).toEqual({ findings: [], pagesAudited: 2, pagesSkipped: 0 })
+  })
+
+  it("throws the same shape as runValidate for invalid IR — never reaches auditDeck", async () => {
+    await expect(runAudit(join(dir, "bad.json"))).rejects.toThrow(/invalid IR/)
+  })
+
+  it("flags a low-contrast style-token override: page/id/[code] formatting and a non-zero summary count", async () => {
+    const result = await runAudit(join(dir, "deck-low-contrast.json"))
+    expect(result.hasFindings).toBe(true)
+    expect(result.output).toMatch(/^page 1 \(p-body\): \[low-contrast\]/)
+    expect(result.output).toMatch(/\naudited 1 pages, 0 skipped, \d+ findings$/)
+  })
+
+  it("--json mode on a findings deck sets hasFindings and includes the finding code", async () => {
+    const result = await runAudit(join(dir, "deck-low-contrast.json"), { json: true })
+    expect(result.hasFindings).toBe(true)
+    const report = JSON.parse(result.output) as {
+      findings: Array<{ code: string; page: number; slideId?: string }>
+    }
+    expect(report.findings.length).toBeGreaterThan(0)
+    expect(report.findings.every((f) => f.code === "low-contrast")).toBe(true)
+    expect(report.findings[0]?.slideId).toBe("p-body")
+  })
+
+  it("notes skipped placeholder pages in human output, unconditionally (not gated on dir-mode like runValidate)", async () => {
+    const result = await runAudit(join(dir, "deck-with-placeholder.json"))
+    expect(result.output).toContain("audited 1 pages, 1 skipped, 0 findings")
+    expect(result.output).toContain("note: 1 unfilled placeholder page: p-2 (page 2)")
+  })
+
+  it("resolves local image assets before auditing, matching render/preview asset handling", async () => {
+    await expect(runAudit(join(dir, "deck-with-asset.json"))).resolves.toMatchObject({ hasFindings: false })
+  })
+
+  it("resolves a deck project directory through the same loadDeckTarget path as validate/render", async () => {
+    const deckDir = await makeDeckDir("pptfast-audit-dir-")
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(join(deckDir, "pages", "p-cover.json"), "{}")
+    await writeFile(
+      join(deckDir, "pages", "p-a.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "Segment A detail" }] }),
+    )
+    await writeFile(
+      join(deckDir, "pages", "p-b.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "Segment B detail" }] }),
+    )
+    await writeFile(
+      join(deckDir, "pages", "p-c.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "Segment C detail" }] }),
+    )
+    await writeFile(join(deckDir, "pages", "p-ending.json"), "{}")
+    const result = await runAudit(deckDir)
+    expect(result.hasFindings).toBe(false)
+    expect(result.output).toBe("audited 5 pages, 0 skipped, 0 findings")
   })
 })
 

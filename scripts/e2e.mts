@@ -27,6 +27,24 @@ function shExpectFail(cmd: string, args: string[]): string {
   throw new Error(`e2e: expected "${cmd} ${args.join(" ")}" to fail, but it succeeded`)
 }
 
+/** Runs `cmd args` and returns its exit status alongside stdout/stderr,
+ *  regardless of whether it succeeded — unlike `sh` (throws on any failure)
+ *  and `shExpectFail` (only ever returns stderr, and requires failure). The
+ *  audit leg below needs this because `pptfast audit`'s report — clean or
+ *  with findings — is the command's normal output on stdout; the exit code
+ *  alone is the pass/fail signal (same convention as eslint/tsc), unlike a
+ *  `fail()`-routed CLI error (console.error → stderr → non-zero exit). */
+function shCapture(cmd: string, args: string[]): { status: number; stdout: string; stderr: string } {
+  try {
+    const stdout = execFileSync(cmd, args, { encoding: "utf8" })
+    return { status: 0, stdout, stderr: "" }
+  } catch (e) {
+    const { status, stdout, stderr } = e as { status?: number; stdout?: string; stderr?: string }
+    if (status === undefined) throw e
+    return { status, stdout: stdout ?? "", stderr: stderr ?? "" }
+  }
+}
+
 // 1) render via the built CLI
 const pptxPath = join(OUT, "basic.pptx")
 console.log(sh("node", ["dist/cli.js", "render", "examples/basic.json", "-o", pptxPath]))
@@ -243,5 +261,65 @@ if (!finalSlide3.includes("13") || !finalSlide3.includes("built-in themes")) {
   throw new Error("e2e: deck-dir leg — filled page content not found in slide3.xml after the normal render")
 }
 console.log("deck-dir leg OK (assemble + draft gate + fill + normal render)")
+
+// 7) audit leg (W6 task 2, spec §7 workflow ④): a clean deck must exit 0; a
+//    deliberately near-background text color (theme.style override,
+//    validate-legal — same fixture shape as deck-audit.test.ts's own
+//    "low-contrast via a real style-token override" case) must exit 1 with a
+//    low-contrast finding in its output, in both human and --json mode.
+console.log("--- audit leg ---")
+
+const cleanAudit = shCapture("node", ["dist/cli.js", "audit", "examples/basic.json"])
+console.log(cleanAudit.stdout)
+if (cleanAudit.status !== 0) {
+  throw new Error(
+    `e2e: audit leg — expected examples/basic.json to audit clean (exit 0), got exit ${cleanAudit.status}`,
+  )
+}
+if (!/audited 5 pages, 0 skipped, 0 findings/.test(cleanAudit.stdout)) {
+  throw new Error(`e2e: audit leg — expected a clean summary line for examples/basic.json, got: ${cleanAudit.stdout}`)
+}
+console.log("audit clean-deck leg OK (examples/basic.json exits 0)")
+
+const lowContrastDeck = {
+  version: "3",
+  filename: "pptfast-e2e-audit-low-contrast",
+  // Near consulting's own colors.bg (#F7F7F2) — validate-legal (theme.style
+  // is a schema-open deep-partial override), renderer-level unreadable.
+  theme: { id: "consulting", style: { colors: { text: "#F5F5F0" } } },
+  slides: [
+    { type: "cover", heading: "Audit Fixture" },
+    {
+      type: "content",
+      id: "p-body",
+      heading: "readable heading",
+      components: [{ type: "paragraph", text: "some body copy that should read as low-contrast" }],
+    },
+  ],
+}
+const lowContrastPath = join(OUT, "audit-low-contrast.json")
+writeFileSync(lowContrastPath, JSON.stringify(lowContrastDeck))
+
+const findingsAudit = shCapture("node", ["dist/cli.js", "audit", lowContrastPath])
+console.log(findingsAudit.stdout)
+if (findingsAudit.status !== 1) {
+  throw new Error(`e2e: audit leg — expected the low-contrast fixture to exit 1, got exit ${findingsAudit.status}`)
+}
+if (!/\[low-contrast\]/.test(findingsAudit.stdout) || !/page 2 \(p-body\)/.test(findingsAudit.stdout)) {
+  throw new Error(
+    `e2e: audit leg — expected a low-contrast finding naming page 2 (p-body), got: ${findingsAudit.stdout}`,
+  )
+}
+console.log("audit low-contrast-fixture leg OK (exit 1, finding present)")
+
+const jsonAudit = shCapture("node", ["dist/cli.js", "audit", lowContrastPath, "--json"])
+if (jsonAudit.status !== 1) {
+  throw new Error(`e2e: audit leg — expected --json mode to also exit 1, got exit ${jsonAudit.status}`)
+}
+const jsonReport = JSON.parse(jsonAudit.stdout) as { findings: Array<{ code: string }> }
+if (!jsonReport.findings.some((f) => f.code === "low-contrast")) {
+  throw new Error(`e2e: audit leg — expected --json output to include a low-contrast finding, got: ${jsonAudit.stdout}`)
+}
+console.log("audit --json leg OK (machine-readable AuditReport, exit 1, low-contrast code present)")
 
 console.log("e2e OK")

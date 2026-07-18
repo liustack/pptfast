@@ -61,7 +61,15 @@ pptfast render deck-dir/ -o deck.pptx
 
 If the project has a `pptfast.config.json`, its theme/style are project defaults — do not fight them with `--theme` unless the user asks.
 
-### Phase 5 — Optional visual self-check
+### Phase 5 — Audit and optional visual self-check
+
+Once every page is filled (no placeholders left), run the deterministic geometry audit:
+
+```bash
+pptfast audit deck-dir/
+```
+
+Zero-token, zero-variance — it renders each page off-screen and checks overflow, out-of-bounds, low-contrast, and overlap, exiting 1 when it finds anything (0 when clean). Each finding names its page (and id) and carries a fix. Fix the flagged page's content — same "restructure, don't delete" discipline as a `validate` error — then re-run `pptfast audit deck-dir/` alone (no need to re-render) until it exits 0. This is the deck's visual QA. Do not rely on eyeballing a screenshot instead.
 
 ```bash
 pptfast preview deck-dir/ -o preview/
@@ -73,7 +81,7 @@ Writes one standalone SVG per slide, never gated on placeholder pages. Read a fe
 
 A revision touches the smallest file that captures it:
 
-- Content change ("punch up the KPI page") → edit that page's `pages/<id>.json` only, then repeat phase 3's `assemble` + `validate` pair before re-rendering. Never regenerate pages nobody asked you to touch.
+- Content change ("punch up the KPI page") → edit that page's `pages/<id>.json` only, then repeat phase 3's `assemble` + `validate` pair, and phase 5's `audit`, before re-rendering. Never regenerate pages nobody asked you to touch.
 - Structural change (reorder, add/remove a page, change a page's type or heading) → edit `deck.plan.json` instead, re-run `pptfast plan validate` first (phase 2's no-replanning rule still applies: only do this when the user actually asked for a structural change).
 
 ## Routing a follow-up request

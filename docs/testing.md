@@ -10,11 +10,12 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 131 files / 1760 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 132 files / 1874 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
-   media-dedupe JSZip patches, the deck plan schema and hard gates, and
-   assemble/disassemble plus the deck-project-directory CLI shell.
+   media-dedupe JSZip patches, the deck plan schema and hard gates,
+   assemble/disassemble plus the deck-project-directory CLI shell, and the
+   deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap).
    Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against
@@ -26,9 +27,12 @@ read_when:
    as a placeholder → a plain `render` is refused → `render --draft` succeeds
    with the placeholder as a real slide → filling the page and re-assembling
    drops the placeholder count to zero → a plain `render` then succeeds too),
-   asserts on the produced pptx's zip structure (required XML parts, embedded
-   text), and converts to PDF with LibreOffice (`soffice`) when it's
-   installed on the machine — a real render, not a mock.
+   an audit leg (`examples/basic.json` audits clean and exits 0, while a
+   deliberately near-background text color, set via a validate-legal
+   `theme.style` override, exits 1 with a low-contrast finding in both human
+   and `--json` output), asserts on the produced pptx's zip structure
+   (required XML parts, embedded text), and converts to PDF with LibreOffice
+   (`soffice`) when it's installed on the machine — a real render, not a mock.
 
 `pnpm check` runs typecheck + lint + `pnpm test` and is the default merge gate.
 `pnpm e2e` is not part of `pnpm check` (it needs a build and is slower) — run

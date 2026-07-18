@@ -14,6 +14,7 @@ import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { disassembleDeck, type PageContent } from "../plan/assemble"
 import { formatInvalidPlanError, planJsonSchema, resolvePlanThemeId, validatePlan } from "../plan"
 import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS, resolveScenario, type ScenarioAxes } from "../scenario"
+import { auditDeck, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
 import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
 import { assertSafeFileSegment, isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
@@ -305,6 +306,106 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
     if (note) notes.push(note)
   }
   return notes.length > 0 ? `${ok}\n${notes.join("\n")}` : ok
+}
+
+/**
+ * `"page 3 (p-kpi): [low-contrast] ..."` — one line per {@link AuditFinding},
+ * echoing `formatIssues`' own `"page N (id) — path: message"` convention
+ * (`../api.ts`) with a bracketed `[code]` standing in for `path` — an
+ * `AuditFinding` has no `path` (it is not a schema-location error, see that
+ * interface's own doc comment in `../svg/audit/deck-audit.ts`), and `code`
+ * is the closest equivalent "what kind of problem" tag. The bracket keeps an
+ * audit-finding line visually distinct from a validate-error line at a
+ * glance, per the plan's own worked example.
+ */
+function formatAuditFinding(f: AuditFinding): string {
+  const idSuffix = f.slideId !== undefined ? ` (${f.slideId})` : ""
+  return `page ${f.page}${idSuffix}: [${f.code}] ${f.message}`
+}
+
+/**
+ * Human-readable `pptfast audit` report (W6 task 2, spec §7 workflow ④):
+ * every finding as its own {@link formatAuditFinding} line — already
+ * naturally grouped by page, since `auditDeck` pushes findings in slide
+ * order (`../svg/audit/deck-audit.ts`) — followed by a trailing summary line
+ * in the plan's own literal wording ("audited N pages, M skipped, K
+ * findings") so an agent can read just the last line to decide whether to
+ * keep iterating, instead of counting findings itself. {@link placeholderNote}
+ * runs unconditionally (unlike `runValidate`'s dir-mode-only gating on that
+ * same helper below) — audit has no pre-existing single-file-mode output to
+ * keep byte-identical the way `runValidate` did when that gating was added,
+ * so there is no reason to withhold a genuinely useful note from a
+ * hand-authored IR that happens to carry placeholders too.
+ */
+function formatAuditReport(report: AuditReport, ir: PptxIR): string {
+  const lines = report.findings.map(formatAuditFinding)
+  lines.push(`audited ${report.pagesAudited} pages, ${report.pagesSkipped} skipped, ${report.findings.length} findings`)
+  const note = placeholderNote(ir)
+  if (note) lines.push(note)
+  return lines.join("\n")
+}
+
+export interface AuditOptions {
+  json?: boolean
+  cwd?: string
+}
+
+export interface AuditCliResult {
+  /** Human report ({@link formatAuditReport}) or, with `opts.json`, the raw
+   *  `JSON.stringify`'d {@link AuditReport} verbatim — the plan's own "the
+   *  full AuditReport" requirement, unmodified by any CLI-side enrichment. */
+  output: string
+  /** `true` when `report.findings.length > 0`. The CLI (`../cli.ts`) prints
+   *  `output` either way, then exits 1 on this signal alone — clean exits 0
+   *  (spec §7 workflow ④: advisory, not a hard gate, but still
+   *  agent-judgeable purely from the exit code without parsing output). */
+  hasFindings: boolean
+}
+
+/**
+ * `pptfast audit <target> [--json]` (W6 task 2, spec §7 workflow ④): resolve
+ * `target` through the exact same `loadDeckTarget` path `runValidate`/
+ * `runRender`/`runPreview` already use (IR file / deck project directory /
+ * bare name under `~/.pptfast/decks`), validate first, then hand the
+ * validated IR to `auditDeck` (`../svg/audit/deck-audit.ts`, pure, no I/O).
+ *
+ * An invalid deck fails exactly like `pptfast validate` — same message
+ * shape, same `PptfastError` → CLI exit-1 path — and never reaches
+ * `auditDeck` at all: the geometry/contrast/overlap checks only mean
+ * anything over a schema-valid, already-quality-gated deck (`auditDeck`'s
+ * own "advisory, not a hard gate" doc comment — `validateIr` is the hard
+ * gate this command leans on rather than re-implements).
+ *
+ * `resolveLocalAssets` runs after validation, same as `runRender`/
+ * `runPreview` — a deck referencing local (non-`data:`/non-`http(s)`) image
+ * files must have them inlined before `auditDeck`'s internal `renderSlideSvg`
+ * calls, otherwise a local asset's `src` would still be its raw relative
+ * path when the contrast checker's background-region walk inspects it,
+ * auditing a slide shape that doesn't match what `render`/`preview` actually
+ * produce for the same deck.
+ *
+ * No `--theme`/`--style` flags (unlike `runRender`) — the plan's CLI surface
+ * for this command is deliberately just `<target> [--json]` — but
+ * `applyDeckConfig` still runs (with no CLI-flag overrides) so a project/user
+ * config's own theme/style default still applies, the same "config layers
+ * apply even with no flag passed" behavior `runValidate` already has.
+ */
+export async function runAudit(target: string, opts: AuditOptions = {}): Promise<AuditCliResult> {
+  const cwd = opts.cwd ?? process.cwd()
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, baseDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  const v = validateIr(raw)
+  if (!v.ok) {
+    throw new PptfastError(
+      `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
+    )
+  }
+  await resolveLocalAssets(v.ir!, baseDir)
+  const report = auditDeck(v.ir!)
+  const hasFindings = report.findings.length > 0
+  const output = opts.json ? JSON.stringify(report, null, 2) : formatAuditReport(report, v.ir!)
+  return { output, hasFindings }
 }
 
 /**
