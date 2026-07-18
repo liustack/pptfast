@@ -577,8 +577,15 @@ describe("colors.muted component-type coverage (task-2 fix round, backlog 5a com
     // human deciding where (if anywhere) it paints colors.muted — the
     // completeness guard the review asked for, deliberately dumb: a plain
     // membership check against a hand-maintained map, not an attempt to
-    // auto-infer rendering behavior from source.
-    const undocumented = COMPONENT_TYPES.filter((type) => !(type in MUTED_SURFACE_CLASS))
+    // auto-infer rendering behavior from source. `Object.hasOwn`, not the
+    // `in` operator (post-v0.3 W8 fix round, reviewer nitpick —
+    // prototype-key hygiene, same precedent as `resolveScenario`'s own
+    // `Object.hasOwn(SCENARIO_PRESETS, input)` check, `src/scenario/
+    // index.ts`): `in` also matches inherited/prototype-chain keys (e.g.
+    // `"toString" in {}` is `true`), which a component type named the same
+    // as an `Object.prototype` member would silently satisfy without ever
+    // getting its own entry in `MUTED_SURFACE_CLASS`.
+    const undocumented = COMPONENT_TYPES.filter((type) => !Object.hasOwn(MUTED_SURFACE_CLASS, type))
     expect(undocumented).toEqual([])
   })
 
