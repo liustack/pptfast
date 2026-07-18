@@ -37,18 +37,24 @@
 //     task's own fix touches) — same token-calibration gap as the point
 //     above, confirmed at the exact same ratios (2.31-2.61:1) against
 //     bloom/classroom's own background.
-//   - `cover-left-anchor.tsx`'s multi-`<tspan>` author/date/version line
-//     gets mis-attributed by `findContrastIssues` to the left primary block
-//     instead of the right white panel it actually sits on — a documented
-//     `deck-audit.ts` blind spot (see that archetype's file header and the
-//     task review's Important I1 "方法论说明"), not a rendering defect.
+//   - `cover-left-anchor.tsx`'s (and `cover-banner-title.tsx`'s)
+//     multi-`<tspan>` author/date/version line: **fixed** in a later task
+//     (post-v0.3 backlog item 5b — `.issues/notes/2026-07-18-post-v03-backlog.md`
+//     #5 — `findContrastIssues` no longer drops a `<tspan>`'s owning
+//     `<text>`'s own x/y when the tspan carries none of its own; see that
+//     function's own doc comment in `deck-audit.ts` and the two dedicated
+//     regression tests in `deck-audit.test.ts`). Still left out of *this*
+//     fixture regardless: populating that meta line now correctly
+//     re-surfaces the exact same `colors.muted`-calibration gap as the two
+//     bullets above (on bloom/classroom specifically — confirmed while
+//     fixing item 5b) rather than a fresh issue, so including it here would
+//     just double-count the already-understood gap through a third code
+//     path instead of adding coverage.
 //   - the five sources `deck-audit.test.ts`'s own "understood pre-existing
 //     low-contrast sources" block already documents and pins.
-// Recalibrating `colors.muted` per theme, or fixing the tspan-attribution
-// blind spot, are both out of this task's scope (the former is a
-// theme-design call across 13 files, the latter touches `deck-audit.ts`,
-// which the brief explicitly keeps hands off) — flagged in the task report
-// as follow-up candidates rather than silently worked around here.
+// Recalibrating `colors.muted` per theme is out of this task's scope (a
+// theme-design call across 13 files) — still flagged as a follow-up
+// candidate rather than silently worked around here.
 import { beforeAll, describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
 import { auditDeck, type AuditFinding } from "./deck-audit"
@@ -99,6 +105,24 @@ interface AllowlistEntry {
   /** Matches against `finding.detail.fill` (contrast) when set — omit to
    * allowlist every finding for this theme+layout pairing. */
   fill?: string
+  /**
+   * Matches against `finding.detail.ratio` (contrast findings only) when
+   * set — both bounds are inclusive, and *both* must be provided together
+   * (a one-sided band isn't a meaningful "historically adjudicated range").
+   * Omit to allowlist by theme/layout/shape alone regardless of ratio, same
+   * as before this field existed (backlog item 6,
+   * `.issues/notes/2026-07-18-post-v03-backlog.md` #6).
+   *
+   * A finding without a numeric `ratio` (i.e. `overflow`/`out-of-bounds`,
+   * which this same allowlist also filters — see `auditFindings`) never
+   * matches an entry that sets these, even if its `text`/theme/layout would
+   * otherwise qualify — a deliberate side effect: a text-shape guard alone
+   * (e.g. `TEXT_SHAPE_GUARD`'s "1-2 digits") can't tell a contrast finding
+   * apart from an overflow finding on the same glyph, so a ratio band is
+   * also the only thing that scopes this entry to contrast specifically.
+   */
+  ratioMin?: number
+  ratioMax?: number
   rationale: string
 }
 
@@ -119,8 +143,29 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     theme: "*",
     layout: "fashion-chapter",
+    // Band derivation (backlog item 6,
+    // `.issues/notes/2026-07-18-post-v03-backlog.md` #6): the text-shape
+    // guard alone (`TEXT_SHAPE_GUARD["fashion-chapter"]`, "1-2 digits")
+    // would silently wave through *any* future 1-2-digit finding under this
+    // layout regardless of how far its ratio has drifted — this band closes
+    // that gap. Measured (2026-07-19, `pnpm exec tsx` against a real render
+    // of every theme whose curated chapter set still includes
+    // fashion-chapter — 10 of 13; bloom/classroom/heritage exclude it via
+    // `CHAPTER_WITHOUT_FASHION` — same fixture shape as this file's own
+    // chapter sweep below) watermark-digit ratios: runway 1.242 (lowest),
+    // academic 1.268, luxe 1.409, ink 1.425, journal 1.459, insight 1.539,
+    // tech 1.583, campaign 1.601, consulting 1.601, enterprise 1.753
+    // (highest). `ratioMin`/`ratioMax` round those two extremes outward by
+    // a small margin (~0.04-0.05, absorbing harmless token-value drift)
+    // without moving the ceiling anywhere close to the 3:1 floor this whole
+    // entry is about staying under. A finding whose ratio lands outside
+    // [1.2, 1.8] no longer matches the historically adjudicated band and
+    // fails the net as a real regression, even with matching theme/layout/
+    // text-shape.
+    ratioMin: 1.2,
+    ratioMax: 1.8,
     rationale:
-      "the chapter-number watermark digit (mixHex(accent, fg, 0.22) — chapter-fashion-chapter.tsx's own header calls it decorative by design) measures under 3:1 against most themes' accent (runway's own ~1.58:1 is the reviewer-adjudicated reference case) — a deliberately faint blend, not body text, blanket-allowlisted by content (a bare 1-2 digit chapter number) rather than enumerated per theme since the blend's whole point is to be faint everywhere it's used. The three themes whose fashion-chapter *heading*/label text (not just the watermark) also fails are curation-excluded in themes/definitions.ts instead (CHAPTER_WITHOUT_FASHION) — this entry never matches non-numeric text, so a real heading failure under this layout still fails the net.",
+      "the chapter-number watermark digit (mixHex(accent, fg, 0.22) — chapter-fashion-chapter.tsx's own header calls it decorative by design) measures under 3:1 against every eligible theme's accent (runway's ~1.24:1 is the current lowest, enterprise's ~1.75:1 the current highest — see the ratioMin/ratioMax comment above for the full 10-theme spread) — a deliberately faint blend, not body text, blanket-allowlisted by content (a bare 1-2 digit chapter number) rather than enumerated per theme since the blend's whole point is to be faint everywhere it's used. The three themes whose fashion-chapter *heading*/label text (not just the watermark) also fails are curation-excluded in themes/definitions.ts instead (CHAPTER_WITHOUT_FASHION) — this entry never matches non-numeric text, so a real heading failure under this layout still fails the net. The added ratio band is a second, independent guard on top of that shape match, not a replacement for it.",
   },
   {
     theme: "*",
@@ -146,12 +191,19 @@ const TEXT_SHAPE_GUARD: Readonly<Record<string, RegExp>> = {
 function isAllowlisted(theme: string, layout: string, finding: AuditFinding): boolean {
   const fill = (finding.detail as { fill?: string } | undefined)?.fill
   const text = (finding.detail as { text?: string } | undefined)?.text
+  const ratio = (finding.detail as { ratio?: number } | undefined)?.ratio
   const guard = TEXT_SHAPE_GUARD[layout]
   if (guard && !guard.test(text ?? "")) return false
   return ALLOWLIST.some((entry) => {
     if (entry.layout !== layout) return false
     if (entry.theme !== "*" && entry.theme !== theme) return false
     if (entry.fill !== undefined && entry.fill !== fill) return false
+    // Both bounds are set together (see AllowlistEntry's own doc comment) —
+    // a finding with no numeric ratio (overflow/out-of-bounds) can never
+    // satisfy either, so a ratio-bounded entry only ever exempts contrast
+    // findings, regardless of how permissive its shape guard is.
+    if (entry.ratioMin !== undefined && (ratio === undefined || ratio < entry.ratioMin)) return false
+    if (entry.ratioMax !== undefined && (ratio === undefined || ratio > entry.ratioMax)) return false
     return true
   })
 }
