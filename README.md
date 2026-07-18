@@ -42,7 +42,7 @@ The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptf
 node dist/cli.js validate examples/basic.json
 # → OK — 5 slides, theme "consulting"
 node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, 29717 bytes)
+# → wrote out/basic.pptx (5 slides, ~29 KB)
 node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
 node dist/cli.js preview examples/basic.json -o out/svgs   # SVG per slide, for a visual self-check
 ```

@@ -41,7 +41,7 @@ skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfas
 node dist/cli.js validate examples/basic.json
 # → OK — 5 slides, theme "consulting"
 node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, 29717 bytes)
+# → wrote out/basic.pptx (5 slides, ~29 KB)
 node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
 node dist/cli.js preview examples/basic.json -o out/svgs   # 每页一张 SVG，供人工目检
 ```
