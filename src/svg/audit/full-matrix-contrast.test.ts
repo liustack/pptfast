@@ -61,12 +61,14 @@
 //     low-contrast sources" block already documents and pins.
 import { beforeAll, describe, expect, it } from "vitest"
 import { COMPONENT_TYPES, type PptxIR, type Slide } from "@/ir"
+import { renderSlideSvg } from "../../api"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { resolveBackgroundHex } from "../FullSlideSvg"
 import { contrastRatio } from "../ink"
+import { parseSvgRoot } from "../serialize"
 
 beforeAll(() => {
   installNodePlatform()
@@ -229,6 +231,72 @@ function isAllowlisted(theme: string, layout: string, finding: AuditFinding): bo
 function findingSummary(f: AuditFinding): string {
   return `${f.code}: ${f.message}`
 }
+
+// rail-numbered allowlist precondition guard (task-1 routed follow-up,
+// `.issues/notes/2026-07-18-post-v03-backlog.md` #6/#7): item 6 added a
+// ratioMin/ratioMax band to the fashion-chapter entry above so a shape-only
+// match can no longer silently wave through a future ratio regression.
+// Verified before doing the same here: the rail-numbered entry's own
+// rationale (above) is a tool-false-positive claim — the badge rect never
+// registers as its own background region because its area sits below
+// deck-audit.ts's MIN_BG_REGION_AREA, so `findContrastIssues` falls back to
+// comparing the badge's ink against the *wrong* (page) background —  not an
+// adjudicated faint-by-design color pairing like fashion-chapter's
+// watermark. `isAllowlisted` (above) never reads `finding.detail.ratio` for
+// this entry (no `ratioMin`/`ratioMax` fields on it), so a ratio band here
+// would have nothing to bound: the finding's actual ratio is an accident of
+// which ink `readableOn` happens to pick per theme against the wrong
+// background, not a stable, intentional blend — pinning its current
+// numeric spread would pin noise, not harden anything.
+//
+// The exemption's real precondition is structural instead: the badge
+// rect's rendered area must stay below MIN_BG_REGION_AREA (8000px^2,
+// deck-audit.ts's own constant — private/unexported, so re-derived here
+// from a real render rather than imported, same "derive from current
+// measured values" discipline the fashion-chapter band above documents).
+// If a future change ever grows the badge past that threshold, the audit
+// would then correctly attribute the badge's own real background instead of
+// falling back to the page background, and this allowlist entry's
+// shape-only match would start silently swallowing a then-legitimate
+// finding instead of a tool artifact. Pinning the precondition itself makes
+// that scenario fail loudly here, at its actual source, instead of
+// surfacing as a confusing unrelated-looking failure inside the swept
+// describe block below.
+describe("rail-numbered allowlist precondition (task-1 routed follow-up)", () => {
+  it("the number badge's real rendered area stays below deck-audit.ts's MIN_BG_REGION_AREA (8000px^2) — the allowlist entry's actual justification", () => {
+    const slide: Slide = {
+      type: "content",
+      heading: HEADING,
+      subheading: SUBHEADING,
+      layout: "rail-numbered",
+      components: CONTENT_BODY,
+    } as Slide
+    // Theme is arbitrary — content-rail-numbered.tsx's badge geometry
+    // (BADGE_W/BADGE_H) is a fixed pixel constant, not driven by any theme
+    // token, so this precondition holds or breaks identically for all 13.
+    const ir = deckFor("consulting", slide)
+    const markup = renderSlideSvg(ir, 0)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${markup}</svg>`)
+
+    // Locate the badge without hardcoding its position: it's the <rect>
+    // immediately preceding the "{chapter}.{content}" label text — the same
+    // shape TEXT_SHAPE_GUARD["rail-numbered"] itself matches findings
+    // against, so this reuses the one guard already defined rather than
+    // re-deriving a second description of the same shape.
+    const badgeText = Array.from(root.querySelectorAll("text")).find((t) =>
+      TEXT_SHAPE_GUARD["rail-numbered"].test(t.textContent ?? ""),
+    )
+    expect(badgeText).toBeTruthy()
+    const badgeRect = badgeText!.previousElementSibling
+    expect(badgeRect?.tagName.toLowerCase()).toBe("rect")
+
+    const width = Number(badgeRect!.getAttribute("width"))
+    const height = Number(badgeRect!.getAttribute("height"))
+    expect(width).toBeGreaterThan(0)
+    expect(height).toBeGreaterThan(0)
+    expect(width * height).toBeLessThan(8000) // MIN_BG_REGION_AREA, deck-audit.ts
+  })
+})
 
 describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
   for (const themeId of CANONICAL_THEME_IDS) {
