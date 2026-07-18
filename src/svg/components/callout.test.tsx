@@ -169,3 +169,32 @@ describe("callout icon override", () => {
     expect(markup).toContain("M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2")
   })
 })
+
+// W4 task 3 fix round (review Minor finding): callout was the one component
+// in the paragraph/bullets/callout trio with no numeric font-size assertion
+// at all — mirrors paragraph.test.tsx's own "delivery tiers" block, same
+// three-tier pattern, same ctx-construction shape. If callout.tsx ever
+// regresses back to a hardcoded FONT_SIZE constant instead of reading
+// ctx.bodyFontPx, this fails loudly at every tier except the ambient 24px
+// one.
+describe("callout component delivery tiers", () => {
+  const component = { type: "callout" as const, variant: "info" as const, text: "档位字号验证提示" }
+
+  it("text delivery (20px) renders font-size 20", () => {
+    const textCtx: ComponentCtx = { ...ctx, bodyFontPx: DELIVERY_BUDGETS.text.bodyBaselinePx }
+    const { container } = svg(callout.render(component, { x: 0, y: 0, w: 1120 }, textCtx))
+    expect(container.querySelector("text")?.getAttribute("font-size")).toBe("20")
+  })
+
+  it("balanced delivery (24px) renders font-size 24", () => {
+    const balancedCtx: ComponentCtx = { ...ctx, bodyFontPx: DELIVERY_BUDGETS.balanced.bodyBaselinePx }
+    const { container } = svg(callout.render(component, { x: 0, y: 0, w: 1120 }, balancedCtx))
+    expect(container.querySelector("text")?.getAttribute("font-size")).toBe("24")
+  })
+
+  it("presentation delivery (32px) renders font-size 32", () => {
+    const presentationCtx: ComponentCtx = { ...ctx, bodyFontPx: DELIVERY_BUDGETS.presentation.bodyBaselinePx }
+    const { container } = svg(callout.render(component, { x: 0, y: 0, w: 1120 }, presentationCtx))
+    expect(container.querySelector("text")?.getAttribute("font-size")).toBe("32")
+  })
+})
