@@ -364,6 +364,30 @@ describe("assembleDeck", () => {
       expect(materializedLayoutCount).toBe(4) // all 4 of makePlan()'s pages omit layout
     })
 
+    // Backlog item 9b (`.issues/notes/2026-07-18-post-v03-backlog.md` #9b):
+    // every materializedLayoutCount test above (and everywhere else in this
+    // file) reuses `makePlan()`'s fixed cover/content/content/ending page
+    // sequence — `chapter` has never appeared in a single fixture alongside
+    // the other three types, so a deck genuinely mixing all four page types
+    // has never exercised this count. Overrides `pages` via `makePlan`'s own
+    // `extra` param (the same mechanism the duplicate-id test above already
+    // uses) rather than changing `makePlan` itself, so every other test that
+    // relies on its default cover/content/content/ending shape is untouched.
+    it("reports materializedLayoutCount across a cover/chapter/content/ending mixed-page-type fixture", () => {
+      const pages = [
+        { id: "p-cover", type: "cover", heading: "Q3 Review" },
+        { id: "p-chapter", type: "chapter", heading: "Section One" },
+        { id: "p-detail", type: "content", heading: "Detail breakdown" },
+        { id: "p-ending", type: "ending", heading: "Thanks" },
+      ]
+      const { ir, materializedLayoutCount } = assembleDeck(makePlan({ pages }), {})
+      // Sanity: all four page types are actually present (otherwise this
+      // fixture would silently degrade back to a 3-type deck and prove
+      // nothing new over the existing test above).
+      expect(ir.slides.map((s) => s.type)).toEqual(["cover", "chapter", "content", "ending"])
+      expect(materializedLayoutCount).toBe(4) // every page omits layout, including the chapter page
+    })
+
     it("omits materializedLayoutCount (undefined) when every page already has an explicit layout", () => {
       const pages: Record<string, PageContent> = {
         "p-cover": { layout: "banner-title" },
