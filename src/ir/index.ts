@@ -585,8 +585,9 @@ const SlideSchema = z
     // Layout registry id（archetype 或 takeover 皆可，src/svg/layouts/registry.ts
     // 的 LAYOUT_REGISTRY 键）。schema 层是开放 string——已注册 + slideTypes 适用
     // 是 validateIr 的硬门（api.ts，报错带可用清单与页号），同 theme.id「schema
-    // 开放、validate 收口」的分层哲学（spec §6）。省略 = resolveArchetype 按
-    // 主题 allowed 集 + deck seed 自动轮换选型。4 个图文接管 id
+    // 开放、validate 收口」的分层哲学（spec §6）。省略 = 四步确定性选型（页型
+    // 全集 → theme.layouts 边界 → scenario 加权 → 加权 seed 取样加相邻防重复，
+    // src/svg/effective-layout.ts。容量归 validate 密度门，不参与选型）。4 个图文接管 id
     // （image-split/image-top/image-bottom/image-annotate，原「图文范式族」
     // P3～2026-07-09 研究 ppt-master showcase 借鉴的 image_split/image_top/
     // image_bottom/image_annotate 四个 variant 值）的具体版式行为详见

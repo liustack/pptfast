@@ -3,6 +3,7 @@ import type { SvgTemplateProps } from "./types"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 
 /**
  * constellation-chapter archetype（spec §3.2）：左侧巨大 accent 色章节序号 +
@@ -17,10 +18,24 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * `colors.text`/`colors.muted`/`colors.border ?? colors.muted`），无烤死颜色
  * 常量，无孤儿色。**档位一・逐字节等价**。
  *
+ * 对比度自适应修复（W4 fix round，Important I1 台账 + 本轮扩大排查）：标题/
+ * 副标题原样消费 `colors.text`/`colors.muted`，对 academic/classroom/
+ * consulting 三个 chapter 页型另开一档默认背景的主题不成立（academic
+ * 2.41:1/1.18:1 一类量级）。**左侧章节号**（`numberColor` = `colors.accent`，
+ * 满不透明度，非水印豁免）同一根因下同样失败——I1 的窄口径扫描（仅匹配
+ * "Sample heading"/"Sample subheading" 字面文本）未网罗到它，本轮补充实测
+ * 复核（academic 2.17:1、classroom 1.48:1，同量级）。三处统一改用
+ * `accessibleInk(..., ctx.defaultBg, fontSize)`——同 chapter-masthead-
+ * chapter.tsx 先例，未失败的组合原样返回、逐字节不变。
+ *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
 export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
+  // `ctx.defaultBg` is optional (ComponentCtx's own doc comment: a
+  // hand-built ctx in a test may omit it) — falls back to the same
+  // `colors.bg` `buildCtx` itself defaults to.
+  const defaultBg = ctx.defaultBg ?? colors.bg
   const chNum = chapterNumberFor(ir.slides, index)
   const label = String(chNum).padStart(2, "0")
   // Task 1（tech）: was accentFor(colors, chNum - 1) — cycled a hue per
@@ -65,7 +80,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
         fontFamily={fonts.heading}
         fontSize="160"
         fontWeight="700"
-        fill={numberColor}
+        fill={accessibleInk(numberColor, defaultBg, 160)}
         dominantBaseline="alphabetic"
       >
         {label}
@@ -79,7 +94,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
           fontFamily={fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="600"
-          fill={colors.text}
+          fill={accessibleInk(colors.text, defaultBg, heading.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -92,7 +107,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
           y={subheadingY}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
-          fill={colors.muted}
+          fill={accessibleInk(colors.muted, defaultBg, subheading.fontSize)}
           dominantBaseline="alphabetic"
         >
           {subheading.text}

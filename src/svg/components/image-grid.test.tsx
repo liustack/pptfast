@@ -17,6 +17,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#051C2C", "#FFC72C"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
+  bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
   images: {
     a: { src: "data:image/png;base64,AAAA" },
     b: { src: "data:image/png;base64,BBBB" },

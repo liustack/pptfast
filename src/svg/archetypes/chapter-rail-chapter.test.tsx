@@ -1,11 +1,23 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { assertSubset } from "../subset-validate"
 import { RailChapter } from "./chapter-rail-chapter"
 import type { PptxIR, Slide } from "@/ir"
+
+// W4 fix round: RailChapter's heading/subheading now adapt to
+// `ctx.defaultBg` (readableOn) instead of a hardcoded white — every ctx in
+// this file must carry the theme's *true* chapter default background, not
+// `buildCtx`'s own `colors.bg` fallback (wrong for academic, whose
+// `defaultBackgrounds.chapter` is a distinct dark green, not its light
+// `colors.bg`; see this file's own archetype header for the same
+// per-theme fact about classroom/consulting).
+function chapterCtx(themeId: string) {
+  const tokens = resolveStyle(themeId)
+  return buildCtx(tokens, {}, undefined, resolveBackgroundHex(tokens.defaultBackgrounds.chapter, tokens.colors.surface))
+}
 
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
@@ -45,7 +57,7 @@ const EXPECTED_CHAPTER2 =
 
 describe("RailChapter", () => {
   it("academic tokens 下输出与迁移前的 BCGEmeraldChapter 逐字节一致（档位一，含多 chapter 序号）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const ctx = chapterCtx("academic")
     const deck = ir("academic")
 
     const next1 = renderSvgMarkup(<RailChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
@@ -58,7 +70,7 @@ describe("RailChapter", () => {
   })
 
   it("章节标题过长时收缩到 <=2 行、字号落在 [40,84) 区间，不整段输出原文（迁移自 academic.test.tsx 的 Chapter 长标题分支）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const ctx = chapterCtx("academic")
     const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, components: [] } as Slide
     const doc: PptxIR = {
       version: "3",
@@ -104,5 +116,34 @@ describe("RailChapter", () => {
 
     // 结构性锚点：进度轨道 + 章节序号水印仍然存在
     expect(out).toContain(">01<")
+  })
+
+  it("W4 fix round Critical C1：runway/enterprise 的 chapter 默认背景是纯白，标题/副标题不再是不可见的白字压白底", () => {
+    for (const themeId of ["runway", "enterprise"] as const) {
+      const ctx = chapterCtx(themeId)
+      // Both themes' defaultBackgrounds.chapter is literal #FFFFFF — assert
+      // that's still true (the fix's premise) before asserting the fix's
+      // effect, so a future token edit can't silently invalidate this test.
+      expect(ctx.defaultBg).toBe("#FFFFFF")
+      const deck = ir(themeId)
+      const root = parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<RailChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)}</svg>`,
+      )
+      // Pre-fix this was a hardcoded "#FFFFFF" heading/subheading on a
+      // #FFFFFF background — precisely the Critical C1 finding (1.00:1,
+      // functionally invisible). Now both resolve to the neutral dark ink —
+      // asserted directly off the heading/subheading elements themselves
+      // (not a markup substring check), since the watermark/dots
+      // legitimately keep literal white regardless (low opacity/non-text,
+      // out of this fix's scope — see file header).
+      const heading = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("第二部分：方法与证据"),
+      )!
+      const subheading = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("面向可复现的实证研究"),
+      )!
+      expect(heading.getAttribute("fill")).toBe("#0A0E14")
+      expect(subheading.getAttribute("fill")).toBe("#0A0E14")
+    }
   })
 })

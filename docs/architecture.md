@@ -62,5 +62,14 @@ and its id in `BUILTIN_THEME_IDS` (`src/ir/index.ts`). `THEME_DEFINITIONS`
 automatically — add a `BRANDS` entry there only if the theme needs
 non-default brand chrome. A new theme also needs a `layouts` entry in
 `LAYOUTS` (`src/themes/definitions.ts`) — that record stays total over
-`CanonicalThemeId`, so a missing entry fails to compile. Archetypes and
-components read only from tokens, so no archetype file changes.
+`CanonicalThemeId`, so a missing entry fails to compile. Each of the four
+page types defaults to `FULL_LAYOUTS.<type>` (every registered archetype for
+that type) — pointing all four there is the norm (ten of the thirteen
+built-ins do exactly that). Narrowing one below the full set is a deliberate
+curation act, not a requirement — the other three (bloom/classroom/heritage)
+narrow only `chapter`, excluding one runway-native archetype whose contrast
+doesn't clear their accent color. The SDK registration seam (`registerTheme`,
+same file) mirrors this default: its `layouts` argument, and each of its four
+page-type entries, are independently optional and fall back to the same full
+set when omitted. Archetypes and components read only from tokens, so no
+archetype file changes.

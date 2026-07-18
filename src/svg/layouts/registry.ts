@@ -26,6 +26,21 @@
  *    `Array.find` a specific component type out of `slide.components`.
  */
 
+// Type-only import from the shared leaf tuple module (not `@/scenario`
+// itself, which owns the nominal `Mode` type this mirrors structurally) —
+// W4 import-cycle precedent: `src/themes/definitions.ts` imports this
+// registry (`getLayout`), so this registry importing `@/scenario` (which
+// could plausibly grow a reason to read theme/layout data back some day)
+// would risk the same scenario↔consumer cycle W3 already broke once by
+// carving `src/ir/scenario-values.ts` out as a dependency-free leaf. `Mode`
+// here and `@/scenario`'s own `Mode` are the exact same literal union
+// (derived from the identical tuple) — TypeScript's structural typing makes
+// them freely interchangeable at every call site, so no cast is ever needed
+// where the two meet (`effective-layout.ts`'s `resolveArchetypeId`).
+import type { MODE_VALUES } from "@/ir/scenario-values"
+
+export type Mode = (typeof MODE_VALUES)[number]
+
 export type SlideType = "cover" | "chapter" | "content" | "ending"
 
 /** The 16-word slot vocabulary — the union of every distinct visual region
@@ -89,6 +104,34 @@ export interface LayoutDefinition {
    *  路径见其注释）共 5 个 → "all"，two-column → ["two_column"]，
    *  bento-panel → ["single"]) */
   arrangements?: readonly Arrangement[] | "all"
+  /**
+   * Auto-selection scenario allowlist (W4, spec §6 step 4's rare
+   * `scenarios_only` hard constraint — distinct from the soft ×3/×1
+   * `layoutTendencies` weighting in `MODE_DEFINITIONS`, `src/scenario`):
+   * when set, `resolveArchetypeId` (`../effective-layout.ts`) drops this
+   * layout from the auto-pick pool unless the resolved scenario's `mode` is
+   * a member. An explicit `slide.layout` pin bypasses selection entirely
+   * (spec §3: "显式指定不经选型"), so this field never blocks a pin — only
+   * auto-pick. `undefined` (every built-in layout today — the mechanism
+   * lands ahead of any real consumer) means unrestricted: every mode is
+   * eligible. See {@link filterByScenariosOnly} for the pure filter this
+   * field feeds.
+   */
+  scenariosOnly?: readonly Mode[]
+}
+
+/**
+ * Pure `scenariosOnly` filter (W4, spec §6 step 4's hard constraint): keep a
+ * layout when its `scenariosOnly` is unset, drop it when set and `mode` is
+ * not a member. Generic over any `scenariosOnly`-shaped record (not just
+ * `LayoutDefinition`) so a unit test can exercise it against synthetic
+ * fixtures without touching the real registry.
+ */
+export function filterByScenariosOnly<T extends { scenariosOnly?: readonly Mode[] }>(
+  defs: readonly T[],
+  mode: Mode,
+): T[] {
+  return defs.filter((def) => def.scenariosOnly === undefined || def.scenariosOnly.includes(mode))
 }
 
 /** Chrome slots (label/rule/meta/decor/watermark/rail) are never fed by an
@@ -479,6 +522,16 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     same component sequence the grid would otherwise hold (see that
 //     entry's own comment), so it shares the grid's number rather than a
 //     lesser invented one.
+//     Final semantics (W4, recorded once the full-set rollout made
+//     bento-panel reachable from every theme, not just tech): this capacity-6
+//     ceiling never actually binds the `min(delivery editorial budget, layout
+//     capacity)` density gate. `DELIVERY_BUDGETS`'s loosest delivery
+//     (`text`) tops out at 5 components/slide — still under 6 — so every
+//     delivery's own editorial budget wins the `min()` for this archetype
+//     (5/4/3 for text/balanced/presentation, never 6). The number above is
+//     bento-panel's true geometric ceiling and stays for documentation and
+//     for any future delivery tier looser than 5, but no deck can reach it
+//     through today's gate.
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   "narrow-column": {

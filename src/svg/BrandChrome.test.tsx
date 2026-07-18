@@ -17,6 +17,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#051C2C", "#FFC72C"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
+  bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
 }
 
 function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {

@@ -21,6 +21,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#006A4E", "#00A878"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
+  bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
 }
 
 function svg(node: React.ReactElement) {
@@ -167,6 +168,7 @@ describe("verdict_banner component: tone color mapping", () => {
         body: "Microsoft YaHei",
         mono: "Consolas",
       },
+      bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
     }
     const { container: pos } = svg(
       verdictBanner.render(
@@ -191,6 +193,7 @@ describe("verdict_banner component: tone color mapping", () => {
     const darkCtx: ComponentCtx = {
       colors: INSIGHT_TOKENS.colors,
       fonts: { heading: "Lora", body: "Inter", mono: "Consolas" },
+      bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
     }
     const { container: pos } = svg(
       verdictBanner.render(
@@ -219,6 +222,7 @@ describe("verdict_banner component: tone color mapping", () => {
     const customCtx: ComponentCtx = {
       colors: LEGACY_CUSTOM_TOKENS.colors,
       fonts: { heading: "Inter", body: "Inter", mono: "Consolas" },
+      bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
     }
     const { container } = svg(
       verdictBanner.render(
@@ -241,6 +245,7 @@ describe("verdict_banner component: tone color mapping", () => {
     const navyCtx: ComponentCtx = {
       colors: CONSULTING_TOKENS.colors,
       fonts: { heading: "Bower", body: "Bower", mono: "Consolas" },
+      bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
     }
     const { container } = svg(
       verdictBanner.render(

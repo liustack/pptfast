@@ -45,11 +45,17 @@ const ir = (theme: string, slides: Slide[] = [chapter, content]): PptxIR =>
 // Captured from NarrowColumnContent (magazine tokens, fixtures above) —
 // pinned as literals so this test no longer depends on the legacy
 // `templates/magazine` module (slated for deletion).
+// W4 task 3 re-pin: balanced delivery's 24px body baseline (was a fixed
+// 20px) — the paragraph/bullets components grow taller (28px -> 34px line
+// height) and push the quote block down; quote's own fixed 26px text and
+// 20px attribution line, and every archetype-bespoke element (kicker,
+// heading, subheading, page number, footnote), are untouched, confirming
+// the diff is confined to the paragraph/bullets trio.
 const MAGAZINE_EXPECTED =
-  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#E4DCD0" stroke-width="1.2"></line><text x="96" y="124" font-family="SimSun, Songti SC, STSong, serif" font-size="16" fill="#C0392B" font-style="italic" dominant-baseline="alphabetic">第一部分：市场洞察</text><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#1F1F1F" dominant-baseline="alphabetic">窄栏叙事：从数据到洞察</text><text x="96" y="254" font-family="SimSun, Songti SC, STSong, serif" font-size="22" fill="#C0392B" font-style="italic" dominant-baseline="alphabetic"><tspan fill="#1F1F1F" font-weight="700">核心结论</tspan><tspan fill="#C0392B">：留存率显著提升</tspan></text><g data-audit-rect="96,298,880,342"><g data-audit-box="96,298,880"><g transform="translate(96,298)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1F1F1F" dominant-baseline="alphabetic">本季度用户留存呈现持续上行趋势。</text></g></g><g data-audit-box="96,342,880"><g transform="translate(96,342)"><circle cx="5" cy="16" r="3" fill="#1A1A1A"></circle><text x="26" y="22" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1F1F1F" dominant-baseline="alphabetic">留存率 +12%</text><circle cx="5" cy="52" r="3" fill="#1A1A1A"></circle><text x="26" y="58" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1F1F1F" dominant-baseline="alphabetic">活跃时长 +8%</text><circle cx="5" cy="88" r="3" fill="#1A1A1A"></circle><text x="26" y="94" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1F1F1F" dominant-baseline="alphabetic">流失率 -5%</text></g></g><g data-audit-box="96,480,880"><g transform="translate(96,480)"><text x="0" y="44" font-size="64" fill="#C0392B" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" dominant-baseline="alphabetic">“</text><text x="20" y="86" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" font-style="italic" fill="#1F1F1F" dominant-baseline="alphabetic">增长的本质是留住已经信任你的人。</text><text x="20" y="123" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#6E6259" dominant-baseline="alphabetic">— 内部访谈</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#6E6259" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="96" y="652" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#6E6259" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
+  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#E4DCD0" stroke-width="1.2"></line><text x="96" y="124" font-family="SimSun, Songti SC, STSong, serif" font-size="16" fill="#C0392B" font-style="italic" dominant-baseline="alphabetic">第一部分：市场洞察</text><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#1F1F1F" dominant-baseline="alphabetic">窄栏叙事：从数据到洞察</text><text x="96" y="254" font-family="SimSun, Songti SC, STSong, serif" font-size="22" fill="#C0392B" font-style="italic" dominant-baseline="alphabetic"><tspan fill="#1F1F1F" font-weight="700">核心结论</tspan><tspan fill="#C0392B">：留存率显著提升</tspan></text><g data-audit-rect="96,298,880,342"><g data-audit-box="96,298,880"><g transform="translate(96,298)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1F1F1F" dominant-baseline="alphabetic">本季度用户留存呈现持续上行趋势。</text></g></g><g data-audit-box="96,338,880"><g transform="translate(96,338)"><circle cx="5" cy="18.8" r="3" fill="#1A1A1A"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1F1F1F" dominant-baseline="alphabetic">留存率 +12%</text><circle cx="5" cy="60.8" r="3" fill="#1A1A1A"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1F1F1F" dominant-baseline="alphabetic">活跃时长 +8%</text><circle cx="5" cy="102.8" r="3" fill="#1A1A1A"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1F1F1F" dominant-baseline="alphabetic">流失率 -5%</text></g></g><g data-audit-box="96,488,880"><g transform="translate(96,488)"><text x="0" y="44" font-size="64" fill="#C0392B" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" dominant-baseline="alphabetic">“</text><text x="20" y="86" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" font-style="italic" fill="#1F1F1F" dominant-baseline="alphabetic">增长的本质是留住已经信任你的人。</text><text x="20" y="123" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#6E6259" dominant-baseline="alphabetic">— 内部访谈</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#6E6259" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="96" y="652" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#6E6259" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
 
 const MAGAZINE_EXPECTED_BARE =
-  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#E4DCD0" stroke-width="1.2"></line><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#1F1F1F" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,230,880,410"><g data-audit-box="96,375.15999999999997,880"><g transform="translate(96,375.15999999999997)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1F1F1F" dominant-baseline="alphabetic">一</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#6E6259" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">01</text>'
+  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#E4DCD0" stroke-width="1.2"></line><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#1F1F1F" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,230,880,410"><g data-audit-box="96,372.88,880"><g transform="translate(96,372.88)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1F1F1F" dominant-baseline="alphabetic">一</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#6E6259" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">01</text>'
 
 describe("NarrowColumnContent", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，含多种 component/kicker/subheading/footnote，档案来自旧 EditorialSerifContent）", () => {
@@ -269,6 +275,43 @@ describe("NarrowColumnContent", () => {
       expect(sub.getAttribute("font-style")).toBe("italic")
       expect(sub.getAttribute("y")).toBe(String(190 + 64))
       expect(columnRectY(root)).toBe(190 + 40 + 68)
+    })
+
+    it("W4 fix round Important I1：consulting 的 colors.accent（#FFC72C）对自己的 content 默认背景只有 ~1.45:1，副题不再是几乎不可读的黄字压米白底", () => {
+      const consultingTokens = resolveStyle("consulting")
+      const ctx = buildCtx(consultingTokens, {})
+      const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
+      const deck = ir("consulting", [slide])
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
+        </svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const sub = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("效率提升三成"),
+      )!
+      // Fell back to readableOn's neutral dark ink (colors.accent itself
+      // measures ~1.45:1 against consulting's own light content background
+      // — squarely in Important I1's cited 1.45-2.92:1 range).
+      expect(sub.getAttribute("fill")).toBe("#0A0E14")
+      expect(sub.getAttribute("fill")).not.toBe(consultingTokens.colors.accent)
+    })
+
+    it("journal（本文件唯一既有 pinned 主题）的副题保持 colors.accent 原值不变（既有 pinned 渲染的逐字节不变性）", () => {
+      const ctx = buildCtx({ ...resolveStyle("journal"), shape: undefined }, {})
+      const slide: Slide = { ...base, subheading: "效率提升三成，风险敞口下降" } as Slide
+      const deck = ir("journal", [slide])
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <NarrowColumnContent ir={deck} slide={slide} index={0} ctx={ctx} />
+        </svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const sub = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("效率提升三成"),
+      )!
+      expect(sub.getAttribute("fill")).toBe(ctx.colors.accent)
     })
 
     it("emphasis markup: ** ** segments invert to colors.text at fontWeight 700, staying italic", () => {

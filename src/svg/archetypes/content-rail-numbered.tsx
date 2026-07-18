@@ -5,6 +5,7 @@ import { chapterNumberFor, contentIndexInChapter } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { accessibleInk, readableOn } from "../ink"
 
 /**
  * rail-numbered content archetype（spec §3.2，Wave 3 Task 18）：grammar break
@@ -38,16 +39,21 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  *     accent/baseFill 入参）：源函数已直接消费，未烤死，原样保留。
  * 两处烤死常量都在 academic 的 token 表里有精确匹配，**无孤儿色**。
  *
- * 白字例外（同 chapter-rail-chapter.tsx / cover-left-anchor.tsx 先例）：徽章
- * 文字固定写死纯白字面量——徽章底色是不透明的 `colors.primary`，为保证在
- * 任意主题色下都可读，这不是某个主题的烤死色（不随主题变化，也不在任何
- * token 字段里），是"色块上必须白字"的结构性产品逻辑，故不进上面的替换表，
- * 予以保留并在测试里跨主题锁死。
+ * 白字例外（同 chapter-rail-chapter.tsx / cover-left-anchor.tsx 先例）——
+ * **W4 fix round 前**：徽章文字曾固定写死纯白字面量，注释断言"任意主题色下
+ * 都可读"。全矩阵扫描推翻了这个断言（多个主题的 `colors.primary` 明度偏
+ * 高，白字对比度精确 1.00-1.14:1）——同 cover-left-anchor.tsx/content-
+ * banner-heading.tsx 的根因（baked 白字 on 自画 `colors.primary` 色块，未
+ * 检查该色块本身的明度）。
+ *
+ * 对比度自适应修复（W4 fix round，根因处置）：徽章文字改用
+ * `readableOn(colors.primary)`——徽章底色（本文件自画的 `<rect>`）就是文字
+ * 唯一的背景来源，不依赖页面级默认背景。
  *
  * **档位一・逐字节等价**（两处烤死常量都精确匹配 token 值，无孤儿色）。
  *
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试锁死
- * 的徽章纯白字面量，grep 清零门预期恰好命中这一处。
+ * 纪律：本文件禁 theme id、禁颜色 hex 字面量——heading/subheading/徽章三处
+ * 均已改为 token 或 `../ink` 调用，grep 清零门预期不再命中任何纯白字面量。
  */
 
 // Shared vertical-centering convention (see consulting.tsx's assertion
@@ -132,12 +138,24 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
   // like navy, this theme substitutes `colors.primary` (measured
   // sufficient contrast) as the subheading's base color instead of the usual
   // `colors.accent` (see the task report's contrast table).
+  //
+  // W4 fix round: that substitution was itself a fixed per-theme assumption
+  // baked into the archetype (colors.primary passes for academic, but
+  // full-matrix scanning found campaign's own colors.primary falls to
+  // 3.49:1 against campaign's own content background — same defect class
+  // as content-banner-heading.tsx's identical primary-for-accent
+  // substitution). `subheadingFill` below keeps colors.primary when it
+  // already clears the ratio (every theme this substitution was actually
+  // built for does) and falls back to readableOn's neutral ink otherwise.
   const subheading = fitEmphasisLine(slide.subheading, {
     maxWidth: TITLE_MAX_W,
     fontSize: SUBHEADING_FONT_SIZE,
     minFontSize: SUBHEADING_MIN_FONT_SIZE,
   })
   const subheadingY = titleLastY + 41
+  const subheadingFill = subheading
+    ? accessibleInk(colors.primary, ctx.defaultBg ?? colors.bg, subheading.fontSize)
+    : colors.primary
 
   const contentRectY = titleLastY + CONTENT_GAP + (subheading ? SUBHEADING_SLOT : 0)
   const contentRect = {
@@ -172,7 +190,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
         fontFamily={fonts.body}
         fontSize={badgeLabel.fontSize}
         fontWeight="700"
-        fill="#FFFFFF"
+        fill={readableOn(colors.primary)}
         textAnchor="middle"
         dominantBaseline="alphabetic"
       >
@@ -207,10 +225,10 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
           y={subheadingY}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
-          fill={colors.primary}
+          fill={subheadingFill}
           dominantBaseline="alphabetic"
         >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: colors.primary, fontWeight: "700" })}
+          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
         </text>
       )}
 

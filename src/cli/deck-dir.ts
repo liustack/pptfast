@@ -361,10 +361,10 @@ export async function readDeckDir(dir: string): Promise<DeckDirResult> {
   const deckDir = resolve(dir)
   const plan = await readPlanFile(deckDir)
   const pages = await readPages(deckDir)
-  const { ir, generatedSeed } = assembleDeck(plan, pages as Record<string, PageContent>)
+  const { ir, generatedSeed, materializedLayoutCount } = assembleDeck(plan, pages as Record<string, PageContent>)
   const images = await scanAssets(deckDir)
   ir.assets = { images: { ...ir.assets.images, ...images } }
-  return { ir, generatedSeed, deckDir }
+  return { ir, generatedSeed, materializedLayoutCount, deckDir }
 }
 
 // ── assets/ (write direction — disassemble) ─────────────────────────────

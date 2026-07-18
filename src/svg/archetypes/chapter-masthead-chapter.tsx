@@ -3,6 +3,7 @@ import type { SvgTemplateProps } from "./types"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 
 /**
  * masthead-chapter archetype（spec §3.2）：顶/底两条 hairline 夹住左对齐大标
@@ -17,10 +18,25 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * （`colors.border ?? colors.muted`/`colors.accent`/`colors.text`/
  * `colors.muted`），无烤死颜色常量，无孤儿色。**档位一・逐字节等价**。
  *
+ * 对比度自适应修复（W4 fix round，design decision 8 台账 #1 的根因处置）：
+ * 标题/副标题原样消费 `colors.text`/`colors.muted`——这两个 token 是为该
+ * 主题「均匀」的默认背景校准的，对 chapter 页型自己另开一档默认背景的三个
+ * 主题（academic 深绿、classroom 雾蓝、consulting 深藏青）不成立，
+ * consulting 的 `colors.text` 恰与自己的 chapter 默认背景同色（1:1，此前
+ * 靠策展排除 `CHAPTER_WITHOUT_MASTHEAD` 处理）。改用
+ * `accessibleInk(colors.text, ctx.defaultBg, fontSize)`：`colors.text`/
+ * `colors.muted` 通过校验就原样返回（其余十主题的 chapter 默认背景与主题
+ * 「均匀」默认背景同色调，逐字节不变），未通过时才落回 `readableOn` 的中性
+ * 墨色——不发明新的取色策略。
+ *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
 export function MastheadChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
+  // `ctx.defaultBg` is optional (ComponentCtx's own doc comment: a
+  // hand-built ctx in a test may omit it) — falls back to the same
+  // `colors.bg` `buildCtx` itself defaults to.
+  const defaultBg = ctx.defaultBg ?? colors.bg
   const chNum = chapterNumberFor(ir.slides, index)
   const label = String(chNum).padStart(2, "0")
 
@@ -84,7 +100,7 @@ export function MastheadChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           fontFamily={fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="600"
-          fill={colors.text}
+          fill={accessibleInk(colors.text, defaultBg, heading.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -97,7 +113,7 @@ export function MastheadChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           y={subheadingY}
           fontFamily={fonts.heading}
           fontSize={subheading.fontSize}
-          fill={colors.muted}
+          fill={accessibleInk(colors.muted, defaultBg, subheading.fontSize)}
           fontStyle="italic"
           dominantBaseline="alphabetic"
         >

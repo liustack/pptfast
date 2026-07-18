@@ -609,10 +609,12 @@ function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): P
  * IR, `./deck-dir.ts`) → write the assembled IR as pretty-printed JSON,
  * default `<deckDir>/deck.json` when `-o` is omitted. Deliberately does
  * *not* call `applyDeckConfig` — `assemble` materializes exactly what the
- * plan says (a portable IR file), theme/style overrides are `validate`/
- * `render`/`preview`'s job (each already applies the four-layer chain
- * whether given this same directory or the `deck.json` this command just
- * wrote).
+ * plan says plus each page's own auto-selected `layout` where the page file
+ * left it implicit (`assembleDeck`'s own doc comment, W4 design decision
+ * 10) — a portable IR file, self-contained down to which archetype each page
+ * will render with. Theme/style overrides are `validate`/`render`/
+ * `preview`'s job (each already applies the four-layer chain whether given
+ * this same directory or the `deck.json` this command just wrote).
  *
  * `target` must resolve to an actual directory: a target that exists but
  * names a file gets a friendly `expected a deck project directory` error
@@ -638,6 +640,15 @@ function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): P
  * `assembleDeck` stays a pure function with no fs side effects, and silently
  * rewriting a file the user did not ask this command to touch would be a
  * worse surprise than asking them to paste one line in.
+ *
+ * `materializedLayoutCount` (also from `assembleDeck`, unset when every page
+ * already named its own `layout` or landed on the image-cover bypass) gets
+ * its own one-line note the same way, listed after the seed note when both
+ * apply — purely informational, telling the caller how many pages just had
+ * an auto-pick baked into `deck.json` rather than leaving them to notice by
+ * diffing the file. The base summary line's `(N slides, M placeholders)`
+ * parenthetical itself stays untouched by either note (`scripts/e2e.mts`
+ * checks it by exact substring) — both notes are strictly additional lines.
  */
 export async function runAssemble(target: string, opts: AssembleOptions = {}): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
@@ -646,7 +657,7 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
   if ((await pathExists(dir)) && !(await isDeckDirectory(dir))) {
     throw new PptfastError(`expected a deck project directory: ${dir}`)
   }
-  const { ir, generatedSeed, deckDir } = await readDeckDir(dir)
+  const { ir, generatedSeed, materializedLayoutCount, deckDir } = await readDeckDir(dir)
   const outPath = opts.output ? resolve(cwd, opts.output) : join(deckDir, "deck.json")
   const outDir = dirname(outPath)
   const outIr = outDir === deckDir ? ir : withRewrittenAssetPaths(ir, deckDir, outDir)
@@ -654,8 +665,16 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
   await writeFile(outPath, JSON.stringify(outIr, null, 2) + "\n")
   const placeholderCount = outIr.slides.filter((s) => s.placeholder).length
   const summary = `wrote ${outPath} (${outIr.slides.length} slides, ${placeholderCount} placeholder${placeholderCount === 1 ? "" : "s"})`
-  if (generatedSeed === undefined) return summary
-  return `${summary}\nnote: generated seed ${generatedSeed} — add "seed": ${generatedSeed} to deck.plan.json for revision stability`
+  const notes: string[] = []
+  if (generatedSeed !== undefined) {
+    notes.push(`note: generated seed ${generatedSeed} — add "seed": ${generatedSeed} to deck.plan.json for revision stability`)
+  }
+  if (materializedLayoutCount !== undefined) {
+    notes.push(
+      `note: ${materializedLayoutCount} layout${materializedLayoutCount === 1 ? "" : "s"} auto-selected into deck.json — pin "layout" in a page file to lock one`,
+    )
+  }
+  return [summary, ...notes].join("\n")
 }
 
 /**

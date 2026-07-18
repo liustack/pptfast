@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { PptfastError } from "../errors"
-import { PptxIRSchema } from "../ir"
+import { PptxIRSchema, type PptxIR } from "../ir"
+import { resolveEffectiveLayoutId } from "../svg/effective-layout"
 import { assembleDeck, disassembleDeck, type PageContent } from "./assemble"
 
 // ── fixtures ─────────────────────────────────────────────────────────────
@@ -293,6 +294,96 @@ describe("assembleDeck", () => {
     })
   })
 
+  // ── materialization (W4 design decision 10) ────────────────────────
+
+  describe("materializes effective layouts", () => {
+    it("fills in a layout for every page type when the page file omits one", () => {
+      const { ir } = assembleDeck(makePlan(), {})
+      for (const slide of ir.slides) {
+        expect(slide.layout, `slide "${slide.id}" (${slide.type})`).toEqual(expect.any(String))
+      }
+    })
+
+    it("leaves an explicit page-file layout untouched", () => {
+      const pages: Record<string, PageContent> = { "p-kpi": { layout: "two-column" } }
+      const { ir } = assembleDeck(makePlan(), pages)
+      expect(ir.slides.find((s) => s.id === "p-kpi")?.layout).toBe("two-column")
+    })
+
+    it("leaves layout omitted for the image-cover takeover bypass — no invented representation for resolveEffectiveLayoutId's null", () => {
+      const pages: Record<string, PageContent> = {
+        "p-cover": { background: { kind: "asset", asset_id: "bg" } },
+      }
+      const { ir } = assembleDeck(makePlan(), pages)
+      const cover = ir.slides.find((s) => s.id === "p-cover")
+      expect(cover?.background).toEqual({ kind: "asset", asset_id: "bg" })
+      expect(cover?.layout).toBeUndefined()
+    })
+
+    it("materializes a layout on an unfilled (placeholder) page too — placeholder status doesn't exempt a page from selection", () => {
+      const { ir } = assembleDeck(makePlan(), {})
+      const kpi = ir.slides.find((s) => s.id === "p-kpi")
+      expect(kpi?.placeholder).toBe(true)
+      expect(kpi?.layout).toEqual(expect.any(String))
+    })
+
+    it("materializes exactly what resolveEffectiveLayoutId independently computes (parity — not a second selection-logic copy)", () => {
+      const seed = 909090
+      const { ir } = assembleDeck(makePlan({ seed }), {})
+
+      // Independently rebuilt pre-materialization shape (assembleDeck's own
+      // step 6, minus the materialization this test exists to check) — a
+      // fresh object, so `resolveEffectiveLayoutId`'s WeakMap cache (keyed by
+      // `ir` identity, `../svg/effective-layout.ts`) can't be silently
+      // reading back assembleDeck's own answer. If assembleDeck ever grew a
+      // second, drifted copy of the selection logic instead of calling this
+      // function, this is the test that would catch it.
+      const manualIr: PptxIR = PptxIRSchema.parse({
+        version: "3",
+        scenario: { delivery: "presentation" },
+        theme: { id: "consulting" },
+        filename: "q3-review",
+        seed,
+        slides: [
+          { id: "p-cover", type: "cover", heading: "Q3 Review", placeholder: true },
+          { id: "p-kpi", type: "content", heading: "Revenue is up", placeholder: true },
+          { id: "p-detail", type: "content", heading: "Detail breakdown", placeholder: true },
+          { id: "p-ending", type: "ending", heading: "Thanks", placeholder: true },
+        ],
+      })
+
+      manualIr.slides.forEach((slide, i) => {
+        const expected = resolveEffectiveLayoutId(manualIr, slide, i)
+        const actual = ir.slides.find((s) => s.id === slide.id)?.layout
+        expect(actual).toBe(expected ?? undefined)
+      })
+    })
+
+    it("reports materializedLayoutCount matching the number of pages it filled in", () => {
+      const { materializedLayoutCount } = assembleDeck(makePlan(), {})
+      expect(materializedLayoutCount).toBe(4) // all 4 of makePlan()'s pages omit layout
+    })
+
+    it("omits materializedLayoutCount (undefined) when every page already has an explicit layout", () => {
+      const pages: Record<string, PageContent> = {
+        "p-cover": { layout: "banner-title" },
+        "p-kpi": { layout: "two-column" },
+        "p-detail": { layout: "two-column" },
+        "p-ending": { layout: "tone-adaptive-ending" },
+      }
+      const { materializedLayoutCount } = assembleDeck(makePlan(), pages)
+      expect(materializedLayoutCount).toBeUndefined()
+    })
+
+    it("excludes an image-cover-bypassed page from materializedLayoutCount", () => {
+      const pages: Record<string, PageContent> = {
+        "p-cover": { background: { kind: "asset", asset_id: "bg" } }, // bypass — stays uncounted
+      }
+      const { materializedLayoutCount } = assembleDeck(makePlan(), pages)
+      expect(materializedLayoutCount).toBe(3) // p-kpi, p-detail, p-ending — not p-cover
+    })
+  })
+
   // ── defensive: malformed page content ──────────────────────────────
 
   describe("page content that cannot produce valid IR", () => {
@@ -433,7 +524,31 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
     const { plan, pages } = disassembleDeck(original)
     const { ir: reassembled } = assembleDeck(plan, pages)
 
-    expect(reassembled.slides).toEqual(original.slides)
+    // `original` was hand-authored via a bare `PptxIRSchema.parse` — it
+    // never went through `assembleDeck`, so its cover/gap/ending slides never
+    // had a `layout` materialized (W4 design decision 10). `reassembled` DID
+    // go through `assembleDeck`, so those same three slides now each carry
+    // an auto-picked `layout` `original` doesn't have — an accepted
+    // consequence, not a bug (`disassembleDeck`'s own doc comment). Compare
+    // content field-by-field with `layout` stripped so this test keeps
+    // covering "content survives the round trip" without re-asserting
+    // materialization (covered separately below and in the materialization
+    // describe block above).
+    const withoutLayout = (slides: typeof original.slides) =>
+      slides.map(({ layout: _layout, ...rest }) => rest)
+    expect(withoutLayout(reassembled.slides)).toEqual(withoutLayout(original.slides))
+
+    // p-kpi's explicit pin came from an actual page file field (`raw.layout`
+    // in `buildSlide`), so materialization skips it and it survives
+    // untouched — unlike the other three slides below.
+    expect(reassembled.slides[1]?.layout).toBe("kpi-strip")
+    // p-cover / p-gap / p-ending all omitted `layout` on `original` and each
+    // now carries whatever `resolveEffectiveLayoutId` auto-picked for it.
+    for (const id of ["p-cover", "p-gap", "p-ending"]) {
+      expect(original.slides.find((s) => s.id === id)?.layout).toBeUndefined()
+      expect(reassembled.slides.find((s) => s.id === id)?.layout).toEqual(expect.any(String))
+    }
+
     expect(reassembled.filename).toBe(original.filename)
     expect(reassembled.theme).toEqual(original.theme)
     expect(reassembled.scenario).toEqual(original.scenario)

@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { assertSubset } from "../subset-validate"
+import { readableOn } from "../ink"
 import { RailNumberedContent } from "./content-rail-numbered"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -69,14 +70,19 @@ const ir = (theme: string): PptxIR =>
 // exact rail-node cy at each chapter position, the badge label per slide,
 // and the subheading-slot-driven content-rect y) without importing the
 // (soon-to-be-deleted) templates/ module.
+// W4 task 3 re-pin: balanced delivery's 24px body baseline (was 20px) —
+// paragraph/bullets grow taller (line height 28px -> 34px), pushing the
+// bullets block and everything below it down. Badge/rail/heading/subheading/
+// footnote (all archetype-bespoke, not the paragraph/bullets/callout trio)
+// keep their exact pixel values.
 const EXPECTED_CONTENT_1A =
-  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="96" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">编号导轨：从章节到小节</text><text x="180" y="166" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#006A4E" dominant-baseline="alphabetic"><tspan fill="#1A2421" font-weight="700">核心结论</tspan><tspan fill="#006A4E">：证据链完整</tspan></text><g data-audit-rect="96,206,1088,434"><g data-audit-box="96,206,1088"><g transform="translate(96,206)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">本节梳理研究背景与既有文献。</text></g></g><g data-audit-box="96,274,1088"><g transform="translate(96,274)"><circle cx="5" cy="16" r="3" fill="#006A4E"></circle><text x="26" y="22" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">假设一成立</text><circle cx="5" cy="52" r="3" fill="#006A4E"></circle><text x="26" y="58" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">假设二部分成立</text><circle cx="5" cy="88" r="3" fill="#006A4E"></circle><text x="26" y="94" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">假设三待验证</text></g></g></g><text x="96" y="656" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" fill="#5D6B65" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
+  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="96" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">编号导轨：从章节到小节</text><text x="180" y="166" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#006A4E" dominant-baseline="alphabetic"><tspan fill="#1A2421" font-weight="700">核心结论</tspan><tspan fill="#006A4E">：证据链完整</tspan></text><g data-audit-rect="96,206,1088,434"><g data-audit-box="96,206,1088"><g transform="translate(96,206)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1A2421" dominant-baseline="alphabetic">本节梳理研究背景与既有文献。</text></g></g><g data-audit-box="96,280,1088"><g transform="translate(96,280)"><circle cx="5" cy="18.8" r="3" fill="#006A4E"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1A2421" dominant-baseline="alphabetic">假设一成立</text><circle cx="5" cy="60.8" r="3" fill="#006A4E"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1A2421" dominant-baseline="alphabetic">假设二部分成立</text><circle cx="5" cy="102.8" r="3" fill="#006A4E"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1A2421" dominant-baseline="alphabetic">假设三待验证</text></g></g></g><text x="96" y="656" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" fill="#5D6B65" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
 const EXPECTED_CONTENT_1B =
-  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="96" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.2</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">同一章节的第二小节</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,332.38,1088"><g transform="translate(96,332.38)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">承接上一小节继续展开。</text></g></g></g>'
+  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="96" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.2</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">同一章节的第二小节</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,330.1,1088"><g transform="translate(96,330.1)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1A2421" dominant-baseline="alphabetic">承接上一小节继续展开。</text></g></g></g>'
 const EXPECTED_CONTENT_2A =
-  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="640" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">2.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">第二章节的首个小节</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,332.38,1088"><g transform="translate(96,332.38)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">方法论概述。</text></g></g></g>'
+  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="640" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">2.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">第二章节的首个小节</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,330.1,1088"><g transform="translate(96,330.1)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1A2421" dominant-baseline="alphabetic">方法论概述。</text></g></g></g>'
 const EXPECTED_CONTENT_BARE =
-  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="96" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,332.38,1088"><g transform="translate(96,332.38)"><text x="0" y="20" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#1A2421" dominant-baseline="alphabetic">一</text></g></g></g>'
+  '<rect x="48" y="96" width="4" height="544" fill="#006A4E"></rect><circle cx="50" cy="96" r="7" fill="#006A4E"></circle><rect x="96" y="96" width="64" height="32" rx="6" fill="#006A4E"></rect><text x="128" y="116" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">1.1</text><text x="180" y="125" font-family="Georgia, Songti SC, STSong, serif" font-size="40" font-weight="600" fill="#1A2421" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,161,1088,479"><g data-audit-box="96,330.1,1088"><g transform="translate(96,330.1)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#1A2421" dominant-baseline="alphabetic">一</text></g></g></g>'
 
 describe("RailNumberedContent", () => {
   it("academic tokens 下输出与迁移前的 BCGEmeraldContent 逐字节一致（档位一，含跨章节编号 + 多 component/subheading/footnote）", () => {
@@ -317,7 +323,7 @@ describe("RailNumberedContent", () => {
     expect(sub.textContent).not.toBe(CJK_LONG.repeat(2))
   })
 
-  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），徽章白字例外跨主题稳定", () => {
+  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），徽章对比度自适应出深字", () => {
     const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
@@ -331,8 +337,15 @@ describe("RailNumberedContent", () => {
     expect(out).not.toContain("#5D6B65") // academic MUTED
     expect(out).not.toContain("#006A4E") // academic primary（回归锁，本函数未烤死但仍确认没有意外硬编码）
 
-    // 白字例外：徽章文字固定纯白，不随主题变化
-    expect(out).toContain('fill="#FFFFFF"')
+    // W4 fix round: 徽章文字不再固定纯白——白字 on tech 亮青 primary
+    // （#2DD4E6）只有 ~1.80:1，全矩阵扫描确认精确 1.00:1（因为 audit 把徽章
+    // 误判到页面背景，见 full-matrix-contrast.test.ts 的 allowlist 说明。
+    // 真实渲染是 badge 自画的 primary 色块）。改用
+    // readableOn(colors.primary) 后 tech 落中性深墨。
+    const expectedInk = readableOn(techTheme.colors.primary)
+    expect(expectedInk).toBe("#0A0E14")
+    expect(out).toContain(`fill="${expectedInk}"`)
+    expect(out).not.toContain('fill="#FFFFFF"')
     expect(ctx.colors.text).not.toBe("#FFFFFF")
 
     // ctx 确实按主题切换生效：heading 字体走 tech 的解析结果

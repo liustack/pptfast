@@ -2,10 +2,20 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { ConstellationChapter } from "./chapter-constellation-chapter"
 import type { PptxIR, Slide } from "@/ir"
+
+// W4 fix round: ConstellationChapter's number/heading/subheading now adapt
+// to `ctx.defaultBg` — every ctx in this file must carry the theme's *true*
+// chapter default background, not `buildCtx`'s own `colors.bg` fallback
+// (wrong for consulting; see chapter-rail-chapter.tsx's file header for the
+// same per-theme fact about academic/classroom).
+function chapterCtx(themeId: string) {
+  const tokens = resolveStyle(themeId)
+  return buildCtx(tokens, {}, undefined, resolveBackgroundHex(tokens.defaultBackgrounds.chapter, tokens.colors.surface))
+}
 
 // Deck with two chapter slides (separated by a content slide) so
 // `chapterNumberFor` has something to derive — index 0 is chapter "01",
@@ -58,7 +68,7 @@ describe("ConstellationChapter", () => {
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = chapterCtx("consulting")
     const deck = ir("consulting")
     const out = renderSvgMarkup(
       <ConstellationChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />,

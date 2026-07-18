@@ -55,18 +55,17 @@ import { resolveStyle, type CanonicalThemeId } from "../../themes"
 import type { PptxIR, Slide } from "@/ir"
 import { CONTENT_ARCHETYPES } from "./index-content"
 import type { ContentArchetype, ContentArchetypeId } from "./types"
-import { THEME_DEFINITIONS } from "../../themes/definitions"
 
-/** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板，W2 任务 2
- * 数据源改为 THEME_DEFINITIONS）：数据源从 SVG_TEMPLATES[id].Content 改为经
- * theme 定义解析该主题的 content archetype（各主题至少 1 个），验证的「副题
- * 间距 >=14px」共享助手不变。 */
-function contentArchetypeFor(themeId: CanonicalThemeId): ContentArchetype {
-  // layouts.content 的 id 是通用 string（W2 任务 2 起不再分页型细分 ID 联合
-  // 类型），CONTENT_ARCHETYPES 仍是窄 Record<ContentArchetypeId,...>——这里
-  // 的 cast 只是类型层面收窄，运行时值不变（清单-注册表一致性锁已守住这个
-  // 不变式，definitions.test.ts）。
-  const id = THEME_DEFINITIONS[themeId].layouts.content[0] as ContentArchetypeId
+/** 迁移自 templates/subheading-spacing.test.tsx（P2 Wave5 删旧模板）：这是
+ * component 级单测（直接调用某个具体 archetype 的渲染函数验证间距公式），
+ * 不是选型级测试——用哪个 archetype 代表哪个主题是本文件自己的固定选择，
+ * 不该随 theme.layouts 的策展内容变化而变化。W4 全集放开前曾借道
+ * `THEME_DEFINITIONS[themeId].layouts.content[0]` 取值——彼时策展集是每主题
+ * 精心排的 2 元素数组，`[0]` 恰好稳定指向本文件想测的那个 archetype。全集
+ * 放开后 `.content` 变成十主题共享的同一份 7 元素全集数组（`[0]` 恒为
+ * "narrow-column"，与主题无关），该隐式假设失效——`CJK_THEME_CASES` 各条目
+ * 直接点名自己要测的 archetype id，不再经 theme.layouts 转一手。 */
+function contentArchetypeFor(id: ContentArchetypeId): ContentArchetype {
   return CONTENT_ARCHETYPES[id]
 }
 
@@ -131,6 +130,10 @@ function subheadingGlyphTop(subheadingY: number): number {
 
 interface ThemeCase {
   id: CanonicalThemeId
+  /** Which content archetype this case exercises (see `contentArchetypeFor`'s
+   *  doc comment for why this is now named explicitly instead of taken from
+   *  `theme.layouts.content[0]`). */
+  archetypeId: ContentArchetypeId
   isTitleLine: (el: Element) => boolean
   /** Renders a Content slide (given heading + components) whose subheadingY was touched by the S3b formula. */
   renderContent: (contentArch: ContentArchetype, ctx: ReturnType<typeof buildCtx>, heading: string) => Element
@@ -139,6 +142,7 @@ interface ThemeCase {
 const CJK_THEME_CASES: ThemeCase[] = [
   {
     id: "academic",
+    archetypeId: "rail-numbered",
     isTitleLine: (el) => el.getAttribute("font-weight") === "600",
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
@@ -152,6 +156,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
   },
   {
     id: "tech",
+    archetypeId: "bento-panel",
     isTitleLine: (el) => el.getAttribute("font-weight") === "700",
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
@@ -166,8 +171,9 @@ const CJK_THEME_CASES: ThemeCase[] = [
   {
     // tone-adaptive-content 已不被 canonical 主题引用（custom→gallery→avant→enterprise
     // 换成高色彩版式），但 archetype 保留在库中，S3b 的 gap 保证仍需覆盖——
-    // 忽略 harness 传入的 manifest content[0]，直接取注册表渲染。
+    // 忽略 harness 传入的 contentArch 参数，直接取注册表渲染。
     id: "enterprise",
+    archetypeId: "tone-adaptive-content",
     isTitleLine: (el) => el.getAttribute("font-weight") === "700",
     renderContent: (_contentArch, ctx, heading) => {
       // No background asset -> the (simpler) no-bg branch.
@@ -183,6 +189,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
   },
   {
     id: "insight",
+    archetypeId: "stacked-poster",
     isTitleLine: (el) => el.getAttribute("font-weight") === "500",
     renderContent: (contentArch, ctx, heading) => {
       // >=3 components forces the degrade (stacked) path — the one S3b actually
@@ -203,6 +210,7 @@ const CJK_THEME_CASES: ThemeCase[] = [
   },
   {
     id: "journal",
+    archetypeId: "narrow-column",
     isTitleLine: (el) => el.getAttribute("font-weight") === "600",
     renderContent: (contentArch, ctx, heading) => {
       const slide: Slide = {
@@ -222,7 +230,7 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
       ["1-line heading", HEADING_ONE_LINE],
       ["2-line heading (real fitHeadingLines wrap)", HEADING_TWO_LINE],
     ])("%s: gap between title glyph bottom and subheading glyph top is >=14px", (_label, heading) => {
-      const contentArch = contentArchetypeFor(theme.id)
+      const contentArch = contentArchetypeFor(theme.archetypeId)
       const tokens = resolveStyle(theme.id)
       const ctx = buildCtx(tokens, {})
       const root = theme.renderContent(contentArch, ctx, heading)
@@ -241,7 +249,7 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
       ["1-line heading (88px banner)", HEADING_ONE_LINE],
       ["2-line heading, real fitHeadingLines wrap (132px banner)", HEADING_TWO_LINE],
     ])("%s", (_label, heading) => {
-      const contentArch = contentArchetypeFor("consulting")
+      const contentArch = contentArchetypeFor("banner-heading")
       const tokens = resolveStyle("consulting")
       const ctx = buildCtx(tokens, {})
       const slide: Slide = {

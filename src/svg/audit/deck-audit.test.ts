@@ -138,8 +138,13 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
   })
 
   it("ending-banner-ending.tsx's adjudicated COPYRIGHT_FAINT tier fails the strict WCAG body threshold", () => {
+    // Pinned explicitly (W4 full-set opening): this test is about one
+    // specific component's hardcoded color, not about auto-selection —
+    // consulting's ending curated set grew from a single-member
+    // ["banner-ending"] to the full 7-archetype set, so an unpinned slide
+    // no longer deterministically lands on banner-ending.
     const ir = deck("consulting", [
-      { type: "ending", heading: "Thanks", components: [] },
+      { type: "ending", heading: "Thanks", layout: "banner-ending", components: [] },
     ], { meta: { organization: "x", copyright: "© 2026 x" } })
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#8a8a86")).toBe(true)

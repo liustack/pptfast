@@ -26,6 +26,7 @@ import { Icon } from "../icons"
 import { dedupeKpiUnit, deltaProps, splitKpiValueWidths } from "../components/kpi"
 import { iconCardContentHeight, renderIconCardBody } from "../components/icon-cards"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { accessibleInk } from "../ink"
 
 /**
  * bento-panel content archetype（spec §3.2，Wave 3 Task 22，本 wave 体量最大
@@ -83,6 +84,13 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * `colors.accent`/`colors.text`/`colors.muted`/`colors.primary`），无任何
  * 烤死颜色常量，无孤儿色。**档位一・逐字节等价**（tech 是零烤色主题，与 brief
  * 表格标注一致）。
+ *
+ * 对比度自适应修复（W4 fix round，Important I1「content archetype 的
+ * subheading 出现同类回声」台账）：subheading 原样消费 `colors.accent`，同
+ * content-narrow-column.tsx 先例——对 consulting/bloom/classroom/heritage/
+ * academic 五个主题不达标（该 archetype 在这些主题 pre-W4 策展集里都不
+ * 存在，全集放开新暴露）。改用 `accessibleInk(colors.accent, ctx.defaultBg,
+ * fontSize)`，通过校验的主题（包括本文件原生 tech）原样返回、逐字节不变。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
@@ -704,6 +712,15 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   })
   const subheadingY = headingLastY + 42
   const subheadingBudget = subheading ? 46 : 0
+  // W4 fix round: keeps colors.accent when it already clears the
+  // size-appropriate ratio, falls back to readableOn's neutral ink
+  // otherwise (see file header). Fallback value is never rendered when
+  // `subheading` is null. `ctx.defaultBg` is optional (`ComponentCtx`'s own
+  // doc comment: a hand-built ctx in a test may omit it) — falls back to
+  // the same `colors.bg` `buildCtx` itself defaults to.
+  const subheadingFill = subheading
+    ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
+    : colors.accent
 
   const bentoRect: ContentRect = {
     x: 96,
@@ -837,12 +854,12 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
           y={subheadingY}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
-          fill={colors.accent}
+          fill={subheadingFill}
           dominantBaseline="alphabetic"
         >
           {renderEmphasisTspans(subheading.segments, {
             accent: colors.text,
-            baseFill: colors.accent,
+            baseFill: subheadingFill,
             fontWeight: "700",
           })}
         </text>

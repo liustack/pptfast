@@ -803,13 +803,49 @@ describe("runAssemble", () => {
     expect(written.slides).toHaveLength(5)
   })
 
-  it("has no generated-seed note when the plan already sets seed", async () => {
+  it("has no generated-seed note when the plan already sets seed (a materialized-layout note may still appear — a separate concern)", async () => {
     const deckDir = await makeDeckDir()
     await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
     const msg = await runAssemble(deckDir)
-    expect(msg).not.toContain("note:")
+    expect(msg).not.toContain("generated seed")
+    expect(msg).not.toContain("revision stability")
     const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
     expect(written.seed).toBe(424242)
+  })
+
+  it("reports the materialized-layout count as its own note (W4 design decision 10)", async () => {
+    const deckDir = await makeDeckDir()
+    // No pages/ dir at all — every one of makeDeckPlan()'s 5 pages is an
+    // unfilled placeholder, so every one of them also omits `layout` and
+    // gets materialized.
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
+    const msg = await runAssemble(deckDir)
+    expect(msg).toContain("note: 5 layouts auto-selected into deck.json")
+    const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
+    expect(written.slides.every((s: { layout?: string }) => typeof s.layout === "string")).toBe(true)
+  })
+
+  it("has no materialized-layout note when every page already pins its own layout", async () => {
+    const deckDir = await makeDeckDir()
+    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
+    await mkdir(join(deckDir, "pages"))
+    await Promise.all([
+      writeFile(join(deckDir, "pages", "p-cover.json"), JSON.stringify({ layout: "banner-title" })),
+      writeFile(join(deckDir, "pages", "p-a.json"), JSON.stringify({ layout: "two-column" })),
+      writeFile(join(deckDir, "pages", "p-b.json"), JSON.stringify({ layout: "two-column" })),
+      writeFile(join(deckDir, "pages", "p-c.json"), JSON.stringify({ layout: "two-column" })),
+      writeFile(join(deckDir, "pages", "p-ending.json"), JSON.stringify({ layout: "tone-adaptive-ending" })),
+    ])
+    const msg = await runAssemble(deckDir)
+    expect(msg).not.toContain("auto-selected")
+    const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
+    expect(written.slides.map((s: { layout?: string }) => s.layout)).toEqual([
+      "banner-title",
+      "two-column",
+      "two-column",
+      "two-column",
+      "tone-adaptive-ending",
+    ])
   })
 
   it("never modifies the user's plan file, even when it suggests writing a seed back", async () => {

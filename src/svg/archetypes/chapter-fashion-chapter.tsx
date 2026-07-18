@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
-import { readableOn } from "./cover-split-diagonal"
+import { readableOn } from "../ink"
 
 /**
  * fashion-chapter archetype（2026-07-10 时尚 runway 专属表达，纯新写）：

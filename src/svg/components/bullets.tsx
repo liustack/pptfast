@@ -13,7 +13,6 @@ import type { SvgComponent } from "./types"
 
 type BulletsComponent = Extract<Component, { type: "bullets" }>
 
-const FONT_SIZE = 20
 const MIN_FONT = 14
 const ITEM_GAP = 8
 const TEXT_INDENT = 26
@@ -46,15 +45,20 @@ interface ItemsLayout {
  * with visually inconsistent sizes. Any line still too wide at the clamped
  * size is truncated with an ellipsis. `measure` and `render` both call this so
  * the reported height always matches what's actually drawn.
+ *
+ * `baseFontSize` is `ctx.bodyFontPx` (W4 task 3, design decision 9) — the
+ * delivery-tier body baseline items shrink *from*, not a fixed ceiling: the
+ * shrink-to-`MIN_FONT` machinery below is unchanged and applies the same way
+ * whether it starts at 20, 24, or 32.
  */
-function layoutItems(component: BulletsComponent, w: number): ItemsLayout {
+function layoutItems(component: BulletsComponent, w: number, baseFontSize: number): ItemsLayout {
   const style = component.style ?? "plain"
   const indent = style === "default" ? TEXT_INDENT : 0
   const maxWidth = Math.max(60, w - indent)
   const prefixes = component.items.map((_, i) => itemPrefix(style, i))
   const texts = component.items.map((item, i) => `${prefixes[i]}${stripEmphasis(item)}`)
-  const layouts = texts.map((t) => layoutSvgText(t, { maxWidth, fontSize: FONT_SIZE, maxLines: 2 }))
-  const fontSize = Math.max(MIN_FONT, Math.min(...layouts.map((l) => l.fontSize), FONT_SIZE))
+  const layouts = texts.map((t) => layoutSvgText(t, { maxWidth, fontSize: baseFontSize, maxLines: 2 }))
+  const fontSize = Math.max(MIN_FONT, Math.min(...layouts.map((l) => l.fontSize), baseFontSize))
   const lineHeight = Math.round(fontSize * 1.4)
 
   // Re-layout once at the unified font size so every item shares the same size.
@@ -97,12 +101,12 @@ function layoutItems(component: BulletsComponent, w: number): ItemsLayout {
 }
 
 export const bullets: SvgComponent<BulletsComponent> = {
-  measure(component, w) {
-    return layoutItems(component, w).height
+  measure(component, w, ctx) {
+    return layoutItems(component, w, ctx.bodyFontPx).height
   },
   render(component, box, ctx) {
     const style = component.style ?? "plain"
-    const { items, fontSize, lineHeight, dividers } = layoutItems(component, box.w)
+    const { items, fontSize, lineHeight, dividers } = layoutItems(component, box.w, ctx.bodyFontPx)
     const indent = style === "default" ? TEXT_INDENT : 0
     return (
       <g transform={`translate(${box.x},${box.y})`}>

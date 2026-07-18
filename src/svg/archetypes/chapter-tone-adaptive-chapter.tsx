@@ -2,6 +2,7 @@
 import type { SvgTemplateProps } from "./types"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
+import { accessibleInk } from "../ink"
 
 /**
  * tone-adaptive-chapter archetype（spec §3.2）：整页居中版式——右下角巨幅半
@@ -34,6 +35,13 @@ import { fitHeadingLines } from "../heading-fit"
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量（除上述白字/黑幕两类豁免——
  * grep 清零门预期命中的 hex 全部落在文件头点名的豁免范围内，逐行可核对）。
+ *
+ * 对比度自适应修复（W4 fix round，Important I1「tone-adaptive-chapter（无 bg
+ * 分支）」台账）：`!withBg` 分支的 `textFg` 原样消费 `colors.text`，对
+ * academic/classroom/consulting 三个 chapter 页型另开一档默认背景的主题
+ * 不成立。改用 `accessibleInk(colors.text, ctx.defaultBg, heading.fontSize)`
+ * ——`withBg` 分支的强制白字豁免不变（背景图上的产品逻辑白字，与 chapter
+ * 默认背景无关）。
  */
 
 /** Check whether the slide has a valid background image asset. Ported
@@ -50,8 +58,6 @@ function hasBgImage(
 
 export function ToneAdaptiveChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const withBg = hasBgImage(ir, slide)
-  // INK 语境映射（见文件头「替换表」）：本函数唯一语境是文字填色 → text。
-  const textFg = withBg ? "#FFFFFF" : ctx.colors.text
   const chNum = chapterNumberFor(ir.slides, index)
   const label = String(chNum).padStart(2, "0")
 
@@ -62,6 +68,14 @@ export function ToneAdaptiveChapter({ ir, slide, index, ctx }: SvgTemplateProps)
     minPt: 40,
   })
   const headingY = heading.lines.length > 1 ? 368 : 408
+
+  // INK 语境映射（见文件头「替换表」）：本函数唯一语境是文字填色 → text。
+  // 对比度自适应修复（见文件头）：!withBg 分支落 accessibleInk，withBg 分支
+  // 的强制白字豁免不变。`ctx.defaultBg` 可选（ComponentCtx 自己的文档：
+  // 测试手搭的 ctx 可能缺省），兜底同 `buildCtx` 自身的缺省值。
+  const textFg = withBg
+    ? "#FFFFFF"
+    : accessibleInk(ctx.colors.text, ctx.defaultBg ?? ctx.colors.bg, heading.fontSize)
 
   return (
     <>

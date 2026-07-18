@@ -2,10 +2,22 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { BannerChapter } from "./chapter-banner-chapter"
 import type { PptxIR, Slide } from "@/ir"
+
+// W4 fix round: BannerChapter's heading/subheading now adapt to
+// `ctx.defaultBg` (readableOn) instead of a hardcoded white — every ctx in
+// this file must carry the theme's *true* chapter default background, not
+// `buildCtx`'s own `colors.bg` fallback (wrong for consulting, whose
+// `defaultBackgrounds.chapter` is a distinct dark navy, not its light
+// `colors.bg`; see `chapter-rail-chapter.tsx`'s file header for the same
+// per-theme fact about academic/classroom).
+function chapterCtx(themeId: string) {
+  const tokens = resolveStyle(themeId)
+  return buildCtx(tokens, {}, undefined, resolveBackgroundHex(tokens.defaultBackgrounds.chapter, tokens.colors.surface))
+}
 
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
@@ -40,7 +52,7 @@ const LEGACY_CHAPTER2_MARKUP = `<text x="1224" y="650" font-family="Georgia, Son
 
 describe("BannerChapter", () => {
   it("consulting tokens 下与旧 MckinseyNavyChapter 输出逐字节一致（档位一，含多 chapter 序号）", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = chapterCtx("consulting")
     const deck = ir("consulting")
 
     const next1 = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
@@ -58,7 +70,7 @@ describe("BannerChapter", () => {
   // 隐含验证了这些数字（字面量里就是 404/460/452），这里显式断言，避免
   // 「值虽正确但没有可读断言」。
   it("单行标题时 heading/subheading/hairline 落在固定基线 y=404/460/452 上", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = chapterCtx("consulting")
     const deck = ir("consulting")
     const markup = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`)
@@ -80,7 +92,7 @@ describe("BannerChapter", () => {
   // instead of overflowing」（旧文件 consulting.test.tsx L347-371）：超长
   // heading 必须被压缩换行/缩字号，不能原样溢出。
   it("超长标题被压缩到 <=2 行且字号收缩（40-84px 之间），不会原样溢出", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = chapterCtx("consulting")
     const slide: Slide = { type: "chapter", heading: CJK_LONG, subheading: CJK_LONG, components: [] } as Slide
     const deck: PptxIR = {
       version: "3",
@@ -126,5 +138,24 @@ describe("BannerChapter", () => {
     // ctx 确实按主题切换：heading 字体走 tech 的解析结果
     expect(out).toContain(`font-family="${ctx.fonts.heading}"`)
     expect(out).toContain(">01<")
+  })
+
+  it("W4 fix round Critical C1：runway/enterprise 的 chapter 默认背景是纯白，标题/副标题不再是不可见的白字压白底", () => {
+    for (const themeId of ["runway", "enterprise"] as const) {
+      const ctx = chapterCtx(themeId)
+      expect(ctx.defaultBg).toBe("#FFFFFF")
+      const deck = ir(themeId)
+      const root = parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<BannerChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)}</svg>`,
+      )
+      const heading = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("第二章：战略选择与路径"),
+      )!
+      const subheading = Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").includes("面向 2027 的三个决定"),
+      )!
+      expect(heading.getAttribute("fill")).toBe("#0A0E14")
+      expect(subheading.getAttribute("fill")).toBe("#0A0E14")
+    }
   })
 })

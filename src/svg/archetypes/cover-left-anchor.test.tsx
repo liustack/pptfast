@@ -5,6 +5,7 @@ import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { assertSubset } from "../subset-validate"
 import { fitHeadingLines } from "../heading-fit"
+import { readableOn } from "../ink"
 import { LeftAnchorCover } from "./cover-left-anchor"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -64,16 +65,31 @@ describe("LeftAnchorCover", () => {
     expect(out).toContain("#004C38")
   })
 
-  it("tech tokens 下用 tech 的 primary/accent 色，装饰三角 / 白字两处豁免跨主题保持不变（证明 token 化成立）", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
+  it("tech tokens 下用 tech 的 primary/accent 色，标题对比度自适应出深字，装饰三角豁免跨主题保持不变（证明 token 化成立）", () => {
+    const techTokens = resolveStyle("tech")
+    const ctx = buildCtx(techTokens, {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
 
     expect(out).toContain("#2DD4E6") // tech primary === accent
     expect(out).not.toContain("#006A4E") // academic primary 不得残留
-    // 白字例外跨主题依然成立：不会被 tech 的 primary/accent/text 替换掉
-    expect(out).toContain('fill="#FFFFFF"')
+    // W4 fix round: 标题不再固定纯白——design decision 8 的实测发现白字 on
+    // tech 亮青 primary（#2DD4E6）只有 ~1.80:1，一度靠策展排除
+    // （COVER_WITHOUT_LEFT_ANCHOR）处理。改用 readableOn(colors.primary) 后
+    // tech 落中性深墨（#0A0E14，对比度 ~10.75:1），不再出现纯白。
+    const expectedInk = readableOn(techTokens.colors.primary)
+    expect(expectedInk).toBe("#0A0E14")
+    expect(out).toContain(`fill="${expectedInk}"`)
+    expect(out).not.toContain('fill="#FFFFFF"')
     // 装饰豁免色是文件私有常量，不随主题变化——跨主题依然渲染同一个 hex
     expect(out).toContain("#004C38")
+  })
+
+  it("academic tokens 下标题仍是纯白——readableOn 对当前既有策展主题（academic 是本文件唯一 pre-W4 owner）产出与旧硬编码逐字节相同的结果", () => {
+    const academicTokens = resolveStyle("academic")
+    const ctx = buildCtx(academicTokens, {})
+    const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
+    expect(readableOn(academicTokens.colors.primary)).toBe("#FFFFFF")
+    expect(out).toContain('fill="#FFFFFF"')
   })
 
   it("org 文本渲染在右侧白面板（translate(576,168)），Cover body 通过 subset validation（迁移自 academic.test.tsx）", () => {

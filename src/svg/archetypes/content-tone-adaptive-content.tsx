@@ -6,6 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { accessibleInk } from "../ink"
 
 /**
  * tone-adaptive-content archetype（spec §3.2，Wave 3 Task 21）：custom 主题
@@ -66,6 +67,15 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试锁
  * 死的白色卡片纯白字面量，grep 清零门预期恰好命中这一处。
+ *
+ * 对比度自适应修复（W4 fix round，Important I1「content archetype 的
+ * subheading 出现同类回声」台账）：两分支的 subheading 都原样消费
+ * `colors.accent`，同 content-narrow-column.tsx 先例——对 consulting/bloom/
+ * classroom/heritage/academic 五个主题不达标。两分支的有效背景不同（`withBg`
+ * 分支落在自画的不透明白色卡片上，无背景分支落在页面默认背景上），各自改用
+ * `accessibleInk(colors.accent, <对应背景>, fontSize)`：`withBg` 分支传固定
+ * `"#FFFFFF"`（卡片色本身，不随主题变化，见上方"白色卡片豁免"），无背景分支
+ * 传 `ctx.defaultBg`。通过校验的主题原样返回、逐字节不变。
  */
 
 /** Check whether the slide has a valid background image asset. Ported
@@ -130,6 +140,14 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
     })
     const subheadingY = headingLastY + 42
     const subheadingBudget = subheading ? 46 : 0
+    // W4 fix round: this branch's subheading sits on the self-painted white
+    // card (below), not the page's `ctx.defaultBg` — keeps colors.accent
+    // when it already clears the ratio against white, falls back to
+    // readableOn's neutral ink otherwise. Fallback value is never rendered
+    // when `subheading` is null.
+    const subheadingFill = subheading
+      ? accessibleInk(colors.accent, "#FFFFFF", subheading.fontSize)
+      : colors.accent
     const dividerY = 198 + headingExtra + subheadingBudget
     const contentRectY = 216 + headingExtra + subheadingBudget
     const contentRectH = Math.max(120, 400 - headingExtra - subheadingBudget)
@@ -186,10 +204,10 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
             y={subheadingY}
             fontFamily={fonts.body}
             fontSize={subheading.fontSize}
-            fill={colors.accent}
+            fill={subheadingFill}
             dominantBaseline="alphabetic"
           >
-            {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: colors.accent, fontWeight: "700" })}
+            {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
           </text>
         )}
 
@@ -281,6 +299,16 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
   })
   const subheadingY = headingLastY + 42
   const subheadingBudget = subheading ? 46 : 0
+  // W4 fix round: this (no-bg) branch's subheading sits directly on the
+  // page's default background — keeps colors.accent when it already clears
+  // the ratio, falls back to readableOn's neutral ink otherwise. Fallback
+  // value is never rendered when `subheading` is null. `ctx.defaultBg` is
+  // optional (`ComponentCtx`'s own doc comment: a hand-built ctx in a test
+  // may omit it) — falls back to the same `colors.bg` `buildCtx` itself
+  // defaults to.
+  const subheadingFill = subheading
+    ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
+    : colors.accent
   const dividerY = 162 + headingExtra + subheadingBudget
   const contentRectY = 180 + headingExtra + subheadingBudget
   const contentRectH = Math.max(120, contentH - headingExtra - subheadingBudget)
@@ -325,10 +353,10 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
           y={subheadingY}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
-          fill={colors.accent}
+          fill={subheadingFill}
           dominantBaseline="alphabetic"
         >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: colors.accent, fontWeight: "700" })}
+          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
         </text>
       )}
 

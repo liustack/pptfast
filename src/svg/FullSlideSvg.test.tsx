@@ -6,6 +6,7 @@ import { renderSvgMarkup, parseSvgRoot } from "./serialize"
 import { assertSubset } from "./subset-validate"
 import { svgToOps } from "../pptx/svg2pptx/dispatch"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
+import { THEME_DEFINITIONS } from "../themes/definitions"
 import type { PptxIR, Slide } from "@/ir"
 
 function ir(slides: Slide[]): PptxIR {
@@ -238,17 +239,17 @@ describe("manifest cover dispatch (P1)", () => {
   const mkIr = (theme: string): PptxIR =>
     ({ version: "3", filename: "m.pptx", theme: { id: theme }, meta: {}, assets: { images: {} }, slides: [coverSlide] }) as unknown as PptxIR
 
-  it("consulting cover 命中允许集成员（split-diagonal 铺开后 3 元素，seed 决定具体落点）", () => {
+  it("consulting cover 命中允许集成员（W4 全集放开后 8 元素，seed 决定具体落点）", () => {
     const { container } = render(<FullSlideSvg ir={mkIr("consulting")} slide={coverSlide} index={0} />)
     const g = container.querySelector("[data-archetype]")
     expect(g).not.toBeNull()
-    expect(["banner-title", "poster-center", "split-diagonal"]).toContain(
-      g!.getAttribute("data-archetype"),
-    )
+    expect(THEME_DEFINITIONS.consulting.layouts.cover).toContain(g!.getAttribute("data-archetype"))
   })
-  it("tech cover 命中 constellation archetype（P2 Task 23 接线后 allowed 已非空，取代原「空集回落」用例）", () => {
+  it("tech cover 命中允许集成员（W4 全集放开，design decision 8 排除 left-anchor 后 7 元素）", () => {
     const { container } = render(<FullSlideSvg ir={mkIr("tech")} slide={coverSlide} index={0} />)
-    expect(container.querySelector('[data-archetype="constellation"]')).not.toBeNull()
+    const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
+    expect(THEME_DEFINITIONS.tech.layouts.cover).toContain(id)
+    expect(id).not.toBe("left-anchor")
   })
   it("asset 背景 cover 仍走 ImageCoverPage 接管（优先级高于 manifest）", () => {
     const bgCover: Slide = { ...coverSlide, background: { kind: "asset", asset_id: "a" } } as Slide
@@ -283,15 +284,16 @@ describe("manifest 四页型分发泛化 (P2)", () => {
       slides: [slide],
     }) as unknown as PptxIR
 
-  it("chapter 命中 archetype（academic → rail-chapter，Wave 4 Task 23 已接线）", () => {
+  it("chapter 命中 archetype（academic → 允许集成员，W4 全集放开后 8 元素）", () => {
     const chapterSlide: Slide = { type: "chapter", heading: "第一章", components: [] } as Slide
     const { container } = render(
       <FullSlideSvg ir={mkIr("academic", chapterSlide)} slide={chapterSlide} index={0} />,
     )
-    expect(container.querySelector('[data-archetype="rail-chapter"]')).not.toBeNull()
+    const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
+    expect(THEME_DEFINITIONS.academic.layouts.chapter).toContain(id)
   })
 
-  it("content 命中 archetype（tech → 允许集成员，P3 Item ② 后含 bento-panel/two-column）", () => {
+  it("content 命中 archetype（tech → 允许集成员，W4 全集放开，design decision 8 排除 banner-heading 后 6 元素）", () => {
     const contentSlide2: Slide = {
       type: "content",
       heading: "内容页",
@@ -301,15 +303,17 @@ describe("manifest 四页型分发泛化 (P2)", () => {
       <FullSlideSvg ir={mkIr("tech", contentSlide2)} slide={contentSlide2} index={0} />,
     )
     const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
-    expect(["bento-panel", "two-column"]).toContain(id)
+    expect(THEME_DEFINITIONS.tech.layouts.content).toContain(id)
+    expect(id).not.toBe("banner-heading")
   })
 
-  it("ending 命中 archetype（journal → masthead-ending，Wave 4 Task 23 已接线）", () => {
+  it("ending 命中 archetype（journal → 允许集成员，W4 全集放开后 7 元素）", () => {
     const endingSlide: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
     const { container } = render(
       <FullSlideSvg ir={mkIr("journal", endingSlide)} slide={endingSlide} index={0} />,
     )
-    expect(container.querySelector('[data-archetype="masthead-ending"]')).not.toBeNull()
+    const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
+    expect(THEME_DEFINITIONS.journal.layouts.ending).toContain(id)
   })
 
   it("motif 命中：Decor 优先取 THEME_DEFINITIONS 对应主题的 motif 对应的 MOTIF_ARCHETYPES 组件（consulting → banner-motif）", () => {
@@ -324,9 +328,11 @@ describe("manifest 四页型分发泛化 (P2)", () => {
   })
 })
 
-describe("content 页轮换 (P3 Item ②)", () => {
-  // academic content 允许集 = ["rail-numbered", "two-column"]（P3 Item ② 吸纳），
-  // 同 deck 内相邻 content 页应按 typeOrdinal 轮换到不同 archetype。
+describe("content 页相邻防重复 (W4 design decision 4, retires P3 item ②'s ordinal rotation)", () => {
+  // academic content 允许集 = W4 全集放开后的 7 元素——相邻防重复保证的是
+  // "紧邻两页不同"，不再是旧 ordinal 轮换机制"奇数页与偶数页各自为一组"的
+  // 严格周期性交替（那个保证只在 2 元素允许集下才成立，全集放开后不再有
+  // 任何主题的 content 允许集是 2 元素）。
   const contentPage = (heading: string): Slide =>
     ({ type: "content", heading, components: [{ type: "paragraph", text: "正文" }] }) as Slide
 
@@ -344,34 +350,22 @@ describe("content 页轮换 (P3 Item ②)", () => {
     ],
   } as unknown as PptxIR
 
-  it("同 deck 相邻 content 页渲染不同 archetype（打破 deck 内雷同）", () => {
+  it("同 deck 相邻 content 页渲染不同 archetype（打破 deck 内雷同），均落在允许集内", () => {
     const archetypeOf = (slideIdx: number): string | null => {
       const { container } = render(
         <FullSlideSvg ir={deck} slide={deck.slides[slideIdx]} index={slideIdx} />,
       )
       return container.querySelector("[data-archetype]")?.getAttribute("data-archetype") ?? null
     }
-    const a1 = archetypeOf(1) // content ordinal 0
-    const a2 = archetypeOf(2) // content ordinal 1
-    const a3 = archetypeOf(3) // content ordinal 2
-    // 2 元素集：相邻交替，第 1 与第 3 同（base, base^1, base）
+    const a1 = archetypeOf(1)
+    const a2 = archetypeOf(2)
+    const a3 = archetypeOf(3)
+    // 相邻防重复只约束紧邻页——a1 与 a3 不相邻，不受约束，允许相同也允许不同。
     expect(a1).not.toBe(a2)
     expect(a2).not.toBe(a3)
-    expect(a1).toBe(a3)
-    // 两个都是 academic 允许集成员
-    expect(["rail-numbered", "two-column"]).toContain(a1)
-    expect(["rail-numbered", "two-column"]).toContain(a2)
-  })
-
-  it("单元素允许集主题零回归（journal content 恒 narrow-column，不受轮换影响）", () => {
-    const magDeck: PptxIR = {
-      ...deck,
-      theme: { id: "journal" },
-    } as unknown as PptxIR
-    const { container } = render(
-      <FullSlideSvg ir={magDeck} slide={magDeck.slides[2]} index={2} />,
-    )
-    expect(container.querySelector('[data-archetype="narrow-column"]')).not.toBeNull()
+    for (const a of [a1, a2, a3]) {
+      expect(THEME_DEFINITIONS.academic.layouts.content).toContain(a)
+    }
   })
 })
 
@@ -404,20 +398,22 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
   })
 
   it("honors the pin even outside the theme's curated family (spec §3: explicit layout bypasses selection unconditionally)", () => {
-    // "narrow-column" is journal's own content archetype — not in tech's
-    // curated content set (["bento-panel", "two-column"]). Per spec §3 ("要
-    // 版式完全不动就显式写 layout 字段（显式指定不经选型）"), an explicit
-    // `layout` always wins over the theme's curated allowed set — it is not
-    // a soft preference that only applies within the family, so this must
-    // render narrow-column rather than falling back to tech's own set.
+    // "banner-heading" is tech's own W4 design-decision-8 content exclusion
+    // (baked white heading unreadable on tech's bright-cyan primary — see
+    // definitions.ts) — not a member of tech's curated content set. Per
+    // spec §3 ("要版式完全不动就显式写 layout 字段（显式指定不经选型）"), an
+    // explicit `layout` always wins over the theme's curated allowed set —
+    // it is not a soft preference that only applies within the family, so
+    // this must render banner-heading rather than falling back to tech's
+    // own curated set.
     const slide: Slide = {
       type: "content",
-      layout: "narrow-column",
+      layout: "banner-heading",
       heading: "标题",
       components: [{ type: "paragraph", text: "正文" }],
     } as Slide
     const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
-    expect(container.querySelector('[data-archetype="narrow-column"]')).not.toBeNull()
+    expect(container.querySelector('[data-archetype="banner-heading"]')).not.toBeNull()
   })
 
   it("falls back to seed-pick (totality safety net) when the pinned id cannot be an archetype for this slide type — unregistered, wrong kind, or wrong slideTypes", () => {
@@ -442,13 +438,57 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
       } as Slide
       const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
       const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
-      expect(["bento-panel", "two-column"]).toContain(id)
+      expect(THEME_DEFINITIONS.tech.layouts.content).toContain(id)
     }
   })
 
   it("falls back to seed-pick when slide.layout is undefined (no regression to the pre-existing dispatch)", () => {
     const slide: Slide = { type: "cover", heading: "标题", components: [] } as Slide
     const { container } = render(<FullSlideSvg ir={mkIr("tech", slide)} slide={slide} index={0} />)
-    expect(container.querySelector('[data-archetype="constellation"]')).not.toBeNull()
+    const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
+    expect(THEME_DEFINITIONS.tech.layouts.cover).toContain(id)
+  })
+})
+
+// W4 task 3 fix round (review Major finding): the review proved this
+// production seam was completely unguarded — `FullSlideSvg.tsx` resolves
+// `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`
+// and threads it as `buildCtx`'s 5th (optional) argument. If a future edit
+// ever drops that argument, `buildCtx` silently falls back to its own
+// default (`DELIVERY_BUDGETS.balanced.bodyBaselinePx` = 24) — every
+// consumer of `ctx.bodyFontPx` would render 24px regardless of what
+// `ir.scenario` said, and the reviewer's mutation-check found that all
+// 1206 `src/svg` tests stayed green when this exact regression was
+// simulated, because `balanced`/24px is *both* the scenario default and
+// `buildCtx`'s own fallback. This block renders THROUGH `FullSlideSvg` (the
+// real production entry point, not a direct `paragraph.render(...)` call)
+// so it exercises the one and only call site the seam lives at. `layout` is
+// pinned (same short-circuit mechanism the block above already exercises)
+// so both renders share identical archetype geometry — only `bodyFontPx`
+// differs between the two assertions.
+describe("delivery bodyFontPx injection seam (W4 task 3 fix round — Major)", () => {
+  const PROBE_TEXT = "档位注入回归探针段落"
+  const probeSlide: Slide = {
+    type: "content",
+    heading: "缝隙回归探针",
+    layout: "narrow-column",
+    components: [{ type: "paragraph", text: PROBE_TEXT }],
+  } as Slide
+
+  function renderProbeFontSize(scenario: Record<string, unknown>): string | null {
+    const doc: PptxIR = { ...ir([probeSlide]), scenario }
+    const { container } = render(<FullSlideSvg ir={doc} slide={probeSlide} index={0} />)
+    const probeText = Array.from(container.querySelectorAll("text")).find(
+      (t) => t.textContent === PROBE_TEXT,
+    )
+    return probeText?.getAttribute("font-size") ?? null
+  }
+
+  it("text delivery renders the paragraph body at 20px through the real render entry point", () => {
+    expect(renderProbeFontSize({ delivery: "text" })).toBe("20")
+  })
+
+  it("presentation delivery renders the paragraph body at 32px through the real render entry point", () => {
+    expect(renderProbeFontSize({ delivery: "presentation" })).toBe("32")
   })
 })

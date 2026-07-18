@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
-import { readableOn } from "./cover-split-diagonal"
+import { readableOn } from "../ink"
 
 /**
  * fashion-ending archetype（2026-07-10 时尚 runway 专属表达，纯新写）：

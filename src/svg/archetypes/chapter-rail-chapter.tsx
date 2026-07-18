@@ -3,16 +3,17 @@ import type { SvgTemplateProps } from "./types"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { accessibleOpacity, readableOn } from "../ink"
 
 /**
  * rail-chapter archetype（spec §3.2）：巨幅居中标题 + 斜体副标题，压在整页
- * 通栏 `colors.primary` 色块上（色块本身由 FullSlideSvg 按
- * `themes/academic.ts` 的 `defaultBackgrounds.chapter` 绘制，本文件不
- * 画背景），底部一条水平章节进度点轨（`totalChapters` 只有 1 时收起轨道
- * 线，只留单点）。自 templates/academic.tsx 的 `BCGEmeraldChapter`
- * （235-328 行）提炼。随迁 helper：`CH_DOT_Y`/`CH_DOT_SPACING`
- * （源文件 232-233 行的模块级私有常量，grep 确认整个 academic.tsx 里只有
- * 本函数消费，随函数体一并复制为本文件私有常量，不建公共 util）。
+ * 通栏色块上（色块本身由 FullSlideSvg 按 theme 的
+ * `defaultBackgrounds.chapter` 绘制，本文件不画背景），底部一条水平章节
+ * 进度点轨（`totalChapters` 只有 1 时收起轨道线，只留单点）。自
+ * templates/academic.tsx 的 `BCGEmeraldChapter`（235-328 行）提炼。随迁
+ * helper：`CH_DOT_Y`/`CH_DOT_SPACING`（源文件 232-233 行的模块级私有常量，
+ * grep 确认整个 academic.tsx 里只有本函数消费，随函数体一并复制为本文件
+ * 私有常量，不建公共 util）。
  *
  * Step A 复核（现状表标"烤色同款"，逐字核实后订正——十六进制值本身不抄进
  * 本注释，避免污染本文件的 grep 清零门，同 cover-left-anchor.tsx 先例）：
@@ -24,26 +25,28 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * / 进度轨道线 / 进度点）。故现状表"烤色同款"的判断不成立，本函数没有需要
  * 建立映射的具名烤色，**档位一・逐字节等价**。
  *
- * 白字处理（同 cover-left-anchor.tsx 的"白字例外"先例，非徽章场景但同一
- * 类产品逻辑）：这 5 处不是"徽章白字"，是画在整页不透明 `colors.primary`
- * 色块之上的水印数字/主标题/副标题/进度点——用于保证在任意主题的
- * `primary` 色值下都可读。**注意一个逐字节陷阱**：这个白色字面量恰好与
- * academic 自己的 `colors.surface` 逐字符相同，但 `surface` 字段在别的
- * 主题里并不是白色（creative/tech 是深色，custom 是浅灰——见
- * themes/*.ts），若机械地把这个字面量映射进 `colors.surface`，在
- * creative/tech 下这些主题的章节页背景同样是深色，文字会变成深色-on-深色
- * 而隐形——这不是"观感等价"而是"观感被破坏"，同 left-anchor 文件头记录的
- * `TRIANGLE_DEEP` 教训同一类陷阱（十六进制凑巧相等 ≠ 语义相同）。核实同款
- * 先例：consulting 的 `MckinseyNavyChapter`（184-324 行）同样对其章节大
- * 标题写死同一个纯白字面量，不是 academic 独有写法，是"章节页压在整页深色
- * 主色块上"这一构图共享的结构性产品逻辑。故该字面量不进下面的替换表，保留
- * 原样，并在测试里跨主题锁死。
+ * 对比度自适应修复（W4 fix round，Critical C1）：主标题/副标题原先写死纯白
+ * ——假设章节默认背景总是深色。全集放开后该假设对 bloom/enterprise/
+ * heritage/ink/journal/runway 六个浅底章节主题不成立（runway/enterprise 精确
+ * 1.00:1，白字压白底完全不可见。其余四个 1.05-1.14:1，米白/浅棕底同样远低于
+ * 3:1 门槛）——同一缺陷模式已在 design decision 8 的台账记录过（consulting×
+ * masthead-chapter、tech×left-anchor/banner-heading）。改用 `readableOn(ctx.
+ * defaultBg)`：`ctx.defaultBg` 就是 FullSlideSvg 实际画在本页背后的那个
+ * `defaultBackgrounds.chapter` 色（见 `ComponentCtx` 自己的文档），
+ * `readableOn` 按其明度选中性黑/白——对本来就深色的七个章节底（academic/
+ * campaign/classroom/consulting/insight/luxe/tech）算出的仍是白色，是同一个
+ * 字面量，输出不变。水印章节号（0.05-0.06 透明度）与进度轨道/进度点两类装饰
+ * 元素保留原样纯白字面量——不是本次缺陷范围（低透明度已被审计的
+ * `DECORATIVE_ALPHA` 豁免，从未被判定不可读），改动面收在 heading/subheading
+ * 两处。
  *
- * 替换表：无——本函数不消费任何 token 字段，只有上述白字例外一项。
+ * 替换表：无——本函数不消费任何 token 字段，唯一颜色输入是上面的
+ * `readableOn(ctx.defaultBg)` 自适应结果与装饰元素的纯白字面量。
  *
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试
- * 锁死的纯白字面量（代码里的 5 处 `fill`/`stroke`），grep 清零门预期恰好
- * 命中这 5 处。
+ * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是水印/进度轨/进度点
+ * 三类装饰元素的纯白字面量（代码里的 3 处 `fill`/`stroke`），grep 清零门
+ * 预期恰好命中这 3 处（heading/subheading 两处已改为 `readableOn` 调用，不
+ * 再是字面量）。
  */
 
 // Horizontal chapter-progress dot row's fixed y and per-dot spacing. Ported
@@ -57,6 +60,11 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const chNum = chapterNumberFor(ir.slides, index)
   const label = String(chNum).padStart(2, "0")
   const totalChapters = ir.slides.filter((s) => s.type === "chapter").length
+  // `ctx.defaultBg` is optional (ComponentCtx's own doc comment: a
+  // hand-built ctx in a test may omit it) — falls back to the same
+  // `colors.bg` `buildCtx` itself defaults to.
+  const defaultBg = ctx.defaultBg ?? ctx.colors.bg
+  const ink = readableOn(defaultBg)
 
   const heading = fitHeadingLines(slide.heading, {
     maxWidth: 1088,
@@ -71,6 +79,18 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     ? fitSvgLine(slide.subheading, { maxWidth: 1088, fontSize: 34, minFontSize: 18 })
     : null
   const subheadingY = headingLastY + 46
+  // Dimmed subheading tier (0.7 opacity for visual hierarchy under the
+  // heading) — W4 fix round: classroom's chapter background (#6E8E9E) gives
+  // `ink` only 3.48:1 at full opacity to begin with (comfortably >=3, but
+  // the *tightest* margin of any theme this archetype's white ink already
+  // covered), and blending it toward that background at 0.7 alpha drops the
+  // rendered ratio to ~2.53:1 — a real, pre-existing gap (present since
+  // before this fix round; classroom's rail-chapter pairing was already
+  // curated pre-W4) that `accessibleOpacity` catches by verifying the
+  // *blended* result, not just `ink`'s own full-opacity ratio.
+  const subheadingOpacity = subheading
+    ? accessibleOpacity(ink, defaultBg, subheading.fontSize, 0.7)
+    : 0.7
 
   // Horizontal chapter-progress dot row, centered under the heading. Single-
   // chapter decks collapse to one dot at the midpoint and skip the track line
@@ -101,7 +121,7 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           fontFamily={ctx.fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="600"
-          fill="#FFFFFF"
+          fill={ink}
           textAnchor="middle"
           dominantBaseline="alphabetic"
         >
@@ -114,8 +134,8 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           y={subheadingY}
           fontFamily={ctx.fonts.heading}
           fontSize={subheading.fontSize}
-          fill="#FFFFFF"
-          opacity="0.7"
+          fill={ink}
+          opacity={subheadingOpacity}
           textAnchor="middle"
           fontStyle="italic"
           dominantBaseline="alphabetic"

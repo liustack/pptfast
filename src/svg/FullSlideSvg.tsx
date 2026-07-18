@@ -1,5 +1,6 @@
 import type React from "react"
-import type { Component, PptxIR, Slide } from "@/ir"
+import type { BackgroundSpec, Component, PptxIR, Slide } from "@/ir"
+import { DELIVERY_BUDGETS, resolveScenario, type Mode, type ScenarioAxes } from "@/scenario"
 import type { StyleTokens } from "../themes/tokens"
 import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
@@ -25,7 +26,29 @@ import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { cachedDeckSeed } from "./variety"
-import { resolveArchetypeId } from "./effective-layout"
+import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrMode } from "./effective-layout"
+
+/**
+ * Reduce a `BackgroundSpec` to one representative hex color — a color spec
+ * is already one; a gradient's `from` stop stands in for the whole band
+ * (every built-in gradient goes dark→darker or light→lighter, so which
+ * stop is picked never changes an ink decision made off it); an asset spec
+ * (a photo) has no single true color, so callers get `surfaceFallback`
+ * instead (mirrors the pre-existing `autoScrimColor` computation below,
+ * which this function now backs).
+ *
+ * Exported (W4 fix round) so archetype tests can build a `ComponentCtx`
+ * whose `defaultBg` matches a theme's *true* `defaultBackgrounds[slideType]`
+ * — required whenever the theme under test gives that slide type a
+ * different default than its own `colors.bg` (only `academic`/`classroom`/
+ * `consulting`'s `chapter` do, among the 13 built-ins), since `buildCtx`'s
+ * own same-named fallback (`colors.bg`) is wrong for exactly those three.
+ */
+export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: string): string {
+  if (spec.kind === "color") return spec.value
+  if (spec.kind === "gradient") return spec.from
+  return surfaceFallback
+}
 
 /**
  * Resolve theme tokens + asset map into the render context components/templates use.
@@ -34,12 +57,31 @@ import { resolveArchetypeId } from "./effective-layout"
  * tagging — omit it (the default) to keep `ctx.blockIndex` undefined, which
  * is what keeps the default export path byte-identical (see `ComponentCtx`'s
  * doc comment).
+ *
+ * `defaultBg` (W4 fix round, `ComponentCtx`'s own doc comment): the caller
+ * (`FullSlideSvg` below) always supplies the true
+ * `tokens.defaultBackgrounds[slide.type]`, reduced to hex via
+ * `resolveBackgroundHex`. Omitting it (as every pre-existing test call site
+ * does) falls back to `tokens.colors.bg` — exact for every slide type on 10
+ * of the 13 built-in themes, and still a plausible same-family value on the
+ * other 3 (`academic`/`classroom`/`consulting`, whose `chapter` background
+ * alone diverges from their own `colors.bg`).
+ *
+ * `bodyFontPx` (W4 task 3, `ComponentCtx.bodyFontPx`'s own doc comment): the
+ * caller (`FullSlideSvg` below) always supplies the true
+ * `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`.
+ * Omitting it (as every `buildCtx(...)`-calling test in this repo except
+ * the paragraph/bullets/callout/three-tier suites does) falls back to
+ * `DELIVERY_BUDGETS.balanced.bodyBaselinePx` (24px) — the scenario default,
+ * so a test that doesn't care about body-text sizing still gets the
+ * ambient value a caller with an omitted/default scenario would.
  */
- 
 export function buildCtx(
   tokens: StyleTokens,
   images: PptxIR["assets"]["images"],
   components?: Component[],
+  defaultBg?: string,
+  bodyFontPx?: number,
 ): ComponentCtx {
   return {
     colors: tokens.colors,
@@ -51,6 +93,8 @@ export function buildCtx(
     },
     images,
     blockIndex: components ? new Map(components.map((component, i) => [component, i])) : undefined,
+    defaultBg: defaultBg ?? tokens.colors.bg,
+    bodyFontPx: bodyFontPx ?? DELIVERY_BUDGETS.balanced.bodyBaselinePx,
   }
 }
 
@@ -75,23 +119,26 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
 
 /**
  * theme.layouts archetype 分发泛化（P2 Task 24，spec §4.2→v0.3 spec §6
- * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 在
- * 集合内挑一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务
- * 3，即 `slide.layout`）显式指定短路——完整选型算法（含 seed+ordinal 轮换、
- * allowed 空集防御性回退）现由 `./effective-layout` 的 `resolveArchetypeId`
- * 持有（W3 任务 3 抽取：`checkIrQuality` 的 density 门在 validate 期要跑同一条
- * 选型路径，两处各自维护一份会有漂移风险，故只留一份）。这里只做 render 专属
- * 的收尾——按选中 id 查这个文件自己的 `PAGE_ARCHETYPE_REGISTRIES` 取 JSX
- * Component（validate 侧不需要、也不该关心这一步）。
+ * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 加权
+ * 取样一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务 3，即
+ * `slide.layout`）显式指定短路——完整选型算法（scenario 加权取样、
+ * scenariosOnly 硬约束、相邻防重复、allowed 空集防御性回退，W4 终态）现由
+ * `./effective-layout` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
+ * `checkIrQuality` 的 density 门在 validate 期要跑同一条选型路径，两处各自维护
+ * 一份会有漂移风险，故只留一份）。这里只做 render 专属的收尾——按选中 id 查
+ * 这个文件自己的 `PAGE_ARCHETYPE_REGISTRIES` 取 JSX Component（validate 侧不
+ * 需要、也不该关心这一步）。
  */
 function resolveArchetype(
   slideType: Slide["type"],
   layouts: ThemeDefinition["layouts"],
   seed: number,
-  typeOrdinal: number,
+  pageKey: string,
   requestedLayout: string | undefined,
+  mode: Mode,
+  previousEffectiveLayoutId: string | null,
 ): { id: string; Component: PageArchetype } | null {
-  const id = resolveArchetypeId(slideType, layouts, seed, typeOrdinal, requestedLayout)
+  const id = resolveArchetypeId(slideType, layouts, seed, pageKey, requestedLayout, mode, previousEffectiveLayoutId)
   return id === null ? null : { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
 }
 
@@ -108,10 +155,28 @@ export function FullSlideSvg({
   preserveAspectRatio,
 }: FullSlideSvgProps) {
   const tokens = resolveStyle(ir.theme.id, ir.theme.style)
+  // W4 fix round: the theme's own default background for this slide type,
+  // independent of any per-slide `slide.background` override — see
+  // `ComponentCtx.defaultBg`'s own doc comment for why archetypes that
+  // paint no panel of their own need this to pick readable ink.
+  const defaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slide.type], tokens.colors.surface)
+  // W4 task 3 (design decision 9): the single injection seam for the
+  // paragraph/bullets/callout trio's body-text baseline — see
+  // `ComponentCtx.bodyFontPx`'s own doc comment for why this is required
+  // (not optional like `defaultBg` above) and why no component recomputes
+  // it. A second, independent `resolveScenario` call from `resolveIrMode`'s
+  // own (cheap, unmemoized — see that function's doc comment) below is
+  // expected, not a duplicated selection-logic copy: this projects
+  // `.delivery`, `resolveIrMode` projects `.mode`, off the same pure input.
+  const bodyFontPx =
+    DELIVERY_BUDGETS[resolveScenario(ir.scenario as string | Partial<ScenarioAxes> | undefined).delivery]
+      .bodyBaselinePx
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.components : undefined,
+    defaultBg,
+    bodyFontPx,
   )
   const themeDef = getThemeDefinition(ir.theme.id)
   // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，
@@ -136,13 +201,9 @@ export function FullSlideSvg({
     const { overlay: _ignored, ...withoutOverlay } = bgSpec
     bgSpec = withoutOverlay
     if (!imageCoverTakeover) {
-      const pageDefault = tokens.defaultBackgrounds[slide.type]
-      autoScrimColor =
-        pageDefault.kind === "color"
-          ? pageDefault.value
-          : pageDefault.kind === "gradient"
-            ? pageDefault.from
-            : tokens.colors.surface
+      // Same "reduce the page default to one hex" resolution `defaultBg`
+      // above already did — reused, not recomputed (`resolveBackgroundHex`).
+      autoScrimColor = defaultBg
     }
   }
   // 图文范式族接管（image-split/image-top/image-bottom/image-annotate，W2
@@ -157,16 +218,26 @@ export function FullSlideSvg({
   // 恒非空）。image 接管优先级更高（压图页/图文版式语义不归 archetype 管，
   // imageCoverTakeover 仅 cover/chapter 生效、splitTakeover 对所有页型生效，
   // 两条优先级原样保留）。
-  // 同类型页序（P3 Item ②轮换用）：该页在整个 deck 同 slide.type 页面里是第
-  // 几个（0 起）。content 页据此在允许集内轮换，打破同 deck 内 content 页雷同。
-  let typeOrdinal = 0
-  for (let i = 0; i < index && i < ir.slides.length; i++) {
-    if (ir.slides[i].type === slide.type) typeOrdinal++
-  }
+  // 盐 pageKey（W4 design decision 2，同类型页序 ordinal 机制已废弃）：优先
+  // 稳定 slide.id，无 id 落回绝对页 index——插页/重排不再牵动其它页的取样。
+  // previousEffectiveLayoutId（W4 design decision 4，相邻防重复的唯一跨页
+  // 输入）：复用 `resolveEffectiveLayoutId` 对上一页的解算而非在这里另起一份
+  // 折叠——同一 WeakMap 缓存的折叠结果，两处必然同源同值。
+  const pageKey = slide.id ?? String(index)
+  const mode = resolveIrMode(ir)
+  const previousEffectiveLayoutId = index > 0 ? resolveEffectiveLayoutId(ir, ir.slides[index - 1], index - 1) : null
   const archetype =
     imageCoverTakeover || splitTakeover
       ? null
-      : resolveArchetype(slide.type, themeDef.layouts, cachedDeckSeed(ir), typeOrdinal, slide.layout)
+      : resolveArchetype(
+          slide.type,
+          themeDef.layouts,
+          cachedDeckSeed(ir),
+          pageKey,
+          slide.layout,
+          mode,
+          previousEffectiveLayoutId,
+        )
 
   return (
     <svg

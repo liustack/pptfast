@@ -2,7 +2,7 @@ import type { SvgTemplateProps } from "./types"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
-import { readableOn } from "./cover-split-diagonal"
+import { readableOn } from "../ink"
 
 /**
  * fashion-masthead cover archetype（2026-07-10 时尚 runway 专属表达，

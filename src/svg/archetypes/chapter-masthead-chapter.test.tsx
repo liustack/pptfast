@@ -2,10 +2,20 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
 import { MastheadChapter } from "./chapter-masthead-chapter"
 import type { PptxIR, Slide } from "@/ir"
+
+// W4 fix round: MastheadChapter's heading/subheading now adapt to
+// `ctx.defaultBg` (accessibleInk) — a ctx built without the theme's *true*
+// chapter default background (consulting's is a distinct dark navy, not its
+// light colors.bg) can't exercise that path. See chapter-rail-chapter.test.tsx's
+// own `chapterCtx` helper for the same pattern.
+function chapterCtx(themeId: string) {
+  const tokens = resolveStyle(themeId)
+  return buildCtx(tokens, {}, undefined, resolveBackgroundHex(tokens.defaultBackgrounds.chapter, tokens.colors.surface))
+}
 
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
@@ -60,6 +70,51 @@ describe("MastheadChapter", () => {
     const out = renderSvgMarkup(<MastheadChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
     expect(out).toContain("#FFC72C") // consulting accent
     expect(out).not.toContain("#C0392B") // magazine accent 不得残留
+  })
+
+  it("W4 fix round：consulting 的 colors.text 与自己的 chapter 默认背景撞色（#051C2C on #051C2C），标题/副标题不再是不可见的深字压深底（design decision 8 台账 #1，策展排除已撤销）", () => {
+    const ctx = chapterCtx("consulting")
+    // The collision the design-decision-8 exclusion was originally about —
+    // still true, this fix doesn't touch either token.
+    expect(ctx.defaultBg).toBe("#051C2C")
+    expect(resolveStyle("consulting").colors.text).toBe("#051C2C")
+
+    const deck = ir("consulting")
+    const root = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<MastheadChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)}</svg>`,
+    )
+    const heading = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("第二部分：技术路线图"),
+    )!
+    const subheading = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("面向 2027 的演进方向"),
+    )!
+    // Heading falls back to readableOn's neutral white ink (colors.text
+    // itself is the same color as the background, so it could never have
+    // passed). Subheading uses colors.muted, a *different* token that
+    // already clears the ratio against this background on its own — no
+    // fallback needed, same accessibleInk no-op-when-already-passing
+    // behavior every other call site in this fix round relies on.
+    const consultingTokens = resolveStyle("consulting")
+    expect(heading.getAttribute("fill")).toBe("#FFFFFF")
+    expect(subheading.getAttribute("fill")).toBe(consultingTokens.colors.muted)
+  })
+
+  it("W4 fix round：journal（本文件唯一 pre-W4 策展主题）的标题/副标题保持 colors.text/colors.muted 原值不变（既有 pinned 渲染的逐字节不变性）", () => {
+    const ctx = chapterCtx("journal")
+    const journalTokens = resolveStyle("journal")
+    const deck = ir("journal")
+    const root = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<MastheadChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)}</svg>`,
+    )
+    const heading = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("第二部分：技术路线图"),
+    )!
+    const subheading = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("面向 2027 的演进方向"),
+    )!
+    expect(heading.getAttribute("fill")).toBe(journalTokens.colors.text)
+    expect(subheading.getAttribute("fill")).toBe(journalTokens.colors.muted)
   })
 
   it("Cover / Chapter body passes assertSubset (no forbidden elements)", () => {

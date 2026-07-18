@@ -2,9 +2,9 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup } from "../serialize"
 import { buildCtx } from "../FullSlideSvg"
-import { resolveStyle } from "../../themes"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
-import { SplitDiagonalCover, readableOn } from "./cover-split-diagonal"
+import { SplitDiagonalCover } from "./cover-split-diagonal"
 import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = {
@@ -38,31 +38,22 @@ describe("SplitDiagonalCover", () => {
     expect(out).not.toContain("#006A4E") // academic primary 不得残留
   })
 
-  it("色块上文字对比度自适应：深色 primary（academic 深绿）配浅字、浅色 primary（tech 亮青）配深字", () => {
-    // academic primary #006A4E 明度低 → 浅字
-    expect(readableOn("#006A4E")).toBe("#FFFFFF")
-    // tech primary #2DD4E6 明度高 → 深字
-    expect(readableOn("#2DD4E6")).toBe("#0A0E14")
-  })
-
-  it("HexColor 短写/带 alpha 形态（schema 允许 3~8 位）：#RGB 展开、#RRGGBBAA 裁 alpha", () => {
-    // 亮黄短写 #FFC ≡ #FFFFCC 明度高 → 深字（原实现按 0 明度错配白字的回归锁）
-    expect(readableOn("#FFC")).toBe("#0A0E14")
-    // 深绿带 alpha → 与 6 位判定一致
-    expect(readableOn("#006A4EFF")).toBe("#FFFFFF")
-    // 4 位 #RGBA：展开后裁 alpha
-    expect(readableOn("#FFCF")).toBe("#0A0E14")
-  })
+  // `readableOn`'s own contrast-adaptivity/hex-parsing unit tests moved to
+  // `src/svg/ink.test.ts` (W4 fix round: extracted into a shared module —
+  // see that file's own header). This describe block keeps only the
+  // component-level render assertions.
 })
 
-describe("split-diagonal theme.layouts 吸纳（新表达一次全主题生效）", () => {
-  it("academic 与 tech 的 cover 允许集都含 split-diagonal", () => {
-    expect(THEME_DEFINITIONS.academic.layouts.cover).toContain("split-diagonal")
-    expect(THEME_DEFINITIONS.tech.layouts.cover).toContain("split-diagonal")
-  })
-
-  it("未吸纳的主题不含（journal/runway 的报头体是招牌，斜切不符，铺开裁决后的例外）", () => {
-    expect(THEME_DEFINITIONS.journal.layouts.cover).not.toContain("split-diagonal")
-    expect(THEME_DEFINITIONS.runway.layouts.cover).not.toContain("split-diagonal")
+// W4 全集放开（design decision 7，spec §3「缺省 = 全集」）后，cover 页型在
+// 十三主题里没有任何策展排除（唯三例外只在 content，见 definitions.ts）——
+// 本节原先记录的「journal/runway 不吸纳 split-diagonal」人工策展裁决已被
+// 全集放开取代：那两个主题的 cover 允许集现在同样含 split-diagonal，全量
+// 逐主题的钉值基线交给 definitions.test.ts 的全集断言维护（这里不重复），
+// 只保留一条轻量烟雾测试证明这个 archetype 对每个主题都可达。
+describe("split-diagonal 全集放开后对十三主题均可达（definitions.test.ts 持有逐主题钉值基线）", () => {
+  it("every canonical theme's cover allowed set includes split-diagonal, including journal/runway (the old opt-out is retired by the full-set default)", () => {
+    for (const id of CANONICAL_THEME_IDS) {
+      expect(THEME_DEFINITIONS[id].layouts.cover, id).toContain("split-diagonal")
+    }
   })
 })

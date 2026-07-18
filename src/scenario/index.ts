@@ -75,6 +75,28 @@ export interface ModeDefinition {
    */
   tendencies: readonly string[]
   /**
+   * Content-archetype soft-weight set for W4's weighted layout selection
+   * (spec §6 step 4: in-set candidates get `TENDENCY_WEIGHT` (×3), out-of-set
+   * get the `BASE_WEIGHT` floor (×1) — both named constants live in
+   * `svg/effective-layout.ts`, next to `resolveArchetypeId`, the sole
+   * consumer). Deliberately a separate field from {@link tendencies} above,
+   * not a reinterpretation of it: `tendencies` mixes component-type names and
+   * layout ids drawn from spec §5's mode table verbatim and also feeds W5's
+   * plan `focus` vocabulary gate, so narrowing its meaning here would be a
+   * breaking change to an existing consumer. This field holds only
+   * `LAYOUT_REGISTRY` content-archetype ids (`svg/layouts/registry.ts`'s
+   * `CONTENT_LAYOUTS` keys) — cover/chapter/ending ids never appear in any
+   * mode's list here, which is exactly why `resolveArchetypeId`'s weighting
+   * is a no-op for those three slide types (spec: "身份页个性来自 theme 不来自
+   * mode，均匀取样") without needing a slide-type special case — a weight
+   * lookup against an id that can never match falls through to the ×1 floor
+   * for every candidate, uniform by construction. `tone-adaptive-content`
+   * appears in no mode's list either (spec's "万金油" call-out: it is the one
+   * content archetype meant to read as mode-neutral, so it always gets the
+   * ×1 floor too).
+   */
+  layoutTendencies: readonly string[]
+  /**
    * Rhythm template descriptor (spec §5's per-mode rhythm-default column),
    * parameterized by mode for W5's plan-validate rotation gate — e.g.
    * briefing is exempt from a generic "three same-rhythm pages in a row is
@@ -90,6 +112,8 @@ export const MODE_DEFINITIONS: Record<Mode, ModeDefinition> = {
   pyramid: {
     id: "pyramid",
     tendencies: ["kpi_cards", "verdict_banner", "chart", "comparison", "matrix", "roadmap"],
+    // MECE 结论先行——密集数据型 body（bento 卡片拼盘/横幅断言）+ 两栏对比。
+    layoutTendencies: ["bento-panel", "banner-heading", "two-column"],
     rhythmPolicy: "anchor-open",
   },
   narrative: {
@@ -101,11 +125,15 @@ export const MODE_DEFINITIONS: Record<Mode, ModeDefinition> = {
     // distinct component type, not part of this family — it only shows up
     // in showcase's row below, matching the spec table.
     tendencies: ["quote", "image-split", "image-top", "image-bottom", "image-annotate", "timeline", "callout"],
+    // 情境→张力→解决——单栏行文（narrow-column）+ 海报式单点强调（stacked-poster）。
+    layoutTendencies: ["narrow-column", "stacked-poster"],
     rhythmPolicy: "alternate",
   },
   instructional: {
     id: "instructional",
     tendencies: ["steps", "numbered_cards", "flowchart", "architecture", "code"],
+    // 分步拆解——编号导轨（rail-numbered）+ 两栏步骤对照。
+    layoutTendencies: ["rail-numbered", "two-column"],
     rhythmPolicy: "repetition-ok",
   },
   showcase: {
@@ -119,11 +147,15 @@ export const MODE_DEFINITIONS: Record<Mode, ModeDefinition> = {
     // here would be unresolvable — kpi_cards is the correct, resolvable
     // normalization.
     tendencies: ["image-split", "image-top", "image-bottom", "image-annotate", "image_grid", "kpi_cards"],
+    // 视觉冲击——海报式单点强调（stacked-poster）+ 卡片拼盘（bento-panel）。
+    layoutTendencies: ["stacked-poster", "bento-panel"],
     rhythmPolicy: "anchor-sparse",
   },
   briefing: {
     id: "briefing",
     tendencies: ["bullets", "row_cards", "timeline", "citation"],
+    // 中性通报可扫读——横幅断言 + 卡片拼盘 + 两栏，三种扫读友好排布并重。
+    layoutTendencies: ["banner-heading", "bento-panel", "two-column"],
     rhythmPolicy: "uniform-dense",
   },
 }
@@ -141,13 +173,17 @@ export { MODE_VALUES }
 export interface DeliveryBudget {
   /**
    * Body-text baseline, in px, at 1280×720 slide geometry (spec §5
-   * delivery table's body-baseline column). Declarative until W4 wires
-   * rendering: this wave (W3) only stores the number, no template reads it
-   * yet, and the current fixed-size rendering geometry (and its pinned
-   * snapshot tests) is unaffected. Spec §5's W3-decomposition amendment
-   * note is explicit that the body-baseline column is a render-level
-   * change, deferred to W4 alongside the theme.layouts full-set rollout
-   * (both land together as one controlled snapshot-baseline re-pin).
+   * delivery table's body-baseline column). Wired into rendering as of W4
+   * task 3 (design decision 9): `src/svg/FullSlideSvg.tsx` resolves
+   * `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`
+   * once and passes it into `buildCtx`, which stores it as
+   * `ComponentCtx.bodyFontPx` — the sole font-size input for the
+   * paragraph/bullets/callout trio ("正文" = continuous running text).
+   * Every other component's own bespoke type scale, the heading system, and
+   * quote's fixed 26px attribution line don't read this field. Since
+   * `balanced` (24px) is the scenario default, an omitted-scenario deck now
+   * renders body text at 24px, not the previous fixed 20px — the one-time,
+   * spec-sanctioned snapshot re-pin that landed alongside this wiring.
    */
   bodyBaselinePx: number
   /**

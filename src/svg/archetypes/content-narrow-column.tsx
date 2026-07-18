@@ -5,6 +5,7 @@ import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { accessibleInk } from "../ink"
 
 /**
  * narrow-column content archetype（spec §3.2，Wave 3 Task 17）：trades the
@@ -24,6 +25,14 @@ import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
  * 字符串——源函数体已直接消费 `ctx.colors`/`ctx.fonts`
  * （`colors.border ?? colors.muted`/`colors.accent`/`colors.text`/
  * `colors.muted`），无烤死颜色常量，无孤儿色。**档位一・逐字节等价**。
+ *
+ * 对比度自适应修复（W4 fix round，Important I1「content archetype 的
+ * subheading 出现同类回声」台账）：subheading 原样消费 `colors.accent`——
+ * 这个 token 是为装饰性强调（小面积图标/分隔线）校准的，不保证在正文尺寸
+ * 下达标（consulting/bloom/classroom/heritage/academic 均实测 1.45-2.92:1，
+ * 该 archetype 在这些主题 pre-W4 策展集里都不存在，是全集放开新暴露）。改用
+ * `accessibleInk(colors.accent, ctx.defaultBg, fontSize)`——通过校验的主题
+ * 原样返回、逐字节不变。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
@@ -85,6 +94,15 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
   })
   const subheadingY = headingLastY + 64
   const subheadingBudget = subheading ? 68 : 0
+  // W4 fix round: keeps colors.accent when it already clears the
+  // size-appropriate ratio, falls back to readableOn's neutral ink
+  // otherwise (see file header). Fallback value is never rendered when
+  // `subheading` is null. `ctx.defaultBg` is optional (`ComponentCtx`'s own
+  // doc comment: a hand-built ctx in a test may omit it) — falls back to
+  // the same `colors.bg` `buildCtx` itself defaults to.
+  const subheadingFill = subheading
+    ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
+    : colors.accent
 
   const columnY = headingLastY + 40 + subheadingBudget
   const columnH = Math.max(0, COLUMN_BOTTOM - columnY)
@@ -150,11 +168,11 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
           y={subheadingY}
           fontFamily={fonts.heading}
           fontSize={subheading.fontSize}
-          fill={colors.accent}
+          fill={subheadingFill}
           fontStyle="italic"
           dominantBaseline="alphabetic"
         >
-          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: colors.accent, fontWeight: "700" })}
+          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
         </text>
       )}
 

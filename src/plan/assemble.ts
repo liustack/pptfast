@@ -15,6 +15,20 @@
  * rule) — the exact same posture `./index.ts` (this folder's schema/validate
  * module) already holds, documented in that file's own top comment.
  *
+ * `assembleDeck` also materializes each page's effective layout id into its
+ * own `layout` field when the page file omitted one (W4 design decision 10):
+ * once the IR above is built and schema-validated, every slide whose
+ * `layout` is still unset gets exactly what `resolveEffectiveLayoutId`
+ * (`../svg/effective-layout.ts`) resolves for it — the same function the
+ * render chain itself calls, so `deck.json` never carries a second,
+ * independently-derived guess at what a page will render as (see this
+ * module's own {@link materializeEffectiveLayouts} for the mechanics). A page
+ * whose file already set `layout` is left untouched. `../svg/effective-layout.ts`
+ * is a pure function with no Node-only import anywhere in its own closure and
+ * nothing in that closure imports back from `src/plan`, so depending on it
+ * from here adds a new edge, not a cycle, and does not pull anything
+ * Node-only into `src/index.ts`'s dependency closure.
+ *
  * `disassembleDeck` is the documented-lossy inverse (spec §7: "disassemble
  * — the inverse of assemble, an optional tail item for W5"): it reconstructs a plan + pages record from
  * an existing IR, well enough that re-`assembleDeck`-ing the result
@@ -25,6 +39,7 @@
  */
 import { PptfastError } from "../errors"
 import { PptxIRSchema, type BackgroundSpec, type Component, type PptxIR, type Slide } from "../ir"
+import { resolveEffectiveLayoutId } from "../svg/effective-layout"
 import { formatInvalidPlanError, validatePlan, type DeckPlan, type PlanPage } from "./index"
 
 // ── PageContent (per-page authoring record, spec §7's `pages/<id>.json`) ──
@@ -59,6 +74,17 @@ export interface AssembleResult {
    * itself (assemble stays a pure function, no fs side effects here).
    */
   generatedSeed?: number
+  /**
+   * Count of pages whose `layout` field this call filled in via
+   * {@link materializeEffectiveLayouts} (W4 design decision 10) —
+   * `undefined` when zero, same "absent means nothing to report" posture as
+   * {@link generatedSeed} just above (a page with an explicit pin already in
+   * its page file, or every omitted page landing on the image-cover
+   * takeover's `null` bypass, both leave this unset). Purely informational:
+   * the CLI shell (`runAssemble`, `../cli/commands.ts`) surfaces it as a
+   * one-line note, nothing here or downstream acts on the number itself.
+   */
+  materializedLayoutCount?: number
 }
 
 // ── deterministic seed generation ───────────────────────────────────────
@@ -239,7 +265,82 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
     throw new PptfastError(`assembled deck did not produce valid IR:\n${detail}`)
   }
 
-  return { ir: parsed.data, ...(generatedSeed !== undefined ? { generatedSeed } : {}) }
+  // Materialization (W4 design decision 10) — must run after the schema
+  // parse above, not on `rawIr`: `resolveEffectiveLayoutId` needs the fully
+  // *defaulted* IR (a plan that omits `theme`, for instance, needs
+  // `parsed.data.theme.id === "consulting"` already filled in by the schema,
+  // not the bare `rawIr` that simply omits the key).
+  const { ir, materializedCount } = materializeEffectiveLayouts(parsed.data)
+
+  return {
+    ir,
+    ...(generatedSeed !== undefined ? { generatedSeed } : {}),
+    ...(materializedCount > 0 ? { materializedLayoutCount: materializedCount } : {}),
+  }
+}
+
+/**
+ * Writes each page's auto-selected layout id into its own `layout` field
+ * (W4 design decision 10: once `assembleDeck` has built the IR, run the same
+ * `resolveEffectiveLayoutId` selection over it and write the auto-picked
+ * result into each page's own `layout` field) — so `deck.json`, the artifact
+ * {@link assembleDeck}'s caller actually writes to disk, always names an
+ * explicit layout per page instead of leaving a downstream reader (or a
+ * future re-`assembleDeck` call with a different seed) to re-derive one.
+ * Runs exactly once per {@link assembleDeck} call, after {@link PptxIRSchema}
+ * has already produced `ir` — every input `resolveEffectiveLayoutId` needs
+ * (resolved theme id, resolved scenario mode, the final `seed`) is only
+ * available on that fully-defaulted object, never on the raw pre-parse shape.
+ *
+ * Two cases leave a slide untouched:
+ *
+ * - `slide.layout` already set (the page file wrote one explicitly, `step 5`
+ *   of {@link assembleDeck}'s own doc comment) — skipped without even calling
+ *   the resolver. `resolveEffectiveLayoutId` would just echo a valid
+ *   archetype pin straight back anyway (its own explicit-pin short-circuit),
+ *   but skipping the call keeps "an explicit page file value survives
+ *   untouched" true by construction, not by coincidence of what the resolver
+ *   happens to do with it.
+ * - The resolver returns `null` — the image-cover takeover
+ *   (`ImageCoverPage`'s bespoke chrome, no `LAYOUT_REGISTRY` id to name, see
+ *   `resolveEffectiveLayoutId`'s own doc comment). `null` has no home in
+ *   `layout`'s `string | undefined` shape, and this function's job is to
+ *   materialize *exactly* what the resolver already means by its return
+ *   value, never invent a representation the resolver itself doesn't have.
+ *
+ * Every other omitted-`layout` slide gets `resolveEffectiveLayoutId`'s
+ * return value spliced in — always a real `LAYOUT_REGISTRY` id for the 13
+ * built-in themes (their curated pools are never empty for any slide type).
+ *
+ * Reads every slide off the *same* `ir` object across the whole pass, and
+ * builds a fresh `slides` array instead of mutating one in place — required
+ * by `resolveEffectiveLayoutId`'s own adjacent-anti-repetition fold
+ * (`../svg/effective-layout.ts`'s `resolveDeckEffectiveLayoutIds`), which
+ * walks the deck once against `ir.slides` exactly as given and caches by
+ * `ir` object identity: feeding it a slide whose `layout` this function's
+ * own earlier iteration had already overwritten would corrupt "slide i-1's
+ * final effective id" into "slide i-1's materialized id" for every later
+ * slide — the same value for an auto-picked neighbor, but silently wrong the
+ * moment a plan pins one page's layout explicitly next to an auto-picked one
+ * (the pin would then read back as slide i-1's own "effective id" a second
+ * time, double-counting it as a repetition risk it was never actually a
+ * candidate for).
+ *
+ * Round-trip note: `disassembleDeck` (below) reads whatever this function
+ * wrote the exact same way it reads a hand-authored pin — see that
+ * function's own doc comment for why that is an accepted consequence, not a
+ * bug.
+ */
+function materializeEffectiveLayouts(ir: PptxIR): { ir: PptxIR; materializedCount: number } {
+  let materializedCount = 0
+  const slides = ir.slides.map((slide, index) => {
+    if (slide.layout !== undefined) return slide
+    const effectiveLayoutId = resolveEffectiveLayoutId(ir, slide, index)
+    if (effectiveLayoutId === null) return slide
+    materializedCount++
+    return { ...slide, layout: effectiveLayoutId }
+  })
+  return materializedCount === 0 ? { ir, materializedCount } : { ir: { ...ir, slides }, materializedCount }
 }
 
 /** Step 4 (no content record → placeholder) / step 5 (content record → full slide). */
@@ -340,6 +441,28 @@ const UNTITLED_HEADING = "Untitled"
  * function reads `ir.brand` back into `plan.brand` below) — carried through
  * unmodified, same as `scenario`/`filename`/`seed`, never synthesized or
  * dropped.
+ *
+ * `layout` deserves a different kind of callout: it round-trips as plain
+ * content like any other field ({@link extractPageContent} copies
+ * `slide.layout` into `PageContent.layout` whenever the slide has one, no
+ * special case) — but a `deck.json` produced by {@link assembleDeck} now
+ * carries a `layout` on nearly every slide (W4 design decision 10's
+ * materialization, see that function's own doc comment), even on pages whose
+ * *original page file* never set one. Nothing on `Slide` marks which is
+ * which — `layout` is just a string either way — so disassembling an
+ * already-assembled `deck.json` writes every materialized pick into the
+ * regenerated page file as if it had been an explicit pin all along, and a
+ * later re-`assembleDeck` call skips materialization for that page from then
+ * on, same as any hand-authored pin. Accepted, not a bug: `disassembleDeck`
+ * is a one-time bare-IR importer into an editable project directory, not a
+ * round-trip channel for `deck.json` itself. A deck project's own
+ * `pages/<id>.json` files are the durable, edit-in-place artifacts —
+ * `deck.json` is downstream output, and feeding it back through
+ * `disassembleDeck` (instead of editing the project directory that produced
+ * it) is what actually costs those pages their revision-stability
+ * re-selection eligibility going forward. A real, user-visible narrowing,
+ * worth knowing about here, not worth adding code to guard against for a
+ * usage pattern nothing in this codebase actually exercises.
  *
  * Two structural fields are synthesized rather than copied when the source
  * slide omits them, each documented where it is generated:
