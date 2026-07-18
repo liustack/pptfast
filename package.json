@@ -1,6 +1,6 @@
 {
   "name": "@liustack/pptfast",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Stable, editable PPTX generation for AI agents — semantic IR in, native DrawingML out",
   "type": "module",
   "license": "MIT",
