@@ -296,6 +296,65 @@ describe("findContrastIssues — low-contrast", () => {
     expect(issues[0].text).toContain("low contrast run")
   })
 
+  // Backlog item 5b (`.issues/notes/2026-07-18-post-v03-backlog.md` #5):
+  // the test above only ever exercises a *single* background region, so a
+  // <tspan> with no x/y of its own landing at the wrong position (see
+  // below) still resolves to the same region it should have anyway,
+  // masking the bug. These two mirror cover-left-anchor.tsx's real emitted
+  // markup exactly (verified against a real render while investigating this
+  // task): a page-wide background <rect> (Background.tsx, painted first),
+  // an opaque left-side color block painted over it, and a <text> — no
+  // wrapping <g transform>, positioned via its own x/y attributes directly
+  // — whose <tspan> children carry no x/y of their own, same as the real
+  // author/date/version meta line's markup
+  // (`<text x="576" y="268" ...><tspan fill="#...">Jane Doe · Lead</tspan>
+  // <tspan fill="#...">    ·    2026-07-19</tspan>...</text>`, captured
+  // from a real academic-theme render).
+  it("attributes a multi-tspan run without its own x/y to the owning <text>'s real position, not the ancestor transform origin", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <rect x="0" y="0" width="512" height="720" fill="#051C2C"/>
+      <text x="640" y="300" font-size="26">
+        <tspan fill="#051C2C">first run</tspan><tspan fill="#051C2C">second run</tspan>
+      </text>
+    </svg>`
+    // Correct attribution: both tspans sit on the right side, over the
+    // page-wide white background — #051C2C-on-white is a real,
+    // comfortably-passing pairing. Before the fix, a <tspan> lacking its
+    // own x/y inherited (ox,oy) — the accumulated *transform* origin passed
+    // down to the <text>'s children — which never includes the <text>'s
+    // own x/y attribute (that offset was only ever applied locally, for the
+    // <text> element's own direct-text check, and never propagated into
+    // what its children receive). With no ancestor <g transform> at all
+    // here, that origin is (0,0) — inside the *left* block region — so both
+    // tspans were wrongly checked against #051C2C-on-#051C2C (identical
+    // colors, 1:1 ratio) and failed outright, against a background neither
+    // run actually sits on.
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("does not let a mis-attributed tspan hide a genuine low-contrast pairing on its real background", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <rect x="0" y="0" width="512" height="720" fill="#051C2C"/>
+      <text x="640" y="300" font-size="26">
+        <tspan fill="#051C2C">passes on white</tspan><tspan fill="#F5F5F0">fails on white</tspan>
+      </text>
+    </svg>`
+    // The first run (#051C2C-on-white) is fine and must stay unflagged —
+    // proving per-tspan independence survives the position fix. The second
+    // (#F5F5F0-on-white, the tspan's real right-side background) is a
+    // genuine WCAG failure and must be flagged. Before the fix, the same
+    // mis-attribution as above resolved *both* tspans to the left block's
+    // dark background instead, where #F5F5F0-on-#051C2C passes
+    // comfortably — silently hiding a real issue rather than merely
+    // manufacturing a spurious one.
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].text).toContain("fails on white")
+    expect(issues[0].background).toBe("#FFFFFF")
+  })
+
   it("uses the 3:1 threshold once a scaled ancestor transform pushes effective font-size past 24px", () => {
     // font-size 12 under scale(2.5) renders at effective 30px — above the
     // 24px large-text cutoff — must use the 3:1 threshold, not 4.5:1.
