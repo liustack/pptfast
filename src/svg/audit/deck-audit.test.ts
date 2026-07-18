@@ -355,6 +355,41 @@ describe("findContrastIssues — low-contrast", () => {
     expect(issues[0].background).toBe("#FFFFFF")
   })
 
+  // Backlog item 6 (task-1 routed follow-up, `.issues/notes/2026-07-18-post-v03-backlog.md`
+  // #5b's own fix): the two tests above both exercise a <tspan> that omits
+  // its own x/y and inherits the owning <text>'s position — deck-audit.ts's
+  // precedence branch (`const tx = ownX !== null ? ax + Number(ownX) * as :
+  // (inheritedTx ?? ax)`) has a second half neither one reaches: a <tspan>
+  // that carries its *own* x/y must use that, not the inherited position,
+  // even though both are available. A bare <text> never exercises this half
+  // either (that function's own doc comment: a <text> is never itself
+  // nested inside another <text>/<tspan>, so `inheritedTx` is always `null`
+  // for it — it always takes the ownX branch trivially).
+  it("a tspan's own x/y overrides the inherited text position, even when an inherited position is also available", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <rect x="0" y="0" width="512" height="720" fill="#051C2C"/>
+      <text x="640" y="300" font-size="26" fill="#051C2C">
+        <tspan>inherits text position</tspan>
+        <tspan x="200" y="300">own position overrides</tspan>
+      </text>
+    </svg>`
+    // Both tspans share the same (inherited) fill — the owning <text>'s
+    // #051C2C. The first tspan has no x/y of its own, so it inherits the
+    // <text>'s real position (640,300) — over the white right-side
+    // background, #051C2C-on-white passes comfortably and must stay
+    // unflagged. The second tspan sets its own x=200,y=300, landing inside
+    // the *left* dark-navy block (#051C2C) — if its own coordinates
+    // correctly win, the effective pairing is #051C2C-on-#051C2C (identical
+    // colors, ratio 1:1), a clear failure. If precedence were wrong (the
+    // inherited/text position winning instead), this tspan would resolve to
+    // the same white background as its sibling and wrongly pass too.
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].text).toBe("own position overrides")
+    expect(issues[0].background).toBe("#051C2C")
+  })
+
   it("uses the 3:1 threshold once a scaled ancestor transform pushes effective font-size past 24px", () => {
     // font-size 12 under scale(2.5) renders at effective 30px — above the
     // 24px large-text cutoff — must use the 3:1 threshold, not 4.5:1.
