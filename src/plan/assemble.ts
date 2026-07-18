@@ -25,7 +25,7 @@
  */
 import { PptfastError } from "../errors"
 import { PptxIRSchema, type BackgroundSpec, type Component, type PptxIR, type Slide } from "../ir"
-import { formatPlanIssues, validatePlan, type DeckPlan, type PlanPage } from "./index"
+import { formatInvalidPlanError, validatePlan, type DeckPlan, type PlanPage } from "./index"
 
 // ── PageContent (per-page authoring record, spec §7's `pages/<id>.json`) ──
 
@@ -122,9 +122,16 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    is almost always freshly `JSON.parse`d off disk by the caller) —
  *    invalid shape or a failed hard gate throws {@link PptfastError} with
  *    `validatePlan`'s own formatted issue list, not a re-derived message.
- * 2. Locked-field protection: a `pages[id]` entry that carries a `type` or
- *    `heading` *key* — even set to `undefined` — throws. `Object.hasOwn`,
- *    not a `!== undefined` read, is what makes that "even `undefined`" case
+ * 2. Shape guard + locked-field protection: a `pages[id]` entry must first be
+ *    a plain object — not `null`, an array, or a primitive — else throws;
+ *    `pages` is `unknown`-shaped off disk same as `plan` itself (step 1), so
+ *    a JSON `null`/string/array content value is a real possibility, not
+ *    just a type-system hole, and `Object.hasOwn` throws its own
+ *    uninformative native `TypeError` on `null` (and silently no-ops on a
+ *    string/array/number) rather than this gate's own readable message.
+ *    Once that holds, a `pages[id]` entry that carries a `type` or `heading`
+ *    *key* — even set to `undefined` — throws. `Object.hasOwn`, not a
+ *    `!== undefined` read, is what makes that "even `undefined`" case
  *    catchable: `PageContent` itself never declares either field, but a
  *    page file freshly parsed off disk is `unknown` before it reaches this
  *    function's declared `PageContent` parameter type, so a stray
@@ -150,7 +157,7 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    fill/select step, summary is "仅供填页自读"), not slide content.
  * 6. Top-level: `version` is always the literal `"3"` (IR's own version,
  *    unrelated to the plan's own `version: "1"`). `scenario`/`theme`/
- *    `filename`/`meta`/`seed` (step 7) carry over from the plan when
+ *    `filename`/`brand`/`meta`/`seed` (step 7) carry over from the plan when
  *    present. When absent, this function omits the field from the raw
  *    object it hands to {@link PptxIRSchema} rather than re-deriving IR's
  *    own default value a second time — one default source of truth, the
@@ -174,17 +181,19 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
   // Step 1
   const validated = validatePlan(plan)
   if (!validated.ok) {
-    throw new PptfastError(
-      `invalid plan (${validated.errors.length} issue${validated.errors.length === 1 ? "" : "s"}):\n${formatPlanIssues(validated.errors)}`,
-    )
+    throw new PptfastError(formatInvalidPlanError(validated.errors))
   }
   const deckPlan = validated.plan!
 
-  // Step 2 — locked-field protection, scanned before orphan detection (see
-  // this function's own doc comment for why the order is observable).
+  // Step 2 — shape guard + locked-field protection, scanned before orphan
+  // detection (see this function's own doc comment for why the order is
+  // observable).
   for (const page of deckPlan.pages) {
     const raw = pages[page.id]
     if (raw === undefined) continue
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      throw new PptfastError(`page "${page.id}": page content must be an object`)
+    }
     for (const key of LOCKED_KEYS) {
       if (Object.hasOwn(raw, key)) {
         throw new PptfastError(`page "${page.id}": "${key}" is locked by the plan — remove it from the page file`)
@@ -216,6 +225,7 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
     ...(deckPlan.scenario !== undefined ? { scenario: deckPlan.scenario } : {}),
     ...(deckPlan.theme !== undefined ? { theme: { id: deckPlan.theme } } : {}),
     ...(deckPlan.filename !== undefined ? { filename: deckPlan.filename } : {}),
+    ...(deckPlan.brand !== undefined ? { brand: deckPlan.brand } : {}),
     meta: deckPlan.meta,
     seed,
     slides,
@@ -299,7 +309,20 @@ const UNTITLED_HEADING = "Untitled"
  *   field, absent from `PageContent`'s shape entirely.
  * - `theme.style` / `theme.brand` overrides collapse to a bare theme-id
  *   string (`DeckPlanSchema.theme` has no shape for either) — only `theme.id`
- *   survives.
+ *   survives. That `theme.brand` is `ThemeSchema.brand` (`BrandConfigSchema`
+ *   — `suppressFooterOnCardContent`/`suppressFooterRule`, footer-chrome
+ *   flags owned by the *theme*) — not to be confused with the deck-level
+ *   `brand` field below, a different, unrelated schema despite the shared
+ *   name.
+ *
+ * Round-trip-safe despite the above, worth calling out because of that name
+ * collision: the top-level `brand` field (`BrandSchema` — `logo_asset_id` /
+ * `position`, the deck logo/position `BrandChrome` reads,
+ * `src/svg/BrandChrome.tsx`) is a plain passthrough on both sides
+ * ({@link assembleDeck} step 6 reads `plan.brand` into `ir.brand`; this
+ * function reads `ir.brand` back into `plan.brand` below) — carried through
+ * unmodified, same as `scenario`/`filename`/`seed`, never synthesized or
+ * dropped.
  *
  * Two structural fields are synthesized rather than copied when the source
  * slide omits them, each documented where it is generated:
@@ -331,6 +354,7 @@ export function disassembleDeck(ir: PptxIR): { plan: DeckPlan; pages: Record<str
     theme: ir.theme.id,
     filename: ir.filename,
     ...(ir.seed !== undefined ? { seed: ir.seed } : {}),
+    ...(ir.brand !== undefined ? { brand: ir.brand } : {}),
     meta: ir.meta,
     pages: planPages,
   }

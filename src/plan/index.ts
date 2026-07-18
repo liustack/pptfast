@@ -19,7 +19,7 @@
  */
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { COMPONENT_TYPES, MetaSchema, ScenarioAxesInputSchema } from "../ir"
+import { BrandSchema, COMPONENT_TYPES, MetaSchema, ScenarioAxesInputSchema } from "../ir"
 import { MODE_DEFINITIONS, resolveScenario, type Delivery, type Mode, type ScenarioAxes } from "../scenario"
 import { CAPACITY } from "../svg/audit/capacity"
 import { LAYOUT_REGISTRY, type SlideType } from "../svg/layouts/registry"
@@ -92,6 +92,14 @@ export const DeckPlanSchema = z
     filename: z.string().optional(),
     seed: z.number().int().optional(),
     meta: MetaSchema.default({}),
+    /** Deck logo placement — reused verbatim from the IR's own `brand` field
+     *  (`BrandSchema`, `../ir`) so plan and IR can't drift apart on shape,
+     *  same pattern as `meta` just above. Unlike `meta`, no `.default({})`:
+     *  IR's own `brand` field is a bare `.optional()` with no default either
+     *  (`undefined` means "no brand", not "an empty brand object") —
+     *  consumed by `BrandChrome` (`src/svg/BrandChrome.tsx`) for the deck's
+     *  logo image and corner position. */
+    brand: BrandSchema.optional(),
     pages: z.array(PlanPageSchema),
   })
   .strict()
@@ -123,6 +131,18 @@ export interface PlanValidateResult {
 
 export function formatPlanIssues(errors: PlanValidationIssue[]): string {
   return errors.map((e) => (e.pageId ? `page "${e.pageId}" — ${e.path}: ${e.message}` : `${e.path}: ${e.message}`)).join("\n")
+}
+
+/**
+ * `"invalid plan (N issue[s]):\n<formatted issues>"` — the exact
+ * {@link PptfastError} message both `runPlanValidate` (`src/cli/commands.ts`)
+ * and {@link assembleDeck}'s (`./assemble.ts`) step 1 throw on a failed
+ * {@link validatePlan} call. Extracted here instead of duplicated verbatim at
+ * each call site so the two can't drift on wording — reuses
+ * {@link formatPlanIssues} for the per-issue body.
+ */
+export function formatInvalidPlanError(errors: PlanValidationIssue[]): string {
+  return `invalid plan (${errors.length} issue${errors.length === 1 ? "" : "s"}):\n${formatPlanIssues(errors)}`
 }
 
 /**

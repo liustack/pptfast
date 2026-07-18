@@ -11,7 +11,7 @@ import {
 } from "../api"
 import { PptfastError } from "../errors"
 import { StyleOverrideSchema, type StyleOverride } from "../ir"
-import { formatPlanIssues, planJsonSchema, resolvePlanThemeId, validatePlan } from "../plan"
+import { formatInvalidPlanError, planJsonSchema, resolvePlanThemeId, validatePlan } from "../plan"
 import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS, resolveScenario, type ScenarioAxes } from "../scenario"
 import { CONFIG_FILENAME, findConfig } from "./config"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
@@ -100,9 +100,7 @@ export async function runPlanValidate(planPath: string): Promise<string> {
   const raw = await loadIrFile(planPath, "plan")
   const v = validatePlan(raw)
   if (!v.ok) {
-    throw new PptfastError(
-      `invalid plan (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatPlanIssues(v.errors)}`,
-    )
+    throw new PptfastError(formatInvalidPlanError(v.errors))
   }
   const plan = v.plan!
   // Safe to call unguarded: validatePlan already resolved this same

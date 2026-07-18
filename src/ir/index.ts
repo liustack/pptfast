@@ -181,7 +181,10 @@ const AssetsSchema = z
   .object({ images: z.record(z.string(), AssetSchema).default({}) })
   .strict()
 
-const BrandSchema = z
+// Exported (not just used internally) so W5's plan schema can pass its own
+// `brand` field straight through to this exact schema instead of redefining
+// an equivalent shape that could drift from it (`src/plan/index.ts`).
+export const BrandSchema = z
   .object({
     logo_asset_id: z.string().optional(),
     position: z.enum(["tl", "tr", "bl", "br"]).optional(),

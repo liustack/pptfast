@@ -77,6 +77,21 @@ describe("assembleDeck", () => {
       }
       expect(() => assembleDeck(makePlan(), rawPages as Record<string, PageContent>)).toThrow(/is locked by the plan/)
     })
+
+    it("rejects a null page content value with a readable error instead of a native TypeError", () => {
+      const rawPages: Record<string, unknown> = { "p-kpi": null }
+      expect(() => assembleDeck(makePlan(), rawPages as Record<string, PageContent>)).toThrow(PptfastError)
+      expect(() => assembleDeck(makePlan(), rawPages as Record<string, PageContent>)).toThrow(
+        /page "p-kpi": page content must be an object/,
+      )
+    })
+
+    it("rejects a string page content value the same way", () => {
+      const rawPages: Record<string, unknown> = { "p-kpi": "not-an-object" }
+      expect(() => assembleDeck(makePlan(), rawPages as Record<string, PageContent>)).toThrow(
+        /page "p-kpi": page content must be an object/,
+      )
+    })
   })
 
   // ── step 3 ──────────────────────────────────────────────────────────
@@ -193,6 +208,11 @@ describe("assembleDeck", () => {
       expect(ir.scenario).toEqual({ delivery: "presentation" })
       expect(ir.theme).toEqual({ id: "consulting" })
       expect(ir.filename).toBe("q3-review")
+    })
+
+    it("passes brand through into ir.brand when the plan sets it", () => {
+      const { ir } = assembleDeck(makePlan({ brand: { logo_asset_id: "logo-1", position: "tl" } }), {})
+      expect(ir.brand).toEqual({ logo_asset_id: "logo-1", position: "tl" })
     })
 
     it("lets IR schema defaults handle theme/filename/meta when the plan omits them", () => {
@@ -343,11 +363,13 @@ describe("disassembleDeck", () => {
       slides: [
         { id: "p-cover", type: "cover", heading: "Cover" },
         { id: "p-body", type: "content" },
+        { id: "p-blank", type: "content", heading: "   " },
         { id: "p-ending", type: "ending", heading: "End" },
       ],
     })
     const { plan } = disassembleDeck(ir)
     expect(plan.pages.find((p) => p.id === "p-body")?.heading).toBe("Untitled")
+    expect(plan.pages.find((p) => p.id === "p-blank")?.heading).toBe("Untitled")
   })
 
   it("produces no pages entry for a placeholder slide, and recovers summary from its subheading", () => {
@@ -391,6 +413,7 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
       theme: { id: "consulting" },
       scenario: { delivery: "presentation" },
       seed: 555,
+      brand: { logo_asset_id: "logo-1", position: "tl" },
       slides: [
         { id: "p-cover", type: "cover", heading: "Cover" },
         {
@@ -415,6 +438,7 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
     expect(reassembled.theme).toEqual(original.theme)
     expect(reassembled.scenario).toEqual(original.scenario)
     expect(reassembled.seed).toBe(original.seed)
+    expect(reassembled.brand).toEqual(original.brand)
   })
 
   it("round-trips a deck whose slides omit id entirely (positional synthesis both ways)", () => {
