@@ -92,6 +92,23 @@ import { accessibleInk } from "../ink"
  * 存在，全集放开新暴露）。改用 `accessibleInk(colors.accent, ctx.defaultBg,
  * fontSize)`，通过校验的主题（包括本文件原生 tech）原样返回、逐字节不变。
  *
+ * 对比度自适应修复补漏（W8 fix round，0.3.0 发布前终态走查发现）：
+ * `renderKpiCardBody` 的 KPI 数值文字同样原样消费 `colors.accent`，W4 那轮
+ * 修复没有覆盖到——subheading 与 KPI 数值是同一文件里的两处独立回声，不是
+ * 同一处遗漏。背景不同：subheading 画在页面背景上（`ctx.defaultBg`），KPI
+ * 数值画在卡片自己的壳上（`renderKpiCard`/`onlyUnit` 单卡分支都先画
+ * `colors.surface` 再调用本函数），所以改用
+ * `accessibleInk(colors.accent, ctx.colors.surface, fittedValue.fontSize)`
+ * ——背景参数是 `colors.surface`，不是 `ctx.defaultBg`。数值字号固定
+ * >=24px（56/72 两档，仅在极端窄卡下可能收缩到 `BENTO_KPI_VALUE_MIN_SIZE`
+ * =20），大字号 3:1 门槛下实测 consulting/bloom/classroom/heritage 四个
+ * 主题不达标（`pptfast audit` 实测 consulting 1.56:1，见
+ * `full-matrix-contrast.test.ts` 的同名回归网）——与 subheading 22px 走
+ * 4.5:1 门槛时不达标的五主题集合不是同一批，纯粹是字号不同导致门槛不同，非
+ * 主题名单不一致的疑点。卡壳描边、发光点缀（dot/ring）仍是纯装饰形状（非
+ * `<text>`），不在 `auditDeck` 的文字对比度检查范围内，维持原样消费
+ * `colors.accent`，不随本次修复变更——同一份「不改形状只改文字」纪律。
+ *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
 
@@ -308,6 +325,18 @@ function renderKpiCardBody(
     minFontSize: BENTO_KPI_LABEL_MIN_SIZE,
   })
 
+  // W8 fix round: same defect class as the subheading's own W4 fix (see
+  // file header) — this value text baked ctx.colors.accent with no check
+  // against the background it's actually painted on. Unlike the
+  // subheading (painted straight on the page background), the value always
+  // sits on *this card's own shell* — `renderKpiCard`/the `onlyUnit`
+  // single-card branch both always paint that shell `colors.surface`
+  // before calling this function — so that (not `ctx.defaultBg`) is the
+  // right background to check against. Real-world catch: consulting's
+  // accent `#FFC72C` on its own surface `#FFFFFF` measures ~1.56:1, well
+  // under the 3:1 large-text floor (`pptfast audit` exit 1).
+  const valueFill = accessibleInk(ctx.colors.accent, ctx.colors.surface, fittedValue.fontSize)
+
   const valueBaselineY = innerY + iconComponentH + valueSize
   const labelBaselineY = valueBaselineY + valueLabelGap
 
@@ -353,7 +382,7 @@ function renderKpiCardBody(
         y={valueBaselineY}
         fontSize={fittedValue.fontSize}
         fontWeight="bold"
-        fill={ctx.colors.accent}
+        fill={valueFill}
         fontFamily={ctx.fonts.heading}
         dominantBaseline="alphabetic"
       >

@@ -1,13 +1,14 @@
 ---
-summary: Product direction beyond the current release — v0.3 concept realignment (Keynote-style themes, scenario-driven selection) and the theme-registry ecosystem
+summary: What v0.3 shipped (Keynote-style themes, scenario-driven selection) plus product direction beyond it — the theme-registry ecosystem
 read_when:
-  - planning v0.3+ work
+  - reviewing what v0.3 shipped
+  - planning v0.4+ work
   - deciding whether a capability belongs in the core engine or the theme ecosystem
 ---
 
 # Roadmap
 
-## v0.3 — concept realignment (in design)
+## v0.3 — concept realignment (shipped in 0.3.0)
 
 Realign the vocabulary around a Keynote-style, no-master model and re-home structural selection onto narrative scenarios:
 
@@ -20,6 +21,8 @@ Realign the vocabulary around a Keynote-style, no-master model and re-home struc
 - Plan artifact (`deck.plan.json`) shipped as a CLI-gated first-class citizen: `pptfast plan validate` enforces mode-aware hard gates (boundary pages, heading length, rhythm rotation, page count vs. delivery), and `assembleDeck`/`disassembleDeck` (SDK) plus `assemble`/`disassemble` (CLI) materialize a deck project directory (`deck.plan.json` + `pages/<id>.json` + `assets/`) to and from IR — enabling page-level generation and revision without holding a whole deck in context
 - Deterministic geometry audit shipped: `pptfast audit <target> [--json]` (SDK: `auditDeck(ir): AuditReport`, pure, zero Node dependency) renders every non-placeholder page off-screen and checks overflow/out-of-bounds (text past its own box or the page), low-contrast (WCAG relative-luminance ratio, text blended through inherited opacity vs. its resolved background region), and overlap (pairwise component bounding-box intersection) — advisory, not a hard gate (`validateIr` already is one), agent-judgeable by exit code alone (0 clean, 1 with findings). Still ahead: folding this into `pptfast preview --html`'s human review step
 - Self-contained HTML preview bundle shipped: `pptfast preview <target> -o <dir> --html` (spec §7 workflow ⑤) writes a single `preview.html` alongside the existing per-slide SVG files — every slide's already-rendered SVG embedded directly into the markup (never `<img src>`, no other external file reference), a bottom thumbnail filmstrip, keyboard (←/→) and click navigation, and a page counter, with placeholder pages carrying a visible "unfilled" badge in both views — for a human (or an agent that can view HTML) to flip through a whole deck at once instead of opening N separate SVG files. A pure string builder (`buildPreviewHtml`), CLI-only and not part of the SDK's public surface, assuming every image asset is local or a `data:` URI — a remote `http(s)` asset src passes through un-inlined and stays a live network reference in the bundle, a known limitation. Still ahead: `pptfast serve` + click-to-annotate (a live preview server with a structured revision-suggestion protocol)
+
+The v3 IR schema is frozen as of 0.3.0 — future evolution is additive only (new optional fields, new enum members), and any breaking change ships under a new top-level `version` value with the same hard-reject-and-migration treatment v2 got.
 
 ## Theme ecosystem (v0.4+)
 

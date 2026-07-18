@@ -81,6 +81,8 @@ Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model be
 
 A deck also carries an optional `seed` (an integer that keeps auto-selected layouts stable across revisions — see Layout selection below for how it's derived when omitted). Any slide may set a stable `id` (what plan pages and validation error messages reference it by) and `placeholder: true` (a slide with no content yet — injected by `assemble` for a plan page nobody has filled in, skipped by the content-quality checks, and blocking `render` unless `--draft`). Field names that commonly drift between a model's output and the schema (25 synonym pairs across component types, e.g. kpi `title`→`label`, quote `content`→`text`) are silently normalized to the canonical name at validate time — `validate`/`render`/`preview` print a note listing what changed, never a hard error.
 
+The v3 IR schema is frozen as of 0.3.0 — future evolution is additive only (new optional fields, new enum members), and any breaking change ships under a new top-level `version` value with the same hard-reject-and-migration treatment v2 got.
+
 ## Themes
 
 A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 13 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — only 3 of the 13 exclude a single chapter layout (a runway-native design whose contrast doesn't clear those themes' accent color). Override the style (`--style`) to re-color a theme.
@@ -178,8 +180,8 @@ The recommended loop for an agent generating a deck: read `pptfast schema` to le
 ## Roadmap
 
 - **v0.2** — Claude Code plugin + skill wrapping the render loop (shipped), design token overrides (`--style`), `init`/self-update commands.
-- **v0.3** — theme-customization skill (brand colors → style), custom theme slots, 1.0.
-- **v0.4** — richer motion (more entrance animations), Office real-device testing, web playground.
+- **v0.3** — scenario-driven narrative axes (mode/delivery/audience), an explicit layout + component registry with weighted seeded selection, the deck plan/assemble workflow, a deterministic geometry audit, a self-contained HTML preview, and the six-phase skill (shipped, schema frozen — see The IR above).
+- **v0.4** — theme ecosystem (distributable theme registry, theme-customization skill, custom brand slots), richer motion (more entrance animations), Office real-device testing, web playground, 1.0.
 
 ## Credits
 

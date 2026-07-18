@@ -183,7 +183,9 @@ describe("BentoPanelContent", () => {
     )
 
     expect(out).toContain(ctx.colors.surface as string) // bento 卡壳 fill
-    expect(out).toContain(ctx.colors.accent as string) // 卡壳描边 + KPI 数值
+    // 卡壳描边 + 发光点缀命中——W8 fix round 起 KPI 数值文字本身在 consulting
+    // 上改走 accessibleInk 回退色，不再是这处命中的来源之一（见下一条用例）。
+    expect(out).toContain(ctx.colors.accent as string)
     expect(out).toContain(ctx.colors.text as string)
     expect(out).toContain(ctx.colors.muted as string)
 
@@ -194,6 +196,42 @@ describe("BentoPanelContent", () => {
     expect(out).not.toContain("#060A13") // tech bg
 
     expect(out).toContain("架构拼盘")
+  })
+
+  it("W8 fix round：consulting 的 colors.accent（#FFC72C）对 KPI 卡片自己的 surface（#FFFFFF）只有 ~1.56:1，数值文字不再是几乎不可读的黄字压白卡", () => {
+    const consultingTheme = resolveStyle("consulting")
+    const ctx = buildCtx(consultingTheme, {})
+    const deck = ir("consulting", [bentoSlide])
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <BentoPanelContent ir={deck} slide={bentoSlide} index={0} ctx={ctx} />
+      </svg>,
+    )
+    const root = parseSvgRoot(markup)
+    // bentoSlide mixes kpiComponent (2 items) with iconCardsComponent (2
+    // items) into a 4-cell grid — font-weight="bold" (the literal string,
+    // not heading's "700" or an icon-card title's "600") is unique to a KPI
+    // card's value <text> in this render, so this query already scopes to
+    // exactly the 2 KPI cells without walking [data-audit-box] and
+    // filtering out the icon-card ones by hand.
+    const valueTexts = Array.from(root.querySelectorAll('text[font-weight="bold"]'))
+    expect(valueTexts).toHaveLength(2) // kpiComponent's 2 items
+
+    for (const valueText of valueTexts) {
+      // Fell back to readableOn's neutral dark ink (colors.accent itself
+      // measures ~1.56:1 against this card's own colors.surface — the same
+      // ratio the W8 walkthrough's live `pptfast audit` run caught).
+      expect(valueText.getAttribute("fill")).toBe("#0A0E14")
+      expect(valueText.getAttribute("fill")).not.toBe(consultingTheme.colors.accent)
+    }
+
+    // The shell stroke + glow cluster are untouched (text-only fix, no new
+    // color policy for decorative shapes — see content-bento-panel.tsx's
+    // accessibleInk call site).
+    const shell = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("data-bento-shell") === "true",
+    )
+    expect(shell?.getAttribute("stroke")).toBe(consultingTheme.colors.accent)
   })
 
   // ── 以下为从 templates/tech.test.tsx 回填的 Content/bento 场景覆盖 ──
