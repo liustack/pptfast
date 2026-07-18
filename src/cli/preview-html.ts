@@ -17,11 +17,17 @@
  * an external file — and the only CSS/JS in the document is inlined in
  * `<style>`/`<script>`. Local image assets are already `data:` URIs by the
  * time `runPreview` calls `renderSlideSvg` (`resolveLocalAssets`'s job,
- * `./load-ir.ts` — this module never touches assets itself). The only
- * `http(s)` substrings that can appear anywhere in the output are SVG
- * namespace URIs (`xmlns="http://www.w3.org/2000/svg"`, emitted by
- * `../svg/serialize.ts` on every slide) — XML namespace identifiers, not
- * network requests.
+ * `./load-ir.ts` — this module never touches assets itself) — *assuming*
+ * every image asset the deck references is local or already a `data:` URI.
+ * Known limitation: `resolveLocalAssets` deliberately passes a remote
+ * `http(s):` asset `src` through untouched (the export pipeline inlines
+ * those itself), so that src is left un-inlined and lands verbatim in this
+ * bundle's embedded SVG as a live network reference, not a namespace URI —
+ * breaking the zero-network-request guarantee for that one slide. Barring
+ * that case, the only `http(s)` substrings that can appear anywhere in the
+ * output are SVG namespace URIs (`xmlns="http://www.w3.org/2000/svg"`,
+ * emitted by `../svg/serialize.ts` on every slide) — XML namespace
+ * identifiers, not network requests.
  *
  * Embed strategy (one `<svg>` per slide, not two): the thumbnail filmstrip
  * and the large "stage" view share the exact same DOM node per slide rather

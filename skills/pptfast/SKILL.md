@@ -72,10 +72,10 @@ pptfast audit deck-dir/
 Zero-token, zero-variance — it renders each page off-screen and checks overflow, out-of-bounds, low-contrast, and overlap, exiting 1 when it finds anything (0 when clean). Each finding names its page (and id) and carries a fix. Fix the flagged page's content — same "restructure, don't delete" discipline as a `validate` error — then re-run `pptfast audit deck-dir/` alone (no need to re-render) until it exits 0. This is the deck's visual QA. Do not rely on eyeballing a screenshot instead.
 
 ```bash
-pptfast preview deck-dir/ -o preview/
+pptfast preview deck-dir/ -o preview/ --html
 ```
 
-Writes one standalone SVG per slide, never gated on placeholder pages. Read a few (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks.
+Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead.
 
 ### Phase 6 — Revision: edit one page, re-assemble
 

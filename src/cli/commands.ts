@@ -508,7 +508,12 @@ export interface PreviewOptions {
    *  flip through the whole deck at once instead of opening N separate SVG
    *  files. Named `htmlOut` rather than `html` so `RenderOptions.draft`-style
    *  option objects in this file all read as "what to produce", not
-   *  "whether this is HTML" (there is nothing else this bundle could be). */
+   *  "whether this is HTML" (there is nothing else this bundle could be).
+   *  Known limitation (see `buildPreviewHtml`'s own doc comment,
+   *  `./preview-html.ts`): self-containment assumes every image asset is
+   *  local or already a `data:` URI — a remote `http(s):` asset src passes
+   *  through `resolveLocalAssets` untouched and lands in the bundle as a
+   *  live network reference, not an inlined file. */
   htmlOut?: boolean
 }
 

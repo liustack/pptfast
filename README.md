@@ -71,7 +71,7 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 | `schema [--style \| --plan]` | Print the IR JSON Schema (or the style-override schema, or the deck plan schema) |
 | `themes [--json]` | List the 13 built-in themes |
 | `scenarios [--json]` | List named scenario presets (mode/delivery/audience axes + theme recommendations) |
-| `preview <target> -o <dir>` | Render each slide to a standalone SVG — same `target` forms as `render`, never gated on placeholder pages |
+| `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`) — same `target` forms as `render`, never gated on placeholder pages |
 | `init` | Scaffold `pptfast.config.json` |
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
@@ -153,7 +153,7 @@ pptfast audit examples/basic.json
 
 ## For AI agents
 
-The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast audit` for the same kind of fixable-in-place feedback on what a *valid* deck can still get wrong at render time (overflow, low-contrast, overlap — exit code alone says whether it's clean), then `pptfast render`. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)).
+The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast audit` for the same kind of fixable-in-place feedback on what a *valid* deck can still get wrong at render time (overflow, low-contrast, overlap — exit code alone says whether it's clean), then `pptfast render`. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. Add `--html` to also write a self-contained `preview.html` for a human to review (keyboard nav, placeholder badges — a remote-URL image asset stays remote, the one self-containment gap). The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)).
 
 ## Roadmap
 
