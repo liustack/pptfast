@@ -712,6 +712,38 @@ describe("v4 narrative alias normalization (spec §15.4)", () => {
     expect(v.normalized).toBeUndefined()
     expect(v.errors[0]!.message).toMatch(/IR v3 is not supported/)
   })
+
+  // Task-1 whole-branch review minor, routed to task 2: `normalizeNarrativeAliases`
+  // only ever reads `input.scenario`/`input.narrative` at the IR root, and
+  // `narrative`'s own `mode`/`delivery` keys one level down inside that field
+  // — it never walks `input.slides` at all (a completely separate walk,
+  // `normalizeComponentAliases`, handles that array). This pins the
+  // consequence: a slide heading or component text field that merely
+  // *contains* the words "narrative"/"text"/"presentation" (the vocabulary's
+  // own axis/value names) must never be mistaken for a root-level narrative
+  // key or rewritten — the alias walk only ever renames object *keys* at
+  // fixed, known paths, never pattern-matches string *content* anywhere.
+  it("never descends into slides[] — a slide heading/text containing the words 'narrative'/'text'/'presentation' is left untouched", () => {
+    const withTrickyContent = {
+      ...raw,
+      slides: [
+        { type: "cover", heading: "The Narrative Text Presentation Strategy" },
+        {
+          type: "content",
+          heading: "Body",
+          components: [{ type: "paragraph", text: "mode: narrative, delivery: presentation, text: dense" }],
+        },
+      ],
+    }
+    const v = validateIr(withTrickyContent)
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toBeUndefined()
+    expect(v.ir?.slides[0]?.heading).toBe("The Narrative Text Presentation Strategy")
+    expect(v.ir?.slides[1]?.components[0]).toMatchObject({
+      type: "paragraph",
+      text: "mode: narrative, delivery: presentation, text: dense",
+    })
+  })
 })
 
 describe("registerTheme end-to-end (W3 task 4)", () => {
