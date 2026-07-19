@@ -1,0 +1,14 @@
+{
+  "id": "q04",
+  "title": "Leadership Offsite Strategy Slide",
+  "coverage": {
+    "mode": "pyramid",
+    "delivery": "presentation",
+    "expects_components": [
+      "swot"
+    ],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en"
+}

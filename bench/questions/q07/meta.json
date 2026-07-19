@@ -1,0 +1,14 @@
+{
+  "id": "q07",
+  "title": "新业务方向内部评审",
+  "coverage": {
+    "mode": "pyramid",
+    "delivery": "balanced",
+    "expects_components": [
+      "bmc"
+    ],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "zh"
+}

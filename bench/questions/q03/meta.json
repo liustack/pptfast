@@ -1,0 +1,15 @@
+{
+  "id": "q03",
+  "title": "New-Hire Onboarding Curriculum",
+  "coverage": {
+    "mode": "instructional",
+    "delivery": "balanced",
+    "expects_components": [
+      "numbered_cards",
+      "row_cards"
+    ],
+    "workflow": "deck-project",
+    "image_deck": false
+  },
+  "lang": "en"
+}

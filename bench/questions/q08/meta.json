@@ -1,0 +1,14 @@
+{
+  "id": "q08",
+  "title": "Data Center Migration Runbook",
+  "coverage": {
+    "mode": "instructional",
+    "delivery": "text",
+    "expects_components": [
+      "gantt"
+    ],
+    "workflow": "deck-project",
+    "image_deck": false
+  },
+  "lang": "en"
+}

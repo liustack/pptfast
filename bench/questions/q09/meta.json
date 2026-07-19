@@ -1,0 +1,15 @@
+{
+  "id": "q09",
+  "title": "Checkout Outage Postmortem",
+  "coverage": {
+    "mode": "briefing",
+    "delivery": "text",
+    "expects_components": [
+      "bullets",
+      "row_cards"
+    ],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en"
+}
