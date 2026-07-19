@@ -176,6 +176,136 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
   })
 })
 
+// Bench-driven fix round (defect A) reclassification: fixing the small-
+// region misattribution family (see deck-audit.ts's own MIN_BG_REGION_AREA/
+// PaintedShape doc comments) re-measures *every* audited text against its
+// real background — including four components whose own badge/chip text used
+// to be silently mismeasured against the wrong (larger) region and now
+// correctly resolves against their own self-painted rect/circle:
+// `steps.tsx`'s numbered badge, `roadmap.tsx`'s stage-number badge,
+// `rings.tsx`'s core label, and `image-compare.tsx`'s "VS"/"AFTER" chips
+// (found via an exhaustive 28-component-type x 13-theme sweep built for this
+// reclassification, not just the plan's 3 named benchmark hits — see the
+// task report's reclassification table). All five hardcode an unwrapped ink
+// (`fill="#FFFFFF"` for the two badges, `fill={ctx.colors.surface}` for the
+// rings/image-compare pair) with no `accessibleInk`/`readableOn` call
+// (unlike `content-rail-numbered.tsx`'s own "{chapter}.{content}" badge,
+// already routed through `readableOn(colors.primary)` in a prior fix round
+// this whole family never received). Pre-fix this was invisible: each was
+// measured against whichever larger region happened to be nearby (a card
+// shell, the ambient page background, or — for roadmap specifically — the
+// same `roundedTopBarPath` phantom region `MUTED_SURFACE_CLASS`'s own
+// `roadmap`/`insight_panel` entries document in full-matrix-contrast.test.ts)
+// and often passed (or, for rings/image-compare's "VS" badge — which paint no
+// card shell at all — *always* passed, on all 13 themes, pre-fix) by sheer
+// coincidence. Recorded here, not fixed — routed to the bench-driven fix
+// wave's own B-group worklist (accessibleInk-style calibration, same
+// precedent as kpi.tsx's delta arrows / numbered_cards' digits), the same
+// "document the real defect, don't silently fix it in the audit-fix task"
+// discipline the sibling describe block above already uses for five
+// unrelated pre-existing sources. `tech`/`campaign` are used below (each is
+// among the 4-6 affected themes for every one of these five call sites,
+// confirmed by a real 13-theme sweep while building this fix).
+describe("auditDeck — newly-exposed low-contrast sources (bench-driven fix round, defect A reclassification)", () => {
+  it("steps.tsx's hardcoded white badge digit fails against tech's light primary once measured against its own circle", () => {
+    const ir = deck("tech", [
+      {
+        type: "content",
+        heading: "steps",
+        components: [{ type: "steps", items: [{ title: "Step one", text: "do the first thing" }] }],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(
+      contrast.some((f) => (f.detail as { fill?: string; text?: string })?.fill === "#FFFFFF" && f.detail?.text === "1"),
+    ).toBe(true)
+  })
+
+  it("roadmap.tsx's hardcoded white badge digit fails against the same light theme primaries as steps.tsx (identical unguarded pattern, separate call site)", () => {
+    const ir = deck("tech", [
+      {
+        type: "content",
+        heading: "roadmap",
+        components: [
+          {
+            type: "roadmap",
+            items: [{ title: "Kickoff", period: "Q1", rows: [{ label: "Scope", value: "discovery" }] }],
+          },
+        ],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(
+      contrast.some((f) => (f.detail as { fill?: string; text?: string })?.fill === "#FFFFFF" && f.detail?.text === "01"),
+    ).toBe(true)
+  })
+
+  it("rings.tsx's core label (colors.surface on colors.primary, no card shell at all) fails against campaign once measured against its own circle", () => {
+    // rings.tsx paints no rect/card of its own — pre-fix, the core label's
+    // *only* possible fallback was the ambient page background, and
+    // colors.surface sits close enough to that background on every one of
+    // the 13 themes that this was a *universal* false positive-shaped
+    // near-miss before this fix (ratio ~1.0-1.2 everywhere, confirmed by a
+    // real sweep) — not just a "sometimes passes by coincidence" case like
+    // the two badges above.
+    const ir = deck("campaign", [
+      {
+        type: "content",
+        heading: "rings",
+        components: [{ type: "rings", items: [{ label: "Core", desc: "inner layer" }] }],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "Core")).toBe(true)
+  })
+
+  it("image-compare.tsx's \"VS\" badge (identical colors.surface-on-colors.primary pattern as rings.tsx, separate call site) fails against campaign the same way", () => {
+    const ir = deck("campaign", [
+      {
+        type: "content",
+        heading: "image compare",
+        components: [
+          {
+            type: "image_compare",
+            left: { asset_id: "a", label: "Before" },
+            right: { asset_id: "b", label: "After" },
+            style: "vs",
+          },
+        ],
+      },
+    ], { assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "data:image/png;base64,AAAA" } } } })
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "VS")).toBe(true)
+  })
+
+  it("image-compare.tsx's \"before_after\" style AFTER chip (colors.surface on colors.accent, a small rect not a circle) fails against consulting once measured against its own chip", () => {
+    // Same defect family, third shape kind: a <rect> this time (the "AFTER"
+    // chip, 52x24=1,248px^2 — well below MIN_BG_REGION_AREA), not a circle —
+    // proving the fix's no-area-floor change (not just the new circle/
+    // ellipse containment math) is what surfaces this one. Unlike the three
+    // above, this was a pure false *negative* pre-fix (zero findings on any
+    // theme, confirmed by a real sweep) rather than a coincidental pass on
+    // some themes — the chip never registered as a region at all pre-fix, so
+    // resolution fell through to a background that always happened to pass.
+    const ir = deck("consulting", [
+      {
+        type: "content",
+        heading: "image compare before/after",
+        components: [
+          {
+            type: "image_compare",
+            left: { asset_id: "a", label: "Before" },
+            right: { asset_id: "b", label: "After" },
+            style: "before_after",
+          },
+        ],
+      },
+    ], { assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "data:image/png;base64,AAAA" } } } })
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "AFTER")).toBe(true)
+  })
+})
+
 describe("auditDeck — overflow / out-of-bounds", () => {
   it("surfaces a v-overflow as an 'overflow' finding with page context and a fix suggestion", () => {
     // `paragraph.tsx` never shrinks/truncates by design ("wrap freely; never
@@ -415,20 +545,49 @@ describe("findContrastIssues — low-contrast", () => {
     expect(findContrastIssues(markup)).toEqual([])
   })
 
-  it("does not let a small decorative rect (below MIN_BG_REGION_AREA) override the real local background", () => {
-    // A tiny accent bar (icon-cards.tsx-style, 32x3) painted over the card,
-    // with text positioned right where the bar is — if the bar wrongly
-    // registered as a background region despite its size, the (dark-ink-on-
-    // yellow) lookup would still pass by coincidence, so instead give the
-    // bar an *unreadable* color pairing: were it (wrongly) picked up as the
-    // background, this near-identical fill would fail; since it must be
-    // excluded by area, resolution falls through to the white card beneath,
-    // which passes comfortably.
+  // Bench-driven fix round (defect A) re-pin: this test used to assert the
+  // opposite (a small decorative rect below MIN_BG_REGION_AREA must NOT
+  // override the real local background, resolution falling through to the
+  // white card beneath instead) — that was the audit-tool bug this fix
+  // round exists to close, root-caused as the single most-hit false-positive
+  // class in the benchmark (rail-numbered's badge, steps' numbered circle:
+  // both small self-painted shapes whose own text was being checked against
+  // a *larger* region underneath instead of the shape it was actually
+  // painted on — see MIN_BG_REGION_AREA's own doc comment in deck-audit.ts).
+  // Old assertion (`toEqual([])`, i.e. no finding — background resolved to
+  // the white card) → new assertion (one finding, background resolves to
+  // the bar's own `#050505` fill) is the derivable flip: attribution now has
+  // no area floor, so text painted directly on top of *any* opaque
+  // self-painted shape resolves against that shape, however small.
+  it("resolves a small decorative rect (below MIN_BG_REGION_AREA) as the real background for text painted directly on top of it", () => {
+    // Same tiny accent bar (icon-cards.tsx-style, 32x3) as before, with text
+    // positioned right where the bar visually is. The near-identical
+    // (near-black text on near-black bar) pairing must now fail — were
+    // resolution still (wrongly) falling through to the white card beneath,
+    // this would pass instead, silently hiding the real on-bar contrast.
     const markup = page(
       BG,
       `<rect x="96" y="176" width="536" height="226" fill="#FFFFFF"/>
        <rect x="120" y="176" width="32" height="3" fill="#050505"/>
        <text x="125" y="178" font-size="20" fill="#000000">card body text</text>`,
+    )
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("does not let a small decorative rect's bounding box swallow text positioned beside it, not on it", () => {
+    // Same tiny accent bar, but the text now sits to the right of it (x=200
+    // vs. the bar's own x=120..152 span) — outside its bounds entirely. Must
+    // still resolve to the real card background beneath: removing the area
+    // floor makes every small opaque shape a candidate, but containment is
+    // still exact (this is a <rect>, so an AABB test) — a shape a text
+    // element doesn't actually sit on must never "leak" onto it.
+    const markup = page(
+      BG,
+      `<rect x="96" y="176" width="536" height="226" fill="#FFFFFF"/>
+       <rect x="120" y="176" width="32" height="3" fill="#050505"/>
+       <text x="200" y="200" font-size="20" fill="#000000">card body text</text>`,
     )
     expect(findContrastIssues(markup)).toEqual([])
   })
