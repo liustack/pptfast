@@ -6,7 +6,7 @@ import { callout } from "./callout"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../FullSlideSvg"
-import { PACING_BUDGETS } from "@/scenario"
+import { PACING_BUDGETS } from "@/narrative"
 
 const ctx: ComponentCtx = {
   colors: {

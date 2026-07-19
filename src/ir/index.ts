@@ -766,7 +766,7 @@ export const SlideSchema = z
  * preset-name string branch (and this file's `theme.id`): the *actual*
  * constraint — only `strategy`/`pacing`/`audience` are legal keys, each with
  * its own closed enum — is enforced later, in `validateIr`, by
- * `resolveNarrative` (`src/scenario`), not here.
+ * `resolveNarrative` (`src/narrative`), not here.
  *
  * This was originally a `.strict()` object with a `z.enum(...)` per axis,
  * closed right at the schema layer — wrong inside a `z.union([...])`: zod
@@ -814,9 +814,9 @@ export const PptxIRSchema = z
     // version is treated as v4, not v3. `validateIr` (`src/api.ts`) branches
     // on an *explicit* "2" or "3" before this schema ever runs (hard reject,
     // spec §9.3/§15.3); everything else — omitted, or explicit "4" — reaches
-    // this schema and gets the v4 alias-normalization rescue for old
-    // field/enum-value spelling (spec §15.4,
-    // `field-aliases.ts`'s `normalizeNarrativeAliases`) before this parse.
+    // this schema's own `.strict()` parse with no old-vocabulary rescue
+    // (spec §16: an old field name like `scenario` fails here as an
+    // unrecognized key, same as any other typo).
     version: z.literal("4").default("4"),
     filename: z.string().default("presentation"),
     // Preset id string or a partial per-axis override object — both
@@ -833,14 +833,17 @@ export const PptxIRSchema = z
     //
     // Type note: this infers as `string | Record<string, unknown> |
     // undefined` on PptxIR — wider than the "strategy/pacing/audience" shape
-    // one might expect. `resolveNarrative` (src/scenario) is the semantic
+    // one might expect. `resolveNarrative` (src/narrative) is the semantic
     // authority for that narrower shape; treat this field's static type as
     // shape-only and go there for what's actually valid.
     //
     // Renamed from `scenario` (spec §8.1/§9.1). A v4-track document that
-    // still writes the pre-rename field name is not rejected here — see
-    // `field-aliases.ts`'s `normalizeNarrativeAliases`, run by `validateIr`
-    // before this schema parses (spec §15.4).
+    // still writes the pre-rename field name (`scenario`) is rejected here —
+    // this object is `.strict()`, so `scenario` surfaces as an unrecognized
+    // key (spec §16). The pre-rename axis field names `mode`/`delivery`
+    // inside `narrative` slip past this schema (it stays an open record —
+    // see `NarrativeProfileInputSchema` above) but are caught one level down
+    // by `resolveNarrative`'s own runtime axis-key check (`src/narrative`).
     narrative: z.union([z.string(), NarrativeProfileInputSchema]).optional(),
     theme: ThemeSchema.default({ id: "consulting" }),
     meta: MetaSchema.default({}),

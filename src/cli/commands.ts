@@ -16,7 +16,7 @@ import { migrateIrV3ToV4 } from "../ir/migrate"
 import { disassembleDeck, type PageContent } from "../plan/assemble"
 import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../plan"
 import { migrateDeckPlanToSpec } from "../plan/migrate"
-import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../scenario"
+import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../narrative"
 import { auditDeck, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
 import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
@@ -463,7 +463,7 @@ export function runThemes(asJson: boolean): string {
 /**
  * List the named narrative presets (spec §5): strategy/pacing/audience axes +
  * soft theme recommendations — never a hard constraint, see
- * `NarrativePreset.themeRecommendations`'s own doc comment in `scenario/index.ts`.
+ * `NarrativePreset.themeRecommendations`'s own doc comment in `narrative/index.ts`.
  * `--json` hands back the full machine-readable payload an agent would want
  * before picking a narrative: every preset, plus the raw strategy/pacing/audience
  * tables those presets are built from (`STRATEGY_DEFINITIONS`/`PACING_BUDGETS`

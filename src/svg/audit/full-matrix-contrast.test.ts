@@ -685,7 +685,7 @@ describe("colors.muted component-type coverage (task-2 fix round, backlog 5a com
     // auto-infer rendering behavior from source. `Object.hasOwn`, not the
     // `in` operator (post-v0.3 W8 fix round, reviewer nitpick —
     // prototype-key hygiene, same precedent as `resolveNarrative`'s own
-    // `Object.hasOwn(NARRATIVE_PRESETS, input)` check, `src/scenario/
+    // `Object.hasOwn(NARRATIVE_PRESETS, input)` check, `src/narrative/
     // index.ts`): `in` also matches inherited/prototype-chain keys (e.g.
     // `"toString" in {}` is `true`), which a component type named the same
     // as an `Object.prototype` member would silently satisfy without ever

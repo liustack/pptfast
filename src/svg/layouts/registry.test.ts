@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { STRATEGY_VALUES, type Strategy } from "@/scenario"
+import { STRATEGY_VALUES, type Strategy } from "@/narrative"
 import { COVER_ARCHETYPES } from "../archetypes"
 import { CHAPTER_ARCHETYPES } from "../archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../archetypes/index-ending"
 import {
-  filterByScenariosOnly,
+  filterByNarrativesOnly,
   getLayout,
   LAYOUT_REGISTRY,
   layoutsForSlideType,
@@ -189,29 +189,29 @@ describe("layoutsForSlideType", () => {
   })
 })
 
-describe("filterByScenariosOnly (W4, spec §6 step 4's rare scenarios_only hard constraint)", () => {
+describe("filterByNarrativesOnly (W4, spec §6 step 4's rare narratives_only hard constraint)", () => {
   // Synthetic fixtures, not real registry entries — the whole point of this
   // being a standalone pure function (design decision 5) is that it can be
   // unit-tested without any real LAYOUT_REGISTRY id or a live selection
   // pass through `resolveArchetypeId`.
-  function synthetic(id: string, scenariosOnly?: readonly Strategy[]): LayoutDefinition {
-    return { id, kind: "archetype", slideTypes: ["content"], slots: [], scenariosOnly }
+  function synthetic(id: string, narrativesOnly?: readonly Strategy[]): LayoutDefinition {
+    return { id, kind: "archetype", slideTypes: ["content"], slots: [], narrativesOnly }
   }
 
-  it("keeps a layout whose scenariosOnly list includes the resolved strategy", () => {
+  it("keeps a layout whose narrativesOnly list includes the resolved strategy", () => {
     const defs = [synthetic("a", ["pyramid", "storytelling"])]
-    expect(filterByScenariosOnly(defs, "pyramid")).toEqual(defs)
+    expect(filterByNarrativesOnly(defs, "pyramid")).toEqual(defs)
   })
 
-  it("drops a layout whose scenariosOnly list excludes the resolved strategy", () => {
+  it("drops a layout whose narrativesOnly list excludes the resolved strategy", () => {
     const defs = [synthetic("a", ["pyramid"])]
-    expect(filterByScenariosOnly(defs, "briefing")).toEqual([])
+    expect(filterByNarrativesOnly(defs, "briefing")).toEqual([])
   })
 
-  it("keeps a layout with no scenariosOnly regardless of strategy (unrestricted default — every built-in layout today)", () => {
+  it("keeps a layout with no narrativesOnly regardless of strategy (unrestricted default — every built-in layout today)", () => {
     const defs = [synthetic("a")]
     for (const strategy of STRATEGY_VALUES) {
-      expect(filterByScenariosOnly(defs, strategy)).toEqual(defs)
+      expect(filterByNarrativesOnly(defs, strategy)).toEqual(defs)
     }
   })
 
@@ -221,12 +221,12 @@ describe("filterByScenariosOnly (W4, spec §6 step 4's rare scenarios_only hard 
       synthetic("in-list", ["showcase"]),
       synthetic("out-of-list", ["pyramid"]),
     ]
-    expect(filterByScenariosOnly(defs, "showcase").map((d) => d.id)).toEqual(["unrestricted", "in-list"])
+    expect(filterByNarrativesOnly(defs, "showcase").map((d) => d.id)).toEqual(["unrestricted", "in-list"])
   })
 
-  it("real LAYOUT_REGISTRY entries: none set scenariosOnly yet (mechanism lands ahead of any real consumer, W4 design decision 5)", () => {
+  it("real LAYOUT_REGISTRY entries: none set narrativesOnly yet (mechanism lands ahead of any real consumer, W4 design decision 5)", () => {
     for (const def of Object.values(LAYOUT_REGISTRY)) {
-      expect(def.scenariosOnly, `"${def.id}" unexpectedly sets scenariosOnly`).toBeUndefined()
+      expect(def.narrativesOnly, `"${def.id}" unexpectedly sets narrativesOnly`).toBeUndefined()
     }
   })
 })

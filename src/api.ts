@@ -1,9 +1,9 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
 import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
-import { normalizeComponentAliases, normalizeNarrativeAliases } from "./ir/field-aliases"
+import { normalizeComponentAliases } from "./ir/field-aliases"
 import { generatePptxBlob } from "./pptx/generate"
-import { resolveNarrative, type NarrativeProfile } from "./scenario"
+import { resolveNarrative, type NarrativeProfile } from "./narrative"
 import { CAPACITY } from "./svg/audit/capacity"
 import { FULL_BODY_TYPES } from "./svg/component-traits"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
@@ -240,29 +240,35 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
  * defeat the point of wiring this in: the spec's core principle is a hard
  * protocol gate, not hoped-for prompt compliance.
  *
- * Before any of that, two deterministic alias passes run in sequence
- * (vocabulary-v4 rename, task 1, spec §15.4 — extending the W5 task-4 alias
- * rescue): {@link normalizeNarrativeAliases} (`ir/field-aliases.ts`) first,
- * rewriting a pre-rename root/narrative field name or enum value (`scenario`
- * → `narrative`, `mode`/`delivery` → `strategy`/`pacing`, `"narrative"`/
- * `"text"`/`"presentation"` → `"storytelling"`/`"dense"`/`"spacious"`), then
- * `normalizeComponentAliases` (W5 task 4) for the unrelated component
- * field-name synonym rescue (kpi `title`→`label`, quote `content`→`text`,
- * …) — independent walks (root-level vs. inside `slides[]`), safe to run in
- * either order, kept in this order only so the narrative rewrite's own
- * `normalized` notes read first. Both only rewrite where the canonical key
- * is absent, so the schema parse below never sees an alias as an
- * "unrecognized key" in the first place. Purely informational: every
- * rewrite is recorded as a human-readable `path: alias → canonical` string
- * and threaded onto `ValidateResult.normalized` on *every* return path below
- * via `withNormalized`, success or failure alike — it never itself gates
- * `ok`.
+ * Before any of that, one deterministic alias pass runs
+ * ({@link normalizeComponentAliases}, W5 task 4) for the component
+ * field-name synonym rescue only (kpi `title`→`label`, quote
+ * `content`→`text`, …) — a weak-model rescue for schema-internal synonym
+ * drift, scoped to `slides[]`. It only rewrites where the canonical key is
+ * absent, so the schema parse below never sees an alias as an "unrecognized
+ * key" in the first place. Purely informational: every rewrite is recorded
+ * as a human-readable `path: alias → canonical` string and threaded onto
+ * `ValidateResult.normalized` on *every* return path below via
+ * `withNormalized`, success or failure alike — it never itself gates `ok`.
  *
- * Both alias passes only ever run for a document already headed for the v4
- * schema — an explicit `version: "2"` or `version: "3"` is hard-rejected
- * first, below, before either alias pass or any schema parse (spec §9.3/
- * §15.3: a v2/v3 document is never silently reinterpreted as v4 through the
- * alias rescue, no matter how it spells its axes).
+ * There is deliberately no root/narrative-level alias pass (spec §16,
+ * reversing the now-superseded §15.4): a v4 document that still spells its
+ * pre-rename vocabulary — `scenario` instead of `narrative`, `mode`/
+ * `delivery` instead of `strategy`/`pacing`, or the old enum values
+ * `"text"`/`"presentation"`/`"narrative"` — is not old-vocabulary
+ * *compatibility*, it is exactly the vocabulary this rename retired, so it
+ * hard-errors like any other unknown key or value: `scenario` fails the
+ * schema's `.strict()` parse below as an unrecognized key, and an old enum
+ * value (or the axis-key names `mode`/`delivery` inside `narrative`, which
+ * the schema itself leaves open) fails `resolveNarrative`'s own runtime
+ * check, listing the current values. `pptfast migrate` (`ir/migrate.ts`)
+ * remains the sanctioned bridge for a genuine v3 document — see the v3 hard
+ * reject below, which points there.
+ *
+ * The component-alias pass only ever runs for a document already headed for
+ * the v4 schema — an explicit `version: "2"` or `version: "3"` is
+ * hard-rejected first, below, before the alias pass or any schema parse
+ * (spec §9.3: a v2/v3 document is never silently reinterpreted as v4).
  */
 export function validateIr(input: unknown): ValidateResult {
   const version = typeof input === "object" && input !== null ? (input as Record<string, unknown>).version : undefined
@@ -302,9 +308,7 @@ export function validateIr(input: unknown): ValidateResult {
     }
   }
 
-  const { value: narrativeNormalizedInput, normalized: narrativeNormalized } = normalizeNarrativeAliases(input)
-  const { value: normalizedInput, normalized: componentNormalized } = normalizeComponentAliases(narrativeNormalizedInput)
-  const normalized = [...narrativeNormalized, ...componentNormalized]
+  const { value: normalizedInput, normalized } = normalizeComponentAliases(input)
   const withNormalized = (result: ValidateResult): ValidateResult =>
     normalized.length > 0 ? { ...result, normalized } : result
 
@@ -313,7 +317,17 @@ export function validateIr(input: unknown): ValidateResult {
     const errors = r.error.issues.map((issue) => {
       const path = issue.path.join(".")
       const m = /^slides\.(\d+)/.exec(path)
-      return { path, message: issue.message, page: m ? Number(m[1]) + 1 : undefined }
+      let message = issue.message
+      // The one retired key a hand-migrated v4 document most plausibly still
+      // carries (spec §16 hard-rejects it, no rescue) — the bare zod
+      // "Unrecognized key" line names the key but not its successor, so
+      // point at the rename and the sanctioned bridge here. The axis keys
+      // and old enum values inside `narrative` already self-document via
+      // resolveNarrative's own errors.
+      if (issue.code === "unrecognized_keys" && path === "" && /"scenario"/.test(message)) {
+        message += ' — "scenario" was renamed to "narrative" in IR v4 (for a v3 file run: pptfast migrate <file> -o <out>)'
+      }
+      return { path, message, page: m ? Number(m[1]) + 1 : undefined }
     })
     return withNormalized({ ok: false, errors })
   }

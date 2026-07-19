@@ -10,7 +10,7 @@
  * separate, optional gate for the spec-authoring stage of the six-phase
  * workflow). This module stays pure and Node-free — no `fs`, no CLI concerns
  * — so it can sit in `src/index.ts`'s dependency closure exactly like
- * `src/ir` and `src/scenario` already do (`AGENTS.md`'s layout rule).
+ * `src/ir` and `src/narrative` already do (`AGENTS.md`'s layout rule).
  * `src/cli/commands.ts` owns the one Node-touching wrapper
  * (`runSpecValidate`: read file, call {@link validateSpec}, format the
  * result).
@@ -25,7 +25,7 @@
 import { z } from "zod"
 import { PptfastError } from "../errors"
 import { BrandSchema, COMPONENT_TYPES, MetaSchema, NarrativeProfileInputSchema } from "../ir"
-import { STRATEGY_DEFINITIONS, resolveNarrative, type Pacing, type Strategy, type NarrativeProfile } from "../scenario"
+import { STRATEGY_DEFINITIONS, resolveNarrative, type Pacing, type Strategy, type NarrativeProfile } from "../narrative"
 import { CAPACITY } from "../svg/audit/capacity"
 import { LAYOUT_REGISTRY, type SlideType } from "../svg/layouts/registry"
 import { getInstalledThemeIds } from "../themes/definitions"
@@ -380,7 +380,7 @@ const LAYOUT_IDS: readonly string[] = Object.keys(LAYOUT_REGISTRY)
  * The strategy tendency set is currently always a subset of the other two
  * (every entry in every `StrategyDefinition.tendencies` array already resolves
  * against either component types or layout ids — see that field's own doc
- * comment in `scenario/index.ts`) — checked explicitly anyway, both because
+ * comment in `narrative/index.ts`) — checked explicitly anyway, both because
  * the brief's wording keeps it a first-class term of the union (a future
  * tendency value from some other vocabulary would still resolve correctly
  * without touching this function) and because the strategy-specific list is the
@@ -535,7 +535,7 @@ function checkAnchorSparsePolicy(spec: DeckSpec, strategy: Strategy): SpecValida
  * default, the exact self-contradiction the spec's codex-review pass
  * flagged, hence a per-`beatPolicy` rule set instead of one rule for
  * everyone). See `StrategyDefinition.beatPolicy`'s own doc comment
- * (`scenario/index.ts`) for which of the five strategies maps to which policy.
+ * (`narrative/index.ts`) for which of the five strategies maps to which policy.
  */
 function checkBeatRotation(spec: DeckSpec, strategy: Strategy): SpecValidationIssue[] {
   const policy = STRATEGY_DEFINITIONS[strategy].beatPolicy
@@ -566,7 +566,7 @@ function checkBeatRotation(spec: DeckSpec, strategy: Strategy): SpecValidationIs
  * Deck-level page-count range per pacing (spec §5's pacing table,
  * initial values — "dense 8-30 / balanced 6-24 / spacious 4-16", not yet
  * tuned against real usage). Independent of `PACING_BUDGETS`
- * (`scenario/index.ts`, per-slide component-count/bullets editorial
+ * (`narrative/index.ts`, per-slide component-count/bullets editorial
  * budget) — this is a separate, deck-wide page-count concern the spec calls
  * out as its own hard gate ("page count vs. pacing recommended range").
  * Message wording renamed from "delivery" to "pacing" (vocabulary-v4

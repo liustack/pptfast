@@ -77,7 +77,7 @@ runnable question.
   "id": "q01",
   "title": "Q2 Budget Performance Review",
   "coverage": {
-    "strategy": "pyramid",          // one of the 5 narrative strategies (src/scenario)
+    "strategy": "pyramid",          // one of the 5 narrative strategies (src/narrative)
     "pacing": "spacious",           // one of the 3 pacing tiers
     "expects_components": ["kpi_cards", "waterfall", "verdict_banner"],
     "workflow": "bare-ir",          // "bare-ir" | "deck-project" — which path the prompt asks for

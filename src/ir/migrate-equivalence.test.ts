@@ -96,7 +96,7 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
   // same strategy/pacing/audience triple the old `SCENARIO_PRESETS` entry
   // did, just spelled with the new vocabulary — proven here by rendering
   // through the real chain rather than re-asserting the preset table (that
-  // table has its own dedicated pins in `scenario/index.test.ts`).
+  // table has its own dedicated pins in `narrative/index.test.ts`).
   it("the annual-review preset migrates by id alone (no per-axis remap needed) and still renders byte-identical", () => {
     const v3 = PptxIRV3Schema.parse(V3_EQUIVALENCE_DECKS.annualReviewPreset)
     expect(v3.scenario).toBe("annual-review")

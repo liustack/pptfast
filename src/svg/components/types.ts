@@ -51,7 +51,7 @@ export interface ComponentCtx {
    * spec §5's pacing table body-baseline column (W4 design decision 9).
    * Sourced from a single seam: `FullSlideSvg.tsx`'s `buildCtx` resolves
    * `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`
-   * (`@/scenario`) — dense=20 / balanced=24 / spacious=32 — and no
+   * (`@/narrative`) — dense=20 / balanced=24 / spacious=32 — and no
    * component recomputes it. Every other component's own bespoke type
    * scale, the heading system (`heading-fit.ts`), and quote's fixed 26px
    * attribution line are untouched by this field; they don't read it.

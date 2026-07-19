@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { paragraph } from "./paragraph"
 import type { ComponentCtx } from "./types"
-import { PACING_BUDGETS } from "@/scenario"
+import { PACING_BUDGETS } from "@/narrative"
 
 const ctx: ComponentCtx = {
   colors: {

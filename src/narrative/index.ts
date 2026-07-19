@@ -2,7 +2,7 @@ import { PptfastError } from "../errors"
 // STRATEGY_VALUES / PACING_VALUES / AUDIENCE_VALUES (re-exported below, next
 // to Strategy/Pacing/Audience's own spec-table-order doc comments) live in
 // ../ir/narrative-values, not here — see that leaf module's docstring for why
-// src/ir owns the shared tuples instead of src/scenario (short version: this
+// src/ir owns the shared tuples instead of src/narrative (short version: this
 // module's own test suite already imports BUILTIN_THEME_IDS from src/ir, so
 // src/ir importing these tuples back from here would risk a cycle).
 import { AUDIENCE_VALUES, PACING_VALUES, STRATEGY_VALUES } from "../ir/narrative-values"
@@ -369,11 +369,10 @@ const AXIS_KEYS = ["strategy", "pacing", "audience"] as const
  * Renamed from `resolveScenario` (spec §8.1). Callers that still hold a
  * pre-rename `mode`/`delivery` shaped input (e.g. a v3 IR's `scenario`
  * field) must migrate it first — see `migrateIrV3ToV4`
- * (`src/ir/migrate.ts`) for the deterministic field/value mapping, or the
- * v4 alias-normalization layer (`src/ir/field-aliases.ts`'s
- * `normalizeNarrativeAliases`) for the same rescue applied automatically to
- * a v4-track document that still writes the old field/value spelling (spec
- * §15.4).
+ * (`src/ir/migrate.ts`) for the deterministic field/value mapping. A
+ * v4-track document that still writes the old field/value spelling gets no
+ * such rescue (spec §16, reversing the now-superseded §15.4): this function
+ * hard-errors on it, same as any other unknown axis key or value.
  */
 export function resolveNarrative(input: string | Partial<NarrativeProfile> | undefined): NarrativeProfile {
   if (input === undefined) return DEFAULT_NARRATIVE

@@ -646,84 +646,79 @@ describe("narrative field (W3 task 2, renamed from scenario spec §8.1)", () => 
   })
 })
 
-describe("v4 narrative alias normalization (spec §15.4)", () => {
-  it("rescues the pre-rename `scenario` field name, printing a root-level normalization note", () => {
+describe("v4 has no old-vocabulary rescue (spec §16, reversing the now-superseded §15.4)", () => {
+  it("hard-rejects the pre-rename `scenario` field name as an unrecognized key — no rename, no rescue, message points at `narrative`", () => {
     const v = validateIr({ ...raw, scenario: { strategy: "pyramid" } })
-    expect(v.ok).toBe(true)
-    expect(v.normalized).toEqual(["(root): scenario → narrative"])
-    expect(v.ir?.narrative).toEqual({ strategy: "pyramid" })
-  })
-
-  it("rescues the pre-rename `mode`/`delivery` axis field names inside `narrative`", () => {
-    const v = validateIr({ ...raw, narrative: { mode: "pyramid", delivery: "balanced" } })
-    expect(v.ok).toBe(true)
-    expect(v.normalized).toEqual([
-      "(root).narrative: mode → strategy",
-      "(root).narrative: delivery → pacing",
-    ])
-    expect(v.ir?.narrative).toEqual({ strategy: "pyramid", pacing: "balanced" })
-  })
-
-  it("rescues the pre-rename enum values (mode \"narrative\" → strategy \"storytelling\", delivery \"text\"/\"presentation\" → pacing \"dense\"/\"spacious\")", () => {
-    const v = validateIr({ ...raw, narrative: { mode: "narrative", delivery: "text" } })
-    expect(v.ok).toBe(true)
-    expect(v.normalized).toEqual([
-      "(root).narrative: mode → strategy",
-      "(root).narrative: delivery → pacing",
-      "(root).narrative.strategy: narrative → storytelling",
-      "(root).narrative.pacing: text → dense",
-    ])
-    expect(v.ir?.narrative).toEqual({ strategy: "storytelling", pacing: "dense" })
-
-    const v2 = validateIr({ ...raw, narrative: { delivery: "presentation" } })
-    expect(v2.normalized).toEqual([
-      "(root).narrative: delivery → pacing",
-      "(root).narrative.pacing: presentation → spacious",
-    ])
-    expect(v2.ir?.narrative).toEqual({ pacing: "spacious" })
-  })
-
-  it("rescues an old enum value even when the field is already written under its new name", () => {
-    const v = validateIr({ ...raw, narrative: { strategy: "narrative" } })
-    expect(v.ok).toBe(true)
-    expect(v.normalized).toEqual(["(root).narrative.strategy: narrative → storytelling"])
-    expect(v.ir?.narrative).toEqual({ strategy: "storytelling" })
-  })
-
-  it("both the alias and the canonical field present at the same level is left untouched (ambiguous — zod strict/resolveNarrative reports it)", () => {
-    const v = validateIr({ ...raw, scenario: "boardroom-report", narrative: "pitch" })
     expect(v.ok).toBe(false)
     expect(v.normalized).toBeUndefined()
-    // `scenario` never got renamed away (both present), so the v4 schema's
-    // strict parse rejects it as an unrecognized key.
-    expect(v.errors.some((e) => e.message.includes("scenario"))).toBe(true)
+    expect(v.ir).toBeUndefined()
+    expect(v.errors.some((e) => e.message.includes('"scenario" was renamed to "narrative" in IR v4'))).toBe(true)
+    expect(v.errors.some((e) => e.message.includes("pptfast migrate"))).toBe(true)
   })
 
-  it("a preset-id string narrative value needs no aliasing — preset ids are unchanged by the rename", () => {
+  it("hard-rejects a preset-id string under the pre-rename `scenario` field name too, with the same pointer", () => {
     const v = validateIr({ ...raw, scenario: "annual-review" })
-    expect(v.ok).toBe(true)
-    expect(v.normalized).toEqual(["(root): scenario → narrative"])
-    expect(v.ir?.narrative).toBe("annual-review")
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    expect(v.errors.some((e) => e.message.includes('"scenario" was renamed to "narrative" in IR v4'))).toBe(true)
   })
 
-  it("never rescues an explicit version \"3\" — the hard-reject fires before any alias pass runs", () => {
+  it("hard-rejects the pre-rename `mode`/`delivery` axis field names inside `narrative`, listing the current axis names", () => {
+    const v = validateIr({ ...raw, narrative: { mode: "pyramid", delivery: "balanced" } })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.path).toBe("narrative")
+    // `narrative` stays an open record at the schema layer (NarrativeProfileInputSchema),
+    // so `mode`/`delivery` slip past zod and are caught one level down by
+    // resolveNarrative's own runtime axis-key check.
+    expect(v.errors[0]!.message).toMatch(/unknown narrative axis "mode"/)
+    expect(v.errors[0]!.message).toMatch(/strategy/)
+    expect(v.errors[0]!.message).toMatch(/pacing/)
+    expect(v.errors[0]!.message).toMatch(/audience/)
+  })
+
+  it("hard-rejects the pre-rename enum values under the current field names, listing the current values", () => {
+    const v = validateIr({ ...raw, narrative: { strategy: "narrative" } })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    expect(v.errors[0]!.message).toMatch(/unknown strategy "narrative"/)
+    expect(v.errors[0]!.message).toMatch(/storytelling/)
+
+    const v2 = validateIr({ ...raw, narrative: { pacing: "text" } })
+    expect(v2.ok).toBe(false)
+    expect(v2.errors[0]!.message).toMatch(/unknown pacing "text"/)
+    expect(v2.errors[0]!.message).toMatch(/dense/)
+
+    const v3 = validateIr({ ...raw, narrative: { pacing: "presentation" } })
+    expect(v3.ok).toBe(false)
+    expect(v3.errors[0]!.message).toMatch(/unknown pacing "presentation"/)
+    expect(v3.errors[0]!.message).toMatch(/spacious/)
+  })
+
+  it("hard-rejects the pre-rename `mode`/`delivery` field names carrying pre-rename enum values too — no rescue at either layer", () => {
+    const v = validateIr({ ...raw, narrative: { mode: "narrative", delivery: "text" } })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    // The axis-key check runs before any value is inspected, so the
+    // unrecognized-key message fires first — the old enum value never even
+    // gets its own chance to be evaluated.
+    expect(v.errors[0]!.message).toMatch(/unknown narrative axis "mode"/)
+  })
+
+  it("still hard-rejects an explicit version \"3\" first, same as before — the v3 boundary is unaffected by the rescue removal", () => {
     const v = validateIr({ ...raw, version: "3", scenario: { strategy: "pyramid" } })
     expect(v.ok).toBe(false)
     expect(v.normalized).toBeUndefined()
     expect(v.errors[0]!.message).toMatch(/IR v3 is not supported/)
   })
 
-  // Task-1 whole-branch review minor, routed to task 2: `normalizeNarrativeAliases`
-  // only ever reads `input.scenario`/`input.narrative` at the IR root, and
-  // `narrative`'s own `mode`/`delivery` keys one level down inside that field
-  // — it never walks `input.slides` at all (a completely separate walk,
-  // `normalizeComponentAliases`, handles that array). This pins the
-  // consequence: a slide heading or component text field that merely
-  // *contains* the words "narrative"/"text"/"presentation" (the vocabulary's
-  // own axis/value names) must never be mistaken for a root-level narrative
-  // key or rewritten — the alias walk only ever renames object *keys* at
-  // fixed, known paths, never pattern-matches string *content* anywhere.
-  it("never descends into slides[] — a slide heading/text containing the words 'narrative'/'text'/'presentation' is left untouched", () => {
+  // Pins that the component-alias walk (normalizeComponentAliases, unaffected
+  // by this section) never mistakes a slide heading/text merely *containing*
+  // the words "narrative"/"text"/"presentation" for anything narrative-axis
+  // related — those words have no special meaning inside slides[] either way,
+  // rescued or not.
+  it("a slide heading/text containing the words 'narrative'/'text'/'presentation' still parses fine — those words carry no meaning inside slides[]", () => {
     const withTrickyContent = {
       ...raw,
       slides: [
