@@ -10,7 +10,7 @@ read_when:
 
 ## The single source of truth
 
-`resolveArchetypeId` (`src/svg/effective-layout.ts:85-118`) is the *only* place the selection mechanics live. `FullSlideSvg.tsx`'s render path and `ir-quality.ts`'s validate-time density gate both call it — never a second copy. The module's own header states the invariant this exists to protect: "what validate approved is what render draws." Do not duplicate this function's body; extend or call it. An explicit `slide.layout` short-circuits every step below unconditionally (bypasses curation, `scenariosOnly`, and weighting — it is a pin, not a preference).
+`resolveArchetypeId` (`src/svg/effective-layout.ts:85-118`) is the *only* place the selection mechanics live. `FullSlideSvg.tsx`'s render path and `ir-quality.ts`'s validate-time density gate both call it — never a second copy. The module's own header states the invariant this exists to protect: "what validate approved is what render draws." Do not duplicate this function's body — extend or call it. An explicit `slide.layout` short-circuits every step below unconditionally (bypasses curation, `scenariosOnly`, and weighting — it is a pin, not a preference).
 
 ## Four deterministic steps
 
@@ -28,7 +28,7 @@ Note the collapse from an original 5-step design: content-fit filtering (candida
 Deterministic selection alone (same input → same output) isn't enough for a *revision* workflow — editing one page's heading must not reshuffle every other page's auto-pick. `deckSeed`/`cachedDeckSeed` (`src/svg/variety.ts:22-53`) resolve, in order:
 
 1. **Explicit `ir.seed`** — wins outright, stable across any edit.
-2. **Deck-project-derived**: `assembleDeck` (`src/plan/assemble.ts:108-134`, `generateSeed`/`stableHash`) djb2-hashes `filename + the plan's ordered page-id sequence` — deliberately *not* heading/component content — when the plan omits `seed`. Written into `ir.seed` and returned as `generatedSeed`; the CLI shell surfaces it for the caller to copy back into `deck.plan.json`.
+2. **Deck-project-derived**: `assembleDeck` (`src/plan/assemble.ts:108-134`, `generateSeed`/`stableHash`) djb2-hashes `filename + the plan's ordered page-id sequence` — deliberately *not* heading/component content — when the plan omits `seed`. Written into `ir.seed` and returned as `generatedSeed` — the CLI shell surfaces it for the caller to copy back into `deck.plan.json`.
 3. **Bare-IR fallback**: a content hash of `filename` + every slide's `heading` — legacy-compatible, but editing any heading reshuffles the whole deck's auto-picks. Documented cost of skipping steps 1-2, not a bug.
 
 Each page's own salt uses its stable `page id` (`slide.id ?? String(index)`), not a same-type ordinal — insert/reorder no longer perturbs unrelated pages' sampling.

@@ -12,20 +12,20 @@ read_when:
 
 ```
 my-deck/
-  deck.plan.json        locked plan — page order, type, heading; sole order-of-truth
+  deck.plan.json        locked plan — page order, type, heading. Sole order-of-truth
   pages/<page-id>.json  one file per filled page, components only (no type/heading)
   assets/                local images, auto-registered by filename
 ```
 
-Layout and fs-safety discipline live in `src/cli/deck-dir.ts` (header comment restates the layout); the pure assembly logic is `assembleDeck`/`disassembleDeck` in `src/plan/assemble.ts` — zero-fs by design (`AGENTS.md`'s `src/index.ts` closure rule), so it's the CLI shell (`deck-dir.ts`, Node-only) that actually reads `deck.plan.json`/`pages/*.json`/`assets/*` off disk. `assertSafeFileSegment` (`deck-dir.ts:67-77`) is the CWE-22 defense every id-to-path join goes through — a `slide.id`/asset-id is an open `z.string()` at the schema layer, so this is a real, tested guard, not defense-in-depth theater.
+Layout and fs-safety discipline live in `src/cli/deck-dir.ts` (header comment restates the layout). The pure assembly logic is `assembleDeck`/`disassembleDeck` in `src/plan/assemble.ts` — zero-fs by design (`AGENTS.md`'s `src/index.ts` closure rule), so it's the CLI shell (`deck-dir.ts`, Node-only) that actually reads `deck.plan.json`/`pages/*.json`/`assets/*` off disk. `assertSafeFileSegment` (`deck-dir.ts:67-77`) is the CWE-22 defense every id-to-path join goes through — a `slide.id`/asset-id is an open `z.string()` at the schema layer, so this is a real, tested guard, not defense-in-depth theater.
 
 ## Six-phase CLI workflow
 
-`skills/pptfast/SKILL.md` is the authored playbook; the phases map onto commands as: **align** (`pptfast schema` / `schema --plan` / `scenarios --json` / `themes --json`) → **plan** (write `deck.plan.json`, `pptfast plan validate <file>` — mode-aware hard gates: boundary pages, heading length, rhythm rotation, page count vs. delivery, `validatePlan`/`formatInvalidPlanError` in `src/plan/index.ts`) → **fill** (`pages/<id>.json` in small batches, `pptfast assemble <dir> -o deck.json` after each batch, then `pptfast validate`) → **audit** (`pptfast audit <target> [--json]`, `docs/*` cross-reference: `src/svg/audit/deck-audit.ts`) → **preview** (`pptfast preview <target> -o <dir> --html`) → **revise** (edit one `pages/<id>.json`, re-`assemble` → `validate`/`audit` → re-render). Every consumer command (`validate`/`render`/`preview`/`audit`) accepts a single IR file, a deck project directory, or a bare name — `isDeckDirectory` (`deck-dir.ts`) is the dispatch.
+`skills/pptfast/SKILL.md` is the authored playbook. The phases map onto commands as: **align** (`pptfast schema` / `schema --plan` / `scenarios --json` / `themes --json`) → **plan** (write `deck.plan.json`, `pptfast plan validate <file>` — mode-aware hard gates: boundary pages, heading length, rhythm rotation, page count vs. delivery, `validatePlan`/`formatInvalidPlanError` in `src/plan/index.ts`) → **fill** (`pages/<id>.json` in small batches, `pptfast assemble <dir> -o deck.json` after each batch, then `pptfast validate`) → **audit** (`pptfast audit <target> [--json]`, `docs/*` cross-reference: `src/svg/audit/deck-audit.ts`) → **preview** (`pptfast preview <target> -o <dir> --html`) → **revise** (edit one `pages/<id>.json`, re-`assemble` → `validate`/`audit` → re-render). Every consumer command (`validate`/`render`/`preview`/`audit`) accepts a single IR file, a deck project directory, or a bare name — `isDeckDirectory` (`deck-dir.ts`) is the dispatch.
 
 ## Placeholder pages and the `--draft` gate
 
-A plan page with no matching `pages/<id>.json` file assembles into `{ placeholder: true, type, heading, subheading? }` (from the plan's `summary`, if set) — never an error (`buildSlide`, `src/plan/assemble.ts:346-368`). `validate` and `preview` pass placeholder pages through unconditionally; `render` hard-refuses a deck containing one unless `--draft` is passed (SDK: `generatePptx(ir, { draft?: boolean })`); `audit` skips them (`auditDeck`, `pagesSkipped`). Assemble's exact contract: a missing page always succeeds (placeholder); a structural contradiction — an orphan `pages/<id>.json` with no matching plan id, a locked-field violation — always throws.
+A plan page with no matching `pages/<id>.json` file assembles into `{ placeholder: true, type, heading, subheading? }` (from the plan's `summary`, if set) — never an error (`buildSlide`, `src/plan/assemble.ts:346-368`). `validate` and `preview` pass placeholder pages through unconditionally. `render` hard-refuses a deck containing one unless `--draft` is passed (SDK: `generatePptx(ir, { draft?: boolean })`), and `audit` skips them (`auditDeck`, `pagesSkipped`). Assemble's exact contract: a missing page always succeeds (placeholder), while a structural contradiction — an orphan `pages/<id>.json` with no matching plan id, a locked-field violation — always throws.
 
 ## Locked fields
 

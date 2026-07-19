@@ -8,11 +8,11 @@ read_when:
 
 # Concepts
 
-Four nouns, each owned by exactly one layer. This doc is the map; `docs/selection-and-seed.md` and `docs/contrast-system.md` go deep on two of the mechanisms that sit on top of it.
+Four nouns, each owned by exactly one layer. This doc is the map — `docs/selection-and-seed.md` and `docs/contrast-system.md` go deep on two of the mechanisms that sit on top of it.
 
 ## theme
 
-`{ id, style, brand, layouts }` — the distributable, top-level unit (`ThemeDefinition`, `src/themes/definitions.ts:18-43`). `style` is pure design tokens (color/type/radius/spacing — `StyleTokens`, `src/themes/tokens.ts`), `brand` is identity chrome filled into a layout's optional slots (logo/footer/page-number — no slideMaster, a layout with no slot for a brand element just omits it), `layouts` is the curated layout set per page type. 13 built-ins (`BUILTIN_THEME_IDS`, `src/ir/index.ts:8`), all pointing every page type at the **full** registered-archetype set for that type (`FULL_LAYOUTS`, `src/themes/definitions.ts:63-68`) — none of the 13 narrows any more (the last curation exclusions were reverted once `src/svg/ink.ts`'s contrast fix made every archetype's text adapt to its actual background; see `docs/contrast-system.md`). `THEME_DEFINITIONS` (same file) is the record every consumer reads; `registerTheme` (`src/themes/registered-themes.ts`) is the SDK extension seam for a caller-defined theme, `layouts` optional there too, defaulting to the same full set per page type.
+`{ id, style, brand, layouts }` — the distributable, top-level unit (`ThemeDefinition`, `src/themes/definitions.ts:18-43`). `style` is pure design tokens (color/type/radius/spacing — `StyleTokens`, `src/themes/tokens.ts`), `brand` is identity chrome filled into a layout's optional slots (logo/footer/page-number — no slideMaster, a layout with no slot for a brand element just omits it), `layouts` is the curated layout set per page type. 13 built-ins (`BUILTIN_THEME_IDS`, `src/ir/index.ts:8`), all pointing every page type at the **full** registered-archetype set for that type (`FULL_LAYOUTS`, `src/themes/definitions.ts:63-68`) — none of the 13 narrows any more (the last curation exclusions were reverted once `src/svg/ink.ts`'s contrast fix made every archetype's text adapt to its actual background — see `docs/contrast-system.md`). `THEME_DEFINITIONS` (same file) is the record every consumer reads. `registerTheme` (`src/themes/registered-themes.ts`) is the SDK extension seam for a caller-defined theme, `layouts` optional there too, defaulting to the same full set per page type.
 
 ## layout
 
@@ -24,7 +24,7 @@ The 24 typed units that fill a slot — the IR's discriminated `Component` union
 
 ## scenario
 
-Three narrative axes — `mode` (5-way argument style), `delivery` (3-way density/typographic tier), `audience` (tone-only, no render effect yet) — `ScenarioAxes`, `src/scenario/index.ts:43-47`. 7 named presets (`SCENARIO_PRESETS`, same file, each carrying soft `themeRecommendations`) plus a per-axis default chain (`resolveScenario`, `src/scenario/index.ts:319-353`: omission → default, typo → hard `PptfastError`). `mode` feeds layout selection (`docs/selection-and-seed.md`); `delivery` feeds the capacity split below.
+Three narrative axes — `mode` (5-way argument style), `delivery` (3-way density/typographic tier), `audience` (tone-only, no render effect yet) — `ScenarioAxes`, `src/scenario/index.ts:43-47`. 7 named presets (`SCENARIO_PRESETS`, same file, each carrying soft `themeRecommendations`) plus a per-axis default chain (`resolveScenario`, `src/scenario/index.ts:319-353`: omission → default, typo → hard `PptfastError`). `mode` feeds layout selection (`docs/selection-and-seed.md`), and `delivery` feeds the capacity split below.
 
 ## Capacity: dual ownership
 
@@ -37,4 +37,4 @@ Two independently-owned ceilings, `min()`'d together at validate time — never 
 
 ## v3 schema freeze
 
-`PptxIRSchema` (`src/ir/index.ts:670-699`) is frozen as of the 0.3.0 npm release — future evolution is additive only (new optional fields, new enum members); any breaking change ships under a new top-level `version` value with the same hard-reject-and-migration treatment v2 got. `version`/`filename`/`scenario`/`theme` are all optional with schema-level defaults (`"3"`/`"presentation"`/general preset/`consulting`) — see `src/ir/index.ts` for the full defaulting chain and README's "The IR" section for the user-facing field list.
+`PptxIRSchema` (`src/ir/index.ts:670-699`) is frozen as of the 0.3.0 npm release — future evolution is additive only (new optional fields, new enum members). Any breaking change ships under a new top-level `version` value with the same hard-reject-and-migration treatment v2 got. `version`/`filename`/`scenario`/`theme` are all optional with schema-level defaults (`"3"`/`"presentation"`/general preset/`consulting`) — see `src/ir/index.ts` for the full defaulting chain and README's "The IR" section for the user-facing field list.
