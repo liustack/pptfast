@@ -20,7 +20,7 @@ describe("all themes export v2 (download path)", () => {
   for (const id of BUILTIN_THEME_IDS) {
     it(`${id} generates a non-empty blob without throwing`, async () => {
       const ir: PptxIR = {
-        version: "3",
+        version: "4",
         filename: `${id}.pptx`,
         theme: { id },
         meta: {},

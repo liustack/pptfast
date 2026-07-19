@@ -122,7 +122,7 @@ const ENDING_TIGHT_HEADING = "从今天开始，用声明式管理"
 
 function deck(slides: Slide[]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "stress.pptx",
     theme: { id: "consulting" },
     meta: { organization: "压力测试" },

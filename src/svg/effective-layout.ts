@@ -2,13 +2,13 @@
  * Effective-layout resolution (W3 task 3, spec §5's dual-attribute capacity
  * split; selection mechanics upgraded in W4, spec §6 steps 4-5 — see below):
  * answers "which layout will `FullSlideSvg` actually draw this slide's body
- * with" — the geometric half of the density gate's `min(delivery editorial
- * budget, layout capacity)` formula. The other half (`DELIVERY_BUDGETS`)
+ * with" — the geometric half of the density gate's `min(pacing editorial
+ * budget, layout capacity)` formula. The other half (`PACING_BUDGETS`)
  * lives in `@/scenario`; this module owns the layout side and nothing else.
  *
  * CRITICAL invariant (spec §5's W3 amendment note: "选型确定性保证 validate
  * 所见 = render 所用"): `resolveArchetypeId` below is the *only* place the
- * scenario-weighted seed-sampling + adjacent-anti-repetition
+ * narrative-weighted seed-sampling + adjacent-anti-repetition
  * archetype-selection mechanics live. `FullSlideSvg.tsx`'s own
  * `resolveArchetype` calls it instead of reimplementing it — any drift
  * between a validate-time copy and the render-time original would silently
@@ -17,7 +17,7 @@
  * call it.
  */
 import type { PptxIR, Slide } from "@/ir"
-import { MODE_DEFINITIONS, resolveScenario, type Mode, type ScenarioAxes } from "@/scenario"
+import { STRATEGY_DEFINITIONS, resolveNarrative, type NarrativeProfile, type Strategy } from "@/scenario"
 import { resolveStyle } from "../themes"
 import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { findImageComponent } from "./layouts/find-image"
@@ -25,14 +25,14 @@ import { filterByScenariosOnly, getLayout } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 
 /**
- * Soft-weight multipliers for `MODE_DEFINITIONS[mode].layoutTendencies`
+ * Soft-weight multipliers for `STRATEGY_DEFINITIONS[strategy].layoutTendencies`
  * (spec §6 step 4, W4 design decision 1): a candidate whose id is in the
- * resolved mode's tendency set gets `TENDENCY_WEIGHT`, every other candidate
- * gets the `BASE_WEIGHT` floor — cover/chapter/ending candidates always fall
- * in the latter bucket since no mode's `layoutTendencies` ever names a
- * non-content id (that field's own doc comment, `@/scenario`). Initial
- * values, not yet tuned against a real corpus (spec §6: "权重初值...为待调
- * 参数，实现期以 audit baseline 全量渲染分布验证") — expect these two
+ * resolved strategy's tendency set gets `TENDENCY_WEIGHT`, every other
+ * candidate gets the `BASE_WEIGHT` floor — cover/chapter/ending candidates
+ * always fall in the latter bucket since no strategy's `layoutTendencies`
+ * ever names a non-content id (that field's own doc comment, `@/scenario`).
+ * Initial values, not yet tuned against a real corpus (spec §6: "权重初值...
+ * 为待调参数，实现期以 audit baseline 全量渲染分布验证") — expect these two
  * constants, not the sampling mechanism itself, to move if a later wave's
  * audit finds the skew too strong or too weak.
  */
@@ -45,18 +45,18 @@ const BASE_WEIGHT = 1
  * step below when it names a registered `kind: "archetype"` layout
  * applicable to `slideType` (spec §3: "要版式完全不动就显式写 layout 字段" —
  * explicit pin bypasses `theme.layouts` curation, `scenariosOnly`, and
- * scenario weighting unconditionally, it is not a soft preference confined
+ * narrative weighting unconditionally, it is not a soft preference confined
  * to the curated family). Otherwise:
  *
  * 1. **theme.layouts curation** (step 3, already the caller's job — this
  *    function just reads `layouts[slideType]` as the starting pool).
  * 2. **`scenariosOnly` hard filter** (step 4's rare constraint,
  *    {@link filterByScenariosOnly}): drop any candidate whose allowlist is
- *    set and excludes the resolved `mode`. An empty result after this step
- *    folds into the same `null` defensive fallback as an empty curated pool
- *    (unreachable for the 13 built-in themes today — no built-in layout
- *    sets `scenariosOnly` yet).
- * 3. **scenario soft weighting** (step 4's ×3/×1, `TENDENCY_WEIGHT`/
+ *    set and excludes the resolved `strategy`. An empty result after this
+ *    step folds into the same `null` defensive fallback as an empty curated
+ *    pool (unreachable for the 13 built-in themes today — no built-in
+ *    layout sets `scenariosOnly` yet).
+ * 3. **narrative soft weighting** (step 4's ×3/×1, `TENDENCY_WEIGHT`/
  *    `BASE_WEIGHT` above) **+ weighted seed sampling** (step 5,
  *    `weightedPickBySeed` — salt is `` `${slideType}-archetype:${pageKey}` ``,
  *    W4 design decision 2: `pageKey` is the caller-resolved `slide.id ??
@@ -88,7 +88,7 @@ export function resolveArchetypeId(
   seed: number,
   pageKey: string,
   requestedLayout: string | undefined,
-  mode: Mode,
+  strategy: Strategy,
   previousEffectiveLayoutId: string | null,
 ): string | null {
   if (requestedLayout) {
@@ -102,10 +102,10 @@ export function resolveArchetypeId(
   const curatedDefs = curated
     .map((id) => getLayout(id))
     .filter((def): def is NonNullable<typeof def> => def !== undefined)
-  const pool = filterByScenariosOnly(curatedDefs, mode).map((def) => def.id)
+  const pool = filterByScenariosOnly(curatedDefs, strategy).map((def) => def.id)
   if (pool.length === 0) return null
 
-  const tendencies = MODE_DEFINITIONS[mode].layoutTendencies
+  const tendencies = STRATEGY_DEFINITIONS[strategy].layoutTendencies
   const weightOf = (id: string): number => (tendencies.includes(id) ? TENDENCY_WEIGHT : BASE_WEIGHT)
   const salt = `${slideType}-archetype:${pageKey}`
   const picked = weightedPickBySeed(seed, salt, pool, weightOf)
@@ -118,25 +118,27 @@ export function resolveArchetypeId(
 }
 
 /**
- * Resolve the resolved scenario `mode` for `ir` (spec §6 step 4's input) —
- * a plain, uncached call to the shared `resolveScenario` (`@/scenario`),
- * same posture as every other call site (`ir-quality.ts`, `plan/index.ts`,
- * `cli/commands.ts`): cheap (no hashing, just object/string comparisons),
- * so unlike `deckSeed` it doesn't warrant its own memoization. The IR
- * schema's `scenario` field is open at the type layer (`string |
- * Record<string, unknown> | undefined` — see `ir/index.ts`'s own doc
- * comment on why); `resolveScenario` is the sole semantic authority that
- * narrows and validates it, so the cast here is the same one every other
- * caller already performs.
+ * Resolve the resolved narrative `strategy` for `ir` (spec §6 step 4's
+ * input) — a plain, uncached call to the shared `resolveNarrative`
+ * (`@/scenario`), same posture as every other call site (`ir-quality.ts`,
+ * `plan/index.ts`, `cli/commands.ts`): cheap (no hashing, just
+ * object/string comparisons), so unlike `deckSeed` it doesn't warrant its
+ * own memoization. The IR schema's `narrative` field is open at the type
+ * layer (`string | Record<string, unknown> | undefined` — see
+ * `ir/index.ts`'s own doc comment on why); `resolveNarrative` is the sole
+ * semantic authority that narrows and validates it, so the cast here is the
+ * same one every other caller already performs.
  *
  * Exported (W4 fix round, Minor M3) so `FullSlideSvg.tsx` can call this
  * exact expression instead of keeping its own byte-identical copy — the
- * duplication was boilerplate (the cast + `.mode` projection), not a second
- * selection-logic implementation, but one shared call site is simpler than
- * two that have to be kept in sync by hand.
+ * duplication was boilerplate (the cast + `.strategy` projection), not a
+ * second selection-logic implementation, but one shared call site is
+ * simpler than two that have to be kept in sync by hand.
+ *
+ * Renamed from `resolveIrMode` (spec §8.1's `Mode`→`Strategy`).
  */
-export function resolveIrMode(ir: PptxIR): Mode {
-  return resolveScenario(ir.scenario as string | Partial<ScenarioAxes> | undefined).mode
+export function resolveIrStrategy(ir: PptxIR): Strategy {
+  return resolveNarrative(ir.narrative as string | Partial<NarrativeProfile> | undefined).strategy
 }
 
 /**
@@ -167,7 +169,7 @@ function resolveOneEffectiveLayoutId(
   ir: PptxIR,
   slide: Slide,
   seed: number,
-  mode: Mode,
+  strategy: Strategy,
   pageKey: string,
   previousEffectiveLayoutId: string | null,
 ): string | null {
@@ -190,7 +192,7 @@ function resolveOneEffectiveLayoutId(
     seed,
     pageKey,
     slide.layout,
-    mode,
+    strategy,
     previousEffectiveLayoutId,
   )
 }
@@ -212,12 +214,12 @@ function resolveDeckEffectiveLayoutIds(ir: PptxIR): readonly (string | null)[] {
   if (cached) return cached
 
   const seed = cachedDeckSeed(ir)
-  const mode = resolveIrMode(ir)
+  const strategy = resolveIrStrategy(ir)
   const deckIds: (string | null)[] = []
   for (let i = 0; i < ir.slides.length; i++) {
     const slide = ir.slides[i]
     const previous = i > 0 ? deckIds[i - 1] : null
-    deckIds.push(resolveOneEffectiveLayoutId(ir, slide, seed, mode, slide.id ?? String(i), previous))
+    deckIds.push(resolveOneEffectiveLayoutId(ir, slide, seed, strategy, slide.id ?? String(i), previous))
   }
   deckEffectiveLayoutIdsCache.set(ir, deckIds)
   return deckIds
@@ -266,7 +268,7 @@ export interface EffectiveLayoutBodyCapacity {
 }
 
 /**
- * The geometric half of W3's density gate (spec §5: `min(delivery editorial
+ * The geometric half of W3's density gate (spec §5: `min(pacing editorial
  * budget, resolved layout's block capacity)`) — `src/svg/ir-quality.ts`'s
  * sole consumer. Looks up the `body` slot on whatever
  * `resolveEffectiveLayoutId` resolved; every non-bypass path (explicit

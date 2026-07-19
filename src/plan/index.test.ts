@@ -43,7 +43,7 @@ function makePlan(pages: unknown[], extra: Record<string, unknown> = {}) {
 
 /** A minimal structurally-valid plan, no rhythm/focus declared anywhere (so
  *  it never trips the rhythm or focus gates). 6 pages — the general preset's
- *  resolved delivery (balanced) floors the page count at 6 — so this stays
+ *  resolved pacing (balanced) floors the page count at 6 — so this stays
  *  ok under the *default*, omitted `scenario` field, which several tests
  *  below rely on (they're specifically exercising "omitted → general"). */
 function minimalValidPlan(extra: Record<string, unknown> = {}) {
@@ -54,12 +54,12 @@ function minimalValidPlan(extra: Record<string, unknown> = {}) {
 }
 
 /** Wrap one "interesting" page under test in an otherwise-boring plan sized
- *  to clear the presentation delivery's page-count floor (4) — for tests
+ *  to clear the spacious pacing's page-count floor (4) — for tests
  *  that care about one specific page-level property and want the boundary/
  *  count gates to be a non-issue. */
 function wrapPage(target: Record<string, unknown>, extra: Record<string, unknown> = {}) {
   return makePlan([cover(), target, content("p-filler"), ending()], {
-    scenario: { delivery: "presentation" },
+    scenario: { pacing: "spacious" },
     ...extra,
   })
 }
@@ -119,7 +119,7 @@ describe("DeckPlanSchema / validatePlan structural pass", () => {
 
   it("allows scenario/theme/filename/seed/summary/rhythm/focus to be omitted", () => {
     // No scenario override on purpose (this test is about field omission) —
-    // padded to 6 pages so the *default* resolved delivery (balanced, floor
+    // padded to 6 pages so the *default* resolved pacing (balanced, floor
     // 6) doesn't fail the page-count gate first.
     const plan = expectOk(minimalValidPlan())
     expect(plan.theme).toBeUndefined()
@@ -197,7 +197,7 @@ describe("hard gate: boundary types (first cover, last ending, no cover/ending m
   })
 
   it("allows a chapter page in the middle of the deck", () => {
-    expectOk(makePlan([cover(), chapter("p-ch"), content("p-a"), ending()], { scenario: { delivery: "presentation" } }))
+    expectOk(makePlan([cover(), chapter("p-ch"), content("p-a"), ending()], { scenario: { pacing: "spacious" } }))
   })
 
   it("reports both violations for a single-page plan (neither cover nor ending)", () => {
@@ -227,7 +227,7 @@ describe("hard gate: page id required + unique", () => {
   it("does not require kebab-case ids", () => {
     expectOk(
       makePlan([cover("P_Cover 1"), content("p-a"), content("p-b"), ending("END")], {
-        scenario: { delivery: "presentation" },
+        scenario: { pacing: "spacious" },
       }),
     )
   })
@@ -308,7 +308,7 @@ describe("hard gate: theme resolution (installed-theme check)", () => {
 
 // ── hard gate: scenario resolution ──────────────────────────────────────
 
-describe("hard gate: scenario resolution (resolveScenario try/catch)", () => {
+describe("hard gate: scenario resolution (resolveNarrative try/catch)", () => {
   it("accepts an omitted scenario (defaults to general)", () => {
     expectOk(minimalValidPlan())
   })
@@ -321,20 +321,20 @@ describe("hard gate: scenario resolution (resolveScenario try/catch)", () => {
     const errors = expectErrors(minimalValidPlan({ scenario: "not-a-preset" }))
     expect(errors).toHaveLength(1)
     expect(errors[0]!.path).toBe("scenario")
-    expect(errors[0]!.message).toMatch(/unknown scenario preset "not-a-preset"/)
+    expect(errors[0]!.message).toMatch(/unknown narrative preset "not-a-preset"/)
   })
 
   it("rejects an unknown axis value inside an axes object", () => {
-    const errors = expectErrors(minimalValidPlan({ scenario: { mode: "not-a-mode" } }))
+    const errors = expectErrors(minimalValidPlan({ scenario: { strategy: "not-a-mode" } }))
     expect(errors[0]!.path).toBe("scenario")
-    expect(errors[0]!.message).toMatch(/unknown mode "not-a-mode"/)
+    expect(errors[0]!.message).toMatch(/unknown strategy "not-a-mode"/)
   })
 })
 
 // ── hard gate: rhythm rotation policy matrix (all 5 modes) ─────────────
 
-describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () => {
-  const axes = (mode: string) => ({ mode, delivery: "presentation", audience: "public" })
+describe("hard gate: rhythm rotation, parameterized by strategy's beatPolicy", () => {
+  const axes = (strategy: string) => ({ strategy, pacing: "spacious", audience: "public" })
 
   describe("pyramid — anchor-open (only the first content page is checked)", () => {
     it("accepts when the first content page declares anchor", () => {
@@ -368,11 +368,11 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
     })
   })
 
-  describe("narrative — alternate (hard error on 3+ consecutive same-rhythm content pages)", () => {
+  describe("storytelling — alternate (hard error on 3+ consecutive same-rhythm content pages)", () => {
     it("accepts exactly 2 consecutive same-rhythm content pages", () => {
       expectOk(
         makePlan([cover(), content("p-1", { rhythm: "anchor" }), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "dense" }), ending()], {
-          scenario: axes("narrative"),
+          scenario: axes("storytelling"),
         }),
       )
     })
@@ -381,7 +381,7 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
       const errors = expectErrors(
         makePlan(
           [cover(), content("p-1", { rhythm: "anchor" }), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "anchor" }), ending()],
-          { scenario: axes("narrative") },
+          { scenario: axes("storytelling") },
         ),
       )
       const err = errors.find((e) => /requires rhythm to alternate/.test(e.message))
@@ -402,7 +402,7 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
             content("p-4", { rhythm: "breathing" }),
             ending(),
           ],
-          { scenario: axes("narrative") },
+          { scenario: axes("storytelling") },
         ),
       )
       const streakErrors = errors.filter((e) => /requires rhythm to alternate/.test(e.message))
@@ -421,7 +421,7 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
             content("p-4", { rhythm: "dense" }),
             ending(),
           ],
-          { scenario: axes("narrative") },
+          { scenario: axes("storytelling") },
         ),
       )
     })
@@ -430,7 +430,7 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
       const errors = expectErrors(
         makePlan(
           [cover(), content("p-1", { rhythm: "anchor" }), chapter("p-ch"), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "anchor" }), ending()],
-          { scenario: axes("narrative") },
+          { scenario: axes("storytelling") },
         ),
       )
       const err = errors.find((e) => /requires rhythm to alternate/.test(e.message))
@@ -442,7 +442,7 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
       const errors = expectErrors(
         makePlan(
           [cover(), content("p-1", { rhythm: "anchor" }), content("p-gap"), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "anchor" }), ending()],
-          { scenario: axes("narrative") },
+          { scenario: axes("storytelling") },
         ),
       )
       const err = errors.find((e) => /requires rhythm to alternate/.test(e.message))
@@ -452,7 +452,7 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
     })
 
     it("never flags pages that omit rhythm entirely", () => {
-      expectOk(makePlan([cover(), content("p-1"), content("p-2"), content("p-3"), content("p-4"), ending()], { scenario: axes("narrative") }))
+      expectOk(makePlan([cover(), content("p-1"), content("p-2"), content("p-3"), content("p-4"), ending()], { scenario: axes("storytelling") }))
     })
   })
 
@@ -518,19 +518,19 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
 
 // ── hard gate: focus vocabulary ─────────────────────────────────────────
 
-describe("hard gate: focus vocabulary (mode tendencies ∪ component types ∪ layout ids)", () => {
-  const pyramidScenario = { mode: "pyramid", delivery: "presentation", audience: "executive" }
+describe("hard gate: focus vocabulary (strategy tendencies ∪ component types ∪ layout ids)", () => {
+  const pyramidScenario = { strategy: "pyramid", pacing: "spacious", audience: "executive" }
 
-  it("accepts a focus drawn from the resolved mode's own tendencies", () => {
+  it("accepts a focus drawn from the resolved strategy's own tendencies", () => {
     expectOk(wrapPage(content("p-1", { focus: "kpi_cards" }), { scenario: pyramidScenario }))
   })
 
-  it("accepts a focus that is a global component type outside the mode's tendencies", () => {
+  it("accepts a focus that is a global component type outside the strategy's tendencies", () => {
     // "bullets" is a real component type, not in pyramid's tendency set
     expectOk(wrapPage(content("p-1", { focus: "bullets" }), { scenario: pyramidScenario }))
   })
 
-  it("accepts a focus that is a registered layout id outside the mode's tendencies", () => {
+  it("accepts a focus that is a registered layout id outside the strategy's tendencies", () => {
     // "two-column" is a real layout id, not in pyramid's tendency set
     expectOk(wrapPage(content("p-1", { focus: "two-column" }), { scenario: pyramidScenario }))
   })
@@ -542,7 +542,7 @@ describe("hard gate: focus vocabulary (mode tendencies ∪ component types ∪ l
     const err = errors.find((e) => e.pageId === "p-1")
     expect(err).toBeDefined()
     expect(err!.message).toMatch(/unknown focus "not_a_real_thing"/)
-    expect(err!.message).toMatch(/kpi_cards/) // mode tendency list present
+    expect(err!.message).toMatch(/kpi_cards/) // strategy tendency list present
     expect(err!.message).toMatch(/bullets/) // component type vocabulary present
     expect(err!.message).toMatch(/two-column/) // layout id vocabulary present
   })
@@ -560,51 +560,51 @@ describe("hard gate: page count within the delivery's suggested range", () => {
     return makePlan([cover(), ...middle, ending()])
   }
 
-  it("accepts the presentation delivery's lower boundary (4 pages)", () => {
-    expectOk({ ...decksOfSize(4), scenario: { delivery: "presentation" } })
+  it("accepts the spacious pacing's lower boundary (4 pages)", () => {
+    expectOk({ ...decksOfSize(4), scenario: { pacing: "spacious" } })
   })
 
-  it("rejects one below the presentation lower boundary (3 pages)", () => {
-    const errors = expectErrors({ ...decksOfSize(3), scenario: { delivery: "presentation" } })
+  it("rejects one below the spacious lower boundary (3 pages)", () => {
+    const errors = expectErrors({ ...decksOfSize(3), scenario: { pacing: "spacious" } })
     expect(errors).toHaveLength(1)
     expect(errors[0]!.path).toBe("pages")
     expect(errors[0]!.message).toMatch(/plan has 3 pages/)
-    expect(errors[0]!.message).toMatch(/"presentation" delivery expects 4-16 pages/)
+    expect(errors[0]!.message).toMatch(/"spacious" delivery expects 4-16 pages/)
     expect(errors[0]!.message).toMatch(/change delivery or add\/remove pages/)
   })
 
-  it("accepts the presentation delivery's upper boundary (16 pages)", () => {
-    expectOk({ ...decksOfSize(16), scenario: { delivery: "presentation" } })
+  it("accepts the spacious pacing's upper boundary (16 pages)", () => {
+    expectOk({ ...decksOfSize(16), scenario: { pacing: "spacious" } })
   })
 
-  it("rejects one above the presentation upper boundary (17 pages)", () => {
-    const errors = expectErrors({ ...decksOfSize(17), scenario: { delivery: "presentation" } })
+  it("rejects one above the spacious upper boundary (17 pages)", () => {
+    const errors = expectErrors({ ...decksOfSize(17), scenario: { pacing: "spacious" } })
     expect(errors[0]!.message).toMatch(/plan has 17 pages/)
   })
 
-  it("the same page count can pass for one delivery and fail for another", () => {
-    // 5 pages: within presentation's 4-16, below balanced's 6-24
-    expectOk({ ...decksOfSize(5), scenario: { delivery: "presentation" } })
-    const errors = expectErrors({ ...decksOfSize(5), scenario: { delivery: "balanced" } })
+  it("the same page count can pass for one pacing and fail for another", () => {
+    // 5 pages: within spacious's 4-16, below balanced's 6-24
+    expectOk({ ...decksOfSize(5), scenario: { pacing: "spacious" } })
+    const errors = expectErrors({ ...decksOfSize(5), scenario: { pacing: "balanced" } })
     expect(errors[0]!.message).toMatch(/"balanced" delivery expects 6-24 pages/)
   })
 
-  it("accepts the text delivery's lower boundary (8 pages)", () => {
-    expectOk({ ...decksOfSize(8), scenario: { delivery: "text" } })
+  it("accepts the dense pacing's lower boundary (8 pages)", () => {
+    expectOk({ ...decksOfSize(8), scenario: { pacing: "dense" } })
   })
 
-  it("rejects one below the text delivery's lower boundary (7 pages)", () => {
-    const errors = expectErrors({ ...decksOfSize(7), scenario: { delivery: "text" } })
-    expect(errors[0]!.message).toMatch(/"text" delivery expects 8-30 pages/)
+  it("rejects one below the dense pacing's lower boundary (7 pages)", () => {
+    const errors = expectErrors({ ...decksOfSize(7), scenario: { pacing: "dense" } })
+    expect(errors[0]!.message).toMatch(/"dense" delivery expects 8-30 pages/)
   })
 })
 
 describe("PLAN_PAGE_COUNT_RANGE", () => {
   it("is pinned to the spec's initial values", () => {
     expect(PLAN_PAGE_COUNT_RANGE).toEqual({
-      text: { min: 8, max: 30 },
+      dense: { min: 8, max: 30 },
       balanced: { min: 6, max: 24 },
-      presentation: { min: 4, max: 16 },
+      spacious: { min: 4, max: 16 },
     })
   })
 })

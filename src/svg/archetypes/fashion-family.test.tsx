@@ -19,7 +19,7 @@ const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 function ir(slides: Slide[]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "f.pptx",
     theme: { id: "runway" },
     meta: { organization: "时尚编辑部", date: "2026-10" },

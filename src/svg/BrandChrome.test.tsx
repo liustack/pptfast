@@ -22,7 +22,7 @@ const ctx: ComponentCtx = {
 
 function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "deck.pptx",
     theme: { id: themeId },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1", date: "2026" },

@@ -184,9 +184,14 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    `rhythm`/`focus`/`summary` never reach the IR for a present page —
  *    they are plan-only authoring anchors (rhythm/focus steer a future
  *    fill/select step, summary is "for the fill step's own reading only"), not slide content.
- * 6. Top-level: `version` is always the literal `"3"` (IR's own version,
- *    unrelated to the plan's own `version: "1"`). `scenario`/`theme`/
- *    `filename`/`brand`/`meta`/`seed` (step 7) carry over from the plan when
+ * 6. Top-level: `version` is always the literal `"4"` (IR's own version,
+ *    unrelated to the plan's own `version: "1"`) — the plan's own `scenario`
+ *    field (unrenamed this task, spec §8.1's `DeckPlan`→`DeckSpec` rename is
+ *    task 2's job) carries across into the v4 IR's `narrative` field, its
+ *    value already in the new strategy/pacing vocabulary (vocabulary-v4
+ *    rename, task 1 — `plan/index.ts`'s own `resolveNarrative` call already
+ *    validates it against that vocabulary before this function ever runs).
+ *    `theme`/`filename`/`brand`/`meta`/`seed` (step 7) carry over from the plan when
  *    present. When absent, this function omits the field from the raw
  *    object it hands to {@link PptxIRSchema} rather than re-deriving IR's
  *    own default value a second time — one default source of truth, the
@@ -250,8 +255,8 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
 
   // Step 6 — top-level IR fields
   const rawIr = {
-    version: "3" as const,
-    ...(deckPlan.scenario !== undefined ? { scenario: deckPlan.scenario } : {}),
+    version: "4" as const,
+    ...(deckPlan.scenario !== undefined ? { narrative: deckPlan.scenario } : {}),
     ...(deckPlan.theme !== undefined ? { theme: { id: deckPlan.theme } } : {}),
     ...(deckPlan.filename !== undefined ? { filename: deckPlan.filename } : {}),
     ...(deckPlan.brand !== undefined ? { brand: deckPlan.brand } : {}),
@@ -290,7 +295,7 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
  * future re-`assembleDeck` call with a different seed) to re-derive one.
  * Runs exactly once per {@link assembleDeck} call, after {@link PptxIRSchema}
  * has already produced `ir` — every input `resolveEffectiveLayoutId` needs
- * (resolved theme id, resolved scenario mode, the final `seed`) is only
+ * (resolved theme id, resolved narrative strategy, the final `seed`) is only
  * available on that fully-defaulted object, never on the raw pre-parse shape.
  *
  * Two cases leave a slide untouched:
@@ -441,8 +446,8 @@ const UNTITLED_HEADING = "Untitled"
  * `src/svg/BrandChrome.tsx`) is a plain passthrough on both sides
  * ({@link assembleDeck} step 6 reads `plan.brand` into `ir.brand` — this
  * function reads `ir.brand` back into `plan.brand` below) — carried through
- * unmodified, same as `scenario`/`filename`/`seed`, never synthesized or
- * dropped.
+ * unmodified, same as `scenario`/`narrative`/`filename`/`seed`, never
+ * synthesized or dropped.
  *
  * `layout` deserves a different kind of callout: it round-trips as plain
  * content like any other field ({@link extractPageContent} copies
@@ -506,7 +511,10 @@ export function disassembleDeck(ir: PptxIR): { plan: DeckPlan; pages: Record<str
 
   const plan: DeckPlan = {
     version: "1",
-    ...(ir.scenario !== undefined ? { scenario: ir.scenario } : {}),
+    // `ir.narrative` (v4 field, vocabulary-v4 rename) carries straight into
+    // the plan's own `scenario` field (unrenamed this task) — its value is
+    // already in the new strategy/pacing vocabulary, no remapping needed.
+    ...(ir.narrative !== undefined ? { scenario: ir.narrative } : {}),
     theme: ir.theme.id,
     filename: ir.filename,
     ...(ir.seed !== undefined ? { seed: ir.seed } : {}),

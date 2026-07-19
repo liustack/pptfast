@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path"
 import JSZip from "jszip"
 import { afterAll, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { SCENARIO_PRESETS } from "../scenario"
+import { NARRATIVE_PRESETS } from "../scenario"
 import {
   applyDeckConfig,
   runAssemble,
@@ -28,7 +28,7 @@ const PNG_1PX = Buffer.from(
 )
 
 const VALID_IR = {
-  version: "3",
+  version: "4",
   filename: "cli-test",
   theme: { id: "tech" },
   slides: [
@@ -38,7 +38,7 @@ const VALID_IR = {
 }
 
 const IR_WITH_LOCAL_ASSET = {
-  version: "3",
+  version: "4",
   filename: "cli-test-asset",
   theme: { id: "tech" },
   assets: { images: { logo: { src: "logo.png" } } },
@@ -49,7 +49,7 @@ const IR_WITH_LOCAL_ASSET = {
 }
 
 const IR_WITH_PLACEHOLDER = {
-  version: "3",
+  version: "4",
   filename: "cli-test-placeholder",
   theme: { id: "tech" },
   slides: [
@@ -65,7 +65,7 @@ const IR_WITH_PLACEHOLDER = {
 // deck-audit.test.ts's own "low-contrast via a real style-token override"
 // fixture (`src/svg/audit/deck-audit.test.ts`).
 const IR_LOW_CONTRAST = {
-  version: "3",
+  version: "4",
   filename: "cli-test-low-contrast",
   theme: { id: "consulting", style: { colors: { text: "#F5F5F0" } } },
   slides: [
@@ -81,7 +81,7 @@ const IR_LOW_CONTRAST = {
 // kpi_cards item uses "title" instead of "label" — W5 task 4's field-alias
 // normalizer should silently adopt it and runValidate should note it.
 const IR_WITH_FIELD_ALIAS = {
-  version: "3",
+  version: "4",
   filename: "cli-test-alias",
   theme: { id: "tech" },
   slides: [
@@ -110,7 +110,7 @@ beforeAll(async () => {
   installNodePlatform()
   dir = await mkdtemp(join(tmpdir(), "pptfast-cli-"))
   await writeFile(join(dir, "deck.json"), JSON.stringify(VALID_IR))
-  await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "3" }))
+  await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "4" }))
   await writeFile(join(dir, "logo.png"), PNG_1PX)
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
   await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
@@ -145,13 +145,13 @@ async function withPptfastHome<T>(home: string, fn: () => Promise<T>): Promise<T
   }
 }
 
-/** 5 pages (cover + 3 content + ending) clears "presentation" delivery's
+/** 5 pages (cover + 3 content + ending) clears "spacious" pacing's
  *  4-16 page-count floor (spec §5) with room to leave some unfilled — same
  *  fixture-sizing rationale as `plan/assemble.test.ts`'s own `makePlan`. */
 function makeDeckPlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: "1",
-    scenario: "boardroom-report", // pyramid/presentation/executive
+    scenario: "boardroom-report", // pyramid/spacious/executive
     theme: "consulting",
     filename: "q3-review",
     pages: [
@@ -170,16 +170,16 @@ function makeDeckDir(prefix = "pptfast-deck-"): Promise<string> {
 }
 
 /** IR shaped so `disassembleDeck`'s output can itself pass `validatePlan`'s
- *  hard gates (first=cover/last=ending, explicit `presentation` delivery so
+ *  hard gates (first=cover/last=ending, explicit `spacious` pacing so
  *  4 pages clears the page-count floor) — unlike `VALID_IR` above, which is
  *  fine for a bare-IR round trip but was never meant to double as a valid
  *  *plan* (no ending page), so re-assembling its disassembled output would
  *  fail `checkBoundaryTypes` before ever reaching a render. */
 const ROUNDTRIPPABLE_IR = {
-  version: "3",
+  version: "4",
   filename: "roundtrip-test",
   theme: { id: "tech" },
-  scenario: { delivery: "presentation" },
+  narrative: { pacing: "spacious" },
   slides: [
     { id: "s-cover", type: "cover", heading: "Cover" },
     { id: "s-body", type: "content", heading: "Body", components: [{ type: "paragraph", text: "hi" }] },
@@ -195,10 +195,10 @@ const ROUNDTRIPPABLE_IR = {
  *  data URI so the later `runRender` on the disassembled directory actually
  *  embeds the image again, not just produces a structurally valid pptx. */
 const ROUNDTRIPPABLE_IR_WITH_ASSET = {
-  version: "3",
+  version: "4",
   filename: "roundtrip-asset-test",
   theme: { id: "tech" },
-  scenario: { delivery: "presentation" },
+  narrative: { pacing: "spacious" },
   assets: { images: { logo: { src: `data:image/png;base64,${PNG_1PX.toString("base64")}` } } },
   slides: [
     { id: "s-cover", type: "cover", heading: "Cover" },
@@ -213,7 +213,7 @@ const ROUNDTRIPPABLE_IR_WITH_ASSET = {
  *  `runDisassemble` summary must not claim to have written a `pages/`
  *  directory that was never created). */
 const IR_ALL_PLACEHOLDERS = {
-  version: "3",
+  version: "4",
   filename: "cli-test-all-placeholder",
   theme: { id: "tech" },
   slides: [
@@ -317,7 +317,7 @@ describe("runAudit (W6 task 2)", () => {
 describe("runPlanValidate", () => {
   it("reports OK with page count, resolved scenario, and theme for a valid plan", async () => {
     await expect(runPlanValidate(join(dir, "plan.json"))).resolves.toBe(
-      'OK — 4 pages, scenario pyramid/presentation/executive, theme "consulting"',
+      'OK — 4 pages, scenario pyramid/spacious/executive, theme "consulting"',
     )
   })
   it("throws with the issue list, including page ids, for an invalid plan", async () => {
@@ -384,7 +384,7 @@ describe("runSchema / runThemes", () => {
 })
 
 describe("runScenarios", () => {
-  const presetCount = Object.keys(SCENARIO_PRESETS).length
+  const presetCount = Object.keys(NARRATIVE_PRESETS).length
 
   it("prints one row per preset in human mode, id/axes/theme recommendations", () => {
     const lines = runScenarios(false).split("\n")
@@ -397,17 +397,17 @@ describe("runScenarios", () => {
 
   it("prints the full machine payload in json mode", () => {
     const payload = JSON.parse(runScenarios(true)) as {
-      presets: Record<string, { axes: { mode: string; delivery: string; audience: string } }>
+      presets: Record<string, { axes: { strategy: string; pacing: string; audience: string } }>
       modes: Record<string, unknown>
       deliveries: Record<string, unknown>
       audiences: string[]
     }
     expect(Object.keys(payload.presets)).toHaveLength(presetCount)
-    expect(payload.presets.general?.axes).toEqual({ mode: "briefing", delivery: "balanced", audience: "public" })
+    expect(payload.presets.general?.axes).toEqual({ strategy: "briefing", pacing: "balanced", audience: "public" })
     expect(Object.keys(payload.modes)).toEqual(
-      expect.arrayContaining(["pyramid", "narrative", "instructional", "showcase", "briefing"]),
+      expect.arrayContaining(["pyramid", "storytelling", "instructional", "showcase", "briefing"]),
     )
-    expect(Object.keys(payload.deliveries)).toEqual(expect.arrayContaining(["text", "balanced", "presentation"]))
+    expect(Object.keys(payload.deliveries)).toEqual(expect.arrayContaining(["dense", "balanced", "spacious"]))
     expect(payload.audiences).toEqual(expect.arrayContaining(["executive", "technical", "customer", "public"]))
   })
 })

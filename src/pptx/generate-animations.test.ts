@@ -23,7 +23,7 @@ function slide(type: Slide["type"]): Slide {
 
 function makeIR(slides: Slide[], animation?: Meta["animation"]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "animations.pptx",
     theme: { id: "consulting" },
     meta: animation ? { animation } : {},

@@ -29,7 +29,7 @@ const LONG_CJK =
 
 function deck(themeId: string, slides: Slide[], overrides: Partial<PptxIR> = {}): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "deck-audit-fixture",
     theme: { id: themeId },
     meta: {},

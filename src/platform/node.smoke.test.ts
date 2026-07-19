@@ -6,7 +6,7 @@ import { generatePptxBlob } from "@/pptx/generate"
 import { installNodePlatform } from "./node"
 
 const ir = PptxIRSchema.parse({
-  version: "3",
+  version: "4",
   filename: "smoke",
   theme: { id: "consulting" },
   slides: [

@@ -48,10 +48,10 @@ export interface ComponentCtx {
   /**
    * Body-text baseline font size (px, 1280×720 slide geometry) for the
    * paragraph/bullets/callout trio — "正文" = continuous running text, per
-   * spec §5's delivery table body-baseline column (W4 design decision 9).
+   * spec §5's pacing table body-baseline column (W4 design decision 9).
    * Sourced from a single seam: `FullSlideSvg.tsx`'s `buildCtx` resolves
-   * `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`
-   * (`@/scenario`) — text=20 / balanced=24 / presentation=32 — and no
+   * `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`
+   * (`@/scenario`) — dense=20 / balanced=24 / spacious=32 — and no
    * component recomputes it. Every other component's own bespoke type
    * scale, the heading system (`heading-fit.ts`), and quote's fixed 26px
    * attribution line are untouched by this field; they don't read it.
@@ -69,7 +69,7 @@ export interface ComponentCtx {
    * compile time everywhere a `ComponentCtx` is built by hand — mostly
    * this repo's component-level tests. `buildCtx` itself keeps its own
    * corresponding parameter optional (defaults to
-   * `DELIVERY_BUDGETS.balanced.bodyBaselinePx`), so the many
+   * `PACING_BUDGETS.balanced.bodyBaselinePx`), so the many
    * `buildCtx(...)`-calling archetype tests that don't care about
    * body-text sizing are unaffected — only the smaller set of tests that
    * construct a `ComponentCtx` object literal directly needed a value

@@ -6,14 +6,14 @@ import { assembleDeck, disassembleDeck, type PageContent } from "./assemble"
 
 // ── fixtures ─────────────────────────────────────────────────────────────
 
-/** 4 pages clears the "presentation" delivery's page-count floor (spec §5:
+/** 4 pages clears the "spacious" pacing's page-count floor (spec §5:
  *  4-16) with the smallest fixture — every test below opts into that
- *  delivery explicitly so plan-level page-count noise never has to be
+ *  pacing explicitly so plan-level page-count noise never has to be
  *  reasoned about alongside whatever the test actually cares about. */
 function makePlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: "1",
-    scenario: { delivery: "presentation" },
+    scenario: { pacing: "spacious" },
     theme: "consulting",
     filename: "q3-review",
     pages: [
@@ -221,10 +221,10 @@ describe("assembleDeck", () => {
   // ── step 6 ──────────────────────────────────────────────────────────
 
   describe("step 6 — top-level field passthrough", () => {
-    it("passes scenario/theme/filename through from the plan", () => {
+    it("passes narrative/theme/filename through from the plan", () => {
       const { ir } = assembleDeck(makePlan(), {})
-      expect(ir.version).toBe("3")
-      expect(ir.scenario).toEqual({ delivery: "presentation" })
+      expect(ir.version).toBe("4")
+      expect(ir.narrative).toEqual({ pacing: "spacious" })
       expect(ir.theme).toEqual({ id: "consulting" })
       expect(ir.filename).toBe("q3-review")
     })
@@ -236,7 +236,7 @@ describe("assembleDeck", () => {
 
     it("lets IR schema defaults handle theme/filename/meta when the plan omits them", () => {
       const minimal = {
-        scenario: { delivery: "presentation" },
+        scenario: { pacing: "spacious" },
         pages: [
           { id: "p-cover", type: "cover", heading: "Cover" },
           { id: "p-body", type: "content", heading: "Body" },
@@ -357,8 +357,8 @@ describe("assembleDeck", () => {
       // second, drifted copy of the selection logic instead of calling this
       // function, this is the test that would catch it.
       const manualIr: PptxIR = PptxIRSchema.parse({
-        version: "3",
-        scenario: { delivery: "presentation" },
+        version: "4",
+        narrative: { pacing: "spacious" },
         theme: { id: "consulting" },
         filename: "q3-review",
         seed,
@@ -442,10 +442,10 @@ describe("assembleDeck", () => {
 describe("disassembleDeck", () => {
   it("reconstructs plan pages and page content from a fully-authored IR", () => {
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       filename: "q3-review",
       theme: { id: "consulting" },
-      scenario: { delivery: "presentation" },
+      narrative: { pacing: "spacious" },
       seed: 777,
       slides: [
         { id: "p-cover", type: "cover", heading: "Q3 Review" },
@@ -464,7 +464,7 @@ describe("disassembleDeck", () => {
 
     expect(plan.filename).toBe("q3-review")
     expect(plan.theme).toBe("consulting")
-    expect(plan.scenario).toEqual({ delivery: "presentation" })
+    expect(plan.scenario).toEqual({ pacing: "spacious" })
     expect(plan.seed).toBe(777)
     expect(plan.pages).toEqual([
       { id: "p-cover", type: "cover", heading: "Q3 Review" },
@@ -482,7 +482,7 @@ describe("disassembleDeck", () => {
 
   it("synthesizes a stable positional id (p-<ordinal>-<type>) for a slide that omits one", () => {
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       theme: { id: "consulting" },
       slides: [
         { type: "cover", heading: "Cover" },
@@ -496,7 +496,7 @@ describe("disassembleDeck", () => {
 
   it('synthesizes "Untitled" for a slide with a missing or blank heading', () => {
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       theme: { id: "consulting" },
       slides: [
         { id: "p-cover", type: "cover", heading: "Cover" },
@@ -512,7 +512,7 @@ describe("disassembleDeck", () => {
 
   it("produces no pages entry for a placeholder slide, and recovers summary from its subheading", () => {
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       theme: { id: "consulting" },
       slides: [
         { id: "p-cover", type: "cover", heading: "Cover" },
@@ -527,7 +527,7 @@ describe("disassembleDeck", () => {
 
   it("never sets rhythm or focus on any produced plan page (no IR-side home for either)", () => {
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       theme: { id: "consulting" },
       slides: [
         { id: "p-cover", type: "cover", heading: "Cover" },
@@ -546,10 +546,10 @@ describe("disassembleDeck", () => {
 describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content", () => {
   it("reproduces every slide's content across cover/content/placeholder/ending", () => {
     const original = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       filename: "roundtrip-deck",
       theme: { id: "consulting" },
-      scenario: { delivery: "presentation" },
+      narrative: { pacing: "spacious" },
       seed: 555,
       brand: { logo_asset_id: "logo-1", position: "tl" },
       slides: [
@@ -600,16 +600,16 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
 
     expect(reassembled.filename).toBe(original.filename)
     expect(reassembled.theme).toEqual(original.theme)
-    expect(reassembled.scenario).toEqual(original.scenario)
+    expect(reassembled.narrative).toEqual(original.narrative)
     expect(reassembled.seed).toBe(original.seed)
     expect(reassembled.brand).toEqual(original.brand)
   })
 
   it("round-trips a deck whose slides omit id entirely (positional synthesis both ways)", () => {
     const original = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       theme: { id: "consulting" },
-      scenario: { delivery: "presentation" },
+      narrative: { pacing: "spacious" },
       slides: [
         { type: "cover", heading: "Cover" },
         { type: "content", heading: "Body", components: [{ type: "paragraph", text: "hi" }] },

@@ -43,7 +43,7 @@ function deck(themeId: (typeof BUILTIN_THEME_IDS)[number]): { ir: PptxIR; slides
     { type: "ending", heading: "谢谢", components: [] },
   ]
   const ir: PptxIR = {
-    version: "3",
+    version: "4",
     filename: "deck.pptx",
     theme: { id: themeId },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1", date: "2026" },

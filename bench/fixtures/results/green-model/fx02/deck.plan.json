@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "scenario": { "delivery": "presentation" },
+  "scenario": { "pacing": "spacious" },
   "theme": "consulting",
   "filename": "fixture-fx02",
   "pages": [

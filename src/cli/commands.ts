@@ -13,7 +13,7 @@ import { PptfastError } from "../errors"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { disassembleDeck, type PageContent } from "../plan/assemble"
 import { formatInvalidPlanError, planJsonSchema, resolvePlanThemeId, validatePlan } from "../plan"
-import { AUDIENCE_VALUES, DELIVERY_BUDGETS, MODE_DEFINITIONS, SCENARIO_PRESETS, resolveScenario, type ScenarioAxes } from "../scenario"
+import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../scenario"
 import { auditDeck, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
 import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
@@ -427,8 +427,8 @@ export async function runPlanValidate(planPath: string): Promise<string> {
   const plan = v.plan!
   // Safe to call unguarded: validatePlan already resolved this same
   // expression successfully as part of its own hard-gate chain.
-  const axes = resolveScenario(plan.scenario as string | Partial<ScenarioAxes> | undefined)
-  return `OK — ${plan.pages.length} pages, scenario ${axes.mode}/${axes.delivery}/${axes.audience}, theme "${resolvePlanThemeId(plan)}"`
+  const axes = resolveNarrative(plan.scenario as string | Partial<NarrativeProfile> | undefined)
+  return `OK — ${plan.pages.length} pages, scenario ${axes.strategy}/${axes.pacing}/${axes.audience}, theme "${resolvePlanThemeId(plan)}"`
 }
 
 export function runSchema(mode?: "style" | "plan"): string {
@@ -443,31 +443,36 @@ export function runThemes(asJson: boolean): string {
 }
 
 /**
- * List the named scenario presets (spec §5): mode/delivery/audience axes +
+ * List the named scenario presets (spec §5): strategy/pacing/audience axes +
  * soft theme recommendations — never a hard constraint, see
- * `ScenarioPreset.themeRecommendations`'s own doc comment in `scenario/index.ts`.
+ * `NarrativePreset.themeRecommendations`'s own doc comment in `scenario/index.ts`.
  * `--json` hands back the full machine-readable payload an agent would want
- * before picking a scenario: every preset, plus the raw mode/delivery/audience
- * tables those presets are built from (`MODE_DEFINITIONS`/`DELIVERY_BUDGETS`
+ * before picking a scenario: every preset, plus the raw strategy/pacing/audience
+ * tables those presets are built from (`STRATEGY_DEFINITIONS`/`PACING_BUDGETS`
  * carry data this wave doesn't yet consume for selection — W4's job — but are
  * still useful for a caller inspecting what each axis value means).
+ *
+ * CLI surface (command name `scenarios`, output field names `modes`/
+ * `deliveries`) is unchanged this task — spec §8.2's `scenarios`→`narratives`
+ * rename is task 2's job. Only the underlying data this command reads
+ * switched to the new vocabulary (spec §8.1).
  */
 export function runScenarios(asJson: boolean): string {
   if (asJson) {
     return JSON.stringify(
       {
-        presets: SCENARIO_PRESETS,
-        modes: MODE_DEFINITIONS,
-        deliveries: DELIVERY_BUDGETS,
+        presets: NARRATIVE_PRESETS,
+        modes: STRATEGY_DEFINITIONS,
+        deliveries: PACING_BUDGETS,
         audiences: AUDIENCE_VALUES,
       },
       null,
       2,
     )
   }
-  const rows = Object.values(SCENARIO_PRESETS).map((p) => ({
+  const rows = Object.values(NARRATIVE_PRESETS).map((p) => ({
     id: p.id,
-    axes: `${p.axes.mode}/${p.axes.delivery}/${p.axes.audience}`,
+    axes: `${p.axes.strategy}/${p.axes.pacing}/${p.axes.audience}`,
     themes: p.themeRecommendations.join(", "),
   }))
   const idWidth = Math.max(...rows.map((r) => r.id.length))

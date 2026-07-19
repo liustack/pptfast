@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest"
 import { checkIrQuality, type QualityIssue } from "./ir-quality"
 import { CAPACITY } from "./audit/capacity"
 import { resolveEffectiveLayoutId } from "./effective-layout"
-import { DELIVERY_BUDGETS, resolveScenario, type Delivery, type ScenarioAxes } from "@/scenario"
+import { PACING_BUDGETS, resolveNarrative, type Pacing, type NarrativeProfile } from "@/scenario"
 import type { Component, PptxIR, Slide } from "@/ir"
 
 // ── helpers ──
 
 function makeIR(slides: Slide[], themeId: PptxIR["theme"]["id"] = "consulting"): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "test.pptx",
     theme: { id: themeId },
     meta: {},
@@ -26,9 +26,9 @@ function paragraphs(n: number): Component[] {
   return Array.from({ length: n }, (_, i) => ({ type: "paragraph" as const, text: String(i) }))
 }
 
-/** {@link ScenarioAxes} varying only in `delivery` — mode/audience default (briefing/public, neither affects W3's density/bullets gates). */
-function deliveryAxes(delivery: Delivery): ScenarioAxes {
-  return resolveScenario({ delivery })
+/** {@link NarrativeProfile} varying only in `pacing` — strategy/audience default (briefing/public, neither affects W3's density/bullets gates). */
+function pacingAxes(pacing: Pacing): NarrativeProfile {
+  return resolveNarrative({ pacing })
 }
 
 /**
@@ -85,9 +85,9 @@ describe("checkIrQuality", () => {
 
   // ── density (W3 task 3, spec §5 dual-attribute capacity split) ──
   //
-  // limit = min(DELIVERY_BUDGETS[delivery].maxComponentsPerSlide,
+  // limit = min(PACING_BUDGETS[pacing].maxComponentsPerSlide,
   // resolveEffectiveLayoutBodyCapacity(...).capacity ?? Infinity). The
-  // matrix below deliberately covers: all 3 deliveries, explicit vs.
+  // matrix below deliberately covers: all 3 pacings, explicit vs.
   // auto-picked layout, the bento-panel capacity-6 exception (both
   // auto-picked and explicit-pinned), and takeover layouts (no geometric
   // term at all).
@@ -97,13 +97,13 @@ describe("checkIrQuality", () => {
   // (capacity 6) for any auto-pick case, not just tech — the pre-W4 "every
   // non-tech theme's content set is 2 same-capacity archetypes" premise this
   // comment used to state is gone. In practice this only makes the
-  // *balanced*/*presentation* auto-pick cases below ambiguity-proof by
-  // arithmetic coincidence (delivery's own budget, 4 and 3 respectively, is
+  // *balanced*/*spacious* auto-pick cases below ambiguity-proof by
+  // arithmetic coincidence (pacing's own budget, 4 and 3 respectively, is
   // <= bento-panel's capacity, so it binds either way — same expectedLimit
-  // regardless of which archetype gets picked); *text* delivery's budget (5)
+  // regardless of which archetype gets picked); *dense* pacing's budget (5)
   // sits strictly between the two possible layout capacities (4 and 6), so
   // it's the one case where the auto-picked archetype's identity actually
-  // changes the expected limit. The "journal / text" case below has been
+  // changes the expected limit. The "journal / dense" case below has been
   // re-verified empirically against W4's weighted+anti-repetition algorithm
   // (not assumed): for this fixture's exact heading/seed it still resolves
   // to narrow-column (capacity 4), so `expectedLimit: 4` is unchanged — not
@@ -119,95 +119,95 @@ describe("checkIrQuality", () => {
     const cases: {
       label: string
       themeId: string
-      delivery: Delivery
+      pacing: Pacing
       layout?: string
       image?: boolean
       expectedLimit: number
     }[] = [
-      // text delivery (editorial budget 5)
+      // dense pacing (editorial budget 5)
       {
-        label: "text delivery, explicit generic layout — the layout's own capacity (4) binds under delivery's 5",
+        label: "dense pacing, explicit generic layout — the layout's own capacity (4) binds under pacing's 5",
         themeId: "consulting",
-        delivery: "text",
+        pacing: "dense",
         layout: "two-column",
         expectedLimit: 4,
       },
       {
-        label: "text delivery, explicit bento-panel — delivery's 5 binds under the layout's own capacity (6)",
+        label: "dense pacing, explicit bento-panel — pacing's 5 binds under the layout's own capacity (6)",
         themeId: "consulting",
-        delivery: "text",
+        pacing: "dense",
         layout: "bento-panel",
         expectedLimit: 5,
       },
       {
-        label: "text delivery, auto-picked layout (non-tech theme) — layout capacity (4) binds under delivery's 5",
+        label: "dense pacing, auto-picked layout (non-tech theme) — layout capacity (4) binds under pacing's 5",
         themeId: "journal",
-        delivery: "text",
+        pacing: "dense",
         expectedLimit: 4,
       },
       {
-        label: "text delivery, takeover layout — no geometric term, pure delivery budget (5)",
+        label: "dense pacing, takeover layout — no geometric term, pure pacing budget (5)",
         themeId: "consulting",
-        delivery: "text",
+        pacing: "dense",
         layout: "image-top",
         image: true,
         expectedLimit: 5,
       },
-      // balanced delivery (editorial budget 4)
+      // balanced pacing (editorial budget 4)
       {
-        label: "balanced delivery, explicit generic layout — tie at 4",
+        label: "balanced pacing, explicit generic layout — tie at 4",
         themeId: "consulting",
-        delivery: "balanced",
+        pacing: "balanced",
         layout: "banner-heading",
         expectedLimit: 4,
       },
       {
-        label: "balanced delivery, auto-picked layout (non-tech theme) — tie at 4",
+        label: "balanced pacing, auto-picked layout (non-tech theme) — tie at 4",
         themeId: "consulting",
-        delivery: "balanced",
+        pacing: "balanced",
         expectedLimit: 4,
       },
       {
-        label: "balanced delivery, explicit bento-panel — delivery's 4 binds under the layout's own capacity (6)",
+        label: "balanced pacing, explicit bento-panel — pacing's 4 binds under the layout's own capacity (6)",
         themeId: "tech",
-        delivery: "balanced",
+        pacing: "balanced",
         layout: "bento-panel",
         expectedLimit: 4,
       },
       {
-        label: "balanced delivery, takeover layout — no geometric term, pure delivery budget (4)",
+        label: "balanced pacing, takeover layout — no geometric term, pure pacing budget (4)",
         themeId: "consulting",
-        delivery: "balanced",
+        pacing: "balanced",
         layout: "image-split",
         image: true,
         expectedLimit: 4,
       },
-      // presentation delivery (editorial budget 3) — every content layout's
-      // own capacity is >= 4, so delivery always binds regardless of layout.
+      // spacious pacing (editorial budget 3) — every content layout's own
+      // capacity is >= 4, so pacing always binds regardless of layout.
       {
-        label: "presentation delivery, explicit generic layout — delivery's 3 always binds",
+        label: "spacious pacing, explicit generic layout — pacing's 3 always binds",
         themeId: "consulting",
-        delivery: "presentation",
+        pacing: "spacious",
         layout: "two-column",
         expectedLimit: 3,
       },
       {
-        label: "presentation delivery, explicit bento-panel — delivery's 3 always binds",
+        label: "spacious pacing, explicit bento-panel — pacing's 3 always binds",
         themeId: "tech",
-        delivery: "presentation",
+        pacing: "spacious",
         layout: "bento-panel",
         expectedLimit: 3,
       },
       {
-        label: "presentation delivery, auto-picked layout — delivery's 3 always binds",
+        label: "spacious pacing, auto-picked layout — pacing's 3 always binds",
         themeId: "consulting",
-        delivery: "presentation",
+        pacing: "spacious",
         expectedLimit: 3,
       },
       {
-        label: "presentation delivery, takeover layout — no geometric term, pure delivery budget (3)",
+        label: "spacious pacing, takeover layout — no geometric term, pure pacing budget (3)",
         themeId: "consulting",
-        delivery: "presentation",
+        pacing: "spacious",
         layout: "image-bottom",
         image: true,
         expectedLimit: 3,
@@ -225,7 +225,7 @@ describe("checkIrQuality", () => {
             ...paragraphs(n - (c.image ? 1 : 0)),
           ],
         })
-        const axes = deliveryAxes(c.delivery)
+        const axes = pacingAxes(c.pacing)
 
         const atLimit = makeIR([build(c.expectedLimit)], c.themeId)
         expect(codes(checkIrQuality(atLimit, axes))).not.toContain("density")
@@ -235,19 +235,19 @@ describe("checkIrQuality", () => {
         expect(codes(issues)).toContain("density")
         const density = issues.find((i) => i.code === "density")!
         expect(density.density?.limit).toBe(c.expectedLimit)
-        expect(density.density?.delivery).toBe(c.delivery)
+        expect(density.density?.pacing).toBe(c.pacing)
         expect(density.message).toContain(String(c.expectedLimit))
       })
     }
 
-    it("auto-selected bento-panel under balanced delivery: limit is 4 (delivery), not 6 (the layout's own capacity)", () => {
+    it("auto-selected bento-panel under balanced pacing: limit is 4 (pacing), not 6 (the layout's own capacity)", () => {
       // The headline case spec §5's W3 amendment calls out by name: a
       // generous-looking auto-picked layout must not let editorial
       // discipline slip. Confirms the fixture really lands on bento-panel
       // (guards this test against silently testing the wrong branch if the
       // selection algorithm or tech's curated set ever changes).
       const heading = findAutoPickHeading("tech", "bento-panel")
-      const axes = deliveryAxes("balanced")
+      const axes = pacingAxes("balanced")
       const build = (n: number): Slide => ({ type: "content", heading, components: paragraphs(n) })
 
       const atLimit = makeIR([build(4)], "tech")
@@ -261,7 +261,7 @@ describe("checkIrQuality", () => {
       expect(density.limit).toBe(4)
       expect(density.layoutId).toBe("bento-panel")
       expect(density.layoutCapacity).toBe(6)
-      expect(density.deliveryBudget).toBe(4)
+      expect(density.pacingBudget).toBe(4)
     })
 
     it("a pinned takeover id with no image component falls through to archetype auto-pick (mirrors FullSlideSvg's own fallback — validate=render)", () => {
@@ -271,7 +271,7 @@ describe("checkIrQuality", () => {
       // back to tech's curated content set, landing on two-column
       // (capacity 4), not the takeover's "no geometric term" behavior.
       const heading = findAutoPickHeading("tech", "two-column")
-      const axes = deliveryAxes("balanced")
+      const axes = pacingAxes("balanced")
       const build = (n: number): Slide => ({
         type: "content",
         heading,
@@ -289,7 +289,7 @@ describe("checkIrQuality", () => {
       expect(issues.find((i) => i.code === "density")!.density?.layoutId).toBe("two-column")
     })
 
-    it("scenario omitted defaults to the general preset (briefing x balanced x public) — density limit 4", () => {
+    it("narrative omitted defaults to the general preset (briefing x balanced x public) — density limit 4", () => {
       const atLimit = makeIR([{ type: "content", heading: "标题", components: paragraphs(4) }])
       expect(codes(checkIrQuality(atLimit))).not.toContain("density")
 
@@ -298,7 +298,7 @@ describe("checkIrQuality", () => {
       expect(codes(issues)).toContain("density")
       const density = issues.find((i) => i.code === "density")!.density!
       expect(density.limit).toBe(4)
-      expect(density.delivery).toBe("balanced")
+      expect(density.pacing).toBe("balanced")
     })
 
     it("does NOT warn density for a non-content slide regardless of component count (density gate is content-only)", () => {
@@ -307,16 +307,16 @@ describe("checkIrQuality", () => {
     })
   })
 
-  // ── bullets (W3 task 3: reads DELIVERY_BUDGETS[delivery].bullets instead of the old flat CAPACITY.bullets) ──
+  // ── bullets (W3 task 3: reads PACING_BUDGETS[pacing].bullets instead of the old flat CAPACITY.bullets) ──
 
   describe("bullets gate matrix", () => {
-    const deliveries: Delivery[] = ["text", "balanced", "presentation"]
+    const pacings: Pacing[] = ["dense", "balanced", "spacious"]
 
-    for (const delivery of deliveries) {
-      const budget = DELIVERY_BUDGETS[delivery]
-      const axes = deliveryAxes(delivery)
+    for (const pacing of pacings) {
+      const budget = PACING_BUDGETS[pacing]
+      const axes = pacingAxes(pacing)
 
-      it(`${delivery} delivery: does NOT warn bullets_overflow at exactly ${budget.bullets.maxItems} items`, () => {
+      it(`${pacing} pacing: does NOT warn bullets_overflow at exactly ${budget.bullets.maxItems} items`, () => {
         const ir = makeIR([
           {
             type: "content",
@@ -329,7 +329,7 @@ describe("checkIrQuality", () => {
         expect(codes(checkIrQuality(ir, axes))).not.toContain("bullets_overflow")
       })
 
-      it(`${delivery} delivery: warns bullets_overflow at ${budget.bullets.maxItems + 1} items, naming the delivery`, () => {
+      it(`${pacing} pacing: warns bullets_overflow at ${budget.bullets.maxItems + 1} items, naming the pacing`, () => {
         const ir = makeIR([
           {
             type: "content",
@@ -344,13 +344,13 @@ describe("checkIrQuality", () => {
         const issue = issues.find((i) => i.code === "bullets_overflow")!
         expect(issue.message).toContain(String(budget.bullets.maxItems))
         expect(issue.bulletsBudget).toEqual({
-          delivery,
+          pacing,
           maxItems: budget.bullets.maxItems,
           maxUnitsPerItem: budget.bullets.maxUnitsPerItem,
         })
       })
 
-      it(`${delivery} delivery: does NOT warn bullet_item_long at exactly ${budget.bullets.maxUnitsPerItem} measureTextUnits`, () => {
+      it(`${pacing} pacing: does NOT warn bullet_item_long at exactly ${budget.bullets.maxUnitsPerItem} measureTextUnits`, () => {
         const ok = "长".repeat(budget.bullets.maxUnitsPerItem) // CJK weight = 1.0/字
         const ir = makeIR([
           { type: "content", heading: "列表页", components: [{ type: "bullets", items: [ok] }] },
@@ -358,7 +358,7 @@ describe("checkIrQuality", () => {
         expect(codes(checkIrQuality(ir, axes))).not.toContain("bullet_item_long")
       })
 
-      it(`${delivery} delivery: warns bullet_item_long over ${budget.bullets.maxUnitsPerItem} measureTextUnits`, () => {
+      it(`${pacing} pacing: warns bullet_item_long over ${budget.bullets.maxUnitsPerItem} measureTextUnits`, () => {
         const long = "长".repeat(budget.bullets.maxUnitsPerItem + 1)
         const ir = makeIR([
           { type: "content", heading: "列表页", components: [{ type: "bullets", items: [long] }] },
@@ -367,11 +367,11 @@ describe("checkIrQuality", () => {
         expect(codes(issues)).toContain("bullet_item_long")
         const issue = issues.find((i) => i.code === "bullet_item_long")!
         expect(issue.severity).toBe("warn")
-        expect(issue.bulletsBudget?.delivery).toBe(delivery)
+        expect(issue.bulletsBudget?.pacing).toBe(pacing)
       })
     }
 
-    it("scenario omitted defaults to the general preset (balanced) bullets budget — maxItems 5", () => {
+    it("narrative omitted defaults to the general preset (balanced) bullets budget — maxItems 5", () => {
       const ir = makeIR([
         {
           type: "content",
@@ -382,7 +382,7 @@ describe("checkIrQuality", () => {
       const issues = checkIrQuality(ir)
       expect(codes(issues)).toContain("bullets_overflow")
       expect(issues.find((i) => i.code === "bullets_overflow")!.bulletsBudget).toEqual({
-        delivery: "balanced",
+        pacing: "balanced",
         maxItems: 5,
         maxUnitsPerItem: 40,
       })
@@ -533,8 +533,8 @@ describe("checkIrQuality", () => {
 
   // ── multiple issues on one slide ──
 
-  it("can report multiple issues on a single slide (default scenario: general/balanced)", () => {
-    const budget = DELIVERY_BUDGETS.balanced
+  it("can report multiple issues on a single slide (default narrative: general/balanced)", () => {
+    const budget = PACING_BUDGETS.balanced
     const ir = makeIR([
       {
         type: "content",

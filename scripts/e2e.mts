@@ -148,7 +148,7 @@ if (sharpMod) {
   await sharpMod(PNG_1PX).webp().toFile(webpPath)
 
   const webpDeck = {
-    version: "3",
+    version: "4",
     filename: "pptfast-webp-smoke",
     theme: { id: "consulting" },
     assets: { images: { smoke: { src: "smoke.webp" } } },
@@ -337,7 +337,7 @@ if (!/audited 5 pages, 0 skipped, 0 findings/.test(cleanAudit.stdout)) {
 console.log("audit clean-deck leg OK (examples/basic.json exits 0)")
 
 const lowContrastDeck = {
-  version: "3",
+  version: "4",
   filename: "pptfast-e2e-audit-low-contrast",
   // Near consulting's own colors.bg (#F7F7F2) — validate-legal (theme.style
   // is a schema-open deep-partial override), renderer-level unreadable.
@@ -395,7 +395,7 @@ console.log("audit --json leg OK (machine-readable AuditReport, exit 1, low-cont
 console.log("--- structure-components leg ---")
 
 const structuresDeck = {
-  version: "3",
+  version: "4",
   filename: "pptfast-e2e-structure-components",
   theme: { id: "consulting" },
   slides: [

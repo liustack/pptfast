@@ -17,13 +17,13 @@ function tmp(): Promise<string> {
   return mkdtemp(join(tmpdir(), "pptfast-deckdir-"))
 }
 
-/** 4 pages clears the "presentation" delivery's page-count floor (spec §5:
+/** 4 pages clears the "spacious" pacing's page-count floor (spec §5:
  *  4-16), same fixture-sizing rationale as `plan/assemble.test.ts`'s own
  *  `makePlan` helper. */
 function makePlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: "1",
-    scenario: { delivery: "presentation" },
+    scenario: { pacing: "spacious" },
     theme: "consulting",
     filename: "q3-review",
     pages: [

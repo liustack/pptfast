@@ -19,8 +19,8 @@
  */
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { BrandSchema, COMPONENT_TYPES, MetaSchema, ScenarioAxesInputSchema } from "../ir"
-import { MODE_DEFINITIONS, resolveScenario, type Delivery, type Mode, type ScenarioAxes } from "../scenario"
+import { BrandSchema, COMPONENT_TYPES, MetaSchema, NarrativeProfileInputSchema } from "../ir"
+import { STRATEGY_DEFINITIONS, resolveNarrative, type Pacing, type Strategy, type NarrativeProfile } from "../scenario"
 import { CAPACITY } from "../svg/audit/capacity"
 import { LAYOUT_REGISTRY, type SlideType } from "../svg/layouts/registry"
 import { getInstalledThemeIds } from "../themes/definitions"
@@ -83,11 +83,15 @@ export type PlanPage = z.infer<typeof PlanPageSchema>
 export const DeckPlanSchema = z
   .object({
     version: z.literal("1").default("1"),
-    // Same open-schema/closed-semantic split as PptxIRSchema's `scenario`
-    // field — see `ScenarioAxesInputSchema`'s doc comment in `ir/index.ts`
+    // Same open-schema/closed-semantic split as PptxIRSchema's `narrative`
+    // field — see `NarrativeProfileInputSchema`'s doc comment in `ir/index.ts`
     // for the full rationale (reused verbatim here, not redefined, so the
-    // two can't drift apart).
-    scenario: z.union([z.string(), ScenarioAxesInputSchema]).optional(),
+    // two can't drift apart). Field name unchanged this task (`scenario`,
+    // not `narrative`) — spec §8.1's `DeckPlan`→`DeckSpec` rename (task 2)
+    // covers this field too. Its *value* is already in the new
+    // strategy/pacing vocabulary as of this task (vocabulary-v4 rename,
+    // task 1) — `resolveNarrative` below is what actually enforces that.
+    scenario: z.union([z.string(), NarrativeProfileInputSchema]).optional(),
     theme: z.string().optional(),
     filename: z.string().optional(),
     seed: z.number().int().optional(),
@@ -351,13 +355,13 @@ const LAYOUT_IDS: readonly string[] = Object.keys(LAYOUT_REGISTRY)
  * Focus vocabulary gate (spec §5): `focus` is optional authoring guidance
  * pointing a later fill/select step at a preferred component or layout —
  * when present it must resolve against one of three vocabularies: the
- * resolved mode's own tendency set (`MODE_DEFINITIONS[mode].tendencies`, W3
+ * resolved mode's own tendency set (`STRATEGY_DEFINITIONS[mode].tendencies`, W3
  * data), the full component-type vocabulary ({@link COMPONENT_TYPES}, 28
  * names), or the full layout-id vocabulary ({@link LAYOUT_IDS},
  * `LAYOUT_REGISTRY`'s keys).
  *
  * The mode tendency set is currently always a subset of the other two
- * (every entry in every `ModeDefinition.tendencies` array already resolves
+ * (every entry in every `StrategyDefinition.tendencies` array already resolves
  * against either component types or layout ids — see that field's own doc
  * comment in `scenario/index.ts`) — checked explicitly anyway, both because
  * the brief's wording keeps it a first-class term of the union (a future
@@ -366,8 +370,8 @@ const LAYOUT_IDS: readonly string[] = Object.keys(LAYOUT_REGISTRY)
  * one most useful to show first in the error message, ahead of the two much
  * longer global lists.
  */
-function checkFocusVocabulary(plan: DeckPlan, mode: Mode): PlanValidationIssue[] {
-  const tendencies = MODE_DEFINITIONS[mode].tendencies
+function checkFocusVocabulary(plan: DeckPlan, mode: Strategy): PlanValidationIssue[] {
+  const tendencies = STRATEGY_DEFINITIONS[mode].tendencies
   const errors: PlanValidationIssue[] = []
   plan.pages.forEach((page, i) => {
     if (page.focus === undefined) return
@@ -386,7 +390,7 @@ function checkFocusVocabulary(plan: DeckPlan, mode: Mode): PlanValidationIssue[]
   return errors
 }
 
-// ── hard gate: rhythm rotation (parameterized by mode's rhythmPolicy) ──
+// ── hard gate: rhythm rotation (parameterized by mode's beatPolicy) ──
 
 type DeclaredRhythmPage = { index: number; id: string; rhythm: PlanRhythm }
 
@@ -424,7 +428,7 @@ function declaredRhythmContentPages(plan: DeckPlan): DeclaredRhythmPage[] {
  * reports exactly one error naming every member, not one error per
  * overlapping triple within it.
  */
-function checkAlternatePolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[] {
+function checkAlternatePolicy(plan: DeckPlan, mode: Strategy): PlanValidationIssue[] {
   const seq = declaredRhythmContentPages(plan)
   const errors: PlanValidationIssue[] = []
   let i = 0
@@ -457,7 +461,7 @@ function checkAlternatePolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[]
  * "only checks the opening"). Vacuously fine when the plan has no content
  * pages at all (e.g. cover → chapter → ending).
  */
-function checkAnchorOpenPolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[] {
+function checkAnchorOpenPolicy(plan: DeckPlan, mode: Strategy): PlanValidationIssue[] {
   const firstContentIndex = plan.pages.findIndex((page) => page.type === "content")
   if (firstContentIndex === -1) return []
   const firstContent = plan.pages[firstContentIndex]!
@@ -484,7 +488,7 @@ function checkAnchorOpenPolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[
  * violation — there is nothing to compute a ratio over (same "absence never
  * violates" posture as every other policy here).
  */
-function checkAnchorSparsePolicy(plan: DeckPlan, mode: Mode): PlanValidationIssue[] {
+function checkAnchorSparsePolicy(plan: DeckPlan, mode: Strategy): PlanValidationIssue[] {
   const declared = declaredRhythmContentPages(plan)
   if (declared.length === 0) return []
   const anchorPages = declared.filter((page) => page.rhythm === "anchor")
@@ -512,12 +516,12 @@ function checkAnchorSparsePolicy(plan: DeckPlan, mode: Mode): PlanValidationIssu
  * hard-gate section, "rhythm-rotation rule parameterized by mode" — a single universal "no 3
  * same-rhythm pages in a row" rule would reject e.g. briefing's own correct
  * default, the exact self-contradiction the spec's codex-review pass
- * flagged, hence a per-`rhythmPolicy` rule set instead of one rule for
- * everyone). See `ModeDefinition.rhythmPolicy`'s own doc comment
+ * flagged, hence a per-`beatPolicy` rule set instead of one rule for
+ * everyone). See `StrategyDefinition.beatPolicy`'s own doc comment
  * (`scenario/index.ts`) for which of the five modes maps to which policy.
  */
-function checkRhythmRotation(plan: DeckPlan, mode: Mode): PlanValidationIssue[] {
-  const policy = MODE_DEFINITIONS[mode].rhythmPolicy
+function checkRhythmRotation(plan: DeckPlan, mode: Strategy): PlanValidationIssue[] {
+  const policy = STRATEGY_DEFINITIONS[mode].beatPolicy
   switch (policy) {
     case "uniform-dense":
     case "repetition-ok":
@@ -542,20 +546,20 @@ function checkRhythmRotation(plan: DeckPlan, mode: Mode): PlanValidationIssue[] 
 // ── hard gate: page count vs delivery ───────────────────────────────────
 
 /**
- * Deck-level page-count range per delivery (spec §5's delivery table,
- * initial values — "text 8-30 / balanced 6-24 / presentation 4-16", not yet
- * tuned against real usage). Independent of `DELIVERY_BUDGETS`
+ * Deck-level page-count range per delivery (spec §5's pacing table,
+ * initial values — "dense 8-30 / balanced 6-24 / spacious 4-16", not yet
+ * tuned against real usage). Independent of `PACING_BUDGETS`
  * (`scenario/index.ts`, per-slide component-count/bullets editorial
  * budget) — this is a separate, deck-wide page-count concern the spec calls
  * out as its own hard gate ("page count vs. delivery recommended range").
  */
-export const PLAN_PAGE_COUNT_RANGE: Record<Delivery, { min: number; max: number }> = {
-  text: { min: 8, max: 30 },
+export const PLAN_PAGE_COUNT_RANGE: Record<Pacing, { min: number; max: number }> = {
+  dense: { min: 8, max: 30 },
   balanced: { min: 6, max: 24 },
-  presentation: { min: 4, max: 16 },
+  spacious: { min: 4, max: 16 },
 }
 
-function checkPageCount(plan: DeckPlan, delivery: Delivery): PlanValidationIssue[] {
+function checkPageCount(plan: DeckPlan, delivery: Pacing): PlanValidationIssue[] {
   const { min, max } = PLAN_PAGE_COUNT_RANGE[delivery]
   const n = plan.pages.length
   if (n >= min && n <= max) return []
@@ -625,23 +629,23 @@ export function validatePlan(input: unknown): PlanValidateResult {
   // Scenario resolution (spec §5's defaults chain), same open-schema/
   // closed-semantic split as validateIr's own (api.ts) — see that
   // function's comment for the full rationale. `plan.scenario`'s inferred
-  // type is wider than `resolveScenario`'s parameter — safe to narrow here
-  // because `resolveScenario` validates every key/value itself at runtime.
-  let resolvedAxes: ScenarioAxes
+  // type is wider than `resolveNarrative`'s parameter — safe to narrow here
+  // because `resolveNarrative` validates every key/value itself at runtime.
+  let resolvedAxes: NarrativeProfile
   try {
-    resolvedAxes = resolveScenario(plan.scenario as string | Partial<ScenarioAxes> | undefined)
+    resolvedAxes = resolveNarrative(plan.scenario as string | Partial<NarrativeProfile> | undefined)
   } catch (err) {
     if (!(err instanceof PptfastError)) throw err
     return { ok: false, errors: [{ path: "scenario", message: err.message }] }
   }
 
-  const rhythmErrors = checkRhythmRotation(plan, resolvedAxes.mode)
+  const rhythmErrors = checkRhythmRotation(plan, resolvedAxes.strategy)
   if (rhythmErrors.length > 0) return { ok: false, errors: rhythmErrors }
 
-  const focusErrors = checkFocusVocabulary(plan, resolvedAxes.mode)
+  const focusErrors = checkFocusVocabulary(plan, resolvedAxes.strategy)
   if (focusErrors.length > 0) return { ok: false, errors: focusErrors }
 
-  const pageCountErrors = checkPageCount(plan, resolvedAxes.delivery)
+  const pageCountErrors = checkPageCount(plan, resolvedAxes.pacing)
   if (pageCountErrors.length > 0) return { ok: false, errors: pageCountErrors }
 
   return { ok: true, plan, errors: [] }

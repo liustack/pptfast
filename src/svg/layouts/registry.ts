@@ -27,19 +27,21 @@
  */
 
 // Type-only import from the shared leaf tuple module (not `@/scenario`
-// itself, which owns the nominal `Mode` type this mirrors structurally) —
-// W4 import-cycle precedent: `src/themes/definitions.ts` imports this
+// itself, which owns the nominal `Strategy` type this mirrors structurally)
+// — W4 import-cycle precedent: `src/themes/definitions.ts` imports this
 // registry (`getLayout`), so this registry importing `@/scenario` (which
 // could plausibly grow a reason to read theme/layout data back some day)
 // would risk the same scenario↔consumer cycle W3 already broke once by
-// carving `src/ir/scenario-values.ts` out as a dependency-free leaf. `Mode`
-// here and `@/scenario`'s own `Mode` are the exact same literal union
-// (derived from the identical tuple) — TypeScript's structural typing makes
-// them freely interchangeable at every call site, so no cast is ever needed
-// where the two meet (`effective-layout.ts`'s `resolveArchetypeId`).
-import type { MODE_VALUES } from "@/ir/scenario-values"
+// carving `src/ir/narrative-values.ts` (renamed from `scenario-values.ts` in
+// the vocabulary-v4 rename, task 1) out as a dependency-free leaf.
+// `Strategy` here and `@/scenario`'s own `Strategy` are the exact same
+// literal union (derived from the identical tuple) — TypeScript's
+// structural typing makes them freely interchangeable at every call site, so
+// no cast is ever needed where the two meet (`effective-layout.ts`'s
+// `resolveArchetypeId`).
+import type { STRATEGY_VALUES } from "@/ir/narrative-values"
 
-export type Mode = (typeof MODE_VALUES)[number]
+export type Strategy = (typeof STRATEGY_VALUES)[number]
 
 export type SlideType = "cover" | "chapter" | "content" | "ending"
 
@@ -87,7 +89,7 @@ export interface LayoutSlot {
   /** component type names this slot accepts, or "any" */
   accepts: readonly string[] | "any"
   /** declarative editorial capacity — how many components this slot holds. W3's
-   *  min(delivery editorial budget, layout capacity) gate is the consumer —
+   *  min(pacing editorial budget, layout capacity) gate is the consumer —
    *  absent = chrome slot, not subject to counting. */
   capacity?: number
   /** for image slots: today's two coexisting conventions (inventory §variant 速查) */
@@ -107,31 +109,31 @@ export interface LayoutDefinition {
   /**
    * Auto-selection scenario allowlist (W4, spec §6 step 4's rare
    * `scenarios_only` hard constraint — distinct from the soft ×3/×1
-   * `layoutTendencies` weighting in `MODE_DEFINITIONS`, `src/scenario`):
+   * `layoutTendencies` weighting in `STRATEGY_DEFINITIONS`, `src/scenario`):
    * when set, `resolveArchetypeId` (`../effective-layout.ts`) drops this
-   * layout from the auto-pick pool unless the resolved scenario's `mode` is
-   * a member. An explicit `slide.layout` pin bypasses selection entirely
-   * (spec §3: "显式指定不经选型"), so this field never blocks a pin — only
-   * auto-pick. `undefined` (every built-in layout today — the mechanism
-   * lands ahead of any real consumer) means unrestricted: every mode is
-   * eligible. See {@link filterByScenariosOnly} for the pure filter this
-   * field feeds.
+   * layout from the auto-pick pool unless the resolved narrative's
+   * `strategy` is a member. An explicit `slide.layout` pin bypasses
+   * selection entirely (spec §3: "显式指定不经选型"), so this field never
+   * blocks a pin — only auto-pick. `undefined` (every built-in layout today
+   * — the mechanism lands ahead of any real consumer) means unrestricted:
+   * every strategy is eligible. See {@link filterByScenariosOnly} for the
+   * pure filter this field feeds.
    */
-  scenariosOnly?: readonly Mode[]
+  scenariosOnly?: readonly Strategy[]
 }
 
 /**
  * Pure `scenariosOnly` filter (W4, spec §6 step 4's hard constraint): keep a
- * layout when its `scenariosOnly` is unset, drop it when set and `mode` is
- * not a member. Generic over any `scenariosOnly`-shaped record (not just
+ * layout when its `scenariosOnly` is unset, drop it when set and `strategy`
+ * is not a member. Generic over any `scenariosOnly`-shaped record (not just
  * `LayoutDefinition`) so a unit test can exercise it against synthetic
  * fixtures without touching the real registry.
  */
-export function filterByScenariosOnly<T extends { scenariosOnly?: readonly Mode[] }>(
+export function filterByScenariosOnly<T extends { scenariosOnly?: readonly Strategy[] }>(
   defs: readonly T[],
-  mode: Mode,
+  strategy: Strategy,
 ): T[] {
-  return defs.filter((def) => def.scenariosOnly === undefined || def.scenariosOnly.includes(mode))
+  return defs.filter((def) => def.scenariosOnly === undefined || def.scenariosOnly.includes(strategy))
 }
 
 /** Chrome slots (label/rule/meta/decor/watermark/rail) are never fed by an
@@ -497,7 +499,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 // `body` slot `capacity` (W2 task 5 — filling the placeholder task 1 left
 // here): declarative authoring-time metadata only, same convention as the
 // `hero`/`strip`/`grid`/`annotation` slots below — consumed since W3 by the
-// validate-layer `min(delivery editorial budget, layout capacity)` quality
+// validate-layer `min(pacing editorial budget, layout capacity)` quality
 // gate (ir-quality.ts via effective-layout.ts). Numbers are the
 // geometry-honest per-layout component count, sourced from the pre-W3
 // CAPACITY table's derivations (not invented fresh):
@@ -505,7 +507,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     tone-adaptive-content, plus stacked-poster's degrade path (this file's
 //     own comment on that entry already establishes it behaves like the
 //     other four "all" archetypes once it falls back to SvgContent): 4,
-//     mirroring the former `CAPACITY.maxBlocksPerSlide` (deleted in W3 — the editorial side now lives in DELIVERY_BUDGETS) — audit/capacity.ts's flat,
+//     mirroring the former `CAPACITY.maxBlocksPerSlide` (deleted in W3 — the editorial side now lives in PACING_BUDGETS) — audit/capacity.ts's flat,
 //     theme-independent default (`floor(minRectH / perBlock)`, the shared
 //     derivation for every linear-stack theme).
 //   - two-column: 4 too — the arrangement splits components into 2 narrower
@@ -524,13 +526,13 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     lesser invented one.
 //     Final semantics (W4, recorded once the full-set rollout made
 //     bento-panel reachable from every theme, not just tech): this capacity-6
-//     ceiling never actually binds the `min(delivery editorial budget, layout
-//     capacity)` density gate. `DELIVERY_BUDGETS`'s loosest delivery
-//     (`text`) tops out at 5 components/slide — still under 6 — so every
-//     delivery's own editorial budget wins the `min()` for this archetype
-//     (5/4/3 for text/balanced/presentation, never 6). The number above is
+//     ceiling never actually binds the `min(pacing editorial budget, layout
+//     capacity)` density gate. `PACING_BUDGETS`'s loosest pacing
+//     (`dense`) tops out at 5 components/slide — still under 6 — so every
+//     pacing's own editorial budget wins the `min()` for this archetype
+//     (5/4/3 for dense/balanced/spacious, never 6). The number above is
 //     bento-panel's true geometric ceiling and stays for documentation and
-//     for any future delivery tier looser than 5, but no deck can reach it
+//     for any future pacing tier looser than 5, but no deck can reach it
 //     through today's gate.
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
