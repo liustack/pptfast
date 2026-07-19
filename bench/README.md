@@ -48,6 +48,26 @@ First-shot quality under the SKILL's own self-check loop (the model's own `valid
 iterations, run by the model itself as part of its normal workflow) is the thing this benchmark
 measures — a human correcting the output after the fact would measure the human, not the model.
 
+### Harness role
+
+The harness plays the user for any turn where the model-under-test stops and waits on a human
+reply. `skills/pptfast/SKILL.md` Phase 2 asks the model to propose a plan and confirm it before
+writing page content — a single-shot harness has no human to supply that confirmation, so the
+harness scripts it instead, with exactly two fixed lines, used verbatim:
+
+- If the model-under-test's turn is asking for confirmation of a plan it just proposed (the
+  Phase 2 "propose and confirm" gate), reply: `Plan confirmed, proceed.`
+- For any other clarifying question the model asks, reply: `Proceed with your best judgment.`
+
+Both lines are fixed and verbatim across every harness implementation and every question — no
+paraphrasing, no tailoring to the specific question, no improvised detail. This scripted
+exchange is part of the standard run protocol, not a manual touch-up: it stands in for the one
+human turn the SKILL's own workflow expects, injected mechanically rather than by a person
+reading the model's output and deciding how to respond. The five deck-project questions (q03,
+q06, q08, q13, q17) additionally tell the model directly, inside the prompt itself, that its
+plan is pre-approved once it validates, so a harness with no scripted-reply turn at all (a true
+single-shot, no-second-message harness) still gets a runnable question.
+
 ## Question bank schema (`meta.json`)
 
 ```jsonc

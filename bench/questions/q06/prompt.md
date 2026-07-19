@@ -6,4 +6,4 @@ The arc needs to be honest about how rough the year started — a difficult layo
 
 This needs to land emotionally for a room that lived through the hard parts, not just report metrics at them.
 
-Because the head of comms wants to approve the story's shape — which beat goes where, what builds to what — before a single page gets written in full, please share the structural plan first for sign-off, then fill in content once that's approved. Expect a couple of rounds of page-level notes after a first pass.
+Because the head of comms wants to approve the story's shape — which beat goes where, what builds to what — before a single page gets written in full, please share the structural plan first for sign-off, then fill in content once that's approved. Expect a couple of rounds of page-level notes after a first pass. Treat the plan as pre-approved once it validates — no confirmation round trip is available.
