@@ -29,7 +29,7 @@ A plan page with no matching `pages/<id>.json` file assembles into `{ placeholde
 
 ## Locked fields
 
-`type` and `heading` are plan-owned (`LOCKED_KEYS`, `src/plan/assemble.ts:138`) — a page file that redeclares either (even set to `undefined`, caught via `Object.hasOwn`, not `!== undefined`) throws before assembly proceeds. `PageContent` (`assemble.ts:57-64`) is the exhaustive shape a page file may set: `components`, `layout`, `arrangement`, `background`, `image_side`, `footnote`.
+`type` and `heading` are plan-owned (`LOCKED_KEYS`, `src/plan/assemble.ts:138`) — a page file that redeclares either (even set to `undefined`, caught via `Object.hasOwn`, not `!== undefined`) throws before assembly proceeds. `PageContent` (`assemble.ts:57-65`) is the exhaustive shape a page file may set: `components`, `layout`, `arrangement`, `background`, `image_side`, `footnote`, `notes` (speaker notes — content, not locked, exported as native PowerPoint speaker notes, never rendered onto the canvas SVG).
 
 ## `~/.pptfast` home and four-layer config
 

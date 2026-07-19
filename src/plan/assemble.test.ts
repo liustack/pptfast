@@ -190,6 +190,24 @@ describe("assembleDeck", () => {
       expect(kpi.subheading).toBeUndefined()
     })
 
+    it("passes notes through as plain content — never locked, never rendered onto the canvas", () => {
+      const pages: Record<string, PageContent> = {
+        "p-kpi": {
+          components: [{ type: "paragraph", text: "Revenue grew 12% QoQ" }],
+          notes: "mention the FX headwind before Q&A",
+        },
+      }
+      const { ir } = assembleDeck(makePlan(), pages)
+      const kpi = ir.slides.find((s) => s.id === "p-kpi")
+      expect(kpi?.notes).toBe("mention the FX headwind before Q&A")
+    })
+
+    it("omits notes cleanly when the page file doesn't set it", () => {
+      const { ir } = assembleDeck(makePlan(), { "p-kpi": { footnote: "unaudited" } })
+      const kpi = ir.slides.find((s) => s.id === "p-kpi")
+      expect(kpi?.notes).toBeUndefined()
+    })
+
     it("applies component-level schema defaults (e.g. image.fit) via the final IR parse", () => {
       const rawPages: Record<string, unknown> = {
         "p-kpi": { components: [{ type: "image", asset_id: "logo" }] },
@@ -437,6 +455,7 @@ describe("disassembleDeck", () => {
           heading: "Revenue is up",
           components: [{ type: "paragraph", text: "hi" }],
           footnote: "note",
+          notes: "mention the FX headwind",
         },
         { id: "p-ending", type: "ending", heading: "Thanks" },
       ],
@@ -452,7 +471,11 @@ describe("disassembleDeck", () => {
       { id: "p-kpi", type: "content", heading: "Revenue is up" },
       { id: "p-ending", type: "ending", heading: "Thanks" },
     ])
-    expect(pages["p-kpi"]).toEqual({ components: [{ type: "paragraph", text: "hi" }], footnote: "note" })
+    expect(pages["p-kpi"]).toEqual({
+      components: [{ type: "paragraph", text: "hi" }],
+      footnote: "note",
+      notes: "mention the FX headwind",
+    })
     expect(pages["p-cover"]).toEqual({})
     expect(pages["p-ending"]).toEqual({})
   })
@@ -539,6 +562,7 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
           layout: "kpi-strip",
           arrangement: "kpi_focus",
           footnote: "note",
+          notes: "mention the FX headwind",
         },
         { id: "p-gap", type: "content", heading: "Gap page", placeholder: true, subheading: "fill me in" },
         { id: "p-ending", type: "ending", heading: "End" },
@@ -561,6 +585,7 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
     const withoutLayout = (slides: typeof original.slides) =>
       slides.map(({ layout: _layout, ...rest }) => rest)
     expect(withoutLayout(reassembled.slides)).toEqual(withoutLayout(original.slides))
+    expect(reassembled.slides[1]?.notes).toBe("mention the FX headwind")
 
     // p-kpi's explicit pin came from an actual page file field (`raw.layout`
     // in `buildSlide`), so materialization skips it and it survives

@@ -61,6 +61,7 @@ export interface PageContent {
   background?: BackgroundSpec
   image_side?: "left" | "right"
   footnote?: string
+  notes?: string
 }
 
 export interface AssembleResult {
@@ -179,7 +180,7 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    a bare "Untitled".
  * 5. Present pages become a full slide: `id`/`type`/`heading` from the plan
  *    page (never the content record — see step 2), plus whichever of
- *    {@link PageContent}'s six fields the content record actually set.
+ *    {@link PageContent}'s seven fields the content record actually set.
  *    `rhythm`/`focus`/`summary` never reach the IR for a present page —
  *    they are plan-only authoring anchors (rhythm/focus steer a future
  *    fill/select step, summary is "for the fill step's own reading only"), not slide content.
@@ -364,6 +365,7 @@ function buildSlide(page: PlanPage, raw: PageContent | undefined): Record<string
     ...(raw.background !== undefined ? { background: raw.background } : {}),
     ...(raw.image_side !== undefined ? { image_side: raw.image_side } : {}),
     ...(raw.footnote !== undefined ? { footnote: raw.footnote } : {}),
+    ...(raw.notes !== undefined ? { notes: raw.notes } : {}),
   }
 }
 
@@ -516,7 +518,7 @@ export function disassembleDeck(ir: PptxIR): { plan: DeckPlan; pages: Record<str
   return { plan, pages }
 }
 
-/** Non-placeholder-slide half of {@link disassembleDeck} — the same six
+/** Non-placeholder-slide half of {@link disassembleDeck} — the same seven
  *  fields {@link buildSlide} injects, read back off the slide. `components`
  *  is included only when non-empty: `Slide.components` always defaults to
  *  `[]` (never `undefined`, `SlideSchema` in `../ir`), but that default and
@@ -531,5 +533,6 @@ function extractPageContent(slide: Slide): PageContent {
   if (slide.background !== undefined) content.background = slide.background
   if (slide.image_side !== undefined) content.image_side = slide.image_side
   if (slide.footnote !== undefined) content.footnote = slide.footnote
+  if (slide.notes !== undefined) content.notes = slide.notes
   return content
 }
