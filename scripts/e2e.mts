@@ -418,6 +418,10 @@ const v3Ir = {
 const v3IrPath = join(OUT, "migrate-v3-input.json")
 writeFileSync(v3IrPath, JSON.stringify(v3Ir))
 const v4OutPath = join(OUT, "migrate-v3-output.json")
+// Clean slate — a leftover output file from a previous run would falsify
+// both this call (should succeed on a fresh target) and the never-overwrite
+// check just below it (should fail only because *this run* just wrote it).
+rmSync(v4OutPath, { force: true })
 console.log(sh("node", ["dist/cli.js", "migrate", v3IrPath, "-o", v4OutPath]))
 const migratedV4 = JSON.parse(readFileSync(v4OutPath, "utf8")) as Record<string, unknown>
 if (migratedV4.version !== "4") {
