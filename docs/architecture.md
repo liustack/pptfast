@@ -64,12 +64,20 @@ non-default brand chrome. A new theme also needs a `layouts` entry in
 `LAYOUTS` (`src/themes/definitions.ts`) — that record stays total over
 `CanonicalThemeId`, so a missing entry fails to compile. Each of the four
 page types defaults to `FULL_LAYOUTS.<type>` (every registered archetype for
-that type) — pointing all four there is the norm (ten of the thirteen
-built-ins do exactly that). Narrowing one below the full set is a deliberate
-curation act, not a requirement — the other three (bloom/classroom/heritage)
-narrow only `chapter`, excluding one runway-native archetype whose contrast
-doesn't clear their accent color. The SDK registration seam (`registerTheme`,
-same file) mirrors this default: its `layouts` argument, and each of its four
-page-type entries, are independently optional and fall back to the same full
-set when omitted. Archetypes and components read only from tokens, so no
-archetype file changes.
+that type), and as of the post-v0.3 W8 fix round **all 13 built-ins point
+every page type there** — the last three chapter-only curation exclusions
+(bloom/classroom/heritage excluding `fashion-chapter`, an artifact of
+`readableOn`'s old fixed-luminance threshold) were reverted once `src/svg/ink.ts`'s
+real dual-ink contrast comparison confirmed all three clear 3:1 without the
+exclusion (`src/themes/definitions.ts:70-95` has the full history). Narrowing
+a page type below the full set is still supported and stays a deliberate
+curation act, not a requirement — see `docs/contrast-system.md` for why a
+narrowing usually turns out to be a contrast bug in disguise rather than a
+real design constraint. The SDK registration seam (`registerTheme`,
+same file) mirrors the full-set default: its `layouts` argument, and each of
+its four page-type entries, are independently optional and fall back to the
+same full set when omitted. Archetypes and components read only from tokens,
+so no archetype file changes.
+
+See `docs/concepts.md` for the fuller v0.3 theme/layout/component/scenario
+vocabulary this section assumes.

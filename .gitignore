@@ -1,7 +1,44 @@
+# dependencies
 node_modules/
+
+# build output
 dist/
-.issues/
-skills/**/outputs/
-*.log
-.DS_Store
 .e2e-out/
+
+# generated outputs
+skills/**/outputs/
+
+# logs
+*.log
+
+# lockfiles from other package managers
+bun.lockb
+bun.lock
+package-lock.json
+
+# environment variables
+.env
+.env.production
+.dev.vars
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode
+.venv
+
+# framework / deploy caches
+.astro/
+.netlify/
+.wrangler
+
+# test output
+test-output
+test/output
+coverage/
+
+# agent workspaces (local, never committed)
+.agent/
+.issues/
+.superpowers
+.claude/settings.local.json
