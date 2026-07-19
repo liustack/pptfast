@@ -778,3 +778,106 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
     expect(affected).toEqual([])
   })
 })
+
+// Coverage-completeness addition (final-review Major finding, whole-branch
+// review of `fix/post-v03-backlog` — independently discovered, not caught by
+// task 2's own review, resolved as this same backlog item 1's own sub-branch
+// fix, `.issues/notes/2026-07-18-post-v03-backlog.md` #1): the review's own
+// words were "`full-matrix-contrast.test.ts` (the wave's own dedicated
+// regression net for exactly this defect class) — grepped for `"asset"` —
+// zero matches; its sweep never constructs a content/ending slide with an
+// asset background." `resolveOverrideBackgroundHex`'s asset branch used to
+// return `tokens.colors.surface` for a per-slide asset-background override —
+// unrelated to what a content slide actually paints behind text in that case
+// (`Background.tsx`'s auto-scrim, colored `themeDefaultBg` — see
+// `FullSlideSvg.tsx`'s own `autoScrimColor` assignment and
+// `resolveOverrideBackgroundHex`'s "Asset policy rationale" doc comment).
+// This sweep closes exactly that gap: every content archetype, every theme,
+// with a real asset background (a data-URI `<image>`, not the missing-asset
+// placeholder rect) through the real `auditDeck` pipeline.
+//
+// Scoped to `content` only, not `ending` (though the underlying mechanism —
+// a non-takeover asset background's auto-scrim — applies identically to
+// both slide types, see `FullSlideSvg.tsx`'s own "content/ending 的 asset
+// 背景维持 P1 雾面 scrim" comment): grepping every `ctx.defaultBg`/
+// `defaultBg` reference under `src/svg/archetypes/` (same methodology the
+// review itself used) finds zero `ending-*.tsx` consumers today, so an
+// `ending` sweep here would render successfully but could never actually
+// exercise the fixed code path — indistinguishable from a vacuous check.
+// `resolveOverrideBackgroundHex`'s own direct unit tests
+// (`FullSlideSvg.test.tsx`) cover the `asset` branch regardless of which
+// slide type calls it, so the fix itself is not undertested for `ending` —
+// only this particular real-render net is narrowed to where it can actually
+// discriminate today. A future `ending` archetype that starts reading
+// `ctx.defaultBg` should extend this block, not silently rely on it.
+//
+// Expected to stay green both before and after the fix, by the review's own
+// quantified analysis (independently reproduced while building this fix, via
+// a throwaway probe script computing `contrastRatio` for every theme's
+// `colors.accent`/`colors.primary` against both `colors.surface` and the
+// real `themeDefaultBg`): today's real flips are either latent
+// (academic/campaign's dangerous-direction flip needs a >=24px subheading no
+// current content archetype requests — every real subheading call site is
+// 20-22px) or cosmetic-safe (insight/luxe's flip swaps *which* ink renders,
+// from the theme's own accent/primary token to `readableOn`'s neutral pick,
+// never producing a sub-threshold pairing either way). This sweep's job is
+// durable regression coverage against a *future* archetype/theme combination
+// crossing into the dangerous direction, not red-then-green proof for *this*
+// fix — see `FullSlideSvg.test.tsx`'s dedicated
+// `resolveOverrideBackgroundHex`/`ctx.defaultBg` tests for that (independently
+// verified red pre-fix, green post-fix, by temporarily reverting the source
+// change and re-running).
+describe("asset-background content contrast (final-review Major finding, backlog item 1 sub-branch)", () => {
+  const ASSET_BG: Slide["background"] = { kind: "asset", asset_id: "bg" }
+  const ASSET_IMAGES: PptxIR["assets"] = { images: { bg: { src: "data:image/png;base64,AAAA" } } }
+
+  // `tone-adaptive-content` excluded — real, `auditDeck`-confirmed defect
+  // found while building this sweep, independently root-caused, but
+  // unrelated to this task's own fix (this file's own header documents the
+  // same "exclude, don't silently absorb" methodology for exactly this
+  // situation — see "kpi_cards... dragged in kpi.tsx's own unrelated,
+  // already-pinned defect" above). `content-tone-adaptive-content.tsx`'s
+  // `withBg` branch (real asset present, `hasBgImage(ir, slide)` true) paints
+  // a hardcoded-opaque `fill="#FFFFFF"` card and then, unlike its own
+  // subheading two lines below (correctly wrapped in
+  // `accessibleInk(colors.accent, "#FFFFFF", ...)`), fills its heading
+  // directly with the bare theme token `colors.text` (no `accessibleInk`
+  // wrap at all — confirmed by reading that file's `withBg` branch, line
+  // ~193) and threads `colors.text`/`colors.muted` into `SvgContent` (body/
+  // footer) the same unguarded way. Safe for the 9/13 themes whose
+  // `colors.text` is a dark token (correct for *their own* page backgrounds)
+  // — breaks for the 4 whose `colors.text` is light because *their* own
+  // surface is dark (`campaign`/`insight`/`luxe`/`tech`, confirmed by
+  // grepping every theme's own `text:` token): a light token painted on this
+  // archetype's own hardcoded-white card measures ~1:1, not a near-miss.
+  // Reproduced directly (`campaign`, real render): heading/paragraph/bullets
+  // all render `fill="#FFFFFF"` on the `fill="#FFFFFF"` card. This is a real,
+  // live, non-latent finding — likely deserving its own fix-round entry, not
+  // silent exclusion — see this fix's own report/ledger note for the
+  // pointer; fixing it is out of this task's scope (different file,
+  // different root cause — a missing `accessibleInk`/hardcoded-ink
+  // guard, nothing to do with `ctx.defaultBg`, `resolveOverrideBackgroundHex`,
+  // or the auto-scrim this task's own fix touches).
+  const KNOWN_GAP_LAYOUTS = new Set(["tone-adaptive-content"])
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: content archetypes clear contrast against the real painted auto-scrim, not colors.surface`, () => {
+      const failures: string[] = []
+      for (const layout of THEME_DEFINITIONS[themeId].layouts.content) {
+        if (KNOWN_GAP_LAYOUTS.has(layout)) continue
+        const slide: Slide = {
+          type: "content",
+          heading: HEADING,
+          subheading: SUBHEADING,
+          layout,
+          components: CONTENT_BODY,
+          background: ASSET_BG,
+        } as Slide
+        const ir: PptxIR = { ...deckFor(themeId, slide), assets: ASSET_IMAGES }
+        const findings = auditFindings(ir).filter((f) => !isAllowlisted(themeId, layout, f))
+        for (const f of findings) failures.push(`${layout}: ${findingSummary(f)}`)
+      }
+      expect(failures).toEqual([])
+    })
+  }
+})
