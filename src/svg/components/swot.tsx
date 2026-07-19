@@ -146,18 +146,18 @@ function renderQuadrant(
 ): React.ReactElement {
   const panel = panelFill(q, ctx)
   const badge = badgeFill(q, ctx)
-  // No boxed badge shell: a BADGE×BADGE (34×34 = 1,156px²) rect sits well
-  // under `deck-audit.ts`'s MIN_BG_REGION_AREA (8,000px² — the same "a small
-  // badge/tag never registers as its own background region" limitation
-  // `full-matrix-contrast.test.ts`'s rail-numbered ALLOWLIST entry already
-  // documents), so any ink chosen against the badge's *own* strong fill
-  // would silently get graded against the *panel* underneath it instead —
-  // real, not just a lint nit: caught by this file's own dedicated 13-theme
-  // probe (`../audit/full-matrix-contrast.test.ts`'s "swot/bmc tinted-panel
-  // contrast") before this comment was written. The letter renders straight
-  // on the panel instead — its ink is computed against `panel`, the
-  // background it actually, verifiably sits on, so there is no possible
-  // mismatch between what's audited and what's rendered.
+  // No boxed badge shell: the letter renders straight on the panel, so its
+  // ink is computed against `panel`, the background it actually, verifiably
+  // sits on — no possible mismatch between what's audited and what's
+  // rendered. (Pre-bench-driven-fix-round, defect A, a boxed BADGE×BADGE,
+  // 34×34 = 1,156px², rect would have sat below `deck-audit.ts`'s
+  // MIN_BG_REGION_AREA and never been attributed its own text — that
+  // limitation is gone for text-background *attribution* now, see
+  // `PaintedShape`'s own doc comment; MIN_BG_REGION_AREA still gates only
+  // the separate, page-level `regions` table.) Locked empirically, not just
+  // by construction: this file's own dedicated 13-theme probe
+  // (`../audit/full-matrix-contrast.test.ts`'s "swot/bmc tinted-panel
+  // contrast") verifies it directly.
   const badgeInk = accessibleInk(badge, panel, BADGE_FONT)
   const titleInk = accessibleInk(ctx.colors.text, panel, TITLE_SIZE)
   const itemInk = accessibleInk(ctx.colors.text, panel, ITEM_SIZE)
