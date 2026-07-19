@@ -134,6 +134,60 @@ describe("migrateIrV3ToV4", () => {
     expect(v4.slides).toEqual(v3.slides)
   })
 
+  // spec §12 output row "speaker notes、动画、渐变和媒体去重不受影响" (task 4):
+  // migrateIrV3ToV4 only ever rewrites the root scenario/mode/delivery
+  // fields (spec §9.1) — speaker notes and gradient backgrounds live inside
+  // `slides[]`, the deck-level animation switch lives inside `meta`, and
+  // media-dedup source data lives inside `assets.images`, so the same
+  // generic "carries across unchanged" proof above already covers them
+  // structurally. This case makes that coverage explicit instead of
+  // implicit: a fixture that actually populates all four, asserting each
+  // survives migration byte-for-byte. Render-time behavior for these
+  // features (dedup logic, animation XML, gradient fill, notesSlide export)
+  // is unchanged code (spec §10) with its own dedicated test suites
+  // (generate-notes-export.test.ts, generate-animations.test.ts,
+  // generate-gradient-fallback.test.ts, pptx-dedupe-media.test.ts) — out of
+  // scope for a migration-function unit test, in scope only for "does the
+  // migration function preserve the data those suites depend on."
+  it("speaker notes, deck-level animation, gradient backgrounds, and duplicate media references all carry across unchanged", () => {
+    const v3 = baseV3({
+      meta: { organization: "ACME", animation: { transition: "push", elements: "auto" } },
+      assets: {
+        images: {
+          logo: { src: "data:image/png;base64,AAAA", alt: "logo" },
+          "logo-dup": { src: "data:image/png;base64,AAAA", alt: "logo again, same bytes" },
+        },
+      },
+      slides: [
+        {
+          type: "cover",
+          heading: "Cover",
+          notes: "speaker notes for the cover slide",
+          background: { kind: "gradient", from: "#111111", to: "#EEEEEE", direction: "diagonal" },
+          components: [],
+        },
+        {
+          type: "content",
+          heading: "Body",
+          notes: "speaker notes for the body slide",
+          components: [{ type: "paragraph", text: "hi" }],
+        },
+      ],
+    })
+    const v4 = migrateIrV3ToV4(v3)
+    expect(v4.meta).toEqual(v3.meta)
+    expect(v4.assets).toEqual(v3.assets)
+    expect(v4.slides).toEqual(v3.slides)
+    // Spot-assert the individual fields too, not just the container objects,
+    // so a future SlideSchema/MetaSchema field rename can't accidentally
+    // satisfy `toEqual` on two empty containers and hide a real regression.
+    expect(v4.meta?.animation).toEqual({ transition: "push", elements: "auto" })
+    expect(v4.assets?.images.logo.src).toBe(v4.assets?.images["logo-dup"]?.src)
+    expect(v4.slides[0]?.notes).toBe("speaker notes for the cover slide")
+    expect(v4.slides[0]?.background).toEqual({ kind: "gradient", from: "#111111", to: "#EEEEEE", direction: "diagonal" })
+    expect(v4.slides[1]?.notes).toBe("speaker notes for the body slide")
+  })
+
   it("omits brand/seed on the v4 output when the v3 input omits them (no synthesized defaults)", () => {
     const v4 = migrateIrV3ToV4(baseV3())
     expect(v4.brand).toBeUndefined()
