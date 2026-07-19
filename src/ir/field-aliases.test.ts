@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   COMPONENT_FIELD_ALIASES,
   COMPONENT_ITEM_FIELD_ALIASES,
+  SLIDE_FIELD_ALIASES,
   normalizeComponentAliases,
 } from "./field-aliases"
 import { PptxIRSchema } from "./index"
@@ -56,6 +57,64 @@ describe("COMPONENT_FIELD_ALIASES: every row round-trips", () => {
     }
     const actual = new Set(BLOCK_CASES.map((c) => `${c.type}.${c.alias}`))
     expect(actual).toEqual(expected)
+  })
+})
+
+// ── every SLIDE_FIELD_ALIASES row round-trips ───────────────────────────────
+
+interface SlideCase {
+  readonly alias: string
+  readonly slide: Record<string, unknown>
+  readonly expected: string
+}
+
+const SLIDE_CASES: readonly SlideCase[] = [
+  { alias: "note", slide: { type: "content", heading: "h", note: "say this out loud", components: [] }, expected: "say this out loud" },
+  { alias: "speaker_notes", slide: { type: "content", heading: "h", speaker_notes: "remember the Q3 caveat", components: [] }, expected: "remember the Q3 caveat" },
+  { alias: "speakerNotes", slide: { type: "content", heading: "h", speakerNotes: "pause here", components: [] }, expected: "pause here" },
+]
+
+describe("SLIDE_FIELD_ALIASES: every row round-trips", () => {
+  it.each(SLIDE_CASES)("$alias → notes", ({ alias, slide, expected }) => {
+    const input = deck([slide])
+    const { value, normalized } = normalizeComponentAliases(input)
+    expect(normalized).toEqual([`slides[0]: ${alias} → notes`])
+    const out = (value as any).slides[0]
+    expect(out.notes).toBe(expected)
+    expect(alias in out).toBe(false)
+    expect(PptxIRSchema.safeParse(value).success).toBe(true)
+  })
+
+  it("covers every SLIDE_FIELD_ALIASES row exactly once (fails if the table gains a row with no test)", () => {
+    const expected = new Set(Object.keys(SLIDE_FIELD_ALIASES))
+    const actual = new Set(SLIDE_CASES.map((c) => c.alias))
+    expect(actual).toEqual(expected)
+  })
+
+  it("both alias and canonical present: left untouched for zod strict to reject", () => {
+    const slide = { type: "content", heading: "h", notes: "real", note: "ignored", components: [] }
+    const input = deck([slide])
+    const { value, normalized } = normalizeComponentAliases(input)
+    expect(normalized).toEqual([])
+    expect(value).toBe(input)
+    expect(PptxIRSchema.safeParse(value).success).toBe(false)
+  })
+
+  it("applies alongside a component-level rewrite on the same slide", () => {
+    const slide = { type: "content", heading: "h", note: "say this", components: [{ type: "quote", content: "hello" }] }
+    const input = deck([slide])
+    const { value, normalized } = normalizeComponentAliases(input)
+    expect(normalized).toEqual(["slides[0]: note → notes", "slides[0].components[0]: content → text"])
+    const out = (value as any).slides[0]
+    expect(out.notes).toBe("say this")
+    expect(out.components[0]).toEqual({ type: "quote", text: "hello" })
+  })
+
+  it("a slide with no components array still gets its own notes alias rewritten", () => {
+    const input = deck([{ type: "content", heading: "h", note: "still works" }])
+    const { value, normalized } = normalizeComponentAliases(input)
+    expect(normalized).toEqual(["slides[0]: note → notes"])
+    expect((value as any).slides[0].notes).toBe("still works")
   })
 })
 
