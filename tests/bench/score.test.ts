@@ -207,6 +207,41 @@ describe("scoreQuestion — ambiguous artifact", () => {
   })
 })
 
+// ── scoreQuestion — local asset resolution (defect H, 2026-07-20 bench-driven
+// fixes wave): a relative assets.images[id].src must resolve against the
+// artifact's own directory, the same way real CLI `render` resolves it
+// (`resolveLocalAssets`, `../../src/cli/load-ir.ts`, called with `baseDir`
+// = the IR file's directory for a bare IR, or `readDeckDir`'s own `deckDir`
+// for a deck-project directory — both equal `resultDir` here). Before this
+// fix, `generatePptx` received the unresolved relative src untouched,
+// `inlinePptxAssets` tried to `fetch()` it as a URL, and the render failed —
+// misscoring a renderable artifact as `renderOk: false`. Both artifact
+// shapes get their own standalone fixture (fx96 bare IR, fx95 deck-project)
+// since `loadArtifact` dispatches between two entirely different code paths
+// (a raw `*.json` parse vs. `readDeckDir`) that both needed the fix.
+
+describe("scoreQuestion — bare IR with a relative local asset path resolves and renders (defect H)", () => {
+  it("fx96: assets.images.pic.src is a relative 'assets/pic.png' — resolves against resultDir and renders deterministically", async () => {
+    const score = await scoreQuestion("fx96", join(RESULTS_DIR, "green-model", "fx96"), undefined)
+    expect(score.reason).toBeUndefined()
+    expect(score.validatePass).toBe(true)
+    expect(score.renderOk).toBe(true)
+    expect(score.renderError).toBeUndefined()
+    expect(score.deterministic).toBe(true)
+  })
+})
+
+describe("scoreQuestion — deck-project directory with a relative local asset path resolves and renders (defect H)", () => {
+  it("fx95: assets/pic.png scanned by readDeckDir stays relative until the scorer resolves it against deckDir (== resultDir)", async () => {
+    const score = await scoreQuestion("fx95", join(RESULTS_DIR, "green-model", "fx95"), undefined)
+    expect(score.reason).toBeUndefined()
+    expect(score.validatePass).toBe(true)
+    expect(score.renderOk).toBe(true)
+    expect(score.renderError).toBeUndefined()
+    expect(score.deterministic).toBe(true)
+  })
+})
+
 // ── report generation shape ──
 
 describe("renderModelReport / renderSummaryReport", () => {
