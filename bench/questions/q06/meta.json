@@ -2,8 +2,8 @@
   "id": "q06",
   "title": "Year-in-Review All-Hands Story",
   "coverage": {
-    "mode": "narrative",
-    "delivery": "balanced",
+    "strategy": "storytelling",
+    "pacing": "balanced",
     "expects_components": [
       "timeline",
       "quote",

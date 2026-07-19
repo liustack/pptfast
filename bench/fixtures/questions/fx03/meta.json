@@ -2,8 +2,8 @@
   "id": "fx03",
   "title": "Fixture: audit-sensitive bare IR",
   "coverage": {
-    "mode": "instructional",
-    "delivery": "text",
+    "strategy": "instructional",
+    "pacing": "dense",
     "expects_components": ["row_cards", "kpi_cards"],
     "workflow": "bare-ir",
     "image_deck": false

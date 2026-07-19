@@ -2,8 +2,8 @@
   "id": "q02",
   "title": "Aria Pro Launch Keynote",
   "coverage": {
-    "mode": "showcase",
-    "delivery": "presentation",
+    "strategy": "showcase",
+    "pacing": "spacious",
     "expects_components": [
       "kpi_cards",
       "image",

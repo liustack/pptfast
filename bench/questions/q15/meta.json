@@ -2,8 +2,8 @@
   "id": "q15",
   "title": "University Recruiting Keynote",
   "coverage": {
-    "mode": "showcase",
-    "delivery": "presentation",
+    "strategy": "showcase",
+    "pacing": "spacious",
     "expects_components": [
       "image_grid",
       "kpi_cards",

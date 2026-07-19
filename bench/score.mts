@@ -77,8 +77,8 @@ function relativizeToRepoRoot(text: string): string {
 // ── question bank / self-reported meta shapes (bench/README.md's schema) ──
 
 export interface QuestionCoverage {
-  mode?: string
-  delivery?: string
+  strategy?: string
+  pacing?: string
   expects_components?: string[]
   workflow?: string
   image_deck?: boolean
@@ -477,13 +477,13 @@ export function renderModelReport(modelTag: string, scores: QuestionScore[]): st
   )
   lines.push("")
   lines.push(
-    "| id | mode | delivery | workflow | validatePass | validateErrors | auditFindings | renderOk | deterministic | coverageHits | tokens | duration_s | notes |",
+    "| id | strategy | pacing | workflow | validatePass | validateErrors | auditFindings | renderOk | deterministic | coverageHits | tokens | duration_s | notes |",
   )
   lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
   for (const s of scores) {
     const notes = [s.reason, s.renderError].filter((x): x is string => !!x).join(" / ")
     lines.push(
-      `| ${mdCell(s.id)} | ${mdCell(s.coverage?.mode)} | ${mdCell(s.coverage?.delivery)} | ${mdCell(s.coverage?.workflow)} | ` +
+      `| ${mdCell(s.id)} | ${mdCell(s.coverage?.strategy)} | ${mdCell(s.coverage?.pacing)} | ${mdCell(s.coverage?.workflow)} | ` +
         `${s.validatePass} | ${s.validateErrorCount} | ${s.auditFindingCount} | ${s.renderOk} | ` +
         `${s.deterministic === null ? "n/a" : s.deterministic} | ${mdCell(s.coverageHits.join(", "))} | ` +
         `${mdCell(s.self?.tokens)} | ${mdCell(s.self?.duration_seconds)} | ${mdCell(notes)} |`,

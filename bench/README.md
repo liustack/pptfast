@@ -29,14 +29,14 @@ For each question:
 1. Give the model-under-test exactly two things: `skills/pptfast/SKILL.md` and that question's
    `prompt.md`. Nothing else — no `meta.json`, no other question's prompt, no hints about which
    component or layout the question is aiming at.
-2. Let the model run the SKILL's workflow to completion: scenario/theme choice, plan (or a
-   direct bare IR file for a small deck, per the SKILL's own "skip the plan" allowance),
+2. Let the model run the SKILL's workflow to completion: narrative/theme choice, spec (or a
+   direct bare IR file for a small deck, per the SKILL's own "skip the spec" allowance),
    `pages/*.json`, `assemble`, `validate`, `render`, `audit` — whatever phases the model
    actually reaches.
 3. Save the resulting artifact into `bench/results/<model-tag>/<question-id>/`:
    - a bare IR file (any `.json` filename), or
-   - a full deck project directory (`deck.plan.json` + `pages/` + optional `assets/`), for
-     questions that asked for the plan-then-fill workflow.
+   - a full deck project directory (`deck.spec.json` + `pages/` + optional `assets/`), for
+     questions that asked for the spec-then-fill workflow.
 4. Optionally drop a `meta.json` alongside it with self-reported `{ tokens?, duration_seconds?,
    model? }`. This is passed through into reports verbatim — it is never scored, never used to
    adjust any pass/fail outcome.
@@ -51,12 +51,12 @@ measures — a human correcting the output after the fact would measure the huma
 ### Harness role
 
 The harness plays the user for any turn where the model-under-test stops and waits on a human
-reply. `skills/pptfast/SKILL.md` Phase 2 asks the model to propose a plan and confirm it before
+reply. `skills/pptfast/SKILL.md` Phase 2 asks the model to propose a spec and confirm it before
 writing page content — a single-shot harness has no human to supply that confirmation, so the
 harness scripts it instead, with exactly two fixed lines, used verbatim:
 
-- If the model-under-test's turn is asking for confirmation of a plan it just proposed (the
-  Phase 2 "propose and confirm" gate), reply: `Plan confirmed, proceed.`
+- If the model-under-test's turn is asking for confirmation of a spec it just proposed (the
+  Phase 2 "propose and confirm" gate), reply: `Spec confirmed, proceed.`
 - For any other clarifying question the model asks, reply: `Proceed with your best judgment.`
 
 Both lines are fixed and verbatim across every harness implementation and every question — no
@@ -65,8 +65,10 @@ exchange is part of the standard run protocol, not a manual touch-up: it stands 
 human turn the SKILL's own workflow expects, injected mechanically rather than by a person
 reading the model's output and deciding how to respond. The five deck-project questions (q03,
 q06, q08, q13, q17) additionally tell the model directly, inside the prompt itself, that its
-plan is pre-approved once it validates, so a harness with no scripted-reply turn at all (a true
-single-shot, no-second-message harness) still gets a runnable question.
+plan is pre-approved once it validates (the prompts' own wording — plain-English "plan", not the
+schema term — left as written per this file's "prompts stay untouched" discipline), so a harness
+with no scripted-reply turn at all (a true single-shot, no-second-message harness) still gets a
+runnable question.
 
 ## Question bank schema (`meta.json`)
 
@@ -75,8 +77,8 @@ single-shot, no-second-message harness) still gets a runnable question.
   "id": "q01",
   "title": "Q2 Budget Performance Review",
   "coverage": {
-    "mode": "pyramid",              // one of the 5 scenario modes (src/scenario)
-    "delivery": "presentation",     // one of the 3 delivery tiers
+    "strategy": "pyramid",          // one of the 5 narrative strategies (src/scenario)
+    "pacing": "spacious",           // one of the 3 pacing tiers
     "expects_components": ["kpi_cards", "waterfall", "verdict_banner"],
     "workflow": "bare-ir",          // "bare-ir" | "deck-project" — which path the prompt asks for
     "image_deck": false             // true if the prompt attaches image material
@@ -94,9 +96,9 @@ cells without re-deriving them from prompt text.
 
 ## Answer-leak discipline
 
-No `prompt.md` names a pptfast component type, layout id, or scenario/schema vocabulary word
+No `prompt.md` names a pptfast component type, layout id, or narrative/schema vocabulary word
 (`swot`, `bmc`, `gantt`, `waterfall`, `roadmap`, `matrix`, `timeline`, `bullets`, `kpi_cards`,
-`asset_id`, `layout`, `scenario`, `pyramid`/`narrative`/`instructional`/`showcase`/`briefing`,
+`asset_id`, `layout`, `narrative`, `pyramid`/`storytelling`/`instructional`/`showcase`/`briefing`,
 etc.). Every question is written as a working business ask in plain language — a strategy
 question describes strengths/weaknesses/opportunities/threats sitting together on one slide, a
 schedule question describes dated bars sharing one calendar axis — the same shape the SKILL's
@@ -106,35 +108,35 @@ and `meta.json` is never handed to the model-under-test (see run protocol above)
 
 ## Coverage matrix
 
-5 modes × 3 deliveries × 4 new components (each ≥1 natural-scenario question) × ≥2 image decks ×
+5 strategies × 3 pacings × 4 new components (each ≥1 natural-narrative question) × ≥2 image decks ×
 ≥3 deck-project-directory questions × 2-3 Chinese questions, across 20 questions — every cell
 met, several by the same question:
 
-| id | title | mode | delivery | lang | workflow | image | expects_components |
+| id | title | strategy | pacing | lang | workflow | image | expects_components |
 |---|---|---|---|---|---|---|---|
-| q01 | Q2 Budget Performance Review | pyramid | presentation | en | bare-ir | | kpi_cards, waterfall, verdict_banner |
-| q02 | Aria Pro Launch Keynote | showcase | presentation | en | bare-ir | yes | kpi_cards, image, verdict_banner |
+| q01 | Q2 Budget Performance Review | pyramid | spacious | en | bare-ir | | kpi_cards, waterfall, verdict_banner |
+| q02 | Aria Pro Launch Keynote | showcase | spacious | en | bare-ir | yes | kpi_cards, image, verdict_banner |
 | q03 | New-Hire Onboarding Curriculum | instructional | balanced | en | deck-project | | numbered_cards, row_cards |
-| q04 | Leadership Offsite Strategy Slide | pyramid | presentation | en | bare-ir | | swot |
-| q05 | Weekly Engineering Status Update | briefing | text | en | bare-ir | | bullets, row_cards |
-| q06 | Year-in-Review All-Hands Story | narrative | balanced | en | deck-project | | timeline, quote, image |
+| q04 | Leadership Offsite Strategy Slide | pyramid | spacious | en | bare-ir | | swot |
+| q05 | Weekly Engineering Status Update | briefing | dense | en | bare-ir | | bullets, row_cards |
+| q06 | Year-in-Review All-Hands Story | storytelling | balanced | en | deck-project | | timeline, quote, image |
 | q07 | 新业务方向内部评审 | pyramid | balanced | zh | bare-ir | | bmc |
-| q08 | Data Center Migration Runbook | instructional | text | en | deck-project | | gantt |
-| q09 | Checkout Outage Postmortem | briefing | text | en | bare-ir | | bullets, row_cards |
-| q10 | Brazil Market Entry Recommendation | pyramid | presentation | en | bare-ir | | chart, matrix, verdict_banner |
-| q11 | Open Enrollment Reference Guide | instructional | text | en | bare-ir | | numbered_cards, row_cards |
-| q12 | Annual Impact Report | narrative | balanced | en | bare-ir | yes | image, kpi_cards, quote |
-| q13 | Seed Round Pitch Deck | pyramid | presentation | en | deck-project | | kpi_cards, chart, comparison |
+| q08 | Data Center Migration Runbook | instructional | dense | en | deck-project | | gantt |
+| q09 | Checkout Outage Postmortem | briefing | dense | en | bare-ir | | bullets, row_cards |
+| q10 | Brazil Market Entry Recommendation | pyramid | spacious | en | bare-ir | | chart, matrix, verdict_banner |
+| q11 | Open Enrollment Reference Guide | instructional | dense | en | bare-ir | | numbered_cards, row_cards |
+| q12 | Annual Impact Report | storytelling | balanced | en | bare-ir | yes | image, kpi_cards, quote |
+| q13 | Seed Round Pitch Deck | pyramid | spacious | en | deck-project | | kpi_cards, chart, comparison |
 | q14 | 一线安全培训课程 | instructional | balanced | zh | bare-ir | | numbered_cards, row_cards |
-| q15 | University Recruiting Keynote | showcase | presentation | en | bare-ir | yes | image_grid, kpi_cards, image |
-| q16 | Weekly Support Metrics Brief | briefing | text | en | bare-ir | | kpi_cards, row_cards |
+| q15 | University Recruiting Keynote | showcase | spacious | en | bare-ir | yes | image_grid, kpi_cards, image |
+| q16 | Weekly Support Metrics Brief | briefing | dense | en | bare-ir | | kpi_cards, row_cards |
 | q17 | H2 Engineering Planning Review | pyramid | balanced | en | deck-project | | roadmap |
-| q18 | 内部工程师认证课程手册 | instructional | text | zh | bare-ir | | numbered_cards |
-| q19 | Annual Shareholder Meeting Keynote | narrative | presentation | en | bare-ir | | quote, verdict_banner |
+| q18 | 内部工程师认证课程手册 | instructional | dense | zh | bare-ir | | numbered_cards |
+| q19 | Annual Shareholder Meeting Keynote | storytelling | spacious | en | bare-ir | | quote, verdict_banner |
 | q20 | Analytics Dashboard Launch Readiness Review | showcase | balanced | en | bare-ir | | kpi_cards, row_cards |
 
-Totals: mode — pyramid 6, instructional 5, briefing 3, narrative 3, showcase 3 (all ≥3).
-delivery — presentation 7, balanced 7, text 6 (all ≥5). New components — swot ×1 (q04), bmc ×1
+Totals: strategy — pyramid 6, instructional 5, briefing 3, storytelling 3, showcase 3 (all ≥3).
+pacing — spacious 7, balanced 7, dense 6 (all ≥5). New components — swot ×1 (q04), bmc ×1
 (q07), waterfall ×1 (q01), gantt ×1 (q08) (all ≥1). Image decks — 3 (q02, q12, q15, ≥2).
 Deck-project-directory — 5 (q03, q06, q08, q13, q17, ≥3). Chinese — 3 (q07, q14, q18, within
 2-3).
@@ -203,7 +205,7 @@ always-equal check.
 Two more `loadArtifact` failure branches, standalone `fx97`/`fx98` results not part of the
 3-question fixture bank (same pattern as the `fx99` "missing directory" fixture — kept out of
 `bench/fixtures/questions` so they don't shift the bank's aggregate counts), are also covered: a
-deck-project directory whose `pages/p-cover.json` redeclares the plan-locked `heading` field
+deck-project directory whose `pages/p-cover.json` redeclares the spec-locked `heading` field
 (`readDeckDir`/`assembleDeck` structural-assembly failure), and a result directory with two
 candidate `*.json` files (the "ambiguous artifact" branch). Both score as a fail with a `reason`,
 never a thrown exception. Every `reason`/error string that would otherwise embed an absolute

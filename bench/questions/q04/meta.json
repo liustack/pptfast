@@ -2,8 +2,8 @@
   "id": "q04",
   "title": "Leadership Offsite Strategy Slide",
   "coverage": {
-    "mode": "pyramid",
-    "delivery": "presentation",
+    "strategy": "pyramid",
+    "pacing": "spacious",
     "expects_components": [
       "swot"
     ],

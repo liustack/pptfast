@@ -2,8 +2,8 @@
   "id": "q20",
   "title": "Analytics Dashboard Launch Readiness Review",
   "coverage": {
-    "mode": "showcase",
-    "delivery": "balanced",
+    "strategy": "showcase",
+    "pacing": "balanced",
     "expects_components": [
       "kpi_cards",
       "row_cards"

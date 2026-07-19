@@ -2,8 +2,8 @@
   "id": "q17",
   "title": "H2 Engineering Planning Review",
   "coverage": {
-    "mode": "pyramid",
-    "delivery": "balanced",
+    "strategy": "pyramid",
+    "pacing": "balanced",
     "expects_components": [
       "roadmap"
     ],
