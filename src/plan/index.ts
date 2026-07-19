@@ -352,7 +352,7 @@ const LAYOUT_IDS: readonly string[] = Object.keys(LAYOUT_REGISTRY)
  * pointing a later fill/select step at a preferred component or layout —
  * when present it must resolve against one of three vocabularies: the
  * resolved mode's own tendency set (`MODE_DEFINITIONS[mode].tendencies`, W3
- * data), the full component-type vocabulary ({@link COMPONENT_TYPES}, 26
+ * data), the full component-type vocabulary ({@link COMPONENT_TYPES}, 28
  * names), or the full layout-id vocabulary ({@link LAYOUT_IDS},
  * `LAYOUT_REGISTRY`'s keys).
  *

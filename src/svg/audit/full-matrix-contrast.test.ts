@@ -500,7 +500,7 @@ describe("colors.muted contrast (post-v0.3 W8 fix round, backlog item 5a)", () =
 // about. Recalibrating for matrix alone would close the *instance* and
 // leave the exact same blind spot open for the next component that paints
 // its own background. `MUTED_SURFACE_CLASS` below is the *class* closure:
-// every one of `COMPONENT_TYPES`' 26 entries — the schema's own source of
+// every one of `COMPONENT_TYPES`' 28 entries — the schema's own source of
 // truth (`src/ir/index.ts`), never hand-copied — gets an explicit,
 // human-reviewed classification of *where* its `colors.muted` text (if
 // any) actually renders, backed by reading that component's real source.
