@@ -5,6 +5,7 @@ import { normalizeComponentAliases } from "./ir/field-aliases"
 import { generatePptxBlob } from "./pptx/generate"
 import { resolveScenario, type ScenarioAxes } from "./scenario"
 import { CAPACITY } from "./svg/audit/capacity"
+import { FULL_BODY_TYPES } from "./svg/component-traits"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { getLayout, layoutsForSlideType } from "./svg/layouts/registry"
 import { slideToSvgMarkup } from "./svg/render-slide"
@@ -152,6 +153,35 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
 }
 
 /**
+ * Full-body component exclusivity hard gate (structure-components wave task
+ * 1, decision 2): a `FULL_BODY_TYPES` member (`swot`/`bmc`,
+ * `component-traits.ts`) is meant to own an entire slide's content rect by
+ * itself (`SvgContent.tsx` hands it the whole rect verbatim) — a slide that
+ * pairs one with *any* other component (another full-body type included)
+ * has nowhere left to put that sibling, so this is a hard validation error,
+ * not a silent "drop the extra component(s) and render anyway" degrade.
+ * Same shape as {@link checkLayoutApplicability} right above: one
+ * page-scoped `ValidationIssue` per offending slide, naming the offending
+ * full-body type(s) so the message is actionable without needing to open
+ * the slide's own JSON.
+ */
+function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
+  const errors: ValidationIssue[] = []
+  ir.slides.forEach((slide, i) => {
+    const fullBodyTypes = slide.components.filter((c) => FULL_BODY_TYPES.has(c.type))
+    if (fullBodyTypes.length === 0 || slide.components.length === 1) return
+    const names = [...new Set(fullBodyTypes.map((c) => c.type))].join(", ")
+    errors.push({
+      path: `slides.${i}.components`,
+      page: i + 1,
+      ...(slide.id !== undefined ? { slideId: slide.id } : {}),
+      message: `"${names}" is a full-body component and must be the slide's only component (found ${slide.components.length} components)`,
+    })
+  })
+  return errors
+}
+
+/**
  * Duplicate slide id hard gate (W5 task 1): `slide.id` is a stable page
  * identity plan/assemble stamps on (spec-adjacent — see `ir/index.ts`'s
  * `id` docstring), so two slides sharing one within the same deck is always
@@ -272,6 +302,8 @@ export function validateIr(input: unknown): ValidateResult {
   }
   const layoutErrors = checkLayoutApplicability(r.data)
   if (layoutErrors.length > 0) return withNormalized({ ok: false, errors: layoutErrors })
+  const fullBodyErrors = checkFullBodyExclusivity(r.data)
+  if (fullBodyErrors.length > 0) return withNormalized({ ok: false, errors: fullBodyErrors })
   const duplicateIdErrors = checkDuplicateSlideIds(r.data)
   if (duplicateIdErrors.length > 0) return withNormalized({ ok: false, errors: duplicateIdErrors })
   // Scenario resolution (spec §5's defaults chain, W3 task 2). Both branches

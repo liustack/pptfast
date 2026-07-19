@@ -231,6 +231,87 @@ describe("duplicate slide id gate (W5 task 1)", () => {
   })
 })
 
+describe("full-body component exclusivity gate (structure-components wave task 1, decision 2)", () => {
+  const swotOnly = { type: "swot", strengths: ["s"], weaknesses: ["w"], opportunities: ["o"], threats: ["t"] }
+  const bmcOnly = {
+    type: "bmc",
+    key_partners: ["p"],
+    key_activities: ["a"],
+    key_resources: ["r"],
+    value_propositions: ["v"],
+    customer_relationships: ["cr"],
+    channels: ["c"],
+    customer_segments: ["cs"],
+    cost_structure: ["co"],
+    revenue_streams: ["rs"],
+  }
+
+  it("accepts a slide whose sole component is a full-body type (swot)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "SWOT", components: [swotOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts a slide whose sole component is a full-body type (bmc)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "BMC", components: [bmcOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("hard-rejects a full-body component paired with an ordinary sibling — not a silent drop", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        {
+          type: "content",
+          heading: "SWOT + bullets",
+          components: [swotOnly, { type: "bullets", items: ["额外的兄弟块"] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.path).toBe("slides.0.components")
+    expect(v.errors[0]!.page).toBe(1)
+    expect(v.errors[0]!.message).toMatch(/"swot" is a full-body component/)
+    expect(v.errors[0]!.message).toMatch(/found 2 components/)
+  })
+
+  it("hard-rejects two full-body components sharing one slide", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "SWOT + BMC", components: [swotOnly, bmcOnly] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/"swot, bmc" is a full-body component/)
+  })
+
+  it("sets slideId when the offending slide has one (same shape as checkLayoutApplicability)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        {
+          type: "content",
+          id: "p-swot",
+          heading: "SWOT + bullets",
+          components: [swotOnly, { type: "bullets", items: ["x"] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.slideId).toBe("p-swot")
+  })
+
+  it("leaves an ordinary (non-full-body) multi-component slide untouched", () => {
+    const v = validateIr(raw) // raw's content slide has just bullets, single component
+    expect(v.ok).toBe(true)
+  })
+})
+
 describe("ValidationIssue.slideId + formatIssues (W5 whole-branch review finding 2)", () => {
   it("checkLayoutApplicability sets slideId, and formatIssues prints 'page N (id) — path: message'", () => {
     const v = validateIr({
