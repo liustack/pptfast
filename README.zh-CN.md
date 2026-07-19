@@ -169,7 +169,7 @@ pptfast audit examples/basic.json
 
 ## 面向 AI agent
 
-推荐给 agent 的生成回路：先读 `pptfast schema` 学词汇表，写出 IR JSON，跑 `pptfast validate` 并根据报错自纠（错误信息带页码和可直接照抄的修正方式，目的就是让这个回路不必依赖人工介入），再跑 `pptfast audit`——同样是可直接照抄的修正反馈，只是针对一份*合法* deck 在渲染层仍可能出现的问题（溢出、低对比度、重叠——exit code 本身就说明干不干净），最后执行 `pptfast render`。`pptfast preview` 能让 agent 在正式渲染前先看一遍 SVG，自查版式是否合理。加上 `--html` 还会额外写出一个自包含的 `preview.html`，供人工审查（键盘翻页、占位页角标——远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）。当所有页面都已填写时，这份 `preview.html` 还会叠加同一份 `audit` 检查结果（每页一个数量角标，加一个可点击跳转的 findings 面板），让人工审查者不必打开终端就能看到问题——如果 deck 里还有占位页，则显示一行「audit 已跳过」的提示代替。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`（浏览器 Blob 下载，不联网也不写文件——preview 始终只读），交给 agent 通过 `pages/*.json` 回填。上文的 Claude Code 插件已把这套回路封装成 skill（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。
+推荐给 agent 的生成回路：先读 `pptfast schema` 学词汇表，写出 IR JSON，跑 `pptfast validate` 并根据报错自纠（错误信息带页码和可直接照抄的修正方式，目的就是让这个回路不必依赖人工介入），再跑 `pptfast audit`——同样是可直接照抄的修正反馈，只是针对一份*合法* deck 在渲染层仍可能出现的问题（溢出、低对比度、重叠——exit code 本身就说明干不干净），最后执行 `pptfast render`。`pptfast preview` 能让 agent 在正式渲染前先看一遍 SVG，自查版式是否合理。加上 `--html` 还会额外写出一个自包含的 `preview.html`，供人工审查（键盘翻页、占位页角标——远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）。当所有页面都已填写时，这份 `preview.html` 还会叠加同一份 `audit` 检查结果（每页一个数量角标，加一个可点击跳转的 findings 面板），让人工审查者不必打开终端就能看到问题——如果 deck 里还有占位页，则显示一行「audit 已跳过」的提示代替。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`（浏览器 Blob 下载，不联网也不写文件——preview 始终只读），交给 agent 通过 `pages/*.json` 回填。上文的 Claude Code 插件已把这套回路封装成 skill（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。这套回路本身由一个模型无关的内部基准测试（`bench/`，不发布到 npm）机械化验证——固定题库，评估模型跟随该 skill 的表现，细节见 `bench/README.md`。
 
 ## 路线图
 
