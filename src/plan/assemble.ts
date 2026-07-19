@@ -1,15 +1,19 @@
 /**
- * assembleDeck / disassembleDeck — plan + per-page content → IR, and back
- * (spec §5's "assemble is a pure SDK function", W5 task 3).
+ * assembleDeck / disassembleDeck — deck spec + per-page content → IR, and
+ * back (spec §5's "assemble is a pure SDK function", W5 task 3; the spec
+ * artifact itself renamed from "plan" to "spec" per the vocabulary-v4
+ * rename, spec §6/§8.1 — old "spec §N" citations throughout this file
+ * predate that rename and still cite the original W5 design doc, left as
+ * historical citations, not renumbered).
  *
  * `assembleDeck` is the pure-function half of the deck-project directory
- * concept (spec §7): a locked {@link DeckPlan} (§5's workflow artifact,
- * validated by `validatePlan` in `./index.ts`) plus a `pages` record keyed
+ * concept (spec §7): a locked {@link DeckSpec} (§5's workflow artifact,
+ * validated by `validateSpec` in `./index.ts`) plus a `pages` record keyed
  * by page id, materialized into a renderable {@link PptxIR}. The CLI's
  * directory wrapper (W5 task 5, not this file) is the only Node-touching
- * piece — it reads `deck.plan.json` + `pages/<id>.json` off disk and calls
+ * piece — it reads `deck.spec.json` + `pages/<id>.json` off disk and calls
  * straight through to {@link assembleDeck}, exactly like `src/cli/commands.ts`
- * already wraps `validateIr`/`validatePlan`. This module itself stays zero-fs
+ * already wraps `validateIr`/`validateSpec`. This module itself stays zero-fs
  * (no `node:*` imports, nothing from `src/cli*` or `src/platform/node.ts`) so
  * it can sit in `src/index.ts`'s dependency closure (`AGENTS.md`'s layout
  * rule) — the exact same posture `./index.ts` (this folder's schema/validate
@@ -30,26 +34,26 @@
  * Node-only into `src/index.ts`'s dependency closure.
  *
  * `disassembleDeck` is the documented-lossy inverse (spec §7: "disassemble
- * — the inverse of assemble, an optional tail item for W5"): it reconstructs a plan + pages record from
+ * — the inverse of assemble, an optional tail item for W5"): it reconstructs a spec + pages record from
  * an existing IR, well enough that re-`assembleDeck`-ing the result
- * reproduces the same slide content, but plan-only fields that never made it
- * into the IR in the first place (`rhythm`, `focus`, and `summary` on
+ * reproduces the same slide content, but spec-only fields that never made it
+ * into the IR in the first place (`beat`, `focus`, and `summary` on
  * anything but a placeholder page) cannot be recovered — see that function's
  * own doc comment for the full accounting.
  */
 import { PptfastError } from "../errors"
 import { PptxIRSchema, type BackgroundSpec, type Component, type PptxIR, type Slide } from "../ir"
 import { resolveEffectiveLayoutId } from "../svg/effective-layout"
-import { formatInvalidPlanError, validatePlan, type DeckPlan, type PlanPage } from "./index"
+import { formatInvalidSpecError, validateSpec, type DeckSpec, type PageSpec } from "./index"
 
 // ── PageContent (per-page authoring record, spec §7's `pages/<id>.json`) ──
 
 /**
- * One page's fillable content — everything a plan page's `id` does *not*
- * already lock in. Deliberately excludes `type`/`heading` (plan-owned, see
+ * One page's fillable content — everything a page spec's `id` does *not*
+ * already lock in. Deliberately excludes `type`/`heading` (spec-owned, see
  * {@link assembleDeck}'s locked-field gate) and `subheading`/`decor`
  * (legitimate `Slide` fields, but outside this record's shape by spec §7's
- * own layout — "pages/<id>.json contains only components" — a plan/pages deck can't
+ * own layout — "pages/<id>.json contains only components" — a spec/pages deck can't
  * author either one — a hand-authored bare IR still can). Every field here is
  * a same-name, same-shape subset of `Slide`'s own optional fields
  * (`../ir`'s `SlideSchema`) — reused, not redeclared, so the two can't drift.
@@ -67,11 +71,11 @@ export interface PageContent {
 export interface AssembleResult {
   ir: PptxIR
   /**
-   * Set only when `plan.seed` was absent and {@link assembleDeck} generated
+   * Set only when `spec.seed` was absent and {@link assembleDeck} generated
    * one deterministically (see the seed section of this function's doc
-   * comment) — `undefined` when `plan.seed` was already present and simply
+   * comment) — `undefined` when `spec.seed` was already present and simply
    * passed through. The CLI shell (W5 task 5) is the one that acts on this:
-   * suggest writing the value back into the plan file, never rewrite it
+   * suggest writing the value back into the spec file, never rewrite it
    * itself (assemble stays a pure function, no fs side effects here).
    */
   generatedSeed?: number
@@ -96,7 +100,9 @@ export interface AssembleResult {
  * private copy of it) — reimplemented locally here for the same reason
  * those two already give each other in `variety.ts`'s doc comment: it is a
  * five-line primitive, and importing it from `svg/variety.ts` would pull a
- * `plan → svg` dependency this module has no business taking. `src/plan`
+ * `plan → svg` dependency this module has no business taking (`src/plan` is
+ * this module's own package name, unchanged this task — only the artifact
+ * concepts it exports renamed, see this file's own top comment). `src/plan`
  * sits beside `src/ir` (an IR-adjacent, pre-render authoring concern).
  * `src/svg` is a *consumer* of IR (the render chain), not a neighbor of
  * `plan` — reaching "up" into it here would point the dependency arrow the
@@ -113,11 +119,11 @@ function stableHash(s: string): number {
 }
 
 /**
- * Deterministic seed for a plan that omits `seed` (spec §5's "seed mechanism
+ * Deterministic seed for a spec that omits `seed` (spec §5's "seed mechanism
  * revision": modification stability requires an *explicit*, persisted seed —
  * this is the one-time generation `assembleDeck` performs on first
  * materialization, spec's own words: "generated once at creation time,
- * stable thereafter"). Hashes `filename + the plan's own
+ * stable thereafter"). Hashes `filename + the spec's own
  * ordered page-id sequence` — deliberately *not* heading text or any
  * per-page content, unlike `svg/variety.ts`'s `deckSeed` (pre-v0.3 content
  * hash, still used when a bare IR omits `seed` entirely): editing an
@@ -139,20 +145,20 @@ function generateSeed(filename: string | undefined, pageIds: readonly string[]):
 const LOCKED_KEYS = ["type", "heading"] as const
 
 /**
- * Assemble a validated plan plus a per-page content record into a renderable
- * IR. See this module's own top comment for the overall shape. Step numbers
- * below match the W5 task-3 brief's own numbered "inject semantics" list verbatim —
- * kept in that exact order because two of them (locked-field vs. orphan)
- * both throw and their relative order is otherwise unobservable from either
- * doc comment alone.
+ * Assemble a validated deck spec plus a per-page content record into a
+ * renderable IR. See this module's own top comment for the overall shape.
+ * Step numbers below match the W5 task-3 brief's own numbered "inject
+ * semantics" list verbatim — kept in that exact order because two of them
+ * (locked-field vs. orphan) both throw and their relative order is
+ * otherwise unobservable from either doc comment alone.
  *
- * 1. `plan` is `unknown` (same boundary `validatePlan` itself has — a plan
+ * 1. `spec` is `unknown` (same boundary `validateSpec` itself has — a spec
  *    is almost always freshly `JSON.parse`d off disk by the caller) —
  *    invalid shape or a failed hard gate throws {@link PptfastError} with
- *    `validatePlan`'s own formatted issue list, not a re-derived message.
+ *    `validateSpec`'s own formatted issue list, not a re-derived message.
  * 2. Shape guard + locked-field protection: a `pages[id]` entry must first be
  *    a plain object — not `null`, an array, or a primitive — else throws.
- *    `pages` is `unknown`-shaped off disk same as `plan` itself (step 1), so
+ *    `pages` is `unknown`-shaped off disk same as `spec` itself (step 1), so
  *    a JSON `null`/string/array content value is a real possibility, not
  *    just a type-system hole, and `Object.hasOwn` throws its own
  *    uninformative native `TypeError` on `null` (and silently no-ops on a
@@ -166,63 +172,64 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    `"heading": null`-turned-`undefined` or a copy-pasted empty key is
  *    exactly the drift this gate exists to catch instead of silently
  *    ignoring.
- * 3. Orphan keys: a `pages` entry whose id isn't any plan page's id. Listed
+ * 3. Orphan keys: a `pages` entry whose id isn't any spec page's id. Listed
  *    together with a fix suggestion, checked only after every present page
  *    has cleared the locked-field gate (step 2) — an orphan file that
  *    *also* happens to redeclare `heading` reports as locked-field first.
- * 4. Missing pages (a plan id with no `pages` entry) become a placeholder
+ * 4. Missing pages (a spec id with no `pages` entry) become a placeholder
  *    slide — never an error. Spec §7's own words: "assemble's precise
  *    semantics — a missing page always succeeds (placeholder), a structural
- *    contradiction (orphan file / bad plan / id conflict) errors". A
+ *    contradiction (orphan file / bad spec / id conflict) errors". A
  *    declared `summary` becomes the placeholder's `subheading` (the one spot
- *    `summary` — otherwise a plan-only anchor, see step 5 — does reach the
+ *    `summary` — otherwise a spec-only anchor, see step 5 — does reach the
  *    IR) so a `--draft` preview of an unfilled deck still reads as more than
  *    a bare "Untitled".
- * 5. Present pages become a full slide: `id`/`type`/`heading` from the plan
- *    page (never the content record — see step 2), plus whichever of
+ * 5. Present pages become a full slide: `id`/`type`/`heading` from the page
+ *    spec (never the content record — see step 2), plus whichever of
  *    {@link PageContent}'s seven fields the content record actually set.
- *    `rhythm`/`focus`/`summary` never reach the IR for a present page —
- *    they are plan-only authoring anchors (rhythm/focus steer a future
+ *    `beat`/`focus`/`summary` never reach the IR for a present page —
+ *    they are spec-only authoring anchors (beat/focus steer a future
  *    fill/select step, summary is "for the fill step's own reading only"), not slide content.
  * 6. Top-level: `version` is always the literal `"4"` (IR's own version,
- *    unrelated to the plan's own `version: "1"`) — the plan's own `scenario`
- *    field (unrenamed this task, spec §8.1's `DeckPlan`→`DeckSpec` rename is
- *    task 2's job) carries across into the v4 IR's `narrative` field, its
- *    value already in the new strategy/pacing vocabulary (vocabulary-v4
- *    rename, task 1 — `plan/index.ts`'s own `resolveNarrative` call already
- *    validates it against that vocabulary before this function ever runs).
- *    `theme`/`filename`/`brand`/`meta`/`seed` (step 7) carry over from the plan when
+ *    unrelated to the deck spec's own `version: "1"`) — the deck spec's own
+ *    `narrative` field (renamed this task from `scenario`, spec §8.1's
+ *    `DeckPlan`→`DeckSpec` rename, task 2) carries across into the v4 IR's
+ *    own `narrative` field, its value already in the new strategy/pacing
+ *    vocabulary (vocabulary-v4 rename, task 1 — `plan/index.ts`'s own
+ *    `resolveNarrative` call already validates it against that vocabulary
+ *    before this function ever runs).
+ *    `theme`/`filename`/`brand`/`meta`/`seed` (step 7) carry over from the spec when
  *    present. When absent, this function omits the field from the raw
  *    object it hands to {@link PptxIRSchema} rather than re-deriving IR's
  *    own default value a second time — one default source of truth, the
  *    schema itself (e.g. `theme` omitted here becomes `{ id: "consulting" }`,
  *    exactly like a bare hand-authored IR that never mentions theme at all —
  *    not a value this function needs to know).
- * 7. Seed: `plan.seed` present → passed through, `generatedSeed` stays
+ * 7. Seed: `spec.seed` present → passed through, `generatedSeed` stays
  *    `undefined` on the result. Absent → {@link generateSeed} derives one
- *    from `filename` + the plan's own ordered page-id list (never page
+ *    from `filename` + the spec's own ordered page-id list (never page
  *    *content* — see that function's own doc comment for why), written to
  *    `ir.seed` *and* returned as `generatedSeed` so a CLI shell can suggest
- *    writing it back into the plan file (this function never touches disk
+ *    writing it back into the spec file (this function never touches disk
  *    itself).
  * 8. Idempotence: every step above is a pure function of its inputs (no
  *    randomness, no wall-clock, no reliance on unordered iteration) — two
- *    calls with structurally-equal `plan`/`pages` produce deep-equal
+ *    calls with structurally-equal `spec`/`pages` produce deep-equal
  *    results, `generatedSeed` included. Exercised directly by this module's
  *    test suite rather than asserted here.
  */
-export function assembleDeck(plan: unknown, pages: Record<string, PageContent>): AssembleResult {
+export function assembleDeck(spec: unknown, pages: Record<string, PageContent>): AssembleResult {
   // Step 1
-  const validated = validatePlan(plan)
+  const validated = validateSpec(spec)
   if (!validated.ok) {
-    throw new PptfastError(formatInvalidPlanError(validated.errors))
+    throw new PptfastError(formatInvalidSpecError(validated.errors))
   }
-  const deckPlan = validated.plan!
+  const deckSpec = validated.spec!
 
   // Step 2 — shape guard + locked-field protection, scanned before orphan
   // detection (see this function's own doc comment for why the order is
   // observable).
-  for (const page of deckPlan.pages) {
+  for (const page of deckSpec.pages) {
     const raw = pages[page.id]
     if (raw === undefined) continue
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -230,37 +237,37 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
     }
     for (const key of LOCKED_KEYS) {
       if (Object.hasOwn(raw, key)) {
-        throw new PptfastError(`page "${page.id}": "${key}" is locked by the plan — remove it from the page file`)
+        throw new PptfastError(`page "${page.id}": "${key}" is locked by the spec — remove it from the page file`)
       }
     }
   }
 
   // Step 3 — orphan pages keys
-  const planIds = new Set(deckPlan.pages.map((page) => page.id))
-  const orphanIds = Object.keys(pages).filter((id) => !planIds.has(id))
+  const specIds = new Set(deckSpec.pages.map((page) => page.id))
+  const orphanIds = Object.keys(pages).filter((id) => !specIds.has(id))
   if (orphanIds.length > 0) {
     throw new PptfastError(
-      `orphan page id${orphanIds.length === 1 ? "" : "s"} ${orphanIds.map((id) => `"${id}"`).join(", ")} — not in the plan, delete the page file or add the page to the plan`,
+      `orphan page id${orphanIds.length === 1 ? "" : "s"} ${orphanIds.map((id) => `"${id}"`).join(", ")} — not in the spec, delete the page file or add the page to the spec`,
     )
   }
 
   // Steps 4 + 5 — build each slide
-  const slides = deckPlan.pages.map((page) => buildSlide(page, pages[page.id]))
+  const slides = deckSpec.pages.map((page) => buildSlide(page, pages[page.id]))
 
   // Step 7 — seed (computed before step 6's raw object so it can be spliced
-  // straight in — plan-only, never reads `pages`, see generateSeed's own doc).
+  // straight in — spec-only, never reads `pages`, see generateSeed's own doc).
   const generatedSeed =
-    deckPlan.seed === undefined ? generateSeed(deckPlan.filename, deckPlan.pages.map((page) => page.id)) : undefined
-  const seed = deckPlan.seed ?? generatedSeed!
+    deckSpec.seed === undefined ? generateSeed(deckSpec.filename, deckSpec.pages.map((page) => page.id)) : undefined
+  const seed = deckSpec.seed ?? generatedSeed!
 
   // Step 6 — top-level IR fields
   const rawIr = {
     version: "4" as const,
-    ...(deckPlan.scenario !== undefined ? { narrative: deckPlan.scenario } : {}),
-    ...(deckPlan.theme !== undefined ? { theme: { id: deckPlan.theme } } : {}),
-    ...(deckPlan.filename !== undefined ? { filename: deckPlan.filename } : {}),
-    ...(deckPlan.brand !== undefined ? { brand: deckPlan.brand } : {}),
-    meta: deckPlan.meta,
+    ...(deckSpec.narrative !== undefined ? { narrative: deckSpec.narrative } : {}),
+    ...(deckSpec.theme !== undefined ? { theme: { id: deckSpec.theme } } : {}),
+    ...(deckSpec.filename !== undefined ? { filename: deckSpec.filename } : {}),
+    ...(deckSpec.brand !== undefined ? { brand: deckSpec.brand } : {}),
+    meta: deckSpec.meta,
     seed,
     slides,
   }
@@ -273,7 +280,7 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
 
   // Materialization (W4 design decision 10) — must run after the schema
   // parse above, not on `rawIr`: `resolveEffectiveLayoutId` needs the fully
-  // *defaulted* IR (a plan that omits `theme`, for instance, needs
+  // *defaulted* IR (a spec that omits `theme`, for instance, needs
   // `parsed.data.theme.id === "consulting"` already filled in by the schema,
   // not the bare `rawIr` that simply omits the key).
   const { ir, materializedCount } = materializeEffectiveLayouts(parsed.data)
@@ -327,7 +334,7 @@ export function assembleDeck(plan: unknown, pages: Record<string, PageContent>):
  * own earlier iteration had already overwritten would corrupt "slide i-1's
  * final effective id" into "slide i-1's materialized id" for every later
  * slide — the same value for an auto-picked neighbor, but silently wrong the
- * moment a plan pins one page's layout explicitly next to an auto-picked one
+ * moment a spec pins one page's layout explicitly next to an auto-picked one
  * (the pin would then read back as slide i-1's own "effective id" a second
  * time, double-counting it as a repetition risk it was never actually a
  * candidate for).
@@ -350,7 +357,7 @@ function materializeEffectiveLayouts(ir: PptxIR): { ir: PptxIR; materializedCoun
 }
 
 /** Step 4 (no content record → placeholder) / step 5 (content record → full slide). */
-function buildSlide(page: PlanPage, raw: PageContent | undefined): Record<string, unknown> {
+function buildSlide(page: PageSpec, raw: PageContent | undefined): Record<string, unknown> {
   if (raw === undefined) {
     return {
       id: page.id,
@@ -378,15 +385,15 @@ function buildSlide(page: PlanPage, raw: PageContent | undefined): Record<string
 
 /** Heading synthesized for a bare IR slide whose own `heading` is missing or
  *  blank (`SlideSchema.heading` is optional with no default — a hand-authored
- *  IR is free to omit it entirely — but `PlanPageSchema.heading` is
- *  required, non-empty, spec §5: a plan page without a heading has no
+ *  IR is free to omit it entirely — but `PageSpecSchema.heading` is
+ *  required, non-empty, spec §5: a page spec without a heading has no
  *  reasonable default). Adjudication (W5 task-3 brief flags this as an open
  *  call): a fixed, deterministic placeholder was picked over synthesizing
  *  from the slide's first text-bearing component, because there frequently
  *  isn't one to find — a `kpi_cards`-only or `chart`-only content slide has
  *  no paragraph/bullets/quote text at all, so a "first text content"
  *  heuristic would need its own silent fallback for exactly the slides most
- *  likely to hit this path, plus ad-hoc truncation to clear the 48-char plan
+ *  likely to hit this path, plus ad-hoc truncation to clear the 48-char spec
  *  heading gate (`CAPACITY.headingMaxChars`, `./index.ts`). A single fixed
  *  string is total, deterministic, always legal against that gate, and — as
  *  a visibly-fake title — a much louder signal to fill in a real heading
@@ -395,21 +402,21 @@ function buildSlide(page: PlanPage, raw: PageContent | undefined): Record<string
 const UNTITLED_HEADING = "Untitled"
 
 /**
- * Inverse of {@link assembleDeck}: reconstructs `{ plan, pages }` from an
+ * Inverse of {@link assembleDeck}: reconstructs `{ spec, pages }` from an
  * existing IR well enough that `assembleDeck(...disassembleDeck(ir))`
  * reproduces every slide's content — but the map is not lossless in both
  * directions, only in the direction the round trip actually exercises
- * (IR → plan/pages → IR). Fields with no IR-side home never survive being
+ * (IR → spec/pages → IR). Fields with no IR-side home never survive being
  * written *to* the IR in the first place, so there is nothing here to read
  * back:
  *
- * - `rhythm` and `focus` never appear on any produced {@link PlanPage} —
- *   both are plan-only authoring anchors with no corresponding `Slide`
+ * - `beat` and `focus` never appear on any produced {@link PageSpec} —
+ *   both are spec-only authoring anchors with no corresponding `Slide`
  *   field at all (see {@link assembleDeck} step 5's doc comment). Nothing
  *   here could recover a value that was never written anywhere.
  * - `summary` is recovered *only* for a placeholder slide, by reversing
  *   step 4's `summary` → `subheading` injection (`slide.subheading` back to
- *   `planPage.summary`). A non-placeholder slide's own `subheading` — a
+ *   `pageSpec.summary`). A non-placeholder slide's own `subheading` — a
  *   legitimate, independent `Slide` field a hand-authored bare IR is free to
  *   set — has no {@link PageContent} field to land in (spec §7's pages/
  *   record is deliberately narrower than `Slide` itself, see that
@@ -418,14 +425,14 @@ const UNTITLED_HEADING = "Untitled"
  *   a filled page) — so it is dropped. Same for `decor`: a real `Slide`
  *   field, absent from `PageContent`'s shape entirely.
  * - `theme.style` / `theme.brand` overrides collapse to a bare theme-id
- *   string (`DeckPlanSchema.theme` has no shape for either) — only `theme.id`
+ *   string (`DeckSpecSchema.theme` has no shape for either) — only `theme.id`
  *   survives. That `theme.brand` is `ThemeSchema.brand` (`BrandConfigSchema`
  *   — `suppressFooterOnCardContent`/`suppressFooterRule`, footer-chrome
  *   flags owned by the *theme*) — not to be confused with the deck-level
  *   `brand` field below, a different, unrelated schema despite the shared
  *   name.
  * - `ir.assets.images` is not part of this function's return value at all —
- *   `{ plan, pages }` has no `assets` field, and this module stays zero-fs
+ *   `{ spec, pages }` has no `assets` field, and this module stays zero-fs
  *   by design (this file's own top comment), so it has no way to write an
  *   `assets/` directory itself. Any `asset_id` reference inside a copied
  *   `components`/`background` survives untouched ({@link extractPageContent}
@@ -444,9 +451,9 @@ const UNTITLED_HEADING = "Untitled"
  * collision: the top-level `brand` field (`BrandSchema` — `logo_asset_id` /
  * `position`, the deck logo/position `BrandChrome` reads,
  * `src/svg/BrandChrome.tsx`) is a plain passthrough on both sides
- * ({@link assembleDeck} step 6 reads `plan.brand` into `ir.brand` — this
- * function reads `ir.brand` back into `plan.brand` below) — carried through
- * unmodified, same as `scenario`/`narrative`/`filename`/`seed`, never
+ * ({@link assembleDeck} step 6 reads `spec.brand` into `ir.brand` — this
+ * function reads `ir.brand` back into `spec.brand` below) — carried through
+ * unmodified, same as `narrative`/`filename`/`seed`, never
  * synthesized or dropped.
  *
  * `layout` deserves a different kind of callout: it round-trips as plain
@@ -476,7 +483,7 @@ const UNTITLED_HEADING = "Untitled"
  * {@link UNTITLED_HEADING} for a missing/blank `heading`, and a positional
  * `p-<1-based-ordinal>-<type>` scheme for a missing `id` (stable across
  * repeated calls on the same IR — it is a pure function of slide position
- * and type — but, unlike a plan-assigned id, *not* stable across inserting
+ * and type — but, unlike a spec-assigned id, *not* stable across inserting
  * or reordering slides — out of scope here, since a bare IR with no `id` at
  * all has no stabler identity to fall back to in the first place).
  *
@@ -494,36 +501,36 @@ const UNTITLED_HEADING = "Untitled"
  * which is exactly why the write-time gate in `../cli/deck-dir.ts` (not this
  * function) is what actually closes the vulnerability.
  */
-export function disassembleDeck(ir: PptxIR): { plan: DeckPlan; pages: Record<string, PageContent> } {
+export function disassembleDeck(ir: PptxIR): { spec: DeckSpec; pages: Record<string, PageContent> } {
   const pages: Record<string, PageContent> = {}
-  const planPages: PlanPage[] = ir.slides.map((slide, index) => {
+  const pageSpecs: PageSpec[] = ir.slides.map((slide, index) => {
     const id = slide.id ?? `p-${index + 1}-${slide.type}`
     const heading = slide.heading !== undefined && slide.heading.trim() !== "" ? slide.heading : UNTITLED_HEADING
-    const planPage: PlanPage = {
+    const pageSpec: PageSpec = {
       id,
       type: slide.type,
       heading,
       ...(slide.placeholder === true && slide.subheading !== undefined ? { summary: slide.subheading } : {}),
     }
     if (slide.placeholder !== true) pages[id] = extractPageContent(slide)
-    return planPage
+    return pageSpec
   })
 
-  const plan: DeckPlan = {
+  const spec: DeckSpec = {
     version: "1",
     // `ir.narrative` (v4 field, vocabulary-v4 rename) carries straight into
-    // the plan's own `scenario` field (unrenamed this task) — its value is
+    // the deck spec's own `narrative` field — its value is
     // already in the new strategy/pacing vocabulary, no remapping needed.
-    ...(ir.narrative !== undefined ? { scenario: ir.narrative } : {}),
+    ...(ir.narrative !== undefined ? { narrative: ir.narrative } : {}),
     theme: ir.theme.id,
     filename: ir.filename,
     ...(ir.seed !== undefined ? { seed: ir.seed } : {}),
     ...(ir.brand !== undefined ? { brand: ir.brand } : {}),
     meta: ir.meta,
-    pages: planPages,
+    pages: pageSpecs,
   }
 
-  return { plan, pages }
+  return { spec, pages }
 }
 
 /** Non-placeholder-slide half of {@link disassembleDeck} — the same seven

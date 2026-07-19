@@ -29,12 +29,12 @@ describe("loadIrFile", () => {
     await expect(loadIrFile(p)).rejects.toThrow(/^IR file .* is not valid JSON/)
   })
 
-  it("uses a caller-supplied kind in both failure messages (e.g. runPlanValidate passing \"plan\")", async () => {
-    await expect(loadIrFile("/nowhere/missing.json", "plan")).rejects.toThrow(/cannot read plan file/)
+  it("uses a caller-supplied kind in both failure messages (e.g. runSpecValidate passing \"spec\")", async () => {
+    await expect(loadIrFile("/nowhere/missing.json", "spec")).rejects.toThrow(/cannot read spec file/)
     const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
-    const p = join(dir, "bad-plan.json")
+    const p = join(dir, "bad-spec.json")
     await writeFile(p, "{ not json")
-    await expect(loadIrFile(p, "plan")).rejects.toThrow(/^plan file .* is not valid JSON/)
+    await expect(loadIrFile(p, "spec")).rejects.toThrow(/^spec file .* is not valid JSON/)
   })
 })
 

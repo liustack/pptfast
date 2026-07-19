@@ -11,13 +11,25 @@ import {
 } from "../api"
 import { PptfastError } from "../errors"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
+import { PptxIRV3Schema } from "../ir/legacy-v3"
+import { migrateIrV3ToV4 } from "../ir/migrate"
 import { disassembleDeck, type PageContent } from "../plan/assemble"
-import { formatInvalidPlanError, planJsonSchema, resolvePlanThemeId, validatePlan } from "../plan"
+import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../plan"
+import { migrateDeckPlanToSpec } from "../plan/migrate"
 import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../scenario"
 import { auditDeck, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
 import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
-import { assertSafeFileSegment, isDeckDirectory, pathExists, readDeckDir, resolveDeckTarget, writeDeckAssets } from "./deck-dir"
+import {
+  assertSafeFileSegment,
+  isDeckDirectory,
+  pathExists,
+  readDeckDir,
+  resolveDeckTarget,
+  writeDeckAssets,
+  PLAN_FILENAME,
+  SPEC_FILENAME,
+} from "./deck-dir"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 import { buildPreviewHtml } from "./preview-html"
 
@@ -160,7 +172,7 @@ export async function applyDeckConfig(
  * built-in default (W5 task 6, {@link resolveDecksDirSource}) — then
  * branches on whether the resolved target is a deck project directory:
  *
- * - directory → `readDeckDir` (assemble in memory — plan + pages/ + assets/,
+ * - directory → `readDeckDir` (assemble in memory — spec + pages/ + assets/,
  *   `./deck-dir.ts`), asset paths resolve against the deck directory itself.
  * - file → the pre-existing single-file path, byte-for-byte: `loadIrFile`
  *   then the same `dirname(resolve(...))` asset base every caller already
@@ -203,7 +215,7 @@ export interface RenderOptions {
 }
 
 /**
- * `irPath` accepts a single IR/plan JSON file, a deck project directory, or
+ * `irPath` accepts a single IR/spec JSON file, a deck project directory, or
  * a bare deck name under `~/.pptfast/decks` (W5 task 5, `loadDeckTarget`
  * above) — directory/bare-name input is assembled in memory first, then
  * follows the exact same validate → resolve-assets → generate pipeline a
@@ -275,7 +287,7 @@ function placeholderNote(ir: PptxIR): string | undefined {
 }
 
 /**
- * `irPath` accepts a single IR/plan JSON file, a deck project directory, or
+ * `irPath` accepts a single IR/spec JSON file, a deck project directory, or
  * a bare deck name (same `loadDeckTarget` resolution `runRender` uses).
  * Directory/bare-name input additionally gets a {@link placeholderNote} —
  * gated on `isDir` specifically so single-file mode (including a
@@ -412,27 +424,33 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
 }
 
 /**
- * Validate a deck plan JSON file (W5 task 2: `pptfast plan validate`).
+ * Validate a deck spec JSON file (W5 task 2: `pptfast plan validate`, renamed
+ * to `pptfast spec validate` — vocabulary-v4 rename, task 2, spec §8.2).
  * `loadIrFile` is a generic "read + JSON-parse with a readable failure
  * message" helper despite its IR-scoped name (`./load-ir.ts`) — reused as-is
  * rather than duplicated, same pattern `runValidate` above uses for IR.
  * Returns human-readable report. Throws PptfastError when invalid (CLI exit 1).
  */
-export async function runPlanValidate(planPath: string): Promise<string> {
-  const raw = await loadIrFile(planPath, "plan")
-  const v = validatePlan(raw)
+export async function runSpecValidate(specPath: string): Promise<string> {
+  const raw = await loadIrFile(specPath, "spec")
+  const v = validateSpec(raw)
   if (!v.ok) {
-    throw new PptfastError(formatInvalidPlanError(v.errors))
+    throw new PptfastError(formatInvalidSpecError(v.errors))
   }
-  const plan = v.plan!
-  // Safe to call unguarded: validatePlan already resolved this same
+  const spec = v.spec!
+  // Safe to call unguarded: validateSpec already resolved this same
   // expression successfully as part of its own hard-gate chain.
-  const axes = resolveNarrative(plan.scenario as string | Partial<NarrativeProfile> | undefined)
-  return `OK — ${plan.pages.length} pages, scenario ${axes.strategy}/${axes.pacing}/${axes.audience}, theme "${resolvePlanThemeId(plan)}"`
+  const axes = resolveNarrative(spec.narrative as string | Partial<NarrativeProfile> | undefined)
+  return `OK — ${spec.pages.length} pages, narrative ${axes.strategy}/${axes.pacing}/${axes.audience}, theme "${resolveSpecThemeId(spec)}"`
 }
 
-export function runSchema(mode?: "style" | "plan"): string {
-  const schema = mode === "style" ? styleJsonSchema() : mode === "plan" ? planJsonSchema() : irJsonSchema()
+/** `mode` selects which JSON Schema to print (`pptfast schema [--style|--spec]`,
+ *  spec §8.2's `schema --plan`→`schema --spec` rename, task 2) — `"plan"` was
+ *  the pre-rename flag value, no longer accepted (`../cli.ts` hard-fails a
+ *  bare `--plan` before this function is ever called, see that file's own
+ *  comment). */
+export function runSchema(mode?: "style" | "spec"): string {
+  const schema = mode === "style" ? styleJsonSchema() : mode === "spec" ? specJsonSchema() : irJsonSchema()
   return JSON.stringify(schema, null, 2)
 }
 
@@ -443,27 +461,28 @@ export function runThemes(asJson: boolean): string {
 }
 
 /**
- * List the named scenario presets (spec §5): strategy/pacing/audience axes +
+ * List the named narrative presets (spec §5): strategy/pacing/audience axes +
  * soft theme recommendations — never a hard constraint, see
  * `NarrativePreset.themeRecommendations`'s own doc comment in `scenario/index.ts`.
  * `--json` hands back the full machine-readable payload an agent would want
- * before picking a scenario: every preset, plus the raw strategy/pacing/audience
+ * before picking a narrative: every preset, plus the raw strategy/pacing/audience
  * tables those presets are built from (`STRATEGY_DEFINITIONS`/`PACING_BUDGETS`
  * carry data this wave doesn't yet consume for selection — W4's job — but are
  * still useful for a caller inspecting what each axis value means).
  *
- * CLI surface (command name `scenarios`, output field names `modes`/
- * `deliveries`) is unchanged this task — spec §8.2's `scenarios`→`narratives`
- * rename is task 2's job. Only the underlying data this command reads
- * switched to the new vocabulary (spec §8.1).
+ * CLI surface renamed this task (spec §8.2's `scenarios`→`narratives`
+ * rename, task 2): command name `narratives`, `--json` output field names
+ * `strategies`/`pacings` (were `modes`/`deliveries`) — kept in step with the
+ * command's own new name rather than leaving a `pptfast narratives --json`
+ * caller staring at a `modes` key for what is now the `strategy` axis.
  */
-export function runScenarios(asJson: boolean): string {
+export function runNarratives(asJson: boolean): string {
   if (asJson) {
     return JSON.stringify(
       {
         presets: NARRATIVE_PRESETS,
-        modes: STRATEGY_DEFINITIONS,
-        deliveries: PACING_BUDGETS,
+        strategies: STRATEGY_DEFINITIONS,
+        pacings: PACING_BUDGETS,
         audiences: AUDIENCE_VALUES,
       },
       null,
@@ -530,7 +549,7 @@ export interface PreviewOptions {
 }
 
 /**
- * `irPath` accepts a single IR/plan JSON file, a deck project directory, or
+ * `irPath` accepts a single IR/spec JSON file, a deck project directory, or
  * a bare deck name (same `loadDeckTarget` resolution `runRender` uses).
  * Preview never gates on placeholder pages either way (single-file or
  * dir-mode) — `renderSlideSvg` itself never calls the draft gate, spec §7:
@@ -637,11 +656,11 @@ function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): P
 
 /**
  * `pptfast assemble <dir|name>` (W5 task 5): resolve `target` (path or bare
- * deck name, `resolveDeckTarget`) → `readDeckDir` (plan + pages/ + assets/ →
+ * deck name, `resolveDeckTarget`) → `readDeckDir` (spec + pages/ + assets/ →
  * IR, `./deck-dir.ts`) → write the assembled IR as pretty-printed JSON,
  * default `<deckDir>/deck.json` when `-o` is omitted. Deliberately does
  * *not* call `applyDeckConfig` — `assemble` materializes exactly what the
- * plan says plus each page's own auto-selected `layout` where the page file
+ * spec says plus each page's own auto-selected `layout` where the page file
  * left it implicit (`assembleDeck`'s own doc comment, W4 design decision
  * 10) — a portable IR file, self-contained down to which archetype each page
  * will render with. Theme/style overrides are `validate`/`render`/
@@ -651,9 +670,9 @@ function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): P
  * `target` must resolve to an actual directory: a target that exists but
  * names a file gets a friendly `expected a deck project directory` error
  * right here rather than reaching `readDeckDir` and failing deeper, with a
- * confusing `ENOTDIR` message, trying to read `<file>/deck.plan.json`. A
+ * confusing `ENOTDIR` message, trying to read `<file>/deck.spec.json`. A
  * target that does not exist *at all* is deliberately let through to
- * `readDeckDir` unchanged — its own missing-plan-file error already names
+ * `readDeckDir` unchanged — its own missing-spec-file error already names
  * the expected layout, strictly more helpful than this shorter message.
  *
  * `-o` resolves against `cwd` (the same fix `resolveDeckTarget` already
@@ -665,9 +684,9 @@ function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): P
  * otherwise `assets/logo.png` (correct relative to `deckDir`) would silently
  * fail to resolve from wherever `-o` actually put the file.
  *
- * When the plan omitted `seed`, `readDeckDir` (via `assembleDeck`) generates
+ * When the spec omitted `seed`, `readDeckDir` (via `assembleDeck`) generates
  * one deterministically and reports it as `generatedSeed` — surfaced here as
- * a suggestion to add it back to `deck.plan.json` for revision stability
+ * a suggestion to add it back to `deck.spec.json` for revision stability
  * (spec §5's seed-generation semantics). Never written automatically:
  * `assembleDeck` stays a pure function with no fs side effects, and silently
  * rewriting a file the user did not ask this command to touch would be a
@@ -699,7 +718,7 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
   const summary = `wrote ${outPath} (${outIr.slides.length} slides, ${placeholderCount} placeholder${placeholderCount === 1 ? "" : "s"})`
   const notes: string[] = []
   if (generatedSeed !== undefined) {
-    notes.push(`note: generated seed ${generatedSeed} — add "seed": ${generatedSeed} to deck.plan.json for revision stability`)
+    notes.push(`note: generated seed ${generatedSeed} — add "seed": ${generatedSeed} to deck.spec.json for revision stability`)
   }
   if (materializedLayoutCount !== undefined) {
     notes.push(
@@ -712,12 +731,12 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
 /**
  * `pptfast disassemble <deck.json> -o <dir>` (W5 task 5): the CLI shell for
  * `disassembleDeck` (`../plan/assemble.ts`) — read + validate an IR file the
- * same way `runRender`/`runValidate` do, then write `deck.plan.json` +
+ * same way `runRender`/`runValidate` do, then write `deck.spec.json` +
  * `pages/<id>.json` for every non-placeholder page. Pretty-printed. Key
  * order is already stable because `disassembleDeck` builds every object
  * with the same fixed field order on every call, not by iterating the
  * input, so there is no separate "stable stringify" step to write. Refuses
- * to overwrite an existing `deck.plan.json` — same `wx`-flag EEXIST guard as
+ * to overwrite an existing `deck.spec.json` — same `wx`-flag EEXIST guard as
  * `runInit`'s config scaffold — so re-running this command never silently
  * clobbers a deck project someone has since started filling in. Page files
  * are freely (re)written since they only exist because this same command
@@ -733,31 +752,31 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
  *
  * The summary never claims to have written a directory it did not create:
  * `pagesDir`/`assetsDir` are only named when at least one page/asset file
- * actually landed there (a plan-only deck with every slide a placeholder,
+ * actually landed there (a spec-only deck with every slide a placeholder,
  * or an assetless deck, leaves either directory unwritten).
  *
  * Every page id is checked with {@link assertSafeFileSegment} (`./deck-dir.ts`)
  * before *any* file is written — not just ahead of `pages/<id>.json` (W5
  * whole-branch review finding 1, CRITICAL — CWE-22), but ahead of
- * `deck.plan.json` too (post-v0.3 W8 fix round, backlog item 8,
+ * `deck.spec.json` too (post-v0.3 W8 fix round, backlog item 8,
  * `.issues/notes/2026-07-18-post-v03-backlog.md` #8 — the check originally
- * ran after the plan write): `slide.id` is an unrestricted string at the
+ * ran after the spec write): `slide.id` is an unrestricted string at the
  * schema layer, so a hand-authored IR could otherwise set one to
  * `"../../../../escape"` and write outside `outDir`. `writeDeckAssets` below
  * (`./deck-dir.ts`) carries the matching check for asset keys, inside
  * `writeOneAsset` — that check stays per-asset rather than also moving
- * ahead of the plan write, since an unsafe id is only one of several ways
+ * ahead of the spec write, since an unsafe id is only one of several ways
  * `writeOneAsset` can fail (malformed data URI, URL asset, unreadable local
  * file) and the others can't be front-loaded without doing the write itself.
  *
  * Failure rollback (post-v0.3 W8 fix round, backlog item 8): once
- * `deck.plan.json` is written, this call is the sole owner of that file for
+ * `deck.spec.json` is written, this call is the sole owner of that file for
  * the rest of its own execution, so any failure in the page/asset writes
  * below deletes it before rethrowing — a failed run never leaves a
- * `deck.plan.json` behind that doesn't match what actually landed in
+ * `deck.spec.json` behind that doesn't match what actually landed in
  * `pages/`/`assets/`. The `wx` no-overwrite guard above still runs first and
  * throws before this rollback scope is ever entered, so a pre-existing
- * `deck.plan.json` this call did not itself create is never at risk of
+ * `deck.spec.json` this call did not itself create is never at risk of
  * being deleted — deleting only ever targets the file this same invocation
  * just wrote.
  */
@@ -765,34 +784,34 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
   const raw = await loadIrFile(irPath)
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
-  const { plan, pages } = disassembleDeck(v.ir!)
+  const { spec, pages } = disassembleDeck(v.ir!)
 
   // W5 whole-branch review finding 1 (CRITICAL, CWE-22): `id` is `slide.id`
   // off the parsed input IR (`disassembleDeck` passes a bare `slide.id`
   // through unchanged when present, `../plan/assemble.ts`) — unrestricted at
   // the schema layer, so an id like `"../../../../escape"` would otherwise
   // write outside `outDir`. Post-v0.3 W8 fix round (backlog item 8): checked
-  // here, ahead of every write including `deck.plan.json` itself, so a
+  // here, ahead of every write including `deck.spec.json` itself, so a
   // single unsafe id fails the whole call with nothing written at all,
-  // rather than leaving a `deck.plan.json` that then needs rolling back.
+  // rather than leaving a `deck.spec.json` that then needs rolling back.
   const ids = Object.keys(pages)
   for (const id of ids) assertSafeFileSegment(id, "slide id")
 
-  const planPath = join(outDir, "deck.plan.json")
+  const specPath = join(outDir, "deck.spec.json")
   await mkdir(outDir, { recursive: true })
   try {
-    await writeFile(planPath, JSON.stringify(plan, null, 2) + "\n", { flag: "wx" })
+    await writeFile(specPath, JSON.stringify(spec, null, 2) + "\n", { flag: "wx" })
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "EEXIST") {
-      throw new PptfastError(`${planPath} already exists — refusing to overwrite an existing deck project`)
+      throw new PptfastError(`${specPath} already exists — refusing to overwrite an existing deck project`)
     }
     throw e
   }
 
-  // From here on `planPath` is a file this call just created (the `wx` flag
+  // From here on `specPath` is a file this call just created (the `wx` flag
   // above guarantees no pre-existing file survived to this point), so it is
   // safe to delete on any failure below — backlog item 8: a mid-way failure
-  // used to leave `deck.plan.json` on disk with no matching pages/assets,
+  // used to leave `deck.spec.json` on disk with no matching pages/assets,
   // misrepresenting the deck project as already, successfully disassembled.
   const pagesDir = join(outDir, "pages")
   try {
@@ -817,11 +836,128 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
         ? `${ids.length} page file${ids.length === 1 ? "" : "s"} to ${pagesDir}`
         : "no pages (every slide was a placeholder)"
     const assetsNote = assetCount > 0 ? `, and ${assetCount} asset file${assetCount === 1 ? "" : "s"} to ${assetsDir}` : ""
-    return `wrote ${planPath}, ${pagesNote}${assetsNote}`
+    return `wrote ${specPath}, ${pagesNote}${assetsNote}`
   } catch (e) {
-    // Best-effort cleanup: a failure to delete the plan file must never mask
+    // Best-effort cleanup: a failure to delete the spec file must never mask
     // the real failure `e` below, so its own error is swallowed, not thrown.
-    await rm(planPath, { force: true }).catch(() => {})
+    await rm(specPath, { force: true }).catch(() => {})
     throw e
   }
+}
+
+// ── migrate ──────────────────────────────────────────────────────────────
+
+/**
+ * `pptfast migrate <input> -o <output>` (spec §9.1/§9.2/§9.3, vocabulary-v4
+ * rename, task 2): the one deterministic conversion surface for both
+ * artifacts this rename touches. Dispatches purely on whether `<input>`
+ * resolves to a directory ({@link isDeckDirectory}) — the same signal every
+ * other deck-accepting command already uses to branch between single-file
+ * and deck-project-directory mode:
+ *
+ * - a directory containing `deck.plan.json` → {@link runMigrateDeckDir}:
+ *   rewrites it to `deck.spec.json` per spec §9.2's field mapping
+ *   ({@link migrateDeckPlanToSpec}, `../plan/migrate.ts`), written to
+ *   `<output>` (a directory — `<output>/deck.spec.json`).
+ * - a file → {@link runMigrateIrFile}: must be an IR v3 document
+ *   (`version: "3"`), wraps {@link migrateIrV3ToV4} (`../ir/migrate.ts`),
+ *   written to `<output>` (a file). IR v2 is explicitly not accepted here
+ *   (spec §15.3: "v2 无真实用户" — `pptfast migrate` only supports v3→v4,
+ *   `validateIr`'s own v2 hard-reject message carries the full v2→v4
+ *   combined mapping for a caller who needs to convert one by hand).
+ *
+ * Both branches never overwrite `<output>` — a pre-existing file at the
+ * resolved output path is a hard `PptfastError`, the same `wx`-flag EEXIST
+ * guard `runDisassemble`/`runInit` already use elsewhere in this file (spec
+ * §9.2: "迁移工具必须默认写到新目标，不覆盖原文件"). Neither branch runs a
+ * model or reinterprets content — both are thin CLI shells over an
+ * already-pure mapping function, per spec §9.3: "只做已声明的结构映射，不
+ * 运行模型，不重写内容，不重新选择 layout".
+ */
+export async function runMigrate(input: string, output: string, cwd = process.cwd()): Promise<string> {
+  const resolvedInput = resolve(cwd, input)
+  if (await isDeckDirectory(resolvedInput)) {
+    return runMigrateDeckDir(resolvedInput, output, cwd)
+  }
+  return runMigrateIrFile(resolvedInput, output, cwd)
+}
+
+/**
+ * Deck-project-directory leg of {@link runMigrate}: reads `deck.plan.json`
+ * out of `dir` (`loadIrFile`'s generic read-plus-parse, `./load-ir.ts` —
+ * same helper `runSpecValidate` above uses, "plan" naming its own failure
+ * messages), maps it through {@link migrateDeckPlanToSpec}
+ * (`../plan/migrate.ts`, spec §9.2's field mapping), and writes the result
+ * to `<output>/deck.spec.json`. `pages/*.json` and `assets/*` are untouched
+ * — spec §9.2's mapping only touches `deck.plan.json`'s own top-level
+ * `scenario` field and each page's `rhythm` field, both entirely absent from
+ * the pages/assets directories.
+ *
+ * Deliberately does not delete or rename the source `deck.plan.json` —
+ * spec §9.2: "不覆盖原文件" applies to the migration direction generally,
+ * and leaving the old file in place is what lets {@link readSpecFile}-style
+ * dual-file detection (`../cli/deck-dir.ts`) catch a half-finished migration
+ * (both files present) instead of one command silently deciding the old
+ * file is now garbage. The success message tells the caller to delete it
+ * once they have confirmed the new file is correct.
+ */
+async function runMigrateDeckDir(dir: string, output: string, cwd: string): Promise<string> {
+  const planPath = join(dir, PLAN_FILENAME)
+  const raw = await loadIrFile(planPath, "plan")
+  const migrated = migrateDeckPlanToSpec(raw)
+  const outDir = resolve(cwd, output)
+  const specPath = join(outDir, SPEC_FILENAME)
+  await mkdir(outDir, { recursive: true })
+  try {
+    await writeFile(specPath, JSON.stringify(migrated, null, 2) + "\n", { flag: "wx" })
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new PptfastError(`${specPath} already exists — refusing to overwrite, delete it first or choose a different -o`)
+    }
+    throw e
+  }
+  return `wrote ${specPath} — run \`pptfast spec validate ${specPath}\` to confirm it, then delete ${planPath} (a directory with both files present is rejected)`
+}
+
+/**
+ * Single-file leg of {@link runMigrate}: requires an explicit `version: "3"`
+ * (spec §9.3: "IR v4 入口遇到 v3 时硬拒绝" is `validateIr`'s own job — this
+ * command instead requires v3 *specifically*, since v3 is the only version
+ * it knows how to convert). `version: "2"` gets its own message pointing at
+ * `validateIr`'s existing combined v2→v4 mapping rather than silently
+ * routing it through the v3 vocabulary as a stepping stone (spec §15.3:
+ * "v2 无真实用户", "`pptfast migrate` 只支持 v3→v4，不接 v2"). Any other
+ * version (already v4, or missing/malformed entirely) is rejected with a
+ * message naming what this command does accept.
+ */
+async function runMigrateIrFile(filePath: string, output: string, cwd: string): Promise<string> {
+  const raw = await loadIrFile(filePath)
+  const version = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>).version : undefined
+  if (version === "2") {
+    throw new PptfastError(
+      "pptfast migrate does not support IR v2 (spec §15.3: v2 has no real users) — run `pptfast validate` on the v2 file to see the full v2→v4 combined field mapping and rewrite it by hand",
+    )
+  }
+  if (version !== "3") {
+    throw new PptfastError(
+      `pptfast migrate only converts an IR v3 file (version: "3") or a deck project directory containing ${PLAN_FILENAME} — got version ${JSON.stringify(version)} in ${filePath}`,
+    )
+  }
+  const parsed = PptxIRV3Schema.safeParse(raw)
+  if (!parsed.success) {
+    const detail = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`).join("\n")
+    throw new PptfastError(`invalid IR v3 file ${filePath}:\n${detail}`)
+  }
+  const migrated = migrateIrV3ToV4(parsed.data)
+  const outPath = resolve(cwd, output)
+  await mkdir(dirname(outPath), { recursive: true })
+  try {
+    await writeFile(outPath, JSON.stringify(migrated, null, 2) + "\n", { flag: "wx" })
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new PptfastError(`${outPath} already exists — refusing to overwrite, delete it first or choose a different -o`)
+    }
+    throw e
+  }
+  return `wrote ${outPath} (migrated IR v3 → v4)`
 }

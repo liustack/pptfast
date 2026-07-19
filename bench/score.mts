@@ -134,12 +134,21 @@ type ArtifactResult = { ir: unknown } | { error: string }
  * object. Two shapes, dispatched the same way the CLI does
  * (`isDeckDirectory` in `src/cli/deck-dir.ts`, restated here rather than
  * imported because the dispatch signal this scorer needs — "does this
- * directory contain `deck.plan.json`" — is cheaper than a second `stat`):
- * a bare IR `*.json` file, or a full deck-project directory assembled via
- * `readDeckDir` (the same seam `pptfast validate`/`render` use, `AGENTS.md`'s
- * "reuse, do not reimplement assembly"). Never throws — every failure path
- * (missing directory, missing/ambiguous artifact file, malformed JSON, a
- * `readDeckDir`/`assembleDeck` structural error) returns `{ error }` instead.
+ * directory contain a deck spec/plan artifact" — is cheaper than a second
+ * `stat`): a bare IR `*.json` file, or a full deck-project directory
+ * assembled via `readDeckDir` (the same seam `pptfast validate`/`render`
+ * use, `AGENTS.md`'s "reuse, do not reimplement assembly"). Never throws —
+ * every failure path (missing directory, missing/ambiguous artifact file,
+ * malformed JSON, a `readDeckDir`/`assembleDeck` structural error) returns
+ * `{ error }` instead.
+ *
+ * Checks for *either* `deck.spec.json` (current, vocabulary-v4 rename, spec
+ * §6/§9.2) or the pre-rename `deck.plan.json` — not just the former — so a
+ * not-yet-migrated result directory still routes into `readDeckDir` and gets
+ * its own readable "no deck.spec.json ... run `pptfast migrate`" error
+ * (`readSpecFile`, `src/cli/deck-dir.ts`) instead of silently falling through
+ * to the bare-IR branch below and being mis-parsed as if `deck.plan.json`/
+ * `deck.spec.json` itself were a bare `PptxIR` file.
  */
 async function loadArtifact(resultDir: string): Promise<ArtifactResult> {
   let entries: Dirent[]
@@ -149,8 +158,10 @@ async function loadArtifact(resultDir: string): Promise<ArtifactResult> {
     return { error: relativizeToRepoRoot(`no result directory found at ${resultDir}`) }
   }
 
-  const hasPlan = entries.some((e) => e.isFile() && e.name === "deck.plan.json")
-  if (hasPlan) {
+  const isDeckProjectDir = entries.some(
+    (e) => e.isFile() && (e.name === "deck.spec.json" || e.name === "deck.plan.json"),
+  )
+  if (isDeckProjectDir) {
     try {
       const { ir } = await readDeckDir(resultDir)
       return { ir }
@@ -167,7 +178,7 @@ async function loadArtifact(resultDir: string): Promise<ArtifactResult> {
   if (candidates.length === 0) {
     return {
       error: relativizeToRepoRoot(
-        `no artifact found in ${resultDir} — expected a bare IR *.json file or a deck.plan.json project`,
+        `no artifact found in ${resultDir} — expected a bare IR *.json file or a deck.spec.json project`,
       ),
     }
   }

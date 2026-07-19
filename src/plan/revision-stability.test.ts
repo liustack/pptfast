@@ -36,13 +36,13 @@ function basePages(): Record<string, unknown>[] {
 
 /** "spacious" pacing's 4-16 page-count floor is cleared by all 8 base
  *  pages (and by 9, once the insertion scenario adds one more) — same
- *  `scenario: { pacing: "spacious" }` shorthand `assemble.test.ts`'s
- *  own `makePlan` uses, which resolves to a rhythm policy every one of these
- *  fixtures' all-rhythm-omitted pages vacuously clears. */
+ *  `narrative: { pacing: "spacious" }` shorthand `assemble.test.ts`'s
+ *  own `makePlan` uses, which resolves to a beat policy every one of these
+ *  fixtures' all-beat-omitted pages vacuously clears. */
 function makePlan(pages: Record<string, unknown>[], extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: "1",
-    scenario: { pacing: "spacious" },
+    narrative: { pacing: "spacious" },
     theme: "consulting",
     filename: "revision-stability-deck",
     pages,

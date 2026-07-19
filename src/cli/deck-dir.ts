@@ -3,7 +3,7 @@
  * scheme, W5 task 5). Everything here touches disk — the pure half
  * (locked-field injection, placeholder/orphan semantics) lives in
  * `../plan/assemble.ts`'s `assembleDeck`, zero-fs by design (`AGENTS.md`'s
- * layout rule: this module is the *only* place that reads `deck.plan.json`
+ * layout rule: this module is the *only* place that reads `deck.spec.json`
  * / `pages/*.json` / `assets/*` off disk and calls straight through to it,
  * the same posture `./load-ir.ts` already holds for a single IR file). It
  * is also the only place that *writes* `assets/*`, on the disassemble side
@@ -11,13 +11,21 @@
  * and the CLI-shell half of `disassembleDeck`'s otherwise-lossy asset
  * handling (see that function's own doc comment in `../plan/assemble.ts`).
  *
- * Directory layout (spec §7):
+ * Directory layout (spec §6/§7 — the locked artifact renamed from
+ * `deck.plan.json` to `deck.spec.json`, vocabulary-v4 rename, task 2):
  * ```
  * my-deck/
- *   deck.plan.json        the locked plan — page order's sole source of truth
+ *   deck.spec.json        the locked spec — page order's sole source of truth
  *   pages/<page-id>.json  one file per filled page, content only (no type/heading)
  *   assets/                local images, auto-registered by filename
  * ```
+ *
+ * A directory carrying the pre-rename `deck.plan.json` only (no
+ * `deck.spec.json` yet) is no longer read directly — `pptfast migrate
+ * <dir> -o <dir>` (`./commands.ts`'s `runMigrate`) converts it in place per
+ * spec §9.2's field mapping. A directory carrying *both* files at once is a
+ * hard error ({@link readSpecFile} below) — spec §9.2: "目录中同时出现
+ * `deck.plan.json` 和 `deck.spec.json` 时应硬报错，不能猜测优先级".
  */
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises"
 import { basename, extname, isAbsolute, join, relative, resolve } from "node:path"
@@ -26,7 +34,15 @@ import { assembleDeck, type AssembleResult, type PageContent } from "../plan/ass
 import { decksRoot } from "./home"
 import { EXT_BY_MIME, loadIrFile } from "./load-ir"
 
-const PLAN_FILENAME = "deck.plan.json"
+/** The pre-rename artifact name (vocabulary-v4 rename, spec §6/§9.2) — no
+ *  longer read directly by {@link readSpecFile}, but still needed to (a)
+ *  detect the dual-file hard-error case and (b) as the migrate command's own
+ *  read source (`./commands.ts`'s `runMigrate`). Both exported for that
+ *  second reason — `runMigrate` needs the exact same two filenames, and
+ *  duplicating the literal strings there would risk the two modules drifting
+ *  on spelling. */
+export const PLAN_FILENAME = "deck.plan.json"
+export const SPEC_FILENAME = "deck.spec.json"
 const PAGES_DIRNAME = "pages"
 const ASSETS_DIRNAME = "assets"
 
@@ -168,7 +184,7 @@ export async function pathExists(path: string): Promise<boolean> {
  * this guard, `resolve(cwd, "")` returns `cwd` unchanged and `pathExists`
  * always finds it (a directory always exists), so the empty string would
  * otherwise quietly pass through as "the target is cwd", surfacing later as
- * a confusing missing-`deck.plan.json` error instead of naming the actual
+ * a confusing missing-`deck.spec.json` error instead of naming the actual
  * problem (an empty target argument) up front.
  */
 export async function resolveDeckTarget(
@@ -184,15 +200,15 @@ export async function resolveDeckTarget(
   return (await pathExists(fallback)) ? fallback : local
 }
 
-// ── deck.plan.json ──────────────────────────────────────────────────────
+// ── deck.spec.json ──────────────────────────────────────────────────────
 
-/** The expected-layout block of {@link readPlanFile}'s missing-file error —
+/** The expected-layout block of {@link readSpecFile}'s missing-file error —
  *  `padEnd`-aligned programmatically (not hand-counted spaces in a template
  *  literal) so the three column widths can't silently drift out of line
  *  when one of the three filename/`*_DIRNAME` constants above changes. */
 function expectedLayoutHint(): string {
   const rows: [string, string][] = [
-    [PLAN_FILENAME, "the locked plan (see `pptfast plan validate`)"],
+    [SPEC_FILENAME, "the locked spec (see `pptfast spec validate`)"],
     [`${PAGES_DIRNAME}/<page-id>.json`, "one file per filled page (missing pages become placeholders)"],
     [`${ASSETS_DIRNAME}/`, "optional local images"],
   ]
@@ -201,30 +217,59 @@ function expectedLayoutHint(): string {
 }
 
 /**
- * Reads `deck.plan.json` out of `dir`. A missing file gets its own,
- * friendlier message over `loadIrFile`'s generic "cannot read" — this is
- * the one failure a deck-directory caller is most likely to hit by typo or
- * by pointing at a directory that was never a deck project in the first
- * place, so the error spells out the expected layout and points at
- * `pptfast plan validate` rather than leaving the caller to guess.
+ * Reads `deck.spec.json` out of `dir` (vocabulary-v4 rename, task 2 —
+ * this function used to read the pre-rename `deck.plan.json` directly; it
+ * no longer does). Three failure shapes, each with its own message:
+ *
+ * - both `deck.plan.json` and `deck.spec.json` present — a hard error, spec
+ *   §9.2: "目录中同时出现 `deck.plan.json` 和 `deck.spec.json` 时应硬报错，
+ *   不能猜测优先级" ("hard error, never guess which one wins"). Checked
+ *   before the missing-file branch below so a caller that just ran
+ *   `pptfast migrate <dir> -o <dir>` (which writes `deck.spec.json`
+ *   *alongside* the pre-existing `deck.plan.json`, never deleting it) gets
+ *   pointed at deleting the old file, not a generic "not a deck project"
+ *   message.
+ * - only `deck.plan.json` present (no `deck.spec.json` yet) — this
+ *   directory predates the rename and is no longer read directly; the
+ *   message points at `pptfast migrate` instead of the generic missing-file
+ *   hint, since the fix here is a one-command conversion, not authoring a
+ *   fresh file from scratch.
+ * - neither file present — the pre-existing "friendlier message over
+ *   `loadIrFile`'s generic "cannot read"" this function has always had: the
+ *   one failure a deck-directory caller is most likely to hit by typo or by
+ *   pointing at a directory that was never a deck project in the first
+ *   place, so the error spells out the expected layout and points at
+ *   `pptfast spec validate` rather than leaving the caller to guess.
  */
-async function readPlanFile(dir: string): Promise<unknown> {
+async function readSpecFile(dir: string): Promise<unknown> {
+  const specPath = join(dir, SPEC_FILENAME)
   const planPath = join(dir, PLAN_FILENAME)
+  const [specExists, planExists] = await Promise.all([pathExists(specPath), pathExists(planPath)])
+  if (specExists && planExists) {
+    throw new PptfastError(
+      `both ${SPEC_FILENAME} and ${PLAN_FILENAME} exist in ${dir} — ambiguous, refusing to guess which one wins. Delete ${PLAN_FILENAME} once you have confirmed ${SPEC_FILENAME} is correct (\`pptfast migrate\` never deletes the source file it read)`,
+    )
+  }
+  if (!specExists && planExists) {
+    throw new PptfastError(
+      `${dir} has ${PLAN_FILENAME} but no ${SPEC_FILENAME} — deck project directories now use ${SPEC_FILENAME}. Run \`pptfast migrate ${dir} -o ${dir}\` to convert it`,
+    )
+  }
   let text: string
   try {
-    text = await readFile(planPath, "utf8")
+    text = await readFile(specPath, "utf8")
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
       throw new PptfastError(
-        `no ${PLAN_FILENAME} in ${dir} — expected a deck project directory:\n${expectedLayoutHint()}`,
+        `no ${SPEC_FILENAME} in ${dir} — expected a deck project directory:\n${expectedLayoutHint()}`,
       )
     }
-    throw new PptfastError(`cannot read plan file: ${planPath}`)
+    throw new PptfastError(`cannot read spec file: ${specPath}`)
   }
   try {
     return JSON.parse(text) as unknown
   } catch (e) {
-    throw new PptfastError(`plan file ${planPath} is not valid JSON: ${(e as Error).message}`)
+    throw new PptfastError(`spec file ${specPath} is not valid JSON: ${(e as Error).message}`)
   }
 }
 
@@ -234,7 +279,7 @@ async function readPlanFile(dir: string): Promise<unknown> {
  * Reads every `pages/<id>.json` file into a `{ id: parsedContent }` record —
  * `id` is the filename sans `.json` (spec §7: one file per page, named by a
  * stable id). A missing `pages/` directory (`ENOENT`) is not an error, just
- * an empty record (a brand-new deck project with a plan and no filled pages
+ * an empty record (a brand-new deck project with a spec and no filled pages
  * yet is exactly `assembleDeck`'s "every page becomes a placeholder" case)
  * — but `pages/` existing as something that cannot be read as a directory
  * (e.g. a file sitting where a directory was expected, `ENOTDIR`) is a real
@@ -331,10 +376,10 @@ export interface DeckDirResult extends AssembleResult {
 }
 
 /**
- * Reads a deck project directory end to end: plan + pages → `assembleDeck`
+ * Reads a deck project directory end to end: spec + pages → `assembleDeck`
  * (locked-field injection, placeholder/orphan semantics — see that
  * function's own doc comment) → assets/ scan merged into the assembled IR's
- * `assets.images` (assemble first, then inject — a plan has no `assets`
+ * `assets.images` (assemble first, then inject — a deck spec has no `assets`
  * field of its own, so there is never a pre-existing id for a scanned asset
  * to collide with, only the intra-`assets/`-directory collision
  * {@link scanAssets} itself guards against).
@@ -343,7 +388,7 @@ export interface DeckDirResult extends AssembleResult {
  * ...images } }`) rather than assigning into `ir.assets.images` in place —
  * deliberately, not just style: `PptxIRSchema`'s `assets` field defaults to
  * a *static* object literal (`AssetsSchema.default({ images: {} })`,
- * `../ir/index.ts`), and a plan never sets its own `assets` (assembleDeck's
+ * `../ir/index.ts`), and a deck spec never sets its own `assets` (assembleDeck's
  * raw object omits the key entirely, same as every other field it lets the
  * schema default), so *every* assembled deck's `ir.assets.images` starts out
  * as that one schema-default object — zod does not deep-clone a static
@@ -377,9 +422,9 @@ export interface DeckDirResult extends AssembleResult {
  */
 export async function readDeckDir(dir: string): Promise<DeckDirResult> {
   const deckDir = resolve(dir)
-  const plan = await readPlanFile(deckDir)
+  const spec = await readSpecFile(deckDir)
   const pages = await readPages(deckDir)
-  const { ir, generatedSeed, materializedLayoutCount } = assembleDeck(plan, pages as Record<string, PageContent>)
+  const { ir, generatedSeed, materializedLayoutCount } = assembleDeck(spec, pages as Record<string, PageContent>)
   const images = await scanAssets(deckDir)
   const merged = { ...ir, assets: { images: { ...ir.assets.images, ...images } } }
   return { ir: merged, generatedSeed, materializedLayoutCount, deckDir }
@@ -400,7 +445,7 @@ export interface WriteDeckAssetsResult {
  * {@link scanAssets} above, and the CLI-shell half of `disassembleDeck`'s
  * documented-lossy `assets` handling (`../plan/assemble.ts`'s own doc
  * comment on that function): that pure function never touches
- * `ir.assets.images` at all (its `{ plan, pages }` return has no `assets`
+ * `ir.assets.images` at all (its `{ spec, pages }` return has no `assets`
  * field), so without this step a disassembled directory would carry
  * `asset_id` references inside `pages/*.json` with nothing under `assets/`
  * backing them — exactly the "image deck round-trips to a missing image"
@@ -427,7 +472,7 @@ export interface WriteDeckAssetsResult {
  *   (inline it as a data URI, or download it first), not something this
  *   function can paper over.
  *
- * Written entries need no plan or page record of their own: `readDeckDir`'s
+ * Written entries need no spec or page record of their own: `readDeckDir`'s
  * own {@link scanAssets} re-registers every file under `assets/` purely by
  * scanning the directory, the same way it would for a hand-added image —
  * this function's only job is making sure the bytes are there.
