@@ -131,7 +131,7 @@ signals off the SDK the render chain already exposes (`validateIr`/`auditDeck`/`
 - **render success**: does `generatePptx` produce a well-formed `.pptx` without throwing
 - **determinism**: render the same artifact twice and compare the two `.pptx` files byte for
   byte, with the one known clock-dependent exclusion the render chain already carries —
-  `docProps/core.xml` (pptxgenjs bakes `new Date().toISOString()` into it on every call; see the
+  `docProps/core.xml` (pptxgenjs bakes `new Date().toISOString()` into it on every call — see the
   `normalizedZipMap` precedent in `src/pptx/generate-notes-export.test.ts`) — every other zip
   part must match exactly, not just structurally
 - **coverage hits**: which of `meta.json`'s `expects_components` actually appear in the produced
