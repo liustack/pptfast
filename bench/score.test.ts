@@ -168,6 +168,45 @@ describe("scoreQuestion — missing artifact", () => {
   })
 })
 
+// ── loadArtifact's two remaining unexercised failure branches (task-2
+// review, Minor finding 2): a readDeckDir/assembleDeck structural-assembly
+// error, and the "ambiguous artifact" (>1 candidate *.json) case. Both
+// fixtures use standalone fx97/fx98 ids that are not part of the
+// bench/fixtures/questions bank (same pattern as fx99 above) so they don't
+// perturb the green/degraded-model aggregate counts asserted elsewhere.
+
+describe("scoreQuestion — deck-project structural-assembly failure", () => {
+  it("a page file that redeclares a plan-locked field fails readDeckDir's assembleDeck step, scores a fail with a reason, never throws", async () => {
+    const score = await scoreQuestion("fx98", join(RESULTS_DIR, "degraded-model", "fx98"), undefined)
+    expect(score.reason).toMatch(/deck project directory failed to assemble/)
+    expect(score.reason).toMatch(/"heading" is locked by the plan/)
+    expect(score.validatePass).toBe(false)
+    expect(score.validateErrorCount).toBe(0)
+    expect(score.auditFindingCount).toBe(0)
+    expect(score.renderOk).toBe(false)
+    expect(score.deterministic).toBeNull()
+    expect(score.coverageHits).toEqual([])
+    // relativized, not the machine-specific absolute path
+    expect(score.reason).not.toContain(REPO_ROOT)
+  })
+})
+
+describe("scoreQuestion — ambiguous artifact", () => {
+  it("a result directory with more than one candidate *.json file scores a fail with a reason naming both, never throws", async () => {
+    const score = await scoreQuestion("fx97", join(RESULTS_DIR, "degraded-model", "fx97"), undefined)
+    expect(score.reason).toMatch(/ambiguous artifact/)
+    expect(score.reason).toContain("alt.json")
+    expect(score.reason).toContain("answer.json")
+    expect(score.validatePass).toBe(false)
+    expect(score.renderOk).toBe(false)
+    expect(score.deterministic).toBeNull()
+    expect(score.coverageHits).toEqual([])
+    // relativized, not the machine-specific absolute path
+    expect(score.reason).not.toContain(REPO_ROOT)
+    expect(score.reason).toContain("bench/fixtures/results/degraded-model/fx97")
+  })
+})
+
 // ── report generation shape ──
 
 describe("renderModelReport / renderSummaryReport", () => {

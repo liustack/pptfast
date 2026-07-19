@@ -200,6 +200,18 @@ question, report shape, and — the scorer-reproducibility requirement — that 
 binary), so the double-run assertion is a genuine byte comparison rather than a vacuous
 always-equal check.
 
+Two more `loadArtifact` failure branches, standalone `fx97`/`fx98` results not part of the
+3-question fixture bank (same pattern as the `fx99` "missing directory" fixture — kept out of
+`bench/fixtures/questions` so they don't shift the bank's aggregate counts), are also covered: a
+deck-project directory whose `pages/p-cover.json` redeclares the plan-locked `heading` field
+(`readDeckDir`/`assembleDeck` structural-assembly failure), and a result directory with two
+candidate `*.json` files (the "ambiguous artifact" branch). Both score as a fail with a `reason`,
+never a thrown exception. Every `reason`/error string that would otherwise embed an absolute
+filesystem path is rewritten repo-root-relative before it reaches the report's `notes` column
+(`relativizeToRepoRoot` in `score.mts`) — same-machine byte-identical reproducibility never
+depended on this, but it also makes two reports from two different checkouts of the same fixture
+tree comparable.
+
 ## Package exclusion
 
 `package.json`'s `files` whitelist is `["dist", "README.zh-CN.md"]` — `bench/` is not listed, so
