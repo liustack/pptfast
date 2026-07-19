@@ -468,6 +468,52 @@ describe("runPreview --html (W7 task 1)", () => {
   })
 })
 
+describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
+  it("audits a clean deck and shows no finding badges or panel", async () => {
+    const out = join(dir, "svgs-html-audit-clean")
+    const msg = await runPreview(join(dir, "deck.json"), out, { htmlOut: true })
+    const html = await readFile(join(out, "preview.html"), "utf8")
+    expect(html).not.toContain('class="pf-finding-badge"')
+    expect(html).not.toContain('class="pf-thumb-finding-badge"')
+    expect(html).not.toContain('id="pf-audit-panel"')
+    expect(html).not.toContain('id="pf-audit-note"')
+    // No "N findings" note appended when the audit found nothing.
+    expect(msg).not.toContain("audit found")
+  })
+
+  it("audits a deliberately low-contrast deck and shows a finding badge + panel entry, plus a CLI note", async () => {
+    const out = join(dir, "svgs-html-audit-low-contrast")
+    const msg = await runPreview(join(dir, "deck-low-contrast.json"), out, { htmlOut: true })
+    const html = await readFile(join(out, "preview.html"), "utf8")
+    expect(html).toContain('class="pf-finding-badge"')
+    expect(html).toContain('class="pf-thumb-finding-badge"')
+    expect(html).toContain('id="pf-audit-panel"')
+    expect(html).toContain("[low-contrast]")
+    expect(html).toContain("p-body") // IR_LOW_CONTRAST's slide id
+    expect(msg).toMatch(/note: audit found \d+ findings? — see preview\.html/)
+  })
+
+  it("skips the audit entirely for a deck with a placeholder page, showing the one-line notice instead of running a partial audit", async () => {
+    const out = join(dir, "svgs-html-audit-placeholder")
+    const msg = await runPreview(join(dir, "deck-with-placeholder.json"), out, { htmlOut: true })
+    const html = await readFile(join(out, "preview.html"), "utf8")
+    expect(html).toContain('id="pf-audit-note"')
+    expect(html).toContain("audit overlay skipped")
+    expect(html).not.toContain('id="pf-audit-panel"')
+    expect(html).not.toContain('class="pf-finding-badge"')
+    expect(html).not.toContain('class="pf-thumb-finding-badge"')
+    expect(msg).not.toContain("audit found")
+  })
+
+  it("always includes the annotation UI and export button, independent of audit results", async () => {
+    const out = join(dir, "svgs-html-audit-annotate")
+    await runPreview(join(dir, "deck.json"), out, { htmlOut: true })
+    const html = await readFile(join(out, "preview.html"), "utf8")
+    expect(html).toContain('id="pf-annotate-panel"')
+    expect(html).toContain('id="pf-export-btn"')
+  })
+})
+
 describe("runSchema --style", () => {
   it("prints the StyleOverride schema", () => {
     const s = JSON.parse(runSchema("style")) as { properties?: Record<string, unknown> }
