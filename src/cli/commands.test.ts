@@ -616,6 +616,15 @@ describe("deck project directory workflow (W5 task 5)", () => {
     expect(assembleMsg1).toContain("to deck.plan.json for revision stability")
     const seedMatch1 = /generated seed (\d+)/.exec(assembleMsg1)
     expect(seedMatch1).not.toBeNull()
+    // Backlog item 9a (`.issues/notes/2026-07-18-post-v03-backlog.md` #9a):
+    // none of p-a/p-b/p-cover/p-ending's page files set an explicit
+    // `layout`, so this call also triggers the materialized-layout note —
+    // commands.ts:668-677 always pushes the seed note before the layout
+    // note when both apply; assert that relative order, not just that each
+    // note's text independently appears somewhere in the message.
+    const layoutNoteIndex1 = assembleMsg1.indexOf("auto-selected into deck.json")
+    expect(layoutNoteIndex1).toBeGreaterThanOrEqual(0)
+    expect(layoutNoteIndex1).toBeGreaterThan(seedMatch1!.index)
 
     const assembled1 = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
     expect(assembled1.slides.find((s: { id: string }) => s.id === "p-c").placeholder).toBe(true)
@@ -792,6 +801,18 @@ describe("runAssemble", () => {
     expect(msg).toContain("5 placeholders") // no pages/ dir at all — every plan page unfilled
     const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
     expect(written.slides).toHaveLength(5)
+
+    // Backlog item 9a: makeDeckPlan() here has neither an explicit `seed`
+    // nor any page pinning its own `layout`, so this default call triggers
+    // both assemble notes — the seed note (generated seed) and the
+    // materialized-layout note (auto-selected). commands.ts:668-677 always
+    // pushes the seed note first; assert that relative order holds in the
+    // actual message, not just that both notes' text appears somewhere.
+    const seedNoteIndex = msg.indexOf("note: generated seed")
+    const layoutNoteIndex = msg.indexOf("note:", seedNoteIndex + 1)
+    expect(seedNoteIndex).toBeGreaterThanOrEqual(0)
+    expect(layoutNoteIndex).toBeGreaterThan(seedNoteIndex)
+    expect(msg.slice(layoutNoteIndex)).toContain("auto-selected into deck.json")
   })
 
   it("writes to a custom -o path when given", async () => {
@@ -1003,6 +1024,13 @@ describe("runDisassemble", () => {
       await expect(runDisassemble(irPath, outDir)).rejects.toThrow(
         'asset "logo": URL assets cannot be disassembled into a deck directory — inline it as a data URI or download it first',
       )
+      // Failure rollback (post-v0.3 W8 fix round, backlog item 8): unlike the
+      // path-traversal case above, this failure happens in writeDeckAssets,
+      // well after deck.plan.json and pages/*.json were both written
+      // successfully — the plan file this run itself created must not
+      // survive, or it would misrepresent this outDir as an already,
+      // successfully disassembled deck project.
+      await expect(stat(join(outDir, "deck.plan.json"))).rejects.toThrow()
     })
 
     it("copies a local file asset into assets/, resolving relative to the input IR's own directory", async () => {
@@ -1074,6 +1102,40 @@ describe("runDisassemble", () => {
         expect(entries).not.toContain("escape")
         expect(entries).not.toContain("escape.json")
       }
+
+      // Failure rollback (post-v0.3 W8 fix round, backlog item 8): the id
+      // check now runs before deck.plan.json is even written, so a failed
+      // run leaves no plan file at all — not a residual one that no longer
+      // matches what (if anything) landed in pages/.
+      await expect(stat(join(outDir, "deck.plan.json"))).rejects.toThrow()
+    })
+
+    // Task-3 review, optional nit routed to this wave: the case above
+    // always starts from an `outDir` that `makeDeckDir()` (mkdtemp) already
+    // created, so it can't tell "the id check runs before mkdir" apart from
+    // "the id check runs before the plan write" — outDir existing either
+    // way. `runDisassemble` (commands.ts) runs the `assertSafeFileSegment`
+    // loop before its own `mkdir(outDir, { recursive: true })` call, so an
+    // unsafe id must fail without ever creating `outDir` at all when it
+    // does not already exist — a stronger, more direct check on that
+    // ordering than the existing case above can express.
+    it("rejects an unsafe slide id without ever creating outDir when it does not already exist", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      const maliciousIr = {
+        ...ROUNDTRIPPABLE_IR,
+        slides: ROUNDTRIPPABLE_IR.slides.map((s, i) => (i === 1 ? { ...s, id: "../../../../escape" } : s)),
+      }
+      await writeFile(irPath, JSON.stringify(maliciousIr))
+      const parent = await makeDeckDir()
+      const outDir = join(parent, "not-created-yet")
+      await expect(stat(outDir)).rejects.toThrow() // sanity: outDir does not exist before the call
+
+      await expect(runDisassemble(irPath, outDir)).rejects.toThrow(
+        'slide id "../../../../escape" is not a safe file name — ids used as page/asset file names must not contain path separators or ".."',
+      )
+
+      await expect(stat(outDir)).rejects.toThrow() // still does not exist — the check ran before mkdir
     })
 
     it("still disassembles a deck with only safe, explicit slide ids — happy path unchanged", async () => {
@@ -1084,6 +1146,26 @@ describe("runDisassemble", () => {
       await runDisassemble(irPath, outDir)
       const pageFiles = (await readdir(join(outDir, "pages"))).sort()
       expect(pageFiles).toEqual(["s-body.json", "s-body2.json", "s-cover.json", "s-ending.json"])
+    })
+  })
+
+  describe("failure-rollback plan-file cleanup (post-v0.3 W8 fix round, backlog item 8)", () => {
+    it("never deletes a pre-existing deck.plan.json this call did not itself create", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR))
+      const outDir = await makeDeckDir()
+      const preExisting = JSON.stringify({ sentinel: "pre-existing plan, not written by this call" })
+      await writeFile(join(outDir, "deck.plan.json"), preExisting)
+
+      // The `wx` no-overwrite guard rejects before the rollback scope is
+      // ever entered — this is a "failed run" in the sense backlog item 8
+      // is about, but the plan file it fails on was never this call's own
+      // to delete.
+      await expect(runDisassemble(irPath, outDir)).rejects.toThrow(/already exists/)
+
+      const stillThere = await readFile(join(outDir, "deck.plan.json"), "utf8")
+      expect(stillThere).toBe(preExisting)
     })
   })
 })

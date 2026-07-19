@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, rm, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve } from "node:path"
 import {
   formatIssues,
@@ -705,18 +705,46 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
  * or an assetless deck, leaves either directory unwritten).
  *
  * Every page id is checked with {@link assertSafeFileSegment} (`./deck-dir.ts`)
- * before any `pages/<id>.json` is written (W5 whole-branch review finding 1,
- * CRITICAL — CWE-22): `slide.id` is an unrestricted string at the schema
- * layer, so a hand-authored IR could otherwise set one to
+ * before *any* file is written — not just ahead of `pages/<id>.json` (W5
+ * whole-branch review finding 1, CRITICAL — CWE-22), but ahead of
+ * `deck.plan.json` too (post-v0.3 W8 fix round, backlog item 8,
+ * `.issues/notes/2026-07-18-post-v03-backlog.md` #8 — the check originally
+ * ran after the plan write): `slide.id` is an unrestricted string at the
+ * schema layer, so a hand-authored IR could otherwise set one to
  * `"../../../../escape"` and write outside `outDir`. `writeDeckAssets` below
  * (`./deck-dir.ts`) carries the matching check for asset keys, inside
- * `writeOneAsset`.
+ * `writeOneAsset` — that check stays per-asset rather than also moving
+ * ahead of the plan write, since an unsafe id is only one of several ways
+ * `writeOneAsset` can fail (malformed data URI, URL asset, unreadable local
+ * file) and the others can't be front-loaded without doing the write itself.
+ *
+ * Failure rollback (post-v0.3 W8 fix round, backlog item 8): once
+ * `deck.plan.json` is written, this call is the sole owner of that file for
+ * the rest of its own execution, so any failure in the page/asset writes
+ * below deletes it before rethrowing — a failed run never leaves a
+ * `deck.plan.json` behind that doesn't match what actually landed in
+ * `pages/`/`assets/`. The `wx` no-overwrite guard above still runs first and
+ * throws before this rollback scope is ever entered, so a pre-existing
+ * `deck.plan.json` this call did not itself create is never at risk of
+ * being deleted — deleting only ever targets the file this same invocation
+ * just wrote.
  */
 export async function runDisassemble(irPath: string, outDir: string): Promise<string> {
   const raw = await loadIrFile(irPath)
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   const { plan, pages } = disassembleDeck(v.ir!)
+
+  // W5 whole-branch review finding 1 (CRITICAL, CWE-22): `id` is `slide.id`
+  // off the parsed input IR (`disassembleDeck` passes a bare `slide.id`
+  // through unchanged when present, `../plan/assemble.ts`) — unrestricted at
+  // the schema layer, so an id like `"../../../../escape"` would otherwise
+  // write outside `outDir`. Post-v0.3 W8 fix round (backlog item 8): checked
+  // here, ahead of every write including `deck.plan.json` itself, so a
+  // single unsafe id fails the whole call with nothing written at all,
+  // rather than leaving a `deck.plan.json` that then needs rolling back.
+  const ids = Object.keys(pages)
+  for (const id of ids) assertSafeFileSegment(id, "slide id")
 
   const planPath = join(outDir, "deck.plan.json")
   await mkdir(outDir, { recursive: true })
@@ -729,37 +757,39 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
     throw e
   }
 
-  const ids = Object.keys(pages)
+  // From here on `planPath` is a file this call just created (the `wx` flag
+  // above guarantees no pre-existing file survived to this point), so it is
+  // safe to delete on any failure below — backlog item 8: a mid-way failure
+  // used to leave `deck.plan.json` on disk with no matching pages/assets,
+  // misrepresenting the deck project as already, successfully disassembled.
   const pagesDir = join(outDir, "pages")
-  if (ids.length > 0) {
-    // W5 whole-branch review finding 1 (CRITICAL, CWE-22): `id` is
-    // `slide.id` off the parsed input IR (`disassembleDeck` passes a bare
-    // `slide.id` through unchanged when present, `../plan/assemble.ts`) —
-    // unrestricted at the schema layer, so an id like
-    // `"../../../../escape"` would otherwise write outside `outDir`.
-    // Validated in its own pass, before any page file is written, so a
-    // single unsafe id blocks the whole batch rather than letting earlier
-    // (safe) ids partially land first.
-    for (const id of ids) assertSafeFileSegment(id, "slide id")
-    await mkdir(pagesDir, { recursive: true })
-    await Promise.all(
-      ids.map((id) => {
-        const content: PageContent = pages[id]!
-        return writeFile(join(pagesDir, `${id}.json`), JSON.stringify(content, null, 2) + "\n")
-      }),
+  try {
+    if (ids.length > 0) {
+      await mkdir(pagesDir, { recursive: true })
+      await Promise.all(
+        ids.map((id) => {
+          const content: PageContent = pages[id]!
+          return writeFile(join(pagesDir, `${id}.json`), JSON.stringify(content, null, 2) + "\n")
+        }),
+      )
+    }
+
+    const { count: assetCount, assetsDir } = await writeDeckAssets(
+      v.ir!.assets.images,
+      outDir,
+      dirname(resolve(irPath)),
     )
+
+    const pagesNote =
+      ids.length > 0
+        ? `${ids.length} page file${ids.length === 1 ? "" : "s"} to ${pagesDir}`
+        : "no pages (every slide was a placeholder)"
+    const assetsNote = assetCount > 0 ? `, and ${assetCount} asset file${assetCount === 1 ? "" : "s"} to ${assetsDir}` : ""
+    return `wrote ${planPath}, ${pagesNote}${assetsNote}`
+  } catch (e) {
+    // Best-effort cleanup: a failure to delete the plan file must never mask
+    // the real failure `e` below, so its own error is swallowed, not thrown.
+    await rm(planPath, { force: true }).catch(() => {})
+    throw e
   }
-
-  const { count: assetCount, assetsDir } = await writeDeckAssets(
-    v.ir!.assets.images,
-    outDir,
-    dirname(resolve(irPath)),
-  )
-
-  const pagesNote =
-    ids.length > 0
-      ? `${ids.length} page file${ids.length === 1 ? "" : "s"} to ${pagesDir}`
-      : "no pages (every slide was a placeholder)"
-  const assetsNote = assetCount > 0 ? `, and ${assetCount} asset file${assetCount === 1 ? "" : "s"} to ${assetsDir}` : ""
-  return `wrote ${planPath}, ${pagesNote}${assetsNote}`
 }

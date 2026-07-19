@@ -88,7 +88,7 @@ describe("PosterEnding", () => {
     )
 
     expect(out).toContain("#051C2C") // consulting primary，短横条 + text
-    expect(out).toContain("#6C6C6C") // consulting muted，副标题/meta 行
+    expect(out).toContain("#6B6B6B") // consulting muted，副标题/meta 行
     expect(out).toContain("#D5D5CB") // consulting border，分隔线
 
     // creative 烤死的 hex 一律不得残留

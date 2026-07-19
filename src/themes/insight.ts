@@ -11,7 +11,7 @@ export const INSIGHT_TOKENS: StyleTokens = {
     primary: "#E63946",
     accent: "#D4A57C",
     text: "#F5F5F5",
-    muted: "#888892",
+    muted: "#93939C", // post-v0.3 W8 fix round补测（backlog 5a，content-matrix 色调混合格底色缺口，task-2 审校发现）：明度上调校准 4.5:1（原 #888892，保色相/饱和度——insight 本轮首次校准，此前从未在 8/13 主题名单内）
     border: "#2A2A2E",
     chartPalette: ["#E63946", "#D4A57C", "#888892", "#F5F5F5"],
   },

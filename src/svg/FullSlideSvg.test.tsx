@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest"
 import { render } from "@testing-library/react"
-import { FullSlideSvg } from "./FullSlideSvg"
+import { FullSlideSvg, resolveOverrideBackgroundHex } from "./FullSlideSvg"
 import { renderSvgMarkup, parseSvgRoot } from "./serialize"
 import { assertSubset } from "./subset-validate"
 import { svgToOps } from "../pptx/svg2pptx/dispatch"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { THEME_DEFINITIONS } from "../themes/definitions"
+import { contrastRatio, readableOn } from "./ink"
 import type { PptxIR, Slide } from "@/ir"
 
 function ir(slides: Slide[]): PptxIR {
@@ -181,6 +182,181 @@ describe("asset background auto scrim (image-layouts P1)", () => {
     expect(scrims).toHaveLength(1)
   })
 
+})
+
+describe("resolveOverrideBackgroundHex (post-v0.3 W8 fix round, backlog item 1)", () => {
+  it("passes a color spec through unchanged, same as resolveBackgroundHex", () => {
+    // surfaceFallback/paintedFallback both supplied but distinct from the
+    // spec's own value and from each other — proves a color spec ignores
+    // both fallback arguments rather than happening to match one of them.
+    expect(resolveOverrideBackgroundHex({ kind: "color", value: "#123456" }, "#FFFFFF", "#000000")).toBe("#123456")
+  })
+
+  it("reduces a gradient to its exact midpoint blend (t=0.5), not the from stop", () => {
+    // Same non-vacuity discipline as the color case above — neither
+    // fallback argument matches "#808080", so a pass proves the midpoint
+    // policy actually ran rather than coincidentally returning a fallback.
+    expect(
+      resolveOverrideBackgroundHex({ kind: "gradient", from: "#FFFFFF", to: "#000000" }, "#FFFFFF", "#000000"),
+    ).toBe("#808080")
+    // Direction-independent — the from/to labels don't privilege either end.
+    expect(
+      resolveOverrideBackgroundHex({ kind: "gradient", from: "#000000", to: "#FFFFFF" }, "#FFFFFF", "#000000"),
+    ).toBe("#808080")
+  })
+
+  // Final-review Major finding (whole-branch review of fix/post-v03-backlog,
+  // independently discovered, not caught by task 2's own review): the asset
+  // branch used to fall back to `surfaceFallback` (`resolveBackgroundHex`'s
+  // own asset policy) — silently wrong for a *per-slide override*, since
+  // `tokens.colors.surface` is not what an asset-background content/ending
+  // slide actually paints behind text (the auto-scrim, colored
+  // `themeDefaultBg` — see `Background.tsx`/`FullSlideSvg.tsx`'s own
+  // `autoScrimColor`). Fixed by threading the caller's `themeDefaultBg`
+  // through as a third `paintedFallback` argument, consulted instead of
+  // `surfaceFallback` for exactly this branch — see
+  // `resolveOverrideBackgroundHex`'s own "Asset policy rationale" doc
+  // comment for the full paint-path justification.
+  it("resolves an asset spec to paintedFallback (the actually-painted scrim color), not surfaceFallback", () => {
+    expect(resolveOverrideBackgroundHex({ kind: "asset", asset_id: "x" }, "#ABCDEF", "#112233")).toBe("#112233")
+  })
+
+  it("does not fall back to surfaceFallback for an asset spec even when it differs from paintedFallback", () => {
+    // Distinguishing assertion: a pre-fix implementation (`resolveBackgroundHex`'s
+    // asset policy, returning `surfaceFallback`) would return "#ABCDEF" here,
+    // not "#112233" — this is red-pre-fix-by-construction evidence, not just
+    // a happy-path pin.
+    const result = resolveOverrideBackgroundHex({ kind: "asset", asset_id: "x" }, "#ABCDEF", "#112233")
+    expect(result).not.toBe("#ABCDEF")
+    expect(result).toBe("#112233")
+  })
+})
+
+// backlog item 1 (`.issues/notes/2026-07-18-post-v03-backlog.md` #1):
+// `ctx.defaultBg` used to be blind to `slide.background`, always resolving
+// to `tokens.defaultBackgrounds[slide.type]` regardless of any per-slide
+// override — an archetype that paints no panel of its own and relies on
+// `ctx.defaultBg` to pick readable ink (e.g. `chapter-rail-chapter.tsx`'s
+// `ink = readableOn(defaultBg)`) could measure contrast against a
+// background the slide never actually painted. classroom is the
+// demonstrator: its own chapter default (`tokens.defaultBackgrounds.chapter`,
+// "#6E8E9E", luminance ~0.251) sits in the luminance band where backlog
+// item 2's `readableOn` fix (`src/svg/ink.ts`) picks dark ink — a
+// deliberately much darker override color flips that pick to white,
+// proving the override is actually read, not just accepted and ignored.
+describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlog item 1)", () => {
+  const classroomIr = (slide: Slide): PptxIR => ({
+    version: "3",
+    filename: "deck.pptx",
+    theme: { id: "classroom" },
+    meta: {},
+    assets: { images: {} },
+    slides: [slide],
+  })
+  const HEADING = "背景覆盖探针"
+  const railChapter = (background?: Slide["background"]): Slide =>
+    ({
+      type: "chapter",
+      heading: HEADING,
+      layout: "rail-chapter",
+      components: [],
+      ...(background ? { background } : {}),
+    }) as Slide
+  const headingFill = (markup: string): string | null => {
+    const root = parseSvgRoot(markup)
+    const heading = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === HEADING)
+    return heading?.getAttribute("fill") ?? null
+  }
+
+  it("invariant: a slide with no background override still picks the theme's own default-background ink (byte-identical to before this fix)", () => {
+    const slide = railChapter()
+    const markup = renderSvgMarkup(<FullSlideSvg ir={classroomIr(slide)} slide={slide} index={0} />)
+    // readableOn("#6E8E9E") — classroom's own tokens.defaultBackgrounds.chapter.
+    expect(headingFill(markup)).toBe(readableOn("#6E8E9E"))
+    expect(headingFill(markup)).toBe("#0A0E14")
+  })
+
+  it("a color slide.background override changes the picked ink to match the real painted background, not the theme default", () => {
+    const slide = railChapter({ kind: "color", value: "#0A0A0C" }) // insight's own colors.bg — very dark
+    const markup = renderSvgMarkup(<FullSlideSvg ir={classroomIr(slide)} slide={slide} index={0} />)
+    expect(headingFill(markup)).toBe(readableOn("#0A0A0C"))
+    expect(headingFill(markup)).toBe("#FFFFFF")
+  })
+
+  it("a gradient slide.background override resolves ctx.defaultBg via the midpoint blend, not the from stop (from and midpoint disagree here)", () => {
+    // from "#000000" alone would pick white ink (readableOn("#000000") ===
+    // "#FFFFFF") — the midpoint "#808080" picks dark ink instead
+    // (readableOn("#808080") === "#0A0E14"), so this only passes if the
+    // render path actually goes through the midpoint, not `.from`.
+    expect(readableOn("#000000")).toBe("#FFFFFF")
+    expect(readableOn("#808080")).toBe("#0A0E14")
+    const slide = railChapter({ kind: "gradient", from: "#000000", to: "#FFFFFF" })
+    const markup = renderSvgMarkup(<FullSlideSvg ir={classroomIr(slide)} slide={slide} index={0} />)
+    expect(headingFill(markup)).toBe("#0A0E14")
+  })
+
+  it("an asset slide.background override does not change autoScrimColor's own theme-default source (out of this fix's scope, see FullSlideSvg.tsx's own comment)", () => {
+    // content (not cover/chapter) so imageCoverTakeover doesn't take over
+    // and the P1 frosted auto-scrim still applies.
+    const slide: Slide = {
+      type: "content",
+      heading: HEADING,
+      components: [{ type: "paragraph", text: "文" }],
+      background: { kind: "asset", asset_id: "bg1" },
+    } as Slide
+    const doc: PptxIR = { ...classroomIr(slide), assets: { images: { bg1: { src: "data:image/png;base64,AAAA" } } } }
+    const { container } = render(<FullSlideSvg ir={doc} slide={slide} index={0} />)
+    // classroom's own content default background, resolveBackgroundHex-reduced — unchanged scrim source.
+    const scrim = Array.from(container.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("fill") === "#F4F1EB" && Number(r.getAttribute("fill-opacity")) > 0.6,
+    )
+    expect(scrim).not.toBeUndefined()
+  })
+
+  // Final-review Major finding (whole-branch review of fix/post-v03-backlog):
+  // the test above only pins that `autoScrimColor` itself (what's actually
+  // painted) stayed put — it says nothing about whether `ctx.defaultBg` (what
+  // ink decisions are measured against) agrees with that painted color. This
+  // is the actual regression: luxe's colors.accent ("#A67B45") measures
+  // 4.42:1 against colors.surface ("#211D18", the pre-fix — wrong —
+  // ctx.defaultBg for an asset override) but 4.88:1 against the real painted
+  // scrim (luxe's own content default background, "#161310") — independently
+  // computed via `contrastRatio` below, not assumed. 4.5:1 is the body-text
+  // floor, and content-narrow-column.tsx's subheading renders at 22px (body
+  // tier, confirmed in that file's own `fitEmphasisLine` call) via
+  // `accessibleInk(colors.accent, ctx.defaultBg, 22)` — so this flip is live
+  // today, not latent.
+  it("an asset slide.background override changes ctx.defaultBg-driven ink to match the real painted scrim, not colors.surface (final-review Major finding)", () => {
+    expect(contrastRatio("#A67B45", "#211D18")).toBeLessThan(4.5)
+    expect(contrastRatio("#A67B45", "#161310")).toBeGreaterThanOrEqual(4.5)
+
+    const SUBHEADING = "背景覆盖探针副题"
+    const slide: Slide = {
+      type: "content",
+      heading: HEADING,
+      subheading: SUBHEADING,
+      layout: "narrow-column",
+      components: [{ type: "paragraph", text: "文" }],
+      background: { kind: "asset", asset_id: "bg1" },
+    } as Slide
+    const doc: PptxIR = {
+      version: "3",
+      filename: "deck.pptx",
+      theme: { id: "luxe" },
+      meta: {},
+      assets: { images: { bg1: { src: "data:image/png;base64,AAAA" } } },
+      slides: [slide],
+    }
+    const markup = renderSvgMarkup(<FullSlideSvg ir={doc} slide={slide} index={0} />)
+    const root = parseSvgRoot(markup)
+    const subheadingText = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === SUBHEADING)
+    expect(subheadingText).toBeDefined()
+    // Post-fix: ctx.defaultBg is the real painted scrim color, so
+    // accessibleInk keeps the theme's own accent token instead of wrongly
+    // falling back to neutral ink (a pre-fix run returns readableOn's
+    // neutral pick here instead, never "#A67B45").
+    expect(subheadingText!.getAttribute("fill")).toBe("#A67B45")
+  })
 })
 
 describe("image_grid / image_compare export round-trip (image-layouts P2)", () => {

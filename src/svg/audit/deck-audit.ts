@@ -382,6 +382,8 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     fillOpacity: number,
     opacityProduct: number,
     inDecor: boolean,
+    inheritedTx: number | null,
+    inheritedTy: number | null,
   ) => {
     const { dx, dy, scale } = parseTransform(el)
     const ax = ox + os * dx
@@ -406,6 +408,13 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     const inDecorSubtree = inDecor || el.getAttribute("data-decor") !== null
 
     const tag = el.tagName.toLowerCase()
+    // Threaded down to children unchanged by every non-text tag (a plain
+    // <g> wrapper, a background <rect>, ...) — only a text/tspan branch
+    // below ever overwrites it, and only a <tspan> descendant of a
+    // <text>/<tspan> can ever observe a non-null value (see that branch's
+    // own doc comment).
+    let currentTx = inheritedTx
+    let currentTy = inheritedTy
     if (tag === "rect" || tag === "image" || tag === "path") {
       let x = 0
       let y = 0
@@ -453,10 +462,39 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         }
       }
     } else if (tag === "text" || tag === "tspan") {
+      // A <tspan> commonly omits `x`/`y` entirely and continues in the same
+      // *line* right after whatever textual content came before it — real
+      // SVG text flow (most visibly cover-left-anchor.tsx's/
+      // cover-banner-title.tsx's author/date/version meta line: three
+      // <tspan>s, none carrying coordinates of their own). Falling back to
+      // `ax`/`ay` (this element's own local origin from the transform chain
+      // alone) for that case — the pre-fix behavior — silently drops the
+      // owning <text>'s own `x`/`y` attribute, which is applied *locally*
+      // below but was never threaded into what children receive: it
+      // resolves to wherever the nearest ancestor <g transform> happens to
+      // put (0,0), almost never where the run is actually painted (backlog
+      // item 5b, `.issues/notes/2026-07-18-post-v03-backlog.md` #5).
+      // `inheritedTx`/`inheritedTy` — the nearest ancestor <text>/<tspan>'s
+      // own already-resolved absolute position, threaded down through the
+      // recursion below — fixes that: not pixel-perfect for the horizontal
+      // cursor advance mid-line (this walker does no real text shaping/
+      // measurement), but exact for this function's actual purpose of
+      // "which background region is this run painted over", since every
+      // real same-line multi-tspan run this renderer emits stays within one
+      // background region (see the doc comment above `findContrastIssues`).
+      // A <text> element is never itself nested inside another
+      // <text>/<tspan> in valid SVG, so it never actually receives a
+      // non-null inherited position — it always falls back to `ax`/`ay`,
+      // identical to the pre-fix formula for that tag.
+      const ownX = el.getAttribute("x")
+      const ownY = el.getAttribute("y")
+      const tx = ownX !== null ? ax + Number(ownX) * as : (inheritedTx ?? ax)
+      const ty = ownY !== null ? ay + Number(ownY) * as : (inheritedTy ?? ay)
+      currentTx = tx
+      currentTy = ty
+
       const content = directText(el)
       if (content) {
-        const tx = ax + Number(el.getAttribute("x") ?? 0) * as
-        const ty = ay + Number(el.getAttribute("y") ?? 0) * as
         const background = backgroundAt(tx, ty)
         if (background !== null) {
           const alpha = currentFillOpacity * currentOpacityProduct
@@ -499,11 +537,13 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         currentFillOpacity,
         currentOpacityProduct,
         inDecorSubtree,
+        currentTx,
+        currentTy,
       )
     }
   }
 
-  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false)
+  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, null, null)
   return { issues, regions }
 }
 

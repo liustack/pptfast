@@ -29,11 +29,13 @@ export interface ThemeDefinition {
    * 全集。design decision 7/8 曾经的六处对比度策展排除（luxe/campaign/
    * classroom 的 content 排除 banner-heading、tech 的 cover/content、
    * consulting 的 chapter）已在 W4 fix round 随对比度自适应 ink helper
-   * （`src/svg/ink.ts`）的根因修复全部撤销——目前仅剩 fix round 自身新发现
-   * 的三处（bloom/classroom/heritage 的 chapter 排除 fashion-chapter，见
-   * `CHAPTER_WITHOUT_FASHION` 的注释）。页型空集 = 该页型回落调用侧兜底
-   * （十三主题四页型均非空，`definitions.test.ts` 锁死）。id 是通用
-   * string（不再按页型区分 archetype id 联合类型）。
+   * （`src/svg/ink.ts`）的根因修复全部撤销。fix round 自身新发现的三处
+   * （bloom/classroom/heritage 的 chapter 排除 fashion-chapter）也已在
+   * post-v0.3 W8 fix round 随 `readableOn` 两墨实测对比度取优的根因修复一并
+   * 撤销（backlog item 2）——十三主题四页型现在均为不折不扣的全集，无任何
+   * 排除残留。页型空集 = 该页型回落调用侧兜底（十三主题四页型均非空，
+   * `definitions.test.ts` 锁死）。id 是通用 string（不再按页型区分
+   * archetype id 联合类型）。
    */
   layouts: Record<Slide["type"], readonly string[]>
   /** Motif：单值，非 allowed-set（spec §3 示意）。undefined = 该主题无 motif 装饰（十三主题中 runway 留空，其余均已设）。 */
@@ -66,28 +68,31 @@ const FULL_LAYOUTS: Record<Slide["type"], readonly string[]> = {
 }
 
 /**
- * The full chapter set minus `fashion-chapter` — three W4 fix-round
- * exclusions (bloom/classroom/heritage; see `LAYOUTS` entries below).
- * `chapter-fashion-chapter.tsx` (a runway-native archetype, untouched by
- * this task except an import-path move) already picks its own ink via
- * `readableOn(ctx.colors.accent)` — but `readableOn`'s fixed 0.4 luminance
- * threshold doesn't guarantee the 3:1 large-text ratio the way a strict
- * WCAG-derived cutoff (~0.3) would, for an accent color whose luminance
- * lands in the 0.3-0.4 gap. Full-matrix scanning found three themes whose
- * `colors.accent` falls there badly enough that the archetype's own
- * "CHAPTER NN" label and heading text (not just its already-adjudicated
- * decorative watermark digit — see `full-matrix-contrast.test.ts`'s
- * allowlist) measure under 3:1: bloom (`#D89A8E`, 2.35:1), classroom
- * (`#D89A88`, 2.36:1), heritage (`#C98A4B`, 2.91:1). `readableOn` itself is
- * out of this task's scope to redesign (it backs every other archetype that
- * already shipped with it, and the brief is explicit: adapt ink, don't
- * invent a new color policy) — curation is the fix per design decision 8's
- * standing rule ("策展是主动行为，禁止调阈值消音"), same disposition as
- * every other exclusion in this file. None of the three curated
- * `fashion-chapter` pre-W4 (only runway did), so this is a full-set-rollout
- * new exposure, not a regression on any previously-shipped pairing.
+ * Formerly "the full chapter set minus `fashion-chapter`" — three W4
+ * fix-round exclusions (bloom/classroom/heritage), **reverted** in the
+ * post-v0.3 W8 fix round (backlog item 2,
+ * `.issues/notes/2026-07-18-post-v03-backlog.md` #2) now that the root cause
+ * is actually fixed. History, for the git-blame reader:
+ * `chapter-fashion-chapter.tsx` already picked its own ink via
+ * `readableOn(ctx.colors.accent)`, but `readableOn`'s old fixed-0.4-luminance
+ * threshold didn't guarantee the 3:1 large-text ratio the way comparing both
+ * inks' real contrast does — bloom (`#D89A8E`), classroom (`#D89A88`),
+ * heritage (`#C98A4B`) all have an accent luminance in the old threshold's
+ * blind gap (~0.19-0.4), where white ink measured under 3:1 (bloom 2.35,
+ * classroom 2.36, heritage 2.91) even though dark ink was always the better
+ * option there. `readableOn` now compares both inks' actual contrast and
+ * picks the higher one (`src/svg/ink.ts`) — re-measured post-fix (`pnpm exec
+ * tsx` against a real render of all three, 2026-07-19): dark ink measures
+ * 8.23:1 (bloom), 8.19:1 (classroom), 6.65:1 (heritage) against the same
+ * accent colors, and `auditDeck` reports zero low-contrast findings for the
+ * heading/"CHAPTER NN" label on all three — comfortably above 3:1, so the
+ * curation workaround is no longer needed. (The decorative watermark digit's
+ * own already-adjudicated sub-3:1 blend — `full-matrix-contrast.test.ts`'s
+ * ratio-banded allowlist entry — is unaffected: its post-fix ratios, 1.537/
+ * 1.537/1.498, still land inside that entry's existing [1.2, 1.8] band.)
+ * `LAYOUTS` below now gives all 13 themes the plain {@link FULL_LAYOUTS.chapter}
+ * — no remaining exclusion of any kind in this file.
  */
-const CHAPTER_WITHOUT_FASHION = FULL_LAYOUTS.chapter.filter((id) => id !== "fashion-chapter")
 
 const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
   enterprise: { suppressFooterOnCardContent: true },
@@ -115,16 +120,13 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 撤销——`LAYOUTS` 现在是十三主题的纯 {@link FULL_LAYOUTS} 全集（A 方案纯
  * 终态），不再有任何 content/cover/chapter 排除残留于这六处。
  *
- * 唯一剩余的排除是 fix round 全矩阵扫描（`full-matrix-contrast.test.ts`）
- * 新发现的一类：runway 专属 `fashion-chapter`/`fashion-masthead`/
- * `fashion-ending` archetype 家族早在 2026-07-10 就自带
- * `readableOn(ctx.colors.accent/primary)` 自适应取色（这是 fix round 提炼
- * 的同一个 helper 的既有消费者，非本任务新写），但 `readableOn` 的固定
- * 0.4 明度阈值不是严格 WCAG 意义上的 3:1 保证（真正的分界约 0.3）——对
- * 少数主题的 accent/primary 明度恰好落在这个 0.3-0.4 缝隙，选中的中性色
- * 仍然达不到 3:1。`readableOn` 本身不在本任务改动范围（brief 明确：自适应
- * 取色不发明新策略，这个函数早已服务其它 archetype），故按同一策展惯例处置
- * ——见 {@link CHAPTER_WITHOUT_FASHION} 的注释。
+ * fix round 全矩阵扫描曾额外发现一类——bloom/classroom/heritage 的 chapter
+ * 排除 `fashion-chapter`（`readableOn(ctx.colors.accent)` 固定 0.4 明度阈值
+ * 对这三个主题的 accent 色不够精确，产出 <3:1）——但这处排除已在 post-v0.3
+ * W8 fix round（backlog item 2，`readableOn` 改为两墨实测对比度取优）随根因
+ * 一起撤销：三个主题重测后的 accent-ink 对比度分别是 8.23:1/8.19:1/6.65:1，
+ * `auditDeck` 复核零 low-contrast 发现。`LAYOUTS` 现在是十三主题不折不扣的
+ * {@link FULL_LAYOUTS} 全集，四页型均无任何例外残留。
  */
 const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif">> = {
   consulting: {
@@ -179,18 +181,18 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     motif: "campaign-motif",
   },
   // classroom（教学课堂，2026-07-13 第 13 主题）：莫兰迪灰调+平滑斑块手绘
-  // 点线由专属 classroom-motif 承载。**chapter 排除 fashion-chapter**：见
-  // CHAPTER_WITHOUT_FASHION 的注释（W4 fix round 新发现，非 design
-  // decision 7/8 原有六处之一）。
+  // 点线由专属 classroom-motif 承载。chapter 曾排除 fashion-chapter（W4 fix
+  // round 新发现），post-v0.3 W8 fix round 随 readableOn 根因修复一起撤销
+  // ——见上方 LAYOUTS 块注释。
   classroom: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_FASHION, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "classroom-motif",
   },
   // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：奶白底水彩晕染+植物细线由
-  // 专属 bloom-motif 承载。**chapter 排除 fashion-chapter**：见
-  // CHAPTER_WITHOUT_FASHION 的注释。
+  // 专属 bloom-motif 承载。chapter 曾排除 fashion-chapter，post-v0.3 W8 fix
+  // round 撤销——见上方 LAYOUTS 块注释。
   bloom: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_FASHION, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "bloom-motif",
   },
   // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：宣纸/墨/朱砂/
@@ -203,10 +205,10 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/definitions.ts），meta 文字照排。
   },
   // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty 浅底混搭，酒红横幅
-  // 上 baked 白字对比充足。**chapter 排除 fashion-chapter**：见
-  // CHAPTER_WITHOUT_FASHION 的注释。
+  // 上 baked 白字对比充足。chapter 曾排除 fashion-chapter，post-v0.3 W8 fix
+  // round 撤销——见上方 LAYOUTS 块注释。
   heritage: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: CHAPTER_WITHOUT_FASHION, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：典藏纹饰（徽记/角花/页缘线）
     motif: "heritage-motif",
   },

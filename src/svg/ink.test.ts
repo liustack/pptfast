@@ -94,17 +94,24 @@ describe("accessibleOpacity", () => {
     expect(accessibleOpacity("#FFFFFF", "#006A4E", 34, 0.7)).toBe(0.7)
   })
 
-  it("falls back to full opacity when the blended result would drop below the required ratio (classroom's tight margin)", () => {
-    // classroom's chapter background (#6E8E9E == its own colors.primary)
-    // gives white only ~3.48:1 at full opacity — the tightest margin of any
-    // theme chapter-rail-chapter.tsx/chapter-banner-chapter.tsx's ink
-    // covers. Blending at the archetypes' usual 0.7 subheading opacity
-    // drops it to ~2.53:1, under the 3:1 large-text floor.
+  it("keeps the preferred opacity now that the two-ink comparison picks classroom's higher-contrast option", () => {
+    // classroom's chapter background (#6E8E9E == its own colors.primary,
+    // luminance ~0.251) used to get white ink under the old fixed-0.4
+    // threshold (white measures only ~3.48:1 there — the tightest margin of
+    // any theme chapter-rail-chapter.tsx/chapter-banner-chapter.tsx's ink
+    // covers, and blending at the archetypes' usual 0.7 subheading opacity
+    // dropped it to ~2.53:1, under the 3:1 large-text floor, hence the old
+    // fallback-to-1 assertion this test used to make). Post backlog item 2
+    // (`readableOn`'s real two-ink contrast comparison, `src/svg/ink.ts`):
+    // dark ink measures ~5.55:1 against this same background — comfortably
+    // higher than white's ~3.48:1 — so `readableOn` now picks dark ink here,
+    // and even blended at 0.7 it stays clear of the 3:1 floor, so
+    // `accessibleOpacity` no longer needs to fall back to full opacity.
     const bg = "#6E8E9E"
     const ink = readableOn(bg)
-    expect(ink).toBe("#FFFFFF")
+    expect(ink).toBe("#0A0E14")
     expect(contrastRatio(ink, bg)).toBeGreaterThanOrEqual(3) // full-opacity ink itself is fine
-    expect(accessibleOpacity(ink, bg, 34, 0.7)).toBe(1)
+    expect(accessibleOpacity(ink, bg, 34, 0.7)).toBe(0.7)
   })
 
   it("never returns something worse than what full opacity already guarantees — accessibleInk's own output always clears the ratio at opacity 1", () => {

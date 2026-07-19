@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import type { StyleColors } from "../../themes/tokens"
+import type { StyleColors, StyleShape } from "../../themes/tokens"
 
 /**
  * Render context threaded through every SVG component. Colors are hex strings from
@@ -13,19 +13,25 @@ export interface ComponentCtx {
   colors: StyleColors
   fonts: { heading: string; body: string; mono: string }
   /** 主题细节 shape token（radius/gapScale），缺省=各消费点 baked 值。 */
-  shape?: import("../../themes/tokens").StyleShape
+  shape?: StyleShape
   /** Resolved asset map (from `ir.assets.images`) for image-bearing components. */
   images?: Record<string, { src: string; alt?: string }>
   /**
-   * The theme's resolved default background color (hex) for the slide type
-   * currently rendering — `tokens.defaultBackgrounds[slide.type]` reduced to
-   * a representative hex (W4 fix round, `FullSlideSvg.tsx`'s
-   * `resolveBackgroundHex`). Consumed by `../ink`'s `readableOn`/
-   * `accessibleInk` in archetypes that paint no background panel of their
-   * own and so sit directly on whatever `Background.tsx` painted behind
-   * them (e.g. `chapter-rail-chapter.tsx`) — an archetype that paints its
-   * *own* panel (e.g. `content-banner-heading.tsx`'s banner rect) uses that
-   * panel's own color (`ctx.colors.primary`) instead, not this field.
+   * The resolved background colour (hex) actually painted behind the slide
+   * currently rendering, reduced to one representative value. Prefers the
+   * slide's own `slide.background` override when it sets one (reduced via
+   * `FullSlideSvg.tsx`'s `resolveOverrideBackgroundHex` — a gradient's exact
+   * midpoint, not its `from` stop), else falls back to the theme's own
+   * `tokens.defaultBackgrounds[slide.type]` (reduced via that file's
+   * `resolveBackgroundHex`, `.from` for a gradient — W4 fix round; per-slide
+   * override awareness is the post-v0.3 W8 fix round, backlog item 1,
+   * `.issues/notes/2026-07-18-post-v03-backlog.md` #1). Consumed by
+   * `../ink`'s `readableOn`/`accessibleInk` in archetypes that paint no
+   * background panel of their own and so sit directly on whatever
+   * `Background.tsx` painted behind them (e.g. `chapter-rail-chapter.tsx`)
+   * — an archetype that paints its *own* panel (e.g.
+   * `content-banner-heading.tsx`'s banner rect) uses that panel's own color
+   * (`ctx.colors.primary`) instead, not this field.
    *
    * Optional, not required: `buildCtx` always sets it (falling back to
    * `tokens.colors.bg` when its own 4th argument is omitted), but a sizable

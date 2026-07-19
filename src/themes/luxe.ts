@@ -22,7 +22,7 @@ export const LUXE_TOKENS: StyleTokens = {
     primary: "#D4B876", // 香槟金
     accent: "#A67B45", // 深铜金（层次）
     text: "#F4EDDF", // 象牙白
-    muted: "#9A9184",
+    muted: "#9C9386", // post-v0.3 W8 fix round补测（backlog 5a，content-matrix 色调混合格底色缺口，task-2 审校发现）：明度上调校准 4.5:1（原 #9A9184，保色相/饱和度——luxe 本轮首次校准，此前从未在 8/13 主题名单内）
     border: "#3A342C",
     chartPalette: ["#D4B876", "#A67B45", "#8C9A8E", "#6E7B8C"],
   },

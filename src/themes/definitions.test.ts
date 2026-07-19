@@ -70,19 +70,17 @@ describe("THEME_DEFINITIONS", () => {
   })
 
   // W4 全集放开（design decision 7, spec §3「缺省 = 全集」）+ W4 fix round
-  // 的根因处置收官：这份基线断言钉的是 v0.3 的全集终态。design decision 7
-  // 的三处既有对比度裁定（luxe/campaign/classroom 的 content 排除
-  // banner-heading）与 design decision 8 本任务实现期新增的三处阳性裁定
-  // （tech 的 cover/content、consulting 的 chapter）——共六处——已随 fix
-  // round 引入的对比度自适应 ink helper（`src/svg/ink.ts`）全部撤销：十三
-  // 主题的 cover/content/ending 现在**没有任何例外**，均为全集。唯一残留
-  // 例外是 fix round 全矩阵扫描新发现的一类——bloom/classroom/heritage 的
-  // chapter 排除 fashion-chapter（该 archetype 早已自带 readableOn 自适应
-  // 取色，但其固定 0.4 明度阈值对这三个主题的 accent 色不够精确，产出
-  // <3:1。见 definitions.ts CHAPTER_WITHOUT_FASHION 的注释）。四个 FULL_*
-  // 常量是手工钉的字面数组（人审基线，不经 layoutsForSlideType 派生）——
-  // 未来 registry 新增/删除 archetype 时，这里必须跟着人工重推，而不是无声
-  // 通过。
+  // 的根因处置收官 + post-v0.3 W8 fix round（backlog item 2）：这份基线断言
+  // 钉的是十三主题四页型的纯全集终态。design decision 7 的三处既有对比度
+  // 裁定（luxe/campaign/classroom 的 content 排除 banner-heading）、design
+  // decision 8 新增的三处阳性裁定（tech 的 cover/content、consulting 的
+  // chapter）、以及 W4 fix round 全矩阵扫描新发现的三处（bloom/classroom/
+  // heritage 的 chapter 排除 fashion-chapter）——共九处——已随 `src/svg/ink.ts`
+  // 的 readableOn 两轮根因修复（W4 引入自适应 ink helper；post-v0.3 W8 把
+  // 固定 0.4 明度阈值换成两墨实测对比度取优）全部撤销：十三主题四页型现在
+  // **没有任何例外**，均为各页型全集。四个 FULL_* 常量是手工钉的字面数组
+  // （人审基线，不经 layoutsForSlideType 派生）——未来 registry 新增/删除
+  // archetype 时，这里必须跟着人工重推，而不是无声通过。
   const FULL_COVER = [
     "banner-title",
     "poster-center",
@@ -121,19 +119,7 @@ describe("THEME_DEFINITIONS", () => {
     "tone-adaptive-ending",
     "fashion-ending",
   ]
-  // W4 fix round's one new exclusion (bloom/classroom/heritage) — see
-  // definitions.ts's CHAPTER_WITHOUT_FASHION comment for the contrast finding.
-  const CHAPTER_WITHOUT_FASHION = [
-    "masthead-chapter",
-    "constellation-chapter",
-    "rail-chapter",
-    "banner-chapter",
-    "poster-chapter",
-    "roman-chapter",
-    "tone-adaptive-chapter",
-  ]
-
-  it("W4 全集放开基线：十三主题的 cover/content/ending 全部为各页型全集，chapter 仅 bloom/classroom/heritage 排除 fashion-chapter", () => {
+  it("W4 全集放开基线 + post-v0.3 W8 fix round：十三主题四页型全部为各页型全集，无任何例外残留", () => {
     expect(THEME_DEFINITIONS.consulting.layouts).toEqual({
       cover: FULL_COVER,
       chapter: FULL_CHAPTER,
@@ -207,24 +193,23 @@ describe("THEME_DEFINITIONS", () => {
     })
     expect(THEME_DEFINITIONS.campaign.motif).toBe("campaign-motif")
 
-    // classroom：W4 fix round 新排除 fashion-chapter（见 CHAPTER_WITHOUT_FASHION）。
+    // classroom：W4 fix round 曾排除 fashion-chapter，post-v0.3 W8 fix round
+    // 随 readableOn 根因修复撤销（backlog item 2）——现为纯 FULL_CHAPTER。
     expect(THEME_DEFINITIONS.classroom.layouts).toEqual({
       cover: FULL_COVER,
-      chapter: CHAPTER_WITHOUT_FASHION,
+      chapter: FULL_CHAPTER,
       content: FULL_CONTENT,
       ending: FULL_ENDING,
     })
-    expect(THEME_DEFINITIONS.classroom.layouts.chapter).not.toContain("fashion-chapter")
     expect(THEME_DEFINITIONS.classroom.motif).toBe("classroom-motif")
 
-    // bloom：W4 fix round 新排除 fashion-chapter（见 CHAPTER_WITHOUT_FASHION）。
+    // bloom：同上，chapter 排除已撤销。
     expect(THEME_DEFINITIONS.bloom.layouts).toEqual({
       cover: FULL_COVER,
-      chapter: CHAPTER_WITHOUT_FASHION,
+      chapter: FULL_CHAPTER,
       content: FULL_CONTENT,
       ending: FULL_ENDING,
     })
-    expect(THEME_DEFINITIONS.bloom.layouts.chapter).not.toContain("fashion-chapter")
     expect(THEME_DEFINITIONS.bloom.motif).toBe("bloom-motif")
 
     expect(THEME_DEFINITIONS.ink.layouts).toEqual({
@@ -235,14 +220,13 @@ describe("THEME_DEFINITIONS", () => {
     })
     expect(THEME_DEFINITIONS.ink.motif).toBe("ink-motif")
 
-    // heritage：W4 fix round 新排除 fashion-chapter（见 CHAPTER_WITHOUT_FASHION）。
+    // heritage：同上，chapter 排除已撤销。
     expect(THEME_DEFINITIONS.heritage.layouts).toEqual({
       cover: FULL_COVER,
-      chapter: CHAPTER_WITHOUT_FASHION,
+      chapter: FULL_CHAPTER,
       content: FULL_CONTENT,
       ending: FULL_ENDING,
     })
-    expect(THEME_DEFINITIONS.heritage.layouts.chapter).not.toContain("fashion-chapter")
     expect(THEME_DEFINITIONS.heritage.motif).toBe("heritage-motif")
   })
 

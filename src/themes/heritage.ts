@@ -20,7 +20,7 @@ export const HERITAGE_TOKENS: StyleTokens = {
     primary: "#7D2A3C", // 勃艮第酒红
     accent: "#C98A4B", // 焦糖铜
     text: "#33262A", // 深酒褐
-    muted: "#8C7A72",
+    muted: "#786961", // post-v0.3 W8 fix round补测（backlog 5a，content-matrix 色调混合格底色缺口，task-2 审校发现）：明度再下调校准 4.5:1（原 #7B6C64 为首轮校准值，更早为 #8C7A72，保色相/饱和度）
     border: "#E8DFD3",
     chartPalette: ["#7D2A3C", "#C98A4B", "#4A6670", "#A3A38C"],
   },

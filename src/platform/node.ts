@@ -1,10 +1,11 @@
 import { DOMParser as LinkedomDOMParser } from "linkedom"
 import { installPlatform } from "./registry"
+import type * as Sharp from "sharp"
 
 async function recodeWithSharp(dataUrl: string): Promise<string> {
-  let sharpMod: typeof import("sharp")
+  let sharpMod: typeof Sharp.default
   try {
-    sharpMod = (await import("sharp")).default as unknown as typeof import("sharp")
+    sharpMod = (await import("sharp")).default as unknown as typeof Sharp.default
   } catch (e) {
     const err = e as NodeJS.ErrnoException
     if (err?.code === "ERR_MODULE_NOT_FOUND" || /Cannot find/.test(err?.message ?? "")) {

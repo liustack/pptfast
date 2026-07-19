@@ -76,6 +76,28 @@ import { accessibleInk } from "../ink"
  * `accessibleInk(colors.accent, <对应背景>, fontSize)`：`withBg` 分支传固定
  * `"#FFFFFF"`（卡片色本身，不随主题变化，见上方"白色卡片豁免"），无背景分支
  * 传 `ctx.defaultBg`。通过校验的主题原样返回、逐字节不变。
+ *
+ * 白卡分支墨色修复（post-v0.3 backlog closure，
+ * `.issues/notes/2026-07-18-post-v03-backlog.md` 新发现 (d)）：`withBg` 分支
+ * 的标题（`colors.text`）、交给 `SvgContent` 渲染的正文/项目符号
+ * （同样读 `colors.text`/`colors.muted`）、页脚 meta（`colors.muted`）三处此前
+ * 直接消费主题 token，未经上面 subheading 早已在用的 accessibleInk 守卫——对
+ * `colors.text` 是深色 token 的 9/13 主题无害（其本就是为浅底设计的墨色），
+ * 但 campaign/insight/luxe/tech 四个 `colors.text` 是浅色 token 的主题（各自
+ * 页面本底是深色，浅字对深底才对）画在这张固定纯白的卡片上，实测约
+ * 1:1——不是当前主题的"页面默认底色"出问题，是这张卡片自己的纯白底色和
+ * 四个主题的浅色 `colors.text` 撞车。补齐同一套 accessibleInk 守卫，参照
+ * subheading 先例，背景参数同样是卡片自己的 `"#FFFFFF"`（不是 `ctx.defaultBg`
+ * ——这张卡片是本分支自画的独立面板，见上方"白色卡片豁免"）：标题按
+ * `heading.fontSize`、页脚 meta 按其固定 20px 直接调用 accessibleInk。
+ * `SvgContent` 的子组件（paragraph.tsx/bullets.tsx 等）没有自己的背景感知，
+ * 一律直接读 `ctx.colors.text`/`.muted`——要在不碰这些跨 archetype 共享渲染器
+ * 的前提下保护它们，唯一办法是把已经过 accessibleInk 校正的 `colors.text`/
+ * `.muted` 通过一份局部派生的 `cardCtx` 往下传，字号参照 `ctx.bodyFontPx`
+ * （paragraph.tsx 自己渲染用的确切字号，也是 bullets.tsx 收缩前的上限，不是
+ * 拍脑袋常量）。9/13 安全主题在卡片纯白底上原本就有 ≥4.5:1（含 `colors.muted`
+ * ，逐主题实测 4.83~18.48:1），accessibleInk 全部原样返回，逐字节不变；4 个
+ * 问题主题落回 `readableOn` 的中性墨色 `#0A0E14`。
  */
 
 /** Check whether the slide has a valid background image asset. Ported
@@ -148,9 +170,36 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
     const subheadingFill = subheading
       ? accessibleInk(colors.accent, "#FFFFFF", subheading.fontSize)
       : colors.accent
+    // The **emphasis** tspans inside the subheading sit on the same white
+    // card, so their accent needs the same guard as headingFill below.
+    const subheadingEmphasisFill = subheading
+      ? accessibleInk(colors.text, "#FFFFFF", subheading.fontSize)
+      : colors.text
     const dividerY = 198 + headingExtra + subheadingBudget
     const contentRectY = 216 + headingExtra + subheadingBudget
     const contentRectH = Math.max(120, 400 - headingExtra - subheadingBudget)
+
+    // Post-v0.3 backlog closure (see file header "白卡分支墨色修复"): heading
+    // + SvgContent body/bullets + footer meta all sit on this branch's own
+    // white card, not `ctx.defaultBg` — same accessibleInk guard the
+    // subheading above already uses, same "#FFFFFF" background reference.
+    const headingFill = accessibleInk(colors.text, "#FFFFFF", heading.fontSize)
+    // `SvgContent`'s descendants (paragraph.tsx/bullets.tsx, etc.) read
+    // `ctx.colors.text`/`.muted` raw with no background awareness of their
+    // own — the only way to protect them without touching those
+    // cross-archetype shared renderers is to hand them an already-corrected
+    // ctx. `ctx.bodyFontPx` is the exact size paragraph.tsx itself renders
+    // at (and the ceiling bullets.tsx shrinks from), so it's the accurate
+    // size reference here, not a guessed constant.
+    const cardCtx = {
+      ...ctx,
+      colors: {
+        ...colors,
+        text: accessibleInk(colors.text, "#FFFFFF", ctx.bodyFontPx),
+        muted: accessibleInk(colors.muted, "#FFFFFF", ctx.bodyFontPx),
+      },
+    }
+    const footerFill = accessibleInk(colors.muted, "#FFFFFF", 20)
 
     /* White content card floating on the background image — see file
        header's "白色卡片豁免". */
@@ -190,7 +239,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
             fontFamily={fonts.heading}
             fontSize={heading.fontSize}
             fontWeight="700"
-            fill={colors.text}
+            fill={headingFill}
             dominantBaseline="alphabetic"
           >
             {line}
@@ -207,7 +256,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
             fill={subheadingFill}
             dominantBaseline="alphabetic"
           >
-            {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
+            {renderEmphasisTspans(subheading.segments, { accent: subheadingEmphasisFill, baseFill: subheadingFill, fontWeight: "700" })}
           </text>
         )}
 
@@ -236,7 +285,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
           arrangement={slide.arrangement}
           components={slide.components}
           rect={{ x: 92, y: contentRectY, w: 1096, h: contentRectH }}
-          ctx={ctx}
+          ctx={cardCtx}
         />
 
         {/* Footer meta inside card */}
@@ -245,7 +294,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
           y="636"
           fontFamily={fonts.body}
           fontSize="20"
-          fill={colors.muted}
+          fill={footerFill}
           dominantBaseline="alphabetic"
         >
           {[

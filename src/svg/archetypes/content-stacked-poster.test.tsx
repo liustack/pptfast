@@ -250,7 +250,7 @@ describe("StackedPosterContent", () => {
     const out = renderSvgMarkup(<StackedPosterContent ir={deck} slide={oneComponentSlide} index={1} ctx={ctx} />)
 
     expect(out).toContain("#051C2C") // consulting primary（也是 text），accent 短横条 + 标题
-    expect(out).toContain("#6C6C6C") // consulting muted，kicker（需要前置 chapter 才会渲染）
+    expect(out).toContain("#6B6B6B") // consulting muted，kicker（需要前置 chapter 才会渲染）
 
     // creative 烤死的 hex 一律不得残留（含并入 muted 的孤儿色 META_MUTED）
     expect(out).not.toContain("#E63946")
