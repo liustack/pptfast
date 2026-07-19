@@ -1,0 +1,11 @@
+{
+  "components": [
+    {
+      "type": "kpi_cards",
+      "items": [
+        { "value": "10", "label": "widgets" },
+        { "value": "20", "label": "gizmos" }
+      ]
+    }
+  ]
+}

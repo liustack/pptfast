@@ -1,0 +1,6 @@
+{
+  "version": "3",
+  "filename": "fixture-fx02-bad-theme",
+  "theme": { "id": "not-a-real-theme" },
+  "slides": [{ "type": "cover", "heading": "Bad Theme" }]
+}

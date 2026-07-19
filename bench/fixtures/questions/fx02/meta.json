@@ -1,0 +1,12 @@
+{
+  "id": "fx02",
+  "title": "Fixture: clean deck-project artifact",
+  "coverage": {
+    "mode": "pyramid",
+    "delivery": "presentation",
+    "expects_components": ["kpi_cards", "chart"],
+    "workflow": "deck-project",
+    "image_deck": false
+  },
+  "lang": "en"
+}

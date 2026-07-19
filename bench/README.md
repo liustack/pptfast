@@ -139,29 +139,66 @@ delivery — presentation 7, balanced 7, text 6 (all ≥5). New components — s
 Deck-project-directory — 5 (q03, q06, q08, q13, q17, ≥3). Chinese — 3 (q07, q14, q18, within
 2-3).
 
-## What Task 2's scorer computes
+## Scoring (`bench/score.mts`)
 
-`bench/score.mts` (Task 2, not yet built as of this task) walks
-`bench/results/<model-tag>/<question-id>/` and, per question, computes purely mechanical
-signals off the SDK the render chain already exposes (`validateIr`/`auditDeck`/`generatePptx`):
+```
+pnpm bench:score [questionsDir] [resultsDir]
+# defaults to `bench/questions` / `bench/results`, both resolved against cwd
+```
 
-- **validate first-pass**: does the produced artifact (or its assembled `deck.json`, for a deck
-  project) pass `validateIr` — pass/fail plus the raw error count
-- **audit findings**: `auditDeck` finding count (overflow, out-of-bounds, low-contrast, overlap)
+Walks `<resultsDir>/<model-tag>/<question-id>/` for every model directory found, scores each
+question in the fixed `<questionsDir>` question bank against it, and writes:
+
+- a per-model `<resultsDir>/<model-tag>/report.md` — one row per question plus an aggregates
+  section
+- a cross-model `<resultsDir>/summary.md` — one row per model (pass rates, mean findings,
+  determinism rate), sorted alphabetically by model tag
+
+Every metric is purely mechanical, computed off the SDK the render chain already exposes
+(`validateIr`/`auditDeck`/`generatePptx`, `src/index.ts`):
+
+- **validate first-pass**: does the produced artifact (or its assembled IR, for a deck project —
+  read via `readDeckDir`, `src/cli/deck-dir.ts`, the same seam `pptfast validate`/`render` use)
+  pass `validateIr` — pass/fail plus the raw error count
+- **audit findings**: `auditDeck` finding count (overflow, out-of-bounds, low-contrast, overlap) —
+  only computed when validate passed (an invalid IR has nothing well-formed enough to audit)
 - **render success**: does `generatePptx` produce a well-formed `.pptx` without throwing
 - **determinism**: render the same artifact twice and compare the two `.pptx` files byte for
-  byte, with the one known clock-dependent exclusion the render chain already carries —
-  `docProps/core.xml` (pptxgenjs bakes `new Date().toISOString()` into it on every call — see the
-  `normalizedZipMap` precedent in `src/pptx/generate-notes-export.test.ts`) — every other zip
-  part must match exactly, not just structurally
-- **coverage hits**: which of `meta.json`'s `expects_components` actually appear in the produced
-  IR — reported for a human reader, never fed back into pass/fail
+  byte via `normalizedPptxSha1` (`bench/score.mts`), with the one known clock-dependent exclusion
+  the render chain already carries — `docProps/core.xml` (pptxgenjs bakes
+  `new Date().toISOString()` into it on every call — same exclusion the `normalizedZipMap`
+  precedent in `src/pptx/generate-notes-export.test.ts` establishes). Every other zip part is
+  read as a binary buffer (not a lossy UTF-8-decoded string) and hashed — a genuine byte
+  comparison, including embedded binary image assets, not a structural or stringified diff.
+  `null` when the render itself failed (nothing to compare)
+- **coverage hits**: which of `meta.json`'s `expects_components` actually appear in the
+  produced IR's top-level `slides[].components[].type` — reported for a human reader, never fed
+  back into `validatePass`/`renderOk`/any other pass-fail decision
 
-A missing artifact, malformed JSON, or a run that times out scores as a fail for that question
-without aborting the rest of the batch, and the report says so plainly. Output: a per-model
-`bench/results/<model-tag>/report.md` and a cross-model `bench/results/summary.md`. Both must be
-byte-identical across two scoring runs of the same result set — no timestamps or other
-non-deterministic content in the report body.
+A missing result directory, malformed JSON, an ambiguous artifact (more than one candidate `.json`
+file), or a `readDeckDir`/`assembleDeck` structural error scores as a fail for that question with
+a `reason` in the report's notes column, without aborting the rest of the batch. Self-reported
+`meta.json` (`{ tokens?, duration_seconds?, model? }`, run protocol step 4) passes through into
+the report's `tokens`/`duration_s` columns verbatim when present, blank otherwise — never scored.
+Both `report.md` files and `summary.md` are byte-identical across two scoring runs of the same
+result set — no timestamps or other non-deterministic content in the report body.
+
+## Testing the scorer
+
+`bench/score.test.ts` (vitest, run by `pnpm check` like every other suite) exercises the scorer
+against `bench/fixtures/`: `bench/fixtures/questions/{fx01,fx02,fx03}` (a 3-question fixture bank,
+one bare-IR question, one deck-project question, one audit-sensitive question) scored against
+`bench/fixtures/results/green-model/` (all three questions validate clean, audit clean, render
+deterministically) and `bench/fixtures/results/degraded-model/` (one malformed-JSON artifact, one
+validate-failing IR — an unknown theme id, one validate-clean but audit-positive IR — a real
+low-contrast finding from `luxe` theme + `kpi_cards` `delta: "down"`, the same source
+`src/svg/audit/deck-audit.test.ts` pins). The suite asserts exact metric values per fixture
+question, report shape, and — the scorer-reproducibility requirement — that two independent
+`runScoring` calls over the same fixture tree produce byte-identical report content, plus a
+`normalizedPptxSha1` unit suite proving the determinism hash both ignores a
+`docProps/core.xml`-only difference and is sensitive to any other single-byte change (text or
+binary), so the double-run assertion is a genuine byte comparison rather than a vacuous
+always-equal check.
 
 ## Package exclusion
 

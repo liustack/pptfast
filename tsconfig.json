@@ -9,11 +9,12 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "types": ["vitest/globals", "node"],
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src", "scripts"]
+  "include": ["src", "scripts", "bench"]
 }

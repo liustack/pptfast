@@ -1,0 +1,16 @@
+{
+  "version": "3",
+  "filename": "fixture-fx03-audit-positive",
+  "theme": { "id": "luxe" },
+  "slides": [
+    { "type": "cover", "heading": "Audit Positive" },
+    {
+      "type": "content",
+      "heading": "kpi",
+      "components": [
+        { "type": "kpi_cards", "items": [{ "value": "1", "label": "x", "delta": "down" }] }
+      ]
+    },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}

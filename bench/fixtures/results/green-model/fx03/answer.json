@@ -1,0 +1,23 @@
+{
+  "version": "3",
+  "filename": "fixture-fx03",
+  "theme": { "id": "consulting" },
+  "slides": [
+    { "type": "cover", "heading": "Fixture Three" },
+    {
+      "type": "content",
+      "heading": "Highlights",
+      "components": [
+        {
+          "type": "row_cards",
+          "items": [
+            { "title": "One", "text": "first" },
+            { "title": "Two", "text": "second" },
+            { "title": "Three", "text": "third" }
+          ]
+        }
+      ]
+    },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}
