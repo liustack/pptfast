@@ -26,7 +26,7 @@ const VARIANT_ICON: Record<CalloutComponent["variant"], string> = {
 
 /**
  * `fontSize` is `ctx.bodyFontPx` (W4 task 3, design decision 9) — the
- * delivery-tier body baseline, not a fixed constant. `ICON_SIZE` above is a
+ * pacing-tier body baseline, not a fixed constant. `ICON_SIZE` above is a
  * bespoke, unrelated pixel constant (icon glyph box) and stays untouched.
  */
 function lay(text: string, w: number, fontSize: number) {

@@ -372,23 +372,23 @@ const LAYOUT_IDS: readonly string[] = Object.keys(LAYOUT_REGISTRY)
  * Focus vocabulary gate (spec §5): `focus` is optional authoring guidance
  * pointing a later fill/select step at a preferred component or layout —
  * when present it must resolve against one of three vocabularies: the
- * resolved mode's own tendency set (`STRATEGY_DEFINITIONS[mode].tendencies`, W3
+ * resolved strategy's own tendency set (`STRATEGY_DEFINITIONS[strategy].tendencies`, W3
  * data), the full component-type vocabulary ({@link COMPONENT_TYPES}, 28
  * names), or the full layout-id vocabulary ({@link LAYOUT_IDS},
  * `LAYOUT_REGISTRY`'s keys).
  *
- * The mode tendency set is currently always a subset of the other two
+ * The strategy tendency set is currently always a subset of the other two
  * (every entry in every `StrategyDefinition.tendencies` array already resolves
  * against either component types or layout ids — see that field's own doc
  * comment in `scenario/index.ts`) — checked explicitly anyway, both because
  * the brief's wording keeps it a first-class term of the union (a future
  * tendency value from some other vocabulary would still resolve correctly
- * without touching this function) and because the mode-specific list is the
+ * without touching this function) and because the strategy-specific list is the
  * one most useful to show first in the error message, ahead of the two much
  * longer global lists.
  */
-function checkFocusVocabulary(spec: DeckSpec, mode: Strategy): SpecValidationIssue[] {
-  const tendencies = STRATEGY_DEFINITIONS[mode].tendencies
+function checkFocusVocabulary(spec: DeckSpec, strategy: Strategy): SpecValidationIssue[] {
+  const tendencies = STRATEGY_DEFINITIONS[strategy].tendencies
   const errors: SpecValidationIssue[] = []
   spec.pages.forEach((page, i) => {
     if (page.focus === undefined) return
@@ -399,7 +399,7 @@ function checkFocusVocabulary(spec: DeckSpec, mode: Strategy): SpecValidationIss
       path: `pages.${i}.focus`,
       pageId: page.id,
       message:
-        `unknown focus "${page.focus}" for mode "${mode}" — expected one of this mode's tendencies ` +
+        `unknown focus "${page.focus}" for strategy "${strategy}" — expected one of this strategy's tendencies ` +
         `(${tendencies.join(", ")}), a component type (${COMPONENT_TYPES.join(", ")}), ` +
         `or a layout id (${LAYOUT_IDS.join(", ")})`,
     })
@@ -407,7 +407,7 @@ function checkFocusVocabulary(spec: DeckSpec, mode: Strategy): SpecValidationIss
   return errors
 }
 
-// ── hard gate: beat rotation (parameterized by mode's beatPolicy) ──
+// ── hard gate: beat rotation (parameterized by strategy's beatPolicy) ──
 
 type DeclaredBeatPage = { index: number; id: string; beat: PageBeat }
 
@@ -429,7 +429,7 @@ function declaredBeatContentPages(spec: DeckSpec): DeclaredBeatPage[] {
 }
 
 /**
- * `alternate` policy (narrative mode): no run of 3 or more consecutive
+ * `alternate` policy (storytelling strategy): no run of 3 or more consecutive
  * content pages may declare the *same* beat. "Consecutive" is evaluated
  * on the declared-beat content-page subsequence
  * ({@link declaredBeatContentPages}), not on raw array adjacency —
@@ -445,7 +445,7 @@ function declaredBeatContentPages(spec: DeckSpec): DeclaredBeatPage[] {
  * reports exactly one error naming every member, not one error per
  * overlapping triple within it.
  */
-function checkAlternatePolicy(spec: DeckSpec, mode: Strategy): SpecValidationIssue[] {
+function checkAlternatePolicy(spec: DeckSpec, strategy: Strategy): SpecValidationIssue[] {
   const seq = declaredBeatContentPages(spec)
   const errors: SpecValidationIssue[] = []
   let i = 0
@@ -460,7 +460,7 @@ function checkAlternatePolicy(spec: DeckSpec, mode: Strategy): SpecValidationIss
         pageId: members[0]!.id,
         message:
           `${runLength} consecutive content pages declare beat "${seq[i]!.beat}" ` +
-          `(${members.map((m) => m.id).join(", ")}) — mode "${mode}" requires beat to alternate, ` +
+          `(${members.map((m) => m.id).join(", ")}) — strategy "${strategy}" requires beat to alternate, ` +
           `vary at least one of them`,
       })
     }
@@ -470,7 +470,7 @@ function checkAlternatePolicy(spec: DeckSpec, mode: Strategy): SpecValidationIss
 }
 
 /**
- * `anchor-open` policy (pyramid mode): only the deck's *first* content page
+ * `anchor-open` policy (pyramid strategy): only the deck's *first* content page
  * is checked — it must declare beat "anchor" if it declares a beat at
  * all. An unset beat on that first content page is not a violation (spec:
  * omission always defers to the later auto-fill step). Every other content
@@ -478,7 +478,7 @@ function checkAlternatePolicy(spec: DeckSpec, mode: Strategy): SpecValidationIss
  * "only checks the opening"). Vacuously fine when the spec has no content
  * pages at all (e.g. cover → chapter → ending).
  */
-function checkAnchorOpenPolicy(spec: DeckSpec, mode: Strategy): SpecValidationIssue[] {
+function checkAnchorOpenPolicy(spec: DeckSpec, strategy: Strategy): SpecValidationIssue[] {
   const firstContentIndex = spec.pages.findIndex((page) => page.type === "content")
   if (firstContentIndex === -1) return []
   const firstContent = spec.pages[firstContentIndex]!
@@ -487,13 +487,13 @@ function checkAnchorOpenPolicy(spec: DeckSpec, mode: Strategy): SpecValidationIs
     {
       path: `pages.${firstContentIndex}.beat`,
       pageId: firstContent.id,
-      message: `first content page declares beat "${firstContent.beat}" — mode "${mode}" requires the deck to open its first content page on "anchor" beat when a beat is declared`,
+      message: `first content page declares beat "${firstContent.beat}" — strategy "${strategy}" requires the deck to open its first content page on "anchor" beat when a beat is declared`,
     },
   ]
 }
 
 /**
- * `anchor-sparse` policy (showcase mode): among content pages that declare a
+ * `anchor-sparse` policy (showcase strategy): among content pages that declare a
  * beat, "anchor" must stay a minority (at most half). Showcase's own
  * beat *default* leans anchor-heavy (spec §5's beat-default column:
  * "anchor-dominant" — applied by the later auto-alternation step when beat is
@@ -505,7 +505,7 @@ function checkAnchorOpenPolicy(spec: DeckSpec, mode: Strategy): SpecValidationIs
  * violation — there is nothing to compute a ratio over (same "absence never
  * violates" posture as every other policy here).
  */
-function checkAnchorSparsePolicy(spec: DeckSpec, mode: Strategy): SpecValidationIssue[] {
+function checkAnchorSparsePolicy(spec: DeckSpec, strategy: Strategy): SpecValidationIssue[] {
   const declared = declaredBeatContentPages(spec)
   if (declared.length === 0) return []
   const anchorPages = declared.filter((page) => page.beat === "anchor")
@@ -522,37 +522,37 @@ function checkAnchorSparsePolicy(spec: DeckSpec, mode: Strategy): SpecValidation
       pageId: anchorPages[0]!.id,
       message:
         `${anchorPages.length} of ${declared.length} content pages with a declared beat are "anchor" ` +
-        `(${pct}%: ${anchorPages.map((page) => page.id).join(", ")}) — mode "${mode}" requires "anchor" to ` +
+        `(${pct}%: ${anchorPages.map((page) => page.id).join(", ")}) — strategy "${strategy}" requires "anchor" to ` +
         `stay a minority of declared beats, vary some to "dense" or "breathing"`,
     },
   ]
 }
 
 /**
- * Dispatches to the resolved mode's beat-rotation rule (spec §5's spec
- * hard-gate section, "beat-rotation rule parameterized by mode" — a single universal "no 3
+ * Dispatches to the resolved strategy's beat-rotation rule (spec §5's spec
+ * hard-gate section, "beat-rotation rule parameterized by strategy" — a single universal "no 3
  * same-beat pages in a row" rule would reject e.g. briefing's own correct
  * default, the exact self-contradiction the spec's codex-review pass
  * flagged, hence a per-`beatPolicy` rule set instead of one rule for
  * everyone). See `StrategyDefinition.beatPolicy`'s own doc comment
- * (`scenario/index.ts`) for which of the five modes maps to which policy.
+ * (`scenario/index.ts`) for which of the five strategies maps to which policy.
  */
-function checkBeatRotation(spec: DeckSpec, mode: Strategy): SpecValidationIssue[] {
-  const policy = STRATEGY_DEFINITIONS[mode].beatPolicy
+function checkBeatRotation(spec: DeckSpec, strategy: Strategy): SpecValidationIssue[] {
+  const policy = STRATEGY_DEFINITIONS[strategy].beatPolicy
   switch (policy) {
     case "uniform-dense":
     case "repetition-ok":
       // Exempt entirely — uniform/repeated beat across content pages is
-      // these modes' own correct default (briefing's "uniform dense",
+      // these strategies' own correct default (briefing's "uniform dense",
       // instructional's "dense tolerated, structure repeats across pages"), not a violation of
       // anything a generic streak rule would otherwise flag.
       return []
     case "alternate":
-      return checkAlternatePolicy(spec, mode)
+      return checkAlternatePolicy(spec, strategy)
     case "anchor-open":
-      return checkAnchorOpenPolicy(spec, mode)
+      return checkAnchorOpenPolicy(spec, strategy)
     case "anchor-sparse":
-      return checkAnchorSparsePolicy(spec, mode)
+      return checkAnchorSparsePolicy(spec, strategy)
     default: {
       const exhaustive: never = policy
       throw new Error(`unhandled beat policy: ${String(exhaustive)}`)

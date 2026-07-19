@@ -9,7 +9,7 @@ const LINE_RATIO = 1.4
 
 /**
  * `fontSize` is `ctx.bodyFontPx` (W4 task 3, design decision 9) — the
- * delivery-tier body baseline, not a fixed constant. `lineHeightRatio`
+ * pacing-tier body baseline, not a fixed constant. `lineHeightRatio`
  * stays fixed (`LINE_RATIO`), so line height scales automatically with
  * whatever baseline the caller passes.
  */
