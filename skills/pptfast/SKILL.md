@@ -76,7 +76,7 @@ Zero-token, zero-variance — it renders each page off-screen and checks overflo
 pptfast preview deck-dir/ -o preview/ --html
 ```
 
-Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead.
+Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal; a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` — read only, never edits the deck itself — route that back through phase 6 when it comes back to you.
 
 ### Phase 6 — Revision: edit one page, re-assemble
 
@@ -84,12 +84,13 @@ A revision touches the smallest file that captures it:
 
 - Content change ("punch up the KPI page") → edit that page's `pages/<id>.json` only, then repeat phase 3's `assemble` + `validate` pair, and phase 5's `audit`, before re-rendering. Never regenerate pages nobody asked you to touch.
 - Structural change (reorder, add/remove a page, change a page's type or heading) → edit `deck.plan.json` instead, re-run `pptfast plan validate` first (phase 2's no-replanning rule still applies: only do this when the user actually asked for a structural change).
+- `revision-request.json` handed back (exported from `preview.html`'s "Export revision requests" button, phase 5) → route each entry in `requests` by `pageId` to that page's `pages/<id>.json`. `pageId` is the page's slide id when it has one, else its 1-based page number — match it against `deck.plan.json`/`pages/` to find the right file when there is no id. Treat `annotation` as a requirement to interpret, not a patch to apply verbatim: it is free-text from a reviewer looking at the rendered slide, not valid page-file JSON — translate it into a concrete content edit yourself, then run the same content-change loop above (`assemble` + `validate` + `audit`) for every page a request touched. Preview stays read-only end to end: nothing about this flow ever writes into `pages/*.json` except your own deliberate edit.
 
 ## Routing a follow-up request
 
 Once a deck project exists, a follow-up message routes into exactly one of three branches — decide which before doing anything:
 
-1. **Edit a page** ("change slide 3", "make the KPI page punchier") → phase 6: edit that page's file, re-assemble, re-validate, re-audit. Never touch pages nobody asked about.
+1. **Edit a page** ("change slide 3", "make the KPI page punchier", or a handed-back `revision-request.json`) → phase 6: edit that page's file, re-assemble, re-validate, re-audit. Never touch pages nobody asked about.
 2. **A new deck** (a different topic, audience, or an explicit request to start over) → phase 1: a new deck project directory, fresh scenario/theme decision, fresh plan.
 3. **Unrelated to deck generation** (a question about the content, anything with no connection to slides) → do not invoke pptfast at all.
 
