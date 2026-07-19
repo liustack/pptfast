@@ -50,7 +50,7 @@ pptfast assemble deck-dir/     # materializes deck.json — catches structural d
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget, unknown theme
 ```
 
-Fix whatever either command reports and re-run until both print `OK`. A plan page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error; pin `layout` in a page file only when a specific pick needs to be locked.
+Fix whatever either command reports and re-run until both print `OK`. A plan page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked.
 
 ### Phase 4 — Render
 
@@ -76,7 +76,7 @@ Zero-token, zero-variance — it renders each page off-screen and checks overflo
 pptfast preview deck-dir/ -o preview/ --html
 ```
 
-Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal; a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` — read only, never edits the deck itself — route that back through phase 6 when it comes back to you.
+Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` — read only, never edits the deck itself — route that back through phase 6 when it comes back to you.
 
 ### Phase 6 — Revision: edit one page, re-assemble
 

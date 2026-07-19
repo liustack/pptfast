@@ -240,7 +240,7 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
  * name before parsing (W5 task 4 — kpi `title`→`label` and friends,
  * `../ir/field-aliases.ts`). Extracted so `runRender`/`runPreview` (W5
  * whole-branch review finding 3 — the README already claimed `validate`
- * *and* `render` both printed this note; `render` never actually did, and
+ * *and* `render` both printed this note — `render` never actually did, and
  * `preview` is folded in here too for the same reason) can append the exact
  * same note `runValidate` below has always printed, instead of each
  * re-deriving the formatting a second and third time. `undefined` when
