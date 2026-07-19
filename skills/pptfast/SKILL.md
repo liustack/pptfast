@@ -43,7 +43,7 @@ Propose and confirm before writing any page content:
 
 ### Phase 3 — Fill pages in batches of at most 4, validate immediately
 
-For each page in the confirmed plan, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote` — never `type`/`heading`, those are locked by the plan). After every batch of at most 4 pages:
+For each page in the confirmed plan, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes` — never `type`/`heading`, those are locked by the plan). `notes` is speaker notes prose for whoever presents the deck — writing a good speaking script is a model strength, so draft it whenever the page's content calls for a spoken walkthrough beyond what's on the slide.
 
 ```bash
 pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken plan
@@ -60,7 +60,7 @@ pptfast render deck-dir/ -o deck.pptx
 
 `--theme <id>` overrides the deck theme without editing the plan. `--style <path>` layers a style-token override on top (re-color without forking a theme, schema: `pptfast schema --style`). Render refuses a deck with unfilled placeholder pages unless you add `--draft` — reach for that only when the user explicitly wants a look before every page is done.
 
-If the project has a `pptfast.config.json`, its theme/style are project defaults — do not fight them with `--theme` unless the user asks.
+If the project has a `pptfast.config.json`, its theme/style are project defaults — do not fight them with `--theme` unless the user asks. Any page `notes` you wrote in phase 3 export as native PowerPoint speaker notes (View → Notes in PowerPoint/Keynote) — never drawn onto the slide itself.
 
 ### Phase 5 — Audit and optional visual self-check
 

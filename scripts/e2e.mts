@@ -220,6 +220,10 @@ writeFileSync(
         items: ["Every shape stays editable", "Design tokens, not freeform drawing"],
       },
     ],
+    // speaker notes (notes+preview wave, task 1) — content, not locked by the
+    // plan, exported as native PowerPoint speaker notes, asserted against
+    // the final render's notesSlide2.xml below.
+    notes: "Emphasize that every shape stays editable in PowerPoint, not a flattened image.",
   }),
 )
 writeFileSync(join(deckDir, "pages", "p-ending.json"), JSON.stringify({}))
@@ -296,6 +300,22 @@ if (!finalSlide3.includes("13") || !finalSlide3.includes("built-in themes")) {
   throw new Error("e2e: deck-dir leg — filled page content not found in slide3.xml after the normal render")
 }
 console.log("deck-dir leg OK (assemble + draft gate + fill + normal render)")
+
+// p-goals is slide 2 (cover, goals, roadmap, ending) and set `notes` above —
+// must reach the exported .pptx as native speaker notes text, never onto the
+// slide's own canvas XML.
+if (!finalZip.file("ppt/notesSlides/notesSlide2.xml")) {
+  throw new Error("e2e: deck-dir leg — missing ppt/notesSlides/notesSlide2.xml in the final render")
+}
+const finalNotes2 = await finalZip.file("ppt/notesSlides/notesSlide2.xml")!.async("string")
+if (!finalNotes2.includes("Emphasize that every shape stays editable")) {
+  throw new Error(`e2e: deck-dir leg — expected p-goals's notes text in notesSlide2.xml, got: ${finalNotes2}`)
+}
+const finalSlide2 = await finalZip.file("ppt/slides/slide2.xml")!.async("string")
+if (finalSlide2.includes("Emphasize that every shape stays editable")) {
+  throw new Error("e2e: deck-dir leg — notes text leaked onto slide2.xml's own canvas, must stay speaker-notes-only")
+}
+console.log("deck-dir speaker-notes leg OK (notesSlide2.xml carries p-goals's notes text, slide2.xml canvas does not)")
 
 // 7) audit leg (W6 task 2, spec §7 workflow ④): a clean deck must exit 0; a
 //    deliberately near-background text color (theme.style override,
