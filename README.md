@@ -155,7 +155,7 @@ A deck can be authored two ways, and every command that takes IR accepts either:
 ```
 my-deck/
   deck.spec.json         the locked spec: page order, type, and heading for every page
-  pages/<page-id>.json  one file per filled page (components/layout/arrangement/background/image_side/footnote)
+  pages/<page-id>.json   one file per filled page (components/layout/arrangement/background/image_side/footnote)
   assets/                local images, auto-registered by filename (image id = filename without extension)
 ```
 

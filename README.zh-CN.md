@@ -147,7 +147,7 @@ bullets 需要时会在各自档位基线之下收缩以适配空间，最低到
 ```
 my-deck/
   deck.spec.json         锁定的 spec：每一页的顺序、type、heading
-  pages/<page-id>.json  每个已填页面一个文件（components/layout/arrangement/background/image_side/footnote）
+  pages/<page-id>.json   每个已填页面一个文件（components/layout/arrangement/background/image_side/footnote）
   assets/                本地图片，按文件名自动注册（图片 id = 去掉扩展名的文件名）
 ```
 
