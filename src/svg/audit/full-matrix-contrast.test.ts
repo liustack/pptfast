@@ -801,6 +801,56 @@ describe("swot/bmc tinted-panel contrast (structure-components wave task 1, deci
   }
 })
 
+// bench-driven fix round, defect F (bmc bottom-row overflow,
+// `tests/bench/questions/q07` evidence): `BMC_SLIDE` above (1-2 items per
+// block) never exercised the schema's own ceiling — 4 items in every one of
+// the 9 named blocks (`z.array(z.string()).min(1).max(4)`, `src/ir/index.ts`)
+// — which a real bench-generated deck actually produced (q07's
+// qwen3.6-27b answer.json: 4 items in all 9 blocks, verbatim below). Pre-fix,
+// `bmc.tsx`'s `render` floored its own drawn height at the natural
+// (unstretched) total and never shrank below `box.h` — a full-body
+// component (`SvgContent.tsx`) gets the archetype's *fixed* content-rect
+// height verbatim, never a box sized to its own `measure()` return value —
+// so schema-max content overflowed the content rect on every one of the 13
+// themes (empirically confirmed pre-fix: 2 v-overflow findings per theme,
+// both in the bottom band — `cost_structure`/`revenue_streams` — the last
+// band painted and the first to spill). Fixed by shrinking every cell's font
+// size/vertical rhythm by the same proportion the box is short by (`bmc.tsx`
+// file header, "The inverse case"). `narrow-column` specifically (not one of
+// the other 6 content archetypes) — the narrowest, most content-constrained
+// curated layout (880px column, 410px content-rect height at this heading),
+// so a clean sweep here is real headroom evidence, not a softball; the task
+// report's own probe additionally swept all 7 content archetypes × all 13
+// themes at this same schema-max fixture (91 combinations, 0 findings) for
+// broader confidence beyond this committed regression's one archetype.
+describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
+  const BMC_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "bmc",
+        key_partners: ["核心原材料供应商", "第三方物流服务商", "云基础设施提供商", "行业协会与标准组织"],
+        key_activities: ["平台核心算法研发", "多系统API对接与集成", "客户成功与培训体系", "生态伙伴拓展与管理"],
+        key_resources: ["资深算法与工程团队", "脱敏供应链历史数据库", "高可用云算力集群", "核心专利与软件著作权"],
+        value_propositions: ["库存周转天数降低30%", "全链路实时可视化追踪", "基于AI的智能需求预测", "零代码无缝系统对接"],
+        customer_relationships: ["专属客户成功经理", "自动化自助服务门户", "季度业务复盘与共创会", "开发者与技术社区"],
+        channels: ["直销团队重点攻坚", "行业峰会与线下展会", "现有合作伙伴转介", "技术白皮书与内容营销"],
+        customer_segments: ["中大型离散制造企业", "头部跨境电商卖家", "第三方物流运营商", "全国性零售连锁集团"],
+        cost_structure: ["研发与工程人力成本", "云服务器与带宽费用", "市场推广与销售佣金", "数据安全与合规投入"],
+        revenue_streams: ["SaaS基础版订阅年费", "按调用量计费的API服务", "定制化实施与培训费", "高级数据分析模块授权"],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max bmc (4 items in every block) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, BMC_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
 // Structure-components wave task 2, decision 7: waterfall.tsx paints three
 // theme-derived bar colors (rise=`colors.accent`, fall=`colors.primary`,
 // total=`mixHex(colors.primary, colors.accent, 0.5)` — the one real tint in
