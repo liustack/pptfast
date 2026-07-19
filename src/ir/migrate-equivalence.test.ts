@@ -31,6 +31,7 @@ import { migrateIrV3ToV4 } from "./migrate"
 import { V3_EQUIVALENCE_DECKS } from "./__fixtures__/v3-equivalence-decks"
 import { renderSlideSvg } from "@/api"
 import { generatePptxBlob } from "@/pptx/generate"
+import { auditDeck } from "@/svg/audit/deck-audit"
 import { installNodePlatform } from "@/platform/node"
 
 const GOLDEN_DIR = new URL("./__fixtures__/equivalence-golden/", import.meta.url)
@@ -68,6 +69,22 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
         const blob = await generatePptxBlob(v4)
         const migratedZipMap = await normalizedZipMap(blob)
         expect(migratedZipMap).toEqual(goldenZipMap)
+      })
+
+      // spec §12 output row "迁移前后审计结果等价" (task 4): auditDeck's
+      // findings/pagesAudited/pagesSkipped must match what the pre-rename
+      // codebase produced on the same deck, same capture method as the SVG/
+      // PPTX goldens above (base commit 0511b8c, PptxIRSchema.parse +
+      // auditDeck, no migration involved on that side — it's the pre-rename
+      // deck audited by pre-rename code). annualReviewPreset's two low-
+      // contrast findings are a pre-existing fixture property (kpi_cards
+      // delta arrow contrast), not something this rename could have
+      // introduced or fixed — asserted here precisely so a future
+      // regression in either direction gets caught.
+      it("audits byte-identical findings to the base-commit (pre-rename) capture", () => {
+        const goldenAudit = readGoldenJson<ReturnType<typeof auditDeck>>(`${name}.audit`)
+        const migratedAudit = auditDeck(v4)
+        expect(migratedAudit).toEqual(goldenAudit)
       })
     })
   }
