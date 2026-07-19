@@ -3,11 +3,13 @@
  * components (`swot.tsx`/`bmc.tsx`, structure-components wave task 1) — both
  * tint their own quadrant/block panels toward a theme token the same way
  * `matrix.tsx`'s `toneFill` already does (`mixHex(ctx.colors.surface,
- * ctx.colors.accent|primary|muted, t)`), so this extracts that file's private
- * `mixHex`/`parseHex` pair into a shared home instead of a third private
- * copy. `matrix.tsx` keeps its own pre-existing copy untouched (out of this
- * task's scope to refactor an already-shipped, already-tested component) —
- * this module is net-new, not a move.
+ * ctx.colors.accent|primary|muted, t)`), so this extracted that file's
+ * private `mixHex`/`parseHex` pair into a shared home instead of a third
+ * private copy. Also used by `waterfall.tsx`'s total-bar blend (task 2).
+ * `matrix.tsx` originally kept its own pre-existing copy untouched (out of
+ * task 1's scope to refactor an already-shipped, already-tested component) —
+ * task 3 (review minor) retired that duplicate and pointed `matrix.tsx` at
+ * this module too, byte-identical output, zero behavior change.
  */
 
 /** Blend hex `a` toward hex `b` by t∈[0,1] → solid #RRGGBB (no alpha, exports

@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { mixHex } from "./color-mix"
 import type { ComponentCtx, SvgComponent } from "./types"
 
 type MatrixComponent = Extract<Component, { type: "matrix" }>
@@ -24,23 +25,6 @@ const TAG_LH = Math.round(TAG_SIZE * 1.35)
 const AXIS_SIZE = 13
 const GAP_TITLE_TAG = 6
 const PAD_BOTTOM = 16
-
-/** Blend hex `a` toward hex `b` by t∈[0,1] → solid #RRGGBB (no alpha, exports
- * cleanly + Chrome 103 safe). */
-function mixHex(a: string, b: string, t: number): string {
-  const pa = parseHex(a)
-  const pb = parseHex(b)
-  if (!pa || !pb) return a
-  const ch = (x: number, y: number) => Math.round(x + (y - x) * t)
-  const hex = (n: number) => n.toString(16).padStart(2, "0")
-  return `#${hex(ch(pa[0], pb[0]))}${hex(ch(pa[1], pb[1]))}${hex(ch(pa[2], pb[2]))}`
-}
-function parseHex(h: string): [number, number, number] | null {
-  const m = /^#?([0-9a-fA-F]{6})$/.exec(h.trim())
-  if (!m) return null
-  const n = parseInt(m[1], 16)
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-}
 
 function toneFill(tone: MatrixItem["tone"], ctx: ComponentCtx): string {
   switch (tone) {
