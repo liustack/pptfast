@@ -74,6 +74,24 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, ItemFieldAlia
   row_cards: { itemsKey: "items", aliases: { description: "text", desc: "text" } },
 }
 
+/**
+ * Slide-level (not component) field aliases — applied to a slide object's
+ * own keys, before this file's per-component normalization runs on that same
+ * slide. New for the speaker-notes field (`SlideSchema.notes`, `../ir/index.ts`):
+ * the singular "note", and PowerPoint's own vocabulary "speaker_notes" /
+ * "speakerNotes", are the same synonym drift this module exists to rescue —
+ * one level up the tree from every other row in this file, since `notes` is a
+ * slide field, not a component field. Same rename semantics as
+ * {@link renameAliases} everywhere else in this module: canonical-present
+ * wins, alias-and-canonical both present is left untouched for zod strict to
+ * reject.
+ */
+export const SLIDE_FIELD_ALIASES: FieldAliasMap = {
+  note: "notes",
+  speaker_notes: "notes",
+  speakerNotes: "notes",
+}
+
 export interface NormalizeAliasesResult {
   /** The (possibly rewritten) input, structurally cloned — the original `input` is never mutated. */
   value: unknown
@@ -138,19 +156,32 @@ function normalizeComponent(component: unknown, si: number, ci: number, normaliz
 }
 
 function normalizeSlide(slide: unknown, si: number, normalized: string[]): unknown {
-  if (!isPlainObject(slide) || !Array.isArray(slide.components)) return slide
-  let changed = false
-  const components = slide.components.map((component, ci) => {
-    const next = normalizeComponent(component, si, ci, normalized)
-    if (next !== component) changed = true
-    return next
-  })
-  return changed ? { ...slide, components } : slide
+  if (!isPlainObject(slide)) return slide
+  const path = `slides[${si}]`
+  // Slide-level rename first (e.g. speaker_notes → notes) — independent of
+  // whether this slide has a valid components array at all.
+  let next = renameAliases(slide, SLIDE_FIELD_ALIASES, path, normalized)
+
+  const components = next.components
+  if (Array.isArray(components)) {
+    let componentsChanged = false
+    const nextComponents = components.map((component, ci) => {
+      const renamed = normalizeComponent(component, si, ci, normalized)
+      if (renamed !== component) componentsChanged = true
+      return renamed
+    })
+    if (componentsChanged) {
+      next = next === slide ? { ...slide, components: nextComponents } : { ...next, components: nextComponents }
+    }
+  }
+
+  return next
 }
 
 /**
- * Deep-walk an unknown (pre-zod) IR shape — `slides[].components[]` and
- * their item arrays — rewriting synonym field names per
+ * Deep-walk an unknown (pre-zod) IR shape — each slide's own top-level keys
+ * (per {@link SLIDE_FIELD_ALIASES}), plus `slides[].components[]` and their
+ * item arrays — rewriting synonym field names per
  * {@link COMPONENT_FIELD_ALIASES} / {@link COMPONENT_ITEM_FIELD_ALIASES}.
  * Structural-share, never mutates `input`: any slide/component/item
  * subtree with nothing to rewrite is returned by the same reference it came

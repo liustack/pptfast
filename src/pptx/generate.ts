@@ -42,6 +42,19 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   ir.slides.forEach((slide, index) => {
     const s = pptx.addSlide({ masterName: slide.type })
     gradientPatches.push(...renderOps(s, slideToOps(ir, slide, index), index))
+    // Speaker notes (notes+preview wave, task 1): native PowerPoint notes,
+    // never drawn onto the canvas SVG — no `slideToOps`/`renderOps`
+    // involvement above. pptxgenjs already emits an (empty-text)
+    // ppt/notesSlides/notesSlideN.xml part for every slide regardless of
+    // whether `addNotes` is ever called (its own `writeToDisk`/`export`
+    // path, `zip.file(...makeXmlNotesSlide(slide))` unconditionally per
+    // slide) — so this call only ever changes that existing part's text,
+    // it never adds a new zip entry. A slide that omits `notes` never calls
+    // `addNotes` at all, so its notesSlide part stays exactly the
+    // pre-existing empty placeholder: the frozen v3 schema's byte-identity
+    // invariant for an omitted-notes deck holds by construction, not by a
+    // conditional guard against new structure.
+    if (slide.notes) s.addNotes(slide.notes)
   })
 
   const rawBlob = (await pptx.write({ outputType: "blob" })) as Blob

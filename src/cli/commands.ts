@@ -240,7 +240,7 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
  * name before parsing (W5 task 4 — kpi `title`→`label` and friends,
  * `../ir/field-aliases.ts`). Extracted so `runRender`/`runPreview` (W5
  * whole-branch review finding 3 — the README already claimed `validate`
- * *and* `render` both printed this note; `render` never actually did, and
+ * *and* `render` both printed this note — `render` never actually did, and
  * `preview` is folded in here too for the same reason) can append the exact
  * same note `runValidate` below has always printed, instead of each
  * re-deriving the formatting a second and third time. `undefined` when
@@ -513,7 +513,14 @@ export interface PreviewOptions {
    *  `./preview-html.ts`): self-containment assumes every image asset is
    *  local or already a `data:` URI — a remote `http(s):` asset src passes
    *  through `resolveLocalAssets` untouched and lands in the bundle as a
-   *  live network reference, not an inlined file. */
+   *  live network reference, not an inlined file.
+   *
+   *  Also gates the audit overlay (notes+preview wave, task 2): when set
+   *  and the deck has no placeholder page, `runPreview` runs `auditDeck`
+   *  (`../svg/audit/deck-audit.ts`) and embeds its findings into
+   *  `preview.html` (per-page badges + a findings panel, `buildPreviewHtml`).
+   *  A deck with any placeholder page skips the audit entirely instead of
+   *  running it partially — see `runPreview`'s own doc comment for why. */
   htmlOut?: boolean
 }
 
@@ -534,6 +541,17 @@ export interface PreviewOptions {
  * `renderSlideSvg` a second time — the `.svg` file on disk and the copy
  * embedded in `preview.html` are then guaranteed byte-identical by
  * construction, not just by the renderer being deterministic.
+ *
+ * `opts.htmlOut` additionally runs `auditDeck` (notes+preview wave, task 2)
+ * — but only when the deck has no placeholder page. `auditDeck` itself
+ * silently skips a placeholder (`AuditReport.pagesSkipped`, nothing to audit
+ * on an unfilled page) — running it over a deck that has some would produce
+ * a *partial* report that still looks complete (zero findings reads as
+ * "clean", not "some pages were never checked"), which is worse than not
+ * running it at all. The plan's contract is the simpler "any placeholder
+ * present → skip the whole overlay, one-line notice instead" — implemented
+ * here as `hasPlaceholder`, and threaded into `buildPreviewHtml` as either
+ * `findings` (clean run) or `auditNote` (skipped), never both.
  */
 export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
@@ -558,6 +576,8 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
   if (aliasNote) notes.push(aliasNote)
   if (opts.htmlOut) {
     const htmlPath = join(outDir, "preview.html")
+    const hasPlaceholder = ir.slides.some((slide) => slide.placeholder)
+    const auditFindings = hasPlaceholder ? [] : auditDeck(ir).findings
     const html = buildPreviewHtml({
       title: ir.filename,
       slides: ir.slides.map((slide, i) => ({
@@ -567,9 +587,16 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
         svg: svgs[i]!,
         placeholder: slide.placeholder,
       })),
+      findings: auditFindings.map((f) => ({ page: f.page, slideId: f.slideId, code: f.code, message: f.message })),
+      auditNote: hasPlaceholder
+        ? "audit overlay skipped — deck has unfilled placeholder pages; fill every page and re-run `pptfast preview --html` to see audit findings"
+        : undefined,
     })
     await writeFile(htmlPath, html)
     notes.push(`note: wrote self-contained preview to ${htmlPath}`)
+    if (auditFindings.length > 0) {
+      notes.push(`note: audit found ${auditFindings.length} finding${auditFindings.length === 1 ? "" : "s"} — see preview.html`)
+    }
   }
   return notes.length > 0 ? `${ok}\n${notes.join("\n")}` : ok
 }

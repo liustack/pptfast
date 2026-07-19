@@ -628,6 +628,18 @@ const SlideSchema = z
     // 仅 image_split 用：图列在左还是右（缺省 left；ppt-master P04 右图出血）
     image_side: z.enum(["left", "right"]).optional(),
     footnote: z.string().optional(),
+    /**
+     * Speaker notes — exported as native PowerPoint speaker notes
+     * (`src/pptx/generate.ts`'s `slide.addNotes`), never rendered onto the
+     * canvas SVG. Purely additive on the frozen v3 schema (optional, no
+     * default): an existing IR that omits this field parses and exports
+     * identically to before this field existed. Never reaches the canvas
+     * SVG, so it carries no geometry to overflow and no ink to contrast-check
+     * — out of scope for capacity/audit measurement
+     * (`src/svg/audit/deck-audit.ts`) by construction, not by an added
+     * exemption.
+     */
+    notes: z.string().optional(),
   })
   .strict()
 

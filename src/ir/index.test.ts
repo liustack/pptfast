@@ -460,6 +460,24 @@ describe("IR v3 slide placeholder field (W5 task 1)", () => {
   })
 })
 
+describe("IR v3 slide notes field (notes+preview wave, task 1)", () => {
+  it("accepts a string notes on a slide", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "cover", heading: "x", notes: "remember to slow down here" }]
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("omits cleanly — stays undefined, no default baked in by the schema", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.slides[0]!.notes).toBeUndefined()
+  })
+  it("rejects a non-string notes", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "cover", heading: "x", notes: 42 }]
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("theme.style override", () => {
   it("accepts a palette/fonts/shape override", () => {
     const d: any = minimal()
