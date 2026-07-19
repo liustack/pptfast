@@ -170,6 +170,11 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
     const subheadingFill = subheading
       ? accessibleInk(colors.accent, "#FFFFFF", subheading.fontSize)
       : colors.accent
+    // The **emphasis** tspans inside the subheading sit on the same white
+    // card, so their accent needs the same guard as headingFill below.
+    const subheadingEmphasisFill = subheading
+      ? accessibleInk(colors.text, "#FFFFFF", subheading.fontSize)
+      : colors.text
     const dividerY = 198 + headingExtra + subheadingBudget
     const contentRectY = 216 + headingExtra + subheadingBudget
     const contentRectH = Math.max(120, 400 - headingExtra - subheadingBudget)
@@ -251,7 +256,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
             fill={subheadingFill}
             dominantBaseline="alphabetic"
           >
-            {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
+            {renderEmphasisTspans(subheading.segments, { accent: subheadingEmphasisFill, baseFill: subheadingFill, fontWeight: "700" })}
           </text>
         )}
 

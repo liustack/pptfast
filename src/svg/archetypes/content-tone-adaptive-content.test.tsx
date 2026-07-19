@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
+import { accessibleInk } from "../ink"
 import { ToneAdaptiveContent } from "./content-tone-adaptive-content"
 import type { PptxIR, Slide } from "@/ir"
 import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
@@ -153,7 +154,7 @@ describe("ToneAdaptiveContent", () => {
     expect(out).not.toContain("#E4E4E7")
   })
 
-  it("跨主题 withBg 分支：白色卡片豁免跨主题保持不变，卡片内文字仍随主题走 colors.text（不切白字）", () => {
+  it("跨主题 withBg 分支：白色卡片豁免跨主题保持不变，卡片内文字走对白卡可读的墨色（不切白字）", () => {
     const tokens = resolveStyle("tech")
     const ctxWithImg = buildCtx(tokens, bgImages)
     const deck = ir("tech", bgImages)
@@ -162,8 +163,14 @@ describe("ToneAdaptiveContent", () => {
     )
 
     expect(out).toContain('fill="#FFFFFF"') // 白色卡片豁免，跨主题不变
-    expect(out).toContain(ctxWithImg.colors.text) // 卡片内标题仍用 tech 的 text，不是白字
-    expect(ctxWithImg.colors.text).not.toBe("#FFFFFF")
+    // tech 的 colors.text 是浅色（对白卡不可读），卡片内文字必须是
+    // accessibleInk 校正后的墨色——原始浅色一处都不得残留（此前该断言
+    // 靠强调段 tspan 泄漏的裸浅色意外通过，泄漏封死后按意图重钉）
+    const cardInk = accessibleInk(ctxWithImg.colors.text, "#FFFFFF", 44)
+    expect(cardInk).not.toBe(ctxWithImg.colors.text)
+    expect(out).toContain(`fill="${cardInk}"`)
+    expect(out).not.toContain(`fill="${ctxWithImg.colors.text}"`)
+    expect(cardInk).not.toBe("#FFFFFF")
   })
 
   // Ported from templates/custom.test.tsx's describe.each controlled-subset

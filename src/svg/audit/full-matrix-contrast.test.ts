@@ -75,7 +75,7 @@ beforeAll(() => {
 })
 
 const HEADING = "示例标题：验证对比度矩阵"
-const SUBHEADING = "示例副标题：用于穷举扫描的所见即所得文案"
+const SUBHEADING = "示例副标题：用于穷举扫描的**所见即所得**文案"
 
 function deckFor(themeId: string, slide: Slide): PptxIR {
   return {
