@@ -352,6 +352,7 @@ describe("hard gate: beat rotation, parameterized by strategy's beatPolicy", () 
       expect(errors.some((e) => e.pageId === "p-1" && /open its first content page on "anchor"/.test(e.message))).toBe(
         true,
       )
+      expect(errors.some((e) => e.pageId === "p-1" && /strategy "pyramid"/.test(e.message))).toBe(true) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
     })
 
     it("does not check later content pages' beat at all", () => {
@@ -388,6 +389,7 @@ describe("hard gate: beat rotation, parameterized by strategy's beatPolicy", () 
       expect(err).toBeDefined()
       expect(err!.message).toMatch(/3 consecutive/)
       expect(err!.message).toMatch(/p-1, p-2, p-3/)
+      expect(err!.message).toMatch(/strategy "storytelling"/) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
       expect(err!.pageId).toBe("p-1")
     })
 
@@ -494,6 +496,7 @@ describe("hard gate: beat rotation, parameterized by strategy's beatPolicy", () 
       const err = errors.find((e) => /stay a minority/.test(e.message))
       expect(err).toBeDefined()
       expect(err!.message).toMatch(/2 of 3/)
+      expect(err!.message).toMatch(/strategy "showcase"/) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
       // Representative pageId (first anchor page), same shape as
       // checkAlternatePolicy's own issue.
       expect(err!.pageId).toBe("p-1")
@@ -542,6 +545,7 @@ describe("hard gate: focus vocabulary (strategy tendencies âˆª component types â
     const err = errors.find((e) => e.pageId === "p-1")
     expect(err).toBeDefined()
     expect(err!.message).toMatch(/unknown focus "not_a_real_thing"/)
+    expect(err!.message).toMatch(/strategy "pyramid"/) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
     expect(err!.message).toMatch(/kpi_cards/) // strategy tendency list present
     expect(err!.message).toMatch(/bullets/) // component type vocabulary present
     expect(err!.message).toMatch(/two-column/) // layout id vocabulary present
