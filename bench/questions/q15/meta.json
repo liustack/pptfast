@@ -1,0 +1,16 @@
+{
+  "id": "q15",
+  "title": "University Recruiting Keynote",
+  "coverage": {
+    "mode": "showcase",
+    "delivery": "presentation",
+    "expects_components": [
+      "image_grid",
+      "kpi_cards",
+      "image"
+    ],
+    "workflow": "bare-ir",
+    "image_deck": true
+  },
+  "lang": "en"
+}

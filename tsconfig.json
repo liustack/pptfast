@@ -9,11 +9,17 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "isolatedModules": true,
+    // Scoped to one import: bench/score.test.ts's `from "./score.mts"` (a
+    // static .mts import, TS5097 without this flag). Emit-inert for the
+    // shipped build — tsc runs noEmit here, and tsup's entry graph never
+    // walks into bench/, so this never reaches the bundler either. Not
+    // house style for extension-qualified imports generally.
+    "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "types": ["vitest/globals", "node"],
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src", "scripts"]
+  "include": ["src", "scripts", "bench"]
 }

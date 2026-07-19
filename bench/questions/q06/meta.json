@@ -1,0 +1,16 @@
+{
+  "id": "q06",
+  "title": "Year-in-Review All-Hands Story",
+  "coverage": {
+    "mode": "narrative",
+    "delivery": "balanced",
+    "expects_components": [
+      "timeline",
+      "quote",
+      "image"
+    ],
+    "workflow": "deck-project",
+    "image_deck": false
+  },
+  "lang": "en"
+}

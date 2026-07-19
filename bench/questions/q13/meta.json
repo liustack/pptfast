@@ -1,0 +1,16 @@
+{
+  "id": "q13",
+  "title": "Seed Round Pitch Deck",
+  "coverage": {
+    "mode": "pyramid",
+    "delivery": "presentation",
+    "expects_components": [
+      "kpi_cards",
+      "chart",
+      "comparison"
+    ],
+    "workflow": "deck-project",
+    "image_deck": false
+  },
+  "lang": "en"
+}

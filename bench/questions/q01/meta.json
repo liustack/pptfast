@@ -1,0 +1,16 @@
+{
+  "id": "q01",
+  "title": "Q2 Budget Performance Review",
+  "coverage": {
+    "mode": "pyramid",
+    "delivery": "presentation",
+    "expects_components": [
+      "kpi_cards",
+      "waterfall",
+      "verdict_banner"
+    ],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en"
+}

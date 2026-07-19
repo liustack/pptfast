@@ -1,0 +1,14 @@
+{
+  "id": "q17",
+  "title": "H2 Engineering Planning Review",
+  "coverage": {
+    "mode": "pyramid",
+    "delivery": "balanced",
+    "expects_components": [
+      "roadmap"
+    ],
+    "workflow": "deck-project",
+    "image_deck": false
+  },
+  "lang": "en"
+}

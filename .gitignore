@@ -37,6 +37,14 @@ test-output
 test/output
 coverage/
 
+# generated benchmark reports (bench/results/ itself is not ignored —
+# model artifacts may be deliberately checked in later; only the
+# scorer-generated report files are. Fixtures live under
+# bench/fixtures/results/, a separate tracked path this pattern doesn't
+# reach.)
+bench/results/**/report.md
+bench/results/**/summary.md
+
 # agent workspaces (local, never committed)
 .agent/
 .issues/

@@ -1,0 +1,15 @@
+{
+  "id": "q20",
+  "title": "Analytics Dashboard Launch Readiness Review",
+  "coverage": {
+    "mode": "showcase",
+    "delivery": "balanced",
+    "expects_components": [
+      "kpi_cards",
+      "row_cards"
+    ],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en"
+}
