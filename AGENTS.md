@@ -2,7 +2,7 @@
 
 ## Goal
 
-`pptfast` — semantic-IR → native editable PPTX toolchain (SDK + CLI, later Claude Code plugin/skills).
+`pptfast` — semantic-IR → native editable PPTX toolchain (SDK + CLI + a Claude Code plugin/skill, shipped since 0.2.0: `skills/pptfast/SKILL.md` + `.claude-plugin/`).
 
 ## Architecture
 
@@ -10,6 +10,8 @@ IR (zod, `src/ir`) → React SVG templates (`src/svg`: archetypes/components/lay
 → `renderToStaticMarkup` → svg2pptx (`src/pptx`) → pptxgenjs + JSZip patches (animations/gradients) → `.pptx`.
 Browser APIs are isolated behind `src/platform` (registry seam, node impl = linkedom + sharp).
 See `docs/architecture.md` for the full five-dimension model and render-chain diagram.
+
+v0.3 vocabulary: **theme** (style + brand + a curated layout set, 13 built-ins), **layout** (a page-level template with named slots, 30 archetypes + 4 image takeovers), **component** (the 24 typed units that fill a slot), **scenario** (narrative axes — mode × delivery × audience — that weight layout selection and set editorial density). See `docs/concepts.md` for the model, `docs/selection-and-seed.md` for how a layout gets picked, `docs/contrast-system.md` for the ink/contrast machinery, `docs/deck-projects.md` for the plan/assemble workflow.
 
 ## Layout rules
 
