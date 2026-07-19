@@ -37,6 +37,183 @@ const BLOCK_CASES: readonly BlockCase[] = [
   { type: "paragraph", alias: "body", canonical: "text", component: { type: "paragraph", body: "hi" }, expected: "hi" },
   { type: "callout", alias: "tone", canonical: "variant", component: { type: "callout", text: "hi", tone: "info" }, expected: "info" },
   { type: "verdict_banner", alias: "variant", canonical: "tone", component: { type: "verdict_banner", text: "hi", variant: "positive" }, expected: "positive" },
+  // swot (structure-components wave task 1, decision 8): singular-for-plural
+  // slip on each of the 4 named quadrant slots.
+  {
+    type: "swot",
+    alias: "strength",
+    canonical: "strengths",
+    component: { type: "swot", strength: ["s"], weaknesses: ["w"], opportunities: ["o"], threats: ["t"] },
+    expected: ["s"],
+  },
+  {
+    type: "swot",
+    alias: "weakness",
+    canonical: "weaknesses",
+    component: { type: "swot", strengths: ["s"], weakness: ["w"], opportunities: ["o"], threats: ["t"] },
+    expected: ["w"],
+  },
+  {
+    type: "swot",
+    alias: "opportunity",
+    canonical: "opportunities",
+    component: { type: "swot", strengths: ["s"], weaknesses: ["w"], opportunity: ["o"], threats: ["t"] },
+    expected: ["o"],
+  },
+  {
+    type: "swot",
+    alias: "threat",
+    canonical: "threats",
+    component: { type: "swot", strengths: ["s"], weaknesses: ["w"], opportunities: ["o"], threat: ["t"] },
+    expected: ["t"],
+  },
+  // bmc (structure-components wave task 1, decision 8): bare-noun-for-
+  // compound-key slip on each of the 8 non-`channels` named blocks
+  // (`channels` already matches the schema's own canonical key).
+  {
+    type: "bmc",
+    alias: "partners",
+    canonical: "key_partners",
+    component: {
+      type: "bmc",
+      partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["p"],
+  },
+  {
+    type: "bmc",
+    alias: "activities",
+    canonical: "key_activities",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["a"],
+  },
+  {
+    type: "bmc",
+    alias: "resources",
+    canonical: "key_resources",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["r"],
+  },
+  {
+    type: "bmc",
+    alias: "value_proposition",
+    canonical: "value_propositions",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_proposition: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["v"],
+  },
+  {
+    type: "bmc",
+    alias: "relationships",
+    canonical: "customer_relationships",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["cr"],
+  },
+  {
+    type: "bmc",
+    alias: "segments",
+    canonical: "customer_segments",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["cs"],
+  },
+  {
+    type: "bmc",
+    alias: "costs",
+    canonical: "cost_structure",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      costs: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["co"],
+  },
+  {
+    type: "bmc",
+    alias: "revenue",
+    canonical: "revenue_streams",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue: ["rs"],
+    },
+    expected: ["rs"],
+  },
 ]
 
 describe("COMPONENT_FIELD_ALIASES: every row round-trips", () => {
@@ -45,7 +222,12 @@ describe("COMPONENT_FIELD_ALIASES: every row round-trips", () => {
     const { value, normalized } = normalizeComponentAliases(input)
     expect(normalized).toEqual([`slides[0].components[0]: ${alias} → ${canonical}`])
     const out = (value as any).slides[0].components[0]
-    expect(out[canonical]).toBe(expected)
+    // toEqual (not toBe): swot/bmc's `expected` values are arrays (each
+    // named slot holds a string[]) — toBe's reference equality would fail
+    // them even on a correct rename since the array literal here and the
+    // renamed one aren't the same object. Behaves identically to toBe for
+    // every pre-existing string-valued case above.
+    expect(out[canonical]).toEqual(expected)
     expect(alias in out).toBe(false)
     expect(PptxIRSchema.safeParse(value).success).toBe(true)
   })

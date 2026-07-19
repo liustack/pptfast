@@ -25,6 +25,8 @@ import { matrix } from "./matrix"
 import { insightPanel } from "./insight_panel"
 import { verdictBanner } from "./verdict-banner"
 import { citation } from "./citation"
+import { swot } from "./swot"
+import { bmc } from "./bmc"
 
 /** Height (px) a component needs at a given width. */
 export function measureComponent(component: Component, w: number, ctx: ComponentCtx): number {
@@ -77,6 +79,10 @@ export function measureComponent(component: Component, w: number, ctx: Component
       return verdictBanner.measure(component, w, ctx)
     case "citation":
       return citation.measure(component, w, ctx)
+    case "swot":
+      return swot.measure(component, w, ctx)
+    case "bmc":
+      return bmc.measure(component, w, ctx)
     default: {
       void (component satisfies never)
       return 0
@@ -135,6 +141,10 @@ function renderComponentContent(component: Component, box: ComponentBox, ctx: Co
       return verdictBanner.render(component, box, ctx)
     case "citation":
       return citation.render(component, box, ctx)
+    case "swot":
+      return swot.render(component, box, ctx)
+    case "bmc":
+      return bmc.render(component, box, ctx)
     default: {
       void (component satisfies never)
       return <g />

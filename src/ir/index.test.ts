@@ -165,6 +165,95 @@ describe("expressive components: roadmap / matrix / insight_panel", () => {
   })
 })
 
+describe("swot component (structure-components wave task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const swotComponent = (n: number) => ({
+    type: "swot",
+    strengths: Array.from({ length: n }, (_, i) => `s${i}`),
+    weaknesses: ["w0"],
+    opportunities: ["o0"],
+    threats: ["t0"],
+  })
+
+  it("accepts 1-5 items per quadrant", () => {
+    for (const n of [1, 3, 5]) {
+      expect(parsePptxIR(withComponents([swotComponent(n)])).success).toBe(true)
+    }
+  })
+  it("rejects an empty quadrant array (min 1)", () => {
+    const d = withComponents([{ type: "swot", strengths: [], weaknesses: ["w0"], opportunities: ["o0"], threats: ["t0"] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects more than 5 items in a quadrant (max 5)", () => {
+    expect(parsePptxIR(withComponents([swotComponent(6)])).success).toBe(false)
+  })
+  it("rejects a missing quadrant (all four are required, not a positional array)", () => {
+    const d = withComponents([{ type: "swot", strengths: ["s0"], weaknesses: ["w0"], opportunities: ["o0"] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...swotComponent(1), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional labels override with any subset of the four keys", () => {
+    const d = withComponents([{ ...swotComponent(1), labels: { strengths: "优势" } }])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown key inside labels (strict)", () => {
+    const d = withComponents([{ ...swotComponent(1), labels: { strengths: "优势", extra: "x" } }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("bmc component (structure-components wave task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const bmcComponent = (overrides: Record<string, string[]> = {}) => ({
+    type: "bmc",
+    key_partners: ["p0"],
+    key_activities: ["a0"],
+    key_resources: ["r0"],
+    value_propositions: ["v0"],
+    customer_relationships: ["cr0"],
+    channels: ["c0"],
+    customer_segments: ["cs0"],
+    cost_structure: ["co0"],
+    revenue_streams: ["rs0"],
+    ...overrides,
+  })
+
+  it("accepts all nine named keys with 1-4 items each", () => {
+    expect(parsePptxIR(withComponents([bmcComponent()])).success).toBe(true)
+    expect(
+      parsePptxIR(withComponents([bmcComponent({ key_partners: ["p0", "p1", "p2", "p3"] })])).success,
+    ).toBe(true)
+  })
+  it("rejects an empty block array (min 1)", () => {
+    expect(parsePptxIR(withComponents([bmcComponent({ key_partners: [] })])).success).toBe(false)
+  })
+  it("rejects more than 4 items in a block (max 4)", () => {
+    expect(
+      parsePptxIR(withComponents([bmcComponent({ key_partners: ["p0", "p1", "p2", "p3", "p4"] })])).success,
+    ).toBe(false)
+  })
+  it("rejects a missing named key (all nine are required, not a positional array)", () => {
+    const full = bmcComponent() as any
+    delete full.revenue_streams
+    expect(parsePptxIR(withComponents([full])).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...bmcComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

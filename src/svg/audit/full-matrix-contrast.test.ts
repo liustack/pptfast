@@ -500,7 +500,7 @@ describe("colors.muted contrast (post-v0.3 W8 fix round, backlog item 5a)", () =
 // about. Recalibrating for matrix alone would close the *instance* and
 // leave the exact same blind spot open for the next component that paints
 // its own background. `MUTED_SURFACE_CLASS` below is the *class* closure:
-// every one of `COMPONENT_TYPES`' 24 entries — the schema's own source of
+// every one of `COMPONENT_TYPES`' 26 entries — the schema's own source of
 // truth (`src/ir/index.ts`), never hand-copied — gets an explicit,
 // human-reviewed classification of *where* its `colors.muted` text (if
 // any) actually renders, backed by reading that component's real source.
@@ -637,6 +637,20 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   image: "flat-surface", // missing-asset placeholder text on a colors.surface rect
   image_grid: "flat-surface", // same missing-asset placeholder pattern
   image_compare: "flat-surface", // same missing-asset placeholder pattern
+  // Structure-components wave task 1: swot.tsx/bmc.tsx never render
+  // `colors.muted` — every title/item line renders `colors.text` (routed
+  // through `accessibleInk` against each panel's own real fill, tinted or
+  // flat) instead, so there is no raw-muted-fill surface for this
+  // completeness guard to track. Both DO tint a panel background
+  // (swot's 4 quadrants, bmc's `value_propositions` block) — decision 7's
+  // "any tinted background needs a dedicated probe" mandate is honored
+  // below regardless of the muted-specific classification being a no-op
+  // here, in the "tinted-panel contrast" describe block (matrix-shaped
+  // 13-theme sweep, but asserting zero low-contrast findings outright
+  // rather than filtering to a `colors.muted` fill, since neither
+  // component ever produces one).
+  swot: "no-muted-fill",
+  bmc: "no-muted-fill",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
@@ -689,6 +703,74 @@ describe("colors.muted component-type coverage (task-2 fix round, backlog 5a com
         (f) => f.code === "low-contrast" && (f.detail as { fill?: string } | undefined)?.fill === style.colors.muted,
       )
       expect(mutedFindings).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave task 1, decision 7: swot.tsx/bmc.tsx each tint
+// at least one panel background (`mixHex(colors.surface, <token>, t)`, the
+// same primitive matrix.tsx's `toneFill` uses) — swot's 4 quadrants, bmc's
+// `value_propositions` block. Neither component ever renders `colors.muted`
+// (see MUTED_SURFACE_CLASS's "no-muted-fill" entries above), so unlike
+// matrix's own dedicated block this sweep can't scope its assertion to a
+// `colors.muted` fill specifically — it asserts zero `low-contrast` findings
+// outright, which is the stronger, more honest claim anyway (every text
+// element these two components render — title and item alike — routes
+// through `accessibleInk` against its own panel's real fill, so this should
+// hold by construction; the sweep locks that empirically rather than only
+// trusting the construction).
+describe("swot/bmc tinted-panel contrast (structure-components wave task 1, decision 7)", () => {
+  // Exercises all 4 quadrant tone branches (accent/primary/muted/
+  // primary-muted-blend — swot.tsx's `badgeFill` switch) with 2 items per
+  // quadrant so both the header and the item-list ink paths render.
+  const SWOT_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "swot",
+        strengths: ["强大的品牌认知度", "稳定的现金流"],
+        weaknesses: ["产品线相对单一", "对单一渠道依赖度高"],
+        opportunities: ["新兴市场快速增长", "政策利好窗口期"],
+        threats: ["新进入者价格战风险", "关键原材料成本上升"],
+      },
+    ],
+  } as Slide
+
+  // Exercises all 9 named blocks, including the one tinted block
+  // (`value_propositions`) alongside the 8 flat-surface ones.
+  const BMC_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "bmc",
+        key_partners: ["核心供应商", "渠道伙伴"],
+        key_activities: ["产品研发"],
+        key_resources: ["工程团队"],
+        value_propositions: ["一站式解决方案", "更低的总拥有成本"],
+        customer_relationships: ["专属客户成功经理"],
+        channels: ["直销团队", "合作伙伴分销"],
+        customer_segments: ["中型企业客户"],
+        cost_structure: ["研发投入", "云基础设施"],
+        revenue_streams: ["订阅费", "实施服务费"],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    // Zero findings outright (not just zero low-contrast) — task 1's own
+    // "visual sanity" bar: a full-body component filling the whole content
+    // rect at real deck geometry must not overflow/out-of-bounds either, on
+    // any of the 13 themes.
+    it(`${themeId}: swot renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, SWOT_SLIDE))).toEqual([])
+    })
+
+    it(`${themeId}: bmc renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, BMC_SLIDE))).toEqual([])
     })
   }
 })

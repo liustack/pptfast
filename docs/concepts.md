@@ -20,7 +20,7 @@ A page-level template with named slots — `LayoutDefinition` (`src/svg/layouts/
 
 ## component
 
-The 24 typed units that fill a slot — the IR's discriminated `Component` union (`COMPONENT_TYPES`, `src/ir/index.ts:567`, derived from the schema itself, not hand-copied): `bullets`, `paragraph`, `quote`, `callout`, `code`, `kpi_cards`, `chart`, `flowchart`, `architecture`, `timeline`, `comparison`, `icon_cards`, `row_cards`, `steps`, `rings`, `numbered_cards`, `roadmap`, `matrix`, `insight_panel`, `verdict_banner`, `citation`, `image`, `image_grid`, `image_compare`. Each has one render component under `src/svg/components/`.
+The 26 typed units that fill a slot — the IR's discriminated `Component` union (`COMPONENT_TYPES`, `src/ir/index.ts:611`, derived from the schema itself, not hand-copied): `bullets`, `paragraph`, `quote`, `callout`, `code`, `kpi_cards`, `chart`, `flowchart`, `architecture`, `timeline`, `comparison`, `icon_cards`, `row_cards`, `steps`, `rings`, `numbered_cards`, `roadmap`, `matrix`, `insight_panel`, `verdict_banner`, `citation`, `image`, `image_grid`, `image_compare`, `swot`, `bmc`. Each has one render component under `src/svg/components/`. `swot`/`bmc` are *full-body* components (`FULL_BODY_TYPES`, `src/svg/component-traits.ts`) — each must be the sole component on its slide (`checkFullBodyExclusivity`, `src/api.ts`) and fills the entire content rect itself rather than stacking alongside siblings.
 
 ## scenario
 
