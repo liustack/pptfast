@@ -666,6 +666,113 @@ describe("findContrastIssues — low-contrast", () => {
   })
 })
 
+// Task-2 review (bench-driven fix round, defect A), Moderate #2: every real
+// circle/ellipse the shipped component suite renders puts text dead-center
+// (rings.tsx's "Core" label sits ~40px² from its circle's center — nowhere
+// near an edge case), so the full-matrix/deck-audit real-render nets never
+// exercised the new `ellipseShape` containment math, the paint-order-safety
+// invariant, the opacity gate on the new shape kinds, or the interaction
+// between `data-decor` and the now-floor-free attribution walk — "the
+// riskiest new surface in the diff" per the review, and a future regression
+// in any of them would have nothing here to catch it. These adapt the
+// review's own independently-verified synthetic probe shapes into this
+// file's regular synthetic-markup style.
+describe("findContrastIssues — circle/ellipse containment and paint-order safety (bench-driven fix round, defect A synthetic edge cases)", () => {
+  it("does not attribute text anchored in a circle's bbox corner to that circle when the point sits outside the disk", () => {
+    // Circle cx=200,cy=200,r=20 — its AABB corners sit at distance
+    // r*sqrt(2)≈28.28 from the center, always outside the disk itself no
+    // matter the radius. Text placed exactly at the top-left bbox corner
+    // (180,180) must fall through to the real white card beneath, not the
+    // circle's own near-black fill — a cruder AABB containment test (the
+    // shape's bounding box, not its actual outline) would wrongly say
+    // "inside" and misattribute it.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <rect x="96" y="96" width="536" height="336" fill="#FFFFFF"/>
+      <circle cx="200" cy="200" r="20" fill="#050505"/>
+      <text x="180" y="180" font-size="20" fill="#000000">beside the badge, not on it</text>
+    </svg>`
+    // Wrongly attributed to the circle: #000000-on-#050505 ≈ 1:1, a finding.
+    // Correctly falls through to the white card: #000000-on-#FFFFFF passes.
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("attributes text exactly on a circle's boundary to that circle (inclusive edge, distance === r)", () => {
+    // (420,400) sits exactly r=20 from the circle's own center (400,400) —
+    // ellipseShape's containment uses `<= 1`, not `< 1`, so the boundary
+    // itself must still count as inside, not just points strictly interior.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <circle cx="400" cy="400" r="20" fill="#050505"/>
+      <text x="420" y="400" font-size="20" fill="#000000">on the boundary</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("never attributes text to a shape painted after it in document order", () => {
+    // The circle is painted *after* the text, at the exact same position —
+    // if the search ever walked paintedShapes without respecting paint
+    // order (e.g. a two-pass "collect every shape, then check every text"
+    // implementation instead of the real interleaved single walk), this
+    // near-black text would wrongly resolve against the same-colored circle
+    // instead of the real (white) page background it was actually painted
+    // on top of.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <text x="100" y="100" font-size="20" fill="#000000">painted before the badge</text>
+      <circle cx="100" cy="100" r="50" fill="#000000"/>
+    </svg>`
+    // Correct: resolves to the page's own white background, passes.
+    // Broken order guard: resolves to the later circle instead,
+    // #000000-on-#000000, a finding.
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("skips a sub-MIN_BG_OPACITY circle for attribution, falling through to the real background beneath it", () => {
+    // A translucent white circle (fill-opacity 0.3, below MIN_BG_OPACITY's
+    // 0.5) sits on top of a dark card. Correct: too faint to trust as a
+    // background estimate, so attribution skips it entirely and falls
+    // through to the dark card beneath — near-white text against that dark
+    // card passes comfortably. A bug that treated the circle as opaque
+    // (using its raw #FFFFFF fill instead of skipping it) would silently
+    // swap in a passing near-white-on-white verdict here instead — the same
+    // "a false pass hides a real defect" failure mode as the mis-attributed
+    // tspan test earlier in this file, on the new shape kinds specifically.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0A0C"/>
+      <circle cx="200" cy="200" r="40" fill="#FFFFFF" fill-opacity="0.3"/>
+      <text x="200" y="200" font-size="20" fill="#F5F5F0">near-white on the dark card</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("does not attribute text to an opaque, adequately-sized shape inside a <g data-decor> subtree", () => {
+    // Mirrors the real-render decor-exclusion lock below (a campaign-theme
+    // cover's motif), but targets *attribution* specifically with synthetic
+    // markup: this circle is large, fully opaque, and geometrically contains
+    // the text — every property that would normally make it win
+    // backgroundAt's search — except that it sits inside a data-decor
+    // subtree (`data-decor="true"`, this renderer's own real serialized
+    // form — confirmed against a live render, not assumed). Worth locking
+    // explicitly post-fix: attribution now has no area floor at all, so
+    // without this guard *any* decor shape, however small, could shadow
+    // nearby text — a strictly larger blast radius than pre-fix, when only
+    // decor shapes big enough to clear MIN_BG_REGION_AREA could ever matter.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <g data-decor="true">
+        <circle cx="200" cy="200" r="40" fill="#000000"/>
+      </g>
+      <text x="200" y="200" font-size="20" fill="#000000">over the decor watermark</text>
+    </svg>`
+    // Wrongly attributed to the decor circle: #000000-on-#000000, a finding.
+    // Correctly excluded: falls through to the white page background, passes.
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+})
+
 describe("findContrastIssues — decor/motif subtrees excluded from background-region collection", () => {
   // Real-render regression lock (not synthetic markup, unlike the suite
   // above) for the `data-decor` exclusion: reviewer measured 7-9 spurious
