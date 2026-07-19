@@ -126,16 +126,19 @@ export const EVIDENCE_TYPES = [
  * "满幅" (full-body) component: a type meant to own an entire content rect by
  * itself rather than stack alongside sibling components — `swot`'s 2×2
  * quadrant grid, `bmc`'s nine-block canvas (structure-components wave task
- * 1). `SvgContent.tsx` special-cases a slide whose sole component is one of
- * these (checked *before* the `big_number`/`assertion_evidence` arrangement
- * branches, so a full-body component wins regardless of what `arrangement`
- * happens to be set to): the whole content rect is handed straight to the
- * component's own `render`, bypassing `layoutContentFit`'s column stacking
- * and the lone-component 38% golden vertical offset. The component then
- * fills `box.h` itself using the box.h-aware uniform-stretch idiom
- * `matrix.tsx`'s `render` already established (no `STRETCH_CAP_RATIO`
- * ceiling — that cap exists for `growStretchables`' card-density heuristic,
- * which a full-body component never goes through).
+ * 1), `waterfall`'s bridge chart, `gantt`'s shared-axis time bars
+ * (structure-components wave task 2, decision 1's set — extended, not
+ * re-adjudicated, by task 2). `SvgContent.tsx` special-cases a slide whose
+ * sole component is one of these (checked *before* the `big_number`/
+ * `assertion_evidence` arrangement branches, so a full-body component wins
+ * regardless of what `arrangement` happens to be set to): the whole content
+ * rect is handed straight to the component's own `render`, bypassing
+ * `layoutContentFit`'s column stacking and the lone-component 38% golden
+ * vertical offset. The component then fills `box.h` itself using the
+ * box.h-aware uniform-stretch idiom `matrix.tsx`'s `render` already
+ * established (no `STRETCH_CAP_RATIO` ceiling — that cap exists for
+ * `growStretchables`' card-density heuristic, which a full-body component
+ * never goes through).
  *
  * A full-body type sharing a slide with any other component would have
  * nowhere left to put that sibling (the whole rect is already spoken for) —
@@ -143,4 +146,4 @@ export const EVIDENCE_TYPES = [
  * that, rejecting the deck with a named `ValidationIssue` rather than
  * silently dropping the extra component(s).
  */
-export const FULL_BODY_TYPES: ReadonlySet<ComponentType> = new Set(["swot", "bmc"])
+export const FULL_BODY_TYPES: ReadonlySet<ComponentType> = new Set(["swot", "bmc", "waterfall", "gantt"])
