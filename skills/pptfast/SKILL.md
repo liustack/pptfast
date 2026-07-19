@@ -107,9 +107,15 @@ Once a deck project exists, a follow-up message routes into exactly one of three
 | Two-sided contrast | `comparison` | two bullet lists |
 | Dated milestones | `timeline` | `bullets` with dates |
 | Phased plan with workstreams | `roadmap` | `timeline` |
+| Phased plan with dated bars on a shared axis | `gantt` | `roadmap` |
 | One verdict or takeaway sentence | `verdict_banner` or `callout` | `paragraph` |
+| 2×2 strategic assessment (strengths/weaknesses/opportunities/threats) | `swot` | `matrix` |
+| 9-block business model canvas | `bmc` | separate `bullets`/`row_cards` |
+| Cumulative bridge/variance breakdown | `waterfall` | `chart` |
 
-`steps` vs `flowchart` is the most common miss: if the edges never branch, it is `steps`.
+`steps` vs `flowchart` is the most common miss: if the edges never branch, it is `steps`. `roadmap` vs `gantt` is the next: `roadmap` groups workstreams into swimlanes with no shared numeric axis, `gantt` plots dated bars against one shared axis all items compare against.
+
+`swot`/`bmc`/`waterfall`/`gantt` are *full-body*: each fills the entire slide and must be the slide's only component — see Capacity below.
 
 ### Image slides
 
@@ -118,6 +124,8 @@ Declare images once in `assets.images` and reference them by `asset_id` — doub
 ### Capacity
 
 A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. Component and bullets budgets scale with the deck's `delivery` axis (tightest for `presentation`, loosest for `text`) — `validate` reports the exact numbers that applied, not a flat constant. Body text size scales the other way: `presentation` renders the largest body font (32px vs. `balanced`'s 24px and `text`'s 20px) even though it allows the fewest components, so a `presentation` slide needs fewer and shorter items, not just tighter ones. When in doubt, split into two slides — writing to fit beats fix-up loops.
+
+Four component types own the whole slide instead of sharing it: `swot`, `bmc`, `waterfall`, `gantt`. Each must be its slide's only component — `validate` hard-errors on a slide that mixes one in with `bullets` or anything else, it never silently drops the sibling.
 
 ### Decor
 

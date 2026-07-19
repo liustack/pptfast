@@ -46,6 +46,33 @@ export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = 
   // (tone/variant) — each direction is this pair's own inverse alias below.
   callout: { tone: "variant" },
   verdict_banner: { variant: "tone" },
+  // Named-slot full-body family (structure-components wave task 1, decision
+  // 8): every slot is its own top-level field (not an item-array element),
+  // so these belong in this top-level table, not
+  // `COMPONENT_ITEM_FIELD_ALIASES` below. Singular-for-plural is the
+  // predictable weak-model slip for a 4-named-array schema like `swot`'s —
+  // a model reaching for "strength" when the field holds a *list* of
+  // strengths.
+  swot: {
+    strength: "strengths",
+    weakness: "weaknesses",
+    opportunity: "opportunities",
+    threat: "threats",
+  },
+  // bmc's canonical keys are the Osterwalder canvas's own compound names
+  // (`key_partners`, `customer_segments`, …) — a model that knows the
+  // business-model-canvas vocabulary but not this schema's exact key
+  // spelling reaches for the shorter/bare noun instead.
+  bmc: {
+    partners: "key_partners",
+    activities: "key_activities",
+    resources: "key_resources",
+    value_proposition: "value_propositions",
+    relationships: "customer_relationships",
+    segments: "customer_segments",
+    costs: "cost_structure",
+    revenue: "revenue_streams",
+  },
 }
 
 /** One component type's item-array field aliases: which array to walk, and the alias map applied to each item object in it. */
@@ -63,6 +90,15 @@ export interface ItemFieldAliasSpec {
  */
 export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, ItemFieldAliasSpec>> = {
   kpi_cards: { itemsKey: "items", aliases: { title: "label", name: "label" } },
+  // Numeric-axis family (structure-components wave task 2, decision 8):
+  // waterfall's per-item signed delta is commonly reached for as "amount" in
+  // finance-deck vocabulary (a waterfall/bridge chart is itself a finance-
+  // reporting convention). gantt's start/end pair is the one field name a
+  // model that knows "Gantt chart" but not this schema's numeric-axis-only
+  // shape (decision 6: no date parsing) reaches for by analogy to a
+  // calendar's own "from"/"to" range vocabulary.
+  waterfall: { itemsKey: "items", aliases: { amount: "value" } },
+  gantt: { itemsKey: "items", aliases: { from: "start", to: "end" } },
   // Real-world tech-deck mental model: layers have a "name" and hold
   // "components" or "nodes" — pptfast's own top-level components array
   // shares the word "components" by coincidence only; this alias is scoped

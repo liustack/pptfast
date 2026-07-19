@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   EVIDENCE_TYPES,
+  FULL_BODY_TYPES,
   PASSTHROUGH_SHELL_TYPES,
   SCALABLE_TYPES,
   SELF_VISUAL_TYPES,
@@ -76,5 +77,18 @@ describe("EVIDENCE_TYPES equivalence (was AssertionEvidence.tsx:8-13) — order 
 
   it("is a tuple (ordered array), not a Set — priority dispatch depends on iteration order", () => {
     expect(Array.isArray(EVIDENCE_TYPES)).toBe(true)
+  })
+})
+
+describe("FULL_BODY_TYPES (structure-components wave task 1 decision 1, extended by task 2 — new, not a refactor equivalence lock)", () => {
+  it("contains exactly the wave's four full-body components (named-slot family + numeric-axis family)", () => {
+    expect(new Set(FULL_BODY_TYPES)).toEqual(new Set(["swot", "bmc", "waterfall", "gantt"]))
+    expect(FULL_BODY_TYPES.size).toBe(4)
+  })
+
+  it("is disjoint from STRETCHABLE_TYPES — full-body components fill box.h directly, never through growStretchables' capped path", () => {
+    for (const type of FULL_BODY_TYPES) {
+      expect(STRETCHABLE_TYPES.has(type)).toBe(false)
+    }
   })
 })

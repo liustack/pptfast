@@ -165,6 +165,189 @@ describe("expressive components: roadmap / matrix / insight_panel", () => {
   })
 })
 
+describe("swot component (structure-components wave task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const swotComponent = (n: number) => ({
+    type: "swot",
+    strengths: Array.from({ length: n }, (_, i) => `s${i}`),
+    weaknesses: ["w0"],
+    opportunities: ["o0"],
+    threats: ["t0"],
+  })
+
+  it("accepts 1-5 items per quadrant", () => {
+    for (const n of [1, 3, 5]) {
+      expect(parsePptxIR(withComponents([swotComponent(n)])).success).toBe(true)
+    }
+  })
+  it("rejects an empty quadrant array (min 1)", () => {
+    const d = withComponents([{ type: "swot", strengths: [], weaknesses: ["w0"], opportunities: ["o0"], threats: ["t0"] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects more than 5 items in a quadrant (max 5)", () => {
+    expect(parsePptxIR(withComponents([swotComponent(6)])).success).toBe(false)
+  })
+  it("rejects a missing quadrant (all four are required, not a positional array)", () => {
+    const d = withComponents([{ type: "swot", strengths: ["s0"], weaknesses: ["w0"], opportunities: ["o0"] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...swotComponent(1), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional labels override with any subset of the four keys", () => {
+    const d = withComponents([{ ...swotComponent(1), labels: { strengths: "优势" } }])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown key inside labels (strict)", () => {
+    const d = withComponents([{ ...swotComponent(1), labels: { strengths: "优势", extra: "x" } }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("bmc component (structure-components wave task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const bmcComponent = (overrides: Record<string, string[]> = {}) => ({
+    type: "bmc",
+    key_partners: ["p0"],
+    key_activities: ["a0"],
+    key_resources: ["r0"],
+    value_propositions: ["v0"],
+    customer_relationships: ["cr0"],
+    channels: ["c0"],
+    customer_segments: ["cs0"],
+    cost_structure: ["co0"],
+    revenue_streams: ["rs0"],
+    ...overrides,
+  })
+
+  it("accepts all nine named keys with 1-4 items each", () => {
+    expect(parsePptxIR(withComponents([bmcComponent()])).success).toBe(true)
+    expect(
+      parsePptxIR(withComponents([bmcComponent({ key_partners: ["p0", "p1", "p2", "p3"] })])).success,
+    ).toBe(true)
+  })
+  it("rejects an empty block array (min 1)", () => {
+    expect(parsePptxIR(withComponents([bmcComponent({ key_partners: [] })])).success).toBe(false)
+  })
+  it("rejects more than 4 items in a block (max 4)", () => {
+    expect(
+      parsePptxIR(withComponents([bmcComponent({ key_partners: ["p0", "p1", "p2", "p3", "p4"] })])).success,
+    ).toBe(false)
+  })
+  it("rejects a missing named key (all nine are required, not a positional array)", () => {
+    const full = bmcComponent() as any
+    delete full.revenue_streams
+    expect(parsePptxIR(withComponents([full])).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...bmcComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("waterfall component (structure-components wave task 2, numeric-axis family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const items = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ label: `项目${i}`, value: i % 2 === 0 ? 10 : -5 }))
+
+  it("accepts 3-8 items", () => {
+    for (const n of [3, 5, 8]) {
+      expect(parsePptxIR(withComponents([{ type: "waterfall", items: items(n) }])).success).toBe(true)
+    }
+  })
+  it("rejects fewer than 3 items", () => {
+    expect(parsePptxIR(withComponents([{ type: "waterfall", items: items(2) }])).success).toBe(false)
+  })
+  it("rejects more than 8 items", () => {
+    expect(parsePptxIR(withComponents([{ type: "waterfall", items: items(9) }])).success).toBe(false)
+  })
+  it("accepts an item with kind omitted, 'delta', or 'total'", () => {
+    const d = withComponents([
+      {
+        type: "waterfall",
+        items: [
+          { label: "a", value: 10 },
+          { label: "b", value: -5, kind: "delta" },
+          { label: "c", value: 20, kind: "total" },
+        ],
+      },
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown kind value", () => {
+    const d = withComponents([{ type: "waterfall", items: [...items(2), { label: "c", value: 1, kind: "bogus" }] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional unit string", () => {
+    const d = withComponents([{ type: "waterfall", items: items(3), unit: "万" }])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ type: "waterfall", items: items(3), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown field inside an item (strict)", () => {
+    const d = withComponents([{ type: "waterfall", items: [...items(2), { label: "c", value: 1, extra: 1 }] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("gantt component (structure-components wave task 2, numeric-axis family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const items = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `阶段${i}`, start: i, end: i + 2 }))
+
+  it("accepts 2-8 items", () => {
+    for (const n of [2, 5, 8]) {
+      expect(parsePptxIR(withComponents([{ type: "gantt", items: items(n) }])).success).toBe(true)
+    }
+  })
+  it("rejects fewer than 2 items", () => {
+    expect(parsePptxIR(withComponents([{ type: "gantt", items: items(1) }])).success).toBe(false)
+  })
+  it("rejects more than 8 items", () => {
+    expect(parsePptxIR(withComponents([{ type: "gantt", items: items(9) }])).success).toBe(false)
+  })
+  it("rejects an item whose end is not greater than start (positive refine test)", () => {
+    const equal = withComponents([{ type: "gantt", items: [{ label: "a", start: 3, end: 3 }, ...items(1)] }])
+    expect(parsePptxIR(equal).success).toBe(false)
+    const inverted = withComponents([{ type: "gantt", items: [{ label: "a", start: 5, end: 2 }, ...items(1)] }])
+    expect(parsePptxIR(inverted).success).toBe(false)
+  })
+  it("accepts an optional axis_labels array", () => {
+    const d = withComponents([{ type: "gantt", items: items(2), axis_labels: ["W1", "W2", "W3"] }])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ type: "gantt", items: items(2), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown field inside an item (strict)", () => {
+    const d = withComponents([{ type: "gantt", items: [{ label: "a", start: 0, end: 1, extra: 1 }, ...items(1)] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("does not parse date strings — start/end must be numbers", () => {
+    const d = withComponents([{ type: "gantt", items: [{ label: "a", start: "2024-01-01", end: "2024-02-01" }, ...items(1)] }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

@@ -102,6 +102,88 @@ it("vertically centers a lone component within the content rect", () => {
   expect(Number(m?.[1])).toBeGreaterThan(200)
 })
 
+// Structure-components wave task 1, decision 1: a full-body component
+// (`swot`/`bmc`, `FULL_BODY_TYPES`) as the slide's sole component gets the
+// whole content rect handed to it verbatim — no `layoutContentFit` column
+// stacking, no 38% golden vertical offset.
+describe("SvgContent full-body components (structure-components wave task 1)", () => {
+  const swotComponent: Component = {
+    type: "swot",
+    strengths: ["优势一"],
+    weaknesses: ["劣势一"],
+    opportunities: ["机会一"],
+    threats: ["威胁一"],
+  } as Component
+
+  it("hands the entire rect (h included) to the sole full-body component, bypassing the golden offset", () => {
+    const markup = renderToStaticMarkup(
+      <svg>
+        <SvgContent components={[swotComponent]} rect={{ x: 96, y: 176, w: 1088, h: 424 }} ctx={ctx} />
+      </svg>,
+    )
+    expect(markup).toContain('data-audit-rect="96,176,1088,424"')
+    expect(markup).toContain('data-audit-box="96,176,1088"')
+    // No dy offset — the component's own <g> children translate straight to
+    // rect.y (176), never a golden-position-shifted y like the lone-component
+    // bullets case above (which lands well past 200).
+    expect(markup).not.toContain("未展示")
+  })
+
+  it("wins over the big_number arrangement branch when the sole component is full-body", () => {
+    const markup = renderToStaticMarkup(
+      <svg>
+        <SvgContent
+          arrangement="big_number"
+          components={[swotComponent]}
+          rect={{ x: 0, y: 0, w: 1000, h: 500 }}
+          ctx={ctx}
+        />
+      </svg>,
+    )
+    // A real swot render (quadrant badge letters), not BigNumber's hero-metric markup.
+    expect(markup).toContain(">S<")
+    expect(markup).toContain(">优势一<")
+  })
+
+  it("fills two different given heights differently (matrix.tsx's box.h stretch idiom, no dead space)", () => {
+    const shortMarkup = renderToStaticMarkup(
+      <svg>
+        <SvgContent components={[swotComponent]} rect={{ x: 0, y: 0, w: 1000, h: 200 }} ctx={ctx} />
+      </svg>,
+    )
+    const tallMarkup = renderToStaticMarkup(
+      <svg>
+        <SvgContent components={[swotComponent]} rect={{ x: 0, y: 0, w: 1000, h: 600 }} ctx={ctx} />
+      </svg>,
+    )
+    // Quadrant panel rects differ in height between the two renders.
+    const heightsOf = (markup: string) =>
+      Array.from(markup.matchAll(/<rect[^>]*width="(\d+(?:\.\d+)?)"[^>]*height="(\d+(?:\.\d+)?)"/g))
+        .filter((m) => Number(m[1]) > 34)
+        .map((m) => Number(m[2]))
+    const shortHeights = heightsOf(shortMarkup)
+    const tallHeights = heightsOf(tallMarkup)
+    expect(shortHeights[0]).not.toBe(tallHeights[0])
+    expect(tallHeights[0]).toBeGreaterThan(shortHeights[0])
+  })
+
+  it("does not fire for an ordinary component even when it's the sole one", () => {
+    const markup = renderToStaticMarkup(
+      <svg>
+        <SvgContent
+          components={[{ type: "bullets", items: ["仅此一块"], style: "default" }]}
+          rect={{ x: 96, y: 176, w: 1088, h: 424 }}
+          ctx={ctx}
+        />
+      </svg>,
+    )
+    // The pre-existing golden-offset behavior (asserted above, "vertically
+    // centers a lone component") is untouched for non-full-body types.
+    const m = /data-audit-box="96,([\d.]+),1088"/.exec(markup)
+    expect(Number(m?.[1])).toBeGreaterThan(200)
+  })
+})
+
 // Wave-B S4: the surplus-distribution gap growth lives entirely in
 // `layoutContentFit`'s returned box.y — SvgContent renders and annotates
 // straight from that one value, so the audit annotation (data-audit-box)

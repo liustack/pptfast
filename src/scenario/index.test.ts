@@ -42,7 +42,7 @@ describe("MODE_DEFINITIONS", () => {
     expect(MODE_DEFINITIONS.briefing.rhythmPolicy).toBe("uniform-dense")
   })
 
-  it("pyramid tendencies match spec §5 row as-is (component types)", () => {
+  it("pyramid tendencies match spec §5 row as-is (component types), plus the structure-components wave's decision 9 join", () => {
     expect(MODE_DEFINITIONS.pyramid.tendencies).toEqual([
       "kpi_cards",
       "verdict_banner",
@@ -50,6 +50,10 @@ describe("MODE_DEFINITIONS", () => {
       "comparison",
       "matrix",
       "roadmap",
+      "swot",
+      "bmc",
+      "waterfall",
+      "gantt",
     ])
   })
 
@@ -64,13 +68,14 @@ describe("MODE_DEFINITIONS", () => {
     expect(MODE_DEFINITIONS.narrative.tendencies).toContain("callout")
   })
 
-  it("instructional tendencies match spec §5 row as-is", () => {
+  it("instructional tendencies match spec §5 row as-is, plus the structure-components wave's decision 9 gantt join", () => {
     expect(MODE_DEFINITIONS.instructional.tendencies).toEqual([
       "steps",
       "numbered_cards",
       "flowchart",
       "architecture",
       "code",
+      "gantt",
     ])
   })
 

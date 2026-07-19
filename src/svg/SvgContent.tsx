@@ -4,6 +4,7 @@ import { measureComponent, renderComponent } from "./components"
 import { asideSplit, layoutContentFit, type ContentRect, type Arrangement } from "./layout"
 import { AssertionEvidence } from "./AssertionEvidence"
 import { BigNumber } from "./BigNumber"
+import { FULL_BODY_TYPES } from "./component-traits"
 
 export interface SvgContentProps {
   arrangement?: Arrangement
@@ -19,6 +20,29 @@ export interface SvgContentProps {
  */
 export function SvgContent({ arrangement, components, rect, ctx }: SvgContentProps) {
   const auditRect = `${rect.x},${rect.y},${rect.w},${rect.h}`
+  // A full-body component (`swot`/`bmc`/`waterfall`/`gantt`, structure-
+  // components wave tasks 1/2 — `FULL_BODY_TYPES`) is meant to own the
+  // *entire* content rect by itself.
+  // `checkFullBodyExclusivity` (api.ts) already guarantees a slide reaching
+  // here with one of these has exactly one component, so `components.length
+  // === 1` is enough to identify the case without re-checking exclusivity —
+  // hand the component the whole rect verbatim (`h: rect.h`, matching
+  // `matrix.tsx`'s own box.h-aware fill idiom) and skip both
+  // `layoutContentFit`'s column-stacking and the lone-component 38% golden
+  // vertical offset below entirely. Checked *before* the `big_number`/
+  // `assertion_evidence` arrangement branches so a full-body component wins
+  // regardless of whatever `arrangement` a slide happens to carry (those two
+  // branches assume ordinary stackable components — e.g. `big_number` hunts
+  // for a `kpi_cards` sibling that will never exist on a full-body slide).
+  if (components.length === 1 && FULL_BODY_TYPES.has(components[0].type)) {
+    return (
+      <g data-audit-rect={auditRect}>
+        <g data-audit-box={`${rect.x},${rect.y},${rect.w}`}>
+          {renderComponent(components[0], { x: rect.x, y: rect.y, w: rect.w, h: rect.h }, ctx)}
+        </g>
+      </g>
+    )
+  }
   // `big_number` is a bespoke hero-metric layout rather than component stacking.
   if (arrangement === "big_number") {
     return (

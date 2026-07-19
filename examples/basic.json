@@ -29,7 +29,7 @@
           "type": "kpi_cards",
           "items": [
             { "value": "13", "label": "built-in themes" },
-            { "value": "24", "label": "semantic component types" },
+            { "value": "28", "label": "semantic component types" },
             { "value": "1", "label": "single SVG source per slide" }
           ]
         }

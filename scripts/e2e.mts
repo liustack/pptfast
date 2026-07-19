@@ -280,7 +280,7 @@ writeFileSync(
         type: "kpi_cards",
         items: [
           { value: "13", label: "built-in themes" },
-          { value: "24", label: "semantic component types" },
+          { value: "28", label: "semantic component types" },
         ],
       },
     ],
@@ -376,5 +376,128 @@ if (!jsonReport.findings.some((f) => f.code === "low-contrast")) {
   throw new Error(`e2e: audit leg — expected --json output to include a low-contrast finding, got: ${jsonAudit.stdout}`)
 }
 console.log("audit --json leg OK (machine-readable AuditReport, exit 1, low-contrast code present)")
+
+// 8) structure-components leg (structure-components wave task 3): a deck
+//    exercising all four full-body components added this wave (swot/bmc/
+//    waterfall/gantt), one per content slide, cover+ending bookending them —
+//    must render to a well-formed pptx and audit clean (exit 0, 0 findings).
+//    `layout: "narrow-column"` is pinned on every content slide (same
+//    precedent as full-matrix-contrast.test.ts's own SWOT_SLIDE/BMC_SLIDE/
+//    WATERFALL_SLIDE/GANTT_SLIDE fixtures) — a full-body component ignores
+//    its resolved archetype's own content-fit geometry either way, so the
+//    pin exists only to keep this leg clear of a documented, unrelated
+//    audit-tool blind spot (this file's own ALLOWLIST["rail-numbered"]
+//    entry: content-rail-numbered.tsx's small self-painted "N.N" badge rect
+//    falls below deck-audit.ts's MIN_BG_REGION_AREA, so a real page that
+//    happens to auto-select that archetype gets a false-positive low-
+//    contrast finding on the badge text — a pre-existing tool gap, not
+//    something this wave's components caused or should paper over here).
+console.log("--- structure-components leg ---")
+
+const structuresDeck = {
+  version: "3",
+  filename: "pptfast-e2e-structure-components",
+  theme: { id: "consulting" },
+  slides: [
+    { type: "cover", heading: "Structure Components Demo" },
+    {
+      type: "content",
+      id: "p-swot",
+      heading: "SWOT",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "swot",
+          strengths: ["Strong brand recognition", "Stable cash flow"],
+          weaknesses: ["Narrow product line", "High channel dependency"],
+          opportunities: ["Fast-growing emerging markets", "Favorable policy window"],
+          threats: ["New entrants triggering price wars", "Rising raw material costs"],
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-bmc",
+      heading: "Business Model Canvas",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "bmc",
+          key_partners: ["Core suppliers", "Channel partners"],
+          key_activities: ["Product R&D"],
+          key_resources: ["Engineering team"],
+          value_propositions: ["One-stop solution", "Lower total cost of ownership"],
+          customer_relationships: ["Dedicated customer success manager"],
+          channels: ["Direct sales", "Partner distribution"],
+          customer_segments: ["Mid-market enterprise customers"],
+          cost_structure: ["R&D investment", "Cloud infrastructure"],
+          revenue_streams: ["Subscription fees", "Implementation services"],
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-waterfall",
+      heading: "Revenue Bridge",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "waterfall",
+          unit: "k",
+          items: [
+            { label: "Opening", value: 500, kind: "total" },
+            { label: "New sales", value: 220 },
+            { label: "Churn", value: -150 },
+            { label: "Upsell", value: 80 },
+            { label: "Refunds", value: -40 },
+          ],
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-gantt",
+      heading: "Project Timeline",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "gantt",
+          axis_labels: ["W1", "W4", "W7", "W10"],
+          items: [
+            { label: "Design", start: 0, end: 3 },
+            { label: "Build", start: 2, end: 7 },
+            { label: "Test", start: 6, end: 9 },
+            { label: "Launch", start: 9, end: 10 },
+          ],
+        },
+      ],
+    },
+    { type: "ending", heading: "Thanks" },
+  ],
+}
+const structuresPath = join(OUT, "structures.json")
+writeFileSync(structuresPath, JSON.stringify(structuresDeck))
+
+console.log(sh("node", ["dist/cli.js", "validate", structuresPath]))
+
+const structuresPptxPath = join(OUT, "structures.pptx")
+console.log(sh("node", ["dist/cli.js", "render", structuresPath, "-o", structuresPptxPath]))
+const structuresZip = await JSZip.loadAsync(readFileSync(structuresPptxPath))
+for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide6.xml"]) {
+  if (!structuresZip.file(f)) throw new Error(`e2e: structure-components leg — missing ${f} in ${structuresPptxPath}`)
+}
+console.log("structure-components render leg OK (6-slide pptx, all parts present)")
+
+const structuresAudit = shCapture("node", ["dist/cli.js", "audit", structuresPath])
+console.log(structuresAudit.stdout)
+if (structuresAudit.status !== 0) {
+  throw new Error(
+    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
+  )
+}
+if (!/audited 6 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
+  throw new Error(`e2e: structure-components leg — expected a clean summary line, got: ${structuresAudit.stdout}`)
+}
+console.log("structure-components audit leg OK (exit 0, 0 findings)")
 
 console.log("e2e OK")

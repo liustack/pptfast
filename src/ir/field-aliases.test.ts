@@ -37,6 +37,183 @@ const BLOCK_CASES: readonly BlockCase[] = [
   { type: "paragraph", alias: "body", canonical: "text", component: { type: "paragraph", body: "hi" }, expected: "hi" },
   { type: "callout", alias: "tone", canonical: "variant", component: { type: "callout", text: "hi", tone: "info" }, expected: "info" },
   { type: "verdict_banner", alias: "variant", canonical: "tone", component: { type: "verdict_banner", text: "hi", variant: "positive" }, expected: "positive" },
+  // swot (structure-components wave task 1, decision 8): singular-for-plural
+  // slip on each of the 4 named quadrant slots.
+  {
+    type: "swot",
+    alias: "strength",
+    canonical: "strengths",
+    component: { type: "swot", strength: ["s"], weaknesses: ["w"], opportunities: ["o"], threats: ["t"] },
+    expected: ["s"],
+  },
+  {
+    type: "swot",
+    alias: "weakness",
+    canonical: "weaknesses",
+    component: { type: "swot", strengths: ["s"], weakness: ["w"], opportunities: ["o"], threats: ["t"] },
+    expected: ["w"],
+  },
+  {
+    type: "swot",
+    alias: "opportunity",
+    canonical: "opportunities",
+    component: { type: "swot", strengths: ["s"], weaknesses: ["w"], opportunity: ["o"], threats: ["t"] },
+    expected: ["o"],
+  },
+  {
+    type: "swot",
+    alias: "threat",
+    canonical: "threats",
+    component: { type: "swot", strengths: ["s"], weaknesses: ["w"], opportunities: ["o"], threat: ["t"] },
+    expected: ["t"],
+  },
+  // bmc (structure-components wave task 1, decision 8): bare-noun-for-
+  // compound-key slip on each of the 8 non-`channels` named blocks
+  // (`channels` already matches the schema's own canonical key).
+  {
+    type: "bmc",
+    alias: "partners",
+    canonical: "key_partners",
+    component: {
+      type: "bmc",
+      partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["p"],
+  },
+  {
+    type: "bmc",
+    alias: "activities",
+    canonical: "key_activities",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["a"],
+  },
+  {
+    type: "bmc",
+    alias: "resources",
+    canonical: "key_resources",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["r"],
+  },
+  {
+    type: "bmc",
+    alias: "value_proposition",
+    canonical: "value_propositions",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_proposition: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["v"],
+  },
+  {
+    type: "bmc",
+    alias: "relationships",
+    canonical: "customer_relationships",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["cr"],
+  },
+  {
+    type: "bmc",
+    alias: "segments",
+    canonical: "customer_segments",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      segments: ["cs"],
+      cost_structure: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["cs"],
+  },
+  {
+    type: "bmc",
+    alias: "costs",
+    canonical: "cost_structure",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      costs: ["co"],
+      revenue_streams: ["rs"],
+    },
+    expected: ["co"],
+  },
+  {
+    type: "bmc",
+    alias: "revenue",
+    canonical: "revenue_streams",
+    component: {
+      type: "bmc",
+      key_partners: ["p"],
+      key_activities: ["a"],
+      key_resources: ["r"],
+      value_propositions: ["v"],
+      customer_relationships: ["cr"],
+      channels: ["c"],
+      customer_segments: ["cs"],
+      cost_structure: ["co"],
+      revenue: ["rs"],
+    },
+    expected: ["rs"],
+  },
 ]
 
 describe("COMPONENT_FIELD_ALIASES: every row round-trips", () => {
@@ -45,7 +222,12 @@ describe("COMPONENT_FIELD_ALIASES: every row round-trips", () => {
     const { value, normalized } = normalizeComponentAliases(input)
     expect(normalized).toEqual([`slides[0].components[0]: ${alias} → ${canonical}`])
     const out = (value as any).slides[0].components[0]
-    expect(out[canonical]).toBe(expected)
+    // toEqual (not toBe): swot/bmc's `expected` values are arrays (each
+    // named slot holds a string[]) — toBe's reference equality would fail
+    // them even on a correct rename since the array literal here and the
+    // renamed one aren't the same object. Behaves identically to toBe for
+    // every pre-existing string-valued case above.
+    expect(out[canonical]).toEqual(expected)
     expect(alias in out).toBe(false)
     expect(PptxIRSchema.safeParse(value).success).toBe(true)
   })
@@ -146,6 +328,19 @@ const ITEM_CASES: readonly ItemCase[] = [
   { type: "numbered_cards", itemsKey: "items", alias: "desc", canonical: "text", item: { title: "Card 1", desc: "body" }, expected: "body", pad: [{ title: "Card 2" }, { title: "Card 3" }] },
   { type: "row_cards", itemsKey: "items", alias: "description", canonical: "text", item: { title: "Row 1", description: "body" }, expected: "body", pad: [{ title: "Row 2" }, { title: "Row 3" }] },
   { type: "row_cards", itemsKey: "items", alias: "desc", canonical: "text", item: { title: "Row 1", desc: "body" }, expected: "body", pad: [{ title: "Row 2" }, { title: "Row 3" }] },
+  // Numeric-axis family (structure-components wave task 2, decision 8).
+  // waterfall's schema minimum is 3 items — pad with 2 already-canonical
+  // items to satisfy it without exercising a second alias in the same case.
+  { type: "waterfall", itemsKey: "items", alias: "amount", canonical: "value", item: { label: "新签", amount: 10 }, expected: 10, pad: [{ label: "流失", value: -5 }, { label: "增购", value: 3 }] },
+  // gantt's `items` alias table has two independent rows (from→start,
+  // to→end) — tested as two separate cases (each leaving the *other* field
+  // canonical) rather than one item exercising both at once, matching this
+  // file's own "one alias per case" convention (see architecture's
+  // name/components split above). gantt's schema minimum is 2 items, and
+  // every item (including the pad) must independently satisfy
+  // `GanttItemSchema`'s `end > start` refine.
+  { type: "gantt", itemsKey: "items", alias: "from", canonical: "start", item: { label: "设计", from: 0, end: 5 }, expected: 0, pad: [{ label: "开发", start: 1, end: 2 }] },
+  { type: "gantt", itemsKey: "items", alias: "to", canonical: "end", item: { label: "测试", start: 2, to: 5 }, expected: 5, pad: [{ label: "上线", start: 1, end: 2 }] },
 ]
 
 describe("COMPONENT_ITEM_FIELD_ALIASES: every row round-trips", () => {

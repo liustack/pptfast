@@ -111,7 +111,23 @@ export interface ModeDefinition {
 export const MODE_DEFINITIONS: Record<Mode, ModeDefinition> = {
   pyramid: {
     id: "pyramid",
-    tendencies: ["kpi_cards", "verdict_banner", "chart", "comparison", "matrix", "roadmap"],
+    // swot/bmc/waterfall/gantt (structure-components wave task 3, decision
+    // 9) all join pyramid's tendency set — every one of the four full-body
+    // types is itself a "conclusion-first, dense-evidence" shape (a 2x2
+    // assessment, a nine-block canvas, a running-total bridge, a shared-axis
+    // schedule), the same MECE-first argument style pyramid already favors.
+    tendencies: [
+      "kpi_cards",
+      "verdict_banner",
+      "chart",
+      "comparison",
+      "matrix",
+      "roadmap",
+      "swot",
+      "bmc",
+      "waterfall",
+      "gantt",
+    ],
     // MECE 结论先行——密集数据型 body（bento 卡片拼盘/横幅断言）+ 两栏对比。
     layoutTendencies: ["bento-panel", "banner-heading", "two-column"],
     rhythmPolicy: "anchor-open",
@@ -131,7 +147,11 @@ export const MODE_DEFINITIONS: Record<Mode, ModeDefinition> = {
   },
   instructional: {
     id: "instructional",
-    tendencies: ["steps", "numbered_cards", "flowchart", "architecture", "code"],
+    // gantt also joins instructional's tendency set (decision 9) — a shared-
+    // axis schedule is itself a step-by-step breakdown (phase 1, phase 2, …
+    // laid end to end), the same "分步拆解" shape instructional already
+    // favors, on top of already belonging to pyramid's evidence-dense set.
+    tendencies: ["steps", "numbered_cards", "flowchart", "architecture", "code", "gantt"],
     // 分步拆解——编号导轨（rail-numbered）+ 两栏步骤对照。
     layoutTendencies: ["rail-numbered", "two-column"],
     rhythmPolicy: "repetition-ok",
