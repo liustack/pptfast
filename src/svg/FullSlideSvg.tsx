@@ -52,16 +52,18 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
 }
 
 /**
- * Same color/asset reduction as `resolveBackgroundHex` above, but a
- * gradient reduces to its exact midpoint blend (t=0.5) instead of the
- * `from` stop. Used only for `slide.background`'s own per-slide override
- * (`FullSlideSvg` below, post-v0.3 W8 fix round, backlog item 1 —
- * `.issues/notes/2026-07-18-post-v03-backlog.md` #1) — `resolveBackgroundHex`
- * keeps its `.from` policy untouched and still exclusively backs
- * `tokens.defaultBackgrounds`, which is real production input today
- * (`tech`'s own cover/chapter/content/ending default *is* a gradient, see
- * `themes/tech.ts`) and must stay byte-identical for a slide with no
- * override of its own.
+ * Same color reduction as `resolveBackgroundHex` above for a `color` spec, but
+ * a gradient reduces to its exact midpoint blend (t=0.5) instead of the
+ * `from` stop, and an asset resolves to the actually-painted scrim color
+ * rather than `resolveBackgroundHex`'s unrelated surface fallback (see
+ * "Asset policy rationale" below). Used only for `slide.background`'s own
+ * per-slide override (`FullSlideSvg` below, post-v0.3 W8 fix round, backlog
+ * item 1 — `.issues/notes/2026-07-18-post-v03-backlog.md` #1) —
+ * `resolveBackgroundHex` keeps its `.from`/`surfaceFallback` policy untouched
+ * and still exclusively backs `tokens.defaultBackgrounds`, which is real
+ * production input today (`tech`'s own cover/chapter/content/ending default
+ * *is* a gradient, see `themes/tech.ts`) and must stay byte-identical for a
+ * slide with no override of its own.
  *
  * Gradient policy rationale — the representative-color choice here must be
  * *semantically consistent* with what `deck-audit.ts` actually measures
@@ -87,9 +89,43 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * blend formula), so the exact colour law matches what `Background.tsx`
  * actually paints — a real point on the true 24-band gradient, not a
  * divergent approximation of one.
+ *
+ * Asset policy rationale (final-review Major finding, post-v0.3 backlog
+ * item 1's own sub-branch — `.issues/notes/2026-07-18-post-v03-backlog.md`
+ * #1): an asset spec has no true single color of its own, same as
+ * `resolveBackgroundHex`'s asset branch — but unlike that function (whose
+ * `surfaceFallback` genuinely is what gets painted when a *theme's own
+ * default* background happens to be an asset, since `autoScrimColor` is
+ * then defined circularly off that same fallback), this reducer's asset
+ * case is a *per-slide override* on top of an otherwise-normal theme, where
+ * what actually paints behind text is already known and different:
+ * `Background.tsx`'s auto-scrim, colored `themeDefaultBg` (see
+ * `FullSlideSvg`'s own `autoScrimColor` assignment below) at
+ * `AUTO_SCRIM_OPACITY = 0.66` — opaque enough that `deck-audit.ts` itself
+ * trusts the scrim's raw fill as the background region's color
+ * (`MIN_BG_OPACITY = 0.5`, `runContrastWalk`'s `opaqueEnough` check), not a
+ * blend with the photo beneath it. Falling through to `surfaceFallback`
+ * here (the pre-fix behavior) returned `tokens.colors.surface` instead —
+ * unrelated to, and routinely different from, that actually-painted color —
+ * which is exactly the "ink decision disagrees with what's actually
+ * rendered" defect class this whole backlog item exists to close, just in
+ * the one branch its original fix (`6b60bb5`) missed. `paintedFallback`
+ * (the caller's `themeDefaultBg`, not `surfaceFallback`) closes it: the
+ * caller already computes that exact value for `autoScrimColor`'s own use,
+ * so this is the same value, not a re-derivation of it. Moot for a
+ * cover/chapter override — `imageCoverTakeover` intercepts those before any
+ * archetype ever reads `ctx.defaultBg` (see `FullSlideSvg`'s own comment at
+ * that assignment) — so this value is simply never read in that case; it is
+ * live for content/ending, the only slide types where the auto-scrim (and
+ * so this exact color) is what actually renders behind text.
  */
-export function resolveOverrideBackgroundHex(spec: BackgroundSpec, surfaceFallback: string): string {
+export function resolveOverrideBackgroundHex(
+  spec: BackgroundSpec,
+  surfaceFallback: string,
+  paintedFallback: string,
+): string {
   if (spec.kind === "gradient") return gradientBands(spec.from, spec.to, 3)[1]
+  if (spec.kind === "asset") return paintedFallback
   return resolveBackgroundHex(spec, surfaceFallback)
 }
 
@@ -216,11 +252,19 @@ export function FullSlideSvg({
   // theme's per-slide-type default regardless of any override. A gradient
   // override reduces via `resolveOverrideBackgroundHex`'s midpoint policy,
   // not `resolveBackgroundHex`'s `.from` — see that function's own doc
-  // comment for why the two intentionally differ. A slide with no override
-  // resolves to exactly `themeDefaultBg` above, unchanged from before this
-  // fix (invariant verified in `FullSlideSvg.test.tsx`).
+  // comment for why the two intentionally differ. An asset override
+  // resolves to `themeDefaultBg` itself — final-review Major finding, this
+  // same backlog item's sub-branch fix: `themeDefaultBg` is exactly the
+  // color `autoScrimColor` below paints behind text for a content/ending
+  // asset background (see `resolveOverrideBackgroundHex`'s own "Asset
+  // policy rationale" for the full paint-path justification), so passing it
+  // as that function's `paintedFallback` argument makes this agree with
+  // what's actually rendered instead of falling back to the unrelated
+  // `tokens.colors.surface`. A slide with no override resolves to exactly
+  // `themeDefaultBg` above, unchanged from before this fix (invariant
+  // verified in `FullSlideSvg.test.tsx`).
   const defaultBg = slide.background
-    ? resolveOverrideBackgroundHex(slide.background, tokens.colors.surface)
+    ? resolveOverrideBackgroundHex(slide.background, tokens.colors.surface, themeDefaultBg)
     : themeDefaultBg
   // W4 task 3 (design decision 9): the single injection seam for the
   // paragraph/bullets/callout trio's body-text baseline — see
@@ -263,13 +307,19 @@ export function FullSlideSvg({
     const { overlay: _ignored, ...withoutOverlay } = bgSpec
     bgSpec = withoutOverlay
     if (!imageCoverTakeover) {
-      // `themeDefaultBg`, deliberately not the slide-background-aware
-      // `defaultBg` above: an asset background has no true colour of its
-      // own to scrim toward (a photo isn't reducible to one hex), so this
-      // scrim has always pulled the image back toward the *theme's* own
-      // base tone for this slide type (see this variable's own doc comment
-      // above) — unrelated to, and deliberately untouched by, backlog item
-      // 1's per-slide-background-aware `ctx.defaultBg` fix.
+      // `themeDefaultBg` directly, not the slide-background-aware
+      // `defaultBg` above — though the two are now (final-review Major
+      // finding, this same backlog item's sub-branch fix) provably equal
+      // whenever this branch runs: `resolveOverrideBackgroundHex`'s asset
+      // case returns exactly this `themeDefaultBg` value, and the
+      // no-override path assigns it directly, so `defaultBg ===
+      // themeDefaultBg` here either way. Reading `themeDefaultBg` (not
+      // `defaultBg`) keeps this assignment independent of `defaultBg`'s own
+      // override-resolution path rather than relying on that equality by
+      // construction — an asset background has no true colour of its own to
+      // scrim toward (a photo isn't reducible to one hex), so this scrim has
+      // always pulled the image back toward the *theme's* own base tone for
+      // this slide type (see this variable's own doc comment above).
       autoScrimColor = themeDefaultBg
     }
   }
