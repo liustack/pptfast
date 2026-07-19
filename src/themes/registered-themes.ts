@@ -18,8 +18,9 @@
 // SSR transform) to crash with a TDZ-class error the moment
 // `CANONICAL_THEME_IDS.map(...)` runs. A neutral leaf with no back-edge to
 // either file sidesteps the direction question entirely — the same fix
-// `ir/scenario-values.ts` already uses for an analogous cycle risk (see that
-// file's docstring for the fuller rationale).
+// `ir/narrative-values.ts` (renamed from `scenario-values.ts` in the
+// vocabulary-v4 rename, task 1) already uses for an analogous cycle risk
+// (see that file's docstring for the fuller rationale).
 //
 // Exported as a raw mutable `Map`, not wrapped in getter/setter functions:
 // this module is internal (never re-exported from `src/index.ts`, the public
