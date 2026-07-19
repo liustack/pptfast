@@ -831,40 +831,41 @@ describe("asset-background content contrast (final-review Major finding, backlog
   const ASSET_BG: Slide["background"] = { kind: "asset", asset_id: "bg" }
   const ASSET_IMAGES: PptxIR["assets"] = { images: { bg: { src: "data:image/png;base64,AAAA" } } }
 
-  // `tone-adaptive-content` excluded — real, `auditDeck`-confirmed defect
-  // found while building this sweep, independently root-caused, but
-  // unrelated to this task's own fix (this file's own header documents the
-  // same "exclude, don't silently absorb" methodology for exactly this
-  // situation — see "kpi_cards... dragged in kpi.tsx's own unrelated,
-  // already-pinned defect" above). `content-tone-adaptive-content.tsx`'s
-  // `withBg` branch (real asset present, `hasBgImage(ir, slide)` true) paints
-  // a hardcoded-opaque `fill="#FFFFFF"` card and then, unlike its own
-  // subheading two lines below (correctly wrapped in
-  // `accessibleInk(colors.accent, "#FFFFFF", ...)`), fills its heading
-  // directly with the bare theme token `colors.text` (no `accessibleInk`
-  // wrap at all — confirmed by reading that file's `withBg` branch, line
-  // ~193) and threads `colors.text`/`colors.muted` into `SvgContent` (body/
-  // footer) the same unguarded way. Safe for the 9/13 themes whose
-  // `colors.text` is a dark token (correct for *their own* page backgrounds)
-  // — breaks for the 4 whose `colors.text` is light because *their* own
-  // surface is dark (`campaign`/`insight`/`luxe`/`tech`, confirmed by
-  // grepping every theme's own `text:` token): a light token painted on this
-  // archetype's own hardcoded-white card measures ~1:1, not a near-miss.
-  // Reproduced directly (`campaign`, real render): heading/paragraph/bullets
-  // all render `fill="#FFFFFF"` on the `fill="#FFFFFF"` card. This is a real,
-  // live, non-latent finding — likely deserving its own fix-round entry, not
-  // silent exclusion — see this fix's own report/ledger note for the
-  // pointer; fixing it is out of this task's scope (different file,
-  // different root cause — a missing `accessibleInk`/hardcoded-ink
-  // guard, nothing to do with `ctx.defaultBg`, `resolveOverrideBackgroundHex`,
-  // or the auto-scrim this task's own fix touches).
-  const KNOWN_GAP_LAYOUTS = new Set(["tone-adaptive-content"])
+  // `tone-adaptive-content` used to be excluded here — real,
+  // `auditDeck`-confirmed defect found while building this sweep,
+  // independently root-caused, but unrelated to this task's own fix (this
+  // file's own header documents the same "exclude, don't silently absorb"
+  // methodology for exactly this situation — see "kpi_cards... dragged in
+  // kpi.tsx's own unrelated, already-pinned defect" above).
+  // `content-tone-adaptive-content.tsx`'s `withBg` branch (real asset
+  // present, `hasBgImage(ir, slide)` true) painted a hardcoded-opaque
+  // `fill="#FFFFFF"` card and then, unlike its own subheading two lines
+  // below (correctly wrapped in `accessibleInk(colors.accent, "#FFFFFF",
+  // ...)`), filled its heading directly with the bare theme token
+  // `colors.text` (no `accessibleInk` wrap at all) and threaded
+  // `colors.text`/`colors.muted` into `SvgContent` (body/footer) the same
+  // unguarded way. Safe for the 9/13 themes whose `colors.text` is a dark
+  // token (correct for *their own* page backgrounds) — broke for the 4 whose
+  // `colors.text` is light because *their* own surface is dark
+  // (`campaign`/`insight`/`luxe`/`tech`, confirmed by grepping every theme's
+  // own `text:` token): a light token painted on this archetype's own
+  // hardcoded-white card measured ~1:1, not a near-miss. Reproduced directly
+  // (`campaign`, real render): heading/paragraph/bullets all rendered
+  // `fill="#FFFFFF"` on the `fill="#FFFFFF"` card.
+  //
+  // Resolved (post-v0.3 backlog closure,
+  // `.issues/notes/2026-07-18-post-v03-backlog.md` 新发现 (d)): heading,
+  // `SvgContent`'s body/bullets (via a locally-derived `cardCtx`), and the
+  // footer meta all now route through the same `accessibleInk` guard the
+  // subheading already used, against the same card `"#FFFFFF"` reference —
+  // see `content-tone-adaptive-content.tsx`'s own "白卡分支墨色修复" file-header
+  // paragraph. Exclusion removed; this sweep now exercises every content
+  // archetype including this one, for all 13 themes, with zero exceptions.
 
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: content archetypes clear contrast against the real painted auto-scrim, not colors.surface`, () => {
       const failures: string[] = []
       for (const layout of THEME_DEFINITIONS[themeId].layouts.content) {
-        if (KNOWN_GAP_LAYOUTS.has(layout)) continue
         const slide: Slide = {
           type: "content",
           heading: HEADING,
