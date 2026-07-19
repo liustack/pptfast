@@ -900,9 +900,26 @@ export async function runMigrate(input: string, output: string, cwd = process.cw
  * (both files present) instead of one command silently deciding the old
  * file is now garbage. The success message tells the caller to delete it
  * once they have confirmed the new file is correct.
+ *
+ * Checks for `deck.plan.json` up front (task 3, routed from task 2's
+ * review) instead of letting a missing file fall through to
+ * `loadIrFile`'s generic "cannot read plan file" — a directory that has
+ * already been migrated (a `deck.spec.json` sitting there with no
+ * `deck.plan.json` left to convert, the plan file having since been
+ * deleted per this function's own success message) gets a dedicated
+ * "already migrated" error instead of a message that reads like the
+ * directory was never a deck project at all. A directory with neither file
+ * still reaches `loadIrFile`'s generic error — this function has no more
+ * specific diagnosis to offer than that one already gives.
  */
 async function runMigrateDeckDir(dir: string, output: string, cwd: string): Promise<string> {
   const planPath = join(dir, PLAN_FILENAME)
+  const sourceSpecPath = join(dir, SPEC_FILENAME)
+  if (!(await pathExists(planPath)) && (await pathExists(sourceSpecPath))) {
+    throw new PptfastError(
+      `${dir} has ${SPEC_FILENAME} but no ${PLAN_FILENAME} — this deck project is already migrated, nothing to do`,
+    )
+  }
   const raw = await loadIrFile(planPath, "plan")
   const migrated = migrateDeckPlanToSpec(raw)
   const outDir = resolve(cwd, output)

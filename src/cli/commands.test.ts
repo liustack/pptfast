@@ -1347,6 +1347,16 @@ describe("runMigrate", () => {
       await expect(runMigrate(deckDir, deckDir)).rejects.toThrow(/cannot read plan file/)
     })
 
+    it("surfaces a friendly 'already migrated' error, not the generic read failure, when deck.spec.json exists and deck.plan.json is already gone", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan()))
+      await runMigrate(deckDir, deckDir)
+      await unlink(join(deckDir, "deck.plan.json"))
+
+      await expect(runMigrate(deckDir, deckDir)).rejects.toThrow(/already migrated/)
+      await expect(runMigrate(deckDir, deckDir)).rejects.not.toThrow(/cannot read plan file/)
+    })
+
     it("the resulting deck.spec.json validates and assembles cleanly once the legacy file is removed (dual-file hard error otherwise)", async () => {
       const deckDir = await makeDeckDir()
       await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan()))
