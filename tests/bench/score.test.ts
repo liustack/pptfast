@@ -16,9 +16,9 @@ const FIXTURES = join(import.meta.dirname, "fixtures")
 const QUESTIONS_DIR = join(FIXTURES, "questions")
 const RESULTS_DIR = join(FIXTURES, "results")
 // Mirrors score.mts's own REPO_ROOT (resolved off this file's own
-// directory, one level up from bench/) — used to assert the notes-column
+// directory, one level up from tests/bench/) — used to assert the notes-column
 // relativization actually strips the machine-specific absolute prefix.
-const REPO_ROOT = resolve(import.meta.dirname, "..")
+const REPO_ROOT = resolve(import.meta.dirname, "../..")
 
 // ── normalizedPptxSha1 — the determinism comparison method itself ──
 //
@@ -131,7 +131,7 @@ describe("scoreQuestion — degraded-model (validate-failing / audit-positive / 
     // notes-column reproducibility across machines: the embedded path is
     // repo-root-relative, not the machine-specific absolute path.
     expect(score.reason).not.toContain(REPO_ROOT)
-    expect(score.reason).toContain("bench/fixtures/results/degraded-model/fx01/broken.json")
+    expect(score.reason).toContain("tests/bench/fixtures/results/degraded-model/fx01/broken.json")
   })
 
   it("fx02 (degraded): unknown theme id fails validateIr — validatePass false, errors > 0, render also fails", async () => {
@@ -172,7 +172,7 @@ describe("scoreQuestion — missing artifact", () => {
 // review, Minor finding 2): a readDeckDir/assembleDeck structural-assembly
 // error, and the "ambiguous artifact" (>1 candidate *.json) case. Both
 // fixtures use standalone fx97/fx98 ids that are not part of the
-// bench/fixtures/questions bank (same pattern as fx99 above) so they don't
+// tests/bench/fixtures/questions bank (same pattern as fx99 above) so they don't
 // perturb the green/degraded-model aggregate counts asserted elsewhere.
 
 describe("scoreQuestion — deck-project structural-assembly failure", () => {
@@ -203,7 +203,7 @@ describe("scoreQuestion — ambiguous artifact", () => {
     expect(score.coverageHits).toEqual([])
     // relativized, not the machine-specific absolute path
     expect(score.reason).not.toContain(REPO_ROOT)
-    expect(score.reason).toContain("bench/fixtures/results/degraded-model/fx97")
+    expect(score.reason).toContain("tests/bench/fixtures/results/degraded-model/fx97")
   })
 })
 

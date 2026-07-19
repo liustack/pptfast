@@ -29,14 +29,15 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src scripts bench --no-error-on-unmatched-pattern",
+    "lint": "eslint src scripts tests --no-error-on-unmatched-pattern",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "e2e": "pnpm build && tsx scripts/e2e.mts",
-    "bench:score": "tsx bench/score.mts",
+    "bench:score": "tsx tests/bench/score.mts",
     "docs:list": "node scripts/docs-list.js",
-    "prepublishOnly": "pnpm check && pnpm build"
+    "prepublishOnly": "pnpm check && pnpm build",
+    "bench:run": "tsx tests/bench/run.mts"
   },
   "keywords": [
     "pptx",
