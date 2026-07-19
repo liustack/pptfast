@@ -229,6 +229,25 @@ describe("readDeckDir", () => {
     expect(kpi?.components).toEqual([{ type: "paragraph", text: "Revenue grew 12%" }])
   })
 
+  // spec §12 Deck Spec row "deck.spec.json 是页面顺序唯一事实源" (task 4):
+  // pages/*.json are written to disk in the *reverse* of spec.pages' order
+  // (p-ending.json first, p-cover.json last) — a readdir-order or file-
+  // mtime-order bug would surface here as a reversed (or otherwise
+  // spec-independent) ir.slides sequence. Every other test in this file
+  // happens to write pages/ files in an order consistent with spec order,
+  // which never exercises this distinction.
+  it("slide order always follows deck.spec.json's pages[] order, never pages/ directory write order", async () => {
+    const dir = await tmp()
+    await writeDeckSpec(dir)
+    await mkdir(join(dir, "pages"))
+    await writeFile(join(dir, "pages", "p-ending.json"), JSON.stringify({}))
+    await writeFile(join(dir, "pages", "p-detail.json"), JSON.stringify({ components: [] }))
+    await writeFile(join(dir, "pages", "p-kpi.json"), JSON.stringify({ components: [] }))
+    await writeFile(join(dir, "pages", "p-cover.json"), JSON.stringify({}))
+    const { ir } = await readDeckDir(dir)
+    expect(ir.slides.map((s) => s.id)).toEqual(["p-cover", "p-kpi", "p-detail", "p-ending"])
+  })
+
   it("treats a missing pages/ directory as zero filled pages — every spec page becomes a placeholder", async () => {
     const dir = await tmp()
     await writeDeckSpec(dir)
