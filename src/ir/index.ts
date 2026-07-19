@@ -191,7 +191,30 @@ export const BrandSchema = z
   })
   .strict()
 
-// ── Components（26 种）──
+// ── Components（28 种）──
+
+// gantt's own item schema is pulled out to a named const (structure-
+// components wave task 2, decision 6) rather than inlined in the union
+// array below, purely so its `.refine` — the one item shape in this whole
+// union that needs cross-field validation — reads as a standalone unit
+// instead of being buried in the middle of a 400-line array literal.
+// `ComponentSchema.options.map((option) => option.shape.type.value)`
+// (`COMPONENT_TYPES` below) requires every *top-level* union member to stay
+// a plain `ZodObject` (`.shape` doesn't exist on the `ZodEffects` a `.refine`
+// wrapper produces) — this only matters for `gantt`'s own top-level object,
+// which stays untouched; the refine lives one level down, on the item
+// schema nested inside `z.array(...)`, where that constraint doesn't apply.
+const GanttItemSchema = z
+  .object({
+    label: z.string(),
+    start: z.number(),
+    end: z.number(),
+  })
+  .strict()
+  .refine((item) => item.end > item.start, {
+    message: "gantt item's end must be greater than its start (no zero/negative-duration bars)",
+    path: ["end"],
+  })
 
 const ComponentSchema = z.discriminatedUnion("type", [
   z
@@ -597,10 +620,49 @@ const ComponentSchema = z.discriminatedUnion("type", [
       revenue_streams: z.array(z.string()).min(1).max(4),
     })
     .strict(),
+  // 数值轴家族（structure-components wave task 2）：另一支满幅组件——不是
+  // named-slot（swot/bmc 的具名槽治的是「弱模型排错序」），而是「运行合计/
+  // 比例映射必须逐字节确定性可推导」，见 waterfall.tsx/gantt.tsx 头注。
+  z
+    .object({
+      type: z.literal("waterfall"),
+      /** 瀑布桥图条目：`value` 是带符号增量（相对上一条运行合计的涨跌），
+       * `kind` 缺省即普通涨跌делта；显式 "total" 表示该条不是增量而是绝对
+       * 合计检查点（渲染层从 0 画到 `value` 本身，不参与增量累加）。3-8
+       * 条——末条非 "total" 时渲染层自动补一根合计柱（见 waterfall.tsx）。 */
+      items: z
+        .array(
+          z
+            .object({
+              label: z.string(),
+              value: z.number(),
+              kind: z.enum(["delta", "total"]).optional(),
+            })
+            .strict()
+        )
+        .min(3)
+        .max(8),
+      /** 数值单位后缀（如「万」「%」），附加在每条数值标签之后，纯展示。 */
+      unit: z.string().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("gantt"),
+      /** 共享数值轴时间条：`start`/`end` 是同一条数轴上的数值（周序/月序/
+       * 任意模型自定的单位），不解析日期字符串——轴界=所有条目 start 的最小
+       * 值与 end 的最大值。2-8 条，每条 `end` 必须大于 `start`
+       * （{@link GanttItemSchema} 的 `.refine`）。 */
+      items: z.array(GanttItemSchema).min(2).max(8),
+      /** 可选刻度标签，沿轴均匀分布展示（不必与 items 的 start/end 值对齐
+       * ——纯展示刻度，如 ["W1","W2","W3","W4"]）。 */
+      axis_labels: z.array(z.string()).optional(),
+    })
+    .strict(),
 ])
 
 /**
- * All 26 component `type` discriminant values, derived from `ComponentSchema`
+ * All 28 component `type` discriminant values, derived from `ComponentSchema`
  * itself (never hand-copied) so this list can't drift from the union above.
  * Typed as plain `readonly string[]` rather than `Component["type"][]` —
  * every consumer of this list (W5's plan `focus` vocabulary gate,

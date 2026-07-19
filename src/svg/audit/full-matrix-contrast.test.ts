@@ -637,20 +637,43 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   image: "flat-surface", // missing-asset placeholder text on a colors.surface rect
   image_grid: "flat-surface", // same missing-asset placeholder pattern
   image_compare: "flat-surface", // same missing-asset placeholder pattern
-  // Structure-components wave task 1: swot.tsx/bmc.tsx never render
-  // `colors.muted` — every title/item line renders `colors.text` (routed
-  // through `accessibleInk` against each panel's own real fill, tinted or
-  // flat) instead, so there is no raw-muted-fill surface for this
-  // completeness guard to track. Both DO tint a panel background
-  // (swot's 4 quadrants, bmc's `value_propositions` block) — decision 7's
-  // "any tinted background needs a dedicated probe" mandate is honored
-  // below regardless of the muted-specific classification being a no-op
-  // here, in the "tinted-panel contrast" describe block (matrix-shaped
-  // 13-theme sweep, but asserting zero low-contrast findings outright
-  // rather than filtering to a `colors.muted` fill, since neither
-  // component ever produces one).
+  // Structure-components wave task 1: bmc.tsx never references
+  // `colors.muted` at all. swot.tsx does — `badgeFill`'s "weaknesses" case
+  // returns `colors.muted` and its "threats" case blends it — but never as a
+  // text fill: `badgeFill`'s return value only ever feeds `panelFill`'s
+  // `mixHex` tint source and `accessibleInk`'s own *candidate* ink argument,
+  // and `accessibleInk` only actually renders that candidate when it clears
+  // contrast against the panel it's tinted from (self-referential and, by
+  // construction, unlikely to) — every title/item line still renders
+  // `colors.text` (routed through `accessibleInk` against each panel's own
+  // real fill, tinted or flat). So there is no *unconditional* raw-muted-fill
+  // surface for this completeness guard to track, only a blend source /
+  // rejected-candidate use — a real distinction from "never touches the
+  // token at all" (bmc's case), worth spelling out honestly rather than
+  // flattening both to one blanket "never renders" claim. Both DO tint a
+  // panel background (swot's 4 quadrants, bmc's `value_propositions` block)
+  // — decision 7's "any tinted background needs a dedicated probe" mandate
+  // is honored below regardless of the muted-specific classification being a
+  // no-op here, in the "tinted-panel contrast" describe block (matrix-shaped
+  // 13-theme sweep, but asserting zero low-contrast findings outright rather
+  // than filtering to a `colors.muted` fill, since neither component ever
+  // produces one as an actually-rendered finding).
   swot: "no-muted-fill",
   bmc: "no-muted-fill",
+  // Structure-components wave task 2: waterfall.tsx touches `colors.muted`
+  // only as a stroke (the zero-baseline reference line and inter-bar dashed
+  // connectors) — the same stroke-only carve-out `bullets.tsx`/`rings.tsx`/
+  // `comparison.tsx` already rely on (never a `<text>`/`<tspan>` fill, so
+  // `findContrastIssues` can never attribute a finding to it). Its three bar
+  // colors (rise/fall/total — the total color is a real `mixHex` blend) are a
+  // tinted *background*, not muted text, covered by decision 7's mandate in
+  // the dedicated "waterfall tinted-bar contrast" describe block below.
+  waterfall: "no-muted-fill",
+  // gantt.tsx renders `colors.muted` as its optional axis-tick-label text —
+  // always directly on the ambient page background (no card/rect sits behind
+  // it, same as chart.tsx's own category labels), so already covered by the
+  // "clears 4.5:1 against every real page background" check above.
+  gantt: "page-bg",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
@@ -771,6 +794,70 @@ describe("swot/bmc tinted-panel contrast (structure-components wave task 1, deci
 
     it(`${themeId}: bmc renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
       expect(auditFindings(deckFor(themeId, BMC_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave task 2, decision 7: waterfall.tsx paints three
+// theme-derived bar colors (rise=`colors.accent`, fall=`colors.primary`,
+// total=`mixHex(colors.primary, colors.accent, 0.5)` — the one real tint in
+// this component, decision 7's own named example). gantt.tsx paints no
+// mixed/tinted surface (its bar fill is flat `colors.accent`), so it isn't
+// one of decision 7's named surfaces, but gets the same "visual sanity" zero-
+// findings bar task 1 already applied to swot/bmc, at real deck geometry
+// across all 13 themes — no exemptions.
+describe("waterfall/gantt contrast (structure-components wave task 2, decision 7)", () => {
+  // Exercises all three bar kinds: an explicit opening `total` (grounded),
+  // two rises, two falls, and — since the last item isn't itself `kind:
+  // "total"` — an auto-appended closing total bar (waterfall.tsx's own
+  // `computeBars`). Six bars total, well inside the 3-8 item schema range
+  // (5 authored + 1 auto).
+  const WATERFALL_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "waterfall",
+        unit: "万",
+        items: [
+          { label: "期初", value: 500, kind: "total" },
+          { label: "新签", value: 220 },
+          { label: "流失", value: -150 },
+          { label: "增购", value: 80 },
+          { label: "退款", value: -40 },
+        ],
+      },
+    ],
+  } as Slide
+
+  // Exercises the `axis_labels` branch (evenly distributed tick text,
+  // including the first/last edge-anchored labels) alongside 4 ordinary bars.
+  const GANTT_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "gantt",
+        axis_labels: ["W1", "W4", "W7", "W10"],
+        items: [
+          { label: "设计", start: 0, end: 3 },
+          { label: "开发", start: 2, end: 7 },
+          { label: "测试", start: 6, end: 9 },
+          { label: "上线", start: 9, end: 10 },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: waterfall renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, WATERFALL_SLIDE))).toEqual([])
+    })
+
+    it(`${themeId}: gantt renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, GANTT_SLIDE))).toEqual([])
     })
   }
 })

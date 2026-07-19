@@ -90,6 +90,15 @@ export interface ItemFieldAliasSpec {
  */
 export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, ItemFieldAliasSpec>> = {
   kpi_cards: { itemsKey: "items", aliases: { title: "label", name: "label" } },
+  // Numeric-axis family (structure-components wave task 2, decision 8):
+  // waterfall's per-item signed delta is commonly reached for as "amount" in
+  // finance-deck vocabulary (a waterfall/bridge chart is itself a finance-
+  // reporting convention). gantt's start/end pair is the one field name a
+  // model that knows "Gantt chart" but not this schema's numeric-axis-only
+  // shape (decision 6: no date parsing) reaches for by analogy to a
+  // calendar's own "from"/"to" range vocabulary.
+  waterfall: { itemsKey: "items", aliases: { amount: "value" } },
+  gantt: { itemsKey: "items", aliases: { from: "start", to: "end" } },
   // Real-world tech-deck mental model: layers have a "name" and hold
   // "components" or "nodes" — pptfast's own top-level components array
   // shares the word "components" by coincidence only; this alias is scoped
