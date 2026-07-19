@@ -38,3 +38,11 @@ Two independently-owned ceilings, `min()`'d together at validate time — never 
 ## v3 schema freeze
 
 `PptxIRSchema` (`src/ir/index.ts:670-699`) is frozen as of the 0.3.0 npm release — future evolution is additive only (new optional fields, new enum members). Any breaking change ships under a new top-level `version` value with the same hard-reject-and-migration treatment v2 got. `version`/`filename`/`scenario`/`theme` are all optional with schema-level defaults (`"3"`/`"presentation"`/general preset/`consulting`) — see `src/ir/index.ts` for the full defaulting chain and README's "The IR" section for the user-facing field list.
+
+## Settled decisions — do not relitigate
+
+Foundational v0.3 adjudications. Proposals that contradict these need an explicit product decision, not a wave plan:
+
+- **No slideMaster, ever (Keynote-style).** Brand chrome is drawn flat into each slide's SVG through a layout's optional slots. The real `.pptx` slideMaster is intentionally near-empty. Enterprise or brand adaptation means `theme.brand` + style tokens + `registerTheme` — never PPTX template import or master adaptation, which belong to a different product category.
+- **Every revision flows through the deck project's gates.** The single source of truth is `deck.plan.json` + `pages/*.json`, and every edit passes `validate`/`audit`. Preview stays read-only by design — the planned UX is audit findings overlaid on `preview.html` plus in-page annotations that produce structured revision requests flowing back into `pages/*.json` (see `docs/roadmap.md`). A full in-preview editor is deliberately deferred, and this layered design is exactly what will make it a natural extension later rather than a rewrite.
+- **The model owns semantics, the engine owns geometry.** No workflow may ask a model to emit coordinates, pixel sizes, or free-form SVG. Weak-model stability is the product's first invariant — capability additions that reintroduce render variance (e.g. native PowerPoint chart internals the audit cannot measure) ship as explicit opt-ins, never defaults.
