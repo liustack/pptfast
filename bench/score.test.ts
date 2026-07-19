@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import JSZip from "jszip"
 import { describe, expect, it } from "vitest"
 import {
@@ -15,6 +15,10 @@ import {
 const FIXTURES = join(import.meta.dirname, "fixtures")
 const QUESTIONS_DIR = join(FIXTURES, "questions")
 const RESULTS_DIR = join(FIXTURES, "results")
+// Mirrors score.mts's own REPO_ROOT (resolved off this file's own
+// directory, one level up from bench/) — used to assert the notes-column
+// relativization actually strips the machine-specific absolute prefix.
+const REPO_ROOT = resolve(import.meta.dirname, "..")
 
 // ── normalizedPptxSha1 — the determinism comparison method itself ──
 //
@@ -124,6 +128,10 @@ describe("scoreQuestion — degraded-model (validate-failing / audit-positive / 
     expect(score.renderOk).toBe(false)
     expect(score.deterministic).toBeNull()
     expect(score.coverageHits).toEqual([])
+    // notes-column reproducibility across machines: the embedded path is
+    // repo-root-relative, not the machine-specific absolute path.
+    expect(score.reason).not.toContain(REPO_ROOT)
+    expect(score.reason).toContain("bench/fixtures/results/degraded-model/fx01/broken.json")
   })
 
   it("fx02 (degraded): unknown theme id fails validateIr — validatePass false, errors > 0, render also fails", async () => {

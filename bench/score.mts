@@ -28,7 +28,7 @@
 import { createHash } from "node:crypto"
 import type { Dirent } from "node:fs"
 import { readFile, readdir, writeFile } from "node:fs/promises"
-import { join, resolve } from "node:path"
+import { join, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import JSZip from "jszip"
 
@@ -37,6 +37,42 @@ import { readDeckDir } from "../src/cli/deck-dir"
 import { installNodePlatform } from "../src/platform/node"
 
 installNodePlatform()
+
+/**
+ * Repo root, derived from this file's own location (`bench/score.mts` →
+ * one level up) rather than `process.cwd()` — `main()` always resolves
+ * `questionsDir`/`resultsDir` against `cwd`, but `score.test.ts` calls
+ * `scoreQuestion`/`runScoring` directly with fixture paths built off
+ * `import.meta.dirname`, and both land under the same repo checkout either
+ * way. Used to relativize the absolute filesystem paths `loadArtifact`
+ * below would otherwise embed in a `reason` — those paths end up in the
+ * report's `notes` column (`renderModelReport`), and an absolute path
+ * there is specific to whichever machine/checkout ran the scorer, breaking
+ * report comparability across machines even though same-machine
+ * byte-identical reproducibility (this file's actual contract, asserted by
+ * `score.test.ts`'s double-run suite) never depended on it. Repo-root-
+ * relative was chosen over results-dir-relative because it needs no extra
+ * parameter threaded through `loadArtifact`/`scoreQuestion` (both already
+ * take a raw `resultDir`, no root reference) and reads the same regardless
+ * of which `resultsDir` a given run was pointed at.
+ */
+const REPO_ROOT = resolve(import.meta.dirname, "..")
+
+/**
+ * Strips every occurrence of the repo-root absolute prefix out of `text`,
+ * turning e.g. `/Users/x/pptfast/bench/results/m/q1/a.json` into
+ * `bench/results/m/q1/a.json`. A plain prefix strip (not `path.relative`
+ * called on the whole string) because some callers below pass through an
+ * error message from `readDeckDir`/`assembleDeck` that already has an
+ * absolute path baked into arbitrary surrounding prose — there is no
+ * single path argument to hand `path.relative`, only text to scrub. A path
+ * outside `REPO_ROOT` (a `resultsDir` pointed elsewhere entirely) is left
+ * absolute rather than mangled — graceful degradation, not a hard
+ * requirement this scorer can enforce on its caller.
+ */
+function relativizeToRepoRoot(text: string): string {
+  return text.split(REPO_ROOT + sep).join("")
+}
 
 // ── question bank / self-reported meta shapes (bench/README.md's schema) ──
 
@@ -110,7 +146,7 @@ async function loadArtifact(resultDir: string): Promise<ArtifactResult> {
   try {
     entries = await readdir(resultDir, { withFileTypes: true })
   } catch {
-    return { error: `no result directory found at ${resultDir}` }
+    return { error: relativizeToRepoRoot(`no result directory found at ${resultDir}`) }
   }
 
   const hasPlan = entries.some((e) => e.isFile() && e.name === "deck.plan.json")
@@ -119,7 +155,7 @@ async function loadArtifact(resultDir: string): Promise<ArtifactResult> {
       const { ir } = await readDeckDir(resultDir)
       return { ir }
     } catch (e) {
-      return { error: `deck project directory failed to assemble: ${(e as Error).message}` }
+      return { error: relativizeToRepoRoot(`deck project directory failed to assemble: ${(e as Error).message}`) }
     }
   }
 
@@ -130,11 +166,17 @@ async function loadArtifact(resultDir: string): Promise<ArtifactResult> {
     .sort()
   if (candidates.length === 0) {
     return {
-      error: `no artifact found in ${resultDir} — expected a bare IR *.json file or a deck.plan.json project`,
+      error: relativizeToRepoRoot(
+        `no artifact found in ${resultDir} — expected a bare IR *.json file or a deck.plan.json project`,
+      ),
     }
   }
   if (candidates.length > 1) {
-    return { error: `ambiguous artifact in ${resultDir}: multiple candidate json files (${candidates.join(", ")})` }
+    return {
+      error: relativizeToRepoRoot(
+        `ambiguous artifact in ${resultDir}: multiple candidate json files (${candidates.join(", ")})`,
+      ),
+    }
   }
 
   const filePath = join(resultDir, candidates[0]!)
@@ -142,12 +184,12 @@ async function loadArtifact(resultDir: string): Promise<ArtifactResult> {
   try {
     text = await readFile(filePath, "utf8")
   } catch (e) {
-    return { error: `cannot read ${filePath}: ${(e as Error).message}` }
+    return { error: relativizeToRepoRoot(`cannot read ${filePath}: ${(e as Error).message}`) }
   }
   try {
     return { ir: JSON.parse(text) as unknown }
   } catch (e) {
-    return { error: `malformed JSON in ${filePath}: ${(e as Error).message}` }
+    return { error: relativizeToRepoRoot(`malformed JSON in ${filePath}: ${(e as Error).message}`) }
   }
 }
 
