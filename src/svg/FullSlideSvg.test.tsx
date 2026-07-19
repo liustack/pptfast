@@ -12,7 +12,7 @@ import type { PptxIR, Slide } from "@/ir"
 
 function ir(slides: Slide[]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "deck.pptx",
     theme: { id: "academic" },
     meta: { organization: "ACME", confidentiality: "internal", version: "v1", date: "2026" },
@@ -246,7 +246,7 @@ describe("resolveOverrideBackgroundHex (post-v0.3 W8 fix round, backlog item 1)"
 // proving the override is actually read, not just accepted and ignored.
 describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlog item 1)", () => {
   const classroomIr = (slide: Slide): PptxIR => ({
-    version: "3",
+    version: "4",
     filename: "deck.pptx",
     theme: { id: "classroom" },
     meta: {},
@@ -340,7 +340,7 @@ describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlo
       background: { kind: "asset", asset_id: "bg1" },
     } as Slide
     const doc: PptxIR = {
-      version: "3",
+      version: "4",
       filename: "deck.pptx",
       theme: { id: "luxe" },
       meta: {},
@@ -413,7 +413,7 @@ describe("image_grid / image_compare export round-trip (image-layouts P2)", () =
 describe("manifest cover dispatch (P1)", () => {
   const coverSlide: Slide = { type: "cover", heading: "标题", components: [] } as Slide
   const mkIr = (theme: string): PptxIR =>
-    ({ version: "3", filename: "m.pptx", theme: { id: theme }, meta: {}, assets: { images: {} }, slides: [coverSlide] }) as unknown as PptxIR
+    ({ version: "4", filename: "m.pptx", theme: { id: theme }, meta: {}, assets: { images: {} }, slides: [coverSlide] }) as unknown as PptxIR
 
   it("consulting cover 命中允许集成员（W4 全集放开后 8 元素，seed 决定具体落点）", () => {
     const { container } = render(<FullSlideSvg ir={mkIr("consulting")} slide={coverSlide} index={0} />)
@@ -452,7 +452,7 @@ describe("manifest cover dispatch (P1)", () => {
 describe("manifest 四页型分发泛化 (P2)", () => {
   const mkIr = (theme: string, slide: Slide): PptxIR =>
     ({
-      version: "3",
+      version: "4",
       filename: "m.pptx",
       theme: { id: theme },
       meta: {},
@@ -513,7 +513,7 @@ describe("content 页相邻防重复 (W4 design decision 4, retires P3 item ②'
     ({ type: "content", heading, components: [{ type: "paragraph", text: "正文" }] }) as Slide
 
   const deck: PptxIR = {
-    version: "3",
+    version: "4",
     filename: "rotation.pptx",
     theme: { id: "academic" },
     meta: {},
@@ -548,7 +548,7 @@ describe("content 页相邻防重复 (W4 design decision 4, retires P3 item ②'
 describe("slide.layout explicit archetype short-circuit (W2 task 3 new capability)", () => {
   const mkIr = (theme: string, slide: Slide): PptxIR =>
     ({
-      version: "3",
+      version: "4",
       filename: "m.pptx",
       theme: { id: theme },
       meta: {},
@@ -628,21 +628,21 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
 
 // W4 task 3 fix round (review Major finding): the review proved this
 // production seam was completely unguarded — `FullSlideSvg.tsx` resolves
-// `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`
+// `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`
 // and threads it as `buildCtx`'s 5th (optional) argument. If a future edit
 // ever drops that argument, `buildCtx` silently falls back to its own
-// default (`DELIVERY_BUDGETS.balanced.bodyBaselinePx` = 24) — every
+// default (`PACING_BUDGETS.balanced.bodyBaselinePx` = 24) — every
 // consumer of `ctx.bodyFontPx` would render 24px regardless of what
-// `ir.scenario` said, and the reviewer's mutation-check found that all
+// `ir.narrative` said, and the reviewer's mutation-check found that all
 // 1206 `src/svg` tests stayed green when this exact regression was
-// simulated, because `balanced`/24px is *both* the scenario default and
+// simulated, because `balanced`/24px is *both* the narrative default and
 // `buildCtx`'s own fallback. This block renders THROUGH `FullSlideSvg` (the
 // real production entry point, not a direct `paragraph.render(...)` call)
 // so it exercises the one and only call site the seam lives at. `layout` is
 // pinned (same short-circuit mechanism the block above already exercises)
 // so both renders share identical archetype geometry — only `bodyFontPx`
 // differs between the two assertions.
-describe("delivery bodyFontPx injection seam (W4 task 3 fix round — Major)", () => {
+describe("pacing bodyFontPx injection seam (W4 task 3 fix round — Major)", () => {
   const PROBE_TEXT = "档位注入回归探针段落"
   const probeSlide: Slide = {
     type: "content",
@@ -651,8 +651,8 @@ describe("delivery bodyFontPx injection seam (W4 task 3 fix round — Major)", (
     components: [{ type: "paragraph", text: PROBE_TEXT }],
   } as Slide
 
-  function renderProbeFontSize(scenario: Record<string, unknown>): string | null {
-    const doc: PptxIR = { ...ir([probeSlide]), scenario }
+  function renderProbeFontSize(narrative: Record<string, unknown>): string | null {
+    const doc: PptxIR = { ...ir([probeSlide]), narrative }
     const { container } = render(<FullSlideSvg ir={doc} slide={probeSlide} index={0} />)
     const probeText = Array.from(container.querySelectorAll("text")).find(
       (t) => t.textContent === PROBE_TEXT,
@@ -660,11 +660,11 @@ describe("delivery bodyFontPx injection seam (W4 task 3 fix round — Major)", (
     return probeText?.getAttribute("font-size") ?? null
   }
 
-  it("text delivery renders the paragraph body at 20px through the real render entry point", () => {
-    expect(renderProbeFontSize({ delivery: "text" })).toBe("20")
+  it("dense pacing renders the paragraph body at 20px through the real render entry point", () => {
+    expect(renderProbeFontSize({ pacing: "dense" })).toBe("20")
   })
 
-  it("presentation delivery renders the paragraph body at 32px through the real render entry point", () => {
-    expect(renderProbeFontSize({ delivery: "presentation" })).toBe("32")
+  it("spacious pacing renders the paragraph body at 32px through the real render entry point", () => {
+    expect(renderProbeFontSize({ pacing: "spacious" })).toBe("32")
   })
 })

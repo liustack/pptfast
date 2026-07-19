@@ -8,7 +8,7 @@ const RED_PNG =
 
 function ir(images: Record<string, { src: string }>): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "t.pptx",
     theme: { id: "enterprise" },
     meta: {},

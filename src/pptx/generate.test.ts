@@ -53,7 +53,7 @@ function makeSlide(type: Slide["type"], heading?: string): Slide {
 // rendering) clear of that gradient-patch path entirely.
 function makeIR(slides: Slide[], themeId = "consulting"): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "test.pptx",
     theme: { id: themeId as PptxIR["theme"]["id"] },
     meta: {},

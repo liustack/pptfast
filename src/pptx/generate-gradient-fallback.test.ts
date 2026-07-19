@@ -62,7 +62,7 @@ function makeSlide(): Slide {
 
 function makeIR(): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "gradient-fallback.pptx",
     theme: { id: "tech" },
     meta: {},

@@ -22,7 +22,7 @@ describe("theme.style override merging", () => {
 
   it("theme.style reaches the rendered SVG", () => {
     const v = validateIr({
-      version: "3",
+      version: "4",
       filename: "t.pptx",
       theme: { id: "consulting", style: { colors: { primary: "#0B5FFF" } } },
       slides: [{ type: "cover", heading: "Hello Tokens" }],

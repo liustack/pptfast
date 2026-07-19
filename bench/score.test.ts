@@ -179,7 +179,7 @@ describe("scoreQuestion — deck-project structural-assembly failure", () => {
   it("a page file that redeclares a plan-locked field fails readDeckDir's assembleDeck step, scores a fail with a reason, never throws", async () => {
     const score = await scoreQuestion("fx98", join(RESULTS_DIR, "degraded-model", "fx98"), undefined)
     expect(score.reason).toMatch(/deck project directory failed to assemble/)
-    expect(score.reason).toMatch(/"heading" is locked by the plan/)
+    expect(score.reason).toMatch(/"heading" is locked by the spec/)
     expect(score.validatePass).toBe(false)
     expect(score.validateErrorCount).toBe(0)
     expect(score.auditFindingCount).toBe(0)

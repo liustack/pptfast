@@ -1,9 +1,9 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
 import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
-import { normalizeComponentAliases } from "./ir/field-aliases"
+import { normalizeComponentAliases, normalizeNarrativeAliases } from "./ir/field-aliases"
 import { generatePptxBlob } from "./pptx/generate"
-import { resolveScenario, type ScenarioAxes } from "./scenario"
+import { resolveNarrative, type NarrativeProfile } from "./scenario"
 import { CAPACITY } from "./svg/audit/capacity"
 import { FULL_BODY_TYPES } from "./svg/component-traits"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
@@ -56,7 +56,7 @@ export interface ValidateResult {
  * a generic English string rather than leaking the untranslated Chinese text.
  *
  * `density` / `bullets_overflow` / `bullet_item_long` (W3 task 3, spec §5):
- * the effective threshold is now scenario-aware (delivery editorial budget,
+ * the effective threshold is now narrative-aware (pacing editorial budget,
  * `density` additionally minned against the resolved layout's geometric
  * capacity — spec §5's dual-attribute capacity split), so the number can no
  * longer be read off a flat constant here. `checkIrQuality` resolves both
@@ -78,31 +78,31 @@ function describeQualityIssue(issue: QualityIssue): string {
       // alongside a "density" code (same total-function posture as the rest
       // of this file's `?.`/`??` guards); never actually hit.
       if (!d) return "too many components on this slide — split into multiple slides"
-      const { limit, delivery, deliveryBudget, layoutId, layoutCapacity } = d
-      if (layoutCapacity === undefined || layoutCapacity === deliveryBudget) {
+      const { limit, pacing, pacingBudget, layoutId, layoutCapacity } = d
+      if (layoutCapacity === undefined || layoutCapacity === pacingBudget) {
         // No geometric term (image-cover bypass or a takeover with no body
         // capacity), or it agrees with the editorial budget — nothing extra
-        // to disambiguate, name the delivery alone.
-        return `too many components on this slide (max ${limit} for ${delivery} delivery) — split into multiple slides`
+        // to disambiguate, name the pacing alone.
+        return `too many components on this slide (max ${limit} for ${pacing} pacing) — split into multiple slides`
       }
-      return layoutCapacity > deliveryBudget
-        ? // Delivery is the binding side, but the layout itself allows more —
+      return layoutCapacity > pacingBudget
+        ? // Pacing is the binding side, but the layout itself allows more —
           // name both so a generous-looking layout (e.g. bento-panel's 6)
           // doesn't read as a bug.
-          `too many components on this slide (max ${limit} — ${layoutId} fits ${layoutCapacity} but ${delivery} delivery caps at ${limit}) — split into multiple slides`
+          `too many components on this slide (max ${limit} — ${layoutId} fits ${layoutCapacity} but ${pacing} pacing caps at ${limit}) — split into multiple slides`
         : // The layout's own capacity is the binding side.
-          `too many components on this slide (max ${limit} — ${layoutId} layout's capacity is tighter than ${delivery} delivery's ${deliveryBudget}) — split into multiple slides`
+          `too many components on this slide (max ${limit} — ${layoutId} layout's capacity is tighter than ${pacing} pacing's ${pacingBudget}) — split into multiple slides`
     }
     case "bullets_overflow": {
       const b = issue.bulletsBudget
       return b
-        ? `bullet list has too many items (max ${b.maxItems} for ${b.delivery} delivery) — trim it or split into multiple slides`
+        ? `bullet list has too many items (max ${b.maxItems} for ${b.pacing} pacing) — trim it or split into multiple slides`
         : "bullet list has too many items — trim it or split into multiple slides"
     }
     case "bullet_item_long": {
       const b = issue.bulletsBudget
       return b
-        ? `a bullet item is too long for ${b.delivery} delivery — keep it within about 2 lines`
+        ? `a bullet item is too long for ${b.pacing} pacing — keep it within about 2 lines`
         : "a bullet item is too long — keep it within about 2 lines"
     }
     case "big_number_no_kpi":
@@ -227,8 +227,8 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
 
 /**
  * Validate raw JSON against the IR schema, then — once it parses — resolve
- * `scenario` (`resolveScenario`, spec §5: an unrecognized preset name is a
- * `scenario`-path error, page-less) and run the content-quality gate
+ * `narrative` (`resolveNarrative`, spec §5: an unrecognized preset name is a
+ * `narrative`-path error, page-less) and run the content-quality gate
  * (`checkIrQuality`, passed the resolved axes) against the parsed IR. All
  * stages must pass for `ok: true`. Quality findings are reported the same
  * way as schema errors (page-scoped, 1-based). `checkIrQuality` itself tags
@@ -240,37 +240,71 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
  * defeat the point of wiring this in: the spec's core principle is a hard
  * protocol gate, not hoped-for prompt compliance.
  *
- * Before any of that, `normalizeComponentAliases` (W5 task 4,
- * `ir/field-aliases.ts`) gets one deterministic pass at `input` — rewriting
- * a known synonym field name (kpi `title`→`label`, quote `content`→`text`,
- * …) only where the canonical key is absent, so the schema parse below never
- * sees the alias as an "unrecognized key" in the first place. Ordering
- * versus the v2 migration check right above it is unobservable (v2 IR uses
- * `blocks`, never `components`, so the normalizer's slide/component walk is
- * always a no-op on it) — it runs second here only so a doomed v2 input
- * skips the extra walk. Purely informational: every rewrite is recorded as a
- * human-readable `path: alias → canonical` string and threaded onto
- * `ValidateResult.normalized` on *every* return path below via
- * `withNormalized`, success or failure alike — it never itself gates `ok`.
+ * Before any of that, two deterministic alias passes run in sequence
+ * (vocabulary-v4 rename, task 1, spec §15.4 — extending the W5 task-4 alias
+ * rescue): {@link normalizeNarrativeAliases} (`ir/field-aliases.ts`) first,
+ * rewriting a pre-rename root/narrative field name or enum value (`scenario`
+ * → `narrative`, `mode`/`delivery` → `strategy`/`pacing`, `"narrative"`/
+ * `"text"`/`"presentation"` → `"storytelling"`/`"dense"`/`"spacious"`), then
+ * `normalizeComponentAliases` (W5 task 4) for the unrelated component
+ * field-name synonym rescue (kpi `title`→`label`, quote `content`→`text`,
+ * …) — independent walks (root-level vs. inside `slides[]`), safe to run in
+ * either order, kept in this order only so the narrative rewrite's own
+ * `normalized` notes read first. Both only rewrite where the canonical key
+ * is absent, so the schema parse below never sees an alias as an
+ * "unrecognized key" in the first place. Purely informational: every
+ * rewrite is recorded as a human-readable `path: alias → canonical` string
+ * and threaded onto `ValidateResult.normalized` on *every* return path below
+ * via `withNormalized`, success or failure alike — it never itself gates
+ * `ok`.
+ *
+ * Both alias passes only ever run for a document already headed for the v4
+ * schema — an explicit `version: "2"` or `version: "3"` is hard-rejected
+ * first, below, before either alias pass or any schema parse (spec §9.3/
+ * §15.3: a v2/v3 document is never silently reinterpreted as v4 through the
+ * alias rescue, no matter how it spells its axes).
  */
 export function validateIr(input: unknown): ValidateResult {
-  // IR v2 friendly migration message (dev-channel scope, spec §8: W1 started
-  // it with the theme.override→theme.style mapping, W2 task 3 appended the
-  // second — variant split into layout + arrangement — and W2 task 4 appends
-  // the third and last one for this wave here: blocks are now components).
-  if (typeof input === "object" && input !== null && (input as Record<string, unknown>).version === "2") {
+  const version = typeof input === "object" && input !== null ? (input as Record<string, unknown>).version : undefined
+
+  // IR v2 hard reject (spec §15.3): a combined mapping straight to v4 — v2
+  // has no real users, so there is no reason to route it through the v3
+  // vocabulary as a stepping stone. `pptfast migrate` only accepts v3 input
+  // (spec §15.3: "不接 v2"), so this message does not point to it — a v2
+  // document must be rewritten by hand using the mapping below.
+  if (version === "2") {
     return {
       ok: false,
       errors: [
         {
           path: "version",
           message:
-            'IR v2 is not supported by pptfast 0.3 — set version to "3" (theme.override is gone, use theme.style. variant is split into layout and arrangement. blocks are now components)',
+            'IR v2 is not supported by pptfast — set version to "4" and rewrite by hand using this mapping: theme.override is now theme.style. variant is split into layout and arrangement. blocks are now components. scenario is now narrative, with mode renamed to strategy (the "narrative" strategy value is now "storytelling") and delivery renamed to pacing (the "text" pacing value is now "dense", "presentation" is now "spacious", "balanced" is unchanged)',
         },
       ],
     }
   }
-  const { value: normalizedInput, normalized } = normalizeComponentAliases(input)
+  // IR v3 hard reject (spec §9.3): v3 is frozen — a v3 document is never
+  // silently reinterpreted as v4, however it spells its axes. Full
+  // field/value mapping (spec §9.1) plus the deterministic migration
+  // command pointer (`migrateIrV3ToV4`, `ir/migrate.ts`, wrapped by the
+  // `pptfast migrate` CLI command, task 2).
+  if (version === "3") {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "version",
+          message:
+            'IR v3 is not supported by pptfast 0.4 — set version to "4", or run `pptfast migrate <input> -o <output>` to convert automatically. Mapping: scenario is now narrative. scenario.mode is now narrative.strategy (mode "narrative" is now strategy "storytelling", every other mode value is unchanged). scenario.delivery is now narrative.pacing (delivery "text" is now pacing "dense", "balanced" is unchanged, "presentation" is now "spacious"). scenario.audience is now narrative.audience (unchanged). every other field is unchanged',
+        },
+      ],
+    }
+  }
+
+  const { value: narrativeNormalizedInput, normalized: narrativeNormalized } = normalizeNarrativeAliases(input)
+  const { value: normalizedInput, normalized: componentNormalized } = normalizeComponentAliases(narrativeNormalizedInput)
+  const normalized = [...narrativeNormalized, ...componentNormalized]
   const withNormalized = (result: ValidateResult): ValidateResult =>
     normalized.length > 0 ? { ...result, normalized } : result
 
@@ -307,31 +341,32 @@ export function validateIr(input: unknown): ValidateResult {
   if (fullBodyErrors.length > 0) return withNormalized({ ok: false, errors: fullBodyErrors })
   const duplicateIdErrors = checkDuplicateSlideIds(r.data)
   if (duplicateIdErrors.length > 0) return withNormalized({ ok: false, errors: duplicateIdErrors })
-  // Scenario resolution (spec §5's defaults chain, W3 task 2). Both branches
-  // of the schema's `scenario` union (ScenarioAxesInputSchema in ir/index.ts)
-  // are open now — a preset-name string and an axes object alike — the same
-  // open-schema/closed-semantic pattern as theme.id above, so resolveScenario
-  // is the *sole* place any scenario semantics (unrecognized preset name,
-  // unrecognized axis key, unrecognized axis value) get rejected. This one
-  // try/catch is therefore the only path that can produce a `scenario`
-  // ValidationIssue, for all of those cases — deliberate, per the W3 task-2
-  // review finding: nesting a schema-closed enum object inside a z.union
-  // meant a failing branch reported as one opaque zod `invalid_union` issue
-  // ("Invalid input", no specifics), never resolveScenario's own
-  // available-values message. r.data.scenario's inferred type
-  // (`string | Record<string, unknown> | undefined`) is wider than
-  // resolveScenario's declared parameter — safe to narrow here because
-  // resolveScenario validates every key and value itself at runtime
+  // Narrative resolution (spec §5's defaults chain, W3 task 2; renamed from
+  // "scenario resolution" spec §8.1). Both branches of the schema's
+  // `narrative` union (NarrativeProfileInputSchema in ir/index.ts) are open
+  // now — a preset-name string and an axes object alike — the same
+  // open-schema/closed-semantic pattern as theme.id above, so
+  // resolveNarrative is the *sole* place any narrative semantics
+  // (unrecognized preset name, unrecognized axis key, unrecognized axis
+  // value) get rejected. This one try/catch is therefore the only path that
+  // can produce a `narrative` ValidationIssue, for all of those cases —
+  // deliberate, per the W3 task-2 review finding: nesting a schema-closed
+  // enum object inside a z.union meant a failing branch reported as one
+  // opaque zod `invalid_union` issue ("Invalid input", no specifics), never
+  // resolveNarrative's own available-values message. r.data.narrative's
+  // inferred type (`string | Record<string, unknown> | undefined`) is wider
+  // than resolveNarrative's declared parameter — safe to narrow here because
+  // resolveNarrative validates every key and value itself at runtime
   // regardless of what the schema let through (its own test suite pins
   // that). The resolved axes are not written back onto r.data (see the
-  // scenario field's docstring in ir/index.ts) — they are only threaded into
-  // checkIrQuality below for task 3 to consume.
-  let resolvedAxes: ScenarioAxes
+  // narrative field's docstring in ir/index.ts) — they are only threaded
+  // into checkIrQuality below for task 3 to consume.
+  let resolvedAxes: NarrativeProfile
   try {
-    resolvedAxes = resolveScenario(r.data.scenario as string | Partial<ScenarioAxes> | undefined)
+    resolvedAxes = resolveNarrative(r.data.narrative as string | Partial<NarrativeProfile> | undefined)
   } catch (err) {
     if (!(err instanceof PptfastError)) throw err
-    return withNormalized({ ok: false, errors: [{ path: "scenario", message: err.message }] })
+    return withNormalized({ ok: false, errors: [{ path: "narrative", message: err.message }] })
   }
   const quality = checkIrQuality(r.data, resolvedAxes)
   if (quality.length === 0) return withNormalized({ ok: true, ir: r.data, errors: [] })

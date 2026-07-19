@@ -2,8 +2,8 @@
   "id": "q18",
   "title": "内部工程师认证课程手册",
   "coverage": {
-    "mode": "instructional",
-    "delivery": "text",
+    "strategy": "instructional",
+    "pacing": "dense",
     "expects_components": [
       "numbered_cards"
     ],

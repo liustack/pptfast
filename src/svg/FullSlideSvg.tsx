@@ -1,6 +1,6 @@
 import type React from "react"
 import type { BackgroundSpec, Component, PptxIR, Slide } from "@/ir"
-import { DELIVERY_BUDGETS, resolveScenario, type Mode, type ScenarioAxes } from "@/scenario"
+import { PACING_BUDGETS, resolveNarrative, type Strategy, type NarrativeProfile } from "@/scenario"
 import type { StyleTokens } from "../themes/tokens"
 import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
@@ -27,7 +27,7 @@ import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { cachedDeckSeed } from "./variety"
-import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrMode } from "./effective-layout"
+import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./effective-layout"
 
 /**
  * Reduce a `BackgroundSpec` to one representative hex color — a color spec
@@ -150,12 +150,12 @@ export function resolveOverrideBackgroundHex(
  *
  * `bodyFontPx` (W4 task 3, `ComponentCtx.bodyFontPx`'s own doc comment): the
  * caller (`FullSlideSvg` below) always supplies the true
- * `DELIVERY_BUDGETS[resolveScenario(ir.scenario).delivery].bodyBaselinePx`.
+ * `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`.
  * Omitting it (as every `buildCtx(...)`-calling test in this repo except
  * the paragraph/bullets/callout/three-tier suites does) falls back to
- * `DELIVERY_BUDGETS.balanced.bodyBaselinePx` (24px) — the scenario default,
+ * `PACING_BUDGETS.balanced.bodyBaselinePx` (24px) — the narrative default,
  * so a test that doesn't care about body-text sizing still gets the
- * ambient value a caller with an omitted/default scenario would.
+ * ambient value a caller with an omitted/default narrative would.
  */
 export function buildCtx(
   tokens: StyleTokens,
@@ -175,7 +175,7 @@ export function buildCtx(
     images,
     blockIndex: components ? new Map(components.map((component, i) => [component, i])) : undefined,
     defaultBg: defaultBg ?? tokens.colors.bg,
-    bodyFontPx: bodyFontPx ?? DELIVERY_BUDGETS.balanced.bodyBaselinePx,
+    bodyFontPx: bodyFontPx ?? PACING_BUDGETS.balanced.bodyBaselinePx,
   }
 }
 
@@ -202,7 +202,7 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
  * theme.layouts archetype 分发泛化（P2 Task 24，spec §4.2→v0.3 spec §6
  * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 加权
  * 取样一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务 3，即
- * `slide.layout`）显式指定短路——完整选型算法（scenario 加权取样、
+ * `slide.layout`）显式指定短路——完整选型算法（narrative 加权取样、
  * scenariosOnly 硬约束、相邻防重复、allowed 空集防御性回退，W4 终态）现由
  * `./effective-layout` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
  * `checkIrQuality` 的 density 门在 validate 期要跑同一条选型路径，两处各自维护
@@ -216,10 +216,10 @@ function resolveArchetype(
   seed: number,
   pageKey: string,
   requestedLayout: string | undefined,
-  mode: Mode,
+  strategy: Strategy,
   previousEffectiveLayoutId: string | null,
 ): { id: string; Component: PageArchetype } | null {
-  const id = resolveArchetypeId(slideType, layouts, seed, pageKey, requestedLayout, mode, previousEffectiveLayoutId)
+  const id = resolveArchetypeId(slideType, layouts, seed, pageKey, requestedLayout, strategy, previousEffectiveLayoutId)
   return id === null ? null : { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
 }
 
@@ -270,12 +270,12 @@ export function FullSlideSvg({
   // paragraph/bullets/callout trio's body-text baseline — see
   // `ComponentCtx.bodyFontPx`'s own doc comment for why this is required
   // (not optional like `defaultBg` above) and why no component recomputes
-  // it. A second, independent `resolveScenario` call from `resolveIrMode`'s
+  // it. A second, independent `resolveNarrative` call from `resolveIrStrategy`'s
   // own (cheap, unmemoized — see that function's doc comment) below is
   // expected, not a duplicated selection-logic copy: this projects
-  // `.delivery`, `resolveIrMode` projects `.mode`, off the same pure input.
+  // `.pacing`, `resolveIrStrategy` projects `.strategy`, off the same pure input.
   const bodyFontPx =
-    DELIVERY_BUDGETS[resolveScenario(ir.scenario as string | Partial<ScenarioAxes> | undefined).delivery]
+    PACING_BUDGETS[resolveNarrative(ir.narrative as string | Partial<NarrativeProfile> | undefined).pacing]
       .bodyBaselinePx
   const ctx = buildCtx(
     tokens,
@@ -341,7 +341,7 @@ export function FullSlideSvg({
   // 输入）：复用 `resolveEffectiveLayoutId` 对上一页的解算而非在这里另起一份
   // 折叠——同一 WeakMap 缓存的折叠结果，两处必然同源同值。
   const pageKey = slide.id ?? String(index)
-  const mode = resolveIrMode(ir)
+  const strategy = resolveIrStrategy(ir)
   const previousEffectiveLayoutId = index > 0 ? resolveEffectiveLayoutId(ir, ir.slides[index - 1], index - 1) : null
   const archetype =
     imageCoverTakeover || splitTakeover
@@ -352,7 +352,7 @@ export function FullSlideSvg({
           cachedDeckSeed(ir),
           pageKey,
           slide.layout,
-          mode,
+          strategy,
           previousEffectiveLayoutId,
         )
 

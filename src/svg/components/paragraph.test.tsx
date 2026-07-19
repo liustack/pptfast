@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { paragraph } from "./paragraph"
 import type { ComponentCtx } from "./types"
-import { DELIVERY_BUDGETS } from "@/scenario"
+import { PACING_BUDGETS } from "@/scenario"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -16,7 +16,7 @@ const ctx: ComponentCtx = {
     chartPalette: ["#006A4E", "#00A878"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
-  bodyFontPx: DELIVERY_BUDGETS.balanced.bodyBaselinePx, // 24 — ambient default for tests that don't exercise a specific tier
+  bodyFontPx: PACING_BUDGETS.balanced.bodyBaselinePx, // 24 — ambient default for tests that don't exercise a specific tier
 }
 
 function svg(node: React.ReactElement) {
@@ -90,28 +90,28 @@ describe("paragraph component emphasis", () => {
   })
 })
 
-// W4 task 3 (design decision 9): the three delivery-tier render assertions —
+// W4 task 3 (design decision 9): the three pacing-tier render assertions —
 // paragraph reads its font size from `ctx.bodyFontPx` alone (no module-level
 // FONT_SIZE constant left), so a short line at each tier's baseline should
 // never wrap and should render at exactly that tier's px, byte for byte.
-describe("paragraph component delivery tiers", () => {
+describe("paragraph component pacing tiers", () => {
   const component = { type: "paragraph" as const, text: "档位字号验证段落" }
 
-  it("text delivery (20px) renders font-size 20", () => {
-    const textCtx: ComponentCtx = { ...ctx, bodyFontPx: DELIVERY_BUDGETS.text.bodyBaselinePx }
-    const { container } = svg(paragraph.render(component, { x: 0, y: 0, w: 1120 }, textCtx))
+  it("dense pacing (20px) renders font-size 20", () => {
+    const denseCtx: ComponentCtx = { ...ctx, bodyFontPx: PACING_BUDGETS.dense.bodyBaselinePx }
+    const { container } = svg(paragraph.render(component, { x: 0, y: 0, w: 1120 }, denseCtx))
     expect(container.querySelector("text")?.getAttribute("font-size")).toBe("20")
   })
 
-  it("balanced delivery (24px) renders font-size 24", () => {
-    const balancedCtx: ComponentCtx = { ...ctx, bodyFontPx: DELIVERY_BUDGETS.balanced.bodyBaselinePx }
+  it("balanced pacing (24px) renders font-size 24", () => {
+    const balancedCtx: ComponentCtx = { ...ctx, bodyFontPx: PACING_BUDGETS.balanced.bodyBaselinePx }
     const { container } = svg(paragraph.render(component, { x: 0, y: 0, w: 1120 }, balancedCtx))
     expect(container.querySelector("text")?.getAttribute("font-size")).toBe("24")
   })
 
-  it("presentation delivery (32px) renders font-size 32", () => {
-    const presentationCtx: ComponentCtx = { ...ctx, bodyFontPx: DELIVERY_BUDGETS.presentation.bodyBaselinePx }
-    const { container } = svg(paragraph.render(component, { x: 0, y: 0, w: 1120 }, presentationCtx))
+  it("spacious pacing (32px) renders font-size 32", () => {
+    const spaciousCtx: ComponentCtx = { ...ctx, bodyFontPx: PACING_BUDGETS.spacious.bodyBaselinePx }
+    const { container } = svg(paragraph.render(component, { x: 0, y: 0, w: 1120 }, spaciousCtx))
     expect(container.querySelector("text")?.getAttribute("font-size")).toBe("32")
   })
 
@@ -121,7 +121,7 @@ describe("paragraph component delivery tiers", () => {
     // LINE_RATIO scales off ctx.bodyFontPx rather than a stale 20px-derived
     // value.
     const two = { type: "paragraph" as const, text: "第一行内容测试换行 第二行内容测试换行延续到底" }
-    for (const bodyFontPx of [DELIVERY_BUDGETS.text.bodyBaselinePx, DELIVERY_BUDGETS.presentation.bodyBaselinePx]) {
+    for (const bodyFontPx of [PACING_BUDGETS.dense.bodyBaselinePx, PACING_BUDGETS.spacious.bodyBaselinePx]) {
       const tierCtx: ComponentCtx = { ...ctx, bodyFontPx }
       const { container } = svg(paragraph.render(two, { x: 0, y: 0, w: 160 }, tierCtx))
       const texts = Array.from(container.querySelectorAll("text"))

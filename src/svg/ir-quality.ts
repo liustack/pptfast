@@ -6,7 +6,7 @@
  */
 
 import type { PptxIR, Slide } from "@/ir"
-import { DELIVERY_BUDGETS, resolveScenario, type Delivery, type ScenarioAxes } from "@/scenario"
+import { PACING_BUDGETS, resolveNarrative, type NarrativeProfile, type Pacing } from "@/scenario"
 import { CAPACITY } from "./audit/capacity"
 import { resolveEffectiveLayoutBodyCapacity } from "./effective-layout"
 import { measureTextUnits } from "../lib/svg-text-layout"
@@ -27,15 +27,15 @@ export type QualityIssue = {
    */
   density?: {
     limit: number
-    delivery: Delivery
-    deliveryBudget: number
+    pacing: Pacing
+    pacingBudget: number
     layoutId: string | null
     layoutCapacity: number | undefined
   }
   /** `code: "bullets_overflow"` / `"bullet_item_long"` only — the resolved
-   * delivery's bullets budget (spec §5 delivery table), for the same
+   * pacing's bullets budget (spec §5 pacing table), for the same
    * English-translation reason as `density` above. */
-  bulletsBudget?: { delivery: Delivery; maxItems: number; maxUnitsPerItem: number }
+  bulletsBudget?: { pacing: Pacing; maxItems: number; maxUnitsPerItem: number }
 }
 
 // ── helpers ──
@@ -64,9 +64,9 @@ function isBackgroundImageOnly(slide: Slide): boolean {
 
 // ── per-slide checks ──
 
-function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: ScenarioAxes): QualityIssue[] {
+function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: NarrativeProfile): QualityIssue[] {
   const issues: QualityIssue[] = []
-  const budget = DELIVERY_BUDGETS[resolvedAxes.delivery]
+  const budget = PACING_BUDGETS[resolvedAxes.pacing]
 
   // A1-reverse: heading too long
   if (slide.heading && charLen(slide.heading) > CAPACITY.headingMaxChars) {
@@ -79,7 +79,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Scena
   }
 
   // A2: density cap — only for content slides. W3 task 3 (spec §5's
-  // dual-attribute capacity split): limit = min(this scenario's delivery
+  // dual-attribute capacity split): limit = min(this narrative's pacing
   // editorial budget, the resolved layout's body-slot geometric capacity).
   // The geometric half comes from `resolveEffectiveLayoutBodyCapacity`
   // (`./effective-layout`) — the exact selection path `FullSlideSvg` renders
@@ -99,8 +99,8 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Scena
         message: `每页至多 ~${limit} 个块，建议拆页`,
         density: {
           limit,
-          delivery: resolvedAxes.delivery,
-          deliveryBudget: budget.maxComponentsPerSlide,
+          pacing: resolvedAxes.pacing,
+          pacingBudget: budget.maxComponentsPerSlide,
           layoutId,
           layoutCapacity,
         },
@@ -109,7 +109,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Scena
   }
 
   // bullets overflow + per-item length — W3 task 3: budget now reads
-  // DELIVERY_BUDGETS (spec §5 delivery table) instead of the old flat
+  // PACING_BUDGETS (spec §5 pacing table) instead of the old flat
   // CAPACITY.bullets.
   for (const component of slide.components) {
     if (component.type !== "bullets") continue
@@ -119,7 +119,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Scena
         severity: "warn",
         code: "bullets_overflow",
         message: `要点列表条目过多（>${budget.bullets.maxItems}），建议精简或拆页`,
-        bulletsBudget: { delivery: resolvedAxes.delivery, ...budget.bullets },
+        bulletsBudget: { pacing: resolvedAxes.pacing, ...budget.bullets },
       })
     }
     for (const item of component.items) {
@@ -129,7 +129,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Scena
           severity: "warn",
           code: "bullet_item_long",
           message: "单条要点过长，建议精简至 2 行内",
-          bulletsBudget: { delivery: resolvedAxes.delivery, ...budget.bullets },
+          bulletsBudget: { pacing: resolvedAxes.pacing, ...budget.bullets },
         })
       }
     }
@@ -167,18 +167,21 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Scena
 
 /**
  * `resolvedAxes` (threaded W3 task 2, consumed by task 3) carries the
- * caller's already-resolved {@link ScenarioAxes} (spec §5) for the
- * scenario-aware density/bullets thresholds in {@link checkSlide} — density
- * reads `resolvedAxes.delivery`'s editorial budget and mixes in the
+ * caller's already-resolved {@link NarrativeProfile} (spec §5) for the
+ * narrative-aware density/bullets thresholds in {@link checkSlide} — density
+ * reads `resolvedAxes.pacing`'s editorial budget and mixes in the
  * resolved layout's geometric capacity (spec §5's dual-attribute capacity
- * split), bullets reads the same delivery's bullets budget. `api.ts`'s
- * `validateIr` resolves scenario for its own error handling and passes the
- * result through here so there is exactly one `resolveScenario` call per
+ * split), bullets reads the same pacing's bullets budget. `api.ts`'s
+ * `validateIr` resolves narrative for its own error handling and passes the
+ * result through here so there is exactly one `resolveNarrative` call per
  * validate pass. Defaults to the `general` preset's axes so this file's own
  * single-argument test call sites keep compiling and behave the same as
- * every other caller that hasn't resolved a scenario of its own.
+ * every other caller that hasn't resolved a narrative of its own.
  */
-export function checkIrQuality(ir: PptxIR, resolvedAxes: ScenarioAxes = resolveScenario(undefined)): QualityIssue[] {
+export function checkIrQuality(
+  ir: PptxIR,
+  resolvedAxes: NarrativeProfile = resolveNarrative(undefined),
+): QualityIssue[] {
   const issues: QualityIssue[] = []
 
   // empty deck

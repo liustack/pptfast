@@ -29,12 +29,12 @@ describe("loadIrFile", () => {
     await expect(loadIrFile(p)).rejects.toThrow(/^IR file .* is not valid JSON/)
   })
 
-  it("uses a caller-supplied kind in both failure messages (e.g. runPlanValidate passing \"plan\")", async () => {
-    await expect(loadIrFile("/nowhere/missing.json", "plan")).rejects.toThrow(/cannot read plan file/)
+  it("uses a caller-supplied kind in both failure messages (e.g. runSpecValidate passing \"spec\")", async () => {
+    await expect(loadIrFile("/nowhere/missing.json", "spec")).rejects.toThrow(/cannot read spec file/)
     const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
-    const p = join(dir, "bad-plan.json")
+    const p = join(dir, "bad-spec.json")
     await writeFile(p, "{ not json")
-    await expect(loadIrFile(p, "plan")).rejects.toThrow(/^plan file .* is not valid JSON/)
+    await expect(loadIrFile(p, "spec")).rejects.toThrow(/^spec file .* is not valid JSON/)
   })
 })
 
@@ -44,7 +44,7 @@ describe("resolveLocalAssets", () => {
     const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
     await writeFile(join(dir, "logo.png"), PNG_1PX)
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       filename: "t",
       theme: { id: "consulting" },
       assets: { images: { logo: { src: "logo.png" } } },
@@ -56,7 +56,7 @@ describe("resolveLocalAssets", () => {
 
   it("leaves data URIs and http(s) URLs untouched", async () => {
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       filename: "t",
       theme: { id: "consulting" },
       assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "https://x.test/i.png" } } },
@@ -69,7 +69,7 @@ describe("resolveLocalAssets", () => {
 
   it("fails loud with the resolved path for a missing file", async () => {
     const ir = PptxIRSchema.parse({
-      version: "3",
+      version: "4",
       filename: "t",
       theme: { id: "consulting" },
       assets: { images: { gone: { src: "missing.png" } } },

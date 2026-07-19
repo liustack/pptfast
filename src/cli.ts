@@ -6,11 +6,12 @@ import {
   runAudit,
   runDisassemble,
   runInit,
-  runPlanValidate,
+  runMigrate,
+  runNarratives,
   runPreview,
   runRender,
-  runScenarios,
   runSchema,
+  runSpecValidate,
   runThemes,
   runValidate,
 } from "./cli/commands"
@@ -86,19 +87,39 @@ program
   .command("schema")
   .description("Print the IR JSON Schema (feed this to a model before it writes IR)")
   .option("--style", "print the style-override schema instead")
-  .option("--plan", "print the deck plan schema instead")
-  .action((opts: { style?: boolean; plan?: boolean }) =>
-    console.log(runSchema(opts.plan ? "plan" : opts.style ? "style" : undefined)),
-  )
+  .option("--spec", "print the deck spec schema instead")
+  .option("--plan", "removed — use --spec instead")
+  .action((opts: { style?: boolean; spec?: boolean; plan?: boolean }) => {
+    // vocabulary-v4 rename (spec §8.2): `--plan` renamed to `--spec`, no
+    // long-lived alias — hard-fail pointing at the one new flag rather than
+    // silently keep serving the plan schema under its old name.
+    if (opts.plan) {
+      fail(new Error("`pptfast schema --plan` has been renamed to `pptfast schema --spec` — run `pptfast schema --spec` instead"))
+    }
+    console.log(runSchema(opts.spec ? "spec" : opts.style ? "style" : undefined))
+  })
 
-const plan = program.command("plan").description("Deck plan commands (spec §5)")
+// vocabulary-v4 rename (spec §8.2): `pptfast plan validate` renamed to
+// `pptfast spec validate`. The `plan` command group stays registered only so
+// `pptfast plan validate <file>` fails with a message pointing at the new
+// command, rather than commander's own generic "unknown command" error.
+const plan = program.command("plan").description("Removed — use `pptfast spec` instead")
 plan
   .command("validate")
-  .description("Validate a deck plan JSON file against the schema and mode-aware hard gates")
-  .argument("<plan.json>")
-  .action(async (planPath: string) => {
+  .description("Removed — use `pptfast spec validate` instead")
+  .argument("<file>")
+  .action(() => {
+    fail(new Error("`pptfast plan validate` has been renamed to `pptfast spec validate` — run `pptfast spec validate <file>` instead"))
+  })
+
+const spec = program.command("spec").description("Deck spec commands (spec §6)")
+spec
+  .command("validate")
+  .description("Validate a deck spec JSON file against the schema and strategy-aware hard gates")
+  .argument("<spec.json>")
+  .action(async (specPath: string) => {
     try {
-      console.log(await runPlanValidate(planPath))
+      console.log(await runSpecValidate(specPath))
     } catch (e) {
       fail(e)
     }
@@ -106,7 +127,7 @@ plan
 
 program
   .command("assemble")
-  .description("Assemble a deck project directory (deck.plan.json + pages/ + assets/) into an IR JSON file")
+  .description("Assemble a deck project directory (deck.spec.json + pages/ + assets/) into an IR JSON file")
   .argument("<dir|name>", "deck project directory, or bare name under ~/.pptfast/decks")
   .option("-o, --output <file>", "output IR JSON path (default: <dir>/deck.json)")
   .action(async (target: string, opts: { output?: string }) => {
@@ -119,12 +140,25 @@ program
 
 program
   .command("disassemble")
-  .description("Split an IR JSON file into a deck project directory (deck.plan.json + pages/)")
+  .description("Split an IR JSON file into a deck project directory (deck.spec.json + pages/)")
   .argument("<ir.json>", "path to the IR file")
   .requiredOption("-o, --output <dir>", "output deck project directory")
   .action(async (irPath: string, opts: { output: string }) => {
     try {
       console.log(await runDisassemble(irPath, opts.output))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program
+  .command("migrate")
+  .description("Convert a v3 IR file to v4, or a deck.plan.json project directory to deck.spec.json — deterministic, no model")
+  .argument("<input>", "IR v3 JSON file, or a deck project directory containing deck.plan.json")
+  .requiredOption("-o, --output <output>", "output path — an IR JSON file for a v3 file input, a directory for a deck-project-directory input")
+  .action(async (input: string, opts: { output: string }) => {
+    try {
+      console.log(await runMigrate(input, opts.output))
     } catch (e) {
       fail(e)
     }
@@ -137,10 +171,20 @@ program
   .action((opts: { json?: boolean }) => console.log(runThemes(Boolean(opts.json))))
 
 program
-  .command("scenarios")
-  .description("List named scenario presets (mode/delivery/audience axes + theme recommendations)")
+  .command("narratives")
+  .description("List named narrative presets (strategy/pacing/audience axes + theme recommendations)")
   .option("--json", "machine-readable output")
-  .action((opts: { json?: boolean }) => console.log(runScenarios(Boolean(opts.json))))
+  .action((opts: { json?: boolean }) => console.log(runNarratives(Boolean(opts.json))))
+
+// vocabulary-v4 rename (spec §8.2): `pptfast scenarios` renamed to
+// `pptfast narratives`, no long-lived alias — hard-fail pointing at the new
+// command name.
+program
+  .command("scenarios")
+  .description("Removed — use `pptfast narratives` instead")
+  .action(() => {
+    fail(new Error("`pptfast scenarios` has been renamed to `pptfast narratives` — run `pptfast narratives` instead"))
+  })
 
 program
   .command("init")

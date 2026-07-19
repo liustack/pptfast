@@ -2,8 +2,8 @@
   "id": "q08",
   "title": "Data Center Migration Runbook",
   "coverage": {
-    "mode": "instructional",
-    "delivery": "text",
+    "strategy": "instructional",
+    "pacing": "dense",
     "expects_components": [
       "gantt"
     ],

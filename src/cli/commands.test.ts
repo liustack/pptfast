@@ -1,21 +1,22 @@
 // @vitest-environment node
-import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import JSZip from "jszip"
 import { afterAll, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { SCENARIO_PRESETS } from "../scenario"
+import { NARRATIVE_PRESETS } from "../scenario"
 import {
   applyDeckConfig,
   runAssemble,
   runAudit,
   runDisassemble,
   runInit,
-  runPlanValidate,
+  runMigrate,
+  runSpecValidate,
   runPreview,
   runRender,
-  runScenarios,
+  runNarratives,
   runSchema,
   runThemes,
   runValidate,
@@ -28,7 +29,7 @@ const PNG_1PX = Buffer.from(
 )
 
 const VALID_IR = {
-  version: "3",
+  version: "4",
   filename: "cli-test",
   theme: { id: "tech" },
   slides: [
@@ -38,7 +39,7 @@ const VALID_IR = {
 }
 
 const IR_WITH_LOCAL_ASSET = {
-  version: "3",
+  version: "4",
   filename: "cli-test-asset",
   theme: { id: "tech" },
   assets: { images: { logo: { src: "logo.png" } } },
@@ -49,7 +50,7 @@ const IR_WITH_LOCAL_ASSET = {
 }
 
 const IR_WITH_PLACEHOLDER = {
-  version: "3",
+  version: "4",
   filename: "cli-test-placeholder",
   theme: { id: "tech" },
   slides: [
@@ -65,7 +66,7 @@ const IR_WITH_PLACEHOLDER = {
 // deck-audit.test.ts's own "low-contrast via a real style-token override"
 // fixture (`src/svg/audit/deck-audit.test.ts`).
 const IR_LOW_CONTRAST = {
-  version: "3",
+  version: "4",
   filename: "cli-test-low-contrast",
   theme: { id: "consulting", style: { colors: { text: "#F5F5F0" } } },
   slides: [
@@ -81,7 +82,7 @@ const IR_LOW_CONTRAST = {
 // kpi_cards item uses "title" instead of "label" — W5 task 4's field-alias
 // normalizer should silently adopt it and runValidate should note it.
 const IR_WITH_FIELD_ALIAS = {
-  version: "3",
+  version: "4",
   filename: "cli-test-alias",
   theme: { id: "tech" },
   slides: [
@@ -92,11 +93,11 @@ const IR_WITH_FIELD_ALIAS = {
 
 const VALID_PLAN = {
   version: "1",
-  scenario: "boardroom-report",
+  narrative: "boardroom-report",
   theme: "consulting",
   pages: [
     { id: "p-cover", type: "cover", heading: "CLI Plan" },
-    { id: "p-kpi", type: "content", heading: "Body content page", rhythm: "anchor", focus: "kpi_cards" },
+    { id: "p-kpi", type: "content", heading: "Body content page", beat: "anchor", focus: "kpi_cards" },
     { id: "p-detail", type: "content", heading: "More detail" },
     { id: "p-ending", type: "ending", heading: "Thanks" },
   ],
@@ -110,7 +111,7 @@ beforeAll(async () => {
   installNodePlatform()
   dir = await mkdtemp(join(tmpdir(), "pptfast-cli-"))
   await writeFile(join(dir, "deck.json"), JSON.stringify(VALID_IR))
-  await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "3" }))
+  await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "4" }))
   await writeFile(join(dir, "logo.png"), PNG_1PX)
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
   await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
@@ -145,13 +146,13 @@ async function withPptfastHome<T>(home: string, fn: () => Promise<T>): Promise<T
   }
 }
 
-/** 5 pages (cover + 3 content + ending) clears "presentation" delivery's
+/** 5 pages (cover + 3 content + ending) clears "spacious" pacing's
  *  4-16 page-count floor (spec §5) with room to leave some unfilled — same
  *  fixture-sizing rationale as `plan/assemble.test.ts`'s own `makePlan`. */
 function makeDeckPlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: "1",
-    scenario: "boardroom-report", // pyramid/presentation/executive
+    narrative: "boardroom-report", // pyramid/spacious/executive
     theme: "consulting",
     filename: "q3-review",
     pages: [
@@ -169,17 +170,17 @@ function makeDeckDir(prefix = "pptfast-deck-"): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix))
 }
 
-/** IR shaped so `disassembleDeck`'s output can itself pass `validatePlan`'s
- *  hard gates (first=cover/last=ending, explicit `presentation` delivery so
+/** IR shaped so `disassembleDeck`'s output can itself pass `validateSpec`'s
+ *  hard gates (first=cover/last=ending, explicit `spacious` pacing so
  *  4 pages clears the page-count floor) — unlike `VALID_IR` above, which is
  *  fine for a bare-IR round trip but was never meant to double as a valid
- *  *plan* (no ending page), so re-assembling its disassembled output would
+ *  *spec* (no ending page), so re-assembling its disassembled output would
  *  fail `checkBoundaryTypes` before ever reaching a render. */
 const ROUNDTRIPPABLE_IR = {
-  version: "3",
+  version: "4",
   filename: "roundtrip-test",
   theme: { id: "tech" },
-  scenario: { delivery: "presentation" },
+  narrative: { pacing: "spacious" },
   slides: [
     { id: "s-cover", type: "cover", heading: "Cover" },
     { id: "s-body", type: "content", heading: "Body", components: [{ type: "paragraph", text: "hi" }] },
@@ -195,10 +196,10 @@ const ROUNDTRIPPABLE_IR = {
  *  data URI so the later `runRender` on the disassembled directory actually
  *  embeds the image again, not just produces a structurally valid pptx. */
 const ROUNDTRIPPABLE_IR_WITH_ASSET = {
-  version: "3",
+  version: "4",
   filename: "roundtrip-asset-test",
   theme: { id: "tech" },
-  scenario: { delivery: "presentation" },
+  narrative: { pacing: "spacious" },
   assets: { images: { logo: { src: `data:image/png;base64,${PNG_1PX.toString("base64")}` } } },
   slides: [
     { id: "s-cover", type: "cover", heading: "Cover" },
@@ -213,7 +214,7 @@ const ROUNDTRIPPABLE_IR_WITH_ASSET = {
  *  `runDisassemble` summary must not claim to have written a `pages/`
  *  directory that was never created). */
 const IR_ALL_PLACEHOLDERS = {
-  version: "3",
+  version: "4",
   filename: "cli-test-all-placeholder",
   theme: { id: "tech" },
   slides: [
@@ -292,7 +293,7 @@ describe("runAudit (W6 task 2)", () => {
 
   it("resolves a deck project directory through the same loadDeckTarget path as validate/render", async () => {
     const deckDir = await makeDeckDir("pptfast-audit-dir-")
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     await mkdir(join(deckDir, "pages"))
     await writeFile(join(deckDir, "pages", "p-cover.json"), "{}")
     await writeFile(
@@ -314,19 +315,19 @@ describe("runAudit (W6 task 2)", () => {
   })
 })
 
-describe("runPlanValidate", () => {
-  it("reports OK with page count, resolved scenario, and theme for a valid plan", async () => {
-    await expect(runPlanValidate(join(dir, "plan.json"))).resolves.toBe(
-      'OK — 4 pages, scenario pyramid/presentation/executive, theme "consulting"',
+describe("runSpecValidate", () => {
+  it("reports OK with page count, resolved narrative, and theme for a valid spec", async () => {
+    await expect(runSpecValidate(join(dir, "plan.json"))).resolves.toBe(
+      'OK — 4 pages, narrative pyramid/spacious/executive, theme "consulting"',
     )
   })
-  it("throws with the issue list, including page ids, for an invalid plan", async () => {
-    await expect(runPlanValidate(join(dir, "bad-plan.json"))).rejects.toThrow(/invalid plan.*no pages/s)
+  it("throws with the issue list, including page ids, for an invalid spec", async () => {
+    await expect(runSpecValidate(join(dir, "bad-plan.json"))).rejects.toThrow(/invalid spec.*no pages/s)
   })
   it("throws a readable error for a file that is not valid JSON", async () => {
     const badJsonPath = join(dir, "not-json-plan.json")
     await writeFile(badJsonPath, "{ not json")
-    await expect(runPlanValidate(badJsonPath)).rejects.toThrow(/not valid JSON/)
+    await expect(runSpecValidate(badJsonPath)).rejects.toThrow(/not valid JSON/)
   })
 })
 
@@ -383,11 +384,11 @@ describe("runSchema / runThemes", () => {
   })
 })
 
-describe("runScenarios", () => {
-  const presetCount = Object.keys(SCENARIO_PRESETS).length
+describe("runNarratives", () => {
+  const presetCount = Object.keys(NARRATIVE_PRESETS).length
 
   it("prints one row per preset in human mode, id/axes/theme recommendations", () => {
-    const lines = runScenarios(false).split("\n")
+    const lines = runNarratives(false).split("\n")
     expect(lines).toHaveLength(presetCount)
     const generalLine = lines.find((l) => l.startsWith("general"))
     expect(generalLine).toBeDefined()
@@ -396,18 +397,18 @@ describe("runScenarios", () => {
   })
 
   it("prints the full machine payload in json mode", () => {
-    const payload = JSON.parse(runScenarios(true)) as {
-      presets: Record<string, { axes: { mode: string; delivery: string; audience: string } }>
-      modes: Record<string, unknown>
-      deliveries: Record<string, unknown>
+    const payload = JSON.parse(runNarratives(true)) as {
+      presets: Record<string, { axes: { strategy: string; pacing: string; audience: string } }>
+      strategies: Record<string, unknown>
+      pacings: Record<string, unknown>
       audiences: string[]
     }
     expect(Object.keys(payload.presets)).toHaveLength(presetCount)
-    expect(payload.presets.general?.axes).toEqual({ mode: "briefing", delivery: "balanced", audience: "public" })
-    expect(Object.keys(payload.modes)).toEqual(
-      expect.arrayContaining(["pyramid", "narrative", "instructional", "showcase", "briefing"]),
+    expect(payload.presets.general?.axes).toEqual({ strategy: "briefing", pacing: "balanced", audience: "public" })
+    expect(Object.keys(payload.strategies)).toEqual(
+      expect.arrayContaining(["pyramid", "storytelling", "instructional", "showcase", "briefing"]),
     )
-    expect(Object.keys(payload.deliveries)).toEqual(expect.arrayContaining(["text", "balanced", "presentation"]))
+    expect(Object.keys(payload.pacings)).toEqual(expect.arrayContaining(["dense", "balanced", "spacious"]))
     expect(payload.audiences).toEqual(expect.arrayContaining(["executive", "technical", "customer", "public"]))
   })
 })
@@ -457,7 +458,7 @@ describe("runPreview --html (W7 task 1)", () => {
 
   it("works for deck project directory input too (loadDeckTarget's dir branch)", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     const out = join(deckDir, "svgs-html")
     await runPreview(deckDir, out, { htmlOut: true })
     const html = await readFile(join(out, "preview.html"), "utf8")
@@ -523,11 +524,11 @@ describe("runSchema --style", () => {
   })
 })
 
-describe("runSchema --plan", () => {
-  it("prints the deck plan schema", () => {
-    const s = JSON.parse(runSchema("plan")) as { properties?: Record<string, unknown> }
+describe("runSchema --spec", () => {
+  it("prints the deck spec schema", () => {
+    const s = JSON.parse(runSchema("spec")) as { properties?: Record<string, unknown> }
     expect(Object.keys(s.properties ?? {})).toEqual(
-      expect.arrayContaining(["version", "scenario", "theme", "pages"]),
+      expect.arrayContaining(["version", "narrative", "theme", "pages"]),
     )
   })
 })
@@ -632,9 +633,9 @@ describe("runInit", () => {
 // ── W5 task 5: deck project directories ─────────────────────────────────
 
 describe("deck project directory workflow (W5 task 5)", () => {
-  it("walks the brief's end-to-end scenario: partial pages → assemble → draft render → fill → render", async () => {
+  it("walks the brief's end-to-end narrative: partial pages → assemble → draft render → fill → render", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     await mkdir(join(deckDir, "pages"))
     await writeFile(
       join(deckDir, "pages", "p-a.json"),
@@ -654,12 +655,12 @@ describe("deck project directory workflow (W5 task 5)", () => {
     await writeFile(join(deckDir, "pages", "p-ending.json"), "{}")
 
     // assemble → placeholder present, seed-generation note included (the
-    // plan omits `seed`).
+    // spec omits `seed`).
     const assembleMsg1 = await runAssemble(deckDir)
     expect(assembleMsg1).toContain(join(deckDir, "deck.json"))
     expect(assembleMsg1).toContain("5 slides")
     expect(assembleMsg1).toContain("1 placeholder")
-    expect(assembleMsg1).toContain("to deck.plan.json for revision stability")
+    expect(assembleMsg1).toContain("to deck.spec.json for revision stability")
     const seedMatch1 = /generated seed (\d+)/.exec(assembleMsg1)
     expect(seedMatch1).not.toBeNull()
     // Backlog item 9a (`.issues/notes/2026-07-18-post-v03-backlog.md` #9a):
@@ -697,7 +698,7 @@ describe("deck project directory workflow (W5 task 5)", () => {
     )
 
     // re-assemble is idempotent: the generated seed is stable (a function of
-    // the plan's filename + page-id sequence, never page content or fill
+    // the spec's filename + page-id sequence, never page content or fill
     // state — plan/assemble.ts's generateSeed) and every page is now filled.
     const assembleMsg2 = await runAssemble(deckDir)
     expect(assembleMsg2).toContain("0 placeholders")
@@ -721,7 +722,7 @@ describe("bare-name resolution through CLI commands (W5 task 5)", () => {
     await withPptfastHome(home, async () => {
       const deckDir = join(home, "decks", "q3-review")
       await mkdir(deckDir, { recursive: true })
-      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
       const cwd = await makeDeckDir("pptfast-barecwd-")
       const msg = await runAssemble("q3-review", { cwd })
       expect(msg).toContain(join(deckDir, "deck.json"))
@@ -765,7 +766,7 @@ describe("bare-name resolution through CLI commands (W5 task 5)", () => {
 describe("structural deck-directory errors surface through the CLI shell (W5 task 5)", () => {
   it("surfaces an orphan page-file error through runValidate", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     await mkdir(join(deckDir, "pages"))
     await writeFile(join(deckDir, "pages", "not-a-real-page.json"), "{}")
     await expect(runValidate(deckDir)).rejects.toThrow(/orphan page id "not-a-real-page"/)
@@ -773,30 +774,30 @@ describe("structural deck-directory errors surface through the CLI shell (W5 tas
 
   it("surfaces a locked-field error through runRender", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     await mkdir(join(deckDir, "pages"))
     await writeFile(join(deckDir, "pages", "p-a.json"), JSON.stringify({ heading: "sneaky" }))
     await expect(
       runRender(deckDir, { output: join(deckDir, "out.pptx") }),
-    ).rejects.toThrow(/"heading" is locked by the plan/)
+    ).rejects.toThrow(/"heading" is locked by the spec/)
   })
 
-  it("surfaces the missing-plan-file error through runPreview", async () => {
+  it("surfaces the missing-spec-file error through runPreview", async () => {
     const deckDir = await makeDeckDir()
-    await expect(runPreview(deckDir, join(deckDir, "svgs"))).rejects.toThrow(/pptfast plan validate/)
+    await expect(runPreview(deckDir, join(deckDir, "svgs"))).rejects.toThrow(/pptfast spec validate/)
   })
 
-  it("surfaces an invalid-plan error through runAssemble", async () => {
+  it("surfaces an invalid-spec error through runAssemble", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify({ pages: [] }))
-    await expect(runAssemble(deckDir)).rejects.toThrow(/invalid plan.*no pages/s)
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify({ pages: [] }))
+    await expect(runAssemble(deckDir)).rejects.toThrow(/invalid spec.*no pages/s)
   })
 })
 
 describe("runValidate prints a placeholder note only for deck-directory input (W5 task 5)", () => {
   it("notes unfilled placeholder pages when validating a deck directory", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     await mkdir(join(deckDir, "pages"))
     await writeFile(
       join(deckDir, "pages", "p-a.json"),
@@ -819,7 +820,7 @@ describe("runValidate prints a placeholder note only for deck-directory input (W
 describe("assets/ auto-registration reaches rendered output (W5 task 5)", () => {
   it("inlines a deck-dir asset as a data URI in the previewed SVG", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     await mkdir(join(deckDir, "pages"))
     await writeFile(
       join(deckDir, "pages", "p-a.json"),
@@ -840,11 +841,11 @@ describe("assets/ auto-registration reaches rendered output (W5 task 5)", () => 
 describe("runAssemble", () => {
   it("writes deck.json to <dir>/deck.json by default and reports the placeholder count", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     const msg = await runAssemble(deckDir)
     expect(msg).toContain(join(deckDir, "deck.json"))
     expect(msg).toContain("5 slides")
-    expect(msg).toContain("5 placeholders") // no pages/ dir at all — every plan page unfilled
+    expect(msg).toContain("5 placeholders") // no pages/ dir at all — every spec page unfilled
     const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
     expect(written.slides).toHaveLength(5)
 
@@ -863,16 +864,16 @@ describe("runAssemble", () => {
 
   it("writes to a custom -o path when given", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     const customOut = join(deckDir, "custom.json")
     await runAssemble(deckDir, { output: customOut })
     const written = JSON.parse(await readFile(customOut, "utf8"))
     expect(written.slides).toHaveLength(5)
   })
 
-  it("has no generated-seed note when the plan already sets seed (a materialized-layout note may still appear — a separate concern)", async () => {
+  it("has no generated-seed note when the spec already sets seed (a materialized-layout note may still appear — a separate concern)", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
     const msg = await runAssemble(deckDir)
     expect(msg).not.toContain("generated seed")
     expect(msg).not.toContain("revision stability")
@@ -885,7 +886,7 @@ describe("runAssemble", () => {
     // No pages/ dir at all — every one of makeDeckPlan()'s 5 pages is an
     // unfilled placeholder, so every one of them also omits `layout` and
     // gets materialized.
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
     const msg = await runAssemble(deckDir)
     expect(msg).toContain("note: 5 layouts auto-selected into deck.json")
     const written = JSON.parse(await readFile(join(deckDir, "deck.json"), "utf8"))
@@ -894,7 +895,7 @@ describe("runAssemble", () => {
 
   it("has no materialized-layout note when every page already pins its own layout", async () => {
     const deckDir = await makeDeckDir()
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan({ seed: 424242 })))
     await mkdir(join(deckDir, "pages"))
     await Promise.all([
       writeFile(join(deckDir, "pages", "p-cover.json"), JSON.stringify({ layout: "banner-title" })),
@@ -915,9 +916,9 @@ describe("runAssemble", () => {
     ])
   })
 
-  it("never modifies the user's plan file, even when it suggests writing a seed back", async () => {
+  it("never modifies the user's spec file, even when it suggests writing a seed back", async () => {
     const deckDir = await makeDeckDir()
-    const planPath = join(deckDir, "deck.plan.json")
+    const planPath = join(deckDir, "deck.spec.json")
     const planText = JSON.stringify(makeDeckPlan())
     await writeFile(planPath, planText)
     await runAssemble(deckDir)
@@ -931,16 +932,16 @@ describe("runAssemble", () => {
     await expect(runAssemble(filePath)).rejects.toThrow(/expected a deck project directory/)
   })
 
-  it("still surfaces the detailed missing-plan-file error for a target that does not exist at all", async () => {
+  it("still surfaces the detailed missing-spec-file error for a target that does not exist at all", async () => {
     const d = await makeDeckDir()
     const missing = join(d, "does-not-exist")
-    await expect(runAssemble(missing)).rejects.toThrow(/pptfast plan validate/)
+    await expect(runAssemble(missing)).rejects.toThrow(/pptfast spec validate/)
   })
 
   describe("cwd + output-relative-asset portability (W5 review fix)", () => {
     it("resolves a relative -o against the cwd param, not the real process.cwd()", async () => {
       const deckDir = await makeDeckDir()
-      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
       const otherCwd = await makeDeckDir()
       const msg = await runAssemble(deckDir, { output: "custom-out.json", cwd: otherCwd })
       const expected = join(otherCwd, "custom-out.json")
@@ -951,7 +952,7 @@ describe("runAssemble", () => {
 
     it("rewrites relative asset srcs to stay correct when -o writes outside the deck directory", async () => {
       const deckDir = await makeDeckDir()
-      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
       await mkdir(join(deckDir, "pages"))
       await writeFile(
         join(deckDir, "pages", "p-a.json"),
@@ -984,7 +985,7 @@ describe("runAssemble", () => {
 
     it("leaves asset srcs untouched when -o stays inside the deck directory", async () => {
       const deckDir = await makeDeckDir()
-      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
       await mkdir(join(deckDir, "assets"))
       await writeFile(join(deckDir, "assets", "logo.png"), PNG_1PX)
       await runAssemble(deckDir, { output: join(deckDir, "custom.json") })
@@ -995,24 +996,24 @@ describe("runAssemble", () => {
 })
 
 describe("runDisassemble", () => {
-  it("splits an IR file into deck.plan.json + pages/<id>.json", async () => {
+  it("splits an IR file into deck.spec.json + pages/<id>.json", async () => {
     const srcDir = await makeDeckDir()
     const irPath = join(srcDir, "deck.json")
     await writeFile(irPath, JSON.stringify(VALID_IR))
     const outDir = await makeDeckDir()
     const msg = await runDisassemble(irPath, outDir)
-    expect(msg).toContain(join(outDir, "deck.plan.json"))
+    expect(msg).toContain(join(outDir, "deck.spec.json"))
 
-    const plan = JSON.parse(await readFile(join(outDir, "deck.plan.json"), "utf8"))
-    expect(plan.pages).toHaveLength(2)
-    expect(plan.theme).toBe("tech")
+    const spec = JSON.parse(await readFile(join(outDir, "deck.spec.json"), "utf8"))
+    expect(spec.pages).toHaveLength(2)
+    expect(spec.theme).toBe("tech")
 
     // VALID_IR's slides omit `id` — disassembleDeck synthesizes p-<ordinal>-<type>.
     const pageFiles = (await readdir(join(outDir, "pages"))).sort()
     expect(pageFiles).toEqual(["p-1-cover.json", "p-2-content.json"])
   })
 
-  it("refuses to overwrite an existing deck.plan.json", async () => {
+  it("refuses to overwrite an existing deck.spec.json", async () => {
     const srcDir = await makeDeckDir()
     const irPath = join(srcDir, "deck.json")
     await writeFile(irPath, JSON.stringify(VALID_IR))
@@ -1072,11 +1073,11 @@ describe("runDisassemble", () => {
       )
       // Failure rollback (post-v0.3 W8 fix round, backlog item 8): unlike the
       // path-traversal case above, this failure happens in writeDeckAssets,
-      // well after deck.plan.json and pages/*.json were both written
-      // successfully — the plan file this run itself created must not
+      // well after deck.spec.json and pages/*.json were both written
+      // successfully — the spec file this run itself created must not
       // survive, or it would misrepresent this outDir as an already,
       // successfully disassembled deck project.
-      await expect(stat(join(outDir, "deck.plan.json"))).rejects.toThrow()
+      await expect(stat(join(outDir, "deck.spec.json"))).rejects.toThrow()
     })
 
     it("copies a local file asset into assets/, resolving relative to the input IR's own directory", async () => {
@@ -1150,16 +1151,16 @@ describe("runDisassemble", () => {
       }
 
       // Failure rollback (post-v0.3 W8 fix round, backlog item 8): the id
-      // check now runs before deck.plan.json is even written, so a failed
-      // run leaves no plan file at all — not a residual one that no longer
+      // check now runs before deck.spec.json is even written, so a failed
+      // run leaves no spec file at all — not a residual one that no longer
       // matches what (if anything) landed in pages/.
-      await expect(stat(join(outDir, "deck.plan.json"))).rejects.toThrow()
+      await expect(stat(join(outDir, "deck.spec.json"))).rejects.toThrow()
     })
 
     // Task-3 review, optional nit routed to this wave: the case above
     // always starts from an `outDir` that `makeDeckDir()` (mkdtemp) already
     // created, so it can't tell "the id check runs before mkdir" apart from
-    // "the id check runs before the plan write" — outDir existing either
+    // "the id check runs before the spec write" — outDir existing either
     // way. `runDisassemble` (commands.ts) runs the `assertSafeFileSegment`
     // loop before its own `mkdir(outDir, { recursive: true })` call, so an
     // unsafe id must fail without ever creating `outDir` at all when it
@@ -1195,23 +1196,181 @@ describe("runDisassemble", () => {
     })
   })
 
-  describe("failure-rollback plan-file cleanup (post-v0.3 W8 fix round, backlog item 8)", () => {
-    it("never deletes a pre-existing deck.plan.json this call did not itself create", async () => {
+  describe("failure-rollback spec-file cleanup (post-v0.3 W8 fix round, backlog item 8)", () => {
+    it("never deletes a pre-existing deck.spec.json this call did not itself create", async () => {
       const srcDir = await makeDeckDir()
       const irPath = join(srcDir, "deck.json")
       await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR))
       const outDir = await makeDeckDir()
-      const preExisting = JSON.stringify({ sentinel: "pre-existing plan, not written by this call" })
-      await writeFile(join(outDir, "deck.plan.json"), preExisting)
+      const preExisting = JSON.stringify({ sentinel: "pre-existing spec, not written by this call" })
+      await writeFile(join(outDir, "deck.spec.json"), preExisting)
 
       // The `wx` no-overwrite guard rejects before the rollback scope is
       // ever entered — this is a "failed run" in the sense backlog item 8
-      // is about, but the plan file it fails on was never this call's own
+      // is about, but the spec file it fails on was never this call's own
       // to delete.
       await expect(runDisassemble(irPath, outDir)).rejects.toThrow(/already exists/)
 
-      const stillThere = await readFile(join(outDir, "deck.plan.json"), "utf8")
+      const stillThere = await readFile(join(outDir, "deck.spec.json"), "utf8")
       expect(stillThere).toBe(preExisting)
+    })
+  })
+})
+
+// ── runMigrate (spec §9.1/§9.2/§9.3, vocabulary-v4 rename, task 2) ────────
+
+const V3_IR = {
+  version: "3",
+  filename: "migrate-cli-test",
+  scenario: { mode: "narrative", delivery: "text", audience: "public" },
+  theme: { id: "consulting" },
+  slides: [
+    { type: "cover", heading: "Migrate CLI Test" },
+    { type: "content", heading: "Body", components: [{ type: "paragraph", text: "hi" }] },
+  ],
+}
+
+function makeLegacyDeckPlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    version: "1",
+    scenario: "boardroom-report",
+    theme: "consulting",
+    filename: "migrate-deck-dir-test",
+    pages: [
+      { id: "p-cover", type: "cover", heading: "Cover" },
+      { id: "p-a", type: "content", heading: "Segment A", rhythm: "anchor" },
+      { id: "p-b", type: "content", heading: "Segment B" },
+      { id: "p-ending", type: "ending", heading: "Thanks" },
+    ],
+    ...extra,
+  }
+}
+
+describe("runMigrate", () => {
+  describe("v3 IR file leg", () => {
+    it("migrates version + the mode/delivery field-and-value mapping to a v4 output file", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v3.json")
+      await writeFile(irPath, JSON.stringify(V3_IR))
+      const outPath = join(await makeDeckDir(), "v4.json")
+
+      const msg = await runMigrate(irPath, outPath)
+      expect(msg).toContain(outPath)
+
+      const written = JSON.parse(await readFile(outPath, "utf8"))
+      expect(written.version).toBe("4")
+      expect(written.scenario).toBeUndefined()
+      // spec §9.1: mode "narrative" → strategy "storytelling", delivery
+      // "text" → pacing "dense", audience carries through unchanged.
+      expect(written.narrative).toEqual({ strategy: "storytelling", pacing: "dense", audience: "public" })
+      expect(written.filename).toBe("migrate-cli-test")
+      expect(written.slides).toHaveLength(2)
+    })
+
+    it("never overwrites an existing output file", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v3.json")
+      await writeFile(irPath, JSON.stringify(V3_IR))
+      const outPath = join(await makeDeckDir(), "v4.json")
+      await runMigrate(irPath, outPath)
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/already exists/)
+    })
+
+    it("rejects IR v2 with a message pointing at validate's own combined v2→v4 mapping, not a silent v3 reinterpretation", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v2.json")
+      await writeFile(irPath, JSON.stringify({ version: "2", slides: [] }))
+      const outPath = join(await makeDeckDir(), "v4.json")
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/does not support IR v2/)
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/pptfast validate/)
+    })
+
+    it("rejects a file that is already v4 — nothing to migrate", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "v4.json")
+      await writeFile(irPath, JSON.stringify(VALID_IR))
+      const outPath = join(await makeDeckDir(), "out.json")
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/only converts an IR v3 file/)
+    })
+
+    it("rejects a v3-labeled file that fails PptxIRV3Schema, naming the issue", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "bad-v3.json")
+      await writeFile(irPath, JSON.stringify({ version: "3", slides: "not-an-array" }))
+      const outPath = join(await makeDeckDir(), "out.json")
+      await expect(runMigrate(irPath, outPath)).rejects.toThrow(/invalid IR v3 file/)
+    })
+  })
+
+  describe("deck-dir leg", () => {
+    it("rewrites deck.plan.json to deck.spec.json per spec §9.2's mapping, leaving every other field verbatim", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan()))
+
+      const msg = await runMigrate(deckDir, deckDir)
+      expect(msg).toContain(join(deckDir, "deck.spec.json"))
+
+      const written = JSON.parse(await readFile(join(deckDir, "deck.spec.json"), "utf8"))
+      expect(written.scenario).toBeUndefined()
+      expect(written.narrative).toBe("boardroom-report")
+      expect(written.theme).toBe("consulting")
+      expect(written.filename).toBe("migrate-deck-dir-test")
+      const pageA = written.pages.find((p: { id: string }) => p.id === "p-a")
+      expect(pageA.rhythm).toBeUndefined()
+      expect(pageA.beat).toBe("anchor")
+      const pageB = written.pages.find((p: { id: string }) => p.id === "p-b")
+      expect(pageB.beat).toBeUndefined() // no rhythm on the source page — nothing to rename
+
+      // The source file is never touched — migrate only ever adds the new one.
+      const stillThere = JSON.parse(await readFile(join(deckDir, "deck.plan.json"), "utf8"))
+      expect(stillThere.scenario).toBe("boardroom-report")
+    })
+
+    it("never overwrites an existing deck.spec.json", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan()))
+      await runMigrate(deckDir, deckDir)
+      await expect(runMigrate(deckDir, deckDir)).rejects.toThrow(/already exists/)
+    })
+
+    it("can write the migrated spec to a different output directory than the source", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan()))
+      const outDir = await makeDeckDir()
+      await runMigrate(deckDir, outDir)
+      expect(await readFile(join(outDir, "deck.spec.json"), "utf8")).toBeDefined()
+      await expect(stat(join(deckDir, "deck.spec.json"))).rejects.toThrow()
+    })
+
+    it("surfaces a readable error when the directory has no deck.plan.json to migrate", async () => {
+      const deckDir = await makeDeckDir()
+      await expect(runMigrate(deckDir, deckDir)).rejects.toThrow(/cannot read plan file/)
+    })
+
+    it("surfaces a friendly 'already migrated' error, not the generic read failure, when deck.spec.json exists and deck.plan.json is already gone", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan()))
+      await runMigrate(deckDir, deckDir)
+      await unlink(join(deckDir, "deck.plan.json"))
+
+      await expect(runMigrate(deckDir, deckDir)).rejects.toThrow(/already migrated/)
+      await expect(runMigrate(deckDir, deckDir)).rejects.not.toThrow(/cannot read plan file/)
+    })
+
+    it("the resulting deck.spec.json validates and assembles cleanly once the legacy file is removed (dual-file hard error otherwise)", async () => {
+      const deckDir = await makeDeckDir()
+      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeLegacyDeckPlan()))
+      await runMigrate(deckDir, deckDir)
+
+      // Both files present — the deck-dir loader must hard-error, not guess.
+      await expect(runAssemble(deckDir)).rejects.toThrow(/deck\.plan\.json/)
+      await expect(runAssemble(deckDir)).rejects.toThrow(/deck\.spec\.json/)
+
+      await unlink(join(deckDir, "deck.plan.json"))
+      const spec = JSON.parse(await readFile(join(deckDir, "deck.spec.json"), "utf8"))
+      await expect(runSpecValidate(join(deckDir, "deck.spec.json"))).resolves.toMatch(/^OK —/)
+      const assembleMsg = await runAssemble(deckDir)
+      expect(assembleMsg).toContain(`${spec.pages.length} slides`)
     })
   })
 })
@@ -1324,7 +1483,7 @@ describe("decksDir redirect (W5 task 5)", () => {
     await withPptfastHome(home, async () => {
       const deckDir = join(teamDecks, "q3-review")
       await mkdir(deckDir, { recursive: true })
-      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
       const cwd = await makeDeckDir("pptfast-redirect-cwd-")
       const msg = await runAssemble("q3-review", { cwd })
       expect(msg).toContain(join(deckDir, "deck.json"))
@@ -1337,7 +1496,7 @@ describe("decksDir redirect (W5 task 5)", () => {
     await withPptfastHome(home, async () => {
       const deckDir = join(home, "team-decks", "q3-review")
       await mkdir(deckDir, { recursive: true })
-      await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+      await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
       // cwd is deliberately unrelated to `home` — a cwd-relative (mis)read of
       // decksDir would resolve to a directory under `cwd`, not find this one.
       const cwd = await makeDeckDir("pptfast-redirect-relative-cwd-")
@@ -1357,14 +1516,14 @@ describe("decksDir redirect — project config precedence (W5 task 6, controller
     await writeFile(join(projectRoot, "pptfast.config.json"), JSON.stringify({ decksDir: "team-decks" }))
     const projectDeckDir = join(projectRoot, "team-decks", "q3-review")
     await mkdir(projectDeckDir, { recursive: true })
-    await writeFile(join(projectDeckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(projectDeckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
 
     // Same bare name also resolves to something real under the user's
     // decksDir, so this proves project wins on a genuine conflict, not just
     // by being the only candidate that exists.
     const userDeckDir = join(userDecks, "q3-review")
     await mkdir(userDeckDir, { recursive: true })
-    await writeFile(join(userDeckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan({ filename: "wrong-deck" })))
+    await writeFile(join(userDeckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan({ filename: "wrong-deck" })))
 
     await withPptfastHome(home, async () => {
       const msg = await runAssemble("q3-review", { cwd: projectRoot })
@@ -1382,7 +1541,7 @@ describe("decksDir redirect — project config precedence (W5 task 6, controller
 
     const deckDir = join(userDecks, "q3-review")
     await mkdir(deckDir, { recursive: true })
-    await writeFile(join(deckDir, "deck.plan.json"), JSON.stringify(makeDeckPlan()))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
 
     await withPptfastHome(home, async () => {
       const msg = await runAssemble("q3-review", { cwd: projectRoot })

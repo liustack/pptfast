@@ -245,3 +245,115 @@ export function normalizeComponentAliases(input: unknown): NormalizeAliasesResul
   })
   return { value: changed ? { ...input, slides } : input, normalized }
 }
+
+// ── v4 narrative alias layer (vocabulary-v4 rename, spec §15.4) ──────────
+//
+// A separate rescue layer from everything above this comment: the alias
+// tables above all normalize *inside* `slides[]` (component field names and
+// their item-array entries). This one instead normalizes the IR *root* —
+// the pre-rename `scenario` field name, and the pre-rename `mode`/`delivery`
+// field names and enum values one level down, inside that field's own
+// object shape. Same rescue posture as every alias above (deterministic,
+// printed, never a silent accept, both-present-is-ambiguous-and-untouched)
+// but a distinct walk because it operates above `slides[]`, a level
+// `normalizeComponentAliases` never visits.
+//
+// Scope, per spec §15.4 ("v4 内旧字段走别名不走硬拦"): only applies to a
+// document already headed for the v4 schema — `validateIr` (`src/api.ts`)
+// hard-rejects an explicit `version: "2"` or `version: "3"` *before* this
+// ever runs, so by the time `normalizeNarrativeAliases` sees an input, its
+// `version` is either omitted (v4's own default, spec §15.1) or explicitly
+// `"4"`. A v3 document that also happens to spell its axes the old way is
+// never silently reinterpreted as v4 through this rescue — it is caught by
+// the hard version check first, every time.
+
+/** Root-level (IR-document) field alias for the v4 IR (spec §15.4): `scenario` → `narrative`. */
+export const IR_ROOT_FIELD_ALIASES: FieldAliasMap = { scenario: "narrative" }
+
+/** `narrative` object field aliases (spec §15.4): `mode` → `strategy`, `delivery` → `pacing`. */
+export const NARRATIVE_FIELD_ALIASES: FieldAliasMap = { mode: "strategy", delivery: "pacing" }
+
+/**
+ * Old narrative-axis enum value → new enum value, keyed by the *canonical*
+ * (post-rename) axis key it applies to — spec §15.4's "旧枚举值" plus spec
+ * §9.1's value-mapping table: the `strategy` axis's old `"narrative"` value
+ * is now `"storytelling"`; the `pacing` axis's old `"text"` value is now
+ * `"dense"` and old `"presentation"` is now `"spacious"` (`"balanced"` is
+ * unchanged, so it needs no entry). Applied regardless of whether the value
+ * arrived under the old field name or was already written under the new one
+ * (e.g. a document that writes `strategy: "narrative"`, mixing the new field
+ * name with the old value, still gets rescued) — field-name aliasing and
+ * value aliasing are independent normalizations, not required to co-occur.
+ */
+export const NARRATIVE_VALUE_ALIASES: Readonly<Record<string, FieldAliasMap>> = {
+  strategy: { narrative: "storytelling" },
+  pacing: { text: "dense", presentation: "spacious" },
+}
+
+/**
+ * Rewrite any old-vocabulary values found at `narrative`'s own top-level
+ * axis keys, per {@link NARRATIVE_VALUE_ALIASES}. Same "clone lazily once,
+ * only on an actual rewrite" discipline as {@link renameAliases}, and
+ * intentionally *not* built on top of it — that helper renames *keys*, this
+ * rewrites the *value* already sitting at a fixed (canonical) key, a
+ * different operation with no ambiguity case to guard (a single key can only
+ * hold one value, so there is no "both present" conflict to detect here).
+ */
+function normalizeNarrativeValues(
+  narrative: Record<string, unknown>,
+  path: string,
+  normalized: string[],
+): Record<string, unknown> {
+  let next = narrative
+  for (const [axis, valueAliases] of Object.entries(NARRATIVE_VALUE_ALIASES)) {
+    const current = next[axis]
+    if (typeof current !== "string") continue
+    const canonicalValue = valueAliases[current]
+    if (canonicalValue === undefined) continue
+    if (next === narrative) next = { ...narrative } // clone lazily, once, on the first actual rewrite
+    next[axis] = canonicalValue
+    normalized.push(`${path}.${axis}: ${current} → ${canonicalValue}`)
+  }
+  return next
+}
+
+/**
+ * Root-level alias normalization for the v4 IR document (spec §15.4): a
+ * document parsed as v4 that still writes the pre-rename field name
+ * (`scenario`), or writes `narrative` but with the pre-rename axis field
+ * names (`mode`/`delivery`) or pre-rename enum values (`mode: "narrative"`,
+ * `delivery: "text"` / `"presentation"`), gets rescued the same way
+ * {@link normalizeComponentAliases} rescues a component field-name typo —
+ * rewritten to the canonical v4 spelling, with a printed `path: alias →
+ * canonical` note, never a silent accept and never a hard reject.
+ *
+ * Same ambiguity rule as {@link renameAliases} throughout this module: both
+ * the alias and the canonical key present at the same level is left
+ * untouched (a real conflict, not an omission) for the zod strict parse (or,
+ * one level down inside `narrative`, `resolveNarrative`'s own runtime axis-
+ * key check — `narrative` is an open record at the schema layer, not
+ * `.strict()`, see `NarrativeProfileInputSchema`'s docstring in `ir/index.ts`)
+ * to report on its own terms.
+ *
+ * `validateIr` (`src/api.ts`) runs this before {@link normalizeComponentAliases}
+ * and before the schema parse — see this section's own header comment for
+ * why a v3/v2 document never reaches this rescue at all.
+ */
+export function normalizeNarrativeAliases(input: unknown): NormalizeAliasesResult {
+  const normalized: string[] = []
+  if (!isPlainObject(input)) return { value: input, normalized }
+
+  const next = renameAliases(input, IR_ROOT_FIELD_ALIASES, "(root)", normalized)
+
+  const narrative = next.narrative
+  if (!isPlainObject(narrative)) return { value: next, normalized }
+
+  let nextNarrative = renameAliases(narrative, NARRATIVE_FIELD_ALIASES, "(root).narrative", normalized)
+  nextNarrative = normalizeNarrativeValues(nextNarrative, "(root).narrative", normalized)
+  if (nextNarrative === narrative) return { value: next, normalized }
+
+  return {
+    value: next === input ? { ...input, narrative: nextNarrative } : { ...next, narrative: nextNarrative },
+    normalized,
+  }
+}

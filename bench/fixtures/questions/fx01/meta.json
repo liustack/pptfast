@@ -2,8 +2,8 @@
   "id": "fx01",
   "title": "Fixture: clean bare IR",
   "coverage": {
-    "mode": "briefing",
-    "delivery": "text",
+    "strategy": "briefing",
+    "pacing": "dense",
     "expects_components": ["bullets", "kpi_cards"],
     "workflow": "bare-ir",
     "image_deck": false

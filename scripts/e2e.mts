@@ -148,7 +148,7 @@ if (sharpMod) {
   await sharpMod(PNG_1PX).webp().toFile(webpPath)
 
   const webpDeck = {
-    version: "3",
+    version: "4",
     filename: "pptfast-webp-smoke",
     theme: { id: "consulting" },
     assets: { images: { smoke: { src: "smoke.webp" } } },
@@ -194,9 +194,9 @@ const deckDir = join(OUT, "deck-dir-demo")
 rmSync(deckDir, { recursive: true, force: true })
 mkdirSync(join(deckDir, "pages"), { recursive: true })
 
-const deckPlan = {
+const deckSpec = {
   version: "1",
-  scenario: "boardroom-report",
+  narrative: "boardroom-report",
   theme: "consulting",
   filename: "pptfast-e2e-deck-dir",
   pages: [
@@ -206,14 +206,14 @@ const deckPlan = {
     { id: "p-ending", type: "ending", heading: "Thanks" },
   ],
 }
-writeFileSync(join(deckDir, "deck.plan.json"), JSON.stringify(deckPlan))
+writeFileSync(join(deckDir, "deck.spec.json"), JSON.stringify(deckSpec))
 writeFileSync(join(deckDir, "pages", "p-cover.json"), JSON.stringify({}))
 writeFileSync(
   join(deckDir, "pages", "p-goals.json"),
   JSON.stringify({
-    // Short items on purpose — this plan's scenario ("boardroom-report")
-    // resolves to "presentation" delivery, the tightest bullets budget
-    // (DELIVERY_BUDGETS.presentation.bullets.maxUnitsPerItem, src/scenario/index.ts).
+    // Short items on purpose — this spec's narrative ("boardroom-report")
+    // resolves to "spacious" pacing, the tightest bullets budget
+    // (PACING_BUDGETS.spacious.bullets.maxUnitsPerItem, src/scenario/index.ts).
     components: [
       {
         type: "bullets",
@@ -221,16 +221,16 @@ writeFileSync(
       },
     ],
     // speaker notes (notes+preview wave, task 1) — content, not locked by the
-    // plan, exported as native PowerPoint speaker notes, asserted against
+    // spec, exported as native PowerPoint speaker notes, asserted against
     // the final render's notesSlide2.xml below.
     notes: "Emphasize that every shape stays editable in PowerPoint, not a flattened image.",
   }),
 )
 writeFileSync(join(deckDir, "pages", "p-ending.json"), JSON.stringify({}))
-// pages/p-roadmap.json is deliberately never written yet — that plan page
+// pages/p-roadmap.json is deliberately never written yet — that spec page
 // has no matching page file, so it must assemble as a placeholder.
 
-console.log(sh("node", ["dist/cli.js", "plan", "validate", join(deckDir, "deck.plan.json")]))
+console.log(sh("node", ["dist/cli.js", "spec", "validate", join(deckDir, "deck.spec.json")]))
 
 const assembleOut = sh("node", ["dist/cli.js", "assemble", deckDir])
 console.log(assembleOut)
@@ -317,6 +317,155 @@ if (finalSlide2.includes("Emphasize that every shape stays editable")) {
 }
 console.log("deck-dir speaker-notes leg OK (notesSlide2.xml carries p-goals's notes text, slide2.xml canvas does not)")
 
+// 6b) migrate leg (spec §9.1/§9.2/§9.3, vocabulary-v4 rename, task 2):
+//     `pptfast migrate` for both accepted input shapes — a pre-rename
+//     deck.plan.json project directory, and a v3 IR file — plus the
+//     "never overwrite" and dual-file hard-error contracts.
+console.log("--- migrate leg ---")
+
+// (a) deck-dir leg: old plan dir → migrate → spec validate → assemble green.
+const migrateDeckDir = join(OUT, "migrate-deck-dir-demo")
+rmSync(migrateDeckDir, { recursive: true, force: true })
+mkdirSync(join(migrateDeckDir, "pages"), { recursive: true })
+const legacyDeckPlan = {
+  version: "1",
+  scenario: "boardroom-report",
+  theme: "consulting",
+  filename: "pptfast-e2e-migrate-deck-dir",
+  pages: [
+    { id: "p-cover", type: "cover", heading: "Migrate Demo" },
+    { id: "p-a", type: "content", heading: "Segment A", rhythm: "anchor" },
+    { id: "p-b", type: "content", heading: "Segment B" },
+    { id: "p-ending", type: "ending", heading: "Thanks" },
+  ],
+}
+writeFileSync(join(migrateDeckDir, "deck.plan.json"), JSON.stringify(legacyDeckPlan))
+writeFileSync(join(migrateDeckDir, "pages", "p-cover.json"), JSON.stringify({}))
+writeFileSync(
+  join(migrateDeckDir, "pages", "p-a.json"),
+  JSON.stringify({ components: [{ type: "paragraph", text: "Segment A detail" }] }),
+)
+writeFileSync(
+  join(migrateDeckDir, "pages", "p-b.json"),
+  JSON.stringify({ components: [{ type: "paragraph", text: "Segment B detail" }] }),
+)
+writeFileSync(join(migrateDeckDir, "pages", "p-ending.json"), JSON.stringify({}))
+
+const migrateDeckDirOut = sh("node", [
+  "dist/cli.js",
+  "migrate",
+  migrateDeckDir,
+  "-o",
+  migrateDeckDir,
+])
+console.log(migrateDeckDirOut)
+const migratedSpecPath = join(migrateDeckDir, "deck.spec.json")
+if (!existsSync(migratedSpecPath)) {
+  throw new Error("e2e: migrate leg — deck.spec.json was not written alongside deck.plan.json")
+}
+const migratedSpec = JSON.parse(readFileSync(migratedSpecPath, "utf8")) as Record<string, unknown>
+if (migratedSpec.scenario !== undefined || migratedSpec.narrative !== "boardroom-report") {
+  throw new Error(`e2e: migrate leg — expected narrative: "boardroom-report", no scenario field, got: ${JSON.stringify(migratedSpec)}`)
+}
+const migratedPageA = (migratedSpec.pages as Array<Record<string, unknown>>).find((p) => p.id === "p-a")
+if (migratedPageA?.rhythm !== undefined || migratedPageA?.beat !== "anchor") {
+  throw new Error(`e2e: migrate leg — expected p-a's rhythm field renamed to beat: "anchor", got: ${JSON.stringify(migratedPageA)}`)
+}
+// The pre-rename deck.plan.json must survive untouched (never overwritten,
+// never deleted by migrate itself) — the caller deletes it once satisfied.
+if (!existsSync(join(migrateDeckDir, "deck.plan.json"))) {
+  throw new Error("e2e: migrate leg — migrate must never delete the source deck.plan.json")
+}
+console.log("migrate deck-dir leg OK (deck.spec.json written, narrative/beat fields renamed, source file untouched)")
+
+// Dual-file hard error (spec §9.2): both files present must refuse to guess.
+const dualFileStderr = shExpectFail("node", ["dist/cli.js", "assemble", migrateDeckDir])
+if (!/deck\.plan\.json/.test(dualFileStderr) || !/deck\.spec\.json/.test(dualFileStderr)) {
+  throw new Error(`e2e: migrate leg — expected the dual-file hard error to name both files, got: ${dualFileStderr}`)
+}
+console.log("migrate dual-file hard-error leg OK (assemble refuses while both files are present)")
+
+// Never-overwrite: re-running migrate at the same -o must refuse, not clobber.
+const migrateOverwriteStderr = shExpectFail("node", ["dist/cli.js", "migrate", migrateDeckDir, "-o", migrateDeckDir])
+if (!/already exists/.test(migrateOverwriteStderr)) {
+  throw new Error(`e2e: migrate leg — expected a re-run to refuse to overwrite deck.spec.json, got: ${migrateOverwriteStderr}`)
+}
+
+// Delete the legacy file (the documented next step) — spec validate and
+// assemble must both go green on the migrated deck.spec.json alone.
+rmSync(join(migrateDeckDir, "deck.plan.json"))
+console.log(sh("node", ["dist/cli.js", "spec", "validate", migratedSpecPath]))
+const migrateAssembleOut = sh("node", ["dist/cli.js", "assemble", migrateDeckDir])
+console.log(migrateAssembleOut)
+if (!migrateAssembleOut.includes("(4 slides, 0 placeholders)")) {
+  throw new Error(`e2e: migrate leg — expected a clean 4-slide, 0-placeholder assemble, got: ${migrateAssembleOut}`)
+}
+console.log("migrate deck-dir leg OK end to end (spec validate + assemble green after deleting the legacy file)")
+
+// (b) v3 IR file leg: mode "narrative" → strategy "storytelling", delivery
+//     "text" → pacing "dense" — the exact spec §9.1 value mapping, not just
+//     a field rename.
+const v3Ir = {
+  version: "3",
+  filename: "pptfast-e2e-migrate-v3",
+  scenario: { mode: "narrative", delivery: "text", audience: "public" },
+  theme: { id: "consulting" },
+  slides: [
+    { type: "cover", heading: "Migrate v3 Demo" },
+    { type: "content", heading: "Body", components: [{ type: "paragraph", text: "migrated from v3" }] },
+  ],
+}
+const v3IrPath = join(OUT, "migrate-v3-input.json")
+writeFileSync(v3IrPath, JSON.stringify(v3Ir))
+const v4OutPath = join(OUT, "migrate-v3-output.json")
+// Clean slate — a leftover output file from a previous run would falsify
+// both this call (should succeed on a fresh target) and the never-overwrite
+// check just below it (should fail only because *this run* just wrote it).
+rmSync(v4OutPath, { force: true })
+console.log(sh("node", ["dist/cli.js", "migrate", v3IrPath, "-o", v4OutPath]))
+const migratedV4 = JSON.parse(readFileSync(v4OutPath, "utf8")) as Record<string, unknown>
+if (migratedV4.version !== "4") {
+  throw new Error(`e2e: migrate leg — expected version "4" in the migrated v3→v4 output, got: ${JSON.stringify(migratedV4.version)}`)
+}
+const migratedNarrative = migratedV4.narrative as Record<string, unknown> | undefined
+if (migratedNarrative?.strategy !== "storytelling" || migratedNarrative?.pacing !== "dense") {
+  throw new Error(`e2e: migrate leg — expected strategy "storytelling" / pacing "dense", got: ${JSON.stringify(migratedNarrative)}`)
+}
+console.log(sh("node", ["dist/cli.js", "validate", v4OutPath]))
+// Never-overwrite for the single-file leg too.
+const migrateV3OverwriteStderr = shExpectFail("node", ["dist/cli.js", "migrate", v3IrPath, "-o", v4OutPath])
+if (!/already exists/.test(migrateV3OverwriteStderr)) {
+  throw new Error(`e2e: migrate leg — expected a re-run to refuse to overwrite the v4 output file, got: ${migrateV3OverwriteStderr}`)
+}
+console.log("migrate v3-IR-file leg OK (version + mode/delivery value mapping, validates as v4, no-overwrite enforced)")
+
+// (c) v2 is explicitly not accepted (spec §15.3: "pptfast migrate 只支持
+//     v3→v4，不接 v2").
+const v2Path = join(OUT, "migrate-v2-input.json")
+writeFileSync(v2Path, JSON.stringify({ version: "2", slides: [] }))
+const migrateV2Stderr = shExpectFail("node", ["dist/cli.js", "migrate", v2Path, "-o", join(OUT, "migrate-v2-output.json")])
+if (!/v2/.test(migrateV2Stderr)) {
+  throw new Error(`e2e: migrate leg — expected the v2-rejection message to mention v2, got: ${migrateV2Stderr}`)
+}
+console.log("migrate v2-rejection leg OK (pptfast migrate refuses v2 input)")
+
+// 6c) vocabulary-v4 old-command hard-fail leg (spec §8.2): no long-lived
+//     aliases — each removed command must fail and name the one new command.
+console.log("--- old-command hard-fail leg ---")
+const scenariosStderr = shExpectFail("node", ["dist/cli.js", "scenarios"])
+if (!/pptfast narratives/.test(scenariosStderr)) {
+  throw new Error(`e2e: old-command leg — expected \`pptfast scenarios\` to point at \`pptfast narratives\`, got: ${scenariosStderr}`)
+}
+const schemaPlanStderr = shExpectFail("node", ["dist/cli.js", "schema", "--plan"])
+if (!/pptfast schema --spec/.test(schemaPlanStderr)) {
+  throw new Error(`e2e: old-command leg — expected \`pptfast schema --plan\` to point at \`pptfast schema --spec\`, got: ${schemaPlanStderr}`)
+}
+const planValidateStderr = shExpectFail("node", ["dist/cli.js", "plan", "validate", migratedSpecPath])
+if (!/pptfast spec validate/.test(planValidateStderr)) {
+  throw new Error(`e2e: old-command leg — expected \`pptfast plan validate\` to point at \`pptfast spec validate\`, got: ${planValidateStderr}`)
+}
+console.log("old-command hard-fail leg OK (scenarios / schema --plan / plan validate all point at their replacements)")
+
 // 7) audit leg (W6 task 2, spec §7 workflow ④): a clean deck must exit 0; a
 //    deliberately near-background text color (theme.style override,
 //    validate-legal — same fixture shape as deck-audit.test.ts's own
@@ -337,7 +486,7 @@ if (!/audited 5 pages, 0 skipped, 0 findings/.test(cleanAudit.stdout)) {
 console.log("audit clean-deck leg OK (examples/basic.json exits 0)")
 
 const lowContrastDeck = {
-  version: "3",
+  version: "4",
   filename: "pptfast-e2e-audit-low-contrast",
   // Near consulting's own colors.bg (#F7F7F2) — validate-legal (theme.style
   // is a schema-open deep-partial override), renderer-level unreadable.
@@ -395,7 +544,7 @@ console.log("audit --json leg OK (machine-readable AuditReport, exit 1, low-cont
 console.log("--- structure-components leg ---")
 
 const structuresDeck = {
-  version: "3",
+  version: "4",
   filename: "pptfast-e2e-structure-components",
   theme: { id: "consulting" },
   slides: [

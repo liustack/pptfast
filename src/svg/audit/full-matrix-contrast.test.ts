@@ -79,7 +79,7 @@ const SUBHEADING = "示例副标题：用于穷举扫描的**所见即所得**�
 
 function deckFor(themeId: string, slide: Slide): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "full-matrix-contrast-fixture",
     theme: { id: themeId },
     meta: {},
@@ -684,8 +684,8 @@ describe("colors.muted component-type coverage (task-2 fix round, backlog 5a com
     // membership check against a hand-maintained map, not an attempt to
     // auto-infer rendering behavior from source. `Object.hasOwn`, not the
     // `in` operator (post-v0.3 W8 fix round, reviewer nitpick —
-    // prototype-key hygiene, same precedent as `resolveScenario`'s own
-    // `Object.hasOwn(SCENARIO_PRESETS, input)` check, `src/scenario/
+    // prototype-key hygiene, same precedent as `resolveNarrative`'s own
+    // `Object.hasOwn(NARRATIVE_PRESETS, input)` check, `src/scenario/
     // index.ts`): `in` also matches inherited/prototype-chain keys (e.g.
     // `"toString" in {}` is `true`), which a component type named the same
     // as an `Object.prototype` member would silently satisfy without ever

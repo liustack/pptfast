@@ -2,8 +2,8 @@
   "id": "q19",
   "title": "Annual Shareholder Meeting Keynote",
   "coverage": {
-    "mode": "narrative",
-    "delivery": "presentation",
+    "strategy": "storytelling",
+    "pacing": "spacious",
     "expects_components": [
       "quote",
       "verdict_banner"

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
-  DeckPlanSchema,
-  PLAN_PAGE_COUNT_RANGE,
-  formatPlanIssues,
-  planJsonSchema,
-  resolvePlanThemeId,
-  validatePlan,
-  type DeckPlan,
-  type PlanValidationIssue,
+  DeckSpecSchema,
+  SPEC_PAGE_COUNT_RANGE,
+  formatSpecIssues,
+  specJsonSchema,
+  resolveSpecThemeId,
+  validateSpec,
+  type DeckSpec,
+  type SpecValidationIssue,
 } from "./index"
 
 // ── fixture builders ──────────────────────────────────────────────────────
@@ -41,10 +41,10 @@ function makePlan(pages: unknown[], extra: Record<string, unknown> = {}) {
   return { pages, ...extra }
 }
 
-/** A minimal structurally-valid plan, no rhythm/focus declared anywhere (so
- *  it never trips the rhythm or focus gates). 6 pages — the general preset's
- *  resolved delivery (balanced) floors the page count at 6 — so this stays
- *  ok under the *default*, omitted `scenario` field, which several tests
+/** A minimal structurally-valid plan, no beat/focus declared anywhere (so
+ *  it never trips the beat or focus gates). 6 pages — the general preset's
+ *  resolved pacing (balanced) floors the page count at 6 — so this stays
+ *  ok under the *default*, omitted `narrative` field, which several tests
  *  below rely on (they're specifically exercising "omitted → general"). */
 function minimalValidPlan(extra: Record<string, unknown> = {}) {
   return makePlan(
@@ -54,27 +54,27 @@ function minimalValidPlan(extra: Record<string, unknown> = {}) {
 }
 
 /** Wrap one "interesting" page under test in an otherwise-boring plan sized
- *  to clear the presentation delivery's page-count floor (4) — for tests
+ *  to clear the spacious pacing's page-count floor (4) — for tests
  *  that care about one specific page-level property and want the boundary/
  *  count gates to be a non-issue. */
 function wrapPage(target: Record<string, unknown>, extra: Record<string, unknown> = {}) {
   return makePlan([cover(), target, content("p-filler"), ending()], {
-    scenario: { delivery: "presentation" },
+    narrative: { pacing: "spacious" },
     ...extra,
   })
 }
 
-function expectOk(input: unknown): DeckPlan {
-  const r = validatePlan(input)
+function expectOk(input: unknown): DeckSpec {
+  const r = validateSpec(input)
   if (!r.ok) {
-    throw new Error(`expected ok, got errors:\n${formatPlanIssues(r.errors)}`)
+    throw new Error(`expected ok, got errors:\n${formatSpecIssues(r.errors)}`)
   }
-  expect(r.plan).toBeDefined()
-  return r.plan!
+  expect(r.spec).toBeDefined()
+  return r.spec!
 }
 
-function expectErrors(input: unknown): PlanValidationIssue[] {
-  const r = validatePlan(input)
+function expectErrors(input: unknown): SpecValidationIssue[] {
+  const r = validateSpec(input)
   expect(r.ok).toBe(false)
   expect(r.errors.length).toBeGreaterThan(0)
   return r.errors
@@ -82,11 +82,11 @@ function expectErrors(input: unknown): PlanValidationIssue[] {
 
 // ── schema accept/reject ────────────────────────────────────────────────
 
-describe("DeckPlanSchema / validatePlan structural pass", () => {
+describe("DeckSpecSchema / validateSpec structural pass", () => {
   it("accepts the spec §5 example shape", () => {
     const plan = expectOk({
       version: "1",
-      scenario: "boardroom-report",
+      narrative: "boardroom-report",
       theme: "consulting",
       filename: "q3-review",
       seed: 12345,
@@ -95,7 +95,7 @@ describe("DeckPlanSchema / validatePlan structural pass", () => {
         cover("p-cover", { heading: "Q3 复盘", summary: "…" }),
         content("p-kpi", {
           heading: "季度业绩创历史新高",
-          rhythm: "anchor",
+          beat: "anchor",
           focus: "kpi_cards",
           summary: "内容锚点，仅供填页自读",
         }),
@@ -117,46 +117,46 @@ describe("DeckPlanSchema / validatePlan structural pass", () => {
     expect(plan.meta).toEqual({})
   })
 
-  it("allows scenario/theme/filename/seed/summary/rhythm/focus to be omitted", () => {
-    // No scenario override on purpose (this test is about field omission) —
-    // padded to 6 pages so the *default* resolved delivery (balanced, floor
+  it("allows narrative/theme/filename/seed/summary/beat/focus to be omitted", () => {
+    // No narrative override on purpose (this test is about field omission) —
+    // padded to 6 pages so the *default* resolved pacing (balanced, floor
     // 6) doesn't fail the page-count gate first.
     const plan = expectOk(minimalValidPlan())
     expect(plan.theme).toBeUndefined()
-    expect(plan.scenario).toBeUndefined()
+    expect(plan.narrative).toBeUndefined()
     expect(plan.filename).toBeUndefined()
     expect(plan.seed).toBeUndefined()
   })
 
   it("rejects an explicit wrong version literal", () => {
-    const r = validatePlan(minimalValidPlan({ version: "2" }))
+    const r = validateSpec(minimalValidPlan({ version: "2" }))
     expect(r.ok).toBe(false)
   })
 
   it("rejects unknown top-level keys (strict)", () => {
-    const r = validatePlan(minimalValidPlan({ notAField: true }))
+    const r = validateSpec(minimalValidPlan({ notAField: true }))
     expect(r.ok).toBe(false)
   })
 
   it("rejects unknown page-level keys (strict)", () => {
-    const r = validatePlan(makePlan([cover(), content("p-body", { notAField: true }), ending()]))
+    const r = validateSpec(makePlan([cover(), content("p-body", { notAField: true }), ending()]))
     expect(r.ok).toBe(false)
   })
 
-  it("rejects a bad rhythm enum value", () => {
-    const r = validatePlan(makePlan([cover(), content("p-body", { rhythm: "chill" }), ending()]))
+  it("rejects a bad beat enum value", () => {
+    const r = validateSpec(makePlan([cover(), content("p-body", { beat: "chill" }), ending()]))
     expect(r.ok).toBe(false)
   })
 
   it("rejects a bad page type enum value", () => {
-    const r = validatePlan(makePlan([cover(), content("p-body", { type: "sidebar" }), ending()]))
+    const r = validateSpec(makePlan([cover(), content("p-body", { type: "sidebar" }), ending()]))
     expect(r.ok).toBe(false)
   })
 
   it("structural errors attach the page id when the raw input still has one", () => {
-    const errors = expectErrors(makePlan([cover(), content("p-body", { rhythm: "chill" }), ending()]))
-    const rhythmError = errors.find((e) => e.path === "pages.1.rhythm")
-    expect(rhythmError?.pageId).toBe("p-body")
+    const errors = expectErrors(makePlan([cover(), content("p-body", { beat: "chill" }), ending()]))
+    const beatError = errors.find((e) => e.path === "pages.1.beat")
+    expect(beatError?.pageId).toBe("p-body")
   })
 })
 
@@ -197,7 +197,7 @@ describe("hard gate: boundary types (first cover, last ending, no cover/ending m
   })
 
   it("allows a chapter page in the middle of the deck", () => {
-    expectOk(makePlan([cover(), chapter("p-ch"), content("p-a"), ending()], { scenario: { delivery: "presentation" } }))
+    expectOk(makePlan([cover(), chapter("p-ch"), content("p-a"), ending()], { narrative: { pacing: "spacious" } }))
   })
 
   it("reports both violations for a single-page plan (neither cover nor ending)", () => {
@@ -227,7 +227,7 @@ describe("hard gate: page id required + unique", () => {
   it("does not require kebab-case ids", () => {
     expectOk(
       makePlan([cover("P_Cover 1"), content("p-a"), content("p-b"), ending("END")], {
-        scenario: { delivery: "presentation" },
+        narrative: { pacing: "spacious" },
       }),
     )
   })
@@ -290,7 +290,7 @@ describe("hard gate: heading required + ≤48 chars (CAPACITY.headingMaxChars)",
 describe("hard gate: theme resolution (installed-theme check)", () => {
   it("accepts an omitted theme (defaults to consulting)", () => {
     const plan = expectOk(minimalValidPlan())
-    expect(resolvePlanThemeId(plan)).toBe("consulting")
+    expect(resolveSpecThemeId(plan)).toBe("consulting")
   })
 
   it("accepts a known built-in theme", () => {
@@ -306,88 +306,90 @@ describe("hard gate: theme resolution (installed-theme check)", () => {
   })
 })
 
-// ── hard gate: scenario resolution ──────────────────────────────────────
+// ── hard gate: narrative resolution ─────────────────────────────────────
 
-describe("hard gate: scenario resolution (resolveScenario try/catch)", () => {
-  it("accepts an omitted scenario (defaults to general)", () => {
+describe("hard gate: narrative resolution (resolveNarrative try/catch)", () => {
+  it("accepts an omitted narrative (defaults to general)", () => {
     expectOk(minimalValidPlan())
   })
 
   it("accepts a named preset string", () => {
-    expectOk(minimalValidPlan({ scenario: "boardroom-report" }))
+    expectOk(minimalValidPlan({ narrative: "boardroom-report" }))
   })
 
   it("rejects an unknown preset name and lists available presets", () => {
-    const errors = expectErrors(minimalValidPlan({ scenario: "not-a-preset" }))
+    const errors = expectErrors(minimalValidPlan({ narrative: "not-a-preset" }))
     expect(errors).toHaveLength(1)
-    expect(errors[0]!.path).toBe("scenario")
-    expect(errors[0]!.message).toMatch(/unknown scenario preset "not-a-preset"/)
+    expect(errors[0]!.path).toBe("narrative")
+    expect(errors[0]!.message).toMatch(/unknown narrative preset "not-a-preset"/)
   })
 
   it("rejects an unknown axis value inside an axes object", () => {
-    const errors = expectErrors(minimalValidPlan({ scenario: { mode: "not-a-mode" } }))
-    expect(errors[0]!.path).toBe("scenario")
-    expect(errors[0]!.message).toMatch(/unknown mode "not-a-mode"/)
+    const errors = expectErrors(minimalValidPlan({ narrative: { strategy: "not-a-mode" } }))
+    expect(errors[0]!.path).toBe("narrative")
+    expect(errors[0]!.message).toMatch(/unknown strategy "not-a-mode"/)
   })
 })
 
-// ── hard gate: rhythm rotation policy matrix (all 5 modes) ─────────────
+// ── hard gate: beat rotation policy matrix (all 5 modes) ─────────────
 
-describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () => {
-  const axes = (mode: string) => ({ mode, delivery: "presentation", audience: "public" })
+describe("hard gate: beat rotation, parameterized by strategy's beatPolicy", () => {
+  const axes = (strategy: string) => ({ strategy, pacing: "spacious", audience: "public" })
 
   describe("pyramid — anchor-open (only the first content page is checked)", () => {
     it("accepts when the first content page declares anchor", () => {
-      expectOk(makePlan([cover(), content("p-1", { rhythm: "anchor" }), content("p-2"), ending()], { scenario: axes("pyramid") }))
+      expectOk(makePlan([cover(), content("p-1", { beat: "anchor" }), content("p-2"), ending()], { narrative: axes("pyramid") }))
     })
 
-    it("accepts when the first content page declares no rhythm at all", () => {
-      expectOk(makePlan([cover(), content("p-1"), content("p-2"), ending()], { scenario: axes("pyramid") }))
+    it("accepts when the first content page declares no beat at all", () => {
+      expectOk(makePlan([cover(), content("p-1"), content("p-2"), ending()], { narrative: axes("pyramid") }))
     })
 
-    it("rejects when the first content page declares a non-anchor rhythm", () => {
+    it("rejects when the first content page declares a non-anchor beat", () => {
       const errors = expectErrors(
-        makePlan([cover(), content("p-1", { rhythm: "dense" }), content("p-2"), ending()], { scenario: axes("pyramid") }),
+        makePlan([cover(), content("p-1", { beat: "dense" }), content("p-2"), ending()], { narrative: axes("pyramid") }),
       )
       expect(errors.some((e) => e.pageId === "p-1" && /open its first content page on "anchor"/.test(e.message))).toBe(
         true,
       )
+      expect(errors.some((e) => e.pageId === "p-1" && /strategy "pyramid"/.test(e.message))).toBe(true) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
     })
 
-    it("does not check later content pages' rhythm at all", () => {
+    it("does not check later content pages' beat at all", () => {
       expectOk(
         makePlan(
-          [cover(), content("p-1", { rhythm: "anchor" }), content("p-2", { rhythm: "dense" }), content("p-3", { rhythm: "dense" }), content("p-4", { rhythm: "dense" }), ending()],
-          { scenario: axes("pyramid") },
+          [cover(), content("p-1", { beat: "anchor" }), content("p-2", { beat: "dense" }), content("p-3", { beat: "dense" }), content("p-4", { beat: "dense" }), ending()],
+          { narrative: axes("pyramid") },
         ),
       )
     })
 
     it("is vacuously fine when there are no content pages at all", () => {
-      expectOk(makePlan([cover(), chapter("p-1"), chapter("p-2"), ending()], { scenario: axes("pyramid") }))
+      expectOk(makePlan([cover(), chapter("p-1"), chapter("p-2"), ending()], { narrative: axes("pyramid") }))
     })
   })
 
-  describe("narrative — alternate (hard error on 3+ consecutive same-rhythm content pages)", () => {
-    it("accepts exactly 2 consecutive same-rhythm content pages", () => {
+  describe("storytelling — alternate (hard error on 3+ consecutive same-beat content pages)", () => {
+    it("accepts exactly 2 consecutive same-beat content pages", () => {
       expectOk(
-        makePlan([cover(), content("p-1", { rhythm: "anchor" }), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "dense" }), ending()], {
-          scenario: axes("narrative"),
+        makePlan([cover(), content("p-1", { beat: "anchor" }), content("p-2", { beat: "anchor" }), content("p-3", { beat: "dense" }), ending()], {
+          narrative: axes("storytelling"),
         }),
       )
     })
 
-    it("rejects exactly 3 consecutive same-rhythm content pages", () => {
+    it("rejects exactly 3 consecutive same-beat content pages", () => {
       const errors = expectErrors(
         makePlan(
-          [cover(), content("p-1", { rhythm: "anchor" }), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "anchor" }), ending()],
-          { scenario: axes("narrative") },
+          [cover(), content("p-1", { beat: "anchor" }), content("p-2", { beat: "anchor" }), content("p-3", { beat: "anchor" }), ending()],
+          { narrative: axes("storytelling") },
         ),
       )
-      const err = errors.find((e) => /requires rhythm to alternate/.test(e.message))
+      const err = errors.find((e) => /requires beat to alternate/.test(e.message))
       expect(err).toBeDefined()
       expect(err!.message).toMatch(/3 consecutive/)
       expect(err!.message).toMatch(/p-1, p-2, p-3/)
+      expect(err!.message).toMatch(/strategy "storytelling"/) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
       expect(err!.pageId).toBe("p-1")
     })
 
@@ -396,16 +398,16 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
         makePlan(
           [
             cover(),
-            content("p-1", { rhythm: "breathing" }),
-            content("p-2", { rhythm: "breathing" }),
-            content("p-3", { rhythm: "breathing" }),
-            content("p-4", { rhythm: "breathing" }),
+            content("p-1", { beat: "breathing" }),
+            content("p-2", { beat: "breathing" }),
+            content("p-3", { beat: "breathing" }),
+            content("p-4", { beat: "breathing" }),
             ending(),
           ],
-          { scenario: axes("narrative") },
+          { narrative: axes("storytelling") },
         ),
       )
-      const streakErrors = errors.filter((e) => /requires rhythm to alternate/.test(e.message))
+      const streakErrors = errors.filter((e) => /requires beat to alternate/.test(e.message))
       expect(streakErrors).toHaveLength(1)
       expect(streakErrors[0]!.message).toMatch(/4 consecutive/)
     })
@@ -415,71 +417,71 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
         makePlan(
           [
             cover(),
-            content("p-1", { rhythm: "anchor" }),
-            content("p-2", { rhythm: "dense" }),
-            content("p-3", { rhythm: "anchor" }),
-            content("p-4", { rhythm: "dense" }),
+            content("p-1", { beat: "anchor" }),
+            content("p-2", { beat: "dense" }),
+            content("p-3", { beat: "anchor" }),
+            content("p-4", { beat: "dense" }),
             ending(),
           ],
-          { scenario: axes("narrative") },
+          { narrative: axes("storytelling") },
         ),
       )
     })
 
-    it("a chapter page between two same-rhythm content pages does not break the streak", () => {
+    it("a chapter page between two same-beat content pages does not break the streak", () => {
       const errors = expectErrors(
         makePlan(
-          [cover(), content("p-1", { rhythm: "anchor" }), chapter("p-ch"), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "anchor" }), ending()],
-          { scenario: axes("narrative") },
+          [cover(), content("p-1", { beat: "anchor" }), chapter("p-ch"), content("p-2", { beat: "anchor" }), content("p-3", { beat: "anchor" }), ending()],
+          { narrative: axes("storytelling") },
         ),
       )
-      const err = errors.find((e) => /requires rhythm to alternate/.test(e.message))
+      const err = errors.find((e) => /requires beat to alternate/.test(e.message))
       expect(err).toBeDefined()
       expect(err!.message).toMatch(/p-1, p-2, p-3/)
     })
 
-    it("an undeclared-rhythm content page between two same-rhythm pages does not break the streak either", () => {
+    it("an undeclared-beat content page between two same-beat pages does not break the streak either", () => {
       const errors = expectErrors(
         makePlan(
-          [cover(), content("p-1", { rhythm: "anchor" }), content("p-gap"), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "anchor" }), ending()],
-          { scenario: axes("narrative") },
+          [cover(), content("p-1", { beat: "anchor" }), content("p-gap"), content("p-2", { beat: "anchor" }), content("p-3", { beat: "anchor" }), ending()],
+          { narrative: axes("storytelling") },
         ),
       )
-      const err = errors.find((e) => /requires rhythm to alternate/.test(e.message))
+      const err = errors.find((e) => /requires beat to alternate/.test(e.message))
       expect(err).toBeDefined()
       expect(err!.message).toMatch(/p-1, p-2, p-3/)
       expect(err!.message).not.toMatch(/p-gap/)
     })
 
-    it("never flags pages that omit rhythm entirely", () => {
-      expectOk(makePlan([cover(), content("p-1"), content("p-2"), content("p-3"), content("p-4"), ending()], { scenario: axes("narrative") }))
+    it("never flags pages that omit beat entirely", () => {
+      expectOk(makePlan([cover(), content("p-1"), content("p-2"), content("p-3"), content("p-4"), ending()], { narrative: axes("storytelling") }))
     })
   })
 
   describe("instructional — repetition-ok (exempt entirely)", () => {
-    it("accepts any number of consecutive same-rhythm content pages", () => {
+    it("accepts any number of consecutive same-beat content pages", () => {
       expectOk(
         makePlan(
           [
             cover(),
-            content("p-1", { rhythm: "dense" }),
-            content("p-2", { rhythm: "dense" }),
-            content("p-3", { rhythm: "dense" }),
-            content("p-4", { rhythm: "dense" }),
-            content("p-5", { rhythm: "dense" }),
+            content("p-1", { beat: "dense" }),
+            content("p-2", { beat: "dense" }),
+            content("p-3", { beat: "dense" }),
+            content("p-4", { beat: "dense" }),
+            content("p-5", { beat: "dense" }),
             ending(),
           ],
-          { scenario: axes("instructional") },
+          { narrative: axes("instructional") },
         ),
       )
     })
   })
 
-  describe("showcase — anchor-sparse (hard error if >50% of declared-rhythm content pages are anchor)", () => {
+  describe("showcase — anchor-sparse (hard error if >50% of declared-beat content pages are anchor)", () => {
     it("accepts exactly 50% anchor", () => {
       expectOk(
-        makePlan([cover(), content("p-1", { rhythm: "anchor" }), content("p-2", { rhythm: "dense" }), ending()], {
-          scenario: axes("showcase"),
+        makePlan([cover(), content("p-1", { beat: "anchor" }), content("p-2", { beat: "dense" }), ending()], {
+          narrative: axes("showcase"),
         }),
       )
     })
@@ -487,29 +489,30 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
     it("rejects when anchor is a strict majority (2 of 3)", () => {
       const errors = expectErrors(
         makePlan(
-          [cover(), content("p-1", { rhythm: "anchor" }), content("p-2", { rhythm: "anchor" }), content("p-3", { rhythm: "dense" }), ending()],
-          { scenario: axes("showcase") },
+          [cover(), content("p-1", { beat: "anchor" }), content("p-2", { beat: "anchor" }), content("p-3", { beat: "dense" }), ending()],
+          { narrative: axes("showcase") },
         ),
       )
       const err = errors.find((e) => /stay a minority/.test(e.message))
       expect(err).toBeDefined()
       expect(err!.message).toMatch(/2 of 3/)
+      expect(err!.message).toMatch(/strategy "showcase"/) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
       // Representative pageId (first anchor page), same shape as
       // checkAlternatePolicy's own issue.
       expect(err!.pageId).toBe("p-1")
     })
 
-    it("is vacuously fine when no content page declares a rhythm", () => {
-      expectOk(makePlan([cover(), content("p-1"), content("p-2"), ending()], { scenario: axes("showcase") }))
+    it("is vacuously fine when no content page declares a beat", () => {
+      expectOk(makePlan([cover(), content("p-1"), content("p-2"), ending()], { narrative: axes("showcase") }))
     })
   })
 
   describe("briefing — uniform-dense (exempt entirely)", () => {
-    it("accepts uniform dense rhythm across every content page", () => {
+    it("accepts uniform dense beat across every content page", () => {
       expectOk(
         makePlan(
-          [cover(), content("p-1", { rhythm: "dense" }), content("p-2", { rhythm: "dense" }), content("p-3", { rhythm: "dense" }), ending()],
-          { scenario: axes("briefing") },
+          [cover(), content("p-1", { beat: "dense" }), content("p-2", { beat: "dense" }), content("p-3", { beat: "dense" }), ending()],
+          { narrative: axes("briefing") },
         ),
       )
     })
@@ -518,130 +521,131 @@ describe("hard gate: rhythm rotation, parameterized by mode's rhythmPolicy", () 
 
 // ── hard gate: focus vocabulary ─────────────────────────────────────────
 
-describe("hard gate: focus vocabulary (mode tendencies ∪ component types ∪ layout ids)", () => {
-  const pyramidScenario = { mode: "pyramid", delivery: "presentation", audience: "executive" }
+describe("hard gate: focus vocabulary (strategy tendencies ∪ component types ∪ layout ids)", () => {
+  const pyramidScenario = { strategy: "pyramid", pacing: "spacious", audience: "executive" }
 
-  it("accepts a focus drawn from the resolved mode's own tendencies", () => {
-    expectOk(wrapPage(content("p-1", { focus: "kpi_cards" }), { scenario: pyramidScenario }))
+  it("accepts a focus drawn from the resolved strategy's own tendencies", () => {
+    expectOk(wrapPage(content("p-1", { focus: "kpi_cards" }), { narrative: pyramidScenario }))
   })
 
-  it("accepts a focus that is a global component type outside the mode's tendencies", () => {
+  it("accepts a focus that is a global component type outside the strategy's tendencies", () => {
     // "bullets" is a real component type, not in pyramid's tendency set
-    expectOk(wrapPage(content("p-1", { focus: "bullets" }), { scenario: pyramidScenario }))
+    expectOk(wrapPage(content("p-1", { focus: "bullets" }), { narrative: pyramidScenario }))
   })
 
-  it("accepts a focus that is a registered layout id outside the mode's tendencies", () => {
+  it("accepts a focus that is a registered layout id outside the strategy's tendencies", () => {
     // "two-column" is a real layout id, not in pyramid's tendency set
-    expectOk(wrapPage(content("p-1", { focus: "two-column" }), { scenario: pyramidScenario }))
+    expectOk(wrapPage(content("p-1", { focus: "two-column" }), { narrative: pyramidScenario }))
   })
 
   it("rejects a focus that matches none of the three vocabularies", () => {
     const errors = expectErrors(
-      makePlan([cover(), content("p-1", { focus: "not_a_real_thing" }), ending()], { scenario: pyramidScenario }),
+      makePlan([cover(), content("p-1", { focus: "not_a_real_thing" }), ending()], { narrative: pyramidScenario }),
     )
     const err = errors.find((e) => e.pageId === "p-1")
     expect(err).toBeDefined()
     expect(err!.message).toMatch(/unknown focus "not_a_real_thing"/)
-    expect(err!.message).toMatch(/kpi_cards/) // mode tendency list present
+    expect(err!.message).toMatch(/strategy "pyramid"/) // W4 task 4: pin the renamed vocabulary, not leftover "mode"
+    expect(err!.message).toMatch(/kpi_cards/) // strategy tendency list present
     expect(err!.message).toMatch(/bullets/) // component type vocabulary present
     expect(err!.message).toMatch(/two-column/) // layout id vocabulary present
   })
 
   it("accepts an omitted focus", () => {
-    expectOk(wrapPage(content("p-1"), { scenario: pyramidScenario }))
+    expectOk(wrapPage(content("p-1"), { narrative: pyramidScenario }))
   })
 })
 
-// ── hard gate: page count vs delivery ───────────────────────────────────
+// ── hard gate: page count vs pacing ─────────────────────────────────────
 
-describe("hard gate: page count within the delivery's suggested range", () => {
+describe("hard gate: page count within the pacing's suggested range", () => {
   function decksOfSize(n: number) {
     const middle = Array.from({ length: n - 2 }, (_, i) => content(`p-${i}`))
     return makePlan([cover(), ...middle, ending()])
   }
 
-  it("accepts the presentation delivery's lower boundary (4 pages)", () => {
-    expectOk({ ...decksOfSize(4), scenario: { delivery: "presentation" } })
+  it("accepts the spacious pacing's lower boundary (4 pages)", () => {
+    expectOk({ ...decksOfSize(4), narrative: { pacing: "spacious" } })
   })
 
-  it("rejects one below the presentation lower boundary (3 pages)", () => {
-    const errors = expectErrors({ ...decksOfSize(3), scenario: { delivery: "presentation" } })
+  it("rejects one below the spacious lower boundary (3 pages)", () => {
+    const errors = expectErrors({ ...decksOfSize(3), narrative: { pacing: "spacious" } })
     expect(errors).toHaveLength(1)
     expect(errors[0]!.path).toBe("pages")
-    expect(errors[0]!.message).toMatch(/plan has 3 pages/)
-    expect(errors[0]!.message).toMatch(/"presentation" delivery expects 4-16 pages/)
-    expect(errors[0]!.message).toMatch(/change delivery or add\/remove pages/)
+    expect(errors[0]!.message).toMatch(/spec has 3 pages/)
+    expect(errors[0]!.message).toMatch(/"spacious" pacing expects 4-16 pages/)
+    expect(errors[0]!.message).toMatch(/change pacing or add\/remove pages/)
   })
 
-  it("accepts the presentation delivery's upper boundary (16 pages)", () => {
-    expectOk({ ...decksOfSize(16), scenario: { delivery: "presentation" } })
+  it("accepts the spacious pacing's upper boundary (16 pages)", () => {
+    expectOk({ ...decksOfSize(16), narrative: { pacing: "spacious" } })
   })
 
-  it("rejects one above the presentation upper boundary (17 pages)", () => {
-    const errors = expectErrors({ ...decksOfSize(17), scenario: { delivery: "presentation" } })
-    expect(errors[0]!.message).toMatch(/plan has 17 pages/)
+  it("rejects one above the spacious upper boundary (17 pages)", () => {
+    const errors = expectErrors({ ...decksOfSize(17), narrative: { pacing: "spacious" } })
+    expect(errors[0]!.message).toMatch(/spec has 17 pages/)
   })
 
-  it("the same page count can pass for one delivery and fail for another", () => {
-    // 5 pages: within presentation's 4-16, below balanced's 6-24
-    expectOk({ ...decksOfSize(5), scenario: { delivery: "presentation" } })
-    const errors = expectErrors({ ...decksOfSize(5), scenario: { delivery: "balanced" } })
-    expect(errors[0]!.message).toMatch(/"balanced" delivery expects 6-24 pages/)
+  it("the same page count can pass for one pacing and fail for another", () => {
+    // 5 pages: within spacious's 4-16, below balanced's 6-24
+    expectOk({ ...decksOfSize(5), narrative: { pacing: "spacious" } })
+    const errors = expectErrors({ ...decksOfSize(5), narrative: { pacing: "balanced" } })
+    expect(errors[0]!.message).toMatch(/"balanced" pacing expects 6-24 pages/)
   })
 
-  it("accepts the text delivery's lower boundary (8 pages)", () => {
-    expectOk({ ...decksOfSize(8), scenario: { delivery: "text" } })
+  it("accepts the dense pacing's lower boundary (8 pages)", () => {
+    expectOk({ ...decksOfSize(8), narrative: { pacing: "dense" } })
   })
 
-  it("rejects one below the text delivery's lower boundary (7 pages)", () => {
-    const errors = expectErrors({ ...decksOfSize(7), scenario: { delivery: "text" } })
-    expect(errors[0]!.message).toMatch(/"text" delivery expects 8-30 pages/)
+  it("rejects one below the dense pacing's lower boundary (7 pages)", () => {
+    const errors = expectErrors({ ...decksOfSize(7), narrative: { pacing: "dense" } })
+    expect(errors[0]!.message).toMatch(/"dense" pacing expects 8-30 pages/)
   })
 })
 
-describe("PLAN_PAGE_COUNT_RANGE", () => {
+describe("SPEC_PAGE_COUNT_RANGE", () => {
   it("is pinned to the spec's initial values", () => {
-    expect(PLAN_PAGE_COUNT_RANGE).toEqual({
-      text: { min: 8, max: 30 },
+    expect(SPEC_PAGE_COUNT_RANGE).toEqual({
+      dense: { min: 8, max: 30 },
       balanced: { min: 6, max: 24 },
-      presentation: { min: 4, max: 16 },
+      spacious: { min: 4, max: 16 },
     })
   })
 })
 
-// ── planJsonSchema ───────────────────────────────────────────────────────
+// ── specJsonSchema ───────────────────────────────────────────────────────
 
-describe("planJsonSchema", () => {
-  it("produces a JSON Schema document with the plan's top-level shape", () => {
-    const schema = planJsonSchema()
+describe("specJsonSchema", () => {
+  it("produces a JSON Schema document with the spec's top-level shape", () => {
+    const schema = specJsonSchema()
     expect(schema).toHaveProperty("$schema")
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties)).toEqual(
-      expect.arrayContaining(["version", "scenario", "theme", "filename", "seed", "meta", "pages"]),
+      expect.arrayContaining(["version", "narrative", "theme", "filename", "seed", "meta", "pages"]),
     )
   })
 
-  it("matches DeckPlanSchema (same schema instance, no drift between the two exports)", () => {
-    expect(planJsonSchema()).toBeDefined()
-    expect(DeckPlanSchema).toBeDefined()
+  it("matches DeckSpecSchema (same schema instance, no drift between the two exports)", () => {
+    expect(specJsonSchema()).toBeDefined()
+    expect(DeckSpecSchema).toBeDefined()
   })
 })
 
-// ── formatPlanIssues ─────────────────────────────────────────────────────
+// ── formatSpecIssues ─────────────────────────────────────────────────────
 
-describe("formatPlanIssues", () => {
+describe("formatSpecIssues", () => {
   it("prefixes a page-scoped issue with its page id", () => {
-    const text = formatPlanIssues([{ path: "pages.0.heading", message: "too long", pageId: "p-cover" }])
+    const text = formatSpecIssues([{ path: "pages.0.heading", message: "too long", pageId: "p-cover" }])
     expect(text).toBe('page "p-cover" — pages.0.heading: too long')
   })
 
   it("omits the page prefix for deck-level issues", () => {
-    const text = formatPlanIssues([{ path: "pages", message: "no pages" }])
+    const text = formatSpecIssues([{ path: "pages", message: "no pages" }])
     expect(text).toBe("pages: no pages")
   })
 
   it("joins multiple issues with newlines", () => {
-    const text = formatPlanIssues([
+    const text = formatSpecIssues([
       { path: "a", message: "1" },
       { path: "b", message: "2" },
     ])

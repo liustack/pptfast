@@ -2,8 +2,8 @@
   "id": "q11",
   "title": "Open Enrollment Reference Guide",
   "coverage": {
-    "mode": "instructional",
-    "delivery": "text",
+    "strategy": "instructional",
+    "pacing": "dense",
     "expects_components": [
       "numbered_cards",
       "row_cards"

@@ -1,0 +1,30 @@
+{
+  "version": "1",
+  "theme": "consulting",
+  "filename": "fixture-fx02",
+  "pages": [
+    {
+      "id": "p-cover",
+      "type": "cover",
+      "heading": "Fixture Two"
+    },
+    {
+      "id": "p-kpi",
+      "type": "content",
+      "heading": "Numbers"
+    },
+    {
+      "id": "p-detail",
+      "type": "content",
+      "heading": "Detail"
+    },
+    {
+      "id": "p-ending",
+      "type": "ending",
+      "heading": "Thanks"
+    }
+  ],
+  "narrative": {
+    "pacing": "spacious"
+  }
+}

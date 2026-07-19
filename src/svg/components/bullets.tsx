@@ -47,7 +47,7 @@ interface ItemsLayout {
  * the reported height always matches what's actually drawn.
  *
  * `baseFontSize` is `ctx.bodyFontPx` (W4 task 3, design decision 9) — the
- * delivery-tier body baseline items shrink *from*, not a fixed ceiling: the
+ * pacing-tier body baseline items shrink *from*, not a fixed ceiling: the
  * shrink-to-`MIN_FONT` machinery below is unchanged and applies the same way
  * whether it starts at 20, 24, or 32.
  */

@@ -20,7 +20,7 @@ import type { PptxIR, Slide } from "@/ir"
 
 function makeIR(slides: Slide[]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "notes-export.pptx",
     theme: { id: "consulting" },
     meta: {},

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { MODE_VALUES, type Mode } from "@/scenario"
+import { STRATEGY_VALUES, type Strategy } from "@/scenario"
 import { COVER_ARCHETYPES } from "../archetypes"
 import { CHAPTER_ARCHETYPES } from "../archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../archetypes/index-content"
@@ -194,24 +194,24 @@ describe("filterByScenariosOnly (W4, spec §6 step 4's rare scenarios_only hard 
   // being a standalone pure function (design decision 5) is that it can be
   // unit-tested without any real LAYOUT_REGISTRY id or a live selection
   // pass through `resolveArchetypeId`.
-  function synthetic(id: string, scenariosOnly?: readonly Mode[]): LayoutDefinition {
+  function synthetic(id: string, scenariosOnly?: readonly Strategy[]): LayoutDefinition {
     return { id, kind: "archetype", slideTypes: ["content"], slots: [], scenariosOnly }
   }
 
-  it("keeps a layout whose scenariosOnly list includes the resolved mode", () => {
-    const defs = [synthetic("a", ["pyramid", "narrative"])]
+  it("keeps a layout whose scenariosOnly list includes the resolved strategy", () => {
+    const defs = [synthetic("a", ["pyramid", "storytelling"])]
     expect(filterByScenariosOnly(defs, "pyramid")).toEqual(defs)
   })
 
-  it("drops a layout whose scenariosOnly list excludes the resolved mode", () => {
+  it("drops a layout whose scenariosOnly list excludes the resolved strategy", () => {
     const defs = [synthetic("a", ["pyramid"])]
     expect(filterByScenariosOnly(defs, "briefing")).toEqual([])
   })
 
-  it("keeps a layout with no scenariosOnly regardless of mode (unrestricted default — every built-in layout today)", () => {
+  it("keeps a layout with no scenariosOnly regardless of strategy (unrestricted default — every built-in layout today)", () => {
     const defs = [synthetic("a")]
-    for (const mode of MODE_VALUES) {
-      expect(filterByScenariosOnly(defs, mode)).toEqual(defs)
+    for (const strategy of STRATEGY_VALUES) {
+      expect(filterByScenariosOnly(defs, strategy)).toEqual(defs)
     }
   })
 

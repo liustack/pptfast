@@ -2,8 +2,8 @@
   "id": "q16",
   "title": "Weekly Support Metrics Brief",
   "coverage": {
-    "mode": "briefing",
-    "delivery": "text",
+    "strategy": "briefing",
+    "pacing": "dense",
     "expects_components": [
       "kpi_cards",
       "row_cards"

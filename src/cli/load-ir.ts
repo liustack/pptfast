@@ -33,10 +33,10 @@ export const EXT_BY_MIME: Record<string, string> = {
 }
 
 /** Read and JSON-parse a file with readable failure messages. `kind` names
- *  what the file is expected to hold (e.g. "plan") for both failure
+ *  what the file is expected to hold (e.g. "spec") for both failure
  *  messages — defaults to "IR" for this function's original, still most
  *  common caller (`runRender`/`runValidate`/`runPreview`, `./commands.ts`);
- *  `runPlanValidate` passes "plan" so its own errors read correctly instead
+ *  `runSpecValidate` passes "spec" so its own errors read correctly instead
  *  of borrowing IR's wording for a file that was never one. */
 export async function loadIrFile(irPath: string, kind = "IR"): Promise<unknown> {
   let text: string

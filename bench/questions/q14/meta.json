@@ -2,8 +2,8 @@
   "id": "q14",
   "title": "一线安全培训课程",
   "coverage": {
-    "mode": "instructional",
-    "delivery": "balanced",
+    "strategy": "instructional",
+    "pacing": "balanced",
     "expects_components": [
       "numbered_cards",
       "row_cards"

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { createElement } from "react"
 import { render } from "@testing-library/react"
 import type { PptxIR, Slide } from "@/ir"
-import { MODE_DEFINITIONS } from "@/scenario"
+import { STRATEGY_DEFINITIONS } from "@/scenario"
 import { FullSlideSvg } from "./FullSlideSvg"
 import { getLayout } from "./layouts/registry"
 import { cachedDeckSeed } from "./variety"
@@ -12,14 +12,14 @@ import {
   resolveArchetypeId,
   resolveEffectiveLayoutBodyCapacity,
   resolveEffectiveLayoutId,
-  resolveIrMode,
+  resolveIrStrategy,
 } from "./effective-layout"
 
 // ── helpers ──
 
 function makeIR(slides: Slide[], themeId: string = "consulting"): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "test.pptx",
     theme: { id: themeId },
     meta: {},
@@ -89,8 +89,8 @@ describe("resolveArchetypeId", () => {
     expect(picks.size).toBeGreaterThan(1)
   })
 
-  it("scenario weighting: a mode's layoutTendencies members are picked more often than non-members (integration through resolveArchetypeId, W4 design decisions 1 + 6)", () => {
-    const tendencyIds = MODE_DEFINITIONS.pyramid.layoutTendencies // bento-panel/banner-heading/two-column, x3 weight
+  it("narrative weighting: a strategy's layoutTendencies members are picked more often than non-members (integration through resolveArchetypeId, W4 design decisions 1 + 6)", () => {
+    const tendencyIds = STRATEGY_DEFINITIONS.pyramid.layoutTendencies // bento-panel/banner-heading/two-column, x3 weight
     const N = 600
     let tendencyHits = 0
     // academic (not tech): a theme with zero W4 design-decision-8 curation
@@ -252,7 +252,7 @@ describe("resolveEffectiveLayoutId", () => {
       cachedDeckSeed(ir),
       "0", // String(index) for the first (and only) slide
       undefined,
-      "briefing", // resolveScenario(undefined) -> general -> briefing
+      "briefing", // resolveNarrative(undefined) -> general -> briefing
       null, // first slide, no previous
     )
     expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe(expected)
@@ -454,7 +454,7 @@ describe("render parity with FullSlideSvg", () => {
       12,
       "1",
       undefined,
-      resolveIrMode(ir),
+      resolveIrStrategy(ir),
       null,
     )
     // The raw pick collides with page 0's own resolved id — this is the

@@ -78,7 +78,7 @@ const SUBHEADING = "效率提升三成，风险敞口下降"
 
 function ir(themeId: CanonicalThemeId, slides: Slide[]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "deck.pptx",
     theme: { id: themeId },
     meta: { organization: "ACME" },

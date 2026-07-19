@@ -30,7 +30,7 @@ const noSub: Slide = {
 
 function ir(slides: Slide[]): PptxIR {
   return {
-    version: "3",
+    version: "4",
     filename: "x.pptx",
     theme: { id: "consulting" },
     meta: {},

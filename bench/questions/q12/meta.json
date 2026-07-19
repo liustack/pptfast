@@ -2,8 +2,8 @@
   "id": "q12",
   "title": "Annual Impact Report",
   "coverage": {
-    "mode": "narrative",
-    "delivery": "balanced",
+    "strategy": "storytelling",
+    "pacing": "balanced",
     "expects_components": [
       "image",
       "kpi_cards",

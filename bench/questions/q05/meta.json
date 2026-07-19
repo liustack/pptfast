@@ -2,8 +2,8 @@
   "id": "q05",
   "title": "Weekly Engineering Status Update",
   "coverage": {
-    "mode": "briefing",
-    "delivery": "text",
+    "strategy": "briefing",
+    "pacing": "dense",
     "expects_components": [
       "bullets",
       "row_cards"

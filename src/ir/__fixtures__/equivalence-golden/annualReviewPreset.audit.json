@@ -1,0 +1,32 @@
+{
+  "findings": [
+    {
+      "page": 3,
+      "code": "low-contrast",
+      "message": "text \"\u2191\" has a contrast ratio of 3.30:1 against its background #FFFFFF (needs 4.5:1) \u2014 choose a text or background color with more contrast",
+      "detail": {
+        "text": "\u2191",
+        "fill": "#16A34A",
+        "background": "#FFFFFF",
+        "ratio": 3.2957336053312796,
+        "required": 4.5,
+        "fontSize": 20
+      }
+    },
+    {
+      "page": 3,
+      "code": "low-contrast",
+      "message": "text \"\u2191\" has a contrast ratio of 3.30:1 against its background #FFFFFF (needs 4.5:1) \u2014 choose a text or background color with more contrast",
+      "detail": {
+        "text": "\u2191",
+        "fill": "#16A34A",
+        "background": "#FFFFFF",
+        "ratio": 3.2957336053312796,
+        "required": 4.5,
+        "fontSize": 20
+      }
+    }
+  ],
+  "pagesAudited": 5,
+  "pagesSkipped": 0
+}

@@ -17,13 +17,13 @@ function tmp(): Promise<string> {
   return mkdtemp(join(tmpdir(), "pptfast-deckdir-"))
 }
 
-/** 4 pages clears the "presentation" delivery's page-count floor (spec §5:
+/** 4 pages clears the "spacious" pacing's page-count floor (spec §5:
  *  4-16), same fixture-sizing rationale as `plan/assemble.test.ts`'s own
  *  `makePlan` helper. */
 function makePlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: "1",
-    scenario: { delivery: "presentation" },
+    narrative: { pacing: "spacious" },
     theme: "consulting",
     filename: "q3-review",
     pages: [
@@ -36,8 +36,8 @@ function makePlan(extra: Record<string, unknown> = {}): Record<string, unknown> 
   }
 }
 
-async function writeDeckPlan(dir: string, plan: unknown = makePlan()): Promise<void> {
-  await writeFile(join(dir, "deck.plan.json"), JSON.stringify(plan))
+async function writeDeckSpec(dir: string, spec: unknown = makePlan()): Promise<void> {
+  await writeFile(join(dir, "deck.spec.json"), JSON.stringify(spec))
 }
 
 describe("assertSafeFileSegment (W5 whole-branch review finding 1, CRITICAL, CWE-22)", () => {
@@ -213,9 +213,9 @@ describe("pathExists", () => {
 })
 
 describe("readDeckDir", () => {
-  it("assembles plan + pages/ + assets/ into an IR with the deck dir resolved absolute", async () => {
+  it("assembles spec + pages/ + assets/ into an IR with the deck dir resolved absolute", async () => {
     const dir = await tmp()
-    await writeDeckPlan(dir)
+    await writeDeckSpec(dir)
     await mkdir(join(dir, "pages"))
     await writeFile(
       join(dir, "pages", "p-kpi.json"),
@@ -229,11 +229,30 @@ describe("readDeckDir", () => {
     expect(kpi?.components).toEqual([{ type: "paragraph", text: "Revenue grew 12%" }])
   })
 
-  it("treats a missing pages/ directory as zero filled pages — every plan page becomes a placeholder", async () => {
+  // spec §12 Deck Spec row "deck.spec.json 是页面顺序唯一事实源" (task 4):
+  // pages/*.json are written to disk in the *reverse* of spec.pages' order
+  // (p-ending.json first, p-cover.json last) — a readdir-order or file-
+  // mtime-order bug would surface here as a reversed (or otherwise
+  // spec-independent) ir.slides sequence. Every other test in this file
+  // happens to write pages/ files in an order consistent with spec order,
+  // which never exercises this distinction.
+  it("slide order always follows deck.spec.json's pages[] order, never pages/ directory write order", async () => {
     const dir = await tmp()
-    await writeDeckPlan(dir)
+    await writeDeckSpec(dir)
+    await mkdir(join(dir, "pages"))
+    await writeFile(join(dir, "pages", "p-ending.json"), JSON.stringify({}))
+    await writeFile(join(dir, "pages", "p-detail.json"), JSON.stringify({ components: [] }))
+    await writeFile(join(dir, "pages", "p-kpi.json"), JSON.stringify({ components: [] }))
+    await writeFile(join(dir, "pages", "p-cover.json"), JSON.stringify({}))
     const { ir } = await readDeckDir(dir)
-    // No pages/ entry for *any* plan page (cover/ending included — assembleDeck
+    expect(ir.slides.map((s) => s.id)).toEqual(["p-cover", "p-kpi", "p-detail", "p-ending"])
+  })
+
+  it("treats a missing pages/ directory as zero filled pages — every spec page becomes a placeholder", async () => {
+    const dir = await tmp()
+    await writeDeckSpec(dir)
+    const { ir } = await readDeckDir(dir)
+    // No pages/ entry for *any* spec page (cover/ending included — assembleDeck
     // applies the same missing-page rule to every page type, not just content).
     expect(ir.slides.filter((s) => s.placeholder).map((s) => s.id)).toEqual([
       "p-cover",
@@ -245,12 +264,12 @@ describe("readDeckDir", () => {
 
   it("skips non-.json entries and dotfiles under pages/", async () => {
     const dir = await tmp()
-    await writeDeckPlan(dir)
+    await writeDeckSpec(dir)
     await mkdir(join(dir, "pages"))
     await writeFile(join(dir, "pages", ".DS_Store"), "junk")
     await writeFile(join(dir, "pages", "notes.txt"), "not a page")
     const { ir } = await readDeckDir(dir)
-    // Neither stray file registered as a page — every plan page stays unfilled.
+    // Neither stray file registered as a page — every spec page stays unfilled.
     expect(ir.slides.filter((s) => s.placeholder).map((s) => s.id)).toEqual([
       "p-cover",
       "p-kpi",
@@ -259,43 +278,77 @@ describe("readDeckDir", () => {
     ])
   })
 
-  it("reports the seed generation the same way assembleDeck does (no plan.seed set)", async () => {
+  it("reports the seed generation the same way assembleDeck does (no spec.seed set)", async () => {
     const dir = await tmp()
-    await writeDeckPlan(dir)
+    await writeDeckSpec(dir)
     const { generatedSeed, ir } = await readDeckDir(dir)
     expect(generatedSeed).toBeDefined()
     expect(ir.seed).toBe(generatedSeed)
   })
 
-  it("passes an explicit plan.seed through with no generatedSeed", async () => {
+  it("passes an explicit spec.seed through with no generatedSeed", async () => {
     const dir = await tmp()
-    await writeDeckPlan(dir, makePlan({ seed: 999 }))
+    await writeDeckSpec(dir, makePlan({ seed: 999 }))
     const { generatedSeed, ir } = await readDeckDir(dir)
     expect(generatedSeed).toBeUndefined()
     expect(ir.seed).toBe(999)
   })
 
-  describe("missing plan file", () => {
-    it("throws a PptfastError suggesting `pptfast plan validate` and the expected layout", async () => {
+  describe("missing spec file", () => {
+    it("throws a PptfastError suggesting `pptfast spec validate` and the expected layout", async () => {
       const dir = await tmp()
-      await expect(readDeckDir(dir)).rejects.toThrow(/pptfast plan validate/)
+      await expect(readDeckDir(dir)).rejects.toThrow(/pptfast spec validate/)
       await expect(readDeckDir(dir)).rejects.toThrow(/pages\/<page-id>\.json/)
       await expect(readDeckDir(dir)).rejects.toThrow(dir)
     })
   })
 
-  describe("malformed plan JSON", () => {
-    it("names the plan file in the error", async () => {
+  // vocabulary-v4 rename (spec §9.2, task 2): deck.plan.json -> deck.spec.json.
+  // readDeckDir (via readSpecFile, ./deck-dir.ts) must (a) never fall back to
+  // reading the pre-rename deck.plan.json directly, (b) hard-error, not guess,
+  // when both files are present in the same directory, and (c) point a
+  // plan-only directory at `pptfast migrate` instead of a generic
+  // "not a deck project" message.
+  describe("legacy deck.plan.json handling (spec §9.2)", () => {
+    it("does not read a deck.plan.json directly — a plan-only directory is treated as missing a spec", async () => {
       const dir = await tmp()
-      await writeFile(join(dir, "deck.plan.json"), "{ not json")
-      await expect(readDeckDir(dir)).rejects.toThrow(/deck\.plan\.json.*not valid JSON/s)
+      await writeFile(join(dir, "deck.plan.json"), JSON.stringify(makePlan()))
+      await expect(readDeckDir(dir)).rejects.toThrow(PptfastError)
+      await expect(readDeckDir(dir)).rejects.toThrow(/deck\.plan\.json/)
+      await expect(readDeckDir(dir)).rejects.toThrow(/deck\.spec\.json/)
+      await expect(readDeckDir(dir)).rejects.toThrow(/pptfast migrate/)
+    })
+
+    it("hard-errors when both deck.plan.json and deck.spec.json exist — never guesses which one wins", async () => {
+      const dir = await tmp()
+      await writeFile(join(dir, "deck.plan.json"), JSON.stringify(makePlan()))
+      await writeDeckSpec(dir)
+      await expect(readDeckDir(dir)).rejects.toThrow(PptfastError)
+      await expect(readDeckDir(dir)).rejects.toThrow(/deck\.plan\.json/)
+      await expect(readDeckDir(dir)).rejects.toThrow(/deck\.spec\.json/)
+      await expect(readDeckDir(dir)).rejects.toThrow(/ambiguous/)
+    })
+
+    it("reads deck.spec.json normally once deck.plan.json has been removed", async () => {
+      const dir = await tmp()
+      await writeDeckSpec(dir)
+      const { ir } = await readDeckDir(dir)
+      expect(ir.slides.map((s) => s.id)).toEqual(["p-cover", "p-kpi", "p-detail", "p-ending"])
+    })
+  })
+
+  describe("malformed spec JSON", () => {
+    it("names the spec file in the error", async () => {
+      const dir = await tmp()
+      await writeFile(join(dir, "deck.spec.json"), "{ not json")
+      await expect(readDeckDir(dir)).rejects.toThrow(/deck\.spec\.json.*not valid JSON/s)
     })
   })
 
   describe("malformed page JSON", () => {
     it("names the offending page file in the error", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await mkdir(join(dir, "pages"))
       await writeFile(join(dir, "pages", "p-kpi.json"), "{ not json")
       await expect(readDeckDir(dir)).rejects.toThrow(/p-kpi.*not valid JSON/s)
@@ -303,9 +356,9 @@ describe("readDeckDir", () => {
   })
 
   describe("orphan page file (structural mismatch — assembleDeck's own gate surfaces through)", () => {
-    it("rejects a pages/ file whose id is not in the plan", async () => {
+    it("rejects a pages/ file whose id is not in the spec", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await mkdir(join(dir, "pages"))
       await writeFile(join(dir, "pages", "not-a-real-page.json"), "{}")
       await expect(readDeckDir(dir)).rejects.toThrow(/orphan page id "not-a-real-page"/)
@@ -315,25 +368,25 @@ describe("readDeckDir", () => {
   describe("locked-field protection (structural mismatch — assembleDeck's own gate surfaces through)", () => {
     it("rejects a page file that redeclares heading", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await mkdir(join(dir, "pages"))
       await writeFile(join(dir, "pages", "p-kpi.json"), JSON.stringify({ heading: "sneaky" }))
-      await expect(readDeckDir(dir)).rejects.toThrow(/"heading" is locked by the plan/)
+      await expect(readDeckDir(dir)).rejects.toThrow(/"heading" is locked by the spec/)
     })
   })
 
-  describe("invalid plan", () => {
-    it("surfaces validatePlan's own formatted error", async () => {
+  describe("invalid spec", () => {
+    it("surfaces validateSpec's own formatted error", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir, { pages: [] })
-      await expect(readDeckDir(dir)).rejects.toThrow(/invalid plan.*no pages/s)
+      await writeDeckSpec(dir, { pages: [] })
+      await expect(readDeckDir(dir)).rejects.toThrow(/invalid spec.*no pages/s)
     })
   })
 
   describe("assets/ auto-registration", () => {
     it("registers each file as assets.images[id] with a deck-relative src", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await mkdir(join(dir, "assets"))
       await writeFile(join(dir, "assets", "logo.png"), "fake-png-bytes")
       const { ir } = await readDeckDir(dir)
@@ -342,14 +395,14 @@ describe("readDeckDir", () => {
 
     it("treats a missing assets/ directory as zero assets", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       const { ir } = await readDeckDir(dir)
       expect(ir.assets.images).toEqual({})
     })
 
     it("skips dotfiles (e.g. .DS_Store) rather than registering them as image assets", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await mkdir(join(dir, "assets"))
       await writeFile(join(dir, "assets", ".DS_Store"), "junk")
       const { ir } = await readDeckDir(dir)
@@ -358,7 +411,7 @@ describe("readDeckDir", () => {
 
     it("rejects two files that normalize to the same asset id, naming both files", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await mkdir(join(dir, "assets"))
       await writeFile(join(dir, "assets", "logo.png"), "a")
       await writeFile(join(dir, "assets", "logo.jpg"), "b")
@@ -372,20 +425,20 @@ describe("readDeckDir", () => {
     // Regression guard: PptxIRSchema's `assets` field defaults to a *static*
     // object literal (`AssetsSchema.default({ images: {} })`, ../ir/index.ts).
     // zod does not deep-clone that default per parse, so every assembled deck
-    // that omits `assets` (every deck — a plan never has one) starts out
+    // that omits `assets` (every deck — a spec never has one) starts out
     // sharing one `images: {}` object identity. Mutating it in place would
     // silently leak one deck's local images onto every other deck assembled
     // in the same process. readDeckDir must rebuild `ir.assets` instead.
     it("does not leak asset registrations across separate readDeckDir calls", async () => {
       const dirA = await tmp()
-      await writeDeckPlan(dirA)
+      await writeDeckSpec(dirA)
       await mkdir(join(dirA, "assets"))
       await writeFile(join(dirA, "assets", "logo.png"), "a")
       const resultA = await readDeckDir(dirA)
       expect(resultA.ir.assets.images).toEqual({ logo: { src: "assets/logo.png" } })
 
       const dirB = await tmp()
-      await writeDeckPlan(dirB)
+      await writeDeckSpec(dirB)
       const resultB = await readDeckDir(dirB)
       expect(resultB.ir.assets.images).toEqual({})
     })
@@ -398,14 +451,14 @@ describe("readDeckDir", () => {
     // without needing platform-specific chmod tricks.
     it("readPages: rethrows when pages/ exists but is a file, not a directory", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await writeFile(join(dir, "pages"), "not a directory")
       await expect(readDeckDir(dir)).rejects.toThrow(/cannot read pages\/ directory/)
     })
 
     it("scanAssets: rethrows when assets/ exists but is a file, not a directory", async () => {
       const dir = await tmp()
-      await writeDeckPlan(dir)
+      await writeDeckSpec(dir)
       await writeFile(join(dir, "assets"), "not a directory")
       await expect(readDeckDir(dir)).rejects.toThrow(/cannot read assets\/ directory/)
     })

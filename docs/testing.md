@@ -10,11 +10,12 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 137 files / 2115 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 146 files / 2379 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
-   media-dedupe JSZip patches, the deck plan schema and hard gates,
-   assemble/disassemble plus the deck-project-directory CLI shell, and the
+   media-dedupe JSZip patches, the deck spec schema and hard gates,
+   assemble/disassemble plus the deck-project-directory CLI shell, the v3→v4
+   and deck.plan.json→deck.spec.json migration functions, and the
    deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap).
    Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
@@ -23,14 +24,18 @@ read_when:
 3. **E2E** (`pnpm e2e`) — builds the package, drives the *built* CLI binary
    (`dist/cli.js`, not the vitest-transpiled source) through render/validate/
    preview on `examples/basic.json`, a deck project directory leg (a temp
-   plan + pages directory left with one unfilled page → `assemble` reports it
+   spec + pages directory left with one unfilled page → `assemble` reports it
    as a placeholder → a plain `render` is refused → `render --draft` succeeds
    with the placeholder as a real slide → filling the page and re-assembling
    drops the placeholder count to zero → a plain `render` then succeeds too),
    an audit leg (`examples/basic.json` audits clean and exits 0, while a
    deliberately near-background text color, set via a validate-legal
    `theme.style` override, exits 1 with a low-contrast finding in both human
-   and `--json` output), asserts on the produced pptx's zip structure
+   and `--json` output), a migrate leg (a pre-rename `deck.plan.json`
+   project directory migrates to `deck.spec.json` with `scenario`→`narrative`
+   and `rhythm`→`beat` renamed and the source file left untouched, both files
+   present is a hard error, migrate never overwrites an existing output),
+   asserts on the produced pptx's zip structure
    (required XML parts, embedded text), and converts to PDF with LibreOffice
    (`soffice`) when it's installed on the machine — a real render, not a mock.
 
