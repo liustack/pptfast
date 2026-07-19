@@ -1,12 +1,12 @@
 #!/usr/bin/env -S pnpm exec tsx
 /**
  * Model-agnostic pptfast benchmark scorer (benchmark wave, task 2). Walks
- * `bench/results/<model-tag>/<question-id>/`, scores each answered question
+ * `tests/bench/results/<model-tag>/<question-id>/`, scores each answered question
  * against exactly the mechanical signals the render chain already exposes —
  * `validateIr`/`auditDeck`/`generatePptx` — and writes a per-model
  * `report.md` plus a cross-model `summary.md`. Zero model/API calls: this
  * script never talks to a model, it only reads artifact files a run already
- * produced (`bench/README.md`'s run protocol).
+ * produced (`tests/bench/README.md`'s run protocol).
  *
  * Every metric here is objective and mechanical by construction — no
  * subjective quality dimension is computed or scored (`AGENTS.md`'s "评审
@@ -17,11 +17,11 @@
  * this file.
  *
  * Usage: `pnpm bench:score [questionsDir] [resultsDir]` (defaults to
- * `bench/questions` / `bench/results`, both resolved against `cwd`).
+ * `tests/bench/questions` / `tests/bench/results`, both resolved against `cwd`).
  *
  * Design note: `runScoring` below is a pure read — it computes report
  * strings but never writes to disk, so the vitest suite (`score.test.ts`)
- * can call it directly against the checked-in `bench/fixtures/` tree without
+ * can call it directly against the checked-in `tests/bench/fixtures/` tree without
  * mutating the repo. Only `main()` (the CLI entry, guarded below) performs
  * the actual `writeFile`s.
  */
@@ -32,14 +32,14 @@ import { join, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import JSZip from "jszip"
 
-import { auditDeck, generatePptx, validateIr } from "../src/index"
-import { readDeckDir } from "../src/cli/deck-dir"
-import { installNodePlatform } from "../src/platform/node"
+import { auditDeck, generatePptx, validateIr } from "../../src/index"
+import { readDeckDir } from "../../src/cli/deck-dir"
+import { installNodePlatform } from "../../src/platform/node"
 
 installNodePlatform()
 
 /**
- * Repo root, derived from this file's own location (`bench/score.mts` →
+ * Repo root, derived from this file's own location (`tests/bench/score.mts` →
  * one level up) rather than `process.cwd()` — `main()` always resolves
  * `questionsDir`/`resultsDir` against `cwd`, but `score.test.ts` calls
  * `scoreQuestion`/`runScoring` directly with fixture paths built off
@@ -56,12 +56,12 @@ installNodePlatform()
  * take a raw `resultDir`, no root reference) and reads the same regardless
  * of which `resultsDir` a given run was pointed at.
  */
-const REPO_ROOT = resolve(import.meta.dirname, "..")
+const REPO_ROOT = resolve(import.meta.dirname, "../..")
 
 /**
  * Strips every occurrence of the repo-root absolute prefix out of `text`,
- * turning e.g. `/Users/x/pptfast/bench/results/m/q1/a.json` into
- * `bench/results/m/q1/a.json`. A plain prefix strip (not `path.relative`
+ * turning e.g. `/Users/x/pptfast/tests/bench/results/m/q1/a.json` into
+ * `tests/bench/results/m/q1/a.json`. A plain prefix strip (not `path.relative`
  * called on the whole string) because some callers below pass through an
  * error message from `readDeckDir`/`assembleDeck` that already has an
  * absolute path baked into arbitrary surrounding prose — there is no
@@ -74,7 +74,7 @@ function relativizeToRepoRoot(text: string): string {
   return text.split(REPO_ROOT + sep).join("")
 }
 
-// ── question bank / self-reported meta shapes (bench/README.md's schema) ──
+// ── question bank / self-reported meta shapes (tests/bench/README.md's schema) ──
 
 export interface QuestionCoverage {
   strategy?: string
@@ -91,7 +91,7 @@ export interface QuestionMeta {
   lang?: string
 }
 
-/** `bench/results/<model>/<qid>/meta.json` — optional, self-reported by
+/** `tests/bench/results/<model>/<qid>/meta.json` — optional, self-reported by
  *  whatever harness ran the model. Passed through into reports verbatim,
  *  never scored (README's "Run protocol", step 4). */
 export interface SelfReportedMeta {
@@ -125,12 +125,12 @@ export interface ModelReport {
   scores: QuestionScore[]
 }
 
-// ── artifact loading (bench/README.md's two artifact shapes) ──
+// ── artifact loading (tests/bench/README.md's two artifact shapes) ──
 
 type ArtifactResult = { ir: unknown } | { error: string }
 
 /**
- * Resolves one `bench/results/<model>/<qid>/` directory into a raw IR
+ * Resolves one `tests/bench/results/<model>/<qid>/` directory into a raw IR
  * object. Two shapes, dispatched the same way the CLI does
  * (`isDeckDirectory` in `src/cli/deck-dir.ts`, restated here rather than
  * imported because the dispatch signal this scorer needs — "does this
@@ -472,8 +472,8 @@ export function renderModelReport(modelTag: string, scores: QuestionScore[]): st
   lines.push(`# pptfast benchmark report — ${modelTag}`)
   lines.push("")
   lines.push(
-    "Mechanical scoring only — no subjective quality dimension. See `bench/README.md` for the run protocol and " +
-      "`bench/score.mts` for the exact metric definitions.",
+    "Mechanical scoring only — no subjective quality dimension. See `tests/bench/README.md` for the run protocol and " +
+      "`tests/bench/score.mts` for the exact metric definitions.",
   )
   lines.push("")
   lines.push(
@@ -509,7 +509,7 @@ export function renderSummaryReport(reports: ModelReport[]): string {
   lines.push("# pptfast benchmark — cross-model summary")
   lines.push("")
   lines.push(
-    "One row per model. Mechanical scoring only — see `bench/README.md`. Per-question detail lives in each " +
+    "One row per model. Mechanical scoring only — see `tests/bench/README.md`. Per-question detail lives in each " +
       "model's own `report.md`.",
   )
   lines.push("")
@@ -546,7 +546,7 @@ export interface ScoringRun {
  * question found under `questionsDir` and returns the report content that
  * would be written, without touching disk. Kept side-effect-free
  * deliberately — `score.test.ts` calls this directly against
- * `bench/fixtures/` to assert on report shape and to double-run it for the
+ * `tests/bench/fixtures/` to assert on report shape and to double-run it for the
  * scorer-reproducibility byte assertion, neither of which should leave
  * generated files inside a checked-in fixtures tree.
  */
@@ -570,8 +570,8 @@ export async function runScoring(questionsDir: string, resultsDir: string): Prom
 // ── CLI entry ──
 
 async function main(): Promise<void> {
-  const questionsDir = resolve(process.argv[2] ?? "bench/questions")
-  const resultsDir = resolve(process.argv[3] ?? "bench/results")
+  const questionsDir = resolve(process.argv[2] ?? "tests/bench/questions")
+  const resultsDir = resolve(process.argv[3] ?? "tests/bench/results")
   const { reports, writes } = await runScoring(questionsDir, resultsDir)
 
   if (reports.length === 0) {

@@ -6,13 +6,13 @@ dependency: this directory is a fixed question bank plus a run protocol. Scoring
 this wave) is entirely mechanical — it consumes the artifact files a model produces, never the
 model itself, and applies no subjective quality dimension.
 
-`bench/` is tracked in git but excluded from the published npm package — see "Package
+`tests/bench/` is tracked in git but excluded from the published npm package — see "Package
 exclusion" below.
 
 ## Directory layout
 
 ```
-bench/
+tests/bench/
   questions/q01..q20/
     prompt.md   the request handed to the model-under-test, verbatim
     meta.json   coverage annotation — never shown to the model, descriptive only
@@ -33,7 +33,7 @@ For each question:
    direct bare IR file for a small deck, per the SKILL's own "skip the spec" allowance),
    `pages/*.json`, `assemble`, `validate`, `render`, `audit` — whatever phases the model
    actually reaches.
-3. Save the resulting artifact into `bench/results/<model-tag>/<question-id>/`:
+3. Save the resulting artifact into `tests/bench/results/<model-tag>/<question-id>/`:
    - a bare IR file (any `.json` filename), or
    - a full deck project directory (`deck.spec.json` + `pages/` + optional `assets/`), for
      questions that asked for the spec-then-fill workflow.
@@ -141,11 +141,11 @@ pacing — spacious 7, balanced 7, dense 6 (all ≥5). New components — swot �
 Deck-project-directory — 5 (q03, q06, q08, q13, q17, ≥3). Chinese — 3 (q07, q14, q18, within
 2-3).
 
-## Scoring (`bench/score.mts`)
+## Scoring (`tests/bench/score.mts`)
 
 ```
 pnpm bench:score [questionsDir] [resultsDir]
-# defaults to `bench/questions` / `bench/results`, both resolved against cwd
+# defaults to `tests/bench/questions` / `tests/bench/results`, both resolved against cwd
 ```
 
 Walks `<resultsDir>/<model-tag>/<question-id>/` for every model directory found, scores each
@@ -166,7 +166,7 @@ Every metric is purely mechanical, computed off the SDK the render chain already
   only computed when validate passed (an invalid IR has nothing well-formed enough to audit)
 - **render success**: does `generatePptx` produce a well-formed `.pptx` without throwing
 - **determinism**: render the same artifact twice and compare the two `.pptx` files byte for
-  byte via `normalizedPptxSha1` (`bench/score.mts`), with the one known clock-dependent exclusion
+  byte via `normalizedPptxSha1` (`tests/bench/score.mts`), with the one known clock-dependent exclusion
   the render chain already carries — `docProps/core.xml` (pptxgenjs bakes
   `new Date().toISOString()` into it on every call — same exclusion the `normalizedZipMap`
   precedent in `src/pptx/generate-notes-export.test.ts` establishes). Every other zip part is
@@ -187,11 +187,11 @@ result set — no timestamps or other non-deterministic content in the report bo
 
 ## Testing the scorer
 
-`bench/score.test.ts` (vitest, run by `pnpm check` like every other suite) exercises the scorer
-against `bench/fixtures/`: `bench/fixtures/questions/{fx01,fx02,fx03}` (a 3-question fixture bank,
+`tests/bench/score.test.ts` (vitest, run by `pnpm check` like every other suite) exercises the scorer
+against `tests/bench/fixtures/`: `tests/bench/fixtures/questions/{fx01,fx02,fx03}` (a 3-question fixture bank,
 one bare-IR question, one deck-project question, one audit-sensitive question) scored against
-`bench/fixtures/results/green-model/` (all three questions validate clean, audit clean, render
-deterministically) and `bench/fixtures/results/degraded-model/` (one malformed-JSON artifact, one
+`tests/bench/fixtures/results/green-model/` (all three questions validate clean, audit clean, render
+deterministically) and `tests/bench/fixtures/results/degraded-model/` (one malformed-JSON artifact, one
 validate-failing IR — an unknown theme id, one validate-clean but audit-positive IR — a real
 low-contrast finding from `luxe` theme + `kpi_cards` `delta: "down"`, the same source
 `src/svg/audit/deck-audit.test.ts` pins). The suite asserts exact metric values per fixture
@@ -204,7 +204,7 @@ always-equal check.
 
 Two more `loadArtifact` failure branches, standalone `fx97`/`fx98` results not part of the
 3-question fixture bank (same pattern as the `fx99` "missing directory" fixture — kept out of
-`bench/fixtures/questions` so they don't shift the bank's aggregate counts), are also covered: a
+`tests/bench/fixtures/questions` so they don't shift the bank's aggregate counts), are also covered: a
 deck-project directory whose `pages/p-cover.json` redeclares the spec-locked `heading` field
 (`readDeckDir`/`assembleDeck` structural-assembly failure), and a result directory with two
 candidate `*.json` files (the "ambiguous artifact" branch). Both score as a fail with a `reason`,
@@ -216,6 +216,10 @@ tree comparable.
 
 ## Package exclusion
 
-`package.json`'s `files` whitelist is `["dist", "README.zh-CN.md"]` — `bench/` is not listed, so
+`package.json`'s `files` whitelist is `["dist", "README.zh-CN.md"]` — `tests/bench/` is not listed, so
 `npm pack` never includes it. Verified by running `npm pack --dry-run` from the repo root and
-confirming no `bench/` entry appears in the file list it prints.
+confirming no `tests/bench/` entry appears in the file list it prints.
+
+## Single-shot API run mode (`run.mts`)
+
+The second sanctioned run mode next to the agentic protocol above: `pnpm bench:run <prefix> [qids...]` drives an external OpenAI-compatible model through ONE completion per question — the prompt carries SKILL.md, the live vocabulary (`schema` / `narratives --json` / `themes --json`), and the question, and the model must answer with a bare IR JSON document. No tool loop, no self-check iterations, so this measures first-shot floor quality (stricter than agentic mode — expect lower validate pass rates). Credentials come from the repo-root `.env` (gitignored): `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`. Artifacts land in `tests/bench/results/<model>/<qid>/` with `meta.json` recording `mode: "single-shot"`, so `score.mts` consumes both modes identically — compare runs of the same mode against each other, not across modes.
