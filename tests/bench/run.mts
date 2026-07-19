@@ -54,6 +54,10 @@ async function runOne(
   const promptPath = join(ROOT, "tests/bench/questions", qid, "prompt.md")
   const prompt = readFileSync(promptPath, "utf8")
   const outDir = join(ROOT, "tests/bench/results", cfg.model, qid)
+  if (existsSync(join(outDir, "answer.json"))) {
+    console.log(`${qid}: already answered, skipping (resume mode)`)
+    return
+  }
   mkdirSync(outDir, { recursive: true })
 
   const system = [
@@ -76,28 +80,37 @@ async function runOne(
   ].join("\n\n---\n\n")
 
   const started = Date.now()
-  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${cfg.apiKey}` },
-    body: JSON.stringify({
-      model: cfg.model,
-      temperature: 0,
-      max_tokens: 16384,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  })
-  if (!res.ok) {
-    const body = await res.text()
-    writeFileSync(join(outDir, "meta.json"), JSON.stringify({ model: cfg.model, mode: "single-shot", error: `HTTP ${res.status}: ${body.slice(0, 300)}` }, null, 2))
-    console.error(`${qid}: HTTP ${res.status}`)
-    return
+  const attempt = async () => {
+    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${cfg.apiKey}` },
+      signal: AbortSignal.timeout(600_000),
+      body: JSON.stringify({
+        model: cfg.model,
+        temperature: 0,
+        max_tokens: 16384,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`)
+    return (await res.json()) as {
+      choices: Array<{ message: { content: string } }>
+      usage?: { prompt_tokens?: number; completion_tokens?: number }
+    }
   }
-  const data = (await res.json()) as {
-    choices: Array<{ message: { content: string } }>
-    usage?: { prompt_tokens?: number; completion_tokens?: number }
+  let data: Awaited<ReturnType<typeof attempt>>
+  try {
+    data = await attempt().catch(() => attempt())
+  } catch (e) {
+    writeFileSync(
+      join(outDir, "meta.json"),
+      JSON.stringify({ model: cfg.model, mode: "single-shot", error: String(e).slice(0, 300) }, null, 2) + "\n",
+    )
+    console.error(`${qid}: failed after retry — ${String(e).slice(0, 120)}`)
+    return
   }
   const answer = stripFence(data.choices[0]?.message.content ?? "")
   writeFileSync(join(outDir, "answer.json"), answer + "\n")
