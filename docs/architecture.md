@@ -20,7 +20,7 @@ another (layout code stays style-agnostic).
 | 2D layout | layout registry (archetypes + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
 | Visual style | style tokens + theme definitions (curated layout sets + motif, 13 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
-| Narrative | scenario axes (mode × delivery × audience, named presets) resolving editorial discipline, plus a first-class plan artifact (`deck.plan.json` — locked page order/type/heading, mode-aware hard gates via `plan validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase plan→fill skill methodology for slide sequencing | `src/plan/`, `src/scenario/`, `skills/` |
+| Narrative | narrative axes (strategy × pacing × audience, named presets) resolving editorial discipline, plus a first-class spec artifact (`deck.spec.json` — locked page order/type/heading, strategy-aware hard gates via `spec validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase spec→fill skill methodology for slide sequencing | `src/plan/`, `src/scenario/`, `skills/` |
 
 The core insight, carried over from the production system pptfast was extracted
 from: **visual variety comes from tokens × archetype library × seed — not
@@ -79,5 +79,5 @@ its four page-type entries, are independently optional and fall back to the
 same full set when omitted. Archetypes and components read only from tokens,
 so no archetype file changes.
 
-See `docs/concepts.md` for the fuller v0.3 theme/layout/component/scenario
+See `docs/concepts.md` for the fuller theme/layout/component/narrative
 vocabulary this section assumes.
