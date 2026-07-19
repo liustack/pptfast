@@ -11,3 +11,7 @@ Audience is tech press and early-access customers, so tone should be confident a
 Hero product photography (reference — use as needed):
 
 ![Aria Pro hero shot](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAYUlEQVR42u3ZMRGAMAxA0YarjkpAAzqqozKqDgkoYWTrTK7vr1ny7rIl2tVL5o6SPAAAAACAvQF1Pb7H84ctz9mcEAAAAAAAAAAAAAAAAAAAAAAAAADAV3izAgAAAABk7gUmoATRryBBiAAAAABJRU5ErkJggg==)
+
+Case close-up showing the wireless charging and ear-tip fit (reference — use as needed):
+
+![Aria Pro case close-up](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAzUlEQVR42u2YSw6AIAxEdeJhdKH3P4cbr+PeD9CPY0naLWHmpSUBZpzndYhUGIJVAtVqsmw+jv1taVk2neaoONQFDjuZDEiEosNqBVKjSLFAo2nUAY2mUQ1MmhZNkGmqyuDTlPXxC03BpYe7jNOeN6/wHWK259Ex30MiIP687r45sgRKoAQKBaT+3Tn+RnJkUiD+1C6OPYyM2aS7VyeHmtOkRxe4J07GJASOWZNLLgPf/MueEsE9kzOq4Yuc0KLTbcYYNIUNmlPnE/bXOgESgk9DVq4+KAAAAABJRU5ErkJggg==)
