@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { buildPreviewHtml, type PreviewHtmlSlideInput } from "./preview-html"
+import { buildPreviewHtml, type PreviewHtmlFinding, type PreviewHtmlSlideInput } from "./preview-html"
 
 /** Minimal-but-realistic standalone slide SVG, matching what `renderSlideSvg`
  *  (`../api.ts`) actually produces: a `viewBox="0 0 1280 720"` root with the
@@ -126,5 +126,171 @@ describe("buildPreviewHtml", () => {
   it("is a pure function: identical input produces identical output", () => {
     const input = { title: "deck", slides: [slide({ index: 0 }), slide({ index: 1 })] }
     expect(buildPreviewHtml(input)).toBe(buildPreviewHtml(input))
+  })
+})
+
+describe("buildPreviewHtml — audit findings overlay (notes+preview wave, task 2)", () => {
+  const finding = (overrides: Partial<PreviewHtmlFinding> & { page: number }): PreviewHtmlFinding => ({
+    code: "low-contrast",
+    message: "some finding message",
+    ...overrides,
+  })
+
+  it("marks a page with findings with a count badge, in both the main view and the thumbnail — same double-badge shape as the 'unfilled' placeholder badge", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 }), slide({ index: 1 }), slide({ index: 2 })],
+      findings: [finding({ page: 2 }), finding({ page: 2, code: "overlap" })],
+    })
+    // page 2 = slides[1] (index 1, 0-based) — one badge riding with the
+    // slide's own moving node, one always-present badge on its thumbnail
+    // button, same "two homes" shape `slideNode`/`thumbButton` already use
+    // for the 'unfilled' badge.
+    expect(html.match(/class="pf-finding-badge"/g)).toHaveLength(1)
+    expect(html.match(/class="pf-thumb-finding-badge"/g)).toHaveLength(1)
+    expect(html).toContain(">2<") // 2 findings on that page
+  })
+
+  it("never shows a finding-count badge when there are no findings", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 }), slide({ index: 1 })],
+    })
+    // Checked by class *usage* (an element carrying the class), not by the
+    // bare substring — the CSS in <style> always defines `.pf-finding-badge`
+    // regardless of whether any element ever uses it.
+    expect(html).not.toContain('class="pf-finding-badge"')
+    expect(html).not.toContain('class="pf-thumb-finding-badge"')
+  })
+
+  it("renders a findings panel entry per finding (code + message), each wired to navigate to its own page", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 }), slide({ index: 1, id: "p-body" })],
+      findings: [finding({ page: 2, slideId: "p-body", code: "overflow", message: "text overflows its column" })],
+    })
+    expect(html).toContain('id="pf-audit-panel"')
+    expect(html).toContain("Audit findings (1)")
+    expect(html).toContain('class="pf-finding" data-page-index="1"') // page 2 → slide index 1
+    expect(html).toContain("[overflow]")
+    expect(html).toContain("text overflows its column")
+    expect(html).toContain("p-body")
+  })
+
+  it("omits the findings panel entirely when there are no findings", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+    })
+    expect(html).not.toContain('id="pf-audit-panel"')
+    expect(html).not.toContain('id="pf-audit-findings"')
+  })
+
+  it("HTML-escapes a finding's code/message/slideId (user content — a finding's message quotes the offending slide's own text)", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+      findings: [
+        finding({ page: 1, message: `text "<script>alert(1)</script>" overflows`, slideId: `p" onmouseover="x` }),
+      ],
+    })
+    expect(html).not.toContain("<script>alert(1)</script>")
+    expect(html).toContain("&lt;script&gt;")
+    expect(html).toContain("p&quot; onmouseover=&quot;x")
+  })
+
+  it("embeds findings as a JSON data blob, safely escaping a literal </script sequence a slide's own text could contain", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+      findings: [finding({ page: 1, message: `text "</script><script>alert(1)</script>" overflows` })],
+    })
+    expect(html).toContain('<script type="application/json" id="pf-audit-findings">')
+    // The dangerous substring must never appear verbatim inside the emitted
+    // markup — it was escaped to a unicode < sequence before embedding.
+    expect(html).not.toContain("</script><script>alert(1)")
+    const dataBlobMatch = html.match(/<script type="application\/json" id="pf-audit-findings">(.*?)<\/script>/s)
+    expect(dataBlobMatch).not.toBeNull()
+    const embedded = JSON.parse(dataBlobMatch![1]!.replace(/\\u003c/g, "<")) as PreviewHtmlFinding[]
+    expect(embedded[0]!.message).toContain("</script><script>alert(1)</script>")
+  })
+
+  it("shows a one-line audit note in the header, and no findings UI at all, when the caller passes auditNote (the placeholder-skip contract)", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 }), slide({ index: 1, placeholder: true })],
+      auditNote: "audit overlay skipped — deck has unfilled placeholder pages",
+    })
+    expect(html).toContain('id="pf-audit-note"')
+    expect(html).toContain("audit overlay skipped")
+    expect(html).not.toContain('id="pf-audit-panel"')
+    expect(html).not.toContain('class="pf-finding-badge"')
+    expect(html).not.toContain('class="pf-thumb-finding-badge"')
+  })
+
+  it("self-containment still holds with findings embedded (no unexpected http(s) reference)", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+      findings: [finding({ page: 1, message: "see https://example.com/not-a-real-network-request in the quoted text" })],
+    })
+    const KNOWN_NAMESPACE_URIS = new Set(["http://www.w3.org/2000/svg"])
+    const matches = html.match(/https?:\/\/[^\s"'<>)]+/g) ?? []
+    const unexpected = matches.filter((m) => !KNOWN_NAMESPACE_URIS.has(m))
+    // A finding message can legitimately contain an http(s) substring (it is
+    // a quote of the deck author's own slide text) — this is not a network
+    // reference, just text sitting inside a JSON string/HTML text node, so it
+    // is expected here, not a self-containment violation. Assert on the
+    // known namespace URI check only; the deliberately-injected fixture
+    // string is excluded from `unexpected` by construction (see below).
+    expect(unexpected.filter((m) => !m.startsWith("https://example.com"))).toEqual([])
+  })
+})
+
+describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)", () => {
+  it("always renders the annotation UI (textarea, add button, per-page list) regardless of findings", () => {
+    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
+    expect(html).toContain('id="pf-annotate-panel"')
+    expect(html).toContain('id="pf-annotate-input"')
+    expect(html).toContain('id="pf-annotate-add"')
+    expect(html).toContain('id="pf-annotate-list"')
+  })
+
+  it("always renders the 'Export revision requests' button", () => {
+    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
+    expect(html).toContain('id="pf-export-btn"')
+    expect(html).toContain("Export revision requests")
+  })
+
+  it("includes the annotation add/remove JS and the export button's revision-request JSON shape", () => {
+    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
+    // add/remove wiring
+    expect(html).toContain("annotateAdd.addEventListener")
+    expect(html).toContain("renderAnnotations()")
+    // pageId resolution: slide id when present, else 1-based page number —
+    // matches AuditFinding.page's own convention (see the JS's own comment).
+    expect(html).toContain("function pageIdFor(i)")
+    // the exported payload's shape, asserted at the source-text level (this
+    // file's existing tests are all string-level, not jsdom-executed) —
+    // `{ version: "1", deck: <filename/title>, requests: [{ pageId,
+    // annotation, createdAt }] }` per the plan's spec.
+    expect(html).toContain("version: '1'")
+    expect(html).toContain("deck: deckTitle")
+    expect(html).toContain("pageId: pid, annotation: text, createdAt: new Date().toISOString()")
+    // zero-network, zero-storage download — a Blob + a synthetic <a download>
+    // click, never fetch/XMLHttpRequest/a form submission.
+    expect(html).toContain("new Blob(")
+    expect(html).toContain("URL.createObjectURL(blob)")
+    expect(html).toContain('a.download = \'revision-request.json\'')
+    expect(html).not.toMatch(/\bfetch\(/)
+    expect(html).not.toContain("XMLHttpRequest")
+  })
+
+  it("self-containment: the annotation/export JS introduces no external reference either", () => {
+    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
+    const KNOWN_NAMESPACE_URIS = new Set(["http://www.w3.org/2000/svg"])
+    const matches = html.match(/https?:\/\/[^\s"'<>)]+/g) ?? []
+    const unexpected = matches.filter((m) => !KNOWN_NAMESPACE_URIS.has(m))
+    expect(unexpected).toEqual([])
   })
 })
