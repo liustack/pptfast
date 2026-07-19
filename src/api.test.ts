@@ -4,7 +4,7 @@ import { formatIssues, generatePptx, irJsonSchema, listThemes, renderSlideSvg, v
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 const raw = {
-  version: "3",
+  version: "4",
   filename: "api-test",
   theme: { id: "consulting" },
   slides: [
@@ -21,13 +21,38 @@ describe("validateIr", () => {
     expect(r.ir?.slides[0]?.components).toEqual([])
   })
 
-  it("gives a migration message for IR v2 input", () => {
+  it("gives a migration message for IR v2 input (spec §15.3: combined mapping straight to v4)", () => {
     const v = validateIr({ version: "2", filename: "x", theme: { id: "tech" }, slides: [] })
     expect(v.ok).toBe(false)
     expect(v.errors).toHaveLength(1)
-    expect(v.errors[0]!.message).toMatch(/use theme\.style/)
+    expect(v.errors[0]!.message).toMatch(/theme\.override is now theme\.style/)
     expect(v.errors[0]!.message).toMatch(/variant is split into layout and arrangement/)
     expect(v.errors[0]!.message).toMatch(/blocks are now components/)
+    expect(v.errors[0]!.message).toMatch(/scenario is now narrative/)
+    expect(v.errors[0]!.message).toMatch(/mode renamed to strategy/)
+    expect(v.errors[0]!.message).toMatch(/"narrative" strategy value is now "storytelling"/)
+    expect(v.errors[0]!.message).toMatch(/delivery renamed to pacing/)
+    expect(v.errors[0]!.message).toMatch(/"text" pacing value is now "dense"/)
+    expect(v.errors[0]!.message).toMatch(/"presentation" is now "spacious"/)
+    // v2 has no automated migration path (spec §15.3: "不接 v2") — the
+    // message must not point to `pptfast migrate`.
+    expect(v.errors[0]!.message).not.toMatch(/pptfast migrate/)
+  })
+
+  it("hard-rejects IR v3 input with the full §9.1 mapping and a migrate-command pointer (spec §9.3)", () => {
+    const v = validateIr({ version: "3", filename: "x", theme: { id: "tech" }, slides: [] })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.path).toBe("version")
+    expect(v.errors[0]!.message).toMatch(/IR v3 is not supported/)
+    expect(v.errors[0]!.message).toMatch(/pptfast migrate <input> -o <output>/)
+    expect(v.errors[0]!.message).toMatch(/scenario is now narrative/)
+    expect(v.errors[0]!.message).toMatch(/scenario\.mode is now narrative\.strategy/)
+    expect(v.errors[0]!.message).toMatch(/mode "narrative" is now strategy "storytelling"/)
+    expect(v.errors[0]!.message).toMatch(/scenario\.delivery is now narrative\.pacing/)
+    expect(v.errors[0]!.message).toMatch(/delivery "text" is now pacing "dense"/)
+    expect(v.errors[0]!.message).toMatch(/"presentation" is now "spacious"/)
+    expect(v.errors[0]!.message).toMatch(/scenario\.audience is now narrative\.audience/)
   })
 
   it("hard-rejects an unknown theme id with the available list", () => {
@@ -452,7 +477,7 @@ describe("placeholder slide quality exemption (W5 task 1)", () => {
 })
 
 describe("describeQualityIssue: density/bullets English messages (W3 task 3, spec §5)", () => {
-  // Each message must name whichever side(s) of min(delivery editorial
+  // Each message must name whichever side(s) of min(pacing editorial
   // budget, resolved layout capacity) actually bound the limit — see
   // ir-quality.ts's `density`/`bulletsBudget` QualityIssue fields and this
   // file's own describeQualityIssue. Reached only through validateIr (the
@@ -474,59 +499,59 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
   const densityMessage = (v: ReturnType<typeof validateIr>) =>
     v.errors.find((e) => e.message.includes("too many components"))?.message
 
-  it("no geometric term (takeover layout): names the delivery alone", () => {
+  it("no geometric term (takeover layout): names the pacing alone", () => {
     const v = validateIr({
       ...raw,
-      scenario: { delivery: "presentation" },
+      narrative: { pacing: "spacious" },
       slides: [raw.slides[0], denseSlide(4, { layout: "image-top", withImage: true })],
     })
     expect(v.ok).toBe(false)
     expect(densityMessage(v)).toBe(
-      "too many components on this slide (max 3 for presentation delivery) — split into multiple slides",
+      "too many components on this slide (max 3 for spacious pacing) — split into multiple slides",
     )
   })
 
-  it("tied capacities (explicit generic layout, balanced): names the delivery alone", () => {
+  it("tied capacities (explicit generic layout, balanced): names the pacing alone", () => {
     const v = validateIr({
       ...raw,
-      scenario: { delivery: "balanced" },
+      narrative: { pacing: "balanced" },
       slides: [raw.slides[0], denseSlide(5, { layout: "two-column" })],
     })
     expect(v.ok).toBe(false)
     expect(densityMessage(v)).toBe(
-      "too many components on this slide (max 4 for balanced delivery) — split into multiple slides",
+      "too many components on this slide (max 4 for balanced pacing) — split into multiple slides",
     )
   })
 
-  it("delivery binds but the layout allows more (bento-panel exception): names both sides", () => {
+  it("pacing binds but the layout allows more (bento-panel exception): names both sides", () => {
     const v = validateIr({
       ...raw,
       theme: { id: "tech" },
-      scenario: { delivery: "balanced" },
+      narrative: { pacing: "balanced" },
       slides: [raw.slides[0], denseSlide(5, { layout: "bento-panel" })],
     })
     expect(v.ok).toBe(false)
     expect(densityMessage(v)).toBe(
-      "too many components on this slide (max 4 — bento-panel fits 6 but balanced delivery caps at 4) — split into multiple slides",
+      "too many components on this slide (max 4 — bento-panel fits 6 but balanced pacing caps at 4) — split into multiple slides",
     )
   })
 
-  it("the layout's own capacity is the binding side (text delivery, generic layout): names the layout", () => {
+  it("the layout's own capacity is the binding side (dense pacing, generic layout): names the layout", () => {
     const v = validateIr({
       ...raw,
-      scenario: { delivery: "text" },
+      narrative: { pacing: "dense" },
       slides: [raw.slides[0], denseSlide(5, { layout: "two-column" })],
     })
     expect(v.ok).toBe(false)
     expect(densityMessage(v)).toBe(
-      "too many components on this slide (max 4 — two-column layout's capacity is tighter than text delivery's 5) — split into multiple slides",
+      "too many components on this slide (max 4 — two-column layout's capacity is tighter than dense pacing's 5) — split into multiple slides",
     )
   })
 
-  it("bullets_overflow names the delivery", () => {
+  it("bullets_overflow names the pacing", () => {
     const v = validateIr({
       ...raw,
-      scenario: { delivery: "balanced" },
+      narrative: { pacing: "balanced" },
       slides: [
         raw.slides[0],
         {
@@ -538,14 +563,14 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
     })
     expect(v.ok).toBe(false)
     expect(v.errors.find((e) => e.message.includes("too many items"))?.message).toBe(
-      "bullet list has too many items (max 5 for balanced delivery) — trim it or split into multiple slides",
+      "bullet list has too many items (max 5 for balanced pacing) — trim it or split into multiple slides",
     )
   })
 
-  it("bullet_item_long names the delivery", () => {
+  it("bullet_item_long names the pacing", () => {
     const v = validateIr({
       ...raw,
-      scenario: { delivery: "text" },
+      narrative: { pacing: "dense" },
       slides: [
         raw.slides[0],
         {
@@ -557,33 +582,33 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
     })
     expect(v.ok).toBe(false)
     expect(v.errors.find((e) => e.message.includes("too long"))?.message).toBe(
-      "a bullet item is too long for text delivery — keep it within about 2 lines",
+      "a bullet item is too long for dense pacing — keep it within about 2 lines",
     )
   })
 })
 
-describe("scenario field (W3 task 2)", () => {
-  it("hard-rejects an unknown scenario preset name, listing available presets", () => {
-    const v = validateIr({ ...raw, scenario: "not-a-real-preset" })
+describe("narrative field (W3 task 2, renamed from scenario spec §8.1)", () => {
+  it("hard-rejects an unknown narrative preset name, listing available presets", () => {
+    const v = validateIr({ ...raw, narrative: "not-a-real-preset" })
     expect(v.ok).toBe(false)
     expect(v.errors).toHaveLength(1)
-    expect(v.errors[0]!.path).toBe("scenario")
+    expect(v.errors[0]!.path).toBe("narrative")
     expect(v.errors[0]!.page).toBeUndefined()
-    expect(v.errors[0]!.message).toMatch(/unknown scenario preset/)
+    expect(v.errors[0]!.message).toMatch(/unknown narrative preset/)
     expect(v.errors[0]!.message).toMatch(/available:.*general/)
   })
 
-  it("accepts a valid scenario preset string", () => {
-    const v = validateIr({ ...raw, scenario: "boardroom-report" })
+  it("accepts a valid narrative preset string", () => {
+    const v = validateIr({ ...raw, narrative: "boardroom-report" })
     expect(v.ok).toBe(true)
   })
 
-  it("accepts a partial scenario axes object", () => {
-    const v = validateIr({ ...raw, scenario: { mode: "pyramid" } })
+  it("accepts a partial narrative axes object", () => {
+    const v = validateIr({ ...raw, narrative: { strategy: "pyramid" } })
     expect(v.ok).toBe(true)
   })
 
-  it("accepts an omitted scenario field (defaults to general, no error)", () => {
+  it("accepts an omitted narrative field (defaults to general, no error)", () => {
     const v = validateIr(raw)
     expect(v.ok).toBe(true)
   })
@@ -592,32 +617,100 @@ describe("scenario field (W3 task 2)", () => {
   // (a strict z.enum per axis) nested inside a z.union, which zod reports as
   // one opaque invalid_union issue on a failing branch — every one of these
   // would have collapsed to the same useless
-  // { path: "scenario", message: "Invalid input" } instead of surfacing
-  // resolveScenario's specific, available-values message. The schema now
+  // { path: "narrative", message: "Invalid input" } instead of surfacing
+  // resolveNarrative's specific, available-values message. The schema now
   // only shape-checks (string vs. object vs. neither — see
-  // src/ir/index.test.ts's "IR v3 scenario field" describe block for that
+  // src/ir/index.test.ts's "IR v4 narrative field" describe block for that
   // layer's coverage); these pin the message content actually reaching the
-  // caller through validateIr's resolveScenario try/catch.
+  // caller through validateIr's resolveNarrative try/catch.
   it("hard-rejects a bad axis value inside the axes object, listing valid values", () => {
-    const v = validateIr({ ...raw, scenario: { mode: "pyramidal" } })
+    const v = validateIr({ ...raw, narrative: { strategy: "pyramidal" } })
     expect(v.ok).toBe(false)
     expect(v.errors).toHaveLength(1)
-    expect(v.errors[0]!.path).toBe("scenario")
+    expect(v.errors[0]!.path).toBe("narrative")
     expect(v.errors[0]!.page).toBeUndefined()
-    expect(v.errors[0]!.message).toMatch(/unknown mode/)
+    expect(v.errors[0]!.message).toMatch(/unknown strategy/)
     expect(v.errors[0]!.message).toMatch(/pyramid/)
   })
 
   it("hard-rejects an unknown key on the axes object, listing valid keys", () => {
-    const v = validateIr({ ...raw, scenario: { speed: "fast" } })
+    const v = validateIr({ ...raw, narrative: { speed: "fast" } })
     expect(v.ok).toBe(false)
     expect(v.errors).toHaveLength(1)
-    expect(v.errors[0]!.path).toBe("scenario")
+    expect(v.errors[0]!.path).toBe("narrative")
     expect(v.errors[0]!.page).toBeUndefined()
-    expect(v.errors[0]!.message).toMatch(/unknown scenario axis/)
-    expect(v.errors[0]!.message).toMatch(/mode/)
-    expect(v.errors[0]!.message).toMatch(/delivery/)
+    expect(v.errors[0]!.message).toMatch(/unknown narrative axis/)
+    expect(v.errors[0]!.message).toMatch(/strategy/)
+    expect(v.errors[0]!.message).toMatch(/pacing/)
     expect(v.errors[0]!.message).toMatch(/audience/)
+  })
+})
+
+describe("v4 narrative alias normalization (spec §15.4)", () => {
+  it("rescues the pre-rename `scenario` field name, printing a root-level normalization note", () => {
+    const v = validateIr({ ...raw, scenario: { strategy: "pyramid" } })
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toEqual(["(root): scenario → narrative"])
+    expect(v.ir?.narrative).toEqual({ strategy: "pyramid" })
+  })
+
+  it("rescues the pre-rename `mode`/`delivery` axis field names inside `narrative`", () => {
+    const v = validateIr({ ...raw, narrative: { mode: "pyramid", delivery: "balanced" } })
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toEqual([
+      "(root).narrative: mode → strategy",
+      "(root).narrative: delivery → pacing",
+    ])
+    expect(v.ir?.narrative).toEqual({ strategy: "pyramid", pacing: "balanced" })
+  })
+
+  it("rescues the pre-rename enum values (mode \"narrative\" → strategy \"storytelling\", delivery \"text\"/\"presentation\" → pacing \"dense\"/\"spacious\")", () => {
+    const v = validateIr({ ...raw, narrative: { mode: "narrative", delivery: "text" } })
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toEqual([
+      "(root).narrative: mode → strategy",
+      "(root).narrative: delivery → pacing",
+      "(root).narrative.strategy: narrative → storytelling",
+      "(root).narrative.pacing: text → dense",
+    ])
+    expect(v.ir?.narrative).toEqual({ strategy: "storytelling", pacing: "dense" })
+
+    const v2 = validateIr({ ...raw, narrative: { delivery: "presentation" } })
+    expect(v2.normalized).toEqual([
+      "(root).narrative: delivery → pacing",
+      "(root).narrative.pacing: presentation → spacious",
+    ])
+    expect(v2.ir?.narrative).toEqual({ pacing: "spacious" })
+  })
+
+  it("rescues an old enum value even when the field is already written under its new name", () => {
+    const v = validateIr({ ...raw, narrative: { strategy: "narrative" } })
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toEqual(["(root).narrative.strategy: narrative → storytelling"])
+    expect(v.ir?.narrative).toEqual({ strategy: "storytelling" })
+  })
+
+  it("both the alias and the canonical field present at the same level is left untouched (ambiguous — zod strict/resolveNarrative reports it)", () => {
+    const v = validateIr({ ...raw, scenario: "boardroom-report", narrative: "pitch" })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    // `scenario` never got renamed away (both present), so the v4 schema's
+    // strict parse rejects it as an unrecognized key.
+    expect(v.errors.some((e) => e.message.includes("scenario"))).toBe(true)
+  })
+
+  it("a preset-id string narrative value needs no aliasing — preset ids are unchanged by the rename", () => {
+    const v = validateIr({ ...raw, scenario: "annual-review" })
+    expect(v.ok).toBe(true)
+    expect(v.normalized).toEqual(["(root): scenario → narrative"])
+    expect(v.ir?.narrative).toBe("annual-review")
+  })
+
+  it("never rescues an explicit version \"3\" — the hard-reject fires before any alias pass runs", () => {
+    const v = validateIr({ ...raw, version: "3", scenario: { strategy: "pyramid" } })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    expect(v.errors[0]!.message).toMatch(/IR v3 is not supported/)
   })
 })
 
@@ -665,7 +758,7 @@ describe("registerTheme end-to-end (W3 task 4)", () => {
   it("a registered theme's style and curated layout take effect end-to-end (validateIr → renderSlideSvg)", () => {
     registerTheme(registeredTheme("acme-registered"))
     const v = validateIr({
-      version: "3",
+      version: "4",
       filename: "registered-theme-test",
       theme: { id: "acme-registered" },
       slides: [{ type: "cover", heading: "Hello from a registered theme" }],

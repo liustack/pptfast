@@ -177,7 +177,10 @@ const AssetSchema = z
   })
   .strict()
 
-const AssetsSchema = z
+// Exported (not just used internally) so `./legacy-v3.ts` (the frozen v3
+// schema) can reuse this exact schema — assets never changed shape between
+// v3 and v4 (spec §9.1: "其余 IR 字段保持不变").
+export const AssetsSchema = z
   .object({ images: z.record(z.string(), AssetSchema).default({}) })
   .strict()
 
@@ -674,7 +677,12 @@ export const COMPONENT_TYPES: readonly string[] = ComponentSchema.options.map((o
 
 // ── Slide ──
 
-const SlideSchema = z
+// Exported (not just used internally) so `./legacy-v3.ts` (the frozen v3
+// schema, kept around only for `migrateIrV3ToV4`'s input parsing and the
+// v3-hard-reject path's own tests) can reuse this exact schema instead of a
+// second definition that could drift from it — slides never changed shape
+// between v3 and v4 (spec §9.1: "其余 IR 字段保持不变").
+export const SlideSchema = z
   .object({
     type: z.enum(["cover", "chapter", "content", "ending"]).default("content"),
     // 稳定页标识（W5 plan/assemble 注入，裸 IR 可省）。schema 层不做跨 slide
@@ -749,64 +757,91 @@ const SlideSchema = z
   })
   .strict()
 
-// ── Scenario（spec §5）──
+// ── Narrative（spec §5, renamed from "Scenario" — spec §8.1）──
 
 /**
- * Object half of the top-level `scenario` field's `string | object` union
+ * Object half of the top-level `narrative` field's `string | object` union
  * (see {@link PptxIRSchema}) — deliberately as open as a record gets: any
  * string key, any value. Same open-schema/closed-semantic split as the
  * preset-name string branch (and this file's `theme.id`): the *actual*
- * constraint — only `mode`/`delivery`/`audience` are legal keys, each with
+ * constraint — only `strategy`/`pacing`/`audience` are legal keys, each with
  * its own closed enum — is enforced later, in `validateIr`, by
- * `resolveScenario` (`src/scenario`), not here.
+ * `resolveNarrative` (`src/scenario`), not here.
  *
  * This was originally a `.strict()` object with a `z.enum(...)` per axis,
  * closed right at the schema layer — wrong inside a `z.union([...])`: zod
  * reports a failing union branch as one opaque `invalid_union` issue, not
  * that branch's own specific issue, so an axis-value typo or an unknown key
- * never surfaced `resolveScenario`'s available-values message — every
+ * never surfaced `resolveNarrative`'s available-values message — every
  * rejection collapsed to the same useless
- * `{ path: "scenario", message: "Invalid input" }` (W3 task-2 review
+ * `{ path: "narrative", message: "Invalid input" }` (W3 task-2 review
  * finding). Loosening this branch to a plain record makes the schema layer
  * responsible for exactly one thing — string vs. object vs. neither — so an
  * object input always parses far enough for `validateIr`'s existing
- * `resolveScenario` try/catch to run and produce a specific, listable
+ * `resolveNarrative` try/catch to run and produce a specific, listable
  * message, the same way it already did for an unknown preset-name string.
- * `resolveScenario` itself still reads `./scenario-values`'s
- * `MODE_VALUES`/`DELIVERY_VALUES`/`AUDIENCE_VALUES` tuples for its runtime
+ * `resolveNarrative` itself still reads `./narrative-values`'s
+ * `STRATEGY_VALUES`/`PACING_VALUES`/`AUDIENCE_VALUES` tuples for its runtime
  * checks — this schema no longer needs to import them at all.
  *
  * Exported so W5's plan schema (`src/plan/index.ts`) can reuse this exact
- * object branch for its own top-level `scenario` field — same
- * open-schema/closed-semantic split, same `resolveScenario` consumer, one
- * definition instead of two that could drift apart.
+ * object branch for its own top-level `scenario` field (plan's own field
+ * name is unchanged this task — spec §8.1's `DeckPlan`→`DeckSpec` rename is
+ * task 2's job, not this one) — same open-schema/closed-semantic split, same
+ * `resolveNarrative` consumer, one definition instead of two that could
+ * drift apart.
+ *
+ * Renamed from `ScenarioAxesInputSchema` in the vocabulary-v4 rename (task
+ * 1) — not itself named in spec §8.1's table, but derived from
+ * `ScenarioAxes`→`NarrativeProfile` the same way the rest of this module's
+ * axis vocabulary was. `./legacy-v3.ts`'s frozen `PptxIRV3Schema` reuses this
+ * exact schema for its own `scenario` field too — the object shape (any
+ * string key, any value) never changed between v3 and v4, only which field
+ * name and which axis-key vocabulary `resolveNarrative`/`resolveScenario`
+ * validate against it downstream.
  */
-export const ScenarioAxesInputSchema = z.record(z.string(), z.unknown())
+export const NarrativeProfileInputSchema = z.record(z.string(), z.unknown())
 
-// ── 顶层 IR ──
+// ── 顶层 IR（v4 — current. The frozen v3 shape lives in ./legacy-v3.ts,
+// kept only for migrateIrV3ToV4's input parsing and the v3-hard-reject
+// path's own tests, per spec §9.3: v3 is a closed, frozen contract that
+// this repo's render chain no longer speaks directly — every v3 input must
+// pass through `migrateIrV3ToV4` first）──
 
 export const PptxIRSchema = z
   .object({
-    version: z.literal("3").default("3"),
+    // v4 is now the default (spec §15.1: "version 默认 '4'") — an omitted
+    // version is treated as v4, not v3. `validateIr` (`src/api.ts`) branches
+    // on an *explicit* "2" or "3" before this schema ever runs (hard reject,
+    // spec §9.3/§15.3); everything else — omitted, or explicit "4" — reaches
+    // this schema and gets the v4 alias-normalization rescue for old
+    // field/enum-value spelling (spec §15.4,
+    // `field-aliases.ts`'s `normalizeNarrativeAliases`) before this parse.
+    version: z.literal("4").default("4"),
     filename: z.string().default("presentation"),
     // Preset id string or a partial per-axis override object — both
     // branches are open at the schema layer now (validity checked in
     // validateIr, same open-schema/closed-semantic pattern as this object's
-    // own theme.id field; see ScenarioAxesInputSchema above for why the
+    // own theme.id field; see NarrativeProfileInputSchema above for why the
     // object branch reads this way too). Omitted entirely = the `general`
     // preset (briefing × balanced × public, spec §5). Deliberately has no
-    // `.default(...)`: the resolved ScenarioAxes is never written back into
-    // the IR — validateIr and (W4) the render path each call
-    // `resolveScenario` themselves (pure, cheap) rather than this schema
+    // `.default(...)`: the resolved NarrativeProfile is never written back
+    // into the IR — validateIr and (W4) the render path each call
+    // `resolveNarrative` themselves (pure, cheap) rather than this schema
     // baking a materialized default in, which would drift the parsed-output
-    // shape the moment SCENARIO_PRESETS.general's axes changed.
+    // shape the moment NARRATIVE_PRESETS.general's axes changed.
     //
     // Type note: this infers as `string | Record<string, unknown> |
-    // undefined` on PptxIR — wider than the "mode/delivery/audience" shape
-    // one might expect. `resolveScenario` (src/scenario) is the semantic
+    // undefined` on PptxIR — wider than the "strategy/pacing/audience" shape
+    // one might expect. `resolveNarrative` (src/scenario) is the semantic
     // authority for that narrower shape; treat this field's static type as
     // shape-only and go there for what's actually valid.
-    scenario: z.union([z.string(), ScenarioAxesInputSchema]).optional(),
+    //
+    // Renamed from `scenario` (spec §8.1/§9.1). A v4-track document that
+    // still writes the pre-rename field name is not rejected here — see
+    // `field-aliases.ts`'s `normalizeNarrativeAliases`, run by `validateIr`
+    // before this schema parses (spec §15.4).
+    narrative: z.union([z.string(), NarrativeProfileInputSchema]).optional(),
     theme: ThemeSchema.default({ id: "consulting" }),
     meta: MetaSchema.default({}),
     assets: AssetsSchema.default({ images: {} }),

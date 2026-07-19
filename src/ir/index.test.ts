@@ -3,13 +3,13 @@ import { describe, it, expect } from "vitest"
 import { parsePptxIR, BUILTIN_THEME_IDS } from "./index"
 
 const minimal = () => ({
-  version: "3", filename: "d.pptx",
+  version: "4", filename: "d.pptx",
   theme: { id: "consulting" }, meta: { organization: "ACME" },
   assets: { images: {} },
   slides: [{ type: "cover", heading: "标题" }],
 })
 
-describe("IR v3 theme field", () => {
+describe("IR v4 theme field", () => {
   it("accepts theme with style and brand overrides", () => {
     const d: any = minimal()
     d.theme = {
@@ -31,12 +31,12 @@ describe("IR v3 theme field", () => {
   })
 })
 
-describe("IR v3 omission defaults (weak-model friendly)", () => {
+describe("IR v4 omission defaults (weak-model friendly)", () => {
   it("a bare slides-only deck parses with all defaults", () => {
     const r = parsePptxIR({ slides: [{ heading: "只有一页", components: [] }] })
     expect(r.success).toBe(true)
     if (r.success) {
-      expect(r.data.version).toBe("3")
+      expect(r.data.version).toBe("4")
       expect(r.data.filename).toBe("presentation")
       expect(r.data.theme.id).toBe("consulting")
       expect(r.data.slides[0]!.type).toBe("content")
@@ -51,13 +51,13 @@ describe("IR v3 omission defaults (weak-model friendly)", () => {
   })
   it("a wrong value is still a hard error (omission ≠ typo)", () => {
     const d: any = minimal()
-    d.version = "4"
+    d.version = "3"
     expect(parsePptxIR(d).success).toBe(false)
   })
 })
 
-describe("pptx-ir v3", () => {
-  it("parses minimal v3", () => {
+describe("pptx-ir v4", () => {
+  it("parses minimal v4", () => {
     const r = parsePptxIR(minimal()); expect(r.success).toBe(true)
   })
   it("slide carries type/arrangement, no layout_ref", () => {
@@ -514,62 +514,69 @@ describe("verdict_banner component", () => {
 
 // Schema layer only distinguishes string vs. object vs. neither for the
 // axes-object branch (W3 task-2 review fix) — key/value semantics (only
-// mode/delivery/audience, each a closed enum) are solely resolveScenario's
-// job, exercised through validateIr in api.test.ts's "scenario field"
+// strategy/pacing/audience, each a closed enum) are solely resolveNarrative's
+// job, exercised through validateIr in api.test.ts's "narrative field"
 // describe block, not here. Nesting a schema-closed enum object inside a
 // z.union used to collapse every rejection into one opaque zod
 // `invalid_union` issue regardless of what was actually wrong — see
-// ScenarioAxesInputSchema's docstring in ir/index.ts for the full story.
-describe("IR v3 scenario field (W3 task 2)", () => {
+// NarrativeProfileInputSchema's docstring in ir/index.ts for the full story.
+//
+// Field renamed `scenario` → `narrative` (vocabulary-v4 rename, task 1, spec
+// §8.1/§9.1) — `parsePptxIR` is a raw schema parse with no alias rescue
+// (that rescue is `validateIr`'s own pre-parse step, `field-aliases.ts`'s
+// `normalizeNarrativeAliases`, api.test.ts), so setting the pre-rename
+// `scenario` key here is now itself a strict-schema rejection, not a
+// semantically-open-but-later-rejected value — see the last two `it`s below.
+describe("IR v4 narrative field (W3 task 2)", () => {
   it("accepts a preset id string", () => {
     const d: any = minimal()
-    d.scenario = "boardroom-report"
+    d.narrative = "boardroom-report"
     const r = parsePptxIR(d)
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.scenario).toBe("boardroom-report")
+    if (r.success) expect(r.data.narrative).toBe("boardroom-report")
   })
 
   it("accepts a partial axes object", () => {
     const d: any = minimal()
-    d.scenario = { mode: "pyramid", audience: "executive" }
+    d.narrative = { strategy: "pyramid", audience: "executive" }
     const r = parsePptxIR(d)
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.scenario).toEqual({ mode: "pyramid", audience: "executive" })
+    if (r.success) expect(r.data.narrative).toEqual({ strategy: "pyramid", audience: "executive" })
   })
 
-  it("accepts omission — scenario stays undefined, no default is baked in by the schema", () => {
+  it("accepts omission — narrative stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.scenario).toBeUndefined()
+    if (r.success) expect(r.data.narrative).toBeUndefined()
   })
 
-  it("schema-accepts an unknown key on the axes object — resolveScenario rejects it (api.test.ts)", () => {
+  it("schema-accepts an unknown key on the axes object — resolveNarrative rejects it (api.test.ts)", () => {
     const d: any = minimal()
-    d.scenario = { mode: "pyramid", speed: "fast" }
+    d.narrative = { strategy: "pyramid", speed: "fast" }
     const r = parsePptxIR(d)
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.scenario).toEqual({ mode: "pyramid", speed: "fast" })
+    if (r.success) expect(r.data.narrative).toEqual({ strategy: "pyramid", speed: "fast" })
   })
 
-  it("schema-accepts a wrong-type axis value — resolveScenario rejects it (api.test.ts)", () => {
+  it("schema-accepts a wrong-type axis value — resolveNarrative rejects it (api.test.ts)", () => {
     const d: any = minimal()
-    d.scenario = { mode: 123 }
+    d.narrative = { strategy: 123 }
     const r = parsePptxIR(d)
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.scenario).toEqual({ mode: 123 })
+    if (r.success) expect(r.data.narrative).toEqual({ strategy: 123 })
   })
 
-  it("schema-accepts an axis-value typo — resolveScenario rejects it (api.test.ts)", () => {
+  it("schema-accepts an axis-value typo — resolveNarrative rejects it (api.test.ts)", () => {
     const d: any = minimal()
-    d.scenario = { mode: "pyramidal" }
+    d.narrative = { strategy: "pyramidal" }
     const r = parsePptxIR(d)
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.scenario).toEqual({ mode: "pyramidal" })
+    if (r.success) expect(r.data.narrative).toEqual({ strategy: "pyramidal" })
   })
 
-  it("rejects a scenario value that is neither a preset string nor an axes object (number)", () => {
+  it("rejects a narrative value that is neither a preset string nor an axes object (number)", () => {
     const d: any = minimal()
-    d.scenario = 42
+    d.narrative = 42
     // Union type error (fails both branches structurally) — generic zod
     // message is acceptable here, unlike the object-branch cases above:
     // there is no per-axis semantic to report, "not a string and not an
@@ -577,16 +584,22 @@ describe("IR v3 scenario field (W3 task 2)", () => {
     expect(parsePptxIR(d).success).toBe(false)
   })
 
-  it("rejects a scenario value that is neither a preset string nor an axes object (array)", () => {
+  it("rejects a narrative value that is neither a preset string nor an axes object (array)", () => {
     const d: any = minimal()
-    d.scenario = ["boardroom-report"]
+    d.narrative = ["boardroom-report"]
     // Arrays are not plain objects (z.record's isPlainObject check) and not
     // strings, so this fails the union the same structural way as a number.
     expect(parsePptxIR(d).success).toBe(false)
   })
+
+  it("rejects the pre-rename `scenario` field name outright (strict schema, no alias rescue at this layer)", () => {
+    const d: any = minimal()
+    d.scenario = "boardroom-report"
+    expect(parsePptxIR(d).success).toBe(false)
+  })
 })
 
-describe("IR v3 seed field (W5 task 1)", () => {
+describe("IR v4 seed field (W5 task 1)", () => {
   it("accepts an integer seed", () => {
     const d: any = minimal()
     d.seed = 12345
@@ -604,7 +617,7 @@ describe("IR v3 seed field (W5 task 1)", () => {
   })
 })
 
-describe("IR v3 slide id field (W5 task 1)", () => {
+describe("IR v4 slide id field (W5 task 1)", () => {
   it("accepts a string id on a slide", () => {
     const d: any = minimal()
     d.slides = [{ type: "cover", id: "p-1", heading: "x" }]
@@ -625,7 +638,7 @@ describe("IR v3 slide id field (W5 task 1)", () => {
   })
 })
 
-describe("IR v3 slide placeholder field (W5 task 1)", () => {
+describe("IR v4 slide placeholder field (W5 task 1)", () => {
   it("accepts placeholder: true", () => {
     const d: any = minimal()
     d.slides = [{ type: "content", placeholder: true }]
@@ -643,7 +656,7 @@ describe("IR v3 slide placeholder field (W5 task 1)", () => {
   })
 })
 
-describe("IR v3 slide notes field (notes+preview wave, task 1)", () => {
+describe("IR v4 slide notes field (notes+preview wave, task 1)", () => {
   it("accepts a string notes on a slide", () => {
     const d: any = minimal()
     d.slides = [{ type: "cover", heading: "x", notes: "remember to slow down here" }]

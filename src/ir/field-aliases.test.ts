@@ -8,7 +8,7 @@ import {
 import { PptxIRSchema } from "./index"
 
 function deck(slides: unknown[]) {
-  return { version: "3", theme: { id: "consulting" }, slides }
+  return { version: "4", theme: { id: "consulting" }, slides }
 }
 
 function slideWith(components: unknown[]) {
@@ -447,7 +447,7 @@ describe("no aliases present: zero change", () => {
     const components = Object.freeze([component])
     const slide = Object.freeze({ type: "content", heading: "h", components })
     const slides = Object.freeze([slide])
-    const input = Object.freeze({ version: "3", theme: Object.freeze({ id: "consulting" }), slides })
+    const input = Object.freeze({ version: "4", theme: Object.freeze({ id: "consulting" }), slides })
 
     expect(() => normalizeComponentAliases(input)).not.toThrow()
     const { value } = normalizeComponentAliases(input)
