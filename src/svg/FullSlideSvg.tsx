@@ -1,6 +1,6 @@
 import type React from "react"
 import type { BackgroundSpec, Component, PptxIR, Slide } from "@/ir"
-import { PACING_BUDGETS, resolveNarrative, type Strategy, type NarrativeProfile } from "@/scenario"
+import { PACING_BUDGETS, resolveNarrative, type Strategy, type NarrativeProfile } from "@/narrative"
 import type { StyleTokens } from "../themes/tokens"
 import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
@@ -203,7 +203,7 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
  * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 加权
  * 取样一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务 3，即
  * `slide.layout`）显式指定短路——完整选型算法（narrative 加权取样、
- * scenariosOnly 硬约束、相邻防重复、allowed 空集防御性回退，W4 终态）现由
+ * narrativesOnly 硬约束、相邻防重复、allowed 空集防御性回退，W4 终态）现由
  * `./effective-layout` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
  * `checkIrQuality` 的 density 门在 validate 期要跑同一条选型路径，两处各自维护
  * 一份会有漂移风险，故只留一份）。这里只做 render 专属的收尾——按选中 id 查

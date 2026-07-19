@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path"
 import JSZip from "jszip"
 import { afterAll, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { NARRATIVE_PRESETS } from "../scenario"
+import { NARRATIVE_PRESETS } from "../narrative"
 import {
   applyDeckConfig,
   runAssemble,

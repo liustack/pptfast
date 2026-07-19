@@ -522,10 +522,10 @@ describe("verdict_banner component", () => {
 // NarrativeProfileInputSchema's docstring in ir/index.ts for the full story.
 //
 // Field renamed `scenario` → `narrative` (vocabulary-v4 rename, task 1, spec
-// §8.1/§9.1) — `parsePptxIR` is a raw schema parse with no alias rescue
-// (that rescue is `validateIr`'s own pre-parse step, `field-aliases.ts`'s
-// `normalizeNarrativeAliases`, api.test.ts), so setting the pre-rename
-// `scenario` key here is now itself a strict-schema rejection, not a
+// §8.1/§9.1). `parsePptxIR` is a raw schema parse — there is no alias
+// rescue anywhere in the v4 pipeline for this field (spec §16: the
+// now-superseded §15.4 rescue was removed), so setting the pre-rename
+// `scenario` key here is a strict-schema rejection, not a
 // semantically-open-but-later-rejected value — see the last two `it`s below.
 describe("IR v4 narrative field (W3 task 2)", () => {
   it("accepts a preset id string", () => {

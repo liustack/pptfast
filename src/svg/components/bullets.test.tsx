@@ -4,7 +4,7 @@ import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { bullets } from "./bullets"
 import type { ComponentCtx } from "./types"
-import { PACING_BUDGETS } from "@/scenario"
+import { PACING_BUDGETS } from "@/narrative"
 
 const ctx: ComponentCtx = {
   colors: {

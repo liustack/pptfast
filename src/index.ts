@@ -44,7 +44,7 @@ export {
   type StrategyDefinition,
   type PacingBudget,
   type NarrativePreset,
-} from "./scenario"
+} from "./narrative"
 export { installPlatform, type PptfastPlatform } from "./platform/registry"
 export {
   validateSpec,

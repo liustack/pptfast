@@ -4,7 +4,7 @@
  * answers "which layout will `FullSlideSvg` actually draw this slide's body
  * with" — the geometric half of the density gate's `min(pacing editorial
  * budget, layout capacity)` formula. The other half (`PACING_BUDGETS`)
- * lives in `@/scenario`; this module owns the layout side and nothing else.
+ * lives in `@/narrative`; this module owns the layout side and nothing else.
  *
  * CRITICAL invariant (spec §5's W3 amendment note: "选型确定性保证 validate
  * 所见 = render 所用"): `resolveArchetypeId` below is the *only* place the
@@ -17,11 +17,11 @@
  * call it.
  */
 import type { PptxIR, Slide } from "@/ir"
-import { STRATEGY_DEFINITIONS, resolveNarrative, type NarrativeProfile, type Strategy } from "@/scenario"
+import { STRATEGY_DEFINITIONS, resolveNarrative, type NarrativeProfile, type Strategy } from "@/narrative"
 import { resolveStyle } from "../themes"
 import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { findImageComponent } from "./layouts/find-image"
-import { filterByScenariosOnly, getLayout } from "./layouts/registry"
+import { filterByNarrativesOnly, getLayout } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 
 /**
@@ -30,7 +30,7 @@ import { cachedDeckSeed, weightedPickBySeed } from "./variety"
  * resolved strategy's tendency set gets `TENDENCY_WEIGHT`, every other
  * candidate gets the `BASE_WEIGHT` floor — cover/chapter/ending candidates
  * always fall in the latter bucket since no strategy's `layoutTendencies`
- * ever names a non-content id (that field's own doc comment, `@/scenario`).
+ * ever names a non-content id (that field's own doc comment, `@/narrative`).
  * Initial values, not yet tuned against a real corpus (spec §6: "权重初值...
  * 为待调参数，实现期以 audit baseline 全量渲染分布验证") — expect these two
  * constants, not the sampling mechanism itself, to move if a later wave's
@@ -44,18 +44,18 @@ const BASE_WEIGHT = 1
  * 3-5, W4 final form). An explicit `requestedLayout` short-circuits every
  * step below when it names a registered `kind: "archetype"` layout
  * applicable to `slideType` (spec §3: "要版式完全不动就显式写 layout 字段" —
- * explicit pin bypasses `theme.layouts` curation, `scenariosOnly`, and
+ * explicit pin bypasses `theme.layouts` curation, `narrativesOnly`, and
  * narrative weighting unconditionally, it is not a soft preference confined
  * to the curated family). Otherwise:
  *
  * 1. **theme.layouts curation** (step 3, already the caller's job — this
  *    function just reads `layouts[slideType]` as the starting pool).
- * 2. **`scenariosOnly` hard filter** (step 4's rare constraint,
- *    {@link filterByScenariosOnly}): drop any candidate whose allowlist is
+ * 2. **`narrativesOnly` hard filter** (step 4's rare constraint,
+ *    {@link filterByNarrativesOnly}): drop any candidate whose allowlist is
  *    set and excludes the resolved `strategy`. An empty result after this
  *    step folds into the same `null` defensive fallback as an empty curated
  *    pool (unreachable for the 13 built-in themes today — no built-in
- *    layout sets `scenariosOnly` yet).
+ *    layout sets `narrativesOnly` yet).
  * 3. **narrative soft weighting** (step 4's ×3/×1, `TENDENCY_WEIGHT`/
  *    `BASE_WEIGHT` above) **+ weighted seed sampling** (step 5,
  *    `weightedPickBySeed` — salt is `` `${slideType}-archetype:${pageKey}` ``,
@@ -102,7 +102,7 @@ export function resolveArchetypeId(
   const curatedDefs = curated
     .map((id) => getLayout(id))
     .filter((def): def is NonNullable<typeof def> => def !== undefined)
-  const pool = filterByScenariosOnly(curatedDefs, strategy).map((def) => def.id)
+  const pool = filterByNarrativesOnly(curatedDefs, strategy).map((def) => def.id)
   if (pool.length === 0) return null
 
   const tendencies = STRATEGY_DEFINITIONS[strategy].layoutTendencies
@@ -120,7 +120,7 @@ export function resolveArchetypeId(
 /**
  * Resolve the resolved narrative `strategy` for `ir` (spec §6 step 4's
  * input) — a plain, uncached call to the shared `resolveNarrative`
- * (`@/scenario`), same posture as every other call site (`ir-quality.ts`,
+ * (`@/narrative`), same posture as every other call site (`ir-quality.ts`,
  * `plan/index.ts`, `cli/commands.ts`): cheap (no hashing, just
  * object/string comparisons), so unlike `deckSeed` it doesn't warrant its
  * own memoization. The IR schema's `narrative` field is open at the type

@@ -26,15 +26,15 @@
  *    `Array.find` a specific component type out of `slide.components`.
  */
 
-// Type-only import from the shared leaf tuple module (not `@/scenario`
+// Type-only import from the shared leaf tuple module (not `@/narrative`
 // itself, which owns the nominal `Strategy` type this mirrors structurally)
 // — W4 import-cycle precedent: `src/themes/definitions.ts` imports this
-// registry (`getLayout`), so this registry importing `@/scenario` (which
+// registry (`getLayout`), so this registry importing `@/narrative` (which
 // could plausibly grow a reason to read theme/layout data back some day)
-// would risk the same scenario↔consumer cycle W3 already broke once by
+// would risk the same narrative↔consumer cycle W3 already broke once by
 // carving `src/ir/narrative-values.ts` (renamed from `scenario-values.ts` in
 // the vocabulary-v4 rename, task 1) out as a dependency-free leaf.
-// `Strategy` here and `@/scenario`'s own `Strategy` are the exact same
+// `Strategy` here and `@/narrative`'s own `Strategy` are the exact same
 // literal union (derived from the identical tuple) — TypeScript's
 // structural typing makes them freely interchangeable at every call site, so
 // no cast is ever needed where the two meet (`effective-layout.ts`'s
@@ -107,33 +107,33 @@ export interface LayoutDefinition {
    *  bento-panel → ["single"]) */
   arrangements?: readonly Arrangement[] | "all"
   /**
-   * Auto-selection scenario allowlist (W4, spec §6 step 4's rare
-   * `scenarios_only` hard constraint — distinct from the soft ×3/×1
-   * `layoutTendencies` weighting in `STRATEGY_DEFINITIONS`, `src/scenario`):
+   * Auto-selection strategy allowlist (W4, spec §6 step 4's rare
+   * `narratives_only` hard constraint — distinct from the soft ×3/×1
+   * `layoutTendencies` weighting in `STRATEGY_DEFINITIONS`, `src/narrative`):
    * when set, `resolveArchetypeId` (`../effective-layout.ts`) drops this
    * layout from the auto-pick pool unless the resolved narrative's
    * `strategy` is a member. An explicit `slide.layout` pin bypasses
    * selection entirely (spec §3: "显式指定不经选型"), so this field never
    * blocks a pin — only auto-pick. `undefined` (every built-in layout today
    * — the mechanism lands ahead of any real consumer) means unrestricted:
-   * every strategy is eligible. See {@link filterByScenariosOnly} for the
+   * every strategy is eligible. See {@link filterByNarrativesOnly} for the
    * pure filter this field feeds.
    */
-  scenariosOnly?: readonly Strategy[]
+  narrativesOnly?: readonly Strategy[]
 }
 
 /**
- * Pure `scenariosOnly` filter (W4, spec §6 step 4's hard constraint): keep a
- * layout when its `scenariosOnly` is unset, drop it when set and `strategy`
- * is not a member. Generic over any `scenariosOnly`-shaped record (not just
+ * Pure `narrativesOnly` filter (W4, spec §6 step 4's hard constraint): keep a
+ * layout when its `narrativesOnly` is unset, drop it when set and `strategy`
+ * is not a member. Generic over any `narrativesOnly`-shaped record (not just
  * `LayoutDefinition`) so a unit test can exercise it against synthetic
  * fixtures without touching the real registry.
  */
-export function filterByScenariosOnly<T extends { scenariosOnly?: readonly Strategy[] }>(
+export function filterByNarrativesOnly<T extends { narrativesOnly?: readonly Strategy[] }>(
   defs: readonly T[],
   strategy: Strategy,
 ): T[] {
-  return defs.filter((def) => def.scenariosOnly === undefined || def.scenariosOnly.includes(strategy))
+  return defs.filter((def) => def.narrativesOnly === undefined || def.narrativesOnly.includes(strategy))
 }
 
 /** Chrome slots (label/rule/meta/decor/watermark/rail) are never fed by an

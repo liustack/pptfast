@@ -6,7 +6,7 @@
  */
 
 import type { PptxIR, Slide } from "@/ir"
-import { PACING_BUDGETS, resolveNarrative, type NarrativeProfile, type Pacing } from "@/scenario"
+import { PACING_BUDGETS, resolveNarrative, type NarrativeProfile, type Pacing } from "@/narrative"
 import { CAPACITY } from "./audit/capacity"
 import { resolveEffectiveLayoutBodyCapacity } from "./effective-layout"
 import { measureTextUnits } from "../lib/svg-text-layout"

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import { checkIrQuality, type QualityIssue } from "./ir-quality"
 import { CAPACITY } from "./audit/capacity"
 import { resolveEffectiveLayoutId } from "./effective-layout"
-import { PACING_BUDGETS, resolveNarrative, type Pacing, type NarrativeProfile } from "@/scenario"
+import { PACING_BUDGETS, resolveNarrative, type Pacing, type NarrativeProfile } from "@/narrative"
 import type { Component, PptxIR, Slide } from "@/ir"
 
 // ── helpers ──
