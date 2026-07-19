@@ -2,7 +2,7 @@ import JSZip from "jszip"
 import type { Op } from "./dispatch"
 import type { TextRunData } from "./text"
 import { gradientFillXml } from "./gradient"
-import { blockMarker } from "../pptx-animations"
+import { blockMarker, pad4 } from "../pptx-animations"
 
 /**
  * The subset of a pptxgenjs `Slide` that the render layer uses. Keeping it
@@ -26,19 +26,36 @@ export interface GradientFillPatch {
 }
 
 /**
- * A short random token, freshly generated per *shape* (each call site below
- * calls this once per gradient op it processes, not once per `renderOps`
- * call) and folded into that shape's `objectName`. `renderOps` runs once per
- * slide, but a caller building a multi-slide deck (see `pptx-generate.ts`)
- * accumulates patches from every slide's `renderOps` call into one array
- * before patching the finished multi-slide pptx (`pptx.write()` happens once,
- * for the whole deck). Plain 0-based names would collide across slides; a
- * fresh token per shape (rather than one shared token per call) makes any
- * collision — within a slide or across slides — astronomically unlikely,
- * without `renderOps` needing to know its own slide index.
+ * Deterministic `objectName` for a gradient-patch shape:
+ * `svg2pptx-gradient-s{slideIndex}-{n}`, where `n` is `indexInSlide` — this
+ * shape's 0-based position among the gradient shapes processed so far *in
+ * this slide* (`patches.length` at assignment time, before the push — see
+ * the two call sites below). `renderOps` runs once per slide with a fresh
+ * `patches` array (see `pptx-generate.ts`'s per-slide `renderOps` call), so
+ * `n` alone would collide across slides (slide 2's first gradient and slide
+ * 5's first gradient would both be `n=0`); folding in `slideIndex` (this
+ * op's slide's own 0-based deck position) keeps the full name unique across
+ * the whole multi-slide deck, which `applyGradientFills`'s exact-match
+ * lookup across every slide part requires — two patches sharing one name
+ * would silently collide in its `objectName → patch` `Map` (last write
+ * wins), leaving one slide's gradient un-patched. `slideIndex` defaults to 0
+ * only for callers that exercise `renderOp`/`renderOps` directly without a
+ * slide context (unit tests); the one production caller (`pptx-generate.ts`)
+ * always threads a real index, so this default never fires there.
+ *
+ * Before this (defect G, 2026-07-20 bench-driven fixes wave), this name
+ * folded in a fresh `Math.random().toString(36)` token per shape instead of
+ * `s{slideIndex}`: non-deterministic, so rendering the same deck twice
+ * produced byte-different slide XML (e.g. `svg2pptx-gradient-54y7li-0` vs
+ * `svg2pptx-gradient-zkebt5-0` for the same shape) — a core-promise
+ * violation the benchmark's double-render scorer (`tests/bench/score.mts`)
+ * caught directly. `slideIndex`+`indexInSlide` are both already stable,
+ * already-computed inputs (no new state to thread), and — unlike a random
+ * token — provably unique within the file by construction, not merely
+ * "astronomically unlikely" to collide.
  */
-function randomToken(): string {
-  return Math.random().toString(36).slice(2, 8)
+function gradientObjectName(slideIndex: number | undefined, indexInSlide: number): string {
+  return `svg2pptx-gradient-s${pad4(slideIndex ?? 0)}-${pad4(indexInSlide)}`
 }
 
 /**
@@ -55,19 +72,30 @@ function randomToken(): string {
  * Appended as a suffix rather than replacing any existing gradient-patch
  * `objectName` so the two markers coexist on one shape (S3: "与渐变的
  * objectName 标记兼容共存"); when there's no existing name, a fresh one is
- * minted the same way the gradient patch does (`svg2pptx-` + a random token)
- * so every component-tagged shape still gets a legible, distinguishable name in
- * PowerPoint's Selection Pane.
+ * minted as `svg2pptx-{opIndex}-{marker}` — `opIndex` (this op's 0-based
+ * position within the whole slide's op list, threaded from `renderOps`) is
+ * what keeps multiple shapes belonging to the *same* component (e.g. a
+ * chart's several bars, all sharing one `blockIndex`) distinguishable from
+ * each other, deterministically, so every component-tagged shape still gets
+ * a legible, distinguishable name in PowerPoint's Selection Pane — this used
+ * to be a fresh random token per shape (defect G, 2026-07-20 bench-driven
+ * fixes wave: same non-determinism as `gradientObjectName`'s, see that
+ * function's doc comment), which `opIndex` replaces without losing the
+ * distinguishing property, since two ops never share a position within one
+ * slide's op list. Defaults to 0 only when a caller exercises `renderOp`
+ * directly without threading `opIndex` (unit tests) — the one production
+ * path (`renderOps`) always supplies it.
  */
 function withBlockMarker(
   opts: Record<string, unknown>,
   op: Op,
   slideIndex: number | undefined,
+  opIndex: number | undefined,
 ): void {
   if (op.blockIndex == null || slideIndex == null) return
   const marker = blockMarker(slideIndex, op.blockIndex)
   const existing = opts.objectName as string | undefined
-  opts.objectName = existing ? `${existing}-${marker}` : `svg2pptx-${randomToken()}-${marker}`
+  opts.objectName = existing ? `${existing}-${marker}` : `svg2pptx-${pad4(opIndex ?? 0)}-${marker}`
 }
 
 /** Map a styled text run to a pptxgenjs `{ text, options }` entry. */
@@ -91,17 +119,23 @@ function runToProp(run: TextRunData): { text: string; options: Record<string, un
  * `<a:gradFill>` is recorded here for `applyGradientFills` to swap in later,
  * once the whole presentation has been written to a .pptx zip.
  *
- * `slideIndex` is this op's slide's 0-based position in the deck — only used
- * (via `withBlockMarker`) to fold wave-C S3's component marker into `objectName`
+ * `slideIndex` is this op's slide's 0-based position in the deck — used both
+ * by `gradientObjectName` (when `op.gradientFill` is set) and (via
+ * `withBlockMarker`) to fold wave-C S3's component marker into `objectName`
  * when `op.blockIndex` is set; omit it and component-tagged ops just keep
  * whatever `objectName` they'd otherwise get (i.e. the gradient patch's, or
- * none).
+ * none). `opIndex` is this op's own 0-based position within the whole
+ * slide's op list (threaded from `renderOps`, see its doc comment) — only
+ * used by `withBlockMarker`'s fresh-name branch, to keep multiple
+ * component-tagged shapes distinguishable from each other in the Selection
+ * Pane.
  */
 export function renderOp(
   slide: SlideLike,
   op: Op,
   patches: GradientFillPatch[] = [],
   slideIndex?: number,
+  opIndex?: number,
 ): void {
   switch (op.kind) {
     case "shape": {
@@ -109,12 +143,12 @@ export function renderOp(
       if (op.fill) opts.fill = op.fill
       if (op.line) opts.line = op.line
       if ("rectRadius" in op && op.rectRadius != null) opts.rectRadius = op.rectRadius
-      if (op.gradientFill) opts.objectName = `svg2pptx-gradient-${randomToken()}-${patches.length}`
+      if (op.gradientFill) opts.objectName = gradientObjectName(slideIndex, patches.length)
       // Must run before the gradient patch is recorded below: it may append
       // the blk marker onto `opts.objectName`, and the patch has to target
       // whatever name actually ends up in the written XML, not the
       // pre-marker one (`applyGradientFills`'s lookup is an exact match).
-      withBlockMarker(opts, op, slideIndex)
+      withBlockMarker(opts, op, slideIndex, opIndex)
       if (op.gradientFill) {
         patches.push({ objectName: opts.objectName as string, xml: gradientFillXml(op.gradientFill) })
       }
@@ -131,7 +165,7 @@ export function renderOp(
       }
       if (op.flipH) opts.flipH = true
       if (op.flipV) opts.flipV = true
-      withBlockMarker(opts, op, slideIndex)
+      withBlockMarker(opts, op, slideIndex, opIndex)
       slide.addShape("line", opts)
       break
     }
@@ -145,9 +179,9 @@ export function renderOp(
       }
       if (op.fill) opts.fill = op.fill
       if (op.line) opts.line = op.line
-      if (op.gradientFill) opts.objectName = `svg2pptx-gradient-${randomToken()}-${patches.length}`
+      if (op.gradientFill) opts.objectName = gradientObjectName(slideIndex, patches.length)
       // See the "shape" case above: must run before the patch is recorded.
-      withBlockMarker(opts, op, slideIndex)
+      withBlockMarker(opts, op, slideIndex, opIndex)
       if (op.gradientFill) {
         patches.push({ objectName: opts.objectName as string, xml: gradientFillXml(op.gradientFill) })
       }
@@ -173,14 +207,14 @@ export function renderOp(
       // 的框裁掉（2026-07-10 全主题导出审计：runway 6 处截断的根因）。
       // 关闭换行让超宽文字横向溢出显示，与 SVG 语义一致。
       opts.wrap = false
-      withBlockMarker(opts, op, slideIndex)
+      withBlockMarker(opts, op, slideIndex, opIndex)
       slide.addText(op.runs.map(runToProp), opts)
       break
     }
     case "image": {
       const opts: Record<string, unknown> = { x: op.x, y: op.y, w: op.w, h: op.h, data: op.data }
       if (op.sizing) opts.sizing = op.sizing
-      withBlockMarker(opts, op, slideIndex)
+      withBlockMarker(opts, op, slideIndex, opIndex)
       slide.addImage(opts)
       break
     }
@@ -194,10 +228,13 @@ export function renderOp(
  *
  * `slideIndex` (this slide's 0-based deck position) is threaded straight
  * through to `renderOp`/`withBlockMarker` — see `renderOp`'s doc comment.
+ * Each op's own 0-based position in `ops` is threaded through too, as
+ * `opIndex` — `withBlockMarker`'s deterministic replacement for the
+ * distinguishing role a random token used to play (defect G).
  */
 export function renderOps(slide: SlideLike, ops: Op[], slideIndex?: number): GradientFillPatch[] {
   const patches: GradientFillPatch[] = []
-  for (const op of ops) renderOp(slide, op, patches, slideIndex)
+  ops.forEach((op, opIndex) => renderOp(slide, op, patches, slideIndex, opIndex))
   return patches
 }
 

@@ -135,7 +135,7 @@ export async function applySlideTransitions(
  * it would only collide with a *different* over-9999 index, not with any
  * normal one.
  */
-function pad4(n: number): string {
+export function pad4(n: number): string {
   return String(n).padStart(4, "0")
 }
 
