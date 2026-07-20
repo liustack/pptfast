@@ -51,6 +51,13 @@ describe("auditDeck — clean deck baseline", () => {
     expect(report.pagesSkipped).toBe(0)
   })
 
+  it("reports checks.svg completed and checks.pixels not-requested when --pixels was never asked for (audit-v2 phase B — 'not checked' must never read as 'passed')", () => {
+    const raw = JSON.parse(readFileSync(new URL("../../../examples/basic.json", import.meta.url), "utf8"))
+    const ir = PptxIRSchema.parse(raw)
+    const report = auditDeck(ir)
+    expect(report.checks).toEqual({ svg: "completed", pixels: "not-requested" })
+  })
+
   // Cross-check against the pre-existing stress-content fixtures (extreme
   // text length, every component type) across a representative theme
   // spread — including `tech`, the one built-in theme whose *default*

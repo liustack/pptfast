@@ -25,10 +25,29 @@ export interface AuditFinding {
   detail?: Record<string, unknown>
 }
 
+/**
+ * Which check families actually ran (audit-v2 phase B, spec §4.2/§11.6) —
+ * the one piece of the spec's original metrics design that survives into
+ * this wave (§11.6: metrics itself deferred, "唯一现值是 checks 结构"). This
+ * is the wave's own spirit made literal: a field can only ever be
+ * `"completed"` once its check family genuinely ran over every audited
+ * page, never a default that silently reads as "passed". `svg` has no
+ * `"not-requested"` state — the deterministic SVG audit always runs, so it
+ * is always `"completed"`. `pixels` starts `"not-requested"` and only ever
+ * becomes `"completed"`; there is deliberately no `"failed"` value — a
+ * failed pixel audit throws (spec §11.7's "契约层"), it never reports
+ * itself as a completed check that happens to carry no findings.
+ */
+export interface AuditChecks {
+  svg: "completed"
+  pixels: "not-requested" | "completed"
+}
+
 export interface AuditReport {
   findings: AuditFinding[]
   pagesAudited: number
   pagesSkipped: number
+  checks: AuditChecks
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1570,23 +1589,14 @@ function droppedFindings(markup: string, page: number, slideId: string | undefin
  * (bench-driven fix round, defect E — reading the `data-truncated`/
  * `data-dropped` markers the render chain now stamps at its own silent
  * content-loss paths). Pure — no I/O, no Node dependency (see
- * `parseSvg`'s doc comment) — `auditDeck` itself never calls
- * `installNodePlatform()`; that's the caller's job (the CLI does it
- * automatically).
+ * `parseSvg`'s doc comment).
  *
- * Advisory, not a hard gate: `validateIr` already rejects structurally
- * invalid or over-dense decks before a caller ever gets this far; this
- * function looks for the visual problems that can still slip through a
- * valid deck at render time (an author-chosen near-background text color,
- * two components whose combined content happens to collide, a card list
- * that had to drop an item to fit). A non-empty `findings` array is a
- * prompt for a human/agent to look, not a rejection.
- *
- * Placeholder pages (`slide.placeholder === true`) are skipped — assemble's
- * stand-in for content nobody has written yet has nothing to audit, same
- * reasoning `checkIrQuality` already uses to skip them (`ir-quality.ts`).
+ * Split out from `auditDeck` (audit-v2 phase B) so the optional pixel audit
+ * (`pixels: true`, see `auditDeck`'s own doc comment) can run this exact
+ * same deterministic pass first and layer pixel-contrast findings on top,
+ * without duplicating the render-and-walk loop.
  */
-export function auditDeck(ir: PptxIR): AuditReport {
+function runDeterministicAudit(ir: PptxIR): { findings: AuditFinding[]; pagesAudited: number; pagesSkipped: number } {
   const findings: AuditFinding[] = []
   let pagesAudited = 0
   let pagesSkipped = 0
@@ -1610,4 +1620,25 @@ export function auditDeck(ir: PptxIR): AuditReport {
   })
 
   return { findings, pagesAudited, pagesSkipped }
+}
+
+/**
+ * The SDK entry point. Advisory, not a hard gate: `validateIr` already
+ * rejects structurally invalid or over-dense decks before a caller ever
+ * gets this far; this function looks for the visual problems that can still
+ * slip through a valid deck at render time (an author-chosen near-background
+ * text color, two components whose combined content happens to collide, a
+ * card list that had to drop an item to fit). A non-empty `findings` array
+ * is a prompt for a human/agent to look, not a rejection.
+ *
+ * Placeholder pages (`slide.placeholder === true`) are skipped — assemble's
+ * stand-in for content nobody has written yet has nothing to audit, same
+ * reasoning `checkIrQuality` already uses to skip them (`ir-quality.ts`).
+ *
+ * `auditDeck` itself never calls `installNodePlatform()`; that's the
+ * caller's job (the CLI does it automatically).
+ */
+export function auditDeck(ir: PptxIR): AuditReport {
+  const { findings, pagesAudited, pagesSkipped } = runDeterministicAudit(ir)
+  return { findings, pagesAudited, pagesSkipped, checks: { svg: "completed", pixels: "not-requested" } }
 }

@@ -255,8 +255,20 @@ describe("runAudit (W6 task 2)", () => {
   it("--json mode returns the full AuditReport, unmodified", async () => {
     const result = await runAudit(join(dir, "deck.json"), { json: true })
     expect(result.hasFindings).toBe(false)
-    const report = JSON.parse(result.output) as { findings: unknown[]; pagesAudited: number; pagesSkipped: number }
-    expect(report).toEqual({ findings: [], pagesAudited: 2, pagesSkipped: 0 })
+    const report = JSON.parse(result.output) as {
+      findings: unknown[]
+      pagesAudited: number
+      pagesSkipped: number
+      checks: unknown
+    }
+    // checks (audit-v2 phase B): pixels is "not-requested" since this call
+    // never passed --pixels — "not checked" must never read as "passed".
+    expect(report).toEqual({
+      findings: [],
+      pagesAudited: 2,
+      pagesSkipped: 0,
+      checks: { svg: "completed", pixels: "not-requested" },
+    })
   })
 
   it("throws the same shape as runValidate for invalid IR — never reaches auditDeck", async () => {

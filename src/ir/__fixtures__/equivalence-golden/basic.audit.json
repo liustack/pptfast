@@ -1,5 +1,6 @@
 {
   "findings": [],
   "pagesAudited": 5,
-  "pagesSkipped": 0
+  "pagesSkipped": 0,
+  "checks": { "svg": "completed", "pixels": "not-requested" }
 }
