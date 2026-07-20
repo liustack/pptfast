@@ -1,5 +1,6 @@
 import type { PptxIR } from "@/ir"
 import { renderSlideSvg } from "../../api"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import { getPlatform } from "../../platform/registry"
 import { auditSvgMarkup, parseNums, parseTransform, type OverflowIssue } from "./svg-audit"
 
@@ -163,8 +164,14 @@ function relativeLuminance(rgb: [number, number, number]): number {
   return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b)
 }
 
-/** WCAG 2.1 SC 1.4.3 contrast ratio between two opaque hex colours. */
-function contrastRatio(hexA: string, hexB: string): number {
+/**
+ * WCAG 2.1 SC 1.4.3 contrast ratio between two opaque hex colours. Exported
+ * (audit-v2 phase B) so `pixel-audit.ts` reuses this exact math against a
+ * *sampled* background pixel instead of a second implementation drifting
+ * from this one — the pixel audit's whole premise is "same WCAG formula,
+ * different (and more reliable) source for the background colour".
+ */
+export function contrastRatio(hexA: string, hexB: string): number {
   const la = relativeLuminance(parseHexColor(hexA))
   const lb = relativeLuminance(parseHexColor(hexB))
   const lighter = Math.max(la, lb)
@@ -176,9 +183,12 @@ function contrastRatio(hexA: string, hexB: string): number {
  * Alpha-blend `fg` over `bg` (both opaque hex) — the "over" compositing a
  * translucent fill actually renders as, so a dimmed (`fill-opacity`/
  * `opacity` < 1) text's *effective* on-page colour, not its raw `fill`
- * attribute, is what gets compared against the background.
+ * attribute, is what gets compared against the background. Exported
+ * (audit-v2 phase B) — see {@link contrastRatio}'s own doc comment;
+ * `pixel-audit.ts` blends a run's ink over a *sampled* pixel with this same
+ * function rather than a second copy.
  */
-function blendOver(fg: string, bg: string, alpha: number): string {
+export function blendOver(fg: string, bg: string, alpha: number): string {
   const [fr, fgc, fb] = parseHexColor(fg)
   const [br, bgc, bb] = parseHexColor(bg)
   const mix = (f: number, b: number) => Math.round(f * alpha + b * (1 - alpha))
@@ -831,6 +841,34 @@ export interface ContrastIssue {
 }
 
 /**
+ * A text run whose effective SVG background could *not* be resolved to a
+ * single paint color (`backgroundAt` returned `null`) — the pixel-audit
+ * blind spot spec §4.3 exists to fill (audit-v2 phase B): in practice this
+ * is a run painted directly over a bare/faintly-scrimmed `<image>` (a real
+ * photo, e.g. `ImagePages.tsx`'s `ImageCoverPage` — its own `DarkScrim`
+ * bands are all individually below `MIN_BG_OPACITY`, so none of them ever
+ * become a `PaintedShape`, and `backgroundAt` falls through to the bare
+ * image underneath). `left`/`right`/`baseline` are the same font-metric
+ * estimate `svg-audit.ts`'s overflow walker uses (`measureTextUnits`,
+ * `text-anchor`-aware), not a real glyph bbox — `pixel-audit.ts` samples a
+ * grid inside this box against the *rasterized* page, so an estimate here
+ * only needs to bound the run, not describe it exactly. `required` is the
+ * real WCAG target (`CONTRAST_RATIO_LARGE`/`CONTRAST_RATIO_BODY`) —
+ * precomputed here so `pixel-audit.ts` never needs to import this file's
+ * size-tier constants just to reproduce the same cutoff.
+ */
+export interface ImageBackedTextRun {
+  text: string
+  left: number
+  right: number
+  baseline: number
+  fontSize: number
+  fill: string
+  alpha: number
+  required: number
+}
+
+/**
  * Only a direct child *text* node's content "belongs" to `el` for contrast
  * purposes — text inside a nested `<tspan>` (which may carry its own `fill`/
  * `fill-opacity` override) is that tspan's own responsibility when `visit`
@@ -942,10 +980,29 @@ export function __collectBgRegions(markup: string): BgRegion[] {
   return runContrastWalk(markup).regions
 }
 
-function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: BgRegion[] } {
+/**
+ * The image-backed text runs `pixel-audit.ts` needs (audit-v2 phase B) —
+ * every run this walk could not resolve a solid SVG background for (see
+ * `ImageBackedTextRun`'s own doc comment). `__`-prefixed for the same
+ * "SDK-internal, sibling-module-only" reason `__collectBgRegions` already
+ * is, not because it's test-only — `pixel-audit.ts` is a real, non-test
+ * caller of this one.
+ */
+export function __collectImageBackedTextRuns(markup: string): ImageBackedTextRun[] {
+  return runContrastWalk(markup).imageBackedRuns
+}
+
+function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: BgRegion[]; imageBackedRuns: ImageBackedTextRun[] } {
   const root = parseSvg(markup)
   const issues: ContrastIssue[] = []
   const regions: BgRegion[] = []
+  // Image-backed text runs (audit-v2 phase B) — see `ImageBackedTextRun`'s
+  // own doc comment. Collected in the same walk as `issues`/`regions` so
+  // background resolution stays one single source of truth: a run lands
+  // here exactly when `backgroundAt` returns `null` for it, the identical
+  // condition `issues` already skips (see the text/tspan branch below) —
+  // additive only, never changes what `issues`/`regions` themselves collect.
+  const imageBackedRuns: ImageBackedTextRun[] = []
   // Attribution's own table (defect A fix) — see `PaintedShape`'s and
   // `findContrastIssues`'s doc comments. A strict superset of `regions` in
   // everything but `<image>` (same floor, unchanged): every rect/path that
@@ -973,6 +1030,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     inDecor: boolean,
     inheritedTx: number | null,
     inheritedTy: number | null,
+    anchor: string,
   ) => {
     const { dx, dy, scale } = parseTransform(el)
     const ax = ox + os * dx
@@ -983,9 +1041,17 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     const ownFontSize = el.getAttribute("font-size")
     const ownFillOpacity = el.getAttribute("fill-opacity")
     const ownOpacity = el.getAttribute("opacity")
+    // `text-anchor` is a standard inheritable SVG presentation property —
+    // threaded the same "own attribute overrides, else inherit" way as
+    // `fill` (any element can set it, only a text/tspan usage point ever
+    // reads it — see `ImageBackedTextRun`'s own doc comment for why this
+    // walk needs it: an anchor-aware left/right span, the same estimate
+    // `svg-audit.ts`'s overflow walker already uses).
+    const ownAnchor = el.getAttribute("text-anchor")
     const currentFill = ownFill ?? fill
     const currentFontSize = ownFontSize ? Number(ownFontSize) : fontSize
     const currentFillOpacity = ownFillOpacity !== null ? Number(ownFillOpacity) : fillOpacity
+    const currentAnchor = ownAnchor ?? anchor
     // `opacity` (unlike `fill-opacity`) compounds down nested groups in real
     // SVG rendering (each ancestor's own opacity<1 further dims everything
     // inside it), so this accumulator multiplies rather than overrides.
@@ -1128,8 +1194,13 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       const content = directText(el)
       if (content) {
         const background = backgroundAt(tx, ty)
+        // `alpha` moved out of the `background !== null` branch (bench-
+        // driven-fix-round-style additive change, audit-v2 phase B): the
+        // `background !== null` branch below is byte-for-byte the same
+        // computation it always was, just now sharing this one hoisted
+        // value with the new `else` branch rather than each recomputing it.
+        const alpha = currentFillOpacity * currentOpacityProduct
         if (background !== null) {
-          const alpha = currentFillOpacity * currentOpacityProduct
           if (alpha >= DECORATIVE_ALPHA) {
             // `currentFontSize` is the *declared* size threaded down for
             // inheritance (deliberately never pre-scaled — see the
@@ -1154,6 +1225,29 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
               })
             }
           }
+        } else if (alpha >= DECORATIVE_ALPHA) {
+          // `background === null` — the pixel-audit blind spot
+          // (`ImageBackedTextRun`'s own doc comment): a run painted over a
+          // bare/faintly-scrimmed `<image>`, or (never observed in practice
+          // — this renderer's `Background.tsx` always paints a full-bleed
+          // layer first) truly nothing at all. Same decorative-alpha
+          // exclusion as the resolved-background branch above — a
+          // near-invisible watermark shouldn't demand a pixel sample any
+          // more than it demands an SVG-color check.
+          const renderedFontSize = currentFontSize * as
+          const width = measureTextUnits(content) * renderedFontSize
+          const left = currentAnchor === "end" ? tx - width : currentAnchor === "middle" ? tx - width / 2 : tx
+          const required = renderedFontSize >= LARGE_TEXT_MIN_PX ? CONTRAST_RATIO_LARGE : CONTRAST_RATIO_BODY
+          imageBackedRuns.push({
+            text: content.slice(0, 24),
+            left,
+            right: left + width,
+            baseline: ty,
+            fontSize: renderedFontSize,
+            fill: currentFill,
+            alpha,
+            required,
+          })
         }
       }
     }
@@ -1171,12 +1265,13 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         inDecorSubtree,
         currentTx,
         currentTy,
+        currentAnchor,
       )
     }
   }
 
-  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, null, null)
-  return { issues, regions }
+  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, null, null, "start")
+  return { issues, regions, imageBackedRuns }
 }
 
 function contrastMessage(issue: ContrastIssue): string {
