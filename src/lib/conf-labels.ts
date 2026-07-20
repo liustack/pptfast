@@ -1,10 +1,13 @@
 /**
  * Shared confidentiality label map.
- * Used by all v2 theme templates to render the Chinese confidentiality badge.
+ * Used by all v2 theme templates to render the confidentiality badge.
+ * Public surface (rendered deck text) — English regardless of deck language,
+ * same discipline as every other fixed-vocabulary label (`CONF_LABEL` and
+ * the archetypes' "Contact"/"Chapter" labels).
  */
 export const CONF_LABEL: Record<string, string> = {
-  public: "公开",
-  internal: "内部",
-  confidential: "机密",
-  restricted: "受限",
+  public: "Public",
+  internal: "Internal",
+  confidential: "Confidential",
+  restricted: "Restricted",
 }

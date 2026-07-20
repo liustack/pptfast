@@ -295,7 +295,16 @@ function renderKpiCardBody(
   const innerY = box.y + BENTO_CARD_TOP_PAD + offsetY
 
   const dp = item.delta ? deltaProps(item.delta) : null
-  const deltaColor = dp ? dp.color || ctx.colors.muted : ctx.colors.muted
+  // Bench-driven fix round, defect B: same unguarded `dp.color` pattern as
+  // kpi.tsx's own row-layout delta arrow (see that file's `deltaProps` doc
+  // comment for the full defect — a real, theme-independent one, found
+  // failing on all 13 themes across the two call sites combined) — this
+  // cell's own `colors.surface` shell (painted by `renderCell` before this
+  // function runs, same background `valueFill` above already checks
+  // against) is the right reference, not `ctx.defaultBg`.
+  const deltaColor = dp
+    ? accessibleInk(dp.color || ctx.colors.muted, ctx.colors.surface, BENTO_KPI_DELTA_SIZE)
+    : ctx.colors.muted
 
   // Same value/unit width-split technique as kpi.tsx (shared via
   // `splitKpiValueWidths`, see components/kpi.tsx): the overflow auditor
@@ -378,6 +387,7 @@ function renderKpiCardBody(
         />
       )}
       <text
+        data-truncated={fittedValue.truncated ? "1" : undefined}
         x={innerX}
         y={valueBaselineY}
         fontSize={fittedValue.fontSize}
@@ -430,6 +440,7 @@ function renderKpiCardBody(
         </text>
       )}
       <text
+        data-truncated={fittedLabel.truncated ? "1" : undefined}
         x={innerX}
         y={labelBaselineY}
         fontSize={fittedLabel.fontSize}
@@ -849,6 +860,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     <>
       {kicker && (
         <text
+          data-truncated={kicker.truncated ? "1" : undefined}
           x="96"
           y="104"
           fontFamily={fonts.body}

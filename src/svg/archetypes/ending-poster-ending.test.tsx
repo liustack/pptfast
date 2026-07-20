@@ -99,13 +99,27 @@ describe("PosterEnding", () => {
     expect(out).not.toContain("#666670")
   })
 
-  it("creative tokens 下无 heading 时主标题兜底“提问与讨论”，且连带触发副标题兜底“Questions & Discussion”", () => {
+  it("creative tokens 下无 heading 时主标题兜底“Questions & Discussion”，且连带触发副标题兜底同一文案（defect C 修复：中文兜底改为英文，主副标题此前已是同一句话的两种语言，译文延续该文案而非臆造新词，见文件头「副题兜底语义」）", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const deck = ir("insight", endingBare)
-    const out = renderSvgMarkup(<PosterEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
+    const { root } = render(<PosterEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
 
-    expect(out).toContain("提问与讨论")
-    expect(out).toContain("Questions &amp; Discussion")
+    // Heading: 150px wraps "Questions & Discussion" across two <text> lines
+    // (font-weight 800, centered) — join them to confirm the fallback fired.
+    const headingLines = Array.from(root.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("font-weight") === "800" && t.getAttribute("text-anchor") === "middle",
+    )
+    expect(headingLines.map((t) => t.textContent).join(" ")).toBe("Questions & Discussion")
+
+    // Subheading: 40px fits on one line (italic, muted, centered) — its own,
+    // structurally distinct element from the heading above.
+    const subheadingLike = Array.from(root.querySelectorAll("text")).find(
+      (t) =>
+        t.getAttribute("font-style") === "italic" &&
+        t.getAttribute("fill") === ctx.colors.muted &&
+        t.getAttribute("text-anchor") === "middle",
+    )!
+    expect(subheadingLike.textContent).toBe("Questions & Discussion")
   })
 
   // 回填缺省分支：heading 存在但 subheading 缺省时，源函数的兜底表达式

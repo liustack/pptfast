@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import { renderBar, renderLine } from "./chart-svg"
+import { renderBar, renderLine, renderDonut } from "./chart-svg"
 import { assertSubset } from "../subset-validate"
 import type { ChartSeries } from "@/ir"
 
@@ -238,6 +238,34 @@ describe("gridlines", () => {
       PLOT_TOP + PLOT_H * 0.5,
       PLOT_TOP + PLOT_H * 0.75,
     ])
+  })
+})
+
+describe("renderDonut — center total label", () => {
+  // Regression lock for defect C (bench-driven fixes wave, task 4): the
+  // center caption under the summed total used to be hardcoded Chinese
+  // ("总计") regardless of deck language — public rendered-output surfaces
+  // are English. `chart_type: "pie"` + `style: "donut"` (src/ir/index.ts)
+  // is the only caller (`chart.tsx`); no prior test exercised this render
+  // path at all (neither `chart.test.tsx` nor this file), so this also
+  // closes a pre-existing coverage gap, not just the language regression.
+  it("renders the English 'Total' caption below the summed value, never the old Chinese label", () => {
+    const { container } = svg(
+      renderDonut(seriesOf(30, 45, 25), PALETTE, 0, 0, W, H, MUTED, TEXT),
+    )
+    const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+    expect(texts).toContain("Total")
+    expect(texts).toContain("100") // 30+45+25, the summed center value
+    expect(container.textContent).not.toContain("总计")
+  })
+
+  it("renders one path wedge per data point and nothing when the series sums to zero", () => {
+    const { container } = svg(renderDonut(seriesOf(1, 2, 3), PALETTE, 0, 0, W, H, MUTED, TEXT))
+    expect(container.querySelectorAll("path")).toHaveLength(3)
+
+    const { container: empty } = svg(renderDonut(seriesOf(0, 0), PALETTE, 0, 0, W, H, MUTED, TEXT))
+    expect(empty.querySelectorAll("path")).toHaveLength(0)
+    expect(empty.querySelectorAll("text")).toHaveLength(0)
   })
 })
 

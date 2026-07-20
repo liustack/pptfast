@@ -7,7 +7,7 @@ import { resolveStyle } from "../../themes"
 import { ConstellationEnding } from "./ending-constellation-ending"
 import type { PptxIR, Slide } from "@/ir"
 
-// 有 heading 的 ending：不触发 heading 兜底"谢谢。"，末尾也不是句号，所以
+// 有 heading 的 ending：不触发 heading 兜底"Thank you."，末尾也不是句号，所以
 // 不触发 splitTrailingPeriod 的 accent tspan 分支。
 const endingWithHeading: Slide = {
   type: "ending",
@@ -15,8 +15,9 @@ const endingWithHeading: Slide = {
   components: [],
 } as Slide
 
-// 无 heading 的 ending：触发 heading 兜底"谢谢。"，其结尾句号被
-// splitTrailingPeriod 拆出，单独渲染为 accent 色的 tspan。
+// 无 heading 的 ending：触发 heading 兜底"Thank you."（defect C 修复：原中文
+// 兜底"谢谢。"改英文），其结尾句号被 splitTrailingPeriod 拆出，单独渲染为
+// accent 色的 tspan。
 const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
@@ -47,7 +48,7 @@ const irNoMeta = (theme: string, slide: Slide): PptxIR =>
 const ENDING_TECH_WITH_HEADING_MARKUP =
   '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#F2F6FA" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><rect x="610" y="420" width="60" height="3" fill="#2DD4E6"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#8A94A6" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
 const ENDING_TECH_BARE_MARKUP =
-  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#F2F6FA" text-anchor="middle" dominant-baseline="alphabetic">谢谢<tspan fill="#2DD4E6">。</tspan></text><rect x="610" y="420" width="60" height="3" fill="#2DD4E6"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#8A94A6" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
+  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#F2F6FA" text-anchor="middle" dominant-baseline="alphabetic">Thank you<tspan fill="#2DD4E6">.</tspan></text><rect x="610" y="420" width="60" height="3" fill="#2DD4E6"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#8A94A6" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
 
 describe("ConstellationEnding", () => {
   it("tech tokens 下与旧 BentoTechEnding 输出逐字节一致（档位一，有 heading，不兜底）", () => {
@@ -59,7 +60,7 @@ describe("ConstellationEnding", () => {
     )
     expect(next).toBe(ENDING_TECH_WITH_HEADING_MARKUP)
     expect(next).toContain("感谢聆听")
-    expect(next).not.toContain("谢谢")
+    expect(next).not.toContain("Thank you")
   })
 
   it("tech tokens 下无 heading 时与旧 BentoTechEnding 输出逐字节一致（档位一，兜底 + 句号拆分）", () => {
@@ -70,9 +71,11 @@ describe("ConstellationEnding", () => {
       <ConstellationEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />,
     )
     expect(next).toBe(ENDING_TECH_BARE_MARKUP)
-    expect(next).toContain("谢谢")
+    expect(next).toContain("Thank you")
     // 结尾句号拆成独立 accent 色 tspan，验证 tech 的 accent 值确实用上了。
-    expect(next).toContain('<tspan fill="#2DD4E6">。</tspan>')
+    // defect C 修复：兜底文案的中文句号"。"改英文句号"."，splitTrailingPeriod
+    // 泛化后两者都能拆分（见该函数注释），这里锁的是新值。
+    expect(next).toContain('<tspan fill="#2DD4E6">.</tspan>')
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
@@ -190,6 +193,33 @@ describe("ConstellationEnding", () => {
       (t) => t.textContent === "Thank you",
     )!
     expect(customHeading.querySelector("tspan")).toBeNull()
+  })
+
+  // Regression lock for defect C (bench-driven fixes wave, task 4):
+  // `splitTrailingPeriod` was generalized from CJK-only ("。") to also
+  // recognize the ASCII "." so the accent-colored-trailing-punctuation
+  // signature detail survives the fallback heading's translation to
+  // English ("Thank you.") — see the function's own comment. This is a new
+  // user-facing behavior beyond the fallback path itself: any explicit
+  // English heading ending in "." now gets the same accent-color split a
+  // CJK "。" always got, closing a design-detail gap that previously only
+  // Chinese-language decks benefited from.
+  it("an explicit heading ending in ASCII '.' also splits the trailing period into an accent tspan (not just the CJK '。' the helper originally supported)", () => {
+    const customSlide: Slide = { type: "ending", heading: "Let's grow together.", components: [] } as Slide
+    const ctx = buildCtx(resolveStyle("tech"), {})
+    const customDoc = ir("tech", customSlide)
+    const customMarkup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <ConstellationEnding ir={customDoc} slide={customSlide} index={0} ctx={ctx} />
+      </svg>,
+    )
+    expect(customMarkup).toContain('<tspan fill="#2DD4E6">.</tspan>')
+    const customRoot = parseSvgRoot(customMarkup)
+    const customHeading = Array.from(customRoot.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").startsWith("Let's grow together"),
+    )!
+    expect(customHeading.textContent).toBe("Let's grow together.")
+    expect(customHeading.querySelector("tspan")?.textContent).toBe(".")
   })
 
   it("last-line-anchored: a 2-line heading's last line lands at the same y (330) as the 1-line case, so the subheading/bar/meta chain below is byte-identical regardless of line count", () => {

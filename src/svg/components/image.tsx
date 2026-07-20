@@ -53,7 +53,7 @@ export const image: SvgComponent<ImageComponent> = {
               fill={ctx.colors.muted}
               dominantBaseline="alphabetic"
             >
-              图片缺失
+              Image missing
             </text>
           </>
         )}
@@ -87,6 +87,7 @@ export const image: SvgComponent<ImageComponent> = {
                   fillOpacity={0.88}
                 />
                 <text
+                  data-truncated={fittedCaption.truncated ? "1" : undefined}
                   x={box.w / 2}
                   y={imgH - 11}
                   textAnchor="middle"

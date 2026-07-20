@@ -1,0 +1,14 @@
+{
+  "version": "1",
+  "theme": "consulting",
+  "filename": "fixture-fx95",
+  "pages": [
+    { "id": "p-cover", "type": "cover", "heading": "Fixture 95" },
+    { "id": "p-body", "type": "content", "heading": "Body" },
+    { "id": "p-detail", "type": "content", "heading": "Detail" },
+    { "id": "p-ending", "type": "ending", "heading": "Thanks" }
+  ],
+  "narrative": {
+    "pacing": "spacious"
+  }
+}

@@ -197,7 +197,8 @@ describe("renderOp component marker (wave-C S3)", () => {
       0,
     )
     const opts = slide.calls[0].args[1] as Record<string, unknown>
-    expect(opts.objectName).toMatch(/^svg2pptx-[a-z0-9]+-blk0000-0002$/)
+    // opIndex omitted (only 4 positional args below) → defaults to 0.
+    expect(opts.objectName).toBe("svg2pptx-0000-blk0000-0002")
   })
 
   it("appends the blk marker onto an existing gradient objectName rather than replacing it", () => {
@@ -220,7 +221,8 @@ describe("renderOp component marker (wave-C S3)", () => {
       3,
     )
     const opts = slide.calls[0].args[1] as Record<string, unknown>
-    expect(opts.objectName).toMatch(/^svg2pptx-gradient-[a-z0-9]+-0-blk0003-0001$/)
+    // slideIndex 3, this is the 1st (0-based) gradient shape in the slide.
+    expect(opts.objectName).toBe("svg2pptx-gradient-s0003-0000-blk0003-0001")
     // The gradient patch itself still targets the *full* (marker-suffixed) name.
     expect(patches[0].objectName).toBe(opts.objectName)
   })
@@ -269,6 +271,37 @@ describe("renderOp component marker (wave-C S3)", () => {
     )
     const opts = slide.calls[0].args[1] as Record<string, unknown>
     expect(opts.objectName).toContain("blk0007-0005")
+  })
+
+  it("renderOps threads each op's own position as opIndex — two shapes sharing one blockIndex (e.g. a chart's bars) get distinguishable, deterministic names", () => {
+    const slide = recorder()
+    renderOps(
+      slide,
+      [
+        { kind: "shape", text: "", shape: "rect", x: 0, y: 0, w: 1, h: 1, blockIndex: 1 } as Op,
+        { kind: "shape", text: "", shape: "rect", x: 1, y: 0, w: 1, h: 1, blockIndex: 1 } as Op,
+      ],
+      2,
+    )
+    const name0 = (slide.calls[0].args[1] as Record<string, unknown>).objectName
+    const name1 = (slide.calls[1].args[1] as Record<string, unknown>).objectName
+    expect(name0).toBe("svg2pptx-0000-blk0002-0001")
+    expect(name1).toBe("svg2pptx-0001-blk0002-0001")
+    // Same marker (same component), different opIndex — never collide, and
+    // stable across repeated calls (no randomness left to reintroduce a
+    // second run's names diverging from the first's).
+    expect(name0).not.toBe(name1)
+    const slideAgain = recorder()
+    renderOps(
+      slideAgain,
+      [
+        { kind: "shape", text: "", shape: "rect", x: 0, y: 0, w: 1, h: 1, blockIndex: 1 } as Op,
+        { kind: "shape", text: "", shape: "rect", x: 1, y: 0, w: 1, h: 1, blockIndex: 1 } as Op,
+      ],
+      2,
+    )
+    expect((slideAgain.calls[0].args[1] as Record<string, unknown>).objectName).toBe(name0)
+    expect((slideAgain.calls[1].args[1] as Record<string, unknown>).objectName).toBe(name1)
   })
 })
 

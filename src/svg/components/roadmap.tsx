@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 import type { ComponentCtx, SvgComponent } from "./types"
 
 type RoadmapComponent = Extract<Component, { type: "roadmap" }>
@@ -36,13 +37,13 @@ const ROW_GAP = 12
 const LABEL_VALUE_GAP = 12
 
 interface RowLayout {
-  label: { text: string; fontSize: number }
+  label: { text: string; fontSize: number; truncated: boolean }
   value: { lines: string[]; fontSize: number; lineHeight: number }
   height: number
 }
 interface CardLayout {
-  period: { text: string; fontSize: number } | null
-  title: { text: string; fontSize: number }
+  period: { text: string; fontSize: number; truncated: boolean } | null
+  title: { text: string; fontSize: number; truncated: boolean }
   rows: RowLayout[]
   labelColW: number
   contentH: number
@@ -141,13 +142,19 @@ function renderCard(
       />
       <path d={roundedTopBarPath(x, y, cardW, BAR_H, r)} fill={ctx.colors.accent} />
       <circle cx={cx} cy={cy} r={BADGE_R} fill={ctx.colors.primary} />
+      {/* Bench-driven fix round, defect A reclassification (Task 3
+          handoff): same unguarded `fill="#FFFFFF"`-on-`colors.primary`
+          pattern as steps.tsx's own badge digit, separate call site — see
+          that file's `renderBadge` comment for the full defect history.
+          `accessibleInk` is a no-op (byte-identical) on every theme where
+          white already clears 4.5:1. */}
       <text
         x={cx}
         y={cy + Math.round(BADGE_FONT * BASELINE_FUDGE)}
         textAnchor="middle"
         fontSize={BADGE_FONT}
         fontWeight="700"
-        fill="#FFFFFF"
+        fill={accessibleInk("#FFFFFF", ctx.colors.primary, BADGE_FONT)}
         fontFamily={ctx.fonts.body}
         dominantBaseline="alphabetic"
       >
@@ -155,6 +162,7 @@ function renderCard(
       </text>
       {layout.period ? (
         <text
+          data-truncated={layout.period.truncated ? "1" : undefined}
           x={x + PAD_X + BADGE_R * 2 + 12}
           y={cy + Math.round(layout.period.fontSize * BASELINE_FUDGE)}
           fontSize={layout.period.fontSize}
@@ -167,6 +175,7 @@ function renderCard(
         </text>
       ) : null}
       <text
+        data-truncated={layout.title.truncated ? "1" : undefined}
         x={x + PAD_X}
         y={titleBaseline}
         fontSize={layout.title.fontSize}
@@ -183,6 +192,7 @@ function renderCard(
         return (
           <g key={ri}>
             <text
+              data-truncated={row.label.truncated ? "1" : undefined}
               x={x + PAD_X}
               y={rowTop + LABEL_SIZE}
               fontSize={row.label.fontSize}

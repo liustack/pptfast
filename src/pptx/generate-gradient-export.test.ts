@@ -86,3 +86,41 @@ describe("generatePptxBlob real theme decor gradients", () => {
     expect(await slideXml(blob)).not.toContain("a:gradFill")
   }, 30000)
 })
+
+/**
+ * Determinism (defect G, 2026-07-20 bench-driven fixes wave): rendering the
+ * same gradient-bearing deck twice must produce byte-identical slide XML.
+ * `render.ts`'s gradient-patch `objectName` used to fold in a fresh
+ * `Math.random()` token per shape (`randomToken()`), so the same deck's two
+ * exports carried two different shape names for the exact same geometry —
+ * e.g. `svg2pptx-gradient-54y7li-0` vs `svg2pptx-gradient-zkebt5-0` — a
+ * byte-nondeterminism regression the benchmark's double-render scorer
+ * (`tests/bench/score.mts`) caught directly. Same `normalizedZipMap` +
+ * double-`generatePptxBlob`-call methodology as
+ * `generate-notes-export.test.ts`'s "omitted-notes export is deterministic
+ * across repeated calls" — that test's fixture never carries a gradient, so
+ * it never exercised this path; `tech`'s full-page decor gradient (the first
+ * test in this file) reliably does.
+ */
+async function normalizedZipMap(blob: Blob): Promise<Record<string, string>> {
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer())
+  const entries = Object.keys(zip.files)
+    .filter((p) => !zip.files[p]!.dir && p !== "docProps/core.xml")
+    .sort()
+  const out: Record<string, string> = {}
+  for (const p of entries) out[p] = await zip.files[p]!.async("string")
+  return out
+}
+
+describe("generatePptxBlob gradient export determinism", () => {
+  it("a gradient-bearing deck exports byte-identical slide XML across two renders", async () => {
+    const { generatePptxBlob } = await import("./generate")
+    const ir = makeIR("tech", [slide("content"), slide("content")])
+
+    const blobA = await generatePptxBlob(ir)
+    const blobB = await generatePptxBlob(ir)
+    const mapA = await normalizedZipMap(blobA)
+    const mapB = await normalizedZipMap(blobB)
+    expect(mapA).toEqual(mapB)
+  }, 30000)
+})

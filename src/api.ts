@@ -22,8 +22,9 @@ export interface ValidationIssue {
    * whole-branch review finding 2: the README already claimed "validation
    * error messages reference [a slide] by [its] id"; this is what makes
    * that true. Set by every page-scoped issue producer
-   * ({@link checkLayoutApplicability}, the content-quality-gate
-   * translation in {@link validateIr}, {@link checkDuplicateSlideIds})
+   * ({@link checkLayoutApplicability}, {@link checkBoundaryPageContent},
+   * the content-quality-gate translation in {@link validateIr},
+   * {@link checkDuplicateSlideIds})
    * when the slide in question has an `id` — absent when the slide has
    * none (bare, pre-W5 IR) or the issue is deck-level, not scoped to any
    * single slide. {@link formatIssues} appends it in parens after the page
@@ -177,6 +178,62 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
       page: i + 1,
       ...(slide.id !== undefined ? { slideId: slide.id } : {}),
       message: `"${names}" is a full-body component and must be the slide's only component (found ${slide.components.length} components)`,
+    })
+  })
+  return errors
+}
+
+/**
+ * Boundary-page render-surface hard gate (bench-driven fixes wave, defect
+ * D): `cover`, `chapter`, and `ending` slides can never render `components`
+ * or `footnote` — every archetype in all three families
+ * (`src/svg/archetypes/index-{chapter,ending}.ts`'s registries, the 8 cover
+ * archetypes `index.ts` re-exports, plus the background-asset
+ * `ImageCoverPage` takeover that intercepts cover/chapter before any
+ * archetype runs, `src/svg/ImagePages.tsx` — `FullSlideSvg.tsx`'s
+ * `imageCoverTakeover` branch) was read to confirm zero exceptions before
+ * this gate was written. A slide carrying either field on one of these
+ * three types was previously silently dropped at render with no signal
+ * anywhere — this makes it a validate error instead, naming exactly which
+ * fields to move or remove. `docs/deck-projects.md`'s boundary-page render
+ * surface table carries the full per-type accounting this gate's rule is
+ * the "always dead, zero exceptions" subset of.
+ *
+ * `content` is deliberately never gated on any field: its own `footnote`
+ * (dropped only by the `two-column` archetype) and `subheading` (dropped
+ * only by the `image-top` takeover) are each a minority exception among
+ * that type's full archetype set, not a universal "never" — the same
+ * reason `subheading` is deliberately absent from `cover`/`chapter`/
+ * `ending`'s rule below despite the benchmark evidence that first flagged
+ * this defect suspecting it might belong: `subheading` renders
+ * unconditionally on all 8 cover archetypes, on 5 of `chapter`'s 8 (all but
+ * `fashion-chapter`/`poster-chapter`/`tone-adaptive-chapter`), and on 6 of
+ * `ending`'s 7 (all but `tone-adaptive-ending`) — gating any of those at
+ * the type level would be a false positive for the majority archetype that
+ * does render it. A hard gate must be sound for every reachable render
+ * path, not just the one the benchmark's four questions happened to hit.
+ *
+ * Placeholder pages (`slide.placeholder`) are exempt, same as
+ * {@link checkIrQuality}'s content rules — an assemble-generated unfilled
+ * stub has no real content to judge. `notes` (speaker notes, never
+ * rendered onto the canvas by design — see its own docstring in
+ * `ir/index.ts`) is never checked here or anywhere else in the render/audit
+ * chain, by construction, not by an added exemption.
+ */
+function checkBoundaryPageContent(ir: PptxIR): ValidationIssue[] {
+  const errors: ValidationIssue[] = []
+  ir.slides.forEach((slide, i) => {
+    if (slide.placeholder) return
+    if (slide.type !== "cover" && slide.type !== "chapter" && slide.type !== "ending") return
+    const ignored: string[] = []
+    if (slide.components.length > 0) ignored.push("components")
+    if (slide.footnote) ignored.push("footnote")
+    if (ignored.length === 0) return
+    errors.push({
+      path: `slides.${i}`,
+      page: i + 1,
+      ...(slide.id !== undefined ? { slideId: slide.id } : {}),
+      message: `"${slide.type}" slides do not render ${ignored.join("/")} — move this content to a content slide or remove it`,
     })
   })
   return errors
@@ -353,6 +410,8 @@ export function validateIr(input: unknown): ValidateResult {
   if (layoutErrors.length > 0) return withNormalized({ ok: false, errors: layoutErrors })
   const fullBodyErrors = checkFullBodyExclusivity(r.data)
   if (fullBodyErrors.length > 0) return withNormalized({ ok: false, errors: fullBodyErrors })
+  const boundaryPageErrors = checkBoundaryPageContent(r.data)
+  if (boundaryPageErrors.length > 0) return withNormalized({ ok: false, errors: boundaryPageErrors })
   const duplicateIdErrors = checkDuplicateSlideIds(r.data)
   if (duplicateIdErrors.length > 0) return withNormalized({ ok: false, errors: duplicateIdErrors })
   // Narrative resolution (spec §5's defaults chain, W3 task 2; renamed from

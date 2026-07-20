@@ -241,6 +241,7 @@ export const waterfall: SvgComponent<WaterfallComponent> = {
             <g key={i}>
               <rect x={barX} y={yTop} width={barW} height={barH} fill={fillFor(bar.kind, ctx)} />
               <text
+                data-truncated={valueText.truncated ? "1" : undefined}
                 x={barX + barW / 2}
                 y={valueY}
                 textAnchor="middle"
@@ -253,6 +254,7 @@ export const waterfall: SvgComponent<WaterfallComponent> = {
                 {valueText.text}
               </text>
               <text
+                data-truncated={categoryText.truncated ? "1" : undefined}
                 x={barX + barW / 2}
                 y={box.y + h - CATEGORY_BOTTOM_MARGIN}
                 textAnchor="middle"

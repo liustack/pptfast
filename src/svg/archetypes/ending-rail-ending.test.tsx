@@ -10,7 +10,7 @@ import type { PptxIR, Slide } from "@/ir"
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
 
-// 有 heading 的 ending：标题原样渲染，不触发 `slide.heading || "谢谢"` 兜底。
+// 有 heading 的 ending：标题原样渲染，不触发 `slide.heading || "Thank you"` 兜底。
 const endingWithHeading: Slide = {
   type: "ending",
   heading: "衷心感谢",
@@ -18,8 +18,9 @@ const endingWithHeading: Slide = {
   components: [],
 } as Slide
 
-// 无 heading（也无 subheading）的 ending：触发标题兜底"谢谢"——注意源函数
-// 只有标题一层兜底，副标题没有独立兜底文案（见文件头"副题兜底语义"）。
+// 无 heading（也无 subheading）的 ending：触发标题兜底"Thank you"（defect C
+// 修复：原中文兜底"谢谢"改英文）——注意源函数只有标题一层兜底，副标题没有
+// 独立兜底文案（见文件头"副题兜底语义"）。
 const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
@@ -52,8 +53,8 @@ describe("RailEnding", () => {
     // 标题 / 副标题 / 联系 / 版权内容存在，不触发标题兜底
     expect(out).toContain("衷心感谢")
     expect(out).toContain("感谢参与本次评审")
-    expect(out).not.toContain("谢谢")
-    expect(out).toContain("联系")
+    expect(out).not.toContain("Thank you")
+    expect(out).toContain("Contact")
     expect(out).toContain("hi@weilan.example")
     expect(out).toContain("© 2026 维岚科技 保留所有权利")
 
@@ -94,12 +95,12 @@ describe("RailEnding", () => {
     expect(out).toContain("#8A968F")
   })
 
-  it("academic tokens 下无 heading 时标题兜底为“谢谢”，副标题没有独立兜底文案（不渲染任何斜体副标题元素）", () => {
+  it("academic tokens 下无 heading 时标题兜底为“Thank you”，副标题没有独立兜底文案（不渲染任何斜体副标题元素）", () => {
     const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic", endingBare)
     const out = renderSvgMarkup(<RailEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
 
-    expect(out).toContain("谢谢")
+    expect(out).toContain("Thank you")
     // 副标题只按 slide.subheading 是否存在决定渲染，没有独立兜底文案——
     // `fontStyle="italic"` 只用在副标题元素上（本组件内唯一的斜体来源），
     // 此处不应出现
@@ -107,9 +108,9 @@ describe("RailEnding", () => {
   })
 
   // 回填缺省分支：heading 存在但 subheading 缺省（不同于 endingBare——那里
-  // heading 也缺省，同时触发标题兜底"谢谢"）。这里单独确认"有 heading、无
-  // subheading"这一常见组合下，副标题槽位不渲染任何元素，且不影响标题正常
-  // 渲染。
+  // heading 也缺省，同时触发标题兜底"Thank you"）。这里单独确认"有 heading、
+  // 无 subheading"这一常见组合下，副标题槽位不渲染任何元素，且不影响标题
+  // 正常渲染。
   it("heading 存在但 subheading 缺省：标题正常渲染，副标题槽位不渲染任何元素", () => {
     const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = { type: "ending", heading: "衷心感谢", components: [] } as Slide
@@ -117,7 +118,7 @@ describe("RailEnding", () => {
     const out = renderSvgMarkup(<RailEnding ir={deck} slide={slide} index={0} ctx={ctx} />)
 
     expect(out).toContain("衷心感谢")
-    expect(out).not.toContain("谢谢") // 不触发标题兜底（"衷心感谢" 不等于兜底文案 "谢谢"）
+    expect(out).not.toContain("Thank you") // 不触发标题兜底（"衷心感谢" 不等于兜底文案 "Thank you"）
     expect(out).not.toContain("italic") // 唯一的斜体来源（副标题）未渲染
   })
 

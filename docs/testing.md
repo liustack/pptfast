@@ -10,13 +10,14 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 146 files / 2379 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 146 files / 2614 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
    media-dedupe JSZip patches, the deck spec schema and hard gates,
    assemble/disassemble plus the deck-project-directory CLI shell, the v3→v4
    and deck.plan.json→deck.spec.json migration functions, and the
-   deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap).
+   deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap/
+   content-truncated/content-dropped).
    Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against

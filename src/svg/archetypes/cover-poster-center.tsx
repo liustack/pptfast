@@ -139,6 +139,7 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
 
       {metaLine && (
         <text
+          data-truncated={metaLine.truncated ? "1" : undefined}
           x={CENTER_X}
           y={metaY}
           textAnchor="middle"

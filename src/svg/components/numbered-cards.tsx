@@ -1,6 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
-import { accessibleOpacity } from "../ink"
+import { accessibleInk, accessibleOpacity } from "../ink"
 import type { ComponentCtx, SvgComponent } from "./types"
 
 type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
@@ -102,19 +102,30 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
                 strokeWidth={2}
                 opacity={0.65}
               />
+              {/* Bench-driven fix round, defect B: this component paints no
+                  card/panel of its own (only the thin accent left-edge
+                  rule), so the big digit sits directly on the page's
+                  ambient default background — `ctx.defaultBg ?? colors.bg`,
+                  same fallback every other card-less component in this
+                  codebase uses. `colors.accent` unwrapped measured <3:1 on
+                  classroom (2.09:1) and academic (2.92:1, a near-miss) once
+                  actually re-measured against a real render (not assumed) —
+                  `accessibleInk` keeps `colors.accent` on every other theme,
+                  byte-identical. */}
               <text
                 x={cellX + INDENT}
                 y={numBaseline}
                 fontSize={NUM_SIZE}
                 fontWeight="bold"
                 fontStyle="italic"
-                fill={ctx.colors.accent}
+                fill={accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, NUM_SIZE)}
                 fontFamily={ctx.fonts.heading}
                 dominantBaseline="alphabetic"
               >
                 {num}
               </text>
               <text
+                data-truncated={title.truncated ? "1" : undefined}
                 x={cellX + INDENT}
                 y={titleBaseline}
                 fontSize={title.fontSize}
@@ -142,6 +153,7 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
                 : null}
               {sub ? (
                 <text
+                  data-truncated={sub.truncated ? "1" : undefined}
                   x={cellX + INDENT}
                   y={
                     textTop +

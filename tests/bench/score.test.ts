@@ -147,7 +147,20 @@ describe("scoreQuestion — degraded-model (validate-failing / audit-positive / 
     expect(score.deterministic).toBeNull()
   })
 
-  it("fx03 (degraded): validates clean but auditDeck flags a real low-contrast finding (luxe + kpi delta:down)", async () => {
+  it("fx03 (degraded): validates clean but auditDeck flags a real low-contrast finding (code.tsx's line-number gray)", async () => {
+    // Bench-driven fix round, defect B (Task 3): this fixture's own
+    // low-contrast source used to be kpi_cards' hardcoded delta-arrow red
+    // on luxe (#DC2626 vs #211D18, 3.47:1) — fixed (accessibleInk, see
+    // kpi.tsx's own `deltaColor` comment), so it no longer produces a
+    // finding on any theme. Swapped for a `code` component (arrangement
+    // "code") — `code.tsx`'s own hardcoded `LINE_NUM_COLOR` (#6A737D)
+    // measures 3.46:1 against the code block's fixed #1E1E1E background on
+    // all 13 themes uniformly (theme-independent by construction, unlike
+    // the old kpi repro), still a real, deliberately out-of-scope pre-
+    // existing source (`deck-audit.test.ts`'s "understood pre-existing
+    // low-contrast sources"). The `kpi_cards` component stays in the
+    // fixture (still needed for `coverageHits` below) but no longer
+    // contributes to `auditFindingCount`.
     const metas = await loadQuestionMetas(QUESTIONS_DIR)
     const meta = metas.find((m) => m.id === "fx03")!
     const score = await scoreQuestion("fx03", join(RESULTS_DIR, "degraded-model", "fx03"), meta)
@@ -204,6 +217,41 @@ describe("scoreQuestion — ambiguous artifact", () => {
     // relativized, not the machine-specific absolute path
     expect(score.reason).not.toContain(REPO_ROOT)
     expect(score.reason).toContain("tests/bench/fixtures/results/degraded-model/fx97")
+  })
+})
+
+// ── scoreQuestion — local asset resolution (defect H, 2026-07-20 bench-driven
+// fixes wave): a relative assets.images[id].src must resolve against the
+// artifact's own directory, the same way real CLI `render` resolves it
+// (`resolveLocalAssets`, `../../src/cli/load-ir.ts`, called with `baseDir`
+// = the IR file's directory for a bare IR, or `readDeckDir`'s own `deckDir`
+// for a deck-project directory — both equal `resultDir` here). Before this
+// fix, `generatePptx` received the unresolved relative src untouched,
+// `inlinePptxAssets` tried to `fetch()` it as a URL, and the render failed —
+// misscoring a renderable artifact as `renderOk: false`. Both artifact
+// shapes get their own standalone fixture (fx96 bare IR, fx95 deck-project)
+// since `loadArtifact` dispatches between two entirely different code paths
+// (a raw `*.json` parse vs. `readDeckDir`) that both needed the fix.
+
+describe("scoreQuestion — bare IR with a relative local asset path resolves and renders (defect H)", () => {
+  it("fx96: assets.images.pic.src is a relative 'assets/pic.png' — resolves against resultDir and renders deterministically", async () => {
+    const score = await scoreQuestion("fx96", join(RESULTS_DIR, "green-model", "fx96"), undefined)
+    expect(score.reason).toBeUndefined()
+    expect(score.validatePass).toBe(true)
+    expect(score.renderOk).toBe(true)
+    expect(score.renderError).toBeUndefined()
+    expect(score.deterministic).toBe(true)
+  })
+})
+
+describe("scoreQuestion — deck-project directory with a relative local asset path resolves and renders (defect H)", () => {
+  it("fx95: assets/pic.png scanned by readDeckDir stays relative until the scorer resolves it against deckDir (== resultDir)", async () => {
+    const score = await scoreQuestion("fx95", join(RESULTS_DIR, "green-model", "fx95"), undefined)
+    expect(score.reason).toBeUndefined()
+    expect(score.validatePass).toBe(true)
+    expect(score.renderOk).toBe(true)
+    expect(score.renderError).toBeUndefined()
+    expect(score.deterministic).toBe(true)
   })
 })
 

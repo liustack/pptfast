@@ -44,6 +44,7 @@ export function AssertionEvidence({
         ))}
         {dropped > 0 && (
           <text
+            data-dropped={dropped}
             x={rect.x + rect.w}
             y={rect.y + rect.h - 6}
             textAnchor="end"
@@ -52,7 +53,7 @@ export function AssertionEvidence({
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${dropped} 项未展示`}
+            {`+${dropped} more`}
           </text>
         )}
       </>
@@ -119,7 +120,7 @@ export function AssertionEvidence({
           fontFamily={ctx.fonts.body}
           dominantBaseline="alphabetic"
         >
-          {`+${dropped} 项未展示`}
+          {`+${dropped} more`}
         </text>
       )}
     </>

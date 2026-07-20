@@ -146,6 +146,7 @@ function renderVertical(
         return (
           <g key={i}>
             <text
+              data-truncated={date.truncated ? "1" : undefined}
               x={V_DATE_COL_W}
               y={nodeCy + 7}
               textAnchor="end"
@@ -164,6 +165,7 @@ function renderVertical(
               fill={hl ? ctx.colors.accent : ctx.colors.primary}
             />
             <text
+              data-truncated={title.truncated ? "1" : undefined}
               x={V_TEXT_X}
               y={nodeCy + 7}
               fontSize={title.fontSize}
@@ -231,6 +233,7 @@ export const timeline: SvgComponent<TimelineComponent> = {
             <g key={i}>
               <circle cx={x} cy={AXIS_Y} r={8} fill={ctx.colors.primary} />
               <text
+                data-truncated={date.truncated ? "1" : undefined}
                 x={tx}
                 y={AXIS_Y - 24}
                 textAnchor={anchor}

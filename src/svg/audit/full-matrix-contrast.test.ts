@@ -61,14 +61,12 @@
 //     low-contrast sources" block already documents and pins.
 import { beforeAll, describe, expect, it } from "vitest"
 import { COMPONENT_TYPES, type PptxIR, type Slide } from "@/ir"
-import { renderSlideSvg } from "../../api"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { resolveBackgroundHex } from "../FullSlideSvg"
 import { contrastRatio } from "../ink"
-import { parseSvgRoot } from "../serialize"
 
 beforeAll(() => {
   installNodePlatform()
@@ -77,13 +75,13 @@ beforeAll(() => {
 const HEADING = "示例标题：验证对比度矩阵"
 const SUBHEADING = "示例副标题：用于穷举扫描的**所见即所得**文案"
 
-function deckFor(themeId: string, slide: Slide): PptxIR {
+function deckFor(themeId: string, slide: Slide, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
     version: "4",
     filename: "full-matrix-contrast-fixture",
     theme: { id: themeId },
     meta: {},
-    assets: { images: {} },
+    assets: { images },
     slides: [slide],
   }
 }
@@ -187,12 +185,18 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     rationale:
       "the chapter-number watermark digit (mixHex(accent, fg, 0.22) — chapter-fashion-chapter.tsx's own header calls it decorative by design) measures under 3:1 against every theme's accent (runway's ~1.24:1 is the current lowest, enterprise's ~1.75:1 the current highest — see the ratioMin/ratioMax comment above for the full 13-theme spread) — a deliberately faint blend, not body text, blanket-allowlisted by content (a bare 1-2 digit chapter number) rather than enumerated per theme since the blend's whole point is to be faint everywhere it's used. Unlike when this entry was first written, no theme curation-excludes fashion-chapter any more (post-v0.3 W8 fix round revoked the last three exclusions once their *heading* text — the actual failure — cleared 3:1 under the fixed `readableOn`) — this entry now covers all 13 themes' watermark uniformly. It never matches non-numeric text, so a real heading failure under this layout still fails the net. The added ratio band is a second, independent guard on top of that shape match, not a replacement for it.",
   },
-  {
-    theme: "*",
-    layout: "rail-numbered",
-    rationale:
-      "audit-tool false positive, not a rendering defect: content-rail-numbered.tsx's own self-painted \"{chapter}.{content}\" badge rect is 64x32=2048px^2, below deck-audit.ts's MIN_BG_REGION_AREA (8000px^2 — that constant's own doc comment explicitly calibrates against 'the largest badge/dot circle found' as something that should NOT register as a background region), so findContrastIssues falls back to comparing the badge's readableOn(colors.primary) ink against the *page* background instead of the badge's own primary fill it's actually rendered on (confirmed by hand-checking real rendered markup). deck-audit.ts is out of this task's scope to touch — matched by the badge's own \"N.N\" text shape, not by which ink readableOn happened to pick, since that's theme-dependent.",
-  },
+  // The rail-numbered entry that used to live here (audit-tool false
+  // positive: the badge rect's 2,048px^2 area sitting below
+  // MIN_BG_REGION_AREA made findContrastIssues fall back to the *page*
+  // background instead of the badge's own primary fill) is gone — reclaimed
+  // by the bench-driven fix round (defect A): `findContrastIssues` no longer
+  // gates text-background *attribution* by that area floor at all (see its
+  // own doc comment in deck-audit.ts), so the badge's self-painted rect is
+  // now correctly found regardless of size, and the false positive this
+  // entry existed to suppress no longer fires. See the dedicated
+  // "rail-numbered badge attribution" describe block below (replaces this
+  // entry's own former structural-precondition regression test) for the
+  // real-render proof, swept across all 13 themes.
 ]
 
 /** Per-layout text-shape guards, keyed by layout id — a finding under that
@@ -204,7 +208,11 @@ const TEXT_SHAPE_GUARD: Readonly<Record<string, RegExp>> = {
   // heading or "CHAPTER NN" label.
   "fashion-chapter": /^\d{1,2}$/,
   // rail-numbered's "{chapter}.{content}" badge ("1.1", "2.3", ...) — never
-  // its heading/subheading/footnote.
+  // its heading/subheading/footnote. No longer paired with an ALLOWLIST
+  // entry (the bench-driven fix round reclaimed it, see ALLOWLIST's own
+  // comment above) — kept as a shape matcher, reused by the dedicated
+  // "rail-numbered badge attribution" describe block below to locate the
+  // badge finding/text without hardcoding its position.
   "rail-numbered": /^\d+\.\d+$/,
 }
 
@@ -232,70 +240,45 @@ function findingSummary(f: AuditFinding): string {
   return `${f.code}: ${f.message}`
 }
 
-// rail-numbered allowlist precondition guard (task-1 routed follow-up,
-// `.issues/notes/2026-07-18-post-v03-backlog.md` #6/#7): item 6 added a
-// ratioMin/ratioMax band to the fashion-chapter entry above so a shape-only
-// match can no longer silently wave through a future ratio regression.
-// Verified before doing the same here: the rail-numbered entry's own
-// rationale (above) is a tool-false-positive claim — the badge rect never
-// registers as its own background region because its area sits below
-// deck-audit.ts's MIN_BG_REGION_AREA, so `findContrastIssues` falls back to
-// comparing the badge's ink against the *wrong* (page) background —  not an
-// adjudicated faint-by-design color pairing like fashion-chapter's
-// watermark. `isAllowlisted` (above) never reads `finding.detail.ratio` for
-// this entry (no `ratioMin`/`ratioMax` fields on it), so a ratio band here
-// would have nothing to bound: the finding's actual ratio is an accident of
-// which ink `readableOn` happens to pick per theme against the wrong
-// background, not a stable, intentional blend — pinning its current
-// numeric spread would pin noise, not harden anything.
-//
-// The exemption's real precondition is structural instead: the badge
-// rect's rendered area must stay below MIN_BG_REGION_AREA (8000px^2,
-// deck-audit.ts's own constant — private/unexported, so re-derived here
-// from a real render rather than imported, same "derive from current
-// measured values" discipline the fashion-chapter band above documents).
-// If a future change ever grows the badge past that threshold, the audit
-// would then correctly attribute the badge's own real background instead of
-// falling back to the page background, and this allowlist entry's
-// shape-only match would start silently swallowing a then-legitimate
-// finding instead of a tool artifact. Pinning the precondition itself makes
-// that scenario fail loudly here, at its actual source, instead of
-// surfacing as a confusing unrelated-looking failure inside the swept
-// describe block below.
-describe("rail-numbered allowlist precondition (task-1 routed follow-up)", () => {
-  it("the number badge's real rendered area stays below deck-audit.ts's MIN_BG_REGION_AREA (8000px^2) — the allowlist entry's actual justification", () => {
-    const slide: Slide = {
-      type: "content",
-      heading: HEADING,
-      subheading: SUBHEADING,
-      layout: "rail-numbered",
-      components: CONTENT_BODY,
-    } as Slide
-    // Theme is arbitrary — content-rail-numbered.tsx's badge geometry
-    // (BADGE_W/BADGE_H) is a fixed pixel constant, not driven by any theme
-    // token, so this precondition holds or breaks identically for all 13.
-    const ir = deckFor("consulting", slide)
-    const markup = renderSlideSvg(ir, 0)
-    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${markup}</svg>`)
-
-    // Locate the badge without hardcoding its position: it's the <rect>
-    // immediately preceding the "{chapter}.{content}" label text — the same
-    // shape TEXT_SHAPE_GUARD["rail-numbered"] itself matches findings
-    // against, so this reuses the one guard already defined rather than
-    // re-deriving a second description of the same shape.
-    const badgeText = Array.from(root.querySelectorAll("text")).find((t) =>
-      TEXT_SHAPE_GUARD["rail-numbered"].test(t.textContent ?? ""),
-    )
-    expect(badgeText).toBeTruthy()
-    const badgeRect = badgeText!.previousElementSibling
-    expect(badgeRect?.tagName.toLowerCase()).toBe("rect")
-
-    const width = Number(badgeRect!.getAttribute("width"))
-    const height = Number(badgeRect!.getAttribute("height"))
-    expect(width).toBeGreaterThan(0)
-    expect(height).toBeGreaterThan(0)
-    expect(width * height).toBeLessThan(8000) // MIN_BG_REGION_AREA, deck-audit.ts
-  })
+// rail-numbered badge attribution (bench-driven fix round, defect A —
+// reclaims the allowlist entry the task-1-routed-follow-up precondition
+// guard this block replaces used to protect). That precondition guard
+// pinned a *structural proxy* ("the badge rect's rendered area stays below
+// MIN_BG_REGION_AREA") for why the allowlist entry was a tool artifact, not
+// a real defect — true at the time, but the proxy's whole reason for
+// existing was that `findContrastIssues` gated text-background attribution
+// by that same area floor, so a badge below it fell through to the *wrong*
+// background. That gate is gone (see MIN_BG_REGION_AREA's and
+// `PaintedShape`'s own doc comments in deck-audit.ts): attribution now finds
+// the badge's own self-painted rect regardless of its area, and the false
+// positive the allowlist entry existed to suppress no longer fires — so
+// there is nothing left to allowlist, and the entry itself was removed
+// above. This block asserts the thing that actually matters now: a real
+// render, swept across every canonical theme, produces zero low-contrast
+// findings on the badge text.
+describe("rail-numbered badge attribution (bench-driven fix round, defect A)", () => {
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: the "{chapter}.{content}" badge text clears contrast against its own self-painted background`, () => {
+      const slide: Slide = {
+        type: "content",
+        heading: HEADING,
+        subheading: SUBHEADING,
+        layout: "rail-numbered",
+        components: CONTENT_BODY,
+      } as Slide
+      const findings = auditFindings(deckFor(themeId, slide))
+      // Scoped to the badge's own text shape (not the whole finding set) —
+      // this block's job is exactly the one thing that used to need an
+      // allowlist entry; any other low-contrast finding under this layout
+      // is still caught by the swept describe block below, unfiltered.
+      const badgeFindings = findings.filter(
+        (f) =>
+          f.code === "low-contrast" &&
+          TEXT_SHAPE_GUARD["rail-numbered"].test((f.detail as { text?: string } | undefined)?.text ?? ""),
+      )
+      expect(badgeFindings).toEqual([])
+    })
+  }
 })
 
 describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
@@ -358,10 +341,13 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
 // specifically — deliberately *not* folded into `CONTENT_BODY` above.
 // `CONTENT_BODY` is shared by every content archetype across all 13 themes;
 // the file header already documents that kpi_cards was tried there once and
-// reverted because it drags in kpi.tsx's own unrelated, already-pinned
-// defect (`deck-audit.test.ts`'s "kpi.tsx's hardcoded delta-arrow red") into
-// every archetype that renders it via the shared row-layout component. This
-// defect is narrower: it lives only in `content-bento-panel.tsx`'s own
+// reverted because it used to drag kpi.tsx's own row-layout delta-arrow
+// defect into every archetype that renders it via the shared row-layout
+// component — historically a *different, already-pinned* defect from this
+// block's own (both are now fixed, see the "defect B real contrast fixes"
+// describe block below; this block's own targeted fixture below predates
+// that fix and stays as its own dedicated regression regardless). This
+// defect was narrower: it lived only in `content-bento-panel.tsx`'s own
 // `renderKpiCardBody` (bento's per-item card renderer — a different code
 // path from kpi.tsx's row layout), reachable only when a kpi_cards
 // component explodes into bento-panel's own cards. A fixture scoped to
@@ -417,6 +403,326 @@ describe("bento-panel kpi_cards contrast (W8 fix round, targeted — see comment
       expect(findings.filter((f) => f.code === "low-contrast")).toEqual([])
     })
   }
+})
+
+// Bench-driven fix round, defect A handoff (Task 3): the five B-group call
+// sites `deck-audit.test.ts`'s own "B-group ink fixes" describe block pins
+// against one representative theme each — swept here across all 13 themes
+// for the full regression net, same targeted-fixture idiom as the
+// bento-panel kpi_cards block above (a component-level defect, not an
+// archetype one, so a single fixed layout is the right scope, not a
+// per-theme layout sweep). All five hardcoded an unwrapped ink with no
+// `accessibleInk`/`readableOn` call — `steps.tsx`/`roadmap.tsx`'s
+// `fill="#FFFFFF"` badge digit, `rings.tsx`/`image-compare.tsx`'s "VS"
+// badge `fill={ctx.colors.surface}`, `image-compare.tsx`'s "AFTER" chip
+// (`before_after` style) `fill={ctx.colors.surface}` — now all routed
+// through `accessibleInk` against the badge/chip's own painted fill. A
+// byte-for-byte render diff (old vs. new component code, all 13 themes,
+// task report) confirms the fix changes rendered output on *exactly* the
+// themes below and leaves every other theme byte-identical — the "dark-
+// badge themes where the old ink already passed stay byte-identical"
+// invariant, verified, not assumed.
+describe("B-group ink fixes — full 13-theme sweep (bench-driven fix round, defect A handoff, Task 3)", () => {
+  const STEPS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [{ type: "steps", items: [{ title: "Step one", text: "do the first thing" }] }],
+  } as Slide
+  const ROADMAP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      { type: "roadmap", items: [{ title: "Kickoff", period: "Q1", rows: [{ label: "Scope", value: "discovery" }] }] },
+    ],
+  } as Slide
+  const RINGS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [{ type: "rings", items: [{ label: "Core", desc: "inner layer" }] }],
+  } as Slide
+  const IMAGE_COMPARE_VS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      { type: "image_compare", left: { asset_id: "a", label: "Before" }, right: { asset_id: "b", label: "After" }, style: "vs" },
+    ],
+  } as Slide
+  const IMAGE_COMPARE_BEFORE_AFTER_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "image_compare",
+        left: { asset_id: "a", label: "Before" },
+        right: { asset_id: "b", label: "After" },
+        style: "before_after",
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: steps.tsx badge digit clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, STEPS_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "1")).toEqual([])
+    })
+
+    it(`${themeId}: roadmap.tsx badge digit clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, ROADMAP_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "01")).toEqual([])
+    })
+
+    it(`${themeId}: rings.tsx core label clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, RINGS_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "Core")).toEqual([])
+    })
+
+    it(`${themeId}: image-compare.tsx "VS" badge clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, IMAGE_COMPARE_VS_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "VS")).toEqual([])
+    })
+
+    it(`${themeId}: image-compare.tsx "AFTER" chip clears contrast against its own chip`, () => {
+      const findings = auditFindings(deckFor(themeId, IMAGE_COMPARE_BEFORE_AFTER_SLIDE))
+      expect(
+        findings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "AFTER" || f.detail?.text === "BEFORE")),
+      ).toEqual([])
+    })
+  }
+})
+
+// Bench-driven fix round, defect B (Task 3): the plan named five real
+// contrast defects for re-test once defect A's attribution fix landed.
+// Three of the five turned out to be genuinely real once measured against
+// a real render (not assumed from the plan's own theme-name shorthand) and
+// are fixed + netted here — `kpi.tsx`'s delta arrow (both its own row
+// layout *and* `content-bento-panel.tsx`'s separate bento-cell call site,
+// same shared `deltaProps` root cause, found failing on every one of the
+// 13 themes across the two call sites combined once actually swept, not
+// just the plan's named journal/enterprise), `numbered_cards.tsx`'s large
+// digit (classroom 2.09:1, academic 2.92:1 — both measured, matching the
+// plan's own "<3:1" description), and `quote.tsx`'s decorative open-quote
+// mark (heritage 2.61:1, plus consulting 1.45:1 — the latter already a
+// known pre-existing pin in `deck-audit.test.ts`, removed from that
+// "understood, not fixed" list now that it's actually fixed here).
+//
+// The other two named items were measured and found **not reproducible**
+// as new/un-adjudicated defects:
+//   - "journal chapter folio numerals": every one of journal's 8 curated
+//     chapter archetypes renders zero low-contrast findings except
+//     `fashion-chapter`, whose only numeral-shaped finding is its giant
+//     chapter-number watermark digit — already covered by this file's own
+//     `ALLOWLIST` entry above (`theme: "*"`, `ratioMin`/`ratioMax`
+//     1.2-1.8; journal's own measured ratio, 1.459, is literally recorded
+//     in that entry's own spread comment). Deliberately faint by design
+//     (`chapter-fashion-chapter.tsx`'s own header calls it decorative), not
+//     a "folio" (a small running chapter-number label) by any reasonable
+//     reading of that term — the watermark is a 420px full-bleed digit.
+//   - "classroom×fashion-chapter kicker": `fashion-chapter`'s actual kicker
+//     text (the small "CHAPTER 01" line, `fill={readableOn(colors.accent)}`
+//     — an editorial kicker in the conventional sense) renders zero
+//     findings for classroom, confirmed by direct measurement. This exact
+//     combination was the named subject of an *earlier* fix
+//     (`themes/definitions.ts`'s own history comment: `readableOn`'s W8
+//     two-ink-comparison fix cleared classroom's fashion-chapter text,
+//     re-measured 8.19:1). The only finding under this combo is, again,
+//     the same already-allowlisted watermark digit (classroom's own ratio,
+//     1.537, also recorded in the `ALLOWLIST` entry's spread comment) —
+//     not the kicker, and not a new defect.
+// Both are documented here rather than silently dropped from the plan's own
+// checklist — see the task report for the full measurement.
+describe("defect B real contrast fixes (bench-driven fix round, Task 3)", () => {
+  const KPI_UP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [{ type: "kpi_cards", items: [{ value: "1", label: "x", delta: "up" }] }],
+  } as Slide
+  const KPI_DOWN_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [{ type: "kpi_cards", items: [{ value: "1", label: "x", delta: "down" }] }],
+  } as Slide
+  const BENTO_KPI_UP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "bento-panel",
+    components: [
+      {
+        type: "kpi_cards",
+        items: [
+          { value: "13", label: "one", delta: "up" },
+          { value: "24", label: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const BENTO_KPI_DOWN_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "bento-panel",
+    components: [
+      {
+        type: "kpi_cards",
+        items: [
+          { value: "13", label: "one", delta: "down" },
+          { value: "24", label: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const NUMBERED_CARDS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [
+      {
+        type: "numbered_cards",
+        items: [
+          { title: "First", text: "one" },
+          { title: "Second", text: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const QUOTE_SLIDE: Slide = {
+    type: "content",
+    arrangement: "quote",
+    heading: HEADING,
+    components: [{ type: "quote", text: "an attributed quotation", attribution: "Someone" }],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: kpi.tsx's up-delta arrow clears contrast against its own card surface`, () => {
+      const findings = auditFindings(deckFor(themeId, KPI_UP_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↑")).toEqual([])
+    })
+
+    it(`${themeId}: kpi.tsx's down-delta arrow clears contrast against its own card surface`, () => {
+      const findings = auditFindings(deckFor(themeId, KPI_DOWN_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↓")).toEqual([])
+    })
+
+    it(`${themeId}: content-bento-panel.tsx's up-delta arrow clears contrast against its own cell surface`, () => {
+      const findings = auditFindings(deckFor(themeId, BENTO_KPI_UP_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↑")).toEqual([])
+    })
+
+    it(`${themeId}: content-bento-panel.tsx's down-delta arrow clears contrast against its own cell surface`, () => {
+      const findings = auditFindings(deckFor(themeId, BENTO_KPI_DOWN_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↓")).toEqual([])
+    })
+
+    it(`${themeId}: numbered_cards.tsx's large digit clears contrast against the page background`, () => {
+      const findings = auditFindings(deckFor(themeId, NUMBERED_CARDS_SLIDE))
+      expect(
+        findings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "01" || f.detail?.text === "02")),
+      ).toEqual([])
+    })
+
+    it(`${themeId}: quote.tsx's decorative open-quote mark clears contrast against the page background`, () => {
+      const findings = auditFindings(deckFor(themeId, QUOTE_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "“")).toEqual([])
+    })
+  }
+})
+
+// Bench-driven fix round, Task 4 review m2 (routed minor): the two guards
+// dc2183f (defect B, Task 3) landed above —
+// `accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, fontSize)` in
+// both `numbered-cards.tsx` and `quote.tsx` — were only proven against a
+// content slide with *no* `slide.background` override, where `ctx.defaultBg`
+// resolves straight to `themeDefaultBg` (`FullSlideSvg.tsx`). Task 3's own
+// review verified the same guard also holds on the *asset-scrim* branch (a
+// content slide with `background: { kind: "asset", ... }`, where
+// `ctx.defaultBg` instead flows through `resolveOverrideBackgroundHex`'s
+// asset case — fixed in an earlier task, 03976da, to resolve to
+// `paintedFallback`/`themeDefaultBg`, the color `Background.tsx`'s
+// auto-scrim actually paints, not `tokens.colors.surface`) across all 13
+// themes — but only with throwaway, uncommitted probes, leaving this branch
+// without a durable regression net. `paintedFallback` currently equals
+// `themeDefaultBg` for every theme (see the two doc comments cited above),
+// so this describe block's per-theme pass/fail outcomes are expected to
+// match the plain-background block right above it byte-for-byte — the
+// point isn't a *different* result, it's guarding the *different code path*
+// that produces it: a regression in `resolveOverrideBackgroundHex`'s asset
+// branch (e.g. reverting `paintedFallback` back to `surfaceFallback`) would
+// slip past every test above, none of which ever sets `slide.background`,
+// while this block would catch it immediately.
+describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task 4 review m2)", () => {
+  // Minimal-but-real data URI, same pattern already established for a
+  // resolved asset background in this suite's sibling file
+  // (`deck-audit.test.ts`'s own asset/scrim fixtures) — `auditDeck` never
+  // decodes pixel dimensions off it, only checks `src` truthiness
+  // (`hasBgImage`, `ImagePages.tsx`/`ToneAdaptiveContent`'s own asset-branch
+  // guard), so a tiny placeholder is sufficient and does not skew geometry.
+  const ASSET_BG_IMAGES: PptxIR["assets"]["images"] = { bg: { src: "data:image/png;base64,AAAA" } }
+  const NUMBERED_CARDS_ASSET_BG_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    background: { kind: "asset", asset_id: "bg" },
+    components: [
+      {
+        type: "numbered_cards",
+        items: [
+          { title: "First", text: "one" },
+          { title: "Second", text: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const QUOTE_ASSET_BG_SLIDE: Slide = {
+    type: "content",
+    arrangement: "quote",
+    heading: HEADING,
+    background: { kind: "asset", asset_id: "bg" },
+    components: [{ type: "quote", text: "an attributed quotation", attribution: "Someone" }],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: numbered_cards.tsx's large digit clears contrast against the asset-scrim background`, () => {
+      const findings = auditFindings(deckFor(themeId, NUMBERED_CARDS_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+      expect(
+        findings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "01" || f.detail?.text === "02")),
+      ).toEqual([])
+    })
+
+    it(`${themeId}: quote.tsx's decorative open-quote mark clears contrast against the asset-scrim background`, () => {
+      const findings = auditFindings(deckFor(themeId, QUOTE_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "“")).toEqual([])
+    })
+  }
+
+  // Distinguishing assertion (red-pre-fix-by-construction, same discipline
+  // FullSlideSvg.test.tsx's own 03976da regression uses, and verified red by
+  // literally reverting FullSlideSvg.tsx's `defaultBg` asset branch back to
+  // `tokens.colors.surface` and re-running this file: academic is the theme
+  // that flips under that revert, not every theme — `accessibleInk`'s
+  // fallback ink can coincidentally clear both candidate backgrounds for
+  // some themes, so this is an empirically-chosen witness, not a guessed
+  // one). `colors.accent` ("#00A878") measures 2.92:1 against academic's
+  // real content-slide background ("#FAFAF6", `defaultBackgrounds.content`
+  // — the exact value this file's own "defect B real contrast fixes" block
+  // above cites for the plain-background case) but 3.06:1 against
+  // `colors.surface` ("#FFFFFF", the pre-03976da wrong asset-branch
+  // fallback) — straddling the 3:1 large-text floor in exactly the
+  // direction that makes a wrong ink decision (measured against surface)
+  // disagree with what the asset-scrim branch actually paints (the real
+  // scrim, themeDefaultBg): `accessibleInk` would wrongly keep the raw
+  // accent color, and the audit — which independently reads the real
+  // painted scrim, not the ink decision's own background — would catch it.
+  it("regression lock: academic's asset-scrim ctx.defaultBg agrees with the real painted scrim, not colors.surface (the pre-03976da wrong fallback)", () => {
+    expect(contrastRatio("#00A878", "#FAFAF6")).toBeLessThan(3)
+    expect(contrastRatio("#00A878", "#FFFFFF")).toBeGreaterThanOrEqual(3)
+    const numberedFindings = auditFindings(deckFor("academic", NUMBERED_CARDS_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+    expect(
+      numberedFindings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "01" || f.detail?.text === "02")),
+    ).toEqual([])
+    const quoteFindings = auditFindings(deckFor("academic", QUOTE_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+    expect(quoteFindings.filter((f) => f.code === "low-contrast" && f.detail?.text === "“")).toEqual([])
+  })
 })
 
 // Dedicated 13-theme colors.muted contrast lock (post-v0.3 W8 fix round,
@@ -613,18 +919,38 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // lookup for the row-label text underneath it (confirmed by dumping the
   // real rendered markup: the row-label's true painted background is the
   // card's white/`colors.surface` rect, not the accent bar's fill).
-  // Pre-existing, out of this task's scope to touch deck-audit.ts (matches
-  // this file's own `rail-numbered` ALLOWLIST entry's precedent of
-  // documenting rather than fixing an audit-tool limitation) — not a
-  // colors.muted defect, so not folded into calibration or into a
-  // "known-gap" pinned finding either.
+  // Bench-driven fix round (defect A) update: this file's own former
+  // `rail-numbered` ALLOWLIST entry (the "documenting rather than fixing an
+  // audit-tool limitation" precedent this paragraph used to point to) is
+  // gone — that task *did* touch deck-audit.ts, and fixed the sibling
+  // small-region-misattribution bug (removing the `MIN_BG_REGION_AREA` floor
+  // from text-background attribution; see PaintedShape's own doc comment).
+  // This accent-bar bug is confirmed, deliberately, still present: real
+  // arc-command parsing (path flattening) is a separate, larger, still-open
+  // backlog item that same task's own plan explicitly scoped out (see
+  // `pathBoundingBox`'s doc comment in deck-audit.ts for the "interaction,
+  // not fixed" note) — a real render before/after that fix shows the exact
+  // same phantom-region misattribution, byte-for-byte, on all 13 themes.
+  // `renderCard`'s own numbered *badge circle* (a `<circle>`, not this path)
+  // is a different, related story: it now correctly resolves against its
+  // own self-painted `colors.primary` fill (the fix's actual win — see
+  // deck-audit.test.ts's "newly-exposed low-contrast sources" describe
+  // block for the real defect that fix exposed, 5/13 themes). Still not a
+  // colors.muted defect either way, so not folded into calibration or into a
+  // "known-gap" pinned finding.
   roadmap: "flat-surface",
   // The one real "needs-fixture" gap this fix round closes — see the
   // dedicated describe block below.
   matrix: "needs-fixture",
   // insight_panel.tsx's footnote text sits on the panel's colors.surface
   // shell (flat-surface) — same roundedTopBarPath phantom-background caveat
-  // as roadmap above (insight_panel.tsx uses the identical helper).
+  // as roadmap above (insight_panel.tsx uses the identical helper, and the
+  // same bench-driven-fix-round update applies: confirmed still present,
+  // deliberately not fixed, see roadmap's own comment above). Unlike
+  // roadmap, insight_panel has no badge circle of its own, so this
+  // component has no partial win either — every one of its texts (title,
+  // row label/text, footnote) still resolves against the same phantom
+  // region, unchanged before and after.
   insight_panel: "flat-surface",
   // The neutral-tone tint rect (`fill={tone}` where tone===colors.muted,
   // verdict-banner.tsx) renders at fillOpacity=0.08 — below deck-audit.ts's
@@ -794,6 +1120,56 @@ describe("swot/bmc tinted-panel contrast (structure-components wave task 1, deci
 
     it(`${themeId}: bmc renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
       expect(auditFindings(deckFor(themeId, BMC_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// bench-driven fix round, defect F (bmc bottom-row overflow,
+// `tests/bench/questions/q07` evidence): `BMC_SLIDE` above (1-2 items per
+// block) never exercised the schema's own ceiling — 4 items in every one of
+// the 9 named blocks (`z.array(z.string()).min(1).max(4)`, `src/ir/index.ts`)
+// — which a real bench-generated deck actually produced (q07's
+// qwen3.6-27b answer.json: 4 items in all 9 blocks, verbatim below). Pre-fix,
+// `bmc.tsx`'s `render` floored its own drawn height at the natural
+// (unstretched) total and never shrank below `box.h` — a full-body
+// component (`SvgContent.tsx`) gets the archetype's *fixed* content-rect
+// height verbatim, never a box sized to its own `measure()` return value —
+// so schema-max content overflowed the content rect on every one of the 13
+// themes (empirically confirmed pre-fix: 2 v-overflow findings per theme,
+// both in the bottom band — `cost_structure`/`revenue_streams` — the last
+// band painted and the first to spill). Fixed by shrinking every cell's font
+// size/vertical rhythm by the same proportion the box is short by (`bmc.tsx`
+// file header, "The inverse case"). `narrow-column` specifically (not one of
+// the other 6 content archetypes) — the narrowest, most content-constrained
+// curated layout (880px column, 410px content-rect height at this heading),
+// so a clean sweep here is real headroom evidence, not a softball; the task
+// report's own probe additionally swept all 7 content archetypes × all 13
+// themes at this same schema-max fixture (91 combinations, 0 findings) for
+// broader confidence beyond this committed regression's one archetype.
+describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
+  const BMC_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "bmc",
+        key_partners: ["核心原材料供应商", "第三方物流服务商", "云基础设施提供商", "行业协会与标准组织"],
+        key_activities: ["平台核心算法研发", "多系统API对接与集成", "客户成功与培训体系", "生态伙伴拓展与管理"],
+        key_resources: ["资深算法与工程团队", "脱敏供应链历史数据库", "高可用云算力集群", "核心专利与软件著作权"],
+        value_propositions: ["库存周转天数降低30%", "全链路实时可视化追踪", "基于AI的智能需求预测", "零代码无缝系统对接"],
+        customer_relationships: ["专属客户成功经理", "自动化自助服务门户", "季度业务复盘与共创会", "开发者与技术社区"],
+        channels: ["直销团队重点攻坚", "行业峰会与线下展会", "现有合作伙伴转介", "技术白皮书与内容营销"],
+        customer_segments: ["中大型离散制造企业", "头部跨境电商卖家", "第三方物流运营商", "全国性零售连锁集团"],
+        cost_structure: ["研发与工程人力成本", "云服务器与带宽费用", "市场推广与销售佣金", "数据安全与合规投入"],
+        revenue_streams: ["SaaS基础版订阅年费", "按调用量计费的API服务", "定制化实施与培训费", "高级数据分析模块授权"],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max bmc (4 items in every block) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, BMC_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
 })

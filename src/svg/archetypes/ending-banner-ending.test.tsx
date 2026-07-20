@@ -11,7 +11,8 @@ const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
 
 // 有 heading 的 ending：标题原样渲染，不触发 `slide.heading || "Thank you."`
-// 兜底，且 heading 有值时副题不触发"谢谢。"兜底（同源码 2026-07-09 去重裁决）。
+// 兜底，且 heading 有值时副题不触发"We appreciate your time."兜底（同源码
+// 2026-07-09 去重裁决）。
 const endingWithHeading: Slide = {
   type: "ending",
   heading: "衷心感谢",
@@ -20,7 +21,7 @@ const endingWithHeading: Slide = {
 } as Slide
 
 // 无 heading（也无 subheading）的 ending：触发双重兜底——标题兜底
-// "Thank you."，副题兜底"谢谢。"。
+// "Thank you."，副题兜底"We appreciate your time."。
 const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
@@ -55,8 +56,8 @@ describe("BannerEnding", () => {
     expect(out).toContain("衷心感谢")
     expect(out).toContain("感谢参与本次评审")
     expect(out).not.toContain("Thank you.")
-    expect(out).not.toContain("谢谢。")
-    expect(out).toContain("联系")
+    expect(out).not.toContain("We appreciate your time.")
+    expect(out).toContain("Contact")
     expect(out).toContain("张三")
     expect(out).toContain("hi@weilan.example")
     expect(out).toContain("© 2026 维岚科技 保留所有权利")
@@ -97,13 +98,13 @@ describe("BannerEnding", () => {
     expect(out).toContain("#8a8a86")
   })
 
-  it("consulting tokens 下无 heading 时标题兜底为“Thank you.”，副题兜底“谢谢。”（双重兜底）", () => {
+  it("consulting tokens 下无 heading 时标题兜底为“Thank you.”，副题兜底“We appreciate your time.”（双重兜底）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", endingBare)
     const out = renderSvgMarkup(<BannerEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
 
     expect(out).toContain("Thank you.")
-    expect(out).toContain("谢谢。")
+    expect(out).toContain("We appreciate your time.")
   })
 
   // 回填旧测试「Ending shrinks a pathologically long heading instead of

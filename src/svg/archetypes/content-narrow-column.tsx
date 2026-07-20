@@ -134,6 +134,7 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
 
       {kicker && (
         <text
+          data-truncated={kicker.truncated ? "1" : undefined}
           x="96"
           y={KICKER_Y}
           fontFamily={fonts.heading}
@@ -200,6 +201,7 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
 
       {footnote && (
         <text
+          data-truncated={footnote.truncated ? "1" : undefined}
           x="96"
           y="652"
           fontFamily={fonts.body}

@@ -38,8 +38,8 @@ function toneFill(tone: MatrixItem["tone"], ctx: ComponentCtx): string {
 }
 
 interface CellLayout {
-  title: { text: string; fontSize: number }
-  tag: { text: string; fontSize: number } | null
+  title: { text: string; fontSize: number; truncated: boolean }
+  tag: { text: string; fontSize: number; truncated: boolean } | null
   contentH: number
 }
 
@@ -133,6 +133,7 @@ export const matrix: SvgComponent<MatrixComponent> = {
                   : {})}
               />
               <text
+                data-truncated={cell.title.truncated ? "1" : undefined}
                 x={x + PAD_X}
                 y={titleBaseline}
                 fontSize={cell.title.fontSize}
@@ -145,6 +146,7 @@ export const matrix: SvgComponent<MatrixComponent> = {
               </text>
               {cell.tag ? (
                 <text
+                  data-truncated={cell.tag.truncated ? "1" : undefined}
                   x={x + PAD_X}
                   y={titleBaseline + GAP_TITLE_TAG + TAG_SIZE}
                   fontSize={cell.tag.fontSize}

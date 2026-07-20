@@ -162,7 +162,7 @@ Every metric is purely mechanical, computed off the SDK the render chain already
 - **validate first-pass**: does the produced artifact (or its assembled IR, for a deck project —
   read via `readDeckDir`, `src/cli/deck-dir.ts`, the same seam `pptfast validate`/`render` use)
   pass `validateIr` — pass/fail plus the raw error count
-- **audit findings**: `auditDeck` finding count (overflow, out-of-bounds, low-contrast, overlap) —
+- **audit findings**: `auditDeck` finding count (overflow, out-of-bounds, low-contrast, overlap, plus the advisory content-truncated and content-dropped codes — all six count) —
   only computed when validate passed (an invalid IR has nothing well-formed enough to audit)
 - **render success**: does `generatePptx` produce a well-formed `.pptx` without throwing
 - **determinism**: render the same artifact twice and compare the two `.pptx` files byte for

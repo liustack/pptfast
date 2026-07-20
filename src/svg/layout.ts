@@ -266,7 +266,7 @@ function distributeSurplus(
  * Vertical overflow guard: retries `layoutContent` with progressively tighter
  * gaps, then — if the tightest gap still overflows — keeps only the components
  * whose bottom edge fits the rect and reports how many were dropped so the
- * caller can render a "+N 项未展示" marker. Quality gates upstream (ir-quality
+ * caller can render a "+N more" marker. Quality gates upstream (ir-quality
  * warn, backend lint) are meant to keep real decks from ever reaching the
  * drop path — this is the last line of defense.
  *
@@ -303,12 +303,12 @@ export function layoutContentFit(
   const kept = placed.filter(
     (p) => p.box.y + measureComponent(p.component, p.box.w, ctx) <= rect.y + rect.h + 1,
   )
-  // A slide degraded to nothing but the "+N 项未展示" marker is worse than
+  // A slide degraded to nothing but the "+N more" marker is worse than
   // one with a single overflowing component — keep the first placed component even
   // if it alone doesn't fit the rect (upstream quality gates make this rare).
   // 保留块带上剩余可用高（box.h < 测量高 = 截断预算，2026-07-11 存量
   // deck 5 项长卡画出页外实锤）：可分割块（row_cards）据此块内截断并
-  // 自画「+N 项未展示」，不感知 box.h 的块行为不变（照旧溢出渲染）。
+  // 自画「+N more」，不感知 box.h 的块行为不变（照旧溢出渲染）。
   if (kept.length === 0 && placed.length > 0) {
     const first = placed[0]
     const avail = rect.y + rect.h - first.box.y

@@ -18,10 +18,14 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * 一・逐字节等价**。
  *
  * 副题兜底逻辑（按当前源码实际行为原样迁移，不改语义）：
- * `slide.subheading || (slide.heading ? "" : "谢谢。")`——仅当 `slide.heading`
- * 也缺省时才兜底显示"谢谢。"；若 heading 有值但 subheading 缺省，则不显示副
- * 题（同 2026-07-09 consulting 去重裁决，见源码同一行注释）。测试覆盖有
- * heading（无兜底）与无 heading（兜底"谢谢。"）两种 ir。
+ * `slide.subheading || (slide.heading ? "" : "We appreciate your time.")`——
+ * 仅当 `slide.heading` 也缺省时才兜底显示该文案；若 heading 有值但
+ * subheading 缺省，则不显示副题（同 2026-07-09 consulting 去重裁决，见源码
+ * 同一行注释）。测试覆盖有 heading（无兜底）与无 heading（兜底
+ * "We appreciate your time."）两种 ir。defect C 修复：主标题兜底"致谢"改
+ * "Thank You"，副标题兜底"谢谢。"改"We appreciate your time."——两个中文
+ * 原文本就是不同措辞（正式/随意两级），译文延续这一区分，不直译成同一句
+ * "Thank you." 让大小标题重复。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
@@ -29,7 +33,7 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
 
   const HEADING_LAST_BASELINE = 340
-  const heading = fitHeadingLines(slide.heading || "致谢", {
+  const heading = fitHeadingLines(slide.heading || "Thank You", {
     maxWidth: 1088,
     fontSize: 76,
     maxLines: 2,
@@ -40,7 +44,7 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const headingLastY = HEADING_LAST_BASELINE
 
   // 兜底只服务完全默认的 ending 页（同 consulting 2026-07-09 去重裁决）
-  const subheading = fitSvgLine(slide.subheading || (slide.heading ? "" : "谢谢。"), {
+  const subheading = fitSvgLine(slide.subheading || (slide.heading ? "" : "We appreciate your time."), {
     maxWidth: 1088,
     fontSize: 28,
     minFontSize: 16,
@@ -73,6 +77,7 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
 
       {subheading.text && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x="640"
           y={subheadingY}
           fontFamily={fonts.heading}

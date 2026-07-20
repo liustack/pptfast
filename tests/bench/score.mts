@@ -32,8 +32,9 @@ import { join, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import JSZip from "jszip"
 
-import { auditDeck, generatePptx, validateIr } from "../../src/index"
+import { auditDeck, generatePptx, validateIr, type PptxIR } from "../../src/index"
 import { readDeckDir } from "../../src/cli/deck-dir"
+import { resolveLocalAssets } from "../../src/cli/load-ir"
 import { installNodePlatform } from "../../src/platform/node"
 
 installNodePlatform()
@@ -286,6 +287,26 @@ export async function normalizedPptxSha1(bytes: Uint8Array): Promise<string> {
   return hash.digest("hex")
 }
 
+// ── local asset resolution (defect H, 2026-07-20 bench-driven fixes wave) ──
+
+/**
+ * Loose shape check for "`ir` has an `assets.images` map to resolve" —
+ * `rawIr` here is the artifact's parsed-but-not-yet-validated JSON (`unknown`),
+ * so this can't just assume `PptxIR`'s shape: a bare IR that omits `assets`
+ * entirely (schema-legal — `PptxIRSchema` defaults it) would otherwise crash
+ * {@link resolveLocalAssets} on `ir.assets.images` before `generatePptx`'s own
+ * validate step ever gets a chance to run. Returning `false` here just skips
+ * the resolution attempt and falls through to the unchanged pre-fix behavior
+ * (`generatePptx` handles/rejects `rawIr` exactly as it always did) — never a
+ * scoring crash either way, "never crash the run" (AGENTS.md).
+ */
+function hasAssetImages(ir: unknown): ir is { assets: { images: Record<string, { src?: unknown }> } } {
+  const assets = (ir as { assets?: unknown } | null)?.assets
+  if (typeof assets !== "object" || assets === null) return false
+  const images = (assets as { images?: unknown }).images
+  return typeof images === "object" && images !== null
+}
+
 // ── per-question scoring ──
 
 export async function scoreQuestion(
@@ -344,6 +365,25 @@ export async function scoreQuestion(
   let deterministic: boolean | null = null
   let renderError: string | undefined
   try {
+    // Real CLI semantics (`runRender`, `../../src/cli/commands.ts`): a
+    // relative `assets.images[id].src` (e.g. "assets/case.png") resolves
+    // against the IR's own directory — `dirname(resolve(irPath))` for a bare
+    // IR file, or `readDeckDir`'s own `deckDir` for a deck-project directory
+    // (see that function's `DeckDirResult.deckDir` doc comment). Both cases
+    // reduce to the same value here: `resultDir` is either the directory the
+    // bare IR file lives directly inside, or the exact directory
+    // `readDeckDir(resultDir)` was called with above (`loadArtifact`) — so
+    // one `resolveLocalAssets(rawIr, resultDir)` call mirrors the CLI for
+    // both artifact shapes. Before this fix (defect H, 2026-07-20
+    // bench-driven fixes wave), this scorer never called it at all: a
+    // relative asset path reached `generatePptx` → `inlinePptxAssets`
+    // untouched, which treats anything not already a `data:`/`http(s):` src
+    // as a fetch URL — `fetch("assets/case.png")` rejects with "Failed to
+    // parse URL", misrecording a renderable artifact as `renderOk: false`.
+    // Mutates `rawIr` in place and is idempotent (a resolved src already
+    // starts with `data:`, so the second `generatePptx` call below is a
+    // no-op here) — matches `resolveLocalAssets`'s own contract, `../../src/cli/load-ir.ts`.
+    if (hasAssetImages(rawIr)) await resolveLocalAssets(rawIr as PptxIR, resultDir)
     const bytesA = await generatePptx(rawIr)
     const bytesB = await generatePptx(rawIr)
     renderOk = true

@@ -172,6 +172,7 @@ describe("fitEmphasisLine", () => {
     expect(result).not.toBeNull()
     expect(result!.fontSize).toBe(22)
     expect(result!.segments).toEqual([{ text: "一句简短的结论", emphasized: false }])
+    expect(result!.truncated).toBe(false)
   })
 
   it("keeps ** markup as separate emphasized segments alongside the fitted font size", () => {
@@ -187,6 +188,7 @@ describe("fitEmphasisLine", () => {
       { text: "效率提升三成", emphasized: true },
       { text: "这件事", emphasized: false },
     ])
+    expect(result!.truncated).toBe(false)
   })
 
   it("shrinks toward minFontSize before truncating, matching fitSvgLine's own behavior", () => {
@@ -197,6 +199,11 @@ describe("fitEmphasisLine", () => {
     expect(result!.fontSize).toBe(plain.fontSize)
     const rebuilt = result!.segments.map((s) => s.text).join("")
     expect(rebuilt).toBe(plain.text)
+    // bench-driven fix round, defect E: `fitEmphasisLine` mirrors
+    // `fitSvgLine`'s own `truncated` flag exactly (this case genuinely drops
+    // characters — 33 CJK units into a 300/16≈18.75-unit floor budget).
+    expect(result!.truncated).toBe(plain.truncated)
+    expect(result!.truncated).toBe(true)
   })
 
   it("truncates mid-emphasized-run and keeps the ellipsis emphasized", () => {
@@ -206,5 +213,6 @@ describe("fitEmphasisLine", () => {
     const last = result!.segments[result!.segments.length - 1]
     expect(last.text.endsWith("…")).toBe(true)
     expect(last.emphasized).toBe(true)
+    expect(result!.truncated).toBe(true)
   })
 })

@@ -4,7 +4,7 @@ import {
   measureTextUnits,
   truncateToUnits,
 } from "../../lib/svg-text-layout"
-import { accessibleOpacity } from "../ink"
+import { accessibleInk, accessibleOpacity } from "../ink"
 import { Icon } from "../icons"
 import type { SvgComponent } from "./types"
 
@@ -13,9 +13,20 @@ type KpiComponent = Extract<Component, { type: "kpi_cards" }>
 const GAP = 16
 const CARD_H = 120
 
-// Exported for tech.tsx's own per-item KPI cards (`renderKpiCard` in
-// templates/tech.tsx) — same delta arrow/color mapping, just laid out
+// Exported for content-bento-panel.tsx's own per-item KPI cards
+// (`renderKpiCardBody`) — same delta arrow/color mapping, just laid out
 // into a compact bento cell instead of this file's wide row card.
+//
+// Background-agnostic by design: this function has no idea what surface its
+// caller will paint the arrow on, so it returns the raw semantic color
+// (green/red/"") and leaves ink-vs-background calibration to each call
+// site's own `accessibleInk` wrap (bench-driven fix round, defect B — see
+// this file's own call site below and content-bento-panel.tsx's identical
+// one). Pre-fix, both call sites rendered `dp.color` raw — a real,
+// reproducible defect (not theme-specific: the full-matrix sweep found at
+// least one of up/down failing on every one of the 13 themes across the two
+// call sites combined, not just the journal/enterprise/luxe instances the
+// benchmark happened to name).
 export function deltaProps(delta: "up" | "down" | "flat") {
   if (delta === "up") return { arrow: "↑", color: "#16A34A" }
   if (delta === "down") return { arrow: "↓", color: "#DC2626" }
@@ -75,8 +86,20 @@ export const kpi: SvgComponent<KpiComponent> = {
         {component.items.map((item, i) => {
           const cardX = i * (cardW + GAP)
           const dp = item.delta ? deltaProps(item.delta) : null
+          // Bench-driven fix round, defect B: `deltaProps` returns a raw
+          // semantic hex (or "" for "flat", falling back to colors.muted)
+          // with no idea what background it'll render on — this card's own
+          // `colors.surface` shell (painted below). Full-matrix scanning
+          // found #16A34A (up) failing against several themes' white/light
+          // surfaces and #DC2626 (down) failing against dark/saturated
+          // ones — a real, theme-independent defect, not just the
+          // journal/enterprise/luxe instances the benchmark happened to
+          // name. `accessibleInk` keeps the semantic color when it already
+          // clears 20px body text's 4.5:1 (every theme this arrow already
+          // passed on, byte-identical), falls back to neutral ink only
+          // where it doesn't.
           const deltaColor = dp
-            ? dp.color || ctx.colors.muted
+            ? accessibleInk(dp.color || ctx.colors.muted, ctx.colors.surface, 20)
             : ctx.colors.muted
           // The overflow auditor measures a `<text>`'s whole textContent
           // (value + unit tspan concatenated) at the outer element's
@@ -111,6 +134,9 @@ export const kpi: SvgComponent<KpiComponent> = {
             fontSize: 16,
             minFontSize: 12,
           })
+          const fittedSource = item.source
+            ? fitSvgLine(item.source, { maxWidth: cardW - 40, fontSize: 11, minFontSize: 9 })
+            : null
           return (
             <g key={i}>
               <rect
@@ -134,6 +160,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                 />
               )}
               <text
+                data-truncated={fittedValue.truncated ? "1" : undefined}
                 x={cardX + 20}
                 y={(item.icon ? 64 : 58) + contentShift}
                 fontSize={fittedValue.fontSize}
@@ -162,6 +189,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                 </text>
               )}
               <text
+                data-truncated={fittedLabel.truncated ? "1" : undefined}
                 x={cardX + 20}
                 y={96 + contentShift}
                 fontSize={fittedLabel.fontSize}
@@ -171,8 +199,9 @@ export const kpi: SvgComponent<KpiComponent> = {
               >
                 {fittedLabel.text}
               </text>
-              {item.source && (
+              {fittedSource && (
                 <text
+                  data-truncated={fittedSource.truncated ? "1" : undefined}
                   x={cardX + 20}
                   y={114 + contentShift}
                   fontSize={11}
@@ -197,7 +226,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                   fontFamily={ctx.fonts.body}
                   dominantBaseline="alphabetic"
                 >
-                  {fitSvgLine(item.source, { maxWidth: cardW - 40, fontSize: 11, minFontSize: 9 }).text}
+                  {fittedSource.text}
                 </text>
               )}
             </g>

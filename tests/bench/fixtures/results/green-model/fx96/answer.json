@@ -1,0 +1,14 @@
+{
+  "version": "4",
+  "filename": "fixture-fx96",
+  "theme": { "id": "consulting" },
+  "assets": { "images": { "pic": { "src": "assets/pic.png" } } },
+  "slides": [
+    {
+      "type": "cover",
+      "heading": "Fixture 96 — relative asset path",
+      "background": { "kind": "asset", "asset_id": "pic" }
+    },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}

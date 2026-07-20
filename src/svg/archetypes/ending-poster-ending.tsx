@@ -40,7 +40,9 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * & Discussion")`——只有 `slide.heading` 也缺省时，副标题才兜底为固定文案
  * "Questions & Discussion"，避免用户填了标题、只是恰好没填副标题时被强行塞入
  * 一句无关的默认副题。测试覆盖有 heading（不触发兜底）与无 heading（触发副题
- * 兜底）两种 ir。
+ * 兜底）两种 ir。defect C 修复：主标题兜底原是中文"提问与讨论"，与副标题兜底
+ * 恰是同一句话的两种语言（副标题此前已是英文，主标题这次补齐）——译文延续
+ * 同一措辞 "Questions & Discussion"，不臆造新词。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
@@ -58,7 +60,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const copyright = ir.meta.copyright
   const author = ir.meta.authors?.[0]
 
-  const heading = fitHeadingLines(slide.heading || "提问与讨论", {
+  const heading = fitHeadingLines(slide.heading || "Questions & Discussion", {
     maxWidth: 1152,
     fontSize: 150,
     maxLines: 2,
@@ -136,6 +138,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Subheading */}
       {subheading.text && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x={CENTER_X}
           y={subheadingY}
           textAnchor="middle"
@@ -162,6 +165,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Combined centered meta line: org / contact / copyright */}
       {metaLine && (
         <text
+          data-truncated={metaLine.truncated ? "1" : undefined}
           x={CENTER_X}
           y={metaY}
           textAnchor="middle"

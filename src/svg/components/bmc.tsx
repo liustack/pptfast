@@ -71,6 +71,43 @@ type BlockKey =
  * reason about (no "8 of these are already known-safe, 1 needs a wrapper"
  * bookkeeping) — see `../audit/full-matrix-contrast.test.ts`'s dedicated
  * "bmc tinted-block contrast" 13-theme sweep for the empirical lock.
+ *
+ * **The inverse case — `box.h` *smaller* than the natural total (bench-
+ * driven fix round, defect F)**: real, not hypothetical. `SvgContent.tsx`
+ * hands a full-body component (`FULL_BODY_TYPES`) the archetype's fixed
+ * content-rect height verbatim, never a box sized to this file's own
+ * `measure()` return value — and schema-max content (4 items in every one
+ * of the 9 blocks, the IR schema's own ceiling — a real bench-observed
+ * shape, `tests/bench/questions/q07`, not a synthetic worst case) can
+ * exceed even the most generous curated content rect. Pre-fix, `render`
+ * floored `totalH` at the natural total and never shrank below it, so an
+ * undersized box just drew taller than `box.h` — the bottom band
+ * (`cost_structure`/`revenue_streams`) spilled first (and worst) because
+ * it's the last band painted and sits lowest, but every one of the 9 cells
+ * was equally capable of overflowing its own drawn rect given a heavy
+ * enough item count. Fix: shrink every cell's font size and vertical
+ * rhythm (padding/line-height/gaps — never the horizontal axis; column
+ * math in `gridGeom` is untouched) by the same proportion the box itself
+ * is short by — `fontScale = totalH / naturalTotal`, threaded through
+ * `blockLayout`/`renderBlock` — floored at `MIN_FONT_SCALE` so text never
+ * degrades past legibility. The floor is derived, not guessed: it equals
+ * `ITEM_SIZE_MIN / ITEM_SIZE` (9.5/12.5 = 0.76), the same 9.5px this file
+ * already accepts as its per-item *width*-axis shrink floor (`fitSvgLine`'s
+ * own `minFontSize`) — the new height-axis floor never asks item text to
+ * go smaller than a size this file already treats as an acceptable edge.
+ * A box at or above natural size (the common case — every non-schema-max
+ * fixture in this codebase's test suite) keeps `fontScale === 1` and takes
+ * the exact pre-fix code path, byte-identical (verified by construction:
+ * `blockLayout`/`renderBlock`'s scaled fields all reduce to the pre-fix
+ * hardcoded constants at `fontScale === 1`, and `naturalBandHeights` is
+ * reused rather than recomputed on that path). See the task report for the
+ * concrete verified ratios (~0.92 for the schema-max 13-theme regression
+ * fixture below; the plan's own literal "3 items" repro needs ~0.90) and
+ * the one compound edge case (a forced 2-line heading *and* a subheading
+ * *and* the narrowest curated content archetype, all at once) the floor
+ * still doesn't fully absorb — out of this task's own scope (no subheading
+ * or multi-line heading in the bench evidence), documented as a bounded
+ * residual rather than silently left unmentioned.
  */
 
 const BLOCK_LABELS: Record<BlockKey, string> = {
@@ -92,34 +129,90 @@ const PAD_BOTTOM = 14
 const CARD_RADIUS = 8
 
 const TITLE_SIZE = 13.5
-const TITLE_LH = Math.round(TITLE_SIZE * 1.3)
+const TITLE_SIZE_MIN = 10
+const TITLE_LH_RATIO = 1.3
 const GAP_TITLE_ITEMS = 10
 
 const ITEM_SIZE = 12.5
-const ITEM_LH = Math.round(ITEM_SIZE * 1.35)
+const ITEM_SIZE_MIN = 9.5
+const ITEM_LH_RATIO = 1.35
 const ITEM_GAP = 5
 const BULLET_R = 2
 const BULLET_INDENT = 11
 
+// bench-driven fix round, defect F — floor for `render`'s box.h-undersized
+// font-shrink below. See file header's "The inverse case" paragraph for the
+// mechanism and why this specific ratio (not an arbitrary one).
+const MIN_FONT_SCALE = ITEM_SIZE_MIN / ITEM_SIZE
+
 interface BlockLayout {
-  title: { text: string; fontSize: number }
-  items: { text: string; fontSize: number }[]
+  title: { text: string; fontSize: number; truncated: boolean }
+  items: { text: string; fontSize: number; truncated: boolean }[]
   contentH: number
+  /** `fontScale`-applied nominal sizes/rhythm `renderBlock` positions
+   * against — nominal, not each fitted item/title's own (possibly further
+   * width-shrunk) `fontSize`. Same "nominal size drives position, fitted
+   * size only affects glyph width" split this file used pre-`fontScale`
+   * too (the old `renderBlock` positioned off the module-level `ITEM_SIZE`
+   * constant, never a fitted item's own shrunk `fontSize`). */
+  titleSize: number
+  titleLH: number
+  padTop: number
+  gapTitleItems: number
+  itemSize: number
+  itemLH: number
+  itemGap: number
+  bulletR: number
 }
 
-function blockLayout(items: string[], key: BlockKey, w: number): BlockLayout {
+/**
+ * `fontScale` (default 1, the pre-fix nominal size) shrinks every vertical
+ * measurement — font sizes, line-heights, padding, gaps — by the same
+ * proportion; the horizontal axis (`w`/`contentW`/`PAD_X`/`BULLET_INDENT`)
+ * is untouched (see file header — this is a vertical-axis fix only). At
+ * `fontScale === 1` every returned field reduces to this file's pre-fix
+ * hardcoded constants exactly (same `TITLE_SIZE`/`ITEM_SIZE`, same 1.3/1.35
+ * ratios, same 10/9.5 width-axis floors) — byte-identical output.
+ */
+function blockLayout(items: string[], key: BlockKey, w: number, fontScale: number = 1): BlockLayout {
   const contentW = Math.max(1, w - PAD_X * 2)
+  const titleSize = TITLE_SIZE * fontScale
+  const itemSize = ITEM_SIZE * fontScale
+  const titleLH = Math.round(titleSize * TITLE_LH_RATIO)
+  const itemLH = Math.round(itemSize * ITEM_LH_RATIO)
+  const padTop = PAD_TOP * fontScale
+  const padBottom = PAD_BOTTOM * fontScale
+  const gapTitleItems = GAP_TITLE_ITEMS * fontScale
+  const itemGap = ITEM_GAP * fontScale
+  const bulletR = BULLET_R * fontScale
+
   const title = fitSvgLine(BLOCK_LABELS[key], {
     maxWidth: contentW,
-    fontSize: TITLE_SIZE,
-    minFontSize: 10,
+    fontSize: titleSize,
+    minFontSize: TITLE_SIZE_MIN * fontScale,
   })
   const fittedItems = items.map((it) =>
-    fitSvgLine(it, { maxWidth: contentW - BULLET_INDENT, fontSize: ITEM_SIZE, minFontSize: 9.5 }),
+    fitSvgLine(it, {
+      maxWidth: contentW - BULLET_INDENT,
+      fontSize: itemSize,
+      minFontSize: ITEM_SIZE_MIN * fontScale,
+    }),
   )
-  const itemsH = fittedItems.length * ITEM_LH + Math.max(0, fittedItems.length - 1) * ITEM_GAP
-  const contentH = PAD_TOP + TITLE_LH + GAP_TITLE_ITEMS + itemsH + PAD_BOTTOM
-  return { title, items: fittedItems, contentH }
+  const itemsH = fittedItems.length * itemLH + Math.max(0, fittedItems.length - 1) * itemGap
+  const contentH = padTop + titleLH + gapTitleItems + itemsH + padBottom
+  return {
+    title,
+    items: fittedItems,
+    contentH,
+    titleSize,
+    titleLH,
+    padTop,
+    gapTitleItems,
+    itemSize,
+    itemLH,
+    itemGap,
+    bulletR,
+  }
 }
 
 const TOP_ROW_KEYS: readonly BlockKey[] = ["key_activities", "customer_relationships"]
@@ -127,17 +220,26 @@ const BOTTOM_ROW_KEYS: readonly BlockKey[] = ["key_resources", "channels"]
 const SPAN_KEYS: readonly BlockKey[] = ["key_partners", "value_propositions", "customer_segments"]
 const BOTTOM_BAND_KEYS: readonly BlockKey[] = ["cost_structure", "revenue_streams"]
 
-/** Natural (unstretched) top-band/bottom-band heights, pure function of
- * `component`'s real content at width `w` — see file header. */
-function naturalBandHeights(component: BmcComponent, w: number): { topBandH: number; bottomBandH: number } {
+/** Natural (unstretched, `fontScale`-adjusted) top-band/bottom-band
+ * heights, pure function of `component`'s real content at width `w` and
+ * `fontScale` — see file header. `fontScale` defaults to 1 (nominal size);
+ * `render`'s undersized-box shrink path is the only caller that ever
+ * passes a smaller value. */
+function naturalBandHeights(
+  component: BmcComponent,
+  w: number,
+  fontScale: number = 1,
+): { topBandH: number; bottomBandH: number } {
   const colW = (w - GAP * 4) / 5
   const bottomColW = (w - GAP) / 2
   const halfRowH = Math.max(
-    ...[...TOP_ROW_KEYS, ...BOTTOM_ROW_KEYS].map((k) => blockLayout(component[k], k, colW).contentH),
+    ...[...TOP_ROW_KEYS, ...BOTTOM_ROW_KEYS].map((k) => blockLayout(component[k], k, colW, fontScale).contentH),
   )
-  const spanH = Math.max(...SPAN_KEYS.map((k) => blockLayout(component[k], k, colW).contentH))
+  const spanH = Math.max(...SPAN_KEYS.map((k) => blockLayout(component[k], k, colW, fontScale).contentH))
   const topBandH = Math.max(halfRowH * 2 + GAP, spanH)
-  const bottomBandH = Math.max(...BOTTOM_BAND_KEYS.map((k) => blockLayout(component[k], k, bottomColW).contentH))
+  const bottomBandH = Math.max(
+    ...BOTTOM_BAND_KEYS.map((k) => blockLayout(component[k], k, bottomColW, fontScale).contentH),
+  )
   return { topBandH, bottomBandH }
 }
 
@@ -202,12 +304,12 @@ function renderBlock(
   r: number,
 ): React.ReactElement {
   const panel = cell.tinted ? mixHex(ctx.colors.surface, ctx.colors.accent, 0.14) : ctx.colors.surface
-  const titleInk = accessibleInk(ctx.colors.text, panel, TITLE_SIZE)
-  const itemInk = accessibleInk(ctx.colors.text, panel, ITEM_SIZE)
+  const titleInk = accessibleInk(ctx.colors.text, panel, layout.titleSize)
+  const itemInk = accessibleInk(ctx.colors.text, panel, layout.itemSize)
   const x = ox + cell.x
   const y = oy + cell.y
-  const titleBaseline = y + PAD_TOP + TITLE_SIZE
-  let itemY = y + PAD_TOP + TITLE_LH + GAP_TITLE_ITEMS
+  const titleBaseline = y + layout.padTop + layout.titleSize
+  let itemY = y + layout.padTop + layout.titleLH + layout.gapTitleItems
   return (
     <g key={cell.key}>
       <rect
@@ -222,6 +324,7 @@ function renderBlock(
           : {})}
       />
       <text
+        data-truncated={layout.title.truncated ? "1" : undefined}
         x={x + PAD_X}
         y={titleBaseline}
         fontSize={layout.title.fontSize}
@@ -234,14 +337,15 @@ function renderBlock(
       </text>
       {layout.items.map((item, ii) => {
         const rowY = itemY
-        itemY += ITEM_LH + ITEM_GAP
-        const dotCy = rowY + ITEM_SIZE * 0.6
+        itemY += layout.itemLH + layout.itemGap
+        const dotCy = rowY + layout.itemSize * 0.6
         return (
           <g key={ii}>
-            <circle cx={x + PAD_X + BULLET_R} cy={dotCy} r={BULLET_R} fill={itemInk} />
+            <circle cx={x + PAD_X + layout.bulletR} cy={dotCy} r={layout.bulletR} fill={itemInk} />
             <text
+              data-truncated={item.truncated ? "1" : undefined}
               x={x + PAD_X + BULLET_INDENT}
-              y={rowY + ITEM_SIZE}
+              y={rowY + layout.itemSize}
               fontSize={item.fontSize}
               fill={itemInk}
               fontFamily={ctx.fonts.body}
@@ -264,13 +368,32 @@ export const bmc: SvgComponent<BmcComponent> = {
   render(component, box, ctx) {
     const { topBandH: natTop, bottomBandH: natBottom } = naturalBandHeights(component, box.w)
     const naturalTotal = natTop + GAP + natBottom
-    const totalH = Math.max(naturalTotal, box.h ?? naturalTotal)
-    const { cells } = gridGeom(box.w, totalH, natTop, natBottom)
+    const totalH = box.h ?? naturalTotal
+
+    // bench-driven fix round, defect F: a box shorter than the natural
+    // total is real (full-body components get the archetype's fixed
+    // content-rect height verbatim, never their own `measure()` value —
+    // `SvgContent.tsx`), so this shrinks every cell's font size/vertical
+    // rhythm by the same proportion the box is short by instead of
+    // silently drawing taller than `box.h` (see file header). A box at or
+    // above natural size keeps `fontScale === 1` — the exact pre-fix path,
+    // byte-identical (`natTop`/`natBottom` above are reused as-is rather
+    // than recomputed).
+    const fontScale =
+      naturalTotal > 0 && totalH < naturalTotal ? Math.max(MIN_FONT_SCALE, totalH / naturalTotal) : 1
+    const { topBandH: scaledTop, bottomBandH: scaledBottom } =
+      fontScale === 1
+        ? { topBandH: natTop, bottomBandH: natBottom }
+        : naturalBandHeights(component, box.w, fontScale)
+    const scaledNaturalTotal = scaledTop + GAP + scaledBottom
+    const finalTotalH = Math.max(scaledNaturalTotal, totalH)
+
+    const { cells } = gridGeom(box.w, finalTotalH, scaledTop, scaledBottom)
     const r = ctx.shape?.radius ?? CARD_RADIUS
     return (
       <g>
         {cells.map((cell) => {
-          const layout = blockLayout(component[cell.key], cell.key, cell.w)
+          const layout = blockLayout(component[cell.key], cell.key, cell.w, fontScale)
           return renderBlock(cell, layout, ctx, box.x, box.y, r)
         })}
       </g>

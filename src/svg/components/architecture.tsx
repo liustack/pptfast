@@ -49,6 +49,7 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
                 fill={layerFill}
               />
               <text
+                data-truncated={title.truncated ? "1" : undefined}
                 x={TITLE_X}
                 y={layerY + TITLE_BASELINE_Y}
                 fontSize={title.fontSize}
@@ -60,6 +61,7 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
                 {title.text}
               </text>
               <text
+                data-truncated={items.truncated ? "1" : undefined}
                 x={ITEMS_X}
                 y={layerY + ITEMS_BASELINE_Y}
                 fontSize={items.fontSize}

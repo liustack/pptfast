@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 import type { ComponentCtx, SvgComponent } from "./types"
 
 type ImageCompareComponent = Extract<Component, { type: "image_compare" }>
@@ -54,7 +55,7 @@ function renderSide({
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            图片缺失
+            Image missing
           </text>
         </>
       )}
@@ -68,6 +69,7 @@ function renderSide({
         strokeWidth={1}
       />
       <text
+        data-truncated={fitted.truncated ? "1" : undefined}
         x={w / 2}
         y={h + 22}
         textAnchor="middle"
@@ -105,7 +107,13 @@ export const imageCompare: SvgComponent<ImageCompareComponent> = {
           ctx,
         })}
         {isVs ? (
-          // 中缝圆徽章「VS」（压在两图接缝上）
+          // 中缝圆徽章「VS」（压在两图接缝上）。
+          // Bench-driven fix round, defect A reclassification (Task 3
+          // handoff): identical colors.surface-on-colors.primary pairing as
+          // rings.tsx's core label (this component paints its own circle,
+          // so contrast must be checked against that circle's own fill, not
+          // the ambient page background) — same campaign/insight/classroom
+          // failure, same accessibleInk fix.
           <g>
             <circle
               cx={box.w / 2}
@@ -122,38 +130,44 @@ export const imageCompare: SvgComponent<ImageCompareComponent> = {
               fontSize={18}
               fontWeight={700}
               fontFamily={ctx.fonts.heading}
-              fill={ctx.colors.surface}
+              fill={accessibleInk(ctx.colors.surface, ctx.colors.primary, 18)}
               dominantBaseline="alphabetic"
             >
               VS
             </text>
           </g>
         ) : (
-          // before/after 左上角标（各一枚小色块标签）
+          // before/after 左上角标（各一枚小色块标签）。
+          // Bench-driven fix round, defect A reclassification (Task 3
+          // handoff): a small rect (52x24=1,248px^2, well below the area
+          // floor `deck-audit.ts` used to gate text-background attribution
+          // by) — the AFTER chip (i===1, colors.accent fill) measures
+          // ~1:1 on consulting/academic/bloom/classroom/luxe/heritage once
+          // correctly attributed to its own chip instead of falling through
+          // to a background that always happened to pass. The BEFORE chip
+          // (i===0, colors.muted fill) already clears the ratio on every
+          // theme — accessibleInk is a no-op there, verified byte-identical.
           <>
-            {[0, half + GAP].map((x, i) => (
-              <g key={i} transform={`translate(${x + 10},10)`}>
-                <rect
-                  x={0}
-                  y={0}
-                  width={i === 0 ? 66 : 52}
-                  height={24}
-                  fill={i === 0 ? ctx.colors.muted : ctx.colors.accent}
-                />
-                <text
-                  x={i === 0 ? 33 : 26}
-                  y={17}
-                  textAnchor="middle"
-                  fontSize={13}
-                  fontWeight={600}
-                  fontFamily={ctx.fonts.body}
-                  fill={ctx.colors.surface}
-                  dominantBaseline="alphabetic"
-                >
-                  {i === 0 ? "BEFORE" : "AFTER"}
-                </text>
-              </g>
-            ))}
+            {[0, half + GAP].map((x, i) => {
+              const chipFill = i === 0 ? ctx.colors.muted : ctx.colors.accent
+              return (
+                <g key={i} transform={`translate(${x + 10},10)`}>
+                  <rect x={0} y={0} width={i === 0 ? 66 : 52} height={24} fill={chipFill} />
+                  <text
+                    x={i === 0 ? 33 : 26}
+                    y={17}
+                    textAnchor="middle"
+                    fontSize={13}
+                    fontWeight={600}
+                    fontFamily={ctx.fonts.body}
+                    fill={accessibleInk(ctx.colors.surface, chipFill, 13)}
+                    dominantBaseline="alphabetic"
+                  >
+                    {i === 0 ? "BEFORE" : "AFTER"}
+                  </text>
+                </g>
+              )
+            })}
           </>
         )}
       </g>

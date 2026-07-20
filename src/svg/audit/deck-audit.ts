@@ -13,7 +13,13 @@ import { auditSvgMarkup, parseNums, parseTransform, type OverflowIssue } from ".
 export interface AuditFinding {
   page: number
   slideId?: string
-  code: "overflow" | "out-of-bounds" | "low-contrast" | "overlap"
+  code:
+    | "overflow"
+    | "out-of-bounds"
+    | "low-contrast"
+    | "overlap"
+    | "content-truncated"
+    | "content-dropped"
   message: string
   detail?: Record<string, unknown>
 }
@@ -182,18 +188,38 @@ function blendOver(fg: string, bg: string, alpha: number): string {
 
 /**
  * Minimum absolute-page area (px²) a `<rect>`/`<image>` must cover to count
- * as a background-establishing region rather than a decorative accent.
+ * as a *page-level* background region — `regions`/`BgRegion`/
+ * `__collectBgRegions`'s own contract below, e.g. "how many real background
+ * layers does this campaign cover paint" (see that test's own doc comment).
  *
- * Calibrated against real geometry found while investigating this task: the
- * smallest legitimate background this renderer paints is a content page's
- * `colors.primary` assertion banner (`content-banner-heading.tsx`,
- * 1088×88 = 95,744px²) or a kpi card shell (`kpi.tsx`, ~262×120 =
- * 31,440px²) or one gradient band (`Background.tsx`, 24 bands over
- * 1280×720 ≈ 1280×31 = 39,680px² for a `tb` gradient); the largest
- * decorative accent found is `icon-cards.tsx`'s corner bar (32×3 = 96px²)
- * and the largest badge/dot circle is `steps.tsx`'s numbered badge
- * (r=19 → ~1,134px²). 8,000px² sits comfortably in the gap between the two
- * clusters.
+ * Calibrated against real geometry found while investigating the original
+ * (W6) version of this task: the smallest legitimate background this
+ * renderer paints is a content page's `colors.primary` assertion banner
+ * (`content-banner-heading.tsx`, 1088×88 = 95,744px²) or a kpi card shell
+ * (`kpi.tsx`, ~262×120 = 31,440px²) or one gradient band (`Background.tsx`,
+ * 24 bands over 1280×720 ≈ 1280×31 = 39,680px² for a `tb` gradient); the
+ * largest decorative accent found is `icon-cards.tsx`'s corner bar
+ * (32×3 = 96px²) and the largest badge/dot circle is `steps.tsx`'s numbered
+ * badge (r=19 → ~1,134px²). 8,000px² sits comfortably in the gap between the
+ * two clusters.
+ *
+ * **Bench-driven fix round (defect A):** this constant used to *also* gate
+ * which shapes a `<text>` could resolve its background against — wrong,
+ * root-caused as the single most-hit false-positive class in the benchmark.
+ * A page-level candidate filter and "what did this text actually get
+ * painted on top of" are different questions with different answers: a
+ * `rail-numbered` "1.1" badge (64×32 = 2,048px²) or a `steps` numbered badge
+ * circle (r=14, ~616px²) sit well below this floor — correctly, they are not
+ * *page* backgrounds — but each is unambiguously the real, sole background
+ * of the digit painted directly on top of it. Gating attribution by this
+ * same area floor made `findContrastIssues` fall through to whatever larger
+ * region happened to sit underneath (the page background, a card shell),
+ * checking the digit's ink against a color it was never actually rendered
+ * on. `paintedShapes`/`PaintedShape` below is the fix: a *separate*,
+ * floor-free walk of every rect/circle/ellipse/path (image excluded, see its
+ * own branch's comment), used only for text-background attribution — this
+ * constant keeps its original, narrower job of filtering `regions` for
+ * `__collectBgRegions`'s own page-level callers/tests, unchanged.
  */
 const MIN_BG_REGION_AREA = 8000
 
@@ -207,6 +233,16 @@ const MIN_BG_REGION_AREA = 8000
  */
 const MIN_BG_OPACITY = 0.5
 
+/**
+ * A page-level background candidate — `regions`' own element shape, filtered
+ * by `MIN_BG_REGION_AREA`/`MIN_BG_OPACITY` (rect/image/path only; see that
+ * constant's own doc comment for why circle/ellipse never join this
+ * particular table). Kept exactly as it was before the bench-driven fix
+ * round for `__collectBgRegions`'s existing page-level contract (its own
+ * dedicated regression test pins an exact region *count* against a real
+ * render) — text-background attribution no longer reads this table at all;
+ * see `PaintedShape` below.
+ */
 export interface BgRegion {
   x: number
   y: number
@@ -214,6 +250,47 @@ export interface BgRegion {
   h: number
   /** `null` = a real `<image>` (photo) — pixel colours genuinely unknown. */
   fill: string | null
+}
+
+/**
+ * A single painted-fill candidate for text-background *attribution*
+ * (bench-driven fix round, defect A) — every opaque-enough rect/circle/
+ * ellipse/path this walk sees, with **no** `MIN_BG_REGION_AREA` floor,
+ * each carrying its own exact containment test rather than a shared AABB.
+ * `contains` is the whole point of the shape split below: a badge circle's
+ * *bounding box* is not the badge circle, and a corner-anchored `<text>`
+ * that happens to sit in one of a circle's bbox corners (outside the circle
+ * itself) must not attribute to it just because a cruder rectangular test
+ * would have said yes.
+ */
+interface PaintedShape {
+  fill: string | null
+  contains(px: number, py: number): boolean
+}
+
+/** Axis-aligned rect containment — shared by `<rect>`/`<image>`/`<path>`
+ * (the last via `pathBoundingBox`'s own over-approximation, see its doc
+ * comment) — every one of those three is checked against its bounding box,
+ * never an exact outline. */
+function rectShape(x: number, y: number, w: number, h: number, fill: string | null): PaintedShape {
+  return { fill, contains: (px, py) => px >= x && px <= x + w && py >= y && py <= y + h }
+}
+
+/** Exact ellipse containment (`circle` is the `rx === ry` case, computed
+ * once by the caller from a scaled `r`) — the normalized-distance form
+ * `((px-cx)/rx)² + ((py-cy)/ry)² <= 1`, not the shape's own AABB. A
+ * degenerate (zero-radius) ellipse contains nothing rather than dividing by
+ * zero. */
+function ellipseShape(cx: number, cy: number, rx: number, ry: number, fill: string | null): PaintedShape {
+  return {
+    fill,
+    contains: (px, py) => {
+      if (rx <= 0 || ry <= 0) return false
+      const nx = (px - cx) / rx
+      const ny = (py - cy) / ry
+      return nx * nx + ny * ny <= 1
+    },
+  }
 }
 
 /**
@@ -239,6 +316,24 @@ export interface BgRegion {
  * block is `cover-split-diagonal.tsx`'s diagonal-cut colour panel, `"M 0,0 L
  * 560,0 L 460,720 L 0,720 Z"` — a straight-line polygon whose vertices *are*
  * its extremes, for which this bbox is exact, not an approximation.
+ *
+ * **Bench-driven fix round (defect A) interaction, recorded not fixed:**
+ * `insight_panel.tsx`/`roadmap.tsx`'s identical `roundedTopBarPath` helper
+ * emits an arc (`A rx ry x-axis-rotation large-arc-flag sweep-flag x y`) —
+ * this function has no path-grammar awareness at all, so it blindly pairs
+ * the arc's radius/rotation/flag numbers as if they were more (x,y)
+ * coordinates, inflating a ~6px-tall accent bar's computed bbox to roughly
+ * the whole page (empirically confirmed while building this fix: a real
+ * `insight_panel` render's bar bbox came back ~1184×1182, dwarfing the
+ * 1280×720 canvas). Removing `MIN_BG_REGION_AREA` from path *attribution*
+ * (this task's own fix, see that constant's doc comment) does not touch
+ * this bug either way — the bogus bbox already clears 8,000px² by roughly
+ * two orders of magnitude, floor or no floor, so it was already winning
+ * `backgroundAt` lookups for everything painted after it, pre-fix and
+ * post-fix alike. Fixing this needs real arc flattening (path-command-aware
+ * parsing), a separate, larger, recorded backlog item — out of scope here,
+ * same "document the tool limitation, don't chase it" precedent this
+ * function's own `data-decor` paragraph above already set.
  */
 function pathBoundingBox(d: string): { x: number; y: number; w: number; h: number } | null {
   const nums = d.match(/-?\d*\.?\d+(?:e[+-]?\d+)?/gi)
@@ -303,41 +398,64 @@ function directText(el: Element): string {
  * `primary` isn't `bg`/`surface`/`panel` and isn't tonally related to them
  * (it's a brand accent, deliberately *not* close to the page background).
  * SVG has no z-index — paint order is exactly document order — so this walk
- * mirrors that directly: every `<rect>`/`<image>` at or above
- * `MIN_BG_REGION_AREA` gets recorded, in document order, as a candidate
- * region; a text element's effective background is whichever recorded
- * region (searched most-recent-first) actually contains its position. This
- * one mechanism covers the page background (`Background.tsx` always paints
- * first), a gradient's individual bands (each is its own region — more
+ * mirrors that directly: every opaque-enough `<rect>`/`<circle>`/`<ellipse>`/
+ * `<path>` (plus `<image>`, floor-gated — see its own branch below) gets
+ * recorded, in document order, as a `PaintedShape`; a text element's
+ * effective background is whichever recorded shape (searched
+ * most-recent-first, i.e. topmost in paint order) actually *contains* its
+ * position — an exact ellipse test for `<circle>`/`<ellipse>`, a bounding-box
+ * test for the other three (see `rectShape`/`ellipseShape`/`pathBoundingBox`).
+ * This one mechanism covers the page background (`Background.tsx` always
+ * paints first), a gradient's individual bands (each is its own shape — more
  * precise than any single midpoint), local panels/cards/banners (the
- * bento-card/kpi/icon-card/banner-heading shell `<rect>`s), and an
- * asset-background scrim opaque enough to trust (`MIN_BG_OPACITY`) — while
- * a bare photo `<image>` with no (or too-faint) scrim correctly resolves to
- * "unknown" (`fill: null`) rather than a guess, and text over it is skipped.
+ * bento-card/kpi/icon-card/banner-heading shell `<rect>`s), a self-painted
+ * badge/chip a text glyph sits directly on top of (`rail-numbered`'s "1.1"
+ * badge, `steps`' numbered circle — see `MIN_BG_REGION_AREA`'s own doc
+ * comment for the false-positive family this fixes), and an asset-background
+ * scrim opaque enough to trust (`MIN_BG_OPACITY`) — while a bare photo
+ * `<image>` with no (or too-faint) scrim correctly resolves to "unknown"
+ * (`fill: null`) rather than a guess, and text over it is skipped.
  *
- * One more exclusion sits on top of the region model above: anything inside
+ * **Bench-driven fix round (defect A):** this `PaintedShape` walk is
+ * *unrestricted* by `MIN_BG_REGION_AREA` — that constant now only filters
+ * the separate, page-level `regions`/`BgRegion` table (unchanged, see its own
+ * doc comment) `__collectBgRegions` exposes. The two used to be the same
+ * table, which is exactly the bug: a badge/chip small enough to correctly
+ * *not* count as a page background is still unambiguously the real, sole
+ * background of whatever text is painted directly on top of it, and gating
+ * attribution by page-level area silently fell through to whatever larger
+ * shape happened to sit underneath instead (the page background, a card
+ * shell) — checking real text against a color it was never actually
+ * rendered on. `<image>` is deliberately not extended past its existing
+ * area floor for attribution (see its own branch's comment) — this
+ * renderer never emits a small inline `<image>`, only large photo
+ * backgrounds, so there is no real small-image case to design against, and
+ * an unfloored "unknown, skip" candidate would only ever shrink coverage,
+ * never fix a misattribution.
+ *
+ * One more exclusion sits on top of the shape model above: anything inside
  * a `<g data-decor>` subtree (`FullSlideSvg.tsx`'s exact wrapper around
  * `themeDef.motif`'s output — verified there, not assumed) never becomes a
- * region, full stop, regardless of size/opacity/fill. Decoration is layered
- * *over* the real background, not a stand-in for it — but nothing in this
- * renderer's motif discipline stops a motif from drawing large, opaque-
+ * candidate, full stop, regardless of size/opacity/fill. Decoration is
+ * layered *over* the real background, not a stand-in for it — but nothing in
+ * this renderer's motif discipline stops a motif from drawing large, opaque-
  * enough shapes: `motif-campaign-motif.tsx`'s crayon-stroke paths are
  * exactly that (each stroke's core-density bucket alone renders at >=0.64
  * effective opacity across every call site in that file, comfortably clear
  * of `MIN_BG_OPACITY`), which would otherwise register as spurious
- * background regions and could shadow the real background for any text that
- * happens to sit inside their (`pathBoundingBox`-over-approximated)
+ * background candidates and could shadow the real background for any text
+ * that happens to sit inside their (`pathBoundingBox`-over-approximated)
  * bounding box — see that function's own doc comment. `findOverlapIssues`
  * needs no equivalent exclusion (decoration never carries
- * `data-audit-box`), but this region walk sees every
- * `<rect>`/`<image>`/`<path>` regardless of what drew it, so the exclusion
- * has to be explicit here. Implemented as a boolean threaded through
- * `visit`'s recursion (once a `data-decor` ancestor is entered it stays true
- * for the whole subtree) rather than a string/regex pre-pass on `markup` —
- * this function already fully parses to DOM, and regex-stripping a
- * `<g>...</g>` span is unsound the moment the subtree nests further `<g>`
- * elements of its own (every motif does), which would truncate at the first
- * nested `</g>` instead of the matching one.
+ * `data-audit-box`), but this walk sees every
+ * `<rect>`/`<circle>`/`<ellipse>`/`<image>`/`<path>` regardless of what drew
+ * it, so the exclusion has to be explicit here. Implemented as a boolean
+ * threaded through `visit`'s recursion (once a `data-decor` ancestor is
+ * entered it stays true for the whole subtree) rather than a string/regex
+ * pre-pass on `markup` — this function already fully parses to DOM, and
+ * regex-stripping a `<g>...</g>` span is unsound the moment the subtree
+ * nests further `<g>` elements of its own (every motif does), which would
+ * truncate at the first nested `</g>` instead of the matching one.
  */
 export function findContrastIssues(markup: string): ContrastIssue[] {
   return runContrastWalk(markup).issues
@@ -363,11 +481,17 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
   const root = parseSvg(markup)
   const issues: ContrastIssue[] = []
   const regions: BgRegion[] = []
+  // Attribution's own table (defect A fix) — see `PaintedShape`'s and
+  // `findContrastIssues`'s doc comments. A strict superset of `regions` in
+  // everything but `<image>` (same floor, unchanged): every rect/path that
+  // qualifies for `regions` also qualifies here, plus every rect/path below
+  // the area floor and every circle/ellipse, so `backgroundAt` only ever
+  // needs to search this one table.
+  const paintedShapes: PaintedShape[] = []
 
   const backgroundAt = (px: number, py: number): string | null => {
-    for (let i = regions.length - 1; i >= 0; i--) {
-      const r = regions[i]
-      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return r.fill
+    for (let i = paintedShapes.length - 1; i >= 0; i--) {
+      if (paintedShapes[i].contains(px, py)) return paintedShapes[i].fill
     }
     return null
   }
@@ -436,12 +560,23 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       }
       const w = localW * as
       const h = localH * as
+      const absX = ax + x * as
+      const absY = ay + y * as
       // `!inDecorSubtree` — see findContrastIssues's own doc comment: a
-      // motif/decor shape never counts as a background region no matter how
-      // large or opaque it renders.
-      if (w * h >= MIN_BG_REGION_AREA && !inDecorSubtree) {
+      // motif/decor shape never counts as a background candidate no matter
+      // how large or opaque it renders.
+      if (!inDecorSubtree) {
         if (tag === "image") {
-          regions.push({ x: ax + x * as, y: ay + y * as, w, h, fill: null })
+          // Unchanged from before this fix, for both tables: a real photo's
+          // pixels are genuinely unknown, and this renderer only ever emits
+          // large, page-covering `<image>`s (never a small inline one) — see
+          // `findContrastIssues`'s own doc comment for why an unfloored
+          // image candidate has no real case to serve.
+          if (w * h >= MIN_BG_REGION_AREA) {
+            const shape = rectShape(absX, absY, w, h, null)
+            regions.push({ x: absX, y: absY, w, h, fill: null })
+            paintedShapes.push(shape)
+          }
         } else {
           const shapeFill = el.getAttribute("fill")
           // Reuse the *inherited* fill-opacity/opacity accumulators (already
@@ -457,9 +592,41 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
           // every subsequent text check).
           const opaqueEnough = currentFillOpacity * currentOpacityProduct >= MIN_BG_OPACITY
           if (shapeFill?.startsWith("#") && opaqueEnough) {
-            regions.push({ x: ax + x * as, y: ay + y * as, w, h, fill: shapeFill })
+            // Attribution (defect A fix): no area floor — a badge/chip too
+            // small to be a *page* background is still the real background
+            // of whatever text sits directly on top of it. See
+            // `MIN_BG_REGION_AREA`'s own doc comment.
+            paintedShapes.push(rectShape(absX, absY, w, h, shapeFill))
+            // Page-level table: unchanged, still area-floored —
+            // `__collectBgRegions`'s own contract (and its dedicated
+            // regression test) is untouched by this fix.
+            if (w * h >= MIN_BG_REGION_AREA) {
+              regions.push({ x: absX, y: absY, w, h, fill: shapeFill })
+            }
           }
         }
+      }
+    } else if (tag === "circle" || tag === "ellipse") {
+      // New shape kinds (defect A fix) — never joined `regions` even before
+      // this task (a badge/dot circle was simply invisible to the audit
+      // entirely, not merely area-excluded) and still don't: `BgRegion`'s own
+      // page-level contract has no real circular-page-background case to
+      // serve, and `__collectBgRegions`'s pinned region count must stay
+      // exactly what it was. Attribution-only, via `paintedShapes`.
+      const cx = Number(el.getAttribute("cx") ?? 0)
+      const cy = Number(el.getAttribute("cy") ?? 0)
+      // `<circle r>` vs `<ellipse rx,ry>` — SVG has no `r` on `<ellipse>` and
+      // no `rx`/`ry` on `<circle>`, so reading the tag-appropriate pair and
+      // falling back to 0 for the other keeps one branch instead of two
+      // near-identical ones.
+      const localRx = Number(el.getAttribute(tag === "circle" ? "r" : "rx") ?? 0)
+      const localRy = Number(el.getAttribute(tag === "circle" ? "r" : "ry") ?? 0)
+      const shapeFill = el.getAttribute("fill")
+      const opaqueEnough = currentFillOpacity * currentOpacityProduct >= MIN_BG_OPACITY
+      if (!inDecorSubtree && shapeFill?.startsWith("#") && opaqueEnough) {
+        paintedShapes.push(
+          ellipseShape(ax + cx * as, ay + cy * as, localRx * as, localRy * as, shapeFill),
+        )
       }
     } else if (tag === "text" || tag === "tspan") {
       // A <tspan> commonly omits `x`/`y` entirely and continues in the same
@@ -759,6 +926,76 @@ function overlapFindings(markup: string, page: number, slideId: string | undefin
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// Content-truncated / content-dropped — bench-driven fix round, defect E:
+// two silent content-loss paths the benchmark found *invisible* to audit —
+// `fitSvgLine`'s (and the emphasis-segment family's) ellipsis truncation,
+// and `layoutContentFit`'s "+N more" drop marker — that models had to
+// eyeball a rendered SVG to catch (row_cards silently dropping 2 of 5
+// items, a two-column slide silently dropping its second component). The
+// render chain already knows exactly when either happens; it just wasn't
+// saying so anywhere machine-readable. Both checks below are thin readers
+// of the marker attributes the render chain now stamps at the point of
+// the cut — `data-truncated="1"` on a truncated `<text>` (`fitSvgLine`'s own
+// doc comment, `../../lib/svg-text-layout.ts`), `data-dropped="N"` on a
+// "+N more" marker (six render sites: `SvgContent`, `BigNumber`,
+// `AssertionEvidence`×2, `ImagePages`, `row-cards.tsx`'s own item-level
+// marker) — neither re-derives truncation/capacity logic here, so there is
+// exactly one place (the render chain itself) that decides what got cut.
+// ────────────────────────────────────────────────────────────────────────
+
+/** First N characters of an element's own text content, trimmed — same
+ *  "prefix, not full text" convention `overflowMessage`/`contrastMessage`
+ *  already use for `issue.text`/`label`. */
+const TEXT_PREFIX_LEN = 24
+
+function truncatedMessage(prefix: string): string {
+  return (
+    `text "${prefix}" was truncated with an ellipsis — widen the layout, shorten the source ` +
+    `content, or accept the cut if the tail wasn't essential`
+  )
+}
+
+function truncatedFindings(markup: string, page: number, slideId: string | undefined): AuditFinding[] {
+  const root = parseSvg(markup)
+  const els = Array.from(root.querySelectorAll('[data-truncated="1"]'))
+  return els.map((el) => {
+    const text = (el.textContent ?? "").trim()
+    const prefix = text.slice(0, TEXT_PREFIX_LEN)
+    return {
+      page,
+      ...(slideId !== undefined ? { slideId } : {}),
+      code: "content-truncated" as const,
+      message: truncatedMessage(prefix),
+      detail: { text },
+    }
+  })
+}
+
+function droppedMessage(count: number): string {
+  const unit = count === 1 ? "item" : "items"
+  const verb = count === 1 ? "is" : "are"
+  return (
+    `${count} more ${unit} of content ${verb} hidden behind a "+${count} more" marker — the content ` +
+    `area is over capacity, split the slide or trim its content`
+  )
+}
+
+function droppedFindings(markup: string, page: number, slideId: string | undefined): AuditFinding[] {
+  const root = parseSvg(markup)
+  const els = Array.from(root.querySelectorAll("[data-dropped]"))
+  return els.map((el) => {
+    const count = Number(el.getAttribute("data-dropped") ?? 0)
+    return {
+      page,
+      ...(slideId !== undefined ? { slideId } : {}),
+      code: "content-dropped" as const,
+      message: droppedMessage(count),
+      detail: { count },
+    }
+  })
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // auditDeck — the SDK entry point.
 // ────────────────────────────────────────────────────────────────────────
 
@@ -766,10 +1003,13 @@ function overlapFindings(markup: string, page: number, slideId: string | undefin
  * Deterministic geometry audit over an already-valid deck (v0.3 W6, spec §7
  * workflow ④): render every non-placeholder slide off-screen
  * (`renderSlideSvg`, the same single-source SVG the preview and exporter
- * both use) and run three check families against the rendered markup —
+ * both use) and run five check families against the rendered markup —
  * overflow/out-of-bounds (reusing `svg-audit.ts`'s existing walker
- * verbatim), low-contrast (WCAG relative luminance), and overlap (pairwise
- * `data-audit-box` intersection). Pure — no I/O, no Node dependency (see
+ * verbatim), low-contrast (WCAG relative luminance), overlap (pairwise
+ * `data-audit-box` intersection), and content-truncated/content-dropped
+ * (bench-driven fix round, defect E — reading the `data-truncated`/
+ * `data-dropped` markers the render chain now stamps at its own silent
+ * content-loss paths). Pure — no I/O, no Node dependency (see
  * `parseSvg`'s doc comment) — `auditDeck` itself never calls
  * `installNodePlatform()`; that's the caller's job (the CLI does it
  * automatically).
@@ -778,8 +1018,9 @@ function overlapFindings(markup: string, page: number, slideId: string | undefin
  * invalid or over-dense decks before a caller ever gets this far; this
  * function looks for the visual problems that can still slip through a
  * valid deck at render time (an author-chosen near-background text color,
- * two components whose combined content happens to collide). A non-empty
- * `findings` array is a prompt for a human/agent to look, not a rejection.
+ * two components whose combined content happens to collide, a card list
+ * that had to drop an item to fit). A non-empty `findings` array is a
+ * prompt for a human/agent to look, not a rejection.
  *
  * Placeholder pages (`slide.placeholder === true`) are skipped — assemble's
  * stand-in for content nobody has written yet has nothing to audit, same
@@ -804,6 +1045,8 @@ export function auditDeck(ir: PptxIR): AuditReport {
     findings.push(...overflowFindings(markup, page, slideId))
     findings.push(...contrastFindings(markup, page, slideId))
     findings.push(...overlapFindings(markup, page, slideId))
+    findings.push(...truncatedFindings(markup, page, slideId))
+    findings.push(...droppedFindings(markup, page, slideId))
   })
 
   return { findings, pagesAudited, pagesSkipped }

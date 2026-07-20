@@ -194,6 +194,7 @@ export function renderBar(
               {d.y}
             </text>
             <text
+              data-truncated={category.truncated ? "1" : undefined}
               x={barX + barW / 2}
               y={y0 + h - 4}
               textAnchor="middle"
@@ -279,6 +280,7 @@ export function renderLine(
                 return (
                   <text
                     key={`cat-${i}`}
+                    data-truncated={category.truncated ? "1" : undefined}
                     x={c.x}
                     y={y0 + h - 4}
                     textAnchor={edgeAnchor(i, coords.length)}
@@ -460,6 +462,7 @@ export function renderDumbbell(
         return (
           <g key={i}>
             <text
+              data-truncated={label.truncated ? "1" : undefined}
               x={x0 + DUMBBELL_LABEL_W}
               y={cy + 4}
               textAnchor="end"
@@ -547,6 +550,7 @@ export function renderBarHorizontal(
         return (
           <g key={i}>
             <text
+              data-truncated={label.truncated ? "1" : undefined}
               x={x0 + BAR_H_LABEL_W}
               y={barY + barH / 2 + 4}
               textAnchor="end"
@@ -633,6 +637,7 @@ export function renderDonut(
         )
       })}
       <text
+        data-truncated={fitted.truncated ? "1" : undefined}
         x={cx}
         y={cy + fitted.fontSize * 0.15}
         textAnchor="middle"
@@ -651,7 +656,7 @@ export function renderDonut(
         fill={mutedColor}
         dominantBaseline="alphabetic"
       >
-        总计
+        Total
       </text>
     </>
   )

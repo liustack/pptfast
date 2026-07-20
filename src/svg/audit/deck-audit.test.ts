@@ -8,7 +8,7 @@
 // not jsdom's incidental global `DOMParser` filling in unasked.
 import { readFileSync } from "node:fs"
 import { beforeAll, describe, expect, it } from "vitest"
-import { PptxIRSchema, type PptxIR, type Slide } from "@/ir"
+import { PptxIRSchema, type Component, type PptxIR, type Slide } from "@/ir"
 import { renderSlideSvg } from "../../api"
 import { installNodePlatform } from "../../platform/node"
 import {
@@ -64,25 +64,19 @@ describe("auditDeck — clean deck baseline", () => {
   // it by construction), so any overlap finding here would be a real bug.
   //
   // `low-contrast` is deliberately *not* asserted zero here. Running the
-  // matrix while developing this check surfaced five distinct, genuine,
+  // matrix while developing this check surfaced three distinct, genuine,
   // pre-existing sources of borderline-WCAG decorative/semantic colour that
-  // this task did not introduce and is out of scope to remediate (a
-  // cross-cutting theme-polish pass, not "audit core") — documented in the
-  // task report, and locked in as explicit regression tests right below
-  // this block so the *specific*, understood cases stay understood rather
-  // than silently allowlisted:
-  //   1. `kpi.tsx`'s `deltaProps` — hardcoded universal red/green
-  //      up/down arrows, uncalibrated against per-theme backgrounds.
-  //   2. `code.tsx`'s `LINE_NUM_COLOR` — a hardcoded editor-gutter gray.
-  //   3. `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s
+  // this task did not introduce and was, at the time, out of scope to
+  // remediate (a cross-cutting theme-polish pass, not "audit core") —
+  // documented in the task report, and locked in as explicit regression
+  // tests right below this block so the *specific*, understood cases stay
+  // understood rather than silently allowlisted:
+  //   1. `code.tsx`'s `LINE_NUM_COLOR` — a hardcoded editor-gutter gray.
+  //   2. `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s
   //      `COPYRIGHT_FAINT` — an explicitly-adjudicated (see that file's own
   //      lengthy doc comment) cross-theme "copyright is the faintest text
   //      tier" convention.
-  //   4. `quote.tsx`'s decorative open-quote mark — the component's own
-  //      comment calls it decorative; it renders at full opacity in
-  //      `ctx.colors.accent`, so `DECORATIVE_ALPHA`'s opacity-based
-  //      exemption (correctly) doesn't catch it.
-  //   5. `architecture.tsx`'s layer title (`ctx.colors.primary` on
+  //   3. `architecture.tsx`'s layer title (`ctx.colors.primary` on
   //      `ctx.colors.panel ?? ctx.colors.surface`) — a *theme's own*
   //      internal colour pairing, not a hardcoded value; on `insight`
   //      specifically it computes to 4.40:1, essentially a rounding
@@ -91,6 +85,14 @@ describe("auditDeck — clean deck baseline", () => {
   // advisory audit is *supposed* to surface — asserting them away would
   // defeat the point. None of them appear in `examples/basic.json` (the
   // plan's actual clean-deck gate, asserted above).
+  //
+  // Two former members of this list — `kpi.tsx`'s hardcoded delta-arrow
+  // red/green and `quote.tsx`'s decorative open-quote mark — are gone as of
+  // the bench-driven fix round's B-group (Task 3): both are real defects,
+  // not out-of-scope theme polish after all, now fixed via `accessibleInk`.
+  // See the "B-group ink fixes" describe block below for the red→green
+  // re-pin (this block's own former assertions on them, `contrast.some(...)
+  // === true`, are exactly what got flipped).
   const THEMES = ["consulting", "insight", "tech", "campaign", "luxe"] as const
   for (const themeId of THEMES) {
     for (const [name, stressDeck] of Object.entries(STRESS_DECKS)) {
@@ -99,7 +101,14 @@ describe("auditDeck — clean deck baseline", () => {
         const report = auditDeck(ir)
         expect(report.findings.filter((f) => f.code === "overlap")).toEqual([])
         for (const f of report.findings) {
-          expect(["overflow", "out-of-bounds", "low-contrast", "overlap"]).toContain(f.code)
+          expect([
+            "overflow",
+            "out-of-bounds",
+            "low-contrast",
+            "overlap",
+            "content-truncated",
+            "content-dropped",
+          ]).toContain(f.code)
           expect(f.message.length).toBeGreaterThan(0)
         }
       })
@@ -110,20 +119,8 @@ describe("auditDeck — clean deck baseline", () => {
 describe("auditDeck — understood pre-existing low-contrast sources (not audit bugs)", () => {
   // Each of these locks in *why* a specific, real component produces a
   // low-contrast finding under the stress matrix above, so a future change
-  // to any of these five colours shows up here instead of silently
+  // to any of these three colours shows up here instead of silently
   // vanishing from (or reappearing in) the broader regression net.
-  it("kpi.tsx's hardcoded delta-arrow red is borderline against a dark/saturated theme background", () => {
-    const ir = deck("luxe", [
-      {
-        type: "content",
-        heading: "kpi",
-        components: [{ type: "kpi_cards", items: [{ value: "1", label: "x", delta: "down" }] }],
-      },
-    ])
-    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#DC2626")).toBe(true)
-  })
-
   it("code.tsx's hardcoded line-number gray is borderline against a dark code-block background", () => {
     const ir = deck("consulting", [
       {
@@ -150,19 +147,6 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#8a8a86")).toBe(true)
   })
 
-  it("quote.tsx's decorative open-quote mark renders at full opacity, so the opacity-based decorative exemption doesn't apply", () => {
-    const ir = deck("consulting", [
-      {
-        type: "content",
-        arrangement: "quote",
-        heading: "quote",
-        components: [{ type: "quote", text: "an attributed quotation" }],
-      },
-    ])
-    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => f.detail?.text === "“")).toBe(true)
-  })
-
   it("architecture.tsx's theme-derived primary-on-panel pairing is a rounding distance under 4.5:1 on insight", () => {
     const ir = deck("insight", [
       {
@@ -173,6 +157,135 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#E63946")).toBe(true)
+  })
+})
+
+// Bench-driven fix round (defect A reclassification, Task 3 handoff): the
+// small-region misattribution fix (see deck-audit.ts's own
+// MIN_BG_REGION_AREA/PaintedShape doc comments) re-measures *every* audited
+// text against its real background — including four components whose own
+// badge/chip text used to be silently mismeasured against the wrong
+// (larger) region: `steps.tsx`'s numbered badge, `roadmap.tsx`'s
+// stage-number badge, `rings.tsx`'s core label, and `image-compare.tsx`'s
+// "VS"/"AFTER" chips (found via an exhaustive 28-component-type x 13-theme
+// sweep, not just the plan's 3 named benchmark hits — see the task report's
+// reclassification table). All five hardcoded an unwrapped ink
+// (`fill="#FFFFFF"` for the two badges, `fill={ctx.colors.surface}` for the
+// rings/image-compare pair) with no `accessibleInk`/`readableOn` call
+// (unlike `content-rail-numbered.tsx`'s own "{chapter}.{content}" badge,
+// already routed through `readableOn(colors.primary)` in a prior fix round
+// this whole family never received). Pre-fix this was invisible: each was
+// measured against whichever larger region happened to be nearby (a card
+// shell, the ambient page background, or — for roadmap specifically — the
+// same `roundedTopBarPath` phantom region `MUTED_SURFACE_CLASS`'s own
+// `roadmap`/`insight_panel` entries document in full-matrix-contrast.test.ts)
+// and often passed (or, for rings/image-compare's "VS" badge — which paint no
+// card shell at all — *always* passed, on all 13 themes, pre-fix) by sheer
+// coincidence. Fixed here (Task 3) the same way `content-rail-numbered.tsx`'s
+// own badge already was: each call site now runs its ink through
+// `accessibleInk`, keeping the preferred fill when it already clears the
+// ratio (byte-identical on every theme that never failed) and falling back
+// to `readableOn`'s neutral ink only where it doesn't. `tech`/`campaign`/
+// `consulting` are used below (each is among the affected themes for its
+// call site, confirmed by a real 13-theme sweep) — the same probes this
+// block's pre-fix version used to pin the defect, now re-pinned to assert
+// it's gone (red→green evidence).
+describe("auditDeck — B-group ink fixes (bench-driven fix round, defect A handoff, Task 3)", () => {
+  it("steps.tsx's numbered badge digit clears contrast against tech's light primary once measured against its own circle", () => {
+    const ir = deck("tech", [
+      {
+        type: "content",
+        heading: "steps",
+        components: [{ type: "steps", items: [{ title: "Step one", text: "do the first thing" }] }],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "1")).toBe(false)
+  })
+
+  it("roadmap.tsx's numbered badge digit clears contrast against the same light theme primaries as steps.tsx (identical pattern, separate call site)", () => {
+    const ir = deck("tech", [
+      {
+        type: "content",
+        heading: "roadmap",
+        components: [
+          {
+            type: "roadmap",
+            items: [{ title: "Kickoff", period: "Q1", rows: [{ label: "Scope", value: "discovery" }] }],
+          },
+        ],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "01")).toBe(false)
+  })
+
+  it("rings.tsx's core label (colors.surface on colors.primary, no card shell at all) clears contrast against campaign once measured against its own circle", () => {
+    // rings.tsx paints no rect/card of its own — pre-fix, the core label's
+    // *only* possible fallback was the ambient page background, and
+    // colors.surface sits close enough to that background on every one of
+    // the 13 themes that this was a *universal* false positive-shaped
+    // near-miss before the defect-A fix (ratio ~1.0-1.2 everywhere,
+    // confirmed by a real sweep) — not just a "sometimes passes by
+    // coincidence" case like the two badges above.
+    const ir = deck("campaign", [
+      {
+        type: "content",
+        heading: "rings",
+        components: [{ type: "rings", items: [{ label: "Core", desc: "inner layer" }] }],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "Core")).toBe(false)
+  })
+
+  it("image-compare.tsx's \"VS\" badge (identical colors.surface-on-colors.primary pattern as rings.tsx, separate call site) clears contrast against campaign the same way", () => {
+    const ir = deck("campaign", [
+      {
+        type: "content",
+        heading: "image compare",
+        components: [
+          {
+            type: "image_compare",
+            left: { asset_id: "a", label: "Before" },
+            right: { asset_id: "b", label: "After" },
+            style: "vs",
+          },
+        ],
+      },
+    ], { assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "data:image/png;base64,AAAA" } } } })
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "VS")).toBe(false)
+  })
+
+  it("image-compare.tsx's \"before_after\" style AFTER chip (colors.surface on colors.accent, a small rect not a circle) clears contrast against consulting once measured against its own chip", () => {
+    // Same defect family, third shape kind: a <rect> this time (the "AFTER"
+    // chip, 52x24=1,248px^2 — well below MIN_BG_REGION_AREA), not a circle —
+    // proving the defect-A fix's no-area-floor change (not just the new
+    // circle/ellipse containment math) is what surfaced this one. Unlike the
+    // three above, this was a pure false *negative* pre-defect-A-fix (zero
+    // findings on any theme) rather than a coincidental pass on some
+    // themes — the chip never registered as a region at all, so resolution
+    // fell through to a background that always happened to pass. The
+    // BEFORE chip (colors.muted fill) is unaffected on every theme — no
+    // low-contrast finding for it before or after this fix.
+    const ir = deck("consulting", [
+      {
+        type: "content",
+        heading: "image compare before/after",
+        components: [
+          {
+            type: "image_compare",
+            left: { asset_id: "a", label: "Before" },
+            right: { asset_id: "b", label: "After" },
+            style: "before_after",
+          },
+        ],
+      },
+    ], { assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "data:image/png;base64,AAAA" } } } })
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "AFTER")).toBe(false)
+    expect(contrast.some((f) => f.detail?.text === "BEFORE")).toBe(false)
   })
 })
 
@@ -205,6 +318,81 @@ describe("auditDeck — overflow / out-of-bounds", () => {
     const overflow = report.findings.filter((f) => f.code === "overflow")
     expect(overflow.length).toBeGreaterThan(0)
     expect(overflow[0].slideId).toBeUndefined()
+  })
+})
+
+// bench-driven fix round, defect E: `fitSvgLine`'s ellipsis truncation and
+// `layoutContentFit`'s "+N more" drop marker used to be invisible to audit —
+// a model (or human) had to eyeball the rendered SVG to notice row_cards
+// silently dropping items or a slide silently dropping a whole component.
+// Both checks below are thin readers of the `data-truncated`/`data-dropped`
+// markers the render chain now stamps (`svg-text-layout.ts`'s `fitSvgLine`,
+// `layout.ts`'s `layoutContentFit`, `row-cards.tsx`'s own item-level marker)
+// — real IR renders, same "auditDeck -> findings" path as every other test
+// in this file, not hand-crafted markup, since the point is proving the
+// render chain's own markers reach the audit layer end to end.
+describe("auditDeck — content-truncated / content-dropped (bench-driven fix round, defect E)", () => {
+  it("surfaces an ellipsis-truncated verdict_banner text as a 'content-truncated' finding", () => {
+    // verdict_banner renders at a fixed 18px/2-line budget regardless of how
+    // far `layoutSvgText` had to loosen its own wrap to fit (`lay`'s own doc
+    // comment) — a long enough unbroken run forces `truncateEmphasisSegments`
+    // to cut, guaranteed regardless of the resolved layout's column width.
+    const ir = deck("consulting", [
+      {
+        type: "content",
+        id: "s1",
+        heading: "verdict probe",
+        components: [{ type: "verdict_banner", tone: "positive", text: LONG_CJK.repeat(10) }],
+      },
+    ])
+    const report = auditDeck(ir)
+    const truncated = report.findings.filter((f) => f.code === "content-truncated")
+    expect(truncated.length).toBeGreaterThan(0)
+    expect(truncated[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-truncated" })
+    expect(truncated[0].message).toMatch(/was truncated with an ellipsis/)
+    expect((truncated[0].detail as { text?: string }).text?.endsWith("…")).toBe(true)
+  })
+
+  it("surfaces layoutContentFit's fully-dropped components as 'content-dropped' findings", () => {
+    // Same fixture shape as SvgContent.test.tsx's own "renders a
+    // dropped-count marker" case, run through the real auditDeck path
+    // instead of calling SvgContent directly.
+    const longText = LONG_CJK.repeat(3)
+    const many: Component[] = Array.from({ length: 8 }, () => ({ type: "paragraph", text: longText }))
+    const ir = deck("consulting", [{ type: "content", id: "s1", heading: "drop probe", components: many }])
+    const report = auditDeck(ir)
+    const dropped = report.findings.filter((f) => f.code === "content-dropped")
+    expect(dropped.length).toBeGreaterThan(0)
+    expect(dropped[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-dropped" })
+    expect(dropped[0].message).toMatch(/hidden behind a "\+\d+ more" marker/)
+    expect((dropped[0].detail as { count?: number }).count).toBeGreaterThan(0)
+  })
+
+  it("surfaces row_cards' own item-level drop (the benchmark's flagship repro) as 'content-dropped'", () => {
+    // The exact bench-cited shape: a multi-item row_cards squeezed into a
+    // two_column half-width slot alongside a second component, each item
+    // carrying enough text/sub content that 5 stacked cards blow well past
+    // even a full content rect, let alone a halved one.
+    const item = (n: number) => ({
+      title: `事项标题条目编号 ${n}`,
+      text: LONG_CJK,
+      sub: "补充说明文字用于撑高卡片高度",
+    })
+    const ir = deck("consulting", [
+      {
+        type: "content",
+        id: "s1",
+        heading: "row_cards probe",
+        arrangement: "two_column",
+        components: [
+          { type: "row_cards", items: [1, 2, 3, 4, 5].map(item) },
+          { type: "paragraph", text: "第二列占位内容" },
+        ],
+      },
+    ])
+    const report = auditDeck(ir)
+    const dropped = report.findings.filter((f) => f.code === "content-dropped")
+    expect(dropped.length).toBeGreaterThan(0)
   })
 })
 
@@ -415,20 +603,49 @@ describe("findContrastIssues — low-contrast", () => {
     expect(findContrastIssues(markup)).toEqual([])
   })
 
-  it("does not let a small decorative rect (below MIN_BG_REGION_AREA) override the real local background", () => {
-    // A tiny accent bar (icon-cards.tsx-style, 32x3) painted over the card,
-    // with text positioned right where the bar is — if the bar wrongly
-    // registered as a background region despite its size, the (dark-ink-on-
-    // yellow) lookup would still pass by coincidence, so instead give the
-    // bar an *unreadable* color pairing: were it (wrongly) picked up as the
-    // background, this near-identical fill would fail; since it must be
-    // excluded by area, resolution falls through to the white card beneath,
-    // which passes comfortably.
+  // Bench-driven fix round (defect A) re-pin: this test used to assert the
+  // opposite (a small decorative rect below MIN_BG_REGION_AREA must NOT
+  // override the real local background, resolution falling through to the
+  // white card beneath instead) — that was the audit-tool bug this fix
+  // round exists to close, root-caused as the single most-hit false-positive
+  // class in the benchmark (rail-numbered's badge, steps' numbered circle:
+  // both small self-painted shapes whose own text was being checked against
+  // a *larger* region underneath instead of the shape it was actually
+  // painted on — see MIN_BG_REGION_AREA's own doc comment in deck-audit.ts).
+  // Old assertion (`toEqual([])`, i.e. no finding — background resolved to
+  // the white card) → new assertion (one finding, background resolves to
+  // the bar's own `#050505` fill) is the derivable flip: attribution now has
+  // no area floor, so text painted directly on top of *any* opaque
+  // self-painted shape resolves against that shape, however small.
+  it("resolves a small decorative rect (below MIN_BG_REGION_AREA) as the real background for text painted directly on top of it", () => {
+    // Same tiny accent bar (icon-cards.tsx-style, 32x3) as before, with text
+    // positioned right where the bar visually is. The near-identical
+    // (near-black text on near-black bar) pairing must now fail — were
+    // resolution still (wrongly) falling through to the white card beneath,
+    // this would pass instead, silently hiding the real on-bar contrast.
     const markup = page(
       BG,
       `<rect x="96" y="176" width="536" height="226" fill="#FFFFFF"/>
        <rect x="120" y="176" width="32" height="3" fill="#050505"/>
        <text x="125" y="178" font-size="20" fill="#000000">card body text</text>`,
+    )
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("does not let a small decorative rect's bounding box swallow text positioned beside it, not on it", () => {
+    // Same tiny accent bar, but the text now sits to the right of it (x=200
+    // vs. the bar's own x=120..152 span) — outside its bounds entirely. Must
+    // still resolve to the real card background beneath: removing the area
+    // floor makes every small opaque shape a candidate, but containment is
+    // still exact (this is a <rect>, so an AABB test) — a shape a text
+    // element doesn't actually sit on must never "leak" onto it.
+    const markup = page(
+      BG,
+      `<rect x="96" y="176" width="536" height="226" fill="#FFFFFF"/>
+       <rect x="120" y="176" width="32" height="3" fill="#050505"/>
+       <text x="200" y="200" font-size="20" fill="#000000">card body text</text>`,
     )
     expect(findContrastIssues(markup)).toEqual([])
   })
@@ -504,6 +721,113 @@ describe("findContrastIssues — low-contrast", () => {
     const issues = findContrastIssues(markup)
     expect(issues).toHaveLength(1)
     expect(issues[0].background).toBe(BG)
+  })
+})
+
+// Task-2 review (bench-driven fix round, defect A), Moderate #2: every real
+// circle/ellipse the shipped component suite renders puts text dead-center
+// (rings.tsx's "Core" label sits ~40px² from its circle's center — nowhere
+// near an edge case), so the full-matrix/deck-audit real-render nets never
+// exercised the new `ellipseShape` containment math, the paint-order-safety
+// invariant, the opacity gate on the new shape kinds, or the interaction
+// between `data-decor` and the now-floor-free attribution walk — "the
+// riskiest new surface in the diff" per the review, and a future regression
+// in any of them would have nothing here to catch it. These adapt the
+// review's own independently-verified synthetic probe shapes into this
+// file's regular synthetic-markup style.
+describe("findContrastIssues — circle/ellipse containment and paint-order safety (bench-driven fix round, defect A synthetic edge cases)", () => {
+  it("does not attribute text anchored in a circle's bbox corner to that circle when the point sits outside the disk", () => {
+    // Circle cx=200,cy=200,r=20 — its AABB corners sit at distance
+    // r*sqrt(2)≈28.28 from the center, always outside the disk itself no
+    // matter the radius. Text placed exactly at the top-left bbox corner
+    // (180,180) must fall through to the real white card beneath, not the
+    // circle's own near-black fill — a cruder AABB containment test (the
+    // shape's bounding box, not its actual outline) would wrongly say
+    // "inside" and misattribute it.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <rect x="96" y="96" width="536" height="336" fill="#FFFFFF"/>
+      <circle cx="200" cy="200" r="20" fill="#050505"/>
+      <text x="180" y="180" font-size="20" fill="#000000">beside the badge, not on it</text>
+    </svg>`
+    // Wrongly attributed to the circle: #000000-on-#050505 ≈ 1:1, a finding.
+    // Correctly falls through to the white card: #000000-on-#FFFFFF passes.
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("attributes text exactly on a circle's boundary to that circle (inclusive edge, distance === r)", () => {
+    // (420,400) sits exactly r=20 from the circle's own center (400,400) —
+    // ellipseShape's containment uses `<= 1`, not `< 1`, so the boundary
+    // itself must still count as inside, not just points strictly interior.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <circle cx="400" cy="400" r="20" fill="#050505"/>
+      <text x="420" y="400" font-size="20" fill="#000000">on the boundary</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("never attributes text to a shape painted after it in document order", () => {
+    // The circle is painted *after* the text, at the exact same position —
+    // if the search ever walked paintedShapes without respecting paint
+    // order (e.g. a two-pass "collect every shape, then check every text"
+    // implementation instead of the real interleaved single walk), this
+    // near-black text would wrongly resolve against the same-colored circle
+    // instead of the real (white) page background it was actually painted
+    // on top of.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <text x="100" y="100" font-size="20" fill="#000000">painted before the badge</text>
+      <circle cx="100" cy="100" r="50" fill="#000000"/>
+    </svg>`
+    // Correct: resolves to the page's own white background, passes.
+    // Broken order guard: resolves to the later circle instead,
+    // #000000-on-#000000, a finding.
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("skips a sub-MIN_BG_OPACITY circle for attribution, falling through to the real background beneath it", () => {
+    // A translucent white circle (fill-opacity 0.3, below MIN_BG_OPACITY's
+    // 0.5) sits on top of a dark card. Correct: too faint to trust as a
+    // background estimate, so attribution skips it entirely and falls
+    // through to the dark card beneath — near-white text against that dark
+    // card passes comfortably. A bug that treated the circle as opaque
+    // (using its raw #FFFFFF fill instead of skipping it) would silently
+    // swap in a passing near-white-on-white verdict here instead — the same
+    // "a false pass hides a real defect" failure mode as the mis-attributed
+    // tspan test earlier in this file, on the new shape kinds specifically.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0A0C"/>
+      <circle cx="200" cy="200" r="40" fill="#FFFFFF" fill-opacity="0.3"/>
+      <text x="200" y="200" font-size="20" fill="#F5F5F0">near-white on the dark card</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("does not attribute text to an opaque, adequately-sized shape inside a <g data-decor> subtree", () => {
+    // Mirrors the real-render decor-exclusion lock below (a campaign-theme
+    // cover's motif), but targets *attribution* specifically with synthetic
+    // markup: this circle is large, fully opaque, and geometrically contains
+    // the text — every property that would normally make it win
+    // backgroundAt's search — except that it sits inside a data-decor
+    // subtree (`data-decor="true"`, this renderer's own real serialized
+    // form — confirmed against a live render, not assumed). Worth locking
+    // explicitly post-fix: attribution now has no area floor at all, so
+    // without this guard *any* decor shape, however small, could shadow
+    // nearby text — a strictly larger blast radius than pre-fix, when only
+    // decor shapes big enough to clear MIN_BG_REGION_AREA could ever matter.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <g data-decor="true">
+        <circle cx="200" cy="200" r="40" fill="#000000"/>
+      </g>
+      <text x="200" y="200" font-size="20" fill="#000000">over the decor watermark</text>
+    </svg>`
+    // Wrongly attributed to the decor circle: #000000-on-#000000, a finding.
+    // Correctly excluded: falls through to the white page background, passes.
+    expect(findContrastIssues(markup)).toEqual([])
   })
 })
 
@@ -674,7 +998,14 @@ describe("auditDeck — finding shape contract", () => {
     const report: { findings: AuditFinding[] } = auditDeck(ir)
     for (const f of report.findings) {
       expect(f.page).toBeGreaterThan(0)
-      expect(["overflow", "out-of-bounds", "low-contrast", "overlap"]).toContain(f.code)
+      expect([
+        "overflow",
+        "out-of-bounds",
+        "low-contrast",
+        "overlap",
+        "content-truncated",
+        "content-dropped",
+      ]).toContain(f.code)
       expect(typeof f.message).toBe("string")
     }
   })

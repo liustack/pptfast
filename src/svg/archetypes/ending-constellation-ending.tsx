@@ -4,15 +4,16 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 
 /**
- * constellation-ending archetype（spec §3.2）：底部收束的大号"谢谢。"式标题
- * （末尾句号单独染 accent 色）+ 可选副题 + 短 accent 签名条 + 居中机构/联系
+ * constellation-ending archetype（spec §3.2）：底部收束的大号"Thank you."式
+ * 标题（末尾句号单独染 accent 色）+ 可选副题 + 短 accent 签名条 + 居中机构/联系
  * 方式/日期元信息，呼应 constellation cover/chapter 同一"星座科技"气质。自
  * templates/tech.tsx 的 `BentoTechEnding`（实测边界 1183-1339 行，brief 给的
  * 1183-1404 含了其后的 Decor 注释块，Step A 复核后收窄）提炼。
  *
  * 随迁 helper：`splitTrailingPeriod`（tech.tsx 1174-1180 行，私有复制，函数
- * 体本身与颜色无关，纯字符串处理，逐字符原样迁移，未改一处逻辑）——用于把
- * 结束标题末尾的中文句号拆出来单独渲染为 accent 色的 tspan。
+ * 体本身与颜色无关，纯字符串处理，逐字符原样迁移，未改一处逻辑；defect C 修复
+ * 时泛化为同时识别 ASCII "."，理由见函数自己的注释）——用于把结束标题末尾的
+ * 句号拆出来单独渲染为 accent 色的 tspan。
  *
  * 星座/光晕模块常量随迁核查（同 cover-constellation.tsx 先例的检查项）：
  * Step A 对函数体逐行核查，`BentoTechEnding` **未引用**任何模块级私有常量
@@ -31,23 +32,30 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * 移，不改语义）：源码是 `slide.subheading ? fitSvgLine(...) : null`——**没有
  * 兜底文案**，subheading 缺省时整块副题（包括其占位间距）直接不渲染，与
  * masthead-ending「heading 缺省才兜底副题文案」的语义不同，这里是纯粹的
- * "有就渲染、没有就不渲染"，无兜底分支。heading 本身有兜底："谢谢。"
- * （`slide.heading || "谢谢。"`）。测试覆盖有 heading（不触发 heading 兜底，
- * 因此不含分裂的句号 tspan 逻辑触发点也不同）与无 heading（触发"谢谢。"
+ * "有就渲染、没有就不渲染"，无兜底分支。heading 本身有兜底："Thank you."
+ * （`slide.heading || "Thank you."`，defect C 修复：原兜底文案"谢谢。"改为
+ * 英文，公共渲染表面英文铁律）。测试覆盖有 heading（不触发 heading 兜底，
+ * 因此不含分裂的句号 tspan 逻辑触发点也不同）与无 heading（触发"Thank you."
  * 兜底，句号被拆分渲染为 accent 色）两种 ir。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
 
-// Ported verbatim from templates/tech.tsx（1174-1180 行）— pure string
-// helper, no color/theme dependency. Splits a trailing CJK full stop off a
-// line of text so the Ending heading's closing "。" can render in accent
-// color while the rest of the line stays `colors.text`.
+// Ported from templates/tech.tsx（1174-1180 行）— pure string helper, no
+// color/theme dependency. Splits a trailing period off a line of text so the
+// Ending heading's closing punctuation can render in accent color while the
+// rest of the line stays `colors.text`. Generalized (defect C fix) to
+// recognize the ASCII "." alongside the original CJK full stop "。" — the
+// fallback heading text this feeds is now English ("Thank you."), and the
+// accent-colored-trailing-punctuation signature detail must survive that
+// translation instead of silently stopping at the CJK-only check.
 function splitTrailingPeriod(line: string): {
   rest: string
   period: string | null
 } {
-  if (line.endsWith("。")) return { rest: line.slice(0, -1), period: "。" }
+  if (line.endsWith("。") || line.endsWith(".")) {
+    return { rest: line.slice(0, -1), period: line.slice(-1) }
+  }
   return { rest: line, period: null }
 }
 
@@ -55,7 +63,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
 
   const HEADING_LAST_BASELINE = 330
-  const heading = fitHeadingLines(slide.heading || "谢谢。", {
+  const heading = fitHeadingLines(slide.heading || "Thank you.", {
     maxWidth: 1088,
     fontSize: 88,
     maxLines: 2,
@@ -143,6 +151,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
 
       {subheading && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x="640"
           y={subheadingY}
           fontFamily={fonts.body}

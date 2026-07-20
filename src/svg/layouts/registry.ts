@@ -391,8 +391,8 @@ const CHAPTER_LAYOUTS: Record<string, LayoutDefinition> = {
 // ─────────────────────────────────────────────────────────────────────────
 const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
   "masthead-ending": {
-    // ending-masthead-ending.tsx: centered heading (falls back to "致谢") +
-    // italic subheading + single org/contact/date meta line.
+    // ending-masthead-ending.tsx: centered heading (falls back to
+    // "Thank You") + italic subheading + single org/contact/date meta line.
     id: "masthead-ending",
     kind: "archetype",
     slideTypes: ["ending"],
@@ -403,7 +403,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "constellation-ending": {
-    // ending-constellation-ending.tsx: centered "谢谢。" heading (accent
+    // ending-constellation-ending.tsx: centered "Thank you." heading (accent
     // trailing period), subheading, signature accent rule bar, stacked
     // org/contact/date meta lines.
     id: "constellation-ending",
@@ -418,8 +418,8 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "rail-ending": {
     // ending-rail-ending.tsx: corner color-block accents (decor, echoing
-    // Cover's rect motif), org kicker, heading ("谢谢"), subheading, hairline
-    // + "联系" contact section + copyright line (all meta).
+    // Cover's rect motif), org kicker, heading ("Thank you"), subheading,
+    // hairline + "Contact" contact section + copyright line (all meta).
     id: "rail-ending",
     kind: "archetype",
     slideTypes: ["ending"],
@@ -434,7 +434,8 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "banner-ending": {
     // ending-banner-ending.tsx: org kicker, italic heading ("Thank you."),
-    // Chinese subheading, divider, "联系" contact section + copyright (meta).
+    // subheading (falls back to "We appreciate your time."), divider,
+    // "Contact" contact section + copyright (meta).
     id: "banner-ending",
     kind: "archetype",
     slideTypes: ["ending"],
@@ -461,8 +462,9 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "tone-adaptive-ending": {
-    // ending-tone-adaptive-ending.tsx: org kicker, heading ("谢谢"), divider,
-    // "联系" contact section + copyright (meta). No subheading render.
+    // ending-tone-adaptive-ending.tsx: org kicker, heading ("Thank you"),
+    // divider, "Contact" contact section + copyright (meta). No subheading
+    // render.
     id: "tone-adaptive-ending",
     kind: "archetype",
     slideTypes: ["ending"],
@@ -475,7 +477,8 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
   },
   "fashion-ending": {
     // ending-fashion-ending.tsx: full-bleed primary block, org kicker (top),
-    // giant heading ("谢谢"), accent band rule, subheading, org/date meta line.
+    // giant heading ("Thank you"), accent band rule, subheading, org/date
+    // meta line.
     id: "fashion-ending",
     kind: "archetype",
     slideTypes: ["ending"],

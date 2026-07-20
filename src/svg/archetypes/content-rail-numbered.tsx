@@ -185,6 +185,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
         fill={colors.primary}
       />
       <text
+        data-truncated={badgeLabel.truncated ? "1" : undefined}
         x={BADGE_CENTER_X}
         y={BADGE_CENTER_Y + Math.round(badgeLabel.fontSize * BASELINE_FUDGE_RATIO)}
         fontFamily={fonts.body}
@@ -241,6 +242,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
        * double-hairline bug). */}
       {footnote && (
         <text
+          data-truncated={footnote.truncated ? "1" : undefined}
           x={CONTENT_X}
           y="656"
           fontFamily={fonts.body}

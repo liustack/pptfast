@@ -92,9 +92,9 @@ describe("PosterCenterCover", () => {
     expect(subtitle.getAttribute("text-anchor")).toBe("middle")
 
     // Combined meta line carries org/confidentiality/date as a single
-    // centered row (CONF_LABEL.internal -> "内部").
+    // centered row (CONF_LABEL.internal -> "Internal").
     expect(markup).toContain("DarkCo")
-    expect(markup).toContain("内部")
+    expect(markup).toContain("Internal")
   })
 
   it("Cover 元素避开四角 BrandChrome logo 条带", () => {

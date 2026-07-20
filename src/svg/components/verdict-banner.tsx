@@ -91,6 +91,10 @@ function textX(hasIcon: boolean): number {
 
 interface Laid {
   lineSegments: EmphasisSegment[][]
+  /** Per-line: did `truncateEmphasisSegments` actually cut this line (bench-
+   *  driven fix round, defect E — the verdict_banner ellipsis the benchmark
+   *  caught by eyeballing)? Parallel to `lineSegments`. */
+  lineTruncated: boolean[]
   height: number
 }
 
@@ -120,12 +124,16 @@ function lay(component: VerdictBannerComponent, w: number): Laid {
     lineHeightRatio: LINE_HEIGHT / FONT_SIZE,
   })
   const maxUnits = textW / FONT_SIZE
-  const lineSegments = sliceEmphasisForLines(
-    parseEmphasis(component.text),
-    l.lines
-  ).map((segs) => truncateEmphasisSegments(segs, maxUnits))
+  const sliced = sliceEmphasisForLines(parseEmphasis(component.text), l.lines)
+  const lineSegments = sliced.map((segs) => truncateEmphasisSegments(segs, maxUnits))
+  // A line actually lost characters iff its post-truncation text differs
+  // from its pre-truncation text (bench-driven fix round, defect E — see
+  // bullets.tsx's identical pattern for the same reasoning).
+  const lineTruncated = sliced.map(
+    (before, i) => before.map((s) => s.text).join("") !== lineSegments[i].map((s) => s.text).join(""),
+  )
   const height = lineSegments.length <= 1 ? HEIGHT_ONE_LINE : HEIGHT_TWO_LINE
-  return { lineSegments, height }
+  return { lineSegments, lineTruncated, height }
 }
 
 export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
@@ -133,7 +141,7 @@ export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
     return lay(component, w).height
   },
   render(component, box, ctx) {
-    const { lineSegments, height } = lay(component, box.w)
+    const { lineSegments, lineTruncated, height } = lay(component, box.w)
     const hasIcon = Boolean(component.icon)
     const tone = toneColor(component.tone, ctx)
     const tx = textX(hasIcon)
@@ -168,6 +176,7 @@ export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
         {lineSegments.map((segments, i) => (
           <text
             key={i}
+            data-truncated={lineTruncated[i] ? "1" : undefined}
             x={tx}
             y={textTopY + i * LINE_HEIGHT + FONT_SIZE}
             fontFamily={ctx.fonts.body}
