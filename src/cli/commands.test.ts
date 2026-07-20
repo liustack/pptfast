@@ -6,6 +6,7 @@ import JSZip from "jszip"
 import { afterAll, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import { NARRATIVE_PRESETS } from "../narrative"
+import { CAPACITY } from "../svg/audit/capacity"
 import {
   applyDeckConfig,
   runAssemble,
@@ -105,6 +106,37 @@ const VALID_PLAN = {
 
 const BAD_PLAN = { pages: [] }
 
+// Borrow wave, Task 2 (dual-threshold severity recalibration): a missing
+// heading is warn-severity (editorial, not content-loss) — validate/render
+// must both still succeed, printing a "warning: ..." note rather than
+// throwing.
+const IR_WITH_WARN_ONLY = {
+  version: "4",
+  filename: "cli-test-warn-only",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover" }, // missing heading — warn only since Task 2
+    { type: "content", heading: "Body", components: [{ type: "paragraph", text: "hello" }] },
+  ],
+}
+
+// A bullet item past CAPACITY.bullets.itemOverflowUnits — the new
+// error-severity geometric ceiling (Task 2) — genuinely gets truncated at
+// render, so this must still hard-block validate/render.
+const IR_WITH_BULLET_OVERFLOW = {
+  version: "4",
+  filename: "cli-test-bullet-overflow",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover", heading: "CLI" },
+    {
+      type: "content",
+      heading: "Body",
+      components: [{ type: "bullets", items: ["测".repeat(CAPACITY.bullets.itemOverflowUnits + 1)] }],
+    },
+  ],
+}
+
 let dir: string
 const originalPptfastHome = process.env.PPTFAST_HOME
 beforeAll(async () => {
@@ -117,6 +149,8 @@ beforeAll(async () => {
   await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
   await writeFile(join(dir, "deck-low-contrast.json"), JSON.stringify(IR_LOW_CONTRAST))
   await writeFile(join(dir, "deck-with-alias.json"), JSON.stringify(IR_WITH_FIELD_ALIAS))
+  await writeFile(join(dir, "deck-warn-only.json"), JSON.stringify(IR_WITH_WARN_ONLY))
+  await writeFile(join(dir, "deck-bullet-overflow.json"), JSON.stringify(IR_WITH_BULLET_OVERFLOW))
   await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
   await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
   // Isolate every test in this file from whatever the real machine's
@@ -242,6 +276,34 @@ describe("runValidate field-alias note (W5 task 4)", () => {
   it("has no note line when there is nothing to normalize", async () => {
     const report = await runValidate(join(dir, "deck.json"))
     expect(report).not.toContain("note:")
+  })
+})
+
+describe("runValidate/runRender dual-threshold severity (Task 2, borrow wave)", () => {
+  it("runValidate prints OK plus a warning line for a warn-only deck (missing_heading), exit-0 shape — never throws", async () => {
+    const report = await runValidate(join(dir, "deck-warn-only.json"))
+    expect(report).toMatch(/^OK — 2 slides/)
+    expect(report).toContain("warning: page 1")
+    expect(report).toMatch(/heading/i)
+  })
+
+  it("runValidate still throws for a deck carrying an error-severity finding (bullet_item_overflow)", async () => {
+    await expect(runValidate(join(dir, "deck-bullet-overflow.json"))).rejects.toThrow(/invalid IR/)
+  })
+
+  it("runRender succeeds and prints a warning note for the same warn-only deck", async () => {
+    const out = join(dir, "warn-only.pptx")
+    const msg = await runRender(join(dir, "deck-warn-only.json"), { output: out })
+    expect(msg).toContain("2 slides")
+    expect(msg).toContain("warning: page 1")
+    const bytes = await readFile(out)
+    expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+  })
+
+  it("runRender still refuses (never writes a file) for the bullet_item_overflow deck", async () => {
+    const out = join(dir, "bullet-overflow-should-not-exist.pptx")
+    await expect(runRender(join(dir, "deck-bullet-overflow.json"), { output: out })).rejects.toThrow(/invalid IR/)
+    await expect(stat(out)).rejects.toThrow()
   })
 })
 

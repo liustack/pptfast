@@ -780,4 +780,91 @@ if (!/audited 6 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
 }
 console.log("structure-components audit leg OK (exit 0, 0 findings)")
 
+// 9) dual-threshold severity leg (borrow wave, Task 2 — validate quality-gate
+//    severity recalibration): a warn-only deck (missing heading — editorial,
+//    not content-loss) must still validate/render successfully with a
+//    "warning: ..." note, exit 0. A bullet item past the new geometric error
+//    ceiling (CAPACITY.bullets.itemOverflowUnits = 50, src/svg/audit/
+//    capacity.ts — genuinely gets truncated at render) must still hard-block
+//    both commands, exit 1. Exercises the *built* dist/cli.js binary, not
+//    just the vitest-level src/api.test.ts/src/cli/commands.test.ts coverage
+//    of the same behavior.
+console.log("--- dual-threshold severity leg ---")
+
+const warnOnlyDeck = {
+  version: "4",
+  filename: "pptfast-e2e-warn-only",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover" }, // missing heading — warn only since Task 2
+    { type: "content", heading: "Body", components: [{ type: "paragraph", text: "hello" }] },
+  ],
+}
+const warnOnlyPath = join(OUT, "warn-only.json")
+writeFileSync(warnOnlyPath, JSON.stringify(warnOnlyDeck))
+
+const warnValidateOut = sh("node", ["dist/cli.js", "validate", warnOnlyPath])
+console.log(warnValidateOut)
+if (!/^OK — 2 slides/.test(warnValidateOut)) {
+  throw new Error(`e2e: dual-threshold leg — expected OK for the warn-only deck, got: ${warnValidateOut}`)
+}
+if (!/warning: page 1/.test(warnValidateOut)) {
+  throw new Error(
+    `e2e: dual-threshold leg — expected a "warning: page 1" line for the missing heading, got: ${warnValidateOut}`,
+  )
+}
+console.log("dual-threshold warn-only validate leg OK (exit 0, warning line present)")
+
+const warnOnlyPptxPath = join(OUT, "warn-only.pptx")
+const warnRenderOut = sh("node", ["dist/cli.js", "render", warnOnlyPath, "-o", warnOnlyPptxPath])
+console.log(warnRenderOut)
+if (!existsSync(warnOnlyPptxPath)) {
+  throw new Error("e2e: dual-threshold leg — render did not write the warn-only deck's pptx")
+}
+if (!/warning: page 1/.test(warnRenderOut)) {
+  throw new Error(`e2e: dual-threshold leg — expected render's own warning line, got: ${warnRenderOut}`)
+}
+console.log("dual-threshold warn-only render leg OK (exit 0, file written, warning line present)")
+
+// 51 = CAPACITY.bullets.itemOverflowUnits (50) + 1 — kept as a literal here
+// since this script only shells out to the built CLI, it does not import
+// src/ directly.
+const bulletOverflowDeck = {
+  version: "4",
+  filename: "pptfast-e2e-bullet-overflow",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover", heading: "Overflow" },
+    { type: "content", heading: "Body", components: [{ type: "bullets", items: ["测".repeat(51)] }] },
+  ],
+}
+const bulletOverflowPath = join(OUT, "bullet-overflow.json")
+writeFileSync(bulletOverflowPath, JSON.stringify(bulletOverflowDeck))
+
+const overflowValidateStderr = shExpectFail("node", ["dist/cli.js", "validate", bulletOverflowPath])
+if (!/exceeds/.test(overflowValidateStderr)) {
+  throw new Error(
+    `e2e: dual-threshold leg — expected the bullet-overflow deck's validate to fail naming "exceeds", got: ${overflowValidateStderr}`,
+  )
+}
+console.log("dual-threshold bullet-overflow validate leg OK (exit 1, geometric ceiling message present)")
+
+const overflowOutPath = join(OUT, "bullet-overflow-should-not-exist.pptx")
+const overflowRenderStderr = shExpectFail("node", [
+  "dist/cli.js",
+  "render",
+  bulletOverflowPath,
+  "-o",
+  overflowOutPath,
+])
+if (!/exceeds/.test(overflowRenderStderr)) {
+  throw new Error(
+    `e2e: dual-threshold leg — expected the bullet-overflow deck's render to fail naming "exceeds", got: ${overflowRenderStderr}`,
+  )
+}
+if (existsSync(overflowOutPath)) {
+  throw new Error("e2e: dual-threshold leg — render must not write a file when validate hard-blocks")
+}
+console.log("dual-threshold bullet-overflow render leg OK (exit 1, no file written)")
+
 console.log("e2e OK")

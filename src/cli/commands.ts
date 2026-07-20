@@ -2,12 +2,14 @@ import { mkdir, rm, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve } from "node:path"
 import {
   formatIssues,
+  formatWarnings,
   generatePptx,
   irJsonSchema,
   listThemes,
   renderSlideSvg,
   styleJsonSchema,
   validateIr,
+  type ValidationIssue,
 } from "../api"
 import { PptfastError } from "../errors"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
@@ -226,7 +228,11 @@ export interface RenderOptions {
  * Appends the same field-alias {@link normalizedNote} `runValidate` below
  * prints (W5 whole-branch review finding 3 — the README already claimed
  * `render` did this; it never actually threaded `v.normalized` through
- * until now).
+ * until now), plus {@link warningsNote} (borrow wave, Task 2) whenever the
+ * pre-flight `validateIr` call below returned warn-severity findings —
+ * `generatePptx`'s own internal re-validate (`../api.ts`) follows the exact
+ * same error-only severity rule, so this pre-flight check and the actual
+ * generation it gates in step can never disagree on what counts as blocking.
  */
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
@@ -240,8 +246,8 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   await mkdir(dirname(resolve(opts.output)), { recursive: true })
   await writeFile(opts.output, bytes)
   const ok = `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`
-  const note = normalizedNote(v.normalized)
-  return note ? `${ok}\n${note}` : ok
+  const notes = [warningsNote(v.warnings), normalizedNote(v.normalized)].filter((n): n is string => n !== undefined)
+  return notes.length > 0 ? `${ok}\n${notes.join("\n")}` : ok
 }
 
 /**
@@ -263,6 +269,23 @@ function normalizedNote(normalized: string[] | undefined): string | undefined {
   if (!normalized || normalized.length === 0) return undefined
   const n = normalized.length
   return `note: ${n} field alias${n === 1 ? "" : "es"} normalized\n${normalized.map((line) => `  ${line}`).join("\n")}`
+}
+
+/**
+ * `"warning: page N — path: message"` block, one line per
+ * {@link ValidateResult.warnings} entry (`../api.ts`, borrow wave Task 2's
+ * dual-threshold severity split) — printed by `runValidate`/`runRender`
+ * alongside their own success line whenever `validateIr` returned at least
+ * one warn-severity finding. `undefined` when there are none, same
+ * "let the caller skip the line entirely" shape {@link normalizedNote}
+ * above and {@link placeholderNote} below both use. Exit code is
+ * unaffected either way — a warning never turns a `runValidate`/`runRender`
+ * call into a thrown `PptfastError` (only `!v.ok`, i.e. an error-severity
+ * finding, does that). This note is purely additive visibility.
+ */
+function warningsNote(warnings: ValidationIssue[] | undefined): string | undefined {
+  if (!warnings || warnings.length === 0) return undefined
+  return formatWarnings(warnings)
 }
 
 /**
@@ -300,6 +323,12 @@ function placeholderNote(ir: PptxIR): string | undefined {
  * appends them as a "note" line after the OK summary: visible so the caller
  * knows their input got silently massaged, but never a reason to fail — a
  * fixed alias never makes it into `v.errors`.
+ *
+ * Borrow wave, Task 2 (dual-threshold severity): also appends
+ * {@link warningsNote} whenever `validateIr` returned warn-severity
+ * findings — printed as `"warning: ..."` lines, exit code 0 either way
+ * (only `!v.ok`, above, throws). A deck can print `OK` and still carry
+ * warnings — that combination is the point of the split, not a bug.
  */
 export async function runValidate(irPath: string, cwd = process.cwd()): Promise<string> {
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
@@ -312,6 +341,8 @@ export async function runValidate(irPath: string, cwd = process.cwd()): Promise<
     )
   const ok = `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
   const notes: string[] = []
+  const warnNote = warningsNote(v.warnings)
+  if (warnNote) notes.push(warnNote)
   const aliasNote = normalizedNote(v.normalized)
   if (aliasNote) notes.push(aliasNote)
   if (isDir) {
