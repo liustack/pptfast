@@ -10,7 +10,7 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 153 files / 2767 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 153 files / 2771 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
    media-dedupe JSZip patches, the deck spec schema and hard gates,
@@ -67,7 +67,7 @@ one allowed zero axis, and animation timing references a real shape on the
 same slide) and throws a `PptfastError` naming the broken invariant — there
 is no opt-out. `src/pptx/package-audit.test.ts` renders a real deck and
 surgically breaks it via JSZip to prove each invariant actually rejects the
-right corruption; `scripts/e2e.mts`'s package-audit leg re-asserts the
+right corruption. `scripts/e2e.mts`'s package-audit leg re-asserts the
 three-way slide consistency and id-uniqueness invariants directly against
 the built CLI's own output. Read-only by construction —
 `PptxPackageReader` (`src/pptx/package-reader.ts`) exposes no mutating
