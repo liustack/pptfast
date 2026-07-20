@@ -132,6 +132,35 @@ describe("lineToOp", () => {
   })
 })
 
+describe("zero-length point line (Lucide dot idiom, e.g. circle-divide/square-divide)", () => {
+  // Lucide draws the "÷" division dots as zero-length <line x1=x2 y1=y2>
+  // elements (a "point"), not <path>. Same degenerate-geometry family as
+  // path.ts's segsToOp fix (task 1 blocking review finding), different
+  // converter: pre-fix this produced w=0 AND h=0 simultaneously, which even
+  // the audit's own connector exception rejects ("connector 允许其中一轴为零，
+  // 但不能两轴同时为零") — correctly, since a *single*-axis-zero line is a
+  // legitimate horizontal/vertical connector (see the two tests above this
+  // one, both still asserting an exact 0 on their zero axis — untouched by
+  // this fix), but a *both*-axes-zero line is a true point with nothing left
+  // to distinguish it from a genuine gate defect.
+  it("floors a true zero-length point (x1===x2 and y1===y2) to a positive bbox on both axes", () => {
+    const op = lineToOp(lineEl('x1="12" y1="16" x2="12" y2="16" stroke="#111111"'))
+    expect(op.w).toBeGreaterThan(0)
+    expect(op.h).toBeGreaterThan(0)
+    expect(op.w).toBeCloseTo(0.75 / 96, 5)
+    expect(op.h).toBeCloseTo(0.75 / 96, 5)
+  })
+
+  it("does not floor a real single-axis-zero connector (horizontal/vertical line stay exactly 0)", () => {
+    // Regression guard: the point-only floor must never leak into the
+    // ordinary horizontal/vertical connector case above.
+    const horizontal = lineToOp(lineEl('x1="0" y1="96" x2="192" y2="96" stroke="#333"'))
+    expect(horizontal.h).toBe(0)
+    const vertical = lineToOp(lineEl('x1="96" y1="0" x2="96" y2="192" stroke="#333"'))
+    expect(vertical.w).toBe(0)
+  })
+})
+
 describe("stroke opacity", () => {
   it("maps element opacity into line transparency", () => {
     const el = lineEl('x1="560" y1="500" x2="720" y2="500" stroke="#00A878" stroke-width="1.6" opacity="0.6"')

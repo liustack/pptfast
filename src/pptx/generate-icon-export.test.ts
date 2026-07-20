@@ -166,3 +166,22 @@ describe("icon catalog sample survives the real export pipeline (task 1 blocking
     },
   )
 })
+
+/**
+ * A second, independent instance of the same root-cause pattern, found by
+ * this fix's own full 1756-icon sweep (not by the review): "circle-divide"
+ * and "square-divide" draw the "÷" numerator/denominator dots as zero-length
+ * `<line x1=x2 y1=y2>` elements, not `<path>` — so they never went through
+ * segsToOp at all, and survived the segsToOp-only fix (923 -> 2 on the full
+ * sweep, not 0) until lineToOp (./line.ts) got the analogous floor. See that
+ * file's own "zero-length point line" tests for the unit-level repro/fix.
+ */
+describe("circle-divide/square-divide (zero-length <line> dots, not segsToOp) through the real export pipeline", () => {
+  it.each(["circle-divide", "square-divide"] as const)(
+    "icon %s exports through generatePptxBlob without throwing",
+    async (name) => {
+      const ir = makeIr([{ type: "kpi_cards", items: [{ value: "1", label: name, icon: name }] }])
+      await expect(generatePptxBlob(ir)).resolves.toBeInstanceOf(Blob)
+    },
+  )
+})
