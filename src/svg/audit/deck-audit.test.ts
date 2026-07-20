@@ -16,6 +16,7 @@ import {
   findContrastIssues,
   findOverlapIssues,
   __collectBgRegions,
+  __pathBoundingBox,
   type AuditFinding,
 } from "./deck-audit"
 import { STRESS_DECKS } from "./stress-fixtures"
@@ -1008,5 +1009,141 @@ describe("auditDeck — finding shape contract", () => {
       ]).toContain(f.code)
       expect(typeof f.message).toBe("string")
     }
+  })
+})
+
+// Arc-bbox root fix (fix/arc-bbox): `pathBoundingBox` used to extract every
+// numeric token from a path's `d` and min/max them, blind to path grammar —
+// exact for straight-line polygons, silently wrong for an `A`/`a` arc
+// command, whose own rx/ry/rotation/flag numbers got paired as if they were
+// more (x,y) coordinates. `insight_panel.tsx`/`roadmap.tsx`'s shared
+// `roundedTopBarPath` accent bar hit this dead-on: a real ~6px-tall bar
+// inflated to a ~1184×1182px bbox dwarfing the 1280×720 canvas (recorded in
+// docs/contrast-system.md's former "Known limitation" paragraph and
+// `.issues/notes/2026-07-18-post-v03-backlog.md`'s "本轮新发现 (a)"). This
+// block first pins the pre-fix defect as a *characterization* test (the old
+// algorithm reimplemented inline, run against a real render's exact `d`
+// string — not a call into the fixed source, which no longer contains the
+// buggy path), then asserts the fixed `__pathBoundingBox` produces a tight
+// bbox for the same string, plus synthetic arc grammar cases the real
+// render doesn't happen to exercise (a full circle via two arcs, absolute
+// and relative).
+describe("__pathBoundingBox — arc-bbox root fix (fix/arc-bbox)", () => {
+  // A real `insight_panel` accent-bar `d` string, captured from
+  // `renderSlideSvg` (insight theme, 2-row panel) before this fix —
+  // `roundedTopBarPath(96, 322.34.., 1088, 6, 2)`'s exact output. Kept as a
+  // literal (not re-derived from the component) so this test stays a fixed
+  // characterization of the real defect, immune to unrelated future layout
+  // changes in insight_panel.tsx's own padding/measurement math.
+  const REAL_ACCENT_BAR_D =
+    "M 96 322.34000000000003 A 2 2 0 0 1 98 320.34000000000003 " +
+    "L 1182 320.34000000000003 A 2 2 0 0 1 1184 322.34000000000003 " +
+    "L 1184 326.34000000000003 L 96 326.34000000000003 Z"
+
+  it("characterizes the pre-fix defect: the old blind token min/max inflates the accent bar to ~1184x1182", () => {
+    // The exact pre-fix algorithm (deck-audit.ts's own `pathBoundingBox`
+    // before this task), reimplemented inline rather than imported — the
+    // source no longer contains it (see `pathBoundingBoxByTokenMinMax`'s
+    // doc comment, now scoped to the malformed-`d` fallback only). This is
+    // the red half of red->green: it documents exactly how wrong the old
+    // behavior was, numerically, against a real render's output.
+    const oldTokenMinMax = (d: string) => {
+      const nums = d.match(/-?\d*\.?\d+(?:e[+-]?\d+)?/gi)!
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+      for (let i = 0; i + 1 < nums.length; i += 2) {
+        const x = Number(nums[i])
+        const y = Number(nums[i + 1])
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+      return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+    }
+    const bbox = oldTokenMinMax(REAL_ACCENT_BAR_D)
+    // Empirically confirmed while building this fix (and matching
+    // docs/contrast-system.md's former "Known limitation" paragraph almost
+    // exactly, modulo the fresh fixture's own exact box width): the arc's
+    // own `rx ry rot largeArc sweep` numbers (2, 2, 0, 0, 1) get paired as
+    // bogus coordinates, and the bogus min x=0/min y=0 corner (from the
+    // rotation/flag zeros) plus the real max x=1184/max y=326.34 gets
+    // further corrupted by the flag "1" pairing with a real y coordinate.
+    expect(bbox.x).toBe(0)
+    expect(bbox.y).toBe(0)
+    expect(bbox.w).toBeCloseTo(1184, 0)
+    expect(bbox.h).toBeCloseTo(1182, 0)
+  })
+
+  it("fixes the accent bar: the grammar-aware bbox is tight around the real ~1088x6 bar, not the phantom ~1184x1182", () => {
+    const bbox = __pathBoundingBox(REAL_ACCENT_BAR_D)
+    expect(bbox).not.toBeNull()
+    expect(bbox!.x).toBeCloseTo(96, 1)
+    expect(bbox!.y).toBeCloseTo(320.34, 1)
+    expect(bbox!.w).toBeCloseTo(1088, 1)
+    expect(bbox!.h).toBeCloseTo(6, 1)
+  })
+
+  it("small corner-rounding arcs (a miniature roundedTopBarPath shape) stay tight to the bar's own box, not the corner radius", () => {
+    // Same shape family as the real bar above, hand-built at a size small
+    // enough to eyeball: a 40x6 bar with a 4px corner radius. The rounded
+    // corners cut *into* the rectangle, never bulge past it, so the tight
+    // bbox must equal the un-rounded rectangle's own extent exactly.
+    const d = "M 0 4 A 4 4 0 0 1 4 0 L 36 0 A 4 4 0 0 1 40 4 L 40 6 L 0 6 Z"
+    const bbox = __pathBoundingBox(d)
+    expect(bbox).toEqual({ x: 0, y: 0, w: 40, h: 6 })
+  })
+
+  it("a full circle via two absolute semicircle arcs bounds exactly to its true circle, not the chord/flag numbers", () => {
+    // M 150 100 A 50 50 0 1 1 50 100 A 50 50 0 1 1 150 100 — the textbook
+    // "circle via two arcs" idiom, center (100, 100) radius 50 (independently
+    // confirmed via the same endpoint->center math run standalone before
+    // writing this test, not just trusted from the implementation under
+    // test). True bbox: x/y in [50, 150].
+    const d = "M 150 100 A 50 50 0 1 1 50 100 A 50 50 0 1 1 150 100"
+    const bbox = __pathBoundingBox(d)
+    expect(bbox).toEqual({ x: 50, y: 50, w: 100, h: 100 })
+  })
+
+  it("a full circle via two relative semicircle arcs (lowercase a) bounds correctly, proving relative-command handling", () => {
+    // M 60 10 a 50 50 0 1 1 -100 0 a 50 50 0 1 1 100 0 — relative-arc
+    // version of the same idiom, center (10, 10) radius 50. Both arcs
+    // confirmed (via standalone sampling before writing this test) to trace
+    // complementary halves of the same circle, not the same half twice.
+    const d = "M 60 10 a 50 50 0 1 1 -100 0 a 50 50 0 1 1 100 0"
+    const bbox = __pathBoundingBox(d)
+    expect(bbox).toEqual({ x: -40, y: -40, w: 100, h: 100 })
+  })
+
+  it("falls back to the old token min/max — never throws — on a d string the grammar walk can't parse", () => {
+    // "Q" here is missing its final (x, y) pair — a genuinely malformed
+    // path the grammar walk can't finish (runs out of tokens mid-command)
+    // — the fallback still returns a safe (if approximate) bbox instead of
+    // throwing and taking down the whole audit walk.
+    const bbox = __pathBoundingBox("M 0 0 Q 10 20")
+    expect(bbox).toEqual({ x: 0, y: 0, w: 10, h: 20 })
+  })
+
+  it("an exact straight-line polygon (cover-split-diagonal.tsx's real shape) stays exact, unaffected by the grammar rewrite", () => {
+    const d = "M 0,0 L 560,0 L 460,720 L 0,720 Z"
+    const bbox = __pathBoundingBox(d)
+    expect(bbox).toEqual({ x: 0, y: 0, w: 560, h: 720 })
+  })
+
+  it("a cubic curve's exact bbox extends past its own endpoints when the control points do", () => {
+    // M 0 0 C 0 100 100 100 100 0 — a symmetric hump. Endpoints are (0,0)
+    // and (100,0), both y=0, but the curve visibly bulges upward toward the
+    // control points (0,100)/(100,100) — an endpoints-only bbox would
+    // wrongly report h=0. Exact analytic extreme: at t=0.5 the curve's own
+    // y reaches 75 (cubic Bezier at the midpoint of two control points both
+    // at y=100 with endpoints at y=0: y(0.5) = 3*0.25*100 + 3*0.25*100 = 75).
+    const d = "M 0 0 C 0 100 100 100 100 0"
+    const bbox = __pathBoundingBox(d)
+    expect(bbox!.x).toBeCloseTo(0, 1)
+    expect(bbox!.w).toBeCloseTo(100, 1)
+    expect(bbox!.y).toBeCloseTo(0, 1)
+    expect(bbox!.h).toBeCloseTo(75, 1)
   })
 })
