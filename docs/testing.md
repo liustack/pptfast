@@ -10,19 +10,25 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 148 files / 2676 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 153 files / 2767 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
    media-dedupe JSZip patches, the deck spec schema and hard gates,
    assemble/disassemble plus the deck-project-directory CLI shell, the v3→v4
    and deck.plan.json→deck.spec.json migration functions, the
    deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap/
-   content-truncated/content-dropped), and the PPTX package-audit reader and
-   rules (see "Package-audit hard gate" below).
+   content-truncated/content-dropped), the optional pixel-contrast audit
+   (`--pixels` — real-Sharp end-to-end coverage plus a dedicated no-platform
+   file for the "nothing can rasterize" contract, see `docs/contrast-system.md`),
+   and the PPTX package-audit reader and rules (see "Package-audit hard gate"
+   below).
    Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against
    real inputs, catching browser/Node DOM behavior drift early.
+   `src/platform/node-rasterize.test.ts` does the same for `rasterizeSvg`,
+   plus the red-first Sharp/librsvg fidelity probe against a real subset of
+   this repo's own SVG output (spec §11.9's escape-clause evidence).
 3. **E2E** (`pnpm e2e`) — builds the package, drives the *built* CLI binary
    (`dist/cli.js`, not the vitest-transpiled source) through render/validate/
    preview on `examples/basic.json`, a deck project directory leg (a temp
@@ -33,7 +39,8 @@ read_when:
    an audit leg (`examples/basic.json` audits clean and exits 0, while a
    deliberately near-background text color, set via a validate-legal
    `theme.style` override, exits 1 with a low-contrast finding in both human
-   and `--json` output), a migrate leg (a pre-rename `deck.plan.json`
+   and `--json` output, plus an `--pixels` leg exercising real Sharp through
+   the built binary), a migrate leg (a pre-rename `deck.plan.json`
    project directory migrates to `deck.spec.json` with `scenario`→`narrative`
    and `rhythm`→`beat` renamed and the source file left untouched, both files
    present is a hard error, migrate never overwrites an existing output),

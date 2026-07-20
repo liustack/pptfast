@@ -45,12 +45,19 @@ component — the SDK has no second, cheaper rendering path to fall out of sync.
 ## Platform seam
 
 `src/index.ts` and everything it imports must stay usable in a browser: no
-`commander`, no `linkedom`, no `sharp`. Two seams in `src/platform/registry.ts`
-(`domParser`, `recodeImageToPng`) are `undefined` until something calls
-`installPlatform()`. `src/platform/node.ts` supplies the Node implementation
-(linkedom for DOM parsing, sharp for image re-encoding) via
-`installNodePlatform()` — the CLI calls it on startup. SDK consumers running in
-Node must call it themselves before rendering.
+`commander`, no `linkedom`, no `sharp`. Three seams in `src/platform/registry.ts`
+(`domParser`, `recodeImageToPng`, `rasterizeSvg`) are `undefined` until
+something calls `installPlatform()`. `src/platform/node.ts` supplies the Node
+implementation (linkedom for DOM parsing, sharp for image re-encoding and SVG
+rasterization) via `installNodePlatform()` — the CLI calls it on startup. SDK
+consumers running in Node must call it themselves before rendering.
+`rasterizeSvg` (audit-v2 phase B, `docs/contrast-system.md`'s own pixel-layer
+section) is the one seam with a real browser default too:
+`src/platform/browser.ts`'s `rasterizeSvgInBrowser` (native `Image` +
+`OffscreenCanvas`/`<canvas>`) is applied as a plain `?? fallback` at its one
+call site (`src/svg/audit/pixel-audit.ts`), the same pattern `domParser`'s
+own `?? globalThis.DOMParser` fallback already uses — not through
+`installPlatform()`, since nothing calls that automatically in a browser.
 
 ## Adding a theme
 

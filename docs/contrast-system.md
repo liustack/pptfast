@@ -4,6 +4,7 @@ read_when:
   - adding or editing an archetype/component that paints its own background or bakes a text fill
   - a full-matrix-contrast.test.ts failure, or a new colors.muted usage
   - deciding whether a low-contrast finding is a real defect or an adjudicated exception
+  - adding to or debugging the optional --pixels pixel-contrast audit
 ---
 
 # Contrast system
@@ -45,3 +46,21 @@ Sweeps every theme × slide type × curated archetype for the W4 defect class. T
 ## Muted calibration discipline
 
 `colors.muted` recalibration is hue/saturation-preserving, minimum-lightness-only — see any `themes/<id>.ts`'s inline comment on its `muted` token (e.g. `src/themes/insight.ts:14`) for the pattern: adjust luminance just far enough to clear 4.5:1 against every real background it renders on, change nothing else about the color.
+
+## The optional pixel layer (`--pixels`, audit-v2 phase B)
+
+`findContrastIssues`'s `PaintedShape` walk (above) resolves a text's background from rendered SVG geometry — but a bare or too-faintly-scrimmed `<image>` gives it nothing to resolve: the walk correctly returns `null` rather than guess, and the text is skipped. `ImagePages.tsx`'s `ImageCoverPage` (the cover/chapter takeover for an asset background) is the one real archetype this happens on — its `DarkScrim` is three stacked `fill-opacity` bands (0.3/0.28/0.3), each individually below `MIN_BG_OPACITY` (0.5), so none of them ever become a `PaintedShape` and every heading/caption on that page resolves to "unknown, skip".
+
+`auditDeck(ir, { pixels: true })` (`src/svg/audit/pixel-audit.ts`) closes that one gap, and only that one — it does not re-check anything the SVG walk already resolved. Flow (spec §4.3):
+
+1. `__collectImageBackedTextRuns` (`deck-audit.ts`) — the same background-resolution walk above, just reading its `background === null` runs instead of discarding them. A page with none skips every step below entirely.
+2. `stripTextNodes` (`pixel-audit.ts`) — a plain string removal of every `<text>` element, not a DOM round-trip (SVG has no reflow, so removing an element can't move anything else, and a round-trip risks a serializer producing markup that doesn't byte-match a real browser's).
+3. `rasterizeSvg(stripped, 1280, 720)` — the platform seam's own primitive (`src/platform/registry.ts`): Sharp in Node (`installNodePlatform()`, spec §11.9's pre-authorized default — see the escape clause below), native `Image`/`OffscreenCanvas`/`<canvas>` in a browser (`src/platform/browser.ts`, spec §11.8, zero new dependency). Missing capability is an explicit `auditDeck` rejection, never a silent clean report — the same "未检查≠通过" contract extended to a platform's own capability (spec §11.7).
+4. A small grid (5×3) is sampled across each run's estimated box (font-metric left/right/baseline, the same estimate `svg-audit.ts`'s overflow walker uses — not a real glyph bbox), tracking the least-favorable (lowest) contrast ratio found — spec's own "worst-case band".
+5. Only a ratio below **1.5:1** becomes a finding (`code: "low-contrast"`, `detail.source: "pixels"` distinguishes it from an SVG-resolved one) — deliberately far below either real WCAG floor (3:1 large text, 4.5:1 body) to control false positives, since pixel sampling carries antialiasing/rasterizer noise the SVG-only walk never has to deal with. A real, non-extreme `ImageCoverPage` case (org-line text, single 0.3-opacity scrim layer) tops out around ~1.8-1.9 even against a pure-white photo — clearing 1.5 by design, not a gap: v1 favors under-flagging a borderline pairing over false-positiving on one that would read fine.
+
+Remote (`http(s):`) image references never reach a rasterizer at all — `findRemoteAssetRef` (`registry.ts`) scans the markup and rejects before either platform implementation runs, shared by both: spec §3.1/§7 promise the default audit chain never makes a network request, and a browser `<img>` load of a remote asset in this restricted context silently drops rather than reliably tainting the canvas, which would otherwise sample a blank region as if it were the real background — exactly the "checked nothing, reported clean" failure this whole wave rules out.
+
+**Sharp escape-clause verdict (spec §11.9):** the pre-authorized trigger to swap Sharp for `@resvg/resvg-js` is "a real render out of this repo's own SVG subset comes back visibly wrong" — `src/platform/node-rasterize.test.ts`'s probe suite renders gradient bands, a rounded arc path built with `insight_panel.tsx`/`roadmap.tsx`'s own `roundedTopBarPath` grammar, an embedded PNG bitmap, and `DarkScrim`-shaped stacked transparency, each against independently-computed expected colors. Sharp passed every case cleanly (solid fills and gradient bands are pixel-exact, three-layer transparency compositing lands within 1/255 of hand-computed sequential blending). The clause does not trigger. Sharp stays.
+
+**Determinism footnote (spec §11.10):** the pixel layer does *not* extend the main audit's cross-run byte-stability promise (same IR → byte-identical JSON) to a cross-*platform* one — Sharp/librsvg and a browser's own canvas implementation antialias differently, so the same deck can sample a different worst-case pixel (and therefore a different ratio) on Node versus in a browser. Same platform, same input still produces a stable result. The 1.5:1 gate sits far enough below both real WCAG floors that this noise is not expected to flip a verdict in practice.
