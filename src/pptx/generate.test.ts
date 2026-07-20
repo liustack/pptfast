@@ -1,5 +1,6 @@
  
 import { describe, expect, it, beforeEach, vi } from "vitest"
+import JSZip from "jszip"
 import type { PptxIR, Slide } from "@/ir"
 
 // ── Fake PptxGenJS (records master + slide ops; real svg pipeline runs) ──
@@ -15,6 +16,57 @@ class FakeSlide {
   }
 }
 
+/**
+ * A minimal but structurally real pptx zip — enough to satisfy
+ * `generatePptxBlob`'s package-audit hard gate (package-audit wave, task 1;
+ * spec §4.4/§10.4, no skip switch) — for `slideCount` slides, each empty
+ * (zero shapes, so the per-slide cNvPr/transform/animation rules are
+ * vacuously satisfied). `FakePptx.write()` below returns this instead of a
+ * placeholder `Blob(["pptx"])` (pre-package-audit shape) since that no
+ * longer survives the gate's own `JSZip.loadAsync` at all.
+ */
+async function buildFakePptxZip(slideCount: number): Promise<Blob> {
+  const zip = new JSZip()
+  const xmlDecl = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  zip.file(
+    "[Content_Types].xml",
+    `${xmlDecl}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>`,
+  )
+  zip.file(
+    "_rels/.rels",
+    `${xmlDecl}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>` +
+      `</Relationships>`,
+  )
+  const sldIds = Array.from({ length: slideCount }, (_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 1}"/>`).join("")
+  zip.file(
+    "ppt/presentation.xml",
+    `${xmlDecl}<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
+      `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ` +
+      `xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
+      `<p:sldIdLst>${sldIds}</p:sldIdLst></p:presentation>`,
+  )
+  const presRels = Array.from(
+    { length: slideCount },
+    (_, i) =>
+      `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`,
+  ).join("")
+  zip.file(
+    "ppt/_rels/presentation.xml.rels",
+    `${xmlDecl}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${presRels}</Relationships>`,
+  )
+  for (let i = 1; i <= slideCount; i++) {
+    zip.file(
+      `ppt/slides/slide${i}.xml`,
+      `${xmlDecl}<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
+        `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ` +
+        `xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree/></p:cSld></p:sld>`,
+    )
+  }
+  const ab = await zip.generateAsync({ type: "arraybuffer" })
+  return new Blob([ab])
+}
+
 class FakePptx {
   layout = ""
   defineLayout = vi.fn()
@@ -24,7 +76,7 @@ class FakePptx {
     this.slides.push({ options, slide })
     return slide
   })
-  write = vi.fn(async () => new Blob(["pptx"]))
+  write = vi.fn(async () => buildFakePptxZip(this.slides.length))
   slides: Array<{ options?: { masterName?: string }; slide: FakeSlide }> = []
   constructor() {
     pptxState.instances.push(this)

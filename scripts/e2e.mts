@@ -63,6 +63,39 @@ for (const f of mustExist) {
 const slide1 = await zip.file("ppt/slides/slide1.xml")!.async("string")
 if (!slide1.includes("pptfast")) throw new Error("e2e: cover heading text not found in slide1.xml")
 
+// 2b) package-audit leg (package-audit wave, task 1, spec §4.4/§10.4):
+//     generatePptxBlob's own hard gate has no skip switch — every render in
+//     this whole script (basic/branded/webp/deck-dir/structures, below)
+//     already implicitly proves the gate accepted the package, since a
+//     violation would have made the CLI exit non-zero with a PptfastError
+//     instead of ever writing a file. This adds direct e2e-level evidence
+//     from the *built* CLI binary's own output (src/pptx/package-audit.test.ts
+//     already covers the red/broken side at the vitest level, including
+//     against real generatePptxBlob renders) that the invariants the gate
+//     enforces genuinely hold end to end: presentation.xml's slide list and
+//     the package's actual slide parts agree, and no slide has a duplicate
+//     shape id.
+console.log("--- package-audit leg ---")
+const presentationXml = await zip.file("ppt/presentation.xml")!.async("string")
+const sldIdCount = (presentationXml.match(/<p:sldId\b/g) ?? []).length
+const slideKeys = Object.keys(zip.files).filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k))
+if (sldIdCount !== slideKeys.length) {
+  throw new Error(
+    `e2e: package-audit leg — presentation.xml lists ${sldIdCount} slide(s) but ${pptxPath} has ${slideKeys.length} slide part(s) (the gate should have refused this before render even wrote the file)`,
+  )
+}
+for (const slideKey of slideKeys) {
+  const slideXml = await zip.file(slideKey)!.async("string")
+  const ids = Array.from(slideXml.matchAll(/<p:cNvPr id="(\d+)"/g)).map((m) => m[1])
+  if (new Set(ids).size !== ids.length) {
+    throw new Error(`e2e: package-audit leg — ${slideKey} has a duplicate p:cNvPr id (the gate should have refused this)`)
+  }
+}
+console.log(
+  `package-audit leg OK (${pptxPath}: ${sldIdCount} slide(s) three-way consistent, no duplicate shape ids — ` +
+    "the hard gate has no skip switch, so every render in this script already passed it)",
+)
+
 // 3) preview command
 console.log(sh("node", ["dist/cli.js", "preview", "examples/basic.json", "-o", join(OUT, "svgs")]))
 

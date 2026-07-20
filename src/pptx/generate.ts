@@ -6,8 +6,10 @@
  * by svg2pptx. Preview and export therefore share one visual source and cannot
  * drift. The only native object kept is the dynamic slide number (on the master).
  */
+import JSZip from "jszip"
 import type pptxgen from "pptxgenjs"
 import { PptxIRSchema, type PptxIR } from "@/ir"
+import { PptfastError } from "../errors"
 import { inlinePptxAssets } from "../platform/inline-assets"
 import { resolveStyle } from "@/themes"
 import { defineMastersForIR } from "./master-builder"
@@ -17,8 +19,11 @@ import {
   type GradientFillPatch,
 } from "./svg2pptx/render"
 import { slideToOps } from "@/svg/render-slide"
-import { dedupePptxMedia } from "./pptx-dedupe-media"
+import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
+import { auditPptxPackage } from "./package-audit"
+
+const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   // `kind` is an optional file-type discriminator some callers attach to the
@@ -87,6 +92,39 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
           ir.slides.map((slide) => slide.components.map((component) => component.type))
         )
       : transitionBlob
-  // Collapse identical embedded media (e.g. a shared background image) to one part.
-  return dedupePptxMedia(elementAnimBlob)
+  // Collapse identical embedded media (e.g. a shared background image) to one
+  // part, then run the package-audit hard gate (Audit v2 spec §4.4/§10.4)
+  // before returning bytes. Both steps share this one `JSZip.loadAsync` of
+  // the fully-patched package — the audit inspects the exact in-memory zip
+  // `dedupeMediaInZip` just mutated (or left alone) rather than the gate
+  // re-reading the package from scratch, per §10.4's "piggyback the patch
+  // chain's own final loadAsync, don't re-unzip." `dedupePptxMedia`'s
+  // Blob-in/Blob-out form (same file) stays exported for its own standalone
+  // tests but is no longer called from this pipeline.
+  let zip: JSZip
+  try {
+    zip = await JSZip.loadAsync(await elementAnimBlob.arrayBuffer())
+  } catch (e) {
+    // Mirrors package-audit.ts's own "zip-unreadable" wording — this is the
+    // same invariant, just caught one layer up since this is the one load
+    // the audit itself piggybacks rather than repeating.
+    throw new PptfastError(
+      `pptx package audit failed — invariant "zip-unreadable": the generated package is not a readable zip archive (${(e as Error).message})`,
+    )
+  }
+  let changed = false
+  try {
+    changed = await dedupeMediaInZip(zip)
+  } catch {
+    // Matches dedupePptxMedia's own defensiveness (a media-dedupe failure is
+    // not a reason to abandon export) — the package audit right below still
+    // inspects whatever state `zip` ended up in, so a real corruption from a
+    // partially-applied dedupe attempt is still caught, just under the
+    // audit's own invariant name rather than this one.
+    changed = false
+  }
+  await auditPptxPackage(zip)
+  if (!changed) return elementAnimBlob
+  const ab = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" })
+  return new Blob([ab], { type: PPTX_MIME })
 }
