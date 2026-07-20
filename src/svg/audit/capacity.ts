@@ -277,8 +277,9 @@ export const CAPACITY = {
    * 统一套用这一个上界，但 "numbered"/"checklist" 样式的前缀（"1. "/"☐ "）
    * 里带的空格会把 `svg-text-layout.ts` `tokenize()` 从逐字符换行误判成
    * 空格分词换行——贪心分词会把整行预算耗在 1-2 字符的前缀上，本任务的探针
-   * 实测这两个样式的真实截断边界只有约 30 units（同一测法测得），远早于
-   * plain/default/divided 的约 57-61。这是 `bullets.tsx`/分词器交互的既有
+   * 实测这两个样式的真实截断边界并不相同：numbered 约 30-31 units，checklist
+   * 约 23-24 units（同一测法测得），两者都远早于 plain/default/divided 的约
+   * 57-61。这是 `bullets.tsx`/分词器交互的既有
    * 缺陷，与本任务的 severity 语义重校无关，不在本次改动范围内处理——按
    * 简报「推导不干净的组件不硬造阈值，回落为 warn+data-truncated 可见性
    * 兜底」处理：这两个样式下本常量不是滴水不漏的硬界，`bullets.tsx` 对

@@ -68,7 +68,34 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
   const issues: QualityIssue[] = []
   const budget = PACING_BUDGETS[resolvedAxes.pacing]
 
-  // A1-reverse: heading too long
+  // A1-reverse: heading too long. Stays warn-only — Task 2 (borrow wave,
+  // dual-threshold severity) deliberately did not give headings an error-
+  // level counterpart to bullet_item_overflow below. Evaluated and
+  // rejected, not overlooked, for two structural reasons:
+  //   1. No clean geometric error derivation exists yet.
+  //      `bullet_item_overflow` leans on one flat shrink floor
+  //      (bullets.tsx's MIN_FONT=14) shared by every archetype. Headings
+  //      have no equivalent single floor — `fitHeadingLines`'s `minPt`
+  //      ranges from 22 (content-banner-heading.tsx,
+  //      content-tone-adaptive-content.tsx) to 72
+  //      (cover-fashion-masthead.tsx) depending on archetype, so one
+  //      global units ceiling would either under-protect the tightest
+  //      archetypes or false-positive on the roomiest ones.
+  //   2. Even a derived threshold would have no render-time visibility to
+  //      back it. `fitHeadingLines` returns `SvgTextLayout`
+  //      (lines/fontSize/lineHeight — src/lib/svg-text-layout.ts), which
+  //      carries no `truncated` field, so its internal `truncateToUnits`
+  //      cut (fired when even `minPt` can't fit the text) cannot surface
+  //      the way `fitSvgLine`'s does. Every `.truncated` consumer in the
+  //      codebase reads off a kicker/subheading/footnote/metaLine-style
+  //      field (all `fitSvgLine`-based) — heading truncation itself is
+  //      currently invisible at render time, so an error here would have
+  //      no `data-truncated` backstop the way `bullet_item_overflow` does.
+  // Recorded follow-up gap: add a `truncated` field to `SvgTextLayout` /
+  // `fitHeadingLines` and wire it into each archetype's heading `<text>`
+  // element, then revisit whether a geometric error is derivable once that
+  // visibility exists (likely needs per-archetype-family minPt buckets,
+  // not one flat number).
   if (slide.heading && charLen(slide.heading) > CAPACITY.headingMaxChars) {
     issues.push({
       slide: index,

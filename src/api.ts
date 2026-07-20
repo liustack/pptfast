@@ -131,7 +131,17 @@ function describeQualityIssue(issue: QualityIssue): string {
       // `ok`. `CAPACITY.bullets.itemOverflowUnits` is a flat, pacing-
       // independent ceiling (see its own derivation comment, capacity.ts),
       // unlike `bullet_item_long`'s per-pacing `maxUnitsPerItem`.
-      return `a bullet item exceeds the render-safety limit (${CAPACITY.bullets.itemOverflowUnits} width units) and will be truncated — shorten it substantially or split the point across two items`
+      //
+      // Wording (review fix round): "will be truncated" overstated it for
+      // the plain/default/divided styles, where the ceiling carries a
+      // deliberate safety margin below their real truncation edge (~56-57
+      // units vs. this 50-unit ceiling) — an item past the ceiling can
+      // still render with zero data-truncated. "can truncate" covers both
+      // that margin and the numbered/checklist styles, whose real edge
+      // sits below this ceiling (capacity.ts's own derivation comment
+      // records the gap) so a truncation there is a real, not merely
+      // possible, outcome.
+      return `a bullet item exceeds the render-safety limit (${CAPACITY.bullets.itemOverflowUnits} width units) and can truncate — shorten it substantially or split the point across two items`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     default:
