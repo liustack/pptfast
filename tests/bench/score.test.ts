@@ -147,7 +147,20 @@ describe("scoreQuestion — degraded-model (validate-failing / audit-positive / 
     expect(score.deterministic).toBeNull()
   })
 
-  it("fx03 (degraded): validates clean but auditDeck flags a real low-contrast finding (luxe + kpi delta:down)", async () => {
+  it("fx03 (degraded): validates clean but auditDeck flags a real low-contrast finding (code.tsx's line-number gray)", async () => {
+    // Bench-driven fix round, defect B (Task 3): this fixture's own
+    // low-contrast source used to be kpi_cards' hardcoded delta-arrow red
+    // on luxe (#DC2626 vs #211D18, 3.47:1) — fixed (accessibleInk, see
+    // kpi.tsx's own `deltaColor` comment), so it no longer produces a
+    // finding on any theme. Swapped for a `code` component (arrangement
+    // "code") — `code.tsx`'s own hardcoded `LINE_NUM_COLOR` (#6A737D)
+    // measures 3.46:1 against the code block's fixed #1E1E1E background on
+    // all 13 themes uniformly (theme-independent by construction, unlike
+    // the old kpi repro), still a real, deliberately out-of-scope pre-
+    // existing source (`deck-audit.test.ts`'s "understood pre-existing
+    // low-contrast sources"). The `kpi_cards` component stays in the
+    // fixture (still needed for `coverageHits` below) but no longer
+    // contributes to `auditFindingCount`.
     const metas = await loadQuestionMetas(QUESTIONS_DIR)
     const meta = metas.find((m) => m.id === "fx03")!
     const score = await scoreQuestion("fx03", join(RESULTS_DIR, "degraded-model", "fx03"), meta)

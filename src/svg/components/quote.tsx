@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 import type { SvgComponent } from "./types"
 
 type QuoteComponent = Extract<Component, { type: "quote" }>
@@ -36,12 +37,22 @@ export const quote: SvgComponent<QuoteComponent> = {
 
     return (
       <g transform={`translate(${box.x},${box.y})`}>
-        {/* decorative open-quote mark */}
+        {/* decorative open-quote mark. Bench-driven fix round, defect B:
+            this component paints no card of its own, so the mark sits
+            directly on the page's ambient default background —
+            `ctx.defaultBg ?? colors.bg`, same fallback every other
+            card-less component in this codebase uses. `colors.accent`
+            unwrapped measured well under the 3:1 large-text floor on
+            several themes once actually re-measured against a real render
+            (heritage 2.61:1, consulting 1.45:1 — the latter already a
+            known, pinned pre-existing case; the fix clears both the same
+            way) — `accessibleInk` keeps `colors.accent` on every theme
+            that already passed, byte-identical. */}
         <text
           x={0}
           y={44}
           fontSize={64}
-          fill={ctx.colors.accent}
+          fill={accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, 64)}
           fontFamily={ctx.fonts.body}
           dominantBaseline="alphabetic"
         >

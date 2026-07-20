@@ -64,25 +64,19 @@ describe("auditDeck — clean deck baseline", () => {
   // it by construction), so any overlap finding here would be a real bug.
   //
   // `low-contrast` is deliberately *not* asserted zero here. Running the
-  // matrix while developing this check surfaced five distinct, genuine,
+  // matrix while developing this check surfaced three distinct, genuine,
   // pre-existing sources of borderline-WCAG decorative/semantic colour that
-  // this task did not introduce and is out of scope to remediate (a
-  // cross-cutting theme-polish pass, not "audit core") — documented in the
-  // task report, and locked in as explicit regression tests right below
-  // this block so the *specific*, understood cases stay understood rather
-  // than silently allowlisted:
-  //   1. `kpi.tsx`'s `deltaProps` — hardcoded universal red/green
-  //      up/down arrows, uncalibrated against per-theme backgrounds.
-  //   2. `code.tsx`'s `LINE_NUM_COLOR` — a hardcoded editor-gutter gray.
-  //   3. `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s
+  // this task did not introduce and was, at the time, out of scope to
+  // remediate (a cross-cutting theme-polish pass, not "audit core") —
+  // documented in the task report, and locked in as explicit regression
+  // tests right below this block so the *specific*, understood cases stay
+  // understood rather than silently allowlisted:
+  //   1. `code.tsx`'s `LINE_NUM_COLOR` — a hardcoded editor-gutter gray.
+  //   2. `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s
   //      `COPYRIGHT_FAINT` — an explicitly-adjudicated (see that file's own
   //      lengthy doc comment) cross-theme "copyright is the faintest text
   //      tier" convention.
-  //   4. `quote.tsx`'s decorative open-quote mark — the component's own
-  //      comment calls it decorative; it renders at full opacity in
-  //      `ctx.colors.accent`, so `DECORATIVE_ALPHA`'s opacity-based
-  //      exemption (correctly) doesn't catch it.
-  //   5. `architecture.tsx`'s layer title (`ctx.colors.primary` on
+  //   3. `architecture.tsx`'s layer title (`ctx.colors.primary` on
   //      `ctx.colors.panel ?? ctx.colors.surface`) — a *theme's own*
   //      internal colour pairing, not a hardcoded value; on `insight`
   //      specifically it computes to 4.40:1, essentially a rounding
@@ -91,6 +85,14 @@ describe("auditDeck — clean deck baseline", () => {
   // advisory audit is *supposed* to surface — asserting them away would
   // defeat the point. None of them appear in `examples/basic.json` (the
   // plan's actual clean-deck gate, asserted above).
+  //
+  // Two former members of this list — `kpi.tsx`'s hardcoded delta-arrow
+  // red/green and `quote.tsx`'s decorative open-quote mark — are gone as of
+  // the bench-driven fix round's B-group (Task 3): both are real defects,
+  // not out-of-scope theme polish after all, now fixed via `accessibleInk`.
+  // See the "B-group ink fixes" describe block below for the red→green
+  // re-pin (this block's own former assertions on them, `contrast.some(...)
+  // === true`, are exactly what got flipped).
   const THEMES = ["consulting", "insight", "tech", "campaign", "luxe"] as const
   for (const themeId of THEMES) {
     for (const [name, stressDeck] of Object.entries(STRESS_DECKS)) {
@@ -110,20 +112,8 @@ describe("auditDeck — clean deck baseline", () => {
 describe("auditDeck — understood pre-existing low-contrast sources (not audit bugs)", () => {
   // Each of these locks in *why* a specific, real component produces a
   // low-contrast finding under the stress matrix above, so a future change
-  // to any of these five colours shows up here instead of silently
+  // to any of these three colours shows up here instead of silently
   // vanishing from (or reappearing in) the broader regression net.
-  it("kpi.tsx's hardcoded delta-arrow red is borderline against a dark/saturated theme background", () => {
-    const ir = deck("luxe", [
-      {
-        type: "content",
-        heading: "kpi",
-        components: [{ type: "kpi_cards", items: [{ value: "1", label: "x", delta: "down" }] }],
-      },
-    ])
-    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#DC2626")).toBe(true)
-  })
-
   it("code.tsx's hardcoded line-number gray is borderline against a dark code-block background", () => {
     const ir = deck("consulting", [
       {
@@ -148,19 +138,6 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     ], { meta: { organization: "x", copyright: "© 2026 x" } })
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#8a8a86")).toBe(true)
-  })
-
-  it("quote.tsx's decorative open-quote mark renders at full opacity, so the opacity-based decorative exemption doesn't apply", () => {
-    const ir = deck("consulting", [
-      {
-        type: "content",
-        arrangement: "quote",
-        heading: "quote",
-        components: [{ type: "quote", text: "an attributed quotation" }],
-      },
-    ])
-    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => f.detail?.text === "“")).toBe(true)
   })
 
   it("architecture.tsx's theme-derived primary-on-panel pairing is a rounding distance under 4.5:1 on insight", () => {

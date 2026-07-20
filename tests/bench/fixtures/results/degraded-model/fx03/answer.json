@@ -11,6 +11,12 @@
         { "type": "kpi_cards", "items": [{ "value": "1", "label": "x", "delta": "down" }] }
       ]
     },
+    {
+      "type": "content",
+      "arrangement": "code",
+      "heading": "code",
+      "components": [{ "type": "code", "language": "ts", "code": "const x = 1\nconst y = 2" }]
+    },
     { "type": "ending", "heading": "Thanks" }
   ]
 }

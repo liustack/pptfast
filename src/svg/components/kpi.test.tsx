@@ -62,7 +62,16 @@ describe("kpi component", () => {
     })
   })
 
-  it('renders delta="up" arrow with fill="#16A34A"', () => {
+  it('renders delta="up" arrow with accessibleInk-guarded fill', () => {
+    // Bench-driven fix round, defect B: `deltaProps`'s hardcoded #16A34A
+    // green measures 3.00:1 against this suite's own synthetic
+    // `colors.surface` (#F4F4F4) — under the 20px arrow's 4.5:1 body floor
+    // (real math, not assumed: contrastRatio("#16A34A", "#F4F4F4") =
+    // 2.9964..., verified with `pnpm exec tsx`). `accessibleInk` falls back
+    // to `readableOn`'s neutral dark ink here — this was a real,
+    // reproducible instance of the same defect the fix addresses, not a
+    // synthetic-fixture-only quirk (see full-matrix-contrast.test.ts's
+    // "defect B real contrast fixes" 13-real-theme sweep for the rest).
     const { container } = svg(
       kpi.render(component, { x: 80, y: 200, w: 1120 }, ctx),
     )
@@ -74,7 +83,7 @@ describe("kpi component", () => {
     // First item has delta="up"
     const upArrow = deltaTexts[0]
     expect(upArrow.textContent).toBe("↑")
-    expect(upArrow.getAttribute("fill")).toBe("#16A34A")
+    expect(upArrow.getAttribute("fill")).toBe("#0A0E14")
   })
 
   it("measure returns 120", () => {

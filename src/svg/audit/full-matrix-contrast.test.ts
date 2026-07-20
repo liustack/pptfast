@@ -341,10 +341,13 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
 // specifically — deliberately *not* folded into `CONTENT_BODY` above.
 // `CONTENT_BODY` is shared by every content archetype across all 13 themes;
 // the file header already documents that kpi_cards was tried there once and
-// reverted because it drags in kpi.tsx's own unrelated, already-pinned
-// defect (`deck-audit.test.ts`'s "kpi.tsx's hardcoded delta-arrow red") into
-// every archetype that renders it via the shared row-layout component. This
-// defect is narrower: it lives only in `content-bento-panel.tsx`'s own
+// reverted because it used to drag kpi.tsx's own row-layout delta-arrow
+// defect into every archetype that renders it via the shared row-layout
+// component — historically a *different, already-pinned* defect from this
+// block's own (both are now fixed, see the "defect B real contrast fixes"
+// describe block below; this block's own targeted fixture below predates
+// that fix and stays as its own dedicated regression regardless). This
+// defect was narrower: it lived only in `content-bento-panel.tsx`'s own
 // `renderKpiCardBody` (bento's per-item card renderer — a different code
 // path from kpi.tsx's row layout), reachable only when a kpi_cards
 // component explodes into bento-panel's own cards. A fixture scoped to
@@ -488,6 +491,140 @@ describe("B-group ink fixes — full 13-theme sweep (bench-driven fix round, def
       expect(
         findings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "AFTER" || f.detail?.text === "BEFORE")),
       ).toEqual([])
+    })
+  }
+})
+
+// Bench-driven fix round, defect B (Task 3): the plan named five real
+// contrast defects for re-test once defect A's attribution fix landed.
+// Three of the five turned out to be genuinely real once measured against
+// a real render (not assumed from the plan's own theme-name shorthand) and
+// are fixed + netted here — `kpi.tsx`'s delta arrow (both its own row
+// layout *and* `content-bento-panel.tsx`'s separate bento-cell call site,
+// same shared `deltaProps` root cause, found failing on every one of the
+// 13 themes across the two call sites combined once actually swept, not
+// just the plan's named journal/enterprise), `numbered_cards.tsx`'s large
+// digit (classroom 2.09:1, academic 2.92:1 — both measured, matching the
+// plan's own "<3:1" description), and `quote.tsx`'s decorative open-quote
+// mark (heritage 2.61:1, plus consulting 1.45:1 — the latter already a
+// known pre-existing pin in `deck-audit.test.ts`, removed from that
+// "understood, not fixed" list now that it's actually fixed here).
+//
+// The other two named items were measured and found **not reproducible**
+// as new/un-adjudicated defects:
+//   - "journal chapter folio numerals": every one of journal's 8 curated
+//     chapter archetypes renders zero low-contrast findings except
+//     `fashion-chapter`, whose only numeral-shaped finding is its giant
+//     chapter-number watermark digit — already covered by this file's own
+//     `ALLOWLIST` entry above (`theme: "*"`, `ratioMin`/`ratioMax`
+//     1.2-1.8; journal's own measured ratio, 1.459, is literally recorded
+//     in that entry's own spread comment). Deliberately faint by design
+//     (`chapter-fashion-chapter.tsx`'s own header calls it decorative), not
+//     a "folio" (a small running chapter-number label) by any reasonable
+//     reading of that term — the watermark is a 420px full-bleed digit.
+//   - "classroom×fashion-chapter kicker": `fashion-chapter`'s actual kicker
+//     text (the small "CHAPTER 01" line, `fill={readableOn(colors.accent)}`
+//     — an editorial kicker in the conventional sense) renders zero
+//     findings for classroom, confirmed by direct measurement. This exact
+//     combination was the named subject of an *earlier* fix
+//     (`themes/definitions.ts`'s own history comment: `readableOn`'s W8
+//     two-ink-comparison fix cleared classroom's fashion-chapter text,
+//     re-measured 8.19:1). The only finding under this combo is, again,
+//     the same already-allowlisted watermark digit (classroom's own ratio,
+//     1.537, also recorded in the `ALLOWLIST` entry's spread comment) —
+//     not the kicker, and not a new defect.
+// Both are documented here rather than silently dropped from the plan's own
+// checklist — see the task report for the full measurement.
+describe("defect B real contrast fixes (bench-driven fix round, Task 3)", () => {
+  const KPI_UP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [{ type: "kpi_cards", items: [{ value: "1", label: "x", delta: "up" }] }],
+  } as Slide
+  const KPI_DOWN_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [{ type: "kpi_cards", items: [{ value: "1", label: "x", delta: "down" }] }],
+  } as Slide
+  const BENTO_KPI_UP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "bento-panel",
+    components: [
+      {
+        type: "kpi_cards",
+        items: [
+          { value: "13", label: "one", delta: "up" },
+          { value: "24", label: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const BENTO_KPI_DOWN_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "bento-panel",
+    components: [
+      {
+        type: "kpi_cards",
+        items: [
+          { value: "13", label: "one", delta: "down" },
+          { value: "24", label: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const NUMBERED_CARDS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [
+      {
+        type: "numbered_cards",
+        items: [
+          { title: "First", text: "one" },
+          { title: "Second", text: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const QUOTE_SLIDE: Slide = {
+    type: "content",
+    arrangement: "quote",
+    heading: HEADING,
+    components: [{ type: "quote", text: "an attributed quotation", attribution: "Someone" }],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: kpi.tsx's up-delta arrow clears contrast against its own card surface`, () => {
+      const findings = auditFindings(deckFor(themeId, KPI_UP_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↑")).toEqual([])
+    })
+
+    it(`${themeId}: kpi.tsx's down-delta arrow clears contrast against its own card surface`, () => {
+      const findings = auditFindings(deckFor(themeId, KPI_DOWN_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↓")).toEqual([])
+    })
+
+    it(`${themeId}: content-bento-panel.tsx's up-delta arrow clears contrast against its own cell surface`, () => {
+      const findings = auditFindings(deckFor(themeId, BENTO_KPI_UP_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↑")).toEqual([])
+    })
+
+    it(`${themeId}: content-bento-panel.tsx's down-delta arrow clears contrast against its own cell surface`, () => {
+      const findings = auditFindings(deckFor(themeId, BENTO_KPI_DOWN_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "↓")).toEqual([])
+    })
+
+    it(`${themeId}: numbered_cards.tsx's large digit clears contrast against the page background`, () => {
+      const findings = auditFindings(deckFor(themeId, NUMBERED_CARDS_SLIDE))
+      expect(
+        findings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "01" || f.detail?.text === "02")),
+      ).toEqual([])
+    })
+
+    it(`${themeId}: quote.tsx's decorative open-quote mark clears contrast against the page background`, () => {
+      const findings = auditFindings(deckFor(themeId, QUOTE_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "“")).toEqual([])
     })
   }
 })

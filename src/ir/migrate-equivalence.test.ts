@@ -76,11 +76,22 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // codebase produced on the same deck, same capture method as the SVG/
       // PPTX goldens above (base commit 0511b8c, PptxIRSchema.parse +
       // auditDeck, no migration involved on that side — it's the pre-rename
-      // deck audited by pre-rename code). annualReviewPreset's two low-
-      // contrast findings are a pre-existing fixture property (kpi_cards
-      // delta arrow contrast), not something this rename could have
-      // introduced or fixed — asserted here precisely so a future
-      // regression in either direction gets caught.
+      // deck audited by pre-rename code) — asserted here precisely so a
+      // future regression in either direction gets caught.
+      //
+      // Recaptured (bench-driven fix round, defect B, Task 3):
+      // annualReviewPreset used to carry two low-contrast findings (a
+      // kpi_cards up-delta arrow, `#16A34A` against `#FFFFFF` at 3.30:1,
+      // duplicated across two cards) — a real defect this fixture happened
+      // to bake in from before the fix, not a migration artifact. All three
+      // golden files (`.svg`/`.audit`/`.pptx-zip`) were regenerated through
+      // this exact test's own code path post-fix; a targeted diff against
+      // the pre-recapture goldens confirmed the *only* change anywhere in
+      // any of the three is `#16A34A` → `#0A0E14` at the two arrow glyphs
+      // (`fill`/`srgbClr val` respectively) plus the now-empty `findings`
+      // array — nothing else drifted. See `kpi.tsx`'s own `deltaColor`
+      // comment and `full-matrix-contrast.test.ts`'s "defect B real
+      // contrast fixes" sweep for the fix itself.
       it("audits byte-identical findings to the base-commit (pre-rename) capture", () => {
         const goldenAudit = readGoldenJson<ReturnType<typeof auditDeck>>(`${name}.audit`)
         const migratedAudit = auditDeck(v4)
