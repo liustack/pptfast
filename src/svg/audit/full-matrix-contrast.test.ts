@@ -75,13 +75,13 @@ beforeAll(() => {
 const HEADING = "示例标题：验证对比度矩阵"
 const SUBHEADING = "示例副标题：用于穷举扫描的**所见即所得**文案"
 
-function deckFor(themeId: string, slide: Slide): PptxIR {
+function deckFor(themeId: string, slide: Slide, images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
     version: "4",
     filename: "full-matrix-contrast-fixture",
     theme: { id: themeId },
     meta: {},
-    assets: { images: {} },
+    assets: { images },
     slides: [slide],
   }
 }
@@ -627,6 +627,102 @@ describe("defect B real contrast fixes (bench-driven fix round, Task 3)", () => 
       expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "“")).toEqual([])
     })
   }
+})
+
+// Bench-driven fix round, Task 4 review m2 (routed minor): the two guards
+// dc2183f (defect B, Task 3) landed above —
+// `accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, fontSize)` in
+// both `numbered-cards.tsx` and `quote.tsx` — were only proven against a
+// content slide with *no* `slide.background` override, where `ctx.defaultBg`
+// resolves straight to `themeDefaultBg` (`FullSlideSvg.tsx`). Task 3's own
+// review verified the same guard also holds on the *asset-scrim* branch (a
+// content slide with `background: { kind: "asset", ... }`, where
+// `ctx.defaultBg` instead flows through `resolveOverrideBackgroundHex`'s
+// asset case — fixed in an earlier task, 03976da, to resolve to
+// `paintedFallback`/`themeDefaultBg`, the color `Background.tsx`'s
+// auto-scrim actually paints, not `tokens.colors.surface`) across all 13
+// themes — but only with throwaway, uncommitted probes, leaving this branch
+// without a durable regression net. `paintedFallback` currently equals
+// `themeDefaultBg` for every theme (see the two doc comments cited above),
+// so this describe block's per-theme pass/fail outcomes are expected to
+// match the plain-background block right above it byte-for-byte — the
+// point isn't a *different* result, it's guarding the *different code path*
+// that produces it: a regression in `resolveOverrideBackgroundHex`'s asset
+// branch (e.g. reverting `paintedFallback` back to `surfaceFallback`) would
+// slip past every test above, none of which ever sets `slide.background`,
+// while this block would catch it immediately.
+describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task 4 review m2)", () => {
+  // Minimal-but-real data URI, same pattern already established for a
+  // resolved asset background in this suite's sibling file
+  // (`deck-audit.test.ts`'s own asset/scrim fixtures) — `auditDeck` never
+  // decodes pixel dimensions off it, only checks `src` truthiness
+  // (`hasBgImage`, `ImagePages.tsx`/`ToneAdaptiveContent`'s own asset-branch
+  // guard), so a tiny placeholder is sufficient and does not skew geometry.
+  const ASSET_BG_IMAGES: PptxIR["assets"]["images"] = { bg: { src: "data:image/png;base64,AAAA" } }
+  const NUMBERED_CARDS_ASSET_BG_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    background: { kind: "asset", asset_id: "bg" },
+    components: [
+      {
+        type: "numbered_cards",
+        items: [
+          { title: "First", text: "one" },
+          { title: "Second", text: "two" },
+        ],
+      },
+    ],
+  } as Slide
+  const QUOTE_ASSET_BG_SLIDE: Slide = {
+    type: "content",
+    arrangement: "quote",
+    heading: HEADING,
+    background: { kind: "asset", asset_id: "bg" },
+    components: [{ type: "quote", text: "an attributed quotation", attribution: "Someone" }],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: numbered_cards.tsx's large digit clears contrast against the asset-scrim background`, () => {
+      const findings = auditFindings(deckFor(themeId, NUMBERED_CARDS_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+      expect(
+        findings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "01" || f.detail?.text === "02")),
+      ).toEqual([])
+    })
+
+    it(`${themeId}: quote.tsx's decorative open-quote mark clears contrast against the asset-scrim background`, () => {
+      const findings = auditFindings(deckFor(themeId, QUOTE_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "“")).toEqual([])
+    })
+  }
+
+  // Distinguishing assertion (red-pre-fix-by-construction, same discipline
+  // FullSlideSvg.test.tsx's own 03976da regression uses, and verified red by
+  // literally reverting FullSlideSvg.tsx's `defaultBg` asset branch back to
+  // `tokens.colors.surface` and re-running this file: academic is the theme
+  // that flips under that revert, not every theme — `accessibleInk`'s
+  // fallback ink can coincidentally clear both candidate backgrounds for
+  // some themes, so this is an empirically-chosen witness, not a guessed
+  // one). `colors.accent` ("#00A878") measures 2.92:1 against academic's
+  // real content-slide background ("#FAFAF6", `defaultBackgrounds.content`
+  // — the exact value this file's own "defect B real contrast fixes" block
+  // above cites for the plain-background case) but 3.06:1 against
+  // `colors.surface` ("#FFFFFF", the pre-03976da wrong asset-branch
+  // fallback) — straddling the 3:1 large-text floor in exactly the
+  // direction that makes a wrong ink decision (measured against surface)
+  // disagree with what the asset-scrim branch actually paints (the real
+  // scrim, themeDefaultBg): `accessibleInk` would wrongly keep the raw
+  // accent color, and the audit — which independently reads the real
+  // painted scrim, not the ink decision's own background — would catch it.
+  it("regression lock: academic's asset-scrim ctx.defaultBg agrees with the real painted scrim, not colors.surface (the pre-03976da wrong fallback)", () => {
+    expect(contrastRatio("#00A878", "#FAFAF6")).toBeLessThan(3)
+    expect(contrastRatio("#00A878", "#FFFFFF")).toBeGreaterThanOrEqual(3)
+    const numberedFindings = auditFindings(deckFor("academic", NUMBERED_CARDS_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+    expect(
+      numberedFindings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "01" || f.detail?.text === "02")),
+    ).toEqual([])
+    const quoteFindings = auditFindings(deckFor("academic", QUOTE_ASSET_BG_SLIDE, ASSET_BG_IMAGES))
+    expect(quoteFindings.filter((f) => f.code === "low-contrast" && f.detail?.text === "“")).toEqual([])
+  })
 })
 
 // Dedicated 13-theme colors.muted contrast lock (post-v0.3 W8 fix round,
