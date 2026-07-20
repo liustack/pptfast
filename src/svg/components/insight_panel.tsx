@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 import type { SvgComponent } from "./types"
 
 type InsightPanelComponent = Extract<Component, { type: "insight_panel" }>
@@ -116,13 +117,22 @@ export const insightPanel: SvgComponent<InsightPanelComponent> = {
           {...(ctx.colors.cardStroke ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 } : {})}
         />
         <path d={roundedTopBarPath(box.x, box.y, box.w, BAR_H, r)} fill={ctx.colors.accent} />
+        {/* Arc-bbox root fix (fix/arc-bbox): `deck-audit.ts`'s
+            `pathBoundingBox` used to mismeasure this title's real background
+            (the panel's own `colors.surface` rect above) as the accent bar's
+            own fill — an SVG-arc-grammar bug in the audit tool, not this
+            component — which made an unguarded `colors.accent` title read as
+            a trivial 1:1-on-itself "pass" on every theme. Fixed audit now
+            measures the real (accent-on-surface) pair, which genuinely fails
+            4.5:1 on 8/13 themes — same `accessibleInk` guard `roadmap.tsx`'s
+            badge digit already uses for an analogous unguarded-fill defect. */}
         <text
           data-truncated={layout.title.truncated ? "1" : undefined}
           x={box.x + PAD_X}
           y={titleBaseline}
           fontSize={layout.title.fontSize}
           fontWeight="700"
-          fill={ctx.colors.accent}
+          fill={accessibleInk(ctx.colors.accent, ctx.colors.surface, layout.title.fontSize)}
           fontFamily={ctx.fonts.heading}
           dominantBaseline="alphabetic"
         >

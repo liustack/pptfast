@@ -269,9 +269,10 @@ interface PaintedShape {
 }
 
 /** Axis-aligned rect containment — shared by `<rect>`/`<image>`/`<path>`
- * (the last via `pathBoundingBox`'s own over-approximation, see its doc
- * comment) — every one of those three is checked against its bounding box,
- * never an exact outline. */
+ * (the last via `pathBoundingBox`'s own bbox, see its doc comment) — every
+ * one of those three is checked against its bounding box, never an exact
+ * outline, even where the bbox itself is now tight/exact (line and arc
+ * geometry) rather than an over-approximation. */
 function rectShape(x: number, y: number, w: number, h: number, fill: string | null): PaintedShape {
   return { fill, contains: (px, py) => px >= x && px <= x + w && py >= y && py <= y + h }
 }
@@ -293,49 +294,467 @@ function ellipseShape(cx: number, cy: number, rx: number, ry: number, fill: stri
   }
 }
 
+/** A single (x, y) sample fed into `pathBoundingBoxByGrammar`'s running
+ * min/max accumulator — never rendered or exposed, just the shared shape
+ * `arcExtents`/the cubic/quadratic extrema helpers hand back. */
+interface PathPoint {
+  x: number
+  y: number
+}
+
 /**
- * Approximate a `<path>`'s bounding box by extracting every numeric
- * coordinate token from its `d` attribute and taking the min/max — not a
- * true path-geometry bbox (a concave polygon's bbox covers area outside the
- * shape; a curve's control points can extend past the curve itself), but a
- * simple, safe over-approximation.
- *
- * This over-approximation used to be assumed harmless renderer-wide ("every
- * filled path is either low-opacity decoration or the one exact case") —
- * wrong: `motif-campaign-motif.tsx`'s crayon-stroke paths are large,
- * `>=MIN_BG_OPACITY`-effective-opacity, `#`-prefixed-fill paths whose sparse
- * scattered-diamond geometry this function's min/max bbox wildly
- * over-covers, and were it walked, would have registered as spurious opaque
- * background regions (reviewer-measured 7-9 extra per campaign cover). The
- * actual fix is `findContrastIssues`'s `data-decor` exclusion (see its own
- * doc comment) — every motif/decor subtree (`FullSlideSvg.tsx`'s `<g
- * data-decor>` wrapper around `themeDef.motif`'s output) is skipped for
- * region-collection purposes entirely, so whatever this function returns for
- * a path inside one never reaches a region. Outside a decor subtree, the
- * only large, opaque `<path>` fill this renderer draws as a real background
- * block is `cover-split-diagonal.tsx`'s diagonal-cut colour panel, `"M 0,0 L
- * 560,0 L 460,720 L 0,720 Z"` — a straight-line polygon whose vertices *are*
- * its extremes, for which this bbox is exact, not an approximation.
- *
- * **Bench-driven fix round (defect A) interaction, recorded not fixed:**
- * `insight_panel.tsx`/`roadmap.tsx`'s identical `roundedTopBarPath` helper
- * emits an arc (`A rx ry x-axis-rotation large-arc-flag sweep-flag x y`) —
- * this function has no path-grammar awareness at all, so it blindly pairs
- * the arc's radius/rotation/flag numbers as if they were more (x,y)
- * coordinates, inflating a ~6px-tall accent bar's computed bbox to roughly
- * the whole page (empirically confirmed while building this fix: a real
- * `insight_panel` render's bar bbox came back ~1184×1182, dwarfing the
- * 1280×720 canvas). Removing `MIN_BG_REGION_AREA` from path *attribution*
- * (this task's own fix, see that constant's doc comment) does not touch
- * this bug either way — the bogus bbox already clears 8,000px² by roughly
- * two orders of magnitude, floor or no floor, so it was already winning
- * `backgroundAt` lookups for everything painted after it, pre-fix and
- * post-fix alike. Fixing this needs real arc flattening (path-command-aware
- * parsing), a separate, larger, recorded backlog item — out of scope here,
- * same "document the tool limitation, don't chase it" precedent this
- * function's own `data-decor` paragraph above already set.
+ * Endpoint -> center parameterization for one SVG `A`/`a` arc command, per
+ * the W3C SVG 1.1 implementation notes appendix F.6.5 — generalized for a
+ * nonzero x-axis-rotation. (This renderer's own arcs, `roundedTopBarPath`'s
+ * corner rounding, never carry one — `svg2pptx/path.ts`'s sibling
+ * conversion leans on that fact and assumes rotation 0 — but this function
+ * is a measuring instrument auditing arbitrary-ish `d` strings, not the
+ * renderer itself, so it does the full spec math instead of inheriting that
+ * shortcut.) Returns `null` for a degenerate arc (zero radius, or start ===
+ * end) — the caller treats that as a plain line to the endpoint, same as a
+ * real SVG renderer would.
  */
-function pathBoundingBox(d: string): { x: number; y: number; w: number; h: number } | null {
+function arcToCenter(
+  x1: number,
+  y1: number,
+  rx0: number,
+  ry0: number,
+  rotDeg: number,
+  largeArc: number,
+  sweep: number,
+  x2: number,
+  y2: number,
+): { cx: number; cy: number; rx: number; ry: number; phi: number; theta1: number; dTheta: number } | null {
+  if (x1 === x2 && y1 === y2) return null
+  let rx = Math.abs(rx0)
+  let ry = Math.abs(ry0)
+  if (rx === 0 || ry === 0) return null
+  const phi = ((rotDeg % 360) * Math.PI) / 180
+  const cosPhi = Math.cos(phi)
+  const sinPhi = Math.sin(phi)
+  const dx2 = (x1 - x2) / 2
+  const dy2 = (y1 - y2) / 2
+  const x1p = cosPhi * dx2 + sinPhi * dy2
+  const y1p = -sinPhi * dx2 + cosPhi * dy2
+  // Scale up radii if they're too small to span the chord (F.6.6.2).
+  const lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry)
+  if (lambda > 1) {
+    const s = Math.sqrt(lambda)
+    rx *= s
+    ry *= s
+  }
+  const sign = largeArc !== sweep ? 1 : -1
+  const num = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p
+  const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p
+  const co = den === 0 ? 0 : sign * Math.sqrt(Math.max(0, num / den))
+  const cxp = (co * rx * y1p) / ry
+  const cyp = (co * -ry * x1p) / rx
+  const cx = cosPhi * cxp - sinPhi * cyp + (x1 + x2) / 2
+  const cy = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2
+  const angleBetween = (ux: number, uy: number, vx: number, vy: number): number => {
+    const dot = ux * vx + uy * vy
+    const len = Math.sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy))
+    let a = Math.acos(Math.min(1, Math.max(-1, len === 0 ? 1 : dot / len)))
+    if (ux * vy - uy * vx < 0) a = -a
+    return a
+  }
+  const ux = (x1p - cxp) / rx
+  const uy = (y1p - cyp) / ry
+  const vx = (-x1p - cxp) / rx
+  const vy = (-y1p - cyp) / ry
+  const theta1 = angleBetween(1, 0, ux, uy)
+  let dTheta = angleBetween(ux, uy, vx, vy)
+  if (sweep === 0 && dTheta > 0) dTheta -= 2 * Math.PI
+  if (sweep === 1 && dTheta < 0) dTheta += 2 * Math.PI
+  return { cx, cy, rx, ry, phi, theta1, dTheta }
+}
+
+/** True when angle `theta` (radians) lies on the swept arc running from
+ * `theta1` to `theta1 + dTheta` (either direction, `dTheta`'s sign says
+ * which) — decides whether one of the ellipse's axis-extremal angles
+ * (`arcExtents` below) actually falls on the drawn segment, not just
+ * somewhere on the ellipse's untouched remainder. */
+function angleOnSweep(theta: number, theta1: number, dTheta: number): boolean {
+  let delta = (theta - theta1) % (2 * Math.PI)
+  if (dTheta >= 0) {
+    if (delta < 0) delta += 2 * Math.PI
+    return delta <= dTheta
+  }
+  if (delta > 0) delta -= 2 * Math.PI
+  return delta >= dTheta
+}
+
+/**
+ * Tight extent points for one `A`/`a` arc segment: both endpoints plus
+ * whichever of the ellipse's (at most 4) axis-extremal points actually lie
+ * on the swept portion (`angleOnSweep`) — the standard endpoint ->
+ * center -> extremal-angle approach most `svg-path-bbox`-style
+ * implementations converge on (SVG 1.1 appendix F.6.4's parameterization,
+ * `x(θ)=cx+rx·cosθ·cosφ−ry·sinθ·sinφ`, `y(θ)=cy+rx·cosθ·sinφ+ry·sinθ·cosφ`,
+ * differentiated and set to 0 for each axis). Endpoints are always included
+ * — a short sweep can miss every extremal angle entirely (`roundedTopBarPath`'s
+ * own quarter-circle corners are exactly that case). Falls back to just the
+ * endpoint for a degenerate arc (see `arcToCenter`).
+ */
+function arcExtents(
+  x1: number,
+  y1: number,
+  rx: number,
+  ry: number,
+  rotDeg: number,
+  largeArc: number,
+  sweep: number,
+  x2: number,
+  y2: number,
+): PathPoint[] {
+  const c = arcToCenter(x1, y1, rx, ry, rotDeg, largeArc, sweep, x2, y2)
+  if (!c) return [{ x: x2, y: y2 }]
+  const { cx, cy, rx: arx, ry: ary, phi, theta1, dTheta } = c
+  const cosPhi = Math.cos(phi)
+  const sinPhi = Math.sin(phi)
+  const pointAt = (theta: number): PathPoint => ({
+    x: cx + arx * Math.cos(theta) * cosPhi - ary * Math.sin(theta) * sinPhi,
+    y: cy + arx * Math.cos(theta) * sinPhi + ary * Math.sin(theta) * cosPhi,
+  })
+  const thetaX = Math.atan2(-ary * sinPhi, arx * cosPhi)
+  const thetaY = Math.atan2(ary * cosPhi, arx * sinPhi)
+  const pts: PathPoint[] = [
+    { x: x1, y: y1 },
+    { x: x2, y: y2 },
+  ]
+  for (const theta of [thetaX, thetaX + Math.PI, thetaY, thetaY + Math.PI]) {
+    if (angleOnSweep(theta, theta1, dTheta)) pts.push(pointAt(theta))
+  }
+  return pts
+}
+
+/** Roots (in `(0, 1)`) of the derivative of a single cubic-Bezier axis
+ * component `p0..p3` — at most 2, from the quadratic `B'(t)=0`. Shared by
+ * `C` and `S` (an `S` command is just a `C` whose first control point is a
+ * reflection, resolved by the caller before this runs). */
+function cubicExtremaT(p0: number, p1: number, p2: number, p3: number): number[] {
+  const a = -p0 + 3 * p1 - 3 * p2 + p3
+  const b = 2 * (p0 - 2 * p1 + p2)
+  const c = p1 - p0
+  const roots: number[] = []
+  if (Math.abs(a) < 1e-9) {
+    if (Math.abs(b) > 1e-9) roots.push(-c / b)
+  } else {
+    const disc = b * b - 4 * a * c
+    if (disc >= 0) {
+      const sq = Math.sqrt(disc)
+      roots.push((-b + sq) / (2 * a), (-b - sq) / (2 * a))
+    }
+  }
+  return roots.filter((t) => t > 0 && t < 1)
+}
+
+function cubicAt(p0: number, p1: number, p2: number, p3: number, t: number): number {
+  const mt = 1 - t
+  return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3
+}
+
+/** Root (in `(0, 1)`) of the derivative of a single quadratic-Bezier axis
+ * component — at most 1, `B'(t)` is linear. Shared by `Q` and `T` (same
+ * reflection relationship as `C`/`S`, one degree lower). */
+function quadExtremaT(p0: number, p1: number, p2: number): number[] {
+  const denom = p0 - 2 * p1 + p2
+  if (Math.abs(denom) < 1e-9) return []
+  const t = (p0 - p1) / denom
+  return t > 0 && t < 1 ? [t] : []
+}
+
+function quadAt(p0: number, p1: number, p2: number, t: number): number {
+  const mt = 1 - t
+  return mt * mt * p0 + 2 * mt * t * p1 + t * t * p2
+}
+
+/** Tokenize a `d` string into command letters and numeric operands.
+ * Positionally aware for `A`/`a`: the SVG grammar (`arc-argument ::= number
+ * comma-wsp? number comma-wsp? number comma-wsp flag comma-wsp? flag
+ * comma-wsp? coordinate-pair`) defines `large-arc-flag`/`sweep-flag` as a
+ * single `"0"` or `"1"` character each, which real authoring tools (and
+ * this codebase's own icon catalog, `src/icons.ts` — generated straight
+ * from lucide's upstream `d` strings, see that file's header) routinely
+ * glue to each other and to the following coordinate with no separator
+ * (`"a1 1 0 001 1"` = rx 1 ry 1 rot 0 large-arc-flag 0 sweep-flag 0 x 1
+ * y 1, not one number `001`). A naive greedy-number regex — what this
+ * function used to be, and what `svg2pptx/path.ts`'s own sibling tokenizer
+ * still is, kept as a separate copy rather than a shared import since
+ * `src/svg/audit` doesn't otherwise depend on `src/pptx` and this file's
+ * layering stays one-directional (IR/SVG -> PPTX, never the reverse) —
+ * swallows the glued digits as a single multi-digit number and silently
+ * desyncs every operand after it, which previously produced a wrong,
+ * non-null bbox for 16 real paths in `src/icons.ts` (not a hypothetical:
+ * confirmed via `pnpm vitest` against the shipped catalog while building
+ * this fix). This walks `d` char-by-char instead of one big `match()`,
+ * tracking the active command and its argument position (mod 7, an arc's
+ * own repeated-group width) so the 4th/5th argument of every `A`/`a` group
+ * is read as exactly one flag character, whatever is glued on either side
+ * of it — the same technique every real SVG path parser uses. */
+function tokenizePathD(d: string): string[] {
+  const tokens: string[] = []
+  const len = d.length
+  let i = 0
+  let cmd = ""
+  // Position within the current command's argument list, mod 7 (an arc's
+  // own repeated-group width) — only consulted for A/a, harmless noise for
+  // every other command since none of them ever compares it to 3/4.
+  let argIndex = 0
+  const isSep = (c: string) => c === " " || c === "\t" || c === "\n" || c === "\r" || c === ","
+  const skipSep = () => {
+    while (i < len && isSep(d[i])) i++
+  }
+  const numberRe = /-?\d*\.?\d+(?:e[-+]?\d+)?/iy
+  while (i < len) {
+    skipSep()
+    if (i >= len) break
+    const ch = d[i]
+    if (/[a-zA-Z]/.test(ch)) {
+      tokens.push(ch)
+      cmd = ch
+      argIndex = 0
+      i++
+      continue
+    }
+    const isArc = cmd === "A" || cmd === "a"
+    if (isArc && (argIndex === 3 || argIndex === 4) && (ch === "0" || ch === "1")) {
+      tokens.push(ch)
+      i++
+      argIndex++
+      continue
+    }
+    numberRe.lastIndex = i
+    const m = numberRe.exec(d)
+    if (!m || m.index !== i || m[0] === "") {
+      // Not a flag, not a number — malformed input. Push the single
+      // character through so the grammar walker's own `num()` guard
+      // throws and `pathBoundingBox` falls back to the safe token
+      // min/max, the same "honest, never-crash" contract as before.
+      tokens.push(ch)
+      i++
+      continue
+    }
+    tokens.push(m[0])
+    i = numberRe.lastIndex
+    argIndex++
+    if (isArc && argIndex === 7) argIndex = 0
+  }
+  return tokens
+}
+
+/**
+ * Grammar-aware path bounding box: walks `d` command-by-command (`M`/`L`/
+ * `H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, both absolute and relative case) instead
+ * of blindly pairing every numeric token as a coordinate — so an arc's own
+ * `rx`/`ry`/`x-axis-rotation`/flag numbers never get mistaken for more
+ * `(x, y)` points (see `pathBoundingBox`'s own doc comment for the defect
+ * this fixes). Line commands are exact by construction (an endpoint the
+ * line actually visits). Curve commands (`C`/`S`/`Q`/`T`) use the exact
+ * derivative-root extrema (`cubicExtremaT`/`quadExtremaT`) — a Bezier's
+ * control points can lie outside the curve itself, so endpoints alone would
+ * under-cover. Arcs use `arcExtents` (endpoint -> center parameterization,
+ * SVG 1.1 appendix F.6.4/F.6.5).
+ *
+ * Returns `null` — never throws — the moment the walk hits anything it
+ * can't make sense of (an unrecognized command letter, a command that runs
+ * out of operands mid-grammar, `d` not starting with `M`/`m`): the caller
+ * (`pathBoundingBox`) falls back to the old blind token min/max for that
+ * case, safer to over-approximate on genuinely malformed input than to
+ * guess wrong about what a broken `d` string was trying to draw.
+ */
+function pathBoundingBoxByGrammar(d: string): { x: number; y: number; w: number; h: number } | null {
+  const tokens = tokenizePathD(d)
+  if (tokens.length === 0) return null
+  let i = 0
+  let cmd = ""
+  let cx = 0
+  let cy = 0
+  let sx = 0
+  let sy = 0
+  // Reflection state for S/T's implicit control point — cleared the moment
+  // a non-C/S (or non-Q/T) command runs, per spec: the reflection only
+  // applies immediately after the matching curve family.
+  let lastCubicCtrl: PathPoint | null = null
+  let lastQuadCtrl: PathPoint | null = null
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  const see = (x: number, y: number) => {
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+  const num = (): number => {
+    const t = tokens[i++]
+    if (t === undefined || /[a-zA-Z]/.test(t)) throw new Error("malformed")
+    const n = Number(t)
+    if (!Number.isFinite(n)) throw new Error("malformed")
+    return n
+  }
+  try {
+    while (i < tokens.length) {
+      if (/[a-zA-Z]/.test(tokens[i])) {
+        cmd = tokens[i++]
+      } else if (cmd === "M") {
+        // Implicit extra coordinate pairs after M/m are lineto, not more
+        // moveto, per spec — the one case a repeated command letter isn't
+        // just "keep using the last one".
+        cmd = "L"
+      } else if (cmd === "m") {
+        cmd = "l"
+      } else if (cmd === "") {
+        throw new Error("malformed") // a numeric token before any command
+      }
+      const rel = cmd === cmd.toLowerCase()
+      const upper = cmd.toUpperCase()
+      if (upper !== "C" && upper !== "S") lastCubicCtrl = null
+      if (upper !== "Q" && upper !== "T") lastQuadCtrl = null
+      switch (upper) {
+        case "M": {
+          const x = num()
+          const y = num()
+          cx = rel ? cx + x : x
+          cy = rel ? cy + y : y
+          sx = cx
+          sy = cy
+          see(cx, cy)
+          break
+        }
+        case "L": {
+          const x = num()
+          const y = num()
+          cx = rel ? cx + x : x
+          cy = rel ? cy + y : y
+          see(cx, cy)
+          break
+        }
+        case "H": {
+          const x = num()
+          cx = rel ? cx + x : x
+          see(cx, cy)
+          break
+        }
+        case "V": {
+          const y = num()
+          cy = rel ? cy + y : y
+          see(cx, cy)
+          break
+        }
+        case "Z": {
+          cx = sx
+          cy = sy
+          break
+        }
+        case "C": {
+          const x1 = num()
+          const y1 = num()
+          const x2 = num()
+          const y2 = num()
+          const x = num()
+          const y = num()
+          const ax1: number = rel ? cx + x1 : x1
+          const ay1: number = rel ? cy + y1 : y1
+          const ax2: number = rel ? cx + x2 : x2
+          const ay2: number = rel ? cy + y2 : y2
+          const ex = rel ? cx + x : x
+          const ey = rel ? cy + y : y
+          see(ex, ey)
+          for (const t of cubicExtremaT(cx, ax1, ax2, ex)) see(cubicAt(cx, ax1, ax2, ex, t), cubicAt(cy, ay1, ay2, ey, t))
+          for (const t of cubicExtremaT(cy, ay1, ay2, ey)) see(cubicAt(cx, ax1, ax2, ex, t), cubicAt(cy, ay1, ay2, ey, t))
+          lastCubicCtrl = { x: ax2, y: ay2 }
+          cx = ex
+          cy = ey
+          break
+        }
+        case "S": {
+          const x2 = num()
+          const y2 = num()
+          const x = num()
+          const y = num()
+          const ax2: number = rel ? cx + x2 : x2
+          const ay2: number = rel ? cy + y2 : y2
+          const ex = rel ? cx + x : x
+          const ey = rel ? cy + y : y
+          const ax1: number = lastCubicCtrl ? 2 * cx - lastCubicCtrl.x : cx
+          const ay1: number = lastCubicCtrl ? 2 * cy - lastCubicCtrl.y : cy
+          see(ex, ey)
+          for (const t of cubicExtremaT(cx, ax1, ax2, ex)) see(cubicAt(cx, ax1, ax2, ex, t), cubicAt(cy, ay1, ay2, ey, t))
+          for (const t of cubicExtremaT(cy, ay1, ay2, ey)) see(cubicAt(cx, ax1, ax2, ex, t), cubicAt(cy, ay1, ay2, ey, t))
+          lastCubicCtrl = { x: ax2, y: ay2 }
+          cx = ex
+          cy = ey
+          break
+        }
+        case "Q": {
+          const x1 = num()
+          const y1 = num()
+          const x = num()
+          const y = num()
+          const ax1: number = rel ? cx + x1 : x1
+          const ay1: number = rel ? cy + y1 : y1
+          const ex = rel ? cx + x : x
+          const ey = rel ? cy + y : y
+          see(ex, ey)
+          for (const t of quadExtremaT(cx, ax1, ex)) see(quadAt(cx, ax1, ex, t), quadAt(cy, ay1, ey, t))
+          for (const t of quadExtremaT(cy, ay1, ey)) see(quadAt(cx, ax1, ex, t), quadAt(cy, ay1, ey, t))
+          lastQuadCtrl = { x: ax1, y: ay1 }
+          cx = ex
+          cy = ey
+          break
+        }
+        case "T": {
+          const x = num()
+          const y = num()
+          const ax1: number = lastQuadCtrl ? 2 * cx - lastQuadCtrl.x : cx
+          const ay1: number = lastQuadCtrl ? 2 * cy - lastQuadCtrl.y : cy
+          const ex = rel ? cx + x : x
+          const ey = rel ? cy + y : y
+          see(ex, ey)
+          for (const t of quadExtremaT(cx, ax1, ex)) see(quadAt(cx, ax1, ex, t), quadAt(cy, ay1, ey, t))
+          for (const t of quadExtremaT(cy, ay1, ey)) see(quadAt(cx, ax1, ex, t), quadAt(cy, ay1, ey, t))
+          lastQuadCtrl = { x: ax1, y: ay1 }
+          cx = ex
+          cy = ey
+          break
+        }
+        case "A": {
+          const rx = num()
+          const ry = num()
+          const rot = num()
+          const largeArc = num()
+          const sweep = num()
+          const x = num()
+          const y = num()
+          const ex = rel ? cx + x : x
+          const ey = rel ? cy + y : y
+          for (const p of arcExtents(cx, cy, rx, ry, rot, largeArc, sweep, ex, ey)) see(p.x, p.y)
+          cx = ex
+          cy = ey
+          break
+        }
+        default:
+          throw new Error("malformed")
+      }
+    }
+  } catch {
+    return null
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+    return null
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+/** The pre-fix behavior, kept only as `pathBoundingBox`'s fallback for `d`
+ * strings `pathBoundingBoxByGrammar` can't parse: extract every numeric
+ * token from `d` and take the min/max, with no notion of which numbers are
+ * coordinates versus an arc's radius/rotation/flags. A safe
+ * over-approximation for the malformed-input case it's now scoped to —
+ * never an under-approximation, never a crash. */
+function pathBoundingBoxByTokenMinMax(d: string): { x: number; y: number; w: number; h: number } | null {
   const nums = d.match(/-?\d*\.?\d+(?:e[+-]?\d+)?/gi)
   if (!nums || nums.length < 2) return null
   let minX = Infinity
@@ -354,6 +773,52 @@ function pathBoundingBox(d: string): { x: number; y: number; w: number; h: numbe
     return null
   }
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+/**
+ * A `<path>`'s bounding box, for `PaintedShape`/`BgRegion` purposes —
+ * grammar-aware (`pathBoundingBoxByGrammar`): walks `d` command-by-command
+ * so an arc's own `rx`/`ry`/`x-axis-rotation`/flag numbers never get
+ * mistaken for more `(x, y)` coordinates, the defect that used to inflate
+ * `insight_panel.tsx`/`roadmap.tsx`'s shared `roundedTopBarPath` accent bar
+ * (a real ~6px-tall bar) to a ~1184×1182px bbox dwarfing the 1280×720
+ * canvas — confirmed via a real render before this fix, re-pinned by
+ * `deck-audit.test.ts`'s own characterization test. Line commands are
+ * exact by construction; curves (`C`/`S`/`Q`/`T`) and arcs (`A`/`a`) use
+ * exact extrema (derivative roots for curves, endpoint -> center
+ * parameterization for arcs — see `pathBoundingBoxByGrammar`'s own doc
+ * comment). Still not a true path-*outline* bbox in the "is this pixel
+ * actually inside the filled shape" sense (a concave polygon's bbox covers
+ * area outside the shape) — `rectShape`'s own doc comment already covers
+ * why that's fine here: every caller tests containment against this
+ * function's bbox, never the path's exact outline, and the one large
+ * opaque non-decor `<path>` background this renderer draws
+ * (`cover-split-diagonal.tsx`'s straight-edged colour panel) has vertices
+ * that *are* its extremes, so the bbox is exact there regardless.
+ *
+ * Falls back to `pathBoundingBoxByTokenMinMax` (the pre-fix behavior) only
+ * for a `d` string the grammar walk can't parse — genuinely malformed
+ * input, not any path this renderer itself emits — see that function's own
+ * doc comment. `motif-campaign-motif.tsx`'s crayon-stroke decor paths stay
+ * out of scope for a different, unrelated reason: `findContrastIssues`'s
+ * `data-decor` exclusion skips every motif/decor subtree before this
+ * function is ever called on it, so whatever bbox either path here would
+ * produce for one never reaches a background region.
+ */
+function pathBoundingBox(d: string): { x: number; y: number; w: number; h: number } | null {
+  return pathBoundingBoxByGrammar(d) ?? pathBoundingBoxByTokenMinMax(d)
+}
+
+/**
+ * Test-only: `pathBoundingBox` exposed so its arc/curve math can be
+ * asserted directly against hand-crafted `d` strings (including a real
+ * `roundedTopBarPath` render's exact output — see `deck-audit.test.ts`'s
+ * characterization test for the pre-fix defect this pins as fixed), the
+ * same `__`-prefixed "test-only, not part of any public barrel" convention
+ * `__collectBgRegions` above already establishes.
+ */
+export function __pathBoundingBox(d: string): { x: number; y: number; w: number; h: number } | null {
+  return pathBoundingBox(d)
 }
 
 export interface ContrastIssue {

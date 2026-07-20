@@ -909,48 +909,42 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // "colors.muted opacity-blend fix" describe block below.
   numbered_cards: "page-bg",
   // roadmap.tsx's row-label text sits on the card's colors.surface shell
-  // (flat-surface) — but `renderCard`'s own accent bar
-  // (`roundedTopBarPath`, an SVG arc `<path>`) triggers a pre-existing,
-  // documented `pathBoundingBox` limitation in deck-audit.ts (see that
-  // function's own doc comment): extracting every numeric token from the
-  // arc's `d` string and taking min/max mis-reads the arc's radius/flag
-  // parameters as coordinates, inflating the accent bar's computed bbox
-  // from ~8px tall to ~the whole card — which then wins the background
-  // lookup for the row-label text underneath it (confirmed by dumping the
-  // real rendered markup: the row-label's true painted background is the
-  // card's white/`colors.surface` rect, not the accent bar's fill).
-  // Bench-driven fix round (defect A) update: this file's own former
-  // `rail-numbered` ALLOWLIST entry (the "documenting rather than fixing an
-  // audit-tool limitation" precedent this paragraph used to point to) is
-  // gone — that task *did* touch deck-audit.ts, and fixed the sibling
-  // small-region-misattribution bug (removing the `MIN_BG_REGION_AREA` floor
-  // from text-background attribution; see PaintedShape's own doc comment).
-  // This accent-bar bug is confirmed, deliberately, still present: real
-  // arc-command parsing (path flattening) is a separate, larger, still-open
-  // backlog item that same task's own plan explicitly scoped out (see
-  // `pathBoundingBox`'s doc comment in deck-audit.ts for the "interaction,
-  // not fixed" note) — a real render before/after that fix shows the exact
-  // same phantom-region misattribution, byte-for-byte, on all 13 themes.
-  // `renderCard`'s own numbered *badge circle* (a `<circle>`, not this path)
-  // is a different, related story: it now correctly resolves against its
-  // own self-painted `colors.primary` fill (the fix's actual win — see
-  // deck-audit.test.ts's "newly-exposed low-contrast sources" describe
-  // block for the real defect that fix exposed, 5/13 themes). Still not a
-  // colors.muted defect either way, so not folded into calibration or into a
-  // "known-gap" pinned finding.
+  // (flat-surface) — `renderCard`'s own accent bar (`roundedTopBarPath`, an
+  // SVG arc `<path>`) used to trigger a `pathBoundingBox` limitation in
+  // deck-audit.ts (extracting every numeric token from the arc's `d` string
+  // and taking min/max misread the arc's radius/flag parameters as
+  // coordinates, inflating the accent bar's computed bbox from ~8px tall to
+  // ~the whole card, which won the background lookup for the row-label text
+  // underneath it) — **resolved** (`fix/arc-bbox`): `pathBoundingBox` is now
+  // path-grammar-aware (walks `d` command-by-command, arcs handled via
+  // endpoint->center parameterization, see that function's own doc comment
+  // in deck-audit.ts), so the row-label correctly resolves against the
+  // card's real `colors.surface` rect, matching this entry's classification
+  // for the first time rather than by coincidence. That same fix also
+  // exposed a *real*, previously-masked defect one level up: `renderCard`'s
+  // `period` text (an unguarded `colors.accent` fill) used to resolve
+  // against the accent bar's own bogus phantom region — whose fill is that
+  // same `colors.accent` value — scoring a trivial ratio=1 "pass" on every
+  // theme; measured against the real card background, 8/13 themes
+  // genuinely fail 4.5:1. Fixed via `accessibleInk` (same precedent this
+  // file's own numbered badge digit already used) — see
+  // `deck-audit.test.ts`'s "arc-bbox reclassification ink fixes" describe
+  // block for the red->green pin. `renderCard`'s numbered *badge circle*
+  // (a `<circle>`, not this path) was a separate, already-fixed story (the
+  // bench-driven fix round's own win, see that round's own report) —
+  // unrelated to this fix, unaffected by it.
   roadmap: "flat-surface",
   // The one real "needs-fixture" gap this fix round closes — see the
   // dedicated describe block below.
   matrix: "needs-fixture",
-  // insight_panel.tsx's footnote text sits on the panel's colors.surface
-  // shell (flat-surface) — same roundedTopBarPath phantom-background caveat
-  // as roadmap above (insight_panel.tsx uses the identical helper, and the
-  // same bench-driven-fix-round update applies: confirmed still present,
-  // deliberately not fixed, see roadmap's own comment above). Unlike
-  // roadmap, insight_panel has no badge circle of its own, so this
-  // component has no partial win either — every one of its texts (title,
-  // row label/text, footnote) still resolves against the same phantom
-  // region, unchanged before and after.
+  // insight_panel.tsx's footnote/row text sits on the panel's
+  // colors.surface shell (flat-surface) — same roundedTopBarPath phantom-
+  // background history as roadmap above (insight_panel.tsx uses the
+  // identical helper), **resolved** the same way (`fix/arc-bbox`). Unlike
+  // roadmap, insight_panel has no badge circle, but its own `title` had the
+  // same unguarded-`colors.accent`-on-phantom-region defect as roadmap's
+  // `period` — same `accessibleInk` fix, same red->green pin (see
+  // `deck-audit.test.ts`).
   insight_panel: "flat-surface",
   // The neutral-tone tint rect (`fill={tone}` where tone===colors.muted,
   // verdict-banner.tsx) renders at fillOpacity=0.08 — below deck-audit.ts's
