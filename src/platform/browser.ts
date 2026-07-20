@@ -48,11 +48,40 @@ function isSecurityError(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { name?: unknown }).name === "SecurityError"
 }
 
+/**
+ * Maximum time (ms) to wait for `Image.onload`/`onerror` to fire before
+ * treating the decode as stuck and rejecting explicitly, rather than
+ * hanging the whole `rasterizeSvgInBrowser` call forever — unlike the
+ * Node/Sharp path (`node.ts`'s `rasterizeSvg`, a synchronous, bounded
+ * call), a browser `Image` decode has no timeout of its own, and a
+ * genuinely stuck one (a browser/OS decoder bug, an unresponsive tab) would
+ * otherwise leave the caller (e.g. a pixel-contrast audit) awaiting forever
+ * with no way to know why. 30s: generous for even a large local decode —
+ * this rasterizer only ever reaches `Image` for a local/data-URI SVG
+ * (`findRemoteAssetRef` already rejected any remote asset reference above)
+ * — but short enough that a stuck decode fails loud well within any
+ * interactive caller's own patience.
+ */
+export const IMAGE_LOAD_TIMEOUT_MS = 30_000
+
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          `rasterizeSvg: timed out after ${IMAGE_LOAD_TIMEOUT_MS}ms waiting for the browser to decode the rasterized SVG as an image (a stuck decode, never a silent hang)`,
+        ),
+      )
+    }, IMAGE_LOAD_TIMEOUT_MS)
     const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error("rasterizeSvg: the browser could not decode the rasterized SVG as an image"))
+    img.onload = () => {
+      clearTimeout(timer)
+      resolve(img)
+    }
+    img.onerror = () => {
+      clearTimeout(timer)
+      reject(new Error("rasterizeSvg: the browser could not decode the rasterized SVG as an image"))
+    }
     img.src = url
   })
 }
