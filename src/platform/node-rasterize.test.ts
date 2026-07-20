@@ -15,8 +15,7 @@
 //    to swap this file's implementation for `@resvg/resvg-js` — see this
 //    task's own report for the verdict this suite produced.
 import { beforeAll, describe, expect, it } from "vitest"
-import { installNodePlatform } from "./node"
-import { isMissingModuleError } from "./node"
+import { installNodePlatform, isMissingModuleError } from "./node"
 import { getPlatform } from "./registry"
 import { makeSolidRegionPngDataUri, twoToneSquarePng } from "./test-png-fixture"
 
