@@ -8,12 +8,14 @@
 // with mocked collaborators; real rasterization correctness is verified once
 // in a real browser via playwright (see this task's own report).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { rasterizeSvgInBrowser } from "./browser"
+import { IMAGE_LOAD_TIMEOUT_MS, rasterizeSvgInBrowser } from "./browser"
 
 /** A controllable `Image` stand-in: `src` setter schedules `onload` (success)
  *  or `onerror` (failure) on the next microtask, mirroring how a real
- *  `Image`'s decode is always asynchronous relative to the `src` assignment. */
-function makeFakeImageClass(mode: "success" | "error"): typeof Image {
+ *  `Image`'s decode is always asynchronous relative to the `src` assignment.
+ *  `"hang"` never calls either — simulates a stuck decode, for the timeout
+ *  coverage below. */
+function makeFakeImageClass(mode: "success" | "error" | "hang"): typeof Image {
   return class FakeImage {
     onload: (() => void) | null = null
     onerror: (() => void) | null = null
@@ -23,6 +25,7 @@ function makeFakeImageClass(mode: "success" | "error"): typeof Image {
     }
     set src(value: string) {
       this._src = value
+      if (mode === "hang") return
       queueMicrotask(() => {
         if (mode === "success") this.onload?.()
         else this.onerror?.()
@@ -151,5 +154,41 @@ describe("rasterizeSvgInBrowser — image decode failure", () => {
   it("rejects with an explicit message when the Image fails to load", async () => {
     vi.stubGlobal("Image", makeFakeImageClass("error"))
     await expect(rasterizeSvgInBrowser("<svg viewBox='0 0 1280 720'/>", 4, 4)).rejects.toThrow(/could not decode/)
+  })
+})
+
+describe("rasterizeSvgInBrowser — decode timeout", () => {
+  // A stuck decode (onload/onerror never fire — the "hang" fake Image mode
+  // above) must not hang the whole rasterize call forever, unlike the
+  // Node/Sharp path (a synchronous, bounded call). Fake timers: real time
+  // never actually elapses, so this stays a fast unit test.
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it(`rejects with an explicit, named-timeout error after ${IMAGE_LOAD_TIMEOUT_MS}ms when onload/onerror never fire`, async () => {
+    vi.stubGlobal("Image", makeFakeImageClass("hang"))
+    const result = rasterizeSvgInBrowser("<svg viewBox='0 0 1280 720'/>", 4, 4)
+    const assertion = expect(result).rejects.toThrow(new RegExp(`timed out after ${IMAGE_LOAD_TIMEOUT_MS}ms`))
+    await vi.advanceTimersByTimeAsync(IMAGE_LOAD_TIMEOUT_MS)
+    await assertion
+  })
+
+  it("does not fire the timeout when the image resolves well before it", async () => {
+    vi.stubGlobal("Image", makeFakeImageClass("success"))
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: vi.fn().mockReturnValue({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
+    } as unknown as CanvasRenderingContext2D)
+
+    const result = rasterizeSvgInBrowser("<svg viewBox='0 0 1280 720'/>", 1, 1)
+    // Let the success microtask (queued synchronously by the fake Image's
+    // `src` setter above) resolve before any fake-timer time passes at all.
+    await vi.advanceTimersByTimeAsync(0)
+    await expect(result).resolves.toEqual({ width: 1, height: 1, data: new Uint8ClampedArray(4) })
   })
 })
