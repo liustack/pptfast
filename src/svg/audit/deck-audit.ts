@@ -469,18 +469,78 @@ function quadAt(p0: number, p1: number, p2: number, t: number): number {
   return mt * mt * p0 + 2 * mt * t * p1 + t * t * p2
 }
 
-/** Tokenize a `d` string into command letters and numeric operands — same
- * pattern `svg2pptx/path.ts`'s own tokenizer uses (kept as a separate copy
- * here rather than a shared import: `src/svg/audit` doesn't otherwise
- * depend on `src/pptx`, and this file's own layering stays one-directional,
- * IR/SVG -> PPTX, never the reverse). Doesn't distinguish a run of
- * concatenated arc flags (`"01"`) from a single two-digit number — neither
- * does the sibling tokenizer this pattern is copied from — but this
- * renderer's own `A` commands always space-separate every operand
- * (`roundedTopBarPath`'s template literal), so that SVG-grammar corner case
- * never actually occurs in `d` strings this function sees. */
+/** Tokenize a `d` string into command letters and numeric operands.
+ * Positionally aware for `A`/`a`: the SVG grammar (`arc-argument ::= number
+ * comma-wsp? number comma-wsp? number comma-wsp flag comma-wsp? flag
+ * comma-wsp? coordinate-pair`) defines `large-arc-flag`/`sweep-flag` as a
+ * single `"0"` or `"1"` character each, which real authoring tools (and
+ * this codebase's own icon catalog, `src/icons.ts` — generated straight
+ * from lucide's upstream `d` strings, see that file's header) routinely
+ * glue to each other and to the following coordinate with no separator
+ * (`"a1 1 0 001 1"` = rx 1 ry 1 rot 0 large-arc-flag 0 sweep-flag 0 x 1
+ * y 1, not one number `001`). A naive greedy-number regex — what this
+ * function used to be, and what `svg2pptx/path.ts`'s own sibling tokenizer
+ * still is, kept as a separate copy rather than a shared import since
+ * `src/svg/audit` doesn't otherwise depend on `src/pptx` and this file's
+ * layering stays one-directional (IR/SVG -> PPTX, never the reverse) —
+ * swallows the glued digits as a single multi-digit number and silently
+ * desyncs every operand after it, which previously produced a wrong,
+ * non-null bbox for 16 real paths in `src/icons.ts` (not a hypothetical:
+ * confirmed via `pnpm vitest` against the shipped catalog while building
+ * this fix). This walks `d` char-by-char instead of one big `match()`,
+ * tracking the active command and its argument position (mod 7, an arc's
+ * own repeated-group width) so the 4th/5th argument of every `A`/`a` group
+ * is read as exactly one flag character, whatever is glued on either side
+ * of it — the same technique every real SVG path parser uses. */
 function tokenizePathD(d: string): string[] {
-  return d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []
+  const tokens: string[] = []
+  const len = d.length
+  let i = 0
+  let cmd = ""
+  // Position within the current command's argument list, mod 7 (an arc's
+  // own repeated-group width) — only consulted for A/a, harmless noise for
+  // every other command since none of them ever compares it to 3/4.
+  let argIndex = 0
+  const isSep = (c: string) => c === " " || c === "\t" || c === "\n" || c === "\r" || c === ","
+  const skipSep = () => {
+    while (i < len && isSep(d[i])) i++
+  }
+  const numberRe = /-?\d*\.?\d+(?:e[-+]?\d+)?/iy
+  while (i < len) {
+    skipSep()
+    if (i >= len) break
+    const ch = d[i]
+    if (/[a-zA-Z]/.test(ch)) {
+      tokens.push(ch)
+      cmd = ch
+      argIndex = 0
+      i++
+      continue
+    }
+    const isArc = cmd === "A" || cmd === "a"
+    if (isArc && (argIndex === 3 || argIndex === 4) && (ch === "0" || ch === "1")) {
+      tokens.push(ch)
+      i++
+      argIndex++
+      continue
+    }
+    numberRe.lastIndex = i
+    const m = numberRe.exec(d)
+    if (!m || m.index !== i || m[0] === "") {
+      // Not a flag, not a number — malformed input. Push the single
+      // character through so the grammar walker's own `num()` guard
+      // throws and `pathBoundingBox` falls back to the safe token
+      // min/max, the same "honest, never-crash" contract as before.
+      tokens.push(ch)
+      i++
+      continue
+    }
+    tokens.push(m[0])
+    i = numberRe.lastIndex
+    argIndex++
+    if (isArc && argIndex === 7) argIndex = 0
+  }
+  return tokens
 }
 
 /**

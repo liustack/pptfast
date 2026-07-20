@@ -1148,6 +1148,277 @@ describe("__pathBoundingBox — arc-bbox root fix (fix/arc-bbox)", () => {
   })
 })
 
+// Compressed SVG arc-flag fix (fix/arc-bbox, flag-parse round): the arc-bbox
+// root fix above made `pathBoundingBoxByGrammar` grammar-aware for M/L/H/V/
+// C/S/Q/T/A/Z, but its tokenizer (`tokenizePathD`) still read every operand
+// with one generic greedy-number regex — correct for every other command,
+// silently wrong for `A`/`a`'s `large-arc-flag`/`sweep-flag` operands, which
+// SVG's grammar defines as exactly one `"0"`/`"1"` character each and which
+// real authoring tools (lucide's own `d` strings, this catalog's upstream —
+// see `src/icons.ts`'s header) routinely glue to each other and to the
+// following coordinate with no separator (`"a1 1 0 001 1"` = rx 1 ry 1 rot 0
+// large-arc-flag 0 sweep-flag 0 x 1 y 1, not "001" as one number). A code
+// review of this branch caught it against real, already-shipped data: 16 of
+// the 2229 arc-bearing `d` strings in `src/icons.ts` produced a silently
+// wrong (non-null, non-thrown) bbox. `tokenizePathD` is now a positional
+// char-by-char scanner that reads the 4th/5th argument of every `A`/`a`
+// 7-tuple as exactly one flag character, whatever's glued on either side.
+//
+// Every expected bbox below was independently re-derived (not trusted from
+// this branch's own arc math) two ways: (1) hand-tracing the grammar
+// char-by-char against the SVG 1.1 path-data BNF, and (2) a from-scratch
+// reference implementation (positional tokenizer + brute-force parametric
+// sampling of each curve/arc at up to 400,000 points, entirely independent
+// of this file's derivative-root/endpoint-to-center code) run standalone
+// before writing these assertions. Both methods agree with the fixed
+// `__pathBoundingBox`'s actual output to well within the `toBeCloseTo`
+// tolerances used here.
+describe("__pathBoundingBox — compressed SVG arc-flag fix (fix/arc-bbox, flag-parse round)", () => {
+  it("characterizes the pre-fix defect: the old greedy-regex tokenizer reads a glued '001' as one number, not flag 0 + flag 0 + x 1", () => {
+    // The exact pre-fix `tokenizePathD` regex (`/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi`)
+    // reimplemented inline — same red-half-of-red/green precedent the arc-bbox
+    // root fix's own characterization test above uses, since the buggy source
+    // no longer exists to call directly. "a1 1 0 001 1" (rx 1 ry 1 rot 0
+    // large-arc-flag 0 sweep-flag 0 x 1 y 1) reads "001" as a single token
+    // (value 1) via this regex, desyncing every argument after the rotation:
+    // large-arc-flag becomes 1 (not 0), sweep-flag becomes the next token "1"
+    // (not 0), and the arc's own x then has no token left before the next
+    // command letter — throwing "malformed" and silently falling back to the
+    // pre-arc-fix blind token min/max over the whole `d` string.
+    const oldGreedyTokenize = (d: string) => d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []
+    const tokens = oldGreedyTokenize("a1 1 0 001 1")
+    expect(tokens).toEqual(["a", "1", "1", "0", "001", "1"])
+    // rx=1 ry=1 rot=0 read correctly; large-arc-flag then wrongly consumes
+    // the whole "001" token (Number("001") === 1) instead of just its first
+    // character, and only one token ("1") remains for sweep-flag — none left
+    // for x, which is exactly why the real function above throws and falls
+    // back rather than returning a wrong-but-plausible-looking arc.
+    expect(Number(tokens[4])).toBe(1)
+  })
+
+  it("fixes the reviewer's minimal case: 'M14 2v5a1 1 0 001 1h5' bounds to the real 6x6 corner-round box, not the pre-fix fallback's 13x2 phantom", () => {
+    // Pre-fix (captured via a temporary probe against this exact source
+    // before the tokenizer fix, same non-committed-probe method the original
+    // review used): __pathBoundingBox returned {x:1,y:0,w:13,h:2} — the old
+    // blind-token-min-max fallback pairing (14,2)(5,1)(1,0)(1,1) after "001"
+    // collapsed to a single "1" token, an entirely different region of the
+    // path than what it actually draws.
+    //
+    // Independently re-derived correct trace: M sets (14,2). v5 lines to
+    // (14,7). a1 1 0 0 0 1 1 draws a quarter-round arc (rx=ry=1) from (14,7)
+    // to (15,8) — a small corner cut that stays within the rectangle
+    // [14,15]x[7,8], contributing no bbox extension beyond its own endpoints
+    // (radius 1 == chord's own half-diagonal component, no scale-up, no
+    // bulge past the endpoints for this specific quarter-turn geometry).
+    // h5 lines to (20,8). Full path bbox: x in [14,20] (w=6), y in [2,8]
+    // (starts at M's y=2, ends at the arc/line's y=8) — w=6, h=6.
+    const bbox = __pathBoundingBox("M14 2v5a1 1 0 001 1h5")
+    expect(bbox).not.toBeNull()
+    expect(bbox!.x).toBeCloseTo(14, 2)
+    expect(bbox!.y).toBeCloseTo(2, 2)
+    expect(bbox!.w).toBeCloseTo(6, 2)
+    expect(bbox!.h).toBeCloseTo(6, 2)
+  })
+
+  it("fixes the reviewer's second case (hdmi-port's real d string): bounds to the real 20x8 port outline, not the pre-fix fallback's 23x17 phantom", () => {
+    // Pre-fix: __pathBoundingBox returned {x:-1,y:-1,w:23,h:17} (same blind
+    // fallback mechanism as above, on hdmi-port's own real `d`). Correct
+    // value independently re-derived via the brute-force sampling reference
+    // described in this describe block's header.
+    const d =
+      "M22 9a1 1 0 00-1-1H3a1 1 0 00-1 1v4a1 1 0 001 1h.5a2 2 0 011.6.8l.3.4A2 2 0 007 16h10a2 2 0 001.6-.8l.3-.4a2 2 0 011.6-.8h.5a1 1 0 001-1z"
+    const bbox = __pathBoundingBox(d)
+    expect(bbox).not.toBeNull()
+    expect(bbox!.x).toBeCloseTo(2, 2)
+    expect(bbox!.y).toBeCloseTo(8, 2)
+    expect(bbox!.w).toBeCloseTo(20, 2)
+    expect(bbox!.h).toBeCloseTo(8, 2)
+  })
+
+  // All 16 real `src/icons.ts` `d` strings a full-catalog scan (2229
+  // arc-bearing paths, all of `PPTX_ICONS`) found silently mis-parsed
+  // pre-fix — not a hand-picked sample, the complete set, matching the
+  // review's own "16 real icon paths" count exactly. Expected values are the
+  // brute-force-sampling reference's output (this describe block's header),
+  // cross-checked to match the fixed `__pathBoundingBox`'s actual output to
+  // within 3 decimal places before rounding for these assertions.
+  it.each([
+    {
+      icon: "ethernet-port",
+      d: "M19 17a2 2 0 00-1.765 1.059l-.47.882A2 2 0 0115 20H9a2 2 0 01-1.765-1.059l-.47-.882A2 2 0 005 17H4a2 2 0 01-2-2V6a2 2 0 012-2h16a2 2 0 012 2v9a2 2 0 01-2 2z",
+      expected: { x: 2, y: 4, w: 20, h: 16 },
+    },
+    {
+      icon: "file-box (accent corner arc)",
+      d: "M14 2v5a1 1 0 001 1h5",
+      expected: { x: 14, y: 2, w: 6, h: 6 },
+    },
+    {
+      icon: "file-box (envelope outline)",
+      d: "M14.692 22H18a2 2 0 002-2V8a2.4 2.4 0 00-.706-1.706l-3.588-3.588A2.4 2.4 0 0014 2H6a2 2 0 00-2 2v3.804",
+      expected: { x: 4, y: 2, w: 16, h: 20 },
+    },
+    {
+      icon: "file-box (box lid)",
+      d: "M2.995 13.014A2 2 0 002 14.744v3.516a2 2 0 00.996 1.73l3 1.74a2 2 0 002.008 0l3-1.74A2 2 0 0012 18.26v-3.517a2 2 0 00-.995-1.73l-3-1.742a2 2 0 00-1.892-.064z",
+      expected: { x: 2, y: 11, w: 10, h: 11 },
+    },
+    {
+      icon: "hdmi-port",
+      d: "M22 9a1 1 0 00-1-1H3a1 1 0 00-1 1v4a1 1 0 001 1h.5a2 2 0 011.6.8l.3.4A2 2 0 007 16h10a2 2 0 001.6-.8l.3-.4a2 2 0 011.6-.8h.5a1 1 0 001-1z",
+      expected: { x: 2, y: 8, w: 20, h: 8 },
+    },
+    {
+      icon: "paper-bag (left side)",
+      d: "M5.364 3.848C4 6 3 9.652 3 12.652V19a2 2 0 002 2h14a2 2 0 002-2v-5c0-2.334-1.816-4.668-2.622-7.002",
+      expected: { x: 3, y: 3.848, w: 18, h: 17.152 },
+    },
+    {
+      icon: "paper-bag (fold)",
+      d: "M7 3h11.379a2 2 0 011.789 1.106l.723 1.447A1 1 0 0119.997 7h-8.525a2 2 0 01-1.789-1.106L8.79 4.105a2 2 0 10-3.579 1.789l2.261 4.522A5 5 0 018 12.652V21",
+      expected: { x: 5, y: 3, w: 15.997, h: 18.001 },
+    },
+    {
+      icon: "save-pen (page corner)",
+      d: "M13.33 13H8a1 1 0 00-1 1v7",
+      expected: { x: 7, y: 13, w: 6.33, h: 8 },
+    },
+    {
+      icon: "save-pen (pencil nib)",
+      d: "M14.363 17.634a2 2 0 00-.506.854l-.837 2.87a.5.5 0 00.62.62l2.87-.837a2 2 0 00.854-.506l4.013-4.009a1 1 0 10-3.004-3.004z",
+      expected: { x: 13, y: 13, w: 8.999, h: 8.998 },
+    },
+    {
+      icon: "save-pen (fold corner)",
+      d: "M7 3v4a1 1 0 001 1h7",
+      expected: { x: 7, y: 3, w: 8, h: 5 },
+    },
+    {
+      icon: "save-pen (page outline)",
+      d: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h10.2a2 2 0 011.4.6l3.8 3.8a2 2 0 01.6 1.4v.3",
+      expected: { x: 3, y: 3, w: 18, h: 18 },
+    },
+    {
+      icon: "scan-box (top-right corner)",
+      d: "M17 3h2a2 2 0 012 2v2",
+      expected: { x: 17, y: 3, w: 4, h: 4 },
+    },
+    {
+      icon: "scan-box (bottom-right corner)",
+      d: "M21 17v2a2 2 0 01-2 2h-2",
+      expected: { x: 17, y: 17, w: 4, h: 4 },
+    },
+    {
+      icon: "scan-box (top-left corner)",
+      d: "M3 7V5a2 2 0 012-2h2",
+      expected: { x: 3, y: 3, w: 4, h: 4 },
+    },
+    {
+      icon: "scan-box (bottom-left corner)",
+      d: "M7 21H5a2 2 0 01-2-2v-2",
+      expected: { x: 3, y: 17, w: 4, h: 4 },
+    },
+    {
+      icon: "scan-box (viewfinder box)",
+      d: "M7.995 8.514A2 2 0 007 10.244v3.516a2 2 0 00.996 1.73l3 1.74a2 2 0 002.008 0l3-1.74A2 2 0 0017 13.76v-3.517a2 2 0 00-.995-1.73l-3-1.742a2 2 0 00-1.892-.064z",
+      expected: { x: 7, y: 6.5, w: 10, h: 11 },
+    },
+  ])("$icon: bounds to the correct, independently-derived box (silently wrong pre-fix)", ({ d, expected }) => {
+    const bbox = __pathBoundingBox(d)
+    expect(bbox).not.toBeNull()
+    expect(bbox!.x).toBeCloseTo(expected.x, 1)
+    expect(bbox!.y).toBeCloseTo(expected.y, 1)
+    expect(bbox!.w).toBeCloseTo(expected.w, 1)
+    expect(bbox!.h).toBeCloseTo(expected.h, 1)
+  })
+
+  it("reproduces the whole-page-phantom-bbox class with a compressed-flag rewrite of the real accent bar: tight ~1088x6, matching the space-separated original exactly", () => {
+    // `roundedTopBarPath`'s real output (the arc-bbox root fix's own
+    // characterization fixture above, `REAL_ACCENT_BAR_D`) already space-
+    // separates every arc operand ("A 2 2 0 0 1 98 ..."), so it never
+    // exercised this defect class itself. This is the same shape, same
+    // coordinates, with the two arcs' "0 1 98"/"0 1 1184" glued into
+    // compressed "0198"/"011184" — legal per the SVG grammar, and exactly
+    // the shape of glued digit this codebase's own icon catalog contains.
+    // A correctly positional parse must recover the identical tight bbox
+    // the space-separated form does; a naive greedy-number tokenizer
+    // desyncs on the glued flags/coordinate and (independently confirmed
+    // via a temporary probe against the pre-fix source) balloons this to
+    // {x:0,y:0,w:11184,h:1182} — the same defect class ("insight_panel"/
+    // "roadmap"'s real ~1184x1182 phantom bbox), reached via compressed
+    // flags instead of the original bar's own now-fixed grammar gap.
+    const compressedAccentBar =
+      "M 96 322.34000000000003 A2 2 0 0198 320.34000000000003 " +
+      "L 1182 320.34000000000003 A2 2 0 011184 322.34000000000003 " +
+      "L 1184 326.34000000000003 L 96 326.34000000000003 Z"
+    const bbox = __pathBoundingBox(compressedAccentBar)
+    expect(bbox).not.toBeNull()
+    expect(bbox!.x).toBeCloseTo(96, 1)
+    expect(bbox!.y).toBeCloseTo(320.34, 1)
+    expect(bbox!.w).toBeCloseTo(1088, 1)
+    expect(bbox!.h).toBeCloseTo(6, 1)
+  })
+
+  it("parses the review's own synthetic string correctly per spec — not a tight bar for these particular (radius 2, chord ~1180) numbers, but provably different from the pre-fix {0,0,1181,1181} phantom", () => {
+    // "M10 315 A2 2 0 010 313 L 1181 313 A2 2 0 011 315 L1181 319 L10 319 Z"
+    // — flagged by the review as reproducing the phantom-bbox class. Traced
+    // positionally per spec: the first arc is rx=2 ry=2 rot=0 large-arc-flag=0
+    // sweep-flag=1 x=0 y=313 (not x=12 — "010 313" decodes to flag '0',
+    // flag '1', then the digit '0' immediately following starts x itself,
+    // giving x=0, not a continuation of "12"). With a declared radius of 2
+    // but a ~10-unit chord to (0,313) from the start point (10,315), and
+    // later a ~1180-unit chord for the second arc, SVG's own out-of-range
+    // radius correction (appendix F.6.6.2: scale rx/ry up by sqrt(lambda)
+    // when the declared radius can't reach the chord) forces a large
+    // effective radius — so this exact string's own correct bbox is
+    // genuinely large (independently re-derived via brute-force sampling:
+    // x=-0.099 y=313 w=1181.1 h=591.0), not tight. It is nonetheless a
+    // faithful demonstration of the fix: the pre-fix fallback value
+    // (independently confirmed via a temporary probe against the pre-fix
+    // source) was {x:0,y:0,w:1181,h:1181} — a different, spec-incorrect
+    // region reached by mis-pairing flag/rotation numbers as coordinates,
+    // not the radius-correction math above.
+    const bbox = __pathBoundingBox(
+      "M10 315 A2 2 0 010 313 L 1181 313 A2 2 0 011 315 L1181 319 L10 319 Z"
+    )
+    expect(bbox).not.toBeNull()
+    expect(bbox!.x).toBeCloseTo(-0.1, 1)
+    expect(bbox!.y).toBeCloseTo(313, 1)
+    expect(bbox!.w).toBeCloseTo(1181.1, 1)
+    expect(bbox!.h).toBeCloseTo(591, 1)
+  })
+
+  it("still falls back honestly (never throws) on a genuinely malformed arc missing its final coordinate", () => {
+    // "A 2 2 0 0 1" with no trailing x/y at all — the positional flag
+    // parser correctly reads both flags, then the grammar walk's own num()
+    // throws on running out of tokens for x, same honest-fallback contract
+    // as every other malformed case in the arc-bbox root fix's own tests.
+    const bbox = __pathBoundingBox("M 0 0 A 2 2 0 0 1")
+    expect(bbox).toEqual({ x: 0, y: 0, w: 2, h: 2 })
+  })
+
+  it("a repeated arc group with no second command letter still parses each group's flags positionally, not just the first", () => {
+    // "M 0 0 a1 1 0 001 1 1 1 0 001 1" — a single "a" command carrying two
+    // 7-tuples back to back, the implicit-repeat grammar rule (no second
+    // "a" between them). Each compressed group ("001 1", both times) is
+    // rx=1 ry=1 rot=0 large-arc-flag=0 sweep-flag=0 x=1 y=1 — the same
+    // compressed shape as the minimal-case test above, applied twice.
+    // The tokenizer's argIndex tracking must reset after 7 arguments
+    // without seeing a new command letter for the second group's flags to
+    // be read positionally too, not as one more generic number each. Two
+    // relative quarter-round steps: (0,0) -> (1,1) -> (2,2), independently
+    // confirmed via the standalone reference implementation (not just
+    // hand-traced, to avoid the exact kind of manual-counting error this
+    // whole fix exists to eliminate).
+    const bbox = __pathBoundingBox("M 0 0 a1 1 0 001 1 1 1 0 001 1")
+    expect(bbox).not.toBeNull()
+    expect(bbox!.x).toBeCloseTo(0, 1)
+    expect(bbox!.y).toBeCloseTo(0, 1)
+    expect(bbox!.w).toBeCloseTo(2, 1)
+    expect(bbox!.h).toBeCloseTo(2, 1)
+  })
+})
+
 // Arc-bbox root fix, reclassification sweep: fixing `pathBoundingBox` (above)
 // exposed a *real* defect the old bug had been masking, not just resolving
 // false positives. `insight_panel.tsx`'s title and `roadmap.tsx`'s period
