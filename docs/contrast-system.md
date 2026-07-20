@@ -36,6 +36,50 @@ The split exists because a badge/chip small enough to correctly *not* count as a
 
 **Residual, distinct limitation found while closing the above:** `pathBoundingBox`'s bbox is now tight, but `rectShape`'s own containment test is still an axis-aligned-box check, never the path's true outline — for a donut/pie wedge (`chart-svg.tsx`'s `renderDonut`/`renderPie`), a wide-angle slice's *exact* bbox can still legitimately span across the ring's own hole, so the donut's center total-label can misattribute to a wedge's fill instead of whatever's really behind the (transparent) hole. Confirmed empirically during this fix's reclassification sweep — the arc-grammar fix roughly halves the misattribution rate in a synthetic multi-theme probe but doesn't eliminate it, because no arc parameter is being misread here (the arc's own bbox is exact); it's the AABB-vs-real-outline approximation every `rectShape`-tested shape accepts that breaks down specifically for an annulus with a real hole. Not fixed here — recorded as a fresh, separately-scoped backlog item, same "document the tool limitation, don't chase it" precedent this file's history is already full of.
 
+## Overlap detection boundary (`findOverlapIssues`, same file)
+
+`findOverlapIssues` pairwise-compares `collectLeafBoxes`' output — one box
+per leaf `data-audit-box`, which only ever carries `x,y,w` (never a height,
+by the existing protocol's own design). Width is always that declared `w`;
+height is reconstructed per box from whatever geometry is drawn inside it —
+a background/icon `<rect>`'s own real extent when there is one, or, for a
+text-only box with no such rect, `TEXT_DESCENT_RATIO` applied to each
+`<text>`'s baseline. Either way, this is **container-declared-geometry
+precision, not glyph-ink precision** — the same "measured vs. real"
+distinction this file's ink/contrast sections keep surfacing, here applied
+to position instead of color.
+
+That makes the detector structurally blind to two collision classes it will
+never see, both a direct consequence of comparing declared boxes instead of
+rendered ink, not of insufficient calibration:
+
+- A padded declared box can overlap a neighbor while the real glyphs inside
+  stay far apart — a possible false positive. In practice this needs no
+  chasing: `layoutContentFit` shrinks gaps or drops components rather than
+  ever letting two placed components' boxes collide, so a real, IR-driven
+  positive fixture isn't reachable through this renderer's normal layout
+  path at all (this function's own doc comment records that directly).
+- Text that would render wider than its declared box can overflow into a
+  neighboring box the detector still reports as clear — a false negative.
+  `collectLeafBoxes` never reads a `<text>` element's content or measures
+  its rendered width; only the declared box counts. This is the position
+  side of a risk this file already tracks from the color side: `render.ts`'s
+  deliberate `opts.wrap = false` choice lets a width-estimate miss surface
+  as visible horizontal overflow instead of silent re-wrapping, and that
+  estimate has no per-exported-font calibration beyond `code.tsx`'s own
+  `MONO_WIDTH_SAFETY` margin for the mono role. A font substitution
+  PowerPoint makes at open time that the estimate didn't anticipate is
+  exactly the overflow this detector can't catch — it audits declared SVG
+  geometry, never the font actually substituted at open time.
+
+Recorded here as a known boundary, not a defect to chase — same discipline
+as this section's donut/pie AABB gap above. Closing the false-negative half
+would mean extending `collectLeafBoxes` to estimate a text leaf's rendered
+width (in whatever unit `measureTextUnits` already uses) and grow its box
+by that, gated by `text-anchor`; that's a real option if a future finding
+makes it worth the investment, but it is a change to this file's core walk,
+not a small one, and stays out of scope here.
+
 ## Full-matrix regression net (`full-matrix-contrast.test.ts`)
 
 Sweeps every theme × slide type × curated archetype for the W4 defect class. Two guardrails worth knowing about:
