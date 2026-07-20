@@ -125,6 +125,7 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
                 {num}
               </text>
               <text
+                data-truncated={title.truncated ? "1" : undefined}
                 x={cellX + INDENT}
                 y={titleBaseline}
                 fontSize={title.fontSize}
@@ -152,6 +153,7 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
                 : null}
               {sub ? (
                 <text
+                  data-truncated={sub.truncated ? "1" : undefined}
                   x={cellX + INDENT}
                   y={
                     textTop +

@@ -211,7 +211,7 @@ export function truncateEmphasisSegments(segments: EmphasisSegment[], maxUnits: 
 export function fitEmphasisLine(
   text: string | undefined,
   opts: { maxWidth: number; fontSize: number; minFontSize?: number },
-): { fontSize: number; segments: EmphasisSegment[] } | null {
+): { fontSize: number; segments: EmphasisSegment[]; truncated: boolean } | null {
   if (!text || !text.trim()) return null
   const minFontSize = opts.minFontSize ?? 12
   const fitted = fitSvgLine(stripEmphasis(text), {
@@ -221,5 +221,10 @@ export function fitEmphasisLine(
   })
   const maxUnits = opts.maxWidth / minFontSize
   const segments = truncateEmphasisSegments(parseEmphasis(text), maxUnits)
-  return { fontSize: fitted.fontSize, segments }
+  // `fitted.truncated` is authoritative for this call too (bench-driven fix
+  // round, defect E) — see this function's own doc comment: the budget
+  // passed to `truncateEmphasisSegments` mirrors `fitSvgLine`'s internal
+  // truncate-branch budget exactly, so the two always agree on *whether* a
+  // cut happened, not just where.
+  return { fontSize: fitted.fontSize, segments, truncated: fitted.truncated }
 }

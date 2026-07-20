@@ -37,13 +37,13 @@ const ROW_GAP = 12
 const LABEL_VALUE_GAP = 12
 
 interface RowLayout {
-  label: { text: string; fontSize: number }
+  label: { text: string; fontSize: number; truncated: boolean }
   value: { lines: string[]; fontSize: number; lineHeight: number }
   height: number
 }
 interface CardLayout {
-  period: { text: string; fontSize: number } | null
-  title: { text: string; fontSize: number }
+  period: { text: string; fontSize: number; truncated: boolean } | null
+  title: { text: string; fontSize: number; truncated: boolean }
   rows: RowLayout[]
   labelColW: number
   contentH: number
@@ -162,6 +162,7 @@ function renderCard(
       </text>
       {layout.period ? (
         <text
+          data-truncated={layout.period.truncated ? "1" : undefined}
           x={x + PAD_X + BADGE_R * 2 + 12}
           y={cy + Math.round(layout.period.fontSize * BASELINE_FUDGE)}
           fontSize={layout.period.fontSize}
@@ -174,6 +175,7 @@ function renderCard(
         </text>
       ) : null}
       <text
+        data-truncated={layout.title.truncated ? "1" : undefined}
         x={x + PAD_X}
         y={titleBaseline}
         fontSize={layout.title.fontSize}
@@ -190,6 +192,7 @@ function renderCard(
         return (
           <g key={ri}>
             <text
+              data-truncated={row.label.truncated ? "1" : undefined}
               x={x + PAD_X}
               y={rowTop + LABEL_SIZE}
               fontSize={row.label.fontSize}

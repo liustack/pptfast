@@ -40,6 +40,7 @@ export const citation: SvgComponent<CitationComponent> = {
           return (
             <text
               key={i}
+              data-truncated={fittedLabel.truncated ? "1" : undefined}
               x="0"
               y={baselineY(i)}
               fontFamily={ctx.fonts.body}

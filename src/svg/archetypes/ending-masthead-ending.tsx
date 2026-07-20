@@ -77,6 +77,7 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
 
       {subheading.text && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x="640"
           y={subheadingY}
           fontFamily={fonts.heading}

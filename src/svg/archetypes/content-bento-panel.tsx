@@ -387,6 +387,7 @@ function renderKpiCardBody(
         />
       )}
       <text
+        data-truncated={fittedValue.truncated ? "1" : undefined}
         x={innerX}
         y={valueBaselineY}
         fontSize={fittedValue.fontSize}
@@ -439,6 +440,7 @@ function renderKpiCardBody(
         </text>
       )}
       <text
+        data-truncated={fittedLabel.truncated ? "1" : undefined}
         x={innerX}
         y={labelBaselineY}
         fontSize={fittedLabel.fontSize}
@@ -858,6 +860,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     <>
       {kicker && (
         <text
+          data-truncated={kicker.truncated ? "1" : undefined}
           x="96"
           y="104"
           fontFamily={fonts.body}

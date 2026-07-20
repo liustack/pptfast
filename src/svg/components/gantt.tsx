@@ -126,6 +126,7 @@ export const gantt: SvgComponent<GanttComponent> = {
           return (
             <g key={i}>
               <text
+                data-truncated={label.truncated ? "1" : undefined}
                 x={box.x}
                 y={cy + Math.round(label.fontSize * 0.35)}
                 textAnchor="start"
@@ -165,6 +166,7 @@ export const gantt: SvgComponent<GanttComponent> = {
               return (
                 <text
                   key={i}
+                  data-truncated={fitted.truncated ? "1" : undefined}
                   x={cx}
                   y={axisY + fitted.fontSize}
                   textAnchor={anchor}

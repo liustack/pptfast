@@ -68,7 +68,7 @@ const ARROW_STROKE_W = 1.5
 const CONNECTOR_STROKE_W = 1.5
 
 interface StepItemTextLayout {
-  title: { text: string; fontSize: number }
+  title: { text: string; fontSize: number; truncated: boolean }
   text: { lines: string[]; fontSize: number; lineHeight: number }
 }
 
@@ -170,6 +170,7 @@ function renderStepCardBody(
     <>
       {renderBadge(badgeCx, badgeCy, index + 1, ctx)}
       <text
+        data-truncated={title.truncated ? "1" : undefined}
         x={box.x}
         y={titleBaselineY}
         fontSize={title.fontSize}
@@ -277,6 +278,7 @@ function renderVertical(component: StepsComponent, box: ComponentBox, ctx: Compo
           <g key={i} data-audit-box={`${box.x},${box.y + rowTop},${box.w}`}>
             {renderBadge(badgeCx, badgeCy(i), i + 1, ctx)}
             <text
+              data-truncated={title.truncated ? "1" : undefined}
               x={TEXT_X_VERTICAL}
               y={titleBaselineY}
               fontSize={title.fontSize}

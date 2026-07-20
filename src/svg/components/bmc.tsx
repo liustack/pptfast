@@ -146,8 +146,8 @@ const BULLET_INDENT = 11
 const MIN_FONT_SCALE = ITEM_SIZE_MIN / ITEM_SIZE
 
 interface BlockLayout {
-  title: { text: string; fontSize: number }
-  items: { text: string; fontSize: number }[]
+  title: { text: string; fontSize: number; truncated: boolean }
+  items: { text: string; fontSize: number; truncated: boolean }[]
   contentH: number
   /** `fontScale`-applied nominal sizes/rhythm `renderBlock` positions
    * against — nominal, not each fitted item/title's own (possibly further
@@ -324,6 +324,7 @@ function renderBlock(
           : {})}
       />
       <text
+        data-truncated={layout.title.truncated ? "1" : undefined}
         x={x + PAD_X}
         y={titleBaseline}
         fontSize={layout.title.fontSize}
@@ -342,6 +343,7 @@ function renderBlock(
           <g key={ii}>
             <circle cx={x + PAD_X + layout.bulletR} cy={dotCy} r={layout.bulletR} fill={itemInk} />
             <text
+              data-truncated={item.truncated ? "1" : undefined}
               x={x + PAD_X + BULLET_INDENT}
               y={rowY + layout.itemSize}
               fontSize={item.fontSize}

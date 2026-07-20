@@ -169,7 +169,7 @@ export function truncateToUnits(text: string, maxUnits: number): string {
 export function fitSvgLine(
   text: string,
   opts: { maxWidth: number; fontSize: number; minFontSize?: number; letterSpacing?: number },
-): { text: string; fontSize: number } {
+): { text: string; fontSize: number; truncated: boolean } {
   const minFontSize = opts.minFontSize ?? 12
   // `letterSpacing` is an SVG attribute in absolute px, independent of
   // font-size — unlike `measureTextUnits`' per-character weights, it doesn't
@@ -182,15 +182,26 @@ export function fitSvgLine(
   // font-size/truncation account for it.
   const letterSpacing = opts.letterSpacing ?? 0
   const units = measureTextUnits(text)
-  if (units <= 0) return { text, fontSize: opts.fontSize }
+  if (units <= 0) return { text, fontSize: opts.fontSize, truncated: false }
   const charCount = Array.from(text).length
   const spacingBudget = Math.max(0, charCount - 1) * letterSpacing
   const availableWidth = Math.max(0, opts.maxWidth - spacingBudget)
   const fitted = Math.min(opts.fontSize, Math.floor(availableWidth / units))
-  if (fitted >= minFontSize) return { text, fontSize: fitted }
+  if (fitted >= minFontSize) return { text, fontSize: fitted, truncated: false }
+  // `truncated` (bench-driven fix round, defect E): `true` exactly when the
+  // shrink-to-`minFontSize` step still wasn't enough and `truncateToUnits`
+  // had to drop characters — the caller-visible signal `deck-audit.ts`'s new
+  // `content-truncated` advisory reads to mark the rendered `<text>` with
+  // `data-truncated="1"`, so real content loss (not just a smaller font) is
+  // auditable instead of requiring a human/model to eyeball every SVG. Not
+  // `text !== originalText` — an author's own text can legitimately be
+  // shorter than what it started as for unrelated reasons upstream; this
+  // flag reports the *mechanism* (did this call take the truncate branch),
+  // which is unambiguous regardless of what the input happened to contain.
   return {
     text: truncateToUnits(text, availableWidth / minFontSize),
     fontSize: minFontSize,
+    truncated: true,
   }
 }
 

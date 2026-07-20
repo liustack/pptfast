@@ -277,6 +277,7 @@ interface EdgeLabelVisual {
   y: number
   text: string
   fontSize: number
+  truncated: boolean
   chipX: number
   chipY: number
   chipW: number
@@ -351,6 +352,7 @@ function computeEdgeLabel(edge: LayoutEdge, scale: number): EdgeLabelVisual | nu
     y,
     text: fitted.text,
     fontSize: fitted.fontSize,
+    truncated: fitted.truncated,
     chipX: x - chipW / 2,
     chipY: y - chipH / 2,
     chipW,
@@ -479,6 +481,7 @@ export const flowchart: SvgComponent<FlowchartComponent> = {
               {fits.map((fitted, i) => (
                 <text
                   key={i}
+                  data-truncated={fitted.truncated ? "1" : undefined}
                   x={nx + nw / 2}
                   y={firstLineY + i * pitch}
                   textAnchor="middle"
@@ -526,6 +529,7 @@ export const flowchart: SvgComponent<FlowchartComponent> = {
                 fill={ctx.colors.bg}
               />
               <text
+                data-truncated={label.truncated ? "1" : undefined}
                 x={label.x}
                 y={label.y}
                 textAnchor="middle"

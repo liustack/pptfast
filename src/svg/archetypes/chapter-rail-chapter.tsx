@@ -130,6 +130,7 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
       ))}
       {subheading && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x="640"
           y={subheadingY}
           fontFamily={ctx.fonts.heading}

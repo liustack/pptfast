@@ -78,6 +78,7 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
 
       {subtitle && (
         <text
+          data-truncated={subtitle.truncated ? "1" : undefined}
           x="640"
           y={subtitleY}
           fontFamily={fonts.heading}

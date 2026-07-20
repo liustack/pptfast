@@ -130,6 +130,7 @@ export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
       {/* meta 行：右下 */}
       {metaLine && (
         <text
+          data-truncated={metaLine.truncated ? "1" : undefined}
           x={TITLE_X}
           y={662}
           fontFamily={ctx.fonts.body}

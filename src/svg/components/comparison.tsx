@@ -206,9 +206,11 @@ export const comparison: SvgComponent<ComparisonComponent> = {
         {/* Header texts */}
         {headers.map((title, c) => {
           if (!title) return null
+          const fitted = truncate(title, widths[c], headerFontSize)
           return (
             <text
               key={`h-${c}`}
+              data-truncated={fitted !== title ? "1" : undefined}
               x={offsets[c] + PAD_X}
               y={ROW / 2 + headerBaseline}
               fill={ctx.colors.text}
@@ -217,7 +219,7 @@ export const comparison: SvgComponent<ComparisonComponent> = {
               fontWeight="bold"
               dominantBaseline="alphabetic"
             >
-              {truncate(title, widths[c], headerFontSize)}
+              {fitted}
             </text>
           )
         })}
@@ -262,9 +264,11 @@ export const comparison: SvgComponent<ComparisonComponent> = {
             <Fragment key={`r-${r}`}>
               {cells.map((cell, c) => {
                 if (c >= colCount) return null
+                const fitted = truncate(cell, widths[c], cellFontSize)
                 return (
                   <text
                     key={`c-${r}-${c}`}
+                    data-truncated={fitted !== cell ? "1" : undefined}
                     x={offsets[c] + PAD_X}
                     y={rowY + ROW / 2 + cellBaseline}
                     fill={c === 0 ? ctx.colors.muted : ctx.colors.text}
@@ -273,7 +277,7 @@ export const comparison: SvgComponent<ComparisonComponent> = {
                     fontWeight={c === 0 ? "bold" : "normal"}
                     dominantBaseline="alphabetic"
                   >
-                    {truncate(cell, widths[c], cellFontSize)}
+                    {fitted}
                   </text>
                 )
               })}

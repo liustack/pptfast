@@ -166,6 +166,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
       {/* Kicker: section name */}
       {kicker && (
         <text
+          data-truncated={kicker.truncated ? "1" : undefined}
           x={kickerX}
           y={KICKER_Y}
           fontFamily={fonts.body}
@@ -229,6 +230,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
        * source line at y=648 (16px apart, doubled hairline). */}
       {footnote && (
         <text
+          data-truncated={footnote.truncated ? "1" : undefined}
           x={BANNER_X}
           y={SOURCE_LINE_Y + 28}
           fontFamily={fonts.body}

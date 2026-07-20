@@ -134,6 +134,9 @@ export const kpi: SvgComponent<KpiComponent> = {
             fontSize: 16,
             minFontSize: 12,
           })
+          const fittedSource = item.source
+            ? fitSvgLine(item.source, { maxWidth: cardW - 40, fontSize: 11, minFontSize: 9 })
+            : null
           return (
             <g key={i}>
               <rect
@@ -157,6 +160,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                 />
               )}
               <text
+                data-truncated={fittedValue.truncated ? "1" : undefined}
                 x={cardX + 20}
                 y={(item.icon ? 64 : 58) + contentShift}
                 fontSize={fittedValue.fontSize}
@@ -185,6 +189,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                 </text>
               )}
               <text
+                data-truncated={fittedLabel.truncated ? "1" : undefined}
                 x={cardX + 20}
                 y={96 + contentShift}
                 fontSize={fittedLabel.fontSize}
@@ -194,8 +199,9 @@ export const kpi: SvgComponent<KpiComponent> = {
               >
                 {fittedLabel.text}
               </text>
-              {item.source && (
+              {fittedSource && (
                 <text
+                  data-truncated={fittedSource.truncated ? "1" : undefined}
                   x={cardX + 20}
                   y={114 + contentShift}
                   fontSize={11}
@@ -220,7 +226,7 @@ export const kpi: SvgComponent<KpiComponent> = {
                   fontFamily={ctx.fonts.body}
                   dominantBaseline="alphabetic"
                 >
-                  {fitSvgLine(item.source, { maxWidth: cardW - 40, fontSize: 11, minFontSize: 9 }).text}
+                  {fittedSource.text}
                 </text>
               )}
             </g>

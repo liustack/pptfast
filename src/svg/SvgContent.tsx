@@ -96,6 +96,7 @@ export function SvgContent({ arrangement, components, rect, ctx }: SvgContentPro
       ))}
       {dropped > 0 && (
         <text
+          data-dropped={dropped}
           x={rect.x + rect.w}
           y={rect.y + rect.h - 6}
           textAnchor="end"

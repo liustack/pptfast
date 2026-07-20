@@ -104,8 +104,8 @@ function panelFill(q: QuadrantKey, ctx: ComponentCtx): string {
 }
 
 interface QuadrantLayout {
-  title: { text: string; fontSize: number }
-  items: { text: string; fontSize: number }[]
+  title: { text: string; fontSize: number; truncated: boolean }
+  items: { text: string; fontSize: number; truncated: boolean }[]
   contentH: number
 }
 
@@ -179,6 +179,7 @@ function renderQuadrant(
         {LETTERS[q]}
       </text>
       <text
+        data-truncated={layout.title.truncated ? "1" : undefined}
         x={badgeX + BADGE + GAP_BADGE_TITLE}
         y={headerBaseline}
         fontSize={layout.title.fontSize}
@@ -197,6 +198,7 @@ function renderQuadrant(
           <g key={ii}>
             <circle cx={x + PAD_X + BULLET_R} cy={dotCy} r={BULLET_R} fill={itemInk} />
             <text
+              data-truncated={item.truncated ? "1" : undefined}
               x={x + PAD_X + BULLET_INDENT}
               y={rowY + ITEM_SIZE}
               fontSize={item.fontSize}

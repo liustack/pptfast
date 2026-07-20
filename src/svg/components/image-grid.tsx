@@ -156,6 +156,7 @@ export const imageGrid: SvgComponent<ImageGridComponent> = {
                         fill={ctx.colors.accent}
                       />
                       <text
+                        data-truncated={fitted.truncated ? "1" : undefined}
                         x={cell.x + 24}
                         y={cell.y + cell.h + 20}
                         fontSize={fitted.fontSize}

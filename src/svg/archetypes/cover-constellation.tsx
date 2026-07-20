@@ -103,6 +103,7 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
         <>
           <rect x="96" y="548" width="84" height="4" fill={colors.accent} />
           <text
+            data-truncated={subtitle.truncated ? "1" : undefined}
             x="96"
             y="596"
             fontFamily={fonts.body}

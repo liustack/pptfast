@@ -179,6 +179,7 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Subtitle */}
       {subtitle && (
         <text
+          data-truncated={subtitle.truncated ? "1" : undefined}
           x="64"
           y={subtitleY}
           fontFamily={fonts.body}

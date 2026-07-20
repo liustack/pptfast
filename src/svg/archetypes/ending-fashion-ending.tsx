@@ -107,6 +107,7 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {/* 底部 meta */}
       {metaLine && (
         <text
+          data-truncated={metaLine.truncated ? "1" : undefined}
           x={56}
           y={668}
           fontFamily={ctx.fonts.body}

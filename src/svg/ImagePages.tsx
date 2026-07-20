@@ -237,6 +237,7 @@ export function ImageSplitPage({
             <>
               <rect x={imgX} y={SPLIT_IMG_H - 44} width={SPLIT_IMG_W} height={44} fill="#0A0E14" fillOpacity={0.62} />
               <text
+                data-truncated={fitted.truncated ? "1" : undefined}
                 x={imgX + 24}
                 y={SPLIT_IMG_H - 17}
                 fontSize={fitted.fontSize}
@@ -297,6 +298,7 @@ export function ImageSplitPage({
       ))}
       {dropped > 0 && (
         <text
+          data-dropped={dropped}
           x={W - 96}
           y={H - 76}
           textAnchor="end"
@@ -487,6 +489,9 @@ export function ImageAnnotatePage({
     fontSize: 17,
     minFontSize: 14,
   })
+  const caption = imageComponent.caption
+    ? fitSvgLine(imageComponent.caption, { maxWidth: 620, fontSize: 14, minFontSize: 12 })
+    : null
 
   return (
     <g>
@@ -508,6 +513,7 @@ export function ImageAnnotatePage({
       <rect x={W / 2 - 28} y={98} width={56} height={3} fill={ctx.colors.accent} />
       {slide.subheading && (
         <text
+          data-truncated={sub.truncated ? "1" : undefined}
           x={W / 2}
           y={132}
           textAnchor="middle"
@@ -541,8 +547,9 @@ export function ImageAnnotatePage({
       ) : (
         <rect x={ANN_IMG_X} y={ANN_IMG_Y} width={ANN_IMG_W} height={ANN_IMG_H} fill={ctx.colors.surface} />
       )}
-      {imageComponent.caption && (
+      {caption && (
         <text
+          data-truncated={caption.truncated ? "1" : undefined}
           x={W / 2}
           y={ANN_IMG_Y + ANN_IMG_H + ANN_FRAME_PAD + 30}
           textAnchor="middle"
@@ -551,7 +558,7 @@ export function ImageAnnotatePage({
           fill={ctx.colors.muted}
           dominantBaseline="alphabetic"
         >
-          {fitSvgLine(imageComponent.caption, { maxWidth: 620, fontSize: 14, minFontSize: 12 }).text}
+          {caption.text}
         </text>
       )}
       {annotations.map((ann, i) => {
@@ -743,6 +750,7 @@ export function ImageBottomPage({
             <>
               <rect x={0} y={captionBottom - 40} width={W} height={40} fill="#0A0E14" fillOpacity={0.55} />
               <text
+                data-truncated={fitted.truncated ? "1" : undefined}
                 x={W / 2}
                 y={captionBottom - 15}
                 textAnchor="middle"

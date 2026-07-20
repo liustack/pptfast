@@ -145,6 +145,7 @@ export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
 
       {subheading && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x="400"
           y={subheadingY}
           fontFamily={fonts.body}

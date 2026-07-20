@@ -86,6 +86,7 @@ export const quote: SvgComponent<QuoteComponent> = {
           })
           return (
             <text
+              data-truncated={attr.truncated ? "1" : undefined}
               x={BODY_INDENT}
               y={QUOTE_ZONE + l.lines.length * l.lineHeight + ATTR_GAP + ATTR_FONT_SIZE}
               fontFamily={ctx.fonts.body}

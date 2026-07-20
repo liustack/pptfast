@@ -223,6 +223,7 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       {/* Top section label */}
       {sectionLabel && (
         <text
+          data-truncated={sectionLabel.truncated ? "1" : undefined}
           x="56"
           y="56"
           fontFamily={ctx.fonts.body}
@@ -386,6 +387,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
       {/* Kicker: small centered section label (no accent color — see below) */}
       {sectionLabel && (
         <text
+          data-truncated={sectionLabel.truncated ? "1" : undefined}
           x={CENTER_X}
           y={SECTION_LABEL_Y}
           textAnchor="middle"
@@ -462,6 +464,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
 
       {footnote && (
         <text
+          data-truncated={footnote.truncated ? "1" : undefined}
           x={CENTER_X}
           y="656"
           textAnchor="middle"

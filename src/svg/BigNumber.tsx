@@ -58,7 +58,7 @@ export function BigNumber({
   // disproportionately long unit renders small enough to fit visually while
   // still making the auditor's concatenated-at-outer-size estimate exceed
   // rect.w.
-  let fittedValue: { text: string; fontSize: number } | null = null
+  let fittedValue: { text: string; fontSize: number; truncated: boolean } | null = null
   let unitFontSize = 0
   let fittedUnit: string | null = null
   if (hero) {
@@ -93,6 +93,7 @@ export function BigNumber({
       {hero && fittedValue && (
         <g>
           <text
+            data-truncated={fittedValue.truncated ? "1" : undefined}
             x={rect.x}
             y={valueBaseline}
             fontFamily={ctx.fonts.heading}
@@ -109,6 +110,7 @@ export function BigNumber({
             )}
           </text>
           <text
+            data-truncated={fittedLabel!.truncated ? "1" : undefined}
             x={rect.x}
             y={valueBaseline + 44}
             fontFamily={ctx.fonts.body}
@@ -125,6 +127,7 @@ export function BigNumber({
       ))}
       {dropped > 0 && (
         <text
+          data-dropped={dropped}
           x={supportRect.x + supportRect.w}
           y={supportRect.y + supportRect.h - 6}
           textAnchor="end"

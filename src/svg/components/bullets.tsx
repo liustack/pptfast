@@ -20,6 +20,10 @@ const TEXT_INDENT = 26
 interface LaidItem {
   lines: string[]
   lineSegments: EmphasisSegment[][]
+  /** Per-line: did `truncateEmphasisSegments` actually cut this line (bench-
+   *  driven fix round, defect E)? Parallel to `lineSegments` — read by
+   *  `render` to mark the rendered `<text>` with `data-truncated="1"`. */
+  lineTruncated: boolean[]
   firstLineY: number
 }
 
@@ -80,8 +84,16 @@ function layoutItems(component: BulletsComponent, w: number, baseFontSize: numbe
     // At the clamped floor, layoutSvgText's own shrink may not have been able
     // to bring the longest line under maxWidth. Truncate any such line.
     const lineSegments = wrappedLineSegments.map((segs) => truncateEmphasisSegments(segs, maxUnits))
+    // A line actually lost characters iff its post-truncation text differs
+    // from its pre-truncation text — `truncateEmphasisSegments` returns
+    // `segs` unchanged (same content) whenever nothing needed cutting, so a
+    // plain text-equality check is exact here, no `maxUnits` re-derivation
+    // needed (bench-driven fix round, defect E).
+    const lineTruncated = wrappedLineSegments.map(
+      (before, li) => before.map((s) => s.text).join("") !== lineSegments[li].map((s) => s.text).join(""),
+    )
     const lines = lineSegments.map((segs) => segs.map((s) => s.text).join(""))
-    const item: LaidItem = { lines, lineSegments, firstLineY: y }
+    const item: LaidItem = { lines, lineSegments, lineTruncated, firstLineY: y }
     // divided 需要更大项间距容纳分隔线（设计感留白）；分隔线 y 取上一项
     // 文字底（末行 baseline+descent≈0.2em）与下一项文字顶（首行
     // baseline-ascent≈0.8em）的几何中点——贴边不居中是 v1 被用户裁
@@ -128,6 +140,7 @@ export const bullets: SvgComponent<BulletsComponent> = {
             {item.lineSegments.map((segments, li) => (
               <text
                 key={li}
+                data-truncated={item.lineTruncated[li] ? "1" : undefined}
                 x={indent}
                 y={item.firstLineY + li * lineHeight}
                 fontFamily={ctx.fonts.body}

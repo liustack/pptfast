@@ -114,6 +114,7 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
       {/* 底部 meta */}
       {metaLine && (
         <text
+          data-truncated={metaLine.truncated ? "1" : undefined}
           x={640}
           y={668}
           fontFamily={ctx.fonts.body}

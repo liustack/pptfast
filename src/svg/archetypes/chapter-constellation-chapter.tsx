@@ -103,6 +103,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
 
       {subheading && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x={HEADING_X}
           y={subheadingY}
           fontFamily={fonts.body}

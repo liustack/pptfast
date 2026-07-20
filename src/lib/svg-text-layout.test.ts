@@ -66,18 +66,27 @@ describe("truncateToUnits", () => {
 
 describe("fitSvgLine", () => {
   it("keeps font size when text fits", () => {
-    expect(fitSvgLine("OK", { maxWidth: 200, fontSize: 20 })).toEqual({ text: "OK", fontSize: 20 })
+    expect(fitSvgLine("OK", { maxWidth: 200, fontSize: 20 })).toEqual({
+      text: "OK",
+      fontSize: 20,
+      truncated: false,
+    })
   })
   it("shrinks font down to the floor before truncating", () => {
     const r = fitSvgLine("一二三四五六七八九十", { maxWidth: 120, fontSize: 20, minFontSize: 12 })
     expect(r.fontSize).toBe(12)
     expect(r.text).toBe("一二三四五六七八九十") // 10 单位 × 12 = 120，恰好放下
+    // Exactly fits at the floor — no character was dropped, so this must not
+    // read as a truncation (bench-driven fix round, defect E: `truncated`
+    // reports real content loss, not merely a smaller font size).
+    expect(r.truncated).toBe(false)
   })
   it("truncates at the floor when still too wide", () => {
     const r = fitSvgLine("一二三四五六七八九十一二", { maxWidth: 120, fontSize: 20, minFontSize: 12 })
     expect(r.fontSize).toBe(12)
     expect(r.text.endsWith("…")).toBe(true)
     expect(measureTextUnits(r.text) * 12).toBeLessThanOrEqual(120)
+    expect(r.truncated).toBe(true)
   })
 
   // Regression for the in-browser getBBox audit (Task 12): callers that
@@ -113,6 +122,7 @@ describe("fitSvgLine", () => {
     const charCount = Array.from(r.text).length
     const totalWidth = measureTextUnits(r.text) * 12 + Math.max(0, charCount - 1) * 4
     expect(totalWidth).toBeLessThanOrEqual(120)
+    expect(r.truncated).toBe(true)
   })
 
   it("is a no-op when letterSpacing is omitted (existing callers unaffected)", () => {

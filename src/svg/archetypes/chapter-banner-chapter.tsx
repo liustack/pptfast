@@ -100,6 +100,7 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
       {/* Optional subheading */}
       {subheading && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x="640"
           y={subheadingY}
           fontFamily={ctx.fonts.body}

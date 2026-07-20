@@ -48,7 +48,7 @@ const ACCENT_H = 3
 const CARD_RADIUS = 8
 
 interface IconCardTextLayout {
-  title: { text: string; fontSize: number }
+  title: { text: string; fontSize: number; truncated: boolean }
   text: { lines: string[]; fontSize: number; lineHeight: number }
 }
 
@@ -155,6 +155,7 @@ export function renderIconCardBody(
         color={ctx.colors.primary}
       />
       <text
+        data-truncated={title.truncated ? "1" : undefined}
         x={box.x}
         y={titleBaselineY}
         fontSize={title.fontSize}

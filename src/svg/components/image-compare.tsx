@@ -69,6 +69,7 @@ function renderSide({
         strokeWidth={1}
       />
       <text
+        data-truncated={fitted.truncated ? "1" : undefined}
         x={w / 2}
         y={h + 22}
         textAnchor="middle"

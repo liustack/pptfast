@@ -40,12 +40,12 @@ function roundedTopBarPath(x: number, y: number, w: number, h: number, r: number
 }
 
 interface RowLayout {
-  label: { text: string; fontSize: number }
+  label: { text: string; fontSize: number; truncated: boolean }
   text: { lines: string[]; fontSize: number; lineHeight: number }
   height: number
 }
 interface PanelLayout {
-  title: { text: string; fontSize: number }
+  title: { text: string; fontSize: number; truncated: boolean }
   rows: RowLayout[]
   labelColW: number
   foot: { lines: string[]; fontSize: number; lineHeight: number } | null
@@ -117,6 +117,7 @@ export const insightPanel: SvgComponent<InsightPanelComponent> = {
         />
         <path d={roundedTopBarPath(box.x, box.y, box.w, BAR_H, r)} fill={ctx.colors.accent} />
         <text
+          data-truncated={layout.title.truncated ? "1" : undefined}
           x={box.x + PAD_X}
           y={titleBaseline}
           fontSize={layout.title.fontSize}
@@ -133,6 +134,7 @@ export const insightPanel: SvgComponent<InsightPanelComponent> = {
           return (
             <g key={ri}>
               <text
+                data-truncated={row.label.truncated ? "1" : undefined}
                 x={box.x + PAD_X}
                 y={rowTop + LABEL_SIZE}
                 fontSize={row.label.fontSize}

@@ -138,6 +138,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Subheading */}
       {subheading.text && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x={CENTER_X}
           y={subheadingY}
           textAnchor="middle"
@@ -164,6 +165,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Combined centered meta line: org / contact / copyright */}
       {metaLine && (
         <text
+          data-truncated={metaLine.truncated ? "1" : undefined}
           x={CENTER_X}
           y={metaY}
           textAnchor="middle"

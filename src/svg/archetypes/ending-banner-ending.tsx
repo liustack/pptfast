@@ -159,6 +159,7 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {/* Chinese subheading（空串=heading 已含感谢语，跳过） */}
       {subheading.text && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x="96"
           y={subheadingY}
           fontFamily={fonts.heading}

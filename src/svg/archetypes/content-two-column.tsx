@@ -27,6 +27,9 @@ import { accessibleInk } from "../ink"
 export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
+  const kicker = section
+    ? fitSvgLine(section, { maxWidth: 900, fontSize: 17, minFontSize: 13 })
+    : null
 
   const KICKER_Y = 96
   const HEADING_BASELINE = 150
@@ -57,10 +60,11 @@ export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   return (
     <>
       {/* kicker：章节名（accent 方块 + muted 文字） */}
-      {section && (
+      {kicker && (
         <>
           <rect x={96} y={KICKER_Y - 13} width={13} height={13} fill={colors.accent} />
           <text
+            data-truncated={kicker.truncated ? "1" : undefined}
             x={120}
             y={KICKER_Y}
             fontFamily={fonts.body}
@@ -69,7 +73,7 @@ export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
             letterSpacing={2}
             dominantBaseline="alphabetic"
           >
-            {fitSvgLine(section, { maxWidth: 900, fontSize: 17, minFontSize: 13 }).text}
+            {kicker.text}
           </text>
         </>
       )}
@@ -93,6 +97,7 @@ export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       {/* subheading：primary 强调（与 banner-heading 的副题语义一致） */}
       {subheading && (
         <text
+          data-truncated={subheading.truncated ? "1" : undefined}
           x={96}
           y={subheadingY}
           fontFamily={fonts.body}

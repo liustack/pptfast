@@ -134,6 +134,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
                 />
               )}
               <text
+                data-truncated={title.truncated ? "1" : undefined}
                 x={item.icon ? TEXT_X + ICON_SIZE + 10 : TEXT_X}
                 y={titleBaseline}
                 fontSize={title.fontSize}
@@ -162,6 +163,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
                 : null}
               {sub ? (
                 <text
+                  data-truncated={sub.truncated ? "1" : undefined}
                   x={TEXT_X}
                   y={
                     textTop +
@@ -181,6 +183,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
         })}
         {hidden > 0 && (
           <text
+            data-dropped={hidden}
             x={box.w}
             y={cursor + 14}
             textAnchor="end"

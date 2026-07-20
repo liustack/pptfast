@@ -218,6 +218,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
         {/* Section label (kicker) inside card — Task 5b: accent, not muted */}
         {sectionLabel && (
           <text
+            data-truncated={sectionLabel.truncated ? "1" : undefined}
             x="92"
             y="104"
             fontFamily={fonts.heading}
@@ -367,6 +368,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
       {/* Section label (kicker) — Task 5b: accent, not muted */}
       {sectionLabel && (
         <text
+          data-truncated={sectionLabel.truncated ? "1" : undefined}
           x="64"
           y="62"
           fontFamily={fonts.heading}

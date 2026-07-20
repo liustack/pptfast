@@ -81,6 +81,7 @@ export const rings: SvgComponent<RingsComponent> = {
           })
           return (
             <text
+              data-truncated={fitted.truncated ? "1" : undefined}
               x={cx}
               y={cy + fitted.fontSize * 0.35}
               textAnchor="middle"
@@ -128,6 +129,7 @@ export const rings: SvgComponent<RingsComponent> = {
               />
               <circle cx={sx} cy={sy} r={3} fill={idx === 0 ? ctx.colors.primary : ctx.colors.accent} />
               <text
+                data-truncated={label.truncated ? "1" : undefined}
                 x={textX}
                 y={rowY}
                 fontSize={label.fontSize}
