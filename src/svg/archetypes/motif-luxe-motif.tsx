@@ -19,14 +19,19 @@ export function LuxeMotif({ ir, slide, ctx }: DecorProps) {
 
   if (!strong) {
     // 弱档：右上一段细金线
-    return <path d="M 1160 48 H 1232" stroke={gold} strokeWidth={1.2} opacity={0.65} />
+    // 用 <line>，不用纯水平的 <path>——svg2pptx 把 <path>（哪怕只走一根轴）
+    // 转成 custGeom 形状，包围盒零高度会被 package-audit 硬门的
+    // invalid-shape-transform 规则拒收（建这道门时发现的真实缺陷，
+    // package-audit 波任务 1，spec §4.4）。真正的 <line> 走
+    // svg2pptx/line.ts 的 prstGeom="line"，该规则明确允许其中一轴为零。
+    return <line x1={1160} y1={48} x2={1232} y2={48} stroke={gold} strokeWidth={1.2} opacity={0.65} />
   }
 
   if (variant === "b") {
     return (
       <>
-        {/* 顶部细金线横贯 + 双端金点 */}
-        <path d="M 96 44 H 1184" stroke={gold} strokeWidth={1} opacity={0.5} />
+        {/* 顶部细金线横贯 + 双端金点——<line>，理由同上方弱档分支注释 */}
+        <line x1={96} y1={44} x2={1184} y2={44} stroke={gold} strokeWidth={1} opacity={0.5} />
         <circle cx={96} cy={44} r={3.5} fill={gold} />
         <circle cx={1184} cy={44} r={3.5} fill={gold} />
       </>

@@ -56,7 +56,13 @@ export function HeritageMotif({ ir, slide, ctx }: DecorProps) {
     <>
       <path d="M 640 36 L 664 58 L 640 80 L 616 58 Z" fill="none" stroke={wine} strokeWidth={1.4} opacity={0.6} />
       <path d="M 640 46 L 654 58 L 640 70 L 626 58 Z" fill="none" stroke={caramel} strokeWidth={1} opacity={0.5} />
-      <path d="M 480 58 H 600 M 680 58 H 800" stroke={caramel} strokeWidth={1} opacity={0.4} />
+      {/* 两侧延伸线：两条 <line>，不用只走一根轴的 <path> — svg2pptx 会把
+          <path>（哪怕纯水平）转成 custGeom，包围盒零高度会被 package-audit
+          硬门的 invalid-shape-transform 规则拒绝（建这道门时发现，spec
+          §4.4）。真正的 <line> 走 svg2pptx/line.ts 的 prstGeom="line"，该
+          规则明确允许一根轴为零。 */}
+      <line x1={480} y1={58} x2={600} y2={58} stroke={caramel} strokeWidth={1} opacity={0.4} />
+      <line x1={680} y1={58} x2={800} y2={58} stroke={caramel} strokeWidth={1} opacity={0.4} />
     </>
   )
 }
