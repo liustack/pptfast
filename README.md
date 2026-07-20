@@ -118,7 +118,7 @@ A narrative is three axes, independent of theme (visual style), that set editori
 | `balanced` (the default) | 24px | 4 | up to 5 items, ~40 characters each |
 | `spacious` | 32px | 3 | up to 4 items, ~30 characters each |
 
-Bullets shrink below their tier's baseline to fit when needed, down to a 14px floor, before any overflow handling kicks in. A bullet item long enough to still overflow at that floor is a hard validate error — distinct from, and looser than, the per-pacing length guidance above — since it genuinely loses text to an ellipsis at render, not just reads as verbose. `pptfast validate` reports the exact numbers that applied to each slide.
+Bullets shrink below their tier's baseline to fit when needed, down to a 14px floor, before any overflow handling kicks in. For the `default`, `plain`, and `divided` bullet styles, an item long enough to still overflow at that floor is a hard validate error — distinct from, and looser than, the per-pacing length guidance above — since it genuinely loses text to an ellipsis at render, not just reads as verbose. The `numbered` and `checklist` styles can truncate before reaching that error threshold — for those two, `pptfast audit`'s `content-truncated` finding is what catches it, not `validate`. `pptfast validate` reports the exact numbers that applied to each slide.
 
 Run `pptfast narratives [--json]` to list the named presets (each carries soft theme recommendations — a starting suggestion, never a constraint) plus the raw axes tables.
 
