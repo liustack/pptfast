@@ -176,17 +176,16 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
   })
 })
 
-// Bench-driven fix round (defect A) reclassification: fixing the small-
-// region misattribution family (see deck-audit.ts's own MIN_BG_REGION_AREA/
-// PaintedShape doc comments) re-measures *every* audited text against its
-// real background — including four components whose own badge/chip text used
-// to be silently mismeasured against the wrong (larger) region and now
-// correctly resolves against their own self-painted rect/circle:
-// `steps.tsx`'s numbered badge, `roadmap.tsx`'s stage-number badge,
-// `rings.tsx`'s core label, and `image-compare.tsx`'s "VS"/"AFTER" chips
-// (found via an exhaustive 28-component-type x 13-theme sweep built for this
-// reclassification, not just the plan's 3 named benchmark hits — see the
-// task report's reclassification table). All five hardcode an unwrapped ink
+// Bench-driven fix round (defect A reclassification, Task 3 handoff): the
+// small-region misattribution fix (see deck-audit.ts's own
+// MIN_BG_REGION_AREA/PaintedShape doc comments) re-measures *every* audited
+// text against its real background — including four components whose own
+// badge/chip text used to be silently mismeasured against the wrong
+// (larger) region: `steps.tsx`'s numbered badge, `roadmap.tsx`'s
+// stage-number badge, `rings.tsx`'s core label, and `image-compare.tsx`'s
+// "VS"/"AFTER" chips (found via an exhaustive 28-component-type x 13-theme
+// sweep, not just the plan's 3 named benchmark hits — see the task report's
+// reclassification table). All five hardcoded an unwrapped ink
 // (`fill="#FFFFFF"` for the two badges, `fill={ctx.colors.surface}` for the
 // rings/image-compare pair) with no `accessibleInk`/`readableOn` call
 // (unlike `content-rail-numbered.tsx`'s own "{chapter}.{content}" badge,
@@ -198,16 +197,17 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
 // `roadmap`/`insight_panel` entries document in full-matrix-contrast.test.ts)
 // and often passed (or, for rings/image-compare's "VS" badge — which paint no
 // card shell at all — *always* passed, on all 13 themes, pre-fix) by sheer
-// coincidence. Recorded here, not fixed — routed to the bench-driven fix
-// wave's own B-group worklist (accessibleInk-style calibration, same
-// precedent as kpi.tsx's delta arrows / numbered_cards' digits), the same
-// "document the real defect, don't silently fix it in the audit-fix task"
-// discipline the sibling describe block above already uses for five
-// unrelated pre-existing sources. `tech`/`campaign` are used below (each is
-// among the 4-6 affected themes for every one of these five call sites,
-// confirmed by a real 13-theme sweep while building this fix).
-describe("auditDeck — newly-exposed low-contrast sources (bench-driven fix round, defect A reclassification)", () => {
-  it("steps.tsx's hardcoded white badge digit fails against tech's light primary once measured against its own circle", () => {
+// coincidence. Fixed here (Task 3) the same way `content-rail-numbered.tsx`'s
+// own badge already was: each call site now runs its ink through
+// `accessibleInk`, keeping the preferred fill when it already clears the
+// ratio (byte-identical on every theme that never failed) and falling back
+// to `readableOn`'s neutral ink only where it doesn't. `tech`/`campaign`/
+// `consulting` are used below (each is among the affected themes for its
+// call site, confirmed by a real 13-theme sweep) — the same probes this
+// block's pre-fix version used to pin the defect, now re-pinned to assert
+// it's gone (red→green evidence).
+describe("auditDeck — B-group ink fixes (bench-driven fix round, defect A handoff, Task 3)", () => {
+  it("steps.tsx's numbered badge digit clears contrast against tech's light primary once measured against its own circle", () => {
     const ir = deck("tech", [
       {
         type: "content",
@@ -216,12 +216,10 @@ describe("auditDeck — newly-exposed low-contrast sources (bench-driven fix rou
       },
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(
-      contrast.some((f) => (f.detail as { fill?: string; text?: string })?.fill === "#FFFFFF" && f.detail?.text === "1"),
-    ).toBe(true)
+    expect(contrast.some((f) => f.detail?.text === "1")).toBe(false)
   })
 
-  it("roadmap.tsx's hardcoded white badge digit fails against the same light theme primaries as steps.tsx (identical unguarded pattern, separate call site)", () => {
+  it("roadmap.tsx's numbered badge digit clears contrast against the same light theme primaries as steps.tsx (identical pattern, separate call site)", () => {
     const ir = deck("tech", [
       {
         type: "content",
@@ -235,19 +233,17 @@ describe("auditDeck — newly-exposed low-contrast sources (bench-driven fix rou
       },
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(
-      contrast.some((f) => (f.detail as { fill?: string; text?: string })?.fill === "#FFFFFF" && f.detail?.text === "01"),
-    ).toBe(true)
+    expect(contrast.some((f) => f.detail?.text === "01")).toBe(false)
   })
 
-  it("rings.tsx's core label (colors.surface on colors.primary, no card shell at all) fails against campaign once measured against its own circle", () => {
+  it("rings.tsx's core label (colors.surface on colors.primary, no card shell at all) clears contrast against campaign once measured against its own circle", () => {
     // rings.tsx paints no rect/card of its own — pre-fix, the core label's
     // *only* possible fallback was the ambient page background, and
     // colors.surface sits close enough to that background on every one of
     // the 13 themes that this was a *universal* false positive-shaped
-    // near-miss before this fix (ratio ~1.0-1.2 everywhere, confirmed by a
-    // real sweep) — not just a "sometimes passes by coincidence" case like
-    // the two badges above.
+    // near-miss before the defect-A fix (ratio ~1.0-1.2 everywhere,
+    // confirmed by a real sweep) — not just a "sometimes passes by
+    // coincidence" case like the two badges above.
     const ir = deck("campaign", [
       {
         type: "content",
@@ -256,10 +252,10 @@ describe("auditDeck — newly-exposed low-contrast sources (bench-driven fix rou
       },
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => f.detail?.text === "Core")).toBe(true)
+    expect(contrast.some((f) => f.detail?.text === "Core")).toBe(false)
   })
 
-  it("image-compare.tsx's \"VS\" badge (identical colors.surface-on-colors.primary pattern as rings.tsx, separate call site) fails against campaign the same way", () => {
+  it("image-compare.tsx's \"VS\" badge (identical colors.surface-on-colors.primary pattern as rings.tsx, separate call site) clears contrast against campaign the same way", () => {
     const ir = deck("campaign", [
       {
         type: "content",
@@ -275,18 +271,20 @@ describe("auditDeck — newly-exposed low-contrast sources (bench-driven fix rou
       },
     ], { assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "data:image/png;base64,AAAA" } } } })
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => f.detail?.text === "VS")).toBe(true)
+    expect(contrast.some((f) => f.detail?.text === "VS")).toBe(false)
   })
 
-  it("image-compare.tsx's \"before_after\" style AFTER chip (colors.surface on colors.accent, a small rect not a circle) fails against consulting once measured against its own chip", () => {
+  it("image-compare.tsx's \"before_after\" style AFTER chip (colors.surface on colors.accent, a small rect not a circle) clears contrast against consulting once measured against its own chip", () => {
     // Same defect family, third shape kind: a <rect> this time (the "AFTER"
     // chip, 52x24=1,248px^2 — well below MIN_BG_REGION_AREA), not a circle —
-    // proving the fix's no-area-floor change (not just the new circle/
-    // ellipse containment math) is what surfaces this one. Unlike the three
-    // above, this was a pure false *negative* pre-fix (zero findings on any
-    // theme, confirmed by a real sweep) rather than a coincidental pass on
-    // some themes — the chip never registered as a region at all pre-fix, so
-    // resolution fell through to a background that always happened to pass.
+    // proving the defect-A fix's no-area-floor change (not just the new
+    // circle/ellipse containment math) is what surfaced this one. Unlike the
+    // three above, this was a pure false *negative* pre-defect-A-fix (zero
+    // findings on any theme) rather than a coincidental pass on some
+    // themes — the chip never registered as a region at all, so resolution
+    // fell through to a background that always happened to pass. The
+    // BEFORE chip (colors.muted fill) is unaffected on every theme — no
+    // low-contrast finding for it before or after this fix.
     const ir = deck("consulting", [
       {
         type: "content",
@@ -302,7 +300,8 @@ describe("auditDeck — newly-exposed low-contrast sources (bench-driven fix rou
       },
     ], { assets: { images: { a: { src: "data:image/png;base64,AAAA" }, b: { src: "data:image/png;base64,AAAA" } } } })
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => f.detail?.text === "AFTER")).toBe(true)
+    expect(contrast.some((f) => f.detail?.text === "AFTER")).toBe(false)
+    expect(contrast.some((f) => f.detail?.text === "BEFORE")).toBe(false)
   })
 })
 

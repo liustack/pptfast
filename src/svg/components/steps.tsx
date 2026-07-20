@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, truncateToUnits } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 import type { ComponentBox, ComponentCtx, SvgComponent } from "./types"
 
 type StepsComponent = Extract<Component, { type: "steps" }>
@@ -97,8 +98,21 @@ function layoutStepItem(item: StepItem, contentW: number): StepItemTextLayout {
   return { title, text }
 }
 
-/** Numbered badge (circle, primary fill, white centered digit) shared by
- * both modes — `cx`/`cy` are the caller's already-resolved badge center. */
+/** Numbered badge (circle, primary fill, centered digit) shared by both
+ * modes — `cx`/`cy` are the caller's already-resolved badge center.
+ *
+ * Bench-driven fix round, defect A reclassification (Task 3 handoff): the
+ * digit's ink used to be a bare `fill="#FFFFFF"` literal on the assumption
+ * every theme's `colors.primary` is dark enough for white to read — full-
+ * matrix scanning (once `deck-audit.ts` learned to attribute a `<text>` to
+ * its own self-painted circle instead of falling through to a larger,
+ * unrelated region — defect A's own fix) found campaign/classroom/insight/
+ * luxe/tech's `colors.primary` measures well under 4.5:1 against white.
+ * `accessibleInk` keeps the white preference when it already clears the
+ * ratio (every other theme, byte-identical) and falls back to
+ * `readableOn`'s neutral ink only where it doesn't — same precedent as
+ * `content-rail-numbered.tsx`'s own badge (the sibling in this component
+ * family that already got this treatment in an earlier fix round). */
 function renderBadge(cx: number, cy: number, n: number, ctx: ComponentCtx): React.ReactElement {
   return (
     <>
@@ -109,7 +123,7 @@ function renderBadge(cx: number, cy: number, n: number, ctx: ComponentCtx): Reac
         textAnchor="middle"
         fontSize={BADGE_FONT_SIZE}
         fontWeight="700"
-        fill="#FFFFFF"
+        fill={accessibleInk("#FFFFFF", ctx.colors.primary, BADGE_FONT_SIZE)}
         fontFamily={ctx.fonts.body}
         dominantBaseline="alphabetic"
       >

@@ -402,6 +402,96 @@ describe("bento-panel kpi_cards contrast (W8 fix round, targeted — see comment
   }
 })
 
+// Bench-driven fix round, defect A handoff (Task 3): the five B-group call
+// sites `deck-audit.test.ts`'s own "B-group ink fixes" describe block pins
+// against one representative theme each — swept here across all 13 themes
+// for the full regression net, same targeted-fixture idiom as the
+// bento-panel kpi_cards block above (a component-level defect, not an
+// archetype one, so a single fixed layout is the right scope, not a
+// per-theme layout sweep). All five hardcoded an unwrapped ink with no
+// `accessibleInk`/`readableOn` call — `steps.tsx`/`roadmap.tsx`'s
+// `fill="#FFFFFF"` badge digit, `rings.tsx`/`image-compare.tsx`'s "VS"
+// badge `fill={ctx.colors.surface}`, `image-compare.tsx`'s "AFTER" chip
+// (`before_after` style) `fill={ctx.colors.surface}` — now all routed
+// through `accessibleInk` against the badge/chip's own painted fill. A
+// byte-for-byte render diff (old vs. new component code, all 13 themes,
+// task report) confirms the fix changes rendered output on *exactly* the
+// themes below and leaves every other theme byte-identical — the "dark-
+// badge themes where the old ink already passed stay byte-identical"
+// invariant, verified, not assumed.
+describe("B-group ink fixes — full 13-theme sweep (bench-driven fix round, defect A handoff, Task 3)", () => {
+  const STEPS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [{ type: "steps", items: [{ title: "Step one", text: "do the first thing" }] }],
+  } as Slide
+  const ROADMAP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      { type: "roadmap", items: [{ title: "Kickoff", period: "Q1", rows: [{ label: "Scope", value: "discovery" }] }] },
+    ],
+  } as Slide
+  const RINGS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [{ type: "rings", items: [{ label: "Core", desc: "inner layer" }] }],
+  } as Slide
+  const IMAGE_COMPARE_VS_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      { type: "image_compare", left: { asset_id: "a", label: "Before" }, right: { asset_id: "b", label: "After" }, style: "vs" },
+    ],
+  } as Slide
+  const IMAGE_COMPARE_BEFORE_AFTER_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "image_compare",
+        left: { asset_id: "a", label: "Before" },
+        right: { asset_id: "b", label: "After" },
+        style: "before_after",
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: steps.tsx badge digit clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, STEPS_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "1")).toEqual([])
+    })
+
+    it(`${themeId}: roadmap.tsx badge digit clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, ROADMAP_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "01")).toEqual([])
+    })
+
+    it(`${themeId}: rings.tsx core label clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, RINGS_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "Core")).toEqual([])
+    })
+
+    it(`${themeId}: image-compare.tsx "VS" badge clears contrast against its own circle`, () => {
+      const findings = auditFindings(deckFor(themeId, IMAGE_COMPARE_VS_SLIDE))
+      expect(findings.filter((f) => f.code === "low-contrast" && f.detail?.text === "VS")).toEqual([])
+    })
+
+    it(`${themeId}: image-compare.tsx "AFTER" chip clears contrast against its own chip`, () => {
+      const findings = auditFindings(deckFor(themeId, IMAGE_COMPARE_BEFORE_AFTER_SLIDE))
+      expect(
+        findings.filter((f) => f.code === "low-contrast" && (f.detail?.text === "AFTER" || f.detail?.text === "BEFORE")),
+      ).toEqual([])
+    })
+  }
+})
+
 // Dedicated 13-theme colors.muted contrast lock (post-v0.3 W8 fix round,
 // backlog item 5a — `.issues/notes/2026-07-18-post-v03-backlog.md` #5, the
 // other half of item 2 — see also task-1's handoff report for the 7

@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 import type { SvgComponent } from "./types"
 
 type RingsComponent = Extract<Component, { type: "rings" }>
@@ -59,7 +60,18 @@ export const rings: SvgComponent<RingsComponent> = {
             />
           )
         })}
-        {/* 内核 label 圆心居中 */}
+        {/* 内核 label 圆心居中。
+            Bench-driven fix round, defect A reclassification (Task 3
+            handoff): this component paints no card shell of its own, so a
+            bare `fill={ctx.colors.surface}` on the self-painted primary
+            circle used to fall through to the ambient page background for
+            contrast purposes (never the circle it's actually rendered on)
+            — full-matrix scanning (post defect-A fix) found
+            campaign/insight/classroom measure ~1.0-1.2:1 there.
+            `accessibleInk` keeps `colors.surface` when it already clears
+            the ratio against the circle's own `colors.primary` fill
+            (every other theme, byte-identical), falls back to
+            `readableOn`'s neutral ink otherwise. */}
         {(() => {
           const core = component.items[0]
           const fitted = fitSvgLine(core.label, {
@@ -74,7 +86,7 @@ export const rings: SvgComponent<RingsComponent> = {
               textAnchor="middle"
               fontSize={fitted.fontSize}
               fontWeight="bold"
-              fill={ctx.colors.surface}
+              fill={accessibleInk(ctx.colors.surface, ctx.colors.primary, fitted.fontSize)}
               fontFamily={ctx.fonts.heading}
               dominantBaseline="alphabetic"
             >
