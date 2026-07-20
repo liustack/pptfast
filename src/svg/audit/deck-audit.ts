@@ -50,6 +50,12 @@ export interface AuditReport {
   checks: AuditChecks
 }
 
+/** `auditDeck`'s second parameter (audit-v2 phase B) — see that function's
+ *  own doc comment for the overload contract this shape backs. */
+export interface AuditDeckOptions {
+  pixels?: boolean
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Shared parse helper — same DOMParser seam `svg-audit.ts` uses (platform
 // registry, `?? globalThis.DOMParser` fallback for jsdom-environment tests
@@ -1637,8 +1643,53 @@ function runDeterministicAudit(ir: PptxIR): { findings: AuditFinding[]; pagesAud
  *
  * `auditDeck` itself never calls `installNodePlatform()`; that's the
  * caller's job (the CLI does it automatically).
+ *
+ * `opts.pixels` (audit-v2 phase B, spec §4.3/§11.7) opts into the optional
+ * pixel-level contrast audit over image-backed text (`../svg/audit/pixel-audit.ts`)
+ * — overloaded so the far more common omitted/`false` case keeps returning
+ * a plain, synchronous `AuditReport` (spec §11.7's "语义层": the default
+ * audit stays pure TS with zero added latency or Promise-wrapping), while
+ * `pixels: true` returns a `Promise<AuditReport>` that resolves once the
+ * rasterization pass completes. A caller holding a non-literal
+ * `{ pixels: someBoolean }` won't match either overload directly (TypeScript
+ * can't narrow it to one specific branch) — branch on the boolean first and
+ * call this function with a literal in each arm, e.g. `opts.pixels ? await
+ * auditDeck(ir, { pixels: true }) : auditDeck(ir)` (`cli/commands.ts`'s
+ * `runAudit` does exactly this).
  */
-export function auditDeck(ir: PptxIR): AuditReport {
+export function auditDeck(ir: PptxIR, opts?: { pixels?: false }): AuditReport
+export function auditDeck(ir: PptxIR, opts: { pixels: true }): Promise<AuditReport>
+export function auditDeck(ir: PptxIR, opts: AuditDeckOptions = {}): AuditReport | Promise<AuditReport> {
   const { findings, pagesAudited, pagesSkipped } = runDeterministicAudit(ir)
-  return { findings, pagesAudited, pagesSkipped, checks: { svg: "completed", pixels: "not-requested" } }
+  const report: AuditReport = { findings, pagesAudited, pagesSkipped, checks: { svg: "completed", pixels: "not-requested" } }
+  if (!opts.pixels) return report
+  return runPixelPass(ir, report)
+}
+
+/**
+ * `auditDeck`'s `pixels: true` branch — factored out so the sync branch
+ * above stays a plain, un-awaited return. Reaches `pixel-audit.ts` through a
+ * *lazy* `import()` rather than a static top-level one deliberately:
+ * `pixel-audit.ts` already statically imports several primitives from this
+ * file (`__collectImageBackedTextRuns`, `blendOver`, `contrastRatio`, the
+ * `AuditFinding`/`ImageBackedTextRun` types) — a static import the other way
+ * here would close that into a module cycle. Both directions only ever
+ * reference plain hoisted function declarations (never invoked at either
+ * module's own top level), so a cycle would in fact resolve safely, but
+ * this codebase's own layering discipline (see `pathBoundingBox`'s doc
+ * comment on why `deck-audit.ts` keeps a second path tokenizer rather than
+ * import one from `src/pptx`: "layering stays one-directional") argues for
+ * avoiding one on principle rather than relying on that safety. The lazy
+ * import also means `pixel-audit.ts` — and transitively `platform/browser.ts`
+ * — is never even loaded for the far more common call that never passes
+ * `pixels: true`.
+ */
+async function runPixelPass(ir: PptxIR, report: AuditReport): Promise<AuditReport> {
+  const { runPixelContrastAudit } = await import("./pixel-audit")
+  const pixelFindings = await runPixelContrastAudit(ir)
+  return {
+    ...report,
+    findings: [...report.findings, ...pixelFindings],
+    checks: { svg: "completed", pixels: "completed" },
+  }
 }
