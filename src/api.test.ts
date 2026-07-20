@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
+import { measureTextUnits } from "@/lib/svg-text-layout"
 import { formatIssues, formatWarnings, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { CAPACITY } from "./svg/audit/capacity"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 const raw = {
@@ -754,6 +756,66 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
     expect(v.warnings?.find((w) => w.message.includes("too long"))?.message).toBe(
       "a bullet item is too long for dense pacing — keep it within about 2 lines",
     )
+  })
+})
+
+describe("bullets geometric hard error (Task 2, borrow wave — dual-threshold severity)", () => {
+  // Q3's boundary scan (fact-report, borrow wave) found validateIr's old
+  // "any finding blocks" design hard-rejecting a 44-CJK-unit bullet item —
+  // well inside the balanced-pacing 40-unit *editorial* budget's reach —
+  // while real render never truncates until ~156 units for a full-width
+  // single column: a ~3.5x gap between the old block point and the true
+  // render-safety edge. Task 2 splits severity so that gap can no longer
+  // turn a legitimate deck into a hard rejection: 44 units is now warn-only
+  // (bullet_item_long fires, `ok` stays true), and rendering the exact same
+  // content produces zero data-truncated markers — closing the loop the
+  // fact-report flagged as the real risk ("a real deck rejected outright").
+  it("44-unit CJK bullet item: warns but ok:true, and a real render has zero data-truncated (Q3's 3.5x gap regression guard)", () => {
+    // "测" is a pure CJK char (measureTextUnits weight 1.0/char), so
+    // repeat(44) is exactly the boundary scan's own "validateIr first
+    // rejects at 44 CJK chars" fixture (fact-report Q3 — the "measured units"
+    // reading, not the density-probe's own differently-sized "47-unit"
+    // illustrative string quoted elsewhere in that same report).
+    const cjk44 = "测".repeat(44)
+    expect(measureTextUnits(cjk44)).toBe(44) // pins the fact-report's own boundary-scan number
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Density probe", components: [{ type: "bullets", items: ["filler item one", cjk44] }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("too long"))).toBe(true)
+    const svg = renderSlideSvg(v.ir!, 1)
+    expect(svg).not.toContain('data-truncated="1"')
+  })
+
+  it(`a bullet item past the geometric ceiling (${CAPACITY.bullets.itemOverflowUnits} units) hard-blocks generation via generatePptx`, async () => {
+    const tooLong = "测".repeat(CAPACITY.bullets.itemOverflowUnits + 1)
+    const ir = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Overflow probe", components: [{ type: "bullets", items: [tooLong] }] },
+      ],
+    }
+    const v = validateIr(ir)
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes("exceeds"))).toBe(true)
+    await expect(generatePptx(ir)).rejects.toThrow(/invalid IR/)
+  })
+
+  it(`does NOT report bullet_item_overflow at exactly ${CAPACITY.bullets.itemOverflowUnits} units — still ok:true (only the editorial warn, if any, applies)`, () => {
+    const atCeiling = "测".repeat(CAPACITY.bullets.itemOverflowUnits)
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "At ceiling", components: [{ type: "bullets", items: [atCeiling] }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
   })
 })
 

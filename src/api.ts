@@ -124,6 +124,14 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `a bullet item is too long for ${b.pacing} pacing — keep it within about 2 lines`
         : "a bullet item is too long — keep it within about 2 lines"
     }
+    case "bullet_item_overflow":
+      // Task 2 (borrow wave, dual-threshold severity): the geometric
+      // counterpart to `bullet_item_long` above — severity "error", not
+      // "warn", so this is the one bullets message that actually blocks
+      // `ok`. `CAPACITY.bullets.itemOverflowUnits` is a flat, pacing-
+      // independent ceiling (see its own derivation comment, capacity.ts),
+      // unlike `bullet_item_long`'s per-pacing `maxUnitsPerItem`.
+      return `a bullet item exceeds the render-safety limit (${CAPACITY.bullets.itemOverflowUnits} width units) and will be truncated — shorten it substantially or split the point across two items`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     default:

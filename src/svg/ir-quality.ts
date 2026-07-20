@@ -108,9 +108,14 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
     }
   }
 
-  // bullets overflow + per-item length — W3 task 3: budget now reads
-  // PACING_BUDGETS (spec §5 pacing table) instead of the old flat
-  // CAPACITY.bullets.
+  // bullets overflow + per-item length — W3 task 3: budget reads
+  // PACING_BUDGETS (spec §5 pacing table), an editorial (warn) ceiling —
+  // *not* the same `CAPACITY.bullets` the geometric check just below reads:
+  // that old flat physical-ceiling entry was deleted in W3 (its number sat
+  // above every pacing budget, so it was redundant at the time). This task
+  // (borrow wave, Task 2) reintroduces `CAPACITY.bullets` under the same
+  // name but a different, narrower meaning (an *error*-level render-safety
+  // ceiling, not an editorial one) — see its own derivation comment.
   for (const component of slide.components) {
     if (component.type !== "bullets") continue
     if (component.items.length > budget.bullets.maxItems) {
@@ -123,13 +128,30 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
       })
     }
     for (const item of component.items) {
-      if (measureTextUnits(item) > budget.bullets.maxUnitsPerItem) {
+      const units = measureTextUnits(item)
+      if (units > budget.bullets.maxUnitsPerItem) {
         issues.push({
           slide: index,
           severity: "warn",
           code: "bullet_item_long",
           message: "单条要点过长，建议精简至 2 行内",
           bulletsBudget: { pacing: resolvedAxes.pacing, ...budget.bullets },
+        })
+      }
+      // Task 2 (borrow wave, dual-threshold severity): geometric hard
+      // ceiling, independent of pacing — see CAPACITY.bullets
+      // .itemOverflowUnits's own derivation comment (capacity.ts) for the
+      // 2-line/MIN_FONT=14/narrowest-two-column-width formula and its
+      // empirical confirmation. Fires *in addition to* bullet_item_long
+      // above when both cross (an item can be simultaneously "over the
+      // editorial budget" and "past the render-safety edge") — the two
+      // codes answer different questions and neither supersedes the other.
+      if (units > CAPACITY.bullets.itemOverflowUnits) {
+        issues.push({
+          slide: index,
+          severity: "error",
+          code: "bullet_item_overflow",
+          message: "单条要点超出渲染安全上限，会被截断显示",
         })
       }
     }
