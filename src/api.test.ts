@@ -393,6 +393,114 @@ describe("full-body component exclusivity gate (structure-components wave task 1
   })
 })
 
+describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)", () => {
+  const bullets = { type: "bullets" as const, items: ["a"] }
+
+  it.each(["cover", "chapter", "ending"] as const)(
+    "hard-rejects a %s slide carrying components — every archetype in that family drops them silently",
+    (type) => {
+      const v = validateIr({
+        ...raw,
+        slides: [{ type, heading: "H", components: [bullets] }],
+      })
+      expect(v.ok).toBe(false)
+      expect(v.errors).toHaveLength(1)
+      expect(v.errors[0]!.path).toBe("slides.0")
+      expect(v.errors[0]!.page).toBe(1)
+      expect(v.errors[0]!.message).toBe(
+        `"${type}" slides do not render components — move this content to a content slide or remove it`,
+      )
+    },
+  )
+
+  it.each(["cover", "chapter", "ending"] as const)(
+    "hard-rejects a %s slide carrying a footnote",
+    (type) => {
+      const v = validateIr({
+        ...raw,
+        slides: [{ type, heading: "H", footnote: "source: x" }],
+      })
+      expect(v.ok).toBe(false)
+      expect(v.errors[0]!.message).toBe(
+        `"${type}" slides do not render footnote — move this content to a content slide or remove it`,
+      )
+    },
+  )
+
+  it("names both offending fields, components first, when a slide carries both", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "cover", heading: "H", components: [bullets], footnote: "source: x" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toBe(
+      '"cover" slides do not render components/footnote — move this content to a content slide or remove it',
+    )
+  })
+
+  it.each(["cover", "chapter", "ending"] as const)(
+    "accepts a %s slide carrying only a subheading — never gated, since no type drops it on every archetype (corrects the benchmark's initial hypothesis that subheading might belong here too)",
+    (type) => {
+      const v = validateIr({
+        ...raw,
+        slides: [{ type, heading: "H", subheading: "S" }],
+      })
+      expect(v.ok).toBe(true)
+    },
+  )
+
+  it("accepts a content slide carrying components, footnote, and subheading together — the one type that renders all three", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "H", subheading: "S", components: [bullets], footnote: "source: x" }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it.each(["cover", "chapter", "ending"] as const)(
+    "exempts a placeholder %s slide — an assemble-generated stub has no real content to judge (same exemption checkIrQuality already applies)",
+    (type) => {
+      const v = validateIr({
+        ...raw,
+        slides: [{ type, placeholder: true, components: [bullets], footnote: "source: x" }],
+      })
+      expect(v.ok).toBe(true)
+    },
+  )
+
+  it("never flags notes — speaker notes are never rendered onto the canvas by design, on any page type", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "cover", heading: "H", notes: "say hello warmly" }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("sets slideId when the offending slide has one (same shape as checkLayoutApplicability/checkFullBodyExclusivity)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "ending", id: "p-end", heading: "Thanks", components: [bullets] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.slideId).toBe("p-end")
+  })
+
+  it("lists one issue per offending slide, not just the first", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { type: "cover", heading: "C", components: [bullets] },
+        { type: "content", heading: "OK", components: [bullets] },
+        { type: "ending", heading: "E", footnote: "source: x" },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(2)
+    expect(v.errors[0]!.page).toBe(1)
+    expect(v.errors[1]!.page).toBe(3)
+  })
+})
+
 describe("ValidationIssue.slideId + formatIssues (W5 whole-branch review finding 2)", () => {
   it("checkLayoutApplicability sets slideId, and formatIssues prints 'page N (id) — path: message'", () => {
     const v = validateIr({
