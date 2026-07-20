@@ -441,11 +441,26 @@ export function renderDumbbell(
   const rows = Math.min(fromData.length, toData.length)
   if (rows === 0) return <></>
   const all = [...fromData, ...toData].map((d) => d.y)
+  // Value domain must cover the data's real minimum, not just its positive
+  // side — a negative value otherwise has no left bound and `vx()` can push
+  // it arbitrarily far off-canvas (2026-07-21 fix: a mixed-sign series, e.g.
+  // from:-5/to:10, degenerated through svg2pptx/text.ts's `align==="center"`
+  // branch — `half = Math.min(xPx, CANVAS_W_PX - xPx)` goes negative once
+  // `xPx < 0` — into a negative-width text op, which the package-audit gate
+  // then rejected outright). `max` keeps its pre-existing +1 floor and `min`
+  // mirrors it on the low side with a 0 floor, so `max >= 1` and `min <= 0`
+  // always hold and `max > min` is structurally guaranteed for every input —
+  // the same "provably non-degenerate" guarantee gantt.tsx's `axisBounds`
+  // documents for its own vx() domain. `min` collapses to exactly 0 whenever
+  // every value is already >= 0, so a positive-only or all-zero series (the
+  // only cases this component shipped with before) renders byte-identically
+  // to the old `v / max` formula.
+  const min = Math.min(0, ...all)
   const max = Math.max(...all, 1)
   const plotX = x0 + DUMBBELL_LABEL_W + 12
   const plotW = Math.max(1, w - DUMBBELL_LABEL_W - 12 - 56)
   const rowH = h / rows
-  const vx = (v: number) => plotX + (v / max) * plotW
+  const vx = (v: number) => plotX + ((v - min) / (max - min)) * plotW
   return (
     <>
       {Array.from({ length: rows }, (_, i) => {
