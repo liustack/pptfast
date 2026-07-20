@@ -15,8 +15,9 @@
 // installed" for another block in the same file.
 import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import { installNodePlatform } from "../../platform/node"
-import { installPlatform } from "../../platform/registry"
+import { installPlatform, type RasterizedImage } from "../../platform/registry"
 import { makeSolidRegionPngDataUri } from "../../platform/test-png-fixture"
 import { auditDeck } from "./deck-audit"
 import { __pixelFindingsForPage, stripTextNodes } from "./pixel-audit"
@@ -132,6 +133,151 @@ describe("__pixelFindingsForPage", () => {
     })
     expect(findings).toEqual([])
     expect(called).toBe(false)
+  })
+})
+
+// ────────────────────────────────────────────────────────────────────────
+// Dense-stride sampling coverage (deep-acceptance review finding 2). The
+// old fixed 5×3-point grid provably missed a genuine sub-1.5:1 patch
+// falling between sample points — demonstrated at ImageCoverPage's own
+// real org-line scale (fontSize 21, x=96/y=104, white fill at 0.85
+// fill-opacity — src/svg/ImagePages.tsx). This block pins that exact
+// demonstrated miss as a red-first regression, plus the aligned control and
+// a single-pixel noise-robustness case the new design must also satisfy.
+// ────────────────────────────────────────────────────────────────────────
+
+describe("worstCaseSample — dense-stride coverage (deep-acceptance review finding 2)", () => {
+  // ImageCoverPage's real org-line parameters, verbatim.
+  const TEXT = "Meridian Analytics Group" // plausible real org name, same length class task-2-review flagged
+  const FONT_SIZE = 21
+  const FILL = "#FFFFFF"
+  const FILL_OPACITY = 0.85
+  const X = 96
+  const Y_BASELINE = 104
+  const W = 1280
+  const H = 720
+
+  const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"><image href="data:image/png;base64,x" x="0" y="0" width="${W}" height="${H}"/><text x="${X}" y="${Y_BASELINE}" font-size="${FONT_SIZE}" fill="${FILL}" fill-opacity="${FILL_OPACITY}">${TEXT}</text></svg>`
+
+  const left = X
+  const right = X + measureTextUnits(TEXT) * FONT_SIZE
+
+  // Reproduce the OLD fixed 5-column grid's own math purely to locate where
+  // its blind spot fell — the fix itself no longer uses this formula at
+  // all (see pixel-audit.ts's samplePositions), this is just how the
+  // acceptance review's own probe found the miss.
+  const OLD_SAMPLE_COLS = 5
+  const oldColXs = Array.from({ length: OLD_SAMPLE_COLS }, (_, col) =>
+    Math.round(left + (right - left) * (col / (OLD_SAMPLE_COLS - 1))),
+  )
+  const gap01 = oldColXs[1]! - oldColXs[0]!
+  const gapCenter = Math.round((oldColXs[0]! + oldColXs[1]!) / 2) // 35px off column 0/1 at this scale
+  const stripeW = Math.max(8, Math.min(24, gap01 - 10)) // 24px at this scale, per the report
+
+  const FIELD_V = 30 // dark field: safe for 0.85-alpha white text (~12:1)
+  const BAD_V = 250 // near-white patch: genuinely bad (hand-verified ~1.03:1 in the report)
+
+  function rasterWithVerticalStripe(stripeX: number) {
+    return async (_svg: string, width: number, height: number): Promise<RasterizedImage> => {
+      const data = new Uint8ClampedArray(width * height * 4)
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4
+          const inStripe = x >= stripeX - stripeW / 2 && x <= stripeX + stripeW / 2
+          const v = inStripe ? BAD_V : FIELD_V
+          data[i] = v
+          data[i + 1] = v
+          data[i + 2] = v
+          data[i + 3] = 255
+        }
+      }
+      return { width, height, data }
+    }
+  }
+
+  it("catches a genuinely sub-1.5:1 patch sitting in the old grid's blind gap (previously zero findings)", async () => {
+    const findings = await __pixelFindingsForPage(markup, 1, "p1", rasterWithVerticalStripe(gapCenter))
+    expect(findings).toHaveLength(1)
+    expect((findings[0]!.detail as { ratio: number }).ratio).toBeLessThan(1.5)
+  })
+
+  it("still catches the same patch aligned to where the old grid's own column would have hit it (non-regression control)", async () => {
+    const findings = await __pixelFindingsForPage(markup, 1, "p1", rasterWithVerticalStripe(oldColXs[1]!))
+    expect(findings).toHaveLength(1)
+    expect((findings[0]!.detail as { ratio: number }).ratio).toBeLessThan(1.5)
+  })
+
+  it("catches the same patch swept across a full old-grid gap period, not just the one historical offset", async () => {
+    // Broader proof of the coverage guarantee than the single historical
+    // repro above: a ~24px bad patch is caught no matter which of several
+    // offsets across the gap it sits at.
+    for (let offset = 0; offset < gap01; offset += 7) {
+      const stripeX = oldColXs[0]! + offset
+      const findings = await __pixelFindingsForPage(markup, 1, "p1", rasterWithVerticalStripe(stripeX))
+      expect(findings, `offset ${offset} from column 0`).toHaveLength(1)
+    }
+  })
+})
+
+describe("worstCaseSample — single-pixel noise robustness (deep-acceptance review finding 2)", () => {
+  const FONT_SIZE = 24
+  const X = 96
+  const Y_BASELINE = 200
+  const W = 1280
+  const H = 720
+  const FILL = "#111111" // dark caption ink — the color direction where a lone DARK noise pixel is the adversarial case
+  const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"><image href="data:image/png;base64,x" x="0" y="0" width="${W}" height="${H}"/><text x="${X}" y="${Y_BASELINE}" font-size="${FONT_SIZE}" fill="${FILL}">noise probe</text></svg>`
+
+  // The exact top-left sample center pixel-audit.ts's own dense grid always
+  // starts at (samplePositions' loop starts at `lo`, i.e. the run's own
+  // left edge / band top) — a deterministic, worst-case placement for a
+  // single noisy pixel: guaranteed to land as some window's exact center,
+  // not a matter of luck.
+  const SAMPLE_ASCENT_RATIO = 0.75
+  const noiseX = X
+  const noiseY = Math.round(Y_BASELINE - FONT_SIZE * SAMPLE_ASCENT_RATIO)
+
+  const SAFE_V = 232 // light field: comfortably safe for near-black text
+  const NOISE_V = 8 // a single near-black outlier pixel (e.g. rasterizer antialiasing noise under a glyph edge)
+
+  it("a lone dark pixel exactly at a sample center does not flip a safe patch into a finding", async () => {
+    const raster = async (_svg: string, width: number, height: number): Promise<RasterizedImage> => {
+      const data = new Uint8ClampedArray(width * height * 4)
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4
+          const v = x === noiseX && y === noiseY ? NOISE_V : SAFE_V
+          data[i] = v
+          data[i + 1] = v
+          data[i + 2] = v
+          data[i + 3] = 255
+        }
+      }
+      return { width, height, data }
+    }
+    const findings = await __pixelFindingsForPage(markup, 1, "p1", raster)
+    expect(findings).toEqual([])
+  })
+
+  it("a real, non-noise 12px-wide dark patch at the same spot still gets caught (the averaging window doesn't blind the check to a genuine defect)", async () => {
+    const patchHalf = 6 // 12px wide, comfortably >= MIN_GUARANTEED_PATCH_PX
+    const raster = async (_svg: string, width: number, height: number): Promise<RasterizedImage> => {
+      const data = new Uint8ClampedArray(width * height * 4)
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4
+          const inPatch = Math.abs(x - noiseX) <= patchHalf
+          const v = inPatch ? NOISE_V : SAFE_V
+          data[i] = v
+          data[i + 1] = v
+          data[i + 2] = v
+          data[i + 3] = 255
+        }
+      }
+      return { width, height, data }
+    }
+    const findings = await __pixelFindingsForPage(markup, 1, "p1", raster)
+    expect(findings).toHaveLength(1)
   })
 })
 

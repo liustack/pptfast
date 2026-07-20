@@ -80,7 +80,11 @@ export function stripTextNodes(markup: string): string {
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (v: number) => v.toString(16).padStart(2, "0")
+  // Rounds first: callers now include averaged (non-integer) channel values
+  // (`averageWindow`'s own doc comment) alongside the original raw-integer
+  // ones — `Math.round` is a no-op for the latter, so this stays byte-for-
+  // byte compatible with every pre-existing call shape.
+  const toHex = (v: number) => Math.round(v).toString(16).padStart(2, "0")
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase()
 }
 
@@ -101,15 +105,52 @@ const SAMPLE_ASCENT_RATIO = 0.75
 const SAMPLE_DESCENT_RATIO = 0.25
 
 /**
- * Sample grid resolution (columns × rows) across a run's estimated
- * `[left,right] × [top,bottom]` box. Small on purpose — pixel sampling runs
- * per image-backed run, per audited page, and the goal is "don't miss a
- * genuinely broken pairing by bad luck", not a dense scan: 15 points is
- * already enough to hit both a bright and dark region of any photo a real
- * heading/caption run would plausibly sit across.
+ * Minimum contiguous low-contrast patch size (px, both axes, at the
+ * 1280×720 rasterization scale) the sampling design below guarantees never
+ * to miss — "glyph scale": at or below the narrowest highlight/shadow
+ * sliver a single character can plausibly introduce (the deep-acceptance
+ * review's own demonstrated miss used a 24px-wide patch, comfortably above
+ * this floor with margin to spare). Anchors both `SAMPLE_STRIDE_PX`
+ * (coverage) and the `SAMPLE_STRIDE_PX` vs `AGGREGATION_HALF_PX` margin
+ * (noise robustness) — see `worstCaseSample`'s own doc comment for the
+ * covering argument these three constants together satisfy.
  */
-const SAMPLE_COLS: number = 5
-const SAMPLE_ROWS: number = 3
+const MIN_GUARANTEED_PATCH_PX = 10
+
+/**
+ * Sample-center spacing (px), both axes — half of `MIN_GUARANTEED_PATCH_PX`,
+ * computed rather than duplicated as a literal so the two constants can
+ * never drift apart. The standard "sample at <= half the feature size"
+ * covering rule. Replaces
+ * the old fixed 5×3-point grid (`SAMPLE_COLS`/`SAMPLE_ROWS`), whose own
+ * justifying comment ("15 points is already enough...") the deep-acceptance
+ * review falsified with a hand-verified repro: a real 1.03:1 contrast patch
+ * sitting 35px from the nearest sample column (columns were 70px apart at
+ * ImageCoverPage's real org-line scale) produced zero findings, yet the
+ * identical patch was caught the moment it landed on a column — pure
+ * alignment luck, not a real "worst-case band" guarantee. A dense,
+ * position-independent stride closes that gap entirely (see the coverage
+ * proof below) instead of shrinking it.
+ */
+const SAMPLE_STRIDE_PX = MIN_GUARANTEED_PATCH_PX / 2
+
+/**
+ * Half-width (px) of the small square window averaged at each sample
+ * center before the worst-case comparison — the noise-robustness half of
+ * this design. A lone single-pixel outlier (rasterizer antialiasing noise
+ * under a glyph edge, photo grain) is diluted to at most 1/9 of a 3×3
+ * window's mean, never enough on its own to pull a genuinely-safe
+ * surrounding patch's averaged ratio under the 1.5 hard-finding floor (this
+ * file's own test: a single near-black (8) pixel inside an otherwise-232
+ * 3×3 window averages to ~207.5, nowhere near dark enough to fail near-
+ * black text). Small enough — window width 3, well under `SAMPLE_STRIDE_PX
+ * × 2 = 10` — that it cannot itself straddle a genuine
+ * `MIN_GUARANTEED_PATCH_PX`-wide bad patch and a safe neighbor closely
+ * enough to dilute a real defect back above the floor (this file's own
+ * test: a real 12px-wide dark patch at the same spot the noise test uses
+ * still produces a finding).
+ */
+const AGGREGATION_HALF_PX = 1
 
 interface WorstCaseSample {
   ratio: number
@@ -117,36 +158,103 @@ interface WorstCaseSample {
 }
 
 /**
- * Grid-sample `run`'s estimated box against `image`, tracking the least-
- * favorable (lowest) contrast ratio found — spec §4.3 step 6's "WCAG 最不利
- * 带" (worst-case band). A sample whose alpha is below 255 is skipped as
- * indeterminate (this renderer's own `Background.tsx` always paints a
- * full-bleed layer first, so a genuinely transparent pixel should not occur
- * in practice — this is a defensive fallback for that hypothetical, not a
- * normal-path concern). Returns `null` when no sample point yielded usable
- * pixel data at all (every point skipped, or the run's box fell entirely
- * outside the rasterized canvas) — the caller treats that as "nothing
- * proven either way", not a finding.
+ * Dense sample-center positions from `lo` to `hi` inclusive, `SAMPLE_STRIDE_PX`
+ * apart. Always includes both endpoints, even when the span isn't an exact
+ * stride multiple (the last gap can be shorter than the stride, never
+ * longer) — a run's own edges are never under-sampled relative to its
+ * interior. `[lo]` when the span has collapsed to (or below) a point, same
+ * degenerate-input guard the old fixed-fraction grid had.
+ */
+function samplePositions(lo: number, hi: number): number[] {
+  if (hi <= lo) return [lo]
+  const positions: number[] = []
+  for (let v = lo; v < hi; v += SAMPLE_STRIDE_PX) positions.push(v)
+  positions.push(hi)
+  return positions
+}
+
+/**
+ * Mean RGB of the `(2*AGGREGATION_HALF_PX+1)²` pixel block centered at
+ * `(cx, cy)` (rounded to the nearest pixel) — the noise-robustness
+ * aggregation step, see `AGGREGATION_HALF_PX`'s own doc comment. Skips any
+ * pixel that's off-canvas or below full alpha, same indeterminate rule the
+ * original single-point design used; a window with at least one usable
+ * pixel still contributes its partial average rather than being discarded
+ * outright, maximizing real coverage near a run's own box edges. Returns
+ * `null` only when the window contained zero usable pixels.
+ */
+function averageWindow(image: RasterizedImage, cx: number, cy: number): { r: number; g: number; b: number } | null {
+  const x0 = Math.round(cx)
+  const y0 = Math.round(cy)
+  let sumR = 0
+  let sumG = 0
+  let sumB = 0
+  let count = 0
+  for (let dy = -AGGREGATION_HALF_PX; dy <= AGGREGATION_HALF_PX; dy++) {
+    const y = y0 + dy
+    if (y < 0 || y >= image.height) continue
+    for (let dx = -AGGREGATION_HALF_PX; dx <= AGGREGATION_HALF_PX; dx++) {
+      const x = x0 + dx
+      if (x < 0 || x >= image.width) continue
+      const i = (y * image.width + x) * 4
+      const alpha = image.data[i + 3]!
+      if (alpha < 255) continue
+      sumR += image.data[i]!
+      sumG += image.data[i + 1]!
+      sumB += image.data[i + 2]!
+      count++
+    }
+  }
+  if (count === 0) return null
+  return { r: sumR / count, g: sumG / count, b: sumB / count }
+}
+
+/**
+ * Grid-sample `run`'s estimated box against `image` at a dense,
+ * deterministic stride (`SAMPLE_STRIDE_PX`) — each sample point itself a
+ * small-window average (`averageWindow`/`AGGREGATION_HALF_PX`) rather than
+ * one raw pixel — tracking the least-favorable (lowest) contrast ratio
+ * found overall: spec §4.3 step 6's "WCAG 最不利带" (worst-case band).
+ *
+ * **Coverage guarantee:** any axis-aligned contiguous low-contrast patch at
+ * least `MIN_GUARANTEED_PATCH_PX` (10px) wide *and* tall is always fully
+ * covered by at least one sample's aggregation window, regardless of the
+ * patch's position relative to the grid — no alignment/phase assumption,
+ * unlike the fixed grid this replaces. Proof, one axis at a time: sample
+ * centers sit at a fixed stride S=5px; a window centered at `c` is fully
+ * inside a patch spanning `[a, a+10]` exactly when
+ * `c ∈ [a+1, a+9]` (window half-width 1px each side) — an interval of
+ * length 8 >= S, so by the covering property of a grid spaced S apart (any
+ * interval of length >= S must contain a grid point, since consecutive
+ * centers are only S apart), that interval always contains at least one
+ * sample center. The same argument applies independently on the
+ * perpendicular axis, so a 2D patch of that minimum size is always hit on
+ * both axes at once. (The deep-acceptance review's demonstrated miss used a
+ * 24px patch — comfortably inside this guarantee with margin to spare.)
+ *
+ * **Noise robustness:** see `AGGREGATION_HALF_PX`'s own doc comment — the
+ * same small window that provides the guarantee above also means a single
+ * noisy pixel can't flip a genuinely-safe patch into a false finding.
+ *
+ * Returns `null` when *no* sample window anywhere yielded any usable pixel
+ * at all (every window skipped, or the run's box fell entirely outside the
+ * rasterized canvas) — the caller treats that as "nothing proven either
+ * way", not a finding.
  */
 function worstCaseSample(run: ImageBackedTextRun, image: RasterizedImage): WorstCaseSample | null {
   const top = run.baseline - run.fontSize * SAMPLE_ASCENT_RATIO
   const bottom = run.baseline + run.fontSize * SAMPLE_DESCENT_RATIO
   let worst: WorstCaseSample | null = null
 
-  for (let row = 0; row < SAMPLE_ROWS; row++) {
-    const fy = SAMPLE_ROWS === 1 ? 0.5 : row / (SAMPLE_ROWS - 1)
-    const y = Math.round(top + (bottom - top) * fy)
-    if (y < 0 || y >= image.height) continue
-    for (let col = 0; col < SAMPLE_COLS; col++) {
-      const fx = SAMPLE_COLS === 1 ? 0.5 : col / (SAMPLE_COLS - 1)
-      const x = Math.round(run.left + (run.right - run.left) * fx)
-      if (x < 0 || x >= image.width) continue
+  const ys = samplePositions(top, bottom)
+  const xs = samplePositions(run.left, run.right)
 
-      const i = (y * image.width + x) * 4
-      const alpha = image.data[i + 3]!
-      if (alpha < 255) continue
+  for (const y of ys) {
+    for (const x of xs) {
+      const avg = averageWindow(image, x, y)
+      if (!avg) continue
 
-      const bgHex = rgbToHex(image.data[i]!, image.data[i + 1]!, image.data[i + 2]!)
+      const bgHex = rgbToHex(avg.r, avg.g, avg.b)
       const effective = blendOver(run.fill, bgHex, run.alpha)
       const ratio = contrastRatio(effective, bgHex)
       if (!worst || ratio < worst.ratio) worst = { ratio, background: bgHex }
@@ -158,8 +266,9 @@ function worstCaseSample(run: ImageBackedTextRun, image: RasterizedImage): Worst
 export interface PixelContrastIssue {
   text: string
   fill: string
-  /** The specific sampled RGB pixel (hex) the worst-case point landed on —
-   *  a literal rasterized sample, never a resolved SVG paint. */
+  /** The small-window-averaged RGB (hex) at the worst-case sample center —
+   *  a rasterized-and-aggregated sample, never a resolved SVG paint (see
+   *  `averageWindow`). */
   background: string
   ratio: number
   required: number
