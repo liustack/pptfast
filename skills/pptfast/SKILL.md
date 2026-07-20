@@ -47,10 +47,10 @@ For each page in the confirmed spec, write `pages/<page-id>.json` with its conte
 
 ```bash
 pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken spec
-pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget, unknown theme
+pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-Fix whatever either command reports and re-run until both print `OK`. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked.
+Fix whatever either command reports as an error and re-run until both print `OK`. `validate` can print `OK` alongside `warning:` lines (e.g. a long heading or a dense slide) — tighten those too when practical, they read better, but they do not block. Only an error stops `OK` from printing. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked.
 
 ### Phase 4 — Render
 
@@ -125,7 +125,7 @@ Declare images once in `assets.images` and reference them by `asset_id` — doub
 
 ### Capacity
 
-A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. Component and bullets budgets scale with the deck's `pacing` axis (tightest for `spacious`, loosest for `dense`) — `validate` reports the exact numbers that applied, not a flat constant. Body text size scales the other way: `spacious` renders the largest body font (32px vs. `balanced`'s 24px and `dense`'s 20px) even though it allows the fewest components, so a `spacious` slide needs fewer and shorter items, not just tighter ones. When in doubt, split into two slides — writing to fit beats fix-up loops.
+A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. Component and bullets budgets scale with the deck's `pacing` axis (tightest for `spacious`, loosest for `dense`) — `validate` reports the exact numbers that applied, not a flat constant. These are warnings, not hard errors — worth fixing for a tighter deck, but they never block `render`. Body text size scales the other way: `spacious` renders the largest body font (32px vs. `balanced`'s 24px and `dense`'s 20px) even though it allows the fewest components, so a `spacious` slide needs fewer and shorter items, not just tighter ones. A bullet item that is long regardless of pacing — long enough to still overflow after shrinking to the render floor — *is* a hard `validate` error (it would otherwise lose real text to an ellipsis), so treat "keep bullet items short" as a real constraint, not just a style suggestion. When in doubt, split into two slides — writing to fit beats fix-up loops.
 
 Four component types own the whole slide instead of sharing it: `swot`, `bmc`, `waterfall`, `gantt`. Each must be its slide's only component — `validate` hard-errors on a slide that mixes one in with `bullets` or anything else, it never silently drops the sibling.
 
