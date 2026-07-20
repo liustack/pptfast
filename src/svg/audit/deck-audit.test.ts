@@ -8,7 +8,7 @@
 // not jsdom's incidental global `DOMParser` filling in unasked.
 import { readFileSync } from "node:fs"
 import { beforeAll, describe, expect, it } from "vitest"
-import { PptxIRSchema, type PptxIR, type Slide } from "@/ir"
+import { PptxIRSchema, type Component, type PptxIR, type Slide } from "@/ir"
 import { renderSlideSvg } from "../../api"
 import { installNodePlatform } from "../../platform/node"
 import {
@@ -101,7 +101,14 @@ describe("auditDeck — clean deck baseline", () => {
         const report = auditDeck(ir)
         expect(report.findings.filter((f) => f.code === "overlap")).toEqual([])
         for (const f of report.findings) {
-          expect(["overflow", "out-of-bounds", "low-contrast", "overlap"]).toContain(f.code)
+          expect([
+            "overflow",
+            "out-of-bounds",
+            "low-contrast",
+            "overlap",
+            "content-truncated",
+            "content-dropped",
+          ]).toContain(f.code)
           expect(f.message.length).toBeGreaterThan(0)
         }
       })
@@ -311,6 +318,81 @@ describe("auditDeck — overflow / out-of-bounds", () => {
     const overflow = report.findings.filter((f) => f.code === "overflow")
     expect(overflow.length).toBeGreaterThan(0)
     expect(overflow[0].slideId).toBeUndefined()
+  })
+})
+
+// bench-driven fix round, defect E: `fitSvgLine`'s ellipsis truncation and
+// `layoutContentFit`'s "+N more" drop marker used to be invisible to audit —
+// a model (or human) had to eyeball the rendered SVG to notice row_cards
+// silently dropping items or a slide silently dropping a whole component.
+// Both checks below are thin readers of the `data-truncated`/`data-dropped`
+// markers the render chain now stamps (`svg-text-layout.ts`'s `fitSvgLine`,
+// `layout.ts`'s `layoutContentFit`, `row-cards.tsx`'s own item-level marker)
+// — real IR renders, same "auditDeck -> findings" path as every other test
+// in this file, not hand-crafted markup, since the point is proving the
+// render chain's own markers reach the audit layer end to end.
+describe("auditDeck — content-truncated / content-dropped (bench-driven fix round, defect E)", () => {
+  it("surfaces an ellipsis-truncated verdict_banner text as a 'content-truncated' finding", () => {
+    // verdict_banner renders at a fixed 18px/2-line budget regardless of how
+    // far `layoutSvgText` had to loosen its own wrap to fit (`lay`'s own doc
+    // comment) — a long enough unbroken run forces `truncateEmphasisSegments`
+    // to cut, guaranteed regardless of the resolved layout's column width.
+    const ir = deck("consulting", [
+      {
+        type: "content",
+        id: "s1",
+        heading: "verdict probe",
+        components: [{ type: "verdict_banner", tone: "positive", text: LONG_CJK.repeat(10) }],
+      },
+    ])
+    const report = auditDeck(ir)
+    const truncated = report.findings.filter((f) => f.code === "content-truncated")
+    expect(truncated.length).toBeGreaterThan(0)
+    expect(truncated[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-truncated" })
+    expect(truncated[0].message).toMatch(/was truncated with an ellipsis/)
+    expect((truncated[0].detail as { text?: string }).text?.endsWith("…")).toBe(true)
+  })
+
+  it("surfaces layoutContentFit's fully-dropped components as 'content-dropped' findings", () => {
+    // Same fixture shape as SvgContent.test.tsx's own "renders a
+    // dropped-count marker" case, run through the real auditDeck path
+    // instead of calling SvgContent directly.
+    const longText = LONG_CJK.repeat(3)
+    const many: Component[] = Array.from({ length: 8 }, () => ({ type: "paragraph", text: longText }))
+    const ir = deck("consulting", [{ type: "content", id: "s1", heading: "drop probe", components: many }])
+    const report = auditDeck(ir)
+    const dropped = report.findings.filter((f) => f.code === "content-dropped")
+    expect(dropped.length).toBeGreaterThan(0)
+    expect(dropped[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-dropped" })
+    expect(dropped[0].message).toMatch(/hidden behind a "\+\d+ more" marker/)
+    expect((dropped[0].detail as { count?: number }).count).toBeGreaterThan(0)
+  })
+
+  it("surfaces row_cards' own item-level drop (the benchmark's flagship repro) as 'content-dropped'", () => {
+    // The exact bench-cited shape: a multi-item row_cards squeezed into a
+    // two_column half-width slot alongside a second component, each item
+    // carrying enough text/sub content that 5 stacked cards blow well past
+    // even a full content rect, let alone a halved one.
+    const item = (n: number) => ({
+      title: `事项标题条目编号 ${n}`,
+      text: LONG_CJK,
+      sub: "补充说明文字用于撑高卡片高度",
+    })
+    const ir = deck("consulting", [
+      {
+        type: "content",
+        id: "s1",
+        heading: "row_cards probe",
+        arrangement: "two_column",
+        components: [
+          { type: "row_cards", items: [1, 2, 3, 4, 5].map(item) },
+          { type: "paragraph", text: "第二列占位内容" },
+        ],
+      },
+    ])
+    const report = auditDeck(ir)
+    const dropped = report.findings.filter((f) => f.code === "content-dropped")
+    expect(dropped.length).toBeGreaterThan(0)
   })
 })
 
@@ -916,7 +998,14 @@ describe("auditDeck — finding shape contract", () => {
     const report: { findings: AuditFinding[] } = auditDeck(ir)
     for (const f of report.findings) {
       expect(f.page).toBeGreaterThan(0)
-      expect(["overflow", "out-of-bounds", "low-contrast", "overlap"]).toContain(f.code)
+      expect([
+        "overflow",
+        "out-of-bounds",
+        "low-contrast",
+        "overlap",
+        "content-truncated",
+        "content-dropped",
+      ]).toContain(f.code)
       expect(typeof f.message).toBe("string")
     }
   })

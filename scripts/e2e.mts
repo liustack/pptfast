@@ -471,6 +471,15 @@ console.log("old-command hard-fail leg OK (scenarios / schema --plan / plan vali
 //    validate-legal — same fixture shape as deck-audit.test.ts's own
 //    "low-contrast via a real style-token override" case) must exit 1 with a
 //    low-contrast finding in its output, in both human and --json mode.
+//    Bench-driven fix round, defect E: the same deliberately-degraded fixture
+//    also carries a page that overflows a single row_cards component (6
+//    schema-legal items, each with substantial title/text/sub — measured
+//    directly against real widths before writing this fixture: a full-width
+//    single column needs ~676px for 6 items, well past any real content
+//    rect's ~380-471px range, see docs/concepts.md's capacity section) to
+//    trip `content-dropped` via row-cards.tsx's own item-level "+N more"
+//    marker, and a page with a verdict_banner carrying far more text than its
+//    fixed 18px/2-line budget can hold to trip `content-truncated`.
 console.log("--- audit leg ---")
 
 const cleanAudit = shCapture("node", ["dist/cli.js", "audit", "examples/basic.json"])
@@ -485,6 +494,14 @@ if (!/audited 5 pages, 0 skipped, 0 findings/.test(cleanAudit.stdout)) {
 }
 console.log("audit clean-deck leg OK (examples/basic.json exits 0)")
 
+// Realistic-length CJK content (not adversarial stress text) — same order of
+// magnitude as docs/concepts.md's capacity-section measurement, so this
+// fixture reproduces the benchmark's actual "row_cards drops items" shape
+// rather than an artificially extreme one.
+const ROW_CARDS_TEXT = "本季度通过精细化运营和渠道下沉实现了显著的增长，客户留存率同步提升"
+const VERDICT_LONG_TEXT =
+  "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明".repeat(6)
+
 const lowContrastDeck = {
   version: "4",
   filename: "pptfast-e2e-audit-low-contrast",
@@ -498,6 +515,27 @@ const lowContrastDeck = {
       id: "p-body",
       heading: "readable heading",
       components: [{ type: "paragraph", text: "some body copy that should read as low-contrast" }],
+    },
+    {
+      type: "content",
+      id: "p-dropped",
+      heading: "row_cards over capacity",
+      components: [
+        {
+          type: "row_cards",
+          items: [1, 2, 3, 4, 5, 6].map((n) => ({
+            title: `事项标题条目编号 ${n}`,
+            text: ROW_CARDS_TEXT,
+            sub: "补充说明文字用于撑高卡片高度",
+          })),
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-truncated",
+      heading: "verdict_banner over budget",
+      components: [{ type: "verdict_banner", tone: "positive", text: VERDICT_LONG_TEXT }],
     },
   ],
 }
@@ -516,6 +554,22 @@ if (!/\[low-contrast\]/.test(findingsAudit.stdout) || !/page 2 \(p-body\)/.test(
 }
 console.log("audit low-contrast-fixture leg OK (exit 1, finding present)")
 
+// Bench-driven fix round, defect E: same fixture, same exit-1 report — a
+// 6-item row_cards over capacity must surface as `content-dropped` on
+// page 3 (p-dropped), and verdict_banner's over-budget text must surface as
+// `content-truncated` on page 4 (p-truncated).
+if (!/\[content-dropped\]/.test(findingsAudit.stdout) || !/page 3 \(p-dropped\)/.test(findingsAudit.stdout)) {
+  throw new Error(
+    `e2e: audit leg — expected a content-dropped finding naming page 3 (p-dropped), got: ${findingsAudit.stdout}`,
+  )
+}
+if (!/\[content-truncated\]/.test(findingsAudit.stdout) || !/page 4 \(p-truncated\)/.test(findingsAudit.stdout)) {
+  throw new Error(
+    `e2e: audit leg — expected a content-truncated finding naming page 4 (p-truncated), got: ${findingsAudit.stdout}`,
+  )
+}
+console.log("audit content-dropped/content-truncated leg OK (exit 1, both new advisory codes present)")
+
 const jsonAudit = shCapture("node", ["dist/cli.js", "audit", lowContrastPath, "--json"])
 if (jsonAudit.status !== 1) {
   throw new Error(`e2e: audit leg — expected --json mode to also exit 1, got exit ${jsonAudit.status}`)
@@ -524,7 +578,13 @@ const jsonReport = JSON.parse(jsonAudit.stdout) as { findings: Array<{ code: str
 if (!jsonReport.findings.some((f) => f.code === "low-contrast")) {
   throw new Error(`e2e: audit leg — expected --json output to include a low-contrast finding, got: ${jsonAudit.stdout}`)
 }
-console.log("audit --json leg OK (machine-readable AuditReport, exit 1, low-contrast code present)")
+if (!jsonReport.findings.some((f) => f.code === "content-dropped")) {
+  throw new Error(`e2e: audit leg — expected --json output to include a content-dropped finding, got: ${jsonAudit.stdout}`)
+}
+if (!jsonReport.findings.some((f) => f.code === "content-truncated")) {
+  throw new Error(`e2e: audit leg — expected --json output to include a content-truncated finding, got: ${jsonAudit.stdout}`)
+}
+console.log("audit --json leg OK (machine-readable AuditReport, exit 1, low-contrast/content-dropped/content-truncated codes present)")
 
 // 8) structure-components leg (structure-components wave task 3): a deck
 //    exercising all four full-body components added this wave (swot/bmc/
@@ -571,14 +631,24 @@ const structuresDeck = {
       layout: "narrow-column",
       components: [
         {
+          // bmc's five-column canvas gives each cell roughly a fifth of the
+          // content width — bench-driven fix round (defect E) turned up
+          // three items here that were already silently ellipsis-truncated
+          // at that width ("Lower total cost of ownership", "Dedicated
+          // customer success manager", "Mid-market enterprise customers")
+          // before the new `content-truncated` audit check made it visible.
+          // Real dead content, not a tool false positive (verified against
+          // bmc.tsx's own PAD_X/BULLET_INDENT/ITEM_SIZE geometry) — shortened
+          // to phrases that actually fit, same "fix the fixture" discipline
+          // defect D's boundary-page gate used for dead content elsewhere.
           type: "bmc",
           key_partners: ["Core suppliers", "Channel partners"],
           key_activities: ["Product R&D"],
           key_resources: ["Engineering team"],
-          value_propositions: ["One-stop solution", "Lower total cost of ownership"],
-          customer_relationships: ["Dedicated customer success manager"],
+          value_propositions: ["One-stop solution", "Lower total cost"],
+          customer_relationships: ["Dedicated support"],
           channels: ["Direct sales", "Partner distribution"],
-          customer_segments: ["Mid-market enterprise customers"],
+          customer_segments: ["Mid-market firms"],
           cost_structure: ["R&D investment", "Cloud infrastructure"],
           revenue_streams: ["Subscription fees", "Implementation services"],
         },

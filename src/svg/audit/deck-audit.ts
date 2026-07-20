@@ -13,7 +13,13 @@ import { auditSvgMarkup, parseNums, parseTransform, type OverflowIssue } from ".
 export interface AuditFinding {
   page: number
   slideId?: string
-  code: "overflow" | "out-of-bounds" | "low-contrast" | "overlap"
+  code:
+    | "overflow"
+    | "out-of-bounds"
+    | "low-contrast"
+    | "overlap"
+    | "content-truncated"
+    | "content-dropped"
   message: string
   detail?: Record<string, unknown>
 }
@@ -920,6 +926,76 @@ function overlapFindings(markup: string, page: number, slideId: string | undefin
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// Content-truncated / content-dropped — bench-driven fix round, defect E:
+// two silent content-loss paths the benchmark found *invisible* to audit —
+// `fitSvgLine`'s (and the emphasis-segment family's) ellipsis truncation,
+// and `layoutContentFit`'s "+N more" drop marker — that models had to
+// eyeball a rendered SVG to catch (row_cards silently dropping 2 of 5
+// items, a two-column slide silently dropping its second component). The
+// render chain already knows exactly when either happens; it just wasn't
+// saying so anywhere machine-readable. Both checks below are thin readers
+// of the marker attributes the render chain now stamps at the point of
+// the cut — `data-truncated="1"` on a truncated `<text>` (`fitSvgLine`'s own
+// doc comment, `../../lib/svg-text-layout.ts`), `data-dropped="N"` on a
+// "+N more" marker (six render sites: `SvgContent`, `BigNumber`,
+// `AssertionEvidence`×2, `ImagePages`, `row-cards.tsx`'s own item-level
+// marker) — neither re-derives truncation/capacity logic here, so there is
+// exactly one place (the render chain itself) that decides what got cut.
+// ────────────────────────────────────────────────────────────────────────
+
+/** First N characters of an element's own text content, trimmed — same
+ *  "prefix, not full text" convention `overflowMessage`/`contrastMessage`
+ *  already use for `issue.text`/`label`. */
+const TEXT_PREFIX_LEN = 24
+
+function truncatedMessage(prefix: string): string {
+  return (
+    `text "${prefix}" was truncated with an ellipsis — widen the layout, shorten the source ` +
+    `content, or accept the cut if the tail wasn't essential`
+  )
+}
+
+function truncatedFindings(markup: string, page: number, slideId: string | undefined): AuditFinding[] {
+  const root = parseSvg(markup)
+  const els = Array.from(root.querySelectorAll('[data-truncated="1"]'))
+  return els.map((el) => {
+    const text = (el.textContent ?? "").trim()
+    const prefix = text.slice(0, TEXT_PREFIX_LEN)
+    return {
+      page,
+      ...(slideId !== undefined ? { slideId } : {}),
+      code: "content-truncated" as const,
+      message: truncatedMessage(prefix),
+      detail: { text },
+    }
+  })
+}
+
+function droppedMessage(count: number): string {
+  const unit = count === 1 ? "item" : "items"
+  const verb = count === 1 ? "is" : "are"
+  return (
+    `${count} more ${unit} of content ${verb} hidden behind a "+${count} more" marker — the content ` +
+    `area is over capacity, split the slide or trim its content`
+  )
+}
+
+function droppedFindings(markup: string, page: number, slideId: string | undefined): AuditFinding[] {
+  const root = parseSvg(markup)
+  const els = Array.from(root.querySelectorAll("[data-dropped]"))
+  return els.map((el) => {
+    const count = Number(el.getAttribute("data-dropped") ?? 0)
+    return {
+      page,
+      ...(slideId !== undefined ? { slideId } : {}),
+      code: "content-dropped" as const,
+      message: droppedMessage(count),
+      detail: { count },
+    }
+  })
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // auditDeck — the SDK entry point.
 // ────────────────────────────────────────────────────────────────────────
 
@@ -927,10 +1003,13 @@ function overlapFindings(markup: string, page: number, slideId: string | undefin
  * Deterministic geometry audit over an already-valid deck (v0.3 W6, spec §7
  * workflow ④): render every non-placeholder slide off-screen
  * (`renderSlideSvg`, the same single-source SVG the preview and exporter
- * both use) and run three check families against the rendered markup —
+ * both use) and run five check families against the rendered markup —
  * overflow/out-of-bounds (reusing `svg-audit.ts`'s existing walker
- * verbatim), low-contrast (WCAG relative luminance), and overlap (pairwise
- * `data-audit-box` intersection). Pure — no I/O, no Node dependency (see
+ * verbatim), low-contrast (WCAG relative luminance), overlap (pairwise
+ * `data-audit-box` intersection), and content-truncated/content-dropped
+ * (bench-driven fix round, defect E — reading the `data-truncated`/
+ * `data-dropped` markers the render chain now stamps at its own silent
+ * content-loss paths). Pure — no I/O, no Node dependency (see
  * `parseSvg`'s doc comment) — `auditDeck` itself never calls
  * `installNodePlatform()`; that's the caller's job (the CLI does it
  * automatically).
@@ -939,8 +1018,9 @@ function overlapFindings(markup: string, page: number, slideId: string | undefin
  * invalid or over-dense decks before a caller ever gets this far; this
  * function looks for the visual problems that can still slip through a
  * valid deck at render time (an author-chosen near-background text color,
- * two components whose combined content happens to collide). A non-empty
- * `findings` array is a prompt for a human/agent to look, not a rejection.
+ * two components whose combined content happens to collide, a card list
+ * that had to drop an item to fit). A non-empty `findings` array is a
+ * prompt for a human/agent to look, not a rejection.
  *
  * Placeholder pages (`slide.placeholder === true`) are skipped — assemble's
  * stand-in for content nobody has written yet has nothing to audit, same
@@ -965,6 +1045,8 @@ export function auditDeck(ir: PptxIR): AuditReport {
     findings.push(...overflowFindings(markup, page, slideId))
     findings.push(...contrastFindings(markup, page, slideId))
     findings.push(...overlapFindings(markup, page, slideId))
+    findings.push(...truncatedFindings(markup, page, slideId))
+    findings.push(...droppedFindings(markup, page, slideId))
   })
 
   return { findings, pagesAudited, pagesSkipped }

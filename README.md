@@ -64,7 +64,7 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 |---|---|
 | `render <target> -o <out.pptx> [--theme <id>] [--style <file>] [--draft]` | Validate + render to a `.pptx` — `target` is an IR JSON file, a deck project directory, or a bare deck name (see Deck projects) |
 | `validate <target>` | Check the IR, print page-scoped errors — same `target` forms as `render` |
-| `audit <target> [--json]` | Deterministic geometry review (overflow/out-of-bounds/low-contrast/overlap) — same `target` forms as `render`, exits 1 when it finds anything (see Auditing) |
+| `audit <target> [--json]` | Deterministic geometry review (overflow/out-of-bounds/low-contrast/overlap/content-truncated/content-dropped) — same `target` forms as `render`, exits 1 when it finds anything (see Auditing) |
 | `spec validate <spec.json>` | Check a deck spec against the schema and strategy-aware hard gates (see Deck projects) |
 | `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
 | `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
@@ -167,7 +167,7 @@ Deck project directories can be referenced by a bare name instead of a path — 
 
 ## Auditing
 
-`pptfast audit <target> [--json]` renders every page off-screen and runs a deterministic geometry review — no LLM screenshot squinting, no variance. Four checks: **overflow** (text past its own box or column), **out-of-bounds** (past the page edge), **low-contrast** (WCAG relative-luminance ratio between text and its resolved background), and **overlap** (two components' regions substantially colliding). Advisory, not a hard gate — `validate` already rejects structurally invalid or over-dense decks. Audit catches what a valid deck can still get wrong at render time (an author-chosen near-background text color, two components whose combined content collides).
+`pptfast audit <target> [--json]` renders every page off-screen and runs a deterministic geometry review — no LLM screenshot squinting, no variance. Six checks: **overflow** (text past its own box or column), **out-of-bounds** (past the page edge), **low-contrast** (WCAG relative-luminance ratio between text and its resolved background), **overlap** (two components' regions substantially colliding), **content-truncated** (text the renderer had to cut short with an ellipsis to fit), and **content-dropped** (a "+N more" marker — a card list or a whole component that didn't fit and got hidden). Advisory, not a hard gate — `validate` already rejects structurally invalid or over-dense decks. Audit catches what a valid deck can still get wrong at render time (an author-chosen near-background text color, two components whose combined content collides, a card list that had to drop an item to fit).
 
 Run it once every page is filled, on the same `target` forms as `validate`/`render` (file, deck project directory, or bare name). Human output groups findings by page (`page 3 (p-kpi): [low-contrast] …`, each message carries a fix suggestion) plus a summary line. `--json` prints the full machine-readable report. The exit code alone is agent-judgeable: `0` clean, `1` when it finds anything — fix the flagged page and re-run `audit` alone, no need to re-render. Skipped placeholder pages are noted, the same "not missing, just not written yet" treatment used everywhere else.
 

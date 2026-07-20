@@ -16,7 +16,8 @@ read_when:
    media-dedupe JSZip patches, the deck spec schema and hard gates,
    assemble/disassemble plus the deck-project-directory CLI shell, the v3→v4
    and deck.plan.json→deck.spec.json migration functions, and the
-   deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap).
+   deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap/
+   content-truncated/content-dropped).
    Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against

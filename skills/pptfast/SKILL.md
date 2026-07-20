@@ -70,7 +70,7 @@ Once every page is filled (no placeholders left), run the deterministic geometry
 pptfast audit deck-dir/
 ```
 
-Zero-token, zero-variance — it renders each page off-screen and checks overflow, out-of-bounds, low-contrast, and overlap, exiting 1 when it finds anything (0 when clean). Each finding names its page (and id) and carries a fix. Fix the flagged page's content — same "restructure, don't delete" discipline as a `validate` error — then re-run `pptfast audit deck-dir/` alone (no need to re-render) until it exits 0. This is the deck's visual QA. Do not rely on eyeballing a screenshot instead.
+Zero-token, zero-variance — it renders each page off-screen and checks overflow, out-of-bounds, low-contrast, overlap, content-truncated (an ellipsis cut real text), and content-dropped (a "+N more" marker hiding an item or a whole component), exiting 1 when it finds anything (0 when clean). Each finding names its page (and id) and carries a fix. Fix the flagged page's content — same "restructure, don't delete" discipline as a `validate` error — then re-run `pptfast audit deck-dir/` alone (no need to re-render) until it exits 0. This is the deck's visual QA. Do not rely on eyeballing a screenshot instead.
 
 ```bash
 pptfast preview deck-dir/ -o preview/ --html
