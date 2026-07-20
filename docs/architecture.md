@@ -42,6 +42,42 @@ IR (validated) → FullSlideSvg (React → one flat 1280×720 SVG)
 `renderSlideSvg` and `generatePptx` both start from the same `FullSlideSvg`
 component — the SDK has no second, cheaper rendering path to fall out of sync.
 
+### Fidelity ledger
+
+`svg2pptx`'s dispatch (`svg2pptx/dispatch.ts`'s `leafToOp` → `svg2pptx/render.ts`'s
+`renderOp`) is a closed table — every SVG leaf tag it recognizes lands on
+exactly one native DrawingML shape, and any tag it doesn't recognize is
+simply skipped (not drawn), never rasterized as a fallback:
+
+| SVG leaf | Op kind | pptxgenjs call | PPTX result |
+|---|---|---|---|
+| `<rect>` | `shape` | `addShape("rect"\|"roundRect")` | native shape (editable) |
+| `<circle>`/`<ellipse>` | `shape` | `addShape("ellipse")` | native shape (editable) |
+| `<line>` | `line` | `addShape("line")` | native connector (editable) |
+| `<polygon>`/`<polyline>`/`<path>` | `path` | `addShape("custGeom")` | native custom geometry (editable) |
+| `<text>` | `text` | `addText` | native text box/run (editable) |
+| `<image>` | `image` | `addImage` | `<p:pic>` — the only picture path |
+
+Icons (`src/svg/icons.tsx`'s lucide path/circle/ellipse/rect/line/polyline/polygon
+primitives) flow through this same table like any other vector markup and
+land as custGeom or native shapes — never a picture.
+
+**Invariant: the only rasterization exit in the export chain is `<image>`
+backed by a real, resolved asset.** Every `<image>`-emitting call site — the
+`image`/`image_grid`/`image_compare` components, `Background`'s asset
+background, `BrandChrome`'s logo, and the 4 `image-*` takeover layouts
+(`ImagePages.tsx`) — resolves a real asset first; when one is missing it
+degrades to a placeholder (a `<rect>` for a content image slot, or the logo
+simply omitting itself) and never degrades to an `<image>`. Separately,
+`rasterizeSvg` (next section) — the one function in this codebase that turns
+SVG into pixels — is reachable only from the optional `--pixels` audit path
+(`src/svg/audit/pixel-audit.ts`); `generatePptxBlob`/`svg2pptx` never call
+it. Rasterization and export are two disjoint subsystems by construction.
+Regression-guarded by `src/pptx/generate-fidelity-export.test.ts`: a deck
+covering every registered component type with zero real assets exports with
+`ppt/media/` empty and zero `<p:pic>` anywhere; adding one real image asset
+moves the count by exactly +1, landing on exactly that slide.
+
 ## Platform seam
 
 `src/index.ts` and everything it imports must stay usable in a browser: no
