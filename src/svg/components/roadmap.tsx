@@ -161,13 +161,22 @@ function renderCard(
         {num}
       </text>
       {layout.period ? (
+        // Arc-bbox root fix (fix/arc-bbox): same defect family as this
+        // file's own badge-digit `accessibleInk` guard above — `deck-
+        // audit.ts`'s `pathBoundingBox` used to mismeasure this period
+        // text's real background (the card's `colors.surface` rect) as the
+        // accent bar's own fill (an audit-tool SVG-arc-grammar bug, not
+        // this component), making an unguarded `colors.accent` period read
+        // as a trivial 1:1-on-itself "pass" on every theme. Fixed audit
+        // measures the real (accent-on-surface) pair, which genuinely fails
+        // 4.5:1 on 8/13 themes.
         <text
           data-truncated={layout.period.truncated ? "1" : undefined}
           x={x + PAD_X + BADGE_R * 2 + 12}
           y={cy + Math.round(layout.period.fontSize * BASELINE_FUDGE)}
           fontSize={layout.period.fontSize}
           fontWeight="600"
-          fill={ctx.colors.accent}
+          fill={accessibleInk(ctx.colors.accent, ctx.colors.surface, layout.period.fontSize)}
           fontFamily={ctx.fonts.body}
           dominantBaseline="alphabetic"
         >

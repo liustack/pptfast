@@ -1147,3 +1147,55 @@ describe("__pathBoundingBox — arc-bbox root fix (fix/arc-bbox)", () => {
     expect(bbox!.h).toBeCloseTo(75, 1)
   })
 })
+
+// Arc-bbox root fix, reclassification sweep: fixing `pathBoundingBox` (above)
+// exposed a *real* defect the old bug had been masking, not just resolving
+// false positives. `insight_panel.tsx`'s title and `roadmap.tsx`'s period
+// text both render an unguarded `colors.accent` fill with no
+// `accessibleInk` wrap — pre-fix, deck-audit.ts's `backgroundAt` resolved
+// both against the accent bar's own bogus ~whole-card phantom region, whose
+// fill is that exact same `colors.accent` value, so every theme scored a
+// trivial ratio=1 "pass" (the benchmark-reported "insight_panel title
+// renders 1:1 contrast across themes" symptom this task's brief named). A
+// 13-theme sweep against the fixed bbox (run while building this fix, not
+// asserted directly here — see the task report's reclassification table)
+// found 8/13 themes' real (accent-on-`colors.surface`) pair genuinely fails
+// 4.5:1. Fixed the same way `roadmap.tsx`'s own badge digit already was
+// (`accessibleInk`, same file, established precedent) — these two tests are
+// the red->green pin for that fix, using two of the eight affected themes.
+describe("auditDeck — arc-bbox reclassification ink fixes (fix/arc-bbox)", () => {
+  it("insight_panel.tsx's title clears contrast against academic's accent-on-surface pairing once measured against its real panel background", () => {
+    const ir = deck("academic", [
+      {
+        type: "content",
+        heading: "insight",
+        components: [
+          {
+            type: "insight_panel",
+            title: "Strategy",
+            rows: [{ label: "Focus", text: "Ship the core loop before anything else." }],
+          },
+        ],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "Strategy")).toBe(false)
+  })
+
+  it("roadmap.tsx's period text clears contrast against luxe's accent-on-surface pairing once measured against its real card background", () => {
+    const ir = deck("luxe", [
+      {
+        type: "content",
+        heading: "roadmap",
+        components: [
+          {
+            type: "roadmap",
+            items: [{ title: "Kickoff", period: "Q1", rows: [{ label: "Scope", value: "discovery" }] }],
+          },
+        ],
+      },
+    ])
+    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+    expect(contrast.some((f) => f.detail?.text === "Q1")).toBe(false)
+  })
+})
