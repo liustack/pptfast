@@ -565,10 +565,11 @@ export interface PreviewOptions {
    *
    *  Also gates the audit overlay (notes+preview wave, task 2): when set
    *  and the deck has no placeholder page, `runPreview` runs `auditDeck`
-   *  (`../svg/audit/deck-audit.ts`) and embeds its findings into
-   *  `preview.html` (per-page badges + a findings panel, `buildPreviewHtml`).
-   *  A deck with any placeholder page skips the audit entirely instead of
-   *  running it partially — see `runPreview`'s own doc comment for why. */
+   *  (`../svg/audit/deck-audit.ts`) and embeds its findings and `checks`
+   *  into `preview.html` (per-page badges + a findings panel + a one-line
+   *  checks summary, `buildPreviewHtml`). A deck with any placeholder page
+   *  skips the audit entirely instead of running it partially — see
+   *  `runPreview`'s own doc comment for why. */
   htmlOut?: boolean
 }
 
@@ -599,7 +600,14 @@ export interface PreviewOptions {
  * running it at all. The plan's contract is the simpler "any placeholder
  * present → skip the whole overlay, one-line notice instead" — implemented
  * here as `hasPlaceholder`, and threaded into `buildPreviewHtml` as either
- * `findings` (clean run) or `auditNote` (skipped), never both.
+ * `findings` + `checks` (clean run) or `auditNote` (skipped), never both.
+ * `checks` (`AuditReport.checks`, `../svg/audit/deck-audit.ts`) rides along
+ * with `findings` on every clean run, not just a partial/findings-only one —
+ * `buildPreviewHtml` renders it as its own one-line summary regardless of
+ * `findings.length`, so a deck that audited clean because nothing was wrong
+ * stays visually distinct from one that audited clean because the pixel
+ * pass never ran (fix round, Important-1: this line was the task brief's
+ * own scope for this wave and was missed in the first pass).
  */
 export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
@@ -625,7 +633,8 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
   if (opts.htmlOut) {
     const htmlPath = join(outDir, "preview.html")
     const hasPlaceholder = ir.slides.some((slide) => slide.placeholder)
-    const auditFindings = hasPlaceholder ? [] : auditDeck(ir).findings
+    const auditReport = hasPlaceholder ? undefined : auditDeck(ir)
+    const auditFindings = auditReport?.findings ?? []
     const html = buildPreviewHtml({
       title: ir.filename,
       slides: ir.slides.map((slide, i) => ({
@@ -639,6 +648,7 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
       auditNote: hasPlaceholder
         ? "audit overlay skipped — deck has unfilled placeholder pages; fill every page and re-run `pptfast preview --html` to see audit findings"
         : undefined,
+      checks: auditReport?.checks,
     })
     await writeFile(htmlPath, html)
     notes.push(`note: wrote self-contained preview to ${htmlPath}`)

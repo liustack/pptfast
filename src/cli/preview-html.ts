@@ -131,6 +131,21 @@ export interface PreviewHtmlFinding {
   message: string
 }
 
+/**
+ * `AuditChecks` (`../svg/audit/deck-audit.ts`), reshaped locally the same
+ * way `findings` is reshaped to {@link PreviewHtmlFinding} — keeps this file
+ * free of a `../svg` import (see the module doc comment). Literal state
+ * words only, mirroring the source type exactly: this wave's soul
+ * constraint is "not checked must never read as passed", so `pixels` being
+ * `"not-requested"` has to survive unchanged all the way into the rendered
+ * line — no checkmark, no "passed"/"ok" substitute that could be misread as
+ * a completed pixel pass.
+ */
+export interface PreviewHtmlChecks {
+  svg: "completed"
+  pixels: "not-requested" | "completed"
+}
+
 export interface PreviewHtmlInput {
   /** Deck title (`ir.filename`) — shown in the `<title>` tag and the header.
    *  User content — HTML-escaped wherever it is shown. */
@@ -153,6 +168,16 @@ export interface PreviewHtmlInput {
    *  deck content — HTML-escaped like everything else in this file
    *  regardless. */
   auditNote?: string
+  /** `auditDeck(...).checks` (`../svg/audit/deck-audit.ts`), reshaped to
+   *  {@link PreviewHtmlChecks} — omit whenever the caller skipped the audit
+   *  (the same condition {@link auditNote}/{@link findings} already use: a
+   *  deck with a placeholder page never calls `auditDeck` at all, so there
+   *  is nothing to report here either). Rendered as one line, independent of
+   *  `findings.length` — a clean 0-finding report and a report where
+   *  `pixels` never ran would otherwise look identical once the findings
+   *  panel is empty in both cases, and the whole point of surfacing `checks`
+   *  here is to keep that distinction visible even then. */
+  checks?: PreviewHtmlChecks
 }
 
 function escapeHtml(s: string): string {
@@ -292,6 +317,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 #pf-side{flex:0 0 260px;align-self:stretch;overflow-y:auto;background:#fff;border:1px solid #ddd;border-radius:6px;padding:12px;font-size:13px}
 #pf-side h2{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#666}
 #pf-side section+section{margin-top:16px;padding-top:16px;border-top:1px solid #eee}
+#pf-audit-checks{margin:0 0 12px;font-size:12px;color:#555}
 .pf-finding{display:block;width:100%;text-align:left;background:#fff;border:1px solid #eee;border-radius:4px;padding:6px 8px;margin-bottom:6px;cursor:pointer;font:inherit}
 .pf-finding:hover{border-color:#93c5fd}
 .pf-finding-loc{display:block;font-size:11px;color:#888}
@@ -493,7 +519,7 @@ const ANNOTATE_PANEL = `<section id="pf-annotate-panel">
  * comment for the self-containment and single-embed-per-slide design notes.
  */
 export function buildPreviewHtml(input: PreviewHtmlInput): string {
-  const { title, slides, findings = [], auditNote } = input
+  const { title, slides, findings = [], auditNote, checks } = input
   const total = slides.length
   const escapedTitle = escapeHtml(title)
 
@@ -530,6 +556,20 @@ export function buildPreviewHtml(input: PreviewHtmlInput): string {
       : ""
   const auditNoteHtml = auditNote !== undefined ? `<span id="pf-audit-note">${escapeHtml(auditNote)}</span>` : ""
 
+  // One-line "which check families actually ran" summary (fix round,
+  // Important-1: the task brief's own scope for this wave, missed in the
+  // first pass) — independent of `auditPanel`'s `findings.length > 0` gate
+  // on purpose, see `PreviewHtmlInput.checks`'s own doc comment for why.
+  // Renders the literal state words straight out of `PreviewHtmlChecks`
+  // (`"completed"` / `"not-requested"`) with no checkmark/tick substitute —
+  // the soul constraint this whole wave is built on is "not checked must
+  // never read as passed", and a glyph here would be exactly that misread
+  // for a `pixels: "not-requested"` report.
+  const checksLine =
+    checks !== undefined
+      ? `<div id="pf-audit-checks">audit checks: svg ${checks.svg} · pixels ${checks.pixels}</div>`
+      : ""
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -545,7 +585,7 @@ export function buildPreviewHtml(input: PreviewHtmlInput): string {
 ${auditNoteHtml}
 <button type="button" id="pf-export-btn">Export revision requests</button>
 </header>
-<div id="pf-stage-wrap"><div id="pf-stage">${stageSlide}</div><aside id="pf-side">${auditPanel}${ANNOTATE_PANEL}</aside></div>
+<div id="pf-stage-wrap"><div id="pf-stage">${stageSlide}</div><aside id="pf-side">${checksLine}${auditPanel}${ANNOTATE_PANEL}</aside></div>
 <nav id="pf-filmstrip" aria-label="slides">${thumbs}</nav>
 ${findingsDataScript}
 <script>${JS}</script>

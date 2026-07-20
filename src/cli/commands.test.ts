@@ -511,6 +511,12 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).not.toContain('id="pf-audit-note"')
     // No "N findings" note appended when the audit found nothing.
     expect(msg).not.toContain("audit found")
+    // The checks summary still shows on a clean report (fix round,
+    // Important-1) — `preview --html` never runs the pixel pass, so it
+    // always reads "not-requested" here, never a checkmark or "passed".
+    expect(html).toContain('id="pf-audit-checks"')
+    expect(html).toContain("svg completed")
+    expect(html).toContain("pixels not-requested")
   })
 
   it("audits a deliberately low-contrast deck and shows a finding badge + panel entry, plus a CLI note", async () => {
@@ -523,6 +529,9 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).toContain("[low-contrast]")
     expect(html).toContain("p-body") // IR_LOW_CONTRAST's slide id
     expect(msg).toMatch(/note: audit found \d+ findings? — see preview\.html/)
+    // The checks summary sits alongside the findings panel, not in place of it.
+    expect(html).toContain('id="pf-audit-checks"')
+    expect(html).toContain("svg completed")
   })
 
   it("skips the audit entirely for a deck with a placeholder page, showing the one-line notice instead of running a partial audit", async () => {
@@ -535,6 +544,9 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).not.toContain('class="pf-finding-badge"')
     expect(html).not.toContain('class="pf-thumb-finding-badge"')
     expect(msg).not.toContain("audit found")
+    // The overlay only appears when the audit actually runs — a skipped
+    // audit shows no checks summary either, same as no findings panel.
+    expect(html).not.toContain('id="pf-audit-checks"')
   })
 
   it("always includes the annotation UI and export button, independent of audit results", async () => {
