@@ -40,8 +40,8 @@ The split exists because a badge/chip small enough to correctly *not* count as a
 
 `findOverlapIssues` pairwise-compares `collectLeafBoxes`' output — one box
 per leaf `data-audit-box`, which only ever carries `x,y,w` (never a height,
-by the existing protocol's own design). Width is always that declared `w`;
-height is reconstructed per box from whatever geometry is drawn inside it —
+by the existing protocol's own design). Width is always that declared `w`.
+Height is reconstructed per box from whatever geometry is drawn inside it —
 a background/icon `<rect>`'s own real extent when there is one, or, for a
 text-only box with no such rect, `TEXT_DESCENT_RATIO` applied to each
 `<text>`'s baseline. Either way, this is **container-declared-geometry
@@ -62,7 +62,7 @@ rendered ink, not of insufficient calibration:
 - Text that would render wider than its declared box can overflow into a
   neighboring box the detector still reports as clear — a false negative.
   `collectLeafBoxes` never reads a `<text>` element's content or measures
-  its rendered width; only the declared box counts. This is the position
+  its rendered width — only the declared box counts. This is the position
   side of a risk this file already tracks from the color side: `render.ts`'s
   deliberate `opts.wrap = false` choice lets a width-estimate miss surface
   as visible horizontal overflow instead of silent re-wrapping, and that
@@ -76,7 +76,7 @@ Recorded here as a known boundary, not a defect to chase — same discipline
 as this section's donut/pie AABB gap above. Closing the false-negative half
 would mean extending `collectLeafBoxes` to estimate a text leaf's rendered
 width (in whatever unit `measureTextUnits` already uses) and grow its box
-by that, gated by `text-anchor`; that's a real option if a future finding
+by that, gated by `text-anchor`. That's a real option if a future finding
 makes it worth the investment, but it is a change to this file's core walk,
 not a small one, and stays out of scope here.
 

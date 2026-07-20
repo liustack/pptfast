@@ -66,16 +66,16 @@ land as custGeom or native shapes — never a picture.
 backed by a real, resolved asset.** Every `<image>`-emitting call site — the
 `image`/`image_grid`/`image_compare` components, `Background`'s asset
 background, `BrandChrome`'s logo, and the 4 `image-*` takeover layouts
-(`ImagePages.tsx`) — resolves a real asset first; when one is missing it
+(`ImagePages.tsx`) — resolves a real asset first. When one is missing it
 degrades to a placeholder (a `<rect>` for a content image slot, or the logo
 simply omitting itself) and never degrades to an `<image>`. Separately,
 `rasterizeSvg` (next section) — the one function in this codebase that turns
 SVG into pixels — is reachable only from the optional `--pixels` audit path
-(`src/svg/audit/pixel-audit.ts`); `generatePptxBlob`/`svg2pptx` never call
+(`src/svg/audit/pixel-audit.ts`) — `generatePptxBlob`/`svg2pptx` never call
 it. Rasterization and export are two disjoint subsystems by construction.
 Regression-guarded by `src/pptx/generate-fidelity-export.test.ts`: a deck
 covering every registered component type with zero real assets exports with
-`ppt/media/` empty and zero `<p:pic>` anywhere; adding one real image asset
+`ppt/media/` empty and zero `<p:pic>` anywhere. Adding one real image asset
 moves the count by exactly +1, landing on exactly that slide.
 
 ## Platform seam
