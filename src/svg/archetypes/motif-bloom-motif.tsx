@@ -410,7 +410,15 @@ export function BloomMotif({ ir, slide, ctx }: DecorProps) {
         {wash(1360, 630, 170, 37, wisteria, rose, 0.8, 1.5)}
         {wash(1350, 520, 110, 35, anchorColor, wisteria, 0.55, 1.55)}
         {sprig(1180, 645, 0.9, wisteria, 0.45)}
-        <path d="M 560 44 h 12 M 588 44 h 12 M 616 44 h 12 M 644 44 h 12 M 672 44 h 12 M 700 44 h 12" stroke={wisteria} strokeWidth={1.4} opacity={0.35} />
+        {/* 顶部一排短横虚线：六个 <line>，不用同轴 <path>——svg2pptx 把
+            <path>（哪怕只走一根轴）转成 custGeom 形状，包围盒零高度会被
+            package-audit 硬门的 invalid-shape-transform 规则拒收（建这道门
+            时发现的真实缺陷，package-audit 波任务 1，spec §4.4）。真正的
+            <line> 走 svg2pptx/line.ts 的 prstGeom="line"，该规则明确允许
+            其中一轴为零。 */}
+        {[560, 588, 616, 644, 672, 700].map((x) => (
+          <line key={x} x1={x} y1={44} x2={x + 12} y2={44} stroke={wisteria} strokeWidth={1.4} opacity={0.35} />
+        ))}
       </>
     )
   }

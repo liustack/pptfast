@@ -349,12 +349,25 @@ function formatAuditFinding(f: AuditFinding): string {
  * keep byte-identical the way `runValidate` did when that gating was added,
  * so there is no reason to withhold a genuinely useful note from a
  * hand-authored IR that happens to carry placeholders too.
+ *
+ * `checks.pixels === "completed"` (audit-v2 phase B, i.e. `--pixels` was
+ * passed) appends one more line — purely additive, gated on that exact
+ * value so the far more common no-`--pixels` run stays byte-identical to
+ * the wording pinned above (`checks.pixels` is `"not-requested"` there,
+ * never `"completed"`). No line at all for the omitted case rather than an
+ * explicit "not requested" note: the human already knows whether they
+ * passed the flag, and the machine-readable `--json` path (never silent
+ * about `checks` either way) is what an agent actually consumes to tell
+ * "not checked" apart from "checked and clean".
  */
 function formatAuditReport(report: AuditReport, ir: PptxIR): string {
   const lines = report.findings.map(formatAuditFinding)
   lines.push(
     `audited ${report.pagesAudited} page${report.pagesAudited === 1 ? "" : "s"}, ${report.pagesSkipped} skipped, ${report.findings.length} finding${report.findings.length === 1 ? "" : "s"}`,
   )
+  if (report.checks.pixels === "completed") {
+    lines.push("pixel-contrast check: completed")
+  }
   const note = placeholderNote(ir)
   if (note) lines.push(note)
   return lines.join("\n")
@@ -363,6 +376,17 @@ function formatAuditReport(report: AuditReport, ir: PptxIR): string {
 export interface AuditOptions {
   json?: boolean
   cwd?: string
+  /** `--pixels` (audit-v2 phase B, spec §4.3/§11.7): also run the optional
+   *  pixel-contrast pass over image-backed text. Explicit opt-in only — see
+   *  `auditDeck`'s own overload doc comment for why this is threaded as a
+   *  ternary with a literal in each arm rather than passed straight through
+   *  as `{ pixels: opts.pixels }` (a plain `boolean` doesn't match either
+   *  overload). Missing rasterization capability or a remote asset
+   *  reference makes this command fail loudly (a rejected `auditDeck`
+   *  promise propagates straight out of this function, same as the
+   *  existing invalid-IR `PptfastError` path) rather than silently
+   *  reporting a clean pixel check that never ran. */
+  pixels?: boolean
 }
 
 export interface AuditCliResult {
@@ -417,7 +441,7 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
     )
   }
   await resolveLocalAssets(v.ir!, baseDir)
-  const report = auditDeck(v.ir!)
+  const report = opts.pixels ? await auditDeck(v.ir!, { pixels: true }) : auditDeck(v.ir!)
   const hasFindings = report.findings.length > 0
   const output = opts.json ? JSON.stringify(report, null, 2) : formatAuditReport(report, v.ir!)
   return { output, hasFindings }
@@ -541,10 +565,11 @@ export interface PreviewOptions {
    *
    *  Also gates the audit overlay (notes+preview wave, task 2): when set
    *  and the deck has no placeholder page, `runPreview` runs `auditDeck`
-   *  (`../svg/audit/deck-audit.ts`) and embeds its findings into
-   *  `preview.html` (per-page badges + a findings panel, `buildPreviewHtml`).
-   *  A deck with any placeholder page skips the audit entirely instead of
-   *  running it partially — see `runPreview`'s own doc comment for why. */
+   *  (`../svg/audit/deck-audit.ts`) and embeds its findings and `checks`
+   *  into `preview.html` (per-page badges + a findings panel + a one-line
+   *  checks summary, `buildPreviewHtml`). A deck with any placeholder page
+   *  skips the audit entirely instead of running it partially — see
+   *  `runPreview`'s own doc comment for why. */
   htmlOut?: boolean
 }
 
@@ -575,7 +600,14 @@ export interface PreviewOptions {
  * running it at all. The plan's contract is the simpler "any placeholder
  * present → skip the whole overlay, one-line notice instead" — implemented
  * here as `hasPlaceholder`, and threaded into `buildPreviewHtml` as either
- * `findings` (clean run) or `auditNote` (skipped), never both.
+ * `findings` + `checks` (clean run) or `auditNote` (skipped), never both.
+ * `checks` (`AuditReport.checks`, `../svg/audit/deck-audit.ts`) rides along
+ * with `findings` on every clean run, not just a partial/findings-only one —
+ * `buildPreviewHtml` renders it as its own one-line summary regardless of
+ * `findings.length`, so a deck that audited clean because nothing was wrong
+ * stays visually distinct from one that audited clean because the pixel
+ * pass never ran (fix round, Important-1: this line was the task brief's
+ * own scope for this wave and was missed in the first pass).
  */
 export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
@@ -601,7 +633,8 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
   if (opts.htmlOut) {
     const htmlPath = join(outDir, "preview.html")
     const hasPlaceholder = ir.slides.some((slide) => slide.placeholder)
-    const auditFindings = hasPlaceholder ? [] : auditDeck(ir).findings
+    const auditReport = hasPlaceholder ? undefined : auditDeck(ir)
+    const auditFindings = auditReport?.findings ?? []
     const html = buildPreviewHtml({
       title: ir.filename,
       slides: ir.slides.map((slide, i) => ({
@@ -615,6 +648,7 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
       auditNote: hasPlaceholder
         ? "audit overlay skipped — deck has unfilled placeholder pages; fill every page and re-run `pptfast preview --html` to see audit findings"
         : undefined,
+      checks: auditReport?.checks,
     })
     await writeFile(htmlPath, html)
     notes.push(`note: wrote self-contained preview to ${htmlPath}`)

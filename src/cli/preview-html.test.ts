@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { buildPreviewHtml, type PreviewHtmlFinding, type PreviewHtmlSlideInput } from "./preview-html"
+import { buildPreviewHtml, type PreviewHtmlChecks, type PreviewHtmlFinding, type PreviewHtmlSlideInput } from "./preview-html"
 
 /** Minimal-but-realistic standalone slide SVG, matching what `renderSlideSvg`
  *  (`../api.ts`) actually produces: a `viewBox="0 0 1280 720"` root with the
@@ -244,6 +244,62 @@ describe("buildPreviewHtml — audit findings overlay (notes+preview wave, task 
     // known namespace URI check only; the deliberately-injected fixture
     // string is excluded from `unexpected` by construction (see below).
     expect(unexpected.filter((m) => !m.startsWith("https://example.com"))).toEqual([])
+  })
+})
+
+describe("buildPreviewHtml — audit checks summary (notes+preview wave, task 2)", () => {
+  const checks = (overrides: Partial<PreviewHtmlChecks> = {}): PreviewHtmlChecks => ({
+    svg: "completed",
+    pixels: "not-requested",
+    ...overrides,
+  })
+
+  it("renders a one-line checks summary naming pixels as not-requested — the literal state word, never a checkmark that could read as passed", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+      checks: checks({ pixels: "not-requested" }),
+    })
+    expect(html).toContain('id="pf-audit-checks"')
+    expect(html).toContain("svg completed")
+    expect(html).toContain("pixels not-requested")
+    // Soul constraint (audit-v2): "not-requested" must never be rendered as
+    // if it had passed — no checkmark/tick glyph anywhere in the document.
+    expect(html).not.toContain("✓") // ✓
+    expect(html).not.toContain("✔") // ✔
+    expect(html).not.toContain("✅") // ✅
+  })
+
+  it("renders the checks summary naming pixels as completed once the pixel pass actually ran", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+      checks: checks({ pixels: "completed" }),
+    })
+    expect(html).toContain('id="pf-audit-checks"')
+    expect(html).toContain("svg completed")
+    expect(html).toContain("pixels completed")
+    // And "not-requested" must not linger anywhere once pixels did run.
+    expect(html).not.toContain("not-requested")
+  })
+
+  it("shows the checks line even on a clean, zero-finding report — the findings panel is omitted but the checks summary is not, since a clean report and a not-fully-checked report must stay visually distinguishable", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+      checks: checks({ pixels: "not-requested" }),
+      // no findings passed — this is the "clean" shape
+    })
+    expect(html).not.toContain('id="pf-audit-panel"')
+    expect(html).toContain('id="pf-audit-checks"')
+  })
+
+  it("omits the checks line entirely when the caller passes no checks (audit skipped for this deck) — matches the existing auditNote/findings convention of only rendering what the caller actually supplies", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [slide({ index: 0 })],
+    })
+    expect(html).not.toContain('id="pf-audit-checks"')
   })
 })
 

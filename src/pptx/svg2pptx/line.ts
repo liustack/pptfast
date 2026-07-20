@@ -88,6 +88,13 @@ export function lineToOp(el: Element): LineOp {
 
   const dx = x2 - x1
   const dy = y2 - y1
+  // 零长度 line（起终点重合，如 Lucide "÷" 图标的点惯用法 x1=x2/y1=y2）在渲染端
+  // 同样是退化 shape——与 path.ts 的 buildOp/segsToOp 同一 0.75px 地板值，但
+  // 仅在两轴都为零时触发：单轴为零的真实水平/垂直连接线（audit 的 connector
+  // 例外本就允许其中一轴为零）保持原样不受影响，那是合法几何，不是本 bug 的模式。
+  const isPoint = dx === 0 && dy === 0
+  const w = isPoint ? 0.75 : Math.abs(dx)
+  const h = isPoint ? 0.75 : Math.abs(dy)
 
   const strokeColor = el.getAttribute("stroke") || "#000000"
   const strokeWidth = num(el, "stroke-width", 1) || 1
@@ -96,8 +103,8 @@ export function lineToOp(el: Element): LineOp {
     kind: "line",
     x: pxToIn(Math.min(x1, x2)),
     y: pxToIn(Math.min(y1, y2)),
-    w: pxToIn(Math.abs(dx)),
-    h: pxToIn(Math.abs(dy)),
+    w: pxToIn(w),
+    h: pxToIn(h),
     line: {
       color: svgColorToHex(strokeColor),
       width: pxToPt(strokeWidth),

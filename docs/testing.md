@@ -10,18 +10,25 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 146 files / 2614 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 153 files / 2771 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
    media-dedupe JSZip patches, the deck spec schema and hard gates,
    assemble/disassemble plus the deck-project-directory CLI shell, the v3→v4
-   and deck.plan.json→deck.spec.json migration functions, and the
+   and deck.plan.json→deck.spec.json migration functions, the
    deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap/
-   content-truncated/content-dropped).
+   content-truncated/content-dropped), the optional pixel-contrast audit
+   (`--pixels` — real-Sharp end-to-end coverage plus a dedicated no-platform
+   file for the "nothing can rasterize" contract, see `docs/contrast-system.md`),
+   and the PPTX package-audit reader and rules (see "Package-audit hard gate"
+   below).
    Snapshots pin rendered SVG/DrawingML output.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against
    real inputs, catching browser/Node DOM behavior drift early.
+   `src/platform/node-rasterize.test.ts` does the same for `rasterizeSvg`,
+   plus the red-first Sharp/librsvg fidelity probe against a real subset of
+   this repo's own SVG output (spec §11.9's escape-clause evidence).
 3. **E2E** (`pnpm e2e`) — builds the package, drives the *built* CLI binary
    (`dist/cli.js`, not the vitest-transpiled source) through render/validate/
    preview on `examples/basic.json`, a deck project directory leg (a temp
@@ -32,7 +39,8 @@ read_when:
    an audit leg (`examples/basic.json` audits clean and exits 0, while a
    deliberately near-background text color, set via a validate-legal
    `theme.style` override, exits 1 with a low-contrast finding in both human
-   and `--json` output), a migrate leg (a pre-rename `deck.plan.json`
+   and `--json` output, plus an `--pixels` leg exercising real Sharp through
+   the built binary), a migrate leg (a pre-rename `deck.plan.json`
    project directory migrates to `deck.spec.json` with `scenario`→`narrative`
    and `rhythm`→`beat` renamed and the source file left untouched, both files
    present is a hard error, migrate never overwrites an existing output),
@@ -43,6 +51,27 @@ read_when:
 `pnpm check` runs typecheck + lint + `pnpm test` and is the default merge gate.
 `pnpm e2e` is not part of `pnpm check` (it needs a build and is slower) — run
 it whenever the render chain (`src/svg/`, `src/pptx/`, `src/themes/`) changes.
+
+## Package-audit hard gate
+
+`generatePptxBlob` (`src/pptx/generate.ts`) runs a package-structure audit
+(`src/pptx/package-audit.ts`) on every export, right after the last JSZip
+patch (media dedupe) and before returning bytes — piggybacking that patch's
+own `JSZip.loadAsync` rather than re-reading the package. It checks OOXML
+invariants a broken patch could plausibly violate (core parts present,
+`[Content_Types].xml`/relationships parse, `presentation.xml`'s slide list
+agrees with its relationships and the actual slide parts, every internal
+relationship target resolves, `p:cNvPr` ids are unique per slide, shape
+transforms are finite integers with positive `cx`/`cy` except a connector's
+one allowed zero axis, and animation timing references a real shape on the
+same slide) and throws a `PptfastError` naming the broken invariant — there
+is no opt-out. `src/pptx/package-audit.test.ts` renders a real deck and
+surgically breaks it via JSZip to prove each invariant actually rejects the
+right corruption. `scripts/e2e.mts`'s package-audit leg re-asserts the
+three-way slide consistency and id-uniqueness invariants directly against
+the built CLI's own output. Read-only by construction —
+`PptxPackageReader` (`src/pptx/package-reader.ts`) exposes no mutating
+method.
 
 ## Snapshot policy
 

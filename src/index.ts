@@ -45,7 +45,7 @@ export {
   type PacingBudget,
   type NarrativePreset,
 } from "./narrative"
-export { installPlatform, type PptfastPlatform } from "./platform/registry"
+export { installPlatform, type PptfastPlatform, type RasterizedImage } from "./platform/registry"
 export {
   validateSpec,
   specJsonSchema,
@@ -67,4 +67,10 @@ export { assembleDeck, disassembleDeck, type PageContent, type AssembleResult } 
 // command wraps for the deck-project-directory input shape, mirroring
 // `migrateIrV3ToV4` above for the single-IR-file shape.
 export { migrateDeckPlanToSpec } from "./plan/migrate"
-export { auditDeck, type AuditReport, type AuditFinding } from "./svg/audit/deck-audit"
+export {
+  auditDeck,
+  type AuditReport,
+  type AuditFinding,
+  type AuditChecks,
+  type AuditDeckOptions,
+} from "./svg/audit/deck-audit"

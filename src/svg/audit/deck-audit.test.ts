@@ -16,6 +16,7 @@ import {
   findContrastIssues,
   findOverlapIssues,
   __collectBgRegions,
+  __collectImageBackedTextRuns,
   __pathBoundingBox,
   type AuditFinding,
 } from "./deck-audit"
@@ -48,6 +49,13 @@ describe("auditDeck — clean deck baseline", () => {
     expect(report.findings).toEqual([])
     expect(report.pagesAudited).toBe(ir.slides.length)
     expect(report.pagesSkipped).toBe(0)
+  })
+
+  it("reports checks.svg completed and checks.pixels not-requested when --pixels was never asked for (audit-v2 phase B — 'not checked' must never read as 'passed')", () => {
+    const raw = JSON.parse(readFileSync(new URL("../../../examples/basic.json", import.meta.url), "utf8"))
+    const ir = PptxIRSchema.parse(raw)
+    const report = auditDeck(ir)
+    expect(report.checks).toEqual({ svg: "completed", pixels: "not-requested" })
   })
 
   // Cross-check against the pre-existing stress-content fixtures (extreme
@@ -722,6 +730,78 @@ describe("findContrastIssues — low-contrast", () => {
     const issues = findContrastIssues(markup)
     expect(issues).toHaveLength(1)
     expect(issues[0].background).toBe(BG)
+  })
+})
+
+describe("__collectImageBackedTextRuns — audit-v2 phase B pixel-audit input", () => {
+  it("collects a run painted over a bare photo (no scrim) — the exact case findContrastIssues itself skips", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
+      <text x="96" y="600" font-size="20" fill="#000000">caption over unknown photo</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    const runs = __collectImageBackedTextRuns(markup)
+    expect(runs).toHaveLength(1)
+    // Text is sliced to 24 chars — same convention ContrastIssue.text/
+    // OverflowIssue.text already use ("caption over unknown photo" is 27).
+    expect(runs[0]).toMatchObject({ text: "caption over unknown pho", fill: "#000000", baseline: 600, fontSize: 20, required: 4.5 })
+  })
+
+  it("collects a run when the only overlay is too faint to resolve (ImagePages.tsx's DarkScrim shape)", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0E14" fill-opacity="0.3"/>
+      <text x="96" y="600" font-size="20" fill="#FFFFFF">bespoke white cover text</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    const runs = __collectImageBackedTextRuns(markup)
+    expect(runs).toHaveLength(1)
+    expect(runs[0]!.fill).toBe("#FFFFFF")
+  })
+
+  it("does not collect a run once an opaque-enough scrim resolves the background (no false-positive pixel candidates)", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0A0C" fill-opacity="0.66"/>
+      <text x="96" y="600" font-size="20" fill="#0A0A0C">low contrast on the scrim itself</text>
+    </svg>`
+    expect(__collectImageBackedTextRuns(markup)).toEqual([])
+  })
+
+  it("excludes decorative near-transparent text from image-backed collection too (same DECORATIVE_ALPHA gate as findContrastIssues)", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
+      <text x="96" y="600" font-size="20" fill="#FFFFFF" fill-opacity="0.1">faint watermark over the photo</text>
+    </svg>`
+    expect(__collectImageBackedTextRuns(markup)).toEqual([])
+  })
+
+  it("computes left/right anchor-aware, matching svg-audit.ts's own estimator for start/middle/end", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
+      <text x="640" y="100" font-size="20" text-anchor="middle" fill="#FFFFFF">centered</text>
+      <text x="640" y="200" font-size="20" text-anchor="end" fill="#FFFFFF">right-aligned</text>
+    </svg>`
+    const runs = __collectImageBackedTextRuns(markup)
+    expect(runs).toHaveLength(2)
+    const [middle, end] = runs
+    // text-anchor="middle": x is the run's horizontal center.
+    expect(middle!.left).toBeLessThan(640)
+    expect(middle!.right).toBeGreaterThan(640)
+    expect((middle!.left + middle!.right) / 2).toBeCloseTo(640, 5)
+    // text-anchor="end": x is the run's right edge.
+    expect(end!.right).toBeCloseTo(640, 5)
+    expect(end!.left).toBeLessThan(640)
+  })
+
+  it("uses the large-text 3:1 threshold once rendered size clears LARGE_TEXT_MIN_PX", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
+      <text x="96" y="100" font-size="32" fill="#FFFFFF">big heading over the photo</text>
+    </svg>`
+    const runs = __collectImageBackedTextRuns(markup)
+    expect(runs).toHaveLength(1)
+    expect(runs[0]!.required).toBe(3)
   })
 })
 

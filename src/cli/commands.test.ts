@@ -255,12 +255,43 @@ describe("runAudit (W6 task 2)", () => {
   it("--json mode returns the full AuditReport, unmodified", async () => {
     const result = await runAudit(join(dir, "deck.json"), { json: true })
     expect(result.hasFindings).toBe(false)
-    const report = JSON.parse(result.output) as { findings: unknown[]; pagesAudited: number; pagesSkipped: number }
-    expect(report).toEqual({ findings: [], pagesAudited: 2, pagesSkipped: 0 })
+    const report = JSON.parse(result.output) as {
+      findings: unknown[]
+      pagesAudited: number
+      pagesSkipped: number
+      checks: unknown
+    }
+    // checks (audit-v2 phase B): pixels is "not-requested" since this call
+    // never passed --pixels — "not checked" must never read as "passed".
+    expect(report).toEqual({
+      findings: [],
+      pagesAudited: 2,
+      pagesSkipped: 0,
+      checks: { svg: "completed", pixels: "not-requested" },
+    })
   })
 
   it("throws the same shape as runValidate for invalid IR — never reaches auditDeck", async () => {
     await expect(runAudit(join(dir, "bad.json"))).rejects.toThrow(/invalid IR/)
+  })
+
+  it("--pixels runs the optional pixel-contrast pass: checks.pixels flips to completed and the human summary notes it", async () => {
+    const result = await runAudit(join(dir, "deck.json"), { pixels: true })
+    expect(result.hasFindings).toBe(false)
+    expect(result.output).toContain("audited 2 pages, 0 skipped, 0 findings")
+    expect(result.output).toContain("pixel-contrast check: completed")
+  })
+
+  it("--pixels --json reports checks.pixels completed in the machine-readable AuditReport", async () => {
+    const result = await runAudit(join(dir, "deck.json"), { pixels: true, json: true })
+    const report = JSON.parse(result.output) as { checks: { svg: string; pixels: string } }
+    expect(report.checks).toEqual({ svg: "completed", pixels: "completed" })
+  })
+
+  it("without --pixels, the human summary never mentions the pixel-contrast check (byte-identical to before this option existed)", async () => {
+    const result = await runAudit(join(dir, "deck.json"))
+    expect(result.output).toBe("audited 2 pages, 0 skipped, 0 findings")
+    expect(result.output).not.toContain("pixel-contrast")
   })
 
   it("flags a low-contrast style-token override: page/id/[code] formatting and a non-zero summary count", async () => {
@@ -480,6 +511,12 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).not.toContain('id="pf-audit-note"')
     // No "N findings" note appended when the audit found nothing.
     expect(msg).not.toContain("audit found")
+    // The checks summary still shows on a clean report (fix round,
+    // Important-1) — `preview --html` never runs the pixel pass, so it
+    // always reads "not-requested" here, never a checkmark or "passed".
+    expect(html).toContain('id="pf-audit-checks"')
+    expect(html).toContain("svg completed")
+    expect(html).toContain("pixels not-requested")
   })
 
   it("audits a deliberately low-contrast deck and shows a finding badge + panel entry, plus a CLI note", async () => {
@@ -492,6 +529,9 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).toContain("[low-contrast]")
     expect(html).toContain("p-body") // IR_LOW_CONTRAST's slide id
     expect(msg).toMatch(/note: audit found \d+ findings? — see preview\.html/)
+    // The checks summary sits alongside the findings panel, not in place of it.
+    expect(html).toContain('id="pf-audit-checks"')
+    expect(html).toContain("svg completed")
   })
 
   it("skips the audit entirely for a deck with a placeholder page, showing the one-line notice instead of running a partial audit", async () => {
@@ -504,6 +544,9 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).not.toContain('class="pf-finding-badge"')
     expect(html).not.toContain('class="pf-thumb-finding-badge"')
     expect(msg).not.toContain("audit found")
+    // The overlay only appears when the audit actually runs — a skipped
+    // audit shows no checks summary either, same as no findings panel.
+    expect(html).not.toContain('id="pf-audit-checks"')
   })
 
   it("always includes the annotation UI and export button, independent of audit results", async () => {
