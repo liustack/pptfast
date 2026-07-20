@@ -18,8 +18,7 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "types": ["vitest/globals", "node"],
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "scripts", "tests/bench"]
 }
