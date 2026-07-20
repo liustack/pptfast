@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import { renderBar, renderLine, renderDonut } from "./chart-svg"
+import { renderBar, renderLine, renderDonut, renderDumbbell } from "./chart-svg"
 import { assertSubset } from "../subset-validate"
 import type { ChartSeries } from "@/ir"
 
@@ -266,6 +266,151 @@ describe("renderDonut — center total label", () => {
     const { container: empty } = svg(renderDonut(seriesOf(0, 0), PALETTE, 0, 0, W, H, MUTED, TEXT))
     expect(empty.querySelectorAll("path")).toHaveLength(0)
     expect(empty.querySelectorAll("text")).toHaveLength(0)
+  })
+})
+
+// 2026-07-21 negative-axis export-gate fix: `renderDumbbell`'s vx() had no
+// lower domain bound, so a negative value could push a dot/line/label
+// arbitrarily far left of the canvas -- degenerating through svg2pptx/
+// text.ts's align==="center" branch into a negative-width text op, which
+// the package-audit gate then rejected (see generate-chart-export.test.ts's
+// dedicated describe block for the real-generatePptx reproduction). These
+// tests exercise the renderer directly, one layer below that gate, so a
+// regression shows up as a wrong/out-of-bounds coordinate rather than a
+// thrown error.
+describe("renderDumbbell — mixed-sign value domain (2026-07-21 negative-axis export-gate fix)", () => {
+  // Passes the box's real page position straight into x0/y0 (rather than
+  // this file's usual x0=y0=0 + no wrapping translate) so every coordinate
+  // asserted below reads as a true canvas-absolute position: chart.tsx
+  // always calls renderDumbbell with x0=y0=0 and applies the page offset via
+  // an outer `<g transform="translate(box.x,box.y)">`, which is just
+  // addition -- translate(80,100) applied to a local (lx,ly) yields exactly
+  // (lx+80, ly+100), the same numbers renderDumbbell(...,80,100,...)
+  // computes directly. box.x=80/y=100/w=1120 mirrors chart.test.tsx's own
+  // production-realistic `box` fixture.
+  const X0 = 80
+  const Y0 = 100
+  const W = 1120
+  const H = 240
+
+  function dumbbellSeries(rows: Array<{ from: number; to: number }>): ChartSeries[] {
+    return [
+      { name: "from", data: rows.map((r, i) => ({ x: `R${i}`, y: r.from })) },
+      { name: "to", data: rows.map((r, i) => ({ x: `R${i}`, y: r.to })) },
+    ]
+  }
+
+  function expectOnCanvas(container: HTMLElement) {
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles.length).toBeGreaterThan(0)
+    for (const c of circles) {
+      expect(Number(c.getAttribute("cx"))).toBeGreaterThanOrEqual(0)
+      expect(Number(c.getAttribute("cx"))).toBeLessThanOrEqual(1280)
+      expect(Number(c.getAttribute("cy"))).toBeGreaterThanOrEqual(0)
+      expect(Number(c.getAttribute("cy"))).toBeLessThanOrEqual(720)
+    }
+    const lines = Array.from(container.querySelectorAll("line"))
+    expect(lines.length).toBeGreaterThan(0)
+    for (const l of lines) {
+      for (const attr of ["x1", "x2"]) {
+        const v = Number(l.getAttribute(attr))
+        expect(v).toBeGreaterThanOrEqual(0)
+        expect(v).toBeLessThanOrEqual(1280)
+      }
+    }
+    // Only the "from" value label is textAnchor="middle" -- the one anchor
+    // style whose pptx conversion (svg2pptx/text.ts, align==="center")
+    // computes a half-width via `Math.min(xPx, CANVAS_W_PX - xPx)`, which
+    // goes negative (a negative-width text box) once xPx itself is
+    // off-canvas. The row label (text-anchor=end) and "to" value label
+    // (default/start anchor) are never data-value-positioned in x, so they
+    // were never at risk of this specific defect.
+    const centerTexts = Array.from(container.querySelectorAll('text[text-anchor="middle"]'))
+    expect(centerTexts.length).toBeGreaterThan(0)
+    for (const t of centerTexts) {
+      const x = Number(t.getAttribute("x"))
+      expect(x).toBeGreaterThanOrEqual(0)
+      expect(x).toBeLessThanOrEqual(1280)
+    }
+  }
+
+  it("keeps every dot/line/label on-canvas for the acceptance report's mild case (from:-5, to:10)", () => {
+    const { container } = svg(
+      renderDumbbell(dumbbellSeries([{ from: -5, to: 10 }]), PALETTE, X0, Y0, W, H, MUTED, TEXT, ACCENT),
+    )
+    expectOnCanvas(container)
+  })
+
+  it("keeps every dot/line/label on-canvas at extreme magnitude (from:-50000, to:3)", () => {
+    const { container } = svg(
+      renderDumbbell(dumbbellSeries([{ from: -50000, to: 3 }]), PALETTE, X0, Y0, W, H, MUTED, TEXT, ACCENT),
+    )
+    expectOnCanvas(container)
+  })
+
+  it("keeps every dot/line/label on-canvas for a multi-row mix of normal and extreme rows", () => {
+    const { container } = svg(
+      renderDumbbell(
+        dumbbellSeries([{ from: 10, to: 20 }, { from: -9000, to: 50 }, { from: 5, to: 8 }]),
+        PALETTE,
+        X0,
+        Y0,
+        W,
+        H,
+        MUTED,
+        TEXT,
+        ACCENT,
+      ),
+    )
+    expectOnCanvas(container)
+  })
+
+  it("orders rendered dots left-to-right by value across the shared domain (a -5 mark renders left of a 10 mark)", () => {
+    const rows = [{ from: -5, to: 3 }, { from: 10, to: -2 }]
+    const { container } = svg(renderDumbbell(dumbbellSeries(rows), PALETTE, X0, Y0, W, H, MUTED, TEXT, ACCENT))
+    const circles = Array.from(container.querySelectorAll("circle"))
+    // Authoring order per row is (from-dot, to-dot): row0.from, row0.to,
+    // row1.from, row1.to.
+    const values = rows.flatMap((r) => [r.from, r.to])
+    expect(circles).toHaveLength(values.length)
+    const paired = circles.map((c, i) => ({ value: values[i], cx: Number(c.getAttribute("cx")) }))
+    const byValue = [...paired].sort((a, b) => a.value - b.value)
+    for (let i = 1; i < byValue.length; i++) {
+      expect(byValue[i].cx).toBeGreaterThanOrEqual(byValue[i - 1].cx)
+    }
+    // Explicit check for the exact case named in the fix brief.
+    const negFive = paired.find((p) => p.value === -5)!
+    const ten = paired.find((p) => p.value === 10)!
+    expect(negFive.cx).toBeLessThan(ten.cx)
+  })
+
+  it("renders a positive-only series byte-identically to the pre-fix formula", () => {
+    // Hand-computed from the pre-fix formula (`vx(v) = plotX + (v/max)*plotW`
+    // with `max = Math.max(...all, 1)`, `plotX = x0 + 108`,
+    // `plotW = max(1, w - 164)`) -- the fixed formula must reduce to exactly
+    // this whenever every value is already >= 0 (the new `min` term
+    // collapses to exactly 0), which is every case this component shipped
+    // with before this fix.
+    const { container } = svg(
+      renderDumbbell(dumbbellSeries([{ from: 20, to: 80 }]), PALETTE, 0, 0, 1120, 240, MUTED, TEXT, ACCENT),
+    )
+    const circles = Array.from(container.querySelectorAll("circle"))
+    const plotX = 0 + 96 + 12
+    const plotW = Math.max(1, 1120 - 96 - 12 - 56)
+    const max = Math.max(20, 80, 1)
+    expect(Number(circles[0].getAttribute("cx"))).toBeCloseTo(plotX + (20 / max) * plotW)
+    expect(Number(circles[1].getAttribute("cx"))).toBeCloseTo(plotX + (80 / max) * plotW)
+  })
+
+  it("keeps the pre-existing all-zero degenerate case stable (no NaN/Infinity; every dot stacks at plotX)", () => {
+    const { container } = svg(
+      renderDumbbell(dumbbellSeries([{ from: 0, to: 0 }]), PALETTE, 0, 0, 1120, 240, MUTED, TEXT, ACCENT),
+    )
+    const circles = Array.from(container.querySelectorAll("circle"))
+    const plotX = 0 + 96 + 12
+    for (const c of circles) {
+      expect(Number(c.getAttribute("cx"))).toBeCloseTo(plotX)
+    }
   })
 })
 

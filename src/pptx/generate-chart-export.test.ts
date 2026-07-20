@@ -175,18 +175,140 @@ describe("chart_type × pathological-values matrix (deep-acceptance review Note 
       label: "dumbbell all-zero",
       component: { type: "chart", chart_type: "dumbbell", series: [{ name: "from", data: allZero }, { name: "to", data: allZero }] },
     },
-    // "dumbbell mixed-sign" deliberately excluded: it degenerates through a
-    // *different* converter (./text.ts's textToOp, align === "center"
-    // branch — `half = Math.min(xPx, CANVAS_W_PX - xPx)` goes negative once
-    // `xPx` itself is off-canvas, producing a negative w), not rectToOp.
-    // Root cause is dumbbell's own `vx()` mapping a data value straight to
-    // an absolute x-coordinate with no clamp, unlike bar/funnel which map a
-    // ratio to a bar's *extent* from a fixed anchor — a distinct defect,
-    // found by this sweep but out of this fix's scope (rectToOp only).
-    // Left as a follow-up; not fixed here.
+    // "dumbbell mixed-sign" (2026-07-21, was excluded here — see the
+    // dedicated reproduction-case describe block at the end of this file for
+    // the full root-cause writeup): degenerated through a *different*
+    // converter (./text.ts's textToOp, align === "center" branch —
+    // `half = Math.min(xPx, CANVAS_W_PX - xPx)` went negative once `xPx`
+    // itself was off-canvas, producing a negative w), not rectToOp. Root
+    // cause was dumbbell's own `vx()` mapping a data value straight to an
+    // absolute x-coordinate with no lower bound, unlike bar/funnel which map
+    // a ratio to a bar's *extent* from a fixed anchor. Now fixed at the
+    // source (chart-svg.tsx's `renderDumbbell` extends its value domain to
+    // `[min(0, ...values), max(...values, 1)]`) — included here like every
+    // other already-safe combination in this matrix.
+    {
+      label: "dumbbell mixed-sign",
+      component: { type: "chart", chart_type: "dumbbell", series: [{ name: "from", data: mixedSign }, { name: "to", data: mixedSign }] },
+    },
+    // pie/donut mixed-sign: swept as part of this fix's sibling-chart-type
+    // check (deep-acceptance review Round 2's ask) — both confirmed safe.
+    // Neither positions anything via a linear value-to-pixel axis (arc angle
+    // is `acc/total`, a running fraction of the sum, not an individual
+    // value's own position on a shared min/max domain), so neither was ever
+    // at risk of dumbbell's defect class. Added here to close the gap and
+    // lock the finding in as regression coverage, not left as a one-off
+    // probe result.
+    {
+      label: "pie mixed-sign",
+      component: { type: "chart", chart_type: "pie", series: [{ name: "s1", data: mixedSign }] },
+    },
+    {
+      label: "donut (pie+style) mixed-sign",
+      component: { type: "chart", chart_type: "pie", style: "donut", series: [{ name: "s1", data: mixedSign }] },
+    },
   ]
 
   it.each(cases)("$label exports through the real generatePptx without an invalid-shape-transform", async ({ component }) => {
     await expectExports([component])
   })
 })
+
+/**
+ * Deep-acceptance review Round 2 finding: dumbbell + mixed-sign series.
+ * Reproduces the reviewer's own independent triage (`probe-dumbbell-
+ * triage.mts`, 5 cases, not just the one representative case folded into
+ * the matrix above) through the REAL generatePptx — every one of these
+ * threw `invalid-shape-transform` pre-fix, through two sub-conditions of
+ * the *same* pre-existing package-audit rule: a non-integer EMU value for
+ * the connecting line/dot shapes, and a negative-or-zero `cx` for the
+ * off-canvas value label's text box.
+ *
+ * Root cause: `renderDumbbell`'s `vx(v) = plotX + (v/max)*plotW` had no
+ * lower domain bound. A *positive* value can never push `vx()` past the
+ * plot's right edge (`max = Math.max(...allValues, 1)` always bounds the
+ * ratio to <= 1 by construction), but a *negative* value had no such bound
+ * and could push `vx()` arbitrarily far left of the canvas — confirmed not
+ * limited to extreme magnitudes; case 4 below (`from: -5, to: 10`) is the
+ * mildest possible negative value and fails identically to the extreme
+ * cases.
+ *
+ * Fixed by extending the value domain to `[min(0, ...values),
+ * max(...values, 1)]` (chart-svg.tsx's `renderDumbbell`) — the same
+ * "provably non-degenerate" domain-bound approach gantt.tsx's `axisBounds`
+ * already uses for its own `vx()`, generalized from gantt's schema-enforced
+ * `end > start` invariant to an explicit `min(0, …)` / `max(…, 1)` pair of
+ * floors (dumbbell's data has no such schema guarantee — an all-zero or
+ * all-negative series is legal IR).
+ */
+describe("dumbbell mixed-sign series through the real generatePptx (deep-acceptance review Round 2 finding)", () => {
+  it("large negative 'from', modest 'to' — case 1 (from=-5000, to=100)", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: -5000 }] }, { name: "to", data: [{ x: "A", y: 100 }] }],
+      },
+    ])
+  })
+
+  it("large negative 'to', modest 'from' — case 2, symmetric (from=100, to=-5000)", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: 100 }] }, { name: "to", data: [{ x: "A", y: -5000 }] }],
+      },
+    ])
+  })
+
+  it("extreme magnitude asymmetry, both signs — case 3 (from=-50000, to=3)", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: -50000 }] }, { name: "to", data: [{ x: "B", y: 3 }] }],
+      },
+    ])
+  })
+
+  it("mild negative, not just extreme values — case 4 (from=-5, to=10)", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: -5 }] }, { name: "to", data: [{ x: "A", y: 10 }] }],
+      },
+    ])
+  })
+
+  it("multi-row, one extreme row mixed with normal rows — case 5", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [
+          { name: "from", data: [{ x: "A", y: 10 }, { x: "B", y: -9000 }, { x: "C", y: 5 }] },
+          { name: "to", data: [{ x: "A", y: 20 }, { x: "B", y: 50 }, { x: "C", y: 8 }] },
+        ],
+      },
+    ])
+  })
+})
+
+// Sibling sweep beyond the matrix above (this fix's own verification, not a
+// pre-existing test): mixed-sign values at REALISTIC magnitude (this file's
+// own `mixedSign` fixture, and even a 4-figure mixed-sign value) export
+// cleanly for every chart_type. But sufficiently large mixed-sign values —
+// roughly |value| >= ~4000, exact threshold depends on the specific ratio,
+// e.g. `{ y: -9000 }` alongside `{ y: 100 }` — trip `invalid-shape-
+// transform` for bar/bar-horizontal/line too, via a THIRD, distinct
+// mechanism: a fractional EMU value (`a:xfrm ext@cy="112.66666666666667" is
+// not a finite integer`) that some conversion step never rounds to an
+// integer. Confirmed this is a magnitude/floating-point-precision defect,
+// not the same "unbounded value-to-position domain" class as dumbbell's:
+// it reproduces identically for all-negative (no zero-crossing) data at the
+// same magnitude, and does NOT reproduce for realistic-magnitude mixed-sign
+// data (this suite's own fixtures). Pre-existing, orthogonal to this fix's
+// diff, and out of this fix's scope — left as a follow-up, not fixed here,
+// not added to the matrix above (it would be a permanently-red case).
