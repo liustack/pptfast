@@ -175,3 +175,40 @@ describe("arc-aware bbox", () => {
     expect(op.h).toBeGreaterThan(0)
   })
 })
+
+describe("zero-extent floor (task 1 blocking review finding)", () => {
+  // Lucide's icon-dot idiom: a 0.01px-long horizontal stroke rendered as a
+  // literal dot. Single-axis anchors only (y never moves) — segsToOp's bbox
+  // used to compute h=0 for this, same failure mode buildOp's own
+  // `Math.max(maxX, minX + 0.75)` floor (this file's polygon/polyline path,
+  // above) already guards against ("零尺寸 custGeom 在渲染端归一化时除零").
+  it("floors the icon-dot idiom ('M12 8h.01') to a positive bbox on both axes", () => {
+    const op = pathToOp(svgEl("path", 'd="M12 8h.01" stroke="#111111"'))
+    expect(op.w).toBeGreaterThan(0)
+    expect(op.h).toBeGreaterThan(0)
+    // Real x-extent (0.01px) is smaller than the 0.75px floor, so both axes
+    // land exactly on the floor — same constant, same value, as buildOp.
+    expect(op.w).toBeCloseTo(pxToIn(0.75), 5)
+    expect(op.h).toBeCloseTo(pxToIn(0.75), 5)
+  })
+
+  // Lucide's short-orthogonal-stroke idiom (e.g. info's vertical body
+  // stroke): x never moves, so segsToOp's old bbox computed w=0 exactly
+  // (not just "small") — the other zero-axis shape the review's repro named
+  // (`shape "Shape 5" a:ext cx=0 cy=31750`).
+  it("floors a vertical-only stroke ('M12 16v-4') on its zero axis only, leaving the real axis untouched", () => {
+    const op = pathToOp(svgEl("path", 'd="M12 16v-4" stroke="#111111"'))
+    expect(op.w).toBeCloseTo(pxToIn(0.75), 5) // x never moves — floored
+    expect(op.h).toBeCloseTo(pxToIn(4), 5) // real 4px extent — unfloored, unchanged
+  })
+
+  it("does not touch a real 2D bbox that already clears the floor on both axes", () => {
+    // Sanity check against regressing the non-degenerate case: this file's
+    // existing M/L/Z square test (400x400px) must stay byte-identical.
+    const op = pathToOp(
+      svgEl("path", 'd="M 880,720 L 880,560 L 1280,320 L 1280,720 Z" fill="#000"'),
+    )
+    expect(op.w).toBeCloseTo(pxToIn(400), 3)
+    expect(op.h).toBeCloseTo(pxToIn(400), 3)
+  })
+})

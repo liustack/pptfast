@@ -370,8 +370,11 @@ function segsToOp(
   }
   const minX = Math.min(...xs)
   const minY = Math.min(...ys)
-  const maxX = Math.max(...xs)
-  const maxY = Math.max(...ys)
+  // 零尺寸 custGeom 在渲染端归一化时除零（曾表现为图标被拉成穿页巨柱）——同
+  // buildOp 的地板值。Lucide 图标的点/短直线惯用法（如 "M12 8h.01"）单轴
+  // 锚点重合，此前在这里没有地板，产生 cx=0 或 cy=0 的退化 custGeom。
+  const maxX = Math.max(Math.max(...xs), minX + 0.75)
+  const maxY = Math.max(Math.max(...ys), minY + 0.75)
 
   const points: PathPoint[] = segs.map((s) => {
     if ("close" in s) return { close: true }
