@@ -73,9 +73,10 @@ program
   )
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .option("--json", "machine-readable output (the full AuditReport)")
-  .action(async (target: string, opts: { json?: boolean }) => {
+  .option("--pixels", "also run the optional pixel-contrast pass over image-backed text (requires sharp)")
+  .action(async (target: string, opts: { json?: boolean; pixels?: boolean }) => {
     try {
-      const { output, hasFindings } = await runAudit(target, { json: opts.json })
+      const { output, hasFindings } = await runAudit(target, { json: opts.json, pixels: opts.pixels })
       console.log(output)
       if (hasFindings) process.exit(1)
     } catch (e) {

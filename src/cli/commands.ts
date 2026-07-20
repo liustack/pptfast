@@ -349,12 +349,25 @@ function formatAuditFinding(f: AuditFinding): string {
  * keep byte-identical the way `runValidate` did when that gating was added,
  * so there is no reason to withhold a genuinely useful note from a
  * hand-authored IR that happens to carry placeholders too.
+ *
+ * `checks.pixels === "completed"` (audit-v2 phase B, i.e. `--pixels` was
+ * passed) appends one more line — purely additive, gated on that exact
+ * value so the far more common no-`--pixels` run stays byte-identical to
+ * the wording pinned above (`checks.pixels` is `"not-requested"` there,
+ * never `"completed"`). No line at all for the omitted case rather than an
+ * explicit "not requested" note: the human already knows whether they
+ * passed the flag, and the machine-readable `--json` path (never silent
+ * about `checks` either way) is what an agent actually consumes to tell
+ * "not checked" apart from "checked and clean".
  */
 function formatAuditReport(report: AuditReport, ir: PptxIR): string {
   const lines = report.findings.map(formatAuditFinding)
   lines.push(
     `audited ${report.pagesAudited} page${report.pagesAudited === 1 ? "" : "s"}, ${report.pagesSkipped} skipped, ${report.findings.length} finding${report.findings.length === 1 ? "" : "s"}`,
   )
+  if (report.checks.pixels === "completed") {
+    lines.push("pixel-contrast check: completed")
+  }
   const note = placeholderNote(ir)
   if (note) lines.push(note)
   return lines.join("\n")
@@ -363,6 +376,17 @@ function formatAuditReport(report: AuditReport, ir: PptxIR): string {
 export interface AuditOptions {
   json?: boolean
   cwd?: string
+  /** `--pixels` (audit-v2 phase B, spec §4.3/§11.7): also run the optional
+   *  pixel-contrast pass over image-backed text. Explicit opt-in only — see
+   *  `auditDeck`'s own overload doc comment for why this is threaded as a
+   *  ternary with a literal in each arm rather than passed straight through
+   *  as `{ pixels: opts.pixels }` (a plain `boolean` doesn't match either
+   *  overload). Missing rasterization capability or a remote asset
+   *  reference makes this command fail loudly (a rejected `auditDeck`
+   *  promise propagates straight out of this function, same as the
+   *  existing invalid-IR `PptfastError` path) rather than silently
+   *  reporting a clean pixel check that never ran. */
+  pixels?: boolean
 }
 
 export interface AuditCliResult {
@@ -417,7 +441,7 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
     )
   }
   await resolveLocalAssets(v.ir!, baseDir)
-  const report = auditDeck(v.ir!)
+  const report = opts.pixels ? await auditDeck(v.ir!, { pixels: true }) : auditDeck(v.ir!)
   const hasFindings = report.findings.length > 0
   const output = opts.json ? JSON.stringify(report, null, 2) : formatAuditReport(report, v.ir!)
   return { output, hasFindings }

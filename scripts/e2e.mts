@@ -619,6 +619,34 @@ if (!jsonReport.findings.some((f) => f.code === "content-truncated")) {
 }
 console.log("audit --json leg OK (machine-readable AuditReport, exit 1, low-contrast/content-dropped/content-truncated codes present)")
 
+// 7b) --pixels leg (audit-v2 phase B, spec §4.3/§11.7): the one CLI surface
+//     genuinely worth an e2e check for this feature — it exercises real
+//     Sharp through the *built* dist/cli.js binary (installNodePlatform()'s
+//     actual runtime dependency resolution), not vitest's in-process call.
+//     examples/basic.json has no asset backgrounds, so this only proves the
+//     pass runs and completes cleanly, not that it can find something —
+//     src/svg/audit/pixel-audit.test.ts's own real-Sharp suite already
+//     covers the sampling/threshold logic end to end.
+console.log("--- audit --pixels leg ---")
+
+const pixelsAudit = shCapture("node", ["dist/cli.js", "audit", "examples/basic.json", "--pixels"])
+if (pixelsAudit.status !== 0) {
+  throw new Error(`e2e: audit --pixels leg — expected examples/basic.json to still audit clean (exit 0), got exit ${pixelsAudit.status}: ${pixelsAudit.stdout}`)
+}
+if (!/pixel-contrast check: completed/.test(pixelsAudit.stdout)) {
+  throw new Error(`e2e: audit --pixels leg — expected the human summary to note the pixel-contrast check ran, got: ${pixelsAudit.stdout}`)
+}
+
+const pixelsJsonAudit = shCapture("node", ["dist/cli.js", "audit", "examples/basic.json", "--pixels", "--json"])
+if (pixelsJsonAudit.status !== 0) {
+  throw new Error(`e2e: audit --pixels leg — expected --pixels --json to also exit 0, got exit ${pixelsJsonAudit.status}`)
+}
+const pixelsReport = JSON.parse(pixelsJsonAudit.stdout) as { checks: { svg: string; pixels: string } }
+if (pixelsReport.checks.pixels !== "completed") {
+  throw new Error(`e2e: audit --pixels leg — expected checks.pixels "completed", got: ${JSON.stringify(pixelsReport.checks)}`)
+}
+console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixels completed, human summary notes it)")
+
 // 8) structure-components leg (structure-components wave task 3): a deck
 //    exercising all four full-body components added this wave (swot/bmc/
 //    waterfall/gantt), one per content slide, cover+ending bookending them —

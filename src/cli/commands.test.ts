@@ -275,6 +275,25 @@ describe("runAudit (W6 task 2)", () => {
     await expect(runAudit(join(dir, "bad.json"))).rejects.toThrow(/invalid IR/)
   })
 
+  it("--pixels runs the optional pixel-contrast pass: checks.pixels flips to completed and the human summary notes it", async () => {
+    const result = await runAudit(join(dir, "deck.json"), { pixels: true })
+    expect(result.hasFindings).toBe(false)
+    expect(result.output).toContain("audited 2 pages, 0 skipped, 0 findings")
+    expect(result.output).toContain("pixel-contrast check: completed")
+  })
+
+  it("--pixels --json reports checks.pixels completed in the machine-readable AuditReport", async () => {
+    const result = await runAudit(join(dir, "deck.json"), { pixels: true, json: true })
+    const report = JSON.parse(result.output) as { checks: { svg: string; pixels: string } }
+    expect(report.checks).toEqual({ svg: "completed", pixels: "completed" })
+  })
+
+  it("without --pixels, the human summary never mentions the pixel-contrast check (byte-identical to before this option existed)", async () => {
+    const result = await runAudit(join(dir, "deck.json"))
+    expect(result.output).toBe("audited 2 pages, 0 skipped, 0 findings")
+    expect(result.output).not.toContain("pixel-contrast")
+  })
+
   it("flags a low-contrast style-token override: page/id/[code] formatting and a non-zero summary count", async () => {
     const result = await runAudit(join(dir, "deck-low-contrast.json"))
     expect(result.hasFindings).toBe(true)
