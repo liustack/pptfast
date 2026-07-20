@@ -104,7 +104,7 @@ export function SvgContent({ arrangement, components, rect, ctx }: SvgContentPro
           fontFamily={ctx.fonts.body}
           dominantBaseline="alphabetic"
         >
-          {`+${dropped} 项未展示`}
+          {`+${dropped} more`}
         </text>
       )}
     </g>

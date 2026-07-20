@@ -107,9 +107,16 @@ describe("StackedPosterContent", () => {
     expect(title.getAttribute("fill")).toBe(ctx.colors.text)
 
     // Kicker: section label (from the preceding chapter) is muted, not primary.
+    // Regression lock for defect C (bench-driven fixes wave, task 4): the
+    // "Chapter NN · <section>" prefix word used to be hardcoded Chinese
+    // ("章节") regardless of deck language — asserting the full string (not
+    // just the section-name substring the earlier version of this test
+    // checked) locks the English prefix landed and stayed in this exact
+    // "Chapter 01 · " shape.
     const kicker = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("第一章"),
     )!
+    expect(kicker.textContent).toBe("Chapter 01 · 第一章")
     expect(kicker.getAttribute("fill")).toBe(ctx.colors.muted)
 
     // Accent hairline (AccentBar inlined): the only primary-filled element.
@@ -184,9 +191,13 @@ describe("StackedPosterContent", () => {
 
     // Section label (kicker replacement on the degrade path) is primary,
     // not muted — a different color role than the poster path's kicker.
+    // Defect C regression lock (see the poster-path kicker test above): the
+    // degrade path's own copy of the "Chapter NN · <section>" breadcrumb
+    // must carry the same English prefix.
     const sectionLabel = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("第一章"),
     )!
+    expect(sectionLabel.textContent).toBe("Chapter 01 · 第一章")
     expect(sectionLabel.getAttribute("fill")).toBe(ctx.colors.primary)
 
     const topDivider = root.querySelector('line[y1="80"]')!

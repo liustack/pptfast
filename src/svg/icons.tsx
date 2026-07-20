@@ -86,7 +86,7 @@ function renderPrimitive(
     case "polygon":
       return <polygon key={i} {...common} points={attrs.points} />
     default:
-      throw new Error(`Icon: 目录含不支持的原语 <${tag}>`)
+      throw new Error(`Icon: catalogue contains an unsupported primitive <${tag}>`)
   }
 }
 

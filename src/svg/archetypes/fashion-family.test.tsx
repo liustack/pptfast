@@ -60,13 +60,13 @@ describe("fashion 家族（runway）", () => {
     const markup = renderSvgMarkup(<FashionEnding ir={deck} slide={ending} index={0} ctx={ctx} />)
     expect(markup).toContain('width="1280" height="720" fill="#0A0A0A"')
     expect(markup).toContain("下期预告")
-    expect(markup).not.toContain("谢谢")
+    expect(markup).not.toContain("Thank you")
   })
 
-  it("ending：heading 缺省时兜底「谢谢」（ending 家族兜底纪律）", () => {
+  it("ending：heading 缺省时兜底「Thank you」（ending 家族兜底纪律，defect C 修复：原中文兜底「谢谢」改英文）", () => {
     const deck = ir([endingBare])
     const markup = renderSvgMarkup(<FashionEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
-    expect(markup).toContain("谢谢")
+    expect(markup).toContain("Thank you")
   })
 
   it("三版式输出均在可导出 SVG 子集内", () => {

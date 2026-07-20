@@ -15,8 +15,9 @@ const endingWithHeading: Slide = {
   components: [],
 } as Slide
 
-// 无 heading 的 ending：触发双重兜底——heading 兜底"致谢"，subheading 兜底
-// "谢谢。"。
+// 无 heading 的 ending：触发双重兜底——heading 兜底"Thank You"，subheading
+// 兜底"We appreciate your time."（defect C 修复：原中文兜底"致谢"/"谢谢。"
+// 改英文，两个中文原词本就是不同措辞，译文延续这一区分）。
 const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const ir = (theme: string, slide: Slide): PptxIR =>
@@ -35,7 +36,7 @@ const ir = (theme: string, slide: Slide): PptxIR =>
 const MAGAZINE_EXPECTED_WITH_HEADING =
   '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#1F1F1F" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#6E6259" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
 const MAGAZINE_EXPECTED_BARE =
-  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#1F1F1F" text-anchor="middle" dominant-baseline="alphabetic">致谢</text><text x="640" y="396" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#6E6259" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">谢谢。</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#6E6259" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
+  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#1F1F1F" text-anchor="middle" dominant-baseline="alphabetic">Thank You</text><text x="640" y="396" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#6E6259" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">We appreciate your time.</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#6E6259" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
 
 describe("MastheadEnding", () => {
   it("magazine tokens 下与固化的基准 markup 逐字节一致（档位一，有 heading，不兜底副题，档案来自旧 EditorialSerifEnding）", () => {
@@ -45,7 +46,7 @@ describe("MastheadEnding", () => {
     const next = renderSvgMarkup(<MastheadEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />)
     expect(next).toBe(MAGAZINE_EXPECTED_WITH_HEADING)
     expect(next).toContain("感谢聆听")
-    expect(next).not.toContain("谢谢。")
+    expect(next).not.toContain("We appreciate your time.")
   })
 
   it("magazine tokens 下无 heading 时与固化的基准 markup 逐字节一致（档位一，双重兜底）", () => {
@@ -54,8 +55,8 @@ describe("MastheadEnding", () => {
 
     const next = renderSvgMarkup(<MastheadEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
     expect(next).toBe(MAGAZINE_EXPECTED_BARE)
-    expect(next).toContain("致谢")
-    expect(next).toContain("谢谢。")
+    expect(next).toContain("Thank You")
+    expect(next).toContain("We appreciate your time.")
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
@@ -81,7 +82,7 @@ describe("MastheadEnding", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("falls back to 「致谢」/「谢谢。」 when heading/subheading are absent, with italic centered fallback subheading", () => {
+  it("falls back to 「Thank You」/「We appreciate your time.」 when heading/subheading are absent, with italic centered fallback subheading", () => {
     const ctx = buildCtx(resolveStyle("journal"), {})
     const slide: Slide = { type: "ending", heading: "", components: [] } as Slide
     const deck = ir("journal", slide)
@@ -90,11 +91,11 @@ describe("MastheadEnding", () => {
         <MastheadEnding ir={deck} slide={slide} index={0} ctx={ctx} />
       </svg>,
     )
-    expect(markup).toContain("致谢")
-    expect(markup).toContain("谢谢")
+    expect(markup).toContain("Thank You")
+    expect(markup).toContain("We appreciate your time.")
     const root = parseSvgRoot(markup)
     const subheading = Array.from(root.querySelectorAll("text")).find((t) =>
-      (t.textContent ?? "").includes("谢谢"),
+      (t.textContent ?? "").includes("We appreciate your time."),
     )!
     expect(subheading.getAttribute("font-style")).toBe("italic")
     expect(subheading.getAttribute("text-anchor")).toBe("middle")
@@ -110,7 +111,7 @@ describe("MastheadEnding", () => {
       </svg>,
     )
     expect(markup).toContain("感谢聆听与支持")
-    expect(markup).not.toContain("谢谢。")
+    expect(markup).not.toContain("We appreciate your time.")
   })
 
   describe("two-line title reflow (S3b addendum, 2026-07-07 — regression lock for six-theme consistency)", () => {

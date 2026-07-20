@@ -63,7 +63,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     // 密度拉伸：box.h 增量均分给各卡，内容组卡内垂直居中
     const perCardGrow = Math.max(0, ((box.h ?? measuredH) - measuredH) / layouts.length)
     // 截断预算（box.h < 测量高，layoutContentFit 单块超高兜底）：只画放
-    // 得下的卡，尾部自画「+N 项未展示」——存量超预算 deck 不再画出页外。
+    // 得下的卡，尾部自画「+N more」——存量超预算 deck 不再画出页外。
     const truncBudget =
       box.h != null && box.h < measuredH ? box.h - 20 : Number.POSITIVE_INFINITY
     let visible = component.items.length
@@ -189,7 +189,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hidden} 项未展示`}
+            {`+${hidden} more`}
           </text>
         )}
       </g>

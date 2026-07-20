@@ -173,7 +173,7 @@ describe("LeftAnchorCover", () => {
       slides: [slide],
     } as unknown as PptxIR
     const out = renderSvgMarkup(<LeftAnchorCover ir={deck} slide={slide} index={0} ctx={ctx} />)
-    expect(out).toContain("内部")
+    expect(out).toContain("Internal")
 
     const root = parseSvgRoot(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,

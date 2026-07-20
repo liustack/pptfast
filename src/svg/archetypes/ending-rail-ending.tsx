@@ -87,7 +87,7 @@ export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const copyright = ir.meta.copyright
   const contactText = [contact?.email, contact?.website].filter(Boolean).join("  ·  ")
 
-  const heading = fitHeadingLines(slide.heading || "谢谢", {
+  const heading = fitHeadingLines(slide.heading || "Thank you", {
     maxWidth: 768,
     fontSize: 120,
     maxLines: 2,
@@ -177,7 +177,7 @@ export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
             letterSpacing="4"
             dominantBaseline="alphabetic"
           >
-            联系
+            Contact
           </text>
           <text
             x="400"

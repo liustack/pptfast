@@ -133,7 +133,7 @@ export function BigNumber({
           fontFamily={ctx.fonts.body}
           dominantBaseline="alphabetic"
         >
-          {`+${dropped} 项未展示`}
+          {`+${dropped} more`}
         </text>
       )}
     </>

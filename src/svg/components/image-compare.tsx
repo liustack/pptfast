@@ -55,7 +55,7 @@ function renderSide({
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            图片缺失
+            Image missing
           </text>
         </>
       )}

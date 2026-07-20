@@ -96,7 +96,7 @@ describe("layoutContentFit", () => {
 
   it("never drops down to an empty content area when a single component overflows alone", () => {
     // One pathologically tall component and nothing else: dropping it would
-    // render a slide with nothing but the "+N 项未展示" marker, which is
+    // render a slide with nothing but the "+N more" marker, which is
     // worse than showing the (overflowing) component itself.
     const mega = paragraphComponent(40)
     const tinyRect: ContentRect = { x: 0, y: 0, w: 400, h: 100 }

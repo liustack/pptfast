@@ -18,7 +18,7 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
 
   // ending 家族兜底纪律：仅 heading 缺省时兜底（模型填了 heading 时兜底
   // 必然语义重复——2026-07-09 用户裁决先例）。
-  const headingText = slide.heading || "谢谢"
+  const headingText = slide.heading || "Thank you"
   const title = fitHeadingLines(headingText, {
     maxWidth: 1168,
     fontSize: 130,

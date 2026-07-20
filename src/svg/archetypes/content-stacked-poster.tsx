@@ -177,7 +177,7 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const section = sectionNameFor(ir.slides, index)
   const chNum = chapterNumberFor(ir.slides, index)
   const rawSectionLabel = section
-    ? `章节 ${String(chNum).padStart(2, "0")} · ${section}`
+    ? `Chapter ${String(chNum).padStart(2, "0")} · ${section}`
     : null
   const sectionLabel = rawSectionLabel
     ? fitSvgLine(rawSectionLabel, {
@@ -366,7 +366,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
   const section = sectionNameFor(ir.slides, index)
   const chNum = chapterNumberFor(ir.slides, index)
   const rawSectionLabel = section
-    ? `章节 ${String(chNum).padStart(2, "0")} · ${section}`
+    ? `Chapter ${String(chNum).padStart(2, "0")} · ${section}`
     : null
   const sectionLabel = rawSectionLabel
     ? fitSvgLine(rawSectionLabel, {

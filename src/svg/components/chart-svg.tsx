@@ -651,7 +651,7 @@ export function renderDonut(
         fill={mutedColor}
         dominantBaseline="alphabetic"
       >
-        总计
+        Total
       </text>
     </>
   )

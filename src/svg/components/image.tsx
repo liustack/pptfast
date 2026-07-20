@@ -53,7 +53,7 @@ export const image: SvgComponent<ImageComponent> = {
               fill={ctx.colors.muted}
               dominantBaseline="alphabetic"
             >
-              图片缺失
+              Image missing
             </text>
           </>
         )}

@@ -69,7 +69,7 @@ describe("SvgContent", () => {
         <SvgContent components={many} rect={{ x: 0, y: 0, w: 800, h: 400 }} ctx={ctx} />
       </svg>,
     )
-    expect(markup).toContain("未展示")
+    expect(markup).toMatch(/\+\d+ more/)
   })
 
   it("annotates bespoke variants with the content rect", () => {

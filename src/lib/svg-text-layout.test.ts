@@ -82,7 +82,7 @@ describe("fitSvgLine", () => {
 
   // Regression for the in-browser getBBox audit (Task 12): callers that
   // render the fitted line with an SVG `letterSpacing` attribute (every
-  // theme's section-label "kicker" does, e.g. `章节 01 · <section>`) add
+  // theme's section-label "kicker" does, e.g. `Chapter 01 · <section>`) add
   // (charCount - 1) * letterSpacing extra real px that the unit-based
   // estimate below didn't know about, so long labels overflowed past the
   // page in a real browser despite passing the estimator-only audit.

@@ -59,11 +59,13 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  *
  * 副题兜底语义（按当前源码实际行为原样迁移，不改语义，见源码 525-526 行
  * 注释"兜底只服务完全默认的 ending 页"）：`slide.subheading ||
- * (slide.heading ? "" : "谢谢。")`——仅当 `slide.heading` 也缺省时才兜底
- * 显示"谢谢。"；若 `heading` 有值但 `subheading` 缺省，则不显示任何副题
- * （避免模型已填感谢语时与兜底副题语义重复）。主标题自身兜底
+ * (slide.heading ? "" : "We appreciate your time.")`——仅当 `slide.heading`
+ * 也缺省时才兜底显示该文案；若 `heading` 有值但 `subheading` 缺省，则不显示
+ * 任何副题（避免模型已填感谢语时与兜底副题语义重复）。主标题自身兜底
  * `slide.heading || "Thank you."`。测试覆盖有 heading（不触发副题兜底）与
- * 无 heading（标题兜底"Thank you."、副题兜底"谢谢。"）两种 ir。
+ * 无 heading（标题兜底"Thank you."、副题兜底"We appreciate your time."）
+ * 两种 ir。defect C 修复：原中文兜底文案"谢谢。"改为英文，选择与主标题不同的
+ * 措辞（而非直译重复"Thank you."）避免同页大小标题显示同一句话。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试
  * 锁死的 `COPYRIGHT_FAINT`，grep 清零门预期恰好命中它的代码定义那一行。
@@ -104,9 +106,12 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
     : ENDING_HEADING_LAST_BASELINE
   const headingLastY =
     headingY + Math.max(0, heading.lines.length - 1) * heading.lineHeight
-  // 兜底只服务完全默认的 ending 页（模型填了 heading 时再兜底"谢谢。"必然
-  // 语义重复，同 consulting 源码 2026-07-09 去重裁决，原样迁移）
-  const subheading = fitSvgLine(slide.subheading || (slide.heading ? "" : "谢谢。"), {
+  // 兜底只服务完全默认的 ending 页（模型填了 heading 时再兜底必然语义重复，
+  // 同 consulting 源码 2026-07-09 去重裁决，原样迁移）。defect C 修复：原
+  // 兜底文案"谢谢。"改为英文"We appreciate your time."——不直译成与主标题
+  // 相同的"Thank you."，避免同页大小标题重复同一句话（主标题兜底已是
+  // "Thank you."，见上方）。
+  const subheading = fitSvgLine(slide.subheading || (slide.heading ? "" : "We appreciate your time."), {
     maxWidth: 1088,
     fontSize: 48,
     minFontSize: 24,
@@ -187,7 +192,7 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
             letterSpacing="4"
             dominantBaseline="alphabetic"
           >
-            联系
+            Contact
           </text>
           <text
             x="96"

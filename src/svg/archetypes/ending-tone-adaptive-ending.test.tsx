@@ -22,17 +22,18 @@ const CJK_LONG =
 // byte-identical to the legacy output before this migration (see the
 // "无 CRITICAL 发现" report).
 const EXPECTED_ENDING_WITH_HEADING_NO_BG =
-  '<text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" letter-spacing="3" dominant-baseline="alphabetic">维岚科技</text><text x="64" y="396" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="100" font-weight="700" fill="#18181B" letter-spacing="-2" dominant-baseline="alphabetic">衷心感谢</text><line x1="64" y1="520" x2="1216" y2="520" stroke="#E4E4E7" stroke-opacity="1" stroke-width="1.6"></line><text x="64" y="572" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" opacity="1" letter-spacing="4" dominant-baseline="alphabetic">联系</text><text x="64" y="608" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="28" fill="#18181B" dominant-baseline="alphabetic">李雷 · hi@weilan.example · weilan.example</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" dominant-baseline="alphabetic">© 2026 维岚科技 保留所有权利</text>'
+  '<text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" letter-spacing="3" dominant-baseline="alphabetic">维岚科技</text><text x="64" y="396" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="100" font-weight="700" fill="#18181B" letter-spacing="-2" dominant-baseline="alphabetic">衷心感谢</text><line x1="64" y1="520" x2="1216" y2="520" stroke="#E4E4E7" stroke-opacity="1" stroke-width="1.6"></line><text x="64" y="572" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" opacity="1" letter-spacing="4" dominant-baseline="alphabetic">Contact</text><text x="64" y="608" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="28" fill="#18181B" dominant-baseline="alphabetic">李雷 · hi@weilan.example · weilan.example</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" dominant-baseline="alphabetic">© 2026 维岚科技 保留所有权利</text>'
 const EXPECTED_ENDING_BARE_NO_BG =
-  '<text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" letter-spacing="3" dominant-baseline="alphabetic">维岚科技</text><text x="64" y="396" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="100" font-weight="700" fill="#18181B" letter-spacing="-2" dominant-baseline="alphabetic">谢谢</text><line x1="64" y1="520" x2="1216" y2="520" stroke="#E4E4E7" stroke-opacity="1" stroke-width="1.6"></line><text x="64" y="572" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" opacity="1" letter-spacing="4" dominant-baseline="alphabetic">联系</text><text x="64" y="608" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="28" fill="#18181B" dominant-baseline="alphabetic">李雷 · hi@weilan.example · weilan.example</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" dominant-baseline="alphabetic">© 2026 维岚科技 保留所有权利</text>'
+  '<text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" letter-spacing="3" dominant-baseline="alphabetic">维岚科技</text><text x="64" y="396" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="100" font-weight="700" fill="#18181B" letter-spacing="-2" dominant-baseline="alphabetic">Thank you</text><line x1="64" y1="520" x2="1216" y2="520" stroke="#E4E4E7" stroke-opacity="1" stroke-width="1.6"></line><text x="64" y="572" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" opacity="1" letter-spacing="4" dominant-baseline="alphabetic">Contact</text><text x="64" y="608" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="28" fill="#18181B" dominant-baseline="alphabetic">李雷 · hi@weilan.example · weilan.example</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" dominant-baseline="alphabetic">© 2026 维岚科技 保留所有权利</text>'
 const EXPECTED_ENDING_WITH_HEADING_WITH_BG =
-  '<rect width="1280" height="720" fill="#000000" opacity="0.32"></rect><text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.8" letter-spacing="3" dominant-baseline="alphabetic">维岚科技</text><text x="64" y="396" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="100" font-weight="700" fill="#FFFFFF" letter-spacing="-2" dominant-baseline="alphabetic">衷心感谢</text><line x1="64" y1="520" x2="1216" y2="520" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.6"></line><text x="64" y="572" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.6" letter-spacing="4" dominant-baseline="alphabetic">联系</text><text x="64" y="608" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="28" fill="#FFFFFF" dominant-baseline="alphabetic">李雷 · hi@weilan.example · weilan.example</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.55" dominant-baseline="alphabetic">© 2026 维岚科技 保留所有权利</text>'
+  '<rect width="1280" height="720" fill="#000000" opacity="0.32"></rect><text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.8" letter-spacing="3" dominant-baseline="alphabetic">维岚科技</text><text x="64" y="396" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="100" font-weight="700" fill="#FFFFFF" letter-spacing="-2" dominant-baseline="alphabetic">衷心感谢</text><line x1="64" y1="520" x2="1216" y2="520" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.6"></line><text x="64" y="572" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.6" letter-spacing="4" dominant-baseline="alphabetic">Contact</text><text x="64" y="608" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="28" fill="#FFFFFF" dominant-baseline="alphabetic">李雷 · hi@weilan.example · weilan.example</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.55" dominant-baseline="alphabetic">© 2026 维岚科技 保留所有权利</text>'
 
-// 有 heading 的 ending：标题原样渲染，不触发 `slide.heading || "谢谢"` 兜底。
+// 有 heading 的 ending：标题原样渲染，不触发 `slide.heading || "Thank you"` 兜底。
 const endingWithHeading: Slide = { type: "ending", heading: "衷心感谢", components: [] } as Slide
 
-// 无 heading 的 ending：触发标题兜底"谢谢"——注意源函数（见文件头「副题兜底
-// 语义」）完全没有 subheading 分支，无副题可兜底。
+// 无 heading 的 ending：触发标题兜底"Thank you"（defect C 修复：原中文兜底
+// "谢谢"改英文）——注意源函数（见文件头「副题兜底语义」）完全没有
+// subheading 分支，无副题可兜底。
 const endingBare: Slide = { type: "ending", components: [] } as Slide
 
 const bgImages: PptxIR["assets"]["images"] = {
@@ -76,10 +77,10 @@ describe("ToneAdaptiveEnding", () => {
       )
       expect(next).toBe(EXPECTED_ENDING_WITH_HEADING_NO_BG)
       expect(next).toContain("衷心感谢")
-      expect(next).not.toContain("谢谢")
+      expect(next).not.toContain("Thank you")
     })
 
-    it("无背景图分支，heading 缺省时兜底渲染“谢谢”", () => {
+    it("无背景图分支，heading 缺省时兜底渲染“Thank you”", () => {
       const tokens = LEGACY_CUSTOM_TOKENS
       const ctx = buildCtx(tokens, {})
       const deck = ir("custom", endingBare)
@@ -88,7 +89,7 @@ describe("ToneAdaptiveEnding", () => {
         <ToneAdaptiveEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />,
       )
       expect(next).toBe(EXPECTED_ENDING_BARE_NO_BG)
-      expect(next).toContain("谢谢")
+      expect(next).toContain("Thank you")
     })
 
     it("有背景图分支（withBg 白字/黑幕豁免）", () => {

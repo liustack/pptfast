@@ -88,7 +88,7 @@ describe("image_grid component", () => {
       items: [{ asset_id: "nope" }, { asset_id: "a" }],
     }
     const { container } = svg(<>{imageGrid.render(component, box, ctx)}</>)
-    expect(container.textContent).toContain("图片缺失")
+    expect(container.textContent).toContain("Image missing")
     expect(container.querySelectorAll("image")).toHaveLength(1)
   })
 })
