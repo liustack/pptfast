@@ -41,6 +41,37 @@ function slidePartXml(n: number, runs: string): string {
   )
 }
 
+/**
+ * A `<p:txBody>`'s `<a:lstStyle><a:lvl1pPr><a:defRPr>...</a:defRPr>` shaped
+ * like pptxgenjs's `genXmlTextRunProperties(opts, isDefault=true)` output
+ * for a placeholder shape (`genXmlTextBody`'s `slideObj._type ===
+ * 'placeholder'` branch — the only path that ever passes `isDefault=true`).
+ * `LATIN_EA_RE` has no anchor to any enclosing tag name, so it's
+ * parent-tag-agnostic by construction — pptxgenjs's own
+ * `genXmlTextRunProperties` is the *same function* for both `<a:rPr>`
+ * (`isDefault=false`) and `<a:defRPr>` (`isDefault=true`), emitting an
+ * identical latin/ea/cs triple either way. This codebase's own
+ * `svg2pptx/render.ts` never sets `opts.placeholder` on its `addText`
+ * calls, so no real slide part in this repo produces a `<a:defRPr>` with a
+ * real face today — this fixture exists purely to pin that the patch
+ * really does reach this context, not just that the regex theoretically
+ * could.
+ */
+function slidePartWithDefRPr(latinFace: string): string {
+  const lstStyle =
+    `<a:lstStyle><a:lvl1pPr algn="l"><a:defRPr sz="1800" kern="1200">` +
+    `<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>` +
+    `<a:latin typeface="${latinFace}" pitchFamily="34" charset="0"/>` +
+    `<a:ea typeface="${latinFace}" pitchFamily="34" charset="-122"/>` +
+    `<a:cs typeface="${latinFace}" pitchFamily="34" charset="-120"/></a:defRPr></a:lvl1pPr></a:lstStyle>`
+  return (
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
+    `<p:cSld><p:spTree><p:sp><p:txBody>${lstStyle}<a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp></p:spTree></p:cSld>` +
+    `<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`
+  )
+}
+
 async function buildPptx(slideRuns: string[]): Promise<Blob> {
   const zip = new JSZip()
   slideRuns.forEach((runs, i) => zip.file(`ppt/slides/slide${i + 1}.xml`, slidePartXml(i + 1, runs)))
@@ -96,6 +127,52 @@ describe("applyEaFontFaces", () => {
     expect(xml).toMatch(
       /<a:latin typeface="Georgia" pitchFamily="34" charset="0"\/><a:ea typeface="Microsoft YaHei"\/>/,
     )
+  })
+
+  // Pins LATIN_EA_RE's documented zero-whitespace-adjacency assumption (see
+  // that regex's own doc comment in pptx-ea-fonts.ts). pptxgenjs 4.0.1 never
+  // actually produces this shape — its `genXmlTextRunProperties` builds the
+  // three tags via plain string concatenation, no whitespace between them —
+  // so this is a synthetic worst case, not a real fixture. It exists so a
+  // future pptxgenjs reformat (or any other producer of this XML shape)
+  // can't silently degrade export correctness: if this assertion ever needs
+  // to change, that's the signal someone actually hit the gap and the regex
+  // needs revisiting, not a silent behavior drift nobody notices.
+  it("does NOT tolerate whitespace between <a:latin> and <a:ea> — pinned as a known limitation, not a desired outcome", async () => {
+    const runWithWhitespaceBeforeEa =
+      `<a:r><a:rPr lang="en-US" sz="1800" dirty="0">` +
+      `<a:latin typeface="Georgia" pitchFamily="34" charset="0"/>\n` +
+      `<a:ea typeface="Georgia" pitchFamily="34" charset="-122"/>` +
+      `<a:cs typeface="Georgia" pitchFamily="34" charset="-120"/></a:rPr><a:t>hi</a:t></a:r>`
+    const out = await applyEaFontFaces(await buildPptx([runWithWhitespaceBeforeEa]))
+    const xml = await slideXml(out)
+    // The optional <a:ea> alternative fails to match past the newline, so
+    // the match is latin-only and a fresh, correct <a:ea> gets inserted
+    // immediately after <a:latin> — same as the no-ea-at-all case above.
+    expect(xml).toContain(
+      '<a:latin typeface="Georgia" pitchFamily="34" charset="0"/><a:ea typeface="Microsoft YaHei"/>',
+    )
+    // But the original whitespace-separated <a:ea typeface="Georgia"> is
+    // never consumed by the match, so it survives untouched right after —
+    // two <a:ea> siblings on one run (CT_TextCharacterProperties allows at
+    // most one), the exact malformed-package failure mode the regex's doc
+    // comment names.
+    const eaCount = (xml.match(/<a:ea typeface="/g) ?? []).length
+    expect(eaCount).toBe(2)
+    expect(xml).toContain('<a:ea typeface="Georgia" pitchFamily="34" charset="-122"/>')
+  })
+
+  it("corrects <a:ea> inside an <a:defRPr> context, not just <a:rPr> (LATIN_EA_RE is parent-tag-agnostic by design)", async () => {
+    const zip = new JSZip()
+    zip.file("ppt/slides/slide1.xml", slidePartWithDefRPr("Georgia"))
+    const ab = await zip.generateAsync({ type: "arraybuffer" })
+    const out = await applyEaFontFaces(new Blob([ab]))
+    const xml = await slideXml(out)
+    expect(xml).toContain("<a:defRPr")
+    expect(xml).toContain(
+      '<a:latin typeface="Georgia" pitchFamily="34" charset="0"/><a:ea typeface="Microsoft YaHei" pitchFamily="34" charset="-122"/>',
+    )
+    expect(xml).not.toContain('<a:ea typeface="Georgia"')
   })
 
   it("patches every run independently, keyed by that run's own latin face", async () => {

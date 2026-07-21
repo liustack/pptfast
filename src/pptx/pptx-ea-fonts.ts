@@ -67,6 +67,25 @@ const SLIDE_PART_RE = /^ppt\/slides\/slide\d+\.xml$/
  * (`undefined` when this run has no `<a:ea>` at all yet — group 3 only
  * matches inside the optional non-capturing wrapper, so a plain "no <a:ea>
  * here" leaves it `undefined` rather than an empty string).
+ *
+ * Zero-whitespace-adjacency assumption: the `<a:ea...>` alternative matches
+ * only when it starts the instant `<a:latin...>`'s own `/>` ends, no space
+ * or newline tolerated in between. This is exactly how pptxgenjs 4.0.1's
+ * `genXmlTextRunProperties` builds the string today (plain `+=`
+ * concatenation, no pretty-printing — verified against
+ * `node_modules/pptxgenjs/dist/pptxgen.cjs.js`), so it holds for every real
+ * run this codebase exports. It is not a documented/versioned contract on
+ * pptxgenjs's part, though: a future `^4.0.1`-range release that reformats
+ * this internal concatenation (e.g. adds a newline for readability) would
+ * make the optional group stop matching for the affected runs — not a
+ * silent no-op, but `patchEaFontsInXml` would then treat that run as
+ * latin-only and *insert* a fresh `<a:ea>` right after `<a:latin>`, leaving
+ * the old, now-unmatched (and still wrong) `<a:ea>` untouched immediately
+ * after it — two `<a:ea>` siblings on one run, which `CT_TextCharacterProperties`
+ * forbids (at most one `ea` child). `pptx-ea-fonts.test.ts`'s whitespace-variant
+ * test pins today's exact behavior so a pptxgenjs upgrade that breaks this
+ * assumption fails loud there (and independently, in the real-pptxgenjs e2e
+ * leg) instead of shipping a malformed package silently.
  */
 const LATIN_EA_RE = /<a:latin typeface="([^"]*)"([^>]*?)\/>(?:<a:ea typeface="[^"]*"([^>]*?)\/>)?/g
 
