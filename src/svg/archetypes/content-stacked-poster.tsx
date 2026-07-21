@@ -251,6 +251,7 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       {heading.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x="56"
           y={150 + i * heading.lineHeight}
           fontFamily={ctx.fonts.heading}
@@ -417,6 +418,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
       {heading.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x={CENTER_X}
           y={TITLE_Y + i * heading.lineHeight}
           textAnchor="middle"

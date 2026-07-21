@@ -140,6 +140,7 @@ export function ToneAdaptiveEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {heading.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x="64"
           y={headingY + i * heading.lineHeight}
           fontFamily={fonts.heading}

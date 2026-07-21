@@ -89,6 +89,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
       {heading.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x={HEADING_X}
           y={HEADING_BASELINE + i * heading.lineHeight}
           fontFamily={fonts.heading}

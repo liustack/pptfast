@@ -134,6 +134,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
         return (
           <text
             key={i}
+            data-truncated={heading.truncated ? "1" : undefined}
             x="640"
             y={headingY + i * heading.lineHeight}
             fontFamily={fonts.heading}

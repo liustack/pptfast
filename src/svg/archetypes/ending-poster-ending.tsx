@@ -110,6 +110,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {heading.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x={CENTER_X}
           y={headingY + i * heading.lineHeight}
           textAnchor="middle"

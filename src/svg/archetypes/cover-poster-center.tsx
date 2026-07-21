@@ -98,6 +98,7 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
       {title.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
           x={CENTER_X}
           y={COVER_TITLE_Y + i * title.lineHeight}
           textAnchor="middle"
