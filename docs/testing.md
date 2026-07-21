@@ -10,10 +10,10 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 155 files / 2854 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 157 files / 2878 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
-   media-dedupe JSZip patches, the deck spec schema and hard gates,
+   ea-font/media-dedupe JSZip patches, the deck spec schema and hard gates,
    assemble/disassemble plus the deck-project-directory CLI shell, the v3→v4
    and deck.plan.json→deck.spec.json migration functions, the
    deterministic deck audit (overflow/out-of-bounds/low-contrast/overlap/
@@ -86,7 +86,7 @@ Native PowerPoint is stricter than LibreOffice and pptxgenjs about DrawingML
 well-formedness. A file that opens fine in `soffice` can still trigger
 PowerPoint's "we found a problem with some content" repair dialog. Before
 publishing a release that touched the export XML (`src/pptx/`, especially
-`svg2pptx/` or the animation/gradient JSZip patches), run a local repair-dialog
+`svg2pptx/` or the animation/gradient/ea-font JSZip patches), run a local repair-dialog
 probe on a real macOS + PowerPoint install:
 
 ```bash
