@@ -64,6 +64,21 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
         expect(migratedSvgs).toEqual(goldenSvgs)
       })
 
+      // `basic.pptx-zip.json` recaptured (a:ea follow-up task): consulting's
+      // Georgia heading/body has zero CJK glyphs, so the new `applyEaFontFaces`
+      // patch (`src/pptx/pptx-ea-fonts.ts`) genuinely changes its exported
+      // `<a:ea>` from the old self-mirroring `"Georgia"` to the corrected
+      // `"Microsoft YaHei"` — a real, intended behavior change, not a
+      // regression. `scenarioBearing`/`annualReviewPreset` both use the
+      // `journal` theme (SimSun heading, Microsoft YaHei body — both already
+      // CJK-capable, so `eaFontFaceFor` self-references and the patch is a
+      // byte-identical no-op there), which is why only `basic`'s golden
+      // needed recapturing. Verified via the same targeted-diff discipline as
+      // the defect-B recapture below: after normalizing away every
+      // `<a:ea typeface="...">` attribute value, old and new
+      // `ppt/slides/slide{1..5}.xml` are byte-identical — the *only* change
+      // anywhere in the capture is that one attribute, on exactly the
+      // Georgia-declared runs, exactly to `"Microsoft YaHei"`.
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)
