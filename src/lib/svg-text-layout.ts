@@ -47,6 +47,43 @@ export interface SvgTextLayout {
 // really does render narrower than a CJK glyph.
 const WIDE_CHAR_RE = /[\u2014\u2018-\u201f\u2e80-\u9fff\uff00-\uffef]/
 
+// Export-font calibration (borrow-wave Task 3, 2026-07-21): this weight
+// table is font-agnostic by design, but heading/body text ultimately
+// exports in whatever `resolveFontFace` (fonts.ts) resolves -- Georgia (the
+// consulting theme's default heading+body face, and academic/insight's
+// heading face) and Microsoft YaHei (the resolved body face for 12 of
+// pptfast's 13 themes -- declared directly by 10, and by academic/insight's
+// role-default fallback since neither's declared body stack hits
+// SAFE_FONTS -- every theme except consulting, whose body resolves to
+// Georgia). Both were measured against the real
+// exported binaries (Georgia: the genuine macOS system font. Microsoft
+// YaHei: the genuine binary Microsoft ships inside Office for Mac's private
+// font bundle, identity-confirmed via that file's own `name` table, not a
+// visually-similar stand-in like PingFang SC) using fontTools' `hmtx`
+// advance-width table, cross-validated to 4 decimal places against a real
+// Chromium `canvas.measureText()` reading of the identical file. Per-class
+// deviation from this file's weights (positive = real wider = the
+// dangerous direction, since `wrap:false` on export turns an underestimate
+// into visible horizontal overflow, not a caught/wrapped line):
+//   Georgia   upper -0.3%, lower/digit -10.4%, space -31.1%, other -17.0%
+//   YaHei     cjk +0.2%, upper -1.4%, lower/digit -0.6%, space -15.5%, other -2.2%
+// Every Georgia class is safe-direction (real narrower, which only leaves
+// more margin). YaHei's cjk class is a hair on the dangerous side of zero
+// (+0.2%) but well inside the 3% no-action band this task's controlling
+// brief set (mirroring the `MONO_WIDTH_SAFETY` precedent's tolerance
+// discipline). Every other YaHei class is safe-direction too. Conclusion:
+// no-action -- this table needs no per-role safety factor for Georgia or
+// Microsoft YaHei. Full corpus and methodology: task-3-report.md
+// (borrow-wave scratchpad, not shipped in this repo).
+//
+// Separately (not a width-calibration finding, recorded here since it
+// surfaced during this same measurement): neither Georgia nor Consolas
+// (src/svg/components/code.tsx) has any CJK glyph in its `cmap` at all --
+// a CJK character in text declared under either face never renders from
+// that face -- PowerPoint substitutes some other, currently uncontrolled
+// font at the glyph level. That is a font-identity gap, not a width-
+// estimation gap, and no width safety factor can address it -- see
+// task-3-report.md's "unexpected findings" section.
 export function measureTextUnits(text: string): number {
   return Array.from(text).reduce((sum, char) => {
     if (/\s/.test(char)) return sum + 0.35
