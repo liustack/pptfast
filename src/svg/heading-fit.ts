@@ -96,12 +96,19 @@ export function fitHeadingLines(
   })
   if (!content.trim() || first.fontSize >= minPt) return first
   const budget = (maxWidth / minPt) * maxLines
-  const truncated = truncateToUnits(content, budget)
-  return layoutSvgText(truncated, {
+  const truncatedContent = truncateToUnits(content, budget)
+  const result = layoutSvgText(truncatedContent, {
     maxWidth,
     fontSize: minPt,
     maxLines,
     lineHeightRatio,
     balanceLines: true,
   })
+  // `layoutSvgText` never sets `truncated` itself (it only wraps/merges) —
+  // this is the one place `fitHeadingLines` took the character-dropping
+  // `truncateToUnits` branch above, so it's the one place that knows to
+  // override the flag. Render call sites (every archetype's heading
+  // `<text>`) read this to stamp `data-truncated="1"`, closing the gap
+  // `ir-quality.ts`'s long_heading comment recorded.
+  return { ...result, truncated: true }
 }

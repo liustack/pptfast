@@ -58,6 +58,11 @@ describe("fitHeadingLines", () => {
     const r = fitHeadingLines("年度战略回顾", { maxWidth: 1088, fontSize: 84, maxLines: 2, minPt: 40 })
     expect(r.lines).toEqual(["年度战略回顾"])
     expect(r.fontSize).toBe(84)
+    // truncation-visibility wave, Task 2: every heading that merely shrinks
+    // (or fits outright) must report `truncated: false` — the render layer
+    // reads this to skip `data-truncated`, so a false positive here would
+    // mark a perfectly-fitting heading as content-loss.
+    expect(r.truncated).toBe(false)
   })
 
   // Decision (Task 9 review): the px-based fitHeadingLines model is intended
@@ -117,5 +122,11 @@ describe("fitHeadingLines", () => {
     for (const line of r.lines) {
       expect(measureTextUnits(line) * r.fontSize).toBeLessThanOrEqual(300 + 1)
     }
+    // truncation-visibility wave, Task 2: the one gap `ir-quality.ts`'s
+    // long_heading comment recorded — `fitHeadingLines`'s internal
+    // `truncateToUnits` cut used to be invisible outside this module. The
+    // render layer (every archetype's heading `<text>`) and `deck-audit.ts`'s
+    // generic `[data-truncated="1"]` reader both key off this flag.
+    expect(r.truncated).toBe(true)
   })
 })
