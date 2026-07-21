@@ -432,6 +432,38 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
     expect(truncated[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-truncated" })
     expect((truncated[0].detail as { text?: string }).text?.endsWith("…")).toBe(true)
   })
+
+  // Review fix round — Critical 1's exact repro, at the render+audit level:
+  // a plain 30-char CJK heading on the same `fashion-masthead` archetype
+  // takes `fitHeadingLines`'s minPt-floor branch (shrinks to 72px) but
+  // — unlike the case above — never actually loses a character. Before the
+  // fix this rendered `data-truncated="1"` and a false `content-truncated`
+  // finding anyway (`truncated` was set on taking the branch, not on
+  // whether `truncateToUnits` changed anything). Locks the negative case
+  // permanently, next to the positive one above.
+  it("does not mark or report a heading that only shrinks to its archetype's minPt floor", () => {
+    const plain = "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及"
+    const ir = deck("campaign", [
+      {
+        type: "cover",
+        id: "s1",
+        heading: plain,
+        layout: "fashion-masthead",
+        components: [],
+      },
+    ])
+    const markup = renderSlideSvg(ir, 0)
+    // The archetype wraps this heading across 2 balanced lines (separate
+    // `<text>` elements), so assert on the substrings that survive the
+    // wrap rather than the joined original — same "no character dropped"
+    // check as the unit-level fixture, split at the wrap point.
+    expect(markup).toContain("微服务架构下的分布式事务一致性保")
+    expect(markup).toContain("障机制与补偿策略设计规范以及")
+    expect(markup).not.toContain("…")
+    expect(markup).not.toContain('data-truncated="1"')
+    const report = auditDeck(ir)
+    expect(report.findings.filter((f) => f.code === "content-truncated")).toEqual([])
+  })
 })
 
 describe("auditDeck — placeholder pages", () => {

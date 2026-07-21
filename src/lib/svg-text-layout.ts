@@ -18,12 +18,13 @@ export interface SvgTextLayout {
   fontSize: number
   lineHeight: number
   /** truncation-visibility wave, Task 2: `true` exactly when the caller had
-   *  to drop characters (an ellipsis cut) to fit — `layoutSvgText` itself
-   *  never truncates (it only wraps/merges lines, so this is always `false`
-   *  here); `fitHeadingLines` (`../svg/heading-fit.ts`) is the one caller
-   *  that overrides it to `true` on its `truncateToUnits` fallback branch.
-   *  Same "mechanism, not content" contract as `fitSvgLine`'s `truncated`
-   *  (this file, below) — the render layer reads it to stamp
+   *  to drop characters (an ellipsis cut) to fit. `layoutSvgText` itself
+   *  never truncates — it only wraps/merges lines, so this is always
+   *  `false` here. `fitHeadingLines` (`../svg/heading-fit.ts`) is the one
+   *  caller that can set it `true`, and only when its own `truncateToUnits`
+   *  call actually changed the string (not merely on taking that code
+   *  branch — a wrap/shrink that lands under budget without dropping a
+   *  character must stay `false`). The render layer reads it to stamp
    *  `data-truncated="1"` on the rendered heading `<text>`. */
   truncated: boolean
 }

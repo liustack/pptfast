@@ -105,10 +105,20 @@ export function fitHeadingLines(
     balanceLines: true,
   })
   // `layoutSvgText` never sets `truncated` itself (it only wraps/merges) —
-  // this is the one place `fitHeadingLines` took the character-dropping
-  // `truncateToUnits` branch above, so it's the one place that knows to
-  // override the flag. Render call sites (every archetype's heading
-  // `<text>`) read this to stamp `data-truncated="1"`, closing the gap
-  // `ir-quality.ts`'s long_heading comment recorded.
-  return { ...result, truncated: true }
+  // this is the one place `fitHeadingLines` took the `truncateToUnits`
+  // fallback branch above, so it's the one place that could know to
+  // override the flag. But entering this branch (first.fontSize < minPt)
+  // only means the *balanced-wrap* fit came in under minPt — it does not
+  // by itself guarantee `truncateToUnits` actually dropped a character.
+  // `budget` (a flat per-line-average units ceiling) and the balanced-wrap
+  // fontSize computation are different formulas, so a heading can fail the
+  // fontSize check yet still measure under `budget` once re-wrapped at
+  // `minPt` — `truncateToUnits` then returns `content` verbatim (its own
+  // early-return: `measureTextUnits(text) <= maxUnits`), and this call
+  // merely shrank to the floor, exactly like `first` would have. So the
+  // real signal is whether `truncateToUnits` actually changed the string —
+  // `!==` is safe here (no author-upstream ambiguity like `fitSvgLine`'s
+  // own doc comment warns about, since both sides of this comparison are
+  // this exact call's own input/output).
+  return { ...result, truncated: truncatedContent !== content }
 }

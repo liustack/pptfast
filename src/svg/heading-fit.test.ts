@@ -129,4 +129,27 @@ describe("fitHeadingLines", () => {
     // generic `[data-truncated="1"]` reader both key off this flag.
     expect(r.truncated).toBe(true)
   })
+
+  // Review fix round — Critical 1: `truncated` used to be set unconditionally
+  // on taking the `minPt`-floor branch, without checking whether
+  // `truncateToUnits` actually dropped a character. `budget` (a flat
+  // per-line-average units ceiling) and the balanced-wrap fontSize
+  // computation `first.fontSize < minPt` gates on are different formulas —
+  // a heading can fail that fontSize check yet still measure under `budget`
+  // once re-wrapped at `minPt`, so it renders in full with no ellipsis. Real
+  // production params (cover-fashion-masthead.tsx): maxWidth 1168, fontSize
+  // 150, maxLines 2, minPt 72 — the archetype with the least shrink headroom
+  // in the whole codebase (ir-quality.ts's own survey), so the easiest place
+  // to hit this false positive.
+  it("does not report truncated when the minPt-floor branch fires but no character is actually dropped", () => {
+    // 30 CJK chars — takes the minPt-floor branch (its balanced-wrap fontSize
+    // comes in under 72) but measures well under the 32.4-unit budget once
+    // re-wrapped at minPt, so truncateToUnits returns it unchanged.
+    const plain = "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及"
+    const r = fitHeadingLines(plain, { maxWidth: 1168, fontSize: 150, maxLines: 2, minPt: 72 })
+    expect(r.fontSize).toBe(72) // did take the minPt-floor branch
+    expect(r.lines.join("")).not.toContain("…") // but nothing was cut
+    expect(r.lines.join("")).toBe(plain) // full text survives, unaltered
+    expect(r.truncated).toBe(false)
+  })
 })
