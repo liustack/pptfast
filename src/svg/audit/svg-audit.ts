@@ -90,7 +90,7 @@ export function auditSvgMarkup(markup: string): OverflowIssue[] {
         const ty = ay + Number(el.getAttribute("y") ?? 0) * as
         // Mono-face branch only (borrow-wave Task 3 fix round, 2026-07-21 —
         // see `isMonoFontFamily`'s derivation comment in fonts.ts). Every
-        // other role stays on the proportional `measureTextUnits` estimate;
+        // other role stays on the proportional `measureTextUnits` estimate —
         // this does not generalize into a font-aware audit for every role
         // (a recorded open item — task-3-report.md §7 / task-3-review.md's
         // Important finding N1, scratchpad, not shipped in this repo).

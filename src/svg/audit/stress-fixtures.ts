@@ -60,8 +60,8 @@ export const MIXED_LONG =
  * while the proportional audit's overestimate still clears the box budget.
  * See `svg-audit.test.ts`'s dedicated permanent regression (a shorter,
  * unshrunk-fontSize repro of the same defect class, using the reviewer's
- * exact 101-char sample) for the component-level, box-width-swept proof;
- * this fixture's job is end-to-end coverage across all 13 real themes'
+ * exact 101-char sample) for the component-level, box-width-swept proof.
+ * This fixture's job is end-to-end coverage across all 13 real themes'
  * real archetype selection, not an isolated width sweep.
  */
 export const SCREAMING_SNAKE_LONG =

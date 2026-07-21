@@ -10,7 +10,7 @@ read_when:
 
 ## Layers
 
-1. **Unit + snapshot** (`pnpm test`, vitest) — 153 files / 2771 cases, colocated
+1. **Unit + snapshot** (`pnpm test`, vitest) — 155 files / 2854 cases, colocated
    with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
    media-dedupe JSZip patches, the deck spec schema and hard gates,
