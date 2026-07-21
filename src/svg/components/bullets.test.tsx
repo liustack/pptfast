@@ -174,6 +174,82 @@ describe("bullets component emphasis", () => {
   })
 })
 
+// Truncation-visibility fix (2026-07-22): the "1. "/"☐ " prefixes each carry
+// exactly one space, which used to flip svg-text-layout.ts's `tokenize()`
+// into word-wrap mode for the whole item (a pure-CJK item has no other
+// space, so the combined "prefix + content" string tokenized into exactly
+// two "words" — the short prefix and one giant unspaced blob for all the
+// content). The greedy wrap then stranded the prefix alone on line 1 and
+// spilled the entire rest of the content onto line 2, wasting a full line's
+// budget on 1-3 characters — numbered/checklist items truncated at ~30-31 /
+// ~23-24 CJK units at this box width, versus plain/default/divided's
+// ~56-61 at the same width (see capacity.ts's bullets derivation comment for
+// the full boundary-scan probe and its methodology). The fix wraps each
+// item's content alone (never handing the prefix to `tokenize`) and splices
+// the prefix back onto line 1 only after wrap/truncate math is done.
+describe("bullets component numbered/checklist prefix-wrap truncation floor", () => {
+  const w = 424 // capacity.ts's bullets derivation box width (magazine narrow-column two_column half)
+
+  it("a 31-CJK-unit numbered item — truncated pre-fix at this box width — renders fully post-fix", () => {
+    const item = "测".repeat(31)
+    const markup = renderToStaticMarkup(
+      <svg>{bullets.render({ type: "bullets", items: [item], style: "numbered" }, { x: 0, y: 0, w }, ctx)}</svg>,
+    )
+    expect(markup).not.toContain('data-truncated="1"')
+    expect(markup).toContain("1. ") // prefix still renders on line 1
+  })
+
+  it("a 24-CJK-unit checklist item — truncated pre-fix at this box width — renders fully post-fix", () => {
+    const item = "测".repeat(24)
+    const markup = renderToStaticMarkup(
+      <svg>{bullets.render({ type: "bullets", items: [item], style: "checklist" }, { x: 0, y: 0, w }, ctx)}</svg>,
+    )
+    expect(markup).not.toContain('data-truncated="1"')
+  })
+
+  it("numbered/checklist edges now land near the plain family's (within the prefix's own width), not at roughly half of it", () => {
+    // Boundary scan mirroring capacity.ts's own methodology: grow a pure-CJK
+    // item one character at a time until `data-truncated="1"` first appears.
+    function firstTruncatedLength(style: "plain" | "numbered" | "checklist"): number {
+      for (let n = 1; n <= 80; n += 1) {
+        const item = "测".repeat(n)
+        const markup = renderToStaticMarkup(
+          <svg>{bullets.render({ type: "bullets", items: [item], style }, { x: 0, y: 0, w }, ctx)}</svg>,
+        )
+        if (markup.includes('data-truncated="1"')) return n
+      }
+      return -1
+    }
+    const plainEdge = firstTruncatedLength("plain")
+    const numberedEdge = firstTruncatedLength("numbered")
+    const checklistEdge = firstTruncatedLength("checklist")
+    // Pre-fix these landed at 31/24 versus plain's 61 — roughly half. Post-fix
+    // they should sit within a handful of units of plain's edge (the gap
+    // being the prefix's own reserved width, not a wasted line).
+    expect(plainEdge - numberedEdge).toBeLessThan(10)
+    expect(plainEdge - checklistEdge).toBeLessThan(10)
+  })
+
+  it("an empty/whitespace-only item still renders just its marker instead of crashing (content-only wrap yields zero lines to splice the prefix onto)", () => {
+    // Regression caught while building the fix above: `layoutSvgText` wraps
+    // empty/whitespace-only content to zero lines, so `lineSegments[0]` was
+    // `undefined` — spreading it (`...lineSegments[0]`) threw
+    // "lineSegments[0] is not iterable". Every style must survive this input.
+    for (const style of ["plain", "default", "divided", "numbered", "checklist"] as const) {
+      expect(() =>
+        renderToStaticMarkup(
+          <svg>{bullets.render({ type: "bullets", items: ["", "   "], style }, { x: 0, y: 0, w }, ctx)}</svg>,
+        ),
+      ).not.toThrow()
+    }
+    const markup = renderToStaticMarkup(
+      <svg>{bullets.render({ type: "bullets", items: [""], style: "numbered" }, { x: 0, y: 0, w }, ctx)}</svg>,
+    )
+    expect(markup).toContain("1. ")
+    expect(markup).not.toContain('data-truncated="1"')
+  })
+})
+
 // W4 task 3 (design decision 9): bullets' shrink-to-MIN_FONT machinery must
 // keep working when it starts from a *higher* baseline than the old fixed
 // 20px — spacious pacing's 32px gives long items more room to shrink

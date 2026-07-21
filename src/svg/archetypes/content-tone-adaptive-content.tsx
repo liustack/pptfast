@@ -235,6 +235,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
         {heading.lines.map((line, i) => (
           <text
             key={i}
+            data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
             x="92"
             y={168 + i * heading.lineHeight}
             fontFamily={fonts.heading}
@@ -385,6 +386,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
       {heading.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x="64"
           y={130 + i * heading.lineHeight}
           fontFamily={fonts.heading}

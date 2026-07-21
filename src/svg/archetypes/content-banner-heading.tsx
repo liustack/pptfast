@@ -191,6 +191,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
       {heading.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x={BANNER_TITLE_X}
           y={
             bannerCenterY -

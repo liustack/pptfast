@@ -1,6 +1,6 @@
 import { Fragment } from "react"
 import type { Component } from "@/ir"
-import { layoutSvgText } from "../../lib/svg-text-layout"
+import { layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
 import {
   parseEmphasis,
   renderEmphasisTspans,
@@ -60,29 +60,83 @@ function layoutItems(component: BulletsComponent, w: number, baseFontSize: numbe
   const indent = style === "default" ? TEXT_INDENT : 0
   const maxWidth = Math.max(60, w - indent)
   const prefixes = component.items.map((_, i) => itemPrefix(style, i))
-  const texts = component.items.map((item, i) => `${prefixes[i]}${stripEmphasis(item)}`)
-  const layouts = texts.map((t) => layoutSvgText(t, { maxWidth, fontSize: baseFontSize, maxLines: 2 }))
+  // `measureTextUnits` is a proportional (per-em) measure, independent of
+  // font size, so each prefix's unit cost can be computed once up front and
+  // scaled by whatever font size is active at each layout pass below.
+  const prefixUnits = prefixes.map((p) => measureTextUnits(p))
+  const strippedTexts = component.items.map((item) => stripEmphasis(item))
+
+  // Truncation-visibility fix (2026-07-22): numbered ("1. ") and checklist
+  // ("☐ ") prefixes each carry exactly one space. Folding that space into
+  // the same string previously handed to `layoutSvgText` flipped
+  // `tokenize()` (svg-text-layout.ts) into word-wrap mode for the *whole*
+  // item: a pure-CJK item has no other space, so `${prefix}${content}`
+  // tokenized into exactly two "words" — the short prefix and one giant
+  // unspaced blob holding all the content. `wrapWithUnits`'s greedy fit then
+  // stranded the prefix alone on line 1 (the packed content chunk plus the
+  // prefix always overflowed the shared per-line budget by the prefix's own
+  // width) and spilled the *entire* rest of the content onto line 2 via the
+  // maxLines merge fallback — wasting a full line's budget on 1-3 characters.
+  // Measured effect: numbered/checklist items truncated at ~30/~23 CJK
+  // units at MIN_FONT+424px-width, versus plain/default/divided's ~56-60 at
+  // the same box (see capacity.ts's bullets derivation for the full probe).
+  //
+  // Root fix, at this composition seam rather than in the shared wrap
+  // engine: never hand the prefix to `layoutSvgText`/`tokenize` at all. Wrap
+  // each item's own content alone — a pure-CJK item then stays in the
+  // tokenizer's per-character mode exactly like plain/default/divided
+  // already do, and a genuinely space-delimited item still word-wraps
+  // correctly on its *own* spaces, undisturbed by the prefix — inside a
+  // width reduced by the prefix's rendered width (`contentMaxWidth` below).
+  // The reservation is uniform across both lines: the prefix only visually
+  // sits on line 1 (bullets never hanging-indents a wrapped continuation —
+  // every line renders at the same `x`), so reserving its ~1-2 units on
+  // line 2 too is a deliberately conservative no-op there, never a source of
+  // overflow on line 1. The prefix itself is spliced back onto line 1's
+  // *segments* only after wrapping and truncation are done, purely for
+  // rendering — it never touches the wrap or truncate math again, so it can
+  // no longer perturb `tokenize`'s word/char decision.
+  //
+  // Scoped to this composition seam (not svg-text-layout.ts's `tokenize`)
+  // because `bullets.tsx` is the only call site in the codebase that
+  // composes a short, space-bearing literal prefix ahead of arbitrary
+  // (possibly space-free CJK) caller content before a `layoutSvgText` call —
+  // fixing the space-delimited heuristic in `tokenize` itself would instead
+  // touch the shared wrap engine that headings, paragraphs, kpi, citation,
+  // icon-cards, steps, and verdict-banner all depend on too, for a defect
+  // only this one composition pattern actually triggers.
+  const contentMaxWidth = (fontSize: number, i: number) =>
+    Math.max(1, maxWidth - prefixUnits[i] * fontSize)
+
+  const layouts = strippedTexts.map((t, i) =>
+    layoutSvgText(t, { maxWidth: contentMaxWidth(baseFontSize, i), fontSize: baseFontSize, maxLines: 2 }),
+  )
   const fontSize = Math.max(MIN_FONT, Math.min(...layouts.map((l) => l.fontSize), baseFontSize))
   const lineHeight = Math.round(fontSize * 1.4)
 
   // Re-layout once at the unified font size so every item shares the same size.
-  const relaid = texts.map((t) => layoutSvgText(t, { maxWidth, fontSize, maxLines: 2 }))
-  const maxUnits = maxWidth / fontSize
+  const relaid = strippedTexts.map((t, i) =>
+    layoutSvgText(t, { maxWidth: contentMaxWidth(fontSize, i), fontSize, maxLines: 2 }),
+  )
 
   let y = Math.round(fontSize * 1.1)
   const dividers: number[] = []
   const items: LaidItem[] = relaid.map((l, i) => {
-    // The prefix (numbering/checklist marker) is never emphasized; only the
-    // original item text can carry `**marks**`.
-    const segments: EmphasisSegment[] = prefixes[i]
-      ? [{ text: prefixes[i], emphasized: false }, ...parseEmphasis(component.items[i])]
-      : parseEmphasis(component.items[i])
+    // The prefix (numbering/checklist marker) is never emphasized and, as of
+    // this fix, never enters the wrap/truncate math either — it's spliced
+    // onto line 1 below, after both are done. `segments` here is exactly the
+    // original item text's emphasis parse, matching what `strippedTexts[i]`
+    // (fed to `layoutSvgText` above) and `l.lines` represent.
+    const segments: EmphasisSegment[] = parseEmphasis(component.items[i])
     // Map emphasis onto the pre-truncation wrapped lines (a gap-free
     // partition of `segments`) before truncating, so truncating one line
     // can't desync the emphasis cursor for a later line.
     const wrappedLineSegments = sliceEmphasisForLines(segments, l.lines)
     // At the clamped floor, layoutSvgText's own shrink may not have been able
-    // to bring the longest line under maxWidth. Truncate any such line.
+    // to bring the longest line under maxWidth. Truncate any such line — same
+    // conservative reservation (`contentMaxWidth`) as the wrap step above, so
+    // a truncated line 1 still leaves room for the prefix spliced on next.
+    const maxUnits = contentMaxWidth(fontSize, i) / fontSize
     const lineSegments = wrappedLineSegments.map((segs) => truncateEmphasisSegments(segs, maxUnits))
     // A line actually lost characters iff its post-truncation text differs
     // from its pre-truncation text — `truncateEmphasisSegments` returns
@@ -92,6 +146,19 @@ function layoutItems(component: BulletsComponent, w: number, baseFontSize: numbe
     const lineTruncated = wrappedLineSegments.map(
       (before, li) => before.map((s) => s.text).join("") !== lineSegments[li].map((s) => s.text).join(""),
     )
+    // Splice the prefix onto line 1 now that wrap/truncate math is done with
+    // content alone — from here it's purely a rendering concern. An
+    // all-whitespace/empty item wraps to zero lines (`layoutSvgText`'s own
+    // empty-content guard), so there's no line 1 to splice onto yet — a
+    // numbered/checklist item with empty content should still show its
+    // marker, so synthesize a one-line item holding just the prefix instead
+    // of indexing into an empty array.
+    if (prefixes[i]) {
+      lineSegments[0] =
+        lineSegments.length > 0
+          ? [{ text: prefixes[i], emphasized: false }, ...lineSegments[0]]
+          : [{ text: prefixes[i], emphasized: false }]
+    }
     const lines = lineSegments.map((segs) => segs.map((s) => s.text).join(""))
     const item: LaidItem = { lines, lineSegments, lineTruncated, firstLineY: y }
     // divided 需要更大项间距容纳分隔线（设计感留白）；分隔线 y 取上一项

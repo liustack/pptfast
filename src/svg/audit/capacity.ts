@@ -291,18 +291,48 @@ export const CAPACITY = {
    * 改变而改变，此处不随之重算，如实记录来源以免误读为仍在引用 `code.tsx`
    * 的当前值（该常量现在已不再是「打折系数」语义，借用关系至此彻底脱钩）。
    *
-   * 已知缺口（如实记录，本任务不修）：`ir-quality.ts` 对全部 bullets 样式
-   * 统一套用这一个上界，但 "numbered"/"checklist" 样式的前缀（"1. "/"☐ "）
-   * 里带的空格会把 `svg-text-layout.ts` `tokenize()` 从逐字符换行误判成
-   * 空格分词换行——贪心分词会把整行预算耗在 1-2 字符的前缀上，本任务的探针
-   * 实测这两个样式的真实截断边界并不相同：numbered 约 30-31 units，checklist
-   * 约 23-24 units（同一测法测得），两者都远早于 plain/default/divided 的约
-   * 57-61。这是 `bullets.tsx`/分词器交互的既有
-   * 缺陷，与本任务的 severity 语义重校无关，不在本次改动范围内处理——按
-   * 简报「推导不干净的组件不硬造阈值，回落为 warn+data-truncated 可见性
-   * 兜底」处理：这两个样式下本常量不是滴水不漏的硬界，`bullets.tsx` 对
-   * 全部样式无条件都会设置的 `data-truncated="1"` 仍是这一残余场景的渲染期
-   * 兜底信号。
+   * **Truncation-visibility 修复轮复核（2026-07-22，上面这处已知缺口已修）**：
+   * 缺口根因是 `bullets.tsx` 把前缀（"1. "/"☐ "）和条目正文拼成同一个字符串
+   * 再喂给 `layoutSvgText`——前缀里那一个空格会把 `svg-text-layout.ts`
+   * `tokenize()` 从逐字符分词误判成空格分词（纯 CJK 正文没有其他空格，拼接
+   * 后整段只切出「前缀」「一整块正文」两个"词"），贪心换行随即把整行预算
+   * 耗在 1-2 字符的前缀上，浪费掉一整行——真实截断边界因此腰斩到约
+   * plain/default/divided 家族（约 57-61）的一半：numbered 约 30-31 units，
+   * checklist 约 23-24 units（探针测法同下）。
+   *
+   * 修复选在组合层（composition seam，`bullets.tsx` 自己），不动共享的
+   * `tokenize()`：前缀不再进入 wrap/truncate 数学，只用条目正文本身走
+   * `layoutSvgText`（纯 CJK 正文因此照常落回逐字符分词），预留出前缀宽度后
+   * 单独拼回首行渲染——`bullets.tsx` 是全仓唯一在 `layoutSvgText` 调用前
+   * 拼接「短、带空格字面量前缀 + 任意（可能无空格的 CJK）调用方内容」的
+   * 组件，改这里不影响 heading/paragraph/kpi/citation/icon-cards/steps/
+   * verdict-banner 共享的同一套 wrap 引擎。
+   *
+   * 同一测法（`installNodePlatform()` + `renderSlideSvg()`，magazine 主题、
+   * `layout: "narrow-column"`、`arrangement: "two_column"`）复测五种样式，
+   * 逐字符扫描 CJK 长度（数字为「零 `data-truncated` 的最长字数 / 首次出现
+   * 的字数」）：
+   *   - plain: 60 / 61（不变）
+   *   - default: 56 / 57（不变，与上面 floor(56.86)=56 的公式推导一致）
+   *   - divided: 60 / 61（不变）
+   *   - numbered: 56 / 57（原 30 / 31）
+   *   - checklist: 58 / 59（原 23 / 24）
+   *
+   * numbered/checklist 的真实边界从「约为 plain 家族的一半」收敛到「贴着
+   * plain 家族」——差距即前缀自身的预留宽度（1-2 units 量级：numbered
+   * "1. " ≈1.37 units、checklist "☐ " ≈0.81 units，乘以 MIN_FONT=14 后
+   * 换算成 px 从 `maxWidth` 里扣掉），不再是结构性缺口。**结论：五种样式的
+   * 边界现在全部 ≥56，严格高于 `itemOverflowUnits=50`——本常量对全部 5 种
+   * bullets 样式现在都是滴水不漏的硬界**，`ir-quality.ts` 的
+   * `bullet_item_overflow` 硬校验错误（本就对全部样式统一套用同一个
+   * `measureTextUnits(item)` 上界，从未按样式分支）现在真正兑现了它的承诺：
+   * 只要某条要点没触发这条 error，它就不会在渲染时被截断，不分样式——
+   * README.md/README.zh-CN.md/skills/pptfast/SKILL.md 已同步删除
+   * numbered/checklist「可能在 validate 报错前先被截断，靠 `pptfast audit`
+   * 兜底」的例外措辞。`bullets.tsx` 对全部样式无条件都会设置的
+   * `data-truncated="1"`（真正超出新边界的条目照常触发）作为渲染期兜底信号
+   * 保留，未受这次改动影响——具体机制见该文件 `layoutItems` 自己的推导
+   * 注释。
    */
   bullets: { itemOverflowUnits: 50 },
   kpi: {

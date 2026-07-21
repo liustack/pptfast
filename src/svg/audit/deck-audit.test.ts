@@ -403,6 +403,67 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
     const dropped = report.findings.filter((f) => f.code === "content-dropped")
     expect(dropped.length).toBeGreaterThan(0)
   })
+
+  // truncation-visibility wave, Task 2: closes the one gap `ir-quality.ts`'s
+  // long_heading comment recorded — heading truncation (`fitHeadingLines`'s
+  // internal `truncateToUnits` cut, fired when even the archetype's `minPt`
+  // floor can't fit the text) used to have zero render-time visibility, so
+  // `content-truncated` never fired for it the way it does for every other
+  // `fitSvgLine`-based text role. `layout: "fashion-masthead"` pins
+  // `cover-fashion-masthead.tsx` deterministically — it declares the
+  // highest `minPt` (72) of any archetype (`ir-quality.ts`'s own survey),
+  // so the least amount of shrink headroom before a pathological heading
+  // hits the truncate branch.
+  it("surfaces a heading that outgrows even its archetype's minPt floor as 'content-truncated'", () => {
+    const ir = deck("campaign", [
+      {
+        type: "cover",
+        id: "s1",
+        heading: LONG_CJK.repeat(5),
+        layout: "fashion-masthead",
+        components: [],
+      },
+    ])
+    const markup = renderSlideSvg(ir, 0)
+    expect(markup).toContain('data-truncated="1"')
+    const report = auditDeck(ir)
+    const truncated = report.findings.filter((f) => f.code === "content-truncated")
+    expect(truncated.length).toBeGreaterThan(0)
+    expect(truncated[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-truncated" })
+    expect((truncated[0].detail as { text?: string }).text?.endsWith("…")).toBe(true)
+  })
+
+  // Review fix round — Critical 1's exact repro, at the render+audit level:
+  // a plain 30-char CJK heading on the same `fashion-masthead` archetype
+  // takes `fitHeadingLines`'s minPt-floor branch (shrinks to 72px) but
+  // — unlike the case above — never actually loses a character. Before the
+  // fix this rendered `data-truncated="1"` and a false `content-truncated`
+  // finding anyway (`truncated` was set on taking the branch, not on
+  // whether `truncateToUnits` changed anything). Locks the negative case
+  // permanently, next to the positive one above.
+  it("does not mark or report a heading that only shrinks to its archetype's minPt floor", () => {
+    const plain = "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及"
+    const ir = deck("campaign", [
+      {
+        type: "cover",
+        id: "s1",
+        heading: plain,
+        layout: "fashion-masthead",
+        components: [],
+      },
+    ])
+    const markup = renderSlideSvg(ir, 0)
+    // The archetype wraps this heading across 2 balanced lines (separate
+    // `<text>` elements), so assert on the substrings that survive the
+    // wrap rather than the joined original — same "no character dropped"
+    // check as the unit-level fixture, split at the wrap point.
+    expect(markup).toContain("微服务架构下的分布式事务一致性保")
+    expect(markup).toContain("障机制与补偿策略设计规范以及")
+    expect(markup).not.toContain("…")
+    expect(markup).not.toContain('data-truncated="1"')
+    const report = auditDeck(ir)
+    expect(report.findings.filter((f) => f.code === "content-truncated")).toEqual([])
+  })
 })
 
 describe("auditDeck — placeholder pages", () => {

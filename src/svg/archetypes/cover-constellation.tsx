@@ -120,6 +120,7 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
       {title.lines.map((line, i) => (
         <text
           key={i}
+          data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
           x="96"
           y={titleY + i * title.lineHeight}
           fontFamily={fonts.heading}

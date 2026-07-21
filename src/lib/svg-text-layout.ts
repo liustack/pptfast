@@ -17,6 +17,16 @@ export interface SvgTextLayout {
   lines: string[]
   fontSize: number
   lineHeight: number
+  /** truncation-visibility wave, Task 2: `true` exactly when the caller had
+   *  to drop characters (an ellipsis cut) to fit. `layoutSvgText` itself
+   *  never truncates — it only wraps/merges lines, so this is always
+   *  `false` here. `fitHeadingLines` (`../svg/heading-fit.ts`) is the one
+   *  caller that can set it `true`, and only when its own `truncateToUnits`
+   *  call actually changed the string (not merely on taking that code
+   *  branch — a wrap/shrink that lands under budget without dropping a
+   *  character must stay `false`). The render layer reads it to stamp
+   *  `data-truncated="1"` on the rendered heading `<text>`. */
+  truncated: boolean
 }
 
 // S3c fix. User-reported bug: a bento callout with a long em-dash-separated
@@ -334,7 +344,7 @@ export function layoutSvgText(
   const lineHeightRatio = options.lineHeightRatio ?? 1.08
 
   if (!content) {
-    return { lines: [], fontSize: options.fontSize, lineHeight: 0 }
+    return { lines: [], fontSize: options.fontSize, lineHeight: 0, truncated: false }
   }
 
   const baseUnits = options.maxWidth / options.fontSize
@@ -370,5 +380,6 @@ export function layoutSvgText(
     lines,
     fontSize,
     lineHeight: Math.round(fontSize * lineHeightRatio),
+    truncated: false,
   }
 }
