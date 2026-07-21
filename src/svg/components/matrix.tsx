@@ -82,18 +82,34 @@ export const matrix: SvgComponent<MatrixComponent> = {
     const availGridH = (box.h ?? measuredGridH) - (component.x_title ? X_TITLE_H : 0)
     const rowH = Math.max(cardH, (availGridH - (rows - 1) * CARD_GAP) / rows)
     const r = ctx.shape?.radius ?? CARD_RADIUS
+    // x_title free-text fit (borrow-wave Task 4 follow-up, docs/contrast-
+    // system.md's "Overlap detection boundary"): same fitSvgLine idiom
+    // gantt's row/axis labels and waterfall/chart-svg's category labels use
+    // — item.title/item.tag (cellLayout above) already went through this,
+    // x_title didn't. The "  →" suffix is fit as part of the one displayed
+    // string rather than measured separately, so an egregious title
+    // truncates (losing the decorative arrow first, same as any other
+    // trailing content) before anything can render past gridX0's right edge.
+    const xTitleFit = component.x_title
+      ? fitSvgLine(`${component.x_title}  →`, {
+          maxWidth: box.w - gridX0,
+          fontSize: AXIS_SIZE,
+          minFontSize: 10,
+        })
+      : null
     return (
       <g>
-        {component.x_title ? (
+        {xTitleFit ? (
           <text
+            data-truncated={xTitleFit.truncated ? "1" : undefined}
             x={box.x + gridX0}
             y={box.y + AXIS_SIZE + 4}
-            fontSize={AXIS_SIZE}
+            fontSize={xTitleFit.fontSize}
             fill={ctx.colors.muted}
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`${component.x_title}  →`}
+            {xTitleFit.text}
           </text>
         ) : null}
         {component.y_title
