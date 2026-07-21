@@ -273,14 +273,23 @@ export const CAPACITY = {
    * warn」在最紧档也成立，只是余量最小（2 units），符合 dense pacing 本身
    * 就是「更贴边」这一档位语义。
    *
-   * **借用值澄清（borrow-wave Task 3，2026-07-21）**：`code.tsx` 的
-   * `MONO_WIDTH_SAFETY` 后续用真机 Consolas 数据重新校准为 0.82（原 0.9
-   * 的校准对象是 Menlo，非真身导出字体）。上面这条 bullets 容量推导借用的
-   * 是「0.9 这个具体数字」作为一次性安全折扣，不是对 `MONO_WIDTH_SAFETY`
-   * 常量的引用——CJK bullets 容量与 mono 字体度量是两件不相关的事，只是
-   * 恰好共用过同一个圆整系数。`itemOverflowUnits = 50` 这个结论本身不随
-   * `MONO_WIDTH_SAFETY` 改变而改变，此处不随之重算，如实记录来源以免
-   * 误读为仍在引用 `code.tsx` 的当前值。
+   * **借用值澄清（borrow-wave Task 3，2026-07-21，修复轮更新）**：`code.tsx`
+   * 的 `MONO_WIDTH_SAFETY` 经过两轮变动。首轮（同日稍早）用真机 Consolas
+   * 数据重新校准为 0.82（原 0.9 的校准对象是 Menlo，非真身导出字体）。
+   * 修复轮（审校发现首轮的「比例加权估算 × 安全系数」方案对深缩进代码行
+   * 有结构性失效——8/16/24/32 空格缩进的真实偏差 +44.69%~+52.97%，远超
+   * 0.82 系数留出的 ~22% 余量，见 code.tsx 自身推导注释与
+   * task-3-review.md Important-2）换成精确模型：`resolveLayout` 直接按
+   * Consolas 实测的逐字符统一前进宽度（0.5498em/字，见 svg-text-layout.ts
+   * `measureMonoTextUnits` 推导注释）计算，不再有比例估算误差需要安全系数
+   * 去覆盖，`MONO_WIDTH_SAFETY` 因此改为 1.0（不留系数——本任务的替身字体
+   * 变异量测数据不支持任何非零残余量，见 code.tsx 该常量自己的推导注释）。
+   * 上面这条 bullets 容量推导借用的始终只是「0.9 这个具体数字」作为一次性
+   * 安全折扣，不是对 `MONO_WIDTH_SAFETY` 常量的引用——CJK bullets 容量与
+   * mono 字体度量是两件不相关的事，只是曾经共用过同一个圆整系数。
+   * `itemOverflowUnits = 50` 这个结论本身不随 `MONO_WIDTH_SAFETY` 任何一轮
+   * 改变而改变，此处不随之重算，如实记录来源以免误读为仍在引用 `code.tsx`
+   * 的当前值（该常量现在已不再是「打折系数」语义，借用关系至此彻底脱钩）。
    *
    * 已知缺口（如实记录，本任务不修）：`ir-quality.ts` 对全部 bullets 样式
    * 统一套用这一个上界，但 "numbered"/"checklist" 样式的前缀（"1. "/"☐ "）

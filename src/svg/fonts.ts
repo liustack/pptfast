@@ -49,9 +49,17 @@
  *     measured safe. No width factor added -- see the calibration note
  *     above `measureTextUnits` in svg-text-layout.ts.
  *   - Consolas (mono/code, all 13 themes via ROLE_DEFAULT): measured
- *     genuinely risky in the dangerous (real-wider-than-assumed) direction.
- *     Mitigated by `code.tsx`'s `MONO_WIDTH_SAFETY`, recalibrated 0.9 ->
- *     0.82 against the real binary as part of this same task.
+ *     genuinely risky in the dangerous (real-wider-than-assumed) direction
+ *     for the *proportional* width model `measureTextUnits` uses. Task 3
+ *     first mitigated this by recalibrating `code.tsx`'s
+ *     `MONO_WIDTH_SAFETY` (0.9 -> 0.82) against the real binary. A same-
+ *     task review round then found deep-indented code could still overflow
+ *     past any fixed safety factor on top of a proportional estimate (see
+ *     `MONO_WIDTH_SAFETY`'s derivation comment in code.tsx), so the mono
+ *     role now skips the proportional model entirely and sizes text with
+ *     an exact per-glyph width -- Consolas's own uniform hmtx advance, via
+ *     `measureMonoTextUnits` in svg-text-layout.ts (see that function's
+ *     derivation comment).
  *   - Microsoft YaHei (body/fallback ROLE_DEFAULT, six themes' actual
  *     heading+body face): measured safe. No width factor added.
  *
