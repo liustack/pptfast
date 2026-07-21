@@ -61,8 +61,8 @@ const SLIDE_PART_RE = /^ppt\/slides\/slide\d+\.xml$/
  * and before any `<a:cs>`, so anchoring on adjacency both finds the right
  * target and guarantees the rewrite can never reorder anything.
  *
- * Group 1 = the latin face (also what `eaFontFaceFor` is keyed on); group 2
- * = the latin tag's own trailing attributes, preserved verbatim; group 3 =
+ * Group 1 = the latin face (also what `eaFontFaceFor` is keyed on). Group 2
+ * = the latin tag's own trailing attributes, preserved verbatim. Group 3 =
  * the existing ea tag's own trailing attributes when one is already present
  * (`undefined` when this run has no `<a:ea>` at all yet — group 3 only
  * matches inside the optional non-capturing wrapper, so a plain "no <a:ea>

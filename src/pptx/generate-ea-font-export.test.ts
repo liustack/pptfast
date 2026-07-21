@@ -12,7 +12,7 @@ import type { PptxIR, Slide } from "@/ir"
  * Microsoft-YaHei-heading theme (already CJK-capable — `<a:ea>` must
  * self-reference `<a:latin>`, per `eaFontFaceFor`'s face-keyed mapping).
  * `pptx-ea-fonts.test.ts` covers the same patch in isolation against a
- * hand-built XML fixture; this is the "it also works through a real theme
+ * hand-built XML fixture. This is the "it also works through a real theme
  * and real pptxgenjs" integration counterpart, mirroring
  * `generate-gradient-export.test.ts`'s own real-theme integration tests.
  */

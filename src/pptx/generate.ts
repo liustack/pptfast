@@ -81,8 +81,8 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   const eaFontBlob = await applyEaFontFaces(gradientBlob)
   // Deck-level page-transition switch (wave-C S1/S2): default fade unless
   // meta.animation.transition overrides it ("none" skips injection). Runs
-  // right after the a:ea patch — still the same `ppt/slides/*.xml` parts;
-  // ordering relative to the media dedupe pass below is otherwise inert,
+  // right after the a:ea patch — still the same `ppt/slides/*.xml` parts.
+  // Ordering relative to the media dedupe pass below is otherwise inert,
   // since dedupe only ever touches `ppt/media/*` and `*.rels` parts.
   const transitionBlob = await applySlideTransitions(
     eaFontBlob,
