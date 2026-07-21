@@ -199,7 +199,14 @@ const EA_FALLBACK_FACE = ROLE_DEFAULT.heading
  *   CJK-monospace treatment either -- no `SAFE_FONTS` member is both
  *   Windows-safe and a monospace CJK face, so a Consolas-declared code
  *   block's CJK comment text renders in the same (proportional) Microsoft
- *   YaHei as any other non-CJK-capable face's fallback.
+ *   YaHei as any other non-CJK-capable face's fallback. This also firms up
+ *   rather than undercuts `measureMonoTextUnits`'s own pre-existing CJK
+ *   width assumption (`svg-text-layout.ts`): that model already sizes a
+ *   mono-role CJK character at ~1 em specifically because it measured
+ *   Microsoft YaHei's CJK class landing there, on the reasoning that CJK
+ *   substitution would likely land near it -- this function now makes that
+ *   *exactly* what renders, deterministically, instead of a best guess
+ *   about where PowerPoint's uncontrolled substitution would land.
  *
  * Case-insensitive and quote/whitespace-trimming, mirroring
  * `resolveFontFace`'s own matching (a caller always passes that function's
