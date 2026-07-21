@@ -263,15 +263,24 @@ export const CAPACITY = {
    * 的陷阱）、"default" 样式，逐字符扫描 CJK 长度：56 字零 `data-truncated`，
    * 57 字首次出现——与上面 floor(56.86)=56 的推导一致（在 1 unit 内）。
    *
-   * 安全余量（简报明确要求「留安全余量」）：套用全仓唯一的既有渲染安全折扣
-   * 先例（`code.tsx` 的 `MONO_WIDTH_SAFETY = 0.9`，同一种「给估算器打折」
-   * 思路，不另造新系数）：
+   * 安全余量（简报明确要求「留安全余量」）：套用当时全仓唯一的既有渲染安全
+   * 折扣先例（`code.tsx` 的 `MONO_WIDTH_SAFETY`，同一种「给估算器打折」
+   * 思路，不另造新系数）取值 0.9：
    *   itemOverflowUnits = floor(56 * 0.9) = floor(50.4) = 50
    *
    * 与三档 pacing 的 `bullet_item_long` warn 阈值（30/40/48）比较：50 严格
    * 大于全部三档，包括最紧的 dense（48）——dual-threshold 的「error 恒宽于
    * warn」在最紧档也成立，只是余量最小（2 units），符合 dense pacing 本身
    * 就是「更贴边」这一档位语义。
+   *
+   * **借用值澄清（borrow-wave Task 3，2026-07-21）**：`code.tsx` 的
+   * `MONO_WIDTH_SAFETY` 后续用真机 Consolas 数据重新校准为 0.82（原 0.9
+   * 的校准对象是 Menlo，非真身导出字体）。上面这条 bullets 容量推导借用的
+   * 是「0.9 这个具体数字」作为一次性安全折扣，不是对 `MONO_WIDTH_SAFETY`
+   * 常量的引用——CJK bullets 容量与 mono 字体度量是两件不相关的事，只是
+   * 恰好共用过同一个圆整系数。`itemOverflowUnits = 50` 这个结论本身不随
+   * `MONO_WIDTH_SAFETY` 改变而改变，此处不随之重算，如实记录来源以免
+   * 误读为仍在引用 `code.tsx` 的当前值。
    *
    * 已知缺口（如实记录，本任务不修）：`ir-quality.ts` 对全部 bullets 样式
    * 统一套用这一个上界，但 "numbered"/"checklist" 样式的前缀（"1. "/"☐ "）
