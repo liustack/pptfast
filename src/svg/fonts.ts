@@ -68,8 +68,16 @@
  * glyph. Any CJK character in text declared under either face never
  * renders from that face -- PowerPoint substitutes some other, currently
  * uncontrolled font at the glyph level for just those characters. Width
- * calibration cannot fix a missing-glyph problem. It is recorded here as a
- * known, unresolved risk, not a settled one.
+ * calibration cannot fix a missing-glyph problem -- this file's
+ * SAFE_FONTS/resolveFontFace axis only ever spoke to the `<a:latin>` slot a
+ * DrawingML run carries, never the separate `<a:ea>` (East Asian) slot
+ * PowerPoint actually consults for CJK glyphs. Left unresolved at the time
+ * (borrow-wave Task 3), this is now closed: `eaFontFaceFor` below resolves
+ * the correct `<a:ea>` face for any already-resolved `<a:latin>` face, and
+ * `src/pptx/pptx-ea-fonts.ts`'s `applyEaFontFaces` JSZip patch (wired into
+ * every `generatePptxBlob` export) writes it into every exported run. CJK
+ * glyphs now resolve from a face that actually has them, independent of
+ * whichever Latin face the same run also carries.
  *
  * Swapping a SAFE_FONTS member for a more metric-reliable one (e.g.
  * consulting's Georgia -> Cambria, which Anthropic's skill does classify
@@ -128,6 +136,90 @@ export function resolveFontFace(stack: string[], role: FontRole): string {
     if (SAFE_FONTS.has(name.toLowerCase())) return name
   }
   return ROLE_DEFAULT[role]
+}
+
+/**
+ * SAFE_FONTS members that ship at least one CJK glyph -- this file's own
+ * "CJK (Windows)" group above. Backs `eaFontFaceFor` below: keying off this
+ * one set (rather than a parallel 21-row ea-lookup table with 11 pointless
+ * self-referencing rows) means there is exactly one place a newly-added
+ * SAFE_FONTS member needs a CJK/non-CJK call made -- `fonts.test.ts`'s
+ * completeness assertion fails the moment a new member isn't accounted for
+ * on either side (this set's "yes," or the implicit "no" of everything
+ * else in SAFE_FONTS).
+ */
+const CJK_SAFE_FACES = new Set(
+  ["Microsoft YaHei", "微软雅黑", "SimSun", "宋体", "SimHei", "黑体", "KaiTi", "楷体", "FangSong", "仿宋"].map(
+    (f) => f.toLowerCase(),
+  ),
+)
+
+/**
+ * The uniform `<a:ea>` fallback for every SAFE_FONTS member with no CJK
+ * glyphs of its own. Reuses `ROLE_DEFAULT`'s own heading/body value (both
+ * already "Microsoft YaHei") rather than a fresh literal: the whole point
+ * of this default is "the CJK face every theme's body text already falls
+ * back to when its own designer font isn't Windows-safe" -- see
+ * `eaFontFaceFor`'s doc comment for why that specific property is what
+ * makes it the right uniform choice here too.
+ */
+const EA_FALLBACK_FACE = ROLE_DEFAULT.heading
+
+/**
+ * Resolve the East Asian (`<a:ea>`) font-slot face for an already-resolved
+ * Latin/CJK face -- i.e. `resolveFontFace`'s own return value. A DrawingML
+ * text run carries three independent font slots (`<a:latin>`, `<a:ea>`,
+ * `<a:cs>` -- ECMA-376 `CT_TextFont`), and PowerPoint picks which one
+ * paints a given character from its Unicode script: `<a:ea>` for CJK,
+ * `<a:latin>` for everything else. A run whose `<a:ea>` names a face with
+ * no CJK glyphs (or, as pptxgenjs's own default does -- see
+ * `pptx-ea-fonts.ts`'s header comment -- mirrors whatever `<a:latin>`
+ * already says) is harmless for that run's Latin characters, but any CJK
+ * character in the same run falls through to PowerPoint's own uncontrolled
+ * substitution the instant the declared `<a:ea>` face can't render it --
+ * this file's header comment's "related but distinct gap."
+ *
+ * The mapping is face-keyed, not role-keyed or content-keyed:
+ *
+ * - A `SAFE_FONTS` member that already ships CJK glyphs (`CJK_SAFE_FACES`
+ *   above -- Microsoft YaHei/SimSun/SimHei/KaiTi/FangSong and their Chinese
+ *   aliases) resolves to *itself*: an explicit, self-referencing `<a:ea>`
+ *   that changes no rendered pixel (the face already covers CJK) but
+ *   completes the declaration -- PowerPoint no longer has to guess, closing
+ *   exactly the gap `slides_maker`'s `CJK_NO_EA` lint (competitive
+ *   research, borrow wave) flags.
+ * - Every other `SAFE_FONTS` member (the 11 Latin-only sans/serif/mono
+ *   faces -- Georgia, Consolas, Arial, etc.) resolves to the fixed
+ *   `EA_FALLBACK_FACE`, regardless of that Latin face's own role
+ *   (heading/body/mono) or design register (serif vs sans vs mono). This is
+ *   a deliberately role-agnostic, pragmatic default, not a font-matching
+ *   exercise: it never introduces a *second* missing-font risk on top of
+ *   the one this function exists to close, since it's the same face
+ *   `ROLE_DEFAULT` already relies on. The mono role gets no special
+ *   CJK-monospace treatment either -- no `SAFE_FONTS` member is both
+ *   Windows-safe and a monospace CJK face, so a Consolas-declared code
+ *   block's CJK comment text renders in the same (proportional) Microsoft
+ *   YaHei as any other non-CJK-capable face's fallback. This also firms up
+ *   rather than undercuts `measureMonoTextUnits`'s own pre-existing CJK
+ *   width assumption (`svg-text-layout.ts`): that model already sizes a
+ *   mono-role CJK character at ~1 em specifically because it measured
+ *   Microsoft YaHei's CJK class landing there, on the reasoning that CJK
+ *   substitution would likely land near it -- this function now makes that
+ *   *exactly* what renders, deterministically, instead of a best guess
+ *   about where PowerPoint's uncontrolled substitution would land.
+ *
+ * Case-insensitive and quote/whitespace-trimming, mirroring
+ * `resolveFontFace`'s own matching (a caller always passes that function's
+ * return value, which preserves whatever casing the theme's own font stack
+ * used). A face outside `SAFE_FONTS` entirely -- which no real caller
+ * produces, since `resolveFontFace` only ever returns a `SAFE_FONTS` member
+ * or a `ROLE_DEFAULT` value, both always in `SAFE_FONTS` -- still falls
+ * back to `EA_FALLBACK_FACE` rather than throwing, so a future caller
+ * outside that guarantee degrades safely instead of crashing an export.
+ */
+export function eaFontFaceFor(latinFace: string): string {
+  const name = latinFace.replace(/['"]/g, "").trim()
+  return CJK_SAFE_FACES.has(name.toLowerCase()) ? name : EA_FALLBACK_FACE
 }
 
 /** Lower-cased safe faces that read as serif, used to pick a preview fallback family below. */

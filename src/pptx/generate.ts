@@ -21,6 +21,7 @@ import {
 import { slideToOps } from "@/svg/render-slide"
 import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
+import { applyEaFontFaces } from "./pptx-ea-fonts"
 import { auditPptxPackage } from "./package-audit"
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -68,14 +69,23 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   // plus a unique objectName. Patch the real `<a:gradFill>` back in now that
   // the whole presentation has been serialized to a zip.
   const gradientBlob = await applyGradientFills(rawBlob, gradientPatches)
+  // CJK east-asian font-slot patch (follow-up to borrow-wave Task 3's
+  // documented CJK glyph gap — `fonts.ts`'s header comment, `pptx-ea-fonts.ts`'s
+  // own header comment for the full mechanics): pptxgenjs has no API to set
+  // `<a:ea>` independently of `<a:latin>`, so every run's east-asian font
+  // slot is corrected here, unconditionally, right after the gradient patch
+  // — both touch the same `ppt/slides/*.xml` parts (text runs vs. shape
+  // fills, non-overlapping regions of the same XML), so grouping them keeps
+  // slide-XML-correcting patches adjacent, ahead of the deck-level
+  // transition/animation patches below which only ever *add* new structure.
+  const eaFontBlob = await applyEaFontFaces(gradientBlob)
   // Deck-level page-transition switch (wave-C S1/S2): default fade unless
   // meta.animation.transition overrides it ("none" skips injection). Runs
-  // right after the gradient patch — both touch the same `ppt/slides/*.xml`
-  // parts, so grouping them keeps slide-XML patches adjacent; ordering
-  // relative to the media dedupe pass below is otherwise inert, since dedupe
-  // only ever touches `ppt/media/*` and `*.rels` parts.
+  // right after the a:ea patch — still the same `ppt/slides/*.xml` parts.
+  // Ordering relative to the media dedupe pass below is otherwise inert,
+  // since dedupe only ever touches `ppt/media/*` and `*.rels` parts.
   const transitionBlob = await applySlideTransitions(
-    gradientBlob,
+    eaFontBlob,
     ir.meta.animation?.transition ?? "fade"
   )
   // Per-component entrance animations (wave-C S3): opt-in only, default off.

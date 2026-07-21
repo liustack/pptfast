@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { isMonoFontFamily, resolveFontFace, resolveFontStack, SAFE_FONTS } from "./fonts"
+import { eaFontFaceFor, isMonoFontFamily, resolveFontFace, resolveFontStack, SAFE_FONTS } from "./fonts"
 
 describe("resolveFontFace", () => {
   it("returns the first stack member that is a known-safe font", () => {
@@ -90,5 +90,86 @@ describe("isMonoFontFamily", () => {
 
   it("rejects an empty string", () => {
     expect(isMonoFontFamily("")).toBe(false)
+  })
+})
+
+// CJK east-asian font-slot mapping (a:ea patch, following up on borrow-wave
+// Task 3's documented CJK glyph gap -- see fonts.ts's header comment).
+describe("eaFontFaceFor", () => {
+  it("self-references a CJK-capable safe face (explicit east-asian slot, no font change)", () => {
+    expect(eaFontFaceFor("Microsoft YaHei")).toBe("Microsoft YaHei")
+    expect(eaFontFaceFor("SimSun")).toBe("SimSun")
+    expect(eaFontFaceFor("KaiTi")).toBe("KaiTi")
+    expect(eaFontFaceFor("楷体")).toBe("楷体")
+  })
+
+  it("falls back to Microsoft YaHei for a Latin-only safe face with zero CJK glyphs", () => {
+    expect(eaFontFaceFor("Georgia")).toBe("Microsoft YaHei")
+    expect(eaFontFaceFor("Consolas")).toBe("Microsoft YaHei")
+    expect(eaFontFaceFor("Arial")).toBe("Microsoft YaHei")
+  })
+
+  it("is case-insensitive, matching resolveFontFace's own matching rule, and echoes the input's own casing back on self-reference", () => {
+    expect(eaFontFaceFor("georgia")).toBe("Microsoft YaHei")
+    expect(eaFontFaceFor("SIMSUN")).toBe("SIMSUN")
+  })
+
+  it("strips quotes/whitespace like resolveFontFace does, for a raw (unresolved) stack entry", () => {
+    expect(eaFontFaceFor(' "Georgia" ')).toBe("Microsoft YaHei")
+  })
+
+  it("falls back to Microsoft YaHei for a face outside SAFE_FONTS entirely (defensive default)", () => {
+    expect(eaFontFaceFor("Comic Sans MS")).toBe("Microsoft YaHei")
+  })
+})
+
+// Completeness guard, same shape as full-matrix-contrast.test.ts's
+// MUTED_SURFACE_CLASS precedent: every SAFE_FONTS member must be listed on
+// one side or the other below, so a newly added member with no CJK
+// classification decision fails this test immediately (via the parity
+// assertion in the first `it`) instead of silently falling through
+// `eaFontFaceFor`'s default with nobody having reviewed whether that's
+// actually correct for it.
+describe("eaFontFaceFor completeness over SAFE_FONTS", () => {
+  // The 10 CJK-capable SAFE_FONTS members (self-reference under eaFontFaceFor).
+  const CJK_FACES = [
+    "Microsoft YaHei",
+    "微软雅黑",
+    "SimSun",
+    "宋体",
+    "SimHei",
+    "黑体",
+    "KaiTi",
+    "楷体",
+    "FangSong",
+    "仿宋",
+  ]
+  // The 11 Latin-only SAFE_FONTS members (fall back to Microsoft YaHei).
+  const LATIN_ONLY_FACES = [
+    "Arial",
+    "Calibri",
+    "Tahoma",
+    "Verdana",
+    "Segoe UI",
+    "Georgia",
+    "Times New Roman",
+    "Cambria",
+    "Consolas",
+    "Courier New",
+    "Lucida Console",
+  ]
+
+  it("accounts for every SAFE_FONTS member exactly once (fails the moment SAFE_FONTS gains an unclassified member)", () => {
+    const classified = new Set([...CJK_FACES, ...LATIN_ONLY_FACES].map((f) => f.toLowerCase()))
+    expect(classified.size).toBe(CJK_FACES.length + LATIN_ONLY_FACES.length) // no duplicate across the two lists
+    expect(classified).toEqual(new Set(SAFE_FONTS))
+  })
+
+  it("every CJK-capable face self-references under eaFontFaceFor", () => {
+    for (const face of CJK_FACES) expect(eaFontFaceFor(face)).toBe(face)
+  })
+
+  it("every Latin-only face falls back to Microsoft YaHei under eaFontFaceFor", () => {
+    for (const face of LATIN_ONLY_FACES) expect(eaFontFaceFor(face)).toBe("Microsoft YaHei")
   })
 })

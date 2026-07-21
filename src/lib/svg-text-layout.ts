@@ -139,8 +139,15 @@ export function measureTextUnits(text: string): number {
 // (consistent with the sibling measurement of Microsoft YaHei's CJK class
 // landing at +0.16%, i.e. ~1em -- see the calibration note above
 // `measureTextUnits`) rather than invent a new, unmeasured number. This is
-// a font-identity gap, not a metrics gap -- see fonts.ts, which records it
-// as a known, unresolved risk no width model can fix.
+// a font-identity gap, not a metrics gap -- fonts.ts originally recorded it
+// as a known, unresolved risk no width model could fix, and has since
+// closed it (a:ea follow-up task -- `eaFontFaceFor` plus the JSZip patch in
+// `src/pptx/pptx-ea-fonts.ts`): a mono-role CJK character now
+// deterministically renders from Microsoft YaHei, exactly the face this
+// 1.0 em/char estimate already assumed. No change needed to this model --
+// it was betting on that face before the fix existed, and the fix made the
+// bet true (see `eaFontFaceFor`'s own doc comment in fonts.ts for that
+// cross-reference).
 const MONO_ADVANCE_EM = 1126 / 2048
 
 export function measureMonoTextUnits(text: string): number {

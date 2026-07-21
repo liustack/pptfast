@@ -35,7 +35,7 @@ drift apart:
 ```
 IR (validated) → FullSlideSvg (React → one flat 1280×720 SVG)
   → svg2pptx (per-element DrawingML ops)
-  → pptxgenjs + JSZip patches (animations, gradients, media dedupe)
+  → pptxgenjs + JSZip patches (animations, gradients, ea font slots, media dedupe)
   → .pptx bytes
 ```
 
