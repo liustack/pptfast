@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
-import { formatIssues, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { measureTextUnits } from "@/lib/svg-text-layout"
+import { formatIssues, formatWarnings, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { CAPACITY } from "./svg/audit/capacity"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 const raw = {
@@ -70,19 +72,23 @@ describe("validateIr", () => {
     expect(r.errors[0]?.path.startsWith("slides.0")).toBe(true)
   })
 
-  it("rejects a schema-valid cover slide with no heading (content-quality gate)", () => {
+  it("warns (not rejects) a schema-valid cover slide with no heading — missing_heading is editorial, not content-loss (Task 2, dual-threshold severity)", () => {
+    // Pre-Task-2 this was a hard error (ok:false) — missing_heading is an
+    // authoring-completeness signal, not a case where render truncates or
+    // drops anything, so it moved to `warnings` and no longer blocks `ok`.
     const bad = {
       ...raw,
       slides: [{ type: "cover" }, raw.slides[1]],
     }
     const r = validateIr(bad)
-    expect(r.ok).toBe(false)
-    expect(r.errors.length).toBeGreaterThan(0)
-    expect(r.errors[0]?.path).toBe("slides.0")
-    expect(r.errors[0]?.page).toBe(1)
+    expect(r.ok).toBe(true)
+    expect(r.errors).toEqual([])
+    expect(r.warnings?.length).toBeGreaterThan(0)
+    expect(r.warnings?.[0]?.path).toBe("slides.0")
+    expect(r.warnings?.[0]?.page).toBe(1)
     // readable, English (public error surface — see describeQualityIssue in api.ts)
-    expect(r.errors[0]?.message).toMatch(/heading/i)
-    expect(r.errors[0]?.message).not.toMatch(/[一-鿿]/)
+    expect(r.warnings?.[0]?.message).toMatch(/heading/i)
+    expect(r.warnings?.[0]?.message).not.toMatch(/[一-鿿]/)
   })
 
   it("rejects an empty deck", () => {
@@ -160,6 +166,53 @@ describe("validateIr", () => {
       })
       expect(v.ok).toBe(true)
     })
+  })
+})
+
+describe("ValidateResult.warnings + formatWarnings (Task 2, borrow wave — dual-threshold severity)", () => {
+  it("omits `warnings` entirely when there are no warn-severity findings (backward-compatible addition, same shape as `normalized`)", () => {
+    const v = validateIr(raw)
+    expect(v.ok).toBe(true)
+    expect(v.warnings).toBeUndefined()
+  })
+
+  it("surfaces a warn-severity finding on `warnings` without affecting `errors` or `ok`", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "cover" }, raw.slides[1]], // missing heading — warn only
+    })
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+    expect(v.warnings).toHaveLength(1)
+  })
+
+  it("formatWarnings prints 'warning: page N — path: message' — formatIssues' own per-line shape, prefixed", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "cover" }, raw.slides[1]],
+    })
+    expect(formatWarnings(v.warnings!)).toBe(`warning: ${formatIssues(v.warnings!)}`)
+    expect(formatWarnings(v.warnings!)).toMatch(/^warning: page 1 — slides\.0: /)
+  })
+
+  it("`warnings` can be present alongside a failing (`ok:false`) result too — a rejected deck's warnings are not hidden", () => {
+    // slide 2 mixes a real error (unknown layout) with slide 1's own
+    // warn-only missing heading — both must be visible on their own arrays.
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { type: "cover" }, // missing heading — warn
+        { type: "content", heading: "x", layout: "not-a-real-layout", components: [] }, // error
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.length).toBeGreaterThan(0)
+    // The layout-applicability hard gate returns early (api.ts's validateIr
+    // short-circuits at the first hard-gate failure, before checkIrQuality
+    // ever runs) — so this specific deck's warning never actually gets
+    // computed. Documents that ordering rather than asserting warnings
+    // exist here: `ok:false` alone is the behavior under test.
+    expect(v.warnings).toBeUndefined()
   })
 })
 
@@ -537,9 +590,13 @@ describe("ValidationIssue.slideId + formatIssues (W5 whole-branch review finding
       // — slideId must stay unset, not leak slide 0's id onto slide 1's issue.
       slides: [{ ...raw.slides[0], id: "p-cover" }, { type: "content" }],
     })
-    expect(v.ok).toBe(false)
-    expect(v.errors[0]!.page).toBe(2)
-    expect(v.errors[0]!.slideId).toBeUndefined()
+    // missing_heading is warn-only since Task 2 — ok:true, the issue lands
+    // on `warnings` instead of `errors` (see "reads slideId" naming: the
+    // slideId-scoping behavior under test is unchanged, only which array
+    // carries the issue moved).
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.page).toBe(2)
+    expect(v.warnings?.[0]!.slideId).toBeUndefined()
   })
 
   it("the content-quality-gate translation sets slideId when the flagged slide has an id", () => {
@@ -547,10 +604,10 @@ describe("ValidationIssue.slideId + formatIssues (W5 whole-branch review finding
       ...raw,
       slides: [raw.slides[0], { type: "content", id: "p-body" }],
     })
-    expect(v.ok).toBe(false)
-    expect(v.errors[0]!.page).toBe(2)
-    expect(v.errors[0]!.slideId).toBe("p-body")
-    expect(formatIssues(v.errors)).toMatch(/^page 2 \(p-body\) — /)
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.page).toBe(2)
+    expect(v.warnings?.[0]!.slideId).toBe("p-body")
+    expect(formatIssues(v.warnings!)).toMatch(/^page 2 \(p-body\) — /)
   })
 })
 
@@ -563,13 +620,13 @@ describe("placeholder slide quality exemption (W5 task 1)", () => {
     expect(v.ok).toBe(true)
   })
 
-  it("a normal (non-placeholder) empty content slide still fails the missing-heading gate", () => {
+  it("a normal (non-placeholder) empty content slide still warns the missing-heading gate (ok:true since Task 2 — missing_heading is editorial, not content-loss)", () => {
     const v = validateIr({
       ...raw,
       slides: [raw.slides[0], { type: "content" }],
     })
-    expect(v.ok).toBe(false)
-    expect(v.errors.some((e) => /heading/i.test(e.message))).toBe(true)
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => /heading/i.test(w.message))).toBe(true)
   })
 
   it("skips every content rule for a placeholder page, not only missing_heading", () => {
@@ -591,6 +648,13 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
   // file's own describeQualityIssue. Reached only through validateIr (the
   // function itself is private), same convention as the existing
   // "readable, English" missing-heading test above.
+  //
+  // Task 2 (dual-threshold severity): density/bullets_overflow/
+  // bullet_item_long are all editorial-budget codes (warn), so every case
+  // below reads its message off `v.warnings` and asserts `ok:true` — before
+  // Task 2 these were hard errors (`ok:false`, read off `v.errors`). The
+  // message content and shape are otherwise unchanged.
+  //
   // `n` is the slide's total component count (what the density gate counts
   // against); `withImage` prepends one `image` component (counted as one of
   // `n`) so a pinned takeover layout actually takes over (findImageComponent
@@ -605,7 +669,7 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
     ],
   })
   const densityMessage = (v: ReturnType<typeof validateIr>) =>
-    v.errors.find((e) => e.message.includes("too many components"))?.message
+    v.warnings?.find((w) => w.message.includes("too many components"))?.message
 
   it("no geometric term (takeover layout): names the pacing alone", () => {
     const v = validateIr({
@@ -613,7 +677,7 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
       narrative: { pacing: "spacious" },
       slides: [raw.slides[0], denseSlide(4, { layout: "image-top", withImage: true })],
     })
-    expect(v.ok).toBe(false)
+    expect(v.ok).toBe(true)
     expect(densityMessage(v)).toBe(
       "too many components on this slide (max 3 for spacious pacing) — split into multiple slides",
     )
@@ -625,7 +689,7 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
       narrative: { pacing: "balanced" },
       slides: [raw.slides[0], denseSlide(5, { layout: "two-column" })],
     })
-    expect(v.ok).toBe(false)
+    expect(v.ok).toBe(true)
     expect(densityMessage(v)).toBe(
       "too many components on this slide (max 4 for balanced pacing) — split into multiple slides",
     )
@@ -638,7 +702,7 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
       narrative: { pacing: "balanced" },
       slides: [raw.slides[0], denseSlide(5, { layout: "bento-panel" })],
     })
-    expect(v.ok).toBe(false)
+    expect(v.ok).toBe(true)
     expect(densityMessage(v)).toBe(
       "too many components on this slide (max 4 — bento-panel fits 6 but balanced pacing caps at 4) — split into multiple slides",
     )
@@ -650,7 +714,7 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
       narrative: { pacing: "dense" },
       slides: [raw.slides[0], denseSlide(5, { layout: "two-column" })],
     })
-    expect(v.ok).toBe(false)
+    expect(v.ok).toBe(true)
     expect(densityMessage(v)).toBe(
       "too many components on this slide (max 4 — two-column layout's capacity is tighter than dense pacing's 5) — split into multiple slides",
     )
@@ -669,8 +733,8 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
         },
       ],
     })
-    expect(v.ok).toBe(false)
-    expect(v.errors.find((e) => e.message.includes("too many items"))?.message).toBe(
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.find((w) => w.message.includes("too many items"))?.message).toBe(
       "bullet list has too many items (max 5 for balanced pacing) — trim it or split into multiple slides",
     )
   })
@@ -688,10 +752,70 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
         },
       ],
     })
-    expect(v.ok).toBe(false)
-    expect(v.errors.find((e) => e.message.includes("too long"))?.message).toBe(
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.find((w) => w.message.includes("too long"))?.message).toBe(
       "a bullet item is too long for dense pacing — keep it within about 2 lines",
     )
+  })
+})
+
+describe("bullets geometric hard error (Task 2, borrow wave — dual-threshold severity)", () => {
+  // Q3's boundary scan (fact-report, borrow wave) found validateIr's old
+  // "any finding blocks" design hard-rejecting a 44-CJK-unit bullet item —
+  // well inside the balanced-pacing 40-unit *editorial* budget's reach —
+  // while real render never truncates until ~156 units for a full-width
+  // single column: a ~3.5x gap between the old block point and the true
+  // render-safety edge. Task 2 splits severity so that gap can no longer
+  // turn a legitimate deck into a hard rejection: 44 units is now warn-only
+  // (bullet_item_long fires, `ok` stays true), and rendering the exact same
+  // content produces zero data-truncated markers — closing the loop the
+  // fact-report flagged as the real risk ("a real deck rejected outright").
+  it("44-unit CJK bullet item: warns but ok:true, and a real render has zero data-truncated (Q3's 3.5x gap regression guard)", () => {
+    // "测" is a pure CJK char (measureTextUnits weight 1.0/char), so
+    // repeat(44) is exactly the boundary scan's own "validateIr first
+    // rejects at 44 CJK chars" fixture (fact-report Q3 — the "measured units"
+    // reading, not the density-probe's own differently-sized "47-unit"
+    // illustrative string quoted elsewhere in that same report).
+    const cjk44 = "测".repeat(44)
+    expect(measureTextUnits(cjk44)).toBe(44) // pins the fact-report's own boundary-scan number
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Density probe", components: [{ type: "bullets", items: ["filler item one", cjk44] }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("too long"))).toBe(true)
+    const svg = renderSlideSvg(v.ir!, 1)
+    expect(svg).not.toContain('data-truncated="1"')
+  })
+
+  it(`a bullet item past the geometric ceiling (${CAPACITY.bullets.itemOverflowUnits} units) hard-blocks generation via generatePptx`, async () => {
+    const tooLong = "测".repeat(CAPACITY.bullets.itemOverflowUnits + 1)
+    const ir = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Overflow probe", components: [{ type: "bullets", items: [tooLong] }] },
+      ],
+    }
+    const v = validateIr(ir)
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes("exceeds"))).toBe(true)
+    await expect(generatePptx(ir)).rejects.toThrow(/invalid IR/)
+  })
+
+  it(`does NOT report bullet_item_overflow at exactly ${CAPACITY.bullets.itemOverflowUnits} units — still ok:true (only the editorial warn, if any, applies)`, () => {
+    const atCeiling = "测".repeat(CAPACITY.bullets.itemOverflowUnits)
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "At ceiling", components: [{ type: "bullets", items: [atCeiling] }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
   })
 })
 

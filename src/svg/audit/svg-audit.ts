@@ -1,5 +1,6 @@
-import { measureTextUnits } from "../../lib/svg-text-layout"
+import { measureMonoTextUnits, measureTextUnits } from "../../lib/svg-text-layout"
 import { getPlatform } from "../../platform/registry"
+import { isMonoFontFamily } from "../fonts"
 
 export interface OverflowIssue {
   kind: "h-overflow" | "v-overflow" | "page-overflow"
@@ -87,7 +88,15 @@ export function auditSvgMarkup(markup: string): OverflowIssue[] {
         const fontSize = Number(el.getAttribute("font-size") ?? 16) * as
         const tx = ax + Number(el.getAttribute("x") ?? 0) * as
         const ty = ay + Number(el.getAttribute("y") ?? 0) * as
-        const width = measureTextUnits(content) * fontSize
+        // Mono-face branch only (borrow-wave Task 3 fix round, 2026-07-21 —
+        // see `isMonoFontFamily`'s derivation comment in fonts.ts). Every
+        // other role stays on the proportional `measureTextUnits` estimate —
+        // this does not generalize into a font-aware audit for every role
+        // (a recorded open item — task-3-report.md §7 / task-3-review.md's
+        // Important finding N1, scratchpad, not shipped in this repo).
+        const fontFamily = el.getAttribute("font-family") ?? ""
+        const measure = isMonoFontFamily(fontFamily) ? measureMonoTextUnits : measureTextUnits
+        const width = measure(content) * fontSize
         const anchor = el.getAttribute("text-anchor") ?? "start"
         const left = anchor === "end" ? tx - width : anchor === "middle" ? tx - width / 2 : tx
         const right = left + width

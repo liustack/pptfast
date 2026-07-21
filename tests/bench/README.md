@@ -177,6 +177,19 @@ Every metric is purely mechanical, computed off the SDK the render chain already
   produced IR's top-level `slides[].components[].type` — reported for a human reader, never fed
   back into `validatePass`/`renderOk`/any other pass-fail decision
 
+**Validate semantics changed 2026-07-21** (borrow wave, Task 2 — `validateIr` dual-threshold
+severity recalibration, `src/api.ts`): `ok`/`errors` now reflect only error-severity
+`checkIrQuality` findings (an empty deck, a bullet item past the render-safety ceiling) — the
+editorial-budget findings (missing/long heading, density, bullets count/length) moved to a
+separate `warnings` array and no longer fail `ok`. `validatePass`/`validateErrorCount` above read
+straight off `v.ok`/`v.errors.length` and never inspected `checkIrQuality` severity directly, so
+`score.mts` needed no code change — "only an error counts as a validate fail" already matches the
+new semantics automatically. Cross-round comparability note: a `report.md`/`summary.md` generated
+before this date used the pre-recalibration semantics (any content-quality finding, warn or
+error, failed `validatePass`), so a `validatePass` rate from before this date is not directly
+comparable to one from after — some answers that used to fail purely on an editorial finding
+(no structural or render-safety problem) now pass.
+
 A missing result directory, malformed JSON, an ambiguous artifact (more than one candidate `.json`
 file), or a `readDeckDir`/`assembleDeck` structural error scores as a fail for that question with
 a `reason` in the report's notes column, without aborting the rest of the batch. Self-reported

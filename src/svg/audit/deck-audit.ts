@@ -1,7 +1,8 @@
 import type { PptxIR } from "@/ir"
 import { renderSlideSvg } from "../../api"
-import { measureTextUnits } from "../../lib/svg-text-layout"
+import { measureMonoTextUnits, measureTextUnits } from "../../lib/svg-text-layout"
 import { getPlatform } from "../../platform/registry"
+import { isMonoFontFamily } from "../fonts"
 import { auditSvgMarkup, parseNums, parseTransform, type OverflowIssue } from "./svg-audit"
 
 /**
@@ -1368,6 +1369,17 @@ export interface OverlapIssue {
  * (bullets/paragraph) have no such rect, so the union of their text spans is
  * what's found instead.
  *
+ * Width also grows past that declared `w` floor (borrow-wave Task 4,
+ * inventory-first): each `<text>` leaf widens its scope's `x`/`w` to the
+ * union of the declared span and its own estimated ink extent —
+ * `measureTextUnits`, or `measureMonoTextUnits` when `isMonoFontFamily`
+ * reliably reads the mono role off the rendered `font-family` (the same
+ * choice `svg-audit.ts`'s own h-overflow check already makes — see
+ * `isMonoFontFamily`'s derivation comment in `fonts.ts`) — anchored by the
+ * element's own `text-anchor` (start/middle/end). Widening only ever grows a
+ * box, never shrinks it. See docs/contrast-system.md's "Overlap detection
+ * boundary" for what this does and doesn't close.
+ *
  * A container box that only wraps further per-item boxes (e.g. `SvgContent`'s
  * own box around an `icon_cards` component, which itself subdivides into one
  * `data-audit-box` per card) is explicitly excluded via `hasNestedBox` —
@@ -1396,6 +1408,20 @@ function collectLeafBoxes(root: Element): DerivedBox[] {
     if (!top) return
     if (bottom > top.bottom) top.bottom = bottom
     if (label && !top.label) top.label = label
+  }
+
+  // Widens the current scope's declared [x, x+w) span to also cover
+  // [left, right) — a union, never a shrink, so a box only ever grows past
+  // its declared width, exactly mirroring `extend`'s height-only-grows
+  // discipline above. See `collectLeafBoxes`'s own doc comment for why a
+  // `<text>` leaf calls this (borrow-wave Task 4).
+  const extendX = (left: number, right: number) => {
+    const top = stack[stack.length - 1]
+    if (!top) return
+    const newLeft = Math.min(top.x, left)
+    const newRight = Math.max(top.x + top.w, right)
+    top.x = newLeft
+    top.w = newRight - newLeft
   }
 
   const visit = (el: Element, ox: number, oy: number, os: number) => {
@@ -1433,6 +1459,18 @@ function collectLeafBoxes(root: Element): DerivedBox[] {
         const fontSize = Number(el.getAttribute("font-size") ?? DEFAULT_FONT_SIZE) * as
         const y = Number(el.getAttribute("y") ?? 0)
         extend(ay + y * as + fontSize * TEXT_DESCENT_RATIO, content.slice(0, 24))
+        // Same estimator the renderer itself fits text with (mirrors
+        // svg-audit.ts's h-overflow check, down to the mono-role branch —
+        // see that file's own comment on this exact choice), anchored by
+        // text-anchor so a middle/end-anchored leaf's ink extends the
+        // correct direction from its `x`.
+        const tx = ax + Number(el.getAttribute("x") ?? 0) * as
+        const fontFamily = el.getAttribute("font-family") ?? ""
+        const measure = isMonoFontFamily(fontFamily) ? measureMonoTextUnits : measureTextUnits
+        const width = measure(content) * fontSize
+        const anchor = el.getAttribute("text-anchor") ?? "start"
+        const left = anchor === "end" ? tx - width : anchor === "middle" ? tx - width / 2 : tx
+        extendX(left, left + width)
       }
     }
 

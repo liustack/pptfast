@@ -223,6 +223,88 @@ export const CAPACITY = {
    *   headingMaxChars = floor(58.71 / 1.2) = floor(48.93) = 48
    */
   headingMaxChars: 48,
+  /**
+   * bullets 几何硬截断上界（借鉴波任务 2，2026-07-21）。区别于
+   * `PACING_BUDGETS[pacing].bullets.maxUnitsPerItem`（30/40/48，编辑性「精简
+   * 到 2 行内」建议值，本任务不动）——这是与 pacing 无关的物理硬界：过线真的
+   * 会被渲染器截断（省略号丢字），不是「显得啰嗦」。
+   *
+   * 起因：借鉴波事实报告 Q3 节边界扫描证明，旧的「任意 finding 都硬阻断」
+   * 设计下，validateIr 在 44 CJK 字处拒绝生成，而 6 组 主题×排布 组合下真实
+   * 渲染首次截断都在 156 字——约 3.5 倍差距，且该差距是结构性的（不分
+   * CJK/Latin），源头是编辑性预算从未对齐 `bullets.tsx` 真正的渲染安全网。
+   *
+   * `bullets.tsx` 的安全网是两个与 pacing 无关的定值：`MIN_FONT = 14`（收缩
+   * 地板）与 `maxLines: 2`（`layoutItems` 传给 `layoutSvgText` 的换行上限）。
+   * 起始字号由 pacing 决定（`bodyBaselinePx` 20/24/32），但一旦某条要点把
+   * 同组件内共享字号压到地板，容量就只由「地板字号 + 可用宽度」决定，与起始
+   * 字号无关——这正是任务简报「2 行 × 24→14 收缩 × 实测盒宽」公式的来源。
+   *
+   * 实测盒宽（本文件既有「内容区最窄矩形」基准的复用，非新测）：
+   * `content-narrow-column.tsx`（magazine 主题窄栏版式）`COLUMN_W = 880`，
+   * 是本文件已确认的全局最窄单栏内容区（见文件头「magazine 窄栏复核」）。
+   * two_column 对半分（`layout.ts` `COLUMN_GAP = 32`）：
+   *   twoColumnW = (880 - 32) / 2 = 424px
+   * （1/3 宽的 `aside` 侧栏更窄，但该 arrangement 的 schema 注释明确写着侧栏
+   * 留给 callout/quote/kpi「大号观点」，不是 bullets 的常规去处——按下面
+   * 「已知缺口」记录，不并入最坏宽度，否则会把上界拖到比 pacing 编辑预算
+   * 还紧，违背「error 应严格宽于每档 warn」的设计目标。）
+   *
+   * `bullets.tsx` `TEXT_INDENT = 26`（"default" 样式项目符号圆点的左缩进，
+   * 是三种缩进约定里最窄的一档——"numbered"/"checklist" 不占用额外
+   * maxWidth，只在文本本身吃掉 1-2 个前缀 unit，量级相近但更难封闭推导，
+   * 取 "default" 已是更保守的一侧）：
+   *   maxWidth = 424 - 26 = 398px
+   *   capacity = floor(2 行 * 398 / MIN_FONT(14)) = floor(56.86) = 56 units
+   *
+   * 实测复核（非纯公式外推）：`installNodePlatform()` +
+   * `renderSlideSvg()` 对 magazine 主题、`layout: "narrow-column"`、
+   * `arrangement: "two_column"`（两个真实 bullets 组件，避免 <2 块退化单栏
+   * 的陷阱）、"default" 样式，逐字符扫描 CJK 长度：56 字零 `data-truncated`，
+   * 57 字首次出现——与上面 floor(56.86)=56 的推导一致（在 1 unit 内）。
+   *
+   * 安全余量（简报明确要求「留安全余量」）：套用当时全仓唯一的既有渲染安全
+   * 折扣先例（`code.tsx` 的 `MONO_WIDTH_SAFETY`，同一种「给估算器打折」
+   * 思路，不另造新系数）取值 0.9：
+   *   itemOverflowUnits = floor(56 * 0.9) = floor(50.4) = 50
+   *
+   * 与三档 pacing 的 `bullet_item_long` warn 阈值（30/40/48）比较：50 严格
+   * 大于全部三档，包括最紧的 dense（48）——dual-threshold 的「error 恒宽于
+   * warn」在最紧档也成立，只是余量最小（2 units），符合 dense pacing 本身
+   * 就是「更贴边」这一档位语义。
+   *
+   * **借用值澄清（borrow-wave Task 3，2026-07-21，修复轮更新）**：`code.tsx`
+   * 的 `MONO_WIDTH_SAFETY` 经过两轮变动。首轮（同日稍早）用真机 Consolas
+   * 数据重新校准为 0.82（原 0.9 的校准对象是 Menlo，非真身导出字体）。
+   * 修复轮（审校发现首轮的「比例加权估算 × 安全系数」方案对深缩进代码行
+   * 有结构性失效——8/16/24/32 空格缩进的真实偏差 +44.69%~+52.97%，远超
+   * 0.82 系数留出的 ~22% 余量，见 code.tsx 自身推导注释与
+   * task-3-review.md Important-2）换成精确模型：`resolveLayout` 直接按
+   * Consolas 实测的逐字符统一前进宽度（0.5498em/字，见 svg-text-layout.ts
+   * `measureMonoTextUnits` 推导注释）计算，不再有比例估算误差需要安全系数
+   * 去覆盖，`MONO_WIDTH_SAFETY` 因此改为 1.0（不留系数——本任务的替身字体
+   * 变异量测数据不支持任何非零残余量，见 code.tsx 该常量自己的推导注释）。
+   * 上面这条 bullets 容量推导借用的始终只是「0.9 这个具体数字」作为一次性
+   * 安全折扣，不是对 `MONO_WIDTH_SAFETY` 常量的引用——CJK bullets 容量与
+   * mono 字体度量是两件不相关的事，只是曾经共用过同一个圆整系数。
+   * `itemOverflowUnits = 50` 这个结论本身不随 `MONO_WIDTH_SAFETY` 任何一轮
+   * 改变而改变，此处不随之重算，如实记录来源以免误读为仍在引用 `code.tsx`
+   * 的当前值（该常量现在已不再是「打折系数」语义，借用关系至此彻底脱钩）。
+   *
+   * 已知缺口（如实记录，本任务不修）：`ir-quality.ts` 对全部 bullets 样式
+   * 统一套用这一个上界，但 "numbered"/"checklist" 样式的前缀（"1. "/"☐ "）
+   * 里带的空格会把 `svg-text-layout.ts` `tokenize()` 从逐字符换行误判成
+   * 空格分词换行——贪心分词会把整行预算耗在 1-2 字符的前缀上，本任务的探针
+   * 实测这两个样式的真实截断边界并不相同：numbered 约 30-31 units，checklist
+   * 约 23-24 units（同一测法测得），两者都远早于 plain/default/divided 的约
+   * 57-61。这是 `bullets.tsx`/分词器交互的既有
+   * 缺陷，与本任务的 severity 语义重校无关，不在本次改动范围内处理——按
+   * 简报「推导不干净的组件不硬造阈值，回落为 warn+data-truncated 可见性
+   * 兜底」处理：这两个样式下本常量不是滴水不漏的硬界，`bullets.tsx` 对
+   * 全部样式无条件都会设置的 `data-truncated="1"` 仍是这一残余场景的渲染期
+   * 兜底信号。
+   */
+  bullets: { itemOverflowUnits: 50 },
   kpi: {
     /**
      * `kpi_focus` 变体单行铺满最窄 rect.w=1096（`layout.ts` kpi_focus 分支

@@ -36,6 +36,36 @@ export const EN_LONG =
   "comprehensive-distributed-transaction-consistency-guarantee-and-compensation-strategy"
 export const MIXED_LONG =
   "基于 Kubernetes Operator 的 StatefulSet 滚动升级与 PodDisruptionBudget 联动策略 v2.3.1-rc.4 说明"
+/**
+ * SCREAMING_SNAKE_CASE code-content stress line (borrow-wave Task 3 review
+ * round, 2026-07-21 — task-3-review.md's Important finding N1). The
+ * pre-existing `code` page below (see `comparison_quote_code`) only ever
+ * exercised camelCase content (`EN_LONG`, all lowercase/hyphenated) — the
+ * reviewer's audit found that class structurally can't trigger the defect
+ * this fixture is now widened to cover: `measureTextUnits`'s per-character
+ * weights assume uppercase is wider than real (dangerous direction for
+ * `svg-audit.ts`'s proportional-vs-exact mono comparison) while underscore
+ * ("other" bucket) assumes narrower — a realistic SCREAMING_SNAKE_CASE
+ * constant/env-var name is exactly the shape that mixes both in the
+ * dangerous proportion, unlike camelCase (lowercase-dominated, safe-
+ * direction, per task-3-review.md's own camelCase control sample).
+ *
+ * A real constant-declaration line, not a bare identifier: realistic length
+ * for a verbose but real constant name (the kind seen in retry/backoff
+ * config), and — cross-checked against the real `code` component + real
+ * `resolveLayout` at this fixture's own real rendered box width (1088px,
+ * uniform across all 13 themes for this page's "code" arrangement) —
+ * exactly the length window (`export const … = 3`, 129 chars) whose real
+ * rendered width uses `code.tsx`'s normal, only-mildly-shrunk sizing branch
+ * while the proportional audit's overestimate still clears the box budget.
+ * See `svg-audit.test.ts`'s dedicated permanent regression (a shorter,
+ * unshrunk-fontSize repro of the same defect class, using the reviewer's
+ * exact 101-char sample) for the component-level, box-width-swept proof.
+ * This fixture's job is end-to-end coverage across all 13 real themes'
+ * real archetype selection, not an isolated width sweep.
+ */
+export const SCREAMING_SNAKE_LONG =
+  "export const MAX_RETRY_COUNT_FOR_DISTRIBUTED_TRANSACTION_COMPENSATION_STRATEGY_ACROSS_MULTIPLE_AVAILABILITY_ZONES_AND_REGIONS = 3"
 
 /** Diagram node/layer labels: brief calls for "截 20 字" off MIXED_LONG. */
 const DIAGRAM_LABEL = MIXED_LONG.slice(0, 20)
@@ -523,6 +553,25 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           type: "code",
           language: "ts",
           code: `const veryLongIdentifierNameForStressTesting = "${EN_LONG}-${EN_LONG}-${EN_LONG}"`,
+        },
+      ],
+    },
+    // Separate page, not a second line on the page above: `resolveLayout`
+    // sizes every line in one code block off the block's own longest line,
+    // so appending this alongside the (much longer) unbroken-token line
+    // above would just render it at that line's own crushed-to-floor
+    // fontSize — too small for either the real or the assumed width to ever
+    // approach the box budget, silently defeating the fixture. See
+    // `SCREAMING_SNAKE_LONG`'s own derivation comment above.
+    {
+      type: "content",
+      arrangement: "code",
+      heading: "代码压力测试（全大写常量名）",
+      components: [
+        {
+          type: "code",
+          language: "ts",
+          code: SCREAMING_SNAKE_LONG,
         },
       ],
     },

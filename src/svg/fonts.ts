@@ -10,6 +10,73 @@
  * The set is intentionally Windows-guaranteed. Latin faces here (Georgia, Arial,
  * Consolas …) also ship on macOS, but Mac-only faces (PingFang SC) are excluded
  * so a deck authored on a Mac still renders predictably on Windows.
+ *
+ * ---
+ *
+ * Two separate judgment axes, not one (borrow-wave Task 3, 2026-07-21):
+ *
+ * 1. AVAILABILITY (what SAFE_FONTS actually decides) -- will a stock Windows
+ *    or Office install have this face at all, so PowerPoint renders the
+ *    requested glyphs instead of silently substituting a different font.
+ *
+ * 2. METRIC RELIABILITY -- once a face is confirmed available, does the
+ *    layout engine's width model (`measureTextUnits` in
+ *    `src/lib/svg-text-layout.ts`, a font-agnostic per-character-class
+ *    heuristic) still predict that face's real advance width closely enough
+ *    to size/wrap/shrink text without overflow. A font can pass (1) and
+ *    fail (2), or vice versa -- they are independent questions, and
+ *    SAFE_FONTS membership on its own answers only the first one.
+ *
+ * Anthropic's official pptx-generation skill classifies both Georgia and
+ * Consolas -- two of this file's SAFE_FONTS members, and the actual export
+ * faces for pptfast's default theme (consulting: Georgia heading+body) and
+ * every theme's code component (Consolas, all 13 themes, via ROLE_DEFAULT
+ * below) -- as "QA-unreliable" rather than "safe". That is axis (2)
+ * judgment. This file's SAFE_FONTS is axis (1) judgment. The two
+ * classifications disagreeing is not a contradiction to paper over -- they
+ * are answering different questions, and pptfast had never actually
+ * measured axis (2) for these faces before borrow-wave Task 3 (the one
+ * prior width-safety mechanism, `code.tsx`'s `MONO_WIDTH_SAFETY`, was
+ * itself calibrated against Menlo, a macOS preview stand-in, not the real
+ * exported Consolas).
+ *
+ * Task 3's real-font measurement (fontTools `hmtx`-table reads of the
+ * genuine binaries, cross-validated against real-Chromium `canvas.
+ * measureText()` -- see task-3-report.md, borrow-wave scratchpad, not
+ * shipped in this repo) resolved axis (2) for all three fonts this file
+ * actually exports today:
+ *   - Georgia (consulting heading+body default, academic/insight heading):
+ *     measured safe. No width factor added -- see the calibration note
+ *     above `measureTextUnits` in svg-text-layout.ts.
+ *   - Consolas (mono/code, all 13 themes via ROLE_DEFAULT): measured
+ *     genuinely risky in the dangerous (real-wider-than-assumed) direction
+ *     for the *proportional* width model `measureTextUnits` uses. Task 3
+ *     first mitigated this by recalibrating `code.tsx`'s
+ *     `MONO_WIDTH_SAFETY` (0.9 -> 0.82) against the real binary. A same-
+ *     task review round then found deep-indented code could still overflow
+ *     past any fixed safety factor on top of a proportional estimate (see
+ *     `MONO_WIDTH_SAFETY`'s derivation comment in code.tsx), so the mono
+ *     role now skips the proportional model entirely and sizes text with
+ *     an exact per-glyph width -- Consolas's own uniform hmtx advance, via
+ *     `measureMonoTextUnits` in svg-text-layout.ts (see that function's
+ *     derivation comment).
+ *   - Microsoft YaHei (body/fallback ROLE_DEFAULT, six themes' actual
+ *     heading+body face): measured safe. No width factor added.
+ *
+ * A related but distinct gap surfaced during that measurement, not a width
+ * question at all: neither Georgia nor Consolas contains a single CJK
+ * glyph. Any CJK character in text declared under either face never
+ * renders from that face -- PowerPoint substitutes some other, currently
+ * uncontrolled font at the glyph level for just those characters. Width
+ * calibration cannot fix a missing-glyph problem. It is recorded here as a
+ * known, unresolved risk, not a settled one.
+ *
+ * Swapping a SAFE_FONTS member for a more metric-reliable one (e.g.
+ * consulting's Georgia -> Cambria, which Anthropic's skill does classify
+ * safe) is a real, available option -- but it is a user-facing visual
+ * design decision, not a mechanical safety fix, so this task documents it
+ * as an option in task-3-report.md rather than executing it. SAFE_FONTS
+ * membership itself is unchanged by this task.
  */
 
 export type FontRole = "heading" | "body" | "mono"
@@ -93,4 +160,42 @@ export function resolveFontStack(stack: string[], role: FontRole): string {
         ? PREVIEW_FALLBACK.serif
         : PREVIEW_FALLBACK.sans
   return `${face}, ${fallback}`
+}
+
+/**
+ * True when `fontFamily` is a family list `resolveFontStack` above produces
+ * for role `"mono"` — i.e. text whose rendered `font-family` attribute came
+ * from `ctx.fonts.mono` (`code.tsx`, the sole mono-role consumer today),
+ * which sizes that text with `measureMonoTextUnits`'s exact per-glyph model
+ * instead of the proportional `measureTextUnits` every other role still
+ * uses (see that function's derivation comment in svg-text-layout.ts).
+ *
+ * `svg-audit.ts`'s overflow detector imports this rather than hardcoding a
+ * font-name literal of its own, so its "is this mono text" branch can't
+ * silently drift from the renderer's actual role decision (borrow-wave
+ * Task 3 review round, 2026-07-21 — task-3-review.md's Important finding
+ * N1, scratchpad, not shipped in this repo). Before that round's fix,
+ * `code.tsx` and the auditor both sized every role with the same
+ * proportional formula, so the two were structurally self-consistent — the
+ * auditor could never flag content the renderer didn't also (by the same
+ * math) consider oversized. Once the mono role switched to an exact model
+ * while every other role kept estimating, that self-consistency broke: an
+ * auditor still measuring mono text proportionally can flag real,
+ * upper/underscore-heavy code (constant names, SQL keywords) the exact
+ * renderer never actually overflows.
+ *
+ * Matches on `resolveFontStack`'s mono-only fallback suffix
+ * (`PREVIEW_FALLBACK.mono`), not the resolved face name. The face name
+ * varies with theme/input (`ROLE_DEFAULT.mono` = "Consolas" today, but any
+ * `SAFE_FONTS` mono entry a theme lists first would resolve instead — e.g.
+ * tech/journal's `["Consolas", "Courier New"]` stack still resolves to
+ * "Consolas" only because it's listed first); what actually decides which
+ * width model `code.tsx` uses is the *role*, not that specific face.
+ * `resolveFontStack` appends `PREVIEW_FALLBACK.mono` only when
+ * `role === "mono"` — no other role's fallback (`.serif`/`.sans`) can ever
+ * produce this suffix — so keying off it tracks the renderer's real role
+ * decision instead of one face name it currently happens to resolve to.
+ */
+export function isMonoFontFamily(fontFamily: string): boolean {
+  return fontFamily.endsWith(`, ${PREVIEW_FALLBACK.mono}`)
 }

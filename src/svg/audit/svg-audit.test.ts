@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest"
+import { renderToStaticMarkup } from "react-dom/server"
+import { code } from "../components/code"
+import { resolveFontStack } from "../fonts"
+import type { ComponentCtx } from "../components/types"
 import { auditSvgMarkup } from "./svg-audit"
 
 const wrap = (inner: string) =>
@@ -120,5 +124,93 @@ describe("auditSvgMarkup", () => {
     )
     expect(issues).toHaveLength(1)
     expect(issues[0].kind).toBe("h-overflow")
+  })
+})
+
+// borrow-wave Task 3 review round (2026-07-21): a permanent regression for
+// task-3-review.md's Important finding N1. Real `code.render()` (the
+// renderer under test) + real `auditSvgMarkup` (the auditor under test) —
+// neither function is reimplemented or mirrored here — wrapped in a
+// hand-built `data-audit-box` envelope that mirrors `SvgContent.tsx`'s own
+// per-component wrapper (the one piece this test builds by hand, since
+// `code.render()` alone never emits its own box — see that component's own
+// file). `ctx.fonts.mono` comes from a real `resolveFontStack([], "mono")`
+// call, not a hand-typed literal, so this test exercises the exact family
+// string production code emits (confirmed against `fonts.test.ts`'s own
+// pin: `resolveFontStack([], "mono")` === `"Consolas, Menlo, monospace"`).
+//
+// Before this round's fix (bf6131e..17a459a), `code.tsx` sized this text
+// with the exact `measureMonoTextUnits` model while this file's
+// `auditSvgMarkup` still measured every `<text>` proportionally
+// (`measureTextUnits`) — the two disagreed, and upper/underscore-heavy
+// content (constant names, SQL keywords, env-var assignments) could read as
+// "overflowing" a box the real renderer never actually overflowed (the
+// renderer's own `Math.floor` sizing structurally guarantees it doesn't —
+// see `code.tsx`'s `MONO_WIDTH_SAFETY` derivation comment). Confirmed red
+// on pre-fix HEAD (17a459a) with this exact construction: boxW=700 produced
+// `h-overflow: text [54,761] exceeds box x=0 w=700` — byte-identical to the
+// reviewer's own captured repro in task-3-review.md's Important finding N1.
+describe("auditSvgMarkup — mono/proportional alignment with the real code renderer (red-first, borrow-wave Task 3 fix round)", () => {
+  const ctx: ComponentCtx = {
+    colors: {
+      bg: "#FFFFFF",
+      surface: "#F4F4F4",
+      primary: "#006A4E",
+      accent: "#00A878",
+      text: "#1A2421",
+      muted: "#5D6B65",
+      chartPalette: ["#006A4E", "#00A878"],
+    },
+    fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: resolveFontStack([], "mono") },
+    bodyFontPx: 24,
+  }
+
+  // The reviewer's exact repro string (task-3-review.md N1): a realistic
+  // SCREAMING_SNAKE_CASE constant/env-var name, 101 characters, "not a
+  // contrived extreme case" per that finding.
+  const SCREAMING_SNAKE_101 =
+    "CONST_MAX_RETRY_COUNT_FOR_DISTRIBUTED_TRANSACTION_COMPENSATION_STRATEGY_ACROSS_ALL_AVAILABILITY_ZONES"
+
+  it("is really 101 characters (the finding's own premise)", () => {
+    expect(SCREAMING_SNAKE_101).toHaveLength(101)
+  })
+
+  // The reviewer's own sweep found this class false-positives across
+  // boxW 270-1010 (75 of 115 sampled widths for this exact string) — the
+  // lower bound, the reviewer's own cited boxW=700 example, and the upper
+  // bound, so a fix that only narrowly patches one width can't pass here.
+  for (const boxW of [270, 700, 1010]) {
+    it(`renders zero h-overflow findings at boxW=${boxW} (false-positive window per task-3-review.md)`, () => {
+      const box = { x: 0, y: 0, w: boxW }
+      const inner = renderToStaticMarkup(
+        code.render({ type: "code", language: "ts", code: SCREAMING_SNAKE_101 }, box, ctx),
+      )
+      const markup = wrap(`<g data-audit-box="${box.x},${box.y},${box.w}">${inner}</g>`)
+      const issues = auditSvgMarkup(markup)
+      expect(issues.filter((i) => i.kind === "h-overflow")).toEqual([])
+    })
+  }
+
+  // "Proportional roles stay proportional" (this round's explicit scope
+  // fence, task-3-report.md's fix-round entry) — the mono branch must not
+  // generalize into a free pass for other roles. Same uppercase/underscore-
+  // heavy content, same box, rendered under `ctx.fonts.body` instead of
+  // `ctx.fonts.mono`: `measureTextUnits`'s real +20%-class overestimate for
+  // uppercase text must still fire. This uses `SvgContent`'s own
+  // `paragraph`-style raw `<text>` shape (hand-built, since no shared
+  // component renders arbitrary body text at a fixed size/box this
+  // directly) rather than a second real component, specifically to prove
+  // the *auditor's* branch — not just "does code.tsx happen to call
+  // measureMonoTextUnits" — actually keys off font-family, not content.
+  it("still flags proportional (non-mono) text with the same content as h-overflow (scope fence: mono-only, not all roles)", () => {
+    const content = SCREAMING_SNAKE_101
+    const boxW = 700
+    const markup = wrap(
+      `<g data-audit-box="0,0,${boxW}">` +
+        `<text x="0" y="20" font-size="15" font-family="${ctx.fonts.body}">${content}</text>` +
+        `</g>`,
+    )
+    const issues = auditSvgMarkup(markup)
+    expect(issues.filter((i) => i.kind === "h-overflow")).toHaveLength(1)
   })
 })

@@ -47,6 +47,43 @@ export interface SvgTextLayout {
 // really does render narrower than a CJK glyph.
 const WIDE_CHAR_RE = /[\u2014\u2018-\u201f\u2e80-\u9fff\uff00-\uffef]/
 
+// Export-font calibration (borrow-wave Task 3, 2026-07-21): this weight
+// table is font-agnostic by design, but heading/body text ultimately
+// exports in whatever `resolveFontFace` (fonts.ts) resolves -- Georgia (the
+// consulting theme's default heading+body face, and academic/insight's
+// heading face) and Microsoft YaHei (the resolved body face for 12 of
+// pptfast's 13 themes -- declared directly by 10, and by academic/insight's
+// role-default fallback since neither's declared body stack hits
+// SAFE_FONTS -- every theme except consulting, whose body resolves to
+// Georgia). Both were measured against the real
+// exported binaries (Georgia: the genuine macOS system font. Microsoft
+// YaHei: the genuine binary Microsoft ships inside Office for Mac's private
+// font bundle, identity-confirmed via that file's own `name` table, not a
+// visually-similar stand-in like PingFang SC) using fontTools' `hmtx`
+// advance-width table, cross-validated to 4 decimal places against a real
+// Chromium `canvas.measureText()` reading of the identical file. Per-class
+// deviation from this file's weights (positive = real wider = the
+// dangerous direction, since `wrap:false` on export turns an underestimate
+// into visible horizontal overflow, not a caught/wrapped line):
+//   Georgia   upper -0.3%, lower/digit -10.4%, space -31.1%, other -17.0%
+//   YaHei     cjk +0.2%, upper -1.4%, lower/digit -0.6%, space -15.5%, other -2.2%
+// Every Georgia class is safe-direction (real narrower, which only leaves
+// more margin). YaHei's cjk class is a hair on the dangerous side of zero
+// (+0.2%) but well inside the 3% no-action band this task's controlling
+// brief set (mirroring the `MONO_WIDTH_SAFETY` precedent's tolerance
+// discipline). Every other YaHei class is safe-direction too. Conclusion:
+// no-action -- this table needs no per-role safety factor for Georgia or
+// Microsoft YaHei. Full corpus and methodology: task-3-report.md
+// (borrow-wave scratchpad, not shipped in this repo).
+//
+// Separately (not a width-calibration finding, recorded here since it
+// surfaced during this same measurement): neither Georgia nor Consolas
+// (src/svg/components/code.tsx) has any CJK glyph in its `cmap` at all --
+// a CJK character in text declared under either face never renders from
+// that face -- PowerPoint substitutes some other, currently uncontrolled
+// font at the glyph level. That is a font-identity gap, not a width-
+// estimation gap, and no width safety factor can address it -- see
+// task-3-report.md's "unexpected findings" section.
 export function measureTextUnits(text: string): number {
   return Array.from(text).reduce((sum, char) => {
     if (/\s/.test(char)) return sum + 0.35
@@ -54,6 +91,62 @@ export function measureTextUnits(text: string): number {
     if (/[A-Z]/.test(char)) return sum + 0.66
     if (/[a-z0-9]/.test(char)) return sum + 0.56
     return sum + 0.46
+  }, 0)
+}
+
+// Mono-role exact width model (borrow-wave Task 3 fix round, 2026-07-21).
+// `measureTextUnits` above is a *proportional* heuristic -- per-character-
+// class weights calibrated for variable-width faces, where a space really
+// is narrower than a letter. Code (`code.tsx`) renders in `ctx.fonts.mono`,
+// which resolves to Consolas for all 13 themes (`fonts.ts` ROLE_DEFAULT) --
+// a genuinely monospace face, where "character-class width" isn't a
+// heuristic to approximate, it's a known constant: every glyph advances
+// the same fixed amount, read directly off the font.
+//
+// Consolas's own `hmtx` (advance-width) table gives 1126 font units at
+// unitsPerEm=2048 for *every* glyph sampled (space, upper, lower, digit,
+// punctuation alike):
+//   MONO_ADVANCE_EM = 1126 / 2048 = 0.5498 em
+// -- the defining, unfakeable signature of a monospace face (contrast
+// Georgia's 0.24-0.66 em spread across character classes in the
+// calibration note above `measureTextUnits`. A variable-width font simply
+// cannot show this uniformity). Measured twice, independently, to the same
+// 4 decimal places: borrow-wave Task 3's fontTools `hmtx` read of the
+// genuine Consolas.ttf (Microsoft Office for Mac's private font bundle,
+// identity-confirmed via that file's own `name` table), and that task's
+// review, which re-derived it from a from-scratch Node.js sfnt/hmtx parser
+// sharing no code with fontTools (see task-3-report.md / task-3-review.md,
+// borrow-wave scratchpad, not shipped in this repo).
+//
+// The proportional weights structurally underestimate this face's
+// whitespace and punctuation as a result (+57.1%/+19.5% real-vs-assumed
+// for the space/"other" classes, same corpus) -- and that gap has no
+// ceiling: it grows with indentation depth, since a deep-indent line is
+// almost entirely the single most-underestimated class. See
+// MONO_WIDTH_SAFETY's derivation comment in code.tsx for what that did to
+// the safety-factor approach this model replaces.
+//
+// The one exception: CJK/wide characters (`WIDE_CHAR_RE`, shared with
+// `measureTextUnits` above) stay at 1.0 em/char, not 0.5498. Consolas's
+// `cmap` contains zero CJK glyphs at all (task-3-report.md's S4.1 finding,
+// exhaustively re-verified in task-3-review.md by scanning every cmap
+// segment/group, not sampling) -- a CJK character declared under a mono
+// role never actually renders from Consolas. PowerPoint silently
+// substitutes some other, uncontrolled font at the glyph level. That
+// substituted font's real metrics are unknowable (it isn't even
+// deterministic which font it will be), so this keeps the same 1.0 em/char
+// assumption `measureTextUnits`'s WIDE_CHAR_RE class already uses for CJK
+// (consistent with the sibling measurement of Microsoft YaHei's CJK class
+// landing at +0.16%, i.e. ~1em -- see the calibration note above
+// `measureTextUnits`) rather than invent a new, unmeasured number. This is
+// a font-identity gap, not a metrics gap -- see fonts.ts, which records it
+// as a known, unresolved risk no width model can fix.
+const MONO_ADVANCE_EM = 1126 / 2048
+
+export function measureMonoTextUnits(text: string): number {
+  return Array.from(text).reduce((sum, char) => {
+    if (WIDE_CHAR_RE.test(char)) return sum + 1
+    return sum + MONO_ADVANCE_EM
   }, 0)
 }
 
@@ -162,6 +255,26 @@ export function truncateToUnits(text: string, maxUnits: number): string {
   }
   if (out === "") {
     return measureTextUnits("…") > maxUnits ? "" : "…"
+  }
+  return `${out}…`
+}
+
+// Mono sibling of `truncateToUnits` above, measuring with
+// `measureMonoTextUnits` instead of `measureTextUnits` -- a separate
+// function rather than a parameterized one so `truncateToUnits`'s existing
+// callers (bullets/kpi/citation/steps/icon-cards/BigNumber/emphasis/
+// heading-fit, all proportional-model roles) are untouched by this borrow-
+// wave Task 3 fix-round addition. Only `code.tsx` calls this one.
+export function truncateToMonoUnits(text: string, maxUnits: number): string {
+  if (measureMonoTextUnits(text) <= maxUnits) return text
+  const budget = maxUnits - 1 // 预留省略号，与 truncateToUnits 同一约定
+  let out = ""
+  for (const ch of Array.from(text)) {
+    if (measureMonoTextUnits(out + ch) > budget) break
+    out += ch
+  }
+  if (out === "") {
+    return measureMonoTextUnits("…") > maxUnits ? "" : "…"
   }
   return `${out}…`
 }

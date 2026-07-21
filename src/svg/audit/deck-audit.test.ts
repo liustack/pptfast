@@ -1064,6 +1064,57 @@ describe("findOverlapIssues — synthetic markup", () => {
     const issues = findOverlapIssues(markup)
     expect(issues).toHaveLength(1)
   })
+
+  // Borrow-wave Task 4 (inventory-first): fact-report Q4's Case B, ported
+  // from that task's read-only probe (q4-overlap-probe.ts, scratchpad, not
+  // shipped in this repo) into a permanent pin. Box A's declared width
+  // (200px) leaves a clear 40px declared gap before box B — but box A's
+  // `<text>` is long enough that its real ink, measured the same way
+  // `fitSvgLine`/`measureTextUnits` would size it at this font-size, runs
+  // hundreds of px past the declared box and deep into box B's territory.
+  // Pre-fix, `collectLeafBoxes` never read a `<text>` element's `x` or its
+  // content's width at all — only ever widened a box's inferred *bottom*
+  // (height) from a text baseline — so this exact pair reported zero
+  // issues (confirmed red against the pre-fix source before this test was
+  // added to the suite). This is the false-negative half fact-report Q4
+  // found and this task's inventory (task-4-report.md, scratchpad) found a
+  // real, shipping instance of (matrix.tsx's `x_title`) inside a live
+  // `data-audit-box` scope, not just a synthetic hypothetical.
+  it("flags a declared-gap pair when box A's real text ink overruns into neighbor B (Q4 Case B false negative)", () => {
+    const longText = "This label is deliberately far too long for its declared box width"
+    // Box A is hand-rolled (text-only, no card chrome — a bare label like
+    // matrix.tsx's x_title) rather than built from `box()` above, since the
+    // point is a leaf whose *only* geometry is the text itself. Box B reuses
+    // `box()` for its background rect so it registers at its declared
+    // position via that helper's own translate wrapper, the same way every
+    // other rect-backed box in this describe block does.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <g data-audit-box="100,300,200"><text x="100" y="320" font-size="24">${longText}</text></g>
+      ${box(340, 300, 300, 80)}
+    </svg>`
+    const issues = findOverlapIssues(markup)
+    expect(issues).toHaveLength(1)
+  })
+
+  // Companion pin for Q4's *other* half (Case A) — a declared-box false
+  // positive real glyphs don't back up. This task's decision rule (per the
+  // controlling brief) only closes the false-negative half above: widening
+  // a box from real ink never *shrinks* it, so a pair whose declared boxes
+  // already overlap while the real glyphs inside stay apart keeps
+  // reporting the exact same (false-positive) finding, unchanged, both
+  // before and after this task's fix — this pins that the fix doesn't
+  // quietly also change Case A's behavior. Not a new capability: recorded
+  // here as a stays-the-same negative control, same values as the original
+  // Case A repro in q4-overlap-probe.ts (scratchpad, not shipped in this
+  // repo) and docs/contrast-system.md's "Overlap detection boundary".
+  it("still flags Case A's declared-box overlap unchanged (real glyphs stay apart — a documented, un-closed limitation)", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <g data-audit-box="100,100,300"><text x="100" y="160" font-size="40">Q1</text></g>
+      <g data-audit-box="300,100,300"><text x="300" y="160" font-size="40">Q2</text></g>
+    </svg>`
+    const issues = findOverlapIssues(markup)
+    expect(issues).toHaveLength(1)
+  })
 })
 
 describe("auditDeck — finding shape contract", () => {

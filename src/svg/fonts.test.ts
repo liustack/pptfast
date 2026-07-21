@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { resolveFontFace, resolveFontStack, SAFE_FONTS } from "./fonts"
+import { isMonoFontFamily, resolveFontFace, resolveFontStack, SAFE_FONTS } from "./fonts"
 
 describe("resolveFontFace", () => {
   it("returns the first stack member that is a known-safe font", () => {
@@ -55,5 +55,40 @@ describe("resolveFontStack", () => {
 
   it("appends a monospace preview fallback for the mono role", () => {
     expect(resolveFontStack(["Fira Code"], "mono")).toBe("Consolas, Menlo, monospace")
+  })
+})
+
+// borrow-wave Task 3 review round (2026-07-21, task-3-review.md Important
+// finding N1): `svg-audit.ts`'s overflow detector keys its mono-vs-
+// proportional measurement branch off this function instead of a duplicated
+// font-name literal. These pin the exact renderer-emitted values it must
+// recognize, and the negatives it must not.
+describe("isMonoFontFamily", () => {
+  it("recognizes every resolveFontStack('mono', ...) output, regardless of which SAFE_FONTS mono face resolved", () => {
+    // Every theme in this repo omits `fonts.mono` or lists Consolas first
+    // (fonts.ts's own file header), so this is the value `ctx.fonts.mono`
+    // actually holds in every shipped deck today.
+    expect(isMonoFontFamily(resolveFontStack([], "mono"))).toBe(true)
+    // A hypothetical theme whose stack resolves to a *different* SAFE_FONTS
+    // mono member must still be recognized — the role decides the width
+    // model, not the specific face name (see this function's derivation
+    // comment in fonts.ts).
+    expect(isMonoFontFamily(resolveFontStack(["Courier New"], "mono"))).toBe(true)
+    expect(isMonoFontFamily(resolveFontStack(["Lucida Console"], "mono"))).toBe(true)
+  })
+
+  it("rejects every resolveFontStack('heading'|'body', ...) output", () => {
+    expect(isMonoFontFamily(resolveFontStack(["Georgia"], "heading"))).toBe(false)
+    expect(isMonoFontFamily(resolveFontStack(["Microsoft YaHei"], "body"))).toBe(false)
+    expect(isMonoFontFamily(resolveFontStack([], "heading"))).toBe(false)
+    expect(isMonoFontFamily(resolveFontStack([], "body"))).toBe(false)
+  })
+
+  it("rejects a bare face name with no fallback suffix (e.g. a hand-built test ctx)", () => {
+    expect(isMonoFontFamily("Consolas")).toBe(false)
+  })
+
+  it("rejects an empty string", () => {
+    expect(isMonoFontFamily("")).toBe(false)
   })
 })

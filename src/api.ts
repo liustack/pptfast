@@ -45,6 +45,24 @@ export interface ValidateResult {
    * least one rewrite happened; informational, never gates `ok` on its own.
    */
   normalized?: string[]
+  /**
+   * Backward-compatible addition (borrow wave, Task 2 — dual-threshold
+   * severity recalibration): warn-severity {@link checkIrQuality} findings
+   * (editorial-budget codes — `missing_heading`/`long_heading`/`density`/
+   * `bullets_overflow`/`bullet_item_long`/`big_number_no_kpi`), formatted the
+   * same shape {@link formatIssues} already prints for `errors` (page/id/path
+   * all included). Present only when at least one warn-severity finding
+   * exists, and never gates `ok` on its own — that is exactly what moved
+   * these findings off `errors` and onto here. Can be present alongside a
+   * failing (`ok:false`) result too, whenever `checkIrQuality` itself ran
+   * (an *earlier* hard gate — schema, theme id, layout applicability,
+   * full-body exclusivity, boundary-page content, duplicate ids, narrative —
+   * short-circuits before `checkIrQuality` runs at all, so a deck rejected
+   * by one of those never reaches this field either way, see `validateIr`'s
+   * own body for the exact gate order). {@link formatWarnings} renders this
+   * array as CLI-ready `"warning: ..."` lines.
+   */
+  warnings?: ValidationIssue[]
 }
 
 /**
@@ -106,6 +124,24 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `a bullet item is too long for ${b.pacing} pacing — keep it within about 2 lines`
         : "a bullet item is too long — keep it within about 2 lines"
     }
+    case "bullet_item_overflow":
+      // Task 2 (borrow wave, dual-threshold severity): the geometric
+      // counterpart to `bullet_item_long` above — severity "error", not
+      // "warn", so this is the one bullets message that actually blocks
+      // `ok`. `CAPACITY.bullets.itemOverflowUnits` is a flat, pacing-
+      // independent ceiling (see its own derivation comment, capacity.ts),
+      // unlike `bullet_item_long`'s per-pacing `maxUnitsPerItem`.
+      //
+      // Wording (review fix round): "will be truncated" overstated it for
+      // the plain/default/divided styles, where the ceiling carries a
+      // deliberate safety margin below their real truncation edge (~56-57
+      // units vs. this 50-unit ceiling) — an item past the ceiling can
+      // still render with zero data-truncated. "can truncate" covers both
+      // that margin and the numbered/checklist styles, whose real edge
+      // sits below this ceiling (capacity.ts's own derivation comment
+      // records the gap) so a truncation there is a real, not merely
+      // possible, outcome.
+      return `a bullet item exceeds the render-safety limit (${CAPACITY.bullets.itemOverflowUnits} width units) and can truncate — shorten it substantially or split the point across two items`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     default:
@@ -286,16 +322,33 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
  * Validate raw JSON against the IR schema, then — once it parses — resolve
  * `narrative` (`resolveNarrative`, spec §5: an unrecognized preset name is a
  * `narrative`-path error, page-less) and run the content-quality gate
- * (`checkIrQuality`, passed the resolved axes) against the parsed IR. All
- * stages must pass for `ok: true`. Quality findings are reported the same
- * way as schema errors (page-scoped, 1-based). `checkIrQuality` itself tags
- * findings "warn" vs "error", but that split was designed for its original
- * consumer (surfacing informational warnings in a UI after generation, per
- * its own docstring) — here it is the pre-generation hard gate, so any
- * finding blocks (`ok: false`), not only "error"-severity ones. Treating
- * "warn" findings (e.g. a cover with no heading) as advisory-only would
- * defeat the point of wiring this in: the spec's core principle is a hard
- * protocol gate, not hoped-for prompt compliance.
+ * (`checkIrQuality`, passed the resolved axes) against the parsed IR. Every
+ * hard-gate stage (schema, theme id, layout applicability, full-body
+ * exclusivity, boundary-page content, duplicate ids, narrative) must pass for
+ * `ok: true`, same as before. Quality findings are reported the same way as
+ * schema errors (page-scoped, 1-based).
+ *
+ * Dual-threshold severity (borrow wave, Task 2 — recalibrated from the prior
+ * "any finding blocks" design): `checkIrQuality`'s own "warn" vs "error" tag
+ * is now respected, not flattened. Only "error"-severity findings
+ * (`empty_deck`, `bullet_item_overflow` — content genuinely lost: an empty
+ * deck, or a bullet item long enough to hit `bullets.tsx`'s MIN_FONT floor
+ * and actually get truncated) gate `ok`. "warn"-severity findings — the
+ * editorial-budget codes (`missing_heading`/`long_heading`/`density`/
+ * `bullets_overflow`/`bullet_item_long`/`big_number_no_kpi`) — surface on
+ * {@link ValidateResult.warnings} instead: visible to every caller (the SDK,
+ * the CLI's `validate`/`render` pre-flight), never blocking. This reverses
+ * the prior posture (this comment used to read "any finding blocks... not
+ * only 'error'-severity ones") because the evidence behind it did not hold:
+ * a boundary scan (borrow-wave fact-report, Q3) found the editorial bullets
+ * threshold blocking content roughly 3.5x below where `bullets.tsx`'s own
+ * render safety net (2-line wrap, shrink to a 14px floor) actually starts
+ * losing characters — so the hard gate was rejecting deck content that
+ * would have rendered with zero visible defect, and a tight hard gate on an
+ * editorial (not geometric) threshold taught truncate-content-to-pass
+ * workarounds rather than catching real loss. `generatePptx`'s default path
+ * inherits this unchanged (`if (!v.ok) throw`) — it already only ever
+ * blocked on `ok`, never inspected `errors`/`warnings` directly.
  *
  * Before any of that, one deterministic alias pass runs
  * ({@link normalizeComponentAliases}, W5 task 4) for the component
@@ -449,7 +502,7 @@ export function validateIr(input: unknown): ValidateResult {
   // the sole issue whenever it fires) — safe to read `.id` off it unguarded.
   // `slideId` (W5 whole-branch review finding 2) set only when that slide
   // itself has one, same as checkLayoutApplicability's own producer above.
-  const errors: ValidationIssue[] = quality.map((issue) =>
+  const toIssue = (issue: QualityIssue): ValidationIssue =>
     issue.code === "empty_deck"
       ? { path: "slides", message: describeQualityIssue(issue) }
       : {
@@ -457,9 +510,20 @@ export function validateIr(input: unknown): ValidateResult {
           message: describeQualityIssue(issue),
           page: issue.slide + 1,
           ...(r.data.slides[issue.slide]!.id !== undefined ? { slideId: r.data.slides[issue.slide]!.id } : {}),
-        },
-  )
-  return withNormalized({ ok: false, errors })
+        }
+  // Dual-threshold severity split (borrow wave, Task 2 — see this
+  // function's own doc comment above for the evidence/rationale): only
+  // "error"-severity findings gate `ok`. "warn"-severity findings surface on
+  // `warnings` regardless of which branch fires below — a rejected
+  // (`ok: false`) deck's warnings are still worth seeing, not just a clean
+  // one's.
+  const warnFindings = quality.filter((issue) => issue.severity === "warn")
+  const warnings = warnFindings.length > 0 ? warnFindings.map(toIssue) : undefined
+  const errorFindings = quality.filter((issue) => issue.severity === "error")
+  if (errorFindings.length > 0) {
+    return withNormalized({ ok: false, errors: errorFindings.map(toIssue), ...(warnings ? { warnings } : {}) })
+  }
+  return withNormalized({ ok: true, ir: r.data, errors: [], ...(warnings ? { warnings } : {}) })
 }
 
 /**
@@ -481,6 +545,20 @@ export function formatIssues(errors: ValidationIssue[]): string {
       return `page ${e.page}${idSuffix} — ${e.path}: ${e.message}`
     })
     .join("\n")
+}
+
+/**
+ * `"warning: page 2 (p-kpi) — path: message"` per {@link ValidateResult.warnings}
+ * entry (borrow wave, Task 2) — the CLI warn-line convention: `pptfast
+ * validate`/`render` print one of these per warn-severity finding, exit 0
+ * regardless (only `errors` drives the exit code — see `cli/commands.ts`'s
+ * `runValidate`/`runRender`). Formats each issue alone through
+ * {@link formatIssues} and prefixes the result rather than duplicating its
+ * page/id/path shape — a warning line is byte-identical to an error line
+ * past the leading label.
+ */
+export function formatWarnings(warnings: ValidationIssue[]): string {
+  return warnings.map((w) => `warning: ${formatIssues([w])}`).join("\n")
 }
 
 /** Render a single slide to standalone SVG markup (preview / self-check). */

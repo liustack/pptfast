@@ -63,7 +63,7 @@ const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
 | Command | Does |
 |---|---|
 | `render <target> -o <out.pptx> [--theme <id>] [--style <file>] [--draft]` | Validate + render to a `.pptx` — `target` is an IR JSON file, a deck project directory, or a bare deck name (see Deck projects) |
-| `validate <target>` | Check the IR, print page-scoped errors — same `target` forms as `render` |
+| `validate <target>` | Check the IR, print page-scoped errors and advisory warnings — same `target` forms as `render` |
 | `audit <target> [--json] [--pixels]` | Deterministic geometry review (overflow/out-of-bounds/low-contrast/overlap/content-truncated/content-dropped) — same `target` forms as `render`, exits 1 when it finds anything (see Auditing) |
 | `spec validate <spec.json>` | Check a deck spec against the schema and strategy-aware hard gates (see Deck projects) |
 | `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
@@ -110,7 +110,7 @@ A theme bundles a style (design tokens), a brand (identity chrome), and a layout
 
 A narrative is three axes, independent of theme (visual style), that set editorial discipline: `strategy` (how the argument is built — `pyramid`, `storytelling`, `instructional`, `showcase`, `briefing`), `pacing` (how dense the content is — `dense`, `balanced`, `spacious`), and `audience` (a tone anchor — `executive`, `technical`, `customer`, `public`, no rendering effect yet). Set the IR's top-level `narrative` to a named preset string (e.g. `"boardroom-report"`) or a partial axes object (e.g. `{ "pacing": "spacious" }`) — an omitted axis, or an omitted `narrative` field entirely, falls back to `general` (`briefing` × `balanced` × `public`). An unknown preset name or axis value is a hard validate error listing what's available.
 
-`pacing` drives the content-quality gate and the body-text baseline (paragraph/bullets/callout only — every other component's own type scale and the heading system are unaffected): the per-slide component budget and the bullets budget (item count and per-item length) both tighten from `dense` toward `spacious`, while the body font size grows the other way — density is additionally capped by whichever layout the slide resolves to, whichever ceiling is tighter.
+`pacing` drives the content-quality gate and the body-text baseline (paragraph/bullets/callout only — every other component's own type scale and the heading system are unaffected): the per-slide component budget and the bullets budget (item count and per-item length) both tighten from `dense` toward `spacious`, while the body font size grows the other way — density is additionally capped by whichever layout the slide resolves to, whichever ceiling is tighter. These are editorial guidance, not hard limits: `validate` reports them as warnings and still succeeds — only genuine render-safety ceilings (below) can block generation.
 
 | pacing | body text | components / slide | bullets |
 |---|---|---|---|
@@ -118,13 +118,13 @@ A narrative is three axes, independent of theme (visual style), that set editori
 | `balanced` (the default) | 24px | 4 | up to 5 items, ~40 characters each |
 | `spacious` | 32px | 3 | up to 4 items, ~30 characters each |
 
-Bullets shrink below their tier's baseline to fit when needed, down to a 14px floor, before any overflow handling kicks in. `pptfast validate` reports the exact numbers that applied to each slide.
+Bullets shrink below their tier's baseline to fit when needed, down to a 14px floor, before any overflow handling kicks in. For the `default`, `plain`, and `divided` bullet styles, an item long enough to still overflow at that floor is a hard validate error — distinct from, and looser than, the per-pacing length guidance above — since it genuinely loses text to an ellipsis at render, not just reads as verbose. The `numbered` and `checklist` styles can truncate before reaching that error threshold — for those two, `pptfast audit`'s `content-truncated` finding is what catches it, not `validate`. `pptfast validate` reports the exact numbers that applied to each slide.
 
 Run `pptfast narratives [--json]` to list the named presets (each carries soft theme recommendations — a starting suggestion, never a constraint) plus the raw axes tables.
 
 ## Layout selection
 
-When a slide omits `layout`, pptfast resolves one automatically in four deterministic steps: the page type's full registry pool → the theme's layout set for that page type (full by default, see Themes above) → the narrative's `strategy` softly upweights (×3) a handful of content-layout ids that suit that strategy, everything else stays at a ×1 floor (cover/chapter/ending are never weighted — their character comes from the theme, not the strategy) → a seeded weighted pick, swapped deterministically to the runner-up when it would repeat the immediately preceding slide's layout. An explicit `layout` always wins and skips every step above. Whether the content actually fits is enforced separately by `validate`'s density gate, never by selection — so editing a page's content cannot silently flip its layout.
+When a slide omits `layout`, pptfast resolves one automatically in four deterministic steps: the page type's full registry pool → the theme's layout set for that page type (full by default, see Themes above) → the narrative's `strategy` softly upweights (×3) a handful of content-layout ids that suit that strategy, everything else stays at a ×1 floor (cover/chapter/ending are never weighted — their character comes from the theme, not the strategy) → a seeded weighted pick, swapped deterministically to the runner-up when it would repeat the immediately preceding slide's layout. An explicit `layout` always wins and skips every step above. Whether the content fits is flagged separately by `validate`'s density gate (editorial guidance, not a hard block — see Narratives above), never by selection — so editing a page's content cannot silently flip its layout.
 
 The pick is fully deterministic — the same IR always resolves the same way, so preview and the final render never disagree. Staying stable *across revisions* (editing one page without reshuffling every other page's auto-picked layout) additionally needs a persisted `seed`, resolved in this order:
 

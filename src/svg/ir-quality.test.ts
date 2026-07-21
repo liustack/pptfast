@@ -389,6 +389,47 @@ describe("checkIrQuality", () => {
     })
   })
 
+  // ── bullet_item_overflow (borrow wave, Task 2: geometric hard ceiling,
+  // dual-threshold severity recalibration) — see CAPACITY.bullets
+  // .itemOverflowUnits's own derivation comment (capacity.ts) for the
+  // formula (2 lines x MIN_FONT=14 floor x narrowest two-column width) and
+  // its empirical confirmation. Pacing-independent by construction (the
+  // floor and wrap cap bullets.tsx uses are flat constants) — unlike
+  // bullet_item_long, this fires the same regardless of which pacing axis
+  // resolved.
+
+  describe("bullet_item_overflow (geometric hard ceiling, severity error)", () => {
+    it(`does NOT report bullet_item_overflow at exactly ${CAPACITY.bullets.itemOverflowUnits} measureTextUnits`, () => {
+      const atCeiling = "长".repeat(CAPACITY.bullets.itemOverflowUnits) // CJK weight = 1.0/字
+      const ir = makeIR([
+        { type: "content", heading: "列表页", components: [{ type: "bullets", items: [atCeiling] }] },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("bullet_item_overflow")
+    })
+
+    it(`reports bullet_item_overflow (severity error) over ${CAPACITY.bullets.itemOverflowUnits} measureTextUnits, alongside bullet_item_long (different questions, neither supersedes the other)`, () => {
+      const over = "长".repeat(CAPACITY.bullets.itemOverflowUnits + 1)
+      const ir = makeIR([
+        { type: "content", heading: "列表页", components: [{ type: "bullets", items: [over] }] },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("bullet_item_overflow")
+      expect(issues.find((i) => i.code === "bullet_item_overflow")!.severity).toBe("error")
+      expect(codes(issues)).toContain("bullet_item_long")
+    })
+
+    it("fires the same regardless of pacing (flat geometric ceiling, not PACING_BUDGETS-scoped)", () => {
+      const over = "长".repeat(CAPACITY.bullets.itemOverflowUnits + 1)
+      const ir = makeIR([
+        { type: "content", heading: "列表页", components: [{ type: "bullets", items: [over] }] },
+      ])
+      for (const pacing of ["dense", "balanced", "spacious"] as Pacing[]) {
+        const issues = checkIrQuality(ir, pacingAxes(pacing))
+        expect(codes(issues)).toContain("bullet_item_overflow")
+      }
+    })
+  })
+
   // ── placeholder pages (W5 task 1): quality gate skips all content rules ──
 
   it("a placeholder page reports no issues even though it is missing a heading", () => {

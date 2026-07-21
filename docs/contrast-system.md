@@ -36,6 +36,79 @@ The split exists because a badge/chip small enough to correctly *not* count as a
 
 **Residual, distinct limitation found while closing the above:** `pathBoundingBox`'s bbox is now tight, but `rectShape`'s own containment test is still an axis-aligned-box check, never the path's true outline — for a donut/pie wedge (`chart-svg.tsx`'s `renderDonut`/`renderPie`), a wide-angle slice's *exact* bbox can still legitimately span across the ring's own hole, so the donut's center total-label can misattribute to a wedge's fill instead of whatever's really behind the (transparent) hole. Confirmed empirically during this fix's reclassification sweep — the arc-grammar fix roughly halves the misattribution rate in a synthetic multi-theme probe but doesn't eliminate it, because no arc parameter is being misread here (the arc's own bbox is exact); it's the AABB-vs-real-outline approximation every `rectShape`-tested shape accepts that breaks down specifically for an annulus with a real hole. Not fixed here — recorded as a fresh, separately-scoped backlog item, same "document the tool limitation, don't chase it" precedent this file's history is already full of.
 
+## Overlap detection boundary (`findOverlapIssues`, same file)
+
+`findOverlapIssues` pairwise-compares `collectLeafBoxes`' output — one box
+per leaf `data-audit-box`, which only ever carries `x,y,w` (never a height,
+by the existing protocol's own design). Height is reconstructed per box from
+whatever geometry is drawn inside it — a background/icon `<rect>`'s own real
+extent when there is one, or, for a text-only box with no such rect,
+`TEXT_DESCENT_RATIO` applied to each `<text>`'s baseline. Width starts from
+that declared `w` too, but (borrow-wave Task 4, inventory-first) is no
+longer a hard ceiling: each `<text>` leaf also widens its box's `x`/`w` to
+the union of the declared span and its own estimated ink extent —
+`measureTextUnits`, or `measureMonoTextUnits` when `isMonoFontFamily`
+reliably reads the mono role off the rendered `font-family` — anchored by
+that element's own `text-anchor`, the same choice `svg-audit.ts`'s sibling
+h-overflow check already makes. Either way, this is still
+**container-declared-geometry precision, not glyph-ink precision** — the
+same "measured vs. real" distinction this file's ink/contrast sections keep
+surfacing, here applied to position instead of color: widening a box from an
+*estimate* narrows the gap to real rendered ink, it does not close it.
+
+That makes the detector structurally blind to two collision classes, both a
+direct consequence of comparing declared/estimated boxes instead of
+genuinely rendered ink, not of insufficient calibration:
+
+- A padded declared box can overlap a neighbor while the real glyphs inside
+  stay far apart — a possible false positive. In practice this needs no
+  chasing: `layoutContentFit` shrinks gaps or drops components rather than
+  ever letting two placed components' boxes collide, so a real, IR-driven
+  positive fixture isn't reachable through this renderer's normal layout
+  path at all (this function's own doc comment records that directly).
+  Unaffected by Task 4's width estimate — widening a box only ever grows it,
+  never shrinks it, so this half behaves exactly as before (pinned unchanged
+  by `deck-audit.test.ts`'s Case A synthetic test).
+- Text that would render wider than its declared box can overflow into a
+  neighboring box the detector still reports as clear — a false negative.
+  Task 4 **narrows** this, it does not close it. Two gaps remain, both
+  recorded rather than chased:
+  - The added width is still an *estimate*, not a real glyph-metrics
+    measurement, so it carries the same per-exported-font calibration gap
+    this file already tracks from the color side: `render.ts`'s deliberate
+    `opts.wrap = false` choice lets a width-estimate miss surface as visible
+    horizontal overflow instead of silent re-wrapping, and a font
+    substitution PowerPoint makes at open time that the estimate didn't
+    anticipate can still under-shoot this detector's now-wider box, the same
+    way it could always under-shoot the renderer's own `fitSvgLine` call.
+    That is the estimator/layout shared-blindness structural gap (borrow-
+    wave Task 3 review's Important-1 finding) — extending `collectLeafBoxes`
+    narrows the amount of *unwidened* text this detector misses, it does not
+    make estimate-vs-real-glyph drift go away.
+  - The estimate only ever reaches text inside a live `data-audit-box`
+    scope. Task 4's grep inventory (task-4-report.md, borrow-wave
+    scratchpad, not shipped in this repo) found the codebase's largest
+    concentration of unprotected, user-content-level `<text>` sits *outside*
+    that scope entirely, by the same construction that already excludes
+    decoration/motif layers from this walk: `BrandChrome.tsx`'s footer
+    (org/date/version), 18 cover/chapter/ending archetypes' own org label,
+    `ImagePages.tsx`'s raw org/date lines, and three archetypes' raw
+    `slide.footnote` all render as page-level chrome — siblings of, never
+    nested inside, any `data-audit-box`. None of that surface is touched by
+    this fix. Being inside a tracked box is also arrangement-dependent, not
+    a component-type property: `big_number`/`assertion_evidence` render
+    their supporting components through a bare `renderComponent(...)` with
+    no `data-audit-box` wrapper at all, so the very same component this fix
+    covers under a boxed arrangement goes uncovered there (only the
+    page-overflow check still sees it). The one confirmed, shipping
+    instance the inventory found *inside* a tracked box is `matrix.tsx`'s
+    `x_title` (rendered with zero width fit before this task) — the concrete
+    case this fix protects today for text that actually renders inside a
+    live tracked box.
+
+Recorded here as a known, narrowed-but-not-closed boundary, not a settled
+one — same discipline as this section's donut/pie AABB gap above.
+
 ## Full-matrix regression net (`full-matrix-contrast.test.ts`)
 
 Sweeps every theme × slide type × curated archetype for the W4 defect class. Two guardrails worth knowing about:
