@@ -164,6 +164,61 @@ describe("matrix component", () => {
       )
     }
 
+    it("does not double-subtract the x_title band from the box.h-undefined fallback (regression: x_title present + box.h left undefined spuriously truncated a title that already fit)", () => {
+      // Reviewer's exact repro: tech theme, content-bento-panel archetype
+      // (which never sets a child's box.h — `renderCell` calls
+      // `renderComponent(component, { x, y, w }, ctx)` with no `h` field),
+      // x_title="Customer Demand", y_title="Investment Level" (16 chars),
+      // 2x2 grid, no tags. The fit-round-1 fallback
+      // (`measuredFallbackH = Math.max(gridH, yTitleH)`) already mirrors
+      // measure()'s own X_TITLE_H-exclusive second term, but the render()
+      // that shipped alongside it subtracted X_TITLE_H from that fallback
+      // a second time whenever box.h was undefined — which is every real
+      // production path for matrix (it isn't in `STRETCHABLE_TYPES`, and
+      // bento-panel never sets box.h either) — silently shrinking the
+      // y_title budget by X_TITLE_H (30px) and truncating "Investment
+      // Level" down to "Investment Le…" even though measure() had already
+      // allocated enough room for the whole title.
+      const bentoLikeComponent = {
+        type: "matrix" as const,
+        x_title: "Customer Demand",
+        y_title: "Investment Level",
+        cols: 2 as const,
+        items: [
+          { title: "Rural nodes", tone: "neutral" as const },
+          { title: "Community hubs", tone: "accent" as const },
+          { title: "Fleet charging", tone: "info" as const },
+          { title: "Flagship urban", tone: "accent" as const },
+        ],
+      }
+      const box = { x: 0, y: 0, w: 800 } // box.h intentionally undefined, matching bento-panel
+      const measured = matrix.measure(bentoLikeComponent, box.w, ctx)
+
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">{matrix.render(bentoLikeComponent, box, ctx)}</svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const yTexts = yTitleTexts(root)
+
+      // Every character survives -- no truncation.
+      expect(yTexts.map((t) => t.textContent).join("")).toBe("Investment Level")
+      expect(yTexts.every((t) => !t.hasAttribute("data-truncated"))).toBe(true)
+
+      // The rendered stack's own extent matches what measure() allocated
+      // for it (yTitleStackHeight(16) — same derivation comment as the
+      // implementation: 20 start-offset + 15 * 15 per-char steps + a 0.25em
+      // descent allowance on the last glyph), not shrunk by a phantom
+      // second X_TITLE_H subtraction, and never exceeds measure()'s own
+      // reported footprint (the honesty guarantee the fit-round-1 tests
+      // above pin separately).
+      const expectedYTitleStackHeight = 20 + 15 * 15 + 13 * 0.25
+      const lastText = yTexts[yTexts.length - 1]
+      const lastBaselineY = Number(lastText.getAttribute("y"))
+      const gridTop = box.y + 30 // box.x_title present -> gridTop offset by X_TITLE_H (30, matrix.tsx's own constant)
+      expect(lastBaselineY - gridTop).toBeCloseTo(expectedYTitleStackHeight - 13 * 0.25, 5)
+      expect(lastBaselineY + 13 * 0.25).toBeLessThanOrEqual(box.y + measured)
+    })
+
     it("caps the stacked characters within a box height narrower than the full stack needs, marking the dropped tail data-truncated", () => {
       // box.h = 150: wider than the 1-row grid's own card height (55px, so
       // the cards themselves render fine) but far short of what all 24

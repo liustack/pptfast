@@ -135,12 +135,33 @@ export const matrix: SvgComponent<MatrixComponent> = {
   render(component, box, ctx) {
     const { cols, rows, gridX0, cardW, cardH, gridH, yTitleH } = gridGeom(component, box.w)
     const gridTop = box.y + (component.x_title ? X_TITLE_H : 0)
-    // 按 box.h 把每行卡等分拉伸（内容顶对齐），铺满可用高。box.h 缺省时的
-    // fallback 与 measure() 同源（grid 自身高度、y_title 竖排所需高度取
-    // 较大值）——两处不能各算一份，否则 y_title 的 fit 预算（availGridH）
-    // 会和 measure() 上报给上游的高度对不上。
+    // 按 box.h 把每行卡等分拉伸（内容顶对齐），铺满可用高。Two different
+    // "total height" semantics meet here, and X_TITLE_H must come off
+    // exactly once — off whichever one of them actually includes it:
+    //  - `box.h`, when a caller sets it (layout.ts's last-resort "keep the
+    //    first overflowing component" branch is the one real production
+    //    source: `avail = rect bottom - box.y`), is the TOTAL remaining
+    //    height from box.y downward — inclusive of the x_title band, same
+    //    convention `measure()` returns. It needs the subtraction.
+    //  - `measuredFallbackH` mirrors `measure()`'s *second* term only
+    //    (`Math.max(gridH, yTitleH)`, gridGeom's grid-only/X_TITLE_H-
+    //    exclusive portion) so it lines up with `gridTop`, which has
+    //    already moved past the x_title band above. Subtracting X_TITLE_H
+    //    from it too would double-count that band and silently starve
+    //    y_title's fit budget by X_TITLE_H px whenever box.h is left
+    //    undefined — which is every real production path except that one
+    //    last-resort branch (matrix isn't in `STRETCHABLE_TYPES`, and
+    //    `content-bento-panel.tsx`'s `renderCell` never sets a child's
+    //    `box.h` either). Bug found by review, confirmed live via a
+    //    tech-theme bento-panel repro (x_title="Customer Demand",
+    //    y_title="Investment Level", 16 chars): measure() correctly
+    //    allocated enough room, but this same subtraction applied a second
+    //    time to the fallback spuriously truncated it to "Investment Le…".
     const measuredFallbackH = Math.max(gridH, yTitleH)
-    const availGridH = (box.h ?? measuredFallbackH) - (component.x_title ? X_TITLE_H : 0)
+    const availGridH =
+      box.h !== undefined
+        ? box.h - (component.x_title ? X_TITLE_H : 0)
+        : measuredFallbackH
     const rowH = Math.max(cardH, (availGridH - (rows - 1) * CARD_GAP) / rows)
     const r = ctx.shape?.radius ?? CARD_RADIUS
     // x_title free-text fit (borrow-wave Task 4 follow-up, docs/contrast-
