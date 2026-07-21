@@ -126,4 +126,120 @@ describe("matrix component", () => {
     expect(xTitleText?.getAttribute("font-size")).toBe("13")
     expect(xTitleText?.hasAttribute("data-truncated")).toBe(false)
   })
+
+  // Family-sweep follow-up to the x_title fix above (that task's reviewer
+  // pinned the root cause): y_title stacks one <text> per character with NO
+  // cap against the component's own box height at all. Two coupled defects,
+  // both fixed here — (1) render() let the stack run past the box's bottom
+  // edge unconditionally, and (2) measure() never accounted for y_title's
+  // own vertical extent, so upstream layout never allocated room for it and
+  // the audit's data-audit-box never covered it either. Neither of the
+  // audit's existing checks catches this class: v-overflow bounds only
+  // against the whole slide's data-audit-rect (not a per-component box),
+  // and the overlap check needs a sibling box below to collide with — so
+  // this test uses the component's own declared box as the oracle directly,
+  // the same way the probe that first surfaced this bug did.
+  describe("y_title vertical fit", () => {
+    // 24 CJK chars, matching the case that first surfaced this defect.
+    const longYTitle = "这是一个远远超出网格实际高度的超长纵轴标题文本超"
+    // 1 row, no tag, no x_title — the shortest possible grid (55px), so the
+    // stack's own height dominates and the overrun is unmistakable rather
+    // than incidental.
+    const shortGridLongYTitle = {
+      type: "matrix" as const,
+      y_title: longYTitle,
+      cols: 2 as const,
+      items: [
+        { title: "a", tone: "neutral" as const },
+        { title: "b", tone: "accent" as const },
+      ],
+    }
+
+    function yTitleTexts(root: Element) {
+      // Only y_title's per-char stack renders with textAnchor="middle" in
+      // this component (item title/tag and x_title all render left-aligned)
+      // — an unambiguous, implementation-detail-free selector.
+      return Array.from(root.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("text-anchor") === "middle",
+      )
+    }
+
+    it("caps the stacked characters within a box height narrower than the full stack needs, marking the dropped tail data-truncated", () => {
+      // box.h = 150: wider than the 1-row grid's own card height (55px, so
+      // the cards themselves render fine) but far short of what all 24
+      // y_title characters stacked at their existing per-char rhythm would
+      // need (~368px) — exactly the "box.h explicitly smaller than the
+      // component's measured need" case `layout.ts`'s own last-resort
+      // overflow path (`layoutContentFit`'s "keep the first placed
+      // component" branch) produces for real.
+      const box = { x: 96, y: 176, w: 600, h: 150 }
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">
+          {matrix.render(shortGridLongYTitle, box, ctx)}
+        </svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const yTexts = yTitleTexts(root)
+      expect(yTexts.length).toBeGreaterThan(0)
+      expect(yTexts.length).toBeLessThan(Array.from(longYTitle).length)
+
+      // In-bounds: every rendered char's baseline, plus a descent
+      // allowance, stays within the declared box (x,y,w,h) — the same
+      // box.y+box.h bottom edge the ~215px pre-fix overrun blew past.
+      for (const t of yTexts) {
+        const baselineY = Number(t.getAttribute("y"))
+        expect(baselineY + Number(t.getAttribute("font-size")) * 0.25).toBeLessThanOrEqual(
+          box.y + box.h,
+        )
+      }
+
+      // Truncation marker convention: the last rendered char is "…" and
+      // carries data-truncated="1", same as cellLayout's title/tag and
+      // x_title (this same file) already do.
+      const last = yTexts[yTexts.length - 1]
+      expect(last.textContent).toBe("…")
+      expect(last.getAttribute("data-truncated")).toBe("1")
+      // No earlier char carries the marker — it's a tail marker, not a
+      // blanket one, matching every other fitted field's convention.
+      expect(yTexts.slice(0, -1).every((t) => !t.hasAttribute("data-truncated"))).toBe(true)
+    })
+
+    it("grows measure()'s reported footprint to cover y_title's real vertical extent once it exceeds the grid's own card height", () => {
+      // Same 1-row/no-tag/24-char fixture as above, measured without a
+      // box.h ceiling — this is what upstream layout (`layout.ts`'s
+      // `stackFrom`/`stackBottom`/`growStretchables`) actually calls to
+      // decide how much room to reserve and where the next sibling starts.
+      const measured = matrix.measure(shortGridLongYTitle, 600, ctx)
+      const gridOnly = matrix.measure({ ...shortGridLongYTitle, y_title: undefined }, 600, ctx)
+      // Pre-fix, measure() was blind to y_title entirely — this component's
+      // reported footprint was `gridOnly` regardless of y_title's length.
+      // Post-fix it must grow past that once the stack needs more room.
+      expect(measured).toBeGreaterThan(gridOnly)
+      // And it must grow far enough to actually cover the full stack this
+      // component would render unconstrained — not just "some" growth.
+      // 24 chars at the existing per-char rhythm (20 start + 23 * 15 step)
+      // need at least 365px from gridTop; measure() must allocate at least
+      // that much (plus/minus the small fixed descent allowance render()
+      // also budgets, asserted loosely here since this test intentionally
+      // doesn't reimplement render()'s exact constants).
+      expect(measured).toBeGreaterThanOrEqual(20 + 23 * 15)
+    })
+
+    it("leaves measure() and the rendered stack byte-identical to the pre-fix baseline when the title already fits the grid (fit path is a no-op on the common case)", () => {
+      // sixCells' own y_title ("资产投入", 4 chars) comfortably fits its
+      // 3-row/tagged grid (269px) — this pins that neither measure() nor
+      // render()'s new cap change anything here.
+      const measured = matrix.measure(sixCells, 800, ctx)
+      const gridOnly = matrix.measure({ ...sixCells, y_title: undefined }, 800, ctx)
+      expect(measured).toBe(gridOnly)
+
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">{matrix.render(sixCells, { x: 0, y: 0, w: 800 }, ctx)}</svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const yTexts = yTitleTexts(root)
+      expect(yTexts.map((t) => t.textContent).join("")).toBe(sixCells.y_title)
+      expect(yTexts.every((t) => !t.hasAttribute("data-truncated"))).toBe(true)
+    })
+  })
 })
