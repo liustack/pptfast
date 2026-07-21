@@ -63,6 +63,22 @@ for (const f of mustExist) {
 const slide1 = await zip.file("ppt/slides/slide1.xml")!.async("string")
 if (!slide1.includes("pptfast")) throw new Error("e2e: cover heading text not found in slide1.xml")
 
+// 2a) a:ea font-slot leg (a:ea follow-up task): examples/basic.json's
+//     consulting theme leads with Georgia (zero CJK glyphs), so every
+//     exported run's <a:ea> must be corrected to Microsoft YaHei by
+//     applyEaFontFaces (src/pptx/pptx-ea-fonts.ts) — asserted here against
+//     the *built* CLI binary's real output, not a vitest mock. Unconditional
+//     per the feature's own design (src/svg/fonts.ts's eaFontFaceFor doc
+//     comment): this holds even though basic.json's own text is all-English,
+//     since the declaration doesn't depend on the run's content.
+if (!/<a:latin typeface="Georgia"[^>]*\/><a:ea typeface="Microsoft YaHei"/.test(slide1)) {
+  throw new Error("e2e: slide1.xml's Georgia-declared run is missing a corrected <a:ea typeface=\"Microsoft YaHei\">")
+}
+if (slide1.includes('<a:ea typeface="Georgia"')) {
+  throw new Error("e2e: slide1.xml still carries an uncorrected <a:ea typeface=\"Georgia\"> (zero CJK glyphs)")
+}
+console.log("a:ea font-slot leg OK (Georgia latin run carries a corrected Microsoft YaHei ea slot)")
+
 // 2b) package-audit leg (package-audit wave, task 1, spec §4.4/§10.4):
 //     generatePptxBlob's own hard gate has no skip switch — every render in
 //     this whole script (basic/branded/webp/deck-dir/structures, below)
