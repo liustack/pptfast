@@ -92,13 +92,19 @@ genuinely rendered ink, not of insufficient calibration:
     that scope entirely, by the same construction that already excludes
     decoration/motif layers from this walk: `BrandChrome.tsx`'s footer
     (org/date/version), 18 cover/chapter/ending archetypes' own org label,
-    and three archetypes' raw `slide.footnote` all render as page-level
-    chrome — siblings of, never nested inside, any `data-audit-box`. None of
-    that surface is touched by this fix. The one confirmed, shipping
+    `ImagePages.tsx`'s raw org/date lines, and three archetypes' raw
+    `slide.footnote` all render as page-level chrome — siblings of, never
+    nested inside, any `data-audit-box`. None of that surface is touched by
+    this fix. Being inside a tracked box is also arrangement-dependent, not
+    a component-type property: `big_number`/`assertion_evidence` render
+    their supporting components through a bare `renderComponent(...)` with
+    no `data-audit-box` wrapper at all, so the very same component this fix
+    covers under a boxed arrangement goes uncovered there (only the
+    page-overflow check still sees it). The one confirmed, shipping
     instance the inventory found *inside* a tracked box is `matrix.tsx`'s
     `x_title` (rendered with zero width fit before this task) — the concrete
-    case this fix protects today, alongside whatever future component text
-    follows the same pattern.
+    case this fix protects today for text that actually renders inside a
+    live tracked box.
 
 Recorded here as a known, narrowed-but-not-closed boundary, not a settled
 one — same discipline as this section's donut/pie AABB gap above.
