@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import {
-  measureTextUnits,
-  truncateToUnits,
+  measureMonoTextUnits,
+  truncateToMonoUnits,
 } from "../../lib/svg-text-layout"
 import type { SvgComponent } from "./types"
 
@@ -17,53 +17,64 @@ const TEXT_COLOR = "#D4D4D4"
 const LINE_NUM_COLOR = "#6A737D"
 const BORDER_RADIUS = 6
 const LINE_HEIGHT_RATIO = 1.45
-// `measureTextUnits` per-character weights (0.46-0.66 by character class) were
-// calibrated against proportional (variable-width) fonts. Code renders in
-// `ctx.fonts.mono`, which `resolveFontFace` (fonts.ts) resolves to Consolas
-// for all 13 themes today (explicit for tech/journal, role-default fallback
-// for the other 11 — none declare a `fonts.mono` stack of their own).
+// Mono-role width math (borrow-wave Task 3 fix round, 2026-07-21):
+// `resolveLayout` below sizes code text with `measureMonoTextUnits`
+// (svg-text-layout.ts) — an *exact* per-glyph model (Consolas's own hmtx
+// advance, 0.5498 em/char, uniform across every character class because
+// Consolas is a monospace face — full arithmetic, dual independent
+// verification, and the CJK exception live in that function's own
+// derivation comment), not a proportional estimate to be corrected with a
+// safety factor after the fact.
 //
-// Recalibrated 2026-07-21 (borrow-wave Task 3) against the real Consolas
-// binary, not a stand-in: the previous comment's "~5-6% wider" figure came
-// from Menlo (the Mac preview-fallback face `resolveFontStack` made
-// reachable in the SVG preview), never the actual exported Consolas — a
-// methodology gap flagged by the fact-finding audit this task closes.
-// Method: read Consolas's own `hmtx` advance-width table directly (via
-// fontTools, an independent, mature sfnt parser — not this estimator, not a
-// rendering pipeline) from the genuine Consolas.ttf Microsoft ships inside
-// Office for Mac's private font bundle. Identity confirmed both by that
-// file's own `name` table (family/postscript name literally read "Consolas")
-// and by every sampled character landing on the exact same advance width
-// (0.5498 em) — the defining, unfakeable signature of a monospace font.
-// Cross-checked against a second, independent method (real Chromium canvas
-// `measureText`, loaded from the identical file via `@font-face`) for the
-// two other calibration targets this task measured (Georgia, Microsoft
-// YaHei): both methods agreed to 4 decimal places on every sample, so the
-// same method's Consolas numbers are trusted without needing a second
-// browser reading (Chrome's OTS sanitizer rejects this particular binary's
-// `prep` table when loaded via `@font-face`, independent of the metrics
-// question — see task-3-report.md).
+// That replaces this same task's first-round approach (same day): run
+// `measureTextUnits`'s *proportional* per-character-class weights —
+// calibrated for variable-width faces — through a single fixed
+// `MONO_WIDTH_SAFETY` multiplier (0.82) meant to cover the gap between
+// that estimate and Consolas's real width. Task 3's review proved that
+// approach has a hole with no ceiling: deep indentation is almost entirely
+// the single most-underestimated character class (space, +57.1% real-vs-
+// assumed), so the gap widens as indentation gets deeper and a fixed
+// factor can't chase it. An 8/16/24/32-space-indented closer (e.g.
+// `"        });"`) deviates +44.69% / +49.66% / +51.79% / +52.97% from the
+// proportional estimate — every one of those blows through the 0.82
+// factor's ~22% headroom (`1/0.82 - 1 ≈ 21.95%`), and 24-32-space
+// indentation (6-8 levels of 4-space nesting) is not a contrived depth in
+// real code. Confirmed red: rendering that family through the old
+// proportional-weights + 0.82 pipeline at a narrow (200px) box overflows
+// the box at indent 16 and 24 (the old estimate is confident enough that
+// truncation never even engages), and still overflows at indent 32 even
+// though truncation *does* engage there — the old approach's own
+// character-budget for "how much to keep" is derived from the same
+// underestimating formula, so cutting the line short doesn't fix it. The
+// exact model below never overflows, at any of the four depths (see
+// MONO_DEEP_INDENT_FIXTURES in code.test.tsx, a permanent regression, and
+// task-3-review.md's Important-2 finding, borrow-wave scratchpad, not
+// shipped in this repo). The exact model has no proportional estimate
+// left to under-shoot, so there's nothing left for a safety factor to
+// correct for *width-estimation error*.
 //
-// Real per-character-class deviation (10-string corpus spanning plain
-// identifiers, operators/brackets, JSON, and deep indentation — positive =
-// real wider than `measureTextUnits` assumes = dangerous, since `wrap:false`
-// on export means an underestimate renders as visible horizontal overflow
-// past the code block's background rect, not a caught/wrapped line):
-// space +57.1%, "other"/punctuation +19.5%, uppercase -16.7% (safe),
-// lowercase+digit -1.8% (safe). Realistic *whole-line* aggregates (what
-// actually drives `resolveLayout`'s fit, since fontSize is set by whichever
-// line `measureTextUnits` scores longest) ranged +0.0% to +18.5%, with the
-// densest sample (an `if`/`&&`/`||` conditional — ordinary code, not a
-// contrived edge case) at that +18.5% ceiling. The prior 0.9 factor (11.1%
-// headroom) does not comfortably cover that ceiling. 0.82 budgets ~22%
-// headroom — clears the observed +18.5% ceiling with margin for corpus
-// variance beyond these 10 samples, without shrinking typical
-// (lower-punctuation-density) code any further than necessary.
-const MONO_WIDTH_SAFETY = 0.82
+// `MONO_WIDTH_SAFETY` therefore no longer budgets estimation-error
+// headroom. The only distinct risk a residual could still budget for is
+// *font-substitution* variance — but this task's export target is a stock
+// Windows/PowerPoint install, where `fonts.ts`'s SAFE_FONTS membership is
+// specifically designed to guarantee Consolas itself is present there, not
+// a substitute. The only substitution actually measured in this task hit a
+// *different* pipeline stage — this macOS dev rig's in-browser SVG
+// preview, where bare-name "Consolas" resolution silently falls back to
+// the OS generic monospace face (task-3-report.md §2.2) — and that one
+// data point (16.2368 em vs Consolas's real 21.4424 em for the same
+// 39-character sample) runs narrower, i.e. safe-direction, not dangerous.
+// Real Windows-rig substitution risk for the actual export target was an
+// explicitly disclosed, unmeasured gap (task-3-report.md §7), not a
+// measured safe-direction one — so unlike the preview-fallback data point,
+// there's no data at all to size a dangerous-direction residual from
+// either. Per this task's controlling ruling (no residual without data
+// behind it): no multiplier.
+const MONO_WIDTH_SAFETY = 1.0
 
 function resolveLayout(lines: string[], w: number) {
   const contentW = (w - 2 * PADDING - LINE_NUM_COL) * MONO_WIDTH_SAFETY
-  const longestUnits = Math.max(...lines.map(measureTextUnits), 0)
+  const longestUnits = Math.max(...lines.map(measureMonoTextUnits), 0)
 
   let fontSize = BASE_FONT_SIZE
   let lineHeight = BASE_LINE_HEIGHT
@@ -80,8 +91,8 @@ function resolveLayout(lines: string[], w: number) {
   // the code-appropriate degradation here.
   const maxUnitsAtFloor = contentW / fontSize
   const renderLines = lines.map((line) =>
-    measureTextUnits(line) > maxUnitsAtFloor
-      ? truncateToUnits(line, maxUnitsAtFloor)
+    measureMonoTextUnits(line) > maxUnitsAtFloor
+      ? truncateToMonoUnits(line, maxUnitsAtFloor)
       : line,
   )
 

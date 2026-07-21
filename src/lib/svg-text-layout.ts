@@ -94,6 +94,62 @@ export function measureTextUnits(text: string): number {
   }, 0)
 }
 
+// Mono-role exact width model (borrow-wave Task 3 fix round, 2026-07-21).
+// `measureTextUnits` above is a *proportional* heuristic -- per-character-
+// class weights calibrated for variable-width faces, where a space really
+// is narrower than a letter. Code (`code.tsx`) renders in `ctx.fonts.mono`,
+// which resolves to Consolas for all 13 themes (`fonts.ts` ROLE_DEFAULT) --
+// a genuinely monospace face, where "character-class width" isn't a
+// heuristic to approximate, it's a known constant: every glyph advances
+// the same fixed amount, read directly off the font.
+//
+// Consolas's own `hmtx` (advance-width) table gives 1126 font units at
+// unitsPerEm=2048 for *every* glyph sampled (space, upper, lower, digit,
+// punctuation alike):
+//   MONO_ADVANCE_EM = 1126 / 2048 = 0.5498 em
+// -- the defining, unfakeable signature of a monospace face (contrast
+// Georgia's 0.24-0.66 em spread across character classes in the
+// calibration note above `measureTextUnits`. A variable-width font simply
+// cannot show this uniformity). Measured twice, independently, to the same
+// 4 decimal places: borrow-wave Task 3's fontTools `hmtx` read of the
+// genuine Consolas.ttf (Microsoft Office for Mac's private font bundle,
+// identity-confirmed via that file's own `name` table), and that task's
+// review, which re-derived it from a from-scratch Node.js sfnt/hmtx parser
+// sharing no code with fontTools (see task-3-report.md / task-3-review.md,
+// borrow-wave scratchpad, not shipped in this repo).
+//
+// The proportional weights structurally underestimate this face's
+// whitespace and punctuation as a result (+57.1%/+19.5% real-vs-assumed
+// for the space/"other" classes, same corpus) -- and that gap has no
+// ceiling: it grows with indentation depth, since a deep-indent line is
+// almost entirely the single most-underestimated class. See
+// MONO_WIDTH_SAFETY's derivation comment in code.tsx for what that did to
+// the safety-factor approach this model replaces.
+//
+// The one exception: CJK/wide characters (`WIDE_CHAR_RE`, shared with
+// `measureTextUnits` above) stay at 1.0 em/char, not 0.5498. Consolas's
+// `cmap` contains zero CJK glyphs at all (task-3-report.md's S4.1 finding,
+// exhaustively re-verified in task-3-review.md by scanning every cmap
+// segment/group, not sampling) -- a CJK character declared under a mono
+// role never actually renders from Consolas. PowerPoint silently
+// substitutes some other, uncontrolled font at the glyph level. That
+// substituted font's real metrics are unknowable (it isn't even
+// deterministic which font it will be), so this keeps the same 1.0 em/char
+// assumption `measureTextUnits`'s WIDE_CHAR_RE class already uses for CJK
+// (consistent with the sibling measurement of Microsoft YaHei's CJK class
+// landing at +0.16%, i.e. ~1em -- see the calibration note above
+// `measureTextUnits`) rather than invent a new, unmeasured number. This is
+// a font-identity gap, not a metrics gap -- see fonts.ts, which records it
+// as a known, unresolved risk no width model can fix.
+const MONO_ADVANCE_EM = 1126 / 2048
+
+export function measureMonoTextUnits(text: string): number {
+  return Array.from(text).reduce((sum, char) => {
+    if (WIDE_CHAR_RE.test(char)) return sum + 1
+    return sum + MONO_ADVANCE_EM
+  }, 0)
+}
+
 function splitLongToken(token: string, maxUnits: number): string[] {
   const chunks: string[] = []
   let current = ""
@@ -199,6 +255,26 @@ export function truncateToUnits(text: string, maxUnits: number): string {
   }
   if (out === "") {
     return measureTextUnits("…") > maxUnits ? "" : "…"
+  }
+  return `${out}…`
+}
+
+// Mono sibling of `truncateToUnits` above, measuring with
+// `measureMonoTextUnits` instead of `measureTextUnits` -- a separate
+// function rather than a parameterized one so `truncateToUnits`'s existing
+// callers (bullets/kpi/citation/steps/icon-cards/BigNumber/emphasis/
+// heading-fit, all proportional-model roles) are untouched by this borrow-
+// wave Task 3 fix-round addition. Only `code.tsx` calls this one.
+export function truncateToMonoUnits(text: string, maxUnits: number): string {
+  if (measureMonoTextUnits(text) <= maxUnits) return text
+  const budget = maxUnits - 1 // 预留省略号，与 truncateToUnits 同一约定
+  let out = ""
+  for (const ch of Array.from(text)) {
+    if (measureMonoTextUnits(out + ch) > budget) break
+    out += ch
+  }
+  if (out === "") {
+    return measureMonoTextUnits("…") > maxUnits ? "" : "…"
   }
   return `${out}…`
 }
