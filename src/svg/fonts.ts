@@ -161,3 +161,41 @@ export function resolveFontStack(stack: string[], role: FontRole): string {
         : PREVIEW_FALLBACK.sans
   return `${face}, ${fallback}`
 }
+
+/**
+ * True when `fontFamily` is a family list `resolveFontStack` above produces
+ * for role `"mono"` — i.e. text whose rendered `font-family` attribute came
+ * from `ctx.fonts.mono` (`code.tsx`, the sole mono-role consumer today),
+ * which sizes that text with `measureMonoTextUnits`'s exact per-glyph model
+ * instead of the proportional `measureTextUnits` every other role still
+ * uses (see that function's derivation comment in svg-text-layout.ts).
+ *
+ * `svg-audit.ts`'s overflow detector imports this rather than hardcoding a
+ * font-name literal of its own, so its "is this mono text" branch can't
+ * silently drift from the renderer's actual role decision (borrow-wave
+ * Task 3 review round, 2026-07-21 — task-3-review.md's Important finding
+ * N1, scratchpad, not shipped in this repo). Before that round's fix,
+ * `code.tsx` and the auditor both sized every role with the same
+ * proportional formula, so the two were structurally self-consistent — the
+ * auditor could never flag content the renderer didn't also (by the same
+ * math) consider oversized. Once the mono role switched to an exact model
+ * while every other role kept estimating, that self-consistency broke: an
+ * auditor still measuring mono text proportionally can flag real,
+ * upper/underscore-heavy code (constant names, SQL keywords) the exact
+ * renderer never actually overflows.
+ *
+ * Matches on `resolveFontStack`'s mono-only fallback suffix
+ * (`PREVIEW_FALLBACK.mono`), not the resolved face name. The face name
+ * varies with theme/input (`ROLE_DEFAULT.mono` = "Consolas" today, but any
+ * `SAFE_FONTS` mono entry a theme lists first would resolve instead — e.g.
+ * tech/journal's `["Consolas", "Courier New"]` stack still resolves to
+ * "Consolas" only because it's listed first); what actually decides which
+ * width model `code.tsx` uses is the *role*, not that specific face.
+ * `resolveFontStack` appends `PREVIEW_FALLBACK.mono` only when
+ * `role === "mono"` — no other role's fallback (`.serif`/`.sans`) can ever
+ * produce this suffix — so keying off it tracks the renderer's real role
+ * decision instead of one face name it currently happens to resolve to.
+ */
+export function isMonoFontFamily(fontFamily: string): boolean {
+  return fontFamily.endsWith(`, ${PREVIEW_FALLBACK.mono}`)
+}
