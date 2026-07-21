@@ -19,14 +19,47 @@ const BORDER_RADIUS = 6
 const LINE_HEIGHT_RATIO = 1.45
 // `measureTextUnits` per-character weights (0.46-0.66 by character class) were
 // calibrated against proportional (variable-width) fonts. Code renders in
-// `ctx.fonts.mono` — a real monospace face (Menlo on the Mac audit rig, once
-// the font-stack fallback in fonts.ts made it reachable) whose fixed advance
-// width per character runs ~5-6% wider than that average for typical
-// identifier-heavy code (more lowercase/underscore/digit characters than the
-// heuristic's mixed-case assumption). Shave the fitting budget by the same
-// margin so the shrink-to-fit and truncate-at-floor math stay accurate for
-// the font that's actually rendering, not just the estimator's model of it.
-const MONO_WIDTH_SAFETY = 0.9
+// `ctx.fonts.mono`, which `resolveFontFace` (fonts.ts) resolves to Consolas
+// for all 13 themes today (explicit for tech/journal, role-default fallback
+// for the other 11 — none declare a `fonts.mono` stack of their own).
+//
+// Recalibrated 2026-07-21 (borrow-wave Task 3) against the real Consolas
+// binary, not a stand-in: the previous comment's "~5-6% wider" figure came
+// from Menlo (the Mac preview-fallback face `resolveFontStack` made
+// reachable in the SVG preview), never the actual exported Consolas — a
+// methodology gap flagged by the fact-finding audit this task closes.
+// Method: read Consolas's own `hmtx` advance-width table directly (via
+// fontTools, an independent, mature sfnt parser — not this estimator, not a
+// rendering pipeline) from the genuine Consolas.ttf Microsoft ships inside
+// Office for Mac's private font bundle. Identity confirmed both by that
+// file's own `name` table (family/postscript name literally read "Consolas")
+// and by every sampled character landing on the exact same advance width
+// (0.5498 em) — the defining, unfakeable signature of a monospace font.
+// Cross-checked against a second, independent method (real Chromium canvas
+// `measureText`, loaded from the identical file via `@font-face`) for the
+// two other calibration targets this task measured (Georgia, Microsoft
+// YaHei): both methods agreed to 4 decimal places on every sample, so the
+// same method's Consolas numbers are trusted without needing a second
+// browser reading (Chrome's OTS sanitizer rejects this particular binary's
+// `prep` table when loaded via `@font-face`, independent of the metrics
+// question — see task-3-report.md).
+//
+// Real per-character-class deviation (10-string corpus spanning plain
+// identifiers, operators/brackets, JSON, and deep indentation — positive =
+// real wider than `measureTextUnits` assumes = dangerous, since `wrap:false`
+// on export means an underestimate renders as visible horizontal overflow
+// past the code block's background rect, not a caught/wrapped line):
+// space +57.1%, "other"/punctuation +19.5%, uppercase -16.7% (safe),
+// lowercase+digit -1.8% (safe). Realistic *whole-line* aggregates (what
+// actually drives `resolveLayout`'s fit, since fontSize is set by whichever
+// line `measureTextUnits` scores longest) ranged +0.0% to +18.5%, with the
+// densest sample (an `if`/`&&`/`||` conditional — ordinary code, not a
+// contrived edge case) at that +18.5% ceiling. The prior 0.9 factor (11.1%
+// headroom) does not comfortably cover that ceiling. 0.82 budgets ~22%
+// headroom — clears the observed +18.5% ceiling with margin for corpus
+// variance beyond these 10 samples, without shrinking typical
+// (lower-punctuation-density) code any further than necessary.
+const MONO_WIDTH_SAFETY = 0.82
 
 function resolveLayout(lines: string[], w: number) {
   const contentW = (w - 2 * PADDING - LINE_NUM_COL) * MONO_WIDTH_SAFETY

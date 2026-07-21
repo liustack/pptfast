@@ -111,15 +111,13 @@ describe("code component", () => {
     // Must not silently render the full untruncated token past the box —
     // the visible text width (line-number column already subtracted) must
     // fit inside the content area, with the same MONO_WIDTH_SAFETY margin
-    // resolveLayout applies (real-browser audit regression: `ctx.fonts.mono`
-    // renders in an actual monospace face like Menlo once resolveFontStack
-    // made it a reachable fallback, whose fixed per-character advance runs
-    // ~5-6% wider than this estimator's mixed-case average — fitting against
-    // the raw, un-shaved contentW let identifier-heavy code overflow the box
-    // in the real Chrome-103-class gate even though this jsdom estimate
-    // passed).
+    // resolveLayout applies (0.82 as of the 2026-07-21 real-Consolas
+    // recalibration in code.tsx — see that constant's derivation comment:
+    // real Consolas advance width runs up to ~19.5% wider than this
+    // estimator's per-character assumption for punctuation-dense code,
+    // measured from the actual Consolas.ttf, not a stand-in face).
     const rawContentW = boxW - 2 * 14 - 40
-    const contentW = rawContentW * 0.9
+    const contentW = rawContentW * 0.82
     const units = Array.from(content).reduce((sum, ch) => {
       if (/\s/.test(ch)) return sum + 0.35
       if (/[A-Z]/.test(ch)) return sum + 0.66
