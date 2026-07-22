@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
 import { measureTextUnits } from "@/lib/svg-text-layout"
+import { makeSolidRegionPngDataUri } from "@/platform/test-png-fixture"
 import { formatIssues, formatWarnings, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
 import { CAPACITY } from "./svg/audit/capacity"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
+
+/** A real, minimal, decodable PNG data URI — every "byte-inertness" and
+ *  "dangling asset_id" test below (Task 2, borrow wave) needs an asset that
+ *  passes `checkAssetBytes` cleanly so it isn't what the test under
+ *  scrutiny observes. */
+const realPngDataUri = makeSolidRegionPngDataUri(2, 2, () => [10, 20, 30])
 
 const raw = {
   version: "4",
@@ -1223,6 +1230,133 @@ describe("generatePptx draft gate (W5 task 1)", () => {
     const v = validateIr(withPlaceholder)
     expect(v.ok).toBe(true)
     expect(() => renderSlideSvg(v.ir!, 1)).not.toThrow()
+  })
+})
+
+describe("checkAssetBytes: byte-level asset validation (Task 2, borrow wave — D3)", () => {
+  const irWithImage = (src: string) => ({
+    ...raw,
+    assets: { images: { photo: { src } } },
+    slides: [
+      raw.slides[0],
+      { type: "content" as const, heading: "x", components: [{ type: "image" as const, asset_id: "photo" }] },
+    ],
+  })
+
+  it("accepts a real PNG data URI unchanged — byte-inertness for a valid deck (hard requirement)", () => {
+    const v = validateIr(irWithImage(realPngDataUri))
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+  })
+
+  // dr/d-robustness.md probe 1: a zero-byte PNG previously sailed through
+  // resolveLocalAssets/generatePptx and landed in the exported .pptx as a
+  // 0-byte media part.
+  it("rejects a zero-byte image data URI as an error", () => {
+    const v = validateIr(irWithImage("data:image/png;base64,"))
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.path).toBe("assets.images.photo")
+    expect(v.errors[0]!.message).toMatch(/zero-byte image/)
+  })
+
+  // dr/d-robustness.md probe 2: corrupt/garbage bytes under a PNG-shaped
+  // wrapper previously passed every existing check silently.
+  it("rejects garbage bytes with an unrecognized header as an error", () => {
+    const v = validateIr(irWithImage("data:image/png;base64,AAAA"))
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/corrupt or unrecognized header/)
+    expect(v.errors[0]!.message).toMatch(/PNG, JPEG, WebP, or GIF/)
+  })
+
+  // dr/d-robustness.md probe 3: a real PNG's bytes declared as image/jpeg.
+  // Disposition: reject, don't silently trust the bytes and rewrite the
+  // MIME (see checkAssetBytes's own doc comment for why).
+  it("rejects a real PNG declared as image/jpeg — extension/MIME-vs-bytes mismatch", () => {
+    const pngPayload = realPngDataUri.slice(realPngDataUri.indexOf(",") + 1)
+    const v = validateIr(irWithImage(`data:image/jpeg;base64,${pngPayload}`))
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toBe(
+      'asset "photo" declares "image/jpeg" but its bytes are actually image/png — fix the data URI\'s MIME prefix or re-export the image as image/jpeg',
+    )
+  })
+
+  it("does not decode/sniff an http(s) source — that ingestion form is validated at a different seam", () => {
+    const v = validateIr(irWithImage("https://example.com/photo.png"))
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+  })
+
+  it("does not decode/sniff a not-yet-resolved local file path — resolveLocalAssets validates that seam", () => {
+    const v = validateIr(irWithImage("photo.png"))
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+  })
+})
+
+describe("checkAssetReferences: dangling asset_id warning (Task 2, borrow wave — B5)", () => {
+  it("warns (does not reject) when an image component references an asset_id absent from assets.images", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "x", components: [{ type: "image", asset_id: "missing" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+    expect(v.warnings).toHaveLength(1)
+    expect(v.warnings?.[0]!.path).toBe("slides.1.components.0.asset_id")
+    expect(v.warnings?.[0]!.message).toBe(
+      'asset_id "missing" is not defined in assets.images — available: (none defined)',
+    )
+  })
+
+  it("names the available asset keys when one is defined but the reference is a typo", () => {
+    const v = validateIr({
+      ...raw,
+      assets: { images: { logo: { src: realPngDataUri } } },
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "x", components: [{ type: "image", asset_id: "logoo" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.message).toBe(
+      'asset_id "logoo" is not defined in assets.images — available: "logo"',
+    )
+  })
+
+  it("does not warn when the asset_id resolves to a real key", () => {
+    const v = validateIr({
+      ...raw,
+      assets: { images: { logo: { src: realPngDataUri } } },
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "x", components: [{ type: "image", asset_id: "logo" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings).toBeUndefined()
+  })
+
+  it("catches a dangling asset_id on an \"asset\"-kind slide background", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { ...raw.slides[0], background: { kind: "asset", asset_id: "missing-bg" } },
+        raw.slides[1],
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.path).toBe("slides.0.background.asset_id")
+    expect(v.warnings?.[0]!.message).toMatch(/asset_id "missing-bg" is not defined/)
+  })
+
+  it("catches a dangling brand.logo_asset_id", () => {
+    const v = validateIr({ ...raw, brand: { logo_asset_id: "missing-logo" } })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.path).toBe("brand.logo_asset_id")
+    expect(v.warnings?.[0]!.message).toMatch(/asset_id "missing-logo" is not defined/)
   })
 })
 
