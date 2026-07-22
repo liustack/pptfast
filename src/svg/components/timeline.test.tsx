@@ -154,18 +154,33 @@ describe("timeline component", () => {
         milestones: manyMilestones,
       }
 
-      it("caps rendered rows to what box.h can hold and marks the drop with data-dropped", () => {
+      it("caps rendered rows to what box.h can hold and marks the drop with data-dropped, keeping every node and the marker within box.h", () => {
         const box = { x: 0, y: 0, w: 800, h: 300 }
         const { container } = svg(timeline.render(manyComponent, box, ctx))
-        const circles = container.querySelectorAll("circle")
+        const circles = Array.from(container.querySelectorAll("circle"))
         expect(circles.length).toBeGreaterThan(0)
         expect(circles.length).toBeLessThan(manyMilestones.length)
+
+        // Every rendered node's circle stays within box.h.
+        for (const c of circles) {
+          const cy = Number(c.getAttribute("cy"))
+          const r = Number(c.getAttribute("r"))
+          expect(cy + r).toBeLessThanOrEqual(box.h)
+        }
 
         const dropped = container.querySelector("[data-dropped]")
         expect(dropped).toBeTruthy()
         const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
         expect(hiddenCount + circles.length).toBe(manyMilestones.length)
         expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+
+        // Review fix (I1, sibling audit): the marker itself must stay
+        // inside box.h too — a marker-excluding containment check is
+        // exactly what let bullets.tsx's own marker overflow slip through
+        // review.
+        const markerY = Number(dropped!.getAttribute("y"))
+        const markerFontSize = Number(dropped!.getAttribute("font-size"))
+        expect(markerY + markerFontSize * 0.25).toBeLessThanOrEqual(box.h)
       })
 
       it("still renders at least one row even when box.h is far smaller than a single row", () => {

@@ -230,7 +230,25 @@ export const bullets: SvgComponent<BulletsComponent> = {
     // precedent for both this convention and the "+N more"/`data-dropped`
     // marker below).
     const truncBudget = box.h ?? Number.POSITIVE_INFINITY
-    const visible = truncBudget === Number.POSITIVE_INFINITY ? allItems.length : visibleItemCount(allItems, truncBudget)
+    // Marker's own font size/vertical reach (shared by the cutoff below and
+    // the marker's own render further down — one derivation, not two copies
+    // that could drift). Review fix (I1): the marker line itself needs
+    // headroom reserved inside truncBudget, the same "reserve room for the
+    // +N more line" shape every sibling fix (comparison/citation/
+    // architecture/timeline) already uses — bullets.tsx (fixed first, in
+    // this same task) originally cut items to fit truncBudget but then drew
+    // the marker *below* that budget, past box.h.
+    const markerFontSize = Math.max(11, Math.round(fontSize * 0.65))
+    const markerReserve = Math.round(fontSize * 0.9) + markerFontSize * 0.25
+    const naturalBottom = allItems.length > 0 ? allItems[allItems.length - 1].contentBottom : 0
+    // Only reserve the marker's headroom when a cut is actually needed —
+    // matching row-cards.tsx/the sibling fixes' own "no naturalHeight
+    // overrun ⇒ no reservation at all" no-op-on-the-common-case shape, so a
+    // deck that already fits box.h exactly is untouched by this reservation.
+    const visible =
+      truncBudget === Number.POSITIVE_INFINITY || naturalBottom <= truncBudget
+        ? allItems.length
+        : visibleItemCount(allItems, truncBudget - markerReserve)
     const items = allItems.slice(0, visible)
     const hidden = allItems.length - visible
     return (
@@ -272,7 +290,7 @@ export const bullets: SvgComponent<BulletsComponent> = {
             x={box.w}
             y={items[items.length - 1].contentBottom + Math.round(fontSize * 0.9)}
             textAnchor="end"
-            fontSize={Math.max(11, Math.round(fontSize * 0.65))}
+            fontSize={markerFontSize}
             fill={ctx.colors.muted}
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"

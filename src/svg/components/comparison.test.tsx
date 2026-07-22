@@ -311,6 +311,14 @@ describe("comparison 首列重复归一化（2026-07-10 无图矩阵真机病型
       expect(hiddenCount).toBeGreaterThan(0)
       expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
       expect(hiddenCount + dataRowLabelTexts.length).toBe(manyRowsComponent.rows.length)
+
+      // Review fix (I1, sibling audit): the marker itself must stay inside
+      // box.h too, not just the rule lines — a marker-excluding containment
+      // check is exactly what let bullets.tsx's own marker overflow slip
+      // through review.
+      const markerY = Number(dropped!.getAttribute("y"))
+      const markerFontSize = Number(dropped!.getAttribute("font-size"))
+      expect(markerY + markerFontSize * 0.25).toBeLessThanOrEqual(box.h)
     })
 
     it("still renders at least one row even when box.h is far smaller than a single row's height", () => {

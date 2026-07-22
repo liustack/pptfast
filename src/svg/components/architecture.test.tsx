@@ -194,6 +194,14 @@ describe("architecture component", () => {
       const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
       expect(hiddenCount + rects.length).toBe(manyLayers.length)
       expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+
+      // Review fix (I1, sibling audit): the marker itself must stay inside
+      // box.h too, not just the rects — a marker-excluding containment
+      // check is exactly what let bullets.tsx's own marker overflow slip
+      // through review.
+      const markerY = Number(dropped!.getAttribute("y"))
+      const markerFontSize = Number(dropped!.getAttribute("font-size"))
+      expect(markerY + markerFontSize * 0.25).toBeLessThanOrEqual(box.h)
     })
 
     it("still renders at least one layer even when box.h is far smaller than a single layer", () => {

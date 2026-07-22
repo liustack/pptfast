@@ -328,8 +328,11 @@ describe("bullets component spacious-pacing shrink (MIN_FONT floor)", () => {
 
       // Every rendered line's baseline (plus a descent allowance) stays
       // within box.h — the actual geometric guarantee this fix exists for.
+      // Review fix (I1): the "+N more" marker text is included in this
+      // loop, not excluded — the marker itself overflowing box.h (reviewer
+      // repro: marker y=304.8 vs box.h=300) is exactly the class of bug a
+      // marker-excluding assertion would hide.
       for (const t of textEls) {
-        if (t.hasAttribute("data-dropped")) continue
         const y = Number(t.getAttribute("y"))
         const fontSize = Number(t.getAttribute("font-size")) || 24
         expect(y + fontSize * 0.25).toBeLessThanOrEqual(box.h)
@@ -342,6 +345,13 @@ describe("bullets component spacious-pacing shrink (MIN_FONT floor)", () => {
       const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
       expect(hiddenCount).toBeGreaterThan(0)
       expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+
+      // Review fix (I1) — reviewer's exact repro pinned directly: at this
+      // box (500 items, box.h=300), the marker itself used to land at
+      // y=304.8, past box.h=300. It must now stay inside.
+      const markerY = Number(dropped!.getAttribute("y"))
+      const markerFontSize = Number(dropped!.getAttribute("font-size"))
+      expect(markerY + markerFontSize * 0.25).toBeLessThanOrEqual(box.h)
     })
 
     it("still renders at least one item even when box.h is far smaller than a single item's own height", () => {

@@ -131,7 +131,11 @@ describe("citation component", () => {
       expect(nonMarker.length).toBeGreaterThan(0)
       expect(nonMarker.length).toBeLessThan(manySources.length)
 
-      for (const t of nonMarker) {
+      // Review fix (I1, sibling audit): containment now covers every
+      // rendered <text>, including the marker — a marker-excluding
+      // containment check is exactly what let bullets.tsx's own marker
+      // overflow slip through review.
+      for (const t of texts) {
         expect(Number(t.getAttribute("y"))).toBeLessThanOrEqual(box.h)
       }
 
