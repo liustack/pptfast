@@ -40,6 +40,80 @@ const TENDENCY_WEIGHT = 3
 const BASE_WEIGHT = 1
 
 /**
+ * A slide's declared `beat` value (P1 variety wave, task 1 — "beat wired
+ * into selection"), narrowed off `Slide["beat"]` rather than re-declared:
+ * `undefined` (the far more common case — most slides never declare one)
+ * always means "no beat weighting layer", never "the `undefined` beat".
+ */
+type PageBeat = NonNullable<Slide["beat"]>
+
+/**
+ * Beat→content-archetype tendency sets (spec: "beat 权重与 strategy 权重
+ * 相乘复合，量级循 TENDENCY_WEIGHT 先例" — beat multiplies onto the existing
+ * strategy weight rather than replacing it, at the same initial magnitude as
+ * `TENDENCY_WEIGHT` above). Each set names only `CONTENT_LAYOUTS` ids
+ * (`svg/layouts/registry.ts`) for the identical structural reason
+ * `StrategyDefinition.layoutTendencies` does (that field's own doc comment,
+ * `@/narrative`): a content page is the only slide type `checkBeatRotation`
+ * (`src/plan/index.ts`) ever reasons about beat for, so a cover/chapter/
+ * ending slide's `weightOf` lookup against these sets always misses and
+ * falls through to `BEAT_BASE_WEIGHT` uniformly — no slide-type special case
+ * needed, same "no id can ever match" no-op every other weighting layer here
+ * already relies on.
+ *
+ * One-line rationale per member, grounded in each archetype's own body
+ * comment (`CONTENT_LAYOUTS`, `svg/layouts/registry.ts`) rather than its
+ * name alone:
+ *
+ * - **anchor** (one bold, high-impact statement):
+ *   - `banner-heading` — the heading sits *inside* a filled "assertion
+ *     banner". The banner rect is the heading treatment, not a container
+ *     wrapped around a plain title, so this archetype's whole identity is
+ *     already "one bold claim, loudly stated".
+ *   - `stacked-poster` — its non-degrade path routes component 1 into a
+ *     dedicated `hero` slot (capacity 1): poster-scale single-subject
+ *     treatment, the most visually loud body geometry in the content pool.
+ * - **dense** (many discrete items, high information density):
+ *   - `bento-panel` — the only content archetype whose `body` capacity is 6
+ *     (every other is 4): a multi-cell grid sized to hold the most, not the
+ *     boldest.
+ *   - `two-column` — splits the body into two narrower columns running in
+ *     parallel, doubling the visible item count over a single stack at the
+ *     same height budget.
+ *   - `rail-numbered` — a numbered progress rail ("{chapter}.{n}") is
+ *     itself a sequential-breakdown signal, the layout that most invites a
+ *     long enumerated list rather than one hero item.
+ * - **breathing** (generous whitespace, one unhurried flow):
+ *   - `narrow-column` — the narrowest body column in the pool, paired with
+ *     a large muted page-number watermark filling the right gutter: spacious
+ *     by construction, not by content choice.
+ *
+ * `tone-adaptive-content` — the pool's "万金油" (already strategy-neutral by
+ * `layoutTendencies`' own convention) — is deliberately absent from every
+ * set here too, for the same reason: it is the one content archetype meant
+ * to read as beat-neutral as well.
+ */
+const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
+  anchor: ["banner-heading", "stacked-poster"],
+  dense: ["bento-panel", "two-column", "rail-numbered"],
+  breathing: ["narrow-column"],
+}
+
+/**
+ * Same initial magnitude as `TENDENCY_WEIGHT`/`BASE_WEIGHT` above (spec
+ * ruling: beat's weight layer follows that precedent), kept as its own named
+ * constants rather than reusing those two directly — the two layers are
+ * independently tunable (a later wave may retune beat's pull without
+ * touching strategy's, or vice versa, once real corpus data exists for
+ * each), and `weightOf` below always multiplies the two layers together, so
+ * sharing one constant between them would make that multiplication silently
+ * degenerate into a single squared term the moment either layer's own value
+ * ever changed independently.
+ */
+const BEAT_TENDENCY_WEIGHT = 3
+const BEAT_BASE_WEIGHT = 1
+
+/**
  * Resolve the archetype registry id for one page-type slot (spec §6 steps
  * 3-5, W4 final form). An explicit `requestedLayout` short-circuits every
  * step below when it names a registered `kind: "archetype"` layout
@@ -57,7 +131,13 @@ const BASE_WEIGHT = 1
  *    pool (unreachable for the 13 built-in themes today — no built-in
  *    layout sets `narrativesOnly` yet).
  * 3. **narrative soft weighting** (step 4's ×3/×1, `TENDENCY_WEIGHT`/
- *    `BASE_WEIGHT` above) **+ weighted seed sampling** (step 5,
+ *    `BASE_WEIGHT` above), **× beat soft weighting** (P1 variety wave task
+ *    1's own ×3/×1 layer, `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/
+ *    `BEAT_BASE_WEIGHT` above — multiplies onto the strategy weight, never
+ *    replaces it. An omitted `beat` contributes a factor of 1 for every
+ *    candidate, so the omitted-beat product is always exactly the
+ *    pre-existing strategy-only weight, byte-identical to before this layer
+ *    existed) **+ weighted seed sampling** (step 5,
  *    `weightedPickBySeed` — salt is `` `${slideType}-archetype:${pageKey}` ``,
  *    W4 design decision 2: `pageKey` is the caller-resolved `slide.id ??
  *    String(index)`, replacing the retired same-type ordinal rotation so a
@@ -90,6 +170,7 @@ export function resolveArchetypeId(
   requestedLayout: string | undefined,
   strategy: Strategy,
   previousEffectiveLayoutId: string | null,
+  beat?: PageBeat,
 ): string | null {
   if (requestedLayout) {
     const pinnedDef = getLayout(requestedLayout)
@@ -106,7 +187,19 @@ export function resolveArchetypeId(
   if (pool.length === 0) return null
 
   const tendencies = STRATEGY_DEFINITIONS[strategy].layoutTendencies
-  const weightOf = (id: string): number => (tendencies.includes(id) ? TENDENCY_WEIGHT : BASE_WEIGHT)
+  // `beatTendencies` stays `undefined` (not `[]`) for an omitted beat so the
+  // multiplication below can short-circuit to a literal `1` rather than
+  // evaluating an always-false `.includes` against an empty array — the two
+  // are behaviorally equivalent, but the explicit `undefined` branch is the
+  // one that makes "omitted beat == zero effect" a visible code path instead
+  // of an incidental consequence of an empty tendency set.
+  const beatTendencies = beat === undefined ? undefined : BEAT_TENDENCIES[beat]
+  const weightOf = (id: string): number => {
+    const strategyWeight = tendencies.includes(id) ? TENDENCY_WEIGHT : BASE_WEIGHT
+    const beatWeight =
+      beatTendencies === undefined ? 1 : beatTendencies.includes(id) ? BEAT_TENDENCY_WEIGHT : BEAT_BASE_WEIGHT
+    return strategyWeight * beatWeight
+  }
   const salt = `${slideType}-archetype:${pageKey}`
   const picked = weightedPickBySeed(seed, salt, pool, weightOf)
 
@@ -163,7 +256,11 @@ export function resolveIrStrategy(ir: PptxIR): Strategy {
  *    above with this slide's salt `pageKey` and `previousEffectiveLayoutId`
  *    (both supplied by the caller — this function never re-derives them, so
  *    there is exactly one place that walks the deck to produce them, see
- *    `resolveDeckEffectiveLayoutIds` below).
+ *    `resolveDeckEffectiveLayoutIds` below), plus this slide's own
+ *    `slide.beat` (P1 variety wave, task 1) — read straight off the IR slide
+ *    object, no separate resolution step: unlike `strategy`, `beat` is not a
+ *    deck-wide narrative axis, it is per-slide, so there is nothing to
+ *    resolve beyond the field read itself.
  */
 function resolveOneEffectiveLayoutId(
   ir: PptxIR,
@@ -194,6 +291,7 @@ function resolveOneEffectiveLayoutId(
     slide.layout,
     strategy,
     previousEffectiveLayoutId,
+    slide.beat,
   )
 }
 

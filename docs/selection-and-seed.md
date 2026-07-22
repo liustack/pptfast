@@ -3,7 +3,7 @@ summary: 'How an omitted slide layout gets picked (the four-step weighted seed s
 read_when:
   - debugging why a slide resolved to an unexpected layout
   - touching layout selection, seed derivation, or the validate/render parity path
-  - adding a strategy's layoutTendencies or a narrativesOnly-restricted layout
+  - adding a strategy's layoutTendencies, a beat's BEAT_TENDENCIES, or a narrativesOnly-restricted layout
 ---
 
 # Selection and seed
@@ -17,7 +17,7 @@ read_when:
 1. **Full pool**: every registered archetype for the slide's page type (`LAYOUT_REGISTRY`, filtered to `kind: "archetype"`).
 2. **theme.layouts boundary**: narrowed to the theme's curated set for that page type — the caller's job before calling `resolveArchetypeId` (full set for all 13 built-ins today, see `docs/concepts.md`).
 3. **`narrativesOnly` hard filter** (`filterByNarrativesOnly`, `src/svg/layouts/registry.ts:132-137` — renamed from `scenariosOnly`/`filterByScenariosOnly` in the vocabulary-v4 rename's internal-name sweep, spec §16, an internal registry detail): drops any candidate whose allowlist excludes the resolved `strategy`. Rare — no built-in layout sets it today.
-4. **Narrative soft weight + seeded pick** (one combined step): `STRATEGY_DEFINITIONS[strategy].layoutTendencies` (`src/narrative/index.ts:118`) gets `TENDENCY_WEIGHT` (×3), everything else `BASE_WEIGHT` (×1) — both constants in `effective-layout.ts:39-40`, explicitly *not yet tuned* against a real corpus. `weightedPickBySeed` (`src/svg/variety.ts:69-90`) samples against the salt `` `${slideType}-archetype:${pageKey}` ``. `layoutTendencies` only ever names content-archetype ids — cover/chapter/ending are structurally unweighted (uniform sampling), not slide-type-special-cased.
+4. **Narrative soft weight × beat soft weight + seeded pick** (one combined step): `STRATEGY_DEFINITIONS[strategy].layoutTendencies` (`src/narrative/index.ts:118`) gets `TENDENCY_WEIGHT` (×3), everything else `BASE_WEIGHT` (×1) — both constants in `effective-layout.ts`, explicitly *not yet tuned* against a real corpus. A slide's optional `beat` (P1 variety wave, task 1 — `Slide.beat`, `src/ir/index.ts`) multiplies a second, independent ×3/×1 factor onto that same weight via `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/`BEAT_BASE_WEIGHT` (`effective-layout.ts`): an omitted `beat` contributes a factor of 1 for every candidate, so the product collapses back to the strategy-only weight exactly — a deck that never declares `beat` selects and renders byte-identically to before this layer existed. `weightedPickBySeed` (`src/svg/variety.ts:69-90`) samples against the salt `` `${slideType}-archetype:${pageKey}` ``. Both `layoutTendencies` and every `BEAT_TENDENCIES` set only ever name content-archetype ids — cover/chapter/ending are structurally unweighted by either layer (uniform sampling), not slide-type-special-cased.
 
 **Adjacent anti-repetition** runs after: if the pick equals the immediately preceding slide's own resolved layout id and the pool has >1 member, redraw once against the same salt with that id removed (deterministic runner-up, local — it never touches any other page). This replaced an earlier same-type-ordinal rotation scheme (`pickBySeedRotating`, since deleted) that reshuffled non-adjacent pages on insert/reorder.
 

@@ -6,7 +6,7 @@ import type { PptxIR, Slide } from "@/ir"
 import { STRATEGY_DEFINITIONS } from "@/narrative"
 import { FullSlideSvg } from "./FullSlideSvg"
 import { getLayout } from "./layouts/registry"
-import { cachedDeckSeed } from "./variety"
+import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 import { THEME_DEFINITIONS } from "../themes/definitions"
 import {
   resolveArchetypeId,
@@ -108,6 +108,121 @@ describe("resolveArchetypeId", () => {
     // precise ratio assertion.
     expect(tendencyHits / N).toBeGreaterThan(0.55)
     expect(tendencyHits / N).toBeLessThan(0.85)
+  })
+
+  // ── beat weighting (P1 variety wave, task 1 — "beat wired into selection") ──
+
+  it("an omitted beat is a mathematical no-op: passing beat=undefined explicitly matches omitting the 8th argument entirely, across strategies and seeds", () => {
+    for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
+      for (let seed = 0; seed < 30; seed++) {
+        const withoutArg = resolveArchetypeId(
+          "content",
+          THEME_DEFINITIONS.academic.layouts,
+          seed,
+          String(seed),
+          undefined,
+          strategy,
+          null,
+        )
+        const withExplicitUndefined = resolveArchetypeId(
+          "content",
+          THEME_DEFINITIONS.academic.layouts,
+          seed,
+          String(seed),
+          undefined,
+          strategy,
+          null,
+          undefined,
+        )
+        expect(withExplicitUndefined).toBe(withoutArg)
+      }
+    }
+  })
+
+  it("beat byte-inertness (hard requirement): an omitted beat's pick equals an independently-recomputed pre-beat formula (weightedPickBySeed against the bare strategy-only weightOf, TENDENCY_WEIGHT=3/BASE_WEIGHT=1 — this file's own doc-comment constants, not imported, to make this a genuine parity check rather than a self-consistency tautology of the current implementation)", () => {
+    for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
+      const tendencyIds = STRATEGY_DEFINITIONS[strategy].layoutTendencies
+      for (let seed = 0; seed < 50; seed++) {
+        const pageKey = String(seed)
+        const actual = resolveArchetypeId(
+          "content",
+          THEME_DEFINITIONS.academic.layouts,
+          seed,
+          pageKey,
+          undefined,
+          strategy,
+          null,
+        )
+        const expected = weightedPickBySeed(seed, `content-archetype:${pageKey}`, CONTENT_ARCHETYPE_IDS, (id) =>
+          tendencyIds.includes(id) ? 3 : 1,
+        )
+        expect(actual).toBe(expected)
+      }
+    }
+  })
+
+  it("beat weighting: a beat's tendency-set members are picked more often than non-members, on top of (not instead of) the strategy layer", () => {
+    // instructional's own layoutTendencies (rail-numbered/two-column) share
+    // zero members with beat "anchor"'s tendency set (banner-heading/
+    // stacked-poster, effective-layout.ts's BEAT_TENDENCIES) — an isolated
+    // pairing so this test measures the beat layer's own pull, not strategy
+    // spillover onto the same ids.
+    const anchorIds = ["banner-heading", "stacked-poster"]
+    const N = 600
+    let anchorHits = 0
+    for (let i = 0; i < N; i++) {
+      const picked = resolveArchetypeId(
+        "content",
+        THEME_DEFINITIONS.academic.layouts,
+        i,
+        String(i),
+        undefined,
+        "instructional",
+        null,
+        "anchor",
+      )!
+      if (anchorIds.includes(picked)) anchorHits++
+    }
+    // Weights: rail-numbered=3 (strategy only), two-column=3 (strategy
+    // only), banner-heading=3 (beat only), stacked-poster=3 (beat only),
+    // bento-panel/narrow-column/tone-adaptive-content=1 each — total 15,
+    // anchor-tendency share = 6/15 = 0.4. Without the beat layer (see the
+    // "narrative weighting" test above) the same two ids would only carry
+    // strategy's ×1 floor — this bound proves the beat layer independently
+    // lifts them, not just strategy's own pull. Wide bounds, same smoke-test
+    // posture as the narrative-weighting test above.
+    expect(anchorHits / N).toBeGreaterThan(0.25)
+    expect(anchorHits / N).toBeLessThan(0.55)
+  })
+
+  it("beat weighting multiplies onto strategy weighting rather than overriding it: a strategy-tendency id that is ALSO a beat-tendency id gets pulled harder than either layer alone", () => {
+    // pyramid's layoutTendencies includes "banner-heading"; beat "anchor"'s
+    // tendency set also includes "banner-heading" — the one pool member both
+    // layers agree on, weight 3×3=9 vs every other id's weight (1, 3, or 3).
+    const N = 600
+    let hits = 0
+    for (let i = 0; i < N; i++) {
+      const picked = resolveArchetypeId(
+        "content",
+        THEME_DEFINITIONS.academic.layouts,
+        i,
+        String(i),
+        undefined,
+        "pyramid",
+        null,
+        "anchor",
+      )!
+      if (picked === "banner-heading") hits++
+    }
+    // Weights: banner-heading=9, bento-panel=3 (strategy only), two-column=3
+    // (strategy only), stacked-poster=3 (beat only), narrow-column/
+    // rail-numbered/tone-adaptive-content=1 each — total 21, banner-heading
+    // share = 9/21 ≈ 0.43. A single id normally caps out at 3/13 ≈ 0.23 under
+    // strategy weighting alone (this file's "narrative weighting" test's own
+    // per-id ceiling) — this bound is deliberately set above that ceiling to
+    // prove the ×9 compound weight, not just one layer's pull.
+    expect(hits / N).toBeGreaterThan(0.3)
+    expect(hits / N).toBeLessThan(0.6)
   })
 
   it("adjacent anti-repetition: when the raw pick equals previousEffectiveLayoutId and the pool has >1 member, redraws deterministically to a different id", () => {
@@ -293,6 +408,76 @@ describe("resolveEffectiveLayoutId", () => {
     const ir = makeIR([slide], "academic")
     expect(THEME_DEFINITIONS.academic.layouts.content).toContain(resolveEffectiveLayoutId(ir, slide, 0))
   })
+
+  // ── beat integration (P1 variety wave, task 1): end-to-end through
+  // resolveEffectiveLayoutId, not just the resolveArchetypeId unit above ──
+
+  it("a slide's own beat reaches resolveArchetypeId end-to-end: forcing it to 'anchor' visibly shifts which id resolves, for at least one seed in a spread", () => {
+    // Same 30-seed spread the byte-inertness test below reuses — proves the
+    // wiring is live (beat isn't silently ignored by resolveEffectiveLayoutId
+    // the way pacing's own PACING_BUDGETS are for selection), not just that
+    // resolveArchetypeId's own weightOf accepts the parameter.
+    let sawADifference = false
+    for (let seed = 0; seed < 30; seed++) {
+      const plain: Slide = { type: "content", heading: "x", components: [{ type: "paragraph", text: "x" }] }
+      const anchored: Slide = { ...plain, beat: "anchor" }
+      const irPlain: PptxIR = { ...makeIR([plain], "academic"), seed }
+      const irAnchored: PptxIR = { ...makeIR([anchored], "academic"), seed }
+      if (resolveEffectiveLayoutId(irPlain, plain, 0) !== resolveEffectiveLayoutId(irAnchored, anchored, 0)) {
+        sawADifference = true
+        break
+      }
+    }
+    expect(sawADifference).toBe(true)
+  })
+
+  describe("beat revision-stability (P1 variety wave, task 1 — per-page independence)", () => {
+    it("changing one page's beat never changes an earlier page's pick (selection walks forward-only)", () => {
+      const base: Slide[] = [
+        { type: "content", id: "p0", heading: "p0", components: [{ type: "paragraph", text: "x" }] },
+        { type: "content", id: "p1", heading: "p1", components: [{ type: "paragraph", text: "x" }] },
+      ]
+      const beats = [undefined, "anchor", "dense", "breathing"] as const
+      const p0Picks = new Set<string | null>()
+      for (const beat of beats) {
+        const slides = base.map((s) => (s.id === "p1" ? { ...s, beat } : s))
+        const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 100 }
+        p0Picks.add(resolveEffectiveLayoutId(ir, ir.slides[0]!, 0))
+      }
+      expect(p0Picks.size).toBe(1)
+    })
+
+    it("changing one page's beat only ever reaches a later page through that page's OWN resolved id (the existing adjacent-anti-repetition channel) — never any other cascade", () => {
+      // 3-page deck, seeds swept: group runs by what page 1 itself resolved
+      // to under each beat value, and assert page 2's resolution is
+      // identical within every group — proving page 2's only input that
+      // could possibly vary with page 1's beat is `previousEffectiveLayoutId`
+      // (page 1's own final id), never beat leaking into page 2's own
+      // weighting or salt.
+      const beats = [undefined, "anchor", "dense", "breathing"] as const
+      for (let seed = 0; seed < 20; seed++) {
+        const groups = new Map<string, Set<string | null>>()
+        for (const beat of beats) {
+          const slides: Slide[] = [
+            { type: "content", id: "p0", heading: "p0", components: [{ type: "paragraph", text: "x" }] },
+            { type: "content", id: "p1", heading: "p1", beat, components: [{ type: "paragraph", text: "x" }] },
+            { type: "content", id: "p2", heading: "p2", components: [{ type: "paragraph", text: "x" }] },
+          ]
+          const ir: PptxIR = { ...makeIR(slides, "academic"), seed }
+          const p1Pick = resolveEffectiveLayoutId(ir, ir.slides[1]!, 1)
+          const p2Pick = resolveEffectiveLayoutId(ir, ir.slides[2]!, 2)
+          const key = String(p1Pick)
+          if (!groups.has(key)) groups.set(key, new Set())
+          groups.get(key)!.add(p2Pick)
+        }
+        for (const [p1Pick, p2Picks] of groups) {
+          expect(p2Picks.size, `seed ${seed}: page 1 resolved to "${p1Pick}" under multiple beats but page 2 diverged`).toBe(
+            1,
+          )
+        }
+      }
+    })
+  })
 })
 
 // ── resolveEffectiveLayoutBodyCapacity (the density gate's geometric term) ──
@@ -395,6 +580,17 @@ describe("render parity with FullSlideSvg", () => {
       label: "journal ending, auto-pick",
       themeId: "journal",
       slide: { type: "ending", heading: "x", components: [] },
+    },
+    {
+      // P1 variety wave, task 1: proves FullSlideSvg's own local
+      // `resolveArchetype` wrapper (`FullSlideSvg.tsx`) threads `slide.beat`
+      // through to `resolveArchetypeId` the same way this module's
+      // `resolveOneEffectiveLayoutId` does — a render-time drift here (one
+      // side reading beat, the other silently dropping it) would break the
+      // "validate sees what render draws" promise for beat specifically.
+      label: "academic content with a declared beat, auto-pick",
+      themeId: "academic",
+      slide: { type: "content", heading: "x", beat: "dense", components: [{ type: "paragraph", text: "x" }] },
     },
   ]
 

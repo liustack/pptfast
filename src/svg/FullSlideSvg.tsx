@@ -218,8 +218,18 @@ function resolveArchetype(
   requestedLayout: string | undefined,
   strategy: Strategy,
   previousEffectiveLayoutId: string | null,
+  beat: Slide["beat"],
 ): { id: string; Component: PageArchetype } | null {
-  const id = resolveArchetypeId(slideType, layouts, seed, pageKey, requestedLayout, strategy, previousEffectiveLayoutId)
+  const id = resolveArchetypeId(
+    slideType,
+    layouts,
+    seed,
+    pageKey,
+    requestedLayout,
+    strategy,
+    previousEffectiveLayoutId,
+    beat,
+  )
   return id === null ? null : { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
 }
 
@@ -354,6 +364,7 @@ export function FullSlideSvg({
           slide.layout,
           strategy,
           previousEffectiveLayoutId,
+          slide.beat,
         )
 
   return (
