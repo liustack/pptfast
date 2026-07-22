@@ -1093,6 +1093,61 @@ describe("v4 has no old-vocabulary rescue (spec §16, reversing the now-supersed
   })
 })
 
+// Borrow-wave task 3 (error-message quality): the rest of the documented
+// v2/v3 → v4 rename map gets the same "renamed, here's the new name" rescue
+// `scenario` already had (see `./ir/rename-hints.ts`), plus a generic
+// slide-level location hint for an unrecognized key that isn't one of those
+// renames. Every case below is one of the borrow-wave B report's 15
+// forgiveness probes (P2/P4/P7) — pinned here as the probe's *new* message
+// shape, replacing the bare "Unrecognized key" the probe originally found.
+describe("unrecognized-key rescue hints (borrow-wave task 3, generalizing the scenario rescue)", () => {
+  it("P7: hints blocks -> components at slide level", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", blocks: [{ type: "bullets", items: ["a", "b"] }] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('Unrecognized key: "blocks"'))).toBe(true)
+    expect(v.errors.some((e) => e.message.includes('"blocks" was renamed to "components" in IR v4'))).toBe(true)
+  })
+
+  it("hints variant -> layout/arrangement at slide level", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", variant: "two-column" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('"variant" was split into "layout" and "arrangement" in IR v4'))).toBe(
+      true,
+    )
+  })
+
+  it("hints theme.override -> theme.style, scoped to the theme object", () => {
+    const v = validateIr({ ...raw, theme: { id: "consulting", override: { accent: "#ff0000" } } })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('"theme.override" was renamed to "theme.style" in IR v4'))).toBe(true)
+  })
+
+  it("P2: a non-rename unrecognized key directly on a slide gets the generic components[] location hint instead", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", items: ["stray", "items"] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('Unrecognized key: "items"'))).toBe(true)
+    expect(v.errors.some((e) => e.message.includes("belong inside one of the slide's components[] entries"))).toBe(true)
+    // Never both hints on the same key.
+    expect(v.errors.some((e) => e.message.includes("was renamed"))).toBe(false)
+  })
+
+  it("P4: an unrecognized key that is neither a documented rename nor at slide level gets no hint at all (out of this task's scope)", () => {
+    const v = validateIr({ ...raw, theme: { id: "consulting", colour: "#ff0000" } })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.message).toBe('Unrecognized key: "colour"')
+  })
+})
+
 describe("registerTheme end-to-end (W3 task 4)", () => {
   afterEach(() => {
     __resetRegisteredThemes()

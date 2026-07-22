@@ -3,6 +3,7 @@ import { PptfastError } from "./errors"
 import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
 import { decodeDataUriBytes, dataUriMime, FORMAT_BY_MIME, MIME_BY_SNIFFED_FORMAT, sniffImageFormat } from "./ir/asset-sniff"
 import { normalizeComponentAliases } from "./ir/field-aliases"
+import { isSlideLevelPath, renameHintsFor, SLIDE_LEVEL_UNKNOWN_KEY_HINT } from "./ir/rename-hints"
 import { generatePptxBlob } from "./pptx/generate"
 import { resolveNarrative, type NarrativeProfile } from "./narrative"
 import { CAPACITY } from "./svg/audit/capacity"
@@ -544,7 +545,14 @@ function checkAssetReferences(ir: PptxIR): ValidationIssue[] {
  * the schema itself leaves open) fails `resolveNarrative`'s own runtime
  * check, listing the current values. `pptfast migrate` (`ir/migrate.ts`)
  * remains the sanctioned bridge for a genuine v3 document — see the v3 hard
- * reject below, which points there.
+ * reject below, which points there. Hard-erroring is not the same as
+ * leaving the error message unhelpful, though: the schema-parse branch below
+ * appends a rename hint to `scenario` and the rest of the documented v2/v3
+ * rename map (`blocks`/`variant`/`theme.override` — `./ir/rename-hints.ts`,
+ * borrow-wave task 3) whenever the offending key matches one, and a generic
+ * "belongs inside components[]" hint for any other slide-level unrecognized
+ * key — message-layer annotation only, never a second, silent rewrite path
+ * alongside {@link normalizeComponentAliases}.
  *
  * The component-alias pass only ever runs for a document already headed for
  * the v4 schema — an explicit `version: "2"` or `version: "3"` is
@@ -599,14 +607,34 @@ export function validateIr(input: unknown): ValidateResult {
       const path = issue.path.join(".")
       const m = /^slides\.(\d+)/.exec(path)
       let message = issue.message
-      // The one retired key a hand-migrated v4 document most plausibly still
-      // carries (spec §16 hard-rejects it, no rescue) — the bare zod
-      // "Unrecognized key" line names the key but not its successor, so
-      // point at the rename and the sanctioned bridge here. The axis keys
-      // and old enum values inside `narrative` already self-document via
-      // resolveNarrative's own errors.
-      if (issue.code === "unrecognized_keys" && path === "" && /"scenario"/.test(message)) {
-        message += ' — "scenario" was renamed to "narrative" in IR v4 (for a v3 file run: pptfast migrate <file> -o <out>)'
+      if (issue.code === "unrecognized_keys") {
+        // The one retired key a hand-migrated v4 document most plausibly
+        // still carries (spec §16 hard-rejects it, no rescue) — the bare
+        // zod "Unrecognized key" line names the key but not its successor,
+        // so point at the rename and the sanctioned bridge here. The axis
+        // keys and old enum values inside `narrative` already self-document
+        // via resolveNarrative's own errors. Kept inline (not folded into
+        // ./ir/rename-hints.ts's table below) because this is the one
+        // rename whose hint also carries the `pptfast migrate` pointer for
+        // a genuine v3 document — see that module's own doc comment for why
+        // the other, v2-only renames don't get the same pointer.
+        if (path === "" && issue.keys.includes("scenario")) {
+          message += ' — "scenario" was renamed to "narrative" in IR v4 (for a v3 file run: pptfast migrate <file> -o <out>)'
+        }
+        // The rest of the documented v2/v3 → v4 rename map (borrow-wave
+        // task 3, generalizing the `scenario` rescue above to
+        // `blocks`/`variant`/`theme.override` — ./ir/rename-hints.ts), plus
+        // a generic "content belongs inside components[]" fallback for a
+        // slide-level unrecognized key that isn't one of those documented
+        // renames (the `items`-directly-on-a-slide probe, borrow-wave B
+        // report §3.3 #3). Never both on the same key: a documented rename
+        // is always the more specific, more useful hint.
+        const renameHints = renameHintsFor(issue.keys, path)
+        if (renameHints.length > 0) {
+          message += renameHints.join("")
+        } else if (isSlideLevelPath(path)) {
+          message += SLIDE_LEVEL_UNKNOWN_KEY_HINT
+        }
       }
       return { path, message, page: m ? Number(m[1]) + 1 : undefined }
     })
