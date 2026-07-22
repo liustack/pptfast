@@ -27,10 +27,14 @@
 // reachable from this sweep — see that file's own comment).
 import { beforeAll, describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
+import { renderSlideSvg } from "@/api"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
-import { CANONICAL_THEME_IDS } from "../../themes"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { MOTIF_CANDIDATES, resolveMotifId } from "../motif-selection"
+import { resolveBackgroundHex } from "../FullSlideSvg"
+import { parseSvgRoot } from "../serialize"
+import { contrastRatio } from "../ink"
 
 beforeAll(() => {
   installNodePlatform()
@@ -140,6 +144,155 @@ describe("motif candidate contrast sweep (P1 variety wave, task 2)", () => {
             for (const f of findings) failures.push(`${slide.type}: ${f.code} ${JSON.stringify(f.detail)}`)
           }
           expect(failures).toEqual([])
+        })
+      }
+    })
+  }
+})
+
+// Review fix round (P1 variety wave, task 2 — Moderate finding): the sweep
+// above proves candidate motifs never make *other* page text unreadable,
+// but it structurally cannot catch a motif's own decor rendering invisibly
+// against its *own* background — `deck-audit.ts`'s contrast walk explicitly
+// excludes every `<g data-decor>` shape from background candidacy (see that
+// file's own "One more exclusion" doc comment), so a decor shape blending
+// into its own background produces zero findings either way. That is
+// exactly the bug the reviewer caught: `motif-banner-motif.tsx` /
+// `motif-rail-motif.tsx`'s chapter branches hard-coded a pure-white fill
+// tuned for their own anchor theme's dark chapter background — invisible
+// white-on-white the moment `enterprise` (chapter bg `#FFFFFF`) or `journal`
+// (chapter bg `#FAF7F2`) became candidates for them. Both are fixed
+// (`readableOn(ctx.defaultBg ?? ctx.colors.bg)` instead of a literal — see
+// each source file's own doc comment) — this guard is the durable
+// regression net so a *future* motif/candidate addition can't reintroduce
+// the same silent-blankness class without a loud test failure.
+//
+// Floor calibration (`tmp-calibrate.ts`, run once, not committed — see this
+// task's report for the numbers): every legitimately-subtle decor
+// blend measured in this codebase today lands at a `contrastRatio` of
+// ~1.07-1.13 against its own real background (low opacity is *supposed* to
+// look faint). The exact bug this guard exists to catch — white blended
+// over an identical white background — measures exactly `1.0000` (zero
+// possible delta, not merely a low one). `VISIBILITY_FLOOR` sits well
+// inside that gap: comfortably below every real subtle-decoration ratio,
+// comfortably above the zero-delta failure mode.
+const VISIBILITY_FLOOR = 1.02
+
+/** Same alpha-composite math as `../ink.ts`'s own (private) `blendOver` —
+ * duplicated here for the same render→util dependency-direction reason that
+ * file's header gives for its own duplicate of `deck-audit.ts`'s copy: a
+ * third small, pure, test-local copy is cheaper than exporting a function
+ * whose only reason to leave `ink.ts` would be this one guard test. */
+function blendOver(fg: string, bg: string, alpha: number): string {
+  const toRgb = (hex: string): [number, number, number] => {
+    const n = parseInt(hex.replace("#", ""), 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  }
+  const [fr, fgc, fb] = toRgb(fg)
+  const [br, bgc, bb] = toRgb(bg)
+  const mix = (f: number, b: number) => Math.round(f * alpha + b * (1 - alpha))
+  const toHex = (v: number) => v.toString(16).padStart(2, "0")
+  return `#${toHex(mix(fr, br))}${toHex(mix(fgc, bgc))}${toHex(mix(fb, bb))}`
+}
+
+/** An element's own effective opacity — `opacity` × `fill-opacity` ×
+ * `stroke-opacity` (SVG's own composition rule), each defaulting to `1`
+ * when absent. Every motif in this codebase only ever sets at most one of
+ * the three on a given shape, but multiplying all three is correct either
+ * way and no more code than picking "the one that's set". */
+function shapeOpacity(el: Element): number {
+  const read = (attr: string): number => {
+    const v = el.getAttribute(attr)
+    return v === null ? 1 : Number(v)
+  }
+  return read("opacity") * read("fill-opacity") * read("stroke-opacity")
+}
+
+/** A shape's own paint color — `fill` if it's a hex literal, else `stroke`
+ * if *that's* a hex literal, else `null` (a `url(#...)` gradient ref,
+ * `"none"`, or no paint attribute at all — none of this task's motifs use
+ * gradients, so `null` here would itself be a signal worth looking at, not
+ * expected in practice). */
+function shapeColor(el: Element): string | null {
+  const fill = el.getAttribute("fill")
+  if (fill?.startsWith("#")) return fill
+  const stroke = el.getAttribute("stroke")
+  if (stroke?.startsWith("#")) return stroke
+  return null
+}
+
+const DECOR_SHAPE_SELECTOR = "line, path, rect, circle, ellipse"
+
+describe("motif candidate decor-visibility guard (P1 variety wave, task 2 — review fix round)", () => {
+  for (const themeId of MULTI_CANDIDATE_THEMES) {
+    const candidates = MOTIF_CANDIDATES[themeId]!
+    const tokens = resolveStyle(themeId)
+    describe(themeId, () => {
+      for (const candidate of candidates) {
+        it(`candidate "${candidate}": every decor shape it actually renders clears a small but nonzero visibility floor against its own real background, on every slide type`, () => {
+          const seed = findSeedFor(themeId, candidate)
+          const failures: string[] = []
+          let sawAnyShape = false
+
+          for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
+            const slide: Slide = { type: slideType, id: "0", heading: HEADING, components: [] } as Slide
+            const ir = deckFor(themeId, slide, seed)
+            expect(
+              resolveMotifId(ir, ir.slides[0]!, 0),
+              `${themeId}/${slideType} did not resolve to "${candidate}"`,
+            ).toBe(candidate)
+
+            const markup = renderSlideSvg(ir, 0)
+            const root = parseSvgRoot(markup)
+            const decorRoot = root.querySelector("[data-decor]")
+            const shapes = decorRoot ? Array.from(decorRoot.querySelectorAll(DECOR_SHAPE_SELECTOR)) : []
+            // No shapes at all is a legitimate, pre-existing "this motif
+            // retreats on this slide type" design choice (e.g. every
+            // enterprise/luxe/heritage/classroom/bloom-family motif returns
+            // null on chapter — the "memphis 先例" documented in each of
+            // their own source headers, disclosed in this task's report) —
+            // not a visibility bug, so it's intentionally not flagged here.
+            if (shapes.length === 0) continue
+
+            const bgHex = resolveBackgroundHex(tokens.defaultBackgrounds[slideType], tokens.colors.surface)
+            // Max ratio across the slide's own decor shapes, not "every
+            // shape individually" (review-fix round 2, `bloom-motif`'s own
+            // watercolor algorithm is many overlapping layers each at
+            // ~3-4.5% opacity by design — see that file's own header — any
+            // *single* granule layer measured alone is intentionally
+            // near-invisible; only their composite is meant to read as
+            // visible texture). What must clear the floor is the *most*
+            // visible constituent of what this motif actually painted — the
+            // exact failure mode this guard exists to catch (banner/rail's
+            // old hard-coded white-on-white) had every shape share the same
+            // fully-invisible fill, so its own max is 1.0 too, still caught.
+            let maxRatio = 0
+            let maxRatioDetail = ""
+            for (const shape of shapes) {
+              const color = shapeColor(shape)
+              if (!color) continue // no hex paint on this shape (see shapeColor's own doc comment)
+              sawAnyShape = true
+              const opacity = shapeOpacity(shape)
+              const blended = opacity >= 1 ? color : blendOver(color, bgHex, opacity)
+              const ratio = contrastRatio(blended, bgHex)
+              if (ratio > maxRatio) {
+                maxRatio = ratio
+                maxRatioDetail = `${shape.tagName} color=${color} opacity=${opacity} bg=${bgHex} blended=${blended}`
+              }
+            }
+            if (maxRatio > 0 && maxRatio < VISIBILITY_FLOOR) {
+              failures.push(
+                `${slideType}: every decor shape is near-invisible — best ratio ${maxRatio.toFixed(4)} (floor ${VISIBILITY_FLOOR}) from ${maxRatioDetail}`,
+              )
+            }
+          }
+
+          expect(failures).toEqual([])
+          // At least one theme/candidate/slide-type combo in this whole
+          // sweep must actually exercise a real shape — otherwise this guard
+          // would pass vacuously (every case hit the "no shapes" `continue`
+          // and never touched the assertion it exists to make).
+          expect(sawAnyShape, `${themeId}/${candidate} never rendered a single hex-colored decor shape`).toBe(true)
         })
       }
     })

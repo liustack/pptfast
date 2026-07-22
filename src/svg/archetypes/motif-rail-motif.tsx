@@ -1,6 +1,7 @@
 // GF/svg/archetypes/motif-rail-motif.tsx
 import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
+import { readableOn } from "../ink"
 
 /**
  * rail-motif archetype（spec §3.2，Wave 3 Task 18）：a soft quarter-disc arc
@@ -40,19 +41,30 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
  * 唯一的颜色字面量是 chapter 分支的白色 arc 填色，处理见下方"白字例外"。
  * **无孤儿色**。
  *
- * 白字例外（同 chapter-rail-chapter.tsx / content-rail-numbered.tsx /
- * cover-left-anchor.tsx 先例）：chapter 分支的 arc 固定写死纯白字面量——
- * chapter 的默认背景就是不透明的 `colors.primary` 本身，"primary 半透明叠在
- * primary 实心背景上"在数学上是无操作（合成结果与背景完全相同，即完全隐
- * 形），故这条分支改用白色，与本文件同主题的 `chapter-rail-chapter.tsx`
- * （章节页大水印数字）共享同一条产品逻辑先例。不进上面的替换表，予以保留
- * 并在测试里跨主题锁死。
+ * **Review fix round (P1 variety wave, task 2 — Moderate finding)**: the
+ * chapter branch used to hard-code a pure-white arc fill — a deliberate
+ * escape from "primary tinted arc on primary-solid background is a no-op
+ * composite" (still true, and still the reason this branch can't just reuse
+ * `ctx.colors.primary` the way content/ending do), but tuned only for
+ * academic's own dark chapter background (`#006A4E`). Once
+ * `motif-selection.ts` made this motif a candidate for other themes too
+ * (`enterprise` — chapter bg `#FFFFFF`; `journal` — chapter bg `#FAF7F2`,
+ * near-white), the hard-coded white arc became invisible white-on-(near-)
+ * white — the same class of bug `motif-banner-motif.tsx`'s own chapter
+ * branch had (see that file's own doc comment for the full story, including
+ * why `motif-selection.ts`'s existing contrast sweep couldn't have caught
+ * this: `<g data-decor>` shapes are structurally excluded from that walk's
+ * background candidacy). Fixed the same way: `readableOn(ctx.defaultBg ??
+ * ctx.colors.bg)` (`../ink.ts`) instead of a hard-coded literal, same 0.06
+ * opacity either way. On academic's own dark chapter bg this still resolves
+ * to exactly `#FFFFFF` (white beats `readableOn`'s other neutral ink,
+ * near-black, by a wide margin there) — byte-identical to before this fix.
  *
- * **档位一・逐字节等价**（唯一烤死颜色字面量是上面点名的白字例外，其余全部
- * 消费 `ctx.colors.primary`，无孤儿色）。
+ * **档位一・逐字节等价**（academic 自身渲染字节不变，其余全部消费
+ * `ctx.colors.primary`，无孤儿色）。
  *
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试锁死
- * 的 chapter 分支纯白字面量，grep 清零门预期恰好命中这一处。
+ * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是 `../ink.ts` 内部
+ * 持有的两枚中性墨色常量，本文件自身不再持有任何 hex 字面量。
  */
 const ARC_CX = 1280
 const ARC_CY = 720
@@ -84,7 +96,7 @@ export function RailMotif({ ir, slide, ctx }: DecorProps) {
   // that file's own doc comment).
   if (slide.type === "cover") return <></>
   if (slide.type === "chapter") {
-    return <path d={arcFor(variant)} fill="#FFFFFF" opacity="0.06" />
+    return <path d={arcFor(variant)} fill={readableOn(ctx.defaultBg ?? ctx.colors.bg)} opacity="0.06" />
   }
   return <path d={arcFor(variant)} fill={ctx.colors.primary} opacity="0.06" />
 }

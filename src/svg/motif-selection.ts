@@ -55,8 +55,8 @@
  * | enterprise | enterprise-motif, banner-motif, rail-motif | enterprise's Swiss-grid IKB identity pairs only with the other minimal geometric-line motifs (banner's grid, rail's arc) — organic/wash/ornamental families would visibly clash with its industrial-design register |
  * | luxe | luxe-motif, heritage-motif, corner-ornament-motif | luxe/heritage/journal all draw from the same thin-ornamental-line family — luxe at the "gilt minimal" end, heritage at "classic emblem", journal at "print corner" |
  * | campaign | campaign-motif *(singleton)* | campaign's saturated multi-hue crayon/brush vocabulary has no sibling anywhere in the other 12 motifs — pairing it with grid lines, watercolor wash, or gold hairlines would break its "活力营销" identity rather than vary it, so it is deliberately left alone (candidate set of 1 — same-deck renders stay byte-identical to before this task, see `motif-selection.test.ts`'s byte-inertness block) |
- * | classroom | classroom-motif, bloom-motif | classroom's own header comment explicitly distinguishes its smooth organic blobs from bloom's watercolor texture, but both are still organic/soft-toned family members — the most-adjacent style match in the whole roster, close enough to rotate without breaking the "教学手账" register the way a grid or brush motif would |
- * | bloom | bloom-motif, classroom-motif | mirror of classroom's pairing above — both organic, soft-toned, most-adjacent match |
+ * | classroom | classroom-motif, bloom-motif | classroom's own header comment explicitly distinguishes its smooth organic blobs from bloom's watercolor texture, but both are still organic/soft-toned family members — the most-adjacent style match in the whole roster, close enough to rotate without breaking the "教学手账" register the way a grid or brush motif would. **Disclosure (Minor, review fix round)**: both `classroom-motif` and `bloom-motif` pre-date this task's own `return null` on `slide.type === "chapter"` (each file's own source, unrelated to candidacy — neither one draws any chapter decor even as its own theme's sole anchor) — classroom's chapter pages render with *no* motif candidate contributing decor regardless of which of the two the seed picks, same as before this task existed. Not a visibility bug (nothing rendered is not the same failure as something rendered invisibly, the Moderate finding this same fix round corrected for `banner-motif`/`rail-motif`) — just a pre-existing reduction in this theme's own candidate-rotation payoff worth naming plainly rather than leaving implicit. |
+ * | bloom | bloom-motif, classroom-motif | mirror of classroom's pairing above — both organic, soft-toned, most-adjacent match. Same chapter-page disclosure as classroom's own entry above — both members of this pair are `return null` on chapter. |
  * | ink | ink-motif *(singleton)* | ink's calligraphy/seal-stamp/vertical-inscription vocabulary is the most culturally-specific motif in the set with no sibling family — any other motif substituted in would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (byte-identical, same rationale pattern as campaign) |
  * | heritage | heritage-motif, luxe-motif, corner-ornament-motif | heritage anchors the thin-ornamental-line family (classic emblem end), luxe (gilt minimal) and journal's corner ornament (print corner) are its closest siblings |
  *
@@ -70,19 +70,55 @@
  *
  * ## Contrast safety
  *
- * Every non-anchor candidate above renders through each theme's *own*
- * `ctx.colors` (every motif's own "零 hex 纪律" — zero baked hex, colors
- * read off `ctx` — see each `motif-*.tsx` file's own header) except two
- * documented baked-white lines in `banner-motif`/`rail-motif` used only for
- * their own theme's dark chapter background (unaffected by this task — those
- * two motifs are candidates only for other themes' *own* cover/content/
- * ending renders in the sets above, where that branch never executes on a
- * background it wasn't tuned for; verified empirically, not just by
- * inspection — see `motif-candidate-contrast.test.ts`, this task's extension
- * of the existing full-matrix contrast sweep to every candidate in this
- * table, not just each theme's own anchor). No candidate was removed by that
- * sweep — recorded here per 控制者裁决 §4's re-pin discipline, so a future
- * reviewer doesn't have to re-derive "was this checked" from git blame.
+ * Two independent nets, checking two different things — neither one alone
+ * is the whole story, and conflating them was this task's own review-round
+ * Major/Moderate mistake (below):
+ *
+ * 1. **Does a candidate motif make *other* page text unreadable?**
+ *    `motif-candidate-contrast.test.ts`'s first sweep runs the existing
+ *    `findContrastIssues`/`auditDeck` machinery against every candidate —
+ *    but that machinery *structurally excludes* every `<g data-decor>` shape
+ *    from background candidacy (`deck-audit.ts`'s own "One more exclusion"
+ *    doc comment), by design (a faint decorative shape must never be
+ *    mistaken for the real page background a heading was contrast-tuned
+ *    against). That exclusion means this sweep can prove decor never breaks
+ *    *other* text — it structurally cannot prove decor is itself visible
+ *    against its own background.
+ * 2. **Does a candidate motif's own decor render invisibly against its own
+ *    background?** A distinct question, added by `motif-candidate-contrast
+ *    .test.ts`'s second sweep (review fix round, Moderate finding): every
+ *    motif's own "零 hex 纪律" (zero baked hex, colors read off `ctx`) means
+ *    a shared token like `ctx.colors.primary`/`border` naturally adapts to
+ *    whichever theme is rendering — but `banner-motif`/`rail-motif`'s
+ *    chapter branches used to be a **documented exception** to that
+ *    discipline: a literal `"#FFFFFF"`, tuned only for their own anchor
+ *    theme's dark chapter background (`consulting`/`academic`). Once this
+ *    task made those two motifs *candidates* for other themes too
+ *    (`enterprise`, chapter bg `#FFFFFF`; `journal`, chapter bg `#FAF7F2`),
+ *    the literal became invisible white-on-(near-)white — a real defect
+ *    sweep 1 above could never have caught (its own `<g data-decor>`
+ *    exclusion), caught instead by a human reviewer and now fixed:
+ *    both branches derive their ink from `readableOn(ctx.defaultBg ??
+ *    ctx.colors.bg)` (`../ink.ts`) instead of a hard-coded literal — see
+ *    each source file's own doc comment for the byte-identity proof that
+ *    their own anchor theme's render is unchanged. Chart-palette rotation's
+ *    own separate leak into this same "shared `ctx` token" hazard (`ctx
+ *    .colors.chartPalette` briefly rotated in place, silently repainting
+ *    `campaign-motif`/`classroom-motif`/`bloom-motif`'s *unrelated*
+ *    decorative reads of that token) is `../chart-palette.ts`'s own
+ *    "Consumption seam" section, not repeated here.
+ *
+ * `motif-candidate-contrast.test.ts`'s second sweep is the durable
+ * regression net for defect class 2 — every candidate's own decor must clear
+ * a small but nonzero visibility floor against its real background,
+ * wherever it renders anything at all (`classroom-motif`/`bloom-motif`
+ * `return null` on `chapter` entirely, pre-dating this task — see the
+ * `classroom`/`bloom` table rows' own disclosure — correctly not flagged by
+ * either sweep: nothing rendered is not the same failure as something
+ * rendered invisibly). No candidate needed removal from this table — every
+ * fix landed at the motif's own consumption seam instead. Recorded here per
+ * 控制者裁决 §4's re-pin discipline, so a future reviewer doesn't have to
+ * re-derive "was this checked, and for which defect class" from git blame.
  */
 import type { PptxIR, Slide } from "@/ir"
 import type { CanonicalThemeId } from "../themes"
