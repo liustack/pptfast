@@ -167,7 +167,7 @@ describe("assembleDeck", () => {
       expect(kpi?.placeholder).toBeUndefined()
     })
 
-    it("never lets spec-only beat/focus/summary reach the IR for a present page", () => {
+    it("carries a declared beat straight into the IR for a present page (P1 variety wave, task 1 — no longer dropped)", () => {
       const withAnchors = makePlan({
         pages: [
           { id: "p-cover", type: "cover", heading: "Q3 Review" },
@@ -185,9 +185,30 @@ describe("assembleDeck", () => {
       })
       const { ir } = assembleDeck(withAnchors, { "p-kpi": {} })
       const kpi = ir.slides.find((s) => s.id === "p-kpi") as unknown as Record<string, unknown>
-      expect(kpi.beat).toBeUndefined()
+      expect(kpi.beat).toBe("anchor")
+      // focus/summary stay spec-only authoring anchors — no IR-side home for either.
       expect(kpi.focus).toBeUndefined()
       expect(kpi.subheading).toBeUndefined()
+    })
+
+    it("omits beat from the IR entirely when the spec page never declared one", () => {
+      const { ir } = assembleDeck(makePlan(), { "p-kpi": {} })
+      const kpi = ir.slides.find((s) => s.id === "p-kpi") as unknown as Record<string, unknown>
+      expect(Object.hasOwn(kpi, "beat")).toBe(false)
+    })
+
+    it("carries a declared beat into a placeholder slide too (step 4, no content record)", () => {
+      const withBeat = makePlan({
+        pages: [
+          { id: "p-cover", type: "cover", heading: "Q3 Review" },
+          { id: "p-kpi", type: "content", heading: "Revenue is up", beat: "breathing" },
+          { id: "p-detail", type: "content", heading: "Detail breakdown" },
+          { id: "p-ending", type: "ending", heading: "Thanks" },
+        ],
+      })
+      const { ir } = assembleDeck(withBeat, {})
+      const kpi = ir.slides.find((s) => s.id === "p-kpi")
+      expect(kpi).toMatchObject({ placeholder: true, beat: "breathing" })
     })
 
     it("passes notes through as plain content — never locked, never rendered onto the canvas", () => {
@@ -525,7 +546,7 @@ describe("disassembleDeck", () => {
     expect(spec.pages.find((p) => p.id === "p-gap")?.summary).toBe("fill me in")
   })
 
-  it("never sets beat or focus on any produced spec page (no IR-side home for either)", () => {
+  it("never sets focus on any produced spec page (no IR-side home for it)", () => {
     const ir = PptxIRSchema.parse({
       version: "4",
       theme: { id: "consulting" },
@@ -537,9 +558,24 @@ describe("disassembleDeck", () => {
     })
     const { spec } = disassembleDeck(ir)
     for (const page of spec.pages) {
-      expect(page.beat).toBeUndefined()
       expect(page.focus).toBeUndefined()
     }
+  })
+
+  it("recovers beat from slide.beat (P1 variety wave, task 1 — plain passthrough, same as layout/heading)", () => {
+    const ir = PptxIRSchema.parse({
+      version: "4",
+      theme: { id: "consulting" },
+      slides: [
+        { id: "p-cover", type: "cover", heading: "Cover" },
+        { id: "p-body", type: "content", heading: "Body", beat: "dense" },
+        { id: "p-plain", type: "content", heading: "Plain" },
+        { id: "p-ending", type: "ending", heading: "End" },
+      ],
+    })
+    const { spec } = disassembleDeck(ir)
+    expect(spec.pages.find((p) => p.id === "p-body")?.beat).toBe("dense")
+    expect(spec.pages.find((p) => p.id === "p-plain")?.beat).toBeUndefined()
   })
 })
 
@@ -558,6 +594,7 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
           id: "p-kpi",
           type: "content",
           heading: "KPI page",
+          beat: "dense",
           components: [{ type: "paragraph", text: "hi" }],
           layout: "kpi-strip",
           arrangement: "kpi_focus",

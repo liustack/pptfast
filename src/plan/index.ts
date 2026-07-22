@@ -24,7 +24,7 @@
  */
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { BrandSchema, COMPONENT_TYPES, MetaSchema, NarrativeProfileInputSchema } from "../ir"
+import { BEAT_VALUES, BrandSchema, COMPONENT_TYPES, MetaSchema, NarrativeProfileInputSchema } from "../ir"
 import { STRATEGY_DEFINITIONS, resolveNarrative, type Pacing, type Strategy, type NarrativeProfile } from "../narrative"
 import { CAPACITY } from "../svg/audit/capacity"
 import { LAYOUT_REGISTRY, type SlideType } from "../svg/layouts/registry"
@@ -41,8 +41,6 @@ import { getInstalledThemeIds } from "../themes/definitions"
  * silent mismatch.
  */
 const PAGE_TYPES = ["cover", "chapter", "content", "ending"] as const satisfies readonly SlideType[]
-
-const BEAT_VALUES = ["anchor", "dense", "breathing"] as const
 
 export type PageSpecType = (typeof PAGE_TYPES)[number]
 export type PageBeat = (typeof BEAT_VALUES)[number]
@@ -64,10 +62,18 @@ export const PageSpecSchema = z
     /** One of the three beat values, or omitted entirely — an omitted
      *  beat is never a hard-gate violation on its own (see
      *  {@link checkBeatRotation}'s policy functions below). It gets
-     *  auto-alternated at assemble time (W5 task 3, not this task). Renamed
+     *  auto-alternated at assemble time (W5 task 3, not this task — still
+     *  unimplemented as of the P1 variety wave's task 1). Renamed
      *  from `rhythm` (vocabulary-v4 rename, spec §4.3/§6/§8.1) — same
      *  three values, same semantics, page-level term only, distinct from
-     *  the deck-level `pacing` axis. */
+     *  the deck-level `pacing` axis. A *declared* value here is no longer
+     *  spec-only advisory material (P1 variety wave, task 1): `assembleDeck`
+     *  (`./assemble.ts`) now carries it straight into the IR's own
+     *  `Slide.beat` field, where it multiplies a soft selection-weight onto
+     *  layout picking (`SlideSchema.beat`'s own doc comment, `../ir/index.ts`)
+     *  — the checks below (rotation shape) and that downstream weighting
+     *  (which archetypes a given beat favors) are two independent consumers
+     *  of the same declared value, not two views of one mechanism. */
     beat: z.enum(BEAT_VALUES).optional(),
     /** Optional authoring hint pointing fill/select at a preferred
      *  component type or layout id — see {@link checkFocusVocabulary}. */
