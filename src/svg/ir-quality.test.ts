@@ -572,6 +572,111 @@ describe("checkIrQuality", () => {
     expect(codes(checkIrQuality(ir))).not.toContain("big_number_no_kpi")
   })
 
+  // ── chart_axes_ignored (chart-axes feature) ──
+  // `component.axes` only renders for bar/line (chart.tsx's own
+  // AXES_APPLICABLE_TYPES) — pie/funnel/dumbbell silently dropped it before
+  // this warn-severity finding existed (dual-threshold severity, Task 2's
+  // machinery: warn reports without blocking `ok`).
+
+  it("warns when a pie chart sets axes (x_title/y_title/show_grid all ignored for this chart_type)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Share",
+        components: [
+          {
+            type: "chart",
+            chart_type: "pie",
+            axes: { x_title: "Segment", y_title: "Share" },
+            series: [{ name: "S1", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).toContain("chart_axes_ignored")
+  })
+
+  it("warns when a funnel or dumbbell chart sets axes", () => {
+    for (const chart_type of ["funnel", "dumbbell"] as const) {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "Pipeline",
+          components: [
+            {
+              type: "chart",
+              chart_type,
+              axes: { show_grid: true },
+              series:
+                chart_type === "dumbbell"
+                  ? [
+                      { name: "From", data: [{ x: "A", y: 10 }] },
+                      { name: "To", data: [{ x: "A", y: 20 }] },
+                    ]
+                  : [{ name: "S1", data: [{ x: "A", y: 10 }] }],
+            },
+          ],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("chart_axes_ignored")
+    }
+  })
+
+  it("does NOT warn for bar or line charts with axes (the applicable types)", () => {
+    for (const chart_type of ["bar", "line"] as const) {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "Trend",
+          components: [
+            {
+              type: "chart",
+              chart_type,
+              axes: { x_title: "X", y_title: "Y" },
+              series: [{ name: "S1", data: [{ x: "A", y: 10 }] }],
+            },
+          ],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("chart_axes_ignored")
+    }
+  })
+
+  it("does NOT warn for a pie chart with no axes field at all", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Share",
+        components: [
+          {
+            type: "chart",
+            chart_type: "pie",
+            series: [{ name: "S1", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).not.toContain("chart_axes_ignored")
+  })
+
+  it("does NOT warn for a pie chart with axes present but every sub-field undefined (axes: {})", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Share",
+        components: [
+          {
+            type: "chart",
+            chart_type: "pie",
+            axes: {},
+            series: [{ name: "S1", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).not.toContain("chart_axes_ignored")
+  })
+
   // ── multiple issues on one slide ──
 
   it("can report multiple issues on a single slide (default narrative: general/balanced)", () => {

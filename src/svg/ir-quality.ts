@@ -36,6 +36,11 @@ export type QualityIssue = {
    * pacing's bullets budget (spec §5 pacing table), for the same
    * English-translation reason as `density` above. */
   bulletsBudget?: { pacing: Pacing; maxItems: number; maxUnitsPerItem: number }
+  /** `code: "chart_axes_ignored"` only — the offending chart's `chart_type`,
+   * for the same English-translation reason as `density`/`bulletsBudget`
+   * above: `api.ts`'s `describeQualityIssue` names it without re-deriving
+   * which component/chart_type triggered the finding. */
+  chartAxesIgnored?: { chartType: string }
 }
 
 // ── helpers ──
@@ -47,6 +52,26 @@ function charLen(s: string): number {
 
 function hasKpiCardsComponent(slide: Slide): boolean {
   return slide.components.some((b) => b.type === "kpi_cards")
+}
+
+/**
+ * Chart types `component.axes` (x_title/y_title/show_grid) actually renders
+ * for — mirrors `chart.tsx`'s own `AXES_APPLICABLE_TYPES` (a local
+ * duplicate, not a cross-import: this is a pure quality-check module, that
+ * one a React SVG renderer — same "small local list + comment" precedent
+ * `gantt.tsx`'s `vx` primitive already set for `chart-svg.tsx` rather than
+ * coupling the two module kinds for two entries). See that file's own doc
+ * comment for the per-type rationale (pie is radial with no axes at all —
+ * funnel/dumbbell have a value axis but no plot-box gridline surface to
+ * anchor a title against).
+ */
+const AXES_APPLICABLE_CHART_TYPES: ReadonlySet<string> = new Set(["bar", "line"])
+
+/** True when `axes` carries at least one real setting — `axes: {}` (every
+ * sub-field omitted, schema-legal since all three are optional) has nothing
+ * for a non-applicable chart_type to actually ignore, so it shouldn't warn. */
+function hasAnyAxesSetting(axes: { x_title?: string; y_title?: string; show_grid?: boolean }): boolean {
+  return axes.x_title !== undefined || axes.y_title !== undefined || axes.show_grid !== undefined
 }
 
 /**
@@ -179,6 +204,25 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
         })
       }
     }
+  }
+
+  // chart_axes_ignored (chart-axes feature, dual-threshold severity — Task 2's
+  // machinery): `axes` is schema-accepted on every chart_type but only
+  // bar/line actually render it (chart.tsx's AXES_APPLICABLE_TYPES) — a
+  // model authoring axes on pie/funnel/dumbbell gets silent no-op geometry
+  // rather than a validation error (axes is legal IR on every chart_type),
+  // so this is a warn-severity advisory, not a hard rejection.
+  for (const component of slide.components) {
+    if (component.type !== "chart" || !component.axes) continue
+    if (AXES_APPLICABLE_CHART_TYPES.has(component.chart_type)) continue
+    if (!hasAnyAxesSetting(component.axes)) continue
+    issues.push({
+      slide: index,
+      severity: "warn",
+      code: "chart_axes_ignored",
+      message: `图表类型 "${component.chart_type}" 不支持坐标轴标题/网格线，axes 字段将被忽略（仅 bar 与 line 支持）`,
+      chartAxesIgnored: { chartType: component.chart_type },
+    })
   }
 
   // missing heading — cover / chapter / content (skip background-image-only pages)

@@ -819,6 +819,66 @@ describe("bullets geometric hard error (Task 2, borrow wave — dual-threshold s
   })
 })
 
+describe("describeQualityIssue: chart_axes_ignored English message (chart-axes feature)", () => {
+  // `axes` (x_title/y_title/show_grid) only renders for bar/line
+  // (chart.tsx's AXES_APPLICABLE_TYPES) — a pie/funnel/dumbbell chart
+  // setting it gets a warn-severity advisory (ir-quality.ts's own Chinese
+  // `message`, dual-threshold severity/Task 2 machinery), translated to
+  // English here for the public validate surface, same convention as every
+  // other QualityIssue code this file already translates.
+  it("names the chart_type and stays ok:true (warn, not error)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Share",
+          components: [
+            {
+              type: "chart",
+              chart_type: "pie",
+              axes: { x_title: "Segment" },
+              series: [{ name: "S1", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    const warning = v.warnings?.find((w) => w.message.includes("axes"))
+    expect(warning).toBeTruthy()
+    expect(warning?.message).toMatch(/pie/)
+    expect(warning?.message).toMatch(/ignored/)
+    // public surface (CLI output/error messages) is English — never leak
+    // ir-quality.ts's own internal Chinese wording.
+    expect(warning?.message).not.toMatch(/[一-鿿]/)
+  })
+
+  it("does NOT fire for a bar chart with axes (the applicable type)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Trend",
+          components: [
+            {
+              type: "chart",
+              chart_type: "bar",
+              axes: { x_title: "Quarter" },
+              series: [{ name: "S1", data: [{ x: "A", y: 10 }] }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("axes")) ?? false).toBe(false)
+  })
+})
+
 describe("narrative field (W3 task 2, renamed from scenario spec §8.1)", () => {
   it("hard-rejects an unknown narrative preset name, listing available presets", () => {
     const v = validateIr({ ...raw, narrative: "not-a-real-preset" })
