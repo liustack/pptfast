@@ -172,6 +172,44 @@ function renderGridlines(
   )
 }
 
+/**
+ * Vertical counterpart of `renderGridlines` — divides the plot *width* into
+ * GRIDLINE_COUNT+1 equal bands instead of the height, for `renderBarHorizontal`
+ * whose value axis runs left-to-right rather than bottom-to-top. Skips any
+ * candidate that lands on `plotX` (the value=0 baseline every bar already
+ * starts from) — mirrors `renderGridlines`' own baseline skip, same
+ * degenerate-`plotW===0` guard.
+ */
+function renderGridlinesVertical(
+  y0: number,
+  h: number,
+  plotX: number,
+  plotW: number,
+  mutedColor: string,
+): ReactElement {
+  const xs: number[] = []
+  for (let i = 1; i <= GRIDLINE_COUNT; i++) {
+    const x = plotX + (plotW * i) / (GRIDLINE_COUNT + 1)
+    if (Math.abs(x - plotX) > 0.01) xs.push(x)
+  }
+  return (
+    <>
+      {xs.map((x, i) => (
+        <line
+          key={i}
+          x1={x}
+          y1={y0}
+          x2={x}
+          y2={y0 + h}
+          stroke={mutedColor}
+          strokeOpacity={0.1}
+          strokeWidth={1}
+        />
+      ))}
+    </>
+  )
+}
+
 export function renderBar(
   series: ChartSeries[],
   _palette: string[],
@@ -182,6 +220,15 @@ export function renderBar(
   mutedColor: string,
   textColor: string,
   accentColor: string,
+  /**
+   * `axes.show_grid` wiring (chart-axes feature): this component already
+   * drew the 3 reference lines below unconditionally, so the default stays
+   * `true` — every pre-feature call site (this file's own tests, `chart.tsx`
+   * whenever `axes` is absent or `show_grid` is unset) renders byte-identical
+   * output. Only an explicit `false` (author opts out via `axes.show_grid`)
+   * suppresses them.
+   */
+  showGrid = true,
 ): ReactElement {
   const all = series.flatMap((s) => s.data.map((d) => d.y))
   const max = Math.max(...all, 1)
@@ -201,7 +248,7 @@ export function renderBar(
           <stop offset="100%" stopColor={gradientShade} />
         </linearGradient>
       </defs>
-      {renderGridlines(x0, w, plotTop, plotH, mutedColor)}
+      {showGrid && renderGridlines(x0, w, plotTop, plotH, mutedColor)}
       {points.map((d, i) => {
         const barH = clampChartExtent((d.y / max) * plotH)
         const barX = x0 + i * groupW + 4
@@ -263,6 +310,10 @@ export function renderLine(
   mutedColor: string,
   textColor: string,
   accentColor: string,
+  /** `axes.show_grid` wiring — see `renderBar`'s own doc comment on this
+   * same parameter for the default-true rationale (this component already
+   * drew the reference lines unconditionally too). */
+  showGrid = true,
 ): ReactElement {
   const plotTop = y0 + LABEL_TOP_PAD
   const plotH = Math.max(0, h - LABEL_TOP_PAD - LABEL_BOTTOM_PAD)
@@ -271,7 +322,7 @@ export function renderLine(
   const categoryMaxWidth = w / Math.max(categoryPoints.length - 1, 1)
   return (
     <>
-      {renderGridlines(x0, w, plotTop, plotH, mutedColor)}
+      {showGrid && renderGridlines(x0, w, plotTop, plotH, mutedColor)}
       {series.map((s, sIdx) => {
         const max = Math.max(...s.data.map((d) => d.y), 1)
         const coords = s.data.map((d, i) => ({
@@ -393,6 +444,12 @@ export function renderPie(
   _mutedColor?: string,
   _textColor?: string,
   _accentColor?: string,
+  /** Unused — pie has no axes (radial, not applicable per chart.tsx's
+   * `AXES_APPLICABLE_TYPES`). Kept for signature parity with bar/line/
+   * barHorizontal so `chart.tsx`'s `renderers` record dispatches through one
+   * uniform call shape (same convention `_mutedColor`/`_textColor`/
+   * `_accentColor` above already established for this function). */
+  _showGrid?: boolean,
 ): ReactElement {
   const data = series[0]?.data ?? []
   const total = data.reduce((s, d) => s + d.y, 0)
@@ -434,6 +491,11 @@ export function renderFunnel(
   _mutedColor?: string,
   _textColor?: string,
   _accentColor?: string,
+  /** Unused — funnel is not `AXES_APPLICABLE_TYPES` (chart.tsx): a single
+   * value dimension with no second (category) axis and no plot-box gridline
+   * surface to anchor a title against. Kept for signature parity, same as
+   * `renderPie`'s own `_showGrid`. */
+  _showGrid?: boolean,
 ): ReactElement {
   const data = series[0]?.data ?? []
   const max = Math.max(...data.map((d) => d.y), 1)
@@ -477,6 +539,13 @@ export function renderDumbbell(
   mutedColor: string,
   textColor: string,
   accentColor: string,
+  /** Unused — dumbbell is not `AXES_APPLICABLE_TYPES` (chart.tsx): a
+   * two-endpoint value comparison with no fixed zero-anchored plot box (its
+   * own `vx()` domain floats to the data's actual min/max, see this
+   * function's own domain-safety comment above), so no gridline surface to
+   * anchor a title against either. Kept for signature parity, same as
+   * `renderPie`'s own `_showGrid`. */
+  _showGrid?: boolean,
 ): ReactElement {
   const fromData = series[0]?.data ?? []
   const toData = series[1]?.data ?? []
@@ -577,6 +646,15 @@ export function renderBarHorizontal(
   mutedColor: string,
   textColor: string,
   accentColor: string,
+  /**
+   * `axes.show_grid` wiring — unlike `renderBar`/`renderLine`, this
+   * component never drew gridlines before this feature (no pre-existing
+   * always-on behavior to preserve), so the default is `false`: a new
+   * opt-in, only rendered when an author explicitly sets
+   * `axes.show_grid: true`. Every pre-feature call site (this file's own
+   * tests) omits the arg and stays gridline-free.
+   */
+  showGrid = false,
 ): ReactElement {
   const points = series[0]?.data ?? []
   if (points.length === 0) return <></>
@@ -594,6 +672,7 @@ export function renderBarHorizontal(
           <stop offset="100%" stopColor={accentColor} />
         </linearGradient>
       </defs>
+      {showGrid && renderGridlinesVertical(y0, h, plotX, plotW, mutedColor)}
       {points.map((d, i) => {
         const barW = clampChartExtent((d.y / max) * plotW)
         const barY = y0 + i * rowH + 5
@@ -659,6 +738,11 @@ export function renderDonut(
   mutedColor?: string,
   textColor?: string,
   _accentColor?: string,
+  /** Unused — donut is `chart_type: "pie"` (a style variant, not a separate
+   * chart_type), so it's covered by the same not-`AXES_APPLICABLE_TYPES`
+   * rationale as `renderPie`'s own `_showGrid`. Kept for signature parity
+   * with `resolveRenderer`'s other branches. */
+  _showGrid?: boolean,
 ): ReactElement {
   const data = series[0]?.data ?? []
   const total = data.reduce((s, d) => s + d.y, 0)

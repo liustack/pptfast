@@ -239,6 +239,58 @@ describe("gridlines", () => {
       PLOT_TOP + PLOT_H * 0.75,
     ])
   })
+
+  // `axes.show_grid` wiring (chart-axes feature): bar/line already drew these
+  // 3 reference lines unconditionally — the new trailing `showGrid` param
+  // must default to `true` so every existing call site (all of the above,
+  // and chart.tsx whenever `axes` is absent) stays byte-identical, and only
+  // an explicit `false` suppresses them.
+  it("renderBar: an explicit showGrid=false suppresses the reference lines", () => {
+    const { container } = svg(
+      renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false),
+    )
+    expect(container.querySelectorAll("line")).toHaveLength(0)
+  })
+
+  it("renderBar: showGrid omitted or explicit true both keep the pre-existing default-on behavior", () => {
+    const omitted = svg(renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const explicitTrue = svg(
+      renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, true),
+    )
+    expect(omitted.container.querySelectorAll("line")).toHaveLength(3)
+    expect(explicitTrue.container.querySelectorAll("line")).toHaveLength(3)
+  })
+
+  it("renderLine: an explicit showGrid=false suppresses the reference lines", () => {
+    const series: ChartSeries[] = [{ name: "Trend", data: [{ x: "a", y: 1 }, { x: "b", y: 2 }] }]
+    const { container } = svg(renderLine(series, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false))
+    expect(container.querySelectorAll("line")).toHaveLength(0)
+  })
+
+  // renderBarHorizontal never drew gridlines before this feature — unlike
+  // bar/line, `showGrid` here is a new opt-in (default false), not a toggle
+  // on pre-existing always-on behavior, so every pre-feature call site
+  // (there are none passing a 10th arg yet) stays byte-identical by default.
+  it("renderBarHorizontal: showGrid omitted stays gridline-free (pre-feature default)", () => {
+    const { container } = svg(
+      renderBarHorizontal(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    expect(container.querySelectorAll("line")).toHaveLength(0)
+  })
+
+  it("renderBarHorizontal: explicit showGrid=true renders 3 vertical reference lines, none on the value-zero baseline", () => {
+    const { container } = svg(
+      renderBarHorizontal(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, true),
+    )
+    const lines = Array.from(container.querySelectorAll("line"))
+    expect(lines).toHaveLength(3)
+    for (const line of lines) {
+      expect(line.getAttribute("stroke")).toBe(MUTED)
+      expect(line.getAttribute("stroke-opacity")).toBe("0.1")
+      expect(line.getAttribute("y1")).toBe("0")
+      expect(line.getAttribute("y2")).toBe(String(H))
+    }
+  })
 })
 
 describe("renderDonut — center total label", () => {
