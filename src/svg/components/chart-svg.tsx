@@ -17,6 +17,48 @@ const LABEL_TOP_PAD = 14
 /** Space (px) reserved at the bottom of `h` for category labels below the plot. */
 const LABEL_BOTTOM_PAD = 18
 
+/**
+ * Ceiling (px) for any single ratio-based chart geometry value —
+ * `renderBar`'s `barH`, `renderBarHorizontal`'s `barW`, `renderLine`'s
+ * per-point `y`, `renderFunnel`'s `barW`. All four compute an unbounded
+ * `(d.y / max) * boxDimension` ratio with no ceiling of their own: legal IR
+ * (chart series' `y` carries no magnitude constraint) can make one value
+ * tens-to-thousands of times its series' own max, scaling that ratio
+ * without bound and pushing the resulting pixel value far off-canvas.
+ * `svg2pptx`'s eventual `pxToIn()` conversion of that value then crosses
+ * pptxgenjs's own undocumented `getSmartParseNumber()` heuristic
+ * (`node_modules/pptxgenjs`: any size `>= 100` is assumed to already be EMU,
+ * not inches, and is returned completely unconverted and unrounded —
+ * 100in * 96px/in = 9600px) — past that line pptxgenjs writes the raw
+ * un-multiplied-by-914400, un-rounded inches float straight into
+ * `a:off`/`a:ext`, which package-audit's invalid-shape-transform rule then
+ * rejects as a non-integer EMU value (2026-07-22 deep-acceptance review
+ * Round 3, 6th defect — `generate-chart-export.test.ts`'s own reproduction
+ * has the full root-cause trace).
+ *
+ * 4800px (50in) sits at half that 9600px/100in danger line — a wide margin
+ * below it for every other pixel offset this pipeline layers on top (label
+ * padding, ascent adjustment, gridline pad), while confirmed realistic
+ * mixed-sign content (this repo's own fixtures, ratios under ~3) sits
+ * nowhere near it, so the clamp is a no-op for every currently-shipping
+ * chart. This is a ceiling, not a domain rescale (contrast
+ * `renderDumbbell`'s `vx()` fix, which extends its *domain* because it maps
+ * a value straight to an absolute x-coordinate with no fixed baseline) —
+ * bar/line/funnel instead scale an *extent* from a fixed anchor (a zero
+ * baseline or plot edge), and a realistic negative value already extends
+ * past the plot box today (a pre-existing, intentionally untouched-by-this-
+ * fix cosmetic property); rescaling the domain the way dumbbell did would
+ * visibly change every negative-value bar/line/funnel's geometry, not just
+ * the pathological ones this ceiling targets.
+ */
+const MAX_CHART_GEOMETRY_PX = 4800
+
+/** Clamp a ratio-scaled chart geometry value to `±MAX_CHART_GEOMETRY_PX` —
+ * see that constant's doc comment for why. */
+function clampChartExtent(px: number): number {
+  return Math.max(-MAX_CHART_GEOMETRY_PX, Math.min(MAX_CHART_GEOMETRY_PX, px))
+}
+
 /** Bar gradient's lower stop keeps this fraction of the accent's original
  * per-channel brightness (0.7 → "70% 亮度变体" per the Task 8 brief). */
 const BAR_GRADIENT_SHADE_FACTOR = 0.7
@@ -161,7 +203,7 @@ export function renderBar(
       </defs>
       {renderGridlines(x0, w, plotTop, plotH, mutedColor)}
       {points.map((d, i) => {
-        const barH = (d.y / max) * plotH
+        const barH = clampChartExtent((d.y / max) * plotH)
         const barX = x0 + i * groupW + 4
         const barW = groupW - 8
         const barY = plotTop + plotH - barH
@@ -234,7 +276,7 @@ export function renderLine(
         const max = Math.max(...s.data.map((d) => d.y), 1)
         const coords = s.data.map((d, i) => ({
           x: x0 + (i / Math.max(s.data.length - 1, 1)) * w,
-          y: plotTop + plotH - (d.y / max) * plotH,
+          y: plotTop + plotH - clampChartExtent((d.y / max) * plotH),
           y_value: d.y,
         }))
         const pts = coords.map((c) => `${c.x},${c.y}`).join(" ")
@@ -400,7 +442,7 @@ export function renderFunnel(
     <>
       {data.map((d, i) => {
         const ratio = d.y / max
-        const barW = w * ratio
+        const barW = clampChartExtent(w * ratio)
         const barX = x0 + (w - barW) / 2
         return (
           <rect
@@ -553,7 +595,7 @@ export function renderBarHorizontal(
         </linearGradient>
       </defs>
       {points.map((d, i) => {
-        const barW = (d.y / max) * plotW
+        const barW = clampChartExtent((d.y / max) * plotW)
         const barY = y0 + i * rowH + 5
         const barH = Math.max(4, rowH - 10)
         const isMax = d.y === max

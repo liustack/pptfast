@@ -296,19 +296,99 @@ describe("dumbbell mixed-sign series through the real generatePptx (deep-accepta
   })
 })
 
-// Sibling sweep beyond the matrix above (this fix's own verification, not a
-// pre-existing test): mixed-sign values at REALISTIC magnitude (this file's
-// own `mixedSign` fixture, and even a 4-figure mixed-sign value) export
-// cleanly for every chart_type. But sufficiently large mixed-sign values —
-// roughly |value| >= ~4000, exact threshold depends on the specific ratio,
-// e.g. `{ y: -9000 }` alongside `{ y: 100 }` — trip `invalid-shape-
-// transform` for bar/bar-horizontal/line too, via a THIRD, distinct
-// mechanism: a fractional EMU value (`a:xfrm ext@cy="112.66666666666667" is
-// not a finite integer`) that some conversion step never rounds to an
-// integer. Confirmed this is a magnitude/floating-point-precision defect,
-// not the same "unbounded value-to-position domain" class as dumbbell's:
-// it reproduces identically for all-negative (no zero-crossing) data at the
-// same magnitude, and does NOT reproduce for realistic-magnitude mixed-sign
-// data (this suite's own fixtures). Pre-existing, orthogonal to this fix's
-// diff, and out of this fix's scope — left as a follow-up, not fixed here,
-// not added to the matrix above (it would be a permanently-red case).
+/**
+ * Deep-acceptance review Round 3 finding (6th defect, now fixed): bar/
+ * bar-horizontal/line/funnel at extreme mixed-magnitude ratio.
+ *
+ * Root cause: `renderBar`/`renderBarHorizontal`/`renderLine`/`renderFunnel`
+ * (`chart-svg.tsx`) all compute a bar/point's pixel extent or position as a
+ * bare `(d.y / max) * boxDimension` ratio with no ceiling. A value whose
+ * magnitude is tens-to-thousands of times its series' own max (legal IR —
+ * `y: z.number()` has no magnitude constraint) scales that ratio without
+ * bound, pushing the resulting pixel value far enough off-canvas that
+ * `svg2pptx`'s `pxToIn()` conversion crosses pptxgenjs's own undocumented
+ * `getSmartParseNumber()` heuristic (`node_modules/pptxgenjs`: `size >= 100`
+ * ⇒ "this is already EMU, not inches" ⇒ returned completely unconverted and
+ * unrounded — 100in * 96px/in = 9600px). Past that line, pptxgenjs writes
+ * the raw, un-multiplied-by-914400, un-rounded inches float straight into
+ * `a:off`/`a:ext`, producing exactly the "too small to be real EMU, too
+ * large to be real inches" fractional value the package-audit gate's
+ * invalid-shape-transform rule then rejects. Confirmed this reproduces
+ * identically for all-negative (no zero-crossing) data at the same
+ * magnitude — a magnitude/ratio defect, not really about sign-mixing,
+ * matching the deep-acceptance review's own disambiguation from the
+ * dumbbell domain-bound defect class. Also confirmed present in `funnel`
+ * (same `(d.y/max)*w` ratio pattern renderFunnel shares with the other
+ * three) even though the review's own probe hadn't isolated it — the
+ * review's per-chart-type sweep used a two-series construction that
+ * accidentally exercised a different (single-point, max=1) shape for
+ * funnel/bar-horizontal/line's per-series-max path, masking the family
+ * membership; a single-series/multi-point construction (this suite's own
+ * `mixedSign` convention) reproduces the identical mechanism in all four.
+ *
+ * Fixed at the renderer (`chart-svg.tsx`): each of the four ratio
+ * computations (`renderBar`'s `barH`, `renderBarHorizontal`'s `barW`,
+ * `renderLine`'s per-point `y`, `renderFunnel`'s `barW`) is now clamped to
+ * `±MAX_CHART_GEOMETRY_PX` (4800px / 50in) before it's used for a rect
+ * extent or a position — half of pptxgenjs's 9600px/100in danger line, wide
+ * margin for every other offset (label padding, ascent adjustment, gridline
+ * pad) this pipeline adds on top. This is a ceiling, not the dumbbell fix's
+ * domain rescale: dumbbell's `vx()` maps a value straight to an absolute
+ * x-coordinate with no baseline, so rescaling the whole domain was the only
+ * way to keep it on-canvas at every magnitude. Bar/line/funnel instead
+ * scale an *extent* from a fixed anchor (a zero baseline / plot edge) —
+ * realistic negative values already extend past the plot box today (a
+ * pre-existing, untouched-by-this-fix cosmetic property, e.g. the existing
+ * "-12% YoY" test above), so rescaling the domain would visibly change
+ * every negative-value bar chart's geometry, not just the pathological
+ * ones. A ceiling changes nothing for any ratio below it (confirmed clean
+ * realistic-magnitude cases — this file's own `mixedSign`, and
+ * `-800/1200`, `-3000/1200` — sit at ratios under 3, nowhere near the
+ * clamp) and only engages once the math would otherwise blow past
+ * pptxgenjs's own conversion threshold.
+ */
+describe("bar/bar-horizontal/line/funnel extreme mixed-magnitude ratio through the real generatePptx (deep-acceptance review Round 3 finding, 6th defect)", () => {
+  const extreme = [
+    { x: "A", y: -9000 },
+    { x: "B", y: 100 },
+  ]
+  // Binary-searched by the reviewer for `bar`: clean through -4000/100
+  // (40x), fails starting at -4500/100 (45x) — kept here as the exact
+  // repro at both sides of that boundary, plus a magnitude sweep well past
+  // it (100x/1000x/1e9) per this task's own brief.
+  const ratios: Array<{ label: string; data: { x: string; y: number }[] }> = [
+    { label: "-9000/100", data: extreme },
+    { label: "-4500/100 (45x, reviewer's exact boundary)", data: [{ x: "A", y: -4500 }, { x: "B", y: 100 }] },
+    { label: "100x", data: [{ x: "A", y: -10000 }, { x: "B", y: 100 }] },
+    { label: "1000x", data: [{ x: "A", y: -100000 }, { x: "B", y: 100 }] },
+    { label: "1e9", data: [{ x: "A", y: -1e9 }, { x: "B", y: 100 }] },
+  ]
+  const chartTypes: Array<{ label: string; chart_type: "bar" | "line" | "funnel"; direction?: "horizontal" }> = [
+    { label: "bar", chart_type: "bar" },
+    { label: "bar-horizontal", chart_type: "bar", direction: "horizontal" },
+    { label: "line", chart_type: "line" },
+    { label: "funnel", chart_type: "funnel" },
+  ]
+  for (const { label: ctLabel, chart_type, direction } of chartTypes) {
+    for (const { label: rLabel, data } of ratios) {
+      it(`${ctLabel} ${rLabel} exports without an invalid-shape-transform`, async () => {
+        const component: Component = { type: "chart", chart_type, series: [{ name: "s1", data }] } as Component
+        if (direction) (component as { direction?: string }).direction = direction
+        await expectExports([component])
+      })
+    }
+  }
+
+  // 40x itself (the reviewer's own "still clean" boundary) is deep into
+  // already-pathological territory (a 40x value spread on one shared linear
+  // axis) — not re-pinned here as a byte-inertness guard; see
+  // chart-svg.test.tsx's own unit tests for the renderer-level geometry
+  // bound instead, and this describe block's own doc comment for why
+  // realistic-magnitude content (confirmed elsewhere in this file) is the
+  // actual byte-inertness contract.
+  it("realistic mixed-sign magnitude (this file's own mixedSign fixture) is unaffected — regression guard", async () => {
+    await expectExports([
+      { type: "chart", chart_type: "bar", series: [{ name: "s1", data: [{ x: "A", y: -8 }, { x: "B", y: 0 }, { x: "C", y: 12 }] }] },
+    ])
+  })
+})
