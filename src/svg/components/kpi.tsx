@@ -70,13 +70,68 @@ function baseCardH(component: KpiComponent): number {
   return component.items.some((it) => it.source) ? CARD_H + 18 : CARD_H
 }
 
+/**
+ * Horizontal graceful landing (P0 hardening, robustness deep-review D1's
+ * horizontal-axis sibling, review round 2): `items` has no schema ceiling
+ * (unlike `icon_cards`/`row_cards`, which cap at 6), and pre-fix `cardW =
+ * (box.w - GAP*(n-1)) / n` had no floor of its own — past a realistic item
+ * count (reviewer's repro: 50 items with a `delta` set, a single-column
+ * full-width slide, no arrangement tricks needed), `cardW` goes negative.
+ * The card's own background `<rect>` survives that (`rect.ts`'s
+ * `floorAxis` already floors any `<rect>`'s negative extent to 0.75px), but
+ * the delta arrow `<text textAnchor="end" x={cardX+cardW-20}>` does not:
+ * `svg2pptx/text.ts`'s `align==="right"` branch computes `w =
+ * pxToIn(xPx)`, and `xPx = cardX+cardW-20` can itself go negative for an
+ * early card once `cardW` is negative enough, producing a genuinely
+ * negative-width **text shape** (`<p:sp>`, not `<p:rect>` — `floorAxis`
+ * never sees it) that `package-audit`'s `invalid-shape-transform` rule
+ * rejects outright: `a:ext cx=-132588 ... needs cx and cy > 0` (reviewer's
+ * exact repro, 50 items with delta).
+ *
+ * Same idiom as the vertical-axis family sweep (bullets/comparison/
+ * citation/architecture/timeline — same task): cap the number of rendered
+ * cards to what fits `box.w` at a sane minimum card width, reflow the
+ * visible cards to fill the freed-up space, and mark the drop with the
+ * same "+N more"/`data-dropped` convention (row-cards.tsx's precedent,
+ * adapted to a horizontal trailing slot instead of a line below).
+ */
+const MIN_CARD_W = 80
+/** Reserved horizontal slot (px) for the "+N more" marker text itself,
+ * plus one `GAP` before it — sized generously for a 3-4 digit count
+ * ("+9999 more") at the marker's own 13px font, never a source of the
+ * marker itself overflowing `box.w`. */
+const MARKER_RESERVE_W = 90
+
+/**
+ * How many leading items fit `box.w` at `MIN_CARD_W` once `MARKER_RESERVE_W`
+ * (+ one more `GAP`) is set aside for the "+N more" marker — at least 1,
+ * matching every other component in this task's family sweep ("never
+ * render zero visible units, even in a near-zero box").
+ */
+function visibleCardCount(fullCount: number, boxW: number): number {
+  const effectiveW = boxW - MARKER_RESERVE_W - GAP
+  const visible = Math.floor((effectiveW + GAP) / (MIN_CARD_W + GAP))
+  return Math.max(1, Math.min(fullCount, visible))
+}
+
 export const kpi: SvgComponent<KpiComponent> = {
   measure(component) {
     return baseCardH(component)
   },
-  render(component, box, ctx) {
+  render(rawComponent, box, ctx) {
+    const fullCount = rawComponent.items.length
+    // Only cap when the *full* set would actually breach MIN_CARD_W — a
+    // deck within any realistic item count reflows through the exact same
+    // formula it always has (byte-identical no-op on the common path).
+    const naturalCardW = (box.w - GAP * (fullCount - 1)) / fullCount
+    const visible = naturalCardW < MIN_CARD_W ? visibleCardCount(fullCount, box.w) : fullCount
+    const hidden = fullCount - visible
+    const component = hidden > 0 ? { ...rawComponent, items: rawComponent.items.slice(0, visible) } : rawComponent
     const n = component.items.length
-    const cardW = (box.w - GAP * (n - 1)) / n
+    // Visible cards reflow to fill box.w when truncated (leaving
+    // MARKER_RESERVE_W + GAP for the marker slot after them), otherwise the
+    // original, unreserved full-width formula — unchanged from pre-fix.
+    const cardW = hidden > 0 ? (box.w - MARKER_RESERVE_W - GAP - GAP * (n - 1)) / n : (box.w - GAP * (n - 1)) / n
     const measured = baseCardH(component)
     // 密度拉伸（box.h 由布局分配）：卡片撑到分配高度，内容组垂直居中
     const cardH = Math.max(measured, box.h ?? measured)
@@ -232,6 +287,20 @@ export const kpi: SvgComponent<KpiComponent> = {
             </g>
           )
         })}
+        {hidden > 0 && (
+          <text
+            data-dropped={hidden}
+            x={n * (cardW + GAP)}
+            y={cardH / 2 + 5}
+            textAnchor="start"
+            fontSize={13}
+            fill={ctx.colors.muted}
+            fontFamily={ctx.fonts.body}
+            dominantBaseline="alphabetic"
+          >
+            {`+${hidden} more`}
+          </text>
+        )}
       </g>
     )
   },

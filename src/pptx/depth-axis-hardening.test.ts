@@ -27,6 +27,22 @@
 //     "graceful truncation" stops being an honest description of
 //     rendering 0.1% of the content, so validate refuses instead.
 //
+// Review round 2 addition: the same defect class reaches a *horizontal*
+// axis too — kpi_cards.items has no schema ceiling either, and
+// `cardW = (box.w - GAP*(n-1)) / n` had no floor. At a realistic item
+// count (50, with at least one `delta` set) `cardW` goes negative; the
+// card's own background <rect> survives (rect.ts's floorAxis already
+// floors a negative-extent rect), but the delta arrow's
+// `<text textAnchor="end" x={cardX+cardW-20}>` does not — a genuinely
+// negative-width text shape that package-audit's invalid-shape-transform
+// rule rejects (`a:ext cx=-132588 ... needs cx and cy > 0`). Horizontal
+// sweep of every other cardW/colW-style horizontal-stacking component
+// (steps/icon_cards/roadmap/matrix/bmc/waterfall) found none reachable —
+// all have a schema `.max()` bound (3-8) unlike kpi_cards, so a legal IR
+// can never drive their divisor past a safe count. Fixed with the same
+// idiom as the vertical family sweep: cap visible cards to what fits
+// box.w at a sane minimum width, "+N more"/data-dropped marker.
+//
 // Runs the REAL generatePptx/generatePptxBlob/validateIr (src/api.ts) —
 // never a mock — the same production entry points the investigation's own
 // probe scripts called.
@@ -203,6 +219,66 @@ describe("byte-inertness for normal decks (hard requirement)", () => {
     expect(bytes[0]).toBe(0x50)
     expect(bytes[1]).toBe(0x4b)
     const svg = renderSlideSvg(ir, 1)
+    expect(svg).not.toContain("data-dropped")
+  })
+})
+
+describe("kpi_cards horizontal-axis sibling: 50-item deck with delta (review round 2 repro)", () => {
+  // Reviewer's exact repro: a realistic (not pathological-scale) item
+  // count, with at least one `delta` set — that's what puts the delta
+  // arrow's negative-width text shape on the page. No arrangement tricks
+  // needed; a plain single-column full-width slide already reaches it.
+  const fiftyKpis = Array.from({ length: 50 }, (_, i) => ({
+    value: String(i),
+    label: `metric ${i}`,
+    delta: "up" as const,
+  }))
+  const ir = baseIr({
+    slides: [
+      { type: "cover", heading: "Cover" },
+      { type: "content", heading: "50 KPI cards", components: [{ type: "kpi_cards", items: fiftyKpis }] },
+      { type: "ending", heading: "Thanks" },
+    ],
+  })
+
+  it("validateIr passes with zero warnings (kpi_cards has no ir-quality count gate — matches the reviewer's own finding)", () => {
+    const v = validateIr(ir)
+    expect(v.ok).toBe(true)
+    expect(v.warnings ?? []).toHaveLength(0)
+  })
+
+  it("generatePptx succeeds — no package-audit rejection (pre-fix: invalid-shape-transform, negative-width delta-arrow text shape)", async () => {
+    const bytes = await generatePptx(ir)
+    expect(bytes[0]).toBe(0x50)
+    expect(bytes[1]).toBe(0x4b)
+  })
+
+  it("the rendered slide caps cards to what box.w can hold and marks the drop honestly", () => {
+    const svg = renderSlideSvg(ir, 1)
+    const dropped = svg.match(/data-dropped="(\d+)"/)
+    expect(dropped).not.toBeNull()
+    expect(Number(dropped![1])).toBeGreaterThan(0)
+    expect(Number(dropped![1])).toBeLessThan(fiftyKpis.length)
+    // Far fewer than 50 card <rect>s actually got drawn.
+    expect((svg.match(/<rect/g) ?? []).length).toBeLessThan(fiftyKpis.length)
+  })
+
+  it("byte-inertness: a small (3-item) kpi_cards deck with delta is unaffected", async () => {
+    const smallIr = baseIr({
+      slides: [
+        { type: "cover", heading: "Cover" },
+        {
+          type: "content",
+          heading: "3 KPI cards",
+          components: [{ type: "kpi_cards", items: fiftyKpis.slice(0, 3) }],
+        },
+        { type: "ending", heading: "Thanks" },
+      ],
+    })
+    const bytes = await generatePptx(smallIr)
+    expect(bytes[0]).toBe(0x50)
+    expect(bytes[1]).toBe(0x4b)
+    const svg = renderSlideSvg(smallIr, 1)
     expect(svg).not.toContain("data-dropped")
   })
 })
