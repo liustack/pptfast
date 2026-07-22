@@ -1,6 +1,14 @@
 import { z } from "zod"
 import { PPTX_ICON_NAMES } from "@/icons"
+import { BEAT_VALUES } from "./narrative-values"
 import { componentTypeError, iconEnumError } from "./schema-error-hints"
+
+// Re-exported so `src/plan/index.ts`'s `PageSpecSchema.beat` can share this
+// exact tuple instead of a second, independently-declared one — same
+// "one vocabulary, two schemas" posture `SlideSchema.beat`'s own doc comment
+// above describes, see `./narrative-values.ts` for why this lives there
+// rather than being declared directly in either schema module.
+export { BEAT_VALUES }
 
 // Built-in theme ids — a registered, renderable subset, not a closed universe:
 // v0.4's theme registry can install more without a schema change (theme.id
@@ -713,6 +721,30 @@ export const SlideSchema = z
     // image_bottom/image_annotate 四个 variant 值）的具体版式行为详见
     // registry.ts 对应条目，不在这里重复。
     layout: z.string().optional(),
+    /**
+     * Page-level rhythm hint (P1 variety wave, task 1 — additive v4 field,
+     * spec's own beat vocabulary, `BEAT_VALUES`/`./narrative-values.ts`:
+     * "anchor" | "dense" | "breathing"). **A selection-weight hint, not a
+     * hard filter**: `resolveArchetypeId` (`svg/effective-layout.ts`)
+     * multiplies a small tendency-weight factor onto whichever content
+     * archetypes the declared beat favors, on top of (never instead of) the
+     * existing `narrative.strategy` weight — an omitted `beat` contributes a
+     * factor of 1 to every candidate, so a slide/deck that never declares one
+     * resolves and renders byte-identically to before this field existed
+     * (the v4 freeze's additive-only contract, `docs/concepts.md`'s "v4
+     * schema freeze" section). Authored on a `deck.spec.json` page
+     * (`PageSpecSchema.beat`, `src/plan/index.ts`) and carried through
+     * `assembleDeck` into this exact field as of this task — previously a
+     * spec-only authoring anchor dropped at assemble (see that module's own
+     * doc comment history). Not confined to `type: "content"` at the schema
+     * layer (same open posture as every other optional `Slide` field), but
+     * only ever has a real weighting effect there in practice: every
+     * `BEAT_TENDENCIES` entry (`svg/effective-layout.ts`) names only content
+     * archetype ids, the identical "cover/chapter/ending weighting is a
+     * structural no-op" convention `StrategyDefinition.layoutTendencies`
+     * already relies on for the same reason (that field's own doc comment).
+     */
+    beat: z.enum(BEAT_VALUES).optional(),
     // Body-arrangement（W2 任务 3：从旧 variant 字段拆出——上面 4 个图文接管值
     // 升格进 layout，其余 9 个身体排布值原样保留，语义逐条不变）。
     arrangement: z
