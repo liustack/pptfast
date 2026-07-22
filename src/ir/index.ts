@@ -279,6 +279,11 @@ const ComponentSchema = z.discriminatedUnion("type", [
       chart_type: z.enum(["bar", "line", "pie", "funnel", "dumbbell"]),
       direction: z.enum(["horizontal", "vertical"]).optional(),
       style: z.enum(["donut"]).optional(),
+      /** Renders only for `chart_type: "bar"` (either direction) and
+       * `"line"` — a cartesian plot box with a real category/value axis pair
+       * to title and grid against. Ignored (schema-legal, silently dropped
+       * at render, warn-severity `chart_axes_ignored` validate finding) on
+       * `pie`/`funnel`/`dumbbell`, which have no such plot box. */
       axes: z
         .object({
           x_title: z.string().optional(),

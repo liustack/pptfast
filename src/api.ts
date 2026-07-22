@@ -143,6 +143,16 @@ function describeQualityIssue(issue: QualityIssue): string {
       return `a bullet item exceeds the render-safety limit (${CAPACITY.bullets.itemOverflowUnits} width units) and can truncate — shorten it substantially or split the point across two items`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
+    case "chart_axes_ignored": {
+      // chart-axes feature: `axes` (x_title/y_title/show_grid) only renders
+      // for bar/line (chart.tsx's AXES_APPLICABLE_TYPES) — names the
+      // offending chart_type via `issue.chartAxesIgnored`, same
+      // structured-field convention as `density`/`bulletsBudget` above.
+      const chartType = issue.chartAxesIgnored?.chartType
+      return chartType
+        ? `axes settings (x_title/y_title/show_grid) are not supported for "${chartType}" charts and are ignored — only bar and line charts render them`
+        : "chart axes settings (x_title/y_title/show_grid) are not supported for this chart type and are ignored — only bar and line charts render them"
+    }
     default:
       return `content quality issue (${issue.code})`
   }
