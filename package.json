@@ -1,6 +1,6 @@
 {
   "name": "@liustack/pptfast",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Stable, editable PPTX generation for AI agents — semantic IR in, native DrawingML out",
   "type": "module",
   "license": "MIT",
@@ -26,6 +26,9 @@
   "engines": {
     "node": ">=18"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
@@ -36,7 +39,8 @@
     "e2e": "pnpm build && tsx scripts/e2e.mts",
     "bench:score": "tsx tests/bench/score.mts",
     "docs:list": "node scripts/docs-list.js",
-    "prepublishOnly": "pnpm check && pnpm build",
+    "prepublishOnly": "pnpm check && pnpm e2e",
+    "release:version": "changeset version && tsx scripts/sync-version.mts",
     "bench:run": "tsx tests/bench/run.mts"
   },
   "keywords": [
@@ -69,6 +73,7 @@
     "sharp": "^0.34.4"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "@eslint/js": "^9.39.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

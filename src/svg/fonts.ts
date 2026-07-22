@@ -85,6 +85,14 @@
  * design decision, not a mechanical safety fix, so this task documents it
  * as an option in task-3-report.md rather than executing it. SAFE_FONTS
  * membership itself is unchanged by this task.
+ *
+ * Decision (2026-07-22): keep Georgia. Our own hmtx measurements found its
+ * widths inside `measureTextUnits`'s tolerance, the golden-anchor tests in
+ * `svg-text-layout.golden.test.ts` now guard that agreement against drift,
+ * and the "QA-unreliable" label came from a rig (LibreOffice-rendered QA)
+ * this engine does not depend on. Identity beats a swap with no measured
+ * safety benefit. Revisit only if a real overflow traces back to a Georgia
+ * metric miss.
  */
 
 export type FontRole = "heading" | "body" | "mono"
