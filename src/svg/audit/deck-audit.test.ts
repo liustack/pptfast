@@ -7,10 +7,13 @@
 // platform registry seam), the same path a real CLI/SDK Node caller hits,
 // not jsdom's incidental global `DOMParser` filling in unasked.
 import { readFileSync } from "node:fs"
+import { createElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import { beforeAll, describe, expect, it } from "vitest"
-import { PptxIRSchema, type Component, type PptxIR, type Slide } from "@/ir"
+import { PptxIRSchema, type ChartSeries, type Component, type PptxIR, type Slide } from "@/ir"
 import { renderSlideSvg } from "../../api"
 import { installNodePlatform } from "../../platform/node"
+import { renderDonut, renderPie } from "../components/chart-svg"
 import {
   auditDeck,
   findContrastIssues,
@@ -18,6 +21,7 @@ import {
   __collectBgRegions,
   __collectImageBackedTextRuns,
   __pathBoundingBox,
+  __parseWedgePath,
   type AuditFinding,
 } from "./deck-audit"
 import { STRESS_DECKS } from "./stress-fixtures"
@@ -1119,6 +1123,193 @@ describe("findContrastIssues — donut/pie wedge sector containment (fix/donut-a
       <text x="802" y="360" font-size="16" fill="#000000">on the invisible wedge</text>
     </svg>`
     expect(findContrastIssues(markup)).toEqual([])
+  })
+})
+
+// Post-review hardening (fix/donut-annulus-attribution, review round 2):
+// token-shape matching alone is falsifiable — a hand-authored `d` unrelated
+// to renderDonut/renderPie can satisfy the same 15/23-token grammar with
+// numbers that don't actually describe a circle. `parseWedgePath` now
+// round-trips every point it reads against its own claimed radius from the
+// resolved center (`onCircle`) and checks the large-arc-flag against the
+// span its own endpoints imply (`resolveSpan`), rejecting to the
+// pre-existing bbox fallback on any incoherence.
+describe("parseWedgePath — geometric round-trip hardening (post-review, falsifiable-gate fix)", () => {
+  it("rejects a hand-authored icon path that happens to match the 15-token pie shape but whose L endpoint isn't on the claimed radius", () => {
+    // M's point (10,10), read as a candidate center, is 89.44px from the L
+    // endpoint (50,90) — nowhere near the claimed r=30 from the A command.
+    // Reviewer-found: pre-hardening, `parseWedgePath` accepted this anyway
+    // (no radius check existed) and derived a wrong sector from the bogus
+    // geometry, silently swallowing a real contrast defect (finding ->
+    // no finding) instead of leaving it to the correct bbox fallback.
+    const ICON_D = "M 10 10 L 50 90 A 30 30 0 0 1 70 20 Z"
+    expect(__parseWedgePath(ICON_D)).toBeNull()
+
+    // Audit outcome must match the pre-parse (AABB/rectShape) behavior
+    // exactly: (60,15) sits inside this path's own bbox (x:[10,70]
+    // y:[10,90], independently confirmed via __pathBoundingBox), so a
+    // correct bbox-fallback attribution still reports the real defect.
+    expect(__pathBoundingBox(ICON_D)).toEqual({ x: 10, y: 10, w: 60, h: 80 })
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="${ICON_D}" fill="#050505"/>
+      <text x="60" y="15" font-size="10" fill="#000000">icon label</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("rejects a path whose large-arc-flag disagrees with the span its own start/end points imply", () => {
+    // Same M/L/A/Z token shape, radius honored exactly this time — both
+    // endpoints sit precisely on the r=100 circle around the M/center point
+    // (406.0307379214091, 465.7979856674331 is `cx + r·cos(200°), cy +
+    // r·sin(200°)`, computed via a standalone reference, not hand-traced)
+    // — but the flag claims a short arc (large=0) while the actual
+    // endpoints (0° to 200°) imply a long one (> 180°). A genuine renderPie
+    // wedge's flag always agrees with its own endpoints
+    // (`endA - startA > Math.PI ? 1 : 0`), so this is incoherent and must
+    // reject to the bbox fallback too — isolated from the radius check
+    // above (this path passes that one cleanly).
+    const MISMATCHED_FLAG_D = "M 500 500 L 600 500 A 100 100 0 0 1 406.0307379214091 465.7979856674331 Z"
+    expect(__parseWedgePath(MISMATCHED_FLAG_D)).toBeNull()
+  })
+
+  it("still recognizes a real renderDonut wedge whose coordinates happen to be clean round numbers (rejects only a genuine near-miss, not a valid wedge)", () => {
+    // Guards against an overcorrection: the hardening must not reject a
+    // real wedge just because its numbers happen to look "too clean" —
+    // recognition is purely geometric (round-trip math), not a heuristic
+    // about how the numbers look. A quarter-circle at a clean center/radius
+    // is exactly this case.
+    const CLEAN_PIE_D = "M 500 500 L 500 400 A 100 100 0 0 1 600 500 Z"
+    const sector = __parseWedgePath(CLEAN_PIE_D)
+    expect(sector).not.toBeNull()
+    expect(sector!.cx).toBeCloseTo(500, 6)
+    expect(sector!.cy).toBeCloseTo(500, 6)
+    expect(sector!.ro).toBeCloseTo(100, 6)
+  })
+
+  // Reviewer-found structural collision: `motif-rail-motif.tsx`'s
+  // `ARC_PATH_BL` (chapter-page corner decoration) is built from the exact
+  // same "M center, L point-on-circle, A arc to another point-on-circle, Z"
+  // idiom `renderPie` uses — because it genuinely *is* a quarter-circle
+  // sector by construction (its own doc comment: "对角象限扇形...是全圆可见
+  // 部分的像素级复刻"), not a coincidental near-miss. No purely-geometric
+  // check can (or should) tell these two apart — rejecting "quarter-circle
+  // sectors with clean round-number coordinates" would also reject a
+  // legitimate `renderPie`/`renderDonut` wedge that happens to land on nice
+  // numbers. `ARC_PATH_BL`'s own real safety net is orthogonal to
+  // recognition entirely: `RailMotif` (`index-motif.ts`) only ever renders
+  // it inside `FullSlideSvg.tsx`'s `<g data-decor>` wrapper at
+  // `opacity="0.06"`, both already-tested, independent exclusions
+  // (`inDecorSubtree` / `MIN_BG_OPACITY`) that gate the whole
+  // `paintedShapes` push — neither reads `parseWedgePath`'s verdict at all.
+  it("recognizes motif-rail-motif.tsx's ARC_PATH_BL as a real sector (an honest structural collision, not a parser bug) — and confirms its real render context still falls back to unaffected attribution", () => {
+    const ARC_CY = 720
+    const ARC_R = 260
+    const ARC_PATH_BL = `M 0,${ARC_CY} L 0,${ARC_CY - ARC_R} A ${ARC_R},${ARC_R} 0 0,1 ${ARC_R},${ARC_CY} Z`
+
+    // Documented, not "fixed": this really is a valid quarter-circle sector.
+    const sector = __parseWedgePath(ARC_PATH_BL)
+    expect(sector).not.toBeNull()
+    expect(sector!.cx).toBeCloseTo(0, 6)
+    expect(sector!.cy).toBeCloseTo(ARC_CY, 6)
+    expect(sector!.ro).toBeCloseTo(ARC_R, 6)
+
+    // Real render shape (RailMotif's own chapter-page output): `<g
+    // data-decor>` wrapper + opacity 0.06, exactly as `FullSlideSvg.tsx`/
+    // `motif-rail-motif.tsx` actually emit it. A near-white org-label text
+    // sitting where the motif visually overlaps must still resolve against
+    // the real dark page background, not this decorative arc, regardless
+    // of `parseWedgePath`'s own (correct) geometric verdict above.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0A0C"/>
+      <g data-decor="true">
+        <path d="${ARC_PATH_BL}" fill="#FFFFFF" opacity="0.06"/>
+      </g>
+      <text x="130" y="620" font-size="20" fill="#FFFFFF">org label near the motif</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+})
+
+// Renderer<->parser contract pin (post-review, "Low" finding): no committed
+// test previously fed *real* renderDonut/renderPie output through
+// parseWedgePath — a future format change to either function would have
+// silently degraded every real donut/pie to the bbox fallback (no crash, no
+// loud failure, just a quiet loss of the precision this whole fix exists
+// for). Same "cross-file format assumption must be pinned loud" precedent
+// as the `a:ea` patch's own defRPr round.
+describe("parseWedgePath — real renderDonut/renderPie output round-trips (renderer<->parser contract pin)", () => {
+  const X0 = 0
+  const Y0 = 0
+  const W = 400
+  const H = 400
+  const EXPECTED_CX = X0 + W / 2
+  const EXPECTED_CY = Y0 + H / 2
+  const EXPECTED_R = Math.min(W, H) / 2 - 4 // renderDonut/renderPie's own `r` formula
+  const EXPECTED_RI = EXPECTED_R * 0.62 // chart-svg.tsx's own DONUT_HOLE_RATIO
+  const PALETTE = ["#006A4E", "#00A878", "#FF6B35", "#FFD166"]
+
+  function seriesOf(...ys: number[]): ChartSeries[] {
+    return [{ name: "S1", data: ys.map((y, i) => ({ x: `C${i}`, y })) }]
+  }
+
+  function extractPathDs(markup: string): string[] {
+    return [...markup.matchAll(/<path\b[^>]*\sd="([^"]+)"/g)].map((m) => m[1]!)
+  }
+
+  it("parses every wedge <path> a real renderDonut call emits, with geometry matching the chart's own known center/radii", () => {
+    // Balanced + wide-skew weights in one series so both a narrow and a
+    // >180° wedge are exercised, same spread the reclassification sweep
+    // used.
+    const markup = renderToStaticMarkup(
+      createElement("svg", null, renderDonut(seriesOf(10, 15, 25, 50), PALETTE, X0, Y0, W, H, "#5D6B65", "#1A2421")),
+    )
+    const ds = extractPathDs(markup)
+    expect(ds.length).toBe(4) // one wedge per category, none zero-share
+    for (const d of ds) {
+      const sector = __parseWedgePath(d)
+      expect(sector).not.toBeNull()
+      expect(sector!.cx).toBeCloseTo(EXPECTED_CX, 6)
+      expect(sector!.cy).toBeCloseTo(EXPECTED_CY, 6)
+      expect(sector!.ro).toBeCloseTo(EXPECTED_R, 6)
+      expect(sector!.ri).toBeCloseTo(EXPECTED_RI, 6)
+      expect(sector!.span).toBeGreaterThan(0)
+      expect(sector!.span).toBeLessThanOrEqual(2 * Math.PI + 1e-9)
+    }
+  })
+
+  it("parses every wedge <path> a real renderPie call emits, with geometry matching the chart's own known center/radius (no hole)", () => {
+    const markup = renderToStaticMarkup(
+      createElement("svg", null, renderPie(seriesOf(10, 15, 25, 50), PALETTE, X0, Y0, W, H)),
+    )
+    const ds = extractPathDs(markup)
+    expect(ds.length).toBe(4)
+    for (const d of ds) {
+      const sector = __parseWedgePath(d)
+      expect(sector).not.toBeNull()
+      expect(sector!.cx).toBeCloseTo(EXPECTED_CX, 6)
+      expect(sector!.cy).toBeCloseTo(EXPECTED_CY, 6)
+      expect(sector!.ro).toBeCloseTo(EXPECTED_R, 6)
+      expect(sector!.ri).toBe(0)
+    }
+  })
+
+  it("parses a real single-100%-share renderDonut wedge as a full circle, and a real zero-share category's wedge as degenerate", () => {
+    const markup = renderToStaticMarkup(
+      createElement("svg", null, renderDonut(seriesOf(42, 0, 30), PALETTE, X0, Y0, W, H, "#5D6B65", "#1A2421")),
+    )
+    const ds = extractPathDs(markup)
+    expect(ds.length).toBe(3)
+    const sectors = ds.map((d) => __parseWedgePath(d))
+    expect(sectors.every((s) => s !== null)).toBe(true)
+    // First category (42/72 share) and third (30/72 share) both have a
+    // real, non-degenerate span; the second (0/72 share) is the zero-span
+    // degenerate case.
+    expect(sectors[1]!.span).toBe(0)
+    expect(sectors[0]!.span).toBeGreaterThan(0)
+    expect(sectors[2]!.span).toBeGreaterThan(0)
   })
 })
 

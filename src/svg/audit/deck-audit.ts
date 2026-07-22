@@ -342,7 +342,7 @@ function ellipseShape(cx: number, cy: number, rx: number, ry: number, fill: stri
  * donut's own center total-label. `ri` is `0` for a pie slice (a disk
  * sector, no hole).
  */
-interface Sector {
+export interface Sector {
   cx: number
   cy: number
   ri: number
@@ -957,6 +957,29 @@ export function __pathBoundingBox(d: string): { x: number; y: number; w: number;
  * `0` means no sweep happened (`span = 0`, a real but visually invisible
  * sliver — correctly contains nothing), `1` means a full turn did (a single
  * 100%-share category, `span = 2π` — correctly contains the whole ring/disk).
+ *
+ * **Geometric round-trip, not just token shape (post-review hardening):**
+ * matching the token *shape* alone is falsifiable — a hand-authored `d`
+ * (an unrelated icon, say) can satisfy the same 15/23-token grammar with
+ * numbers that don't actually describe a circle, e.g. an `L`/`A` endpoint
+ * nowhere near the claimed radius from the claimed center. Silently
+ * accepting that would parse a *wrong* sector and could flip a real
+ * `findContrastIssues` verdict rather than just missing a precision
+ * upgrade. So every point this function reads off the path (`x1,y1`/
+ * `x2,y2` for a pie, all four outer/inner points for a donut) is checked
+ * against its own claimed radius from the resolved center within
+ * `RADIUS_ROUNDTRIP_EPS` — a genuine `renderDonut`/`renderPie` wedge always
+ * round-trips exactly (the points *are* `cx + r·cos(θ), cy + r·sin(θ)` by
+ * construction), so this only ever *rejects* a token-shape near-miss, never
+ * a real one. The large-arc-flag is checked the same way: a genuine wedge's
+ * flag always agrees with whether its own (non-degenerate) span exceeds π
+ * (`renderPie`/`renderDonut`'s own `endA - startA > Math.PI ? 1 : 0`), so a
+ * flag that disagrees with the span its own endpoints imply is rejected
+ * too, independent of the radius check (it catches a different failure
+ * mode — same-circle points with a mismatched sweep/magnitude flag).
+ * Reject-only: this hardening never makes a previously-rejected `d` newly
+ * accepted, so it never turns a correct AABB attribution into a wrong
+ * sector one — only ever the other direction.
  */
 function parseWedgePath(d: string): Sector | null {
   const tokens = tokenizePathD(d)
@@ -968,15 +991,32 @@ function parseWedgePath(d: string): Sector | null {
   }
   const isFlag = (i: number) => tokens[i] === "0" || tokens[i] === "1"
   const DEGENERATE_EPS = 1e-6
-  const span = (startA: number, endA: number, large: string): number => {
-    let s = (endA - startA) % (2 * Math.PI)
-    if (s < 0) s += 2 * Math.PI
+  // Absolute pixel tolerance for "does this point actually lie on its
+  // claimed circle" / "is the recovered center actually where the outer
+  // and inner arc endpoints agree it is" — loose enough to absorb float
+  // round-off from `atan2`/`hypot`/the donut center's linear solve
+  // (empirically ~1e-10 on real renderDonut/renderPie output, see
+  // deck-audit.test.ts's real-render round-trip pin), tight enough that no
+  // adversarial or coincidental non-wedge `d` clears it by accident.
+  const RADIUS_ROUNDTRIP_EPS = 1e-3
+  // `null` return means "reject the whole parse" (inconsistent flag or a
+  // genuinely zero/negative span with a `large=1` flag, which can't happen
+  // for a real wedge) — distinct from a valid `0`/`2π` degenerate span.
+  const resolveSpan = (startA: number, endA: number, large: string): number | null => {
+    let raw = (endA - startA) % (2 * Math.PI)
+    if (raw < 0) raw += 2 * Math.PI
     // See this function's own doc comment — near-zero is the ambiguous
     // boundary between a zero-sweep and a full-turn wedge, resolved by the
     // large-arc-flag the path itself already carries rather than guessed.
-    if (s < DEGENERATE_EPS) return large === "1" ? 2 * Math.PI : 0
-    return s
+    if (raw < DEGENERATE_EPS) return large === "1" ? 2 * Math.PI : 0
+    // Non-degenerate: the flag must agree with the span its own endpoints
+    // imply — `renderPie`/`renderDonut`'s own `endA - startA > π ? 1 : 0`.
+    const expectedLarge = raw > Math.PI ? "1" : "0"
+    if (large !== expectedLarge) return null
+    return raw
   }
+  const onCircle = (px: number, py: number, cx: number, cy: number, r: number): boolean =>
+    Math.abs(Math.hypot(px - cx, py - cy) - r) <= RADIUS_ROUNDTRIP_EPS
 
   if (
     tokens.length === 15 &&
@@ -1000,9 +1040,12 @@ function parseWedgePath(d: string): Sector | null {
       return null
     }
     if (r <= 0 || Math.abs(r - rCheck) > 1e-6) return null
+    if (!onCircle(x1, y1, cx, cy, r) || !onCircle(x2, y2, cx, cy, r)) return null
     const startA = Math.atan2(y1 - cy, x1 - cx)
     const endA = Math.atan2(y2 - cy, x2 - cx)
-    return { cx, cy, ri: 0, ro: r, startA, span: span(startA, endA, tokens[10]!) }
+    const wedgeSpan = resolveSpan(startA, endA, tokens[10]!)
+    if (wedgeSpan === null) return null
+    return { cx, cy, ri: 0, ro: r, startA, span: wedgeSpan }
   }
 
   if (
@@ -1042,6 +1085,19 @@ function parseWedgePath(d: string): Sector | null {
     if (Math.abs(denom) < 1e-6) return null
     const cx = (r * ix2 - ri * ox1) / denom
     const cy = (r * iy2 - ri * oy1) / denom
+    // Geometric round-trip: all four points this branch reads must actually
+    // sit on their own claimed circle around the *recovered* center — the
+    // linear solve above can produce a center for any four points fed to
+    // it, on-circle or not, so this is an independent, non-tautological
+    // check (see this function's own doc comment).
+    if (
+      !onCircle(ox1, oy1, cx, cy, r) ||
+      !onCircle(ox2, oy2, cx, cy, r) ||
+      !onCircle(ix1, iy1, cx, cy, ri) ||
+      !onCircle(ix2, iy2, cx, cy, ri)
+    ) {
+      return null
+    }
     const startA = Math.atan2(oy1 - cy, ox1 - cx)
     const endA = Math.atan2(oy2 - cy, ox2 - cx)
     // Cross-check: (ix1, iy1) is the inner arc's point at endA — it should
@@ -1049,10 +1105,20 @@ function parseWedgePath(d: string): Sector | null {
     const checkA = Math.atan2(iy1 - cy, ix1 - cx)
     const angleDiff = Math.abs(((checkA - endA + Math.PI) % (2 * Math.PI)) - Math.PI)
     if (angleDiff > 1e-3) return null
-    return { cx, cy, ri, ro: r, startA, span: span(startA, endA, tokens[7]!) }
+    const wedgeSpan = resolveSpan(startA, endA, tokens[7]!)
+    if (wedgeSpan === null) return null
+    return { cx, cy, ri, ro: r, startA, span: wedgeSpan }
   }
 
   return null
+}
+
+/** Test-only: `parseWedgePath` exposed so its recognition/round-trip math
+ * can be asserted directly against hand-crafted and real-rendered `d`
+ * strings, the same `__`-prefixed convention `__pathBoundingBox` already
+ * establishes. */
+export function __parseWedgePath(d: string): Sector | null {
+  return parseWedgePath(d)
 }
 
 export interface ContrastIssue {
