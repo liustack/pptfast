@@ -102,11 +102,13 @@ genuinely rendered ink, not of insufficient calibration:
     their supporting components through a bare `renderComponent(...)` with
     no `data-audit-box` wrapper at all, so the very same component this fix
     covers under a boxed arrangement goes uncovered there (only the
-    page-overflow check still sees it). The one confirmed, shipping
-    instance the inventory found *inside* a tracked box is `matrix.tsx`'s
-    `x_title` (rendered with zero width fit before this task) — the concrete
-    case this fix protects today for text that actually renders inside a
-    live tracked box.
+    page-overflow check still sees it). Two confirmed, shipping instances
+    the inventory found *inside* a tracked box: `matrix.tsx`'s `x_title`
+    (rendered with zero width fit before this task) and `chart.tsx`'s
+    `axes.x_title`/`axes.y_title` (rendered inside `SvgContent.tsx`'s own
+    `data-audit-box` wrapper, same as any other normally-placed component) —
+    the concrete cases this fix protects today for text that actually
+    renders inside a live tracked box.
 
 Recorded here as a known, narrowed-but-not-closed boundary, not a settled
 one — same discipline as this section's donut/pie AABB gap above.
