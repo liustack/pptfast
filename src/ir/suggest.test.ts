@@ -65,6 +65,14 @@ describe("closestMatch", () => {
       expect(suggestion).toMatch(/^arrow(-|$)/)
     })
 
+    it('"circle-chek" suggests "circle-check" (distance 1), not its own stem "circle" (controller fix: single-edit outranks prefix)', () => {
+      // A word-boundary stem match also exists here ("circle-chek" starts
+      // with "circle" + "-"), and an earlier ordering let that stem win. A
+      // single slipped key is the stronger signal — the distance-1 pass now
+      // runs before the prefix pass.
+      expect(closestMatch("circle-chek", PPTX_ICON_NAMES)).toBe("circle-check")
+    })
+
     it('"" (empty string) gets no suggestion at all (reviewer case: was suggesting "x")', () => {
       expect(closestMatch("", PPTX_ICON_NAMES)).toBeUndefined()
     })

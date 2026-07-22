@@ -123,18 +123,22 @@ function prefixMatch(input: string, candidates: readonly string[]): string | und
  *    than a raw edit-distance threshold would be. Accepted unconditionally
  *    (no distance gate) — reordering the exact same words is essentially
  *    never a coincidence at this candidate-list scale.
- * 2. **Prefix match** ({@link prefixMatch}, review fix) — `input` is a
+ * 2. **Single-edit match** — a candidate at Levenshtein distance exactly 1
+ *    wins outright. One slipped key is the strongest typo signal short of a
+ *    word reorder: `"circle-chek"` must suggest `"circle-check"` (distance
+ *    1), not its own stem `"circle"` — which is why this pass runs before
+ *    the prefix pass, not after it.
+ * 3. **Prefix match** ({@link prefixMatch}, review fix) — `input` is a
  *    plausible stem/truncation of a real candidate, or vice versa. Runs
- *    before the distance pass because it is a stronger, more specific signal
- *    than raw edit distance: `"arrow"` is a stem of many real `arrow-*`
- *    icons, but its nearest candidate *by raw distance alone* can be a
- *    wildly unrelated word that merely happens to share a few letters (the
- *    reviewer's `"arrow"` → `"carrot"` case) — checking stems first means the
- *    distance pass never gets a chance to make that mistake.
- * 3. **Edit-distance match** — the candidate with the smallest
+ *    before the multi-edit distance pass because a clean word-boundary stem
+ *    is a stronger signal than a distance of 2 or more: `"arrow"` is a stem
+ *    of many real `arrow-*` icons, but its nearest candidate *by raw
+ *    distance alone* is the unrelated `"carrot"` at distance 2 (the
+ *    reviewer's case) — checking stems before multi-edit distance means
+ *    that pass never gets a chance to make that mistake.
+ * 4. **Edit-distance match** — the candidate with the smallest
  *    {@link levenshteinDistance} to `input`, accepted only when that distance
- *    is within {@link typoThreshold} of `input`'s own length (catches e.g.
- *    `"kpi_card"` for `"kpi_cards"`, distance 1).
+ *    is within {@link typoThreshold} of `input`'s own length.
  *
  * Deliberately a linear scan over `candidates` (no index/trie) for the
  * passes that do scan — this only ever runs once, after a value has already
@@ -158,9 +162,6 @@ export function closestMatch(input: string, candidates: readonly string[]): stri
     if (reordered) return reordered
   }
 
-  const prefixed = prefixMatch(input, candidates)
-  if (prefixed) return prefixed
-
   let best: string | undefined
   let bestDistance = Infinity
   for (const candidate of candidates) {
@@ -170,6 +171,11 @@ export function closestMatch(input: string, candidates: readonly string[]): stri
       best = candidate
     }
   }
+  if (best !== undefined && bestDistance === 1) return best
+
+  const prefixed = prefixMatch(input, candidates)
+  if (prefixed) return prefixed
+
   if (best === undefined) return undefined
   return bestDistance <= typoThreshold(input.length) ? best : undefined
 }
