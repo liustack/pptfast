@@ -95,6 +95,66 @@ call site (`src/svg/audit/pixel-audit.ts`), the same pattern `domParser`'s
 own `?? globalThis.DOMParser` fallback already uses — not through
 `installPlatform()`, since nothing calls that automatically in a browser.
 
+### Distribution: the seam being real vs. the package being loadable
+
+"`src/index.ts`'s closure is browser-safe" and "the published package loads
+in a browser" are two different claims — the P2 browser-distribution wave
+closed the gap between them. The seam above has always been true (verified
+against a real Chrome tab, not just jsdom), but the default build
+(`tsup.config.ts`'s `index`/`node`/`cli` entries) externalizes every
+`dependencies` entry (`react`, `react-dom`, `zod`, `jszip`, `dagre`,
+`pptxgenjs`) as bare ESM specifiers — correct for a bundler consumer
+(Vite/webpack resolve them from `node_modules`, deduped against the rest of
+the app), fatal for a bare `<script type="module">` (`Failed to resolve
+module specifier "zod"` before a single line of the module runs — no
+partial availability, a top-level `import` failure takes the whole module
+down). `package.json`'s `exports` map now offers two additional, fully
+self-contained subpaths built from the same `src/index.ts` closure, wired
+through two more `tsup.config.ts` array entries (`platform: "browser"`,
+`noExternal: [/.*/]`, `splitting: false`, so each is one file with zero
+relative-chunk fetches and zero bare specifiers left to resolve):
+
+- **`./browser`** (`dist/browser.js`) — the full engine, every dependency
+  inlined (react + react-dom/server + zod + jszip + dagre + pptxgenjs, ~1.7 MB
+  raw / ~455 KB gzip). `platform: "browser"` makes esbuild honor each
+  dependency's own package.json `browser` field (pptxgenjs and jszip both
+  ship one, remapping their Node-only `fs`/`https` code paths away) instead
+  of resolving their Node/CJS main — real-Chrome-verified against
+  `dist/index.js`'s underlying render/export/audit chain in an earlier
+  investigation (`generatePptx`, `auditDeck`, `auditDeck({ pixels: true })`
+  all functionally correct, byte-identical output to the Node CLI).
+- **`./validate`** (`dist/validate.js`) — `validateIr` and nothing else
+  reachable from the render/export chain, for an "embed a validator" page
+  that has no reason to carry `react`/`pptxgenjs`/`jszip`/`dagre` at all
+  (~730 KB raw / ~155 KB gzip, a fraction of `/browser`'s size). Its source,
+  `src/validate.ts`, imports from `src/validate-core.ts` — a module carved
+  out of what used to be all of `src/api.ts` — directly, not through
+  `src/api.ts` itself (which also defines `renderSlideSvg`/`generatePptx`
+  and statically imports `src/svg/render-slide.ts`/`src/pptx/generate.ts`).
+  A first attempt re-exported the light subset through `src/api.ts` and
+  relied on the bundler to tree-shake the unused `generatePptx`/
+  `renderSlideSvg` bindings away — it didn't: esbuild's CJS-interop wrapper
+  for jszip/react-dom's `require()`-based code kept their init closures in
+  the output even though the two functions' own bodies were correctly
+  eliminated. Importing `src/validate-core.ts` directly makes the exclusion
+  a physical file-graph fact instead of a tree-shaking bet — `src/validate.ts`'s
+  build never sees `src/api.ts`, `src/pptx/generate.ts`, or
+  `src/svg/render-slide.ts` as input files at all, whether or not a future
+  esbuild version's tree-shaking gets more aggressive about CJS interop.
+
+The default `"."`/`"./node"` entries are unchanged — `dependencies` stay
+external there, same as before this wave. `scripts/e2e.mts` (which already
+runs after `pnpm build`) parses both new bundles post-build and asserts zero
+surviving bare top-level import/export specifiers, generous size-budget
+smoke bounds, and tree separation (`dist/validate.js` must not contain
+`PptxGenJS`/`renderToStaticMarkup`/`JSZip`/`graphlib` — real bundled-code
+markers, not the npm package-name substring, since minification drops the
+latter but keeps distinctive API surface intact) — the regression guard for
+the exact failure class a bare `<script type="module">` hits. See the
+README's own Browser section for the consumer-facing quickstart and honest
+caveats (assets must be `data:` URIs or CORS-readable `http(s)` URLs,
+`--pixels`-equivalent auditing needs `OffscreenCanvas`).
+
 ## Adding a theme
 
 A new theme is style tokens + an optional brand config, never new render
