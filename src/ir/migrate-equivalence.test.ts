@@ -58,6 +58,28 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       const v3 = PptxIRV3Schema.parse(rawV3)
       const v4 = migrateIrV3ToV4(v3)
 
+      // Recaptured (P1 variety wave, task 3 — cover/chapter/ending strategy
+      // soft-weighting + the pyramid/briefing content layoutTendencies
+      // re-derivation). None of these three decks pin every identity page's
+      // `layout`, so weighting the previously-uniform cover/chapter/ending
+      // auto-pick can legitimately flip which archetype a given seed lands
+      // on — a real, intended selection-behavior change, not a migration
+      // regression. Verified via a targeted diff against the pre-recapture
+      // goldens (`.svg.json`/`.pptx-zip.json` only — `.audit.json` needed no
+      // recapture, the newly-picked archetypes introduce no new findings on
+      // any of these three fixtures). Only these specific slides change,
+      // every other slide (including every explicitly `layout`-pinned
+      // ending) stays byte-identical to the pre-task-3 golden:
+      //   - `basic`: slide index 3 (content page "At a glance", auto-picked
+      //     — briefing's re-derived content set swapped `bento-panel` for
+      //     `rail-numbered`, shifting this seed's pick to
+      //     `tone-adaptive-content`).
+      //   - `scenarioBearing`: slide indices 0 and 4 (cover + ending, both
+      //     auto-picked — storytelling's new identityTendencies pulling
+      //     this seed onto `editorial-masthead`/`poster-ending`).
+      //   - `annualReviewPreset`: slide index 1 (chapter, auto-picked —
+      //     storytelling's new identityTendencies pulling this seed onto
+      //     `banner-chapter`).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

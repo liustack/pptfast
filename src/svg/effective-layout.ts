@@ -25,12 +25,19 @@ import { filterByNarrativesOnly, getLayout } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 
 /**
- * Soft-weight multipliers for `STRATEGY_DEFINITIONS[strategy].layoutTendencies`
- * (spec §6 step 4, W4 design decision 1): a candidate whose id is in the
- * resolved strategy's tendency set gets `TENDENCY_WEIGHT`, every other
- * candidate gets the `BASE_WEIGHT` floor — cover/chapter/ending candidates
- * always fall in the latter bucket since no strategy's `layoutTendencies`
- * ever names a non-content id (that field's own doc comment, `@/narrative`).
+ * Soft-weight multipliers for a resolved strategy's tendency set (spec §6
+ * step 4, W4 design decision 1): a candidate whose id is in the set gets
+ * `TENDENCY_WEIGHT`, every other candidate gets the `BASE_WEIGHT` floor.
+ * Two disjoint tendency sources feed this, selected by slide type (see
+ * `tendencyIdsFor` below): `STRATEGY_DEFINITIONS[strategy].layoutTendencies`
+ * for content candidates (the original W4 mechanism), and
+ * `STRATEGY_DEFINITIONS[strategy].identityTendencies[slideType]` for
+ * cover/chapter/ending candidates (P1 variety wave, task 3 — before this,
+ * identity candidates always fell into the `BASE_WEIGHT` bucket uniformly,
+ * since no strategy's `layoutTendencies` ever named a non-content id — that
+ * field's own doc comment now points here instead of repeating the stale
+ * claim). Both sources share these same two constants — the same initial
+ * magnitude, not independently tuned per source.
  * Initial values, not yet tuned against a real corpus (spec §6: "权重初值...
  * 为待调参数，实现期以 audit baseline 全量渲染分布验证") — expect these two
  * constants, not the sampling mechanism itself, to move if a later wave's
@@ -38,6 +45,21 @@ import { cachedDeckSeed, weightedPickBySeed } from "./variety"
  */
 const TENDENCY_WEIGHT = 3
 const BASE_WEIGHT = 1
+
+/**
+ * Resolve the id set `weightOf` below should treat as `strategy`'s
+ * tendency-favored candidates for `slideType` (P1 variety wave, task 3):
+ * content reads the pre-existing `layoutTendencies` (unchanged since W4),
+ * cover/chapter/ending each read their own slot of the new
+ * `identityTendencies` record (`@/narrative`'s `StrategyDefinition`). The two
+ * fields hold disjoint id namespaces by construction (each field's own doc
+ * comment), so this dispatch never risks scoring a candidate against the
+ * wrong vocabulary.
+ */
+function tendencyIdsFor(slideType: Slide["type"], strategy: Strategy): readonly string[] {
+  if (slideType === "content") return STRATEGY_DEFINITIONS[strategy].layoutTendencies
+  return STRATEGY_DEFINITIONS[strategy].identityTendencies[slideType]
+}
 
 /**
  * A slide's declared `beat` value (P1 variety wave, task 1 — "beat wired
@@ -156,12 +178,17 @@ const BEAT_BASE_WEIGHT = 1
  *    pool (unreachable for the 13 built-in themes today — no built-in
  *    layout sets `narrativesOnly` yet).
  * 3. **narrative soft weighting** (step 4's ×3/×1, `TENDENCY_WEIGHT`/
- *    `BASE_WEIGHT` above) **combined with beat soft weighting** (P1 variety
- *    wave task 1's own ×3/×1 layer, `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/
- *    `BEAT_BASE_WEIGHT` above — via `Math.max`, not multiplication, per that
- *    constant's own doc comment: agreement between the two layers doesn't
- *    square the pull, disagreement still lets either layer's own weight
- *    through unreduced). An omitted `beat` contributes an implicit weight of
+ *    `BASE_WEIGHT` above, sourced per slide type by `tendencyIdsFor` —
+ *    content reads `layoutTendencies`, cover/chapter/ending each read their
+ *    own `identityTendencies` slot, P1 variety wave task 3) **combined with
+ *    beat soft weighting** (P1 variety wave task 1's own ×3/×1 layer,
+ *    `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/`BEAT_BASE_WEIGHT` above — via
+ *    `Math.max`, not multiplication, per that constant's own doc comment:
+ *    agreement between the two layers doesn't square the pull, disagreement
+ *    still lets either layer's own weight through unreduced. `BEAT_TENDENCIES`
+ *    only ever names content ids, so this layer stays a structural no-op for
+ *    cover/chapter/ending regardless of slide type — beat never weights
+ *    identity pages). An omitted `beat` contributes an implicit weight of
  *    1 for every candidate, which `max` never lets exceed the strategy-only
  *    weight, so the omitted-beat result is always exactly the pre-existing
  *    strategy-only weight, byte-identical to before this layer existed)
@@ -214,7 +241,7 @@ export function resolveArchetypeId(
   const pool = filterByNarrativesOnly(curatedDefs, strategy).map((def) => def.id)
   if (pool.length === 0) return null
 
-  const tendencies = STRATEGY_DEFINITIONS[strategy].layoutTendencies
+  const tendencies = tendencyIdsFor(slideType, strategy)
   // `beatTendencies` stays `undefined` (not `[]`) for an omitted beat so the
   // `max` below can short-circuit against a literal `1` rather than
   // evaluating an always-false `.includes` against an empty array — the two

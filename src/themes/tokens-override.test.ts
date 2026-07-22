@@ -25,7 +25,18 @@ describe("theme.style override merging", () => {
       version: "4",
       filename: "t.pptx",
       theme: { id: "consulting", style: { colors: { primary: "#0B5FFF" } } },
-      slides: [{ type: "cover", heading: "Hello Tokens" }],
+      // Explicit `layout` pin (P1 variety wave, task 3 re-pin): this test
+      // only cares whether a `theme.style` override reaches render, not
+      // which cover archetype auto-pick lands on — an omitted `layout` left
+      // that pick to the seed/strategy-weighted auto-pick, which cover
+      // identity weighting (task 3) can now legitimately shift to an
+      // archetype that never paints `colors.primary` at all (e.g.
+      // `tone-adaptive-header`, no color-block). `left-anchor` always
+      // paints its 40%-width heading block in `colors.primary`
+      // (`cover-left-anchor.tsx`), so pinning it decouples this assertion
+      // from selection weighting entirely — the correct fix for a test that
+      // was already fragile to any future re-weighting, not just this one.
+      slides: [{ type: "cover", heading: "Hello Tokens", layout: "left-anchor" }],
     })
     expect(v.ok).toBe(true)
     expect(renderSlideSvg(v.ir!, 0)).toContain("#0B5FFF")

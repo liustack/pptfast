@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest"
 import { createElement } from "react"
 import { render } from "@testing-library/react"
 import type { PptxIR, Slide } from "@/ir"
-import { STRATEGY_DEFINITIONS } from "@/narrative"
+import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
 import { FullSlideSvg } from "./FullSlideSvg"
-import { getLayout } from "./layouts/registry"
+import { getLayout, layoutsForSlideType } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 import { THEME_DEFINITIONS } from "../themes/definitions"
 import {
@@ -270,6 +270,188 @@ describe("resolveArchetypeId", () => {
     expect(share).toBeLessThan(0.4)
   })
 
+  // ── identity-page strategy weighting (P1 variety wave, task 3) ──
+  // cover/chapter/ending used to be uniformly sampled (no strategy signal
+  // ever reached them). academic's identity pools are each the full
+  // registry set (8 cover / 8 chapter / 7 ending — `layoutsForSlideType`,
+  // asserted below rather than hardcoded so a future archetype-pool
+  // expansion can't silently desync this file's own algebra).
+
+  describe("identity-page strategy weighting", () => {
+    it("a strategy's cover identityTendencies members are picked more often than non-members (N=5000, algebra-derived bounds)", () => {
+      // pyramid.identityTendencies.cover = [banner-title, left-anchor], 2
+      // members at weight 3 against a full 8-id cover pool (the other 6 at
+      // weight 1): total = 2*3 + 6*1 = 12, expected combined tendency share
+      // = 6/12 = 0.5 exactly.
+      const coverPool = layoutsForSlideType("cover").length
+      expect(coverPool).toBe(8)
+      const tendencyIds = STRATEGY_DEFINITIONS.pyramid.identityTendencies.cover
+      expect(tendencyIds.length).toBe(2)
+      const N = 5000
+      let hits = 0
+      for (let i = 0; i < N; i++) {
+        const picked = resolveArchetypeId(
+          "cover",
+          THEME_DEFINITIONS.academic.layouts,
+          i,
+          String(i),
+          undefined,
+          "pyramid",
+          null,
+        )!
+        if (tendencyIds.includes(picked)) hits++
+      }
+      const share = hits / N
+      expect(share).toBeGreaterThan(0.4)
+      expect(share).toBeLessThan(0.6)
+    })
+
+    it("a strategy's chapter identityTendencies members are picked more often than non-members (N=5000)", () => {
+      // storytelling.identityTendencies.chapter = [roman-chapter,
+      // banner-chapter], 2 members at weight 3 over a full 8-id chapter
+      // pool: total = 2*3 + 6*1 = 12, expected combined share = 6/12 = 0.5.
+      const tendencyIds = STRATEGY_DEFINITIONS.storytelling.identityTendencies.chapter
+      const N = 5000
+      let hits = 0
+      for (let i = 0; i < N; i++) {
+        const picked = resolveArchetypeId(
+          "chapter",
+          THEME_DEFINITIONS.academic.layouts,
+          i,
+          String(i),
+          undefined,
+          "storytelling",
+          null,
+        )!
+        if (tendencyIds.includes(picked)) hits++
+      }
+      const share = hits / N
+      expect(share).toBeGreaterThan(0.4)
+      expect(share).toBeLessThan(0.6)
+    })
+
+    it("a strategy's ending identityTendencies members are picked more often than non-members (N=5000)", () => {
+      // showcase.identityTendencies.ending = [fashion-ending, poster-ending],
+      // 2 members at weight 3 over a full 7-id ending pool (the other 5 at
+      // weight 1): total = 2*3 + 5*1 = 11, expected combined share = 6/11 ≈
+      // 0.545.
+      const endingPool = layoutsForSlideType("ending").length
+      expect(endingPool).toBe(7)
+      const tendencyIds = STRATEGY_DEFINITIONS.showcase.identityTendencies.ending
+      const N = 5000
+      let hits = 0
+      for (let i = 0; i < N; i++) {
+        const picked = resolveArchetypeId(
+          "ending",
+          THEME_DEFINITIONS.academic.layouts,
+          i,
+          String(i),
+          undefined,
+          "showcase",
+          null,
+        )!
+        if (tendencyIds.includes(picked)) hits++
+      }
+      const share = hits / N
+      expect(share).toBeGreaterThan(0.44)
+      expect(share).toBeLessThan(0.65)
+    })
+
+    it("no single identity archetype's realized share exceeds ~35% under any strategy (T1 reviewer's concentration ceiling, checked algebraically for every strategy x page type)", () => {
+      // Every strategy uses a 2-member set — the worst case (smallest pool,
+      // ending=7) still gives a single marked member weight 3 / (2*3 + 5*1)
+      // = 3/11 ≈ 0.273, well under the 0.35 ceiling the T1 reviewer flagged
+      // (storytelling x beat "breathing" compounding a single archetype to
+      // ~0.53% before the max() fix). Computed directly from the weight
+      // formula (no sampling needed — this is closed-form, not a Monte
+      // Carlo estimate) so it stays exact regardless of the seeded-hash
+      // sampler's own distribution quality.
+      const strategies: Strategy[] = ["pyramid", "storytelling", "instructional", "showcase", "briefing"]
+      const pageTypes = ["cover", "chapter", "ending"] as const
+      for (const strategy of strategies) {
+        for (const pageType of pageTypes) {
+          const poolSize = layoutsForSlideType(pageType).length
+          const tendencyIds = STRATEGY_DEFINITIONS[strategy].identityTendencies[pageType]
+          const markedCount = tendencyIds.length
+          const totalWeight = markedCount * 3 + (poolSize - markedCount) * 1
+          const perMemberShare = 3 / totalWeight
+          expect(
+            perMemberShare,
+            `${strategy}.${pageType}: a single marked archetype would claim ${(perMemberShare * 100).toFixed(1)}%`,
+          ).toBeLessThan(0.35)
+        }
+      }
+    })
+
+    it("beat never weights identity pages: passing any beat value to a cover/chapter/ending resolve is a no-op, across strategies and seeds", () => {
+      const beats = ["anchor", "dense", "breathing"] as const
+      const identitySlideTypes = ["cover", "chapter", "ending"] as const
+      for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
+        for (const slideType of identitySlideTypes) {
+          for (let seed = 0; seed < 15; seed++) {
+            const withoutBeat = resolveArchetypeId(
+              slideType,
+              THEME_DEFINITIONS.academic.layouts,
+              seed,
+              String(seed),
+              undefined,
+              strategy,
+              null,
+            )
+            for (const beat of beats) {
+              const withBeat = resolveArchetypeId(
+                slideType,
+                THEME_DEFINITIONS.academic.layouts,
+                seed,
+                String(seed),
+                undefined,
+                strategy,
+                null,
+                beat,
+              )
+              expect(withBeat, `${slideType}/${strategy}/seed=${seed}/beat=${beat}`).toBe(withoutBeat)
+            }
+          }
+        }
+      }
+    })
+
+    it("the default narrative (general -> briefing) is NOT byte-identical to a tendency-free bare sample: omitted narrative shifts identity-page picks the same way every other strategy does", () => {
+      // `general`'s axes resolve to strategy "briefing" (DEFAULT_NARRATIVE,
+      // @/narrative) — briefing carries real, non-empty identityTendencies
+      // (this task gives every strategy a real set, matching the
+      // pre-existing precedent that briefing's content layoutTendencies has
+      // always been non-empty too, since W4). So an omitted-narrative deck's
+      // cover/chapter/ending picks are NOT byte-identical to a hypothetical
+      // "no weighting at all" baseline — this is the desirable boundary
+      // this task's own contract asked to verify and state: general is not
+      // tendency-free, exactly mirroring how it was never content-tendency-
+      // free either.
+      const briefingCoverIds = STRATEGY_DEFINITIONS.briefing.identityTendencies.cover
+      expect(briefingCoverIds.length).toBeGreaterThan(0)
+      const N = 3000
+      let hits = 0
+      for (let i = 0; i < N; i++) {
+        const picked = resolveArchetypeId(
+          "cover",
+          THEME_DEFINITIONS.academic.layouts,
+          i,
+          String(i),
+          undefined,
+          "briefing", // resolveNarrative(undefined) -> general -> briefing
+          null,
+        )!
+        if (briefingCoverIds.includes(picked)) hits++
+      }
+      // Uniform sampling (the pre-task-3 behavior) would give 2/8 = 0.25 —
+      // the weighted mechanism gives 6/12 = 0.5 — assert clearly above the
+      // old uniform baseline to prove the default strategy really is
+      // weighted now, not accidentally still uniform.
+      const share = hits / N
+      expect(share).toBeGreaterThan(0.4)
+    })
+  })
+
   it("adjacent anti-repetition: when the raw pick equals previousEffectiveLayoutId and the pool has >1 member, redraws deterministically to a different id", () => {
     // academic's content pool is the full 7-id set (never empty), so the
     // raw pick (previous=null) is always a real id — feed that same id back
@@ -304,6 +486,20 @@ describe("resolveArchetypeId", () => {
 // ── resolveEffectiveLayoutId (full per-slide resolution) ──
 
 describe("resolveEffectiveLayoutId", () => {
+  it("a deck's narrative strategy reaches identity-page selection end-to-end: a cover picked under pyramid differs from the same seed's pick under storytelling, for at least one seed in a spread (P1 variety wave, task 3)", () => {
+    let sawADifference = false
+    for (let seed = 0; seed < 30; seed++) {
+      const slide: Slide = { type: "cover", heading: "x", components: [] }
+      const irPyramid: PptxIR = { ...makeIR([slide], "academic"), seed, narrative: { strategy: "pyramid" } }
+      const irStorytelling: PptxIR = { ...makeIR([slide], "academic"), seed, narrative: { strategy: "storytelling" } }
+      if (resolveEffectiveLayoutId(irPyramid, slide, 0) !== resolveEffectiveLayoutId(irStorytelling, slide, 0)) {
+        sawADifference = true
+        break
+      }
+    }
+    expect(sawADifference).toBe(true)
+  })
+
   it("cover/chapter with an asset background bypasses archetypes entirely (returns null — ImageCoverPage has no registry entry)", () => {
     for (const type of ["cover", "chapter"] as const) {
       const slide: Slide = { type, heading: "x", background: { kind: "asset", asset_id: "bg" }, components: [] }
