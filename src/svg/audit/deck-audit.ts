@@ -1,5 +1,6 @@
 import type { PptxIR } from "@/ir"
 import { renderSlideSvg } from "../../api"
+import { PptfastError } from "../../errors"
 import { measureMonoTextUnits, measureTextUnits } from "../../lib/svg-text-layout"
 import { getPlatform } from "../../platform/registry"
 import { isMonoFontFamily } from "../fonts"
@@ -1959,6 +1960,40 @@ function runDeterministicAudit(ir: PptxIR): { findings: AuditFinding[]; pagesAud
 }
 
 /**
+ * `auditDeck`'s own runtime guard against a caller passing raw/unvalidated
+ * JSON straight through (borrow wave, Task 2 — A4). The type signature says
+ * `PptxIR`, but nothing enforced that at runtime — a plain
+ * `JSON.parse(...)` result missing `assets` (a perfectly ordinary shape for
+ * a hand-authored document, or any document that simply hasn't been through
+ * `validateIr` yet, which fills in `assets: { images: {} }` as a schema
+ * default) reached `FullSlideSvg` and crashed with `TypeError: Cannot read
+ * properties of undefined (reading 'images')` — verbatim, real-browser
+ * reproduction (`dr/a-lightweight.md` §4). Node and browser hit the exact
+ * same crash (the render chain this guards, `runDeterministicAudit` →
+ * `renderSlideSvg` → `FullSlideSvg`, is shared — part of `src/index.ts`'s
+ * browser-safe closure), so the fix lives once, here, rather than duplicated
+ * per platform. Only checks the two fields the render chain actually
+ * dereferences unguarded (`slides`, `assets.images`) — a cheap shape check,
+ * not a re-run of `validateIr`'s full schema, which stays the caller's job.
+ */
+function assertValidatedIrShape(ir: unknown): asserts ir is PptxIR {
+  const assets = (ir as { assets?: { images?: unknown } } | null)?.assets
+  const looksValid =
+    typeof ir === "object" &&
+    ir !== null &&
+    Array.isArray((ir as { slides?: unknown }).slides) &&
+    typeof assets === "object" &&
+    assets !== null &&
+    typeof assets.images === "object" &&
+    assets.images !== null
+  if (!looksValid) {
+    throw new PptfastError(
+      "auditDeck received an IR object missing slides[] or assets.images — pass the .ir returned by validateIr(input), not raw/unvalidated JSON (run validateIr first)",
+    )
+  }
+}
+
+/**
  * The SDK entry point. Advisory, not a hard gate: `validateIr` already
  * rejects structurally invalid or over-dense decks before a caller ever
  * gets this far; this function looks for the visual problems that can still
@@ -1990,6 +2025,7 @@ function runDeterministicAudit(ir: PptxIR): { findings: AuditFinding[]; pagesAud
 export function auditDeck(ir: PptxIR, opts?: { pixels?: false }): AuditReport
 export function auditDeck(ir: PptxIR, opts: { pixels: true }): Promise<AuditReport>
 export function auditDeck(ir: PptxIR, opts: AuditDeckOptions = {}): AuditReport | Promise<AuditReport> {
+  assertValidatedIrShape(ir)
   const { findings, pagesAudited, pagesSkipped } = runDeterministicAudit(ir)
   const report: AuditReport = { findings, pagesAudited, pagesSkipped, checks: { svg: "completed", pixels: "not-requested" } }
   if (!opts.pixels) return report
