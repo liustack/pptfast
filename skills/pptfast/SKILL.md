@@ -148,6 +148,10 @@ A slide is a fixed-size canvas. Draft to fit on the first pass: few components p
 
 Four component types own the whole slide instead of sharing it: `swot`, `bmc`, `waterfall`, `gantt`. Each must be its slide's only component — `validate` hard-errors on a slide that mixes one in with `bullets` or anything else, it never silently drops the sibling.
 
+### Beat
+
+A content page's optional `beat` (`anchor`, `dense`, or `breathing`) is more than a `spec validate` rhythm check now — it also nudges which layout `render` auto-picks for that page: `anchor` leans toward a single bold-statement layout, `dense` leans toward a high-density layout with more visible items, `breathing` leans toward the most spacious single-column layout. It is a soft weight, not a pin — an explicit `layout` still overrides it entirely, and an unset `beat` has zero effect. Declare it deliberately, one value per page based on that page's actual role in the argument (the "big reveal" page is `anchor`, a data-heavy comparison page is `dense`, a breather page between two dense sections is `breathing`), not as a rubber stamp on every page — `spec validate`'s own beat-rotation gate already flags a streak of identical declared beats for strategies that expect variation, and stamping the same value everywhere also just cancels out the layout variety this field exists to add.
+
 ### Decor
 
 Set slide `decor` only when the user explicitly asks for decorative flourish. Default is none — themes already carry their own motifs.
