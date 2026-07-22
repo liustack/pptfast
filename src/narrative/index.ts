@@ -237,8 +237,13 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // distinct component type, not part of this family — it only shows up
     // in showcase's row below, matching the spec table.
     tendencies: ["quote", "image-split", "image-top", "image-bottom", "image-annotate", "timeline", "callout"],
-    // 情境→张力→解决——单栏行文（narrow-column）+ 海报式单点强调（stacked-poster）。
-    layoutTendencies: ["narrow-column", "stacked-poster"],
+    // 情境→张力→解决——单栏行文（narrow-column）+ 海报式单点强调（stacked-
+    // poster）+ 留白居中的静谧构图（quiet-frame，P1 variety wave task 4：
+    // content 池扩容新增的 breathing 适格 archetype——storytelling 本就是
+    // 池里唯一同时偏好 narrow-column/stacked-poster 两个「从容」版式的
+    // strategy，quiet-frame 的对称留白构图是同一气质的第三种表达，不是
+    // 勉强凑数）。
+    layoutTendencies: ["narrow-column", "stacked-poster", "quiet-frame"],
     // Identity tendencies: storytelling's cover/chapter/ending want suspense
     // and an editorial voice, not a business report's directness.
     // - cover `editorial-masthead`: centered literary masthead + italic
@@ -271,8 +276,12 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // laid end to end), the same "分步拆解" shape instructional already
     // favors, on top of already belonging to pyramid's evidence-dense set.
     tendencies: ["steps", "numbered_cards", "flowchart", "architecture", "code", "gantt"],
-    // 分步拆解——编号导轨（rail-numbered）+ 两栏步骤对照。
-    layoutTendencies: ["rail-numbered", "two-column"],
+    // 分步拆解——编号导轨（rail-numbered）+ 两栏步骤对照 + 主次分层的三区
+    // 版式（asymmetric-triptych，P1 variety wave task 4：content 池扩容
+    // 优先落给代表性不足的 instructional，此前仅 2 项。「一个主题项 + 拆成
+    // 两个次要区块」的构图本身就是「主步骤 + 子步骤」的视觉转译，与
+    // instructional 的分步拆解性格直接对应，不是借用凑数）。
+    layoutTendencies: ["rail-numbered", "two-column", "asymmetric-triptych"],
     // Identity tendencies: instructional's cover/chapter/ending favor
     // structured, procedural clarity over either boardroom directness or
     // storytelling atmosphere.
@@ -310,8 +319,13 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // here would be unresolvable — kpi_cards is the correct, resolvable
     // normalization.
     tendencies: ["image-split", "image-top", "image-bottom", "image-annotate", "image_grid", "kpi_cards"],
-    // 视觉冲击——海报式单点强调（stacked-poster）+ 卡片拼盘（bento-panel）。
-    layoutTendencies: ["stacked-poster", "bento-panel"],
+    // 视觉冲击——海报式单点强调（stacked-poster）+ 卡片拼盘（bento-panel）+
+    // 常驻高亮色块（side-highlight，P1 variety wave task 4：content 池扩容
+    // 优先落给代表性不足的 showcase，此前仅 2 项。一块不透明主色高亮面板
+    // 是这个池子里视觉冲击力最直接的新表达，与 showcase 的门面页选型
+    // poster-center/fashion-masthead/fashion-chapter/fashion-ending 同一
+    // 「大胆色块」气质）。
+    layoutTendencies: ["stacked-poster", "bento-panel", "side-highlight"],
     // Identity tendencies: showcase's cover/chapter/ending want the same
     // glossy, visual-impact-first punch as its content picks.
     // - cover `poster-center`: fully centered, no kicker, a single bottom

@@ -96,6 +96,11 @@ type PageBeat = NonNullable<Slide["beat"]>
  *   - `stacked-poster` — its non-degrade path routes component 1 into a
  *     dedicated `hero` slot (capacity 1): poster-scale single-subject
  *     treatment, the most visually loud body geometry in the content pool.
+ *   - `side-highlight` (P1 variety wave, task 4) — a persistent, opaque
+ *     `colors.primary` panel runs the page's full content height,
+ *     unconditionally, regardless of `slide.components` — the same "loud,
+ *     unmissable page identity" register as the two members above, just
+ *     asserted beside the body instead of above or inside it.
  * - **dense** (many discrete items, high information density):
  *   - `bento-panel` — the only content archetype whose `body` capacity is 6
  *     (every other is 4): a multi-cell grid sized to hold the most, not the
@@ -106,10 +111,25 @@ type PageBeat = NonNullable<Slide["beat"]>
  *   - `rail-numbered` — a numbered progress rail ("{chapter}.{n}") is
  *     itself a sequential-breakdown signal, the layout that most invites a
  *     long enumerated list rather than one hero item.
+ *   - `asymmetric-triptych` (P1 variety wave, task 4) — three independently
+ *     filled regions (a lead column plus two framed secondary panels), the
+ *     pool's highest *structural* region count after bento-panel's 6-cell
+ *     grid — and, addressing the T1 handoff's reviewer note that
+ *     `two-column`/`rail-numbered` read as visually thin on a
+ *     single-component page, its region dividers/frames are unconditional
+ *     chrome that stays visible even with exactly 1 component (see the
+ *     archetype file's own composition-sketch header).
  * - **breathing** (generous whitespace, one unhurried flow):
  *   - `narrow-column` — the narrowest body column in the pool, paired with
  *     a large muted page-number watermark filling the right gutter: spacious
  *     by construction, not by content choice.
+ *   - `quiet-frame` (P1 variety wave, task 4) — a whitespace-led centered
+ *     composition (symmetric 200px margins, no watermark, no side panel):
+ *     the pool's second `breathing` member, closing the single-member gap
+ *     the T1 handoff flagged (a lone tendency-set member is over-sensitive
+ *     to the max-composition agreement case — any strategy that also favors
+ *     that one id gets a "free" corroboration with nothing else to spread
+ *     across).
  *
  * `tone-adaptive-content` — the pool's "万金油" (already strategy-neutral by
  * `layoutTendencies`' own convention) — is deliberately absent from every
@@ -117,9 +137,9 @@ type PageBeat = NonNullable<Slide["beat"]>
  * to read as beat-neutral as well.
  */
 const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
-  anchor: ["banner-heading", "stacked-poster"],
-  dense: ["bento-panel", "two-column", "rail-numbered"],
-  breathing: ["narrow-column"],
+  anchor: ["banner-heading", "stacked-poster", "side-highlight"],
+  dense: ["bento-panel", "two-column", "rail-numbered", "asymmetric-triptych"],
+  breathing: ["narrow-column", "quiet-frame"],
 }
 
 /**

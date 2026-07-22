@@ -68,6 +68,12 @@ export type SlotName =
   | "rail"
   | "meta"
   | "decor"
+  // P1 variety wave, task 4 (content-pool expansion): side-highlight's
+  // persistent chrome panel, asymmetric-triptych's three body regions.
+  | "panel"
+  | "lead"
+  | "top"
+  | "bottom"
 
 /** Body-arrangement enum (the retired `variant` field's 9-value non-image
  * subset — W2 task 3 split the other 4 image values off into first-class
@@ -493,7 +499,9 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Content archetypes (7) — the only family that reads `slide.components`, so
+// Content archetypes (10, P1 variety wave task 4: 7 -> 10 — content was the
+// pool's thinnest page type, the C-investigation's own finding, dr/
+// c-diversity.md) — the only family that reads `slide.components`, so
 // every entry carries a `body` slot plus its own header chrome, and declares
 // `arrangements` (inventory decision #2: archetypes that don't obey the
 // author's arrangement still truthfully declare which arrangement(s) they
@@ -537,6 +545,13 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     bento-panel's true geometric ceiling and stays for documentation and
 //     for any future pacing tier looser than 5, but no deck can reach it
 //     through today's gate.
+//   - side-highlight/asymmetric-triptych/quiet-frame (task 4's three new
+//     archetypes): 4, the same flat single-stack default every archetype
+//     but bento-panel already carries — none of the three's own body
+//     column/region ever exceeds the pool's existing narrowest single-stack
+//     width (880px, `narrow-column`'s `COLUMN_W`), so no new per-archetype
+//     number is warranted (each file's own composition-sketch header
+//     derives this explicitly, not just asserts it).
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   "narrow-column": {
@@ -678,6 +693,72 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
       { name: "subheading", accepts: CHROME },
       { name: "rule", accepts: CHROME },
       { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
+      { name: "meta", accepts: CHROME },
+    ],
+    arrangements: "all",
+  },
+  "side-highlight": {
+    // content-side-highlight.tsx: standard-width body column (kicker/
+    // heading/subheading/SvgContent body, arrangement passed through) plus
+    // a persistent, unconditional highlight panel (chrome, not a
+    // component-fed slot) running the page's full content height on the
+    // right edge — badge/watermark/org label, never empty regardless of
+    // `slide.components`.
+    id: "side-highlight",
+    kind: "archetype",
+    slideTypes: ["content"],
+    slots: [
+      { name: "kicker", accepts: CHROME },
+      { name: "heading", accepts: CHROME },
+      { name: "subheading", accepts: CHROME },
+      { name: "body", accepts: "any", capacity: 4 }, // single-stack, 880px column — see file header derivation
+      { name: "panel", accepts: CHROME },
+      { name: "meta", accepts: CHROME },
+    ],
+    arrangements: "all",
+  },
+  "asymmetric-triptych": {
+    // content-asymmetric-triptych.tsx: full-width kicker/heading/subheading
+    // chrome above a three-region body — a wide `lead` column (the first
+    // component alone) plus a narrower right column split into `top`/
+    // `bottom` framed secondary panels. All three internal SvgContent calls
+    // hardcode arrangement to the default single-stack (never
+    // `slide.arrangement` — the three-region split is this archetype's own
+    // grammar, same hardcode convention as bento-panel/two-column).
+    // Persistent dividers/panel frames are unconditional chrome, not
+    // component-count-dependent.
+    id: "asymmetric-triptych",
+    kind: "archetype",
+    slideTypes: ["content"],
+    slots: [
+      { name: "kicker", accepts: CHROME },
+      { name: "heading", accepts: CHROME },
+      { name: "subheading", accepts: CHROME },
+      { name: "body", accepts: "any", capacity: 4 }, // 1 lead + up to 3 secondary — see file header derivation
+      { name: "lead", accepts: "any", capacity: 1 },
+      { name: "top", accepts: "any" },
+      { name: "bottom", accepts: "any" },
+      { name: "meta", accepts: CHROME },
+    ],
+    arrangements: ["single"],
+  },
+  "quiet-frame": {
+    // content-quiet-frame.tsx: whitespace-led centered composition —
+    // symmetric 200px margins (vs. narrow-column's asymmetric gutter),
+    // centered kicker/heading/subheading, a short centered accent rule,
+    // then an 880px-wide centered SvgContent body (arrangement passed
+    // through unchanged). No watermark, no persistent side panel — the
+    // pool's second `breathing`-suitable archetype (T1 handoff hard
+    // requirement).
+    id: "quiet-frame",
+    kind: "archetype",
+    slideTypes: ["content"],
+    slots: [
+      { name: "kicker", accepts: CHROME },
+      { name: "heading", accepts: CHROME },
+      { name: "subheading", accepts: CHROME },
+      { name: "rule", accepts: CHROME },
+      { name: "body", accepts: "any", capacity: 4 }, // single-stack, 880px centered column — see file header derivation
       { name: "meta", accepts: CHROME },
     ],
     arrangements: "all",
