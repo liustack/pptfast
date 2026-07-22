@@ -80,6 +80,29 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `annualReviewPreset`: slide index 1 (chapter, auto-picked —
       //     storytelling's new identityTendencies pulling this seed onto
       //     `banner-chapter`).
+      //
+      // Re-recaptured (P1 variety wave, task 4 — content-pool expansion, 7
+      // -> 10 new archetypes side-highlight/asymmetric-triptych/quiet-frame,
+      // plus their strategy `layoutTendencies`/beat `BEAT_TENDENCIES`
+      // placement). None of these three decks pin every content page's
+      // `layout` either, so a pool-wide reweighting can legitimately flip
+      // which archetype a given seed's auto-pick lands on — the same
+      // "real, intended selection-behavior change, not a migration
+      // regression" posture as the task-3 recapture above. Verified via the
+      // identical targeted-diff discipline: `.audit.json` needed no
+      // recapture for any of the three (findings stayed the empty array on
+      // both sides — the newly-picked archetypes introduce no new
+      // findings). Exactly the same two slide indices changed in all three
+      // fixtures, nothing else:
+      //   - `basic`: slide indices 2 and 3 (content pages, both auto-picked
+      //     — `bento-panel` -> `stacked-poster`, `tone-adaptive-content` ->
+      //     `two-column`).
+      //   - `scenarioBearing`: slide indices 2 and 3 (content, auto-picked
+      //     — `tone-adaptive-content` -> `rail-numbered`, `stacked-poster`
+      //     -> `quiet-frame`).
+      //   - `annualReviewPreset`: slide indices 2 and 3 (content,
+      //     auto-picked — `banner-heading` -> `narrow-column`, `two-column`
+      //     -> `stacked-poster`).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

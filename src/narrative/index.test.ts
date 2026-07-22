@@ -113,6 +113,46 @@ describe("STRATEGY_DEFINITIONS", () => {
     expect(STRATEGY_DEFINITIONS.pyramid.layoutTendencies).toEqual(["bento-panel", "banner-heading", "two-column"])
   })
 
+  // ── content layoutTendencies: content-pool expansion weight placement
+  // (P1 variety wave, task 4 — storytelling/instructional/showcase each
+  // gain a third member, closing the plan's "instructional/showcase have
+  // only 2-3 preferred content ids" representation gap; storytelling joins
+  // them for thematic parity since its own two pre-existing members are
+  // already the pool's other "unhurried" archetypes) ──
+
+  it("pins storytelling's re-derived content set: narrow-column + stacked-poster + quiet-frame (its two pre-existing atmospheric picks gain a third, equally restrained sibling)", () => {
+    expect(STRATEGY_DEFINITIONS.storytelling.layoutTendencies).toEqual([
+      "narrow-column",
+      "stacked-poster",
+      "quiet-frame",
+    ])
+  })
+
+  it("pins instructional's re-derived content set: rail-numbered + two-column + asymmetric-triptych (a lead item + two secondary panels reads as main-step + sub-steps)", () => {
+    expect(STRATEGY_DEFINITIONS.instructional.layoutTendencies).toEqual([
+      "rail-numbered",
+      "two-column",
+      "asymmetric-triptych",
+    ])
+  })
+
+  it("pins showcase's re-derived content set: stacked-poster + bento-panel + side-highlight (a permanent opaque highlight panel matches showcase's own glossy identity-page picks)", () => {
+    expect(STRATEGY_DEFINITIONS.showcase.layoutTendencies).toEqual([
+      "stacked-poster",
+      "bento-panel",
+      "side-highlight",
+    ])
+  })
+
+  it("every strategy's content layoutTendencies set now has exactly 3 members (was an uneven 2-3 split before task 4's placement)", () => {
+    for (const strategy of expectedStrategies) {
+      expect(
+        STRATEGY_DEFINITIONS[strategy].layoutTendencies.length,
+        `${strategy}.layoutTendencies`,
+      ).toBe(3)
+    }
+  })
+
   // ── identityTendencies: cover/chapter/ending strategy soft-weighting
   // (P1 variety wave, task 3) ──────────────────────────────────────────────
 

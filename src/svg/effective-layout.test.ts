@@ -28,6 +28,11 @@ function makeIR(slides: Slide[], themeId: string = "consulting"): PptxIR {
   } as PptxIR
 }
 
+// Order matches `CONTENT_LAYOUTS`' own declaration order in registry.ts —
+// `weightedPickBySeed` maps candidates to a weight interval in list order,
+// so tests that independently recompute an *exact* expected pick (not just
+// a distribution smoke test) need this array byte-order-identical to the
+// real pool `resolveArchetypeId` builds from `theme.layouts.content`.
 const CONTENT_ARCHETYPE_IDS = [
   "narrow-column",
   "two-column",
@@ -36,6 +41,10 @@ const CONTENT_ARCHETYPE_IDS = [
   "stacked-poster",
   "bento-panel",
   "tone-adaptive-content",
+  // P1 variety wave, task 4: content pool 7 -> 10.
+  "side-highlight",
+  "asymmetric-triptych",
+  "quiet-frame",
 ]
 
 // ── resolveArchetypeId (pure seed+ordinal selection, extracted from FullSlideSvg) ──
@@ -101,13 +110,15 @@ describe("resolveArchetypeId", () => {
       const picked = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, i, String(i), undefined, "pyramid", null)!
       if (tendencyIds.includes(picked)) tendencyHits++
     }
-    // 3 ids at weight 3 (=9) vs 4 ids at weight 1 (=4) over the full 7-id
-    // content pool: expected tendency share = 9/13 ≈ 0.69. Wide bounds
-    // (not a tight equality) — this is a distribution smoke test proving
-    // the weighting is wired in, `weightedPickBySeed`'s own test owns the
-    // precise ratio assertion.
-    expect(tendencyHits / N).toBeGreaterThan(0.55)
-    expect(tendencyHits / N).toBeLessThan(0.85)
+    // 3 ids at weight 3 (=9) vs 7 ids (10-3=7) at weight 1 (=7) over the
+    // full 10-id content pool (P1 variety wave, task 4: 7 -> 10 — pyramid's
+    // own 3-member set is unchanged, only the pool denominator grew):
+    // expected tendency share = 9/16 = 0.5625. Wide bounds (not a tight
+    // equality) — this is a distribution smoke test proving the weighting
+    // is wired in, `weightedPickBySeed`'s own test owns the precise ratio
+    // assertion.
+    expect(tendencyHits / N).toBeGreaterThan(0.45)
+    expect(tendencyHits / N).toBeLessThan(0.7)
   })
 
   // ── beat weighting (P1 variety wave, task 1 — "beat wired into selection") ──
@@ -162,12 +173,13 @@ describe("resolveArchetypeId", () => {
   })
 
   it("beat weighting: a beat's tendency-set members are picked more often than non-members, on top of (not instead of) the strategy layer", () => {
-    // instructional's own layoutTendencies (rail-numbered/two-column) share
-    // zero members with beat "anchor"'s tendency set (banner-heading/
-    // stacked-poster, effective-layout.ts's BEAT_TENDENCIES) — an isolated
-    // pairing so this test measures the beat layer's own pull, not strategy
-    // spillover onto the same ids.
-    const anchorIds = ["banner-heading", "stacked-poster"]
+    // instructional's own layoutTendencies (rail-numbered/two-column/
+    // asymmetric-triptych, P1 variety wave task 4) share zero members with
+    // beat "anchor"'s tendency set (banner-heading/stacked-poster/
+    // side-highlight, same task, effective-layout.ts's BEAT_TENDENCIES) —
+    // an isolated pairing so this test measures the beat layer's own pull,
+    // not strategy spillover onto the same ids.
+    const anchorIds = ["banner-heading", "stacked-poster", "side-highlight"]
     const N = 600
     let anchorHits = 0
     for (let i = 0; i < N; i++) {
@@ -183,16 +195,57 @@ describe("resolveArchetypeId", () => {
       )!
       if (anchorIds.includes(picked)) anchorHits++
     }
-    // Weights: rail-numbered=3 (strategy only), two-column=3 (strategy
-    // only), banner-heading=3 (beat only), stacked-poster=3 (beat only),
-    // bento-panel/narrow-column/tone-adaptive-content=1 each — total 15,
-    // anchor-tendency share = 6/15 = 0.4. Without the beat layer (see the
-    // "narrative weighting" test above) the same two ids would only carry
-    // strategy's ×1 floor — this bound proves the beat layer independently
-    // lifts them, not just strategy's own pull. Wide bounds, same smoke-test
-    // posture as the narrative-weighting test above.
-    expect(anchorHits / N).toBeGreaterThan(0.25)
-    expect(anchorHits / N).toBeLessThan(0.55)
+    // Weights over the full 10-id pool: rail-numbered/two-column/
+    // asymmetric-triptych=3 each (strategy only, 9 total), banner-heading/
+    // stacked-poster/side-highlight=3 each (beat only, 9 total),
+    // bento-panel/narrow-column/tone-adaptive-content/quiet-frame=1 each (4
+    // total) — total weight 22, anchor-tendency share = 9/22 ≈ 0.409.
+    // Without the beat layer (see the "narrative weighting" test above) the
+    // same three ids would only carry strategy's ×1 floor — this bound
+    // proves the beat layer independently lifts them, not just strategy's
+    // own pull. Wide bounds, same smoke-test posture as the
+    // narrative-weighting test above.
+    expect(anchorHits / N).toBeGreaterThan(0.3)
+    expect(anchorHits / N).toBeLessThan(0.52)
+  })
+
+  it("breathing's tendency set now has 2 members, not 1 (P1 variety wave, task 4 — closes the T1 handoff's single-member gap): both narrow-column and quiet-frame get independently lifted by beat alone, isolated from pyramid's own zero-overlap strategy pull", () => {
+    // pyramid's layoutTendencies (bento-panel/banner-heading/two-column)
+    // shares zero members with breathing's tendency set
+    // (narrow-column/quiet-frame) — the same isolated-pairing methodology
+    // the anchor test above uses, so this measures beat's own pull on
+    // *both* breathing members, not strategy spillover onto either.
+    const breathingIds = ["narrow-column", "quiet-frame"]
+    const N = 2000
+    let hits = 0
+    let narrowColumnHits = 0
+    let quietFrameHits = 0
+    for (let i = 0; i < N; i++) {
+      const picked = resolveArchetypeId(
+        "content",
+        THEME_DEFINITIONS.academic.layouts,
+        i,
+        String(i),
+        undefined,
+        "pyramid",
+        null,
+        "breathing",
+      )!
+      if (breathingIds.includes(picked)) hits++
+      if (picked === "narrow-column") narrowColumnHits++
+      if (picked === "quiet-frame") quietFrameHits++
+    }
+    // Weights: bento-panel/banner-heading/two-column=3 each (strategy only,
+    // 9 total), narrow-column/quiet-frame=3 each (beat only, 6 total),
+    // rail-numbered/stacked-poster/tone-adaptive-content/side-highlight/
+    // asymmetric-triptych=1 each (5 total) — total weight 20, combined
+    // breathing share = 6/20 = 0.3, each member individually = 3/20 = 0.15.
+    // Both members must show real, comparable lift — a single-member set
+    // would have one candidate carrying the whole 0.3 alone.
+    expect(hits / N).toBeGreaterThan(0.22)
+    expect(hits / N).toBeLessThan(0.38)
+    expect(narrowColumnHits / N).toBeGreaterThan(0.08)
+    expect(quietFrameHits / N).toBeGreaterThan(0.08)
   })
 
   it("beat weighting composes via max, not multiplication: agreement between the two layers caps at either layer's own weight instead of squaring it (P1 fix round)", () => {
@@ -215,28 +268,35 @@ describe("resolveArchetypeId", () => {
       )!
       if (picked === "banner-heading") hits++
     }
-    // Weights (max composition): banner-heading=max(3,3)=3, bento-panel=
-    // max(3,1)=3 (strategy only), two-column=max(3,1)=3 (strategy only),
-    // stacked-poster=max(1,3)=3 (beat only), narrow-column/rail-numbered/
-    // tone-adaptive-content=max(1,1)=1 each — total 3+3+3+3+1+1+1=15,
-    // banner-heading share = 3/15 = 0.2 exactly. Bounds set tight around that
-    // exact value and, deliberately, well below the multiplicative formula's
-    // own 9/21 ≈ 0.43 (the compounding this fix round removed) to prove the
-    // regression is closed, not just that some value is picked.
-    expect(hits / N).toBeGreaterThan(0.12)
-    expect(hits / N).toBeLessThan(0.3)
+    // Weights over the full 10-id pool (P1 variety wave, task 4) under max
+    // composition: banner-heading=max(3,3)=3 (shared member), bento-panel/
+    // two-column=max(3,1)=3 each (strategy only), stacked-poster/
+    // side-highlight=max(1,3)=3 each (beat only), narrow-column/
+    // rail-numbered/tone-adaptive-content/asymmetric-triptych/quiet-frame=
+    // max(1,1)=1 each (5 ids) — total 3×5 + 1×5 = 20, banner-heading share
+    // = 3/20 = 0.15 exactly. Bounds set around that value and, deliberately,
+    // well below what the old multiplicative formula would give on this
+    // same 10-id pool (banner-heading=3×3=9 vs. a 26-total weight ≈ 0.346)
+    // to prove the regression stays closed as the pool grows, not just at
+    // the 7-id size it was originally measured against.
+    expect(hits / N).toBeGreaterThan(0.08)
+    expect(hits / N).toBeLessThan(0.24)
   })
 
   it("regression (P1 fix round): storytelling × beat 'breathing' no longer compounds narrow-column into a majority pick — the exact pathology the reviewer measured at ~53% under the old multiplicative formula", () => {
-    // storytelling's layoutTendencies includes "narrow-column"; beat
-    // "breathing"'s tendency set is narrow-column alone — the most natural
-    // real-author pairing (an "unhurried single flow" beat under a
-    // "tension, image-forward" strategy that already reaches for the same
-    // spacious layout), and exactly the case the reviewer flagged: the old
-    // `strategyWeight * beatWeight` formula gave narrow-column weight 3×3=9
-    // against the pool's stacked-poster (strategy-only, weight 3) and five
-    // other weight-1 members — total 17, narrow-column share 9/17 ≈ 0.529
-    // (measured N=5000 in the review, confirmed by this exact algebra).
+    // storytelling's layoutTendencies is now {narrow-column, stacked-poster,
+    // quiet-frame} (P1 variety wave, task 4 added quiet-frame) and beat
+    // "breathing"'s tendency set is now {narrow-column, quiet-frame} (same
+    // task, closing the T1-flagged single-member gap) — narrow-column stays
+    // a member of *both* sets, still the most natural real-author pairing
+    // (an "unhurried single flow" beat under a "tension, image-forward"
+    // strategy that already reaches for the same spacious layout), and
+    // still exactly the case the reviewer flagged: the old
+    // `strategyWeight * beatWeight` formula would give narrow-column weight
+    // 3×3=9 against the pool's stacked-poster (strategy-only, weight 3),
+    // quiet-frame (now itself a shared member, weight 3×3=9 too), and 7
+    // other weight-1 members — a compounding that would only have gotten
+    // worse as task 4 added a second shared id, not better.
     const N = 5000
     let narrowColumnHits = 0
     for (let i = 0; i < N; i++) {
@@ -252,22 +312,29 @@ describe("resolveArchetypeId", () => {
       )!
       if (picked === "narrow-column") narrowColumnHits++
     }
-    // Weights under Math.max: narrow-column=max(3,3)=3 (both layers agree —
-    // capped, not squared), stacked-poster=max(3,1)=3 (strategy only),
-    // banner-heading/two-column/rail-numbered/bento-panel/
-    // tone-adaptive-content=max(1,1)=1 each — total 3+3+1×5=11, narrow-column
-    // share = 3/11 ≈ 0.2727. Identical, by construction, to storytelling's
-    // own strategy-only share with no beat declared at all (also 3/11) —
-    // proof that an agreeing beat contributes corroboration, not amplification.
+    // Weights under Math.max, full 10-id pool: narrow-column=max(3,3)=3 and
+    // quiet-frame=max(3,3)=3 (both layers agree on both ids — capped, not
+    // squared), stacked-poster=max(3,1)=3 (strategy only), the remaining 7
+    // ids (two-column/rail-numbered/banner-heading/bento-panel/
+    // tone-adaptive-content/side-highlight/asymmetric-triptych)=max(1,1)=1
+    // each — total 3+3+3+7=16, narrow-column share = 3/16 = 0.1875.
+    // Identical, by construction, to storytelling's own strategy-only share
+    // with no beat declared at all (also 3/16, since breathing's tendency
+    // set {narrow-column, quiet-frame} is now a full subset of
+    // storytelling's own {narrow-column, stacked-poster, quiet-frame} — beat
+    // contributes zero marginal weight to any id here either way) — proof
+    // that an agreeing beat contributes corroboration, not amplification.
     const share = narrowColumnHits / N
-    expect(share).toBeGreaterThan(0.22)
-    expect(share).toBeLessThan(0.33)
-    // Explicitly below the old formula's own measured/derived ~0.529 — the
-    // regression this fix round closes, asserted concretely rather than
+    expect(share).toBeGreaterThan(0.15)
+    expect(share).toBeLessThan(0.24)
+    // Explicitly below what the old multiplicative formula would give on
+    // this same 10-id pool (narrow-column=3×3=9, quiet-frame=3×3=9,
+    // stacked-poster=3×1=3, 7 others at 1 — total 28, share 9/28 ≈ 0.321) —
+    // the regression this fix round closes, asserted concretely rather than
     // only matching the new expected band (a band-only check could in
     // principle still pass if the bug reintroduced a smaller-but-still-real
     // compounding effect).
-    expect(share).toBeLessThan(0.4)
+    expect(share).toBeLessThan(0.28)
   })
 
   // ── identity-page strategy weighting (P1 variety wave, task 3) ──
@@ -854,19 +921,21 @@ describe("render parity with FullSlideSvg", () => {
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Seed 12 (found by brute-force search over this exact 2-page academic
-    // fixture, same method as plan/revision-stability.test.ts's own seed=3
-    // comment) is the smallest seed where the deck-wide fold naturally
-    // collides: page 0 auto-picks "two-column" (pageKey "0", no previous),
-    // and page 1's own raw weighted pick (pageKey "1", before
-    // anti-repetition) is *also* "two-column" — so W4 design decision 4's
-    // redraw fires and lands on "narrow-column", the deterministic
-    // runner-up (academic's content pool has 7 members, never empty).
+    // Seed 9 (P1 variety wave, task 4 re-pin — content pool grew 7 -> 10,
+    // reweighting every hash-interval boundary, so seed 12's old collision
+    // stopped colliding; re-found by brute-force search over this exact
+    // 2-page academic fixture, same method as
+    // plan/revision-stability.test.ts's own seed comments): page 0
+    // auto-picks "two-column" (pageKey "0", no previous), and page 1's own
+    // raw weighted pick (pageKey "1", before anti-repetition) is *also*
+    // "two-column" — so W4 design decision 4's redraw fires and lands on
+    // "narrow-column", the deterministic runner-up (academic's content pool
+    // now has 10 members, never empty).
     const slides: Slide[] = [
       { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
       { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 12 }
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 9 }
 
     // Page 0: no previous page, ordinary auto-pick — sanity baseline for
     // what page 1 would collide with.
@@ -888,7 +957,7 @@ describe("render parity with FullSlideSvg", () => {
     const unswappedRawPick = resolveArchetypeId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
-      12,
+      9,
       "1",
       undefined,
       resolveIrStrategy(ir),

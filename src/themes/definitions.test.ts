@@ -109,6 +109,10 @@ describe("THEME_DEFINITIONS", () => {
     "stacked-poster",
     "bento-panel",
     "tone-adaptive-content",
+    // P1 variety wave, task 4: content pool 7 -> 10.
+    "side-highlight",
+    "asymmetric-triptych",
+    "quiet-frame",
   ]
   const FULL_ENDING = [
     "masthead-ending",

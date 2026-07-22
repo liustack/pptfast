@@ -81,24 +81,26 @@ describe("explicit seed: revision stability", () => {
   })
 
   it("declaring a beat on one page changes at most that page's own materialized layout, plus its immediate successor through the existing adjacent-anti-repetition channel (P1 variety wave, task 1)", () => {
-    // Seed 2 (found by brute-force search over this exact fixture, same
-    // method the insertion test below documents for its own seed, re-found
-    // after the P1 fix round's max-composition change — see BEAT_TENDENCY_
-    // WEIGHT's own doc comment, effective-layout.ts): declaring beat
-    // "anchor" on p-2 flips p-2's own raw pick from "two-column" to
-    // "rail-numbered" for this seed — neither id is in "anchor"'s own
-    // tendency set (BEAT_TENDENCIES, effective-layout.ts), so this isn't
-    // beat directly favoring the new pick. It's the standard weighted-
-    // interval-sampling effect: boosting banner-heading/stacked-poster's own
-    // weight (both now max(1,3)=3, up from strategy-only 1) shifts where
-    // every other id's interval boundary falls for the same hash, the same
-    // "changing one candidate's weight can flip a different candidate's
-    // outcome" property `weightedPickBySeed` already has. p-3's redraw
-    // decision is unaffected for this seed — proving both halves of this
-    // test are load-bearing: the beat layer really does change the
-    // declaring page's own pick, and that change really doesn't cascade
-    // past the one page beat was declared on.
-    const seed = 2
+    // Seed 1 (P1 variety wave, task 4 re-pin — content pool grew 7 -> 10,
+    // reweighting every hash-interval boundary, so seed 2's own collision
+    // stopped demonstrating this property; re-found by brute-force search
+    // over this exact fixture, same method the insertion test below
+    // documents for its own seed): declaring beat "anchor" on p-2 flips
+    // p-2's own raw pick from "narrow-column" to "rail-numbered" for this
+    // seed — neither id is in "anchor"'s own tendency set (banner-heading/
+    // stacked-poster/side-highlight, `BEAT_TENDENCIES`,
+    // effective-layout.ts), so this isn't beat directly favoring the new
+    // pick. It's the standard weighted-interval-sampling effect: boosting
+    // banner-heading/stacked-poster/side-highlight's own weight (each now
+    // max(1,3)=3, up from strategy-only 1) shifts where every other id's
+    // interval boundary falls for the same hash, the same "changing one
+    // candidate's weight can flip a different candidate's outcome" property
+    // `weightedPickBySeed` already has. p-3's redraw decision is unaffected
+    // for this seed — proving both halves of this test are load-bearing:
+    // the beat layer really does change the declaring page's own pick, and
+    // that change really doesn't cascade past the one page beat was
+    // declared on.
+    const seed = 1
     const { ir: before } = assembleDeck(makePlan(basePages(), { seed }), {})
     const beforeLayouts = layoutsById(before)
 
@@ -130,22 +132,18 @@ describe("explicit seed: revision stability", () => {
   })
 
   it("inserting a new page mid-deck only disturbs the new page and its immediate successor", () => {
-    // Seed 4 (found by brute-force search over this exact fixture — P1
-    // variety wave, task 3 re-pin — the previous seed 3 was re-derived
-    // against the pre-task-3 content weight table, `briefing`'s
-    // `layoutTendencies` re-derivation for pyramid/briefing differentiation
-    // shifted this fixture's own weighted picks enough that seed 3 started
-    // exercising a second, further hop of the anti-repetition chain
-    // (p-4's own resolved-id change flipping p-5's redraw decision too) —
-    // an always-structurally-possible ripple this test was never asserting
-    // against, just one this particular magic seed hadn't happened to
-    // exercise before) is used here instead of the heading-edit test's seed
-    // *because* it actually exercises the redraw: p-4's raw pick collides
-    // with p-new's effective id post-insertion where it didn't collide with
-    // p-3's pre-insertion, so p-4 concretely changes — proving this test's
-    // exemption is load-bearing, not a vacuously-unused allowance. Any seed
-    // would do for the "nothing *else* changes" half of this test.
-    const seed = 4
+    // Seed 7 (P1 variety wave, task 4 re-pin — content pool grew 7 -> 10,
+    // reweighting every hash-interval boundary, so seed 4's own collision
+    // stopped exercising this property; re-found by brute-force search over
+    // this exact fixture, same method as the previous P1 task 3 re-pin this
+    // comment used to document) is used here instead of the heading-edit
+    // test's seed *because* it actually exercises the redraw: p-4's raw
+    // pick collides with p-new's effective id post-insertion where it
+    // didn't collide with p-3's pre-insertion, so p-4 concretely changes
+    // (from "bento-panel" to "two-column") — proving this test's exemption
+    // is load-bearing, not a vacuously-unused allowance. Any seed would do
+    // for the "nothing *else* changes" half of this test.
+    const seed = 7
     const { ir: before } = assembleDeck(makePlan(basePages(), { seed }), {})
     const beforeLayouts = layoutsById(before)
 
