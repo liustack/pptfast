@@ -27,6 +27,7 @@ import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { resolveMotifId } from "./motif-selection"
+import { resolveChartPaletteOffset, rotateChartPalette } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
 import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./effective-layout"
 
@@ -157,6 +158,16 @@ export function resolveOverrideBackgroundHex(
  * `PACING_BUDGETS.balanced.bodyBaselinePx` (24px) — the narrative default,
  * so a test that doesn't care about body-text sizing still gets the
  * ambient value a caller with an omitted/default narrative would.
+ *
+ * `chartPaletteOffset` (P1 variety wave, task 2 — `./chart-palette.ts`'s own
+ * header comment has the full rationale): the caller supplies
+ * `resolveChartPaletteOffset(cachedDeckSeed(ir), tokens.colors.chartPalette.length)`.
+ * A falsy offset (`undefined`, or a real `0` — both mean "no rotation")
+ * keeps `colors` as the exact `tokens.colors` reference, so every
+ * `buildCtx(...)` call site that omits this 6th argument (every test in
+ * this repo except this task's own) stays byte-identical to before this
+ * parameter existed — same "new optional trailing argument, old call sites
+ * untouched" posture `bodyFontPx` and `defaultBg` already established.
  */
 export function buildCtx(
   tokens: StyleTokens,
@@ -164,9 +175,13 @@ export function buildCtx(
   components?: Component[],
   defaultBg?: string,
   bodyFontPx?: number,
+  chartPaletteOffset?: number,
 ): ComponentCtx {
+  const colors = chartPaletteOffset
+    ? { ...tokens.colors, chartPalette: rotateChartPalette(tokens.colors.chartPalette, chartPaletteOffset) }
+    : tokens.colors
   return {
-    colors: tokens.colors,
+    colors,
     shape: tokens.shape,
     fonts: {
       heading: resolveFontStack(tokens.fonts.heading, "heading"),
@@ -288,12 +303,19 @@ export function FullSlideSvg({
   const bodyFontPx =
     PACING_BUDGETS[resolveNarrative(ir.narrative as string | Partial<NarrativeProfile> | undefined).pacing]
       .bodyBaselinePx
+  // P1 variety wave, task 2 (`./chart-palette.ts`'s own header comment has
+  // the full rationale): one offset per deck (seed-derived, no pageKey), so
+  // every chart on every page of this deck agrees on the same rotated
+  // phase — computed here, not memoized, since it's a cheap pure function of
+  // `cachedDeckSeed(ir)` + this theme's own palette length.
+  const chartPaletteOffset = resolveChartPaletteOffset(cachedDeckSeed(ir), tokens.colors.chartPalette.length)
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.components : undefined,
     defaultBg,
     bodyFontPx,
+    chartPaletteOffset,
   )
   const themeDef = getThemeDefinition(ir.theme.id)
   // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，

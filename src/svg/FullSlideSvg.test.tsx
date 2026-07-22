@@ -718,3 +718,82 @@ describe("motif candidate rotation (P1 variety wave, task 2)", () => {
     expect(first).toBe(second)
   })
 })
+
+// P1 variety wave, task 2 — chart palette phase rotation
+// (`./chart-palette.ts`'s own header has the design rationale). `runway` is
+// used here specifically because it has no motif (see the describe block
+// above) — the chart's own `<path fill="…">` elements are the only
+// hex-filled paths a decor-free page can render, so no filtering by hex
+// value against the motif's own ctx-derived colors is needed to isolate
+// them.
+describe("chart palette phase rotation (P1 variety wave, task 2)", () => {
+  const RUNWAY_CHART_PALETTE = ["#0A0A0A", "#D80027", "#77787D", "#C9C9CC"]
+
+  const pieSlide: Slide = {
+    type: "content",
+    heading: "图表色板轮换探针",
+    layout: "narrow-column",
+    components: [
+      {
+        type: "chart",
+        chart_type: "pie",
+        series: [
+          {
+            name: "S1",
+            data: [
+              { x: "A", y: 10 },
+              { x: "B", y: 20 },
+              { x: "C", y: 30 },
+              { x: "D", y: 15 },
+            ],
+          },
+        ],
+      },
+    ],
+  } as Slide
+
+  function pieFills(seed: number): string[] {
+    const doc: PptxIR = { ...ir([pieSlide]), theme: { id: "runway" }, seed } as PptxIR
+    const { container } = render(<FullSlideSvg ir={doc} slide={pieSlide} index={0} />)
+    return Array.from(container.querySelectorAll("path"))
+      .map((p) => p.getAttribute("fill"))
+      .filter((f): f is string => !!f && RUNWAY_CHART_PALETTE.includes(f))
+  }
+
+  it("renders all 4 wedges in the theme's own palette, just phase-shifted — same multiset, cyclic order preserved", () => {
+    for (let seed = 0; seed < 12; seed++) {
+      const fills = pieFills(seed)
+      expect(fills).toHaveLength(4)
+      expect([...fills].sort()).toEqual([...RUNWAY_CHART_PALETTE].sort())
+      // Cyclic order: rotating `fills` back to start at index 0's position
+      // in the original palette must reproduce the original palette exactly.
+      const start = RUNWAY_CHART_PALETTE.indexOf(fills[0]!)
+      const reconstructed = [...RUNWAY_CHART_PALETTE.slice(start), ...RUNWAY_CHART_PALETTE.slice(0, start)]
+      expect(fills).toEqual(reconstructed)
+    }
+  })
+
+  it("different seeds commonly start the wedge sequence at a different palette color (phase varies across decks)", () => {
+    const firstFills = new Set(Array.from({ length: 12 }, (_, seed) => pieFills(seed)[0]))
+    expect(firstFills.size, "every seed started on the same wedge color").toBeGreaterThan(1)
+  })
+
+  it("same seed renders byte-identical wedge colors across repeated renders (double-render determinism, one shared phase per deck)", () => {
+    expect(pieFills(5)).toEqual(pieFills(5))
+  })
+
+  it("a chart on every page of the same deck shares the identical rotated phase (deck-scoped, not page-scoped)", () => {
+    const twoPageDeck: Slide[] = [
+      { ...pieSlide, id: "p0" } as Slide,
+      { ...pieSlide, id: "p1", heading: "第二页" } as Slide,
+    ]
+    const doc: PptxIR = { ...ir(twoPageDeck), theme: { id: "runway" }, seed: 9 } as PptxIR
+    const fillsFor = (index: number) => {
+      const { container } = render(<FullSlideSvg ir={doc} slide={doc.slides[index]!} index={index} />)
+      return Array.from(container.querySelectorAll("path"))
+        .map((p) => p.getAttribute("fill"))
+        .filter((f): f is string => !!f && RUNWAY_CHART_PALETTE.includes(f))
+    }
+    expect(fillsFor(0)).toEqual(fillsFor(1))
+  })
+})
