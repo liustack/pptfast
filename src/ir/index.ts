@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { PPTX_ICON_NAMES } from "@/icons"
+import { componentTypeError, iconEnumError } from "./schema-error-hints"
 
 // Built-in theme ids — a registered, renderable subset, not a closed universe:
 // v0.4's theme registry can install more without a schema change (theme.id
@@ -240,7 +241,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
       type: z.literal("callout"),
       variant: z.enum(["info", "warn", "tip"]),
       text: z.string(),
-      icon: z.enum(PPTX_ICON_NAMES).optional(),
+      icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
     })
     .strict(),
   z
@@ -260,7 +261,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
             unit: z.string().optional(),
             label: z.string(),
             delta: z.enum(["up", "down", "flat"]).optional(),
-            icon: z.enum(PPTX_ICON_NAMES).optional(),
+            icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
             /** 数据来源小字（财经信任语言，2026-07-12 借鉴），如
              * 「来源: Crunchbase」。 */
             source: z.string().optional(),
@@ -383,7 +384,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
         .array(
           z
             .object({
-              icon: z.enum(PPTX_ICON_NAMES),
+              icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }),
               title: z.string(),
               text: z.string(),
             })
@@ -403,7 +404,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
         .array(
           z
             .object({
-              icon: z.enum(PPTX_ICON_NAMES).optional(),
+              icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
               title: z.string(),
               text: z.string().optional(),
               sub: z.string().optional(),
@@ -531,7 +532,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
       type: z.literal("verdict_banner"),
       text: z.string(),
       tone: z.enum(["positive", "warning", "neutral"]),
-      icon: z.enum(PPTX_ICON_NAMES).optional(),
+      icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
     })
     .strict(),
   z
@@ -667,7 +668,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
       axis_labels: z.array(z.string()).optional(),
     })
     .strict(),
-])
+], { error: componentTypeError })
 
 /**
  * All 28 component `type` discriminant values, derived from `ComponentSchema`

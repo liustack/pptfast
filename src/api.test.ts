@@ -1148,6 +1148,71 @@ describe("unrecognized-key rescue hints (borrow-wave task 3, generalizing the sc
   })
 })
 
+// Borrow-wave task 3: zod's default enum/discriminator error flattens every
+// valid value into the message (a real icon typo produced a 24,910-char,
+// 1756-option wall; a component-type typo produced a 437-char, 28-option one
+// — borrow-wave B report §3.3 #1/#2). `./ir/schema-error-hints.ts` replaces
+// both with a nearest-neighbor "did you mean" suggestion, a count, and a
+// pointer — this describe block pins probes P9 and P10 as their new shape,
+// plus the length ceiling that makes the old wall structurally impossible.
+describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
+  const withComponent = (component: unknown) => ({
+    ...raw,
+    slides: [raw.slides[0], { type: "content", heading: "x", components: [component] }],
+  })
+
+  it("P9: an icon near-miss ('check-circle' for lucide's 'circle-check') gets a did-you-mean suggestion, not the full enum", () => {
+    const v = validateIr(
+      withComponent({ type: "icon_cards", items: [{ icon: "check-circle", title: "a", text: "x" }, { icon: "circle-check", title: "b", text: "y" }] }),
+    )
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message).toContain('"check-circle" is not a valid icon name')
+    expect(message).toContain('did you mean "circle-check"?')
+    expect(message).toContain("pptfast schema")
+    expect(message).not.toMatch(/"a-arrow-down"/) // the enum is never flattened into the message
+    expect(message.length).toBeLessThan(500)
+  })
+
+  it("P10: a component-type near-miss (singular 'kpi_card' for 'kpi_cards') gets a did-you-mean suggestion, not the full type list", () => {
+    const v = validateIr(withComponent({ type: "kpi_card", items: [{ value: "1", label: "x" }] }))
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    const message = v.errors[0]!.message
+    expect(message).toContain('"kpi_card" is not a valid component type')
+    expect(message).toContain('did you mean "kpi_cards"?')
+    expect(message).toContain("pptfast schema")
+    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 28-option list is never flattened into the message
+    expect(message.length).toBeLessThan(500)
+  })
+
+  it("an icon value with no plausible match still stays short, with no suggestion offered", () => {
+    const v = validateIr(
+      withComponent({ type: "icon_cards", items: [{ icon: "totally-unrelated-nonsense-value", title: "a", text: "x" }, { icon: "circle-check", title: "b", text: "y" }] }),
+    )
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message).not.toContain("did you mean")
+    expect(message.length).toBeLessThan(500)
+  })
+
+  it("every icon field site (callout/kpi_cards/icon_cards/row_cards/verdict_banner) shares the same did-you-mean treatment", () => {
+    const sites: unknown[] = [
+      { type: "callout", variant: "info", text: "x", icon: "check-circle" },
+      { type: "kpi_cards", items: [{ value: "1", label: "x", icon: "check-circle" }] },
+      { type: "row_cards", items: [{ title: "a", icon: "check-circle" }, { title: "b" }, { title: "c" }] },
+      { type: "verdict_banner", text: "x", tone: "positive", icon: "check-circle" },
+    ]
+    for (const component of sites) {
+      const v = validateIr(withComponent(component))
+      expect(v.ok).toBe(false)
+      const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+      expect(message).toContain('did you mean "circle-check"?')
+      expect(message.length).toBeLessThan(500)
+    }
+  })
+})
+
 describe("registerTheme end-to-end (W3 task 4)", () => {
   afterEach(() => {
     __resetRegisteredThemes()
