@@ -668,3 +668,53 @@ describe("pacing bodyFontPx injection seam (W4 task 3 fix round — Major)", () 
     expect(renderProbeFontSize({ pacing: "spacious" })).toBe("32")
   })
 })
+
+// P1 variety wave, task 2 — motif candidate-set rotation
+// (`./motif-selection.ts`'s own header has the design rationale). These
+// tests exercise the real production entry point (`FullSlideSvg`), not the
+// pure `resolveMotifId` function directly (already covered exhaustively in
+// `motif-selection.test.ts`) — proving the wiring at `Decor`'s own call
+// site is actually live, and that the themes this task must leave alone
+// (`runway`, and any 1-member candidate set) really do render
+// byte-identically through the whole component, not just at the selection
+// function's own return value.
+describe("motif candidate rotation (P1 variety wave, task 2)", () => {
+  function decorMarkup(themeId: string, pageId: string, seed: number): string | null {
+    const doc: PptxIR = { ...ir([]), theme: { id: themeId }, seed } as PptxIR
+    const slide: Slide = { type: "content", id: pageId, heading: "x", components: [] } as Slide
+    doc.slides = [slide]
+    const { container } = render(<FullSlideSvg ir={doc} slide={slide} index={0} />)
+    return container.querySelector("[data-decor]")?.innerHTML ?? null
+  }
+
+  it("consulting (3-candidate set): different decor pages in the same deck commonly render different motif markup", () => {
+    const markups = new Set(
+      Array.from({ length: 8 }, (_, i) => decorMarkup("consulting", `page-${i}`, 7)),
+    )
+    expect(markups.size, "all 8 pages rendered identical decor markup").toBeGreaterThan(1)
+  })
+
+  it("runway (no motif, settled decision): the decor slot never renders anything, for any pageKey or seed", () => {
+    for (let i = 0; i < 10; i++) {
+      expect(decorMarkup("runway", `page-${i}`, i)).toBeNull()
+    }
+  })
+
+  it("campaign (1-member candidate set): which motif renders never varies by pageKey at a fixed seed — unaffected by this task's per-pageKey selection layer (campaign-motif's own internal composition variant is separately seed-driven, not pageKey-driven, and predates this task)", () => {
+    const markups = new Set(Array.from({ length: 10 }, (_, i) => decorMarkup("campaign", `page-${i}`, 99)))
+    expect(markups.size).toBe(1)
+  })
+
+  it("same (ir, slide, index) renders byte-identical decor markup across repeated renders (double-render determinism)", () => {
+    const doc: PptxIR = { ...ir([]), theme: { id: "heritage" }, seed: 3 } as PptxIR
+    const slide: Slide = { type: "chapter", id: "p1", heading: "x", components: [] } as Slide
+    doc.slides = [slide]
+    const first = render(<FullSlideSvg ir={doc} slide={slide} index={0} />).container.querySelector(
+      "[data-decor]",
+    )?.innerHTML
+    const second = render(<FullSlideSvg ir={doc} slide={slide} index={0} />).container.querySelector(
+      "[data-decor]",
+    )?.innerHTML
+    expect(first).toBe(second)
+  })
+})

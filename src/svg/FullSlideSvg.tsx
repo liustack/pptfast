@@ -26,6 +26,7 @@ import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
+import { resolveMotifId } from "./motif-selection"
 import { cachedDeckSeed } from "./variety"
 import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./effective-layout"
 
@@ -296,10 +297,13 @@ export function FullSlideSvg({
   )
   const themeDef = getThemeDefinition(ir.theme.id)
   // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，
-  // W3 任务 4 起经 getThemeDefinition 统一查找——registered theme 同样生效）：
-  // 全走 theme 定义的 motif（十三主题四页型已全量接线，旧 templates/<theme>.tsx
-  // 的 Decor 回落已随 templates 删除）。
-  const Decor = themeDef.motif ? MOTIF_ARCHETYPES[themeDef.motif] : undefined
+  // W3 任务 4 起经 getThemeDefinition 统一查找——registered theme 同样生效，
+  // P1 variety wave task 2 起不再是每主题一个固定 id：`resolveMotifId`
+  // 〔./motif-selection.ts〕在 12/13 内置主题上把它换成一个 2-3 项候选子集的
+  // seed+pageKey 加权采样，同 deck 内不同页常态性拿到不同贴纸；runway〔无
+  // motif〕与 registered/自定义主题走该函数自己的直通回落，行为不变）。
+  const motifId = resolveMotifId(ir, slide, index)
+  const Decor = motifId ? MOTIF_ARCHETYPES[motifId] : undefined
   let bgSpec = slide.background ?? tokens.defaultBackgrounds[slide.type]
   // 压图页接管（图片排版 polish，2026-07-09 用户反馈）：cover/chapter 的
   // asset 背景 → 暗遮罩 + 白字 bespoke 版式（ImageCoverPage）——图保持清晰
