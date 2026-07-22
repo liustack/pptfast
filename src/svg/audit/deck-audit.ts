@@ -330,6 +330,58 @@ function ellipseShape(cx: number, cy: number, rx: number, ry: number, fill: stri
   }
 }
 
+/**
+ * A donut-annulus or pie sector, recognized from a `<path>`'s own `d`
+ * string (fix/donut-annulus-attribution — closes `docs/contrast-system.md`'s
+ * own "Residual, distinct limitation" paragraph). Extends `ellipseShape`'s
+ * "exact outline, not the AABB" precedent to `renderDonut`/`renderPie`'s own
+ * wedge idiom (`chart-svg.tsx`): a wide-angle wedge's exact bbox (already
+ * tight since the arc-bbox wave) can still legitimately span the ring's
+ * transparent hole or a pie slice's own un-swept "bite", which is exactly
+ * where `rectShape`'s AABB containment test used to misattribute the
+ * donut's own center total-label. `ri` is `0` for a pie slice (a disk
+ * sector, no hole).
+ */
+export interface Sector {
+  cx: number
+  cy: number
+  ri: number
+  ro: number
+  /** Start angle (radians, `Math.atan2` convention). */
+  startA: number
+  /** Angular span swept from `startA` in the increasing-angle direction,
+   * always in `(0, 2π]` — never negative, never wrapped past a full turn. */
+  span: number
+}
+
+/** Exact donut-annulus/pie-sector containment — `dist` within `[ri, ro]`
+ * (radius band) *and* the point's own angle within `[startA, startA+span]`
+ * (mod 2π). A `span` at/above a full turn (a single 100%-share donut/pie
+ * category) skips the angular test entirely — every angle is "inside" a
+ * full circle, and computing a meaningful `startA`/`endA` split for one
+ * would be a distinction without a difference. Small epsilon on both tests
+ * for the same reason `pathBoundingBoxByGrammar`'s arc math already needs
+ * one: these figures round-trip through `atan2`/`hypot` on floats
+ * recovered from the `d` string's own text, not the renderer's original
+ * unrounded values. */
+function sectorShape(sector: Sector, fill: string | null): PaintedShape {
+  const { cx, cy, ri, ro, startA, span } = sector
+  const EPS = 1e-6
+  return {
+    fill,
+    contains: (px, py) => {
+      const dx = px - cx
+      const dy = py - cy
+      const dist = Math.hypot(dx, dy)
+      if (dist < ri - EPS || dist > ro + EPS) return false
+      if (span >= 2 * Math.PI - EPS) return true
+      let delta = (Math.atan2(dy, dx) - startA) % (2 * Math.PI)
+      if (delta < -EPS) delta += 2 * Math.PI
+      return delta >= -EPS && delta <= span + EPS
+    },
+  }
+}
+
 /** A single (x, y) sample fed into `pathBoundingBoxByGrammar`'s running
  * min/max accumulator — never rendered or exposed, just the shared shape
  * `arcExtents`/the cubic/quadratic extrema helpers hand back. */
@@ -857,6 +909,218 @@ export function __pathBoundingBox(d: string): { x: number; y: number; w: number;
   return pathBoundingBox(d)
 }
 
+/**
+ * Recognizes a `<path>`'s `d` as `renderPie`'s or `renderDonut`'s own wedge
+ * idiom (`chart-svg.tsx`) and extracts the `Sector` its containment test
+ * needs — a closed, parseable family (like `ellipseShape`'s disk), *not* a
+ * general path-outline engine: `docs/contrast-system.md`'s "document the
+ * tool limitation, don't chase it" precedent for arbitrary paths stays
+ * exactly as it was, this only recognizes the renderer's own two fixed
+ * token shapes. Any `d` that doesn't match one of them — including a
+ * malformed one `tokenizePathD` can't fully tokenize — returns `null`, and
+ * the caller keeps the existing `rectShape`/`pathBoundingBox` fallback
+ * unchanged. Reuses `tokenizePathD` (positionally aware for an arc's
+ * glued flag characters, see that function's own doc comment) rather than
+ * a raw-string regex, so a coordinate that happens to render in
+ * exponential notation (`Math.cos`/`Math.sin` of a half-turn angle can
+ * yield e.g. `6.123233995736766e-17`) still tokenizes correctly.
+ *
+ * Pie idiom (`M cx cy L x1 y1 A r r 0 large 1 x2 y2 Z`, 15 tokens): the
+ * center is the `M` point itself, written directly — no trig needed to
+ * recover it. `x1,y1`/`x2,y2` are exact points on the circle at the
+ * sector's start/end angle, read back via `atan2` for the angular span.
+ * `ri` is always `0` — a pie slice has no hole.
+ *
+ * Donut idiom (`M ox1 oy1 A r r 0 large 1 ox2 oy2 L ix1 iy1 A ri ri 0 large
+ * 0 ix2 iy2 Z`, 23 tokens): unlike the pie, the center is never written to
+ * `d` directly, only two arc endpoints per angle (outer radius `r`, inner
+ * radius `ri`). `ox1,oy1` (outer point, start angle) and `ix2,iy2` (inner
+ * point, same start angle — the point `Z` closes back to `ox1,oy1`
+ * through) both lie on the same ray from the center, so the center solves
+ * from the one linear relationship `outer = center + r·dir`,
+ * `inner = center + ri·dir` (same `dir`) satisfy:
+ * `center = (r·inner − ri·outer) / (r − ri)` — exact, never degenerate
+ * here since `DONUT_HOLE_RATIO < 1` keeps `r ≠ ri` for any positive outer
+ * radius. Cross-checked against the *other* pair (`ix1,iy1`/`ox2,oy2`, end
+ * angle) before trusting the recovered center — a mismatch means this
+ * wasn't really `renderDonut`'s own idiom (or the token match was a false
+ * positive on some unrelated 23-token path), so it falls back to the bbox
+ * rather than trust a possibly-wrong center.
+ *
+ * A zero-share category (`d.y === 0`, unfiltered by `renderDonut`/
+ * `renderPie` — a real, reachable shape, not hypothetical) and a 100%-share
+ * category are both geometrically degenerate the same way: `startA === endA`
+ * either 0 or a full turn apart, so their start/end points coincide and
+ * `atan2` alone can't tell "no sweep at all" from "swept a full circle"
+ * apart — both round-trip to the same coordinates. The renderer's own
+ * `large-arc-flag` (`endA - startA > π ? 1 : 0`) is exactly the missing bit:
+ * `0` means no sweep happened (`span = 0`, a real but visually invisible
+ * sliver — correctly contains nothing), `1` means a full turn did (a single
+ * 100%-share category, `span = 2π` — correctly contains the whole ring/disk).
+ *
+ * **Geometric round-trip, not just token shape (post-review hardening):**
+ * matching the token *shape* alone is falsifiable — a hand-authored `d`
+ * (an unrelated icon, say) can satisfy the same 15/23-token grammar with
+ * numbers that don't actually describe a circle, e.g. an `L`/`A` endpoint
+ * nowhere near the claimed radius from the claimed center. Silently
+ * accepting that would parse a *wrong* sector and could flip a real
+ * `findContrastIssues` verdict rather than just missing a precision
+ * upgrade. So every point this function reads off the path (`x1,y1`/
+ * `x2,y2` for a pie, all four outer/inner points for a donut) is checked
+ * against its own claimed radius from the resolved center within
+ * `RADIUS_ROUNDTRIP_EPS` — a genuine `renderDonut`/`renderPie` wedge always
+ * round-trips exactly (the points *are* `cx + r·cos(θ), cy + r·sin(θ)` by
+ * construction), so this only ever *rejects* a token-shape near-miss, never
+ * a real one. The large-arc-flag is checked the same way: a genuine wedge's
+ * flag always agrees with whether its own (non-degenerate) span exceeds π
+ * (`renderPie`/`renderDonut`'s own `endA - startA > Math.PI ? 1 : 0`), so a
+ * flag that disagrees with the span its own endpoints imply is rejected
+ * too, independent of the radius check (it catches a different failure
+ * mode — same-circle points with a mismatched sweep/magnitude flag).
+ * Reject-only: this hardening never makes a previously-rejected `d` newly
+ * accepted, so it never turns a correct AABB attribution into a wrong
+ * sector one — only ever the other direction.
+ */
+function parseWedgePath(d: string): Sector | null {
+  const tokens = tokenizePathD(d)
+  const num = (i: number): number | null => {
+    const t = tokens[i]
+    if (t === undefined) return null
+    const n = Number(t)
+    return Number.isFinite(n) ? n : null
+  }
+  const isFlag = (i: number) => tokens[i] === "0" || tokens[i] === "1"
+  const DEGENERATE_EPS = 1e-6
+  // Absolute pixel tolerance for "does this point actually lie on its
+  // claimed circle" / "is the recovered center actually where the outer
+  // and inner arc endpoints agree it is" — loose enough to absorb float
+  // round-off from `atan2`/`hypot`/the donut center's linear solve
+  // (empirically ~1e-10 on real renderDonut/renderPie output, see
+  // deck-audit.test.ts's real-render round-trip pin), tight enough that no
+  // adversarial or coincidental non-wedge `d` clears it by accident.
+  const RADIUS_ROUNDTRIP_EPS = 1e-3
+  // `null` return means "reject the whole parse" (inconsistent flag or a
+  // genuinely zero/negative span with a `large=1` flag, which can't happen
+  // for a real wedge) — distinct from a valid `0`/`2π` degenerate span.
+  const resolveSpan = (startA: number, endA: number, large: string): number | null => {
+    let raw = (endA - startA) % (2 * Math.PI)
+    if (raw < 0) raw += 2 * Math.PI
+    // See this function's own doc comment — near-zero is the ambiguous
+    // boundary between a zero-sweep and a full-turn wedge, resolved by the
+    // large-arc-flag the path itself already carries rather than guessed.
+    if (raw < DEGENERATE_EPS) return large === "1" ? 2 * Math.PI : 0
+    // Non-degenerate: the flag must agree with the span its own endpoints
+    // imply — `renderPie`/`renderDonut`'s own `endA - startA > π ? 1 : 0`.
+    const expectedLarge = raw > Math.PI ? "1" : "0"
+    if (large !== expectedLarge) return null
+    return raw
+  }
+  const onCircle = (px: number, py: number, cx: number, cy: number, r: number): boolean =>
+    Math.abs(Math.hypot(px - cx, py - cy) - r) <= RADIUS_ROUNDTRIP_EPS
+
+  if (
+    tokens.length === 15 &&
+    tokens[0] === "M" &&
+    tokens[3] === "L" &&
+    tokens[6] === "A" &&
+    tokens[9] === "0" && // x-axis-rotation, always 0 in this renderer's own arcs
+    isFlag(10) &&
+    tokens[11] === "1" && // sweep-flag, always positive in this renderer
+    tokens[14] === "Z"
+  ) {
+    const cx = num(1)
+    const cy = num(2)
+    const x1 = num(4)
+    const y1 = num(5)
+    const r = num(7)
+    const rCheck = num(8)
+    const x2 = num(12)
+    const y2 = num(13)
+    if (cx === null || cy === null || x1 === null || y1 === null || r === null || rCheck === null || x2 === null || y2 === null) {
+      return null
+    }
+    if (r <= 0 || Math.abs(r - rCheck) > 1e-6) return null
+    if (!onCircle(x1, y1, cx, cy, r) || !onCircle(x2, y2, cx, cy, r)) return null
+    const startA = Math.atan2(y1 - cy, x1 - cx)
+    const endA = Math.atan2(y2 - cy, x2 - cx)
+    const wedgeSpan = resolveSpan(startA, endA, tokens[10]!)
+    if (wedgeSpan === null) return null
+    return { cx, cy, ri: 0, ro: r, startA, span: wedgeSpan }
+  }
+
+  if (
+    tokens.length === 23 &&
+    tokens[0] === "M" &&
+    tokens[3] === "A" &&
+    tokens[6] === "0" &&
+    isFlag(7) &&
+    tokens[8] === "1" &&
+    tokens[11] === "L" &&
+    tokens[14] === "A" &&
+    tokens[17] === "0" &&
+    isFlag(18) &&
+    tokens[19] === "0" &&
+    tokens[22] === "Z"
+  ) {
+    const ox1 = num(1)
+    const oy1 = num(2)
+    const r = num(4)
+    const rCheck = num(5)
+    const ox2 = num(9)
+    const oy2 = num(10)
+    const ix1 = num(12)
+    const iy1 = num(13)
+    const ri = num(15)
+    const riCheck = num(16)
+    const ix2 = num(20)
+    const iy2 = num(21)
+    if (
+      ox1 === null || oy1 === null || r === null || rCheck === null || ox2 === null || oy2 === null ||
+      ix1 === null || iy1 === null || ri === null || riCheck === null || ix2 === null || iy2 === null
+    ) {
+      return null
+    }
+    if (r <= 0 || ri < 0 || Math.abs(r - rCheck) > 1e-6 || Math.abs(ri - riCheck) > 1e-6) return null
+    const denom = r - ri
+    if (Math.abs(denom) < 1e-6) return null
+    const cx = (r * ix2 - ri * ox1) / denom
+    const cy = (r * iy2 - ri * oy1) / denom
+    // Geometric round-trip: all four points this branch reads must actually
+    // sit on their own claimed circle around the *recovered* center — the
+    // linear solve above can produce a center for any four points fed to
+    // it, on-circle or not, so this is an independent, non-tautological
+    // check (see this function's own doc comment).
+    if (
+      !onCircle(ox1, oy1, cx, cy, r) ||
+      !onCircle(ox2, oy2, cx, cy, r) ||
+      !onCircle(ix1, iy1, cx, cy, ri) ||
+      !onCircle(ix2, iy2, cx, cy, ri)
+    ) {
+      return null
+    }
+    const startA = Math.atan2(oy1 - cy, ox1 - cx)
+    const endA = Math.atan2(oy2 - cy, ox2 - cx)
+    // Cross-check: (ix1, iy1) is the inner arc's point at endA — it should
+    // land on the same ray as (ox2, oy2) through the recovered center.
+    const checkA = Math.atan2(iy1 - cy, ix1 - cx)
+    const angleDiff = Math.abs(((checkA - endA + Math.PI) % (2 * Math.PI)) - Math.PI)
+    if (angleDiff > 1e-3) return null
+    const wedgeSpan = resolveSpan(startA, endA, tokens[7]!)
+    if (wedgeSpan === null) return null
+    return { cx, cy, ri, ro: r, startA, span: wedgeSpan }
+  }
+
+  return null
+}
+
+/** Test-only: `parseWedgePath` exposed so its recognition/round-trip math
+ * can be asserted directly against hand-crafted and real-rendered `d`
+ * strings, the same `__`-prefixed convention `__pathBoundingBox` already
+ * establishes. */
+export function __parseWedgePath(d: string): Sector | null {
+  return parseWedgePath(d)
+}
+
 export interface ContrastIssue {
   text: string
   fill: string
@@ -1101,14 +1365,22 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       let y = 0
       let localW = 0
       let localH = 0
+      // Attribution-only (fix/donut-annulus-attribution): a recognized
+      // donut/pie wedge (`parseWedgePath`) gets an exact sector containment
+      // test instead of `rectShape`'s AABB below — `regions`'/`pathBoundingBox`'s
+      // own bbox (still used for both `w`/`h` here and the page-level table)
+      // is untouched, only which `PaintedShape` this path becomes changes.
+      let localWedge: Sector | null = null
       if (tag === "path") {
-        const bbox = pathBoundingBox(el.getAttribute("d") ?? "")
+        const dAttr = el.getAttribute("d") ?? ""
+        const bbox = pathBoundingBox(dAttr)
         if (bbox) {
           x = bbox.x
           y = bbox.y
           localW = bbox.w
           localH = bbox.h
         }
+        localWedge = parseWedgePath(dAttr)
       } else {
         x = Number(el.getAttribute("x") ?? 0)
         y = Number(el.getAttribute("y") ?? 0)
@@ -1153,7 +1425,27 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
             // small to be a *page* background is still the real background
             // of whatever text sits directly on top of it. See
             // `MIN_BG_REGION_AREA`'s own doc comment.
-            paintedShapes.push(rectShape(absX, absY, w, h, shapeFill))
+            if (localWedge) {
+              // fix/donut-annulus-attribution: a recognized wedge gets the
+              // exact sector test — no rotation in `parseTransform`'s own
+              // contract, so `startA`/`span` carry over unscaled, only the
+              // center/radii translate+scale the same way `w`/`h` above do.
+              paintedShapes.push(
+                sectorShape(
+                  {
+                    cx: ax + localWedge.cx * as,
+                    cy: ay + localWedge.cy * as,
+                    ri: localWedge.ri * as,
+                    ro: localWedge.ro * as,
+                    startA: localWedge.startA,
+                    span: localWedge.span,
+                  },
+                  shapeFill,
+                ),
+              )
+            } else {
+              paintedShapes.push(rectShape(absX, absY, w, h, shapeFill))
+            }
             // Page-level table: unchanged, still area-floored —
             // `__collectBgRegions`'s own contract (and its dedicated
             // regression test) is untouched by this fix.
