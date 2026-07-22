@@ -1212,6 +1212,37 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
       expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
     }
   })
+
+  // Review round: the length bound above was not actually code-enforced —
+  // `enumMismatchMessage` interpolated the raw offending value verbatim, so
+  // a long *typo* (not just a large candidate list) could blow the bound.
+  // Reviewer measured a 2000-char garbage icon value producing a 2098-char
+  // message. `describeOffendingValue` (schema-error-hints.ts) now truncates
+  // the echoed value past 60 chars — pinned end-to-end here with the
+  // reviewer's exact input size.
+  it("a long (2000-char) garbage icon value still produces a message under the length bound, with the echoed value truncated", () => {
+    const v = validateIr(withComponent({ type: "icon_cards", items: [{ icon: "x".repeat(2000), title: "a", text: "b" }, { icon: "circle-check", title: "c", text: "d" }] }))
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+    expect(message).toContain("(2000 chars total)")
+    expect(message).not.toContain("x".repeat(2000)) // the full 2000-char value is never echoed verbatim
+  })
+
+  it("a 5000-char garbage icon value resolves quickly (no suggestion search runs) and still respects the length bound", () => {
+    const start = performance.now()
+    const v = validateIr(withComponent({ type: "icon_cards", items: [{ icon: "y".repeat(5000), title: "a", text: "b" }, { icon: "circle-check", title: "c", text: "d" }] }))
+    const elapsed = performance.now() - start
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+    expect(message).not.toContain("did you mean") // far too long to be a plausible typo of any real icon name
+    // Generous smoke bound (see src/ir/suggest.test.ts's own comment on why
+    // this isn't a tight/flaky assertion) — reviewer measured 483ms against
+    // the unguarded search for this exact input size through validateIr's
+    // full call chain.
+    expect(elapsed).toBeLessThan(200)
+  })
 })
 
 describe("registerTheme end-to-end (W3 task 4)", () => {

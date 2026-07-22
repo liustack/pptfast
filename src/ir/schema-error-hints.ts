@@ -32,6 +32,23 @@ const SCHEMA_POINTER = "see `pptfast schema` for the full list"
  */
 export const ENUM_ERROR_MESSAGE_MAX_LENGTH = 500
 
+/**
+ * How much of the offending value to echo verbatim before truncating
+ * (review fix — High: `enumMismatchMessage` used to interpolate `input`
+ * unbounded, so a 2000-char garbage value produced a 2098-char message,
+ * defeating {@link ENUM_ERROR_MESSAGE_MAX_LENGTH} the moment an author's
+ * actual typo was long, not just when the *candidate* list was large). 60
+ * chars is enough to recognize what was typed at a glance without the echo
+ * itself becoming the thing that blows the length budget.
+ */
+const INPUT_ECHO_MAX_LENGTH = 60
+
+/** Quote `input` for display, truncating with a length note past {@link INPUT_ECHO_MAX_LENGTH} — the one place in this module a value of unbounded length reaches the message, so it is the one place that has to bound it. */
+function describeOffendingValue(input: string): string {
+  if (input.length <= INPUT_ECHO_MAX_LENGTH) return `"${input}"`
+  return `"${input.slice(0, INPUT_ECHO_MAX_LENGTH)}…" (${input.length} chars total)`
+}
+
 function enumMismatchMessage(kind: string, input: unknown, candidates: readonly string[]): string {
   const count = candidates.length
   if (typeof input !== "string") {
@@ -39,7 +56,7 @@ function enumMismatchMessage(kind: string, input: unknown, candidates: readonly 
   }
   const suggestion = closestMatch(input, candidates)
   const suggestPart = suggestion ? ` — did you mean "${suggestion}"?` : ""
-  return `"${input}" is not a valid ${kind}${suggestPart} (${count} valid ${kind} values — ${SCHEMA_POINTER})`
+  return `${describeOffendingValue(input)} is not a valid ${kind}${suggestPart} (${count} valid ${kind} values — ${SCHEMA_POINTER})`
 }
 
 /**

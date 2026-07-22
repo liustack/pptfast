@@ -7,7 +7,9 @@
  * chars for one real typo — see the borrow-wave B report §3.3 #1). Never used
  * on a render/validate hot path — only when a value has already failed
  * validation, so there is no performance budget to protect here beyond "does
- * not noticeably slow down an already-failing parse".
+ * not noticeably slow down an already-failing parse" — see
+ * {@link closestMatch}'s own doc comment for the one place that budget still
+ * needs an explicit guard (an adversarial/garbage-length input value).
  */
 
 /**
@@ -65,9 +67,21 @@ function typoThreshold(len: number): number {
 
 /**
  * Nearest match to `input` among `candidates`, or `undefined` when nothing is
- * close enough to be a plausible typo rather than an unrelated guess. Two
- * passes, cheapest/most-confident first:
+ * close enough to be a plausible typo rather than an unrelated guess, or when
+ * `input` is absurdly longer than every candidate (review fix — High:
+ * reviewer measured 483ms for a 5000-char garbage `input` against the real
+ * icon list, because the old code ran the full O(n·m) distance search
+ * against every candidate regardless of how implausible a match already was
+ * from the length alone). Passes, cheapest/most-confident first:
  *
+ * 0. **Adversarial-length bail-out** — an `input` longer than 2x the longest
+ *    candidate can never be a near-miss of anything in `candidates`: its
+ *    Levenshtein distance to *any* candidate is at least
+ *    `input.length - candidate.length`, already past any threshold this
+ *    module would ever accept. This is a pure performance optimization, not
+ *    a behavior change — the full search below could never have returned a
+ *    match past this length anyway — but skipping it outright avoids the
+ *    O(n·m) cost entirely rather than paying it just to conclude "no match".
  * 1. **Word-reorder match** — `input`'s hyphen/underscore-separated words,
  *    sorted, exactly match a candidate's own sorted words. Catches the
  *    canonical weak-model icon slip this was written for: guessing
@@ -83,13 +97,21 @@ function typoThreshold(len: number): number {
  *    is within {@link typoThreshold} of the longer string's length (catches
  *    e.g. `"kpi_card"` for `"kpi_cards"`, distance 1).
  *
- * Deliberately a linear scan over `candidates` (no index/trie) — this only
- * ever runs once, after a value has already failed validation, against at
- * most a couple thousand short strings; building and maintaining an index
- * would cost more than the scan it replaces.
+ * Deliberately a linear scan over `candidates` (no index/trie) for the passes
+ * that do scan — this only ever runs once, after a value has already failed
+ * validation, against at most a couple thousand short strings (once the
+ * adversarial-length bail-out has ruled out the pathological case); building
+ * and maintaining an index would cost more than the scan it replaces.
  */
 export function closestMatch(input: string, candidates: readonly string[]): string | undefined {
+  const longestCandidateLength = candidates.reduce((max, c) => Math.max(max, c.length), 0)
+  // A length this far past every candidate can never equal one (skips the
+  // exact-match check below too) and can never land within any distance
+  // threshold this module would accept — bail before any O(n) or O(n·m) pass
+  // runs at all.
+  if (input.length > longestCandidateLength * 2) return undefined
   if (candidates.includes(input)) return input // exact match is never the caller's actual failure mode, but stay correct if it happens
+
   const inputTokens = sortedTokens(input)
   if (inputTokens.length > 1) {
     const reordered = candidates.find((c) => sameTokens(sortedTokens(c), inputTokens))
