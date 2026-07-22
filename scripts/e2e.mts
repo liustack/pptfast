@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { gzipSync } from "node:zlib"
 import JSZip from "jszip"
 import type * as Sharp from "sharp"
 
@@ -882,5 +883,107 @@ if (existsSync(overflowOutPath)) {
   throw new Error("e2e: dual-threshold leg — render must not write a file when validate hard-blocks")
 }
 console.log("dual-threshold bullet-overflow render leg OK (exit 1, no file written)")
+
+// browser-distribution wave (P2, task 1) build-verification leg: dist/browser.js
+// and dist/validate.js must be loadable by a bare `<script type="module">`
+// in a real browser — no bare (unresolved) top-level import/export
+// specifier, which is exactly the regression class a browser deep-dive
+// investigation caught against the pre-existing dist/index.js (real Chrome:
+// `Failed to resolve module specifier "zod"`, since index.js externalizes
+// zod/jszip/dagre/react/react-dom as bare specifiers by design — correct for
+// a bundler consumer, fatal for a bare <script>). tsup.config.ts's
+// browser/validate entries bundle every dependency in (`noExternal: [/.*/]`,
+// `platform: "browser"`, `splitting: false`), so neither output file should
+// carry any surviving static import/export-from declaration at all.
+console.log("--- browser-distribution build-verification leg ---")
+
+/** A top-level `import`/`export ... from "<specifier>"` declaration pointing
+ *  at a bare (non-relative, non-absolute) specifier — the exact shape that
+ *  makes a browser's ESM loader throw `Failed to resolve module specifier`
+ *  before a single line of the module runs (deep-dive repro, dist/index.js).
+ *  A minified single-line bundle has no reliable newline boundary to anchor
+ *  on, so this matches the token sequence directly rather than per-line. */
+const BARE_STATIC_IMPORT = /\bfrom"(?!\.\.?\/|\/)[^"]+"/g
+
+/** Node built-ins pptxgenjs's own (vendored, unmodified) optional
+ *  file-save/network fallback dynamically imports — guarded behind a
+ *  `typeof process<"u" && process.versions?.node` runtime check that is
+ *  always false in a real browser (the equivalent pre-existing code in
+ *  today's dist/index.js chunk was verified safe in the deep-dive's real
+ *  Chrome run), so the import() expression itself is parsed but never
+ *  evaluated there. A finite, explicit allowlist — anything else showing up
+ *  here would be a new, unreviewed Node dependency sneaking into a browser
+ *  bundle. */
+const ALLOWED_DYNAMIC_NODE_BUILTINS = new Set(["fs", "https"])
+
+function checkBrowserBundle(relPath: string, opts: { allowDynamicNodeBuiltins: boolean }): { raw: number; gzip: number } {
+  const path = join(process.cwd(), relPath)
+  const code = readFileSync(path, "utf8")
+
+  const bareStatic = [...code.matchAll(BARE_STATIC_IMPORT)].map((m) => m[0])
+  if (bareStatic.length > 0) {
+    throw new Error(
+      `e2e: ${relPath} has ${bareStatic.length} bare top-level import/export specifier(s) — a bare <script type="module"> would fail to resolve these before any code runs: ${bareStatic.slice(0, 5).join(", ")}`,
+    )
+  }
+
+  const dynamicImports = [...code.matchAll(/import\((['"])([^'"]+)\1\)/g)].map((m) => m[2]!)
+  const bareDynamic = dynamicImports.filter((spec) => !spec.startsWith(".") && !spec.startsWith("/"))
+  const unexpected = bareDynamic.filter(
+    (spec) => !(opts.allowDynamicNodeBuiltins && ALLOWED_DYNAMIC_NODE_BUILTINS.has(spec.replace(/^node:/, ""))),
+  )
+  if (unexpected.length > 0) {
+    throw new Error(
+      `e2e: ${relPath} has unexpected bare dynamic import() specifier(s): ${unexpected.join(", ")} — every dynamic import in a browser bundle must be relative, or a reviewed Node-builtin fallback added to ALLOWED_DYNAMIC_NODE_BUILTINS`,
+    )
+  }
+
+  return { raw: code.length, gzip: gzipSync(code).length }
+}
+
+const browserSize = checkBrowserBundle("dist/browser.js", { allowDynamicNodeBuiltins: true })
+console.log(`dist/browser.js: ${browserSize.raw} bytes raw, ${browserSize.gzip} bytes gzip`)
+// Generous size-budget smoke bounds (catch a 2x explosion, not a 2% drift) —
+// react + react-dom/server + zod + jszip + dagre + pptxgenjs inlined
+// currently lands around 1.7MB raw / 460KB gzip.
+if (browserSize.raw > 4 * 1024 * 1024) {
+  throw new Error(`e2e: dist/browser.js grew to ${browserSize.raw} bytes raw — over the 4MB smoke budget, investigate before raising it`)
+}
+if (browserSize.gzip > 1.5 * 1024 * 1024) {
+  throw new Error(`e2e: dist/browser.js grew to ${browserSize.gzip} bytes gzip — over the 1.5MB smoke budget, investigate before raising it`)
+}
+
+const validateSize = checkBrowserBundle("dist/validate.js", { allowDynamicNodeBuiltins: false })
+console.log(`dist/validate.js: ${validateSize.raw} bytes raw, ${validateSize.gzip} bytes gzip`)
+if (validateSize.raw > 2 * 1024 * 1024) {
+  throw new Error(`e2e: dist/validate.js grew to ${validateSize.raw} bytes raw — over the 2MB smoke budget, investigate before raising it`)
+}
+if (validateSize.gzip > 500 * 1024) {
+  throw new Error(`e2e: dist/validate.js grew to ${validateSize.gzip} bytes gzip — over the 500KB smoke budget, investigate before raising it`)
+}
+
+// Tree-separation (task 2's "no pptxgenjs/react/jszip for an embed-a-validator
+// page" pitch): dist/validate.js's closure must exclude the render/export
+// chain entirely — checked against real bundled *code* (class/function names
+// unique to each library), not the npm package-name substring, since
+// minification drops the latter but keeps distinctive API surface intact.
+const validateCode = readFileSync(join(process.cwd(), "dist/validate.js"), "utf8")
+const RENDER_CHAIN_MARKERS = ["PptxGenJS", "renderToStaticMarkup", "JSZip", "graphlib"]
+for (const marker of RENDER_CHAIN_MARKERS) {
+  if (validateCode.includes(marker)) {
+    throw new Error(`e2e: dist/validate.js unexpectedly contains "${marker}" — the render/export chain leaked into the validate-only entry`)
+  }
+}
+// And the full browser bundle must still carry all of them — a sanity check
+// that the markers themselves are meaningful (still present somewhere in
+// this build), not silently renamed away by a future minifier/dependency
+// version change that would make the check above pass for the wrong reason.
+const browserCode = readFileSync(join(process.cwd(), "dist/browser.js"), "utf8")
+for (const marker of RENDER_CHAIN_MARKERS) {
+  if (!browserCode.includes(marker)) {
+    throw new Error(`e2e: dist/browser.js is missing "${marker}" — expected the full render/export chain to be bundled here`)
+  }
+}
+console.log("browser-distribution build-verification leg OK (zero bare specifiers, size budgets, tree separation)")
 
 console.log("e2e OK")
