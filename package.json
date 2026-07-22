@@ -17,6 +17,14 @@
     "./node": {
       "types": "./dist/node.d.ts",
       "import": "./dist/node.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/browser.js"
+    },
+    "./validate": {
+      "types": "./dist/validate.d.ts",
+      "import": "./dist/validate.js"
     }
   },
   "files": [
@@ -30,7 +38,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "rm -rf dist && tsup",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src scripts tests --no-error-on-unmatched-pattern",
     "test": "vitest run",
