@@ -325,6 +325,81 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     expect(texts.filter((t) => ["V", "a", "l", "u", "e"].includes(t ?? "")).length).toBeGreaterThanOrEqual(5)
   })
 
+  // F1 (review round, moderate defect): a line chart's first-point value
+  // label could render with its ink flush against the y_title band — a real
+  // render measured only ~10px between the y_title's own character center
+  // and the plot's x0 (roughly half a glyph-width of true clearance),
+  // reproduced by a first point landing near CHART_H's vertical midband
+  // (data y:[50,100] — first=50 is exactly half of max=100). Fixed
+  // structurally: the plot's x-origin now shifts right by the y_title band
+  // width *plus* a dedicated gap, not just the band width alone, so the two
+  // regions cannot become geometrically adjacent regardless of content.
+  it("reserves a real horizontal gap between the y_title band and the plot — line chart, reviewer's exact repro (low-but-midband first point)", () => {
+    const component = {
+      type: "chart" as const,
+      chart_type: "line" as const,
+      series: [{ name: "Trend", data: [{ x: "Jan", y: 50 }, { x: "Feb", y: 100 }] }],
+      axes: { y_title: "Value" },
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    const texts = Array.from(container.querySelectorAll("text"))
+    const yTitleXs = texts
+      .filter((t) => ["V", "a", "l", "u", "e"].includes(t.textContent ?? ""))
+      .map((t) => Number(t.getAttribute("x")))
+    expect(new Set(yTitleXs).size).toBe(1) // all stacked chars share one column x
+    const yTitleX = yTitleXs[0]!
+
+    // The first point's own value label ("50", text-anchor="start") sits at
+    // the plot's x0 — the tightest point any plotted content ever gets to
+    // the y_title band.
+    const firstValueLabel = texts.find((t) => t.textContent === "50")!
+    const plotX0 = Number(firstValueLabel.getAttribute("x"))
+
+    // A single glyph at AXES_TITLE_SIZE (11px) is at most ~11px wide, so a
+    // centered character's own ink never reaches past yTitleX + 5.5px — a
+    // >=15px gap from yTitleX to plotX0 leaves real, content-independent
+    // clearance rather than a coincidental non-overlap for this one string.
+    // (Pre-fix this measured exactly 10px on a real render — this threshold
+    // fails against the pre-fix reservation and passes post-fix.)
+    expect(plotX0 - yTitleX).toBeGreaterThanOrEqual(15)
+  })
+
+  it("x_title-only decks do not gain the y_title gutter — the plot stays flush at box.x (byte-identical to no-axes)", () => {
+    const noAxes = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
+    const xTitleOnly = { ...noAxes, axes: { x_title: "Quarter" } }
+    const rectsBase = svg(chart.render(noAxes, box, ctx)).container.querySelectorAll("rect")
+    const rectsXTitle = svg(chart.render(xTitleOnly, box, ctx)).container.querySelectorAll("rect")
+    // Same bar geometry (x/width) in both — the x_title band only adds
+    // height below the plot, it must not shift or narrow the plot itself.
+    expect(rectsXTitle[0]!.getAttribute("x")).toBe(rectsBase[0]!.getAttribute("x"))
+    expect(rectsXTitle[0]!.getAttribute("width")).toBe(rectsBase[0]!.getAttribute("width"))
+  })
+
+  it("reserves the same real gap for bar-horizontal's row labels against the y_title band (F1 — verified for bar-horizontal too)", () => {
+    const longLabel = "A Very Long Row Label That Forces The Full Fitted Width Budget"
+    const component = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      direction: "horizontal" as const,
+      series: [{ name: "Revenue", data: [{ x: longLabel, y: 100 }, { x: "Short", y: 50 }] }],
+      axes: { y_title: "Category" },
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    const texts = Array.from(container.querySelectorAll("text"))
+    const yTitleX = Number(
+      texts.find((t) => t.textContent === "C" && t.getAttribute("text-anchor") === "middle")!.getAttribute("x"),
+    )
+    const rowLabel = texts.find((t) => t.getAttribute("font-weight") === "600")!
+    expect(rowLabel.getAttribute("data-truncated")).toBe("1") // confirms it hit the full-width fit budget
+    // BAR_H_LABEL_W is 110 (chart-svg.tsx) — the label's text-anchor="end"
+    // point sits at x0 + 110, so x0 = anchorX - 110 regardless of the gap's
+    // value — this infers the real plot x0 the same way the label's own
+    // worst-case (maximally fitted) left edge would land on it.
+    const anchorX = Number(rowLabel.getAttribute("x"))
+    const inferredX0 = anchorX - 110
+    expect(inferredX0 - yTitleX).toBeGreaterThanOrEqual(15)
+  })
+
   it("does not render axes titles on a non-applicable chart_type (pie) even when axes is set — field is honestly ignored, not silently accepted", () => {
     const pieSeries = [{ name: "Market", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }]
     const component = {

@@ -74,10 +74,29 @@ const AXES_TITLE_SIZE = 11
  * applicable type (gantt.tsx's AXIS_BAND_H/hasAxisLabels precedent: reserve
  * only when present, never unconditionally). */
 const AXES_X_TITLE_H = 22
-/** Gutter width (px) reserved left of the plot for y_title's stacked-character
- * column — eaten out of the component's own box.w (like matrix.tsx's
- * Y_TITLE_W), not added to measure()'s height. */
-const AXES_Y_TITLE_W = 20
+/** Width (px) of the y_title's own stacked-character column — characters are
+ * centered within this band (unchanged visual width — only the total gutter
+ * fed to the plot's x-origin grows, see AXES_Y_TITLE_W below). */
+const AXES_Y_TITLE_BAND_W = 20
+/**
+ * Pure clearance (px) between the y_title band and the plot's left edge
+ * (review round F1 fix). Without this, the plot's x0 sat flush at the
+ * band's own width with zero margin — a first-point value label (line
+ * chart, text-anchor="start") or a maximally-fitted row label
+ * (bar-horizontal, text-anchor="end", capped to BAR_H_LABEL_W) can both
+ * render with ink starting exactly at that boundary, only ~5px from the
+ * y_title band's own rightmost glyph ink (measured on a real render: a line
+ * chart whose first point lands near CHART_H's vertical midband, where the
+ * value label's y coordinate falls inside the y_title stack's own vertical
+ * span too). A single glyph at AXES_TITLE_SIZE is at most ~1em wide, so
+ * this gap keeps the two regions apart by construction — not merely
+ * unlikely to touch for whatever content a given deck happens to author.
+ */
+const AXES_Y_TITLE_GAP = 10
+/** Total width (px) reserved out of box.w for y_title — band + gap — fed as
+ * the plot's x0/plotW when y_title is present (matrix.tsx's Y_TITLE_W idiom,
+ * widened by AXES_Y_TITLE_GAP above). */
+const AXES_Y_TITLE_W = AXES_Y_TITLE_BAND_W + AXES_Y_TITLE_GAP
 /** Baseline-to-baseline vertical step for y_title's stacked characters —
  * mirrors matrix.tsx's Y_TITLE_CHAR_ADVANCE (AXIS_SIZE + 2). */
 const AXES_Y_CHAR_ADVANCE = AXES_TITLE_SIZE + 2
@@ -168,7 +187,7 @@ export const chart: SvgComponent<ChartComponent> = {
                 data-truncated={
                   yTitleFit!.truncated && i === yTitleFit!.chars.length - 1 ? "1" : undefined
                 }
-                x={AXES_Y_TITLE_W / 2}
+                x={AXES_Y_TITLE_BAND_W / 2}
                 y={yFirstBaselineY + i * AXES_Y_CHAR_ADVANCE}
                 textAnchor="middle"
                 fontSize={AXES_TITLE_SIZE}
