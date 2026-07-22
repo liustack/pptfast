@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import { renderBar, renderLine, renderDonut, renderDumbbell } from "./chart-svg"
+import { renderBar, renderBarHorizontal, renderLine, renderFunnel, renderDonut, renderDumbbell } from "./chart-svg"
 import { assertSubset } from "../subset-validate"
 import type { ChartSeries } from "@/ir"
 
@@ -411,6 +411,85 @@ describe("renderDumbbell — mixed-sign value domain (2026-07-21 negative-axis e
     for (const c of circles) {
       expect(Number(c.getAttribute("cx"))).toBeCloseTo(plotX)
     }
+  })
+})
+
+// 2026-07-22 extreme-magnitude export-gate fix (deep-acceptance review Round
+// 3, 6th defect): renderBar/renderBarHorizontal/renderLine/renderFunnel all
+// compute a bar/point's pixel extent or position as a bare
+// `(d.y / max) * boxDimension` ratio with no ceiling. A value tens-to-
+// thousands of times its series' own max (legal IR) scaled that ratio
+// without bound, eventually crossing pptxgenjs's own undocumented
+// "size >= 100in is already EMU" heuristic and writing a raw, unconverted,
+// non-integer value into the exported XML — see chart-svg.tsx's own
+// MAX_CHART_GEOMETRY_PX doc comment and generate-chart-export.test.ts's
+// reproduction through the real generatePptx for the full root-cause trace.
+// Kept local (not exported) same as this file's own PLOT_H convention.
+const MAX_CHART_GEOMETRY_PX = 4800
+
+describe("renderBar/renderBarHorizontal/renderLine/renderFunnel — extreme-magnitude geometry ceiling (2026-07-22 export-gate fix)", () => {
+  function assertNumericAttrsBounded(container: HTMLElement, selector: string, attrs: string[], bound: number) {
+    const els = Array.from(container.querySelectorAll(selector))
+    expect(els.length).toBeGreaterThan(0)
+    for (const el of els) {
+      for (const attr of attrs) {
+        const raw = el.getAttribute(attr)
+        if (raw === null) continue
+        const n = Number(raw)
+        expect(Number.isFinite(n)).toBe(true)
+        expect(Math.abs(n)).toBeLessThanOrEqual(bound)
+      }
+    }
+  }
+
+  it("renderBar: an extreme negative value's rect/text geometry never exceeds the ceiling", () => {
+    const { container } = svg(
+      renderBar(seriesOf(-1e9, 100), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    // Position values (rect y, text y) get an extra generous margin over the
+    // raw ceiling since they're offset from a plot anchor (plotTop+plotH),
+    // not the clamp's own zero point -- still nowhere near pptxgenjs's
+    // 9600px danger line even with that margin.
+    assertNumericAttrsBounded(container, "rect", ["height"], MAX_CHART_GEOMETRY_PX)
+    assertNumericAttrsBounded(container, "rect, text", ["y"], MAX_CHART_GEOMETRY_PX + H)
+  })
+
+  it("renderBarHorizontal: an extreme negative value's rect/text geometry never exceeds the ceiling", () => {
+    const { container } = svg(
+      renderBarHorizontal(seriesOf(-1e9, 100), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    assertNumericAttrsBounded(container, "rect", ["width"], MAX_CHART_GEOMETRY_PX)
+    assertNumericAttrsBounded(container, "rect, text", ["x"], MAX_CHART_GEOMETRY_PX + W)
+  })
+
+  it("renderLine: an extreme negative value's points/labels/dots geometry never exceeds the ceiling", () => {
+    const series: ChartSeries[] = [{ name: "S", data: [{ x: "A", y: -1e9 }, { x: "B", y: 100 }] }]
+    const { container } = svg(renderLine(series, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    assertNumericAttrsBounded(container, "circle, text", ["cy", "y"], MAX_CHART_GEOMETRY_PX + H)
+    const polyline = container.querySelector("polyline")!
+    const ys = polyline.getAttribute("points")!.trim().split(/\s+/).map((p) => Number(p.split(",")[1]))
+    for (const y of ys) expect(Math.abs(y)).toBeLessThanOrEqual(MAX_CHART_GEOMETRY_PX + H)
+  })
+
+  it("renderFunnel: an extreme negative value's rect geometry never exceeds the ceiling", () => {
+    const series: ChartSeries[] = [{ name: "S", data: [{ x: "A", y: -1e9 }, { x: "B", y: 100 }] }]
+    const { container } = svg(renderFunnel(series, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    assertNumericAttrsBounded(container, "rect", ["width"], MAX_CHART_GEOMETRY_PX)
+    assertNumericAttrsBounded(container, "rect", ["x"], MAX_CHART_GEOMETRY_PX + W)
+  })
+
+  it("renderBar: a realistic-magnitude negative value (ratio well under the ceiling) renders byte-identically to the pre-fix formula", () => {
+    // Hand-computed from the pre-fix formula (`barH = (d.y / max) * plotH`)
+    // -- the clamp must be a complete no-op whenever the raw ratio's
+    // magnitude is nowhere near MAX_CHART_GEOMETRY_PX, which every realistic
+    // (even quite extreme, e.g. -12 against a max of 5) mixed-sign chart is.
+    const { container } = svg(
+      renderBar(seriesOf(-12, 5), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    const rects = Array.from(container.querySelectorAll("rect"))
+    const max = Math.max(-12, 5, 1)
+    const rawBarH = (-12 / max) * PLOT_H
+    expect(Number(rects[0].getAttribute("height"))).toBeCloseTo(rawBarH)
   })
 })
 
