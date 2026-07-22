@@ -25,6 +25,15 @@ interface LaidItem {
    *  `render` to mark the rendered `<text>` with `data-truncated="1"`. */
   lineTruncated: boolean[]
   firstLineY: number
+  /** y (group-relative, px) of this item's own text bottom — last line's
+   * baseline plus a 0.2em descent allowance, same proxy `svg-audit.ts`'s
+   * v-overflow check and matrix.tsx's y_title fit use for "how far down did
+   * this text actually reach." Read by `render`'s box.h-aware cap (P0
+   * hardening, robustness deep-review D1) to decide how many items fit —
+   * `layoutItems` itself stays unbounded/unaware of any box, same division
+   * of responsibility `measure`/`render` already split (this field is what
+   * lets `render` answer "does item i fit" without recomputing layout). */
+  contentBottom: number
 }
 
 /** Non-emphasized prefix prepended ahead of an item's (stripped) text. */
@@ -160,23 +169,41 @@ function layoutItems(component: BulletsComponent, w: number, baseFontSize: numbe
           : [{ text: prefixes[i], emphasized: false }]
     }
     const lines = lineSegments.map((segs) => segs.map((s) => s.text).join(""))
-    const item: LaidItem = { lines, lineSegments, lineTruncated, firstLineY: y }
     // divided 需要更大项间距容纳分隔线（设计感留白）；分隔线 y 取上一项
     // 文字底（末行 baseline+descent≈0.2em）与下一项文字顶（首行
     // baseline-ascent≈0.8em）的几何中点——贴边不居中是 v1 被用户裁
     // 「粗糙」的原因（2026-07-10）。
     const gapAfter = style === "divided" ? Math.round(fontSize * 1.9) : ITEM_GAP
     const lastBaseline = y + (lines.length - 1) * lineHeight
+    const contentBottom = lastBaseline + fontSize * 0.2
+    const item: LaidItem = { lines, lineSegments, lineTruncated, firstLineY: y, contentBottom }
     y += lines.length * lineHeight + gapAfter
     if (style === "divided" && i < relaid.length - 1) {
-      const textBottom = lastBaseline + fontSize * 0.2
       const nextTextTop = y - fontSize * 0.8
-      dividers.push(Math.round((textBottom + nextTextTop) / 2))
+      dividers.push(Math.round((contentBottom + nextTextTop) / 2))
     }
     return item
   })
 
   return { items, fontSize, lineHeight, height: y - (style === "divided" ? Math.round(fontSize * 1.9) : ITEM_GAP), dividers }
+}
+
+/**
+ * How many leading items of `items` fit within `truncBudget` px (group-
+ * relative, same space `item.contentBottom` is measured in) — at least 1,
+ * matching `row-cards.tsx`'s own "never render zero visible units, even in
+ * a near-zero box" precedent for this exact `box.h`-undersized situation
+ * (`layoutContentFit`'s last-resort "keep the first placed component"
+ * branch is the only caller that ever sets a `box.h` smaller than this
+ * component's own unbounded `measure()` height).
+ */
+function visibleItemCount(items: LaidItem[], truncBudget: number): number {
+  let visible = 0
+  for (const item of items) {
+    if (item.contentBottom > truncBudget) break
+    visible++
+  }
+  return Math.max(1, visible)
 }
 
 export const bullets: SvgComponent<BulletsComponent> = {
@@ -185,8 +212,27 @@ export const bullets: SvgComponent<BulletsComponent> = {
   },
   render(component, box, ctx) {
     const style = component.style ?? "plain"
-    const { items, fontSize, lineHeight, dividers } = layoutItems(component, box.w, ctx.bodyFontPx)
+    const { items: allItems, fontSize, lineHeight, dividers } = layoutItems(component, box.w, ctx.bodyFontPx)
     const indent = style === "default" ? TEXT_INDENT : 0
+    // Vertical graceful landing (P0 hardening, robustness deep-review D1):
+    // `component.items` carries no schema ceiling, and pre-fix this loop
+    // rendered every item's `<text>` regardless of how far past `box.h` its
+    // `y` landed — an extreme item count (500+) pushed `y` far enough off
+    // the 1280×720 canvas to cross pptxgenjs's undocumented
+    // `getSmartParseNumber()` ≥100in heuristic (see `chart-svg.tsx`'s
+    // `MAX_CHART_GEOMETRY_PX` for the same trap on the chart side),
+    // producing a non-integer EMU that `package-audit`'s
+    // `invalid-shape-transform` rule then rejected — loud, but with an
+    // unusable error message (see `formatViolations`' own fix, same task).
+    // `box.h` is only ever set on this non-stretchable component type by
+    // `layoutContentFit`'s overflow-defense branch, so its presence always
+    // means "cap to this budget," never "stretch" (`row-cards.tsx` is the
+    // precedent for both this convention and the "+N more"/`data-dropped`
+    // marker below).
+    const truncBudget = box.h ?? Number.POSITIVE_INFINITY
+    const visible = truncBudget === Number.POSITIVE_INFINITY ? allItems.length : visibleItemCount(allItems, truncBudget)
+    const items = allItems.slice(0, visible)
+    const hidden = allItems.length - visible
     return (
       <g transform={`translate(${box.x},${box.y})`}>
         {items.map((item, i) => (
@@ -220,6 +266,20 @@ export const bullets: SvgComponent<BulletsComponent> = {
             ))}
           </Fragment>
         ))}
+        {hidden > 0 && (
+          <text
+            data-dropped={hidden}
+            x={box.w}
+            y={items[items.length - 1].contentBottom + Math.round(fontSize * 0.9)}
+            textAnchor="end"
+            fontSize={Math.max(11, Math.round(fontSize * 0.65))}
+            fill={ctx.colors.muted}
+            fontFamily={ctx.fonts.body}
+            dominantBaseline="alphabetic"
+          >
+            {`+${hidden} more`}
+          </text>
+        )}
       </g>
     )
   },

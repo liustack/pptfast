@@ -307,4 +307,75 @@ describe("bullets component spacious-pacing shrink (MIN_FONT floor)", () => {
       expect(sizes.every((s) => s === String(bodyFontPx))).toBe(true)
     }
   })
+
+  // P0 hardening (robustness deep-review D1, family-sweep primary target):
+  // items has no schema ceiling, and pre-fix render() drew every item's
+  // <text> regardless of box.h, letting y run arbitrarily far past the
+  // canvas on an extreme item count. `layoutContentFit`'s overflow-defense
+  // branch (layout.ts) is the only caller that ever sets box.h on this
+  // non-stretchable component — its presence always means "cap to this
+  // budget," matching row-cards.tsx's own box.h-undersized precedent.
+  describe("box.h-aware vertical cap (graceful landing)", () => {
+    const manyItems = Array.from({ length: 500 }, (_, i) => `item ${i}: a mildly long bullet point`)
+
+    it("caps rendered items to what box.h can hold and marks the drop with data-dropped, never rendering past the box", () => {
+      const component = { type: "bullets" as const, items: manyItems }
+      const box = { x: 96, y: 176, w: 1088, h: 300 }
+      const { container } = svg(bullets.render(component, box, ctx))
+      const textEls = Array.from(container.querySelectorAll("text"))
+      // Far fewer than the full 500 items got a <text> per line.
+      expect(textEls.length).toBeLessThan(manyItems.length)
+
+      // Every rendered line's baseline (plus a descent allowance) stays
+      // within box.h — the actual geometric guarantee this fix exists for.
+      for (const t of textEls) {
+        if (t.hasAttribute("data-dropped")) continue
+        const y = Number(t.getAttribute("y"))
+        const fontSize = Number(t.getAttribute("font-size")) || 24
+        expect(y + fontSize * 0.25).toBeLessThanOrEqual(box.h)
+      }
+
+      // Drop marker: exactly one, naming how many items were hidden, and
+      // the visible+hidden count reconciles to the full input.
+      const dropped = container.querySelector("[data-dropped]")
+      expect(dropped).toBeTruthy()
+      const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
+      expect(hiddenCount).toBeGreaterThan(0)
+      expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+    })
+
+    it("still renders at least one item even when box.h is far smaller than a single item's own height", () => {
+      const component = { type: "bullets" as const, items: manyItems }
+      const box = { x: 0, y: 0, w: 1088, h: 5 }
+      const { container } = svg(bullets.render(component, box, ctx))
+      // At least one item's lines got drawn (row-cards.tsx's "never zero
+      // visible units" precedent) despite the budget being unmeetable.
+      const nonMarkerTexts = Array.from(container.querySelectorAll("text")).filter(
+        (t) => !t.hasAttribute("data-dropped"),
+      )
+      expect(nonMarkerTexts.length).toBeGreaterThan(0)
+    })
+
+    it("is a byte-identical no-op when box.h is omitted (the ordinary/common render path)", () => {
+      const component = { type: "bullets" as const, items }
+      const withoutH = renderToStaticMarkup(
+        <svg>{bullets.render(component, { x: 0, y: 0, w: 1120 }, ctx)}</svg>,
+      )
+      const withGenerousH = renderToStaticMarkup(
+        <svg>{bullets.render(component, { x: 0, y: 0, w: 1120, h: 100000 }, ctx)}</svg>,
+      )
+      expect(withoutH).toBe(withGenerousH)
+      expect(withoutH).not.toContain("data-dropped")
+    })
+
+    it("never shows a data-dropped marker when every item already fits box.h", () => {
+      const component = { type: "bullets" as const, items }
+      const measured = bullets.measure(component, 1120, ctx)
+      const { container } = svg(
+        bullets.render(component, { x: 0, y: 0, w: 1120, h: measured + 40 }, ctx),
+      )
+      expect(container.querySelector("[data-dropped]")).toBeNull()
+      expect(container.querySelectorAll("text").length).toBeGreaterThan(0)
+    })
+  })
 })
