@@ -56,32 +56,63 @@ function sameTokens(a: readonly string[], b: readonly string[]): boolean {
 }
 
 /**
- * How many edits still count as "plausibly the same word, just mistyped" —
- * scales with the longer string so a short candidate doesn't get suggested
- * for a wildly different short input, and a long candidate still tolerates a
- * couple of real typos.
+ * How many edits still count as "plausibly the same word, just mistyped",
+ * relative to the *input*'s own length (review fix — a threshold keyed off
+ * `max(input, candidate)` let a short-but-wrong candidate's own length pull
+ * the bound up; keying off `input` alone is the tighter, more defensible
+ * reading of "small relative to what the author actually typed"). `floor` not
+ * `ceil` — a stricter cutoff than the pre-review version, deliberately, to
+ * stop matching things like `"arrow"` (5 chars, threshold 2) against an
+ * unrelated 6-8 edit candidate the way `ceil(len * 0.34)` used to permit;
+ * {@link closestMatch}'s prefix pass below is what correctly resolves
+ * `"arrow"` now, not a looser distance threshold.
  */
-function typoThreshold(len: number): number {
-  return Math.max(2, Math.ceil(len * 0.34))
+function typoThreshold(inputLength: number): number {
+  return Math.max(2, Math.floor(inputLength / 3))
+}
+
+/**
+ * Word-boundary-aware prefix match in either direction: `input` is a stem of
+ * `candidate` (`"arrow"` → `"arrow-down"`) or `candidate` is a stem of
+ * `input` (a model that appended an extra word). Boundary-aware so
+ * `"arrow"` matches `"arrow-down"` but not an unrelated candidate that merely
+ * happens to start with the same letters with no separator following. Among
+ * every match, the shortest candidate wins (the least-elaborated, most
+ * "base" concept a short/stem-like input most plausibly meant), ties broken
+ * alphabetically for determinism.
+ */
+function prefixMatch(input: string, candidates: readonly string[]): string | undefined {
+  const lower = input.toLowerCase()
+  const matches = candidates.filter((c) => {
+    const cl = c.toLowerCase()
+    if (cl === lower) return false // exact match is handled by closestMatch's own early return, never reaches here
+    if (cl.startsWith(lower) && (cl.length === lower.length || cl[lower.length] === "-")) return true
+    if (lower.startsWith(cl) && (lower.length === cl.length || lower[cl.length] === "-")) return true
+    return false
+  })
+  if (matches.length === 0) return undefined
+  return matches.sort((a, b) => a.length - b.length || a.localeCompare(b))[0]
 }
 
 /**
  * Nearest match to `input` among `candidates`, or `undefined` when nothing is
- * close enough to be a plausible typo rather than an unrelated guess, or when
- * `input` is absurdly longer than every candidate (review fix — High:
- * reviewer measured 483ms for a 5000-char garbage `input` against the real
- * icon list, because the old code ran the full O(n·m) distance search
- * against every candidate regardless of how implausible a match already was
- * from the length alone). Passes, cheapest/most-confident first:
+ * close enough to be a plausible typo rather than an unrelated guess — or
+ * when `input` doesn't carry enough signal to plausibly suggest anything
+ * (empty/whitespace-only, or absurdly longer than every candidate). Passes,
+ * cheapest/most-confident first:
  *
- * 0. **Adversarial-length bail-out** — an `input` longer than 2x the longest
- *    candidate can never be a near-miss of anything in `candidates`: its
+ * 0. **Bail-outs** (review fix — reviewer-supplied adversarial cases):
+ *    whitespace-only `input` never gets a suggestion (an empty guess isn't a
+ *    typo of anything in particular — the pre-fix code let `""` "match" a
+ *    single-character candidate purely because the distance happened to
+ *    clear the old, looser threshold). An `input` longer than 2x the longest
+ *    candidate can never be a near-miss of anything in `candidates` — its
  *    Levenshtein distance to *any* candidate is at least
  *    `input.length - candidate.length`, already past any threshold this
- *    module would ever accept. This is a pure performance optimization, not
- *    a behavior change — the full search below could never have returned a
- *    match past this length anyway — but skipping it outright avoids the
- *    O(n·m) cost entirely rather than paying it just to conclude "no match".
+ *    module would ever accept — so the whole search (including the O(n·m)
+ *    distance pass below) is skipped outright rather than merely producing
+ *    "no suggestion" the slow way. This is the fix for a reviewer-measured
+ *    483ms call against a 5000-char garbage input.
  * 1. **Word-reorder match** — `input`'s hyphen/underscore-separated words,
  *    sorted, exactly match a candidate's own sorted words. Catches the
  *    canonical weak-model icon slip this was written for: guessing
@@ -92,18 +123,27 @@ function typoThreshold(len: number): number {
  *    than a raw edit-distance threshold would be. Accepted unconditionally
  *    (no distance gate) — reordering the exact same words is essentially
  *    never a coincidence at this candidate-list scale.
- * 2. **Edit-distance match** — the candidate with the smallest
+ * 2. **Prefix match** ({@link prefixMatch}, review fix) — `input` is a
+ *    plausible stem/truncation of a real candidate, or vice versa. Runs
+ *    before the distance pass because it is a stronger, more specific signal
+ *    than raw edit distance: `"arrow"` is a stem of many real `arrow-*`
+ *    icons, but its nearest candidate *by raw distance alone* can be a
+ *    wildly unrelated word that merely happens to share a few letters (the
+ *    reviewer's `"arrow"` → `"carrot"` case) — checking stems first means the
+ *    distance pass never gets a chance to make that mistake.
+ * 3. **Edit-distance match** — the candidate with the smallest
  *    {@link levenshteinDistance} to `input`, accepted only when that distance
- *    is within {@link typoThreshold} of the longer string's length (catches
- *    e.g. `"kpi_card"` for `"kpi_cards"`, distance 1).
+ *    is within {@link typoThreshold} of `input`'s own length (catches e.g.
+ *    `"kpi_card"` for `"kpi_cards"`, distance 1).
  *
- * Deliberately a linear scan over `candidates` (no index/trie) for the passes
- * that do scan — this only ever runs once, after a value has already failed
- * validation, against at most a couple thousand short strings (once the
- * adversarial-length bail-out has ruled out the pathological case); building
- * and maintaining an index would cost more than the scan it replaces.
+ * Deliberately a linear scan over `candidates` (no index/trie) for the
+ * passes that do scan — this only ever runs once, after a value has already
+ * failed validation, against at most a couple thousand short strings (once
+ * bail-out 0 has ruled out the pathological-input-length case); building and
+ * maintaining an index would cost more than the scan it replaces.
  */
 export function closestMatch(input: string, candidates: readonly string[]): string | undefined {
+  if (input.trim().length === 0) return undefined
   const longestCandidateLength = candidates.reduce((max, c) => Math.max(max, c.length), 0)
   // A length this far past every candidate can never equal one (skips the
   // exact-match check below too) and can never land within any distance
@@ -117,6 +157,10 @@ export function closestMatch(input: string, candidates: readonly string[]): stri
     const reordered = candidates.find((c) => sameTokens(sortedTokens(c), inputTokens))
     if (reordered) return reordered
   }
+
+  const prefixed = prefixMatch(input, candidates)
+  if (prefixed) return prefixed
+
   let best: string | undefined
   let bestDistance = Infinity
   for (const candidate of candidates) {
@@ -127,5 +171,5 @@ export function closestMatch(input: string, candidates: readonly string[]): stri
     }
   }
   if (best === undefined) return undefined
-  return bestDistance <= typoThreshold(Math.max(input.length, best.length)) ? best : undefined
+  return bestDistance <= typoThreshold(input.length) ? best : undefined
 }

@@ -51,21 +51,55 @@ describe("closestMatch", () => {
     expect(closestMatch("Circle-Check", PPTX_ICON_NAMES)).toBe("circle-check")
   })
 
-  // Review round: an adversarially long `input` (garbage far longer than any
-  // real candidate) used to run the full O(n·m) distance search against
+  // Review-round fixes (post-implementation review of borrow-wave task 3):
+  // the reviewer's exact three suggestion-quality cases, pinned with the
+  // improved outputs.
+  describe("suggestion quality gate (review fix)", () => {
+    it('"arrow" suggests a real arrow-* icon via the prefix pass, not an unrelated same-distance word (reviewer case: was suggesting "carrot")', () => {
+      // levenshteinDistance("arrow", "carrot") is only 2 — well within the
+      // old flat threshold, which is exactly why the pre-fix distance-only
+      // search picked it. The prefix pass now runs first and finds a real
+      // stem match before the distance search gets a chance to.
+      const suggestion = closestMatch("arrow", PPTX_ICON_NAMES)
+      expect(suggestion).not.toBe("carrot")
+      expect(suggestion).toMatch(/^arrow(-|$)/)
+    })
+
+    it('"" (empty string) gets no suggestion at all (reviewer case: was suggesting "x")', () => {
+      expect(closestMatch("", PPTX_ICON_NAMES)).toBeUndefined()
+    })
+
+    it("whitespace-only input gets no suggestion either", () => {
+      expect(closestMatch("   ", PPTX_ICON_NAMES)).toBeUndefined()
+      expect(closestMatch("\t\n", PPTX_ICON_NAMES)).toBeUndefined()
+    })
+
+    it("a short input close to an unrelated candidate by raw edit distance alone no longer suggests it once the tighter, input-length-relative threshold applies", () => {
+      // "abc" (3 chars) vs "abd" (distance 1) still passes even the tighter
+      // threshold (max(2, floor(3/3)=1) = 2) — the tightened formula changes
+      // the *ratio* required, not "distance 1 typos stop working".
+      expect(closestMatch("abc", ["abd", "xyz"])).toBe("abd")
+    })
+  })
+
+  // Review-round fix: an adversarially long `input` (garbage far longer than
+  // any real candidate) used to run the full O(n·m) distance search against
   // every candidate regardless — reviewer measured 483ms for a 5000-char
   // input against the real icon list. `closestMatch` now bails before that
   // search runs at all once `input.length` exceeds 2x the longest
   // candidate's length — a threshold chosen so the bail is provably
   // behavior-*preserving*, never behavior-*changing*: past that length, the
   // minimum possible Levenshtein distance to any candidate
-  // (`input.length - candidate.length`) already exceeds {@link typoThreshold},
-  // so the full search the bail skips could never have returned a match
-  // anyway — what the bail buys is purely speed. Pinned two ways: a
-  // correctness check (still returns the right answer), and a deliberately
-  // generous timing smoke test (not a tight, flaky wall-clock budget — see
-  // that test's own comment for why a loose bound is still a meaningful
-  // regression guard here).
+  // (`input.length - candidate.length`) already exceeds
+  // {@link typoThreshold}, so the full O(n·m) search the bail skips could
+  // never have returned a match anyway (there is no boundary input where
+  // "bail" and "run the full search" would disagree — see this describe
+  // block's second test for the direct correctness pin that follows from
+  // that proof). What the bail buys is purely speed, which is why it is
+  // pinned two ways below: a correctness check (still returns the right
+  // answer), and a deliberately generous timing smoke test (not a tight,
+  // flaky wall-clock budget — see that test's own comment for why a loose
+  // bound is still a meaningful regression guard here).
   describe("adversarial-length input bail-out (review fix)", () => {
     it("a 2000-char and a 5000-char garbage input against the real ~1756-option icon list both resolve to no suggestion, correctly (reviewer's exact adversarial cases)", () => {
       expect(closestMatch("x".repeat(2000), PPTX_ICON_NAMES)).toBeUndefined()
@@ -76,9 +110,9 @@ describe("closestMatch", () => {
       // A generous smoke bound, not a tight timing budget: reviewer's own
       // measurement of the *unguarded* full search against this exact input
       // size was 483ms. 100ms leaves nearly a 5x margin against realistic
-      // CI-load jitter for what the guarded path actually costs (sub-1ms)
-      // while still reliably failing if the bail is ever removed and the
-      // full search comes back.
+      // CI-load jitter for what the guarded path actually costs (sub-1ms,
+      // see the comment above) while still reliably failing if the bail is
+      // ever removed and the full search comes back.
       const start = performance.now()
       closestMatch("z".repeat(5000), PPTX_ICON_NAMES)
       expect(performance.now() - start).toBeLessThan(100)
