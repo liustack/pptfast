@@ -358,15 +358,26 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
  * image is content loss, the same class `bullet_item_overflow` already
  * hard-gates on — not an editorial-budget warn.
  *
- * Scope: `data:` URIs only. A local file path (`assets.images[x].src` not
- * yet a `data:` URI) is the CLI-only ingestion form — `resolveLocalAssets`
- * (`cli/load-ir.ts`) runs the same {@link sniffImageFormat} sniff at its own
- * seam, right after reading the file's bytes, since that step is Node-only
- * and cannot live here without pulling `node:fs` into `validateIr`'s
- * browser-safe closure (`src/index.ts`'s dependency-closure rule — two
- * ingestion forms, one shared sniffer, two call sites). An `http(s)://` src
- * is left untouched here for the same reason `resolveLocalAssets` leaves it
- * alone: its bytes aren't fetched until export (`inlinePptxAssets`).
+ * Scope: `data:` URIs only — three ingestion forms exist, this covers one.
+ * A local file path (`assets.images[x].src` not yet a `data:` URI) is the
+ * CLI-only ingestion form — `resolveLocalAssets` (`cli/load-ir.ts`) runs the
+ * same {@link sniffImageFormat} sniff at its own seam, right after reading
+ * the file's bytes, since that step is Node-only and cannot live here
+ * without pulling `node:fs` into `validateIr`'s browser-safe closure
+ * (`src/index.ts`'s dependency-closure rule). An `http(s)://` src is left
+ * untouched here too, but not because it's out of scope for byte
+ * validation — it's checked at a *different, later* seam on purpose:
+ * `validateIr` never makes a network request (a deliberate, unconditional
+ * boundary — no fetch, ever, from validate), so a remote asset's bytes
+ * simply don't exist yet at this point in the pipeline. `inlinePptxAssets`
+ * (`platform/inline-assets.ts`) is where the URL actually turns into bytes
+ * (its own `fetch` call, export time) — that function's
+ * `assertValidFetchedImageBytes` runs this exact same sniff on what comes
+ * back, right after the fetch, so the byte check still happens, just later
+ * and at the seam where there's something to check. All three ingestion
+ * forms therefore end up sniffed exactly once, each at the earliest point
+ * its bytes actually exist — nowhere in the chain is an `http(s)` asset's
+ * validity left permanently unchecked.
  *
  * Extension/declared-MIME-vs-bytes mismatch disposition: reject, not
  * silently trust the sniffed bytes and rewrite the MIME. A
