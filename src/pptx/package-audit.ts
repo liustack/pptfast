@@ -423,9 +423,51 @@ async function collectViolations(reader: PptxPackageReader): Promise<PackageAudi
   return violations
 }
 
+/**
+ * Cap on how many individual violation lines `formatViolations` ever spells
+ * out verbatim. Sized for a human/agent skimming a terminal or log line, not
+ * for completeness — the per-rule summary above the detail block already
+ * carries the true total, so nothing is lost by truncating the list itself.
+ *
+ * Real incident (P0 hardening, robustness deep-review D1): an unbounded
+ * text-stacking component (e.g. `bullets` with an extreme item count) can
+ * make `checkShapeTransforms` alone emit thousands of `invalid-shape-
+ * transform` violations, one per off-canvas `<a:xfrm>` — 500 items produced
+ * 621, 20000 items produced 19776 and a 2.5MB error string. A message that
+ * size is useless to the SDK's actual audience (an AI agent's context
+ * window / a CI log), and drowns the one line that would have named the
+ * real root cause (which slide, which rule, how many).
+ */
+const MAX_VIOLATION_DETAIL_LINES = 20
+
 function formatViolations(violations: PackageAuditViolation[]): string {
-  const lines = violations.map((v) => `  [${v.rule}] ${v.message}`)
-  return `pptx package audit failed — ${violations.length} invariant violation${violations.length === 1 ? "" : "s"} in the generated package:\n${lines.join("\n")}`
+  const total = violations.length
+
+  // Group by rule first — this is the "dedupe" half: 19776 individually
+  // distinct `invalid-shape-transform` messages (each names a different
+  // shape id/offset) collapse into one `invalid-shape-transform: 19776`
+  // line instead of repeating the same rule name thousands of times.
+  const byRule = new Map<PackageAuditRuleId, number>()
+  for (const v of violations) byRule.set(v.rule, (byRule.get(v.rule) ?? 0) + 1)
+  const ruleSummary = Array.from(byRule.entries())
+    .map(([rule, count]) => `  ${rule}: ${count}`)
+    .join("\n")
+
+  // Then a bounded sample of the actual messages — enough to see concrete
+  // shape ids/offsets for triage, never the whole list.
+  const shown = violations.slice(0, MAX_VIOLATION_DETAIL_LINES)
+  const detailLines = shown.map((v) => `  [${v.rule}] ${v.message}`).join("\n")
+  const omitted = total - shown.length
+  const omittedNote =
+    omitted > 0
+      ? `\n  … ${omitted} more violation${omitted === 1 ? "" : "s"} omitted (see per-rule counts above)`
+      : ""
+
+  return (
+    `pptx package audit failed — ${total} invariant violation${total === 1 ? "" : "s"} in the generated package.\n` +
+    `By rule:\n${ruleSummary}\n\n` +
+    `First ${shown.length} violation${shown.length === 1 ? "" : "s"}:\n${detailLines}${omittedNote}`
+  )
 }
 
 /**

@@ -244,4 +244,56 @@ describe("auditPptxPackage — additional invariant coverage", () => {
     expect(caught!.message).toMatch(/duplicate-shape-id/)
     expect(caught!.message).toMatch(/slide-list-mismatch/)
   })
+
+  // P0 hardening (robustness deep-review D1): the pre-fix `formatViolations`
+  // concatenated every violation verbatim with no cap — a real deck with an
+  // extreme-count text-stacking component (500-item bullets, 20000-item
+  // bullets) drove `checkShapeTransforms` to emit hundreds to tens of
+  // thousands of `invalid-shape-transform` lines, producing a 2.5MB single
+  // error string. Reproduced here without an extreme-content deck (the
+  // renderer-level cap added alongside this fix would make that path no
+  // longer reach this many violations for bullets specifically) by directly
+  // injecting many synthetic broken shapes into a clean slide's `<p:spTree>`
+  // — this is a property of `formatViolations` itself, independent of which
+  // rule or component produced the flood.
+  it("caps a message-blowing flood of same-rule violations to a bounded, grouped-by-rule summary", async () => {
+    const zip = await renderCleanZip()
+    const path = "ppt/slides/slide2.xml"
+    const before = await readPart(zip, path)
+    const FLOOD_N = 2000
+    const brokenShapes = Array.from(
+      { length: FLOOD_N },
+      (_, i) =>
+        `<p:sp><p:nvSpPr><p:cNvPr id="${90000 + i}" name="flood${i}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="0" y="12.5"/><a:ext cx="100" cy="100"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:sp>`,
+    ).join("")
+    const after = before.replace("</p:spTree>", `${brokenShapes}</p:spTree>`)
+    expect(after).not.toBe(before)
+    zip.file(path, after)
+
+    let caught: Error | undefined
+    try {
+      await auditPptxPackage(zip)
+    } catch (e) {
+      caught = e as Error
+    }
+    expect(caught).toBeTruthy()
+    const message = caught!.message
+
+    // Total count is still reported honestly (not silently lost by capping).
+    expect(message).toMatch(new RegExp(`${FLOOD_N} invariant violation`))
+    // Grouped-by-rule summary names the rule with its real count.
+    expect(message).toMatch(new RegExp(`invalid-shape-transform: ${FLOOD_N}`))
+    // The verbatim detail sample never exceeds the fixed line cap, however
+    // large the underlying violation count — this is the actual "2.5MB
+    // impossible" guarantee: bytes scale with the cap, not with FLOOD_N.
+    const detailLineCount = (message.match(/\[invalid-shape-transform]/g) ?? []).length
+    expect(detailLineCount).toBeLessThanOrEqual(20)
+    expect(message).toMatch(/more violations? omitted/)
+    // Message-size upper bound (D1 opportunity #2's hard requirement: a
+    // 2.5MB error string must become impossible). 8KB is generous headroom
+    // above what 20 detail lines plus a handful of rule-summary lines can
+    // possibly need, yet three orders of magnitude below the 2.5MB baseline
+    // this flood used to produce pre-fix.
+    expect(message.length).toBeLessThan(8_000)
+  })
 })
