@@ -107,18 +107,50 @@ function verticalLayout(component: TimelineComponent, w: number) {
   })
 }
 
+/**
+ * How many leading rows of `rows` fit within `truncBudget` px (group-
+ * relative, same space `rowTops[i] + rows[i].rowH` is measured in), leaving
+ * ~20px of headroom for the "+N more" marker line — at least 1, matching
+ * row-cards.tsx's "never render zero visible units" precedent.
+ */
+function visibleVerticalRowCount(
+  rowTops: number[],
+  rows: ReadonlyArray<{ rowH: number }>,
+  truncBudget: number,
+): number {
+  if (truncBudget === Number.POSITIVE_INFINITY) return rows.length
+  let visible = 0
+  for (let i = 0; i < rows.length; i++) {
+    if (rowTops[i] + rows[i].rowH > truncBudget - 20) break
+    visible = i + 1
+  }
+  return Math.max(1, visible)
+}
+
 function renderVertical(
   component: TimelineComponent,
   box: ComponentBox,
   ctx: ComponentCtx,
 ): React.ReactElement {
-  const rows = verticalLayout(component, box.w)
-  const rowTops: number[] = []
+  const allRows = verticalLayout(component, box.w)
+  const allRowTops: number[] = []
   let cursor = V_TOP_PAD
-  for (const r of rows) {
-    rowTops.push(cursor)
+  for (const r of allRows) {
+    allRowTops.push(cursor)
     cursor += r.rowH + V_ROW_GAP
   }
+  // Vertical graceful landing (P0 hardening, robustness deep-review D1,
+  // family-sweep sibling of bullets.tsx): `milestones` has no schema
+  // ceiling, and this layout mode stacks one row per milestone with no cap
+  // of its own. `box.h` is only ever set on this non-stretchable component
+  // by `layoutContentFit`'s overflow-defense branch (`layout.ts`), so its
+  // presence always means "cap to this budget" (row-cards.tsx's own
+  // precedent for the convention below).
+  const truncBudget = box.h ?? Number.POSITIVE_INFINITY
+  const visibleCount = visibleVerticalRowCount(allRowTops, allRows, truncBudget)
+  const hiddenCount = allRows.length - visibleCount
+  const rows = allRows.slice(0, visibleCount)
+  const rowTops = allRowTops.slice(0, visibleCount)
   const axisTop = rowTops[0] + 8
   const axisBottom = rowTops[rowTops.length - 1] + 8
   return (
@@ -194,6 +226,20 @@ function renderVertical(
           </g>
         )
       })}
+      {hiddenCount > 0 && (
+        <text
+          data-dropped={hiddenCount}
+          x={box.w}
+          y={rowTops[rowTops.length - 1] + rows[rows.length - 1].rowH + 20}
+          textAnchor="end"
+          fontSize={13}
+          fill={ctx.colors.muted}
+          fontFamily={ctx.fonts.body}
+          dominantBaseline="alphabetic"
+        >
+          {`+${hiddenCount} more`}
+        </text>
+      )}
     </g>
   )
 }

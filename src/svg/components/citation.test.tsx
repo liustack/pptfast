@@ -115,4 +115,57 @@ describe("citation component", () => {
     expect(tspan.textContent).toMatch(/…$/)
     expect(tspan.textContent!.length).toBeLessThan(longUrl.length)
   })
+
+  // P0 hardening (robustness deep-review D1, family-sweep sibling of
+  // bullets.tsx): `sources` has no schema ceiling and each source costs a
+  // fixed ROW px regardless of content.
+  describe("box.h-aware vertical cap (graceful landing)", () => {
+    const manySources = Array.from({ length: 200 }, (_, i) => ({ label: `source ${i}` }))
+    const manyComponent = { type: "citation" as const, sources: manySources }
+
+    it("caps rendered sources to what box.h can hold and marks the drop with data-dropped", () => {
+      const box = { x: 0, y: 0, w: 1120, h: 200 }
+      const { container } = svg(citation.render(manyComponent, box, ctx))
+      const texts = Array.from(container.querySelectorAll("text"))
+      const nonMarker = texts.filter((t) => !t.hasAttribute("data-dropped"))
+      expect(nonMarker.length).toBeGreaterThan(0)
+      expect(nonMarker.length).toBeLessThan(manySources.length)
+
+      for (const t of nonMarker) {
+        expect(Number(t.getAttribute("y"))).toBeLessThanOrEqual(box.h)
+      }
+
+      const dropped = container.querySelector("[data-dropped]")
+      expect(dropped).toBeTruthy()
+      const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
+      expect(hiddenCount + nonMarker.length).toBe(manySources.length)
+      expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+    })
+
+    it("still renders at least one source even when box.h is far smaller than a single row", () => {
+      const box = { x: 0, y: 0, w: 1120, h: 2 }
+      const { container } = svg(citation.render(manyComponent, box, ctx))
+      const nonMarker = Array.from(container.querySelectorAll("text")).filter(
+        (t) => !t.hasAttribute("data-dropped"),
+      )
+      expect(nonMarker.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("is a byte-identical no-op when box.h is omitted", () => {
+      const withoutH = svg(citation.render(component, { x: 0, y: 0, w: 1120 }, ctx)).container.innerHTML
+      const withGenerousH = svg(
+        citation.render(component, { x: 0, y: 0, w: 1120, h: 100000 }, ctx),
+      ).container.innerHTML
+      expect(withoutH).toBe(withGenerousH)
+      expect(withoutH).not.toContain("data-dropped")
+    })
+
+    it("never shows a data-dropped marker when every source already fits box.h", () => {
+      const measured = citation.measure(component, 1120, ctx)
+      const { container } = svg(
+        citation.render(component, { x: 0, y: 0, w: 1120, h: measured + 40 }, ctx),
+      )
+      expect(container.querySelector("[data-dropped]")).toBeNull()
+    })
+  })
 })

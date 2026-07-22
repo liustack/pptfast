@@ -122,4 +122,76 @@ describe("timeline component", () => {
     expect(h).toBeGreaterThanOrEqual(180)
     expect(h).toBeLessThanOrEqual(320)
   })
+
+  describe("layout: vertical", () => {
+    const verticalComponent = {
+      type: "timeline" as const,
+      layout: "vertical" as const,
+      milestones: component.milestones,
+    }
+
+    it("renders one row per milestone with a vertical axis line", () => {
+      const { container } = svg(
+        timeline.render(verticalComponent, { x: 0, y: 0, w: 800 }, ctx),
+      )
+      expect(container.querySelectorAll("circle").length).toBe(3)
+      const line = container.querySelector("line")
+      expect(line).not.toBeNull()
+      expect(line?.getAttribute("x1")).toBe(line?.getAttribute("x2"))
+    })
+
+    // P0 hardening (robustness deep-review D1, family-sweep sibling of
+    // bullets.tsx): `milestones` has no schema ceiling, and this layout
+    // mode stacks one row per milestone with no cap of its own.
+    describe("box.h-aware vertical cap (graceful landing)", () => {
+      const manyMilestones = Array.from({ length: 150 }, (_, i) => ({
+        date: `Q${i}`,
+        title: `Milestone ${i}`,
+      }))
+      const manyComponent = {
+        type: "timeline" as const,
+        layout: "vertical" as const,
+        milestones: manyMilestones,
+      }
+
+      it("caps rendered rows to what box.h can hold and marks the drop with data-dropped", () => {
+        const box = { x: 0, y: 0, w: 800, h: 300 }
+        const { container } = svg(timeline.render(manyComponent, box, ctx))
+        const circles = container.querySelectorAll("circle")
+        expect(circles.length).toBeGreaterThan(0)
+        expect(circles.length).toBeLessThan(manyMilestones.length)
+
+        const dropped = container.querySelector("[data-dropped]")
+        expect(dropped).toBeTruthy()
+        const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
+        expect(hiddenCount + circles.length).toBe(manyMilestones.length)
+        expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+      })
+
+      it("still renders at least one row even when box.h is far smaller than a single row", () => {
+        const box = { x: 0, y: 0, w: 800, h: 5 }
+        const { container } = svg(timeline.render(manyComponent, box, ctx))
+        expect(container.querySelectorAll("circle").length).toBeGreaterThanOrEqual(1)
+      })
+
+      it("is a byte-identical no-op when box.h is omitted", () => {
+        const withoutH = svg(
+          timeline.render(verticalComponent, { x: 0, y: 0, w: 800 }, ctx),
+        ).container.innerHTML
+        const withGenerousH = svg(
+          timeline.render(verticalComponent, { x: 0, y: 0, w: 800, h: 100000 }, ctx),
+        ).container.innerHTML
+        expect(withoutH).toBe(withGenerousH)
+        expect(withoutH).not.toContain("data-dropped")
+      })
+
+      it("never shows a data-dropped marker when every row already fits box.h", () => {
+        const measured = timeline.measure(verticalComponent, 800, ctx)
+        const { container } = svg(
+          timeline.render(verticalComponent, { x: 0, y: 0, w: 800, h: measured + 40 }, ctx),
+        )
+        expect(container.querySelector("[data-dropped]")).toBeNull()
+      })
+    })
+  })
 })

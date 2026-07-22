@@ -166,4 +166,64 @@ describe("architecture component", () => {
     const g = container.querySelector("g")
     expect(g?.getAttribute("transform")).toBe("translate(80,100)")
   })
+
+  // P0 hardening (robustness deep-review D1, family-sweep sibling of
+  // bullets.tsx): `layers` has no schema ceiling and each layer costs a
+  // fixed LAYER_H+GAP px regardless of content.
+  describe("box.h-aware vertical cap (graceful landing)", () => {
+    const manyLayers = Array.from({ length: 100 }, (_, i) => ({
+      title: `Layer ${i}`,
+      items: ["x"],
+    }))
+    const manyComponent = { type: "architecture" as const, layers: manyLayers }
+
+    it("caps rendered layers to what box.h can hold, marks the drop, and never draws a rect past the box", () => {
+      const box = { x: 0, y: 0, w: 1120, h: 300 }
+      const { container } = svg(architecture.render(manyComponent, box, ctx))
+      const rects = Array.from(container.querySelectorAll("rect"))
+      expect(rects.length).toBeGreaterThan(0)
+      expect(rects.length).toBeLessThan(manyLayers.length)
+      for (const rect of rects) {
+        const y = Number(rect.getAttribute("y"))
+        const h = Number(rect.getAttribute("height"))
+        expect(y + h).toBeLessThanOrEqual(box.h)
+      }
+
+      const dropped = container.querySelector("[data-dropped]")
+      expect(dropped).toBeTruthy()
+      const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
+      expect(hiddenCount + rects.length).toBe(manyLayers.length)
+      expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+    })
+
+    it("still renders at least one layer even when box.h is far smaller than a single layer", () => {
+      const box = { x: 0, y: 0, w: 1120, h: 5 }
+      const { container } = svg(architecture.render(manyComponent, box, ctx))
+      expect(container.querySelectorAll("rect").length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("is a byte-identical no-op when box.h is omitted", () => {
+      const withoutH = svg(
+        architecture.render({ type: "architecture", layers }, { x: 0, y: 0, w: 1120 }, ctx),
+      ).container.innerHTML
+      const withGenerousH = svg(
+        architecture.render(
+          { type: "architecture", layers },
+          { x: 0, y: 0, w: 1120, h: 100000 },
+          ctx,
+        ),
+      ).container.innerHTML
+      expect(withoutH).toBe(withGenerousH)
+      expect(withoutH).not.toContain("data-dropped")
+    })
+
+    it("never shows a data-dropped marker when every layer already fits box.h", () => {
+      const component = { type: "architecture" as const, layers }
+      const measured = architecture.measure(component, 1120, ctx)
+      const { container } = svg(
+        architecture.render(component, { x: 0, y: 0, w: 1120, h: measured + 40 }, ctx),
+      )
+      expect(container.querySelector("[data-dropped]")).toBeNull()
+    })
+  })
 })
