@@ -705,6 +705,22 @@ describe("motif candidate rotation (P1 variety wave, task 2)", () => {
     expect(markups.size).toBe(1)
   })
 
+  // Review fix round (Major finding): the pre-fix `chartPaletteOffset`
+  // rotation lived inside `ctx.colors.chartPalette` itself, the exact token
+  // `campaign-motif` destructures by fixed position for its own decorative
+  // fill — campaign's decor markup silently differed across seeds even
+  // though `resolveMotifId` always picked "campaign-motif" for every one of
+  // them (this is the pageKey-at-one-seed check above; it can't see a
+  // cross-seed color drift under the same, correctly-resolved motif id).
+  // This test varies *seed* at a fixed pageKey to catch exactly that gap —
+  // must stay green post-fix (`motif-chart-palette-isolation.test.tsx`
+  // covers the same seam at the unit level, this covers it end-to-end
+  // through the real render entry point).
+  it("campaign: decor markup is byte-identical across a seed sweep at a fixed pageKey — chart-palette rotation must not leak into decorative color choice", () => {
+    const markups = new Set(Array.from({ length: 20 }, (_, seed) => decorMarkup("campaign", "same-page", seed)))
+    expect(markups.size, "campaign decor varied across seeds at a fixed pageKey").toBe(1)
+  })
+
   it("same (ir, slide, index) renders byte-identical decor markup across repeated renders (double-render determinism)", () => {
     const doc: PptxIR = { ...ir([]), theme: { id: "heritage" }, seed: 3 } as PptxIR
     const slide: Slide = { type: "chapter", id: "p1", heading: "x", components: [] } as Slide

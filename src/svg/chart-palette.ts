@@ -24,6 +24,22 @@
  * every chart on every page of one deck shares the identical rotated
  * palette — contrast this with motif's per-page pageKey salt.
  *
+ * **Consumption seam (review fix round, Major finding — moved here from
+ * `buildCtx` itself)**: `rotateChartPalette` is called from exactly one
+ * place, `components/chart.tsx`'s own `render`, on `ctx.colors.chartPalette`
+ * combined with `ctx.chartPaletteOffset` (`ComponentCtx.chartPaletteOffset`'s
+ * own doc comment has the full story). `ctx.colors.chartPalette` itself is
+ * **never** rotated — an earlier version of this task rotated it in place
+ * inside `buildCtx`, which silently leaked into every other reader of that
+ * same token: `campaign-motif`/`classroom-motif`/`bloom-motif` all
+ * destructure `ctx.colors.chartPalette` by fixed position for their own
+ * decorative fills (unrelated to any chart), so a motif's decoration color
+ * drifted with the chart phase — campaign (a settled 1-member motif
+ * candidate set that must render byte-identically across every seed)
+ * differed across seeds purely from this leak. Only the chart component
+ * opts into rotation; every other `ctx.colors.chartPalette` reader still
+ * sees exactly the theme's own declared order, unconditionally.
+ *
  * Contrast safety: no chart renderer in `chart-svg.tsx` derives any
  * `<text>` fill from `palette[i]` — every label reads a fixed theme token
  * (`ctx.colors.text`/`muted`/`accent`, never the palette array itself; the

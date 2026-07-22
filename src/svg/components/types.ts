@@ -91,6 +91,29 @@ export interface ComponentCtx {
    * "静态渲染不变" constraint).
    */
   blockIndex?: ReadonlyMap<Component, number>
+  /**
+   * Seed-derived starting offset into `colors.chartPalette` (P1 variety
+   * wave, task 2 — `../chart-palette.ts`'s own header has the full
+   * rationale). **Deliberately separate from `colors.chartPalette` itself**
+   * (review fix round, Major finding): an earlier version of this feature
+   * rotated `colors.chartPalette` directly inside `buildCtx`, which silently
+   * leaked into every *other* consumer of that same token —
+   * `campaign-motif`/`classroom-motif`/`bloom-motif` all destructure
+   * `ctx.colors.chartPalette` by fixed position for their own decorative
+   * fills (see each file's own header comment), so a motif's decoration
+   * color drifted with the chart's phase even though nothing about motif
+   * rendering is supposed to depend on chart state at all — campaign (a
+   * settled 1-member candidate set that must render byte-identically across
+   * every seed) differed across seeds purely from this leak. The chart
+   * component (`../components/chart.tsx`, the only reader of this field) is
+   * responsible for rotating `colors.chartPalette` itself before use;
+   * every other consumer (every motif, any future component) reads
+   * `colors.chartPalette` unrotated, exactly the theme's own declared
+   * order, same as before this task existed. `undefined` means "no
+   * rotation" — `buildCtx`'s own test callers (every one except this
+   * task's) never set it.
+   */
+  chartPaletteOffset?: number
 }
 
 /**

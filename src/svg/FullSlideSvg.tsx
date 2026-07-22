@@ -27,7 +27,7 @@ import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { resolveMotifId } from "./motif-selection"
-import { resolveChartPaletteOffset, rotateChartPalette } from "./chart-palette"
+import { resolveChartPaletteOffset } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
 import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./effective-layout"
 
@@ -162,12 +162,17 @@ export function resolveOverrideBackgroundHex(
  * `chartPaletteOffset` (P1 variety wave, task 2 — `./chart-palette.ts`'s own
  * header comment has the full rationale): the caller supplies
  * `resolveChartPaletteOffset(cachedDeckSeed(ir), tokens.colors.chartPalette.length)`.
- * A falsy offset (`undefined`, or a real `0` — both mean "no rotation")
- * keeps `colors` as the exact `tokens.colors` reference, so every
- * `buildCtx(...)` call site that omits this 6th argument (every test in
- * this repo except this task's own) stays byte-identical to before this
- * parameter existed — same "new optional trailing argument, old call sites
- * untouched" posture `bodyFontPx` and `defaultBg` already established.
+ * **Passed through as its own `ComponentCtx` field, `colors.chartPalette`
+ * itself is never rotated here** (review fix round, Major finding — see
+ * `ComponentCtx.chartPaletteOffset`'s own doc comment for the full leak this
+ * corrects): rotating `colors.chartPalette` in place used to silently reach
+ * every consumer of that token, not just the chart component, including
+ * several motifs that destructure it by fixed position for decoration
+ * unrelated to any chart. `components/chart.tsx` — the only reader of this
+ * field — is responsible for rotating `colors.chartPalette` itself before
+ * use. Every `buildCtx(...)` call site that omits this 6th argument (every
+ * test in this repo except this task's own) is unaffected either way,
+ * before or after this fix.
  */
 export function buildCtx(
   tokens: StyleTokens,
@@ -177,11 +182,8 @@ export function buildCtx(
   bodyFontPx?: number,
   chartPaletteOffset?: number,
 ): ComponentCtx {
-  const colors = chartPaletteOffset
-    ? { ...tokens.colors, chartPalette: rotateChartPalette(tokens.colors.chartPalette, chartPaletteOffset) }
-    : tokens.colors
   return {
-    colors,
+    colors: tokens.colors,
     shape: tokens.shape,
     fonts: {
       heading: resolveFontStack(tokens.fonts.heading, "heading"),
@@ -192,6 +194,7 @@ export function buildCtx(
     blockIndex: components ? new Map(components.map((component, i) => [component, i])) : undefined,
     defaultBg: defaultBg ?? tokens.colors.bg,
     bodyFontPx: bodyFontPx ?? PACING_BUDGETS.balanced.bodyBaselinePx,
+    chartPaletteOffset,
   }
 }
 
