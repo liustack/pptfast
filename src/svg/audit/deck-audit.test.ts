@@ -973,6 +973,155 @@ describe("findContrastIssues — circle/ellipse containment and paint-order safe
   })
 })
 
+// fix/donut-annulus-attribution: closes docs/contrast-system.md's own
+// "Residual, distinct limitation" paragraph — `rectShape`'s AABB
+// containment test never distinguished a donut/pie wedge's real filled
+// outline from its (already-exact, arc-bbox-wave-fixed) bounding box, so a
+// wide-angle wedge's legitimate bbox-spans-the-hole/gap could misattribute
+// the donut's own center total-label (or any text sitting in a wide pie
+// slice's un-swept "bite") to the wedge's fill instead of whatever's really
+// behind it. `d` strings below are `renderDonut`/`renderPie`'s
+// (`chart-svg.tsx`) own literal idiom for cx=640,cy=360,r=200,
+// ri=124(=200*DONUT_HOLE_RATIO), a 260°-wide wedge starting at -90°
+// (top) — independently generated from that renderer's own formulas (not
+// hand-traced), same "verify with a standalone reference, not eyeballing
+// trig" discipline the arc-bbox wave's own arc tests already follow.
+describe("findContrastIssues — donut/pie wedge sector containment (fix/donut-annulus-attribution)", () => {
+  const DONUT_WEDGE_A_D =
+    "M 640 160 A 200 200 0 1 1 443.0384493975584 394.72963553338604 L 517.8838386264862 381.5323740306994 A 124 124 0 1 0 640 236 Z"
+  const PIE_WEDGE_A_D = "M 640 360 L 640 160 A 200 200 0 1 1 443.0384493975584 394.72963553338604 Z"
+
+  it("does not attribute a donut's center-hole text to a wide wedge's fill even though the wedge's exact bbox legitimately spans the hole", () => {
+    // The wedge's own bbox (arc-bbox-wave-exact, not over-approximated)
+    // still legitimately covers x:[~443,840] y:[~160,560] for a 260° sweep
+    // — the donut's own center total-label at (640,360) sits inside that
+    // bbox but outside the wedge's real annulus fill (which has a
+    // ri=124 hole). Pre-fix: rectShape's AABB test says "inside", so the
+    // near-black text wrongly resolves against the wedge's near-black fill
+    // (#050505), ~1:1, a finding. Post-fix: the sector test correctly
+    // falls through the hole to the real page background (#F7F7F2),
+    // passes.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="${DONUT_WEDGE_A_D}" fill="#050505"/>
+      <text x="640" y="360" font-size="30" fill="#000000">100</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("still attributes text genuinely on the wedge's own band to that wedge (positive control, same wedge as the hole test above)", () => {
+    // (764.0991997852744, 464.13159276921937) is the wedge's own mid-angle,
+    // mid-radius point — genuinely inside the annulus fill, not the hole.
+    // Must resolve to the wedge's own #050505 fill both before and after
+    // this fix: the sector test is a *precision* upgrade over the AABB
+    // test, not a new exclusion — a real on-band point was never the bug.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="${DONUT_WEDGE_A_D}" fill="#050505"/>
+      <text x="764.0991997852744" y="464.13159276921937" font-size="16" fill="#000000">on the band</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("does not attribute text in a wide pie slice's un-swept 'bite' to that slice, even though the slice's exact bbox legitimately covers it", () => {
+    // Same 260° sweep as the donut case, but a pie slice (`renderPie`) has
+    // no hole — the analogous gap is the 100° "bite" the arc never swept.
+    // (563.3955556881021, 295.72123903134604) sits well inside the slice's
+    // own bbox (radius 100 < r=200) but at 220° — outside the slice's real
+    // [-90°, 170°] angular span. Pre-fix: AABB says "inside" (r-only test,
+    // no angle), same misattribution class. Post-fix: falls through to the
+    // real page background.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="${PIE_WEDGE_A_D}" fill="#050505"/>
+      <text x="563.3955556881021" y="295.72123903134604" font-size="16" fill="#000000">in the bite</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("still attributes text genuinely on a pie slice's own fill to that slice (positive control)", () => {
+    // (731.9253331742774, 437.13451316238474) is the same slice's
+    // mid-angle point at r*0.6 — genuinely inside the disk sector.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="${PIE_WEDGE_A_D}" fill="#050505"/>
+      <text x="731.9253331742774" y="437.13451316238474" font-size="16" fill="#000000">on the slice</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("keeps the plain bbox fallback for a <path> that isn't recognizable as this renderer's own wedge idiom", () => {
+    // A generic rounded-top-corners rect (unrelated to renderDonut/
+    // renderPie's exact token shape) must keep resolving via
+    // rectShape/pathBoundingBox exactly as before — the sector test is
+    // recognition-gated, not a general path-outline engine. The top-right
+    // corner arc (center (92,8), r=8) cuts that corner away from the real
+    // filled outline; (99,1) sits outside that arc's disk (distance
+    // ≈9.9 > 8) but inside the path's plain AABB (x:[0,100] y:[0,20]) —
+    // still attributes to it, the pre-existing, unchanged AABB
+    // approximation this task's brief explicitly leaves alone.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="M 8 0 L 92 0 A 8 8 0 0 1 100 8 L 100 20 L 0 20 L 0 8 A 8 8 0 0 1 8 0 Z" fill="#050505"/>
+      <text x="99" y="1" font-size="10" fill="#000000">corner</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("does not attribute text to a donut wedge painted after it in document order (paint-order safety carries over from ellipseShape's own precedent)", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <text x="640" y="360" font-size="30" fill="#000000">painted before the wedge</text>
+      <path d="${DONUT_WEDGE_A_D}" fill="#000000"/>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  // `parseWedgePath`'s own doc comment: a 100%-share wedge and a 0%-share
+  // (`d.y === 0`, unfiltered by `renderDonut` — a real, reachable shape) are
+  // both geometrically degenerate the same way — start/end points coincide,
+  // so `atan2` alone can't tell "swept nothing" from "swept a full turn"
+  // apart. Both `d` strings below are `renderDonut`'s own literal output
+  // (cx=640,cy=360,r=200,ri=124), independently generated, not hand-traced.
+  it("attributes a band point anywhere on a full-circle (100%-share) donut wedge to that wedge, not just near its coincident start/end angle", () => {
+    const FULL_CIRCLE_D = "M 640 160 A 200 200 0 1 1 640 160 L 640 236 A 124 124 0 1 0 640 236 Z"
+    // (802, 360) is on the band (radius 162 = (r+ri)/2) at angle 0°, nowhere
+    // near the coincident start/end angle (-90°) — only correct if `span`
+    // resolved to a full turn (2π), not 0.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="${FULL_CIRCLE_D}" fill="#050505"/>
+      <text x="802" y="360" font-size="16" fill="#000000">on the full ring</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#050505")
+  })
+
+  it("does not attribute a band-radius point at a different angle to a zero-share (d.y === 0) donut wedge — its own span is 0, not a full circle", () => {
+    const ZERO_SHARE_D = "M 640 560 A 200 200 0 0 1 640 560 L 640 484 A 124 124 0 0 0 640 484 Z"
+    // (802, 360) is on the band radius (162) but at 0°, nowhere near this
+    // wedge's own (coincident, degenerate) 90° angle — the wedge itself
+    // paints nothing (zero sweep), so this point must fall through to the
+    // real page background. A regression that resolved the same
+    // start/end-coincide ambiguity toward "full circle" instead of "zero
+    // sweep" would wrongly swallow this — and, worse, the donut's own
+    // center label at any angle — into this invisible wedge's fill instead.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
+      <path d="${ZERO_SHARE_D}" fill="#050505"/>
+      <text x="802" y="360" font-size="16" fill="#000000">on the invisible wedge</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+})
+
 describe("findContrastIssues — decor/motif subtrees excluded from background-region collection", () => {
   // Real-render regression lock (not synthetic markup, unlike the suite
   // above) for the `data-decor` exclusion: reviewer measured 7-9 spurious
