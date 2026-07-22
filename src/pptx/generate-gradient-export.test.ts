@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import JSZip from "jszip"
+import { createHash } from "node:crypto"
 import type { PptxIR, Slide } from "@/ir"
 
 /**
@@ -97,19 +98,17 @@ describe("generatePptxBlob real theme decor gradients", () => {
  * byte-nondeterminism regression the benchmark's double-render scorer
  * (`tests/bench/score.mts`) caught directly. Same `normalizedZipMap` +
  * double-`generatePptxBlob`-call methodology as
- * `generate-notes-export.test.ts`'s "omitted-notes export is deterministic
+ * `generate-notes-export.test.ts`'s "omitted-notes export is byte-identical
  * across repeated calls" — that test's fixture never carries a gradient, so
  * it never exercised this path; `tech`'s full-page decor gradient (the first
- * test in this file) reliably does.
+ * test in this file) reliably does. Whole-file SHA256 (P0 hardening Task 4
+ * pinned every zip timestamp — see generate-determinism.test.ts) —
+ * previously this compared decompressed part content with
+ * `docProps/core.xml` excluded, which never actually verified byte
+ * identity of the produced file.
  */
-async function normalizedZipMap(blob: Blob): Promise<Record<string, string>> {
-  const zip = await JSZip.loadAsync(await blob.arrayBuffer())
-  const entries = Object.keys(zip.files)
-    .filter((p) => !zip.files[p]!.dir && p !== "docProps/core.xml")
-    .sort()
-  const out: Record<string, string> = {}
-  for (const p of entries) out[p] = await zip.files[p]!.async("string")
-  return out
+async function sha256(blob: Blob): Promise<string> {
+  return createHash("sha256").update(Buffer.from(await blob.arrayBuffer())).digest("hex")
 }
 
 describe("generatePptxBlob gradient export determinism", () => {
@@ -119,8 +118,6 @@ describe("generatePptxBlob gradient export determinism", () => {
 
     const blobA = await generatePptxBlob(ir)
     const blobB = await generatePptxBlob(ir)
-    const mapA = await normalizedZipMap(blobA)
-    const mapB = await normalizedZipMap(blobB)
-    expect(mapA).toEqual(mapB)
+    expect(await sha256(blobB)).toBe(await sha256(blobA))
   }, 30000)
 })

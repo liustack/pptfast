@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import JSZip from "jszip"
+import { createHash } from "node:crypto"
 import type { PptxIR, Slide } from "@/ir"
 
 /**
@@ -86,16 +87,14 @@ describe("generatePptxBlob CJK east-asian font-slot (a:ea)", () => {
  * `eaFontFaceFor` is a pure function of the latin face alone, and the patch
  * carries no per-shape random/positional state (unlike the gradient patch's
  * pre-fix `objectName`, defect G) — so a CJK deck's two independent renders
- * must still produce byte-identical output.
+ * must still produce byte-identical output. Whole-file SHA256 (P0 hardening
+ * Task 4 pinned every zip timestamp — see generate-determinism.test.ts) —
+ * previously this compared decompressed part content with
+ * `docProps/core.xml` excluded, which never actually verified byte
+ * identity of the produced file.
  */
-async function normalizedZipMap(blob: Blob): Promise<Record<string, string>> {
-  const zip = await JSZip.loadAsync(await blob.arrayBuffer())
-  const entries = Object.keys(zip.files)
-    .filter((p) => !zip.files[p]!.dir && p !== "docProps/core.xml")
-    .sort()
-  const out: Record<string, string> = {}
-  for (const p of entries) out[p] = await zip.files[p]!.async("string")
-  return out
+async function sha256(blob: Blob): Promise<string> {
+  return createHash("sha256").update(Buffer.from(await blob.arrayBuffer())).digest("hex")
 }
 
 describe("generatePptxBlob a:ea export determinism", () => {
@@ -108,8 +107,6 @@ describe("generatePptxBlob a:ea export determinism", () => {
 
     const blobA = await generatePptxBlob(ir)
     const blobB = await generatePptxBlob(ir)
-    const mapA = await normalizedZipMap(blobA)
-    const mapB = await normalizedZipMap(blobB)
-    expect(mapA).toEqual(mapB)
+    expect(await sha256(blobB)).toBe(await sha256(blobA))
   }, 30000)
 })

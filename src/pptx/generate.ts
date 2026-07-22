@@ -23,6 +23,7 @@ import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
 import { applyEaFontFaces } from "./pptx-ea-fonts"
 import { auditPptxPackage } from "./package-audit"
+import { normalizePptxTimestamps } from "./pptx-fixed-timestamps"
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
@@ -122,19 +123,25 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
       `pptx package audit failed — invariant "zip-unreadable": the generated package is not a readable zip archive (${(e as Error).message})`,
     )
   }
-  let changed = false
   try {
-    changed = await dedupeMediaInZip(zip)
+    await dedupeMediaInZip(zip)
   } catch {
     // Matches dedupePptxMedia's own defensiveness (a media-dedupe failure is
     // not a reason to abandon export) — the package audit right below still
     // inspects whatever state `zip` ended up in, so a real corruption from a
     // partially-applied dedupe attempt is still caught, just under the
     // audit's own invariant name rather than this one.
-    changed = false
   }
   await auditPptxPackage(zip)
-  if (!changed) return elementAnimBlob
+  // Whole-file byte determinism (P0 hardening Task 4 — see
+  // pptx-fixed-timestamps.ts's header comment for the full root cause):
+  // every entry's zip-metadata date and docProps/core.xml's created/modified
+  // text get pinned to one fixed instant here, on the fully-assembled
+  // package, right before the chain's one remaining `generateAsync()` — so
+  // this step always re-serializes now, even on the (common) path where
+  // `dedupeMediaInZip` found nothing to collapse and this stage used to
+  // return `elementAnimBlob` unpatched.
+  await normalizePptxTimestamps(zip)
   const ab = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" })
   return new Blob([ab], { type: PPTX_MIME })
 }

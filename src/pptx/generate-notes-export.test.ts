@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import JSZip from "jszip"
+import { createHash } from "node:crypto"
 import type { PptxIR, Slide } from "@/ir"
 
 /**
@@ -36,20 +37,8 @@ async function zipEntry(blob: Blob, path: string): Promise<string> {
   return file!.async("string")
 }
 
-/** Every zip part's content, keyed by path — `docProps/core.xml` excluded
- *  (pptxgenjs bakes `new Date().toISOString()` into it on every call, see
- *  `node_modules/pptxgenjs/dist/pptxgen.cjs.js`'s `makeXmlCore` — the one
- *  genuinely nondeterministic part of an otherwise pure export, unrelated to
- *  notes). Used to compare two exports for everything *except* that one
- *  known clock-dependent part. */
-async function normalizedZipMap(blob: Blob): Promise<Record<string, string>> {
-  const zip = await JSZip.loadAsync(await blob.arrayBuffer())
-  const entries = Object.keys(zip.files)
-    .filter((p) => !zip.files[p]!.dir && p !== "docProps/core.xml")
-    .sort()
-  const out: Record<string, string> = {}
-  for (const p of entries) out[p] = await zip.files[p]!.async("string")
-  return out
+async function sha256(blob: Blob): Promise<string> {
+  return createHash("sha256").update(Buffer.from(await blob.arrayBuffer())).digest("hex")
 }
 
 describe("generatePptxBlob speaker notes export", () => {
@@ -92,7 +81,7 @@ describe("generatePptxBlob speaker notes export", () => {
     expect(notes2).toMatch(/<a:t>\s*<\/a:t>/)
   })
 
-  it("omitted-notes export is deterministic across repeated calls (every zip part except docProps/core.xml's clock-dependent timestamp is identical) — the invariant an omitted-notes deck's export never changes because of this feature", async () => {
+  it("omitted-notes export is byte-identical across repeated calls (P0 hardening Task 4 pinned every zip timestamp, so this is now a whole-file hash — see generate-determinism.test.ts) — the invariant an omitted-notes deck's export never changes because of this feature", async () => {
     const { generatePptxBlob } = await import("./generate")
     const ir = makeIR([
       { type: "cover", heading: "pptfast", subheading: "Stable, editable PPTX from a semantic IR", components: [] },
@@ -116,8 +105,6 @@ describe("generatePptxBlob speaker notes export", () => {
 
     const blobA = await generatePptxBlob(ir)
     const blobB = await generatePptxBlob(ir)
-    const mapA = await normalizedZipMap(blobA)
-    const mapB = await normalizedZipMap(blobB)
-    expect(mapA).toEqual(mapB)
+    expect(await sha256(blobB)).toBe(await sha256(blobA))
   })
 })
