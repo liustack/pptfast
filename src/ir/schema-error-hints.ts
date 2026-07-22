@@ -6,7 +6,7 @@ import { closestMatch } from "./suggest"
  * (`./index.ts`'s icon enum, used 5 times, and `ComponentSchema`'s `type`
  * discriminator) — borrow-wave task 3. Replaces zod's default "flatten every
  * valid value into the message" behavior (a real icon typo produces a
- * 24,910-char, 1756-option wall; a component-type typo produces a 437-char,
+ * 24,910-char, 1756-option wall. A component-type typo produces a 437-char,
  * 28-option one — borrow-wave B report §3.3 #1/#2) with a nearest-neighbor
  * "did you mean" suggestion, a count, and a pointer to `pptfast schema`
  * (the CLI command that prints the full list on request) — never the

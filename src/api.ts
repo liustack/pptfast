@@ -391,7 +391,7 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
  * d-robustness.md` again — this is the gap that let it through before).
  * Silently rewriting the MIME instead would make that specific risk
  * disappear without ever telling the caller their source data was
- * mislabeled; for an AI-agent-facing SDK, bytes that don't match their
+ * mislabeled — for an AI-agent-facing SDK, bytes that don't match their
  * claimed format is itself a signal something upstream went wrong (wrong
  * file selected, a failed re-encode) that the caller needs surfaced, not
  * quietly reinterpreted out from under them.
@@ -449,7 +449,7 @@ function checkAssetBytes(ir: PptxIR): ValidationIssue[] {
  * silent, so a single-turn model had no text to self-correct from). Warn,
  * not error: the placeholder still renders and nothing downstream crashes,
  * so this is advisory (naming the typo, not blocking export) — the
- * render-time placeholder behavior itself is unchanged; this only makes its
+ * render-time placeholder behavior itself is unchanged — this only makes its
  * cause visible instead of silent.
  */
 function checkAssetReferences(ir: PptxIR): ValidationIssue[] {

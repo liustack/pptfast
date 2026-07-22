@@ -59,7 +59,7 @@ function sameTokens(a: readonly string[], b: readonly string[]): boolean {
  * How many edits still count as "plausibly the same word, just mistyped",
  * relative to the *input*'s own length (review fix — a threshold keyed off
  * `max(input, candidate)` let a short-but-wrong candidate's own length pull
- * the bound up; keying off `input` alone is the tighter, more defensible
+ * the bound up — keying off `input` alone is the tighter, more defensible
  * reading of "small relative to what the author actually typed"). `floor` not
  * `ceil` — a stricter cutoff than the pre-review version, deliberately, to
  * stop matching things like `"arrow"` (5 chars, threshold 2) against an
@@ -143,7 +143,7 @@ function prefixMatch(input: string, candidates: readonly string[]): string | und
  * Deliberately a linear scan over `candidates` (no index/trie) for the
  * passes that do scan — this only ever runs once, after a value has already
  * failed validation, against at most a couple thousand short strings (once
- * bail-out 0 has ruled out the pathological-input-length case); building and
+ * bail-out 0 has ruled out the pathological-input-length case) — building and
  * maintaining an index would cost more than the scan it replaces.
  */
 export function closestMatch(input: string, candidates: readonly string[]): string | undefined {
