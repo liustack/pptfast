@@ -81,15 +81,24 @@ describe("explicit seed: revision stability", () => {
   })
 
   it("declaring a beat on one page changes at most that page's own materialized layout, plus its immediate successor through the existing adjacent-anti-repetition channel (P1 variety wave, task 1)", () => {
-    // Seed 1 (found by brute-force search over this exact fixture, same
-    // method the insertion test below documents for its own seed): declaring
-    // beat "anchor" on p-2 concretely flips p-2's own pick (stacked-poster ->
-    // banner-heading — "anchor"'s own tendency set, effective-layout.ts's
-    // BEAT_TENDENCIES) for this seed, with p-3's redraw decision unaffected
-    // — proving both halves of this test are load-bearing: the beat layer
-    // really does change the declaring page's own pick, and that change
-    // really doesn't cascade past the one page beat was declared on.
-    const seed = 1
+    // Seed 2 (found by brute-force search over this exact fixture, same
+    // method the insertion test below documents for its own seed, re-found
+    // after the P1 fix round's max-composition change — see BEAT_TENDENCY_
+    // WEIGHT's own doc comment, effective-layout.ts): declaring beat
+    // "anchor" on p-2 flips p-2's own raw pick from "two-column" to
+    // "rail-numbered" for this seed — neither id is in "anchor"'s own
+    // tendency set (BEAT_TENDENCIES, effective-layout.ts), so this isn't
+    // beat directly favoring the new pick. It's the standard weighted-
+    // interval-sampling effect: boosting banner-heading/stacked-poster's own
+    // weight (both now max(1,3)=3, up from strategy-only 1) shifts where
+    // every other id's interval boundary falls for the same hash, the same
+    // "changing one candidate's weight can flip a different candidate's
+    // outcome" property `weightedPickBySeed` already has. p-3's redraw
+    // decision is unaffected for this seed — proving both halves of this
+    // test are load-bearing: the beat layer really does change the
+    // declaring page's own pick, and that change really doesn't cascade
+    // past the one page beat was declared on.
+    const seed = 2
     const { ir: before } = assembleDeck(makePlan(basePages(), { seed }), {})
     const beforeLayouts = layoutsById(before)
 

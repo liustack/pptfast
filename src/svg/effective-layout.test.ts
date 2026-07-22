@@ -195,11 +195,12 @@ describe("resolveArchetypeId", () => {
     expect(anchorHits / N).toBeLessThan(0.55)
   })
 
-  it("beat weighting multiplies onto strategy weighting rather than overriding it: a strategy-tendency id that is ALSO a beat-tendency id gets pulled harder than either layer alone", () => {
+  it("beat weighting composes via max, not multiplication: agreement between the two layers caps at either layer's own weight instead of squaring it (P1 fix round)", () => {
     // pyramid's layoutTendencies includes "banner-heading"; beat "anchor"'s
     // tendency set also includes "banner-heading" — the one pool member both
-    // layers agree on, weight 3×3=9 vs every other id's weight (1, 3, or 3).
-    const N = 600
+    // layers agree on. Under Math.max: weight stays 3 (max(3,3)=3), not 9
+    // (3×3, the original multiplicative formula this fix round replaced).
+    const N = 1000
     let hits = 0
     for (let i = 0; i < N; i++) {
       const picked = resolveArchetypeId(
@@ -214,15 +215,59 @@ describe("resolveArchetypeId", () => {
       )!
       if (picked === "banner-heading") hits++
     }
-    // Weights: banner-heading=9, bento-panel=3 (strategy only), two-column=3
-    // (strategy only), stacked-poster=3 (beat only), narrow-column/
-    // rail-numbered/tone-adaptive-content=1 each — total 21, banner-heading
-    // share = 9/21 ≈ 0.43. A single id normally caps out at 3/13 ≈ 0.23 under
-    // strategy weighting alone (this file's "narrative weighting" test's own
-    // per-id ceiling) — this bound is deliberately set above that ceiling to
-    // prove the ×9 compound weight, not just one layer's pull.
-    expect(hits / N).toBeGreaterThan(0.3)
-    expect(hits / N).toBeLessThan(0.6)
+    // Weights (max composition): banner-heading=max(3,3)=3, bento-panel=
+    // max(3,1)=3 (strategy only), two-column=max(3,1)=3 (strategy only),
+    // stacked-poster=max(1,3)=3 (beat only), narrow-column/rail-numbered/
+    // tone-adaptive-content=max(1,1)=1 each — total 3+3+3+3+1+1+1=15,
+    // banner-heading share = 3/15 = 0.2 exactly. Bounds set tight around that
+    // exact value and, deliberately, well below the multiplicative formula's
+    // own 9/21 ≈ 0.43 (the compounding this fix round removed) to prove the
+    // regression is closed, not just that some value is picked.
+    expect(hits / N).toBeGreaterThan(0.12)
+    expect(hits / N).toBeLessThan(0.3)
+  })
+
+  it("regression (P1 fix round): storytelling × beat 'breathing' no longer compounds narrow-column into a majority pick — the exact pathology the reviewer measured at ~53% under the old multiplicative formula", () => {
+    // storytelling's layoutTendencies includes "narrow-column"; beat
+    // "breathing"'s tendency set is narrow-column alone — the most natural
+    // real-author pairing (an "unhurried single flow" beat under a
+    // "tension, image-forward" strategy that already reaches for the same
+    // spacious layout), and exactly the case the reviewer flagged: the old
+    // `strategyWeight * beatWeight` formula gave narrow-column weight 3×3=9
+    // against the pool's stacked-poster (strategy-only, weight 3) and five
+    // other weight-1 members — total 17, narrow-column share 9/17 ≈ 0.529
+    // (measured N=5000 in the review, confirmed by this exact algebra).
+    const N = 5000
+    let narrowColumnHits = 0
+    for (let i = 0; i < N; i++) {
+      const picked = resolveArchetypeId(
+        "content",
+        THEME_DEFINITIONS.academic.layouts,
+        i,
+        String(i),
+        undefined,
+        "storytelling",
+        null,
+        "breathing",
+      )!
+      if (picked === "narrow-column") narrowColumnHits++
+    }
+    // Weights under Math.max: narrow-column=max(3,3)=3 (both layers agree —
+    // capped, not squared), stacked-poster=max(3,1)=3 (strategy only),
+    // banner-heading/two-column/rail-numbered/bento-panel/
+    // tone-adaptive-content=max(1,1)=1 each — total 3+3+1×5=11, narrow-column
+    // share = 3/11 ≈ 0.2727. Identical, by construction, to storytelling's
+    // own strategy-only share with no beat declared at all (also 3/11) —
+    // proof that an agreeing beat contributes corroboration, not amplification.
+    const share = narrowColumnHits / N
+    expect(share).toBeGreaterThan(0.22)
+    expect(share).toBeLessThan(0.33)
+    // Explicitly below the old formula's own measured/derived ~0.529 — the
+    // regression this fix round closes, asserted concretely rather than
+    // only matching the new expected band (a band-only check could in
+    // principle still pass if the bug reintroduced a smaller-but-still-real
+    // compounding effect).
+    expect(share).toBeLessThan(0.4)
   })
 
   it("adjacent anti-repetition: when the raw pick equals previousEffectiveLayoutId and the pool has >1 member, redraws deterministically to a different id", () => {

@@ -69,9 +69,11 @@ export const PageSpecSchema = z
      *  the deck-level `pacing` axis. A *declared* value here is no longer
      *  spec-only advisory material (P1 variety wave, task 1): `assembleDeck`
      *  (`./assemble.ts`) now carries it straight into the IR's own
-     *  `Slide.beat` field, where it multiplies a soft selection-weight onto
-     *  layout picking (`SlideSchema.beat`'s own doc comment, `../ir/index.ts`)
-     *  — the checks below (rotation shape) and that downstream weighting
+     *  `Slide.beat` field, where it combines with a soft selection-weight
+     *  onto layout picking (`Math.max`, not multiplication — see
+     *  `SlideSchema.beat`'s own doc comment, `../ir/index.ts`, and
+     *  `BEAT_TENDENCY_WEIGHT`'s in `../svg/effective-layout.ts` for why) —
+     *  the checks below (rotation shape) and that downstream weighting
      *  (which archetypes a given beat favors) are two independent consumers
      *  of the same declared value, not two views of one mechanism. */
     beat: z.enum(BEAT_VALUES).optional(),

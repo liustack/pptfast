@@ -48,10 +48,11 @@ const BASE_WEIGHT = 1
 type PageBeat = NonNullable<Slide["beat"]>
 
 /**
- * Beat→content-archetype tendency sets (spec: "beat 权重与 strategy 权重
- * 相乘复合，量级循 TENDENCY_WEIGHT 先例" — beat multiplies onto the existing
- * strategy weight rather than replacing it, at the same initial magnitude as
- * `TENDENCY_WEIGHT` above). Each set names only `CONTENT_LAYOUTS` ids
+ * Beat→content-archetype tendency sets (spec: beat's weight layer is a
+ * second, independent preference signal at the same initial magnitude as
+ * `TENDENCY_WEIGHT` above — see `weightOf` below for how it combines with
+ * strategy's own weight, a P1 fix-round revision of the original
+ * "multiplies onto strategy" ruling). Each set names only `CONTENT_LAYOUTS` ids
  * (`svg/layouts/registry.ts`) for the identical structural reason
  * `StrategyDefinition.layoutTendencies` does (that field's own doc comment,
  * `@/narrative`): a content page is the only slide type `checkBeatRotation`
@@ -105,10 +106,34 @@ const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
  * constants rather than reusing those two directly — the two layers are
  * independently tunable (a later wave may retune beat's pull without
  * touching strategy's, or vice versa, once real corpus data exists for
- * each), and `weightOf` below always multiplies the two layers together, so
- * sharing one constant between them would make that multiplication silently
- * degenerate into a single squared term the moment either layer's own value
- * ever changed independently.
+ * each).
+ *
+ * **Composition is `max`, not multiplication (P1 fix round, revising this
+ * task's own original ruling).** The first cut of `weightOf` multiplied the
+ * two layers (`strategyWeight * beatWeight`), which measurably compounded
+ * whenever a strategy's own `layoutTendencies` and a beat's `BEAT_TENDENCIES`
+ * happened to name the same archetype — storytelling already favors
+ * `narrow-column`, and `breathing` favors it too, so `storytelling` × beat
+ * `"breathing"` squared that agreement into a single archetype claiming ~53%
+ * of realized picks (measured, N=5000. Algebra: weight 9 vs. the pool's five
+ * other weight-1 members and one weight-3 member, 9/17 ≈ 52.9%) — the exact
+ * pathology this weighting system exists to fix, now reproduced by it, for
+ * precisely the most natural real-author pairing (an "unhurried single flow"
+ * beat under a "tension, image-forward" strategy that already reaches for
+ * the same spacious layout). `weightOf` below now takes
+ * `Math.max(strategyWeight, beatWeight)` instead: **both layers assert the
+ * same underlying preference dimension** ("which archetype should this
+ * candidate set favor"), not two orthogonal ones whose signals should stack
+ * multiplicatively — agreement between them is corroboration, not a reason
+ * to square the pull, while disagreement (one layer favors an id the other
+ * is neutral on) still lets either layer's own weight through at full
+ * strength, unreduced by the other's neutrality. Byte-inertness is
+ * unaffected by this change: an omitted beat's implicit weight is always
+ * `1`, and `strategyWeight` is always `>= 1`
+ * (`TENDENCY_WEIGHT`/`BASE_WEIGHT`), so `Math.max(strategyWeight, 1)` always
+ * equals `strategyWeight` exactly, the same "no-op when beat is omitted"
+ * guarantee the multiplicative formula gave, by the same "one side is always
+ * 1" reasoning, just via `max` instead of `×`.
  */
 const BEAT_TENDENCY_WEIGHT = 3
 const BEAT_BASE_WEIGHT = 1
@@ -131,13 +156,16 @@ const BEAT_BASE_WEIGHT = 1
  *    pool (unreachable for the 13 built-in themes today — no built-in
  *    layout sets `narrativesOnly` yet).
  * 3. **narrative soft weighting** (step 4's ×3/×1, `TENDENCY_WEIGHT`/
- *    `BASE_WEIGHT` above), **× beat soft weighting** (P1 variety wave task
- *    1's own ×3/×1 layer, `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/
- *    `BEAT_BASE_WEIGHT` above — multiplies onto the strategy weight, never
- *    replaces it. An omitted `beat` contributes a factor of 1 for every
- *    candidate, so the omitted-beat product is always exactly the
- *    pre-existing strategy-only weight, byte-identical to before this layer
- *    existed) **+ weighted seed sampling** (step 5,
+ *    `BASE_WEIGHT` above) **combined with beat soft weighting** (P1 variety
+ *    wave task 1's own ×3/×1 layer, `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/
+ *    `BEAT_BASE_WEIGHT` above — via `Math.max`, not multiplication, per that
+ *    constant's own doc comment: agreement between the two layers doesn't
+ *    square the pull, disagreement still lets either layer's own weight
+ *    through unreduced). An omitted `beat` contributes an implicit weight of
+ *    1 for every candidate, which `max` never lets exceed the strategy-only
+ *    weight, so the omitted-beat result is always exactly the pre-existing
+ *    strategy-only weight, byte-identical to before this layer existed)
+ *    **+ weighted seed sampling** (step 5,
  *    `weightedPickBySeed` — salt is `` `${slideType}-archetype:${pageKey}` ``,
  *    W4 design decision 2: `pageKey` is the caller-resolved `slide.id ??
  *    String(index)`, replacing the retired same-type ordinal rotation so a
@@ -188,17 +216,22 @@ export function resolveArchetypeId(
 
   const tendencies = STRATEGY_DEFINITIONS[strategy].layoutTendencies
   // `beatTendencies` stays `undefined` (not `[]`) for an omitted beat so the
-  // multiplication below can short-circuit to a literal `1` rather than
+  // `max` below can short-circuit against a literal `1` rather than
   // evaluating an always-false `.includes` against an empty array — the two
   // are behaviorally equivalent, but the explicit `undefined` branch is the
   // one that makes "omitted beat == zero effect" a visible code path instead
   // of an incidental consequence of an empty tendency set.
   const beatTendencies = beat === undefined ? undefined : BEAT_TENDENCIES[beat]
+  // `Math.max`, not `*` (P1 fix round — see BEAT_TENDENCY_WEIGHT's own doc
+  // comment for the full derivation): both layers assert the same
+  // preference dimension, so agreement between them must not square the
+  // pull, while disagreement still lets either layer's own weight through
+  // at full strength, unreduced by the other's neutrality.
   const weightOf = (id: string): number => {
     const strategyWeight = tendencies.includes(id) ? TENDENCY_WEIGHT : BASE_WEIGHT
     const beatWeight =
       beatTendencies === undefined ? 1 : beatTendencies.includes(id) ? BEAT_TENDENCY_WEIGHT : BEAT_BASE_WEIGHT
-    return strategyWeight * beatWeight
+    return Math.max(strategyWeight, beatWeight)
   }
   const salt = `${slideType}-archetype:${pageKey}`
   const picked = weightedPickBySeed(seed, salt, pool, weightOf)

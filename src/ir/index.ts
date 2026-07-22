@@ -726,12 +726,16 @@ export const SlideSchema = z
      * spec's own beat vocabulary, `BEAT_VALUES`/`./narrative-values.ts`:
      * "anchor" | "dense" | "breathing"). **A selection-weight hint, not a
      * hard filter**: `resolveArchetypeId` (`svg/effective-layout.ts`)
-     * multiplies a small tendency-weight factor onto whichever content
-     * archetypes the declared beat favors, on top of (never instead of) the
-     * existing `narrative.strategy` weight — an omitted `beat` contributes a
-     * factor of 1 to every candidate, so a slide/deck that never declares one
-     * resolves and renders byte-identically to before this field existed
-     * (the v4 freeze's additive-only contract, `docs/concepts.md`'s "v4
+     * combines a small tendency-weight factor for whichever content
+     * archetypes the declared beat favors with the existing
+     * `narrative.strategy` weight via `Math.max` (a P1 fix-round revision —
+     * see `BEAT_TENDENCY_WEIGHT`'s own doc comment for why a product
+     * measurably compounded into a monotony bug and `max` doesn't) — an
+     * omitted `beat` contributes an implicit weight of 1 to every candidate,
+     * which `max` never lets exceed the strategy-only weight, so a slide/deck
+     * that never declares one resolves and renders byte-identically to
+     * before this field existed (the v4 freeze's additive-only contract,
+     * `docs/concepts.md`'s "v4
      * schema freeze" section). Authored on a `deck.spec.json` page
      * (`PageSpecSchema.beat`, `src/plan/index.ts`) and carried through
      * `assembleDeck` into this exact field as of this task — previously a
