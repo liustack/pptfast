@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { PptfastError } from "../errors"
 import { BUILTIN_THEME_IDS } from "../ir"
+import { layoutsForSlideType } from "../svg/layouts/registry"
 import {
   STRATEGY_DEFINITIONS,
   PACING_BUDGETS,
@@ -93,6 +94,113 @@ describe("STRATEGY_DEFINITIONS", () => {
 
   it("briefing tendencies match spec §5 row as-is", () => {
     expect(STRATEGY_DEFINITIONS.briefing.tendencies).toEqual(["bullets", "row_cards", "timeline", "citation"])
+  })
+
+  // ── content layoutTendencies: pyramid/briefing differentiation (P1
+  // variety wave, task 3 — the two used to be the exact same 3-element set) ──
+
+  it("pyramid and briefing content layoutTendencies are no longer identical (C-diversity finding: they used to be the same 3-element set)", () => {
+    const pyramidSet = [...STRATEGY_DEFINITIONS.pyramid.layoutTendencies].sort()
+    const briefingSet = [...STRATEGY_DEFINITIONS.briefing.layoutTendencies].sort()
+    expect(pyramidSet).not.toEqual(briefingSet)
+  })
+
+  it("pins the re-derived briefing content set: banner-heading + rail-numbered + two-column (bento-panel's dense evidence-grid swapped for rail-numbered's sequential enumeration)", () => {
+    expect(STRATEGY_DEFINITIONS.briefing.layoutTendencies).toEqual(["banner-heading", "rail-numbered", "two-column"])
+  })
+
+  it("pyramid's own content set is unchanged by the briefing re-derivation", () => {
+    expect(STRATEGY_DEFINITIONS.pyramid.layoutTendencies).toEqual(["bento-panel", "banner-heading", "two-column"])
+  })
+
+  // ── content layoutTendencies: content-pool expansion weight placement
+  // (P1 variety wave, task 4 — storytelling/instructional/showcase each
+  // gain a third member, closing the plan's "instructional/showcase have
+  // only 2-3 preferred content ids" representation gap; storytelling joins
+  // them for thematic parity since its own two pre-existing members are
+  // already the pool's other "unhurried" archetypes) ──
+
+  it("pins storytelling's re-derived content set: narrow-column + stacked-poster + quiet-frame (its two pre-existing atmospheric picks gain a third, equally restrained sibling)", () => {
+    expect(STRATEGY_DEFINITIONS.storytelling.layoutTendencies).toEqual([
+      "narrow-column",
+      "stacked-poster",
+      "quiet-frame",
+    ])
+  })
+
+  it("pins instructional's re-derived content set: rail-numbered + two-column + asymmetric-triptych (a lead item + two secondary panels reads as main-step + sub-steps)", () => {
+    expect(STRATEGY_DEFINITIONS.instructional.layoutTendencies).toEqual([
+      "rail-numbered",
+      "two-column",
+      "asymmetric-triptych",
+    ])
+  })
+
+  it("pins showcase's re-derived content set: stacked-poster + bento-panel + side-highlight (a permanent opaque highlight panel matches showcase's own glossy identity-page picks)", () => {
+    expect(STRATEGY_DEFINITIONS.showcase.layoutTendencies).toEqual([
+      "stacked-poster",
+      "bento-panel",
+      "side-highlight",
+    ])
+  })
+
+  it("every strategy's content layoutTendencies set now has exactly 3 members (was an uneven 2-3 split before task 4's placement)", () => {
+    for (const strategy of expectedStrategies) {
+      expect(
+        STRATEGY_DEFINITIONS[strategy].layoutTendencies.length,
+        `${strategy}.layoutTendencies`,
+      ).toBe(3)
+    }
+  })
+
+  // ── identityTendencies: cover/chapter/ending strategy soft-weighting
+  // (P1 variety wave, task 3) ──────────────────────────────────────────────
+
+  describe("identityTendencies", () => {
+    const strategies: Strategy[] = ["pyramid", "storytelling", "instructional", "showcase", "briefing"]
+    const pageTypes = ["cover", "chapter", "ending"] as const
+
+    it("every strategy declares a small (2-3 member) subset for each of cover/chapter/ending", () => {
+      for (const strategy of strategies) {
+        for (const pageType of pageTypes) {
+          const set = STRATEGY_DEFINITIONS[strategy].identityTendencies[pageType]
+          expect(set.length).toBeGreaterThanOrEqual(2)
+          expect(set.length).toBeLessThanOrEqual(3)
+        }
+      }
+    })
+
+    it("every declared id is a real registered archetype applicable to its own page type", () => {
+      for (const pageType of pageTypes) {
+        const validIds = layoutsForSlideType(pageType).map((def) => def.id)
+        for (const strategy of strategies) {
+          for (const id of STRATEGY_DEFINITIONS[strategy].identityTendencies[pageType]) {
+            expect(validIds, `${strategy}.identityTendencies.${pageType} has unregistered id "${id}"`).toContain(id)
+          }
+        }
+      }
+    })
+
+    it("no two strategies declare an identical subset for the same page type (each strategy reads as its own flavor)", () => {
+      for (const pageType of pageTypes) {
+        const setsSeen = new Map<string, Strategy>()
+        for (const strategy of strategies) {
+          const key = [...STRATEGY_DEFINITIONS[strategy].identityTendencies[pageType]].sort().join(",")
+          const collidesWith = setsSeen.get(key)
+          expect(collidesWith, `${pageType}: "${strategy}" and "${collidesWith}" declared the identical set`).toBeUndefined()
+          setsSeen.set(key, strategy)
+        }
+      }
+    })
+
+    it("the tone-adaptive-* neutral archetype never appears in any strategy's identity set, mirroring tone-adaptive-content's absence from every layoutTendencies list", () => {
+      const neutralIds = { cover: "tone-adaptive-header", chapter: "tone-adaptive-chapter", ending: "tone-adaptive-ending" } as const
+      for (const pageType of pageTypes) {
+        for (const strategy of strategies) {
+          expect(STRATEGY_DEFINITIONS[strategy].identityTendencies[pageType]).not.toContain(neutralIds[pageType])
+        }
+      }
+    })
   })
 })
 

@@ -88,6 +88,25 @@ describe("pptx-ir v4", () => {
     const d: any = minimal(); d.slides[0].decorations = []
     expect(parsePptxIR(d).success).toBe(false)
   })
+  it("slide accepts an optional beat (P1 variety wave, task 1's additive v4 field — 'anchor'/'dense'/'breathing')", () => {
+    for (const beat of ["anchor", "dense", "breathing"]) {
+      const d: any = minimal()
+      d.slides = [{ type: "content", heading: "x", beat, components: [] }]
+      const r = parsePptxIR(d)
+      expect(r.success).toBe(true)
+      if (r.success) expect(r.data.slides[0]!.beat).toBe(beat)
+    }
+  })
+  it("a slide with no beat omits the field entirely (no default, unlike type/version)", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.slides[0]!.beat).toBeUndefined()
+  })
+  it("rejects an unknown beat value (typo, not omission)", () => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "x", beat: "urgent", components: [] }]
+    expect(parsePptxIR(d).success).toBe(false)
+  })
   it("parses successfully when assets is omitted (backend default)", () => {
     const d: any = minimal()
     delete d.assets

@@ -58,6 +58,64 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       const v3 = PptxIRV3Schema.parse(rawV3)
       const v4 = migrateIrV3ToV4(v3)
 
+      // Recaptured (P1 variety wave, task 3 — cover/chapter/ending strategy
+      // soft-weighting + the pyramid/briefing content layoutTendencies
+      // re-derivation). None of these three decks pin every identity page's
+      // `layout`, so weighting the previously-uniform cover/chapter/ending
+      // auto-pick can legitimately flip which archetype a given seed lands
+      // on — a real, intended selection-behavior change, not a migration
+      // regression. Verified via a targeted diff against the pre-recapture
+      // goldens (`.svg.json`/`.pptx-zip.json` only — `.audit.json` needed no
+      // recapture, the newly-picked archetypes introduce no new findings on
+      // any of these three fixtures). Only these specific slides change,
+      // every other slide (including every explicitly `layout`-pinned
+      // ending) stays byte-identical to the pre-task-3 golden:
+      //   - `basic`: slide index 3 (content page "At a glance", auto-picked
+      //     — briefing's re-derived content set swapped `bento-panel` for
+      //     `rail-numbered`, shifting this seed's pick to
+      //     `tone-adaptive-content`).
+      //   - `scenarioBearing`: slide indices 0 and 4 (cover + ending, both
+      //     auto-picked — storytelling's new identityTendencies pulling
+      //     this seed onto `editorial-masthead`/`poster-ending`).
+      //   - `annualReviewPreset`: slide index 1 (chapter, auto-picked —
+      //     storytelling's new identityTendencies pulling this seed onto
+      //     `banner-chapter`).
+      //
+      // Re-recaptured (P1 variety wave, task 4 — content-pool expansion, 7
+      // -> 10 new archetypes side-highlight/asymmetric-triptych/quiet-frame,
+      // plus their strategy `layoutTendencies`/beat `BEAT_TENDENCIES`
+      // placement). None of these three decks pin every content page's
+      // `layout` either, so a pool-wide reweighting can legitimately flip
+      // which archetype a given seed's auto-pick lands on — the same
+      // "real, intended selection-behavior change, not a migration
+      // regression" posture as the task-3 recapture above. Verified via the
+      // identical targeted-diff discipline: `.audit.json` needed no
+      // recapture for any of the three (findings stayed the empty array on
+      // both sides — the newly-picked archetypes introduce no new
+      // findings). Exactly the same two slide indices changed in all three
+      // fixtures, nothing else:
+      //   - `basic`: slide indices 2 and 3 (content pages, both auto-picked
+      //     — `bento-panel` -> `stacked-poster`, `tone-adaptive-content` ->
+      //     `two-column`).
+      //   - `scenarioBearing`: slide indices 2 and 3 (content, auto-picked
+      //     — `tone-adaptive-content` -> `rail-numbered`, `stacked-poster`
+      //     -> `quiet-frame`).
+      //   - `annualReviewPreset`: slide indices 2 and 3 (content,
+      //     auto-picked — `banner-heading` -> `narrow-column`, `two-column`
+      //     -> `stacked-poster`).
+      //
+      // Re-recaptured again (P1 variety wave, task 4 fix round — reviewer
+      // Minor-1, quiet-frame's single-component symmetry fix): `content-
+      // quiet-frame.tsx` now narrows+re-centers its content rect for
+      // exactly 1 non-full-body component (640px, was the full 880px
+      // symmetric rect) — a real, intended geometry fix, not a migration
+      // regression. `scenarioBearing`'s own slide index 3 (the
+      // `quiet-frame` content page landed above, exactly 1 paragraph
+      // component) is the only slide in any of the three fixtures affected
+      // — verified via the same targeted-diff discipline: `basic`/
+      // `annualReviewPreset` are untouched by this recapture (neither has a
+      // 1-component quiet-frame page), and `.audit.json` needed no
+      // recapture (findings stayed the empty array).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

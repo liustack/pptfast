@@ -42,7 +42,7 @@ describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
     }
   }
 
-  it("has exactly 30 archetype-kind entries, all traceable to one of the four real registries", () => {
+  it("has exactly 33 archetype-kind entries, all traceable to one of the four real registries (P1 variety wave task 4: content 7 -> 10)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_ARCHETYPES),
       ...Object.keys(CHAPTER_ARCHETYPES),
@@ -50,7 +50,7 @@ describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
       ...Object.keys(ENDING_ARCHETYPES),
     ])
     const archetypeEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(archetypeEntries).toHaveLength(30)
+    expect(archetypeEntries).toHaveLength(33)
     for (const entry of archetypeEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real archetype id`).toBe(true)
     }
@@ -113,17 +113,23 @@ describe("content family: body slot + declared arrangements", () => {
     expect(LAYOUT_REGISTRY["bento-panel"].arrangements).toEqual(["single"])
   })
 
+  it("asymmetric-triptych only honors single (hardcoded — its own three-region split is its arrangement, P1 variety wave task 4)", () => {
+    expect(LAYOUT_REGISTRY["asymmetric-triptych"].arrangements).toEqual(["single"])
+  })
+
   it("stacked-poster declares arrangements \"all\" (W2 task 3 adjudication: its degrade path passes slide.arrangement straight through unchanged, same as the four plain pass-through archetypes — the conditional hero/strip takeover only applies to 1-2 fitting components)", () => {
     expect(LAYOUT_REGISTRY["stacked-poster"].arrangements).toBe("all")
   })
 
-  it("the remaining five arrangement-respecting archetypes declare arrangements: \"all\"", () => {
+  it("the remaining seven arrangement-respecting archetypes declare arrangements: \"all\" (P1 variety wave task 4 adds side-highlight/quiet-frame to the five pre-existing members)", () => {
     for (const id of [
       "banner-heading",
       "narrow-column",
       "rail-numbered",
       "tone-adaptive-content",
       "stacked-poster",
+      "side-highlight",
+      "quiet-frame",
     ]) {
       expect(LAYOUT_REGISTRY[id].arrangements).toBe("all")
     }
@@ -147,7 +153,7 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
     expect(body?.capacity).toBe(6)
   })
 
-  it("the remaining 6 content archetypes' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3, see registry.ts's CONTENT_LAYOUTS header comment)", () => {
+  it("the remaining 9 content archetypes' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3; P1 variety wave task 4's three new archetypes join at the same flat default — see registry.ts's CONTENT_LAYOUTS header comment)", () => {
     for (const id of Object.keys(CONTENT_ARCHETYPES)) {
       if (id === "bento-panel") continue
       const body = LAYOUT_REGISTRY[id].slots.find((s) => s.name === "body")
@@ -181,11 +187,11 @@ describe("layoutsForSlideType", () => {
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 7 archetypes and the 4 takeovers", () => {
+  it("content includes both the 10 archetypes and the 4 takeovers (P1 variety wave task 4: content 7 -> 10)", () => {
     const contents = layoutsForSlideType("content")
-    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(7)
+    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(10)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
-    expect(contents).toHaveLength(11)
+    expect(contents).toHaveLength(14)
   })
 })
 

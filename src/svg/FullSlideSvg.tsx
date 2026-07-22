@@ -26,6 +26,8 @@ import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
 import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
+import { resolveMotifId } from "./motif-selection"
+import { resolveChartPaletteOffset } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
 import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./effective-layout"
 
@@ -156,6 +158,21 @@ export function resolveOverrideBackgroundHex(
  * `PACING_BUDGETS.balanced.bodyBaselinePx` (24px) — the narrative default,
  * so a test that doesn't care about body-text sizing still gets the
  * ambient value a caller with an omitted/default narrative would.
+ *
+ * `chartPaletteOffset` (P1 variety wave, task 2 — `./chart-palette.ts`'s own
+ * header comment has the full rationale): the caller supplies
+ * `resolveChartPaletteOffset(cachedDeckSeed(ir), tokens.colors.chartPalette.length)`.
+ * **Passed through as its own `ComponentCtx` field, `colors.chartPalette`
+ * itself is never rotated here** (review fix round, Major finding — see
+ * `ComponentCtx.chartPaletteOffset`'s own doc comment for the full leak this
+ * corrects): rotating `colors.chartPalette` in place used to silently reach
+ * every consumer of that token, not just the chart component, including
+ * several motifs that destructure it by fixed position for decoration
+ * unrelated to any chart. `components/chart.tsx` — the only reader of this
+ * field — is responsible for rotating `colors.chartPalette` itself before
+ * use. Every `buildCtx(...)` call site that omits this 6th argument (every
+ * test in this repo except this task's own) is unaffected either way,
+ * before or after this fix.
  */
 export function buildCtx(
   tokens: StyleTokens,
@@ -163,6 +180,7 @@ export function buildCtx(
   components?: Component[],
   defaultBg?: string,
   bodyFontPx?: number,
+  chartPaletteOffset?: number,
 ): ComponentCtx {
   return {
     colors: tokens.colors,
@@ -176,6 +194,7 @@ export function buildCtx(
     blockIndex: components ? new Map(components.map((component, i) => [component, i])) : undefined,
     defaultBg: defaultBg ?? tokens.colors.bg,
     bodyFontPx: bodyFontPx ?? PACING_BUDGETS.balanced.bodyBaselinePx,
+    chartPaletteOffset,
   }
 }
 
@@ -218,8 +237,18 @@ function resolveArchetype(
   requestedLayout: string | undefined,
   strategy: Strategy,
   previousEffectiveLayoutId: string | null,
+  beat: Slide["beat"],
 ): { id: string; Component: PageArchetype } | null {
-  const id = resolveArchetypeId(slideType, layouts, seed, pageKey, requestedLayout, strategy, previousEffectiveLayoutId)
+  const id = resolveArchetypeId(
+    slideType,
+    layouts,
+    seed,
+    pageKey,
+    requestedLayout,
+    strategy,
+    previousEffectiveLayoutId,
+    beat,
+  )
   return id === null ? null : { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
 }
 
@@ -277,19 +306,29 @@ export function FullSlideSvg({
   const bodyFontPx =
     PACING_BUDGETS[resolveNarrative(ir.narrative as string | Partial<NarrativeProfile> | undefined).pacing]
       .bodyBaselinePx
+  // P1 variety wave, task 2 (`./chart-palette.ts`'s own header comment has
+  // the full rationale): one offset per deck (seed-derived, no pageKey), so
+  // every chart on every page of this deck agrees on the same rotated
+  // phase — computed here, not memoized, since it's a cheap pure function of
+  // `cachedDeckSeed(ir)` + this theme's own palette length.
+  const chartPaletteOffset = resolveChartPaletteOffset(cachedDeckSeed(ir), tokens.colors.chartPalette.length)
   const ctx = buildCtx(
     tokens,
     ir.assets.images,
     ir.meta.animation?.elements === "auto" ? slide.components : undefined,
     defaultBg,
     bodyFontPx,
+    chartPaletteOffset,
   )
   const themeDef = getThemeDefinition(ir.theme.id)
   // motif 分发（P2 Task 24→Wave5 收尾，W2 任务 2 数据源迁至 THEME_DEFINITIONS，
-  // W3 任务 4 起经 getThemeDefinition 统一查找——registered theme 同样生效）：
-  // 全走 theme 定义的 motif（十三主题四页型已全量接线，旧 templates/<theme>.tsx
-  // 的 Decor 回落已随 templates 删除）。
-  const Decor = themeDef.motif ? MOTIF_ARCHETYPES[themeDef.motif] : undefined
+  // W3 任务 4 起经 getThemeDefinition 统一查找——registered theme 同样生效，
+  // P1 variety wave task 2 起不再是每主题一个固定 id：`resolveMotifId`
+  // 〔./motif-selection.ts〕在 12/13 内置主题上把它换成一个 2-3 项候选子集的
+  // seed+pageKey 加权采样，同 deck 内不同页常态性拿到不同贴纸；runway〔无
+  // motif〕与 registered/自定义主题走该函数自己的直通回落，行为不变）。
+  const motifId = resolveMotifId(ir, slide, index)
+  const Decor = motifId ? MOTIF_ARCHETYPES[motifId] : undefined
   let bgSpec = slide.background ?? tokens.defaultBackgrounds[slide.type]
   // 压图页接管（图片排版 polish，2026-07-09 用户反馈）：cover/chapter 的
   // asset 背景 → 暗遮罩 + 白字 bespoke 版式（ImageCoverPage）——图保持清晰
@@ -354,6 +393,7 @@ export function FullSlideSvg({
           slide.layout,
           strategy,
           previousEffectiveLayoutId,
+          slide.beat,
         )
 
   return (

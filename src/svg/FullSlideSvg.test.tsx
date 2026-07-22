@@ -668,3 +668,148 @@ describe("pacing bodyFontPx injection seam (W4 task 3 fix round — Major)", () 
     expect(renderProbeFontSize({ pacing: "spacious" })).toBe("32")
   })
 })
+
+// P1 variety wave, task 2 — motif candidate-set rotation
+// (`./motif-selection.ts`'s own header has the design rationale). These
+// tests exercise the real production entry point (`FullSlideSvg`), not the
+// pure `resolveMotifId` function directly (already covered exhaustively in
+// `motif-selection.test.ts`) — proving the wiring at `Decor`'s own call
+// site is actually live, and that the themes this task must leave alone
+// (`runway`, and any 1-member candidate set) really do render
+// byte-identically through the whole component, not just at the selection
+// function's own return value.
+describe("motif candidate rotation (P1 variety wave, task 2)", () => {
+  function decorMarkup(themeId: string, pageId: string, seed: number): string | null {
+    const doc: PptxIR = { ...ir([]), theme: { id: themeId }, seed } as PptxIR
+    const slide: Slide = { type: "content", id: pageId, heading: "x", components: [] } as Slide
+    doc.slides = [slide]
+    const { container } = render(<FullSlideSvg ir={doc} slide={slide} index={0} />)
+    return container.querySelector("[data-decor]")?.innerHTML ?? null
+  }
+
+  it("consulting (3-candidate set): different decor pages in the same deck commonly render different motif markup", () => {
+    const markups = new Set(
+      Array.from({ length: 8 }, (_, i) => decorMarkup("consulting", `page-${i}`, 7)),
+    )
+    expect(markups.size, "all 8 pages rendered identical decor markup").toBeGreaterThan(1)
+  })
+
+  it("runway (no motif, settled decision): the decor slot never renders anything, for any pageKey or seed", () => {
+    for (let i = 0; i < 10; i++) {
+      expect(decorMarkup("runway", `page-${i}`, i)).toBeNull()
+    }
+  })
+
+  it("campaign (1-member candidate set): which motif renders never varies by pageKey at a fixed seed — unaffected by this task's per-pageKey selection layer (campaign-motif's own internal composition variant is separately seed-driven, not pageKey-driven, and predates this task)", () => {
+    const markups = new Set(Array.from({ length: 10 }, (_, i) => decorMarkup("campaign", `page-${i}`, 99)))
+    expect(markups.size).toBe(1)
+  })
+
+  // Review fix round (Major finding): the pre-fix `chartPaletteOffset`
+  // rotation lived inside `ctx.colors.chartPalette` itself, the exact token
+  // `campaign-motif` destructures by fixed position for its own decorative
+  // fill — campaign's decor markup silently differed across seeds even
+  // though `resolveMotifId` always picked "campaign-motif" for every one of
+  // them (this is the pageKey-at-one-seed check above; it can't see a
+  // cross-seed color drift under the same, correctly-resolved motif id).
+  // This test varies *seed* at a fixed pageKey to catch exactly that gap —
+  // must stay green post-fix (`motif-chart-palette-isolation.test.tsx`
+  // covers the same seam at the unit level, this covers it end-to-end
+  // through the real render entry point).
+  it("campaign: decor markup is byte-identical across a seed sweep at a fixed pageKey — chart-palette rotation must not leak into decorative color choice", () => {
+    const markups = new Set(Array.from({ length: 20 }, (_, seed) => decorMarkup("campaign", "same-page", seed)))
+    expect(markups.size, "campaign decor varied across seeds at a fixed pageKey").toBe(1)
+  })
+
+  it("same (ir, slide, index) renders byte-identical decor markup across repeated renders (double-render determinism)", () => {
+    const doc: PptxIR = { ...ir([]), theme: { id: "heritage" }, seed: 3 } as PptxIR
+    const slide: Slide = { type: "chapter", id: "p1", heading: "x", components: [] } as Slide
+    doc.slides = [slide]
+    const first = render(<FullSlideSvg ir={doc} slide={slide} index={0} />).container.querySelector(
+      "[data-decor]",
+    )?.innerHTML
+    const second = render(<FullSlideSvg ir={doc} slide={slide} index={0} />).container.querySelector(
+      "[data-decor]",
+    )?.innerHTML
+    expect(first).toBe(second)
+  })
+})
+
+// P1 variety wave, task 2 — chart palette phase rotation
+// (`./chart-palette.ts`'s own header has the design rationale). `runway` is
+// used here specifically because it has no motif (see the describe block
+// above) — the chart's own `<path fill="…">` elements are the only
+// hex-filled paths a decor-free page can render, so no filtering by hex
+// value against the motif's own ctx-derived colors is needed to isolate
+// them.
+describe("chart palette phase rotation (P1 variety wave, task 2)", () => {
+  const RUNWAY_CHART_PALETTE = ["#0A0A0A", "#D80027", "#77787D", "#C9C9CC"]
+
+  const pieSlide: Slide = {
+    type: "content",
+    heading: "图表色板轮换探针",
+    layout: "narrow-column",
+    components: [
+      {
+        type: "chart",
+        chart_type: "pie",
+        series: [
+          {
+            name: "S1",
+            data: [
+              { x: "A", y: 10 },
+              { x: "B", y: 20 },
+              { x: "C", y: 30 },
+              { x: "D", y: 15 },
+            ],
+          },
+        ],
+      },
+    ],
+  } as Slide
+
+  function pieFills(seed: number): string[] {
+    const doc: PptxIR = { ...ir([pieSlide]), theme: { id: "runway" }, seed } as PptxIR
+    const { container } = render(<FullSlideSvg ir={doc} slide={pieSlide} index={0} />)
+    return Array.from(container.querySelectorAll("path"))
+      .map((p) => p.getAttribute("fill"))
+      .filter((f): f is string => !!f && RUNWAY_CHART_PALETTE.includes(f))
+  }
+
+  it("renders all 4 wedges in the theme's own palette, just phase-shifted — same multiset, cyclic order preserved", () => {
+    for (let seed = 0; seed < 12; seed++) {
+      const fills = pieFills(seed)
+      expect(fills).toHaveLength(4)
+      expect([...fills].sort()).toEqual([...RUNWAY_CHART_PALETTE].sort())
+      // Cyclic order: rotating `fills` back to start at index 0's position
+      // in the original palette must reproduce the original palette exactly.
+      const start = RUNWAY_CHART_PALETTE.indexOf(fills[0]!)
+      const reconstructed = [...RUNWAY_CHART_PALETTE.slice(start), ...RUNWAY_CHART_PALETTE.slice(0, start)]
+      expect(fills).toEqual(reconstructed)
+    }
+  })
+
+  it("different seeds commonly start the wedge sequence at a different palette color (phase varies across decks)", () => {
+    const firstFills = new Set(Array.from({ length: 12 }, (_, seed) => pieFills(seed)[0]))
+    expect(firstFills.size, "every seed started on the same wedge color").toBeGreaterThan(1)
+  })
+
+  it("same seed renders byte-identical wedge colors across repeated renders (double-render determinism, one shared phase per deck)", () => {
+    expect(pieFills(5)).toEqual(pieFills(5))
+  })
+
+  it("a chart on every page of the same deck shares the identical rotated phase (deck-scoped, not page-scoped)", () => {
+    const twoPageDeck: Slide[] = [
+      { ...pieSlide, id: "p0" } as Slide,
+      { ...pieSlide, id: "p1", heading: "第二页" } as Slide,
+    ]
+    const doc: PptxIR = { ...ir(twoPageDeck), theme: { id: "runway" }, seed: 9 } as PptxIR
+    const fillsFor = (index: number) => {
+      const { container } = render(<FullSlideSvg ir={doc} slide={doc.slides[index]!} index={index} />)
+      return Array.from(container.querySelectorAll("path"))
+        .map((p) => p.getAttribute("fill"))
+        .filter((f): f is string => !!f && RUNWAY_CHART_PALETTE.includes(f))
+    }
+    expect(fillsFor(0)).toEqual(fillsFor(1))
+  })
+})

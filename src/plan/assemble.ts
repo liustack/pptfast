@@ -37,9 +37,12 @@
  * — the inverse of assemble, an optional tail item for W5"): it reconstructs a spec + pages record from
  * an existing IR, well enough that re-`assembleDeck`-ing the result
  * reproduces the same slide content, but spec-only fields that never made it
- * into the IR in the first place (`beat`, `focus`, and `summary` on
- * anything but a placeholder page) cannot be recovered — see that function's
- * own doc comment for the full accounting.
+ * into the IR in the first place (`focus`, and `summary` on anything but a
+ * placeholder page) cannot be recovered — see that function's own doc
+ * comment for the full accounting. `beat` *did* have this same "never made
+ * it into the IR" status until the P1 variety wave's task 1 gave it a real
+ * `Slide.beat` field (`../ir/index.ts`) — it is now a plain passthrough on
+ * both sides, same as `layout`/`heading`, no longer in this lossy list.
  */
 import { PptfastError } from "../errors"
 import { PptxIRSchema, type BackgroundSpec, type Component, type PptxIR, type Slide } from "../ir"
@@ -183,13 +186,25 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    declared `summary` becomes the placeholder's `subheading` (the one spot
  *    `summary` — otherwise a spec-only anchor, see step 5 — does reach the
  *    IR) so a `--draft` preview of an unfilled deck still reads as more than
- *    a bare "Untitled".
+ *    a bare "Untitled". A declared `beat` carries straight into the
+ *    placeholder's own `Slide.beat` too (P1 variety wave, task 1 — see step
+ *    5's note below). A placeholder page still participates in this
+ *    function's own layout materialization below, so its beat still needs
+ *    to reach the IR for that weighting to see it once the page is filled
+ *    in later without re-materializing.
  * 5. Present pages become a full slide: `id`/`type`/`heading` from the page
  *    spec (never the content record — see step 2), plus whichever of
  *    {@link PageContent}'s seven fields the content record actually set.
- *    `beat`/`focus`/`summary` never reach the IR for a present page —
- *    they are spec-only authoring anchors (beat/focus steer a future
- *    fill/select step, summary is "for the fill step's own reading only"), not slide content.
+ *    `beat` now carries straight into the IR's own `Slide.beat` field too —
+ *    reached from `PageSpec`, not `PageContent` (same source as `id`/`type`/
+ *    `heading`, since `beat` is spec-owned, not per-page content) — as of
+ *    the P1 variety wave's task 1. Previously dropped here as a spec-only
+ *    authoring anchor, `SlideSchema.beat`'s own doc comment
+ *    (`../ir/index.ts`) has the full accounting of what it now does
+ *    downstream. `focus`/`summary` still never reach the IR for a present
+ *    page — they remain spec-only authoring anchors (focus steers a future
+ *    fill/select step, summary is "for the fill step's own reading only"),
+ *    not slide content.
  * 6. Top-level: `version` is always the literal `"4"` (IR's own version,
  *    unrelated to the deck spec's own `version: "1"`) — the deck spec's own
  *    `narrative` field (renamed this task from `scenario`, spec §8.1's
@@ -364,6 +379,7 @@ function buildSlide(page: PageSpec, raw: PageContent | undefined): Record<string
       type: page.type,
       heading: page.heading,
       placeholder: true,
+      ...(page.beat !== undefined ? { beat: page.beat } : {}),
       ...(page.summary !== undefined ? { subheading: page.summary } : {}),
     }
   }
@@ -371,6 +387,7 @@ function buildSlide(page: PageSpec, raw: PageContent | undefined): Record<string
     id: page.id,
     type: page.type,
     heading: page.heading,
+    ...(page.beat !== undefined ? { beat: page.beat } : {}),
     ...(raw.components !== undefined ? { components: raw.components } : {}),
     ...(raw.layout !== undefined ? { layout: raw.layout } : {}),
     ...(raw.arrangement !== undefined ? { arrangement: raw.arrangement } : {}),
@@ -410,10 +427,14 @@ const UNTITLED_HEADING = "Untitled"
  * written *to* the IR in the first place, so there is nothing here to read
  * back:
  *
- * - `beat` and `focus` never appear on any produced {@link PageSpec} —
- *   both are spec-only authoring anchors with no corresponding `Slide`
- *   field at all (see {@link assembleDeck} step 5's doc comment). Nothing
- *   here could recover a value that was never written anywhere.
+ * - `focus` never appears on any produced {@link PageSpec} — it is a
+ *   spec-only authoring anchor with no corresponding `Slide` field at all
+ *   (see {@link assembleDeck} step 5's doc comment). Nothing here could
+ *   recover a value that was never written anywhere. `beat` used to share
+ *   this fate but no longer does (P1 variety wave, task 1): it is now a
+ *   plain passthrough on both sides, exactly like `layout`/`heading` below —
+ *   `assembleDeck` step 5/6 reads `pageSpec.beat` into `slide.beat`, this
+ *   function reads `slide.beat` straight back below.
  * - `summary` is recovered *only* for a placeholder slide, by reversing
  *   step 4's `summary` → `subheading` injection (`slide.subheading` back to
  *   `pageSpec.summary`). A non-placeholder slide's own `subheading` — a
@@ -510,6 +531,7 @@ export function disassembleDeck(ir: PptxIR): { spec: DeckSpec; pages: Record<str
       id,
       type: slide.type,
       heading,
+      ...(slide.beat !== undefined ? { beat: slide.beat } : {}),
       ...(slide.placeholder === true && slide.subheading !== undefined ? { summary: slide.subheading } : {}),
     }
     if (slide.placeholder !== true) pages[id] = extractPageContent(slide)

@@ -394,7 +394,17 @@ describe("runAudit (W6 task 2)", () => {
     const result = await runAudit(join(dir, "deck-low-contrast.json"))
     expect(result.hasFindings).toBe(true)
     expect(result.output).toMatch(/^page 1 \(p-body\): \[low-contrast\]/)
-    expect(result.output).toMatch(/\naudited 1 page, 0 skipped, \d+ findings$/)
+    // `findings?` (P1 variety wave, task 3 re-pin): this fixture's single
+    // content page has no declared narrative, so it resolves through
+    // briefing's re-derived content layoutTendencies (task 3 item 2) —
+    // its auto-picked archetype now renders exactly one low-contrast text
+    // element instead of the pre-task-3 pick's two, correctly singularizing
+    // the CLI's own count-aware "finding"/"findings" grammar
+    // (`commands.ts`'s summary line). The assertion only ever cared about
+    // "at least one finding, formatted with the right noun", not a specific
+    // count — tightening the regex to assume plural was the bug, not this
+    // count dropping to 1.
+    expect(result.output).toMatch(/\naudited 1 page, 0 skipped, \d+ findings?$/)
   })
 
   it("--json mode on a findings deck sets hasFindings and includes the finding code", async () => {

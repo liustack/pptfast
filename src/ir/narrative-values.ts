@@ -30,3 +30,20 @@
 export const STRATEGY_VALUES = ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const
 export const PACING_VALUES = ["dense", "balanced", "spacious"] as const
 export const AUDIENCE_VALUES = ["executive", "technical", "customer", "public"] as const
+
+// Page-level `beat` vocabulary (P1 variety wave, task 1 — "beat wired into
+// selection"). Not one of the three narrative *axes* above (beat is a
+// per-page authoring value, not a deck-level `NarrativeProfile` field) but
+// shares this leaf module for the identical reason: `src/ir` (SlideSchema's
+// `beat` field, `./index.ts`) and `src/plan` (PageSpecSchema's own `beat`
+// field, `../plan/index.ts`) both need the exact same three-value tuple, and
+// `src/plan` already imports from `src/ir`, so `src/ir` importing the tuple
+// back from `src/plan` would be the cycle this module exists to avoid (see
+// this file's own top comment). Distinct from `StrategyDefinition.beatPolicy`
+// (`src/narrative/index.ts`) — that is a *per-strategy rotation rule* name
+// ("anchor-open", "alternate", ...), a different five-value vocabulary that
+// shares no members with this one. Values unchanged from the pre-vocabulary-v4
+// "rhythm" field (spec §2.3/§4.3/§8.1's rename table): `anchor` (single bold
+// statement), `dense` (high information density), `breathing` (generous
+// whitespace, unhurried single flow).
+export const BEAT_VALUES = ["anchor", "dense", "breathing"] as const

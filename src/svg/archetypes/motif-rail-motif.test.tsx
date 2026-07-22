@@ -1,11 +1,28 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
+import type { StyleTokens } from "../../themes/tokens"
 import { assertSubset } from "../subset-validate"
 import { RailMotif } from "./motif-rail-motif"
 import type { PptxIR, Slide } from "@/ir"
+
+// Review fix round (P1 variety wave, task 2 — Moderate finding): the chapter
+// branch now derives its ink from `ctx.defaultBg` (`readableOn`, see the
+// source file's own doc comment) instead of a hard-coded white literal — a
+// bare `buildCtx(tokens, {})` call (as every fixture below used to make, for
+// every slide type indiscriminately) resolves `defaultBg` to `tokens.colors.bg`
+// unconditionally, which is academic's *cover/content* background
+// (`#FAFAF6`), never its actual chapter background (`#006A4E`). Production
+// (`FullSlideSvg.tsx`) always resolves `defaultBg` per the slide's own
+// *actual* type; this helper mirrors that so these fixtures stay a faithful
+// simulation of production instead of accidentally exercising `readableOn`
+// against the wrong background.
+function ctxFor(tokens: StyleTokens, slideType: Slide["type"]): ReturnType<typeof buildCtx> {
+  const defaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slideType], tokens.colors.surface)
+  return buildCtx(tokens, {}, undefined, defaultBg)
+}
 
 // BrandChrome's bl/br brand logo bands (see templates/academic.test.tsx's
 // own LOGO_BANDS / "documents (not asserts false)" precedent) — the arc's
@@ -56,7 +73,7 @@ describe("RailMotif", () => {
   ] as const)(
     "academic tokens 下 %s slide 输出与迁移前的 BcgEmeraldDecor 逐字节一致（档位一）",
     (label, slide) => {
-      const ctx = buildCtx(resolveStyle("academic"), {})
+      const ctx = ctxFor(resolveStyle("academic"), slide.type)
       const deck = ir("academic")
 
       const next = renderSvgMarkup(<RailMotif ir={deck} slide={slide} ctx={ctx} />)
@@ -98,10 +115,11 @@ describe("RailMotif", () => {
   })
 
   it("装饰几何：cover 不渲染任何 path，chapter/content/ending 各渲染一段同弧形 path（装饰未隐形）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const tokens = resolveStyle("academic")
     const deck = ir("academic")
 
     function renderMotif(slide: Slide): Element {
+      const ctx = ctxFor(tokens, slide.type)
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
           <RailMotif ir={deck} slide={slide} ctx={ctx} />
@@ -123,30 +141,33 @@ describe("RailMotif", () => {
       expect(paths[0].getAttribute("opacity")).toBe("0.06")
     }
 
-    // chapter 分支用白字例外（primary 实心背景上 primary 半透明会是无操作/
-    // 完全隐形，见文件头"白字例外"说明），content/ending 用 primary。
+    // chapter 分支用 readableOn(实际 chapter 背景)（primary 实心背景上
+    // primary 半透明会是无操作/完全隐形，见文件头"Review fix round"说明），
+    // content/ending 用 primary。academic 的 chapter 背景够暗，readableOn
+    // 在此解出纯白，与旧的白字硬编码字节一致。
     const chapterFill = renderMotif(chapterSlide).querySelector("path")?.getAttribute("fill")
     const contentFill = renderMotif(contentSlide).querySelector("path")?.getAttribute("fill")
     const endingFill = renderMotif(endingSlide).querySelector("path")?.getAttribute("fill")
     expect(chapterFill).toBe("#FFFFFF")
-    expect(contentFill).toBe(ctx.colors.primary)
-    expect(endingFill).toBe(ctx.colors.primary)
+    expect(contentFill).toBe(tokens.colors.primary)
+    expect(endingFill).toBe(tokens.colors.primary)
     expect(contentFill).not.toBe(chapterFill)
   })
 
-  it("tech tokens 下用 tech 的 primary 驱动 content/ending 弧形色（证明 token 化成立，无 baked hex），chapter 白字例外跨主题稳定", () => {
+  it("tech tokens 下用 tech 的 primary 驱动 content/ending 弧形色（证明 token 化成立，无 baked hex），chapter readableOn 在 tech 的深色渐变背景下同样解出纯白", () => {
     const techTheme = resolveStyle("tech")
-    const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
 
-    const contentOut = renderSvgMarkup(<RailMotif ir={deck} slide={contentSlide} ctx={ctx} />)
-    expect(contentOut).toContain(ctx.colors.primary as string)
+    const contentCtx = ctxFor(techTheme, "content")
+    const contentOut = renderSvgMarkup(<RailMotif ir={deck} slide={contentSlide} ctx={contentCtx} />)
+    expect(contentOut).toContain(contentCtx.colors.primary as string)
     expect(contentOut).not.toContain("#006A4E") // academic 自己的 primary 烤死色不得残留
 
-    const chapterOut = renderSvgMarkup(<RailMotif ir={deck} slide={chapterSlide} ctx={ctx} />)
-    // 白字例外：固定纯白，不随主题变化
+    const chapterCtx = ctxFor(techTheme, "chapter")
+    const chapterOut = renderSvgMarkup(<RailMotif ir={deck} slide={chapterSlide} ctx={chapterCtx} />)
+    // readableOn(tech 的深色渐变 chapter 背景) 解出纯白。
     expect(chapterOut).toContain('fill="#FFFFFF"')
-    expect(ctx.colors.primary).not.toBe("#FFFFFF")
-    expect(chapterOut).not.toContain(ctx.colors.primary as string)
+    expect(chapterCtx.colors.primary).not.toBe("#FFFFFF")
+    expect(chapterOut).not.toContain(chapterCtx.colors.primary as string)
   })
 })

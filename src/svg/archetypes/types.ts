@@ -60,6 +60,10 @@ export type ContentArchetypeId =
   | "banner-heading" | "rail-numbered" | "stacked-poster"
   | "bento-panel" | "narrow-column" | "tone-adaptive-content"
   | "two-column" // P3 Item ②：跨主题通用第二 content 版式（轮换素材）
+  // P1 variety wave, task 4 (content-pool expansion, 7 -> 10): a persistent
+  // asymmetric side panel, a lead+stacked-pair triptych, and a whitespace-
+  // led centered frame — see each file's own composition-sketch header.
+  | "side-highlight" | "asymmetric-triptych" | "quiet-frame"
 
 // Wave 3（motif，随 content 任务迁移）
 export type MotifArchetypeId =

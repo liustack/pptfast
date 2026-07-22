@@ -2,10 +2,27 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
+import type { StyleTokens } from "../../themes/tokens"
 import { BannerMotif } from "./motif-banner-motif"
 import type { PptxIR, Slide } from "@/ir"
+
+// Review fix round (P1 variety wave, task 2 — Moderate finding): the chapter
+// branch now derives its ink from `ctx.defaultBg` (`readableOn`, see the
+// source file's own doc comment) instead of a hard-coded white literal — a
+// bare `buildCtx(tokens, {})` call (as every fixture below used to make, for
+// every slide type indiscriminately) resolves `defaultBg` to `tokens.colors.bg`
+// unconditionally, which is consulting's *cover/content* background
+// (`#F7F7F2`), never its actual chapter background (`#051C2C`). Production
+// (`FullSlideSvg.tsx`) always resolves `defaultBg` per the slide's own
+// *actual* type; this helper mirrors that so these fixtures stay a faithful
+// simulation of production instead of accidentally exercising `readableOn`
+// against the wrong background.
+function ctxFor(tokens: StyleTokens, slideType: Slide["type"]): ReturnType<typeof buildCtx> {
+  const defaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slideType], tokens.colors.surface)
+  return buildCtx(tokens, {}, undefined, defaultBg)
+}
 
 // BrandChrome's brand logo bands (see templates/consulting.test.tsx's own
 // LOGO_BANDS block) — re-declared here (self-contained, no cross-import from
@@ -60,7 +77,7 @@ describe("BannerMotif", () => {
   ] as const)(
     "consulting tokens 下 %s slide 与旧 MckinseyNavyDecor 输出逐字节一致（档位一）",
     (label, slide) => {
-      const ctx = buildCtx(resolveStyle("consulting"), {})
+      const ctx = ctxFor(resolveStyle("consulting"), slide.type)
       const deck = ir("consulting")
 
       const next = renderSvgMarkup(<BannerMotif ir={deck} slide={slide} ctx={ctx} />)
@@ -69,10 +86,11 @@ describe("BannerMotif", () => {
   )
 
   it("装饰几何：cover/chapter 各渲染 5 条竖线 + 2 条横线的极淡网格（跳过标题带的第 3 条候选横线），content/ending 无任何装饰（跨 slide.type 验证装饰未被误删或误增）", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const tokens = resolveStyle("consulting")
     const deck = ir("consulting")
 
     function renderMotif(slide: Slide): Element {
+      const ctx = ctxFor(tokens, slide.type)
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
           <BannerMotif ir={deck} slide={slide} ctx={ctx} />
@@ -102,30 +120,35 @@ describe("BannerMotif", () => {
       expect(root.querySelector("rect")).toBeNull()
     }
 
-    // cover 用 border token 描边，chapter（默认深色 primary 背景）改用白字例外
-    // 描边——同一份网格几何，两种描边色，产品逻辑不同，不是取巧凑数。
+    // cover 用 border token 描边，chapter（默认深色 primary 背景）改用
+    // readableOn(实际 chapter 背景) 描边——同一份网格几何，两种描边色，产品
+    // 逻辑不同，不是取巧凑数。consulting 的 chapter 背景是深色 primary，
+    // readableOn 在此仍解出纯白，与旧的白字硬编码字节一致。
     const coverStroke = renderMotif(coverSlide).querySelector("line")?.getAttribute("stroke")
     const chapterStroke = renderMotif(chapterSlide).querySelector("line")?.getAttribute("stroke")
-    expect(coverStroke).toBe(ctx.colors.border ?? ctx.colors.muted)
+    expect(coverStroke).toBe(tokens.colors.border ?? tokens.colors.muted)
     expect(chapterStroke).toBe("#FFFFFF")
     expect(coverStroke).not.toBe(chapterStroke)
     expect(renderMotif(coverSlide).querySelector("line")?.getAttribute("stroke-opacity")).toBe("0.25")
     expect(renderMotif(chapterSlide).querySelector("line")?.getAttribute("stroke-opacity")).toBe("0.05")
   })
 
-  it("tech tokens 下用 tech 的 border（缺省则 muted）驱动 cover 网格描边色（证明 token 化成立，无 baked hex），chapter 白字例外跨主题稳定", () => {
+  it("tech tokens 下用 tech 的 border（缺省则 muted）驱动 cover 网格描边色（证明 token 化成立，无 baked hex），chapter readableOn 在 tech 的深色渐变背景下同样解出纯白", () => {
     const techTheme = resolveStyle("tech")
-    const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
 
-    const coverOut = renderSvgMarkup(<BannerMotif ir={deck} slide={coverSlide} ctx={ctx} />)
-    const expectedStroke = ctx.colors.border ?? ctx.colors.muted
+    const coverCtx = ctxFor(techTheme, "cover")
+    const coverOut = renderSvgMarkup(<BannerMotif ir={deck} slide={coverSlide} ctx={coverCtx} />)
+    const expectedStroke = coverCtx.colors.border ?? coverCtx.colors.muted
     expect(coverOut).toContain(expectedStroke as string)
     // consulting 自己的 DIVIDER 烤死色不得残留
     expect(coverOut).not.toContain("#D5D5CB")
 
-    const chapterOut = renderSvgMarkup(<BannerMotif ir={deck} slide={chapterSlide} ctx={ctx} />)
-    // 白字例外：固定纯白，不随主题变化
+    const chapterCtx = ctxFor(techTheme, "chapter")
+    const chapterOut = renderSvgMarkup(<BannerMotif ir={deck} slide={chapterSlide} ctx={chapterCtx} />)
+    // readableOn(tech 的深色渐变 chapter 背景) 解出纯白——与 consulting 的深色
+    // chapter 背景同一结论，不是巧合固定值：两个主题的 chapter 背景都够暗，
+    // readableOn 的两枚候选墨色里白墨稳赢。
     expect(chapterOut).toContain('stroke="#FFFFFF"')
     expect(expectedStroke).not.toBe("#FFFFFF")
     expect(chapterOut).not.toContain(`stroke="${expectedStroke}"`)

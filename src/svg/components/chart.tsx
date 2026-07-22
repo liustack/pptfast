@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { rotateChartPalette } from "../chart-palette"
 import type { SvgComponent } from "./types"
 import {
   renderBar,
@@ -151,12 +152,20 @@ export const chart: SvgComponent<ChartComponent> = {
     const yTitleFit = hasYTitle ? fitYAxisTitle(axes!.y_title!, CHART_H) : null
     const yStackSpan = yTitleFit ? Math.max(0, yTitleFit.chars.length - 1) * AXES_Y_CHAR_ADVANCE : 0
     const yFirstBaselineY = (CHART_H - yStackSpan) / 2
+    // P1 variety wave, task 2 (review fix round, Major finding): rotation
+    // happens *here*, at the one place this palette actually feeds a chart
+    // — not in `ctx.colors.chartPalette` itself, which several motifs also
+    // read for unrelated decoration (see `ComponentCtx.chartPaletteOffset`'s
+    // own doc comment for the leak this seam fixes). `ctx.chartPaletteOffset`
+    // undefined/0 rotates to a same-values copy (`rotateChartPalette`'s own
+    // doc comment) — a byte-identical multiset either way.
+    const palette = rotateChartPalette(ctx.colors.chartPalette, ctx.chartPaletteOffset ?? 0)
 
     return (
       <g transform={`translate(${box.x},${box.y})`}>
         {renderer(
           component.series,
-          ctx.colors.chartPalette,
+          palette,
           yTitleW,
           0,
           plotW,

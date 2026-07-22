@@ -1,6 +1,7 @@
 // GF/svg/archetypes/motif-banner-motif.tsx
 import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
+import { readableOn } from "../ink"
 
 /**
  * banner-motif archetype（spec §3.2，Wave 3 Task 19）：cover/chapter ("强",
@@ -35,20 +36,37 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
  *     不进替换表。
  * 结论：**无孤儿色**（唯一被消费的烤死常量 `DIVIDER` 有精确 token 匹配）。
  *
- * 白字例外（同 chapter-banner-chapter.tsx / motif-rail-motif.tsx 记录的
- * 同一类产品逻辑）：chapter 分支的 grid 描边固定写死纯白字面量——chapter
- * 的默认背景就是不透明的 `colors.primary` 本身（见 themes/
- * consulting.ts 的 `defaultBackgrounds.chapter`），若机械映射为
- * `colors.border`，在 border 与 primary 十六进制接近的主题下网格会近乎
- * 隐形，这不是烤死的主题色，也不在任何 token 字段里，是"深色实心背景上
- * 网格必须走白色低透明度"的结构性产品逻辑，不进替换表，予以保留并在
- * 测试里跨主题锁死。
+ * **Review fix round (P1 variety wave, task 2 — Moderate finding)**: the
+ * chapter branch used to hard-code a pure-white grid stroke, tuned for
+ * consulting's own dark chapter background (`#051C2C`) — safe as long as
+ * this motif only ever rendered on its own anchor theme. Once
+ * `motif-selection.ts` made this motif a *candidate* for other themes too
+ * (`enterprise`, whose chapter background is `#FFFFFF`), the hard-coded
+ * white grid became invisible white-on-white — contradicting
+ * `motif-selection.ts`'s own contrast-safety claim (that claim only ever
+ * covered `findContrastIssues`' text/background walk, which structurally
+ * excludes every `<g data-decor>` shape from candidacy — see that file's
+ * "Contrast safety" section — so it never caught a decor shape rendering
+ * invisibly against its *own* background; it only ever proved decor never
+ * makes *other* text unreadable). Fixed by deriving the ink from the actual
+ * background instead of a hard-coded literal: `readableOn(ctx.defaultBg ??
+ * ctx.colors.bg)` (`../ink.ts`) — the same two-ink, real-contrast-measured
+ * chooser the archetype-side contrast fix round already uses for exactly
+ * this "self-painted surface, adaptive ink" problem, applied here to a
+ * decorative line instead of body text. Kept at the same low opacity
+ * (`GRID_STROKE_OPACITY_CHAPTER`) either way — a low-opacity blend of
+ * *either* neutral ink against its own background is a small, deliberately
+ * subtle, but always nonzero luminance delta, on any background. On
+ * consulting's own dark chapter bg this resolves to exactly `#FFFFFF` —
+ * `readableOn` picks the higher-contrast of its two fixed neutral inks, and
+ * white beats near-black by a wide margin there — so the anchor theme's own
+ * render is byte-identical to before this fix.
  *
- * **档位一・逐字节等价**（唯一烤死颜色常量 `DIVIDER` 有精确 token 匹配，
- * 唯一的颜色字面量是上面点名并测试锁死的白字例外）。
+ * **档位一・逐字节等价**（consulting 自身渲染字节不变，唯一烤死颜色常量
+ * `DIVIDER` 有精确 token 匹配）。
  *
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试
- * 锁死的 chapter 分支纯白字面量，grep 清零门预期恰好命中这一处。
+ * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是 `../ink.ts` 内部
+ * 持有的两枚中性墨色常量，本文件自身不再持有任何 hex 字面量。
  */
 const GRID_STROKE_OPACITY = 0.25
 const GRID_STROKE_OPACITY_CHAPTER = 0.05
@@ -69,7 +87,9 @@ export function BannerMotif({ ir, slide, ctx }: DecorProps) {
   const variant = pickBySeed(cachedDeckSeed(ir), "banner-decor", ["a", "b", "c"] as const)
   if (slide.type === "cover" || slide.type === "chapter") {
     const isChapter = slide.type === "chapter"
-    const gridStroke = isChapter ? "#FFFFFF" : (ctx.colors.border ?? ctx.colors.muted)
+    const gridStroke = isChapter
+      ? readableOn(ctx.defaultBg ?? ctx.colors.bg)
+      : (ctx.colors.border ?? ctx.colors.muted)
     const gridOpacity = isChapter
       ? GRID_STROKE_OPACITY_CHAPTER
       : GRID_STROKE_OPACITY

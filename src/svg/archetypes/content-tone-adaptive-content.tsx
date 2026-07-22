@@ -98,6 +98,16 @@ import { accessibleInk } from "../ink"
  * 拍脑袋常量）。9/13 安全主题在卡片纯白底上原本就有 ≥4.5:1（含 `colors.muted`
  * ，逐主题实测 4.83~18.48:1），accessibleInk 全部原样返回，逐字节不变；4 个
  * 问题主题落回 `readableOn` 的中性墨色 `#0A0E14`。
+ *
+ * kicker 守卫补漏（P1 variety wave, task 3 副产品——被 `identityTendencies`/
+ * briefing 内容权重重推导后新落到的选型序列，在 `examples/basic.json` 上首次
+ * 实测命中曝光）：两分支的 section label（kicker）此前一直原样消费
+ * `colors.accent`，是本文件唯一没跟上"对比度自适应修复"那一轮的文字——subheading/
+ * heading/footer meta 早已套 `accessibleInk`，kicker 被漏掉。consulting 主题
+ * `accent=#FFC72C` 对 `#F7F7F2` 页面默认底实测约 1.45:1，远低于 22px kicker 所
+ * 需的 4.5:1。补齐同一套守卫：无背景图分支传 `ctx.defaultBg ?? colors.bg`（同
+ * subheading 先例），`withBg` 分支传卡片自身的 `"#FFFFFF"`（同 heading/footer
+ * 先例）。达标主题原样返回，逐字节不变。
  */
 
 /** Check whether the slide has a valid background image asset. Ported
@@ -184,6 +194,9 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
     // white card, not `ctx.defaultBg` — same accessibleInk guard the
     // subheading above already uses, same "#FFFFFF" background reference.
     const headingFill = accessibleInk(colors.text, "#FFFFFF", heading.fontSize)
+    // kicker 守卫补漏（见文件头注释）：section label 同样落在这张自画白卡上，
+    // 缺失的那一处 accessibleInk 守卫，同 headingFill 的背景参考。
+    const sectionLabelFill = sectionLabel ? accessibleInk(colors.accent, "#FFFFFF", sectionLabel.fontSize) : colors.accent
     // `SvgContent`'s descendants (paragraph.tsx/bullets.tsx, etc.) read
     // `ctx.colors.text`/`.muted` raw with no background awareness of their
     // own — the only way to protect them without touching those
@@ -223,7 +236,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
             y="104"
             fontFamily={fonts.heading}
             fontSize={sectionLabel.fontSize}
-            fill={colors.accent}
+            fill={sectionLabelFill}
             letterSpacing="2"
             dominantBaseline="alphabetic"
           >
@@ -360,6 +373,11 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
   const subheadingFill = subheading
     ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.accent
+  // kicker 守卫补漏（见文件头注释）：section label 落在同一张页面默认底上，
+  // 缺失的那一处 accessibleInk 守卫，同 subheadingFill 的背景参考。
+  const sectionLabelFill = sectionLabel
+    ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, sectionLabel.fontSize)
+    : colors.accent
   const dividerY = 162 + headingExtra + subheadingBudget
   const contentRectY = 180 + headingExtra + subheadingBudget
   const contentRectH = Math.max(120, contentH - headingExtra - subheadingBudget)
@@ -374,7 +392,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
           y="62"
           fontFamily={fonts.heading}
           fontSize={sectionLabel.fontSize}
-          fill={colors.accent}
+          fill={sectionLabelFill}
           letterSpacing="2"
           dominantBaseline="alphabetic"
         >

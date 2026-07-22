@@ -105,17 +105,68 @@ export interface StrategyDefinition {
    * spec `focus` vocabulary gate, so narrowing its meaning here would be a
    * breaking change to an existing consumer. This field holds only
    * `LAYOUT_REGISTRY` content-archetype ids (`svg/layouts/registry.ts`'s
-   * `CONTENT_LAYOUTS` keys) — cover/chapter/ending ids never appear in any
-   * strategy's list here, which is exactly why `resolveArchetypeId`'s weighting
-   * is a no-op for those three slide types (spec: "身份页个性来自 theme 不来自
-   * strategy，均匀取样") without needing a slide-type special case — a weight
-   * lookup against an id that can never match falls through to the ×1 floor
-   * for every candidate, uniform by construction. `tone-adaptive-content`
-   * appears in no strategy's list either (spec's "万金油" call-out: it is the
-   * one content archetype meant to read as strategy-neutral, so it always
-   * gets the ×1 floor too).
+   * `CONTENT_LAYOUTS` keys) — cover/chapter/ending ids never appear in this
+   * field's list, `resolveArchetypeId` reads {@link identityTendencies}
+   * below for those three slide types instead, so the two fields' id
+   * namespaces stay disjoint by construction rather than by convention.
+   * `tone-adaptive-content` appears in no strategy's list here (spec's "万金
+   * 油" call-out: it is the one content archetype meant to read as
+   * strategy-neutral, so it always gets the ×1 floor).
+   *
+   * **Historical note (corrected P1 variety wave, task 3):** this field's
+   * doc comment used to claim cover/chapter/ending stayed uniformly sampled
+   * because "身份页个性来自 theme 不来自 strategy" — that claim was already
+   * false when written (`theme.layouts` only curates the candidate *pool*,
+   * spec §6 step 3 — the 13 built-in themes' pools are all the full registry
+   * set for every slide type, so `theme.id` contributes zero shaping either —
+   * see `.issues/.../dr/c-diversity.md`'s §1.1 measurement). Identity pages
+   * now get their own strategy-driven soft weighting via
+   * {@link identityTendencies} — theme's role stays exactly what step 3
+   * always said it was — pool curation, not per-archetype preference — for
+   * both content and identity slides alike.
    */
   layoutTendencies: readonly string[]
+  /**
+   * Cover/chapter/ending soft-weight sets (P1 variety wave, task 3 — "身份页
+   * strategy 软加权"), one per identity slide type. Same ×3/×1 mechanics as
+   * {@link layoutTendencies} (`TENDENCY_WEIGHT`/`BASE_WEIGHT`,
+   * `svg/effective-layout.ts`) and the same consumer (`resolveArchetypeId`),
+   * just scoped to a disjoint id namespace: this field holds only
+   * `LAYOUT_REGISTRY` cover/chapter/ending archetype ids
+   * (`svg/layouts/registry.ts`'s `COVER_LAYOUTS`/`CHAPTER_LAYOUTS`/
+   * `ENDING_LAYOUTS` keys), never a content id — `resolveArchetypeId` picks
+   * this field or {@link layoutTendencies} based on the slide type being
+   * resolved, never both for the same candidate.
+   *
+   * Deliberately small (2-3 members per page type, out of a 7-8-id pool) —
+   * spec: "映射表提案是内容决策...权重不是排除", so every non-member archetype
+   * still stays reachable at the `BASE_WEIGHT` floor, just less often. Each
+   * member's rationale is documented next to its own strategy entry below,
+   * grounded in that archetype's own body comment in
+   * `svg/layouts/registry.ts` (`COVER_LAYOUTS`/`CHAPTER_LAYOUTS`/
+   * `ENDING_LAYOUTS`), not its name alone.
+   *
+   * `tone-adaptive-header`/`tone-adaptive-chapter`/`tone-adaptive-ending`
+   * never appear in any strategy's set here, mirroring
+   * `tone-adaptive-content`'s absence from every {@link layoutTendencies}
+   * list: each is its page type's "万金油" (registry.ts's own convention),
+   * the one archetype each identity slide type is meant to keep reading as
+   * strategy-neutral.
+   *
+   * Supersedes the old design note this field replaces (formerly recorded
+   * on {@link layoutTendencies} below, now corrected there): identity pages
+   * were never actually reading `theme.id` for their character either
+   * (`theme.layouts` only curates the *pool*, spec §6 step 3 — it was never
+   * a per-archetype weighting signal, for content or identity slides alike)
+   * — this field is what now gives cover/chapter/ending a strategy-driven
+   * personality, the same soft-weight mechanism content pages have had since
+   * W4.
+   */
+  identityTendencies: {
+    readonly cover: readonly string[]
+    readonly chapter: readonly string[]
+    readonly ending: readonly string[]
+  }
   /**
    * Beat template descriptor (spec §5's per-strategy beat-default column,
    * renamed from "rhythm" — spec §2.3), parameterized by strategy for W5's
@@ -150,6 +201,31 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     ],
     // MECE 结论先行——密集数据型 body（bento 卡片拼盘/横幅断言）+ 两栏对比。
     layoutTendencies: ["bento-panel", "banner-heading", "two-column"],
+    // Identity tendencies (P1 variety wave, task 3): a conclusion-first
+    // boardroom deck wants its cover/chapter/ending to read as direct and
+    // authoritative, not atmospheric.
+    // - cover `banner-title`: org kicker + conf badge + accent bar + an
+    //   explicit author/date/version meta row — the formal report-title
+    //   convention a boardroom deck opens with.
+    // - cover `left-anchor`: a 40%-width primary-color block carries the
+    //   heading — one declarative assertion block, the same "state the
+    //   point boldly" instinct as this strategy's own content picks
+    //   (banner-heading, bento-panel).
+    // - chapter `poster-chapter`: the pool's only *opaque* (not translucent)
+    //   chapter-number watermark — the most visually confident "milestone
+    //   stated outright" numeral treatment.
+    // - chapter `masthead-chapter`: top/bottom hairlines bracket a
+    //   left-aligned heading, zero ornament — a clean, formal section break.
+    // - ending `masthead-ending`: centered heading + a single org/contact/
+    //   date meta line — the plainest, most conclusive close.
+    // - ending `rail-ending`: corner color-block accents + an explicit
+    //   "Contact" section + copyright — a structured, sectioned wrap-up that
+    //   reads like a report's closing page, not a sentimental goodbye.
+    identityTendencies: {
+      cover: ["banner-title", "left-anchor"],
+      chapter: ["poster-chapter", "masthead-chapter"],
+      ending: ["masthead-ending", "rail-ending"],
+    },
     beatPolicy: "anchor-open",
   },
   storytelling: {
@@ -161,8 +237,36 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // distinct component type, not part of this family — it only shows up
     // in showcase's row below, matching the spec table.
     tendencies: ["quote", "image-split", "image-top", "image-bottom", "image-annotate", "timeline", "callout"],
-    // 情境→张力→解决——单栏行文（narrow-column）+ 海报式单点强调（stacked-poster）。
-    layoutTendencies: ["narrow-column", "stacked-poster"],
+    // 情境→张力→解决——单栏行文（narrow-column）+ 海报式单点强调（stacked-
+    // poster）+ 留白居中的静谧构图（quiet-frame，P1 variety wave task 4：
+    // content 池扩容新增的 breathing 适格 archetype——storytelling 本就是
+    // 池里唯一同时偏好 narrow-column/stacked-poster 两个「从容」版式的
+    // strategy，quiet-frame 的对称留白构图是同一气质的第三种表达，不是
+    // 勉强凑数）。
+    layoutTendencies: ["narrow-column", "stacked-poster", "quiet-frame"],
+    // Identity tendencies: storytelling's cover/chapter/ending want suspense
+    // and an editorial voice, not a business report's directness.
+    // - cover `editorial-masthead`: centered literary masthead + italic
+    //   subheading + a single merged meta line — reads like a magazine
+    //   feature opener, not a title page.
+    // - cover `constellation`: bottom-anchored hero heading + the signature
+    //   9-point constellation motif — the pool's most atmospheric,
+    //   scene-setting cover, matching a "situation → tension" arc.
+    // - chapter `roman-chapter`: a giant roman-numeral watermark + a
+    //   seed-rotated arc ornament — the pool's most literary, ornamental
+    //   chapter break.
+    // - chapter `banner-chapter`: centered white heading over the theme's
+    //   full primary-color block — a dramatic, full-bleed scene change.
+    // - ending `constellation-ending`: "Thank you." with an accent trailing
+    //   period + accent rule bar — echoes the cover's own constellation
+    //   branding, closing the arc it opened.
+    // - ending `poster-ending`: centered italic heading — an editorial,
+    //   poster-style close.
+    identityTendencies: {
+      cover: ["editorial-masthead", "constellation"],
+      chapter: ["roman-chapter", "banner-chapter"],
+      ending: ["constellation-ending", "poster-ending"],
+    },
     beatPolicy: "alternate",
   },
   instructional: {
@@ -172,8 +276,36 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // laid end to end), the same "分步拆解" shape instructional already
     // favors, on top of already belonging to pyramid's evidence-dense set.
     tendencies: ["steps", "numbered_cards", "flowchart", "architecture", "code", "gantt"],
-    // 分步拆解——编号导轨（rail-numbered）+ 两栏步骤对照。
-    layoutTendencies: ["rail-numbered", "two-column"],
+    // 分步拆解——编号导轨（rail-numbered）+ 两栏步骤对照 + 主次分层的三区
+    // 版式（asymmetric-triptych，P1 variety wave task 4：content 池扩容
+    // 优先落给代表性不足的 instructional，此前仅 2 项。「一个主题项 + 拆成
+    // 两个次要区块」的构图本身就是「主步骤 + 子步骤」的视觉转译，与
+    // instructional 的分步拆解性格直接对应，不是借用凑数）。
+    layoutTendencies: ["rail-numbered", "two-column", "asymmetric-triptych"],
+    // Identity tendencies: instructional's cover/chapter/ending favor
+    // structured, procedural clarity over either boardroom directness or
+    // storytelling atmosphere.
+    // - cover `split-diagonal`: a hard diagonal cut partitions kicker/decor
+    //   from heading/subheading/meta — the one cover whose own geometry is
+    //   a literal division, echoing a step-by-step handout's structure.
+    // - cover `banner-title`: the same formal-document convention pyramid
+    //   borrows, doubly apt for training material that also states a
+    //   version number in its meta row.
+    // - chapter `rail-chapter`: the only chapter archetype carrying an
+    //   explicit progress-dot rail/track — a literal "step N of M" cue.
+    // - chapter `constellation-chapter`: left opaque accent number +
+    //   right-aligned heading — a crisp, numbered division between
+    //   procedure blocks.
+    // - ending `rail-ending`: an explicit "Contact" section + copyright — a
+    //   reference page a trainee can act on, not a sentimental sign-off.
+    // - ending `banner-ending`: italic "Thank you." plus its own explicit
+    //   "Contact" section + copyright — practical next-steps information
+    //   over sentiment.
+    identityTendencies: {
+      cover: ["split-diagonal", "banner-title"],
+      chapter: ["rail-chapter", "constellation-chapter"],
+      ending: ["rail-ending", "banner-ending"],
+    },
     beatPolicy: "repetition-ok",
   },
   showcase: {
@@ -187,15 +319,69 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // here would be unresolvable — kpi_cards is the correct, resolvable
     // normalization.
     tendencies: ["image-split", "image-top", "image-bottom", "image-annotate", "image_grid", "kpi_cards"],
-    // 视觉冲击——海报式单点强调（stacked-poster）+ 卡片拼盘（bento-panel）。
-    layoutTendencies: ["stacked-poster", "bento-panel"],
+    // 视觉冲击——海报式单点强调（stacked-poster）+ 卡片拼盘（bento-panel）+
+    // 常驻高亮色块（side-highlight，P1 variety wave task 4：content 池扩容
+    // 优先落给代表性不足的 showcase，此前仅 2 项。一块不透明主色高亮面板
+    // 是这个池子里视觉冲击力最直接的新表达，与 showcase 的门面页选型
+    // poster-center/fashion-masthead/fashion-chapter/fashion-ending 同一
+    // 「大胆色块」气质）。
+    layoutTendencies: ["stacked-poster", "bento-panel", "side-highlight"],
+    // Identity tendencies: showcase's cover/chapter/ending want the same
+    // glossy, visual-impact-first punch as its content picks.
+    // - cover `poster-center`: fully centered, no kicker, a single bottom
+    //   meta line — the boldest, most minimal typographic poster in the
+    //   pool, all visual weight on the headline itself.
+    // - cover `fashion-masthead`: a full-bleed primary block + accent color
+    //   band — glossy, product-launch-grade visual punch.
+    // - chapter `fashion-chapter`: a full-bleed accent block + an explicit
+    //   "CHAPTER NN" kicker — the glossiest, most magazine-tag-like chapter
+    //   marker in the pool.
+    // - chapter `poster-chapter`: shares pyramid's bold opaque numeral —
+    //   showcase wants that same visual confidence for a milestone
+    //   announcement.
+    // - ending `fashion-ending`: a full-bleed primary block + a giant
+    //   heading — the boldest, most visually loud close, matching this
+    //   strategy's cover/chapter picks.
+    // - ending `poster-ending`: centered italic poster style — glossy and
+    //   minimal.
+    identityTendencies: {
+      cover: ["poster-center", "fashion-masthead"],
+      chapter: ["fashion-chapter", "poster-chapter"],
+      ending: ["fashion-ending", "poster-ending"],
+    },
     beatPolicy: "anchor-sparse",
   },
   briefing: {
     id: "briefing",
     tendencies: ["bullets", "row_cards", "timeline", "citation"],
-    // 中性通报可扫读——横幅断言 + 卡片拼盘 + 两栏，三种扫读友好排布并重。
-    layoutTendencies: ["banner-heading", "bento-panel", "two-column"],
+    // 中性通报可扫读——横幅断言 + 编号导轨 + 两栏，三种扫读友好排布并重。原三元
+    // 集合（banner-heading/bento-panel/two-column）与 pyramid 逐位相同——已按
+    // 两者的真实叙事性格重新提案（P1 variety wave, task 3）：bento-panel（密集
+    // MECE 证据网格）是 pyramid「结论先行、层层论证」的签名式排布，而 briefing
+    // 通报状态/事实是逐条陈述，不是论证聚合，换成 rail-numbered（编号进度轨，
+    // 天然是「第 N 条」的顺序枚举）更贴合「status/facts sequential」。
+    layoutTendencies: ["banner-heading", "rail-numbered", "two-column"],
+    // Identity tendencies: briefing's cover/chapter/ending stay plain and
+    // fact-forward — briefing is also `general`'s default strategy, so most
+    // no-narrative decks now see this set (see effective-layout.test.ts's
+    // "default narrative" coverage for the byte-inertness boundary this
+    // implies).
+    // - cover `banner-title`: the same formal-report convention pyramid
+    //   borrows, apt for a status briefing's "who/when/version" opening.
+    // - cover `poster-center`: centered and unadorned — a plain, no-flourish
+    //   open that reads as neutral rather than narrative-driven.
+    // - chapter `masthead-chapter`: a plain hairline-bracketed heading — the
+    //   least decorated, most scannable section marker.
+    // - chapter `constellation-chapter`: left-accent numbered division —
+    //   orderly and fact-forward, no watermark drama.
+    // - ending `masthead-ending`: a plain centered close, no flourish.
+    // - ending `banner-ending`: an explicit "Contact" section + copyright —
+    //   a status report's practical sign-off, facts over sentiment.
+    identityTendencies: {
+      cover: ["banner-title", "poster-center"],
+      chapter: ["masthead-chapter", "constellation-chapter"],
+      ending: ["masthead-ending", "banner-ending"],
+    },
     beatPolicy: "uniform-dense",
   },
 }
