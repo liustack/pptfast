@@ -103,6 +103,19 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `annualReviewPreset`: slide indices 2 and 3 (content,
       //     auto-picked — `banner-heading` -> `narrow-column`, `two-column`
       //     -> `stacked-poster`).
+      //
+      // Re-recaptured again (P1 variety wave, task 4 fix round — reviewer
+      // Minor-1, quiet-frame's single-component symmetry fix): `content-
+      // quiet-frame.tsx` now narrows+re-centers its content rect for
+      // exactly 1 non-full-body component (640px, was the full 880px
+      // symmetric rect) — a real, intended geometry fix, not a migration
+      // regression. `scenarioBearing`'s own slide index 3 (the
+      // `quiet-frame` content page landed above, exactly 1 paragraph
+      // component) is the only slide in any of the three fixtures affected
+      // — verified via the same targeted-diff discipline: `basic`/
+      // `annualReviewPreset` are untouched by this recapture (neither has a
+      // 1-component quiet-frame page), and `.audit.json` needed no
+      // recapture (findings stayed the empty array).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

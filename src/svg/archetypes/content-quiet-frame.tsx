@@ -1,5 +1,6 @@
 import type { SvgTemplateProps } from "./types"
 import { SvgContent } from "../SvgContent"
+import { FULL_BODY_TYPES } from "../component-traits"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
@@ -26,13 +27,17 @@ import { accessibleInk } from "../ink"
  * the content region begins. The content region itself passes
  * `slide.arrangement` straight through unchanged (this archetype's
  * distinguishing feature is the frame around the content, not a bespoke
- * internal split), width 880 — matching, never narrowing past,
- * `narrow-column`'s own `COLUMN_W` (the pool's existing narrowest
- * single-stack width, so this archetype introduces no new minimum
- * `audit/capacity.ts` would need to re-derive against). No watermark, no
- * side gutter — the whitespace itself (symmetric margins, a lower content
- * start, no persistent decoration) is the whole visual signature, which is
- * exactly what "whitespace-led" means as a *structural* difference from
+ * internal split): width 880 for 2+ components — matching, never
+ * narrowing past, `narrow-column`'s own `COLUMN_W` (the pool's existing
+ * narrowest single-stack width, so this archetype introduces no new
+ * minimum `audit/capacity.ts` would need to re-derive against) — and a
+ * narrower, re-centered 640 for exactly 1 non-full-body component (still
+ * wider than the pool's existing 424px two-column-half minimum, see the
+ * "Single-component symmetry fix" note below — a fix-round addition, not
+ * part of the original sketch). No watermark, no side gutter — the
+ * whitespace itself (symmetric margins, a lower content start, no
+ * persistent decoration) is the whole visual signature, which is exactly
+ * what "whitespace-led" means as a *structural* difference from
  * `narrow-column`'s own (asymmetric, watermark-carrying) breathing
  * treatment.
  *
@@ -41,6 +46,25 @@ import { accessibleInk } from "../ink"
  * restrained sibling) and beat `breathing` (the archetype's entire reason
  * for existing).
  *
+ * Single-component symmetry fix (P1 variety wave, task 4 fix round —
+ * reviewer Minor-1): the content region used to always fill the full
+ * FRAME_W=880 rect, even with exactly 1 component — `SvgContent`'s stack
+ * renders that lone block left-aligned at the rect's own x (200), so a
+ * centered kicker/heading/subheading/rule sat directly above a flush-left
+ * body line, breaking the archetype's whole symmetric identity at exactly
+ * the single-component edge shape this task exists to differentiate (the
+ * same "visibly distinct at n=1" bar `asymmetric-triptych`'s own header
+ * holds itself to). Fix: when the slide carries exactly 1 component that
+ * isn't a full-body type (`swot`/`bmc`/`waterfall`/`gantt` — those already
+ * take the *whole* rect via `SvgContent`'s own first branch, narrowing
+ * would just cramp a component designed to use the full width), the
+ * content rect narrows to `SINGLE_COMPONENT_W` (640, still wider than the
+ * pool's existing 424px two-column-half minimum — no new capacity.ts
+ * floor) and re-centers on `CENTER_X`, echoing the centered heading above
+ * it instead of reading as an unrelated wide box. `n>=2` is untouched
+ * (still the full symmetric 880 rect, unaffected by this branch) — the
+ * multi-component render is byte-identical to before this fix.
+ *
  * Discipline: no theme id, no hex literal — every color is a token or an
  * `../ink` call.
  */
@@ -48,6 +72,8 @@ import { accessibleInk } from "../ink"
 const CENTER_X = 640
 const FRAME_X = 200
 const FRAME_W = 880
+// See "Single-component symmetry fix" above.
+const SINGLE_COMPONENT_W = 640
 
 const KICKER_Y = 120
 const HEADING_BASELINE = 180
@@ -91,12 +117,17 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const ruleY = (subheading ? subheadingY : headingLastY) + RULE_GAP
   const contentY = ruleY + CONTENT_GAP
   const contentBottom = slide.footnote ? 600 : 620
-  const contentRect = {
-    x: FRAME_X,
-    y: contentY,
-    w: FRAME_W,
-    h: Math.max(120, contentBottom - contentY),
-  }
+  const contentH = Math.max(120, contentBottom - contentY)
+  // Single-component symmetry fix (see file header): narrow + re-center the
+  // rect only for the lone-non-full-body-component case. n>=2 (or a
+  // full-body component, which SvgContent already hands the whole rect)
+  // keeps the original full-width symmetric rect, byte-identical to before
+  // this fix.
+  const isSingleOrdinaryComponent =
+    slide.components.length === 1 && !FULL_BODY_TYPES.has(slide.components[0].type)
+  const contentRect = isSingleOrdinaryComponent
+    ? { x: CENTER_X - SINGLE_COMPONENT_W / 2, y: contentY, w: SINGLE_COMPONENT_W, h: contentH }
+    : { x: FRAME_X, y: contentY, w: FRAME_W, h: contentH }
 
   const footnote = slide.footnote
     ? fitSvgLine(slide.footnote, { maxWidth: FRAME_W, fontSize: 14, minFontSize: 11 })
