@@ -29,6 +29,25 @@ pptfast themes --json      # built-in themes (id + label)
 
 Never write IR or a spec from memory of a previous session or from this file — the schema evolves and `schema`/`narratives`/`themes` output always wins.
 
+**Boundary-page rule — learn this now, it is the single most common mistake:** `cover`, `chapter`, and `ending` pages never render `components` or `footnote`, on any archetype, no exceptions. Put that content on a `content` page instead. Getting this wrong at spec time means rewriting real content later — `validate` catches it with `"<type>" slides do not render components/footnote — move this content to a content slide or remove it`, but by then you have already drafted content that has to move.
+
+```json
+// pages/closing.json — spec type "ending" — WRONG: components never render on an ending page
+{ "components": [{ "type": "bullets", "items": ["Thank you", "Questions? sales@example.com"] }] }
+```
+
+```json
+// pages/wrap-up.json — spec type "content", inserted right before the ending page — CORRECT
+{ "components": [{ "type": "bullets", "items": ["Thank you", "Questions? sales@example.com"] }] }
+```
+
+```json
+// pages/closing.json — spec type "ending" — stays bare, nothing to move here
+{}
+```
+
+`docs/deck-projects.md`'s boundary-page render surface table has the full per-type accounting.
+
 ### Phase 2 — Spec and confirm
 
 Propose and confirm before writing any page content:
@@ -43,7 +62,7 @@ Propose and confirm before writing any page content:
 
 ### Phase 3 — Fill pages in batches of at most 4, validate immediately
 
-For each page in the confirmed spec, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes` — never `type`/`heading`, those are locked by the spec). `cover`/`chapter`/`ending` pages never render `components` or `footnote` — `validate` hard-errors if either is set there (`docs/deck-projects.md`'s boundary-page render surface table has the full per-type accounting). Put that content on a `content` page instead. `notes` is speaker notes prose for whoever presents the deck — writing a good speaking script is a model strength, so draft it whenever the page's content calls for a spoken walkthrough beyond what's on the slide.
+For each page in the confirmed spec, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes` — never `type`/`heading`, those are locked by the spec). Remember Phase 1's boundary-page rule while drafting `cover`/`chapter`/`ending` pages — do not give them `components` or `footnote` and then have to move it. `notes` is speaker notes prose for whoever presents the deck — writing a good speaking script is a model strength, so draft it whenever the page's content calls for a spoken walkthrough beyond what's on the slide.
 
 ```bash
 pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken spec

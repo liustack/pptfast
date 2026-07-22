@@ -1,9 +1,17 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
 import { measureTextUnits } from "@/lib/svg-text-layout"
+import { makeSolidRegionPngDataUri } from "@/platform/test-png-fixture"
 import { formatIssues, formatWarnings, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { ENUM_ERROR_MESSAGE_MAX_LENGTH } from "./ir/schema-error-hints"
 import { CAPACITY } from "./svg/audit/capacity"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
+
+/** A real, minimal, decodable PNG data URI — every "byte-inertness" and
+ *  "dangling asset_id" test below (Task 2, borrow wave) needs an asset that
+ *  passes `checkAssetBytes` cleanly so it isn't what the test under
+ *  scrutiny observes. */
+const realPngDataUri = makeSolidRegionPngDataUri(2, 2, () => [10, 20, 30])
 
 const raw = {
   version: "4",
@@ -819,6 +827,59 @@ describe("bullets geometric hard error (Task 2, borrow wave — dual-threshold s
   })
 })
 
+// P0 hardening (robustness deep-review D1): bullets_overflow's count-based
+// second-tier escalation — bullets_count_overflow, same dual-threshold
+// severity machinery as bullet_item_overflow above (this file's own
+// precedent/template), just on item count instead of item length.
+describe("bullets count geometric hard error (P0 hardening, robustness deep-review D1)", () => {
+  it(`a bullets list past the count ceiling (${CAPACITY.bullets.countOverflowItems} items) hard-blocks generation via generatePptx`, async () => {
+    const tooMany = Array.from({ length: CAPACITY.bullets.countOverflowItems + 1 }, (_, i) => `item ${i}`)
+    const ir = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Count overflow probe", components: [{ type: "bullets", items: tooMany }] },
+      ],
+    }
+    const v = validateIr(ir)
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes("far too many items"))).toBe(true)
+    await expect(generatePptx(ir)).rejects.toThrow(/invalid IR/)
+  })
+
+  it(`does NOT report bullets_count_overflow at exactly ${CAPACITY.bullets.countOverflowItems} items — still ok:true`, () => {
+    const atCeiling = Array.from({ length: CAPACITY.bullets.countOverflowItems }, (_, i) => `item ${i}`)
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "At count ceiling", components: [{ type: "bullets", items: atCeiling }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("names the ceiling and stays free of a leaked '+N more'-style per-item dump — message stays short regardless of item count", async () => {
+    const tooMany = Array.from({ length: 20_000 }, (_, i) => `item ${i}`)
+    const ir = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Extreme", components: [{ type: "bullets", items: tooMany }] },
+      ],
+    }
+    let caught: Error | undefined
+    try {
+      await generatePptx(ir)
+    } catch (e) {
+      caught = e as Error
+    }
+    expect(caught).toBeTruthy()
+    expect(caught!.message).toContain(String(CAPACITY.bullets.countOverflowItems))
+    expect(caught!.message.length).toBeLessThan(2_000)
+  })
+})
+
 describe("describeQualityIssue: chart_axes_ignored English message (chart-axes feature)", () => {
   // `axes` (x_title/y_title/show_grid) only renders for bar/line
   // (chart.tsx's AXES_APPLICABLE_TYPES) — a pie/funnel/dumbbell chart
@@ -1033,6 +1094,157 @@ describe("v4 has no old-vocabulary rescue (spec §16, reversing the now-supersed
   })
 })
 
+// Borrow-wave task 3 (error-message quality): the rest of the documented
+// v2/v3 → v4 rename map gets the same "renamed, here's the new name" rescue
+// `scenario` already had (see `./ir/rename-hints.ts`), plus a generic
+// slide-level location hint for an unrecognized key that isn't one of those
+// renames. Every case below is one of the borrow-wave B report's 15
+// forgiveness probes (P2/P4/P7) — pinned here as the probe's *new* message
+// shape, replacing the bare "Unrecognized key" the probe originally found.
+describe("unrecognized-key rescue hints (borrow-wave task 3, generalizing the scenario rescue)", () => {
+  it("P7: hints blocks -> components at slide level", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", blocks: [{ type: "bullets", items: ["a", "b"] }] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('Unrecognized key: "blocks"'))).toBe(true)
+    expect(v.errors.some((e) => e.message.includes('"blocks" was renamed to "components" in IR v4'))).toBe(true)
+  })
+
+  it("hints variant -> layout/arrangement at slide level", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", variant: "two-column" }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('"variant" was split into "layout" and "arrangement" in IR v4'))).toBe(
+      true,
+    )
+  })
+
+  it("hints theme.override -> theme.style, scoped to the theme object", () => {
+    const v = validateIr({ ...raw, theme: { id: "consulting", override: { accent: "#ff0000" } } })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('"theme.override" was renamed to "theme.style" in IR v4'))).toBe(true)
+  })
+
+  it("P2: a non-rename unrecognized key directly on a slide gets the generic components[] location hint instead", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "x", items: ["stray", "items"] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('Unrecognized key: "items"'))).toBe(true)
+    expect(v.errors.some((e) => e.message.includes("belong inside one of the slide's components[] entries"))).toBe(true)
+    // Never both hints on the same key.
+    expect(v.errors.some((e) => e.message.includes("was renamed"))).toBe(false)
+  })
+
+  it("P4: an unrecognized key that is neither a documented rename nor at slide level gets no hint at all (out of this task's scope)", () => {
+    const v = validateIr({ ...raw, theme: { id: "consulting", colour: "#ff0000" } })
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    expect(v.errors[0]!.message).toBe('Unrecognized key: "colour"')
+  })
+})
+
+// Borrow-wave task 3: zod's default enum/discriminator error flattens every
+// valid value into the message (a real icon typo produced a 24,910-char,
+// 1756-option wall; a component-type typo produced a 437-char, 28-option one
+// — borrow-wave B report §3.3 #1/#2). `./ir/schema-error-hints.ts` replaces
+// both with a nearest-neighbor "did you mean" suggestion, a count, and a
+// pointer — this describe block pins probes P9 and P10 as their new shape,
+// plus the length ceiling that makes the old wall structurally impossible.
+describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
+  const withComponent = (component: unknown) => ({
+    ...raw,
+    slides: [raw.slides[0], { type: "content", heading: "x", components: [component] }],
+  })
+
+  it("P9: an icon near-miss ('check-circle' for lucide's 'circle-check') gets a did-you-mean suggestion, not the full enum", () => {
+    const v = validateIr(
+      withComponent({ type: "icon_cards", items: [{ icon: "check-circle", title: "a", text: "x" }, { icon: "circle-check", title: "b", text: "y" }] }),
+    )
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message).toContain('"check-circle" is not a valid icon name')
+    expect(message).toContain('did you mean "circle-check"?')
+    expect(message).toContain("pptfast schema")
+    expect(message).not.toMatch(/"a-arrow-down"/) // the enum is never flattened into the message
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+  })
+
+  it("P10: a component-type near-miss (singular 'kpi_card' for 'kpi_cards') gets a did-you-mean suggestion, not the full type list", () => {
+    const v = validateIr(withComponent({ type: "kpi_card", items: [{ value: "1", label: "x" }] }))
+    expect(v.ok).toBe(false)
+    expect(v.errors).toHaveLength(1)
+    const message = v.errors[0]!.message
+    expect(message).toContain('"kpi_card" is not a valid component type')
+    expect(message).toContain('did you mean "kpi_cards"?')
+    expect(message).toContain("pptfast schema")
+    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 28-option list is never flattened into the message
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+  })
+
+  it("an icon value with no plausible match still stays short, with no suggestion offered", () => {
+    const v = validateIr(
+      withComponent({ type: "icon_cards", items: [{ icon: "totally-unrelated-nonsense-value", title: "a", text: "x" }, { icon: "circle-check", title: "b", text: "y" }] }),
+    )
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message).not.toContain("did you mean")
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+  })
+
+  it("every icon field site (callout/kpi_cards/icon_cards/row_cards/verdict_banner) shares the same did-you-mean treatment", () => {
+    const sites: unknown[] = [
+      { type: "callout", variant: "info", text: "x", icon: "check-circle" },
+      { type: "kpi_cards", items: [{ value: "1", label: "x", icon: "check-circle" }] },
+      { type: "row_cards", items: [{ title: "a", icon: "check-circle" }, { title: "b" }, { title: "c" }] },
+      { type: "verdict_banner", text: "x", tone: "positive", icon: "check-circle" },
+    ]
+    for (const component of sites) {
+      const v = validateIr(withComponent(component))
+      expect(v.ok).toBe(false)
+      const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+      expect(message).toContain('did you mean "circle-check"?')
+      expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+    }
+  })
+
+  // Review round: the length bound above was not actually code-enforced —
+  // `enumMismatchMessage` interpolated the raw offending value verbatim, so
+  // a long *typo* (not just a large candidate list) could blow the bound.
+  // Reviewer measured a 2000-char garbage icon value producing a 2098-char
+  // message. `describeOffendingValue` (schema-error-hints.ts) now truncates
+  // the echoed value past 60 chars — pinned end-to-end here with the
+  // reviewer's exact input size.
+  it("a long (2000-char) garbage icon value still produces a message under the length bound, with the echoed value truncated", () => {
+    const v = validateIr(withComponent({ type: "icon_cards", items: [{ icon: "x".repeat(2000), title: "a", text: "b" }, { icon: "circle-check", title: "c", text: "d" }] }))
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+    expect(message).toContain("(2000 chars total)")
+    expect(message).not.toContain("x".repeat(2000)) // the full 2000-char value is never echoed verbatim
+  })
+
+  it("a 5000-char garbage icon value resolves quickly (no suggestion search runs) and still respects the length bound", () => {
+    const start = performance.now()
+    const v = validateIr(withComponent({ type: "icon_cards", items: [{ icon: "y".repeat(5000), title: "a", text: "b" }, { icon: "circle-check", title: "c", text: "d" }] }))
+    const elapsed = performance.now() - start
+    expect(v.ok).toBe(false)
+    const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
+    expect(message).not.toContain("did you mean") // far too long to be a plausible typo of any real icon name
+    // Generous smoke bound (see src/ir/suggest.test.ts's own comment on why
+    // this isn't a tight/flaky assertion) — reviewer measured 483ms against
+    // the unguarded search for this exact input size through validateIr's
+    // full call chain.
+    expect(elapsed).toBeLessThan(200)
+  })
+})
+
 describe("registerTheme end-to-end (W3 task 4)", () => {
   afterEach(() => {
     __resetRegisteredThemes()
@@ -1170,6 +1382,133 @@ describe("generatePptx draft gate (W5 task 1)", () => {
     const v = validateIr(withPlaceholder)
     expect(v.ok).toBe(true)
     expect(() => renderSlideSvg(v.ir!, 1)).not.toThrow()
+  })
+})
+
+describe("checkAssetBytes: byte-level asset validation (Task 2, borrow wave — D3)", () => {
+  const irWithImage = (src: string) => ({
+    ...raw,
+    assets: { images: { photo: { src } } },
+    slides: [
+      raw.slides[0],
+      { type: "content" as const, heading: "x", components: [{ type: "image" as const, asset_id: "photo" }] },
+    ],
+  })
+
+  it("accepts a real PNG data URI unchanged — byte-inertness for a valid deck (hard requirement)", () => {
+    const v = validateIr(irWithImage(realPngDataUri))
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+  })
+
+  // dr/d-robustness.md probe 1: a zero-byte PNG previously sailed through
+  // resolveLocalAssets/generatePptx and landed in the exported .pptx as a
+  // 0-byte media part.
+  it("rejects a zero-byte image data URI as an error", () => {
+    const v = validateIr(irWithImage("data:image/png;base64,"))
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.path).toBe("assets.images.photo")
+    expect(v.errors[0]!.message).toMatch(/zero-byte image/)
+  })
+
+  // dr/d-robustness.md probe 2: corrupt/garbage bytes under a PNG-shaped
+  // wrapper previously passed every existing check silently.
+  it("rejects garbage bytes with an unrecognized header as an error", () => {
+    const v = validateIr(irWithImage("data:image/png;base64,AAAA"))
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/corrupt or unrecognized header/)
+    expect(v.errors[0]!.message).toMatch(/PNG, JPEG, WebP, or GIF/)
+  })
+
+  // dr/d-robustness.md probe 3: a real PNG's bytes declared as image/jpeg.
+  // Disposition: reject, don't silently trust the bytes and rewrite the
+  // MIME (see checkAssetBytes's own doc comment for why).
+  it("rejects a real PNG declared as image/jpeg — extension/MIME-vs-bytes mismatch", () => {
+    const pngPayload = realPngDataUri.slice(realPngDataUri.indexOf(",") + 1)
+    const v = validateIr(irWithImage(`data:image/jpeg;base64,${pngPayload}`))
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toBe(
+      'asset "photo" declares "image/jpeg" but its bytes are actually image/png — fix the data URI\'s MIME prefix or re-export the image as image/jpeg',
+    )
+  })
+
+  it("does not decode/sniff an http(s) source — that ingestion form is validated at a different seam", () => {
+    const v = validateIr(irWithImage("https://example.com/photo.png"))
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+  })
+
+  it("does not decode/sniff a not-yet-resolved local file path — resolveLocalAssets validates that seam", () => {
+    const v = validateIr(irWithImage("photo.png"))
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+  })
+})
+
+describe("checkAssetReferences: dangling asset_id warning (Task 2, borrow wave — B5)", () => {
+  it("warns (does not reject) when an image component references an asset_id absent from assets.images", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "x", components: [{ type: "image", asset_id: "missing" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.errors).toEqual([])
+    expect(v.warnings).toHaveLength(1)
+    expect(v.warnings?.[0]!.path).toBe("slides.1.components.0.asset_id")
+    expect(v.warnings?.[0]!.message).toBe(
+      'asset_id "missing" is not defined in assets.images — available: (none defined)',
+    )
+  })
+
+  it("names the available asset keys when one is defined but the reference is a typo", () => {
+    const v = validateIr({
+      ...raw,
+      assets: { images: { logo: { src: realPngDataUri } } },
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "x", components: [{ type: "image", asset_id: "logoo" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.message).toBe(
+      'asset_id "logoo" is not defined in assets.images — available: "logo"',
+    )
+  })
+
+  it("does not warn when the asset_id resolves to a real key", () => {
+    const v = validateIr({
+      ...raw,
+      assets: { images: { logo: { src: realPngDataUri } } },
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "x", components: [{ type: "image", asset_id: "logo" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings).toBeUndefined()
+  })
+
+  it("catches a dangling asset_id on an \"asset\"-kind slide background", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        { ...raw.slides[0], background: { kind: "asset", asset_id: "missing-bg" } },
+        raw.slides[1],
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.path).toBe("slides.0.background.asset_id")
+    expect(v.warnings?.[0]!.message).toMatch(/asset_id "missing-bg" is not defined/)
+  })
+
+  it("catches a dangling brand.logo_asset_id", () => {
+    const v = validateIr({ ...raw, brand: { logo_asset_id: "missing-logo" } })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.[0]!.path).toBe("brand.logo_asset_id")
+    expect(v.warnings?.[0]!.message).toMatch(/asset_id "missing-logo" is not defined/)
   })
 })
 

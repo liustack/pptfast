@@ -1,7 +1,9 @@
 import { z } from "zod"
 import { PptfastError } from "./errors"
 import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
+import { decodeDataUriBytes, dataUriMime, FORMAT_BY_MIME, MIME_BY_SNIFFED_FORMAT, sniffImageFormat } from "./ir/asset-sniff"
 import { normalizeComponentAliases } from "./ir/field-aliases"
+import { isSlideLevelPath, renameHintsFor, SLIDE_LEVEL_UNKNOWN_KEY_HINT } from "./ir/rename-hints"
 import { generatePptxBlob } from "./pptx/generate"
 import { resolveNarrative, type NarrativeProfile } from "./narrative"
 import { CAPACITY } from "./svg/audit/capacity"
@@ -49,18 +51,21 @@ export interface ValidateResult {
    * Backward-compatible addition (borrow wave, Task 2 — dual-threshold
    * severity recalibration): warn-severity {@link checkIrQuality} findings
    * (editorial-budget codes — `missing_heading`/`long_heading`/`density`/
-   * `bullets_overflow`/`bullet_item_long`/`big_number_no_kpi`), formatted the
-   * same shape {@link formatIssues} already prints for `errors` (page/id/path
-   * all included). Present only when at least one warn-severity finding
-   * exists, and never gates `ok` on its own — that is exactly what moved
-   * these findings off `errors` and onto here. Can be present alongside a
-   * failing (`ok:false`) result too, whenever `checkIrQuality` itself ran
-   * (an *earlier* hard gate — schema, theme id, layout applicability,
-   * full-body exclusivity, boundary-page content, duplicate ids, narrative —
-   * short-circuits before `checkIrQuality` runs at all, so a deck rejected
-   * by one of those never reaches this field either way, see `validateIr`'s
-   * own body for the exact gate order). {@link formatWarnings} renders this
-   * array as CLI-ready `"warning: ..."` lines.
+   * `bullets_overflow`/`bullet_item_long`/`big_number_no_kpi`) plus
+   * {@link checkAssetReferences}'s dangling-`asset_id` findings (borrow wave,
+   * Task 2, B5 — a reference to an `assets.images` key that doesn't exist),
+   * formatted the same shape {@link formatIssues} already prints for `errors`
+   * (page/id/path all included). Present only when at least one warn-severity
+   * finding exists, and never gates `ok` on its own — that is exactly what
+   * moved these findings off `errors` and onto here. Can be present alongside
+   * a failing (`ok:false`) result too, whenever `checkIrQuality`/
+   * `checkAssetReferences` themselves ran (an *earlier* hard gate — schema,
+   * theme id, layout applicability, full-body exclusivity, boundary-page
+   * content, duplicate ids, asset bytes, narrative — short-circuits before
+   * either runs at all, so a deck rejected by one of those never reaches
+   * this field either way, see `validateIr`'s own body for the exact gate
+   * order). {@link formatWarnings} renders this array as CLI-ready
+   * `"warning: ..."` lines.
    */
   warnings?: ValidationIssue[]
 }
@@ -118,6 +123,19 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `bullet list has too many items (max ${b.maxItems} for ${b.pacing} pacing) — trim it or split into multiple slides`
         : "bullet list has too many items — trim it or split into multiple slides"
     }
+    case "bullets_count_overflow":
+      // P0 hardening (robustness deep-review D1, borrow-wave Task 2's
+      // dual-threshold machinery reused, not a new severity system): the
+      // count-based escalation of "bullets_overflow" above — severity
+      // "error", so this is the one bullets-count message that actually
+      // blocks `ok`. Like `bullet_item_overflow`, `CAPACITY.bullets
+      // .countOverflowItems` is a flat, pacing-independent ceiling (see its
+      // own derivation comment, capacity.ts): past this many items, the
+      // render-side box.h cap (bullets.tsx, same task) will still land the
+      // file successfully, but "graceful truncation" stops describing the
+      // outcome honestly — most of the content would silently vanish
+      // behind a single "+N more" marker.
+      return `bullet list has far too many items (over ${CAPACITY.bullets.countOverflowItems}) — most would silently drop behind a "+N more" marker rather than render; trim it substantially or split into multiple slides`
     case "bullet_item_long": {
       const b = issue.bulletsBudget
       return b
@@ -328,14 +346,159 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
 }
 
 /**
+ * Byte-level validation of every inline (`data:`) image asset in
+ * `assets.images` (borrow wave, Task 2 — D3): magic-byte sniffing catches a
+ * zero-byte or corrupt-header asset before it ever reaches the render/export
+ * chain, where every existing check (schema, layout, `package-audit`'s 8
+ * structural rules) previously passed it silently — it landed in the
+ * exported `.pptx` as a 0-byte or undecodable media part
+ * (`dr/d-robustness.md`'s asset-ingestion finding: a zero-byte PNG, a
+ * garbage-byte PNG and a real PNG saved as `.jpg` all "resolveLocalAssets
+ * OK → generatePptx OK", the 0-byte case confirmed landing in the output
+ * zip as `ppt/media/image-1-1.png` at 0 bytes). ERROR severity: a broken
+ * image is content loss, the same class `bullet_item_overflow` already
+ * hard-gates on — not an editorial-budget warn.
+ *
+ * Scope: `data:` URIs only — three ingestion forms exist, this covers one.
+ * A local file path (`assets.images[x].src` not yet a `data:` URI) is the
+ * CLI-only ingestion form — `resolveLocalAssets` (`cli/load-ir.ts`) runs the
+ * same {@link sniffImageFormat} sniff at its own seam, right after reading
+ * the file's bytes, since that step is Node-only and cannot live here
+ * without pulling `node:fs` into `validateIr`'s browser-safe closure
+ * (`src/index.ts`'s dependency-closure rule). An `http(s)://` src is left
+ * untouched here too, but not because it's out of scope for byte
+ * validation — it's checked at a *different, later* seam on purpose:
+ * `validateIr` never makes a network request (a deliberate, unconditional
+ * boundary — no fetch, ever, from validate), so a remote asset's bytes
+ * simply don't exist yet at this point in the pipeline. `inlinePptxAssets`
+ * (`platform/inline-assets.ts`) is where the URL actually turns into bytes
+ * (its own `fetch` call, export time) — that function's
+ * `assertValidFetchedImageBytes` runs this exact same sniff on what comes
+ * back, right after the fetch, so the byte check still happens, just later
+ * and at the seam where there's something to check. All three ingestion
+ * forms therefore end up sniffed exactly once, each at the earliest point
+ * its bytes actually exist — nowhere in the chain is an `http(s)` asset's
+ * validity left permanently unchecked.
+ *
+ * Extension/declared-MIME-vs-bytes mismatch disposition: reject, not
+ * silently trust the sniffed bytes and rewrite the MIME. A
+ * `data:image/jpeg;base64,...` URI whose payload is actually PNG-encoded
+ * would otherwise flow untouched into `svg2pptx/image.ts`'s `<image>` op and
+ * land in the exported package under a JPEG media-part identity with PNG
+ * bytes inside it — exactly the extension/content mismatch the repair-dialog
+ * probe (`docs/testing.md`) exists to catch, and `package-audit.ts`'s 8
+ * structural rules never check media-part byte validity at all (`dr/
+ * d-robustness.md` again — this is the gap that let it through before).
+ * Silently rewriting the MIME instead would make that specific risk
+ * disappear without ever telling the caller their source data was
+ * mislabeled — for an AI-agent-facing SDK, bytes that don't match their
+ * claimed format is itself a signal something upstream went wrong (wrong
+ * file selected, a failed re-encode) that the caller needs surfaced, not
+ * quietly reinterpreted out from under them.
+ */
+function checkAssetBytes(ir: PptxIR): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  for (const [id, asset] of Object.entries(ir.assets.images)) {
+    if (!asset.src.startsWith("data:")) continue
+    const bytes = decodeDataUriBytes(asset.src)
+    if (bytes === null) {
+      issues.push({
+        path: `assets.images.${id}`,
+        message: `asset "${id}": data URI is not valid base64 image data — re-export or re-encode the image`,
+      })
+      continue
+    }
+    if (bytes.length === 0) {
+      issues.push({
+        path: `assets.images.${id}`,
+        message: `asset "${id}" is a zero-byte image — re-export or re-upload the file`,
+      })
+      continue
+    }
+    const sniffed = sniffImageFormat(bytes)
+    if (sniffed === null) {
+      issues.push({
+        path: `assets.images.${id}`,
+        message: `asset "${id}": image data has a corrupt or unrecognized header (expected PNG, JPEG, WebP, or GIF) — re-export or re-upload the file`,
+      })
+      continue
+    }
+    const declaredMime = dataUriMime(asset.src)
+    const declaredFormat = FORMAT_BY_MIME[declaredMime]
+    if (declaredFormat && declaredFormat !== sniffed) {
+      issues.push({
+        path: `assets.images.${id}`,
+        message: `asset "${id}" declares "${declaredMime}" but its bytes are actually ${MIME_BY_SNIFFED_FORMAT[sniffed]} — fix the data URI's MIME prefix or re-export the image as ${declaredMime}`,
+      })
+    }
+  }
+  return issues
+}
+
+/**
+ * Every `asset_id` reference in the deck (an `image`/`image_grid`/
+ * `image_compare` component, an `"asset"`-kind slide background,
+ * `brand.logo_asset_id`) against the keys actually present in
+ * `assets.images` (borrow wave, Task 2 — B5). A reference to a key that
+ * doesn't exist renders as pptfast's documented graceful placeholder — a
+ * gray rect, `svg/components/image.tsx`'s `src ? <image> : <rect>` fallback,
+ * a deliberate "never crash" design — with zero error or warning text
+ * anywhere in the existing chain (`dr/b-weak-model.md`'s P15 probe: the only
+ * genuinely zero-signal misinterpretation found across 15 hand-written
+ * weak-model error probes — `validateIr` and `generatePptx` both stayed
+ * silent, so a single-turn model had no text to self-correct from). Warn,
+ * not error: the placeholder still renders and nothing downstream crashes,
+ * so this is advisory (naming the typo, not blocking export) — the
+ * render-time placeholder behavior itself is unchanged — this only makes its
+ * cause visible instead of silent.
+ */
+function checkAssetReferences(ir: PptxIR): ValidationIssue[] {
+  const known = Object.keys(ir.assets.images)
+  const available = known.length > 0 ? known.map((k) => `"${k}"`).join(", ") : "(none defined)"
+  const issues: ValidationIssue[] = []
+  // Every call site below passes a distinct `path` (one per asset_id-bearing
+  // field in the deck), so no separate dedup bookkeeping is needed here.
+  const check = (assetId: string | undefined, path: string, page?: number, slideId?: string) => {
+    if (!assetId || known.includes(assetId)) return
+    issues.push({
+      path,
+      message: `asset_id "${assetId}" is not defined in assets.images — available: ${available}`,
+      ...(page !== undefined ? { page } : {}),
+      ...(slideId !== undefined ? { slideId } : {}),
+    })
+  }
+  if (ir.brand?.logo_asset_id) check(ir.brand.logo_asset_id, "brand.logo_asset_id")
+  ir.slides.forEach((slide, i) => {
+    const page = i + 1
+    const slideId = slide.id
+    if (slide.background?.kind === "asset") {
+      check(slide.background.asset_id, `slides.${i}.background.asset_id`, page, slideId)
+    }
+    slide.components.forEach((c, ci) => {
+      if (c.type === "image") {
+        check(c.asset_id, `slides.${i}.components.${ci}.asset_id`, page, slideId)
+      } else if (c.type === "image_grid") {
+        c.items.forEach((item, ii) =>
+          check(item.asset_id, `slides.${i}.components.${ci}.items.${ii}.asset_id`, page, slideId),
+        )
+      } else if (c.type === "image_compare") {
+        check(c.left.asset_id, `slides.${i}.components.${ci}.left.asset_id`, page, slideId)
+        check(c.right.asset_id, `slides.${i}.components.${ci}.right.asset_id`, page, slideId)
+      }
+    })
+  })
+  return issues
+}
+
+/**
  * Validate raw JSON against the IR schema, then — once it parses — resolve
  * `narrative` (`resolveNarrative`, spec §5: an unrecognized preset name is a
  * `narrative`-path error, page-less) and run the content-quality gate
  * (`checkIrQuality`, passed the resolved axes) against the parsed IR. Every
  * hard-gate stage (schema, theme id, layout applicability, full-body
- * exclusivity, boundary-page content, duplicate ids, narrative) must pass for
- * `ok: true`, same as before. Quality findings are reported the same way as
- * schema errors (page-scoped, 1-based).
+ * exclusivity, boundary-page content, duplicate ids, asset bytes, narrative)
+ * must pass for `ok: true`, same as before. Quality findings are reported
+ * the same way as schema errors (page-scoped, 1-based).
  *
  * Dual-threshold severity (borrow wave, Task 2 — recalibrated from the prior
  * "any finding blocks" design): `checkIrQuality`'s own "warn" vs "error" tag
@@ -382,7 +545,14 @@ function checkDuplicateSlideIds(ir: PptxIR): ValidationIssue[] {
  * the schema itself leaves open) fails `resolveNarrative`'s own runtime
  * check, listing the current values. `pptfast migrate` (`ir/migrate.ts`)
  * remains the sanctioned bridge for a genuine v3 document — see the v3 hard
- * reject below, which points there.
+ * reject below, which points there. Hard-erroring is not the same as
+ * leaving the error message unhelpful, though: the schema-parse branch below
+ * appends a rename hint to `scenario` and the rest of the documented v2/v3
+ * rename map (`blocks`/`variant`/`theme.override` — `./ir/rename-hints.ts`,
+ * borrow-wave task 3) whenever the offending key matches one, and a generic
+ * "belongs inside components[]" hint for any other slide-level unrecognized
+ * key — message-layer annotation only, never a second, silent rewrite path
+ * alongside {@link normalizeComponentAliases}.
  *
  * The component-alias pass only ever runs for a document already headed for
  * the v4 schema — an explicit `version: "2"` or `version: "3"` is
@@ -437,14 +607,34 @@ export function validateIr(input: unknown): ValidateResult {
       const path = issue.path.join(".")
       const m = /^slides\.(\d+)/.exec(path)
       let message = issue.message
-      // The one retired key a hand-migrated v4 document most plausibly still
-      // carries (spec §16 hard-rejects it, no rescue) — the bare zod
-      // "Unrecognized key" line names the key but not its successor, so
-      // point at the rename and the sanctioned bridge here. The axis keys
-      // and old enum values inside `narrative` already self-document via
-      // resolveNarrative's own errors.
-      if (issue.code === "unrecognized_keys" && path === "" && /"scenario"/.test(message)) {
-        message += ' — "scenario" was renamed to "narrative" in IR v4 (for a v3 file run: pptfast migrate <file> -o <out>)'
+      if (issue.code === "unrecognized_keys") {
+        // The one retired key a hand-migrated v4 document most plausibly
+        // still carries (spec §16 hard-rejects it, no rescue) — the bare
+        // zod "Unrecognized key" line names the key but not its successor,
+        // so point at the rename and the sanctioned bridge here. The axis
+        // keys and old enum values inside `narrative` already self-document
+        // via resolveNarrative's own errors. Kept inline (not folded into
+        // ./ir/rename-hints.ts's table below) because this is the one
+        // rename whose hint also carries the `pptfast migrate` pointer for
+        // a genuine v3 document — see that module's own doc comment for why
+        // the other, v2-only renames don't get the same pointer.
+        if (path === "" && issue.keys.includes("scenario")) {
+          message += ' — "scenario" was renamed to "narrative" in IR v4 (for a v3 file run: pptfast migrate <file> -o <out>)'
+        }
+        // The rest of the documented v2/v3 → v4 rename map (borrow-wave
+        // task 3, generalizing the `scenario` rescue above to
+        // `blocks`/`variant`/`theme.override` — ./ir/rename-hints.ts), plus
+        // a generic "content belongs inside components[]" fallback for a
+        // slide-level unrecognized key that isn't one of those documented
+        // renames (the `items`-directly-on-a-slide probe, borrow-wave B
+        // report §3.3 #3). Never both on the same key: a documented rename
+        // is always the more specific, more useful hint.
+        const renameHints = renameHintsFor(issue.keys, path)
+        if (renameHints.length > 0) {
+          message += renameHints.join("")
+        } else if (isSlideLevelPath(path)) {
+          message += SLIDE_LEVEL_UNKNOWN_KEY_HINT
+        }
       }
       return { path, message, page: m ? Number(m[1]) + 1 : undefined }
     })
@@ -476,6 +666,12 @@ export function validateIr(input: unknown): ValidateResult {
   if (boundaryPageErrors.length > 0) return withNormalized({ ok: false, errors: boundaryPageErrors })
   const duplicateIdErrors = checkDuplicateSlideIds(r.data)
   if (duplicateIdErrors.length > 0) return withNormalized({ ok: false, errors: duplicateIdErrors })
+  // Asset byte validation (borrow wave, Task 2 — D3): a broken image is
+  // content loss, so this is a hard gate at the same short-circuiting
+  // position as the other structural checks above, not folded into
+  // checkIrQuality's editorial-budget warn/error split below.
+  const assetByteErrors = checkAssetBytes(r.data)
+  if (assetByteErrors.length > 0) return withNormalized({ ok: false, errors: assetByteErrors })
   // Narrative resolution (spec §5's defaults chain, W3 task 2; renamed from
   // "scenario resolution" spec §8.1). Both branches of the schema's
   // `narrative` union (NarrativeProfileInputSchema in ir/index.ts) are open
@@ -504,7 +700,6 @@ export function validateIr(input: unknown): ValidateResult {
     return withNormalized({ ok: false, errors: [{ path: "narrative", message: err.message }] })
   }
   const quality = checkIrQuality(r.data, resolvedAxes)
-  if (quality.length === 0) return withNormalized({ ok: true, ir: r.data, errors: [] })
   // `issue.slide` indexes `r.data.slides` directly for every code but
   // "empty_deck" (that branch never reaches here, see its own `slide: 0`
   // bookkeeping in ir-quality.ts's checkIrQuality — an early return makes it
@@ -522,12 +717,15 @@ export function validateIr(input: unknown): ValidateResult {
         }
   // Dual-threshold severity split (borrow wave, Task 2 — see this
   // function's own doc comment above for the evidence/rationale): only
-  // "error"-severity findings gate `ok`. "warn"-severity findings surface on
-  // `warnings` regardless of which branch fires below — a rejected
-  // (`ok: false`) deck's warnings are still worth seeing, not just a clean
-  // one's.
-  const warnFindings = quality.filter((issue) => issue.severity === "warn")
-  const warnings = warnFindings.length > 0 ? warnFindings.map(toIssue) : undefined
+  // "error"-severity findings gate `ok`. "warn"-severity findings — quality's
+  // own plus checkAssetReferences's dangling-asset_id findings (B5) —
+  // surface on `warnings` regardless of which branch fires below — a
+  // rejected (`ok: false`) deck's warnings are still worth seeing, not just
+  // a clean one's.
+  const warnFindings = quality.filter((issue) => issue.severity === "warn").map(toIssue)
+  const assetRefWarnings = checkAssetReferences(r.data)
+  const allWarnings = [...warnFindings, ...assetRefWarnings]
+  const warnings = allWarnings.length > 0 ? allWarnings : undefined
   const errorFindings = quality.filter((issue) => issue.severity === "error")
   if (errorFindings.length > 0) {
     return withNormalized({ ok: false, errors: errorFindings.map(toIssue), ...(warnings ? { warnings } : {}) })

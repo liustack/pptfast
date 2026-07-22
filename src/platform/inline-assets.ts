@@ -11,6 +11,7 @@
  * data URL 的 MIME 原样写进 pptx，PowerPoint 打不开 webp。
  */
 import type { PptxIR } from "@/ir"
+import { dataUriMime, decodeDataUriBytes, FORMAT_BY_MIME, MIME_BY_SNIFFED_FORMAT, sniffImageFormat } from "@/ir/asset-sniff"
 import { PptfastError } from "../errors"
 import { getPlatform } from "./registry"
 
@@ -139,6 +140,54 @@ export async function maybeCompressBackground(dataUrl: string): Promise<string> 
   }
 }
 
+/**
+ * Byte-level validation for an `http(s)://` asset's *fetched* bytes (borrow
+ * wave, Task 2 follow-up — the review's high-severity finding: a 200
+ * response with a `content-type: image/png` header and a 4-byte garbage
+ * body previously sailed through `validateIr` (ok:true, zero warnings) and
+ * `generatePptx` (succeeds) and landed byte-for-byte in the exported
+ * `ppt/media/*` part, since `package-audit.ts`'s `checkRelationshipTargets`
+ * only checks that a media part exists, never that its bytes are valid).
+ * This is the third, previously-missing ingestion seam for the same sniff
+ * `api.ts`'s `checkAssetBytes` and `cli/load-ir.ts`'s `resolveLocalAssets`
+ * already run — validated here, right after `fetch`, because a remote
+ * asset's bytes plainly don't exist yet at `validateIr` time (see this
+ * module's own responsibility: inlining is what turns a URL into bytes at
+ * all). `validateIr` staying network-free is a deliberate, unchanged
+ * boundary — it never fetches anything, by design (spec-level "no network
+ * request from validate") — not an oversight this function papers over.
+ *
+ * Same reject-not-relabel disposition as the other two seams for a
+ * declared-MIME-vs-bytes mismatch (a server that lies about `content-type`)
+ * — trusting the response header over the actual bytes is exactly the kind
+ * of silent mislabeling `checkAssetBytes`'s own doc comment argues against.
+ *
+ * Deliberately separate from the `fetch` `try/catch` above/below this
+ * function's call site: a fetch *failure* (network error, non-2xx) and a
+ * fetch *success carrying broken image bytes* are different failure modes
+ * that deserve different messages, not one generic "fetch failed" for both.
+ */
+function assertValidFetchedImageBytes(id: string, url: string, dataUrl: string): void {
+  const bytes = decodeDataUriBytes(dataUrl)
+  if (bytes === null || bytes.length === 0) {
+    throw new PptfastError(
+      `background/illustration asset "${id}" fetched from ${url} came back as a zero-byte or undecodable image — cannot produce a complete PPT, please retry or regenerate the image`,
+    )
+  }
+  const sniffed = sniffImageFormat(bytes)
+  if (sniffed === null) {
+    throw new PptfastError(
+      `background/illustration asset "${id}" fetched from ${url} has a corrupt or unrecognized image header (expected PNG, JPEG, WebP, or GIF) — cannot produce a complete PPT, please retry or regenerate the image`,
+    )
+  }
+  const declaredFormat = FORMAT_BY_MIME[dataUriMime(dataUrl)]
+  if (declaredFormat && declaredFormat !== sniffed) {
+    throw new PptfastError(
+      `background/illustration asset "${id}" fetched from ${url} declares "${dataUriMime(dataUrl)}" but its bytes are actually ${MIME_BY_SNIFFED_FORMAT[sniffed]} — cannot produce a complete PPT, please retry or regenerate the image`,
+    )
+  }
+}
+
 export async function inlinePptxAssets(ir: PptxIR): Promise<PptxIR> {
   const entries = Object.entries(ir.assets?.images ?? {})
   const bgIds = backgroundAssetIds(ir)
@@ -179,6 +228,7 @@ export async function inlinePptxAssets(ir: PptxIR): Promise<PptxIR> {
           `background/illustration asset "${id}" fetch failed (${e instanceof Error ? e.message : String(e)}), cannot produce a complete PPT — please retry or regenerate the image`,
         )
       }
+      assertValidFetchedImageBytes(id, asset.src, dataUrl)
       dataUrl = await normalizeAssetDataUrl(id, dataUrl)
       images[id] = {
         ...asset,

@@ -104,7 +104,36 @@ function buildRuns(el: Element, baseBold: boolean, baseItalic: boolean): TextRun
   return runs
 }
 
-/** Convert an SVG `<text>` element to a pptxgenjs text op. */
+/**
+ * `yPx`/`xPx` are trusted as-is, no ceiling of their own (P0 hardening,
+ * robustness deep-review D1 — evaluated and deliberately rejected here, not
+ * overlooked): a text-stacking SVG component (bullets/comparison/etc, this
+ * task's fix) that lets `y` run far enough off-canvas would eventually cross
+ * pptxgenjs's own undocumented `getSmartParseNumber()` ≥100in heuristic —
+ * the exact same trap `chart-svg.tsx`'s `MAX_CHART_GEOMETRY_PX` fences off
+ * on the chart side. This module is *not* where that fence belongs, for the
+ * same reason the chart fix put its own ceiling in the SVG renderer
+ * (`chart-svg.tsx`) rather than in this converter layer: "the engine owns
+ * geometry" (dumbbell adjudication) — `svg2pptx` is a faithful px→in/pt
+ * transform used by every shape kind (`rect.ts`/`ellipse.ts`/`line.ts`/
+ * `path.ts`/`image.ts` all share the same unclamped `pxToIn`), with no
+ * per-callsite knowledge of what a "reasonable" coordinate looks like for
+ * its caller. An opinionated ceiling in `pxToIn` itself would risk silently
+ * mangling a deliberately-large-but-legitimate coordinate (a full-bleed
+ * background, an intentional off-canvas bleed element) into a wrong value
+ * instead of the loud rejection `package-audit`'s `invalid-shape-transform`
+ * rule already provides when geometry genuinely breaks — this codebase's
+ * "never silently pass" posture (Audit v2 spec §4.4) favors that loud
+ * failure over a converter-level guess. The actual fix is upstream, at the
+ * component that emits the coordinate: every text-stacking component this
+ * task's family sweep found (bullets/comparison/citation/architecture/
+ * timeline-vertical) now caps its own rendered item count to its box, so
+ * `y` never runs away in the first place — see each component's own doc
+ * comment. `formatViolations`' dedup+truncation fix (same task,
+ * `package-audit.ts`) is the safety net for the case a future component
+ * misses this and the rejection fires anyway: the message stays readable
+ * instead of a multi-MB dump, regardless of how many shapes overflow.
+ */
 export function textToOp(el: Element): TextOp {
   const fontSizePx = num(el, "font-size", 16)
   const align = anchorToAlign(el.getAttribute("text-anchor"))

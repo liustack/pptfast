@@ -274,4 +274,79 @@ describe("comparison 首列重复归一化（2026-07-10 无图矩阵真机病型
     const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
     expect(texts.filter((t) => t === "甲")).toHaveLength(2)
   })
+
+  // P0 hardening (robustness deep-review D1, family-sweep sibling of
+  // bullets.tsx): `rows` has no schema ceiling and each row costs a fixed
+  // ROW px regardless of content — pre-fix, render() drew every row
+  // unconditionally, pushing an extreme row count (D1's repro used 300)
+  // arbitrarily far past the canvas.
+  describe("box.h-aware vertical cap (graceful landing)", () => {
+    const manyRowsComponent = {
+      type: "comparison" as const,
+      columns: ["A", "B"],
+      rows: Array.from({ length: 300 }, (_, i) => ({
+        label: `row ${i}`,
+        cells: [`cell ${i}a`, `cell ${i}b`],
+      })),
+    }
+
+    it("caps rendered rows to what box.h can hold and marks the drop with data-dropped, never drawing a rule line past the box", () => {
+      const box = { x: 96, y: 176, w: 1088, h: 300 }
+      const { container } = render(<svg>{comparison.render(manyRowsComponent, box, ctx)}</svg>)
+      // Far fewer than the full 300 rows got rendered.
+      const dataRowLabelTexts = Array.from(container.querySelectorAll("text")).filter((t) =>
+        (t.textContent ?? "").startsWith("row "),
+      )
+      expect(dataRowLabelTexts.length).toBeGreaterThan(0)
+      expect(dataRowLabelTexts.length).toBeLessThan(manyRowsComponent.rows.length)
+
+      // No rule line (header/separator/bottom) lands past box.h.
+      for (const line of Array.from(container.querySelectorAll("line"))) {
+        expect(Number(line.getAttribute("y1"))).toBeLessThanOrEqual(box.h)
+      }
+
+      const dropped = container.querySelector("[data-dropped]")
+      expect(dropped).toBeTruthy()
+      const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
+      expect(hiddenCount).toBeGreaterThan(0)
+      expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+      expect(hiddenCount + dataRowLabelTexts.length).toBe(manyRowsComponent.rows.length)
+
+      // Review fix (I1, sibling audit): the marker itself must stay inside
+      // box.h too, not just the rule lines — a marker-excluding containment
+      // check is exactly what let bullets.tsx's own marker overflow slip
+      // through review.
+      const markerY = Number(dropped!.getAttribute("y"))
+      const markerFontSize = Number(dropped!.getAttribute("font-size"))
+      expect(markerY + markerFontSize * 0.25).toBeLessThanOrEqual(box.h)
+    })
+
+    it("still renders at least one row even when box.h is far smaller than a single row's height", () => {
+      const box = { x: 0, y: 0, w: 1088, h: 5 }
+      const { container } = render(<svg>{comparison.render(manyRowsComponent, box, ctx)}</svg>)
+      const dataRowLabelTexts = Array.from(container.querySelectorAll("text")).filter((t) =>
+        (t.textContent ?? "").startsWith("row "),
+      )
+      expect(dataRowLabelTexts.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("is a byte-identical no-op when box.h is omitted (the ordinary/common render path)", () => {
+      const withoutH = render(
+        <svg>{comparison.render(component, { x: 0, y: 0, w: 1120 }, ctx)}</svg>,
+      ).container.innerHTML
+      const withGenerousH = render(
+        <svg>{comparison.render(component, { x: 0, y: 0, w: 1120, h: 100000 }, ctx)}</svg>,
+      ).container.innerHTML
+      expect(withoutH).toBe(withGenerousH)
+      expect(withoutH).not.toContain("data-dropped")
+    })
+
+    it("never shows a data-dropped marker when every row already fits box.h", () => {
+      const measured = comparison.measure(component, 1120, ctx)
+      const { container } = render(
+        <svg>{comparison.render(component, { x: 0, y: 0, w: 1120, h: measured + 40 }, ctx)}</svg>,
+      )
+      expect(container.querySelector("[data-dropped]")).toBeNull()
+    })
+  })
 })

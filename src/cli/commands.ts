@@ -329,16 +329,33 @@ function placeholderNote(ir: PptxIR): string | undefined {
  * findings — printed as `"warning: ..."` lines, exit code 0 either way
  * (only `!v.ok`, above, throws). A deck can print `OK` and still carry
  * warnings — that combination is the point of the split, not a bug.
+ *
+ * Borrow wave, Task 2 follow-up (review finding, medium): also runs
+ * `resolveLocalAssets` on `v.ir!`, same as `runRender`/`runAudit`/
+ * `runPreview` already do — `validateIr` itself only sniffs already-inlined
+ * `data:` URIs (`checkAssetBytes`, `../api.ts`'s own doc comment on why a
+ * local file path is a different, Node-only ingestion form), so without
+ * this a deck-dir referencing a corrupt local `.png` printed `OK` here while
+ * `render` correctly rejected the exact same input right after — an
+ * inconsistency with SKILL.md's Phase 3 contract, which treats `validate`
+ * as the authoritative pre-flight check. `resolveLocalAssets` mutating
+ * `v.ir!.assets.images[x].src` into a data URI as a side effect is harmless
+ * here — nothing this function reads afterward (`slides.length`, `theme.id`,
+ * `placeholderNote`) depends on `src` — so there was no reason to write a
+ * separate check-only variant; reusing the exact same function guarantees
+ * identical rejection semantics with `render` by construction, not by
+ * keeping two copies of the same logic in sync by hand.
  */
 export async function runValidate(irPath: string, cwd = process.cwd()): Promise<string> {
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, isDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
+  const { raw, baseDir, isDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
   await applyDeckConfig(raw, { cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok)
     throw new PptfastError(
       `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
     )
+  await resolveLocalAssets(v.ir!, baseDir)
   const ok = `OK — ${v.ir!.slides.length} slides, theme "${v.ir!.theme.id}"`
   const notes: string[] = []
   const warnNote = warningsNote(v.warnings)

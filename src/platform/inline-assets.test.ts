@@ -6,6 +6,13 @@ import { PptfastError } from "../errors"
 const RED_PNG =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 
+// Task 2 follow-up (borrow wave — assertValidFetchedImageBytes): these
+// fixtures only need to pass magic-byte sniffing, not decode as real images
+// — the tests using them stub `Image`/`canvas` decoding separately, so only
+// the leading signature bytes matter here.
+const FAKE_WEBP_BYTES = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])
+const FAKE_JPEG_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0])
+
 function ir(images: Record<string, { src: string }>): PptxIR {
   return {
     version: "4",
@@ -103,7 +110,7 @@ describe("office-safe mime normalization", () => {
 
   it("re-encodes fetched webp assets to png", async () => {
     stubDecodeEnv({ decodeOk: true })
-    const bytes = new Uint8Array([1, 2, 3])
+    const bytes = FAKE_WEBP_BYTES
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -126,7 +133,7 @@ describe("office-safe mime normalization", () => {
   })
 
   it("passes fetched jpeg through without re-encoding", async () => {
-    const bytes = new Uint8Array([4, 5, 6])
+    const bytes = FAKE_JPEG_BYTES
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -144,7 +151,7 @@ describe("office-safe mime normalization", () => {
       "fetch",
       vi.fn(
         async () =>
-          new Response(new Uint8Array([9]), {
+          new Response(FAKE_WEBP_BYTES, {
             headers: { "content-type": "image/webp" },
           }),
       ),
@@ -152,6 +159,63 @@ describe("office-safe mime normalization", () => {
     await expect(
       inlinePptxAssets(ir({ upload_bg: { src: WEBP_URL } })),
     ).rejects.toThrow(/upload_bg/)
+  })
+})
+
+// Task 2 follow-up (borrow wave — review finding, high): the exact
+// garbage-server scenario the review constructed — a 200 response,
+// `content-type: image/png`, and a body that is not real image bytes.
+// Previously nothing in the chain checked a *fetched* asset's bytes, so
+// this sailed through inlinePptxAssets/generatePptx untouched and landed
+// verbatim in the exported ppt/media/* part.
+describe("assertValidFetchedImageBytes (Task 2 follow-up — fetched-bytes validation)", () => {
+  it("rejects a 200 response with a valid content-type header but garbage bytes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(new Uint8Array([0x00, 0x01, 0x02, 0x03]), {
+            headers: { "content-type": "image/png" },
+          }),
+      ),
+    )
+    await expect(
+      inlinePptxAssets(ir({ hero: { src: "https://example.com/hero.png" } })),
+    ).rejects.toThrow(PptfastError)
+    await expect(
+      inlinePptxAssets(ir({ hero: { src: "https://example.com/hero.png" } })),
+    ).rejects.toThrow(/hero/)
+  })
+
+  it("rejects a zero-byte fetched response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(new Uint8Array([]), { headers: { "content-type": "image/png" } })),
+    )
+    await expect(
+      inlinePptxAssets(ir({ hero: { src: "https://example.com/hero.png" } })),
+    ).rejects.toThrow(/zero-byte or undecodable/)
+  })
+
+  it("rejects a real PNG fetched with a content-type: image/jpeg header (declared-MIME-vs-bytes mismatch)", async () => {
+    const pngBytes = Uint8Array.from(atob(RED_PNG.split(",")[1]!), (c) => c.charCodeAt(0))
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(pngBytes, { headers: { "content-type": "image/jpeg" } })),
+    )
+    await expect(
+      inlinePptxAssets(ir({ hero: { src: "https://example.com/hero.jpg" } })),
+    ).rejects.toThrow(/declares "image\/jpeg" but its bytes are actually image\/png/)
+  })
+
+  it("still accepts a genuinely valid fetched PNG (byte-inertness)", async () => {
+    const pngBytes = Uint8Array.from(atob(RED_PNG.split(",")[1]!), (c) => c.charCodeAt(0))
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(pngBytes, { headers: { "content-type": "image/png" } })),
+    )
+    const out = await inlinePptxAssets(ir({ hero: { src: "https://example.com/hero.png" } }))
+    expect(out.assets.images.hero?.src.startsWith("data:image/png;base64,")).toBe(true)
   })
 })
 

@@ -176,6 +176,23 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
         bulletsBudget: { pacing: resolvedAxes.pacing, ...budget.bullets },
       })
     }
+    // bullets_overflow 二级升级（P0 hardening, robustness deep-review D1,
+    // 借 borrow 波 Task 2 的 dual-threshold 架构，与 bullet_item_overflow
+    // 同款"扁平、与 pacing 无关的物理/合理性硬界"设计）：条目数超过
+    // `CAPACITY.bullets.countOverflowItems` 时，"优雅截断"已经不是对结果
+    // 的诚实描述——render 层（`bullets.tsx`，同任务）现在会把渲染项数钳制
+    // 到 box.h 并标记 `data-dropped`，不会再崩溃，但极端条目数会让绝大多数
+    // 内容悄悄消失在一行「+N more」里。阈值推导见 `capacity.ts`
+    // `CAPACITY.bullets.countOverflowItems` 自己的注释。
+    if (component.items.length > CAPACITY.bullets.countOverflowItems) {
+      issues.push({
+        slide: index,
+        severity: "error",
+        code: "bullets_count_overflow",
+        message: `要点列表条目数远超合理上限（>${CAPACITY.bullets.countOverflowItems}），"优雅截断"已不再是诚实描述——请精简内容或拆分为多页`,
+        bulletsBudget: { pacing: resolvedAxes.pacing, ...budget.bullets },
+      })
+    }
     for (const item of component.items) {
       const units = measureTextUnits(item)
       if (units > budget.bullets.maxUnitsPerItem) {

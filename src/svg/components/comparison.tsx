@@ -174,7 +174,37 @@ export const comparison: SvgComponent<ComparisonComponent> = {
   },
 
   render(rawComponent, box, ctx) {
-    const { labelHeader, component } = dedupeLabelColumn(rawComponent)
+    const { labelHeader, component: dedupedComponent } = dedupeLabelColumn(rawComponent)
+
+    // Vertical graceful landing (P0 hardening, robustness deep-review D1,
+    // family-sweep sibling of bullets.tsx): `rows` has no schema ceiling
+    // and each row costs a fixed `ROW` px regardless of content, so an
+    // extreme row count (the D1 repro used 300) pushes every row further
+    // off-canvas with no cap of its own — the same "unbounded per-item
+    // vertical stack, no box.h awareness" shape bullets.tsx had. `box.h` is
+    // only ever set on this non-stretchable component by
+    // `layoutContentFit`'s overflow-defense branch (`layout.ts`), so its
+    // presence always means "cap to this budget," never "stretch"
+    // (row-cards.tsx's own precedent for this convention).
+    const truncBudget = box.h ?? Number.POSITIVE_INFINITY
+    const fullRowCount = dedupedComponent.rows.length
+    const naturalHeight = (fullRowCount + 1) * ROW // header + every data row, ignoring box.h
+    let visibleRowCount = fullRowCount
+    if (naturalHeight > truncBudget) {
+      // Reserve 1 ROW for the header row and 1 ROW for the "+N more"
+      // marker line itself inside the budget — same reservation shape
+      // row-cards.tsx's own `truncBudget - 20` uses for its marker text.
+      // Floored at 1 visible row (row-cards.tsx's "never render zero
+      // visible units" precedent), even when the budget can't truly fit
+      // even one — an honestly-labeled overflow beats an empty table.
+      visibleRowCount = Math.max(1, Math.min(fullRowCount, Math.floor(truncBudget / ROW) - 2))
+    }
+    const hiddenRowCount = fullRowCount - visibleRowCount
+    const component =
+      hiddenRowCount > 0
+        ? { ...dedupedComponent, rows: dedupedComponent.rows.slice(0, visibleRowCount) }
+        : dedupedComponent
+
     const headers = headerTitles(component, labelHeader)
     const colCount = headers.length
     const { widths, offsets } = computeColumns(component, box.w, labelHeader)
@@ -284,6 +314,20 @@ export const comparison: SvgComponent<ComparisonComponent> = {
             </Fragment>
           )
         })}
+        {hiddenRowCount > 0 && (
+          <text
+            data-dropped={hiddenRowCount}
+            x={box.w}
+            y={totalRows * ROW + 20}
+            textAnchor="end"
+            fontSize={13}
+            fill={ctx.colors.muted}
+            fontFamily={ctx.fonts.body}
+            dominantBaseline="alphabetic"
+          >
+            {`+${hiddenRowCount} more`}
+          </text>
+        )}
       </g>
     )
   },

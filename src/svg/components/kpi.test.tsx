@@ -258,3 +258,78 @@ describe("kpi 冗余单位去重（2026-07-10 无图矩阵真机病型：value �
     expect(container.textContent).toContain("台")
   })
 })
+
+// P0 hardening (robustness deep-review D1's horizontal-axis sibling, review
+// round 2): `items` has no schema ceiling (unlike icon_cards/row_cards,
+// which cap at 6). Pre-fix, `cardW = (box.w - GAP*(n-1)) / n` had no floor
+// — past a realistic item count, `cardW` goes negative, and the delta
+// arrow's `<text textAnchor="end" x={cardX+cardW-20}>` (not the card's own
+// `<rect>`, which `rect.ts`'s `floorAxis` already protects) turns into a
+// genuinely negative-width text shape that `package-audit` rejects. Full
+// generatePptx-level red-first coverage of the reviewer's exact repro (50
+// items with delta) lives in `src/pptx/depth-axis-hardening.test.ts`; this
+// pins the component-level cap/marker/containment behavior in isolation.
+describe("kpi_cards box.w-aware horizontal cap (graceful landing)", () => {
+  const manyItems = Array.from({ length: 50 }, (_, i) => ({
+    value: String(i),
+    label: `metric ${i}`,
+    delta: "up" as const,
+  }))
+  const manyComponent = { type: "kpi_cards" as const, items: manyItems }
+
+  it("caps rendered cards to what box.w can hold at a sane minimum width, marks the drop with data-dropped, and keeps every card and the marker within box.w", () => {
+    const box = { x: 0, y: 0, w: 1088 }
+    const { container } = svg(kpi.render(manyComponent, box, ctx))
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects.length).toBeGreaterThan(0)
+    expect(rects.length).toBeLessThan(manyItems.length)
+
+    // Every rendered card's rect stays within box.w, and no card is
+    // negative-width (the reviewer's exact crash class).
+    for (const rect of rects) {
+      const x = Number(rect.getAttribute("x"))
+      const w = Number(rect.getAttribute("width"))
+      expect(w).toBeGreaterThan(0)
+      expect(x + w).toBeLessThanOrEqual(box.w)
+    }
+
+    // Every rendered <text> (value/delta/label — the delta arrow is the
+    // reviewer's exact crash site) stays within box.w too, marker
+    // included — a marker-excluding containment check is exactly what let
+    // bullets.tsx's own marker overflow slip through review earlier this
+    // task.
+    for (const t of Array.from(container.querySelectorAll("text"))) {
+      const x = Number(t.getAttribute("x"))
+      expect(x).toBeGreaterThanOrEqual(0)
+      expect(x).toBeLessThanOrEqual(box.w)
+    }
+
+    const dropped = container.querySelector("[data-dropped]")
+    expect(dropped).toBeTruthy()
+    const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
+    expect(hiddenCount).toBeGreaterThan(0)
+    expect(hiddenCount + rects.length).toBe(manyItems.length)
+    expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+  })
+
+  it("still renders at least one card even when box.w is far smaller than a single card's minimum width", () => {
+    const box = { x: 0, y: 0, w: 20 }
+    const { container } = svg(kpi.render(manyComponent, box, ctx))
+    expect(container.querySelectorAll("rect").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("is a byte-identical no-op for an item count that already fits box.w at a healthy width (the ordinary/common render path)", () => {
+    const smallComponent = { type: "kpi_cards" as const, items: manyItems.slice(0, 3) }
+    const withoutMarker = renderToStaticMarkup(
+      <svg>{kpi.render(smallComponent, { x: 0, y: 0, w: 1120 }, ctx)}</svg>,
+    )
+    expect(withoutMarker).not.toContain("data-dropped")
+    expect((withoutMarker.match(/<rect/g) ?? []).length).toBe(3)
+  })
+
+  it("never shows a data-dropped marker when the full set already clears MIN_CARD_W", () => {
+    const { container } = svg(kpi.render(manyComponent, { x: 0, y: 0, w: 100000 }, ctx))
+    expect(container.querySelector("[data-dropped]")).toBeNull()
+    expect(container.querySelectorAll("rect").length).toBe(manyItems.length)
+  })
+})

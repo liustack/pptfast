@@ -50,6 +50,21 @@ const IR_WITH_LOCAL_ASSET = {
   ],
 }
 
+// Task 2 follow-up (borrow wave — review finding, medium): same shape as
+// IR_WITH_LOCAL_ASSET but pointing at a corrupt local file — used to pin
+// that `runValidate` now rejects this the same way `runRender` already did,
+// instead of printing OK on a deck that render/audit/preview would reject.
+const IR_WITH_CORRUPT_LOCAL_ASSET = {
+  version: "4",
+  filename: "cli-test-corrupt-asset",
+  theme: { id: "tech" },
+  assets: { images: { logo: { src: "corrupt-logo.png" } } },
+  slides: [
+    { type: "cover", heading: "CLI" },
+    { type: "content", heading: "Body", components: [{ type: "image", asset_id: "logo" }] },
+  ],
+}
+
 const IR_WITH_PLACEHOLDER = {
   version: "4",
   filename: "cli-test-placeholder",
@@ -145,7 +160,9 @@ beforeAll(async () => {
   await writeFile(join(dir, "deck.json"), JSON.stringify(VALID_IR))
   await writeFile(join(dir, "bad.json"), JSON.stringify({ version: "4" }))
   await writeFile(join(dir, "logo.png"), PNG_1PX)
+  await writeFile(join(dir, "corrupt-logo.png"), Buffer.from([0x00, 0x01, 0x02, 0x03]))
   await writeFile(join(dir, "deck-with-asset.json"), JSON.stringify(IR_WITH_LOCAL_ASSET))
+  await writeFile(join(dir, "deck-with-corrupt-asset.json"), JSON.stringify(IR_WITH_CORRUPT_LOCAL_ASSET))
   await writeFile(join(dir, "deck-with-placeholder.json"), JSON.stringify(IR_WITH_PLACEHOLDER))
   await writeFile(join(dir, "deck-low-contrast.json"), JSON.stringify(IR_LOW_CONTRAST))
   await writeFile(join(dir, "deck-with-alias.json"), JSON.stringify(IR_WITH_FIELD_ALIAS))
@@ -304,6 +321,23 @@ describe("runValidate/runRender dual-threshold severity (Task 2, borrow wave)", 
     const out = join(dir, "bullet-overflow-should-not-exist.pptx")
     await expect(runRender(join(dir, "deck-bullet-overflow.json"), { output: out })).rejects.toThrow(/invalid IR/)
     await expect(stat(out)).rejects.toThrow()
+  })
+})
+
+// Task 2 follow-up (borrow wave — review finding, medium): before this fix,
+// `runValidate` never called `resolveLocalAssets`, so a deck referencing a
+// corrupt local file printed OK here while `runRender` on the exact same
+// input correctly rejected it right after — an inconsistency with
+// SKILL.md's "validate is the authoritative pre-flight check" contract.
+describe("runValidate local-asset byte validation (Task 2 follow-up)", () => {
+  it("rejects a corrupt local image asset — matches runRender's own rejection, not a silent OK", async () => {
+    await expect(runValidate(join(dir, "deck-with-corrupt-asset.json"))).rejects.toThrow(
+      /corrupt or unrecognized header/,
+    )
+  })
+
+  it("still reports OK for a genuinely valid local image asset (byte-inertness, unchanged from before this fix)", async () => {
+    await expect(runValidate(join(dir, "deck-with-asset.json"))).resolves.toMatch(/OK — 2 slides/)
   })
 })
 
@@ -1162,6 +1196,33 @@ describe("runDisassemble", () => {
       const zip = await JSZip.loadAsync(await readFile(pptxPath))
       const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"))
       expect(media.length).toBeGreaterThan(0)
+    })
+
+    // Task 2 follow-up (borrow wave — review finding, low): a full
+    // disassemble -> corrupt assets/<file> -> render/validate end-to-end
+    // regression, not just the equivalent-code-path argument the original
+    // report leaned on. Reuses this describe block's own round-trip fixture
+    // (already a minimal deck that clears validateSpec's boundary-type and
+    // page-count gates — spacious pacing's 4-page floor, cover-first/
+    // ending-last) rather than inventing a new one, since `scanAssets`
+    // registers `assets/<file>` through the exact same `resolveLocalAssets`
+    // call site as a directly-authored local path IR.
+    it("rejects a corrupted assets/ file on both runRender and runValidate, end to end through disassemble", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR_WITH_ASSET))
+      const outDir = await makeDeckDir()
+      await runDisassemble(irPath, outDir)
+
+      // Corrupt the materialized asset in place — same file scanAssets will
+      // register on the next readDeckDir, no IR editing involved.
+      await writeFile(join(outDir, "assets", "logo.png"), Buffer.from([0x00, 0x01, 0x02, 0x03]))
+
+      await expect(runRender(outDir, { output: join(outDir, "should-not-exist.pptx") })).rejects.toThrow(
+        /corrupt or unrecognized header/,
+      )
+      await expect(stat(join(outDir, "should-not-exist.pptx"))).rejects.toThrow()
+      await expect(runValidate(outDir)).rejects.toThrow(/corrupt or unrecognized header/)
     })
 
     it("rejects a URL asset with a disassemble-specific error", async () => {

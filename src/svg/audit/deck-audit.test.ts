@@ -12,6 +12,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { beforeAll, describe, expect, it } from "vitest"
 import { PptxIRSchema, type ChartSeries, type Component, type PptxIR, type Slide } from "@/ir"
 import { renderSlideSvg } from "../../api"
+import { PptfastError } from "../../errors"
 import { installNodePlatform } from "../../platform/node"
 import { renderDonut, renderPie } from "../components/chart-svg"
 import {
@@ -1541,6 +1542,34 @@ describe("auditDeck — finding shape contract", () => {
       ]).toContain(f.code)
       expect(typeof f.message).toBe("string")
     }
+  })
+})
+
+// Task 2 (borrow wave, A4): auditDeck's raw-input guard. dr/a-lightweight.md
+// §4's exact real-browser repro — a bare JSON.parse result with no `assets`
+// field crashed inside FullSlideSvg with `Cannot read properties of
+// undefined (reading 'images')`, no hint anywhere that the fix was "run
+// validateIr first". Both probes below reproduce that shape directly rather
+// than importing validateIr's own fixtures, so this test stays a pure
+// "auditDeck's own guard" check independent of validateIr's behavior.
+describe("auditDeck — raw/unvalidated-input guard (Task 2, borrow wave — A4)", () => {
+  it("throws a PptfastError pointing to validateIr for auditDeck({})", () => {
+    // Deliberately passing a shape that violates the PptxIR type — the
+    // exact scenario this guard exists to catch (a caller feeding raw JSON
+    // straight through without validateIr first).
+    expect(() => auditDeck({} as PptxIR)).toThrow(PptfastError)
+    expect(() => auditDeck({} as PptxIR)).toThrow(/run validateIr first/)
+  })
+
+  it("throws the same guard for auditDeck(garbage) — a slides array present but assets missing", () => {
+    const garbage = { slides: [{ type: "cover" }] } as unknown as PptxIR
+    expect(() => auditDeck(garbage)).toThrow(PptfastError)
+    expect(() => auditDeck(garbage)).toThrow(/slides\[\] or assets\.images/)
+  })
+
+  it("does not throw for a properly validated/constructed IR (the deck() test helper's own shape)", () => {
+    const ir = deck("consulting", [{ type: "cover", heading: "hello", components: [] }])
+    expect(() => auditDeck(ir)).not.toThrow()
   })
 })
 
