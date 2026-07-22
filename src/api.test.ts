@@ -819,6 +819,59 @@ describe("bullets geometric hard error (Task 2, borrow wave — dual-threshold s
   })
 })
 
+// P0 hardening (robustness deep-review D1): bullets_overflow's count-based
+// second-tier escalation — bullets_count_overflow, same dual-threshold
+// severity machinery as bullet_item_overflow above (this file's own
+// precedent/template), just on item count instead of item length.
+describe("bullets count geometric hard error (P0 hardening, robustness deep-review D1)", () => {
+  it(`a bullets list past the count ceiling (${CAPACITY.bullets.countOverflowItems} items) hard-blocks generation via generatePptx`, async () => {
+    const tooMany = Array.from({ length: CAPACITY.bullets.countOverflowItems + 1 }, (_, i) => `item ${i}`)
+    const ir = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Count overflow probe", components: [{ type: "bullets", items: tooMany }] },
+      ],
+    }
+    const v = validateIr(ir)
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes("far too many items"))).toBe(true)
+    await expect(generatePptx(ir)).rejects.toThrow(/invalid IR/)
+  })
+
+  it(`does NOT report bullets_count_overflow at exactly ${CAPACITY.bullets.countOverflowItems} items — still ok:true`, () => {
+    const atCeiling = Array.from({ length: CAPACITY.bullets.countOverflowItems }, (_, i) => `item ${i}`)
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "At count ceiling", components: [{ type: "bullets", items: atCeiling }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("names the ceiling and stays free of a leaked '+N more'-style per-item dump — message stays short regardless of item count", async () => {
+    const tooMany = Array.from({ length: 20_000 }, (_, i) => `item ${i}`)
+    const ir = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "Extreme", components: [{ type: "bullets", items: tooMany }] },
+      ],
+    }
+    let caught: Error | undefined
+    try {
+      await generatePptx(ir)
+    } catch (e) {
+      caught = e as Error
+    }
+    expect(caught).toBeTruthy()
+    expect(caught!.message).toContain(String(CAPACITY.bullets.countOverflowItems))
+    expect(caught!.message.length).toBeLessThan(2_000)
+  })
+})
+
 describe("describeQualityIssue: chart_axes_ignored English message (chart-axes feature)", () => {
   // `axes` (x_title/y_title/show_grid) only renders for bar/line
   // (chart.tsx's AXES_APPLICABLE_TYPES) — a pie/funnel/dumbbell chart

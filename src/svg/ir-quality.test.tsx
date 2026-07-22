@@ -433,6 +433,90 @@ describe("checkIrQuality", () => {
     })
   })
 
+  // ── bullets_count_overflow (P0 hardening, robustness deep-review D1:
+  // bullets_overflow's second-tier escalation — borrow-wave Task 2's
+  // dual-threshold machinery reused, not a new severity system). See
+  // CAPACITY.bullets.countOverflowItems's own derivation comment
+  // (capacity.ts) for the formula and its D-report empirical grounding
+  // (500/20000-item repro). Flat, pacing-independent ceiling — same design
+  // as bullet_item_overflow above, not scaled by each pacing tier's own
+  // editorial maxItems budget.
+
+  describe("bullets_count_overflow (second-tier escalation, severity error, flat pacing-independent ceiling)", () => {
+    const threshold = CAPACITY.bullets.countOverflowItems
+
+    it(`does NOT report bullets_count_overflow at exactly ${threshold} items (fires alongside the warn-level bullets_overflow, which stays warn)`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "列表页",
+          components: [{ type: "bullets", items: Array.from({ length: threshold }, (_, i) => String(i)) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).not.toContain("bullets_count_overflow")
+      // Still over the ordinary editorial budget — bullets_overflow (warn)
+      // stays a separate, lower-severity finding, untouched by this gate.
+      expect(codes(issues)).toContain("bullets_overflow")
+    })
+
+    it(`reports bullets_count_overflow (severity error) over ${threshold} items`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "列表页",
+          components: [{ type: "bullets", items: Array.from({ length: threshold + 1 }, (_, i) => String(i)) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("bullets_count_overflow")
+      const issue = issues.find((i) => i.code === "bullets_count_overflow")!
+      expect(issue.severity).toBe("error")
+    })
+
+    it("fires the same regardless of pacing (flat ceiling, not PACING_BUDGETS-scoped)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "列表页",
+          components: [{ type: "bullets", items: Array.from({ length: threshold + 1 }, (_, i) => String(i)) }],
+        },
+      ])
+      for (const pacing of ["dense", "balanced", "spacious"] as Pacing[]) {
+        const issues = checkIrQuality(ir, pacingAxes(pacing))
+        expect(codes(issues)).toContain("bullets_count_overflow")
+      }
+    })
+
+    // D1's own repro fixtures (scratchpad `dr/gen-deck.mts`
+    // buildPathologicalDeck / `dr/big-bullets.mts`) — the 500-item scenario
+    // must land as graceful (this gate silent), the 20000-item scenario
+    // must be blocked. Full generatePptx/render-level coverage lives in
+    // `src/pptx/depth-axis-hardening.test.ts`; this pins the quality-gate
+    // boundary itself in isolation.
+    it("does NOT report bullets_count_overflow for the 500-item D1 repro (must land gracefully, not block)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "500-item bullets stress",
+          components: [{ type: "bullets", items: Array.from({ length: 500 }, (_, i) => `item ${i}`) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("bullets_count_overflow")
+    })
+
+    it("reports bullets_count_overflow for the 20000-item D1 repro (must block)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "extreme bullets",
+          components: [{ type: "bullets", items: Array.from({ length: 20_000 }, (_, i) => `item ${i}`) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("bullets_count_overflow")
+    })
+  })
+
   // ── placeholder pages (W5 task 1): quality gate skips all content rules ──
 
   it("a placeholder page reports no issues even though it is missing a heading", () => {

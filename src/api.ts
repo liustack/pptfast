@@ -118,6 +118,19 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `bullet list has too many items (max ${b.maxItems} for ${b.pacing} pacing) — trim it or split into multiple slides`
         : "bullet list has too many items — trim it or split into multiple slides"
     }
+    case "bullets_count_overflow":
+      // P0 hardening (robustness deep-review D1, borrow-wave Task 2's
+      // dual-threshold machinery reused, not a new severity system): the
+      // count-based escalation of "bullets_overflow" above — severity
+      // "error", so this is the one bullets-count message that actually
+      // blocks `ok`. Like `bullet_item_overflow`, `CAPACITY.bullets
+      // .countOverflowItems` is a flat, pacing-independent ceiling (see its
+      // own derivation comment, capacity.ts): past this many items, the
+      // render-side box.h cap (bullets.tsx, same task) will still land the
+      // file successfully, but "graceful truncation" stops describing the
+      // outcome honestly — most of the content would silently vanish
+      // behind a single "+N more" marker.
+      return `bullet list has far too many items (over ${CAPACITY.bullets.countOverflowItems}) — most would silently drop behind a "+N more" marker rather than render; trim it substantially or split into multiple slides`
     case "bullet_item_long": {
       const b = issue.bulletsBudget
       return b

@@ -334,7 +334,48 @@ export const CAPACITY = {
    * 保留，未受这次改动影响——具体机制见该文件 `layoutItems` 自己的推导
    * 注释。
    */
-  bullets: { itemOverflowUnits: 50 },
+  bullets: {
+    itemOverflowUnits: 50,
+    /**
+     * bullets 条目**数量**的 error 级二级升级阈值（P0 hardening, robustness
+     * deep-review D1，warn 二级升级——borrow 波 Task 2 同款 dual-threshold
+     * 架构，此前只覆盖单条要点的字符长度即上面 `itemOverflowUnits`，本条
+     * 补上"条目数"这一维）。与 `itemOverflowUnits` 同款设计：**与 pacing
+     * 无关的扁平物理/合理性硬界**，不是 `PACING_BUDGETS[pacing].bullets
+     * .maxItems`（4/5/6，编辑性「建议拆页」warn 预算，本任务不动）的倍数
+     * ——过线意味着"优雅截断"这个描述已经不诚实，该拒绝而不是悄悄丢弃几乎
+     * 全部内容，且这条判断不应该因为 pacing 档位不同而摇摆。
+     *
+     * 起因（本任务 render 侧修复之后）：`bullets.tsx`/`comparison.tsx` 等
+     * 现在会把渲染项数钳制到 `box.h` 能容纳的范围并画 `data-dropped` 标记
+     * （同一任务），所以极端条目数不再让渲染器崩溃或撞上 pptxgenjs
+     * `getSmartParseNumber()` 陷阱（见 `chart-svg.tsx`
+     * `MAX_CHART_GEOMETRY_PX` 同源问题）。但这只解决了"不崩"，没解决
+     * "该不该"——20000 项要点里 render 层最多能落地几十项，其余全部变成
+     * 一行「+19970 more」，这已经不是"截断"，是"几乎丢光"。该在 validate
+     * 阶段就诚实拒绝，而不是悄悄生成一份 99%+ 内容缺失的文件。
+     *
+     * 阈值推导（两头夹逼，而非单侧外推）：
+     *   下界——D 报告压测场景本身（`bigArrayBullets`，500 项，`scratchpad
+     *   dr/gen-deck.mts` `buildPathologicalDeck`）被明确要求保持"优雅落地"
+     *   （render 侧截断 + `data-dropped`，validate 不拦），阈值必须严格
+     *   高于 500，并留出安全余量，不能让"一个作者手滑多写了几百条"这种
+     *   仍然可辨认是真实内容的输入被拒收。
+     *
+     *   上界——`bullets.tsx` `MIN_FONT=14` 收缩地板下单行项最小占位
+     *   `lineHeight(20) + ITEM_GAP(8) = 28px`，即便把整块 720px 画布
+     *   （`CANVAS_H_PX`，`constants.ts`，无标题无页边距——比任何真实内容区
+     *   都宽松）全部让给 bullets，物理上也只能显示
+     *   `floor(720/28) = 25` 项左右。1000 项是这个"慷慨到不现实"的物理
+     *   显示上限的 40 倍——任何越过这条线的输入，无论 pacing 档位如何，
+     *   都已经不是"排版偏挤"，而是"99%+ 的内容注定悄悄消失"。
+     *
+     *   取 1000：500（D 报告下界，必须放行）到 1000 有 2× 安全余量；1000
+     *   到 20000（D 报告另一压测场景，`big-bullets.mts` n=20000，必须拒收）
+     *   有 20× 安全余量——两头都留了充足空间，不是卡在某个测试用例的边缘。
+     */
+    countOverflowItems: 1000,
+  },
   kpi: {
     /**
      * `kpi_focus` 变体单行铺满最窄 rect.w=1096（`layout.ts` kpi_focus 分支
