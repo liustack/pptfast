@@ -1198,6 +1198,33 @@ describe("runDisassemble", () => {
       expect(media.length).toBeGreaterThan(0)
     })
 
+    // Task 2 follow-up (borrow wave — review finding, low): a full
+    // disassemble -> corrupt assets/<file> -> render/validate end-to-end
+    // regression, not just the equivalent-code-path argument the original
+    // report leaned on. Reuses this describe block's own round-trip fixture
+    // (already a minimal deck that clears validateSpec's boundary-type and
+    // page-count gates — spacious pacing's 4-page floor, cover-first/
+    // ending-last) rather than inventing a new one, since `scanAssets`
+    // registers `assets/<file>` through the exact same `resolveLocalAssets`
+    // call site as a directly-authored local path IR.
+    it("rejects a corrupted assets/ file on both runRender and runValidate, end to end through disassemble", async () => {
+      const srcDir = await makeDeckDir()
+      const irPath = join(srcDir, "deck.json")
+      await writeFile(irPath, JSON.stringify(ROUNDTRIPPABLE_IR_WITH_ASSET))
+      const outDir = await makeDeckDir()
+      await runDisassemble(irPath, outDir)
+
+      // Corrupt the materialized asset in place — same file scanAssets will
+      // register on the next readDeckDir, no IR editing involved.
+      await writeFile(join(outDir, "assets", "logo.png"), Buffer.from([0x00, 0x01, 0x02, 0x03]))
+
+      await expect(runRender(outDir, { output: join(outDir, "should-not-exist.pptx") })).rejects.toThrow(
+        /corrupt or unrecognized header/,
+      )
+      await expect(stat(join(outDir, "should-not-exist.pptx"))).rejects.toThrow()
+      await expect(runValidate(outDir)).rejects.toThrow(/corrupt or unrecognized header/)
+    })
+
     it("rejects a URL asset with a disassemble-specific error", async () => {
       const srcDir = await makeDeckDir()
       const irPath = join(srcDir, "deck.json")
