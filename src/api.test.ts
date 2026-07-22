@@ -3,6 +3,7 @@ import { PptxIRSchema } from "@/ir"
 import { measureTextUnits } from "@/lib/svg-text-layout"
 import { makeSolidRegionPngDataUri } from "@/platform/test-png-fixture"
 import { formatIssues, formatWarnings, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
+import { ENUM_ERROR_MESSAGE_MAX_LENGTH } from "./ir/schema-error-hints"
 import { CAPACITY } from "./svg/audit/capacity"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
@@ -1171,7 +1172,7 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
     expect(message).toContain('did you mean "circle-check"?')
     expect(message).toContain("pptfast schema")
     expect(message).not.toMatch(/"a-arrow-down"/) // the enum is never flattened into the message
-    expect(message.length).toBeLessThan(500)
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
   })
 
   it("P10: a component-type near-miss (singular 'kpi_card' for 'kpi_cards') gets a did-you-mean suggestion, not the full type list", () => {
@@ -1183,7 +1184,7 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
     expect(message).toContain('did you mean "kpi_cards"?')
     expect(message).toContain("pptfast schema")
     expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 28-option list is never flattened into the message
-    expect(message.length).toBeLessThan(500)
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
   })
 
   it("an icon value with no plausible match still stays short, with no suggestion offered", () => {
@@ -1193,7 +1194,7 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
     expect(v.ok).toBe(false)
     const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
     expect(message).not.toContain("did you mean")
-    expect(message.length).toBeLessThan(500)
+    expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
   })
 
   it("every icon field site (callout/kpi_cards/icon_cards/row_cards/verdict_banner) shares the same did-you-mean treatment", () => {
@@ -1208,7 +1209,7 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
       expect(v.ok).toBe(false)
       const message = v.errors.find((e) => e.path.endsWith(".icon"))!.message
       expect(message).toContain('did you mean "circle-check"?')
-      expect(message.length).toBeLessThan(500)
+      expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
     }
   })
 })
