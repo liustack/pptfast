@@ -102,6 +102,16 @@ const fiveForces: Component = {
   buyer_power: { items: ["Concentrated buyers"] },
   substitutes: { items: ["Open-source alternatives"], intensity: "medium" },
 }
+const heatmap: Component = {
+  type: "heatmap",
+  x_labels: ["Q1", "Q2", "Q3"],
+  y_labels: ["North", "South"],
+  values: [
+    [10, 20, 30],
+    [5, -5, 15],
+  ],
+  show_values: true,
+}
 
 /** The 3 image-family types, each pointed at an asset id that is never
  *  present in `assets.images` — deliberately exercising the "asset missing
@@ -145,6 +155,7 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
   gantt,
   pest,
   five_forces: fiveForces,
+  heatmap,
   flowchart: {
     type: "flowchart",
     nodes: [
@@ -259,6 +270,7 @@ function noAssetIr(): PptxIR {
       contentSlide("Gantt", [COMPONENT_BY_TYPE.gantt]),
       contentSlide("PEST", [COMPONENT_BY_TYPE.pest]),
       contentSlide("Five Forces", [COMPONENT_BY_TYPE.five_forces]),
+      contentSlide("Heatmap", [COMPONENT_BY_TYPE.heatmap]),
       contentSlide("Flow + Architecture", [COMPONENT_BY_TYPE.flowchart, COMPONENT_BY_TYPE.architecture]),
       contentSlide("Timeline + Comparison", [COMPONENT_BY_TYPE.timeline, COMPONENT_BY_TYPE.comparison]),
       contentSlide("RowCards + Steps", [COMPONENT_BY_TYPE.row_cards, COMPONENT_BY_TYPE.steps]),

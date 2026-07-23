@@ -317,7 +317,7 @@ describe("duplicate slide id gate (W5 task 1)", () => {
   })
 })
 
-describe("full-body component exclusivity gate (structure-components wave task 1 decision 2, set extended by task 2)", () => {
+describe("full-body component exclusivity gate (structure-components wave 1 task 1 decision 2, set extended by wave 1 task 2 and wave 2 tasks 1-2)", () => {
   const swotOnly = { type: "swot", strengths: ["s"], weaknesses: ["w"], opportunities: ["o"], threats: ["t"] }
   const bmcOnly = {
     type: "bmc",
@@ -360,6 +360,12 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     supplier_power: { items: ["sp"] },
     buyer_power: { items: ["bp"] },
     substitutes: { items: ["su"] },
+  }
+  const heatmapOnly = {
+    type: "heatmap",
+    x_labels: ["Q1", "Q2"],
+    y_labels: ["A"],
+    values: [[1, 2]],
   }
 
   it("accepts a slide whose sole component is a full-body type (swot)", () => {
@@ -410,6 +416,14 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     expect(v.ok).toBe(true)
   })
 
+  it("accepts a slide whose sole component is a full-body type (heatmap)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "Heatmap", components: [heatmapOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
   it("hard-rejects a full-body component paired with an ordinary sibling — not a silent drop", () => {
     const v = validateIr({
       ...raw,
@@ -454,6 +468,21 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     })
     expect(v.ok).toBe(false)
     expect(v.errors[0]!.message).toMatch(/"pest, five_forces" is a full-body component/)
+  })
+
+  it("hard-rejects the wave-2 value-grid full-body type (heatmap) paired with an ordinary sibling", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        {
+          type: "content",
+          heading: "Heatmap + bullets",
+          components: [heatmapOnly, { type: "bullets", items: ["extra sibling"] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/"heatmap" is a full-body component/)
   })
 
   it("hard-rejects two components of the *same* full-body type sharing one slide (task-1 review minor: literal same-type double)", () => {

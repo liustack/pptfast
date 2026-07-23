@@ -1015,6 +1015,17 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // tinted-panel background itself is covered below, "five_forces
   // tinted-panel contrast".
   five_forces: "no-muted-fill",
+  // Structure-components wave 2 task 2: heatmap.tsx renders `colors.muted`
+  // for its column headers (x_labels), row headers (y_labels), and the
+  // optional x_title/y_title axis captions — every one of them directly on
+  // the ambient page background, never on a self-painted cell (mirroring
+  // chart-svg.tsx's own category-axis labels and matrix.tsx's x_title/
+  // y_title, both already "page-bg"). The one genuinely self-painted-surface
+  // text this component renders — the optional per-cell value
+  // (`show_values`) — is never `colors.muted`; it's `colors.text` routed
+  // through `accessibleInk` against that cell's own computed fill (see the
+  // dedicated "heatmap cell-fill x ink" sweep below, decision 7's mandate).
+  heatmap: "page-bg",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
@@ -1430,6 +1441,143 @@ describe("five_forces schema-max content (structure-components wave 2 task 1)", 
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: schema-max five_forces (5 items in every panel, all intensity levels) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
       expect(auditFindings(deckFor(themeId, FIVE_FORCES_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 2, decision 4/5: heatmap.tsx is the one
+// component in this whole wave whose self-painted surface is a *computed*
+// color, not a fixed theme token blend (matrix.tsx's `toneFill` still only
+// ever picks from 3 fixed tone branches) — every cell's fill is a
+// continuous function of its own value (`cellFill`/`valueT`,
+// `heatmap.tsx`), so the value→color→ink chain needs its own dedicated
+// sweep rather than reusing swot/pest/five_forces' "assert zero findings
+// outright" shape verbatim. Two blocks below: a basic representative-content
+// sweep (mirrors the pattern above) and a schema-max 10x10 sweep, both zero
+// auditDeck findings across all 13 themes — followed by a third, narrower
+// block that isolates the cell-value-text-vs-cell-fill contrast pair
+// specifically (decision 7's mandate: "any tinted/computed background needs
+// a dedicated probe"), sweeping a wide value spread (including the
+// domain extremes, which sit at the ramp's two ends where a marginal ink
+// choice is most likely to fail) plus a negative-inclusive distribution.
+describe("heatmap contrast (structure-components wave 2 task 2)", () => {
+  const HEATMAP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["一季度", "二季度", "三季度", "四季度"],
+        y_labels: ["华东", "华南", "华北"],
+        values: [
+          [12, 45, 78, 33],
+          [-20, 5, 60, 90],
+          [50, 50, 50, 50],
+        ],
+        show_values: true,
+        x_title: "季度",
+        y_title: "区域",
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: heatmap renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, HEATMAP_SLIDE))).toEqual([])
+    })
+  }
+
+  const heatmapLabels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+  const HEATMAP_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: heatmapLabels(10, "列"),
+        y_labels: heatmapLabels(10, "行"),
+        values: Array.from({ length: 10 }, (_, r) => Array.from({ length: 10 }, (_, c) => r * 10 + c)),
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max heatmap (10x10 grid, show_values on) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, HEATMAP_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// The cell-fill x ink probe named above: isolates value→color→ink
+// specifically, at the ramp's two extremes (domain min/max — where
+// `accessibleInk`'s fallback is most likely to actually need to engage,
+// since the fill there sits furthest from `colors.surface`) plus a
+// negative-inclusive distribution and a fully degenerate one (every value
+// equal — the flat mid-tone `valueT` returns for a zero-range domain).
+// Every `low-contrast` finding, if any survived, would name the offending
+// fill/ink pair (`AuditFinding.detail`) — asserting the finding set outright
+// is empty is the same "stronger, more honest claim" swot/bmc/pest/
+// five_forces' own tinted-panel blocks already settled on.
+describe("heatmap cell-fill x ink (structure-components wave 2 task 2, decision 7 — the hard part named by the controller ruling)", () => {
+  const EXTREMES_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["min", "mid", "max"],
+        y_labels: ["row"],
+        values: [[0, 50, 100]],
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  const NEGATIVE_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["a", "b", "c", "d"],
+        y_labels: ["row"],
+        values: [[-100, -25, 0, 40]],
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  const DEGENERATE_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["a", "b", "c"],
+        y_labels: ["row"],
+        values: [[7, 7, 7]],
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: cell value text clears contrast at both ramp extremes (domain min and max)`, () => {
+      expect(auditFindings(deckFor(themeId, EXTREMES_SLIDE))).toEqual([])
+    })
+
+    it(`${themeId}: cell value text clears contrast across a negative-inclusive distribution`, () => {
+      expect(auditFindings(deckFor(themeId, NEGATIVE_SLIDE))).toEqual([])
+    })
+
+    it(`${themeId}: cell value text clears contrast on a fully degenerate (all-equal) grid`, () => {
+      expect(auditFindings(deckFor(themeId, DEGENERATE_SLIDE))).toEqual([])
     })
   }
 })

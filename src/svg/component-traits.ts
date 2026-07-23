@@ -129,7 +129,8 @@ export const EVIDENCE_TYPES = [
  * grid, `five_forces`'s hub-and-spoke panel set (structure-components wave 2
  * task 1, extending wave 1's own named-slot family), `waterfall`'s bridge
  * chart, `gantt`'s shared-axis time bars (structure-components wave 1 task
- * 2, decision 1's set). `SvgContent.tsx` special-cases a slide whose
+ * 2, decision 1's set), `heatmap`'s value-driven color grid
+ * (structure-components wave 2 task 2). `SvgContent.tsx` special-cases a slide whose
  * sole component is one of these (checked *before* the `big_number`/
  * `assertion_evidence` arrangement branches, so a full-body component wins
  * regardless of what `arrangement` happens to be set to): the whole content
@@ -154,4 +155,5 @@ export const FULL_BODY_TYPES: ReadonlySet<ComponentType> = new Set([
   "gantt",
   "pest",
   "five_forces",
+  "heatmap",
 ])

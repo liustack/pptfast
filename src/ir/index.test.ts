@@ -476,6 +476,107 @@ describe("five_forces component (structure-components wave 2 task 1, named-slot 
   })
 })
 
+describe("heatmap component (structure-components wave 2 task 2, value-grid family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const heatmapComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "heatmap",
+    x_labels: ["Q1", "Q2"],
+    y_labels: ["North", "South"],
+    values: [
+      [1, 2],
+      [3, 4],
+    ],
+    ...overrides,
+  })
+
+  it("accepts a well-formed rectangular grid", () => {
+    expect(parsePptxIR(withComponents([heatmapComponent()])).success).toBe(true)
+  })
+  it("accepts a single row (1 y_label)", () => {
+    const d = withComponents([heatmapComponent({ y_labels: ["only"], values: [[1, 2]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts a single column (1 x_label)", () => {
+    const d = withComponents([heatmapComponent({ x_labels: ["only"], values: [[1], [2]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts a single cell (1x1)", () => {
+    const d = withComponents([heatmapComponent({ x_labels: ["x"], y_labels: ["y"], values: [[42]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts the schema-max 10x10 grid", () => {
+    const labels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+    const d = withComponents([
+      heatmapComponent({
+        x_labels: labels(10, "x"),
+        y_labels: labels(10, "y"),
+        values: Array.from({ length: 10 }, (_, r) => Array.from({ length: 10 }, (_, c) => r * 10 + c)),
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects more than 10 x_labels (max 10)", () => {
+    const d = withComponents([
+      heatmapComponent({ x_labels: Array.from({ length: 11 }, (_, i) => `x${i}`), values: [Array.from({ length: 11 }, () => 1), Array.from({ length: 11 }, () => 1)] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects more than 10 y_labels (max 10)", () => {
+    const d = withComponents([
+      heatmapComponent({ y_labels: Array.from({ length: 11 }, (_, i) => `y${i}`), values: Array.from({ length: 11 }, () => [1, 2]) }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an empty x_labels array (min 1)", () => {
+    const d = withComponents([heatmapComponent({ x_labels: [], values: [[], []] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects a row count that doesn't match y_labels length (rectangularity refine)", () => {
+    const d = withComponents([heatmapComponent({ y_labels: ["North", "South", "East"], values: [[1, 2], [3, 4]] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects a ragged row whose length doesn't match x_labels length (rectangularity refine)", () => {
+    const d = withComponents([heatmapComponent({ values: [[1, 2], [3, 4, 5]] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts negative values (no sign constraint)", () => {
+    const d = withComponents([heatmapComponent({ values: [[-10, 2], [3, -4]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts an explicit domain override", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 0, max: 100 } })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts a degenerate explicit domain (min === max)", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 5, max: 5 } })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an explicit domain where max < min", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 10, max: 5 } })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional show_values flag", () => {
+    const d = withComponents([heatmapComponent({ show_values: true })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts optional x_title/y_title", () => {
+    const d = withComponents([heatmapComponent({ x_title: "Quarter", y_title: "Region" })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...heatmapComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown field inside domain (strict)", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 0, max: 1, extra: 1 } })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())
