@@ -23,7 +23,7 @@ import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
 import { applyEaFontFaces } from "./pptx-ea-fonts"
 import { auditPptxPackage } from "./package-audit"
-import { finalizePptxZip, normalizePptxTimestamps } from "./pptx-fixed-timestamps"
+import { finalizePptxZip, normalizePptxTimestamps, PptxSealViolationError } from "./pptx-fixed-timestamps"
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
@@ -123,12 +123,22 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   }
   try {
     await dedupeMediaInZip(zip)
-  } catch {
-    // Deliberately defensive (a media-dedupe failure is not a reason to
-    // abandon export) — the package audit right below still inspects
-    // whatever state `zip` ended up in, so a real corruption from a
-    // partially-applied dedupe attempt is still caught, just under the
-    // audit's own invariant name rather than this one.
+  } catch (e) {
+    // Two-tier catch (carried-items wave, fix round — review finding F1):
+    // a `PptxSealViolationError` means this call itself ran out of order
+    // (reordered to run after `normalizePptxTimestamps` sealed `zip` below
+    // — exactly the defect the seal exists to catch) and must propagate,
+    // not be absorbed by the *different*, deliberately forgiving catch this
+    // block has had since 85ebc1e for a genuine dedupe failure (bad media
+    // bytes, malformed `.rels` XML) — "a media-dedupe failure is not a
+    // reason to abandon export," the package audit right below still
+    // inspects whatever state `zip` ended up in, so a real corruption from
+    // a partially-applied dedupe attempt is still caught, just under the
+    // audit's own invariant name rather than this one. See
+    // `PptxSealViolationError`'s own doc comment (pptx-fixed-timestamps.ts)
+    // for why this needed to be its own error class rather than a plain
+    // `PptfastError` — this `instanceof` check is the reason.
+    if (e instanceof PptxSealViolationError) throw e
   }
   await auditPptxPackage(zip)
   // Whole-file byte determinism (P0 hardening Task 4 — see

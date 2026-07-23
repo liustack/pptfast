@@ -76,6 +76,30 @@ const CORE_TIMESTAMP_RE =
   /(<dcterms:(?:created|modified) xsi:type="dcterms:W3CDTF">)[^<]*(<\/dcterms:(?:created|modified)>)/g
 
 /**
+ * A `normalizePptxTimestamps` ordering-contract violation — either half:
+ * something mutated a zip after it was sealed, or `generateAsync()` was
+ * reached through `finalizePptxZip` without ever sealing it (carried-items
+ * wave, fix round — review finding F1).
+ *
+ * Deliberately its own subclass, not a bare `throw new PptfastError(...)`:
+ * `generate.ts`'s call site for `dedupeMediaInZip` already wraps that call
+ * in a broad, intentionally-forgiving `try/catch` (documented since
+ * 85ebc1e, "a media-dedupe failure is not a reason to abandon export" — a
+ * *genuine* dedupe failure, bad media bytes or malformed `.rels` XML, is
+ * meant to be swallowed there and left for `auditPptxPackage` to catch
+ * under its own name if it left real corruption behind). A seal violation
+ * is not that: it means this call is running at the *wrong point in the
+ * pipeline entirely* — reordered to run after `normalizePptxTimestamps`
+ * sealed the zip — a programming-invariant failure the original catch was
+ * never written to anticipate and must not silently absorb. Still an
+ * `instanceof PptfastError` (extends it), so anything already catching that
+ * broader class unconditionally elsewhere is unaffected — only a call site
+ * that specifically checks `instanceof PptxSealViolationError` before its
+ * own catch (see `generate.ts`'s own such check) can tell the two apart.
+ */
+export class PptxSealViolationError extends PptfastError {}
+
+/**
  * Zip instances `normalizePptxTimestamps` has already run on (carried-items
  * wave — P0 T4 carried: "must run last" was convention only, enforced by
  * nothing). A `WeakSet` keyed on the zip object itself, not a boolean flag
@@ -86,7 +110,7 @@ const CORE_TIMESTAMP_RE =
 const sealedZips = new WeakSet<JSZip>()
 
 function throwSealedViolation(method: string): never {
-  throw new PptfastError(
+  throw new PptxSealViolationError(
     `pptx export invariant violated: "${method}" was called on a JSZip package after normalizePptxTimestamps had already run on it. normalizePptxTimestamps must be the last patch applied before generateAsync() (see its own doc comment, pptx-fixed-timestamps.ts) — move this call ahead of normalizePptxTimestamps in generate.ts's patch chain, or fold its mutation into normalizePptxTimestamps itself`,
   )
 }
@@ -165,15 +189,15 @@ export async function normalizePptxTimestamps(zip: JSZip): Promise<void> {
 
 /**
  * The one sanctioned way to reach `generateAsync()` on the export
- * pipeline's zip (carried-items wave). Throws (same `PptfastError`
- * invariant as the seal itself) if `normalizePptxTimestamps` never ran on
- * this exact zip instance — catching the "forgot to call it at all" case
- * the seal above can't catch on its own (a skipped call leaves the zip
- * unsealed, not mutated-after-sealing). `generate.ts` calls this instead of
- * `zip.generateAsync(...)` directly, so both halves of the "must run last"
- * contract (must run, and nothing may follow it) are enforced at the one
- * call site that would otherwise silently reintroduce wall-clock
- * nondeterminism.
+ * pipeline's zip (carried-items wave). Throws (`PptxSealViolationError`,
+ * same invariant class as the seal itself) if `normalizePptxTimestamps`
+ * never ran on this exact zip instance — catching the "forgot to call it
+ * at all" case the seal above can't catch on its own (a skipped call
+ * leaves the zip unsealed, not mutated-after-sealing). `generate.ts` calls
+ * this instead of `zip.generateAsync(...)` directly, so both halves of the
+ * "must run last" contract (must run, and nothing may follow it) are
+ * enforced at the one call site that would otherwise silently reintroduce
+ * wall-clock nondeterminism.
  *
  * Narrowed to the `"arraybuffer"` output type rather than forwarding
  * jszip's own `generateAsync<T>` generic — `generate.ts` is the only real
@@ -189,7 +213,7 @@ export async function finalizePptxZip(
   options: JSZip.JSZipGeneratorOptions<"arraybuffer">,
 ): Promise<ArrayBuffer> {
   if (!sealedZips.has(zip)) {
-    throw new PptfastError(
+    throw new PptxSealViolationError(
       "pptx export invariant violated: generateAsync() was reached without normalizePptxTimestamps having run on this zip first — call normalizePptxTimestamps(zip) immediately before finalizePptxZip(zip, options) (see normalizePptxTimestamps's own doc comment, pptx-fixed-timestamps.ts)",
     )
   }

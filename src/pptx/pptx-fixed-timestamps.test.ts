@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import JSZip from "jszip"
-import { finalizePptxZip, normalizePptxTimestamps, FIXED_ZIP_DATE, FIXED_ZIP_DATE_ISO } from "./pptx-fixed-timestamps"
+import {
+  finalizePptxZip,
+  normalizePptxTimestamps,
+  FIXED_ZIP_DATE,
+  FIXED_ZIP_DATE_ISO,
+  PptxSealViolationError,
+} from "./pptx-fixed-timestamps"
 import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { PptfastError } from "../errors"
 
@@ -44,25 +50,42 @@ describe("normalizePptxTimestamps (unchanged core behavior)", () => {
 })
 
 describe("runtime seal: nothing may mutate a zip after normalizePptxTimestamps ran on it", () => {
-  it("zip.file(...) throws a PptfastError naming the violated method", async () => {
+  it("zip.file(...) throws a PptxSealViolationError naming the violated method", async () => {
     const zip = buildZip()
     await normalizePptxTimestamps(zip)
-    expect(() => zip.file("new.txt", "x")).toThrow(PptfastError)
+    expect(() => zip.file("new.txt", "x")).toThrow(PptxSealViolationError)
     expect(() => zip.file("new.txt", "x")).toThrow(/"file" was called .* after normalizePptxTimestamps/)
   })
 
   it("zip.remove(...) throws the same invariant", async () => {
     const zip = buildZip()
     await normalizePptxTimestamps(zip)
-    expect(() => zip.remove("ppt/media/image-1-1.png")).toThrow(PptfastError)
+    expect(() => zip.remove("ppt/media/image-1-1.png")).toThrow(PptxSealViolationError)
     expect(() => zip.remove("ppt/media/image-1-1.png")).toThrow(/"remove" was called/)
   })
 
   it("zip.folder(...) throws the same invariant", async () => {
     const zip = buildZip()
     await normalizePptxTimestamps(zip)
-    expect(() => zip.folder("new-dir")).toThrow(PptfastError)
+    expect(() => zip.folder("new-dir")).toThrow(PptxSealViolationError)
     expect(() => zip.folder("new-dir")).toThrow(/"folder" was called/)
+  })
+
+  // Review finding F1 (carried-items wave, fix round): PptxSealViolationError
+  // must still be an instanceof PptfastError, so any call site that already
+  // catches the broader class unconditionally (rather than specifically
+  // checking for this subclass — see generate.ts's own dedupeMediaInZip
+  // catch) is not silently broken by this class existing.
+  it("PptxSealViolationError is a PptfastError subclass", async () => {
+    const zip = buildZip()
+    await normalizePptxTimestamps(zip)
+    try {
+      zip.file("new.txt", "x")
+      expect.unreachable("should have thrown")
+    } catch (e) {
+      expect(e).toBeInstanceOf(PptxSealViolationError)
+      expect(e).toBeInstanceOf(PptfastError)
+    }
   })
 
   // Direct reproduction of the actual real-world reorder defect this guard
@@ -88,7 +111,7 @@ describe("runtime seal: nothing may mutate a zip after normalizePptxTimestamps r
     )
 
     await normalizePptxTimestamps(zip)
-    await expect(dedupeMediaInZip(zip)).rejects.toThrow(PptfastError)
+    await expect(dedupeMediaInZip(zip)).rejects.toThrow(PptxSealViolationError)
     await expect(dedupeMediaInZip(zip)).rejects.toThrow(/normalizePptxTimestamps must be the last patch/)
   })
 
@@ -106,7 +129,7 @@ describe("finalizePptxZip: the one sanctioned way to reach generateAsync()", () 
   it("throws if normalizePptxTimestamps never ran on this zip", async () => {
     const zip = buildZip()
     await expect(finalizePptxZip(zip, { type: "arraybuffer", compression: "DEFLATE" })).rejects.toThrow(
-      PptfastError,
+      PptxSealViolationError,
     )
     await expect(finalizePptxZip(zip, { type: "arraybuffer", compression: "DEFLATE" })).rejects.toThrow(
       /generateAsync\(\) was reached without normalizePptxTimestamps/,
