@@ -514,6 +514,27 @@ describe("COMPONENT_ITEM_FIELD_ALIASES: every row round-trips", () => {
   })
 })
 
+// ── total pair count pinned (docs/changeset "53 total synonym pairs") ──────
+
+describe("total synonym-pair count", () => {
+  it("COMPONENT_FIELD_ALIASES + COMPONENT_ITEM_FIELD_ALIASES flatten to exactly 53 pairs", () => {
+    // The "covers every row exactly once" completeness guards above only
+    // prove BLOCK_CASES/ITEM_CASES stay in lockstep with each table's own
+    // rows — a row deleted from a table *and* its matching test case would
+    // still pass both guards, silently changing the total with nothing
+    // noticing. `.changeset/structure-components-2.md` quotes this number in
+    // prose ("53 total synonym pairs, up from 40") with nothing pinning it —
+    // this assertion is that pin. `SLIDE_FIELD_ALIASES` (3 more rows) is
+    // deliberately excluded: the changeset names only these two tables.
+    const blockCount = Object.values(COMPONENT_FIELD_ALIASES).reduce((n, m) => n + Object.keys(m).length, 0)
+    const itemCount = Object.values(COMPONENT_ITEM_FIELD_ALIASES).reduce(
+      (n, spec) => n + Object.keys(spec.aliases).length,
+      0,
+    )
+    expect(blockCount + itemCount).toBe(53)
+  })
+})
+
 // ── both alias and canonical present: left untouched, zod strict rejects ───
 
 describe("both alias and canonical present: left untouched for zod strict to reject", () => {

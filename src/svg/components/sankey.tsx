@@ -542,6 +542,14 @@ function computeLayout(component: SankeyComponent, boxX: number, boxY: number, w
   // residual — see the task-3 fix-round report) — band *stacking order* is
   // now content-stable, band *color* is not, and closing that second gap
   // was not part of what was ordered here.
+  //
+  // The same authored-order dependence extends to SVG *paint* order (final
+  // review, Minor finding 4): the JSX band loop below renders `layoutLinks`
+  // in `component.links`' own unsorted array order, so which of two
+  // visually-crossing bands paints on top is likewise a function of
+  // `links[]` array position, not graph content. Label safety is unaffected
+  // either way — `accessibleInkAgainstAll` blends against every band a
+  // label's box actually overlaps, independent of which one painted last.
   const paletteSize = Math.max(1, component.nodes.length)
   const layoutLinks: LayoutLink[] = component.links.map((l) => ({
     from: l.from,

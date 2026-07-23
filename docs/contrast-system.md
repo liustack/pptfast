@@ -87,6 +87,17 @@ genuinely rendered ink, not of insufficient calibration:
     wave Task 3 review's Important-1 finding) — extending `collectLeafBoxes`
     narrows the amount of *unwidened* text this detector misses, it does not
     make estimate-vs-real-glyph drift go away.
+  - Worth separating from that kerning gap, which is permanent and
+    weight-independent: this branch's bold-metrics fix (2026-07-24) made the
+    renderer bold-aware first (`measureTextUnits` gained a
+    `{ bold, fontFamily }` parameter, `isBold()`'s threshold mirroring
+    `svg2pptx/text.ts`'s own OOXML `b="1"` decision), which for one window
+    left both auditors still assuming Regular weight against real bold
+    render geometry — a structural under-widening on bold text specifically,
+    not kerning-scale rounding noise. That gap is now closed, not just
+    narrowed: `svg-audit.ts`'s h-overflow check and `collectLeafBoxes`'s
+    overlap widening (the twin consumer this fix restored parity on) both
+    read the element's real `font-weight` via `isBold()` before measuring.
   - The estimate only ever reaches text inside a live `data-audit-box`
     scope. Task 4's grep inventory (task-4-report.md, borrow-wave
     scratchpad, not shipped in this repo) found the codebase's largest
