@@ -69,15 +69,20 @@ export function BigNumber({
       unitUnits > 0 && valueUnits > 0
         ? Math.floor((rect.w * valueUnits) / (valueUnits + unitUnits))
         : rect.w
+    // bold-metrics fix (2026-07-24): this text renders `fontWeight="bold"`
+    // in `ctx.fonts.heading` below (same defect class as components/kpi.tsx's
+    // value text — see that file's identical fix and comment).
     fittedValue = fitSvgLine(valueStr, {
       maxWidth: valueMaxWidth,
       fontSize: HERO_SIZE,
       minFontSize: HERO_MIN_FONT_SIZE,
+      bold: true,
+      fontFamily: ctx.fonts.heading,
     })
     unitFontSize = Math.round(fittedValue.fontSize * 0.4)
     const unitMaxWidth = rect.w - valueMaxWidth
     fittedUnit = hero.unit
-      ? truncateToUnits(hero.unit, unitMaxWidth / fittedValue.fontSize)
+      ? truncateToUnits(hero.unit, unitMaxWidth / fittedValue.fontSize, { bold: true, fontFamily: ctx.fonts.heading })
       : null
   }
   const fittedLabel = hero

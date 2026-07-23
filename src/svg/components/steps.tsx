@@ -78,11 +78,25 @@ interface StepItemTextLayout {
  * (including that file's defensive post-wrap truncation — see the comment
  * there: `layoutSvgText`'s own font-shrink floors at 1px, which text long
  * enough can still overflow `contentW` at). */
-function layoutStepItem(item: StepItem, contentW: number): StepItemTextLayout {
+// `fontFamily` (bold-metrics fix, 2026-07-24): both `title` render call
+// sites (`renderStepCardBody`/`renderVertical`, below) declare
+// `fontWeight="600"`/`"700"` in `ctx.fonts.heading` — audit-baseline.test.ts's
+// ink/journal/runway/bloom "new_components_stress" case caught this the same
+// class of defect as the reported cover overflow once svg-audit.ts's
+// overflow walker became weight/face-aware (that test's own header comment:
+// "if a case fails, the residual overflow is real and belongs to the
+// renderer"). Optional and measure-phase callers (`stepContentHeight`/
+// `verticalRowGeometry`, which only ever read this function's `.text`, never
+// `.title`) can omit it — `title.fontSize` never feeds `StepsComponent`'s
+// own `measure()` height, only its own rendered width, so the measure/render
+// phases can't disagree over it.
+function layoutStepItem(item: StepItem, contentW: number, fontFamily?: string): StepItemTextLayout {
   const title = fitSvgLine(item.title, {
     maxWidth: contentW,
     fontSize: TITLE_FONT_SIZE,
     minFontSize: TITLE_MIN_FONT_SIZE,
+    bold: true,
+    fontFamily,
   })
   const wrapped = layoutSvgText(item.text, {
     maxWidth: contentW,
@@ -160,7 +174,7 @@ function renderStepCardBody(
   box: ComponentBox,
   ctx: ComponentCtx,
 ): React.ReactElement {
-  const { title, text } = layoutStepItem(item, box.w)
+  const { title, text } = layoutStepItem(item, box.w, ctx.fonts.heading)
   const badgeCx = box.x + BADGE_R
   const badgeCy = box.y + BADGE_R
   const titleTopY = box.y + BADGE_BAND + GAP_BADGE_TITLE
@@ -271,7 +285,7 @@ function renderVertical(component: StepsComponent, box: ComponentBox, ctx: Compo
       ))}
       {component.items.map((item, i) => {
         const rowTop = i * rowH
-        const { title, text } = layoutStepItem(item, contentW)
+        const { title, text } = layoutStepItem(item, contentW, ctx.fonts.heading)
         const titleBaselineY = rowTop + TITLE_FONT_SIZE
         const textTopY = rowTop + TITLE_LINE_HEIGHT + GAP_TITLE_TEXT_VERTICAL
         return (

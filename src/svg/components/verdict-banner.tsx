@@ -113,19 +113,33 @@ interface Laid {
  * `textW / FONT_SIZE` catches exactly that case — same fix bullets.tsx applies
  * at its own clamped floor font size.
  */
-function lay(component: VerdictBannerComponent, w: number): Laid {
+function lay(component: VerdictBannerComponent, w: number, fontFamily: string): Laid {
   const hasIcon = Boolean(component.icon)
   const tx = textX(hasIcon)
   const textW = Math.max(1, w - tx - PAD_X)
+  // bold-metrics fix (2026-07-24): every line renders `fontWeight="600"` on
+  // its outer `<text>` below (the *base*, non-emphasized weight — emphasis
+  // spans go bolder still, 700, via `renderEmphasisTspans`, but that's not
+  // this component's exemption case: unlike an archetype subheading whose
+  // *unmarked* text defaults to Regular and only `**marked**` runs go bold,
+  // every character of this component's line is already bold before
+  // emphasis is even considered). audit-baseline.test.ts's own "if a case
+  // fails, the residual overflow is real and belongs to the renderer"
+  // policy caught this the same way it caught kpi/BigNumber/steps/content-
+  // bento-panel's own value/title text (see those files' identical fix).
   const l = layoutSvgText(stripEmphasis(component.text), {
     maxWidth: textW,
     fontSize: FONT_SIZE,
     maxLines: MAX_LINES,
     lineHeightRatio: LINE_HEIGHT / FONT_SIZE,
+    bold: true,
+    fontFamily,
   })
   const maxUnits = textW / FONT_SIZE
   const sliced = sliceEmphasisForLines(parseEmphasis(component.text), l.lines)
-  const lineSegments = sliced.map((segs) => truncateEmphasisSegments(segs, maxUnits))
+  const lineSegments = sliced.map((segs) =>
+    truncateEmphasisSegments(segs, maxUnits, { bold: true, fontFamily }),
+  )
   // A line actually lost characters iff its post-truncation text differs
   // from its pre-truncation text (bench-driven fix round, defect E — see
   // bullets.tsx's identical pattern for the same reasoning).
@@ -137,11 +151,17 @@ function lay(component: VerdictBannerComponent, w: number): Laid {
 }
 
 export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
-  measure(component, w) {
-    return lay(component, w).height
+  // bold-metrics fix (2026-07-24): `ctx` now read here (previously unused
+  // by this component's `measure`) so this phase's own `lay()` call agrees
+  // with `render`'s — both must resolve the same line count (1 vs 2, this
+  // component's only `height` input) from the same bold/face-aware
+  // estimate, or the box `render` draws into can silently disagree with
+  // the height `measure` reserved for it upstream.
+  measure(component, w, ctx) {
+    return lay(component, w, ctx.fonts.body).height
   },
   render(component, box, ctx) {
-    const { lineSegments, lineTruncated, height } = lay(component, box.w)
+    const { lineSegments, lineTruncated, height } = lay(component, box.w, ctx.fonts.body)
     const hasIcon = Boolean(component.icon)
     const tone = toneColor(component.tone, ctx)
     const tx = textX(hasIcon)

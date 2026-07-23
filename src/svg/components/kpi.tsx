@@ -175,14 +175,26 @@ export const kpi: SvgComponent<KpiComponent> = {
             unit,
             availableWidth,
           )
+          // bold-metrics fix (2026-07-24): this text renders `fontWeight=
+          // "bold"` in `ctx.fonts.heading` below — audit-baseline.test.ts's
+          // ink/journal/runway/bloom "kpi" cases caught this the same way
+          // they caught the reported cover defect (that test's own header
+          // comment: "if a case fails, the residual overflow is real and
+          // belongs to the renderer") once svg-audit.ts's overflow walker
+          // became weight/face-aware. `fittedUnit` inherits the parent
+          // `<text>`'s bold (SVG tspans inherit `font-weight` unless
+          // overridden), so its own truncation budget needs the same
+          // correction.
           const fittedValue = fitSvgLine(valueStr, {
             maxWidth: valueMaxWidth,
             fontSize: 40,
             minFontSize: 22,
+            bold: true,
+            fontFamily: ctx.fonts.heading,
           })
           const unitFontSize = Math.round(fittedValue.fontSize * 0.45)
           const fittedUnit = unit
-            ? truncateToUnits(unit, unitMaxWidth / unitFontSize)
+            ? truncateToUnits(unit, unitMaxWidth / unitFontSize, { bold: true, fontFamily: ctx.fonts.heading })
             : null
           const fittedLabel = fitSvgLine(item.label, {
             maxWidth: cardW - 40,
