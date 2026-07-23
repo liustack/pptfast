@@ -85,7 +85,7 @@ function computeColumns(
   const weights: number[] = []
   for (let c = 0; c < colCount; c++) {
     const texts = [headers[c], ...columnTexts(component, c)]
-    const maxUnits = Math.max(...texts.map(measureTextUnits), 1)
+    const maxUnits = Math.max(...texts.map((t) => measureTextUnits(t)), 1)
     weights.push(maxUnits)
   }
 

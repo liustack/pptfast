@@ -9,6 +9,7 @@ import {
   layoutSvgText,
   truncateToUnits,
   type SvgTextLayout,
+  type TextWeightHint,
 } from "../lib/svg-text-layout"
 
 // CJK punctuation/symbols (U+3000 ideographic space .. U+303F), ideographs
@@ -80,9 +81,19 @@ export function fitHeadingLines(
     maxLines?: number
     minPt?: number
     lineHeightRatio?: number
-  },
+  } & TextWeightHint,
 ): SvgTextLayout {
-  const { maxWidth, fontSize, maxLines = 2, minPt = 28, lineHeightRatio } = opts
+  const { maxWidth, fontSize, maxLines = 2, minPt = 28, lineHeightRatio, fontFamily } = opts
+  // bold-metrics fix (2026-07-24): default flipped to `true`, not `false`.
+  // root-cause.md S5: 50/52 archetype `fontWeight` declarations across
+  // src/svg/archetypes/*.tsx are >=600 (96%) -- this is the primary heading
+  // sizing entry point every one of those headings' rendered `<text>` goes
+  // through, so "heading" and "bold" are the same case in practice. The 2
+  // genuine exceptions (ending-banner-ending.tsx / content-stacked-poster.tsx,
+  // both fontWeight=500 by deliberate design) pass `bold: false` explicitly
+  // at their own call site rather than this function guessing per-caller.
+  const bold = opts.bold ?? true
+  const weight: TextWeightHint = { bold, fontFamily }
   const content = text ?? ""
   // balanceLines: headings are the hero surface where a widow line
   // (「年度战略回」+「顾」) reads broken — body/subtitle call sites keep the
@@ -93,16 +104,18 @@ export function fitHeadingLines(
     maxLines,
     lineHeightRatio,
     balanceLines: true,
+    ...weight,
   })
   if (!content.trim() || first.fontSize >= minPt) return first
   const budget = (maxWidth / minPt) * maxLines
-  const truncatedContent = truncateToUnits(content, budget)
+  const truncatedContent = truncateToUnits(content, budget, weight)
   const result = layoutSvgText(truncatedContent, {
     maxWidth,
     fontSize: minPt,
     maxLines,
     lineHeightRatio,
     balanceLines: true,
+    ...weight,
   })
   // `layoutSvgText` never sets `truncated` itself (it only wraps/merges) —
   // this is the one place `fitHeadingLines` took the `truncateToUnits`
