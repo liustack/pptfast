@@ -150,6 +150,42 @@ const PUNCTUATION_STRESS =
  */
 const ENDING_TIGHT_HEADING = "从今天开始，用声明式管理"
 
+/**
+ * Bold-heading stress phrases (bold-metrics fix, round 2, 2026-07-24 —
+ * review Finding #3). Real, ordinary marketing-style phrases, not a
+ * synthetic character soup, deliberately concentrated in Georgia Bold's own
+ * worst-measured printable-ASCII characters (`GEORGIA_BOLD_EXACT`,
+ * `svg-text-layout.ts`): upper "W" 1.1265em (this face's single widest
+ * letter, a +51.8% deviation from the pre-round-2 class-average assumption),
+ * upper "M" 1.0234em, lower "m" 1.0156em (the widest lowercase letter,
+ * +81.36% over its own class average) — the same character concentration
+ * the round-2 review's two real, ordinary clipping headings happened to
+ * have ("Maximum Momentum Wave", Georgia Bold's "Wave" trailing "e" cut off
+ * canvas edge; "MEGAMARKET MOMENTUM", "MARKET"'s trailing "T" cut off — both
+ * LibreOffice-confirmed, `scratchpad/verify/ga-page-4.png` /
+ * `ga-page-7.png`, not shipped in this repo), reused verbatim below as two
+ * of this pool's eight phrases rather than invented anew.
+ *
+ * Exercises the 9 structure components the review's Finding #3 found
+ * unprotected (`bmc`/`five_forces`/`image_compare`/`insight_panel`/
+ * `numbered_cards`/`pest`/`rings`/`roadmap`/`swot`, `structure_bold_
+ * headings` deck below) — every one of these components' bold title/label
+ * `<text>` elements now threads `bold: true` + the real resolved
+ * `fontFamily` into `fitSvgLine`/`layoutSvgText` (this same fix round), so
+ * these should all pass the audit by construction under the exact
+ * per-character model, not just look plausible.
+ */
+const BOLD_STRESS_PHRASES = [
+  "Maximum Momentum Wave",
+  "MEGAMARKET MOMENTUM",
+  "World-Class Workmanship",
+  "Winning Market Mix",
+  "Wide World Marketing",
+  "Mass Market Movement",
+  "Milestone Momentum Wins",
+  "Maximum Value Warranty",
+] as const
+
 function deck(slides: Slide[]): PptxIR {
   return {
     version: "4",
@@ -761,6 +797,179 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
               label: i % 2 === 0 ? "创建 / 维护同步状态" : "确认",
             })
           ),
+        },
+      ],
+    },
+  ]),
+
+  // structure_bold_headings (bold-metrics fix, round 2, 2026-07-24 — review
+  // Finding #3): one page per structure component whose bold title/label
+  // fields this fix round found unprotected. `BOLD_STRESS_PHRASES`'s own
+  // doc comment has the full character-concentration rationale. Five of
+  // these types (`swot`/`pest`/`five_forces` here, plus `bmc`) are
+  // full-body (`FULL_BODY_TYPES`, `component-traits.ts`) and so each gets
+  // its own page, exclusive of siblings (`checkFullBodyExclusivity`); the
+  // other four (`rings`/`roadmap`/`numbered_cards`/`insight_panel`/
+  // `image_compare`) aren't full-body but still get one page each here to
+  // keep every component's box width the realistic single-component case,
+  // not a confound from an unrelated sibling squeeze.
+  //
+  // `bmc`'s own title text (`BLOCK_LABELS`, `bmc.tsx`) is a fixed constant,
+  // not part of the IR schema (`key_partners` etc. control each cell's
+  // *items* only) — no adversarial content can reach it, so this page
+  // stresses its items instead (still real coverage: the same renderer fix
+  // shipped for `bmc.tsx` for consistency, and this page is the only one of
+  // the nine that can't exercise a bold *title* at all, documented here
+  // rather than silently omitting `bmc` from this deck).
+  structure_bold_headings: deck([
+    {
+      type: "content",
+      heading: "圆环压力测试",
+      components: [
+        {
+          type: "rings",
+          items: [
+            { label: BOLD_STRESS_PHRASES[0], desc: MIXED_LONG },
+            { label: BOLD_STRESS_PHRASES[1], desc: MIXED_LONG },
+            { label: BOLD_STRESS_PHRASES[2], desc: MIXED_LONG },
+            { label: BOLD_STRESS_PHRASES[3], desc: MIXED_LONG },
+          ],
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "路线图压力测试",
+      components: [
+        {
+          type: "roadmap",
+          items: [
+            {
+              title: `${BOLD_STRESS_PHRASES[0]} Marketing`,
+              period: "Q1 2026 · 88.8% MoM Growth",
+              rows: [
+                { label: "Momentum", value: `${BOLD_STRESS_PHRASES[4]} 88.8%` },
+                { label: "Market", value: BOLD_STRESS_PHRASES[1] },
+              ],
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[1]} Matrix`,
+              period: BOLD_STRESS_PHRASES[7],
+              rows: [{ label: "Volume", value: BOLD_STRESS_PHRASES[5] }],
+            },
+            {
+              title: BOLD_STRESS_PHRASES[2],
+              period: BOLD_STRESS_PHRASES[6],
+              rows: [{ label: "Wins", value: BOLD_STRESS_PHRASES[3] }],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "编号卡片压力测试",
+      components: [
+        {
+          type: "numbered_cards",
+          items: [
+            { title: BOLD_STRESS_PHRASES[0], text: MIXED_LONG, sub: "Momentum" },
+            { title: BOLD_STRESS_PHRASES[1], text: MIXED_LONG, sub: "Market" },
+            { title: BOLD_STRESS_PHRASES[2], text: MIXED_LONG, sub: "Craft" },
+            { title: BOLD_STRESS_PHRASES[3], text: MIXED_LONG, sub: "Mix" },
+          ],
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "洞察面板压力测试",
+      components: [
+        {
+          type: "insight_panel",
+          title: `${BOLD_STRESS_PHRASES[0]} Marketing Mix`,
+          rows: [
+            { label: BOLD_STRESS_PHRASES[4], text: MIXED_LONG },
+            { label: BOLD_STRESS_PHRASES[1], text: MIXED_LONG },
+            { label: BOLD_STRESS_PHRASES[2], text: MIXED_LONG },
+          ],
+          footnote: MIXED_LONG,
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "图片对比压力测试",
+      components: [
+        {
+          type: "image_compare",
+          left: { asset_id: "missing", label: BOLD_STRESS_PHRASES[0] },
+          right: { asset_id: "missing", label: `${BOLD_STRESS_PHRASES[1]} Matrix` },
+          style: "before_after",
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "SWOT 压力测试",
+      components: [
+        {
+          type: "swot",
+          strengths: [BOLD_STRESS_PHRASES[0], MIXED_LONG],
+          weaknesses: [BOLD_STRESS_PHRASES[1], MIXED_LONG],
+          opportunities: [BOLD_STRESS_PHRASES[2], MIXED_LONG],
+          threats: [BOLD_STRESS_PHRASES[3], MIXED_LONG],
+          labels: {
+            strengths: BOLD_STRESS_PHRASES[4],
+            weaknesses: BOLD_STRESS_PHRASES[5],
+            opportunities: BOLD_STRESS_PHRASES[6],
+            threats: BOLD_STRESS_PHRASES[7],
+          },
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "PEST 压力测试",
+      components: [
+        {
+          type: "pest",
+          political: { title: BOLD_STRESS_PHRASES[0], items: [MIXED_LONG, MIXED_LONG] },
+          economic: { title: BOLD_STRESS_PHRASES[1], items: [MIXED_LONG, MIXED_LONG] },
+          social: { title: BOLD_STRESS_PHRASES[2], items: [MIXED_LONG, MIXED_LONG] },
+          technological: { title: BOLD_STRESS_PHRASES[3], items: [MIXED_LONG, MIXED_LONG] },
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "五力模型压力测试",
+      components: [
+        {
+          type: "five_forces",
+          rivalry: { label: BOLD_STRESS_PHRASES[0], intensity: "high", items: [MIXED_LONG, MIXED_LONG] },
+          new_entrants: { label: BOLD_STRESS_PHRASES[1], intensity: "medium", items: [MIXED_LONG] },
+          supplier_power: { label: BOLD_STRESS_PHRASES[2], intensity: "low", items: [MIXED_LONG] },
+          buyer_power: { label: BOLD_STRESS_PHRASES[3], intensity: "high", items: [MIXED_LONG] },
+          substitutes: { label: BOLD_STRESS_PHRASES[4], intensity: "medium", items: [MIXED_LONG] },
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "商业模式画布压力测试",
+      components: [
+        {
+          type: "bmc",
+          key_partners: [MIXED_LONG, MIXED_LONG],
+          key_activities: [MIXED_LONG, MIXED_LONG],
+          key_resources: [MIXED_LONG],
+          value_propositions: [MIXED_LONG, MIXED_LONG],
+          customer_relationships: [MIXED_LONG],
+          channels: [MIXED_LONG],
+          customer_segments: [MIXED_LONG],
+          cost_structure: [MIXED_LONG],
+          revenue_streams: [MIXED_LONG],
         },
       ],
     },
