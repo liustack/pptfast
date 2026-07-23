@@ -23,7 +23,7 @@ import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
 import { applyEaFontFaces } from "./pptx-ea-fonts"
 import { auditPptxPackage } from "./package-audit"
-import { normalizePptxTimestamps } from "./pptx-fixed-timestamps"
+import { finalizePptxZip, normalizePptxTimestamps, PptxSealViolationError } from "./pptx-fixed-timestamps"
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
@@ -109,9 +109,7 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   // the fully-patched package — the audit inspects the exact in-memory zip
   // `dedupeMediaInZip` just mutated (or left alone) rather than the gate
   // re-reading the package from scratch, per §10.4's "piggyback the patch
-  // chain's own final loadAsync, don't re-unzip." `dedupePptxMedia`'s
-  // Blob-in/Blob-out form (same file) stays exported for its own standalone
-  // tests but is no longer called from this pipeline.
+  // chain's own final loadAsync, don't re-unzip."
   let zip: JSZip
   try {
     zip = await JSZip.loadAsync(await elementAnimBlob.arrayBuffer())
@@ -125,12 +123,22 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   }
   try {
     await dedupeMediaInZip(zip)
-  } catch {
-    // Matches dedupePptxMedia's own defensiveness (a media-dedupe failure is
-    // not a reason to abandon export) — the package audit right below still
-    // inspects whatever state `zip` ended up in, so a real corruption from a
-    // partially-applied dedupe attempt is still caught, just under the
-    // audit's own invariant name rather than this one.
+  } catch (e) {
+    // Two-tier catch (carried-items wave, fix round — review finding F1):
+    // a `PptxSealViolationError` means this call itself ran out of order
+    // (reordered to run after `normalizePptxTimestamps` sealed `zip` below
+    // — exactly the defect the seal exists to catch) and must propagate,
+    // not be absorbed by the *different*, deliberately forgiving catch this
+    // block has had since 85ebc1e for a genuine dedupe failure (bad media
+    // bytes, malformed `.rels` XML) — "a media-dedupe failure is not a
+    // reason to abandon export," the package audit right below still
+    // inspects whatever state `zip` ended up in, so a real corruption from
+    // a partially-applied dedupe attempt is still caught, just under the
+    // audit's own invariant name rather than this one. See
+    // `PptxSealViolationError`'s own doc comment (pptx-fixed-timestamps.ts)
+    // for why this needed to be its own error class rather than a plain
+    // `PptfastError` — this `instanceof` check is the reason.
+    if (e instanceof PptxSealViolationError) throw e
   }
   await auditPptxPackage(zip)
   // Whole-file byte determinism (P0 hardening Task 4 — see
@@ -141,7 +149,15 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   // this step always re-serializes now, even on the (common) path where
   // `dedupeMediaInZip` found nothing to collapse and this stage used to
   // return `elementAnimBlob` unpatched.
+  //
+  // Must-run-last is no longer convention only (carried-items wave, P0 T4
+  // carried item): `normalizePptxTimestamps` seals `zip`'s own mutating
+  // methods once it finishes, and `finalizePptxZip` below is the only
+  // sanctioned way to reach `generateAsync()` — inserting a new mutating
+  // patch here, or reordering `normalizePptxTimestamps` any earlier than
+  // this exact line, throws loudly at the exact call site that violated it
+  // (see both functions' own doc comments, pptx-fixed-timestamps.ts).
   await normalizePptxTimestamps(zip)
-  const ab = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" })
+  const ab = await finalizePptxZip(zip, { type: "arraybuffer", compression: "DEFLATE" })
   return new Blob([ab], { type: PPTX_MIME })
 }

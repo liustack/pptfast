@@ -87,6 +87,45 @@ function isBackgroundImageOnly(slide: Slide): boolean {
   )
 }
 
+/**
+ * Shared push-plumbing for the item-count dual-threshold checks the
+ * carried-items wave adds for comparison/citation/architecture (mirrors
+ * bullet_item_overflow/bullets_count_overflow's shape: a warn budget and a
+ * separate, always-higher error ceiling, both flat/pacing-independent
+ * `CAPACITY` constants — see each call site's own `CAPACITY.*` derivation
+ * comment in capacity.ts for the actual numbers). Not shared with the
+ * bullets loop above: bullets' two error-tier checks
+ * (bullet_item_overflow/bullets_count_overflow) answer different questions
+ * (per-item length vs. item count) and bullets_overflow/bullet_item_long
+ * read PACING_BUDGETS, not CAPACITY, so folding all four bullets checks and
+ * these three into one generic helper would blur that distinction rather
+ * than clarify it. `errorThreshold` is never lower than `warnThreshold` for
+ * any of the three call sites (capacity.ts pins the arithmetic that makes
+ * that true) — this helper doesn't itself enforce the ordering, it just
+ * fires each check independently, same as `bullet_item_long`/
+ * `bullet_item_overflow` firing side by side above.
+ */
+function pushItemCountOverflow(
+  issues: QualityIssue[],
+  slideIndex: number,
+  count: number,
+  opts: {
+    warnThreshold: number
+    errorThreshold: number
+    warnCode: string
+    errorCode: string
+    warnMessage: string
+    errorMessage: string
+  },
+): void {
+  if (count > opts.warnThreshold) {
+    issues.push({ slide: slideIndex, severity: "warn", code: opts.warnCode, message: opts.warnMessage })
+  }
+  if (count > opts.errorThreshold) {
+    issues.push({ slide: slideIndex, severity: "error", code: opts.errorCode, message: opts.errorMessage })
+  }
+}
+
 // ── per-slide checks ──
 
 function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: NarrativeProfile): QualityIssue[] {
@@ -220,6 +259,53 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
           message: "单条要点超出渲染安全上限，会被截断显示",
         })
       }
+    }
+  }
+
+  // comparison_overflow/citation_overflow/architecture_overflow +
+  // their _count_overflow error tiers (carried-items wave): P0 hardening's
+  // family sweep gave these three vertical-stacking components (comparison/
+  // citation/architecture) a render-time box.h cap + data-dropped marker,
+  // the same "graceful landing" fix bullets.tsx got — but, unlike bullets,
+  // zero pre-render editorial signal, so a weak model saw no warning before
+  // content silently dropped behind a "+N more" marker. Same dual-threshold
+  // *shape* as bullets_overflow/bullets_count_overflow above (warn at a
+  // budget, error at an extreme ceiling), but unlike bullets_overflow (a
+  // per-pacing PACING_BUDGETS number) both thresholds here come from
+  // CAPACITY (capacity.ts) — these three have no pacing table of their own,
+  // so both are flat and pacing-independent, the same shape
+  // bullet_item_overflow/bullets_count_overflow already use. See
+  // CAPACITY.comparison/.citation/.architecture's own derivation comments
+  // (capacity.ts) for the box-geometry arithmetic (warn) and two-sided
+  // bracketing (error).
+  for (const component of slide.components) {
+    if (component.type === "comparison") {
+      pushItemCountOverflow(issues, index, component.rows.length, {
+        warnThreshold: CAPACITY.comparison.warnRows,
+        errorThreshold: CAPACITY.comparison.errorRows,
+        warnCode: "comparison_overflow",
+        errorCode: "comparison_count_overflow",
+        warnMessage: `对比表行数过多（>${CAPACITY.comparison.warnRows}行），极端版式下可能被截断显示，建议精简或拆页`,
+        errorMessage: `对比表行数远超合理上限（>${CAPACITY.comparison.errorRows}），"优雅截断"已不再是诚实描述——请精简内容或拆分为多页`,
+      })
+    } else if (component.type === "citation") {
+      pushItemCountOverflow(issues, index, component.sources.length, {
+        warnThreshold: CAPACITY.citation.warnSources,
+        errorThreshold: CAPACITY.citation.errorSources,
+        warnCode: "citation_overflow",
+        errorCode: "citation_count_overflow",
+        warnMessage: `引用来源数量过多（>${CAPACITY.citation.warnSources}条），极端版式下可能被截断显示，建议精简或拆页`,
+        errorMessage: `引用来源数量远超合理上限（>${CAPACITY.citation.errorSources}），"优雅截断"已不再是诚实描述——请精简内容或拆分为多页`,
+      })
+    } else if (component.type === "architecture") {
+      pushItemCountOverflow(issues, index, component.layers.length, {
+        warnThreshold: CAPACITY.architecture.warnLayers,
+        errorThreshold: CAPACITY.architecture.errorLayers,
+        warnCode: "architecture_overflow",
+        errorCode: "architecture_count_overflow",
+        warnMessage: `架构层数过多（>${CAPACITY.architecture.warnLayers}层），极端版式下可能被截断显示，建议精简或拆页`,
+        errorMessage: `架构层数远超合理上限（>${CAPACITY.architecture.errorLayers}），"优雅截断"已不再是诚实描述——请精简内容或拆分为多页`,
+      })
     }
   }
 

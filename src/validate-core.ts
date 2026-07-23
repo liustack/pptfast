@@ -175,6 +175,26 @@ function describeQualityIssue(issue: QualityIssue): string {
       // covers that margin: crossing this ceiling is a real render-safety
       // risk worth fixing, not a guaranteed loss.
       return `a bullet item exceeds the render-safety limit (${CAPACITY.bullets.itemOverflowUnits} width units) and can truncate — shorten it substantially or split the point across two items`
+    // comparison_overflow/citation_overflow/architecture_overflow +
+    // their _count_overflow error tiers (carried-items wave): the same
+    // dual-threshold shape as bullet_item_long/bullet_item_overflow above,
+    // applied to the three other vertical-stacking family members P0
+    // hardening gave a render-time box.h cap but no pre-render editorial
+    // signal (see CAPACITY.comparison/.citation/.architecture's own
+    // derivation comments, capacity.ts, for the box-geometry arithmetic and
+    // two-sided bracketing behind each number).
+    case "comparison_overflow":
+      return `comparison table has too many rows (over ${CAPACITY.comparison.warnRows}) — trim it or split into multiple slides`
+    case "comparison_count_overflow":
+      return `comparison table has far too many rows (over ${CAPACITY.comparison.errorRows}) — most would silently drop behind a "+N more" marker rather than render, trim it substantially or split into multiple slides`
+    case "citation_overflow":
+      return `citation list has too many sources (over ${CAPACITY.citation.warnSources}) — trim it or split into multiple slides`
+    case "citation_count_overflow":
+      return `citation list has far too many sources (over ${CAPACITY.citation.errorSources}) — most would silently drop behind a "+N more" marker rather than render, trim it substantially or split into multiple slides`
+    case "architecture_overflow":
+      return `architecture diagram has too many layers (over ${CAPACITY.architecture.warnLayers}) — trim it or split into multiple slides`
+    case "architecture_count_overflow":
+      return `architecture diagram has far too many layers (over ${CAPACITY.architecture.errorLayers}) — most would silently drop behind a "+N more" marker rather than render, trim it substantially or split into multiple slides`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     case "chart_axes_ignored": {

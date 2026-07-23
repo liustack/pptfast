@@ -259,13 +259,14 @@ const SOLID_FILL_RE = /<a:solidFill>.*?<\/a:solidFill>/s
  * internal `genXmlColorSelection` has no branch for anything else, so there
  * is no hook — public or private — to ask it to emit `a:gradFill`. Patching
  * the written XML directly is the same shape of fix as the sibling
- * `dedupePptxMedia` (open the zip with JSZip, rewrite parts, re-zip).
+ * `pptx-animations.ts`'s `applySlideTransitions` (open the zip with JSZip,
+ * rewrite parts, re-zip).
  *
- * Unlike that dedupe pass, this one fails loud instead of swallowing errors:
- * a dedupe miss just leaves the file a little larger, but a patch miss would
- * silently ship a solid placeholder where a gradient was authored — a wrong
- * visual, not a crash, and exactly the kind of silent divergence this whole
- * feature exists to prevent.
+ * Unlike that transitions pass, this one fails loud instead of swallowing
+ * errors: a missed transition just leaves the deck a little less polished,
+ * but a patch miss here would silently ship a solid placeholder where a
+ * gradient was authored — a wrong visual, not a crash, and exactly the kind
+ * of silent divergence this whole feature exists to prevent.
  */
 export async function applyGradientFills(
   pptx: Blob | ArrayBuffer | Uint8Array,

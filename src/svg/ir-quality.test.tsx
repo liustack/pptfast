@@ -517,6 +517,281 @@ describe("checkIrQuality", () => {
     })
   })
 
+  // ── comparison_overflow / comparison_count_overflow, citation_overflow /
+  // citation_count_overflow, architecture_overflow / architecture_count_overflow
+  // (carried-items wave — P0 hardening's family sweep gave these three
+  // vertical-stacking components a render-time box.h cap + data-dropped
+  // marker, same as bullets, but zero pre-render editorial signal: bullets_
+  // overflow/bullets_count_overflow's own dual-threshold shape applied here.
+  // Unlike bullets_overflow (a per-pacing PACING_BUDGETS editorial number),
+  // these three components have no pacing table of their own — both the warn
+  // and error thresholds live in CAPACITY (capacity.ts), flat and pacing-
+  // independent, mirroring bullet_item_overflow/bullets_count_overflow's own
+  // "flat CAPACITY constant" shape instead. See CAPACITY.comparison/
+  // .citation/.architecture's own derivation comments (capacity.ts) for the
+  // box-geometry arithmetic (warn) and two-sided bracketing (error). ──
+
+  function comparisonRows(n: number): { label: string; cells: string[] }[] {
+    return Array.from({ length: n }, (_, i) => ({ label: `row ${i}`, cells: ["a", "b"] }))
+  }
+
+  describe("comparison_overflow (warn, geometric render-capacity budget)", () => {
+    const threshold = CAPACITY.comparison.warnRows
+
+    it(`does NOT warn at exactly ${threshold} rows (the worst-case content box's own no-drop boundary)`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "对比页",
+          components: [{ type: "comparison", columns: ["A", "B"], rows: comparisonRows(threshold) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("comparison_overflow")
+    })
+
+    it(`warns (severity warn) at ${threshold + 1} rows`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "对比页",
+          components: [{ type: "comparison", columns: ["A", "B"], rows: comparisonRows(threshold + 1) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("comparison_overflow")
+      expect(issues.find((i) => i.code === "comparison_overflow")!.severity).toBe("warn")
+    })
+  })
+
+  describe("comparison_count_overflow (error, extreme ceiling mirroring bullets_count_overflow's bracketing)", () => {
+    const threshold = CAPACITY.comparison.errorRows
+
+    it(`does NOT report at exactly ${threshold} rows`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "对比压力测试",
+          components: [{ type: "comparison", columns: ["A", "B"], rows: comparisonRows(threshold) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("comparison_count_overflow")
+    })
+
+    it(`reports (severity error) over ${threshold} rows`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "对比压力测试",
+          components: [{ type: "comparison", columns: ["A", "B"], rows: comparisonRows(threshold + 1) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("comparison_count_overflow")
+      expect(issues.find((i) => i.code === "comparison_count_overflow")!.severity).toBe("error")
+    })
+
+    // Lower bracket anchor: depth-axis-hardening.test.ts's own pinned D1-family
+    // fixture (300-row comparison) must keep landing gracefully (render-side
+    // cap + data-dropped, never a validate rejection) — this gate must never
+    // regress that already-shipped guarantee.
+    it("does NOT report for 300 rows (depth-axis-hardening.test.ts's own pinned 'must land gracefully' fixture)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "300-row comparison stress",
+          components: [{ type: "comparison", columns: ["A", "B"], rows: comparisonRows(300) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("comparison_count_overflow")
+    })
+
+    // Upper bracket anchor: clearly pathological scale (same order of
+    // magnitude as the D1 report's own 20000-item bullets repro) must reject.
+    it("reports for 20000 rows (clearly pathological, must reject)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "extreme comparison",
+          components: [{ type: "comparison", columns: ["A", "B"], rows: comparisonRows(20_000) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("comparison_count_overflow")
+    })
+  })
+
+  function citationSources(n: number): { label: string }[] {
+    return Array.from({ length: n }, (_, i) => ({ label: `source ${i}` }))
+  }
+
+  describe("citation_overflow (warn, geometric render-capacity budget)", () => {
+    const threshold = CAPACITY.citation.warnSources
+
+    it(`does NOT warn at exactly ${threshold} sources (the worst-case content box's own no-drop boundary)`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "引用页",
+          components: [{ type: "citation", sources: citationSources(threshold) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("citation_overflow")
+    })
+
+    it(`warns (severity warn) at ${threshold + 1} sources`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "引用页",
+          components: [{ type: "citation", sources: citationSources(threshold + 1) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("citation_overflow")
+      expect(issues.find((i) => i.code === "citation_overflow")!.severity).toBe("warn")
+    })
+  })
+
+  describe("citation_count_overflow (error, extreme ceiling mirroring bullets_count_overflow's bracketing)", () => {
+    const threshold = CAPACITY.citation.errorSources
+
+    it(`does NOT report at exactly ${threshold} sources`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "引用压力测试",
+          components: [{ type: "citation", sources: citationSources(threshold) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("citation_count_overflow")
+    })
+
+    it(`reports (severity error) over ${threshold} sources`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "引用压力测试",
+          components: [{ type: "citation", sources: citationSources(threshold + 1) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("citation_count_overflow")
+      expect(issues.find((i) => i.code === "citation_count_overflow")!.severity).toBe("error")
+    })
+
+    // Lower bracket anchor (carried-items wave's own new fixture — citation
+    // has no pre-existing depth-axis-hardening.test.ts scenario to anchor
+    // against, unlike comparison — 300 mirrors that file's own comparison
+    // anchor for family consistency): a genuinely large, if excessive,
+    // source list must still land gracefully, not be hard-rejected.
+    it("does NOT report for 300 sources (must land gracefully, not be hard-rejected)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "300-source citation stress",
+          components: [{ type: "citation", sources: citationSources(300) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("citation_count_overflow")
+    })
+
+    it("reports for 20000 sources (clearly pathological, must reject)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "extreme citation",
+          components: [{ type: "citation", sources: citationSources(20_000) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("citation_count_overflow")
+    })
+  })
+
+  function architectureLayers(n: number): { title: string; items: string[] }[] {
+    return Array.from({ length: n }, (_, i) => ({ title: `layer ${i}`, items: ["a", "b"] }))
+  }
+
+  describe("architecture_overflow (warn, geometric render-capacity budget)", () => {
+    const threshold = CAPACITY.architecture.warnLayers
+
+    it(`does NOT warn at exactly ${threshold} layers (the worst-case content box's own no-drop boundary)`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "架构页",
+          components: [{ type: "architecture", layers: architectureLayers(threshold) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("architecture_overflow")
+    })
+
+    it(`warns (severity warn) at ${threshold + 1} layers`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "架构页",
+          components: [{ type: "architecture", layers: architectureLayers(threshold + 1) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("architecture_overflow")
+      expect(issues.find((i) => i.code === "architecture_overflow")!.severity).toBe("warn")
+    })
+  })
+
+  describe("architecture_count_overflow (error, extreme ceiling mirroring bullets_count_overflow's bracketing)", () => {
+    const threshold = CAPACITY.architecture.errorLayers
+
+    it(`does NOT report at exactly ${threshold} layers`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "架构压力测试",
+          components: [{ type: "architecture", layers: architectureLayers(threshold) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("architecture_count_overflow")
+    })
+
+    it(`reports (severity error) over ${threshold} layers`, () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "架构压力测试",
+          components: [{ type: "architecture", layers: architectureLayers(threshold + 1) }],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("architecture_count_overflow")
+      expect(issues.find((i) => i.code === "architecture_count_overflow")!.severity).toBe("error")
+    })
+
+    // Lower bracket anchor (carried-items wave's own new fixture, scaled down
+    // from comparison/citation's 300 to respect architecture's own much
+    // coarser per-layer cost — 150 is already an absurd count of system
+    // layers for one diagram, yet must still land gracefully).
+    it("does NOT report for 150 layers (must land gracefully, not be hard-rejected)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "150-layer architecture stress",
+          components: [{ type: "architecture", layers: architectureLayers(150) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("architecture_count_overflow")
+    })
+
+    it("reports for 20000 layers (clearly pathological, must reject)", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "extreme architecture",
+          components: [{ type: "architecture", layers: architectureLayers(20_000) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("architecture_count_overflow")
+    })
+  })
+
   // ── placeholder pages (W5 task 1): quality gate skips all content rules ──
 
   it("a placeholder page reports no issues even though it is missing a heading", () => {

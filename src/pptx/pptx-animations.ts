@@ -58,7 +58,7 @@ export function transitionXml(
  * effect into every slide part.
  *
  * Same JSZip-write-after-patch shape as the sibling `render.ts`'s
- * `applyGradientFills` and `pptx-dedupe-media.ts`'s `dedupePptxMedia` (open
+ * `applyGradientFills` and `pptx-ea-fonts.ts`'s `applyEaFontFaces` (open
  * the zip, rewrite parts, re-zip) — reusing that basis rather than teaching
  * pptxgenjs about transitions, which has no API for them (same shape of gap
  * as the gradient-fill one `applyGradientFills`'s doc comment describes).
@@ -76,16 +76,16 @@ export function transitionXml(
  * call on the same blob) is stripped before the new one is inserted, so
  * repeated calls never stack multiple `<p:transition>` elements.
  *
- * Defensive like `dedupePptxMedia` (not fail-loud like `applyGradientFills`):
- * a bad/non-zip input just comes back unchanged. That asymmetry is
- * deliberate — `applyGradientFills` fails loud because a missed per-shape
- * patch would silently ship the wrong *visual* (a solid fill where a
- * gradient was authored). A missed transition has no such failure mode: it
- * is deck-wide and uniform, not keyed to any per-shape target that could go
- * missing, so the only realistic failure is a malformed/mock zip (as
- * `pptx-generate.test.ts`'s `FakePptx.write()` stub produces) — exactly the
- * case `dedupePptxMedia` already treats as a no-op passthrough so export
- * never breaks.
+ * Defensive like `generate.ts`'s own try/catch around `dedupeMediaInZip`
+ * (not fail-loud like `applyGradientFills`): a bad/non-zip input just comes
+ * back unchanged. That asymmetry is deliberate — `applyGradientFills` fails
+ * loud because a missed per-shape patch would silently ship the wrong
+ * *visual* (a solid fill where a gradient was authored). A missed
+ * transition has no such failure mode: it is deck-wide and uniform, not
+ * keyed to any per-shape target that could go missing, so the only
+ * realistic failure is a malformed/mock zip (as `pptx-generate.test.ts`'s
+ * `FakePptx.write()` stub produces) — exactly the case that try/catch
+ * already treats as a no-op passthrough so export never breaks.
  */
 export async function applySlideTransitions(
   pptx: Blob | ArrayBuffer | Uint8Array,

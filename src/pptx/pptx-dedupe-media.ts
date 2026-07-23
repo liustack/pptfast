@@ -1,4 +1,4 @@
-import JSZip from "jszip"
+import type JSZip from "jszip"
 
 /**
  * Deduplicate identical media parts in-place on an already-loaded `zip`.
@@ -9,14 +9,19 @@ import JSZip from "jszip"
  * media into a single part and repoints every relationship at it (the OOXML-native
  * "one media part, many relationships" shape that PowerPoint itself produces).
  *
- * Returns whether anything actually changed. Split out from `dedupePptxMedia`
- * below (package-audit wave, task 1) so `generate.ts`'s final pipeline step can
- * run this same mutation against the one `JSZip.loadAsync` it already did for
- * the package-audit hard gate, instead of `dedupePptxMedia` doing its own
- * second load — spec §10.4's "reuse the patch chain's own final loadAsync,
- * don't re-unzip." Not defensive itself (an unexpected failure propagates) —
- * `dedupePptxMedia`'s own try/catch below is the one place that still needs
- * to swallow a bad/mock zip, so it stays there rather than moving in here.
+ * Returns whether anything actually changed. Originally split out from a
+ * since-removed `dedupePptxMedia` Blob-in/Blob-out wrapper (package-audit
+ * wave, task 1 — that wrapper opened its own fresh `JSZip.loadAsync` and
+ * re-serialized on every call) so `generate.ts`'s final pipeline step could
+ * run this same mutation against the one `JSZip.loadAsync` it already did
+ * for the package-audit hard gate instead — spec §10.4's "reuse the patch
+ * chain's own final loadAsync, don't re-unzip." The wrapper itself became
+ * dead code once `generate.ts` switched to calling this function directly
+ * (every remaining production reference was in a comment) and was removed
+ * (carried-items wave, P0 T4 carried item) — this function is the one
+ * surviving surface, and stays exactly as it was: not defensive itself (an
+ * unexpected failure propagates), the same posture `generate.ts`'s own
+ * try/catch around its call site already documents as deliberate.
  */
 export async function dedupeMediaInZip(zip: JSZip): Promise<boolean> {
   const mediaFiles = Object.keys(zip.files).filter(
@@ -58,32 +63,6 @@ export async function dedupeMediaInZip(zip: JSZip): Promise<boolean> {
   }
 
   return true
-}
-
-/**
- * Standalone `Blob → Blob` form of {@link dedupeMediaInZip}: loads, dedupes,
- * and re-serializes on its own.
- *
- * Defensive: any failure (e.g. a non-zip blob from a test mock) returns the
- * input unchanged so export never breaks. `generate.ts`'s pipeline no longer
- * calls this directly (see {@link dedupeMediaInZip}'s doc comment) — it stays
- * exported for the tests that exercise this exact contract in isolation.
- */
-export async function dedupePptxMedia(blob: Blob): Promise<Blob> {
-  try {
-    const zip = await JSZip.loadAsync(await blob.arrayBuffer())
-    const changed = await dedupeMediaInZip(zip)
-    if (!changed) return blob
-
-    // arraybuffer (not "blob") so this works in browser, jsdom and Node alike,
-    // and is a clean BlobPart.
-    const ab = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" })
-    return new Blob([ab], {
-      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    })
-  } catch {
-    return blob
-  }
 }
 
 function base(p: string): string {
