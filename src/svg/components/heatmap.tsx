@@ -127,25 +127,51 @@ const EASED_STEP = 0.01
  * WCAG's own worst-case contrast band (empirically confirmed against real
  * theme tokens, not just derived on paper — see the fix-round test failures
  * this constant's introduction closed): for a background whose relative
- * luminance sits near ~0.18-0.20, *neither* `readableOn`'s near-black
- * (`#0A0E14`, not literally 0-luminance) nor pure white clears 4.5:1 — the
- * two-ink comparison's own break-even point (`ink.ts`'s
- * `LUMINANCE_INK_THRESHOLD` doc comment names ~0.19) sits exactly where the
- * *achievable* contrast from either candidate dips to ~4.4, just under the
- * body-text floor. A continuous `colors.surface`→`colors.primary` lerp
- * necessarily crosses this band at some `eased` value between its two
- * endpoints (surface is high-luminance, primary is typically low — a
- * monotonic luminance descent must pass through every luminance in between,
- * intermediate value theorem), so this is not a bug in one specific theme's
- * token choice — it is unavoidable for *any* continuous light→dark ramp
- * under this codebase's binary black/white ink model, confirmed by the
- * initial (unguarded) version of this ramp failing `full-matrix-contrast
- * .test.ts` on 5 of 13 themes, always at a ratio of 4.40-4.49 (just under
- * the 4.5 floor), never far off it. `safeEased` below is the fix: when
- * `show_values` will actually paint text on a cell (the only case this
- * matters — no text, no contrast requirement), nudge that cell's own
+ * luminance sits in ≈0.183-0.194 (scanned directly against this codebase's
+ * real `DARK_INK`/`LIGHT_INK` constants, `ink.ts` — not a paper estimate),
+ * *neither* `readableOn`'s near-black (`#0A0E14`, not literally
+ * 0-luminance) nor pure white clears 4.5:1 — the two-ink comparison's own
+ * break-even point (`ink.ts`'s `LUMINANCE_INK_THRESHOLD` doc comment names
+ * ~0.19) sits exactly where the *achievable* contrast from either candidate
+ * dips to ~4.4, just under the body-text floor. A continuous
+ * `colors.surface`→`colors.primary` lerp necessarily crosses this band at
+ * some `eased` value between its two endpoints (surface is high-luminance,
+ * primary is typically low — a monotonic luminance descent must pass
+ * through every luminance in between, intermediate value theorem), so this
+ * is not a bug in one specific theme's token choice — it is unavoidable for
+ * *any* continuous light→dark ramp under this codebase's binary black/white
+ * ink model, confirmed by the initial (unguarded) version of this ramp
+ * failing `full-matrix-contrast.test.ts`: the representative content sweep
+ * passed clean with no nudge at all, but the schema-max 10×10 sweep (dense
+ * enough to statistically hit the ~1-in-50 dead-zone width on some cell)
+ * failed on 12/13 themes, and the negative-distribution cell-ink probe
+ * failed on 3/13 — 12/13 themes affected somewhere across the full battery
+ * (review fix round measurement; supersedes an earlier, narrower "5/13"
+ * figure from before those two sweeps existed). `safeEased` below is the
+ * fix: when `show_values` will actually paint text on a cell (the only case
+ * this matters — no text, no contrast requirement), nudge that cell's own
  * `eased` fraction away from the dead zone rather than accepting whichever
  * color the raw lerp landed on.
+ *
+ * **Confinement is a real, disclosed residual, not silently swallowed**
+ * (review fix round finding 1): a theme whose *entire* surface→primary path
+ * sits inside the band (both endpoints confined, or `surface === primary`
+ * exactly in-band) has no `eased` value `safeEased` can escape to — the
+ * search degrades to whichever boundary it hits, still the
+ * `accessibleInk`-chosen best-available ink, never a wrong/unreadable
+ * color. No canonical theme does this (all 13 green,
+ * `full-matrix-contrast.test.ts`), and `registerTheme` currently performs
+ * no color/contrast validation on a caller-supplied `style` at all — a
+ * systemic extensibility gap this component doesn't own or fix. What this
+ * component *does* guarantee: the confined case is deterministically
+ * **audit-visible**, not silent — `findContrastIssues` measures each
+ * cell's value text against that cell's own real rendered fill and reports
+ * it as a `low-contrast` finding every time, on every affected value, at
+ * the same ~4.38-4.44 ratio this comment names
+ * (`heatmap-deadzone.test.ts` pins this against a real `registerTheme` +
+ * `auditDeck` reconstruction of the confined case, plus a straddling
+ * control that stays clean). `pptfast audit` is the deterministic backstop
+ * for the residual this loop's own boundary clamp cannot itself close.
  */
 function hasSafeInk(hex: string): boolean {
   return contrastRatio(readableOn(hex), hex) >= INK_SAFE_RATIO
@@ -164,10 +190,13 @@ function hasSafeInk(hex: string): boolean {
  * theme's own two anchor colors — no dependency on which specific value
  * produced `eased`, so it's exactly as deterministic as the ramp itself.
  * Bounded to 100 steps (the full [0,1] range at `EASED_STEP`'s own
- * resolution) — every real theme's `colors.primary` clears the dead zone
- * well before either boundary in practice (confirmed by the 13-theme sweep
- * this function's introduction turned green), so the loop's own boundary
- * clamp is a safety net, not the expected exit path.
+ * resolution) — every one of the 13 canonical themes' `colors.primary`
+ * clears the dead zone well before either boundary in practice (confirmed
+ * by the 13-theme sweep this function's introduction turned green), so the
+ * loop's own boundary clamp is the fallback for the confined case
+ * `hasSafeInk`'s own doc comment discloses above — best-available ink, not
+ * a guarantee — never the expected exit path for any theme this codebase
+ * currently ships.
  */
 function safeEased(eased: number, ctx: ComponentCtx): number {
   const hex = (e: number) => mixHex(ctx.colors.surface, ctx.colors.primary, e)
