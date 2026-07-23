@@ -1249,6 +1249,69 @@ describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
   }
 })
 
+// Task 1 fix round (post-review, controller scope addition): `swot.tsx`
+// never got a dedicated schema-max sweep of its own (only the 1-2-item
+// "swot/bmc tinted-panel contrast" fixture above) — closed now that
+// `swot.tsx` carries the same `fontScale` defect-F fix `bmc.tsx`/
+// `pest.tsx`/`five-forces.tsx` already have. 5 items in every one of swot's
+// 4 quadrants (`z.array(z.string()).min(1).max(5)`, `ir/index.ts`), on
+// `narrow-column`, this suite's own narrowest curated content archetype.
+describe("swot schema-max content (fix round, controller scope addition)", () => {
+  const SWOT_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "swot",
+        strengths: ["强大的品牌认知度", "稳定的现金流", "经验丰富的管理团队", "自有核心技术平台", "客户复购率高"],
+        weaknesses: ["产品线相对单一", "对单一渠道依赖度高", "国际化程度不足", "核心系统老化", "低毛利细分市场占比高"],
+        opportunities: ["新兴市场快速增长", "政策利好窗口期", "邻近品类扩张空间", "潜在战略合作机会", "可持续发展需求上升"],
+        threats: ["新进入者价格战风险", "关键原材料成本上升", "汇率波动敞口", "消费者偏好快速迁移", "数据隐私监管趋严"],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max swot (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, SWOT_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Task 1 fix round (post-review, controller scope addition): the
+// reviewer's own repro shape — schema-max content *and* a heading long
+// enough to force a 2-line wrap *and* the narrowest curated archetype, all
+// three at once (`five-forces.tsx`'s file header already named this
+// compound gap as an unresolved residual for that component; this pins
+// whether `swot` — now carrying the identical fix — clears it too, rather
+// than leaving that claim as prose only). English item text (`fitSvgLine`'s
+// Latin-script measurement path, not the CJK path the block above
+// exercises) at schema-max density, under a 32-char heading long enough to
+// wrap to 2 lines on every one of the 13 themes.
+describe("swot zero-residual under a 2-line-wrapped heading + schema-max content (fix round)", () => {
+  const SWOT_LONG_HEADING_SLIDE: Slide = {
+    type: "content",
+    heading: "Competitive Landscape Deep-Dive",
+    layout: "narrow-column",
+    components: [
+      {
+        type: "swot",
+        strengths: ["Strong brand recognition", "Stable cash flow", "Experienced leadership", "Proprietary tech platform", "item number 5"],
+        weaknesses: ["Narrow product line", "High channel dependency", "Limited global presence", "Aging infrastructure", "item number 5"],
+        opportunities: ["Fast-growing markets", "Favorable policy window", "Adjacent category growth", "Partnership potential", "item number 5"],
+        threats: ["New entrant price wars", "Rising material costs", "Currency volatility", "Shifting preferences", "item number 5"],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: swot clears the reviewer's compound repro shape with zero findings`, () => {
+      expect(auditFindings(deckFor(themeId, SWOT_LONG_HEADING_SLIDE))).toEqual([])
+    })
+  }
+})
+
 // Structure-components wave 2 task 1, same defect-F discipline as bmc's own
 // schema-max sweep above: 5 items in every one of pest's 4 quadrants
 // (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own

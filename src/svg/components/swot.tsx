@@ -41,6 +41,30 @@ type QuadrantKey = "strengths" | "weaknesses" | "opportunities" | "threats"
  * mixed-in tint — see the dedicated 13-theme sweep in
  * `../audit/full-matrix-contrast.test.ts` ("swot/bmc tinted-panel contrast")
  * that locks this empirically, not just by construction.
+ *
+ * **Undersized-box shrink** (fix round, post-review: `bmc.tsx`'s bench-
+ * driven fix-round defect F, the same mechanism `pest.tsx`/`five-forces.tsx`
+ * carry — `swot.tsx` is this whole family's original ancestor and had never
+ * gotten the fix itself, only ever the `Math.max(cellH, ...)` floor below,
+ * which grows a row but never shrinks it below its own unstretched natural
+ * height). A full-body component gets the archetype's *fixed* content-rect
+ * height verbatim (`SvgContent.tsx`), never a box sized to its own
+ * `measure()` value, and schema-max content (5 items in every one of the 4
+ * quadrants) combined with a heading long enough to force a 2-line wrap can
+ * shrink that fixed rect below what an unshrinkable natural cell needs — an
+ * independent reviewer stress matrix (13 themes × 5 heading lengths, real
+ * validate→render→audit CLI pipeline) confirmed this. `render` now mirrors
+ * `bmc.tsx`/`pest.tsx`/`five-forces.tsx`'s exact two-stage fix: a
+ * `fontScale` (< 1 only when `box.h` is short of the natural total, floored
+ * at `MIN_FONT_SCALE`) shrinks every quadrant's font size/vertical rhythm
+ * uniformly before geometry is derived, and the pre-existing `Math.max`
+ * grow path still handles `box.h` exceeding the natural total — the two
+ * never engage at once. Unlike `five-forces.tsx`'s own admitted residual,
+ * this file's dedicated 13-theme schema-max + long-heading sweep (same
+ * fixture shape `pest.tsx`'s own sweep uses) found zero remaining findings
+ * at the font-scale floor — the 2×2, 2-row geometry here has more headroom
+ * relative to its own natural content than five_forces' 3-band cross, so
+ * this fix fully absorbs the compound case rather than leaving a residual.
  */
 
 const DEFAULT_LABELS: Record<QuadrantKey, string> = {
@@ -65,19 +89,32 @@ const PAD_BOTTOM = 18
 const CARD_RADIUS = 10
 
 // `BADGE` is a horizontal reservation for the unboxed letter (see
-// `renderQuadrant`'s comment) — no rect this wide is ever painted.
+// `renderQuadrant`'s comment) — no rect this wide is ever painted. Its
+// *height* footprint (`Math.max(BADGE, titleSize)` in `quadrantLayout`)
+// does shrink with `fontScale` below, same as every other vertical
+// measurement in this file.
 const BADGE = 34
 const BADGE_FONT = 22
 const GAP_BADGE_TITLE = 12
 
 const TITLE_SIZE = 17
+const TITLE_SIZE_MIN = 12
 const GAP_HEADER_ITEMS = 14
 
 const ITEM_SIZE = 14
-const ITEM_LH = Math.round(ITEM_SIZE * 1.4)
+const ITEM_SIZE_MIN = 11
+const ITEM_LH_RATIO = 1.4
 const ITEM_GAP = 6
 const BULLET_R = 2.5
 const BULLET_INDENT = 14
+
+// fix round (post-review): floor for render's box.h-undersized font-shrink
+// below, ported from `pest.tsx`/`five-forces.tsx`/`bmc.tsx` — see file
+// header. Derived the same way: it equals the item text's own width-axis
+// shrink floor (`ITEM_SIZE_MIN / ITEM_SIZE`), so the new height-axis floor
+// never asks item text to go smaller than a size this file already treats
+// as an acceptable edge.
+const MIN_FONT_SCALE = ITEM_SIZE_MIN / ITEM_SIZE
 
 /** Badge fill (a solid, un-blended theme token) per quadrant — the panel tint
  * below blends this same color toward `colors.surface`, so the badge always
@@ -107,28 +144,82 @@ interface QuadrantLayout {
   title: { text: string; fontSize: number; truncated: boolean }
   items: { text: string; fontSize: number; truncated: boolean }[]
   contentH: number
+  // fontScale-applied nominal rhythm — `renderQuadrant` positions against
+  // these, not each fitted title/item's own (possibly further width-shrunk)
+  // `fontSize`. Same nominal/fitted split `bmc.tsx`'s own `BlockLayout`/
+  // `pest.tsx`/`five-forces.tsx`'s own layout structs use.
+  badgeSize: number
+  badgeFont: number
+  titleSize: number
+  padTop: number
+  padBottom: number
+  gapBadgeTitle: number
+  gapHeaderItems: number
+  itemSize: number
+  itemLH: number
+  itemGap: number
+  bulletR: number
 }
 
-function quadrantLayout(items: string[], title: string, quadW: number): QuadrantLayout {
+/**
+ * `fontScale` (default 1, nominal) shrinks every vertical measurement —
+ * font sizes, line-height, padding, gaps, the badge's height footprint — by
+ * the same proportion; `quadW`/`PAD_X`/`BULLET_INDENT` (the horizontal
+ * axis) are untouched. At `fontScale === 1` every returned field reduces to
+ * this file's nominal constants exactly — same as `pest.tsx`'s own
+ * `quadrantLayout` (byte-for-byte ported from there).
+ */
+function quadrantLayout(items: string[], title: string, quadW: number, fontScale: number = 1): QuadrantLayout {
   const contentW = quadW - PAD_X * 2
+  const badgeSize = BADGE * fontScale
+  const badgeFont = BADGE_FONT * fontScale
+  const titleSize = TITLE_SIZE * fontScale
+  const padTop = PAD_TOP * fontScale
+  const padBottom = PAD_BOTTOM * fontScale
+  const gapBadgeTitle = GAP_BADGE_TITLE * fontScale
+  const gapHeaderItems = GAP_HEADER_ITEMS * fontScale
+  const itemSize = ITEM_SIZE * fontScale
+  const itemLH = Math.round(itemSize * ITEM_LH_RATIO)
+  const itemGap = ITEM_GAP * fontScale
+  const bulletR = BULLET_R * fontScale
+
   const fittedTitle = fitSvgLine(title, {
-    maxWidth: contentW - BADGE - GAP_BADGE_TITLE,
-    fontSize: TITLE_SIZE,
-    minFontSize: 12,
+    maxWidth: contentW - badgeSize - gapBadgeTitle,
+    fontSize: titleSize,
+    minFontSize: TITLE_SIZE_MIN * fontScale,
   })
   const fittedItems = items.map((it) =>
-    fitSvgLine(it, { maxWidth: contentW - BULLET_INDENT, fontSize: ITEM_SIZE, minFontSize: 11 }),
+    fitSvgLine(it, {
+      maxWidth: contentW - BULLET_INDENT,
+      fontSize: itemSize,
+      minFontSize: ITEM_SIZE_MIN * fontScale,
+    }),
   )
-  const itemsH = fittedItems.length * ITEM_LH + Math.max(0, fittedItems.length - 1) * ITEM_GAP
-  const headerH = Math.max(BADGE, TITLE_SIZE)
-  const contentH = PAD_TOP + headerH + GAP_HEADER_ITEMS + itemsH + PAD_BOTTOM
-  return { title: fittedTitle, items: fittedItems, contentH }
+  const itemsH = fittedItems.length * itemLH + Math.max(0, fittedItems.length - 1) * itemGap
+  const headerH = Math.max(badgeSize, titleSize)
+  const contentH = padTop + headerH + gapHeaderItems + itemsH + padBottom
+  return {
+    title: fittedTitle,
+    items: fittedItems,
+    contentH,
+    badgeSize,
+    badgeFont,
+    titleSize,
+    padTop,
+    padBottom,
+    gapBadgeTitle,
+    gapHeaderItems,
+    itemSize,
+    itemLH,
+    itemGap,
+    bulletR,
+  }
 }
 
-function gridGeom(component: SwotComponent, w: number) {
+function gridGeom(component: SwotComponent, w: number, fontScale: number = 1) {
   const quadW = (w - GRID_GAP) / 2
   const layouts = QUADRANTS.map((q) =>
-    quadrantLayout(component[q], component.labels?.[q] ?? DEFAULT_LABELS[q], quadW),
+    quadrantLayout(component[q], component.labels?.[q] ?? DEFAULT_LABELS[q], quadW, fontScale),
   )
   const cellH = Math.max(...layouts.map((l) => l.contentH))
   return { quadW, cellH, layouts }
@@ -158,19 +249,19 @@ function renderQuadrant(
   // by construction: this file's own dedicated 13-theme probe
   // (`../audit/full-matrix-contrast.test.ts`'s "swot/bmc tinted-panel
   // contrast") verifies it directly.
-  const badgeInk = accessibleInk(badge, panel, BADGE_FONT)
-  const titleInk = accessibleInk(ctx.colors.text, panel, TITLE_SIZE)
-  const itemInk = accessibleInk(ctx.colors.text, panel, ITEM_SIZE)
+  const badgeInk = accessibleInk(badge, panel, layout.badgeFont)
+  const titleInk = accessibleInk(ctx.colors.text, panel, layout.titleSize)
+  const itemInk = accessibleInk(ctx.colors.text, panel, layout.itemSize)
   const badgeX = x + PAD_X
-  const headerBaseline = y + PAD_TOP + Math.round(BADGE_FONT * 0.86)
-  let itemY = y + PAD_TOP + Math.max(BADGE, TITLE_SIZE) + GAP_HEADER_ITEMS
+  const headerBaseline = y + layout.padTop + Math.round(layout.badgeFont * 0.86)
+  let itemY = y + layout.padTop + Math.max(layout.badgeSize, layout.titleSize) + layout.gapHeaderItems
   return (
     <g key={q}>
       <rect x={x} y={y} width={w} height={h} rx={r} fill={panel} />
       <text
         x={badgeX}
         y={headerBaseline}
-        fontSize={BADGE_FONT}
+        fontSize={layout.badgeFont}
         fontWeight="800"
         fill={badgeInk}
         fontFamily={ctx.fonts.heading}
@@ -180,7 +271,7 @@ function renderQuadrant(
       </text>
       <text
         data-truncated={layout.title.truncated ? "1" : undefined}
-        x={badgeX + BADGE + GAP_BADGE_TITLE}
+        x={badgeX + layout.badgeSize + layout.gapBadgeTitle}
         y={headerBaseline}
         fontSize={layout.title.fontSize}
         fontWeight="700"
@@ -192,15 +283,15 @@ function renderQuadrant(
       </text>
       {layout.items.map((item, ii) => {
         const rowY = itemY
-        itemY += ITEM_LH + ITEM_GAP
-        const dotCy = rowY + ITEM_SIZE * 0.65
+        itemY += layout.itemLH + layout.itemGap
+        const dotCy = rowY + layout.itemSize * 0.65
         return (
           <g key={ii}>
-            <circle cx={x + PAD_X + BULLET_R} cy={dotCy} r={BULLET_R} fill={itemInk} />
+            <circle cx={x + PAD_X + layout.bulletR} cy={dotCy} r={layout.bulletR} fill={itemInk} />
             <text
               data-truncated={item.truncated ? "1" : undefined}
               x={x + PAD_X + BULLET_INDENT}
-              y={rowY + ITEM_SIZE}
+              y={rowY + layout.itemSize}
               fontSize={item.fontSize}
               fill={itemInk}
               fontFamily={ctx.fonts.body}
@@ -221,11 +312,30 @@ export const swot: SvgComponent<SwotComponent> = {
     return cellH * 2 + GRID_GAP
   },
   render(component, box, ctx) {
-    const { quadW, cellH, layouts } = gridGeom(component, box.w)
-    const measuredH = cellH * 2 + GRID_GAP
-    // box.h-aware uniform stretch (matrix.tsx's own idiom) — no
-    // STRETCH_CAP_RATIO ceiling, this component fills whatever it's handed.
-    const rowH = Math.max(cellH, ((box.h ?? measuredH) - GRID_GAP) / 2)
+    const natural = gridGeom(component, box.w)
+    const naturalTotal = natural.cellH * 2 + GRID_GAP
+    const totalH = box.h ?? naturalTotal
+
+    // fix round (post-review), ported from pest.tsx/five-forces.tsx/
+    // bmc.tsx — see file header. A box shorter than the natural total
+    // shrinks every quadrant's font size/vertical rhythm by the same
+    // proportion the box is short by, floored at MIN_FONT_SCALE, instead of
+    // silently drawing past box.h (this file's pre-fix
+    // `Math.max(cellH, ...)` floor). A box at or above natural size keeps
+    // fontScale === 1 and reuses `natural` as-is rather than recomputing.
+    const fontScale = naturalTotal > 0 && totalH < naturalTotal ? Math.max(MIN_FONT_SCALE, totalH / naturalTotal) : 1
+    const scaled = fontScale === 1 ? natural : gridGeom(component, box.w, fontScale)
+    const scaledNaturalTotal = scaled.cellH * 2 + GRID_GAP
+    const finalTotalH = Math.max(scaledNaturalTotal, totalH)
+
+    const { quadW, layouts } = scaled
+    // Growth-only stretch (this file's own pre-existing idiom, kept
+    // byte-identical at fontScale===1/no-grow): both rows are always equal
+    // height by construction, so an exact `(finalTotalH - GAP) / 2` split
+    // both reproduces `scaled.cellH` exactly when finalTotalH ===
+    // scaledNaturalTotal (the undersized-box case, nothing left to grow)
+    // and grows evenly when box.h exceeds the natural total.
+    const rowH = (finalTotalH - GRID_GAP) / 2
     const r = ctx.shape?.radius ?? CARD_RADIUS
     return (
       <g>
