@@ -1285,6 +1285,39 @@ describe("pest schema-max content (structure-components wave 2 task 1)", () => {
   }
 })
 
+// Task 1 fix round (post-review, High finding): the reviewer's own repro
+// shape — schema-max content *and* a heading long enough to force a 2-line
+// wrap *and* the narrowest curated archetype, all three at once
+// (`five-forces.tsx`'s file header already named this compound gap as an
+// unresolved residual for that component; this pins whether `pest` — now
+// carrying the identical fix — clears it too, rather than leaving that
+// claim as prose only). English item text (`fitSvgLine`'s Latin-script
+// measurement path, not the CJK path the block above exercises) at
+// schema-max density, under a 32-char heading long enough to wrap to 2
+// lines on every one of the 13 themes.
+describe("pest zero-residual under a 2-line-wrapped heading + schema-max content (fix round)", () => {
+  const PEST_LONG_HEADING_SLIDE: Slide = {
+    type: "content",
+    heading: "Competitive Landscape Deep-Dive",
+    layout: "narrow-column",
+    components: [
+      {
+        type: "pest",
+        political: { items: ["Tightening regulation", "Rising trade tariffs", "New antitrust scrutiny", "Labor law changes", "item number 5"] },
+        economic: { items: ["Falling interest rates", "Confidence rebound", "Currency volatility", "Rising input costs", "item number 5"] },
+        social: { items: ["Generational shift", "Normalized remote work", "Aging population", "Sustainability demand", "item number 5"] },
+        technological: { items: ["Generative-AI adoption", "Falling compute cost", "5G rollout expanding", "Automation of lines", "item number 5"] },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: pest clears the reviewer's compound repro shape with zero findings`, () => {
+      expect(auditFindings(deckFor(themeId, PEST_LONG_HEADING_SLIDE))).toEqual([])
+    })
+  }
+})
+
 // Structure-components wave 2 task 1, same defect-F discipline as bmc's own
 // schema-max sweep above: 5 items in every one of five_forces' 5 panels
 // (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own
