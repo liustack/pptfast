@@ -53,12 +53,28 @@ interface PanelLayout {
   contentH: number
 }
 
-function panelLayout(component: InsightPanelComponent, w: number): PanelLayout {
+// `fontFamily` (bold-metrics fix, round 2, 2026-07-24): `title`/`label`
+// both render `fontWeight="700"` below (`title` in `ctx.fonts.heading`,
+// `label` in `ctx.fonts.body`) -- bold-aware fitting needed for both,
+// same as every other bold heading-faced text this task's audit-baseline
+// sweep found and fixed. Both params optional/default `undefined`
+// (envelope fallback) -- `measure()` never reads either fitted result,
+// only `contentH`, itself derived from fixed constants (`TITLE_LH`/
+// `TEXT_LH`), never `title.fontSize`/`label.fontSize` -- so measure/render
+// can't disagree regardless of which callers pass a real value.
+function panelLayout(
+  component: InsightPanelComponent,
+  w: number,
+  headingFontFamily?: string,
+  bodyFontFamily?: string,
+): PanelLayout {
   const contentW = w - PAD_X * 2
   const title = fitSvgLine(component.title, {
     maxWidth: contentW,
     fontSize: TITLE_SIZE,
     minFontSize: 13,
+    bold: true,
+    fontFamily: headingFontFamily,
   })
   const labelColW = Math.min(
     Math.max(LABEL_COL_MIN, Math.max(...component.rows.map((r) => measureTextUnits(r.label) * LABEL_SIZE)) + 14),
@@ -66,7 +82,13 @@ function panelLayout(component: InsightPanelComponent, w: number): PanelLayout {
   )
   const textW = Math.max(60, contentW - labelColW)
   const rows: RowLayout[] = component.rows.map((r) => {
-    const label = fitSvgLine(r.label, { maxWidth: labelColW, fontSize: LABEL_SIZE, minFontSize: 11 })
+    const label = fitSvgLine(r.label, {
+      maxWidth: labelColW,
+      fontSize: LABEL_SIZE,
+      minFontSize: 11,
+      bold: true,
+      fontFamily: bodyFontFamily,
+    })
     const text = layoutSvgText(r.text, {
       maxWidth: textW,
       fontSize: TEXT_SIZE,
@@ -99,7 +121,7 @@ export const insightPanel: SvgComponent<InsightPanelComponent> = {
     return panelLayout(component, w).contentH
   },
   render(component, box, ctx) {
-    const layout = panelLayout(component, box.w)
+    const layout = panelLayout(component, box.w, ctx.fonts.heading, ctx.fonts.body)
     const r = ctx.shape?.radius ?? CARD_RADIUS
     // 面板高度取实测与分配的较大者——脚注按内容实测底定位，恒在卡内。
     const panelH = Math.max(layout.contentH, box.h ?? layout.contentH)

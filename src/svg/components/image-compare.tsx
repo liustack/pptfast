@@ -31,7 +31,11 @@ function renderSide({
   ctx: ComponentCtx
 }) {
   const src = ctx.images?.[asset_id]?.src
-  const fitted = fitSvgLine(label, { maxWidth: w - 16, fontSize: 15, minFontSize: 12 })
+  // bold-metrics fix (round 2, 2026-07-24): this label renders
+  // `fontWeight={600}` in `ctx.fonts.body` below -- bold by this codebase's
+  // own threshold, and `fonts.body` resolves to Georgia for the consulting
+  // theme (the same face the reported defect traced to), not just YaHei.
+  const fitted = fitSvgLine(label, { maxWidth: w - 16, fontSize: 15, minFontSize: 12, bold: true, fontFamily: ctx.fonts.body })
   return (
     <g transform={`translate(${x},0)`}>
       {src ? (

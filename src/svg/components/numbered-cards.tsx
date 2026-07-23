@@ -30,14 +30,25 @@ function grid(component: NumberedCardsComponent, w: number) {
   return { n, cols, rows, cellW, contentW }
 }
 
+// `fontFamily` (bold-metrics fix, round 2, 2026-07-24): `title` renders
+// `fontWeight="bold"` in `ctx.fonts.heading` below -- bold-aware fitting
+// needed, same as every other bold heading-faced text this task's
+// audit-baseline sweep found and fixed. Optional/defaults `undefined`
+// (envelope fallback) -- `h` (this function's height contribution) is
+// derived from the fixed `TITLE_BLOCK_H` constant, never `title.fontSize`,
+// so measure/render can't disagree regardless of which callers pass a
+// real value.
 function cellLayout(
   item: NumberedCardsComponent["items"][number],
   contentW: number,
+  fontFamily?: string,
 ) {
   const title = fitSvgLine(item.title, {
     maxWidth: contentW,
     fontSize: TITLE_SIZE,
     minFontSize: 13,
+    bold: true,
+    fontFamily,
   })
   const text = item.text
     ? layoutSvgText(item.text, {
@@ -85,7 +96,7 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
           const cellX = col * (cellW + COL_GAP)
           const cellY = heights.slice(0, row).reduce((s, h) => s + h + ROW_GAP, 0)
           const cellH = heights[row]
-          const { title, text, sub } = cellLayout(item, contentW)
+          const { title, text, sub } = cellLayout(item, contentW, ctx.fonts.heading)
           const num = String(i + 1).padStart(2, "0")
           const numBaseline = cellY + NUM_SIZE
           const titleBaseline = cellY + NUM_BLOCK_H + TITLE_SIZE
