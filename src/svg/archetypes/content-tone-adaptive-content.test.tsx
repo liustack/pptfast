@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../FullSlideSvg"
 import { resolveStyle } from "../../themes"
-import { accessibleInk } from "../ink"
+import { accessibleInk, contrastRatio, requiredContrastRatio } from "../ink"
 import { ToneAdaptiveContent } from "./content-tone-adaptive-content"
 import type { PptxIR, Slide } from "@/ir"
 import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
@@ -439,6 +439,82 @@ describe("ToneAdaptiveContent", () => {
       const root = parseSvgRoot(markup)
       const kicker = findKicker(root)
       expect(kicker.getAttribute("fill")).toBe(ctxWithImg.colors.accent)
+    })
+  })
+
+  // Regression test for commit 181892a (P1 variety wave, task 3 fix round —
+  // "fix(svg): guard tone-adaptive-content kicker fill with accessibleInk"),
+  // which shipped without one of its own (P1 task 3's own minor finding,
+  // carried to the P1 final review, carried again to roadmap.md's 跟进池).
+  //
+  // The kicker (section label) was the one text element in this archetype
+  // that never got the accessibleInk contrast guard heading/subheading/
+  // footer meta already had — both branches rendered it in raw
+  // `colors.accent` regardless of background. The exact combo that exposed
+  // it: consulting's theme, no-bg branch (`examples/basic.json` carries no
+  // background-image slides, so this is the branch a real deck's auto-pick
+  // actually reaches) — `accent` (#FFC72C) against consulting's page
+  // background (#F7F7F2, `ctx.defaultBg`) measures ~1.452:1, far under the
+  // 4.5:1 a 22px kicker needs. Reverting the fix (raw `fill={colors.accent}`
+  // in the no-bg branch's kicker `<text>`) makes the second test below fail
+  // — verified directly during implementation by temporarily reintroducing
+  // that exact line and confirming this test goes red, then restoring it.
+  describe("181892a regression: kicker clears contrast on consulting's no-bg page background (pre-fix ~1.452:1)", () => {
+    const chapterFirst: Slide = { type: "chapter", heading: "第一章", components: [] } as Slide
+    const withSection: Slide = {
+      type: "content",
+      heading: "三大支柱",
+      components: [{ type: "paragraph", text: "正文。" }],
+    } as Slide
+
+    function findKicker(root: Element): Element {
+      return Array.from(root.querySelectorAll("text")).find((t) =>
+        (t.textContent ?? "").startsWith("Chapter"),
+      )!
+    }
+
+    it("characterizes the pre-fix defect: consulting's raw accent fails the 22px kicker's required ratio against its own page background", () => {
+      const tokens = resolveStyle("consulting")
+      const ctx = buildCtx(tokens, {})
+      // Pins the exact number this fix's own commit message and the P1
+      // task 3 review both cite (~1.452:1) — independently recomputed here
+      // via the same contrastRatio the archetype itself now guards with,
+      // not copied from either source.
+      const rawRatio = contrastRatio(tokens.colors.accent, ctx.defaultBg!)
+      expect(rawRatio).toBeCloseTo(1.452, 3)
+      expect(rawRatio).toBeLessThan(requiredContrastRatio(22))
+    })
+
+    it("no-bg branch: the rendered kicker's ink now clears the required ratio (accessibleInk-guarded, not raw colors.accent)", () => {
+      const tokens = resolveStyle("consulting")
+      const ctx = buildCtx(tokens, {})
+      const deck: PptxIR = {
+        version: "3",
+        filename: "x.pptx",
+        theme: { id: "consulting" },
+        meta: {},
+        assets: { images: {} },
+        slides: [chapterFirst, withSection],
+      } as unknown as PptxIR
+      const markup = renderSvgMarkup(
+        wrap(<ToneAdaptiveContent ir={deck} slide={withSection} index={1} ctx={ctx} />),
+      )
+      const root = parseSvgRoot(markup)
+      const kicker = findKicker(root)
+      const fill = kicker.getAttribute("fill")!
+      const fontSize = Number(kicker.getAttribute("font-size"))
+
+      // The actual regression guard: past this line reverting 181892a's
+      // fix (fill={colors.accent} instead of fill={sectionLabelFill}) fails.
+      expect(contrastRatio(fill, ctx.defaultBg!)).toBeGreaterThanOrEqual(requiredContrastRatio(fontSize))
+      // Must be genuinely corrected, not coincidentally passing while still
+      // being the raw (failing) token value.
+      expect(fill).not.toBe(tokens.colors.accent)
+      // Pins the exact formula the archetype uses (same background
+      // reference as subheadingFill, this branch's own S3b precedent) —
+      // catches a revert to raw colors.accent AND a wrong background/font-
+      // size reference, not just "still not raw accent."
+      expect(fill).toBe(accessibleInk(tokens.colors.accent, ctx.defaultBg!, fontSize))
     })
   })
 
