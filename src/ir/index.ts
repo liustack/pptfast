@@ -917,37 +917,22 @@ const ComponentSchema = z.discriminatedUnion("type", [
       // self-loops (a node flowing into itself has no meaningful band
       // geometry — top/bottom of the same bar — so it's rejected outright
       // rather than special-cased at render time, plan task 3 item 1's
-      // explicit "self-loops rejected with an actionable message").
+      // explicit "self-loops rejected with an actionable message"). Every
+      // message below is single-quoted (never a raw `"` around an id).
       //
-      // Every message below is single-quoted (never a raw `"` around an id),
-      // and every `path` stops at `["links", i]` rather than drilling one
-      // level further into `["links", i, "from"]`/`["links", i, "to"]" —
-      // both are a real, empirically-caught fix, not a style preference: the
-      // browser-distribution e2e leg scans the bundled output for a bare
-      // `from"<specifier>"` token sequence (the shape a minified `import x
-      // from "pkg"` collapses to) to catch a real bare-import regression,
-      // and that scan cannot distinguish real import syntax from a
-      // coincidental run of characters inside a string literal — it has no
-      // JS parser, only a regex over raw bundle text. A zod issue `path`
-      // array ending in the literal element `"from"` emits that exact
-      // 4-letter word as its own bundled JS string token. The regex matches
-      // greedily from there to the *next* double-quote anywhere later in the
-      // ~1.6MB bundle, which always exists eventually — so any `path` ending
-      // in `"from"` false-positives this scan regardless of what the
-      // message text says or how it's quoted (confirmed by two independent
-      // failed e2e attempts on this exact task: the first fix, quoting the
-      // message text with single quotes instead of double, only moved the
-      // false match's endpoint to the next unrelated `"custom"` code-object
-      // key later in the bundle — proof the message text was never the real
-      // trigger, the bare `"from"` path element was). Dropping the trailing
-      // segment removes the string "from" from this schema's compiled
-      // output entirely, closing the false positive at its actual source
-      // rather than its symptom. Each issue's `message` already names
-      // "from"/"to" explicitly in prose, so no precision is lost for a
-      // reader or a weak model repairing the document — only the
-      // machine-readable path's granularity narrows from "this exact field"
-      // to "this link object", the same granularity `checkFullBodyExclusivity`
-      // and this file's own self-loop check right below already use.
+      // The endpoint-existence checks' `path` drills to the exact field
+      // (`["links", i, "from"]`/`["links", i, "to"]`) — the self-loop
+      // check's stays at `["links", i]`, since neither endpoint alone is
+      // "wrong" there (both are equal, valid ids; it's the pair that's
+      // rejected). This briefly used a workaround, now removed: the
+      // browser-distribution e2e leg's `BARE_STATIC_IMPORT` scanner
+      // (`scripts/e2e.mts`) used to do a raw text match with no notion of
+      // string-literal context, so a compiled zod issue `path` array ending
+      // in the literal element `"from"` collided with its bare-import scan
+      // exactly like a minified `import x from"pkg"` would. Fixed at the
+      // scanner (syntax-aware now — see that file's own doc comment), so
+      // the natural, most-precise path is safe again and no longer needs to
+      // route around a false positive one layer away from where it lives.
       const nodeIds = new Set(c.nodes.map((n) => n.id))
       const availableIds = [...nodeIds].map((id) => `'${id}'`).join(", ") || "(no nodes declared)"
       let hasStructuralLinkError = false
@@ -964,7 +949,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
           hasStructuralLinkError = true
           ctx.addIssue({
             code: "custom",
-            path: ["links", i],
+            path: ["links", i, "from"],
             message: `sankey link ${i}'s 'from' node id '${link.from}' is not declared in nodes — available: ${availableIds}`,
           })
         }
@@ -972,7 +957,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
           hasStructuralLinkError = true
           ctx.addIssue({
             code: "custom",
-            path: ["links", i],
+            path: ["links", i, "to"],
             message: `sankey link ${i}'s 'to' node id '${link.to}' is not declared in nodes — available: ${availableIds}`,
           })
         }

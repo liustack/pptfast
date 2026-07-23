@@ -993,8 +993,31 @@ console.log("--- browser-distribution build-verification leg ---")
  *  makes a browser's ESM loader throw `Failed to resolve module specifier`
  *  before a single line of the module runs (deep-dive repro, dist/index.js).
  *  A minified single-line bundle has no reliable newline boundary to anchor
- *  on, so this matches the token sequence directly rather than per-line. */
-const BARE_STATIC_IMPORT = /\bfrom"(?!\.\.?\/|\/)[^"]+"/g
+ *  on, so this matches the token sequence directly rather than per-line.
+ *
+ *  Syntax-aware, not a bare word match (structure-components wave 2 task 4
+ *  root fix): a raw `\bfrom"..."` scan collides with *any* string-literal
+ *  content that happens to end in the word "from" directly abutting its own
+ *  closing quote — not hypothetical, a real zod issue `path` array element
+ *  (`["links", i, "from"]`) false-triggered this exact scan pre-fix (see
+ *  `src/ir/index.ts`'s sankey `superRefine`, which used to work around it by
+ *  never emitting a `path` ending in that literal word). The lookbehind
+ *  requires a real `import`/`export` keyword within the preceding 200
+ *  characters with no intervening quote/backtick/semicolon — the one thing
+ *  a genuine import/export-from clause always has and arbitrary string
+ *  *data* structurally cannot (data is always already inside a string
+ *  literal, i.e. behind a quote, by the time any characters of it exist to
+ *  scan). 200 chars comfortably bounds even a long named-import clause
+ *  (`import{a,b,c,...}from"pkg"`) while staying far short of the gap
+ *  between two unrelated statements in a real ~1.6MB bundle, so it does not
+ *  risk pairing a `from` with a stale, unrelated `import` far upstream.
+ *  Verified against both the true-positive shapes (named/star/braces/
+ *  default imports, sequential real imports) and the false-positive shapes
+ *  (the sankey path element, and `field-aliases.ts`'s own new sankey
+ *  `{source:"from",target:"to"}` alias row — same words, different file,
+ *  confirming the fix is general rather than tuned to the one collision
+ *  that motivated it) before being wired in here. */
+const BARE_STATIC_IMPORT = /(?<=\b(?:import|export)\b[^"'`;]{0,200})\bfrom"(?!\.\.?\/|\/)[^"]+"/g
 
 /** Node built-ins pptxgenjs's own (vendored, unmodified) optional
  *  file-save/network fallback dynamically imports — guarded behind a
