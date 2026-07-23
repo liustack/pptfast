@@ -109,9 +109,7 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   // the fully-patched package — the audit inspects the exact in-memory zip
   // `dedupeMediaInZip` just mutated (or left alone) rather than the gate
   // re-reading the package from scratch, per §10.4's "piggyback the patch
-  // chain's own final loadAsync, don't re-unzip." `dedupePptxMedia`'s
-  // Blob-in/Blob-out form (same file) stays exported for its own standalone
-  // tests but is no longer called from this pipeline.
+  // chain's own final loadAsync, don't re-unzip."
   let zip: JSZip
   try {
     zip = await JSZip.loadAsync(await elementAnimBlob.arrayBuffer())
@@ -126,9 +124,9 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   try {
     await dedupeMediaInZip(zip)
   } catch {
-    // Matches dedupePptxMedia's own defensiveness (a media-dedupe failure is
-    // not a reason to abandon export) — the package audit right below still
-    // inspects whatever state `zip` ended up in, so a real corruption from a
+    // Deliberately defensive (a media-dedupe failure is not a reason to
+    // abandon export) — the package audit right below still inspects
+    // whatever state `zip` ended up in, so a real corruption from a
     // partially-applied dedupe attempt is still caught, just under the
     // audit's own invariant name rather than this one.
   }
