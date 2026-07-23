@@ -257,4 +257,171 @@ describe("sankey pathological inputs (render-time, never throws)", () => {
     const truncated = container.querySelector("text[data-truncated]")
     expect(truncated).toBeTruthy()
   })
+
+  // Task-3 fix round, review Minor finding 3: a non-conserved hub (in-flow
+  // != out-flow) renders without error and leaves a real, predictable,
+  // band-free gap along the lighter side — disclosed behavior (this file's
+  // own header comment, "A real, disclosed consequence of not forcing
+  // conservation"), rendered and visually inspected (see the fix-round
+  // report), not just asserted here. This pins the *geometry* the review's
+  // own rendered-screenshot finding named: node height tracks the heavier
+  // side (in=100), the lighter side's (out=60) bands only cover a
+  // proportional fraction of that height, leaving the rest untouched.
+  it("a non-conserved hub (in=100, out=60) renders with node height tracking the heavier side and a real gap on the lighter side", () => {
+    const nonConserved = {
+      type: "sankey" as const,
+      nodes: [
+        { id: "s1", label: "S1" },
+        { id: "s2", label: "S2" },
+        { id: "s3", label: "S3" },
+        { id: "hub", label: "Hub" },
+        { id: "sink", label: "Sink" },
+      ],
+      links: [
+        { from: "s1", to: "hub", value: 30 },
+        { from: "s2", to: "hub", value: 50 },
+        { from: "s3", to: "hub", value: 20 },
+        { from: "hub", to: "sink", value: 60 },
+      ],
+    }
+    const { container } = svg(sankey.render(nonConserved, { x: 0, y: 0, w: 900, h: 400 }, ctx))
+    const rectByLabel = new Map<string, Element>()
+    for (const g of Array.from(container.querySelectorAll("g[data-audit-box]"))) {
+      const label = g.querySelector("text")?.textContent
+      const rect = g.querySelector("rect")
+      if (label && rect) rectByLabel.set(label, rect)
+    }
+    const hubH = Number(rectByLabel.get("Hub")!.getAttribute("height"))
+    const sinkH = Number(rectByLabel.get("Sink")!.getAttribute("height"))
+
+    // The real, visible signature of non-conservation: hub (weight =
+    // max(in=100, out=60) = 100) and sink (weight = in = 60) are adjacent,
+    // sequential nodes fed by the *same* single link — in a conserved
+    // chain they'd render the same height. Here hub renders visibly
+    // *taller* than sink, tracking its own heavier (incoming) side rather
+    // than the 60 units it actually hands off. Both single-node layers
+    // share this render's one global value->px scale (layer0's 3-node
+    // stack is the binding constraint in this fixture), so the ratio is
+    // exact, not just directionally larger.
+    expect(hubH).toBeGreaterThan(sinkH)
+    expect(hubH / sinkH).toBeCloseTo(100 / 60, 2)
+
+    // The single outgoing band exists, is thinner than the hub's own bar,
+    // and the render completes without error — the gap is real geometry,
+    // not a crash or a dropped band.
+    const bandCount = container.querySelectorAll("path[data-band-bbox]").length
+    expect(bandCount).toBe(4) // 3 incoming to hub + 1 outgoing from it
+  })
+})
+
+// Task-3 fix round, review Minor finding 2: stacking order must follow the
+// graph's own content (node id), not the incidental array position `nodes[]`
+// happened to be authored in — reproduces the review's own adversarial probe
+// (a source with 3 outgoing links, `nodes[]` reordered without touching the
+// graph itself) directly.
+describe("sankey stacking order is content-derived, not authored-array-order (task 3 fix round, review Minor finding 2)", () => {
+  function hubComponent(nodeOrder: string[]) {
+    const labels: Record<string, string> = { a: "A", x: "X", y: "Y", z: "Z" }
+    return {
+      type: "sankey" as const,
+      nodes: nodeOrder.map((id) => ({ id, label: labels[id]! })),
+      links: [
+        { from: "a", to: "x", value: 10 },
+        { from: "a", to: "y", value: 10 },
+        { from: "a", to: "z", value: 10 },
+      ],
+    }
+  }
+
+  /** The three target nodes' own top-to-bottom vertical order (by rendered
+   * `y`), read as each node's label in that order — this fixture's hub "a"
+   * has exactly one outgoing link to each, so a target's own node-column
+   * position and its band's stacking slot at "a" move together (both are
+   * the same content-derived tie-break now), making the target nodes'
+   * own vertical order a direct, simple proxy for "did stacking order
+   * change" without needing to reverse-engineer band-to-target matching
+   * from bbox geometry alone. */
+  function targetOrder(nodeOrder: string[]): string[] {
+    const { container } = svg(sankey.render(hubComponent(nodeOrder), { x: 0, y: 0, w: 900, h: 400 }, ctx))
+    const entries: { label: string; y: number }[] = []
+    for (const g of Array.from(container.querySelectorAll("g[data-audit-box]"))) {
+      const label = g.querySelector("text")?.textContent
+      const rect = g.querySelector("rect")
+      if (label && label !== "A" && rect) entries.push({ label, y: Number(rect.getAttribute("y")) })
+    }
+    return entries.sort((p, q) => p.y - q.y).map((e) => e.label)
+  }
+
+  it("reordering nodes[] for the identical graph (same ids, same edges, same values) no longer changes the rendered node order", () => {
+    const forward = targetOrder(["a", "x", "y", "z"])
+    const reversed = targetOrder(["a", "z", "y", "x"])
+    expect(forward).toEqual(reversed)
+  })
+
+  it("the node order follows lexicographic id order (x, y, z), matching compareIds", () => {
+    const order = targetOrder(["a", "z", "y", "x"])
+    expect(order).toEqual(["X", "Y", "Z"])
+  })
+
+  it("double-render byte equality still holds after the tie-break change", () => {
+    const a = renderToStaticMarkup(sankey.render(hubComponent(["a", "z", "y", "x"]), { x: 96, y: 176, w: 1088, h: 420 }, ctx))
+    const b = renderToStaticMarkup(sankey.render(hubComponent(["a", "z", "y", "x"]), { x: 96, y: 176, w: 1088, h: 420 }, ctx))
+    expect(a).toBe(b)
+  })
+})
+
+// Task-3 fix round, review Major finding: labels can sit visually on top of
+// a real, translucent band — the renderer must compute ink safe against the
+// real composite, not just the plain page bg. Component-level pin
+// (full-matrix-contrast.test.ts carries the permanent 13-theme analytic
+// sweep) — this is the fast, component-local regression check.
+describe("sankey label ink is safe against real band composites (task 3 fix round, review Major finding)", () => {
+  it("emits data-band-bbox on every band and data-label-bbox on every label, for the analytic contrast sweep to consume", () => {
+    const { container } = svg(sankey.render(twoLayer, { x: 0, y: 0, w: 900, h: 400 }, ctx))
+    expect(container.querySelectorAll("path[data-band-bbox]").length).toBe(2)
+    expect(container.querySelectorAll("text[data-label-bbox]").length).toBe(3)
+  })
+
+  it("a label whose overlapping bands genuinely disagree on ink direction gets a backing chip, and the chip's own fill exactly matches the resolved page bg", () => {
+    // Two bands sharing one target, colored so their two blends genuinely
+    // disagree on ink direction against a dark page bg — the exact
+    // opposite-direction conflict class this fix's own header comment
+    // documents. Values are a frozen snapshot of campaign theme's real
+    // `colors.bg`/two of its four `chartPalette` entries
+    // (`src/themes/campaign.ts`) at the time this defect was found and
+    // fixed — copied as literal hex here (not imported live) specifically
+    // so this test keeps exercising the exact numeric scenario that
+    // motivated the fix even if campaign's own tokens are retuned later —
+    // campaign's *live* theme is separately and continuously covered by
+    // `full-matrix-contrast.test.ts`'s permanent 13-theme analytic sweep
+    // regardless. Verified analytically (a real computation run, not
+    // estimated) before writing this test: blended over this bg at
+    // BAND_OPACITY (0.45), `#F0559E` only clears 4.5:1 with white (6.47 vs
+    // black's 2.99 — black badly fails), `#F7D23E` only clears it with
+    // near-black (4.65 vs white's 4.16 — white fails) — no single flat ink
+    // satisfies both blends at once.
+    const conflictCtx: ComponentCtx = {
+      ...ctx,
+      colors: { ...ctx.colors, bg: "#3D2E78", text: "#3D2E78", chartPalette: ["#F0559E", "#F7D23E"] },
+      defaultBg: "#3D2E78",
+    }
+    const hub = {
+      type: "sankey" as const,
+      nodes: [
+        { id: "s1", label: "S1" },
+        { id: "s2", label: "S2" },
+        { id: "t", label: "T" },
+      ],
+      links: [
+        { from: "s1", to: "t", value: 50 },
+        { from: "s2", to: "t", value: 50 },
+      ],
+    }
+    const { container } = svg(sankey.render(hub, { x: 0, y: 0, w: 900, h: 200 }, conflictCtx))
+    const chips = container.querySelectorAll("rect[data-label-chip]")
+    expect(chips.length).toBeGreaterThan(0)
+    for (const chip of Array.from(chips)) {
+      expect(chip.getAttribute("fill")).toBe(conflictCtx.defaultBg)
+    }
+  })
 })

@@ -61,12 +61,16 @@
 //     low-contrast sources" block already documents and pins.
 import { beforeAll, describe, expect, it } from "vitest"
 import { COMPONENT_TYPES, type PptxIR, type Slide } from "@/ir"
+import { renderSlideSvg } from "../../api"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { resolveBackgroundHex } from "../FullSlideSvg"
-import { contrastRatio } from "../ink"
+import { contrastRatio, requiredContrastRatio } from "../ink"
+import { parseSvgRoot } from "../serialize"
+import { mixHex } from "../components/color-mix"
+import { BAND_OPACITY } from "../components/sankey"
 
 beforeAll(() => {
   installNodePlatform()
@@ -1605,135 +1609,238 @@ describe("heatmap cell-fill x ink (structure-components wave 2 task 2, decision 
 // horizontal gap several translucent bands route through, so a real
 // low-contrast finding here would mean a label got misattributed against a
 // band instead of the page background.
-describe("sankey contrast (structure-components wave 2 task 3)", () => {
-  const SIMPLE_SLIDE: Slide = {
-    type: "content",
-    heading: HEADING,
-    layout: "narrow-column",
-    components: [
-      {
-        type: "sankey",
-        nodes: [
-          { id: "coal", label: "煤炭" },
-          { id: "gas", label: "天然气" },
-          { id: "grid", label: "电网" },
-        ],
-        links: [
-          { from: "coal", to: "grid", value: 30 },
-          { from: "gas", to: "grid", value: 50 },
-        ],
-      },
-    ],
-  } as Slide
+// Hoisted to module scope (task-3 fix round, review Major finding) so both
+// the auditDeck-based sweep below AND the analytic blended-contrast sweep
+// (this file's "sankey label-over-band blended contrast" describe block)
+// share exactly the same four fixtures — the whole point of the second
+// sweep is to catch a defect class the first one is structurally blind to,
+// so it needs to run against the identical topologies, not a redescribed
+// approximation of them.
+const SANKEY_SIMPLE_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: [
+        { id: "coal", label: "煤炭" },
+        { id: "gas", label: "天然气" },
+        { id: "grid", label: "电网" },
+      ],
+      links: [
+        { from: "coal", to: "grid", value: 30 },
+        { from: "gas", to: "grid", value: 50 },
+      ],
+    },
+  ],
+} as Slide
 
+const SANKEY_MULTI_LAYER_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: [
+        { id: "coal", label: "Coal" },
+        { id: "gas", label: "Natural Gas" },
+        { id: "renewables", label: "Renewables" },
+        { id: "grid", label: "National Grid" },
+        { id: "homes", label: "Residential Homes" },
+        { id: "industry", label: "Heavy Industry" },
+        { id: "exports", label: "Exports" },
+      ],
+      links: [
+        { from: "coal", to: "grid", value: 30 },
+        { from: "gas", to: "grid", value: 50 },
+        { from: "renewables", to: "grid", value: 20 },
+        { from: "grid", to: "homes", value: 45 },
+        { from: "grid", to: "industry", value: 35 },
+        { from: "grid", to: "exports", value: 20 },
+      ],
+    },
+  ],
+} as Slide
+
+// Dense crossing: every node in layer 1 links to every node in layer 2 —
+// the maximal-crossing topology a 3x3 bipartite fan produces, deliberately
+// including a wide value spread (5..95) so band thickness varies a lot,
+// and one particularly long label to also exercise truncation under
+// crossing bands simultaneously. This is the fixture the review's own
+// Major finding was measured against (campaign 4.30:1, insight 4.34:1,
+// pre-fix).
+const SANKEY_DENSE_CROSSING_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: [
+        { id: "a1", label: "一个相当长的上游节点名称" },
+        { id: "a2", label: "Source B" },
+        { id: "a3", label: "Source C" },
+        { id: "b1", label: "Target X" },
+        { id: "b2", label: "Target Y" },
+        { id: "b3", label: "Target Z" },
+      ],
+      links: [
+        { from: "a1", to: "b1", value: 95 },
+        { from: "a1", to: "b2", value: 5 },
+        { from: "a1", to: "b3", value: 40 },
+        { from: "a2", to: "b1", value: 15 },
+        { from: "a2", to: "b2", value: 60 },
+        { from: "a2", to: "b3", value: 10 },
+        { from: "a3", to: "b1", value: 25 },
+        { from: "a3", to: "b2", value: 30 },
+        { from: "a3", to: "b3", value: 70 },
+      ],
+    },
+  ],
+} as Slide
+
+const sankeyLabels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+const SANKEY_SCHEMA_MAX_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: sankeyLabels(16, "节点").map((label, i) => ({ id: `n${i}`, label })),
+      links: (() => {
+        const links: { from: string; to: string; value: number }[] = []
+        outer: for (let i = 0; i < 8; i++) {
+          for (let j = 8; j < 16; j++) {
+            if (links.length >= 30) break outer
+            links.push({ from: `n${i}`, to: `n${j}`, value: ((i + j) % 9) + 1 })
+          }
+        }
+        return links
+      })(),
+    },
+  ],
+} as Slide
+
+describe("sankey contrast (structure-components wave 2 task 3)", () => {
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: simple two-layer sankey renders with zero auditDeck findings`, () => {
-      expect(auditFindings(deckFor(themeId, SIMPLE_SLIDE))).toEqual([])
+      expect(auditFindings(deckFor(themeId, SANKEY_SIMPLE_SLIDE))).toEqual([])
     })
   }
-
-  const MULTI_LAYER_SLIDE: Slide = {
-    type: "content",
-    heading: HEADING,
-    layout: "narrow-column",
-    components: [
-      {
-        type: "sankey",
-        nodes: [
-          { id: "coal", label: "Coal" },
-          { id: "gas", label: "Natural Gas" },
-          { id: "renewables", label: "Renewables" },
-          { id: "grid", label: "National Grid" },
-          { id: "homes", label: "Residential Homes" },
-          { id: "industry", label: "Heavy Industry" },
-          { id: "exports", label: "Exports" },
-        ],
-        links: [
-          { from: "coal", to: "grid", value: 30 },
-          { from: "gas", to: "grid", value: 50 },
-          { from: "renewables", to: "grid", value: 20 },
-          { from: "grid", to: "homes", value: 45 },
-          { from: "grid", to: "industry", value: 35 },
-          { from: "grid", to: "exports", value: 20 },
-        ],
-      },
-    ],
-  } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: multi-layer sankey renders with zero auditDeck findings`, () => {
-      expect(auditFindings(deckFor(themeId, MULTI_LAYER_SLIDE))).toEqual([])
+      expect(auditFindings(deckFor(themeId, SANKEY_MULTI_LAYER_SLIDE))).toEqual([])
     })
   }
-
-  // Dense crossing: every node in layer 1 links to every node in layer 2 —
-  // the maximal-crossing topology a 3x3 bipartite fan produces, deliberately
-  // including a wide value spread (5..95) so band thickness varies a lot,
-  // and one particularly long label to also exercise truncation under
-  // crossing bands simultaneously.
-  const DENSE_CROSSING_SLIDE: Slide = {
-    type: "content",
-    heading: HEADING,
-    layout: "narrow-column",
-    components: [
-      {
-        type: "sankey",
-        nodes: [
-          { id: "a1", label: "一个相当长的上游节点名称" },
-          { id: "a2", label: "Source B" },
-          { id: "a3", label: "Source C" },
-          { id: "b1", label: "Target X" },
-          { id: "b2", label: "Target Y" },
-          { id: "b3", label: "Target Z" },
-        ],
-        links: [
-          { from: "a1", to: "b1", value: 95 },
-          { from: "a1", to: "b2", value: 5 },
-          { from: "a1", to: "b3", value: 40 },
-          { from: "a2", to: "b1", value: 15 },
-          { from: "a2", to: "b2", value: 60 },
-          { from: "a2", to: "b3", value: 10 },
-          { from: "a3", to: "b1", value: 25 },
-          { from: "a3", to: "b2", value: 30 },
-          { from: "a3", to: "b3", value: 70 },
-        ],
-      },
-    ],
-  } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: dense-crossing sankey (9 links, 3x3 fully-connected bipartite fan) renders with zero auditDeck findings`, () => {
-      expect(auditFindings(deckFor(themeId, DENSE_CROSSING_SLIDE))).toEqual([])
+      expect(auditFindings(deckFor(themeId, SANKEY_DENSE_CROSSING_SLIDE))).toEqual([])
     })
   }
 
-  const sankeyLabels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
-  const SCHEMA_MAX_SLIDE: Slide = {
-    type: "content",
-    heading: HEADING,
-    layout: "narrow-column",
-    components: [
-      {
-        type: "sankey",
-        nodes: sankeyLabels(16, "节点").map((label, i) => ({ id: `n${i}`, label })),
-        links: (() => {
-          const links: { from: string; to: string; value: number }[] = []
-          outer: for (let i = 0; i < 8; i++) {
-            for (let j = 8; j < 16; j++) {
-              if (links.length >= 30) break outer
-              links.push({ from: `n${i}`, to: `n${j}`, value: ((i + j) % 9) + 1 })
-            }
-          }
-          return links
-        })(),
-      },
-    ],
-  } as Slide
-
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: schema-max sankey (16 nodes, 30 links) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
-      expect(auditFindings(deckFor(themeId, SCHEMA_MAX_SLIDE))).toEqual([])
+      expect(auditFindings(deckFor(themeId, SANKEY_SCHEMA_MAX_SLIDE))).toEqual([])
     })
+  }
+})
+
+// Task-3 fix round, review Major finding: `auditDeck` (above) is
+// structurally blind to a label sitting over a real, translucent band —
+// `BAND_OPACITY` (sankey.tsx) is deliberately below `MIN_BG_OPACITY` so a
+// band never becomes a `paintedShapes` background candidate (preventing a
+// *false positive*), which also means the SVG-level walk can never resolve
+// a label's background to anything but the plain page bg, and `--pixels`
+// can't help either (verified directly: that layer only ever samples runs
+// whose SVG-resolved background came back `null`, and this one resolves
+// cleanly — non-null — to the page bg). This describe block is the
+// permanent, renderer-output-level regression net the review ordered: it
+// reads the REAL rendered SVG (`renderSlideSvg`, the same single-source
+// markup the exporter and preview both use) — a band's real fill/geometry
+// off its own `data-band-bbox` attribute, a label's real ink/geometry off
+// its own `data-label-bbox` — and independently recomputes the analytic
+// alpha-composite blend for every band a label's box geometrically
+// overlaps, asserting every resulting ratio still clears the WCAG floor.
+// A label backed by a safety chip (`data-label-chip`, the opposite-
+// direction-conflict escalation `sankey.tsx`'s own `isSafeAgainstAll` doc
+// comment names) is verified against the *chip's* real fill instead of any
+// band blend — the chip is what a viewer actually sees behind that label.
+//
+// Pre-fix, this exact method (analytic blend + real geometric overlap)
+// reproduced the review's own measured violations on this branch's HEAD
+// before the fix (campaign/insight, ratios in the 4.3 range) — this block
+// stayed red against the pre-fix renderer and is green now.
+describe("sankey label-over-band blended contrast (task 3 fix round, review Major finding — permanent guard)", () => {
+  interface BandGeom {
+    xMin: number
+    yMin: number
+    xMax: number
+    yMax: number
+    fill: string
+  }
+
+  /** Every real (label, background-it-actually-sits-on) pair for one
+   * rendered sankey slide, read straight off real SVG output — never a
+   * reimplementation of sankey.tsx's own layout math, only its declared
+   * (`data-*`) geometry and its own chosen `fill` values. */
+  function realLabelBackgroundPairs(themeId: string, slide: Slide): { label: string; ink: string; fontSize: number; bg: string }[] {
+    const ir = deckFor(themeId, slide)
+    const markup = renderSlideSvg(ir, 0)
+    const root = parseSvgRoot(markup)
+    const pageBg = root.querySelector("rect")?.getAttribute("fill") ?? "#FFFFFF"
+    const bands: BandGeom[] = Array.from(root.querySelectorAll("path[data-band-bbox]")).map((el) => {
+      const [xMin, yMin, xMax, yMax] = (el.getAttribute("data-band-bbox") ?? "").split(",").map(Number)
+      return { xMin, yMin, xMax, yMax, fill: el.getAttribute("fill")! }
+    })
+
+    const pairs: { label: string; ink: string; fontSize: number; bg: string }[] = []
+    for (const text of Array.from(root.querySelectorAll("text[data-label-bbox]"))) {
+      const ink = text.getAttribute("fill")!
+      const fontSize = Number(text.getAttribute("font-size"))
+      const label = text.textContent ?? ""
+      const hasChip = text.previousElementSibling?.getAttribute("data-label-chip") === "1"
+      if (hasChip) {
+        // The chip's own fill is the real, guaranteed background — verify
+        // against *that*, not any band it may still visually sit above
+        // (the whole point of the chip is that the band underneath no
+        // longer matters).
+        pairs.push({ label, ink, fontSize, bg: (text.previousElementSibling as Element).getAttribute("fill")! })
+        continue
+      }
+      const [txMin, tyMin, txMax, tyMax] = (text.getAttribute("data-label-bbox") ?? "").split(",").map(Number)
+      pairs.push({ label, ink, fontSize, bg: pageBg })
+      for (const band of bands) {
+        const overlaps = txMin <= band.xMax && txMax >= band.xMin && tyMin <= band.yMax && tyMax >= band.yMin
+        if (!overlaps) continue
+        pairs.push({ label, ink, fontSize, bg: mixHex(pageBg, band.fill, BAND_OPACITY) })
+      }
+    }
+    return pairs
+  }
+
+  const FIXTURES: [string, Slide][] = [
+    ["simple", SANKEY_SIMPLE_SLIDE],
+    ["multi-layer", SANKEY_MULTI_LAYER_SLIDE],
+    ["dense-crossing", SANKEY_DENSE_CROSSING_SLIDE],
+    ["schema-max", SANKEY_SCHEMA_MAX_SLIDE],
+  ]
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    for (const [topology, slide] of FIXTURES) {
+      it(`${themeId} / ${topology}: every label clears 4.5:1 (or 3:1 if large) against every real background it sits on, band blends included`, () => {
+        const pairs = realLabelBackgroundPairs(themeId, slide)
+        expect(pairs.length).toBeGreaterThan(0)
+        const violations = pairs
+          .map(({ label, ink, fontSize, bg }) => ({ label, ink, bg, ratio: contrastRatio(ink, bg), required: requiredContrastRatio(fontSize) }))
+          .filter((p) => p.ratio < p.required)
+        expect(violations).toEqual([])
+      })
+    }
   }
 })
 
