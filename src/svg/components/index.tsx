@@ -30,6 +30,7 @@ import { bmc } from "./bmc"
 import { waterfall } from "./waterfall"
 import { gantt } from "./gantt"
 import { pest } from "./pest"
+import { fiveForces } from "./five-forces"
 
 /** Height (px) a component needs at a given width. */
 export function measureComponent(component: Component, w: number, ctx: ComponentCtx): number {
@@ -92,6 +93,8 @@ export function measureComponent(component: Component, w: number, ctx: Component
       return gantt.measure(component, w, ctx)
     case "pest":
       return pest.measure(component, w, ctx)
+    case "five_forces":
+      return fiveForces.measure(component, w, ctx)
     default: {
       void (component satisfies never)
       return 0
@@ -160,6 +163,8 @@ function renderComponentContent(component: Component, box: ComponentBox, ctx: Co
       return gantt.render(component, box, ctx)
     case "pest":
       return pest.render(component, box, ctx)
+    case "five_forces":
+      return fiveForces.render(component, box, ctx)
     default: {
       void (component satisfies never)
       return <g />

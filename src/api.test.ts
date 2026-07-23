@@ -353,6 +353,14 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     social: { items: ["s"] },
     technological: { items: ["t"] },
   }
+  const fiveForcesOnly = {
+    type: "five_forces",
+    rivalry: { items: ["r"] },
+    new_entrants: { items: ["n"] },
+    supplier_power: { items: ["sp"] },
+    buyer_power: { items: ["bp"] },
+    substitutes: { items: ["su"] },
+  }
 
   it("accepts a slide whose sole component is a full-body type (swot)", () => {
     const v = validateIr({
@@ -394,6 +402,14 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     expect(v.ok).toBe(true)
   })
 
+  it("accepts a slide whose sole component is a full-body type (five_forces)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "Five Forces", components: [fiveForcesOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
   it("hard-rejects a full-body component paired with an ordinary sibling — not a silent drop", () => {
     const v = validateIr({
       ...raw,
@@ -429,6 +445,15 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     })
     expect(v.ok).toBe(false)
     expect(v.errors[0]!.message).toMatch(/"waterfall, gantt" is a full-body component/)
+  })
+
+  it("hard-rejects two full-body components across the wave-2 named-slot pair sharing one slide", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "PEST + Five Forces", components: [pestOnly, fiveForcesOnly] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/"pest, five_forces" is a full-body component/)
   })
 
   it("hard-rejects two components of the *same* full-body type sharing one slide (task-1 review minor: literal same-type double)", () => {

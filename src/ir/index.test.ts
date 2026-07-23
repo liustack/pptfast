@@ -416,6 +416,66 @@ describe("pest component (structure-components wave 2 task 1, named-slot family)
   })
 })
 
+describe("five_forces component (structure-components wave 2 task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const panel = (n: number, overrides: Record<string, unknown> = {}) => ({
+    items: Array.from({ length: n }, (_, i) => `i${i}`),
+    ...overrides,
+  })
+  const fiveForcesComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "five_forces",
+    rivalry: panel(1),
+    new_entrants: panel(1),
+    supplier_power: panel(1),
+    buyer_power: panel(1),
+    substitutes: panel(1),
+    ...overrides,
+  })
+
+  it("accepts 1-5 items per panel", () => {
+    for (const n of [1, 3, 5]) {
+      expect(parsePptxIR(withComponents([fiveForcesComponent({ rivalry: panel(n) })])).success).toBe(true)
+    }
+  })
+  it("rejects an empty panel items array (min 1)", () => {
+    expect(parsePptxIR(withComponents([fiveForcesComponent({ rivalry: panel(0) })])).success).toBe(false)
+  })
+  it("rejects more than 5 items in a panel (max 5)", () => {
+    expect(parsePptxIR(withComponents([fiveForcesComponent({ rivalry: panel(6) })])).success).toBe(false)
+  })
+  it("rejects a missing panel (all five are required, not a positional array)", () => {
+    const full = fiveForcesComponent() as any
+    delete full.substitutes
+    expect(parsePptxIR(withComponents([full])).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...fiveForcesComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional inline label per panel", () => {
+    const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { label: "竞争烈度" }) })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts an optional intensity enum (low/medium/high) on any panel, including the center", () => {
+    for (const level of ["low", "medium", "high"]) {
+      const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { intensity: level }) })])
+      expect(parsePptxIR(d).success).toBe(true)
+    }
+  })
+  it("rejects an unknown intensity value (strict enum)", () => {
+    const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { intensity: "extreme" }) })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown field inside a panel object (strict)", () => {
+    const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { extra: "x" }) })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

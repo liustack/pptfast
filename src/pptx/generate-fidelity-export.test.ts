@@ -94,6 +94,14 @@ const pest: Component = {
   social: { items: ["Habits shift"] },
   technological: { items: ["AI adoption"] },
 }
+const fiveForces: Component = {
+  type: "five_forces",
+  rivalry: { items: ["Top 3 hold 60% share"], intensity: "high" },
+  new_entrants: { items: ["High licensing barrier"], intensity: "low" },
+  supplier_power: { items: ["Component shortage"], intensity: "medium" },
+  buyer_power: { items: ["Concentrated buyers"] },
+  substitutes: { items: ["Open-source alternatives"], intensity: "medium" },
+}
 
 /** The 3 image-family types, each pointed at an asset id that is never
  *  present in `assets.images` — deliberately exercising the "asset missing
@@ -136,6 +144,7 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
   waterfall,
   gantt,
   pest,
+  five_forces: fiveForces,
   flowchart: {
     type: "flowchart",
     nodes: [
@@ -249,6 +258,7 @@ function noAssetIr(): PptxIR {
       contentSlide("Waterfall", [COMPONENT_BY_TYPE.waterfall]),
       contentSlide("Gantt", [COMPONENT_BY_TYPE.gantt]),
       contentSlide("PEST", [COMPONENT_BY_TYPE.pest]),
+      contentSlide("Five Forces", [COMPONENT_BY_TYPE.five_forces]),
       contentSlide("Flow + Architecture", [COMPONENT_BY_TYPE.flowchart, COMPONENT_BY_TYPE.architecture]),
       contentSlide("Timeline + Comparison", [COMPONENT_BY_TYPE.timeline, COMPONENT_BY_TYPE.comparison]),
       contentSlide("RowCards + Steps", [COMPONENT_BY_TYPE.row_cards, COMPONENT_BY_TYPE.steps]),

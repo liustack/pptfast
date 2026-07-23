@@ -665,8 +665,8 @@ if (pixelsReport.checks.pixels !== "completed") {
 console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixels completed, human summary notes it)")
 
 // 8) structure-components leg (structure-components wave 1 task 3, extended
-//    by wave 2 task 1): a deck exercising every full-body component shipped
-//    so far across both waves (swot/bmc/waterfall/gantt/pest), one per
+//    by wave 2 task 1): a deck exercising all six full-body components
+//    across both waves (swot/bmc/waterfall/gantt/pest/five_forces), one per
 //    content slide, cover+ending bookending them —
 //    must render to a well-formed pptx and audit clean (exit 0, 0 findings).
 //    `layout: "narrow-column"` is pinned on every content slide (same
@@ -785,6 +785,22 @@ const structuresDeck = {
         },
       ],
     },
+    {
+      type: "content",
+      id: "p-five-forces",
+      heading: "Porter's Five Forces",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "five_forces",
+          rivalry: { items: ["Top 3 players hold 60%+ share", "Persistent price competition"], intensity: "high" },
+          new_entrants: { items: ["High licensing barrier to entry"], intensity: "low" },
+          supplier_power: { items: ["Core-component supply shortage"], intensity: "medium" },
+          buyer_power: { items: ["High customer concentration"], intensity: "medium" },
+          substitutes: { items: ["Free open-source alternatives"], intensity: "high" },
+        },
+      ],
+    },
     { type: "ending", heading: "Thanks" },
   ],
 }
@@ -796,19 +812,19 @@ console.log(sh("node", ["dist/cli.js", "validate", structuresPath]))
 const structuresPptxPath = join(OUT, "structures.pptx")
 console.log(sh("node", ["dist/cli.js", "render", structuresPath, "-o", structuresPptxPath]))
 const structuresZip = await JSZip.loadAsync(readFileSync(structuresPptxPath))
-for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide7.xml"]) {
+for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide8.xml"]) {
   if (!structuresZip.file(f)) throw new Error(`e2e: structure-components leg — missing ${f} in ${structuresPptxPath}`)
 }
-console.log("structure-components render leg OK (7-slide pptx, all parts present)")
+console.log("structure-components render leg OK (8-slide pptx, all parts present)")
 
 const structuresAudit = shCapture("node", ["dist/cli.js", "audit", structuresPath])
 console.log(structuresAudit.stdout)
 if (structuresAudit.status !== 0) {
   throw new Error(
-    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt/pest deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
+    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt/pest/five_forces deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
   )
 }
-if (!/audited 7 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
+if (!/audited 8 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
   throw new Error(`e2e: structure-components leg — expected a clean summary line, got: ${structuresAudit.stdout}`)
 }
 console.log("structure-components audit leg OK (exit 0, 0 findings)")

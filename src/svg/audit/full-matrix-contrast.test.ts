@@ -1003,6 +1003,13 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // tinted-panel background itself is covered below, "pest tinted-panel
   // contrast".
   pest: "no-muted-fill",
+  // five-forces.tsx's `forceToken` "supplier_power" case returns
+  // `colors.muted` — identical role (tint/candidate source only, the
+  // intensity marker's filled dots reuse the same token but paint no text
+  // either). Same classification, same reasoning as pest above; the
+  // tinted-panel background itself is covered below, "five_forces
+  // tinted-panel contrast".
+  five_forces: "no-muted-fill",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
@@ -1160,6 +1167,38 @@ describe("pest tinted-panel contrast (structure-components wave 2 task 1, decisi
   }
 })
 
+// Structure-components wave 2 task 1, decision 7: five-forces.tsx tints all
+// 5 force panels (same `mixHex` primitive) — never renders `colors.muted` as
+// an unconditional text fill (see MUTED_SURFACE_CLASS's "no-muted-fill"
+// entry above), so this sweep asserts zero `low-contrast` findings outright.
+describe("five_forces tinted-panel contrast (structure-components wave 2 task 1, decision 7)", () => {
+  // Exercises all 5 panel token branches (accent/primary/muted/
+  // primary-accent-blend/accent-muted-blend — five-forces.tsx's
+  // `forceToken` switch), all 3 intensity levels across the 5 panels
+  // (including the center `rivalry` panel), and the native connector lines.
+  const FIVE_FORCES_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "five_forces",
+        rivalry: { items: ["头部三家份额超60%", "价格战常态化"], intensity: "high" },
+        new_entrants: { items: ["牌照与资质壁垒高"], intensity: "low" },
+        supplier_power: { items: ["核心元器件二供不足", "原材料价格波动大"], intensity: "medium" },
+        buyer_power: { items: ["大客户集中度高"], intensity: "medium" },
+        substitutes: { items: ["开源方案免费可用", "替代技术路线成熟"], intensity: "high" },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: five_forces renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, FIVE_FORCES_SLIDE))).toEqual([])
+    })
+  }
+})
+
 // bench-driven fix round, defect F (bmc bottom-row overflow,
 // `tests/bench/questions/q07` evidence): `BMC_SLIDE` above (1-2 items per
 // block) never exercised the schema's own ceiling — 4 items in every one of
@@ -1242,6 +1281,54 @@ describe("pest schema-max content (structure-components wave 2 task 1)", () => {
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: schema-max pest (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
       expect(auditFindings(deckFor(themeId, PEST_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 1, same defect-F discipline as bmc's own
+// schema-max sweep above: 5 items in every one of five_forces' 5 panels
+// (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own
+// ceiling), on `narrow-column`, this suite's own narrowest curated content
+// archetype. This is the fixture that first surfaced this file's own
+// bench-driven-fix-round-style defect (three stacked full-width bands need
+// more vertical room than bmc's own two-band, multi-column canvas) — see
+// `five-forces.tsx`'s own file header for the fix (`fontScale`, ported from
+// `bmc.tsx`) and its one documented residual gap.
+describe("five_forces schema-max content (structure-components wave 2 task 1)", () => {
+  const FIVE_FORCES_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "five_forces",
+        rivalry: {
+          intensity: "high",
+          items: ["头部三家份额超60%", "价格战常态化", "产品同质化严重", "获客成本持续攀升", "存量市场竞争加剧"],
+        },
+        new_entrants: {
+          intensity: "low",
+          items: ["牌照与资质壁垒高", "规模效应门槛高", "渠道资源稀缺", "初始资本投入大", "品牌信任建立周期长"],
+        },
+        supplier_power: {
+          intensity: "medium",
+          items: ["核心元器件二供不足", "原材料价格波动大", "供应商集中度高", "切换成本较高", "长期锁定合约限制"],
+        },
+        buyer_power: {
+          intensity: "medium",
+          items: ["大客户集中度高", "比价平台信息透明", "切换供应商成本低", "集采议价能力强", "定制化需求增多"],
+        },
+        substitutes: {
+          intensity: "high",
+          items: ["开源方案免费可用", "替代技术路线成熟", "跨行业解决方案渗透", "自建能力意愿上升", "性价比替代品增多"],
+        },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max five_forces (5 items in every panel, all intensity levels) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, FIVE_FORCES_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
 })

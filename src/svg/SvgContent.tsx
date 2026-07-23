@@ -20,8 +20,8 @@ export interface SvgContentProps {
  */
 export function SvgContent({ arrangement, components, rect, ctx }: SvgContentProps) {
   const auditRect = `${rect.x},${rect.y},${rect.w},${rect.h}`
-  // A full-body component (`swot`/`bmc`/`waterfall`/`gantt`/`pest`,
-  // structure-components wave 1 tasks 1/2 + wave 2 task 1 —
+  // A full-body component (`swot`/`bmc`/`waterfall`/`gantt`/`pest`/
+  // `five_forces`, structure-components wave 1 tasks 1/2 + wave 2 task 1 —
   // `FULL_BODY_TYPES`) is meant to own the
   // *entire* content rect by itself.
   // `checkFullBodyExclusivity` (api.ts) already guarantees a slide reaching
