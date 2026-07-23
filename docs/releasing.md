@@ -49,7 +49,11 @@ git push origin main --follow-tags
 2. PowerPoint repair-dialog probe (`docs/testing.md`) — mandatory whenever the
    export XML changed since the last release.
 3. `npm publish` — `prepublishOnly` reruns `pnpm check && pnpm e2e` as the
-   final gate, then npm prompts for the passkey.
+   final gate. On a machine running concurrent heavy sessions the vitest leg
+   can hit spurious 30s timeouts — bound the workers for the publish run
+   (`VITEST_MAX_THREADS=2 VITEST_MAX_FORKS=2 npm publish`) rather than
+   skipping the gate, and isolate-rerun any failing file first to confirm
+   it is contention, not a regression.
 
 When CI is rebuilt, migrate publishing to npm trusted publishing (OIDC) and
 let the changesets action open version PRs — that is the current ecosystem
