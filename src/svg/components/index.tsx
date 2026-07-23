@@ -32,6 +32,7 @@ import { gantt } from "./gantt"
 import { pest } from "./pest"
 import { fiveForces } from "./five-forces"
 import { heatmap } from "./heatmap"
+import { sankey } from "./sankey"
 
 /** Height (px) a component needs at a given width. */
 export function measureComponent(component: Component, w: number, ctx: ComponentCtx): number {
@@ -98,6 +99,8 @@ export function measureComponent(component: Component, w: number, ctx: Component
       return fiveForces.measure(component, w, ctx)
     case "heatmap":
       return heatmap.measure(component, w, ctx)
+    case "sankey":
+      return sankey.measure(component, w, ctx)
     default: {
       void (component satisfies never)
       return 0
@@ -170,6 +173,8 @@ function renderComponentContent(component: Component, box: ComponentBox, ctx: Co
       return fiveForces.render(component, box, ctx)
     case "heatmap":
       return heatmap.render(component, box, ctx)
+    case "sankey":
+      return sankey.render(component, box, ctx)
     default: {
       void (component satisfies never)
       return <g />

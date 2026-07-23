@@ -577,6 +577,205 @@ describe("heatmap component (structure-components wave 2 task 2, value-grid fami
   })
 })
 
+describe("sankey component (structure-components wave 2 task 3, flow-graph family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const sankeyComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "sankey",
+    nodes: [
+      { id: "a", label: "A" },
+      { id: "b", label: "B" },
+      { id: "c", label: "C" },
+    ],
+    links: [
+      { from: "a", to: "c", value: 10 },
+      { from: "b", to: "c", value: 20 },
+    ],
+    ...overrides,
+  })
+
+  it("accepts a well-formed two-layer graph", () => {
+    expect(parsePptxIR(withComponents([sankeyComponent()])).success).toBe(true)
+  })
+
+  it("accepts a minimal two-node one-link graph", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+        links: [{ from: "a", to: "b", value: 1 }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a disconnected node alongside a normal chain", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }, { id: "orphan", label: "Orphan" }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a multi-layer chain (A->B->C)", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }],
+        links: [{ from: "a", to: "b", value: 5 }, { from: "b", to: "c", value: 5 }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts the schema-max shape (16 nodes, 30 links)", () => {
+    const nodes = Array.from({ length: 16 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}` }))
+    // A dense bipartite-ish fan: first 8 nodes each link to all of the last
+    // 8 — 8*8=64 possible, capped at 30 to stay within schema bounds.
+    const links: { from: string; to: string; value: number }[] = []
+    outer: for (let i = 0; i < 8; i++) {
+      for (let j = 8; j < 16; j++) {
+        if (links.length >= 30) break outer
+        links.push({ from: `n${i}`, to: `n${j}`, value: i + j + 1 })
+      }
+    }
+    const d = withComponents([sankeyComponent({ nodes, links })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects more than 16 nodes (max 16)", () => {
+    const nodes = Array.from({ length: 17 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}` }))
+    const d = withComponents([sankeyComponent({ nodes, links: [{ from: "n0", to: "n1", value: 1 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects fewer than 2 nodes (min 2)", () => {
+    const d = withComponents([sankeyComponent({ nodes: [{ id: "a", label: "A" }], links: [] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects more than 30 links (max 30)", () => {
+    const nodes = Array.from({ length: 16 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}` }))
+    const links: { from: string; to: string; value: number }[] = []
+    outer: for (let i = 0; i < 8; i++) {
+      for (let j = 8; j < 16; j++) {
+        if (links.length >= 31) break outer
+        links.push({ from: `n${i}`, to: `n${j}`, value: 1 })
+      }
+    }
+    const d = withComponents([sankeyComponent({ nodes, links })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an empty links array (min 1)", () => {
+    const d = withComponents([sankeyComponent({ links: [] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects duplicate node ids", () => {
+    const d = withComponents([
+      sankeyComponent({ nodes: [{ id: "a", label: "A" }, { id: "a", label: "A2" }, { id: "c", label: "C" }] }),
+    ])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/duplicated.*'a'/)
+  })
+
+  it("rejects a link whose 'from' references an undeclared node id, naming it", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "ghost", to: "c", value: 1 }] })])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/'ghost'.*not declared/)
+  })
+
+  it("rejects a link whose 'to' references an undeclared node id, naming it", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "ghost", value: 1 }] })])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/'ghost'.*not declared/)
+  })
+
+  it("rejects a self-loop link with an actionable message", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "a", value: 1 }] })])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/self-loop/)
+  })
+
+  it("rejects a zero-value link (value must be > 0)", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: 0 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects a negative-value link", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: -5 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("accepts a tiny positive value (pathological-small, not zero)", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: 0.0001 }] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects a 2-cycle (a->b->a) with a message naming the cycle", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+        links: [{ from: "a", to: "b", value: 1 }, { from: "b", to: "a", value: 1 }],
+      }),
+    ])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) {
+      expect(r.error).toMatch(/cycle/)
+      expect(r.error).toMatch(/a -> b -> a/)
+    }
+  })
+
+  it("rejects a longer cycle (a->b->c->a) with a message naming the cycle", () => {
+    const d = withComponents([
+      sankeyComponent({
+        links: [{ from: "a", to: "b", value: 1 }, { from: "b", to: "c", value: 1 }, { from: "c", to: "a", value: 1 }],
+      }),
+    ])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/cycle/)
+  })
+
+  it("accepts a DAG that reconverges (diamond shape, not a cycle)", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }, { id: "d", label: "D" }],
+        links: [
+          { from: "a", to: "b", value: 5 },
+          { from: "a", to: "c", value: 5 },
+          { from: "b", to: "d", value: 5 },
+          { from: "c", to: "d", value: 5 },
+        ],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...sankeyComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown field inside a node object (strict)", () => {
+    const d = withComponents([sankeyComponent({ nodes: [{ id: "a", label: "A", extra: 1 }, { id: "b", label: "B" }, { id: "c", label: "C" }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown field inside a link object (strict)", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: 1, extra: 1 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

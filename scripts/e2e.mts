@@ -665,9 +665,9 @@ if (pixelsReport.checks.pixels !== "completed") {
 console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixels completed, human summary notes it)")
 
 // 8) structure-components leg (structure-components wave 1 task 3, extended
-//    by wave 2 tasks 1-2): a deck exercising all seven full-body components
-//    across both waves (swot/bmc/waterfall/gantt/pest/five_forces/heatmap),
-//    one per content slide, cover+ending bookending them —
+//    by wave 2 tasks 1-3): a deck exercising all eight full-body components
+//    across both waves (swot/bmc/waterfall/gantt/pest/five_forces/heatmap/
+//    sankey), one per content slide, cover+ending bookending them —
 //    must render to a well-formed pptx and audit clean (exit 0, 0 findings).
 //    `layout: "narrow-column"` is pinned on every content slide (same
 //    precedent as full-matrix-contrast.test.ts's own SWOT_SLIDE/BMC_SLIDE/
@@ -822,6 +822,32 @@ const structuresDeck = {
         },
       ],
     },
+    {
+      type: "content",
+      id: "p-sankey",
+      heading: "Energy Flow",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "sankey",
+          nodes: [
+            { id: "coal", label: "Coal" },
+            { id: "gas", label: "Natural Gas" },
+            { id: "renewables", label: "Renewables" },
+            { id: "grid", label: "National Grid" },
+            { id: "homes", label: "Residential Homes" },
+            { id: "industry", label: "Heavy Industry" },
+          ],
+          links: [
+            { from: "coal", to: "grid", value: 30 },
+            { from: "gas", to: "grid", value: 50 },
+            { from: "renewables", to: "grid", value: 20 },
+            { from: "grid", to: "homes", value: 55 },
+            { from: "grid", to: "industry", value: 45 },
+          ],
+        },
+      ],
+    },
     { type: "ending", heading: "Thanks" },
   ],
 }
@@ -833,19 +859,31 @@ console.log(sh("node", ["dist/cli.js", "validate", structuresPath]))
 const structuresPptxPath = join(OUT, "structures.pptx")
 console.log(sh("node", ["dist/cli.js", "render", structuresPath, "-o", structuresPptxPath]))
 const structuresZip = await JSZip.loadAsync(readFileSync(structuresPptxPath))
-for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide9.xml"]) {
+for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide10.xml"]) {
   if (!structuresZip.file(f)) throw new Error(`e2e: structure-components leg — missing ${f} in ${structuresPptxPath}`)
 }
-console.log("structure-components render leg OK (9-slide pptx, all parts present)")
+// Sankey differentiation check (plan task 3): its own slide (p-sankey, the
+// 9th content slide -> slide9.xml, cover is slide1) must carry zero <p:pic>
+// and at least one <a:custGeom> — native editable flow bands, never a
+// rasterized image (the direct counterpoint to the official pptx skill's
+// "no native form, ship as an image" classification for this exact chart type).
+const sankeySlideXml = await structuresZip.file("ppt/slides/slide9.xml")!.async("string")
+if (sankeySlideXml.includes("<p:pic>")) {
+  throw new Error("e2e: structure-components leg — sankey slide unexpectedly contains <p:pic> (should be zero, native vectors only)")
+}
+if (!/<a:custGeom>/.test(sankeySlideXml)) {
+  throw new Error("e2e: structure-components leg — sankey slide has no <a:custGeom> (expected its flow bands to export as native vector paths)")
+}
+console.log("structure-components render leg OK (10-slide pptx, all parts present, sankey slide is zero-p:pic/native-custGeom)")
 
 const structuresAudit = shCapture("node", ["dist/cli.js", "audit", structuresPath])
 console.log(structuresAudit.stdout)
 if (structuresAudit.status !== 0) {
   throw new Error(
-    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt/pest/five_forces/heatmap deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
+    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt/pest/five_forces/heatmap/sankey deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
   )
 }
-if (!/audited 9 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
+if (!/audited 10 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
   throw new Error(`e2e: structure-components leg — expected a clean summary line, got: ${structuresAudit.stdout}`)
 }
 console.log("structure-components audit leg OK (exit 0, 0 findings)")

@@ -112,6 +112,22 @@ const heatmap: Component = {
   ],
   show_values: true,
 }
+const sankey: Component = {
+  type: "sankey",
+  nodes: [
+    { id: "coal", label: "Coal" },
+    { id: "gas", label: "Gas" },
+    { id: "grid", label: "Grid" },
+    { id: "homes", label: "Homes" },
+    { id: "industry", label: "Industry" },
+  ],
+  links: [
+    { from: "coal", to: "grid", value: 30 },
+    { from: "gas", to: "grid", value: 50 },
+    { from: "grid", to: "homes", value: 45 },
+    { from: "grid", to: "industry", value: 35 },
+  ],
+}
 
 /** The 3 image-family types, each pointed at an asset id that is never
  *  present in `assets.images` — deliberately exercising the "asset missing
@@ -156,6 +172,7 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
   pest,
   five_forces: fiveForces,
   heatmap,
+  sankey,
   flowchart: {
     type: "flowchart",
     nodes: [
@@ -271,6 +288,7 @@ function noAssetIr(): PptxIR {
       contentSlide("PEST", [COMPONENT_BY_TYPE.pest]),
       contentSlide("Five Forces", [COMPONENT_BY_TYPE.five_forces]),
       contentSlide("Heatmap", [COMPONENT_BY_TYPE.heatmap]),
+      contentSlide("Sankey", [COMPONENT_BY_TYPE.sankey]),
       contentSlide("Flow + Architecture", [COMPONENT_BY_TYPE.flowchart, COMPONENT_BY_TYPE.architecture]),
       contentSlide("Timeline + Comparison", [COMPONENT_BY_TYPE.timeline, COMPONENT_BY_TYPE.comparison]),
       contentSlide("RowCards + Steps", [COMPONENT_BY_TYPE.row_cards, COMPONENT_BY_TYPE.steps]),

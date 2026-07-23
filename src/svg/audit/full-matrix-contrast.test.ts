@@ -1026,6 +1026,19 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // through `accessibleInk` against that cell's own computed fill (see the
   // dedicated "heatmap cell-fill x ink" sweep below, decision 7's mandate).
   heatmap: "page-bg",
+  // Structure-components wave 2 task 3: sankey.tsx never references
+  // `colors.muted` at all — its one text-bearing surface (the node label)
+  // renders via `accessibleInk(colors.text, ctx.defaultBg ?? colors.bg, …)`,
+  // deliberately routed through the ambient page background rather than a
+  // self-painted rect: a label sits immediately beside its node bar (not on
+  // top of it), and flow bands render at `BAND_OPACITY` (0.45) — below
+  // `deck-audit.ts`'s own `MIN_BG_OPACITY` (0.5) by deliberate design (see
+  // `sankey.tsx`'s own header comment) so a band can never become a
+  // contrast-attribution background candidate regardless of how a label's
+  // box happens to overlap one. Link values are deliberately not rendered as
+  // text at all (unlike heatmap's `show_values`), so there is no second
+  // self-painted-surface surface to track here.
+  sankey: "no-muted-fill",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
@@ -1578,6 +1591,148 @@ describe("heatmap cell-fill x ink (structure-components wave 2 task 2, decision 
 
     it(`${themeId}: cell value text clears contrast on a fully degenerate (all-equal) grid`, () => {
       expect(auditFindings(deckFor(themeId, DEGENERATE_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 3: sankey.tsx is the wave's largest
+// component — three topologies swept per the plan's own visual-QA mandate
+// ("simple 2-layer, multi-layer, dense crossing"), each at schema-realistic
+// content across all 13 themes. The dense-crossing fixture is the one that
+// actually exercises this component's central contrast-safety claim (its
+// own header comment, "Band opacity is a deliberate contrast-safety
+// choice"): node labels sit directly beside node bars in the same
+// horizontal gap several translucent bands route through, so a real
+// low-contrast finding here would mean a label got misattributed against a
+// band instead of the page background.
+describe("sankey contrast (structure-components wave 2 task 3)", () => {
+  const SIMPLE_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "sankey",
+        nodes: [
+          { id: "coal", label: "煤炭" },
+          { id: "gas", label: "天然气" },
+          { id: "grid", label: "电网" },
+        ],
+        links: [
+          { from: "coal", to: "grid", value: 30 },
+          { from: "gas", to: "grid", value: 50 },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: simple two-layer sankey renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, SIMPLE_SLIDE))).toEqual([])
+    })
+  }
+
+  const MULTI_LAYER_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "sankey",
+        nodes: [
+          { id: "coal", label: "Coal" },
+          { id: "gas", label: "Natural Gas" },
+          { id: "renewables", label: "Renewables" },
+          { id: "grid", label: "National Grid" },
+          { id: "homes", label: "Residential Homes" },
+          { id: "industry", label: "Heavy Industry" },
+          { id: "exports", label: "Exports" },
+        ],
+        links: [
+          { from: "coal", to: "grid", value: 30 },
+          { from: "gas", to: "grid", value: 50 },
+          { from: "renewables", to: "grid", value: 20 },
+          { from: "grid", to: "homes", value: 45 },
+          { from: "grid", to: "industry", value: 35 },
+          { from: "grid", to: "exports", value: 20 },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: multi-layer sankey renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, MULTI_LAYER_SLIDE))).toEqual([])
+    })
+  }
+
+  // Dense crossing: every node in layer 1 links to every node in layer 2 —
+  // the maximal-crossing topology a 3x3 bipartite fan produces, deliberately
+  // including a wide value spread (5..95) so band thickness varies a lot,
+  // and one particularly long label to also exercise truncation under
+  // crossing bands simultaneously.
+  const DENSE_CROSSING_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "sankey",
+        nodes: [
+          { id: "a1", label: "一个相当长的上游节点名称" },
+          { id: "a2", label: "Source B" },
+          { id: "a3", label: "Source C" },
+          { id: "b1", label: "Target X" },
+          { id: "b2", label: "Target Y" },
+          { id: "b3", label: "Target Z" },
+        ],
+        links: [
+          { from: "a1", to: "b1", value: 95 },
+          { from: "a1", to: "b2", value: 5 },
+          { from: "a1", to: "b3", value: 40 },
+          { from: "a2", to: "b1", value: 15 },
+          { from: "a2", to: "b2", value: 60 },
+          { from: "a2", to: "b3", value: 10 },
+          { from: "a3", to: "b1", value: 25 },
+          { from: "a3", to: "b2", value: 30 },
+          { from: "a3", to: "b3", value: 70 },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: dense-crossing sankey (9 links, 3x3 fully-connected bipartite fan) renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, DENSE_CROSSING_SLIDE))).toEqual([])
+    })
+  }
+
+  const sankeyLabels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+  const SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "sankey",
+        nodes: sankeyLabels(16, "节点").map((label, i) => ({ id: `n${i}`, label })),
+        links: (() => {
+          const links: { from: string; to: string; value: number }[] = []
+          outer: for (let i = 0; i < 8; i++) {
+            for (let j = 8; j < 16; j++) {
+              if (links.length >= 30) break outer
+              links.push({ from: `n${i}`, to: `n${j}`, value: ((i + j) % 9) + 1 })
+            }
+          }
+          return links
+        })(),
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max sankey (16 nodes, 30 links) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
 })

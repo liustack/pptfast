@@ -367,6 +367,14 @@ describe("full-body component exclusivity gate (structure-components wave 1 task
     y_labels: ["A"],
     values: [[1, 2]],
   }
+  const sankeyOnly = {
+    type: "sankey",
+    nodes: [
+      { id: "a", label: "A" },
+      { id: "b", label: "B" },
+    ],
+    links: [{ from: "a", to: "b", value: 10 }],
+  }
 
   it("accepts a slide whose sole component is a full-body type (swot)", () => {
     const v = validateIr({
@@ -483,6 +491,29 @@ describe("full-body component exclusivity gate (structure-components wave 1 task
     })
     expect(v.ok).toBe(false)
     expect(v.errors[0]!.message).toMatch(/"heatmap" is a full-body component/)
+  })
+
+  it("accepts a slide whose sole component is a full-body type (sankey)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "Sankey", components: [sankeyOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("hard-rejects the wave-2 flow-graph full-body type (sankey) paired with an ordinary sibling", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        {
+          type: "content",
+          heading: "Sankey + bullets",
+          components: [sankeyOnly, { type: "bullets", items: ["extra sibling"] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/"sankey" is a full-body component/)
   })
 
   it("hard-rejects two components of the *same* full-body type sharing one slide (task-1 review minor: literal same-type double)", () => {
