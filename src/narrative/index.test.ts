@@ -43,7 +43,7 @@ describe("STRATEGY_DEFINITIONS", () => {
     expect(STRATEGY_DEFINITIONS.briefing.beatPolicy).toBe("uniform-dense")
   })
 
-  it("pyramid tendencies match spec §5 row as-is (component types), plus the structure-components wave's decision 9 join", () => {
+  it("pyramid tendencies match spec §5 row as-is (component types), plus the structure-components wave's decision 9 join and wave 2 task 4's own follow-on join", () => {
     expect(STRATEGY_DEFINITIONS.pyramid.tendencies).toEqual([
       "kpi_cards",
       "verdict_banner",
@@ -55,6 +55,10 @@ describe("STRATEGY_DEFINITIONS", () => {
       "bmc",
       "waterfall",
       "gantt",
+      "pest",
+      "five_forces",
+      "heatmap",
+      "sankey",
     ])
   })
 
