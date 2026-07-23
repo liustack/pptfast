@@ -994,6 +994,15 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // it, same as chart.tsx's own category labels), so already covered by the
   // "clears 4.5:1 against every real page background" check above.
   gantt: "page-bg",
+  // Structure-components wave 2 task 1: pest.tsx's `badgeFill` "social" case
+  // returns `colors.muted` (same role as swot.tsx's "weaknesses" case) —
+  // only ever a `panelFill` tint source / `accessibleInk` candidate, never
+  // an unconditional text fill (title/item text always renders
+  // `colors.text` routed through `accessibleInk` against the real panel).
+  // Same "no-muted-fill" classification as swot for the same reason; the
+  // tinted-panel background itself is covered below, "pest tinted-panel
+  // contrast".
+  pest: "no-muted-fill",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
@@ -1118,6 +1127,39 @@ describe("swot/bmc tinted-panel contrast (structure-components wave task 1, deci
   }
 })
 
+// Structure-components wave 2 task 1, decision 7 (same mandate as wave 1's
+// own swot/bmc block above): pest.tsx tints all 4 quadrant panels
+// (`mixHex(colors.surface, <token>, t)`, the same primitive) — never renders
+// `colors.muted` as an unconditional text fill (see MUTED_SURFACE_CLASS's
+// "no-muted-fill" entry above), so this sweep asserts zero `low-contrast`
+// findings outright, same as the swot/bmc block.
+describe("pest tinted-panel contrast (structure-components wave 2 task 1, decision 7)", () => {
+  // Exercises all 4 quadrant token branches (primary/accent/muted/
+  // primary-muted-blend — pest.tsx's `badgeFill` switch) with 2 items per
+  // quadrant, one quadrant's title overridden so the inline-title path
+  // renders too.
+  const PEST_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "pest",
+        political: { items: ["数据合规监管趋严", "跨境审查政策收紧"] },
+        economic: { title: "宏观经济", items: ["利率下行周期", "消费信心指数回升"] },
+        social: { items: ["消费习惯代际迁移", "远程办公常态化"] },
+        technological: { items: ["生成式AI快速渗透", "边缘计算成本下降"] },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: pest renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, PEST_SLIDE))).toEqual([])
+    })
+  }
+})
+
 // bench-driven fix round, defect F (bmc bottom-row overflow,
 // `tests/bench/questions/q07` evidence): `BMC_SLIDE` above (1-2 items per
 // block) never exercised the schema's own ceiling — 4 items in every one of
@@ -1164,6 +1206,42 @@ describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: schema-max bmc (4 items in every block) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
       expect(auditFindings(deckFor(themeId, BMC_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 1, same defect-F discipline as bmc's own
+// schema-max sweep above: 5 items in every one of pest's 4 quadrants
+// (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own
+// ceiling), on `narrow-column`, this suite's own narrowest curated content
+// archetype.
+describe("pest schema-max content (structure-components wave 2 task 1)", () => {
+  const PEST_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "pest",
+        political: {
+          items: ["数据合规监管趋严", "跨境审查政策收紧", "反垄断调查加码", "行业准入牌照收紧", "劳动用工新规落地"],
+        },
+        economic: {
+          items: ["利率下行周期", "消费信心指数回升", "人民币汇率波动", "大宗商品价格上涨", "地方财政压力上升"],
+        },
+        social: {
+          items: ["消费习惯代际迁移", "远程办公常态化", "人口老龄化加速", "下沉市场消费升级", "健康与可持续偏好上升"],
+        },
+        technological: {
+          items: ["生成式AI快速渗透", "边缘计算成本下降", "5G应用场景扩展", "自动化生产线普及", "数据安全技术升级"],
+        },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max pest (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, PEST_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
 })

@@ -346,6 +346,13 @@ describe("full-body component exclusivity gate (structure-components wave task 1
       { label: "b", start: 2, end: 5 },
     ],
   }
+  const pestOnly = {
+    type: "pest",
+    political: { items: ["p"] },
+    economic: { items: ["e"] },
+    social: { items: ["s"] },
+    technological: { items: ["t"] },
+  }
 
   it("accepts a slide whose sole component is a full-body type (swot)", () => {
     const v = validateIr({
@@ -375,6 +382,14 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     const v = validateIr({
       ...raw,
       slides: [{ type: "content", heading: "Gantt", components: [ganttOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts a slide whose sole component is a full-body type (pest)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "PEST", components: [pestOnly] }],
     })
     expect(v.ok).toBe(true)
   })

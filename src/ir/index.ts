@@ -228,6 +228,20 @@ const GanttItemSchema = z
     path: ["end"],
   })
 
+// PEST macro-environment scan (structure-components wave task 1, second
+// component of this task — same "named-slot family" discipline as
+// swot/bmc above: four independent named fields, never a positional array a
+// weak model could mis-order). Each quadrant carries its own optional
+// `title` inline (`{title?, items}`) instead of a sibling `labels` object
+// the way swot does — this task's own schema-shape call, not a swot-copy
+// oversight (see pest.tsx's own file header for the render-side rationale).
+const PestQuadrantSchema = z
+  .object({
+    title: z.string().optional(),
+    items: z.array(z.string()).min(1).max(5),
+  })
+  .strict()
+
 const ComponentSchema = z.discriminatedUnion("type", [
   z
     .object({
@@ -674,6 +688,17 @@ const ComponentSchema = z.discriminatedUnion("type", [
       /** 可选刻度标签，沿轴均匀分布展示（不必与 items 的 start/end 值对齐
        * ——纯展示刻度，如 ["W1","W2","W3","W4"]）。 */
       axis_labels: z.array(z.string()).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pest"),
+      /** 政治/经济/社会/技术——经典 2×2 PEST 宏观环境扫描。每槽 1-5 条，各槽
+       * 自带可选 `title` 覆写（缺省用固定英文全称，见 pest.tsx）。 */
+      political: PestQuadrantSchema,
+      economic: PestQuadrantSchema,
+      social: PestQuadrantSchema,
+      technological: PestQuadrantSchema,
     })
     .strict(),
 ], { error: componentTypeError })

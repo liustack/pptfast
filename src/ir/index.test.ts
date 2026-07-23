@@ -367,6 +367,55 @@ describe("gantt component (structure-components wave task 2, numeric-axis family
   })
 })
 
+describe("pest component (structure-components wave 2 task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const quadrant = (n: number, overrides: Record<string, unknown> = {}) => ({
+    items: Array.from({ length: n }, (_, i) => `i${i}`),
+    ...overrides,
+  })
+  const pestComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "pest",
+    political: quadrant(1),
+    economic: quadrant(1),
+    social: quadrant(1),
+    technological: quadrant(1),
+    ...overrides,
+  })
+
+  it("accepts 1-5 items per quadrant", () => {
+    for (const n of [1, 3, 5]) {
+      expect(parsePptxIR(withComponents([pestComponent({ political: quadrant(n) })])).success).toBe(true)
+    }
+  })
+  it("rejects an empty quadrant items array (min 1)", () => {
+    expect(parsePptxIR(withComponents([pestComponent({ political: quadrant(0) })])).success).toBe(false)
+  })
+  it("rejects more than 5 items in a quadrant (max 5)", () => {
+    expect(parsePptxIR(withComponents([pestComponent({ political: quadrant(6) })])).success).toBe(false)
+  })
+  it("rejects a missing quadrant (all four are required, not a positional array)", () => {
+    const full = pestComponent() as any
+    delete full.technological
+    expect(parsePptxIR(withComponents([full])).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...pestComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional inline title per quadrant", () => {
+    const d = withComponents([pestComponent({ political: quadrant(1, { title: "政治" }) })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown field inside a quadrant object (strict)", () => {
+    const d = withComponents([pestComponent({ political: quadrant(1, { extra: "x" }) })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

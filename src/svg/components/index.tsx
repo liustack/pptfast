@@ -29,6 +29,7 @@ import { swot } from "./swot"
 import { bmc } from "./bmc"
 import { waterfall } from "./waterfall"
 import { gantt } from "./gantt"
+import { pest } from "./pest"
 
 /** Height (px) a component needs at a given width. */
 export function measureComponent(component: Component, w: number, ctx: ComponentCtx): number {
@@ -89,6 +90,8 @@ export function measureComponent(component: Component, w: number, ctx: Component
       return waterfall.measure(component, w, ctx)
     case "gantt":
       return gantt.measure(component, w, ctx)
+    case "pest":
+      return pest.measure(component, w, ctx)
     default: {
       void (component satisfies never)
       return 0
@@ -155,6 +158,8 @@ function renderComponentContent(component: Component, box: ComponentBox, ctx: Co
       return waterfall.render(component, box, ctx)
     case "gantt":
       return gantt.render(component, box, ctx)
+    case "pest":
+      return pest.render(component, box, ctx)
     default: {
       void (component satisfies never)
       return <g />

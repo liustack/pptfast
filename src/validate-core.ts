@@ -233,10 +233,11 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
 }
 
 /**
- * Full-body component exclusivity hard gate (structure-components wave task
- * 1, decision 2 — set extended by task 2, unchanged in shape): a
- * `FULL_BODY_TYPES` member (`swot`/`bmc`/`waterfall`/`gantt`,
- * `component-traits.ts`) is meant to own an entire slide's content rect by
+ * Full-body component exclusivity hard gate (structure-components wave 1
+ * task 1, decision 2 — set extended by wave 1 task 2 and wave 2 task 1,
+ * unchanged in shape): a `FULL_BODY_TYPES` member (`swot`/`bmc`/`waterfall`/
+ * `gantt`/`pest`, `component-traits.ts`) is meant to own an
+ * entire slide's content rect by
  * itself (`SvgContent.tsx` hands it the whole rect verbatim) — a slide that
  * pairs one with *any* other component (another full-body type included)
  * has nowhere left to put that sibling, so this is a hard validation error,

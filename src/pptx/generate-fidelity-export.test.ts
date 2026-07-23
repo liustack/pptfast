@@ -87,6 +87,13 @@ const gantt: Component = {
   ],
   axis_labels: ["W1", "W2", "W3"],
 }
+const pest: Component = {
+  type: "pest",
+  political: { items: ["Regulation"] },
+  economic: { items: ["Interest rates"] },
+  social: { items: ["Habits shift"] },
+  technological: { items: ["AI adoption"] },
+}
 
 /** The 3 image-family types, each pointed at an asset id that is never
  *  present in `assets.images` — deliberately exercising the "asset missing
@@ -128,6 +135,7 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
   bmc,
   waterfall,
   gantt,
+  pest,
   flowchart: {
     type: "flowchart",
     nodes: [
@@ -240,6 +248,7 @@ function noAssetIr(): PptxIR {
       contentSlide("BMC", [COMPONENT_BY_TYPE.bmc]),
       contentSlide("Waterfall", [COMPONENT_BY_TYPE.waterfall]),
       contentSlide("Gantt", [COMPONENT_BY_TYPE.gantt]),
+      contentSlide("PEST", [COMPONENT_BY_TYPE.pest]),
       contentSlide("Flow + Architecture", [COMPONENT_BY_TYPE.flowchart, COMPONENT_BY_TYPE.architecture]),
       contentSlide("Timeline + Comparison", [COMPONENT_BY_TYPE.timeline, COMPONENT_BY_TYPE.comparison]),
       contentSlide("RowCards + Steps", [COMPONENT_BY_TYPE.row_cards, COMPONENT_BY_TYPE.steps]),

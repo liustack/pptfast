@@ -80,10 +80,10 @@ describe("EVIDENCE_TYPES equivalence (was AssertionEvidence.tsx:8-13) — order 
   })
 })
 
-describe("FULL_BODY_TYPES (structure-components wave task 1 decision 1, extended by task 2 — new, not a refactor equivalence lock)", () => {
-  it("contains exactly the wave's four full-body components (named-slot family + numeric-axis family)", () => {
-    expect(new Set(FULL_BODY_TYPES)).toEqual(new Set(["swot", "bmc", "waterfall", "gantt"]))
-    expect(FULL_BODY_TYPES.size).toBe(4)
+describe("FULL_BODY_TYPES (structure-components wave 1 task 1 decision 1, extended by wave 1 task 2 and wave 2 task 1 — new, not a refactor equivalence lock)", () => {
+  it("contains exactly the five full-body components shipped so far across both waves (named-slot family + numeric-axis family)", () => {
+    expect(new Set(FULL_BODY_TYPES)).toEqual(new Set(["swot", "bmc", "waterfall", "gantt", "pest"]))
+    expect(FULL_BODY_TYPES.size).toBe(5)
   })
 
   it("is disjoint from STRETCHABLE_TYPES — full-body components fill box.h directly, never through growStretchables' capped path", () => {
