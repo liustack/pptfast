@@ -3,7 +3,7 @@ import { renderSlideSvg } from "../../api"
 import { PptfastError } from "../../errors"
 import { measureMonoTextUnits, measureTextUnits } from "../../lib/svg-text-layout"
 import { getPlatform } from "../../platform/registry"
-import { isMonoFontFamily } from "../fonts"
+import { isBold, isMonoFontFamily } from "../fonts"
 import { auditSvgMarkup, parseNums, parseTransform, type OverflowIssue } from "./svg-audit"
 
 /**
@@ -1666,12 +1666,14 @@ export interface OverlapIssue {
  * inventory-first): each `<text>` leaf widens its scope's `x`/`w` to the
  * union of the declared span and its own estimated ink extent —
  * `measureTextUnits`, or `measureMonoTextUnits` when `isMonoFontFamily`
- * reliably reads the mono role off the rendered `font-family` (the same
- * choice `svg-audit.ts`'s own h-overflow check already makes — see
- * `isMonoFontFamily`'s derivation comment in `fonts.ts`) — anchored by the
- * element's own `text-anchor` (start/middle/end). Widening only ever grows a
- * box, never shrinks it. See docs/contrast-system.md's "Overlap detection
- * boundary" for what this does and doesn't close.
+ * reliably reads the mono role off the rendered `font-family`, `measureTextUnits`
+ * itself reading the element's real `font-weight` via `isBold()` (the same
+ * mono-role and bold-weight choices `svg-audit.ts`'s own h-overflow check
+ * already makes — see `isMonoFontFamily`'s derivation comment in `fonts.ts`
+ * and `isBold()`'s own doc comment) — anchored by the element's own
+ * `text-anchor` (start/middle/end). Widening only ever grows a box, never
+ * shrinks it. See docs/contrast-system.md's "Overlap detection boundary" for
+ * what this does and doesn't close.
  *
  * A container box that only wraps further per-item boxes (e.g. `SvgContent`'s
  * own box around an `icon_cards` component, which itself subdivides into one
@@ -1752,15 +1754,19 @@ function collectLeafBoxes(root: Element): DerivedBox[] {
         const fontSize = Number(el.getAttribute("font-size") ?? DEFAULT_FONT_SIZE) * as
         const y = Number(el.getAttribute("y") ?? 0)
         extend(ay + y * as + fontSize * TEXT_DESCENT_RATIO, content.slice(0, 24))
-        // Same estimator the renderer itself fits text with (mirrors
-        // svg-audit.ts's h-overflow check, down to the mono-role branch —
-        // see that file's own comment on this exact choice), anchored by
-        // text-anchor so a middle/end-anchored leaf's ink extends the
-        // correct direction from its `x`.
+        // Same estimator the renderer itself fits text with, weight-aware
+        // parity with svg-audit.ts's h-overflow check restored (bold-metrics
+        // fix, 2026-07-24 — see that file's own derivation comment on the
+        // `isBold()`/mono-role split this mirrors), anchored by text-anchor
+        // so a middle/end-anchored leaf's ink extends the correct direction
+        // from its `x`.
         const tx = ax + Number(el.getAttribute("x") ?? 0) * as
         const fontFamily = el.getAttribute("font-family") ?? ""
-        const measure = isMonoFontFamily(fontFamily) ? measureMonoTextUnits : measureTextUnits
-        const width = measure(content) * fontSize
+        const bold = isBold(el.getAttribute("font-weight"))
+        const units = isMonoFontFamily(fontFamily)
+          ? measureMonoTextUnits(content)
+          : measureTextUnits(content, { bold, fontFamily })
+        const width = units * fontSize
         const anchor = el.getAttribute("text-anchor") ?? "start"
         const left = anchor === "end" ? tx - width : anchor === "middle" ? tx - width / 2 : tx
         extendX(left, left + width)
