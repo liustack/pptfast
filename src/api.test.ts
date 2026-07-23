@@ -1283,7 +1283,7 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
     expect(message).toContain('"kpi_card" is not a valid component type')
     expect(message).toContain('did you mean "kpi_cards"?')
     expect(message).toContain("pptfast schema")
-    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 28-option list is never flattened into the message
+    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 32-option list is never flattened into the message
     expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
   })
 

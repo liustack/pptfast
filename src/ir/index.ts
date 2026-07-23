@@ -203,7 +203,7 @@ export const BrandSchema = z
   })
   .strict()
 
-// ── Components（28 种）──
+// ── Components（32 种）──
 
 // gantt's own item schema is pulled out to a named const (structure-
 // components wave task 2, decision 6) rather than inlined in the union
@@ -988,7 +988,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
 ], { error: componentTypeError })
 
 /**
- * All 28 component `type` discriminant values, derived from `ComponentSchema`
+ * All 32 component `type` discriminant values, derived from `ComponentSchema`
  * itself (never hand-copied) so this list can't drift from the union above.
  * Typed as plain `readonly string[]` rather than `Component["type"][]` —
  * every consumer of this list (W5's plan `focus` vocabulary gate,

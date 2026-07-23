@@ -28,7 +28,7 @@ import type { Component } from "@/ir"
  * about.
  */
 
-/** The IR's component discriminant union (`ComponentSchema`'s 28 `type`
+/** The IR's component discriminant union (`ComponentSchema`'s 32 `type`
  * literals), aliased so the 6 sets below don't each re-spell
  * `Component["type"]`. Not a redefinition — always structurally identical to
  * the IR's own type, per this task's requirement that the string-literal

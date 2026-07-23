@@ -11,7 +11,7 @@ IR (zod, `src/ir`) → React SVG templates (`src/svg`: archetypes/components/lay
 Browser APIs are isolated behind `src/platform` (registry seam, node impl = linkedom + sharp).
 See `docs/architecture.md` for the full five-dimension model and render-chain diagram.
 
-Vocabulary: **theme** (style + brand + a curated layout set, 13 built-ins), **layout** (a page-level template with named slots, 33 archetypes + 4 image takeovers), **component** (the 28 typed units that fill a slot), **narrative** (strategy × pacing × audience — that weight layout selection and set editorial density). A deck spec (`deck.spec.json`) locks narrative/theme/page order before page-level fill. See `docs/concepts.md` for the model, `docs/selection-and-seed.md` for how a layout gets picked, `docs/contrast-system.md` for the ink/contrast machinery, `docs/deck-projects.md` for the spec/assemble workflow.
+Vocabulary: **theme** (style + brand + a curated layout set, 13 built-ins), **layout** (a page-level template with named slots, 33 archetypes + 4 image takeovers), **component** (the 32 typed units that fill a slot), **narrative** (strategy × pacing × audience — that weight layout selection and set editorial density). A deck spec (`deck.spec.json`) locks narrative/theme/page order before page-level fill. See `docs/concepts.md` for the model, `docs/selection-and-seed.md` for how a layout gets picked, `docs/contrast-system.md` for the ink/contrast machinery, `docs/deck-projects.md` for the spec/assemble workflow.
 
 ## Layout rules
 
