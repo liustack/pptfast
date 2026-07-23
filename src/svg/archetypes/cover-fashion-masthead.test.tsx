@@ -147,17 +147,33 @@ describe("cover-fashion-masthead — bold-metrics fix red-first (user-reported c
       })
     }
 
-    it("YaHei (campaign) is not needlessly over-shrunk relative to the conservative cross-face envelope (face-awareness has real visual payoff)", () => {
-      // If the fix fell back to the envelope (MAX across Georgia/YaHei/
-      // SimSun-KaiTi) for every face instead of a real per-face lookup,
-      // YaHei's `upper` class would be corrected by Georgia's 1.1242
-      // instead of its own measured 1.0317 -- a real, avoidable extra
-      // shrink for 6 of 13 themes. This asserts the face-aware fontSize is
-      // strictly >= what the envelope-only alternative would have produced.
+    // Round 2 (2026-07-24): this test's original premise -- "face-aware is
+    // always narrower than the envelope, proving face-awareness avoids
+    // needless over-shrink" -- stopped being universally true once Georgia/
+    // YaHei moved to an exact per-character model and the envelope lost
+    // round 1's margin (see svg-text-layout.ts's EPITAPH comment). The
+    // envelope is a per-CLASS max across three faces, still an average; the
+    // exact model is a per-CHARACTER sum for the one real face -- for an
+    // adversarial, letter-heavy string like "Components Demo" the exact
+    // reading can legitimately come out *above* a class-average envelope
+    // that was never fit to this specific string's composition in the
+    // first place. The real payoff face-awareness has is accuracy, not
+    // "always smaller" -- this test now checks that directly: the face-
+    // aware estimate matches a genuine hmtx reading almost exactly, while
+    // the envelope (structurally incapable of per-string exactness) does
+    // not.
+    it("YaHei (campaign) exact model matches the genuine hmtx reading; the conservative envelope alone would not have (face-awareness's real payoff is accuracy, not just a smaller number)", () => {
       const campaignCtx = buildCtx(resolveStyle("campaign"), {})
       const faceAware = measureTextUnits("Components Demo", { bold: true, fontFamily: campaignCtx.fonts.heading })
       const envelopeOnly = measureTextUnits("Components Demo", { bold: true, fontFamily: undefined })
-      expect(faceAware).toBeLessThan(envelopeOnly)
+      // real_em 9.7319 -- this fix's own direct fontTools re-measurement
+      // against the genuine msyhbd.ttc (not tabulated in bold-data-
+      // pack.json, which only measured the combined two-line title); see
+      // svg-text-layout.bold-golden.test.ts's own anchor for the same
+      // number with its full provenance comment.
+      const genuineReal = 9.7319
+      expect(Math.abs((faceAware - genuineReal) / genuineReal)).toBeLessThan(0.001)
+      expect(envelopeOnly).toBeLessThan(genuineReal)
     })
   })
 })

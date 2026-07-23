@@ -215,19 +215,23 @@ describe("ConstellationEnding", () => {
     )
     expect(customMarkup).toContain('<tspan fill="#2DD4E6">.</tspan>')
     const customRoot = parseSvgRoot(customMarkup)
-    // bold-metrics fix (2026-07-24): this heading now wraps to 2 lines
-    // ("Let's grow" / "together.") instead of 1 -- tech's YaHei heading
-    // face's `lowerDigit` class now carries `LOWER_DIGIT_MARGIN`
-    // (svg-text-layout.ts), so the full unwrapped string no longer fits
-    // fontSize 88 on one line. Re-pinned to find the line carrying the
-    // split tspan (this test's actual subject) rather than assume a line
-    // count this fix has no reason to preserve.
+    // bold-metrics fix (2026-07-24): round 1's class-average-plus-margin
+    // model wrapped this heading to 2 lines ("Let's grow" / "together.");
+    // round 2's exact per-character model (tech's YaHei heading face) is
+    // more precise for this particular string and fits it back onto one
+    // line at fontSize 88, the archetype's own declared max -- see this
+    // fix's report round-2 section's aesthetic-comparison data (round 2
+    // never shrinks *more* than round 1, and often less, exactly this
+    // case). Re-pinned to find the line carrying the split tspan (this
+    // test's actual subject) via its own attributes rather than assume any
+    // particular line count -- twice now, first for round 1's wrap, now
+    // back for round 2's fit.
     const headingLines = Array.from(customRoot.querySelectorAll("text")).filter(
       (t) => t.getAttribute("font-size") === "88" && t.getAttribute("font-weight") === "700",
     )
-    expect(headingLines.map((t) => t.textContent)).toEqual(["Let's grow", "together."])
+    expect(headingLines.map((t) => t.textContent)).toEqual(["Let's grow together."])
     const customHeading = headingLines.find((t) => t.querySelector("tspan") !== null)!
-    expect(customHeading.textContent).toBe("together.")
+    expect(customHeading.textContent).toBe("Let's grow together.")
     expect(customHeading.querySelector("tspan")?.textContent).toBe(".")
   })
 

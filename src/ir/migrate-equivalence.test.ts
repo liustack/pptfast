@@ -142,6 +142,30 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // block's `data-audit-box`/`data-audit-rect` y-coordinates shift down
       // to make room), and `.audit.json` needed no recapture (findings
       // stayed the empty array both sides).
+      //
+      // Re-recaptured a third time (bold-metrics fix round 2, same date --
+      // controller-ordered upgrade from a class-average-plus-margin model
+      // to an exact per-character advance model for Georgia/YaHei, after a
+      // review found real headings that clipped straight through the
+      // margin; see svg-text-layout.ts's EPITAPH comment). SimSun/KaiTi
+      // were not upgraded to an exact model (that face's Latin glyphs have
+      // zero measured per-character variance -- no class-average gap to
+      // close the way Georgia/YaHei had one -- see `SIMSUN_KAITI`'s own
+      // comment for the full argument), but did lose the same round-1
+      // margin on `lowerDigit` that Georgia/YaHei's classes lost --
+      // reverting it to the verbatim conservative-proxy factor undoes
+      // exactly the previous recapture above: "A quarter of steady wins"
+      // fits back onto one line at fontSize 64, matching what the
+      // *original*, pre-round-1 golden had (round 1 wrapped it to two,
+      // round 2 un-wraps it back to one -- not a coincidence: `SIMSUN_
+      // KAITI`'s `lowerDigit` factor is 1.048 verbatim both before round 1
+      // and again now, only round 1's brief middle state multiplied it by
+      // the now-retired 1.2 margin). Same targeted-diff discipline: slide
+      // index 3 is the only change anywhere in any of the three fixtures'
+      // SVG/PPTX goldens, and `.audit.json` needed no recapture -- verified
+      // by directly computing `auditDeck` fresh and JSON-comparing it
+      // against both the old and new goldens (`true` both times), not just
+      // "this file wasn't touched by the diff."
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

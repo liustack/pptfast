@@ -124,20 +124,19 @@ describe("LeftAnchorCover", () => {
         (t) => t.getAttribute("x") === "64" && t.getAttribute("fill") === "#FFFFFF",
       )
       expect(titleLines.length).toBe(3)
-      // bold-metrics fix (2026-07-24): 43, not the pre-fix 47 -- this
+      // bold-metrics fix (2026-07-24): 44, not the pre-fix 47 -- this
       // heading renders `fontWeight="600"` (LeftAnchorCover.tsx), academic's
-      // heading face resolves to Georgia, and Georgia Bold's `upper` class
-      // measures +12.42% over this estimator's old unweighted assumption
-      // (bold-data-pack.md, this fix's own data pack) -- a real shrink from
-      // a heading that now correctly accounts for the font weight it
-      // actually exports as. `lowerDigit` also carries `JUDGMENT_BAND_
-      // MARGIN` (svg-text-layout.ts) -- this heading is lowerDigit-heavy
-      // ("大规模语言模型推理速度提升" etc. are CJK, but the Latin word
-      // "DSpark" and the digits "60-85" both land lowerDigit), same
-      // red-first-verification-round reasoning as the reported cover
-      // defect. Re-pinned, not blindly `-u`'d: see this fix's report for
-      // the full re-pin list.
-      expect(titleLines[0].getAttribute("font-size")).toBe("43")
+      // heading face resolves to Georgia, and Georgia Bold's real per-
+      // character advances (the round-2 exact model, svg-text-layout.ts's
+      // `GEORGIA_BOLD_EXACT`) size this line a hair larger than round 1's
+      // class-average-plus-margin estimate did (43) -- this string's actual
+      // character composition (mostly CJK, plus "DSpark" and the digits
+      // "60-85") doesn't concentrate the wide-character risk round 1's
+      // margin was blindly defending against everywhere. Re-pinned twice
+      // now (47 pre-fix -> 43 round 1 -> 44 round 2), never blindly `-u`'d:
+      // see this fix's report for the full re-pin list and the round-2
+      // aesthetic-comparison data this delta is one data point of.
+      expect(titleLines[0].getAttribute("font-size")).toBe("44")
 
       const expected = fitHeadingLines(REPORTED_HEADING, {
         maxWidth: 360,
