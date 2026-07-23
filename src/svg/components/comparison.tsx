@@ -1,6 +1,6 @@
 import { Fragment } from "react"
 import type { Component } from "@/ir"
-import { measureTextUnits } from "../../lib/svg-text-layout"
+import { measureTextUnits, type TextWeightHint } from "../../lib/svg-text-layout"
 import type { SvgComponent } from "./types"
 
 type ComparisonComponent = Extract<Component, { type: "comparison" }>
@@ -85,7 +85,7 @@ function computeColumns(
   const weights: number[] = []
   for (let c = 0; c < colCount; c++) {
     const texts = [headers[c], ...columnTexts(component, c)]
-    const maxUnits = Math.max(...texts.map(measureTextUnits), 1)
+    const maxUnits = Math.max(...texts.map((t) => measureTextUnits(t)), 1)
     weights.push(maxUnits)
   }
 
@@ -125,8 +125,8 @@ function computeColumns(
  * Largest font size (clamped to [MIN_FONT_SIZE, base]) at which `text` fits
  * the column's padded width on one line.
  */
-function shrinkToFit(text: string, colW: number, base: number): number {
-  const units = measureTextUnits(text)
+function shrinkToFit(text: string, colW: number, base: number, weight?: TextWeightHint): number {
+  const units = measureTextUnits(text, weight)
   if (units <= 0) return base
   const avail = colW - PAD_X * 2
   return Math.max(MIN_FONT_SIZE, Math.min(base, Math.floor(avail / units)))
@@ -135,31 +135,43 @@ function shrinkToFit(text: string, colW: number, base: number): number {
 /**
  * Table-wide fitted font size: the minimum per-column `shrinkToFit` across
  * all (text, column) pairs, so every header (or every cell) shares one size
- * instead of shrinking raggedly column by column.
+ * instead of shrinking raggedly column by column. `bold` is per-pair (not a
+ * single flag for the whole call) because `cellFontSize`'s own pairs below
+ * mix bold row-labels (column 0) with Regular data cells (bold-metrics fix,
+ * 2026-07-24 — audit-baseline.test.ts's own "if a case fails, the residual
+ * overflow is real and belongs to the renderer" policy caught this the same
+ * way it caught kpi/BigNumber/steps/content-bento-panel/verdict-banner's
+ * own bold text, see those files' identical fix): the shared minimum this
+ * function returns must still be driven by column 0's real bold width
+ * without pessimizing every other (non-bold) column's own contribution.
  */
 function fittedFontSize(
-  pairs: Array<{ text: string; colW: number }>,
+  pairs: Array<{ text: string; colW: number; bold?: boolean }>,
   base: number,
+  fontFamily: string,
 ): number {
-  return Math.min(base, ...pairs.map(({ text, colW }) => shrinkToFit(text, colW, base)))
+  return Math.min(
+    base,
+    ...pairs.map(({ text, colW, bold }) => shrinkToFit(text, colW, base, { bold, fontFamily })),
+  )
 }
 
 /**
  * Truncate text to fit within available pixel width at the given font size.
  * If the rendered text exceeds the column, trim and append "...".
  */
-function truncate(text: string, colW: number, fontSize: number): string {
+function truncate(text: string, colW: number, fontSize: number, weight?: TextWeightHint): string {
   const availableUnits = (colW - PAD_X * 2) / fontSize
-  if (measureTextUnits(text) <= availableUnits) return text
+  if (measureTextUnits(text, weight) <= availableUnits) return text
 
   const chars = Array.from(text)
   const ellipsis = "…"
-  const ellipsisUnits = measureTextUnits(ellipsis)
+  const ellipsisUnits = measureTextUnits(ellipsis, weight)
   let result = ""
   let units = 0
 
   for (const ch of chars) {
-    const chUnits = measureTextUnits(ch)
+    const chUnits = measureTextUnits(ch, weight)
     if (units + chUnits + ellipsisUnits > availableUnits) break
     result += ch
     units += chUnits
@@ -212,16 +224,21 @@ export const comparison: SvgComponent<ComparisonComponent> = {
     const totalRows = component.rows.length + 1 // header + data rows
 
     const headerFontSize = fittedFontSize(
-      headers.flatMap((title, c) => (title ? [{ text: title, colW: widths[c] }] : [])),
+      // Every header renders bold below (`fontWeight="bold"`).
+      headers.flatMap((title, c) => (title ? [{ text: title, colW: widths[c], bold: true }] : [])),
       HEADER_FONT_SIZE,
+      ctx.fonts.body,
     )
     const cellFontSize = fittedFontSize(
       component.rows.flatMap((row) =>
+        // Column 0 (row label) renders bold below (`fontWeight={c === 0 ?
+        // "bold" : "normal"}`); every other column stays Regular.
         [row.label, ...row.cells]
           .slice(0, colCount)
-          .map((cell, c) => ({ text: cell, colW: widths[c] })),
+          .map((cell, c) => ({ text: cell, colW: widths[c], bold: c === 0 })),
       ),
       CELL_FONT_SIZE,
+      ctx.fonts.body,
     )
     // 基线补偿随字号走（0.35×字号），18/16 时与旧常量 +6 完全一致。
     const headerBaseline = Math.round(headerFontSize * 0.35)
@@ -236,7 +253,7 @@ export const comparison: SvgComponent<ComparisonComponent> = {
         {/* Header texts */}
         {headers.map((title, c) => {
           if (!title) return null
-          const fitted = truncate(title, widths[c], headerFontSize)
+          const fitted = truncate(title, widths[c], headerFontSize, { bold: true, fontFamily: ctx.fonts.body })
           return (
             <text
               key={`h-${c}`}
@@ -294,7 +311,10 @@ export const comparison: SvgComponent<ComparisonComponent> = {
             <Fragment key={`r-${r}`}>
               {cells.map((cell, c) => {
                 if (c >= colCount) return null
-                const fitted = truncate(cell, widths[c], cellFontSize)
+                const fitted = truncate(cell, widths[c], cellFontSize, {
+                  bold: c === 0,
+                  fontFamily: ctx.fonts.body,
+                })
                 return (
                   <text
                     key={`c-${r}-${c}`}

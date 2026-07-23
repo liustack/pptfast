@@ -1,5 +1,5 @@
 import React from "react"
-import { fitSvgLine, truncateToUnits } from "../lib/svg-text-layout"
+import { fitSvgLine, truncateToUnits, type TextWeightHint } from "../lib/svg-text-layout"
 
 /** One run of text with its emphasis state, in source (unmarked) text order. */
 export interface EmphasisSegment {
@@ -163,9 +163,13 @@ export function sliceEmphasisForLines(segments: EmphasisSegment[], lines: string
  * slicing, this never desyncs later lines because it only ever looks at
  * this one line's own (gap-free) segment table.
  */
-export function truncateEmphasisSegments(segments: EmphasisSegment[], maxUnits: number): EmphasisSegment[] {
+export function truncateEmphasisSegments(
+  segments: EmphasisSegment[],
+  maxUnits: number,
+  weight?: TextWeightHint,
+): EmphasisSegment[] {
   const text = segments.map((s) => s.text).join("")
-  const truncated = truncateToUnits(text, maxUnits)
+  const truncated = truncateToUnits(text, maxUnits, weight)
   if (truncated === text) return segments
 
   const hasEllipsis = truncated.endsWith("…")

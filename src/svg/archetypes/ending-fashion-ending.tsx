@@ -24,6 +24,7 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 130,
     maxLines: 2,
     minPt: 64,
+    fontFamily: ctx.fonts.heading,
   })
   const TITLE_Y = 340
   const titleLastY = TITLE_Y + Math.max(0, title.lines.length - 1) * title.lineHeight

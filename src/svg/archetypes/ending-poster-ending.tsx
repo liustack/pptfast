@@ -65,6 +65,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 150,
     maxLines: 2,
     minPt: 40,
+    fontFamily: ctx.fonts.heading,
   })
   // Last-line-anchored（同源文件 2026-07-07 addendum）：把末行锚定在固定基线，
   // 无论标题是一行还是两行，下方 accent bar / 副标题 / 分隔线 / meta 的整条链路

@@ -1,4 +1,5 @@
 import { pxToIn, pxToPt, SLIDE_W_IN, CANVAS_W_PX } from "../../constants"
+import { isBold } from "../../svg/fonts"
 import { svgColorToHex } from "./color"
 import { elementOpacity } from "./style"
 
@@ -42,12 +43,6 @@ function num(el: Element, name: string, fallback = 0): number {
   const v = el.getAttribute(name)
   if (v == null) return fallback
   return parseFloat(v) || fallback
-}
-
-function isBold(weight: string | null): boolean {
-  if (!weight) return false
-  if (weight === "bold" || weight === "bolder") return true
-  return parseInt(weight, 10) >= 600
 }
 
 /** font-style italic/oblique → italic（2026-07-12 导出审计抓漏：TextRunData

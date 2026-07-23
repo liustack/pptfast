@@ -54,6 +54,7 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 100,
     maxLines: 2,
     minPt: 52,
+    fontFamily: ctx.fonts.heading,
   })
   // Fixed first-line baseline regardless of 1 vs. 2 lines: at fontSize 100 a
   // 2-line title's first glyph top (baseline - ~0.75*fontSize ≈ 205) still

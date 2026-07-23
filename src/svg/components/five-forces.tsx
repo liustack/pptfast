@@ -173,11 +173,19 @@ interface PanelLayout {
  * untouched. At `fontScale === 1` every returned field reduces to this
  * file's nominal constants exactly — same as `bmc.tsx`'s `blockLayout`.
  */
+// `fontFamily` (bold-metrics fix, round 2, 2026-07-24): the rendered label
+// `<text>` declares `fontWeight="700"` in `ctx.fonts.heading` (`render`
+// below) -- same bold-aware-fitting need as every other bold heading-faced
+// text this task's audit-baseline sweep found and fixed. Optional,
+// defaults to `undefined` (envelope fallback) -- `measure()` never reads
+// `.label`, only the `contentH` derived from the fixed declared
+// `labelSize`, so it doesn't need a real value.
 function panelLayout(
   key: ForceKey,
   panel: { label?: string; intensity?: Intensity; items: string[] },
   w: number,
   fontScale: number = 1,
+  fontFamily?: string,
 ): PanelLayout {
   const contentW = Math.max(1, w - PAD_X * 2)
   const labelSize = LABEL_SIZE * fontScale
@@ -196,6 +204,8 @@ function panelLayout(
     maxWidth: contentW,
     fontSize: labelSize,
     minFontSize: LABEL_SIZE_MIN * fontScale,
+    bold: true,
+    fontFamily,
   })
   const items = panel.items.map((it) =>
     fitSvgLine(it, {
@@ -239,18 +249,23 @@ interface CrossGeom {
 /** Pure function of `component`'s own real content at width `w` and
  * `fontScale` (default 1) — the natural (unstretched) 3×3 cross geometry
  * `measure()` and `render()` both derive from, never a hardcoded ratio. */
-function crossGeom(component: FiveForcesComponent, w: number, fontScale: number = 1): CrossGeom {
+function crossGeom(
+  component: FiveForcesComponent,
+  w: number,
+  fontScale: number = 1,
+  fontFamily?: string,
+): CrossGeom {
   const usableW = w - GAP * 2
   const leftW = usableW * SIDE_COL_RATIO
   const rightW = usableW * SIDE_COL_RATIO
   const centerW = usableW - leftW - rightW
 
   const layouts: Record<ForceKey, PanelLayout> = {
-    rivalry: panelLayout("rivalry", component.rivalry, centerW, fontScale),
-    new_entrants: panelLayout("new_entrants", component.new_entrants, centerW, fontScale),
-    supplier_power: panelLayout("supplier_power", component.supplier_power, leftW, fontScale),
-    buyer_power: panelLayout("buyer_power", component.buyer_power, rightW, fontScale),
-    substitutes: panelLayout("substitutes", component.substitutes, centerW, fontScale),
+    rivalry: panelLayout("rivalry", component.rivalry, centerW, fontScale, fontFamily),
+    new_entrants: panelLayout("new_entrants", component.new_entrants, centerW, fontScale, fontFamily),
+    supplier_power: panelLayout("supplier_power", component.supplier_power, leftW, fontScale, fontFamily),
+    buyer_power: panelLayout("buyer_power", component.buyer_power, rightW, fontScale, fontFamily),
+    substitutes: panelLayout("substitutes", component.substitutes, centerW, fontScale, fontFamily),
   }
 
   const topH = layouts.new_entrants.contentH
@@ -372,7 +387,7 @@ export const fiveForces: SvgComponent<FiveForcesComponent> = {
     return topH + GAP + midH + GAP + bottomH
   },
   render(component, box, ctx) {
-    const natural = crossGeom(component, box.w)
+    const natural = crossGeom(component, box.w, 1, ctx.fonts.heading)
     const { leftW, centerW, rightW } = natural
     const naturalTotal = natural.topH + GAP + natural.midH + GAP + natural.bottomH
     const totalH = box.h ?? naturalTotal
@@ -385,7 +400,7 @@ export const fiveForces: SvgComponent<FiveForcesComponent> = {
     // `natural` as-is rather than recomputing (`bmc.tsx`'s own "one walk"
     // efficiency note).
     const fontScale = naturalTotal > 0 && totalH < naturalTotal ? Math.max(MIN_FONT_SCALE, totalH / naturalTotal) : 1
-    const scaled = fontScale === 1 ? natural : crossGeom(component, box.w, fontScale)
+    const scaled = fontScale === 1 ? natural : crossGeom(component, box.w, fontScale, ctx.fonts.heading)
     const { topH: scaledNatTop, midH: scaledNatMid, bottomH: scaledNatBottom, layouts } = scaled
     const scaledNaturalTotal = scaledNatTop + GAP + scaledNatMid + GAP + scaledNatBottom
     const finalTotalH = Math.max(scaledNaturalTotal, totalH)

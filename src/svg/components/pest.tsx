@@ -173,7 +173,22 @@ interface QuadrantLayout {
  * this file's nominal constants exactly — same as `bmc.tsx`'s
  * `blockLayout`/`five-forces.tsx`'s `panelLayout`.
  */
-function quadrantLayout(items: string[], title: string, quadW: number, fontScale: number = 1): QuadrantLayout {
+// `fontFamily` (bold-metrics fix, round 2, 2026-07-24): the rendered title
+// `<text>` declares `fontWeight="700"` in `ctx.fonts.heading`
+// (`renderQuadrant` below) -- bold-aware fitting needed, same as every
+// other bold heading-faced text this task's audit-baseline sweep found and
+// fixed. Optional/defaults `undefined` (envelope fallback) -- `contentH`
+// (this function's height contribution) is derived from `headerH =
+// Math.max(badgeSize, titleSize)`, the fixed declared size, never
+// `fittedTitle.fontSize`, so measure/render can't disagree regardless of
+// which callers pass a real value.
+function quadrantLayout(
+  items: string[],
+  title: string,
+  quadW: number,
+  fontScale: number = 1,
+  fontFamily?: string,
+): QuadrantLayout {
   const contentW = quadW - PAD_X * 2
   const badgeSize = BADGE * fontScale
   const badgeFont = BADGE_FONT * fontScale
@@ -191,6 +206,8 @@ function quadrantLayout(items: string[], title: string, quadW: number, fontScale
     maxWidth: contentW - badgeSize - gapBadgeTitle,
     fontSize: titleSize,
     minFontSize: TITLE_SIZE_MIN * fontScale,
+    bold: true,
+    fontFamily,
   })
   const fittedItems = items.map((it) =>
     fitSvgLine(it, {
@@ -220,10 +237,10 @@ function quadrantLayout(items: string[], title: string, quadW: number, fontScale
   }
 }
 
-function gridGeom(component: PestComponent, w: number, fontScale: number = 1) {
+function gridGeom(component: PestComponent, w: number, fontScale: number = 1, fontFamily?: string) {
   const quadW = (w - GRID_GAP) / 2
   const layouts = QUADRANTS.map((q) =>
-    quadrantLayout(component[q].items, component[q].title ?? DEFAULT_TITLES[q], quadW, fontScale),
+    quadrantLayout(component[q].items, component[q].title ?? DEFAULT_TITLES[q], quadW, fontScale, fontFamily),
   )
   const cellH = Math.max(...layouts.map((l) => l.contentH))
   return { quadW, cellH, layouts }
@@ -304,7 +321,7 @@ export const pest: SvgComponent<PestComponent> = {
     return cellH * 2 + GRID_GAP
   },
   render(component, box, ctx) {
-    const natural = gridGeom(component, box.w)
+    const natural = gridGeom(component, box.w, 1, ctx.fonts.heading)
     const naturalTotal = natural.cellH * 2 + GRID_GAP
     const totalH = box.h ?? naturalTotal
 
@@ -316,7 +333,7 @@ export const pest: SvgComponent<PestComponent> = {
     // at or above natural size keeps fontScale === 1 and reuses `natural`
     // as-is rather than recomputing.
     const fontScale = naturalTotal > 0 && totalH < naturalTotal ? Math.max(MIN_FONT_SCALE, totalH / naturalTotal) : 1
-    const scaled = fontScale === 1 ? natural : gridGeom(component, box.w, fontScale)
+    const scaled = fontScale === 1 ? natural : gridGeom(component, box.w, fontScale, ctx.fonts.heading)
     const scaledNaturalTotal = scaled.cellH * 2 + GRID_GAP
     const finalTotalH = Math.max(scaledNaturalTotal, totalH)
 

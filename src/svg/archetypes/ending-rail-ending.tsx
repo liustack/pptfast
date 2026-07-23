@@ -92,6 +92,7 @@ export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 120,
     maxLines: 2,
     minPt: 40,
+    fontFamily: fonts.heading,
   })
   const isTwoLine = heading.lines.length > 1
   const headingY = isTwoLine

@@ -1,6 +1,6 @@
 import { measureMonoTextUnits, measureTextUnits } from "../../lib/svg-text-layout"
 import { getPlatform } from "../../platform/registry"
-import { isMonoFontFamily } from "../fonts"
+import { isBold, isMonoFontFamily } from "../fonts"
 
 export interface OverflowIssue {
   kind: "h-overflow" | "v-overflow" | "page-overflow"
@@ -88,15 +88,28 @@ export function auditSvgMarkup(markup: string): OverflowIssue[] {
         const fontSize = Number(el.getAttribute("font-size") ?? 16) * as
         const tx = ax + Number(el.getAttribute("x") ?? 0) * as
         const ty = ay + Number(el.getAttribute("y") ?? 0) * as
-        // Mono-face branch only (borrow-wave Task 3 fix round, 2026-07-21 —
-        // see `isMonoFontFamily`'s derivation comment in fonts.ts). Every
-        // other role stays on the proportional `measureTextUnits` estimate —
-        // this does not generalize into a font-aware audit for every role
-        // (a recorded open item — task-3-report.md §7 / task-3-review.md's
-        // Important finding N1, scratchpad, not shipped in this repo).
+        // Mono-face branch (borrow-wave Task 3 fix round, 2026-07-21 — see
+        // `isMonoFontFamily`'s derivation comment in fonts.ts) stays exact
+        // and weight-blind: `measureMonoTextUnits` takes no weight
+        // parameter because Consolas's own hmtx table shows bold/regular
+        // advance widths equal to 4 decimal places (bold-data-pack.md S2),
+        // and the mono role never declares bold in this codebase anyway
+        // (root-cause.md S5). Every proportional role (bold-metrics fix,
+        // 2026-07-24) now reads the real `font-weight` this element
+        // rendered with, via the same `isBold()` threshold svg2pptx/text.ts
+        // uses to decide OOXML's `b="1"` — so this auditor can never
+        // disagree with what the exporter actually ships. Before this fix,
+        // both the renderer and this auditor shared the same unweighted
+        // `measureTextUnits` call, so the two were structurally unable to
+        // disagree even when a real exported font rendered bold — the
+        // "estimator/audit shared-blindness" gap root-cause.md S4.2 named
+        // as the mechanism that let the reported cover-overflow defect
+        // audit clean (0 findings) while visibly overflowing in PowerPoint.
         const fontFamily = el.getAttribute("font-family") ?? ""
-        const measure = isMonoFontFamily(fontFamily) ? measureMonoTextUnits : measureTextUnits
-        const width = measure(content) * fontSize
+        const units = isMonoFontFamily(fontFamily)
+          ? measureMonoTextUnits(content)
+          : measureTextUnits(content, { bold: isBold(el.getAttribute("font-weight")), fontFamily })
+        const width = units * fontSize
         const anchor = el.getAttribute("text-anchor") ?? "start"
         const left = anchor === "end" ? tx - width : anchor === "middle" ? tx - width / 2 : tx
         const right = left + width

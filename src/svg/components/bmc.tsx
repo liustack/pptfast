@@ -174,7 +174,26 @@ interface BlockLayout {
  * hardcoded constants exactly (same `TITLE_SIZE`/`ITEM_SIZE`, same 1.3/1.35
  * ratios, same 10/9.5 width-axis floors) — byte-identical output.
  */
-function blockLayout(items: string[], key: BlockKey, w: number, fontScale: number = 1): BlockLayout {
+// `fontFamily` (bold-metrics fix, round 2, 2026-07-24): `renderBlock`'s own
+// title `<text>` declares `fontWeight="700"` in `ctx.fonts.heading` -- the
+// cell title (`BLOCK_LABELS[key]`, a fixed constant, not user-controllable
+// via the IR) needs the same bold-aware fitting as every other bold
+// heading-faced text this task's audit-baseline sweep already found and
+// fixed (kpi.tsx/steps.tsx/etc, round 1). Optional and defaults to
+// `undefined` (envelope fallback, `bold: true` regardless -- title is
+// unconditionally bold in this component) so the measure-time callers
+// below (which only ever read `.contentH`, itself derived from the fixed
+// declared `titleSize`, never the fitted result) don't need it -- see this
+// function's own return value: `contentH` doesn't depend on whether
+// `title` actually had to shrink, so measure/render can't disagree over it
+// regardless of which callers pass `fontFamily`.
+function blockLayout(
+  items: string[],
+  key: BlockKey,
+  w: number,
+  fontScale: number = 1,
+  fontFamily?: string,
+): BlockLayout {
   const contentW = Math.max(1, w - PAD_X * 2)
   const titleSize = TITLE_SIZE * fontScale
   const itemSize = ITEM_SIZE * fontScale
@@ -190,6 +209,8 @@ function blockLayout(items: string[], key: BlockKey, w: number, fontScale: numbe
     maxWidth: contentW,
     fontSize: titleSize,
     minFontSize: TITLE_SIZE_MIN * fontScale,
+    bold: true,
+    fontFamily,
   })
   const fittedItems = items.map((it) =>
     fitSvgLine(it, {
@@ -393,7 +414,7 @@ export const bmc: SvgComponent<BmcComponent> = {
     return (
       <g>
         {cells.map((cell) => {
-          const layout = blockLayout(component[cell.key], cell.key, cell.w, fontScale)
+          const layout = blockLayout(component[cell.key], cell.key, cell.w, fontScale, ctx.fonts.heading)
           return renderBlock(cell, layout, ctx, box.x, box.y, r)
         })}
       </g>

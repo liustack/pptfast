@@ -150,6 +150,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
       fontSize: 44,
       maxLines: 2,
       minPt: 22,
+      fontFamily: fonts.heading,
     })
     const headingExtra = Math.max(0, heading.lines.length - 1) * heading.lineHeight
     const headingLastY = 168 + headingExtra
@@ -341,6 +342,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
     fontSize: 46,
     maxLines: 2,
     minPt: 22,
+    fontFamily: fonts.heading,
   })
   const headingExtra = Math.max(0, heading.lines.length - 1) * heading.lineHeight
   const headingLastY = 130 + headingExtra
