@@ -923,8 +923,8 @@ const ComponentSchema = z.discriminatedUnion("type", [
       // The endpoint-existence checks' `path` drills to the exact field
       // (`["links", i, "from"]`/`["links", i, "to"]`) — the self-loop
       // check's stays at `["links", i]`, since neither endpoint alone is
-      // "wrong" there (both are equal, valid ids; it's the pair that's
-      // rejected). This briefly used a workaround, now removed: the
+      // "wrong" there — both are equal, valid ids, it's the pair that's
+      // rejected. This briefly used a workaround, now removed: the
       // browser-distribution e2e leg's `BARE_STATIC_IMPORT` scanner
       // (`scripts/e2e.mts`) used to do a raw text match with no notion of
       // string-literal context, so a compiled zod issue `path` array ending

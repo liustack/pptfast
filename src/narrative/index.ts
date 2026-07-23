@@ -205,7 +205,7 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // candidate, since a layered DAG reads left-to-right — is fundamentally
     // a *proportional-flow decomposition* (quantity conservation across
     // paths), categorically different from `flowchart`'s procedural
-    // decision-branching that actually earned instructional's set; forcing
+    // decision-branching that actually earned instructional's set. Forcing
     // a second join here would be inventing a parallel decision 9 itself
     // never needed for 3 of its own 4 members either. All four therefore
     // get exactly the same single-strategy treatment swot/bmc/waterfall got

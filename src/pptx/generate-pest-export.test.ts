@@ -13,7 +13,7 @@
 // fall into (nothing here is a value at all): this file exists to close a
 // different, real gap instead — nothing previously pushed `pest` through the
 // full real export chain (svg2pptx's rect/text-box conversion, the package-
-// audit hard gate) at its schema extremes; `pest.test.tsx` only ever
+// audit hard gate) at its schema extremes — `pest.test.tsx` only ever
 // exercises `renderSvgMarkup`+`assertSubset`, and the e2e structure-
 // components leg uses one modest, representative fixture, not schema-max.
 import { beforeAll, describe, expect, it } from "vitest"
