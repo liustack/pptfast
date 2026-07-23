@@ -87,6 +87,47 @@ const gantt: Component = {
   ],
   axis_labels: ["W1", "W2", "W3"],
 }
+const pest: Component = {
+  type: "pest",
+  political: { items: ["Regulation"] },
+  economic: { items: ["Interest rates"] },
+  social: { items: ["Habits shift"] },
+  technological: { items: ["AI adoption"] },
+}
+const fiveForces: Component = {
+  type: "five_forces",
+  rivalry: { items: ["Top 3 hold 60% share"], intensity: "high" },
+  new_entrants: { items: ["High licensing barrier"], intensity: "low" },
+  supplier_power: { items: ["Component shortage"], intensity: "medium" },
+  buyer_power: { items: ["Concentrated buyers"] },
+  substitutes: { items: ["Open-source alternatives"], intensity: "medium" },
+}
+const heatmap: Component = {
+  type: "heatmap",
+  x_labels: ["Q1", "Q2", "Q3"],
+  y_labels: ["North", "South"],
+  values: [
+    [10, 20, 30],
+    [5, -5, 15],
+  ],
+  show_values: true,
+}
+const sankey: Component = {
+  type: "sankey",
+  nodes: [
+    { id: "coal", label: "Coal" },
+    { id: "gas", label: "Gas" },
+    { id: "grid", label: "Grid" },
+    { id: "homes", label: "Homes" },
+    { id: "industry", label: "Industry" },
+  ],
+  links: [
+    { from: "coal", to: "grid", value: 30 },
+    { from: "gas", to: "grid", value: 50 },
+    { from: "grid", to: "homes", value: 45 },
+    { from: "grid", to: "industry", value: 35 },
+  ],
+}
 
 /** The 3 image-family types, each pointed at an asset id that is never
  *  present in `assets.images` — deliberately exercising the "asset missing
@@ -128,6 +169,10 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
   bmc,
   waterfall,
   gantt,
+  pest,
+  five_forces: fiveForces,
+  heatmap,
+  sankey,
   flowchart: {
     type: "flowchart",
     nodes: [
@@ -240,6 +285,10 @@ function noAssetIr(): PptxIR {
       contentSlide("BMC", [COMPONENT_BY_TYPE.bmc]),
       contentSlide("Waterfall", [COMPONENT_BY_TYPE.waterfall]),
       contentSlide("Gantt", [COMPONENT_BY_TYPE.gantt]),
+      contentSlide("PEST", [COMPONENT_BY_TYPE.pest]),
+      contentSlide("Five Forces", [COMPONENT_BY_TYPE.five_forces]),
+      contentSlide("Heatmap", [COMPONENT_BY_TYPE.heatmap]),
+      contentSlide("Sankey", [COMPONENT_BY_TYPE.sankey]),
       contentSlide("Flow + Architecture", [COMPONENT_BY_TYPE.flowchart, COMPONENT_BY_TYPE.architecture]),
       contentSlide("Timeline + Comparison", [COMPONENT_BY_TYPE.timeline, COMPONENT_BY_TYPE.comparison]),
       contentSlide("RowCards + Steps", [COMPONENT_BY_TYPE.row_cards, COMPONENT_BY_TYPE.steps]),

@@ -68,6 +68,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 88,
     maxLines: 2,
     minPt: 44,
+    fontFamily: fonts.heading,
   })
   const headingY =
     HEADING_LAST_BASELINE -

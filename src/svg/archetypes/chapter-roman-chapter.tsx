@@ -81,6 +81,7 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 60,
     maxLines: 2,
     minPt: 32,
+    fontFamily: ctx.fonts.heading,
   })
   const headingY = 388
   const headingLastY = headingY + Math.max(0, heading.lines.length - 1) * heading.lineHeight

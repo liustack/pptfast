@@ -98,6 +98,7 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 40,
     maxLines: 2,
     minPt: 26,
+    fontFamily: fonts.heading,
   })
   const headingLastY =
     HEADING_BASELINE + Math.max(0, heading.lines.length - 1) * heading.lineHeight

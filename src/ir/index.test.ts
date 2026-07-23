@@ -367,6 +367,415 @@ describe("gantt component (structure-components wave task 2, numeric-axis family
   })
 })
 
+describe("pest component (structure-components wave 2 task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const quadrant = (n: number, overrides: Record<string, unknown> = {}) => ({
+    items: Array.from({ length: n }, (_, i) => `i${i}`),
+    ...overrides,
+  })
+  const pestComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "pest",
+    political: quadrant(1),
+    economic: quadrant(1),
+    social: quadrant(1),
+    technological: quadrant(1),
+    ...overrides,
+  })
+
+  it("accepts 1-5 items per quadrant", () => {
+    for (const n of [1, 3, 5]) {
+      expect(parsePptxIR(withComponents([pestComponent({ political: quadrant(n) })])).success).toBe(true)
+    }
+  })
+  it("rejects an empty quadrant items array (min 1)", () => {
+    expect(parsePptxIR(withComponents([pestComponent({ political: quadrant(0) })])).success).toBe(false)
+  })
+  it("rejects more than 5 items in a quadrant (max 5)", () => {
+    expect(parsePptxIR(withComponents([pestComponent({ political: quadrant(6) })])).success).toBe(false)
+  })
+  it("rejects a missing quadrant (all four are required, not a positional array)", () => {
+    const full = pestComponent() as any
+    delete full.technological
+    expect(parsePptxIR(withComponents([full])).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...pestComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional inline title per quadrant", () => {
+    const d = withComponents([pestComponent({ political: quadrant(1, { title: "政治" }) })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown field inside a quadrant object (strict)", () => {
+    const d = withComponents([pestComponent({ political: quadrant(1, { extra: "x" }) })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("five_forces component (structure-components wave 2 task 1, named-slot family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const panel = (n: number, overrides: Record<string, unknown> = {}) => ({
+    items: Array.from({ length: n }, (_, i) => `i${i}`),
+    ...overrides,
+  })
+  const fiveForcesComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "five_forces",
+    rivalry: panel(1),
+    new_entrants: panel(1),
+    supplier_power: panel(1),
+    buyer_power: panel(1),
+    substitutes: panel(1),
+    ...overrides,
+  })
+
+  it("accepts 1-5 items per panel", () => {
+    for (const n of [1, 3, 5]) {
+      expect(parsePptxIR(withComponents([fiveForcesComponent({ rivalry: panel(n) })])).success).toBe(true)
+    }
+  })
+  it("rejects an empty panel items array (min 1)", () => {
+    expect(parsePptxIR(withComponents([fiveForcesComponent({ rivalry: panel(0) })])).success).toBe(false)
+  })
+  it("rejects more than 5 items in a panel (max 5)", () => {
+    expect(parsePptxIR(withComponents([fiveForcesComponent({ rivalry: panel(6) })])).success).toBe(false)
+  })
+  it("rejects a missing panel (all five are required, not a positional array)", () => {
+    const full = fiveForcesComponent() as any
+    delete full.substitutes
+    expect(parsePptxIR(withComponents([full])).success).toBe(false)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...fiveForcesComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional inline label per panel", () => {
+    const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { label: "竞争烈度" }) })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts an optional intensity enum (low/medium/high) on any panel, including the center", () => {
+    for (const level of ["low", "medium", "high"]) {
+      const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { intensity: level }) })])
+      expect(parsePptxIR(d).success).toBe(true)
+    }
+  })
+  it("rejects an unknown intensity value (strict enum)", () => {
+    const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { intensity: "extreme" }) })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown field inside a panel object (strict)", () => {
+    const d = withComponents([fiveForcesComponent({ rivalry: panel(1, { extra: "x" }) })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("heatmap component (structure-components wave 2 task 2, value-grid family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const heatmapComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "heatmap",
+    x_labels: ["Q1", "Q2"],
+    y_labels: ["North", "South"],
+    values: [
+      [1, 2],
+      [3, 4],
+    ],
+    ...overrides,
+  })
+
+  it("accepts a well-formed rectangular grid", () => {
+    expect(parsePptxIR(withComponents([heatmapComponent()])).success).toBe(true)
+  })
+  it("accepts a single row (1 y_label)", () => {
+    const d = withComponents([heatmapComponent({ y_labels: ["only"], values: [[1, 2]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts a single column (1 x_label)", () => {
+    const d = withComponents([heatmapComponent({ x_labels: ["only"], values: [[1], [2]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts a single cell (1x1)", () => {
+    const d = withComponents([heatmapComponent({ x_labels: ["x"], y_labels: ["y"], values: [[42]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts the schema-max 10x10 grid", () => {
+    const labels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+    const d = withComponents([
+      heatmapComponent({
+        x_labels: labels(10, "x"),
+        y_labels: labels(10, "y"),
+        values: Array.from({ length: 10 }, (_, r) => Array.from({ length: 10 }, (_, c) => r * 10 + c)),
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects more than 10 x_labels (max 10)", () => {
+    const d = withComponents([
+      heatmapComponent({ x_labels: Array.from({ length: 11 }, (_, i) => `x${i}`), values: [Array.from({ length: 11 }, () => 1), Array.from({ length: 11 }, () => 1)] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects more than 10 y_labels (max 10)", () => {
+    const d = withComponents([
+      heatmapComponent({ y_labels: Array.from({ length: 11 }, (_, i) => `y${i}`), values: Array.from({ length: 11 }, () => [1, 2]) }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an empty x_labels array (min 1)", () => {
+    const d = withComponents([heatmapComponent({ x_labels: [], values: [[], []] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects a row count that doesn't match y_labels length (rectangularity refine)", () => {
+    const d = withComponents([heatmapComponent({ y_labels: ["North", "South", "East"], values: [[1, 2], [3, 4]] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects a ragged row whose length doesn't match x_labels length (rectangularity refine)", () => {
+    const d = withComponents([heatmapComponent({ values: [[1, 2], [3, 4, 5]] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts negative values (no sign constraint)", () => {
+    const d = withComponents([heatmapComponent({ values: [[-10, 2], [3, -4]] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts an explicit domain override", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 0, max: 100 } })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts a degenerate explicit domain (min === max)", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 5, max: 5 } })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an explicit domain where max < min", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 10, max: 5 } })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("accepts an optional show_values flag", () => {
+    const d = withComponents([heatmapComponent({ show_values: true })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("accepts optional x_title/y_title", () => {
+    const d = withComponents([heatmapComponent({ x_title: "Quarter", y_title: "Region" })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...heatmapComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects an unknown field inside domain (strict)", () => {
+    const d = withComponents([heatmapComponent({ domain: { min: 0, max: 1, extra: 1 } })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
+describe("sankey component (structure-components wave 2 task 3, flow-graph family)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const sankeyComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "sankey",
+    nodes: [
+      { id: "a", label: "A" },
+      { id: "b", label: "B" },
+      { id: "c", label: "C" },
+    ],
+    links: [
+      { from: "a", to: "c", value: 10 },
+      { from: "b", to: "c", value: 20 },
+    ],
+    ...overrides,
+  })
+
+  it("accepts a well-formed two-layer graph", () => {
+    expect(parsePptxIR(withComponents([sankeyComponent()])).success).toBe(true)
+  })
+
+  it("accepts a minimal two-node one-link graph", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+        links: [{ from: "a", to: "b", value: 1 }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a disconnected node alongside a normal chain", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }, { id: "orphan", label: "Orphan" }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a multi-layer chain (A->B->C)", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }],
+        links: [{ from: "a", to: "b", value: 5 }, { from: "b", to: "c", value: 5 }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts the schema-max shape (16 nodes, 30 links)", () => {
+    const nodes = Array.from({ length: 16 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}` }))
+    // A dense bipartite-ish fan: first 8 nodes each link to all of the last
+    // 8 — 8*8=64 possible, capped at 30 to stay within schema bounds.
+    const links: { from: string; to: string; value: number }[] = []
+    outer: for (let i = 0; i < 8; i++) {
+      for (let j = 8; j < 16; j++) {
+        if (links.length >= 30) break outer
+        links.push({ from: `n${i}`, to: `n${j}`, value: i + j + 1 })
+      }
+    }
+    const d = withComponents([sankeyComponent({ nodes, links })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects more than 16 nodes (max 16)", () => {
+    const nodes = Array.from({ length: 17 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}` }))
+    const d = withComponents([sankeyComponent({ nodes, links: [{ from: "n0", to: "n1", value: 1 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects fewer than 2 nodes (min 2)", () => {
+    const d = withComponents([sankeyComponent({ nodes: [{ id: "a", label: "A" }], links: [] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects more than 30 links (max 30)", () => {
+    const nodes = Array.from({ length: 16 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}` }))
+    const links: { from: string; to: string; value: number }[] = []
+    outer: for (let i = 0; i < 8; i++) {
+      for (let j = 8; j < 16; j++) {
+        if (links.length >= 31) break outer
+        links.push({ from: `n${i}`, to: `n${j}`, value: 1 })
+      }
+    }
+    const d = withComponents([sankeyComponent({ nodes, links })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an empty links array (min 1)", () => {
+    const d = withComponents([sankeyComponent({ links: [] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects duplicate node ids", () => {
+    const d = withComponents([
+      sankeyComponent({ nodes: [{ id: "a", label: "A" }, { id: "a", label: "A2" }, { id: "c", label: "C" }] }),
+    ])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/duplicated.*'a'/)
+  })
+
+  it("rejects a link whose 'from' references an undeclared node id, naming it", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "ghost", to: "c", value: 1 }] })])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/'ghost'.*not declared/)
+  })
+
+  it("rejects a link whose 'to' references an undeclared node id, naming it", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "ghost", value: 1 }] })])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/'ghost'.*not declared/)
+  })
+
+  it("rejects a self-loop link with an actionable message", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "a", value: 1 }] })])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/self-loop/)
+  })
+
+  it("rejects a zero-value link (value must be > 0)", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: 0 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects a negative-value link", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: -5 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("accepts a tiny positive value (pathological-small, not zero)", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: 0.0001 }] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects a 2-cycle (a->b->a) with a message naming the cycle", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+        links: [{ from: "a", to: "b", value: 1 }, { from: "b", to: "a", value: 1 }],
+      }),
+    ])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) {
+      expect(r.error).toMatch(/cycle/)
+      expect(r.error).toMatch(/a -> b -> a/)
+    }
+  })
+
+  it("rejects a longer cycle (a->b->c->a) with a message naming the cycle", () => {
+    const d = withComponents([
+      sankeyComponent({
+        links: [{ from: "a", to: "b", value: 1 }, { from: "b", to: "c", value: 1 }, { from: "c", to: "a", value: 1 }],
+      }),
+    ])
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/cycle/)
+  })
+
+  it("accepts a DAG that reconverges (diamond shape, not a cycle)", () => {
+    const d = withComponents([
+      sankeyComponent({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }, { id: "d", label: "D" }],
+        links: [
+          { from: "a", to: "b", value: 5 },
+          { from: "a", to: "c", value: 5 },
+          { from: "b", to: "d", value: 5 },
+          { from: "c", to: "d", value: 5 },
+        ],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...sankeyComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown field inside a node object (strict)", () => {
+    const d = withComponents([sankeyComponent({ nodes: [{ id: "a", label: "A", extra: 1 }, { id: "b", label: "B" }, { id: "c", label: "C" }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown field inside a link object (strict)", () => {
+    const d = withComponents([sankeyComponent({ links: [{ from: "a", to: "c", value: 1, extra: 1 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

@@ -65,19 +65,51 @@ function roundedTopBarPath(x: number, y: number, w: number, h: number, r: number
   )
 }
 
-function cardLayout(item: RoadmapItem, cardW: number): CardLayout {
+// `headingFontFamily`/`bodyFontFamily` (bold-metrics fix, round 2,
+// 2026-07-24): `title` renders `fontWeight="700"` in `ctx.fonts.heading`,
+// `period` and `value` both render `fontWeight="600"`/`"600"` in
+// `ctx.fonts.body` (`renderCard` below) -- all three are bold by this
+// codebase's own threshold, so all three need weight-aware fitting, same as
+// every other bold text this task's audit-baseline sweep found and fixed.
+//
+// Unlike this task's other layout functions, `value` is a *multi-line*
+// (`layoutSvgText`, not `fitSvgLine`) bold field, and `rows[].height` --
+// which `contentH`/`cardH` are built from -- genuinely depends on
+// `value.lines.length`, itself a function of which face/weight `layoutSvgText`
+// assumed while wrapping. Leaving `measure()` on the cheap envelope-only
+// fallback the way this task's other components safely do for their
+// (height-inert) bold titles would risk `measure()` and `render()` picking a
+// *different line count* for the same value string -- a real measure/render
+// divergence bug, not just a cosmetic one. So both `measure()` and `render()`
+// below thread the *same* real `ctx.fonts.heading`/`ctx.fonts.body` into
+// every call here (not the envelope-in-measure pattern), guaranteeing
+// identical wrap decisions regardless of caller. `title`/`period` didn't
+// strictly need this (their `contentH` contribution comes from the fixed
+// `TITLE_LH`/badge constants, never their own fitted `.fontSize`) but take
+// the same real values for consistency now that this function threads them
+// anyway.
+function cardLayout(
+  item: RoadmapItem,
+  cardW: number,
+  headingFontFamily?: string,
+  bodyFontFamily?: string,
+): CardLayout {
   const contentW = cardW - PAD_X * 2
   const period = item.period
     ? fitSvgLine(item.period, {
         maxWidth: contentW - BADGE_R * 2 - 12,
         fontSize: PERIOD_SIZE,
         minFontSize: 11,
+        bold: true,
+        fontFamily: bodyFontFamily,
       })
     : null
   const title = fitSvgLine(item.title, {
     maxWidth: contentW,
     fontSize: TITLE_SIZE,
     minFontSize: 14,
+    bold: true,
+    fontFamily: headingFontFamily,
   })
   const rowItems = item.rows ?? []
   // Label column width = widest fitted label, clamped so the value column keeps
@@ -94,6 +126,8 @@ function cardLayout(item: RoadmapItem, cardW: number): CardLayout {
       fontSize: VALUE_SIZE,
       maxLines: 2,
       lineHeightRatio: 1.4,
+      bold: true,
+      fontFamily: bodyFontFamily,
     })
     return { label, value, height: Math.max(VALUE_LH, value.lines.length * value.lineHeight) }
   })
@@ -233,15 +267,17 @@ function renderCard(
 }
 
 export const roadmap: SvgComponent<RoadmapComponent> = {
-  measure(component, w) {
+  measure(component, w, ctx) {
     const n = component.items.length
     const cardW = (w - GAP * (n - 1)) / n
-    return Math.max(...component.items.map((it) => cardLayout(it, cardW).cardH))
+    return Math.max(
+      ...component.items.map((it) => cardLayout(it, cardW, ctx.fonts.heading, ctx.fonts.body).cardH),
+    )
   },
   render(component, box, ctx) {
     const n = component.items.length
     const cardW = (box.w - GAP * (n - 1)) / n
-    const layouts = component.items.map((it) => cardLayout(it, cardW))
+    const layouts = component.items.map((it) => cardLayout(it, cardW, ctx.fonts.heading, ctx.fonts.body))
     const measuredH = Math.max(...layouts.map((l) => l.cardH))
     // 均分密度拉伸：box.h 由布局分配时，卡高吃满（内容顶对齐，底部留白）。
     const cardH = Math.max(measuredH, box.h ?? measuredH)

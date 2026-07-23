@@ -133,10 +133,14 @@ Once a deck project exists, a follow-up message routes into exactly one of three
 | 2×2 strategic assessment (strengths/weaknesses/opportunities/threats) | `swot` | `matrix` |
 | 9-block business model canvas | `bmc` | separate `bullets`/`row_cards` |
 | Cumulative bridge/variance breakdown | `waterfall` | `chart` |
+| 2×2 macro-environment scan (political/economic/social/technological) | `pest` | `swot` |
+| Competitive-structure analysis (rivalry + 4 surrounding forces) | `five_forces` | `matrix` |
+| Two-axis value grid with color-coded cells (e.g. region × quarter) | `heatmap` | `matrix` |
+| Proportional flow/quantity distribution across stages (e.g. budget allocation, energy mix) | `sankey` | `chart` (funnel) or `flowchart` |
 
-`steps` vs `flowchart` is the most common miss: if the edges never branch, it is `steps`. `roadmap` vs `gantt` is the next: `roadmap` groups workstreams into swimlanes with no shared numeric axis, `gantt` plots dated bars against one shared axis all items compare against.
+`steps` vs `flowchart` is the most common miss: if the edges never branch, it is `steps`. `roadmap` vs `gantt` is the next: `roadmap` groups workstreams into swimlanes with no shared numeric axis, `gantt` plots dated bars against one shared axis all items compare against. `pest` vs `swot` is the next: `pest` is external macro-environment factors only (no internal strengths/weaknesses axis), always the same four named categories — an internal-vs-external strategic assessment is still `swot`. `sankey` vs `flowchart`/funnel `chart` is the last: `sankey` conserves and splits a quantity across branching/merging paths (the band width itself carries meaning), `flowchart` is decision/process branching with no quantity, and a funnel `chart` only ever narrows in one line, never branches or merges.
 
-`swot`/`bmc`/`waterfall`/`gantt` are *full-body*: each fills the entire slide and must be the slide's only component — see Capacity below.
+`swot`/`bmc`/`waterfall`/`gantt`/`pest`/`five_forces`/`heatmap`/`sankey` are *full-body*: each fills the entire slide and must be the slide's only component — see Capacity below.
 
 ### Image slides
 
@@ -146,7 +150,7 @@ Declare images once in `assets.images` and reference them by `asset_id` — doub
 
 A slide is a fixed-size canvas. Draft to fit on the first pass: few components per slide, short assertive headings, bullet items within about two lines. Component and bullets budgets scale with the deck's `pacing` axis (tightest for `spacious`, loosest for `dense`) — `validate` reports the exact numbers that applied, not a flat constant. These are warnings, not hard errors — worth fixing for a tighter deck, but they never block `render`. Body text size scales the other way: `spacious` renders the largest body font (32px vs. `balanced`'s 24px and `dense`'s 20px) even though it allows the fewest components, so a `spacious` slide needs fewer and shorter items, not just tighter ones. A bullet item that is long regardless of pacing — long enough to still overflow after shrinking to the render floor — *is* a hard `validate` error, for every bullet style (`default`/`plain`/`divided`/`numbered`/`checklist` alike — it would otherwise lose real text to an ellipsis). Treat "keep bullet items short" as a real constraint regardless of style. When in doubt, split into two slides — writing to fit beats fix-up loops.
 
-Four component types own the whole slide instead of sharing it: `swot`, `bmc`, `waterfall`, `gantt`. Each must be its slide's only component — `validate` hard-errors on a slide that mixes one in with `bullets` or anything else, it never silently drops the sibling.
+Eight component types own the whole slide instead of sharing it: `swot`, `bmc`, `waterfall`, `gantt`, `pest`, `five_forces`, `heatmap`, `sankey`. Each must be its slide's only component — `validate` hard-errors on a slide that mixes one in with `bullets` or anything else, it never silently drops the sibling.
 
 ### Beat
 

@@ -319,14 +319,20 @@ function renderKpiCardBody(
     unit,
     innerW
   )
+  // bold-metrics fix (2026-07-24): same defect class as components/kpi.tsx's
+  // own value text (see that file's identical fix and comment) — this text
+  // renders `fontWeight="bold"` in `ctx.fonts.heading` below, and
+  // `fittedUnit`'s tspan inherits that bold.
   const fittedValue = fitSvgLine(valueStr, {
     maxWidth: valueMaxWidth,
     fontSize: valueSize,
     minFontSize: BENTO_KPI_VALUE_MIN_SIZE,
+    bold: true,
+    fontFamily: ctx.fonts.heading,
   })
   const unitFontSize = Math.round(fittedValue.fontSize * 0.45)
   const fittedUnit = unit
-    ? truncateToUnits(unit, unitMaxWidth / unitFontSize)
+    ? truncateToUnits(unit, unitMaxWidth / unitFontSize, { bold: true, fontFamily: ctx.fonts.heading })
     : null
   const fittedLabel = fitSvgLine(item.label, {
     maxWidth: innerW,
@@ -729,6 +735,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 44,
     maxLines: 2,
     minPt: 24,
+    fontFamily: fonts.heading,
   })
   const headingLastY =
     HEADING_BASELINE +

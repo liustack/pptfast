@@ -4,6 +4,11 @@ import { code } from "../components/code"
 import { resolveFontStack } from "../fonts"
 import type { ComponentCtx } from "../components/types"
 import { auditSvgMarkup } from "./svg-audit"
+import { buildCtx } from "../FullSlideSvg"
+import { resolveStyle } from "../../themes"
+import { renderSvgMarkup } from "../serialize"
+import { FashionMastheadCover } from "../archetypes/cover-fashion-masthead"
+import type { PptxIR, Slide } from "@/ir"
 
 const wrap = (inner: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${inner}</svg>`
@@ -212,5 +217,105 @@ describe("auditSvgMarkup — mono/proportional alignment with the real code rend
     )
     const issues = auditSvgMarkup(markup)
     expect(issues.filter((i) => i.kind === "h-overflow")).toHaveLength(1)
+  })
+})
+
+// bold-metrics fix (2026-07-24), audit-sync (fix item 3). Same "renderer and
+// auditor must not diverge" lesson the mono round above already fixed for
+// the mono/proportional split, now applied to the *weight* axis:
+// `auditSvgMarkup` used to size every proportional `<text>` with the same
+// unweighted `measureTextUnits(content)` call regardless of its
+// `font-weight` attribute, structurally unable to disagree with the
+// (also-unweighted) renderer even when the exported font genuinely renders
+// bold — root-cause.md S4.2's "estimator/audit shared-blindness" gap, the
+// mechanism that let the reported cover-overflow defect audit clean (0
+// findings) while visibly overflowing in PowerPoint.
+describe("auditSvgMarkup — bold-weight alignment with the real exporter (bold-metrics fix, 2026-07-24)", () => {
+  const georgiaCtx: ComponentCtx = {
+    colors: {
+      bg: "#FFFFFF",
+      surface: "#F4F4F4",
+      primary: "#051C2C",
+      accent: "#FFC72C",
+      text: "#0A0E14",
+      muted: "#5D6B65",
+      chartPalette: ["#051C2C", "#FFC72C"],
+    },
+    fonts: { heading: "Georgia, Songti SC, STSong, serif", body: "Georgia, Songti SC, STSong, serif", mono: resolveFontStack([], "mono") },
+    bodyFontPx: 24,
+  }
+
+  // Calibrated so the OLD unweighted estimate ("fits": 8.39 units * 139px =
+  // 1166.21, under the 1168 box) and the NEW bold-aware estimate ("Georgia
+  // Bold" real hmtx 1366.79px, root-cause.md S3) land on opposite sides of
+  // the same 1168px box — the exact reported defect's own numbers, not a
+  // synthetic case built to force a pass.
+  const REPORTED_LINE = "Components Demo"
+  const REPORTED_FONT_SIZE = 139
+  const REPORTED_BOX_W = 1168
+
+  it("red-first: a bold Georgia run at the exact reported fontSize/box now flags h-overflow (pre-fix this was silently clean — see root-cause.md's '0 findings' repro)", () => {
+    const markup = wrap(
+      `<g data-audit-box="0,0,${REPORTED_BOX_W}">` +
+        `<text x="0" y="20" font-size="${REPORTED_FONT_SIZE}" font-weight="900" font-family="${georgiaCtx.fonts.heading}">${REPORTED_LINE}</text>` +
+        `</g>`,
+    )
+    const issues = auditSvgMarkup(markup)
+    expect(issues.filter((i) => i.kind === "h-overflow")).toHaveLength(1)
+  })
+
+  it("scope fence: the identical line/box at Regular weight (no font-weight attribute) stays clean — bold-awareness doesn't leak into non-bold text", () => {
+    const markup = wrap(
+      `<g data-audit-box="0,0,${REPORTED_BOX_W}">` +
+        `<text x="0" y="20" font-size="${REPORTED_FONT_SIZE}" font-family="${georgiaCtx.fonts.heading}">${REPORTED_LINE}</text>` +
+        `</g>`,
+    )
+    const issues = auditSvgMarkup(markup)
+    // Regular Georgia is within tolerance for this string (root-cause.md
+    // S3: +1.41%, inside the 3% no-action band) — genuinely does not
+    // overflow, not merely "not flagged."
+    expect(issues.filter((i) => i.kind === "h-overflow")).toEqual([])
+  })
+
+  it("scope fence: font-weight=\"500\" (below this codebase's bold threshold) is not treated as bold", () => {
+    const markup = wrap(
+      `<g data-audit-box="0,0,${REPORTED_BOX_W}">` +
+        `<text x="0" y="20" font-size="${REPORTED_FONT_SIZE}" font-weight="500" font-family="${georgiaCtx.fonts.heading}">${REPORTED_LINE}</text>` +
+        `</g>`,
+    )
+    const issues = auditSvgMarkup(markup)
+    expect(issues.filter((i) => i.kind === "h-overflow")).toEqual([])
+  })
+
+  // Renderer/auditor non-divergence, real components on both sides (mono
+  // round's own precedent — real `code.render()` + real `auditSvgMarkup`,
+  // no reimplementation on either side). `FashionMastheadCover` paints no
+  // `data-audit-box` of its own around its heading (confirmed: no archetype
+  // does — headings rely on `fitHeadingLines`'s own `Math.floor` sizing as
+  // their safety net, not audit instrumentation), so this test supplies the
+  // same box the archetype itself declares to `fitHeadingLines`
+  // (maxWidth=1168) to ask the honest question this fix's brief item 3
+  // requires: given the box the renderer itself sized against, do the two
+  // now agree? Before this fix both sides shared one unweighted formula and
+  // could never disagree (a tautology); after this fix, they use the same
+  // bold-aware formula on real bold text and must still agree.
+  it("real renderer + real auditor agree: the fixed heading's own chosen fontSize is judged fitting for the same box it was sized against", () => {
+    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const slide: Slide = { type: "cover", heading: "Structure Components Demo", components: [] } as Slide
+    const ir: PptxIR = {
+      version: "3",
+      filename: "x.pptx",
+      theme: { id: "consulting" },
+      meta: {},
+      assets: { images: {} },
+      slides: [slide],
+    } as unknown as PptxIR
+    const out = renderSvgMarkup(<FashionMastheadCover ir={ir} slide={slide} index={0} ctx={ctx} />)
+    // Wrap exactly the box the archetype itself passed to `fitHeadingLines`
+    // (x=56, maxWidth=1168) around the real rendered markup — same
+    // convention as the mono round's own `data-audit-box` envelope above.
+    const markup = wrap(`<g data-audit-box="56,0,1168">${out}</g>`)
+    const issues = auditSvgMarkup(markup)
+    expect(issues.filter((i) => i.kind === "h-overflow")).toEqual([])
   })
 })

@@ -99,6 +99,13 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 132,
     maxLines: 2,
     minPt: 40,
+    // bold-metrics fix (2026-07-24): this heading renders at fontWeight=500
+    // below (one of exactly 2 archetype heading declarations under 600, the
+    // codebase's bold threshold — root-cause.md S5), so it opts out of
+    // `fitHeadingLines`'s bold-default flip explicitly rather than being
+    // over-corrected for a weight it never actually exports as.
+    bold: false,
+    fontFamily: fonts.heading,
   })
   const isTwoLine = heading.lines.length > 1
   const headingY = isTwoLine

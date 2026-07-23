@@ -1517,6 +1517,42 @@ describe("findOverlapIssues — synthetic markup", () => {
     const issues = findOverlapIssues(markup)
     expect(issues).toHaveLength(1)
   })
+
+  // Bold-metrics fix follow-up (2026-07-24, final-review Important-1):
+  // `collectLeafBoxes`'s own `<text>` widening (the Task 4 fix pinned by the
+  // Q4 cases above) called `measureTextUnits(content)` with no weight
+  // argument at all — unconditionally Regular — even after the bold-metrics
+  // fix taught the estimator to take `{ bold, fontFamily }` and taught
+  // `svg-audit.ts`'s sibling h-overflow check to read the element's real
+  // `font-weight` via `isBold()` (see that file's own derivation comment).
+  // This is the missing twin consumer: same estimator, same font, same
+  // size, differing only by `font-weight` — proves the overlap walker now
+  // widens a bold leaf's box further than a Regular one, through the real
+  // `findOverlapIssues` public path (not an internal export).
+  //
+  // "Maximum Momentum" at Georgia 32px is the same phrase this file's own
+  // calibration history (see `measureTextUnits`'s EPITAPH comment in
+  // svg-text-layout.ts) names as a real LibreOffice-confirmed Bold overflow
+  // repro ("Maximum Momentum Wave" clipped its trailing "e") — not a
+  // cherry-picked synthetic string. The neighbor box sits at a declared gap
+  // (x=390) just past the Regular estimate's own right edge (~386px), so
+  // Regular text stays clear while the Bold-aware exact-table widening
+  // (Georgia Bold's real advances run well past the Regular class-average
+  // estimate — this file's own EPITAPH comment measured "m" alone at a
+  // 1.81x ratio) reaches into it.
+  it("widens a bold leaf's box further than the same text/family/size at regular weight (final-review Important-1: collectLeafBoxes was weight-blind)", () => {
+    const heading = (weight?: string) =>
+      `<g data-audit-box="100,300,10"><text x="100" y="320" font-size="32" font-family="Georgia, Songti SC, STSong, serif"${
+        weight ? ` font-weight="${weight}"` : ""
+      }>Maximum Momentum</text></g>`
+    const neighbor = box(390, 300, 400, 80)
+    const regularMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${heading()}${neighbor}</svg>`
+    const boldMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${heading("700")}${neighbor}</svg>`
+
+    expect(findOverlapIssues(regularMarkup)).toEqual([])
+    const boldIssues = findOverlapIssues(boldMarkup)
+    expect(boldIssues).toHaveLength(1)
+  })
 })
 
 describe("auditDeck — finding shape contract", () => {

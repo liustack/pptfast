@@ -127,6 +127,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
     fontSize: 40,
     maxLines: 2,
     minPt: 24,
+    fontFamily: fonts.heading,
   })
   const headingFudge = Math.round(heading.fontSize * BASELINE_FUDGE_RATIO)
   const titleLastY =

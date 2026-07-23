@@ -87,6 +87,17 @@ genuinely rendered ink, not of insufficient calibration:
     wave Task 3 review's Important-1 finding) — extending `collectLeafBoxes`
     narrows the amount of *unwidened* text this detector misses, it does not
     make estimate-vs-real-glyph drift go away.
+  - Worth separating from that kerning gap, which is permanent and
+    weight-independent: this branch's bold-metrics fix (2026-07-24) made the
+    renderer bold-aware first (`measureTextUnits` gained a
+    `{ bold, fontFamily }` parameter, `isBold()`'s threshold mirroring
+    `svg2pptx/text.ts`'s own OOXML `b="1"` decision), which for one window
+    left both auditors still assuming Regular weight against real bold
+    render geometry — a structural under-widening on bold text specifically,
+    not kerning-scale rounding noise. That gap is now closed, not just
+    narrowed: `svg-audit.ts`'s h-overflow check and `collectLeafBoxes`'s
+    overlap widening (the twin consumer this fix restored parity on) both
+    read the element's real `font-weight` via `isBold()` before measuring.
   - The estimate only ever reaches text inside a live `data-audit-box`
     scope. Task 4's grep inventory (task-4-report.md, borrow-wave
     scratchpad, not shipped in this repo) found the codebase's largest
@@ -118,7 +129,7 @@ one — same discipline as this section's donut/pie AABB gap above.
 Sweeps every theme × slide type × curated archetype for the W4 defect class. Two guardrails worth knowing about:
 
 - **`ALLOWLIST`** (`full-matrix-contrast.test.ts`, search by name): named, adjudicated exceptions only — never silent. Each entry documents *why* — e.g. `fashion-chapter`'s decorative chapter-number watermark (deliberately faint by design; carries a `ratioMin`/`ratioMax` band plus a `TEXT_SHAPE_GUARD` regex so a future regression on the same digit still fails the net instead of silently matching the old exception) or `tech`'s `fashion-masthead` meta line (a single reviewer-adjudicated rounding-distance-under-the-floor borderline, theme+layout-scoped with no shape/ratio guard needed).
-- **`MUTED_SURFACE_CLASS`** + its completeness guard (same file, search by name — line numbers drift with every test insertion, so this doc cites symbols only): every one of the 28 `COMPONENT_TYPES` needs a human-reviewed classification of where its `colors.muted` text renders (`no-muted-fill`/`page-bg`/`flat-surface`/`needs-fixture`/`known-gap`) — `Object.hasOwn` against `COMPONENT_TYPES` fails the test the moment a 29th component ships unclassified. Exists because a first calibration pass probed only two surfaces (page background, bento-panel card) and missed `content-matrix`'s tone-blended cell background entirely — this guard closes the *class* of blind spot, not just that instance.
+- **`MUTED_SURFACE_CLASS`** + its completeness guard (same file, search by name — line numbers drift with every test insertion, so this doc cites symbols only): every one of the 32 `COMPONENT_TYPES` needs a human-reviewed classification of where its `colors.muted` text renders (`no-muted-fill`/`page-bg`/`flat-surface`/`needs-fixture`/`known-gap`) — `Object.hasOwn` against `COMPONENT_TYPES` fails the test the moment a 33rd component ships unclassified. Exists because a first calibration pass probed only two surfaces (page background, bento-panel card) and missed `content-matrix`'s tone-blended cell background entirely — this guard closes the *class* of blind spot, not just that instance.
 
 ## Muted calibration discipline
 

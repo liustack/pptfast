@@ -317,7 +317,7 @@ describe("duplicate slide id gate (W5 task 1)", () => {
   })
 })
 
-describe("full-body component exclusivity gate (structure-components wave task 1 decision 2, set extended by task 2)", () => {
+describe("full-body component exclusivity gate (structure-components wave 1 task 1 decision 2, set extended by wave 1 task 2 and wave 2 tasks 1-2)", () => {
   const swotOnly = { type: "swot", strengths: ["s"], weaknesses: ["w"], opportunities: ["o"], threats: ["t"] }
   const bmcOnly = {
     type: "bmc",
@@ -345,6 +345,35 @@ describe("full-body component exclusivity gate (structure-components wave task 1
       { label: "a", start: 0, end: 3 },
       { label: "b", start: 2, end: 5 },
     ],
+  }
+  const pestOnly = {
+    type: "pest",
+    political: { items: ["p"] },
+    economic: { items: ["e"] },
+    social: { items: ["s"] },
+    technological: { items: ["t"] },
+  }
+  const fiveForcesOnly = {
+    type: "five_forces",
+    rivalry: { items: ["r"] },
+    new_entrants: { items: ["n"] },
+    supplier_power: { items: ["sp"] },
+    buyer_power: { items: ["bp"] },
+    substitutes: { items: ["su"] },
+  }
+  const heatmapOnly = {
+    type: "heatmap",
+    x_labels: ["Q1", "Q2"],
+    y_labels: ["A"],
+    values: [[1, 2]],
+  }
+  const sankeyOnly = {
+    type: "sankey",
+    nodes: [
+      { id: "a", label: "A" },
+      { id: "b", label: "B" },
+    ],
+    links: [{ from: "a", to: "b", value: 10 }],
   }
 
   it("accepts a slide whose sole component is a full-body type (swot)", () => {
@@ -375,6 +404,30 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     const v = validateIr({
       ...raw,
       slides: [{ type: "content", heading: "Gantt", components: [ganttOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts a slide whose sole component is a full-body type (pest)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "PEST", components: [pestOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts a slide whose sole component is a full-body type (five_forces)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "Five Forces", components: [fiveForcesOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("accepts a slide whose sole component is a full-body type (heatmap)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "Heatmap", components: [heatmapOnly] }],
     })
     expect(v.ok).toBe(true)
   })
@@ -414,6 +467,53 @@ describe("full-body component exclusivity gate (structure-components wave task 1
     })
     expect(v.ok).toBe(false)
     expect(v.errors[0]!.message).toMatch(/"waterfall, gantt" is a full-body component/)
+  })
+
+  it("hard-rejects two full-body components across the wave-2 named-slot pair sharing one slide", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "PEST + Five Forces", components: [pestOnly, fiveForcesOnly] }],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/"pest, five_forces" is a full-body component/)
+  })
+
+  it("hard-rejects the wave-2 value-grid full-body type (heatmap) paired with an ordinary sibling", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        {
+          type: "content",
+          heading: "Heatmap + bullets",
+          components: [heatmapOnly, { type: "bullets", items: ["extra sibling"] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/"heatmap" is a full-body component/)
+  })
+
+  it("accepts a slide whose sole component is a full-body type (sankey)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [{ type: "content", heading: "Sankey", components: [sankeyOnly] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("hard-rejects the wave-2 flow-graph full-body type (sankey) paired with an ordinary sibling", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        {
+          type: "content",
+          heading: "Sankey + bullets",
+          components: [sankeyOnly, { type: "bullets", items: ["extra sibling"] }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.message).toMatch(/"sankey" is a full-body component/)
   })
 
   it("hard-rejects two components of the *same* full-body type sharing one slide (task-1 review minor: literal same-type double)", () => {
@@ -1183,7 +1283,7 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
     expect(message).toContain('"kpi_card" is not a valid component type')
     expect(message).toContain('did you mean "kpi_cards"?')
     expect(message).toContain("pptfast schema")
-    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 28-option list is never flattened into the message
+    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 32-option list is never flattened into the message
     expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
   })
 

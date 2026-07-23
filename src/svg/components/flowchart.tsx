@@ -114,7 +114,7 @@ export function normalizeLabelLines(label: string): string[] {
 
 /** Node box width sized by the widest line's estimated width (units × font size). */
 function nodeWidth(lines: string[]): number {
-  const maxUnits = Math.max(...lines.map(measureTextUnits), 0)
+  const maxUnits = Math.max(...lines.map((l) => measureTextUnits(l)), 0)
   const textW = maxUnits * FONT_SIZE + NODE_PAD_X * 2
   return Math.min(NODE_MAX_W, Math.max(NODE_MIN_W, textW))
 }

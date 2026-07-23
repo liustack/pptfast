@@ -28,7 +28,7 @@ import type { Component } from "@/ir"
  * about.
  */
 
-/** The IR's component discriminant union (`ComponentSchema`'s 28 `type`
+/** The IR's component discriminant union (`ComponentSchema`'s 32 `type`
  * literals), aliased so the 6 sets below don't each re-spell
  * `Component["type"]`. Not a redefinition — always structurally identical to
  * the IR's own type, per this task's requirement that the string-literal
@@ -125,10 +125,14 @@ export const EVIDENCE_TYPES = [
 /**
  * "满幅" (full-body) component: a type meant to own an entire content rect by
  * itself rather than stack alongside sibling components — `swot`'s 2×2
- * quadrant grid, `bmc`'s nine-block canvas (structure-components wave task
- * 1), `waterfall`'s bridge chart, `gantt`'s shared-axis time bars
- * (structure-components wave task 2, decision 1's set — extended, not
- * re-adjudicated, by task 2). `SvgContent.tsx` special-cases a slide whose
+ * quadrant grid, `bmc`'s nine-block canvas, `pest`'s 2×2 macro-environment
+ * grid, `five_forces`'s hub-and-spoke panel set (structure-components wave 2
+ * task 1, extending wave 1's own named-slot family), `waterfall`'s bridge
+ * chart, `gantt`'s shared-axis time bars (structure-components wave 1 task
+ * 2, decision 1's set), `heatmap`'s value-driven color grid
+ * (structure-components wave 2 task 2), `sankey`'s layered flow diagram
+ * (structure-components wave 2 task 3 — the wave's largest component).
+ * `SvgContent.tsx` special-cases a slide whose
  * sole component is one of these (checked *before* the `big_number`/
  * `assertion_evidence` arrangement branches, so a full-body component wins
  * regardless of what `arrangement` happens to be set to): the whole content
@@ -146,4 +150,13 @@ export const EVIDENCE_TYPES = [
  * that, rejecting the deck with a named `ValidationIssue` rather than
  * silently dropping the extra component(s).
  */
-export const FULL_BODY_TYPES: ReadonlySet<ComponentType> = new Set(["swot", "bmc", "waterfall", "gantt"])
+export const FULL_BODY_TYPES: ReadonlySet<ComponentType> = new Set([
+  "swot",
+  "bmc",
+  "waterfall",
+  "gantt",
+  "pest",
+  "five_forces",
+  "heatmap",
+  "sankey",
+])

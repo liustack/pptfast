@@ -73,6 +73,40 @@ export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = 
     costs: "cost_structure",
     revenue: "revenue_streams",
   },
+  // PEST macro-environment scan (structure-components wave 2 task 4): each
+  // of the 4 named slots is already a single common English adjective
+  // (unlike bmc's compound canonical names above), so the predictable slip
+  // is reaching for its noun form instead — a model that glosses the
+  // acronym as "Politics, Economics, Society, Technology" (a common
+  // informal expansion) writes the noun, not this schema's adjective.
+  pest: {
+    politics: "political",
+    economy: "economic",
+    society: "social",
+    technology: "technological",
+  },
+  // Porter's Five Forces (structure-components wave 2 task 4): the same
+  // bare-noun-for-compound-key slip bmc's table documents above —
+  // `rivalry`/`substitutes` are already bare nouns matching their own
+  // canonical spelling (no alias possible there), but the three qualified
+  // names invite dropping the qualifier.
+  five_forces: {
+    entrants: "new_entrants",
+    suppliers: "supplier_power",
+    buyers: "buyer_power",
+  },
+  // Heatmap (structure-components wave 2 task 4): `x_labels`/`y_labels`/
+  // `values` are chart-vocabulary names a model describing a plain "rows x
+  // columns" grid casually reaches past — `rows`/`columns` are the natural
+  // table words for the same two axes, `data` the generic noun for "the
+  // numbers." `range` is the natural word for `domain`'s `{min,max}`
+  // value-scale override.
+  heatmap: {
+    rows: "y_labels",
+    columns: "x_labels",
+    data: "values",
+    range: "domain",
+  },
 }
 
 /** One component type's item-array field aliases: which array to walk, and the alias map applied to each item object in it. */
@@ -99,6 +133,19 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, ItemFieldAlia
   // calendar's own "from"/"to" range vocabulary.
   waterfall: { itemsKey: "items", aliases: { amount: "value" } },
   gantt: { itemsKey: "items", aliases: { from: "start", to: "end" } },
+  // Sankey (structure-components wave 2 task 4): `source`/`target` is the
+  // exact field-name convention D3-sankey and Plotly's own Sankey trace
+  // both use for a link's two endpoints — a model that has ever produced a
+  // sankey spec for either of those two (the dominant JS/Python charting
+  // libraries for this diagram type) reaches for that vocabulary over this
+  // schema's `from`/`to`. `nodes[].label` carries no alias here: D3's own
+  // classic convention there is `name`, but rescuing it would need a
+  // *second* item-array entry for the same component type (`nodes`
+  // alongside `links`), which `ItemFieldAliasSpec`'s one-`itemsKey`-per-
+  // component-type shape does not support — a real, scoped-out gap, not a
+  // silent drop, left for a future mechanism change rather than a data
+  // addition.
+  sankey: { itemsKey: "links", aliases: { source: "from", target: "to" } },
   // Real-world tech-deck mental model: layers have a "name" and hold
   // "components" or "nodes" — pptfast's own top-level components array
   // shares the word "components" by coincidence only; this alias is scoped

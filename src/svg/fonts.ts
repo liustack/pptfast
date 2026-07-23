@@ -299,3 +299,24 @@ export function resolveFontStack(stack: string[], role: FontRole): string {
 export function isMonoFontFamily(fontFamily: string): boolean {
   return fontFamily.endsWith(`, ${PREVIEW_FALLBACK.mono}`)
 }
+
+/**
+ * True when a DrawingML/CSS `font-weight` value renders bold. Shared
+ * between the export converter (`svg2pptx/text.ts`, which maps this to
+ * OOXML's boolean `b="1"` run property) and the overflow auditor
+ * (`svg-audit.ts`'s `auditSvgMarkup`) so the two can never literally-drift
+ * apart on which weight value counts as bold (bold-metrics fix,
+ * 2026-07-24) — the same class of risk `isMonoFontFamily` above already
+ * closed for the mono/proportional split, per root-cause.md's
+ * "estimator/audit shared-blindness" finding: the auditor and the renderer
+ * sharing one *source* for a judgment, not each hand-rolling their own
+ * copy that can silently diverge. Matches CSS's two bold keywords
+ * (`"bold"`/`"bolder"`) or any numeric weight >= 600 — OOXML has no weight
+ * granularity beyond a single on/off bit, so PowerPoint renders anything
+ * >= 600 with the same real Bold glyph outline as a literal `"bold"`.
+ */
+export function isBold(weight: string | null): boolean {
+  if (!weight) return false
+  if (weight === "bold" || weight === "bolder") return true
+  return parseInt(weight, 10) >= 600
+}

@@ -203,7 +203,7 @@ export const BrandSchema = z
   })
   .strict()
 
-// ── Components（28 种）──
+// ── Components（32 种）──
 
 // gantt's own item schema is pulled out to a named const (structure-
 // components wave task 2, decision 6) rather than inlined in the union
@@ -227,6 +227,132 @@ const GanttItemSchema = z
     message: "gantt item's end must be greater than its start (no zero/negative-duration bars)",
     path: ["end"],
   })
+
+// PEST macro-environment scan (structure-components wave task 1, second
+// component of this task — same "named-slot family" discipline as
+// swot/bmc above: four independent named fields, never a positional array a
+// weak model could mis-order). Each quadrant carries its own optional
+// `title` inline (`{title?, items}`) instead of a sibling `labels` object
+// the way swot does — this task's own schema-shape call, not a swot-copy
+// oversight (see pest.tsx's own file header for the render-side rationale).
+const PestQuadrantSchema = z
+  .object({
+    title: z.string().optional(),
+    items: z.array(z.string()).min(1).max(5),
+  })
+  .strict()
+
+// Porter's Five Forces hub-and-spoke (structure-components wave 2 task 1,
+// second component of this task): `rivalry` is the center panel
+// (competitive rivalry — the model's own namesake force), the other four
+// are the surrounding forces. All five named slots share one shape —
+// `intensity` is meaningful for `rivalry` too, a market's own competitive
+// intensity is exactly what the center panel measures, so it isn't
+// special-cased out of the shared schema the way a "hub has no intensity"
+// design would have done.
+const FiveForcesPanelSchema = z
+  .object({
+    label: z.string().optional(),
+    intensity: z.enum(["low", "medium", "high"]).optional(),
+    items: z.array(z.string()).min(1).max(5),
+  })
+  .strict()
+
+// Sankey flow diagram (structure-components wave 2 task 3 — the wave's
+// largest component and its sharpest differentiator: Anthropic's own
+// official pptx-authoring skill classifies a sankey as "PowerPoint has no
+// native form for this" and ships it as a rasterized image. This component
+// routes every node bar and flow band through the existing SVG path ->
+// custGeom pipeline instead, so the export carries zero `<p:pic>` for it —
+// natively editable vectors, not a picture of a chart).
+//
+// Two named sub-schemas (not inlined, same "cross-field refine needs its own
+// symbol" precedent GanttItemSchema set above): `nodes`/`links` is a graph,
+// not a named-slot family (swot/pest's own "positional array a weak model
+// could mis-order" concern doesn't apply here — a node's identity is its own
+// `id`, referenced by `links[].from`/`to`, not by array position), so this
+// stays the natural {nodes[], links[]} shape rather than forcing named slots
+// where none would make sense.
+const SankeyNodeSchema = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+  })
+  .strict()
+
+/**
+ * Classic 3-color DFS cycle detection, returning one concrete node-id path
+ * (e.g. `["a","b","c","a"]`) rather than just "a cycle exists somewhere" —
+ * actionable for a weak model to repair by naming exactly which link to
+ * remove or redirect (plan task 3 item 1: "带可执行消息"). Iterates
+ * `nodeIds`/each node's outgoing adjacency list in *authored array order*
+ * (both built from `c.nodes`/`c.links` by the caller, never a Map/Set
+ * iteration for anything order-sensitive), so the specific cycle reported is
+ * deterministic across runs even when a graph contains more than one.
+ *
+ * Written as a return-threading recursive helper — not a closure mutating an
+ * outer `let` — deliberately: an earlier version threaded a shared `let
+ * cyclePath` through the recursive `visit` closure instead, which TS's
+ * control-flow narrowing couldn't follow across the closure boundary
+ * (`cyclePath` narrowed to `never` at the read site despite the runtime
+ * value being correct) — functional return-threading sidesteps that
+ * whole class of narrowing fragility rather than fighting it with a type
+ * assertion.
+ */
+function findSankeyCycle(nodeIds: readonly string[], adjacency: ReadonlyMap<string, string[]>): string[] | null {
+  const WHITE = 0
+  const GRAY = 1
+  const BLACK = 2
+  const color = new Map<string, number>(nodeIds.map((id) => [id, WHITE]))
+  const stack: string[] = []
+
+  const visit = (id: string): string[] | null => {
+    color.set(id, GRAY)
+    stack.push(id)
+    for (const next of adjacency.get(id) ?? []) {
+      if (color.get(next) === GRAY) {
+        const start = stack.indexOf(next)
+        return [...stack.slice(start), next]
+      }
+      if (color.get(next) === WHITE) {
+        const found = visit(next)
+        if (found) return found
+      }
+    }
+    stack.pop()
+    color.set(id, BLACK)
+    return null
+  }
+
+  for (const id of nodeIds) {
+    if (color.get(id) === WHITE) {
+      const found = visit(id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const SankeyLinkSchema = z
+  .object({
+    from: z.string(),
+    to: z.string(),
+    /** Flow magnitude, strictly positive (`z.number().positive()` — the
+     * schema-level decision for "value > 0 or explicit zero-value handling",
+     * plan task 3 item 1). A zero or negative value carries no visible flow
+     * to draw — rejecting it at the schema is a clearer signal than silently
+     * rendering an invisible or degenerate band, and matches this schema's
+     * own posture elsewhere (gantt's item `.refine` rejects a zero-duration
+     * bar the same way, for the same reason: a valid-looking but
+     * un-renderable-as-intended value is a schema-time error, not a
+     * render-time silent no-op). A *tiny-but-positive* value is legal and
+     * handled at render time instead — `sankey.tsx`'s `MIN_BAND_H` floors it
+     * to a visible minimum thickness rather than letting it vanish, the
+     * pathological case named in the plan's "extreme value ratio (1:10000)"
+     * probe. */
+    value: z.number().positive(),
+  })
+  .strict()
 
 const ComponentSchema = z.discriminatedUnion("type", [
   z
@@ -676,10 +802,193 @@ const ComponentSchema = z.discriminatedUnion("type", [
       axis_labels: z.array(z.string()).optional(),
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("pest"),
+      /** 政治/经济/社会/技术——经典 2×2 PEST 宏观环境扫描。每槽 1-5 条，各槽
+       * 自带可选 `title` 覆写（缺省用固定英文全称，见 pest.tsx）。 */
+      political: PestQuadrantSchema,
+      economic: PestQuadrantSchema,
+      social: PestQuadrantSchema,
+      technological: PestQuadrantSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("five_forces"),
+      /** 波特五力——中心「竞争强度」+ 四向力量（新进入者/供应商议价力/买方
+       * 议价力/替代品威胁）。五槽同构，`intensity` 对中心槽同样有意义（见
+       * {@link FiveForcesPanelSchema}）。 */
+      rivalry: FiveForcesPanelSchema,
+      new_entrants: FiveForcesPanelSchema,
+      supplier_power: FiveForcesPanelSchema,
+      buyer_power: FiveForcesPanelSchema,
+      substitutes: FiveForcesPanelSchema,
+    })
+    .strict(),
+  // 值驱动数值网格家族（structure-components wave 2 task 2）：另一支满幅
+  // 组件——形状由 x_labels/y_labels 两个具名数组直接推导（无独立 cols/rows
+  // 字段，杜绝两套数字互相打架），values 矩形性用三条 `.refine` 校验
+  // （行数=y_labels 长度、每行列数=x_labels 长度、可选 domain.max>=min）。
+  // zod v4 下 `.refine()` 直接挂在 discriminatedUnion 成员对象上仍保留
+  // `.shape`（经本任务实测确认，不同于 v3 的 ZodEffects 包装丢 `.shape`
+  // 的旧顾虑——`GanttItemSchema` 当年绕开的那个坑在 v4 已不成立），因此这里
+  // 不必像 gantt 的 refine 那样退一层塞进嵌套数组项，直接写在组件对象本身。
+  z
+    .object({
+      type: z.literal("heatmap"),
+      /** 列头（沿横轴，每列一个），1-10 项——1 项即单列热力图（病态但合法，
+       * 见 heatmap.tsx 头注）。 */
+      x_labels: z.array(z.string()).min(1).max(10),
+      /** 行头（沿纵轴，每行一个），1-10 项——1 项即单行热力图。 */
+      y_labels: z.array(z.string()).min(1).max(10),
+      /** 值矩阵，行优先：`values[row][col]`。行数必须等于 y_labels 长度、
+       * 每行列数必须等于 x_labels 长度（下方 `.refine`）——不接受锯齿数组。
+       * 无正负号约束（负值合法业务数据，如同比降幅）。 */
+      values: z.array(z.array(z.number())).min(1),
+      /** 显式色阶值域覆写，缺省取 values 的真实 min/max。`min===max`
+       * （退化域）合法——渲染层落回统一中间色调，不是 schema 层拒收的
+       * 病态（见 heatmap.tsx 的 `valueT`）。`min>max`（真正的顺序错误）
+       * 才是 schema 层拒收的对象（下方 `.refine`）。 */
+      domain: z.object({ min: z.number(), max: z.number() }).strict().optional(),
+      /** 每格叠加显示数值（原样 `String(value)`，不做千分位/小数位格式化——
+       * 格式化留给未来任务，v1 范围内如实展示原始数字）。缺省不显示。 */
+      show_values: z.boolean().optional(),
+      /** 横轴/纵轴整体说明（如「季度」/「地区」），复用 chart.tsx 的
+       * axes.x_title/y_title 拟合机制——与 x_labels/y_labels（每列/每行的
+       * 具体刻度）是两个不同语义层，同时可选、互不依赖。 */
+      x_title: z.string().optional(),
+      y_title: z.string().optional(),
+    })
+    .strict()
+    .refine((c) => c.values.length === c.y_labels.length, {
+      message: "heatmap values row count must equal y_labels length (one row per y_label)",
+      path: ["values"],
+    })
+    .refine((c) => c.values.every((row) => row.length === c.x_labels.length), {
+      message: "heatmap every values row's length must equal x_labels length (one column per x_label)",
+      path: ["values"],
+    })
+    .refine((c) => !c.domain || c.domain.max >= c.domain.min, {
+      message: "heatmap domain.max must be greater than or equal to domain.min",
+      path: ["domain"],
+    }),
+  // Sankey (structure-components wave 2 task 3) — see SankeyNodeSchema/
+  // SankeyLinkSchema above for the shape rationale. Bounds: 2-16 nodes
+  // (a single node has nothing to flow into/out of — `min(2)` is the
+  // smallest graph with at least one real edge), 1-30 links. Both ceilings
+  // are a render-geometry derivation, not an arbitrary round number: the
+  // full-body content box is ~500-600px tall, `sankey.tsx`'s own
+  // `MIN_NODE_H`+`NODE_GAP` floor keeps even the most-populated single layer
+  // (worst case: every node lands in one layer, e.g. an all-disconnected
+  // graph) legible up to about 16 stacked bars before they'd compress below
+  // a readable minimum — the same "schema max = the largest shape the real
+  // renderer keeps legible" discipline heatmap's 10x10 bound and gantt's
+  // 2-8 item bound already establish. 30 links comfortably covers the
+  // "dense crossing" topology the plan names as a required visual case
+  // (e.g. a 4-layer, 4-node-per-layer diagram with every adjacent layer
+  // pair fully connected is 4*4*3=48 possible edges, well above what a
+  // legible band stack can carry) without inviting an unbounded array.
+  z
+    .object({
+      type: z.literal("sankey"),
+      nodes: z.array(SankeyNodeSchema).min(2).max(16),
+      links: z.array(SankeyLinkSchema).min(1).max(30),
+    })
+    .strict()
+    .superRefine((c, ctx) => {
+      // 1. Unique node ids — a duplicated id makes every downstream
+      // `links[].from`/`to` reference ambiguous (which node?), so this is
+      // checked first and independently of the endpoint-existence check
+      // below (a link referencing a duplicated id would otherwise "resolve"
+      // against either occurrence, masking the real problem).
+      const idCounts = new Map<string, number>()
+      for (const n of c.nodes) idCounts.set(n.id, (idCounts.get(n.id) ?? 0) + 1)
+      const duplicateIds = [...idCounts].filter(([, count]) => count > 1).map(([id]) => id)
+      if (duplicateIds.length > 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["nodes"],
+          message: `sankey node ids must be unique — duplicated: ${duplicateIds.map((id) => `'${id}'`).join(", ")}`,
+        })
+      }
+
+      // 2. Every link's from/to must reference a declared node id, and 3. no
+      // self-loops (a node flowing into itself has no meaningful band
+      // geometry — top/bottom of the same bar — so it's rejected outright
+      // rather than special-cased at render time, plan task 3 item 1's
+      // explicit "self-loops rejected with an actionable message"). Every
+      // message below is single-quoted (never a raw `"` around an id).
+      //
+      // The endpoint-existence checks' `path` drills to the exact field
+      // (`["links", i, "from"]`/`["links", i, "to"]`) — the self-loop
+      // check's stays at `["links", i]`, since neither endpoint alone is
+      // "wrong" there — both are equal, valid ids, it's the pair that's
+      // rejected. This briefly used a workaround, now removed: the
+      // browser-distribution e2e leg's `BARE_STATIC_IMPORT` scanner
+      // (`scripts/e2e.mts`) used to do a raw text match with no notion of
+      // string-literal context, so a compiled zod issue `path` array ending
+      // in the literal element `"from"` collided with its bare-import scan
+      // exactly like a minified `import x from"pkg"` would. Fixed at the
+      // scanner (syntax-aware now — see that file's own doc comment), so
+      // the natural, most-precise path is safe again and no longer needs to
+      // route around a false positive one layer away from where it lives.
+      const nodeIds = new Set(c.nodes.map((n) => n.id))
+      const availableIds = [...nodeIds].map((id) => `'${id}'`).join(", ") || "(no nodes declared)"
+      let hasStructuralLinkError = false
+      c.links.forEach((link, i) => {
+        if (link.from === link.to) {
+          hasStructuralLinkError = true
+          ctx.addIssue({
+            code: "custom",
+            path: ["links", i],
+            message: `sankey link ${i} is a self-loop ('${link.from}' -> '${link.to}') — self-loops are not supported, remove this link or route the flow through an intermediate node instead`,
+          })
+        }
+        if (!nodeIds.has(link.from)) {
+          hasStructuralLinkError = true
+          ctx.addIssue({
+            code: "custom",
+            path: ["links", i, "from"],
+            message: `sankey link ${i}'s 'from' node id '${link.from}' is not declared in nodes — available: ${availableIds}`,
+          })
+        }
+        if (!nodeIds.has(link.to)) {
+          hasStructuralLinkError = true
+          ctx.addIssue({
+            code: "custom",
+            path: ["links", i, "to"],
+            message: `sankey link ${i}'s 'to' node id '${link.to}' is not declared in nodes — available: ${availableIds}`,
+          })
+        }
+      })
+
+      // 4. Cycle detection — sankey.tsx's layered layout requires a DAG
+      // (layer = longest path from a source, undefined on a cycle). Only
+      // runs once the graph is otherwise structurally sound (unique ids,
+      // every endpoint resolved, no self-loop) — a dangling reference or
+      // self-loop already produced its own actionable issue above, and
+      // would make the adjacency walk below meaningless (a self-loop is
+      // trivially "a cycle" but the message above is the more useful one).
+      // See {@link findSankeyCycle}'s own doc comment for the algorithm and
+      // determinism argument.
+      if (duplicateIds.length > 0 || hasStructuralLinkError) return
+      const adjacency = new Map<string, string[]>(c.nodes.map((n) => [n.id, [] as string[]]))
+      for (const link of c.links) adjacency.get(link.from)!.push(link.to)
+
+      const cyclePath = findSankeyCycle(c.nodes.map((n) => n.id), adjacency)
+      if (cyclePath) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["links"],
+          message: `sankey graph contains a cycle: ${cyclePath.join(" -> ")} — sankey layout requires a directed acyclic graph (DAG), break the cycle by removing or redirecting one of these links`,
+        })
+      }
+    }),
 ], { error: componentTypeError })
 
 /**
- * All 28 component `type` discriminant values, derived from `ComponentSchema`
+ * All 32 component `type` discriminant values, derived from `ComponentSchema`
  * itself (never hand-copied) so this list can't drift from the union above.
  * Typed as plain `readonly string[]` rather than `Component["type"][]` —
  * every consumer of this list (W5's plan `focus` vocabulary gate,

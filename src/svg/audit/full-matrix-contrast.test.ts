@@ -61,12 +61,16 @@
 //     low-contrast sources" block already documents and pins.
 import { beforeAll, describe, expect, it } from "vitest"
 import { COMPONENT_TYPES, type PptxIR, type Slide } from "@/ir"
+import { renderSlideSvg } from "../../api"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { resolveBackgroundHex } from "../FullSlideSvg"
-import { contrastRatio } from "../ink"
+import { contrastRatio, requiredContrastRatio } from "../ink"
+import { parseSvgRoot } from "../serialize"
+import { mixHex } from "../components/color-mix"
+import { BAND_OPACITY } from "../components/sankey"
 
 beforeAll(() => {
   installNodePlatform()
@@ -806,7 +810,7 @@ describe("colors.muted contrast (post-v0.3 W8 fix round, backlog item 5a)", () =
 // about. Recalibrating for matrix alone would close the *instance* and
 // leave the exact same blind spot open for the next component that paints
 // its own background. `MUTED_SURFACE_CLASS` below is the *class* closure:
-// every one of `COMPONENT_TYPES`' 28 entries — the schema's own source of
+// every one of `COMPONENT_TYPES`' 32 entries — the schema's own source of
 // truth (`src/ir/index.ts`), never hand-copied — gets an explicit,
 // human-reviewed classification of *where* its `colors.muted` text (if
 // any) actually renders, backed by reading that component's real source.
@@ -994,6 +998,51 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // it, same as chart.tsx's own category labels), so already covered by the
   // "clears 4.5:1 against every real page background" check above.
   gantt: "page-bg",
+  // Structure-components wave 2 task 1: pest.tsx's `badgeFill` "social" case
+  // returns `colors.muted` (same role as swot.tsx's "weaknesses" case) —
+  // only ever a `panelFill` tint source / `accessibleInk` candidate, never
+  // an unconditional text fill (title/item text always renders
+  // `colors.text` routed through `accessibleInk` against the real panel).
+  // Same "no-muted-fill" classification as swot for the same reason; the
+  // tinted-panel background itself is covered below, "pest tinted-panel
+  // contrast".
+  pest: "no-muted-fill",
+  // five-forces.tsx's `forceToken` "supplier_power" case returns
+  // `colors.muted` — identical role (tint/candidate source only, the
+  // intensity marker's filled dots reuse the same token but paint no text
+  // either). A third use (review fix round, Low: enumeration was
+  // incomplete, conclusion unaffected): `render`'s `lineColor =
+  // ctx.colors.muted` feeds every hub-and-spoke `<line>`'s `stroke` — a
+  // decorative connector, not text, so `findContrastIssues` (which only
+  // ever walks `<text>`/`<tspan>`) can never attribute a finding to it
+  // either. Same classification, same reasoning as pest above; the
+  // tinted-panel background itself is covered below, "five_forces
+  // tinted-panel contrast".
+  five_forces: "no-muted-fill",
+  // Structure-components wave 2 task 2: heatmap.tsx renders `colors.muted`
+  // for its column headers (x_labels), row headers (y_labels), and the
+  // optional x_title/y_title axis captions — every one of them directly on
+  // the ambient page background, never on a self-painted cell (mirroring
+  // chart-svg.tsx's own category-axis labels and matrix.tsx's x_title/
+  // y_title, both already "page-bg"). The one genuinely self-painted-surface
+  // text this component renders — the optional per-cell value
+  // (`show_values`) — is never `colors.muted`; it's `colors.text` routed
+  // through `accessibleInk` against that cell's own computed fill (see the
+  // dedicated "heatmap cell-fill x ink" sweep below, decision 7's mandate).
+  heatmap: "page-bg",
+  // Structure-components wave 2 task 3: sankey.tsx never references
+  // `colors.muted` at all — its one text-bearing surface (the node label)
+  // renders via `accessibleInk(colors.text, ctx.defaultBg ?? colors.bg, …)`,
+  // deliberately routed through the ambient page background rather than a
+  // self-painted rect: a label sits immediately beside its node bar (not on
+  // top of it), and flow bands render at `BAND_OPACITY` (0.45) — below
+  // `deck-audit.ts`'s own `MIN_BG_OPACITY` (0.5) by deliberate design (see
+  // `sankey.tsx`'s own header comment) so a band can never become a
+  // contrast-attribution background candidate regardless of how a label's
+  // box happens to overlap one. Link values are deliberately not rendered as
+  // text at all (unlike heatmap's `show_values`), so there is no second
+  // self-painted-surface surface to track here.
+  sankey: "no-muted-fill",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
@@ -1118,6 +1167,71 @@ describe("swot/bmc tinted-panel contrast (structure-components wave task 1, deci
   }
 })
 
+// Structure-components wave 2 task 1, decision 7 (same mandate as wave 1's
+// own swot/bmc block above): pest.tsx tints all 4 quadrant panels
+// (`mixHex(colors.surface, <token>, t)`, the same primitive) — never renders
+// `colors.muted` as an unconditional text fill (see MUTED_SURFACE_CLASS's
+// "no-muted-fill" entry above), so this sweep asserts zero `low-contrast`
+// findings outright, same as the swot/bmc block.
+describe("pest tinted-panel contrast (structure-components wave 2 task 1, decision 7)", () => {
+  // Exercises all 4 quadrant token branches (primary/accent/muted/
+  // primary-muted-blend — pest.tsx's `badgeFill` switch) with 2 items per
+  // quadrant, one quadrant's title overridden so the inline-title path
+  // renders too.
+  const PEST_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "pest",
+        political: { items: ["数据合规监管趋严", "跨境审查政策收紧"] },
+        economic: { title: "宏观经济", items: ["利率下行周期", "消费信心指数回升"] },
+        social: { items: ["消费习惯代际迁移", "远程办公常态化"] },
+        technological: { items: ["生成式AI快速渗透", "边缘计算成本下降"] },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: pest renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, PEST_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 1, decision 7: five-forces.tsx tints all
+// 5 force panels (same `mixHex` primitive) — never renders `colors.muted` as
+// an unconditional text fill (see MUTED_SURFACE_CLASS's "no-muted-fill"
+// entry above), so this sweep asserts zero `low-contrast` findings outright.
+describe("five_forces tinted-panel contrast (structure-components wave 2 task 1, decision 7)", () => {
+  // Exercises all 5 panel token branches (accent/primary/muted/
+  // primary-accent-blend/accent-muted-blend — five-forces.tsx's
+  // `forceToken` switch), all 3 intensity levels across the 5 panels
+  // (including the center `rivalry` panel), and the native connector lines.
+  const FIVE_FORCES_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "five_forces",
+        rivalry: { items: ["头部三家份额超60%", "价格战常态化"], intensity: "high" },
+        new_entrants: { items: ["牌照与资质壁垒高"], intensity: "low" },
+        supplier_power: { items: ["核心元器件二供不足", "原材料价格波动大"], intensity: "medium" },
+        buyer_power: { items: ["大客户集中度高"], intensity: "medium" },
+        substitutes: { items: ["开源方案免费可用", "替代技术路线成熟"], intensity: "high" },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: five_forces renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, FIVE_FORCES_SLIDE))).toEqual([])
+    })
+  }
+})
+
 // bench-driven fix round, defect F (bmc bottom-row overflow,
 // `tests/bench/questions/q07` evidence): `BMC_SLIDE` above (1-2 items per
 // block) never exercised the schema's own ceiling — 4 items in every one of
@@ -1165,6 +1279,568 @@ describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
     it(`${themeId}: schema-max bmc (4 items in every block) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
       expect(auditFindings(deckFor(themeId, BMC_SCHEMA_MAX_SLIDE))).toEqual([])
     })
+  }
+})
+
+// Task 1 fix round (post-review, controller scope addition): `swot.tsx`
+// never got a dedicated schema-max sweep of its own (only the 1-2-item
+// "swot/bmc tinted-panel contrast" fixture above) — closed now that
+// `swot.tsx` carries the same `fontScale` defect-F fix `bmc.tsx`/
+// `pest.tsx`/`five-forces.tsx` already have. 5 items in every one of swot's
+// 4 quadrants (`z.array(z.string()).min(1).max(5)`, `ir/index.ts`), on
+// `narrow-column`, this suite's own narrowest curated content archetype.
+describe("swot schema-max content (fix round, controller scope addition)", () => {
+  const SWOT_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "swot",
+        strengths: ["强大的品牌认知度", "稳定的现金流", "经验丰富的管理团队", "自有核心技术平台", "客户复购率高"],
+        weaknesses: ["产品线相对单一", "对单一渠道依赖度高", "国际化程度不足", "核心系统老化", "低毛利细分市场占比高"],
+        opportunities: ["新兴市场快速增长", "政策利好窗口期", "邻近品类扩张空间", "潜在战略合作机会", "可持续发展需求上升"],
+        threats: ["新进入者价格战风险", "关键原材料成本上升", "汇率波动敞口", "消费者偏好快速迁移", "数据隐私监管趋严"],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max swot (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, SWOT_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Task 1 fix round (post-review, controller scope addition): the
+// reviewer's own repro shape — schema-max content *and* a heading long
+// enough to force a 2-line wrap *and* the narrowest curated archetype, all
+// three at once (`five-forces.tsx`'s file header already named this
+// compound gap as an unresolved residual for that component; this pins
+// whether `swot` — now carrying the identical fix — clears it too, rather
+// than leaving that claim as prose only). English item text (`fitSvgLine`'s
+// Latin-script measurement path, not the CJK path the block above
+// exercises) at schema-max density, under a 32-char heading long enough to
+// wrap to 2 lines on every one of the 13 themes.
+describe("swot zero-residual under a 2-line-wrapped heading + schema-max content (fix round)", () => {
+  const SWOT_LONG_HEADING_SLIDE: Slide = {
+    type: "content",
+    heading: "Competitive Landscape Deep-Dive",
+    layout: "narrow-column",
+    components: [
+      {
+        type: "swot",
+        strengths: ["Strong brand recognition", "Stable cash flow", "Experienced leadership", "Proprietary tech platform", "item number 5"],
+        weaknesses: ["Narrow product line", "High channel dependency", "Limited global presence", "Aging infrastructure", "item number 5"],
+        opportunities: ["Fast-growing markets", "Favorable policy window", "Adjacent category growth", "Partnership potential", "item number 5"],
+        threats: ["New entrant price wars", "Rising material costs", "Currency volatility", "Shifting preferences", "item number 5"],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: swot clears the reviewer's compound repro shape with zero findings`, () => {
+      expect(auditFindings(deckFor(themeId, SWOT_LONG_HEADING_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 1, same defect-F discipline as bmc's own
+// schema-max sweep above: 5 items in every one of pest's 4 quadrants
+// (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own
+// ceiling), on `narrow-column`, this suite's own narrowest curated content
+// archetype.
+describe("pest schema-max content (structure-components wave 2 task 1)", () => {
+  const PEST_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "pest",
+        political: {
+          items: ["数据合规监管趋严", "跨境审查政策收紧", "反垄断调查加码", "行业准入牌照收紧", "劳动用工新规落地"],
+        },
+        economic: {
+          items: ["利率下行周期", "消费信心指数回升", "人民币汇率波动", "大宗商品价格上涨", "地方财政压力上升"],
+        },
+        social: {
+          items: ["消费习惯代际迁移", "远程办公常态化", "人口老龄化加速", "下沉市场消费升级", "健康与可持续偏好上升"],
+        },
+        technological: {
+          items: ["生成式AI快速渗透", "边缘计算成本下降", "5G应用场景扩展", "自动化生产线普及", "数据安全技术升级"],
+        },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max pest (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, PEST_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Task 1 fix round (post-review, High finding): the reviewer's own repro
+// shape — schema-max content *and* a heading long enough to force a 2-line
+// wrap *and* the narrowest curated archetype, all three at once
+// (`five-forces.tsx`'s file header already named this compound gap as an
+// unresolved residual for that component; this pins whether `pest` — now
+// carrying the identical fix — clears it too, rather than leaving that
+// claim as prose only). English item text (`fitSvgLine`'s Latin-script
+// measurement path, not the CJK path the block above exercises) at
+// schema-max density, under a 32-char heading long enough to wrap to 2
+// lines on every one of the 13 themes.
+describe("pest zero-residual under a 2-line-wrapped heading + schema-max content (fix round)", () => {
+  const PEST_LONG_HEADING_SLIDE: Slide = {
+    type: "content",
+    heading: "Competitive Landscape Deep-Dive",
+    layout: "narrow-column",
+    components: [
+      {
+        type: "pest",
+        political: { items: ["Tightening regulation", "Rising trade tariffs", "New antitrust scrutiny", "Labor law changes", "item number 5"] },
+        economic: { items: ["Falling interest rates", "Confidence rebound", "Currency volatility", "Rising input costs", "item number 5"] },
+        social: { items: ["Generational shift", "Normalized remote work", "Aging population", "Sustainability demand", "item number 5"] },
+        technological: { items: ["Generative-AI adoption", "Falling compute cost", "5G rollout expanding", "Automation of lines", "item number 5"] },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: pest clears the reviewer's compound repro shape with zero findings`, () => {
+      expect(auditFindings(deckFor(themeId, PEST_LONG_HEADING_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 1, same defect-F discipline as bmc's own
+// schema-max sweep above: 5 items in every one of five_forces' 5 panels
+// (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own
+// ceiling), on `narrow-column`, this suite's own narrowest curated content
+// archetype. This is the fixture that first surfaced this file's own
+// bench-driven-fix-round-style defect (three stacked full-width bands need
+// more vertical room than bmc's own two-band, multi-column canvas) — see
+// `five-forces.tsx`'s own file header for the fix (`fontScale`, ported from
+// `bmc.tsx`) and its one documented residual gap.
+describe("five_forces schema-max content (structure-components wave 2 task 1)", () => {
+  const FIVE_FORCES_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "five_forces",
+        rivalry: {
+          intensity: "high",
+          items: ["头部三家份额超60%", "价格战常态化", "产品同质化严重", "获客成本持续攀升", "存量市场竞争加剧"],
+        },
+        new_entrants: {
+          intensity: "low",
+          items: ["牌照与资质壁垒高", "规模效应门槛高", "渠道资源稀缺", "初始资本投入大", "品牌信任建立周期长"],
+        },
+        supplier_power: {
+          intensity: "medium",
+          items: ["核心元器件二供不足", "原材料价格波动大", "供应商集中度高", "切换成本较高", "长期锁定合约限制"],
+        },
+        buyer_power: {
+          intensity: "medium",
+          items: ["大客户集中度高", "比价平台信息透明", "切换供应商成本低", "集采议价能力强", "定制化需求增多"],
+        },
+        substitutes: {
+          intensity: "high",
+          items: ["开源方案免费可用", "替代技术路线成熟", "跨行业解决方案渗透", "自建能力意愿上升", "性价比替代品增多"],
+        },
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max five_forces (5 items in every panel, all intensity levels) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, FIVE_FORCES_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 2, decision 4/5: heatmap.tsx is the one
+// component in this whole wave whose self-painted surface is a *computed*
+// color, not a fixed theme token blend (matrix.tsx's `toneFill` still only
+// ever picks from 3 fixed tone branches) — every cell's fill is a
+// continuous function of its own value (`cellFill`/`valueT`,
+// `heatmap.tsx`), so the value→color→ink chain needs its own dedicated
+// sweep rather than reusing swot/pest/five_forces' "assert zero findings
+// outright" shape verbatim. Two blocks below: a basic representative-content
+// sweep (mirrors the pattern above) and a schema-max 10x10 sweep, both zero
+// auditDeck findings across all 13 themes — followed by a third, narrower
+// block that isolates the cell-value-text-vs-cell-fill contrast pair
+// specifically (decision 7's mandate: "any tinted/computed background needs
+// a dedicated probe"), sweeping a wide value spread (including the
+// domain extremes, which sit at the ramp's two ends where a marginal ink
+// choice is most likely to fail) plus a negative-inclusive distribution.
+describe("heatmap contrast (structure-components wave 2 task 2)", () => {
+  const HEATMAP_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["一季度", "二季度", "三季度", "四季度"],
+        y_labels: ["华东", "华南", "华北"],
+        values: [
+          [12, 45, 78, 33],
+          [-20, 5, 60, 90],
+          [50, 50, 50, 50],
+        ],
+        show_values: true,
+        x_title: "季度",
+        y_title: "区域",
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: heatmap renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, HEATMAP_SLIDE))).toEqual([])
+    })
+  }
+
+  const heatmapLabels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+  const HEATMAP_SCHEMA_MAX_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: heatmapLabels(10, "列"),
+        y_labels: heatmapLabels(10, "行"),
+        values: Array.from({ length: 10 }, (_, r) => Array.from({ length: 10 }, (_, c) => r * 10 + c)),
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max heatmap (10x10 grid, show_values on) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, HEATMAP_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// The cell-fill x ink probe named above: isolates value→color→ink
+// specifically, at the ramp's two extremes (domain min/max — where
+// `accessibleInk`'s fallback is most likely to actually need to engage,
+// since the fill there sits furthest from `colors.surface`) plus a
+// negative-inclusive distribution and a fully degenerate one (every value
+// equal — the flat mid-tone `valueT` returns for a zero-range domain).
+// Every `low-contrast` finding, if any survived, would name the offending
+// fill/ink pair (`AuditFinding.detail`) — asserting the finding set outright
+// is empty is the same "stronger, more honest claim" swot/bmc/pest/
+// five_forces' own tinted-panel blocks already settled on.
+describe("heatmap cell-fill x ink (structure-components wave 2 task 2, decision 7 — the hard part named by the controller ruling)", () => {
+  const EXTREMES_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["min", "mid", "max"],
+        y_labels: ["row"],
+        values: [[0, 50, 100]],
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  const NEGATIVE_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["a", "b", "c", "d"],
+        y_labels: ["row"],
+        values: [[-100, -25, 0, 40]],
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  const DEGENERATE_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "heatmap",
+        x_labels: ["a", "b", "c"],
+        y_labels: ["row"],
+        values: [[7, 7, 7]],
+        show_values: true,
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: cell value text clears contrast at both ramp extremes (domain min and max)`, () => {
+      expect(auditFindings(deckFor(themeId, EXTREMES_SLIDE))).toEqual([])
+    })
+
+    it(`${themeId}: cell value text clears contrast across a negative-inclusive distribution`, () => {
+      expect(auditFindings(deckFor(themeId, NEGATIVE_SLIDE))).toEqual([])
+    })
+
+    it(`${themeId}: cell value text clears contrast on a fully degenerate (all-equal) grid`, () => {
+      expect(auditFindings(deckFor(themeId, DEGENERATE_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Structure-components wave 2 task 3: sankey.tsx is the wave's largest
+// component — three topologies swept per the plan's own visual-QA mandate
+// ("simple 2-layer, multi-layer, dense crossing"), each at schema-realistic
+// content across all 13 themes. The dense-crossing fixture is the one that
+// actually exercises this component's central contrast-safety claim (its
+// own header comment, "Band opacity is a deliberate contrast-safety
+// choice"): node labels sit directly beside node bars in the same
+// horizontal gap several translucent bands route through, so a real
+// low-contrast finding here would mean a label got misattributed against a
+// band instead of the page background.
+// Hoisted to module scope (task-3 fix round, review Major finding) so both
+// the auditDeck-based sweep below AND the analytic blended-contrast sweep
+// (this file's "sankey label-over-band blended contrast" describe block)
+// share exactly the same four fixtures — the whole point of the second
+// sweep is to catch a defect class the first one is structurally blind to,
+// so it needs to run against the identical topologies, not a redescribed
+// approximation of them.
+const SANKEY_SIMPLE_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: [
+        { id: "coal", label: "煤炭" },
+        { id: "gas", label: "天然气" },
+        { id: "grid", label: "电网" },
+      ],
+      links: [
+        { from: "coal", to: "grid", value: 30 },
+        { from: "gas", to: "grid", value: 50 },
+      ],
+    },
+  ],
+} as Slide
+
+const SANKEY_MULTI_LAYER_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: [
+        { id: "coal", label: "Coal" },
+        { id: "gas", label: "Natural Gas" },
+        { id: "renewables", label: "Renewables" },
+        { id: "grid", label: "National Grid" },
+        { id: "homes", label: "Residential Homes" },
+        { id: "industry", label: "Heavy Industry" },
+        { id: "exports", label: "Exports" },
+      ],
+      links: [
+        { from: "coal", to: "grid", value: 30 },
+        { from: "gas", to: "grid", value: 50 },
+        { from: "renewables", to: "grid", value: 20 },
+        { from: "grid", to: "homes", value: 45 },
+        { from: "grid", to: "industry", value: 35 },
+        { from: "grid", to: "exports", value: 20 },
+      ],
+    },
+  ],
+} as Slide
+
+// Dense crossing: every node in layer 1 links to every node in layer 2 —
+// the maximal-crossing topology a 3x3 bipartite fan produces, deliberately
+// including a wide value spread (5..95) so band thickness varies a lot,
+// and one particularly long label to also exercise truncation under
+// crossing bands simultaneously. This is the fixture the review's own
+// Major finding was measured against (campaign 4.30:1, insight 4.34:1,
+// pre-fix).
+const SANKEY_DENSE_CROSSING_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: [
+        { id: "a1", label: "一个相当长的上游节点名称" },
+        { id: "a2", label: "Source B" },
+        { id: "a3", label: "Source C" },
+        { id: "b1", label: "Target X" },
+        { id: "b2", label: "Target Y" },
+        { id: "b3", label: "Target Z" },
+      ],
+      links: [
+        { from: "a1", to: "b1", value: 95 },
+        { from: "a1", to: "b2", value: 5 },
+        { from: "a1", to: "b3", value: 40 },
+        { from: "a2", to: "b1", value: 15 },
+        { from: "a2", to: "b2", value: 60 },
+        { from: "a2", to: "b3", value: 10 },
+        { from: "a3", to: "b1", value: 25 },
+        { from: "a3", to: "b2", value: 30 },
+        { from: "a3", to: "b3", value: 70 },
+      ],
+    },
+  ],
+} as Slide
+
+const sankeyLabels = (n: number, prefix: string) => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
+const SANKEY_SCHEMA_MAX_SLIDE: Slide = {
+  type: "content",
+  heading: HEADING,
+  layout: "narrow-column",
+  components: [
+    {
+      type: "sankey",
+      nodes: sankeyLabels(16, "节点").map((label, i) => ({ id: `n${i}`, label })),
+      links: (() => {
+        const links: { from: string; to: string; value: number }[] = []
+        outer: for (let i = 0; i < 8; i++) {
+          for (let j = 8; j < 16; j++) {
+            if (links.length >= 30) break outer
+            links.push({ from: `n${i}`, to: `n${j}`, value: ((i + j) % 9) + 1 })
+          }
+        }
+        return links
+      })(),
+    },
+  ],
+} as Slide
+
+describe("sankey contrast (structure-components wave 2 task 3)", () => {
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: simple two-layer sankey renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, SANKEY_SIMPLE_SLIDE))).toEqual([])
+    })
+  }
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: multi-layer sankey renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, SANKEY_MULTI_LAYER_SLIDE))).toEqual([])
+    })
+  }
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: dense-crossing sankey (9 links, 3x3 fully-connected bipartite fan) renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, SANKEY_DENSE_CROSSING_SLIDE))).toEqual([])
+    })
+  }
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max sankey (16 nodes, 30 links) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, SANKEY_SCHEMA_MAX_SLIDE))).toEqual([])
+    })
+  }
+})
+
+// Task-3 fix round, review Major finding: `auditDeck` (above) is
+// structurally blind to a label sitting over a real, translucent band —
+// `BAND_OPACITY` (sankey.tsx) is deliberately below `MIN_BG_OPACITY` so a
+// band never becomes a `paintedShapes` background candidate (preventing a
+// *false positive*), which also means the SVG-level walk can never resolve
+// a label's background to anything but the plain page bg, and `--pixels`
+// can't help either (verified directly: that layer only ever samples runs
+// whose SVG-resolved background came back `null`, and this one resolves
+// cleanly — non-null — to the page bg). This describe block is the
+// permanent, renderer-output-level regression net the review ordered: it
+// reads the REAL rendered SVG (`renderSlideSvg`, the same single-source
+// markup the exporter and preview both use) — a band's real fill/geometry
+// off its own `data-band-bbox` attribute, a label's real ink/geometry off
+// its own `data-label-bbox` — and independently recomputes the analytic
+// alpha-composite blend for every band a label's box geometrically
+// overlaps, asserting every resulting ratio still clears the WCAG floor.
+// A label backed by a safety chip (`data-label-chip`, the opposite-
+// direction-conflict escalation `sankey.tsx`'s own `isSafeAgainstAll` doc
+// comment names) is verified against the *chip's* real fill instead of any
+// band blend — the chip is what a viewer actually sees behind that label.
+//
+// Pre-fix, this exact method (analytic blend + real geometric overlap)
+// reproduced the review's own measured violations on this branch's HEAD
+// before the fix (campaign/insight, ratios in the 4.3 range) — this block
+// stayed red against the pre-fix renderer and is green now.
+describe("sankey label-over-band blended contrast (task 3 fix round, review Major finding — permanent guard)", () => {
+  interface BandGeom {
+    xMin: number
+    yMin: number
+    xMax: number
+    yMax: number
+    fill: string
+  }
+
+  /** Every real (label, background-it-actually-sits-on) pair for one
+   * rendered sankey slide, read straight off real SVG output — never a
+   * reimplementation of sankey.tsx's own layout math, only its declared
+   * (`data-*`) geometry and its own chosen `fill` values. */
+  function realLabelBackgroundPairs(themeId: string, slide: Slide): { label: string; ink: string; fontSize: number; bg: string }[] {
+    const ir = deckFor(themeId, slide)
+    const markup = renderSlideSvg(ir, 0)
+    const root = parseSvgRoot(markup)
+    const pageBg = root.querySelector("rect")?.getAttribute("fill") ?? "#FFFFFF"
+    const bands: BandGeom[] = Array.from(root.querySelectorAll("path[data-band-bbox]")).map((el) => {
+      const [xMin, yMin, xMax, yMax] = (el.getAttribute("data-band-bbox") ?? "").split(",").map(Number)
+      return { xMin, yMin, xMax, yMax, fill: el.getAttribute("fill")! }
+    })
+
+    const pairs: { label: string; ink: string; fontSize: number; bg: string }[] = []
+    for (const text of Array.from(root.querySelectorAll("text[data-label-bbox]"))) {
+      const ink = text.getAttribute("fill")!
+      const fontSize = Number(text.getAttribute("font-size"))
+      const label = text.textContent ?? ""
+      const hasChip = text.previousElementSibling?.getAttribute("data-label-chip") === "1"
+      if (hasChip) {
+        // The chip's own fill is the real, guaranteed background — verify
+        // against *that*, not any band it may still visually sit above
+        // (the whole point of the chip is that the band underneath no
+        // longer matters).
+        pairs.push({ label, ink, fontSize, bg: (text.previousElementSibling as Element).getAttribute("fill")! })
+        continue
+      }
+      const [txMin, tyMin, txMax, tyMax] = (text.getAttribute("data-label-bbox") ?? "").split(",").map(Number)
+      pairs.push({ label, ink, fontSize, bg: pageBg })
+      for (const band of bands) {
+        const overlaps = txMin <= band.xMax && txMax >= band.xMin && tyMin <= band.yMax && tyMax >= band.yMin
+        if (!overlaps) continue
+        pairs.push({ label, ink, fontSize, bg: mixHex(pageBg, band.fill, BAND_OPACITY) })
+      }
+    }
+    return pairs
+  }
+
+  const FIXTURES: [string, Slide][] = [
+    ["simple", SANKEY_SIMPLE_SLIDE],
+    ["multi-layer", SANKEY_MULTI_LAYER_SLIDE],
+    ["dense-crossing", SANKEY_DENSE_CROSSING_SLIDE],
+    ["schema-max", SANKEY_SCHEMA_MAX_SLIDE],
+  ]
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    for (const [topology, slide] of FIXTURES) {
+      it(`${themeId} / ${topology}: every label clears 4.5:1 (or 3:1 if large) against every real background it sits on, band blends included`, () => {
+        const pairs = realLabelBackgroundPairs(themeId, slide)
+        expect(pairs.length).toBeGreaterThan(0)
+        const violations = pairs
+          .map(({ label, ink, fontSize, bg }) => ({ label, ink, bg, ratio: contrastRatio(ink, bg), required: requiredContrastRatio(fontSize) }))
+          .filter((p) => p.ratio < p.required)
+        expect(violations).toEqual([])
+      })
+    }
   }
 })
 

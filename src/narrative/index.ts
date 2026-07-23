@@ -187,6 +187,29 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // types is itself a "conclusion-first, dense-evidence" shape (a 2x2
     // assessment, a nine-block canvas, a running-total bridge, a shared-axis
     // schedule), the same MECE-first argument style pyramid already favors.
+    //
+    // pest/five_forces/heatmap/sankey (structure-components wave 2 task 4)
+    // join the same set on the identical rationale — every one of them is
+    // also a `FULL_BODY_TYPES` member (`svg/component-traits.ts`), i.e. a
+    // dense, self-contained analytical shape read as a single conclusion (a
+    // macro-environment scan, a competitive-forces panel set, a value grid,
+    // a flow decomposition), not a sequential narrative device. Considered
+    // and declined a *second* membership for each, the way gantt alone also
+    // joined `instructional` below (decision 9's own precedent: not every
+    // full-body type gets one, only gantt did, for a specific reason — "a
+    // shared-axis schedule is itself a step-by-step breakdown"). None of
+    // the four wave-2 components has an equally clean, literal
+    // "this is inherently a sequence of steps" reading: pest/five_forces
+    // are simultaneous-factor frameworks (nothing about them is ordered),
+    // heatmap is an unordered value grid, and sankey — the closest
+    // candidate, since a layered DAG reads left-to-right — is fundamentally
+    // a *proportional-flow decomposition* (quantity conservation across
+    // paths), categorically different from `flowchart`'s procedural
+    // decision-branching that actually earned instructional's set. Forcing
+    // a second join here would be inventing a parallel decision 9 itself
+    // never needed for 3 of its own 4 members either. All four therefore
+    // get exactly the same single-strategy treatment swot/bmc/waterfall got
+    // above, not a lesser one.
     tendencies: [
       "kpi_cards",
       "verdict_banner",
@@ -198,6 +221,10 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
       "bmc",
       "waterfall",
       "gantt",
+      "pest",
+      "five_forces",
+      "heatmap",
+      "sankey",
     ],
     // MECE 结论先行——密集数据型 body（bento 卡片拼盘/横幅断言）+ 两栏对比。
     layoutTendencies: ["bento-panel", "banner-heading", "two-column"],

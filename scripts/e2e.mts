@@ -330,7 +330,7 @@ writeFileSync(
         type: "kpi_cards",
         items: [
           { value: "13", label: "built-in themes" },
-          { value: "28", label: "semantic component types" },
+          { value: "32", label: "semantic component types" },
         ],
       },
     ],
@@ -664,9 +664,10 @@ if (pixelsReport.checks.pixels !== "completed") {
 }
 console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixels completed, human summary notes it)")
 
-// 8) structure-components leg (structure-components wave task 3): a deck
-//    exercising all four full-body components added this wave (swot/bmc/
-//    waterfall/gantt), one per content slide, cover+ending bookending them —
+// 8) structure-components leg (structure-components wave 1 task 3, extended
+//    by wave 2 tasks 1-3): a deck exercising all eight full-body components
+//    across both waves (swot/bmc/waterfall/gantt/pest/five_forces/heatmap/
+//    sankey), one per content slide, cover+ending bookending them —
 //    must render to a well-formed pptx and audit clean (exit 0, 0 findings).
 //    `layout: "narrow-column"` is pinned on every content slide (same
 //    precedent as full-matrix-contrast.test.ts's own SWOT_SLIDE/BMC_SLIDE/
@@ -769,6 +770,84 @@ const structuresDeck = {
         },
       ],
     },
+    {
+      type: "content",
+      id: "p-pest",
+      heading: "PEST Analysis",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "pest",
+          political: { items: ["Tightening data-privacy regulation", "Rising trade tariffs"] },
+          economic: { title: "Macro Economy", items: ["Falling interest rates", "Consumer confidence rebound"] },
+          social: { items: ["Generational shift in habits", "Normalized remote work"] },
+          technological: { items: ["Rapid generative-AI adoption", "Falling edge-compute cost"] },
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-five-forces",
+      heading: "Porter's Five Forces",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "five_forces",
+          rivalry: { items: ["Top 3 players hold 60%+ share", "Persistent price competition"], intensity: "high" },
+          new_entrants: { items: ["High licensing barrier to entry"], intensity: "low" },
+          supplier_power: { items: ["Core-component supply shortage"], intensity: "medium" },
+          buyer_power: { items: ["High customer concentration"], intensity: "medium" },
+          substitutes: { items: ["Free open-source alternatives"], intensity: "high" },
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-heatmap",
+      heading: "Regional Performance Heatmap",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "heatmap",
+          x_labels: ["Q1", "Q2", "Q3", "Q4"],
+          y_labels: ["North", "South", "East"],
+          values: [
+            [12, 45, 78, 33],
+            [-20, 5, 60, 90],
+            [50, 50, 50, 50],
+          ],
+          show_values: true,
+          x_title: "Quarter",
+          y_title: "Region",
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-sankey",
+      heading: "Energy Flow",
+      layout: "narrow-column",
+      components: [
+        {
+          type: "sankey",
+          nodes: [
+            { id: "coal", label: "Coal" },
+            { id: "gas", label: "Natural Gas" },
+            { id: "renewables", label: "Renewables" },
+            { id: "grid", label: "National Grid" },
+            { id: "homes", label: "Residential Homes" },
+            { id: "industry", label: "Heavy Industry" },
+          ],
+          links: [
+            { from: "coal", to: "grid", value: 30 },
+            { from: "gas", to: "grid", value: 50 },
+            { from: "renewables", to: "grid", value: 20 },
+            { from: "grid", to: "homes", value: 55 },
+            { from: "grid", to: "industry", value: 45 },
+          ],
+        },
+      ],
+    },
     { type: "ending", heading: "Thanks" },
   ],
 }
@@ -780,19 +859,31 @@ console.log(sh("node", ["dist/cli.js", "validate", structuresPath]))
 const structuresPptxPath = join(OUT, "structures.pptx")
 console.log(sh("node", ["dist/cli.js", "render", structuresPath, "-o", structuresPptxPath]))
 const structuresZip = await JSZip.loadAsync(readFileSync(structuresPptxPath))
-for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide6.xml"]) {
+for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide10.xml"]) {
   if (!structuresZip.file(f)) throw new Error(`e2e: structure-components leg — missing ${f} in ${structuresPptxPath}`)
 }
-console.log("structure-components render leg OK (6-slide pptx, all parts present)")
+// Sankey differentiation check (plan task 3): its own slide (p-sankey, the
+// 9th content slide -> slide9.xml, cover is slide1) must carry zero <p:pic>
+// and at least one <a:custGeom> — native editable flow bands, never a
+// rasterized image (the direct counterpoint to the official pptx skill's
+// "no native form, ship as an image" classification for this exact chart type).
+const sankeySlideXml = await structuresZip.file("ppt/slides/slide9.xml")!.async("string")
+if (sankeySlideXml.includes("<p:pic>")) {
+  throw new Error("e2e: structure-components leg — sankey slide unexpectedly contains <p:pic> (should be zero, native vectors only)")
+}
+if (!/<a:custGeom>/.test(sankeySlideXml)) {
+  throw new Error("e2e: structure-components leg — sankey slide has no <a:custGeom> (expected its flow bands to export as native vector paths)")
+}
+console.log("structure-components render leg OK (10-slide pptx, all parts present, sankey slide is zero-p:pic/native-custGeom)")
 
 const structuresAudit = shCapture("node", ["dist/cli.js", "audit", structuresPath])
 console.log(structuresAudit.stdout)
 if (structuresAudit.status !== 0) {
   throw new Error(
-    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
+    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt/pest/five_forces/heatmap/sankey deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
   )
 }
-if (!/audited 6 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
+if (!/audited 10 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
   throw new Error(`e2e: structure-components leg — expected a clean summary line, got: ${structuresAudit.stdout}`)
 }
 console.log("structure-components audit leg OK (exit 0, 0 findings)")
@@ -902,8 +993,31 @@ console.log("--- browser-distribution build-verification leg ---")
  *  makes a browser's ESM loader throw `Failed to resolve module specifier`
  *  before a single line of the module runs (deep-dive repro, dist/index.js).
  *  A minified single-line bundle has no reliable newline boundary to anchor
- *  on, so this matches the token sequence directly rather than per-line. */
-const BARE_STATIC_IMPORT = /\bfrom"(?!\.\.?\/|\/)[^"]+"/g
+ *  on, so this matches the token sequence directly rather than per-line.
+ *
+ *  Syntax-aware, not a bare word match (structure-components wave 2 task 4
+ *  root fix): a raw `\bfrom"..."` scan collides with *any* string-literal
+ *  content that happens to end in the word "from" directly abutting its own
+ *  closing quote — not hypothetical, a real zod issue `path` array element
+ *  (`["links", i, "from"]`) false-triggered this exact scan pre-fix (see
+ *  `src/ir/index.ts`'s sankey `superRefine`, which used to work around it by
+ *  never emitting a `path` ending in that literal word). The lookbehind
+ *  requires a real `import`/`export` keyword within the preceding 200
+ *  characters with no intervening quote/backtick/semicolon — the one thing
+ *  a genuine import/export-from clause always has and arbitrary string
+ *  *data* structurally cannot (data is always already inside a string
+ *  literal, i.e. behind a quote, by the time any characters of it exist to
+ *  scan). 200 chars comfortably bounds even a long named-import clause
+ *  (`import{a,b,c,...}from"pkg"`) while staying far short of the gap
+ *  between two unrelated statements in a real ~1.6MB bundle, so it does not
+ *  risk pairing a `from` with a stale, unrelated `import` far upstream.
+ *  Verified against both the true-positive shapes (named/star/braces/
+ *  default imports, sequential real imports) and the false-positive shapes
+ *  (the sankey path element, and `field-aliases.ts`'s own new sankey
+ *  `{source:"from",target:"to"}` alias row — same words, different file,
+ *  confirming the fix is general rather than tuned to the one collision
+ *  that motivated it) before being wired in here. */
+const BARE_STATIC_IMPORT = /(?<=\b(?:import|export)\b[^"'`;]{0,200})\bfrom"(?!\.\.?\/|\/)[^"]+"/g
 
 /** Node built-ins pptxgenjs's own (vendored, unmodified) optional
  *  file-save/network fallback dynamically imports — guarded behind a

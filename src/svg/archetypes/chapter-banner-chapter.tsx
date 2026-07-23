@@ -50,6 +50,7 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 84,
     maxLines: 2,
     minPt: 40,
+    fontFamily: ctx.fonts.heading,
   })
   const headingY = heading.lines.length > 1 ? 364 : 404
   const headingLastY =

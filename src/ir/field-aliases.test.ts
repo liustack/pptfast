@@ -214,6 +214,131 @@ const BLOCK_CASES: readonly BlockCase[] = [
     },
     expected: ["rs"],
   },
+  // pest/five_forces (structure-components wave 2 task 4).
+  {
+    type: "pest",
+    alias: "politics",
+    canonical: "political",
+    component: {
+      type: "pest",
+      politics: { items: ["p"] },
+      economic: { items: ["e"] },
+      social: { items: ["s"] },
+      technological: { items: ["t"] },
+    },
+    expected: { items: ["p"] },
+  },
+  {
+    type: "pest",
+    alias: "economy",
+    canonical: "economic",
+    component: {
+      type: "pest",
+      political: { items: ["p"] },
+      economy: { items: ["e"] },
+      social: { items: ["s"] },
+      technological: { items: ["t"] },
+    },
+    expected: { items: ["e"] },
+  },
+  {
+    type: "pest",
+    alias: "society",
+    canonical: "social",
+    component: {
+      type: "pest",
+      political: { items: ["p"] },
+      economic: { items: ["e"] },
+      society: { items: ["s"] },
+      technological: { items: ["t"] },
+    },
+    expected: { items: ["s"] },
+  },
+  {
+    type: "pest",
+    alias: "technology",
+    canonical: "technological",
+    component: {
+      type: "pest",
+      political: { items: ["p"] },
+      economic: { items: ["e"] },
+      social: { items: ["s"] },
+      technology: { items: ["t"] },
+    },
+    expected: { items: ["t"] },
+  },
+  {
+    type: "five_forces",
+    alias: "entrants",
+    canonical: "new_entrants",
+    component: {
+      type: "five_forces",
+      rivalry: { items: ["r"] },
+      entrants: { items: ["n"] },
+      supplier_power: { items: ["s"] },
+      buyer_power: { items: ["b"] },
+      substitutes: { items: ["x"] },
+    },
+    expected: { items: ["n"] },
+  },
+  {
+    type: "five_forces",
+    alias: "suppliers",
+    canonical: "supplier_power",
+    component: {
+      type: "five_forces",
+      rivalry: { items: ["r"] },
+      new_entrants: { items: ["n"] },
+      suppliers: { items: ["s"] },
+      buyer_power: { items: ["b"] },
+      substitutes: { items: ["x"] },
+    },
+    expected: { items: ["s"] },
+  },
+  {
+    type: "five_forces",
+    alias: "buyers",
+    canonical: "buyer_power",
+    component: {
+      type: "five_forces",
+      rivalry: { items: ["r"] },
+      new_entrants: { items: ["n"] },
+      supplier_power: { items: ["s"] },
+      buyers: { items: ["b"] },
+      substitutes: { items: ["x"] },
+    },
+    expected: { items: ["b"] },
+  },
+  // heatmap (structure-components wave 2 task 4): each case starts from a
+  // minimal valid 1x1 grid and swaps in the one field under test.
+  {
+    type: "heatmap",
+    alias: "rows",
+    canonical: "y_labels",
+    component: { type: "heatmap", x_labels: ["c1"], rows: ["r1"], values: [[1]] },
+    expected: ["r1"],
+  },
+  {
+    type: "heatmap",
+    alias: "columns",
+    canonical: "x_labels",
+    component: { type: "heatmap", columns: ["c1"], y_labels: ["r1"], values: [[1]] },
+    expected: ["c1"],
+  },
+  {
+    type: "heatmap",
+    alias: "data",
+    canonical: "values",
+    component: { type: "heatmap", x_labels: ["c1"], y_labels: ["r1"], data: [[1]] },
+    expected: [[1]],
+  },
+  {
+    type: "heatmap",
+    alias: "range",
+    canonical: "domain",
+    component: { type: "heatmap", x_labels: ["c1"], y_labels: ["r1"], values: [[1]], range: { min: 0, max: 10 } },
+    expected: { min: 0, max: 10 },
+  },
 ]
 
 describe("COMPONENT_FIELD_ALIASES: every row round-trips", () => {
@@ -311,6 +436,8 @@ interface ItemCase {
   readonly expected: unknown
   /** Extra already-canonical items appended after `item`, only to satisfy a component's own array min-count (steps/numbered_cards/row_cards) — irrelevant to the alias under test. */
   readonly pad?: Record<string, unknown>[]
+  /** Extra already-canonical top-level component fields merged in alongside `[itemsKey]` — for a component with a *second* required field beyond its item array (sankey's `nodes`, required alongside `links`). Every other component in this table needs only `type` + its one item array, hence optional. */
+  readonly extra?: Record<string, unknown>
 }
 
 const ITEM_CASES: readonly ItemCase[] = [
@@ -341,11 +468,33 @@ const ITEM_CASES: readonly ItemCase[] = [
   // `GanttItemSchema`'s `end > start` refine.
   { type: "gantt", itemsKey: "items", alias: "from", canonical: "start", item: { label: "设计", from: 0, end: 5 }, expected: 0, pad: [{ label: "开发", start: 1, end: 2 }] },
   { type: "gantt", itemsKey: "items", alias: "to", canonical: "end", item: { label: "测试", start: 2, to: 5 }, expected: 5, pad: [{ label: "上线", start: 1, end: 2 }] },
+  // Sankey (structure-components wave 2 task 4): `links`' two endpoint
+  // fields, D3-sankey/Plotly's own `source`/`target` vocabulary. `nodes` is
+  // a second, independently-required field (not this alias's concern) —
+  // supplied via `extra` so the component is schema-valid end to end.
+  {
+    type: "sankey",
+    itemsKey: "links",
+    alias: "source",
+    canonical: "from",
+    extra: { nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }] },
+    item: { source: "a", to: "b", value: 5 },
+    expected: "a",
+  },
+  {
+    type: "sankey",
+    itemsKey: "links",
+    alias: "target",
+    canonical: "to",
+    extra: { nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }] },
+    item: { from: "a", target: "b", value: 7 },
+    expected: "b",
+  },
 ]
 
 describe("COMPONENT_ITEM_FIELD_ALIASES: every row round-trips", () => {
-  it.each(ITEM_CASES)("$type.$itemsKey: $alias → $canonical", ({ type, itemsKey, alias, canonical, item, expected, pad = [] }) => {
-    const component = { type, [itemsKey]: [item, ...pad] }
+  it.each(ITEM_CASES)("$type.$itemsKey: $alias → $canonical", ({ type, itemsKey, alias, canonical, item, expected, pad = [], extra = {} }) => {
+    const component = { type, ...extra, [itemsKey]: [item, ...pad] }
     const input = deck([slideWith([component])])
     const { value, normalized } = normalizeComponentAliases(input)
     expect(normalized).toEqual([`slides[0].components[0].${itemsKey}[0]: ${alias} → ${canonical}`])
@@ -362,6 +511,27 @@ describe("COMPONENT_ITEM_FIELD_ALIASES: every row round-trips", () => {
     }
     const actual = new Set(ITEM_CASES.map((c) => `${c.type}.${c.alias}`))
     expect(actual).toEqual(expected)
+  })
+})
+
+// ── total pair count pinned (docs/changeset "53 total synonym pairs") ──────
+
+describe("total synonym-pair count", () => {
+  it("COMPONENT_FIELD_ALIASES + COMPONENT_ITEM_FIELD_ALIASES flatten to exactly 53 pairs", () => {
+    // The "covers every row exactly once" completeness guards above only
+    // prove BLOCK_CASES/ITEM_CASES stay in lockstep with each table's own
+    // rows — a row deleted from a table *and* its matching test case would
+    // still pass both guards, silently changing the total with nothing
+    // noticing. `.changeset/structure-components-2.md` quotes this number in
+    // prose ("53 total synonym pairs, up from 40") with nothing pinning it —
+    // this assertion is that pin. `SLIDE_FIELD_ALIASES` (3 more rows) is
+    // deliberately excluded: the changeset names only these two tables.
+    const blockCount = Object.values(COMPONENT_FIELD_ALIASES).reduce((n, m) => n + Object.keys(m).length, 0)
+    const itemCount = Object.values(COMPONENT_ITEM_FIELD_ALIASES).reduce(
+      (n, spec) => n + Object.keys(spec.aliases).length,
+      0,
+    )
+    expect(blockCount + itemCount).toBe(53)
   })
 })
 

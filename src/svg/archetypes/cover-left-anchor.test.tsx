@@ -124,13 +124,26 @@ describe("LeftAnchorCover", () => {
         (t) => t.getAttribute("x") === "64" && t.getAttribute("fill") === "#FFFFFF",
       )
       expect(titleLines.length).toBe(3)
-      expect(titleLines[0].getAttribute("font-size")).toBe("47")
+      // bold-metrics fix (2026-07-24): 44, not the pre-fix 47 -- this
+      // heading renders `fontWeight="600"` (LeftAnchorCover.tsx), academic's
+      // heading face resolves to Georgia, and Georgia Bold's real per-
+      // character advances (the round-2 exact model, svg-text-layout.ts's
+      // `GEORGIA_BOLD_EXACT`) size this line a hair larger than round 1's
+      // class-average-plus-margin estimate did (43) -- this string's actual
+      // character composition (mostly CJK, plus "DSpark" and the digits
+      // "60-85") doesn't concentrate the wide-character risk round 1's
+      // margin was blindly defending against everywhere. Re-pinned twice
+      // now (47 pre-fix -> 43 round 1 -> 44 round 2), never blindly `-u`'d:
+      // see this fix's report for the full re-pin list and the round-2
+      // aesthetic-comparison data this delta is one data point of.
+      expect(titleLines[0].getAttribute("font-size")).toBe("44")
 
       const expected = fitHeadingLines(REPORTED_HEADING, {
         maxWidth: 360,
         fontSize: 64,
         maxLines: 3,
         minPt: 32,
+        fontFamily: ctx.fonts.heading,
       })
       expect(titleLines.map((t) => t.textContent)).toEqual(expected.lines)
       expect(Number(titleLines[0].getAttribute("font-size"))).toBe(expected.fontSize)
@@ -157,6 +170,7 @@ describe("LeftAnchorCover", () => {
         fontSize: 64,
         maxLines: 3,
         minPt: 32,
+        fontFamily: ctx.fonts.heading,
       })
       expect(titleLines.map((t) => t.textContent)).toEqual(expected.lines)
     })

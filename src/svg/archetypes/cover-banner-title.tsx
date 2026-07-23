@@ -23,6 +23,13 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 84,
     maxLines: 2,
     lineHeightRatio: 1.08,
+    // bold-metrics fix (2026-07-24): this archetype renders its heading
+    // via `layoutSvgText` directly, not `fitHeadingLines` (root-cause.md
+    // S1), so it doesn't inherit that function's bold-default flip — its
+    // own `fontWeight="600"` below (>=600, this codebase's bold threshold,
+    // `isBold()` in fonts.ts) needs the same explicit opt-in.
+    bold: true,
+    fontFamily: ctx.fonts.heading,
   })
   const subtitle = layoutSvgText(slide.subheading, {
     maxWidth: 1040,

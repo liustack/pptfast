@@ -74,10 +74,20 @@ export const rings: SvgComponent<RingsComponent> = {
             `readableOn`'s neutral ink otherwise. */}
         {(() => {
           const core = component.items[0]
+          // `bold`/`fontFamily` (bold-metrics fix, round 2, 2026-07-24): this
+          // label renders `fontWeight="bold"` in `ctx.fonts.heading` below --
+          // bold-aware fitting needed, same as every other bold heading-faced
+          // text this task's audit-baseline sweep found and fixed. `measure`
+          // (`geometry(component, _w).h`) never reads this fit's result at
+          // all -- ring radii come purely from item *count*, not text metrics
+          // -- so there is no measure/render divergence risk to reason about
+          // here, unlike the height-affecting fields elsewhere in this task.
           const fitted = fitSvgLine(core.label, {
             maxWidth: radii[0] * 1.7,
             fontSize: 18,
             minFontSize: 12,
+            bold: true,
+            fontFamily: ctx.fonts.heading,
           })
           return (
             <text
@@ -105,10 +115,16 @@ export const rings: SvgComponent<RingsComponent> = {
           const angle = Math.atan2(rowY - 5 - cy, textX - 18 - cx)
           const sx = cx + r * Math.cos(angle)
           const sy = cy + r * Math.sin(angle)
+          // `bold`/`fontFamily`: same fix, this outer-ring label renders
+          // `fontWeight="bold"` in `ctx.fonts.heading` below too. Same
+          // no-divergence-risk argument as the core label above -- `measure`
+          // never reads any per-item label fit.
           const label = fitSvgLine(item.label, {
             maxWidth: textW,
             fontSize: LABEL_SIZE,
             minFontSize: 13,
+            bold: true,
+            fontFamily: ctx.fonts.heading,
           })
           const desc = item.desc
             ? layoutSvgText(item.desc, {
