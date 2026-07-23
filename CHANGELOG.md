@@ -1,5 +1,22 @@
 # @liustack/pptfast
 
+## 0.8.0
+
+### Minor Changes
+
+- f0fb885: Structure components wave 2: four new full-body components join `swot`/`bmc`/`waterfall`/`gantt` — `pest` (a political/economic/social/technological macro-environment scan), `five_forces` (Porter's Five Forces hub-and-spoke competitive analysis), `heatmap` (a value-driven color grid with a theme-derived sequential ramp and per-cell accessible ink), and `sankey` (a layered, quantity-proportional flow diagram exported as native editable vectors — zero `<p:pic>`, every band a real `<a:custGeom>`, a direct differentiation point against the rasterized-image treatment this chart type gets elsewhere). `COMPONENT_TYPES` grows from 28 to 32, `FULL_BODY_TYPES` from 4 to 8.
+
+  - Two review-round fixes shipped with the components themselves: `heatmap`'s value-ramp dead zone (a narrow relative-luminance band where neither black nor white ink clears 4.5:1) is now pinned as an audit-visible regression rather than silently degrading, and `sankey`'s label-over-band contrast is measured against the real rendered alpha composite (with an opaque backing chip as a guaranteed fallback when no single ink clears every overlapping band), its node/band stacking order keyed to node id rather than authored array position, and its non-conserved-hub gap explicitly disclosed and covered.
+  - Field-alias rescue (`COMPONENT_FIELD_ALIASES`/`COMPONENT_ITEM_FIELD_ALIASES`) and pyramid-strategy narrative-tendency membership — both deferred when the four components first landed — now cover all four, the same treatment `swot`/`bmc`/`waterfall`/`gantt` got (53 total synonym pairs, up from 40).
+  - SKILL.md's component-selection table, README/README.zh-CN's full-body paragraph, and every stale "28 components" reference across docs and internal doc comments are updated to 32.
+  - The browser-bundle bare-import scanner (`pnpm e2e`'s build-verification leg) is now syntax-aware instead of doing a raw text match, closing a false-positive class a `sankey` validate-error path collided with during development.
+  - Full 13-theme contrast-matrix coverage, pathological-input export coverage through the real `generatePptx` + package-audit hard gate for all four, and a zero-findings e2e leg exercising all eight full-body components on one deck.
+
+### Patch Changes
+
+- 2afecab: Headings no longer overflow in PowerPoint. The width estimator gains exact per-character advance models for the exported faces (Georgia and Microsoft YaHei, both weights, extracted from real font metrics) with a conservative fallback for unmeasured faces — bold headings were previously estimated with regular-weight assumptions and could clip at the slide edge. Nine structure components additionally now pass their heading weight through the fitter.
+- 1a9dffa: Validation now emits non-blocking editorial warnings when comparison, citation, or architecture content exceeds its editorial budget, alongside the existing hard geometric limits. Export hardening: the timestamp normalizer is enforced as the final patch in the export chain, and a determinism-seal violation now surfaces loudly instead of being swallowed by media dedupe's error handling.
+
 ## 0.7.0
 
 ### Minor Changes

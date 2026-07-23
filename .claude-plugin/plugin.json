@@ -1,6 +1,6 @@
 {
   "name": "pptfast",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Generate native, editable PPTX decks from a semantic IR — schema-driven workflow with a hard validate gate",
   "author": {
     "name": "Leon Liu",
