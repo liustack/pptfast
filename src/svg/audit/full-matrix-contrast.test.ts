@@ -1006,7 +1006,12 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // five-forces.tsx's `forceToken` "supplier_power" case returns
   // `colors.muted` — identical role (tint/candidate source only, the
   // intensity marker's filled dots reuse the same token but paint no text
-  // either). Same classification, same reasoning as pest above; the
+  // either). A third use (review fix round, Low: enumeration was
+  // incomplete, conclusion unaffected): `render`'s `lineColor =
+  // ctx.colors.muted` feeds every hub-and-spoke `<line>`'s `stroke` — a
+  // decorative connector, not text, so `findContrastIssues` (which only
+  // ever walks `<text>`/`<tspan>`) can never attribute a finding to it
+  // either. Same classification, same reasoning as pest above; the
   // tinted-panel background itself is covered below, "five_forces
   // tinted-panel contrast".
   five_forces: "no-muted-fill",
