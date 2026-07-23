@@ -1,4 +1,5 @@
 import type JSZip from "jszip"
+import { PptfastError } from "../errors"
 
 /**
  * Whole-file byte determinism (P0 hardening, Task 4 — D4 in the robustness
@@ -75,6 +76,22 @@ const CORE_TIMESTAMP_RE =
   /(<dcterms:(?:created|modified) xsi:type="dcterms:W3CDTF">)[^<]*(<\/dcterms:(?:created|modified)>)/g
 
 /**
+ * Zip instances `normalizePptxTimestamps` has already run on (carried-items
+ * wave — P0 T4 carried: "must run last" was convention only, enforced by
+ * nothing). A `WeakSet` keyed on the zip object itself, not a boolean flag
+ * anywhere on `JSZip` — this file never touches the `jszip` package itself,
+ * so a per-instance side table is the only way to remember "this exact zip
+ * was normalized" without monkeypatching the class.
+ */
+const sealedZips = new WeakSet<JSZip>()
+
+function throwSealedViolation(method: string): never {
+  throw new PptfastError(
+    `pptx export invariant violated: "${method}" was called on a JSZip package after normalizePptxTimestamps had already run on it. normalizePptxTimestamps must be the last patch applied before generateAsync() (see its own doc comment, pptx-fixed-timestamps.ts) — move this call ahead of normalizePptxTimestamps in generate.ts's patch chain, or fold its mutation into normalizePptxTimestamps itself`,
+  )
+}
+
+/**
  * Final normalization pass for the export chain: pin every zip entry's
  * local-file-header date to `FIXED_ZIP_DATE`, and pin `docProps/core.xml`'s
  * `<dcterms:created>`/`<dcterms:modified>` text to `FIXED_ZIP_DATE_ISO`.
@@ -88,6 +105,35 @@ const CORE_TIMESTAMP_RE =
  * "open, rewrite parts, caller re-zips" shape) rather than returning a new
  * `Blob` itself — `generate.ts` already owns the one call to
  * `generateAsync()` that follows.
+ *
+ * Runtime seal (carried-items wave, P0 T4 carried item — judged more
+ * robust than a source-order-parsing test alone, see this task's own
+ * report for the comparison): once this function's own work is done, it
+ * overrides `zip`'s `file`/`folder`/`remove` methods — the only mutating
+ * surface any patch stage in this pipeline actually calls (`dedupeMediaInZip`
+ * uses `.file()`/`.remove()`, the earlier Blob-in/Blob-out patches
+ * (`applyGradientFills`/`applyEaFontFaces`/`applySlideTransitions`/
+ * `applyElementAnimations`) each do their own independent `JSZip.loadAsync`
+ * on a different object entirely, never touching this one) — on *this one
+ * instance only*, never `JSZip.prototype`, so no other zip anywhere in the
+ * process (including a concurrent `generatePptx` call) is affected. A call
+ * to any of the three after this point throws immediately, loudly, at the
+ * exact call site that violated the ordering — whether that call moved
+ * here because `normalizePptxTimestamps` itself got reordered earlier (so
+ * something that used to run *before* it now runs *after*) or because a
+ * brand-new patch stage got inserted after it. `finalizePptxZip` below is
+ * the only sanctioned way to reach `generateAsync()` on a sealed zip — it
+ * throws if called on a zip this function never ran on, closing the other
+ * half of the contract ("must run", not just "must run last").
+ *
+ * Read access (`zip.file(path)` with no write, `zip.files`) is deliberately
+ * *not* guarded — nothing downstream of this call currently reads the zip
+ * (`finalizePptxZip` only serializes it), and this function's own header
+ * comment already establishes the contract as "nothing else touches this
+ * zip," not just "nothing else mutates it," but a hard boundary on writes
+ * is the one that actually protects the determinism invariant this file
+ * exists for, and is the one every real call site in this pipeline would
+ * trip if reordered.
  */
 export async function normalizePptxTimestamps(zip: JSZip): Promise<void> {
   const core = zip.file(CORE_XML_PATH)
@@ -105,4 +151,47 @@ export async function normalizePptxTimestamps(zip: JSZip): Promise<void> {
   for (const path of Object.keys(zip.files)) {
     zip.files[path]!.date = FIXED_ZIP_DATE
   }
+  // Seal — see this function's own doc comment above. `generateAsync`
+  // itself never calls `.file`/`.folder`/`.remove` internally (verified
+  // against jszip 3.10.1's own source: `generateAsync` → `generateInternalStream`
+  // → `generate.generateWorker` → `zip.forEach`, a read-only iteration over
+  // `zip.files` that never touches these three), so overriding them here
+  // cannot break the one call this pipeline is still allowed to make.
+  zip.file = (() => throwSealedViolation("file")) as JSZip["file"]
+  zip.folder = (() => throwSealedViolation("folder")) as JSZip["folder"]
+  zip.remove = (() => throwSealedViolation("remove")) as JSZip["remove"]
+  sealedZips.add(zip)
+}
+
+/**
+ * The one sanctioned way to reach `generateAsync()` on the export
+ * pipeline's zip (carried-items wave). Throws (same `PptfastError`
+ * invariant as the seal itself) if `normalizePptxTimestamps` never ran on
+ * this exact zip instance — catching the "forgot to call it at all" case
+ * the seal above can't catch on its own (a skipped call leaves the zip
+ * unsealed, not mutated-after-sealing). `generate.ts` calls this instead of
+ * `zip.generateAsync(...)` directly, so both halves of the "must run last"
+ * contract (must run, and nothing may follow it) are enforced at the one
+ * call site that would otherwise silently reintroduce wall-clock
+ * nondeterminism.
+ *
+ * Narrowed to the `"arraybuffer"` output type rather than forwarding
+ * jszip's own `generateAsync<T>` generic — `generate.ts` is the only real
+ * caller and always asks for `arraybuffer` (a clean `Blob` in Node, jsdom,
+ * and the browser alike). jszip's own `OutputByType` map that a forwarded
+ * generic would need to index into is a file-local type in jszip's `.d.ts`
+ * (no `export` keyword, unreachable from outside that file even via the
+ * `JSZip` namespace), so genericizing this wrapper would need a type this
+ * package cannot actually name.
+ */
+export async function finalizePptxZip(
+  zip: JSZip,
+  options: JSZip.JSZipGeneratorOptions<"arraybuffer">,
+): Promise<ArrayBuffer> {
+  if (!sealedZips.has(zip)) {
+    throw new PptfastError(
+      "pptx export invariant violated: generateAsync() was reached without normalizePptxTimestamps having run on this zip first — call normalizePptxTimestamps(zip) immediately before finalizePptxZip(zip, options) (see normalizePptxTimestamps's own doc comment, pptx-fixed-timestamps.ts)",
+    )
+  }
+  return zip.generateAsync(options)
 }

@@ -23,7 +23,7 @@ import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
 import { applyEaFontFaces } from "./pptx-ea-fonts"
 import { auditPptxPackage } from "./package-audit"
-import { normalizePptxTimestamps } from "./pptx-fixed-timestamps"
+import { finalizePptxZip, normalizePptxTimestamps } from "./pptx-fixed-timestamps"
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
@@ -141,7 +141,15 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   // this step always re-serializes now, even on the (common) path where
   // `dedupeMediaInZip` found nothing to collapse and this stage used to
   // return `elementAnimBlob` unpatched.
+  //
+  // Must-run-last is no longer convention only (carried-items wave, P0 T4
+  // carried item): `normalizePptxTimestamps` seals `zip`'s own mutating
+  // methods once it finishes, and `finalizePptxZip` below is the only
+  // sanctioned way to reach `generateAsync()` — inserting a new mutating
+  // patch here, or reordering `normalizePptxTimestamps` any earlier than
+  // this exact line, throws loudly at the exact call site that violated it
+  // (see both functions' own doc comments, pptx-fixed-timestamps.ts).
   await normalizePptxTimestamps(zip)
-  const ab = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" })
+  const ab = await finalizePptxZip(zip, { type: "arraybuffer", compression: "DEFLATE" })
   return new Blob([ab], { type: PPTX_MIME })
 }
