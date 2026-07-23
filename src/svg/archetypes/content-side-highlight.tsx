@@ -99,6 +99,7 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
     fontSize: 42,
     maxLines: 2,
     minPt: 28,
+    fontFamily: fonts.heading,
   })
   const headingLastY =
     HEADING_BASELINE + Math.max(0, heading.lines.length - 1) * heading.lineHeight

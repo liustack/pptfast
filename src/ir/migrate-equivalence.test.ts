@@ -116,6 +116,32 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // `annualReviewPreset` are untouched by this recapture (neither has a
       // 1-component quiet-frame page), and `.audit.json` needed no
       // recapture (findings stayed the empty array).
+      //
+      // Re-recaptured again (bold-metrics fix, 2026-07-24 — svg-text-
+      // layout.ts's weight/face-aware `measureTextUnits`): a heading's
+      // rendered `<text>` carrying `font-weight >= 600` under a real Bold-
+      // exporting font now sizes against that font's real Bold advance
+      // width, not the pre-fix Regular-only calibration (root-cause.md,
+      // this fix's own investigation — the fix this whole task exists
+      // for). `annualReviewPreset`'s slide index 3 (`stacked-poster`
+      // chapter, `journal` theme -> SimSun heading) is the only slide in
+      // any of the three fixtures affected: its bold SimSun heading "A
+      // quarter of steady wins" (`fontWeight="800"`) was fitting on one
+      // line at fontSize 64 under the old unweighted estimate; the new
+      // SimSun/KaiTi-aware estimate (this fix's item 2 -- the face's own
+      // Regular-weight space/other gap, folded in regardless of bold --
+      // plus its conservative-proxy Bold `lowerDigit` factor) now wraps it
+      // to two ("A quarter of" / "steady wins") at the same fontSize 64 --
+      // a real, intended shrink-safety change, not a migration regression.
+      // Verified via the same targeted-diff discipline as every prior
+      // recapture above: `basic`/`scenarioBearing` are untouched (neither
+      // lands a bold Georgia/YaHei/SimSun/KaiTi heading close enough to its
+      // budget for this fix to move), the only difference anywhere in
+      // `annualReviewPreset`'s SVG/PPTX goldens is this one heading's line
+      // count and font-family-local geometry it displaces (the quote
+      // block's `data-audit-box`/`data-audit-rect` y-coordinates shift down
+      // to make room), and `.audit.json` needed no recapture (findings
+      // stayed the empty array both sides).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

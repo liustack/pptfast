@@ -194,6 +194,13 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 50,
     maxLines: 2,
     minPt: 26,
+    // bold-metrics fix (2026-07-24): this heading renders at fontWeight=500
+    // below (one of exactly 2 archetype heading declarations under 600, the
+    // codebase's bold threshold — root-cause.md S5), so it opts out of
+    // `fitHeadingLines`'s bold-default flip explicitly rather than being
+    // over-corrected for a weight it never actually exports as.
+    bold: false,
+    fontFamily: ctx.fonts.heading,
   })
   const headingExtra = Math.max(0, heading.lines.length - 1) * heading.lineHeight
   const headingLastY = 150 + headingExtra
@@ -313,6 +320,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
     fontSize: 64,
     maxLines: 2,
     minPt: 36,
+    fontFamily: ctx.fonts.heading,
   })
   const titleLastY = TITLE_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight
 

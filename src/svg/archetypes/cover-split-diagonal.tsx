@@ -43,6 +43,7 @@ export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 76,
     maxLines: 3,
     minPt: 44,
+    fontFamily: ctx.fonts.heading,
   })
   const TITLE_Y = 300
   const titleLastY = TITLE_Y + Math.max(0, title.lines.length - 1) * title.lineHeight

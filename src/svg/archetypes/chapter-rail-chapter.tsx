@@ -71,6 +71,7 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 84,
     maxLines: 2,
     minPt: 40,
+    fontFamily: ctx.fonts.heading,
   })
   const headingY = heading.lines.length > 1 ? 352 : 392
   const headingLastY =

@@ -28,6 +28,15 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 150,
     maxLines: 2,
     minPt: 72,
+    // bold-metrics fix (2026-07-24): this line's fontWeight="900" render
+    // below relies on `fitHeadingLines`'s bold-default flip (opts.bold
+    // defaults true) plus this explicit fontFamily so the estimate is
+    // face-aware (Georgia under consulting/academic/insight) rather than
+    // falling back to the cross-face envelope. This is the exact archetype
+    // + slot the user-reported cover-overflow defect traced to
+    // (root-cause.md: "Components Demo" on the consulting theme) — see
+    // this fix's red-first test in cover-fashion-masthead.test.tsx.
+    fontFamily: ctx.fonts.heading,
   })
   const TITLE_Y = 330
   const titleLastY = TITLE_Y + Math.max(0, title.lines.length - 1) * title.lineHeight

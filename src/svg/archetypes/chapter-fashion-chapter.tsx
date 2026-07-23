@@ -43,6 +43,7 @@ export function FashionChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 54,
     maxLines: 2,
     minPt: 30,
+    fontFamily: ctx.fonts.heading,
   })
 
   return (

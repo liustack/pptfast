@@ -215,10 +215,19 @@ describe("ConstellationEnding", () => {
     )
     expect(customMarkup).toContain('<tspan fill="#2DD4E6">.</tspan>')
     const customRoot = parseSvgRoot(customMarkup)
-    const customHeading = Array.from(customRoot.querySelectorAll("text")).find((t) =>
-      (t.textContent ?? "").startsWith("Let's grow together"),
-    )!
-    expect(customHeading.textContent).toBe("Let's grow together.")
+    // bold-metrics fix (2026-07-24): this heading now wraps to 2 lines
+    // ("Let's grow" / "together.") instead of 1 -- tech's YaHei heading
+    // face's `lowerDigit` class now carries `LOWER_DIGIT_MARGIN`
+    // (svg-text-layout.ts), so the full unwrapped string no longer fits
+    // fontSize 88 on one line. Re-pinned to find the line carrying the
+    // split tspan (this test's actual subject) rather than assume a line
+    // count this fix has no reason to preserve.
+    const headingLines = Array.from(customRoot.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("font-size") === "88" && t.getAttribute("font-weight") === "700",
+    )
+    expect(headingLines.map((t) => t.textContent)).toEqual(["Let's grow", "together."])
+    const customHeading = headingLines.find((t) => t.querySelector("tspan") !== null)!
+    expect(customHeading.textContent).toBe("together.")
     expect(customHeading.querySelector("tspan")?.textContent).toBe(".")
   })
 

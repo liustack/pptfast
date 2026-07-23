@@ -56,6 +56,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
     fontSize: 56,
     maxLines: 2,
     minPt: 28,
+    fontFamily: fonts.heading,
   })
   const headingLastY =
     HEADING_BASELINE +

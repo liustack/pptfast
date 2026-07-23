@@ -63,6 +63,7 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     fontSize: 56,
     maxLines: 2,
     minPt: 28,
+    fontFamily: ctx.fonts.heading,
   })
   // 章节数字基线 400、字号 224，下伸部至 ~463px。标题起点须留出
   // 显式间距（含导出 ascent 近似 ±20px 缓冲），否则数字与标题叠压。

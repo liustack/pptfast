@@ -124,13 +124,27 @@ describe("LeftAnchorCover", () => {
         (t) => t.getAttribute("x") === "64" && t.getAttribute("fill") === "#FFFFFF",
       )
       expect(titleLines.length).toBe(3)
-      expect(titleLines[0].getAttribute("font-size")).toBe("47")
+      // bold-metrics fix (2026-07-24): 43, not the pre-fix 47 -- this
+      // heading renders `fontWeight="600"` (LeftAnchorCover.tsx), academic's
+      // heading face resolves to Georgia, and Georgia Bold's `upper` class
+      // measures +12.42% over this estimator's old unweighted assumption
+      // (bold-data-pack.md, this fix's own data pack) -- a real shrink from
+      // a heading that now correctly accounts for the font weight it
+      // actually exports as. `lowerDigit` also carries `JUDGMENT_BAND_
+      // MARGIN` (svg-text-layout.ts) -- this heading is lowerDigit-heavy
+      // ("大规模语言模型推理速度提升" etc. are CJK, but the Latin word
+      // "DSpark" and the digits "60-85" both land lowerDigit), same
+      // red-first-verification-round reasoning as the reported cover
+      // defect. Re-pinned, not blindly `-u`'d: see this fix's report for
+      // the full re-pin list.
+      expect(titleLines[0].getAttribute("font-size")).toBe("43")
 
       const expected = fitHeadingLines(REPORTED_HEADING, {
         maxWidth: 360,
         fontSize: 64,
         maxLines: 3,
         minPt: 32,
+        fontFamily: ctx.fonts.heading,
       })
       expect(titleLines.map((t) => t.textContent)).toEqual(expected.lines)
       expect(Number(titleLines[0].getAttribute("font-size"))).toBe(expected.fontSize)
@@ -157,6 +171,7 @@ describe("LeftAnchorCover", () => {
         fontSize: 64,
         maxLines: 3,
         minPt: 32,
+        fontFamily: ctx.fonts.heading,
       })
       expect(titleLines.map((t) => t.textContent)).toEqual(expected.lines)
     })

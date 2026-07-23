@@ -55,6 +55,7 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
     fontSize: 60,
     maxLines: 2,
     minPt: 32,
+    fontFamily: fonts.heading,
   })
   const headingLastY =
     HEADING_BASELINE + Math.max(0, heading.lines.length - 1) * heading.lineHeight
