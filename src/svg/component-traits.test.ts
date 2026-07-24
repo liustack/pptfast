@@ -106,18 +106,29 @@ describe("FULL_BODY_TYPES (structure-components wave 1 task 1 decision 1, extend
 // `src/ir/components/<name>.ts` domain file by reading these 6 collections
 // (`ComponentTraits`'s own doc comment, `src/ir/components/types.ts`) — that
 // is only sound if every member of every collection below is a real,
-// current `COMPONENT_TYPES` entry. TypeScript already enforces this at
-// compile time (each collection below is typed `ReadonlySet<ComponentType>`
-// / `readonly ComponentType[]`, and `ComponentType = Component["type"]` —
-// see `./component-traits.ts`'s own top doc comment), and the describe
+// current `COMPONENT_TYPES` entry. To be precise about what this test does
+// and doesn't add: TypeScript's structural typing already catches a
+// component renamed or removed in `ir/index.ts` without a matching
+// `component-traits.ts` update *today* — each collection below is typed
+// `ReadonlySet<ComponentType>` / `readonly ComponentType[]`
+// (`ComponentType = Component["type"]`, `./component-traits.ts`'s own top
+// doc comment), so a stale literal fails `tsc` loudly, typically cascading
+// into many more errors across every file still referencing the old type
+// string (review round for this task measured 144 cascading errors from a
+// single rename) — not a silent gap `pnpm check` would miss. This test's
+// real value is narrower: a fast, explicit, human-readable check that
+// doesn't need a full compiler run, and — more importantly — a runtime
+// backstop for W2c's planned traits reverse-generation, once these
+// collections' ir-side successors (one `ComponentTraits` declaration per
+// `src/ir/components/*.ts` domain file) are assembled by a codegen/
+// aggregation step that reads them as plain data rather than as
+// compile-time-checked literals the way today's 6 `Set`s are. The describe
 // blocks above already pin every collection's exact membership against a
-// hardcoded pre-refactor twin. Neither of those checks the *live*
-// `COMPONENT_TYPES` export (`@/ir`, derived from `ComponentSchema.options`)
-// though — both compare against a value declared in this same file/module,
-// so a real-world drift (a component renamed or removed in `ir/index.ts`
-// without updating `component-traits.ts` to match) would silently survive
-// both. This closes that gap: every member across all 6 collections must
-// resolve against the live union, not a hardcoded twin of it.
+// hardcoded pre-refactor twin, but neither that nor the type system cross-
+// checks against the *live* `COMPONENT_TYPES` export (`@/ir`, derived from
+// `ComponentSchema.options`) — this adds that one specific cross-check
+// explicitly, rather than leaving it an implicit side effect of the type
+// annotations above.
 describe("every classified member is a live COMPONENT_TYPES entry (traits reverse-generation feasibility, W2a task 4)", () => {
   it("STRETCHABLE_TYPES ∪ SELF_VISUAL_TYPES ∪ SCALABLE_TYPES ∪ PASSTHROUGH_SHELL_TYPES ∪ FULL_BODY_TYPES ∪ EVIDENCE_TYPES ⊆ COMPONENT_TYPES", () => {
     const allClassified = new Set<string>([

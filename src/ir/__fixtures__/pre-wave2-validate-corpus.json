@@ -1,4 +1,86 @@
 {
+  "coverage/gantt-tripwire": {
+    "errors": [
+      {
+        "message": "gantt item's end must be greater than its start (no zero/negative-duration bars)",
+        "page": 1,
+        "path": "slides.0.components.0.items.1.end"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/gantt-valid": {
+    "errors": [],
+    "ok": true
+  },
+  "coverage/heatmap-tripwire": {
+    "errors": [
+      {
+        "message": "heatmap domain.max must be greater than or equal to domain.min",
+        "page": 1,
+        "path": "slides.0.components.0.domain"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/heatmap-valid": {
+    "errors": [],
+    "ok": true
+  },
+  "coverage/image_grid-tripwire": {
+    "errors": [
+      {
+        "message": "Too small: expected array to have >=2 items",
+        "page": 1,
+        "path": "slides.0.components.0.items"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/image_grid-valid": {
+    "errors": [],
+    "ok": true,
+    "warnings": [
+      {
+        "message": "asset_id \"a1\" is not defined in assets.images — available: (none defined)",
+        "page": 1,
+        "path": "slides.0.components.0.items.0.asset_id"
+      },
+      {
+        "message": "asset_id \"a2\" is not defined in assets.images — available: (none defined)",
+        "page": 1,
+        "path": "slides.0.components.0.items.1.asset_id"
+      }
+    ]
+  },
+  "coverage/sankey-tripwire": {
+    "errors": [
+      {
+        "message": "sankey link 0's 'to' node id 'c' is not declared in nodes — available: 'a', 'b'",
+        "page": 1,
+        "path": "slides.0.components.0.links.0.to"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/sankey-valid": {
+    "errors": [],
+    "ok": true
+  },
+  "coverage/waterfall-tripwire": {
+    "errors": [
+      {
+        "message": "Too small: expected array to have >=3 items",
+        "page": 1,
+        "path": "slides.0.components.0.items"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/waterfall-valid": {
+    "errors": [],
+    "ok": true
+  },
   "examples/basic": {
     "errors": [],
     "ok": true
