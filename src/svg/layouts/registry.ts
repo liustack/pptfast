@@ -1,6 +1,6 @@
 /**
  * Layout registry (W2 task 1, spec §3/§6/§8): an explicit, statically-checked
- * description of what the render chain's 30 archetype components + 4
+ * description of what the render chain's 33 archetype components + 4
  * page-level image takeovers already draw. This is a metadata layer only —
  * it formalizes today's implicit page structure (archetype JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
@@ -46,7 +46,7 @@ export type Strategy = (typeof STRATEGY_VALUES)[number]
 export type SlideType = "cover" | "chapter" | "content" | "ending"
 
 /** The 16-word slot vocabulary — the union of every distinct visual region
- * observed across all 30 archetypes + 4 takeovers (inventory's "建议 slot
+ * observed across all 33 archetypes + 4 takeovers (inventory's "建议 slot
  * 词汇表"). Not every word is used by every entry, and `aside` currently
  * has zero occurrences as a *slot* (it only exists today as a body
  * `arrangement` — see `Arrangement` below) — kept in the vocabulary because
@@ -845,7 +845,7 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   },
 }
 
-/** All 30 archetype layouts + 4 takeover layouts, keyed by id. */
+/** All 33 archetype layouts + 4 takeover layouts, keyed by id. */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {
   ...COVER_LAYOUTS,
   ...CHAPTER_LAYOUTS,

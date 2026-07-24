@@ -1,6 +1,6 @@
 /**
  * Heading auto-sizing for the single-source SVG renderer. Ported from the
- * exporter's `text-fit.ts` (deleted once the legacy export path is removed) so
+ * exporter's `text-fit.ts`, deleted along with the legacy export path, so
  * the SVG templates own their heading metric. Sizes a heading from its visual
  * length so a long title shrinks to fit instead of overflowing.
  */
