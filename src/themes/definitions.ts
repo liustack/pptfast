@@ -1,6 +1,7 @@
-import type { BrandConfig, Slide } from "@/ir"
+import type { BackgroundSpec, BrandConfig, Slide } from "@/ir"
 import { PptfastError } from "../errors"
 import type { MotifArchetypeId } from "../svg/archetypes/types"
+import { contrastRatio } from "../svg/ink"
 import { getLayout, layoutsForSlideType } from "../svg/layouts/registry"
 import { REGISTERED_THEMES } from "./registered-themes"
 import type { StyleTokens } from "./tokens"
@@ -247,6 +248,107 @@ export function resolveBrand(id: string, override?: BrandConfig): BrandConfig {
 const REGISTERABLE_SLIDE_TYPES: readonly Slide["type"][] = ["cover", "chapter", "content", "ending"]
 
 /**
+ * Reduce a `BackgroundSpec` to one representative hex color — a color spec
+ * is already one; a gradient's `from` stop stands in for the whole band (see
+ * `svg/FullSlideSvg.tsx`'s own copy of this same function for the fuller
+ * gradient/asset rationale).
+ *
+ * Deliberately duplicated (byte-identical logic) from `svg/FullSlideSvg.tsx`'s
+ * exported `resolveBackgroundHex` rather than imported: that file already
+ * imports back from this one (`getThemeDefinition`), and it further pulls in
+ * the render-orchestration subtree (`BrandChrome.tsx`/`effective-layout.ts`/
+ * `motif-selection.ts`, confirmed via `npx madge --circular`) — importing it
+ * here would fold that whole subtree into a cycle with this foundational
+ * theme-registration module just to reuse a 3-line pure function. `ink.ts`'s
+ * own `contrastRatio` below makes the identical call against
+ * `deck-audit.ts`'s copy for an analogous reason (see that file's header
+ * comment: "render code must never import from the audit package;
+ * dependency direction is render→util, not the reverse") — this is the same
+ * discipline applied to the mirror-image direction (a low-level
+ * registration module must not import the high-level render orchestrator).
+ * Keep in sync with `FullSlideSvg.tsx`'s copy if the reduction rule ever
+ * changes.
+ */
+function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: string): string {
+  if (spec.kind === "color") return spec.value
+  if (spec.kind === "gradient") return spec.from
+  return surfaceFallback
+}
+
+/**
+ * Registration-time contrast floor (backlog-sweep task I2, controller-
+ * adjudicated): `colors.text`/`colors.muted` must clear 3.0:1 — the WCAG
+ * large-text floor — against each checked slide type's own resolved default
+ * background (same reduction `FullSlideSvg.tsx` itself paints with,
+ * {@link resolveBackgroundHex}). Below 3.0 a token is unreadable at *any*
+ * font size, not just body text, which is the same "always broken, no
+ * legitimate design reading it as intentional" bar this function's 6
+ * existing throw checks already hold layout ids to.
+ *
+ * Deliberately *not* the 4.5:1 body-text floor: a real gray-scale design can
+ * legitimately land in [3.0, 4.5) and should not be hard-rejected at
+ * registration — that higher bar is a theme author's own self-audit
+ * concern, already covered by `full-matrix-contrast.test.ts`'s
+ * `colors.muted contrast` suite for the 13 builtins (all measure >= 4.5
+ * there today).
+ */
+const CONTRAST_FLOOR = 3.0
+
+/**
+ * Slide types this check actually walks — `"chapter"` is deliberately
+ * excluded, same as `full-matrix-contrast.test.ts`'s `colors.muted contrast`
+ * suite (see that block's own comment). Verified by reading, not assumed:
+ * every one of the 8 chapter archetypes (`chapter-*.tsx`) imports
+ * `accessibleInk`/`readableOn` from `../svg/ink` and routes *both*
+ * `colors.text` and `colors.muted` through it before ever painting a fill —
+ * none paints either token raw against `ctx.defaultBg`. This isn't a
+ * per-theme coincidence this function would need to re-verify per
+ * registration: `registerTheme` can only curate a subset of *already
+ * existing* archetypes ("a theme never ships new render code", this
+ * function's own doc comment above) drawn from that same shared, fixed
+ * chapter-archetype set — so the raw-token-vs-chapter-background pairing
+ * this check would otherwise measure is structurally never what actually
+ * renders, for any theme this function could ever accept, not just the 13
+ * builtins. A probe against all 13 builtins' real tokens confirms this is
+ * load-bearing, not theoretical: `academic`/`classroom`/`consulting` are the
+ * 3 builtins whose `defaultBackgrounds.chapter` intentionally diverges from
+ * their own `colors.bg` (a dark divider tone, see {@link resolveBackgroundHex}'s
+ * own doc comment) — checking `chapter` here would hard-reject `colors.text`
+ * and/or `colors.muted` for all 3 of them (measured 1.00:1/2.41:1/2.23:1 for
+ * text, 3.26:1/1.18:1/1.46:1 for muted, against their own chapter
+ * background) despite every one of them rendering correctly today, precisely
+ * because their chapter archetypes never read these tokens raw.
+ */
+const CONTRAST_CHECKED_SLIDE_TYPES = ["cover", "content", "ending"] as const
+
+/**
+ * Throws {@link PptfastError} the moment any of `style.colors.text`/
+ * `style.colors.muted` falls below {@link CONTRAST_FLOOR} against a
+ * {@link CONTRAST_CHECKED_SLIDE_TYPES} slide type's own resolved default
+ * background — see that constant's doc comment for the 3.0 rationale and
+ * {@link CONTRAST_CHECKED_SLIDE_TYPES}'s for why `chapter` is out of scope.
+ *
+ * Exported so a test can sweep it directly against the 13 builtins: they
+ * never call {@link registerTheme} (`THEME_DEFINITIONS` is built straight
+ * from `THEME_STYLES`, not through this seam — see `registered-themes.ts`'s
+ * own docstring for why that separation is load-bearing), so this is the
+ * only way to lock their contrast floor as part of this task.
+ */
+export function assertContrastFloor(id: string, style: StyleTokens): void {
+  for (const slideType of CONTRAST_CHECKED_SLIDE_TYPES) {
+    const bg = resolveBackgroundHex(style.defaultBackgrounds[slideType], style.colors.surface)
+    for (const token of ["text", "muted"] as const) {
+      const ratio = contrastRatio(style.colors[token], bg)
+      if (ratio < CONTRAST_FLOOR) {
+        throw new PptfastError(
+          `theme "${id}" colors.${token} has a contrast ratio of ${ratio.toFixed(2)}:1 against its "${slideType}" background (${bg}) — must be at least ${CONTRAST_FLOOR.toFixed(1)}:1`,
+        )
+      }
+    }
+  }
+}
+
+/**
  * `registerTheme`'s input shape (W4, spec §3 "缺省 = 全集"): identical to
  * {@link ThemeDefinition} except `layouts` is optional, and — when present —
  * each of its four slide-type entries is independently optional too. A
@@ -281,6 +383,10 @@ export type ThemeRegistration = Omit<ThemeDefinition, "layouts"> & {
  *   default only kicks in when the key — or `layouts` itself — is omitted
  *   entirely, `undefined`, never for a caller-supplied `[]`).
  * - `style` must be present (a JS caller can bypass the TS type).
+ * - `style.colors.text`/`style.colors.muted` must each clear the
+ *   {@link CONTRAST_FLOOR} against a {@link CONTRAST_CHECKED_SLIDE_TYPES}
+ *   slide type's own resolved default background — see
+ *   {@link assertContrastFloor}'s own doc comment.
  *
  * Once registered, the theme participates in `getInstalledThemeIds`,
  * `getThemeDefinition` (hence `effective-layout.ts`/`FullSlideSvg`'s
@@ -295,6 +401,7 @@ export function registerTheme(def: ThemeRegistration): void {
   if (!def.style) {
     throw new PptfastError(`theme "${def.id}" is missing style tokens`)
   }
+  assertContrastFloor(def.id, def.style)
   const layouts = {} as Record<Slide["type"], readonly string[]>
   for (const slideType of REGISTERABLE_SLIDE_TYPES) {
     const ids = def.layouts?.[slideType] ?? FULL_LAYOUTS[slideType]

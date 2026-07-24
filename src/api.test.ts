@@ -1544,8 +1544,16 @@ describe("registerTheme end-to-end (W3 task 4)", () => {
           surface: "#FFFFFF",
           primary: "#123ABC",
           accent: "#FF00AA",
-          text: "#101010",
-          muted: "#666666",
+          // White/light-gray text — every `defaultBackgrounds` entry below is
+          // the same medium-saturation "#123ABC" blue, and #101010/#666666
+          // (this fixture's pre-registerTheme-contrast-floor values) measured
+          // 2.14:1/1.55:1 against it, below the new 3.0 floor
+          // (`assertContrastFloor`, backlog-sweep task I2). Unrelated to what
+          // either test in this describe block actually asserts (the
+          // "#123ABC" substring check reads `colors.bg`/`colors.primary`, not
+          // these two tokens).
+          text: "#FFFFFF",
+          muted: "#CCCCCC",
           chartPalette: ["#123ABC", "#FF00AA"],
         },
         fonts: { heading: ["Arial"], body: ["Arial"] },

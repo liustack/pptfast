@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId } from "./index"
 import {
   __resetRegisteredThemes,
+  assertContrastFloor,
   getInstalledThemeIds,
   getThemeDefinition,
   registerTheme,
@@ -426,6 +427,112 @@ describe("registerTheme", () => {
     expect(() => registerTheme(testTheme({ layouts: { content: [] } }))).toThrow(
       /must declare at least one layout for "content" slides/,
     )
+  })
+
+  // ── registerTheme: colors.text/colors.muted contrast floor (backlog-sweep
+  // task I2). Registration-time floor, not the 4.5:1 body-text bar
+  // `full-matrix-contrast.test.ts`'s `colors.muted contrast` suite enforces —
+  // see `assertContrastFloor`'s own doc comment in `./definitions` for the
+  // 3.0 rationale. `testTheme()`'s own fixture (`text` #000000, `muted`
+  // #888888, all-white `defaultBackgrounds`) clears 3.0 comfortably (21:1 /
+  // ~3.55:1) so every *other* `registerTheme` test above stays green
+  // unaffected by this check.
+  it("does not throw when colors.text/colors.muted clear the 3.0 floor against every slide type's background", () => {
+    expect(() => registerTheme(testTheme({ id: "acme-contrast-ok" }))).not.toThrow()
+  })
+
+  it("rejects colors.text below the 3.0 contrast floor against a slide type's resolved default background, naming the token/slideType/ratio/threshold", () => {
+    const base = testTheme({ id: "acme-low-text-contrast" })
+    expect(() =>
+      registerTheme({
+        ...base,
+        // near-white text on the fixture's white "cover" background -> ~1.09:1.
+        style: { ...base.style, colors: { ...base.style.colors, text: "#F5F5F5" } },
+      }),
+    ).toThrow(/colors\.text.*1\.\d\d:1.*"cover".*3\.0:1/)
+  })
+
+  it("rejects colors.muted below the 3.0 contrast floor", () => {
+    const base = testTheme({ id: "acme-low-muted-contrast" })
+    expect(() =>
+      registerTheme({
+        ...base,
+        style: { ...base.style, colors: { ...base.style.colors, muted: "#FAFAFA" } },
+      }),
+    ).toThrow(/colors\.muted/)
+  })
+
+  it("checks content and ending too, not just cover", () => {
+    const base = testTheme({ id: "acme-ending-bad" })
+    expect(() =>
+      registerTheme({
+        ...base,
+        style: {
+          ...base.style,
+          // Only "ending" is a bad background (black, same as the fixture's
+          // own black `colors.text` -> 1:1) — cover/chapter/content stay the
+          // fixture's white, which clears the floor.
+          defaultBackgrounds: {
+            cover: { kind: "color", value: "#FFFFFF" },
+            chapter: { kind: "color", value: "#FFFFFF" },
+            content: { kind: "color", value: "#FFFFFF" },
+            ending: { kind: "color", value: "#000000" },
+          },
+        },
+      }),
+    ).toThrow(/colors\.text.*"ending"/)
+  })
+
+  // Verified red-then-green during implementation: a first draft checked all
+  // four slide types (matching the task brief's literal text) and a probe
+  // against the 13 real builtins immediately found academic/classroom/
+  // consulting's `colors.text`/`colors.muted` measuring as low as 1.00:1
+  // against their own `chapter` background — not a bug in those themes
+  // (nothing ever renders that raw pairing, see the next test and
+  // `assertContrastFloor`'s own doc comment), but a false positive in the
+  // check itself. This test locks the fix: `chapter` is deliberately
+  // excluded, mirroring `full-matrix-contrast.test.ts`'s `colors.muted
+  // contrast` suite's own precedent for the identical reason.
+  it("deliberately excludes chapter from the check — a bad chapter background alone does not throw", () => {
+    const base = testTheme({ id: "acme-chapter-bad-bg-is-fine" })
+    expect(() =>
+      registerTheme({
+        ...base,
+        style: {
+          ...base.style,
+          // "chapter" alone is bad (black, 1:1 against the fixture's own
+          // black colors.text) — cover/content/ending stay white, so if
+          // chapter were checked this would throw; it must not.
+          defaultBackgrounds: {
+            cover: { kind: "color", value: "#FFFFFF" },
+            chapter: { kind: "color", value: "#000000" },
+            content: { kind: "color", value: "#FFFFFF" },
+            ending: { kind: "color", value: "#FFFFFF" },
+          },
+        },
+      }),
+    ).not.toThrow()
+  })
+})
+
+describe("assertContrastFloor", () => {
+  // Scoping decision (backlog-sweep task I2, confirmed by reading the
+  // source): the 13 builtins do NOT go through `registerTheme` —
+  // `THEME_DEFINITIONS` is built directly from `THEME_STYLES`
+  // (`Object.fromEntries(CANONICAL_THEME_IDS.map(...))` in `./definitions`),
+  // and `registered-themes.ts`'s own docstring explains this is load-bearing
+  // (a `THEME_DEFINITIONS`/`registerTheme` cycle would crash at module-eval
+  // with a TDZ error). A repo-wide grep for `registerTheme(` confirms zero
+  // production call sites outside its own declaration — every call site is
+  // this file (or a sibling test) registering a synthetic test theme, never
+  // one of the 13 canonical ids. So `registerTheme`'s new contrast check
+  // never actually runs against a builtin; this test sweeps all 13 directly
+  // through the underlying validation function instead, per the task brief's
+  // own scoping fallback for exactly this case.
+  it("all 13 canonical themes clear the 3.0 floor for colors.text and colors.muted on every slide type", () => {
+    for (const id of CANONICAL_THEME_IDS) {
+      expect(() => assertContrastFloor(id, THEME_DEFINITIONS[id].style)).not.toThrow()
+    }
   })
 })
 
