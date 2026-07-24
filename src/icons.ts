@@ -1,7 +1,7 @@
 /**
  * PPTX 图标目录（生成文件，勿手改）。
  * 由 scripts/gen-pptx-icons.mts 从 lucide v1.25.0（ISC License，框架无关
- * 核心包）提取全量图标 + 8 个手工兼容别名（该脚本 COMPAT_ALIASES，
+ * 核心包）提取全量图标 + 10 个手工兼容别名（该脚本 COMPAT_ALIASES，
  * 桥接 lucide 改名前的旧名）。单源：zod 枚举（IR）与 pptx-svg 渲染共用。
  * ops-kb pydantic Literal 手工镜像。
  * 重新生成：pnpm exec tsx scripts/gen-pptx-icons.mts
@@ -26,6 +26,8 @@ export const PPTX_ICONS: Readonly<Record<string, readonly PptxIconPrimitive[]>> 
   "alarm-clock-plus": [["circle",{"cx":"12","cy":"13","r":"8"}],["path",{"d":"M5 3 2 6"}],["path",{"d":"m22 6-3-3"}],["path",{"d":"M6.38 18.7 4 21"}],["path",{"d":"M17.64 18.67 20 21"}],["path",{"d":"M12 10v6"}],["path",{"d":"M9 13h6"}]],
   "alarm-smoke": [["path",{"d":"M11 21c0-2.5 2-2.5 2-5"}],["path",{"d":"M16 21c0-2.5 2-2.5 2-5"}],["path",{"d":"m19 8-.8 3a1.25 1.25 0 0 1-1.2 1H7a1.25 1.25 0 0 1-1.2-1L5 8"}],["path",{"d":"M21 3a1 1 0 0 1 1 1v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z"}],["path",{"d":"M6 21c0-2.5 2-2.5 2-5"}]],
   "album": [["rect",{"width":"18","height":"18","x":"3","y":"3","rx":"2","ry":"2"}],["polyline",{"points":"11 3 11 11 14 8 17 11 17 3"}]],
+  "alert-circle": [["circle",{"cx":"12","cy":"12","r":"10"}],["line",{"x1":"12","x2":"12","y1":"8","y2":"12"}],["line",{"x1":"12","x2":"12.01","y1":"16","y2":"16"}]],
+  "alert-triangle": [["path",{"d":"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"}],["path",{"d":"M12 9v4"}],["path",{"d":"M12 17h.01"}]],
   "align-center-horizontal": [["path",{"d":"M2 12h20"}],["path",{"d":"M10 16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"}],["path",{"d":"M10 8V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4"}],["path",{"d":"M20 16v1a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1"}],["path",{"d":"M14 8V7c0-1.1.9-2 2-2h2a2 2 0 0 1 2 2v1"}]],
   "align-center-vertical": [["path",{"d":"M12 2v20"}],["path",{"d":"M8 10H4a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h4"}],["path",{"d":"M16 10h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4"}],["path",{"d":"M8 20H7a2 2 0 0 1-2-2v-2c0-1.1.9-2 2-2h1"}],["path",{"d":"M16 14h1a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-1"}]],
   "align-end-horizontal": [["rect",{"width":"6","height":"16","x":"4","y":"2","rx":"2"}],["rect",{"width":"6","height":"9","x":"14","y":"9","rx":"2"}],["path",{"d":"M22 22H2"}]],
