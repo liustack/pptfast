@@ -174,6 +174,122 @@ describe("LeftAnchorCover", () => {
       })
       expect(titleLines.map((t) => t.textContent)).toEqual(expected.lines)
     })
+
+    // task R2（svg-text-layout.ts 的 tokenize 无空格分支修复 + retry-ladder
+    // scope extension）：一个粘在 CJK 中间、自身不含空格的拉丁 run（本仓
+    // 惯用语）修复前会被 360px 这个本文件最窄的 fitHeadingLines 预算从中间
+    // 切断，且 truncated 从未被触发（静默）。
+    //
+    // R2 review 的 Important finding（test 诚实性）：上一轮实现把这里的钉子
+    // 换成了 run 在 position ≥1（"OpenAPIGateway"，前面垫了 5 个 CJK 字符）
+    // 的变体，回避了 brief 原始 repro——run 在 STRING POSITION 0（串首即
+    // 拉丁 run）的场景。下面先恢复 brief 原文字面 pin 串作为主用例，
+    // position ≥1 的钉子保留在本 describe 块末尾作为补充覆盖。
+    it("the brief's own literal position-0 pin string, at this archetype's own narrowest budget, hits the documented minPt fallback boundary — falls back to the legacy split, never worse (R2 review: restored primary case)", () => {
+      // 经 fitHeadingLines 直调独立核实（Georgia Bold 精确字宽表，这个页面
+      // 真实使用的字重/字体）：这个 20 字符 run 自身宽度在 360px 预算下，
+      // 即使收缩到本页面的 minPt=32，整行也放不下（run 自身宽度换算出的
+      // 最佳"整体不切"字号只有 29——比 32 floor 还低 3pt）。这正是本任务
+      // 设计明确要求的兜底条件："run genuinely wider than a full line at
+      // minPt"——落回拆分是设计上正确、经过验证的结果，不是残留缺陷。落回
+      // 结果与本任务 ladder 修复前（3c8fe2b）的 fitHeadingLines 输出逐字节
+      // 一致（见任务报告的核实记录）。
+      const RUN = "Brandxxxxxxxxxxxxxxx"
+      const literalPin = `${RUN}：让工程团队将大模型推理性能提升`
+      const literalSlide: Slide = { type: "cover", heading: literalPin, components: [] } as Slide
+      const ctx = buildCtx(resolveStyle("academic"), {})
+      const out = renderSvgMarkup(
+        <LeftAnchorCover ir={ir("academic")} slide={literalSlide} index={0} ctx={ctx} />,
+      )
+      const root = parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,
+      )
+      const titleLines = Array.from(root.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("x") === "64" && t.getAttribute("fill") === "#FFFFFF",
+      )
+      const lineTexts = titleLines.map((t) => t.textContent)
+      expect(lineTexts).toEqual(["Brandxxxxxxxxxxxx", "xxx：让工程团队将大模", "型推理性能提升"])
+      expect(titleLines[0]?.getAttribute("font-size")).toBe("33")
+      // 尽管发生了 mid-run 拆分，仍必须无丢字、无重排——拆分而非丢内容。
+      expect(lineTexts.join("")).toBe(literalPin)
+      const expected = fitHeadingLines(literalPin, {
+        maxWidth: 360,
+        fontSize: 64,
+        maxLines: 3,
+        minPt: 32,
+        fontFamily: ctx.fonts.heading,
+      })
+      expect(expected.truncated).toBe(false)
+      expect(lineTexts).toEqual(expected.lines)
+      expect(Number(titleLines[0]?.getAttribute("font-size"))).toBe(expected.fontSize)
+    })
+
+    // Sweep-derived regression（reviewer 实测阈值，见任务报告）：run 长度
+    // 16 在这个预算下确实可以整体不切——与上面 20 字符的兜底场景对照，
+    // 证明修复在其真实可达范围内切实生效，而不只是有文档说明的兜底路径。
+    it("a shorter position-0 run (length 16, the reviewer's own measured threshold) genuinely resolves — no mid-run break, real fix demonstrated", () => {
+      const RUN = "Brandxxxxxxxxxxx"
+      const heading16 = `${RUN}：让工程团队将大模型推理性能提升`
+      const slide16: Slide = { type: "cover", heading: heading16, components: [] } as Slide
+      const ctx = buildCtx(resolveStyle("academic"), {})
+      const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide16} index={0} ctx={ctx} />)
+      const root = parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,
+      )
+      const titleLines = Array.from(root.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("x") === "64" && t.getAttribute("fill") === "#FFFFFF",
+      )
+      const lineTexts = titleLines.map((t) => t.textContent)
+      expect(lineTexts).toEqual(["Brandxxxxxxxxxxx", "：让工程团队将大模", "型推理性能提升"])
+      expect(lineTexts[0]).toBe(RUN) // run 独占第 1 行，从 position 0 起无切断
+      expect(titleLines[0]?.getAttribute("font-size")).toBe("37")
+      const expected = fitHeadingLines(heading16, {
+        maxWidth: 360,
+        fontSize: 64,
+        maxLines: 3,
+        minPt: 32,
+        fontFamily: ctx.fonts.heading,
+      })
+      expect(expected.truncated).toBe(false)
+      expect(lineTexts).toEqual(expected.lines)
+    })
+
+    // Position ≥1（"OpenAPIGateway"，前面垫了 5 个 CJK 字符）：原始 R2
+    // tokenize 修复已经独自解决——前导 CJK 吸收第 1 行预算，run 无需收缩
+    // 字号即可整体换到第 2 行。保留作为补充覆盖（守护"已经工作的那一半"），
+    // 不是本次 ladder 修复要验证的目标场景。
+    it("keeps a fused Latin run intact when wrapping a realistic English-glued-to-CJK heading, run at position ≥1 (additional coverage — guards the already-working half)", () => {
+      const RUN = "OpenAPIGateway"
+      const fusedHeading = "统一接入层OpenAPIGateway让跨团队协作效率显著提升"
+      const fusedSlide: Slide = { type: "cover", heading: fusedHeading, components: [] } as Slide
+      const ctx = buildCtx(resolveStyle("academic"), {})
+      const out = renderSvgMarkup(
+        <LeftAnchorCover ir={ir("academic")} slide={fusedSlide} index={0} ctx={ctx} />,
+      )
+      const root = parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,
+      )
+      const titleLines = Array.from(root.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("x") === "64" && t.getAttribute("fill") === "#FFFFFF",
+      )
+      const lineTexts = titleLines.map((t) => t.textContent)
+      expect(lineTexts).toEqual(["统一接入层", "OpenAPIGateway让跨", "团队协作效率显著提升"])
+      // run 必须整体落在某一行内，任何一行都不能从 run 内部切开
+      expect(lineTexts.some((l) => l?.includes(RUN))).toBe(true)
+      expect(titleLines[0]?.getAttribute("font-size")).toBe("32")
+      // truncated:false 语义仍需准确——内容并未被 truncateToUnits 丢字，
+      // 只是收缩到了 minPt 地板（32），这与 fitHeadingLines 直接调用的结果
+      // 必须一致。
+      const expected = fitHeadingLines(fusedHeading, {
+        maxWidth: 360,
+        fontSize: 64,
+        maxLines: 3,
+        minPt: 32,
+        fontFamily: ctx.fonts.heading,
+      })
+      expect(expected.truncated).toBe(false)
+      expect(lineTexts).toEqual(expected.lines)
+    })
   })
 
   it("confidentiality 徽标 (1064,104,120,48) 避让 BrandChrome 四个 logo 带（迁移自 academic.test.tsx）", () => {

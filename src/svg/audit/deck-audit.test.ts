@@ -871,6 +871,103 @@ describe("__collectImageBackedTextRuns — audit-v2 phase B pixel-audit input", 
   })
 })
 
+describe("gradient (url()) shape fills route to pixel-audit instead of misattributing (task R3)", () => {
+  it("collects a run painted over a gradient-filled <rect> instead of misattributing it to whatever lies beneath (rect/path registration gate)", () => {
+    // Pre-fix defect (recon for this task, measured live on the tech theme's
+    // constellation motif): `fill="url(#...)"` failed the old
+    // `shapeFill?.startsWith("#")` registration gate outright, so the
+    // gradient rect never became a PaintedShape at all — `backgroundAt`
+    // silently skipped past it and fell through to whatever *solid* shape
+    // happened to sit underneath, checking real text against a color it was
+    // never actually rendered on (worse than the `<image>` blind spot: that
+    // one at least degrades to `fill: null`, this one degraded to a
+    // confidently wrong answer). This fixture's own choice of near-black
+    // text over a near-black solid page background (#000000 on #0A0E14,
+    // ~1.03:1) captures the misattribution directly: pre-fix this produced a
+    // spurious low-contrast finding against the WRONG (underlying) color;
+    // post-fix the gradient rect registers with `fill: null` — the same
+    // routing a bare `<image>` already gets — and the run defers entirely to
+    // pixel-audit.ts instead.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0E14"/>
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2DD4E6"/>
+          <stop offset="100%" stop-color="#0A1220"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="400" height="400" fill="url(#g1)"/>
+      <text x="96" y="200" font-size="20" fill="#000000">text over gradient</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    const runs = __collectImageBackedTextRuns(markup)
+    expect(runs).toHaveLength(1)
+    expect(runs[0]).toMatchObject({ text: "text over gradient", fill: "#000000", baseline: 200, fontSize: 20, required: 4.5 })
+  })
+
+  it("collects a run painted over a gradient-filled <circle> the same way (circle/ellipse registration gate)", () => {
+    // Same defect, the second call site (`findContrastIssues`'s doc comment
+    // notes both sites explicitly) — a badge/dot circle using a gradient
+    // fill must get the identical `fill: null` routing, not a silent
+    // fall-through to the solid page background underneath.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0E14"/>
+      <defs>
+        <radialGradient id="g2">
+          <stop offset="0%" stop-color="#2DD4E6"/>
+          <stop offset="100%" stop-color="#0A1220"/>
+        </radialGradient>
+      </defs>
+      <circle cx="200" cy="200" r="80" fill="url(#g2)"/>
+      <text x="200" y="200" font-size="20" fill="#000000">badge label</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    const runs = __collectImageBackedTextRuns(markup)
+    expect(runs).toHaveLength(1)
+    expect(runs[0]!.fill).toBe("#000000")
+  })
+
+  it("registers a large gradient-filled rect in the page-level regions table too, as fill: null — never the raw url() string", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <defs>
+        <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2DD4E6"/>
+          <stop offset="100%" stop-color="#0A1220"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="1280" height="720" fill="url(#g3)"/>
+    </svg>`
+    const regions = __collectBgRegions(markup)
+    expect(regions).toHaveLength(1)
+    expect(regions[0]!.fill).toBeNull()
+  })
+
+  it("still excludes a gradient-filled shape inside <g data-decor>, same as a solid one (decor exclusion unaffected by the widened gate)", () => {
+    // Regression guard for the recon's own "decor exception awareness"
+    // question: the widened gate must stay strictly subordinate to the
+    // pre-existing `!inDecorSubtree` check, not bypass it. If it didn't,
+    // this decor gradient would register with `fill: null` and swallow the
+    // text into imageBackedRuns; correctly excluded, the text falls through
+    // to the solid white page background and passes contrast outright — the
+    // same verdict this markup would have produced before this task's fix.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <defs>
+        <linearGradient id="g4" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000000"/>
+          <stop offset="100%" stop-color="#111111"/>
+        </linearGradient>
+      </defs>
+      <g data-decor="true">
+        <rect x="0" y="0" width="1280" height="720" fill="url(#g4)"/>
+      </g>
+      <text x="200" y="200" font-size="20" fill="#000000">over the decor gradient</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    expect(__collectImageBackedTextRuns(markup)).toEqual([])
+  })
+})
+
 // Task-2 review (bench-driven fix round, defect A), Moderate #2: every real
 // circle/ellipse the shipped component suite renders puts text dead-center
 // (rings.tsx's "Core" label sits ~40px² from its circle's center — nowhere
