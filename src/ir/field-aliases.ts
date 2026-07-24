@@ -29,6 +29,10 @@
  *    rename is still a legitimate zod error, not a naming problem.
  */
 
+import { aliases as quoteAliases } from "./components/quote"
+import { aliases as paragraphAliases } from "./components/paragraph"
+import { aliases as calloutAliases } from "./components/callout"
+
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
 
@@ -38,13 +42,13 @@ export type FieldAliasMap = Readonly<Record<string, string>>
  * `_BLOCK_FIELD_ALIASES` (its "block" is pptfast's "component" post-rename).
  */
 export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = {
-  quote: { content: "text", author: "attribution", by: "attribution" },
+  quote: quoteAliases.block,
   // Mental model overlap with "code snippet" / "code text" / "source code".
   code: { content: "code", source: "code", snippet: "code", text: "code" },
-  paragraph: { content: "text", body: "text" },
+  paragraph: paragraphAliases.block,
   // callout and verdict_banner's semantic fields commonly cross-wire
   // (tone/variant) — each direction is this pair's own inverse alias below.
-  callout: { tone: "variant" },
+  callout: calloutAliases.block,
   verdict_banner: { variant: "tone" },
   // Named-slot full-body family (structure-components wave task 1, decision
   // 8): every slot is its own top-level field (not an item-array element),

@@ -2,6 +2,10 @@ import { z } from "zod"
 import { PPTX_ICON_NAMES } from "@/icons/catalog"
 import { BEAT_VALUES } from "./narrative-values"
 import { componentTypeError, iconEnumError } from "./schema-error-hints"
+import { schema as bulletsSchema } from "./components/bullets"
+import { schema as paragraphSchema } from "./components/paragraph"
+import { schema as quoteSchema } from "./components/quote"
+import { schema as calloutSchema } from "./components/callout"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -355,29 +359,10 @@ const SankeyLinkSchema = z
   .strict()
 
 const ComponentSchema = z.discriminatedUnion("type", [
-  z
-    .object({
-      type: z.literal("bullets"),
-      items: z.array(z.string()),
-      style: z.enum(["default", "checklist", "numbered", "plain", "divided"]).optional(),
-    })
-    .strict(),
-  z.object({ type: z.literal("paragraph"), text: z.string() }).strict(),
-  z
-    .object({
-      type: z.literal("quote"),
-      text: z.string(),
-      attribution: z.string().optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("callout"),
-      variant: z.enum(["info", "warn", "tip"]),
-      text: z.string(),
-      icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-    })
-    .strict(),
+  bulletsSchema,
+  paragraphSchema,
+  quoteSchema,
+  calloutSchema,
   z
     .object({
       type: z.literal("code"),
