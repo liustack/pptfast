@@ -1,5 +1,6 @@
 // GF/svg/archetypes/chapter-constellation-chapter.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
@@ -127,4 +128,25 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
       />
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CHAPTER_LAYOUTS["constellation-chapter"] entry. `CHROME` (registry.ts's
+// private `readonly string[] = []` alias, "not fed by an authored
+// component") is inlined here to the literal `[]` it always held, to avoid a
+// value-import cycle with the registry aggregator (which value-imports this
+// export) — see registry.ts's slot-`accepts` convention doc for what `[]`
+// means.
+export const layoutDef: LayoutDefinition = {
+  // chapter-constellation-chapter.tsx: left opaque accent chapter number
+  // (watermark), right-aligned heading + subheading, bottom hairline.
+  id: "constellation-chapter",
+  kind: "archetype",
+  slideTypes: ["chapter"],
+  slots: [
+    { name: "watermark", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+  ],
 }

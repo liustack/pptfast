@@ -1,5 +1,6 @@
 // GF/svg/archetypes/cover-tone-adaptive-header.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 
@@ -254,4 +255,27 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// COVER_LAYOUTS["tone-adaptive-header"] entry. `CHROME` (registry.ts's
+// private `readonly string[] = []` alias, "not fed by an authored
+// component") is inlined here to the literal `[]` it always held, to avoid a
+// value-import cycle with the registry aggregator (which value-imports this
+// export) — see registry.ts's slot-`accepts` convention doc for what `[]`
+// means.
+export const layoutDef: LayoutDefinition = {
+  // cover-tone-adaptive-header.tsx: org kicker, conf badge, heading,
+  // subheading; no-bg mode adds a divider + author/date/version meta row,
+  // bg mode collapses meta to one white overlay line (same slot names).
+  id: "tone-adaptive-header",
+  kind: "archetype",
+  slideTypes: ["cover"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "meta", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+  ],
 }

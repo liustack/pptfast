@@ -341,7 +341,7 @@ function checkBoundaryPageContent(ir: PptxIR): ValidationIssue[] {
 
 /**
  * Duplicate slide id hard gate (W5 task 1): `slide.id` is a stable page
- * identity plan/assemble stamps on (spec-adjacent — see `ir/index.ts`'s
+ * identity spec/assemble stamps on (spec-adjacent — see `ir/index.ts`'s
  * `id` docstring), so two slides sharing one within the same deck is always
  * an authoring/assemble bug, never legitimate input. One issue for the
  * whole deck (`path: "slides"`, no `page` — the problem spans multiple
@@ -351,7 +351,7 @@ function checkBoundaryPageContent(ir: PptxIR): ValidationIssue[] {
  * collide with itself.
  *
  * `slideId` (W5 whole-branch review finding 2) is set to the *first*
- * duplicated id, the same "representative id" shape `src/plan/index.ts`'s
+ * duplicated id, the same "representative id" shape `src/spec/index.ts`'s
  * own deck/plan-wide checks already use (e.g. `checkAlternatePolicy`) for an
  * issue that — unlike `checkLayoutApplicability`'s — is not itself scoped to
  * one single slide: this issue can list more than one distinct duplicated id

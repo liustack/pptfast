@@ -1,5 +1,6 @@
 // GF/svg/archetypes/chapter-poster-chapter.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { accessibleInk } from "../ink"
@@ -142,4 +143,24 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
       />
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CHAPTER_LAYOUTS["poster-chapter"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // chapter-poster-chapter.tsx: top-right org kicker, top/bottom hairlines,
+  // large opaque chapter-number watermark, heading. No subheading render.
+  id: "poster-chapter",
+  kind: "archetype",
+  slideTypes: ["chapter"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "watermark", accepts: [] },
+    { name: "heading", accepts: [] },
+  ],
 }

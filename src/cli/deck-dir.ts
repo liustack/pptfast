@@ -2,14 +2,14 @@
  * Deck project directory fs shell (spec §7's "deck project directory"
  * scheme, W5 task 5). Everything here touches disk — the pure half
  * (locked-field injection, placeholder/orphan semantics) lives in
- * `../plan/assemble.ts`'s `assembleDeck`, zero-fs by design (`AGENTS.md`'s
+ * `../spec/assemble.ts`'s `assembleDeck`, zero-fs by design (`AGENTS.md`'s
  * layout rule: this module is the *only* place that reads `deck.spec.json`
  * / `pages/*.json` / `assets/*` off disk and calls straight through to it,
  * the same posture `./load-ir.ts` already holds for a single IR file). It
  * is also the only place that *writes* `assets/*`, on the disassemble side
  * ({@link writeDeckAssets}) — the mirror image of {@link scanAssets} below,
  * and the CLI-shell half of `disassembleDeck`'s otherwise-lossy asset
- * handling (see that function's own doc comment in `../plan/assemble.ts`).
+ * handling (see that function's own doc comment in `../spec/assemble.ts`).
  *
  * Directory layout (spec §6/§7 — the locked artifact renamed from
  * `deck.plan.json` to `deck.spec.json`, vocabulary-v4 rename, task 2):
@@ -30,7 +30,7 @@
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises"
 import { basename, extname, isAbsolute, join, relative, resolve } from "node:path"
 import { PptfastError } from "../errors"
-import { assembleDeck, type AssembleResult, type PageContent } from "../plan/assemble"
+import { assembleDeck, type AssembleResult, type PageContent } from "../spec/assemble"
 import { decksRoot } from "./home"
 import { EXT_BY_MIME, loadIrFile } from "./load-ir"
 
@@ -443,7 +443,7 @@ export interface WriteDeckAssetsResult {
 /**
  * Write direction of the assets/ concept — the mirror image of
  * {@link scanAssets} above, and the CLI-shell half of `disassembleDeck`'s
- * documented-lossy `assets` handling (`../plan/assemble.ts`'s own doc
+ * documented-lossy `assets` handling (`../spec/assemble.ts`'s own doc
  * comment on that function): that pure function never touches
  * `ir.assets.images` at all (its `{ spec, pages }` return has no `assets`
  * field), so without this step a disassembled directory would carry

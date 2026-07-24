@@ -1,6 +1,6 @@
 /**
  * 从 lucide 提取全量图标原语，生成 PPTX 图标目录（单源）：
- *   src/icons.ts
+ *   src/icons/catalog.ts
  * 该文件同时供 zod 枚举（IR 校验）与 pptx-svg 渲染消费。ops-kb 的 pydantic
  * Literal 手工镜像此名单（来源注释）。
  *
@@ -12,7 +12,7 @@
  * 1.24.0（`.js` 变 `.mjs`，脚本对不上包结构），核心包的裸数组更适合
  * codegen，顺带甩掉一份没别处用到的 React 专用依赖。
  *
- * 兼容锁：W2.5 之前手工精选的 431 个名字（见 src/icons.legacy-names.ts）必须
+ * 兼容锁：W2.5 之前手工精选的 431 个名字（见 src/icons/legacy-names.ts）必须
  * 全部在生成结果里保留（超集扩张，不是替换）。lucide 升级偶尔会把旧名折进
  * 新名（如 v1.24 → v1.25 把 "home" 折进了 "house"，旧名不再是目录里的文件
  * 名），凡是全量目录里找不到的旧名，在下面 COMPAT_ALIASES 里手工补一条，
@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url"
  * 旧名 → 当前 canonical 名，两类来源，同一条救援路径（同一份图标数据，
  * 只是多注册一个可解析的名字）：
  *
- *  1. lucide 改名桥接（首 8 条）。发现方法：对比 icons.legacy-names.ts 的
+ *  1. lucide 改名桥接（首 8 条）。发现方法：对比 icons/legacy-names.ts 的
  *     431 个名字与 lucide 全量图标目录的文件名列表，取差集（2026-07-18，
  *     lucide v1.25.0，差集共 8 个）。
  *  2. 模型预训练旧习惯名（`alert-circle`/`alert-triangle`，T0b 救援）：与
@@ -148,7 +148,7 @@ ${entries.join("\n")}
 
 export const PPTX_ICON_NAMES = Object.keys(PPTX_ICONS) as [string, ...string[]]
 `
-  const dest = path.resolve(here, "../src/icons.ts")
+  const dest = path.resolve(here, "../src/icons/catalog.ts")
   writeFileSync(dest, out)
   console.log(
     `wrote ${dest} with ${rows.length} icons (${canonicalNames.length} canonical + ${aliasCount} compat aliases)`,

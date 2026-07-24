@@ -4,15 +4,34 @@
  * page-level image takeovers already draw. This is a metadata layer only —
  * it formalizes today's implicit page structure (archetype JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
- * drawing code. Nothing in the render chain consumes this yet (W2 tasks 2-5
- * wire selection/validation/capacity through it).
+ * drawing code.
  *
- * Source of truth: `.issues/notes/2026-07-18-w2-archetype-region-inventory.md`
- * (the W2 pre-flight inventory) plus a direct re-read of every archetype file
- * cited below — where the inventory's summary and the code disagreed, the
- * code won (see the task report for the one confirmed case: image-annotate).
+ * **Aggregator, not author (src domain reorg wave 1, task T1d).** Every
+ * individual `LayoutDefinition` used to live here as a literal Record entry.
+ * Each one now lives beside the archetype JSX it describes instead — an
+ * `export const layoutDef: LayoutDefinition` at the bottom of the matching
+ * `archetypes/*.tsx` file, or one of 4 uniquely-named exports at the bottom
+ * of `image-pages.tsx` for the takeovers (one file implements all 4, so they
+ * can't share the uniform `layoutDef` name the 33 single-layout archetype
+ * files use) — so "take one layout away whole" is a single-file operation
+ * instead of a two-file archaeology dig. This file's own job is now purely
+ * computational aggregation: import every `layoutDef`, assemble the five
+ * Records below (`{ [def.id]: def }`-style, preserving the exact key order
+ * the pre-migration literals held — order is load-bearing, not cosmetic, see
+ * `registry.migration-guard.test.ts`'s own header comment), merge them into
+ * `LAYOUT_REGISTRY`, and keep every type, query function
+ * (`getLayout`/`layoutsForSlideType`), and validation function
+ * (`filterByNarrativesOnly`) that reads the result. Never a re-export relay
+ * — every line below either constructs a Record or queries/validates one
+ * (this wave's aggregator discipline).
  *
- * Slot `accepts` convention used throughout this file:
+ * Source of truth for each definition's own content: the archetype file it
+ * now lives in cites `.issues/notes/2026-07-18-w2-archetype-region-inventory.md`
+ * (the W2 pre-flight inventory) plus a direct re-read of the archetype file
+ * itself — where the inventory's summary and the code disagreed, the code
+ * won (see the W2 task report for the one confirmed case: image-annotate).
+ *
+ * Slot `accepts` convention used throughout every `layoutDef`:
  *  - `[]` (empty array): the slot is *not* fed by an authored component
  *    — it's derived straight from slide-level scalar fields (`slide.heading`,
  *    `slide.subheading`), `ir.meta.*` (organization/date/version/contact/
@@ -40,6 +59,59 @@
 // no cast is ever needed where the two meet (`layout-selection.ts`'s
 // `resolveArchetypeId`).
 import type { STRATEGY_VALUES } from "@/ir/narrative-values"
+
+// ── layoutDef imports (src domain reorg wave 1, task T1d): 33 archetype
+// files (one `layoutDef` each) + image-pages.tsx's 4 uniquely-named takeover
+// exports — 37 bindings total. Grouped by family, each group in the exact
+// order its former literal Record held (order feeds `layoutsForSlideType`'s
+// `Object.values` walk below, which feeds `theme.layouts[type]`'s array
+// order, which `resolveArchetypeId`'s `weightedPickBySeed` samples from
+// positionally — see registry.migration-guard.test.ts). Aliased to a
+// family-prefixed camelCase name (mirrors each file's own name) since 33
+// files all export the same bare `layoutDef`.
+import { layoutDef as coverBannerTitle } from "../archetypes/cover-banner-title"
+import { layoutDef as coverPosterCenter } from "../archetypes/cover-poster-center"
+import { layoutDef as coverLeftAnchor } from "../archetypes/cover-left-anchor"
+import { layoutDef as coverConstellation } from "../archetypes/cover-constellation"
+import { layoutDef as coverEditorialMasthead } from "../archetypes/cover-editorial-masthead"
+import { layoutDef as coverToneAdaptiveHeader } from "../archetypes/cover-tone-adaptive-header"
+import { layoutDef as coverFashionMasthead } from "../archetypes/cover-fashion-masthead"
+import { layoutDef as coverSplitDiagonal } from "../archetypes/cover-split-diagonal"
+
+import { layoutDef as chapterMastheadChapter } from "../archetypes/chapter-masthead-chapter"
+import { layoutDef as chapterConstellationChapter } from "../archetypes/chapter-constellation-chapter"
+import { layoutDef as chapterRailChapter } from "../archetypes/chapter-rail-chapter"
+import { layoutDef as chapterBannerChapter } from "../archetypes/chapter-banner-chapter"
+import { layoutDef as chapterPosterChapter } from "../archetypes/chapter-poster-chapter"
+import { layoutDef as chapterRomanChapter } from "../archetypes/chapter-roman-chapter"
+import { layoutDef as chapterToneAdaptiveChapter } from "../archetypes/chapter-tone-adaptive-chapter"
+import { layoutDef as chapterFashionChapter } from "../archetypes/chapter-fashion-chapter"
+
+import { layoutDef as endingMastheadEnding } from "../archetypes/ending-masthead-ending"
+import { layoutDef as endingConstellationEnding } from "../archetypes/ending-constellation-ending"
+import { layoutDef as endingRailEnding } from "../archetypes/ending-rail-ending"
+import { layoutDef as endingBannerEnding } from "../archetypes/ending-banner-ending"
+import { layoutDef as endingPosterEnding } from "../archetypes/ending-poster-ending"
+import { layoutDef as endingToneAdaptiveEnding } from "../archetypes/ending-tone-adaptive-ending"
+import { layoutDef as endingFashionEnding } from "../archetypes/ending-fashion-ending"
+
+import { layoutDef as contentNarrowColumn } from "../archetypes/content-narrow-column"
+import { layoutDef as contentTwoColumn } from "../archetypes/content-two-column"
+import { layoutDef as contentRailNumbered } from "../archetypes/content-rail-numbered"
+import { layoutDef as contentBannerHeading } from "../archetypes/content-banner-heading"
+import { layoutDef as contentStackedPoster } from "../archetypes/content-stacked-poster"
+import { layoutDef as contentBentoPanel } from "../archetypes/content-bento-panel"
+import { layoutDef as contentToneAdaptiveContent } from "../archetypes/content-tone-adaptive-content"
+import { layoutDef as contentSideHighlight } from "../archetypes/content-side-highlight"
+import { layoutDef as contentAsymmetricTriptych } from "../archetypes/content-asymmetric-triptych"
+import { layoutDef as contentQuietFrame } from "../archetypes/content-quiet-frame"
+
+import {
+  imageSplitLayoutDef,
+  imageTopLayoutDef,
+  imageBottomLayoutDef,
+  imageAnnotateLayoutDef,
+} from "../image-pages"
 
 export type Strategy = (typeof STRATEGY_VALUES)[number]
 
@@ -142,136 +214,21 @@ export function filterByNarrativesOnly<T extends { narrativesOnly?: readonly Str
   return defs.filter((def) => def.narrativesOnly === undefined || def.narrativesOnly.includes(strategy))
 }
 
-/** Chrome slots (label/rule/meta/decor/watermark/rail) are never fed by an
- * authored component — see the file header's `accepts` convention. */
-const CHROME: readonly string[] = []
-
 // ─────────────────────────────────────────────────────────────────────────
 // Cover archetypes (8) — cover/chapter/ending never read `slide.components`
-// (inventory headline finding, confirmed file-by-file below), so none of
-// them declare a `body` slot.
+// (inventory headline finding — see each archetype's own `layoutDef`
+// comment for the file-by-file confirmation), so none of them declare a
+// `body` slot.
 // ─────────────────────────────────────────────────────────────────────────
 const COVER_LAYOUTS: Record<string, LayoutDefinition> = {
-  "banner-title": {
-    // cover-banner-title.tsx: org dot-kicker, conf badge, heading, accent
-    // bar, italic subheading, meta divider + author/date/version row.
-    id: "banner-title",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-    ],
-  },
-  "poster-center": {
-    // cover-poster-center.tsx: fully centered "poster" — no kicker (org is
-    // folded into the single bottom meta line, not a standalone label).
-    id: "poster-center",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "left-anchor": {
-    // cover-left-anchor.tsx: 40%-width primary color block carries the
-    // heading (white, product-logic exempt); right panel has org kicker,
-    // conf badge, subheading, meta divider + author/date/version. The
-    // corner triangle is a private decorative swatch (TRIANGLE_DEEP) → decor.
-    id: "left-anchor",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "decor", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-    ],
-  },
-  constellation: {
-    // cover-constellation.tsx: top-left org kicker, bottom-anchored hero
-    // heading, accent rule + subheading, conf/date meta row, and the
-    // signature 9-point constellation motif (inline in this file, not the
-    // separate Motif system) → decor.
-    id: "constellation",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-      { name: "decor", accepts: CHROME },
-    ],
-  },
-  "editorial-masthead": {
-    // cover-editorial-masthead.tsx: centered masthead heading + short
-    // underline + italic subheading + single merged org/date/conf meta line.
-    // No standalone kicker.
-    id: "editorial-masthead",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "tone-adaptive-header": {
-    // cover-tone-adaptive-header.tsx: org kicker, conf badge, heading,
-    // subheading; no-bg mode adds a divider + author/date/version meta row,
-    // bg mode collapses meta to one white overlay line (same slot names).
-    id: "tone-adaptive-header",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-    ],
-  },
-  "fashion-masthead": {
-    // cover-fashion-masthead.tsx: full-bleed primary block, org kicker, thin
-    // rule above the masthead heading, accent color band, subheading, meta.
-    id: "fashion-masthead",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "split-diagonal": {
-    // cover-split-diagonal.tsx: diagonal-cut primary block carries an org
-    // kicker + decorative accent dot (decor); heading/rule/subheading/meta
-    // sit in the right clear zone.
-    id: "split-diagonal",
-    kind: "archetype",
-    slideTypes: ["cover"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "decor", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
+  [coverBannerTitle.id]: coverBannerTitle,
+  [coverPosterCenter.id]: coverPosterCenter,
+  [coverLeftAnchor.id]: coverLeftAnchor,
+  [coverConstellation.id]: coverConstellation,
+  [coverEditorialMasthead.id]: coverEditorialMasthead,
+  [coverToneAdaptiveHeader.id]: coverToneAdaptiveHeader,
+  [coverFashionMasthead.id]: coverFashionMasthead,
+  [coverSplitDiagonal.id]: coverSplitDiagonal,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -280,115 +237,14 @@ const COVER_LAYOUTS: Record<string, LayoutDefinition> = {
 // paired with `heading`. No body slot (chapter never reads components).
 // ─────────────────────────────────────────────────────────────────────────
 const CHAPTER_LAYOUTS: Record<string, LayoutDefinition> = {
-  "masthead-chapter": {
-    // chapter-masthead-chapter.tsx: top/bottom hairlines bracket a
-    // left-aligned heading + italic subheading; bottom-right translucent
-    // chapter-number watermark.
-    id: "masthead-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "rule", accepts: CHROME },
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-    ],
-  },
-  "constellation-chapter": {
-    // chapter-constellation-chapter.tsx: left opaque accent chapter number
-    // (watermark), right-aligned heading + subheading, bottom hairline.
-    id: "constellation-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-    ],
-  },
-  "rail-chapter": {
-    // chapter-rail-chapter.tsx: giant translucent watermark numeral, centered
-    // heading + italic subheading over the theme's primary color block, and
-    // a horizontal chapter-progress dot row + track → rail.
-    id: "rail-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rail", accepts: CHROME },
-    ],
-  },
-  "banner-chapter": {
-    // chapter-banner-chapter.tsx: translucent watermark numeral, centered
-    // white heading/subheading over the primary color block, short
-    // decorative accent hairline.
-    id: "banner-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-    ],
-  },
-  "poster-chapter": {
-    // chapter-poster-chapter.tsx: top-right org kicker, top/bottom hairlines,
-    // large opaque chapter-number watermark, heading. No subheading render.
-    id: "poster-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-    ],
-  },
-  "roman-chapter": {
-    // chapter-roman-chapter.tsx: top-right org kicker, giant roman-numeral
-    // watermark, heading + italic subheading with its own short rule, and a
-    // seed/chapter-rotated arc ornament (eclipse/grooves/chord) → decor.
-    id: "roman-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "decor", accepts: CHROME },
-    ],
-  },
-  "tone-adaptive-chapter": {
-    // chapter-tone-adaptive-chapter.tsx: translucent watermark numeral +
-    // centered heading only — no kicker, no subheading render at all.
-    id: "tone-adaptive-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-    ],
-  },
-  "fashion-chapter": {
-    // chapter-fashion-chapter.tsx: full-bleed accent block, "CHAPTER NN"
-    // kicker + org kicker (bottom), giant numeral watermark, heading, bottom
-    // rule. No subheading render.
-    id: "fashion-chapter",
-    kind: "archetype",
-    slideTypes: ["chapter"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "watermark", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-    ],
-  },
+  [chapterMastheadChapter.id]: chapterMastheadChapter,
+  [chapterConstellationChapter.id]: chapterConstellationChapter,
+  [chapterRailChapter.id]: chapterRailChapter,
+  [chapterBannerChapter.id]: chapterBannerChapter,
+  [chapterPosterChapter.id]: chapterPosterChapter,
+  [chapterRomanChapter.id]: chapterRomanChapter,
+  [chapterToneAdaptiveChapter.id]: chapterToneAdaptiveChapter,
+  [chapterFashionChapter.id]: chapterFashionChapter,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -396,106 +252,13 @@ const CHAPTER_LAYOUTS: Record<string, LayoutDefinition> = {
 // universal pair; no body slot (ending never reads components).
 // ─────────────────────────────────────────────────────────────────────────
 const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
-  "masthead-ending": {
-    // ending-masthead-ending.tsx: centered heading (falls back to
-    // "Thank You") + italic subheading + single org/contact/date meta line.
-    id: "masthead-ending",
-    kind: "archetype",
-    slideTypes: ["ending"],
-    slots: [
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "constellation-ending": {
-    // ending-constellation-ending.tsx: centered "Thank you." heading (accent
-    // trailing period), subheading, signature accent rule bar, stacked
-    // org/contact/date meta lines.
-    id: "constellation-ending",
-    kind: "archetype",
-    slideTypes: ["ending"],
-    slots: [
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "rail-ending": {
-    // ending-rail-ending.tsx: corner color-block accents (decor, echoing
-    // Cover's rect motif), org kicker, heading ("Thank you"), subheading,
-    // hairline + "Contact" contact section + copyright line (all meta).
-    id: "rail-ending",
-    kind: "archetype",
-    slideTypes: ["ending"],
-    slots: [
-      { name: "decor", accepts: CHROME },
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "banner-ending": {
-    // ending-banner-ending.tsx: org kicker, italic heading ("Thank you."),
-    // subheading (falls back to "We appreciate your time."), divider,
-    // "Contact" contact section + copyright (meta).
-    id: "banner-ending",
-    kind: "archetype",
-    slideTypes: ["ending"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "poster-ending": {
-    // ending-poster-ending.tsx: centered italic heading, accent rule,
-    // subheading, divider, single combined org/contact/copyright meta line.
-    // No standalone kicker.
-    id: "poster-ending",
-    kind: "archetype",
-    slideTypes: ["ending"],
-    slots: [
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "tone-adaptive-ending": {
-    // ending-tone-adaptive-ending.tsx: org kicker, heading ("Thank you"),
-    // divider, "Contact" contact section + copyright (meta). No subheading
-    // render.
-    id: "tone-adaptive-ending",
-    kind: "archetype",
-    slideTypes: ["ending"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
-  "fashion-ending": {
-    // ending-fashion-ending.tsx: full-bleed primary block, org kicker (top),
-    // giant heading ("Thank you"), accent band rule, subheading, org/date
-    // meta line.
-    id: "fashion-ending",
-    kind: "archetype",
-    slideTypes: ["ending"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-  },
+  [endingMastheadEnding.id]: endingMastheadEnding,
+  [endingConstellationEnding.id]: endingConstellationEnding,
+  [endingRailEnding.id]: endingRailEnding,
+  [endingBannerEnding.id]: endingBannerEnding,
+  [endingPosterEnding.id]: endingPosterEnding,
+  [endingToneAdaptiveEnding.id]: endingToneAdaptiveEnding,
+  [endingFashionEnding.id]: endingFashionEnding,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -515,8 +278,9 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 // geometry-honest per-layout component count, sourced from the pre-W3
 // CAPACITY table's derivations (not invented fresh):
 //   - single-stack layouts — narrow-column/rail-numbered/banner-heading/
-//     tone-adaptive-content, plus stacked-poster's degrade path (this file's
-//     own comment on that entry already establishes it behaves like the
+//     tone-adaptive-content, plus stacked-poster's degrade path
+//     (content-stacked-poster.tsx's own comment on its layoutDef already
+//     establishes it behaves like the
 //     other four "all" archetypes once it falls back to SvgContent): 4,
 //     mirroring the former `CAPACITY.maxBlocksPerSlide` (deleted in W3 — the editorial side now lives in PACING_BUDGETS) — audit/capacity.ts's flat,
 //     theme-independent default (`floor(minRectH / perBlock)`, the shared
@@ -552,217 +316,25 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     width (880px, `narrow-column`'s `COLUMN_W`), so no new per-archetype
 //     number is warranted (each file's own composition-sketch header
 //     derives this explicitly, not just asserts it).
+//
+// This essay is what every content archetype's own body-slot capacity
+// comment means by "see registry.ts's CONTENT_LAYOUTS header for the
+// derivation" (src domain reorg wave 1, task T1d — reworded from the
+// pre-migration "see file header derivation" once each entry moved into its
+// own archetype file). It stays here, comparative across all 10, rather
+// than traveling with any one entry.
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
-  "narrow-column": {
-    // content-narrow-column.tsx: top hairline, italic kicker, heading,
-    // subheading, narrow SvgContent body (arrangement passed through
-    // unchanged), large muted page-number watermark in the right gutter,
-    // italic footnote
-    // (meta).
-    id: "narrow-column",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "rule", accepts: CHROME },
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
-      { name: "watermark", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: "all",
-  },
-  "two-column": {
-    // content-two-column.tsx: kicker, heading, subheading, accent bar +
-    // hairline rule, SvgContent body — hardcodes arrangement="two_column"
-    // (content-two-column.tsx:102) regardless of slide.arrangement. No
-    // footnote/meta render at all.
-    id: "two-column",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // two narrower columns, same height budget — see file header derivation
-    ],
-    arrangements: ["two_column"],
-  },
-  "rail-numbered": {
-    // content-rail-numbered.tsx: fixed left progress track + node (rail),
-    // "{chapter}.{n}" number badge replacing the usual kicker, heading,
-    // subheading, SvgContent body (arrangement passed through), italic footnote
-    // (meta).
-    id: "rail-numbered",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "rail", accepts: CHROME },
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: "all",
-  },
-  "banner-heading": {
-    // content-banner-heading.tsx: section-name kicker, heading set inside a
-    // filled "assertion banner" (the banner rect *is* the heading treatment
-    // — no separate rule), subheading, SvgContent body (arrangement passed
-    // through), italic footnote (meta).
-    id: "banner-heading",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: "all",
-  },
-  "stacked-poster": {
-    // content-stacked-poster.tsx: centered kicker + accent rule, heading,
-    // subheading, and a `body` slot — the *degrade* path (>=3 components, 0
-    // components, or an overflowing hero/strip candidate) passes
-    // `slide.arrangement` straight through to SvgContent unchanged, so this
-    // archetype honors every arrangement exactly like the four plain "all"
-    // archetypes below (W2 task 3 adjudication: the inventory's original
-    // "single" was a conservative placeholder pending this call, not a
-    // literal claim that only "single" ever reaches SvgContent — see the
-    // registry test's dedicated degrade-path-with-two_column assertion).
-    // Exactly 1-2 fitting components instead take the bespoke poster path,
-    // which bypasses arrangement entirely: component[0] always renders in a
-    // dedicated `hero` slot (capacity 1), and component[1] — only when there are
-    // exactly 2 — renders in a `strip` caption slot below a divider
-    // (capacity 1). Footnote (meta) renders on both paths.
-    id: "stacked-poster",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // single-stack degrade path — see file header derivation
-      { name: "hero", accepts: "any", capacity: 1 },
-      { name: "strip", accepts: "any", capacity: 1 },
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: "all",
-  },
-  "bento-panel": {
-    // content-bento-panel.tsx: kicker, heading, subheading, and a `body`
-    // slot that alternates between a plain single-component/degraded stack and
-    // a dedicated `grid` slot — up to 6 bento cells (bento-layout.ts:193-194,
-    // "the bento grid only ever has 6 cells"), hero-weight-ordered. All
-    // three internal SvgContent calls hardcode arrangement="single"
-    // (inventory: "bento-panel 三处调用全部硬编码 variant=single" — the
-    // inventory's own finding predates the W2 task 3 field rename). Italic
-    // footnote (meta).
-    id: "bento-panel",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 6 }, // mirrors this archetype's own grid capacity — see file header derivation
-      { name: "grid", accepts: "any", capacity: 6 },
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: ["single"],
-  },
-  "tone-adaptive-content": {
-    // content-tone-adaptive-content.tsx: kicker, heading, subheading, accent
-    // bar + hairline rule, SvgContent body (arrangement passed through
-    // unchanged in both branches), meta (footer meta row inside the white
-    // card when a bg image is present, or an italic footnote when not —
-    // same slot, two renderings).
-    id: "tone-adaptive-content",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // single-stack — see file header derivation
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: "all",
-  },
-  "side-highlight": {
-    // content-side-highlight.tsx: standard-width body column (kicker/
-    // heading/subheading/SvgContent body, arrangement passed through) plus
-    // a persistent, unconditional highlight panel (chrome, not a
-    // component-fed slot) running the page's full content height on the
-    // right edge — badge/watermark/org label, never empty regardless of
-    // `slide.components`.
-    id: "side-highlight",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // single-stack, 880px column — see file header derivation
-      { name: "panel", accepts: CHROME },
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: "all",
-  },
-  "asymmetric-triptych": {
-    // content-asymmetric-triptych.tsx: full-width kicker/heading/subheading
-    // chrome above a three-region body — a wide `lead` column (the first
-    // component alone) plus a narrower right column split into `top`/
-    // `bottom` framed secondary panels. All three internal SvgContent calls
-    // hardcode arrangement to the default single-stack (never
-    // `slide.arrangement` — the three-region split is this archetype's own
-    // grammar, same hardcode convention as bento-panel/two-column).
-    // Persistent dividers/panel frames are unconditional chrome, not
-    // component-count-dependent.
-    id: "asymmetric-triptych",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // 1 lead + up to 3 secondary — see file header derivation
-      { name: "lead", accepts: "any", capacity: 1 },
-      { name: "top", accepts: "any" },
-      { name: "bottom", accepts: "any" },
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: ["single"],
-  },
-  "quiet-frame": {
-    // content-quiet-frame.tsx: whitespace-led centered composition —
-    // symmetric 200px margins (vs. narrow-column's asymmetric gutter),
-    // centered kicker/heading/subheading, a short centered accent rule,
-    // then an 880px-wide centered SvgContent body (arrangement passed
-    // through unchanged). No watermark, no persistent side panel — the
-    // pool's second `breathing`-suitable archetype (T1 handoff hard
-    // requirement).
-    id: "quiet-frame",
-    kind: "archetype",
-    slideTypes: ["content"],
-    slots: [
-      { name: "kicker", accepts: CHROME },
-      { name: "heading", accepts: CHROME },
-      { name: "subheading", accepts: CHROME },
-      { name: "rule", accepts: CHROME },
-      { name: "body", accepts: "any", capacity: 4 }, // single-stack, 880px centered column — see file header derivation
-      { name: "meta", accepts: CHROME },
-    ],
-    arrangements: "all",
-  },
+  [contentNarrowColumn.id]: contentNarrowColumn,
+  [contentTwoColumn.id]: contentTwoColumn,
+  [contentRailNumbered.id]: contentRailNumbered,
+  [contentBannerHeading.id]: contentBannerHeading,
+  [contentStackedPoster.id]: contentStackedPoster,
+  [contentBentoPanel.id]: contentBentoPanel,
+  [contentToneAdaptiveContent.id]: contentToneAdaptiveContent,
+  [contentSideHighlight.id]: contentSideHighlight,
+  [contentAsymmetricTriptych.id]: contentAsymmetricTriptych,
+  [contentQuietFrame.id]: contentQuietFrame,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -780,69 +352,10 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 // used to just state the intended applicability without enforcing it).
 // ─────────────────────────────────────────────────────────────────────────
 const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
-  "image-split": {
-    // image-pages.tsx ImageSplitPage: full-height bleed image in a fixed
-    // column (first image component; optional caption overlay), kicker + heading
-    // + rule + subheading in the text column, then the remaining components as
-    // body — hardcoded arrangement "single" (layoutContentFit("single", ...),
-    // image-pages.tsx:209-214), not exposed via `arrangements` (takeover
-    // kind, not archetype).
-    id: "image-split",
-    kind: "takeover",
-    slideTypes: ["content"],
-    slots: [
-      { name: "image", accepts: ["image"], selection: "first" },
-      { name: "caption", accepts: [] },
-      { name: "body", accepts: "any" },
-    ],
-  },
-  "image-top": {
-    // image-pages.tsx ImageTopPage: full-width top-band bleed image (first
-    // image component, no caption render), heading band, remaining components split
-    // into up to 3 columns as body — each column hardcoded "single"
-    // (image-pages.tsx:360).
-    id: "image-top",
-    kind: "takeover",
-    slideTypes: ["content"],
-    slots: [
-      { name: "image", accepts: ["image"], selection: "first" },
-      { name: "body", accepts: "any" },
-    ],
-  },
-  "image-bottom": {
-    // image-pages.tsx ImageBottomPage: centered heading/rule/subheading,
-    // remaining components as body (hardcoded "single", image-pages.tsx:682-687),
-    // then a full-width bottom-band bleed image (first image component) with an
-    // optional caption overlay.
-    id: "image-bottom",
-    kind: "takeover",
-    slideTypes: ["content"],
-    slots: [
-      { name: "body", accepts: "any" },
-      { name: "image", accepts: ["image"], selection: "first" },
-      { name: "caption", accepts: [] },
-    ],
-  },
-  "image-annotate": {
-    // image-pages.tsx ImageAnnotatePage: centered heading + subheading,
-    // framed center image (first image component) with optional caption, and up
-    // to 4 corner annotations sourced from the *first bullets component's* items
-    // (bulletsComponent.items.slice(0, 4), image-pages.tsx:479-482). Deliberate
-    // deviation from the brief's base "image + body" takeover shape: unlike
-    // the other 3 takeovers, this renderer never builds a `rest` of
-    // leftover components — nothing besides the found image + bullets component is
-    // read, so declaring a `body` slot here would claim capacity the code
-    // does not actually offer. `annotation` is the real substitute for body
-    // in this one takeover.
-    id: "image-annotate",
-    kind: "takeover",
-    slideTypes: ["content"],
-    slots: [
-      { name: "image", accepts: ["image"], selection: "first" },
-      { name: "annotation", accepts: ["bullets"], capacity: 4 },
-      { name: "caption", accepts: [] },
-    ],
-  },
+  [imageSplitLayoutDef.id]: imageSplitLayoutDef,
+  [imageTopLayoutDef.id]: imageTopLayoutDef,
+  [imageBottomLayoutDef.id]: imageBottomLayoutDef,
+  [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
 /** All 33 archetype layouts + 4 takeover layouts, keyed by id. */

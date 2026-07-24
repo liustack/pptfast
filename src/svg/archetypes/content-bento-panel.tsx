@@ -1,6 +1,7 @@
 // GF/svg/archetypes/content-bento-panel.tsx
 import type React from "react"
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import type { ContentRect } from "../layout"
 import type { StyleColors } from "../../themes/tokens"
 import type { ComponentCtx } from "../components/types"
@@ -931,4 +932,36 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUTS["bento-panel"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means. The body
+// slot's capacity comment is reworded from "see file header derivation" to
+// name registry.ts explicitly, since that derivation essay lives in
+// registry.ts's CONTENT_LAYOUTS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-bento-panel.tsx: kicker, heading, subheading, and a `body`
+  // slot that alternates between a plain single-component/degraded stack and
+  // a dedicated `grid` slot — up to 6 bento cells (bento-layout.ts:193-194,
+  // "the bento grid only ever has 6 cells"), hero-weight-ordered. All
+  // three internal SvgContent calls hardcode arrangement="single"
+  // (inventory: "bento-panel 三处调用全部硬编码 variant=single" — the
+  // inventory's own finding predates the W2 task 3 field rename). Italic
+  // footnote (meta).
+  id: "bento-panel",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "body", accepts: "any", capacity: 6 }, // mirrors this archetype's own grid capacity — see registry.ts's CONTENT_LAYOUTS header for the derivation
+    { name: "grid", accepts: "any", capacity: 6 },
+    { name: "meta", accepts: [] },
+  ],
+  arrangements: ["single"],
 }

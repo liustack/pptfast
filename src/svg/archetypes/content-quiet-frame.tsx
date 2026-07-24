@@ -1,4 +1,5 @@
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { SvgContent } from "../svg-content"
 import { FULL_BODY_TYPES } from "../component-traits"
 import { sectionNameFor } from "../../lib/derive"
@@ -207,4 +208,35 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUTS["quiet-frame"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means. The body
+// slot's capacity comment is reworded from "see file header derivation" to
+// name registry.ts explicitly, since that derivation essay lives in
+// registry.ts's CONTENT_LAYOUTS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-quiet-frame.tsx: whitespace-led centered composition —
+  // symmetric 200px margins (vs. narrow-column's asymmetric gutter),
+  // centered kicker/heading/subheading, a short centered accent rule,
+  // then an 880px-wide centered SvgContent body (arrangement passed
+  // through unchanged). No watermark, no persistent side panel — the
+  // pool's second `breathing`-suitable archetype (T1 handoff hard
+  // requirement).
+  id: "quiet-frame",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "body", accepts: "any", capacity: 4 }, // single-stack, 880px centered column — see registry.ts's CONTENT_LAYOUTS header for the derivation
+    { name: "meta", accepts: [] },
+  ],
+  arrangements: "all",
 }

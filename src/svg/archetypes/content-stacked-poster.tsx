@@ -1,6 +1,7 @@
 // GF/svg/archetypes/content-stacked-poster.tsx
 import type { Component } from "@/ir"
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import type { ContentRect } from "../layout"
 import type { ComponentCtx } from "../components/types"
 import { SvgContent } from "../svg-content"
@@ -489,4 +490,44 @@ export function StackedPosterContent(props: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUTS["stacked-poster"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means. The body
+// slot's capacity comment is reworded from "see file header derivation" to
+// name registry.ts explicitly, since that derivation essay lives in
+// registry.ts's CONTENT_LAYOUTS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-stacked-poster.tsx: centered kicker + accent rule, heading,
+  // subheading, and a `body` slot — the *degrade* path (>=3 components, 0
+  // components, or an overflowing hero/strip candidate) passes
+  // `slide.arrangement` straight through to SvgContent unchanged, so this
+  // archetype honors every arrangement exactly like the four plain "all"
+  // archetypes below (W2 task 3 adjudication: the inventory's original
+  // "single" was a conservative placeholder pending this call, not a
+  // literal claim that only "single" ever reaches SvgContent — see the
+  // registry test's dedicated degrade-path-with-two_column assertion).
+  // Exactly 1-2 fitting components instead take the bespoke poster path,
+  // which bypasses arrangement entirely: component[0] always renders in a
+  // dedicated `hero` slot (capacity 1), and component[1] — only when there are
+  // exactly 2 — renders in a `strip` caption slot below a divider
+  // (capacity 1). Footnote (meta) renders on both paths.
+  id: "stacked-poster",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "body", accepts: "any", capacity: 4 }, // single-stack degrade path — see registry.ts's CONTENT_LAYOUTS header for the derivation
+    { name: "hero", accepts: "any", capacity: 1 },
+    { name: "strip", accepts: "any", capacity: 1 },
+    { name: "meta", accepts: [] },
+  ],
+  arrangements: "all",
 }

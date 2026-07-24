@@ -1,0 +1,1133 @@
+{
+  "order": [
+    "banner-title",
+    "poster-center",
+    "left-anchor",
+    "constellation",
+    "editorial-masthead",
+    "tone-adaptive-header",
+    "fashion-masthead",
+    "split-diagonal",
+    "masthead-chapter",
+    "constellation-chapter",
+    "rail-chapter",
+    "banner-chapter",
+    "poster-chapter",
+    "roman-chapter",
+    "tone-adaptive-chapter",
+    "fashion-chapter",
+    "masthead-ending",
+    "constellation-ending",
+    "rail-ending",
+    "banner-ending",
+    "poster-ending",
+    "tone-adaptive-ending",
+    "fashion-ending",
+    "narrow-column",
+    "two-column",
+    "rail-numbered",
+    "banner-heading",
+    "stacked-poster",
+    "bento-panel",
+    "tone-adaptive-content",
+    "side-highlight",
+    "asymmetric-triptych",
+    "quiet-frame",
+    "image-split",
+    "image-top",
+    "image-bottom",
+    "image-annotate"
+  ],
+  "registry": {
+    "asymmetric-triptych": {
+      "arrangements": [
+        "single"
+      ],
+      "id": "asymmetric-triptych",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": "any",
+          "capacity": 1,
+          "name": "lead"
+        },
+        {
+          "accepts": "any",
+          "name": "top"
+        },
+        {
+          "accepts": "any",
+          "name": "bottom"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "banner-chapter": {
+      "id": "banner-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        }
+      ]
+    },
+    "banner-ending": {
+      "id": "banner-ending",
+      "kind": "archetype",
+      "slideTypes": [
+        "ending"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "banner-heading": {
+      "arrangements": "all",
+      "id": "banner-heading",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "banner-title": {
+      "id": "banner-title",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        }
+      ]
+    },
+    "bento-panel": {
+      "arrangements": [
+        "single"
+      ],
+      "id": "bento-panel",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": "any",
+          "capacity": 6,
+          "name": "body"
+        },
+        {
+          "accepts": "any",
+          "capacity": 6,
+          "name": "grid"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "constellation": {
+      "id": "constellation",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        },
+        {
+          "accepts": [],
+          "name": "decor"
+        }
+      ]
+    },
+    "constellation-chapter": {
+      "id": "constellation-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        }
+      ]
+    },
+    "constellation-ending": {
+      "id": "constellation-ending",
+      "kind": "archetype",
+      "slideTypes": [
+        "ending"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "editorial-masthead": {
+      "id": "editorial-masthead",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "fashion-chapter": {
+      "id": "fashion-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        }
+      ]
+    },
+    "fashion-ending": {
+      "id": "fashion-ending",
+      "kind": "archetype",
+      "slideTypes": [
+        "ending"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "fashion-masthead": {
+      "id": "fashion-masthead",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "image-annotate": {
+      "id": "image-annotate",
+      "kind": "takeover",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [
+            "image"
+          ],
+          "name": "image",
+          "selection": "first"
+        },
+        {
+          "accepts": [
+            "bullets"
+          ],
+          "capacity": 4,
+          "name": "annotation"
+        },
+        {
+          "accepts": [],
+          "name": "caption"
+        }
+      ]
+    },
+    "image-bottom": {
+      "id": "image-bottom",
+      "kind": "takeover",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": "any",
+          "name": "body"
+        },
+        {
+          "accepts": [
+            "image"
+          ],
+          "name": "image",
+          "selection": "first"
+        },
+        {
+          "accepts": [],
+          "name": "caption"
+        }
+      ]
+    },
+    "image-split": {
+      "id": "image-split",
+      "kind": "takeover",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [
+            "image"
+          ],
+          "name": "image",
+          "selection": "first"
+        },
+        {
+          "accepts": [],
+          "name": "caption"
+        },
+        {
+          "accepts": "any",
+          "name": "body"
+        }
+      ]
+    },
+    "image-top": {
+      "id": "image-top",
+      "kind": "takeover",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [
+            "image"
+          ],
+          "name": "image",
+          "selection": "first"
+        },
+        {
+          "accepts": "any",
+          "name": "body"
+        }
+      ]
+    },
+    "left-anchor": {
+      "id": "left-anchor",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "decor"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        }
+      ]
+    },
+    "masthead-chapter": {
+      "id": "masthead-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        }
+      ]
+    },
+    "masthead-ending": {
+      "id": "masthead-ending",
+      "kind": "archetype",
+      "slideTypes": [
+        "ending"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "narrow-column": {
+      "arrangements": "all",
+      "id": "narrow-column",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "poster-center": {
+      "id": "poster-center",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "poster-chapter": {
+      "id": "poster-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        }
+      ]
+    },
+    "poster-ending": {
+      "id": "poster-ending",
+      "kind": "archetype",
+      "slideTypes": [
+        "ending"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "quiet-frame": {
+      "arrangements": "all",
+      "id": "quiet-frame",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "rail-chapter": {
+      "id": "rail-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rail"
+        }
+      ]
+    },
+    "rail-ending": {
+      "id": "rail-ending",
+      "kind": "archetype",
+      "slideTypes": [
+        "ending"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "decor"
+        },
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "rail-numbered": {
+      "arrangements": "all",
+      "id": "rail-numbered",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "rail"
+        },
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "roman-chapter": {
+      "id": "roman-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "decor"
+        }
+      ]
+    },
+    "side-highlight": {
+      "arrangements": "all",
+      "id": "side-highlight",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": [],
+          "name": "panel"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "split-diagonal": {
+      "id": "split-diagonal",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "decor"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "stacked-poster": {
+      "arrangements": "all",
+      "id": "stacked-poster",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": "any",
+          "capacity": 1,
+          "name": "hero"
+        },
+        {
+          "accepts": "any",
+          "capacity": 1,
+          "name": "strip"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "tone-adaptive-chapter": {
+      "id": "tone-adaptive-chapter",
+      "kind": "archetype",
+      "slideTypes": [
+        "chapter"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "watermark"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        }
+      ]
+    },
+    "tone-adaptive-content": {
+      "arrangements": "all",
+      "id": "tone-adaptive-content",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "tone-adaptive-ending": {
+      "id": "tone-adaptive-ending",
+      "kind": "archetype",
+      "slideTypes": [
+        "ending"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        }
+      ]
+    },
+    "tone-adaptive-header": {
+      "id": "tone-adaptive-header",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "meta"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        }
+      ]
+    },
+    "two-column": {
+      "arrangements": [
+        "two_column"
+      ],
+      "id": "two-column",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "accepts": [],
+          "name": "kicker"
+        },
+        {
+          "accepts": [],
+          "name": "heading"
+        },
+        {
+          "accepts": [],
+          "name": "subheading"
+        },
+        {
+          "accepts": [],
+          "name": "rule"
+        },
+        {
+          "accepts": "any",
+          "capacity": 4,
+          "name": "body"
+        }
+      ]
+    }
+  }
+}

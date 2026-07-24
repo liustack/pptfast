@@ -1,5 +1,6 @@
 // GF/svg/archetypes/content-tone-adaptive-content.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { SvgContent } from "../svg-content"
 import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
@@ -477,4 +478,33 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUTS["tone-adaptive-content"] entry. `CHROME` (registry.ts's
+// private `readonly string[] = []` alias, "not fed by an authored
+// component") is inlined here to the literal `[]` it always held, to avoid a
+// value-import cycle with the registry aggregator (which value-imports this
+// export) — see registry.ts's slot-`accepts` convention doc for what `[]`
+// means. The body slot's capacity comment is reworded from "see file header
+// derivation" to name registry.ts explicitly, since that derivation essay
+// lives in registry.ts's CONTENT_LAYOUTS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-tone-adaptive-content.tsx: kicker, heading, subheading, accent
+  // bar + hairline rule, SvgContent body (arrangement passed through
+  // unchanged in both branches), meta (footer meta row inside the white
+  // card when a bg image is present, or an italic footnote when not —
+  // same slot, two renderings).
+  id: "tone-adaptive-content",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "body", accepts: "any", capacity: 4 }, // single-stack — see registry.ts's CONTENT_LAYOUTS header for the derivation
+    { name: "meta", accepts: [] },
+  ],
+  arrangements: "all",
 }

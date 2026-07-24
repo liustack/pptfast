@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
 import { CANONICAL_THEME_IDS } from "../themes"
 import { THEME_DEFINITIONS, registerTheme, __resetRegisteredThemes } from "../themes/definitions"
-import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
+import { MOTIF_ARCHETYPES } from "./motifs"
 import { MOTIF_ANCHOR_WEIGHT, MOTIF_BASE_WEIGHT, MOTIF_CANDIDATES, resolveMotifId } from "./motif-selection"
 
 function makeIR(slides: Slide[], themeId: string, seed?: number): PptxIR {

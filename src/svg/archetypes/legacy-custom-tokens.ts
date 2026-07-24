@@ -9,6 +9,11 @@ import type { StyleTokens } from "../../themes/tokens";
  * 成立的。gallery 换成克莱因蓝色板后 `resolveStyle("custom")` 已解析到新色板，
  * 锁若跟着 resolveStyle 走就失去「与迁移前一致」的锚点。故锁固定引用本快照，
  * 不随 canonical 主题演化漂移。生产代码不得 import 本文件。
+ *
+ * 域重组 T1a（motif 迁至 `../motifs/`）后仍留在此处：消费方跨
+ * archetypes/（cover/chapter/content/ending 四个 tone-adaptive 测试）、
+ * motifs/（`motif-tone-adaptive-motif.test.tsx`）与 components/
+ * （`verdict-banner.test.tsx`）三侧，是共享测试资产，不属于任一单域。
  */
 export const LEGACY_CUSTOM_TOKENS: StyleTokens = {
   id: "custom",

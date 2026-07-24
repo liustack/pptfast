@@ -1,5 +1,6 @@
 // GF/svg/archetypes/ending-tone-adaptive-ending.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 
 /**
@@ -210,4 +211,26 @@ export function ToneAdaptiveEnding({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// ENDING_LAYOUTS["tone-adaptive-ending"] entry. `CHROME` (registry.ts's
+// private `readonly string[] = []` alias, "not fed by an authored
+// component") is inlined here to the literal `[]` it always held, to avoid a
+// value-import cycle with the registry aggregator (which value-imports this
+// export) — see registry.ts's slot-`accepts` convention doc for what `[]`
+// means.
+export const layoutDef: LayoutDefinition = {
+  // ending-tone-adaptive-ending.tsx: org kicker, heading ("Thank you"),
+  // divider, "Contact" contact section + copyright (meta). No subheading
+  // render.
+  id: "tone-adaptive-ending",
+  kind: "archetype",
+  slideTypes: ["ending"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "meta", accepts: [] },
+  ],
 }

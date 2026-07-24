@@ -563,7 +563,7 @@ function quadAt(p0: number, p1: number, p2: number, t: number): number {
  * comma-wsp? number comma-wsp? number comma-wsp flag comma-wsp? flag
  * comma-wsp? coordinate-pair`) defines `large-arc-flag`/`sweep-flag` as a
  * single `"0"` or `"1"` character each, which real authoring tools (and
- * this codebase's own icon catalog, `src/icons.ts` — generated straight
+ * this codebase's own icon catalog, `src/icons/catalog.ts` — generated straight
  * from lucide's upstream `d` strings, see that file's header) routinely
  * glue to each other and to the following coordinate with no separator
  * (`"a1 1 0 001 1"` = rx 1 ry 1 rot 0 large-arc-flag 0 sweep-flag 0 x 1
@@ -574,7 +574,7 @@ function quadAt(p0: number, p1: number, p2: number, t: number): number {
  * layering stays one-directional (IR/SVG -> PPTX, never the reverse) —
  * swallows the glued digits as a single multi-digit number and silently
  * desyncs every operand after it, which previously produced a wrong,
- * non-null bbox for 16 real paths in `src/icons.ts` (not a hypothetical:
+ * non-null bbox for 16 real paths in `src/icons/catalog.ts` (not a hypothetical:
  * confirmed via `pnpm vitest` against the shipped catalog while building
  * this fix). This walks `d` char-by-char instead of one big `match()`,
  * tracking the active command and its argument position (mod 7, an arc's
@@ -1860,7 +1860,7 @@ function collectLeafBoxes(root: Element): DerivedBox[] {
  * components' boxes collide).
  *
  * Decoration/motif layers need no special exclusion here: every motif
- * (`archetypes/motif-*.tsx`) and `slide-decor.tsx` render exclusively outside
+ * (`motifs/motif-*.tsx`) and `slide-decor.tsx` render exclusively outside
  * the `data-audit-box`/`data-audit-rect` protocol (verified against every
  * motif file and empirically against real rendered markup across five
  * heavily-decorated themes while building this check) — `collectLeafBoxes`

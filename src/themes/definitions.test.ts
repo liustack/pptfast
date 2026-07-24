@@ -15,7 +15,7 @@ import { COVER_ARCHETYPES } from "../svg/archetypes"
 import { CHAPTER_ARCHETYPES } from "../svg/archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../svg/archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../svg/archetypes/index-ending"
-import { MOTIF_ARCHETYPES } from "../svg/archetypes/index-motif"
+import { MOTIF_ARCHETYPES } from "../svg/motifs"
 import { layoutsForSlideType } from "../svg/layouts/registry"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 

@@ -1,4 +1,5 @@
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { readableOn } from "../ink"
@@ -115,4 +116,25 @@ export function FashionChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CHAPTER_LAYOUTS["fashion-chapter"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // chapter-fashion-chapter.tsx: full-bleed accent block, "CHAPTER NN"
+  // kicker + org kicker (bottom), giant numeral watermark, heading, bottom
+  // rule. No subheading render.
+  id: "fashion-chapter",
+  kind: "archetype",
+  slideTypes: ["chapter"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "watermark", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "rule", accepts: [] },
+  ],
 }

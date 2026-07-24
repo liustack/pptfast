@@ -1,9 +1,9 @@
 import { z } from "zod"
-import { PPTX_ICON_NAMES } from "@/icons"
+import { PPTX_ICON_NAMES } from "@/icons/catalog"
 import { BEAT_VALUES } from "./narrative-values"
 import { componentTypeError, iconEnumError } from "./schema-error-hints"
 
-// Re-exported so `src/plan/index.ts`'s `PageSpecSchema.beat` can share this
+// Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
 // "one vocabulary, two schemas" posture `SlideSchema.beat`'s own doc comment
 // above describes, see `./narrative-values.ts` for why this lives there
@@ -132,7 +132,7 @@ export const ThemeSchema = z
 
 // Exported (not just used internally) so W5's plan schema can pass its own
 // `meta` field straight through to this exact schema instead of redefining
-// an equivalent shape that could drift from it (`src/plan/index.ts`).
+// an equivalent shape that could drift from it (`src/spec/index.ts`).
 export const MetaSchema = z
   .object({
     organization: z.string().optional(),
@@ -195,7 +195,7 @@ export const AssetsSchema = z
 
 // Exported (not just used internally) so W5's plan schema can pass its own
 // `brand` field straight through to this exact schema instead of redefining
-// an equivalent shape that could drift from it (`src/plan/index.ts`).
+// an equivalent shape that could drift from it (`src/spec/index.ts`).
 export const BrandSchema = z
   .object({
     logo_asset_id: z.string().optional(),
@@ -992,7 +992,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
  * itself (never hand-copied) so this list can't drift from the union above.
  * Typed as plain `readonly string[]` rather than `Component["type"][]` —
  * every consumer of this list (W5's plan `focus` vocabulary gate,
- * `src/plan/index.ts`) tests membership of an arbitrary author-supplied
+ * `src/spec/index.ts`) tests membership of an arbitrary author-supplied
  * string, and TS's `Array.includes` is invariant in its element type, so a
  * narrower literal-union type would reject that call at the caller.
  */
@@ -1008,7 +1008,7 @@ export const COMPONENT_TYPES: readonly string[] = ComponentSchema.options.map((o
 export const SlideSchema = z
   .object({
     type: z.enum(["cover", "chapter", "content", "ending"]).default("content"),
-    // 稳定页标识（W5 plan/assemble 注入，裸 IR 可省）。schema 层不做跨 slide
+    // 稳定页标识（W5 spec/assemble 注入，裸 IR 可省）。schema 层不做跨 slide
     // 校验——同 deck 内重复 id 是 validateIr 的硬错误（api.ts
     // checkDuplicateSlideIds），错误列出重复的 id，不带页码（跨多页的
     // deck 级问题，单一 page 字段放不下）。
@@ -1046,7 +1046,7 @@ export const SlideSchema = z
      * before this field existed (the v4 freeze's additive-only contract,
      * `docs/concepts.md`'s "v4
      * schema freeze" section). Authored on a `deck.spec.json` page
-     * (`PageSpecSchema.beat`, `src/plan/index.ts`) and carried through
+     * (`PageSpecSchema.beat`, `src/spec/index.ts`) and carried through
      * `assembleDeck` into this exact field as of this task — previously a
      * spec-only authoring anchor dropped at assemble (see that module's own
      * doc comment history). Not confined to `type: "content"` at the schema
@@ -1135,7 +1135,7 @@ export const SlideSchema = z
  * `STRATEGY_VALUES`/`PACING_VALUES`/`AUDIENCE_VALUES` tuples for its runtime
  * checks — this schema no longer needs to import them at all.
  *
- * Exported so W5's plan schema (`src/plan/index.ts`) can reuse this exact
+ * Exported so W5's plan schema (`src/spec/index.ts`) can reuse this exact
  * object branch for its own top-level `scenario` field (plan's own field
  * name is unchanged this task — spec §8.1's `DeckPlan`→`DeckSpec` rename is
  * task 2's job, not this one) — same open-schema/closed-semantic split, same

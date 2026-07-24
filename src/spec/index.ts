@@ -3,7 +3,12 @@
  * task 2 — renamed to "Deck Spec" per the vocabulary-v4 rename, spec §6/§8.1;
  * "spec §N" citations throughout this file that predate this rename still
  * point at that original W5 design doc, not this rename's own spec — left
- * as historical citations, not renumbered).
+ * as historical citations, not renumbered). That rename originally covered
+ * the exported concepts and CLI vocabulary only — this module's own
+ * directory stayed `src/plan` for a while after, a known stale name the
+ * src domain-reorg wave's task T1c closed by moving it to `src/spec`
+ * (mechanical `git mv`, every exported symbol unchanged): the path now
+ * matches the vocabulary this header already used throughout.
  *
  * A deck spec is a workflow artifact, not a render prerequisite (spec §5's
  * "escape hatch": a bare IR v3 renders directly, `spec validate` is a

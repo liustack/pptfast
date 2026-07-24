@@ -1,4 +1,4 @@
-// GF/svg/archetypes/motif-poster-motif.tsx
+// GF/svg/motifs/motif-poster-motif.tsx
 import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 

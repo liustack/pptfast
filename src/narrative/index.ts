@@ -691,7 +691,7 @@ export interface NormalizeNarrativeShapeResult {
  * rewriting, as opposed to `resolveNarrative`'s silent, blanket tolerance).
  *
  * Two callers run this today — `validateIr` (`../validate-core.ts`) and
- * `validateSpec` (`../plan/index.ts`, T0b fix 2 scope extension: a
+ * `validateSpec` (`../spec/index.ts`, T0b fix 2 scope extension: a
  * `deck.spec.json`'s own top-level `narrative` field is exactly the same
  * shape, reached by `pptfast spec validate`/`pptfast render <deck-dir>`,
  * not just a bare IR file) — each on their own raw, pre-schema-parse input,

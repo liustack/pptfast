@@ -1,4 +1,5 @@
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
@@ -124,4 +125,31 @@ export function TwoColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
       />
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUTS["two-column"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means. The body
+// slot's capacity comment is reworded from "see file header derivation" to
+// name registry.ts explicitly, since that derivation essay lives in
+// registry.ts's CONTENT_LAYOUTS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-two-column.tsx: kicker, heading, subheading, accent bar +
+  // hairline rule, SvgContent body — hardcodes arrangement="two_column"
+  // (content-two-column.tsx:102) regardless of slide.arrangement. No
+  // footnote/meta render at all.
+  id: "two-column",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "body", accepts: "any", capacity: 4 }, // two narrower columns, same height budget — see registry.ts's CONTENT_LAYOUTS header for the derivation
+  ],
+  arrangements: ["two_column"],
 }

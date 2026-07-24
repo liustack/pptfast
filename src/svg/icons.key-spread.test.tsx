@@ -42,7 +42,7 @@ describe("Icon-bearing render (post-v0.3 W8 fix round, backlog item 11)", () => 
       // Five icons chosen to cover all 7 renderPrimitive JSX return sites in
       // one markup: info (circle+path), cylinder (ellipse+path), server
       // (rect+line), navigation (polygon), album (rect+polyline) — grepped
-      // from `@/icons` (`src/icons.ts`) for each primitive kind's rarest
+      // from `@/icons/catalog` (`src/icons/catalog.ts`) for each primitive kind's rarest
       // occurrence. `renderToStaticMarkup` — the same server-render entry
       // point `renderSlideSvg`/`generatePptx` use in production
       // (`docs/architecture.md`'s render-chain diagram) — rather than

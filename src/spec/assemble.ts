@@ -29,7 +29,7 @@
  * module's own {@link materializeEffectiveLayouts} for the mechanics). A page
  * whose file already set `layout` is left untouched. `../svg/layout-selection.ts`
  * is a pure function with no Node-only import anywhere in its own closure and
- * nothing in that closure imports back from `src/plan`, so depending on it
+ * nothing in that closure imports back from `src/spec`, so depending on it
  * from here adds a new edge, not a cycle, and does not pull anything
  * Node-only into `src/index.ts`'s dependency closure.
  *
@@ -103,14 +103,16 @@ export interface AssembleResult {
  * private copy of it) — reimplemented locally here for the same reason
  * those two already give each other in `variety.ts`'s doc comment: it is a
  * five-line primitive, and importing it from `svg/variety.ts` would pull a
- * `plan → svg` dependency this module has no business taking (`src/plan` is
- * this module's own package name, unchanged this task — only the artifact
- * concepts it exports renamed, see this file's own top comment). `src/plan`
- * sits beside `src/ir` (an IR-adjacent, pre-render authoring concern).
- * `src/svg` is a *consumer* of IR (the render chain), not a neighbor of
- * `plan` — reaching "up" into it here would point the dependency arrow the
- * wrong way for what is conceptually a lower-level module. The two hashes
- * are also semantically independent on purpose (see {@link generateSeed}):
+ * `spec → svg` dependency this module has no business taking (`src/spec` is
+ * this module's own package name — renamed from `src/plan` in the src
+ * domain-reorg wave, a mechanical follow-up now that every artifact concept
+ * it exports was already called "spec", see this file's own top comment).
+ * `src/spec` sits beside `src/ir` (an IR-adjacent, pre-render authoring
+ * concern). `src/svg` is a *consumer* of IR (the render chain), not a
+ * neighbor of `spec` — reaching "up" into it here would point the
+ * dependency arrow the wrong way for what is conceptually a lower-level
+ * module. The two hashes are also semantically independent on purpose (see
+ * {@link generateSeed}):
  * this one intentionally excludes heading text that `deckSeed` intentionally
  * includes, so sharing an implementation would invite sharing behavior that
  * must not be shared.
@@ -210,7 +212,7 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    `narrative` field (renamed this task from `scenario`, spec §8.1's
  *    `DeckPlan`→`DeckSpec` rename, task 2) carries across into the v4 IR's
  *    own `narrative` field, its value already in the new strategy/pacing
- *    vocabulary (vocabulary-v4 rename, task 1 — `plan/index.ts`'s own
+ *    vocabulary (vocabulary-v4 rename, task 1 — `spec/index.ts`'s own
  *    `resolveNarrative` call already validates it against that vocabulary
  *    before this function ever runs).
  *    `theme`/`filename`/`brand`/`meta`/`seed` (step 7) carry over from the spec when

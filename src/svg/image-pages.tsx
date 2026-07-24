@@ -1,6 +1,7 @@
 import { Fragment } from "react"
 import type { PptxIR, Slide } from "@/ir"
 import type { ComponentCtx } from "./components/types"
+import type { LayoutDefinition } from "./layouts/registry"
 import { renderComponent } from "./components"
 import { layoutContentFit, stackBottom } from "./layout"
 import { findImageComponent } from "./layouts/find-image"
@@ -767,4 +768,79 @@ export function ImageBottomPage({
         })()}
     </g>
   )
+}
+
+// T1d (src domain reorg wave 1): the 4 takeover LayoutDefinitions inlined
+// verbatim from registry.ts's former `TAKEOVER_LAYOUTS` entries — one file,
+// 4 named exports (not `layoutDef`, unlike the 33 archetype files: all four
+// takeovers are implemented in this single file, so they need distinct
+// export names to coexist). `LayoutDefinition` is a type-only import from
+// registry.ts — registry.ts value-imports these 4 exports back, and a
+// type-only import is erased at compile time, so the two files' mutual
+// reference never becomes a runtime cycle.
+export const imageSplitLayoutDef: LayoutDefinition = {
+  // image-pages.tsx ImageSplitPage: full-height bleed image in a fixed
+  // column (first image component; optional caption overlay), kicker + heading
+  // + rule + subheading in the text column, then the remaining components as
+  // body — hardcoded arrangement "single" (layoutContentFit("single", ...),
+  // image-pages.tsx:209-214), not exposed via `arrangements` (takeover
+  // kind, not archetype).
+  id: "image-split",
+  kind: "takeover",
+  slideTypes: ["content"],
+  slots: [
+    { name: "image", accepts: ["image"], selection: "first" },
+    { name: "caption", accepts: [] },
+    { name: "body", accepts: "any" },
+  ],
+}
+
+export const imageTopLayoutDef: LayoutDefinition = {
+  // image-pages.tsx ImageTopPage: full-width top-band bleed image (first
+  // image component, no caption render), heading band, remaining components split
+  // into up to 3 columns as body — each column hardcoded "single"
+  // (image-pages.tsx:360).
+  id: "image-top",
+  kind: "takeover",
+  slideTypes: ["content"],
+  slots: [
+    { name: "image", accepts: ["image"], selection: "first" },
+    { name: "body", accepts: "any" },
+  ],
+}
+
+export const imageBottomLayoutDef: LayoutDefinition = {
+  // image-pages.tsx ImageBottomPage: centered heading/rule/subheading,
+  // remaining components as body (hardcoded "single", image-pages.tsx:682-687),
+  // then a full-width bottom-band bleed image (first image component) with an
+  // optional caption overlay.
+  id: "image-bottom",
+  kind: "takeover",
+  slideTypes: ["content"],
+  slots: [
+    { name: "body", accepts: "any" },
+    { name: "image", accepts: ["image"], selection: "first" },
+    { name: "caption", accepts: [] },
+  ],
+}
+
+export const imageAnnotateLayoutDef: LayoutDefinition = {
+  // image-pages.tsx ImageAnnotatePage: centered heading + subheading,
+  // framed center image (first image component) with optional caption, and up
+  // to 4 corner annotations sourced from the *first bullets component's* items
+  // (bulletsComponent.items.slice(0, 4), image-pages.tsx:479-482). Deliberate
+  // deviation from the brief's base "image + body" takeover shape: unlike
+  // the other 3 takeovers, this renderer never builds a `rest` of
+  // leftover components — nothing besides the found image + bullets component is
+  // read, so declaring a `body` slot here would claim capacity the code
+  // does not actually offer. `annotation` is the real substitute for body
+  // in this one takeover.
+  id: "image-annotate",
+  kind: "takeover",
+  slideTypes: ["content"],
+  slots: [
+    { name: "image", accepts: ["image"], selection: "first" },
+    { name: "annotation", accepts: ["bullets"], capacity: 4 },
+    { name: "caption", accepts: [] },
+  ],
 }

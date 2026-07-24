@@ -35,10 +35,10 @@ export const AUDIENCE_VALUES = ["executive", "technical", "customer", "public"] 
 // selection"). Not one of the three narrative *axes* above (beat is a
 // per-page authoring value, not a deck-level `NarrativeProfile` field) but
 // shares this leaf module for the identical reason: `src/ir` (SlideSchema's
-// `beat` field, `./index.ts`) and `src/plan` (PageSpecSchema's own `beat`
-// field, `../plan/index.ts`) both need the exact same three-value tuple, and
-// `src/plan` already imports from `src/ir`, so `src/ir` importing the tuple
-// back from `src/plan` would be the cycle this module exists to avoid (see
+// `beat` field, `./index.ts`) and `src/spec` (PageSpecSchema's own `beat`
+// field, `../spec/index.ts`) both need the exact same three-value tuple, and
+// `src/spec` already imports from `src/ir`, so `src/ir` importing the tuple
+// back from `src/spec` would be the cycle this module exists to avoid (see
 // this file's own top comment). Distinct from `StrategyDefinition.beatPolicy`
 // (`src/narrative/index.ts`) — that is a *per-strategy rotation rule* name
 // ("anchor-open", "alternate", ...), a different five-value vocabulary that

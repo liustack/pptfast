@@ -1,5 +1,5 @@
 /**
- * PPTX 幻灯片图标渲染。目录数据来自共享单源 `@/icons`
+ * PPTX 幻灯片图标渲染。目录数据来自共享单源 `@/icons/catalog`
  * （lucide 提取，zod 枚举同源），本文件只负责把原语渲染进受控 SVG 子集：
  * path（含贝塞尔）/circle/ellipse/rect/line/polyline/polygon + g(translate/scale)。
  * 不产出嵌套 svg、foreignObject、渐变或 var()。
@@ -8,7 +8,7 @@ import type React from "react"
 import {
   PPTX_ICONS,
   type PptxIconPrimitive,
-} from "@/icons"
+} from "@/icons/catalog"
 
 export interface IconProps {
   /** Logical icon name (must exist in the shared catalogue). */

@@ -8,7 +8,7 @@ import { iconCards, iconCardContentHeight } from "./icon-cards"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../full-slide-svg"
-import { LEGACY_ICON_NAMES } from "../../icons.legacy-names"
+import { LEGACY_ICON_NAMES } from "../../icons/legacy-names"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -295,7 +295,7 @@ describe("icon_cards component: text overflow fallback", () => {
 
 describe("icon_cards component: W2.5 full lucide catalog (new icons)", () => {
   // Sampled from the icons the W2.5 regeneration added — absent from the
-  // pre-W2.5 curated 431 (icons.legacy-names.ts), present only once
+  // pre-W2.5 curated 431 (icons/legacy-names.ts), present only once
   // gen-pptx-icons.mts pulls in the full lucide set. Doesn't touch the
   // existing pinned "rocket" fixtures above.
   const NEW_ICON_NAMES = ["cat", "backpack", "glasses", "hand"]
