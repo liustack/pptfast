@@ -78,7 +78,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  * (`svg/layouts/registry.ts`) for the identical structural reason
  * `StrategyDefinition.layoutTendencies` does (that field's own doc comment,
  * `@/narrative`): a content page is the only slide type `checkBeatRotation`
- * (`src/plan/index.ts`) ever reasons about beat for, so a cover/chapter/
+ * (`src/spec/index.ts`) ever reasons about beat for, so a cover/chapter/
  * ending slide's `weightOf` lookup against these sets always misses and
  * falls through to `BEAT_BASE_WEIGHT` uniformly — no slide-type special case
  * needed, same "no id can ever match" no-op every other weighting layer here
@@ -294,7 +294,7 @@ export function resolveArchetypeId(
  * Resolve the resolved narrative `strategy` for `ir` (spec §6 step 4's
  * input) — a plain, uncached call to the shared `resolveNarrative`
  * (`@/narrative`), same posture as every other call site (`ir-quality.ts`,
- * `plan/index.ts`, `cli/commands.ts`): cheap (no hashing, just
+ * `spec/index.ts`, `cli/commands.ts`): cheap (no hashing, just
  * object/string comparisons), so unlike `deckSeed` it doesn't warrant its
  * own memoization. The IR schema's `narrative` field is open at the type
  * layer (`string | Record<string, unknown> | undefined` — see

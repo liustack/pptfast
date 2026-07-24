@@ -20,7 +20,7 @@ another (layout code stays style-agnostic).
 | 2D layout | layout registry (archetypes + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
 | Visual style | style tokens + theme definitions (curated layout sets + motif, 13 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
-| Narrative | narrative axes (strategy × pacing × audience, named presets) resolving editorial discipline, plus a first-class spec artifact (`deck.spec.json` — locked page order/type/heading, strategy-aware hard gates via `spec validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase spec→fill skill methodology for slide sequencing | `src/plan/`, `src/narrative/`, `skills/` |
+| Narrative | narrative axes (strategy × pacing × audience, named presets) resolving editorial discipline, plus a first-class spec artifact (`deck.spec.json` — locked page order/type/heading, strategy-aware hard gates via `spec validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase spec→fill skill methodology for slide sequencing | `src/spec/`, `src/narrative/`, `skills/` |
 
 The core insight, carried over from the production system pptfast was extracted
 from: **visual variety comes from tokens × archetype library × seed — not

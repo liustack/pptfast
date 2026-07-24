@@ -216,7 +216,7 @@ async function withPptfastHome<T>(home: string, fn: () => Promise<T>): Promise<T
 
 /** 5 pages (cover + 3 content + ending) clears "spacious" pacing's
  *  4-16 page-count floor (spec §5) with room to leave some unfilled — same
- *  fixture-sizing rationale as `plan/assemble.test.ts`'s own `makePlan`. */
+ *  fixture-sizing rationale as `spec/assemble.test.ts`'s own `makePlan`. */
 function makeDeckPlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: "1",
@@ -828,7 +828,7 @@ describe("deck project directory workflow (W5 task 5)", () => {
     // Cover/ending have no fillable content of their own here, but still
     // need a pages/ entry to count as "filled" — assembleDeck applies the
     // same missing-page → placeholder rule to every page type, not just
-    // content pages (plan/assemble.ts's buildSlide has no type-based
+    // content pages (spec/assemble.ts's buildSlide has no type-based
     // special case). p-c is deliberately left unfilled — 2 of 3 content
     // pages present — so it is the *only* placeholder below.
     await writeFile(join(deckDir, "pages", "p-cover.json"), "{}")
@@ -879,7 +879,7 @@ describe("deck project directory workflow (W5 task 5)", () => {
 
     // re-assemble is idempotent: the generated seed is stable (a function of
     // the spec's filename + page-id sequence, never page content or fill
-    // state — plan/assemble.ts's generateSeed) and every page is now filled.
+    // state — spec/assemble.ts's generateSeed) and every page is now filled.
     const assembleMsg2 = await runAssemble(deckDir)
     expect(assembleMsg2).toContain("0 placeholders")
     expect(assembleMsg2).toContain(`generated seed ${seedMatch1![1]}`)

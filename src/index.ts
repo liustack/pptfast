@@ -60,13 +60,13 @@ export {
   type PageBeat,
   type SpecValidateResult,
   type SpecValidationIssue,
-} from "./plan"
-export { assembleDeck, disassembleDeck, type PageContent, type AssembleResult } from "./plan/assemble"
+} from "./spec"
+export { assembleDeck, disassembleDeck, type PageContent, type AssembleResult } from "./spec/assemble"
 // Deterministic, pure deck.plan.json → deck.spec.json migration (spec §9.2,
 // vocabulary-v4 rename, task 2) — the primitive the `pptfast migrate` CLI
 // command wraps for the deck-project-directory input shape, mirroring
 // `migrateIrV3ToV4` above for the single-IR-file shape.
-export { migrateDeckPlanToSpec } from "./plan/migrate"
+export { migrateDeckPlanToSpec } from "./spec/migrate"
 export {
   auditDeck,
   type AuditReport,

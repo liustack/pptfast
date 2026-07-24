@@ -15,9 +15,9 @@ import { PptfastError } from "../errors"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { PptxIRV3Schema } from "../ir/legacy-v3"
 import { migrateIrV3ToV4 } from "../ir/migrate"
-import { disassembleDeck, type PageContent } from "../plan/assemble"
-import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../plan"
-import { migrateDeckPlanToSpec } from "../plan/migrate"
+import { disassembleDeck, type PageContent } from "../spec/assemble"
+import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../spec"
+import { migrateDeckPlanToSpec } from "../spec/migrate"
 import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../narrative"
 import { auditDeck, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
 import { getInstalledThemeIds } from "../themes/definitions"
@@ -506,7 +506,7 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
  * Appends the same {@link normalizedNote} `runValidate`/`runRender` print
  * (T0b fix 2 scope extension) whenever `validateSpec` rewrote a top-level
  * `narrative: {id: "<preset>"}` shape (`SpecValidateResult.normalized`,
- * `../plan/index.ts`) — the spec-validate channel gets the identical note
+ * `../spec/index.ts`) — the spec-validate channel gets the identical note
  * format the bare-IR path already has, not a second, differently-shaped one.
  */
 export async function runSpecValidate(specPath: string): Promise<string> {
@@ -820,7 +820,7 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
 
 /**
  * `pptfast disassemble <deck.json> -o <dir>` (W5 task 5): the CLI shell for
- * `disassembleDeck` (`../plan/assemble.ts`) — read + validate an IR file the
+ * `disassembleDeck` (`../spec/assemble.ts`) — read + validate an IR file the
  * same way `runRender`/`runValidate` do, then write `deck.spec.json` +
  * `pages/<id>.json` for every non-placeholder page. Pretty-printed. Key
  * order is already stable because `disassembleDeck` builds every object
@@ -878,7 +878,7 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
 
   // W5 whole-branch review finding 1 (CRITICAL, CWE-22): `id` is `slide.id`
   // off the parsed input IR (`disassembleDeck` passes a bare `slide.id`
-  // through unchanged when present, `../plan/assemble.ts`) — unrestricted at
+  // through unchanged when present, `../spec/assemble.ts`) — unrestricted at
   // the schema layer, so an id like `"../../../../escape"` would otherwise
   // write outside `outDir`. Post-v0.3 W8 fix round (backlog item 8): checked
   // here, ahead of every write including `deck.spec.json` itself, so a
@@ -947,7 +947,7 @@ export async function runDisassemble(irPath: string, outDir: string): Promise<st
  *
  * - a directory containing `deck.plan.json` → {@link runMigrateDeckDir}:
  *   rewrites it to `deck.spec.json` per spec §9.2's field mapping
- *   ({@link migrateDeckPlanToSpec}, `../plan/migrate.ts`), written to
+ *   ({@link migrateDeckPlanToSpec}, `../spec/migrate.ts`), written to
  *   `<output>` (a directory — `<output>/deck.spec.json`).
  * - a file → {@link runMigrateIrFile}: must be an IR v3 document
  *   (`version: "3"`), wraps {@link migrateIrV3ToV4} (`../ir/migrate.ts`),
@@ -977,7 +977,7 @@ export async function runMigrate(input: string, output: string, cwd = process.cw
  * out of `dir` (`loadIrFile`'s generic read-plus-parse, `./load-ir.ts` —
  * same helper `runSpecValidate` above uses, "plan" naming its own failure
  * messages), maps it through {@link migrateDeckPlanToSpec}
- * (`../plan/migrate.ts`, spec §9.2's field mapping), and writes the result
+ * (`../spec/migrate.ts`, spec §9.2's field mapping), and writes the result
  * to `<output>/deck.spec.json`. `pages/*.json` and `assets/*` are untouched
  * — spec §9.2's mapping only touches `deck.plan.json`'s own top-level
  * `scenario` field and each page's `rhythm` field, both entirely absent from

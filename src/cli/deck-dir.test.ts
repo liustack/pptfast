@@ -18,7 +18,7 @@ function tmp(): Promise<string> {
 }
 
 /** 4 pages clears the "spacious" pacing's page-count floor (spec §5:
- *  4-16), same fixture-sizing rationale as `plan/assemble.test.ts`'s own
+ *  4-16), same fixture-sizing rationale as `spec/assemble.test.ts`'s own
  *  `makePlan` helper. */
 function makePlan(extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {

@@ -12,10 +12,10 @@ function stableHash(s: string): number {
 
 /**
  * deck 级多样性种子（W4 seed 机制修订，spec §6：「确定性 ≠ 修订稳定性」）：
- * `ir.seed`（显式，plan/assemble 注入，见 `ir/index.ts` 该字段自己的注释）
+ * `ir.seed`（显式，spec/assemble 注入，见 `ir/index.ts` 该字段自己的注释）
  * 优先——同一 seed 在插页/改标题后仍逐字不变，这是显式 seed 存在的唯一意义。
  * 未写 seed 时回落 IR 内容的确定性哈希（filename + 全部 heading），与 W4
- * 之前的行为逐字节一致，裸 IR（无 plan/assemble 参与）向后兼容：预览/导出/
+ * 之前的行为逐字节一致，裸 IR（无 spec/assemble 参与）向后兼容：预览/导出/
  * 重渲染天然一致，但改任何一页标题都会重排全 deck 自动选型——这正是
  * 「未显式 seed 时不承诺修订稳定性」的记录在案代价（spec §6），不是 bug。
  */
