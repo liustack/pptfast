@@ -434,9 +434,9 @@ interface ItemCase {
   readonly canonical: string
   readonly item: Record<string, unknown>
   readonly expected: unknown
-  /** Extra already-canonical items appended after `item`, only to satisfy a component's own array min-count (steps/numbered_cards/row_cards) — irrelevant to the alias under test. */
+  /** Extra already-canonical items appended after `item`, only to satisfy a component's own array min-count (steps/numbered_cards/row_cards, sankey's `nodes` min(2)) — irrelevant to the alias under test. */
   readonly pad?: Record<string, unknown>[]
-  /** Extra already-canonical top-level component fields merged in alongside `[itemsKey]` — for a component with a *second* required field beyond its item array (sankey's `nodes`, required alongside `links`). Every other component in this table needs only `type` + its one item array, hence optional. */
+  /** Extra already-canonical top-level component fields merged in alongside `[itemsKey]` — for a component with a *second* required field beyond the item array under test (sankey's `nodes` and `links`, each required alongside the other). Every other component in this table needs only `type` + its one item array, hence optional. */
   readonly extra?: Record<string, unknown>
 }
 
@@ -490,6 +490,35 @@ const ITEM_CASES: readonly ItemCase[] = [
     item: { from: "a", target: "b", value: 7 },
     expected: "b",
   },
+  // Sankey `nodes` (field-alias sweep task I1: COMPONENT_ITEM_FIELD_ALIASES
+  // widened from one itemsKey per component type to a list, so a component
+  // can carry more than one item array's own alias spec — sankey now lists
+  // both `links` above and `nodes` here). `name` is D3-sankey's own classic
+  // node-label field, `title` mirrors kpi_cards' own title→label slip
+  // above. `links` is the second, independently-required field here
+  // (mirroring the two `links` cases above, which supply `nodes` via
+  // `extra` instead) — supplied via `extra` so the component is
+  // schema-valid end to end. `pad` satisfies `nodes`' own schema min(2).
+  {
+    type: "sankey",
+    itemsKey: "nodes",
+    alias: "name",
+    canonical: "label",
+    extra: { links: [{ from: "a", to: "b", value: 5 }] },
+    item: { id: "a", name: "Node A" },
+    pad: [{ id: "b", label: "Node B" }],
+    expected: "Node A",
+  },
+  {
+    type: "sankey",
+    itemsKey: "nodes",
+    alias: "title",
+    canonical: "label",
+    extra: { links: [{ from: "a", to: "b", value: 5 }] },
+    item: { id: "a", title: "Node A" },
+    pad: [{ id: "b", label: "Node B" }],
+    expected: "Node A",
+  },
 ]
 
 describe("COMPONENT_ITEM_FIELD_ALIASES: every row round-trips", () => {
@@ -506,8 +535,10 @@ describe("COMPONENT_ITEM_FIELD_ALIASES: every row round-trips", () => {
 
   it("covers every COMPONENT_ITEM_FIELD_ALIASES row exactly once (fails if the table gains a row with no test)", () => {
     const expected = new Set<string>()
-    for (const [type, spec] of Object.entries(COMPONENT_ITEM_FIELD_ALIASES)) {
-      for (const alias of Object.keys(spec.aliases)) expected.add(`${type}.${alias}`)
+    for (const [type, specs] of Object.entries(COMPONENT_ITEM_FIELD_ALIASES)) {
+      for (const spec of specs) {
+        for (const alias of Object.keys(spec.aliases)) expected.add(`${type}.${alias}`)
+      }
     }
     const actual = new Set(ITEM_CASES.map((c) => `${c.type}.${c.alias}`))
     expect(actual).toEqual(expected)
@@ -517,21 +548,24 @@ describe("COMPONENT_ITEM_FIELD_ALIASES: every row round-trips", () => {
 // ── total pair count pinned (docs/changeset "53 total synonym pairs") ──────
 
 describe("total synonym-pair count", () => {
-  it("COMPONENT_FIELD_ALIASES + COMPONENT_ITEM_FIELD_ALIASES flatten to exactly 53 pairs", () => {
+  it("COMPONENT_FIELD_ALIASES + COMPONENT_ITEM_FIELD_ALIASES flatten to exactly 55 pairs", () => {
     // The "covers every row exactly once" completeness guards above only
     // prove BLOCK_CASES/ITEM_CASES stay in lockstep with each table's own
     // rows — a row deleted from a table *and* its matching test case would
     // still pass both guards, silently changing the total with nothing
     // noticing. `.changeset/structure-components-2.md` quotes this number in
     // prose ("53 total synonym pairs, up from 40") with nothing pinning it —
-    // this assertion is that pin. `SLIDE_FIELD_ALIASES` (3 more rows) is
+    // this assertion was that pin, now 55: field-alias sweep task I1 added
+    // sankey's `nodes[].label` alias pair (`name`, `title` — see
+    // `COMPONENT_ITEM_FIELD_ALIASES.sankey`'s own comment), +2 over that
+    // changeset's count. `SLIDE_FIELD_ALIASES` (3 more rows) is
     // deliberately excluded: the changeset names only these two tables.
     const blockCount = Object.values(COMPONENT_FIELD_ALIASES).reduce((n, m) => n + Object.keys(m).length, 0)
     const itemCount = Object.values(COMPONENT_ITEM_FIELD_ALIASES).reduce(
-      (n, spec) => n + Object.keys(spec.aliases).length,
+      (n, specs) => n + specs.reduce((m, spec) => m + Object.keys(spec.aliases).length, 0),
       0,
     )
-    expect(blockCount + itemCount).toBe(53)
+    expect(blockCount + itemCount).toBe(55)
   })
 })
 
