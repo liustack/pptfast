@@ -8,7 +8,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import { PACING_BUDGETS, resolveNarrative, type NarrativeProfile, type Pacing } from "@/narrative"
 import { CAPACITY } from "./audit/capacity"
-import { resolveEffectiveLayoutBodyCapacity } from "./effective-layout"
+import { resolveEffectiveLayoutBodyCapacity } from "./layout-selection"
 import { measureTextUnits } from "../lib/svg-text-layout"
 
 export type QualityIssue = {
@@ -170,7 +170,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
   // dual-attribute capacity split): limit = min(this narrative's pacing
   // editorial budget, the resolved layout's body-slot geometric capacity).
   // The geometric half comes from `resolveEffectiveLayoutBodyCapacity`
-  // (`./effective-layout`) — the exact selection path `FullSlideSvg` renders
+  // (`./layout-selection`) — the exact selection path `FullSlideSvg` renders
   // through, never re-derived here, so what this gate flags is guaranteed to
   // match what render would actually overflow. `layoutCapacity: undefined`
   // (image-cover bypass, or a takeover with no `body` slot capacity — the 4

@@ -37,7 +37,7 @@
 // `Strategy` here and `@/narrative`'s own `Strategy` are the exact same
 // literal union (derived from the identical tuple) — TypeScript's
 // structural typing makes them freely interchangeable at every call site, so
-// no cast is ever needed where the two meet (`effective-layout.ts`'s
+// no cast is ever needed where the two meet (`layout-selection.ts`'s
 // `resolveArchetypeId`).
 import type { STRATEGY_VALUES } from "@/ir/narrative-values"
 
@@ -116,7 +116,7 @@ export interface LayoutDefinition {
    * Auto-selection strategy allowlist (W4, spec §6 step 4's rare
    * `narratives_only` hard constraint — distinct from the soft ×3/×1
    * `layoutTendencies` weighting in `STRATEGY_DEFINITIONS`, `src/narrative`):
-   * when set, `resolveArchetypeId` (`../effective-layout.ts`) drops this
+   * when set, `resolveArchetypeId` (`../layout-selection.ts`) drops this
    * layout from the auto-pick pool unless the resolved narrative's
    * `strategy` is a member. An explicit `slide.layout` pin bypasses
    * selection entirely (spec §3: "显式指定不经选型"), so this field never
@@ -511,7 +511,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 // here): declarative authoring-time metadata only, same convention as the
 // `hero`/`strip`/`grid`/`annotation` slots below — consumed since W3 by the
 // validate-layer `min(pacing editorial budget, layout capacity)` quality
-// gate (ir-quality.ts via effective-layout.ts). Numbers are the
+// gate (ir-quality.ts via layout-selection.ts). Numbers are the
 // geometry-honest per-layout component count, sourced from the pre-W3
 // CAPACITY table's derivations (not invented fresh):
 //   - single-stack layouts — narrow-column/rail-numbered/banner-heading/

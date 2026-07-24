@@ -13,7 +13,7 @@ import {
   resolveEffectiveLayoutBodyCapacity,
   resolveEffectiveLayoutId,
   resolveIrStrategy,
-} from "./effective-layout"
+} from "./layout-selection"
 
 // ── helpers ──
 
@@ -176,7 +176,7 @@ describe("resolveArchetypeId", () => {
     // instructional's own layoutTendencies (rail-numbered/two-column/
     // asymmetric-triptych, P1 variety wave task 4) share zero members with
     // beat "anchor"'s tendency set (banner-heading/stacked-poster/
-    // side-highlight, same task, effective-layout.ts's BEAT_TENDENCIES) —
+    // side-highlight, same task, layout-selection.ts's BEAT_TENDENCIES) —
     // an isolated pairing so this test measures the beat layer's own pull,
     // not strategy spillover onto the same ids.
     const anchorIds = ["banner-heading", "stacked-poster", "side-highlight"]

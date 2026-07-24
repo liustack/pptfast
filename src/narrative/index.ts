@@ -98,7 +98,7 @@ export interface StrategyDefinition {
    * Content-archetype soft-weight set for W4's weighted layout selection
    * (spec §6 step 4: in-set candidates get `TENDENCY_WEIGHT` (×3), out-of-set
    * get the `BASE_WEIGHT` floor (×1) — both named constants live in
-   * `svg/effective-layout.ts`, next to `resolveArchetypeId`, the sole
+   * `svg/layout-selection.ts`, next to `resolveArchetypeId`, the sole
    * consumer). Deliberately a separate field from {@link tendencies} above,
    * not a reinterpretation of it: `tendencies` mixes component-type names and
    * layout ids drawn from spec §5's strategy table verbatim and also feeds W5's
@@ -130,7 +130,7 @@ export interface StrategyDefinition {
    * Cover/chapter/ending soft-weight sets (P1 variety wave, task 3 — "身份页
    * strategy 软加权"), one per identity slide type. Same ×3/×1 mechanics as
    * {@link layoutTendencies} (`TENDENCY_WEIGHT`/`BASE_WEIGHT`,
-   * `svg/effective-layout.ts`) and the same consumer (`resolveArchetypeId`),
+   * `svg/layout-selection.ts`) and the same consumer (`resolveArchetypeId`),
    * just scoped to a disjoint id namespace: this field holds only
    * `LAYOUT_REGISTRY` cover/chapter/ending archetype ids
    * (`svg/layouts/registry.ts`'s `COVER_LAYOUTS`/`CHAPTER_LAYOUTS`/
@@ -390,7 +390,7 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     layoutTendencies: ["banner-heading", "rail-numbered", "two-column"],
     // Identity tendencies: briefing's cover/chapter/ending stay plain and
     // fact-forward — briefing is also `general`'s default strategy, so most
-    // no-narrative decks now see this set (see effective-layout.test.ts's
+    // no-narrative decks now see this set (see layout-selection.test.ts's
     // "default narrative" coverage for the byte-inertness boundary this
     // implies).
     // - cover `banner-title`: the same formal-report convention pyramid

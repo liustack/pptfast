@@ -257,7 +257,7 @@ const REGISTERABLE_SLIDE_TYPES: readonly Slide["type"][] = ["cover", "chapter", 
  * Deliberately duplicated (byte-identical logic) from `svg/full-slide-svg.tsx`'s
  * exported `resolveBackgroundHex` rather than imported: that file already
  * imports back from this one (`getThemeDefinition`), and it further pulls in
- * the render-orchestration subtree (`brand-chrome.tsx`/`effective-layout.ts`/
+ * the render-orchestration subtree (`brand-chrome.tsx`/`layout-selection.ts`/
  * `motif-selection.ts`, confirmed via `npx madge --circular`) — importing it
  * here would fold that whole subtree into a cycle with this foundational
  * theme-registration module just to reuse a 3-line pure function. `ink.ts`'s
@@ -424,7 +424,7 @@ export type ThemeRegistration = Omit<ThemeDefinition, "layouts"> & {
  * about to succeed).
  *
  * Once registered, the theme participates in `getInstalledThemeIds`,
- * `getThemeDefinition` (hence `effective-layout.ts`/`FullSlideSvg`'s
+ * `getThemeDefinition` (hence `layout-selection.ts`/`FullSlideSvg`'s
  * selection and `resolveBrand`), and `themes/index.ts`'s `resolveStyle` —
  * every internal theme lookup, with no separate "registered theme" branch
  * for callers to remember.
@@ -481,7 +481,7 @@ export function getInstalledThemeIds(): readonly string[] {
  * the builtin fallback (`THEME_DEFINITIONS[resolveThemeId(id)]`, which itself
  * folds an unrecognized id to consulting). The one lookup every internal
  * consumer that used to read `THEME_DEFINITIONS[resolveThemeId(id)]`
- * directly (`effective-layout.ts`, `full-slide-svg.tsx`) now calls instead, so
+ * directly (`layout-selection.ts`, `full-slide-svg.tsx`) now calls instead, so
  * a registered theme's curated layouts actually drive selection end-to-end.
  */
 export function getThemeDefinition(id: string): ThemeDefinition {

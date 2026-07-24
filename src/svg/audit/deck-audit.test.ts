@@ -1425,7 +1425,7 @@ describe("findContrastIssues — decor/motif subtrees excluded from background-r
   //
   // `layout: "split-diagonal"` pins the cover archetype deterministically
   // (an explicit `slide.layout` short-circuits the seed-based pick per
-  // `resolveArchetypeId`'s own doc comment in `effective-layout.ts`) to
+  // `resolveArchetypeId`'s own doc comment in `layout-selection.ts`) to
   // `cover-split-diagonal.tsx` — chosen specifically because it exercises
   // `pathBoundingBox`'s one remaining *exact* (non-decor) solid-path case
   // side-by-side with the decor exclusion in the same render, tying both

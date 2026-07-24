@@ -29,7 +29,7 @@ import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { resolveMotifId } from "./motif-selection"
 import { resolveChartPaletteOffset } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
-import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./effective-layout"
+import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./layout-selection"
 
 /**
  * Reduce a `BackgroundSpec` to one representative hex color — a color spec
@@ -223,7 +223,7 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
  * 取样一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务 3，即
  * `slide.layout`）显式指定短路——完整选型算法（narrative 加权取样、
  * narrativesOnly 硬约束、相邻防重复、allowed 空集防御性回退，W4 终态）现由
- * `./effective-layout` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
+ * `./layout-selection` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
  * `checkIrQuality` 的 density 门在 validate 期要跑同一条选型路径，两处各自维护
  * 一份会有漂移风险，故只留一份）。这里只做 render 专属的收尾——按选中 id 查
  * 这个文件自己的 `PAGE_ARCHETYPE_REGISTRIES` 取 JSX Component（validate 侧不

@@ -72,7 +72,7 @@ export const PageSpecSchema = z
      *  `Slide.beat` field, where it combines with a soft selection-weight
      *  onto layout picking (`Math.max`, not multiplication — see
      *  `SlideSchema.beat`'s own doc comment, `../ir/index.ts`, and
-     *  `BEAT_TENDENCY_WEIGHT`'s in `../svg/effective-layout.ts` for why) —
+     *  `BEAT_TENDENCY_WEIGHT`'s in `../svg/layout-selection.ts` for why) —
      *  the checks below (rotation shape) and that downstream weighting
      *  (which archetypes a given beat favors) are two independent consumers
      *  of the same declared value, not two views of one mechanism. */
@@ -331,7 +331,7 @@ const HEADING_MAX_CHARS = CAPACITY.headingMaxChars
  * elsewhere in this codebase for a different purpose (bullets budgets).
  * Duplicated rather than imported: `charLen` is a one-line function and
  * importing it would pull `ir-quality.ts`'s whole module graph
- * (`effective-layout.ts`, `svg-text-layout.ts`, ...) into this Node-free
+ * (`layout-selection.ts`, `svg-text-layout.ts`, ...) into this Node-free
  * package for a single line of logic. Keep in sync with `ir-quality.ts`'s
  * `charLen` if that one ever changes.
  */
