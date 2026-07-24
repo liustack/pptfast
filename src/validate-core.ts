@@ -22,7 +22,7 @@ import { PptxIRSchema, StyleOverrideSchema, type PptxIR } from "./ir"
 import { decodeDataUriBytes, dataUriMime, FORMAT_BY_MIME, MIME_BY_SNIFFED_FORMAT, sniffImageFormat } from "./ir/asset-sniff"
 import { normalizeComponentAliases } from "./ir/field-aliases"
 import { isSlideLevelPath, renameHintsFor, SLIDE_LEVEL_UNKNOWN_KEY_HINT } from "./ir/rename-hints"
-import { resolveNarrative, type NarrativeProfile } from "./narrative"
+import { normalizeNarrativeShape, resolveNarrative, type NarrativeProfile } from "./narrative"
 import { CAPACITY } from "./svg/audit/capacity"
 import { FULL_BODY_TYPES } from "./svg/component-traits"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
@@ -559,18 +559,32 @@ function checkAssetReferences(ir: PptxIR): ValidationIssue[] {
  * inherits this unchanged (`if (!v.ok) throw`) — it already only ever
  * blocked on `ok`, never inspected `errors`/`warnings` directly.
  *
- * Before any of that, one deterministic alias pass runs
- * ({@link normalizeComponentAliases}, W5 task 4) for the component
- * field-name synonym rescue only (kpi `title`→`label`, quote
- * `content`→`text`, …) — a weak-model rescue for schema-internal synonym
- * drift, scoped to `slides[]`. It only rewrites where the canonical key is
- * absent, so the schema parse below never sees an alias as an "unrecognized
- * key" in the first place. Purely informational: every rewrite is recorded
- * as a human-readable `path: alias → canonical` string and threaded onto
- * `ValidateResult.normalized` on *every* return path below via
- * `withNormalized`, success or failure alike — it never itself gates `ok`.
+ * Before any of that, two deterministic pre-parse rewrite passes run, each
+ * threading its rewrite notes onto `ValidateResult.normalized` on *every*
+ * return path below via `withNormalized`, success or failure alike — neither
+ * ever gates `ok` on its own:
+ *  - {@link normalizeComponentAliases} (W5 task 4): the component
+ *    field-name synonym rescue (kpi `title`→`label`, quote `content`→`text`,
+ *    …), scoped to `slides[]`. Only rewrites where the canonical key is
+ *    absent, so the schema parse below never sees an alias as an
+ *    "unrecognized key" in the first place.
+ *  - {@link normalizeNarrativeShape} (`./narrative`, T0b bench-evidence fix
+ *    2 — see its own doc comment for the full rationale): the root-level
+ *    `narrative: {id: <preset>}` shape rescue. A model that just wrote
+ *    `theme: {id: "consulting"}` a few lines above pattern-matches the same
+ *    wrapper shape onto `narrative`; this rewrites it to the bare preset
+ *    string `resolveNarrative`'s string branch actually expects. Fires only
+ *    when `id` is the object's sole narrative-relevant key (none of
+ *    strategy/pacing/audience alongside it) — a mixed shape stays
+ *    unrescued, ambiguous, and hard-errors exactly as it did before this
+ *    pass existed.
  *
- * There is deliberately no root/narrative-level alias pass (spec §16,
+ * Both are the same class of fix — a weak-model *synonym* rescue (a name
+ * drift for the component-alias pass, a *shape* drift for the narrative
+ * pass) — which is the actual boundary the next paragraph's "no
+ * old-vocabulary rescue" draws, not "no rewrite ever touches `narrative`."
+ *
+ * There is still deliberately no *old-vocabulary* rescue (spec §16,
  * reversing the now-superseded §15.4): a v4 document that still spells its
  * pre-rename vocabulary — `scenario` instead of `narrative`, `mode`/
  * `delivery` instead of `strategy`/`pacing`, or the old enum values
@@ -580,21 +594,24 @@ function checkAssetReferences(ir: PptxIR): ValidationIssue[] {
  * schema's `.strict()` parse below as an unrecognized key, and an old enum
  * value (or the axis-key names `mode`/`delivery` inside `narrative`, which
  * the schema itself leaves open) fails `resolveNarrative`'s own runtime
- * check, listing the current values. `pptfast migrate` (`ir/migrate.ts`)
- * remains the sanctioned bridge for a genuine v3 document — see the v3 hard
- * reject below, which points there. Hard-erroring is not the same as
- * leaving the error message unhelpful, though: the schema-parse branch below
- * appends a rename hint to `scenario` and the rest of the documented v2/v3
- * rename map (`blocks`/`variant`/`theme.override` — `./ir/rename-hints.ts`,
- * borrow-wave task 3) whenever the offending key matches one, and a generic
- * "belongs inside components[]" hint for any other slide-level unrecognized
- * key — message-layer annotation only, never a second, silent rewrite path
- * alongside {@link normalizeComponentAliases}.
+ * check, listing the current values. `{id: <preset>}` was never a v3
+ * `scenario` shape, so `normalizeNarrativeShape` above does not reopen this
+ * door — it rescues a shape weak models invent by analogy to `theme.id`, not
+ * a shape the pre-rename vocabulary ever spoke. `pptfast migrate`
+ * (`ir/migrate.ts`) remains the sanctioned bridge for a genuine v3 document —
+ * see the v3 hard reject below, which points there. Hard-erroring is not the
+ * same as leaving the error message unhelpful, though: the schema-parse
+ * branch below appends a rename hint to `scenario` and the rest of the
+ * documented v2/v3 rename map (`blocks`/`variant`/`theme.override` —
+ * `./ir/rename-hints.ts`, borrow-wave task 3) whenever the offending key
+ * matches one, and a generic "belongs inside components[]" hint for any
+ * other slide-level unrecognized key — message-layer annotation only, never
+ * a second, silent rewrite path alongside the two passes above.
  *
- * The component-alias pass only ever runs for a document already headed for
- * the v4 schema — an explicit `version: "2"` or `version: "3"` is
- * hard-rejected first, below, before the alias pass or any schema parse
- * (spec §9.3: a v2/v3 document is never silently reinterpreted as v4).
+ * Both pre-parse passes only ever run for a document already headed for the
+ * v4 schema — an explicit `version: "2"` or `version: "3"` is hard-rejected
+ * first, below, before either pass or any schema parse (spec §9.3: a v2/v3
+ * document is never silently reinterpreted as v4).
  */
 export function validateIr(input: unknown): ValidateResult {
   const version = typeof input === "object" && input !== null ? (input as Record<string, unknown>).version : undefined
@@ -634,7 +651,10 @@ export function validateIr(input: unknown): ValidateResult {
     }
   }
 
-  const { value: normalizedInput, normalized } = normalizeComponentAliases(input)
+  const componentAliasPass = normalizeComponentAliases(input)
+  const narrativeShapePass = normalizeNarrativeShape(componentAliasPass.value)
+  const normalizedInput = narrativeShapePass.value
+  const normalized = [...componentAliasPass.normalized, ...narrativeShapePass.normalized]
   const withNormalized = (result: ValidateResult): ValidateResult =>
     normalized.length > 0 ? { ...result, normalized } : result
 
