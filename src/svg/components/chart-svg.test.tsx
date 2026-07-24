@@ -466,6 +466,86 @@ describe("renderDumbbell — mixed-sign value domain (2026-07-21 negative-axis e
   })
 })
 
+// Task R1 fix: dumbbell's from.y/to.y value labels rendered the raw data
+// value with no width fitting at all, unlike this same component's row
+// category label (the `label` variable a few lines up, `fitSvgLine(String(
+// from.x), ...)`) which already shrinks/truncates to fit its declared box.
+// A large value (e.g. a 10-digit number, the same magnitude the sub-EMU
+// line.ts fix's from=1e9-scale repro uses) had no such protection and could
+// overflow its row visually. Fixed by giving from.y/to.y the identical
+// fitSvgLine treatment, same mechanism, no new number-abbreviation
+// convention invented.
+describe("renderDumbbell — value-label width fitting (from.y/to.y)", () => {
+  it("keeps normal-magnitude from.y/to.y byte-identical to the pre-fix raw rendering (no shrink, no truncation)", () => {
+    const series: ChartSeries[] = [
+      { name: "from", data: [{ x: "A", y: 42 }] },
+      { name: "to", data: [{ x: "A", y: 128 }] },
+    ]
+    const { container } = svg(renderDumbbell(series, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const texts = Array.from(container.querySelectorAll("text"))
+    const fromLabel = texts.find((t) => t.textContent === "42")
+    const toLabel = texts.find((t) => t.textContent === "128")
+    expect(fromLabel).toBeTruthy()
+    expect(toLabel).toBeTruthy()
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(11) // LABEL_FONT_SIZE, unchanged
+    expect(Number(toLabel!.getAttribute("font-size"))).toBe(12.5) // unchanged
+    expect(fromLabel!.getAttribute("data-truncated")).toBeNull()
+    expect(toLabel!.getAttribute("data-truncated")).toBeNull()
+  })
+
+  it("shrinks (fitSvgLine) a 10-digit value label instead of rendering it raw and unbounded", () => {
+    // 10 digits -- the same magnitude as the sub-EMU line.ts fix's own
+    // from=1e9-scale repro. `fill`/`text-anchor` (not textContent) locate
+    // the two value labels: whether fitSvgLine's shrink-only or
+    // shrink-then-truncate branch fires at this exact width budget isn't
+    // this test's concern (that's fitSvgLine's own unit tests' job,
+    // svg-text-layout.test.ts) -- only that the label is bounded at all,
+    // mirroring chart.test.tsx's own bar-chart fitSvgLine test, which
+    // likewise only asserts the resulting font-size range, not content.
+    const series: ChartSeries[] = [
+      { name: "from", data: [{ x: "A", y: 1234567890 }] },
+      { name: "to", data: [{ x: "A", y: 1987654321 }] },
+    ]
+    const { container } = svg(renderDumbbell(series, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const texts = Array.from(container.querySelectorAll("text"))
+    const fromLabel = texts.find((t) => t.getAttribute("fill") === MUTED && t.getAttribute("text-anchor") === "middle")
+    const toLabel = texts.find((t) => t.getAttribute("fill") === ACCENT)
+    expect(fromLabel).toBeTruthy()
+    expect(toLabel).toBeTruthy()
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBeLessThan(11) // LABEL_FONT_SIZE
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBeGreaterThanOrEqual(10) // this call's minFontSize
+    expect(Number(toLabel!.getAttribute("font-size"))).toBeLessThan(12.5)
+    expect(Number(toLabel!.getAttribute("font-size"))).toBeGreaterThanOrEqual(10)
+  })
+
+  it("never leaves a from.y/to.y label unbounded — a pathologically long value (16 digits, Number.MAX_SAFE_INTEGER scale) truncates at the minimum font size instead of overflowing raw", () => {
+    // MAX_SAFE_INTEGER (not an even-longer digit string): stays a plain
+    // decimal String() representation (16 digits) with no scientific-
+    // notation formatting quirk (JS switches to exponential form only past
+    // 1e21) -- a realistic "how long can a genuine integer value's decimal
+    // string get" ceiling, well past this label's width budget either way.
+    const hugeFrom = Number.MAX_SAFE_INTEGER
+    const hugeTo = hugeFrom - 1
+    const series: ChartSeries[] = [
+      { name: "from", data: [{ x: "A", y: hugeFrom }] },
+      { name: "to", data: [{ x: "A", y: hugeTo }] },
+    ]
+    const { container } = svg(renderDumbbell(series, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const texts = Array.from(container.querySelectorAll("text"))
+    // fill/text-anchor (not textContent) locate the two value labels here
+    // too -- at this length truncation is certain, so the full numeric
+    // string is never a reliable lookup key to begin with.
+    const fromLabel = texts.find((t) => t.getAttribute("fill") === MUTED && t.getAttribute("text-anchor") === "middle")
+    const toLabel = texts.find((t) => t.getAttribute("fill") === ACCENT)
+    expect(fromLabel).toBeTruthy()
+    expect(toLabel).toBeTruthy()
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(10) // this call's minFontSize floor
+    expect(Number(toLabel!.getAttribute("font-size"))).toBe(10)
+    expect(fromLabel!.textContent!.length).toBeLessThan(String(hugeFrom).length)
+    expect(toLabel!.textContent!.length).toBeLessThan(String(hugeTo).length)
+  })
+})
+
 // 2026-07-22 extreme-magnitude export-gate fix (deep-acceptance review Round
 // 3, 6th defect): renderBar/renderBarHorizontal/renderLine/renderFunnel all
 // compute a bar/point's pixel extent or position as a bare

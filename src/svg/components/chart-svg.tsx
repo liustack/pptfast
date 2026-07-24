@@ -528,6 +528,12 @@ export function renderFunnel(
  */
 const DUMBBELL_LABEL_W = 96
 const DUMBBELL_DOT_R = 5
+/** Width budget (px) for the from.y/to.y value labels' `fitSvgLine` call —
+ * the same gap `plotW` below already reserves past the plot's right edge
+ * for a value label (previously an inline `56` literal there, now named and
+ * shared with the fitSvgLine calls below so both consumers of "how wide is
+ * a value label allowed to be" stay in sync). */
+const DUMBBELL_VALUE_LABEL_W = 56
 
 export function renderDumbbell(
   series: ChartSeries[],
@@ -569,7 +575,7 @@ export function renderDumbbell(
   const min = Math.min(0, ...all)
   const max = Math.max(...all, 1)
   const plotX = x0 + DUMBBELL_LABEL_W + 12
-  const plotW = Math.max(1, w - DUMBBELL_LABEL_W - 12 - 56)
+  const plotW = Math.max(1, w - DUMBBELL_LABEL_W - 12 - DUMBBELL_VALUE_LABEL_W)
   const rowH = h / rows
   const vx = (v: number) => plotX + ((v - min) / (max - min)) * plotW
   return (
@@ -581,6 +587,23 @@ export function renderDumbbell(
         const label = fitSvgLine(String(from.x), {
           maxWidth: DUMBBELL_LABEL_W,
           fontSize: 13,
+          minFontSize: 10,
+        })
+        // from.y/to.y raw-rendered the data value with no width fitting at
+        // all — unlike the row category label immediately above, which
+        // already shrinks/truncates via fitSvgLine. A large value (e.g. a
+        // 10-digit number) had no such protection and could overflow its
+        // row visually. Same treatment, same mechanism, mirrored from that
+        // neighboring call: fontSize/minFontSize match what each label
+        // already rendered at, only maxWidth is new.
+        const fromValueLabel = fitSvgLine(String(from.y), {
+          maxWidth: DUMBBELL_VALUE_LABEL_W,
+          fontSize: LABEL_FONT_SIZE,
+          minFontSize: 10,
+        })
+        const toValueLabel = fitSvgLine(String(to.y), {
+          maxWidth: DUMBBELL_VALUE_LABEL_W,
+          fontSize: 12.5,
           minFontSize: 10,
         })
         const x1 = vx(from.y)
@@ -603,24 +626,26 @@ export function renderDumbbell(
             <circle cx={x1} cy={cy} r={DUMBBELL_DOT_R} fill={mutedColor} />
             <circle cx={x2} cy={cy} r={DUMBBELL_DOT_R + 1.5} fill={accentColor} />
             <text
+              data-truncated={fromValueLabel.truncated ? "1" : undefined}
               x={x1}
               y={cy - 11}
               textAnchor="middle"
-              fontSize={LABEL_FONT_SIZE}
+              fontSize={fromValueLabel.fontSize}
               fill={mutedColor}
               dominantBaseline="alphabetic"
             >
-              {from.y}
+              {fromValueLabel.text}
             </text>
             <text
+              data-truncated={toValueLabel.truncated ? "1" : undefined}
               x={x2 + DUMBBELL_DOT_R + 8}
               y={cy + 4}
-              fontSize={12.5}
+              fontSize={toValueLabel.fontSize}
               fontWeight="bold"
               fill={accentColor}
               dominantBaseline="alphabetic"
             >
-              {to.y}
+              {toValueLabel.text}
             </text>
           </g>
         )
