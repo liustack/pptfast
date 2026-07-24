@@ -174,6 +174,46 @@ describe("LeftAnchorCover", () => {
       })
       expect(titleLines.map((t) => t.textContent)).toEqual(expected.lines)
     })
+
+    // task R2（svg-text-layout.ts 的 tokenize 无空格分支修复）：一个粘在
+    // CJK 中间、自身不含空格的拉丁 run（本仓惯用语，本例 "OpenAPIGateway"）
+    // 修复前会被 360px 这个本文件最窄的 fitHeadingLines 预算从中间切断——
+    // 实测修复前渲染输出（`git stash` 到修复前逐一核实过，见任务报告）：
+    //   ["统一接入层OpenAP", "IGateway让跨团队", "协作效率显著提升"]，font-size 39
+    // "OpenAPIGateway" 被拆成 "OpenAP" / "IGateway" 两截，且 truncated 从未
+    // 被触发（静默）。下面钉的是修复后的行为。
+    it("keeps a fused Latin run intact when wrapping a realistic English-glued-to-CJK heading (task R2 regression)", () => {
+      const RUN = "OpenAPIGateway"
+      const fusedHeading = "统一接入层OpenAPIGateway让跨团队协作效率显著提升"
+      const fusedSlide: Slide = { type: "cover", heading: fusedHeading, components: [] } as Slide
+      const ctx = buildCtx(resolveStyle("academic"), {})
+      const out = renderSvgMarkup(
+        <LeftAnchorCover ir={ir("academic")} slide={fusedSlide} index={0} ctx={ctx} />,
+      )
+      const root = parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,
+      )
+      const titleLines = Array.from(root.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("x") === "64" && t.getAttribute("fill") === "#FFFFFF",
+      )
+      const lineTexts = titleLines.map((t) => t.textContent)
+      expect(lineTexts).toEqual(["统一接入层", "OpenAPIGateway让跨", "团队协作效率显著提升"])
+      // run 必须整体落在某一行内，任何一行都不能从 run 内部切开
+      expect(lineTexts.some((l) => l?.includes(RUN))).toBe(true)
+      expect(titleLines[0]?.getAttribute("font-size")).toBe("32")
+      // truncated:false 语义仍需准确——内容并未被 truncateToUnits 丢字，
+      // 只是收缩到了 minPt 地板（32），这与 fitHeadingLines 直接调用的结果
+      // 必须一致。
+      const expected = fitHeadingLines(fusedHeading, {
+        maxWidth: 360,
+        fontSize: 64,
+        maxLines: 3,
+        minPt: 32,
+        fontFamily: ctx.fonts.heading,
+      })
+      expect(expected.truncated).toBe(false)
+      expect(lineTexts).toEqual(expected.lines)
+    })
   })
 
   it("confidentiality 徽标 (1064,104,120,48) 避让 BrandChrome 四个 logo 带（迁移自 academic.test.tsx）", () => {

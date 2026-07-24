@@ -195,3 +195,134 @@ describe("layoutSvgText balanceLines (widow avoidance)", () => {
     expect(r.lines).toEqual(["年度战略回", "顾报告"])
   })
 })
+
+describe("tokenize atomic Latin/digit runs (task R2: fused-prefix wrap fix)", () => {
+  // 缺陷（修复前）：无空格分支旧实现把整串按字符切 token（`Array.from`），
+  // 一个粘在 CJK 中间、自身无空格的拉丁 run（本仓惯用语，如
+  // "...OpenAPIGateway让..."）因此完全没有"整词"保护——贪心逐行填充可以在
+  // run 内部任意字符处断行，且因为从未落进 `truncateToUnits`，`truncated`
+  // 仍报 false，缺陷完全静默。下面两个真实调用预算（cover-left-anchor 的
+  // 360/64/3、cover-split-diagonal 的 588/76/3）在修复前对同一输入的实测
+  // 输出（`git stash` 到修复前逐一验证过，见任务报告）：
+  //   360×64×3： ["统一接入层OpenAPI", "Gateway让跨团队协", "作效率显著提升"]
+  //   588×76×3： ["统一接入层OpenAP", "IGateway让跨团队", "协作效率显著提升"]
+  // ——"OpenAPIGateway" 两处都被从中间切断。下面钉的是修复后的行为：run 只
+  // 整体换行，绝不被从中间切断。
+  const FUSED = "统一接入层OpenAPIGateway让跨团队协作效率显著提升"
+  const RUN = "OpenAPIGateway"
+
+  it("keeps a fused Latin run intact at a narrow real call-site budget (cover-left-anchor's own 360/64/3)", () => {
+    const r = layoutSvgText(FUSED, { maxWidth: 360, fontSize: 64, maxLines: 3 })
+    expect(r.lines).toEqual(["统一接入层", "OpenAPIGateway让跨", "团队协作效率显著提升"])
+    expect(r.lines.join("")).toBe(FUSED) // 无丢字/无重排
+    expect(r.truncated).toBe(false)
+  })
+
+  it("keeps the same fused run intact at a second real call-site budget (cover-split-diagonal's own 588/76/3)", () => {
+    const r = layoutSvgText(FUSED, { maxWidth: 588, fontSize: 76, maxLines: 3 })
+    expect(r.lines).toEqual(["统一接入层", "OpenAPIGateway让跨团", "队协作效率显著提升"])
+    expect(r.lines.some((l) => l.includes(RUN))).toBe(true)
+  })
+
+  it("pure CJK (no space anywhere) wraps byte-identically to pre-fix behavior — the no-space branch's per-character CJK tokenization is untouched (regression pin)", () => {
+    // 钉值取自修复前（未改动 tokenize）代码的实测输出，见任务报告：纯 CJK
+    // 串本就一字一 token，新正则的「其余字符」分支与旧 `Array.from` 逐字符
+    // 行为完全一致，这两个用例证明字节不变。
+    const r1 = layoutSvgText("平台架构演进从单体到云原生的技术实践紫蓝渐变背景", {
+      maxWidth: 1088,
+      fontSize: 92,
+      maxLines: 2,
+    })
+    expect(r1.lines).toEqual(["平台架构演进从单体到云原生", "的技术实践紫蓝渐变背景"])
+    expect(r1.fontSize).toBe(83)
+    expect(r1.truncated).toBe(false)
+
+    const r2 = layoutSvgText("年度战略回顾报告全文完整版本不删减", {
+      maxWidth: 360,
+      fontSize: 64,
+      maxLines: 3,
+    })
+    expect(r2.lines).toEqual(["年度战略回顾", "报告全文完整", "版本不删减"])
+    expect(r2.fontSize).toBe(60)
+  })
+
+  it("space-delimited English wraps byte-identically to pre-fix behavior — that tokenize() branch is untouched by this fix (regression pin)", () => {
+    const r = layoutSvgText("The Quick Brown Fox Jumps Over The Lazy Dog Repeatedly", {
+      maxWidth: 400,
+      fontSize: 40,
+      maxLines: 3,
+    })
+    expect(r.lines).toEqual(["The Quick Brown Fox", "Jumps Over The Lazy", "Dog Repeatedly"])
+    expect(r.fontSize).toBe(38)
+  })
+
+  it("an atomic run wider than any achievable line still falls back to splitLongToken -- no infinite loop, no dropped text", () => {
+    // 自查点 (d)：原子 run 本身就超过整行预算时，splitLongToken 仍是唯一
+    // 出路（不可能不切）——本用例证明该保底路径未被破坏：有限步内终止、
+    // 拼回后与原文一致、且每行仍在预算内。
+    const LONG = "Supercalifragilisticexpialidocious文本"
+    const r = layoutSvgText(LONG, { maxWidth: 60, fontSize: 20, maxLines: 10 })
+    expect(r.lines.join("")).toBe(LONG) // 无丢字
+    expect(r.lines.length).toBeGreaterThan(1) // 确实被切开了，不是静默溢出成一行
+    const maxUnits = 60 / 20
+    for (const line of r.lines) {
+      expect(measureTextUnits(line)).toBeLessThanOrEqual(maxUnits + 1e-9)
+    }
+  })
+
+  describe("self-review: mixed-script / connector / accent boundary cases", () => {
+    it("keeps a hyphen+percent run ('60-85%') atomic -- moves wholly to its own line rather than splitting", () => {
+      const r = layoutSvgText("业务提升幅度达到60-85%这是核心指标", {
+        maxWidth: 140,
+        fontSize: 40,
+        maxLines: 6,
+      })
+      expect(r.lines).toContain("60-85%")
+    })
+
+    it("keeps a dotted version string ('v2.3.1-rc.4') atomic when the line budget can fit it", () => {
+      const r = layoutSvgText("本次发布对应版本号v2.3.1-rc.4请各团队升级验证", {
+        maxWidth: 200,
+        fontSize: 30,
+        maxLines: 6,
+      })
+      expect(r.lines).toContain("v2.3.1-rc.4")
+    })
+
+    it("lets a trailing connector ('etc.') detach from the run -- the period can start the next line, but 'etc' itself never splits", () => {
+      const r = layoutSvgText("支etc.以及后续会持续增加的更多类型说明", {
+        maxWidth: 108,
+        fontSize: 40,
+        maxLines: 10,
+      })
+      const idx = r.lines.findIndex((l) => l.endsWith("etc"))
+      expect(idx).toBeGreaterThanOrEqual(0)
+      expect(r.lines[idx + 1]?.startsWith(".")).toBe(true)
+    })
+
+    it("lets a leading connector ('-flag') detach from the run -- the hyphen can end the previous line, but 'flag' itself never splits", () => {
+      const r = layoutSvgText("命令行参数新增了一个重要的-flag选项用于控制", {
+        maxWidth: 130,
+        fontSize: 40,
+        maxLines: 8,
+      })
+      const idx = r.lines.findIndex((l) => l.endsWith("-"))
+      expect(idx).toBeGreaterThanOrEqual(0)
+      expect(r.lines[idx + 1]?.startsWith("flag")).toBe(true)
+    })
+
+    it("documents the ASCII-only boundary: an accented Latin letter ('café') does NOT extend the atomic run, so a break can land between 'caf' and 'é'", () => {
+      // 有意为之、与 brief 范围一致的已知边界：run 正则是 `[A-Za-z0-9]`，不含
+      // `\p{L}`，重音拉丁字母不算 run 的延伸字符，退回逐字符 token（与 CJK
+      // 同一处理路径）。这不是本任务要修的缺陷范围——诚实钉出这条边界，
+      // 而非悄悄扩大正则去覆盖全部 Unicode 字母表。
+      const r = layoutSvgText("这家连锁咖啡品牌café在全球范围内开设", {
+        maxWidth: 90,
+        fontSize: 40,
+        maxLines: 6,
+      })
+      expect(r.lines).toContain("品牌caf")
+      expect(r.lines).toContain("é在全球")
+    })
+  })
+})

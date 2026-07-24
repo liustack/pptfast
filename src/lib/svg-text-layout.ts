@@ -548,12 +548,68 @@ function splitLongToken(token: string, maxUnits: number, weight?: TextWeightHint
   return chunks
 }
 
+// Atomic-run pattern for tokenize()'s no-space branch below (task R2,
+// 2026-07-24). CJK's own wrapping convention allows a break between any
+// two ideographs but never inside a run of Latin letters/digits -- this
+// repo's own fused heading idiom glues an English brand/metric prefix
+// straight onto a CJK clause with no separating space (e.g. "DSpark：让大
+// 模型推理快..."). The old no-space tokenizer (`Array.from(normalized)`)
+// split every character individually, so a Latin run had no protection at
+// all: the greedy per-token line pack (`wrapWithUnits` below) could end a
+// line after any single character, landing squarely mid-word once the line
+// budget got tight (empirically: ~20 fused-prefix characters at
+// cover-left-anchor's 360px budget) -- silently, since a wrap/shrink that
+// still lands under budget never touched `truncateToUnits`, so `truncated`
+// stayed `false`.
+//
+// This regex instead matches a maximal run starting and ending in
+// `[A-Za-z0-9]`, with `.`/`-`/`%` allowed *inside* the run so a
+// hyphen/decimal/percent doesn't fracture a token that reads as one visual
+// unit ("60-85%", "v2.3.1-rc.4" each stay a single atomic token) --  but
+// never as the run's own first or last character, so a trailing connector
+// splits off as its own single-char token ("etc." → ["etc", "."]) and a
+// leading one likewise ("-flag" → ["-", "flag"]): a break can still land
+// next to a connector, just never inside the alphanumeric run itself. Every
+// other character (CJK, punctuation, and deliberately -- see below --
+// anything outside ASCII) falls through to the trailing `.` alternative,
+// one token per character, unchanged from the old `Array.from` behavior --
+// which is what keeps pure-CJK and already-space-delimited text (that
+// branch is untouched) byte-identical to pre-fix output.
+//
+// Deliberately ASCII-only (`[A-Za-z0-9]`, not `\p{L}`/`\p{N}`): an accented
+// Latin letter (é, ü) or any other non-CJK, non-ASCII script does NOT
+// extend a run -- "café" tokenizes as `["caf", "é"]`, so a break could
+// still land between "caf" and "é" under a tight budget. That is a real,
+// known boundary, not silently widened past what this task's brief scoped
+// (ASCII alphanumerics) -- see the tokenize() doc comment and this task's
+// report for the full self-review of mixed-script/connector edge cases.
+//
+// `splitLongToken` below is intentionally untouched: it remains the
+// fallback for the rare case where an atomic run alone is wider than a
+// full line (a run that long still can't be rendered unbroken in a bounded
+// box -- there is no alternative to a mid-run cut there), now reached with
+// a (possibly multi-character) atomic token instead of always a single
+// character, which it already handled correctly (it's the same code path
+// `splitLongToken` already served for an over-long whitespace-delimited
+// word).
+const LATIN_RUN_OR_CHAR_RE = /[A-Za-z0-9](?:[A-Za-z0-9.\-%]*[A-Za-z0-9%])?|./gu
+
+/**
+ * Splits `text` into wrap tokens. Space-delimited text (contains at least
+ * one space anywhere) splits on spaces, same as always -- `wrapWithUnits`
+ * re-joins those with a single space within a line (`spaceDelimited: true`
+ * is exactly the re-join signal it reads). Text with no space at all (the
+ * common case for a CJK clause, with or without a fused Latin/digit prefix)
+ * splits per `LATIN_RUN_OR_CHAR_RE` above: one token per CJK/punctuation
+ * character, but a maximal atomic token per contiguous ASCII Latin/digit
+ * run -- see that constant's own comment for the full boundary discussion.
+ */
 function tokenize(text: string): { tokens: string[]; spaceDelimited: boolean } {
   const normalized = text.trim().replace(/\s+/g, " ")
   if (!normalized) return { tokens: [], spaceDelimited: false }
   const spaceDelimited = normalized.includes(" ")
   return {
-    tokens: spaceDelimited ? normalized.split(" ") : Array.from(normalized),
+    tokens: spaceDelimited ? normalized.split(" ") : (normalized.match(LATIN_RUN_OR_CHAR_RE) ?? []),
     spaceDelimited,
   }
 }
