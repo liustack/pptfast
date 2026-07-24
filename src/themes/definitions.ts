@@ -1,6 +1,7 @@
 import type { BackgroundSpec, BrandConfig, Slide } from "@/ir"
 import { PptfastError } from "../errors"
 import type { MotifArchetypeId } from "../svg/archetypes/types"
+import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 import { contrastRatio } from "../svg/ink"
 import { getLayout, layoutsForSlideType } from "../svg/layouts/registry"
 import { REGISTERED_THEMES } from "./registered-themes"
@@ -349,6 +350,34 @@ export function assertContrastFloor(id: string, style: StyleTokens): void {
 }
 
 /**
+ * `console.warn`s a single line when `stack` (a theme's `fonts.heading` or
+ * `fonts.body`) resolves — via `resolveFontFace`, the exact same resolution
+ * `FullSlideSvg.tsx`'s render path uses — to a face with no exact
+ * per-character width table (`hasExactWidthTable`, `../svg/fonts` ->
+ * `svg-text-layout.ts`). Not a hard rejection: an unmeasured designer font
+ * (Cambria, a theme's own custom stack, …) is a legitimate design choice,
+ * not a defect — `measureTextUnits`'s class-average envelope still sizes it,
+ * just more conservatively, with a real (if small) overflow risk on long
+ * runs. `mono` is deliberately never checked here — `measureMonoTextUnits`
+ * already sizes it with an exact per-glyph model for Consolas, the only
+ * mono face any builtin ships.
+ *
+ * This is the first `console.warn` call site in the codebase (a repo-wide
+ * grep found none) — deliberately plain, no new warning-channel
+ * abstraction: there is no registration-time warning plumbing to reuse, and
+ * `console.warn` needs none (zero API surface change, works identically on
+ * every platform this package ships to).
+ */
+function warnUnmeasuredFace(id: string, role: "heading" | "body", stack: string[]): void {
+  const face = resolveFontFace(stack, role)
+  if (!hasExactWidthTable(face)) {
+    console.warn(
+      `theme "${id}" ${role} font "${face}" has no exact width table — text width estimation falls back to a conservative class-average envelope and may overflow on long text; see measureTextUnits in src/lib/svg-text-layout.ts`,
+    )
+  }
+}
+
+/**
  * `registerTheme`'s input shape (W4, spec §3 "缺省 = 全集"): identical to
  * {@link ThemeDefinition} except `layouts` is optional, and — when present —
  * each of its four slide-type entries is independently optional too. A
@@ -387,6 +416,12 @@ export type ThemeRegistration = Omit<ThemeDefinition, "layouts"> & {
  *   {@link CONTRAST_FLOOR} against a {@link CONTRAST_CHECKED_SLIDE_TYPES}
  *   slide type's own resolved default background — see
  *   {@link assertContrastFloor}'s own doc comment.
+ *
+ * Also `console.warn`s (never throws) once for each of `style.fonts.heading`/
+ * `style.fonts.body` that resolves to a face with no exact width table — see
+ * {@link warnUnmeasuredFace}'s own doc comment. Fires only for a
+ * registration that clears every check above (i.e. one that is actually
+ * about to succeed).
  *
  * Once registered, the theme participates in `getInstalledThemeIds`,
  * `getThemeDefinition` (hence `effective-layout.ts`/`FullSlideSvg`'s
@@ -428,6 +463,11 @@ export function registerTheme(def: ThemeRegistration): void {
     }
     layouts[slideType] = ids
   }
+  // Soft checks last, only once every hard check above has confirmed this
+  // registration will actually succeed — a registration that goes on to
+  // throw (bad layout id, etc.) never warns for an unrelated font choice.
+  warnUnmeasuredFace(def.id, "heading", def.style.fonts.heading)
+  warnUnmeasuredFace(def.id, "body", def.style.fonts.body)
   REGISTERED_THEMES.set(def.id, { ...def, layouts })
 }
 

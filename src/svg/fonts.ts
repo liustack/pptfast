@@ -320,3 +320,13 @@ export function isBold(weight: string | null): boolean {
   if (weight === "bold" || weight === "bolder") return true
   return parseInt(weight, 10) >= 600
 }
+
+/**
+ * Re-exported from `svg-text-layout.ts` (backlog-sweep task I2) so a
+ * font-role caller here — `registerTheme` (`themes/definitions.ts`)
+ * foremost — can ask "does this resolved face get an exact width model"
+ * alongside `resolveFontFace` without a separate `../lib/svg-text-layout`
+ * import of its own. See that function's own doc comment for the
+ * georgia/yahei-only exact set and its class-average fallback.
+ */
+export { hasExactWidthTable } from "../lib/svg-text-layout"

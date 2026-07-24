@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId } from "./index"
 import {
   __resetRegisteredThemes,
@@ -17,6 +17,7 @@ import { CONTENT_ARCHETYPES } from "../svg/archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../svg/archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "../svg/archetypes/index-motif"
 import { layoutsForSlideType } from "../svg/layouts/registry"
+import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 
 // 四页型注册表按 id 分发用的宽字符串索引视图（PAGE_ARCHETYPE_REGISTRIES 在
 // FullSlideSvg.tsx 用的同一模式）：THEME_DEFINITIONS.layouts 的 id 是通用
@@ -512,6 +513,93 @@ describe("registerTheme", () => {
         },
       }),
     ).not.toThrow()
+  })
+})
+
+// ── registerTheme: unmeasured-font-width console.warn (backlog-sweep task
+// I2). First console.warn precedent in the codebase (repo-wide grep found
+// zero prior production `console.warn` call sites) — plain, no new warning-
+// channel abstraction, per the task's own adjudicated rationale.
+describe("registerTheme: unmeasured-font-width console.warn", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  it("warns for a heading face with no exact width table (SimSun) and stays silent for a body face that has one (Georgia)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const base = testTheme({ id: "acme-warn-heading-only" })
+    registerTheme({ ...base, style: { ...base.style, fonts: { heading: ["SimSun"], body: ["Georgia"] } } })
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    const message = warnSpy.mock.calls[0]?.[0]
+    expect(message).toMatch(/acme-warn-heading-only/)
+    expect(message).toMatch(/heading/)
+    expect(message).toMatch(/SimSun/)
+    expect(message).toMatch(/no exact width table/)
+    expect(message).toMatch(/class-average envelope/)
+    warnSpy.mockRestore()
+  })
+
+  it("warns twice — once per role — when both heading and body resolve to faces without an exact width table", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const base = testTheme({ id: "acme-warn-both" })
+    registerTheme({ ...base, style: { ...base.style, fonts: { heading: ["SimSun"], body: ["KaiTi"] } } })
+    expect(warnSpy).toHaveBeenCalledTimes(2)
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/heading/)
+    expect(warnSpy.mock.calls[1]?.[0]).toMatch(/body/)
+    warnSpy.mockRestore()
+  })
+
+  it("stays silent when both heading and body resolve to faces with an exact width table (Georgia/Microsoft YaHei)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const base = testTheme({ id: "acme-no-warn" })
+    registerTheme({ ...base, style: { ...base.style, fonts: { heading: ["Georgia"], body: ["Microsoft YaHei"] } } })
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it("never warns for a registration that ultimately throws (e.g. a bad layout id) — warnings only fire once a registration will actually succeed", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const base = testTheme({ id: "acme-throws-before-warn" })
+    expect(() =>
+      registerTheme({
+        ...base,
+        style: { ...base.style, fonts: { heading: ["SimSun"], body: ["SimSun"] } },
+        layouts: { ...base.layouts, cover: ["not-a-real-layout"] },
+      }),
+    ).toThrow(/not-a-real-layout/)
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  // Hostile-review finding (backlog-sweep task I2 self-review): 4 of the 13
+  // builtins (bloom/ink/journal/runway) resolve their *heading* font to
+  // SimSun or KaiTi — real, deliberate CJK-serif design choices (see each
+  // theme file's own inline comment — SimSun/KaiTi are the only CJK serif
+  // entries in `SAFE_FONTS`) that have no exact width table. Every builtin's
+  // *body* font resolves to Microsoft YaHei, which does. If any of this ever
+  // reached `console.warn`, it would fire on every single consumer's very
+  // first render — but it structurally cannot: builtins never call
+  // `registerTheme` (`THEME_DEFINITIONS` is built directly from
+  // `THEME_STYLES`, see the `assertContrastFloor` describe block's own
+  // comment above for the full argument). This test locks both halves of
+  // that claim so a future change that either (a) alters which builtins
+  // resolve to a non-exact face, or (b) starts routing builtins through
+  // `registerTheme`, fails loudly here instead of silently starting to spam
+  // every consumer.
+  it("regression: bloom/ink/journal/runway's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const nonExactHeadingBuiltins = new Set(["bloom", "ink", "journal", "runway"])
+    for (const id of CANONICAL_THEME_IDS) {
+      const style = THEME_DEFINITIONS[id].style
+      const headingFace = resolveFontFace(style.fonts.heading, "heading")
+      const bodyFace = resolveFontFace(style.fonts.body, "body")
+      expect(hasExactWidthTable(bodyFace), `${id} body face "${bodyFace}"`).toBe(true)
+      expect(hasExactWidthTable(headingFace), `${id} heading face "${headingFace}"`).toBe(
+        !nonExactHeadingBuiltins.has(id),
+      )
+    }
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
   })
 })
 

@@ -977,3 +977,23 @@ export function layoutSvgText(
     truncated: false,
   }
 }
+
+/**
+ * True when `fontFamily` resolves (via `classifyFaceKey`'s own first-member
+ * convention above) to a face this pack has a real per-character exact
+ * advance-width table for (`EXACT_TABLE_FOR` above) -- currently Georgia and
+ * Microsoft YaHei only. Every other face -- SimSun/KaiTi (classified but
+ * class-average-only, see `EXACT_TABLE_FOR`'s own comment), an unmeasured
+ * designer font, `undefined`/empty input -- falls back to
+ * `measureTextUnits`'s coarser, deliberately-conservative class-average
+ * envelope instead.
+ *
+ * Exported (backlog-sweep task I2) so a registration-time caller
+ * (`themes/definitions.ts`'s `registerTheme`, via the `../svg/fonts`
+ * forwarding re-export next to `isMonoFontFamily`/`isBold`) can warn a theme
+ * author that their chosen heading/body face falls back to that envelope,
+ * without duplicating `classifyFaceKey`'s own matching rules.
+ */
+export function hasExactWidthTable(fontFamily: string): boolean {
+  return EXACT_TABLE_FOR[classifyFaceKey(fontFamily)] !== undefined
+}
