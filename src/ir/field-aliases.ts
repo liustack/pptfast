@@ -39,6 +39,7 @@ import { aliases as timelineAliases } from "./components/timeline"
 import { aliases as rowCardsAliases } from "./components/row-cards"
 import { aliases as stepsAliases } from "./components/steps"
 import { aliases as numberedCardsAliases } from "./components/numbered-cards"
+import { aliases as verdictBannerAliases } from "./components/verdict-banner"
 
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
@@ -56,7 +57,7 @@ export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = 
   // callout and verdict_banner's semantic fields commonly cross-wire
   // (tone/variant) — each direction is this pair's own inverse alias below.
   callout: calloutAliases.block,
-  verdict_banner: { variant: "tone" },
+  verdict_banner: verdictBannerAliases.block,
   // Named-slot full-body family (structure-components wave task 1, decision
   // 8): every slot is its own top-level field (not an item-array element),
   // so these belong in this top-level table, not

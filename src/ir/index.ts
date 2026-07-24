@@ -1,7 +1,6 @@
 import { z } from "zod"
-import { PPTX_ICON_NAMES } from "@/icons/catalog"
 import { BEAT_VALUES } from "./narrative-values"
-import { componentTypeError, iconEnumError } from "./schema-error-hints"
+import { componentTypeError } from "./schema-error-hints"
 import { schema as bulletsSchema } from "./components/bullets"
 import { schema as paragraphSchema } from "./components/paragraph"
 import { schema as quoteSchema } from "./components/quote"
@@ -18,6 +17,10 @@ import { schema as rowCardsSchema } from "./components/row-cards"
 import { schema as stepsSchema } from "./components/steps"
 import { schema as ringsSchema } from "./components/rings"
 import { schema as numberedCardsSchema } from "./components/numbered-cards"
+import { schema as roadmapSchema } from "./components/roadmap"
+import { schema as matrixSchema } from "./components/matrix"
+import { schema as insightPanelSchema } from "./components/insight-panel"
+import { schema as verdictBannerSchema } from "./components/verdict-banner"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -387,72 +390,10 @@ const ComponentSchema = z.discriminatedUnion("type", [
   stepsSchema,
   ringsSchema,
   numberedCardsSchema,
-  z
-    .object({
-      type: z.literal("roadmap"),
-      /** 阶段路线图卡：2-4 个阶段横排，自动编号 01..N，每阶段含标题、
-       * 可选时段（如「0-6 个月」）与若干 label:value 指标行。适合分阶段
-       * 推进/路线图/里程碑规划。 */
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              period: z.string().optional(),
-              rows: z
-                .array(z.object({ label: z.string(), value: z.string() }).strict())
-                .max(4)
-                .optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(4),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("matrix"),
-      /** 二维定位矩阵：带可选 XY 轴标签的色格网格，items 按行优先填格，
-       * tone 决定象限底色。适合定位矩阵/象限分析/组合分类。 */
-      x_title: z.string().optional(),
-      y_title: z.string().optional(),
-      cols: z.number().int().min(2).max(3),
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              tag: z.string().optional(),
-              tone: z.enum(["neutral", "accent", "info"]).optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(9),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("insight_panel"),
-      /** 带标题的策略/观点面板：标题压色条 + 若干 label/描述行 + 可选贴底
-       * 脚注。常作 aside 侧栏块与数据并置（观点/纪律/结论）。 */
-      title: z.string(),
-      rows: z
-        .array(z.object({ label: z.string(), text: z.string() }).strict())
-        .min(1)
-        .max(5),
-      footnote: z.string().optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("verdict_banner"),
-      text: z.string(),
-      tone: z.enum(["positive", "warning", "neutral"]),
-      icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-    })
-    .strict(),
+  roadmapSchema,
+  matrixSchema,
+  insightPanelSchema,
+  verdictBannerSchema,
   z
     .object({
       type: z.literal("citation"),
