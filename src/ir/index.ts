@@ -1,3 +1,35 @@
+/**
+ * The v4 IR schema root: theme/meta/assets/brand/background/slide/narrative
+ * and the top-level `PptxIRSchema` a deck document parses against
+ * (`parsePptxIR`). The frozen v3 shape lives in `./legacy-v3.ts`, kept only
+ * for `migrateIrV3ToV4`'s input parsing (spec §9.3).
+ *
+ * **The `ComponentSchema` union below is a pure aggregator (src domain reorg
+ * wave 2, spec §4.3), same discipline as `src/svg/layouts/registry.ts`'s T1d
+ * precedent.** Every one of the 32 component schemas used to live here as a
+ * literal `z.object({...})` entry directly inside the `discriminatedUnion`
+ * array. Each now lives in its own `src/ir/components/<name>.ts` domain file
+ * instead (schema + field aliases + render-trait declaration together, spec
+ * §4.1) — imported below and referenced by name, in the exact union position
+ * its literal used to occupy, so "take one component away whole" is a
+ * single-file operation instead of an edit split across this file,
+ * `field-aliases.ts`, and `component-traits.ts`. This file's own job for
+ * components is now purely computational: import all 32, construct
+ * `ComponentSchema` via `z.discriminatedUnion`, and derive `COMPONENT_TYPES`
+ * from the result — never a hand-copied literal, never a re-export relay. A
+ * handful of schema fragments genuinely shared by ≥2 components (only the
+ * icon-name enum, as of this wave) live in `src/ir/components/shared.ts`
+ * instead of any one domain file; every other named sub-schema that reads as
+ * "shared" at a glance (e.g. `GanttItemSchema`, `PestQuadrantSchema`,
+ * `SankeyNodeSchema`/`SankeyLinkSchema`) turned out to be single-consumer and
+ * moved into its own component's domain file with it.
+ *
+ * The rest of this module — everything outside the `// ── Components` section
+ * — is unrelated to the component-domain split and was never in its scope:
+ * background/theme/meta/assets/brand/slide/narrative and the top-level
+ * `PptxIRSchema` are genuinely this file's own content, not aggregated from
+ * elsewhere.
+ */
 import { z } from "zod"
 import { BEAT_VALUES } from "./narrative-values"
 import { componentTypeError } from "./schema-error-hints"

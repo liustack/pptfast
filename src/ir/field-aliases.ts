@@ -27,6 +27,25 @@
  *    for a pattern like timeline `year: 2024`) — out of scope for a table
  *    that normalizes field *names*; a type mismatch surviving a correct
  *    rename is still a legitimate zod error, not a naming problem.
+ *
+ * **`COMPONENT_FIELD_ALIASES`/`COMPONENT_ITEM_FIELD_ALIASES` are pure
+ * aggregators (src domain reorg wave 2, spec §4.3), same discipline as
+ * `src/svg/layouts/registry.ts`'s T1d precedent.** Every row used to be a
+ * hand-copied literal directly inside one of these two tables. Each
+ * component's own alias rows now live beside its IR schema instead — the
+ * `aliases: ComponentAliasSpec` export at the bottom of the matching
+ * `src/ir/components/<name>.ts` domain file (spec §4.1) — imported below and
+ * referenced by `.block`/`.items`, under the exact same table key the
+ * literal used to occupy. A component with no alias rows still exports
+ * `aliases = {}`; this file's tables simply don't reference it (`bullets`,
+ * `chart`, … have no row in either table, same as before this wave). Every
+ * other export in this file — `FieldAliasMap`/`ItemFieldAliasSpec` (the
+ * shapes a domain file's own `aliases` export is checked against),
+ * `SLIDE_FIELD_ALIASES` (slide-level, out of the component-domain split's
+ * scope — the singular `notes` synonym rescue was never a per-component
+ * concern), and every function below (`normalizeComponentAliases` and its
+ * private helpers) — is machinery that *applies* the two tables, not table
+ * content itself, and is unchanged by this wave.
  */
 
 import { aliases as quoteAliases } from "./components/quote"
