@@ -14,6 +14,10 @@ import { schema as architectureSchema } from "./components/architecture"
 import { schema as timelineSchema } from "./components/timeline"
 import { schema as comparisonSchema } from "./components/comparison"
 import { schema as iconCardsSchema } from "./components/icon-cards"
+import { schema as rowCardsSchema } from "./components/row-cards"
+import { schema as stepsSchema } from "./components/steps"
+import { schema as ringsSchema } from "./components/rings"
+import { schema as numberedCardsSchema } from "./components/numbered-cards"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -379,81 +383,10 @@ const ComponentSchema = z.discriminatedUnion("type", [
   timelineSchema,
   comparisonSchema,
   iconCardsSchema,
-  z
-    .object({
-      type: z.literal("row_cards"),
-      /** 全宽横向长卡列表（编号圆圈 + 可选图标 + 三级文字），3-6 项纵向
-       * 堆叠，highlight 项 accent 描边强调。适合成果一览/贡献清单/议题列表
-       * 这类每项信息量较大的枚举。 */
-      items: z
-        .array(
-          z
-            .object({
-              icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-              title: z.string(),
-              text: z.string().optional(),
-              sub: z.string().optional(),
-              highlight: z.boolean().optional(),
-            })
-            .strict()
-        )
-        .min(3)
-        .max(6),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("steps"),
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              text: z.string(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(5),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("rings"),
-      /** 分层同心圆环（洋葱模型）：items 从内核到外层排序（items[0]=内核
-       * 实心圆）。每层引线标注到右侧（label 短词 ≤8 字，desc 一句话）。 */
-      items: z
-        .array(
-          z
-            .object({
-              label: z.string(),
-              desc: z.string().optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(4),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("numbered_cards"),
-      /** 编号网格列表（编辑部大数字目录）：自动编号 01..N，无卡壳左竖线
-       * 分栏，适合并列名录/作品集/要点集。≤4 项单行，5-8 项两行网格。 */
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              text: z.string().optional(),
-              sub: z.string().optional(),
-            })
-            .strict()
-        )
-        .min(3)
-        .max(8),
-    })
-    .strict(),
+  rowCardsSchema,
+  stepsSchema,
+  ringsSchema,
+  numberedCardsSchema,
   z
     .object({
       type: z.literal("roadmap"),

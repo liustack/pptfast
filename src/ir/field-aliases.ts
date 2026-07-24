@@ -36,6 +36,9 @@ import { aliases as calloutAliases } from "./components/callout"
 import { aliases as kpiCardsAliases } from "./components/kpi-cards"
 import { aliases as architectureAliases } from "./components/architecture"
 import { aliases as timelineAliases } from "./components/timeline"
+import { aliases as rowCardsAliases } from "./components/row-cards"
+import { aliases as stepsAliases } from "./components/steps"
+import { aliases as numberedCardsAliases } from "./components/numbered-cards"
 
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
@@ -171,10 +174,10 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly Item
   // shares the word "components" by coincidence only; this alias is scoped
   // to one architecture layer's own item shape, never the deck-level array.
   architecture: architectureAliases.items,
-  steps: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
+  steps: stepsAliases.items,
   timeline: timelineAliases.items,
-  numbered_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
-  row_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
+  numbered_cards: numberedCardsAliases.items,
+  row_cards: rowCardsAliases.items,
 }
 
 /**
