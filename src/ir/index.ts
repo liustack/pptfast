@@ -10,6 +10,10 @@ import { schema as codeSchema } from "./components/code"
 import { schema as kpiCardsSchema } from "./components/kpi-cards"
 import { schema as chartSchema } from "./components/chart"
 import { schema as flowchartSchema } from "./components/flowchart"
+import { schema as architectureSchema } from "./components/architecture"
+import { schema as timelineSchema } from "./components/timeline"
+import { schema as comparisonSchema } from "./components/comparison"
+import { schema as iconCardsSchema } from "./components/icon-cards"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -371,64 +375,10 @@ const ComponentSchema = z.discriminatedUnion("type", [
   kpiCardsSchema,
   chartSchema,
   flowchartSchema,
-  z
-    .object({
-      type: z.literal("architecture"),
-      layers: z.array(
-        z
-          .object({ title: z.string(), items: z.array(z.string()) })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("timeline"),
-      /** 版式：缺省 horizontal（存量语义）。vertical=左 date/中轴圆点/右
-       * 标题描述的编辑部竖排时间线，适合 4-8 个叙事型节点。 */
-      layout: z.enum(["horizontal", "vertical"]).optional(),
-      milestones: z.array(
-        z
-          .object({
-            date: z.string(),
-            title: z.string(),
-            desc: z.string().optional(),
-            /** 强调节点：accent 色 + 大圆点（时间线上的「转折点」语义）。 */
-            highlight: z.boolean().optional(),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("comparison"),
-      columns: z.array(z.string()),
-      rows: z.array(
-        z
-          .object({ label: z.string(), cells: z.array(z.string()) })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("icon_cards"),
-      /** 2-4 项单行并列，5-6 项自动 2 行 3 列宫格（2026-07-11 用户借鉴）。 */
-      items: z
-        .array(
-          z
-            .object({
-              icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }),
-              title: z.string(),
-              text: z.string(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(6),
-    })
-    .strict(),
+  architectureSchema,
+  timelineSchema,
+  comparisonSchema,
+  iconCardsSchema,
   z
     .object({
       type: z.literal("row_cards"),

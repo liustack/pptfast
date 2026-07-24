@@ -34,6 +34,8 @@ import { aliases as codeAliases } from "./components/code"
 import { aliases as paragraphAliases } from "./components/paragraph"
 import { aliases as calloutAliases } from "./components/callout"
 import { aliases as kpiCardsAliases } from "./components/kpi-cards"
+import { aliases as architectureAliases } from "./components/architecture"
+import { aliases as timelineAliases } from "./components/timeline"
 
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
@@ -168,9 +170,9 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly Item
   // "components" or "nodes" — pptfast's own top-level components array
   // shares the word "components" by coincidence only; this alias is scoped
   // to one architecture layer's own item shape, never the deck-level array.
-  architecture: [{ itemsKey: "layers", aliases: { name: "title", components: "items", nodes: "items" } }],
+  architecture: architectureAliases.items,
   steps: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
-  timeline: [{ itemsKey: "milestones", aliases: { year: "date", text: "desc", description: "desc" } }],
+  timeline: timelineAliases.items,
   numbered_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
   row_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
 }
