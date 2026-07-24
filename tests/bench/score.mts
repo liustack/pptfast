@@ -238,11 +238,27 @@ function extractComponentTypes(rawIr: unknown): Set<string> {
     if (!Array.isArray(slides)) return types
     for (const slide of slides) {
       const components = (slide as { components?: unknown })?.components
-      if (!Array.isArray(components)) continue
-      for (const component of components) {
-        const t = (component as { type?: unknown })?.type
-        if (typeof t === "string") types.add(t)
+      if (Array.isArray(components)) {
+        for (const component of components) {
+          const t = (component as { type?: unknown })?.type
+          if (typeof t === "string") types.add(t)
+        }
       }
+      // Background-asset blind spot (T0b fix 3, bench-evidence q06/q12 false
+      // negatives, .issues/notes/2026-07-24-bench-rerun.md item 3): a
+      // full-bleed cover photo set via `background.kind === "asset"`
+      // (src/ir/index.ts's BackgroundSpec) is a real image expression, just
+      // not a `components[]` entry — the same visual result an explicit
+      // `image` component gives, one layer up (the slide-background layer
+      // instead of the content layer). expects_components' own vocabulary
+      // only ever names this family "image" (no separate "background image"
+      // label exists anywhere in the question bank — swept the full set
+      // behind this fix and found none), so mapping the background-asset
+      // signal onto "image" is the one rescue this scan needs: without it, a
+      // model that correctly reached for a background photo scores as if it
+      // produced no image at all.
+      const background = (slide as { background?: unknown })?.background
+      if ((background as { kind?: unknown } | undefined)?.kind === "asset") types.add("image")
     }
   } catch {
     // best-effort — coverage is descriptive reporting, never allowed to

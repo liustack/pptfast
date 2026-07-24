@@ -10,6 +10,7 @@ import {
   runScoring,
   scoreModel,
   scoreQuestion,
+  type QuestionMeta,
 } from "./score.mts"
 
 const FIXTURES = join(import.meta.dirname, "fixtures")
@@ -252,6 +253,39 @@ describe("scoreQuestion — deck-project directory with a relative local asset p
     expect(score.renderOk).toBe(true)
     expect(score.renderError).toBeUndefined()
     expect(score.deterministic).toBe(true)
+  })
+})
+
+// ── coverage: background-asset blind spot (T0b fix 3, bench-evidence) ──
+//
+// extractComponentTypes used to scan only slides[].components[].type — a
+// slide whose "image" expectation is satisfied by a full-bleed background
+// photo (background.kind === "asset", src/ir/index.ts's BackgroundSpec)
+// rather than an explicit `image` component scored as a coverage miss even
+// though the deck genuinely used a photo (q06/q12 false negatives,
+// .issues/notes/2026-07-24-bench-rerun.md item 3). Standalone fx94 fixture
+// (not part of the shared questions/ bank — same "isolated fx9x id + inline
+// meta" pattern fx95/fx96/fx97/fx98/fx99 above use) so this doesn't perturb
+// the main bank's aggregate-count assertions elsewhere in this file.
+
+describe("scoreQuestion — background-asset coverage detection (T0b fix 3)", () => {
+  it("fx94: a background-asset cover photo counts as an 'image' coverage hit even with zero image components", async () => {
+    const meta: QuestionMeta = { id: "fx94", coverage: { expects_components: ["image"] } }
+    const score = await scoreQuestion("fx94", join(RESULTS_DIR, "green-model", "fx94"), meta)
+    expect(score.reason).toBeUndefined()
+    expect(score.validatePass).toBe(true)
+    expect(score.renderOk).toBe(true)
+    // The fixture's only slide-level image expression is background.kind ===
+    // "asset" — zero components[].type entries anywhere in the deck — so
+    // this hit can only come from the background scan, not the pre-existing
+    // components[] walk.
+    expect(score.coverageHits).toEqual(["image"])
+  })
+
+  it("fx94: an expectation not satisfied by either components[] or a background asset still misses, same as before", async () => {
+    const meta: QuestionMeta = { id: "fx94", coverage: { expects_components: ["image", "kpi_cards"] } }
+    const score = await scoreQuestion("fx94", join(RESULTS_DIR, "green-model", "fx94"), meta)
+    expect(score.coverageHits).toEqual(["image"])
   })
 })
 
