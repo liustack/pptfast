@@ -21,6 +21,10 @@ import { schema as roadmapSchema } from "./components/roadmap"
 import { schema as matrixSchema } from "./components/matrix"
 import { schema as insightPanelSchema } from "./components/insight-panel"
 import { schema as verdictBannerSchema } from "./components/verdict-banner"
+import { schema as citationSchema } from "./components/citation"
+import { schema as imageSchema } from "./components/image"
+import { schema as imageGridSchema } from "./components/image-grid"
+import { schema as imageCompareSchema } from "./components/image-compare"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -394,56 +398,10 @@ const ComponentSchema = z.discriminatedUnion("type", [
   matrixSchema,
   insightPanelSchema,
   verdictBannerSchema,
-  z
-    .object({
-      type: z.literal("citation"),
-      sources: z.array(
-        z
-          .object({
-            label: z.string(),
-            url: z.string().optional(),
-            ref: z.string().optional(),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("image"),
-      asset_id: z.string(),
-      caption: z.string().optional(),
-      // 默认 cover（2026-07-09 用户反馈：模型常选 contain letterbox 不铺满
-      // ——照片一律等比铺满裁切；contain 留给图表截图等不可裁切的图）
-      fit: z.enum(["contain", "cover"]).default("cover"),
-    })
-    .strict(),
-  // 图片排版 P2（2026-07-08）：多图网格与双图对比。
-  z
-    .object({
-      type: z.literal("image_grid"),
-      items: z
-        .array(
-          z
-            .object({
-              asset_id: z.string(),
-              caption: z.string().optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(4),
-      emphasis: z.enum(["none", "first"]).optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("image_compare"),
-      left: z.object({ asset_id: z.string(), label: z.string() }).strict(),
-      right: z.object({ asset_id: z.string(), label: z.string() }).strict(),
-      style: z.enum(["vs", "before_after"]).optional(),
-    })
-    .strict(),
+  citationSchema,
+  imageSchema,
+  imageGridSchema,
+  imageCompareSchema,
   // 结构化组件族（structure-components wave task 1）：named-slot 满幅组件
   // ——不走 bullets 那种弱模型易错序的位置数组，每个语义槽是独立具名字段，
   // 模型写错字段名会被 zod strict 直接拒收，而不是静默错标象限/分区。渲染
