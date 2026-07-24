@@ -3,7 +3,7 @@ import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import { mixHex } from "./color-mix"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type PestComponent = Extract<Component, { type: "pest" }>
 type QuadrantKey = "political" | "economic" | "social" | "technological"
@@ -359,3 +359,5 @@ export const pest: SvgComponent<PestComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<PestComponent> = { type: "pest", measure: pest.measure, render: pest.render }

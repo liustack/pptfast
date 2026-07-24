@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { mixHex } from "./color-mix"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type MatrixComponent = Extract<Component, { type: "matrix" }>
 type MatrixItem = MatrixComponent["items"][number]
@@ -293,3 +293,5 @@ export const matrix: SvgComponent<MatrixComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<MatrixComponent> = { type: "matrix", measure: matrix.measure, render: matrix.render }

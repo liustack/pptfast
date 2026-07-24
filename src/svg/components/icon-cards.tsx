@@ -6,7 +6,7 @@ import {
   truncateToUnits,
 } from "../../lib/svg-text-layout"
 import { Icon } from "../icons"
-import type { ComponentBox, ComponentCtx, SvgComponent } from "./types"
+import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type IconCardsComponent = Extract<Component, { type: "icon_cards" }>
 /** A single `icon_cards` item, keyed off the schema so `icon` stays in sync
@@ -248,3 +248,5 @@ export const iconCards: SvgComponent<IconCardsComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<IconCardsComponent> = { type: "icon_cards", measure: iconCards.measure, render: iconCards.render }

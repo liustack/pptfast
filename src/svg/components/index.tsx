@@ -1,185 +1,101 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import type { ComponentBox, ComponentCtx } from "./types"
-import { paragraph } from "./paragraph"
-import { bullets } from "./bullets"
-import { quote } from "./quote"
-import { callout } from "./callout"
-import { code } from "./code"
-import { kpi } from "./kpi"
-import { image } from "./image"
-import { imageGrid } from "./image-grid"
-import { imageCompare } from "./image-compare"
-import { chart } from "./chart"
-import { flowchart } from "./flowchart"
-import { architecture } from "./architecture"
-import { timeline } from "./timeline"
-import { comparison } from "./comparison"
-import { iconCards } from "./icon-cards"
-import { numberedCards } from "./numbered-cards"
-import { rings } from "./rings"
-import { rowCards } from "./row-cards"
-import { steps } from "./steps"
-import { roadmap } from "./roadmap"
-import { matrix } from "./matrix"
-import { insightPanel } from "./insight-panel"
-import { verdictBanner } from "./verdict-banner"
-import { citation } from "./citation"
-import { swot } from "./swot"
-import { bmc } from "./bmc"
-import { waterfall } from "./waterfall"
-import { gantt } from "./gantt"
-import { pest } from "./pest"
-import { fiveForces } from "./five-forces"
-import { heatmap } from "./heatmap"
-import { sankey } from "./sankey"
+import type { ComponentType } from "../component-traits"
+import type { ComponentBox, ComponentCtx, RenderDef } from "./types"
+import { renderDef as paragraphRenderDef } from "./paragraph"
+import { renderDef as bulletsRenderDef } from "./bullets"
+import { renderDef as quoteRenderDef } from "./quote"
+import { renderDef as calloutRenderDef } from "./callout"
+import { renderDef as codeRenderDef } from "./code"
+import { renderDef as kpiRenderDef } from "./kpi"
+import { renderDef as imageRenderDef } from "./image"
+import { renderDef as imageGridRenderDef } from "./image-grid"
+import { renderDef as imageCompareRenderDef } from "./image-compare"
+import { renderDef as chartRenderDef } from "./chart"
+import { renderDef as flowchartRenderDef } from "./flowchart"
+import { renderDef as architectureRenderDef } from "./architecture"
+import { renderDef as timelineRenderDef } from "./timeline"
+import { renderDef as comparisonRenderDef } from "./comparison"
+import { renderDef as iconCardsRenderDef } from "./icon-cards"
+import { renderDef as numberedCardsRenderDef } from "./numbered-cards"
+import { renderDef as ringsRenderDef } from "./rings"
+import { renderDef as rowCardsRenderDef } from "./row-cards"
+import { renderDef as stepsRenderDef } from "./steps"
+import { renderDef as roadmapRenderDef } from "./roadmap"
+import { renderDef as matrixRenderDef } from "./matrix"
+import { renderDef as insightPanelRenderDef } from "./insight-panel"
+import { renderDef as verdictBannerRenderDef } from "./verdict-banner"
+import { renderDef as citationRenderDef } from "./citation"
+import { renderDef as swotRenderDef } from "./swot"
+import { renderDef as bmcRenderDef } from "./bmc"
+import { renderDef as waterfallRenderDef } from "./waterfall"
+import { renderDef as ganttRenderDef } from "./gantt"
+import { renderDef as pestRenderDef } from "./pest"
+import { renderDef as fiveForcesRenderDef } from "./five-forces"
+import { renderDef as heatmapRenderDef } from "./heatmap"
+import { renderDef as sankeyRenderDef } from "./sankey"
+
+/**
+ * Dispatch table (src domain reorg wave 2, spec §4.2/§4.3): replaces the
+ * former 32-case `measureComponent`/`renderComponentContent` switches with a
+ * lookup into this `Record<ComponentType, RenderDef>`. Each entry is the
+ * matching `src/svg/components/<name>.tsx` file's own `renderDef` export
+ * (`measure`/`render` referenced, never copied — the component files
+ * themselves are unchanged by this table's existence). `Record<ComponentType,
+ * RenderDef>` is *total* over `ComponentType` — TypeScript rejects this
+ * object literal at compile time if any of the 32 `ComponentType` members is
+ * missing a property, or if an unknown key is added — the same exhaustiveness
+ * guarantee the old switches' `component satisfies never` default arm gave
+ * (a case can't be silently forgotten), just proven by object-literal
+ * completeness instead of a switch's case coverage. Consulted by direct index
+ * (`RENDER_DEFS[component.type]`, no defensive `undefined` check) — this
+ * repo's own established convention for a total `Record<K, V>` lookup (e.g.
+ * `fonts.ts`'s `ROLE_DEFAULT[role]`), safe here for the same reason: the type
+ * checker already proves every `ComponentType` key resolves to a value.
+ */
+const RENDER_DEFS: Record<ComponentType, RenderDef> = {
+  paragraph: paragraphRenderDef,
+  bullets: bulletsRenderDef,
+  quote: quoteRenderDef,
+  callout: calloutRenderDef,
+  code: codeRenderDef,
+  kpi_cards: kpiRenderDef,
+  image: imageRenderDef,
+  image_grid: imageGridRenderDef,
+  image_compare: imageCompareRenderDef,
+  chart: chartRenderDef,
+  flowchart: flowchartRenderDef,
+  architecture: architectureRenderDef,
+  timeline: timelineRenderDef,
+  comparison: comparisonRenderDef,
+  icon_cards: iconCardsRenderDef,
+  numbered_cards: numberedCardsRenderDef,
+  rings: ringsRenderDef,
+  row_cards: rowCardsRenderDef,
+  steps: stepsRenderDef,
+  roadmap: roadmapRenderDef,
+  matrix: matrixRenderDef,
+  insight_panel: insightPanelRenderDef,
+  verdict_banner: verdictBannerRenderDef,
+  citation: citationRenderDef,
+  swot: swotRenderDef,
+  bmc: bmcRenderDef,
+  waterfall: waterfallRenderDef,
+  gantt: ganttRenderDef,
+  pest: pestRenderDef,
+  five_forces: fiveForcesRenderDef,
+  heatmap: heatmapRenderDef,
+  sankey: sankeyRenderDef,
+}
 
 /** Height (px) a component needs at a given width. */
 export function measureComponent(component: Component, w: number, ctx: ComponentCtx): number {
-  switch (component.type) {
-    case "paragraph":
-      return paragraph.measure(component, w, ctx)
-    case "bullets":
-      return bullets.measure(component, w, ctx)
-    case "quote":
-      return quote.measure(component, w, ctx)
-    case "callout":
-      return callout.measure(component, w, ctx)
-    case "code":
-      return code.measure(component, w, ctx)
-    case "kpi_cards":
-      return kpi.measure(component, w, ctx)
-    case "image":
-      return image.measure(component, w, ctx)
-    case "image_grid":
-      return imageGrid.measure(component, w, ctx)
-    case "image_compare":
-      return imageCompare.measure(component, w, ctx)
-    case "chart":
-      return chart.measure(component, w, ctx)
-    case "flowchart":
-      return flowchart.measure(component, w, ctx)
-    case "architecture":
-      return architecture.measure(component, w, ctx)
-    case "timeline":
-      return timeline.measure(component, w, ctx)
-    case "comparison":
-      return comparison.measure(component, w, ctx)
-    case "icon_cards":
-      return iconCards.measure(component, w, ctx)
-    case "numbered_cards":
-      return numberedCards.measure(component, w, ctx)
-    case "rings":
-      return rings.measure(component, w, ctx)
-    case "row_cards":
-      return rowCards.measure(component, w, ctx)
-    case "steps":
-      return steps.measure(component, w, ctx)
-    case "roadmap":
-      return roadmap.measure(component, w, ctx)
-    case "matrix":
-      return matrix.measure(component, w, ctx)
-    case "insight_panel":
-      return insightPanel.measure(component, w, ctx)
-    case "verdict_banner":
-      return verdictBanner.measure(component, w, ctx)
-    case "citation":
-      return citation.measure(component, w, ctx)
-    case "swot":
-      return swot.measure(component, w, ctx)
-    case "bmc":
-      return bmc.measure(component, w, ctx)
-    case "waterfall":
-      return waterfall.measure(component, w, ctx)
-    case "gantt":
-      return gantt.measure(component, w, ctx)
-    case "pest":
-      return pest.measure(component, w, ctx)
-    case "five_forces":
-      return fiveForces.measure(component, w, ctx)
-    case "heatmap":
-      return heatmap.measure(component, w, ctx)
-    case "sankey":
-      return sankey.measure(component, w, ctx)
-    default: {
-      void (component satisfies never)
-      return 0
-    }
-  }
+  return RENDER_DEFS[component.type].measure(component, w, ctx)
 }
 
-/** Render a component's own content — the `renderComponent` switch, unwrapped. */
+/** Render a component's own content — the `renderComponent` dispatch, unwrapped. */
 function renderComponentContent(component: Component, box: ComponentBox, ctx: ComponentCtx): React.ReactElement {
-  switch (component.type) {
-    case "paragraph":
-      return paragraph.render(component, box, ctx)
-    case "bullets":
-      return bullets.render(component, box, ctx)
-    case "quote":
-      return quote.render(component, box, ctx)
-    case "callout":
-      return callout.render(component, box, ctx)
-    case "code":
-      return code.render(component, box, ctx)
-    case "kpi_cards":
-      return kpi.render(component, box, ctx)
-    case "image":
-      return image.render(component, box, ctx)
-    case "image_grid":
-      return imageGrid.render(component, box, ctx)
-    case "image_compare":
-      return imageCompare.render(component, box, ctx)
-    case "chart":
-      return chart.render(component, box, ctx)
-    case "flowchart":
-      return flowchart.render(component, box, ctx)
-    case "architecture":
-      return architecture.render(component, box, ctx)
-    case "timeline":
-      return timeline.render(component, box, ctx)
-    case "comparison":
-      return comparison.render(component, box, ctx)
-    case "icon_cards":
-      return iconCards.render(component, box, ctx)
-    case "numbered_cards":
-      return numberedCards.render(component, box, ctx)
-    case "rings":
-      return rings.render(component, box, ctx)
-    case "row_cards":
-      return rowCards.render(component, box, ctx)
-    case "steps":
-      return steps.render(component, box, ctx)
-    case "roadmap":
-      return roadmap.render(component, box, ctx)
-    case "matrix":
-      return matrix.render(component, box, ctx)
-    case "insight_panel":
-      return insightPanel.render(component, box, ctx)
-    case "verdict_banner":
-      return verdictBanner.render(component, box, ctx)
-    case "citation":
-      return citation.render(component, box, ctx)
-    case "swot":
-      return swot.render(component, box, ctx)
-    case "bmc":
-      return bmc.render(component, box, ctx)
-    case "waterfall":
-      return waterfall.render(component, box, ctx)
-    case "gantt":
-      return gantt.render(component, box, ctx)
-    case "pest":
-      return pest.render(component, box, ctx)
-    case "five_forces":
-      return fiveForces.render(component, box, ctx)
-    case "heatmap":
-      return heatmap.render(component, box, ctx)
-    case "sankey":
-      return sankey.render(component, box, ctx)
-    default: {
-      void (component satisfies never)
-      return <g />
-    }
-  }
+  return RENDER_DEFS[component.type].render(component, box, ctx)
 }
 
 /**

@@ -3,7 +3,7 @@ import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import { mixHex } from "./color-mix"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type SwotComponent = Extract<Component, { type: "swot" }>
 type QuadrantKey = "strengths" | "weaknesses" | "opportunities" | "threats"
@@ -368,3 +368,5 @@ export const swot: SvgComponent<SwotComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<SwotComponent> = { type: "swot", measure: swot.measure, render: swot.render }

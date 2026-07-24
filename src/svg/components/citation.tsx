@@ -4,7 +4,7 @@ import {
   measureTextUnits,
   truncateToUnits,
 } from "../../lib/svg-text-layout"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type CitationComponent = Extract<Component, { type: "citation" }>
 
@@ -99,3 +99,5 @@ export const citation: SvgComponent<CitationComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<CitationComponent> = { type: "citation", measure: citation.measure, render: citation.render }

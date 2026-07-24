@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { Icon } from "../icons"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type RowCardsComponent = Extract<Component, { type: "row_cards" }>
 
@@ -199,3 +199,5 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<RowCardsComponent> = { type: "row_cards", measure: rowCards.measure, render: rowCards.render }

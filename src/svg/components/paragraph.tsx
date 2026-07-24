@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { layoutSvgText } from "../../lib/svg-text-layout"
 import { parseEmphasis, renderEmphasisTspans, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type ParagraphComponent = Extract<Component, { type: "paragraph" }>
 
@@ -49,3 +49,5 @@ export const paragraph: SvgComponent<ParagraphComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<ParagraphComponent> = { type: "paragraph", measure: paragraph.measure, render: paragraph.render }

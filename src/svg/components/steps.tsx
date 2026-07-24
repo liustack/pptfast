@@ -2,7 +2,7 @@ import type React from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, truncateToUnits } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
-import type { ComponentBox, ComponentCtx, SvgComponent } from "./types"
+import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type StepsComponent = Extract<Component, { type: "steps" }>
 type StepItem = StepsComponent["items"][number]
@@ -369,3 +369,5 @@ export const steps: SvgComponent<StepsComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<StepsComponent> = { type: "steps", measure: steps.measure, render: steps.render }

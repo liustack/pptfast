@@ -1,6 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type GanttComponent = Extract<Component, { type: "gantt" }>
 
@@ -185,3 +185,5 @@ export const gantt: SvgComponent<GanttComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<GanttComponent> = { type: "gantt", measure: gantt.measure, render: gantt.render }

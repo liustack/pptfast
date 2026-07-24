@@ -2,7 +2,7 @@ import type { Component } from "@/ir"
 import { Icon } from "../icons"
 import { layoutSvgText } from "../../lib/svg-text-layout"
 import { parseEmphasis, renderEmphasisTspans, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type CalloutComponent = Extract<Component, { type: "callout" }>
 
@@ -87,3 +87,5 @@ export const callout: SvgComponent<CalloutComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<CalloutComponent> = { type: "callout", measure: callout.measure, render: callout.render }

@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type InsightPanelComponent = Extract<Component, { type: "insight_panel" }>
 
@@ -212,3 +212,5 @@ export const insightPanel: SvgComponent<InsightPanelComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<InsightPanelComponent> = { type: "insight_panel", measure: insightPanel.measure, render: insightPanel.render }
