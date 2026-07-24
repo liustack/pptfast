@@ -98,12 +98,19 @@ export function fitHeadingLines(
   // balanceLines: headings are the hero surface where a widow line
   // (「年度战略回」+「顾」) reads broken — body/subtitle call sites keep the
   // greedy default (see SvgTextLayoutOptions).
+  //
+  // minPt (task R2 retry-ladder scope extension, 2026-07-24): threaded
+  // through so `layoutSvgText`'s own word-integrity search knows the real
+  // hard floor this call site enforces, instead of searching for a
+  // split-free font past the point this function would discard it anyway
+  // via the truncate-fallback branch below.
   const first = layoutSvgText(content, {
     maxWidth,
     fontSize,
     maxLines,
     lineHeightRatio,
     balanceLines: true,
+    minPt,
     ...weight,
   })
   if (!content.trim() || first.fontSize >= minPt) return first
@@ -115,6 +122,7 @@ export function fitHeadingLines(
     maxLines,
     lineHeightRatio,
     balanceLines: true,
+    minPt,
     ...weight,
   })
   // `layoutSvgText` never sets `truncated` itself (it only wraps/merges) —

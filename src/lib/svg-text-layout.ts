@@ -33,6 +33,20 @@ export interface SvgTextLayoutOptions extends TextWeightHint {
    * their established greedy geometry.
    */
   balanceLines?: boolean
+  /**
+   * Word-integrity retry-ladder bound (task R2 scope extension, 2026-07-24
+   * — see the comment above `layoutSvgText`'s split-free search for the
+   * full mechanism). When the retry ladder's own largest-font candidate had
+   * to cut an atomic Latin/digit run mid-run (`LATIN_RUN_OR_CHAR_RE`), the
+   * ladder searches for a smaller, split-free font instead — but never one
+   * that would size below `minPt`, since a caller passing this is
+   * declaring that floor a hard constraint (mirroring `fitHeadingLines`'s
+   * own `minPt`, which is exactly where every real call site's value comes
+   * from). Omitted (the default): no floor — the search is bounded only by
+   * its own retry budget. Purely additive: every pre-existing call site
+   * that never set this keeps its previous, unbounded-by-minPt search.
+   */
+  minPt?: number
 }
 
 export interface SvgTextLayout {
@@ -614,18 +628,58 @@ function tokenize(text: string): { tokens: string[]; spaceDelimited: boolean } {
   }
 }
 
-function wrapWithUnits(text: string, maxUnits: number, weight?: TextWeightHint): string[] {
+// Retry-ladder word-integrity plumbing (task R2 scope extension, 2026-07-24
+// — see `layoutSvgText`'s own comment for how these two fields drive the
+// search). Deliberately scoped to the no-space branch's atomic Latin/digit
+// run tokens only (`!spaceDelimited && ` below on both fields) -- never the
+// space-delimited branch's whole-word tokens:
+//   - The Critical finding this fix answers is specifically a no-space
+//     fused-heading repro (see LATIN_RUN_OR_CHAR_RE's own comment); a long
+//     single English word inside an already-space-delimited sentence is a
+//     different, pre-existing, working-as-designed `splitLongToken` use
+//     (unchanged since before R2), not part of this task's scope.
+//   - This also makes "space-delimited paths stay byte-identical" an
+//     architectural guarantee, not an empirical one: `hadSplit` can never
+//     be `true` for space-delimited content, so the search branch below
+//     that reads it never activates there, full stop.
+// A length-1 token (every CJK/punctuation character, in either branch) can
+// never itself yield `splitLongToken(...).length > 1` regardless of
+// `maxUnits` (`splitLongToken`'s own char-by-char loop only ever splits
+// *between* two accumulated characters) -- so `hadSplit`/`minSplitFreeUnits`
+// are, in practice, exclusively about multi-character no-space runs, the
+// exact "atomic Latin run" the brief names.
+interface WrapResult {
+  lines: string[]
+  /** `true` iff some no-space multi-char run's own width exceeded this
+   * call's `maxUnits`, forcing `splitLongToken` to cut it into 2+ pieces. */
+  hadSplit: boolean
+  /** `max(measureTextUnits(run))` over every no-space multi-char run token
+   * `tokenize` produced for this `text` -- 0 when there are none (pure CJK,
+   * space-delimited, or no-space text with no run). Independent of the
+   * `maxUnits` argument (token identity/width never depends on the search
+   * budget), so it is safe to read from any one call on the same `text`
+   * and reuse verbatim as the retry ladder's direct jump target: passing
+   * this value back in as `maxUnits` is, by construction, the exact
+   * narrowest budget under which every such run stays whole. */
+  minSplitFreeUnits: number
+}
+
+function wrapWithUnits(text: string, maxUnits: number, weight?: TextWeightHint): WrapResult {
   const lines: string[] = []
+  let hadSplit = false
+  let minSplitFreeUnits = 0
 
   for (const paragraph of text.split(/\n+/)) {
     const { tokens, spaceDelimited } = tokenize(paragraph)
     let current = ""
 
     for (const token of tokens) {
-      const tokenChunks =
-        measureTextUnits(token, weight) > maxUnits
-          ? splitLongToken(token, maxUnits, weight)
-          : [token]
+      const tokenUnits = measureTextUnits(token, weight)
+      const isRunToken = !spaceDelimited && Array.from(token).length > 1
+      if (isRunToken) minSplitFreeUnits = Math.max(minSplitFreeUnits, tokenUnits)
+
+      const tokenChunks = tokenUnits > maxUnits ? splitLongToken(token, maxUnits, weight) : [token]
+      if (isRunToken && tokenChunks.length > 1) hadSplit = true
 
       for (const [chunkIndex, chunk] of tokenChunks.entries()) {
         const prefix = current && spaceDelimited && chunkIndex === 0 ? " " : ""
@@ -642,7 +696,7 @@ function wrapWithUnits(text: string, maxUnits: number, weight?: TextWeightHint):
     if (current) lines.push(current)
   }
 
-  return lines
+  return { lines, hadSplit, minSplitFreeUnits }
 }
 
 /**
@@ -674,8 +728,8 @@ function balanceWrappedLines(content: string, lines: string[], weight?: TextWeig
     const candidate = wrapWithUnits(content, target, weight)
     // Same line count, evenly split — that's the goal. Fewer lines means the
     // token floor out-widened the greedy budget (giant word): keep greedy.
-    if (candidate.length === lines.length) return candidate
-    if (candidate.length < lines.length) return lines
+    if (candidate.lines.length === lines.length) return candidate.lines
+    if (candidate.lines.length < lines.length) return lines
     target *= 1.06
   }
   return lines
@@ -768,25 +822,144 @@ export function layoutSvgText(
   const maxLines = options.maxLines ?? 2
   const lineHeightRatio = options.lineHeightRatio ?? 1.08
   const weight: TextWeightHint = { bold: options.bold, fontFamily: options.fontFamily }
+  const minPt = options.minPt
 
   if (!content) {
     return { lines: [], fontSize: options.fontSize, lineHeight: 0, truncated: false }
   }
 
-  const baseUnits = options.maxWidth / options.fontSize
-  let maxUnits = baseUnits
-  let lines = wrapWithUnits(content, maxUnits, weight)
-
-  for (let i = 0; lines.length > maxLines && i < 8; i += 1) {
-    maxUnits *= 1.14
-    lines = wrapWithUnits(content, maxUnits, weight)
+  const fontSizeFor = (ls: string[]): number => {
+    const longest = Math.max(...ls.map((l) => measureTextUnits(l, weight)), 1)
+    return Math.max(1, Math.min(options.fontSize, Math.floor(options.maxWidth / longest)))
   }
 
-  if (lines.length > maxLines) {
-    lines = [
-      ...lines.slice(0, maxLines - 1),
-      lines.slice(maxLines - 1).join(""),
+  // Legacy search: byte-identical to this function's pre-task-R2-retry-
+  // ladder-fix algorithm -- the largest font size (smallest `maxUnits`)
+  // whose wrap satisfies `maxLines`, including the forced-merge fallback
+  // below when no retry step gets there. `attempt` after this loop is
+  // whichever call actually produced `legacyLines` (pre-merge), so
+  // `attempt.hadSplit` below reflects *that* candidate, not merely the
+  // first one tried.
+  const baseUnits = options.maxWidth / options.fontSize
+  let maxUnits = baseUnits
+  let attempt = wrapWithUnits(content, maxUnits, weight)
+  const minSplitFreeUnits = attempt.minSplitFreeUnits // content-invariant, see WrapResult
+
+  let legacyLines = attempt.lines
+  for (let i = 0; legacyLines.length > maxLines && i < 8; i += 1) {
+    maxUnits *= 1.14
+    attempt = wrapWithUnits(content, maxUnits, weight)
+    legacyLines = attempt.lines
+  }
+  const legacyHadSplit = attempt.hadSplit
+
+  if (legacyLines.length > maxLines) {
+    legacyLines = [
+      ...legacyLines.slice(0, maxLines - 1),
+      legacyLines.slice(maxLines - 1).join(""),
     ]
+  }
+
+  let lines = legacyLines
+
+  // Word-integrity preference (task R2 retry-ladder scope extension,
+  // 2026-07-24): the ladder above always converges on the *largest* font
+  // that satisfies `maxLines`, and character-level `splitLongToken` output
+  // can always hit any target line count at a smaller-or-equal `maxUnits`
+  // than keeping a run whole -- so whenever the legacy search needed a
+  // retry at all, it tends to land on a budget that still cuts an atomic
+  // Latin/digit run mid-run (the Critical finding: a run at string position
+  // 0, with no leading CJK to absorb line 1, hits this every time the run
+  // alone doesn't already fit the requested font size).
+  //
+  // Gate strictly on `legacyHadSplit` (the *selected* candidate's own split
+  // state, not merely whether the very first attempt had one): whenever the
+  // legacy search's own answer is already split-free -- the overwhelming
+  // majority of real content, including every pure-CJK and space-delimited
+  // input -- this whole branch is skipped and `lines` stays `legacyLines`
+  // verbatim, with zero extra `wrapWithUnits` calls beyond what today's
+  // code already makes. This is what makes "must not change any layout
+  // where no split ever occurs" a property of the selection rule, not
+  // merely an observed test result.
+  //
+  // When it *does* need to search: `minSplitFreeUnits` is the exact
+  // narrowest `maxUnits` at which every no-space run individually fits (see
+  // `WrapResult`), so jumping straight there -- rather than geometric-
+  // guessing for it -- is provably the largest-font split-free candidate,
+  // if it satisfies `maxLines`. `minSplitFreeUnits` is always strictly
+  // greater than whatever `maxUnits` the legacy search stopped at whenever
+  // `legacyHadSplit` is true (proof: `hadSplit` true means some run's own
+  // width exceeded that `maxUnits`, and `minSplitFreeUnits` is the max over
+  // every such run's width) -- so this search only ever shrinks the font
+  // from the legacy answer, never grows it. Growing `maxUnits` further from
+  // there can only keep or reduce `lines.length` and keep or reduce the
+  // resulting font size (both monotonic in `maxUnits`), so a candidate is
+  // rejected and the search advances only while a smaller font might still
+  // recover `maxLines`; the instant a candidate's own font would already
+  // sit under `minPt` (when the caller declared one), further growth can
+  // only make it worse, so the search stops rather than wasting steps.
+  //
+  // If no admissible (maxLines-satisfying, minPt-respecting) split-free
+  // candidate exists in-budget -- a run genuinely wider than a full line
+  // even at `minPt`, or `maxLines` itself unreachable without splitting --
+  // `lines` stays `legacyLines`: the documented fallback, split rather than
+  // drop content, never worse than today.
+  //
+  // Search ceiling: when the caller declared `minPt`, that floor alone
+  // bounds the search (the loop body's own `fontSizeFor(...) >= minPt`
+  // check) -- `stepCap` below is then a generous, practically-unreachable
+  // termination safety net (see the monotonicity argument above), not the
+  // real stopping condition. Without a `minPt` -- no call site in this
+  // codebase omits it except a handful of non-heading `layoutSvgText`
+  // callers and this file's own `minPt`-omitting tests -- there is no
+  // caller-declared floor to search within, so `reachCeilingUnits` instead
+  // caps the search at the exact `maxUnits` the pre-existing (pre-task-R2-
+  // retry-ladder-fix) ladder could already reach on its own
+  // (`baseUnits * 1.14^8`, the same 8-retry budget the legacy loop above
+  // uses). This is what keeps the preference from ever shrinking a
+  // `minPt`-less call's font further than the *original* algorithm's own
+  // worst case already could -- it only ever reorders which
+  // already-in-reach candidate wins, it does not grant the ladder new
+  // reach. (Concretely: without this, a run wider than any line the
+  // original ladder could ever have produced -- this file's own
+  // "Supercalifragilistic..." self-review case -- would shrink the font
+  // without bound chasing word integrity, instead of falling back to
+  // `splitLongToken` the way it always has.)
+  if (legacyHadSplit) {
+    const reachCeilingUnits = minPt === undefined ? baseUnits * 1.14 ** 8 : Infinity
+    if (minSplitFreeUnits <= reachCeilingUnits) {
+      let splitFreeUnits = minSplitFreeUnits
+      let splitFreeAttempt = wrapWithUnits(content, splitFreeUnits, weight)
+      let admissible = splitFreeAttempt.lines.length <= maxLines
+      if (admissible && minPt !== undefined) {
+        admissible = fontSizeFor(splitFreeAttempt.lines) >= minPt
+      }
+      const stepCap = minPt === undefined ? 8 : 32
+      for (
+        let i = 0;
+        !admissible &&
+        splitFreeAttempt.lines.length > maxLines &&
+        splitFreeUnits < reachCeilingUnits &&
+        i < stepCap;
+        i += 1
+      ) {
+        // Clamped, not just multiplied: without `minPt` the ceiling is a
+        // hard cap (see the comment above), and geometric growth alone
+        // could overshoot it by up to one step's worth on the iteration
+        // that crosses it -- clamping keeps `splitFreeUnits` from ever
+        // exceeding `reachCeilingUnits`, so the "never shrinks the font
+        // further than the original algorithm's own worst case" guarantee
+        // holds exactly, not just approximately. A no-op when `minPt` is
+        // defined (`reachCeilingUnits` is `Infinity` there).
+        splitFreeUnits = Math.min(splitFreeUnits * 1.14, reachCeilingUnits)
+        splitFreeAttempt = wrapWithUnits(content, splitFreeUnits, weight)
+        admissible = splitFreeAttempt.lines.length <= maxLines
+        if (admissible && minPt !== undefined) {
+          admissible = fontSizeFor(splitFreeAttempt.lines) >= minPt
+        }
+      }
+      if (admissible) lines = splitFreeAttempt.lines
+    }
   }
 
   // After the merge fallback a too-long text's last line is long, not a
@@ -795,12 +968,7 @@ export function layoutSvgText(
     lines = balanceWrappedLines(content, lines, weight)
   }
 
-  const longest = Math.max(...lines.map((l) => measureTextUnits(l, weight)), 1)
-  const fittedFontSize = Math.min(
-    options.fontSize,
-    Math.floor(options.maxWidth / longest)
-  )
-  const fontSize = Math.max(1, fittedFontSize)
+  const fontSize = fontSizeFor(lines)
 
   return {
     lines,
