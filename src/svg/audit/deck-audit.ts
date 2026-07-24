@@ -1210,6 +1210,27 @@ function directText(el: Element): string {
  * `<image>` with no (or too-faint) scrim correctly resolves to "unknown"
  * (`fill: null`) rather than a guess, and text over it is skipped.
  *
+ * **Gradient fills route the same way (task R3):** a shape whose `fill` is a
+ * gradient reference (`url(#...)`, e.g. `chart-svg.tsx`'s bar/area fills)
+ * used to fail the registration gate outright — neither a resolvable solid
+ * color nor `<image>`'s explicit `fill: null` path, so it simply never
+ * became a `PaintedShape` at all, and a text element painted over it
+ * silently resolved against whatever *solid* shape happened to sit
+ * underneath instead: a real misattribution, not a skip — worse than the
+ * `<image>` blind spot above, which at least degrades to a checkable
+ * "unknown". `resolveCandidateFill` closes this: a `url(...)` fill now
+ * registers exactly like a bare `<image>` does — `fill: null`, both in
+ * `paintedShapes` and, area-floor permitting, in `regions` — reusing the
+ * identical `__collectImageBackedTextRuns` -> `pixel-audit.ts`
+ * worst-case-pixel-sample fallback rather than inventing a second,
+ * gradient-specific color approximation (which stop, at which offset, would
+ * even be the "representative" one?). The `<g data-decor>` exclusion below
+ * applies identically regardless of fill kind — a decor-layer gradient (e.g.
+ * the tech theme's `constellation-motif` background field) was already
+ * excluded from candidacy before this fix and still is; this routing change
+ * only ever affects a *content-layer* gradient shape, since decoration never
+ * reaches the fill check at all (see the exclusion's own boolean guard).
+ *
  * **Bench-driven fix round (defect A):** this `PaintedShape` walk is
  * *unrestricted* by `MIN_BG_REGION_AREA` — that constant now only filters
  * the separate, page-level `regions`/`BgRegion` table (unchanged, see its own
@@ -1281,6 +1302,31 @@ export function __collectBgRegions(markup: string): BgRegion[] {
  */
 export function __collectImageBackedTextRuns(markup: string): ImageBackedTextRun[] {
   return runContrastWalk(markup).imageBackedRuns
+}
+
+/**
+ * Resolves a raw `fill` attribute to the value `paintedShapes`/`regions`
+ * should record a shape under, or `undefined` when it isn't a background
+ * candidate at all — task R3's fix, see `findContrastIssues`'s own doc
+ * comment ("Gradient fills route the same way" paragraph) for the routing
+ * this enables.
+ *
+ * A solid hex color (`#...`) resolves to itself, unchanged from before this
+ * fix — `backgroundAt` can trust it outright. A gradient reference
+ * (`url(#...)`, e.g. `chart-svg.tsx`'s bar/area fills) resolves to `null`,
+ * the exact same "resolvable no further" signal a bare `<image>` already
+ * uses (see `ImageBackedTextRun`): reimplementing this walker's own gradient
+ * math (stop colors, direction, offset) to guess one representative color
+ * would be both unnecessary — the `null` -> `__collectImageBackedTextRuns` ->
+ * pixel-audit.ts fallback already exists and samples the *real* rendered
+ * pixels — and unsound, since no single color actually represents an
+ * arbitrary point along a multi-stop blend. Anything else (`none`, a named
+ * CSS color, absent) is not a candidate at all, same as pre-fix.
+ */
+function resolveCandidateFill(rawFill: string | null): string | null | undefined {
+  if (rawFill?.startsWith("#")) return rawFill
+  if (rawFill?.startsWith("url(")) return null
+  return undefined
 }
 
 function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: BgRegion[]; imageBackedRuns: ImageBackedTextRun[] } {
@@ -1421,7 +1467,14 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
           // silently overriding the real dark-purple page background for
           // every subsequent text check).
           const opaqueEnough = currentFillOpacity * currentOpacityProduct >= MIN_BG_OPACITY
-          if (shapeFill?.startsWith("#") && opaqueEnough) {
+          // task R3: `resolveCandidateFill` accepts both a solid hex color
+          // and a `url(#...)` gradient reference — the latter resolves to
+          // `null` (own doc comment), not the raw `shapeFill` string used
+          // pre-fix, so a gradient shape routes through the same `fill:
+          // null` -> pixel-audit fallback a bare `<image>` already gets
+          // instead of silently never registering at all.
+          const resolvedFill = resolveCandidateFill(shapeFill)
+          if (resolvedFill !== undefined && opaqueEnough) {
             // Attribution (defect A fix): no area floor — a badge/chip too
             // small to be a *page* background is still the real background
             // of whatever text sits directly on top of it. See
@@ -1441,17 +1494,17 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
                     startA: localWedge.startA,
                     span: localWedge.span,
                   },
-                  shapeFill,
+                  resolvedFill,
                 ),
               )
             } else {
-              paintedShapes.push(rectShape(absX, absY, w, h, shapeFill))
+              paintedShapes.push(rectShape(absX, absY, w, h, resolvedFill))
             }
             // Page-level table: unchanged, still area-floored —
             // `__collectBgRegions`'s own contract (and its dedicated
             // regression test) is untouched by this fix.
             if (w * h >= MIN_BG_REGION_AREA) {
-              regions.push({ x: absX, y: absY, w, h, fill: shapeFill })
+              regions.push({ x: absX, y: absY, w, h, fill: resolvedFill })
             }
           }
         }
@@ -1473,9 +1526,13 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       const localRy = Number(el.getAttribute(tag === "circle" ? "r" : "ry") ?? 0)
       const shapeFill = el.getAttribute("fill")
       const opaqueEnough = currentFillOpacity * currentOpacityProduct >= MIN_BG_OPACITY
-      if (!inDecorSubtree && shapeFill?.startsWith("#") && opaqueEnough) {
+      // task R3: same `resolveCandidateFill` widening as the rect/path
+      // branch above — a gradient-filled badge/dot circle now registers as
+      // `fill: null` instead of silently never becoming a candidate at all.
+      const resolvedFill = resolveCandidateFill(shapeFill)
+      if (!inDecorSubtree && resolvedFill !== undefined && opaqueEnough) {
         paintedShapes.push(
-          ellipseShape(ax + cx * as, ay + cy * as, localRx * as, localRy * as, shapeFill),
+          ellipseShape(ax + cx * as, ay + cy * as, localRx * as, localRy * as, resolvedFill),
         )
       }
     } else if (tag === "text" || tag === "tspan") {
