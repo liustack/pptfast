@@ -6,7 +6,7 @@ import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { ToneAdaptiveMotif } from "./motif-tone-adaptive-motif"
 import type { PptxIR, Slide } from "@/ir"
-import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
+import { LEGACY_CUSTOM_TOKENS } from "../archetypes/legacy-custom-tokens"
 
 function wrap(el: React.ReactElement): React.ReactElement {
   return <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">{el}</svg>

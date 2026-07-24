@@ -1860,7 +1860,7 @@ function collectLeafBoxes(root: Element): DerivedBox[] {
  * components' boxes collide).
  *
  * Decoration/motif layers need no special exclusion here: every motif
- * (`archetypes/motif-*.tsx`) and `slide-decor.tsx` render exclusively outside
+ * (`motifs/motif-*.tsx`) and `slide-decor.tsx` render exclusively outside
  * the `data-audit-box`/`data-audit-rect` protocol (verified against every
  * motif file and empirically against real rendered markup across five
  * heavily-decorated themes while building this check) — `collectLeafBoxes`

@@ -1297,7 +1297,7 @@ describe("parseWedgePath — geometric round-trip hardening (post-review, falsif
   // sectors with clean round-number coordinates" would also reject a
   // legitimate `renderPie`/`renderDonut` wedge that happens to land on nice
   // numbers. `ARC_PATH_BL`'s own real safety net is orthogonal to
-  // recognition entirely: `RailMotif` (`index-motif.ts`) only ever renders
+  // recognition entirely: `RailMotif` (`motifs/index.ts`) only ever renders
   // it inside `full-slide-svg.tsx`'s `<g data-decor>` wrapper at
   // `opacity="0.06"`, both already-tested, independent exclusions
   // (`inDecorSubtree` / `MIN_BG_OPACITY`) that gate the whole

@@ -1,6 +1,6 @@
 import type { BackgroundSpec, BrandConfig, Slide } from "@/ir"
 import { PptfastError } from "../errors"
-import type { MotifArchetypeId } from "../svg/archetypes/types"
+import type { MotifArchetypeId } from "../svg/motifs/types"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 import { contrastRatio } from "../svg/ink"
 import { getLayout, layoutsForSlideType } from "../svg/layouts/registry"

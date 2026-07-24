@@ -14,16 +14,6 @@ export interface SvgTemplateProps {
 }
 
 /**
- * Props for a motif archetype（原 templates/types.ts 的 DecorProps）。与
- * SvgTemplateProps 相比无 index：装饰几何是 (theme, slide.type) 的纯函数。
- */
-export interface DecorProps {
-  ir: PptxIR
-  slide: Slide
-  ctx: ComponentCtx
-}
-
-/**
  * Cover archetype：与旧模板 Cover 同签名的 SVG fragment 组件（spec §3.2）。
  * 纪律：实现文件内禁 theme id、禁 baked hex——颜色/字体只来自 p.ctx。
  */
@@ -33,8 +23,6 @@ export type CoverArchetype = (p: SvgTemplateProps) => React.ReactElement
 export type ChapterArchetype = (p: SvgTemplateProps) => React.ReactElement
 export type ContentArchetype = (p: SvgTemplateProps) => React.ReactElement
 export type EndingArchetype = (p: SvgTemplateProps) => React.ReactElement
-/** Motif（原 per-theme Decor）：签名对齐 templates/types.ts 的 DecorProps，可为 null。 */
-export type MotifArchetype = (p: DecorProps) => React.ReactElement | null
 
 /** P1 仅两个（spec §4.2）。P2 扩展时在此加 id 并在 index.ts 注册。 */
 // Wave 1（cover 补齐）：新增 4 个 id，与 P1 的 2 个合并
@@ -64,15 +52,3 @@ export type ContentArchetypeId =
   // asymmetric side panel, a lead+stacked-pair triptych, and a whitespace-
   // led centered frame — see each file's own composition-sketch header.
   | "side-highlight" | "asymmetric-triptych" | "quiet-frame"
-
-// Wave 3（motif，随 content 任务迁移）
-export type MotifArchetypeId =
-  | "banner-motif" | "rail-motif" | "poster-motif"
-  | "constellation-motif" | "corner-ornament-motif" | "tone-adaptive-motif"
-  | "campaign-motif" // 2026-07-13：多彩笔刷涂鸦（campaign 专属，memphis 拆分 A）
-  | "bloom-motif" // 2026-07-13：水彩晕染+植物细线（bloom 专属，memphis 拆分 B）
-  | "classroom-motif" // 2026-07-13：莫兰迪平滑斑块+手绘点线（classroom 专属，第 13 主题）
-  | "ink-motif" // 2026-07-10：古籍版框+印章+远山（ink 专属新表达）
-  | "luxe-motif" // 2026-07-10 全覆盖：烫金细线（luxe 专属）
-  | "enterprise-motif" // 2026-07-10 全覆盖：IKB 方块秩序（enterprise 专属）
-  | "heritage-motif" // 2026-07-10 全覆盖：典藏纹饰（heritage 专属）

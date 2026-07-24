@@ -1,4 +1,4 @@
-// GF/svg/archetypes/motif-banner-motif.tsx
+// GF/svg/motifs/motif-banner-motif.tsx
 import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 import { readableOn } from "../ink"

@@ -123,7 +123,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import type { CanonicalThemeId } from "../themes"
 import { getThemeDefinition } from "../themes/definitions"
-import type { MotifArchetypeId } from "./archetypes/types"
+import type { MotifArchetypeId } from "./motifs/types"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 
 /**
