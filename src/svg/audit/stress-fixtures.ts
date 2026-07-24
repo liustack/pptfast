@@ -821,6 +821,45 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   // shipped for `bmc.tsx` for consistency, and this page is the only one of
   // the nine that can't exercise a bold *title* at all, documented here
   // rather than silently omitting `bmc` from this deck).
+  //
+  // I3 addendum (0.8.0 final-review follow-up): `matrix`/`row_cards` append
+  // here too. Both paint a bold title `<text>` inside this deck's same live
+  // data-audit-box machinery (matrix's item.title, fontWeight 700;
+  // row_cards' item.title, fontWeight bold) but neither was part of the
+  // bold-metrics fix round's own 9-component sweep above (5d4c4a8) and
+  // neither had ever appeared in `STRESS_DECKS` at all — the one real
+  // end-to-end regression gap the bold-width defect class still had.
+  //
+  // `matrix` (cols=3, items=9, schema max) turned out to have a genuinely
+  // reachable instance of that gap, not just a theoretical one: a single
+  // `BOLD_STRESS_PHRASES` entry (~20-24 chars) still fits this page's own
+  // cols=3 card width (contentW ~305px) even at its true bold rendering, so
+  // this page pairs two adjacent pool entries per item (still real,
+  // ordinary marketing phrases end to end, same reuse-not-invent spirit —
+  // `roadmap`'s own page above already established appending a real extra
+  // word to lengthen a phrase) — verified empirically (fitSvgLine, no
+  // `bold`/`fontFamily` threaded, exactly matrix.tsx's pre-fix call shape)
+  // to push the *fitted* text's true bold width 14-90px past contentW
+  // across every pairing, comfortably past the auditor's 6px tolerance.
+  // `x_title`/`y_title` separately push matrix's own historically fragile
+  // fit paths (already hardened by the matrix.tsx fix trio — d13ed15/
+  // 005c9ca/d79d750) to `CJK_LONG`-class severity for the first time inside
+  // the real dual-gate pipeline, not just `matrix.test.tsx`'s own isolated
+  // component probes.
+  //
+  // `row_cards` (6 items, schema max) keeps `title` at a single pool entry
+  // deliberately, not by oversight: its one full-width card per item gives
+  // `title` a ~946px box (icon-gutter-adjusted) — reaching the same true-
+  // bold overflow there needs roughly 3x a single phrase's length, past
+  // what any real "title" field plausibly holds, so stacking phrases here
+  // would be padding for its own sake rather than adversarial-but-real
+  // content (self-review's own "don't invent unless the field's realistic
+  // shape demands it" line). Its adversarial pressure lands on the fields
+  // the schema actually gives room to stress instead: `text` reuses
+  // `CARD_TEXT_STRESS` — the same `layoutSvgText(..., maxLines: 2)` shape
+  // this constant's own doc comment already names icon_cards/steps as
+  // covering — and `highlight` alternates so both the accent- and default-
+  // stroke card paths render side by side.
   structure_bold_headings: deck([
     {
       type: "content",
@@ -970,6 +1009,118 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           customer_segments: [MIXED_LONG],
           cost_structure: [MIXED_LONG],
           revenue_streams: [MIXED_LONG],
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "矩阵压力测试",
+      components: [
+        {
+          type: "matrix",
+          x_title: CJK_LONG,
+          y_title: CJK_LONG_WITH_DASH,
+          cols: 3,
+          items: [
+            {
+              title: `${BOLD_STRESS_PHRASES[0]} ${BOLD_STRESS_PHRASES[1]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "neutral",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[1]} ${BOLD_STRESS_PHRASES[2]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "accent",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[2]} ${BOLD_STRESS_PHRASES[3]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "info",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[3]} ${BOLD_STRESS_PHRASES[4]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "neutral",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[4]} ${BOLD_STRESS_PHRASES[5]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "accent",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[5]} ${BOLD_STRESS_PHRASES[6]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "info",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[6]} ${BOLD_STRESS_PHRASES[7]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "neutral",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[7]} ${BOLD_STRESS_PHRASES[0]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "accent",
+            },
+            {
+              title: `${BOLD_STRESS_PHRASES[2]} ${BOLD_STRESS_PHRASES[6]}`,
+              tag: DIAGRAM_LABEL,
+              tone: "info",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "长卡列表压力测试",
+      components: [
+        {
+          type: "row_cards",
+          items: [
+            {
+              icon: "trophy",
+              title: BOLD_STRESS_PHRASES[0],
+              text: CARD_TEXT_STRESS,
+              sub: CHART_LABEL,
+              highlight: true,
+            },
+            {
+              icon: "target",
+              title: BOLD_STRESS_PHRASES[1],
+              text: CARD_TEXT_STRESS,
+              sub: CHART_LABEL,
+              highlight: false,
+            },
+            {
+              icon: "rocket",
+              title: BOLD_STRESS_PHRASES[2],
+              text: CARD_TEXT_STRESS,
+              sub: CHART_LABEL,
+              highlight: true,
+            },
+            {
+              icon: "award",
+              title: BOLD_STRESS_PHRASES[3],
+              text: CARD_TEXT_STRESS,
+              sub: CHART_LABEL,
+              highlight: false,
+            },
+            {
+              icon: "handshake",
+              title: BOLD_STRESS_PHRASES[4],
+              text: CARD_TEXT_STRESS,
+              sub: CHART_LABEL,
+              highlight: true,
+            },
+            {
+              icon: "milestone",
+              title: BOLD_STRESS_PHRASES[5],
+              text: CARD_TEXT_STRESS,
+              sub: CHART_LABEL,
+              highlight: false,
+            },
+          ],
         },
       ],
     },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   fitSvgLine,
+  hasExactWidthTable,
   layoutSvgText,
   measureTextUnits,
   truncateToUnits,
@@ -487,5 +488,37 @@ describe("layoutSvgText word-integrity retry-ladder preference (task R2 scope ex
     const c = layoutSvgText(POSITION_0_PIN, opts)
     expect(b).toEqual(a)
     expect(c).toEqual(a)
+  })
+})
+
+// hasExactWidthTable (backlog-sweep task I2): thin wrapper around
+// classifyFaceKey + EXACT_TABLE_FOR's own membership, exported so a
+// registration-time caller (themes/definitions.ts's registerTheme) can ask
+// "does this resolved face get an exact width model" without reaching into
+// this module's private classification internals.
+describe("hasExactWidthTable", () => {
+  it("is true for the two measured exact-model faces (georgia/yahei)", () => {
+    expect(hasExactWidthTable("Georgia")).toBe(true)
+    expect(hasExactWidthTable("Microsoft YaHei")).toBe(true)
+    expect(hasExactWidthTable("微软雅黑")).toBe(true)
+  })
+
+  it("matches classifyFaceKey's own case/quote-insensitive first-member convention", () => {
+    expect(hasExactWidthTable('"Georgia"')).toBe(true)
+    expect(hasExactWidthTable("georgia")).toBe(true)
+    expect(hasExactWidthTable("Georgia, Songti SC, STSong, serif")).toBe(true)
+  })
+
+  it("is false for a face that classifies but has only a class-average table (SimSun/KaiTi)", () => {
+    expect(hasExactWidthTable("SimSun")).toBe(false)
+    expect(hasExactWidthTable("宋体")).toBe(false)
+    expect(hasExactWidthTable("KaiTi")).toBe(false)
+    expect(hasExactWidthTable("楷体")).toBe(false)
+  })
+
+  it("is false for an unmeasured/unknown face, including undefined-like empty input", () => {
+    expect(hasExactWidthTable("Cambria")).toBe(false)
+    expect(hasExactWidthTable("Arial")).toBe(false)
+    expect(hasExactWidthTable("")).toBe(false)
   })
 })

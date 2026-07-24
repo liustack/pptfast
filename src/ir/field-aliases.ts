@@ -117,13 +117,17 @@ export interface ItemFieldAliasSpec {
 }
 
 /**
- * Item-array field aliases: component type → { itemsKey, aliases }. Ported
- * verbatim from ops-kb's `_ITEM_FIELD_ALIASES` (its 2-tuple
- * `(list_key, aliases)` becomes this named shape here — same data, more
- * readable than an indexed tuple).
+ * Item-array field aliases: component type → one `{ itemsKey, aliases }`
+ * spec *per item array* that type has. Ported verbatim from ops-kb's
+ * `_ITEM_FIELD_ALIASES` (its 2-tuple `(list_key, aliases)` becomes this
+ * named shape here — same data, more readable than an indexed tuple), then
+ * widened from one spec per component type to a list of specs (field-alias
+ * sweep task I1) so a component type with more than one item array (sankey's
+ * `nodes[]` alongside `links[]`) can alias each independently — see sankey's
+ * own two-entry row below for the shape this widening unlocked.
  */
-export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, ItemFieldAliasSpec>> = {
-  kpi_cards: { itemsKey: "items", aliases: { title: "label", name: "label" } },
+export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly ItemFieldAliasSpec[]>> = {
+  kpi_cards: [{ itemsKey: "items", aliases: { title: "label", name: "label" } }],
   // Numeric-axis family (structure-components wave task 2, decision 8):
   // waterfall's per-item signed delta is commonly reached for as "amount" in
   // finance-deck vocabulary (a waterfall/bridge chart is itself a finance-
@@ -131,30 +135,38 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, ItemFieldAlia
   // model that knows "Gantt chart" but not this schema's numeric-axis-only
   // shape (decision 6: no date parsing) reaches for by analogy to a
   // calendar's own "from"/"to" range vocabulary.
-  waterfall: { itemsKey: "items", aliases: { amount: "value" } },
-  gantt: { itemsKey: "items", aliases: { from: "start", to: "end" } },
-  // Sankey (structure-components wave 2 task 4): `source`/`target` is the
-  // exact field-name convention D3-sankey and Plotly's own Sankey trace
-  // both use for a link's two endpoints — a model that has ever produced a
-  // sankey spec for either of those two (the dominant JS/Python charting
-  // libraries for this diagram type) reaches for that vocabulary over this
-  // schema's `from`/`to`. `nodes[].label` carries no alias here: D3's own
-  // classic convention there is `name`, but rescuing it would need a
-  // *second* item-array entry for the same component type (`nodes`
-  // alongside `links`), which `ItemFieldAliasSpec`'s one-`itemsKey`-per-
-  // component-type shape does not support — a real, scoped-out gap, not a
-  // silent drop, left for a future mechanism change rather than a data
-  // addition.
-  sankey: { itemsKey: "links", aliases: { source: "from", target: "to" } },
+  waterfall: [{ itemsKey: "items", aliases: { amount: "value" } }],
+  gantt: [{ itemsKey: "items", aliases: { from: "start", to: "end" } }],
+  // Sankey (structure-components wave 2 task 4, `links`; field-alias sweep
+  // task I1, `nodes`): `links`' `source`/`target` is the exact field-name
+  // convention D3-sankey and Plotly's own Sankey trace both use for a
+  // link's two endpoints — a model that has ever produced a sankey spec for
+  // either of those two (the dominant JS/Python charting libraries for this
+  // diagram type) reaches for that vocabulary over this schema's
+  // `from`/`to`. `nodes[].label` carried no alias until task I1 widened this
+  // table's value type to a list of specs — rescuing it needed a *second*
+  // item-array entry for the same component type (`nodes` alongside
+  // `links`), which the original one-`itemsKey`-per-component-type shape
+  // did not support (a real, scoped-out gap, not a silent drop). Now that a
+  // component type can list one spec per item array, `nodes` gets its own:
+  // `name` is D3's own classic node-label convention (the same
+  // "reaches for the charting library's vocabulary" logic as `links`'
+  // `source`/`target` above), `title` mirrors kpi_cards' own
+  // `title`→`label` alias above — the same generic title-for-label slip on
+  // any labeled-card-like item shape.
+  sankey: [
+    { itemsKey: "links", aliases: { source: "from", target: "to" } },
+    { itemsKey: "nodes", aliases: { name: "label", title: "label" } },
+  ],
   // Real-world tech-deck mental model: layers have a "name" and hold
   // "components" or "nodes" — pptfast's own top-level components array
   // shares the word "components" by coincidence only; this alias is scoped
   // to one architecture layer's own item shape, never the deck-level array.
-  architecture: { itemsKey: "layers", aliases: { name: "title", components: "items", nodes: "items" } },
-  steps: { itemsKey: "items", aliases: { description: "text", desc: "text" } },
-  timeline: { itemsKey: "milestones", aliases: { year: "date", text: "desc", description: "desc" } },
-  numbered_cards: { itemsKey: "items", aliases: { description: "text", desc: "text" } },
-  row_cards: { itemsKey: "items", aliases: { description: "text", desc: "text" } },
+  architecture: [{ itemsKey: "layers", aliases: { name: "title", components: "items", nodes: "items" } }],
+  steps: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
+  timeline: [{ itemsKey: "milestones", aliases: { year: "date", text: "desc", description: "desc" } }],
+  numbered_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
+  row_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
 }
 
 /**
@@ -220,18 +232,24 @@ function normalizeComponent(component: unknown, si: number, ci: number, normaliz
   const blockAliases = COMPONENT_FIELD_ALIASES[component.type]
   if (blockAliases) next = renameAliases(next, blockAliases, path, normalized)
 
-  const itemSpec = COMPONENT_ITEM_FIELD_ALIASES[component.type]
-  if (itemSpec) {
-    const items = next[itemSpec.itemsKey]
-    if (Array.isArray(items)) {
-      let itemsChanged = false
-      const nextItems = items.map((item, ii) => {
-        if (!isPlainObject(item)) return item
-        const renamed = renameAliases(item, itemSpec.aliases, `${path}.${itemSpec.itemsKey}[${ii}]`, normalized)
-        if (renamed !== item) itemsChanged = true
-        return renamed
-      })
-      if (itemsChanged) next = { ...next, [itemSpec.itemsKey]: nextItems }
+  const itemSpecs = COMPONENT_ITEM_FIELD_ALIASES[component.type]
+  if (itemSpecs) {
+    // One component type can list more than one item array (sankey: `links`
+    // then `nodes`) — walked in table order, each iteration reading/writing
+    // `next` so a rewrite in an earlier spec's array is visible to (and
+    // never clobbered by) a later spec's own `{ ...next, ... }` clone.
+    for (const itemSpec of itemSpecs) {
+      const items = next[itemSpec.itemsKey]
+      if (Array.isArray(items)) {
+        let itemsChanged = false
+        const nextItems = items.map((item, ii) => {
+          if (!isPlainObject(item)) return item
+          const renamed = renameAliases(item, itemSpec.aliases, `${path}.${itemSpec.itemsKey}[${ii}]`, normalized)
+          if (renamed !== item) itemsChanged = true
+          return renamed
+        })
+        if (itemsChanged) next = { ...next, [itemSpec.itemsKey]: nextItems }
+      }
     }
   }
 

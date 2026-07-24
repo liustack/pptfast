@@ -93,9 +93,25 @@ function fitYTitleStack(text: string, availH: number): { chars: string[]; trunca
   return { chars: [...kept, "…"], truncated: true }
 }
 
-function cellLayout(item: MatrixItem, cardW: number): CellLayout {
+// `fontFamily` (bold-metrics fix, round 3, 2026-07-24): optional and only
+// ever passed by `render()`'s own direct call below, not `gridGeom()`'s
+// internal one (used by both `measure()` and `render()` to size the grid) --
+// `contentH` derives from `TITLE_LH`, a fixed constant, never from `title`'s
+// own fitted `fontSize`, so `measure()`/`render()` can't disagree regardless
+// of which face this fit resolves against. Same fallback-in-measure,
+// real-face-in-render split 5d4c4a8 established for the other 9 structure
+// components.
+function cellLayout(item: MatrixItem, cardW: number, fontFamily?: string): CellLayout {
   const contentW = cardW - PAD_X * 2
-  const title = fitSvgLine(item.title, { maxWidth: contentW, fontSize: TITLE_SIZE, minFontSize: 12 })
+  // `bold: true`: this title always renders `fontWeight="700"` below --
+  // unconditional, unlike a component where boldness depends on content.
+  const title = fitSvgLine(item.title, {
+    maxWidth: contentW,
+    fontSize: TITLE_SIZE,
+    minFontSize: 12,
+    bold: true,
+    fontFamily,
+  })
   const tag = item.tag
     ? fitSvgLine(item.tag, { maxWidth: contentW, fontSize: TAG_SIZE, minFontSize: 10 })
     : null
@@ -230,7 +246,7 @@ export const matrix: SvgComponent<MatrixComponent> = {
           const row = Math.floor(i / cols)
           const x = box.x + gridX0 + col * (cardW + CARD_GAP)
           const y = gridTop + row * (rowH + CARD_GAP)
-          const cell = cellLayout(item, cardW)
+          const cell = cellLayout(item, cardW, ctx.fonts.heading)
           const titleBaseline = y + PAD_TOP + TITLE_SIZE
           return (
             <g key={i}>
