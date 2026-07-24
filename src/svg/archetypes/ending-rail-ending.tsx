@@ -1,5 +1,6 @@
 // GF/svg/archetypes/ending-rail-ending.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 
@@ -209,4 +210,27 @@ export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// ENDING_LAYOUTS["rail-ending"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // ending-rail-ending.tsx: corner color-block accents (decor, echoing
+  // Cover's rect motif), org kicker, heading ("Thank you"), subheading,
+  // hairline + "Contact" contact section + copyright line (all meta).
+  id: "rail-ending",
+  kind: "archetype",
+  slideTypes: ["ending"],
+  slots: [
+    { name: "decor", accepts: [] },
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "meta", accepts: [] },
+  ],
 }

@@ -1,4 +1,5 @@
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { readableOn } from "../ink"
@@ -124,4 +125,26 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// ENDING_LAYOUTS["fashion-ending"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // ending-fashion-ending.tsx: full-bleed primary block, org kicker (top),
+  // giant heading ("Thank you"), accent band rule, subheading, org/date
+  // meta line.
+  id: "fashion-ending",
+  kind: "archetype",
+  slideTypes: ["ending"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "meta", accepts: [] },
+  ],
 }

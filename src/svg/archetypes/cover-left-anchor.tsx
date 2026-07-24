@@ -1,5 +1,6 @@
 // GF/svg/archetypes/cover-left-anchor.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
@@ -247,4 +248,28 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// COVER_LAYOUTS["left-anchor"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // cover-left-anchor.tsx: 40%-width primary color block carries the
+  // heading (white, product-logic exempt); right panel has org kicker,
+  // conf badge, subheading, meta divider + author/date/version. The
+  // corner triangle is a private decorative swatch (TRIANGLE_DEEP) → decor.
+  id: "left-anchor",
+  kind: "archetype",
+  slideTypes: ["cover"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "decor", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "meta", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+  ],
 }

@@ -1,4 +1,5 @@
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import type { ContentRect } from "../layout"
 import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
@@ -248,4 +249,39 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUTS["asymmetric-triptych"] entry. `CHROME` (registry.ts's
+// private `readonly string[] = []` alias, "not fed by an authored
+// component") is inlined here to the literal `[]` it always held, to avoid a
+// value-import cycle with the registry aggregator (which value-imports this
+// export) — see registry.ts's slot-`accepts` convention doc for what `[]`
+// means. The body slot's capacity comment is reworded from "see file header
+// derivation" to name registry.ts explicitly, since that derivation essay
+// lives in registry.ts's CONTENT_LAYOUTS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-asymmetric-triptych.tsx: full-width kicker/heading/subheading
+  // chrome above a three-region body — a wide `lead` column (the first
+  // component alone) plus a narrower right column split into `top`/
+  // `bottom` framed secondary panels. All three internal SvgContent calls
+  // hardcode arrangement to the default single-stack (never
+  // `slide.arrangement` — the three-region split is this archetype's own
+  // grammar, same hardcode convention as bento-panel/two-column).
+  // Persistent dividers/panel frames are unconditional chrome, not
+  // component-count-dependent.
+  id: "asymmetric-triptych",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "body", accepts: "any", capacity: 4 }, // 1 lead + up to 3 secondary — see registry.ts's CONTENT_LAYOUTS header for the derivation
+    { name: "lead", accepts: "any", capacity: 1 },
+    { name: "top", accepts: "any" },
+    { name: "bottom", accepts: "any" },
+    { name: "meta", accepts: [] },
+  ],
+  arrangements: ["single"],
 }

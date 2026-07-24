@@ -1,5 +1,6 @@
 // GF/svg/archetypes/cover-banner-title.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 
@@ -192,4 +193,25 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// COVER_LAYOUTS["banner-title"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // cover-banner-title.tsx: org dot-kicker, conf badge, heading, accent
+  // bar, italic subheading, meta divider + author/date/version row.
+  id: "banner-title",
+  kind: "archetype",
+  slideTypes: ["cover"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "meta", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "subheading", accepts: [] },
+  ],
 }

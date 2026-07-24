@@ -1,5 +1,6 @@
 // GF/svg/archetypes/cover-editorial-masthead.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
@@ -110,4 +111,25 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// COVER_LAYOUTS["editorial-masthead"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // cover-editorial-masthead.tsx: centered masthead heading + short
+  // underline + italic subheading + single merged org/date/conf meta line.
+  // No standalone kicker.
+  id: "editorial-masthead",
+  kind: "archetype",
+  slideTypes: ["cover"],
+  slots: [
+    { name: "heading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "meta", accepts: [] },
+  ],
 }

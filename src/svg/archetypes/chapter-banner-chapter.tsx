@@ -1,5 +1,6 @@
 // GF/svg/archetypes/chapter-banner-chapter.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
@@ -128,4 +129,25 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
       />
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CHAPTER_LAYOUTS["banner-chapter"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // chapter-banner-chapter.tsx: translucent watermark numeral, centered
+  // white heading/subheading over the primary color block, short
+  // decorative accent hairline.
+  id: "banner-chapter",
+  kind: "archetype",
+  slideTypes: ["chapter"],
+  slots: [
+    { name: "watermark", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+  ],
 }

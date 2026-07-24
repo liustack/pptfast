@@ -1,5 +1,6 @@
 // GF/svg/archetypes/ending-banner-ending.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 
@@ -231,4 +232,26 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// ENDING_LAYOUTS["banner-ending"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // ending-banner-ending.tsx: org kicker, italic heading ("Thank you."),
+  // subheading (falls back to "We appreciate your time."), divider,
+  // "Contact" contact section + copyright (meta).
+  id: "banner-ending",
+  kind: "archetype",
+  slideTypes: ["ending"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "meta", accepts: [] },
+  ],
 }

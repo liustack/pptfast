@@ -1,5 +1,6 @@
 // GF/svg/archetypes/cover-constellation.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
@@ -205,4 +206,28 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
       />
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// COVER_LAYOUTS["constellation"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means.
+export const layoutDef: LayoutDefinition = {
+  // cover-constellation.tsx: top-left org kicker, bottom-anchored hero
+  // heading, accent rule + subheading, conf/date meta row, and the
+  // signature 9-point constellation motif (inline in this file, not the
+  // separate Motif system) → decor.
+  id: "constellation",
+  kind: "archetype",
+  slideTypes: ["cover"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "rule", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "meta", accepts: [] },
+    { name: "decor", accepts: [] },
+  ],
 }

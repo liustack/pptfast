@@ -1,5 +1,6 @@
 // GF/svg/archetypes/content-narrow-column.tsx
 import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "../layouts/registry"
 import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
@@ -217,4 +218,34 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
       )}
     </>
   )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUTS["narrow-column"] entry. `CHROME` (registry.ts's private
+// `readonly string[] = []` alias, "not fed by an authored component") is
+// inlined here to the literal `[]` it always held, to avoid a value-import
+// cycle with the registry aggregator (which value-imports this export) — see
+// registry.ts's slot-`accepts` convention doc for what `[]` means. The body
+// slot's capacity comment is reworded from "see file header derivation" to
+// name registry.ts explicitly, since that derivation essay lives in
+// registry.ts's CONTENT_LAYOUTS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-narrow-column.tsx: top hairline, italic kicker, heading,
+  // subheading, narrow SvgContent body (arrangement passed through
+  // unchanged), large muted page-number watermark in the right gutter,
+  // italic footnote
+  // (meta).
+  id: "narrow-column",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "rule", accepts: [] },
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "body", accepts: "any", capacity: 4 }, // single-stack — see registry.ts's CONTENT_LAYOUTS header for the derivation
+    { name: "watermark", accepts: [] },
+    { name: "meta", accepts: [] },
+  ],
+  arrangements: "all",
 }
