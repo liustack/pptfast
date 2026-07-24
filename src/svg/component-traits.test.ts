@@ -1,5 +1,37 @@
 import { describe, expect, it } from "vitest"
 import { COMPONENT_TYPES } from "@/ir"
+import { traits as bulletsTraits } from "@/ir/components/bullets"
+import { traits as paragraphTraits } from "@/ir/components/paragraph"
+import { traits as quoteTraits } from "@/ir/components/quote"
+import { traits as calloutTraits } from "@/ir/components/callout"
+import { traits as codeTraits } from "@/ir/components/code"
+import { traits as kpiCardsTraits } from "@/ir/components/kpi-cards"
+import { traits as chartTraits } from "@/ir/components/chart"
+import { traits as flowchartTraits } from "@/ir/components/flowchart"
+import { traits as architectureTraits } from "@/ir/components/architecture"
+import { traits as timelineTraits } from "@/ir/components/timeline"
+import { traits as comparisonTraits } from "@/ir/components/comparison"
+import { traits as iconCardsTraits } from "@/ir/components/icon-cards"
+import { traits as rowCardsTraits } from "@/ir/components/row-cards"
+import { traits as stepsTraits } from "@/ir/components/steps"
+import { traits as ringsTraits } from "@/ir/components/rings"
+import { traits as numberedCardsTraits } from "@/ir/components/numbered-cards"
+import { traits as roadmapTraits } from "@/ir/components/roadmap"
+import { traits as matrixTraits } from "@/ir/components/matrix"
+import { traits as insightPanelTraits } from "@/ir/components/insight-panel"
+import { traits as verdictBannerTraits } from "@/ir/components/verdict-banner"
+import { traits as citationTraits } from "@/ir/components/citation"
+import { traits as imageTraits } from "@/ir/components/image"
+import { traits as imageGridTraits } from "@/ir/components/image-grid"
+import { traits as imageCompareTraits } from "@/ir/components/image-compare"
+import { traits as swotTraits } from "@/ir/components/swot"
+import { traits as bmcTraits } from "@/ir/components/bmc"
+import { traits as waterfallTraits } from "@/ir/components/waterfall"
+import { traits as ganttTraits } from "@/ir/components/gantt"
+import { traits as pestTraits } from "@/ir/components/pest"
+import { traits as fiveForcesTraits } from "@/ir/components/five-forces"
+import { traits as heatmapTraits } from "@/ir/components/heatmap"
+import { traits as sankeyTraits } from "@/ir/components/sankey"
 import {
   EVIDENCE_TYPES,
   FULL_BODY_TYPES,
@@ -8,6 +40,48 @@ import {
   SELF_VISUAL_TYPES,
   STRETCHABLE_TYPES,
 } from "./component-traits"
+
+/**
+ * Every domain file's own `[type, traits]` pair, gathered independently of
+ * `component-traits.ts`'s own internal `ALL_TRAITS` aggregation (deliberately
+ * not imported from there) — this file's "EVIDENCE_TYPES consistency" check
+ * below needs a second, separate computation to be a meaningful drift check
+ * rather than component-traits.ts trivially agreeing with itself.
+ */
+const DOMAIN_FILE_TRAITS: readonly (readonly [string, { readonly evidence: boolean }])[] = [
+  ["bullets", bulletsTraits],
+  ["paragraph", paragraphTraits],
+  ["quote", quoteTraits],
+  ["callout", calloutTraits],
+  ["code", codeTraits],
+  ["kpi_cards", kpiCardsTraits],
+  ["chart", chartTraits],
+  ["flowchart", flowchartTraits],
+  ["architecture", architectureTraits],
+  ["timeline", timelineTraits],
+  ["comparison", comparisonTraits],
+  ["icon_cards", iconCardsTraits],
+  ["row_cards", rowCardsTraits],
+  ["steps", stepsTraits],
+  ["rings", ringsTraits],
+  ["numbered_cards", numberedCardsTraits],
+  ["roadmap", roadmapTraits],
+  ["matrix", matrixTraits],
+  ["insight_panel", insightPanelTraits],
+  ["verdict_banner", verdictBannerTraits],
+  ["citation", citationTraits],
+  ["image", imageTraits],
+  ["image_grid", imageGridTraits],
+  ["image_compare", imageCompareTraits],
+  ["swot", swotTraits],
+  ["bmc", bmcTraits],
+  ["waterfall", waterfallTraits],
+  ["gantt", ganttTraits],
+  ["pest", pestTraits],
+  ["five_forces", fiveForcesTraits],
+  ["heatmap", heatmapTraits],
+  ["sankey", sankeyTraits],
+]
 
 /**
  * Equivalence lock (W2 task 5): `component-traits.ts` unifies 5 component-
@@ -78,6 +152,26 @@ describe("EVIDENCE_TYPES equivalence (was assertion-evidence.tsx:8-13) — order
 
   it("is a tuple (ordered array), not a Set — priority dispatch depends on iteration order", () => {
     expect(Array.isArray(EVIDENCE_TYPES)).toBe(true)
+  })
+})
+
+// ── EVIDENCE_TYPES consistency (src domain reorg wave 2, spec §4.1's named
+// exception) ─────────────────────────────────────────────────────────────
+//
+// EVIDENCE_TYPES itself is not derived from the 32 domain files (order is
+// cross-component comparative knowledge no single domain file can declare
+// about itself — component-traits.ts's own EVIDENCE_TYPES doc comment has
+// the full rationale) — but its *membership* must still agree with which
+// domain files declare `traits.evidence: true`. Two independent sources of
+// truth (this hand-written order vs. every domain file's own boolean); a
+// component's `evidence` flag flipped without updating this array, or vice
+// versa, would silently diverge without this check.
+describe("EVIDENCE_TYPES consistency: membership matches every domain file's own evidence:true declaration", () => {
+  it("the set of types declaring traits.evidence:true equals EVIDENCE_TYPES' membership (order aside)", () => {
+    const declaredEvidence = new Set(
+      DOMAIN_FILE_TRAITS.filter(([, traits]) => traits.evidence).map(([type]) => type),
+    )
+    expect(declaredEvidence).toEqual(new Set(EVIDENCE_TYPES))
   })
 })
 
