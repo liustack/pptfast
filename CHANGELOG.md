@@ -1,5 +1,19 @@
 # @liustack/pptfast
 
+## 0.9.0
+
+### Minor Changes
+
+- cd2f321: registerTheme now validates that colors.text and colors.muted clear a 3.0:1 contrast floor (WCAG's large-text threshold) against the resolved default background for cover, content, and ending slides, throwing PptfastError with the offending token, slide type, measured ratio, and threshold when they don't (chapter is intentionally exempt — every chapter archetype already selects contrast-adaptive ink rather than painting these tokens raw); it also now emits a console.warn, never a throw, when a theme's resolved heading or body font falls back to the text-width estimator's conservative class-average model instead of an exact per-character table, so overflow-prone font choices are visible at registration time rather than only in rendered output. The field-alias rescue mechanism now supports more than one item-array per component type, letting sankey's `nodes` array rescue name/title synonyms for its label field (55 total synonym pairs, up from 53) alongside its existing links source/target rescue. Also fixed: matrix's bold card titles now measure their true bold width when fitting to the card, closing the one structure component the 0.8.0 bold-metrics fix round's sweep missed.
+
+### Patch Changes
+
+- 8c62a0b: Chart export and text-wrap correctness fixes.
+
+  - A dumbbell row whose `from`/`to` values were nearly (but not bit-exactly) equal at large magnitude could throw during export — the connector's sub-pixel delta rounded to zero EMU and tripped the package-integrity gate for the whole deck, not just that row. The zero-length floor now triggers whenever both axes round to zero EMU, not only on bit-exact equality. Dumbbell's value labels (`from.y`/`to.y`) also now shrink/truncate to fit their box instead of rendering unbounded.
+  - A heading that fuses an English/digit run directly onto CJK text with no space (a common bilingual idiom) could have that run split mid-character once the line ran out of room, with no visible truncation marker. Wrapping now treats such a run as one atomic unit — CJK's own line-breaking convention — and prefers a smaller, split-free font over a mid-run cut whenever one exists within the heading's own size floor.
+  - Text painted over a gradient-filled shape was previously checked against whatever solid color happened to sit underneath in the contrast audit, instead of the gradient it was actually rendered on. It now routes through the same real-pixel-sample fallback a background photo already gets.
+
 ## 0.8.0
 
 ### Minor Changes
