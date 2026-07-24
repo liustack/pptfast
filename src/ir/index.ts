@@ -6,6 +6,10 @@ import { schema as bulletsSchema } from "./components/bullets"
 import { schema as paragraphSchema } from "./components/paragraph"
 import { schema as quoteSchema } from "./components/quote"
 import { schema as calloutSchema } from "./components/callout"
+import { schema as codeSchema } from "./components/code"
+import { schema as kpiCardsSchema } from "./components/kpi-cards"
+import { schema as chartSchema } from "./components/chart"
+import { schema as flowchartSchema } from "./components/flowchart"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -363,98 +367,10 @@ const ComponentSchema = z.discriminatedUnion("type", [
   paragraphSchema,
   quoteSchema,
   calloutSchema,
-  z
-    .object({
-      type: z.literal("code"),
-      language: z.string(),
-      code: z.string(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("kpi_cards"),
-      items: z.array(
-        z
-          .object({
-            value: z.string(),
-            unit: z.string().optional(),
-            label: z.string(),
-            delta: z.enum(["up", "down", "flat"]).optional(),
-            icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-            /** 数据来源小字（财经信任语言，2026-07-12 借鉴），如
-             * 「来源: Crunchbase」。 */
-            source: z.string().optional(),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("chart"),
-      /** dumbbell（2026-07-12 借鉴）：哑铃变化图——series[0]=起点值、
-       * series[1]=终点值（等长同 x 标签），每行「起点●———●终点」显变化。
-       * bar 可加 direction:"horizontal" 横条排名（长标签友好）。
-       * pie 可加 style:"donut" 环形+中心总值。 */
-      chart_type: z.enum(["bar", "line", "pie", "funnel", "dumbbell"]),
-      direction: z.enum(["horizontal", "vertical"]).optional(),
-      style: z.enum(["donut"]).optional(),
-      /** Renders only for `chart_type: "bar"` (either direction) and
-       * `"line"` — a cartesian plot box with a real category/value axis pair
-       * to title and grid against. Ignored (schema-legal, silently dropped
-       * at render, warn-severity `chart_axes_ignored` validate finding) on
-       * `pie`/`funnel`/`dumbbell`, which have no such plot box. */
-      axes: z
-        .object({
-          x_title: z.string().optional(),
-          y_title: z.string().optional(),
-          show_grid: z.boolean().optional(),
-        })
-        .strict()
-        .optional(),
-      series: z.array(
-        z
-          .object({
-            name: z.string(),
-            data: z.array(
-              z
-                .object({
-                  x: z.union([z.string(), z.number()]),
-                  y: z.number(),
-                })
-                .strict()
-            ),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("flowchart"),
-      nodes: z
-        .array(
-          z
-            .object({
-              id: z.string(),
-              label: z.string(),
-              kind: z.enum(["rect", "diamond", "round"]).optional(),
-            })
-            .strict()
-        )
-        .max(20),
-      edges: z.array(
-        z
-          .object({
-            from: z.string(),
-            to: z.string(),
-            label: z.string().optional(),
-          })
-          .strict()
-      ),
-      direction: z.enum(["TB", "TD", "BT", "LR", "RL"]).optional(),
-    })
-    .strict(),
+  codeSchema,
+  kpiCardsSchema,
+  chartSchema,
+  flowchartSchema,
   z
     .object({
       type: z.literal("architecture"),

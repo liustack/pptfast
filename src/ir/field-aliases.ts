@@ -30,8 +30,10 @@
  */
 
 import { aliases as quoteAliases } from "./components/quote"
+import { aliases as codeAliases } from "./components/code"
 import { aliases as paragraphAliases } from "./components/paragraph"
 import { aliases as calloutAliases } from "./components/callout"
+import { aliases as kpiCardsAliases } from "./components/kpi-cards"
 
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
@@ -44,7 +46,7 @@ export type FieldAliasMap = Readonly<Record<string, string>>
 export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = {
   quote: quoteAliases.block,
   // Mental model overlap with "code snippet" / "code text" / "source code".
-  code: { content: "code", source: "code", snippet: "code", text: "code" },
+  code: codeAliases.block,
   paragraph: paragraphAliases.block,
   // callout and verdict_banner's semantic fields commonly cross-wire
   // (tone/variant) — each direction is this pair's own inverse alias below.
@@ -131,7 +133,7 @@ export interface ItemFieldAliasSpec {
  * own two-entry row below for the shape this widening unlocked.
  */
 export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly ItemFieldAliasSpec[]>> = {
-  kpi_cards: [{ itemsKey: "items", aliases: { title: "label", name: "label" } }],
+  kpi_cards: kpiCardsAliases.items,
   // Numeric-axis family (structure-components wave task 2, decision 8):
   // waterfall's per-item signed delta is commonly reached for as "amount" in
   // finance-deck vocabulary (a waterfall/bridge chart is itself a finance-
