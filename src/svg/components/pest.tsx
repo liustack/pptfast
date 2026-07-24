@@ -16,7 +16,7 @@ type QuadrantKey = "political" | "economic" | "social" | "technological"
  * a direct port of `swot.tsx`'s own (same `mixHex`-tinted self-painted
  * panels, same unboxed letter-badge idiom, same box.h-aware uncapped
  * stretch). A full-body component (`FULL_BODY_TYPES`, `component-traits.ts`)
- * — the only component `SvgContent.tsx` ever hands this to fills the whole
+ * — the only component `svg-content.tsx` ever hands this to fills the whole
  * content rect, no sibling components on the same slide (enforced by
  * `checkFullBodyExclusivity`, `api.ts`).
  *
@@ -50,7 +50,7 @@ type QuadrantKey = "political" | "economic" | "social" | "technological"
  * `Math.max(cellH, ...)` floor byte-for-byte instead, which only ever grows
  * a row, never shrinks it below its own unstretched natural height). A
  * full-body component gets the archetype's *fixed* content-rect height
- * verbatim (`SvgContent.tsx`), never a box sized to its own `measure()`
+ * verbatim (`svg-content.tsx`), never a box sized to its own `measure()`
  * value, and schema-max content (5 items in every one of the 4 quadrants)
  * combined with a heading long enough to force a 2-line wrap can shrink that
  * fixed rect below what an unshrinkable natural cell needs — an independent

@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { PosterCenterCover } from "./cover-poster-center"
 import type { PptxIR, Slide } from "@/ir"
@@ -11,7 +11,7 @@ const slide: Slide = { type: "cover", heading: "创意提案", subheading: "一�
 const ir = (theme: string): PptxIR =>
   ({ version: "3", filename: "x.pptx", theme: { id: theme }, meta: { organization: "品牌组" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
 
-// BrandChrome's brand logo bands (BrandChrome.tsx logoBox: image at
+// BrandChrome's brand logo bands (brand-chrome.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br). Ported from
 // templates/creative.test.tsx — the poster grammar's entire premise is
 // centering everything on x=640 so its x-extent stays within [190,1090],

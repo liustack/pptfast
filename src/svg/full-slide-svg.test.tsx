@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest"
 import { render } from "@testing-library/react"
-import { FullSlideSvg, resolveOverrideBackgroundHex } from "./FullSlideSvg"
+import { FullSlideSvg, resolveOverrideBackgroundHex } from "./full-slide-svg"
 import { renderSvgMarkup, parseSvgRoot } from "./serialize"
 import { assertSubset } from "./subset-validate"
 import { svgToOps } from "../pptx/svg2pptx/dispatch"
@@ -176,7 +176,7 @@ describe("asset background auto scrim (image-layouts P1)", () => {
     )
     const scrims = Array.from(container.querySelectorAll("rect")).filter((r) => {
       const o = r.getAttribute("fill-opacity")
-      // 0.66（2026-07-09 用户裁决 0.8 看不清背景，同 Background.test 边界）
+      // 0.66（2026-07-09 用户裁决 0.8 看不清背景，同 background.test 边界）
       return o !== null && Number(o) >= 0.6 && Number(o) < 0.75
     })
     expect(scrims).toHaveLength(1)
@@ -211,7 +211,7 @@ describe("resolveOverrideBackgroundHex (post-v0.3 W8 fix round, backlog item 1)"
   // own asset policy) — silently wrong for a *per-slide override*, since
   // `tokens.colors.surface` is not what an asset-background content/ending
   // slide actually paints behind text (the auto-scrim, colored
-  // `themeDefaultBg` — see `Background.tsx`/`FullSlideSvg.tsx`'s own
+  // `themeDefaultBg` — see `background.tsx`/`full-slide-svg.tsx`'s own
   // `autoScrimColor`). Fixed by threading the caller's `themeDefaultBg`
   // through as a third `paintedFallback` argument, consulted instead of
   // `surfaceFallback` for exactly this branch — see
@@ -295,7 +295,7 @@ describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlo
     expect(headingFill(markup)).toBe("#0A0E14")
   })
 
-  it("an asset slide.background override does not change autoScrimColor's own theme-default source (out of this fix's scope, see FullSlideSvg.tsx's own comment)", () => {
+  it("an asset slide.background override does not change autoScrimColor's own theme-default source (out of this fix's scope, see full-slide-svg.tsx's own comment)", () => {
     // content (not cover/chapter) so imageCoverTakeover doesn't take over
     // and the P1 frosted auto-scrim still applies.
     const slide: Slide = {
@@ -627,7 +627,7 @@ describe("slide.layout explicit archetype short-circuit (W2 task 3 new capabilit
 })
 
 // W4 task 3 fix round (review Major finding): the review proved this
-// production seam was completely unguarded — `FullSlideSvg.tsx` resolves
+// production seam was completely unguarded — `full-slide-svg.tsx` resolves
 // `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`
 // and threads it as `buildCtx`'s 5th (optional) argument. If a future edit
 // ever drops that argument, `buildCtx` silently falls back to its own

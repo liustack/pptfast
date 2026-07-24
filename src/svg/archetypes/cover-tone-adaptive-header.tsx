@@ -40,7 +40,7 @@ import { CONF_LABEL } from "../../lib/conf-labels"
  * 的结构性产品逻辑，不随主题变化，不进上面的替换表。顶部黑色半透明幕布
  * （scrim for bg-image readability，替代原 linearGradient）同属此类：不是
  * 任何主题 token 的烤色，是固定可读性遮罩——且不是与全局机制重复的遗留
- * 代码：FullSlideSvg.tsx 的全局 auto-scrim 机制通过 `isDesignTheme` 显式
+ * 代码：full-slide-svg.tsx 的全局 auto-scrim 机制通过 `isDesignTheme` 显式
  * 把当前主题排除在外（该文件 ~83/88 行注释：当前主题维持裸背景 + 模型
  * overlay 直通），所以这个局部幕布是本主题封面在有背景图时唯一起作用的
  * 遮罩，必须原样保留。

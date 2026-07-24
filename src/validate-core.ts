@@ -258,7 +258,7 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
  * unchanged in shape): a `FULL_BODY_TYPES` member (`swot`/`bmc`/`waterfall`/
  * `gantt`/`pest`/`five_forces`/`heatmap`/`sankey`, `component-traits.ts`) is meant to own an
  * entire slide's content rect by
- * itself (`SvgContent.tsx` hands it the whole rect verbatim) — a slide that
+ * itself (`svg-content.tsx` hands it the whole rect verbatim) — a slide that
  * pairs one with *any* other component (another full-body type included)
  * has nowhere left to put that sibling, so this is a hard validation error,
  * not a silent "drop the extra component(s) and render anyway" degrade.
@@ -290,7 +290,7 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
  * (`src/svg/archetypes/index-{chapter,ending}.ts`'s registries, the 8 cover
  * archetypes `index.ts` re-exports, plus the background-asset
  * `ImageCoverPage` takeover that intercepts cover/chapter before any
- * archetype runs, `src/svg/ImagePages.tsx` — `FullSlideSvg.tsx`'s
+ * archetype runs, `src/svg/image-pages.tsx` — `full-slide-svg.tsx`'s
  * `imageCoverTakeover` branch) was read to confirm zero exceptions before
  * this gate was written. A slide carrying either field on one of these
  * three types was previously silently dropped at render with no signal

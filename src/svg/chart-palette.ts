@@ -19,7 +19,7 @@
  * rotate series colors while one deck stays internally deterministic" —
  * every chart across one deck should agree on the same color assignment for
  * a given series index, so a reader can learn "series 2 is this color" once
- * on page 3 and have it still hold on page 7. `FullSlideSvg.tsx` computes
+ * on page 3 and have it still hold on page 7. `full-slide-svg.tsx` computes
  * the offset once per render off `cachedDeckSeed(ir)` alone (no pageKey), so
  * every chart on every page of one deck shares the identical rotated
  * palette — contrast this with motif's per-page pageKey salt.

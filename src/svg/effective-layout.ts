@@ -9,7 +9,7 @@
  * CRITICAL invariant (spec §5's W3 amendment note: "选型确定性保证 validate
  * 所见 = render 所用"): `resolveArchetypeId` below is the *only* place the
  * narrative-weighted seed-sampling + adjacent-anti-repetition
- * archetype-selection mechanics live. `FullSlideSvg.tsx`'s own
+ * archetype-selection mechanics live. `full-slide-svg.tsx`'s own
  * `resolveArchetype` calls it instead of reimplementing it — any drift
  * between a validate-time copy and the render-time original would silently
  * break the "what validate approved is what render draws" promise this gate
@@ -232,7 +232,7 @@ const BEAT_BASE_WEIGHT = 1
  * allowed set for all four slide types — kept for future/custom themes,
  * same "total function, never crash" posture as `resolveThemeId`).
  *
- * Pulled out of `FullSlideSvg.tsx`'s old private `resolveArchetype` (W3 task
+ * Pulled out of `full-slide-svg.tsx`'s old private `resolveArchetype` (W3 task
  * 3 extraction) so this exact selection logic has exactly one copy, callable
  * from both the render path and this module's own
  * `resolveEffectiveLayoutId` below.
@@ -302,7 +302,7 @@ export function resolveArchetypeId(
  * semantic authority that narrows and validates it, so the cast here is the
  * same one every other caller already performs.
  *
- * Exported (W4 fix round, Minor M3) so `FullSlideSvg.tsx` can call this
+ * Exported (W4 fix round, Minor M3) so `full-slide-svg.tsx` can call this
  * exact expression instead of keeping its own byte-identical copy — the
  * duplication was boilerplate (the cast + `.strategy` projection), not a
  * second selection-logic implementation, but one shared call site is
@@ -316,7 +316,7 @@ export function resolveIrStrategy(ir: PptxIR): Strategy {
 
 /**
  * Single per-slide resolution step, shared by the deck-wide fold below —
- * mirrors `FullSlideSvg.tsx`'s own dispatch order exactly:
+ * mirrors `full-slide-svg.tsx`'s own dispatch order exactly:
  *
  * 1. **Image-cover takeover** (cover/chapter with an asset background —
  *    `ImageCoverPage`): bespoke full-page chrome with no `LAYOUT_REGISTRY`
@@ -325,11 +325,11 @@ export function resolveIrStrategy(ir: PptxIR): Strategy {
  *    unaffected).
  * 2. **Image-family takeover** (`image-split`/`image-top`/`image-bottom`/
  *    `image-annotate` — `slide.layout` pinned to one of these *and* an
- *    `image` component present, `ImagePages.tsx`): returns that takeover id
+ *    `image` component present, `image-pages.tsx`): returns that takeover id
  *    itself. A pinned takeover id with no image component does **not**
  *    count — render's own `splitTakeover` check requires both, and falls
  *    through to the archetype path below when only the id is set (see
- *    `FullSlideSvg.test.tsx`'s "falls back to seed-pick... kind takeover not
+ *    `full-slide-svg.test.tsx`'s "falls back to seed-pick... kind takeover not
  *    archetype" case) — replicated here via the same `findImageComponent`
  *    helper render itself calls, not a re-derived condition.
  * 3. **Archetype** (the common case): delegates to `resolveArchetypeId`

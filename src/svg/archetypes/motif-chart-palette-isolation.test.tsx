@@ -11,7 +11,7 @@
 // byte-inertness contract) differed across seeds purely because a page
 // happening to also carry a different implicit chart-palette offset
 // repainted its crayon strokes in a different order. The existing
-// byte-inertness coverage (`motif-selection.test.ts`, `FullSlideSvg.test.tsx`)
+// byte-inertness coverage (`motif-selection.test.ts`, `full-slide-svg.test.tsx`)
 // only ever varied pageKey at a fixed seed, or varied seed only through the
 // pure `resolveMotifId` selection function (which never touched color) — so
 // this leak was invisible to every pre-fix test. This file isolates the
@@ -20,7 +20,7 @@
 // `ir`/`slide`/`tokens` fixed? Post-fix, the answer must always be no.
 import { describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { renderSvgMarkup } from "../serialize"
 import { CampaignMotif } from "./motif-campaign-motif"

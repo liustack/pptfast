@@ -20,7 +20,7 @@ import { layoutsForSlideType } from "../svg/layouts/registry"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 
 // 四页型注册表按 id 分发用的宽字符串索引视图（PAGE_ARCHETYPE_REGISTRIES 在
-// FullSlideSvg.tsx 用的同一模式）：THEME_DEFINITIONS.layouts 的 id 是通用
+// full-slide-svg.tsx 用的同一模式）：THEME_DEFINITIONS.layouts 的 id 是通用
 // string（W2 任务 2 起不再分页型细分 ID 联合类型），直接用窄 Record 类型索引
 // 会编译失败，故在测试里做同样的宽化视图。
 const COVER_REGISTRY: Record<string, unknown> = COVER_ARCHETYPES

@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { kpi } from "./kpi"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 
 const ctx: ComponentCtx = {
   colors: {

@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import type { StyleTokens } from "../../themes/tokens"
 import { BannerMotif } from "./motif-banner-motif"
@@ -15,7 +15,7 @@ import type { PptxIR, Slide } from "@/ir"
 // every slide type indiscriminately) resolves `defaultBg` to `tokens.colors.bg`
 // unconditionally, which is consulting's *cover/content* background
 // (`#F7F7F2`), never its actual chapter background (`#051C2C`). Production
-// (`FullSlideSvg.tsx`) always resolves `defaultBg` per the slide's own
+// (`full-slide-svg.tsx`) always resolves `defaultBg` per the slide's own
 // *actual* type; this helper mirrors that so these fixtures stay a faithful
 // simulation of production instead of accidentally exercising `readableOn`
 // against the wrong background.

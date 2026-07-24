@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { CornerOrnamentMotif } from "./motif-corner-ornament-motif"
 import type { PptxIR, Slide } from "@/ir"
@@ -38,7 +38,7 @@ function probeVariantA(theme: string): string {
 
 const ir = (theme: string): PptxIR => mkIr(theme, probeVariantA(theme))
 
-// BrandChrome's brand logo bands (BrandChrome.tsx logoBox: image at
+// BrandChrome's brand logo bands (brand-chrome.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br). Aligned with the same
 // constants/pattern used by academic.test.tsx and creative.test.tsx.
 const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { fitHeadingLines } from "../heading-fit"

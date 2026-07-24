@@ -7,7 +7,7 @@ import { measureTextUnits } from "../../lib/svg-text-layout"
 import { steps } from "./steps"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 
 const ctx: ComponentCtx = {
   colors: {

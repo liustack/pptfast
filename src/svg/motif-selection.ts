@@ -167,7 +167,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifAr
  * should draw its decor with. Mirrors `effective-layout.ts`'s
  * `resolveEffectiveLayoutId` signature/posture for the same reason: a single
  * authoritative function callable from both the render path
- * (`FullSlideSvg.tsx`) and tests/tooling (`motif-candidate-contrast.test.ts`)
+ * (`full-slide-svg.tsx`) and tests/tooling (`motif-candidate-contrast.test.ts`)
  * that want to know a page's pick without re-deriving the salt logic.
  *
  * - `ir.theme.id` has no entry in {@link MOTIF_CANDIDATES} (a registered/

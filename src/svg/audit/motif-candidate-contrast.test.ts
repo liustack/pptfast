@@ -32,7 +32,7 @@ import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { MOTIF_CANDIDATES, resolveMotifId } from "../motif-selection"
-import { resolveBackgroundHex } from "../FullSlideSvg"
+import { resolveBackgroundHex } from "../full-slide-svg"
 import { parseSvgRoot } from "../serialize"
 import { contrastRatio } from "../ink"
 

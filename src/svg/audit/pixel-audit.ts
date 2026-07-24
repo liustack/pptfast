@@ -348,7 +348,7 @@ async function pixelFindingsForPage(
  * `__pathBoundingBox` establish): lets `pixel-audit.test.ts` exercise the
  * sampling-grid + `PIXEL_HARD_FINDING_MAX_RATIO` threshold logic directly,
  * with a hand-crafted `rasterize` function returning exact, controlled
- * pixel data — real component geometry (`ImagePages.tsx`'s `DarkScrim`, in
+ * pixel data — real component geometry (`image-pages.tsx`'s `DarkScrim`, in
  * particular) turned out unable to organically produce a sub-1.5 ratio for
  * *any* photo brightness at the org-line's single-scrim-layer position
  * (confirmed empirically while building this task's own test suite: even a

@@ -50,7 +50,7 @@
  */
 import { describe, it, expect } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle, type CanonicalThemeId } from "../../themes"
 import type { PptxIR, Slide } from "@/ir"
 import { CONTENT_ARCHETYPES } from "./index-content"

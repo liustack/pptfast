@@ -1,7 +1,7 @@
 import { createElement } from "react"
 import type { PptxIR, Slide } from "@/ir"
 import { svgToOps, type Op } from "../pptx/svg2pptx/dispatch"
-import { FullSlideSvg } from "./FullSlideSvg"
+import { FullSlideSvg } from "./full-slide-svg"
 import { renderSvgMarkup, parseSvgRoot } from "./serialize"
 
 /**

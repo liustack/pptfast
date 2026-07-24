@@ -21,7 +21,7 @@ The densest defect history in this project — most of what's below exists becau
 
 ## `ctx.defaultBg`
 
-`FullSlideSvg.tsx` resolves one scalar default background per slide (`buildCtx`, doc comment at lines 140-159, assignment at 244-268) for archetypes that paint no panel of their own: theme's per-slide-type default (`resolveBackgroundHex`) → overridden by `slide.background` when set (`resolveOverrideBackgroundHex` — a gradient reduces to its midpoint, not the `.from` stop) → for an asset background, the *painted scrim color* (`themeDefaultBg`, the exact value `autoScrimColor` paints at `AUTO_SCRIM_OPACITY = 0.66`), never `colors.surface`. This chain exists to agree with what `deck-audit.ts` actually measures — an ink decision that disagrees with the rendered pixels is exactly the defect class this file's history is full of.
+`full-slide-svg.tsx` resolves one scalar default background per slide (`buildCtx`, doc comment at lines 140-159, assignment at 244-268) for archetypes that paint no panel of their own: theme's per-slide-type default (`resolveBackgroundHex`) → overridden by `slide.background` when set (`resolveOverrideBackgroundHex` — a gradient reduces to its midpoint, not the `.from` stop) → for an asset background, the *painted scrim color* (`themeDefaultBg`, the exact value `autoScrimColor` paints at `AUTO_SCRIM_OPACITY = 0.66`), never `colors.surface`. This chain exists to agree with what `deck-audit.ts` actually measures — an ink decision that disagrees with the rendered pixels is exactly the defect class this file's history is full of.
 
 ## Audit measurement (`src/svg/audit/deck-audit.ts`)
 
@@ -103,9 +103,9 @@ genuinely rendered ink, not of insufficient calibration:
     scratchpad, not shipped in this repo) found the codebase's largest
     concentration of unprotected, user-content-level `<text>` sits *outside*
     that scope entirely, by the same construction that already excludes
-    decoration/motif layers from this walk: `BrandChrome.tsx`'s footer
+    decoration/motif layers from this walk: `brand-chrome.tsx`'s footer
     (org/date/version), 18 cover/chapter/ending archetypes' own org label,
-    `ImagePages.tsx`'s raw org/date lines, and three archetypes' raw
+    `image-pages.tsx`'s raw org/date lines, and three archetypes' raw
     `slide.footnote` all render as page-level chrome — siblings of, never
     nested inside, any `data-audit-box`. None of that surface is touched by
     this fix. Being inside a tracked box is also arrangement-dependent, not
@@ -116,7 +116,7 @@ genuinely rendered ink, not of insufficient calibration:
     page-overflow check still sees it). Two confirmed, shipping instances
     the inventory found *inside* a tracked box: `matrix.tsx`'s `x_title`
     (rendered with zero width fit before this task) and `chart.tsx`'s
-    `axes.x_title`/`axes.y_title` (rendered inside `SvgContent.tsx`'s own
+    `axes.x_title`/`axes.y_title` (rendered inside `svg-content.tsx`'s own
     `data-audit-box` wrapper, same as any other normally-placed component) —
     the concrete cases this fix protects today for text that actually
     renders inside a live tracked box.
@@ -137,7 +137,7 @@ Sweeps every theme × slide type × curated archetype for the W4 defect class. T
 
 ## The optional pixel layer (`--pixels`, audit-v2 phase B)
 
-`findContrastIssues`'s `PaintedShape` walk (above) resolves a text's background from rendered SVG geometry — but a bare or too-faintly-scrimmed `<image>` gives it nothing to resolve: the walk correctly returns `null` rather than guess, and the text is skipped. `ImagePages.tsx`'s `ImageCoverPage` (the cover/chapter takeover for an asset background) is the one real archetype this happens on — its `DarkScrim` is three stacked `fill-opacity` bands (0.3/0.28/0.3), each individually below `MIN_BG_OPACITY` (0.5), so none of them ever become a `PaintedShape` and every heading/caption on that page resolves to "unknown, skip".
+`findContrastIssues`'s `PaintedShape` walk (above) resolves a text's background from rendered SVG geometry — but a bare or too-faintly-scrimmed `<image>` gives it nothing to resolve: the walk correctly returns `null` rather than guess, and the text is skipped. `image-pages.tsx`'s `ImageCoverPage` (the cover/chapter takeover for an asset background) is the one real archetype this happens on — its `DarkScrim` is three stacked `fill-opacity` bands (0.3/0.28/0.3), each individually below `MIN_BG_OPACITY` (0.5), so none of them ever become a `PaintedShape` and every heading/caption on that page resolves to "unknown, skip".
 
 `auditDeck(ir, { pixels: true })` (`src/svg/audit/pixel-audit.ts`) closes that one gap, and only that one — it does not re-check anything the SVG walk already resolved. Flow (spec §4.3):
 

@@ -9,7 +9,7 @@
 //    subset of this repo's own SVG output (gradient bands, a rounded arc
 //    path built the same way `insight_panel.tsx`/`roadmap.tsx`'s shared
 //    (private, unexported) `roundedTopBarPath` helper does, an embedded
-//    bitmap, stacked-translucency compositing matching `ImagePages.tsx`'s
+//    bitmap, stacked-translucency compositing matching `image-pages.tsx`'s
 //    `DarkScrim`) against independently-known-correct colors. Any one of
 //    these coming back visibly wrong is spec §11.9's pre-authorized trigger
 //    to swap this file's implementation for `@resvg/resvg-js` — see this
@@ -96,8 +96,8 @@ describe("isMissingModuleError", () => {
 // ────────────────────────────────────────────────────────────────────────
 
 describe("rasterizeSvg (Sharp) — real-SVG-subset fidelity probe", () => {
-  it("gradient bands: renders Background.tsx's own 24-solid-rect-band approximation with exact per-band color", async () => {
-    // Mirrors gradient-bands.ts + Background.tsx's tb-direction band layout
+  it("gradient bands: renders background.tsx's own 24-solid-rect-band approximation with exact per-band color", async () => {
+    // Mirrors gradient-bands.ts + background.tsx's tb-direction band layout
     // exactly (same band count, same rounding) — the actual markup this
     // renderer emits for `background: { kind: "gradient" }` is a stack of
     // opaque <rect> bands, never a real <linearGradient>, so this is the
@@ -159,7 +159,7 @@ describe("rasterizeSvg (Sharp) — real-SVG-subset fidelity probe", () => {
     expect(pixelAt(image, 102, 102)).toEqual([0xff, 0xff, 0xff, 255]) // just outside the rounded top-left corner — must stay background, not bleed
   })
 
-  it("embedded bitmap: a real PNG asset (the exact <image href=data:...> shape Background.tsx emits for an asset background) rasterizes both regions to their known colors", async () => {
+  it("embedded bitmap: a real PNG asset (the exact <image href=data:...> shape background.tsx emits for an asset background) rasterizes both regions to their known colors", async () => {
     const uri = makeSolidRegionPngDataUri(40, 40, (_x, y) => (y < 20 ? [0xff, 0xee, 0x33] : [0x0b, 0x12, 0x20]))
     const svg = `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg"><image href="${uri}" x="0" y="0" width="1280" height="720" preserveAspectRatio="xMidYMid slice"/></svg>`
     const image = await rasterize(svg)
@@ -168,8 +168,8 @@ describe("rasterizeSvg (Sharp) — real-SVG-subset fidelity probe", () => {
     expect(pixelAt(image, 200, 600)).toEqual([0x0b, 0x12, 0x20, 255])
   })
 
-  it("transparency: stacked translucent rects (ImagePages.tsx's own DarkScrim shape — three overlapping fill-opacity bands) composite within 2/255 of independently-computed sequential alpha blending", async () => {
-    // DarkScrim's exact three bands (ImagePages.tsx): full-height 0.3, bottom
+  it("transparency: stacked translucent rects (image-pages.tsx's own DarkScrim shape — three overlapping fill-opacity bands) composite within 2/255 of independently-computed sequential alpha blending", async () => {
+    // DarkScrim's exact three bands (image-pages.tsx): full-height 0.3, bottom
     // 45% at 0.28, bottom 22% at 0.3, all #0A0E14 — over a bright yellow
     // stand-in background so the compounding is visible at every sample
     // point. Tolerance (not exact-equality) is deliberate and itself part of

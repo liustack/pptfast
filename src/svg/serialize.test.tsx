@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "./serialize"
-import { SvgContent } from "./SvgContent"
+import { SvgContent } from "./svg-content"
 import { svgToOps } from "../pptx/svg2pptx/dispatch"
 import { SLIDE_W_IN } from "../constants"
 import type { ComponentCtx } from "./components/types"

@@ -3,7 +3,7 @@
  * Contrast-aware ink selection, shared by every archetype that either paints
  * its own background panel (a `colors.primary`/`colors.accent`-filled block)
  * or relies on the page-level default background `FullSlideSvg` paints
- * behind it (`ctx.defaultBg` — see `FullSlideSvg.tsx`'s `buildCtx`).
+ * behind it (`ctx.defaultBg` — see `full-slide-svg.tsx`'s `buildCtx`).
  *
  * Extracted (W4 fix round) from `cover-split-diagonal.tsx`'s `readableOn` —
  * that function already had cross-file consumers before this extraction

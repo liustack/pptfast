@@ -20,7 +20,7 @@ export interface ComponentCtx {
    * The resolved background colour (hex) actually painted behind the slide
    * currently rendering, reduced to one representative value. Prefers the
    * slide's own `slide.background` override when it sets one (reduced via
-   * `FullSlideSvg.tsx`'s `resolveOverrideBackgroundHex` — a gradient's exact
+   * `full-slide-svg.tsx`'s `resolveOverrideBackgroundHex` — a gradient's exact
    * midpoint, not its `from` stop), else falls back to the theme's own
    * `tokens.defaultBackgrounds[slide.type]` (reduced via that file's
    * `resolveBackgroundHex`, `.from` for a gradient — W4 fix round; per-slide
@@ -28,7 +28,7 @@ export interface ComponentCtx {
    * `.issues/notes/2026-07-18-post-v03-backlog.md` #1). Consumed by
    * `../ink`'s `readableOn`/`accessibleInk` in archetypes that paint no
    * background panel of their own and so sit directly on whatever
-   * `Background.tsx` painted behind them (e.g. `chapter-rail-chapter.tsx`)
+   * `background.tsx` painted behind them (e.g. `chapter-rail-chapter.tsx`)
    * — an archetype that paints its *own* panel (e.g.
    * `content-banner-heading.tsx`'s banner rect) uses that panel's own color
    * (`ctx.colors.primary`) instead, not this field.
@@ -49,7 +49,7 @@ export interface ComponentCtx {
    * Body-text baseline font size (px, 1280×720 slide geometry) for the
    * paragraph/bullets/callout trio — "正文" = continuous running text, per
    * spec §5's pacing table body-baseline column (W4 design decision 9).
-   * Sourced from a single seam: `FullSlideSvg.tsx`'s `buildCtx` resolves
+   * Sourced from a single seam: `full-slide-svg.tsx`'s `buildCtx` resolves
    * `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`
    * (`@/narrative`) — dense=20 / balanced=24 / spacious=32 — and no
    * component recomputes it. Every other component's own bespoke type

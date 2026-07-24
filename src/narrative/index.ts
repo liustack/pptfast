@@ -428,7 +428,7 @@ export interface PacingBudget {
   /**
    * Body-text baseline, in px, at 1280×720 slide geometry (spec §5 pacing
    * table's body-baseline column). Wired into rendering as of W4 task 3
-   * (design decision 9): `src/svg/FullSlideSvg.tsx` resolves
+   * (design decision 9): `src/svg/full-slide-svg.tsx` resolves
    * `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`
    * once and passes it into `buildCtx`, which stores it as
    * `ComponentCtx.bodyFontPx` — the sole font-size input for the

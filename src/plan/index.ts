@@ -126,7 +126,7 @@ export const DeckSpecSchema = z
      *  shape, same pattern as `meta` just above. Unlike `meta`, no
      *  `.default({})`: IR's own `brand` field is a bare `.optional()` with no
      *  default either (`undefined` means "no brand", not "an empty brand
-     *  object") — consumed by `BrandChrome` (`src/svg/BrandChrome.tsx`) for
+     *  object") — consumed by `BrandChrome` (`src/svg/brand-chrome.tsx`) for
      *  the deck's logo image and corner position. */
     brand: BrandSchema.optional(),
     pages: z.array(PageSpecSchema),

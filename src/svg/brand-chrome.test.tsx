@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import { BrandChrome } from "./BrandChrome"
+import { BrandChrome } from "./brand-chrome"
 import type { PptxIR, Slide } from "@/ir"
 import type { ComponentCtx } from "./components/types"
 

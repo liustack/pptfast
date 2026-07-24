@@ -471,7 +471,7 @@ const UNTITLED_HEADING = "Untitled"
  * Round-trip-safe despite the above, worth calling out because of that name
  * collision: the top-level `brand` field (`BrandSchema` — `logo_asset_id` /
  * `position`, the deck logo/position `BrandChrome` reads,
- * `src/svg/BrandChrome.tsx`) is a plain passthrough on both sides
+ * `src/svg/brand-chrome.tsx`) is a plain passthrough on both sides
  * ({@link assembleDeck} step 6 reads `spec.brand` into `ir.brand` — this
  * function reads `ir.brand` back into `spec.brand` below) — carried through
  * unmodified, same as `narrative`/`filename`/`seed`, never

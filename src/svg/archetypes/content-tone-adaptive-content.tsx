@@ -1,6 +1,6 @@
 // GF/svg/archetypes/content-tone-adaptive-content.tsx
 import type { SvgTemplateProps } from "./types"
-import { SvgContent } from "../SvgContent"
+import { SvgContent } from "../svg-content"
 import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"

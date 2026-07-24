@@ -12,7 +12,7 @@ import {
  * Equivalence lock (W2 task 5): `component-traits.ts` unifies 5 component-
  * classification sets that used to live scattered across `layout.ts`,
  * `bento-layout.ts`, two archetype files (a duplicate pair), and
- * `AssertionEvidence.tsx` (inventory §"容量双系统"). Unifying them doesn't
+ * `assertion-evidence.tsx` (inventory §"容量双系统"). Unifying them doesn't
  * change what any of them classify — every export below is pinned against
  * the exact members transcribed from its pre-refactor definition (file:line
  * cited per block, read straight from source before the merge). This is a
@@ -68,9 +68,9 @@ describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-1
   })
 })
 
-describe("EVIDENCE_TYPES equivalence (was AssertionEvidence.tsx:8-13) — order is load-bearing", () => {
+describe("EVIDENCE_TYPES equivalence (was assertion-evidence.tsx:8-13) — order is load-bearing", () => {
   it("matches the pre-refactor priority order exactly, not just membership", () => {
-    // AssertionEvidence.tsx:8-13 (pre-refactor):
+    // assertion-evidence.tsx:8-13 (pre-refactor):
     // ["chart", "image", "comparison", "kpi_cards"] as const satisfies readonly Component["type"][]
     expect(EVIDENCE_TYPES).toEqual(["chart", "image", "comparison", "kpi_cards"])
   })

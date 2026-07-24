@@ -768,10 +768,10 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 // ─────────────────────────────────────────────────────────────────────────
 // Image takeover layouts (4) — `slide.layout` ids for the page-level
 // `image-split`/`image-top`/`image-bottom`/`image-annotate` takeovers
-// (FullSlideSvg.tsx's splitTakeover branch, keyed off `getLayout(slide.
+// (full-slide-svg.tsx's splitTakeover branch, keyed off `getLayout(slide.
 // layout)?.kind === "takeover"` since W2 task 3 — originally 4 snake_case
 // `slide.variant` values): bespoke full-page compositions that intercept
-// *before* any archetype runs, implemented by src/svg/ImagePages.tsx.
+// *before* any archetype runs, implemented by src/svg/image-pages.tsx.
 // `slideTypes` is written as `["content"]`, and task 3's applicability gate
 // (api.ts `checkLayoutApplicability`) now enforces it as a validate hard
 // error — before that gate existed, these ids were schema-legal on any
@@ -781,11 +781,11 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 // ─────────────────────────────────────────────────────────────────────────
 const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   "image-split": {
-    // ImagePages.tsx ImageSplitPage: full-height bleed image in a fixed
+    // image-pages.tsx ImageSplitPage: full-height bleed image in a fixed
     // column (first image component; optional caption overlay), kicker + heading
     // + rule + subheading in the text column, then the remaining components as
     // body — hardcoded arrangement "single" (layoutContentFit("single", ...),
-    // ImagePages.tsx:209-214), not exposed via `arrangements` (takeover
+    // image-pages.tsx:209-214), not exposed via `arrangements` (takeover
     // kind, not archetype).
     id: "image-split",
     kind: "takeover",
@@ -797,10 +797,10 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "image-top": {
-    // ImagePages.tsx ImageTopPage: full-width top-band bleed image (first
+    // image-pages.tsx ImageTopPage: full-width top-band bleed image (first
     // image component, no caption render), heading band, remaining components split
     // into up to 3 columns as body — each column hardcoded "single"
-    // (ImagePages.tsx:360).
+    // (image-pages.tsx:360).
     id: "image-top",
     kind: "takeover",
     slideTypes: ["content"],
@@ -810,8 +810,8 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "image-bottom": {
-    // ImagePages.tsx ImageBottomPage: centered heading/rule/subheading,
-    // remaining components as body (hardcoded "single", ImagePages.tsx:682-687),
+    // image-pages.tsx ImageBottomPage: centered heading/rule/subheading,
+    // remaining components as body (hardcoded "single", image-pages.tsx:682-687),
     // then a full-width bottom-band bleed image (first image component) with an
     // optional caption overlay.
     id: "image-bottom",
@@ -824,10 +824,10 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "image-annotate": {
-    // ImagePages.tsx ImageAnnotatePage: centered heading + subheading,
+    // image-pages.tsx ImageAnnotatePage: centered heading + subheading,
     // framed center image (first image component) with optional caption, and up
     // to 4 corner annotations sourced from the *first bullets component's* items
-    // (bulletsComponent.items.slice(0, 4), ImagePages.tsx:479-482). Deliberate
+    // (bulletsComponent.items.slice(0, 4), image-pages.tsx:479-482). Deliberate
     // deviation from the brief's base "image + body" takeover shape: unlike
     // the other 3 takeovers, this renderer never builds a `rest` of
     // leftover components — nothing besides the found image + bullets component is

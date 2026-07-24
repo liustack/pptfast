@@ -10,7 +10,7 @@ read_when:
 
 ## The single source of truth
 
-`resolveArchetypeId` (`src/svg/effective-layout.ts:85`) is the *only* place the selection mechanics live. `FullSlideSvg.tsx`'s render path and `ir-quality.ts`'s validate-time density gate both call it — never a second copy. The module's own header states the invariant this exists to protect: "what validate approved is what render draws." Do not duplicate this function's body — extend or call it. An explicit `slide.layout` short-circuits every step below unconditionally (bypasses curation, `narrativesOnly`, and weighting — it is a pin, not a preference).
+`resolveArchetypeId` (`src/svg/effective-layout.ts:85`) is the *only* place the selection mechanics live. `full-slide-svg.tsx`'s render path and `ir-quality.ts`'s validate-time density gate both call it — never a second copy. The module's own header states the invariant this exists to protect: "what validate approved is what render draws." Do not duplicate this function's body — extend or call it. An explicit `slide.layout` short-circuits every step below unconditionally (bypasses curation, `narrativesOnly`, and weighting — it is a pin, not a preference).
 
 ## Four deterministic steps
 

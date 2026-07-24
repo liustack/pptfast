@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { auditSvgMarkup } from "../audit/svg-audit"
 import { measureTextUnits } from "../../lib/svg-text-layout"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { BentoPanelContent } from "./content-bento-panel"
 import type { Component, PptxIR, Slide } from "@/ir"
@@ -97,13 +97,13 @@ const SOLO_KPI_TECH_MARKUP =
 // 20px) makes each demo item taller, so the SvgContent single-stack
 // fallback (see the test below) now only fits 6 of the 7 items instead of
 // 7 — the 7th drops via SvgContent's own pre-existing overflow-marker path
-// ("+1 more", already covered independently by SvgContent.test.tsx's
+// ("+1 more", already covered independently by svg-content.test.tsx's
 // "renders a dropped-count marker when components overflow the rect").
 // This is a capacity-number shift caused by the font-size default change,
 // not a behavior change in the drop/marker mechanism itself.
 // Bench-driven fix round (defect E) re-pin: the "+1 more" marker now carries
 // `data-dropped="1"` — the audit-visibility marker `deck-audit.ts`'s new
-// `content-dropped` finding reads (`SvgContent.tsx`'s own doc comment).
+// `content-dropped` finding reads (`svg-content.tsx`'s own doc comment).
 // Attribute-only diff, zero geometry change.
 const OVERFLOW_TECH_MARKUP =
   '<text x="96" y="150" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="44" font-weight="700" fill="#F2F6FA" dominant-baseline="alphabetic">七项要点</text><g data-audit-rect="96,186,1088,454"><g data-audit-box="96,186,1088"><g transform="translate(96,186)"><circle cx="5" cy="18.8" r="3" fill="#2DD4E6"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#F2F6FA" dominant-baseline="alphabetic">要点 0</text></g></g><g data-audit-box="96,252,1088"><g transform="translate(96,252)"><circle cx="5" cy="18.8" r="3" fill="#2DD4E6"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#F2F6FA" dominant-baseline="alphabetic">要点 1</text></g></g><g data-audit-box="96,318,1088"><g transform="translate(96,318)"><circle cx="5" cy="18.8" r="3" fill="#2DD4E6"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#F2F6FA" dominant-baseline="alphabetic">要点 2</text></g></g><g data-audit-box="96,384,1088"><g transform="translate(96,384)"><circle cx="5" cy="18.8" r="3" fill="#2DD4E6"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#F2F6FA" dominant-baseline="alphabetic">要点 3</text></g></g><g data-audit-box="96,450,1088"><g transform="translate(96,450)"><circle cx="5" cy="18.8" r="3" fill="#2DD4E6"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#F2F6FA" dominant-baseline="alphabetic">要点 4</text></g></g><g data-audit-box="96,516,1088"><g transform="translate(96,516)"><circle cx="5" cy="18.8" r="3" fill="#2DD4E6"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#F2F6FA" dominant-baseline="alphabetic">要点 5</text></g></g><text data-dropped="1" x="1184" y="634" text-anchor="end" font-size="14" fill="#8A94A6" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" dominant-baseline="alphabetic">+1 more</text></g>'

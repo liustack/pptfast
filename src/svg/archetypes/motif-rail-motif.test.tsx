@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import type { StyleTokens } from "../../themes/tokens"
 import { assertSubset } from "../subset-validate"
@@ -15,7 +15,7 @@ import type { PptxIR, Slide } from "@/ir"
 // every slide type indiscriminately) resolves `defaultBg` to `tokens.colors.bg`
 // unconditionally, which is academic's *cover/content* background
 // (`#FAFAF6`), never its actual chapter background (`#006A4E`). Production
-// (`FullSlideSvg.tsx`) always resolves `defaultBg` per the slide's own
+// (`full-slide-svg.tsx`) always resolves `defaultBg` per the slide's own
 // *actual* type; this helper mirrors that so these fixtures stay a faithful
 // simulation of production instead of accidentally exercising `readableOn`
 // against the wrong background.

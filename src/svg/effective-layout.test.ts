@@ -4,7 +4,7 @@ import { createElement } from "react"
 import { render } from "@testing-library/react"
 import type { PptxIR, Slide } from "@/ir"
 import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
-import { FullSlideSvg } from "./FullSlideSvg"
+import { FullSlideSvg } from "./full-slide-svg"
 import { getLayout, layoutsForSlideType } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 import { THEME_DEFINITIONS } from "../themes/definitions"
@@ -891,7 +891,7 @@ describe("render parity with FullSlideSvg", () => {
     },
     {
       // P1 variety wave, task 1: proves FullSlideSvg's own local
-      // `resolveArchetype` wrapper (`FullSlideSvg.tsx`) threads `slide.beat`
+      // `resolveArchetype` wrapper (`full-slide-svg.tsx`) threads `slide.beat`
       // through to `resolveArchetypeId` the same way this module's
       // `resolveOneEffectiveLayoutId` does — a render-time drift here (one
       // side reading beat, the other silently dropping it) would break the
@@ -915,7 +915,7 @@ describe("render parity with FullSlideSvg", () => {
   // anti-repetition redraw (W4 design decision 4) never fires in any
   // render-parity case. The dedicated anti-repetition unit tests (this
   // file's `resolveArchetypeId` describe block, and
-  // `FullSlideSvg.test.tsx`'s own "content 页相邻防重复") cover the
+  // `full-slide-svg.test.tsx`'s own "content 页相邻防重复") cover the
   // mechanism itself, but never through an actual `FullSlideSvg` render at
   // the page where the swap lands. This fixture closes that gap: a genuine
   // multi-page collision, at index>0, run through the same render-parity

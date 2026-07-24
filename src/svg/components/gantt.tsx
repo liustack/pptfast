@@ -7,7 +7,7 @@ type GanttComponent = Extract<Component, { type: "gantt" }>
 /**
  * Shared-axis time-bar chart (structure-components wave task 2, decision 6):
  * a full-body component (`FULL_BODY_TYPES`, `component-traits.ts`) — the sole
- * component `SvgContent.tsx` ever hands this to fills the whole content rect,
+ * component `svg-content.tsx` ever hands this to fills the whole content rect,
  * no sibling components on the same slide (`checkFullBodyExclusivity`,
  * `api.ts`).
  *

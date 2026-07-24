@@ -153,7 +153,7 @@ const DEFAULT_FONT_SIZE = 16
  * decoration would be false-positive noise on every deck that uses it.
  *
  * Empirical basis (found while investigating this task, not guessed):
- * `SlideDecor.tsx`'s `big_number`/`quote_marks` watermark decorations render
+ * `slide-decor.tsx`'s `big_number`/`quote_marks` watermark decorations render
  * at 0.08-0.24 `fill-opacity` by design (a giant page-number/quote-mark meant
  * to be barely visible), while every *readable* de-emphasized text found
  * across the theme set (fashion cover/chapter/ending meta lines, kpi delta
@@ -233,7 +233,7 @@ export function blendOver(fg: string, bg: string, alpha: number): string {
  * (W6) version of this task: the smallest legitimate background this
  * renderer paints is a content page's `colors.primary` assertion banner
  * (`content-banner-heading.tsx`, 1088×88 = 95,744px²) or a kpi card shell
- * (`kpi.tsx`, ~262×120 = 31,440px²) or one gradient band (`Background.tsx`,
+ * (`kpi.tsx`, ~262×120 = 31,440px²) or one gradient band (`background.tsx`,
  * 24 bands over 1280×720 ≈ 1280×31 = 39,680px² for a `tb` gradient); the
  * largest decorative accent found is `icon-cards.tsx`'s corner bar
  * (32×3 = 96px²) and the largest badge/dot circle is `steps.tsx`'s numbered
@@ -264,7 +264,7 @@ const MIN_BG_REGION_AREA = 8000
  * A translucent overlay/scrim below this opacity doesn't visually dominate
  * enough to trust its own raw colour as a stand-in for "the background text
  * sits on" — the unknown layer beneath it (a photo) would still show through
- * too much. `Background.tsx`'s own auto-scrim (`AUTO_SCRIM_OPACITY = 0.66`)
+ * too much. `background.tsx`'s own auto-scrim (`AUTO_SCRIM_OPACITY = 0.66`)
  * and a typical author-authored `overlay.opacity` both clear this easily; a
  * faint decorative tint does not.
  */
@@ -1136,7 +1136,7 @@ export interface ContrastIssue {
  * single paint color (`backgroundAt` returned `null`) — the pixel-audit
  * blind spot spec §4.3 exists to fill (audit-v2 phase B): in practice this
  * is a run painted directly over a bare/faintly-scrimmed `<image>` (a real
- * photo, e.g. `ImagePages.tsx`'s `ImageCoverPage` — its own `DarkScrim`
+ * photo, e.g. `image-pages.tsx`'s `ImageCoverPage` — its own `DarkScrim`
  * bands are all individually below `MIN_BG_OPACITY`, so none of them ever
  * become a `PaintedShape`, and `backgroundAt` falls through to the bare
  * image underneath). `left`/`right`/`baseline` are the same font-metric
@@ -1199,7 +1199,7 @@ function directText(el: Element): string {
  * most-recent-first, i.e. topmost in paint order) actually *contains* its
  * position — an exact ellipse test for `<circle>`/`<ellipse>`, a bounding-box
  * test for the other three (see `rectShape`/`ellipseShape`/`pathBoundingBox`).
- * This one mechanism covers the page background (`Background.tsx` always
+ * This one mechanism covers the page background (`background.tsx` always
  * paints first), a gradient's individual bands (each is its own shape — more
  * precise than any single midpoint), local panels/cards/banners (the
  * bento-card/kpi/icon-card/banner-heading shell `<rect>`s), a self-painted
@@ -1249,7 +1249,7 @@ function directText(el: Element): string {
  * never fix a misattribution.
  *
  * One more exclusion sits on top of the shape model above: anything inside
- * a `<g data-decor>` subtree (`FullSlideSvg.tsx`'s exact wrapper around
+ * a `<g data-decor>` subtree (`full-slide-svg.tsx`'s exact wrapper around
  * `themeDef.motif`'s output — verified there, not assumed) never becomes a
  * candidate, full stop, regardless of size/opacity/fill. Decoration is
  * layered *over* the real background, not a stand-in for it — but nothing in
@@ -1393,7 +1393,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     // SVG rendering (each ancestor's own opacity<1 further dims everything
     // inside it), so this accumulator multiplies rather than overrides.
     const currentOpacityProduct = opacityProduct * (ownOpacity !== null ? Number(ownOpacity) : 1)
-    // `data-decor` is `FullSlideSvg.tsx`'s exact wrapper around theme motif
+    // `data-decor` is `full-slide-svg.tsx`'s exact wrapper around theme motif
     // output — once entered it marks this element *and* every descendant
     // (subtree exclusion, not just this node), same "sticky" accumulation
     // pattern as `currentOpacityProduct` above.
@@ -1605,7 +1605,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
           // `background === null` — the pixel-audit blind spot
           // (`ImageBackedTextRun`'s own doc comment): a run painted over a
           // bare/faintly-scrimmed `<image>`, or (never observed in practice
-          // — this renderer's `Background.tsx` always paints a full-bleed
+          // — this renderer's `background.tsx` always paints a full-bleed
           // layer first) truly nothing at all. Same decorative-alpha
           // exclusion as the resolved-background branch above — a
           // near-invisible watermark shouldn't demand a pixel sample any
@@ -1706,7 +1706,7 @@ export interface OverlapIssue {
  * nested one).
  *
  * `data-audit-box` only ever carries `x,y,w` (verified across every emitter
- * in `src/svg`: `SvgContent.tsx` and every card/list component) — never a
+ * in `src/svg`: `svg-content.tsx` and every card/list component) — never a
  * height, because the existing protocol only ever needed width, for the
  * h-overflow check it was built for. This walk reconstructs height the same
  * way the *overflow* auditor reconstructs a text's vertical extent: from
@@ -1860,7 +1860,7 @@ function collectLeafBoxes(root: Element): DerivedBox[] {
  * components' boxes collide).
  *
  * Decoration/motif layers need no special exclusion here: every motif
- * (`archetypes/motif-*.tsx`) and `SlideDecor.tsx` render exclusively outside
+ * (`archetypes/motif-*.tsx`) and `slide-decor.tsx` render exclusively outside
  * the `data-audit-box`/`data-audit-rect` protocol (verified against every
  * motif file and empirically against real rendered markup across five
  * heavily-decorated themes while building this check) — `collectLeafBoxes`

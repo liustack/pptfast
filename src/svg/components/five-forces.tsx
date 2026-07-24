@@ -17,7 +17,7 @@ type Intensity = "low" | "medium" | "high"
  * substitutes below) and each connects to the center with a native `<line>`
  * — the diagram's own hub-and-spoke identity, not a decorative flourish. A
  * full-body component (`FULL_BODY_TYPES`, `component-traits.ts`) — the only
- * component `SvgContent.tsx` ever hands this to fills the whole content
+ * component `svg-content.tsx` ever hands this to fills the whole content
  * rect, no sibling components on the same slide (`checkFullBodyExclusivity`,
  * `api.ts`).
  *
@@ -31,7 +31,7 @@ type Intensity = "low" | "medium" | "high"
  * **Undersized-box shrink is real here too** (`bmc.tsx`'s own bench-driven
  * fix-round defect F, ported proactively rather than rediscovered): a
  * full-body component gets the archetype's *fixed* content-rect height
- * verbatim (`SvgContent.tsx`), never a box sized to its own `measure()`
+ * verbatim (`svg-content.tsx`), never a box sized to its own `measure()`
  * value, and this component's schema-max content (5 items in every one of
  * the 5 panels) can exceed even the narrowest curated content rect —
  * confirmed empirically the same way bmc's own defect was (this file's
