@@ -869,7 +869,7 @@ function pathBoundingBoxByTokenMinMax(d: string): { x: number; y: number; w: num
  * grammar-aware (`pathBoundingBoxByGrammar`): walks `d` command-by-command
  * so an arc's own `rx`/`ry`/`x-axis-rotation`/flag numbers never get
  * mistaken for more `(x, y)` coordinates, the defect that used to inflate
- * `insight_panel.tsx`/`roadmap.tsx`'s shared `roundedTopBarPath` accent bar
+ * `insight-panel.tsx`/`roadmap.tsx`'s shared `roundedTopBarPath` accent bar
  * (a real ~6px-tall bar) to a ~1184×1182px bbox dwarfing the 1280×720
  * canvas — confirmed via a real render before this fix, re-pinned by
  * `deck-audit.test.ts`'s own characterization test. Line commands are

@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { insightPanel } from "./insight_panel"
+import { insightPanel } from "./insight-panel"
 import type { ComponentCtx } from "./types"
 
 const ctx: ComponentCtx = {

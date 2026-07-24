@@ -848,7 +848,7 @@ type MutedSurfaceClass =
  * - `"flat-surface"`: renders `colors.muted` text over a card/panel whose
  *   fill is the *same*, unblended `colors.surface` token the bento-panel
  *   check above already locks (`icon-cards.tsx`/`kpi.tsx`'s card shell/
- *   `roadmap.tsx`'s card/`insight_panel.tsx`'s panel/`row-cards.tsx`'s
+ *   `roadmap.tsx`'s card/`insight-panel.tsx`'s panel/`row-cards.tsx`'s
  *   card/`steps.tsx`'s horizontal-mode card/`image*.tsx`'s missing-asset
  *   placeholder rect all use `fill={ctx.colors.surface}` verbatim, grepped
  *   and read individually) — re-rendering would just re-verify the
@@ -941,9 +941,9 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // The one real "needs-fixture" gap this fix round closes — see the
   // dedicated describe block below.
   matrix: "needs-fixture",
-  // insight_panel.tsx's footnote/row text sits on the panel's
+  // insight-panel.tsx's footnote/row text sits on the panel's
   // colors.surface shell (flat-surface) — same roundedTopBarPath phantom-
-  // background history as roadmap above (insight_panel.tsx uses the
+  // background history as roadmap above (insight-panel.tsx uses the
   // identical helper), **resolved** the same way (`fix/arc-bbox`). Unlike
   // roadmap, insight_panel has no badge circle, but its own `title` had the
   // same unguarded-`colors.accent`-on-phantom-region defect as roadmap's

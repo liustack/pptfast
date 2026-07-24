@@ -1710,7 +1710,7 @@ describe("auditDeck — raw/unvalidated-input guard (Task 2, borrow wave — A4)
 // numeric token from a path's `d` and min/max them, blind to path grammar —
 // exact for straight-line polygons, silently wrong for an `A`/`a` arc
 // command, whose own rx/ry/rotation/flag numbers got paired as if they were
-// more (x,y) coordinates. `insight_panel.tsx`/`roadmap.tsx`'s shared
+// more (x,y) coordinates. `insight-panel.tsx`/`roadmap.tsx`'s shared
 // `roundedTopBarPath` accent bar hit this dead-on: a real ~6px-tall bar
 // inflated to a ~1184×1182px bbox dwarfing the 1280×720 canvas (recorded in
 // docs/contrast-system.md's former "Known limitation" paragraph and
@@ -1728,7 +1728,7 @@ describe("__pathBoundingBox — arc-bbox root fix (fix/arc-bbox)", () => {
   // `roundedTopBarPath(96, 322.34.., 1088, 6, 2)`'s exact output. Kept as a
   // literal (not re-derived from the component) so this test stays a fixed
   // characterization of the real defect, immune to unrelated future layout
-  // changes in insight_panel.tsx's own padding/measurement math.
+  // changes in insight-panel.tsx's own padding/measurement math.
   const REAL_ACCENT_BAR_D =
     "M 96 322.34000000000003 A 2 2 0 0 1 98 320.34000000000003 " +
     "L 1182 320.34000000000003 A 2 2 0 0 1 1184 322.34000000000003 " +
@@ -2115,7 +2115,7 @@ describe("__pathBoundingBox — compressed SVG arc-flag fix (fix/arc-bbox, flag-
 
 // Arc-bbox root fix, reclassification sweep: fixing `pathBoundingBox` (above)
 // exposed a *real* defect the old bug had been masking, not just resolving
-// false positives. `insight_panel.tsx`'s title and `roadmap.tsx`'s period
+// false positives. `insight-panel.tsx`'s title and `roadmap.tsx`'s period
 // text both render an unguarded `colors.accent` fill with no
 // `accessibleInk` wrap — pre-fix, deck-audit.ts's `backgroundAt` resolved
 // both against the accent bar's own bogus ~whole-card phantom region, whose
@@ -2129,7 +2129,7 @@ describe("__pathBoundingBox — compressed SVG arc-flag fix (fix/arc-bbox, flag-
 // (`accessibleInk`, same file, established precedent) — these two tests are
 // the red->green pin for that fix, using two of the eight affected themes.
 describe("auditDeck — arc-bbox reclassification ink fixes (fix/arc-bbox)", () => {
-  it("insight_panel.tsx's title clears contrast against academic's accent-on-surface pairing once measured against its real panel background", () => {
+  it("insight-panel.tsx's title clears contrast against academic's accent-on-surface pairing once measured against its real panel background", () => {
     const ir = deck("academic", [
       {
         type: "content",

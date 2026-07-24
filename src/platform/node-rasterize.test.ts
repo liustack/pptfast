@@ -7,7 +7,7 @@
 // 2. The red-first Sharp/librsvg fidelity probe spec §11.9's escape clause
 //    demands *before* this task's implementation is trusted: render a real
 //    subset of this repo's own SVG output (gradient bands, a rounded arc
-//    path built the same way `insight_panel.tsx`/`roadmap.tsx`'s shared
+//    path built the same way `insight-panel.tsx`/`roadmap.tsx`'s shared
 //    (private, unexported) `roundedTopBarPath` helper does, an embedded
 //    bitmap, stacked-translucency compositing matching `image-pages.tsx`'s
 //    `DarkScrim`) against independently-known-correct colors. Any one of
@@ -133,7 +133,7 @@ describe("rasterizeSvg (Sharp) — real-SVG-subset fidelity probe", () => {
     expect(pixelAt(image, 10, midY)).toEqual([er12, eg12, eb12, 255])
   })
 
-  it("rounded arc path: the exact d-string grammar insight_panel.tsx/roadmap.tsx's shared roundedTopBarPath builds rasterizes with exact fill color, inside and outside the curve", async () => {
+  it("rounded arc path: the exact d-string grammar insight-panel.tsx/roadmap.tsx's shared roundedTopBarPath builds rasterizes with exact fill color, inside and outside the curve", async () => {
     // roundedTopBarPath's own formula (both components keep it module-private
     // — see deck-audit.ts's own doc comment on the same shape), reproduced
     // here at larger scale (an easier-to-sample stand-in for the real ~6px
