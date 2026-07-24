@@ -40,6 +40,10 @@ import { aliases as rowCardsAliases } from "./components/row-cards"
 import { aliases as stepsAliases } from "./components/steps"
 import { aliases as numberedCardsAliases } from "./components/numbered-cards"
 import { aliases as verdictBannerAliases } from "./components/verdict-banner"
+import { aliases as swotAliases } from "./components/swot"
+import { aliases as bmcAliases } from "./components/bmc"
+import { aliases as waterfallAliases } from "./components/waterfall"
+import { aliases as ganttAliases } from "./components/gantt"
 
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
@@ -65,26 +69,12 @@ export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = 
   // predictable weak-model slip for a 4-named-array schema like `swot`'s —
   // a model reaching for "strength" when the field holds a *list* of
   // strengths.
-  swot: {
-    strength: "strengths",
-    weakness: "weaknesses",
-    opportunity: "opportunities",
-    threat: "threats",
-  },
+  swot: swotAliases.block,
   // bmc's canonical keys are the Osterwalder canvas's own compound names
   // (`key_partners`, `customer_segments`, …) — a model that knows the
   // business-model-canvas vocabulary but not this schema's exact key
   // spelling reaches for the shorter/bare noun instead.
-  bmc: {
-    partners: "key_partners",
-    activities: "key_activities",
-    resources: "key_resources",
-    value_proposition: "value_propositions",
-    relationships: "customer_relationships",
-    segments: "customer_segments",
-    costs: "cost_structure",
-    revenue: "revenue_streams",
-  },
+  bmc: bmcAliases.block,
   // PEST macro-environment scan (structure-components wave 2 task 4): each
   // of the 4 named slots is already a single common English adjective
   // (unlike bmc's compound canonical names above), so the predictable slip
@@ -147,8 +137,8 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly Item
   // model that knows "Gantt chart" but not this schema's numeric-axis-only
   // shape (decision 6: no date parsing) reaches for by analogy to a
   // calendar's own "from"/"to" range vocabulary.
-  waterfall: [{ itemsKey: "items", aliases: { amount: "value" } }],
-  gantt: [{ itemsKey: "items", aliases: { from: "start", to: "end" } }],
+  waterfall: waterfallAliases.items,
+  gantt: ganttAliases.items,
   // Sankey (structure-components wave 2 task 4, `links`; field-alias sweep
   // task I1, `nodes`): `links`' `source`/`target` is the exact field-name
   // convention D3-sankey and Plotly's own Sankey trace both use for a
