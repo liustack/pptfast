@@ -392,3 +392,86 @@ describe("bar/bar-horizontal/line/funnel extreme mixed-magnitude ratio through t
     ])
   })
 })
+
+/**
+ * Dumbbell sub-EMU near-equal connector defect: a dumbbell row whose `from`
+ * and `to` values are *nearly* but not bit-exactly equal at large magnitude
+ * (e.g. `from=1e9, to=1e9+1`) renders a horizontal connector (`<line>`,
+ * chart-svg.tsx's renderDumbbell — dy is exactly 0 by construction, both
+ * endpoints share one `cy`) whose dx, after `vx()`'s ratio-scaled x mapping,
+ * is on the order of 1e-7px — nonzero in IEEE-754 terms, so it evaded
+ * `svg2pptx/line.ts`'s old bit-exact `dx === 0 && dy === 0` "is this a
+ * point" check, but both axes round to 0 EMU once pptxgenjs's own
+ * `inch2Emu` (`Math.round(EMU * inches)`) quantizes them. The resulting
+ * `<a:ext cx="0" cy="0">` line shape trips package-audit's
+ * invalid-shape-transform "zero-length connector" rule, and — because
+ * `generate.ts` runs that audit unconditionally over the whole exported
+ * package — throws for the *entire* deck, not just the offending row.
+ *
+ * Exact-equal values (`from=1e9, to=1e9`) already passed pre-fix (dx is
+ * bit-exact 0, caught by the old check's floor). A delta >= 1e5 at the same
+ * magnitude also already passed (dx rounds to >= 1 EMU, real geometry).
+ * Both are kept here as contrast/regression cases alongside the actual
+ * near-equal repro, reproducing the fix's own empirical verification
+ * matrix.
+ *
+ * Fixed at the converter (`svg2pptx/line.ts`'s `lineToOp`): `isPoint` now
+ * asks "does each axis round to 0 EMU" (`Math.round(px / PX_PER_IN *
+ * EMU_PER_IN) === 0`) instead of bit-exact equality — see that file's own
+ * doc comment for the full predicate and why it can't leak into real
+ * single-axis-zero connectors.
+ */
+describe("dumbbell sub-EMU near-equal connector through the real generatePptx", () => {
+  it("near-equal values at large magnitude (from=1e9, to=1e9+1) export without a zero-length-connector invalid-shape-transform", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: 1e9 }] }, { name: "to", data: [{ x: "A", y: 1e9 + 1 }] }],
+      },
+    ])
+  })
+
+  it("near-equal negative values at the same magnitude (from=-1e9, to=-1e9+1) export cleanly — sibling repro confirmed by recon", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: -1e9 }] }, { name: "to", data: [{ x: "A", y: -1e9 + 1 }] }],
+      },
+    ])
+  })
+
+  it("exact-equal values at the same magnitude (from=1e9, to=1e9) — contrast case, already passed via the pre-existing bit-exact floor", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: 1e9 }] }, { name: "to", data: [{ x: "A", y: 1e9 }] }],
+      },
+    ])
+  })
+
+  it("delta >= 1e5 at the same magnitude (from=1e9, to=1e9+1e5) — contrast case, dx rounds to >= 1 EMU so always passed", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [{ name: "from", data: [{ x: "A", y: 1e9 }] }, { name: "to", data: [{ x: "A", y: 1e9 + 1e5 }] }],
+      },
+    ])
+  })
+
+  it("a near-equal extreme-magnitude row mixed with a normal-magnitude row in the same chart exports cleanly (one degenerate row previously poisoned the whole export chain)", async () => {
+    await expectExports([
+      {
+        type: "chart",
+        chart_type: "dumbbell",
+        series: [
+          { name: "from", data: [{ x: "A", y: 1e9 }, { x: "B", y: 10 }] },
+          { name: "to", data: [{ x: "A", y: 1e9 + 1 }, { x: "B", y: 20 }] },
+        ],
+      },
+    ])
+  })
+})

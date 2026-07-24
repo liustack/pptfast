@@ -161,6 +161,36 @@ describe("zero-length point line (Lucide dot idiom, e.g. circle-divide/square-di
   })
 })
 
+describe("sub-EMU near-equal endpoints (dumbbell horizontal-connector edge case)", () => {
+  // dumbbell's connector is always horizontal by construction (both
+  // endpoints share one `cy`, chart-svg.tsx's renderDumbbell) — dy is
+  // exactly 0, never near-zero. A near-equal-but-not-bit-exact `from`/`to`
+  // pair at large magnitude (e.g. from=1e9, to=1e9+1, `vx()`'s ratio-scaled
+  // x mapping) produces a dx on the order of 1e-7px: nonzero in strict
+  // IEEE-754 terms (so the old `dx === 0` half of isPoint never fired), but
+  // it rounds to 0 EMU once pptxgenjs's own `inch2Emu`
+  // (`Math.round(EMU_PER_IN * inches)`, node_modules/pptxgenjs) quantizes
+  // it — same degenerate end state as a bit-exact point, just reached via
+  // float drift instead of equal inputs.
+  it("floors a near-equal (not bit-exact) horizontal connector whose dx rounds to 0 EMU, same as a true point", () => {
+    const x1 = 100
+    const dxPx = 4e-7 // sub-EMU: 4e-7/96*914400 ≈ 0.0038 EMU, rounds to 0
+    const op = lineToOp(lineEl(`x1="${x1}" y1="50" x2="${x1 + dxPx}" y2="50" stroke="#111111"`))
+    expect(op.w).toBeGreaterThan(0)
+    expect(op.h).toBeGreaterThan(0)
+    expect(op.w).toBeCloseTo(0.75 / 96, 5)
+    expect(op.h).toBeCloseTo(0.75 / 96, 5)
+  })
+
+  it("does not floor a legitimately thin-but-visible line (0.5px is ~4762 EMU, nowhere near the 0-EMU threshold)", () => {
+    // Regression guard for the widened predicate: it must only fire when
+    // BOTH axes round to zero EMU, never merely because a line is thin.
+    const op = lineToOp(lineEl('x1="0" y1="0" x2="0.5" y2="0" stroke="#111111"'))
+    expect(op.w).toBeCloseTo(0.5 / 96, 5)
+    expect(op.h).toBe(0)
+  })
+})
+
 describe("stroke opacity", () => {
   it("maps element opacity into line transparency", () => {
     const el = lineEl('x1="560" y1="500" x2="720" y2="500" stroke="#00A878" stroke-width="1.6" opacity="0.6"')

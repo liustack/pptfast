@@ -1,6 +1,24 @@
-import { pxToIn, pxToPt } from "../../constants"
+import { PX_PER_IN, pxToIn, pxToPt } from "../../constants"
 import { svgColorToHex, svgColorTransparency } from "./color"
 import { elementOpacity } from "./style"
+
+/** EMU per inch — `node_modules/pptxgenjs`'s own `EMU` constant, replicated
+ * here because this is the one place in the render chain that needs to
+ * anticipate pptxgenjs's `inch2Emu` (`Math.round(EMU * inches)`) rounding
+ * *before* handing it a value, not just convert into its units. Not part of
+ * `constants.ts`: every other converter only ever produces inches/points and
+ * lets pptxgenjs do this conversion itself. */
+const EMU_PER_IN = 914400
+
+/** True when an SVG px length is small enough that pptxgenjs's own EMU
+ * rounding (`Math.round(px / PX_PER_IN * EMU_PER_IN)`) collapses it to
+ * exactly 0 — i.e. genuinely below PowerPoint's unit resolution, not just
+ * "a small number". A legitimately thin but visible line (0.5px ≈ 4762 EMU)
+ * sits nowhere near this threshold; it only fires for sub-EMU deltas
+ * (< ~5.25e-5px). */
+function roundsToZeroEmu(px: number): boolean {
+  return Math.round((Math.abs(px) / PX_PER_IN) * EMU_PER_IN) === 0
+}
 
 /**
  * pptxgenjs line dash type.
@@ -92,7 +110,17 @@ export function lineToOp(el: Element): LineOp {
   // 同样是退化 shape——与 path.ts 的 buildOp/segsToOp 同一 0.75px 地板值，但
   // 仅在两轴都为零时触发：单轴为零的真实水平/垂直连接线（audit 的 connector
   // 例外本就允许其中一轴为零）保持原样不受影响，那是合法几何，不是本 bug 的模式。
-  const isPoint = dx === 0 && dy === 0
+  //
+  // 判等口径故意不是位精确 `dx === 0`：near-equal 但非位精确的端点对（如
+  // dumbbell 的 from=1e9,to=1e9+1，经 vx() 比例映射后 dx≈4e-7px）在 IEEE-754
+  // 意义上非零、逃过旧判等，但两轴各自 px→EMU 取整（pptxgenjs 自己的
+  // inch2Emu = Math.round(EMU_PER_IN * inches)）后同样双双归零，触发
+  // package-audit 的 zero-length connector 判定——落地效果和位精确的点一样，
+  // 只是路径不同。`roundsToZeroEmu` 问的是"这根轴在 PPTX 的取整精度下还剩不
+  // 剩得下"，不是"两端点是否位精确相等"；仍然要求双轴同时成立，单轴为零的
+  // 真实水平/垂直连接线（见本文件下方两个未受影响的回归用例）不受影响——那根
+  // 非零轴在任何真实量级下都远超 1 EMU。
+  const isPoint = roundsToZeroEmu(dx) && roundsToZeroEmu(dy)
   const w = isPoint ? 0.75 : Math.abs(dx)
   const h = isPoint ? 0.75 : Math.abs(dy)
 
