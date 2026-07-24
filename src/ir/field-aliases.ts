@@ -44,6 +44,10 @@ import { aliases as swotAliases } from "./components/swot"
 import { aliases as bmcAliases } from "./components/bmc"
 import { aliases as waterfallAliases } from "./components/waterfall"
 import { aliases as ganttAliases } from "./components/gantt"
+import { aliases as pestAliases } from "./components/pest"
+import { aliases as fiveForcesAliases } from "./components/five-forces"
+import { aliases as heatmapAliases } from "./components/heatmap"
+import { aliases as sankeyAliases } from "./components/sankey"
 
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
@@ -81,34 +85,20 @@ export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = 
   // is reaching for its noun form instead — a model that glosses the
   // acronym as "Politics, Economics, Society, Technology" (a common
   // informal expansion) writes the noun, not this schema's adjective.
-  pest: {
-    politics: "political",
-    economy: "economic",
-    society: "social",
-    technology: "technological",
-  },
+  pest: pestAliases.block,
   // Porter's Five Forces (structure-components wave 2 task 4): the same
   // bare-noun-for-compound-key slip bmc's table documents above —
   // `rivalry`/`substitutes` are already bare nouns matching their own
   // canonical spelling (no alias possible there), but the three qualified
   // names invite dropping the qualifier.
-  five_forces: {
-    entrants: "new_entrants",
-    suppliers: "supplier_power",
-    buyers: "buyer_power",
-  },
+  five_forces: fiveForcesAliases.block,
   // Heatmap (structure-components wave 2 task 4): `x_labels`/`y_labels`/
   // `values` are chart-vocabulary names a model describing a plain "rows x
   // columns" grid casually reaches past — `rows`/`columns` are the natural
   // table words for the same two axes, `data` the generic noun for "the
   // numbers." `range` is the natural word for `domain`'s `{min,max}`
   // value-scale override.
-  heatmap: {
-    rows: "y_labels",
-    columns: "x_labels",
-    data: "values",
-    range: "domain",
-  },
+  heatmap: heatmapAliases.block,
 }
 
 /** One component type's item-array field aliases: which array to walk, and the alias map applied to each item object in it. */
@@ -156,10 +146,7 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly Item
   // `source`/`target` above), `title` mirrors kpi_cards' own
   // `title`→`label` alias above — the same generic title-for-label slip on
   // any labeled-card-like item shape.
-  sankey: [
-    { itemsKey: "links", aliases: { source: "from", target: "to" } },
-    { itemsKey: "nodes", aliases: { name: "label", title: "label" } },
-  ],
+  sankey: sankeyAliases.items,
   // Real-world tech-deck mental model: layers have a "name" and hold
   // "components" or "nodes" — pptfast's own top-level components array
   // shares the word "components" by coincidence only; this alias is scoped
