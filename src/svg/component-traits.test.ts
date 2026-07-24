@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { COMPONENT_TYPES } from "@/ir"
 import {
   EVIDENCE_TYPES,
   FULL_BODY_TYPES,
@@ -91,6 +92,44 @@ describe("FULL_BODY_TYPES (structure-components wave 1 task 1 decision 1, extend
   it("is disjoint from STRETCHABLE_TYPES — full-body components fill box.h directly, never through growStretchables' capped path", () => {
     for (const type of FULL_BODY_TYPES) {
       expect(STRETCHABLE_TYPES.has(type)).toBe(false)
+    }
+  })
+})
+
+// ── traits reverse-generation feasibility (src domain reorg wave 2, W2a
+// task 4) ────────────────────────────────────────────────────────────────
+//
+// Not a migration guard (nothing here is deletable post-migration — this is
+// a permanent data-integrity check, same spirit as the "covers every row
+// exactly once" completeness guards in field-aliases.test.ts). Wave-2 W2c
+// plans to reverse-generate one `traits: ComponentTraits` declaration per
+// `src/ir/components/<name>.ts` domain file by reading these 6 collections
+// (`ComponentTraits`'s own doc comment, `src/ir/components/types.ts`) — that
+// is only sound if every member of every collection below is a real,
+// current `COMPONENT_TYPES` entry. TypeScript already enforces this at
+// compile time (each collection below is typed `ReadonlySet<ComponentType>`
+// / `readonly ComponentType[]`, and `ComponentType = Component["type"]` —
+// see `./component-traits.ts`'s own top doc comment), and the describe
+// blocks above already pin every collection's exact membership against a
+// hardcoded pre-refactor twin. Neither of those checks the *live*
+// `COMPONENT_TYPES` export (`@/ir`, derived from `ComponentSchema.options`)
+// though — both compare against a value declared in this same file/module,
+// so a real-world drift (a component renamed or removed in `ir/index.ts`
+// without updating `component-traits.ts` to match) would silently survive
+// both. This closes that gap: every member across all 6 collections must
+// resolve against the live union, not a hardcoded twin of it.
+describe("every classified member is a live COMPONENT_TYPES entry (traits reverse-generation feasibility, W2a task 4)", () => {
+  it("STRETCHABLE_TYPES ∪ SELF_VISUAL_TYPES ∪ SCALABLE_TYPES ∪ PASSTHROUGH_SHELL_TYPES ∪ FULL_BODY_TYPES ∪ EVIDENCE_TYPES ⊆ COMPONENT_TYPES", () => {
+    const allClassified = new Set<string>([
+      ...STRETCHABLE_TYPES,
+      ...SELF_VISUAL_TYPES,
+      ...SCALABLE_TYPES,
+      ...PASSTHROUGH_SHELL_TYPES,
+      ...FULL_BODY_TYPES,
+      ...EVIDENCE_TYPES,
+    ])
+    for (const type of allClassified) {
+      expect(COMPONENT_TYPES).toContain(type)
     }
   })
 })

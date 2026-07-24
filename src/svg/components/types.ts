@@ -140,3 +140,32 @@ export interface SvgComponent<B> {
   measure(component: B, w: number, ctx: ComponentCtx): number
   render(component: B, box: ComponentBox, ctx: ComponentCtx): React.ReactElement
 }
+
+/**
+ * The svg-side half of the per-component domain-file contract (src domain
+ * reorg wave 2, spec §4.2 + the controller ruling amending it to the
+ * uniform export name `renderDef`): each `src/svg/components/<name>.tsx`
+ * file already exports an `SvgComponent<T>` object (e.g. `sankey`, `kpi`
+ * below) — W2c adds one more export, `renderDef`, pairing that same
+ * `measure`/`render` pair with this component's own `type` discriminant
+ * literal, e.g. `export const renderDef: RenderDef<SankeyComponent> = {
+ * type: "sankey", measure: sankey.measure, render: sankey.render }`.
+ *
+ * `measure`/`render` are typed by direct reuse of {@link SvgComponent} —
+ * precisely the two call signatures `measureComponent`'s and
+ * `renderComponentContent`'s switch cases in `./index.tsx` already dispatch
+ * through today (`(component: B, w, ctx) => number` /
+ * `(component: B, box, ctx) => ReactElement`), not a redeclaration that
+ * could drift from them.
+ *
+ * `components/index.tsx`'s future `Record<ComponentType, RenderDef>` lookup
+ * table (replacing today's two 32-case switches, W2c) is this type's real
+ * consumer — this task adds only the type, `index.tsx`'s switches are
+ * unchanged.
+ */
+export interface RenderDef<T extends Component = Component> {
+  /** This component's own `type` discriminant literal — the lookup key `components/index.tsx`'s future `Record<ComponentType, RenderDef>` table dispatches on. */
+  readonly type: T["type"]
+  readonly measure: SvgComponent<T>["measure"]
+  readonly render: SvgComponent<T>["render"]
+}
