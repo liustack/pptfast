@@ -278,8 +278,9 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 // geometry-honest per-layout component count, sourced from the pre-W3
 // CAPACITY table's derivations (not invented fresh):
 //   - single-stack layouts — narrow-column/rail-numbered/banner-heading/
-//     tone-adaptive-content, plus stacked-poster's degrade path (this file's
-//     own comment on that entry already establishes it behaves like the
+//     tone-adaptive-content, plus stacked-poster's degrade path
+//     (content-stacked-poster.tsx's own comment on its layoutDef already
+//     establishes it behaves like the
 //     other four "all" archetypes once it falls back to SvgContent): 4,
 //     mirroring the former `CAPACITY.maxBlocksPerSlide` (deleted in W3 — the editorial side now lives in PACING_BUDGETS) — audit/capacity.ts's flat,
 //     theme-independent default (`floor(minRectH / perBlock)`, the shared
