@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { assertSubset } from "../subset-validate"
 import { RailChapter } from "./chapter-rail-chapter"

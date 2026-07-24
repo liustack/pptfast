@@ -89,7 +89,7 @@ describe("explicit seed: revision stability", () => {
     // p-2's own raw pick from "narrow-column" to "rail-numbered" for this
     // seed — neither id is in "anchor"'s own tendency set (banner-heading/
     // stacked-poster/side-highlight, `BEAT_TENDENCIES`,
-    // effective-layout.ts), so this isn't beat directly favoring the new
+    // layout-selection.ts), so this isn't beat directly favoring the new
     // pick. It's the standard weighted-interval-sampling effect: boosting
     // banner-heading/stacked-poster/side-highlight's own weight (each now
     // max(1,3)=3, up from strategy-only 1) shifts where every other id's

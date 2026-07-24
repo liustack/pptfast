@@ -1,5 +1,5 @@
 import type { SvgTemplateProps } from "./types"
-import { SvgContent } from "../SvgContent"
+import { SvgContent } from "../svg-content"
 import { FULL_BODY_TYPES } from "../component-traits"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"

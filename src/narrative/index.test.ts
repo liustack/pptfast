@@ -8,6 +8,7 @@ import {
   NARRATIVE_PRESETS,
   DEFAULT_NARRATIVE,
   resolveNarrative,
+  normalizeNarrativeShape,
   STRATEGY_VALUES,
   PACING_VALUES,
   AUDIENCE_VALUES,
@@ -416,5 +417,111 @@ describe("resolveNarrative", () => {
     expect(() => resolveNarrative({ audience: null } as unknown as Partial<NarrativeProfile>)).toThrow(
       /unknown audience "null"/,
     )
+  })
+
+  // T0b fix 2 (scope-extended, controller ruling): the {id} shape rescue is
+  // folded directly into resolveNarrative's own entry — silently, no note —
+  // so every current and future caller tolerates it "for free," not just
+  // validateIr/validateSpec's own pre-parse normalizeNarrativeShape passes.
+  // Those two callers additionally run normalizeNarrativeShape on the raw
+  // input first, purely to report + persist the rewrite — see that
+  // function's own tests below for the reporting half.
+  it("tolerates the {id: <preset>} shape directly, resolving to that preset's axes — same as calling it with the bare string", () => {
+    const withId = resolveNarrative({ id: "boardroom-report" } as unknown as Partial<NarrativeProfile>)
+    const bare = resolveNarrative("boardroom-report")
+    expect(withId).toEqual(bare)
+    expect(withId).toEqual(NARRATIVE_PRESETS["boardroom-report"].axes)
+  })
+
+  it("an unknown preset id under the {id} shape still throws resolveNarrative's own preset error", () => {
+    const bad = { id: "not-a-real-preset" } as unknown as Partial<NarrativeProfile>
+    expect(() => resolveNarrative(bad)).toThrow(/unknown narrative preset "not-a-real-preset"/)
+  })
+
+  it("does NOT rescue a mixed {id, strategy} shape — falls through to the unknown-axis-key error, same as before", () => {
+    const bad = { id: "boardroom-report", strategy: "pyramid" } as unknown as Partial<NarrativeProfile>
+    expect(() => resolveNarrative(bad)).toThrow(/unknown narrative axis "id"/)
+  })
+})
+
+// ── normalizeNarrativeShape (T0b fix 2, bench-evidence `{id}` shape rescue) ──
+//
+// A weak model that just wrote `theme: {id: "consulting"}` a few lines above
+// pattern-matches the same "object wrapping an id" shape onto `narrative`.
+// Real bench-failing inputs (.issues/notes/2026-07-24-bench-rerun.md item 2,
+// 3 real failures — 60% of flash's total): `{"id":"training"}`,
+// `{"id":"boardroom-report"}`.
+
+describe("normalizeNarrativeShape", () => {
+  it("leaves a non-object input untouched (no narrative field at all)", () => {
+    const input = { version: "4", slides: [] }
+    const result = normalizeNarrativeShape(input)
+    expect(result.value).toBe(input) // same reference — no rewrite
+    expect(result.normalized).toEqual([])
+  })
+
+  it("leaves a plain preset-string narrative untouched", () => {
+    const input = { narrative: "training" }
+    const result = normalizeNarrativeShape(input)
+    expect(result.value).toBe(input)
+    expect(result.normalized).toEqual([])
+  })
+
+  it("leaves a proper partial-axes object untouched", () => {
+    const input = { narrative: { strategy: "pyramid" } }
+    const result = normalizeNarrativeShape(input)
+    expect(result.value).toBe(input)
+    expect(result.normalized).toEqual([])
+  })
+
+  it("rescues the exact bench-failing shape {id: \"training\"} to the bare preset string", () => {
+    const input = { version: "4", narrative: { id: "training" }, slides: [] }
+    const result = normalizeNarrativeShape(input)
+    expect(result.value).toEqual({ version: "4", narrative: "training", slides: [] })
+    expect(result.value).not.toBe(input) // never mutates the original
+    expect(input.narrative).toEqual({ id: "training" }) // original untouched
+    expect(result.normalized).toHaveLength(1)
+    expect(result.normalized[0]).toContain("narrative")
+    expect(result.normalized[0]).toContain("training")
+  })
+
+  it("rescues {id: \"boardroom-report\"} too — not a single-preset special case", () => {
+    const result = normalizeNarrativeShape({ narrative: { id: "boardroom-report" } })
+    expect(result.value).toEqual({ narrative: "boardroom-report" })
+  })
+
+  it("does not itself validate the preset id — resolveNarrative's own error is still the honest outcome downstream", () => {
+    // normalizeNarrativeShape only rewrites shape, never validates the id
+    // against NARRATIVE_PRESETS — that stays resolveNarrative's job.
+    const result = normalizeNarrativeShape({ narrative: { id: "not-a-real-preset" } })
+    expect(result.value).toEqual({ narrative: "not-a-real-preset" })
+    const rewritten = (result.value as { narrative: string }).narrative
+    expect(() => resolveNarrative(rewritten)).toThrow(/unknown narrative preset/)
+  })
+
+  it("does NOT rescue a mixed shape {id, strategy} — genuinely ambiguous, left untouched", () => {
+    const input = { narrative: { id: "training", strategy: "pyramid" } }
+    const result = normalizeNarrativeShape(input)
+    expect(result.value).toBe(input)
+    expect(result.normalized).toEqual([])
+  })
+
+  it("does NOT rescue {id, pacing} or {id, audience} either — any axis key alongside id blocks the rescue", () => {
+    expect(normalizeNarrativeShape({ narrative: { id: "training", pacing: "dense" } }).normalized).toEqual([])
+    expect(normalizeNarrativeShape({ narrative: { id: "training", audience: "public" } }).normalized).toEqual([])
+  })
+
+  it("does not rescue when id is not a string", () => {
+    const input = { narrative: { id: 42 } }
+    const result = normalizeNarrativeShape(input)
+    expect(result.value).toBe(input)
+    expect(result.normalized).toEqual([])
+  })
+
+  it("leaves a non-object narrative value (e.g. an array) untouched", () => {
+    const input = { narrative: ["not", "an", "object"] }
+    const result = normalizeNarrativeShape(input)
+    expect(result.value).toBe(input)
+    expect(result.normalized).toEqual([])
   })
 })

@@ -16,7 +16,7 @@ Four nouns, each owned by exactly one layer. This doc is the map — `docs/selec
 
 ## layout
 
-A page-level template with named slots — `LayoutDefinition` (`src/svg/layouts/registry.ts:99-123`): `id`, `kind` (`"archetype" | "takeover"`), `slideTypes`, `slots` (each a `{ name, accepts, capacity? }`), an optional `arrangements` allowlist, and an optional `narrativesOnly` strategy allowlist (renamed from `scenariosOnly`, spec §16 — an internal registry detail, not part of the public narrative vocabulary). `LAYOUT_REGISTRY` (same file) holds 33 archetypes + 4 image takeovers (`image-split`/`image-top`/`image-bottom`/`image-annotate` — bespoke full-bleed layouts requiring an `image` component, dispatched outside the normal archetype pool, see `resolveOneEffectiveLayoutId` in `src/svg/effective-layout.ts:168-206`). A slot's `capacity` (present only on the `body` slot of content archetypes) is the layout's declared geometric ceiling — bento-panel's is 6, every other content archetype's is 4.
+A page-level template with named slots — `LayoutDefinition` (`src/svg/layouts/registry.ts:99-123`): `id`, `kind` (`"archetype" | "takeover"`), `slideTypes`, `slots` (each a `{ name, accepts, capacity? }`), an optional `arrangements` allowlist, and an optional `narrativesOnly` strategy allowlist (renamed from `scenariosOnly`, spec §16 — an internal registry detail, not part of the public narrative vocabulary). `LAYOUT_REGISTRY` (same file) holds 33 archetypes + 4 image takeovers (`image-split`/`image-top`/`image-bottom`/`image-annotate` — bespoke full-bleed layouts requiring an `image` component, dispatched outside the normal archetype pool, see `resolveOneEffectiveLayoutId` in `src/svg/layout-selection.ts:317-376`). A slot's `capacity` (present only on the `body` slot of content archetypes) is the layout's declared geometric ceiling — bento-panel's is 6, every other content archetype's is 4.
 
 ## component
 
@@ -33,7 +33,7 @@ Renamed from `scenario` (`mode`/`delivery`) in the vocabulary-v4 rewrite (spec: 
 Two independently-owned ceilings, `min()`'d together at validate time — never one table:
 
 - **Editorial budget** (pacing, content discipline — "how many things belong here"): `PACING_BUDGETS[pacing]` (`src/narrative/index.ts:262-266`) — `maxComponentsPerSlide` and the bullets item/length caps, plus `bodyBaselinePx` (the paragraph/bullets/callout trio's sole font-size input, nothing else): `dense`=20px/5 components/6×48-char bullets, `balanced`=24px/4/5×40 (the narrative default), `spacious`=32px/3/4×30.
-- **Geometric capacity** (layout, physical fact — "how many things fit"): the resolved layout's `body` slot `capacity` (`resolveEffectiveLayoutBodyCapacity`, `src/svg/effective-layout.ts`).
+- **Geometric capacity** (layout, physical fact — "how many things fit"): the resolved layout's `body` slot `capacity` (`resolveEffectiveLayoutBodyCapacity`, `src/svg/layout-selection.ts`).
 
 `ir-quality.ts`'s density gate takes `min(editorial, geometric)`. This is why validate must resolve the same layout selection render will use — the parity discipline `docs/selection-and-seed.md` documents.
 

@@ -1,6 +1,6 @@
 /**
  * Layout registry (W2 task 1, spec §3/§6/§8): an explicit, statically-checked
- * description of what the render chain's 30 archetype components + 4
+ * description of what the render chain's 33 archetype components + 4
  * page-level image takeovers already draw. This is a metadata layer only —
  * it formalizes today's implicit page structure (archetype JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
@@ -37,7 +37,7 @@
 // `Strategy` here and `@/narrative`'s own `Strategy` are the exact same
 // literal union (derived from the identical tuple) — TypeScript's
 // structural typing makes them freely interchangeable at every call site, so
-// no cast is ever needed where the two meet (`effective-layout.ts`'s
+// no cast is ever needed where the two meet (`layout-selection.ts`'s
 // `resolveArchetypeId`).
 import type { STRATEGY_VALUES } from "@/ir/narrative-values"
 
@@ -46,7 +46,7 @@ export type Strategy = (typeof STRATEGY_VALUES)[number]
 export type SlideType = "cover" | "chapter" | "content" | "ending"
 
 /** The 16-word slot vocabulary — the union of every distinct visual region
- * observed across all 30 archetypes + 4 takeovers (inventory's "建议 slot
+ * observed across all 33 archetypes + 4 takeovers (inventory's "建议 slot
  * 词汇表"). Not every word is used by every entry, and `aside` currently
  * has zero occurrences as a *slot* (it only exists today as a body
  * `arrangement` — see `Arrangement` below) — kept in the vocabulary because
@@ -116,7 +116,7 @@ export interface LayoutDefinition {
    * Auto-selection strategy allowlist (W4, spec §6 step 4's rare
    * `narratives_only` hard constraint — distinct from the soft ×3/×1
    * `layoutTendencies` weighting in `STRATEGY_DEFINITIONS`, `src/narrative`):
-   * when set, `resolveArchetypeId` (`../effective-layout.ts`) drops this
+   * when set, `resolveArchetypeId` (`../layout-selection.ts`) drops this
    * layout from the auto-pick pool unless the resolved narrative's
    * `strategy` is a member. An explicit `slide.layout` pin bypasses
    * selection entirely (spec §3: "显式指定不经选型"), so this field never
@@ -511,7 +511,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 // here): declarative authoring-time metadata only, same convention as the
 // `hero`/`strip`/`grid`/`annotation` slots below — consumed since W3 by the
 // validate-layer `min(pacing editorial budget, layout capacity)` quality
-// gate (ir-quality.ts via effective-layout.ts). Numbers are the
+// gate (ir-quality.ts via layout-selection.ts). Numbers are the
 // geometry-honest per-layout component count, sourced from the pre-W3
 // CAPACITY table's derivations (not invented fresh):
 //   - single-stack layouts — narrow-column/rail-numbered/banner-heading/
@@ -768,10 +768,10 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 // ─────────────────────────────────────────────────────────────────────────
 // Image takeover layouts (4) — `slide.layout` ids for the page-level
 // `image-split`/`image-top`/`image-bottom`/`image-annotate` takeovers
-// (FullSlideSvg.tsx's splitTakeover branch, keyed off `getLayout(slide.
+// (full-slide-svg.tsx's splitTakeover branch, keyed off `getLayout(slide.
 // layout)?.kind === "takeover"` since W2 task 3 — originally 4 snake_case
 // `slide.variant` values): bespoke full-page compositions that intercept
-// *before* any archetype runs, implemented by src/svg/ImagePages.tsx.
+// *before* any archetype runs, implemented by src/svg/image-pages.tsx.
 // `slideTypes` is written as `["content"]`, and task 3's applicability gate
 // (api.ts `checkLayoutApplicability`) now enforces it as a validate hard
 // error — before that gate existed, these ids were schema-legal on any
@@ -781,11 +781,11 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 // ─────────────────────────────────────────────────────────────────────────
 const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   "image-split": {
-    // ImagePages.tsx ImageSplitPage: full-height bleed image in a fixed
+    // image-pages.tsx ImageSplitPage: full-height bleed image in a fixed
     // column (first image component; optional caption overlay), kicker + heading
     // + rule + subheading in the text column, then the remaining components as
     // body — hardcoded arrangement "single" (layoutContentFit("single", ...),
-    // ImagePages.tsx:209-214), not exposed via `arrangements` (takeover
+    // image-pages.tsx:209-214), not exposed via `arrangements` (takeover
     // kind, not archetype).
     id: "image-split",
     kind: "takeover",
@@ -797,10 +797,10 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "image-top": {
-    // ImagePages.tsx ImageTopPage: full-width top-band bleed image (first
+    // image-pages.tsx ImageTopPage: full-width top-band bleed image (first
     // image component, no caption render), heading band, remaining components split
     // into up to 3 columns as body — each column hardcoded "single"
-    // (ImagePages.tsx:360).
+    // (image-pages.tsx:360).
     id: "image-top",
     kind: "takeover",
     slideTypes: ["content"],
@@ -810,8 +810,8 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "image-bottom": {
-    // ImagePages.tsx ImageBottomPage: centered heading/rule/subheading,
-    // remaining components as body (hardcoded "single", ImagePages.tsx:682-687),
+    // image-pages.tsx ImageBottomPage: centered heading/rule/subheading,
+    // remaining components as body (hardcoded "single", image-pages.tsx:682-687),
     // then a full-width bottom-band bleed image (first image component) with an
     // optional caption overlay.
     id: "image-bottom",
@@ -824,10 +824,10 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
     ],
   },
   "image-annotate": {
-    // ImagePages.tsx ImageAnnotatePage: centered heading + subheading,
+    // image-pages.tsx ImageAnnotatePage: centered heading + subheading,
     // framed center image (first image component) with optional caption, and up
     // to 4 corner annotations sourced from the *first bullets component's* items
-    // (bulletsComponent.items.slice(0, 4), ImagePages.tsx:479-482). Deliberate
+    // (bulletsComponent.items.slice(0, 4), image-pages.tsx:479-482). Deliberate
     // deviation from the brief's base "image + body" takeover shape: unlike
     // the other 3 takeovers, this renderer never builds a `rest` of
     // leftover components — nothing besides the found image + bullets component is
@@ -845,7 +845,7 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   },
 }
 
-/** All 30 archetype layouts + 4 takeover layouts, keyed by id. */
+/** All 33 archetype layouts + 4 takeover layouts, keyed by id. */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {
   ...COVER_LAYOUTS,
   ...CHAPTER_LAYOUTS,

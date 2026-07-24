@@ -329,6 +329,30 @@ describe("hard gate: narrative resolution (resolveNarrative try/catch)", () => {
     expect(errors[0]!.path).toBe("narrative")
     expect(errors[0]!.message).toMatch(/unknown strategy "not-a-mode"/)
   })
+
+  // T0b fix 2 (scope-extended, controller ruling): the same {id: <preset>}
+  // shape rescue validateIr (api.ts) applies to a bare IR's narrative field
+  // must also apply here — a deck.spec.json is the other real entry point
+  // (pptfast spec validate / render <deck-dir>) a weak model's
+  // theme:{id:...}-by-analogy slip can reach.
+  it("rescues the {id: <preset>} shape — resolves as if narrative had been the bare preset string, and reports the rewrite", () => {
+    const input = minimalValidPlan({ narrative: { id: "boardroom-report" } })
+    const spec = expectOk(input)
+    expect(spec.narrative).toBe("boardroom-report")
+    const r = validateSpec(input)
+    expect(r.normalized).toBeDefined()
+    expect(r.normalized).toHaveLength(1)
+    expect(r.normalized![0]).toContain("narrative")
+    expect(r.normalized![0]).toContain("boardroom-report")
+  })
+
+  it("does NOT rescue a mixed {id, strategy} shape — stays an ambiguous hard error, same as the bare-IR path", () => {
+    const input = minimalValidPlan({ narrative: { id: "boardroom-report", strategy: "pyramid" } })
+    const errors = expectErrors(input)
+    expect(errors[0]!.path).toBe("narrative")
+    expect(errors[0]!.message).toMatch(/unknown narrative axis "id"/)
+    expect(validateSpec(input).normalized).toBeUndefined()
+  })
 })
 
 // ── hard gate: beat rotation policy matrix (all 5 modes) ─────────────

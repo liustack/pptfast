@@ -91,6 +91,29 @@ describe("Icon component", () => {
   })
 })
 
+describe("Icon component: model pretraining-habit aliases (T0b fix 1)", () => {
+  // A weak model's pretraining data remembers the older lucide-react names
+  // ("alert-circle"/"alert-triangle") pptfast never used (this catalog has
+  // always spelled these "circle-alert"/"triangle-alert" — see
+  // icons.legacy-names.ts). Bench evidence: 6 real validate failures across
+  // 3 models, .issues/notes/2026-07-24-bench-rerun.md item 1. These aliases
+  // must render byte-identical output to their canonical counterpart, not
+  // just "something" — same catalog entry, not a lookalike substitute.
+  it("renders alert-circle identically to circle-alert", () => {
+    const alias = svg(<Icon name="alert-circle" x={0} y={0} size={24} color="#DC2626" />)
+    const canonical = svg(<Icon name="circle-alert" x={0} y={0} size={24} color="#DC2626" />)
+    expect(alias.container.innerHTML).toBe(canonical.container.innerHTML)
+    expect(alias.container.innerHTML.length).toBeGreaterThan(0)
+  })
+
+  it("renders alert-triangle identically to triangle-alert", () => {
+    const alias = svg(<Icon name="alert-triangle" x={0} y={0} size={24} color="#DC2626" />)
+    const canonical = svg(<Icon name="triangle-alert" x={0} y={0} size={24} color="#DC2626" />)
+    expect(alias.container.innerHTML).toBe(canonical.container.innerHTML)
+    expect(alias.container.innerHTML.length).toBeGreaterThan(0)
+  })
+})
+
 describe("shared catalogue", () => {
   it("renders every catalogued icon within the controlled subset", () => {
     for (const name of PPTX_ICON_NAMES) {

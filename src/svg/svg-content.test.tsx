@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { SvgContent } from "./SvgContent"
+import { SvgContent } from "./svg-content"
 import type { ComponentCtx } from "./components/types"
 import type { Component } from "@/ir"
 

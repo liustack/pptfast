@@ -30,7 +30,7 @@ import { accessibleInk } from "../ink"
  * 切到纯白，不随主题变化——背景图上强制白字的结构性产品逻辑，不进上面的替
  * 换表。整页黑色半透明幕布（scrim for bg-image readability，替代原
  * linearGradient）同属此类：不是任何主题 token 的烤色，是固定可读性遮罩，
- * 原样保留（同 cover 版本引用的 FullSlideSvg.tsx `isDesignTheme` 排除逻
+ * 原样保留（同 cover 版本引用的 full-slide-svg.tsx `isDesignTheme` 排除逻
  * 辑，custom 主题维持裸背景 + 局部 scrim 直通）。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量（除上述白字/黑幕两类豁免——

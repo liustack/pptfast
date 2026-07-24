@@ -4,9 +4,9 @@ import type { DecorProps } from "./types"
 /**
  * tone-adaptive-motif archetype（spec §3.2，Wave 3 Task 21）：全页极淡的
  * 180° 竖直渐变场（`colors.bg` → 一个固定的"轻度混黑"灰阶），充当所有
- * slide.type 共用的默认底色纹理，代替 Background.tsx 那块纯色矩形之上的一层
- * 微妙层次（Background.tsx 仍照常画自己的纯色矩形，本渐变场在 FullSlideSvg
- * 的 decor 插槽里画在它之上，完全覆盖，故不需要改 Background.tsx）。当 slide
+ * slide.type 共用的默认底色纹理，代替 background.tsx 那块纯色矩形之上的一层
+ * 微妙层次（background.tsx 仍照常画自己的纯色矩形，本渐变场在 FullSlideSvg
+ * 的 decor 插槽里画在它之上，完全覆盖，故不需要改 background.tsx）。当 slide
  * 携带任何显式背景覆盖（`hasExplicitBackground`——比 `hasBgImage` 更宽，
  * asset/color/gradient 三种都算）时整体跳过渲染（返回 `<></>`），避免遮住
  * 那个已经画出来的真实背景。自 templates/custom.tsx 的 `CustomDecor`

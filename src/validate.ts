@@ -5,7 +5,7 @@
  * chain (React, react-dom/server, pptxgenjs, jszip, dagre are all reachable
  * only from generatePptx/renderSlideSvg/auditDeck). This entry's closure
  * stops at validateIr's own dependency graph — zod plus the pure IR
- * schema/quality-check modules under src/ir and src/svg (effective-layout.ts
+ * schema/quality-check modules under src/ir and src/svg (layout-selection.ts
  * and layouts/registry.ts are metadata tables, no React import).
  *
  * Imports from `./validate-core` directly — *not* `./api`, which also

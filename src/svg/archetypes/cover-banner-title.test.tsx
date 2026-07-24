@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import { parseSvgRoot, renderSvgMarkup } from "../serialize"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { BannerTitleCover } from "./cover-banner-title"
 import type { PptxIR, Slide } from "@/ir"

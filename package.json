@@ -3,6 +3,7 @@
   "version": "0.9.0",
   "description": "Stable, editable PPTX generation for AI agents — semantic IR in, native DrawingML out",
   "type": "module",
+  "sideEffects": false,
   "license": "MIT",
   "bin": {
     "pptfast": "./dist/cli.js"

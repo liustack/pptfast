@@ -34,7 +34,7 @@ A spec page with no matching `pages/<id>.json` file assembles into `{ placeholde
 
 ## Boundary-page render surface
 
-`PageContent` above is the same shape for every page type, but not every field it allows is actually drawn onto the canvas by every type — `components` and `footnote` never render on a `cover`, `chapter`, or `ending` page, confirmed by reading every archetype in both families (`src/svg/archetypes/index-{chapter,ending}.ts`'s registries, `cover-*.tsx`'s 8 files) plus the background-asset `ImageCoverPage` takeover that intercepts `cover`/`chapter` before any archetype runs (`FullSlideSvg.tsx`'s `imageCoverTakeover` branch, `src/svg/ImagePages.tsx`). `validate` hard-errors a page that sets either (`checkBoundaryPageContent`, `src/api.ts`) — bench-driven fixes wave, defect D: before this gate existed, that content was silently dropped at render with no signal anywhere.
+`PageContent` above is the same shape for every page type, but not every field it allows is actually drawn onto the canvas by every type — `components` and `footnote` never render on a `cover`, `chapter`, or `ending` page, confirmed by reading every archetype in both families (`src/svg/archetypes/index-{chapter,ending}.ts`'s registries, `cover-*.tsx`'s 8 files) plus the background-asset `ImageCoverPage` takeover that intercepts `cover`/`chapter` before any archetype runs (`full-slide-svg.tsx`'s `imageCoverTakeover` branch, `src/svg/image-pages.tsx`). `validate` hard-errors a page that sets either (`checkBoundaryPageContent`, `src/api.ts`) — bench-driven fixes wave, defect D: before this gate existed, that content was silently dropped at render with no signal anywhere.
 
 | type | heading | subheading | components | footnote |
 |---|---|---|---|---|

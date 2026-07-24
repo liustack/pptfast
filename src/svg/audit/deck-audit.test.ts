@@ -368,7 +368,7 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
   })
 
   it("surfaces layoutContentFit's fully-dropped components as 'content-dropped' findings", () => {
-    // Same fixture shape as SvgContent.test.tsx's own "renders a
+    // Same fixture shape as svg-content.test.tsx's own "renders a
     // dropped-count marker" case, run through the real auditDeck path
     // instead of calling SvgContent directly.
     const longText = LONG_CJK.repeat(3)
@@ -492,7 +492,7 @@ describe("findContrastIssues — low-contrast", () => {
   const BG = "#F7F7F2" // consulting theme colors.bg
   // Background is now derived from the rendered geometry itself (see
   // findContrastIssues's doc comment) — every fixture here starts with a
-  // real full-page background <rect>, the same thing Background.tsx always
+  // real full-page background <rect>, the same thing background.tsx always
   // renders first, rather than passing a background value in directly.
   const page = (bg: string, inner: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><rect x="0" y="0" width="1280" height="720" fill="${bg}"/>${inner}</svg>`
@@ -524,7 +524,7 @@ describe("findContrastIssues — low-contrast", () => {
   })
 
   it("excludes decorative near-transparent text (SlideDecor-style watermark) from the check", () => {
-    // Mirrors SlideDecor.tsx's `big_number` watermark: near-black-on-light
+    // Mirrors slide-decor.tsx's `big_number` watermark: near-black-on-light
     // would ordinarily pass anyway, so use a fill that *would* fail at full
     // opacity but is dimmed to 0.14 fill-opacity, same as that component's
     // "subtle" intensity — must NOT be flagged.
@@ -565,7 +565,7 @@ describe("findContrastIssues — low-contrast", () => {
   // below) still resolves to the same region it should have anyway,
   // masking the bug. These two mirror cover-left-anchor.tsx's real emitted
   // markup exactly (verified against a real render while investigating this
-  // task): a page-wide background <rect> (Background.tsx, painted first),
+  // task): a page-wide background <rect> (background.tsx, painted first),
   // an opaque left-side color block painted over it, and a <text> — no
   // wrapping <g transform>, positioned via its own x/y attributes directly
   // — whose <tspan> children carry no x/y of their own, same as the real
@@ -726,7 +726,7 @@ describe("findContrastIssues — low-contrast", () => {
   })
 
   it("resolves each of several gradient bands to its own color rather than one page-wide value", () => {
-    // Background.tsx paints a gradient as N solid-fill bands stacked
+    // background.tsx paints a gradient as N solid-fill bands stacked
     // top-to-bottom. A light band low in the stack and a dark band high in
     // the stack must each be judged against their *own* band, not a single
     // blended page-wide estimate.
@@ -748,7 +748,7 @@ describe("findContrastIssues — low-contrast", () => {
   })
 
   it("trusts an opaque-enough scrim over a photo as the effective background", () => {
-    // Mirrors Background.tsx's auto-scrim (opacity 0.66, above MIN_BG_OPACITY).
+    // Mirrors background.tsx's auto-scrim (opacity 0.66, above MIN_BG_OPACITY).
     const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
       <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
       <rect x="0" y="0" width="1280" height="720" fill="#0A0A0C" fill-opacity="0.66"/>
@@ -758,7 +758,7 @@ describe("findContrastIssues — low-contrast", () => {
   })
 
   it("does not trust a too-faint overlay as a reliable background estimate", () => {
-    // Mirrors ImagePages.tsx's ImageCoverPage-style light scrims (~0.3,
+    // Mirrors image-pages.tsx's ImageCoverPage-style light scrims (~0.3,
     // below MIN_BG_OPACITY) — too translucent for its own color to be a
     // trustworthy stand-in for "the background text sits on".
     const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
@@ -813,7 +813,7 @@ describe("__collectImageBackedTextRuns — audit-v2 phase B pixel-audit input", 
     expect(runs[0]).toMatchObject({ text: "caption over unknown pho", fill: "#000000", baseline: 600, fontSize: 20, required: 4.5 })
   })
 
-  it("collects a run when the only overlay is too faint to resolve (ImagePages.tsx's DarkScrim shape)", () => {
+  it("collects a run when the only overlay is too faint to resolve (image-pages.tsx's DarkScrim shape)", () => {
     const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
       <image href="data:image/png;base64,x" x="0" y="0" width="1280" height="720"/>
       <rect x="0" y="0" width="1280" height="720" fill="#0A0E14" fill-opacity="0.3"/>
@@ -1298,7 +1298,7 @@ describe("parseWedgePath — geometric round-trip hardening (post-review, falsif
   // legitimate `renderPie`/`renderDonut` wedge that happens to land on nice
   // numbers. `ARC_PATH_BL`'s own real safety net is orthogonal to
   // recognition entirely: `RailMotif` (`index-motif.ts`) only ever renders
-  // it inside `FullSlideSvg.tsx`'s `<g data-decor>` wrapper at
+  // it inside `full-slide-svg.tsx`'s `<g data-decor>` wrapper at
   // `opacity="0.06"`, both already-tested, independent exclusions
   // (`inDecorSubtree` / `MIN_BG_OPACITY`) that gate the whole
   // `paintedShapes` push — neither reads `parseWedgePath`'s verdict at all.
@@ -1315,7 +1315,7 @@ describe("parseWedgePath — geometric round-trip hardening (post-review, falsif
     expect(sector!.ro).toBeCloseTo(ARC_R, 6)
 
     // Real render shape (RailMotif's own chapter-page output): `<g
-    // data-decor>` wrapper + opacity 0.06, exactly as `FullSlideSvg.tsx`/
+    // data-decor>` wrapper + opacity 0.06, exactly as `full-slide-svg.tsx`/
     // `motif-rail-motif.tsx` actually emit it. A near-white org-label text
     // sitting where the motif visually overlaps must still resolve against
     // the real dark page background, not this decorative arc, regardless
@@ -1421,18 +1421,18 @@ describe("findContrastIssues — decor/motif subtrees excluded from background-r
   // draws several large, >=0.64-effective-opacity crayon-stroke `<path>`s —
   // exactly the shape `MIN_BG_REGION_AREA`/`MIN_BG_OPACITY` would otherwise
   // accept as real backgrounds — inside the `<g data-decor>` wrapper
-  // `FullSlideSvg.tsx` renders around every theme motif's output.
+  // `full-slide-svg.tsx` renders around every theme motif's output.
   //
   // `layout: "split-diagonal"` pins the cover archetype deterministically
   // (an explicit `slide.layout` short-circuits the seed-based pick per
-  // `resolveArchetypeId`'s own doc comment in `effective-layout.ts`) to
+  // `resolveArchetypeId`'s own doc comment in `layout-selection.ts`) to
   // `cover-split-diagonal.tsx` — chosen specifically because it exercises
   // `pathBoundingBox`'s one remaining *exact* (non-decor) solid-path case
   // side-by-side with the decor exclusion in the same render, tying both
   // halves of this fix together. That gives an exact, hand-verified
   // legitimate region count of 2 (read from source, not guessed): the
   // campaign theme's solid `#3D2E78` full-page background
-  // (`Background.tsx`'s `spec.kind === "color"` branch paints exactly one
+  // (`background.tsx`'s `spec.kind === "color"` branch paints exactly one
   // `<rect>`) and `cover-split-diagonal.tsx`'s own `#F0559E` (`ctx.colors.
   // primary`) diagonal color panel (its accent bar is 72x5=360px², under
   // `MIN_BG_REGION_AREA`; its decorative circle isn't a rect/image/path at
@@ -1469,7 +1469,7 @@ describe("auditDeck — low-contrast via a real style-token override (validate-l
   })
 
   it("never throws on an asset (photo) background slide, resolved or not", () => {
-    // `Background.tsx` falls back to a solid `#1A1A1A` rect for an
+    // `background.tsx` falls back to a solid `#1A1A1A` rect for an
     // unresolved asset id (not `null`/indeterminate — a real, checkable
     // color), and adds an auto-scrim over a resolved one — so this doesn't
     // assert "no contrast findings" (both of those *are* legitimately
@@ -1710,7 +1710,7 @@ describe("auditDeck — raw/unvalidated-input guard (Task 2, borrow wave — A4)
 // numeric token from a path's `d` and min/max them, blind to path grammar —
 // exact for straight-line polygons, silently wrong for an `A`/`a` arc
 // command, whose own rx/ry/rotation/flag numbers got paired as if they were
-// more (x,y) coordinates. `insight_panel.tsx`/`roadmap.tsx`'s shared
+// more (x,y) coordinates. `insight-panel.tsx`/`roadmap.tsx`'s shared
 // `roundedTopBarPath` accent bar hit this dead-on: a real ~6px-tall bar
 // inflated to a ~1184×1182px bbox dwarfing the 1280×720 canvas (recorded in
 // docs/contrast-system.md's former "Known limitation" paragraph and
@@ -1728,7 +1728,7 @@ describe("__pathBoundingBox — arc-bbox root fix (fix/arc-bbox)", () => {
   // `roundedTopBarPath(96, 322.34.., 1088, 6, 2)`'s exact output. Kept as a
   // literal (not re-derived from the component) so this test stays a fixed
   // characterization of the real defect, immune to unrelated future layout
-  // changes in insight_panel.tsx's own padding/measurement math.
+  // changes in insight-panel.tsx's own padding/measurement math.
   const REAL_ACCENT_BAR_D =
     "M 96 322.34000000000003 A 2 2 0 0 1 98 320.34000000000003 " +
     "L 1182 320.34000000000003 A 2 2 0 0 1 1184 322.34000000000003 " +
@@ -2115,7 +2115,7 @@ describe("__pathBoundingBox — compressed SVG arc-flag fix (fix/arc-bbox, flag-
 
 // Arc-bbox root fix, reclassification sweep: fixing `pathBoundingBox` (above)
 // exposed a *real* defect the old bug had been masking, not just resolving
-// false positives. `insight_panel.tsx`'s title and `roadmap.tsx`'s period
+// false positives. `insight-panel.tsx`'s title and `roadmap.tsx`'s period
 // text both render an unguarded `colors.accent` fill with no
 // `accessibleInk` wrap — pre-fix, deck-audit.ts's `backgroundAt` resolved
 // both against the accent bar's own bogus ~whole-card phantom region, whose
@@ -2129,7 +2129,7 @@ describe("__pathBoundingBox — compressed SVG arc-flag fix (fix/arc-bbox, flag-
 // (`accessibleInk`, same file, established precedent) — these two tests are
 // the red->green pin for that fix, using two of the eight affected themes.
 describe("auditDeck — arc-bbox reclassification ink fixes (fix/arc-bbox)", () => {
-  it("insight_panel.tsx's title clears contrast against academic's accent-on-surface pairing once measured against its real panel background", () => {
+  it("insight-panel.tsx's title clears contrast against academic's accent-on-surface pairing once measured against its real panel background", () => {
     const ir = deck("academic", [
       {
         type: "content",

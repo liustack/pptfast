@@ -4,7 +4,7 @@ import type { SvgTemplateProps } from "./types"
 import type { ContentRect } from "../layout"
 import type { StyleColors } from "../../themes/tokens"
 import type { ComponentCtx } from "../components/types"
-import { SvgContent } from "../SvgContent"
+import { SvgContent } from "../svg-content"
 import {
   layoutBento,
   explodeIntoUnits,
@@ -130,7 +130,7 @@ const BENTO_CARD_BOTTOM_PAD = 16
 // `SCALABLE_TYPES`/`SELF_VISUAL_TYPES`/`PASSTHROUGH_SHELL_TYPES` (imported
 // above) now live in `../component-traits` (W2 task 5 unification of the 5
 // component-classification sets scattered across layout.ts/bento-layout.ts/
-// this file/content-stacked-poster.tsx/AssertionEvidence.tsx) — not
+// this file/content-stacked-poster.tsx/assertion-evidence.tsx) — not
 // redefined here. See that file for the full "why" on each set, including
 // the "卡中卡" (card-in-a-card) and "双壳治理" (double-shell governance)
 // rationale this file used to carry locally.

@@ -408,7 +408,7 @@ export interface DeckDirResult extends AssembleResult {
  * item 4, `.issues/notes/2026-07-18-post-v03-backlog.md` #4): the earlier
  * version mutated `assembleDeck`'s own return value in place, which is
  * harmless *today* only because `variety.ts`'s `deckSeedCache` and
- * `effective-layout.ts`'s `deckEffectiveLayoutIdsCache` — the only two
+ * `layout-selection.ts`'s `deckEffectiveLayoutIdsCache` — the only two
  * consumers that key a `WeakMap` off an `ir` object's identity — never read
  * `.assets` (confirmed by reading both cache-populating functions: they only
  * touch `seed`/`filename`/`theme.id`/`theme.style`/`narrative`/

@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { measureComponent } from "../components"
 import { StackedPosterContent } from "./content-stacked-poster"
@@ -11,7 +11,7 @@ import type { PptxIR, Slide } from "@/ir"
 const CJK_LONG =
   "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
 
-// BrandChrome's brand logo bands (BrandChrome.tsx logoBox: image at
+// BrandChrome's brand logo bands (brand-chrome.tsx logoBox: image at
 // width=96 height=40, positioned tl/tr/bl/br). Ported from
 // templates/creative.test.tsx — the poster grammar's entire premise is
 // centering everything on x=640 so its x-extent stays within [190,1090],

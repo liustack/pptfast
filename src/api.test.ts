@@ -1283,6 +1283,44 @@ describe("narrative field (W3 task 2, renamed from scenario spec §8.1)", () => 
   })
 })
 
+describe("narrative {id} shape rescue (T0b fix 2, bench-evidence)", () => {
+  // A weak model that just wrote `theme: {id: "consulting"}` pattern-matches
+  // the same wrapper shape onto `narrative`. Real bench-failing inputs
+  // (.issues/notes/2026-07-24-bench-rerun.md item 2, 3 real failures — 60%
+  // of flash's total): {"id":"training"}, {"id":"boardroom-report"}.
+  it("rescues the exact bench-failing input {id: \"training\"} — validates, resolves to the training preset, and reports the rewrite", () => {
+    const v = validateIr({ ...raw, narrative: { id: "training" } })
+    expect(v.ok).toBe(true)
+    // The rewrite reaches the parsed IR itself (not just this call's local
+    // resolveNarrative check) — a downstream render re-resolving
+    // ir.narrative independently sees the corrected string too.
+    expect(v.ir?.narrative).toBe("training")
+    expect(v.normalized).toBeDefined()
+    expect(v.normalized!.some((n) => n.includes("narrative") && n.includes("training"))).toBe(true)
+  })
+
+  it("rescues {id: \"boardroom-report\"} — the other real bench-failing input", () => {
+    const v = validateIr({ ...raw, narrative: { id: "boardroom-report" } })
+    expect(v.ok).toBe(true)
+    expect(v.ir?.narrative).toBe("boardroom-report")
+  })
+
+  it("an unknown preset id under the {id} shape still hard-errors with resolveNarrative's own message — the rescue only normalizes shape, never validates the id", () => {
+    const v = validateIr({ ...raw, narrative: { id: "not-a-real-preset" } })
+    expect(v.ok).toBe(false)
+    expect(v.errors[0]!.path).toBe("narrative")
+    expect(v.errors[0]!.message).toMatch(/unknown narrative preset/)
+  })
+
+  it("does NOT rescue a mixed {id, strategy} shape — genuinely ambiguous, stays a hard error", () => {
+    const v = validateIr({ ...raw, narrative: { id: "training", strategy: "pyramid" } })
+    expect(v.ok).toBe(false)
+    expect(v.normalized).toBeUndefined()
+    expect(v.errors[0]!.path).toBe("narrative")
+    expect(v.errors[0]!.message).toMatch(/unknown narrative axis "id"/)
+  })
+})
+
 describe("v4 has no old-vocabulary rescue (spec §16, reversing the now-superseded §15.4)", () => {
   it("hard-rejects the pre-rename `scenario` field name as an unrecognized key — no rename, no rescue, message points at `narrative`", () => {
     const v = validateIr({ ...raw, scenario: { strategy: "pyramid" } })

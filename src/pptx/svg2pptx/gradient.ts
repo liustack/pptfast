@@ -1,7 +1,7 @@
 /**
  * SVG `<linearGradient>`/`<radialGradient>` → DrawingML `a:gradFill`.
  *
- * Not used by slide backgrounds today: `svg/Background.tsx`'s
+ * Not used by slide backgrounds today: `svg/background.tsx`'s
  * `kind:"gradient"` case approximates a gradient with 24 solid-fill `<rect>`
  * bands (`gradient-bands.ts`) instead of a real `<linearGradient>`, so it
  * never produces the `fill="url(#...)"` input this module looks for — the

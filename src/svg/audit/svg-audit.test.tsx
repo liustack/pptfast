@@ -4,7 +4,7 @@ import { code } from "../components/code"
 import { resolveFontStack } from "../fonts"
 import type { ComponentCtx } from "../components/types"
 import { auditSvgMarkup } from "./svg-audit"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { renderSvgMarkup } from "../serialize"
 import { FashionMastheadCover } from "../archetypes/cover-fashion-masthead"
@@ -136,7 +136,7 @@ describe("auditSvgMarkup", () => {
 // task-3-review.md's Important finding N1. Real `code.render()` (the
 // renderer under test) + real `auditSvgMarkup` (the auditor under test) —
 // neither function is reimplemented or mirrored here — wrapped in a
-// hand-built `data-audit-box` envelope that mirrors `SvgContent.tsx`'s own
+// hand-built `data-audit-box` envelope that mirrors `svg-content.tsx`'s own
 // per-component wrapper (the one piece this test builds by hand, since
 // `code.render()` alone never emits its own box — see that component's own
 // file). `ctx.fonts.mono` comes from a real `resolveFontStack([], "mono")`

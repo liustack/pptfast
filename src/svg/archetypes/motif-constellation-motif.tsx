@@ -73,9 +73,9 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
  * full-bleed decor gradient that would otherwise hide it. Any
  * override kind counts, not just `asset`: `color`/`gradient` are
  * schema-validated hex values that always render successfully in
- * Background.tsx, so presence alone is enough; `asset` still requires
+ * background.tsx, so presence alone is enough; `asset` still requires
  * resolving to a loadable image — an errored/missing asset falls back to
- * Background.tsx's own dark placeholder rect, which isn't a meaningful
+ * background.tsx's own dark placeholder rect, which isn't a meaningful
  * override worth protecting from decor. Ported verbatim from
  * templates/tech.tsx（1405-1416 行），私有复制，签名/实现不变. */
 function hasExplicitBackground(

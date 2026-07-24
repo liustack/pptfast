@@ -7,7 +7,7 @@ import { measureTextUnits } from "../../lib/svg-text-layout"
 import { iconCards, iconCardContentHeight } from "./icon-cards"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { LEGACY_ICON_NAMES } from "../../icons.legacy-names"
 
 const ctx: ComponentCtx = {

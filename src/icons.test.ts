@@ -25,3 +25,26 @@ describe("PPTX icon catalog: compat lock", () => {
     }
   })
 })
+
+describe("PPTX icon catalog: model pretraining-habit aliases (T0b fix 1)", () => {
+  // Distinct from the compat-lock block above: those 8 (+ this pair) all
+  // resolve through the exact same gen-pptx-icons.mts COMPAT_ALIASES
+  // mechanism, but the *reason* differs. The compat-lock names bridge a
+  // lucide upstream rename away from this repo's own pre-W2.5 curated list
+  // (LEGACY_ICON_NAMES already spells this pair "circle-alert"/
+  // "triangle-alert" — the current canonical names, not these two). This
+  // pair instead rescues a weak-model habit: a model's pretraining data
+  // remembers the older lucide-react convention ("alert-circle"/
+  // "alert-triangle") that this catalog never used. Bench-evidence: 6 real
+  // validate failures across 3 models, `.issues/notes/2026-07-24-bench-rerun.md`
+  // item 1.
+  it("carries both legacy-habit names in the generated catalog", () => {
+    expect(PPTX_ICON_NAMES).toContain("alert-circle")
+    expect(PPTX_ICON_NAMES).toContain("alert-triangle")
+  })
+
+  it("resolves each legacy-habit name to the exact same primitives as its current canonical name", () => {
+    expect(PPTX_ICONS["alert-circle"]).toEqual(PPTX_ICONS["circle-alert"])
+    expect(PPTX_ICONS["alert-triangle"]).toEqual(PPTX_ICONS["triangle-alert"])
+  })
+})

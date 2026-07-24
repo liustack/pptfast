@@ -7,16 +7,16 @@ import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { ComponentCtx } from "./components/types"
 import type { SvgTemplateProps } from "./archetypes/types"
-import { Background } from "./Background"
-import { BrandChrome } from "./BrandChrome"
-import { SlideDecor } from "./SlideDecor"
+import { Background } from "./background"
+import { BrandChrome } from "./brand-chrome"
+import { SlideDecor } from "./slide-decor"
 import {
   ImageAnnotatePage,
   ImageBottomPage,
   ImageCoverPage,
   ImageSplitPage,
   ImageTopPage,
-} from "./ImagePages"
+} from "./image-pages"
 import { findImageComponent } from "./layouts/find-image"
 import { gradientBands } from "./gradient-bands"
 import { getLayout } from "./layouts/registry"
@@ -29,7 +29,7 @@ import { MOTIF_ARCHETYPES } from "./archetypes/index-motif"
 import { resolveMotifId } from "./motif-selection"
 import { resolveChartPaletteOffset } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
-import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./effective-layout"
+import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./layout-selection"
 
 /**
  * Reduce a `BackgroundSpec` to one representative hex color — a color spec
@@ -72,7 +72,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * against, not just internally self-consistent (confirmed by reading that
  * module before writing this one, not assumed): `deck-audit.ts`'s
  * `findContrastIssues`/`runContrastWalk` never averages a gradient — it
- * records each of `Background.tsx`'s 24 real rendered bands as its own
+ * records each of `background.tsx`'s 24 real rendered bands as its own
  * exact region (the same `gradientBands` call this function reuses below)
  * and looks up whichever band a text element's own resolved position
  * actually falls inside. A single scalar `ctx.defaultBg` can't reproduce
@@ -88,7 +88,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * vertical center, 360), content subheadings at y=88-220 — see the task
  * report's per-archetype y-coordinate survey for the full list. Computed
  * via the renderer's own `gradientBands` (not a separately hand-rolled
- * blend formula), so the exact colour law matches what `Background.tsx`
+ * blend formula), so the exact colour law matches what `background.tsx`
  * actually paints — a real point on the true 24-band gradient, not a
  * divergent approximation of one.
  *
@@ -101,7 +101,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * then defined circularly off that same fallback), this reducer's asset
  * case is a *per-slide override* on top of an otherwise-normal theme, where
  * what actually paints behind text is already known and different:
- * `Background.tsx`'s auto-scrim, colored `themeDefaultBg` (see
+ * `background.tsx`'s auto-scrim, colored `themeDefaultBg` (see
  * `FullSlideSvg`'s own `autoScrimColor` assignment below) at
  * `AUTO_SCRIM_OPACITY = 0.66` — opaque enough that `deck-audit.ts` itself
  * trusts the scrim's raw fill as the background region's color
@@ -223,7 +223,7 @@ const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchet
  * 取样一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务 3，即
  * `slide.layout`）显式指定短路——完整选型算法（narrative 加权取样、
  * narrativesOnly 硬约束、相邻防重复、allowed 空集防御性回退，W4 终态）现由
- * `./effective-layout` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
+ * `./layout-selection` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
  * `checkIrQuality` 的 density 门在 validate 期要跑同一条选型路径，两处各自维护
  * 一份会有漂移风险，故只留一份）。这里只做 render 专属的收尾——按选中 id 查
  * 这个文件自己的 `PAGE_ARCHETYPE_REGISTRIES` 取 JSX Component（validate 侧不
@@ -291,7 +291,7 @@ export function FullSlideSvg({
   // what's actually rendered instead of falling back to the unrelated
   // `tokens.colors.surface`. A slide with no override resolves to exactly
   // `themeDefaultBg` above, unchanged from before this fix (invariant
-  // verified in `FullSlideSvg.test.tsx`).
+  // verified in `full-slide-svg.test.tsx`).
   const defaultBg = slide.background
     ? resolveOverrideBackgroundHex(slide.background, tokens.colors.surface, themeDefaultBg)
     : themeDefaultBg

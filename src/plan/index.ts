@@ -25,7 +25,14 @@
 import { z } from "zod"
 import { PptfastError } from "../errors"
 import { BEAT_VALUES, BrandSchema, COMPONENT_TYPES, MetaSchema, NarrativeProfileInputSchema } from "../ir"
-import { STRATEGY_DEFINITIONS, resolveNarrative, type Pacing, type Strategy, type NarrativeProfile } from "../narrative"
+import {
+  normalizeNarrativeShape,
+  resolveNarrative,
+  STRATEGY_DEFINITIONS,
+  type NarrativeProfile,
+  type Pacing,
+  type Strategy,
+} from "../narrative"
 import { CAPACITY } from "../svg/audit/capacity"
 import { LAYOUT_REGISTRY, type SlideType } from "../svg/layouts/registry"
 import { getInstalledThemeIds } from "../themes/definitions"
@@ -72,7 +79,7 @@ export const PageSpecSchema = z
      *  `Slide.beat` field, where it combines with a soft selection-weight
      *  onto layout picking (`Math.max`, not multiplication — see
      *  `SlideSchema.beat`'s own doc comment, `../ir/index.ts`, and
-     *  `BEAT_TENDENCY_WEIGHT`'s in `../svg/effective-layout.ts` for why) —
+     *  `BEAT_TENDENCY_WEIGHT`'s in `../svg/layout-selection.ts` for why) —
      *  the checks below (rotation shape) and that downstream weighting
      *  (which archetypes a given beat favors) are two independent consumers
      *  of the same declared value, not two views of one mechanism. */
@@ -126,7 +133,7 @@ export const DeckSpecSchema = z
      *  shape, same pattern as `meta` just above. Unlike `meta`, no
      *  `.default({})`: IR's own `brand` field is a bare `.optional()` with no
      *  default either (`undefined` means "no brand", not "an empty brand
-     *  object") — consumed by `BrandChrome` (`src/svg/BrandChrome.tsx`) for
+     *  object") — consumed by `BrandChrome` (`src/svg/brand-chrome.tsx`) for
      *  the deck's logo image and corner position. */
     brand: BrandSchema.optional(),
     pages: z.array(PageSpecSchema),
@@ -156,6 +163,19 @@ export interface SpecValidateResult {
   ok: boolean
   spec?: DeckSpec
   errors: SpecValidationIssue[]
+  /**
+   * Same shape and channel as `ValidateResult.normalized` (`../validate-core.ts`)
+   * — human-readable `path: alias → canonical`-style rewrite entries for every
+   * deterministic pre-parse rewrite `validateSpec` applied before parsing.
+   * Today the only source is `normalizeNarrativeShape` (`../narrative`, T0b
+   * fix 2 scope extension): a top-level `narrative: {id: "<preset>"}` shape
+   * rewritten to the bare preset string. Present only when at least one
+   * rewrite happened; informational, never gates `ok` on its own.
+   * `cli/commands.ts`'s `runSpecValidate` prints this through the same
+   * `normalizedNote` helper `runValidate`/`runRender` already use for the
+   * bare-IR path's own component field-alias notes.
+   */
+  normalized?: string[]
 }
 
 export function formatSpecIssues(errors: SpecValidationIssue[]): string {
@@ -331,7 +351,7 @@ const HEADING_MAX_CHARS = CAPACITY.headingMaxChars
  * elsewhere in this codebase for a different purpose (bullets budgets).
  * Duplicated rather than imported: `charLen` is a one-line function and
  * importing it would pull `ir-quality.ts`'s whole module graph
- * (`effective-layout.ts`, `svg-text-layout.ts`, ...) into this Node-free
+ * (`layout-selection.ts`, `svg-text-layout.ts`, ...) into this Node-free
  * package for a single line of logic. Keep in sync with `ir-quality.ts`'s
  * `charLen` if that one ever changes.
  */
@@ -627,55 +647,80 @@ function pageIdFromRawInput(input: unknown, index: number): string | undefined {
  * resolves cleanly. Every spec-gate philosophy here is "hard block, no soft
  * warning" (spec §5's "escape hatch" section — a spec that doesn't fit this shape
  * should be authored as bare IR instead, not warned-and-shipped).
+ *
+ * Before the schema parse, {@link normalizeNarrativeShape} (`../narrative`,
+ * T0b fix 2 scope extension) runs on the raw input, exactly mirroring
+ * `validateIr`'s own pre-parse pass (`../validate-core.ts`) — a top-level
+ * `narrative: {id: "<preset>"}` shape is rewritten to the bare preset
+ * string before `DeckSpecSchema.safeParse` ever sees it, so the correction
+ * lands in the returned `spec` itself (read again by `checkBeatRotation`/
+ * `checkFocusVocabulary`/`checkPageCount` below, and by `runSpecValidate`'s
+ * own OK-summary line, `../cli/commands.ts`), not just this function's own
+ * local `resolveNarrative` call below. Every return path is wrapped in
+ * `withNormalized` so the rewrite note (`SpecValidateResult.normalized`)
+ * surfaces on success *or* failure, success or failure alike — same
+ * "informational, never gates `ok`" contract `ValidateResult.normalized`
+ * has.
  */
 export function validateSpec(input: unknown): SpecValidateResult {
-  const r = DeckSpecSchema.safeParse(input)
+  const { value: normalizedInput, normalized } = normalizeNarrativeShape(input)
+  const withNormalized = (result: SpecValidateResult): SpecValidateResult =>
+    normalized.length > 0 ? { ...result, normalized } : result
+
+  const r = DeckSpecSchema.safeParse(normalizedInput)
   if (!r.success) {
     const errors = r.error.issues.map((issue) => {
       const path = issue.path.join(".")
       const m = /^pages\.(\d+)/.exec(path)
-      return { path, message: issue.message, pageId: m ? pageIdFromRawInput(input, Number(m[1])) : undefined }
+      return { path, message: issue.message, pageId: m ? pageIdFromRawInput(normalizedInput, Number(m[1])) : undefined }
     })
-    return { ok: false, errors }
+    return withNormalized({ ok: false, errors })
   }
   const spec = r.data
 
   const emptyErrors = checkPagesNonEmpty(spec)
-  if (emptyErrors.length > 0) return { ok: false, errors: emptyErrors }
+  if (emptyErrors.length > 0) return withNormalized({ ok: false, errors: emptyErrors })
 
   const boundaryErrors = checkBoundaryTypes(spec)
-  if (boundaryErrors.length > 0) return { ok: false, errors: boundaryErrors }
+  if (boundaryErrors.length > 0) return withNormalized({ ok: false, errors: boundaryErrors })
 
   const idErrors = checkPageIds(spec)
-  if (idErrors.length > 0) return { ok: false, errors: idErrors }
+  if (idErrors.length > 0) return withNormalized({ ok: false, errors: idErrors })
 
   const headingErrors = checkHeadings(spec)
-  if (headingErrors.length > 0) return { ok: false, errors: headingErrors }
+  if (headingErrors.length > 0) return withNormalized({ ok: false, errors: headingErrors })
 
   const themeErrors = checkTheme(spec)
-  if (themeErrors.length > 0) return { ok: false, errors: themeErrors }
+  if (themeErrors.length > 0) return withNormalized({ ok: false, errors: themeErrors })
 
   // Narrative resolution (spec §5's defaults chain), same open-schema/
   // closed-semantic split as validateIr's own (api.ts) — see that
   // function's comment for the full rationale. `spec.narrative`'s inferred
   // type is wider than `resolveNarrative`'s parameter — safe to narrow here
   // because `resolveNarrative` validates every key/value itself at runtime.
+  // When the input was an `{id}` shape, `spec.narrative` here already reads
+  // as the rescued bare string (`normalizeNarrativeShape` rewrote it before
+  // the schema parse above) — this call just resolves that string like any
+  // other preset id. `resolveNarrative`'s own entry additionally tolerates
+  // the unrescued `{id}` shape directly too (see its doc comment), so this
+  // line stays correct even if some future caller of `resolveNarrative`
+  // reaches it without going through a normalizeNarrativeShape pass first.
   let resolvedAxes: NarrativeProfile
   try {
     resolvedAxes = resolveNarrative(spec.narrative as string | Partial<NarrativeProfile> | undefined)
   } catch (err) {
     if (!(err instanceof PptfastError)) throw err
-    return { ok: false, errors: [{ path: "narrative", message: err.message }] }
+    return withNormalized({ ok: false, errors: [{ path: "narrative", message: err.message }] })
   }
 
   const beatErrors = checkBeatRotation(spec, resolvedAxes.strategy)
-  if (beatErrors.length > 0) return { ok: false, errors: beatErrors }
+  if (beatErrors.length > 0) return withNormalized({ ok: false, errors: beatErrors })
 
   const focusErrors = checkFocusVocabulary(spec, resolvedAxes.strategy)
-  if (focusErrors.length > 0) return { ok: false, errors: focusErrors }
+  if (focusErrors.length > 0) return withNormalized({ ok: false, errors: focusErrors })
 
   const pageCountErrors = checkPageCount(spec, resolvedAxes.pacing)
-  if (pageCountErrors.length > 0) return { ok: false, errors: pageCountErrors }
+  if (pageCountErrors.length > 0) return withNormalized({ ok: false, errors: pageCountErrors })
 
-  return { ok: true, spec, errors: [] }
+  return withNormalized({ ok: true, spec, errors: [] })
 }

@@ -11,7 +11,7 @@ type QuadrantKey = "strengths" | "weaknesses" | "opportunities" | "threats"
 /**
  * Named 2×2 SWOT quadrant grid (structure-components wave task 1, decision
  * 3): a full-body component (`FULL_BODY_TYPES`, `component-traits.ts`) — the
- * only component `SvgContent.tsx` ever hands this to fills the whole content
+ * only component `svg-content.tsx` ever hands this to fills the whole content
  * rect, no sibling components on the same slide (enforced by
  * `checkFullBodyExclusivity`, `api.ts`).
  *
@@ -48,7 +48,7 @@ type QuadrantKey = "strengths" | "weaknesses" | "opportunities" | "threats"
  * gotten the fix itself, only ever the `Math.max(cellH, ...)` floor below,
  * which grows a row but never shrinks it below its own unstretched natural
  * height). A full-body component gets the archetype's *fixed* content-rect
- * height verbatim (`SvgContent.tsx`), never a box sized to its own
+ * height verbatim (`svg-content.tsx`), never a box sized to its own
  * `measure()` value, and schema-max content (5 items in every one of the 4
  * quadrants) combined with a heading long enough to force a 2-line wrap can
  * shrink that fixed rect below what an unshrinkable natural cell needs — an

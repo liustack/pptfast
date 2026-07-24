@@ -66,7 +66,7 @@ import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
-import { resolveBackgroundHex } from "../FullSlideSvg"
+import { resolveBackgroundHex } from "../full-slide-svg"
 import { contrastRatio, requiredContrastRatio } from "../ink"
 import { parseSvgRoot } from "../serialize"
 import { mixHex } from "../components/color-mix"
@@ -638,12 +638,12 @@ describe("defect B real contrast fixes (bench-driven fix round, Task 3)", () => 
 // `accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, fontSize)` in
 // both `numbered-cards.tsx` and `quote.tsx` — were only proven against a
 // content slide with *no* `slide.background` override, where `ctx.defaultBg`
-// resolves straight to `themeDefaultBg` (`FullSlideSvg.tsx`). Task 3's own
+// resolves straight to `themeDefaultBg` (`full-slide-svg.tsx`). Task 3's own
 // review verified the same guard also holds on the *asset-scrim* branch (a
 // content slide with `background: { kind: "asset", ... }`, where
 // `ctx.defaultBg` instead flows through `resolveOverrideBackgroundHex`'s
 // asset case — fixed in an earlier task, 03976da, to resolve to
-// `paintedFallback`/`themeDefaultBg`, the color `Background.tsx`'s
+// `paintedFallback`/`themeDefaultBg`, the color `background.tsx`'s
 // auto-scrim actually paints, not `tokens.colors.surface`) across all 13
 // themes — but only with throwaway, uncommitted probes, leaving this branch
 // without a durable regression net. `paintedFallback` currently equals
@@ -660,7 +660,7 @@ describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task
   // resolved asset background in this suite's sibling file
   // (`deck-audit.test.ts`'s own asset/scrim fixtures) — `auditDeck` never
   // decodes pixel dimensions off it, only checks `src` truthiness
-  // (`hasBgImage`, `ImagePages.tsx`/`ToneAdaptiveContent`'s own asset-branch
+  // (`hasBgImage`, `image-pages.tsx`/`ToneAdaptiveContent`'s own asset-branch
   // guard), so a tiny placeholder is sufficient and does not skew geometry.
   const ASSET_BG_IMAGES: PptxIR["assets"]["images"] = { bg: { src: "data:image/png;base64,AAAA" } }
   const NUMBERED_CARDS_ASSET_BG_SLIDE: Slide = {
@@ -700,8 +700,8 @@ describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task
   }
 
   // Distinguishing assertion (red-pre-fix-by-construction, same discipline
-  // FullSlideSvg.test.tsx's own 03976da regression uses, and verified red by
-  // literally reverting FullSlideSvg.tsx's `defaultBg` asset branch back to
+  // full-slide-svg.test.tsx's own 03976da regression uses, and verified red by
+  // literally reverting full-slide-svg.tsx's `defaultBg` asset branch back to
   // `tokens.colors.surface` and re-running this file: academic is the theme
   // that flips under that revert, not every theme — `accessibleInk`'s
   // fallback ink can coincidentally clear both candidate backgrounds for
@@ -739,7 +739,7 @@ describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task
 // `chapter-masthead-chapter.tsx`'s subheading does — against every real
 // background this renderer actually paints behind it:
 //   - each theme's own cover/content/ending page background (its
-//     `defaultBackgrounds`, reduced the same way `FullSlideSvg.tsx` does).
+//     `defaultBackgrounds`, reduced the same way `full-slide-svg.tsx` does).
 //     `chapter` is deliberately excluded: every chapter archetype either
 //     never reads `colors.muted` at all, or reads it through
 //     `accessibleInk` (`chapter-masthead-chapter.tsx`/`chapter-poster-
@@ -848,7 +848,7 @@ type MutedSurfaceClass =
  * - `"flat-surface"`: renders `colors.muted` text over a card/panel whose
  *   fill is the *same*, unblended `colors.surface` token the bento-panel
  *   check above already locks (`icon-cards.tsx`/`kpi.tsx`'s card shell/
- *   `roadmap.tsx`'s card/`insight_panel.tsx`'s panel/`row-cards.tsx`'s
+ *   `roadmap.tsx`'s card/`insight-panel.tsx`'s panel/`row-cards.tsx`'s
  *   card/`steps.tsx`'s horizontal-mode card/`image*.tsx`'s missing-asset
  *   placeholder rect all use `fill={ctx.colors.surface}` verbatim, grepped
  *   and read individually) — re-rendering would just re-verify the
@@ -941,9 +941,9 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // The one real "needs-fixture" gap this fix round closes — see the
   // dedicated describe block below.
   matrix: "needs-fixture",
-  // insight_panel.tsx's footnote/row text sits on the panel's
+  // insight-panel.tsx's footnote/row text sits on the panel's
   // colors.surface shell (flat-surface) — same roundedTopBarPath phantom-
-  // background history as roadmap above (insight_panel.tsx uses the
+  // background history as roadmap above (insight-panel.tsx uses the
   // identical helper), **resolved** the same way (`fix/arc-bbox`). Unlike
   // roadmap, insight_panel has no badge circle, but its own `title` had the
   // same unguarded-`colors.accent`-on-phantom-region defect as roadmap's
@@ -1240,7 +1240,7 @@ describe("five_forces tinted-panel contrast (structure-components wave 2 task 1,
 // qwen3.6-27b answer.json: 4 items in all 9 blocks, verbatim below). Pre-fix,
 // `bmc.tsx`'s `render` floored its own drawn height at the natural
 // (unstretched) total and never shrank below `box.h` — a full-body
-// component (`SvgContent.tsx`) gets the archetype's *fixed* content-rect
+// component (`svg-content.tsx`) gets the archetype's *fixed* content-rect
 // height verbatim, never a box sized to its own `measure()` return value —
 // so schema-max content overflowed the content rect on every one of the 13
 // themes (empirically confirmed pre-fix: 2 v-overflow findings per theme,
@@ -2004,8 +2004,8 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 // asset background." `resolveOverrideBackgroundHex`'s asset branch used to
 // return `tokens.colors.surface` for a per-slide asset-background override —
 // unrelated to what a content slide actually paints behind text in that case
-// (`Background.tsx`'s auto-scrim, colored `themeDefaultBg` — see
-// `FullSlideSvg.tsx`'s own `autoScrimColor` assignment and
+// (`background.tsx`'s auto-scrim, colored `themeDefaultBg` — see
+// `full-slide-svg.tsx`'s own `autoScrimColor` assignment and
 // `resolveOverrideBackgroundHex`'s "Asset policy rationale" doc comment).
 // This sweep closes exactly that gap: every content archetype, every theme,
 // with a real asset background (a data-URI `<image>`, not the missing-asset
@@ -2013,14 +2013,14 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 //
 // Scoped to `content` only, not `ending` (though the underlying mechanism —
 // a non-takeover asset background's auto-scrim — applies identically to
-// both slide types, see `FullSlideSvg.tsx`'s own "content/ending 的 asset
+// both slide types, see `full-slide-svg.tsx`'s own "content/ending 的 asset
 // 背景维持 P1 雾面 scrim" comment): grepping every `ctx.defaultBg`/
 // `defaultBg` reference under `src/svg/archetypes/` (same methodology the
 // review itself used) finds zero `ending-*.tsx` consumers today, so an
 // `ending` sweep here would render successfully but could never actually
 // exercise the fixed code path — indistinguishable from a vacuous check.
 // `resolveOverrideBackgroundHex`'s own direct unit tests
-// (`FullSlideSvg.test.tsx`) cover the `asset` branch regardless of which
+// (`full-slide-svg.test.tsx`) cover the `asset` branch regardless of which
 // slide type calls it, so the fix itself is not undertested for `ending` —
 // only this particular real-render net is narrowed to where it can actually
 // discriminate today. A future `ending` archetype that starts reading
@@ -2038,7 +2038,7 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 // never producing a sub-threshold pairing either way). This sweep's job is
 // durable regression coverage against a *future* archetype/theme combination
 // crossing into the dangerous direction, not red-then-green proof for *this*
-// fix — see `FullSlideSvg.test.tsx`'s dedicated
+// fix — see `full-slide-svg.test.tsx`'s dedicated
 // `resolveOverrideBackgroundHex`/`ctx.defaultBg` tests for that (independently
 // verified red pre-fix, green post-fix, by temporarily reverting the source
 // change and re-running).

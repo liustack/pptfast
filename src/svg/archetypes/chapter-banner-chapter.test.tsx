@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx, resolveBackgroundHex } from "../FullSlideSvg"
+import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { BannerChapter } from "./chapter-banner-chapter"
 import type { PptxIR, Slide } from "@/ir"

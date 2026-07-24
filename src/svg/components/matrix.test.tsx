@@ -85,7 +85,7 @@ describe("matrix component", () => {
   // width fit — the audit's own widened box detects the collision this can
   // cause, but the component itself let the text genuinely overflow. This
   // pins the render-layer fix using the audit's own h-overflow detector
-  // (auditSvgMarkup, same oracle SvgContent.tsx's real data-audit-box wrapper
+  // (auditSvgMarkup, same oracle svg-content.tsx's real data-audit-box wrapper
   // feeds) as the objective measure, not just an eyeballed string length.
   it("fits an egregiously long x_title within its declared box instead of overflowing it (real-render h-overflow oracle)", () => {
     // 72 CJK chars — far past anything a 560px box minus the y_title gutter

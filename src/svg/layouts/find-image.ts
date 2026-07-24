@@ -2,7 +2,7 @@ import type { Component, Slide } from "@/ir"
 
 /**
  * Shared "first image component" lookup (W2 task 3): the takeover-layout
- * renderers (`ImagePages.tsx`'s 4 page components) and `FullSlideSvg`'s
+ * renderers (`image-pages.tsx`'s 4 page components) and `FullSlideSvg`'s
  * takeover-dispatch check each used to independently write
  * `slide.components.find((b) => b.type === "image")` — 5 duplicated copies of
  * the same convention (inventory finding). This is the single place that

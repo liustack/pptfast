@@ -1,7 +1,7 @@
 // GF/svg/archetypes/content-banner-heading.tsx
 import type { SvgTemplateProps } from "./types"
 import type { PptxIR } from "@/ir"
-import { SvgContent } from "../SvgContent"
+import { SvgContent } from "../svg-content"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"

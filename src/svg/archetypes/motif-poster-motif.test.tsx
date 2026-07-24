@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx } from "../FullSlideSvg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { PosterMotif } from "./motif-poster-motif"
 import type { PptxIR, Slide } from "@/ir"
@@ -12,7 +12,7 @@ const chapterSlide: Slide = { type: "chapter", heading: "章节", components: []
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
 
-// BrandChrome's brand logo bands (BrandChrome.tsx logoBox).
+// BrandChrome's brand logo bands (brand-chrome.tsx logoBox).
 const LOGO_BANDS = [
   { x: 64, y: 48, w: 96, h: 40 },
   { x: 1120, y: 48, w: 96, h: 40 },

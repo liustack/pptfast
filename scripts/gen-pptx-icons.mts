@@ -25,9 +25,21 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 /**
- * 旧名 → 当前 canonical 名。发现方法：对比 icons.legacy-names.ts 的 431 个
- * 名字与 lucide 全量图标目录的文件名列表，取差集（2026-07-18，lucide
- * v1.25.0，差集共 8 个）。目标名一定能在全量目录里解析到。
+ * 旧名 → 当前 canonical 名，两类来源，同一条救援路径（同一份图标数据，
+ * 只是多注册一个可解析的名字）：
+ *
+ *  1. lucide 改名桥接（首 8 条）。发现方法：对比 icons.legacy-names.ts 的
+ *     431 个名字与 lucide 全量图标目录的文件名列表，取差集（2026-07-18，
+ *     lucide v1.25.0，差集共 8 个）。
+ *  2. 模型预训练旧习惯名（`alert-circle`/`alert-triangle`，T0b 救援）：与
+ *     第 1 类的触发原因不同——这两个名字从来不是本仓 LEGACY_ICON_NAMES 的
+ *     一员（本仓自 W2.5 起就拼作 `circle-alert`/`triangle-alert`），而是
+ *     模型从预训练记忆里吐出的旧版 lucide-react 命名。基准复测实测 6 次
+ *     真实校验失败、跨 3 个模型（`.issues/notes/2026-07-24-bench-rerun.md`
+ *     立即可修项 1）——单发模式下 "did you mean" 提示没有第二轮可读，别名
+ *     救援是唯一有效防线。
+ *
+ * 目标名一定能在全量目录里解析到。
  */
 const COMPAT_ALIASES: Readonly<Record<string, string>> = {
   home: "house",
@@ -38,6 +50,9 @@ const COMPAT_ALIASES: Readonly<Record<string, string>> = {
   train: "tram-front",
   waves: "waves-horizontal",
   "circle-help": "circle-question-mark",
+  // 模型预训练旧习惯名（非 lucide 改名桥接，见上方类别 2）：
+  "alert-circle": "circle-alert",
+  "alert-triangle": "triangle-alert",
 }
 
 const ALLOWED_TAGS = new Set(["path", "circle", "ellipse", "rect", "line", "polyline", "polygon"])

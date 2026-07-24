@@ -66,7 +66,7 @@ land as custGeom or native shapes — never a picture.
 backed by a real, resolved asset.** Every `<image>`-emitting call site — the
 `image`/`image_grid`/`image_compare` components, `Background`'s asset
 background, `BrandChrome`'s logo, and the 4 `image-*` takeover layouts
-(`ImagePages.tsx`) — resolves a real asset first. When one is missing it
+(`image-pages.tsx`) — resolves a real asset first. When one is missing it
 degrades to a placeholder (a `<rect>` for a content image slot, or the logo
 simply omitting itself) and never degrades to an `<image>`. Separately,
 `rasterizeSvg` (next section) — the one function in this codebase that turns

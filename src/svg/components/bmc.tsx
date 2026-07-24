@@ -73,7 +73,7 @@ type BlockKey =
  * "bmc tinted-block contrast" 13-theme sweep for the empirical lock.
  *
  * **The inverse case — `box.h` *smaller* than the natural total (bench-
- * driven fix round, defect F)**: real, not hypothetical. `SvgContent.tsx`
+ * driven fix round, defect F)**: real, not hypothetical. `svg-content.tsx`
  * hands a full-body component (`FULL_BODY_TYPES`) the archetype's fixed
  * content-rect height verbatim, never a box sized to this file's own
  * `measure()` return value — and schema-max content (4 items in every one
@@ -394,7 +394,7 @@ export const bmc: SvgComponent<BmcComponent> = {
     // bench-driven fix round, defect F: a box shorter than the natural
     // total is real (full-body components get the archetype's fixed
     // content-rect height verbatim, never their own `measure()` value —
-    // `SvgContent.tsx`), so this shrinks every cell's font size/vertical
+    // `svg-content.tsx`), so this shrinks every cell's font size/vertical
     // rhythm by the same proportion the box is short by instead of
     // silently drawing taller than `box.h` (see file header). A box at or
     // above natural size keeps `fontScale === 1` — the exact pre-fix path,

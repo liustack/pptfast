@@ -141,7 +141,7 @@ describe("__pixelFindingsForPage", () => {
 // old fixed 5×3-point grid provably missed a genuine sub-1.5:1 patch
 // falling between sample points — demonstrated at ImageCoverPage's own
 // real org-line scale (fontSize 21, x=96/y=104, white fill at 0.85
-// fill-opacity — src/svg/ImagePages.tsx). This block pins that exact
+// fill-opacity — src/svg/image-pages.tsx). This block pins that exact
 // demonstrated miss as a red-first regression, plus the aligned control and
 // a single-pixel noise-robustness case the new design must also satisfy.
 // ────────────────────────────────────────────────────────────────────────
@@ -293,7 +293,7 @@ describe("auditDeck({ pixels: true }) — real Sharp rasterization", () => {
     expect(result.checks).toEqual({ svg: "completed", pixels: "not-requested" })
   })
 
-  it("reports zero pixel findings for white cover text over a near-black photo (ImagePages.tsx's real ImageCoverPage/DarkScrim geometry)", async () => {
+  it("reports zero pixel findings for white cover text over a near-black photo (image-pages.tsx's real ImageCoverPage/DarkScrim geometry)", async () => {
     const darkPhoto = makeSolidRegionPngDataUri(20, 20, () => [0x05, 0x05, 0x08])
     const ir = deck(
       "consulting",

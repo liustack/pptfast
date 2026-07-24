@@ -107,12 +107,12 @@ export const PASSTHROUGH_SHELL_TYPES: ReadonlySet<ComponentType> = new Set([
 
 /**
  * Component types considered "evidence" for the `assertion_evidence`
- * arrangement (`AssertionEvidence.tsx`), in priority order — order is
+ * arrangement (`assertion-evidence.tsx`), in priority order — order is
  * load-bearing: the *first* type in this list found among a slide's
  * components is the one enlarged/centered as the slide's single strongest
  * evidence. An unordered set can't express "chart beats image beats
  * comparison beats kpi_cards", so unlike the 4 sets above this stays an
- * ordered tuple, not a `Set`. Moved from `AssertionEvidence.tsx:8-13`,
+ * ordered tuple, not a `Set`. Moved from `assertion-evidence.tsx:8-13`,
  * members and order unchanged.
  */
 export const EVIDENCE_TYPES = [
@@ -132,7 +132,7 @@ export const EVIDENCE_TYPES = [
  * 2, decision 1's set), `heatmap`'s value-driven color grid
  * (structure-components wave 2 task 2), `sankey`'s layered flow diagram
  * (structure-components wave 2 task 3 — the wave's largest component).
- * `SvgContent.tsx` special-cases a slide whose
+ * `svg-content.tsx` special-cases a slide whose
  * sole component is one of these (checked *before* the `big_number`/
  * `assertion_evidence` arrangement branches, so a full-body component wins
  * regardless of what `arrangement` happens to be set to): the whole content

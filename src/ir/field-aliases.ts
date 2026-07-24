@@ -311,7 +311,7 @@ export function normalizeComponentAliases(input: unknown): NormalizeAliasesResul
   return { value: changed ? { ...input, slides } : input, normalized }
 }
 
-// ── No root/narrative-level alias layer (spec §16) ────────────────────────
+// ── No root/narrative-level *old-vocabulary* alias layer (spec §16) ───────
 //
 // A v4-track rescue for the IR root's pre-rename `scenario` field name, and
 // the pre-rename `mode`/`delivery` field names and enum values one level
@@ -328,3 +328,14 @@ export function normalizeComponentAliases(input: unknown): NormalizeAliasesResul
 // (`ir/migrate.ts`) remains the sanctioned bridge for a genuine v3 document —
 // v3 documents carry this exact old vocabulary by definition, and migration
 // is a distinct, declared operation from silent in-place rescue.
+//
+// This absence is scoped to *old vocabulary* specifically, not to "no
+// narrative-level rewrite of any kind" — `src/narrative/index.ts`'s
+// `normalizeNarrativeShape` (T0b, added after this paragraph was written)
+// does rewrite `narrative` pre-parse, but for an unrelated reason: a
+// `{id: <preset>}` wrapper shape weak models invent by analogy to
+// `theme: {id: ...}`, never a shape the pre-rename `scenario` vocabulary
+// spoke. Same "weak-model synonym rescue" class this file's own
+// `COMPONENT_FIELD_ALIASES` table is, just for a shape instead of a field
+// name — see that function's own doc comment for the full boundary against
+// this section's old-vocabulary rule.

@@ -2,8 +2,8 @@ import type { Component } from "@/ir"
 import type { ComponentCtx } from "./components/types"
 import { measureComponent, renderComponent } from "./components"
 import { asideSplit, layoutContentFit, type ContentRect, type Arrangement } from "./layout"
-import { AssertionEvidence } from "./AssertionEvidence"
-import { BigNumber } from "./BigNumber"
+import { AssertionEvidence } from "./assertion-evidence"
+import { BigNumber } from "./big-number"
 import { FULL_BODY_TYPES } from "./component-traits"
 
 export interface SvgContentProps {

@@ -14,8 +14,8 @@ import { COMPONENT_TYPES, type Component, type PptxIR, type Slide } from "@/ir"
  * lucide icon primitive in `src/svg/icons.tsx` — lands as a native shape,
  * connector, custGeom, or text run, never a picture. Every `<image>`-
  * emitting call site (`image.tsx`, `image-grid.tsx`, `image-compare.tsx`,
- * `Background.tsx`'s asset background, `BrandChrome.tsx`'s logo, and
- * `ImagePages.tsx`'s 4 `image-*` takeover layouts) resolves a real asset
+ * `background.tsx`'s asset background, `brand-chrome.tsx`'s logo, and
+ * `image-pages.tsx`'s 4 `image-*` takeover layouts) resolves a real asset
  * first and falls back to a placeholder — a `<rect>` for content image
  * slots, or simply omits itself for the optional brand-chrome logo — when
  * one is missing, never to `<image>`. Until this file, that invariant had

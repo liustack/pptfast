@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { checkIrQuality, type QualityIssue } from "./ir-quality"
 import { CAPACITY } from "./audit/capacity"
-import { resolveEffectiveLayoutId } from "./effective-layout"
+import { resolveEffectiveLayoutId } from "./layout-selection"
 import { renderSvgMarkup } from "./serialize"
 import { chart } from "./components/chart"
 import type { ComponentCtx } from "./components/types"
@@ -37,10 +37,10 @@ function pacingAxes(pacing: Pacing): NarrativeProfile {
 /**
  * Search for a heading string that makes a single-content-slide `themeId`
  * deck's auto-pick (content ordinal 0) land on `targetLayoutId` — via the
- * real `resolveEffectiveLayoutId` (`./effective-layout`), never a
+ * real `resolveEffectiveLayoutId` (`./layout-selection`), never a
  * reimplemented copy of its seed/hash mechanics, so this fixture can never
  * silently drift from what selection actually does (same "must reuse, not
- * reimplement" concern `effective-layout.ts` itself documents). Only needed
+ * reimplement" concern `layout-selection.ts` itself documents). Only needed
  * for theme "tech", whose content allowed set (`["bento-panel",
  * "two-column"]`) mixes two different body capacities (6 vs 4) — every
  * other built-in theme's content allowed set is two same-capacity (4)

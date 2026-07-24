@@ -7,7 +7,7 @@
  * seed 的视觉元素" alongside chart palette, see `chart-palette.ts`). This
  * module replaces that single id with a per-theme *candidate set* (2-3
  * style-compatible motifs, one exception below) and a seed+pageKey weighted
- * pick — `weightedPickBySeed`, the exact mechanism `effective-layout.ts`
+ * pick — `weightedPickBySeed`, the exact mechanism `layout-selection.ts`
  * already uses for layout selection — so different decor pages in one deck
  * commonly land on different motifs while a single deck+seed stays fully
  * deterministic (double-render identical) and editing one page never
@@ -30,7 +30,7 @@
  * pre-existing anchor motif** (`THEME_DEFINITIONS[id].motif`, locked by
  * `motif-selection.test.ts`) and carries {@link MOTIF_ANCHOR_WEIGHT} against
  * every other member's {@link MOTIF_BASE_WEIGHT} — the same 3:1 ratio
- * `effective-layout.ts`'s `TENDENCY_WEIGHT`/`BASE_WEIGHT` and
+ * `layout-selection.ts`'s `TENDENCY_WEIGHT`/`BASE_WEIGHT` and
  * `BEAT_TENDENCY_WEIGHT`/`BEAT_BASE_WEIGHT` already use, reused rather than
  * inventing a fourth magic ratio. This keeps the theme's identity anchor the
  * *plurality* pick always (3 vs. 1 beats any single rival) and the outright
@@ -127,7 +127,7 @@ import type { MotifArchetypeId } from "./archetypes/types"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 
 /**
- * Same 3:1 ratio as `effective-layout.ts`'s `TENDENCY_WEIGHT`/`BASE_WEIGHT`
+ * Same 3:1 ratio as `layout-selection.ts`'s `TENDENCY_WEIGHT`/`BASE_WEIGHT`
  * and `BEAT_TENDENCY_WEIGHT`/`BEAT_BASE_WEIGHT` — reused, not reinvented (see
  * this module's own header for why 3:1 in particular). Kept as its own named
  * pair rather than importing those directly: this axis (motif) is
@@ -164,10 +164,10 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifAr
 
 /**
  * Resolve which motif archetype id `slide` (the `index`-th page of `ir`)
- * should draw its decor with. Mirrors `effective-layout.ts`'s
+ * should draw its decor with. Mirrors `layout-selection.ts`'s
  * `resolveEffectiveLayoutId` signature/posture for the same reason: a single
  * authoritative function callable from both the render path
- * (`FullSlideSvg.tsx`) and tests/tooling (`motif-candidate-contrast.test.ts`)
+ * (`full-slide-svg.tsx`) and tests/tooling (`motif-candidate-contrast.test.ts`)
  * that want to know a page's pick without re-deriving the salt logic.
  *
  * - `ir.theme.id` has no entry in {@link MOTIF_CANDIDATES} (a registered/
@@ -182,7 +182,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifAr
  *   byte-inertness block).
  * - A 2-3 member set: `weightedPickBySeed` salted on
  *   `` `motif:${pageKey}` `` (`pageKey` = `slide.id ?? String(index)`, the
- *   exact same stable-id-preferred convention `effective-layout.ts` uses),
+ *   exact same stable-id-preferred convention `layout-selection.ts` uses),
  *   weighted `MOTIF_ANCHOR_WEIGHT` for the anchor and `MOTIF_BASE_WEIGHT`
  *   for every other member. No cross-page state is read or written — unlike
  *   layout selection's adjacent anti-repetition, a motif pick depends only

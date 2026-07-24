@@ -98,7 +98,7 @@ export interface StrategyDefinition {
    * Content-archetype soft-weight set for W4's weighted layout selection
    * (spec §6 step 4: in-set candidates get `TENDENCY_WEIGHT` (×3), out-of-set
    * get the `BASE_WEIGHT` floor (×1) — both named constants live in
-   * `svg/effective-layout.ts`, next to `resolveArchetypeId`, the sole
+   * `svg/layout-selection.ts`, next to `resolveArchetypeId`, the sole
    * consumer). Deliberately a separate field from {@link tendencies} above,
    * not a reinterpretation of it: `tendencies` mixes component-type names and
    * layout ids drawn from spec §5's strategy table verbatim and also feeds W5's
@@ -130,7 +130,7 @@ export interface StrategyDefinition {
    * Cover/chapter/ending soft-weight sets (P1 variety wave, task 3 — "身份页
    * strategy 软加权"), one per identity slide type. Same ×3/×1 mechanics as
    * {@link layoutTendencies} (`TENDENCY_WEIGHT`/`BASE_WEIGHT`,
-   * `svg/effective-layout.ts`) and the same consumer (`resolveArchetypeId`),
+   * `svg/layout-selection.ts`) and the same consumer (`resolveArchetypeId`),
    * just scoped to a disjoint id namespace: this field holds only
    * `LAYOUT_REGISTRY` cover/chapter/ending archetype ids
    * (`svg/layouts/registry.ts`'s `COVER_LAYOUTS`/`CHAPTER_LAYOUTS`/
@@ -390,7 +390,7 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     layoutTendencies: ["banner-heading", "rail-numbered", "two-column"],
     // Identity tendencies: briefing's cover/chapter/ending stay plain and
     // fact-forward — briefing is also `general`'s default strategy, so most
-    // no-narrative decks now see this set (see effective-layout.test.ts's
+    // no-narrative decks now see this set (see layout-selection.test.ts's
     // "default narrative" coverage for the byte-inertness boundary this
     // implies).
     // - cover `banner-title`: the same formal-report convention pyramid
@@ -428,7 +428,7 @@ export interface PacingBudget {
   /**
    * Body-text baseline, in px, at 1280×720 slide geometry (spec §5 pacing
    * table's body-baseline column). Wired into rendering as of W4 task 3
-   * (design decision 9): `src/svg/FullSlideSvg.tsx` resolves
+   * (design decision 9): `src/svg/full-slide-svg.tsx` resolves
    * `PACING_BUDGETS[resolveNarrative(ir.narrative).pacing].bodyBaselinePx`
    * once and passes it into `buildCtx`, which stores it as
    * `ComponentCtx.bodyFontPx` — the sole font-size input for the
@@ -558,6 +558,35 @@ export const DEFAULT_NARRATIVE: NarrativeProfile = Object.freeze(NARRATIVE_PRESE
 
 const AXIS_KEYS = ["strategy", "pacing", "audience"] as const
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * `{id: <preset>}` shape-rescue predicate (T0b fix 2, bench-evidence — see
+ * `.issues/notes/2026-07-24-bench-rerun.md` item 2): returns the rescued
+ * preset-id string when `value` is a plain object whose only
+ * narrative-relevant key is a string `id` (none of {@link AXIS_KEYS}
+ * alongside it), `undefined` otherwise (not an object, `id` missing/
+ * non-string, or a mixed shape with an axis key present too — genuinely
+ * ambiguous, deliberately left unrescued). Shared by two call sites with
+ * different jobs, both documented at their own definition:
+ *  - {@link resolveNarrative}'s own entry — silent, no reporting, so every
+ *    caller (present and future) tolerates the shape "for free."
+ *  - {@link normalizeNarrativeShape} — reports the rewrite as a note and
+ *    persists it into the shared pre-parse input `validateIr`/`validateSpec`
+ *    return to their own downstream callers.
+ * A single shared predicate means the two can never drift on what counts as
+ * rescuable.
+ */
+function rescueIdShape(value: unknown): string | undefined {
+  if (!isPlainObject(value)) return undefined
+  const id = value.id
+  if (typeof id !== "string") return undefined
+  if (AXIS_KEYS.some((key) => Object.hasOwn(value, key))) return undefined
+  return id
+}
+
 /**
  * Resolve a narrative input down to concrete axes, per spec §5's design
  * principle "omission gets the default, a typo is a hard error" (weak-model
@@ -573,11 +602,26 @@ const AXIS_KEYS = ["strategy", "pacing", "audience"] as const
  *   happen to equal `DEFAULT_NARRATIVE`'s values because `general` *is* that
  *   exact combination, but the fallback here is per-axis, not "any omitted
  *   axis falls back to the whole default object")
+ * - an `{id: <preset>}` object (T0b fix 2, scope-extended — see
+ *   {@link rescueIdShape}) → silently treated as that bare preset-id string,
+ *   the same weak-model shape slip `theme: {id: "consulting"}` invites by
+ *   analogy. Folded directly into this function's own entry (not just a
+ *   pre-parse pass two of its six call sites happen to run) so every caller
+ *   — `validateIr`, `validateSpec`, `layout-selection.ts`,
+ *   `full-slide-svg.tsx`, `ir-quality.ts`, `cli/commands.ts` alike — gets
+ *   this tolerance for free, present and future. Silent here (no rewrite
+ *   note — this is a pure resolver with no reporting channel, and adding one
+ *   would ripple into every one of those call sites' own return-shape
+ *   expectations); `validateIr`/`validateSpec` additionally run
+ *   {@link normalizeNarrativeShape} on their own raw pre-parse input first,
+ *   specifically to report + persist the rewrite into what they return.
  *
  * An unknown axis value, or an unknown key on the partial axes object,
  * always throws {@link PptfastError} (never silently ignored or dropped) —
  * omission and a typo are different intents, and only the former has a
- * reasonable default.
+ * reasonable default. A mixed `{id, strategy}`-style shape is exactly this
+ * case ({@link rescueIdShape} declines it): `id` is simply an unrecognized
+ * key, so it hard-errors the same as any other typo.
  *
  * Renamed from `resolveScenario` (spec §8.1). Callers that still hold a
  * pre-rename `mode`/`delivery` shaped input (e.g. a v3 IR's `scenario`
@@ -585,10 +629,15 @@ const AXIS_KEYS = ["strategy", "pacing", "audience"] as const
  * (`src/ir/migrate.ts`) for the deterministic field/value mapping. A
  * v4-track document that still writes the old field/value spelling gets no
  * such rescue (spec §16, reversing the now-superseded §15.4): this function
- * hard-errors on it, same as any other unknown axis key or value.
+ * hard-errors on it, same as any other unknown axis key or value. The
+ * `{id}` shape above is not that — it was never a v3 `scenario` shape, just
+ * a new confusion weak models invent by analogy to `theme.id`.
  */
 export function resolveNarrative(input: string | Partial<NarrativeProfile> | undefined): NarrativeProfile {
   if (input === undefined) return DEFAULT_NARRATIVE
+
+  const rescuedId = rescueIdShape(input)
+  if (rescuedId !== undefined) input = rescuedId
 
   if (typeof input === "string") {
     if (!Object.hasOwn(NARRATIVE_PRESETS, input)) {
@@ -621,4 +670,58 @@ export function resolveNarrative(input: string | Partial<NarrativeProfile> | und
   }
 
   return { strategy, pacing, audience }
+}
+
+// ── normalizeNarrativeShape (T0b, bench-evidence fix 2 — see
+// .issues/notes/2026-07-24-bench-rerun.md item 2) ───────────────────────
+
+/** Same `{ value, normalized }` reporting shape `ir/field-aliases.ts`'s `normalizeComponentAliases` uses — see that module's own doc comment for the convention this mirrors. */
+export interface NormalizeNarrativeShapeResult {
+  /** The (possibly rewritten) top-level IR/spec input — the same reference as `input` when nothing changed. */
+  value: unknown
+  /** A human-readable `narrative: {...} → "..."` rewrite note, present only when a rewrite happened. */
+  normalized: string[]
+}
+
+/**
+ * Root-level `narrative` shape rescue — the reporting half of the `{id}`
+ * rescue {@link rescueIdShape} implements (that function's own doc comment
+ * has the full "why this shape, why not a mixed one" rationale; this one
+ * covers what's specific to *this* half: reporting + shared-object
+ * rewriting, as opposed to `resolveNarrative`'s silent, blanket tolerance).
+ *
+ * Two callers run this today — `validateIr` (`../validate-core.ts`) and
+ * `validateSpec` (`../plan/index.ts`, T0b fix 2 scope extension: a
+ * `deck.spec.json`'s own top-level `narrative` field is exactly the same
+ * shape, reached by `pptfast spec validate`/`pptfast render <deck-dir>`,
+ * not just a bare IR file) — each on their own raw, pre-schema-parse input,
+ * *before* handing it to their own `z.object(...).strict().safeParse`.
+ * Operating pre-parse (not just inside each caller's own `resolveNarrative`
+ * try/catch) matters for a reason `resolveNarrative`'s own blanket
+ * tolerance doesn't fully cover on its own: the *rewritten* shape needs to
+ * end up in the object each caller returns (`ValidateResult.ir` /
+ * `SpecValidateResult.spec`), not just resolve correctly for this one call
+ * — `validateIr`'s `ir.narrative` and `validateSpec`'s `spec.narrative` are
+ * both read again independently downstream (the render chain's own
+ * `resolveNarrative(ir.narrative)` calls in `svg/layout-selection.ts`/
+ * `svg/full-slide-svg.tsx`; `cli/commands.ts`'s `runSpecValidate` re-reads
+ * `spec.narrative` for its own OK-summary line). Since `resolveNarrative`
+ * itself now tolerates the shape too (silently), those re-reads would no
+ * longer *throw* even without this rewrite — but they would silently
+ * resolve the unrewritten `{id: ...}` object every time instead of ever
+ * seeing the corrected string, and the rewrite note would never surface.
+ * This pass exists so the correction is real and visible, not just
+ * tolerated.
+ */
+export function normalizeNarrativeShape(input: unknown): NormalizeNarrativeShapeResult {
+  if (!isPlainObject(input) || !isPlainObject(input.narrative)) {
+    return { value: input, normalized: [] }
+  }
+  const narrative = input.narrative
+  const rescuedId = rescueIdShape(narrative)
+  if (rescuedId === undefined) return { value: input, normalized: [] }
+  return {
+    value: { ...input, narrative: rescuedId },
+    normalized: [`narrative: ${JSON.stringify(narrative)} → ${JSON.stringify(rescuedId)}`],
+  }
 }
