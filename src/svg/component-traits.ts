@@ -94,52 +94,61 @@ import { traits as sankeyTraits } from "@/ir/components/sankey"
 export type ComponentType = Component["type"]
 
 /**
- * Every component's own `[type, traits]` pair, in `COMPONENT_TYPES` union
- * order (order is a readability convenience for cross-checking against
- * `src/ir/index.ts`'s own import block, not load-bearing — `typesWith` below
- * filters/collects into a `Set`, so pair order never affects any exported
- * value). The one place a new component's 6 boolean trait flags become Set
- * memberships — adding a 33rd component means adding one row here (plus, as
- * ever, the domain file itself), not touching 5 Set literals by hand.
+ * Every component's own traits declaration, keyed by type in
+ * `COMPONENT_TYPES` union order (order is a readability convenience for
+ * cross-checking against `src/ir/index.ts`'s own import block, not
+ * load-bearing — `typesWith` below collects into a `Set`, so key order never
+ * affects any exported value). The one place a new component's 6 boolean
+ * trait flags become Set memberships — adding a 33rd component means adding
+ * one entry here (plus, as ever, the domain file itself), not touching 5 Set
+ * literals by hand. Typed as a total `Record<ComponentType, ...>` (the same
+ * exhaustiveness pattern `RENDER_DEFS` in `components/index.tsx` uses) so a
+ * missing entry is a COMPILE error, not a silent all-false degradation —
+ * the wave-2 final review's mutation probe showed the previous array shape
+ * let a dropped row pass typecheck, lint, and the full suite unnoticed.
  */
-const ALL_TRAITS: readonly (readonly [ComponentType, ComponentTraits])[] = [
-  ["bullets", bulletsTraits],
-  ["paragraph", paragraphTraits],
-  ["quote", quoteTraits],
-  ["callout", calloutTraits],
-  ["code", codeTraits],
-  ["kpi_cards", kpiCardsTraits],
-  ["chart", chartTraits],
-  ["flowchart", flowchartTraits],
-  ["architecture", architectureTraits],
-  ["timeline", timelineTraits],
-  ["comparison", comparisonTraits],
-  ["icon_cards", iconCardsTraits],
-  ["row_cards", rowCardsTraits],
-  ["steps", stepsTraits],
-  ["rings", ringsTraits],
-  ["numbered_cards", numberedCardsTraits],
-  ["roadmap", roadmapTraits],
-  ["matrix", matrixTraits],
-  ["insight_panel", insightPanelTraits],
-  ["verdict_banner", verdictBannerTraits],
-  ["citation", citationTraits],
-  ["image", imageTraits],
-  ["image_grid", imageGridTraits],
-  ["image_compare", imageCompareTraits],
-  ["swot", swotTraits],
-  ["bmc", bmcTraits],
-  ["waterfall", waterfallTraits],
-  ["gantt", ganttTraits],
-  ["pest", pestTraits],
-  ["five_forces", fiveForcesTraits],
-  ["heatmap", heatmapTraits],
-  ["sankey", sankeyTraits],
-]
+const ALL_TRAITS: Record<ComponentType, ComponentTraits> = {
+  bullets: bulletsTraits,
+  paragraph: paragraphTraits,
+  quote: quoteTraits,
+  callout: calloutTraits,
+  code: codeTraits,
+  kpi_cards: kpiCardsTraits,
+  chart: chartTraits,
+  flowchart: flowchartTraits,
+  architecture: architectureTraits,
+  timeline: timelineTraits,
+  comparison: comparisonTraits,
+  icon_cards: iconCardsTraits,
+  row_cards: rowCardsTraits,
+  steps: stepsTraits,
+  rings: ringsTraits,
+  numbered_cards: numberedCardsTraits,
+  roadmap: roadmapTraits,
+  matrix: matrixTraits,
+  insight_panel: insightPanelTraits,
+  verdict_banner: verdictBannerTraits,
+  citation: citationTraits,
+  image: imageTraits,
+  image_grid: imageGridTraits,
+  image_compare: imageCompareTraits,
+  swot: swotTraits,
+  bmc: bmcTraits,
+  waterfall: waterfallTraits,
+  gantt: ganttTraits,
+  pest: pestTraits,
+  five_forces: fiveForcesTraits,
+  heatmap: heatmapTraits,
+  sankey: sankeyTraits,
+}
 
 /** Every component type whose own domain-file `traits` declares `trait: true`, collected as a `ReadonlySet`. */
 function typesWith(trait: keyof ComponentTraits): ReadonlySet<ComponentType> {
-  return new Set(ALL_TRAITS.filter(([, traits]) => traits[trait]).map(([type]) => type))
+  return new Set(
+    (Object.entries(ALL_TRAITS) as [ComponentType, ComponentTraits][])
+      .filter(([, traits]) => traits[trait])
+      .map(([type]) => type),
+  )
 }
 
 /**

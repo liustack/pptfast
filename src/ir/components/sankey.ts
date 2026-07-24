@@ -11,7 +11,7 @@ import type { ComponentAliasSpec, ComponentTraits } from "./types"
 // natively editable vectors, not a picture of a chart).
 //
 // Two named sub-schemas (not inlined, same "cross-field refine needs its own
-// symbol" precedent GanttItemSchema set above): `nodes`/`links` is a graph,
+// symbol" precedent gantt.ts's GanttItemSchema set): `nodes`/`links` is a graph,
 // not a named-slot family (swot/pest's own "positional array a weak model
 // could mis-order" concern doesn't apply here — a node's identity is its own
 // `id`, referenced by `links[].from`/`to`, not by array position), so this
