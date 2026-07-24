@@ -1,6 +1,6 @@
 /**
  * Frozen snapshot of the pre-W2.5 curated icon catalog (431 names, commit
- * 647eb97's `src/icons.ts`) — the compat-lock fixture for `icons.test.ts`.
+ * 647eb97's `src/icons.ts`) — the compat-lock fixture for `catalog.test.ts`.
  * lucide renames icons upstream between releases (e.g. v1.24 → v1.25 folded
  * "home" into "house"), so `scripts/gen-pptx-icons.mts` must keep every one
  * of these names resolvable in the regenerated `PPTX_ICON_NAMES` — either it

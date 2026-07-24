@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { PPTX_ICON_NAMES } from "@/icons"
+import { PPTX_ICON_NAMES } from "@/icons/catalog"
 import { BEAT_VALUES } from "./narrative-values"
 import { componentTypeError, iconEnumError } from "./schema-error-hints"
 

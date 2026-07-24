@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import { PPTX_ICON_NAMES } from "@/icons"
+import { PPTX_ICON_NAMES } from "@/icons/catalog"
 import { assertSubset } from "./subset-validate"
 import { Icon } from "./icons"
 
@@ -95,7 +95,7 @@ describe("Icon component: model pretraining-habit aliases (T0b fix 1)", () => {
   // A weak model's pretraining data remembers the older lucide-react names
   // ("alert-circle"/"alert-triangle") pptfast never used (this catalog has
   // always spelled these "circle-alert"/"triangle-alert" — see
-  // icons.legacy-names.ts). Bench evidence: 6 real validate failures across
+  // icons/legacy-names.ts). Bench evidence: 6 real validate failures across
   // 3 models, .issues/notes/2026-07-24-bench-rerun.md item 1. These aliases
   // must render byte-identical output to their canonical counterpart, not
   // just "something" — same catalog entry, not a lookalike substitute.

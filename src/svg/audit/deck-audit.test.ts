@@ -1849,11 +1849,11 @@ describe("__pathBoundingBox — arc-bbox root fix (fix/arc-bbox)", () => {
 // silently wrong for `A`/`a`'s `large-arc-flag`/`sweep-flag` operands, which
 // SVG's grammar defines as exactly one `"0"`/`"1"` character each and which
 // real authoring tools (lucide's own `d` strings, this catalog's upstream —
-// see `src/icons.ts`'s header) routinely glue to each other and to the
+// see `src/icons/catalog.ts`'s header) routinely glue to each other and to the
 // following coordinate with no separator (`"a1 1 0 001 1"` = rx 1 ry 1 rot 0
 // large-arc-flag 0 sweep-flag 0 x 1 y 1, not "001" as one number). A code
 // review of this branch caught it against real, already-shipped data: 16 of
-// the 2229 arc-bearing `d` strings in `src/icons.ts` produced a silently
+// the 2229 arc-bearing `d` strings in `src/icons/catalog.ts` produced a silently
 // wrong (non-null, non-thrown) bbox. `tokenizePathD` is now a positional
 // char-by-char scanner that reads the 4th/5th argument of every `A`/`a`
 // 7-tuple as exactly one flag character, whatever's glued on either side.
@@ -1929,7 +1929,7 @@ describe("__pathBoundingBox — compressed SVG arc-flag fix (fix/arc-bbox, flag-
     expect(bbox!.h).toBeCloseTo(8, 2)
   })
 
-  // All 16 real `src/icons.ts` `d` strings a full-catalog scan (2229
+  // All 16 real `src/icons/catalog.ts` `d` strings a full-catalog scan (2229
   // arc-bearing paths, all of `PPTX_ICONS`) found silently mis-parsed
   // pre-fix — not a hand-picked sample, the complete set, matching the
   // review's own "16 real icon paths" count exactly. Expected values are the

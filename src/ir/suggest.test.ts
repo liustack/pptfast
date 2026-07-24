@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { PPTX_ICON_NAMES } from "@/icons"
+import { PPTX_ICON_NAMES } from "@/icons/catalog"
 import { closestMatch, levenshteinDistance } from "./suggest"
 
 describe("levenshteinDistance", () => {
