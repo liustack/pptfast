@@ -121,6 +121,22 @@ const VALID_PLAN = {
 
 const BAD_PLAN = { pages: [] }
 
+// T0b fix 2 (scope-extended, controller ruling): same shape as VALID_PLAN,
+// but narrative written as the {id: <preset>} wrapper shape a weak model
+// generalizes from theme: {id: "consulting"} — proves runSpecValidate's
+// note-printing channel, not just validateSpec's own return value.
+const PLAN_WITH_NARRATIVE_ID_SHAPE = {
+  version: "1",
+  narrative: { id: "boardroom-report" },
+  theme: "consulting",
+  pages: [
+    { id: "p-cover", type: "cover", heading: "CLI Plan" },
+    { id: "p-kpi", type: "content", heading: "Body content page", beat: "anchor", focus: "kpi_cards" },
+    { id: "p-detail", type: "content", heading: "More detail" },
+    { id: "p-ending", type: "ending", heading: "Thanks" },
+  ],
+}
+
 // Borrow wave, Task 2 (dual-threshold severity recalibration): a missing
 // heading is warn-severity (editorial, not content-loss) — validate/render
 // must both still succeed, printing a "warning: ..." note rather than
@@ -170,6 +186,7 @@ beforeAll(async () => {
   await writeFile(join(dir, "deck-bullet-overflow.json"), JSON.stringify(IR_WITH_BULLET_OVERFLOW))
   await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
   await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
+  await writeFile(join(dir, "plan-with-narrative-id-shape.json"), JSON.stringify(PLAN_WITH_NARRATIVE_ID_SHAPE))
   // Isolate every test in this file from whatever the real machine's
   // ~/.pptfast happens to hold (W5 task 5: applyDeckConfig now reads the
   // user config layer — findUserConfig — on every call). A fresh, never-
@@ -465,6 +482,20 @@ describe("runSpecValidate", () => {
     const badJsonPath = join(dir, "not-json-plan.json")
     await writeFile(badJsonPath, "{ not json")
     await expect(runSpecValidate(badJsonPath)).rejects.toThrow(/not valid JSON/)
+  })
+})
+
+describe("runSpecValidate narrative {id} shape rescue note (T0b fix 2, scope-extended)", () => {
+  it("prints a note after OK, the same channel runValidate's field-alias note uses, for the narrative {id} shape rescue", async () => {
+    const report = await runSpecValidate(join(dir, "plan-with-narrative-id-shape.json"))
+    expect(report).toMatch(/^OK — 4 pages, narrative pyramid\/spacious\/executive, theme "consulting"/)
+    expect(report).toContain("note: 1 field alias normalized")
+    expect(report).toContain('narrative: {"id":"boardroom-report"} → "boardroom-report"')
+  })
+
+  it("has no note line for a spec whose narrative is already the bare preset string", async () => {
+    const report = await runSpecValidate(join(dir, "plan.json"))
+    expect(report).not.toContain("note:")
   })
 })
 

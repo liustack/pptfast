@@ -502,6 +502,12 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
  * message" helper despite its IR-scoped name (`./load-ir.ts`) — reused as-is
  * rather than duplicated, same pattern `runValidate` above uses for IR.
  * Returns human-readable report. Throws PptfastError when invalid (CLI exit 1).
+ *
+ * Appends the same {@link normalizedNote} `runValidate`/`runRender` print
+ * (T0b fix 2 scope extension) whenever `validateSpec` rewrote a top-level
+ * `narrative: {id: "<preset>"}` shape (`SpecValidateResult.normalized`,
+ * `../plan/index.ts`) — the spec-validate channel gets the identical note
+ * format the bare-IR path already has, not a second, differently-shaped one.
  */
 export async function runSpecValidate(specPath: string): Promise<string> {
   const raw = await loadIrFile(specPath, "spec")
@@ -513,7 +519,9 @@ export async function runSpecValidate(specPath: string): Promise<string> {
   // Safe to call unguarded: validateSpec already resolved this same
   // expression successfully as part of its own hard-gate chain.
   const axes = resolveNarrative(spec.narrative as string | Partial<NarrativeProfile> | undefined)
-  return `OK — ${spec.pages.length} pages, narrative ${axes.strategy}/${axes.pacing}/${axes.audience}, theme "${resolveSpecThemeId(spec)}"`
+  const ok = `OK — ${spec.pages.length} pages, narrative ${axes.strategy}/${axes.pacing}/${axes.audience}, theme "${resolveSpecThemeId(spec)}"`
+  const aliasNote = normalizedNote(v.normalized)
+  return aliasNote ? `${ok}\n${aliasNote}` : ok
 }
 
 /** `mode` selects which JSON Schema to print (`pptfast schema [--style|--spec]`,

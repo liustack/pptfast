@@ -558,6 +558,35 @@ export const DEFAULT_NARRATIVE: NarrativeProfile = Object.freeze(NARRATIVE_PRESE
 
 const AXIS_KEYS = ["strategy", "pacing", "audience"] as const
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * `{id: <preset>}` shape-rescue predicate (T0b fix 2, bench-evidence — see
+ * `.issues/notes/2026-07-24-bench-rerun.md` item 2): returns the rescued
+ * preset-id string when `value` is a plain object whose only
+ * narrative-relevant key is a string `id` (none of {@link AXIS_KEYS}
+ * alongside it), `undefined` otherwise (not an object, `id` missing/
+ * non-string, or a mixed shape with an axis key present too — genuinely
+ * ambiguous, deliberately left unrescued). Shared by two call sites with
+ * different jobs, both documented at their own definition:
+ *  - {@link resolveNarrative}'s own entry — silent, no reporting, so every
+ *    caller (present and future) tolerates the shape "for free."
+ *  - {@link normalizeNarrativeShape} — reports the rewrite as a note and
+ *    persists it into the shared pre-parse input `validateIr`/`validateSpec`
+ *    return to their own downstream callers.
+ * A single shared predicate means the two can never drift on what counts as
+ * rescuable.
+ */
+function rescueIdShape(value: unknown): string | undefined {
+  if (!isPlainObject(value)) return undefined
+  const id = value.id
+  if (typeof id !== "string") return undefined
+  if (AXIS_KEYS.some((key) => Object.hasOwn(value, key))) return undefined
+  return id
+}
+
 /**
  * Resolve a narrative input down to concrete axes, per spec §5's design
  * principle "omission gets the default, a typo is a hard error" (weak-model
@@ -573,11 +602,26 @@ const AXIS_KEYS = ["strategy", "pacing", "audience"] as const
  *   happen to equal `DEFAULT_NARRATIVE`'s values because `general` *is* that
  *   exact combination, but the fallback here is per-axis, not "any omitted
  *   axis falls back to the whole default object")
+ * - an `{id: <preset>}` object (T0b fix 2, scope-extended — see
+ *   {@link rescueIdShape}) → silently treated as that bare preset-id string,
+ *   the same weak-model shape slip `theme: {id: "consulting"}` invites by
+ *   analogy. Folded directly into this function's own entry (not just a
+ *   pre-parse pass two of its six call sites happen to run) so every caller
+ *   — `validateIr`, `validateSpec`, `layout-selection.ts`,
+ *   `full-slide-svg.tsx`, `ir-quality.ts`, `cli/commands.ts` alike — gets
+ *   this tolerance for free, present and future. Silent here (no rewrite
+ *   note — this is a pure resolver with no reporting channel, and adding one
+ *   would ripple into every one of those call sites' own return-shape
+ *   expectations); `validateIr`/`validateSpec` additionally run
+ *   {@link normalizeNarrativeShape} on their own raw pre-parse input first,
+ *   specifically to report + persist the rewrite into what they return.
  *
  * An unknown axis value, or an unknown key on the partial axes object,
  * always throws {@link PptfastError} (never silently ignored or dropped) —
  * omission and a typo are different intents, and only the former has a
- * reasonable default.
+ * reasonable default. A mixed `{id, strategy}`-style shape is exactly this
+ * case ({@link rescueIdShape} declines it): `id` is simply an unrecognized
+ * key, so it hard-errors the same as any other typo.
  *
  * Renamed from `resolveScenario` (spec §8.1). Callers that still hold a
  * pre-rename `mode`/`delivery` shaped input (e.g. a v3 IR's `scenario`
@@ -585,10 +629,15 @@ const AXIS_KEYS = ["strategy", "pacing", "audience"] as const
  * (`src/ir/migrate.ts`) for the deterministic field/value mapping. A
  * v4-track document that still writes the old field/value spelling gets no
  * such rescue (spec §16, reversing the now-superseded §15.4): this function
- * hard-errors on it, same as any other unknown axis key or value.
+ * hard-errors on it, same as any other unknown axis key or value. The
+ * `{id}` shape above is not that — it was never a v3 `scenario` shape, just
+ * a new confusion weak models invent by analogy to `theme.id`.
  */
 export function resolveNarrative(input: string | Partial<NarrativeProfile> | undefined): NarrativeProfile {
   if (input === undefined) return DEFAULT_NARRATIVE
+
+  const rescuedId = rescueIdShape(input)
+  if (rescuedId !== undefined) input = rescuedId
 
   if (typeof input === "string") {
     if (!Object.hasOwn(NARRATIVE_PRESETS, input)) {
@@ -628,75 +677,51 @@ export function resolveNarrative(input: string | Partial<NarrativeProfile> | und
 
 /** Same `{ value, normalized }` reporting shape `ir/field-aliases.ts`'s `normalizeComponentAliases` uses — see that module's own doc comment for the convention this mirrors. */
 export interface NormalizeNarrativeShapeResult {
-  /** The (possibly rewritten) top-level IR input — the same reference as `input` when nothing changed. */
+  /** The (possibly rewritten) top-level IR/spec input — the same reference as `input` when nothing changed. */
   value: unknown
   /** A human-readable `narrative: {...} → "..."` rewrite note, present only when a rewrite happened. */
   normalized: string[]
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 /**
- * Root-level `narrative` shape rescue: a weak model that just wrote
- * `theme: {id: "consulting"}` a few lines above pattern-matches the same
- * "object wrapping an id" shape onto `narrative`, writing
- * `narrative: {id: "training"}` — but a narrative object only ever accepts
- * the three axis keys above (`AXIS_KEYS`: strategy/pacing/audience); the
- * schema's *string* branch is what a preset id is actually spelled as. Real
- * bench-failing inputs (3 real failures, 60% of flash's total):
- * `{"id":"training"}`, `{"id":"boardroom-report"}`.
+ * Root-level `narrative` shape rescue — the reporting half of the `{id}`
+ * rescue {@link rescueIdShape} implements (that function's own doc comment
+ * has the full "why this shape, why not a mixed one" rationale; this one
+ * covers what's specific to *this* half: reporting + shared-object
+ * rewriting, as opposed to `resolveNarrative`'s silent, blanket tolerance).
  *
- * Rewrites `id` to the bare preset string *before* `resolveNarrative` ever
- * sees it, and — critically — operates on the same raw, pre-schema-parse
- * input `validateIr` (`../validate-core.ts`) hands `PptxIRSchema.safeParse`,
- * not just on a value scoped to that one function's own `resolveNarrative`
- * call. A fix confined to validateIr's own try/catch would have let the
- * `{id}` shape parse successfully (`NarrativeProfileInputSchema` is a fully
- * open record — any object shape parses) only to leave the *unrescued*
- * shape sitting in the returned `PptxIR`, where a downstream render's own
- * independent `resolveNarrative(ir.narrative)` call (`svg/layout-selection
- * .ts`, `svg/full-slide-svg.tsx` each call it again — `resolveNarrative` is
- * the sole semantic authority for every caller, not just `validateIr`'s own)
- * would throw the exact same "unknown narrative axis 'id'" error a second
- * time, at render, uncaught.
- * Rewriting the shared input here means every caller downstream of
- * `validateIr`'s returned `ir` — the render chain included — sees the
- * corrected string, not just this one validate call.
- *
- * This is a weak-model synonym-*shape* rescue, the same class
- * `ir/field-aliases.ts`'s `COMPONENT_FIELD_ALIASES` table is (hence it
- * reports through the identical `ValidateResult.normalized` channel, wired
- * in by `validateIr`) — not a revival of the pre-rename `scenario`/`mode`/
- * `delivery` vocabulary spec §16 deliberately left unrescued (see
- * `validateIr`'s own doc comment, `../validate-core.ts`, for that boundary
- * in full). `{id}` was never a legal v3 `scenario` shape — nothing here
- * reopens that door; this rescues a shape weak models invent by analogy to
- * `theme.id`, not a shape the pre-rename vocabulary ever spoke.
- *
- * Fires only when `id` is a string and none of `AXIS_KEYS` are also present
- * on the same object. A mixed shape like `{id, strategy}` is genuinely
- * ambiguous (override the preset, or a stray leftover `id` key on what was
- * meant to be a plain axes object?) and is deliberately left untouched:
- * `resolveNarrative`'s own "unknown narrative axis 'id'" error is the
- * honest outcome for that shape, same as any other unrecognized key. This
- * function never itself validates `id` against {@link NARRATIVE_PRESETS} —
- * an unknown preset id still reaches `resolveNarrative`'s own "unknown
- * narrative preset" check downstream, unchanged; this is a shape rewrite
- * only, never a second semantic-validity gate.
+ * Two callers run this today — `validateIr` (`../validate-core.ts`) and
+ * `validateSpec` (`../plan/index.ts`, T0b fix 2 scope extension: a
+ * `deck.spec.json`'s own top-level `narrative` field is exactly the same
+ * shape, reached by `pptfast spec validate`/`pptfast render <deck-dir>`,
+ * not just a bare IR file) — each on their own raw, pre-schema-parse input,
+ * *before* handing it to their own `z.object(...).strict().safeParse`.
+ * Operating pre-parse (not just inside each caller's own `resolveNarrative`
+ * try/catch) matters for a reason `resolveNarrative`'s own blanket
+ * tolerance doesn't fully cover on its own: the *rewritten* shape needs to
+ * end up in the object each caller returns (`ValidateResult.ir` /
+ * `SpecValidateResult.spec`), not just resolve correctly for this one call
+ * — `validateIr`'s `ir.narrative` and `validateSpec`'s `spec.narrative` are
+ * both read again independently downstream (the render chain's own
+ * `resolveNarrative(ir.narrative)` calls in `svg/layout-selection.ts`/
+ * `svg/full-slide-svg.tsx`; `cli/commands.ts`'s `runSpecValidate` re-reads
+ * `spec.narrative` for its own OK-summary line). Since `resolveNarrative`
+ * itself now tolerates the shape too (silently), those re-reads would no
+ * longer *throw* even without this rewrite — but they would silently
+ * resolve the unrewritten `{id: ...}` object every time instead of ever
+ * seeing the corrected string, and the rewrite note would never surface.
+ * This pass exists so the correction is real and visible, not just
+ * tolerated.
  */
 export function normalizeNarrativeShape(input: unknown): NormalizeNarrativeShapeResult {
   if (!isPlainObject(input) || !isPlainObject(input.narrative)) {
     return { value: input, normalized: [] }
   }
   const narrative = input.narrative
-  const id = narrative.id
-  if (typeof id !== "string" || AXIS_KEYS.some((key) => Object.hasOwn(narrative, key))) {
-    return { value: input, normalized: [] }
-  }
+  const rescuedId = rescueIdShape(narrative)
+  if (rescuedId === undefined) return { value: input, normalized: [] }
   return {
-    value: { ...input, narrative: id },
-    normalized: [`narrative: ${JSON.stringify(narrative)} → ${JSON.stringify(id)}`],
+    value: { ...input, narrative: rescuedId },
+    normalized: [`narrative: ${JSON.stringify(narrative)} → ${JSON.stringify(rescuedId)}`],
   }
 }

@@ -418,6 +418,30 @@ describe("resolveNarrative", () => {
       /unknown audience "null"/,
     )
   })
+
+  // T0b fix 2 (scope-extended, controller ruling): the {id} shape rescue is
+  // folded directly into resolveNarrative's own entry — silently, no note —
+  // so every current and future caller tolerates it "for free," not just
+  // validateIr/validateSpec's own pre-parse normalizeNarrativeShape passes.
+  // Those two callers additionally run normalizeNarrativeShape on the raw
+  // input first, purely to report + persist the rewrite — see that
+  // function's own tests below for the reporting half.
+  it("tolerates the {id: <preset>} shape directly, resolving to that preset's axes — same as calling it with the bare string", () => {
+    const withId = resolveNarrative({ id: "boardroom-report" } as unknown as Partial<NarrativeProfile>)
+    const bare = resolveNarrative("boardroom-report")
+    expect(withId).toEqual(bare)
+    expect(withId).toEqual(NARRATIVE_PRESETS["boardroom-report"].axes)
+  })
+
+  it("an unknown preset id under the {id} shape still throws resolveNarrative's own preset error", () => {
+    const bad = { id: "not-a-real-preset" } as unknown as Partial<NarrativeProfile>
+    expect(() => resolveNarrative(bad)).toThrow(/unknown narrative preset "not-a-real-preset"/)
+  })
+
+  it("does NOT rescue a mixed {id, strategy} shape — falls through to the unknown-axis-key error, same as before", () => {
+    const bad = { id: "boardroom-report", strategy: "pyramid" } as unknown as Partial<NarrativeProfile>
+    expect(() => resolveNarrative(bad)).toThrow(/unknown narrative axis "id"/)
+  })
 })
 
 // ── normalizeNarrativeShape (T0b fix 2, bench-evidence `{id}` shape rescue) ──
