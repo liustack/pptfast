@@ -3,7 +3,7 @@ import type { ComponentAliasSpec, ComponentTraits } from "./types"
 
 // PEST macro-environment scan (structure-components wave task 1, second
 // component of this task — same "named-slot family" discipline as
-// swot/bmc above: four independent named fields, never a positional array a
+// swot.ts/bmc.ts (same family): four independent named fields, never a positional array a
 // weak model could mis-order). Each quadrant carries its own optional
 // `title` inline (`{title?, items}`) instead of a sibling `labels` object
 // the way swot does — this task's own schema-shape call, not a swot-copy

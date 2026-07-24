@@ -3,11 +3,11 @@ import type { ComponentAliasSpec, ComponentTraits } from "./types"
 
 // gantt's own item schema is pulled out to a named const (structure-
 // components wave task 2, decision 6) rather than inlined in the union
-// array below, purely so its `.refine` — the one item shape in this whole
+// array in this file, purely so its `.refine` — the one item shape in this whole
 // union that needs cross-field validation — reads as a standalone unit
 // instead of being buried in the middle of a 400-line array literal.
 // `ComponentSchema.options.map((option) => option.shape.type.value)`
-// (`COMPONENT_TYPES` below) requires every *top-level* union member to stay
+// (`COMPONENT_TYPES` in ir/index.ts) requires every *top-level* union member to stay
 // a plain `ZodObject` (`.shape` doesn't exist on the `ZodEffects` a `.refine`
 // wrapper produces) — this only matters for `gantt`'s own top-level object,
 // which stays untouched; the refine lives one level down, on the item
