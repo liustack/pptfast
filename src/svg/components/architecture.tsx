@@ -1,6 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type ArchitectureComponent = Extract<Component, { type: "architecture" }>
 
@@ -116,3 +116,5 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<ArchitectureComponent> = { type: "architecture", measure: architecture.measure, render: architecture.render }

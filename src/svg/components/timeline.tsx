@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
-import type { ComponentBox, ComponentCtx, SvgComponent } from "./types"
+import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type TimelineComponent = Extract<Component, { type: "timeline" }>
 
@@ -328,3 +328,5 @@ export const timeline: SvgComponent<TimelineComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<TimelineComponent> = { type: "timeline", measure: timeline.measure, render: timeline.render }

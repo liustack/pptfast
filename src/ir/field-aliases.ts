@@ -27,7 +27,46 @@
  *    for a pattern like timeline `year: 2024`) — out of scope for a table
  *    that normalizes field *names*; a type mismatch surviving a correct
  *    rename is still a legitimate zod error, not a naming problem.
+ *
+ * **`COMPONENT_FIELD_ALIASES`/`COMPONENT_ITEM_FIELD_ALIASES` are pure
+ * aggregators (src domain reorg wave 2, spec §4.3), same discipline as
+ * `src/svg/layouts/registry.ts`'s T1d precedent.** Every row used to be a
+ * hand-copied literal directly inside one of these two tables. Each
+ * component's own alias rows now live beside its IR schema instead — the
+ * `aliases: ComponentAliasSpec` export at the bottom of the matching
+ * `src/ir/components/<name>.ts` domain file (spec §4.1) — imported below and
+ * referenced by `.block`/`.items`, under the exact same table key the
+ * literal used to occupy. A component with no alias rows still exports
+ * `aliases = {}`; this file's tables simply don't reference it (`bullets`,
+ * `chart`, … have no row in either table, same as before this wave). Every
+ * other export in this file — `FieldAliasMap`/`ItemFieldAliasSpec` (the
+ * shapes a domain file's own `aliases` export is checked against),
+ * `SLIDE_FIELD_ALIASES` (slide-level, out of the component-domain split's
+ * scope — the singular `notes` synonym rescue was never a per-component
+ * concern), and every function below (`normalizeComponentAliases` and its
+ * private helpers) — is machinery that *applies* the two tables, not table
+ * content itself, and is unchanged by this wave.
  */
+
+import { aliases as quoteAliases } from "./components/quote"
+import { aliases as codeAliases } from "./components/code"
+import { aliases as paragraphAliases } from "./components/paragraph"
+import { aliases as calloutAliases } from "./components/callout"
+import { aliases as kpiCardsAliases } from "./components/kpi-cards"
+import { aliases as architectureAliases } from "./components/architecture"
+import { aliases as timelineAliases } from "./components/timeline"
+import { aliases as rowCardsAliases } from "./components/row-cards"
+import { aliases as stepsAliases } from "./components/steps"
+import { aliases as numberedCardsAliases } from "./components/numbered-cards"
+import { aliases as verdictBannerAliases } from "./components/verdict-banner"
+import { aliases as swotAliases } from "./components/swot"
+import { aliases as bmcAliases } from "./components/bmc"
+import { aliases as waterfallAliases } from "./components/waterfall"
+import { aliases as ganttAliases } from "./components/gantt"
+import { aliases as pestAliases } from "./components/pest"
+import { aliases as fiveForcesAliases } from "./components/five-forces"
+import { aliases as heatmapAliases } from "./components/heatmap"
+import { aliases as sankeyAliases } from "./components/sankey"
 
 /** One component type's `{ aliasKey: canonicalKey }` map. */
 export type FieldAliasMap = Readonly<Record<string, string>>
@@ -38,14 +77,14 @@ export type FieldAliasMap = Readonly<Record<string, string>>
  * `_BLOCK_FIELD_ALIASES` (its "block" is pptfast's "component" post-rename).
  */
 export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = {
-  quote: { content: "text", author: "attribution", by: "attribution" },
+  quote: quoteAliases.block,
   // Mental model overlap with "code snippet" / "code text" / "source code".
-  code: { content: "code", source: "code", snippet: "code", text: "code" },
-  paragraph: { content: "text", body: "text" },
+  code: codeAliases.block,
+  paragraph: paragraphAliases.block,
   // callout and verdict_banner's semantic fields commonly cross-wire
   // (tone/variant) — each direction is this pair's own inverse alias below.
-  callout: { tone: "variant" },
-  verdict_banner: { variant: "tone" },
+  callout: calloutAliases.block,
+  verdict_banner: verdictBannerAliases.block,
   // Named-slot full-body family (structure-components wave task 1, decision
   // 8): every slot is its own top-level field (not an item-array element),
   // so these belong in this top-level table, not
@@ -53,60 +92,32 @@ export const COMPONENT_FIELD_ALIASES: Readonly<Record<string, FieldAliasMap>> = 
   // predictable weak-model slip for a 4-named-array schema like `swot`'s —
   // a model reaching for "strength" when the field holds a *list* of
   // strengths.
-  swot: {
-    strength: "strengths",
-    weakness: "weaknesses",
-    opportunity: "opportunities",
-    threat: "threats",
-  },
+  swot: swotAliases.block,
   // bmc's canonical keys are the Osterwalder canvas's own compound names
   // (`key_partners`, `customer_segments`, …) — a model that knows the
   // business-model-canvas vocabulary but not this schema's exact key
   // spelling reaches for the shorter/bare noun instead.
-  bmc: {
-    partners: "key_partners",
-    activities: "key_activities",
-    resources: "key_resources",
-    value_proposition: "value_propositions",
-    relationships: "customer_relationships",
-    segments: "customer_segments",
-    costs: "cost_structure",
-    revenue: "revenue_streams",
-  },
+  bmc: bmcAliases.block,
   // PEST macro-environment scan (structure-components wave 2 task 4): each
   // of the 4 named slots is already a single common English adjective
   // (unlike bmc's compound canonical names above), so the predictable slip
   // is reaching for its noun form instead — a model that glosses the
   // acronym as "Politics, Economics, Society, Technology" (a common
   // informal expansion) writes the noun, not this schema's adjective.
-  pest: {
-    politics: "political",
-    economy: "economic",
-    society: "social",
-    technology: "technological",
-  },
+  pest: pestAliases.block,
   // Porter's Five Forces (structure-components wave 2 task 4): the same
   // bare-noun-for-compound-key slip bmc's table documents above —
   // `rivalry`/`substitutes` are already bare nouns matching their own
   // canonical spelling (no alias possible there), but the three qualified
   // names invite dropping the qualifier.
-  five_forces: {
-    entrants: "new_entrants",
-    suppliers: "supplier_power",
-    buyers: "buyer_power",
-  },
+  five_forces: fiveForcesAliases.block,
   // Heatmap (structure-components wave 2 task 4): `x_labels`/`y_labels`/
   // `values` are chart-vocabulary names a model describing a plain "rows x
   // columns" grid casually reaches past — `rows`/`columns` are the natural
   // table words for the same two axes, `data` the generic noun for "the
   // numbers." `range` is the natural word for `domain`'s `{min,max}`
   // value-scale override.
-  heatmap: {
-    rows: "y_labels",
-    columns: "x_labels",
-    data: "values",
-    range: "domain",
-  },
+  heatmap: heatmapAliases.block,
 }
 
 /** One component type's item-array field aliases: which array to walk, and the alias map applied to each item object in it. */
@@ -127,7 +138,7 @@ export interface ItemFieldAliasSpec {
  * own two-entry row below for the shape this widening unlocked.
  */
 export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly ItemFieldAliasSpec[]>> = {
-  kpi_cards: [{ itemsKey: "items", aliases: { title: "label", name: "label" } }],
+  kpi_cards: kpiCardsAliases.items,
   // Numeric-axis family (structure-components wave task 2, decision 8):
   // waterfall's per-item signed delta is commonly reached for as "amount" in
   // finance-deck vocabulary (a waterfall/bridge chart is itself a finance-
@@ -135,8 +146,8 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly Item
   // model that knows "Gantt chart" but not this schema's numeric-axis-only
   // shape (decision 6: no date parsing) reaches for by analogy to a
   // calendar's own "from"/"to" range vocabulary.
-  waterfall: [{ itemsKey: "items", aliases: { amount: "value" } }],
-  gantt: [{ itemsKey: "items", aliases: { from: "start", to: "end" } }],
+  waterfall: waterfallAliases.items,
+  gantt: ganttAliases.items,
   // Sankey (structure-components wave 2 task 4, `links`; field-alias sweep
   // task I1, `nodes`): `links`' `source`/`target` is the exact field-name
   // convention D3-sankey and Plotly's own Sankey trace both use for a
@@ -154,19 +165,16 @@ export const COMPONENT_ITEM_FIELD_ALIASES: Readonly<Record<string, readonly Item
   // `source`/`target` above), `title` mirrors kpi_cards' own
   // `title`→`label` alias above — the same generic title-for-label slip on
   // any labeled-card-like item shape.
-  sankey: [
-    { itemsKey: "links", aliases: { source: "from", target: "to" } },
-    { itemsKey: "nodes", aliases: { name: "label", title: "label" } },
-  ],
+  sankey: sankeyAliases.items,
   // Real-world tech-deck mental model: layers have a "name" and hold
   // "components" or "nodes" — pptfast's own top-level components array
   // shares the word "components" by coincidence only; this alias is scoped
   // to one architecture layer's own item shape, never the deck-level array.
-  architecture: [{ itemsKey: "layers", aliases: { name: "title", components: "items", nodes: "items" } }],
-  steps: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
-  timeline: [{ itemsKey: "milestones", aliases: { year: "date", text: "desc", description: "desc" } }],
-  numbered_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
-  row_cards: [{ itemsKey: "items", aliases: { description: "text", desc: "text" } }],
+  architecture: architectureAliases.items,
+  steps: stepsAliases.items,
+  timeline: timelineAliases.items,
+  numbered_cards: numberedCardsAliases.items,
+  row_cards: rowCardsAliases.items,
 }
 
 /**

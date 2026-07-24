@@ -1,7 +1,7 @@
 import { Fragment } from "react"
 import type { Component } from "@/ir"
 import { measureTextUnits, type TextWeightHint } from "../../lib/svg-text-layout"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type ComparisonComponent = Extract<Component, { type: "comparison" }>
 
@@ -352,3 +352,5 @@ export const comparison: SvgComponent<ComparisonComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<ComparisonComponent> = { type: "comparison", measure: comparison.measure, render: comparison.render }

@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type RingsComponent = Extract<Component, { type: "rings" }>
 
@@ -178,3 +178,5 @@ export const rings: SvgComponent<RingsComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<RingsComponent> = { type: "rings", measure: rings.measure, render: rings.render }

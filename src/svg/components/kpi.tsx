@@ -6,7 +6,7 @@ import {
 } from "../../lib/svg-text-layout"
 import { accessibleInk, accessibleOpacity } from "../ink"
 import { Icon } from "../icons"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type KpiComponent = Extract<Component, { type: "kpi_cards" }>
 
@@ -317,3 +317,5 @@ export const kpi: SvgComponent<KpiComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<KpiComponent> = { type: "kpi_cards", measure: kpi.measure, render: kpi.render }

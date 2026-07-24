@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type ImageCompareComponent = Extract<Component, { type: "image_compare" }>
 
@@ -178,3 +178,5 @@ export const imageCompare: SvgComponent<ImageCompareComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<ImageCompareComponent> = { type: "image_compare", measure: imageCompare.measure, render: imageCompare.render }

@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type QuoteComponent = Extract<Component, { type: "quote" }>
 
@@ -102,3 +102,5 @@ export const quote: SvgComponent<QuoteComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<QuoteComponent> = { type: "quote", measure: quote.measure, render: quote.render }

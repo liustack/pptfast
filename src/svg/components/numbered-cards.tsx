@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { accessibleInk, accessibleOpacity } from "../ink"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
 
@@ -201,3 +201,5 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<NumberedCardsComponent> = { type: "numbered_cards", measure: numberedCards.measure, render: numberedCards.render }

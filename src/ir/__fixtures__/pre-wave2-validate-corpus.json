@@ -1,0 +1,326 @@
+{
+  "coverage/gantt-tripwire": {
+    "errors": [
+      {
+        "message": "gantt item's end must be greater than its start (no zero/negative-duration bars)",
+        "page": 1,
+        "path": "slides.0.components.0.items.1.end"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/gantt-valid": {
+    "errors": [],
+    "ok": true
+  },
+  "coverage/heatmap-tripwire": {
+    "errors": [
+      {
+        "message": "heatmap domain.max must be greater than or equal to domain.min",
+        "page": 1,
+        "path": "slides.0.components.0.domain"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/heatmap-valid": {
+    "errors": [],
+    "ok": true
+  },
+  "coverage/image_grid-tripwire": {
+    "errors": [
+      {
+        "message": "Too small: expected array to have >=2 items",
+        "page": 1,
+        "path": "slides.0.components.0.items"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/image_grid-valid": {
+    "errors": [],
+    "ok": true,
+    "warnings": [
+      {
+        "message": "asset_id \"a1\" is not defined in assets.images — available: (none defined)",
+        "page": 1,
+        "path": "slides.0.components.0.items.0.asset_id"
+      },
+      {
+        "message": "asset_id \"a2\" is not defined in assets.images — available: (none defined)",
+        "page": 1,
+        "path": "slides.0.components.0.items.1.asset_id"
+      }
+    ]
+  },
+  "coverage/sankey-tripwire": {
+    "errors": [
+      {
+        "message": "sankey link 0's 'to' node id 'c' is not declared in nodes — available: 'a', 'b'",
+        "page": 1,
+        "path": "slides.0.components.0.links.0.to"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/sankey-valid": {
+    "errors": [],
+    "ok": true
+  },
+  "coverage/waterfall-tripwire": {
+    "errors": [
+      {
+        "message": "Too small: expected array to have >=3 items",
+        "page": 1,
+        "path": "slides.0.components.0.items"
+      }
+    ],
+    "ok": false
+  },
+  "coverage/waterfall-valid": {
+    "errors": [],
+    "ok": true
+  },
+  "examples/basic": {
+    "errors": [],
+    "ok": true
+  },
+  "stress/bullets": {
+    "errors": [
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 2,
+        "path": "slides.1"
+      }
+    ],
+    "ok": false,
+    "warnings": [
+      {
+        "message": "bullet list has too many items (max 5 for balanced pacing) — trim it or split into multiple slides",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 1,
+        "path": "slides.0"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      }
+    ]
+  },
+  "stress/chart": {
+    "errors": [
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 2,
+        "path": "slides.1"
+      }
+    ],
+    "ok": false,
+    "warnings": [
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 2,
+        "path": "slides.1"
+      }
+    ]
+  },
+  "stress/citation": {
+    "errors": [],
+    "ok": true
+  },
+  "stress/comparison_quote_code": {
+    "errors": [],
+    "ok": true,
+    "warnings": [
+      {
+        "message": "asset_id \"missing\" is not defined in assets.images — available: (none defined)",
+        "page": 6,
+        "path": "slides.5.components.0.asset_id"
+      }
+    ]
+  },
+  "stress/diagram": {
+    "errors": [],
+    "ok": true,
+    "warnings": [
+      {
+        "message": "architecture diagram has too many layers (over 3) — trim it or split into multiple slides",
+        "page": 2,
+        "path": "slides.1"
+      }
+    ]
+  },
+  "stress/flowchart_edge_labels": {
+    "errors": [],
+    "ok": true
+  },
+  "stress/heading": {
+    "errors": [],
+    "ok": true,
+    "warnings": [
+      {
+        "message": "heading exceeds 48 characters — tighten it into a short, assertive phrase",
+        "page": 3,
+        "path": "slides.2"
+      }
+    ]
+  },
+  "stress/kpi": {
+    "errors": [
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 3,
+        "path": "slides.2"
+      },
+      {
+        "message": "a bullet item exceeds the render-safety limit (50 width units) and can truncate — shorten it substantially or split the point across two items",
+        "page": 3,
+        "path": "slides.2"
+      }
+    ],
+    "ok": false,
+    "warnings": [
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 3,
+        "path": "slides.2"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 3,
+        "path": "slides.2"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 3,
+        "path": "slides.2"
+      },
+      {
+        "message": "a bullet item is too long for balanced pacing — keep it within about 2 lines",
+        "page": 3,
+        "path": "slides.2"
+      }
+    ]
+  },
+  "stress/new_components_stress": {
+    "errors": [],
+    "ok": true
+  },
+  "stress/paragraph_stack": {
+    "errors": [],
+    "ok": true,
+    "warnings": [
+      {
+        "message": "too many components on this slide (max 4 for balanced pacing) — split into multiple slides",
+        "page": 1,
+        "path": "slides.0"
+      }
+    ]
+  },
+  "stress/structure_bold_headings": {
+    "errors": [],
+    "ok": true,
+    "warnings": [
+      {
+        "message": "asset_id \"missing\" is not defined in assets.images — available: (none defined)",
+        "page": 5,
+        "path": "slides.4.components.0.left.asset_id"
+      },
+      {
+        "message": "asset_id \"missing\" is not defined in assets.images — available: (none defined)",
+        "page": 5,
+        "path": "slides.4.components.0.right.asset_id"
+      }
+    ]
+  }
+}

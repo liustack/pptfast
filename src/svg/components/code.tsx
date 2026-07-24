@@ -3,7 +3,7 @@ import {
   measureMonoTextUnits,
   truncateToMonoUnits,
 } from "../../lib/svg-text-layout"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type CodeComponent = Extract<Component, { type: "code" }>
 
@@ -153,3 +153,5 @@ export const code: SvgComponent<CodeComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<CodeComponent> = { type: "code", measure: code.measure, render: code.render }

@@ -1,31 +1,89 @@
 import type { Component } from "@/ir"
+import type { ComponentTraits } from "@/ir/components/types"
+import { traits as bulletsTraits } from "@/ir/components/bullets"
+import { traits as paragraphTraits } from "@/ir/components/paragraph"
+import { traits as quoteTraits } from "@/ir/components/quote"
+import { traits as calloutTraits } from "@/ir/components/callout"
+import { traits as codeTraits } from "@/ir/components/code"
+import { traits as kpiCardsTraits } from "@/ir/components/kpi-cards"
+import { traits as chartTraits } from "@/ir/components/chart"
+import { traits as flowchartTraits } from "@/ir/components/flowchart"
+import { traits as architectureTraits } from "@/ir/components/architecture"
+import { traits as timelineTraits } from "@/ir/components/timeline"
+import { traits as comparisonTraits } from "@/ir/components/comparison"
+import { traits as iconCardsTraits } from "@/ir/components/icon-cards"
+import { traits as rowCardsTraits } from "@/ir/components/row-cards"
+import { traits as stepsTraits } from "@/ir/components/steps"
+import { traits as ringsTraits } from "@/ir/components/rings"
+import { traits as numberedCardsTraits } from "@/ir/components/numbered-cards"
+import { traits as roadmapTraits } from "@/ir/components/roadmap"
+import { traits as matrixTraits } from "@/ir/components/matrix"
+import { traits as insightPanelTraits } from "@/ir/components/insight-panel"
+import { traits as verdictBannerTraits } from "@/ir/components/verdict-banner"
+import { traits as citationTraits } from "@/ir/components/citation"
+import { traits as imageTraits } from "@/ir/components/image"
+import { traits as imageGridTraits } from "@/ir/components/image-grid"
+import { traits as imageCompareTraits } from "@/ir/components/image-compare"
+import { traits as swotTraits } from "@/ir/components/swot"
+import { traits as bmcTraits } from "@/ir/components/bmc"
+import { traits as waterfallTraits } from "@/ir/components/waterfall"
+import { traits as ganttTraits } from "@/ir/components/gantt"
+import { traits as pestTraits } from "@/ir/components/pest"
+import { traits as fiveForcesTraits } from "@/ir/components/five-forces"
+import { traits as heatmapTraits } from "@/ir/components/heatmap"
+import { traits as sankeyTraits } from "@/ir/components/sankey"
 
 /**
- * Component trait registry (W2 task 5, spec §3/§6/§8): a single home for the
- * 5 component-classification sets the render-time layout/degrade machinery
- * consulted from 5 different files before this task (inventory
- * §"容量双系统" named this scatter directly: `STRETCHABLE_TYPES`/
- * `SELF_VISUAL_TYPES`/`SCALABLE_TYPES` ×2 duplicate definitions/
- * `PASSTHROUGH_SHELL_TYPES`/`EVIDENCE_TYPES`). Unifying them here doesn't
- * change what any of them classify — every member below is byte-identical to
- * its pre-refactor source (locked by `component-traits.test.ts`); only their
- * storage location moves, so a future reclassification has one place to
- * change instead of five.
+ * Component trait registry (W2 task 5, spec §3/§6/§8 — re-derived as a pure
+ * aggregator in src domain reorg wave 2, spec §4.3). Single home for the
+ * render-time layout/degrade machinery's 5 component-classification
+ * `ReadonlySet`s (`STRETCHABLE_TYPES`/`SELF_VISUAL_TYPES`/`SCALABLE_TYPES`/
+ * `PASSTHROUGH_SHELL_TYPES`/`FULL_BODY_TYPES`) plus the ordered
+ * `EVIDENCE_TYPES` tuple.
  *
- * This registry is the *dynamic/render-time* half of the inventory's
+ * **Aggregator, not author (src domain reorg wave 2).** Every component's 6
+ * boolean trait flags used to live here as a hand-written literal Set
+ * membership (W2 task 5's own unification of 5 previously-scattered
+ * definitions). They now live beside each component's own IR schema instead —
+ * a `traits: ComponentTraits` export at the bottom of the matching
+ * `src/ir/components/<name>.ts` domain file (`ComponentTraits`'s own doc
+ * comment there is the authority on what each of the 6 booleans means) — so
+ * "take one component away whole" carries its render-time classification with
+ * it instead of leaving a trailing edit in a sixth file. This file's own job
+ * is now purely computational: import every domain file's `traits`, pair each
+ * with its own `type` literal in `ALL_TRAITS` below, and derive the 5 Sets by
+ * filtering on the matching boolean — never a re-export relay, never a
+ * hand-maintained literal member list. Exported names and `Set` semantics are
+ * unchanged from W2 task 5 (every consumer of `STRETCHABLE_TYPES` etc. reads
+ * this file exactly as before); only *how* each Set's membership is produced
+ * moved, same as T1d's `layouts/registry.ts` precedent for archetype
+ * `layoutDef`s.
+ *
+ * `EVIDENCE_TYPES` is the one export this aggregator does not derive
+ * mechanically (spec §4.1's named exception, see its own doc comment below)
+ * — it carries cross-component *priority order*, comparative knowledge no
+ * single domain file can declare about itself, so it stays a hand-written
+ * ordered tuple here. `component-traits.test.ts` pins the consistency
+ * invariant between this hand-written order and the domain files' own
+ * `evidence: true` declarations (two independent sources of truth, drift
+ * between them fails a test — spec §4.1's own closing sentence).
+ *
+ * This registry is still the *dynamic/render-time* half of the inventory's
  * "容量双系统" (2026-07-18 decision #5): it still runs on every render to
  * decide stretch/self-visual/scalable/passthrough-shell/evidence-priority
  * behavior — nothing here is new metadata. The *static/authoring-time* half —
- * `layouts/registry.ts`'s slot `capacity` numbers (filled alongside this
- * file, same task) and `audit/capacity.ts`'s `CAPACITY` table (W3) — is a
- * separate, declarative concern; this file has no capacity numbers in it.
+ * `layouts/registry.ts`'s slot `capacity` numbers and `audit/capacity.ts`'s
+ * `CAPACITY` table — is a separate, declarative concern; this file has no
+ * capacity numbers in it.
  *
  * Not merged into one tagged enum: each set classifies a different
  * *behavior axis*, not the same axis at different thresholds — a component
  * can be simultaneously stretchable (layout.ts's density-fill) and
  * evidence-priority-ranked (AssertionEvidence's dispatch), so collapsing
  * them would force every consumer to reason about axes it doesn't care
- * about.
+ * about. `ComponentTraits` (the per-component declaration shape, `src/ir/
+ * components/types.ts`) mirrors this same "6 independent booleans, not one
+ * enum" posture at the declaration site.
  */
 
 /** The IR's component discriminant union (`ComponentSchema`'s 32 `type`
@@ -36,16 +94,71 @@ import type { Component } from "@/ir"
 export type ComponentType = Component["type"]
 
 /**
+ * Every component's own traits declaration, keyed by type in
+ * `COMPONENT_TYPES` union order (order is a readability convenience for
+ * cross-checking against `src/ir/index.ts`'s own import block, not
+ * load-bearing — `typesWith` below collects into a `Set`, so key order never
+ * affects any exported value). The one place a new component's 6 boolean
+ * trait flags become Set memberships — adding a 33rd component means adding
+ * one entry here (plus, as ever, the domain file itself), not touching 5 Set
+ * literals by hand. Typed as a total `Record<ComponentType, ...>` (the same
+ * exhaustiveness pattern `RENDER_DEFS` in `components/index.tsx` uses) so a
+ * missing entry is a COMPILE error, not a silent all-false degradation —
+ * the wave-2 final review's mutation probe showed the previous array shape
+ * let a dropped row pass typecheck, lint, and the full suite unnoticed.
+ */
+const ALL_TRAITS: Record<ComponentType, ComponentTraits> = {
+  bullets: bulletsTraits,
+  paragraph: paragraphTraits,
+  quote: quoteTraits,
+  callout: calloutTraits,
+  code: codeTraits,
+  kpi_cards: kpiCardsTraits,
+  chart: chartTraits,
+  flowchart: flowchartTraits,
+  architecture: architectureTraits,
+  timeline: timelineTraits,
+  comparison: comparisonTraits,
+  icon_cards: iconCardsTraits,
+  row_cards: rowCardsTraits,
+  steps: stepsTraits,
+  rings: ringsTraits,
+  numbered_cards: numberedCardsTraits,
+  roadmap: roadmapTraits,
+  matrix: matrixTraits,
+  insight_panel: insightPanelTraits,
+  verdict_banner: verdictBannerTraits,
+  citation: citationTraits,
+  image: imageTraits,
+  image_grid: imageGridTraits,
+  image_compare: imageCompareTraits,
+  swot: swotTraits,
+  bmc: bmcTraits,
+  waterfall: waterfallTraits,
+  gantt: ganttTraits,
+  pest: pestTraits,
+  five_forces: fiveForcesTraits,
+  heatmap: heatmapTraits,
+  sankey: sankeyTraits,
+}
+
+/** Every component type whose own domain-file `traits` declares `trait: true`, collected as a `ReadonlySet`. */
+function typesWith(trait: keyof ComponentTraits): ReadonlySet<ComponentType> {
+  return new Set(
+    (Object.entries(ALL_TRAITS) as [ComponentType, ComponentTraits][])
+      .filter(([, traits]) => traits[trait])
+      .map(([type]) => type),
+  )
+}
+
+/**
  * "卡壳类" component: `layoutContentFit`'s density-stretch pass
  * (`layout.ts`'s `growStretchables`) may grow these to fill a column's
  * leftover height instead of leaving it dead ("密度铺满"), capped at
- * `STRETCH_CAP_RATIO`×. Moved from `layout.ts:137`, members unchanged.
+ * `STRETCH_CAP_RATIO`×. Declared per-component via `traits.stretchable`
+ * (`src/ir/components/*.ts`), aggregated here.
  */
-export const STRETCHABLE_TYPES: ReadonlySet<ComponentType> = new Set([
-  "kpi_cards",
-  "icon_cards",
-  "row_cards",
-])
+export const STRETCHABLE_TYPES: ReadonlySet<ComponentType> = typesWith("stretchable")
 
 /**
  * Component types that already paint their own card/frame — callout's
@@ -55,16 +168,10 @@ export const STRETCHABLE_TYPES: ReadonlySet<ComponentType> = new Set([
  * `sortUnitsByHeroWeight` (hero-weight ranking) and
  * `content-bento-panel.tsx`'s `renderCell`/`cellOverBudget` (these render
  * bare — stacking bento's own outline shell underneath one of them would be
- * a redundant "卡中卡", card-in-a-card). Moved from
- * `bento-layout.ts:210-216`, members unchanged.
+ * a redundant "卡中卡", card-in-a-card). Declared per-component via
+ * `traits.selfVisual`, aggregated here.
  */
-export const SELF_VISUAL_TYPES: ReadonlySet<ComponentType> = new Set([
-  "callout",
-  "code",
-  "comparison",
-  "quote",
-  "verdict_banner",
-])
+export const SELF_VISUAL_TYPES: ReadonlySet<ComponentType> = typesWith("selfVisual")
 
 /**
  * Component types whose content is a rendered graphic (no text-fit/
@@ -74,13 +181,11 @@ export const SELF_VISUAL_TYPES: ReadonlySet<ComponentType> = new Set([
  * only ever shrinks (`scale = budgetH/measured` when over budget), while
  * `content-stacked-poster.tsx` also scales *up* to fill a hero/strip slot
  * (capped at that file's own `HERO_SCALE_MAX`) since a poster hero is meant
- * to read as a dominant image. Both files independently defined this exact
- * `{"chart", "image"}` set before this task —
- * `component-traits.test.ts` pins the pre-merge equivalence proof. Moved
- * from `content-bento-panel.tsx:105` / `content-stacked-poster.tsx:121`,
- * members unchanged.
+ * to read as a dominant image. Declared per-component via `traits.scalable`,
+ * aggregated here — `component-traits.test.ts` still pins the exact
+ * `{"chart", "image"}` membership.
  */
-export const SCALABLE_TYPES: ReadonlySet<ComponentType> = new Set(["chart", "image"])
+export const SCALABLE_TYPES: ReadonlySet<ComponentType> = typesWith("scalable")
 
 /**
  * Component types that already draw their own internal chrome per node —
@@ -93,17 +198,10 @@ export const SCALABLE_TYPES: ReadonlySet<ComponentType> = new Set(["chart", "ima
  * panel+stroke shell painted behind an already-carded diagram/bare paragraph
  * is a redundant second shell. Unlike `SELF_VISUAL_TYPES`, these still
  * render through the ordinary-component grid-cell path (same box, same
- * padding, same audit annotations) — only the shell paint is skipped. Moved
- * from `content-bento-panel.tsx:134-143`, members unchanged.
+ * padding, same audit annotations) — only the shell paint is skipped.
+ * Declared per-component via `traits.passthroughShell`, aggregated here.
  */
-export const PASSTHROUGH_SHELL_TYPES: ReadonlySet<ComponentType> = new Set([
-  "steps",
-  "flowchart",
-  "architecture",
-  "timeline",
-  "paragraph",
-  "quote",
-])
+export const PASSTHROUGH_SHELL_TYPES: ReadonlySet<ComponentType> = typesWith("passthroughShell")
 
 /**
  * Component types considered "evidence" for the `assertion_evidence`
@@ -112,8 +210,18 @@ export const PASSTHROUGH_SHELL_TYPES: ReadonlySet<ComponentType> = new Set([
  * components is the one enlarged/centered as the slide's single strongest
  * evidence. An unordered set can't express "chart beats image beats
  * comparison beats kpi_cards", so unlike the 4 sets above this stays an
- * ordered tuple, not a `Set`. Moved from `assertion-evidence.tsx:8-13`,
- * members and order unchanged.
+ * ordered tuple, not a `Set` — spec §4.1's named exception to the
+ * aggregation-from-domain-files rule above: order is cross-component
+ * comparative knowledge no single `src/ir/components/<name>.ts` file could
+ * declare about itself, so it stays hand-written here rather than derived
+ * from `ALL_TRAITS`. Each listed component's own domain file still declares
+ * `traits.evidence: true` (the membership half); this array supplies only
+ * the order the membership half can't express.
+ * `component-traits.test.ts`'s "EVIDENCE_TYPES consistency" check asserts
+ * this array's *membership* (not order) equals the set of domain files that
+ * declare `evidence: true` — two independent sources of truth (this
+ * hand-written order vs. every domain file's own boolean), drift between
+ * them fails that test rather than silently diverging.
  */
 export const EVIDENCE_TYPES = [
   "chart",
@@ -126,14 +234,10 @@ export const EVIDENCE_TYPES = [
  * "满幅" (full-body) component: a type meant to own an entire content rect by
  * itself rather than stack alongside sibling components — `swot`'s 2×2
  * quadrant grid, `bmc`'s nine-block canvas, `pest`'s 2×2 macro-environment
- * grid, `five_forces`'s hub-and-spoke panel set (structure-components wave 2
- * task 1, extending wave 1's own named-slot family), `waterfall`'s bridge
- * chart, `gantt`'s shared-axis time bars (structure-components wave 1 task
- * 2, decision 1's set), `heatmap`'s value-driven color grid
- * (structure-components wave 2 task 2), `sankey`'s layered flow diagram
- * (structure-components wave 2 task 3 — the wave's largest component).
- * `svg-content.tsx` special-cases a slide whose
- * sole component is one of these (checked *before* the `big_number`/
+ * grid, `five_forces`'s hub-and-spoke panel set, `waterfall`'s bridge chart,
+ * `gantt`'s shared-axis time bars, `heatmap`'s value-driven color grid,
+ * `sankey`'s layered flow diagram. `svg-content.tsx` special-cases a slide
+ * whose sole component is one of these (checked *before* the `big_number`/
  * `assertion_evidence` arrangement branches, so a full-body component wins
  * regardless of what `arrangement` happens to be set to): the whole content
  * rect is handed straight to the component's own `render`, bypassing
@@ -148,15 +252,7 @@ export const EVIDENCE_TYPES = [
  * nowhere left to put that sibling (the whole rect is already spoken for) —
  * `api.ts`'s `checkFullBodyExclusivity` is the hard validation gate for
  * that, rejecting the deck with a named `ValidationIssue` rather than
- * silently dropping the extra component(s).
+ * silently dropping the extra component(s). Declared per-component via
+ * `traits.fullBody`, aggregated here.
  */
-export const FULL_BODY_TYPES: ReadonlySet<ComponentType> = new Set([
-  "swot",
-  "bmc",
-  "waterfall",
-  "gantt",
-  "pest",
-  "five_forces",
-  "heatmap",
-  "sankey",
-])
+export const FULL_BODY_TYPES: ReadonlySet<ComponentType> = typesWith("fullBody")

@@ -9,7 +9,7 @@ import {
   type EmphasisSegment,
 } from "../emphasis"
 import { Icon } from "../icons"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type VerdictBannerComponent = Extract<Component, { type: "verdict_banner" }>
 
@@ -216,3 +216,5 @@ export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<VerdictBannerComponent> = { type: "verdict_banner", measure: verdictBanner.measure, render: verdictBanner.render }

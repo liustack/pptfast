@@ -9,7 +9,7 @@ import {
   truncateEmphasisSegments,
   type EmphasisSegment,
 } from "../emphasis"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type BulletsComponent = Extract<Component, { type: "bullets" }>
 
@@ -302,3 +302,5 @@ export const bullets: SvgComponent<BulletsComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<BulletsComponent> = { type: "bullets", measure: bullets.measure, render: bullets.render }

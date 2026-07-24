@@ -3,7 +3,7 @@ import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import { mixHex } from "./color-mix"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type BmcComponent = Extract<Component, { type: "bmc" }>
 type BlockKey =
@@ -421,3 +421,5 @@ export const bmc: SvgComponent<BmcComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<BmcComponent> = { type: "bmc", measure: bmc.measure, render: bmc.render }

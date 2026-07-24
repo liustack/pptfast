@@ -3,7 +3,7 @@ import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import { mixHex } from "./color-mix"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type FiveForcesComponent = Extract<Component, { type: "five_forces" }>
 type ForceKey = "rivalry" | "new_entrants" | "supplier_power" | "buyer_power" | "substitutes"
@@ -480,3 +480,5 @@ export const fiveForces: SvgComponent<FiveForcesComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<FiveForcesComponent> = { type: "five_forces", measure: fiveForces.measure, render: fiveForces.render }

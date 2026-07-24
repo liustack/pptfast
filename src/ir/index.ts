@@ -1,7 +1,70 @@
+/**
+ * The v4 IR schema root: theme/meta/assets/brand/background/slide/narrative
+ * and the top-level `PptxIRSchema` a deck document parses against
+ * (`parsePptxIR`). The frozen v3 shape lives in `./legacy-v3.ts`, kept only
+ * for `migrateIrV3ToV4`'s input parsing (spec §9.3).
+ *
+ * **The `ComponentSchema` union below is a pure aggregator (src domain reorg
+ * wave 2, spec §4.3), same discipline as `src/svg/layouts/registry.ts`'s T1d
+ * precedent.** Every one of the 32 component schemas used to live here as a
+ * literal `z.object({...})` entry directly inside the `discriminatedUnion`
+ * array. Each now lives in its own `src/ir/components/<name>.ts` domain file
+ * instead (schema + field aliases + render-trait declaration together, spec
+ * §4.1) — imported below and referenced by name, in the exact union position
+ * its literal used to occupy, so "take one component away whole" is a
+ * single-file operation instead of an edit split across this file,
+ * `field-aliases.ts`, and `component-traits.ts`. This file's own job for
+ * components is now purely computational: import all 32, construct
+ * `ComponentSchema` via `z.discriminatedUnion`, and derive `COMPONENT_TYPES`
+ * from the result — never a hand-copied literal, never a re-export relay. A
+ * handful of schema fragments genuinely shared by ≥2 components (only the
+ * icon-name enum, as of this wave) live in `src/ir/components/shared.ts`
+ * instead of any one domain file; every other named sub-schema that reads as
+ * "shared" at a glance (e.g. `GanttItemSchema`, `PestQuadrantSchema`,
+ * `SankeyNodeSchema`/`SankeyLinkSchema`) turned out to be single-consumer and
+ * moved into its own component's domain file with it.
+ *
+ * The rest of this module — everything outside the `// ── Components` section
+ * — is unrelated to the component-domain split and was never in its scope:
+ * background/theme/meta/assets/brand/slide/narrative and the top-level
+ * `PptxIRSchema` are genuinely this file's own content, not aggregated from
+ * elsewhere.
+ */
 import { z } from "zod"
-import { PPTX_ICON_NAMES } from "@/icons/catalog"
 import { BEAT_VALUES } from "./narrative-values"
-import { componentTypeError, iconEnumError } from "./schema-error-hints"
+import { componentTypeError } from "./schema-error-hints"
+import { schema as bulletsSchema } from "./components/bullets"
+import { schema as paragraphSchema } from "./components/paragraph"
+import { schema as quoteSchema } from "./components/quote"
+import { schema as calloutSchema } from "./components/callout"
+import { schema as codeSchema } from "./components/code"
+import { schema as kpiCardsSchema } from "./components/kpi-cards"
+import { schema as chartSchema } from "./components/chart"
+import { schema as flowchartSchema } from "./components/flowchart"
+import { schema as architectureSchema } from "./components/architecture"
+import { schema as timelineSchema } from "./components/timeline"
+import { schema as comparisonSchema } from "./components/comparison"
+import { schema as iconCardsSchema } from "./components/icon-cards"
+import { schema as rowCardsSchema } from "./components/row-cards"
+import { schema as stepsSchema } from "./components/steps"
+import { schema as ringsSchema } from "./components/rings"
+import { schema as numberedCardsSchema } from "./components/numbered-cards"
+import { schema as roadmapSchema } from "./components/roadmap"
+import { schema as matrixSchema } from "./components/matrix"
+import { schema as insightPanelSchema } from "./components/insight-panel"
+import { schema as verdictBannerSchema } from "./components/verdict-banner"
+import { schema as citationSchema } from "./components/citation"
+import { schema as imageSchema } from "./components/image"
+import { schema as imageGridSchema } from "./components/image-grid"
+import { schema as imageCompareSchema } from "./components/image-compare"
+import { schema as swotSchema } from "./components/swot"
+import { schema as bmcSchema } from "./components/bmc"
+import { schema as waterfallSchema } from "./components/waterfall"
+import { schema as ganttSchema } from "./components/gantt"
+import { schema as pestSchema } from "./components/pest"
+import { schema as fiveForcesSchema } from "./components/five-forces"
+import { schema as heatmapSchema } from "./components/heatmap"
+import { schema as sankeySchema } from "./components/sankey"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -205,786 +268,39 @@ export const BrandSchema = z
 
 // ── Components（32 种）──
 
-// gantt's own item schema is pulled out to a named const (structure-
-// components wave task 2, decision 6) rather than inlined in the union
-// array below, purely so its `.refine` — the one item shape in this whole
-// union that needs cross-field validation — reads as a standalone unit
-// instead of being buried in the middle of a 400-line array literal.
-// `ComponentSchema.options.map((option) => option.shape.type.value)`
-// (`COMPONENT_TYPES` below) requires every *top-level* union member to stay
-// a plain `ZodObject` (`.shape` doesn't exist on the `ZodEffects` a `.refine`
-// wrapper produces) — this only matters for `gantt`'s own top-level object,
-// which stays untouched; the refine lives one level down, on the item
-// schema nested inside `z.array(...)`, where that constraint doesn't apply.
-const GanttItemSchema = z
-  .object({
-    label: z.string(),
-    start: z.number(),
-    end: z.number(),
-  })
-  .strict()
-  .refine((item) => item.end > item.start, {
-    message: "gantt item's end must be greater than its start (no zero/negative-duration bars)",
-    path: ["end"],
-  })
-
-// PEST macro-environment scan (structure-components wave task 1, second
-// component of this task — same "named-slot family" discipline as
-// swot/bmc above: four independent named fields, never a positional array a
-// weak model could mis-order). Each quadrant carries its own optional
-// `title` inline (`{title?, items}`) instead of a sibling `labels` object
-// the way swot does — this task's own schema-shape call, not a swot-copy
-// oversight (see pest.tsx's own file header for the render-side rationale).
-const PestQuadrantSchema = z
-  .object({
-    title: z.string().optional(),
-    items: z.array(z.string()).min(1).max(5),
-  })
-  .strict()
-
-// Porter's Five Forces hub-and-spoke (structure-components wave 2 task 1,
-// second component of this task): `rivalry` is the center panel
-// (competitive rivalry — the model's own namesake force), the other four
-// are the surrounding forces. All five named slots share one shape —
-// `intensity` is meaningful for `rivalry` too, a market's own competitive
-// intensity is exactly what the center panel measures, so it isn't
-// special-cased out of the shared schema the way a "hub has no intensity"
-// design would have done.
-const FiveForcesPanelSchema = z
-  .object({
-    label: z.string().optional(),
-    intensity: z.enum(["low", "medium", "high"]).optional(),
-    items: z.array(z.string()).min(1).max(5),
-  })
-  .strict()
-
-// Sankey flow diagram (structure-components wave 2 task 3 — the wave's
-// largest component and its sharpest differentiator: Anthropic's own
-// official pptx-authoring skill classifies a sankey as "PowerPoint has no
-// native form for this" and ships it as a rasterized image. This component
-// routes every node bar and flow band through the existing SVG path ->
-// custGeom pipeline instead, so the export carries zero `<p:pic>` for it —
-// natively editable vectors, not a picture of a chart).
-//
-// Two named sub-schemas (not inlined, same "cross-field refine needs its own
-// symbol" precedent GanttItemSchema set above): `nodes`/`links` is a graph,
-// not a named-slot family (swot/pest's own "positional array a weak model
-// could mis-order" concern doesn't apply here — a node's identity is its own
-// `id`, referenced by `links[].from`/`to`, not by array position), so this
-// stays the natural {nodes[], links[]} shape rather than forcing named slots
-// where none would make sense.
-const SankeyNodeSchema = z
-  .object({
-    id: z.string(),
-    label: z.string(),
-  })
-  .strict()
-
-/**
- * Classic 3-color DFS cycle detection, returning one concrete node-id path
- * (e.g. `["a","b","c","a"]`) rather than just "a cycle exists somewhere" —
- * actionable for a weak model to repair by naming exactly which link to
- * remove or redirect (plan task 3 item 1: "带可执行消息"). Iterates
- * `nodeIds`/each node's outgoing adjacency list in *authored array order*
- * (both built from `c.nodes`/`c.links` by the caller, never a Map/Set
- * iteration for anything order-sensitive), so the specific cycle reported is
- * deterministic across runs even when a graph contains more than one.
- *
- * Written as a return-threading recursive helper — not a closure mutating an
- * outer `let` — deliberately: an earlier version threaded a shared `let
- * cyclePath` through the recursive `visit` closure instead, which TS's
- * control-flow narrowing couldn't follow across the closure boundary
- * (`cyclePath` narrowed to `never` at the read site despite the runtime
- * value being correct) — functional return-threading sidesteps that
- * whole class of narrowing fragility rather than fighting it with a type
- * assertion.
- */
-function findSankeyCycle(nodeIds: readonly string[], adjacency: ReadonlyMap<string, string[]>): string[] | null {
-  const WHITE = 0
-  const GRAY = 1
-  const BLACK = 2
-  const color = new Map<string, number>(nodeIds.map((id) => [id, WHITE]))
-  const stack: string[] = []
-
-  const visit = (id: string): string[] | null => {
-    color.set(id, GRAY)
-    stack.push(id)
-    for (const next of adjacency.get(id) ?? []) {
-      if (color.get(next) === GRAY) {
-        const start = stack.indexOf(next)
-        return [...stack.slice(start), next]
-      }
-      if (color.get(next) === WHITE) {
-        const found = visit(next)
-        if (found) return found
-      }
-    }
-    stack.pop()
-    color.set(id, BLACK)
-    return null
-  }
-
-  for (const id of nodeIds) {
-    if (color.get(id) === WHITE) {
-      const found = visit(id)
-      if (found) return found
-    }
-  }
-  return null
-}
-
-const SankeyLinkSchema = z
-  .object({
-    from: z.string(),
-    to: z.string(),
-    /** Flow magnitude, strictly positive (`z.number().positive()` — the
-     * schema-level decision for "value > 0 or explicit zero-value handling",
-     * plan task 3 item 1). A zero or negative value carries no visible flow
-     * to draw — rejecting it at the schema is a clearer signal than silently
-     * rendering an invisible or degenerate band, and matches this schema's
-     * own posture elsewhere (gantt's item `.refine` rejects a zero-duration
-     * bar the same way, for the same reason: a valid-looking but
-     * un-renderable-as-intended value is a schema-time error, not a
-     * render-time silent no-op). A *tiny-but-positive* value is legal and
-     * handled at render time instead — `sankey.tsx`'s `MIN_BAND_H` floors it
-     * to a visible minimum thickness rather than letting it vanish, the
-     * pathological case named in the plan's "extreme value ratio (1:10000)"
-     * probe. */
-    value: z.number().positive(),
-  })
-  .strict()
-
 const ComponentSchema = z.discriminatedUnion("type", [
-  z
-    .object({
-      type: z.literal("bullets"),
-      items: z.array(z.string()),
-      style: z.enum(["default", "checklist", "numbered", "plain", "divided"]).optional(),
-    })
-    .strict(),
-  z.object({ type: z.literal("paragraph"), text: z.string() }).strict(),
-  z
-    .object({
-      type: z.literal("quote"),
-      text: z.string(),
-      attribution: z.string().optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("callout"),
-      variant: z.enum(["info", "warn", "tip"]),
-      text: z.string(),
-      icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("code"),
-      language: z.string(),
-      code: z.string(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("kpi_cards"),
-      items: z.array(
-        z
-          .object({
-            value: z.string(),
-            unit: z.string().optional(),
-            label: z.string(),
-            delta: z.enum(["up", "down", "flat"]).optional(),
-            icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-            /** 数据来源小字（财经信任语言，2026-07-12 借鉴），如
-             * 「来源: Crunchbase」。 */
-            source: z.string().optional(),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("chart"),
-      /** dumbbell（2026-07-12 借鉴）：哑铃变化图——series[0]=起点值、
-       * series[1]=终点值（等长同 x 标签），每行「起点●———●终点」显变化。
-       * bar 可加 direction:"horizontal" 横条排名（长标签友好）。
-       * pie 可加 style:"donut" 环形+中心总值。 */
-      chart_type: z.enum(["bar", "line", "pie", "funnel", "dumbbell"]),
-      direction: z.enum(["horizontal", "vertical"]).optional(),
-      style: z.enum(["donut"]).optional(),
-      /** Renders only for `chart_type: "bar"` (either direction) and
-       * `"line"` — a cartesian plot box with a real category/value axis pair
-       * to title and grid against. Ignored (schema-legal, silently dropped
-       * at render, warn-severity `chart_axes_ignored` validate finding) on
-       * `pie`/`funnel`/`dumbbell`, which have no such plot box. */
-      axes: z
-        .object({
-          x_title: z.string().optional(),
-          y_title: z.string().optional(),
-          show_grid: z.boolean().optional(),
-        })
-        .strict()
-        .optional(),
-      series: z.array(
-        z
-          .object({
-            name: z.string(),
-            data: z.array(
-              z
-                .object({
-                  x: z.union([z.string(), z.number()]),
-                  y: z.number(),
-                })
-                .strict()
-            ),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("flowchart"),
-      nodes: z
-        .array(
-          z
-            .object({
-              id: z.string(),
-              label: z.string(),
-              kind: z.enum(["rect", "diamond", "round"]).optional(),
-            })
-            .strict()
-        )
-        .max(20),
-      edges: z.array(
-        z
-          .object({
-            from: z.string(),
-            to: z.string(),
-            label: z.string().optional(),
-          })
-          .strict()
-      ),
-      direction: z.enum(["TB", "TD", "BT", "LR", "RL"]).optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("architecture"),
-      layers: z.array(
-        z
-          .object({ title: z.string(), items: z.array(z.string()) })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("timeline"),
-      /** 版式：缺省 horizontal（存量语义）。vertical=左 date/中轴圆点/右
-       * 标题描述的编辑部竖排时间线，适合 4-8 个叙事型节点。 */
-      layout: z.enum(["horizontal", "vertical"]).optional(),
-      milestones: z.array(
-        z
-          .object({
-            date: z.string(),
-            title: z.string(),
-            desc: z.string().optional(),
-            /** 强调节点：accent 色 + 大圆点（时间线上的「转折点」语义）。 */
-            highlight: z.boolean().optional(),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("comparison"),
-      columns: z.array(z.string()),
-      rows: z.array(
-        z
-          .object({ label: z.string(), cells: z.array(z.string()) })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("icon_cards"),
-      /** 2-4 项单行并列，5-6 项自动 2 行 3 列宫格（2026-07-11 用户借鉴）。 */
-      items: z
-        .array(
-          z
-            .object({
-              icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }),
-              title: z.string(),
-              text: z.string(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(6),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("row_cards"),
-      /** 全宽横向长卡列表（编号圆圈 + 可选图标 + 三级文字），3-6 项纵向
-       * 堆叠，highlight 项 accent 描边强调。适合成果一览/贡献清单/议题列表
-       * 这类每项信息量较大的枚举。 */
-      items: z
-        .array(
-          z
-            .object({
-              icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-              title: z.string(),
-              text: z.string().optional(),
-              sub: z.string().optional(),
-              highlight: z.boolean().optional(),
-            })
-            .strict()
-        )
-        .min(3)
-        .max(6),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("steps"),
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              text: z.string(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(5),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("rings"),
-      /** 分层同心圆环（洋葱模型）：items 从内核到外层排序（items[0]=内核
-       * 实心圆）。每层引线标注到右侧（label 短词 ≤8 字，desc 一句话）。 */
-      items: z
-        .array(
-          z
-            .object({
-              label: z.string(),
-              desc: z.string().optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(4),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("numbered_cards"),
-      /** 编号网格列表（编辑部大数字目录）：自动编号 01..N，无卡壳左竖线
-       * 分栏，适合并列名录/作品集/要点集。≤4 项单行，5-8 项两行网格。 */
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              text: z.string().optional(),
-              sub: z.string().optional(),
-            })
-            .strict()
-        )
-        .min(3)
-        .max(8),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("roadmap"),
-      /** 阶段路线图卡：2-4 个阶段横排，自动编号 01..N，每阶段含标题、
-       * 可选时段（如「0-6 个月」）与若干 label:value 指标行。适合分阶段
-       * 推进/路线图/里程碑规划。 */
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              period: z.string().optional(),
-              rows: z
-                .array(z.object({ label: z.string(), value: z.string() }).strict())
-                .max(4)
-                .optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(4),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("matrix"),
-      /** 二维定位矩阵：带可选 XY 轴标签的色格网格，items 按行优先填格，
-       * tone 决定象限底色。适合定位矩阵/象限分析/组合分类。 */
-      x_title: z.string().optional(),
-      y_title: z.string().optional(),
-      cols: z.number().int().min(2).max(3),
-      items: z
-        .array(
-          z
-            .object({
-              title: z.string(),
-              tag: z.string().optional(),
-              tone: z.enum(["neutral", "accent", "info"]).optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(9),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("insight_panel"),
-      /** 带标题的策略/观点面板：标题压色条 + 若干 label/描述行 + 可选贴底
-       * 脚注。常作 aside 侧栏块与数据并置（观点/纪律/结论）。 */
-      title: z.string(),
-      rows: z
-        .array(z.object({ label: z.string(), text: z.string() }).strict())
-        .min(1)
-        .max(5),
-      footnote: z.string().optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("verdict_banner"),
-      text: z.string(),
-      tone: z.enum(["positive", "warning", "neutral"]),
-      icon: z.enum(PPTX_ICON_NAMES, { error: iconEnumError }).optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("citation"),
-      sources: z.array(
-        z
-          .object({
-            label: z.string(),
-            url: z.string().optional(),
-            ref: z.string().optional(),
-          })
-          .strict()
-      ),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("image"),
-      asset_id: z.string(),
-      caption: z.string().optional(),
-      // 默认 cover（2026-07-09 用户反馈：模型常选 contain letterbox 不铺满
-      // ——照片一律等比铺满裁切；contain 留给图表截图等不可裁切的图）
-      fit: z.enum(["contain", "cover"]).default("cover"),
-    })
-    .strict(),
-  // 图片排版 P2（2026-07-08）：多图网格与双图对比。
-  z
-    .object({
-      type: z.literal("image_grid"),
-      items: z
-        .array(
-          z
-            .object({
-              asset_id: z.string(),
-              caption: z.string().optional(),
-            })
-            .strict()
-        )
-        .min(2)
-        .max(4),
-      emphasis: z.enum(["none", "first"]).optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("image_compare"),
-      left: z.object({ asset_id: z.string(), label: z.string() }).strict(),
-      right: z.object({ asset_id: z.string(), label: z.string() }).strict(),
-      style: z.enum(["vs", "before_after"]).optional(),
-    })
-    .strict(),
-  // 结构化组件族（structure-components wave task 1）：named-slot 满幅组件
-  // ——不走 bullets 那种弱模型易错序的位置数组，每个语义槽是独立具名字段，
-  // 模型写错字段名会被 zod strict 直接拒收，而不是静默错标象限/分区。渲染
-  // 时必须是 slide 的唯一 component（`FULL_BODY_TYPES`, component-traits.ts
-  // + `checkFullBodyExclusivity`, api.ts 的独占硬门）。
-  z
-    .object({
-      type: z.literal("swot"),
-      /** 内部因素·优势/劣势，外部因素·机会/威胁——经典 2×2 SWOT 矩阵。每槽
-       * 1-5 条，各自独立数组（绝不是共享一个位置数组按下标分象限）。 */
-      strengths: z.array(z.string()).min(1).max(5),
-      weaknesses: z.array(z.string()).min(1).max(5),
-      opportunities: z.array(z.string()).min(1).max(5),
-      threats: z.array(z.string()).min(1).max(5),
-      /** 象限标题覆写（国际化/自定义措辞）——缺省用固定英文 S/W/O/T 全称
-       * （Strengths/Weaknesses/Opportunities/Threats），四键均可选，缺的键
-       * 落回默认值。 */
-      labels: z
-        .object({
-          strengths: z.string().optional(),
-          weaknesses: z.string().optional(),
-          opportunities: z.string().optional(),
-          threats: z.string().optional(),
-        })
-        .strict()
-        .optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("bmc"),
-      /** Business Model Canvas 经典九宫——固定具名键（非位置数组），每槽
-       * 1-4 条。渲染层按 Osterwalder 标准五列画布排布（见 bmc.tsx 头注）。 */
-      key_partners: z.array(z.string()).min(1).max(4),
-      key_activities: z.array(z.string()).min(1).max(4),
-      key_resources: z.array(z.string()).min(1).max(4),
-      value_propositions: z.array(z.string()).min(1).max(4),
-      customer_relationships: z.array(z.string()).min(1).max(4),
-      channels: z.array(z.string()).min(1).max(4),
-      customer_segments: z.array(z.string()).min(1).max(4),
-      cost_structure: z.array(z.string()).min(1).max(4),
-      revenue_streams: z.array(z.string()).min(1).max(4),
-    })
-    .strict(),
-  // 数值轴家族（structure-components wave task 2）：另一支满幅组件——不是
-  // named-slot（swot/bmc 的具名槽治的是「弱模型排错序」），而是「运行合计/
-  // 比例映射必须逐字节确定性可推导」，见 waterfall.tsx/gantt.tsx 头注。
-  z
-    .object({
-      type: z.literal("waterfall"),
-      /** 瀑布桥图条目：`value` 是带符号增量（相对上一条运行合计的涨跌），
-       * `kind` 缺省即普通涨跌делта；显式 "total" 表示该条不是增量而是绝对
-       * 合计检查点（渲染层从 0 画到 `value` 本身，不参与增量累加）。3-8
-       * 条——末条非 "total" 时渲染层自动补一根合计柱（见 waterfall.tsx）。 */
-      items: z
-        .array(
-          z
-            .object({
-              label: z.string(),
-              value: z.number(),
-              kind: z.enum(["delta", "total"]).optional(),
-            })
-            .strict()
-        )
-        .min(3)
-        .max(8),
-      /** 数值单位后缀（如「万」「%」），附加在每条数值标签之后，纯展示。 */
-      unit: z.string().optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("gantt"),
-      /** 共享数值轴时间条：`start`/`end` 是同一条数轴上的数值（周序/月序/
-       * 任意模型自定的单位），不解析日期字符串——轴界=所有条目 start 的最小
-       * 值与 end 的最大值。2-8 条，每条 `end` 必须大于 `start`
-       * （{@link GanttItemSchema} 的 `.refine`）。 */
-      items: z.array(GanttItemSchema).min(2).max(8),
-      /** 可选刻度标签，沿轴均匀分布展示（不必与 items 的 start/end 值对齐
-       * ——纯展示刻度，如 ["W1","W2","W3","W4"]）。 */
-      axis_labels: z.array(z.string()).optional(),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("pest"),
-      /** 政治/经济/社会/技术——经典 2×2 PEST 宏观环境扫描。每槽 1-5 条，各槽
-       * 自带可选 `title` 覆写（缺省用固定英文全称，见 pest.tsx）。 */
-      political: PestQuadrantSchema,
-      economic: PestQuadrantSchema,
-      social: PestQuadrantSchema,
-      technological: PestQuadrantSchema,
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("five_forces"),
-      /** 波特五力——中心「竞争强度」+ 四向力量（新进入者/供应商议价力/买方
-       * 议价力/替代品威胁）。五槽同构，`intensity` 对中心槽同样有意义（见
-       * {@link FiveForcesPanelSchema}）。 */
-      rivalry: FiveForcesPanelSchema,
-      new_entrants: FiveForcesPanelSchema,
-      supplier_power: FiveForcesPanelSchema,
-      buyer_power: FiveForcesPanelSchema,
-      substitutes: FiveForcesPanelSchema,
-    })
-    .strict(),
-  // 值驱动数值网格家族（structure-components wave 2 task 2）：另一支满幅
-  // 组件——形状由 x_labels/y_labels 两个具名数组直接推导（无独立 cols/rows
-  // 字段，杜绝两套数字互相打架），values 矩形性用三条 `.refine` 校验
-  // （行数=y_labels 长度、每行列数=x_labels 长度、可选 domain.max>=min）。
-  // zod v4 下 `.refine()` 直接挂在 discriminatedUnion 成员对象上仍保留
-  // `.shape`（经本任务实测确认，不同于 v3 的 ZodEffects 包装丢 `.shape`
-  // 的旧顾虑——`GanttItemSchema` 当年绕开的那个坑在 v4 已不成立），因此这里
-  // 不必像 gantt 的 refine 那样退一层塞进嵌套数组项，直接写在组件对象本身。
-  z
-    .object({
-      type: z.literal("heatmap"),
-      /** 列头（沿横轴，每列一个），1-10 项——1 项即单列热力图（病态但合法，
-       * 见 heatmap.tsx 头注）。 */
-      x_labels: z.array(z.string()).min(1).max(10),
-      /** 行头（沿纵轴，每行一个），1-10 项——1 项即单行热力图。 */
-      y_labels: z.array(z.string()).min(1).max(10),
-      /** 值矩阵，行优先：`values[row][col]`。行数必须等于 y_labels 长度、
-       * 每行列数必须等于 x_labels 长度（下方 `.refine`）——不接受锯齿数组。
-       * 无正负号约束（负值合法业务数据，如同比降幅）。 */
-      values: z.array(z.array(z.number())).min(1),
-      /** 显式色阶值域覆写，缺省取 values 的真实 min/max。`min===max`
-       * （退化域）合法——渲染层落回统一中间色调，不是 schema 层拒收的
-       * 病态（见 heatmap.tsx 的 `valueT`）。`min>max`（真正的顺序错误）
-       * 才是 schema 层拒收的对象（下方 `.refine`）。 */
-      domain: z.object({ min: z.number(), max: z.number() }).strict().optional(),
-      /** 每格叠加显示数值（原样 `String(value)`，不做千分位/小数位格式化——
-       * 格式化留给未来任务，v1 范围内如实展示原始数字）。缺省不显示。 */
-      show_values: z.boolean().optional(),
-      /** 横轴/纵轴整体说明（如「季度」/「地区」），复用 chart.tsx 的
-       * axes.x_title/y_title 拟合机制——与 x_labels/y_labels（每列/每行的
-       * 具体刻度）是两个不同语义层，同时可选、互不依赖。 */
-      x_title: z.string().optional(),
-      y_title: z.string().optional(),
-    })
-    .strict()
-    .refine((c) => c.values.length === c.y_labels.length, {
-      message: "heatmap values row count must equal y_labels length (one row per y_label)",
-      path: ["values"],
-    })
-    .refine((c) => c.values.every((row) => row.length === c.x_labels.length), {
-      message: "heatmap every values row's length must equal x_labels length (one column per x_label)",
-      path: ["values"],
-    })
-    .refine((c) => !c.domain || c.domain.max >= c.domain.min, {
-      message: "heatmap domain.max must be greater than or equal to domain.min",
-      path: ["domain"],
-    }),
-  // Sankey (structure-components wave 2 task 3) — see SankeyNodeSchema/
-  // SankeyLinkSchema above for the shape rationale. Bounds: 2-16 nodes
-  // (a single node has nothing to flow into/out of — `min(2)` is the
-  // smallest graph with at least one real edge), 1-30 links. Both ceilings
-  // are a render-geometry derivation, not an arbitrary round number: the
-  // full-body content box is ~500-600px tall, `sankey.tsx`'s own
-  // `MIN_NODE_H`+`NODE_GAP` floor keeps even the most-populated single layer
-  // (worst case: every node lands in one layer, e.g. an all-disconnected
-  // graph) legible up to about 16 stacked bars before they'd compress below
-  // a readable minimum — the same "schema max = the largest shape the real
-  // renderer keeps legible" discipline heatmap's 10x10 bound and gantt's
-  // 2-8 item bound already establish. 30 links comfortably covers the
-  // "dense crossing" topology the plan names as a required visual case
-  // (e.g. a 4-layer, 4-node-per-layer diagram with every adjacent layer
-  // pair fully connected is 4*4*3=48 possible edges, well above what a
-  // legible band stack can carry) without inviting an unbounded array.
-  z
-    .object({
-      type: z.literal("sankey"),
-      nodes: z.array(SankeyNodeSchema).min(2).max(16),
-      links: z.array(SankeyLinkSchema).min(1).max(30),
-    })
-    .strict()
-    .superRefine((c, ctx) => {
-      // 1. Unique node ids — a duplicated id makes every downstream
-      // `links[].from`/`to` reference ambiguous (which node?), so this is
-      // checked first and independently of the endpoint-existence check
-      // below (a link referencing a duplicated id would otherwise "resolve"
-      // against either occurrence, masking the real problem).
-      const idCounts = new Map<string, number>()
-      for (const n of c.nodes) idCounts.set(n.id, (idCounts.get(n.id) ?? 0) + 1)
-      const duplicateIds = [...idCounts].filter(([, count]) => count > 1).map(([id]) => id)
-      if (duplicateIds.length > 0) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["nodes"],
-          message: `sankey node ids must be unique — duplicated: ${duplicateIds.map((id) => `'${id}'`).join(", ")}`,
-        })
-      }
-
-      // 2. Every link's from/to must reference a declared node id, and 3. no
-      // self-loops (a node flowing into itself has no meaningful band
-      // geometry — top/bottom of the same bar — so it's rejected outright
-      // rather than special-cased at render time, plan task 3 item 1's
-      // explicit "self-loops rejected with an actionable message"). Every
-      // message below is single-quoted (never a raw `"` around an id).
-      //
-      // The endpoint-existence checks' `path` drills to the exact field
-      // (`["links", i, "from"]`/`["links", i, "to"]`) — the self-loop
-      // check's stays at `["links", i]`, since neither endpoint alone is
-      // "wrong" there — both are equal, valid ids, it's the pair that's
-      // rejected. This briefly used a workaround, now removed: the
-      // browser-distribution e2e leg's `BARE_STATIC_IMPORT` scanner
-      // (`scripts/e2e.mts`) used to do a raw text match with no notion of
-      // string-literal context, so a compiled zod issue `path` array ending
-      // in the literal element `"from"` collided with its bare-import scan
-      // exactly like a minified `import x from"pkg"` would. Fixed at the
-      // scanner (syntax-aware now — see that file's own doc comment), so
-      // the natural, most-precise path is safe again and no longer needs to
-      // route around a false positive one layer away from where it lives.
-      const nodeIds = new Set(c.nodes.map((n) => n.id))
-      const availableIds = [...nodeIds].map((id) => `'${id}'`).join(", ") || "(no nodes declared)"
-      let hasStructuralLinkError = false
-      c.links.forEach((link, i) => {
-        if (link.from === link.to) {
-          hasStructuralLinkError = true
-          ctx.addIssue({
-            code: "custom",
-            path: ["links", i],
-            message: `sankey link ${i} is a self-loop ('${link.from}' -> '${link.to}') — self-loops are not supported, remove this link or route the flow through an intermediate node instead`,
-          })
-        }
-        if (!nodeIds.has(link.from)) {
-          hasStructuralLinkError = true
-          ctx.addIssue({
-            code: "custom",
-            path: ["links", i, "from"],
-            message: `sankey link ${i}'s 'from' node id '${link.from}' is not declared in nodes — available: ${availableIds}`,
-          })
-        }
-        if (!nodeIds.has(link.to)) {
-          hasStructuralLinkError = true
-          ctx.addIssue({
-            code: "custom",
-            path: ["links", i, "to"],
-            message: `sankey link ${i}'s 'to' node id '${link.to}' is not declared in nodes — available: ${availableIds}`,
-          })
-        }
-      })
-
-      // 4. Cycle detection — sankey.tsx's layered layout requires a DAG
-      // (layer = longest path from a source, undefined on a cycle). Only
-      // runs once the graph is otherwise structurally sound (unique ids,
-      // every endpoint resolved, no self-loop) — a dangling reference or
-      // self-loop already produced its own actionable issue above, and
-      // would make the adjacency walk below meaningless (a self-loop is
-      // trivially "a cycle" but the message above is the more useful one).
-      // See {@link findSankeyCycle}'s own doc comment for the algorithm and
-      // determinism argument.
-      if (duplicateIds.length > 0 || hasStructuralLinkError) return
-      const adjacency = new Map<string, string[]>(c.nodes.map((n) => [n.id, [] as string[]]))
-      for (const link of c.links) adjacency.get(link.from)!.push(link.to)
-
-      const cyclePath = findSankeyCycle(c.nodes.map((n) => n.id), adjacency)
-      if (cyclePath) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["links"],
-          message: `sankey graph contains a cycle: ${cyclePath.join(" -> ")} — sankey layout requires a directed acyclic graph (DAG), break the cycle by removing or redirecting one of these links`,
-        })
-      }
-    }),
+  bulletsSchema,
+  paragraphSchema,
+  quoteSchema,
+  calloutSchema,
+  codeSchema,
+  kpiCardsSchema,
+  chartSchema,
+  flowchartSchema,
+  architectureSchema,
+  timelineSchema,
+  comparisonSchema,
+  iconCardsSchema,
+  rowCardsSchema,
+  stepsSchema,
+  ringsSchema,
+  numberedCardsSchema,
+  roadmapSchema,
+  matrixSchema,
+  insightPanelSchema,
+  verdictBannerSchema,
+  citationSchema,
+  imageSchema,
+  imageGridSchema,
+  imageCompareSchema,
+  swotSchema,
+  bmcSchema,
+  waterfallSchema,
+  ganttSchema,
+  pestSchema,
+  fiveForcesSchema,
+  heatmapSchema,
+  sankeySchema,
 ], { error: componentTypeError })
 
 /**

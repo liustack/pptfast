@@ -5,7 +5,7 @@ import {
   fitSvgLine,
   measureTextUnits,
 } from "../../lib/svg-text-layout"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type FlowchartComponent = Extract<Component, { type: "flowchart" }>
 
@@ -547,3 +547,5 @@ export const flowchart: SvgComponent<FlowchartComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<FlowchartComponent> = { type: "flowchart", measure: flowchart.measure, render: flowchart.render }

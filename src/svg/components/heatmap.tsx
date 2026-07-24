@@ -2,7 +2,7 @@ import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { mixHex } from "./color-mix"
 import { accessibleInk, contrastRatio, readableOn } from "../ink"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type HeatmapComponent = Extract<Component, { type: "heatmap" }>
 
@@ -422,3 +422,5 @@ export const heatmap: SvgComponent<HeatmapComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<HeatmapComponent> = { type: "heatmap", measure: heatmap.measure, render: heatmap.render }

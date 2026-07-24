@@ -3,7 +3,7 @@ import { fitSvgLine, measureTextUnits } from "../../lib/svg-text-layout"
 import { rotateChartPalette } from "../chart-palette"
 import { accessibleInk, contrastRatio, readableOn, requiredContrastRatio } from "../ink"
 import { mixHex } from "./color-mix"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 
 type SankeyComponent = Extract<Component, { type: "sankey" }>
 
@@ -782,3 +782,5 @@ export const sankey: SvgComponent<SankeyComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<SankeyComponent> = { type: "sankey", measure: sankey.measure, render: sankey.render }

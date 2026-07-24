@@ -2,7 +2,7 @@ import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import { mixHex } from "./color-mix"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type WaterfallComponent = Extract<Component, { type: "waterfall" }>
 type WaterfallItem = WaterfallComponent["items"][number]
@@ -273,3 +273,5 @@ export const waterfall: SvgComponent<WaterfallComponent> = {
   },
 }
 
+
+export const renderDef: RenderDef<WaterfallComponent> = { type: "waterfall", measure: waterfall.measure, render: waterfall.render }

@@ -2,7 +2,7 @@ import type React from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, measureTextUnits } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
-import type { ComponentCtx, SvgComponent } from "./types"
+import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type RoadmapComponent = Extract<Component, { type: "roadmap" }>
 type RoadmapItem = RoadmapComponent["items"][number]
@@ -290,3 +290,5 @@ export const roadmap: SvgComponent<RoadmapComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<RoadmapComponent> = { type: "roadmap", measure: roadmap.measure, render: roadmap.render }

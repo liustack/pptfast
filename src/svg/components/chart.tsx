@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { rotateChartPalette } from "../chart-palette"
-import type { SvgComponent } from "./types"
+import type { RenderDef, SvgComponent } from "./types"
 import {
   renderBar,
   renderBarHorizontal,
@@ -212,3 +212,5 @@ export const chart: SvgComponent<ChartComponent> = {
     )
   },
 }
+
+export const renderDef: RenderDef<ChartComponent> = { type: "chart", measure: chart.measure, render: chart.render }
