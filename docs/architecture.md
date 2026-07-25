@@ -166,7 +166,7 @@ content themselves:
 - **A layout definition lives with its implementation.** Each of the 33
   single-layout archetypes exports `layoutDef: LayoutDefinition` at the
   bottom of its own `src/svg/archetypes/<name>.tsx` file, beside the JSX
-  that draws it (`image-pages.tsx` exports 4 uniquely-named ones instead,
+  that draws it (`src/svg/image-pages.tsx` — one level above `archetypes/` — exports 4 uniquely-named ones instead,
   since one file implements all 4 image takeovers and they can't share the
   bare `layoutDef` name the 33 single-layout files use). `src/svg/layouts/registry.ts`
   imports every one and assembles `LAYOUT_REGISTRY` from them — "take one
@@ -197,8 +197,9 @@ content themselves:
   (`component-traits.test.ts`) asserts the two stay in sync.
 
 **Adding a component** touches, at minimum, the 2 domain files above plus
-4 points a normal `pnpm check` catches if skipped — a missing entry fails
-the build or the test suite, never silently:
+6 points a normal `pnpm check` catches if skipped — a missing entry fails
+the build or the test suite, never silently (this list was measured
+against the most recent real addition, `data_table`, not predicted):
 
 1. `src/ir/index.ts` — import the new schema, add it to `ComponentSchema`'s
    `z.discriminatedUnion` array
@@ -213,6 +214,14 @@ the build or the test suite, never silently:
    existing `examples/*.json`/`STRESS_DECKS` fixture already uses it, or
    because a new `COVERAGE_ENTRIES` `-valid`/`-tripwire` pair was added
    for it (the test fails red otherwise)
+5. `src/pptx/generate-fidelity-export.test.ts` — `COMPONENT_BY_TYPE` is
+   another total `Record<Component["type"], Component>`: the fidelity
+   sweep needs one real instance of the new type (compile error if
+   missing)
+6. `src/svg/audit/full-matrix-contrast.test.ts` — `MUTED_SURFACE_CLASS`
+   classifies every component type for the contrast sweep; an
+   `Object.hasOwn` exhaustiveness test fails red until the new type is
+   classified
 
 Plus, only when they apply: a `src/ir/field-aliases.ts` row in either
 alias table (only if the component needs a synonym rescue); an
