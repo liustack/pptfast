@@ -817,6 +817,75 @@ describe("architecture component direction field (probe evidence-gate byproduct,
   })
 })
 
+describe("comparison component cells/columns length contract (probe evidence-gate byproduct, 2026-07-26)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const comparisonComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "comparison",
+    columns: ["Sales", "Customer Success"],
+    rows: [{ label: "Owns", cells: ["Pipeline", "Renewals"] }],
+    ...overrides,
+  })
+
+  it("accepts rows whose cells length exactly matches columns.length (unchanged)", () => {
+    const d = withComponents([comparisonComponent()])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  // ── lenient-fewer-cells contract, unchanged: a row with fewer cells than
+  // columns is schema-legal — comparison.tsx's columnTexts() already reads
+  // a missing index as "" and renders an empty cell, the positional
+  // equivalent of data_table's own "missing key" lenience. ──
+  it("accepts a row with fewer cells than columns.length (lenient — renders empty, unchanged)", () => {
+    const d = withComponents([
+      comparisonComponent({ rows: [{ label: "Owns", cells: ["Pipeline"] }] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a row with zero cells (lenient — unchanged)", () => {
+    const d = withComponents([comparisonComponent({ rows: [{ label: "Owns", cells: [] }] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  // ── strict-extra-cells contract: a row with more cells than columns is a
+  // hard error naming the row index and both counts (superRefine,
+  // comparison.ts) — the exact shape the probe artifact hit
+  // (qwen3.6-27b/p07: 2 columns, 3 cells per row, the 3rd silently
+  // dropped at render). ──
+  it("rejects a row with more cells than columns.length (extra-cell hard error)", () => {
+    const d = withComponents([
+      comparisonComponent({
+        rows: [{ label: "Owns", cells: ["Pipeline", "Renewals", "Main point of contact"] }],
+      }),
+    ])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/rows\[0\]/)
+      expect(result.error).toMatch(/3 cell/)
+      expect(result.error).toMatch(/2 column/)
+    }
+  })
+
+  it("extra-cell error names the correct row index for a non-zero row", () => {
+    const d = withComponents([
+      comparisonComponent({
+        rows: [
+          { label: "Owns", cells: ["Pipeline", "Renewals"] },
+          { label: "Shared", cells: ["Onboarding", "Onboarding", "Main point of contact"] },
+        ],
+      }),
+    ])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/rows\[1\]/)
+  })
+})
+
 describe("data_table component (R1 evidence wave Task T3 — 33rd component, first through the wave-2 domain-file flow)", () => {
   const withComponents = (components: any[]) => {
     const d: any = minimal()
