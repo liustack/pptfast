@@ -155,6 +155,78 @@ describe("architecture component", () => {
     expect(units * fontSize).toBeLessThanOrEqual(1120 - 180 - 6 + 1)
   })
 
+  // direction (probe evidence-gate byproduct, 2026-07-26): `layers[0]`
+  // painting topmost is a documented default, not the only reading —
+  // `direction: "bottom_up"` lets a bottom-up-authored ladder (e.g. a
+  // maturity model written low-to-high) render right-side up.
+  describe("direction", () => {
+    it("defaults to top_down: layers[0] paints at y=0 (topmost)", () => {
+      const { container } = svg(
+        architecture.render({ type: "architecture", layers }, { x: 0, y: 0, w: 1120 }, ctx),
+      )
+      const rects = Array.from(container.querySelectorAll("rect"))
+      expect(rects[0].getAttribute("y")).toBe("0")
+      expect(rects[rects.length - 1].getAttribute("y")).toBe(
+        String((layers.length - 1) * (72 + 12)),
+      )
+    })
+
+    it("explicit direction: 'top_down' is byte-identical to omitting direction", () => {
+      const omitted = svg(
+        architecture.render({ type: "architecture", layers }, { x: 0, y: 0, w: 1120 }, ctx),
+      ).container.innerHTML
+      const explicit = svg(
+        architecture.render(
+          { type: "architecture", layers, direction: "top_down" },
+          { x: 0, y: 0, w: 1120 },
+          ctx,
+        ),
+      ).container.innerHTML
+      expect(explicit).toBe(omitted)
+    })
+
+    it("direction: 'bottom_up' flips the y-order: layers[0] paints at the bottom", () => {
+      const { container } = svg(
+        architecture.render(
+          { type: "architecture", layers, direction: "bottom_up" },
+          { x: 0, y: 0, w: 1120 },
+          ctx,
+        ),
+      )
+      const rects = Array.from(container.querySelectorAll("rect"))
+      // layers[0] ("Presentation") is the first rect emitted (DOM order
+      // still follows array order), but its y must now be the bottom-most
+      // slot instead of 0.
+      expect(rects[0].getAttribute("y")).toBe(String((layers.length - 1) * (72 + 12)))
+      expect(rects[rects.length - 1].getAttribute("y")).toBe("0")
+    })
+
+    it("bottom_up keeps the same layers[0..N) truncation policy under box.h overflow (drops the tail, not the foundation)", () => {
+      const manyLayers = Array.from({ length: 10 }, (_, i) => ({
+        title: `Layer ${i}`,
+        items: ["x"],
+      }))
+      const box = { x: 0, y: 0, w: 1120, h: 300 }
+      const { container } = svg(
+        architecture.render(
+          { type: "architecture", layers: manyLayers, direction: "bottom_up" },
+          box,
+          ctx,
+        ),
+      )
+      const texts = Array.from(container.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("fill") === ctx.colors.primary,
+      )
+      const titles = texts.map((t) => t.textContent)
+      // Same head-kept/tail-dropped policy as top_down: Layer 0 (the
+      // "foundation" of a bottom-up ladder) must still be visible.
+      expect(titles).toContain("Layer 0")
+      expect(titles).not.toContain("Layer 9")
+      const dropped = container.querySelector("[data-dropped]")
+      expect(dropped).toBeTruthy()
+    })
+  })
+
   it("wraps content in a translated group", () => {
     const { container } = svg(
       architecture.render(
