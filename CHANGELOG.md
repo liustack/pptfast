@@ -1,5 +1,21 @@
 # @liustack/pptfast
 
+## 0.10.0
+
+### Minor Changes
+
+- 85a91d3: Multi-series charts now genuinely compare instead of silently dropping data: a vertical or horizontal `bar` chart with 2+ series renders each series as its own grouped bar per category instead of only ever drawing the first series, and a multi-series `line` chart now shares one value domain and one category axis across every series instead of each series scaling independently. A `bar` or `line` chart with 2+ series also gets an automatic legend (series name + color swatch) below the plot, truncating an overly long series name (`data-truncated`) and collapsing overflow entries into a trailing "+N more" marker (`data-dropped`) once too many series to list. A category (`x` value) repeated within one series now surfaces as an editorial quality warning instead of silently colliding with itself. Negative and mixed-sign values in a multi-series chart now anchor correctly at the shared zero baseline instead of producing invalid (negative) bar geometry. Single-series positive bar/line charts render byte-identically to before, and pie/donut/funnel/dumbbell are unaffected.
+
+  New `data_table` component (the IR's component union grows from 32 to 33): a native, editable row/column table (2-8 columns, 1-12 rows, optional `highlight`/`total` row emphasis, and a footnote `source` line) for exact figures the audience reads row-by-row, rendered as real shapes — never a rasterized image. A row's `cells` may omit a declared column's key (renders an empty cell, plus an editorial quality warning naming the row and the missing key), but a key not declared in any `columns` entry is a hard schema error, since that signals a structural misunderstanding rather than incomplete data.
+
+  Also fixes a `row_cards` bug where the "+N more" truncation marker could render past the component's own bottom edge when a card list was truncated to fit a tight box height — the marker's position now matches the budget that decided how many cards fit, with no extra unbudgeted gap.
+
+### Patch Changes
+
+- 9a50c75: Icon names now also accept `alert-circle` and `alert-triangle` — the older lucide-react spellings some AI agents still write from pre-training habit — resolving to the same icons as their current names (`circle-alert`/`triangle-alert`). The top-level `narrative` field also now accepts an `{id: "<preset>"}` object shape (e.g. `narrative: {id: "training"}`) as an alternate way to write a bare preset-name string, matching the `theme: {id: "..."}` shape already used elsewhere in the schema; validate/render prints a rewrite note when this rescue fires, the same way field-name synonym rescues already do. The exported `resolveNarrative` SDK function itself also tolerates the `{id}` shape now, silently — a direct SDK caller bypassing validate gets the rescue without a note. A narrative object that mixes `id` with an axis field (`strategy`/`pacing`/`audience`) is unchanged — still a hard validation error, since that combination is genuinely ambiguous.
+
+  The published `package.json` now declares `"sideEffects": false`, letting consumer bundlers tree-shake unused modules aggressively — verified safe: the package has no bare side-effect imports and platform installation is always an explicit function call.
+
 ## 0.9.0
 
 ### Minor Changes
