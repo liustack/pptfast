@@ -13,8 +13,18 @@
  * Credentials load from the repo-root .env (gitignored, never committed):
  *   <PREFIX>_BASE_URL / <PREFIX>_API_KEY / <PREFIX>_MODEL
  * Usage:
- *   pnpm bench:run <prefix> [q01 q02 ...]   (default: all 20 questions)
+ *   pnpm bench:run <prefix> [q01 q02 ...]   (default: all questions in questionsDir)
+ *   pnpm bench:run <prefix> --questions-dir=<dir> --results-dir=<dir> [ids...]
  * e.g. pnpm bench:run qwen · pnpm bench:run deepseek q01 q07
+ *   pnpm bench:run qwen --questions-dir=tests/bench/questions-probe --results-dir=tests/bench/results-probe
+ *
+ * `--questions-dir`/`--results-dir` default to `tests/bench/questions` /
+ * `tests/bench/results` (unchanged default behavior) — added so a second,
+ * separate question bank (e.g. the probe bank, `tests/bench/questions-probe/`)
+ * can be run without touching the main bank's result history. Question ids
+ * are auto-discovered from whichever `questionsDir` is in effect via a
+ * generic `/^[a-z]\d\d$/` id shape (matches both `q01`/`p01`-style prefixes),
+ * not a hardcoded `q\d\d`.
  */
 import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
@@ -50,10 +60,11 @@ async function runOne(
   cfg: { baseUrl: string; apiKey: string; model: string },
   qid: string,
   shared: { skill: string; schema: string; narratives: string; themes: string },
+  dirs: { questionsDir: string; resultsDir: string },
 ): Promise<void> {
-  const promptPath = join(ROOT, "tests/bench/questions", qid, "prompt.md")
+  const promptPath = join(dirs.questionsDir, qid, "prompt.md")
   const prompt = readFileSync(promptPath, "utf8")
-  const outDir = join(ROOT, "tests/bench/results", cfg.model, qid)
+  const outDir = join(dirs.resultsDir, cfg.model, qid)
   if (existsSync(join(outDir, "answer.json"))) {
     console.log(`${qid}: already answered, skipping (resume mode)`)
     return
@@ -137,7 +148,15 @@ async function runOne(
 }
 
 async function main(): Promise<void> {
-  const [prefixArg, ...qids] = process.argv.slice(2)
+  const rawArgs = process.argv.slice(2)
+  const dirFlag = (name: string, fallback: string): string => {
+    const prefix = `--${name}=`
+    const hit = rawArgs.find((a) => a.startsWith(prefix))
+    return hit ? resolve(ROOT, hit.slice(prefix.length)) : join(ROOT, fallback)
+  }
+  const questionsDir = dirFlag("questions-dir", "tests/bench/questions")
+  const resultsDir = dirFlag("results-dir", "tests/bench/results")
+  const [prefixArg, ...qids] = rawArgs.filter((a) => !a.startsWith("--"))
   if (!prefixArg) throw new Error("usage: pnpm bench:run <env-prefix e.g. qwen|deepseek> [qids...]")
   const prefix = prefixArg.toUpperCase()
   const env = loadEnv()
@@ -145,18 +164,21 @@ async function main(): Promise<void> {
   if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) throw new Error(`missing ${prefix}_BASE_URL/_API_KEY/_MODEL in .env`)
 
   const questions =
-    qids.length > 0 ? qids : readdirSync(join(ROOT, "tests/bench/questions")).filter((d) => /^q\d\d$/.test(d)).sort()
+    qids.length > 0 ? qids : readdirSync(questionsDir).filter((d) => /^[a-z]\d\d$/.test(d)).sort()
   const shared = {
     skill: readFileSync(join(ROOT, "skills/pptfast/SKILL.md"), "utf8"),
     schema: cliText(["schema"]),
     narratives: cliText(["narratives", "--json"]),
     themes: cliText(["themes", "--json"]),
   }
-  console.log(`model ${cfg.model} · ${questions.length} questions · concurrency ${CONCURRENCY}`)
+  console.log(`model ${cfg.model} · ${questions.length} questions · concurrency ${CONCURRENCY} · questions=${questionsDir} results=${resultsDir}`)
   const queue = [...questions]
   const workers = Array.from({ length: CONCURRENCY }, async () => {
     for (let qid = queue.shift(); qid !== undefined; qid = queue.shift()) {
-      await runOne({ baseUrl: cfg.baseUrl!, apiKey: cfg.apiKey!, model: cfg.model! }, qid, shared)
+      await runOne({ baseUrl: cfg.baseUrl!, apiKey: cfg.apiKey!, model: cfg.model! }, qid, shared, {
+        questionsDir,
+        resultsDir,
+      })
     }
   })
   await Promise.all(workers)

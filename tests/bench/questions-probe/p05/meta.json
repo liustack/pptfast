@@ -1,0 +1,14 @@
+{
+  "id": "p05",
+  "title": "新领导团队介绍",
+  "coverage": {
+    "strategy": "briefing",
+    "pacing": "dense",
+    "expects_components": ["row_cards", "icon_cards"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "zh",
+  "probe": true,
+  "probe_candidate": "people_cards"
+}
