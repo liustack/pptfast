@@ -19,7 +19,7 @@ import { disassembleDeck, type PageContent } from "../spec/assemble"
 import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpec } from "../spec"
 import { migrateDeckPlanToSpec } from "../spec/migrate"
 import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../narrative"
-import { auditDeck, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
+import { auditDeck, type AuditChecks, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
 import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
 import {
@@ -191,20 +191,29 @@ export async function applyDeckConfig(
  * `projectHit`/`userHit` are the caller's own already-fetched
  * `findConfig(cwd)`/`findUserConfig()` results (see `applyDeckConfig`'s doc
  * comment above for why both are threaded rather than fetched here too).
+ *
+ * `resolvedTarget` (serve wave, task S1) is the absolute path `target` itself
+ * resolved to — the deck directory (`isDir: true`) or the single IR file
+ * (`isDir: false`). Unused by `runValidate`/`runRender`/`runAudit`, which
+ * only ever destructure `raw`/`baseDir`(/`isDir`) — it exists so
+ * `buildDeckPreview` below can hand it to `createServeServer` (`./serve.ts`)
+ * as the exact path to `fs.watch`, without that module re-deriving the same
+ * bare-name/`decksDir` resolution a second time.
  */
 async function loadDeckTarget(
   arg: string,
   cwd: string,
   projectHit: ProjectConfigHit,
   userHit: UserConfigHit,
-): Promise<{ raw: unknown; baseDir: string; isDir: boolean }> {
+): Promise<{ raw: unknown; baseDir: string; isDir: boolean; resolvedTarget: string }> {
   const target = await resolveDeckTarget(arg, resolveDecksDirSource(projectHit, userHit), cwd)
   if (await isDeckDirectory(target)) {
     const { ir, deckDir } = await readDeckDir(target)
-    return { raw: ir, baseDir: deckDir, isDir: true }
+    return { raw: ir, baseDir: deckDir, isDir: true, resolvedTarget: deckDir }
   }
   const raw = await loadIrFile(target)
-  return { raw, baseDir: dirname(resolve(target)), isDir: false }
+  const resolvedFile = resolve(target)
+  return { raw, baseDir: dirname(resolvedFile), isDir: false, resolvedTarget: resolvedFile }
 }
 
 export interface RenderOptions {
@@ -630,6 +639,123 @@ export interface PreviewOptions {
 }
 
 /**
+ * Shared "assemble/validate/render" half of the preview build pipeline
+ * (serve wave, task S1 extraction) — every step `runPreview` always
+ * performed regardless of `--html`, factored out so {@link buildDeckPreview}
+ * below (and transitively `createServeServer`, `./serve.ts`) can reuse it
+ * without re-threading `loadDeckTarget`/`applyDeckConfig`/`validateIr`/
+ * `resolveLocalAssets` a second time. Resolves `target` exactly like
+ * `runRender`/`runValidate`/`runAudit` (single IR file, deck project
+ * directory, or bare deck name — {@link loadDeckTarget} above), then renders
+ * every slide to SVG once (`svgs`, index-aligned with `ir.slides`) — the same
+ * strings both `runPreview`'s per-slide `.svg` files and
+ * {@link buildDeckAuditAndHtml}'s embedded `preview.html` copies come from,
+ * so the two stay byte-identical by construction, not just because the
+ * renderer is deterministic (the same guarantee `runPreview` documented
+ * before this extraction).
+ */
+interface DeckRenderResult {
+  ir: PptxIR
+  svgs: string[]
+  /** The deck directory (`isDir: true`) or the single IR file (`isDir:
+   *  false`) `target` resolved to — see {@link loadDeckTarget}'s own doc
+   *  comment on `resolvedTarget` for why this is threaded back. */
+  resolvedTarget: string
+  isDir: boolean
+  normalized?: string[]
+}
+
+async function renderDeckSlides(target: string, opts: { cwd?: string } = {}): Promise<DeckRenderResult> {
+  const cwd = opts.cwd ?? process.cwd()
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, baseDir, isDir, resolvedTarget } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  const v = validateIr(raw)
+  if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
+  await resolveLocalAssets(v.ir!, baseDir)
+  const ir = v.ir!
+  const svgs = ir.slides.map((_, i) => renderSlideSvg(ir, i))
+  return { ir, svgs, resolvedTarget, isDir, normalized: v.normalized }
+}
+
+/**
+ * Audit + HTML-build half of the pipeline (serve wave, task S1 extraction —
+ * this is `runPreview`'s pre-extraction `opts.htmlOut` branch body, moved
+ * here with no behavior change so both `--html` output and
+ * `createServeServer`'s cached page are the exact same bytes for the exact
+ * same deck state). Runs `auditDeck` (notes+preview wave, task 2) — but only
+ * when the deck has no placeholder page. `auditDeck` itself silently skips a
+ * placeholder (`AuditReport.pagesSkipped`, nothing to audit on an unfilled
+ * page) — running it over a deck that has some would produce a *partial*
+ * report that still looks complete (zero findings reads as "clean", not
+ * "some pages were never checked"), which is worse than not running it at
+ * all. The plan's contract is the simpler "any placeholder present → skip
+ * the whole overlay, one-line notice instead" — implemented here as
+ * `hasPlaceholder`, and threaded into `buildPreviewHtml` as either
+ * `findings` + `checks` (clean run) or `auditNote` (skipped), never both.
+ * `checks` (`AuditReport.checks`, `../svg/audit/deck-audit.ts`) rides along
+ * with `findings` on every clean run, not just a partial/findings-only one —
+ * `buildPreviewHtml` renders it as its own one-line summary regardless of
+ * `findings.length`, so a deck that audited clean because nothing was wrong
+ * stays visually distinct from one that audited clean because the pixel
+ * pass never ran.
+ */
+function buildDeckAuditAndHtml(
+  ir: PptxIR,
+  svgs: string[],
+): { html: string; findings: AuditFinding[]; checks?: AuditChecks } {
+  const hasPlaceholder = ir.slides.some((slide) => slide.placeholder)
+  const auditReport = hasPlaceholder ? undefined : auditDeck(ir)
+  const findings = auditReport?.findings ?? []
+  const html = buildPreviewHtml({
+    title: ir.filename,
+    slides: ir.slides.map((slide, i) => ({
+      index: i,
+      id: slide.id,
+      type: slide.type,
+      svg: svgs[i]!,
+      placeholder: slide.placeholder,
+    })),
+    findings: findings.map((f) => ({ page: f.page, slideId: f.slideId, code: f.code, message: f.message })),
+    auditNote: hasPlaceholder
+      ? "audit overlay skipped — deck has unfilled placeholder pages; fill every page and re-run `pptfast preview --html` to see audit findings"
+      : undefined,
+    checks: auditReport?.checks,
+  })
+  return { html, findings, checks: auditReport?.checks }
+}
+
+/**
+ * {@link renderDeckSlides} + {@link buildDeckAuditAndHtml} combined — the
+ * full "target → {html, findings, ...}" preview build pipeline (serve wave,
+ * task S1; spec-plan.md `.issues/2026-07-25-serve/spec-plan.md` §3 design
+ * ruling 5: "buildPreviewHtml 复用现状 ... 禁止 fork 一份 preview 构建逻辑").
+ * Two consumers: `runPreview`'s `opts.htmlOut` branch below (byte-identical
+ * output to before this extraction — see that function's own doc comment),
+ * and `createServeServer` (`./serve.ts`), which calls this once at startup
+ * and again on every debounced `fs.watch` rebuild, caching `.html` in memory
+ * for `GET /` and pushing an SSE `reload` once it succeeds. A thrown
+ * `PptfastError` (invalid IR, a mid-edit malformed JSON save, ...) propagates
+ * straight out of this function either way — it is `createServeServer`'s job
+ * to catch the *rebuild* case and turn it into an SSE `error` event instead
+ * of letting it kill the server; the *first* call (before serve starts
+ * listening) is deliberately allowed to reject the whole command, same
+ * "throw `PptfastError` → CLI exit 1" contract every other `run*` command
+ * already has, since there is no previous-good HTML yet to keep serving.
+ */
+export interface DeckPreviewResult extends DeckRenderResult {
+  html: string
+  findings: AuditFinding[]
+  checks?: AuditChecks
+}
+
+export async function buildDeckPreview(target: string, opts: { cwd?: string } = {}): Promise<DeckPreviewResult> {
+  const rendered = await renderDeckSlides(target, opts)
+  const { html, findings, checks } = buildDeckAuditAndHtml(rendered.ir, rendered.svgs)
+  return { ...rendered, html, findings, checks }
+}
+
+/**
  * `irPath` accepts a single IR/spec JSON file, a deck project directory, or
  * a bare deck name (same `loadDeckTarget` resolution `runRender` uses).
  * Preview never gates on placeholder pages either way (single-file or
@@ -641,75 +767,37 @@ export interface PreviewOptions {
  * Appends the same field-alias {@link normalizedNote} `runValidate`/
  * `runRender` print (W5 whole-branch review finding 3).
  *
- * `opts.htmlOut` reuses each slide's already-rendered SVG string
- * ({@link buildPreviewHtml}'s `slides[].svg`) rather than calling
- * `renderSlideSvg` a second time — the `.svg` file on disk and the copy
- * embedded in `preview.html` are then guaranteed byte-identical by
- * construction, not just by the renderer being deterministic.
- *
- * `opts.htmlOut` additionally runs `auditDeck` (notes+preview wave, task 2)
- * — but only when the deck has no placeholder page. `auditDeck` itself
- * silently skips a placeholder (`AuditReport.pagesSkipped`, nothing to audit
- * on an unfilled page) — running it over a deck that has some would produce
- * a *partial* report that still looks complete (zero findings reads as
- * "clean", not "some pages were never checked"), which is worse than not
- * running it at all. The plan's contract is the simpler "any placeholder
- * present → skip the whole overlay, one-line notice instead" — implemented
- * here as `hasPlaceholder`, and threaded into `buildPreviewHtml` as either
- * `findings` + `checks` (clean run) or `auditNote` (skipped), never both.
- * `checks` (`AuditReport.checks`, `../svg/audit/deck-audit.ts`) rides along
- * with `findings` on every clean run, not just a partial/findings-only one —
- * `buildPreviewHtml` renders it as its own one-line summary regardless of
- * `findings.length`, so a deck that audited clean because nothing was wrong
- * stays visually distinct from one that audited clean because the pixel
- * pass never ran (fix round, Important-1: this line was the task brief's
- * own scope for this wave and was missed in the first pass).
+ * Delegates the assemble/render/audit/HTML-build work to
+ * {@link renderDeckSlides}/{@link buildDeckAuditAndHtml} (serve wave, task S1
+ * extraction — see {@link buildDeckPreview}'s own doc comment for why); this
+ * function's own job is now purely the CLI-facing shell around them —
+ * writing each rendered SVG to `outDir`, conditionally writing
+ * `preview.html`, and assembling the human-readable summary line. `outDir`
+ * is only created once assemble/validate/render has already succeeded
+ * (`renderDeckSlides` runs first) — a target that fails to resolve or
+ * validate never leaves behind an empty `outDir` it was never able to fill,
+ * the same "don't create output for a call that's about to fail" posture
+ * `runDisassemble`'s own path-traversal guard already established elsewhere
+ * in this file.
  */
 export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
-  const cwd = opts.cwd ?? process.cwd()
-  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
-  await applyDeckConfig(raw, { cwd, projectHit, userHit })
-  const v = validateIr(raw)
-  if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
-  await resolveLocalAssets(v.ir!, baseDir)
+  const { ir, svgs, normalized } = await renderDeckSlides(irPath, { cwd: opts.cwd })
   await mkdir(outDir, { recursive: true })
-  const ir = v.ir!
-  const svgs: string[] = []
   for (let i = 0; i < ir.slides.length; i++) {
-    const svg = renderSlideSvg(ir, i)
-    svgs.push(svg)
     const name = `${String(i + 1).padStart(3, "0")}-${ir.slides[i]!.type}.svg`
-    await writeFile(join(outDir, name), svg)
+    await writeFile(join(outDir, name), svgs[i]!)
   }
   const ok = `wrote ${ir.slides.length} SVG files to ${outDir}`
   const notes: string[] = []
-  const aliasNote = normalizedNote(v.normalized)
+  const aliasNote = normalizedNote(normalized)
   if (aliasNote) notes.push(aliasNote)
   if (opts.htmlOut) {
+    const { html, findings } = buildDeckAuditAndHtml(ir, svgs)
     const htmlPath = join(outDir, "preview.html")
-    const hasPlaceholder = ir.slides.some((slide) => slide.placeholder)
-    const auditReport = hasPlaceholder ? undefined : auditDeck(ir)
-    const auditFindings = auditReport?.findings ?? []
-    const html = buildPreviewHtml({
-      title: ir.filename,
-      slides: ir.slides.map((slide, i) => ({
-        index: i,
-        id: slide.id,
-        type: slide.type,
-        svg: svgs[i]!,
-        placeholder: slide.placeholder,
-      })),
-      findings: auditFindings.map((f) => ({ page: f.page, slideId: f.slideId, code: f.code, message: f.message })),
-      auditNote: hasPlaceholder
-        ? "audit overlay skipped — deck has unfilled placeholder pages; fill every page and re-run `pptfast preview --html` to see audit findings"
-        : undefined,
-      checks: auditReport?.checks,
-    })
     await writeFile(htmlPath, html)
     notes.push(`note: wrote self-contained preview to ${htmlPath}`)
-    if (auditFindings.length > 0) {
-      notes.push(`note: audit found ${auditFindings.length} finding${auditFindings.length === 1 ? "" : "s"} — see preview.html`)
+    if (findings.length > 0) {
+      notes.push(`note: audit found ${findings.length} finding${findings.length === 1 ? "" : "s"} — see preview.html`)
     }
   }
   return notes.length > 0 ? `${ok}\n${notes.join("\n")}` : ok
