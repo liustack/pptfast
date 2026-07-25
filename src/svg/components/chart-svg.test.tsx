@@ -118,15 +118,36 @@ describe("gradient id uniqueness across chart instances on one page", () => {
     expect(idA).toBe(idB)
   })
 
-  it("gives two series within one line chart distinct area-gradient ids", () => {
+  // R1 evidence wave, Task T2: multi-series line no longer draws an
+  // area-fill gradient per series at all ("no stacked area fills, only line
+  // strokes when n>=2" — transparent regions would inter-blend once more
+  // than one series can be present; single-series keeps its area fill
+  // unchanged, see the byte-compat golden pins). This test used to prove
+  // "two series -> two distinct area-gradient ids"; that shape can no longer
+  // occur, so distinct-id coverage moves to two single-series instances
+  // (mirroring the two `renderBar` tests directly above), and a new test
+  // locks in the n>=2 "no gradient/polygon at all" behavior.
+  it("gives two different single-series line charts distinct area-gradient ids", () => {
+    const a: ChartSeries[] = [{ name: "A", data: [{ x: "a", y: 1 }, { x: "b", y: 5 }] }]
+    const b: ChartSeries[] = [{ name: "A", data: [{ x: "a", y: 9 }, { x: "b", y: 3 }] }]
+    const { container: ca } = svg(renderLine(a, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const { container: cb } = svg(renderLine(b, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const idA = ca.querySelector("linearGradient")!.getAttribute("id")
+    const idB = cb.querySelector("linearGradient")!.getAttribute("id")
+    expect(idA).toBeTruthy()
+    expect(idB).toBeTruthy()
+    expect(idA).not.toBe(idB)
+  })
+
+  it("a multi-series (n>=2) line chart renders no area-fill gradient or polygon — strokes only", () => {
     const twoSeries: ChartSeries[] = [
       { name: "A", data: [{ x: "a", y: 1 }, { x: "b", y: 5 }] },
       { name: "B", data: [{ x: "a", y: 3 }, { x: "b", y: 2 }] },
     ]
     const { container } = svg(renderLine(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
-    const ids = Array.from(container.querySelectorAll("linearGradient")).map((g) => g.getAttribute("id"))
-    expect(ids).toHaveLength(2)
-    expect(new Set(ids).size).toBe(2)
+    expect(container.querySelectorAll("linearGradient")).toHaveLength(0)
+    expect(container.querySelectorAll("polygon")).toHaveLength(0)
+    expect(container.querySelectorAll("polyline")).toHaveLength(2)
   })
 })
 
@@ -610,18 +631,30 @@ describe("renderBar/renderBarHorizontal/renderLine/renderFunnel — extreme-magn
     assertNumericAttrsBounded(container, "rect", ["x"], MAX_CHART_GEOMETRY_PX + W)
   })
 
-  it("renderBar: a realistic-magnitude negative value (ratio well under the ceiling) renders byte-identically to the pre-fix formula", () => {
-    // Hand-computed from the pre-fix formula (`barH = (d.y / max) * plotH`)
-    // -- the clamp must be a complete no-op whenever the raw ratio's
-    // magnitude is nowhere near MAX_CHART_GEOMETRY_PX, which every realistic
-    // (even quite extreme, e.g. -12 against a max of 5) mixed-sign chart is.
+  // R1 evidence wave, Task T2: a single series carrying ANY negative value
+  // was never byte-compat-protected (Global Constraint 1 protects only
+  // "single-series positive") -- and for good reason. The pre-T2 formula
+  // (`barH = (d.y / max) * plotH`, unconditionally) produced a *negative*
+  // rect height for a negative value (`(-12 / 5) * PLOT_H = -499.2`), which
+  // is invalid SVG (a `<rect height>` must be >= 0) -- this test used to pin
+  // that broken value as "correct". chart-model.ts's shared domain now
+  // correctly spans down to the real negative minimum (`domain.min =
+  // Math.min(0, -12, 5) = -12`), and `verticalBarExtent` measures the bar as
+  // a signed span from the true zero baseline (`zeroAxisRatio`) instead of
+  // assuming the baseline always sits at the plot's bottom edge -- producing
+  // a real, non-negative height instead.
+  it("renderBar: a realistic-magnitude negative single-series value gets a correct non-negative mixed-sign bar height, not the old invalid-negative-height formula", () => {
     const { container } = svg(
       renderBar(seriesOf(-12, 5), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
     )
     const rects = Array.from(container.querySelectorAll("rect"))
-    const max = Math.max(-12, 5, 1)
-    const rawBarH = (-12 / max) * PLOT_H
-    expect(Number(rects[0].getAttribute("height"))).toBeCloseTo(rawBarH)
+    const domain = { min: Math.min(0, -12, 5), max: Math.max(0, -12, 5, 1) }
+    const zero = (0 - domain.min) / (domain.max - domain.min)
+    // value=-12 spans the domain fraction [0, zero] (it's the domain's own
+    // minimum), so its bar height is exactly `zero` of the plot height.
+    const expectedBarH = zero * PLOT_H
+    expect(Number(rects[0].getAttribute("height"))).toBeCloseTo(expectedBarH)
+    expect(Number(rects[0].getAttribute("height"))).toBeGreaterThanOrEqual(0)
   })
 })
 
@@ -639,12 +672,35 @@ describe("subset validation", () => {
     expect(() => assertSubset(container.querySelector("svg")!)).not.toThrow()
   })
 
-  it("multi-series line chart (multiple gradient defs on one page) passes assertSubset", () => {
+  // R1 evidence wave, Task T2: multi-series line no longer declares any
+  // gradient defs at all (see "gradient id uniqueness" describe block above)
+  // — kept as a subset-validation regression guard regardless (the shared-
+  // domain polyline/text markup still needs to stay inside the svg2pptx
+  // subset even without gradients).
+  it("multi-series (shared-domain) line chart passes assertSubset", () => {
     const twoSeries: ChartSeries[] = [
       { name: "A", data: [{ x: "a", y: 1 }, { x: "b", y: 5 }] },
       { name: "B", data: [{ x: "a", y: 3 }, { x: "b", y: 2 }] },
     ]
     const { container } = svg(renderLine(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(() => assertSubset(container.querySelector("svg")!)).not.toThrow()
+  })
+
+  it("grouped (multi-series) bar chart passes assertSubset", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "a", y: 10 }, { x: "b", y: 20 }] },
+      { name: "B", data: [{ x: "a", y: 15 }, { x: "b", y: 5 }] },
+    ]
+    const { container } = svg(renderBar(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(() => assertSubset(container.querySelector("svg")!)).not.toThrow()
+  })
+
+  it("grouped (multi-series) horizontal bar chart passes assertSubset", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "a", y: 10 }, { x: "b", y: 20 }] },
+      { name: "B", data: [{ x: "a", y: 15 }, { x: "b", y: 5 }] },
+    ]
+    const { container } = svg(renderBarHorizontal(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
     expect(() => assertSubset(container.querySelector("svg")!)).not.toThrow()
   })
 })
