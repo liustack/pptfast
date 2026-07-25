@@ -658,6 +658,287 @@ describe("renderBar/renderBarHorizontal/renderLine/renderFunnel — extreme-magn
   })
 })
 
+// R1 evidence wave, Task T2 review carried item (Important, recorded for
+// wave close in .superpowers/sdd/progress.md: "grouped negative/mixed-sign
+// bar/line lacks dedicated regression tests (reviewer probes verified code
+// correct — coverage gap only)"). The three describe blocks below are that
+// missing coverage: they mirror the single-series negative pin directly
+// above ("renderBar: a realistic-magnitude negative single-series value
+// gets a correct non-negative mixed-sign bar height...") but for n>=2
+// (grouped) series, independently re-deriving domain/zero/extent from
+// chart-model.ts's own documented rules (never importing chart-svg.tsx's
+// barExtentFraction/verticalBarExtent/horizontalBarExtent/lineValueY
+// internals directly) so a regression in the implementation can't share a
+// bug with its own test. Three properties per shape, matching the carried
+// item's own wording: (1) zero-axis offset geometry — every bar/point's
+// baseline-touching edge lands on one shared zero row/column, not a
+// per-series or per-category anchor, (2) no negative rect dimensions, and
+// (3) shared domain correctness — a series with no extreme values of its
+// own still scales against the OTHER series' extreme value, proving the
+// domain is genuinely shared rather than computed independently per series.
+describe("renderBar — grouped (n>=2) negative/mixed-sign regression (T2 review carried item)", () => {
+  it("two-series mixed-sign: every bar's y/height matches the shared-domain formula exactly, heights are never negative, and each bar's baseline-touching edge sits at one shared zero row", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "Q1", y: -12 }, { x: "Q2", y: 5 }] },
+      { name: "B", data: [{ x: "Q1", y: 8 }, { x: "Q2", y: -20 }] },
+    ]
+    const { container } = svg(renderBar(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(4) // 2 categories x 2 series
+
+    // chart-model.ts's shared-domain rule: one [min,max] across BOTH
+    // series' kept values, always including zero, max floored at 1
+    // (computeChartDomain's own doc comment) -- independently re-derived
+    // here, not imported.
+    const allValues = [-12, 5, 8, -20]
+    const domain = { min: Math.min(0, ...allValues), max: Math.max(0, ...allValues, 1) }
+    const zero = (0 - domain.min) / (domain.max - domain.min)
+    const baselineY = PLOT_TOP + PLOT_H - zero * PLOT_H
+
+    // Render order is (category, then model.series' fixed 0..n-1 order) --
+    // Q1's two bars (series A=-12, B=8), then Q2's (A=5, B=-20) -- matching
+    // renderBar's own per-category `for (const s of model.series)` loop.
+    const orderedValues = [-12, 8, 5, -20]
+    orderedValues.forEach((value, i) => {
+      const rect = rects[i]!
+      const height = Number(rect.getAttribute("height"))
+      const y = Number(rect.getAttribute("y"))
+      expect(height).toBeGreaterThanOrEqual(0) // no negative <rect height> regression
+
+      const ratio = (value - domain.min) / (domain.max - domain.min)
+      const { start, end } = value >= 0 ? { start: zero, end: ratio } : { start: ratio, end: zero }
+      expect(y).toBeCloseTo(PLOT_TOP + PLOT_H - end * PLOT_H)
+      expect(height).toBeCloseTo((end - start) * PLOT_H)
+
+      // Zero-axis offset geometry: a positive bar's BOTTOM edge sits on the
+      // baseline (it rises up from zero); a negative bar's TOP edge sits on
+      // the baseline (it hangs down from zero) -- both land on the exact
+      // same shared baselineY, not a per-category recomputation.
+      if (value >= 0) {
+        expect(y + height).toBeCloseTo(baselineY)
+      } else {
+        expect(y).toBeCloseTo(baselineY)
+      }
+    })
+  })
+
+  it("two-series all-negative: bars still anchor correctly even though domain.max unconditionally floors to 1 (not 0) with no positive data in sight (the T1-review-flagged floor-at-1 quirk)", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "Q1", y: -12 }, { x: "Q2", y: -3 }] },
+      { name: "B", data: [{ x: "Q1", y: -8 }, { x: "Q2", y: -20 }] },
+    ]
+    const { container } = svg(renderBar(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(4)
+
+    const allValues = [-12, -3, -8, -20]
+    const domain = { min: Math.min(0, ...allValues), max: Math.max(0, ...allValues, 1) } // max floors to 1, not 0
+    const zero = (0 - domain.min) / (domain.max - domain.min)
+    const baselineY = PLOT_TOP + PLOT_H - zero * PLOT_H
+
+    const orderedValues = [-12, -8, -3, -20]
+    orderedValues.forEach((value, i) => {
+      const rect = rects[i]!
+      const height = Number(rect.getAttribute("height"))
+      const y = Number(rect.getAttribute("y"))
+      expect(height).toBeGreaterThanOrEqual(0)
+      const ratio = (value - domain.min) / (domain.max - domain.min)
+      const { start, end } = { start: ratio, end: zero } // every value here is negative
+      expect(y).toBeCloseTo(PLOT_TOP + PLOT_H - end * PLOT_H)
+      expect(height).toBeCloseTo((end - start) * PLOT_H)
+      expect(y).toBeCloseTo(baselineY) // every bar hangs down from the same shared baseline
+    })
+    // The baseline is NOT at the plot's very top (y===PLOT_TOP) -- proof the
+    // max-floors-to-1 quirk is genuinely in effect (domain.max=1, not 0).
+    expect(baselineY).toBeGreaterThan(PLOT_TOP)
+  })
+
+  it("shared domain is NOT computed per-series: a modest-value series' bar scales against the OTHER series' extreme value", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "Extreme", data: [{ x: "Q1", y: -100 }] },
+      { name: "Modest", data: [{ x: "Q1", y: 5 }] },
+    ]
+    const { container } = svg(renderBar(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(2)
+
+    // If "Modest" were scaled against its OWN local domain (its only value,
+    // 5 -- a positive-only single value), it would fill nearly the entire
+    // plot height, same as any single-series positive bar does. Scaled
+    // against the domain SHARED with "Extreme" (min=-100, max=5, a 105-wide
+    // span), its true height is a small fraction of the plot instead --
+    // proof the domain really is shared, not computed independently.
+    const domain = { min: Math.min(0, -100, 5), max: Math.max(0, -100, 5, 1) }
+    const zero = (0 - domain.min) / (domain.max - domain.min)
+    const modestRatio = (5 - domain.min) / (domain.max - domain.min)
+    const expectedModestHeight = (modestRatio - zero) * PLOT_H
+
+    const modestRect = rects[1]! // seriesIndex 1 == "Modest"
+    expect(Number(modestRect.getAttribute("height"))).toBeCloseTo(expectedModestHeight)
+    expect(Number(modestRect.getAttribute("height"))).toBeLessThan(PLOT_H * 0.2)
+  })
+})
+
+// Mirrors chart-svg.tsx's own BAR_H_LABEL_W(110)/12px gap/64px right-margin
+// -- component-internal constants, not exported, re-derived locally exactly
+// like this file's own PLOT_TOP/PLOT_H convention above (see the golden
+// test's EXPECTED_BAR_HORIZONTAL pin: rect x="122" width="934" confirms
+// these numbers for W=1120).
+const BAR_H_PLOT_X = 0 + 110 + 12
+const BAR_H_PLOT_W = Math.max(1, W - 110 - 12 - 64)
+
+describe("renderBarHorizontal — grouped (n>=2) negative/mixed-sign regression (T2 review carried item)", () => {
+  it("two-series mixed-sign: every bar's x/width matches the shared-domain formula exactly, widths are never negative, and each bar's baseline-touching edge sits at one shared zero column", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "Q1", y: -12 }, { x: "Q2", y: 5 }] },
+      { name: "B", data: [{ x: "Q1", y: 8 }, { x: "Q2", y: -20 }] },
+    ]
+    const { container } = svg(renderBarHorizontal(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(4)
+
+    const allValues = [-12, 5, 8, -20]
+    const domain = { min: Math.min(0, ...allValues), max: Math.max(0, ...allValues, 1) }
+    const zero = (0 - domain.min) / (domain.max - domain.min)
+    const baselineX = BAR_H_PLOT_X + zero * BAR_H_PLOT_W
+
+    const orderedValues = [-12, 8, 5, -20]
+    orderedValues.forEach((value, i) => {
+      const rect = rects[i]!
+      const width = Number(rect.getAttribute("width"))
+      const x = Number(rect.getAttribute("x"))
+      expect(width).toBeGreaterThanOrEqual(0) // no negative <rect width> regression
+
+      const ratio = (value - domain.min) / (domain.max - domain.min)
+      const { start, end } = value >= 0 ? { start: zero, end: ratio } : { start: ratio, end: zero }
+      expect(x).toBeCloseTo(BAR_H_PLOT_X + start * BAR_H_PLOT_W)
+      expect(width).toBeCloseTo((end - start) * BAR_H_PLOT_W)
+
+      // Zero-axis offset geometry, mirrored onto the horizontal axis: a
+      // positive bar's LEFT edge sits on the baseline (extends rightward);
+      // a negative bar's RIGHT edge sits on the baseline (extends
+      // leftward) -- both land on the exact same shared baselineX.
+      if (value >= 0) {
+        expect(x).toBeCloseTo(baselineX)
+      } else {
+        expect(x + width).toBeCloseTo(baselineX)
+      }
+    })
+  })
+
+  it("two-series all-negative: every bar's right edge still lands on the shared baseline even though domain.max floors to 1", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "Q1", y: -12 }, { x: "Q2", y: -3 }] },
+      { name: "B", data: [{ x: "Q1", y: -8 }, { x: "Q2", y: -20 }] },
+    ]
+    const { container } = svg(renderBarHorizontal(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(4)
+
+    const allValues = [-12, -3, -8, -20]
+    const domain = { min: Math.min(0, ...allValues), max: Math.max(0, ...allValues, 1) }
+    const zero = (0 - domain.min) / (domain.max - domain.min)
+    const baselineX = BAR_H_PLOT_X + zero * BAR_H_PLOT_W
+
+    for (const rect of rects) {
+      const width = Number(rect.getAttribute("width"))
+      const x = Number(rect.getAttribute("x"))
+      expect(width).toBeGreaterThanOrEqual(0)
+      expect(x + width).toBeCloseTo(baselineX)
+    }
+    expect(baselineX).toBeLessThan(BAR_H_PLOT_X + BAR_H_PLOT_W) // not at the very right edge
+  })
+
+  it("shared domain is NOT computed per-series: a modest-value series' bar scales against the OTHER series' extreme value", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "Extreme", data: [{ x: "Q1", y: -100 }] },
+      { name: "Modest", data: [{ x: "Q1", y: 5 }] },
+    ]
+    const { container } = svg(renderBarHorizontal(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(2)
+
+    const domain = { min: Math.min(0, -100, 5), max: Math.max(0, -100, 5, 1) }
+    const zero = (0 - domain.min) / (domain.max - domain.min)
+    const modestRatio = (5 - domain.min) / (domain.max - domain.min)
+    const expectedModestWidth = (modestRatio - zero) * BAR_H_PLOT_W
+
+    const modestRect = rects[1]!
+    expect(Number(modestRect.getAttribute("width"))).toBeCloseTo(expectedModestWidth)
+    expect(Number(modestRect.getAttribute("width"))).toBeLessThan(BAR_H_PLOT_W * 0.2)
+  })
+})
+
+describe("renderLine — grouped (n>=2) negative/mixed-sign regression (T2 review carried item)", () => {
+  function expectedLineY(value: number, domain: { min: number; max: number }): number {
+    const ratio = (value - domain.min) / (domain.max - domain.min)
+    return PLOT_TOP + PLOT_H - ratio * PLOT_H
+  }
+
+  it("two-series mixed-sign: every point's y matches the shared-domain formula exactly for both series", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "a", y: -12 }, { x: "b", y: 5 }] },
+      { name: "B", data: [{ x: "a", y: 8 }, { x: "b", y: -20 }] },
+    ]
+    const { container } = svg(renderLine(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const polylines = Array.from(container.querySelectorAll("polyline"))
+    expect(polylines).toHaveLength(2)
+
+    const allValues = [-12, 5, 8, -20]
+    const domain = { min: Math.min(0, ...allValues), max: Math.max(0, ...allValues, 1) }
+
+    const aPoints = polylines[0]!.getAttribute("points")!.trim().split(/\s+/).map((p) => p.split(",").map(Number))
+    const bPoints = polylines[1]!.getAttribute("points")!.trim().split(/\s+/).map((p) => p.split(",").map(Number))
+    expect(aPoints[0]![1]).toBeCloseTo(expectedLineY(-12, domain))
+    expect(aPoints[1]![1]).toBeCloseTo(expectedLineY(5, domain))
+    expect(bPoints[0]![1]).toBeCloseTo(expectedLineY(8, domain))
+    expect(bPoints[1]![1]).toBeCloseTo(expectedLineY(-20, domain))
+  })
+
+  it("two-series all-negative: every point's y matches the formula even though domain.max floors to 1", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "A", data: [{ x: "a", y: -12 }, { x: "b", y: -3 }] },
+      { name: "B", data: [{ x: "a", y: -8 }, { x: "b", y: -20 }] },
+    ]
+    const { container } = svg(renderLine(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const polylines = Array.from(container.querySelectorAll("polyline"))
+    const allValues = [-12, -3, -8, -20]
+    const domain = { min: Math.min(0, ...allValues), max: Math.max(0, ...allValues, 1) }
+
+    const aPoints = polylines[0]!.getAttribute("points")!.trim().split(/\s+/).map((p) => p.split(",").map(Number))
+    const bPoints = polylines[1]!.getAttribute("points")!.trim().split(/\s+/).map((p) => p.split(",").map(Number))
+    expect(aPoints[0]![1]).toBeCloseTo(expectedLineY(-12, domain))
+    expect(aPoints[1]![1]).toBeCloseTo(expectedLineY(-3, domain))
+    expect(bPoints[0]![1]).toBeCloseTo(expectedLineY(-8, domain))
+    expect(bPoints[1]![1]).toBeCloseTo(expectedLineY(-20, domain))
+    // No point sits at the plot's very top -- proof no value reached the
+    // domain's max (which floored to 1, not the real max of -3).
+    for (const [, y] of [...aPoints, ...bPoints]) {
+      expect(y).toBeGreaterThan(PLOT_TOP)
+    }
+  })
+
+  it("shared domain is NOT computed per-series: a modest-value series' points sit measurably below the plot's very top because the OTHER series' extreme value stretches the shared domain", () => {
+    const twoSeries: ChartSeries[] = [
+      { name: "Extreme", data: [{ x: "a", y: -100 }, { x: "b", y: 5 }] },
+      { name: "Modest", data: [{ x: "a", y: 3 }, { x: "b", y: 2 }] },
+    ]
+    const { container } = svg(renderLine(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const polylines = Array.from(container.querySelectorAll("polyline"))
+    const domain = { min: Math.min(0, -100, 5, 3, 2), max: Math.max(0, -100, 5, 3, 2, 1) }
+
+    const modestPoints = polylines[1]!.getAttribute("points")!.trim().split(/\s+/).map((p) => p.split(",").map(Number))
+    expect(modestPoints[0]![1]).toBeCloseTo(expectedLineY(3, domain))
+    expect(modestPoints[1]![1]).toBeCloseTo(expectedLineY(2, domain))
+    // If "Modest" were scaled against its own local domain (min=0,
+    // max=Math.max(0,3,2,1)=3), its value-3 point would sit exactly at the
+    // plot's top edge (y===PLOT_TOP, ratio=1). Under the domain actually
+    // shared with "Extreme" (dominated by its -100..5 span), it sits well
+    // below that -- proof the domain is genuinely shared.
+    expect(modestPoints[0]![1]).toBeGreaterThan(PLOT_TOP + 1)
+  })
+})
+
 describe("subset validation", () => {
   it("bar chart gradient markup passes assertSubset", () => {
     const { container } = svg(renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))

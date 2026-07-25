@@ -134,6 +134,11 @@ describe("chart_type × pathological-values matrix (deep-acceptance review Note 
   const zeroPoint = [{ x: "A", y: 0 }, { x: "B", y: 5 }, { x: "C", y: 10 }]
   const allZero = [{ x: "A", y: 0 }, { x: "B", y: 0 }, { x: "C", y: 0 }]
   const mixedSign = [{ x: "A", y: -8 }, { x: "B", y: 0 }, { x: "C", y: 12 }]
+  // Second series for the grouped (n>=2) cases below — distinct values from
+  // `mixedSign` so a defect that only shows up once two DIFFERENT series
+  // share a domain (e.g. a per-series-local domain leaking through) can't
+  // hide behind two identical series.
+  const mixedSignB = [{ x: "A", y: 6 }, { x: "B", y: -15 }, { x: "C", y: 3 }]
 
   const cases: Array<{ label: string; component: Component }> = [
     { label: "bar zero-point", component: { type: "chart", chart_type: "bar", series: [{ name: "s1", data: zeroPoint }] } },
@@ -206,6 +211,39 @@ describe("chart_type × pathological-values matrix (deep-acceptance review Note 
     {
       label: "donut (pie+style) mixed-sign",
       component: { type: "chart", chart_type: "pie", style: "donut", series: [{ name: "s1", data: mixedSign }] },
+    },
+    // R1 evidence wave, Task T4 (T2 review carried item): the grouped
+    // (n>=2) mixed-sign shapes chart-model.ts's shared domain now supports
+    // — bar/bar-horizontal/line each got dedicated renderer-level geometry
+    // coverage in chart-svg.test.tsx (formula-exact, not just "doesn't
+    // throw"); these three close the same gap at the real export chain, one
+    // representative case per shape, proving the whole render -> svg2pptx
+    // -> package-audit pipeline accepts grouped mixed-sign data end to end,
+    // not just the isolated renderer.
+    {
+      label: "bar grouped mixed-sign (n=2, shared domain across two distinct series)",
+      component: {
+        type: "chart",
+        chart_type: "bar",
+        series: [{ name: "s1", data: mixedSign }, { name: "s2", data: mixedSignB }],
+      },
+    },
+    {
+      label: "bar horizontal grouped mixed-sign (n=2)",
+      component: {
+        type: "chart",
+        chart_type: "bar",
+        direction: "horizontal",
+        series: [{ name: "s1", data: mixedSign }, { name: "s2", data: mixedSignB }],
+      },
+    },
+    {
+      label: "line grouped mixed-sign (n=2, shared domain, no stacked area fill)",
+      component: {
+        type: "chart",
+        chart_type: "line",
+        series: [{ name: "s1", data: mixedSign }, { name: "s2", data: mixedSignB }],
+      },
     },
   ]
 
