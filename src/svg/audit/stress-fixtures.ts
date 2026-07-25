@@ -879,8 +879,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   // this constant's own doc comment already names icon_cards/steps as
   // covering — and `highlight` alternates so both the accent- and default-
   // stroke card paths render side by side.
-  structure_bold_headings: {
-    ...deck([
+  structure_bold_headings: deck([
     {
       type: "content",
       heading: "圆环压力测试",
@@ -1210,31 +1209,5 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
         },
       ],
     },
-    ]),
-    // Explicit seed (R1 evidence wave, Task T3): this deck previously had no
-    // explicit `seed`, so every page without a pinned `layout` auto-selects
-    // via `deckSeed`'s content-hash fallback (`variety.ts`) — a hash of
-    // `filename + every slide's heading joined`, which by design (spec §6,
-    // that function's own doc comment: "未显式 seed 时不承诺修订稳定性")
-    // reshuffles EVERY page's auto-selected archetype the moment any
-    // heading anywhere in the deck changes, including a wholly unrelated
-    // page simply being appended. Adding this task's own `data_table` page
-    // (last in the array) did exactly that: `长卡列表压力测试`
-    // (`row_cards`) got reshuffled onto a narrower auto-picked archetype it
-    // had never been exercised against before, and its own "+N more"
-    // dropped-row marker text overflows that archetype's content rect by a
-    // few px on all 13 themes — a real, narrow, pre-existing fragility in
-    // row_cards.tsx unrelated to data_table's own renderer (confirmed:
-    // data_table's own new page has zero findings on every theme both
-    // with and without this seed), but out of this task's scope to fix.
-    // `seed: 1` (found by brute-force search across seeds 1-200 against all
-    // 13 canonical themes x all 12 pages, the same empirical-verification
-    // method this file's own `ENDING_TIGHT_HEADING` doc comment used) is the
-    // first value under which the *whole* deck — every pre-existing page
-    // plus the new one — renders with zero overflow findings everywhere,
-    // restoring this deck to the revision-stable behavior an explicit seed
-    // is documented to guarantee (`variety.ts`'s `deckSeed`) so a *future*
-    // edit to this deck doesn't reshuffle every page's layout again either.
-    seed: 1,
-  },
+  ]),
 }
