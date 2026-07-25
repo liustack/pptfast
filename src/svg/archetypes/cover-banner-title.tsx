@@ -1,4 +1,3 @@
-// GF/svg/archetypes/cover-banner-title.tsx
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { layoutSvgText } from "../../lib/svg-text-layout"

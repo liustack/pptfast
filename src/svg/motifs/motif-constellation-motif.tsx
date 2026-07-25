@@ -1,4 +1,3 @@
-// GF/svg/motifs/motif-constellation-motif.tsx
 import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 

@@ -1,4 +1,3 @@
-// GF/svg/archetypes/content-bento-panel.tsx
 import type React from "react"
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
