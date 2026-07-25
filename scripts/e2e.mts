@@ -680,6 +680,27 @@ console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixel
 //    happens to auto-select that archetype gets a false-positive low-
 //    contrast finding on the badge text — a pre-existing tool gap, not
 //    something this wave's components caused or should paper over here).
+//
+//    R1 evidence wave, Task T4: two more content pages, p-data-table
+//    (component 33, the wave's new data_table) and p-multi-series-chart (a
+//    2-series grouped bar with a legend, exercising the wave's shared-domain
+//    multi-series chart fix) — appended right before the ending slide so
+//    every earlier slide index (including sankey's own slide9.xml assertion
+//    below) stays unchanged. Neither pins `layout`: unlike the eight
+//    full-body components above, data_table/chart are NOT full-body, so
+//    their geometry genuinely depends on whichever archetype auto-selection
+//    resolves — left to the real (unpinned) path deliberately, matching this
+//    wave's own precedent for this exact fixture family (b7a3754: an earlier
+//    seed pin elsewhere in this wave was reverted once the renderer bug it
+//    was routing around got fixed at the root, restoring "the fixture's
+//    actual mission — stressing real auto-selection paths, not a frozen
+//    one") rather than preemptively pinning around a hypothetical. Content
+//    is deliberately modest (short English labels, well under data_table's
+//    schema max of 8 columns/12 rows) — this leg's job is proving the full
+//    CLI render -> package-audit -> soffice chain accepts both new
+//    behaviors end to end, not re-running T3's own dedicated 13-theme
+//    stress-fixture coverage (src/svg/audit/stress-fixtures.ts's own
+//    "数据表压力测试" page already does that at schema-max scale).
 console.log("--- structure-components leg ---")
 
 const structuresDeck = {
@@ -848,6 +869,54 @@ const structuresDeck = {
         },
       ],
     },
+    // R1 evidence wave, Task T4 — see this leg's own top comment for why
+    // these two are appended here (after sankey, before ending) and why
+    // neither pins `layout`.
+    {
+      type: "content",
+      id: "p-data-table",
+      heading: "Regional Performance",
+      components: [
+        {
+          type: "data_table",
+          columns: [
+            { key: "region", label: "Region" },
+            { key: "q1", label: "Q1", align: "right" },
+            { key: "q2", label: "Q2", align: "right" },
+            { key: "yoy", label: "YoY", align: "right" },
+          ],
+          rows: [
+            { cells: { region: "North", q1: "120", q2: "138", yoy: "+15%" } },
+            { cells: { region: "South", q1: "98", q2: "104", yoy: "+6%" } },
+            { cells: { region: "East", q1: "76", q2: "81", yoy: "+7%" } },
+            { cells: { region: "West", q1: "142", q2: "150", yoy: "+6%" } },
+            { cells: { region: "Total", q1: "436", q2: "473", yoy: "+8%" }, emphasis: "total" },
+          ],
+          source: "Internal finance system, FY26 Q2 close",
+        },
+      ],
+    },
+    {
+      type: "content",
+      id: "p-multi-series-chart",
+      heading: "Revenue vs Target",
+      components: [
+        {
+          type: "chart",
+          chart_type: "bar",
+          series: [
+            {
+              name: "Revenue",
+              data: [{ x: "Q1", y: 120 }, { x: "Q2", y: 138 }, { x: "Q3", y: 145 }, { x: "Q4", y: 160 }],
+            },
+            {
+              name: "Target",
+              data: [{ x: "Q1", y: 110 }, { x: "Q2", y: 130 }, { x: "Q3", y: 140 }, { x: "Q4", y: 150 }],
+            },
+          ],
+        },
+      ],
+    },
     { type: "ending", heading: "Thanks" },
   ],
 }
@@ -859,7 +928,7 @@ console.log(sh("node", ["dist/cli.js", "validate", structuresPath]))
 const structuresPptxPath = join(OUT, "structures.pptx")
 console.log(sh("node", ["dist/cli.js", "render", structuresPath, "-o", structuresPptxPath]))
 const structuresZip = await JSZip.loadAsync(readFileSync(structuresPptxPath))
-for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide10.xml"]) {
+for (const f of ["ppt/presentation.xml", "ppt/slides/slide1.xml", "ppt/slides/slide12.xml"]) {
   if (!structuresZip.file(f)) throw new Error(`e2e: structure-components leg — missing ${f} in ${structuresPptxPath}`)
 }
 // Sankey differentiation check (plan task 3): its own slide (p-sankey, the
@@ -874,16 +943,16 @@ if (sankeySlideXml.includes("<p:pic>")) {
 if (!/<a:custGeom>/.test(sankeySlideXml)) {
   throw new Error("e2e: structure-components leg — sankey slide has no <a:custGeom> (expected its flow bands to export as native vector paths)")
 }
-console.log("structure-components render leg OK (10-slide pptx, all parts present, sankey slide is zero-p:pic/native-custGeom)")
+console.log("structure-components render leg OK (12-slide pptx, all parts present, sankey slide is zero-p:pic/native-custGeom)")
 
 const structuresAudit = shCapture("node", ["dist/cli.js", "audit", structuresPath])
 console.log(structuresAudit.stdout)
 if (structuresAudit.status !== 0) {
   throw new Error(
-    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt/pest/five_forces/heatmap/sankey deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
+    `e2e: structure-components leg — expected the swot/bmc/waterfall/gantt/pest/five_forces/heatmap/sankey/data_table/chart deck to audit clean (exit 0), got exit ${structuresAudit.status}: ${structuresAudit.stdout}`,
   )
 }
-if (!/audited 10 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
+if (!/audited 12 pages, 0 skipped, 0 findings/.test(structuresAudit.stdout)) {
   throw new Error(`e2e: structure-components leg — expected a clean summary line, got: ${structuresAudit.stdout}`)
 }
 console.log("structure-components audit leg OK (exit 0, 0 findings)")
