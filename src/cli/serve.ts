@@ -187,8 +187,16 @@ export const SERVE_CLIENT_SCRIPT_ID = "pptfast-serve-client"
  *    secondary link next to it just calls `originalBtn.click()` — the
  *    untouched, real download path — so a manual copy is always still one
  *    click away regardless of whether the POST succeeds.
+ *
+ * Exported (S3, S2 re-review's named test carry) purely so
+ * `serve-client.test.ts` can execute this exact string under jsdom instead of
+ * only grepping it as markup — this file has no other export consumer, isn't
+ * re-exported from anywhere `pptfast --help` or the SDK's public surface ever
+ * reads, and stays exactly as inert to import as before: `src/cli/serve.ts`
+ * is already Node-only (AGENTS.md's layout rule), never reachable from
+ * `src/index.ts`'s browser-safe closure regardless of what it exports.
  */
-const SERVE_CLIENT_JS = `
+export const SERVE_CLIENT_JS = `
 (function () {
   // Each of the two jobs below is independently wrapped (own function, own
   // try/catch at its call site at the bottom) so a failure in one — an
