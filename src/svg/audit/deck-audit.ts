@@ -253,8 +253,8 @@ export function blendOver(fg: string, bg: string, alpha: number): string {
  * region happened to sit underneath (the page background, a card shell),
  * checking the digit's ink against a color it was never actually rendered
  * on. `paintedShapes`/`PaintedShape` below is the fix: a *separate*,
- * floor-free walk of every rect/circle/ellipse/path (image excluded, see its
- * own branch's comment), used only for text-background attribution — this
+ * floor-free walk of every rect/circle/ellipse/path/polygon (image excluded,
+ * see its own branch's comment), used only for text-background attribution — this
  * constant keeps its original, narrower job of filtering `regions` for
  * `__collectBgRegions`'s own page-level callers/tests, unchanged.
  */
@@ -272,9 +272,10 @@ const MIN_BG_OPACITY = 0.5
 
 /**
  * A page-level background candidate — `regions`' own element shape, filtered
- * by `MIN_BG_REGION_AREA`/`MIN_BG_OPACITY` (rect/image/path only; see that
- * constant's own doc comment for why circle/ellipse never join this
- * particular table). Kept exactly as it was before the bench-driven fix
+ * by `MIN_BG_REGION_AREA`/`MIN_BG_OPACITY` (rect/image/path/polygon only; see
+ * that constant's own doc comment for why circle/ellipse never join this
+ * particular table — `polygon` joins it on the same footing as `path`,
+ * sweep2 T4). Kept exactly as it was before the bench-driven fix
  * round for `__collectBgRegions`'s existing page-level contract (its own
  * dedicated regression test pins an exact region *count* against a real
  * render) — text-background attribution no longer reads this table at all;
@@ -291,8 +292,9 @@ export interface BgRegion {
 
 /**
  * A single painted-fill candidate for text-background *attribution*
- * (bench-driven fix round, defect A) — every opaque-enough rect/circle/
- * ellipse/path this walk sees, with **no** `MIN_BG_REGION_AREA` floor,
+ * (bench-driven fix round, defect A; polygon added sweep2 T4) — every
+ * opaque-enough rect/circle/ellipse/path/polygon this walk sees, with **no**
+ * `MIN_BG_REGION_AREA` floor,
  * each carrying its own exact containment test rather than a shared AABB.
  * `contains` is the whole point of the shape split below: a badge circle's
  * *bounding box* is not the badge circle, and a corner-anchored `<text>`
@@ -305,11 +307,12 @@ interface PaintedShape {
   contains(px: number, py: number): boolean
 }
 
-/** Axis-aligned rect containment — shared by `<rect>`/`<image>`/`<path>`
- * (the last via `pathBoundingBox`'s own bbox, see its doc comment) — every
- * one of those three is checked against its bounding box, never an exact
- * outline, even where the bbox itself is now tight/exact (line and arc
- * geometry) rather than an over-approximation. */
+/** Axis-aligned rect containment — shared by `<rect>`/`<image>`/`<path>`/
+ * `<polygon>` (the last two via `pathBoundingBox`/`polygonBoundingBox`'s own
+ * bbox, see each function's doc comment) — every one of those four is
+ * checked against its bounding box, never an exact outline, even where the
+ * bbox itself is now tight/exact (line and arc geometry) rather than an
+ * over-approximation. */
 function rectShape(x: number, y: number, w: number, h: number, fill: string | null): PaintedShape {
   return { fill, contains: (px, py) => px >= x && px <= x + w && py >= y && py <= y + h }
 }
@@ -865,6 +868,42 @@ function pathBoundingBoxByTokenMinMax(d: string): { x: number; y: number; w: num
 }
 
 /**
+ * A `<polygon>`'s bounding box, for `PaintedShape`/`BgRegion` purposes —
+ * simple min/max over the coordinate pairs in its `points` attribute.
+ * Unlike `pathBoundingBox`'s curve/arc extrema math, a polygon's vertices
+ * *are* its extremes by construction — no interior curve can bulge past a
+ * straight-edged outline's own corners, so no grammar walk is needed. Same
+ * "never throws, an over-approximating AABB stands in for the exact
+ * outline" contract as `pathBoundingBox` (a concave polygon's bbox covers
+ * area outside the shape too — see that function's own doc comment for why
+ * that's an accepted limitation here). Malformed/degenerate `points`
+ * (fewer than 3 coordinate pairs, a non-numeric token) returns `null`,
+ * mirroring `pathBoundingBox`'s own "never crash, caller skips
+ * registration" contract for the equivalent case.
+ */
+function polygonBoundingBox(pointsAttr: string): { x: number; y: number; w: number; h: number } | null {
+  const nums = pointsAttr
+    .trim()
+    .split(/[\s,]+/)
+    .filter((tok) => tok !== "")
+    .map(Number)
+  if (nums.length < 6 || nums.some((n) => !Number.isFinite(n))) return null
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    const x = nums[i]!
+    const y = nums[i + 1]!
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+/**
  * A `<path>`'s bounding box, for `PaintedShape`/`BgRegion` purposes —
  * grammar-aware (`pathBoundingBoxByGrammar`): walks `d` command-by-command
  * so an arc's own `rx`/`ry`/`x-axis-rotation`/flag numbers never get
@@ -1193,12 +1232,13 @@ function directText(el: Element): string {
  * (it's a brand accent, deliberately *not* close to the page background).
  * SVG has no z-index — paint order is exactly document order — so this walk
  * mirrors that directly: every opaque-enough `<rect>`/`<circle>`/`<ellipse>`/
- * `<path>` (plus `<image>`, floor-gated — see its own branch below) gets
- * recorded, in document order, as a `PaintedShape`; a text element's
- * effective background is whichever recorded shape (searched
+ * `<path>`/`<polygon>` (plus `<image>`, floor-gated — see its own branch
+ * below) gets recorded, in document order, as a `PaintedShape`; a text
+ * element's effective background is whichever recorded shape (searched
  * most-recent-first, i.e. topmost in paint order) actually *contains* its
  * position — an exact ellipse test for `<circle>`/`<ellipse>`, a bounding-box
- * test for the other three (see `rectShape`/`ellipseShape`/`pathBoundingBox`).
+ * test for the other four (see
+ * `rectShape`/`ellipseShape`/`pathBoundingBox`/`polygonBoundingBox`).
  * This one mechanism covers the page background (`background.tsx` always
  * paints first), a gradient's individual bands (each is its own shape — more
  * precise than any single midpoint), local panels/cards/banners (the
@@ -1211,15 +1251,15 @@ function directText(el: Element): string {
  * (`fill: null`) rather than a guess, and text over it is skipped.
  *
  * **Gradient fills route the same way (task R3):** a shape whose `fill` is a
- * gradient reference (`url(#...)`, e.g. `chart-svg.tsx`'s bar/area fills)
- * used to fail the registration gate outright — neither a resolvable solid
- * color nor `<image>`'s explicit `fill: null` path, so it simply never
- * became a `PaintedShape` at all, and a text element painted over it
- * silently resolved against whatever *solid* shape happened to sit
- * underneath instead: a real misattribution, not a skip — worse than the
- * `<image>` blind spot above, which at least degrades to a checkable
- * "unknown". `resolveCandidateFill` closes this: a `url(...)` fill now
- * registers exactly like a bare `<image>` does — `fill: null`, both in
+ * gradient reference (`url(#...)`, e.g. `chart-svg.tsx`'s bar fills) used to
+ * fail the registration gate outright — neither a resolvable solid color nor
+ * `<image>`'s explicit `fill: null` path, so it simply never became a
+ * `PaintedShape` at all, and a text element painted over it silently
+ * resolved against whatever *solid* shape happened to sit underneath
+ * instead: a real misattribution, not a skip — worse than the `<image>`
+ * blind spot above, which at least degrades to a checkable "unknown".
+ * `resolveCandidateFill` closes this: a `url(...)` fill now registers
+ * exactly like a bare `<image>` does — `fill: null`, both in
  * `paintedShapes` and, area-floor permitting, in `regions` — reusing the
  * identical `__collectImageBackedTextRuns` -> `pixel-audit.ts`
  * worst-case-pixel-sample fallback rather than inventing a second,
@@ -1230,6 +1270,19 @@ function directText(el: Element): string {
  * excluded from candidacy before this fix and still is; this routing change
  * only ever affects a *content-layer* gradient shape, since decoration never
  * reaches the fill check at all (see the exclusion's own boolean guard).
+ *
+ * **`<polygon>` joins the same registration gate (sweep2 T4):** R3 above
+ * widened `resolveCandidateFill`'s reach for `rect`/`path`/`circle`/
+ * `ellipse`, but `<polygon>` never dispatched to any registration branch at
+ * all — a live gap, not a hypothetical one: `renderLine`'s per-series
+ * area-under-curve fill (`chart-svg.tsx`, a `<polygon>` filled with its own
+ * `url(#...)` gradient) was silently invisible to this walk, so text placed
+ * over that area misattributed to whatever solid shape happened to sit
+ * underneath, exactly the R3 defect reopened for one more tag. `<polygon>`
+ * now runs through the identical `resolveCandidateFill`/opaque-enough/
+ * `data-decor` gating as `rect`/`path` — solid hex registers normally,
+ * `url(...)` registers `fill: null` and defers to pixel-audit — with
+ * `polygonBoundingBox` standing in for `pathBoundingBox`'s bbox.
  *
  * **Bench-driven fix round (defect A):** this `PaintedShape` walk is
  * *unrestricted* by `MIN_BG_REGION_AREA` — that constant now only filters
@@ -1263,8 +1316,8 @@ function directText(el: Element): string {
  * bounding box — see that function's own doc comment. `findOverlapIssues`
  * needs no equivalent exclusion (decoration never carries
  * `data-audit-box`), but this walk sees every
- * `<rect>`/`<circle>`/`<ellipse>`/`<image>`/`<path>` regardless of what drew
- * it, so the exclusion has to be explicit here. Implemented as a boolean
+ * `<rect>`/`<circle>`/`<ellipse>`/`<image>`/`<path>`/`<polygon>` regardless
+ * of what drew it, so the exclusion has to be explicit here. Implemented as a boolean
  * threaded through `visit`'s recursion (once a `data-decor` ancestor is
  * entered it stays true for the whole subtree) rather than a string/regex
  * pre-pass on `markup` — this function already fully parses to DOM, and
@@ -1407,7 +1460,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     // own doc comment).
     let currentTx = inheritedTx
     let currentTy = inheritedTy
-    if (tag === "rect" || tag === "image" || tag === "path") {
+    if (tag === "rect" || tag === "image" || tag === "path" || tag === "polygon") {
       let x = 0
       let y = 0
       let localW = 0
@@ -1417,6 +1470,9 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       // test instead of `rectShape`'s AABB below — `regions`'/`pathBoundingBox`'s
       // own bbox (still used for both `w`/`h` here and the page-level table)
       // is untouched, only which `PaintedShape` this path becomes changes.
+      // `<polygon>` never carries this idiom (`renderPie`/`renderDonut` both
+      // emit `<path>`), so it stays `null` there — falls straight through to
+      // `rectShape`'s AABB below, same as every other non-wedge shape.
       let localWedge: Sector | null = null
       if (tag === "path") {
         const dAttr = el.getAttribute("d") ?? ""
@@ -1428,6 +1484,21 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
           localH = bbox.h
         }
         localWedge = parseWedgePath(dAttr)
+      } else if (tag === "polygon") {
+        // sweep2 T4: `<polygon>` joins the registration gate here (it used
+        // to dispatch to nothing at all — see `findContrastIssues`'s own
+        // doc comment for the misattribution that left, `renderLine`'s
+        // gradient area fill in `chart-svg.tsx` being the live case).
+        // `polygonBoundingBox` (min/max over `points`, no curve/arc math
+        // needed) stands in for `pathBoundingBox` the same way `<path>`
+        // uses it above.
+        const bbox = polygonBoundingBox(el.getAttribute("points") ?? "")
+        if (bbox) {
+          x = bbox.x
+          y = bbox.y
+          localW = bbox.w
+          localH = bbox.h
+        }
       } else {
         x = Number(el.getAttribute("x") ?? 0)
         y = Number(el.getAttribute("y") ?? 0)
