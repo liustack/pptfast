@@ -486,10 +486,21 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           series: [
             {
               name: CHART_LABEL,
+              // R1 evidence wave, Task T2 dup-x pre-fix (plan amendment):
+              // these 3 points used to share one literal `x: CHART_LABEL`
+              // value — harmless before chart-model.ts existed (renderBar
+              // walked `data` positionally, oblivious to x at all), but once
+              // T2 wires buildChartModel's "duplicate x within a series ->
+              // keep first, drop the rest" rule in, 2 of these 3 points
+              // would silently collapse into 1 category, losing the
+              // label-width stress this page exists for. Suffixed instead
+              // of replaced so every point still exercises the same
+              // near-24-char CHART_LABEL width pressure, just as 3 genuinely
+              // distinct categories.
               data: [
-                { x: CHART_LABEL, y: 10 },
-                { x: CHART_LABEL, y: 20 },
-                { x: CHART_LABEL, y: 15 },
+                { x: `${CHART_LABEL} 1`, y: 10 },
+                { x: `${CHART_LABEL} 2`, y: 20 },
+                { x: `${CHART_LABEL} 3`, y: 15 },
               ],
             },
           ],
@@ -501,16 +512,21 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           series: [
             {
               name: CHART_LABEL,
+              // Same dup-x pre-fix as the bar chart above — both series
+              // reuse the identical 2 suffixed labels (not 4 distinct ones)
+              // so they align onto the same 2-category shared domain once T2
+              // wires the model in, exercising multi-series category
+              // alignment rather than diluting it into two disjoint sets.
               data: [
-                { x: CHART_LABEL, y: 5 },
-                { x: CHART_LABEL, y: 25 },
+                { x: `${CHART_LABEL} 1`, y: 5 },
+                { x: `${CHART_LABEL} 2`, y: 25 },
               ],
             },
             {
               name: CHART_LABEL,
               data: [
-                { x: CHART_LABEL, y: 8 },
-                { x: CHART_LABEL, y: 18 },
+                { x: `${CHART_LABEL} 1`, y: 8 },
+                { x: `${CHART_LABEL} 2`, y: 18 },
               ],
             },
           ],
@@ -529,9 +545,12 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           series: [
             {
               name: CHART_LABEL,
+              // Same dup-x pre-fix as the two_column page's bar chart above
+              // (this page has its own independent chart instance, same
+              // pre-existing shared-x fixture bug).
               data: [
-                { x: CHART_LABEL, y: 10 },
-                { x: CHART_LABEL, y: 20 },
+                { x: `${CHART_LABEL} 1`, y: 10 },
+                { x: `${CHART_LABEL} 2`, y: 20 },
               ],
             },
           ],
