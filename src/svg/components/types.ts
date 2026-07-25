@@ -159,7 +159,7 @@ export interface SvgComponent<B> {
  * could drift from them.
  *
  * `components/index.tsx`'s future `Record<ComponentType, RenderDef>` lookup
- * table (replacing today's two 32-case switches, W2c) is this type's real
+ * table (replacing today's two per-component-type switches, W2c) is this type's real
  * consumer — this task adds only the type, `index.tsx`'s switches are
  * unchanged.
  */

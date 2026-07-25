@@ -406,8 +406,8 @@ const LAYOUT_IDS: readonly string[] = Object.keys(LAYOUT_REGISTRY)
  * pointing a later fill/select step at a preferred component or layout —
  * when present it must resolve against one of three vocabularies: the
  * resolved strategy's own tendency set (`STRATEGY_DEFINITIONS[strategy].tendencies`, W3
- * data), the full component-type vocabulary ({@link COMPONENT_TYPES}, 32
- * names), or the full layout-id vocabulary ({@link LAYOUT_IDS},
+ * data), the full component-type vocabulary ({@link COMPONENT_TYPES}, every
+ * component-type name), or the full layout-id vocabulary ({@link LAYOUT_IDS},
  * `LAYOUT_REGISTRY`'s keys).
  *
  * The strategy tendency set is currently always a subset of the other two

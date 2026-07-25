@@ -38,13 +38,13 @@ import { renderDef as dataTableRenderDef } from "./data-table"
 
 /**
  * Dispatch table (src domain reorg wave 2, spec §4.2/§4.3): replaces the
- * former 32-case `measureComponent`/`renderComponentContent` switches with a
+ * former per-component-type `measureComponent`/`renderComponentContent` switches with a
  * lookup into this `Record<ComponentType, RenderDef>`. Each entry is the
  * matching `src/svg/components/<name>.tsx` file's own `renderDef` export
  * (`measure`/`render` referenced, never copied — the component files
  * themselves are unchanged by this table's existence). `Record<ComponentType,
  * RenderDef>` is *total* over `ComponentType` — TypeScript rejects this
- * object literal at compile time if any of the 32 `ComponentType` members is
+ * object literal at compile time if any `ComponentType` member is
  * missing a property, or if an unknown key is added — the same exhaustiveness
  * guarantee the old switches' `component satisfies never` default arm gave
  * (a case can't be silently forgotten), just proven by object-literal
