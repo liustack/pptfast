@@ -64,7 +64,23 @@ function cellText(row: DataTableRow, key: string): string {
 
 /** 按比例文本权重分配列宽（`comparison.tsx` `computeColumns` 同款算法），
  * 权重只取自 `rows`（调用方已经做完溢出截断的可见行子集，不是完整
- * `component.rows`）——与 comparison.tsx 先算截断、再算列宽的顺序一致。 */
+ * `component.rows`）——与 comparison.tsx 先算截断、再算列宽的顺序一致。
+ *
+ * Bold-blind by design, not by oversight (T3 review, Minor finding):
+ * `measureTextUnits(t)` below is called with no `{bold, fontFamily}` weight
+ * hint, even though header/total-row text renders bold — same posture
+ * `comparison.tsx`'s own `computeColumns` already takes (its weight pass
+ * doesn't thread bold either). This is safe because this pass only decides
+ * each column's *proportional share* of `totalW`, never the final rendered
+ * text — the actual bold-aware, truncation-correct fit happens downstream
+ * per cell via `fitSvgLine` (which *does* thread `bold`/`fontFamily`, the
+ * mandatory "bold-width lesson" this file's own header comment names).
+ * Under-weighting a bold column's width by ignoring its true (wider) bold
+ * extent here can only ever make that column *relatively* narrower than an
+ * idealized bold-aware allocation would — never wider than what
+ * `fitSvgLine` then safely shrinks/truncates to fit, so it can never
+ * overflow, only shrink a bold header/total-cell's font size slightly more
+ * eagerly than a perfectly weighted pass would. */
 function computeColumnWidths(
   columns: readonly DataTableColumn[],
   rows: readonly DataTableRow[],

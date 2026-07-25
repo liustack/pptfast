@@ -93,6 +93,18 @@ export const schema = z
 // 是诚实默认，等真实失败样本出现再补（"按需"，不是"预先编"）。
 export const aliases = {} satisfies ComponentAliasSpec
 
+// `passthroughShell: true` is currently inert in practice (T3 review, Minor
+// finding): `content-bento-panel.tsx`'s `renderCell` checks `SELF_VISUAL_TYPES`
+// first (line ~650) and returns early via `SvgContent` for any type in that
+// set — data_table's own `selfVisual: true` above always wins that race, so
+// the code never falls through to the later `PASSTHROUGH_SHELL_TYPES` check
+// (line ~684) that would actually consult this flag. Left as `true` anyway
+// (matches the plan's explicit contract, and is the semantically correct
+// declaration — data_table genuinely does draw its own internal chrome with
+// no enclosing card, independent of which consumer happens to read it today)
+// — flagged here for a future reader who traces a bento-panel render and
+// finds no behavioral difference from toggling it, not fixed, since there is
+// no known-wrong behavior to correct.
 export const traits = {
   stretchable: false,
   selfVisual: true,
