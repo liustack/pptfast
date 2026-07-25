@@ -2097,3 +2097,86 @@ describe("asset-background content contrast (final-review Major finding, backlog
     })
   }
 })
+
+// R1 evidence wave, Task T2: multi-series bar/line charts now render a
+// legend (chart.tsx's own `legendApplicable`/`layoutChartLegend`) whose name
+// text is the first genuinely *computed-at-render-time* ink this component
+// family has ever needed — every pre-T2 chart text fill was a fixed theme
+// token (`ctx.colors.muted`/`text`/`accent`) passed straight through, never
+// its own `accessibleInk` guard, because chart text never sat on anything
+// but the page's own default background. The legend name/dropped-marker
+// text is no different in that one respect (still painted on
+// `ctx.defaultBg ?? ctx.colors.bg`, never a self-painted panel), but
+// `chart.tsx`'s own render() now explicitly routes it through
+// `accessibleInk(ctx.colors.muted, legendBg, fontSize)` (mirrors this same
+// component's x_title/y_title guard-free precedent turning into one line
+// below), so this sweep exists to prove that guard actually holds across
+// all 13 themes rather than assume it from the call site alone — same
+// "dedicated probe for the hard part" methodology this file's heatmap
+// cell-fill/sankey label-over-band blocks already established.
+describe("chart legend contrast (R1 evidence wave, Task T2)", () => {
+  const LEGEND_BAR_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [
+      {
+        type: "chart",
+        chart_type: "bar",
+        series: [
+          { name: "North America", data: [{ x: "Q1", y: 120 }, { x: "Q2", y: 180 }] },
+          { name: "Europe", data: [{ x: "Q1", y: 90 }, { x: "Q2", y: 140 }] },
+          { name: "Asia Pacific", data: [{ x: "Q1", y: 60 }, { x: "Q2", y: 200 }] },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: multi-series bar legend renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, LEGEND_BAR_SLIDE))).toEqual([])
+    })
+  }
+
+  const LEGEND_LINE_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [
+      {
+        type: "chart",
+        chart_type: "line",
+        series: [
+          { name: "Active Users", data: [{ x: "Jan", y: 1200 }, { x: "Feb", y: 1450 }, { x: "Mar", y: 1100 }] },
+          { name: "New Signups", data: [{ x: "Jan", y: 300 }, { x: "Feb", y: 420 }, { x: "Mar", y: 380 }] },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: multi-series line legend renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, LEGEND_LINE_SLIDE))).toEqual([])
+    })
+  }
+
+  // Overflow stress: enough series (long names, realistic magnitude) to
+  // force both the per-name `data-truncated` fitSvgLine branch and the
+  // trailing "+N more" `data-dropped` marker (chart.tsx's own
+  // `layoutChartLegend`) — the marker text is exactly as much "legend text
+  // painted on the real background" as a name entry, so it needs the same
+  // proof, not just the comfortable few-series case above.
+  const legendStressSeries = Array.from({ length: 10 }, (_, i) => ({
+    name: `Region Segment Number ${i + 1} — Extended Descriptive Label`,
+    data: [{ x: "Q1", y: (i + 1) * 10 }, { x: "Q2", y: (i + 2) * 15 }],
+  }))
+  const LEGEND_OVERFLOW_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [{ type: "chart", chart_type: "bar", series: legendStressSeries }],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: legend name-truncation and count-overflow ("+N more") text renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, LEGEND_OVERFLOW_SLIDE))).toEqual([])
+    })
+  }
+})

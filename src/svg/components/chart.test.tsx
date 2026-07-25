@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
+import type { PptxIR } from "@/ir"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { auditSvgMarkup } from "../audit/svg-audit"
+import { auditDeck } from "../audit/deck-audit"
 import { chart } from "./chart"
 import type { ComponentCtx } from "./types"
 
@@ -557,6 +559,191 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       series: barSeries,
       axes: { x_title: "Quarter", y_title: "USD", show_grid: true },
     }
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">{chart.render(component, box, ctx)}</svg>,
+    )
+    expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
+  })
+})
+
+// Legend (R1 evidence wave, Task T2 — roadmap §6.1.2's legend model,
+// rendering half). `n==1` byte-compat is already proven bit-for-bit by
+// chart-svg.golden.test.ts's own "chart component golden markup" describe
+// block (measure() stays 240, full render() output unchanged) — these tests
+// cover the new n>=2 behavior only: legend swatches/names, name/count
+// overflow markers, and the pie/funnel/dumbbell exclusion.
+describe("chart component — legend (n>=2 series)", () => {
+  // Only chart.tsx itself sets `font-family` on a `<text>` node (x_title/
+  // y_title/legend) — chart-svg.tsx's own bar/line/etc. text elements never
+  // do (see chart-svg.tsx's text nodes) — so for an axes-free component,
+  // every `text[font-family]` is unambiguously legend content.
+  function legendTexts(container: HTMLElement): Element[] {
+    return Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("font-family") === ctx.fonts.body,
+    )
+  }
+
+  const twoSeriesBar = {
+    type: "chart" as const,
+    chart_type: "bar" as const,
+    series: [
+      { name: "North America", data: [{ x: "Q1", y: 120 }, { x: "Q2", y: 180 }] },
+      { name: "Europe", data: [{ x: "Q1", y: 90 }, { x: "Q2", y: 140 }] },
+    ],
+  }
+
+  it("measure() grows by a fixed extra amount for a multi-series bar chart (never proportional to series count)", () => {
+    const oneSeries = { type: "chart" as const, chart_type: "bar" as const, series: [twoSeriesBar.series[0]!] }
+    const fiveSeries = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      series: Array.from({ length: 5 }, (_, i) => ({ name: `S${i}`, data: [{ x: "A", y: i + 1 }] })),
+    }
+    const h1 = chart.measure(oneSeries, 1120, ctx)
+    const h2 = chart.measure(twoSeriesBar, 1120, ctx)
+    const h5 = chart.measure(fiveSeries, 1120, ctx)
+    expect(h2).toBeGreaterThan(h1)
+    expect(h5).toBe(h2) // fixed band, not proportional to series count
+  })
+
+  it("measure() does not grow for a multi-series pie/funnel/dumbbell chart (legend never applies — dispatch untouched)", () => {
+    const pie2 = {
+      type: "chart" as const,
+      chart_type: "pie" as const,
+      series: [{ name: "A", data: [{ x: "x", y: 1 }] }, { name: "B", data: [{ x: "y", y: 2 }] }],
+    }
+    const pie1 = { ...pie2, series: [pie2.series[0]!] }
+    expect(chart.measure(pie2, 1120, ctx)).toBe(chart.measure(pie1, 1120, ctx))
+
+    const funnel2 = {
+      type: "chart" as const,
+      chart_type: "funnel" as const,
+      series: [{ name: "A", data: [{ x: "x", y: 1 }] }, { name: "B", data: [{ x: "y", y: 2 }] }],
+    }
+    const funnel1 = { ...funnel2, series: [funnel2.series[0]!] }
+    expect(chart.measure(funnel2, 1120, ctx)).toBe(chart.measure(funnel1, 1120, ctx))
+
+    // dumbbell is *always* exactly 2 series (from/to) by construction — the
+    // most direct possible proof that series.length alone never triggers a
+    // legend; chart_type applicability (`legendApplicable`) gates it too.
+    const dumbbell = {
+      type: "chart" as const,
+      chart_type: "dumbbell" as const,
+      series: [{ name: "From", data: [{ x: "A", y: 10 }] }, { name: "To", data: [{ x: "A", y: 20 }] }],
+    }
+    expect(chart.measure(dumbbell, 1120, ctx)).toBe(240)
+  })
+
+  it("renders one swatch + name per series for a multi-series bar chart", () => {
+    const { container } = svg(chart.render(twoSeriesBar, box, ctx))
+    const texts = legendTexts(container)
+    expect(texts.map((t) => t.textContent)).toEqual(["North America", "Europe"])
+    for (const t of texts) {
+      expect(t.getAttribute("data-truncated")).toBeNull()
+      expect(t.hasAttribute("data-dropped")).toBe(false)
+    }
+  })
+
+  it("legend swatch colors follow the rotated palette in series order (colorIndex === seriesIndex)", () => {
+    const { container } = svg(chart.render(twoSeriesBar, box, ctx))
+    const swatches = Array.from(container.querySelectorAll("rect")).filter(
+      (r) => Number(r.getAttribute("width")) === 10 && Number(r.getAttribute("height")) === 10,
+    )
+    expect(swatches).toHaveLength(2)
+    expect(swatches[0]!.getAttribute("fill")).toBe(ctx.colors.chartPalette[0])
+    expect(swatches[1]!.getAttribute("fill")).toBe(ctx.colors.chartPalette[1])
+  })
+
+  it("renders no legend swatches/text for a single-series bar chart (byte-compat boundary)", () => {
+    const oneSeries = { type: "chart" as const, chart_type: "bar" as const, series: [twoSeriesBar.series[0]!] }
+    const { container } = svg(chart.render(oneSeries, box, ctx))
+    expect(legendTexts(container)).toHaveLength(0)
+  })
+
+  it("renders no legend for a multi-series pie/funnel/dumbbell chart even though series.length >= 2", () => {
+    const pie = {
+      type: "chart" as const,
+      chart_type: "pie" as const,
+      series: [{ name: "A", data: [{ x: "x", y: 1 }] }, { name: "B", data: [{ x: "y", y: 2 }] }],
+    }
+    const dumbbell = {
+      type: "chart" as const,
+      chart_type: "dumbbell" as const,
+      series: [{ name: "From", data: [{ x: "A", y: 10 }] }, { name: "To", data: [{ x: "A", y: 20 }] }],
+    }
+    for (const component of [pie, dumbbell]) {
+      const { container } = svg(chart.render(component, box, ctx))
+      expect(legendTexts(container)).toHaveLength(0)
+    }
+  })
+
+  it("name overflow: a series name longer than its slot truncates via fitSvgLine, marked data-truncated", () => {
+    const longName = "A Very Long Series Name That Overflows The Legend Slot Width Budget Easily"
+    const component = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      series: [
+        { name: longName, data: [{ x: "A", y: 1 }] },
+        { name: "Short", data: [{ x: "A", y: 2 }] },
+      ],
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    const truncated = legendTexts(container).find((t) => t.getAttribute("data-truncated") === "1")
+    expect(truncated).toBeTruthy()
+    expect(truncated!.textContent!.length).toBeLessThan(longName.length)
+  })
+
+  it("count overflow: more series than fit in one row drop the tail into a '+N more' marker, marked data-dropped", () => {
+    const manySeries = Array.from({ length: 12 }, (_, i) => ({
+      name: `S${i + 1}`,
+      data: [{ x: "A", y: i + 1 }],
+    }))
+    const component = { type: "chart" as const, chart_type: "bar" as const, series: manySeries }
+    const { container } = svg(chart.render(component, box, ctx))
+    const texts = legendTexts(container)
+    const dropped = texts.find((t) => t.hasAttribute("data-dropped"))
+    expect(dropped).toBeTruthy()
+    expect(dropped!.textContent).toMatch(/^\+\d+ more$/)
+    const droppedCount = Number(dropped!.getAttribute("data-dropped"))
+    expect(droppedCount).toBeGreaterThan(0)
+    const nameEntries = texts.filter((t) => !t.hasAttribute("data-dropped"))
+    expect(nameEntries.length).toBeLessThan(manySeries.length)
+    expect(nameEntries.length + droppedCount).toBe(manySeries.length)
+  })
+
+  it("audit-visibility: deck-audit reads both the truncated name and the dropped-count marker as content-truncated/content-dropped findings", () => {
+    const longName = "A Very Long Series Name That Overflows The Legend Slot Width Budget Easily And Then Some"
+    const manySeries = Array.from({ length: 12 }, (_, i) => ({
+      name: i === 0 ? longName : `S${i + 1}`,
+      data: [{ x: "A", y: i + 1 }],
+    }))
+    const ir: PptxIR = {
+      version: "4",
+      filename: "legend-audit-fixture",
+      theme: { id: "consulting" },
+      meta: {},
+      assets: { images: {} },
+      slides: [
+        {
+          type: "content",
+          heading: "Legend audit fixture",
+          components: [{ type: "chart", chart_type: "bar", series: manySeries }],
+        },
+      ],
+    } as PptxIR
+    const report = auditDeck(ir)
+    const truncated = report.findings.filter((f) => f.code === "content-truncated")
+    const dropped = report.findings.filter((f) => f.code === "content-dropped")
+    expect(truncated.length).toBeGreaterThan(0)
+    expect(dropped.length).toBeGreaterThan(0)
+  })
+
+  it("renders only svg2pptx-subset primitives with a multi-series legend (swatches + truncated name + dropped marker)", () => {
+    const manySeries = Array.from({ length: 10 }, (_, i) => ({
+      name: `A Fairly Long Series Name Number ${i + 1}`,
+      data: [{ x: "A", y: i + 1 }],
+    }))
+    const component = { type: "chart" as const, chart_type: "bar" as const, series: manySeries }
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">{chart.render(component, box, ctx)}</svg>,
     )
