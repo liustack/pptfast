@@ -48,10 +48,18 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
     const hiddenCount = fullCount - visibleCount
     const component =
       hiddenCount > 0 ? { ...rawComponent, layers: rawComponent.layers.slice(0, visibleCount) } : rawComponent
+    // `direction: "bottom_up"` (probe evidence-gate byproduct, see
+    // architecture.ts's own doc comment): flips which end of the
+    // (possibly-truncated) `layers` array paints at the bottom of the
+    // stack. Truncation above already sliced `layers[0..visibleCount)`
+    // regardless of direction — only the per-layer y position flips here,
+    // the drop policy (keep the head, drop the tail) stays the same.
+    const bottomUp = component.direction === "bottom_up"
+    const paintedCount = component.layers.length
     return (
       <g transform={`translate(${box.x},${box.y})`}>
         {component.layers.map((layer, i) => {
-          const layerY = i * (LAYER_H + GAP)
+          const layerY = (bottomUp ? paintedCount - 1 - i : i) * (LAYER_H + GAP)
           const title = fitSvgLine(layer.title, {
             maxWidth: ITEMS_X - TITLE_X - PAD,
             fontSize: TITLE_FONT_SIZE,

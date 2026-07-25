@@ -127,6 +127,7 @@ Once a deck project exists, a follow-up message routes into exactly one of three
 | Linear process, no branches | `steps` | `flowchart` |
 | Branching or looping process | `flowchart` | `steps` |
 | Two-sided contrast | `comparison` | two bullet lists |
+| System/organizational layering (a stack of bands, e.g. tech-stack layers or a maturity ladder) | `architecture` | `bullets` |
 | Dated milestones | `timeline` | `bullets` with dates |
 | Phased plan with workstreams | `roadmap` | `timeline` |
 | Phased plan with dated bars on a shared axis | `gantt` | `roadmap` |
@@ -140,6 +141,8 @@ Once a deck project exists, a follow-up message routes into exactly one of three
 | Proportional flow/quantity distribution across stages (e.g. budget allocation, energy mix) | `sankey` | `chart` (funnel) or `flowchart` |
 
 `steps` vs `flowchart` is the most common miss: if the edges never branch, it is `steps`. `roadmap` vs `gantt` is the next: `roadmap` groups workstreams into swimlanes with no shared numeric axis, `gantt` plots dated bars against one shared axis all items compare against. `pest` vs `swot` is the next: `pest` is external macro-environment factors only (no internal strengths/weaknesses axis), always the same four named categories — an internal-vs-external strategic assessment is still `swot`. `sankey` vs `flowchart`/funnel `chart` is the next: `sankey` conserves and splits a quantity across branching/merging paths (the band width itself carries meaning), `flowchart` is decision/process branching with no quantity, and a funnel `chart` only ever narrows in one line, never branches or merges. `data_table` vs `chart` vs `comparison` is the last: exact figures the audience reads row-by-row is `data_table`, a trend/comparison shape meant to be read at a glance is `chart`, qualitative side-by-side attributes with no exact figures is `comparison`.
+
+`architecture`'s `layers` array paints top-to-bottom by default (`layers[0]` is the topmost band) — the natural order for a system stack authored top-down (presentation layer first, infrastructure last). Author a bottom-up narrative (a maturity ladder, a foundation-first capability model) in its own natural low-to-high order and set `direction: "bottom_up"` on the component to paint `layers[0]` at the bottom instead — do not hand-reverse the array to fake it, the field exists precisely so the array stays in narrative order.
 
 `swot`/`bmc`/`waterfall`/`gantt`/`pest`/`five_forces`/`heatmap`/`sankey` are *full-body*: each fills the entire slide and must be the slide's only component — see Capacity below.
 

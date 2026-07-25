@@ -776,6 +776,47 @@ describe("sankey component (structure-components wave 2 task 3, flow-graph famil
   })
 })
 
+describe("architecture component direction field (probe evidence-gate byproduct, 2026-07-26)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const architectureComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "architecture",
+    layers: [
+      { title: "Ad Hoc", items: ["No process"] },
+      { title: "Data-Led", items: ["Fully instrumented"] },
+    ],
+    ...overrides,
+  })
+
+  it("accepts a component with no direction field (byte-compat default)", () => {
+    const d = withComponents([architectureComponent()])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      const c = result.data.slides[0].components?.[0] as any
+      expect(c.direction).toBeUndefined()
+    }
+  })
+
+  it("accepts direction: 'top_down'", () => {
+    const d = withComponents([architectureComponent({ direction: "top_down" })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts direction: 'bottom_up'", () => {
+    const d = withComponents([architectureComponent({ direction: "bottom_up" })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects an invalid direction value", () => {
+    const d = withComponents([architectureComponent({ direction: "sideways" })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("data_table component (R1 evidence wave Task T3 — 33rd component, first through the wave-2 domain-file flow)", () => {
   const withComponents = (components: any[]) => {
     const d: any = minimal()
