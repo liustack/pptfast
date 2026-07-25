@@ -1,8 +1,12 @@
 # @liustack/pptfast
 
-## 0.10.0
+## 0.11.0
+
+> Includes everything staged for the unpublished 0.10.0 (its tag was retired before release — 0.11.0 is the first release carrying these changes).
 
 ### Minor Changes
+
+- b23e931: `pptfast serve <target> [--port 4400] [--no-open]`: a live-reloading browser preview for deck project directories and bare IR files, serving the exact same review page `pptfast preview --html` writes to disk. Source changes (`deck.spec.json`/`pages/`/`assets/`, or the bare IR file itself) push a whole-page reload to the open tab over SSE, with a recoverable error banner in place of a crash on a mid-edit invalid save. The page's annotation panel now submits straight back to the deck directory as `revision-request.json` — the same file the download flow already produces, byte-for-byte — closing the agent↔human revision loop without manual file shuttling.
 
 - 85a91d3: Multi-series charts now genuinely compare instead of silently dropping data: a vertical or horizontal `bar` chart with 2+ series renders each series as its own grouped bar per category instead of only ever drawing the first series, and a multi-series `line` chart now shares one value domain and one category axis across every series instead of each series scaling independently. A `bar` or `line` chart with 2+ series also gets an automatic legend (series name + color swatch) below the plot, truncating an overly long series name (`data-truncated`) and collapsing overflow entries into a trailing "+N more" marker (`data-dropped`) once too many series to list. A category (`x` value) repeated within one series now surfaces as an editorial quality warning instead of silently colliding with itself. Negative and mixed-sign values in a multi-series chart now anchor correctly at the shared zero baseline instead of producing invalid (negative) bar geometry. Single-series positive bar/line charts render byte-identically to before, and pie/donut/funnel/dumbbell are unaffected.
 
