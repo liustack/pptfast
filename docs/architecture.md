@@ -1,5 +1,5 @@
 ---
-summary: 'Architecture: five-dimension model, single-source SVG render chain, platform seam'
+summary: 'Architecture: five-dimension model, single-source SVG render chain, platform seam, domain-file conventions'
 read_when:
   - first time in this repo
   - adding themes/components/layouts
@@ -154,6 +154,84 @@ the exact failure class a bare `<script type="module">` hits. See the
 README's own Browser section for the consumer-facing quickstart and honest
 caveats (assets must be `data:` URIs or CORS-readable `http(s)` URLs,
 `--pixels`-equivalent auditing needs `OffscreenCanvas`).
+
+## Domain files
+
+Layouts and components are organized by domain — each one's own definition
+lives beside (or across a matched pair of) files named for it — not
+collected into one big literal table. Two registries/aggregators consume
+these domain files by importing and combining them, never by holding the
+content themselves:
+
+- **A layout definition lives with its implementation.** Each of the 33
+  single-layout archetypes exports `layoutDef: LayoutDefinition` at the
+  bottom of its own `src/svg/archetypes/<name>.tsx` file, beside the JSX
+  that draws it (`src/svg/image-pages.tsx` — one level above `archetypes/` — exports 4 uniquely-named ones instead,
+  since one file implements all 4 image takeovers and they can't share the
+  bare `layoutDef` name the 33 single-layout files use). `src/svg/layouts/registry.ts`
+  imports every one and assembles `LAYOUT_REGISTRY` from them — "take one
+  layout away whole" is a single-file operation, not a two-file
+  archaeology dig.
+- **A component is two same-named domain files, one per side of the
+  IR/SVG boundary.** `src/ir/components/<name>.ts` exports `schema` (the
+  zod shape), `aliases` (a `ComponentAliasSpec` — `{}` if the component
+  declares no synonym-rescue rows) and `traits` (the render-trait
+  declaration `component-traits.ts` aggregates). `src/svg/components/<name>.tsx`
+  exports `renderDef` (`{ measure, render }`). Nothing about a component's
+  shape, field aliasing, traits, or rendering lives anywhere but this pair.
+- **Aggregator discipline.** Every table that spans domain files —
+  `src/ir/index.ts`'s `ComponentSchema` discriminated union,
+  `src/svg/layouts/registry.ts`'s `LAYOUT_REGISTRY`,
+  `src/svg/components/index.tsx`'s `RENDER_DEFS`,
+  `src/svg/component-traits.ts`'s `ALL_TRAITS`, `src/ir/field-aliases.ts`'s
+  two alias tables — does only computed construction over the imported
+  domain values (unions, `Record`/`Set` building, lists derived from
+  another structure, e.g. `COMPONENT_TYPES` from `ComponentSchema.options`)
+  and never holds a hand-copied literal that could drift from what the
+  domain file actually declares. `component-traits.ts`'s `EVIDENCE_TYPES`
+  is the one deliberate exception: relative priority order across
+  component types ("chart beats image beats comparison") is knowledge no
+  single domain file can declare about itself, so the order stays
+  hand-written there — each listed component's own domain file still
+  declares the membership half (`traits.evidence: true`), and a test
+  (`component-traits.test.ts`) asserts the two stay in sync.
+
+**Adding a component** touches, at minimum, the 2 domain files above plus
+6 points a normal `pnpm check` catches if skipped — a missing entry fails
+the build or the test suite, never silently (this list was measured
+against the most recent real addition, `data_table`, not predicted):
+
+1. `src/ir/index.ts` — import the new schema, add it to `ComponentSchema`'s
+   `z.discriminatedUnion` array
+2. `src/svg/components/index.tsx` — import the new `renderDef`, add it to
+   `RENDER_DEFS` (a total `Record<ComponentType, RenderDef>` — TypeScript
+   rejects the object literal at compile time if any `ComponentType` is
+   missing)
+3. `src/svg/component-traits.ts` — import the new `traits`, add it to
+   `ALL_TRAITS` (same total-`Record` compile guard)
+4. `src/ir/corpus-coverage.test.ts` — the new type must be behaviorally
+   exercised by the validation corpus at least once, either because an
+   existing `examples/*.json`/`STRESS_DECKS` fixture already uses it, or
+   because a new `COVERAGE_ENTRIES` `-valid`/`-tripwire` pair was added
+   for it (the test fails red otherwise)
+5. `src/pptx/generate-fidelity-export.test.ts` — `COMPONENT_BY_TYPE` is
+   another total `Record<Component["type"], Component>`: the fidelity
+   sweep needs one real instance of the new type (compile error if
+   missing)
+6. `src/svg/audit/full-matrix-contrast.test.ts` — `MUTED_SURFACE_CLASS`
+   classifies every component type for the contrast sweep; an
+   `Object.hasOwn` exhaustiveness test fails red until the new type is
+   classified
+
+Plus, only when they apply: a `src/ir/field-aliases.ts` row in either
+alias table (only if the component needs a synonym rescue); an
+`EVIDENCE_TYPES` insertion when `traits.evidence: true` (the position is
+an editorial call, not mechanical); a `skills/pptfast/SKILL.md`
+"Component selection" table row, so the authoring skill's own guidance
+knows the type exists; any doc's component-count mention that reads as a
+literal number rather than worded ("every component type"); and a
+`STRESS_DECKS` fixture entry if the type needs render-pressure coverage
+beyond what the validation corpus already exercises.
 
 ## Adding a theme
 

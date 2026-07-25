@@ -1657,7 +1657,7 @@ describe("enum/discriminator did-you-mean hints (borrow-wave task 3)", () => {
     expect(message).toContain('"kpi_card" is not a valid component type')
     expect(message).toContain('did you mean "kpi_cards"?')
     expect(message).toContain("pptfast schema")
-    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full 32-option list is never flattened into the message
+    expect(message).not.toMatch(/'bullets' \| 'paragraph'/) // the full component-type option list is never flattened into the message
     expect(message.length).toBeLessThan(ENUM_ERROR_MESSAGE_MAX_LENGTH)
   })
 
@@ -1808,6 +1808,17 @@ describe("renderSlideSvg", () => {
   it("throws a readable error for an out-of-range index", () => {
     const ir = PptxIRSchema.parse(raw)
     expect(() => renderSlideSvg(ir, 99)).toThrow(/out of range/)
+  })
+
+  it("throws a named PptfastError (not a bare TypeError) for a component.type that bypassed validateIr (wave-2 sweep, T3, final review Minor 2)", () => {
+    const ir = PptxIRSchema.parse(raw)
+    // A type assertion, not `validateIr`, is what could ever put an invalid
+    // `type` on a `Component` — `RENDER_DEFS[component.type]` used to be
+    // `undefined` for it, surfacing as a bare "Cannot read properties of
+    // undefined" TypeError instead of a message naming the bad type.
+    ir.slides[1]!.components = [{ type: "not_a_real_component_type" } as unknown as (typeof ir.slides)[1]["components"][number]]
+    expect(() => renderSlideSvg(ir, 1)).toThrow(/not_a_real_component_type/)
+    expect(() => renderSlideSvg(ir, 1)).toThrow(/validateIr/)
   })
 })
 

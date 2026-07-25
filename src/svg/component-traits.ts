@@ -87,7 +87,7 @@ import { traits as dataTableTraits } from "@/ir/components/data-table"
  * enum" posture at the declaration site.
  */
 
-/** The IR's component discriminant union (`ComponentSchema`'s 32 `type`
+/** The IR's component discriminant union (`ComponentSchema`'s `type`
  * literals), aliased so the 6 sets below don't each re-spell
  * `Component["type"]`. Not a redefinition — always structurally identical to
  * the IR's own type, per this task's requirement that the string-literal

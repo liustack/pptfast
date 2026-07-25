@@ -1,4 +1,3 @@
-// GF/svg/motifs/motif-corner-ornament-motif.tsx
 import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 

@@ -63,6 +63,47 @@ describe("truncateToUnits", () => {
     expect(out).toBe("…")
     expect(measureTextUnits(out)).toBeLessThanOrEqual(0.46)
   })
+
+  // Run-awareness (sweep2 T4, R2's recorded follow-up). Pre-fix,
+  // truncateToUnits cut strictly char-by-char with no notion of
+  // LATIN_RUN_OR_CHAR_RE's own atomic-run boundaries (tokenize()'s
+  // wrap/split path already respects those, see that constant's own
+  // comment) — so an ellipsis cut could land mid-Latin-run even though the
+  // same text would never *wrap* mid-run. "集群Kubernetes管理" at a budget
+  // that lands 7 letters into "Kubernetes" is exactly that repro.
+  it("retreats a mid-run ellipsis cut to the run's own start instead of splitting the run", () => {
+    const out = truncateToUnits("集群Kubernetes管理", 7.3)
+    // Pre-fix this produced "集群Kuberne…" — cut mid-word. Post-fix the
+    // whole "Kubernetes" run yields to the ellipsis instead.
+    expect(out).toBe("集群…")
+    expect(out).not.toContain("Kuberne")
+    expect(measureTextUnits(out)).toBeLessThanOrEqual(7.3)
+  })
+
+  it("keeps a mid-run cut when the straddled run starts the line (empty-line floor)", () => {
+    // "Kubernetes" here starts the string, so retreating to the run's own
+    // start (position 0) would drop all content — content beats purity,
+    // same floor philosophy as splitLongToken's own fallback, so the
+    // mid-run cut stands.
+    const out = truncateToUnits("Kubernetes集群", 5.9)
+    expect(out).toBe("Kubernet…")
+    expect(out.length).toBeGreaterThan(1) // not emptied by the retreat
+    expect(measureTextUnits(out)).toBeLessThanOrEqual(5.9)
+  })
+
+  it("leaves pure-CJK truncation byte-identical (no Latin/digit run to straddle)", () => {
+    // Pinned exact output, not just characteristics — every run
+    // LATIN_RUN_OR_CHAR_RE finds in pure-CJK text is a single character
+    // (length <= 1), so retreatFromMidRun's own `continue` guard means this
+    // path is structurally unreachable here, not merely untested.
+    expect(truncateToUnits("微服务架构下的分布式事务一致性", 6)).toBe("微服务架构…")
+  })
+
+  it("is deterministic across repeated calls on the same input", () => {
+    const first = truncateToUnits("集群Kubernetes管理", 7.3)
+    const second = truncateToUnits("集群Kubernetes管理", 7.3)
+    expect(second).toBe(first)
+  })
 })
 
 describe("fitSvgLine", () => {

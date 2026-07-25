@@ -968,6 +968,70 @@ describe("gradient (url()) shape fills route to pixel-audit instead of misattrib
   })
 })
 
+describe("<polygon> joins the same registration gate as rect/path (sweep2 T4)", () => {
+  it("collects a run painted over a gradient-filled <polygon> instead of misattributing it to whatever lies beneath (live case: renderLine's area fill in chart-svg.tsx)", () => {
+    // Pre-fix: `<polygon>` dispatched to no registration branch at all —
+    // not `rect`/`image`/`path` (solid or gradient), not `circle`/`ellipse`
+    // — so a gradient-filled polygon never became a `PaintedShape`, and
+    // `backgroundAt` fell straight through to the solid page background
+    // underneath. This fixture mirrors the R3 rect/circle tests' own
+    // near-black-on-near-black setup so a pre-fix run produces a spurious
+    // low-contrast finding against the WRONG (underlying) color instead of
+    // deferring to pixel-audit.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0E14"/>
+      <defs>
+        <linearGradient id="g5" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2DD4E6"/>
+          <stop offset="100%" stop-color="#0A1220"/>
+        </linearGradient>
+      </defs>
+      <polygon points="0,400 400,400 400,100 0,100" fill="url(#g5)" stroke="none"/>
+      <text x="96" y="200" font-size="20" fill="#000000">text over gradient area</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    const runs = __collectImageBackedTextRuns(markup)
+    expect(runs).toHaveLength(1)
+    expect(runs[0]).toMatchObject({ text: "text over gradient area", fill: "#000000", baseline: 200, fontSize: 20, required: 4.5 })
+  })
+
+  it("computes contrast against a solid-fill <polygon>'s own color, not whatever sits beneath it", () => {
+    // The other half of the registration gate: a solid hex `fill` on a
+    // polygon must resolve exactly like a solid rect/path does — attributed
+    // to the polygon itself, not skipped/misattributed to the page
+    // background underneath. White text at ~1:1 against the polygon's own
+    // near-white fill is a real finding; against the dark page background
+    // beneath it, it would pass.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#0A0E14"/>
+      <polygon points="0,400 400,400 400,100 0,100" fill="#F5F5F0"/>
+      <text x="96" y="200" font-size="20" fill="#FFFFFF">text over solid polygon</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0]).toMatchObject({ background: "#F5F5F0", fill: "#FFFFFF" })
+    expect(__collectImageBackedTextRuns(markup)).toEqual([])
+  })
+
+  it("still excludes a gradient-filled polygon inside <g data-decor>, same as rect/path (decor exclusion unaffected by the widened gate)", () => {
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <defs>
+        <linearGradient id="g6" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000000"/>
+          <stop offset="100%" stop-color="#111111"/>
+        </linearGradient>
+      </defs>
+      <g data-decor="true">
+        <polygon points="0,720 0,520 200,720" fill="url(#g6)"/>
+      </g>
+      <text x="50" y="650" font-size="20" fill="#000000">over the decor polygon</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    expect(__collectImageBackedTextRuns(markup)).toEqual([])
+  })
+})
+
 // Task-2 review (bench-driven fix round, defect A), Moderate #2: every real
 // circle/ellipse the shipped component suite renders puts text dead-center
 // (rings.tsx's "Core" label sits ~40px² from its circle's center — nowhere

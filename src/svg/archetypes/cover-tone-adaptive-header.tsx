@@ -1,4 +1,3 @@
-// GF/svg/archetypes/cover-tone-adaptive-header.tsx
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"

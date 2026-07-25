@@ -1,4 +1,3 @@
-// GF/svg/archetypes/cover-poster-center.tsx
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"

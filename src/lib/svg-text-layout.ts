@@ -576,14 +576,20 @@ function splitLongToken(token: string, maxUnits: number, weight?: TextWeightHint
 // still lands under budget never touched `truncateToUnits`, so `truncated`
 // stayed `false`.
 //
-// This regex instead matches a maximal run starting and ending in
-// `[A-Za-z0-9]`, with `.`/`-`/`%` allowed *inside* the run so a
-// hyphen/decimal/percent doesn't fracture a token that reads as one visual
-// unit ("60-85%", "v2.3.1-rc.4" each stay a single atomic token) --  but
-// never as the run's own first or last character, so a trailing connector
-// splits off as its own single-char token ("etc." → ["etc", "."]) and a
-// leading one likewise ("-flag" → ["-", "flag"]): a break can still land
-// next to a connector, just never inside the alphanumeric run itself. Every
+// This regex instead matches a maximal run starting in `[A-Za-z0-9]`, with
+// `.`/`-`/`%` allowed *inside* the run so a hyphen/decimal/percent doesn't
+// fracture a token that reads as one visual unit ("60-85%", "v2.3.1-rc.4"
+// each stay a single atomic token). `.` and `-` are never the run's own
+// first or last character, so a trailing connector splits off as its own
+// single-char token ("etc." → ["etc", "."]) and a leading one likewise
+// ("-flag" → ["-", "flag"]): a break can still land next to those two
+// connectors, just never inside the alphanumeric run itself. `%` is exempt
+// from that trailing restriction -- it's allowed to close a run ("85%"
+// stays whole, unlike "etc.") -- and because the run keeps extending past
+// it whenever more alphanumerics follow with no space or punctuation in
+// between, a percent sign glued directly onto a following word fuses into
+// the same atomic token too: "50%off" tokenizes as the single token
+// `"50%off"`, not `["50%", "off"]`. Every
 // other character (CJK, punctuation, and deliberately -- see below --
 // anything outside ASCII) falls through to the trailing `.` alternative,
 // one token per character, unchanged from the old `Array.from` behavior --
@@ -735,6 +741,55 @@ function balanceWrappedLines(content: string, lines: string[], weight?: TextWeig
   return lines
 }
 
+/**
+ * Retreats a character-by-character ellipsis cut (`truncateToUnits`'s own
+ * `out`) off the middle of an atomic Latin/digit run (sweep2 T4, R2's
+ * recorded follow-up). `tokenize()`'s wrap/split path already treats a
+ * `LATIN_RUN_OR_CHAR_RE` run as a single indivisible unit (see that
+ * constant's own comment) — but `truncateToUnits` below cuts strictly
+ * char-by-char with no such awareness, so its own ellipsis point can still
+ * land mid-run even though the exact same text would never *wrap* mid-run
+ * ("Kubernetes…" cut down to "Kuberne…" is exactly the defect this closes).
+ *
+ * `cut` is `text`'s own prefix (`truncateToUnits`'s greedy loop only ever
+ * appends consecutive characters from `text`'s start, so `cut === text.slice(0,
+ * cut.length)` always holds) — `cut.length` is therefore both "how many
+ * UTF-16 units of `text` survived the budget" and directly comparable to a
+ * `LATIN_RUN_OR_CHAR_RE` match's own `index`/`[0].length` (both counted in
+ * the same UTF-16-code-unit terms a `u`-flag regex still reports its
+ * `index` in), with no code-point/grapheme translation needed — this
+ * codebase's Latin/CJK/digit domain never carries astral-plane input for
+ * either side of that comparison to disagree on.
+ *
+ * `text.matchAll` (not a shared-state `exec`/`lastIndex` loop) — `matchAll`
+ * clones the regex internally per its own spec contract, so this can safely
+ * share `LATIN_RUN_OR_CHAR_RE` with `tokenize()` without either call
+ * corrupting the other's `lastIndex` state.
+ *
+ * FLOOR: when the straddled run itself starts at position 0 (no leading
+ * CJK/text for the ellipsis to land after), retreating to the run's start
+ * would empty the line entirely — content beats purity here, the same
+ * fallback philosophy `splitLongToken` already uses when a run alone is
+ * wider than its budget: the mid-run cut stands rather than dropping all
+ * content. Every other case retreats to the run's own start, which can only
+ * ever *shorten* `cut` — so it can never turn a within-budget cut into an
+ * overflowing one.
+ */
+function retreatFromMidRun(text: string, cut: string): string {
+  const cutLen = cut.length
+  for (const match of text.matchAll(LATIN_RUN_OR_CHAR_RE)) {
+    const run = match[0]
+    if (run.length <= 1) continue // a single-char token can't be cut mid-run
+    const runStart = match.index
+    const runEnd = runStart + run.length
+    if (cutLen > runStart && cutLen < runEnd) {
+      return runStart === 0 ? cut : text.slice(0, runStart)
+    }
+    if (runStart >= cutLen) break // runs appear in text order — none further can straddle the cut
+  }
+  return cut
+}
+
 export function truncateToUnits(text: string, maxUnits: number, weight?: TextWeightHint): string {
   if (measureTextUnits(text, weight) <= maxUnits) return text
   const budget = maxUnits - 1 // 预留省略号
@@ -746,7 +801,7 @@ export function truncateToUnits(text: string, maxUnits: number, weight?: TextWei
   if (out === "") {
     return measureTextUnits("…", weight) > maxUnits ? "" : "…"
   }
-  return `${out}…`
+  return `${retreatFromMidRun(text, out)}…`
 }
 
 // Mono sibling of `truncateToUnits` above, measuring with

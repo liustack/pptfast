@@ -249,7 +249,7 @@ export const matrix: SvgComponent<MatrixComponent> = {
           const cell = cellLayout(item, cardW, ctx.fonts.heading)
           const titleBaseline = y + PAD_TOP + TITLE_SIZE
           return (
-            <g key={i}>
+            <g key={i} data-audit-box={`${x},${y},${cardW}`}>
               <rect
                 x={x}
                 y={y}

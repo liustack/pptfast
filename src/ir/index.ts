@@ -14,7 +14,7 @@
  * its literal used to occupy, so "take one component away whole" is a
  * single-file operation instead of an edit split across this file,
  * `field-aliases.ts`, and `component-traits.ts`. This file's own job for
- * components is now purely computational: import all 32, construct
+ * components is now purely computational: import every component schema, construct
  * `ComponentSchema` via `z.discriminatedUnion`, and derive `COMPONENT_TYPES`
  * from the result — never a hand-copied literal, never a re-export relay. A
  * handful of schema fragments genuinely shared by ≥2 components (only the
@@ -306,7 +306,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
 ], { error: componentTypeError })
 
 /**
- * All 32 component `type` discriminant values, derived from `ComponentSchema`
+ * All component `type` discriminant values, derived from `ComponentSchema`
  * itself (never hand-copied) so this list can't drift from the union above.
  * Typed as plain `readonly string[]` rather than `Component["type"][]` —
  * every consumer of this list (W5's plan `focus` vocabulary gate,

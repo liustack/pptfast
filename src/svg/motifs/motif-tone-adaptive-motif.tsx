@@ -1,4 +1,3 @@
-// GF/svg/motifs/motif-tone-adaptive-motif.tsx
 import type { DecorProps } from "./types"
 
 /**

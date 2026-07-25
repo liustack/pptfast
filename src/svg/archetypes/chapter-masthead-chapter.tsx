@@ -1,4 +1,3 @@
-// GF/svg/archetypes/chapter-masthead-chapter.tsx
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { chapterNumberFor } from "../../lib/derive"

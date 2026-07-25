@@ -1,4 +1,3 @@
-// GF/svg/archetypes/cover-left-anchor.tsx
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"

@@ -183,7 +183,7 @@ describe("EVIDENCE_TYPES equivalence (was assertion-evidence.tsx:8-13) — order
 // ── EVIDENCE_TYPES consistency (src domain reorg wave 2, spec §4.1's named
 // exception) ─────────────────────────────────────────────────────────────
 //
-// EVIDENCE_TYPES itself is not derived from the 32 domain files (order is
+// EVIDENCE_TYPES itself is not derived from the per-component domain files (order is
 // cross-component comparative knowledge no single domain file can declare
 // about itself — component-traits.ts's own EVIDENCE_TYPES doc comment has
 // the full rationale) — but its *membership* must still agree with which

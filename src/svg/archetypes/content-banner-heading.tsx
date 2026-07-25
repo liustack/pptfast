@@ -1,4 +1,3 @@
-// GF/svg/archetypes/content-banner-heading.tsx
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import type { PptxIR } from "@/ir"

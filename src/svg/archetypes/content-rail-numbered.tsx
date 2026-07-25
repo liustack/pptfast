@@ -1,4 +1,3 @@
-// GF/svg/archetypes/content-rail-numbered.tsx
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { SvgContent } from "../svg-content"

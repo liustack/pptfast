@@ -1,4 +1,3 @@
-// GF/svg/archetypes/content-stacked-poster.tsx
 import type { Component } from "@/ir"
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"

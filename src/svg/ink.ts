@@ -1,4 +1,3 @@
-// GF/svg/ink.ts
 /**
  * Contrast-aware ink selection, shared by every archetype that either paints
  * its own background panel (a `colors.primary`/`colors.accent`-filled block)

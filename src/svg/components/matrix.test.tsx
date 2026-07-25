@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { auditSvgMarkup } from "../audit/svg-audit"
@@ -77,6 +78,66 @@ describe("matrix component", () => {
       <svg xmlns="http://www.w3.org/2000/svg">{matrix.render(sixCells, { x: 0, y: 0, w: 800 }, ctx)}</svg>,
     )
     expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
+  })
+
+  // I3 review's Important, wave-2 sweep T3: mirrors row-cards.tsx:96's
+  // per-card `data-audit-box` — every cell now registers its own box, not
+  // just the whole grid's. Before this, only a title reaching all the way to
+  // the *grid's* own right edge (e.g. the last column of the row) could ever
+  // cross an audited box; a narrower col0/col1 cell overflowing its own,
+  // smaller card was structurally invisible to svg-audit.
+  describe("per-cell data-audit-box (I3 review Important)", () => {
+    it("each cell's <g> carries data-audit-box at that cell's own x/y/width, matching its rect", () => {
+      const { container } = svg(matrix.render(sixCells, { x: 60, y: 200, w: 800 }, ctx))
+      const rects = Array.from(container.querySelectorAll("rect"))
+      const cellGroups = rects.map((r) => r.parentElement!)
+      expect(cellGroups).toHaveLength(sixCells.items.length)
+      cellGroups.forEach((g, i) => {
+        const rect = rects[i]!
+        expect(g.getAttribute("data-audit-box")).toBe(
+          `${rect.getAttribute("x")},${rect.getAttribute("y")},${rect.getAttribute("width")}`,
+        )
+      })
+    })
+
+    // Differential: real `cellLayout()`/`fitSvgLine()` never let a title
+    // actually overflow its own card (it shrinks to a font floor, then
+    // truncates — see this file's "egregious x_title" precedent below for
+    // the same guarantee on x_title), so this test constructs the violation
+    // directly rather than through matrix.render(), the same way
+    // svg-audit.test.tsx's own hand-built h-overflow fixtures do — proving
+    // the audit *mechanism* the per-cell box adds, as a defense-in-depth net
+    // against a future regression in that fit/truncate contract.
+    it("a per-cell box catches a col0 title overflowing its own card even though it stays inside the outer grid box (pre/post-fix differential)", () => {
+      const outerBox = { x: 60, y: 200, w: 800 } // matches this file's own convention above
+      const cardW = 392 // 2-col grid at w=800, CARD_GAP=16: (800 - 16) / 2
+      const cellX = outerBox.x
+      const cellY = outerBox.y
+      const fontSize = 19 // TITLE_SIZE
+      const textLeft = cellX + 18 // PAD_X
+      const overflowingTitle = "溢出".repeat(14)
+      const textWidth = measureTextUnits(overflowingTitle, { bold: true }) * fontSize
+      // Sanity-check the constructed geometry actually straddles the
+      // boundary this test means to probe, instead of silently measuring
+      // the wrong thing if the text-metrics table ever changes.
+      expect(textLeft + textWidth).toBeGreaterThan(cellX + cardW + 6) // overflows the per-cell box
+      expect(textLeft + textWidth).toBeLessThan(outerBox.x + outerBox.w - 6) // stays inside the outer grid box
+
+      const cellMarkup = `<text x="${textLeft}" y="${cellY + 35}" font-size="${fontSize}" font-weight="700">${overflowingTitle}</text>`
+      const outerBoxAttr = `${outerBox.x},${outerBox.y},${outerBox.w}`
+
+      // Pre-fix shape: only the outer grid's own box (set by whatever
+      // upstream caller wraps the whole component, same as production).
+      const preFixMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><g data-audit-box="${outerBoxAttr}">${cellMarkup}</g></svg>`
+      expect(auditSvgMarkup(preFixMarkup).filter((i) => i.kind === "h-overflow")).toEqual([])
+
+      // Post-fix shape: the per-cell box this task adds, nested inside the
+      // same outer box — matches matrix.tsx's actual `<g data-audit-box=...>`
+      // wrapper around each cell.
+      const postFixMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><g data-audit-box="${outerBoxAttr}"><g data-audit-box="${cellX},${cellY},${cardW}">${cellMarkup}</g></g></svg>`
+      const postIssues = auditSvgMarkup(postFixMarkup).filter((i) => i.kind === "h-overflow")
+      expect(postIssues).toHaveLength(1)
+    })
   })
 
   // Borrow-wave Task 4 (docs/contrast-system.md's "Overlap detection

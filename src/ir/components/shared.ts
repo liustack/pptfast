@@ -6,7 +6,7 @@ import { iconEnumError } from "../schema-error-hints"
  * Genuinely cross-component zod primitives (src domain reorg wave 2, spec
  * §4.1: "共享子 schema…放 `src/ir/components/shared.ts`——真跨域共享资产，
  * 保持少量"). This is the CLAUDE.md shared-assets rule's exception clause in
- * practice: a fragment lands here only when *two or more* of the 32
+ * practice: a fragment lands here only when *two or more* of the
  * per-component domain files (`./sankey.ts`, `./kpi-cards.ts`, … — added in
  * W2b/W2c, this file is scaffolded ahead of them in W2a) would otherwise
  * define the exact same zod value independently. Everything a single
