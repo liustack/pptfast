@@ -1609,6 +1609,114 @@ describe("heatmap cell-fill x ink (structure-components wave 2 task 2, decision 
   }
 })
 
+// R1 evidence wave, Task T3 — data_table (33rd component, first through the
+// wave-2 domain-file flow). Mirrors heatmap's own two-sweep shape directly
+// above: a realistic-content sweep (representative column count/content,
+// narrowest curated content archetype) plus a schema-max sweep (8 columns x
+// 12 rows) — both assert zero `auditFindings` (contrast + overflow +
+// out-of-bounds) across every canonical theme.
+describe("data_table contrast (R1 evidence wave, Task T3)", () => {
+  const DATA_TABLE_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "data_table",
+        columns: [
+          { key: "metric", label: "关键指标" },
+          { key: "q1", label: "Q1", align: "right" },
+          { key: "q2", label: "Q2", align: "right" },
+          { key: "yoy", label: "同比", align: "right" },
+        ],
+        rows: [
+          { cells: { metric: "营收", q1: "120.5", q2: "135.2", yoy: "+12.2%" }, emphasis: "highlight" },
+          { cells: { metric: "成本", q1: "80.1", q2: "84.6", yoy: "+5.6%" } },
+          { cells: { metric: "利润", q1: "40.4", q2: "50.6", yoy: "+25.2%" }, emphasis: "total" },
+        ],
+        source: "内部财务系统，FY26",
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: data_table renders with zero auditDeck findings (contrast, overflow, out-of-bounds)`, () => {
+      expect(auditFindings(deckFor(themeId, DATA_TABLE_SLIDE))).toEqual([])
+    })
+  }
+
+  const dataTableSchemaMaxSlide = (): Slide => {
+    const columns = Array.from({ length: 8 }, (_, i) => ({
+      key: `c${i}`,
+      label: `列${i}一个较长的表头名称`,
+      align: (i % 2 === 0 ? "left" : "right") as "left" | "right",
+    }))
+    const rows = Array.from({ length: 12 }, (_, r) => ({
+      cells: Object.fromEntries(columns.map((c, i) => [c.key, i === 0 ? `第${r}行一个较长的单元格内容` : r * 111 + i])),
+      ...(r === 11 ? { emphasis: "total" as const } : r % 4 === 0 ? { emphasis: "highlight" as const } : {}),
+    }))
+    return {
+      type: "content",
+      heading: HEADING,
+      layout: "narrow-column",
+      components: [{ type: "data_table", columns, rows, source: "示例数据来源脚注文本" }],
+    } as Slide
+  }
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: schema-max data_table (8 columns x 12 rows, emphasis mix) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+      expect(auditFindings(deckFor(themeId, dataTableSchemaMaxSlide()))).toEqual([])
+    })
+  }
+})
+
+// The emphasis-row ink probe named above: isolates the self-painted-surface
+// contrast claim specifically — `data-table.tsx`'s `rowFill`/`accessibleInk`
+// pairing for `highlight`/`total` rows, the one surface in this component
+// that doesn't already ride the "page background" safety net every other
+// text in the component (header, plain-row cells, source footnote) relies
+// on. Every `low-contrast` finding, if any survived, would name the
+// offending fill/ink pair (`AuditFinding.detail`) — asserting the finding
+// set outright is empty is the same "stronger, more honest claim" swot/bmc/
+// pest/five_forces/heatmap's own tinted-surface blocks already settled on.
+describe("data_table emphasis-row ink (R1 evidence wave, Task T3 — self-painted-surface discipline)", () => {
+  const HIGHLIGHT_ONLY_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "data_table",
+        columns: [{ key: "a", label: "A" }, { key: "b", label: "B" }],
+        rows: [{ cells: { a: "强调行内容", b: "42" }, emphasis: "highlight" }],
+      },
+    ],
+  } as Slide
+
+  const TOTAL_ONLY_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    layout: "narrow-column",
+    components: [
+      {
+        type: "data_table",
+        columns: [{ key: "a", label: "A" }, { key: "b", label: "B" }],
+        rows: [{ cells: { a: "合计行内容", b: "999" }, emphasis: "total" }],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: highlight-row text clears contrast against its own accent-tinted fill`, () => {
+      expect(auditFindings(deckFor(themeId, HIGHLIGHT_ONLY_SLIDE))).toEqual([])
+    })
+
+    it(`${themeId}: total-row (bold) text clears contrast against its own muted-tinted fill`, () => {
+      expect(auditFindings(deckFor(themeId, TOTAL_ONLY_SLIDE))).toEqual([])
+    })
+  }
+})
+
 // Structure-components wave 2 task 3: sankey.tsx is the wave's largest
 // component — three topologies swept per the plan's own visual-QA mandate
 // ("simple 2-layer, multi-layer, dense crossing"), each at schema-realistic
