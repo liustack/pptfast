@@ -338,6 +338,10 @@ describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)
     expect(html).toContain("new Blob(")
     expect(html).toContain("URL.createObjectURL(blob)")
     expect(html).toContain('a.download = \'revision-request.json\'')
+    // The explicit seam `pptfast serve`'s injected client calls
+    // (src/cli/serve.ts) — pinned by name so a drift between the assignment
+    // here and the consumption there fails a test instead of only a browser.
+    expect(html).toContain("window.__pptfastBuildExportBlob = buildExportBlob")
     expect(html).not.toMatch(/\bfetch\(/)
     expect(html).not.toContain("XMLHttpRequest")
   })

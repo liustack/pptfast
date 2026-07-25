@@ -15,6 +15,7 @@ import {
   runThemes,
   runValidate,
 } from "./cli/commands"
+import { DEFAULT_PORT, runServe } from "./cli/serve"
 import { checkForUpdate, createSelfUpdater } from "./cli/update"
 import { VERSION } from "./version"
 
@@ -207,6 +208,27 @@ program
   .action(async (target: string, opts: { output: string; html?: boolean }) => {
     try {
       console.log(await runPreview(target, opts.output, { htmlOut: opts.html }))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program
+  .command("serve")
+  .description("Serve a live-reloading HTML preview of an IR JSON file, deck project directory, or bare deck name over HTTP")
+  .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
+  .option("--port <number>", `port to listen on (default ${DEFAULT_PORT})`)
+  .option("--no-open", "do not open the URL in a browser after starting")
+  .action(async (target: string, opts: { port?: string; open: boolean }) => {
+    try {
+      let port: number | undefined
+      if (opts.port !== undefined) {
+        port = Number(opts.port)
+        if (!Number.isInteger(port)) {
+          fail(new Error(`invalid --port value "${opts.port}" — expected an integer`))
+        }
+      }
+      await runServe(target, { port, open: opts.open })
     } catch (e) {
       fail(e)
     }

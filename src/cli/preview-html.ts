@@ -89,6 +89,19 @@
  * browser download pattern — keeping the self-containment invariant this
  * whole module exists to protect (no `fetch`, no `XMLHttpRequest`, no form
  * `action`).
+ *
+ * `buildExportBlob()` (serve wave, task S2 rework) factors the payload/Blob
+ * construction half of that click handler into its own named function,
+ * still private to the same `<script>` closure (it still reads `annotations`
+ * and calls `pageIdFor()` directly) — and additionally assigns a reference
+ * to it onto `window.__pptfastBuildExportBlob`. That one global function
+ * handle is the sanctioned seam `pptfast serve` (`../cli/serve.ts`) calls to
+ * reuse this exact serialization for its own `POST /revision-request`
+ * submit flow, instead of forking a second copy of it (spec-plan.md design
+ * ruling 5) — this module itself stays exactly as ignorant of
+ * networking/serve as ever (still no `fetch` call anywhere in this file,
+ * still a pure download feature); only the caller on the other side of that
+ * global reaches for `fetch`.
  */
 
 export interface PreviewHtmlSlideInput {
@@ -473,7 +486,10 @@ const JS = `
   // skills/pptfast/SKILL.md's phase-6 revision-request handling). Zero
   // network/storage — an in-memory Blob + a synthetic <a download> click,
   // the standard browser-only download pattern.
-  exportBtn.addEventListener('click', function () {
+  // pptfast serve (src/cli/serve.ts) depends on this function's
+  // callable-and-synchronous contract and return type — think before
+  // changing.
+  function buildExportBlob() {
     var requests = []
     Object.keys(annotations).forEach(function (key) {
       var i = parseInt(key, 10)
@@ -484,7 +500,16 @@ const JS = `
     })
     var deckTitle = document.getElementById('pf-title').textContent
     var payload = { version: '1', deck: deckTitle, requests: requests }
-    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  }
+  // The one sanctioned cross-module seam this file exposes (see this
+  // module's own doc comment) — a plain function reference, not data, so
+  // the caller always gets this build's live annotation state, never a
+  // stale snapshot.
+  window.__pptfastBuildExportBlob = buildExportBlob
+
+  exportBtn.addEventListener('click', function () {
+    var blob = buildExportBlob()
     var url = URL.createObjectURL(blob)
     var a = document.createElement('a')
     a.href = url
