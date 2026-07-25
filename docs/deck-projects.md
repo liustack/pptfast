@@ -1,10 +1,11 @@
 ---
-summary: 'Deck project directory layout, the six-phase CLI workflow, placeholder/--draft semantics, locked fields, the boundary-page render surface, and the four-layer config/home directory scheme'
+summary: 'Deck project directory layout, the six-phase CLI workflow, the live `pptfast serve` preview loop, placeholder/--draft semantics, locked fields, the boundary-page render surface, and the four-layer config/home directory scheme'
 read_when:
   - authoring or debugging a deck project directory (deck.spec.json + pages/ + assets/)
-  - touching src/spec, src/cli/deck-dir.ts, src/cli/home.ts, or src/cli/config.ts
+  - touching src/spec, src/cli/deck-dir.ts, src/cli/home.ts, src/cli/config.ts, or src/cli/serve.ts
   - a placeholder/--draft, orphan-file, or locked-field error needs tracing
   - a cover/chapter/ending page's components or footnote go missing at render, or you need to know which fields a page type actually renders
+  - deciding whether a revision-loop change belongs to the download form (`preview --html`) or the live form (`serve`)
 ---
 
 # Deck projects
@@ -23,6 +24,12 @@ Layout and fs-safety discipline live in `src/cli/deck-dir.ts` (header comment re
 ## Six-phase CLI workflow
 
 `skills/pptfast/SKILL.md` is the authored playbook. The phases map onto commands as: **align** (`pptfast schema` / `schema --spec` / `narratives --json` / `themes --json`) → **spec** (write `deck.spec.json`, `pptfast spec validate <file>` — strategy-aware hard gates: boundary pages, heading length, beat rotation, page count vs. pacing, `validateSpec`/`formatInvalidSpecError` in `src/spec/index.ts`) → **fill** (`pages/<id>.json` in small batches, `pptfast assemble <dir> -o deck.json` after each batch, then `pptfast validate`) → **audit** (`pptfast audit <target> [--json]`, `docs/*` cross-reference: `src/svg/audit/deck-audit.ts`) → **preview** (`pptfast preview <target> -o <dir> --html` — once every page is filled, this also overlays the same `audit` findings on `preview.html` and lets a human reviewer leave per-page annotations that export as `revision-request.json`) → **revise** (edit one `pages/<id>.json` by hand, or route a handed-back `revision-request.json`'s entries into their `pageId`'s page file, then re-`assemble` → `validate`/`audit` → re-render). Every consumer command (`validate`/`render`/`preview`/`audit`) accepts a single IR file, a deck project directory, or a bare name — `isDeckDirectory` (`deck-dir.ts`) is the dispatch. The `revision-request.json` loop is what closes preview's read-only design back into the normal edit path — see `skills/pptfast/SKILL.md`'s phase 6 for the exact routing rule (`pageId` = slide id, else 1-based page number).
+
+## Live preview (`pptfast serve`)
+
+`pptfast serve <target> [--port 4400] [--no-open]` (same `target` forms as every other deck-accepting command above) is the **preview** phase's review loop in live form, not a separate workflow — the identical `preview.html` markup, running off a local `node:http` server bound to `127.0.0.1` instead of a file `pptfast preview --html` writes once. A source edit (`deck.spec.json`/`pages/`/`assets/` for a deck project directory, or the file itself for a bare IR target) triggers a rebuild and pushes a whole-page reload to the open browser tab over SSE, 200ms-debounced so a multi-file save coalesces into one refresh. A rebuild that fails (a mid-edit invalid JSON save is the common case) shows a recoverable error banner instead of taking the server down, and clears itself on the next successful save.
+
+The one behavioral difference from the download form: the annotation panel's submit control POSTs straight to `<deck-dir>/revision-request.json` (bare IR target: alongside the IR file), atomically written so an agent polling for it never sees a half-written file, instead of only downloading it — closing the loop with no manual export/hand-back step. The file format itself is unchanged — byte-for-byte the same `{version, deck, requests}` shape `pptfast preview --html`'s own download button already produces — so **revise**'s routing rule above needs no change either way. Both forms stay valid, for different needs: `serve` for a live local loop where the agent and a reviewer are both watching the same running deck, `preview --html` for a static, shareable artifact (attach to a ticket, review offline, nothing to keep running). No auth and no remote bind (`127.0.0.1` only, no `--host` flag) — a local dev tool, not a hosted review server.
 
 ## Placeholder pages and the `--draft` gate
 
