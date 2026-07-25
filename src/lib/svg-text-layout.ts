@@ -576,14 +576,20 @@ function splitLongToken(token: string, maxUnits: number, weight?: TextWeightHint
 // still lands under budget never touched `truncateToUnits`, so `truncated`
 // stayed `false`.
 //
-// This regex instead matches a maximal run starting and ending in
-// `[A-Za-z0-9]`, with `.`/`-`/`%` allowed *inside* the run so a
-// hyphen/decimal/percent doesn't fracture a token that reads as one visual
-// unit ("60-85%", "v2.3.1-rc.4" each stay a single atomic token) --  but
-// never as the run's own first or last character, so a trailing connector
-// splits off as its own single-char token ("etc." → ["etc", "."]) and a
-// leading one likewise ("-flag" → ["-", "flag"]): a break can still land
-// next to a connector, just never inside the alphanumeric run itself. Every
+// This regex instead matches a maximal run starting in `[A-Za-z0-9]`, with
+// `.`/`-`/`%` allowed *inside* the run so a hyphen/decimal/percent doesn't
+// fracture a token that reads as one visual unit ("60-85%", "v2.3.1-rc.4"
+// each stay a single atomic token). `.` and `-` are never the run's own
+// first or last character, so a trailing connector splits off as its own
+// single-char token ("etc." → ["etc", "."]) and a leading one likewise
+// ("-flag" → ["-", "flag"]): a break can still land next to those two
+// connectors, just never inside the alphanumeric run itself. `%` is exempt
+// from that trailing restriction -- it's allowed to close a run ("85%"
+// stays whole, unlike "etc.") -- and because the run keeps extending past
+// it whenever more alphanumerics follow with no space or punctuation in
+// between, a percent sign glued directly onto a following word fuses into
+// the same atomic token too: "50%off" tokenizes as the single token
+// `"50%off"`, not `["50%", "off"]`. Every
 // other character (CJK, punctuation, and deliberately -- see below --
 // anything outside ASCII) falls through to the trailing `.` alternative,
 // one token per character, unchanged from the old `Array.from` behavior --
