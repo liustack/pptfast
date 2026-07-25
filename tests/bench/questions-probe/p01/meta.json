@@ -1,0 +1,14 @@
+{
+  "id": "p01",
+  "title": "New Engineering Org Announcement",
+  "coverage": {
+    "strategy": "briefing",
+    "pacing": "balanced",
+    "expects_components": ["architecture", "flowchart"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en",
+  "probe": true,
+  "probe_candidate": "hierarchy"
+}

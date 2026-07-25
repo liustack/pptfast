@@ -1,0 +1,14 @@
+{
+  "id": "p08",
+  "title": "Product Demo Slide for the App Launch Deck",
+  "coverage": {
+    "strategy": "showcase",
+    "pacing": "spacious",
+    "expects_components": ["image", "image_compare"],
+    "workflow": "bare-ir",
+    "image_deck": true
+  },
+  "lang": "en",
+  "probe": true,
+  "probe_candidate": "device_mockup"
+}

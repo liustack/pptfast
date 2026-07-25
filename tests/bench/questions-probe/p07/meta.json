@@ -1,0 +1,14 @@
+{
+  "id": "p07",
+  "title": "Where Sales and Success Overlap",
+  "coverage": {
+    "strategy": "pyramid",
+    "pacing": "balanced",
+    "expects_components": ["rings", "comparison"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en",
+  "probe": true,
+  "probe_candidate": "venn"
+}

@@ -236,3 +236,71 @@ confirming no `tests/bench/` entry appears in the file list it prints.
 ## Single-shot API run mode (`run.mts`)
 
 The second sanctioned run mode next to the agentic protocol above: `pnpm bench:run <prefix> [qids...]` drives an external OpenAI-compatible model through ONE completion per question — the prompt carries SKILL.md, the live vocabulary (`schema` / `narratives --json` / `themes --json`), and the question, and the model must answer with a bare IR JSON document. No tool loop, no self-check iterations, so this measures first-shot floor quality (stricter than agentic mode — expect lower validate pass rates). Credentials come from the repo-root `.env` (gitignored): `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`. Artifacts land in `tests/bench/results/<model>/<qid>/` with `meta.json` recording `mode: "single-shot"`, so `score.mts` consumes both modes identically — compare runs of the same mode against each other, not across modes.
+
+`run.mts` also takes optional `--questions-dir=<dir>` / `--results-dir=<dir>` flags (default: `tests/bench/questions` / `tests/bench/results`, unchanged) so a second question bank — the probe bank below — can be run without touching the main bank's result history: `pnpm bench:run <prefix> --questions-dir=tests/bench/questions-probe --results-dir=tests/bench/results-probe`. Question ids are auto-discovered from whichever `questionsDir` is in effect (`/^[a-z]\d\d$/`, matches both `q01`- and `p01`-style ids). `score.mts` already took `[questionsDir] [resultsDir]` positional args before this wave (`pnpm bench:score tests/bench/questions-probe tests/bench/results-probe`) — no scorer code changed for the probe bank.
+
+## Probe bank (`questions-probe/`)
+
+A second, separate question bank — `tests/bench/questions-probe/p01..p08`, its own id namespace, the main `questions/q01..q20` bank untouched — built for exactly one purpose: **evidence-gate input for the candidate component pool** (`.issues/specs/2026-07-24-pptfast-layout-component-roadmap.md` §5/§7), not model benchmarking. The gate requires ≥2 distinct-scenario cases per candidate of "the model wanted to express X and the existing 32-component pool could not carry it" before that candidate gets built. The 2026-07-24 rerun (`.issues/notes/2026-07-24-bench-rerun.md`) found the main bank structurally incapable of producing this evidence — it was authored around the existing pool, so no question in it ever puts a model in a position where only a missing component would do. The probe bank exists to put the model in exactly that position, once per candidate.
+
+**Scores from this bank are diagnostic, not comparative.** There is no "probe bank pass rate" worth tracking release over release — the deliverable is the qualitative read of what a model tried to do when the pool couldn't carry its intent, produced by a human (or an agent doing the analysis pass, not the run itself) reading each artifact.
+
+### Candidates and prompts
+
+One question per candidate, chosen from the roadmap's §7 candidate pool:
+
+| id | candidate | scenario |
+|---|---|---|
+| p01 | hierarchy | a three-level, asymmetric reporting-line announcement (a flat list would lose the who-reports-to-whom grouping) |
+| p02 | cycle | a four-stage support routine that explicitly closes the loop and repeats indefinitely |
+| p03 | agenda | a six-section meeting deck's opening slide, one section marked as currently active |
+| p04 | tier_stack | a four-rung capability-maturity ladder, deliberately without per-rung counts/percentages (kept out of funnel territory) |
+| p05 | people_cards | five new executives introduced by name/title/one-line background/current remit, initials in place of photos |
+| p06 | logo_wall | a twelve-name, equal-weight customer/partner proof slide for an investor deck |
+| p07 | venn | two teams' responsibilities where the overlap itself (three shared duties) is the argument being made |
+| p08 | device_mockup | a real attached product screenshot that needs to read as "a phone in someone's hand," not a floating image (materials pattern follows q02/q12) |
+
+### `meta.json` fields
+
+Same schema as the main bank (`coverage.strategy`/`pacing`/`expects_components`/`workflow`/`image_deck`, `lang`), plus two probe-only fields — `meta.json` is never shown to the model-under-test, same as the main bank:
+
+```jsonc
+{
+  "probe": true,               // marks this question as belonging to the probe bank
+  "probe_candidate": "hierarchy" // which §7 candidate component this question targets
+}
+```
+
+`expects_components` here does **not** name the candidate (the candidate does not exist yet) — it names the existing-pool component(s) a model would most plausibly reach for while hard-fitting the scenario into the current 32, e.g. hierarchy → `architecture`/`flowchart`, venn → `rings`/`comparison`, agenda → `numbered_cards`/`row_cards`. The rationale for each pairing lives here (JSON has no comment syntax to carry it inline):
+
+- **p01 hierarchy** → `architecture` (nearest node-and-connection shape), `flowchart` (branching-process shape, sometimes mis-reached-for even without a decision to branch on)
+- **p02 cycle** → `steps` (linear-process shape, no native loop-back), `flowchart` (branching shape, sometimes forced into a loop)
+- **p03 agenda** → `numbered_cards`/`row_cards` (list shapes with no way to mark one item as "current" without extra text)
+- **p04 tier_stack** → `comparison` (side-by-side shape, not stacked/ordered), `matrix` (2×2 grid, wrong axis count for an n-rung ladder)
+- **p05 people_cards** → `row_cards`/`icon_cards` (nearest per-person card shapes, no dedicated person/avatar semantics)
+- **p06 logo_wall** → `image_grid` (nearest equal-weight grid shape, built for photos not marks/wordmarks), `icon_cards`
+- **p07 venn** → `rings` (nearest circular-comparison shape, no true set-intersection region), `comparison` (side-by-side, no overlap region at all)
+- **p08 device_mockup** → `image` (plain image, no frame semantics), `image_compare` (two-image shape, not a device-frame shape)
+
+### How to run
+
+Single-shot mode against the four weak test-account models (`.env` prefixes `DSPRO`/`DEEPSEEK`/`QWEN35`/`QWEN`, same accounts the main bank rerun used), one probe result tree kept separate from the main bank's:
+
+```bash
+for p in DSPRO DEEPSEEK QWEN35 QWEN; do
+  pnpm bench:run "$p" --questions-dir=tests/bench/questions-probe --results-dir=tests/bench/results-probe
+done
+pnpm bench:score tests/bench/questions-probe tests/bench/results-probe
+```
+
+`tests/bench/results-probe/` is gitignored (same as `tests/bench/results/`) — nothing under it is ever committed, only the question bank and code that produced it.
+
+### Analysis protocol
+
+The mechanical scores (`validatePass`/`auditFindingCount`/`renderOk`/`coverageHits`) are a starting filter, not the finding. For every produced artifact, read it and classify what actually happened using the same buckets the 2026-07-24 rerun's gap analysis used (`.issues/notes/2026-07-24-bench-rerun.md`'s failure-attribution table):
+
+- **EXPRESSION-GAP** — the artifact this bank exists to surface: the model reached for an existing component and visibly bent its semantics to fit content that component's own contract doesn't cover (e.g. a `flowchart` with no real decision branch standing in for a reporting tree, a `comparison` with more than two sides standing in for a ladder), or the model bullets-dumped the structure into plain text/`bullets` because nothing in the pool fit and it gave up trying to structure it, or — the strongest possible signal — the model invented a `type` string that does not exist in the schema at all (an automatic `validatePass: false`, worth reading regardless of the fail).
+- **COMPONENT-CHOICE** — the model picked a real, defensible component that is merely a worse fit than one of the `expects_components` guesses, without visibly abusing its semantics — evidence *against* the gate for that scenario, not for it.
+- **SCHEMA / CONTENT / OTHER** — same meaning as the main bank's rerun analysis (schema-shape mistakes, content-quality issues, everything else) — noise relative to this bank's purpose, but still worth tallying so an EXPRESSION-GAP claim isn't cherry-picked out of a batch of otherwise-broken artifacts.
+
+A candidate clears the evidence gate's ≥2-distinct-scenario bar only on **EXPRESSION-GAP** findings, and per §5's own wording, distinct scenario means distinct underlying case, not distinct model — the same p0x prompt hard-fit by two different models is one scenario, not two. This analysis pass is deliberately not performed by the run itself (`run.mts`/`score.mts` stay purely mechanical, no subjective dimension, `AGENTS.md`'s "评审基调") — it is the controller's next dispatch after the artifacts exist.

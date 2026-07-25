@@ -1,0 +1,14 @@
+{
+  "id": "p04",
+  "title": "Data Practice Maturity Assessment",
+  "coverage": {
+    "strategy": "pyramid",
+    "pacing": "balanced",
+    "expects_components": ["comparison", "matrix"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en",
+  "probe": true,
+  "probe_candidate": "tier_stack"
+}

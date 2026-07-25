@@ -1,0 +1,14 @@
+{
+  "id": "p03",
+  "title": "季度业务复盘会议 - 开场页",
+  "coverage": {
+    "strategy": "briefing",
+    "pacing": "spacious",
+    "expects_components": ["numbered_cards", "row_cards"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "zh",
+  "probe": true,
+  "probe_candidate": "agenda"
+}
