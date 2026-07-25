@@ -32,6 +32,7 @@ import { traits as pestTraits } from "@/ir/components/pest"
 import { traits as fiveForcesTraits } from "@/ir/components/five-forces"
 import { traits as heatmapTraits } from "@/ir/components/heatmap"
 import { traits as sankeyTraits } from "@/ir/components/sankey"
+import { traits as dataTableTraits } from "@/ir/components/data-table"
 
 /**
  * Component trait registry (W2 task 5, spec §3/§6/§8 — re-derived as a pure
@@ -140,6 +141,7 @@ const ALL_TRAITS: Record<ComponentType, ComponentTraits> = {
   five_forces: fiveForcesTraits,
   heatmap: heatmapTraits,
   sankey: sankeyTraits,
+  data_table: dataTableTraits,
 }
 
 /** Every component type whose own domain-file `traits` declares `trait: true`, collected as a `ReadonlySet`. */
@@ -222,9 +224,17 @@ export const PASSTHROUGH_SHELL_TYPES: ReadonlySet<ComponentType> = typesWith("pa
  * declare `evidence: true` — two independent sources of truth (this
  * hand-written order vs. every domain file's own boolean), drift between
  * them fails that test rather than silently diverging.
+ *
+ * `data_table` inserted right after `chart` (R1 evidence wave, Task T3,
+ * plan's explicit ordering call): a chart is still the single strongest
+ * evidence type when both appear, but a structured data table outranks a
+ * bare photo/comparison-table/kpi callout as the next-strongest evidence —
+ * it carries the same "reviewable structured numbers" quality a chart does,
+ * just without the visual plot.
  */
 export const EVIDENCE_TYPES = [
   "chart",
+  "data_table",
   "image",
   "comparison",
   "kpi_cards",

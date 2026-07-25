@@ -49,6 +49,14 @@ export type QualityIssue = {
    * `ChartDuplicate`/one issue, see that type's own doc comment), for the
    * same English-translation reason as `chartAxesIgnored` above. */
   chartDuplicateCategory?: { seriesName: string; x: string | number }
+  /** `code: "data_table_missing_cell"` only (R1 evidence wave, Task T3) —
+   * the offending row's 0-based index and the declared column key its
+   * `cells` object omits, for the same English-translation reason as
+   * `chartDuplicateCategory` above. One issue per (row, missing key) pair —
+   * a row missing 2 declared keys produces 2 issues, mirroring
+   * `chart_duplicate_category`'s own "one per occurrence, not one per row"
+   * granularity. */
+  dataTableMissingCell?: { rowIndex: number; key: string }
 }
 
 // ── helpers ──
@@ -361,6 +369,34 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
         chartDuplicateCategory: { seriesName: dup.seriesName, x: dup.x },
       })
     }
+  }
+
+  // data_table_missing_cell (R1 evidence wave, Task T3 — the plan's
+  // lenient-revision contract): `cells` has no length floor per row, so a
+  // row omitting one of `columns`' declared keys is schema-legal —
+  // data-table.tsx renders that cell empty rather than erroring (an *extra*
+  // key not declared in any column, by contrast, is a schema-level hard
+  // error — see data-table.ts's own superRefine, the strict-structural-
+  // misunderstanding half of the same contract). This is the pre-render
+  // advisory for the lenient half: name the exact row index and missing key
+  // so the content gap is visible before the deck ships, the same
+  // "structural leniency, editorial visibility" split chart_duplicate_category
+  // (T2) established for a different component.
+  for (const component of slide.components) {
+    if (component.type !== "data_table") continue
+    component.rows.forEach((row, ri) => {
+      for (const col of component.columns) {
+        if (row.cells[col.key] === undefined) {
+          issues.push({
+            slide: index,
+            severity: "warn",
+            code: "data_table_missing_cell",
+            message: `数据表第 ${ri} 行缺少列 "${col.key}" 的取值，该单元格将渲染为空`,
+            dataTableMissingCell: { rowIndex: ri, key: col.key },
+          })
+        }
+      }
+    })
   }
 
   // missing heading — cover / chapter / content (skip background-image-only pages)

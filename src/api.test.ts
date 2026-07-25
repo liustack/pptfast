@@ -1128,6 +1128,70 @@ describe("describeQualityIssue: chart_duplicate_category English message (R1 evi
   })
 })
 
+describe("describeQualityIssue: data_table_missing_cell English message (R1 evidence wave, Task T3)", () => {
+  // data-table.ts's schema tolerates a row whose `cells` omits one of
+  // `columns`' declared keys (the lenient half of the plan's revised
+  // contract — the strict half, an extra undeclared key, is a schema-level
+  // hard error instead, never reaching this warn-severity advisory).
+  // Translated to English here for the public validate surface, same
+  // convention as chart_duplicate_category above.
+  it("names the row index and the missing column key, and stays ok:true (warn, not error)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Metrics",
+          components: [
+            {
+              type: "data_table",
+              columns: [
+                { key: "metric", label: "Metric" },
+                { key: "q1", label: "Q1" },
+              ],
+              rows: [{ cells: { metric: "Revenue" } }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    const warning = v.warnings?.find((w) => w.message.includes("missing a value"))
+    expect(warning).toBeTruthy()
+    expect(warning?.message).toMatch(/row 0/)
+    expect(warning?.message).toMatch(/"q1"/)
+    // public surface (CLI output/error messages) is English — never leak
+    // ir-quality.ts's own internal Chinese wording.
+    expect(warning?.message).not.toMatch(/[一-鿿]/)
+  })
+
+  it("does NOT fire when every row's cells cover every declared column", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Metrics",
+          components: [
+            {
+              type: "data_table",
+              columns: [
+                { key: "metric", label: "Metric" },
+                { key: "q1", label: "Q1" },
+              ],
+              rows: [{ cells: { metric: "Revenue", q1: "120" } }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("missing a value")) ?? false).toBe(false)
+  })
+})
+
 // carried-items wave: comparison/citation/architecture got a render-time
 // box.h cap + data-dropped marker from P0 hardening's family sweep (same
 // fix bullets.tsx got) but no pre-render editorial signal of their own —

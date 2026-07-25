@@ -79,6 +79,15 @@ function minimalDeck(component: Record<string, unknown>): unknown {
  *    declares a custom refine, so each trips its tightest schema-level
  *    bound instead (`image_grid.items` `min(2)`, `waterfall.items`
  *    `min(3)`).
+ *  - `data_table-tripwire` (R1 evidence wave, Task T3 — 33rd component):
+ *    row 0's `cells` carries `ghost_col`, a key not declared in `columns` —
+ *    the sharpest contract violation this component's schema rejects (`ir/
+ *    components/data-table.ts`'s `superRefine`). Deliberately not a
+ *    *missing*-key row (`cells` short one declared column's key) — that
+ *    case is schema-legal by the plan's own lenient-revision contract
+ *    (renders empty + an `ir-quality.ts` warn, never a parse failure), so it
+ *    belongs in a quality/warn-path test (`ir-quality.test.tsx`), not this
+ *    file's hard-rejection tripwire.
  */
 const COVERAGE_ENTRIES: Record<string, unknown> = {
   "coverage/gantt-valid": minimalDeck({
@@ -152,6 +161,22 @@ const COVERAGE_ENTRIES: Record<string, unknown> = {
       { label: "Start", value: 100 },
       { label: "Q1", value: 20 },
     ],
+  }),
+  "coverage/data_table-valid": minimalDeck({
+    type: "data_table",
+    columns: [
+      { key: "metric", label: "Metric" },
+      { key: "q1", label: "Q1", align: "right" },
+    ],
+    rows: [{ cells: { metric: "Revenue", q1: "120" } }],
+  }),
+  "coverage/data_table-tripwire": minimalDeck({
+    type: "data_table",
+    columns: [
+      { key: "metric", label: "Metric" },
+      { key: "q1", label: "Q1", align: "right" },
+    ],
+    rows: [{ cells: { metric: "Revenue", q1: "120", ghost_col: "x" } }],
   }),
 }
 

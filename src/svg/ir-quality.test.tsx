@@ -1205,6 +1205,58 @@ describe("checkIrQuality", () => {
     expect(issue?.chartDuplicateCategory).toEqual({ seriesName: "Q1 Actuals", x: "East" })
   })
 
+  // ── data_table_missing_cell (R1 evidence wave, Task T3) ──
+  // data-table.ts's schema tolerates a row whose `cells` omits one of
+  // `columns`' declared keys (renders empty, never a parse error) — this is
+  // the pre-render advisory for that lenient half of the contract. The
+  // *strict* half (an extra key not declared in any column) is a schema-level
+  // hard error instead (`ir/index.test.ts`'s data_table describe block), not
+  // a quality warning — this file only covers the lenient/warn half.
+
+  const dataTableIR = (rows: Array<{ cells: Record<string, string | number>; emphasis?: "highlight" | "total" }>) =>
+    makeIR([
+      {
+        type: "content",
+        heading: "Metrics",
+        components: [
+          {
+            type: "data_table",
+            columns: [
+              { key: "metric", label: "Metric" },
+              { key: "q1", label: "Q1" },
+            ],
+            rows,
+          },
+        ],
+      },
+    ])
+
+  it("warns when a row's cells omit a declared column's key", () => {
+    const ir = dataTableIR([{ cells: { metric: "Revenue" } }])
+    expect(codes(checkIrQuality(ir))).toContain("data_table_missing_cell")
+  })
+
+  it("does NOT warn when every row's cells cover every declared column", () => {
+    const ir = dataTableIR([{ cells: { metric: "Revenue", q1: "120" } }])
+    expect(codes(checkIrQuality(ir))).not.toContain("data_table_missing_cell")
+  })
+
+  it("reports one issue per missing key, not one per row (a row missing 2 of 2 keys produces 2 issues)", () => {
+    const ir = dataTableIR([{ cells: {} }])
+    const issues = checkIrQuality(ir).filter((i) => i.code === "data_table_missing_cell")
+    expect(issues).toHaveLength(2)
+  })
+
+  it("carries the row index and the missing column key, and is warn-severity (never blocks)", () => {
+    const ir = dataTableIR([
+      { cells: { metric: "Revenue", q1: "120" } },
+      { cells: { metric: "Costs" } }, // row index 1, missing "q1"
+    ])
+    const issue = checkIrQuality(ir).find((i) => i.code === "data_table_missing_cell")
+    expect(issue?.severity).toBe("warn")
+    expect(issue?.dataTableMissingCell).toEqual({ rowIndex: 1, key: "q1" })
+  })
+
   // ── multiple issues on one slide ──
 
   it("can report multiple issues on a single slide (default narrative: general/balanced)", () => {

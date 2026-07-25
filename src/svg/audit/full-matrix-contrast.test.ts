@@ -1043,6 +1043,16 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // text at all (unlike heatmap's `show_values`), so there is no second
   // self-painted-surface surface to track here.
   sankey: "no-muted-fill",
+  // R1 evidence wave, Task T3: data-table.tsx's only `colors.muted` usage is
+  // the optional `source` footnote line — it sits directly on the ambient
+  // page background (the table body itself is deliberately unfilled,
+  // booktabs convention, same reasoning as comparison's own entry above for
+  // its row-label text). The highlight/total emphasis-row text is a
+  // *separate* surface (a self-painted row-tint rect) but never reads
+  // `colors.muted` — it renders `colors.text` through `accessibleInk`
+  // instead, so it's out of this map's scope entirely (see the dedicated
+  // "data_table contrast" sweep below for that surface's own verification).
+  data_table: "page-bg",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
