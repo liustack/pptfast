@@ -207,6 +207,16 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `axes settings (x_title/y_title/show_grid) are not supported for "${chartType}" charts and are ignored — only bar and line charts render them`
         : "chart axes settings (x_title/y_title/show_grid) are not supported for this chart type and are ignored — only bar and line charts render them"
     }
+    case "chart_duplicate_category": {
+      // R1 evidence wave, Task T2: chart-model.ts's buildChartModel found a
+      // category (x value) repeated within one series — names the series
+      // and the repeated value via `issue.chartDuplicateCategory`, same
+      // structured-field convention as `chartAxesIgnored` above.
+      const d = issue.chartDuplicateCategory
+      return d
+        ? `chart series "${d.seriesName}" has a duplicate category "${d.x}" — only the first occurrence is kept, later ones are dropped`
+        : "a chart series has a duplicate category value — only the first occurrence is kept, later ones are dropped"
+    }
     default:
       return `content quality issue (${issue.code})`
   }

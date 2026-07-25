@@ -1091,6 +1091,120 @@ describe("checkIrQuality", () => {
     })
   })
 
+  // ── chart_duplicate_category (R1 evidence wave, Task T2) ──
+  // chart-model.ts's buildChartModel flags an x value repeated within one
+  // series (kept: first occurrence, dropped: the rest) — a data-authoring
+  // concern independent of chart_type, so this runs for every chart_type,
+  // not just bar/line (unlike chart_axes_ignored above, which is scoped to
+  // the types that actually ignore the field).
+
+  it("warns when a series has a duplicate category value within itself", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1", data: [{ x: "East", y: 10 }, { x: "East", y: 20 }, { x: "West", y: 15 }] }],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).toContain("chart_duplicate_category")
+  })
+
+  it("does NOT warn when every series has distinct category values", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1", data: [{ x: "East", y: 10 }, { x: "West", y: 15 }] }],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).not.toContain("chart_duplicate_category")
+  })
+
+  it("does NOT warn when the same category appears across different series (cross-series sharing is normal, not a duplicate)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "line",
+            series: [
+              { name: "2025", data: [{ x: "Q1", y: 10 }, { x: "Q2", y: 20 }] },
+              { name: "2026", data: [{ x: "Q1", y: 15 }, { x: "Q2", y: 25 }] },
+            ],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).not.toContain("chart_duplicate_category")
+  })
+
+  it("reports one issue per repeated key, not one per repeat occurrence (a key repeated 3x in one series is one issue)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1", data: [{ x: "East", y: 1 }, { x: "East", y: 2 }, { x: "East", y: 3 }] }],
+          },
+        ],
+      },
+    ])
+    const issues = checkIrQuality(ir).filter((i) => i.code === "chart_duplicate_category")
+    expect(issues).toHaveLength(1)
+  })
+
+  it("fires for every chart_type, including pie/funnel/dumbbell — the data-quality concern is chart_type-agnostic (unlike chart_axes_ignored)", () => {
+    for (const chart_type of ["pie", "funnel", "dumbbell"] as const) {
+      const series =
+        chart_type === "dumbbell"
+          ? [
+              { name: "From", data: [{ x: "A", y: 10 }, { x: "A", y: 20 }] },
+              { name: "To", data: [{ x: "A", y: 30 }] },
+            ]
+          : [{ name: "S1", data: [{ x: "A", y: 10 }, { x: "A", y: 20 }, { x: "B", y: 15 }] }]
+      const ir = makeIR([
+        { type: "content", heading: "h", components: [{ type: "chart", chart_type, series }] },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("chart_duplicate_category")
+    }
+  })
+
+  it("carries the series name and the duplicated x value, and is warn-severity (never blocks)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1 Actuals", data: [{ x: "East", y: 10 }, { x: "East", y: 20 }] }],
+          },
+        ],
+      },
+    ])
+    const issue = checkIrQuality(ir).find((i) => i.code === "chart_duplicate_category")
+    expect(issue?.severity).toBe("warn")
+    expect(issue?.chartDuplicateCategory).toEqual({ seriesName: "Q1 Actuals", x: "East" })
+  })
+
   // ── multiple issues on one slide ──
 
   it("can report multiple issues on a single slide (default narrative: general/balanced)", () => {
