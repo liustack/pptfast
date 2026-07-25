@@ -1,6 +1,7 @@
 import type { ReactElement } from "react"
 import type { ChartSeries } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { buildChartModel, zeroAxisRatio, type ChartDomain } from "./chart-model"
 
 /**
  * Chart renderers for the page-coordinate SVG pipeline.
@@ -210,9 +211,97 @@ function renderGridlinesVertical(
   )
 }
 
+/**
+ * Grouped/mixed-sign bar geometry (R1 evidence wave, Task T2 — roadmap
+ * §6.1.2/§6.1.3). Shared by `renderBar` (vertical) and `renderBarHorizontal`
+ * — both map a value to an *extent* from a fixed zero-baseline anchor within
+ * a plot box, just along perpendicular pixel axes, so the fraction math is
+ * identical and only the pixel-axis mapping at each call site differs.
+ *
+ * **Byte-compat derivation**: every one of these three helpers branches on
+ * `domain.min === 0` — the exact condition `chart-model.ts`'s
+ * `computeChartDomain` documents as "every contributing value is already
+ * >= 0" (Global Constraint 1's "single-series positive" shape, but the
+ * condition itself is series-count-agnostic: an all-non-negative multi-
+ * series group also takes this branch, correctly, since the old implicit-
+ * zero-baseline formula is exactly right whenever nothing is negative). That
+ * branch reproduces the pre-T2 renderers' own `(value / max) * plotDimension`
+ * formula **verbatim, same operation order** — not an algebraically-equal
+ * rewrite — because floating-point arithmetic is not guaranteed associative
+ * (`a - (a - b) === b` does not hold bit-for-bit in general), so only a
+ * literal copy of the old expression is provably bit-identical to the
+ * golden pins. The `domain.min < 0` branch (a negative value is present
+ * somewhere — always outside byte-compat protection) instead locates the
+ * true zero baseline via `zeroAxisRatio` and measures the bar as a signed
+ * span from there, so a negative value extends the *correct* direction
+ * instead of assuming the baseline always sits at the plot's low edge.
+ */
+function barExtentFraction(value: number, domain: ChartDomain): { start: number; end: number } {
+  const zero = zeroAxisRatio(domain)
+  const ratio = (value - domain.min) / (domain.max - domain.min)
+  return value >= 0 ? { start: zero, end: ratio } : { start: ratio, end: zero }
+}
+
+/** Vertical bar's rect `y`/`height` for one value — see `barExtentFraction`'s
+ * doc comment for the shared derivation and byte-compat branch. */
+function verticalBarExtent(
+  value: number,
+  domain: ChartDomain,
+  plotTop: number,
+  plotH: number,
+): { barY: number; barH: number } {
+  if (domain.min === 0) {
+    const barH = clampChartExtent((value / domain.max) * plotH)
+    return { barY: plotTop + plotH - barH, barH }
+  }
+  const { start, end } = barExtentFraction(value, domain)
+  const barTopY = plotTop + plotH - end * plotH
+  const barBottomY = plotTop + plotH - start * plotH
+  return { barY: barTopY, barH: clampChartExtent(barBottomY - barTopY) }
+}
+
+/** Horizontal bar's rect `x`/`width` for one value — see
+ * `barExtentFraction`'s doc comment for the shared derivation and
+ * byte-compat branch. */
+function horizontalBarExtent(
+  value: number,
+  domain: ChartDomain,
+  plotX: number,
+  plotW: number,
+): { barX: number; barW: number } {
+  if (domain.min === 0) {
+    const barW = clampChartExtent((value / domain.max) * plotW)
+    return { barX: plotX, barW }
+  }
+  const { start, end } = barExtentFraction(value, domain)
+  const barLeftX = plotX + start * plotW
+  const barRightX = plotX + end * plotW
+  return { barX: barLeftX, barW: clampChartExtent(barRightX - barLeftX) }
+}
+
+/**
+ * Line chart's per-point pixel `y` for one value — same `domain.min === 0`
+ * byte-compat branch as the bar helpers above (verbatim old formula), else a
+ * real zero-anchored linear map via the value's own fraction of
+ * `[domain.min, domain.max]` (no separate baseline needed here — unlike bar,
+ * a line point has no "extent", just one coordinate).
+ */
+function lineValueY(value: number, domain: ChartDomain, plotTop: number, plotH: number): number {
+  if (domain.min === 0) {
+    return plotTop + plotH - clampChartExtent((value / domain.max) * plotH)
+  }
+  const ratio = (value - domain.min) / (domain.max - domain.min)
+  return plotTop + plotH - clampChartExtent(ratio * plotH)
+}
+
+/** Vertical bar's group edge margin (px, was the inline literals `4`/`groupW
+ * - 8`) — reused unchanged as the intra-group gap between sibling bars in a
+ * grouped (n>=2) category, see `renderBar`'s own group-geometry comment. */
+const BAR_GROUP_EDGE_GAP = 4
+
 export function renderBar(
   series: ChartSeries[],
-  _palette: string[],
+  palette: string[],
   x0: number,
   y0: number,
   w: number,
@@ -230,61 +319,105 @@ export function renderBar(
    */
   showGrid = true,
 ): ReactElement {
-  const all = series.flatMap((s) => s.data.map((d) => d.y))
-  const max = Math.max(...all, 1)
-  const points = series[0]?.data ?? []
-  const groupW = w / Math.max(points.length, 1)
+  // R1 evidence wave, Task T2: category union + shared domain replace the
+  // old series[0]-only walk (`points = series[0]?.data`) and the old
+  // all-series-scanned-but-not-all-drawn `max` (`series.flatMap(...)`,
+  // chart-model.ts's own header comment has the full defect writeup). `n<=1`
+  // is the byte-compat path: for a single series, `model.categories` is
+  // exactly that series' own `data` in order and `model.domain.max` is
+  // bit-identical to the old `Math.max(...all, 1)` (chart-model.test.ts's
+  // "single-series identity" suite) — every formula below that branches on
+  // `n<=1`/`domain.min === 0` reduces to the pre-T2 renderer's own
+  // expression, same operation order, for that shape.
+  const model = buildChartModel(series)
+  const { categories, domain } = model
+  const n = model.series.length
+  const groupW = w / Math.max(categories.length, 1)
   const plotTop = y0 + LABEL_TOP_PAD
   const plotH = Math.max(0, h - LABEL_TOP_PAD - LABEL_BOTTOM_PAD)
-  // One shared gradient per chart instance — every non-max bar reuses it via
-  // the same `url(#…)` reference, so it's declared once, not per bar.
+  // One shared gradient per chart instance, only declared when it can
+  // actually be referenced — the single-series max-bar-emphasis look this
+  // gradient serves (see below) is byte-compat-pinned for n<=1 and never
+  // used for a grouped (n>=2) chart, which paints flat palette colors
+  // instead (per-series color must read consistently with that series'
+  // legend swatch, a gradient would obscure that mapping).
   const gradientId = chartGradientId("chart-bar-grad", w, h, series)
   const gradientShade = scaleHexBrightness(accentColor, BAR_GRADIENT_SHADE_FACTOR)
   return (
     <>
-      <defs>
-        <linearGradient id={gradientId} x1={0} y1={0} x2={0} y2={1}>
-          <stop offset="0%" stopColor={accentColor} />
-          <stop offset="100%" stopColor={gradientShade} />
-        </linearGradient>
-      </defs>
+      {n <= 1 && (
+        <defs>
+          <linearGradient id={gradientId} x1={0} y1={0} x2={0} y2={1}>
+            <stop offset="0%" stopColor={accentColor} />
+            <stop offset="100%" stopColor={gradientShade} />
+          </linearGradient>
+        </defs>
+      )}
       {showGrid && renderGridlines(x0, w, plotTop, plotH, mutedColor)}
-      {points.map((d, i) => {
-        const barH = clampChartExtent((d.y / max) * plotH)
-        const barX = x0 + i * groupW + 4
-        const barW = groupW - 8
-        const barY = plotTop + plotH - barH
-        // The tallest bar (or bars tied for tallest) stands out as a solid
-        // accent fill instead of the gradient — "无渐变突出" per the brief.
-        const isMax = d.y === max
-        const category = fitSvgLine(String(d.x), {
-          maxWidth: barW,
+      {categories.map((cat, i) => {
+        // Group geometry: BAR_GROUP_EDGE_GAP is the pre-existing
+        // single-series margin (previously the inline literals `4`/`groupW
+        // - 8`, now named and reused, not reinvented) — the group's usable
+        // inner width reserves that same gap on both outer edges regardless
+        // of how many bars share it. n<=1 keeps `perBarW === usableW`
+        // (one bar fills the whole group, no floor — exactly the old
+        // `barW = groupW - 8`); n>=2 splits `usableW` into n bars with
+        // (n-1) intra-group gaps of that same unit, so grouped bars breathe
+        // at the identical rhythm a single bar always did.
+        const groupX0 = x0 + i * groupW + BAR_GROUP_EDGE_GAP
+        const usableW = groupW - BAR_GROUP_EDGE_GAP * 2
+        const perBarW = n <= 1 ? usableW : Math.max(1, (usableW - (n - 1) * BAR_GROUP_EDGE_GAP) / n)
+        const category = fitSvgLine(String(cat.x), {
+          maxWidth: usableW,
           fontSize: LABEL_FONT_SIZE,
           minFontSize: LABEL_MIN_FONT_SIZE,
         })
-        return (
-          <g key={i}>
+        const barElements: ReactElement[] = []
+        for (const s of model.series) {
+          const value = s.values[i]
+          if (value == null) continue // bar gap — this series has no data for this category
+          const barX = groupX0 + s.seriesIndex * (perBarW + BAR_GROUP_EDGE_GAP)
+          const isSingle = n <= 1
+          const isMax = isSingle && value === domain.max
+          const { barY, barH } = verticalBarExtent(value, domain, plotTop, plotH)
+          // `LegendEntry.colorIndex` is always `=== seriesIndex` (pre-modulo
+          // — chart-model.ts's own doc comment on that field), so this reads
+          // `s.seriesIndex` directly rather than round-tripping through
+          // `model.legend`.
+          const fill = isSingle
+            ? isMax
+              ? accentColor
+              : `url(#${gradientId})`
+            : palette[s.seriesIndex % palette.length]
+          barElements.push(
             <rect
+              key={`r-${s.seriesIndex}`}
               x={barX}
               y={barY}
-              width={barW}
+              width={perBarW}
               height={barH}
-              fill={isMax ? accentColor : `url(#${gradientId})`}
-              opacity={isMax ? 1 : 0.75}
-            />
+              fill={fill}
+              opacity={isSingle ? (isMax ? 1 : 0.75) : 1}
+            />,
             <text
-              x={barX + barW / 2}
+              key={`v-${s.seriesIndex}`}
+              x={barX + perBarW / 2}
               y={barY - 4}
               textAnchor="middle"
               fontSize={LABEL_FONT_SIZE}
-              fill={textColor}
+              fill={isSingle ? textColor : mutedColor}
               dominantBaseline="alphabetic"
             >
-              {d.y}
-            </text>
+              {value}
+            </text>,
+          )
+        }
+        return (
+          <g key={cat.key}>
+            {barElements}
             <text
               data-truncated={category.truncated ? "1" : undefined}
-              x={barX + barW / 2}
+              x={groupX0 + usableW / 2}
               y={y0 + h - 4}
               textAnchor="middle"
               fontSize={category.fontSize}
@@ -315,31 +448,77 @@ export function renderLine(
    * drew the reference lines unconditionally too). */
   showGrid = true,
 ): ReactElement {
+  // R1 evidence wave, Task T2: every series now aligns to one shared
+  // category union and one shared value domain (chart-model.ts) instead of
+  // each series computing its own independent per-series max AND its own
+  // independent per-series x-spacing (the old `i / Math.max(s.data.length -
+  // 1, 1)` denominator used *that series'* own point count — two series of
+  // different lengths landed their points at different pixel x's even
+  // though `chart.tsx` drew one shared category axis under them). `n<=1` is
+  // the byte-compat path — see `lineValueY`'s own doc comment for the exact
+  // bit-identity derivation.
+  const model = buildChartModel(series)
+  const { categories, domain } = model
+  const n = model.series.length
   const plotTop = y0 + LABEL_TOP_PAD
   const plotH = Math.max(0, h - LABEL_TOP_PAD - LABEL_BOTTOM_PAD)
-  const baselineY = plotTop + plotH
-  const categoryPoints = series[0]?.data ?? []
-  const categoryMaxWidth = w / Math.max(categoryPoints.length - 1, 1)
+  // `zeroAxisRatio(domain)` is exactly `0` whenever `domain.min === 0`
+  // (n<=1's byte-compat shape), so `baselineY` reduces to the old hardcoded
+  // `plotTop + plotH` bit-identically there, while still locating the real
+  // zero-value row for a mixed-sign single series (never byte-protected —
+  // Global Constraint 1 — but still worth anchoring correctly since the
+  // tool is already in hand).
+  const baselineY = plotTop + plotH - zeroAxisRatio(domain) * plotH
+  const categoryMaxWidth = w / Math.max(categories.length - 1, 1)
+  const xForIndex = (i: number) => x0 + (i / Math.max(categories.length - 1, 1)) * w
+
   return (
     <>
       {showGrid && renderGridlines(x0, w, plotTop, plotH, mutedColor)}
-      {series.map((s, sIdx) => {
-        const max = Math.max(...s.data.map((d) => d.y), 1)
-        const coords = s.data.map((d, i) => ({
-          x: x0 + (i / Math.max(s.data.length - 1, 1)) * w,
-          y: plotTop + plotH - clampChartExtent((d.y / max) * plotH),
-          y_value: d.y,
-        }))
-        const pts = coords.map((c) => `${c.x},${c.y}`).join(" ")
-        const first = coords[0]
-        const last = coords[coords.length - 1]
+      {model.series.map((s) => {
+        const sIdx = s.seriesIndex
+        type Resolved = { i: number; x: number; y: number; value: number }
+        // One slot per category, `null` for a gap — a single O(n) pass, not
+        // a per-index re-scan of a filtered array.
+        const pointAt: (Resolved | null)[] = categories.map((_cat, i) => {
+          const value = s.values[i]
+          if (value == null) return null
+          return { i, x: xForIndex(i), y: lineValueY(value, domain, plotTop, plotH), value }
+        })
+        // "Line break" for a missing category (roadmap's model-driven rule):
+        // split into contiguous runs at each gap, one <polyline> per run.
+        // n<=1 never has a gap (a single series owns every category by
+        // construction — chart-model.ts's own union-order rule), so this is
+        // always exactly one run spanning every point, byte-identical to the
+        // old always-one-polyline-per-series shape. A series with zero
+        // resolved points (empty `data`) still renders one empty polyline,
+        // matching the old unconditional `<polyline points={pts} .../>`.
+        const runs: Resolved[][] = []
+        let current: Resolved[] = []
+        for (const point of pointAt) {
+          if (point) {
+            current.push(point)
+          } else if (current.length > 0) {
+            runs.push(current)
+            current = []
+          }
+        }
+        if (current.length > 0) runs.push(current)
+        if (runs.length === 0) runs.push([])
+
+        const resolved = pointAt.filter((p): p is Resolved => p !== null)
+        const first = resolved[0]
+        const last = resolved[resolved.length - 1]
         // Per-series area-under-curve gradient — each series gets its own
-        // declared id (folding sIdx into the seed) since each traces a
-        // different shape and must not share a def with another series.
-        const areaId = chartGradientId(`chart-line-area-${sIdx}`, w, h, s)
+        // declared id (folding sIdx into the seed, and hashing the
+        // *original* series object so the id stays byte-compat for n<=1) —
+        // only emitted for a single series (n>=2: "no stacked area fills,
+        // only line strokes" per the plan — transparent regions would
+        // inter-blend once more than one series can be present).
+        const areaId = chartGradientId(`chart-line-area-${sIdx}`, w, h, series[sIdx]!)
         return (
           <g key={sIdx}>
-            {first && last && (
+            {n <= 1 && first && last && (
               <>
                 <defs>
                   <linearGradient id={areaId} x1={0} y1={0} x2={0} y2={1}>
@@ -348,35 +527,38 @@ export function renderLine(
                   </linearGradient>
                 </defs>
                 <polygon
-                  points={`${pts} ${last.x},${baselineY} ${first.x},${baselineY}`}
+                  points={`${runs[0]!.map((c) => `${c.x},${c.y}`).join(" ")} ${last.x},${baselineY} ${first.x},${baselineY}`}
                   fill={`url(#${areaId})`}
                   stroke="none"
                 />
               </>
             )}
-            <polyline
-              points={pts}
-              fill="none"
-              stroke={palette[sIdx % palette.length]}
-              strokeWidth={2}
-            />
-            {/* Category labels sit under the x-axis once, off series[0]'s data
-                points — repeating them per series would stack duplicate
-                labels on the shared x-axis. */}
+            {runs.map((run, runIdx) => (
+              <polyline
+                key={`ln-${runIdx}`}
+                points={run.map((c) => `${c.x},${c.y}`).join(" ")}
+                fill="none"
+                stroke={palette[sIdx % palette.length]}
+                strokeWidth={2}
+              />
+            ))}
+            {/* Category labels sit under the x-axis once, off the shared
+                category union — repeating them per series would stack
+                duplicate labels on the shared x-axis. */}
             {sIdx === 0 &&
-              coords.map((c, i) => {
-                const category = fitSvgLine(String(categoryPoints[i]?.x ?? ""), {
+              categories.map((cat, i) => {
+                const category = fitSvgLine(String(cat.x), {
                   maxWidth: categoryMaxWidth,
                   fontSize: LABEL_FONT_SIZE,
                   minFontSize: LABEL_MIN_FONT_SIZE,
                 })
                 return (
                   <text
-                    key={`cat-${i}`}
+                    key={`cat-${cat.key}`}
                     data-truncated={category.truncated ? "1" : undefined}
-                    x={c.x}
+                    x={xForIndex(i)}
                     y={y0 + h - 4}
-                    textAnchor={edgeAnchor(i, coords.length)}
+                    textAnchor={edgeAnchor(i, categories.length)}
                     fontSize={category.fontSize}
                     fill={mutedColor}
                     dominantBaseline="alphabetic"
@@ -386,34 +568,38 @@ export function renderLine(
                 )
               })}
             {/* Value labels only at each series' endpoints — every point would
-                clutter a many-point line, unlike bar's one-label-per-bar. */}
+                clutter a many-point line, unlike bar's one-label-per-bar.
+                "Endpoints" now means the first/last *non-null* point (a
+                trailing/leading gap has no coordinate to be first or last
+                at), but the edge-anchor direction still reads off that
+                point's real position in the shared category axis. */}
             {first && (
               <text
                 x={first.x}
                 y={first.y - 6}
-                textAnchor={edgeAnchor(0, coords.length)}
+                textAnchor={edgeAnchor(first.i, categories.length)}
                 fontSize={LABEL_FONT_SIZE}
                 fill={textColor}
                 dominantBaseline="alphabetic"
               >
-                {first.y_value}
+                {first.value}
               </text>
             )}
             {last && last !== first && (
               <text
                 x={last.x}
                 y={last.y - 6}
-                textAnchor={edgeAnchor(coords.length - 1, coords.length)}
+                textAnchor={edgeAnchor(last.i, categories.length)}
                 fontSize={LABEL_FONT_SIZE}
                 fill={textColor}
                 dominantBaseline="alphabetic"
               >
-                {last.y_value}
+                {last.value}
               </text>
             )}
             {/* Endpoint emphasis: a soft outer ring plus a solid accent dot,
-                always at the series' last point (even a single-point series,
-                where it coincides with `first`). */}
+                always at the series' last non-null point (even a
+                single-point series, where it coincides with `first`). */}
             {last && (
               <>
                 <circle
@@ -660,10 +846,18 @@ export function renderDumbbell(
  * 最大条实色 accent，其余同竖版走渐变（横向）。
  */
 const BAR_H_LABEL_W = 110
+/** Row edge margin (px, was the inline literals `5`/`rowH - 10`) — reused as
+ * the intra-group gap between sibling sub-rows in a grouped (n>=2) category,
+ * same rationale as `renderBar`'s own `BAR_GROUP_EDGE_GAP`. */
+const BAR_H_ROW_EDGE_GAP = 5
+/** Row thickness floor (px, was the inline literal `4` in `Math.max(4, rowH
+ * - 10)`) — reused unchanged as the floor for each sub-row in a grouped
+ * category too, rather than inventing a second minimum. */
+const BAR_H_MIN_THICKNESS = 4
 
 export function renderBarHorizontal(
   series: ChartSeries[],
-  _palette: string[],
+  palette: string[],
   x0: number,
   y0: number,
   w: number,
@@ -681,39 +875,95 @@ export function renderBarHorizontal(
    */
   showGrid = false,
 ): ReactElement {
-  const points = series[0]?.data ?? []
-  if (points.length === 0) return <></>
-  const max = Math.max(...points.map((d) => d.y), 1)
-  const rowH = h / points.length
+  // R1 evidence wave, Task T2 — same category-union/shared-domain wiring as
+  // `renderBar`, mirrored onto the perpendicular axis (rows instead of
+  // columns, `horizontalBarExtent` instead of `verticalBarExtent`). This
+  // component previously read only `series[0]?.data`, same defect class as
+  // the old `renderBar` (chart-model.ts's own header comment).
+  const model = buildChartModel(series)
+  const { categories, domain } = model
+  if (categories.length === 0) return <></>
+  const n = model.series.length
+  const rowH = h / categories.length
   const plotX = x0 + BAR_H_LABEL_W + 12
   const plotW = Math.max(1, w - BAR_H_LABEL_W - 12 - 64)
   const gradientId = chartGradientId("chart-barh-grad", w, h, series)
   const gradientShade = scaleHexBrightness(accentColor, BAR_GRADIENT_SHADE_FACTOR)
   return (
     <>
-      <defs>
-        <linearGradient id={gradientId} x1={0} y1={0} x2={1} y2={0}>
-          <stop offset="0%" stopColor={gradientShade} />
-          <stop offset="100%" stopColor={accentColor} />
-        </linearGradient>
-      </defs>
+      {n <= 1 && (
+        <defs>
+          <linearGradient id={gradientId} x1={0} y1={0} x2={1} y2={0}>
+            <stop offset="0%" stopColor={gradientShade} />
+            <stop offset="100%" stopColor={accentColor} />
+          </linearGradient>
+        </defs>
+      )}
       {showGrid && renderGridlinesVertical(y0, h, plotX, plotW, mutedColor)}
-      {points.map((d, i) => {
-        const barW = clampChartExtent((d.y / max) * plotW)
-        const barY = y0 + i * rowH + 5
-        const barH = Math.max(4, rowH - 10)
-        const isMax = d.y === max
-        const label = fitSvgLine(String(d.x), {
+      {categories.map((cat, i) => {
+        // Row geometry, mirrors renderBar's group geometry comment: n<=1
+        // keeps the old unconditional `Math.max(4, rowH - 10)` floor
+        // (`perBarH === Math.max(BAR_H_MIN_THICKNESS, usableH)`, same
+        // expression, byte-identical); n>=2 splits the row into n sub-rows
+        // with (n-1) intra-group gaps of the same BAR_H_ROW_EDGE_GAP unit.
+        const rowY0 = y0 + i * rowH + BAR_H_ROW_EDGE_GAP
+        const usableH = rowH - BAR_H_ROW_EDGE_GAP * 2
+        const perBarH =
+          n <= 1
+            ? Math.max(BAR_H_MIN_THICKNESS, usableH)
+            : Math.max(BAR_H_MIN_THICKNESS, (usableH - (n - 1) * BAR_H_ROW_EDGE_GAP) / n)
+        // Category (row) label centers on the whole group, n==1 or n>=2
+        // alike — for n<=1 this is algebraically (and bit-for-bit, same
+        // expression) the single bar's own center, matching the old shared
+        // `barY + barH / 2 + 4` both the row label and value label read.
+        const labelCenterY = n <= 1 ? rowY0 + perBarH / 2 + 4 : rowY0 + usableH / 2 + 4
+        const label = fitSvgLine(String(cat.x), {
           maxWidth: BAR_H_LABEL_W,
           fontSize: 13,
           minFontSize: 10,
         })
+        const barElements: ReactElement[] = []
+        for (const s of model.series) {
+          const value = s.values[i]
+          if (value == null) continue // bar gap — this series has no data for this category
+          const barY = rowY0 + s.seriesIndex * (perBarH + BAR_H_ROW_EDGE_GAP)
+          const isSingle = n <= 1
+          const isMax = isSingle && value === domain.max
+          const { barX, barW } = horizontalBarExtent(value, domain, plotX, plotW)
+          const fill = isSingle
+            ? isMax
+              ? accentColor
+              : `url(#${gradientId})`
+            : palette[s.seriesIndex % palette.length]
+          barElements.push(
+            <rect
+              key={`r-${s.seriesIndex}`}
+              x={barX}
+              y={barY}
+              width={barW}
+              height={perBarH}
+              fill={fill}
+              opacity={isSingle ? (isMax ? 1 : 0.75) : 1}
+            />,
+            <text
+              key={`v-${s.seriesIndex}`}
+              x={barX + barW + 8}
+              y={barY + perBarH / 2 + 4}
+              fontSize={12.5}
+              fontWeight="bold"
+              fill={isSingle ? (isMax ? accentColor : mutedColor) : mutedColor}
+              dominantBaseline="alphabetic"
+            >
+              {value}
+            </text>,
+          )
+        }
         return (
-          <g key={i}>
+          <g key={cat.key}>
             <text
               data-truncated={label.truncated ? "1" : undefined}
               x={x0 + BAR_H_LABEL_W}
-              y={barY + barH / 2 + 4}
+              y={labelCenterY}
               textAnchor="end"
               fontSize={label.fontSize}
               fontWeight="600"
@@ -722,24 +972,7 @@ export function renderBarHorizontal(
             >
               {label.text}
             </text>
-            <rect
-              x={plotX}
-              y={barY}
-              width={barW}
-              height={barH}
-              fill={isMax ? accentColor : `url(#${gradientId})`}
-              opacity={isMax ? 1 : 0.75}
-            />
-            <text
-              x={plotX + barW + 8}
-              y={barY + barH / 2 + 4}
-              fontSize={12.5}
-              fontWeight="bold"
-              fill={isMax ? accentColor : mutedColor}
-              dominantBaseline="alphabetic"
-            >
-              {d.y}
-            </text>
+            {barElements}
           </g>
         )
       })}

@@ -32,6 +32,7 @@ import { traits as pestTraits } from "@/ir/components/pest"
 import { traits as fiveForcesTraits } from "@/ir/components/five-forces"
 import { traits as heatmapTraits } from "@/ir/components/heatmap"
 import { traits as sankeyTraits } from "@/ir/components/sankey"
+import { traits as dataTableTraits } from "@/ir/components/data-table"
 import {
   EVIDENCE_TYPES,
   FULL_BODY_TYPES,
@@ -81,6 +82,7 @@ const DOMAIN_FILE_TRAITS: readonly (readonly [string, { readonly evidence: boole
   ["five_forces", fiveForcesTraits],
   ["heatmap", heatmapTraits],
   ["sankey", sankeyTraits],
+  ["data_table", dataTableTraits],
 ]
 
 /**
@@ -106,13 +108,22 @@ describe("STRETCHABLE_TYPES equivalence (was layout.ts:137)", () => {
   })
 })
 
-describe("SELF_VISUAL_TYPES equivalence (was bento-layout.ts:210-216)", () => {
-  it("matches the pre-refactor members exactly", () => {
+describe("SELF_VISUAL_TYPES equivalence (was bento-layout.ts:210-216, plus R1's data_table addition)", () => {
+  it("matches the pre-refactor members plus data_table (R1 evidence wave, Task T3 — first new selfVisual:true declaration since the W2 task 5 refactor)", () => {
     // bento-layout.ts:210-216 (pre-refactor):
     // new Set(["callout", "code", "comparison", "quote", "verdict_banner"])
     const preRefactor = ["callout", "code", "comparison", "quote", "verdict_banner"]
-    expect(new Set(SELF_VISUAL_TYPES)).toEqual(new Set(preRefactor))
-    expect(SELF_VISUAL_TYPES.size).toBe(preRefactor.length)
+    // R1 evidence wave, Task T3 (plan's explicit traits contract): data_table
+    // declares selfVisual: true too — it draws its own rule-line table shell
+    // (header rule + row separators + emphasis-row tint), so painting bento's
+    // own outline shell behind it would be a redundant "卡中卡", the same
+    // reasoning every pre-refactor member above already documents. A real,
+    // intentional addition to this set's membership, not drift — the
+    // pre-refactor array above stays as the historical baseline this lock
+    // originally pinned.
+    const current = [...preRefactor, "data_table"]
+    expect(new Set(SELF_VISUAL_TYPES)).toEqual(new Set(current))
+    expect(SELF_VISUAL_TYPES.size).toBe(current.length)
   })
 })
 
@@ -133,21 +144,35 @@ describe("SCALABLE_TYPES duplication verdict (content-bento-panel.tsx:105 vs con
   })
 })
 
-describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-143)", () => {
-  it("matches the pre-refactor members exactly", () => {
+describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-143, plus R1's data_table addition)", () => {
+  it("matches the pre-refactor members plus data_table (R1 evidence wave, Task T3 — first new passthroughShell:true declaration since the W2 task 5 refactor)", () => {
     // content-bento-panel.tsx:134-143 (pre-refactor):
     // new Set(["steps", "flowchart", "architecture", "timeline", "paragraph", "quote"])
     const preRefactor = ["steps", "flowchart", "architecture", "timeline", "paragraph", "quote"]
-    expect(new Set(PASSTHROUGH_SHELL_TYPES)).toEqual(new Set(preRefactor))
-    expect(PASSTHROUGH_SHELL_TYPES.size).toBe(preRefactor.length)
+    // R1 evidence wave, Task T3 (plan's explicit traits contract): data_table
+    // declares passthroughShell: true too — same reasoning as
+    // flowchart/architecture/timeline above (draws its own internal chrome,
+    // no enclosing card), so the bento shell paint should be skipped for it
+    // as well. A real, intentional addition, not drift — the pre-refactor
+    // array above stays as the historical baseline this lock originally
+    // pinned.
+    const current = [...preRefactor, "data_table"]
+    expect(new Set(PASSTHROUGH_SHELL_TYPES)).toEqual(new Set(current))
+    expect(PASSTHROUGH_SHELL_TYPES.size).toBe(current.length)
   })
 })
 
 describe("EVIDENCE_TYPES equivalence (was assertion-evidence.tsx:8-13) — order is load-bearing", () => {
-  it("matches the pre-refactor priority order exactly, not just membership", () => {
+  it("matches the current priority order (R1 evidence wave, Task T3 inserted data_table after chart, before image)", () => {
     // assertion-evidence.tsx:8-13 (pre-refactor):
     // ["chart", "image", "comparison", "kpi_cards"] as const satisfies readonly Component["type"][]
-    expect(EVIDENCE_TYPES).toEqual(["chart", "image", "comparison", "kpi_cards"])
+    // R1 evidence wave, Task T3 (plan's explicit ordering call): "data_table"
+    // inserted right after "chart" — see EVIDENCE_TYPES' own doc comment
+    // (component-traits.ts) for the rationale. A deliberate, intentional
+    // change to this array's content, not a drift — the pre-refactor value
+    // above is kept in the comment as the historical baseline this lock
+    // originally pinned.
+    expect(EVIDENCE_TYPES).toEqual(["chart", "data_table", "image", "comparison", "kpi_cards"])
   })
 
   it("is a tuple (ordered array), not a Set — priority dispatch depends on iteration order", () => {

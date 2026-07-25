@@ -1091,6 +1091,172 @@ describe("checkIrQuality", () => {
     })
   })
 
+  // ── chart_duplicate_category (R1 evidence wave, Task T2) ──
+  // chart-model.ts's buildChartModel flags an x value repeated within one
+  // series (kept: first occurrence, dropped: the rest) — a data-authoring
+  // concern independent of chart_type, so this runs for every chart_type,
+  // not just bar/line (unlike chart_axes_ignored above, which is scoped to
+  // the types that actually ignore the field).
+
+  it("warns when a series has a duplicate category value within itself", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1", data: [{ x: "East", y: 10 }, { x: "East", y: 20 }, { x: "West", y: 15 }] }],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).toContain("chart_duplicate_category")
+  })
+
+  it("does NOT warn when every series has distinct category values", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1", data: [{ x: "East", y: 10 }, { x: "West", y: 15 }] }],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).not.toContain("chart_duplicate_category")
+  })
+
+  it("does NOT warn when the same category appears across different series (cross-series sharing is normal, not a duplicate)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "line",
+            series: [
+              { name: "2025", data: [{ x: "Q1", y: 10 }, { x: "Q2", y: 20 }] },
+              { name: "2026", data: [{ x: "Q1", y: 15 }, { x: "Q2", y: 25 }] },
+            ],
+          },
+        ],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).not.toContain("chart_duplicate_category")
+  })
+
+  it("reports one issue per repeated key, not one per repeat occurrence (a key repeated 3x in one series is one issue)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1", data: [{ x: "East", y: 1 }, { x: "East", y: 2 }, { x: "East", y: 3 }] }],
+          },
+        ],
+      },
+    ])
+    const issues = checkIrQuality(ir).filter((i) => i.code === "chart_duplicate_category")
+    expect(issues).toHaveLength(1)
+  })
+
+  it("fires for every chart_type, including pie/funnel/dumbbell — the data-quality concern is chart_type-agnostic (unlike chart_axes_ignored)", () => {
+    for (const chart_type of ["pie", "funnel", "dumbbell"] as const) {
+      const series =
+        chart_type === "dumbbell"
+          ? [
+              { name: "From", data: [{ x: "A", y: 10 }, { x: "A", y: 20 }] },
+              { name: "To", data: [{ x: "A", y: 30 }] },
+            ]
+          : [{ name: "S1", data: [{ x: "A", y: 10 }, { x: "A", y: 20 }, { x: "B", y: 15 }] }]
+      const ir = makeIR([
+        { type: "content", heading: "h", components: [{ type: "chart", chart_type, series }] },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("chart_duplicate_category")
+    }
+  })
+
+  it("carries the series name and the duplicated x value, and is warn-severity (never blocks)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Revenue",
+        components: [
+          {
+            type: "chart",
+            chart_type: "bar",
+            series: [{ name: "Q1 Actuals", data: [{ x: "East", y: 10 }, { x: "East", y: 20 }] }],
+          },
+        ],
+      },
+    ])
+    const issue = checkIrQuality(ir).find((i) => i.code === "chart_duplicate_category")
+    expect(issue?.severity).toBe("warn")
+    expect(issue?.chartDuplicateCategory).toEqual({ seriesName: "Q1 Actuals", x: "East" })
+  })
+
+  // ── data_table_missing_cell (R1 evidence wave, Task T3) ──
+  // data-table.ts's schema tolerates a row whose `cells` omits one of
+  // `columns`' declared keys (renders empty, never a parse error) — this is
+  // the pre-render advisory for that lenient half of the contract. The
+  // *strict* half (an extra key not declared in any column) is a schema-level
+  // hard error instead (`ir/index.test.ts`'s data_table describe block), not
+  // a quality warning — this file only covers the lenient/warn half.
+
+  const dataTableIR = (rows: Array<{ cells: Record<string, string | number>; emphasis?: "highlight" | "total" }>) =>
+    makeIR([
+      {
+        type: "content",
+        heading: "Metrics",
+        components: [
+          {
+            type: "data_table",
+            columns: [
+              { key: "metric", label: "Metric" },
+              { key: "q1", label: "Q1" },
+            ],
+            rows,
+          },
+        ],
+      },
+    ])
+
+  it("warns when a row's cells omit a declared column's key", () => {
+    const ir = dataTableIR([{ cells: { metric: "Revenue" } }])
+    expect(codes(checkIrQuality(ir))).toContain("data_table_missing_cell")
+  })
+
+  it("does NOT warn when every row's cells cover every declared column", () => {
+    const ir = dataTableIR([{ cells: { metric: "Revenue", q1: "120" } }])
+    expect(codes(checkIrQuality(ir))).not.toContain("data_table_missing_cell")
+  })
+
+  it("reports one issue per missing key, not one per row (a row missing 2 of 2 keys produces 2 issues)", () => {
+    const ir = dataTableIR([{ cells: {} }])
+    const issues = checkIrQuality(ir).filter((i) => i.code === "data_table_missing_cell")
+    expect(issues).toHaveLength(2)
+  })
+
+  it("carries the row index and the missing column key, and is warn-severity (never blocks)", () => {
+    const ir = dataTableIR([
+      { cells: { metric: "Revenue", q1: "120" } },
+      { cells: { metric: "Costs" } }, // row index 1, missing "q1"
+    ])
+    const issue = checkIrQuality(ir).find((i) => i.code === "data_table_missing_cell")
+    expect(issue?.severity).toBe("warn")
+    expect(issue?.dataTableMissingCell).toEqual({ rowIndex: 1, key: "q1" })
+  })
+
   // ── multiple issues on one slide ──
 
   it("can report multiple issues on a single slide (default narrative: general/balanced)", () => {

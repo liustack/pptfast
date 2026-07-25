@@ -1,6 +1,8 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { rotateChartPalette } from "../chart-palette"
+import { accessibleInk } from "../ink"
+import { buildChartModel } from "./chart-model"
 import type { RenderDef, SvgComponent } from "./types"
 import {
   renderBar,
@@ -68,6 +70,95 @@ function axesApplicable(component: ChartComponent): boolean {
   return AXES_APPLICABLE_TYPES.has(component.chart_type)
 }
 
+/**
+ * Legend applicability (R1 evidence wave, Task T2 — roadmap §6.1.2's legend
+ * model, rendering half). Deliberately reuses `axesApplicable`'s own
+ * bar/line chart_type set rather than declaring a second identical one —
+ * unlike `ir-quality.ts`'s own `AXES_APPLICABLE_CHART_TYPES` (a genuine
+ * cross-file duplicate, justified by that file's render/quality layering
+ * split), this check lives in the *same file* as `axesApplicable`, so
+ * reusing it directly is simplification, not risk: pie/donut (radial, no
+ * per-series comparison axis), funnel and dumbbell (no shared category
+ * axis a legend's color-to-series mapping would sit against) never gain a
+ * legend regardless of `series.length`, matching the byte-compat boundary
+ * that keeps their dispatch path untouched (roadmap §6.1.4). The second
+ * half of the condition — `series.length >= 2` — is the actual legend
+ * trigger: never for a single series (byte-compat — see the golden pins),
+ * always from two series up.
+ */
+function legendApplicable(component: ChartComponent): boolean {
+  return axesApplicable(component) && component.series.length >= 2
+}
+
+/** Legend swatch (px, square) — small enough to read as a color chip
+ * alongside an 11px name, not so large it unbalances a single-line band. */
+const LEGEND_SWATCH_SIZE = 10
+/** Legend name font size (px) — matches chart-svg.tsx's own LABEL_FONT_SIZE
+ * (bar/line category & value labels), so legend text reads at the same
+ * visual weight as the chart content it describes. */
+const LEGEND_FONT_SIZE = 11
+const LEGEND_MIN_FONT_SIZE = 9
+/** Per-entry name budget (px) before `fitSvgLine` shrinks/truncates it. */
+const LEGEND_NAME_MAX_W = 96
+/** Gap (px) between a swatch and its own name. */
+const LEGEND_SWATCH_GAP = 6
+/** Gap (px) after one entry's name before the next entry's swatch starts —
+ * keeps adjacent entries visually separated at any name length (fitSvgLine
+ * caps the name at LEGEND_NAME_MAX_W, so this trailing gap is never eaten
+ * by overflow text). */
+const LEGEND_ENTRY_TRAILING_GAP = 18
+/** One legend entry's fixed pixel slot: swatch + gap + name budget +
+ * trailing gap. A coarse, deterministic budget — same "approximate, not a
+ * real per-character canvas measurement" style `maxYAxisChars`/
+ * `fitHeadingLines` already use throughout this codebase — not an exact fit:
+ * how many entries fit a given width is `floor(availW / LEGEND_SLOT_W)`,
+ * and any individual name too long for its own slot shrinks/truncates via
+ * `fitSvgLine` rather than growing the slot. Entries beyond that count drop
+ * into one trailing "+N more" slot instead of shrinking every slot further
+ * — the same "fixed reserved footprint, content adapts to it" contract
+ * `measure()`'s own x_title/y_title bands already use.
+ */
+const LEGEND_SLOT_W = LEGEND_SWATCH_SIZE + LEGEND_SWATCH_GAP + LEGEND_NAME_MAX_W + LEGEND_ENTRY_TRAILING_GAP
+/** Band height (px) reserved below the plot (and below x_title's own band,
+ * if also present) for the legend row — mirrors AXES_X_TITLE_H's "reserve a
+ * fixed band, add it to measure() only when the content that needs it is
+ * actually present" pattern. */
+const LEGEND_BAND_H = 26
+
+type LegendSlot = {
+  seriesIndex: number
+  colorIndex: number
+  slotX: number
+  fitted: ReturnType<typeof fitSvgLine>
+}
+
+/**
+ * Lays out a chart's legend entries (chart-model.ts's `ChartModel.legend`,
+ * already in input series order) against `availW` px: how many whole slots
+ * fit, each visible entry's own fitted (shrunk/truncated) name, and how many
+ * trailing entries got dropped into a "+N more" marker instead. Pure
+ * function of `legend`/`availW` — no rendering, mirrors this file's own
+ * `fitYAxisTitle`'s "compute the fit, let the caller draw it" shape.
+ */
+function layoutChartLegend(
+  legend: ReturnType<typeof buildChartModel>["legend"],
+  availW: number,
+): { slots: LegendSlot[]; droppedCount: number } {
+  const maxVisible = Math.max(1, Math.floor(availW / LEGEND_SLOT_W))
+  const showCount = legend.length <= maxVisible ? legend.length : Math.max(0, maxVisible - 1)
+  const slots: LegendSlot[] = legend.slice(0, showCount).map((entry, idx) => ({
+    seriesIndex: entry.seriesIndex,
+    colorIndex: entry.colorIndex,
+    slotX: idx * LEGEND_SLOT_W,
+    fitted: fitSvgLine(entry.name, {
+      maxWidth: LEGEND_NAME_MAX_W,
+      fontSize: LEGEND_FONT_SIZE,
+      minFontSize: LEGEND_MIN_FONT_SIZE,
+    }),
+  }))
+  return { slots, droppedCount: legend.length - showCount }
+}
+
 /** Font size (px) for both x_title and y_title. */
 const AXES_TITLE_SIZE = 11
 /** Band height (px) reserved below the CHART_H plot for x_title — added to
@@ -133,7 +224,8 @@ function fitYAxisTitle(text: string, availH: number): { chars: string[]; truncat
 export const chart: SvgComponent<ChartComponent> = {
   measure(component) {
     const hasXTitle = axesApplicable(component) && !!component.axes?.x_title
-    return CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0)
+    const hasLegend = legendApplicable(component)
+    return CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0) + (hasLegend ? LEGEND_BAND_H : 0)
   },
   render(component, box, ctx) {
     const renderer = resolveRenderer(component)
@@ -160,6 +252,18 @@ export const chart: SvgComponent<ChartComponent> = {
     // undefined/0 rotates to a same-values copy (`rotateChartPalette`'s own
     // doc comment) — a byte-identical multiset either way.
     const palette = rotateChartPalette(ctx.colors.chartPalette, ctx.chartPaletteOffset ?? 0)
+
+    // Legend (R1 evidence wave, Task T2): same "compute a model, render
+    // below the plot in a reserved band" shape as x_title/y_title just
+    // above — `legendApplicable` (never for a single series, never for
+    // pie/donut/funnel/dumbbell) gates it off entirely for every
+    // byte-compat-pinned or byte-compat-boundary case, so this block is a
+    // pure no-op (renders nothing, `legendTop`/layout unused) whenever it
+    // doesn't apply.
+    const hasLegend = legendApplicable(component)
+    const legendTop = CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0)
+    const legendLayout = hasLegend ? layoutChartLegend(buildChartModel(component.series).legend, plotW) : null
+    const legendBg = ctx.defaultBg ?? ctx.colors.bg
 
     return (
       <g transform={`translate(${box.x},${box.y})`}>
@@ -208,6 +312,50 @@ export const chart: SvgComponent<ChartComponent> = {
               </text>
             ))
           : null}
+        {legendLayout ? (
+          <g>
+            {legendLayout.slots.map((slot) => {
+              const swatchX = yTitleW + slot.slotX
+              const swatchY = legendTop + (LEGEND_BAND_H - LEGEND_SWATCH_SIZE) / 2
+              const nameFill = accessibleInk(ctx.colors.muted, legendBg, slot.fitted.fontSize)
+              return (
+                <g key={slot.seriesIndex}>
+                  <rect
+                    x={swatchX}
+                    y={swatchY}
+                    width={LEGEND_SWATCH_SIZE}
+                    height={LEGEND_SWATCH_SIZE}
+                    fill={palette[slot.colorIndex % palette.length]}
+                  />
+                  <text
+                    data-truncated={slot.fitted.truncated ? "1" : undefined}
+                    x={swatchX + LEGEND_SWATCH_SIZE + LEGEND_SWATCH_GAP}
+                    y={legendTop + LEGEND_BAND_H - 8}
+                    fontSize={slot.fitted.fontSize}
+                    fill={nameFill}
+                    fontFamily={ctx.fonts.body}
+                    dominantBaseline="alphabetic"
+                  >
+                    {slot.fitted.text}
+                  </text>
+                </g>
+              )
+            })}
+            {legendLayout.droppedCount > 0 && (
+              <text
+                data-dropped={legendLayout.droppedCount}
+                x={yTitleW + legendLayout.slots.length * LEGEND_SLOT_W}
+                y={legendTop + LEGEND_BAND_H - 8}
+                fontSize={LEGEND_FONT_SIZE}
+                fill={accessibleInk(ctx.colors.muted, legendBg, LEGEND_FONT_SIZE)}
+                fontFamily={ctx.fonts.body}
+                dominantBaseline="alphabetic"
+              >
+                {`+${legendLayout.droppedCount} more`}
+              </text>
+            )}
+          </g>
+        ) : null}
       </g>
     )
   },

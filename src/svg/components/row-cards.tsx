@@ -82,11 +82,24 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     let cursor = 0
     return (
       <g transform={`translate(${box.x},${box.y})`}>
-        {component.items.slice(0, visible).map((item, i) => {
+        {component.items.slice(0, visible).map((item, i, visibleItems) => {
           const { title, text, sub, contentH, cardH } = layouts[i]
           const shellH = cardH + perCardGrow
           const cardY = cursor
-          cursor += shellH + CARD_GAP
+          // CARD_GAP only *between* cards (N-1 gaps for N cards) — matches
+          // the acceptance loop above and measure()'s own formula exactly.
+          // A fix-round bug (R1 evidence wave, Task T3 review — a real,
+          // production-reachable defect a stress-fixture reshuffle exposed,
+          // fixed here per Global Constraint 6/the I3 precedent rather than
+          // routed around) used to add this gap unconditionally, including
+          // after the *last* visible card — the acceptance loop never
+          // budgeted for that extra 14px, so the "+N more" marker below
+          // (placed at `cursor + 14`) could land up to 8px past `box.h`,
+          // outside the real overflow auditor's own tolerance. The marker
+          // is meant to sit 14px below the last card's own shell, not
+          // 14px below "last card + one more unnecessary gap" — see
+          // row-cards.test.tsx's sweep for the regression pin.
+          cursor += shellH + (i < visibleItems.length - 1 ? CARD_GAP : 0)
           const hl = Boolean(item.highlight)
           const contentTop = cardY + (shellH - contentH) / 2
           const numCy = cardY + shellH / 2

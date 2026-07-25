@@ -486,10 +486,21 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           series: [
             {
               name: CHART_LABEL,
+              // R1 evidence wave, Task T2 dup-x pre-fix (plan amendment):
+              // these 3 points used to share one literal `x: CHART_LABEL`
+              // value — harmless before chart-model.ts existed (renderBar
+              // walked `data` positionally, oblivious to x at all), but once
+              // T2 wires buildChartModel's "duplicate x within a series ->
+              // keep first, drop the rest" rule in, 2 of these 3 points
+              // would silently collapse into 1 category, losing the
+              // label-width stress this page exists for. Suffixed instead
+              // of replaced so every point still exercises the same
+              // near-24-char CHART_LABEL width pressure, just as 3 genuinely
+              // distinct categories.
               data: [
-                { x: CHART_LABEL, y: 10 },
-                { x: CHART_LABEL, y: 20 },
-                { x: CHART_LABEL, y: 15 },
+                { x: `${CHART_LABEL} 1`, y: 10 },
+                { x: `${CHART_LABEL} 2`, y: 20 },
+                { x: `${CHART_LABEL} 3`, y: 15 },
               ],
             },
           ],
@@ -501,16 +512,21 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           series: [
             {
               name: CHART_LABEL,
+              // Same dup-x pre-fix as the bar chart above — both series
+              // reuse the identical 2 suffixed labels (not 4 distinct ones)
+              // so they align onto the same 2-category shared domain once T2
+              // wires the model in, exercising multi-series category
+              // alignment rather than diluting it into two disjoint sets.
               data: [
-                { x: CHART_LABEL, y: 5 },
-                { x: CHART_LABEL, y: 25 },
+                { x: `${CHART_LABEL} 1`, y: 5 },
+                { x: `${CHART_LABEL} 2`, y: 25 },
               ],
             },
             {
               name: CHART_LABEL,
               data: [
-                { x: CHART_LABEL, y: 8 },
-                { x: CHART_LABEL, y: 18 },
+                { x: `${CHART_LABEL} 1`, y: 8 },
+                { x: `${CHART_LABEL} 2`, y: 18 },
               ],
             },
           ],
@@ -529,9 +545,12 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
           series: [
             {
               name: CHART_LABEL,
+              // Same dup-x pre-fix as the two_column page's bar chart above
+              // (this page has its own independent chart instance, same
+              // pre-existing shared-x fixture bug).
               data: [
-                { x: CHART_LABEL, y: 10 },
-                { x: CHART_LABEL, y: 20 },
+                { x: `${CHART_LABEL} 1`, y: 10 },
+                { x: `${CHART_LABEL} 2`, y: 20 },
               ],
             },
           ],
@@ -1121,6 +1140,72 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
               highlight: false,
             },
           ],
+        },
+      ],
+    },
+    // data_table (R1 evidence wave, Task T3 — 33rd component, first through
+    // the wave-2 domain-file flow): schema-max 8 columns x 12 rows, CJK-long
+    // header/cell content, an emphasis mix (highlight + total), stressing
+    // both this fix round's headline concern (header/total-row text renders
+    // bold — column widths must be derived, and each cell fitted, with
+    // `bold`/`fontFamily` threaded into `fitSvgLine`, matrix.tsx's own
+    // "bold-width lesson") and CJK truncation across a genuinely narrow
+    // per-column budget (8 columns sharing one content-rect width). Two
+    // headers reuse `BOLD_STRESS_PHRASES` entries verbatim (Georgia Bold's
+    // own worst-measured characters, same reuse-not-invent precedent as
+    // every other page in this deck) instead of CJK, so both scripts'
+    // bold-metrics paths get real end-to-end pressure on this component, not
+    // just CJK's.
+    {
+      type: "content",
+      heading: "数据表压力测试",
+      components: [
+        {
+          type: "data_table",
+          columns: [
+            { key: "metric", label: CJK_LONG.slice(0, 16) },
+            { key: "region", label: CJK_LONG_WITH_DASH.slice(0, 14) },
+            { key: "q1", label: BOLD_STRESS_PHRASES[0], align: "right" },
+            { key: "q2", label: "Q2", align: "right" },
+            { key: "q3", label: "Q3", align: "right" },
+            { key: "q4", label: BOLD_STRESS_PHRASES[1], align: "right" },
+            { key: "yoy", label: "YoY %", align: "right" },
+            { key: "note", label: DIAGRAM_LABEL },
+          ],
+          rows: Array.from({ length: 12 }, (_, r) => {
+            if (r === 11) {
+              // 汇总行：total 强调——数值列也要扛住加粗渲染压力，不只是
+              // 表头。
+              return {
+                cells: {
+                  metric: "合计",
+                  region: "全部区域",
+                  q1: "1,234,567.89",
+                  q2: "987,654.32",
+                  q3: "1,111,111.11",
+                  q4: "2,222,222.22",
+                  yoy: "+88.8%",
+                  note: MIXED_LONG,
+                },
+                emphasis: "total" as const,
+              }
+            }
+            const emphasis = r === 2 || r === 7 ? ("highlight" as const) : undefined
+            return {
+              cells: {
+                metric: r % 3 === 0 ? CJK_LONG : `${CJK_LONG_WITH_DASH.slice(0, 10)}${r}`,
+                region: BOLD_STRESS_PHRASES[r % BOLD_STRESS_PHRASES.length],
+                q1: `${(r + 1) * 111}.${r}`,
+                q2: `${(r + 1) * 87}.${r}`,
+                q3: `-${r * 12}.5`,
+                q4: `${(r + 1) * 203}`,
+                yoy: `${r % 2 === 0 ? "+" : "-"}${r * 3}.${r}%`,
+                note: r % 4 === 0 ? MIXED_LONG : DIAGRAM_LABEL,
+              },
+              ...(emphasis ? { emphasis } : {}),
+            }
+          }),
+          source: CJK_LONG_WITH_DASH,
         },
       ],
     },

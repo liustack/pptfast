@@ -207,6 +207,28 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `axes settings (x_title/y_title/show_grid) are not supported for "${chartType}" charts and are ignored — only bar and line charts render them`
         : "chart axes settings (x_title/y_title/show_grid) are not supported for this chart type and are ignored — only bar and line charts render them"
     }
+    case "chart_duplicate_category": {
+      // R1 evidence wave, Task T2: chart-model.ts's buildChartModel found a
+      // category (x value) repeated within one series — names the series
+      // and the repeated value via `issue.chartDuplicateCategory`, same
+      // structured-field convention as `chartAxesIgnored` above.
+      const d = issue.chartDuplicateCategory
+      return d
+        ? `chart series "${d.seriesName}" has a duplicate category "${d.x}" — only the first occurrence is kept, later ones are dropped`
+        : "a chart series has a duplicate category value — only the first occurrence is kept, later ones are dropped"
+    }
+    case "data_table_missing_cell": {
+      // R1 evidence wave, Task T3: a data_table row's `cells` omits one of
+      // `columns`' declared keys — schema-legal (the lenient half of the
+      // plan's revised contract), rendered as an empty cell by
+      // data-table.tsx. Names the row index and the missing key via
+      // `issue.dataTableMissingCell`, same structured-field convention as
+      // `chartDuplicateCategory` above.
+      const d = issue.dataTableMissingCell
+      return d
+        ? `data table row ${d.rowIndex} is missing a value for column "${d.key}" — that cell will render empty`
+        : "a data table row is missing a value for a declared column — that cell will render empty"
+    }
     default:
       return `content quality issue (${issue.code})`
   }

@@ -1040,6 +1040,158 @@ describe("describeQualityIssue: chart_axes_ignored English message (chart-axes f
   })
 })
 
+describe("describeQualityIssue: chart_duplicate_category English message (R1 evidence wave, Task T2)", () => {
+  // chart-model.ts's buildChartModel flags a category (x value) repeated
+  // within one series — a warn-severity advisory (Global Constraint 2: a
+  // data-quality concern, never a schema-level hard error), translated to
+  // English here for the public validate surface, same convention as
+  // chart_axes_ignored above.
+  it("names the series and the duplicated category, and stays ok:true (warn, not error)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Revenue",
+          components: [
+            {
+              type: "chart",
+              chart_type: "bar",
+              series: [
+                {
+                  name: "Q1 Actuals",
+                  data: [{ x: "East", y: 10 }, { x: "East", y: 20 }, { x: "West", y: 15 }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    const warning = v.warnings?.find((w) => w.message.includes("duplicate category"))
+    expect(warning).toBeTruthy()
+    expect(warning?.message).toMatch(/Q1 Actuals/)
+    expect(warning?.message).toMatch(/East/)
+    // public surface (CLI output/error messages) is English — never leak
+    // ir-quality.ts's own internal Chinese wording.
+    expect(warning?.message).not.toMatch(/[一-鿿]/)
+  })
+
+  it("does NOT fire when every series has distinct category values", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Revenue",
+          components: [
+            {
+              type: "chart",
+              chart_type: "bar",
+              series: [{ name: "Q1 Actuals", data: [{ x: "East", y: 10 }, { x: "West", y: 15 }] }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("duplicate category")) ?? false).toBe(false)
+  })
+
+  it("fires for a duplicate category on a chart_type that renders it byte-identically otherwise (pie — data-quality concern is chart_type-agnostic)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Share",
+          components: [
+            {
+              type: "chart",
+              chart_type: "pie",
+              series: [
+                { name: "Segment", data: [{ x: "Enterprise", y: 40 }, { x: "Enterprise", y: 10 }, { x: "SMB", y: 50 }] },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    const warning = v.warnings?.find((w) => w.message.includes("duplicate category"))
+    expect(warning).toBeTruthy()
+    expect(warning?.message).toMatch(/Enterprise/)
+  })
+})
+
+describe("describeQualityIssue: data_table_missing_cell English message (R1 evidence wave, Task T3)", () => {
+  // data-table.ts's schema tolerates a row whose `cells` omits one of
+  // `columns`' declared keys (the lenient half of the plan's revised
+  // contract — the strict half, an extra undeclared key, is a schema-level
+  // hard error instead, never reaching this warn-severity advisory).
+  // Translated to English here for the public validate surface, same
+  // convention as chart_duplicate_category above.
+  it("names the row index and the missing column key, and stays ok:true (warn, not error)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Metrics",
+          components: [
+            {
+              type: "data_table",
+              columns: [
+                { key: "metric", label: "Metric" },
+                { key: "q1", label: "Q1" },
+              ],
+              rows: [{ cells: { metric: "Revenue" } }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    const warning = v.warnings?.find((w) => w.message.includes("missing a value"))
+    expect(warning).toBeTruthy()
+    expect(warning?.message).toMatch(/row 0/)
+    expect(warning?.message).toMatch(/"q1"/)
+    // public surface (CLI output/error messages) is English — never leak
+    // ir-quality.ts's own internal Chinese wording.
+    expect(warning?.message).not.toMatch(/[一-鿿]/)
+  })
+
+  it("does NOT fire when every row's cells cover every declared column", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Metrics",
+          components: [
+            {
+              type: "data_table",
+              columns: [
+                { key: "metric", label: "Metric" },
+                { key: "q1", label: "Q1" },
+              ],
+              rows: [{ cells: { metric: "Revenue", q1: "120" } }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("missing a value")) ?? false).toBe(false)
+  })
+})
+
 // carried-items wave: comparison/citation/architecture got a render-time
 // box.h cap + data-dropped marker from P0 hardening's family sweep (same
 // fix bullets.tsx got) but no pre-render editorial signal of their own —

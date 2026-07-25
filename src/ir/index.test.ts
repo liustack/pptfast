@@ -776,6 +776,182 @@ describe("sankey component (structure-components wave 2 task 3, flow-graph famil
   })
 })
 
+describe("data_table component (R1 evidence wave Task T3 — 33rd component, first through the wave-2 domain-file flow)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const dataTableComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "data_table",
+    columns: [
+      { key: "metric", label: "Metric" },
+      { key: "q1", label: "Q1", align: "right" },
+    ],
+    rows: [{ cells: { metric: "Revenue", q1: "120" } }],
+    ...overrides,
+  })
+
+  it("accepts a well-formed minimal table (2 columns, 1 row)", () => {
+    expect(parsePptxIR(withComponents([dataTableComponent()])).success).toBe(true)
+  })
+
+  it("accepts the schema-max shape (8 columns, 12 rows)", () => {
+    const columns = Array.from({ length: 8 }, (_, i) => ({ key: `c${i}`, label: `Col ${i}` }))
+    const rows = Array.from({ length: 12 }, (_, r) => ({
+      cells: Object.fromEntries(columns.map((c) => [c.key, r])),
+    }))
+    const d = withComponents([dataTableComponent({ columns, rows })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects fewer than 2 columns", () => {
+    const d = withComponents([
+      dataTableComponent({ columns: [{ key: "a", label: "A" }], rows: [{ cells: { a: "x" } }] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects more than 8 columns", () => {
+    const columns = Array.from({ length: 9 }, (_, i) => ({ key: `c${i}`, label: `Col ${i}` }))
+    const d = withComponents([dataTableComponent({ columns, rows: [{ cells: {} }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an empty rows array (min 1)", () => {
+    const d = withComponents([dataTableComponent({ rows: [] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects more than 12 rows", () => {
+    const rows = Array.from({ length: 13 }, () => ({ cells: { metric: "x", q1: "1" } }))
+    const d = withComponents([dataTableComponent({ rows })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("accepts an explicit align on a column", () => {
+    const d = withComponents([
+      dataTableComponent({
+        columns: [{ key: "a", label: "A", align: "center" }, { key: "b", label: "B" }],
+        rows: [{ cells: { a: "x", b: "y" } }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects an invalid align value", () => {
+    const d = withComponents([
+      dataTableComponent({
+        columns: [{ key: "a", label: "A", align: "justify" }, { key: "b", label: "B" }],
+        rows: [{ cells: { a: "x", b: "y" } }],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("accepts emphasis: highlight and emphasis: total on rows", () => {
+    const d = withComponents([
+      dataTableComponent({
+        rows: [
+          { cells: { metric: "Revenue", q1: "120" }, emphasis: "highlight" },
+          { cells: { metric: "Total", q1: "500" }, emphasis: "total" },
+        ],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects an invalid emphasis value", () => {
+    const d = withComponents([
+      dataTableComponent({ rows: [{ cells: { metric: "x", q1: "1" }, emphasis: "bold" }] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("accepts an optional source footnote", () => {
+    const d = withComponents([dataTableComponent({ source: "Internal finance system, FY26" })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a numeric cell value (no formatting imposed at schema level)", () => {
+    const d = withComponents([dataTableComponent({ rows: [{ cells: { metric: "Revenue", q1: 120.5 } }] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  // ── lenient-missing-key contract: a row omitting a declared column's key
+  // is schema-legal (renders empty + ir-quality warn, see ir-quality.test.tsx
+  // for the warn-path assertion — this file only proves the parse itself
+  // still succeeds).
+  it("accepts a row whose cells omit a declared column's key (lenient — renders empty, warn only)", () => {
+    const d = withComponents([dataTableComponent({ rows: [{ cells: { metric: "Revenue" } }] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a row with completely empty cells (every declared column's key missing)", () => {
+    const d = withComponents([dataTableComponent({ rows: [{ cells: {} }] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  // ── strict-extra-key contract: a cells key not declared in columns is a
+  // hard error naming the row index and the offending key (superRefine,
+  // data-table.ts).
+  it("rejects a row whose cells carry a key not declared in any column (extra-key hard error)", () => {
+    const d = withComponents([
+      dataTableComponent({ rows: [{ cells: { metric: "Revenue", q1: "120", ghost_col: "x" } }] }),
+    ])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/rows\[0\]/)
+      expect(result.error).toMatch(/ghost_col/)
+    }
+  })
+
+  it("extra-key error names the correct row index for a non-zero row", () => {
+    const d = withComponents([
+      dataTableComponent({
+        rows: [
+          { cells: { metric: "Revenue", q1: "120" } },
+          { cells: { metric: "Costs", q1: "80", ghost_col: "x" } },
+        ],
+      }),
+    ])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/rows\[1\]/)
+  })
+
+  // ── unique-column-key contract ──
+  it("rejects duplicate column keys (structural — hard error)", () => {
+    const d = withComponents([
+      dataTableComponent({
+        columns: [{ key: "a", label: "A" }, { key: "a", label: "A duplicate" }],
+        rows: [{ cells: { a: "x" } }],
+      }),
+    ])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/unique/)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...dataTableComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown field inside a column object (strict)", () => {
+    const d = withComponents([
+      dataTableComponent({ columns: [{ key: "a", label: "A", extra: 1 }, { key: "b", label: "B" }] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown field inside a row object (strict)", () => {
+    const d = withComponents([dataTableComponent({ rows: [{ cells: { metric: "x", q1: "1" }, extra: 1 }] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

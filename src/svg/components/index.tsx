@@ -34,6 +34,7 @@ import { renderDef as pestRenderDef } from "./pest"
 import { renderDef as fiveForcesRenderDef } from "./five-forces"
 import { renderDef as heatmapRenderDef } from "./heatmap"
 import { renderDef as sankeyRenderDef } from "./sankey"
+import { renderDef as dataTableRenderDef } from "./data-table"
 
 /**
  * Dispatch table (src domain reorg wave 2, spec §4.2/§4.3): replaces the
@@ -86,6 +87,7 @@ const RENDER_DEFS: Record<ComponentType, RenderDef> = {
   five_forces: fiveForcesRenderDef,
   heatmap: heatmapRenderDef,
   sankey: sankeyRenderDef,
+  data_table: dataTableRenderDef,
 }
 
 /** Height (px) a component needs at a given width. */

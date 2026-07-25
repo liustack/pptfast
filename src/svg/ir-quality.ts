@@ -10,6 +10,7 @@ import { PACING_BUDGETS, resolveNarrative, type NarrativeProfile, type Pacing } 
 import { CAPACITY } from "./audit/capacity"
 import { resolveEffectiveLayoutBodyCapacity } from "./layout-selection"
 import { measureTextUnits } from "../lib/svg-text-layout"
+import { buildChartModel } from "./components/chart-model"
 
 export type QualityIssue = {
   slide: number
@@ -41,6 +42,21 @@ export type QualityIssue = {
    * above: `api.ts`'s `describeQualityIssue` names it without re-deriving
    * which component/chart_type triggered the finding. */
   chartAxesIgnored?: { chartType: string }
+  /** `code: "chart_duplicate_category"` only (R1 evidence wave, Task T2) —
+   * the offending series' name and the repeated category value, straight
+   * off `chart-model.ts`'s own `ChartDuplicate` (one issue per duplicate
+   * key per series — a key repeated 3x in one series still produces one
+   * `ChartDuplicate`/one issue, see that type's own doc comment), for the
+   * same English-translation reason as `chartAxesIgnored` above. */
+  chartDuplicateCategory?: { seriesName: string; x: string | number }
+  /** `code: "data_table_missing_cell"` only (R1 evidence wave, Task T3) —
+   * the offending row's 0-based index and the declared column key its
+   * `cells` object omits, for the same English-translation reason as
+   * `chartDuplicateCategory` above. One issue per (row, missing key) pair —
+   * a row missing 2 declared keys produces 2 issues, mirroring
+   * `chart_duplicate_category`'s own "one per occurrence, not one per row"
+   * granularity. */
+  dataTableMissingCell?: { rowIndex: number; key: string }
 }
 
 // ── helpers ──
@@ -325,6 +341,61 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
       code: "chart_axes_ignored",
       message: `图表类型 "${component.chart_type}" 不支持坐标轴标题/网格线，axes 字段将被忽略（仅 bar 与 line 支持）`,
       chartAxesIgnored: { chartType: component.chart_type },
+    })
+  }
+
+  // chart_duplicate_category (R1 evidence wave, Task T2 — roadmap §6.1.2):
+  // a data-authoring concern independent of chart_type/rendering, so this
+  // runs for every chart_type, not just bar/line — `chart-model.ts`'s
+  // `buildChartModel` flags any category value repeated within one series
+  // (kept: first occurrence, dropped: the rest) as part of bar/line's own
+  // dedup rule, but the underlying "did the author accidentally repeat a
+  // category label" question is exactly as real for pie/funnel/dumbbell,
+  // which don't dedupe at render time at all (e.g. two same-labeled pie
+  // wedges silently split one category's value across two slices — an
+  // even easier authoring slip to miss than bar/line's clean "first wins").
+  // Global Constraint 2 (roadmap): duplicate x is a data-quality question,
+  // not a structural one — warn, never a schema-level hard error, and never
+  // blocks `ok` (severity "warn" only).
+  for (const component of slide.components) {
+    if (component.type !== "chart") continue
+    const { duplicates } = buildChartModel(component.series)
+    for (const dup of duplicates) {
+      issues.push({
+        slide: index,
+        severity: "warn",
+        code: "chart_duplicate_category",
+        message: `图表系列 "${dup.seriesName}" 存在重复分类 "${dup.x}"，仅保留首次出现的取值，其余将被忽略`,
+        chartDuplicateCategory: { seriesName: dup.seriesName, x: dup.x },
+      })
+    }
+  }
+
+  // data_table_missing_cell (R1 evidence wave, Task T3 — the plan's
+  // lenient-revision contract): `cells` has no length floor per row, so a
+  // row omitting one of `columns`' declared keys is schema-legal —
+  // data-table.tsx renders that cell empty rather than erroring (an *extra*
+  // key not declared in any column, by contrast, is a schema-level hard
+  // error — see data-table.ts's own superRefine, the strict-structural-
+  // misunderstanding half of the same contract). This is the pre-render
+  // advisory for the lenient half: name the exact row index and missing key
+  // so the content gap is visible before the deck ships, the same
+  // "structural leniency, editorial visibility" split chart_duplicate_category
+  // (T2) established for a different component.
+  for (const component of slide.components) {
+    if (component.type !== "data_table") continue
+    component.rows.forEach((row, ri) => {
+      for (const col of component.columns) {
+        if (row.cells[col.key] === undefined) {
+          issues.push({
+            slide: index,
+            severity: "warn",
+            code: "data_table_missing_cell",
+            message: `数据表第 ${ri} 行缺少列 "${col.key}" 的取值，该单元格将渲染为空`,
+            dataTableMissingCell: { rowIndex: ri, key: col.key },
+          })
+        }
+      }
     })
   }
 

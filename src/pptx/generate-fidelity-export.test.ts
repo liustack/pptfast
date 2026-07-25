@@ -256,6 +256,11 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
   image: imageDangling,
   image_grid: imageGridDangling,
   image_compare: imageCompareDangling,
+  data_table: {
+    type: "data_table",
+    columns: [{ key: "metric", label: "Metric" }, { key: "q1", label: "Q1", align: "right" }],
+    rows: [{ cells: { metric: "Revenue", q1: "120" }, emphasis: "total" }],
+  },
 }
 
 const ONE_PX_PNG =
@@ -298,6 +303,7 @@ function noAssetIr(): PptxIR {
       contentSlide("Quote + Paragraph", [COMPONENT_BY_TYPE.quote, COMPONENT_BY_TYPE.paragraph]),
       contentSlide("Bullets + Code", [COMPONENT_BY_TYPE.bullets, COMPONENT_BY_TYPE.code]),
       contentSlide("Citation", [COMPONENT_BY_TYPE.citation]),
+      contentSlide("Data Table", [COMPONENT_BY_TYPE.data_table]),
       // The 3 image-family types, all pointed at unresolvable asset ids —
       // must fall back to a placeholder, never emit `<image>`.
       contentSlide("Image family (no resolvable asset)", [
