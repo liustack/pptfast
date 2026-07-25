@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises"
 import http from "node:http"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -494,6 +494,27 @@ describe("createServeServer — POST /revision-request", () => {
 
     const res = await get(handle.port, "/revision-request")
     expect(res.status).toBe(405)
+  })
+
+  it("cleans up the tmp file when the final rename fails, leaving no orphan behind (S2 rework carry)", async () => {
+    const deckDir = await makeDir()
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(
+      join(deckDir, "pages", "p-a.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "first draft" }] }),
+    )
+    // The write target pre-exists as a *directory* — `rename` onto an
+    // existing directory reliably fails (EISDIR, POSIX) without needing to
+    // fake a filesystem, forcing atomicWriteFile's cleanup path.
+    await mkdir(join(deckDir, "revision-request.json"))
+    const handle = await startServe(deckDir)
+
+    const res = await post(handle.port, "/revision-request", JSON.stringify(makeRevisionRequestPayload()))
+    expect(res.status).toBe(500)
+
+    const entries = await readdir(deckDir)
+    expect(entries.filter((name) => name.includes(".tmp"))).toEqual([])
   })
 
   it("writes alongside the IR file for a bare-IR target, not into a deck directory", async () => {

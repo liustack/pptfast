@@ -60,7 +60,7 @@
 import { spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { type FSWatcher, watch } from "node:fs"
-import { rename, writeFile } from "node:fs/promises"
+import { rename, unlink, writeFile } from "node:fs/promises"
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
 import { platform as osPlatform } from "node:os"
 import { dirname, join } from "node:path"
@@ -159,31 +159,34 @@ export const SERVE_CLIENT_SCRIPT_ID = "pptfast-serve-client"
  *
  * 2. Revision-request submit: rewires the existing export/download button
  *    (`#pf-export-btn`, `buildPreviewHtml`/`./preview-html.ts`) to POST
- *    instead of only downloading — reusing that module's own private
- *    annotation-serialization closure rather than re-implementing it here
- *    (design ruling 5 forbids a second copy of any part of the
- *    preview-build logic). That serialization (the `annotations` state, and
- *    the click handler that reads it into `{version, deck, requests}`)
- *    lives entirely inside `buildPreviewHtml`'s own `<script>` closure, with
- *    no seam exported for another script to call into directly — the one
- *    thing that closure's handler does that *is* observable from outside it
- *    is hand a `Blob` to `URL.createObjectURL`. `harvestExportBlob()` below
- *    wraps that one global just long enough to capture the exact `Blob` the
- *    original handler builds, then restores it immediately — safe because
- *    that handler has no `await`/Promise anywhere in it (`Blob` →
- *    `createObjectURL` → synthetic `<a>` → `click()` → `removeChild` →
- *    `revokeObjectURL`, all synchronous DOM/Blob calls), so nothing outside
- *    this one synchronous call ever observes the patched globals. The
- *    rewired button (a `cloneNode` swapped in for the original — `cloneNode`
- *    never copies `addEventListener` listeners, so the original element,
- *    though detached from the document, keeps `buildPreviewHtml`'s own
- *    listener intact and still runnable via `.click()`) posts the harvested
- *    Blob's text to `POST /revision-request` and additionally suppresses
- *    the original handler's own synthetic download for that one call, so a
- *    submit does not also silently drop a file in the browser's downloads
- *    folder; a small secondary link next to it calls the same harvest
- *    routine without suppressing the download, so a manual copy is always
- *    still one click away regardless of whether the POST succeeds.
+ *    instead of only downloading. The exact serialized payload comes from
+ *    `window.__pptfastBuildExportBlob` — a plain function reference that
+ *    file's own `<script>` closure assigns onto `window` specifically as
+ *    this module's seam (see that file's own doc comment for the full
+ *    rationale; design ruling 5 forbids a second copy of any part of the
+ *    preview-build logic, and calling back into the original closure's own
+ *    function is how this reuses it instead of re-deriving the
+ *    `{version, deck, requests}` shape here). Called through
+ *    `Promise.resolve(...).then(...)` rather than invoked and trusted
+ *    directly — cheap insurance that both a synchronous throw *and* a
+ *    rejected/async return from `buildExportBlob()` land in the same
+ *    `.catch` as a network failure, all surfaced as the same inline
+ *    status-line feedback, never a silent no-op. (An earlier version of
+ *    this file took a different approach here — briefly monkey-patching
+ *    `URL.createObjectURL`/`HTMLAnchorElement.prototype.click` around a
+ *    programmatic click on the original button, to capture the `Blob` it
+ *    built without a seam existing yet. Reviewed out: it only worked
+ *    because that handler happened to be perfectly synchronous start to
+ *    finish, an assumption a later change to it — one `await` — could
+ *    silently break with zero user-visible error, on the one feature this
+ *    whole command exists to make possible.) The rewired button (a
+ *    `cloneNode` swapped in for the original — `cloneNode` never copies
+ *    `addEventListener` listeners, so the original element, though detached
+ *    from the document, keeps `buildPreviewHtml`'s own listener intact and
+ *    still runnable via `.click()`) shows success/failure inline; a small
+ *    secondary link next to it just calls `originalBtn.click()` — the
+ *    untouched, real download path — so a manual copy is always still one
+ *    click away regardless of whether the POST succeeds.
  */
 const SERVE_CLIENT_JS = `
 (function () {
@@ -245,46 +248,38 @@ const SERVE_CLIENT_JS = `
     submitBtn.insertAdjacentElement('afterend', status)
     status.insertAdjacentElement('afterend', downloadLink)
 
-    function harvestExportBlob(suppressDownload) {
-      var realCreateObjectURL = URL.createObjectURL
-      var realAnchorClick = HTMLAnchorElement.prototype.click
-      var blob = null
-      URL.createObjectURL = function (b) {
-        blob = b
-        return realCreateObjectURL.call(URL, b)
-      }
-      if (suppressDownload) {
-        HTMLAnchorElement.prototype.click = function () {
-          if (this.download === 'revision-request.json') return
-          return realAnchorClick.apply(this, arguments)
-        }
-      }
-      try {
-        originalBtn.click()
-      } finally {
-        URL.createObjectURL = realCreateObjectURL
-        if (suppressDownload) HTMLAnchorElement.prototype.click = realAnchorClick
-      }
-      return blob
-    }
-
     submitBtn.addEventListener('click', function () {
-      var blob = harvestExportBlob(true)
-      if (!blob) return
+      if (typeof window.__pptfastBuildExportBlob !== 'function') {
+        status.style.color = '#dc2626'
+        status.textContent = 'failed to submit revision request (export function unavailable — try reloading the page)'
+        return
+      }
       status.style.color = ''
       status.textContent = 'submitting…'
-      blob
-        .text()
+      // The extra Promise.resolve().then(...) wrapper (rather than calling
+      // window.__pptfastBuildExportBlob() directly and chaining off its
+      // result) means a synchronous throw from that call lands in the same
+      // .catch below as an async rejection or a network failure — every
+      // failure mode this chain can hit surfaces as the same inline
+      // status-line feedback, none of them silent.
+      Promise.resolve()
+        .then(function () {
+          return window.__pptfastBuildExportBlob()
+        })
+        .then(function (blob) {
+          return blob.text()
+        })
         .then(function (text) {
           return fetch('/revision-request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: text,
-          }).then(function (res) {
-            if (!res.ok) throw new Error('server responded ' + res.status)
-            status.style.color = '#16a34a'
-            status.textContent = 'Revision request saved to the deck directory'
           })
+        })
+        .then(function (res) {
+          if (!res.ok) throw new Error('server responded ' + res.status)
+          status.style.color = '#16a34a'
+          status.textContent = 'Revision request saved to the deck directory'
         })
         .catch(function (err) {
           status.style.color = '#dc2626'
@@ -294,7 +289,7 @@ const SERVE_CLIENT_JS = `
 
     downloadLink.addEventListener('click', function (e) {
       e.preventDefault()
-      harvestExportBlob(false)
+      originalBtn.click()
     })
   }
 
@@ -349,11 +344,26 @@ export function injectServeClient(html: string): string {
  * collide on the same tmp file, even though they'd still race on whose
  * `rename` lands last — acceptable for a single local user submitting from
  * one browser tab (design ruling 6: no auth, a local dev tool).
+ *
+ * A `rename` that itself fails (permissions, a full disk, ...) would
+ * otherwise leave the tmp file behind forever — nothing else in this
+ * module ever revisits it. On that path this now best-effort `unlink`s the
+ * orphan before rethrowing the original error (the caller,
+ * `handleRevisionRequestPost` below, turns that rethrow into a 500) — the
+ * cleanup's own failure is swallowed (`.catch(() => {})`) since it must
+ * never mask the real error, but a permissions problem that blocks
+ * `rename` typically blocks `unlink` the same way, so this is best-effort,
+ * not a guarantee.
  */
 async function atomicWriteFile(targetPath: string, data: string): Promise<void> {
   const tmpPath = `${targetPath}.${randomUUID()}.tmp`
   await writeFile(tmpPath, data, "utf8")
-  await rename(tmpPath, targetPath)
+  try {
+    await rename(tmpPath, targetPath)
+  } catch (e) {
+    await unlink(tmpPath).catch(() => {})
+    throw e
+  }
 }
 
 /**
