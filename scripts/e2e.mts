@@ -697,7 +697,7 @@ console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixel
 //    one") rather than preemptively pinning around a hypothetical. Content
 //    is deliberately modest (short English labels, well under data_table's
 //    schema max of 8 columns/12 rows) — this leg's job is proving the full
-//    CLI render -> package-audit -> soffice chain accepts both new
+//    CLI render -> package-audit -> CLI-audit chain accepts both new
 //    behaviors end to end, not re-running T3's own dedicated 13-theme
 //    stress-fixture coverage (src/svg/audit/stress-fixtures.ts's own
 //    "数据表压力测试" page already does that at schema-max scale).
