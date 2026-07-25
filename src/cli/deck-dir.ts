@@ -43,8 +43,12 @@ import { EXT_BY_MIME, loadIrFile } from "./load-ir"
  *  on spelling. */
 export const PLAN_FILENAME = "deck.plan.json"
 export const SPEC_FILENAME = "deck.spec.json"
-const PAGES_DIRNAME = "pages"
-const ASSETS_DIRNAME = "assets"
+// Exported (serve wave, task S1) so `./serve.ts` can build its fs.watch
+// roots from the exact same directory names this module already treats as
+// the deck-project layout's source of truth, instead of a second hardcoded
+// "pages"/"assets" literal that could drift from these.
+export const PAGES_DIRNAME = "pages"
+export const ASSETS_DIRNAME = "assets"
 
 // ── path-traversal safety (CWE-22 defense) ──────────────────────────────
 
