@@ -92,6 +92,7 @@ const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文�
 | `themes [--json]` | 列出 13 个内置主题 |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`）——`target` 形式同 `render`，永远不受占位页拦截 |
+| `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新，批注直接提交回 deck 目录生成 `revision-request.json` |
 | `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`——确定性转换，不调模型（见「IR」与「Deck 项目」） |
 | `init` | 生成 `pptfast.config.json` 模板 |
 | `check-update` / `self-update` | 检查 npm 上的新版本 / 更新全局安装 |

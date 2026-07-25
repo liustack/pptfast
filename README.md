@@ -94,6 +94,7 @@ No `installPlatform()` call is needed in a browser — DOM parsing and (for `--p
 | `themes [--json]` | List the 13 built-in themes |
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`) — same `target` forms as `render`, never gated on placeholder pages |
+| `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes, with annotations submitting straight back to the deck directory as `revision-request.json` |
 | `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call (see The IR and Deck projects) |
 | `init` | Scaffold `pptfast.config.json` |
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
