@@ -782,6 +782,7 @@ export async function buildDeckPreview(target: string, opts: { cwd?: string } = 
  */
 export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
   const { ir, svgs, normalized } = await renderDeckSlides(irPath, { cwd: opts.cwd })
+  // After render, not before (S1 review carry) — see this function's own doc comment.
   await mkdir(outDir, { recursive: true })
   for (let i = 0; i < ir.slides.length; i++) {
     const name = `${String(i + 1).padStart(3, "0")}-${ir.slides[i]!.type}.svg`

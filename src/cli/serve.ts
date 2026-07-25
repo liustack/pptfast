@@ -206,6 +206,13 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
       // (nothing filled in, no local images) — nothing to watch there until
       // it's created, not a reason to fail serve startup. Anything other
       // than "doesn't exist yet" (permissions, ...) is a real problem.
+      // Consequence (S1 review carry): this watch-setup pass only ever runs
+      // once, at `createServeServer` call time — a directory that gets
+      // created *later* in the same session (e.g. the first local image
+      // asset is added, materializing `assets/` mid-edit) is never picked
+      // up, since nothing here re-scans for newly-appeared watch roots
+      // afterward. Changes under such a directory go unnoticed until the
+      // user restarts `pptfast serve`.
       if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e
     }
   }
@@ -248,6 +255,28 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
     teardownWatchersAndTimers()
     for (const res of sseClients) res.end()
     sseClients.clear()
+    // `res.end()` above finishes each SSE response, but the socket behind a
+    // `Connection: keep-alive` response (`GET /events`'s own header) is not
+    // guaranteed to be released the instant the response ends —
+    // `server.close()`'s callback only fires once every socket the server
+    // ever accepted has actually closed, so a lingering keep-alive socket
+    // can otherwise leave it hanging indefinitely (S1 review carry).
+    // `closeIdleConnections`/`closeAllConnections` ("http: added connection
+    // closing methods", nodejs/node#42812) exist since Node 18.2.0 — this
+    // repo's actual floor is 18.0.0 (package.json#engines: ">=18"), hence
+    // the `typeof` guard rather than a direct call. Calling both
+    // unconditionally on every Node 18+ patch is deliberate, not redundant
+    // belt-and-suspenders: Node's own `close()` briefly, accidentally
+    // auto-invoked `closeIdleConnections()` internally on some Node 18.x
+    // releases — a v19-only behavior mistakenly backported and later
+    // reverted (nodejs/node#52336, landed 18.20.3: "closeIdleConnections
+    // should not be called while server.close in node v18. This behavior is
+    // for node v19 and above") — so whether `close()` alone is already
+    // sufficient varies by exact patch and cannot be assumed; calling both
+    // methods explicitly here is correct on every patch, a harmless no-op
+    // wherever `close()` already handled it.
+    if (typeof server.closeIdleConnections === "function") server.closeIdleConnections()
+    if (typeof server.closeAllConnections === "function") server.closeAllConnections()
     await new Promise<void>((resolveClose, rejectClose) => {
       server.close((err) => (err ? rejectClose(err) : resolveClose()))
     })

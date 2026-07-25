@@ -24,6 +24,14 @@ const VALID_IR = {
 // out of createServeServer's own initial build.
 const INVALID_IR_SHAPE = { version: "4" }
 
+// 1x1 red PNG — the same fixture commands.test.ts uses to exercise a real
+// deck-dir `assets/` asset (see its own "assets/ auto-registration reaches
+// rendered output" describe block).
+const PNG_1PX = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+)
+
 function makeDir(prefix = "pptfast-serve-"): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix))
 }
@@ -291,6 +299,57 @@ describe("createServeServer — watch + rebuild (deck project directory)", () =>
     await sse.waitFor("reload")
     const recovered = await get(handle.port, "/")
     expect(recovered.body).toContain("recovered draft")
+    sse.close()
+  })
+
+  // S1 review carry: task S1's own watch-coverage tests only exercised
+  // pages/*.json — these two round out the other two watch roots
+  // (`watchRoots`, `./serve.ts`) with dedicated coverage of their own.
+
+  it("rebuilds when a file appears inside assets/ (dedicated assets/ watch coverage)", async () => {
+    const deckDir = await makeDir()
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(
+      join(deckDir, "pages", "p-a.json"),
+      JSON.stringify({ components: [{ type: "image", asset_id: "logo" }] }),
+    )
+    await mkdir(join(deckDir, "assets"))
+    await writeFile(join(deckDir, "assets", "logo.png"), PNG_1PX)
+    const handle = await startServe(deckDir)
+    const initial = await get(handle.port, "/")
+    expect(initial.body).toContain("data:image/png;base64")
+
+    const sse = connectSSE(handle.port)
+    // A second, unreferenced file — this test's only job is proving the
+    // assets/ *directory* is watched at all (task S1's own coverage was
+    // pages/*.json only), not re-proving asset-content resolution
+    // (commands.test.ts's "assets/ auto-registration reaches rendered
+    // output" already covers that).
+    await writeFile(join(deckDir, "assets", "extra.png"), PNG_1PX)
+    await sse.waitFor("reload")
+    sse.close()
+  })
+
+  it("rebuilds when only deck.spec.json changes, with no pages/ edit", async () => {
+    const deckDir = await makeDir()
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
+    await mkdir(join(deckDir, "pages"))
+    await writeFile(
+      join(deckDir, "pages", "p-a.json"),
+      JSON.stringify({ components: [{ type: "paragraph", text: "steady content" }] }),
+    )
+    const handle = await startServe(deckDir)
+    const initial = await get(handle.port, "/")
+    expect(initial.body).toContain("serve-deck")
+
+    const sse = connectSSE(handle.port)
+    const renamedPlan = { ...makeDeckPlan(), filename: "serve-deck-renamed" }
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(renamedPlan))
+    await sse.waitFor("reload")
+
+    const revised = await get(handle.port, "/")
+    expect(revised.body).toContain("serve-deck-renamed")
     sse.close()
   })
 })
