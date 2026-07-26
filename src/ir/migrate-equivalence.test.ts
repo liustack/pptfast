@@ -187,7 +187,10 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     picked) -- `poster-ending` -> `constellation-ending`. Not
       //     journal's own declared id (`masthead-ending`) -- a mechanical
       //     side effect of the same declaration: bumping `masthead-ending`'s
-      //     weight 1 -> 3 grows the ending pool's total weight from 7 to 9,
+      //     weight 1 -> 3 grows the ending pool's total weight from 11 to
+      //     13 (the pool already carries two weight-3 members from the
+      //     strategy layer's own `identityTendencies`, so the base is 11,
+      //     not the 7 an earlier draft of this comment stated),
       //     which shifts where this fixed seed's `target = hash % total`
       //     lands among the *other* candidates' boundaries too (the same
       //     modulo-reshuffle every weight-sum change in this pipeline can
@@ -196,7 +199,8 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     auto-picked) -- `banner-chapter` -> `rail-chapter`, the same
       //     total-weight-shift mechanism as above (journal's declared
       //     `masthead-chapter` weight bump moves the chapter pool's total
-      //     from 8 to 10).
+      //     from 12 to 14 -- same correction as above, the strategy layer's
+      //     own weight-3 members are part of the base).
       // `.audit.json` needed no recapture for any of the three (findings
       // stayed the empty array both sides, confirmed by computing
       // `auditDeck` fresh against both the old and new goldens) -- the
