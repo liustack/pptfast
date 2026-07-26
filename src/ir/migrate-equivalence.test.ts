@@ -206,6 +206,32 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // `auditDeck` fresh against both the old and new goldens) -- the
       // newly-picked archetypes introduce no new geometry/contrast defect
       // on any of these three fixtures.
+      //
+      // Re-recaptured again (content-archetype expansion wave, task T1 --
+      // `.issues/2026-07-26-content-archetypes/plan.md`): registering an
+      // 11th content archetype (`image-lead-split`) grows the content
+      // pool's weighted-sampling denominator on every theme that curates
+      // the full set (`consulting`/`journal`, the two themes these three
+      // fixtures use, both do) -- the same "real, intended selection-
+      // behavior change, not a migration regression" posture as every pool-
+      // growth recapture above (P1 variety wave task 4's own 7 -> 10
+      // recapture is the direct precedent). None of these three decks pins
+      // every content page's `layout`, so a pool-wide reweighting can
+      // legitimately flip which archetype a given seed's auto-pick lands
+      // on. Verified via the same targeted-diff discipline: `.audit.json`
+      // needed no recapture for any of the three (findings stayed the
+      // empty array both sides) -- `image-lead-split` itself was never the
+      // archetype any of these three fixtures' seeds actually landed on;
+      // the shift is purely the denominator changing which of the
+      // *existing* 10 archetypes each seed's hash lands on:
+      //   - `basic`: slide index 2 (content, auto-picked) --
+      //     `stacked-poster` -> `tone-adaptive-content`; slide index 3
+      //     (content, auto-picked) -- `two-column` -> `stacked-poster`.
+      //   - `scenarioBearing`: slide index 1 (content, auto-picked) --
+      //     `stacked-poster` -> `bento-panel`; slide index 2 (content,
+      //     auto-picked) -- `rail-numbered` -> `narrow-column`.
+      //   - `annualReviewPreset`: slide index 2 (content, auto-picked) --
+      //     `narrow-column` -> `quiet-frame`.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

@@ -45,6 +45,8 @@ const CONTENT_ARCHETYPE_IDS = [
   "side-highlight",
   "asymmetric-triptych",
   "quiet-frame",
+  // content-archetype expansion wave, task T1: content pool 10 -> 11.
+  "image-lead-split",
 ]
 
 // ── resolveArchetypeId (pure seed+ordinal selection, extracted from FullSlideSvg) ──
@@ -1123,21 +1125,21 @@ describe("render parity with FullSlideSvg", () => {
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Seed 9 (P1 variety wave, task 4 re-pin — content pool grew 7 -> 10,
-    // reweighting every hash-interval boundary, so seed 12's old collision
-    // stopped colliding; re-found by brute-force search over this exact
-    // 2-page academic fixture, same method as
+    // Seed 3 (content-archetype expansion wave, task T1 re-pin — content
+    // pool grew 10 -> 11, reweighting every hash-interval boundary, so seed
+    // 9's old collision stopped colliding; re-found by brute-force search
+    // over this exact 2-page academic fixture, same method as
     // plan/revision-stability.test.ts's own seed comments): page 0
     // auto-picks "two-column" (pageKey "0", no previous), and page 1's own
     // raw weighted pick (pageKey "1", before anti-repetition) is *also*
     // "two-column" — so W4 design decision 4's redraw fires and lands on
-    // "narrow-column", the deterministic runner-up (academic's content pool
-    // now has 10 members, never empty).
+    // "side-highlight", the deterministic runner-up (academic's content pool
+    // now has 11 members, never empty).
     const slides: Slide[] = [
       { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
       { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 9 }
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 3 }
 
     // Page 0: no previous page, ordinary auto-pick — sanity baseline for
     // what page 1 would collide with.
@@ -1159,7 +1161,7 @@ describe("render parity with FullSlideSvg", () => {
     const unswappedRawPick = resolveArchetypeId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
-      9,
+      3,
       "1",
       undefined,
       resolveIrStrategy(ir),
@@ -1169,9 +1171,9 @@ describe("render parity with FullSlideSvg", () => {
     // actual collision the redraw exists to break.
     expect(unswappedRawPick).toBe("two-column")
     // The real (redrawn) resolution differs from that raw pick — the redraw
-    // branch, not some other code path, is what produced "narrow-column".
+    // branch, not some other code path, is what produced "side-highlight".
     expect(resolved).not.toBe(unswappedRawPick)
-    expect(resolved).toBe("narrow-column")
+    expect(resolved).toBe("side-highlight")
   })
 
   it("a takeover or image-cover bypass never renders [data-archetype] (the archetype branch is correctly skipped both sides)", () => {
