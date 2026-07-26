@@ -286,6 +286,28 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // nothing to fix in the renderer here, this is the labeling
       // convention working as designed on a slide shape T1's own review
       // already accepted.
+      //
+      // Re-recaptured again (controller-probed follow-up fix round —
+      // `content-image-lead-split.tsx`'s "starved" branch): the
+      // `content-truncated` finding pinned directly above turned out to be
+      // a real structural defect after all, not just an accepted labeling
+      // convention — `image-lead-split`'s unconditional 435px text column
+      // squeezed this exact kpi_cards-only page for no reason, since it has
+      // no scalable (image/chart) lead component to justify narrowing
+      // beside a real visual column. The archetype now widens the text
+      // column to 788px (and shrinks the decorative visual column to a
+      // 260px accent panel) whenever there is no scalable lead — see that
+      // file's own header for the full rationale and the skeleton-diversity
+      // check that the widened width doesn't collide with an existing
+      // archetype's own region class. Only `annualReviewPreset`'s slide
+      // index 2 is affected across all three fixtures (the only slide, in
+      // any of them, that actually lands on `image-lead-split` with no
+      // scalable lead — confirmed by diffing all 5 slides of each fixture's
+      // recaptured SVG golden against its pre-recapture version, only this
+      // one changed anywhere). `.audit.json`'s one `content-truncated`
+      // finding goes back to `findings: []` (the label no longer truncates
+      // at the widened per-card width); `.pptx-zip.json`'s file-name set is
+      // unchanged, only that same slide's XML differs.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

@@ -1,14 +1,5 @@
 {
-  "findings": [
-    {
-      "page": 3,
-      "code": "content-truncated",
-      "message": "text \"average …\" was truncated with an ellipsis — widen the layout, shorten the source content, or accept the cut if the tail wasn't essential",
-      "detail": {
-        "text": "average …"
-      }
-    }
-  ],
+  "findings": [],
   "pagesAudited": 5,
   "pagesSkipped": 0,
   "checks": {
