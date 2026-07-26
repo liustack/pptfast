@@ -80,20 +80,34 @@ import { accessibleInk } from "../ink"
  * for a column with no bleed room, not a rewritten technique.
  *
  * Beat/strategy tendency assignment (decided in the plan's T3 integration
- * task, once `split-band` also landed): this archetype is a `breathing`
- * `BEAT_TENDENCIES` member (`layout-selection.ts`) — its narrow 435px text
- * column mirrors `narrow-column`'s own "spacious by construction" case, just
- * filling the freed-up width with a real co-equal visual column instead of
- * a watermark (see that table's own doc comment for the full reasoning).
- * Deliberately *not* an `anchor` member: this file's own "two co-equal
- * protagonists" framing above is a calmer register than `stacked-poster`'s
- * single hero or `split-band`'s full-bleed banner. It also stays out of
- * every strategy's `layoutTendencies` (`@/narrative`) — deliberately
- * neutral, the same "万金油" treatment `tone-adaptive-content` gets: its
- * defining trait (an unconditional visual/text split) is an asset-
- * availability signal, not an argument-style one — any strategy's deck can
- * equally have (or lack) a chart/photo worth leading with, so no single
- * strategy's rhetorical register owns this composition.
+ * task, once `split-band` also landed; the beat rationale was strengthened
+ * in the wave's final review round after a reviewer found the original
+ * column-width analogy underargued): this archetype is a `breathing`
+ * `BEAT_TENDENCIES` member (`layout-selection.ts`) under *both* of its
+ * geometries — with a scalable lead, a single-stack 435px text column beside
+ * one generously shrink-to-fit-only visual subject; without one, the text
+ * column widens to 788px (mirroring `narrow-column`'s own "spacious
+ * single-stack column" case directly) beside a decorative accent panel
+ * carrying zero information content. Neither geometry ever splits into
+ * multiple competing regions (unlike `dense`'s members) or makes one loud,
+ * bold-colored assertion (unlike `anchor`'s) — see that table's own doc
+ * comment for the full "single flow + single quiet companion" argument.
+ * Deliberately *not* an `anchor` member for the same reason: this file's own
+ * "two co-equal protagonists" framing above is a calmer register than
+ * `stacked-poster`'s single hero or `split-band`'s full-bleed banner. It
+ * also stays out of every strategy's `layoutTendencies` (`@/narrative`) —
+ * deliberately neutral, the same "万金油" treatment `tone-adaptive-content`
+ * gets: its defining trait (an unconditional visual/text split) is an
+ * asset-availability signal, not an argument-style one — any strategy's
+ * deck can equally have (or lack) a chart/photo worth leading with, so no
+ * single strategy's rhetorical register owns this composition.
+ * Reconsidered specifically against `showcase` in the same final-review
+ * round (once `split-band` moved into `showcase.layoutTendencies` on the
+ * opposite finding — see `@/narrative`'s own doc comment): showcase's
+ * register is visual *punch* (bold, opaque color blocks), not visual
+ * *presence*, so merely having an image to lead with still doesn't map onto
+ * showcase's membership criterion the way a full-bleed color band does. It
+ * stays neutral on reconsideration, not by default.
  *
  * Discipline: no theme id, no hex literal — every color is a token or an
  * `../ink` call.
