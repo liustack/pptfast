@@ -105,6 +105,7 @@ import { layoutDef as contentToneAdaptiveContent } from "../archetypes/content-t
 import { layoutDef as contentSideHighlight } from "../archetypes/content-side-highlight"
 import { layoutDef as contentAsymmetricTriptych } from "../archetypes/content-asymmetric-triptych"
 import { layoutDef as contentQuietFrame } from "../archetypes/content-quiet-frame"
+import { layoutDef as contentImageLeadSplit } from "../archetypes/content-image-lead-split"
 
 import {
   imageSplitLayoutDef,
@@ -262,7 +263,10 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Content archetypes (10, P1 variety wave task 4: 7 -> 10 — content was the
+// Content archetypes (11, content-archetype expansion wave task T1: 10 -> 11
+// — image-lead-split, the first archetype whose column split is genuinely
+// unequal — see that file's own composition-sketch header; P1 variety wave
+// task 4 grew this same family 7 -> 10 before it, content having been the
 // pool's thinnest page type, the C-investigation's own finding, dr/
 // c-diversity.md) — the only family that reads `slide.components`, so
 // every entry carries a `body` slot plus its own header chrome, and declares
@@ -316,6 +320,12 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     width (880px, `narrow-column`'s `COLUMN_W`), so no new per-archetype
 //     number is warranted (each file's own composition-sketch header
 //     derives this explicitly, not just asserts it).
+//   - image-lead-split (task T1): body 4 too, and visual 1 — its 435px text
+//     column is narrower than every other archetype's own single-stack
+//     column, but still wider than the pool's already-audited narrowest
+//     single-stack region (asymmetric-triptych's 424px `top`/`bottom`
+//     panels), so this doesn't warrant a new number either, nor tightening
+//     any `audit/capacity.ts` floor — the file's own header derives this.
 //
 // This essay is what every content archetype's own body-slot capacity
 // comment means by "see registry.ts's CONTENT_LAYOUTS header for the
@@ -335,6 +345,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   [contentSideHighlight.id]: contentSideHighlight,
   [contentAsymmetricTriptych.id]: contentAsymmetricTriptych,
   [contentQuietFrame.id]: contentQuietFrame,
+  [contentImageLeadSplit.id]: contentImageLeadSplit,
 }
 
 // ─────────────────────────────────────────────────────────────────────────

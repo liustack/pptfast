@@ -33,6 +33,7 @@
     "side-highlight",
     "asymmetric-triptych",
     "quiet-frame",
+    "image-lead-split",
     "image-split",
     "image-top",
     "image-bottom",
@@ -750,6 +751,42 @@
           "name": "meta"
         }
       ]
+    },
+    "image-lead-split": {
+      "id": "image-lead-split",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "name": "kicker",
+          "accepts": []
+        },
+        {
+          "name": "heading",
+          "accepts": []
+        },
+        {
+          "name": "subheading",
+          "accepts": []
+        },
+        {
+          "name": "hero",
+          "accepts": "any",
+          "capacity": 1
+        },
+        {
+          "name": "body",
+          "accepts": "any",
+          "capacity": 4
+        },
+        {
+          "name": "meta",
+          "accepts": []
+        }
+      ],
+      "arrangements": "all"
     },
     "rail-chapter": {
       "id": "rail-chapter",

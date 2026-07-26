@@ -52,3 +52,7 @@ export type ContentArchetypeId =
   // asymmetric side panel, a lead+stacked-pair triptych, and a whitespace-
   // led centered frame — see each file's own composition-sketch header.
   | "side-highlight" | "asymmetric-triptych" | "quiet-frame"
+  // Content-archetype expansion wave, task T1 (content-pool expansion,
+  // 10 -> 11): an unconditional 60/40 visual/text split — see the file's own
+  // composition-sketch header.
+  | "image-lead-split"
