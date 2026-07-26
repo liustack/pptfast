@@ -39,8 +39,9 @@ coverage/
 
 # benchmark run outputs are regenerable, ignored wholesale
 # (tests/bench/fixtures/ is a different tracked path, unaffected)
-tests/bench/results/
-tests/bench/results-probe/
+# one rule covers every run-output dir: results/ (main bank), results-probe/
+# (evidence-gate probes), results-archive/<date>/ (kept snapshots of past runs)
+tests/bench/results*/
 
 # agent workspaces (local, never committed)
 .agent/

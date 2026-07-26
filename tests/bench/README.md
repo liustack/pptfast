@@ -19,8 +19,15 @@ tests/bench/
   results/<model-tag>/<question-id>/
     ...         the model-under-test's artifact (created by a run, not checked in here)
     meta.json   optional self-reported run stats (tokens/duration/model), pass-through only
+  results-probe/<model-tag>/<question-id>/   probe-bank runs (see "Probe bank" below)
+  results-archive/<YYYY-MM-DD>/              kept snapshots of a past run, for cross-round comparison
   README.md     this file
 ```
+
+Every run-output directory matches one `.gitignore` rule (`tests/bench/results*/`) — runs are
+regenerable and never checked in. Keep a round worth comparing against by moving it into
+`results-archive/<date>/` rather than leaving it in place, so the next run starts clean and the
+scorer (which reads `<resultsDir>/<model-tag>/`) never mistakes an archive folder for a model tag.
 
 ## Run protocol
 
