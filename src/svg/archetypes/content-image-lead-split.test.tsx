@@ -224,6 +224,81 @@ describe("ImageLeadSplitContent pathological content", () => {
   }
 })
 
+// Content-archetype expansion wave, task T3 — coverage gap T2's review
+// found: this archetype's 435px text column is the only one of the pool's
+// three narrow(-ish) archetypes (435 vs asymmetric-triptych's 632/
+// two-column's 640) that was never stress-tested against `kpi_cards`, whose
+// own card-width math (`kpi.tsx`'s `naturalCardW = (box.w - GAP*(n-1)) /
+// n`) divides the box width by item count. A realistic 3-item KPI row at
+// 435px lands `naturalCardW` ≈ 134px per card — comfortably above
+// `kpi.tsx`'s own `MIN_CARD_W` (80px) graceful-drop floor, so all 3 cards
+// stay visible (no card is dropped) — but each card's own 94px text budget
+// (`cardW - 40`) is narrow enough that `fitSvgLine`'s own truncation
+// kicks in on the label text. Plan.md's own controller ruling: this
+// truncation is **adjudicated correct behavior**, not a defect to fix here
+// — capacity (how many cards fit) is a component-count gate that already
+// works correctly at this width; the *text* truncation lives entirely in
+// `kpi.tsx`'s own per-card width math, unrelated to this archetype's
+// geometry. This suite's only job is to pin the interaction so the next
+// pool-growth wave rediscovers it as "already covered", not as a surprise.
+describe("ImageLeadSplitContent — kpi_cards in the 435px column (T3 coverage gap closure)", () => {
+  const kpiSlide: Slide = {
+    type: "content",
+    layout: "image-lead-split",
+    heading: "KPI coverage in the narrow column",
+    components: [
+      {
+        type: "kpi_cards",
+        items: [
+          { value: "128", unit: "%", label: "Revenue growth YoY", delta: "up" },
+          { value: "42", unit: "ms", label: "P95 latency improvement", delta: "down" },
+          { value: "99.9", unit: "%", label: "Uptime SLA compliance", delta: "flat" },
+        ],
+      },
+    ],
+  } as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: a realistic 3-item kpi_cards row renders with zero overflow/out-of-bounds/overlap findings`, () => {
+      const deck: PptxIR = { ...ir([kpiSlide]), theme: { id: themeId } }
+      const findings = auditDeck(deck).findings.filter(
+        (f) => f.code === "overflow" || f.code === "out-of-bounds" || f.code === "overlap",
+      )
+      expect(findings).toEqual([])
+    })
+  }
+
+  it("graceful, not silent: all 3 cards stay visible (no capacity drop) but the label text carries a data-truncated marker", () => {
+    const { markup, root } = render(ir([kpiSlide]), kpiSlide)
+    const cardRects = Array.from(root.querySelectorAll("rect")).filter((r) => r.getAttribute("rx") !== null)
+    // 3 kpi card shells, none dropped (naturalCardW ~134px clears kpi.tsx's
+    // own 80px MIN_CARD_W floor at this width, so the graceful-drop path
+    // never fires here) — this is the capacity gate working correctly, not
+    // this test's concern.
+    expect(cardRects.length).toBeGreaterThanOrEqual(3)
+    // The "not silent" half: at least one text element records that it had
+    // to truncate to fit its card's own narrow text budget.
+    expect(markup).toContain('data-truncated="1"')
+    expect(() => assertSubset(root)).not.toThrow()
+  })
+
+  it("every kpi card stays within the 435px text column's own bounds — no card right-edge crosses into the visual column's x=571 start", () => {
+    const { root } = render(ir([kpiSlide]), kpiSlide)
+    const bodyGroup = root.querySelector('g[data-audit-box^="96,"]')
+    expect(bodyGroup).not.toBeNull()
+    const cardRects = Array.from(bodyGroup!.querySelectorAll("rect")).filter((r) => r.getAttribute("rx") !== null)
+    expect(cardRects.length).toBe(3)
+    for (const r of cardRects) {
+      const x = Number(r.getAttribute("x"))
+      const w = Number(r.getAttribute("width"))
+      // Card x is local to the kpi component's own translated <g> (relative
+      // to the 435px body rect, not the page) — asserting against 435 (not
+      // 96+435) matches kpi.tsx's own coordinate space.
+      expect(x + w).toBeLessThanOrEqual(435 + 0.01)
+    }
+  })
+})
+
 describe("ImageLeadSplitContent determinism", () => {
   it("renders byte-identical markup across two independent renders of the same slide", () => {
     const a = render(ir([imageLead], { "shot-1": { src: "data:image/png;base64,AAAA" } }), imageLead)
