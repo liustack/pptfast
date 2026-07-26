@@ -206,6 +206,108 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // `auditDeck` fresh against both the old and new goldens) -- the
       // newly-picked archetypes introduce no new geometry/contrast defect
       // on any of these three fixtures.
+      //
+      // Re-recaptured again (content-archetype expansion wave, task T1 --
+      // `.issues/2026-07-26-content-archetypes/plan.md`): registering an
+      // 11th content archetype (`image-lead-split`) grows the content
+      // pool's weighted-sampling denominator on every theme that curates
+      // the full set (`consulting`/`journal`, the two themes these three
+      // fixtures use, both do) -- the same "real, intended selection-
+      // behavior change, not a migration regression" posture as every pool-
+      // growth recapture above (P1 variety wave task 4's own 7 -> 10
+      // recapture is the direct precedent). None of these three decks pins
+      // every content page's `layout`, so a pool-wide reweighting can
+      // legitimately flip which archetype a given seed's auto-pick lands
+      // on. Verified via the same targeted-diff discipline: `.audit.json`
+      // needed no recapture for any of the three (findings stayed the
+      // empty array both sides) -- `image-lead-split` itself was never the
+      // archetype any of these three fixtures' seeds actually landed on;
+      // the shift is purely the denominator changing which of the
+      // *existing* 10 archetypes each seed's hash lands on:
+      //   - `basic`: slide index 2 (content, auto-picked) --
+      //     `stacked-poster` -> `tone-adaptive-content`; slide index 3
+      //     (content, auto-picked) -- `two-column` -> `stacked-poster`.
+      //   - `scenarioBearing`: slide index 1 (content, auto-picked) --
+      //     `stacked-poster` -> `bento-panel`; slide index 2 (content,
+      //     auto-picked) -- `rail-numbered` -> `narrow-column`.
+      //   - `annualReviewPreset`: slide index 2 (content, auto-picked) --
+      //     `narrow-column` -> `quiet-frame`.
+      //
+      // Re-recaptured again (content-archetype expansion wave, task T2 --
+      // `.issues/2026-07-26-content-archetypes/plan.md`): registering a
+      // 12th content archetype (`split-band`) grows the content pool's
+      // weighted-sampling denominator again, on the same two full-set
+      // themes (`consulting`/`journal`) as every prior pool-growth
+      // recapture -- same "real, intended selection-behavior change"
+      // posture, not a migration regression. All three fixtures moved this
+      // time (a first -- every prior pool-growth recapture above spared at
+      // least one of the three):
+      //   - `basic`: slide index 2 (content, auto-picked) --
+      //     `tone-adaptive-content` -> `rail-numbered`; slide index 3
+      //     (content, auto-picked) -- `stacked-poster` -> `split-band`.
+      //     `split-band` itself *is* the actual landed pick here, the
+      //     first of these three fixtures where the newly-registered
+      //     archetype is the seed's real choice, not just a denominator
+      //     reshuffle onto an existing one.
+      //   - `scenarioBearing`: slide index 1 (content, auto-picked) --
+      //     `bento-panel` -> `narrow-column`; slide index 2 (content,
+      //     auto-picked) -- `narrow-column` -> `side-highlight`.
+      //     `split-band` was never this fixture's landed pick -- pure
+      //     denominator reshuffle onto existing archetypes, same
+      //     mechanism as every prior pool-growth recapture.
+      //   - `annualReviewPreset`: slide indices 2 and 3 (content,
+      //     auto-picked) -- `quiet-frame` -> `image-lead-split`,
+      //     `stacked-poster` -> `asymmetric-triptych`. `split-band` was
+      //     never this fixture's landed pick either.
+      //
+      // Unlike every prior pool-growth recapture, `.audit.json` *did* need
+      // recapturing for one of the three: `annualReviewPreset`'s
+      // re-landed `image-lead-split` page has 3 `kpi_cards` items sharing
+      // its 435px text column (a pre-existing, review-approved T1
+      // behavior, not something this task touches), and one card's
+      // "average order value" label now truncates to "average …" at that
+      // column's narrower per-card width -- a real `content-truncated`
+      // finding, not a migration artifact. `basic`/`scenarioBearing`'s own
+      // `.audit.json` needed no *content* recapture (`findings: []` both
+      // sides, before and after -- only JSON pretty-printing whitespace
+      // differs, an artifact of the recapture script's own
+      // `JSON.stringify(..., null, 2)` versus whatever formatting produced
+      // the pre-existing golden, not a behavior change). Verified via the
+      // same targeted-diff discipline as every recapture above: the one
+      // `content-truncated` finding is the *only* change anywhere in
+      // `annualReviewPreset.audit.json` (`findings: []` -> one
+      // `content-truncated` entry, `pagesAudited`/`pagesSkipped`/`checks`
+      // all unchanged), and `content-truncated` is the pool's own
+      // established "graceful degradation, not a rendering bug" signal
+      // (`ir-quality`/`deck-audit.ts`'s documented distinction from
+      // `overflow`/`out-of-bounds`/`overlap` -- the same three codes
+      // `content-split-band.test.tsx`'s own pathological-content sweep
+      // asserts zero of, deliberately excluding this one) -- there is
+      // nothing to fix in the renderer here, this is the labeling
+      // convention working as designed on a slide shape T1's own review
+      // already accepted.
+      //
+      // Re-recaptured again (controller-probed follow-up fix round —
+      // `content-image-lead-split.tsx`'s "starved" branch): the
+      // `content-truncated` finding pinned directly above turned out to be
+      // a real structural defect after all, not just an accepted labeling
+      // convention — `image-lead-split`'s unconditional 435px text column
+      // squeezed this exact kpi_cards-only page for no reason, since it has
+      // no scalable (image/chart) lead component to justify narrowing
+      // beside a real visual column. The archetype now widens the text
+      // column to 788px (and shrinks the decorative visual column to a
+      // 260px accent panel) whenever there is no scalable lead — see that
+      // file's own header for the full rationale and the skeleton-diversity
+      // check that the widened width doesn't collide with an existing
+      // archetype's own region class. Only `annualReviewPreset`'s slide
+      // index 2 is affected across all three fixtures (the only slide, in
+      // any of them, that actually lands on `image-lead-split` with no
+      // scalable lead — confirmed by diffing all 5 slides of each fixture's
+      // recaptured SVG golden against its pre-recapture version, only this
+      // one changed anywhere). `.audit.json`'s one `content-truncated`
+      // finding goes back to `findings: []` (the label no longer truncates
+      // at the widened per-card width); `.pptx-zip.json`'s file-name set is
+      // unchanged, only that same slide's XML differs.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

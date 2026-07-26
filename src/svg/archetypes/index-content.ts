@@ -9,6 +9,8 @@ import { BentoPanelContent } from "./content-bento-panel"
 import { SideHighlightContent } from "./content-side-highlight"
 import { AsymmetricTriptychContent } from "./content-asymmetric-triptych"
 import { QuietFrameContent } from "./content-quiet-frame"
+import { ImageLeadSplitContent } from "./content-image-lead-split"
+import { SplitBandContent } from "./content-split-band"
 
 export type { ContentArchetype, ContentArchetypeId } from "./types"
 
@@ -17,6 +19,10 @@ export type { ContentArchetype, ContentArchetypeId } from "./types"
 // Partial 过渡态（沿用 chapter 页型在 Wave 2 收尾任务的同一模式）。
 // P1 variety wave, task 4：content 池 7 -> 10，新增三个（顺序与
 // `LAYOUT_REGISTRY`/`CONTENT_LAYOUTS` 的声明顺序一致，见 registry.ts）。
+// Content-archetype expansion wave, task T1：content 池 10 -> 11，新增
+// image-lead-split（见该文件自己的构图注释）。
+// Content-archetype expansion wave, task T2：content 池 11 -> 12，新增
+// split-band（见该文件自己的构图注释）。
 export const CONTENT_ARCHETYPES: Record<ContentArchetypeId, ContentArchetype> = {
   "narrow-column": NarrowColumnContent,
   "two-column": TwoColumnContent,
@@ -28,4 +34,6 @@ export const CONTENT_ARCHETYPES: Record<ContentArchetypeId, ContentArchetype> = 
   "side-highlight": SideHighlightContent,
   "asymmetric-triptych": AsymmetricTriptychContent,
   "quiet-frame": QuietFrameContent,
+  "image-lead-split": ImageLeadSplitContent,
+  "split-band": SplitBandContent,
 }

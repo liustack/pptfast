@@ -141,20 +141,22 @@ describe("STRATEGY_DEFINITIONS", () => {
     ])
   })
 
-  it("pins showcase's re-derived content set: stacked-poster + bento-panel + side-highlight (a permanent opaque highlight panel matches showcase's own glossy identity-page picks)", () => {
+  it("pins showcase's re-derived content set: stacked-poster + bento-panel + side-highlight + split-band (wave-final-review correction: split-band's full-bleed color band is the same 'bold opaque color block' idiom side-highlight already earns membership for, just escalated to genuinely full-bleed — see the field's own doc comment and split-band's entry below for the full argument)", () => {
     expect(STRATEGY_DEFINITIONS.showcase.layoutTendencies).toEqual([
       "stacked-poster",
       "bento-panel",
       "side-highlight",
+      "split-band",
     ])
   })
 
-  it("every strategy's content layoutTendencies set now has exactly 3 members (was an uneven 2-3 split before task 4's placement)", () => {
+  it("every strategy's content layoutTendencies set has at least 3 members, showcase now has 4 (wave-final-review correction added split-band to showcase specifically — see the pin test above)", () => {
     for (const strategy of expectedStrategies) {
+      const expected = strategy === "showcase" ? 4 : 3
       expect(
         STRATEGY_DEFINITIONS[strategy].layoutTendencies.length,
         `${strategy}.layoutTendencies`,
-      ).toBe(3)
+      ).toBe(expected)
     }
   })
 

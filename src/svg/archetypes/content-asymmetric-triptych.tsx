@@ -124,10 +124,29 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
   const bottomComponents = rest.slice(topHalfCount)
 
   const leadRect: ContentRect = { x: LEAD_X, y: bodyTop, w: LEAD_W, h: bodyH }
-  const rowH = Math.max(60, (bodyH - ROW_GAP) / 2)
+  // Pool-growth-exposed pre-existing defect (content-archetype expansion
+  // wave, task T1 — found via `audit-baseline.test.ts`'s
+  // `new_components_stress` fixture: registering an 11th content archetype
+  // shifted seeded auto-selection onto this archetype for a page it had
+  // never landed on before, exposing this). With exactly one secondary
+  // component, TOP used to be squeezed into a half-height box while BOTTOM
+  // sat empty beside it — starving a real component of half its available
+  // height for no reason (a heavy 5-item `steps` list overflowed the
+  // half-height box even after its own font-shrink floor). TOP now claims
+  // the *full* `bodyH` whenever BOTTOM has nothing to show, the same "sole
+  // occupant gets the full column" precedent LEAD itself already follows —
+  // BOTTOM's frame/divider are skipped in that case (there is no region to
+  // show). `topComponents.length > 0` scopes this to exactly that case, not
+  // the `rest.length === 0` one (both TOP/BOTTOM empty) the file header's
+  // "a lone-component page still shows 3 regions" T1-handoff guarantee is
+  // about — that case's own dedicated test (`content-asymmetric-
+  // triptych.test.tsx`, "with 0 components") is untouched by this change.
+  const bottomStarved = topComponents.length > 0 && bottomComponents.length === 0
+  const halfRowH = Math.max(60, (bodyH - ROW_GAP) / 2)
+  const rowH = bottomStarved ? bodyH : halfRowH
   const topRect: ContentRect = { x: RIGHT_X, y: bodyTop, w: RIGHT_W, h: rowH }
   const dividerY = bodyTop + rowH + ROW_GAP / 2
-  const bottomRect: ContentRect = { x: RIGHT_X, y: bodyTop + rowH + ROW_GAP, w: RIGHT_W, h: rowH }
+  const bottomRect: ContentRect = { x: RIGHT_X, y: bodyTop + rowH + ROW_GAP, w: RIGHT_W, h: halfRowH }
 
   const footnote = slide.footnote
     ? fitSvgLine(slide.footnote, { maxWidth: HEADING_MAX_W, fontSize: 14, minFontSize: 11 })
@@ -202,26 +221,35 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
         strokeOpacity={0.45}
         strokeWidth={1}
       />
-      <rect
-        x={bottomRect.x}
-        y={bottomRect.y}
-        width={bottomRect.w}
-        height={bottomRect.h}
-        rx={PANEL_RADIUS}
-        fill="none"
-        stroke={colors.border ?? colors.muted}
-        strokeOpacity={0.45}
-        strokeWidth={1}
-      />
-      <line
-        x1={RIGHT_X}
-        y1={dividerY}
-        x2={RIGHT_X + RIGHT_W}
-        y2={dividerY}
-        stroke={colors.border ?? colors.muted}
-        strokeWidth={1}
-        strokeOpacity={0.3}
-      />
+      {/* BOTTOM's frame/divider are skipped when TOP has absorbed the full
+          bodyH (see `bottomStarved` above) — there is no region left to
+          outline. Untouched for every other case (0 or >=2 rest
+          components), including the 0-rest showcase this file's header
+          documents. */}
+      {!bottomStarved && (
+        <>
+          <rect
+            x={bottomRect.x}
+            y={bottomRect.y}
+            width={bottomRect.w}
+            height={bottomRect.h}
+            rx={PANEL_RADIUS}
+            fill="none"
+            stroke={colors.border ?? colors.muted}
+            strokeOpacity={0.45}
+            strokeWidth={1}
+          />
+          <line
+            x1={RIGHT_X}
+            y1={dividerY}
+            x2={RIGHT_X + RIGHT_W}
+            y2={dividerY}
+            stroke={colors.border ?? colors.muted}
+            strokeWidth={1}
+            strokeOpacity={0.3}
+          />
+        </>
+      )}
 
       {leadComponent && (
         <SvgContent arrangement={undefined} components={[leadComponent]} rect={leadRect} ctx={ctx} />

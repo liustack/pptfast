@@ -1,6 +1,6 @@
 /**
  * Layout registry (W2 task 1, spec §3/§6/§8): an explicit, statically-checked
- * description of what the render chain's 33 archetype components + 4
+ * description of what the render chain's 35 archetype components + 4
  * page-level image takeovers already draw. This is a metadata layer only —
  * it formalizes today's implicit page structure (archetype JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
@@ -60,9 +60,11 @@
 // `resolveArchetypeId`).
 import type { STRATEGY_VALUES } from "@/ir/narrative-values"
 
-// ── layoutDef imports (src domain reorg wave 1, task T1d): 33 archetype
+// ── layoutDef imports (src domain reorg wave 1, task T1d): 35 archetype
 // files (one `layoutDef` each) + image-pages.tsx's 4 uniquely-named takeover
-// exports — 37 bindings total. Grouped by family, each group in the exact
+// exports — 39 bindings total (content-archetype expansion wave grew this
+// from 33/37 to 35/39 — image-lead-split + split-band, tasks T1/T2).
+// Grouped by family, each group in the exact
 // order its former literal Record held (order feeds `layoutsForSlideType`'s
 // `Object.values` walk below, which feeds `theme.layouts[type]`'s array
 // order, which `resolveArchetypeId`'s `weightedPickBySeed` samples from
@@ -105,6 +107,8 @@ import { layoutDef as contentToneAdaptiveContent } from "../archetypes/content-t
 import { layoutDef as contentSideHighlight } from "../archetypes/content-side-highlight"
 import { layoutDef as contentAsymmetricTriptych } from "../archetypes/content-asymmetric-triptych"
 import { layoutDef as contentQuietFrame } from "../archetypes/content-quiet-frame"
+import { layoutDef as contentImageLeadSplit } from "../archetypes/content-image-lead-split"
+import { layoutDef as contentSplitBand } from "../archetypes/content-split-band"
 
 import {
   imageSplitLayoutDef,
@@ -118,7 +122,7 @@ export type Strategy = (typeof STRATEGY_VALUES)[number]
 export type SlideType = "cover" | "chapter" | "content" | "ending"
 
 /** The 16-word slot vocabulary — the union of every distinct visual region
- * observed across all 33 archetypes + 4 takeovers (inventory's "建议 slot
+ * observed across all 35 archetypes + 4 takeovers (inventory's "建议 slot
  * 词汇表"). Not every word is used by every entry, and `aside` currently
  * has zero occurrences as a *slot* (it only exists today as a body
  * `arrangement` — see `Arrangement` below) — kept in the vocabulary because
@@ -262,7 +266,14 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Content archetypes (10, P1 variety wave task 4: 7 -> 10 — content was the
+// Content archetypes (12, content-archetype expansion wave task T2: 11 -> 12
+// — split-band, the pool's first *horizontal* split (a full-bleed header
+// band over an ordinary body band) — see that file's own composition-sketch
+// header for the capacity measurement that chose its ratio; task T1 grew
+// this same family 10 -> 11 just before it — image-lead-split, the first
+// archetype whose column split is genuinely
+// unequal — see that file's own composition-sketch header; P1 variety wave
+// task 4 grew this same family 7 -> 10 before it, content having been the
 // pool's thinnest page type, the C-investigation's own finding, dr/
 // c-diversity.md) — the only family that reads `slide.components`, so
 // every entry carries a `body` slot plus its own header chrome, and declares
@@ -316,6 +327,25 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     width (880px, `narrow-column`'s `COLUMN_W`), so no new per-archetype
 //     number is warranted (each file's own composition-sketch header
 //     derives this explicitly, not just asserts it).
+//   - image-lead-split (task T1): body 4 too, and visual 1 — its 435px text
+//     column is narrower than every other archetype's own single-stack
+//     column, but still wider than the pool's already-audited narrowest
+//     single-stack region (asymmetric-triptych's 424px `top`/`bottom`
+//     panels), so this doesn't warrant a new number either, nor tightening
+//     any `audit/capacity.ts` floor — the file's own header derives this.
+//   - split-band (task T2): body 4 too — its 400px (380px with a footnote)
+//     body height is *shorter* than every other archetype's own body
+//     region (the pool's previous floor was width, not height; this is the
+//     first archetype whose header chrome eats vertical rather than
+//     horizontal budget), which is exactly why this task's own capacity
+//     measurement (see the file's own composition-sketch header) tested
+//     candidate ratios against realistic per-tier content *before* fixing
+//     the geometry, instead of assuming the pool's flat 4 would still be
+//     safe at a new, shorter height. It held at zero `data-dropped` for
+//     ordinary content at every pacing tier, so 4 stays the declared
+//     number — no `audit/capacity.ts` floor needs tightening either, by
+//     the same "re-verified, not assumed" standard image-lead-split's own
+//     entry above already established for a *width* floor.
 //
 // This essay is what every content archetype's own body-slot capacity
 // comment means by "see registry.ts's CONTENT_LAYOUTS header for the
@@ -335,6 +365,8 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   [contentSideHighlight.id]: contentSideHighlight,
   [contentAsymmetricTriptych.id]: contentAsymmetricTriptych,
   [contentQuietFrame.id]: contentQuietFrame,
+  [contentImageLeadSplit.id]: contentImageLeadSplit,
+  [contentSplitBand.id]: contentSplitBand,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -358,7 +390,7 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 33 archetype layouts + 4 takeover layouts, keyed by id. */
+/** All 35 archetype layouts + 4 takeover layouts, keyed by id. */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {
   ...COVER_LAYOUTS,
   ...CHAPTER_LAYOUTS,

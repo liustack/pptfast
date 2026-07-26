@@ -45,6 +45,10 @@ const CONTENT_ARCHETYPE_IDS = [
   "side-highlight",
   "asymmetric-triptych",
   "quiet-frame",
+  // content-archetype expansion wave, task T1: content pool 10 -> 11.
+  "image-lead-split",
+  // content-archetype expansion wave, task T2: content pool 11 -> 12.
+  "split-band",
 ]
 
 // ── resolveArchetypeId (pure seed+ordinal selection, extracted from FullSlideSvg) ──
@@ -286,17 +290,20 @@ describe("resolveArchetypeId", () => {
   it("regression (P1 fix round): storytelling × beat 'breathing' no longer compounds narrow-column into a majority pick — the exact pathology the reviewer measured at ~53% under the old multiplicative formula", () => {
     // storytelling's layoutTendencies is now {narrow-column, stacked-poster,
     // quiet-frame} (P1 variety wave, task 4 added quiet-frame) and beat
-    // "breathing"'s tendency set is now {narrow-column, quiet-frame} (same
-    // task, closing the T1-flagged single-member gap) — narrow-column stays
-    // a member of *both* sets, still the most natural real-author pairing
-    // (an "unhurried single flow" beat under a "tension, image-forward"
+    // "breathing"'s tendency set is now {narrow-column, quiet-frame,
+    // image-lead-split} (image-lead-split added by the content-archetype
+    // expansion wave's own T3 task, see `layout-selection.ts`'s
+    // `BEAT_TENDENCIES` doc comment) — narrow-column stays a member of
+    // *both* sets, still the most natural real-author pairing (an
+    // "unhurried single flow" beat under a "tension, image-forward"
     // strategy that already reaches for the same spacious layout), and
     // still exactly the case the reviewer flagged: the old
     // `strategyWeight * beatWeight` formula would give narrow-column weight
     // 3×3=9 against the pool's stacked-poster (strategy-only, weight 3),
-    // quiet-frame (now itself a shared member, weight 3×3=9 too), and 7
-    // other weight-1 members — a compounding that would only have gotten
-    // worse as task 4 added a second shared id, not better.
+    // quiet-frame (itself a shared member, weight 3×3=9 too), image-lead-
+    // split (beat-only, weight 1×3=3), and 8 other weight-1 members — a
+    // compounding that would only have gotten worse as content-pool growth
+    // keeps adding shared/beat-only ids, not better.
     const N = 5000
     let narrowColumnHits = 0
     for (let i = 0; i < N; i++) {
@@ -312,29 +319,28 @@ describe("resolveArchetypeId", () => {
       )!
       if (picked === "narrow-column") narrowColumnHits++
     }
-    // Weights under Math.max, full 10-id pool: narrow-column=max(3,3)=3 and
-    // quiet-frame=max(3,3)=3 (both layers agree on both ids — capped, not
-    // squared), stacked-poster=max(3,1)=3 (strategy only), the remaining 7
-    // ids (two-column/rail-numbered/banner-heading/bento-panel/
-    // tone-adaptive-content/side-highlight/asymmetric-triptych)=max(1,1)=1
-    // each — total 3+3+3+7=16, narrow-column share = 3/16 = 0.1875.
-    // Identical, by construction, to storytelling's own strategy-only share
-    // with no beat declared at all (also 3/16, since breathing's tendency
-    // set {narrow-column, quiet-frame} is now a full subset of
-    // storytelling's own {narrow-column, stacked-poster, quiet-frame} — beat
-    // contributes zero marginal weight to any id here either way) — proof
-    // that an agreeing beat contributes corroboration, not amplification.
+    // Weights under Math.max, full 12-id pool (content-archetype expansion
+    // wave, task T3 re-derivation — image-lead-split joining `breathing`
+    // moves narrow-column's share down from the pre-T3 3/16 = 0.1875):
+    // narrow-column=max(3,3)=3 and quiet-frame=max(3,3)=3 (both layers
+    // agree on both ids — capped, not squared), stacked-poster=max(3,1)=3
+    // (strategy only), image-lead-split=max(1,3)=3 (beat only, new this
+    // task), the remaining 8 ids (two-column/rail-numbered/banner-heading/
+    // bento-panel/tone-adaptive-content/side-highlight/asymmetric-triptych/
+    // split-band)=max(1,1)=1 each — total 3+3+3+3+8=20, narrow-column share
+    // = 3/20 = 0.15 exactly. Bounds set with margin on both sides of that
+    // point estimate for N=5000 sampling noise.
     const share = narrowColumnHits / N
-    expect(share).toBeGreaterThan(0.15)
-    expect(share).toBeLessThan(0.24)
+    expect(share).toBeGreaterThan(0.11)
+    expect(share).toBeLessThan(0.19)
     // Explicitly below what the old multiplicative formula would give on
-    // this same 10-id pool (narrow-column=3×3=9, quiet-frame=3×3=9,
-    // stacked-poster=3×1=3, 7 others at 1 — total 28, share 9/28 ≈ 0.321) —
-    // the regression this fix round closes, asserted concretely rather than
-    // only matching the new expected band (a band-only check could in
-    // principle still pass if the bug reintroduced a smaller-but-still-real
-    // compounding effect).
-    expect(share).toBeLessThan(0.28)
+    // this same 12-id pool (narrow-column=3×3=9, quiet-frame=3×3=9,
+    // stacked-poster=3×1=3, image-lead-split=1×3=3, 8 others at 1 — total
+    // 32, share 9/32 = 0.28125) — the regression this fix round closes,
+    // asserted concretely rather than only matching the new expected band
+    // (a band-only check could in principle still pass if the bug
+    // reintroduced a smaller-but-still-real compounding effect).
+    expect(share).toBeLessThan(0.24)
   })
 
   // ── theme tendency weighting (theme-structure wave, task T1 —
@@ -1123,21 +1129,23 @@ describe("render parity with FullSlideSvg", () => {
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Seed 9 (P1 variety wave, task 4 re-pin — content pool grew 7 -> 10,
-    // reweighting every hash-interval boundary, so seed 12's old collision
-    // stopped colliding; re-found by brute-force search over this exact
-    // 2-page academic fixture, same method as
-    // plan/revision-stability.test.ts's own seed comments): page 0
-    // auto-picks "two-column" (pageKey "0", no previous), and page 1's own
-    // raw weighted pick (pageKey "1", before anti-repetition) is *also*
-    // "two-column" — so W4 design decision 4's redraw fires and lands on
-    // "narrow-column", the deterministic runner-up (academic's content pool
-    // now has 10 members, never empty).
+    // Seed 1 (content-archetype expansion wave, task T2 re-pin — content
+    // pool grew 11 -> 12 (split-band), reweighting every hash-interval
+    // boundary again, so seed 3's old collision (T1's own re-pin) stopped
+    // colliding; re-found by brute-force search over this exact 2-page
+    // academic fixture, same method as T1's own re-pin and
+    // plan/revision-stability.test.ts's seed comments): page 0 auto-picks
+    // "two-column" (pageKey "0", no previous — unchanged from T1's pin, a
+    // happy coincidence of the search, not preserved on purpose), and page
+    // 1's own raw weighted pick (pageKey "1", before anti-repetition) is
+    // *also* "two-column" — so W4 design decision 4's redraw fires and
+    // lands on "asymmetric-triptych", the new deterministic runner-up
+    // (academic's content pool now has 12 members, never empty).
     const slides: Slide[] = [
       { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
       { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 9 }
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 1 }
 
     // Page 0: no previous page, ordinary auto-pick — sanity baseline for
     // what page 1 would collide with.
@@ -1159,7 +1167,7 @@ describe("render parity with FullSlideSvg", () => {
     const unswappedRawPick = resolveArchetypeId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
-      9,
+      1,
       "1",
       undefined,
       resolveIrStrategy(ir),
@@ -1169,9 +1177,9 @@ describe("render parity with FullSlideSvg", () => {
     // actual collision the redraw exists to break.
     expect(unswappedRawPick).toBe("two-column")
     // The real (redrawn) resolution differs from that raw pick — the redraw
-    // branch, not some other code path, is what produced "narrow-column".
+    // branch, not some other code path, is what produced "asymmetric-triptych".
     expect(resolved).not.toBe(unswappedRawPick)
-    expect(resolved).toBe("narrow-column")
+    expect(resolved).toBe("asymmetric-triptych")
   })
 
   it("a takeover or image-cover bypass never renders [data-archetype] (the archetype branch is correctly skipped both sides)", () => {
