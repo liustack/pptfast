@@ -104,6 +104,27 @@ function computeColumnWidths(
       }
     }
   }
+  // Last-resort uniform clamp (content-archetype expansion wave, task T1 —
+  // found via `audit-baseline.test.ts`'s `structure_bold_headings` fixture
+  // once a content archetype narrow enough to expose it entered the pool):
+  // the shrink loop above never lets a column go below `MIN_COL_W`, so when
+  // `totalW` itself is narrower than `columns.length * MIN_COL_W` (schema
+  // max is 8 columns — 8*64=512px, wider than this file's own author ever
+  // stress-tested against before this fixture), the widths still sum to
+  // more than `totalW` after that loop and every downstream `<line>`/`<rect
+  // width={box.w}>` call draws past the component's own box — a real
+  // horizontal overflow, not a cosmetic one. `MIN_COL_W` is a *readability*
+  // target, not a correctness invariant this component may violate the box
+  // to defend — scaling every column down proportionally (breaking below
+  // `MIN_COL_W` only when structurally unavoidable) keeps the table inside
+  // `totalW` unconditionally; `fitSvgLine`'s own shrink/truncate fallback
+  // (already threaded per cell, this file's own header comment) absorbs the
+  // narrower result the same way it absorbs any other narrow column.
+  const totalAfterShrink = widths.reduce((s, w) => s + w, 0)
+  if (totalAfterShrink > totalW && totalAfterShrink > 0) {
+    const scale = totalW / totalAfterShrink
+    for (let c = 0; c < widths.length; c++) widths[c] *= scale
+  }
   const offsets: number[] = []
   let x = 0
   for (const w of widths) {
