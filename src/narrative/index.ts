@@ -113,25 +113,43 @@ export interface StrategyDefinition {
    * 油" call-out: it is the one content archetype meant to read as
    * strategy-neutral, so it always gets the ×1 floor).
    *
-   * **`image-lead-split`/`split-band` (content-archetype expansion wave,
-   * task T3) join it, deliberately, as this field's third and fourth
-   * permanently-neutral members** — a decision, not an oversight (T1's own
-   * review flagged `image-lead-split`'s absence here as looking accidental,
-   * so this note exists to close that off explicitly). Both archetypes'
-   * defining traits are *asset/chrome* choices, not *argument-style* ones:
-   * `image-lead-split`'s unconditional visual/text split depends on whether
-   * the deck's author actually has a chart/photo worth leading with, and
-   * `split-band`'s full-bleed color header is a visual-weight escalation of
-   * `banner-heading`'s existing assertion idiom layered on an otherwise
-   * ordinary body — neither maps to one strategy's rhetorical register
-   * (MECE evidence-first, editorial restraint, step-by-step procedure,
-   * glossy visual punch, plain scannability) more than another's: a
-   * pyramid deck, a storytelling deck, and a briefing deck can equally have
-   * (or lack) a strong image to lead with, or want a bold banded opener.
-   * Both *do* carry a beat-level personality instead (`BEAT_TENDENCIES`,
-   * `svg/layout-selection.ts` — `image-lead-split` is `breathing`,
-   * `split-band` is `anchor`) — that axis measures page-level density
-   * character, a question this field's argument-style axis doesn't ask.
+   * **`image-lead-split` (content-archetype expansion wave, task T3) joins
+   * it, deliberately, as this field's third permanently-neutral member** — a
+   * decision, not an oversight (T1's own review flagged its absence here as
+   * looking accidental, so this note exists to close that off explicitly).
+   * Its defining trait is an *asset-availability* choice, not an
+   * *argument-style* one: the unconditional visual/text split depends on
+   * whether the deck's author actually has a chart/photo worth leading with
+   * (see `content-image-lead-split.tsx`'s own file header) — a pyramid deck,
+   * a storytelling deck, a showcase deck, and a briefing deck can equally
+   * have (or lack) a strong image to lead with, so no single strategy's
+   * rhetorical register (MECE evidence-first, editorial restraint,
+   * step-by-step procedure, glossy visual punch, plain scannability) owns
+   * this composition more than another's. **Reconsidered specifically
+   * against `showcase`** (the wave's final review, see `split-band`'s own
+   * entry in `showcase.layoutTendencies` below): showcase's register is
+   * visual *punch* (bold color blocks, opaque highlight panels), not visual
+   * *presence* — having an image at all doesn't say anything about how
+   * loudly the page asserts itself, so this archetype's asset-dependence
+   * still doesn't map onto showcase's own membership criterion the way
+   * `split-band`'s full-bleed color band does. It still went back to
+   * neutral, not out of inertia. It *does* carry a beat-level personality
+   * instead (`BEAT_TENDENCIES`, `svg/layout-selection.ts` — `breathing`) —
+   * that axis measures page-level density character, a question this
+   * field's argument-style axis doesn't ask.
+   *
+   * **`split-band` (same wave, same task) does NOT join this field** — it
+   * was originally proposed here on the same "chrome, not argument" theory
+   * above, but the wave's final review refuted that specific claim with
+   * in-file evidence: `split-band`'s defining feature, a full-bleed
+   * (x=0, w=1280) `colors.primary` header band, is a strictly stronger
+   * version of the exact "bold opaque color block" idiom `side-highlight`
+   * already earns `showcase.layoutTendencies` membership for (see that
+   * entry's own comment below), and showcase's identity picks
+   * (`fashion-masthead`/`fashion-chapter`/`fashion-ending`) are themselves
+   * built from full-bleed color blocks — visual weight *is* showcase's
+   * rhetorical register, not a register-neutral chrome choice. `split-band`
+   * is listed in `showcase.layoutTendencies` below instead of here.
    *
    * **Historical note (corrected P1 variety wave, task 3):** this field's
    * doc comment used to claim cover/chapter/ending stayed uniformly sampled
@@ -371,8 +389,15 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // 优先落给代表性不足的 showcase，此前仅 2 项。一块不透明主色高亮面板
     // 是这个池子里视觉冲击力最直接的新表达，与 showcase 的门面页选型
     // poster-center/fashion-masthead/fashion-chapter/fashion-ending 同一
-    // 「大胆色块」气质）。
-    layoutTendencies: ["stacked-poster", "bento-panel", "side-highlight"],
+    // 「大胆色块」气质）+ 满版色块通栏（split-band，content-archetype
+    // expansion wave task T3 final-review correction：`split-band` 的
+    // header 是一块贯穿整页宽度（x=0, w=1280）的不透明 colors.primary 通栏，
+    // 是 side-highlight 那块「常驻高亮面板」同一套「大胆色块」表达的更强
+    // 版本——不再侧边而是通栏，视觉冲击力只增不减。showcase 自己的门面页
+    // 选型（fashion-masthead 的满版主色块+强调色带、fashion-chapter/
+    // fashion-ending 的满版强调色块）本身就是这套「满版色块」气质，
+    // split-band 是这套气质在 content 页上的自然延伸，不是勉强凑数）。
+    layoutTendencies: ["stacked-poster", "bento-panel", "side-highlight", "split-band"],
     // Identity tendencies: showcase's cover/chapter/ending want the same
     // glossy, visual-impact-first punch as its content picks.
     // - cover `poster-center`: fully centered, no kicker, a single bottom
