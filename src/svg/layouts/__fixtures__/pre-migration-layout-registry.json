@@ -34,6 +34,7 @@
     "asymmetric-triptych",
     "quiet-frame",
     "image-lead-split",
+    "split-band",
     "image-split",
     "image-top",
     "image-bottom",
@@ -775,6 +776,37 @@
           "name": "hero",
           "accepts": "any",
           "capacity": 1
+        },
+        {
+          "name": "body",
+          "accepts": "any",
+          "capacity": 4
+        },
+        {
+          "name": "meta",
+          "accepts": []
+        }
+      ],
+      "arrangements": "all"
+    },
+    "split-band": {
+      "id": "split-band",
+      "kind": "archetype",
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "name": "kicker",
+          "accepts": []
+        },
+        {
+          "name": "heading",
+          "accepts": []
+        },
+        {
+          "name": "subheading",
+          "accepts": []
         },
         {
           "name": "body",

@@ -106,6 +106,7 @@ import { layoutDef as contentSideHighlight } from "../archetypes/content-side-hi
 import { layoutDef as contentAsymmetricTriptych } from "../archetypes/content-asymmetric-triptych"
 import { layoutDef as contentQuietFrame } from "../archetypes/content-quiet-frame"
 import { layoutDef as contentImageLeadSplit } from "../archetypes/content-image-lead-split"
+import { layoutDef as contentSplitBand } from "../archetypes/content-split-band"
 
 import {
   imageSplitLayoutDef,
@@ -263,8 +264,12 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Content archetypes (11, content-archetype expansion wave task T1: 10 -> 11
-// — image-lead-split, the first archetype whose column split is genuinely
+// Content archetypes (12, content-archetype expansion wave task T2: 11 -> 12
+// — split-band, the pool's first *horizontal* split (a full-bleed header
+// band over an ordinary body band) — see that file's own composition-sketch
+// header for the capacity measurement that chose its ratio; task T1 grew
+// this same family 10 -> 11 just before it — image-lead-split, the first
+// archetype whose column split is genuinely
 // unequal — see that file's own composition-sketch header; P1 variety wave
 // task 4 grew this same family 7 -> 10 before it, content having been the
 // pool's thinnest page type, the C-investigation's own finding, dr/
@@ -326,6 +331,19 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     single-stack region (asymmetric-triptych's 424px `top`/`bottom`
 //     panels), so this doesn't warrant a new number either, nor tightening
 //     any `audit/capacity.ts` floor — the file's own header derives this.
+//   - split-band (task T2): body 4 too — its 400px (380px with a footnote)
+//     body height is *shorter* than every other archetype's own body
+//     region (the pool's previous floor was width, not height; this is the
+//     first archetype whose header chrome eats vertical rather than
+//     horizontal budget), which is exactly why this task's own capacity
+//     measurement (see the file's own composition-sketch header) tested
+//     candidate ratios against realistic per-tier content *before* fixing
+//     the geometry, instead of assuming the pool's flat 4 would still be
+//     safe at a new, shorter height. It held at zero `data-dropped` for
+//     ordinary content at every pacing tier, so 4 stays the declared
+//     number — no `audit/capacity.ts` floor needs tightening either, by
+//     the same "re-verified, not assumed" standard image-lead-split's own
+//     entry above already established for a *width* floor.
 //
 // This essay is what every content archetype's own body-slot capacity
 // comment means by "see registry.ts's CONTENT_LAYOUTS header for the
@@ -346,6 +364,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   [contentAsymmetricTriptych.id]: contentAsymmetricTriptych,
   [contentQuietFrame.id]: contentQuietFrame,
   [contentImageLeadSplit.id]: contentImageLeadSplit,
+  [contentSplitBand.id]: contentSplitBand,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
