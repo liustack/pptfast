@@ -47,6 +47,8 @@ const CONTENT_ARCHETYPE_IDS = [
   "quiet-frame",
   // content-archetype expansion wave, task T1: content pool 10 -> 11.
   "image-lead-split",
+  // content-archetype expansion wave, task T2: content pool 11 -> 12.
+  "split-band",
 ]
 
 // ── resolveArchetypeId (pure seed+ordinal selection, extracted from FullSlideSvg) ──
@@ -1125,21 +1127,23 @@ describe("render parity with FullSlideSvg", () => {
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Seed 3 (content-archetype expansion wave, task T1 re-pin — content
-    // pool grew 10 -> 11, reweighting every hash-interval boundary, so seed
-    // 9's old collision stopped colliding; re-found by brute-force search
-    // over this exact 2-page academic fixture, same method as
-    // plan/revision-stability.test.ts's own seed comments): page 0
-    // auto-picks "two-column" (pageKey "0", no previous), and page 1's own
-    // raw weighted pick (pageKey "1", before anti-repetition) is *also*
-    // "two-column" — so W4 design decision 4's redraw fires and lands on
-    // "side-highlight", the deterministic runner-up (academic's content pool
-    // now has 11 members, never empty).
+    // Seed 1 (content-archetype expansion wave, task T2 re-pin — content
+    // pool grew 11 -> 12 (split-band), reweighting every hash-interval
+    // boundary again, so seed 3's old collision (T1's own re-pin) stopped
+    // colliding; re-found by brute-force search over this exact 2-page
+    // academic fixture, same method as T1's own re-pin and
+    // plan/revision-stability.test.ts's seed comments): page 0 auto-picks
+    // "two-column" (pageKey "0", no previous — unchanged from T1's pin, a
+    // happy coincidence of the search, not preserved on purpose), and page
+    // 1's own raw weighted pick (pageKey "1", before anti-repetition) is
+    // *also* "two-column" — so W4 design decision 4's redraw fires and
+    // lands on "asymmetric-triptych", the new deterministic runner-up
+    // (academic's content pool now has 12 members, never empty).
     const slides: Slide[] = [
       { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
       { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 3 }
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 1 }
 
     // Page 0: no previous page, ordinary auto-pick — sanity baseline for
     // what page 1 would collide with.
@@ -1161,7 +1165,7 @@ describe("render parity with FullSlideSvg", () => {
     const unswappedRawPick = resolveArchetypeId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
-      3,
+      1,
       "1",
       undefined,
       resolveIrStrategy(ir),
@@ -1171,9 +1175,9 @@ describe("render parity with FullSlideSvg", () => {
     // actual collision the redraw exists to break.
     expect(unswappedRawPick).toBe("two-column")
     // The real (redrawn) resolution differs from that raw pick — the redraw
-    // branch, not some other code path, is what produced "side-highlight".
+    // branch, not some other code path, is what produced "asymmetric-triptych".
     expect(resolved).not.toBe(unswappedRawPick)
-    expect(resolved).toBe("side-highlight")
+    expect(resolved).toBe("asymmetric-triptych")
   })
 
   it("a takeover or image-cover bypass never renders [data-archetype] (the archetype branch is correctly skipped both sides)", () => {

@@ -42,7 +42,7 @@ describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
     }
   }
 
-  it("has exactly 34 archetype-kind entries, all traceable to one of the four real registries (content-archetype expansion wave task T1: content 10 -> 11)", () => {
+  it("has exactly 35 archetype-kind entries, all traceable to one of the four real registries (content-archetype expansion wave task T2: content 11 -> 12)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_ARCHETYPES),
       ...Object.keys(CHAPTER_ARCHETYPES),
@@ -50,7 +50,7 @@ describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
       ...Object.keys(ENDING_ARCHETYPES),
     ])
     const archetypeEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(archetypeEntries).toHaveLength(34)
+    expect(archetypeEntries).toHaveLength(35)
     for (const entry of archetypeEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real archetype id`).toBe(true)
     }
@@ -187,11 +187,11 @@ describe("layoutsForSlideType", () => {
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 11 archetypes and the 4 takeovers (content-archetype expansion wave task T1: content 10 -> 11)", () => {
+  it("content includes both the 12 archetypes and the 4 takeovers (content-archetype expansion wave task T2: content 11 -> 12)", () => {
     const contents = layoutsForSlideType("content")
-    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(11)
+    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(12)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
-    expect(contents).toHaveLength(15)
+    expect(contents).toHaveLength(16)
   })
 })
 

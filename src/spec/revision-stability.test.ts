@@ -132,19 +132,20 @@ describe("explicit seed: revision stability", () => {
   })
 
   it("inserting a new page mid-deck only disturbs the new page and its immediate successor", () => {
-    // Seed 0 (content-archetype expansion wave, task T1 re-pin — content
-    // pool grew 10 -> 11, reweighting every hash-interval boundary, so seed
-    // 7's own collision stopped exercising this property; re-found by
-    // brute-force search over this exact fixture, same method as the
-    // previous P1 task 4 re-pin this comment used to document) is used here
-    // instead of the heading-edit test's seed *because* it actually
-    // exercises the redraw: p-4's raw pick collides with p-new's effective
-    // id post-insertion where it didn't collide with p-3's pre-insertion, so
-    // p-4 concretely changes (from "rail-numbered" to "bento-panel") —
+    // Seed 3 (content-archetype expansion wave, task T2 re-pin — content
+    // pool grew 11 -> 12 (split-band), reweighting every hash-interval
+    // boundary again, so seed 0's own collision (T1's own re-pin) stopped
+    // exercising this property; re-found by brute-force search over this
+    // exact fixture, same method as T1's own re-pin and the earlier P1
+    // task 4 re-pin this comment used to document) is used here instead of
+    // the heading-edit test's seed *because* it actually exercises the
+    // redraw: p-4's raw pick collides with p-new's effective id
+    // post-insertion where it didn't collide with p-3's pre-insertion, so
+    // p-4 concretely changes (from "rail-numbered" to "banner-heading") —
     // proving this test's exemption is load-bearing, not a vacuously-unused
     // allowance. Any seed would do for the "nothing *else* changes" half of
     // this test.
-    const seed = 0
+    const seed = 3
     const { ir: before } = assembleDeck(makePlan(basePages(), { seed }), {})
     const beforeLayouts = layoutsById(before)
 

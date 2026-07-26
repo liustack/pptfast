@@ -117,6 +117,8 @@ describe("THEME_DEFINITIONS", () => {
     "quiet-frame",
     // content-archetype expansion wave, task T1: content pool 10 -> 11.
     "image-lead-split",
+    // content-archetype expansion wave, task T2: content pool 11 -> 12.
+    "split-band",
   ]
   const FULL_ENDING = [
     "masthead-ending",
