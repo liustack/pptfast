@@ -173,7 +173,7 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * `auditDeck` 复核零 low-contrast 发现。`LAYOUTS` 现在是十三主题不折不扣的
  * {@link FULL_LAYOUTS} 全集，四页型均无任何例外残留。
  */
-const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif">> = {
+const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif" | "layoutTendencies">> = {
   consulting: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "banner-motif",
@@ -269,6 +269,13 @@ export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Obje
       tags: [] as const,
       layouts: LAYOUTS[id].layouts,
       motif: LAYOUTS[id].motif,
+      // Theme-structure wave, task T1 fix round (reviewer's Minor): projected
+      // through now, even though no builtin's `LAYOUTS` entry sets it yet
+      // (task T2's job) — so a future entry that adds `layoutTendencies` is
+      // mechanical (just another key on that entry's object literal) instead
+      // of also requiring a matching edit here, and `tsc` would have caught
+      // the omission had this projection itself been forgotten.
+      layoutTendencies: LAYOUTS[id].layoutTendencies,
     },
   ]),
 ) as unknown as Record<CanonicalThemeId, ThemeDefinition>

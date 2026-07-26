@@ -238,6 +238,16 @@ function resolveArchetype(
   strategy: Strategy,
   previousEffectiveLayoutId: string | null,
   beat: Slide["beat"],
+  // Theme-structure wave, task T1 fix-round: the theme's own structural
+  // personality (`ThemeDefinition.layoutTendencies`, `../themes/definitions.ts`),
+  // already sliced to this slide type by the caller below — threaded through
+  // to `resolveArchetypeId` for the exact same reason `beat` already is: this
+  // is the render path's copy of the selection call, and
+  // `resolveOneEffectiveLayoutId` (`./layout-selection.ts`) is the
+  // validate-path copy. Both must pass every weighting input identically or
+  // the module's own file-header invariant ("what validate sees is what
+  // render uses") breaks the moment any theme declares a tendency.
+  themeTendencies: readonly string[] | undefined,
 ): { id: string; Component: PageArchetype } | null {
   const id = resolveArchetypeId(
     slideType,
@@ -248,6 +258,7 @@ function resolveArchetype(
     strategy,
     previousEffectiveLayoutId,
     beat,
+    themeTendencies,
   )
   return id === null ? null : { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
 }
@@ -394,6 +405,7 @@ export function FullSlideSvg({
           strategy,
           previousEffectiveLayoutId,
           slide.beat,
+          themeDef.layoutTendencies?.[slide.type],
         )
 
   return (

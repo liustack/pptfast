@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { createElement } from "react"
 import { render } from "@testing-library/react"
 import type { PptxIR, Slide } from "@/ir"
@@ -7,7 +7,7 @@ import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
 import { FullSlideSvg } from "./full-slide-svg"
 import { getLayout, layoutsForSlideType } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
-import { THEME_DEFINITIONS } from "../themes/definitions"
+import { __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS } from "../themes/definitions"
 import {
   resolveArchetypeId,
   resolveEffectiveLayoutBodyCapacity,
@@ -1197,5 +1197,60 @@ describe("render parity with FullSlideSvg", () => {
       }
       expect(renderedArchetypeId(ir, slide, 0)).toBeNull()
     }
+  })
+
+  // ── theme-structure wave, T1 fix round: `full-slide-svg.tsx`'s own local
+  // `resolveArchetype` wrapper is a *second* production call site of
+  // `resolveArchetypeId` (the first is `resolveOneEffectiveLayoutId` in
+  // `layout-selection.ts`, which `resolveEffectiveLayoutId` above answers
+  // from) — a reviewer-caught Critical: the render-path wrapper wasn't
+  // threading `themeTendencies` through, so the single-file IR render path
+  // (bypassing `assembleDeck`/`materializeEffectiveLayouts`) would render
+  // WITHOUT a theme's declared personality the moment any theme ever
+  // declares one, while `resolveEffectiveLayoutId` (what pacing/capacity
+  // validation consults) computes WITH it — exactly the validate-vs-render
+  // divergence this module's own file header calls out as the one invariant
+  // this whole selection mechanism exists to protect. Byte-identical to
+  // `resolveEffectiveLayoutId` today only because no *builtin* theme
+  // declares tendencies yet (task T2's job) — this test uses a registered
+  // fixture theme specifically so it doesn't depend on that.
+  describe("render parity with theme layoutTendencies (T1 fix round)", () => {
+    afterEach(() => {
+      __resetRegisteredThemes()
+    })
+
+    it("a theme with declared content layoutTendencies: FullSlideSvg's actual rendered archetype agrees with resolveEffectiveLayoutId across a seed spread", () => {
+      registerTheme({
+        id: "t1-fixture-theme-render-parity",
+        style: THEME_DEFINITIONS.academic.style,
+        brand: {},
+        tags: [],
+        layouts: {
+          cover: THEME_DEFINITIONS.academic.layouts.cover,
+          chapter: THEME_DEFINITIONS.academic.layouts.chapter,
+          content: CONTENT_ARCHETYPE_IDS,
+          ending: THEME_DEFINITIONS.academic.layouts.ending,
+        },
+        // "quiet-frame" is deliberately not a member of briefing's own
+        // layoutTendencies (asserted below) — isolating the theme layer's
+        // own pull, so any render/validate divergence here can only come
+        // from the render path dropping themeTendencies, never strategy
+        // spillover onto the same id.
+        layoutTendencies: { content: ["quiet-frame"] },
+      })
+      expect(STRATEGY_DEFINITIONS.briefing.layoutTendencies).not.toContain("quiet-frame")
+
+      for (let seed = 0; seed < 40; seed++) {
+        const slide: Slide = {
+          type: "content",
+          heading: `seed ${seed}`,
+          components: [{ type: "paragraph", text: "x" }],
+        }
+        const ir: PptxIR = { ...makeIR([slide], "t1-fixture-theme-render-parity"), seed }
+        const validated = resolveEffectiveLayoutId(ir, slide, 0)
+        const rendered = renderedArchetypeId(ir, slide, 0)
+        expect(rendered, `seed ${seed}: rendered "${rendered}" vs. validated "${validated}"`).toBe(validated)
+      }
+    })
   })
 })
