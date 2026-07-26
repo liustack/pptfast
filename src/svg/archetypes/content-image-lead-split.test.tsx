@@ -74,8 +74,9 @@ function render(deck: PptxIR, slide: Slide, index = 0): { markup: string; root: 
 }
 
 describe("ImageLeadSplitContent geometry", () => {
-  it("unconditional 60/40 split: narrow (435px) text column and a wider visual column, never overlapping", () => {
-    const { root } = render(ir([zeroComponents]), zeroComponents)
+  it("unconditional 60/40 split: narrow (435px) text column and a wider visual column, never overlapping — when a real scalable component leads", () => {
+    const deck = ir([imageLead], { "shot-1": { src: "data:image/png;base64,AAAA" } })
+    const { root } = render(deck, imageLead)
     const rects = Array.from(root.querySelectorAll("g[data-audit-rect]")).map((g) =>
       parseAudit(g.getAttribute("data-audit-rect")),
     )
@@ -90,6 +91,78 @@ describe("ImageLeadSplitContent geometry", () => {
     // Never touch: text column's right edge stays left of visual column's left edge.
     expect(textRect.x + textRect.w).toBeLessThanOrEqual(visualRect.x)
     expect(rectsOverlap(textRect as { x: number; y: number; w: number; h: number }, visualRect as { x: number; y: number; w: number; h: number })).toBe(false)
+  })
+
+  // Controller-probed defect (content-archetype expansion wave, follow-up
+  // fix round): with NO scalable (image/chart) lead component at all — 0
+  // components, or every component non-scalable (e.g. a kpi_cards-only
+  // page) — the visual column has nothing real to show, only a decorative
+  // placeholder. Keeping the text column pinned at 435px in that case
+  // squeezes real content into a narrow column purely to make room for a
+  // drawn accent shape, which is exactly what caused `annualReviewPreset`'s
+  // kpi_cards-only page to truncate a label at 435px. Mirrors
+  // `content-asymmetric-triptych.tsx`'s own `bottomStarved` precedent (T1
+  // commit e067256): when the thing that would justify a narrow column is
+  // absent, the column reclaims the freed space instead of staying narrow
+  // beside a void.
+  describe("starved (no scalable lead component): the text column reclaims the freed width", () => {
+    it("a zero-component page widens the text column past 435px", () => {
+      const { root } = render(ir([zeroComponents]), zeroComponents)
+      const rects = Array.from(root.querySelectorAll("g[data-audit-rect]")).map((g) =>
+        parseAudit(g.getAttribute("data-audit-rect")),
+      )
+      const textRect = rects.find((r) => r.x === 96)!
+      expect(textRect).toBeTruthy()
+      expect(textRect.w).toBeGreaterThan(435)
+    })
+
+    it("a non-scalable lead (paragraph) also widens the text column past 435px", () => {
+      const { root } = render(ir([paragraphLead]), paragraphLead)
+      const rects = Array.from(root.querySelectorAll("g[data-audit-rect]")).map((g) =>
+        parseAudit(g.getAttribute("data-audit-rect")),
+      )
+      const textRect = rects.find((r) => r.x === 96)!
+      expect(textRect).toBeTruthy()
+      expect(textRect.w).toBeGreaterThan(435)
+    })
+
+    it("the widened text column never overlaps the (now smaller) decorative visual column", () => {
+      const { root } = render(ir([zeroComponents]), zeroComponents)
+      const rects = Array.from(root.querySelectorAll("g[data-audit-rect]")).map((g) =>
+        parseAudit(g.getAttribute("data-audit-rect")),
+      )
+      const textRect = rects.find((r) => r.x === 96)! as { x: number; y: number; w: number; h: number }
+      const visualRect = rects.find((r) => r.x !== 96)! as { x: number; y: number; w: number; h: number }
+      expect(textRect.x + textRect.w).toBeLessThanOrEqual(visualRect.x)
+      expect(rectsOverlap(textRect, visualRect)).toBe(false)
+    })
+
+    // Skeleton-diversity guard (audit/content-skeleton-diversity.test.tsx):
+    // the widened starved-case text column must not collapse into an
+    // existing archetype's own (x, width) class — `narrow-column`/
+    // `side-highlight`'s shared (96, 880) class, `two-column`'s (96, 528)/
+    // (656, 528) pair, or `asymmetric-triptych`'s (96, 632) lead column —
+    // which would quietly erase this wave's earned skeleton diversity for
+    // the (common) imageless case.
+    it("the widened width does not collide with narrow-column's (880) or two-column's (528) or asymmetric-triptych's (632) region widths", () => {
+      const { root } = render(ir([zeroComponents]), zeroComponents)
+      const rects = Array.from(root.querySelectorAll("g[data-audit-rect]")).map((g) =>
+        parseAudit(g.getAttribute("data-audit-rect")),
+      )
+      const textRect = rects.find((r) => r.x === 96)!
+      for (const collidingWidth of [632, 880, 528, 1088]) {
+        expect(Math.abs(textRect.w - collidingWidth)).toBeGreaterThan(20)
+      }
+    })
+
+    it("still starved, does not enlarge all the way to the pool's full 1088px content width (would collide with banner-heading/rail-numbered)", () => {
+      const { root } = render(ir([zeroComponents]), zeroComponents)
+      const rects = Array.from(root.querySelectorAll("g[data-audit-rect]")).map((g) =>
+        parseAudit(g.getAttribute("data-audit-rect")),
+      )
+      const textRect = rects.find((r) => r.x === 96)!
+      expect(textRect.w).toBeLessThan(1000)
+    })
   })
 
   it("visual column renders even with zero components — a drawn placeholder, not an empty hole", () => {
@@ -225,23 +298,25 @@ describe("ImageLeadSplitContent pathological content", () => {
 })
 
 // Content-archetype expansion wave, task T3 — coverage gap T2's review
-// found: this archetype's 435px text column is the only one of the pool's
-// three narrow(-ish) archetypes (435 vs asymmetric-triptych's 632/
-// two-column's 640) that was never stress-tested against `kpi_cards`, whose
-// own card-width math (`kpi.tsx`'s `naturalCardW = (box.w - GAP*(n-1)) /
-// n`) divides the box width by item count. A realistic 3-item KPI row at
-// 435px lands `naturalCardW` ≈ 134px per card — comfortably above
-// `kpi.tsx`'s own `MIN_CARD_W` (80px) graceful-drop floor, so all 3 cards
-// stay visible (no card is dropped) — but each card's own 94px text budget
-// (`cardW - 40`) is narrow enough that `fitSvgLine`'s own truncation
-// kicks in on the label text. Plan.md's own controller ruling: this
-// truncation is **adjudicated correct behavior**, not a defect to fix here
-// — capacity (how many cards fit) is a component-count gate that already
-// works correctly at this width; the *text* truncation lives entirely in
-// `kpi.tsx`'s own per-card width math, unrelated to this archetype's
-// geometry. This suite's only job is to pin the interaction so the next
-// pool-growth wave rediscovers it as "already covered", not as a surprise.
-describe("ImageLeadSplitContent — kpi_cards in the 435px column (T3 coverage gap closure)", () => {
+// found: this archetype's text column was never stress-tested against
+// `kpi_cards`, whose own card-width math (`kpi.tsx`'s `naturalCardW =
+// (box.w - GAP*(n-1)) / n`) divides the box width by item count.
+//
+// **Superseded by the controller-probed follow-up fix**: a kpi_cards-only
+// slide has no scalable lead component, so it now hits the "starved"
+// branch (see content-image-lead-split.tsx's file header) and gets the
+// widened 788px column, not the old unconditional 435px. At 435px this
+// suite used to pin `naturalCardW` ≈ 134px/card with an 94px text budget
+// narrow enough to truncate every label — plan.md's own controller ruling
+// at the time called that "adjudicated correct behavior". It wasn't: that
+// exact truncation is what showed up for real in `annualReviewPreset`'s
+// kpi_cards-only page, and is the defect this fix addresses. At the
+// widened 788px column, `naturalCardW` ≈ 252px/card (212px text budget) —
+// comfortably enough for these realistic labels to render without
+// truncating. This suite now pins the *fixed* behavior (zero truncation,
+// all cards visible) so a future regression is caught the same way the old
+// truncation used to be pinned.
+describe("ImageLeadSplitContent — kpi_cards in the widened starved column (T3 coverage gap, re-pinned post-fix)", () => {
   const kpiSlide: Slide = {
     type: "content",
     layout: "image-lead-split",
@@ -268,21 +343,23 @@ describe("ImageLeadSplitContent — kpi_cards in the 435px column (T3 coverage g
     })
   }
 
-  it("graceful, not silent: all 3 cards stay visible (no capacity drop) but the label text carries a data-truncated marker", () => {
+  it("fixed: all 3 cards stay visible and the label text no longer needs to truncate at the widened width", () => {
     const { markup, root } = render(ir([kpiSlide]), kpiSlide)
     const cardRects = Array.from(root.querySelectorAll("rect")).filter((r) => r.getAttribute("rx") !== null)
-    // 3 kpi card shells, none dropped (naturalCardW ~134px clears kpi.tsx's
-    // own 80px MIN_CARD_W floor at this width, so the graceful-drop path
-    // never fires here) — this is the capacity gate working correctly, not
-    // this test's concern.
+    // 3 kpi card shells, none dropped — the capacity gate (how many cards
+    // fit) is unaffected by this fix; still working correctly.
     expect(cardRects.length).toBeGreaterThanOrEqual(3)
-    // The "not silent" half: at least one text element records that it had
-    // to truncate to fit its card's own narrow text budget.
-    expect(markup).toContain('data-truncated="1"')
+    // The fix: at 788px (252px/card, 212px text budget) none of these
+    // realistic labels need `fitSvgLine`'s truncation anymore — the exact
+    // interaction that used to truncate `annualReviewPreset`'s kpi label.
+    expect(markup).not.toContain('data-truncated="1"')
+    expect(markup).toContain("Revenue growth YoY")
+    expect(markup).toContain("P95 latency improvement")
+    expect(markup).toContain("Uptime SLA compliance")
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("every kpi card stays within the 435px text column's own bounds — no card right-edge crosses into the visual column's x=571 start", () => {
+  it("every kpi card stays within the widened (788px) text column's own bounds — no card right-edge crosses into the visual column's x=924 start", () => {
     const { root } = render(ir([kpiSlide]), kpiSlide)
     const bodyGroup = root.querySelector('g[data-audit-box^="96,"]')
     expect(bodyGroup).not.toBeNull()
@@ -292,9 +369,9 @@ describe("ImageLeadSplitContent — kpi_cards in the 435px column (T3 coverage g
       const x = Number(r.getAttribute("x"))
       const w = Number(r.getAttribute("width"))
       // Card x is local to the kpi component's own translated <g> (relative
-      // to the 435px body rect, not the page) — asserting against 435 (not
-      // 96+435) matches kpi.tsx's own coordinate space.
-      expect(x + w).toBeLessThanOrEqual(435 + 0.01)
+      // to the 788px starved-case body rect, not the page) — asserting
+      // against 788 (not 96+788) matches kpi.tsx's own coordinate space.
+      expect(x + w).toBeLessThanOrEqual(788 + 0.01)
     }
   })
 })

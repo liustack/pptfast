@@ -27,7 +27,11 @@ import { accessibleInk } from "../ink"
  * narrow `SvgContent` single-stack body) — visual column x=571 w=613,
  * y=72..640 (h=568, matching `side-highlight`'s own panel vertical span).
  * The 40px gap between them (571 - 96 - 435) keeps the two regions from
- * ever touching regardless of either one's own internal padding.
+ * ever touching regardless of either one's own internal padding. This
+ * geometry only holds when a real scalable component leads (see "Starved
+ * case" below `STARVED_TEXT_W`'s declaration for the imageless variant,
+ * where the text column widens to 788px and the visual column shrinks to a
+ * 260px accent panel).
  *
  * Unlike `stacked-poster` (whose hero/strip poster grammar only activates
  * for <=2 fitting components and degrades to a full-width stack otherwise)
@@ -96,15 +100,49 @@ import { accessibleInk } from "../ink"
  */
 
 const TEXT_X = 96
-const TEXT_W = 435
 const COLUMN_GAP = 40
-const VISUAL_X = TEXT_X + TEXT_W + COLUMN_GAP // 571
 const VISUAL_RIGHT = 1184
-const VISUAL_W = VISUAL_RIGHT - VISUAL_X // 613
 const VISUAL_Y = 72
 const VISUAL_BOTTOM = 640
 const VISUAL_H = VISUAL_BOTTOM - VISUAL_Y // 568
 const VISUAL_RADIUS = 20
+
+// Co-equal case: a real scalable (image/chart) lead component fills the
+// visual column, so the unconditional 60/40 split holds at its full ratio.
+const LEAD_TEXT_W = 435
+const LEAD_VISUAL_X = TEXT_X + LEAD_TEXT_W + COLUMN_GAP // 571
+const LEAD_VISUAL_W = VISUAL_RIGHT - LEAD_VISUAL_X // 613
+
+/**
+ * Starved case (controller-probed defect, follow-up fix round — mirrors
+ * `content-asymmetric-triptych.tsx`'s own `bottomStarved` precedent): there
+ * is no scalable lead component at all (0 components, or every component
+ * non-scalable — e.g. a kpi_cards-only page), so the visual column has
+ * nothing real to show, only the drawn decorative placeholder (see
+ * `renderVisualPlaceholder`). Keeping the text column pinned at
+ * `LEAD_TEXT_W` in that case buys nothing — it squeezes real content into
+ * 435px purely to leave room beside a decorative void (this is exactly what
+ * made a kpi_cards-only page truncate a label at 435px). The text column
+ * reclaims most of the freed width instead; the visual column shrinks to a
+ * slim accent panel (still flush against the page's right content edge, same
+ * vertical span) rather than disappearing outright, so the archetype keeps a
+ * recognizable "text beside a visual accent" identity even with no asset to
+ * lead with — just no longer a co-equal 60/40 split, since there is no
+ * second protagonist to be co-equal *with*.
+ *
+ * `STARVED_TEXT_W` (788) is deliberately chosen to land clear of every other
+ * content archetype's own (x=96, width) region class the pool's skeleton-
+ * diversity acceptance test (`audit/content-skeleton-diversity.test.tsx`)
+ * already tracks — `two-column`'s 528px half-columns, `asymmetric-
+ * triptych`'s 632px `lead`, `narrow-column`/`side-highlight`'s shared 880px
+ * column, `banner-heading`/`rail-numbered`'s full 1088px — every one of
+ * those is >=90px away from 788, well outside that test's own 10px
+ * quantization step, so a starved imageless page keeps its own distinct
+ * skeleton rather than quietly collapsing into an existing archetype's.
+ */
+const STARVED_VISUAL_W = 260
+const STARVED_VISUAL_X = VISUAL_RIGHT - STARVED_VISUAL_W // 924
+const STARVED_TEXT_W = STARVED_VISUAL_X - COLUMN_GAP - TEXT_X // 788
 
 const KICKER_Y = 96
 const HEADING_BASELINE = 150
@@ -174,6 +212,21 @@ function renderVisualPlaceholder(rect: ContentRect, ctx: ComponentCtx) {
 export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
+
+  // See file header "Component placement" — components[0] only ever leaves
+  // the body stack when it is itself a scalable (image/chart) lead. Computed
+  // up front (rather than after heading/body layout, as it used to be) since
+  // the "starved" branch below now feeds TEXT_W, which every text-fitting
+  // call below depends on.
+  const [first, ...rest] = slide.components
+  const visualComponent = first && SCALABLE_TYPES.has(first.type) ? first : undefined
+  const bodyComponents = visualComponent ? rest : slide.components
+
+  // Starved: no scalable lead to justify the narrow 435px column — see file
+  // header "Starved case" section above `STARVED_TEXT_W`'s derivation.
+  const starved = !visualComponent
+  const TEXT_W = starved ? STARVED_TEXT_W : LEAD_TEXT_W
+
   const kicker = section
     ? fitSvgLine(section, { maxWidth: TEXT_W, fontSize: 17, minFontSize: 13, letterSpacing: 2 })
     : null
@@ -218,13 +271,9 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
     ? fitSvgLine(slide.footnote, { maxWidth: TEXT_W, fontSize: 14, minFontSize: 11 })
     : null
 
-  // See file header "Component placement" — components[0] only ever leaves
-  // the body stack when it is itself a scalable (image/chart) lead.
-  const [first, ...rest] = slide.components
-  const visualComponent = first && SCALABLE_TYPES.has(first.type) ? first : undefined
-  const bodyComponents = visualComponent ? rest : slide.components
-
-  const visualRect: ContentRect = { x: VISUAL_X, y: VISUAL_Y, w: VISUAL_W, h: VISUAL_H }
+  const visualRect: ContentRect = starved
+    ? { x: STARVED_VISUAL_X, y: VISUAL_Y, w: STARVED_VISUAL_W, h: VISUAL_H }
+    : { x: LEAD_VISUAL_X, y: VISUAL_Y, w: LEAD_VISUAL_W, h: VISUAL_H }
 
   return (
     <>
@@ -314,15 +363,20 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
 export const layoutDef: LayoutDefinition = {
   // content-image-lead-split.tsx: narrow (435px) text column — kicker/
   // heading/subheading/single-stack SvgContent body — beside an
-  // unconditional 613px visual column. `visual` only ever actually receives
-  // a live component (capacity 1, components[0], gated on SCALABLE_TYPES);
-  // otherwise it renders a persistent decorative placeholder instead — see
-  // file header. `body` capacity is 4, the pool's flat single-stack default
-  // (registry.ts's CONTENT_LAYOUTS header derivation), unaffected by the
-  // narrower 435px width — narrower than every other archetype's own
-  // single-stack column but still wider than the pool's already-audited
-  // narrowest single-stack region (asymmetric-triptych's 424px `top`/
-  // `bottom` panels), so no capacity.ts floor needs tightening. The visual
+  // unconditional 613px visual column, when a real scalable (image/chart)
+  // lead is present. Without one (0 components, or every component
+  // non-scalable), the text column widens to 788px and the visual column
+  // shrinks to a 260px accent panel instead — see file header's "Starved
+  // case". `visual` only ever actually receives a live component (capacity
+  // 1, components[0], gated on SCALABLE_TYPES); otherwise it renders a
+  // persistent decorative placeholder instead — see file header. `body`
+  // capacity is 4, the pool's flat single-stack default (registry.ts's
+  // CONTENT_LAYOUTS header derivation), unaffected by the narrower 435px
+  // width — narrower than every other archetype's own single-stack column
+  // but still wider than the pool's already-audited narrowest single-stack
+  // region (asymmetric-triptych's 424px `top`/`bottom` panels), so no
+  // capacity.ts floor needs tightening (the starved 788px case is wider
+  // still, so it doesn't tighten that floor either). The visual
   // column reuses `SlotName`'s existing "hero" word (stacked-poster's own
   // "a single, possibly-scaled dominant component" slot) rather than
   // growing the 16-word vocabulary — this file's own prose calls it
