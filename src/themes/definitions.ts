@@ -177,18 +177,61 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   consulting: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "banner-motif",
+    // Theme-structure wave, task T2: consulting's own motif is
+    // `banner-motif`, and `banner-title`/`banner-chapter`/`banner-ending`
+    // are verbatim extractions of consulting's own predecessor render code
+    // (`MckinseyNavyCover`/`Chapter`/`Ending`, see each archetype file's own
+    // header) — this is the theme's native "assertion banner" register, not
+    // a borrowed one.
+    layoutTendencies: {
+      cover: ["banner-title"],
+      chapter: ["banner-chapter"],
+      ending: ["banner-ending"],
+    },
   },
   insight: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "poster-motif",
+    // Theme-structure wave, task T2: insight's own motif is `poster-motif`,
+    // and `poster-center`/`poster-chapter`/`poster-ending` are verbatim
+    // extractions of insight's own predecessor creative.tsx render code
+    // (`EditorialDarkCover`/`Chapter`/`Ending`) — matches the
+    // Bloomberg/Economist-style bold, information-forward register this
+    // theme's own token comment names ("原 creative 改名...其实是
+    // Bloomberg/Economist 财经信息图风").
+    layoutTendencies: {
+      cover: ["poster-center"],
+      chapter: ["poster-chapter"],
+      ending: ["poster-ending"],
+    },
   },
   academic: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "rail-motif",
+    // Theme-structure wave, task T2: academic's own motif is `rail-motif`,
+    // and `left-anchor`/`rail-chapter`/`rail-ending` are verbatim
+    // extractions of academic's own predecessor render code
+    // (`BCGEmeraldCover`/`Chapter`/`Ending`) — this theme's native
+    // color-block-plus-progress-rail register.
+    layoutTendencies: {
+      cover: ["left-anchor"],
+      chapter: ["rail-chapter"],
+      ending: ["rail-ending"],
+    },
   },
   tech: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "constellation-motif",
+    // Theme-structure wave, task T2: tech's own motif is
+    // `constellation-motif`, and `constellation`/`constellation-chapter`/
+    // `constellation-ending` are verbatim extractions of tech's own
+    // predecessor render code (`BentoTechCover`/`Chapter`/`Ending`) — this
+    // theme's native visual family, not a borrowed one.
+    layoutTendencies: {
+      cover: ["constellation"],
+      chapter: ["constellation-chapter"],
+      ending: ["constellation-ending"],
+    },
   },
   // runway（时尚杂志，2026-07-10 拆分）：冲击力=超大排印+满版色块（检索背书），
   // fashion-masthead/fashion-chapter/fashion-ending 是 runway 专属新表达。
@@ -198,11 +241,32 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // motif 刻意不配（2026-07-10 全覆盖时曾加「时尚编辑标记」，两版均被
     // 用户裁难看后撤销）：runway 的语言=满版色块+超大排印+留白，排印至上是
     // 终审裁决——十三主题中唯一留空 motif 的一个。
+    // Theme-structure wave, task T2: `fashion-masthead`/`fashion-chapter`/
+    // `fashion-ending` were built exclusively for runway (2026-07-10, pure
+    // new writes, extreme-scale full-bleed typography) — with no motif of
+    // its own, this archetype family is runway's only structural signature
+    // beyond token colors.
+    layoutTendencies: {
+      cover: ["fashion-masthead"],
+      chapter: ["fashion-chapter"],
+      ending: ["fashion-ending"],
+    },
   },
   // journal（人文期刊，原 magazine 改名）：masthead 报头家族，角饰是人文感。
   journal: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "corner-ornament-motif",
+    // Theme-structure wave, task T2: journal's own motif is
+    // `corner-ornament-motif` (editorial ornamentation), and
+    // `editorial-masthead`/`masthead-chapter`/`masthead-ending` are verbatim
+    // extractions of journal's own predecessor magazine.tsx render code
+    // (`EditorialSerifCover`/`Chapter`/`Ending`) — this theme's native
+    // masthead register.
+    layoutTendencies: {
+      cover: ["editorial-masthead"],
+      chapter: ["masthead-chapter"],
+      ending: ["masthead-ending"],
+    },
   },
   // enterprise（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+炸橘的
   // 高色彩版式组合，banner 横幅 baked 白字在 IKB #002FA7 上对比充足（无需

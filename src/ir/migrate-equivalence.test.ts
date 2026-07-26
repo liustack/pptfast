@@ -166,6 +166,42 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // by directly computing `auditDeck` fresh and JSON-comparing it
       // against both the old and new goldens (`true` both times), not just
       // "this file wasn't touched by the diff."
+      //
+      // Re-recaptured again (theme-structure wave, task T2 --
+      // `.issues/2026-07-26-theme-structure/plan.md`): `consulting` and
+      // `journal` (the two themes these three fixtures use) both picked up
+      // a `layoutTendencies` declaration on cover/chapter/ending
+      // (`../themes/definitions.ts`'s `LAYOUTS` table) -- a real, intended
+      // selection-behavior change (design decision 2's whole point: the
+      // theme layer is now a live weighting input to auto-picked
+      // cover/chapter/ending archetypes), not a migration regression. None
+      // of these three decks pins every identity page's `layout`, so
+      // reweighting the pool can legitimately flip a given seed's pick --
+      // same posture as every recapture above. Exactly one slide changed
+      // in each fixture (verified via a targeted-diff script, not just
+      // "this file wasn't touched"):
+      //   - `basic` (`consulting`): slide index 1 (chapter, auto-picked) --
+      //     `masthead-chapter` -> `banner-chapter`, consulting's own
+      //     declared chapter tendency landing directly.
+      //   - `scenarioBearing` (`journal`): slide index 4 (ending, auto-
+      //     picked) -- `poster-ending` -> `constellation-ending`. Not
+      //     journal's own declared id (`masthead-ending`) -- a mechanical
+      //     side effect of the same declaration: bumping `masthead-ending`'s
+      //     weight 1 -> 3 grows the ending pool's total weight from 7 to 9,
+      //     which shifts where this fixed seed's `target = hash % total`
+      //     lands among the *other* candidates' boundaries too (the same
+      //     modulo-reshuffle every weight-sum change in this pipeline can
+      //     cause -- not an independent defect).
+      //   - `annualReviewPreset` (`journal`): slide index 1 (chapter,
+      //     auto-picked) -- `banner-chapter` -> `rail-chapter`, the same
+      //     total-weight-shift mechanism as above (journal's declared
+      //     `masthead-chapter` weight bump moves the chapter pool's total
+      //     from 8 to 10).
+      // `.audit.json` needed no recapture for any of the three (findings
+      // stayed the empty array both sides, confirmed by computing
+      // `auditDeck` fresh against both the old and new goldens) -- the
+      // newly-picked archetypes introduce no new geometry/contrast defect
+      // on any of these three fixtures.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
