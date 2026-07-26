@@ -516,6 +516,84 @@ describe("registerTheme", () => {
   })
 })
 
+// ── registerTheme: layoutTendencies consistency (theme-structure wave, task
+// T1 — `.issues/2026-07-26-theme-structure/plan.md`). A theme's own
+// structural personality (`ThemeDefinition.layoutTendencies`,
+// `Partial<Record<Slide["type"], readonly string[]>>`) must only ever name
+// ids already inside that same slide type's own curated `layouts` pool — an
+// id outside it can never be scored by `weightOf` (`../svg/layout-selection.ts`
+// builds its candidate pool from `layouts[slideType]` before any tendency is
+// consulted), so declaring one is a theme-author mistake, not a legal
+// no-op. ──────────────────────────────────────────────────────────────────
+describe("registerTheme: layoutTendencies consistency", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  it("accepts a layoutTendencies id that is a member of this theme's own layouts set for that slide type", () => {
+    expect(() =>
+      registerTheme(testTheme({ id: "acme-tendency-ok", layoutTendencies: { content: ["two-column"] } })),
+    ).not.toThrow()
+    expect(getThemeDefinition("acme-tendency-ok").layoutTendencies).toEqual({ content: ["two-column"] })
+  })
+
+  it("rejects a layoutTendencies id that is not in this theme's own layouts set for that slide type, naming the id and slide type", () => {
+    // testTheme()'s own content pool is exactly ["two-column"] — "narrow-column"
+    // is a real, registered content archetype (so it can't be caught by the
+    // unrelated "unknown layout id" check above), just not a member of this
+    // particular theme's curated content set.
+    expect(() =>
+      registerTheme(testTheme({ id: "acme-tendency-bad", layoutTendencies: { content: ["narrow-column"] } })),
+    ).toThrow(/layoutTendencies\.content.*"narrow-column".*not in this theme's own layouts\.content/)
+  })
+
+  it("rejects an out-of-pool id even when a different slide type's tendency is fine (checks all four independently)", () => {
+    expect(() =>
+      registerTheme(
+        testTheme({
+          id: "acme-tendency-mixed",
+          layoutTendencies: { content: ["two-column"], cover: ["left-anchor"] },
+        }),
+      ),
+      // testTheme()'s cover pool is exactly ["poster-center"] — "left-anchor" is
+      // a real cover archetype, just outside this theme's own curated set.
+    ).toThrow(/layoutTendencies\.cover.*"left-anchor"/)
+  })
+
+  it("a theme that declares no layoutTendencies at all registers unaffected (the field is fully optional)", () => {
+    expect(() => registerTheme(testTheme({ id: "acme-no-tendency" }))).not.toThrow()
+    expect(getThemeDefinition("acme-no-tendency").layoutTendencies).toBeUndefined()
+  })
+})
+
+// ── built-in consistency sweep (theme-structure wave, task T1): the 13
+// canonical themes never go through `registerTheme` (see the
+// `assertContrastFloor` describe block's own comment for why), so this test
+// is the only place their own `layoutTendencies` (if any) gets the same
+// hard-boundary check. Vacuously true today — task T1 declares no builtin
+// tendencies (that is task T2's job) — but this must fail loudly the moment
+// any builtin declares one that isn't a member of its own `layouts` set for
+// that slide type.
+describe("THEME_DEFINITIONS: layoutTendencies consistency (built-ins)", () => {
+  it("every declared layoutTendencies id, for every builtin that declares any, is a member of that same theme's own layouts set for that slide type", () => {
+    const slideTypes = ["cover", "chapter", "content", "ending"] as const
+    for (const id of CANONICAL_THEME_IDS) {
+      const def = THEME_DEFINITIONS[id]
+      if (!def.layoutTendencies) continue
+      for (const slideType of slideTypes) {
+        const declared = def.layoutTendencies[slideType]
+        if (!declared) continue
+        for (const layoutId of declared) {
+          expect(
+            def.layouts[slideType],
+            `theme "${id}" layoutTendencies.${slideType} declares "${layoutId}", which is not in its own layouts.${slideType}`,
+          ).toContain(layoutId)
+        }
+      }
+    }
+  })
+})
+
 // ── registerTheme: unmeasured-font-width console.warn (backlog-sweep task
 // I2). First console.warn precedent in the codebase (repo-wide grep found
 // zero prior production `console.warn` call sites) — plain, no new warning-

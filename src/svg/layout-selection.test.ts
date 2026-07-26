@@ -337,6 +337,208 @@ describe("resolveArchetypeId", () => {
     expect(share).toBeLessThan(0.28)
   })
 
+  // ── theme tendency weighting (theme-structure wave, task T1 —
+  // `.issues/2026-07-26-theme-structure/plan.md`) ──
+  // `ThemeDefinition.layoutTendencies` (`../themes/definitions.ts`): a
+  // theme's own structural personality, composed into `weightOf` via
+  // `Math.max` alongside strategy and beat. None of the 13 builtins declare
+  // this field yet (task T2's job — declaring builtin tendencies is
+  // explicitly out of this task's scope) — every test below uses a locally-
+  // constructed pool (this file's own `CONTENT_ARCHETYPE_IDS`/academic's
+  // identity pools), never a builtin theme's own `layoutTendencies`.
+
+  describe("theme tendency weighting", () => {
+    // Reuses academic's full identity pools (never curated away from the
+    // full set) with `content` pinned to `CONTENT_ARCHETYPE_IDS`'s own
+    // declaration order, so an independently-recomputed expectation stays
+    // byte-order-identical to the real pool `resolveArchetypeId` builds.
+    const testLayouts = { ...THEME_DEFINITIONS.academic.layouts, content: CONTENT_ARCHETYPE_IDS }
+
+    it("undeclared theme (themeTendencies omitted): resolveArchetypeId's picks are byte-identical to the pre-theme-layer formula (today's values, captured independently — not reusing this module's own themeWeight code, same discipline as the beat byte-inertness test above)", () => {
+      for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
+        const tendencyIds = STRATEGY_DEFINITIONS[strategy].layoutTendencies
+        for (let seed = 0; seed < 50; seed++) {
+          const pageKey = String(seed)
+          const actual = resolveArchetypeId("content", testLayouts, seed, pageKey, undefined, strategy, null)
+          const expected = weightedPickBySeed(seed, `content-archetype:${pageKey}`, CONTENT_ARCHETYPE_IDS, (id) =>
+            tendencyIds.includes(id) ? 3 : 1,
+          )
+          expect(actual).toBe(expected)
+        }
+      }
+    })
+
+    it("an omitted themeTendencies is a mathematical no-op: passing themeTendencies=undefined explicitly matches omitting the 9th argument entirely, across strategies and seeds", () => {
+      for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
+        for (let seed = 0; seed < 30; seed++) {
+          const withoutArg = resolveArchetypeId("content", testLayouts, seed, String(seed), undefined, strategy, null)
+          const withExplicitUndefined = resolveArchetypeId(
+            "content",
+            testLayouts,
+            seed,
+            String(seed),
+            undefined,
+            strategy,
+            null,
+            undefined,
+            undefined,
+          )
+          expect(withExplicitUndefined).toBe(withoutArg)
+        }
+      }
+    })
+
+    it("declared theme: a themeTendencies id gets bumped to weight 3, raising its realized pick share above the un-marked floor (isolated from strategy's own pull — pyramid's layoutTendencies shares zero members with the marked id)", () => {
+      expect(STRATEGY_DEFINITIONS.pyramid.layoutTendencies).not.toContain("quiet-frame")
+      const N = 2000
+      let hits = 0
+      for (let i = 0; i < N; i++) {
+        const picked = resolveArchetypeId(
+          "content",
+          testLayouts,
+          i,
+          String(i),
+          undefined,
+          "pyramid",
+          null,
+          undefined,
+          ["quiet-frame"],
+        )
+        if (picked === "quiet-frame") hits++
+      }
+      // Weights over the 10-id pool: bento-panel/banner-heading/two-column=3
+      // each (strategy only, pyramid's own layoutTendencies, 9 total),
+      // quiet-frame=3 (theme only), the remaining 6 ids=1 each (6 total) —
+      // total weight 18, quiet-frame share = 3/18 ≈ 0.167. A bare weight-1
+      // floor (no theme layer at all) would give 1/16 ≈ 0.0625 instead
+      // (9+7 denominator, quiet-frame among the 7 unmarked) — assert clearly
+      // above that uniform-floor baseline.
+      const share = hits / N
+      expect(share).toBeGreaterThan(0.11)
+      expect(share).toBeLessThan(0.24)
+    })
+
+    it("composes via max, not multiplication: a strategy AND a theme both naming the same id caps its weight at 3, not 9 (the ruling most likely to be silently violated)", () => {
+      // pyramid's layoutTendencies includes "banner-heading" — declare the
+      // theme's own tendency for that exact same id, on the same pool.
+      expect(STRATEGY_DEFINITIONS.pyramid.layoutTendencies).toContain("banner-heading")
+      const N = 2000
+      let hits = 0
+      for (let i = 0; i < N; i++) {
+        const picked = resolveArchetypeId(
+          "content",
+          testLayouts,
+          i,
+          String(i),
+          undefined,
+          "pyramid",
+          null,
+          undefined,
+          ["banner-heading"],
+        )
+        if (picked === "banner-heading") hits++
+      }
+      // Weights over the 10-id pool under max: banner-heading=max(3,3)=3
+      // (shared, capped not squared), bento-panel/two-column=3 each
+      // (strategy only), the remaining 7 ids=1 each — total 3*3 + 7*1 = 16,
+      // banner-heading share = 3/16 = 0.1875. Under the (rejected)
+      // multiplicative formula it would instead be weight 9 against a total
+      // of 9+3+3+7=22, share 9/22 ≈ 0.409 — well outside these bounds, so a
+      // regression back to multiplication would fail this assertion.
+      const share = hits / N
+      expect(share).toBeGreaterThan(0.12)
+      expect(share).toBeLessThan(0.26)
+    })
+
+    it("out-of-pool theme tendency has zero effect: an id not in this theme's own layouts.content set never affects the pick, byte-identical to the same setup with layoutTendencies omitted (the hard boundary — layouts stays the pool, tendencies only weight within it)", () => {
+      const narrowedLayouts = { ...testLayouts, content: CONTENT_ARCHETYPE_IDS.filter((id) => id !== "quiet-frame") }
+      for (let seed = 0; seed < 50; seed++) {
+        const withOutOfPoolTendency = resolveArchetypeId(
+          "content",
+          narrowedLayouts,
+          seed,
+          String(seed),
+          undefined,
+          "pyramid",
+          null,
+          undefined,
+          ["quiet-frame"],
+        )
+        const withoutTendency = resolveArchetypeId(
+          "content",
+          narrowedLayouts,
+          seed,
+          String(seed),
+          undefined,
+          "pyramid",
+          null,
+        )
+        expect(withOutOfPoolTendency).toBe(withoutTendency)
+        expect(withOutOfPoolTendency).not.toBe("quiet-frame")
+      }
+    })
+
+    it("theme tendency reaches identity pages too (cover), unlike strategy's own content-only layoutTendencies — the one signal that weights cover/chapter/ending personality (design decision 2)", () => {
+      const coverPool = layoutsForSlideType("cover")
+        .filter((l) => l.kind === "archetype")
+        .map((l) => l.id)
+      // "left-anchor" is deliberately not a member of briefing's own
+      // identityTendencies.cover (["banner-title", "poster-center"]) — an
+      // isolated pairing so this measures the theme layer's own pull, not
+      // strategy spillover onto the same id.
+      expect(STRATEGY_DEFINITIONS.briefing.identityTendencies.cover).not.toContain("left-anchor")
+      const N = 3000
+      let hits = 0
+      for (let i = 0; i < N; i++) {
+        const picked = resolveArchetypeId(
+          "cover",
+          { ...testLayouts, cover: coverPool },
+          i,
+          String(i),
+          undefined,
+          "briefing",
+          null,
+          undefined,
+          ["left-anchor"],
+        )
+        if (picked === "left-anchor") hits++
+      }
+      // Weights over the 8-id cover pool: banner-title/poster-center=3 each
+      // (strategy only, briefing's own identityTendencies.cover, 6 total),
+      // left-anchor=3 (theme only), the remaining 5 ids=1 each — total
+      // 3+3+3+5=14, left-anchor share = 3/14 ≈ 0.214.
+      const share = hits / N
+      expect(share).toBeGreaterThan(0.15)
+      expect(share).toBeLessThan(0.28)
+    })
+
+    it("deterministic: repeated resolution with identical inputs (including themeTendencies) yields identical picks", () => {
+      const a = resolveArchetypeId(
+        "content",
+        testLayouts,
+        42,
+        "1",
+        undefined,
+        "briefing",
+        null,
+        undefined,
+        ["quiet-frame"],
+      )
+      const b = resolveArchetypeId(
+        "content",
+        testLayouts,
+        42,
+        "1",
+        undefined,
+        "briefing",
+        null,
+        undefined,
+        ["quiet-frame"],
+      )
+      expect(a).toBe(b)
+    })
+  })
+
   // ── identity-page strategy weighting (P1 variety wave, task 3) ──
   // cover/chapter/ending used to be uniformly sampled (no strategy signal
   // ever reached them). academic's identity pools are each the full

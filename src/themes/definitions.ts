@@ -42,6 +42,49 @@ export interface ThemeDefinition {
   layouts: Record<Slide["type"], readonly string[]>
   /** Motif：单值，非 allowed-set（spec §3 示意）。undefined = 该主题无 motif 装饰（十三主题中 runway 留空，其余均已设）。 */
   motif?: MotifArchetypeId
+  /**
+   * A theme's own structural personality (theme-structure wave, task T1 —
+   * `.issues/2026-07-26-theme-structure/plan.md`'s 控制器设计裁定 2): per
+   * page type, the archetype ids this theme's author wants `resolveArchetypeId`
+   * (`src/svg/layout-selection.ts`) to lean toward. Shape mirrors
+   * `StrategyDefinition.layoutTendencies` (`@/narrative`) — the same "named
+   * ids get a soft weight bump, everyone else stays at the floor" contract —
+   * but declared **per slide type** rather than content-only: a strategy's
+   * own tendency signal never reaches cover/chapter/ending (that field's own
+   * doc comment), so for those three page types — precisely where a theme's
+   * visual identity reads loudest — this is the *only* structural signal in
+   * the whole selection pipeline. Content can carry both a strategy tendency
+   * and a theme tendency at once; `weightOf` composes every live layer via
+   * `Math.max`, never multiplication (same ruling `BEAT_TENDENCY_WEIGHT`'s
+   * doc comment already argues for: agreement between layers corroborates
+   * the same preference dimension, it does not square the pull).
+   *
+   * **Soft weight, not a whitelist — `layouts` above stays the one hard
+   * boundary.** A slide type's candidate pool is built from `layouts[slideType]`
+   * *before* any tendency is ever consulted (`resolveArchetypeId`'s own
+   * `pool` construction), so an id this record names for a page type it is
+   * not also present in that same page type's `layouts` set can never be
+   * scored — it is invisible to `weightOf`, not merely down-weighted. That
+   * silent no-op is exactly why it counts as a theme-author mistake rather
+   * than a legal (if unusual) declaration — `definitions.test.ts`'s
+   * consistency sweep over the 13 builtins, and `registerTheme`'s own
+   * validation below for any future custom theme, both fail loudly the
+   * moment a `layoutTendencies` entry names an id outside its own page
+   * type's `layouts` set, so the mistake surfaces at registration/test time
+   * instead of silently doing nothing at render time.
+   *
+   * Optional at every level (the whole field, and independently each of its
+   * four page-type entries) — **omission is not a lesser default, it is
+   * today's exact behavior**: a page type this record doesn't cover (key
+   * absent, or the field itself `undefined`) contributes a uniform weight of
+   * 1 to every candidate, the same "no theme-layer opinion" no-op floor
+   * `beatTendencies === undefined` already gives beat. None of the 13
+   * builtins declare this field yet (theme-structure wave task T1 is the
+   * mechanism only — task T2 is where individual builtins pick up a
+   * personality), so every one of them renders byte-identically to before
+   * this field existed.
+   */
+  layoutTendencies?: Partial<Record<Slide["type"], readonly string[]>>
 }
 
 /**
@@ -462,6 +505,25 @@ export function registerTheme(def: ThemeRegistration): void {
       }
     }
     layouts[slideType] = ids
+  }
+  // `layoutTendencies` consistency (theme-structure wave, task T1): a
+  // declared id that isn't also a member of this same slide type's
+  // just-resolved `layouts` set can never be scored by `weightOf`
+  // (`layout-selection.ts`'s pool is built from `layouts[slideType]` before
+  // any tendency is consulted) — it would silently do nothing forever, the
+  // exact "theme author mistake" `ThemeDefinition.layoutTendencies`'s own
+  // doc comment warns about. Caught here, at registration time, rather than
+  // left to surface (or not) at render time.
+  for (const slideType of REGISTERABLE_SLIDE_TYPES) {
+    const tendencyIds = def.layoutTendencies?.[slideType]
+    if (!tendencyIds) continue
+    for (const id of tendencyIds) {
+      if (!layouts[slideType].includes(id)) {
+        throw new PptfastError(
+          `theme "${def.id}" layoutTendencies.${slideType} references "${id}", which is not in this theme's own layouts.${slideType} set — a tendency must name an id already in the theme's curated pool`,
+        )
+      }
+    }
   }
   // Soft checks last, only once every hard check above has confirmed this
   // registration will actually succeed — a registration that goes on to
