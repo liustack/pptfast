@@ -50,10 +50,16 @@ export interface ThemeDefinition {
    * `StrategyDefinition.layoutTendencies` (`@/narrative`) — the same "named
    * ids get a soft weight bump, everyone else stays at the floor" contract —
    * but declared **per slide type** rather than content-only: a strategy's
-   * own tendency signal never reaches cover/chapter/ending (that field's own
-   * doc comment), so for those three page types — precisely where a theme's
-   * visual identity reads loudest — this is the *only* structural signal in
-   * the whole selection pipeline. Content can carry both a strategy tendency
+   * `layoutTendencies` is content-only, so on cover/chapter/ending a theme
+   * competes only with `StrategyDefinition.identityTendencies` (which
+   * `tendencyIdsFor` does consult for those three types — an earlier draft
+   * of this comment wrongly claimed no strategy signal reached them at all).
+   * **Consequence worth knowing when declaring:** because `weightOf`
+   * composes via `Math.max`, a theme tendency naming an id the active
+   * strategy's `identityTendencies` already names adds no differential pull
+   * for that id under that strategy (max(3,3) = 3) — a theme's structural
+   * character therefore reads most clearly on ids the strategies do not
+   * already favor. Content can carry both a strategy tendency
    * and a theme tendency at once; `weightOf` composes every live layer via
    * `Math.max`, never multiplication (same ruling `BEAT_TENDENCY_WEIGHT`'s
    * doc comment already argues for: agreement between layers corroborates
