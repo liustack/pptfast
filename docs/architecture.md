@@ -18,14 +18,20 @@ another (layout code stays style-agnostic).
 |---|---|---|
 | Content model | IR (zod schema, semantic components) | `src/ir/` |
 | 2D layout | layout registry (archetypes + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
-| Visual style | style tokens + theme definitions (curated layout sets + motif, 13 built-in themes) | `src/themes/` |
+| Visual style | style tokens + theme definitions (curated layout sets + motif + optional per-page-type layout tendencies, 13 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
 | Narrative | narrative axes (strategy × pacing × audience, named presets) resolving editorial discipline, plus a first-class spec artifact (`deck.spec.json` — locked page order/type/heading, strategy-aware hard gates via `spec validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase spec→fill skill methodology for slide sequencing | `src/spec/`, `src/narrative/`, `skills/` |
 
 The core insight, carried over from the production system pptfast was extracted
 from: **visual variety comes from tokens × archetype library × seed — not
 freeform drawing.** Swapping only color tokens (the shadcn-style reskin) still
-converges on sameness. The archetype library is what raises the ceiling.
+converges on sameness. The archetype library is what raises the ceiling — and,
+as of the theme-structure wave, the theme axis is no longer a constant term in
+that product: a theme's optional `layoutTendencies` (`docs/concepts.md`'s theme
+section) softly steers *which* archetype the seeded pick favors, per page type,
+so swapping only the theme (same IR, same seed) can now itself change the
+realized layout sequence, not just the palette — see `docs/selection-and-seed.md`
+for the mechanics.
 
 ## Render chain
 
@@ -250,7 +256,7 @@ every page type there** — the last three chapter-only curation exclusions
 (bloom/classroom/heritage excluding `fashion-chapter`, an artifact of
 `readableOn`'s old fixed-luminance threshold) were reverted once `src/svg/ink.ts`'s
 real dual-ink contrast comparison confirmed all three clear 3:1 without the
-exclusion (`src/themes/definitions.ts:70-95` has the full history). Narrowing
+exclusion (`src/themes/definitions.ts:115-140` has the full history). Narrowing
 a page type below the full set is still supported and stays a deliberate
 curation act, not a requirement — see `docs/contrast-system.md` for why a
 narrowing usually turns out to be a contrast bug in disguise rather than a
@@ -258,7 +264,13 @@ real design constraint. The SDK registration seam (`registerTheme`,
 same file) mirrors the full-set default: its `layouts` argument, and each of
 its four page-type entries, are independently optional and fall back to the
 same full set when omitted. Archetypes and components read only from tokens,
-so no archetype file changes.
+so no archetype file changes. A theme may also optionally declare
+`layoutTendencies` (theme-structure wave) — a per-page-type soft weight over
+ids already in that same page type's `layouts` entry, giving the new theme a
+structural personality rather than only a palette; see `docs/concepts.md`'s
+theme section and `docs/selection-and-seed.md` for the mechanics. Leaving it
+undeclared (the default) is a legitimate choice, not a lesser one — several
+built-ins do.
 
 See `docs/concepts.md` for the fuller theme/layout/component/narrative
 vocabulary this section assumes.
