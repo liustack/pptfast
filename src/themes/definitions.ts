@@ -42,6 +42,55 @@ export interface ThemeDefinition {
   layouts: Record<Slide["type"], readonly string[]>
   /** Motif：单值，非 allowed-set（spec §3 示意）。undefined = 该主题无 motif 装饰（十三主题中 runway 留空，其余均已设）。 */
   motif?: MotifArchetypeId
+  /**
+   * A theme's own structural personality (theme-structure wave, task T1 —
+   * `.issues/2026-07-26-theme-structure/plan.md`'s 控制器设计裁定 2): per
+   * page type, the archetype ids this theme's author wants `resolveArchetypeId`
+   * (`src/svg/layout-selection.ts`) to lean toward. Shape mirrors
+   * `StrategyDefinition.layoutTendencies` (`@/narrative`) — the same "named
+   * ids get a soft weight bump, everyone else stays at the floor" contract —
+   * but declared **per slide type** rather than content-only: a strategy's
+   * `layoutTendencies` is content-only, so on cover/chapter/ending a theme
+   * competes only with `StrategyDefinition.identityTendencies` (which
+   * `tendencyIdsFor` does consult for those three types — an earlier draft
+   * of this comment wrongly claimed no strategy signal reached them at all).
+   * **Consequence worth knowing when declaring:** because `weightOf`
+   * composes via `Math.max`, a theme tendency naming an id the active
+   * strategy's `identityTendencies` already names adds no differential pull
+   * for that id under that strategy (max(3,3) = 3) — a theme's structural
+   * character therefore reads most clearly on ids the strategies do not
+   * already favor. Content can carry both a strategy tendency
+   * and a theme tendency at once; `weightOf` composes every live layer via
+   * `Math.max`, never multiplication (same ruling `BEAT_TENDENCY_WEIGHT`'s
+   * doc comment already argues for: agreement between layers corroborates
+   * the same preference dimension, it does not square the pull).
+   *
+   * **Soft weight, not a whitelist — `layouts` above stays the one hard
+   * boundary.** A slide type's candidate pool is built from `layouts[slideType]`
+   * *before* any tendency is ever consulted (`resolveArchetypeId`'s own
+   * `pool` construction), so an id this record names for a page type it is
+   * not also present in that same page type's `layouts` set can never be
+   * scored — it is invisible to `weightOf`, not merely down-weighted. That
+   * silent no-op is exactly why it counts as a theme-author mistake rather
+   * than a legal (if unusual) declaration — `definitions.test.ts`'s
+   * consistency sweep over the 13 builtins, and `registerTheme`'s own
+   * validation below for any future custom theme, both fail loudly the
+   * moment a `layoutTendencies` entry names an id outside its own page
+   * type's `layouts` set, so the mistake surfaces at registration/test time
+   * instead of silently doing nothing at render time.
+   *
+   * Optional at every level (the whole field, and independently each of its
+   * four page-type entries) — **omission is not a lesser default, it is
+   * today's exact behavior**: a page type this record doesn't cover (key
+   * absent, or the field itself `undefined`) contributes a uniform weight of
+   * 1 to every candidate, the same "no theme-layer opinion" no-op floor
+   * `beatTendencies === undefined` already gives beat. None of the 13
+   * builtins declare this field yet (theme-structure wave task T1 is the
+   * mechanism only — task T2 is where individual builtins pick up a
+   * personality), so every one of them renders byte-identically to before
+   * this field existed.
+   */
+  layoutTendencies?: Partial<Record<Slide["type"], readonly string[]>>
 }
 
 /**
@@ -130,22 +179,65 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * `auditDeck` 复核零 low-contrast 发现。`LAYOUTS` 现在是十三主题不折不扣的
  * {@link FULL_LAYOUTS} 全集，四页型均无任何例外残留。
  */
-const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif">> = {
+const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif" | "layoutTendencies">> = {
   consulting: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "banner-motif",
+    // Theme-structure wave, task T2: consulting's own motif is
+    // `banner-motif`, and `banner-title`/`banner-chapter`/`banner-ending`
+    // are verbatim extractions of consulting's own predecessor render code
+    // (`MckinseyNavyCover`/`Chapter`/`Ending`, see each archetype file's own
+    // header) — this is the theme's native "assertion banner" register, not
+    // a borrowed one.
+    layoutTendencies: {
+      cover: ["banner-title"],
+      chapter: ["banner-chapter"],
+      ending: ["banner-ending"],
+    },
   },
   insight: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "poster-motif",
+    // Theme-structure wave, task T2: insight's own motif is `poster-motif`,
+    // and `poster-center`/`poster-chapter`/`poster-ending` are verbatim
+    // extractions of insight's own predecessor creative.tsx render code
+    // (`EditorialDarkCover`/`Chapter`/`Ending`) — matches the
+    // Bloomberg/Economist-style bold, information-forward register this
+    // theme's own token comment names ("原 creative 改名...其实是
+    // Bloomberg/Economist 财经信息图风").
+    layoutTendencies: {
+      cover: ["poster-center"],
+      chapter: ["poster-chapter"],
+      ending: ["poster-ending"],
+    },
   },
   academic: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "rail-motif",
+    // Theme-structure wave, task T2: academic's own motif is `rail-motif`,
+    // and `left-anchor`/`rail-chapter`/`rail-ending` are verbatim
+    // extractions of academic's own predecessor render code
+    // (`BCGEmeraldCover`/`Chapter`/`Ending`) — this theme's native
+    // color-block-plus-progress-rail register.
+    layoutTendencies: {
+      cover: ["left-anchor"],
+      chapter: ["rail-chapter"],
+      ending: ["rail-ending"],
+    },
   },
   tech: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "constellation-motif",
+    // Theme-structure wave, task T2: tech's own motif is
+    // `constellation-motif`, and `constellation`/`constellation-chapter`/
+    // `constellation-ending` are verbatim extractions of tech's own
+    // predecessor render code (`BentoTechCover`/`Chapter`/`Ending`) — this
+    // theme's native visual family, not a borrowed one.
+    layoutTendencies: {
+      cover: ["constellation"],
+      chapter: ["constellation-chapter"],
+      ending: ["constellation-ending"],
+    },
   },
   // runway（时尚杂志，2026-07-10 拆分）：冲击力=超大排印+满版色块（检索背书），
   // fashion-masthead/fashion-chapter/fashion-ending 是 runway 专属新表达。
@@ -155,11 +247,32 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // motif 刻意不配（2026-07-10 全覆盖时曾加「时尚编辑标记」，两版均被
     // 用户裁难看后撤销）：runway 的语言=满版色块+超大排印+留白，排印至上是
     // 终审裁决——十三主题中唯一留空 motif 的一个。
+    // Theme-structure wave, task T2: `fashion-masthead`/`fashion-chapter`/
+    // `fashion-ending` were built exclusively for runway (2026-07-10, pure
+    // new writes, extreme-scale full-bleed typography) — with no motif of
+    // its own, this archetype family is runway's only structural signature
+    // beyond token colors.
+    layoutTendencies: {
+      cover: ["fashion-masthead"],
+      chapter: ["fashion-chapter"],
+      ending: ["fashion-ending"],
+    },
   },
   // journal（人文期刊，原 magazine 改名）：masthead 报头家族，角饰是人文感。
   journal: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "corner-ornament-motif",
+    // Theme-structure wave, task T2: journal's own motif is
+    // `corner-ornament-motif` (editorial ornamentation), and
+    // `editorial-masthead`/`masthead-chapter`/`masthead-ending` are verbatim
+    // extractions of journal's own predecessor magazine.tsx render code
+    // (`EditorialSerifCover`/`Chapter`/`Ending`) — this theme's native
+    // masthead register.
+    layoutTendencies: {
+      cover: ["editorial-masthead"],
+      chapter: ["masthead-chapter"],
+      ending: ["masthead-ending"],
+    },
   },
   // enterprise（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+炸橘的
   // 高色彩版式组合，banner 横幅 baked 白字在 IKB #002FA7 上对比充足（无需
@@ -226,6 +339,13 @@ export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Obje
       tags: [] as const,
       layouts: LAYOUTS[id].layouts,
       motif: LAYOUTS[id].motif,
+      // Theme-structure wave, task T1 fix round (reviewer's Minor): projected
+      // through now, even though no builtin's `LAYOUTS` entry sets it yet
+      // (task T2's job) — so a future entry that adds `layoutTendencies` is
+      // mechanical (just another key on that entry's object literal) instead
+      // of also requiring a matching edit here, and `tsc` would have caught
+      // the omission had this projection itself been forgotten.
+      layoutTendencies: LAYOUTS[id].layoutTendencies,
     },
   ]),
 ) as unknown as Record<CanonicalThemeId, ThemeDefinition>
@@ -462,6 +582,25 @@ export function registerTheme(def: ThemeRegistration): void {
       }
     }
     layouts[slideType] = ids
+  }
+  // `layoutTendencies` consistency (theme-structure wave, task T1): a
+  // declared id that isn't also a member of this same slide type's
+  // just-resolved `layouts` set can never be scored by `weightOf`
+  // (`layout-selection.ts`'s pool is built from `layouts[slideType]` before
+  // any tendency is consulted) — it would silently do nothing forever, the
+  // exact "theme author mistake" `ThemeDefinition.layoutTendencies`'s own
+  // doc comment warns about. Caught here, at registration time, rather than
+  // left to surface (or not) at render time.
+  for (const slideType of REGISTERABLE_SLIDE_TYPES) {
+    const tendencyIds = def.layoutTendencies?.[slideType]
+    if (!tendencyIds) continue
+    for (const id of tendencyIds) {
+      if (!layouts[slideType].includes(id)) {
+        throw new PptfastError(
+          `theme "${def.id}" layoutTendencies.${slideType} references "${id}", which is not in this theme's own layouts.${slideType} set — a tendency must name an id already in the theme's curated pool`,
+        )
+      }
+    }
   }
   // Soft checks last, only once every hard check above has confirmed this
   // registration will actually succeed — a registration that goes on to

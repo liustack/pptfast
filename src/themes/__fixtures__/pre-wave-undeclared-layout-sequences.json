@@ -1,0 +1,331 @@
+{
+  "enterprise": {
+    "1": [
+      "banner-title",
+      "masthead-chapter",
+      "tone-adaptive-content",
+      "rail-numbered",
+      "rail-chapter",
+      "rail-numbered",
+      "masthead-ending"
+    ],
+    "2": [
+      "banner-title",
+      "tone-adaptive-chapter",
+      "banner-heading",
+      "tone-adaptive-content",
+      "rail-chapter",
+      "two-column",
+      "banner-ending"
+    ],
+    "3": [
+      "fashion-masthead",
+      "constellation-chapter",
+      "two-column",
+      "asymmetric-triptych",
+      "roman-chapter",
+      "tone-adaptive-content",
+      "banner-ending"
+    ],
+    "4": [
+      "constellation",
+      "constellation-chapter",
+      "banner-heading",
+      "stacked-poster",
+      "tone-adaptive-chapter",
+      "asymmetric-triptych",
+      "fashion-ending"
+    ],
+    "5": [
+      "banner-title",
+      "rail-chapter",
+      "quiet-frame",
+      "side-highlight",
+      "poster-chapter",
+      "banner-heading",
+      "fashion-ending"
+    ]
+  },
+  "luxe": {
+    "1": [
+      "banner-title",
+      "masthead-chapter",
+      "tone-adaptive-content",
+      "rail-numbered",
+      "rail-chapter",
+      "rail-numbered",
+      "masthead-ending"
+    ],
+    "2": [
+      "banner-title",
+      "tone-adaptive-chapter",
+      "banner-heading",
+      "tone-adaptive-content",
+      "rail-chapter",
+      "two-column",
+      "banner-ending"
+    ],
+    "3": [
+      "fashion-masthead",
+      "constellation-chapter",
+      "two-column",
+      "asymmetric-triptych",
+      "roman-chapter",
+      "tone-adaptive-content",
+      "banner-ending"
+    ],
+    "4": [
+      "constellation",
+      "constellation-chapter",
+      "banner-heading",
+      "stacked-poster",
+      "tone-adaptive-chapter",
+      "asymmetric-triptych",
+      "fashion-ending"
+    ],
+    "5": [
+      "banner-title",
+      "rail-chapter",
+      "quiet-frame",
+      "side-highlight",
+      "poster-chapter",
+      "banner-heading",
+      "fashion-ending"
+    ]
+  },
+  "campaign": {
+    "1": [
+      "banner-title",
+      "masthead-chapter",
+      "tone-adaptive-content",
+      "rail-numbered",
+      "rail-chapter",
+      "rail-numbered",
+      "masthead-ending"
+    ],
+    "2": [
+      "banner-title",
+      "tone-adaptive-chapter",
+      "banner-heading",
+      "tone-adaptive-content",
+      "rail-chapter",
+      "two-column",
+      "banner-ending"
+    ],
+    "3": [
+      "fashion-masthead",
+      "constellation-chapter",
+      "two-column",
+      "asymmetric-triptych",
+      "roman-chapter",
+      "tone-adaptive-content",
+      "banner-ending"
+    ],
+    "4": [
+      "constellation",
+      "constellation-chapter",
+      "banner-heading",
+      "stacked-poster",
+      "tone-adaptive-chapter",
+      "asymmetric-triptych",
+      "fashion-ending"
+    ],
+    "5": [
+      "banner-title",
+      "rail-chapter",
+      "quiet-frame",
+      "side-highlight",
+      "poster-chapter",
+      "banner-heading",
+      "fashion-ending"
+    ]
+  },
+  "classroom": {
+    "1": [
+      "banner-title",
+      "masthead-chapter",
+      "tone-adaptive-content",
+      "rail-numbered",
+      "rail-chapter",
+      "rail-numbered",
+      "masthead-ending"
+    ],
+    "2": [
+      "banner-title",
+      "tone-adaptive-chapter",
+      "banner-heading",
+      "tone-adaptive-content",
+      "rail-chapter",
+      "two-column",
+      "banner-ending"
+    ],
+    "3": [
+      "fashion-masthead",
+      "constellation-chapter",
+      "two-column",
+      "asymmetric-triptych",
+      "roman-chapter",
+      "tone-adaptive-content",
+      "banner-ending"
+    ],
+    "4": [
+      "constellation",
+      "constellation-chapter",
+      "banner-heading",
+      "stacked-poster",
+      "tone-adaptive-chapter",
+      "asymmetric-triptych",
+      "fashion-ending"
+    ],
+    "5": [
+      "banner-title",
+      "rail-chapter",
+      "quiet-frame",
+      "side-highlight",
+      "poster-chapter",
+      "banner-heading",
+      "fashion-ending"
+    ]
+  },
+  "bloom": {
+    "1": [
+      "banner-title",
+      "masthead-chapter",
+      "tone-adaptive-content",
+      "rail-numbered",
+      "rail-chapter",
+      "rail-numbered",
+      "masthead-ending"
+    ],
+    "2": [
+      "banner-title",
+      "tone-adaptive-chapter",
+      "banner-heading",
+      "tone-adaptive-content",
+      "rail-chapter",
+      "two-column",
+      "banner-ending"
+    ],
+    "3": [
+      "fashion-masthead",
+      "constellation-chapter",
+      "two-column",
+      "asymmetric-triptych",
+      "roman-chapter",
+      "tone-adaptive-content",
+      "banner-ending"
+    ],
+    "4": [
+      "constellation",
+      "constellation-chapter",
+      "banner-heading",
+      "stacked-poster",
+      "tone-adaptive-chapter",
+      "asymmetric-triptych",
+      "fashion-ending"
+    ],
+    "5": [
+      "banner-title",
+      "rail-chapter",
+      "quiet-frame",
+      "side-highlight",
+      "poster-chapter",
+      "banner-heading",
+      "fashion-ending"
+    ]
+  },
+  "ink": {
+    "1": [
+      "banner-title",
+      "masthead-chapter",
+      "tone-adaptive-content",
+      "rail-numbered",
+      "rail-chapter",
+      "rail-numbered",
+      "masthead-ending"
+    ],
+    "2": [
+      "banner-title",
+      "tone-adaptive-chapter",
+      "banner-heading",
+      "tone-adaptive-content",
+      "rail-chapter",
+      "two-column",
+      "banner-ending"
+    ],
+    "3": [
+      "fashion-masthead",
+      "constellation-chapter",
+      "two-column",
+      "asymmetric-triptych",
+      "roman-chapter",
+      "tone-adaptive-content",
+      "banner-ending"
+    ],
+    "4": [
+      "constellation",
+      "constellation-chapter",
+      "banner-heading",
+      "stacked-poster",
+      "tone-adaptive-chapter",
+      "asymmetric-triptych",
+      "fashion-ending"
+    ],
+    "5": [
+      "banner-title",
+      "rail-chapter",
+      "quiet-frame",
+      "side-highlight",
+      "poster-chapter",
+      "banner-heading",
+      "fashion-ending"
+    ]
+  },
+  "heritage": {
+    "1": [
+      "banner-title",
+      "masthead-chapter",
+      "tone-adaptive-content",
+      "rail-numbered",
+      "rail-chapter",
+      "rail-numbered",
+      "masthead-ending"
+    ],
+    "2": [
+      "banner-title",
+      "tone-adaptive-chapter",
+      "banner-heading",
+      "tone-adaptive-content",
+      "rail-chapter",
+      "two-column",
+      "banner-ending"
+    ],
+    "3": [
+      "fashion-masthead",
+      "constellation-chapter",
+      "two-column",
+      "asymmetric-triptych",
+      "roman-chapter",
+      "tone-adaptive-content",
+      "banner-ending"
+    ],
+    "4": [
+      "constellation",
+      "constellation-chapter",
+      "banner-heading",
+      "stacked-poster",
+      "tone-adaptive-chapter",
+      "asymmetric-triptych",
+      "fashion-ending"
+    ],
+    "5": [
+      "banner-title",
+      "rail-chapter",
+      "quiet-frame",
+      "side-highlight",
+      "poster-chapter",
+      "banner-heading",
+      "fashion-ending"
+    ]
+  }
+}

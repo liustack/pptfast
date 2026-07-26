@@ -181,6 +181,51 @@ const BEAT_TENDENCY_WEIGHT = 3
 const BEAT_BASE_WEIGHT = 1
 
 /**
+ * Theme structural-personality weight layer (theme-structure wave, task T1 —
+ * `.issues/2026-07-26-theme-structure/plan.md`'s 控制器设计裁定 2):
+ * `ThemeDefinition.layoutTendencies[slideType]` (`../themes/definitions.ts`),
+ * resolved by the caller (`resolveOneEffectiveLayoutId` below) and passed in
+ * as this function's own `themeTendencies` parameter — same "caller resolves
+ * the per-slide-type slice, this function just weighs it" shape
+ * `tendencyIdsFor` already gives the strategy layer.
+ *
+ * **Deliberately reuses `TENDENCY_WEIGHT`/`BASE_WEIGHT` above rather than a
+ * third named pair** (unlike beat's own independently-named
+ * `BEAT_TENDENCY_WEIGHT`/`BEAT_BASE_WEIGHT`): the plan's own controller
+ * ruling is explicit that a third magic-number pair buys nothing here (one
+ * more constant pair is one more thing to explain, and the existing 3:1
+ * contrast has already been validated in practice since W4) — so this layer
+ * shares the strategy layer's exact two constants instead of shadowing them.
+ *
+ * **Composition is `max`, never multiplication** — same reasoning as
+ * `BEAT_TENDENCY_WEIGHT`'s own doc comment above: strategy/beat/theme all
+ * assert the same underlying preference dimension ("which candidate should
+ * this slide favor"), so two (or three) layers agreeing on one id
+ * corroborates that id rather than compounding into a runaway share. See
+ * `weightOf` below.
+ *
+ * **Hard boundary unaffected**: `weightOf` is only ever invoked by
+ * `weightedPickBySeed` over `pool` (built from `layouts[slideType]` before
+ * this layer, or any other, is consulted) — a `themeTendencies` id outside
+ * that pool is simply never passed to `weightOf` at all, so it can never
+ * inflate any real candidate's weight. That silent no-op is precisely why
+ * declaring one is a theme-author mistake, not a legal edge case —
+ * `registerTheme` (`../themes/definitions.ts`) rejects it at registration
+ * time, and `definitions.test.ts` sweeps the 13 builtins for the same
+ * mistake, so this module itself never needs to defend against it.
+ *
+ * **Undeclared theme = byte-identical to before this layer existed**: an
+ * omitted `layoutTendencies` (the whole field, or just this slide type's own
+ * entry) resolves `themeTendencies` to `undefined` at the call site, which
+ * `weightOf` below treats as a uniform weight of 1 for every candidate —
+ * `Math.max(strategyWeight, beatWeight, 1)` never exceeds
+ * `Math.max(strategyWeight, beatWeight)`, so the result is exactly what
+ * `weightOf` computed before this layer was added. All 13 builtins leave
+ * this field undeclared as of task T1 (task T2's job), so this is not a
+ * hypothetical case — it is every real deck rendered today.
+ */
+
+/**
  * Resolve the archetype registry id for one page-type slot (spec §6 steps
  * 3-5, W4 final form). An explicit `requestedLayout` short-circuits every
  * step below when it names a registered `kind: "archetype"` layout
@@ -202,16 +247,22 @@ const BEAT_BASE_WEIGHT = 1
  *    content reads `layoutTendencies`, cover/chapter/ending each read their
  *    own `identityTendencies` slot, P1 variety wave task 3) **combined with
  *    beat soft weighting** (P1 variety wave task 1's own ×3/×1 layer,
- *    `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/`BEAT_BASE_WEIGHT` above — via
- *    `Math.max`, not multiplication, per that constant's own doc comment:
- *    agreement between the two layers doesn't square the pull, disagreement
- *    still lets either layer's own weight through unreduced. `BEAT_TENDENCIES`
- *    only ever names content ids, so this layer stays a structural no-op for
- *    cover/chapter/ending regardless of slide type — beat never weights
- *    identity pages). An omitted `beat` contributes an implicit weight of
- *    1 for every candidate, which `max` never lets exceed the strategy-only
- *    weight, so the omitted-beat result is always exactly the pre-existing
- *    strategy-only weight, byte-identical to before this layer existed)
+ *    `BEAT_TENDENCIES`/`BEAT_TENDENCY_WEIGHT`/`BEAT_BASE_WEIGHT` above) **and
+ *    theme soft weighting** (theme-structure wave task T1's own layer, the
+ *    caller-resolved `themeTendencies` slice of `ThemeDefinition.layoutTendencies`
+ *    — `../themes/definitions.ts`, reusing `TENDENCY_WEIGHT`/`BASE_WEIGHT`,
+ *    no third constant pair) — all three combined via `Math.max`, not
+ *    multiplication, per `BEAT_TENDENCY_WEIGHT`'s own doc comment: every
+ *    layer agreeing on one id corroborates that id, it never compounds the
+ *    pull. `BEAT_TENDENCIES` only ever names content ids, so beat stays a
+ *    structural no-op for cover/chapter/ending regardless of slide type —
+ *    beat never weights identity pages, while a theme's own tendency is (by
+ *    design decision 2) the one signal that reaches those three page types
+ *    at all. An omitted `beat` and/or an omitted `themeTendencies` each
+ *    contribute an implicit weight of 1 for every candidate, which `max`
+ *    never lets exceed the strategy-only weight, so a slide type/theme pair
+ *    that declares neither resolves to exactly the pre-existing
+ *    strategy-only weight, byte-identical to before either layer existed)
  *    **+ weighted seed sampling** (step 5,
  *    `weightedPickBySeed` — salt is `` `${slideType}-archetype:${pageKey}` ``,
  *    W4 design decision 2: `pageKey` is the caller-resolved `slide.id ??
@@ -246,6 +297,12 @@ export function resolveArchetypeId(
   strategy: Strategy,
   previousEffectiveLayoutId: string | null,
   beat?: PageBeat,
+  // Theme-structure wave, task T1: the caller (`resolveOneEffectiveLayoutId`
+  // below) resolves `themeDef.layoutTendencies?.[slideType]` and passes that
+  // slice straight through — trailing and optional so every pre-existing
+  // positional call site (this file's own test suite included) keeps
+  // resolving byte-identically without passing it at all.
+  themeTendencies?: readonly string[],
 ): string | null {
   if (requestedLayout) {
     const pinnedDef = getLayout(requestedLayout)
@@ -270,15 +327,18 @@ export function resolveArchetypeId(
   // of an incidental consequence of an empty tendency set.
   const beatTendencies = beat === undefined ? undefined : BEAT_TENDENCIES[beat]
   // `Math.max`, not `*` (P1 fix round — see BEAT_TENDENCY_WEIGHT's own doc
-  // comment for the full derivation): both layers assert the same
-  // preference dimension, so agreement between them must not square the
-  // pull, while disagreement still lets either layer's own weight through
-  // at full strength, unreduced by the other's neutrality.
+  // comment for the full derivation, extended to the theme layer by the
+  // theme-structure wave's own controller ruling): every layer asserts the
+  // same preference dimension, so agreement between any of them must not
+  // square the pull, while disagreement still lets each layer's own weight
+  // through at full strength, unreduced by another layer's neutrality.
   const weightOf = (id: string): number => {
     const strategyWeight = tendencies.includes(id) ? TENDENCY_WEIGHT : BASE_WEIGHT
     const beatWeight =
       beatTendencies === undefined ? 1 : beatTendencies.includes(id) ? BEAT_TENDENCY_WEIGHT : BEAT_BASE_WEIGHT
-    return Math.max(strategyWeight, beatWeight)
+    const themeWeight =
+      themeTendencies === undefined ? 1 : themeTendencies.includes(id) ? TENDENCY_WEIGHT : BASE_WEIGHT
+    return Math.max(strategyWeight, beatWeight, themeWeight)
   }
   const salt = `${slideType}-archetype:${pageKey}`
   const picked = weightedPickBySeed(seed, salt, pool, weightOf)
@@ -340,7 +400,11 @@ export function resolveIrStrategy(ir: PptxIR): Strategy {
  *    `slide.beat` (P1 variety wave, task 1) — read straight off the IR slide
  *    object, no separate resolution step: unlike `strategy`, `beat` is not a
  *    deck-wide narrative axis, it is per-slide, so there is nothing to
- *    resolve beyond the field read itself.
+ *    resolve beyond the field read itself — plus `themeDef.layoutTendencies?.[slide.type]`
+ *    (theme-structure wave, task T1): the theme is already resolved here
+ *    (`getThemeDefinition` right below), so this is the one place that slices
+ *    its per-slide-type tendency record down to the slice `resolveArchetypeId`
+ *    actually weighs, same "resolve once at the call site" posture as `beat`.
  */
 function resolveOneEffectiveLayoutId(
   ir: PptxIR,
@@ -372,6 +436,7 @@ function resolveOneEffectiveLayoutId(
     strategy,
     previousEffectiveLayoutId,
     slide.beat,
+    themeDef.layoutTendencies?.[slide.type],
   )
 }
 

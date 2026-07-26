@@ -1,0 +1,11 @@
+---
+"@liustack/pptfast": minor
+---
+
+`ThemeDefinition` gains an optional `layoutTendencies` field: a per-page-type soft weight (`{ cover?, chapter?, content?, ending?: string[] }`) naming the archetype ids a theme's author wants auto-selection to lean toward, composed with the existing narrative-strategy and beat weights via `max` (agreement corroborates a pick, it never compounds into a monoculture). It is a soft steer within a theme's own `layouts` set, never a second whitelist — a tendency can only reweight an id already curated into that set for the same page type.
+
+Six of the thirteen built-in themes (`consulting`, `insight`, `academic`, `tech`, `runway`, `journal`) now declare tendencies on their cover/chapter/ending pages, each toward the archetype family that is that theme's own native visual register (e.g. `consulting` toward its banner-assertion layouts, `journal` toward its masthead family). Practically, this means the same deck rendered under two different themes can now differ in *which layouts get picked*, not only in color and type — a fixed IR and seed rendered across all 13 themes previously produced one identical per-page layout sequence; it now produces seven distinct sequences.
+
+Known limitation this release ships with: because the composition takes the *maximum* of the strategy, beat, and theme weights rather than stacking them, a theme tendency naming an archetype the active narrative strategy already favors adds no extra pull for that page. Under the default narrative, `consulting` and `journal` each have only one of their three declared identity-page tendencies free of that overlap, so their structural character currently reads through a single page rather than all three. The other four declared themes are unaffected, and every theme's character reads fully under narratives whose own preferences don't overlap. A later pass will rebalance those two declarations toward archetypes the strategies don't already favor.
+
+Fully backward compatible: the field is optional, and any theme that doesn't declare it — the other 7 built-ins, every custom theme registered via `registerTheme` before this release, and any deck whose pages pin `layout` explicitly — renders and selects exactly as it did before, byte-for-byte.
