@@ -14,7 +14,7 @@ function tmp(): Promise<string> {
  * The exact message `JSON.parse` throws for `text` on whatever JS engine
  * runs this test — used to build an exact-text expectation for config.ts's
  * `<path> is not valid JSON: <message>` template (backlog item 7a,
- * `.issues/notes/2026-07-18-post-v03-backlog.md` #7a) without hardcoding a
+ * `.issues/notes/engineering-history.md` #7a) without hardcoding a
  * V8-version-specific wording: `readConfigFile` (config.ts:104-108) embeds
  * this exact same engine message verbatim, so deriving it live from the
  * same `text` this test itself writes to disk keeps the assertion exact
@@ -52,7 +52,7 @@ describe("findConfig", () => {
     const root = await tmp()
     const configPath = join(root, "pptfast.config.json")
     await writeFile(configPath, JSON.stringify({ them: "tech" }))
-    // Exact text (backlog item 7a, `.issues/notes/2026-07-18-post-v03-backlog.md`
+    // Exact text (backlog item 7a, `.issues/notes/engineering-history.md`
     // #7a): config.ts:110-114's real `invalid <path>:\n<field>: <message>`
     // template, `(root)` because zod's `.strict()` unrecognized-key issue
     // carries an empty `issue.path` (not scoped to the bad key itself).

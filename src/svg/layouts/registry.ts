@@ -26,8 +26,8 @@
  * (this wave's aggregator discipline).
  *
  * Source of truth for each definition's own content: the archetype file it
- * now lives in cites `.issues/notes/2026-07-18-w2-archetype-region-inventory.md`
- * (the W2 pre-flight inventory) plus a direct re-read of the archetype file
+ * now lives in, `.issues/notes/engineering-history.md`
+ * (the W2 pre-flight inventory), plus a direct re-read of the archetype file
  * itself — where the inventory's summary and the code disagreed, the code
  * won (see the W2 task report for the one confirmed case: image-annotate).
  *

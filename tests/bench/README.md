@@ -248,7 +248,7 @@ The second sanctioned run mode next to the agentic protocol above: `pnpm bench:r
 
 ## Probe bank (`questions-probe/`)
 
-A second, separate question bank — `tests/bench/questions-probe/p01..p08`, its own id namespace, the main `questions/q01..q20` bank untouched — built for exactly one purpose: **evidence-gate input for the candidate component pool** (`.issues/specs/2026-07-24-pptfast-layout-component-roadmap.md` §5/§7), not model benchmarking. The gate requires ≥2 distinct-scenario cases per candidate of "the model wanted to express X and the existing 32-component pool could not carry it" before that candidate gets built. The 2026-07-24 rerun (`.issues/notes/2026-07-24-bench-rerun.md`) found the main bank structurally incapable of producing this evidence — it was authored around the existing pool, so no question in it ever puts a model in a position where only a missing component would do. The probe bank exists to put the model in exactly that position, once per candidate.
+A second, separate question bank — `tests/bench/questions-probe/p01..p08`, its own id namespace, the main `questions/q01..q20` bank untouched — built for exactly one purpose: **evidence-gate input for the candidate component pool** (`.issues/specs/2026-07-24-pptfast-layout-component-roadmap.md` §5/§7), not model benchmarking. The gate requires ≥2 distinct-scenario cases per candidate of "the model wanted to express X and the existing 33-component pool could not carry it" before that candidate gets built. The 2026-07-24 rerun (`.issues/notes/quality-evidence.md`) found the main bank structurally incapable of producing this evidence — it was authored around the existing pool, so no question in it ever puts a model in a position where only a missing component would do. The probe bank exists to put the model in exactly that position, once per candidate.
 
 **Scores from this bank are diagnostic, not comparative.** There is no "probe bank pass rate" worth tracking release over release — the deliverable is the qualitative read of what a model tried to do when the pool couldn't carry its intent, produced by a human (or an agent doing the analysis pass, not the run itself) reading each artifact.
 
@@ -278,7 +278,7 @@ Same schema as the main bank (`coverage.strategy`/`pacing`/`expects_components`/
 }
 ```
 
-`expects_components` here does **not** name the candidate (the candidate does not exist yet) — it names the existing-pool component(s) a model would most plausibly reach for while hard-fitting the scenario into the current 32, e.g. hierarchy → `architecture`/`flowchart`, venn → `rings`/`comparison`, agenda → `numbered_cards`/`row_cards`. The rationale for each pairing lives here (JSON has no comment syntax to carry it inline):
+`expects_components` here does **not** name the candidate (the candidate does not exist yet) — it names the existing-pool component(s) a model would most plausibly reach for while hard-fitting the scenario into the current 33, e.g. hierarchy → `architecture`/`flowchart`, venn → `rings`/`comparison`, agenda → `numbered_cards`/`row_cards`. The rationale for each pairing lives here (JSON has no comment syntax to carry it inline):
 
 - **p01 hierarchy** → `architecture` (nearest node-and-connection shape), `flowchart` (branching-process shape, sometimes mis-reached-for even without a decision to branch on)
 - **p02 cycle** → `steps` (linear-process shape, no native loop-back), `flowchart` (branching shape, sometimes forced into a loop)
@@ -304,7 +304,7 @@ pnpm bench:score tests/bench/questions-probe tests/bench/results-probe
 
 ### Analysis protocol
 
-The mechanical scores (`validatePass`/`auditFindingCount`/`renderOk`/`coverageHits`) are a starting filter, not the finding. For every produced artifact, read it and classify what actually happened using the same buckets the 2026-07-24 rerun's gap analysis used (`.issues/notes/2026-07-24-bench-rerun.md`'s failure-attribution table):
+The mechanical scores (`validatePass`/`auditFindingCount`/`renderOk`/`coverageHits`) are a starting filter, not the finding. For every produced artifact, read it and classify what actually happened using the same buckets the 2026-07-24 rerun's gap analysis used (`.issues/notes/quality-evidence.md`'s failure-attribution table):
 
 - **EXPRESSION-GAP** — the artifact this bank exists to surface: the model reached for an existing component and visibly bent its semantics to fit content that component's own contract doesn't cover (e.g. a `flowchart` with no real decision branch standing in for a reporting tree, a `comparison` with more than two sides standing in for a ladder), or the model bullets-dumped the structure into plain text/`bullets` because nothing in the pool fit and it gave up trying to structure it, or — the strongest possible signal — the model invented a `type` string that does not exist in the schema at all (an automatic `validatePass: false`, worth reading regardless of the fail).
 - **COMPONENT-CHOICE** — the model picked a real, defensible component that is merely a worse fit than one of the `expects_components` guesses, without visibly abusing its semantics — evidence *against* the gate for that scenario, not for it.

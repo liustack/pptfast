@@ -2,7 +2,7 @@ import { z } from "zod"
 import type { ComponentAliasSpec, ComponentTraits } from "./types"
 
 // positional cells vs data_table's keyed cells (probe evidence-gate
-// byproduct, 2026-07-26 — `.issues/notes/2026-07-26-probe-evidence-gate.md`
+// byproduct, 2026-07-26 — `.issues/notes/quality-evidence.md`
 // venn section): `rows[].cells` is a *positional* array read by index
 // against `columns` (`columnTexts()` in comparison.tsx reads
 // `cells[colIdx - 1]`), unlike data_table's keyed `Record<key, value>`

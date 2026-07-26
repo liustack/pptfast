@@ -78,7 +78,7 @@ import { accessibleInk } from "../ink"
  * 传 `ctx.defaultBg`。通过校验的主题原样返回、逐字节不变。
  *
  * 白卡分支墨色修复（post-v0.3 backlog closure，
- * `.issues/notes/2026-07-18-post-v03-backlog.md` 新发现 (d)）：`withBg` 分支
+ * `.issues/notes/engineering-history.md` 新发现 (d)）：`withBg` 分支
  * 的标题（`colors.text`）、交给 `SvgContent` 渲染的正文/项目符号
  * （同样读 `colors.text`/`colors.muted`）、页脚 meta（`colors.muted`）三处此前
  * 直接消费主题 token，未经上面 subheading 早已在用的 accessibleInk 守卫——对

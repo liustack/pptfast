@@ -1438,7 +1438,7 @@ describe("narrative field (W3 task 2, renamed from scenario spec §8.1)", () => 
 describe("narrative {id} shape rescue (T0b fix 2, bench-evidence)", () => {
   // A weak model that just wrote `theme: {id: "consulting"}` pattern-matches
   // the same wrapper shape onto `narrative`. Real bench-failing inputs
-  // (.issues/notes/2026-07-24-bench-rerun.md item 2, 3 real failures — 60%
+  // (.issues/notes/quality-evidence.md item 2, 3 real failures — 60%
   // of flash's total): {"id":"training"}, {"id":"boardroom-report"}.
   it("rescues the exact bench-failing input {id: \"training\"} — validates, resolves to the training preset, and reports the rewrite", () => {
     const v = validateIr({ ...raw, narrative: { id: "training" } })

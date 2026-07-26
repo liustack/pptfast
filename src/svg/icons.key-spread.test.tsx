@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
 // Deliberately its own file, not folded into icons.test.tsx (post-v0.3 W8
-// fix round, backlog item 11, `.issues/notes/2026-07-18-post-v03-backlog.md`
+// fix round, backlog item 11, `.issues/notes/engineering-history.md`
 // #11). React's dev-mode "A props object containing a 'key' prop is being
 // spread into JSX" warning is deduplicated per element type for the
 // lifetime of the module realm — confirmed empirically while building this

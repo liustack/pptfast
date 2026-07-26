@@ -111,7 +111,7 @@ The v4 IR schema is frozen as of 0.4.0 — future evolution is additive only (ne
 
 ## Themes
 
-A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 13 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — only 3 of the 13 exclude a single chapter layout (a runway-native design whose contrast doesn't clear those themes' accent color). Override the style (`--style`) to re-color a theme.
+A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 13 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — none of the 13 narrows anything today (an earlier three-theme exclusion was reverted once every archetype's ink adapted to its actual background). Override the style (`--style`) to re-color a theme.
 
 | id | label |
 |---|---|

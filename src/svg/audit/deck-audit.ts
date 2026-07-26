@@ -1618,7 +1618,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       // below but was never threaded into what children receive: it
       // resolves to wherever the nearest ancestor <g transform> happens to
       // put (0,0), almost never where the run is actually painted (backlog
-      // item 5b, `.issues/notes/2026-07-18-post-v03-backlog.md` #5).
+      // item 5b, `.issues/notes/engineering-history.md` #5).
       // `inheritedTx`/`inheritedTy` — the nearest ancestor <text>/<tspan>'s
       // own already-resolved absolute position, threaded down through the
       // recursion below — fixes that: not pixel-perfect for the horizontal

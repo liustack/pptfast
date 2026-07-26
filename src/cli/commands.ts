@@ -938,7 +938,7 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
  * before *any* file is written — not just ahead of `pages/<id>.json` (W5
  * whole-branch review finding 1, CRITICAL — CWE-22), but ahead of
  * `deck.spec.json` too (post-v0.3 W8 fix round, backlog item 8,
- * `.issues/notes/2026-07-18-post-v03-backlog.md` #8 — the check originally
+ * `.issues/notes/engineering-history.md` #8 — the check originally
  * ran after the spec write): `slide.id` is an unrestricted string at the
  * schema layer, so a hand-authored IR could otherwise set one to
  * `"../../../../escape"` and write outside `outDir`. `writeDeckAssets` below

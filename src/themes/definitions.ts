@@ -73,7 +73,7 @@ const FULL_LAYOUTS: Record<Slide["type"], readonly string[]> = {
  * Formerly "the full chapter set minus `fashion-chapter`" — three W4
  * fix-round exclusions (bloom/classroom/heritage), **reverted** in the
  * post-v0.3 W8 fix round (backlog item 2,
- * `.issues/notes/2026-07-18-post-v03-backlog.md` #2) now that the root cause
+ * `.issues/notes/engineering-history.md` #2) now that the root cause
  * is actually fixed. History, for the git-blame reader:
  * `chapter-fashion-chapter.tsx` already picked its own ink via
  * `readableOn(ctx.colors.accent)`, but `readableOn`'s old fixed-0.4-luminance

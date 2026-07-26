@@ -21,7 +21,7 @@
 
 /**
  * `readableOn`'s tie-break-only fallback threshold (backlog item 2,
- * `.issues/notes/2026-07-18-post-v03-backlog.md` #2 — post-v0.3 W8 fix
+ * `.issues/notes/engineering-history.md` #2 — post-v0.3 W8 fix
  * round: the fixed 0.4 cutover this constant used to *drive* every
  * `readableOn` decision is gone, replaced by a real two-ink contrast
  * comparison below). Kept only for the near-zero-probability exact-tie case

@@ -232,7 +232,7 @@ describe("resolveOverrideBackgroundHex (post-v0.3 W8 fix round, backlog item 1)"
   })
 })
 
-// backlog item 1 (`.issues/notes/2026-07-18-post-v03-backlog.md` #1):
+// backlog item 1 (`.issues/notes/engineering-history.md` #1):
 // `ctx.defaultBg` used to be blind to `slide.background`, always resolving
 // to `tokens.defaultBackgrounds[slide.type]` regardless of any per-slide
 // override — an archetype that paints no panel of its own and relies on

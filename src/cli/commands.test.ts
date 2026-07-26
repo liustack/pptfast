@@ -843,7 +843,7 @@ describe("deck project directory workflow (W5 task 5)", () => {
     expect(assembleMsg1).toContain("to deck.spec.json for revision stability")
     const seedMatch1 = /generated seed (\d+)/.exec(assembleMsg1)
     expect(seedMatch1).not.toBeNull()
-    // Backlog item 9a (`.issues/notes/2026-07-18-post-v03-backlog.md` #9a):
+    // Backlog item 9a (`.issues/notes/engineering-history.md` #9a):
     // none of p-a/p-b/p-cover/p-ending's page files set an explicit
     // `layout`, so this call also triggers the materialized-layout note —
     // commands.ts:668-677 always pushes the seed note before the layout

@@ -41,7 +41,7 @@ function renderPrimitive(
   //
   // `key` is passed directly at each JSX call site below (`key={i}`), never
   // inside this spread object (post-v0.3 W8 fix round, backlog item 11,
-  // `.issues/notes/2026-07-18-post-v03-backlog.md` #11): React 19 warns
+  // `.issues/notes/engineering-history.md` #11): React 19 warns
   // ("A props object containing a 'key' prop is being spread into JSX") the
   // moment an object carrying an own `key` field is spread into an element,
   // which every one of the 7 tag branches below did before this fix —

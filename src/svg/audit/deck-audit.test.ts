@@ -559,7 +559,7 @@ describe("findContrastIssues — low-contrast", () => {
     expect(issues[0].text).toContain("low contrast run")
   })
 
-  // Backlog item 5b (`.issues/notes/2026-07-18-post-v03-backlog.md` #5):
+  // Backlog item 5b (`.issues/notes/engineering-history.md` #5):
   // the test above only ever exercises a *single* background region, so a
   // <tspan> with no x/y of its own landing at the wrong position (see
   // below) still resolves to the same region it should have anyway,
@@ -618,7 +618,7 @@ describe("findContrastIssues — low-contrast", () => {
     expect(issues[0].background).toBe("#FFFFFF")
   })
 
-  // Backlog item 6 (task-1 routed follow-up, `.issues/notes/2026-07-18-post-v03-backlog.md`
+  // Backlog item 6 (task-1 routed follow-up, `.issues/notes/engineering-history.md`
   // #5b's own fix): the two tests above both exercise a <tspan> that omits
   // its own x/y and inherits the owning <text>'s position — deck-audit.ts's
   // precedence branch (`const tx = ownX !== null ? ax + Number(ownX) * as :
@@ -1778,7 +1778,7 @@ describe("auditDeck — raw/unvalidated-input guard (Task 2, borrow wave — A4)
 // `roundedTopBarPath` accent bar hit this dead-on: a real ~6px-tall bar
 // inflated to a ~1184×1182px bbox dwarfing the 1280×720 canvas (recorded in
 // docs/contrast-system.md's former "Known limitation" paragraph and
-// `.issues/notes/2026-07-18-post-v03-backlog.md`'s "本轮新发现 (a)"). This
+// `.issues/notes/engineering-history.md`'s "本轮新发现 (a)"). This
 // block first pins the pre-fix defect as a *characterization* test (the old
 // algorithm reimplemented inline, run against a real render's exact `d`
 // string — not a call into the fixed source, which no longer contains the

@@ -60,7 +60,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * rather than `resolveBackgroundHex`'s unrelated surface fallback (see
  * "Asset policy rationale" below). Used only for `slide.background`'s own
  * per-slide override (`FullSlideSvg` below, post-v0.3 W8 fix round, backlog
- * item 1 — `.issues/notes/2026-07-18-post-v03-backlog.md` #1) —
+ * item 1 — `.issues/notes/engineering-history.md` #1) —
  * `resolveBackgroundHex` keeps its `.from`/`surfaceFallback` policy untouched
  * and still exclusively backs `tokens.defaultBackgrounds`, which is real
  * production input today (`tech`'s own cover/chapter/content/ending default
@@ -93,7 +93,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * divergent approximation of one.
  *
  * Asset policy rationale (final-review Major finding, post-v0.3 backlog
- * item 1's own sub-branch — `.issues/notes/2026-07-18-post-v03-backlog.md`
+ * item 1's own sub-branch — `.issues/notes/engineering-history.md`
  * #1): an asset spec has no true single color of its own, same as
  * `resolveBackgroundHex`'s asset branch — but unlike that function (whose
  * `surfaceFallback` genuinely is what gets painted when a *theme's own
@@ -273,7 +273,7 @@ export function FullSlideSvg({
   // `defaultBg`'s own fallback for a slide that sets no override.
   const themeDefaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slide.type], tokens.colors.surface)
   // ctx.defaultBg (post-v0.3 W8 fix round, backlog item 1 —
-  // `.issues/notes/2026-07-18-post-v03-backlog.md` #1): prefer the slide's
+  // `.issues/notes/engineering-history.md` #1): prefer the slide's
   // own `slide.background` override when it sets one, so an archetype that
   // paints no panel of its own (and so reads this field to pick readable
   // ink — see `ComponentCtx.defaultBg`'s own doc comment) measures contrast

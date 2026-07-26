@@ -403,7 +403,7 @@ describe("assembleDeck", () => {
       expect(materializedLayoutCount).toBe(4) // all 4 of makePlan()'s pages omit layout
     })
 
-    // Backlog item 9b (`.issues/notes/2026-07-18-post-v03-backlog.md` #9b):
+    // Backlog item 9b (`.issues/notes/engineering-history.md` #9b):
     // every materializedLayoutCount test above (and everywhere else in this
     // file) reuses `makePlan()`'s fixed cover/content/content/ending page
     // sequence — `chapter` has never appeared in a single fixture alongside

@@ -448,7 +448,7 @@ describe("resolveNarrative", () => {
 //
 // A weak model that just wrote `theme: {id: "consulting"}` a few lines above
 // pattern-matches the same "object wrapping an id" shape onto `narrative`.
-// Real bench-failing inputs (.issues/notes/2026-07-24-bench-rerun.md item 2,
+// Real bench-failing inputs (.issues/notes/quality-evidence.md item 2,
 // 3 real failures — 60% of flash's total): `{"id":"training"}`,
 // `{"id":"boardroom-report"}`.
 

@@ -36,7 +36,7 @@ describe("PPTX icon catalog: model pretraining-habit aliases (T0b fix 1)", () =>
   // pair instead rescues a weak-model habit: a model's pretraining data
   // remembers the older lucide-react convention ("alert-circle"/
   // "alert-triangle") that this catalog never used. Bench-evidence: 6 real
-  // validate failures across 3 models, `.issues/notes/2026-07-24-bench-rerun.md`
+  // validate failures across 3 models, `.issues/notes/quality-evidence.md`
   // item 1.
   it("carries both legacy-habit names in the generated catalog", () => {
     expect(PPTX_ICON_NAMES).toContain("alert-circle")

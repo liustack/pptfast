@@ -25,7 +25,7 @@ export interface ComponentCtx {
    * `tokens.defaultBackgrounds[slide.type]` (reduced via that file's
    * `resolveBackgroundHex`, `.from` for a gradient — W4 fix round; per-slide
    * override awareness is the post-v0.3 W8 fix round, backlog item 1,
-   * `.issues/notes/2026-07-18-post-v03-backlog.md` #1). Consumed by
+   * `.issues/notes/engineering-history.md` #1). Consumed by
    * `../ink`'s `readableOn`/`accessibleInk` in archetypes that paint no
    * background panel of their own and so sit directly on whatever
    * `background.tsx` painted behind them (e.g. `chapter-rail-chapter.tsx`)

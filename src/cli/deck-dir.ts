@@ -409,7 +409,7 @@ export interface DeckDirResult extends AssembleResult {
  * The merged result is spliced in via a shallow clone of the whole `ir`
  * object (`{ ...ir, assets: ... }`), not a `ir.assets = ...` reassignment
  * onto the object `assembleDeck` returned (post-v0.3 W8 fix round, backlog
- * item 4, `.issues/notes/2026-07-18-post-v03-backlog.md` #4): the earlier
+ * item 4, `.issues/notes/engineering-history.md` #4): the earlier
  * version mutated `assembleDeck`'s own return value in place, which is
  * harmless *today* only because `variety.ts`'s `deckSeedCache` and
  * `layout-selection.ts`'s `deckEffectiveLayoutIdsCache` — the only two

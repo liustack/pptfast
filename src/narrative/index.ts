@@ -564,7 +564,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * `{id: <preset>}` shape-rescue predicate (T0b fix 2, bench-evidence — see
- * `.issues/notes/2026-07-24-bench-rerun.md` item 2): returns the rescued
+ * `.issues/notes/quality-evidence.md` item 2): returns the rescued
  * preset-id string when `value` is a plain object whose only
  * narrative-relevant key is a string `id` (none of {@link AXIS_KEYS}
  * alongside it), `undefined` otherwise (not an object, `id` missing/
@@ -673,7 +673,7 @@ export function resolveNarrative(input: string | Partial<NarrativeProfile> | und
 }
 
 // ── normalizeNarrativeShape (T0b, bench-evidence fix 2 — see
-// .issues/notes/2026-07-24-bench-rerun.md item 2) ───────────────────────
+// .issues/notes/quality-evidence.md item 2) ───────────────────────
 
 /** Same `{ value, normalized }` reporting shape `ir/field-aliases.ts`'s `normalizeComponentAliases` uses — see that module's own doc comment for the convention this mirrors. */
 export interface NormalizeNarrativeShapeResult {

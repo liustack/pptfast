@@ -860,7 +860,7 @@ describe("render parity with FullSlideSvg", () => {
   const archetypePathCases: { label: string; themeId: string; slide: Slide }[] = [
     { label: "tech cover, auto-pick", themeId: "tech", slide: { type: "cover", heading: "x", components: [] } },
     {
-      // Backlog item 7c (`.issues/notes/2026-07-18-post-v03-backlog.md` #7c):
+      // Backlog item 7c (`.issues/notes/engineering-history.md` #7c):
       // this sweep previously covered cover/content/ending only — chapter
       // had zero render-parity coverage even though it resolves through the
       // exact same archetype path (image-cover takeover aside, already
@@ -909,7 +909,7 @@ describe("render parity with FullSlideSvg", () => {
     })
   }
 
-  // Backlog item 3 (`.issues/notes/2026-07-18-post-v03-backlog.md` #3): every
+  // Backlog item 3 (`.issues/notes/engineering-history.md` #3): every
   // case above is a single-page deck at index 0, where
   // `previousEffectiveLayoutId` is always `null` — the adjacent
   // anti-repetition redraw (W4 design decision 4) never fires in any

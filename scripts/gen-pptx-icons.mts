@@ -35,7 +35,7 @@ import { fileURLToPath } from "node:url"
  *     第 1 类的触发原因不同——这两个名字从来不是本仓 LEGACY_ICON_NAMES 的
  *     一员（本仓自 W2.5 起就拼作 `circle-alert`/`triangle-alert`），而是
  *     模型从预训练记忆里吐出的旧版 lucide-react 命名。基准复测实测 6 次
- *     真实校验失败、跨 3 个模型（`.issues/notes/2026-07-24-bench-rerun.md`
+ *     真实校验失败、跨 3 个模型（`.issues/notes/quality-evidence.md`
  *     立即可修项 1）——单发模式下 "did you mean" 提示没有第二轮可读，别名
  *     救援是唯一有效防线。
  *

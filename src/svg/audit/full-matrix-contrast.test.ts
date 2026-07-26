@@ -29,7 +29,7 @@
 //     against several themes' own backgrounds — a theme-token-calibration
 //     gap, not an archetype assuming the wrong background. **Fixed** in a
 //     later task (post-v0.3 W8 fix round, backlog item 5a —
-//     `.issues/notes/2026-07-18-post-v03-backlog.md` #5 — a minimal
+//     `.issues/notes/engineering-history.md` #5 — a minimal
 //     hue/saturation-preserving lightness recalibration across the 7
 //     affected themes' `colors.muted`, see each `themes/<id>.ts`'s own
 //     inline comment on that token) and locked in by the dedicated
@@ -49,7 +49,7 @@
 //   - `cover-left-anchor.tsx`'s (and `cover-banner-title.tsx`'s)
 //     multi-`<tspan>` author/date/version line: attribution **fixed** in a
 //     later task (post-v0.3 backlog item 5b —
-//     `.issues/notes/2026-07-18-post-v03-backlog.md` #5 — `findContrastIssues`
+//     `.issues/notes/engineering-history.md` #5 — `findContrastIssues`
 //     no longer drops a `<tspan>`'s owning `<text>`'s own x/y when the
 //     tspan carries none of its own; see that function's own doc comment in
 //     `deck-audit.ts` and the two dedicated regression tests in
@@ -121,7 +121,7 @@ interface AllowlistEntry {
    * (a one-sided band isn't a meaningful "historically adjudicated range").
    * Omit to allowlist by theme/layout/shape alone regardless of ratio, same
    * as before this field existed (backlog item 6,
-   * `.issues/notes/2026-07-18-post-v03-backlog.md` #6).
+   * `.issues/notes/engineering-history.md` #6).
    *
    * A finding without a numeric `ratio` (i.e. `overflow`/`out-of-bounds`,
    * which this same allowlist also filters — see `auditFindings`) never
@@ -154,7 +154,7 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     theme: "*",
     layout: "fashion-chapter",
     // Band derivation (backlog item 6,
-    // `.issues/notes/2026-07-18-post-v03-backlog.md` #6): the text-shape
+    // `.issues/notes/engineering-history.md` #6): the text-shape
     // guard alone (`TEXT_SHAPE_GUARD["fashion-chapter"]`, "1-2 digits")
     // would silently wave through *any* future 1-2-digit finding under this
     // layout regardless of how far its ratio has drifted — this band closes
@@ -730,7 +730,7 @@ describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task
 })
 
 // Dedicated 13-theme colors.muted contrast lock (post-v0.3 W8 fix round,
-// backlog item 5a — `.issues/notes/2026-07-18-post-v03-backlog.md` #5, the
+// backlog item 5a — `.issues/notes/engineering-history.md` #5, the
 // other half of item 2 — see also task-1's handoff report for the 7
 // concrete combos this replaces). Unlike the sweep above (deliberately
 // meta-free, see the file header), this block deliberately populates the
@@ -2027,7 +2027,7 @@ describe("waterfall/gantt contrast (structure-components wave task 2, decision 7
 })
 
 // colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review
-// routed — `.issues/notes/2026-07-18-post-v03-backlog.md`'s "9. task-2 覆盖
+// routed — `.issues/notes/engineering-history.md`'s "9. task-2 覆盖
 // 小项" area). Two colors.muted call sites rendered at a reduced opacity
 // WITHOUT routing through `accessibleOpacity` (`src/svg/ink.ts`) — the
 // helper this codebase already built for exactly this shape of problem
@@ -2115,7 +2115,7 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 // Coverage-completeness addition (final-review Major finding, whole-branch
 // review of `fix/post-v03-backlog` — independently discovered, not caught by
 // task 2's own review, resolved as this same backlog item 1's own sub-branch
-// fix, `.issues/notes/2026-07-18-post-v03-backlog.md` #1): the review's own
+// fix, `.issues/notes/engineering-history.md` #1): the review's own
 // words were "`full-matrix-contrast.test.ts` (the wave's own dedicated
 // regression net for exactly this defect class) — grepped for `"asset"` —
 // zero matches; its sweep never constructs a content/ending slide with an
@@ -2187,7 +2187,7 @@ describe("asset-background content contrast (final-review Major finding, backlog
   // `fill="#FFFFFF"` on the `fill="#FFFFFF"` card.
   //
   // Resolved (post-v0.3 backlog closure,
-  // `.issues/notes/2026-07-18-post-v03-backlog.md` 新发现 (d)): heading,
+  // `.issues/notes/engineering-history.md` 新发现 (d)): heading,
   // `SvgContent`'s body/bullets (via a locally-derived `cardCtx`), and the
   // footer meta all now route through the same `accessibleInk` guard the
   // subheading already used, against the same card `"#FFFFFF"` reference —

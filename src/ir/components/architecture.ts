@@ -2,7 +2,7 @@ import { z } from "zod"
 import type { ComponentAliasSpec, ComponentTraits } from "./types"
 
 // order semantics (probe evidence-gate byproduct, 2026-07-26 —
-// `.issues/notes/2026-07-26-probe-evidence-gate.md` tier_stack section):
+// `.issues/notes/quality-evidence.md` tier_stack section):
 // `layers` is an ordered array and the renderer (`architecture.tsx`) paints
 // it top-to-bottom — `layers[0]` is always the topmost band. That is a
 // legitimate reading of "architecture" (a system-layering stack diagram is
