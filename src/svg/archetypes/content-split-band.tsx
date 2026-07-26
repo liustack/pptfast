@@ -125,6 +125,19 @@ import { accessibleInk, readableOn } from "../ink"
  * bold-metrics default" case `content-image-lead-split.tsx` already
  * established).
  *
+ * Beat/strategy tendency assignment (T3 integration task): this archetype is
+ * an `anchor` `BEAT_TENDENCIES` member (`layout-selection.ts`) — its
+ * full-bleed `header` band *is* the heading treatment, the same "banner rect
+ * is the heading" identity `banner-heading` already earns anchor membership
+ * for, escalated to genuinely full-bleed (see that table's own doc comment).
+ * It stays out of every strategy's `layoutTendencies` (`@/narrative`)
+ * deliberately, the same "万金油" neutral treatment `tone-adaptive-content`
+ * gets: the full-bleed color treatment is a chrome/visual-weight choice
+ * layered on top of an otherwise ordinary single-stack body, not an argument-
+ * style signal any one strategy's rhetorical register (MECE evidence,
+ * editorial restraint, step-by-step procedure, glossy visual punch, plain
+ * scannability) especially owns.
+ *
  * Discipline: no theme id, no hex literal — every color is a token or an
  * `../ink` call.
  */

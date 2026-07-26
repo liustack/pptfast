@@ -101,6 +101,18 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     unconditionally, regardless of `slide.components` — the same "loud,
  *     unmissable page identity" register as the two members above, just
  *     asserted beside the body instead of above or inside it.
+ *   - `split-band` (content-archetype expansion wave, task T3 —
+ *     `.issues/2026-07-26-content-archetypes/plan.md`) — its full-bleed
+ *     `header` band *is* the heading treatment (a filled `colors.primary`
+ *     rect spanning the entire page width, not inset to the usual x=96..
+ *     1184 content margins the way even `banner-heading`'s own assertion
+ *     banner is) — the same "banner rect is the heading" identity that
+ *     already earns `banner-heading` its anchor membership, just escalated
+ *     to genuinely full-bleed. Distinct from `image-lead-split` below
+ *     (`content-image-lead-split.tsx`'s own file header explicitly frames
+ *     that archetype as "两个真正共存的主角", not one loud statement) —
+ *     the two new archetypes deliberately land in different beats, not the
+ *     same one by default.
  * - **dense** (many discrete items, high information density):
  *   - `bento-panel` — the only content archetype whose `body` capacity is 6
  *     (every other is 4): a multi-cell grid sized to hold the most, not the
@@ -130,6 +142,18 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     to the max-composition agreement case — any strategy that also favors
  *     that one id gets a "free" corroboration with nothing else to spread
  *     across).
+ *   - `image-lead-split` (content-archetype expansion wave, task T3) — its
+ *     own file header already makes the "spacious by construction" case
+ *     directly: the narrowest single-stack text column in the pool (435px,
+ *     narrower even than `narrow-column`'s 880px), its width given over not
+ *     to a watermark (`narrow-column`'s own device) but to a real,
+ *     co-equal visual column next door. Same underlying trait
+ *     `narrow-column` earns its own membership for — a narrow column
+ *     paired with generous adjacent space — just filled with a real
+ *     asset instead of a muted page number. Explicitly *not* `anchor`: the
+ *     file header frames the visual column as a second protagonist sharing
+ *     the page, not a single loud statement the way `stacked-poster`'s hero
+ *     or `split-band`'s full-bleed band are.
  *
  * `tone-adaptive-content` — the pool's "万金油" (already strategy-neutral by
  * `layoutTendencies`' own convention) — is deliberately absent from every
@@ -137,9 +161,9 @@ type PageBeat = NonNullable<Slide["beat"]>
  * to read as beat-neutral as well.
  */
 const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
-  anchor: ["banner-heading", "stacked-poster", "side-highlight"],
+  anchor: ["banner-heading", "stacked-poster", "side-highlight", "split-band"],
   dense: ["bento-panel", "two-column", "rail-numbered", "asymmetric-triptych"],
-  breathing: ["narrow-column", "quiet-frame"],
+  breathing: ["narrow-column", "quiet-frame", "image-lead-split"],
 }
 
 /**

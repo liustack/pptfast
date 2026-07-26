@@ -75,11 +75,21 @@ import { accessibleInk } from "../ink"
  * never enlarged) — the same measure-and-scale math, a narrower cap chosen
  * for a column with no bleed room, not a rewritten technique.
  *
- * Beat/strategy tendency assignment is deferred to the plan's T3 (integration)
- * task, once `split-band` also lands — this archetype is beat-neutral
- * (absent from `BEAT_TENDENCIES`, `layout-selection.ts`) until then, the
- * same treatment `tone-adaptive-content` gets permanently by that table's own
- * design ("万金油" — deliberately absent from every tendency set).
+ * Beat/strategy tendency assignment (decided in the plan's T3 integration
+ * task, once `split-band` also landed): this archetype is a `breathing`
+ * `BEAT_TENDENCIES` member (`layout-selection.ts`) — its narrow 435px text
+ * column mirrors `narrow-column`'s own "spacious by construction" case, just
+ * filling the freed-up width with a real co-equal visual column instead of
+ * a watermark (see that table's own doc comment for the full reasoning).
+ * Deliberately *not* an `anchor` member: this file's own "two co-equal
+ * protagonists" framing above is a calmer register than `stacked-poster`'s
+ * single hero or `split-band`'s full-bleed banner. It also stays out of
+ * every strategy's `layoutTendencies` (`@/narrative`) — deliberately
+ * neutral, the same "万金油" treatment `tone-adaptive-content` gets: its
+ * defining trait (an unconditional visual/text split) is an asset-
+ * availability signal, not an argument-style one — any strategy's deck can
+ * equally have (or lack) a chart/photo worth leading with, so no single
+ * strategy's rhetorical register owns this composition.
  *
  * Discipline: no theme id, no hex literal — every color is a token or an
  * `../ink` call.

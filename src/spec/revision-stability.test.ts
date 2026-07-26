@@ -86,21 +86,30 @@ describe("explicit seed: revision stability", () => {
     // stopped demonstrating this property; re-found by brute-force search
     // over this exact fixture, same method the insertion test below
     // documents for its own seed): declaring beat "anchor" on p-2 flips
-    // p-2's own raw pick from "narrow-column" to "rail-numbered" for this
-    // seed — neither id is in "anchor"'s own tendency set (banner-heading/
-    // stacked-poster/side-highlight, `BEAT_TENDENCIES`,
-    // layout-selection.ts), so this isn't beat directly favoring the new
-    // pick. It's the standard weighted-interval-sampling effect: boosting
-    // banner-heading/stacked-poster/side-highlight's own weight (each now
-    // max(1,3)=3, up from strategy-only 1) shifts where every other id's
-    // interval boundary falls for the same hash, the same "changing one
-    // candidate's weight can flip a different candidate's outcome" property
-    // `weightedPickBySeed` already has. p-3's redraw decision is unaffected
-    // for this seed — proving both halves of this test are load-bearing:
-    // the beat layer really does change the declaring page's own pick, and
-    // that change really doesn't cascade past the one page beat was
-    // declared on.
-    const seed = 1
+    // p-2's own raw pick from "rail-numbered" to "bento-panel" for this seed
+    // — neither id is in "anchor"'s own tendency set (banner-heading/
+    // stacked-poster/side-highlight/split-band, `BEAT_TENDENCIES`,
+    // layout-selection.ts — `split-band` joined by the content-archetype
+    // expansion wave's own T3 task), so this isn't beat directly favoring
+    // the new pick. It's the standard weighted-interval-sampling effect:
+    // boosting banner-heading/stacked-poster/side-highlight/split-band's own
+    // weight (each now max(1,3)=3, up from strategy-only 1) shifts where
+    // every other id's interval boundary falls for the same hash, the same
+    // "changing one candidate's weight can flip a different candidate's
+    // outcome" property `weightedPickBySeed` already has. p-3's redraw
+    // decision is unaffected for this seed — proving both halves of this
+    // test are load-bearing: the beat layer really does change the
+    // declaring page's own pick, and that change really doesn't cascade
+    // past the one page beat was declared on.
+    //
+    // Re-pinned (content-archetype expansion wave, task T3 — `split-band`
+    // joining `BEAT_TENDENCIES.anchor` reweighted every hash-interval
+    // boundary again, so seed 1's own before/after pair collapsed to the
+    // same pick for p-2, "banner-heading" both times, breaking this test's
+    // own non-vacuity assertion): re-found by brute-force search over this
+    // exact fixture, same method the insertion test below documents for its
+    // own seed.
+    const seed = 0
     const { ir: before } = assembleDeck(makePlan(basePages(), { seed }), {})
     const beforeLayouts = layoutsById(before)
 

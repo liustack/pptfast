@@ -290,17 +290,20 @@ describe("resolveArchetypeId", () => {
   it("regression (P1 fix round): storytelling × beat 'breathing' no longer compounds narrow-column into a majority pick — the exact pathology the reviewer measured at ~53% under the old multiplicative formula", () => {
     // storytelling's layoutTendencies is now {narrow-column, stacked-poster,
     // quiet-frame} (P1 variety wave, task 4 added quiet-frame) and beat
-    // "breathing"'s tendency set is now {narrow-column, quiet-frame} (same
-    // task, closing the T1-flagged single-member gap) — narrow-column stays
-    // a member of *both* sets, still the most natural real-author pairing
-    // (an "unhurried single flow" beat under a "tension, image-forward"
+    // "breathing"'s tendency set is now {narrow-column, quiet-frame,
+    // image-lead-split} (image-lead-split added by the content-archetype
+    // expansion wave's own T3 task, see `layout-selection.ts`'s
+    // `BEAT_TENDENCIES` doc comment) — narrow-column stays a member of
+    // *both* sets, still the most natural real-author pairing (an
+    // "unhurried single flow" beat under a "tension, image-forward"
     // strategy that already reaches for the same spacious layout), and
     // still exactly the case the reviewer flagged: the old
     // `strategyWeight * beatWeight` formula would give narrow-column weight
     // 3×3=9 against the pool's stacked-poster (strategy-only, weight 3),
-    // quiet-frame (now itself a shared member, weight 3×3=9 too), and 7
-    // other weight-1 members — a compounding that would only have gotten
-    // worse as task 4 added a second shared id, not better.
+    // quiet-frame (itself a shared member, weight 3×3=9 too), image-lead-
+    // split (beat-only, weight 1×3=3), and 8 other weight-1 members — a
+    // compounding that would only have gotten worse as content-pool growth
+    // keeps adding shared/beat-only ids, not better.
     const N = 5000
     let narrowColumnHits = 0
     for (let i = 0; i < N; i++) {
@@ -316,29 +319,28 @@ describe("resolveArchetypeId", () => {
       )!
       if (picked === "narrow-column") narrowColumnHits++
     }
-    // Weights under Math.max, full 10-id pool: narrow-column=max(3,3)=3 and
-    // quiet-frame=max(3,3)=3 (both layers agree on both ids — capped, not
-    // squared), stacked-poster=max(3,1)=3 (strategy only), the remaining 7
-    // ids (two-column/rail-numbered/banner-heading/bento-panel/
-    // tone-adaptive-content/side-highlight/asymmetric-triptych)=max(1,1)=1
-    // each — total 3+3+3+7=16, narrow-column share = 3/16 = 0.1875.
-    // Identical, by construction, to storytelling's own strategy-only share
-    // with no beat declared at all (also 3/16, since breathing's tendency
-    // set {narrow-column, quiet-frame} is now a full subset of
-    // storytelling's own {narrow-column, stacked-poster, quiet-frame} — beat
-    // contributes zero marginal weight to any id here either way) — proof
-    // that an agreeing beat contributes corroboration, not amplification.
+    // Weights under Math.max, full 12-id pool (content-archetype expansion
+    // wave, task T3 re-derivation — image-lead-split joining `breathing`
+    // moves narrow-column's share down from the pre-T3 3/16 = 0.1875):
+    // narrow-column=max(3,3)=3 and quiet-frame=max(3,3)=3 (both layers
+    // agree on both ids — capped, not squared), stacked-poster=max(3,1)=3
+    // (strategy only), image-lead-split=max(1,3)=3 (beat only, new this
+    // task), the remaining 8 ids (two-column/rail-numbered/banner-heading/
+    // bento-panel/tone-adaptive-content/side-highlight/asymmetric-triptych/
+    // split-band)=max(1,1)=1 each — total 3+3+3+3+8=20, narrow-column share
+    // = 3/20 = 0.15 exactly. Bounds set with margin on both sides of that
+    // point estimate for N=5000 sampling noise.
     const share = narrowColumnHits / N
-    expect(share).toBeGreaterThan(0.15)
-    expect(share).toBeLessThan(0.24)
+    expect(share).toBeGreaterThan(0.11)
+    expect(share).toBeLessThan(0.19)
     // Explicitly below what the old multiplicative formula would give on
-    // this same 10-id pool (narrow-column=3×3=9, quiet-frame=3×3=9,
-    // stacked-poster=3×1=3, 7 others at 1 — total 28, share 9/28 ≈ 0.321) —
-    // the regression this fix round closes, asserted concretely rather than
-    // only matching the new expected band (a band-only check could in
-    // principle still pass if the bug reintroduced a smaller-but-still-real
-    // compounding effect).
-    expect(share).toBeLessThan(0.28)
+    // this same 12-id pool (narrow-column=3×3=9, quiet-frame=3×3=9,
+    // stacked-poster=3×1=3, image-lead-split=1×3=3, 8 others at 1 — total
+    // 32, share 9/32 = 0.28125) — the regression this fix round closes,
+    // asserted concretely rather than only matching the new expected band
+    // (a band-only check could in principle still pass if the bug
+    // reintroduced a smaller-but-still-real compounding effect).
+    expect(share).toBeLessThan(0.24)
   })
 
   // ── theme tendency weighting (theme-structure wave, task T1 —

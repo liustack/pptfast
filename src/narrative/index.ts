@@ -113,6 +113,26 @@ export interface StrategyDefinition {
    * 油" call-out: it is the one content archetype meant to read as
    * strategy-neutral, so it always gets the ×1 floor).
    *
+   * **`image-lead-split`/`split-band` (content-archetype expansion wave,
+   * task T3) join it, deliberately, as this field's third and fourth
+   * permanently-neutral members** — a decision, not an oversight (T1's own
+   * review flagged `image-lead-split`'s absence here as looking accidental,
+   * so this note exists to close that off explicitly). Both archetypes'
+   * defining traits are *asset/chrome* choices, not *argument-style* ones:
+   * `image-lead-split`'s unconditional visual/text split depends on whether
+   * the deck's author actually has a chart/photo worth leading with, and
+   * `split-band`'s full-bleed color header is a visual-weight escalation of
+   * `banner-heading`'s existing assertion idiom layered on an otherwise
+   * ordinary body — neither maps to one strategy's rhetorical register
+   * (MECE evidence-first, editorial restraint, step-by-step procedure,
+   * glossy visual punch, plain scannability) more than another's: a
+   * pyramid deck, a storytelling deck, and a briefing deck can equally have
+   * (or lack) a strong image to lead with, or want a bold banded opener.
+   * Both *do* carry a beat-level personality instead (`BEAT_TENDENCIES`,
+   * `svg/layout-selection.ts` — `image-lead-split` is `breathing`,
+   * `split-band` is `anchor`) — that axis measures page-level density
+   * character, a question this field's argument-style axis doesn't ask.
+   *
    * **Historical note (corrected P1 variety wave, task 3):** this field's
    * doc comment used to claim cover/chapter/ending stayed uniformly sampled
    * because "身份页个性来自 theme 不来自 strategy" — that claim was already
