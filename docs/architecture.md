@@ -256,7 +256,7 @@ every page type there** — the last three chapter-only curation exclusions
 (bloom/classroom/heritage excluding `fashion-chapter`, an artifact of
 `readableOn`'s old fixed-luminance threshold) were reverted once `src/svg/ink.ts`'s
 real dual-ink contrast comparison confirmed all three clear 3:1 without the
-exclusion (`src/themes/definitions.ts:115-140` has the full history). Narrowing
+exclusion (`src/themes/definitions.ts:121-146` has the full history). Narrowing
 a page type below the full set is still supported and stays a deliberate
 curation act, not a requirement — see `docs/contrast-system.md` for why a
 narrowing usually turns out to be a contrast bug in disguise rather than a
