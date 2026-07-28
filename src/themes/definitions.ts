@@ -327,6 +327,45 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 2026-07-10 motif 全覆盖：典藏纹饰（徽记/角花/页缘线）
     motif: "heritage-motif",
   },
+  // pulse（医疗健康/生命科学，2026-07-28 themes-16 wave task T1，第 14 主题）：
+  // 极浅薄荷白底+深青绿主色的清洁诊疗气质，细脉搏线+胶囊/细胞圆点簇由专属
+  // pulse-motif 承载。pulse 没有 legacy 预兆代码可提炼（不像 academic/tech
+  // 等六个既有声明主题那样有自己的原生 archetype 家族——那六家各自占用
+  // cover/chapter/ending 三池里互不重叠的一整个「家族」：banner/poster/
+  // rail/constellation/fashion/masthead），layoutTendencies 因此从通用
+  // archetype 池里挑选气质相符的 id（plan 裁定 3）：
+  //   - cover `split-diagonal`：primary 色块以硬斜切线收边，标题在净空区
+  //     跨近斜切线——一道果断的斜切像心电图尖峰的陡直落笔，呼应 pulse 自己
+  //     的脉搏节律气质，同时是 P3「新表达」archetype，不与任何既有声明
+  //     主题的 cover 家族重合（重合仅 strategy 层的 instructional 一家，
+  //     不与默认 briefing 重合）。
+  //   - chapter `tone-adaptive-chapter`：居中大标题+右下角编号水印，朴素
+  //     无花哨——`narrative/index.ts` 里明确"从不出现在任何 strategy 的
+  //     identityTendencies 字段里"的三个"万金油" identity archetype 之一
+  //     （该文件自己的文档用语），pulse 在它上面永远拿到满额差异化权重，
+  //     零 strategy 重合。
+  //   - ending `banner-ending`："联系"区块+版权行的务实收尾——生物医药 BD/
+  //     诊所品牌很自然需要一条联系方式收尾。重合 instructional/briefing
+  //     两家（三选一里代价最小：cover/chapter 已经零重合，ending 让一步）。
+  // 实测校验（`theme-structure.test.ts` 的"每个声明主题的 resolveSequence
+  // 两两不同"）：weightedPickBySeed 的候选池抽签值只取决于 (seed,
+  // pageKey)、与 theme id 无关——两个主题若对同一页型声明完全相同的单一
+  // tendency id，会在该页型上产出完全相同的选中结果（非小概率巧合，是
+  // weightedPickBySeed 的确定性推论）。左侧色块+留白（left-anchor）、
+  // 底部进度点轨（rail-chapter）等更"显然贴题"的候选逐一试过，但它们已是
+  // academic 自己的 cover/chapter 声明，会在 fixture 固定 IR 的 seed=1 上
+  // 与 academic 撞出字节相同的 7 页序列（brute-force 扫过 cover×chapter×
+  // ending 全部 448 组合验证，仅 160 组不与既有 6 个声明主题碰撞）——上面
+  // 三选是其中同时兼顾气质贴合、strategy 零/低重合、且实测通过的一组。
+  pulse: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "pulse-motif",
+    layoutTendencies: {
+      cover: ["split-diagonal"],
+      chapter: ["tone-adaptive-chapter"],
+      ending: ["banner-ending"],
+    },
+  },
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(

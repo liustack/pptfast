@@ -71,15 +71,15 @@ function resolveSequence(themeId: string, seed: number): (string | null)[] {
 const DECLARED_THEME_IDS = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].layoutTendencies !== undefined)
 const UNDECLARED_THEME_IDS = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].layoutTendencies === undefined)
 
-it("sanity: 6 themes declare layoutTendencies, 7 don't (task T2's own split — if this drifts, the numbers this file pins below must be re-measured, not silently kept)", () => {
-  expect(DECLARED_THEME_IDS).toHaveLength(6)
+it("sanity: 7 themes declare layoutTendencies, 7 don't (task T2's 6 + themes-16 wave task T1's pulse — if this drifts, the numbers this file pins below must be re-measured, not silently kept)", () => {
+  expect(DECLARED_THEME_IDS).toHaveLength(7)
   expect(UNDECLARED_THEME_IDS).toHaveLength(7)
 })
 
 // ── 1. Divergence test ──
 
 describe("cross-theme layout divergence (the plan's core defect)", () => {
-  it("resolves NOT-all-identical layout sequences across the 13 canonical themes for a fixed IR + fixed seed", () => {
+  it("resolves NOT-all-identical layout sequences across the 14 canonical themes for a fixed IR + fixed seed", () => {
     const sequences = CANONICAL_THEME_IDS.map((id) => resolveSequence(id, 1))
     const distinct = new Set(sequences.map((seq) => JSON.stringify(seq)))
     // Pre-wave (commit 709605a, before T1/T2 landed): all 13 themes' `layouts`
@@ -90,12 +90,14 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // against that commit (verified by archiving 709605a and re-running this
     // same fixture against it — see the task report).
     expect(distinct.size).toBeGreaterThan(1)
-    // Measured exact count post-wave (task T3): the 6 declared themes
-    // (consulting/academic/journal/insight/tech/runway) each resolve their
-    // own distinct sequence (their cover/chapter/ending tendencies name
-    // pairwise-distinct archetypes), and the 7 undeclared themes still share
-    // the single pre-wave sequence — 6 + 1 = 7 distinct sequences total.
-    expect(distinct.size).toBe(7)
+    // Measured exact count (task T3's 6 declared themes + themes-16 wave
+    // task T1's pulse, the 7th declaring theme): each of the 7 declared
+    // themes (consulting/academic/journal/insight/tech/runway/pulse)
+    // resolves its own distinct sequence, and the 7 undeclared themes still
+    // share the single pre-wave sequence — 7 + 1 = 8 distinct sequences
+    // total (re-measured after pulse landed — `pnpm exec tsx` against a real
+    // resolve of all 14 canonical themes, see task-1-report.md).
+    expect(distinct.size).toBe(8)
   })
 
   it("every declared theme's sequence differs from every other declared theme's (the 6 aren't accidentally colliding with each other)", () => {
@@ -287,8 +289,8 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: exactly 18 declared theme×archetype combinations exist to force-audit (6 themes × 3 declared ids each, matching the T2 review's own count)", () => {
-    expect(combos).toHaveLength(18)
+  it("sanity: exactly 21 declared theme×archetype combinations exist to force-audit (7 themes × 3 declared ids each — T2's original 6 + themes-16 wave task T1's pulse)", () => {
+    expect(combos).toHaveLength(21)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {

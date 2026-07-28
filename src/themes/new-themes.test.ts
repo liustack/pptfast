@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { resolveFontFace } from "../svg/fonts"
 import { TECH_TOKENS } from "./tech"
 import { JOURNAL_TOKENS } from "./journal"
+import { PULSE_TOKENS } from "./pulse"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -41,5 +42,30 @@ describe("journal (ex-magazine) tokens", () => {
 
   it("does not set an accentPool (single, restrained accent color)", () => {
     expect(JOURNAL_TOKENS.colors.accentPool).toBeUndefined()
+  })
+})
+
+// themes-16 wave, task T1 (2026-07-28): pulse is the 14th built-in theme
+// (healthcare/life-science). Same shape-only assertions as the two blocks
+// above — registry wiring (CANONICAL_THEME_IDS/THEME_STYLES/BUILTIN_THEME_IDS)
+// is covered separately by themes/index.test.ts and svg/legacy-theme-mapping.test.tsx.
+describe("pulse tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = PULSE_TOKENS
+    expect(t.id).toBe("pulse")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, clean sans stack)", () => {
+    expect(resolveFontFace(PULSE_TOKENS.fonts.heading, "heading")).toBe(
+      "Microsoft YaHei",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained accent color)", () => {
+    expect(PULSE_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 8 (rounded, approachable — clinic/health report register)", () => {
+    expect(PULSE_TOKENS.shape?.radius).toBe(8)
   })
 })

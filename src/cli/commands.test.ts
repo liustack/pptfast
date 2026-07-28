@@ -546,9 +546,9 @@ describe("runSchema / runThemes", () => {
   it("prints JSON Schema", () => {
     expect(JSON.parse(runSchema())).toHaveProperty("$schema")
   })
-  it("prints 13 themes, json mode parses", () => {
-    expect(runThemes(false).split("\n")).toHaveLength(13)
-    expect(JSON.parse(runThemes(true))).toHaveLength(13)
+  it("prints 14 themes, json mode parses", () => {
+    expect(runThemes(false).split("\n")).toHaveLength(14)
+    expect(JSON.parse(runThemes(true))).toHaveLength(14)
   })
 })
 
