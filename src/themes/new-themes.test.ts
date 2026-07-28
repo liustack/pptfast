@@ -4,6 +4,7 @@ import { TECH_TOKENS } from "./tech"
 import { JOURNAL_TOKENS } from "./journal"
 import { PULSE_TOKENS } from "./pulse"
 import { TERRA_TOKENS } from "./terra"
+import { EMBER_TOKENS } from "./ember"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -93,5 +94,31 @@ describe("terra tokens", () => {
 
   it("shape.radius is 4 (plain, unadorned — ESG/sustainability report register)", () => {
     expect(TERRA_TOKENS.shape?.radius).toBe(4)
+  })
+})
+
+// themes-16 wave, task T3 (2026-07-28): ember is the 16th, wave-closing
+// built-in theme (startup pitch/warm energy). Same shape-only assertions as
+// the blocks above — registry wiring (CANONICAL_THEME_IDS/THEME_STYLES/
+// BUILTIN_THEME_IDS) is covered separately by themes/index.test.ts and
+// svg/legacy-theme-mapping.test.tsx.
+describe("ember tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = EMBER_TOKENS
+    expect(t.id).toBe("ember")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, modern sans stack)", () => {
+    expect(resolveFontFace(EMBER_TOKENS.fonts.heading, "heading")).toBe(
+      "Microsoft YaHei",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained flame-yellow accent)", () => {
+    expect(EMBER_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 10 (friendly, rounded — startup-pitch register)", () => {
+    expect(EMBER_TOKENS.shape?.radius).toBe(10)
   })
 })

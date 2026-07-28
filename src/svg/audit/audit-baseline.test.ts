@@ -26,6 +26,7 @@ const THEMES = [
   "bloom",
   "pulse",
   "terra",
+  "ember",
 ] as const
 
 /**

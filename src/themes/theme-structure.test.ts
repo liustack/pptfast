@@ -71,15 +71,15 @@ function resolveSequence(themeId: string, seed: number): (string | null)[] {
 const DECLARED_THEME_IDS = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].layoutTendencies !== undefined)
 const UNDECLARED_THEME_IDS = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].layoutTendencies === undefined)
 
-it("sanity: 8 themes declare layoutTendencies, 7 don't (task T2's 6 + themes-16 wave task T1's pulse + task T2's terra — if this drifts, the numbers this file pins below must be re-measured, not silently kept)", () => {
-  expect(DECLARED_THEME_IDS).toHaveLength(8)
+it("sanity: 9 themes declare layoutTendencies, 7 don't (task T2's 6 + themes-16 wave task T1's pulse + task T2's terra + task T3's ember — if this drifts, the numbers this file pins below must be re-measured, not silently kept)", () => {
+  expect(DECLARED_THEME_IDS).toHaveLength(9)
   expect(UNDECLARED_THEME_IDS).toHaveLength(7)
 })
 
 // ── 1. Divergence test ──
 
 describe("cross-theme layout divergence (the plan's core defect)", () => {
-  it("resolves NOT-all-identical layout sequences across the 15 canonical themes for a fixed IR + fixed seed", () => {
+  it("resolves NOT-all-identical layout sequences across the 16 canonical themes for a fixed IR + fixed seed", () => {
     const sequences = CANONICAL_THEME_IDS.map((id) => resolveSequence(id, 1))
     const distinct = new Set(sequences.map((seq) => JSON.stringify(seq)))
     // Pre-wave (commit 709605a, before T1/T2 landed): all 13 themes' `layouts`
@@ -91,17 +91,17 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // same fixture against it — see the task report).
     expect(distinct.size).toBeGreaterThan(1)
     // Measured exact count (task T3's 6 declared themes + themes-16 wave
-    // task T1's pulse + task T2's terra, the 8th declaring theme): each of
-    // the 8 declared themes (consulting/academic/journal/insight/tech/
-    // runway/pulse/terra) resolves its own distinct sequence, and the 7
-    // undeclared themes still share the single pre-wave sequence — 8 + 1 = 9
-    // distinct sequences total (re-measured after terra landed — `pnpm exec
-    // tsx` against a real resolve of all 15 canonical themes, see
-    // task-2-report.md).
-    expect(distinct.size).toBe(9)
+    // task T1's pulse + task T2's terra + task T3's ember, the 9th declaring
+    // theme): each of the 9 declared themes (consulting/academic/journal/
+    // insight/tech/runway/pulse/terra/ember) resolves its own distinct
+    // sequence, and the 7 undeclared themes still share the single pre-wave
+    // sequence — 9 + 1 = 10 distinct sequences total (re-measured after
+    // ember landed — `pnpm exec tsx` against a real resolve of all 16
+    // canonical themes, see task-3-report.md).
+    expect(distinct.size).toBe(10)
   })
 
-  it("every declared theme's sequence differs from every other declared theme's (none of the 8 are accidentally colliding with each other)", () => {
+  it("every declared theme's sequence differs from every other declared theme's (none of the 9 are accidentally colliding with each other)", () => {
     const sequences = DECLARED_THEME_IDS.map((id) => JSON.stringify(resolveSequence(id, 1)))
     expect(new Set(sequences).size).toBe(DECLARED_THEME_IDS.length)
   })
@@ -290,8 +290,8 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: exactly 23 declared theme×archetype combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 — terra curates cover/ending only, no chapter id)", () => {
-    expect(combos).toHaveLength(23)
+  it("sanity: exactly 25 declared theme×archetype combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 + task T3's ember × 2 — terra curates cover/ending only, ember curates chapter/ending only, neither declares a cover id)", () => {
+    expect(combos).toHaveLength(25)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {

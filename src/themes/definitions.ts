@@ -402,6 +402,69 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       ending: ["tone-adaptive-ending"],
     },
   },
+  // ember（创业路演/暖色能量，2026-07-28 themes-16 wave task T3，第 16、
+  // 本波最后一个主题）：暖白底+火橙主色的明快上升气质，上升火花由专属
+  // ember-motif 承载。task T3 brief 明确警告：找"没人用过的 id"这条路在
+  // cover/ending 两个轴上已经走绝——terra 落地后 cover 池 8 个 id 已全部被
+  // 既有声明主题占用（banner-title/left-anchor/poster-center/constellation/
+  // fashion-masthead/editorial-masthead/split-diagonal/tone-adaptive-
+  // header），ending 池 7 个也已全占（masthead-ending/constellation-ending/
+  // rail-ending/banner-ending/poster-ending/tone-adaptive-ending/fashion-
+  // ending 的等价重合形态），chapter 池仅剩 roman-chapter 未被声明过。ember
+  // 因此不找"未占用 id"，改用 brief 指定的工具：复用 id + 组合交互 +
+  // 部分声明。
+  //
+  // 实测穷举（`resolveArchetypeId` 直连，同 T2 terra 的 brute-force 方法，
+  // 脚本临时写在仓库外未入库）：先按气质从每轴挑 2-3 个候选——cover
+  // {fashion-masthead, poster-center, split-diagonal}（满版色块/居中海报/
+  // 硬切对角，都读"发布感"）、chapter {fashion-chapter, poster-chapter,
+  // rail-chapter}（杂志感章节标/自信里程碑数字/进度点轨，都读"上升/推进"）、
+  // ending {fashion-ending, constellation-ending, banner-ending}（响亮
+  // 收官/"Thank you."签名条/联系方式）。逐一用 theme-structure.test.ts 同款
+  // fixture（seed=1）实测发现：**该 fixture 上 8 个 cover id 的单声明只
+  // 收敛到 2 个可达结果**（banner-title 或 poster-center——briefing 默认
+  // strategy 自己已把 banner-title/poster-center 权重锁到 3，任何主题
+  // 声明的第三个 id 只是把总权重从 12 抬到 14，被同一个固定哈希目标值
+  // 打进同一个 poster-center 桶，声明具体是哪个 id 不影响这一结果）；chapter
+  // 同理只收敛到 2 个结果（masthead-chapter 或 fashion-chapter，8 个非
+  // masthead/constellation 的单声明全部落在 fashion-chapter，含 roman-
+  // chapter——T3 brief 转述的"roman-chapter 与 runway 全组合撞车"结论就是
+  // 这枚硬币的另一面：声明 roman-chapter 与声明 rail-chapter/banner-chapter/
+  // fashion-chapter 等价，都收敛到 fashion-chapter，不是 roman-chapter 本身
+  // 有什么特殊之处）；ending 收敛到 3 个结果（masthead-ending/banner-ending/
+  // poster-ending）。8 declared + undeclared 控制组在这套 (cover, chapter,
+  // ending) 三元组空间里已经占满 12 种可达组合里的 9 种，只剩 3 种未被
+  // 使用，全部要求 cover 落在 banner-title（即 cover 轴不声明或声明一个
+  // 与 briefing 完全打平的零边际权重 id——两者对这枚 fixture 而言等价）。
+  //
+  // 结论：cover 轴对本主题没有任何真实分化空间——声明它要么是零边际权重
+  // 的空动作（同 terra 修复前 masthead-chapter 的教训：declare 与不 declare
+  // 字节相同），要么把结果推进已经 6/8 主题挤占的 poster-center 桶，两条
+  // 路都不产生区分度，因此**刻意不声明 cover**（Partial 裁剪，terra 先例
+  // 的同一处理，这次轮到 cover 轴让步）。chapter/ending 两轴改为服务两个
+  // 目的：(a) 挑到未被使用的三元组之一，(b) 气质对得上——最终选
+  // chapter `rail-chapter`（进度点轨，"pitch deck 里程碑推进"的具象读法，
+  // 呼应"上升"气质；复用 academic 的声明 id，但 academic 是 BCG 绿的
+  // 咨询进度轨，ember 是橙色发布倒计时式的进度轨，同一构图两种气质）+
+  // ending `constellation-ending`（"Thank you."+accent 句号+签名条，干脆
+  // 自信的收尾，呼应"发布感"；复用 tech 的声明 id，但 tech 是深空星域
+  // 冷调，ember 是暖橙调——归档件本身零 baked hex，全部吃 ctx.colors，
+  // 视觉观感由 tokens 决定，不是同一张脸）——落到 (banner-title[cover
+  // 轴不声明的默认值], fashion-chapter, tone-adaptive-content, split-band,
+  // rail-chapter, banner-heading, banner-ending) 这一未被使用的三元组。
+  //
+  // 实测校验（`theme-structure.test.ts` 的"每个声明主题的 resolveSequence
+  // 两两不同"）：ember 的完整 resolveSequence（seed=1）与其余 8 个既有
+  // 声明主题（含 pulse/terra）逐一比对均不同，也不与 7 个未声明主题共享的
+  // 默认序列相同。
+  ember: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "ember-motif",
+    layoutTendencies: {
+      chapter: ["rail-chapter"],
+      ending: ["constellation-ending"],
+    },
+  },
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(
