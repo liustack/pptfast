@@ -3,6 +3,7 @@ import { Command } from "commander"
 import { installNodePlatform } from "./platform/node"
 import {
   runAssemble,
+  runAssetBrief,
   runAudit,
   runDisassemble,
   runInit,
@@ -80,6 +81,21 @@ program
       const { output, hasFindings } = await runAudit(target, { json: opts.json, pixels: opts.pixels })
       console.log(output)
       if (hasFindings) process.exit(1)
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+program
+  .command("asset-brief")
+  .description(
+    "Image-generation brief for every image slot in a deck: the real rendered frame, fit/crop mode, suggested pixel size, theme palette/mood, and a paste-ready prompt",
+  )
+  .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
+  .option("--json", "machine-readable output (the full AssetBrief)")
+  .action(async (target: string, opts: { json?: boolean }) => {
+    try {
+      console.log(await runAssetBrief(target, { json: opts.json }))
     } catch (e) {
       fail(e)
     }

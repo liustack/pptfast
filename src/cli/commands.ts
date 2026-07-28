@@ -20,6 +20,7 @@ import { formatInvalidSpecError, specJsonSchema, resolveSpecThemeId, validateSpe
 import { migrateDeckPlanToSpec } from "../spec/migrate"
 import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../narrative"
 import { auditDeck, type AuditChecks, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
+import { buildAssetBrief, type AssetBrief, type AssetBriefItem } from "../svg/asset-brief"
 import { getInstalledThemeIds } from "../themes/definitions"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
 import {
@@ -502,6 +503,87 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
   const hasFindings = report.findings.length > 0
   const output = opts.json ? JSON.stringify(report, null, 2) : formatAuditReport(report, v.ir!)
   return { output, hasFindings }
+}
+
+// ── asset-brief ──────────────────────────────────────────────────────────
+
+/**
+ * `"page 3 (p-kpi, content) — pic (missing): frame 613x307 @ (571,203), aspect
+ * 2:1, cover ..."` — one block per {@link AssetBriefItem}, grouped naturally
+ * by page order (`buildAssetBrief` pushes items in slide/document order, same
+ * convention {@link formatAuditFinding} relies on for audit findings). A
+ * `rendered: false` item prints without the frame/pixel lines (there is
+ * nothing real to report — {@link buildAssetBrief}'s own doc comment) but
+ * still gets its palette/mood/prompt lines, matching the brief's own "never
+ * silently drop it" contract.
+ */
+function formatAssetBriefItem(item: AssetBriefItem): string {
+  const idSuffix = item.page.id !== undefined ? `, ${item.page.id}` : ""
+  const header = `page ${item.page.index + 1} (${item.page.type}${idSuffix}) — ${item.asset_id}${item.missing ? " (missing)" : ""}${item.rendered ? "" : " (not rendered under the selected layout)"}`
+  const lines = [header]
+  if (item.frame && item.suggested_pixels) {
+    lines.push(
+      `  frame: ${item.frame.w}x${item.frame.h} @ (${item.frame.x},${item.frame.y}), aspect ${item.frame.aspect}, ${item.fit.mode}`,
+    )
+    lines.push(`  suggested pixels: ${item.suggested_pixels.w}x${item.suggested_pixels.h}`)
+  }
+  lines.push(`  fit: ${item.fit.note}`)
+  lines.push(`  palette: primary ${item.palette.primary}, accent ${item.palette.accent} (${item.palette.hexes.join(", ")})`)
+  lines.push(`  mood: ${item.mood.description}`)
+  lines.push(`  prompt: ${item.suggested_prompt}`)
+  return lines.join("\n")
+}
+
+/**
+ * Human-readable `pptfast asset-brief` report (asset-brief plan, task 1):
+ * one {@link formatAssetBriefItem} block per image slot, followed by a
+ * trailing summary line in the same "read just the last line" spirit
+ * {@link formatAuditReport} already established for `audit`.
+ */
+function formatAssetBriefReport(brief: AssetBrief): string {
+  if (brief.items.length === 0) return `no image components found for theme "${brief.theme}"`
+  const missingCount = brief.items.filter((i) => i.missing).length
+  const notRenderedCount = brief.items.filter((i) => !i.rendered).length
+  const lines = brief.items.map(formatAssetBriefItem)
+  lines.push(
+    `${brief.items.length} image slot${brief.items.length === 1 ? "" : "s"}, ${missingCount} to generate, ${notRenderedCount} not rendered under their selected layout`,
+  )
+  return lines.join("\n\n")
+}
+
+export interface AssetBriefOptions {
+  json?: boolean
+  cwd?: string
+}
+
+/**
+ * `pptfast asset-brief <target> [--json]` (asset-brief plan, task 1): resolve
+ * `target` through the exact same `loadDeckTarget` path `audit`/`validate`/
+ * `render`/`preview` already use, validate first (same error shape/exit-1
+ * path as every other command in this file), then hand the validated IR to
+ * `buildAssetBrief` (`../svg/asset-brief.ts`, pure, no I/O beyond the render
+ * pass it runs internally).
+ *
+ * No exit-1 gating on `missing`/`rendered` the way `audit` gates on
+ * `hasFindings` — a to-do list of images still needing art is not a defect
+ * the way an audit finding is; this command is purely informational, the
+ * same "advisory" posture `runValidate`'s `placeholderNote` already has for
+ * unfilled pages.
+ */
+export async function runAssetBrief(target: string, opts: AssetBriefOptions = {}): Promise<string> {
+  const cwd = opts.cwd ?? process.cwd()
+  const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
+  const { raw, baseDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
+  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  const v = validateIr(raw)
+  if (!v.ok) {
+    throw new PptfastError(
+      `invalid IR (${v.errors.length} issue${v.errors.length === 1 ? "" : "s"}):\n${formatIssues(v.errors)}`,
+    )
+  }
+  await resolveLocalAssets(v.ir!, baseDir)
+  const brief = buildAssetBrief(v.ir!)
+  return opts.json ? JSON.stringify(brief, null, 2) : formatAssetBriefReport(brief)
 }
 
 /**
