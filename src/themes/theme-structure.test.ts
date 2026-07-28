@@ -290,8 +290,8 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: exactly 24 declared theme×archetype combinations exist to force-audit (8 themes × 3 declared ids each — T2's original 6 + themes-16 wave task T1's pulse + task T2's terra)", () => {
-    expect(combos).toHaveLength(24)
+  it("sanity: exactly 23 declared theme×archetype combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 — terra curates cover/ending only, no chapter id)", () => {
+    expect(combos).toHaveLength(23)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {

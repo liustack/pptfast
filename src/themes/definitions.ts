@@ -383,27 +383,22 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //   - ending `tone-adaptive-ending`：唯一零主题重合的 ending id，同 cover
   //     一样是万金油 identity archetype，零 strategy 重合——"长期主义"收尾
   //     不需要一句响亮的收官宣言，克制留白比横幅更贴题。
-  //   - chapter `masthead-chapter`：chapter 池 8 个里已有 7 个被声明过（仅
-  //     roman-chapter 从未被声明），但实测（brute-force 扫过 cover×chapter×
-  //     ending 全部 448 组合，见 task-2-report.md）显示 cover/ending 都锁定
-  //     为两个万金油 id 时，roman-chapter 在 fixture 固定 IR 的 seed=1 上
-  //     与其余 7 个既有声明主题（含 pulse）逐一比对总是撞出字节相同的 7 页
-  //     序列——仅 masthead-chapter、constellation-chapter 两个 chapter id
-  //     能让完整序列岔开。masthead 是 journal 的报头家族、constellation 是
-  //     tech 的星域渐变家族；constellation 的深空发光质感与 terra 的大地
-  //     气质冲突更明显，masthead 的克制报头版式冲突更小（journal 本身也是
-  //     衬线人文调性），三选一里代价最小的一项让步，同 pulse 自己 ending
-  //     让步给 banner-ending 家族的先例（"三选一里代价最小"，pulse 条目
-  //     自己的注释原话）。
+  //   - chapter 轴刻意不声明：masthead-chapter 落在 strategy `briefing` 的
+  //     identityTendencies.chapter 里，默认 strategy 下 max(3,3)=3，声明它
+  //     不产生任何边际权重；它同时是 journal 已声明的 chapter id，声明了也
+  //     只是重复 journal 在 chapter 轴上的性格。剩下能让完整序列岔开的选项
+  //     （见上一版注释的 brute-force 结果）都要么撞权重、要么撞别的主题
+  //     已声明的轴，没有一个能不靠这两种代价拿到区分度——没有区分度的声明
+  //     就是噪音，裁剪（Partial 只声明 cover/ending）比硬凑一个更诚实。
   // 实测校验（`theme-structure.test.ts` 的"每个声明主题的 resolveSequence
-  // 两两不同"）：terra 的完整 resolveSequence 与其余 7 个既有声明主题
-  // （含 pulse）逐一比对均不同，也不与 7 个未声明主题共享的默认序列相同。
+  // 两两不同"）：terra 的完整 resolveSequence 靠 cover/ending 两个万金油 id
+  // 已经与其余 7 个既有声明主题（含 pulse）逐一比对均不同，也不与 7 个未声明
+  // 主题共享的默认序列相同，chapter 轴不需要额外声明来撑区分度。
   terra: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "terra-motif",
     layoutTendencies: {
       cover: ["tone-adaptive-header"],
-      chapter: ["masthead-chapter"],
       ending: ["tone-adaptive-ending"],
     },
   },
