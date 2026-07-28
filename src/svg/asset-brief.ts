@@ -60,6 +60,13 @@ export interface AssetBriefPage {
 export interface AssetBriefItem {
   page: AssetBriefPage
   asset_id: string
+  /** Discriminant reserved for v2 (asset-brief plan 裁定 4): only `"image"`
+   *  is produced today, one `AssetBriefItem` per `image` component.
+   *  `"background"` is the documented extension slot for background asset
+   *  specs, deliberately not built in v1 (no `background` geometry
+   *  extraction exists yet) — this field lets a future v2 add it without a
+   *  breaking shape change for consumers that already switch on `kind`. */
+  kind: "image"
   /** No usable `src` in `ir.assets.images` for this `asset_id` — this is a
    *  generation to-do item, not a defect (asset-brief plan 裁定 2). */
   missing: boolean
@@ -328,6 +335,7 @@ export function buildAssetBrief(ir: PptxIR): AssetBrief {
     return {
       page: { index: slideIndex, id: slide.id, type: slide.type, heading: slide.heading },
       asset_id: component.asset_id,
+      kind: "image",
       missing,
       rendered,
       frame,

@@ -64,6 +64,7 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     expect(brief.items).toHaveLength(1)
     const item = brief.items[0]!
     expect(item.asset_id).toBe("pic")
+    expect(item.kind).toBe("image") // v2 extension slot (plan 裁定 4) — only "image" exists today
     expect(item.rendered).toBe(true)
     expect(item.missing).toBe(true) // no assets.images entry was supplied
     // x/y measured off the real render, not copied from the archetype's own
