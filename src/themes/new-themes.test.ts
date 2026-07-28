@@ -3,6 +3,7 @@ import { resolveFontFace } from "../svg/fonts"
 import { TECH_TOKENS } from "./tech"
 import { JOURNAL_TOKENS } from "./journal"
 import { PULSE_TOKENS } from "./pulse"
+import { TERRA_TOKENS } from "./terra"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -67,5 +68,30 @@ describe("pulse tokens", () => {
 
   it("shape.radius is 8 (rounded, approachable — clinic/health report register)", () => {
     expect(PULSE_TOKENS.shape?.radius).toBe(8)
+  })
+})
+
+// themes-16 wave, task T2 (2026-07-28): terra is the 15th built-in theme
+// (sustainability/ESG). Same shape-only assertions as the blocks above —
+// registry wiring (CANONICAL_THEME_IDS/THEME_STYLES/BUILTIN_THEME_IDS) is
+// covered separately by themes/index.test.ts and svg/legacy-theme-mapping.test.tsx.
+describe("terra tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = TERRA_TOKENS
+    expect(t.id).toBe("terra")
+  })
+
+  it("heading font resolves to Georgia (exact width table, earthy serif stack)", () => {
+    expect(resolveFontFace(TERRA_TOKENS.fonts.heading, "heading")).toBe(
+      "Georgia",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained terracotta accent)", () => {
+    expect(TERRA_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 4 (plain, unadorned — ESG/sustainability report register)", () => {
+    expect(TERRA_TOKENS.shape?.radius).toBe(4)
   })
 })

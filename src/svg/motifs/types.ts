@@ -28,3 +28,4 @@ export type MotifArchetypeId =
   | "enterprise-motif" // 2026-07-10 全覆盖：IKB 方块秩序（enterprise 专属）
   | "heritage-motif" // 2026-07-10 全覆盖：典藏纹饰（heritage 专属）
   | "pulse-motif" // 2026-07-28 themes-16 wave T1：细脉搏线+胶囊/细胞圆点簇（pulse 专属，第 14 主题）
+  | "terra-motif" // 2026-07-28 themes-16 wave T2：等高线+叶脉/种子点簇（terra 专属，第 15 主题）

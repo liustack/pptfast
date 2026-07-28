@@ -366,6 +366,47 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       ending: ["banner-ending"],
     },
   },
+  // terra（可持续/ESG，2026-07-28 themes-16 wave task T2，第 15 主题）：
+  // 沙色底+橄榄绿主色的朴素大地气质，等高线+叶脉/种子点由专属 terra-motif
+  // 承载。同 pulse 一样没有 legacy 预兆代码可提炼，layoutTendencies 从通用
+  // archetype 池里挑（plan 裁定 3）——挑选时先盘点 8 个既有声明主题（含
+  // pulse）已经用掉的 id：cover 池 8 个 id 里 7 个已被声明（banner-title/
+  // poster-center/left-anchor/constellation/fashion-masthead/editorial-
+  // masthead/split-diagonal），ending 池 7 个里 6 个已被声明（banner-ending/
+  // poster-ending/rail-ending/constellation-ending/fashion-ending/masthead-
+  // ending）——两池各自只剩一个从未被任何主题声明过的 id：
+  //   - cover `tone-adaptive-header`：唯一零主题重合的 cover id，同时是
+  //     `narrative/index.ts` 里"从不出现在任何 strategy 的 identityTendencies
+  //     字段里"的万金油 identity archetype——自适应留白的克制封面，恰好呼应
+  //     terra「朴素、根系」气质里"朴素"的那一半：不靠硬构图抢眼，靠底色和
+  //     motif 本身的地形线说话。
+  //   - ending `tone-adaptive-ending`：唯一零主题重合的 ending id，同 cover
+  //     一样是万金油 identity archetype，零 strategy 重合——"长期主义"收尾
+  //     不需要一句响亮的收官宣言，克制留白比横幅更贴题。
+  //   - chapter `masthead-chapter`：chapter 池 8 个里已有 7 个被声明过（仅
+  //     roman-chapter 从未被声明），但实测（brute-force 扫过 cover×chapter×
+  //     ending 全部 448 组合，见 task-2-report.md）显示 cover/ending 都锁定
+  //     为两个万金油 id 时，roman-chapter 在 fixture 固定 IR 的 seed=1 上
+  //     与其余 7 个既有声明主题（含 pulse）逐一比对总是撞出字节相同的 7 页
+  //     序列——仅 masthead-chapter、constellation-chapter 两个 chapter id
+  //     能让完整序列岔开。masthead 是 journal 的报头家族、constellation 是
+  //     tech 的星域渐变家族；constellation 的深空发光质感与 terra 的大地
+  //     气质冲突更明显，masthead 的克制报头版式冲突更小（journal 本身也是
+  //     衬线人文调性），三选一里代价最小的一项让步，同 pulse 自己 ending
+  //     让步给 banner-ending 家族的先例（"三选一里代价最小"，pulse 条目
+  //     自己的注释原话）。
+  // 实测校验（`theme-structure.test.ts` 的"每个声明主题的 resolveSequence
+  // 两两不同"）：terra 的完整 resolveSequence 与其余 7 个既有声明主题
+  // （含 pulse）逐一比对均不同，也不与 7 个未声明主题共享的默认序列相同。
+  terra: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "terra-motif",
+    layoutTendencies: {
+      cover: ["tone-adaptive-header"],
+      chapter: ["masthead-chapter"],
+      ending: ["tone-adaptive-ending"],
+    },
+  },
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(

@@ -15,6 +15,7 @@ import { JOURNAL_TOKENS } from "./journal";
 import { LUXE_TOKENS } from "./luxe";
 import { HERITAGE_TOKENS } from "./heritage";
 import { PULSE_TOKENS } from "./pulse";
+import { TERRA_TOKENS } from "./terra";
 
 /**
  * The 13 canonical themes, registered/renderable. 场景化命名：对外 theme.id
@@ -23,7 +24,8 @@ import { PULSE_TOKENS } from "./pulse";
  * bloom Soft Bloom / classroom Classroom / ink Ink Wash / tech Tech /
  * runway Fashion Runway / journal Editorial Journal / luxe Luxe /
  * heritage Heritage / pulse Health & Life Science——themes-16 wave task T1
- * 新增第 14 个）。pptfast 是独立分叉，无存量 deck 兼容包袱，不维护 legacy id
+ * 新增第 14 个 / terra Sustainability & ESG——themes-16 wave task T2 新增
+ * 第 15 个）。pptfast 是独立分叉，无存量 deck 兼容包袱，不维护 legacy id
  * 映射表（resolveThemeId 对未知 id 一律回落 consulting）。
  */
 export const CANONICAL_THEME_IDS = [
@@ -41,6 +43,7 @@ export const CANONICAL_THEME_IDS = [
   "luxe",
   "heritage",
   "pulse",
+  "terra",
 ] as const;
 
 export type CanonicalThemeId = (typeof CANONICAL_THEME_IDS)[number];
@@ -61,6 +64,7 @@ export const THEME_LABELS: Record<CanonicalThemeId, string> = {
   luxe: "Luxe",
   heritage: "Heritage",
   pulse: "Health & Life Science",
+  terra: "Sustainability & ESG",
 };
 
 /** Map any theme id onto a canonical, registered theme id. Unknown ids fall back to consulting. */
@@ -85,6 +89,7 @@ export const THEME_STYLES: Record<CanonicalThemeId, StyleTokens> = {
   luxe: LUXE_TOKENS,
   heritage: HERITAGE_TOKENS,
   pulse: PULSE_TOKENS,
+  terra: TERRA_TOKENS,
 };
 
 /**

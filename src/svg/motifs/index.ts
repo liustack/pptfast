@@ -13,6 +13,7 @@ import { LuxeMotif } from "./motif-luxe-motif"
 import { EnterpriseMotif } from "./motif-enterprise-motif"
 import { HeritageMotif } from "./motif-heritage-motif"
 import { PulseMotif } from "./motif-pulse-motif"
+import { TerraMotif } from "./motif-terra-motif"
 
 export type { MotifArchetype, MotifArchetypeId } from "./types"
 
@@ -35,4 +36,5 @@ export const MOTIF_ARCHETYPES: Record<MotifArchetypeId, MotifArchetype> = {
   "enterprise-motif": EnterpriseMotif,
   "heritage-motif": HeritageMotif,
   "pulse-motif": PulseMotif,
+  "terra-motif": TerraMotif,
 }
