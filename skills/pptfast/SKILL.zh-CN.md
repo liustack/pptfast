@@ -152,6 +152,8 @@ pptfast preview deck-dir/ -o preview/ --html
 
 在 `assets.images` 里统一声明图片，用 `asset_id` 引用——务必逐个核对 `asset_id` 拼写，写错 key 只会渲染出一个静默的占位符，不会报错。显式的 `layout` id 永远优先于 pptfast 的自动选型，否则自动选型会从该页型对应的 theme layout 集合里挑（默认是全部已注册版式，除非 theme 主动收窄）——对于以图片为核心的 slide，把 `layout` 设成某个 image takeover：`image-split`（半页图片 + 侧边文字，`image_side: left|right`）、`image-top`（顶部通版图片 + 下方文字分栏）、`image-bottom`（上方文字，下方图片）、`image-annotate`（居中图片 + 从前 4 条 bullets 取出的放射状标注）。**每个 image layout 都需要 `components` 里至少有一个 `image` component**——不论它在数组里的位置，pptfast 都会用找到的第一个作为图片来源，其余的 component 全部成为该 layout 的文字正文。
 
+给任何 `asset_id` 还没有真实文件的 `image` component 生成美术之前，先跑一遍 `pptfast asset-brief <target>`——它会真的渲染一遍 deck，报告每个图片位实际的渲染框（不是版式的名义槽位尺寸）、带安全区说明的裁切模式、建议的生成像素、主题色板，以及一段可直接粘贴的提示词。宽高比和色调对上了，生成的图片摆上去才会显得是设计好的，而不是被拉伸、裁错或跑色。
+
 ### 容量
 
 一张 slide 是一块固定尺寸的画布。第一遍起草就要考虑装得下：每张 slide 少放几个 component，标题简短有力，bullet 条目控制在约两行以内。component 数和 bullets 预算随这份 deck 的 `pacing` 轴变化（`spacious` 最紧，`dense` 最松）——`validate` 会报出实际生效的具体数值，不是一个写死的常数。这些是警告，不是硬错误——值得为了让 deck 更紧凑而修，但从不拦住 `render`。正文字号则反过来变化：`spacious` 渲染出的正文字号最大（32px，相对 `balanced` 的 24px 和 `dense` 的 20px），即便它允许的 component 数最少——所以一张 `spacious` 的 slide 需要更少、更短的条目，而不只是更紧凑。不论 pacing 是什么，一条长到在渲染安全字号地板下仍然溢出的 bullet 条目，*就是*一条硬 `validate` 错误，五种 bullet 样式（`default`/`plain`/`divided`/`numbered`/`checklist`）一视同仁——否则它会被省略号真的截掉一段真实文字。把「bullet 条目要短」当成一条不分样式都成立的硬约束。拿不准的时候就拆成两张 slide——一遍写对，好过事后反复修补。

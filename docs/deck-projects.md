@@ -1,11 +1,12 @@
 ---
-summary: 'Deck project directory layout, the six-phase CLI workflow, the live `pptfast serve` preview loop, placeholder/--draft semantics, locked fields, the boundary-page render surface, and the four-layer config/home directory scheme'
+summary: 'Deck project directory layout, the six-phase CLI workflow, the live `pptfast serve` preview loop, the `pptfast asset-brief` image-generation brief, placeholder/--draft semantics, locked fields, the boundary-page render surface, and the four-layer config/home directory scheme'
 read_when:
   - authoring or debugging a deck project directory (deck.spec.json + pages/ + assets/)
   - touching src/spec, src/cli/deck-dir.ts, src/cli/home.ts, src/cli/config.ts, or src/cli/serve.ts
   - a placeholder/--draft, orphan-file, or locked-field error needs tracing
   - a cover/chapter/ending page's components or footnote go missing at render, or you need to know which fields a page type actually renders
   - deciding whether a revision-loop change belongs to the download form (`preview --html`) or the live form (`serve`)
+  - generating art for an image slot and needing its real rendered frame/crop mode/palette (`pptfast asset-brief`, `src/svg/asset-brief.ts`)
 ---
 
 # Deck projects
@@ -30,6 +31,10 @@ Layout and fs-safety discipline live in `src/cli/deck-dir.ts` (header comment re
 `pptfast serve <target> [--port 4400] [--no-open]` (same `target` forms as every other deck-accepting command above) is the **preview** phase's review loop in live form, not a separate workflow — the identical `preview.html` markup, running off a local `node:http` server bound to `127.0.0.1` instead of a file `pptfast preview --html` writes once. A source edit (`deck.spec.json`/`pages/`/`assets/` for a deck project directory, or the file itself for a bare IR target) triggers a rebuild and pushes a whole-page reload to the open browser tab over SSE, 200ms-debounced so a multi-file save coalesces into one refresh. A rebuild that fails (a mid-edit invalid JSON save is the common case) shows a recoverable error banner instead of taking the server down, and clears itself on the next successful save.
 
 The one behavioral difference from the download form: the annotation panel's submit control POSTs straight to `<deck-dir>/revision-request.json` (bare IR target: alongside the IR file), atomically written so an agent polling for it never sees a half-written file, instead of only downloading it — closing the loop with no manual export/hand-back step. The file format itself is unchanged — byte-for-byte the same `{version, deck, requests}` shape `pptfast preview --html`'s own download button already produces — so **revise**'s routing rule above needs no change either way. Both forms stay valid, for different needs: `serve` for a live local loop where the agent and a reviewer are both watching the same running deck, `preview --html` for a static, shareable artifact (attach to a ticket, review offline, nothing to keep running). No auth and no remote bind (`127.0.0.1` only, no `--host` flag) — a local dev tool, not a hosted review server.
+
+## Asset briefs (`pptfast asset-brief`)
+
+`pptfast asset-brief <target> [--json]` (`src/svg/asset-brief.ts`, `buildAssetBrief`) closes the same knowledge gap for image assets that `audit` closes for layout defects: an image slot's real rendered frame (`image.tsx`'s `measure` — `Math.min(round(w * 0.5), MAX_IMAGE_H)`, then cover/contain cropping) is engine-internal geometry no amount of reading the IR reveals, and generating art at the wrong aspect ratio is the single most common reason a placed image looks wrong. The brief comes from an actual off-screen render pass, never a copied constant — every `asset_id` an `image` component references, resolved or not, gets its own dummy 1×1 PNG injected into an in-memory copy of the IR for that render (never the real `ir`, never the export path), so the geometry extracted afterward is always real. A slide whose selected layout never actually draws the component (e.g. a cover archetype, which never reads `slide.components` at all) reports `rendered: false` rather than being silently dropped. Same `target` resolution as every other deck-accepting command; purely informational, no exit-code gate. v1 scope is `image` components only — `image_grid`/`image_compare` and `background` asset specs are a natural v2 extension of the same shape, not yet covered.
 
 ## Placeholder pages and the `--draft` gate
 

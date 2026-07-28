@@ -85,6 +85,7 @@ const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文�
 | `render <target> -o <out.pptx> [--theme <id>] [--style <file>] [--draft]` | 校验并渲染成 `.pptx`——`target` 可以是 IR JSON 文件、deck 项目目录，或裸名（见「Deck 项目」） |
 | `validate <target>` | 校验 IR，输出带页码的错误信息与提示性警告——`target` 形式同 `render` |
 | `audit <target> [--json] [--pixels]` | 确定性几何审查（溢出/越界/低对比度/重叠/内容截断/内容丢失）——`target` 形式同 `render`，一旦发现问题 exit 1（见「审查」） |
+| `asset-brief <target> [--json]` | 为每个 `image` 组件生成一份配图简报——真实渲染框、裁切模式、建议生成尺寸、主题色板/气质、可直接粘贴的提示词（见「配图简报」） |
 | `spec validate <spec.json>` | 校验 deck spec 是否符合 schema 与随 strategy 变化的硬门（见「Deck 项目」） |
 | `assemble <dir\|name> [-o <file>]` | 把 deck 项目目录合并成单个 IR JSON 文件 |
 | `disassemble <ir.json> -o <dir>` | 把 IR JSON 文件拆成 deck 项目目录 |
@@ -193,9 +194,21 @@ pptfast audit examples/basic.json
 # → audited 5 pages, 0 skipped, 0 findings
 ```
 
+## 配图简报
+
+`pptfast asset-brief <target> [--json]` 把一份生图提示词需要、但调用方看不到的引擎内部知识——真实渲染框，而不是版式的名义槽位——变成一份简报：对每个 `image` 组件，给出实际渲染出的 `frame`（x/y/w/h + 宽高比，来自一次离屏渲染，绝不是手抄的常量）、带裁切安全区说明的 `fit` 模式、`suggested_pixels`（框的 2 倍分辨率）、该主题的 `palette`/`mood`，以及一段可直接粘贴的英文 `suggested_prompt`。`assets.images` 里没有可用资产的 `asset_id` 依然会拿到完整的简报条目（`missing: true`）——这是待生成清单，不是缺陷——选中的版式实际没画出来的组件会标为 `rendered: false`，而不是被悄悄丢掉。`target` 形式同 `audit`/`render`。纯信息性输出——不设 exit code 硬门，不改动渲染管线，也不调用任何生图 API。
+
+```bash
+pptfast asset-brief my-deck/
+# → page 3 (content, p-hero) — pic (missing)
+#     frame: 613x307 @ (571,203), aspect 2:1, cover
+#     suggested pixels: 1226x614
+#     ...
+```
+
 ## 面向 AI agent
 
-推荐给 agent 的生成回路：先读 `pptfast schema` 学词汇表，写出 IR JSON，跑 `pptfast validate` 并根据报错自纠（错误信息带页码和可直接照抄的修正方式，目的就是让这个回路不必依赖人工介入），再跑 `pptfast audit`——同样是可直接照抄的修正反馈，只是针对一份*合法* deck 在渲染层仍可能出现的问题（溢出、低对比度、重叠——exit code 本身就说明干不干净），最后执行 `pptfast render`。`pptfast preview` 能让 agent 在正式渲染前先看一遍 SVG，自查版式是否合理。加上 `--html` 还会额外写出一个自包含的 `preview.html`，供人工审查（键盘翻页、占位页角标——远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）——打开后零网络请求、零进一步依赖，是这个项目目前最成熟的零依赖浏览器产物（见上文「浏览器」）。当所有页面都已填写时，这份 `preview.html` 还会叠加同一份 `audit` 检查结果（每页一个数量角标，加一个可点击跳转的 findings 面板），让人工审查者不必打开终端就能看到问题——如果 deck 里还有占位页，则显示一行「audit 已跳过」的提示代替。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`（浏览器 Blob 下载，不联网也不写文件——preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本而不是下载版本——打开的浏览器标签页会随源文件变化自动刷新，同一个批注面板改为直接提交到磁盘上的 `<deck-dir>/revision-request.json`，不用再手动导出、手动交回。上文的 Claude Code 插件已把这套回路封装成 skill（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。这套回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证——固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
+推荐给 agent 的生成回路：先读 `pptfast schema` 学词汇表，写出 IR JSON，跑 `pptfast validate` 并根据报错自纠（错误信息带页码和可直接照抄的修正方式，目的就是让这个回路不必依赖人工介入），再跑 `pptfast audit`——同样是可直接照抄的修正反馈，只是针对一份*合法* deck 在渲染层仍可能出现的问题（溢出、低对比度、重叠——exit code 本身就说明干不干净），最后执行 `pptfast render`。给任何图片位生成美术之前先跑一遍 `pptfast asset-brief`——真实渲染框和裁切模式是光看 IR 猜不出来的引擎内部知识，宽高比不对或色调跑偏是生成图片摆上去之后最常见的翻车原因。`pptfast preview` 能让 agent 在正式渲染前先看一遍 SVG，自查版式是否合理。加上 `--html` 还会额外写出一个自包含的 `preview.html`，供人工审查（键盘翻页、占位页角标——远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）——打开后零网络请求、零进一步依赖，是这个项目目前最成熟的零依赖浏览器产物（见上文「浏览器」）。当所有页面都已填写时，这份 `preview.html` 还会叠加同一份 `audit` 检查结果（每页一个数量角标，加一个可点击跳转的 findings 面板），让人工审查者不必打开终端就能看到问题——如果 deck 里还有占位页，则显示一行「audit 已跳过」的提示代替。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`（浏览器 Blob 下载，不联网也不写文件——preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本而不是下载版本——打开的浏览器标签页会随源文件变化自动刷新，同一个批注面板改为直接提交到磁盘上的 `<deck-dir>/revision-request.json`，不用再手动导出、手动交回。上文的 Claude Code 插件已把这套回路封装成 skill（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。这套回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证——固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
 
 ## 路线图
 
