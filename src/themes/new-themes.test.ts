@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest"
 import { resolveFontFace } from "../svg/fonts"
 import { TECH_TOKENS } from "./tech"
 import { JOURNAL_TOKENS } from "./journal"
+import { PULSE_TOKENS } from "./pulse"
+import { TERRA_TOKENS } from "./terra"
+import { EMBER_TOKENS } from "./ember"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -41,5 +44,81 @@ describe("journal (ex-magazine) tokens", () => {
 
   it("does not set an accentPool (single, restrained accent color)", () => {
     expect(JOURNAL_TOKENS.colors.accentPool).toBeUndefined()
+  })
+})
+
+// themes-16 wave, task T1 (2026-07-28): pulse is the 14th built-in theme
+// (healthcare/life-science). Same shape-only assertions as the two blocks
+// above — registry wiring (CANONICAL_THEME_IDS/THEME_STYLES/BUILTIN_THEME_IDS)
+// is covered separately by themes/index.test.ts and svg/legacy-theme-mapping.test.tsx.
+describe("pulse tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = PULSE_TOKENS
+    expect(t.id).toBe("pulse")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, clean sans stack)", () => {
+    expect(resolveFontFace(PULSE_TOKENS.fonts.heading, "heading")).toBe(
+      "Microsoft YaHei",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained accent color)", () => {
+    expect(PULSE_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 8 (rounded, approachable — clinic/health report register)", () => {
+    expect(PULSE_TOKENS.shape?.radius).toBe(8)
+  })
+})
+
+// themes-16 wave, task T2 (2026-07-28): terra is the 15th built-in theme
+// (sustainability/ESG). Same shape-only assertions as the blocks above —
+// registry wiring (CANONICAL_THEME_IDS/THEME_STYLES/BUILTIN_THEME_IDS) is
+// covered separately by themes/index.test.ts and svg/legacy-theme-mapping.test.tsx.
+describe("terra tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = TERRA_TOKENS
+    expect(t.id).toBe("terra")
+  })
+
+  it("heading font resolves to Georgia (exact width table, earthy serif stack)", () => {
+    expect(resolveFontFace(TERRA_TOKENS.fonts.heading, "heading")).toBe(
+      "Georgia",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained terracotta accent)", () => {
+    expect(TERRA_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 4 (plain, unadorned — ESG/sustainability report register)", () => {
+    expect(TERRA_TOKENS.shape?.radius).toBe(4)
+  })
+})
+
+// themes-16 wave, task T3 (2026-07-28): ember is the 16th, wave-closing
+// built-in theme (startup pitch/warm energy). Same shape-only assertions as
+// the blocks above — registry wiring (CANONICAL_THEME_IDS/THEME_STYLES/
+// BUILTIN_THEME_IDS) is covered separately by themes/index.test.ts and
+// svg/legacy-theme-mapping.test.tsx.
+describe("ember tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = EMBER_TOKENS
+    expect(t.id).toBe("ember")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, modern sans stack)", () => {
+    expect(resolveFontFace(EMBER_TOKENS.fonts.heading, "heading")).toBe(
+      "Microsoft YaHei",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained flame-yellow accent)", () => {
+    expect(EMBER_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 10 (friendly, rounded — startup-pitch register)", () => {
+    expect(EMBER_TOKENS.shape?.radius).toBe(10)
   })
 })

@@ -59,6 +59,9 @@
  * | bloom | bloom-motif, classroom-motif | mirror of classroom's pairing above — both organic, soft-toned, most-adjacent match. Same chapter-page disclosure as classroom's own entry above — both members of this pair are `return null` on chapter. |
  * | ink | ink-motif *(singleton)* | ink's calligraphy/seal-stamp/vertical-inscription vocabulary is the most culturally-specific motif in the set with no sibling family — any other motif substituted in would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (byte-identical, same rationale pattern as campaign) |
  * | heritage | heritage-motif, luxe-motif, corner-ornament-motif | heritage anchors the thin-ornamental-line family (classic emblem end), luxe (gilt minimal) and journal's corner ornament (print corner) are its closest siblings |
+ * | pulse | pulse-motif *(singleton)* | themes-16 wave, task T1 (2026-07-28): pulse's thin ECG pulse-line + capsule/cell-dot vocabulary is its own new technique family with no sibling among the other 13 motifs (not organic-blob like classroom/bloom, not thin-ornamental-line like journal/heritage/luxe, not grid-geometry like consulting/enterprise) — pairing it with any existing motif would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/ink) |
+ * | terra | terra-motif *(singleton)* | themes-16 wave, task T2 (2026-07-28): terra's topographic contour-line + leaf-vein/seed-dot vocabulary is its own new technique family — closer to classroom/bloom's organic register than to any grid or ornamental-line family, but its lines are irregular *closed terrain rings* (a land/growth reading), not smooth color blobs or watercolor wash, so pairing it with classroom/bloom would still read as a mismatched skin. Stays a candidate set of 1 (same rationale pattern as pulse/campaign/ink) |
+ * | ember | ember-motif *(singleton)* | themes-16 wave, task T3 (2026-07-28): ember's rising-spark-particle vocabulary (dots fading along an ascending bezier arc) is its own new technique family — a directional motion mark, not a static blob/ornament/grid/glow like any of the other 15 motifs, so no existing motif reads as a compatible sibling. Stays a candidate set of 1 (same rationale pattern as pulse/terra/campaign/ink) |
  *
  * `tone-adaptive-motif` — the 13th registered motif archetype — is
  * deliberately absent from every candidate set above: its own source header
@@ -160,6 +163,9 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifAr
   bloom: ["bloom-motif", "classroom-motif"],
   ink: ["ink-motif"],
   heritage: ["heritage-motif", "luxe-motif", "corner-ornament-motif"],
+  pulse: ["pulse-motif"],
+  terra: ["terra-motif"],
+  ember: ["ember-motif"],
 }
 
 /**

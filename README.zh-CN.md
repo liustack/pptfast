@@ -6,7 +6,7 @@
 
 ## 为什么
 
-自由绘制 SVG/HTML 再转 PPTX 的链路上限很高，但下限不稳定——弱模型（或强模型状态不好时）画出来的往往是版式错乱、脱离品牌规范、甚至无法阅读的产物。pptfast 用受控词汇取代自由绘制：一份语义化 IR（zod schema）、13 个内置主题（各自打包一套 style 设计 tokens 与 brand 品牌标识元素）、带 seed 多样性的 layout/component 版式库，以及每个图形都保持可编辑的原生 DrawingML 输出——不是贴上去的一张图。
+自由绘制 SVG/HTML 再转 PPTX 的链路上限很高，但下限不稳定——弱模型（或强模型状态不好时）画出来的往往是版式错乱、脱离品牌规范、甚至无法阅读的产物。pptfast 用受控词汇取代自由绘制：一份语义化 IR（zod schema）、16 个内置主题（各自打包一套 style 设计 tokens 与 brand 品牌标识元素）、带 seed 多样性的 layout/component 版式库，以及每个图形都保持可编辑的原生 DrawingML 输出——不是贴上去的一张图。
 
 一份 PPT 本质上是五件事：内容模型、二维布局、视觉样式、动效、叙事。pptfast 负责后四项，内容模型交给你（或你的 agent）通过写 IR 来掌控。
 
@@ -90,7 +90,7 @@ const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文�
 | `assemble <dir\|name> [-o <file>]` | 把 deck 项目目录合并成单个 IR JSON 文件 |
 | `disassemble <ir.json> -o <dir>` | 把 IR JSON 文件拆成 deck 项目目录 |
 | `schema [--style \| --spec]` | 输出 IR 的 JSON Schema（或 style 覆盖 schema，或 deck spec schema） |
-| `themes [--json]` | 列出 13 个内置主题 |
+| `themes [--json]` | 列出 16 个内置主题 |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`）——`target` 形式同 `render`，永远不受占位页拦截 |
 | `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新，批注直接提交回 deck 目录生成 `revision-request.json` |
@@ -110,7 +110,7 @@ v4 IR schema 自 0.4.0 起冻结——后续演进只走加法（新增可选字
 
 ## 主题
 
-主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素）与每个页型各自的版式（layout）集合——以下是 13 个内置主题。每个内置主题默认对每个页型都开放全部已注册版式（每个 archetype 都会按主题的实际背景色自适应取色，所以全集在任何主题下都保持可读）。收窄集合是主题作者的主动选择，不是常态——13 个主题里只有 3 个排除了单个 chapter 版式（一款 runway 专属设计，在这三个主题的强调色上对比度不够）。覆盖 style（`--style`）即可为某个主题重新配色。
+主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素）与每个页型各自的版式（layout）集合——以下是 16 个内置主题。每个内置主题默认对每个页型都开放全部已注册版式（每个 archetype 都会按主题的实际背景色自适应取色，所以全集在任何主题下都保持可读）。收窄集合是主题作者的主动选择，不是常态——16 个主题里没有一个收窄任何页型（早年的三主题排除已在 ink 自适应取色修复后撤销）。覆盖 style（`--style`）即可为某个主题重新配色。
 
 | id | label |
 |---|---|
@@ -127,6 +127,9 @@ v4 IR schema 自 0.4.0 起冻结——后续演进只走加法（新增可选字
 | `journal` | Editorial Journal |
 | `luxe` | Luxe |
 | `heritage` | Heritage |
+| `pulse` | Health & Life Science |
+| `terra` | Sustainability & ESG |
+| `ember` | Startup Pitch |
 
 ## 叙事
 

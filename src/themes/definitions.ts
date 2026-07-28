@@ -327,6 +327,144 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 2026-07-10 motif 全覆盖：典藏纹饰（徽记/角花/页缘线）
     motif: "heritage-motif",
   },
+  // pulse（医疗健康/生命科学，2026-07-28 themes-16 wave task T1，第 14 主题）：
+  // 极浅薄荷白底+深青绿主色的清洁诊疗气质，细脉搏线+胶囊/细胞圆点簇由专属
+  // pulse-motif 承载。pulse 没有 legacy 预兆代码可提炼（不像 academic/tech
+  // 等六个既有声明主题那样有自己的原生 archetype 家族——那六家各自占用
+  // cover/chapter/ending 三池里互不重叠的一整个「家族」：banner/poster/
+  // rail/constellation/fashion/masthead），layoutTendencies 因此从通用
+  // archetype 池里挑选气质相符的 id（plan 裁定 3）：
+  //   - cover `split-diagonal`：primary 色块以硬斜切线收边，标题在净空区
+  //     跨近斜切线——一道果断的斜切像心电图尖峰的陡直落笔，呼应 pulse 自己
+  //     的脉搏节律气质，同时是 P3「新表达」archetype，不与任何既有声明
+  //     主题的 cover 家族重合（重合仅 strategy 层的 instructional 一家，
+  //     不与默认 briefing 重合）。
+  //   - chapter `tone-adaptive-chapter`：居中大标题+右下角编号水印，朴素
+  //     无花哨——`narrative/index.ts` 里明确"从不出现在任何 strategy 的
+  //     identityTendencies 字段里"的三个"万金油" identity archetype 之一
+  //     （该文件自己的文档用语），pulse 在它上面永远拿到满额差异化权重，
+  //     零 strategy 重合。
+  //   - ending `banner-ending`："联系"区块+版权行的务实收尾——生物医药 BD/
+  //     诊所品牌很自然需要一条联系方式收尾。重合 instructional/briefing
+  //     两家（三选一里代价最小：cover/chapter 已经零重合，ending 让一步）。
+  // 实测校验（`theme-structure.test.ts` 的"每个声明主题的 resolveSequence
+  // 两两不同"）：weightedPickBySeed 的候选池抽签值只取决于 (seed,
+  // pageKey)、与 theme id 无关——两个主题若对同一页型声明完全相同的单一
+  // tendency id，会在该页型上产出完全相同的选中结果（非小概率巧合，是
+  // weightedPickBySeed 的确定性推论）。左侧色块+留白（left-anchor）、
+  // 底部进度点轨（rail-chapter）等更"显然贴题"的候选逐一试过，但它们已是
+  // academic 自己的 cover/chapter 声明，会在 fixture 固定 IR 的 seed=1 上
+  // 与 academic 撞出字节相同的 7 页序列（brute-force 扫过 cover×chapter×
+  // ending 全部 448 组合验证，仅 160 组不与既有 6 个声明主题碰撞）——上面
+  // 三选是其中同时兼顾气质贴合、strategy 零/低重合、且实测通过的一组。
+  pulse: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "pulse-motif",
+    layoutTendencies: {
+      cover: ["split-diagonal"],
+      chapter: ["tone-adaptive-chapter"],
+      ending: ["banner-ending"],
+    },
+  },
+  // terra（可持续/ESG，2026-07-28 themes-16 wave task T2，第 15 主题）：
+  // 沙色底+橄榄绿主色的朴素大地气质，等高线+叶脉/种子点由专属 terra-motif
+  // 承载。同 pulse 一样没有 legacy 预兆代码可提炼，layoutTendencies 从通用
+  // archetype 池里挑（plan 裁定 3）——挑选时先盘点 8 个既有声明主题（含
+  // pulse）已经用掉的 id：cover 池 8 个 id 里 7 个已被声明（banner-title/
+  // poster-center/left-anchor/constellation/fashion-masthead/editorial-
+  // masthead/split-diagonal），ending 池 7 个里 6 个已被声明（banner-ending/
+  // poster-ending/rail-ending/constellation-ending/fashion-ending/masthead-
+  // ending）——两池各自只剩一个从未被任何主题声明过的 id：
+  //   - cover `tone-adaptive-header`：唯一零主题重合的 cover id，同时是
+  //     `narrative/index.ts` 里"从不出现在任何 strategy 的 identityTendencies
+  //     字段里"的万金油 identity archetype——自适应留白的克制封面，恰好呼应
+  //     terra「朴素、根系」气质里"朴素"的那一半：不靠硬构图抢眼，靠底色和
+  //     motif 本身的地形线说话。
+  //   - ending `tone-adaptive-ending`：唯一零主题重合的 ending id，同 cover
+  //     一样是万金油 identity archetype，零 strategy 重合——"长期主义"收尾
+  //     不需要一句响亮的收官宣言，克制留白比横幅更贴题。
+  //   - chapter 轴刻意不声明：masthead-chapter 落在 strategy `briefing` 的
+  //     identityTendencies.chapter 里，默认 strategy 下 max(3,3)=3，声明它
+  //     不产生任何边际权重；它同时是 journal 已声明的 chapter id，声明了也
+  //     只是重复 journal 在 chapter 轴上的性格。剩下能让完整序列岔开的选项
+  //     （见上一版注释的 brute-force 结果）都要么撞权重、要么撞别的主题
+  //     已声明的轴，没有一个能不靠这两种代价拿到区分度——没有区分度的声明
+  //     就是噪音，裁剪（Partial 只声明 cover/ending）比硬凑一个更诚实。
+  // 实测校验（`theme-structure.test.ts` 的"每个声明主题的 resolveSequence
+  // 两两不同"）：terra 的完整 resolveSequence 靠 cover/ending 两个万金油 id
+  // 已经与其余 7 个既有声明主题（含 pulse）逐一比对均不同，也不与 7 个未声明
+  // 主题共享的默认序列相同，chapter 轴不需要额外声明来撑区分度。
+  terra: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "terra-motif",
+    layoutTendencies: {
+      cover: ["tone-adaptive-header"],
+      ending: ["tone-adaptive-ending"],
+    },
+  },
+  // ember（创业路演/暖色能量，2026-07-28 themes-16 wave task T3，第 16、
+  // 本波最后一个主题）：暖白底+火橙主色的明快上升气质，上升火花由专属
+  // ember-motif 承载。task T3 brief 明确警告：找"没人用过的 id"这条路在
+  // cover/ending 两个轴上已经走绝——terra 落地后 cover 池 8 个 id 已全部被
+  // 既有声明主题占用（banner-title/left-anchor/poster-center/constellation/
+  // fashion-masthead/editorial-masthead/split-diagonal/tone-adaptive-
+  // header），ending 池 7 个也已全占（masthead-ending/constellation-ending/
+  // rail-ending/banner-ending/poster-ending/tone-adaptive-ending/fashion-
+  // ending 的等价重合形态），chapter 池仅剩 roman-chapter 未被声明过。ember
+  // 因此不找"未占用 id"，改用 brief 指定的工具：复用 id + 组合交互 +
+  // 部分声明。
+  //
+  // 实测穷举（`resolveArchetypeId` 直连，同 T2 terra 的 brute-force 方法，
+  // 脚本临时写在仓库外未入库）：先按气质从每轴挑 2-3 个候选——cover
+  // {fashion-masthead, poster-center, split-diagonal}（满版色块/居中海报/
+  // 硬切对角，都读"发布感"）、chapter {fashion-chapter, poster-chapter,
+  // rail-chapter}（杂志感章节标/自信里程碑数字/进度点轨，都读"上升/推进"）、
+  // ending {fashion-ending, constellation-ending, banner-ending}（响亮
+  // 收官/"Thank you."签名条/联系方式）。逐一用 theme-structure.test.ts 同款
+  // fixture（seed=1）实测发现：**该 fixture 上 8 个 cover id 的单声明只
+  // 收敛到 2 个可达结果**（banner-title 或 poster-center——briefing 默认
+  // strategy 自己已把 banner-title/poster-center 权重锁到 3，任何主题
+  // 声明的第三个 id 只是把总权重从 12 抬到 14，被同一个固定哈希目标值
+  // 打进同一个 poster-center 桶，声明具体是哪个 id 不影响这一结果）；chapter
+  // 同理只收敛到 2 个结果（masthead-chapter 或 fashion-chapter，8 个非
+  // masthead/constellation 的单声明全部落在 fashion-chapter，含 roman-
+  // chapter——T3 brief 转述的"roman-chapter 与 runway 全组合撞车"结论就是
+  // 这枚硬币的另一面：声明 roman-chapter 与声明 rail-chapter/banner-chapter/
+  // fashion-chapter 等价，都收敛到 fashion-chapter，不是 roman-chapter 本身
+  // 有什么特殊之处）；ending 收敛到 3 个结果（masthead-ending/banner-ending/
+  // poster-ending）。8 declared + undeclared 控制组在这套 (cover, chapter,
+  // ending) 三元组空间里已经占满 12 种可达组合里的 9 种，只剩 3 种未被
+  // 使用，全部要求 cover 落在 banner-title（即 cover 轴不声明或声明一个
+  // 与 briefing 完全打平的零边际权重 id——两者对这枚 fixture 而言等价）。
+  //
+  // 结论：cover 轴对本主题没有任何真实分化空间——声明它要么是零边际权重
+  // 的空动作（同 terra 修复前 masthead-chapter 的教训：declare 与不 declare
+  // 字节相同），要么把结果推进已经 6/8 主题挤占的 poster-center 桶，两条
+  // 路都不产生区分度，因此**刻意不声明 cover**（Partial 裁剪，terra 先例
+  // 的同一处理，这次轮到 cover 轴让步）。chapter/ending 两轴改为服务两个
+  // 目的：(a) 挑到未被使用的三元组之一，(b) 气质对得上——最终选
+  // chapter `rail-chapter`（进度点轨，"pitch deck 里程碑推进"的具象读法，
+  // 呼应"上升"气质；复用 academic 的声明 id，但 academic 是 BCG 绿的
+  // 咨询进度轨，ember 是橙色发布倒计时式的进度轨，同一构图两种气质）+
+  // ending `constellation-ending`（"Thank you."+accent 句号+签名条，干脆
+  // 自信的收尾，呼应"发布感"；复用 tech 的声明 id，但 tech 是深空星域
+  // 冷调，ember 是暖橙调——归档件本身零 baked hex，全部吃 ctx.colors，
+  // 视觉观感由 tokens 决定，不是同一张脸）——落到 (banner-title[cover
+  // 轴不声明的默认值], fashion-chapter, tone-adaptive-content, split-band,
+  // rail-chapter, banner-heading, banner-ending) 这一未被使用的三元组。
+  //
+  // 实测校验（`theme-structure.test.ts` 的"每个声明主题的 resolveSequence
+  // 两两不同"）：ember 的完整 resolveSequence（seed=1）与其余 8 个既有
+  // 声明主题（含 pulse/terra）逐一比对均不同，也不与 7 个未声明主题共享的
+  // 默认序列相同。
+  ember: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "ember-motif",
+    layoutTendencies: {
+      chapter: ["rail-chapter"],
+      ending: ["constellation-ending"],
+    },
+  },
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(

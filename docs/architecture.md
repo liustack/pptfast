@@ -18,7 +18,7 @@ another (layout code stays style-agnostic).
 |---|---|---|
 | Content model | IR (zod schema, semantic components) | `src/ir/` |
 | 2D layout | layout registry (archetypes + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
-| Visual style | style tokens + theme definitions (curated layout sets + motif + optional per-page-type layout tendencies, 13 built-in themes) | `src/themes/` |
+| Visual style | style tokens + theme definitions (curated layout sets + motif + optional per-page-type layout tendencies, 16 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
 | Narrative | narrative axes (strategy × pacing × audience, named presets) resolving editorial discipline, plus a first-class spec artifact (`deck.spec.json` — locked page order/type/heading, strategy-aware hard gates via `spec validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase spec→fill skill methodology for slide sequencing | `src/spec/`, `src/narrative/`, `skills/` |
 
@@ -251,7 +251,7 @@ non-default brand chrome. A new theme also needs a `layouts` entry in
 `LAYOUTS` (`src/themes/definitions.ts`) — that record stays total over
 `CanonicalThemeId`, so a missing entry fails to compile. Each of the four
 page types defaults to `FULL_LAYOUTS.<type>` (every registered archetype for
-that type), and as of the post-v0.3 W8 fix round **all 13 built-ins point
+that type), and as of the post-v0.3 W8 fix round **all 16 built-ins point
 every page type there** — the last three chapter-only curation exclusions
 (bloom/classroom/heritage excluding `fashion-chapter`, an artifact of
 `readableOn`'s old fixed-luminance threshold) were reverted once `src/svg/ink.ts`'s
