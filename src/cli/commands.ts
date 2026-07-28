@@ -515,11 +515,19 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
  * `rendered: false` item prints without the frame/pixel lines (there is
  * nothing real to report — {@link buildAssetBrief}'s own doc comment) but
  * still gets its palette/mood/prompt lines, matching the brief's own "never
- * silently drop it" contract.
+ * silently drop it" contract. A `shared` item (>=2 `image` components on the
+ * page reference the same `asset_id`) gets an explicit "(shared by N image
+ * slots, frame not attributable to one)" header suffix — this asset_id's
+ * frames are real but which specific component each one belongs to cannot be
+ * determined from the render (`buildAssetBrief`'s own doc comment), so the
+ * report says so instead of implying a pairing it can't back up.
  */
 function formatAssetBriefItem(item: AssetBriefItem): string {
   const idSuffix = item.page.id !== undefined ? `, ${item.page.id}` : ""
-  const header = `page ${item.page.index + 1} (${item.page.type}${idSuffix}) — ${item.asset_id}${item.missing ? " (missing)" : ""}${item.rendered ? "" : " (not rendered under the selected layout)"}`
+  const sharedSuffix = item.shared
+    ? ` (shared by ${item.occurrenceCount} image slots, frame not attributable to one)`
+    : ""
+  const header = `page ${item.page.index + 1} (${item.page.type}${idSuffix}) — ${item.asset_id}${item.missing ? " (missing)" : ""}${item.rendered ? "" : " (not rendered under the selected layout)"}${sharedSuffix}`
   const lines = [header]
   if (item.frame && item.suggested_pixels) {
     lines.push(
