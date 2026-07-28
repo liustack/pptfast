@@ -7,7 +7,7 @@ DrawingML out.
 
 ## Why
 
-Freeform SVG/HTML-to-PPTX pipelines have a high ceiling but an unstable floor — a weak model (or a strong one having an off turn) produces a deck that's broken, off-brand, or unreadable. pptfast trades freeform drawing for a controlled vocabulary: a semantic IR (zod schema), 13 built-in themes bundling a style (design tokens) and a brand (identity chrome), a layout-and-component library with seeded variety, and native DrawingML output where every shape stays editable — not a picture pasted onto a slide.
+Freeform SVG/HTML-to-PPTX pipelines have a high ceiling but an unstable floor — a weak model (or a strong one having an off turn) produces a deck that's broken, off-brand, or unreadable. pptfast trades freeform drawing for a controlled vocabulary: a semantic IR (zod schema), 16 built-in themes bundling a style (design tokens) and a brand (identity chrome), a layout-and-component library with seeded variety, and native DrawingML output where every shape stays editable — not a picture pasted onto a slide.
 
 A deck is really five things: a content model, a 2D layout, a visual style, motion, and a narrative. pptfast owns the last four — you (or your agent) own the content model by writing the IR.
 
@@ -92,7 +92,7 @@ No `installPlatform()` call is needed in a browser — DOM parsing and (for `--p
 | `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
 | `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
 | `schema [--style \| --spec]` | Print the IR JSON Schema (or the style-override schema, or the deck spec schema) |
-| `themes [--json]` | List the 13 built-in themes |
+| `themes [--json]` | List the 16 built-in themes |
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`) — same `target` forms as `render`, never gated on placeholder pages |
 | `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes, with annotations submitting straight back to the deck directory as `revision-request.json` |
@@ -112,7 +112,7 @@ The v4 IR schema is frozen as of 0.4.0 — future evolution is additive only (ne
 
 ## Themes
 
-A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 13 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — none of the 13 narrows anything today (an earlier three-theme exclusion was reverted once every archetype's ink adapted to its actual background). Override the style (`--style`) to re-color a theme.
+A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 16 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — none of the 16 narrows anything today (an earlier three-theme exclusion was reverted once every archetype's ink adapted to its actual background). Override the style (`--style`) to re-color a theme.
 
 | id | label |
 |---|---|
@@ -129,6 +129,9 @@ A theme bundles a style (design tokens), a brand (identity chrome), and a layout
 | `journal` | Editorial Journal |
 | `luxe` | Luxe |
 | `heritage` | Heritage |
+| `pulse` | Health & Life Science |
+| `terra` | Sustainability & ESG |
+| `ember` | Startup Pitch |
 
 ## Narratives
 
