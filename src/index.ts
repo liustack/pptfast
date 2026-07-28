@@ -74,3 +74,13 @@ export {
   type AuditChecks,
   type AuditDeckOptions,
 } from "./svg/audit/deck-audit"
+export {
+  buildAssetBrief,
+  type AssetBrief,
+  type AssetBriefItem,
+  type AssetBriefPage,
+  type AssetBriefFrame,
+  type AssetBriefFit,
+  type AssetBriefPalette,
+  type AssetBriefMood,
+} from "./svg/asset-brief"

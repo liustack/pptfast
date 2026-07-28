@@ -1,0 +1,180 @@
+// @vitest-environment node
+//
+// Runs under the real Node platform (linkedom DOMParser via the platform
+// registry seam) — the same reasoning `deck-audit.test.ts` documents for its
+// own `@vitest-environment node` choice: this exercises `buildAssetBrief`'s
+// actual documented Node consumption path end-to-end, not jsdom's incidental
+// global filling in unasked.
+import { beforeAll, describe, expect, it } from "vitest"
+import type { Component, PptxIR, Slide } from "@/ir"
+import { getInstalledThemeIds } from "../themes/definitions"
+import { installNodePlatform } from "../platform/node"
+import { buildAssetBrief } from "./asset-brief"
+
+beforeAll(() => {
+  installNodePlatform()
+})
+
+function deck(themeId: string, slides: Slide[], overrides: Partial<PptxIR> = {}): PptxIR {
+  return {
+    version: "4",
+    filename: "asset-brief-fixture",
+    theme: { id: themeId },
+    meta: {},
+    seed: 7,
+    assets: { images: {} },
+    slides,
+    ...overrides,
+  } as PptxIR
+}
+
+const TINY_PNG =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+
+function imageComponent(assetId: string, extra: Partial<Component> = {}): Component {
+  return { type: "image", asset_id: assetId, fit: "cover", ...extra } as Component
+}
+
+/**
+ * The controller's own probe deck (task brief §"验收" 1 / plan §"验收"):
+ * image-lead-split + consulting, a real 613-wide visual slot. `image.tsx`'s
+ * own `measure` (613 * 0.5 rounds to 307, under the 340 cap) is what this
+ * pins against — but this test never imports that constant, it only asserts
+ * on `buildAssetBrief`'s output, which is exactly the point (裁定 1: the
+ * frame must come from a real render, not a copied formula).
+ */
+function probeDeck(assetId = "pic"): PptxIR {
+  return deck("consulting", [
+    {
+      type: "content",
+      id: "p1",
+      layout: "image-lead-split",
+      heading: "Regional growth engine",
+      components: [
+        imageComponent(assetId),
+        { type: "paragraph", text: "APAC contributed 42% of net-new revenue this quarter." } as Component,
+      ],
+    } as Slide,
+  ])
+}
+
+describe("buildAssetBrief — probe fixture (real render, not a copied constant)", () => {
+  it("reports the actual rendered frame 613x307 / 2:1, not the layoutDef slot 613x568", () => {
+    const brief = buildAssetBrief(probeDeck())
+    expect(brief.items).toHaveLength(1)
+    const item = brief.items[0]!
+    expect(item.asset_id).toBe("pic")
+    expect(item.rendered).toBe(true)
+    expect(item.missing).toBe(true) // no assets.images entry was supplied
+    // x/y measured off the real render, not copied from the archetype's own
+    // geometry-sketch doc comment ("y=72..640" describes the 568px-tall
+    // *slot*, not the 307px-tall image's position within it — the renderer
+    // centers the capped-height image inside that slot, landing at y=203;
+    // asserting the actual output here, not the slot bounds, is exactly the
+    // 裁定 1 discipline this test exists to pin).
+    expect(item.frame).toEqual({ x: 571, y: 203, w: 613, h: 307, aspect: "2:1" })
+    expect(item.suggested_pixels).toEqual({ w: 1226, h: 614 })
+  })
+
+  it("reports missing: false once the asset is actually resolved, frame stays identical", () => {
+    const ir = probeDeck()
+    ir.assets.images.pic = { src: TINY_PNG }
+    const brief = buildAssetBrief(ir)
+    const item = brief.items[0]!
+    expect(item.missing).toBe(false)
+    expect(item.rendered).toBe(true)
+    expect(item.frame).toEqual({ x: 571, y: 203, w: 613, h: 307, aspect: "2:1" })
+  })
+
+  it("never mutates the input ir (dummy injection is a render-only in-memory copy)", () => {
+    const ir = probeDeck()
+    const before = JSON.parse(JSON.stringify(ir))
+    buildAssetBrief(ir)
+    expect(ir).toEqual(before)
+  })
+})
+
+describe("buildAssetBrief — missing-asset deck", () => {
+  it("lists an unresolved asset_id with missing: true and a non-empty suggested_prompt, renderer stays untouched (no assets.images write)", () => {
+    const ir = probeDeck("not-yet-generated")
+    const brief = buildAssetBrief(ir)
+    expect(ir.assets.images).toEqual({}) // renderer/caller-visible IR never gains the dummy
+    const item = brief.items[0]!
+    expect(item.missing).toBe(true)
+    expect(item.suggested_prompt.length).toBeGreaterThan(0)
+    expect(item.suggested_prompt).toContain(item.palette.primary)
+  })
+})
+
+describe("buildAssetBrief — component never rendered under the selected layout", () => {
+  it("marks rendered: false and omits frame/suggested_pixels rather than dropping the item", () => {
+    // A cover archetype's own template never reads `slide.components` at all
+    // (it renders a fixed heading/subheading/decor layout) — an `image`
+    // component placed on a cover slide (with a non-asset background, so
+    // `imageCoverTakeover` never engages) is guaranteed to be present in the
+    // IR yet never emit an `<image>` anywhere in the rendered markup. This is
+    // a deterministic, structural way to exercise the "component silently
+    // has no slot" path without depending on a fragile overflow-budget guess.
+    const ir = deck("consulting", [
+      {
+        type: "cover",
+        id: "c1",
+        layout: "banner-title",
+        heading: "Cover",
+        components: [imageComponent("orphan")],
+      } as Slide,
+    ])
+    const brief = buildAssetBrief(ir)
+    expect(brief.items).toHaveLength(1)
+    const item = brief.items[0]!
+    expect(item.asset_id).toBe("orphan")
+    expect(item.rendered).toBe(false)
+    expect(item.frame).toBeUndefined()
+    expect(item.suggested_pixels).toBeUndefined()
+    // palette/mood/prompt still fully assembled — never dropped silently.
+    expect(item.palette.hexes.length).toBeGreaterThan(0)
+    expect(item.mood.description.length).toBeGreaterThan(0)
+    expect(item.suggested_prompt).toContain("was not rendered")
+  })
+})
+
+describe("buildAssetBrief — every built-in theme", () => {
+  it.each(getInstalledThemeIds())("assembles complete palette/mood fields for theme %s", (themeId) => {
+    const ir = probeDeck()
+    ir.theme.id = themeId
+    const brief = buildAssetBrief(ir)
+    expect(brief.theme).toBe(themeId)
+    const item = brief.items[0]!
+    expect(item.palette.hexes.length).toBeGreaterThan(0)
+    expect(item.palette.primary).toMatch(/^#/)
+    expect(item.palette.accent).toMatch(/^#/)
+    expect(Array.isArray(item.mood.tags)).toBe(true)
+    expect(item.mood.description.length).toBeGreaterThan(0)
+    expect(item.suggested_prompt.length).toBeGreaterThan(0)
+  })
+})
+
+describe("buildAssetBrief — determinism", () => {
+  it("same IR in, deep-equal AssetBrief out, across two independent calls", () => {
+    const ir = probeDeck()
+    const first = buildAssetBrief(ir)
+    const second = buildAssetBrief(ir)
+    expect(second).toEqual(first)
+  })
+})
+
+describe("buildAssetBrief — fit note", () => {
+  it("cover mode names the crop behavior and safe zone", () => {
+    const item = buildAssetBrief(probeDeck()).items[0]!
+    expect(item.fit.mode).toBe("cover")
+    expect(item.fit.note).toContain("center")
+  })
+
+  it("contain mode names the letterbox behavior", () => {
+    const ir = probeDeck()
+    ;(ir.slides[0]!.components[0] as { fit: string }).fit = "contain"
+    const item = buildAssetBrief(ir).items[0]!
+    expect(item.fit.mode).toBe("contain")
+    expect(item.fit.note).toContain("letterbox")
+  })
+})
