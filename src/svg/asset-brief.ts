@@ -61,11 +61,12 @@ export interface AssetBriefItem {
   page: AssetBriefPage
   asset_id: string
   /** Discriminant reserved for v2 (asset-brief plan 裁定 4): only `"image"`
-   *  is produced today, one `AssetBriefItem` per `image` component.
-   *  `"background"` is the documented extension slot for background asset
-   *  specs, deliberately not built in v1 (no `background` geometry
-   *  extraction exists yet) — this field lets a future v2 add it without a
-   *  breaking shape change for consumers that already switch on `kind`. */
+   *  is produced today (one `AssetBriefItem` per `image` component, or per
+   *  shared frame — see `shared` below). `"background"` is the documented
+   *  extension slot for background asset specs, deliberately not built in
+   *  v1 (no `background` geometry extraction exists yet) — this field lets
+   *  a future v2 add it without a breaking shape change for consumers that
+   *  already switch on `kind`. */
   kind: "image"
   /** No usable `src` in `ir.assets.images` for this `asset_id` — this is a
    *  generation to-do item, not a defect (asset-brief plan 裁定 2). */
@@ -83,6 +84,23 @@ export interface AssetBriefItem {
   mood: AssetBriefMood
   /** One English paragraph, paste-ready for an image-generation tool. */
   suggested_prompt: string
+  /** True when this item's `frame` cannot be attributed to one specific
+   *  `image` component: `occurrenceCount` (>=2) `image` components on this
+   *  same page share this `asset_id`. Because a shared `asset_id` resolves
+   *  to the exact same dummy href in the render-only pass, every occurrence
+   *  produces an *identical* `<image>` `href` in the rendered SVG — there is
+   *  no signal left to tell which `<image>` element came from which
+   *  component, in principle, not just in this implementation. Rather than
+   *  guess (see `buildAssetBrief`'s own doc comment for the bug this
+   *  replaced), every real rendered frame for the shared `asset_id` gets its
+   *  own item, all flagged `shared: true`, none claiming a specific
+   *  component. Omitted (not `false`) for the single-occurrence case — the
+   *  overwhelmingly common one — so that path's output shape is byte-for-
+   *  byte what it was before this field existed. */
+  shared?: true
+  /** Present iff `shared` is true: how many `image` components on this page
+   *  reference this same `asset_id`. */
+  occurrenceCount?: number
 }
 
 export interface AssetBrief {
@@ -299,6 +317,32 @@ function buildPrompt(mood: AssetBriefMood, palette: AssetBriefPalette, frame: As
  * function attributes to the component — rare in practice (v1 doesn't cover
  * background geometry at all, see above) and left as a documented gap
  * rather than engineered around.
+ *
+ * Shared-`asset_id` handling (task reviewer finding, fixed after v1's first
+ * pass): the IR schema places no uniqueness constraint on `asset_id`
+ * (`src/ir/index.ts`) — two different `image` components on the same page
+ * legally reference the same one. Because the override above (deliberately)
+ * maps a shared `asset_id` to one shared dummy href, both occurrences render
+ * an *identical* `<image href>` — the rendered SVG carries no signal left to
+ * tell them apart. (v1's first pass tried anyway: a FIFO queue keyed by
+ * `asset_id`, drained in `slide.components` order under the assumption that
+ * extraction order would match — it doesn't in general, e.g.
+ * `content-image-lead-split.tsx` renders its narrow-column body *before*
+ * its visual-lead column in the JSX it returns, so the queue was backwards
+ * and every frame ended up attributed to the wrong occurrence. Not a fixable
+ * ordering bug: no ordering convention could be relied on across every
+ * archetype's own JSX emission order, present and future.) The honest fix:
+ * per page, group `image` components by `asset_id` first. A group of size 1
+ * (the overwhelmingly common case) keeps the exact single-item shape this
+ * function always produced. A group of size >1 abandons per-component
+ * attribution entirely — it emits one item per *real rendered frame* for
+ * that `asset_id` (not per component), each flagged `shared: true` with the
+ * group's `occurrenceCount`, so every real frame is still reported (nothing
+ * silently dropped) without asserting a specific component<->frame pairing
+ * that cannot be known. If fewer frames render than there are occurrences
+ * (e.g. the layout dropped one), the shortfall is padded with `rendered:
+ * false` shared items so the count of components sharing the id is still
+ * fully visible to a reader of the brief.
  */
 export function buildAssetBrief(ir: PptxIR): AssetBrief {
   const themeDef = getThemeDefinition(ir.theme.id)
@@ -324,26 +368,97 @@ export function buildAssetBrief(ir: PptxIR): AssetBrief {
     framesBySlide.set(slideIndex, extractImageFrames(renderSlideSvg(renderIr, slideIndex)))
   }
 
-  const items: AssetBriefItem[] = occurrences.map(({ slideIndex, component }) => {
-    const slide = ir.slides[slideIndex]!
-    const queue = framesBySlide.get(slideIndex)?.get(component.asset_id)
-    const raw = queue?.shift()
-    const missing = !ir.assets.images[component.asset_id]?.src
-    const rendered = raw !== undefined
-    const frame = raw ? toFrame(raw) : undefined
-    const fit = buildFit(component.fit, frame?.aspect)
-    return {
-      page: { index: slideIndex, id: slide.id, type: slide.type, heading: slide.heading },
-      asset_id: component.asset_id,
-      kind: "image",
-      missing,
-      rendered,
-      frame,
-      suggested_pixels: frame ? { w: frame.w * 2, h: frame.h * 2 } : undefined,
-      fit,
-      palette,
-      mood,
-      suggested_prompt: buildPrompt(mood, palette, frame, fit),
+  const items: AssetBriefItem[] = []
+  ir.slides.forEach((slide, slideIndex) => {
+    // Group this page's `image` components by `asset_id`, preserving each
+    // id's first-encounter order — same overall item ordering the old flat
+    // `occurrences.map` produced for the (overwhelmingly common)
+    // one-component-per-asset_id case.
+    const groups = new Map<string, ImageComponent[]>()
+    for (const component of slide.components) {
+      if (component.type !== "image") continue
+      const list = groups.get(component.asset_id)
+      if (list) list.push(component)
+      else groups.set(component.asset_id, [component])
+    }
+    if (groups.size === 0) return
+
+    const page: AssetBriefPage = { index: slideIndex, id: slide.id, type: slide.type, heading: slide.heading }
+    const frameMap = framesBySlide.get(slideIndex)
+    const isMissing = (assetId: string) => !ir.assets.images[assetId]?.src
+
+    for (const [assetId, group] of groups) {
+      const frames = frameMap?.get(assetId) ?? []
+
+      if (group.length === 1) {
+        // Unchanged single-occurrence path — exact same output as before
+        // this fix (task requirement).
+        const raw = frames[0]
+        const frame = raw ? toFrame(raw) : undefined
+        const fit = buildFit(group[0]!.fit, frame?.aspect)
+        items.push({
+          page,
+          asset_id: assetId,
+          kind: "image",
+          missing: isMissing(assetId),
+          rendered: frame !== undefined,
+          frame,
+          suggested_pixels: frame ? { w: frame.w * 2, h: frame.h * 2 } : undefined,
+          fit,
+          palette,
+          mood,
+          suggested_prompt: buildPrompt(mood, palette, frame, fit),
+        })
+        continue
+      }
+
+      // Shared asset_id, >1 occurrence on this page — see this function's
+      // own doc comment ("Shared-asset_id handling") for why per-component
+      // attribution is skipped rather than guessed. `fit` mode is read off
+      // the group's first component; if occurrences disagree on `fit` that
+      // choice is a documented simplification, not a claim about which
+      // occurrence any one frame belongs to.
+      const occurrenceCount = group.length
+      const sharedFit = group[0]!.fit
+      const missing = isMissing(assetId)
+      for (const raw of frames) {
+        const frame = toFrame(raw)
+        const fit = buildFit(sharedFit, frame.aspect)
+        items.push({
+          page,
+          asset_id: assetId,
+          kind: "image",
+          missing,
+          rendered: true,
+          frame,
+          suggested_pixels: { w: frame.w * 2, h: frame.h * 2 },
+          fit,
+          palette,
+          mood,
+          shared: true,
+          occurrenceCount,
+          suggested_prompt: buildPrompt(mood, palette, frame, fit),
+        })
+      }
+      // Fewer real frames than occurrences: pad with `rendered: false`
+      // shared items so the full occurrenceCount stays visible rather than
+      // silently under-reporting how many components reference this id.
+      for (let i = frames.length; i < occurrenceCount; i++) {
+        const fit = buildFit(sharedFit, undefined)
+        items.push({
+          page,
+          asset_id: assetId,
+          kind: "image",
+          missing,
+          rendered: false,
+          fit,
+          palette,
+          mood,
+          shared: true,
+          occurrenceCount,
+          suggested_prompt: buildPrompt(mood, palette, undefined, fit),
+        })
+      }
     }
   })
 

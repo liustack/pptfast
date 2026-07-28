@@ -64,7 +64,6 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     expect(brief.items).toHaveLength(1)
     const item = brief.items[0]!
     expect(item.asset_id).toBe("pic")
-    expect(item.kind).toBe("image") // v2 extension slot (plan 裁定 4) — only "image" exists today
     expect(item.rendered).toBe(true)
     expect(item.missing).toBe(true) // no assets.images entry was supplied
     // x/y measured off the real render, not copied from the archetype's own
@@ -136,6 +135,60 @@ describe("buildAssetBrief — component never rendered under the selected layout
     expect(item.palette.hexes.length).toBeGreaterThan(0)
     expect(item.mood.description.length).toBeGreaterThan(0)
     expect(item.suggested_prompt).toContain("was not rendered")
+  })
+})
+
+describe("buildAssetBrief — shared asset_id across multiple components on one page", () => {
+  // Reviewer repro: `image-lead-split` renders `components[0]` (an
+  // image/chart) as the 613x568-slot visual lead (measured/capped down to
+  // 613x307 — same real-render truth the probe fixture above pins) and
+  // stacks every other component, including a later `image`, into the
+  // narrow 435px body column (435x218 there). Two *different* `image`
+  // components legally share one `asset_id` (bare string, no uniqueness
+  // constraint — `src/ir/index.ts`) — since both resolve to the exact same
+  // dummy href, the rendered SVG offers no way to tell which `<image>`
+  // belongs to which component (href-based attribution is impossible in
+  // principle, not just unimplemented). The fix this test pins: never guess
+  // (the previous `Array.prototype.shift()`-off-a-FIFO-queue logic silently
+  // paired frames to occurrences in DOM/extraction order, which is *not*
+  // `slide.components` order here — body renders before the visual column in
+  // the archetype's own JSX, so the queue was backwards and every frame was
+  // swapped) — instead emit one honest, explicitly `shared` item per real
+  // rendered frame, both present, neither claiming a specific component.
+  it("emits one shared item per rendered frame, both real frames present and correctly valued, no swapped attribution claim", () => {
+    const ir = deck("consulting", [
+      {
+        type: "content",
+        id: "p1",
+        layout: "image-lead-split",
+        heading: "Regional growth engine",
+        components: [
+          imageComponent("shared"),
+          { type: "paragraph", text: "APAC contributed 42% of net-new revenue this quarter." } as Component,
+          imageComponent("shared"),
+        ],
+      } as Slide,
+    ])
+    const brief = buildAssetBrief(ir)
+    const sharedItems = brief.items.filter((i) => i.asset_id === "shared")
+    expect(sharedItems).toHaveLength(2)
+    expect(sharedItems.every((i) => i.shared === true)).toBe(true)
+    expect(sharedItems.every((i) => i.occurrenceCount === 2)).toBe(true)
+    expect(sharedItems.every((i) => i.rendered === true)).toBe(true)
+    const frames = sharedItems.map((i) => i.frame)
+    // The visual-lead frame (measured/capped 613x307 — same geometry the
+    // probe fixture above pins) and the narrow-body-column frame (435x218)
+    // must both survive, as a set — order is DOM/extraction order, not a
+    // claim about which component produced which frame.
+    expect(frames).toContainEqual(expect.objectContaining({ w: 613, h: 307 }))
+    expect(frames).toContainEqual(expect.objectContaining({ w: 435, h: 218 }))
+  })
+
+  it("single-occurrence pages are unaffected: no `shared`/`occurrenceCount` fields, same output shape as before", () => {
+    const item = buildAssetBrief(probeDeck()).items[0]!
+    expect(item.shared).toBeUndefined()
+    expect(item.occurrenceCount).toBeUndefined()
+    expect(item.kind).toBe("image")
   })
 })
 
