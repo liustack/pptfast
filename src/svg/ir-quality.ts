@@ -9,7 +9,14 @@ import type { PptxIR, Slide } from "@/ir"
 import { PACING_BUDGETS, resolveNarrative, type NarrativeProfile, type Pacing } from "@/narrative"
 import { CAPACITY } from "./audit/capacity"
 import { resolveEffectiveLayoutBodyCapacity } from "./layout-selection"
+import { getLayout } from "./layouts/registry"
 import { measureTextUnits } from "../lib/svg-text-layout"
+// `fitHeadingLines` is a pure text-layout function (no React, no DOM — see
+// its own file's imports), the same tier as `measureTextUnits` above, so
+// importing it here doesn't touch the render chain this module (part of the
+// light `./validate` SDK bundle, see `validate-core.ts`'s own file header)
+// must stay clear of.
+import { fitHeadingLines } from "./heading-fit"
 import { buildChartModel } from "./components/chart-model"
 
 export type QualityIssue = {
@@ -57,6 +64,11 @@ export type QualityIssue = {
    * `chart_duplicate_category`'s own "one per occurrence, not one per row"
    * granularity. */
   dataTableMissingCell?: { rowIndex: number; key: string }
+  /** `code: "pin_only_over_capacity"` only (quote-stage wave, task T2,
+   * 裁定 2) — the pinned `pinOnly` layout's id, its declared `body`-slot
+   * capacity, and the slide's actual component count, for the same
+   * English-translation reason as `density`/`bulletsBudget` above. */
+  pinOnlyCapacity?: { layoutId: string; capacity: number; componentCount: number }
 }
 
 // ── helpers ──
@@ -82,6 +94,28 @@ function hasKpiCardsComponent(slide: Slide): boolean {
  * anchor a title against).
  */
 const AXES_APPLICABLE_CHART_TYPES: ReadonlySet<string> = new Set(["bar", "line"])
+
+/**
+ * `content-quote-stage.tsx`'s own `fitHeadingLines` call — mirrors (not
+ * cross-imports) that archetype file's `TITLE_MAX_WIDTH`/`TITLE_FONT_SIZE`/
+ * `TITLE_MAX_LINES`/`TITLE_MIN_PT` constants, same "small local duplicate +
+ * comment" precedent as `AXES_APPLICABLE_CHART_TYPES` right above (that
+ * archetype file pulls the render chain — `SvgContent`/`renderComponent` —
+ * which this module, part of the light `./validate` SDK bundle, must never
+ * touch). `fontFamily` is deliberately omitted: this module doesn't resolve
+ * the slide's theme fonts, so the truncation decision below uses
+ * `fitHeadingLines`'s cross-face fallback width table — the same
+ * theme-agnostic posture every other flat `CAPACITY`-based hard-error check
+ * in this file already takes (`bullet_item_overflow` et al. never resolve a
+ * font either). Keep in sync with `content-quote-stage.tsx` if either
+ * changes.
+ */
+const QUOTE_STAGE_HEADING_FIT = {
+  maxWidth: 1000,
+  fontSize: 92,
+  maxLines: 4,
+  minPt: 36,
+} as const
 
 /** True when `axes` carries at least one real setting — `axes: {}` (every
  * sub-field omitted, schema-legal since all three are optional) has nothing
@@ -208,6 +242,64 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
           layoutId,
           layoutCapacity,
         },
+      })
+    }
+  }
+
+  // pin-only over-capacity hard error (quote-stage wave, task T2, 裁定 2):
+  // an explicit pin onto a `pinOnly` layout (`registry.ts`'s
+  // `LayoutDefinition.pinOnly` — reachable *only* through this exact path,
+  // never auto-pick) already declares author intent, so the generic degrade
+  // every other over-capacity slide gets today — `layoutContentFit`'s "+N
+  // more" pill, flagged only as the `density` *warn* above — would silently
+  // drop content the author explicitly asked to keep. Scope strictly to
+  // `pinOnly` layouts: an ordinary layout pinned over its own declared body
+  // capacity keeps today's `density` warn above, completely unchanged
+  // (regression-tested in ir-quality.test.tsx) — this is an *additional*
+  // error, not a replacement for that warn (both fire together when a
+  // pinOnly layout is over capacity, same "different questions, both fire"
+  // posture `bullet_item_long`/`bullet_item_overflow` already established).
+  if (slide.layout !== undefined) {
+    const pinnedDef = getLayout(slide.layout)
+    const pinnedCapacity = pinnedDef?.slots.find((s) => s.name === "body")?.capacity
+    if (pinnedDef?.pinOnly && pinnedCapacity !== undefined && slide.components.length > pinnedCapacity) {
+      issues.push({
+        slide: index,
+        severity: "error",
+        code: "pin_only_over_capacity",
+        message: `钉住的版式 "${slide.layout}" 容量为 ${pinnedCapacity}，当前有 ${slide.components.length} 个组件，超出容量——请拆分内容或去掉钉住`,
+        pinOnlyCapacity: {
+          layoutId: slide.layout,
+          capacity: pinnedCapacity,
+          componentCount: slide.components.length,
+        },
+      })
+    }
+  }
+
+  // quote-stage heading width-limit hard error (quote-stage wave, task T2):
+  // unlike an ordinary archetype's heading — decorative relative to its own
+  // body content, hence `long_heading`'s warn-only posture above (see that
+  // block's own comment on why a *general* per-archetype minPt-bucket error
+  // derivation was evaluated and deferred, not overlooked) — quote-stage's
+  // heading *is* the page's entire content (裁定 3: heading as the page's
+  // oversized main visual). `fitHeadingLines` truncating even at its own
+  // `minPt` floor is real, silent content loss on this one archetype, the
+  // same class `bullet_item_overflow` below already hard-blocks for
+  // bullets — so this is the one archetype whose heading gets an error
+  // tier, deliberately not generalized to every archetype (scope
+  // discipline: this wave adds exactly one `pinOnly` member; a shared
+  // mechanism can follow once a second member needs it). See
+  // `QUOTE_STAGE_HEADING_FIT`'s own comment for why it mirrors, rather than
+  // cross-imports, the archetype file's own fit params.
+  if (slide.layout === "quote-stage" && slide.heading) {
+    const fit = fitHeadingLines(slide.heading, QUOTE_STAGE_HEADING_FIT)
+    if (fit.truncated) {
+      issues.push({
+        slide: index,
+        severity: "error",
+        code: "quote_stage_heading_overflow",
+        message: `钉住的 quote-stage 金句正文过长，缩小到最低字号仍会被截断——请精简金句或拆分为多页`,
       })
     }
   }

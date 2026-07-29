@@ -963,6 +963,84 @@ describe("bullets geometric hard error (Task 2, borrow wave — dual-threshold s
   })
 })
 
+// quote-stage wave, task T2, 裁定 2: pinning a `pinOnly` layout
+// (registry.ts's `LayoutDefinition.pinOnly`) over its own declared `body`
+// capacity is a hard error end-to-end through `validateIr` — not just at
+// the `checkIrQuality` unit level (`ir-quality.test.tsx` already covers
+// that). quote-stage is the pool's only `pinOnly` member as of this task.
+describe("pin_only_over_capacity end-to-end via validateIr (quote-stage wave, task T2, 裁定 2)", () => {
+  it("pinning quote-stage with 2 components hard-blocks validateIr, naming the layout id and both numbers", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "金句", layout: "quote-stage", components: [{ type: "paragraph", text: "a" }, { type: "paragraph", text: "b" }] },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(
+      v.errors.some(
+        (e) => e.message.includes('"quote-stage"') && e.message.includes("at most 1") && e.message.includes("has 2"),
+      ),
+    ).toBe(true)
+  })
+
+  it("pinning quote-stage with 1 component (at capacity) validates ok", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "金句", layout: "quote-stage", components: [{ type: "paragraph", text: "—— 出处" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("pinning quote-stage with 0 components (a pure quote) validates ok", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "金句", layout: "quote-stage", components: [] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("regression: pinning an ordinary (non-pinOnly) layout over its own capacity keeps ok:true with only a density warning — the new hard error never fires for it", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "标题",
+          layout: "two-column",
+          components: Array.from({ length: 5 }, (_, i) => ({ type: "paragraph" as const, text: String(i) })),
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("too many components"))).toBe(true)
+  })
+
+  it("a pathologically long quote-stage heading that still truncates at minPt hard-blocks validateIr, naming the render-safety limit", () => {
+    const CJK_LONG =
+      "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: `${CJK_LONG}${CJK_LONG}${CJK_LONG}`,
+          layout: "quote-stage",
+          components: [],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes("render-safety limit"))).toBe(true)
+  })
+})
+
 // P0 hardening (robustness deep-review D1): bullets_overflow's count-based
 // second-tier escalation — bullets_count_overflow, same dual-threshold
 // severity machinery as bullet_item_overflow above (this file's own

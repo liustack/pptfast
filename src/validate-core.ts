@@ -229,6 +229,26 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `data table row ${d.rowIndex} is missing a value for column "${d.key}" — that cell will render empty`
         : "a data table row is missing a value for a declared column — that cell will render empty"
     }
+    case "pin_only_over_capacity": {
+      // quote-stage wave, task T2, 裁定 2: a `pinOnly` layout (registry.ts's
+      // `LayoutDefinition.pinOnly`) pinned over its own declared `body`
+      // capacity — severity "error", so this is one of the two quote-stage
+      // messages that actually blocks `ok`. Names the layout id and both
+      // numbers via `issue.pinOnlyCapacity`, same structured-field
+      // convention as `density`/`bulletsBudget` above.
+      const p = issue.pinOnlyCapacity
+      return p
+        ? `pinned layout "${p.layoutId}" allows at most ${p.capacity} component${p.capacity === 1 ? "" : "s"} but this slide has ${p.componentCount} — split the content or remove the pin`
+        : "a pinned layout is over its declared capacity — split the content or remove the pin"
+    }
+    case "quote_stage_heading_overflow":
+      // quote-stage wave, task T2: quote-stage's heading *is* the page's
+      // entire content (unlike an ordinary archetype's decorative heading,
+      // long_heading's warn-only case above) — a heading that still can't
+      // fit even at fitHeadingLines's own minimum font size is real content
+      // loss, the same class bullet_item_overflow already hard-blocks for
+      // bullets below.
+      return "quote-stage heading exceeds the render-safety limit even at its minimum font size and would be truncated — shorten the quote or split it across slides"
     default:
       return `content quality issue (${issue.code})`
   }
