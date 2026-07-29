@@ -95,28 +95,6 @@ function hasKpiCardsComponent(slide: Slide): boolean {
  */
 const AXES_APPLICABLE_CHART_TYPES: ReadonlySet<string> = new Set(["bar", "line"])
 
-/**
- * `content-quote-stage.tsx`'s own `fitHeadingLines` call — mirrors (not
- * cross-imports) that archetype file's `TITLE_MAX_WIDTH`/`TITLE_FONT_SIZE`/
- * `TITLE_MAX_LINES`/`TITLE_MIN_PT` constants, same "small local duplicate +
- * comment" precedent as `AXES_APPLICABLE_CHART_TYPES` right above (that
- * archetype file pulls the render chain — `SvgContent`/`renderComponent` —
- * which this module, part of the light `./validate` SDK bundle, must never
- * touch). `fontFamily` is deliberately omitted: this module doesn't resolve
- * the slide's theme fonts, so the truncation decision below uses
- * `fitHeadingLines`'s cross-face fallback width table — the same
- * theme-agnostic posture every other flat `CAPACITY`-based hard-error check
- * in this file already takes (`bullet_item_overflow` et al. never resolve a
- * font either). Keep in sync with `content-quote-stage.tsx` if either
- * changes.
- */
-const QUOTE_STAGE_HEADING_FIT = {
-  maxWidth: 1000,
-  fontSize: 92,
-  maxLines: 4,
-  minPt: 36,
-} as const
-
 /** True when `axes` carries at least one real setting — `axes: {}` (every
  * sub-field omitted, schema-legal since all three are optional) has nothing
  * for a non-applicable chart_type to actually ignore, so it shouldn't warn. */
@@ -246,21 +224,32 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
     }
   }
 
-  // pin-only over-capacity hard error (quote-stage wave, task T2, 裁定 2):
-  // an explicit pin onto a `pinOnly` layout (`registry.ts`'s
-  // `LayoutDefinition.pinOnly` — reachable *only* through this exact path,
-  // never auto-pick) already declares author intent, so the generic degrade
-  // every other over-capacity slide gets today — `layoutContentFit`'s "+N
-  // more" pill, flagged only as the `density` *warn* above — would silently
-  // drop content the author explicitly asked to keep. Scope strictly to
-  // `pinOnly` layouts: an ordinary layout pinned over its own declared body
-  // capacity keeps today's `density` warn above, completely unchanged
-  // (regression-tested in ir-quality.test.tsx) — this is an *additional*
-  // error, not a replacement for that warn (both fire together when a
-  // pinOnly layout is over capacity, same "different questions, both fire"
-  // posture `bullet_item_long`/`bullet_item_overflow` already established).
+  // Two pinned-layout hard errors below share one `getLayout` lookup
+  // (T2 fix round — whole-branch review flagged the pre-fix version's
+  // heading check as a shadow copy: it hardcoded `slide.layout ===
+  // "quote-stage"` and hand-mirrored this archetype's four fit constants
+  // with no sync guard, the one place in this file that knew an individual
+  // archetype id — everything else here, including the capacity check right
+  // below, is metadata-driven). Both checks only look at the pinned
+  // layout's own declared `LayoutDefinition` fields now — no archetype id
+  // appears in either condition.
   if (slide.layout !== undefined) {
     const pinnedDef = getLayout(slide.layout)
+
+    // pin-only over-capacity hard error (quote-stage wave, task T2, 裁定 2):
+    // an explicit pin onto a `pinOnly` layout (`registry.ts`'s
+    // `LayoutDefinition.pinOnly` — reachable *only* through this exact path,
+    // never auto-pick) already declares author intent, so the generic
+    // degrade every other over-capacity slide gets today —
+    // `layoutContentFit`'s "+N more" pill, flagged only as the `density`
+    // *warn* above — would silently drop content the author explicitly
+    // asked to keep. Scope strictly to `pinOnly` layouts: an ordinary
+    // layout pinned over its own declared body capacity keeps today's
+    // `density` warn above, completely unchanged (regression-tested in
+    // ir-quality.test.tsx) — this is an *additional* error, not a
+    // replacement for that warn (both fire together when a pinOnly layout
+    // is over capacity, same "different questions, both fire" posture
+    // `bullet_item_long`/`bullet_item_overflow` already established).
     const pinnedCapacity = pinnedDef?.slots.find((s) => s.name === "body")?.capacity
     if (pinnedDef?.pinOnly && pinnedCapacity !== undefined && slide.components.length > pinnedCapacity) {
       issues.push({
@@ -275,32 +264,36 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
         },
       })
     }
-  }
 
-  // quote-stage heading width-limit hard error (quote-stage wave, task T2):
-  // unlike an ordinary archetype's heading — decorative relative to its own
-  // body content, hence `long_heading`'s warn-only posture above (see that
-  // block's own comment on why a *general* per-archetype minPt-bucket error
-  // derivation was evaluated and deferred, not overlooked) — quote-stage's
-  // heading *is* the page's entire content (裁定 3: heading as the page's
-  // oversized main visual). `fitHeadingLines` truncating even at its own
-  // `minPt` floor is real, silent content loss on this one archetype, the
-  // same class `bullet_item_overflow` below already hard-blocks for
-  // bullets — so this is the one archetype whose heading gets an error
-  // tier, deliberately not generalized to every archetype (scope
-  // discipline: this wave adds exactly one `pinOnly` member; a shared
-  // mechanism can follow once a second member needs it). See
-  // `QUOTE_STAGE_HEADING_FIT`'s own comment for why it mirrors, rather than
-  // cross-imports, the archetype file's own fit params.
-  if (slide.layout === "quote-stage" && slide.heading) {
-    const fit = fitHeadingLines(slide.heading, QUOTE_STAGE_HEADING_FIT)
-    if (fit.truncated) {
-      issues.push({
-        slide: index,
-        severity: "error",
-        code: "quote_stage_heading_overflow",
-        message: `钉住的 quote-stage 金句正文过长，缩小到最低字号仍会被截断——请精简金句或拆分为多页`,
-      })
+    // heading width-limit hard error (quote-stage wave, task T2; made
+    // metadata-driven in the T2 fix round): fires for *any* pinned layout
+    // that declares `headingFit` (`registry.ts`'s
+    // `LayoutDefinition.headingFit` — see that field's own doc comment for
+    // the full rationale and why it replaces a hardcoded archetype-id
+    // check), running the exact same `fitHeadingLines` call the layout's
+    // own archetype file uses to render — one declared source, not two
+    // hand-mirrored copies. Only `quote-stage` sets `headingFit` as of this
+    // fix, so behavior is unchanged: unlike an ordinary archetype's heading
+    // — decorative relative to its own body content, hence `long_heading`'s
+    // warn-only posture above (see that block's own comment on why a
+    // *general* per-archetype minPt-bucket error derivation was evaluated
+    // and deferred, not overlooked) — quote-stage's heading *is* the page's
+    // entire content (裁定 3: heading as the page's oversized main visual).
+    // `fitHeadingLines` truncating even at its own `minPt` floor is real,
+    // silent content loss, the same class `bullet_item_overflow` below
+    // already hard-blocks for bullets. A future `pinOnly` member can opt
+    // into this same error tier simply by declaring its own `headingFit` —
+    // no change needed here.
+    if (pinnedDef?.headingFit && slide.heading) {
+      const fit = fitHeadingLines(slide.heading, pinnedDef.headingFit)
+      if (fit.truncated) {
+        issues.push({
+          slide: index,
+          severity: "error",
+          code: "quote_stage_heading_overflow",
+          message: `钉住的 quote-stage 金句正文过长，缩小到最低字号仍会被截断——请精简金句或拆分为多页`,
+        })
+      }
     }
   }
 

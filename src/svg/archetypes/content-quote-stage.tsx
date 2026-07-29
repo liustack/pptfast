@@ -28,7 +28,10 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * 容量超限（>1 组件）与金句超长（缩到 minPt 仍放不下）都不是本文件的职责——
  * 前者是 `ir-quality.ts` 的 `pin_only_over_capacity` 硬错误（裁定 2，pinOnly
  * 专属，普通钉住版式维持今天的 density warn 不变），后者是
- * `quote_stage_heading_overflow` 硬错误（同文件）。本文件自己只管渲染：
+ * `quote_stage_heading_overflow` 硬错误（同文件，T2 fix round 起改为读本文件
+ * `layoutDef.headingFit` 这份声明式元数据，不再钉死 `slide.layout ===
+ * "quote-stage"` 这一支具体分支——见 `LayoutDefinition.headingFit` 自己的注释,
+ * registry.ts）。本文件自己只管渲染：
  * `fitHeadingLines` 的 graceful truncate + `data-truncated="1"` 标记（既有
  * 机制，同每个 archetype 的 heading 处理）是渲染层最后一道防线，不是把关口
  * ——真正的把关在 validate。
@@ -42,8 +45,8 @@ const CENTER_X = 640
 // the page's only decoration, same idiom as stacked-poster/fashion-masthead's
 // own accent bars (a short primary-filled rect, never a text color).
 // ACCENT_BAR_Y sits a full 160px above TITLE_Y's baseline (not just a
-// nominal gap): a real render at TITLE_FONT_SIZE found CJK glyphs with a
-// tall upper element (e.g. "终") reach noticeably above the generic
+// nominal gap): a real render at layoutDef.headingFit.fontSize found CJK
+// glyphs with a tall upper element (e.g. "终") reach noticeably above the generic
 // ascender estimate, close enough to a tighter gap to visibly clip through
 // the bar — this value is empirically verified clear (`.e2e-out/quote-stage`
 // human-check renders, quote-stage wave task T2), not just calculated.
@@ -51,18 +54,6 @@ const ACCENT_BAR_Y = 140
 const ACCENT_BAR_W = 56
 const ACCENT_BAR_H = 4
 
-// Heading fit params — mirrored (not cross-imported) into
-// `ir-quality.ts`'s own `QUOTE_STAGE_HEADING_FIT` for the width-limit
-// hard-error check: that module is part of the light `./validate` SDK
-// bundle and must never import this render-chain file (SvgContent pulls the
-// full component-render chain) — see that constant's own comment for the
-// "small local duplicate, not a cross-import" precedent this mirrors
-// (`AXES_APPLICABLE_CHART_TYPES`, same file). Keep both in sync if either
-// changes.
-const TITLE_MAX_WIDTH = 1000
-const TITLE_FONT_SIZE = 92
-const TITLE_MAX_LINES = 4
-const TITLE_MIN_PT = 36
 const TITLE_Y = 300 // first-line baseline anchor
 
 const ANNOTATION_GAP = 64 // heading's last line -> subheading annotation
@@ -84,11 +75,16 @@ const FOOTNOTE_Y = 676
 export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
 
+  // `headingFit` lives on `layoutDef` (below) — the single source both this
+  // call and `ir-quality.ts`'s `quote_stage_heading_overflow` hard-error
+  // check read (that module reads it generically off `getLayout(slide
+  // .layout)?.headingFit`, no cross-import of this render-chain file — see
+  // `LayoutDefinition.headingFit`'s own doc comment, registry.ts). Only
+  // `fontFamily` is supplied here rather than on the shared object: it comes
+  // from this archetype's render `ctx`, which the validate-side check has no
+  // access to (and deliberately doesn't need — see that check's own comment).
   const heading = fitHeadingLines(slide.heading, {
-    maxWidth: TITLE_MAX_WIDTH,
-    fontSize: TITLE_FONT_SIZE,
-    maxLines: TITLE_MAX_LINES,
-    minPt: TITLE_MIN_PT,
+    ...layoutDef.headingFit,
     fontFamily: fonts.heading,
   })
   const titleLastY = TITLE_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight
@@ -187,7 +183,14 @@ export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
   )
 }
 
-export const layoutDef: LayoutDefinition = {
+// `satisfies` (not a `: LayoutDefinition` annotation) deliberately keeps
+// `headingFit`'s literal type non-optional here, so `QuoteStageContent`
+// above can read `layoutDef.headingFit` directly without a `| undefined`
+// fighting `fitHeadingLines`'s required `maxWidth`/`fontSize` params — while
+// still structurally checking against `LayoutDefinition` (every consumer
+// elsewhere, e.g. `registry.ts`'s `Record<string, LayoutDefinition>`, still
+// sees the field as optional, correctly, since most layouts omit it).
+export const layoutDef = {
   // content-quote-stage.tsx: pptfast's first pinOnly archetype (quote-stage
   // wave, T1's mechanism + T2's first member) — heading as the page's
   // oversized centered main visual, capacity-1 body slot rendered as a
@@ -205,4 +208,16 @@ export const layoutDef: LayoutDefinition = {
     { name: "meta", accepts: [] },
   ],
   arrangements: ["single"],
-}
+  // Heading-overflow hard-error params (T2 fix round — see
+  // `LayoutDefinition.headingFit`'s own doc comment, registry.ts, for the
+  // full rationale): `ir-quality.ts` reads this generically off
+  // `getLayout(slide.layout)?.headingFit`, and `QuoteStageContent` above
+  // reads the exact same object for its own `fitHeadingLines` call — one
+  // declared source, not two hand-mirrored copies.
+  headingFit: {
+    maxWidth: 1000,
+    fontSize: 92,
+    maxLines: 4,
+    minPt: 36,
+  },
+} satisfies LayoutDefinition

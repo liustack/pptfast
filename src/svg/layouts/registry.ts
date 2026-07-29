@@ -243,6 +243,36 @@ export interface LayoutDefinition {
    * 5). See {@link excludePinOnly} for the pure filter this field feeds.
    */
   pinOnly?: boolean
+  /**
+   * Heading-overflow hard-error parameters (quote-stage wave, T2 fix round —
+   * `.issues/2026-07-28-quote-stage/task-2-report.md`'s fix-report addendum):
+   * when set, `ir-quality.ts`'s `checkSlide` runs `fitHeadingLines(slide
+   * .heading, headingFit)` for a slide pinned onto this layout and hard-
+   * errors (`quote_stage_heading_overflow`) if even `minPt` still truncates
+   * it. Shape mirrors `fitHeadingLines`'s own options (minus `fontFamily`,
+   * which the archetype supplies from its render `ctx` and the validate-side
+   * check deliberately omits — see `ir-quality.ts`'s call site comment for
+   * why a theme-agnostic fallback width table is the right posture there).
+   *
+   * Replaces the pre-fix design where `ir-quality.ts` hardcoded
+   * `slide.layout === "quote-stage"` plus its own hand-mirrored copy of this
+   * archetype's four fit constants (a shadow-copy with no sync guard,
+   * flagged by whole-branch review) — this field makes the layout's own
+   * `layoutDef` (`content-quote-stage.tsx`) the single source for both the
+   * archetype's own render-time fit call *and* validate's hard-error check,
+   * the same "declarative metadata `ir-quality.ts` reads generically" shape
+   * `pinOnly` above and `slots[].capacity` already established (see
+   * `pin_only_over_capacity`'s own check, same file, for the precedent this
+   * mirrors). `undefined` (every layout except `quote-stage` as of this
+   * field's introduction) means no heading-overflow hard error for that
+   * layout — `long_heading`'s warn stays the only signal, unchanged.
+   */
+  headingFit?: {
+    maxWidth: number
+    fontSize: number
+    maxLines?: number
+    minPt?: number
+  }
 }
 
 /**

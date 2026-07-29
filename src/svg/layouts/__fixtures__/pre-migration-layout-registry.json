@@ -849,7 +849,13 @@
       ],
       "arrangements": [
         "single"
-      ]
+      ],
+      "headingFit": {
+        "maxWidth": 1000,
+        "fontSize": 92,
+        "maxLines": 4,
+        "minPt": 36
+      }
     },
     "rail-chapter": {
       "id": "rail-chapter",
