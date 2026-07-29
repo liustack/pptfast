@@ -28,9 +28,11 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * 容量超限（>1 组件）与金句超长（缩到 minPt 仍放不下）都不是本文件的职责——
  * 前者是 `ir-quality.ts` 的 `pin_only_over_capacity` 硬错误（裁定 2，pinOnly
  * 专属，普通钉住版式维持今天的 density warn 不变），后者是
- * `quote_stage_heading_overflow` 硬错误（同文件，T2 fix round 起改为读本文件
+ * `pinned_heading_overflow` 硬错误（同文件，T2 fix round 起改为读本文件
  * `layoutDef.headingFit` 这份声明式元数据，不再钉死 `slide.layout ===
- * "quote-stage"` 这一支具体分支——见 `LayoutDefinition.headingFit` 自己的注释,
+ * "quote-stage"` 这一支具体分支；T3 收尾把错误码本身也从
+ * `quote_stage_heading_overflow` 改名为 `pinned_heading_overflow`，跟检查早已
+ * metadata-driven 的事实对齐——见 `LayoutDefinition.headingFit` 自己的注释,
  * registry.ts）。本文件自己只管渲染：
  * `fitHeadingLines` 的 graceful truncate + `data-truncated="1"` 标记（既有
  * 机制，同每个 archetype 的 heading 处理）是渲染层最后一道防线，不是把关口
@@ -63,7 +65,7 @@ const BODY_RECT_H = 80
 // Defensive ceiling so the body rect's own declared `data-audit-box` never
 // runs off the page bottom for a pathologically tall (4-line) heading — a
 // heading long enough to actually need this room is exactly the case
-// `ir-quality.ts`'s `quote_stage_heading_overflow` hard error blocks before
+// `ir-quality.ts`'s `pinned_heading_overflow` hard error blocks before
 // it ever reaches render through the normal validate -> render CLI path;
 // this ceiling only protects the *direct* render call
 // `audit-baseline.test.ts` exercises (that fixture deliberately bypasses
@@ -76,7 +78,7 @@ export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
 
   // `headingFit` lives on `layoutDef` (below) — the single source both this
-  // call and `ir-quality.ts`'s `quote_stage_heading_overflow` hard-error
+  // call and `ir-quality.ts`'s `pinned_heading_overflow` hard-error
   // check read (that module reads it generically off `getLayout(slide
   // .layout)?.headingFit`, no cross-import of this render-chain file — see
   // `LayoutDefinition.headingFit`'s own doc comment, registry.ts). Only

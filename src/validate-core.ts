@@ -241,14 +241,22 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `pinned layout "${p.layoutId}" allows at most ${p.capacity} component${p.capacity === 1 ? "" : "s"} but this slide has ${p.componentCount} — split the content or remove the pin`
         : "a pinned layout is over its declared capacity — split the content or remove the pin"
     }
-    case "quote_stage_heading_overflow":
-      // quote-stage wave, task T2: quote-stage's heading *is* the page's
+    case "pinned_heading_overflow": {
+      // quote-stage wave, task T2; renamed from `quote_stage_heading_overflow`
+      // in task T3 to match the check going metadata-driven off `headingFit`
+      // (ir-quality.ts's own comment on that field) — fires for any pinned
+      // layout that declares `headingFit`, whose heading *is* the page's
       // entire content (unlike an ordinary archetype's decorative heading,
       // long_heading's warn-only case above) — a heading that still can't
       // fit even at fitHeadingLines's own minimum font size is real content
       // loss, the same class bullet_item_overflow already hard-blocks for
-      // bullets below.
-      return "quote-stage heading exceeds the render-safety limit even at its minimum font size and would be truncated — shorten the quote or split it across slides"
+      // bullets below. Names the layout id via `issue.pinnedHeadingOverflow`,
+      // same structured-field convention as `pinOnlyCapacity` above.
+      const p = issue.pinnedHeadingOverflow
+      return p
+        ? `pinned layout "${p.layoutId}"'s heading exceeds the render-safety limit even at its minimum font size and would be truncated — shorten the heading or split it across slides`
+        : "a pinned layout's heading exceeds the render-safety limit even at its minimum font size and would be truncated — shorten the heading or split it across slides"
+    }
     default:
       return `content quality issue (${issue.code})`
   }

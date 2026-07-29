@@ -248,8 +248,11 @@ export interface LayoutDefinition {
    * `.issues/2026-07-28-quote-stage/task-2-report.md`'s fix-report addendum):
    * when set, `ir-quality.ts`'s `checkSlide` runs `fitHeadingLines(slide
    * .heading, headingFit)` for a slide pinned onto this layout and hard-
-   * errors (`quote_stage_heading_overflow`) if even `minPt` still truncates
-   * it. Shape mirrors `fitHeadingLines`'s own options (minus `fontFamily`,
+   * errors (`pinned_heading_overflow` — renamed from
+   * `quote_stage_heading_overflow` in task T3 once the check itself went
+   * metadata-driven, so the code no longer names quote-stage specifically)
+   * if even `minPt` still truncates it. Shape mirrors `fitHeadingLines`'s
+   * own options (minus `fontFamily`,
    * which the archetype supplies from its render `ctx` and the validate-side
    * check deliberately omits — see `ir-quality.ts`'s call site comment for
    * why a theme-agnostic fallback width table is the right posture there).

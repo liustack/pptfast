@@ -69,6 +69,12 @@ export type QualityIssue = {
    * capacity, and the slide's actual component count, for the same
    * English-translation reason as `density`/`bulletsBudget` above. */
   pinOnlyCapacity?: { layoutId: string; capacity: number; componentCount: number }
+  /** `code: "pinned_heading_overflow"` only (quote-stage wave, task T2;
+   * renamed from `quote_stage_heading_overflow` in task T3 once the check
+   * went metadata-driven off `headingFit` — see that field's own doc
+   * comment) — the pinned layout's id, for the same English-translation
+   * reason as `pinOnlyCapacity` above. */
+  pinnedHeadingOverflow?: { layoutId: string }
 }
 
 // ── helpers ──
@@ -266,32 +272,37 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
     }
 
     // heading width-limit hard error (quote-stage wave, task T2; made
-    // metadata-driven in the T2 fix round): fires for *any* pinned layout
-    // that declares `headingFit` (`registry.ts`'s
+    // metadata-driven in the T2 fix round; code renamed from
+    // `quote_stage_heading_overflow` to `pinned_heading_overflow` in task T3
+    // to match — the check itself was already metadata-driven, the old code
+    // name was the only thing still naming quote-stage specifically): fires
+    // for *any* pinned layout that declares `headingFit` (`registry.ts`'s
     // `LayoutDefinition.headingFit` — see that field's own doc comment for
     // the full rationale and why it replaces a hardcoded archetype-id
     // check), running the exact same `fitHeadingLines` call the layout's
     // own archetype file uses to render — one declared source, not two
     // hand-mirrored copies. Only `quote-stage` sets `headingFit` as of this
-    // fix, so behavior is unchanged: unlike an ordinary archetype's heading
+    // task, so behavior is unchanged: unlike an ordinary archetype's heading
     // — decorative relative to its own body content, hence `long_heading`'s
     // warn-only posture above (see that block's own comment on why a
     // *general* per-archetype minPt-bucket error derivation was evaluated
-    // and deferred, not overlooked) — quote-stage's heading *is* the page's
-    // entire content (裁定 3: heading as the page's oversized main visual).
-    // `fitHeadingLines` truncating even at its own `minPt` floor is real,
-    // silent content loss, the same class `bullet_item_overflow` below
-    // already hard-blocks for bullets. A future `pinOnly` member can opt
-    // into this same error tier simply by declaring its own `headingFit` —
-    // no change needed here.
+    // and deferred, not overlooked) — a `headingFit`-declaring pinned
+    // layout's heading *is* the page's entire content (裁定 3: heading as
+    // the page's oversized main visual, quote-stage being the first such
+    // member). `fitHeadingLines` truncating even at its own `minPt` floor is
+    // real, silent content loss, the same class `bullet_item_overflow`
+    // below already hard-blocks for bullets. A future `pinOnly` member can
+    // opt into this same error tier simply by declaring its own
+    // `headingFit` — no change needed here.
     if (pinnedDef?.headingFit && slide.heading) {
       const fit = fitHeadingLines(slide.heading, pinnedDef.headingFit)
       if (fit.truncated) {
         issues.push({
           slide: index,
           severity: "error",
-          code: "quote_stage_heading_overflow",
-          message: `钉住的 quote-stage 金句正文过长，缩小到最低字号仍会被截断——请精简金句或拆分为多页`,
+          code: "pinned_heading_overflow",
+          message: `钉住的版式 "${slide.layout}" 正文过长，缩小到最低字号仍会被截断——请精简正文或拆分为多页`,
+          pinnedHeadingOverflow: { layoutId: slide.layout },
         })
       }
     }

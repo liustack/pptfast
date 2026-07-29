@@ -363,7 +363,7 @@ describe("checkIrQuality", () => {
   })
 
   // ── quote-stage heading width-limit hard error (quote-stage wave, task T2) ──
-  describe("quote_stage_heading_overflow (quote-stage only — never fires for any other archetype's heading)", () => {
+  describe("pinned_heading_overflow (quote-stage only — never fires for any other archetype's heading)", () => {
     const CJK_LONG =
       "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
     const MIXED_LONG =
@@ -373,14 +373,14 @@ describe("checkIrQuality", () => {
       const ir = makeIR([
         { type: "content", heading: "简洁是最终的复杂", layout: "quote-stage", components: [] },
       ])
-      expect(codes(checkIrQuality(ir))).not.toContain("quote_stage_heading_overflow")
+      expect(codes(checkIrQuality(ir))).not.toContain("pinned_heading_overflow")
     })
 
     it("a single CJK_LONG heading still fits within quote-stage's own budget (maxLines 4 gives real room) and does not fire", () => {
       const ir = makeIR([
         { type: "content", heading: CJK_LONG, layout: "quote-stage", components: [] },
       ])
-      expect(codes(checkIrQuality(ir))).not.toContain("quote_stage_heading_overflow")
+      expect(codes(checkIrQuality(ir))).not.toContain("pinned_heading_overflow")
     })
 
     it("a pathologically long CJK+mixed heading (2x CJK_LONG + MIXED_LONG) that still truncates at minPt is a hard error", () => {
@@ -393,8 +393,8 @@ describe("checkIrQuality", () => {
         },
       ])
       const issues = checkIrQuality(ir)
-      expect(codes(issues)).toContain("quote_stage_heading_overflow")
-      expect(issues.find((i) => i.code === "quote_stage_heading_overflow")!.severity).toBe("error")
+      expect(codes(issues)).toContain("pinned_heading_overflow")
+      expect(issues.find((i) => i.code === "pinned_heading_overflow")!.severity).toBe("error")
     })
 
     it("a pathologically long MIXED_LONG heading (CJK + Latin/digit mix) that still truncates at minPt is a hard error", () => {
@@ -407,7 +407,7 @@ describe("checkIrQuality", () => {
         },
       ])
       const issues = checkIrQuality(ir)
-      expect(codes(issues)).toContain("quote_stage_heading_overflow")
+      expect(codes(issues)).toContain("pinned_heading_overflow")
     })
 
     it("the exact same pathologically long heading on a non-quote-stage archetype never fires this code (scope-distinct from long_heading's warn above)", () => {
@@ -415,7 +415,7 @@ describe("checkIrQuality", () => {
         { type: "content", heading: `${CJK_LONG}${CJK_LONG}`, components: [] },
       ])
       const issues = checkIrQuality(ir)
-      expect(codes(issues)).not.toContain("quote_stage_heading_overflow")
+      expect(codes(issues)).not.toContain("pinned_heading_overflow")
       // long_heading (warn, char-count based) may or may not fire depending
       // on CAPACITY.headingMaxChars — irrelevant to this test's own claim.
     })

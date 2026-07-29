@@ -1225,7 +1225,7 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   // fallback keeps every element inside its own declared box even when the
   // *content* gets cut, which is exactly what this baseline's "zero
   // findings" bar checks (a truncated-but-in-bounds render is not what this
-  // gate flags — see `ir-quality.ts`'s own `quote_stage_heading_overflow`
+  // gate flags — see `ir-quality.ts`'s own `pinned_heading_overflow`
   // hard error for the separate, validate-level "this heading is too long,
   // period" gate this deck deliberately does NOT go through, since this
   // file's own header established these fixtures render directly, bypassing
