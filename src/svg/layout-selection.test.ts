@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { createElement } from "react"
 import { render } from "@testing-library/react"
 import type { PptxIR, Slide } from "@/ir"
 import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
 import { FullSlideSvg } from "./full-slide-svg"
-import { getLayout, layoutsForSlideType } from "./layouts/registry"
+import { getLayout, LAYOUT_REGISTRY, layoutsForSlideType } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
-import { __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS } from "../themes/definitions"
+import { __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
 import {
   resolveArchetypeId,
   resolveEffectiveLayoutBodyCapacity,
@@ -1259,6 +1259,63 @@ describe("render parity with FullSlideSvg", () => {
         const rendered = renderedArchetypeId(ir, slide, 0)
         expect(rendered, `seed ${seed}: rendered "${rendered}" vs. validated "${validated}"`).toBe(validated)
       }
+    })
+  })
+
+  // ── pinOnly layout tier (quote-stage wave, task T1 —
+  // `.issues/2026-07-28-quote-stage/plan.md`'s 裁定 1): a synthetic
+  // `LAYOUT_REGISTRY` entry, injected/removed around each test the same way
+  // `registerTheme`'s own fixtures are — real `getLayout(id)` lookups are
+  // needed here (unlike `registry.test.ts`'s pure `excludePinOnly` unit
+  // tests) because both the candidate-pool filter *and* the pin
+  // short-circuit read the registry directly, and an unregistered id would
+  // already be dropped by the pool's own `!== undefined` filter regardless
+  // of `pinOnly` — indistinguishable from the exclusion this suite means to
+  // prove.
+  describe("pinOnly layout tier: excluded from sampling, pin path unaffected", () => {
+    const PIN_ONLY_TEST_ID = "test-pin-only-archetype"
+
+    beforeEach(() => {
+      LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = {
+        id: PIN_ONLY_TEST_ID,
+        kind: "archetype",
+        slideTypes: ["content"],
+        slots: [],
+        pinOnly: true,
+      }
+    })
+    afterEach(() => {
+      delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
+    })
+
+    it("never auto-selected across a seed spread, even when a curated layouts set (as a registerTheme-registered custom theme would legally build) lists it", () => {
+      const layouts: ThemeDefinition["layouts"] = {
+        cover: THEME_DEFINITIONS.consulting.layouts.cover,
+        chapter: THEME_DEFINITIONS.consulting.layouts.chapter,
+        content: [PIN_ONLY_TEST_ID, "two-column", "narrow-column"],
+        ending: THEME_DEFINITIONS.consulting.layouts.ending,
+      }
+      for (let seed = 0; seed < 60; seed++) {
+        const picked = resolveArchetypeId("content", layouts, seed, String(seed), undefined, "briefing", null)
+        expect(picked, `seed ${seed} picked the pinOnly id`).not.toBe(PIN_ONLY_TEST_ID)
+      }
+    })
+
+    it("a pool containing only the pinOnly id resolves to null (defensive empty-pool fallback), not to the pinOnly id itself", () => {
+      const layouts: ThemeDefinition["layouts"] = {
+        cover: THEME_DEFINITIONS.consulting.layouts.cover,
+        chapter: THEME_DEFINITIONS.consulting.layouts.chapter,
+        content: [PIN_ONLY_TEST_ID],
+        ending: THEME_DEFINITIONS.consulting.layouts.ending,
+      }
+      expect(resolveArchetypeId("content", layouts, 1, "0", undefined, "briefing", null)).toBeNull()
+    })
+
+    it("an explicit pin naming the pinOnly id still resolves it (pin path untouched — pinOnly means 'only this road reaches it')", () => {
+      const layouts: ThemeDefinition["layouts"] = THEME_DEFINITIONS.consulting.layouts
+      expect(
+        resolveArchetypeId("content", layouts, 1, "0", PIN_ONLY_TEST_ID, "briefing", null),
+      ).toBe(PIN_ONLY_TEST_ID)
     })
   })
 })

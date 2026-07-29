@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
 import { measureTextUnits } from "@/lib/svg-text-layout"
 import { makeSolidRegionPngDataUri } from "@/platform/test-png-fixture"
 import { formatIssues, formatWarnings, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
 import { ENUM_ERROR_MESSAGE_MAX_LENGTH } from "./ir/schema-error-hints"
 import { CAPACITY } from "./svg/audit/capacity"
+import { LAYOUT_REGISTRY } from "./svg/layouts/registry"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 /** A real, minimal, decodable PNG data URI — every "byte-inertness" and
@@ -173,6 +174,41 @@ describe("validateIr", () => {
         ],
       })
       expect(v.ok).toBe(true)
+    })
+
+    // quote-stage wave, task T1 (`.issues/2026-07-28-quote-stage/plan.md`'s
+    // 裁定 1, TDD assertion (d)): `checkLayoutApplicability` only ever checks
+    // registry existence + `slideTypes` — it must keep passing a pinOnly
+    // layout, since pin-only means "only an explicit pin reaches it", and
+    // this *is* that explicit pin. A synthetic `LAYOUT_REGISTRY` entry
+    // stands in for the not-yet-built `quote-stage` (T2's job) — this task
+    // is the mechanism only.
+    describe("pinOnly layout: explicit pin still passes applicability", () => {
+      const PIN_ONLY_TEST_ID = "test-pin-only-archetype"
+
+      beforeEach(() => {
+        LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = {
+          id: PIN_ONLY_TEST_ID,
+          kind: "archetype",
+          slideTypes: ["content"],
+          slots: [],
+          pinOnly: true,
+        }
+      })
+      afterEach(() => {
+        delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
+      })
+
+      it("accepts a content slide explicitly pinning a pinOnly archetype layout id", () => {
+        const v = validateIr({
+          ...raw,
+          slides: [
+            raw.slides[0],
+            { type: "content", heading: "Quote", layout: PIN_ONLY_TEST_ID, components: [] },
+          ],
+        })
+        expect(v.ok).toBe(true)
+      })
     })
   })
 })

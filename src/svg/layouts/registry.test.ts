@@ -5,6 +5,7 @@ import { CHAPTER_ARCHETYPES } from "../archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../archetypes/index-ending"
 import {
+  excludePinOnly,
   filterByNarrativesOnly,
   getLayout,
   LAYOUT_REGISTRY,
@@ -233,6 +234,40 @@ describe("filterByNarrativesOnly (W4, spec §6 step 4's rare narratives_only har
   it("real LAYOUT_REGISTRY entries: none set narrativesOnly yet (mechanism lands ahead of any real consumer, W4 design decision 5)", () => {
     for (const def of Object.values(LAYOUT_REGISTRY)) {
       expect(def.narrativesOnly, `"${def.id}" unexpectedly sets narrativesOnly`).toBeUndefined()
+    }
+  })
+})
+
+describe("excludePinOnly (quote-stage wave, task T1's pinOnly tier)", () => {
+  // Synthetic fixtures, not real registry entries — same "standalone pure
+  // function" testability `filterByNarrativesOnly`'s own describe block
+  // above already established for its own field.
+  function synthetic(id: string, pinOnly?: boolean): LayoutDefinition {
+    return { id, kind: "archetype", slideTypes: ["content"], slots: [], pinOnly }
+  }
+
+  it("keeps a layout with pinOnly unset", () => {
+    const defs = [synthetic("a")]
+    expect(excludePinOnly(defs)).toEqual(defs)
+  })
+
+  it("keeps a layout with pinOnly: false", () => {
+    const defs = [synthetic("a", false)]
+    expect(excludePinOnly(defs)).toEqual(defs)
+  })
+
+  it("drops a layout with pinOnly: true", () => {
+    expect(excludePinOnly([synthetic("a", true)])).toEqual([])
+  })
+
+  it("filters a mixed pool: keeps unset/false members, drops pinOnly members, preserves order", () => {
+    const defs = [synthetic("unset"), synthetic("not-pinned", false), synthetic("pinned", true), synthetic("also-kept")]
+    expect(excludePinOnly(defs).map((d) => d.id)).toEqual(["unset", "not-pinned", "also-kept"])
+  })
+
+  it("real LAYOUT_REGISTRY entries: none set pinOnly yet (mechanism lands ahead of any real consumer, quote-stage wave task T1 — mirrors narrativesOnly's own W4 design decision 5)", () => {
+    for (const def of Object.values(LAYOUT_REGISTRY)) {
+      expect(def.pinOnly, `"${def.id}" unexpectedly sets pinOnly`).toBeUndefined()
     }
   })
 })

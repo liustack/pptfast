@@ -202,6 +202,44 @@ export interface LayoutDefinition {
    * pure filter this field feeds.
    */
   narrativesOnly?: readonly Strategy[]
+  /**
+   * The pin-only tier (quote-stage wave, task T1 —
+   * `.issues/2026-07-28-quote-stage/plan.md`'s 裁定 1): marks a layout as
+   * reachable **only** through an explicit `slide.layout` pin, never through
+   * automatic selection. This is for genuinely low-capacity, content-blind-
+   * selection-hostile layouts (the motivating case: `quote-stage`, a
+   * single-heading "金句" page whose capacity-1 body would starve or
+   * silently drop content if a normal auto-pick pool ever sampled it for an
+   * ordinary multi-component slide) — the architecture ruling that "auto-
+   * selection stays content-blind" holds exactly *because* such layouts opt
+   * out of sampling entirely, rather than selection growing content-aware
+   * logic to route around them.
+   *
+   * Enforced at exactly two candidate-pool construction points — never at
+   * the pin path itself, which is the whole point of the tier ("pin-only"
+   * means *only* that road reaches it):
+   * - `../themes/definitions.ts`'s `fullArchetypeSet` (every built-in
+   *   theme's default pool, since it defaults to the full registered-
+   *   archetype set)
+   * - `../layout-selection.ts`'s `resolveArchetypeId` candidate-pool
+   *   construction (defensive: `registerTheme` legally allows a custom
+   *   theme to list a pinOnly id in its own curated `layouts` set — that
+   *   registration-time check validates existence/kind/slideTypes, not
+   *   this flag — so sampling itself must re-exclude it here too)
+   *
+   * `resolveArchetypeId`'s `requestedLayout` short-circuit and
+   * `checkLayoutApplicability` (`../../validate-core.ts`) both stay
+   * unmodified by this flag: an explicit pin bypasses selection
+   * unconditionally regardless of `pinOnly`, and applicability only ever
+   * checks registry existence + `slideTypes`, never this tier.
+   *
+   * `undefined` (every built-in layout as of this task — the mechanism
+   * lands ahead of its first real consumer, `quote-stage`, T2's job) means
+   * ordinarily auto-selectable, same "no real member yet, byte-identical
+   * selection" posture `narrativesOnly` launched with (W4 design decision
+   * 5). See {@link excludePinOnly} for the pure filter this field feeds.
+   */
+  pinOnly?: boolean
 }
 
 /**
@@ -216,6 +254,20 @@ export function filterByNarrativesOnly<T extends { narrativesOnly?: readonly Str
   strategy: Strategy,
 ): T[] {
   return defs.filter((def) => def.narrativesOnly === undefined || def.narrativesOnly.includes(strategy))
+}
+
+/**
+ * Pure `pinOnly` filter (quote-stage wave, task T1 — see
+ * {@link LayoutDefinition.pinOnly}'s own doc comment for the full tier
+ * semantics): drop every layout whose `pinOnly` is `true`, keep the rest.
+ * Generic over any `pinOnly`-shaped record, same synthetic-fixture-testable
+ * shape {@link filterByNarrativesOnly} already established. Two real call
+ * sites: `../themes/definitions.ts`'s `fullArchetypeSet` and
+ * `../layout-selection.ts`'s `resolveArchetypeId` candidate-pool
+ * construction — see the field doc comment for why both are needed.
+ */
+export function excludePinOnly<T extends { pinOnly?: boolean }>(defs: readonly T[]): T[] {
+  return defs.filter((def) => !def.pinOnly)
 }
 
 // ─────────────────────────────────────────────────────────────────────────

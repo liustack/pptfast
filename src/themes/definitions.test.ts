@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId } from "./index"
 import {
+  __fullArchetypeSet,
   __resetRegisteredThemes,
   assertContrastFloor,
   getInstalledThemeIds,
@@ -16,7 +17,7 @@ import { CHAPTER_ARCHETYPES } from "../svg/archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../svg/archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../svg/archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "../svg/motifs"
-import { layoutsForSlideType } from "../svg/layouts/registry"
+import { LAYOUT_REGISTRY, layoutsForSlideType, type LayoutDefinition } from "../svg/layouts/registry"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 
 // 四页型注册表按 id 分发用的宽字符串索引视图（PAGE_ARCHETYPE_REGISTRIES 在
@@ -741,5 +742,62 @@ describe("getThemeDefinition", () => {
 
   it("matches THEME_DEFINITIONS for a builtin id", () => {
     expect(getThemeDefinition("tech")).toBe(THEME_DEFINITIONS.tech)
+  })
+})
+
+// ── pinOnly layout tier (quote-stage wave, task T1 —
+// `.issues/2026-07-28-quote-stage/plan.md`'s 裁定 1) ──────────────────────
+//
+// `fullArchetypeSet` (the module-private function `__fullArchetypeSet`
+// re-exports under this file's own test-only convention) only ever snapshots
+// its result once, at module load (`FULL_LAYOUTS`), long before any test
+// could mutate `LAYOUT_REGISTRY` — so this suite injects a synthetic
+// pinOnly-tagged registry entry directly and calls `__fullArchetypeSet`
+// itself, rather than reading `THEME_DEFINITIONS`/`FULL_LAYOUTS` (both frozen
+// at import time).
+
+const PIN_ONLY_TEST_ID = "test-pin-only-archetype"
+
+function pinOnlyTestLayout(): LayoutDefinition {
+  return { id: PIN_ONLY_TEST_ID, kind: "archetype", slideTypes: ["content"], slots: [], pinOnly: true }
+}
+
+describe("pinOnly layout tier: fullArchetypeSet exclusion", () => {
+  beforeEach(() => {
+    LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = pinOnlyTestLayout()
+  })
+  afterEach(() => {
+    delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
+  })
+
+  it("a pinOnly archetype never appears in fullArchetypeSet for its slide type", () => {
+    expect(__fullArchetypeSet("content")).not.toContain(PIN_ONLY_TEST_ID)
+  })
+
+  it("a plain (non-pinOnly) archetype registered the same way does appear — proves the exclusion is pinOnly-specific, not a generic new-id miss", () => {
+    const plainId = "test-plain-archetype"
+    LAYOUT_REGISTRY[plainId] = { id: plainId, kind: "archetype", slideTypes: ["content"], slots: [] }
+    try {
+      expect(__fullArchetypeSet("content")).toContain(plainId)
+    } finally {
+      delete LAYOUT_REGISTRY[plainId]
+    }
+  })
+})
+
+describe("pinOnly layout tier: registerTheme still legally allows curating a pinOnly id", () => {
+  beforeEach(() => {
+    LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = pinOnlyTestLayout()
+  })
+  afterEach(() => {
+    delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
+    __resetRegisteredThemes()
+  })
+
+  it("does not throw when a custom theme curates a pinOnly id into its own layouts set (registerTheme validates existence/kind/slideTypes, never pinOnly — sampling itself excludes it instead, see layout-selection.test.ts)", () => {
+    expect(() =>
+      registerTheme(testTheme({ id: "acme-pin-only", layouts: { content: [PIN_ONLY_TEST_ID, "two-column"] } })),
+    ).not.toThrow()
+    expect(getThemeDefinition("acme-pin-only").layouts.content).toContain(PIN_ONLY_TEST_ID)
   })
 })
