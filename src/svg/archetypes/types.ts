@@ -61,3 +61,8 @@ export type ContentArchetypeId =
   // over an ordinary body band — see the file's own composition-sketch
   // header.
   | "split-band"
+  // quote-stage wave, task T2 (content-pool expansion, 12 -> 13): the
+  // pool's first `pinOnly` member (registry.ts's `LayoutDefinition.pinOnly`)
+  // — a single-heading "金句" page, capacity-1 body — see the file's own
+  // composition-sketch header.
+  | "quote-stage"

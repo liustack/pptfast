@@ -1,6 +1,6 @@
 /**
  * Layout registry (W2 task 1, spec §3/§6/§8): an explicit, statically-checked
- * description of what the render chain's 35 archetype components + 4
+ * description of what the render chain's 36 archetype components + 4
  * page-level image takeovers already draw. This is a metadata layer only —
  * it formalizes today's implicit page structure (archetype JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
@@ -60,10 +60,12 @@
 // `resolveArchetypeId`).
 import type { STRATEGY_VALUES } from "@/ir/narrative-values"
 
-// ── layoutDef imports (src domain reorg wave 1, task T1d): 35 archetype
+// ── layoutDef imports (src domain reorg wave 1, task T1d): 36 archetype
 // files (one `layoutDef` each) + image-pages.tsx's 4 uniquely-named takeover
-// exports — 39 bindings total (content-archetype expansion wave grew this
-// from 33/37 to 35/39 — image-lead-split + split-band, tasks T1/T2).
+// exports — 40 bindings total (content-archetype expansion wave grew this
+// from 33/37 to 35/39 — image-lead-split + split-band, tasks T1/T2; the
+// quote-stage wave grew it once more, 35/39 to 36/40 — quote-stage, T2,
+// pptfast's first `pinOnly` member, see {@link LayoutDefinition.pinOnly}).
 // Grouped by family, each group in the exact
 // order its former literal Record held (order feeds `layoutsForSlideType`'s
 // `Object.values` walk below, which feeds `theme.layouts[type]`'s array
@@ -109,6 +111,7 @@ import { layoutDef as contentAsymmetricTriptych } from "../archetypes/content-as
 import { layoutDef as contentQuietFrame } from "../archetypes/content-quiet-frame"
 import { layoutDef as contentImageLeadSplit } from "../archetypes/content-image-lead-split"
 import { layoutDef as contentSplitBand } from "../archetypes/content-split-band"
+import { layoutDef as contentQuoteStage } from "../archetypes/content-quote-stage"
 
 import {
   imageSplitLayoutDef,
@@ -318,12 +321,17 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Content archetypes (12, content-archetype expansion wave task T2: 11 -> 12
-// — split-band, the pool's first *horizontal* split (a full-bleed header
-// band over an ordinary body band) — see that file's own composition-sketch
-// header for the capacity measurement that chose its ratio; task T1 grew
-// this same family 10 -> 11 just before it — image-lead-split, the first
-// archetype whose column split is genuinely
+// Content archetypes (13, quote-stage wave task T2: 12 -> 13 — quote-stage,
+// pptfast's first `pinOnly` member (see {@link LayoutDefinition.pinOnly}):
+// reachable only through an explicit `slide.layout` pin, never auto-picked,
+// so it doesn't grow any theme's curated pool — "12 auto-selectable + 1
+// pin-only", not a flat +1 (see that file's own composition-sketch header);
+// content-archetype expansion wave task T2 grew the auto-selectable count
+// 11 -> 12 just before it — split-band, the pool's first *horizontal* split
+// (a full-bleed header band over an ordinary body band) — see that file's
+// own composition-sketch header for the capacity measurement that chose its
+// ratio; task T1 grew this same family 10 -> 11 just before it —
+// image-lead-split, the first archetype whose column split is genuinely
 // unequal — see that file's own composition-sketch header; P1 variety wave
 // task 4 grew this same family 7 -> 10 before it, content having been the
 // pool's thinnest page type, the C-investigation's own finding, dr/
@@ -398,12 +406,26 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     number — no `audit/capacity.ts` floor needs tightening either, by
 //     the same "re-verified, not assumed" standard image-lead-split's own
 //     entry above already established for a *width* floor.
+//   - quote-stage (quote-stage wave, task T2): body 1 — not a flat-default
+//     single-stack number like every entry above. This is the pool's first
+//     `pinOnly` member (see {@link LayoutDefinition.pinOnly}): the body
+//     slot is a small attribution/footnote *annotation* position below an
+//     oversized heading, not a "承重" content region — 1 is a deliberate,
+//     narrow authoring contract (at most one short attribution component),
+//     not a geometric ceiling derived from column width like the other
+//     entries' 4/6. Enforced two ways: `ir-quality.ts`'s `density` warn
+//     (min(pacing budget, this capacity) — same generic gate every entry
+//     here already feeds) *and*, because this is a pinned-only layout, a
+//     dedicated hard *error* (`pin_only_over_capacity`, quote-stage wave
+//     T2's own 裁定 2) — an explicit pin already declares author intent, so
+//     silently dropping content past capacity 1 would be real content loss,
+//     not an editorial nudge.
 //
 // This essay is what every content archetype's own body-slot capacity
 // comment means by "see registry.ts's CONTENT_LAYOUTS header for the
 // derivation" (src domain reorg wave 1, task T1d — reworded from the
 // pre-migration "see file header derivation" once each entry moved into its
-// own archetype file). It stays here, comparative across all 10, rather
+// own archetype file). It stays here, comparative across all 13, rather
 // than traveling with any one entry.
 // ─────────────────────────────────────────────────────────────────────────
 const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
@@ -419,6 +441,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
   [contentQuietFrame.id]: contentQuietFrame,
   [contentImageLeadSplit.id]: contentImageLeadSplit,
   [contentSplitBand.id]: contentSplitBand,
+  [contentQuoteStage.id]: contentQuoteStage,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -442,7 +465,7 @@ const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 35 archetype layouts + 4 takeover layouts, keyed by id. */
+/** All 36 archetype layouts + 4 takeover layouts, keyed by id. */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {
   ...COVER_LAYOUTS,
   ...CHAPTER_LAYOUTS,

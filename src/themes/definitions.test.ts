@@ -17,7 +17,7 @@ import { CHAPTER_ARCHETYPES } from "../svg/archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../svg/archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../svg/archetypes/index-ending"
 import { MOTIF_ARCHETYPES } from "../svg/motifs"
-import { LAYOUT_REGISTRY, layoutsForSlideType, type LayoutDefinition } from "../svg/layouts/registry"
+import { LAYOUT_REGISTRY, layoutsForSlideType, excludePinOnly, type LayoutDefinition } from "../svg/layouts/registry"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 
 // 四页型注册表按 id 分发用的宽字符串索引视图（PAGE_ARCHETYPE_REGISTRIES 在
@@ -396,15 +396,19 @@ describe("registerTheme", () => {
   // defaulting to the full registered-archetype set (spec §3 "缺省 = 全集")
   // ──────────────────────────────────────────────────────────────────────
 
-  it("omitting layouts entirely defaults every slide type to its full registered-archetype set", () => {
+  it("omitting layouts entirely defaults every slide type to its full registered-archetype set, minus any pinOnly member (quote-stage wave, task T1's fullArchetypeSet filter — now exercised by a real member, task T2's quote-stage)", () => {
     registerTheme(testTheme({ layouts: undefined }))
     const def = getThemeDefinition("acme")
     for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
-      const expected = layoutsForSlideType(slideType)
-        .filter((l) => l.kind === "archetype")
-        .map((l) => l.id)
+      const expected = excludePinOnly(layoutsForSlideType(slideType).filter((l) => l.kind === "archetype")).map(
+        (l) => l.id,
+      )
       expect(def.layouts[slideType]).toEqual(expected)
     }
+    // Explicit, name-level lock (not just "the filtered set matches"): the
+    // default content pool must not silently regain quote-stage if the
+    // filter above ever broke.
+    expect(def.layouts.content).not.toContain("quote-stage")
   })
 
   it("curating only one slide type leaves the other three at their full-set default (explicit narrowing coexists with the new default)", () => {
