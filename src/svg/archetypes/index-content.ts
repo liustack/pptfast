@@ -11,6 +11,7 @@ import { AsymmetricTriptychContent } from "./content-asymmetric-triptych"
 import { QuietFrameContent } from "./content-quiet-frame"
 import { ImageLeadSplitContent } from "./content-image-lead-split"
 import { SplitBandContent } from "./content-split-band"
+import { QuoteStageContent } from "./content-quote-stage"
 
 export type { ContentArchetype, ContentArchetypeId } from "./types"
 
@@ -23,6 +24,10 @@ export type { ContentArchetype, ContentArchetypeId } from "./types"
 // image-lead-split（见该文件自己的构图注释）。
 // Content-archetype expansion wave, task T2：content 池 11 -> 12，新增
 // split-band（见该文件自己的构图注释）。
+// quote-stage wave, task T2：content 池 12 -> 13，新增 quote-stage——但它是
+// `pinOnly`（见 registry.ts 的 `LayoutDefinition.pinOnly`），不进任何主题的
+// 自动选型池，"12 auto-selectable + 1 pin-only" 而不是简单的 "13"（SKILL/docs
+// 措辞由 T3 收尾）。
 export const CONTENT_ARCHETYPES: Record<ContentArchetypeId, ContentArchetype> = {
   "narrow-column": NarrowColumnContent,
   "two-column": TwoColumnContent,
@@ -36,4 +41,5 @@ export const CONTENT_ARCHETYPES: Record<ContentArchetypeId, ContentArchetype> = 
   "quiet-frame": QuietFrameContent,
   "image-lead-split": ImageLeadSplitContent,
   "split-band": SplitBandContent,
+  "quote-stage": QuoteStageContent,
 }

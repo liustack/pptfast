@@ -146,8 +146,8 @@ function skeletonKey(skeleton: readonly RegionTuple[]): string {
 const ALL_CONTENT_IDS = Object.keys(CONTENT_ARCHETYPES) as ContentArchetypeId[]
 
 describe("content archetype skeleton diversity (content-archetype expansion wave, T3 acceptance metric)", () => {
-  it("covers all 12 registered content archetypes (sanity — this metric is meaningless over a stale/partial list)", () => {
-    expect(ALL_CONTENT_IDS).toHaveLength(12)
+  it("covers all 13 registered content archetypes (sanity — this metric is meaningless over a stale/partial list)", () => {
+    expect(ALL_CONTENT_IDS).toHaveLength(13)
   })
 
   it("the full-region skeleton set resolves to >= 6 distinct classes across the pool (was ~4 under the rejected first-box-only reading)", () => {

@@ -310,6 +310,117 @@ describe("checkIrQuality", () => {
     })
   })
 
+  // ── pin-only over-capacity hard error (quote-stage wave, task T2, 裁定 2) ──
+  describe("pin_only_over_capacity (pinOnly layouts only — a hard error, scope-distinct from the density warn above)", () => {
+    it("pinning quote-stage (capacity 1) with 2 components is a hard error", () => {
+      const ir = makeIR([
+        { type: "content", heading: "金句", layout: "quote-stage", components: paragraphs(2) },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("pin_only_over_capacity")
+      const found = issues.find((i) => i.code === "pin_only_over_capacity")!
+      expect(found.severity).toBe("error")
+      expect(found.pinOnlyCapacity).toEqual({ layoutId: "quote-stage", capacity: 1, componentCount: 2 })
+    })
+
+    it("pinning quote-stage with exactly 1 component (at capacity) passes clean", () => {
+      const ir = makeIR([
+        { type: "content", heading: "金句", layout: "quote-stage", components: paragraphs(1) },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("pin_only_over_capacity")
+    })
+
+    it("pinning quote-stage with 0 components (a pure quote) passes clean", () => {
+      const ir = makeIR([
+        { type: "content", heading: "金句", layout: "quote-stage", components: [] },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("pin_only_over_capacity")
+    })
+
+    it("regression: pinning an ordinary (non-pinOnly) layout over its own declared capacity still only warns density, never this new error", () => {
+      // two-column's body capacity is 4 (registry.ts) — 5 components pins it
+      // over capacity, same shape as quote-stage's own over-capacity case
+      // above, but two-column is *not* pinOnly, so this must stay exactly
+      // today's behavior: a `density` warn, `ok:true`-equivalent (checked at
+      // the checkIrQuality level via severity), never the new hard error.
+      const ir = makeIR([
+        { type: "content", heading: "标题", layout: "two-column", components: paragraphs(5) },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("density")
+      expect(issues.find((i) => i.code === "density")!.severity).toBe("warn")
+      expect(codes(issues)).not.toContain("pin_only_over_capacity")
+    })
+
+    it("regression: pinning bento-panel (capacity 6, not pinOnly) over its own capacity still only warns density", () => {
+      const ir = makeIR([
+        { type: "content", heading: "标题", layout: "bento-panel", components: paragraphs(7) },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("density")
+      expect(codes(issues)).not.toContain("pin_only_over_capacity")
+    })
+  })
+
+  // ── quote-stage heading width-limit hard error (quote-stage wave, task T2) ──
+  describe("pinned_heading_overflow (quote-stage only — never fires for any other archetype's heading)", () => {
+    const CJK_LONG =
+      "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
+    const MIXED_LONG =
+      "基于 Kubernetes Operator 的 StatefulSet 滚动升级与 PodDisruptionBudget 联动策略 v2.3.1-rc.4 说明"
+
+    it("an ordinary-length heading fits comfortably and never fires", () => {
+      const ir = makeIR([
+        { type: "content", heading: "简洁是最终的复杂", layout: "quote-stage", components: [] },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("pinned_heading_overflow")
+    })
+
+    it("a single CJK_LONG heading still fits within quote-stage's own budget (maxLines 4 gives real room) and does not fire", () => {
+      const ir = makeIR([
+        { type: "content", heading: CJK_LONG, layout: "quote-stage", components: [] },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("pinned_heading_overflow")
+    })
+
+    it("a pathologically long CJK+mixed heading (2x CJK_LONG + MIXED_LONG) that still truncates at minPt is a hard error", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: `${CJK_LONG}${CJK_LONG}${MIXED_LONG}`,
+          layout: "quote-stage",
+          components: [],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("pinned_heading_overflow")
+      expect(issues.find((i) => i.code === "pinned_heading_overflow")!.severity).toBe("error")
+    })
+
+    it("a pathologically long MIXED_LONG heading (CJK + Latin/digit mix) that still truncates at minPt is a hard error", () => {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: `${MIXED_LONG}${MIXED_LONG}${MIXED_LONG}`,
+          layout: "quote-stage",
+          components: [],
+        },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("pinned_heading_overflow")
+    })
+
+    it("the exact same pathologically long heading on a non-quote-stage archetype never fires this code (scope-distinct from long_heading's warn above)", () => {
+      const ir = makeIR([
+        { type: "content", heading: `${CJK_LONG}${CJK_LONG}`, components: [] },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).not.toContain("pinned_heading_overflow")
+      // long_heading (warn, char-count based) may or may not fire depending
+      // on CAPACITY.headingMaxChars — irrelevant to this test's own claim.
+    })
+  })
+
   // ── bullets (W3 task 3: reads PACING_BUDGETS[pacing].bullets instead of the old flat CAPACITY.bullets) ──
 
   describe("bullets gate matrix", () => {

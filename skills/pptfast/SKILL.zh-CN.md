@@ -71,7 +71,7 @@ pptfast assemble deck-dir/     # materializes deck.json — catches structural d
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`。
+把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见下文「Quote-stage」）。
 
 ### Phase 4 — 渲染
 
@@ -153,6 +153,10 @@ pptfast preview deck-dir/ -o preview/ --html
 在 `assets.images` 里统一声明图片，用 `asset_id` 引用——务必逐个核对 `asset_id` 拼写，写错 key 只会渲染出一个静默的占位符，不会报错。显式的 `layout` id 永远优先于 pptfast 的自动选型，否则自动选型会从该页型对应的 theme layout 集合里挑（默认是全部已注册版式，除非 theme 主动收窄）——对于以图片为核心的 slide，把 `layout` 设成某个 image takeover：`image-split`（半页图片 + 侧边文字，`image_side: left|right`）、`image-top`（顶部通版图片 + 下方文字分栏）、`image-bottom`（上方文字，下方图片）、`image-annotate`（居中图片 + 从前 4 条 bullets 取出的放射状标注）。**每个 image layout 都需要 `components` 里至少有一个 `image` component**——不论它在数组里的位置，pptfast 都会用找到的第一个作为图片来源，其余的 component 全部成为该 layout 的文字正文。
 
 给任何 `asset_id` 还没有真实文件的 `image` component 生成美术之前，先跑一遍 `pptfast asset-brief <target>`——它会真的渲染一遍 deck，报告每个图片位实际的渲染框（不是版式的名义槽位尺寸）、带安全区说明的裁切模式、建议的生成像素、主题色板，以及一段可直接粘贴的提示词。宽高比和色调对上了，生成的图片摆上去才会显得是设计好的，而不是被拉伸、裁错或跑色。
+
+### Quote-stage（金句页）
+
+`quote-stage` 是一个 pin-only 版式：它从不出现在自动选型里，只能通过在 content 页面显式设置 `layout: "quote-stage"` 来钉住使用。用它来承载真正的论断或金句时刻——一句简短有力的标题作为整页唯一的主视觉，最多再配一个短小的附注 component（出处、署名，或一句补充）。绝不要把它钉在信息密集的页面上：它声明的容量是 1，超出这个数字 `validate` 会硬报错，不同于普通版式钉住超容量时只给警告。0 个 component 同样是合法的 quote-stage 页面——一句纯粹的金句不需要附注。
 
 ### 容量
 

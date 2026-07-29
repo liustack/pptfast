@@ -5,6 +5,7 @@ import { CHAPTER_ARCHETYPES } from "../archetypes/index-chapter"
 import { CONTENT_ARCHETYPES } from "../archetypes/index-content"
 import { ENDING_ARCHETYPES } from "../archetypes/index-ending"
 import {
+  excludePinOnly,
   filterByNarrativesOnly,
   getLayout,
   LAYOUT_REGISTRY,
@@ -42,7 +43,7 @@ describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
     }
   }
 
-  it("has exactly 35 archetype-kind entries, all traceable to one of the four real registries (content-archetype expansion wave task T2: content 11 -> 12)", () => {
+  it("has exactly 36 archetype-kind entries, all traceable to one of the four real registries (quote-stage wave task T2: content 12 -> 13)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_ARCHETYPES),
       ...Object.keys(CHAPTER_ARCHETYPES),
@@ -50,7 +51,7 @@ describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
       ...Object.keys(ENDING_ARCHETYPES),
     ])
     const archetypeEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(archetypeEntries).toHaveLength(35)
+    expect(archetypeEntries).toHaveLength(36)
     for (const entry of archetypeEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real archetype id`).toBe(true)
     }
@@ -153,12 +154,17 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
     expect(body?.capacity).toBe(6)
   })
 
-  it("the remaining 9 content archetypes' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3; P1 variety wave task 4's three new archetypes join at the same flat default — see registry.ts's CONTENT_LAYOUTS header comment)", () => {
+  it("the remaining content archetypes' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3; P1 variety wave task 4's three new archetypes join at the same flat default — see registry.ts's CONTENT_LAYOUTS header comment) — except bento-panel (6, its own grid capacity, asserted separately above) and quote-stage (1, a deliberate authoring contract, not a geometric flat-default — see that archetype's own registry.ts derivation comment, quote-stage wave task T2)", () => {
     for (const id of Object.keys(CONTENT_ARCHETYPES)) {
-      if (id === "bento-panel") continue
+      if (id === "bento-panel" || id === "quote-stage") continue
       const body = LAYOUT_REGISTRY[id].slots.find((s) => s.name === "body")
       expect(body?.capacity, `"${id}" body slot should carry capacity 4`).toBe(4)
     }
+  })
+
+  it("quote-stage's body slot carries capacity 1 (quote-stage wave, task T2 — a deliberate authoring contract for its single attribution/footnote annotation slot, not a geometric flat-default)", () => {
+    const body = LAYOUT_REGISTRY["quote-stage"].slots.find((s) => s.name === "body")
+    expect(body?.capacity).toBe(1)
   })
 })
 
@@ -187,11 +193,11 @@ describe("layoutsForSlideType", () => {
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 12 archetypes and the 4 takeovers (content-archetype expansion wave task T2: content 11 -> 12)", () => {
+  it("content includes both the 13 archetypes and the 4 takeovers (quote-stage wave task T2: content 12 -> 13 — quote-stage, pptfast's first pinOnly member; layoutsForSlideType reads slideTypes only, unaffected by pinOnly, which only gates auto-selection pool construction — see LayoutDefinition.pinOnly's own doc comment)", () => {
     const contents = layoutsForSlideType("content")
-    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(12)
+    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(13)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
-    expect(contents).toHaveLength(16)
+    expect(contents).toHaveLength(17)
   })
 })
 
@@ -233,6 +239,44 @@ describe("filterByNarrativesOnly (W4, spec §6 step 4's rare narratives_only har
   it("real LAYOUT_REGISTRY entries: none set narrativesOnly yet (mechanism lands ahead of any real consumer, W4 design decision 5)", () => {
     for (const def of Object.values(LAYOUT_REGISTRY)) {
       expect(def.narrativesOnly, `"${def.id}" unexpectedly sets narrativesOnly`).toBeUndefined()
+    }
+  })
+})
+
+describe("excludePinOnly (quote-stage wave, task T1's pinOnly tier)", () => {
+  // Synthetic fixtures, not real registry entries — same "standalone pure
+  // function" testability `filterByNarrativesOnly`'s own describe block
+  // above already established for its own field.
+  function synthetic(id: string, pinOnly?: boolean): LayoutDefinition {
+    return { id, kind: "archetype", slideTypes: ["content"], slots: [], pinOnly }
+  }
+
+  it("keeps a layout with pinOnly unset", () => {
+    const defs = [synthetic("a")]
+    expect(excludePinOnly(defs)).toEqual(defs)
+  })
+
+  it("keeps a layout with pinOnly: false", () => {
+    const defs = [synthetic("a", false)]
+    expect(excludePinOnly(defs)).toEqual(defs)
+  })
+
+  it("drops a layout with pinOnly: true", () => {
+    expect(excludePinOnly([synthetic("a", true)])).toEqual([])
+  })
+
+  it("filters a mixed pool: keeps unset/false members, drops pinOnly members, preserves order", () => {
+    const defs = [synthetic("unset"), synthetic("not-pinned", false), synthetic("pinned", true), synthetic("also-kept")]
+    expect(excludePinOnly(defs).map((d) => d.id)).toEqual(["unset", "not-pinned", "also-kept"])
+  })
+
+  it("real LAYOUT_REGISTRY entries: exactly quote-stage sets pinOnly (quote-stage wave, task T2 — its first real consumer; task T1 originally landed this mechanism ahead of any real member, mirroring narrativesOnly's own W4 design decision 5, but that posture only held until T2)", () => {
+    for (const def of Object.values(LAYOUT_REGISTRY)) {
+      if (def.id === "quote-stage") {
+        expect(def.pinOnly, `"${def.id}" should set pinOnly`).toBe(true)
+      } else {
+        expect(def.pinOnly, `"${def.id}" unexpectedly sets pinOnly`).toBeUndefined()
+      }
     }
   })
 })

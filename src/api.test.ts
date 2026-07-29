@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { PptxIRSchema } from "@/ir"
 import { measureTextUnits } from "@/lib/svg-text-layout"
 import { makeSolidRegionPngDataUri } from "@/platform/test-png-fixture"
 import { formatIssues, formatWarnings, generatePptx, irJsonSchema, listThemes, renderSlideSvg, validateIr } from "./api"
 import { ENUM_ERROR_MESSAGE_MAX_LENGTH } from "./ir/schema-error-hints"
 import { CAPACITY } from "./svg/audit/capacity"
+import { LAYOUT_REGISTRY } from "./svg/layouts/registry"
 import { __resetRegisteredThemes, registerTheme, type ThemeDefinition } from "./themes/definitions"
 
 /** A real, minimal, decodable PNG data URI — every "byte-inertness" and
@@ -173,6 +174,41 @@ describe("validateIr", () => {
         ],
       })
       expect(v.ok).toBe(true)
+    })
+
+    // quote-stage wave, task T1 (`.issues/2026-07-28-quote-stage/plan.md`'s
+    // 裁定 1, TDD assertion (d)): `checkLayoutApplicability` only ever checks
+    // registry existence + `slideTypes` — it must keep passing a pinOnly
+    // layout, since pin-only means "only an explicit pin reaches it", and
+    // this *is* that explicit pin. A synthetic `LAYOUT_REGISTRY` entry
+    // stands in for the not-yet-built `quote-stage` (T2's job) — this task
+    // is the mechanism only.
+    describe("pinOnly layout: explicit pin still passes applicability", () => {
+      const PIN_ONLY_TEST_ID = "test-pin-only-archetype"
+
+      beforeEach(() => {
+        LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = {
+          id: PIN_ONLY_TEST_ID,
+          kind: "archetype",
+          slideTypes: ["content"],
+          slots: [],
+          pinOnly: true,
+        }
+      })
+      afterEach(() => {
+        delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
+      })
+
+      it("accepts a content slide explicitly pinning a pinOnly archetype layout id", () => {
+        const v = validateIr({
+          ...raw,
+          slides: [
+            raw.slides[0],
+            { type: "content", heading: "Quote", layout: PIN_ONLY_TEST_ID, components: [] },
+          ],
+        })
+        expect(v.ok).toBe(true)
+      })
     })
   })
 })
@@ -924,6 +960,84 @@ describe("bullets geometric hard error (Task 2, borrow wave — dual-threshold s
       ],
     })
     expect(v.ok).toBe(true)
+  })
+})
+
+// quote-stage wave, task T2, 裁定 2: pinning a `pinOnly` layout
+// (registry.ts's `LayoutDefinition.pinOnly`) over its own declared `body`
+// capacity is a hard error end-to-end through `validateIr` — not just at
+// the `checkIrQuality` unit level (`ir-quality.test.tsx` already covers
+// that). quote-stage is the pool's only `pinOnly` member as of this task.
+describe("pin_only_over_capacity end-to-end via validateIr (quote-stage wave, task T2, 裁定 2)", () => {
+  it("pinning quote-stage with 2 components hard-blocks validateIr, naming the layout id and both numbers", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "金句", layout: "quote-stage", components: [{ type: "paragraph", text: "a" }, { type: "paragraph", text: "b" }] },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(
+      v.errors.some(
+        (e) => e.message.includes('"quote-stage"') && e.message.includes("at most 1") && e.message.includes("has 2"),
+      ),
+    ).toBe(true)
+  })
+
+  it("pinning quote-stage with 1 component (at capacity) validates ok", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        { type: "content", heading: "金句", layout: "quote-stage", components: [{ type: "paragraph", text: "—— 出处" }] },
+      ],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("pinning quote-stage with 0 components (a pure quote) validates ok", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [raw.slides[0], { type: "content", heading: "金句", layout: "quote-stage", components: [] }],
+    })
+    expect(v.ok).toBe(true)
+  })
+
+  it("regression: pinning an ordinary (non-pinOnly) layout over its own capacity keeps ok:true with only a density warning — the new hard error never fires for it", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "标题",
+          layout: "two-column",
+          components: Array.from({ length: 5 }, (_, i) => ({ type: "paragraph" as const, text: String(i) })),
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("too many components"))).toBe(true)
+  })
+
+  it("a pathologically long quote-stage heading that still truncates at minPt hard-blocks validateIr, naming the render-safety limit", () => {
+    const CJK_LONG =
+      "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: `${CJK_LONG}${CJK_LONG}${CJK_LONG}`,
+          layout: "quote-stage",
+          components: [],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes("render-safety limit"))).toBe(true)
   })
 })
 

@@ -3,7 +3,7 @@ import { PptfastError } from "../errors"
 import type { MotifArchetypeId } from "../svg/motifs/types"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 import { contrastRatio } from "../svg/ink"
-import { getLayout, layoutsForSlideType } from "../svg/layouts/registry"
+import { excludePinOnly, getLayout, layoutsForSlideType } from "../svg/layouts/registry"
 import { REGISTERED_THEMES } from "./registered-themes"
 import type { StyleTokens } from "./tokens"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId, type CanonicalThemeId } from "./index"
@@ -102,12 +102,28 @@ export interface ThemeDefinition {
  * auto-pick set may only ever contain archetypes (`registerTheme`'s own
  * validation below enforces the same constraint on any caller-supplied
  * set — takeovers are addressed only via an explicit `slide.layout` pin,
- * never auto-selected).
+ * never auto-selected). Also excludes any `pinOnly` archetype (quote-stage
+ * wave, task T1 -- see `LayoutDefinition.pinOnly`'s own doc comment,
+ * `../svg/layouts/registry.ts`): a pinOnly layout must never enter any
+ * pool, curated or not, so the exclusion happens here rather than as a
+ * later, softer filter the way `narrativesOnly` is.
  */
 function fullArchetypeSet(slideType: Slide["type"]): readonly string[] {
-  return layoutsForSlideType(slideType)
-    .filter((layout) => layout.kind === "archetype")
-    .map((layout) => layout.id)
+  return excludePinOnly(layoutsForSlideType(slideType).filter((layout) => layout.kind === "archetype")).map(
+    (layout) => layout.id,
+  )
+}
+
+/**
+ * Test-only: `fullArchetypeSet` under a `__`-prefixed name (same convention
+ * as `__resetRegisteredThemes` below) so a pinOnly regression test can call
+ * it directly against a synthetic `LAYOUT_REGISTRY` mutation -- `FULL_LAYOUTS`
+ * below only ever snapshots `fullArchetypeSet`'s result once, at module
+ * load, long before any test could inject a fixture entry. Deliberately not
+ * exported from `src/index.ts` (the public SDK barrel).
+ */
+export function __fullArchetypeSet(slideType: Slide["type"]): readonly string[] {
+  return fullArchetypeSet(slideType)
 }
 
 /** The full-set default for every slide type (W4) — one registry walk, shared by every builtin theme below and by `registerTheme`'s own per-slide-type default. */

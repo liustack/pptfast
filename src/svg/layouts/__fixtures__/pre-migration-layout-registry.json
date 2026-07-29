@@ -35,6 +35,7 @@
     "quiet-frame",
     "image-lead-split",
     "split-band",
+    "quote-stage",
     "image-split",
     "image-top",
     "image-bottom",
@@ -819,6 +820,42 @@
         }
       ],
       "arrangements": "all"
+    },
+    "quote-stage": {
+      "id": "quote-stage",
+      "kind": "archetype",
+      "pinOnly": true,
+      "slideTypes": [
+        "content"
+      ],
+      "slots": [
+        {
+          "name": "heading",
+          "accepts": []
+        },
+        {
+          "name": "subheading",
+          "accepts": []
+        },
+        {
+          "name": "body",
+          "accepts": "any",
+          "capacity": 1
+        },
+        {
+          "name": "meta",
+          "accepts": []
+        }
+      ],
+      "arrangements": [
+        "single"
+      ],
+      "headingFit": {
+        "maxWidth": 1000,
+        "fontSize": 92,
+        "maxLines": 4,
+        "minPt": 36
+      }
     },
     "rail-chapter": {
       "id": "rail-chapter",

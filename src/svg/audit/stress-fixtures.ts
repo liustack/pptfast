@@ -1210,4 +1210,39 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       ],
     },
   ]),
+
+  // quote_stage (quote-stage wave, task T2, 裁定 4): pptfast's first
+  // `pinOnly` archetype (registry.ts's `LayoutDefinition.pinOnly`) — the
+  // "content archetypes" auto-pick fixtures throughout the rest of this
+  // file never reach it (it's excluded from every theme's curated pool by
+  // construction), so it needs its own explicitly-pinned deck to get any
+  // pathological-content coverage from this baseline at all. Two pages:
+  // an extreme CJK quote at capacity 0 (a pure quote, no attribution — the
+  // archetype's own most minimal legal shape) and an extreme mixed
+  // CJK/Latin/digit quote at capacity 1 (heading + subheading + one
+  // attribution component all extreme simultaneously) — both must still
+  // report zero overflow findings: `fitHeadingLines`'s shrink-then-truncate
+  // fallback keeps every element inside its own declared box even when the
+  // *content* gets cut, which is exactly what this baseline's "zero
+  // findings" bar checks (a truncated-but-in-bounds render is not what this
+  // gate flags — see `ir-quality.ts`'s own `pinned_heading_overflow`
+  // hard error for the separate, validate-level "this heading is too long,
+  // period" gate this deck deliberately does NOT go through, since this
+  // file's own header established these fixtures render directly, bypassing
+  // validateIr on purpose).
+  quote_stage: deck([
+    {
+      type: "content",
+      layout: "quote-stage",
+      heading: `${CJK_LONG}${CJK_LONG}`,
+      components: [],
+    },
+    {
+      type: "content",
+      layout: "quote-stage",
+      heading: MIXED_LONG,
+      subheading: MIXED_LONG,
+      components: [{ type: "paragraph", text: MIXED_LONG }],
+    },
+  ]),
 }
