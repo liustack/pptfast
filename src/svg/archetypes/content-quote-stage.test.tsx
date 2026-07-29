@@ -197,6 +197,39 @@ describe("QuoteStageContent", () => {
     })
   })
 
+  // quote-stage wave, T2 fix round (whole-branch review, Finding 2 — Global
+  // Constraint 3's determinism requirement had no dedicated test for a
+  // pinned quote-stage page): unlike the two determinism tests above (this
+  // file's own `QuoteStageContent`-only render, bypassing motif/decor
+  // selection), this one goes through the real public entry point end to
+  // end — `renderSlideSvg` (`src/api.ts`) on a full `PptxIR` — the same
+  // "double-render, same IR, byte-identical output" shape
+  // `full-slide-svg.test.tsx`'s own "double-render determinism" test and
+  // `generate-determinism.test.ts`'s whole-file tests already established,
+  // just at the SVG-string layer those don't individually cover for this
+  // archetype. A long CJK heading (this archetype's most content-heavy,
+  // most fitHeadingLines-shrinking case) plus one attribution component
+  // (the body slot's only legal non-empty shape, capacity 1) is the
+  // combination most likely to expose any non-determinism in either
+  // fitHeadingLines' text layout or the shared motif/decor seed derivation.
+  describe("end-to-end determinism via renderSlideSvg (quote-stage wave, T2 fix round)", () => {
+    it("a pinned quote-stage page with a long CJK heading and one attribution component renders byte-identical SVG across two independent renderSlideSvg calls", async () => {
+      const { renderSlideSvg } = await import("../../api")
+      const slide: Slide = {
+        type: "content",
+        layout: "quote-stage",
+        heading: CJK_LONG,
+        components: [{ type: "paragraph", text: "—— 出处" }],
+      } as Slide
+      const doc = ir("consulting", [slide])
+
+      const svgA = renderSlideSvg(doc, 0)
+      const svgB = renderSlideSvg(doc, 0)
+
+      expect(svgB).toBe(svgA)
+    })
+  })
+
   it("consulting tokens: no creative/insight baked hex leaks (token discipline)", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(
