@@ -66,6 +66,7 @@ import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
+import { LAYOUT_REGISTRY } from "../layouts/registry"
 import { resolveBackgroundHex } from "../full-slide-svg"
 import { contrastRatio, requiredContrastRatio } from "../ink"
 import { parseSvgRoot } from "../serialize"
@@ -337,6 +338,75 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
         }
         expect(failures).toEqual([])
       })
+    })
+  }
+})
+
+// pin-only matrix leg (quote-stage wave, task T2, 裁定 4): `pinOnly` layouts
+// (registry.ts's `LayoutDefinition.pinOnly`) are reachable only through an
+// explicit `slide.layout` pin, so `THEME_DEFINITIONS[themeId].layouts`
+// never lists one — the "content archetypes" sweep right above, which
+// enumerates *that* curated set, has zero coverage of them by construction.
+// Without a dedicated leg, a `pinOnly` archetype (currently just
+// quote-stage) would sit outside every contrast/overflow regression net in
+// this repo. Enumerate every `pinOnly` entry in `LAYOUT_REGISTRY` directly
+// (not hardcoded to "quote-stage") × all 16 canonical themes, pin each one
+// explicitly, and run the exact same `auditFindings`/`isAllowlisted`
+// machinery the sweep above already uses — no new assertion helper.
+//
+// Two content shapes per (theme, layout) pair, at capacity 0 and capacity 1
+// (quote-stage's own declared `body` capacity — see registry.ts's
+// CONTENT_LAYOUTS header) rather than the shared `CONTENT_BODY` fixture
+// (2 components, `paragraph`+`bullets`) the sweep above uses: pinning a
+// `pinOnly` layout with more components than its own declared capacity is a
+// hard *error* at the `checkIrQuality` layer (`pin_only_over_capacity`,
+// this same wave's 裁定 2) — a fixture that size would validate-reject
+// before ever reaching this audit, so it would be testing the wrong thing
+// here. `HEADING`/`SUBHEADING` (this file's own shared fixtures) stay,
+// matching the sweep above's use of realistic, non-trivial text.
+describe("pin-only matrix contrast/overflow regression net (quote-stage wave, task T2, 裁定 4)", () => {
+  const PIN_ONLY_LAYOUTS = Object.values(LAYOUT_REGISTRY).filter((l) => l.pinOnly)
+
+  // Not a silent-zero foot-gun: if every `pinOnly` layout were ever removed
+  // (or the flag renamed) without updating this file, the describe block
+  // below would just iterate zero layouts and report a false "pass" —  this
+  // assertion turns that into a loud failure instead, the same
+  // "coverage-holds-a-floor" discipline the rest of this file's fixed
+  // 16-theme sweeps already assume implicitly.
+  it("LAYOUT_REGISTRY has at least one pinOnly member to sweep (quote-stage)", () => {
+    expect(PIN_ONLY_LAYOUTS.length).toBeGreaterThanOrEqual(1)
+  })
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    describe(themeId, () => {
+      for (const layoutDef of PIN_ONLY_LAYOUTS) {
+        const layout = layoutDef.id
+        const bodyCapacity = layoutDef.slots.find((s) => s.name === "body")?.capacity ?? 0
+
+        it(`${layout} at 0 components (a pure quote)`, () => {
+          const slide: Slide = {
+            type: "content",
+            heading: HEADING,
+            subheading: SUBHEADING,
+            layout,
+            components: [],
+          } as Slide
+          const findings = auditFindings(deckFor(themeId, slide)).filter((f) => !isAllowlisted(themeId, layout, f))
+          expect(findings.map(findingSummary)).toEqual([])
+        })
+
+        it(`${layout} at its own declared capacity (${bodyCapacity} component${bodyCapacity === 1 ? "" : "s"})`, () => {
+          const slide: Slide = {
+            type: "content",
+            heading: HEADING,
+            subheading: SUBHEADING,
+            layout,
+            components: CONTENT_BODY.slice(0, bodyCapacity),
+          } as Slide
+          const findings = auditFindings(deckFor(themeId, slide)).filter((f) => !isAllowlisted(themeId, layout, f))
+          expect(findings.map(findingSummary)).toEqual([])
+        })
+      }
     })
   }
 })
