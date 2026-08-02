@@ -13,7 +13,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
-import type { Strategy } from "@/narrative"
+import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
 import { renderSlideSvg } from "../api"
 import { auditDeck, type AuditFinding } from "../svg/audit/deck-audit"
 import { CJK_LONG, MIXED_LONG, STRESS_DECKS } from "../svg/audit/stress-fixtures"
@@ -104,6 +104,77 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
   it("every declared theme's sequence differs from every other declared theme's (none of the 9 are accidentally colliding with each other)", () => {
     const sequences = DECLARED_THEME_IDS.map((id) => JSON.stringify(resolveSequence(id, 1)))
     expect(new Set(sequences).size).toBe(DECLARED_THEME_IDS.length)
+  })
+})
+
+// ── 1b. Declaration-rebalance wave acceptance evidence
+// (`.issues/2026-08-03-declaration-rebalance/plan.md`) ──
+//
+// The theme-structure wave's own changelog admitted a known limitation:
+// consulting (cover + ending) and journal (chapter + ending) each had 2 of
+// their 3 declared axes silently dead under the default `briefing` strategy
+// — `briefing.identityTendencies` already names their native id on those
+// axes, so `Math.max(strategyWeight, themeWeight)` never exceeded the
+// strategy-only weight (max(3,3)=3) and the axis read identically to an
+// undeclared theme. This wave appends a second, honest id to each dead axis
+// (native id kept, per the plan's 裁定 1) — see consulting's and journal's
+// own `layoutTendencies` comments (`./definitions.ts`) for the per-id
+// character rationale and the real `resolveArchetypeId` sweep that picked
+// each combination.
+
+/** `briefing`'s own soft-weight id set for `slideType` — the set a theme's own tendency must add *something new* to, to have any real (non-dead) pull under the deck's default narrative. */
+function briefingIdentityIds(slideType: "cover" | "chapter" | "ending"): readonly string[] {
+  return STRATEGY_DEFINITIONS.briefing.identityTendencies[slideType]
+}
+
+/** Whether `themeId`'s own declared tendency for `slideType` names at least one id `briefing.identityTendencies` doesn't already name — i.e. this axis has genuine additional pull under the default strategy, not just a `Math.max` no-op agreeing with what briefing already favors. */
+function hasEffectivePull(themeId: CanonicalThemeId, slideType: "cover" | "chapter" | "ending"): boolean {
+  const themeIds = THEME_DEFINITIONS[themeId].layoutTendencies?.[slideType] ?? []
+  const briefingIds = briefingIdentityIds(slideType)
+  return themeIds.some((id) => !briefingIds.includes(id))
+}
+
+describe("declaration-rebalance wave: consulting/journal both clear >=2 effective-pull axes under briefing", () => {
+  it("consulting: cover, chapter, and ending all have real pull beyond briefing's own identityTendencies (>=2 required, all 3 achieved)", () => {
+    const axes = (["cover", "chapter", "ending"] as const).filter((st) => hasEffectivePull("consulting", st))
+    expect(axes).toEqual(["cover", "chapter", "ending"])
+  })
+
+  it("journal: cover, chapter, and ending all have real pull beyond briefing's own identityTendencies (>=2 required, all 3 achieved)", () => {
+    const axes = (["cover", "chapter", "ending"] as const).filter((st) => hasEffectivePull("journal", st))
+    expect(axes).toEqual(["cover", "chapter", "ending"])
+  })
+
+  // Recorded once, from a real `resolveSequence` run against this exact
+  // fixture at seed=1 *before* this wave's `definitions.ts` edit landed (the
+  // plan's required before/after comparison anchor) — not re-derived here,
+  // so a future accidental revert of the `layoutTendencies` edit would still
+  // fail this test even if it byte-matched some other old state.
+  const PRE_REBALANCE_CONSULTING = [
+    "banner-title",
+    "fashion-chapter",
+    "tone-adaptive-content",
+    "split-band",
+    "rail-chapter",
+    "banner-heading",
+    "masthead-ending",
+  ]
+  const PRE_REBALANCE_JOURNAL = [
+    "poster-center",
+    "masthead-chapter",
+    "tone-adaptive-content",
+    "split-band",
+    "rail-chapter",
+    "banner-heading",
+    "masthead-ending",
+  ]
+
+  it("consulting's post-rebalance sequence differs from its own pre-rebalance sequence (the append actually moved something)", () => {
+    expect(resolveSequence("consulting", 1)).not.toEqual(PRE_REBALANCE_CONSULTING)
+  })
+
+  it("journal's post-rebalance sequence differs from its own pre-rebalance sequence (the append actually moved something)", () => {
+    expect(resolveSequence("journal", 1)).not.toEqual(PRE_REBALANCE_JOURNAL)
   })
 })
 
@@ -290,8 +361,8 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: exactly 25 declared theme×archetype combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 + task T3's ember × 2 — terra curates cover/ending only, ember curates chapter/ending only, neither declares a cover id)", () => {
-    expect(combos).toHaveLength(25)
+  it("sanity: exactly 31 declared theme×archetype combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 + task T3's ember × 2 (= 25), + declaration-rebalance wave's own +3 each for consulting/journal — both grew from 3 to 6 declared ids apiece to fix their two briefing-dead axes, `.issues/2026-08-03-declaration-rebalance/plan.md` — terra curates cover/ending only, ember curates chapter/ending only, neither declares a cover id)", () => {
+    expect(combos).toHaveLength(31)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {
