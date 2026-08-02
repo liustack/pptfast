@@ -112,6 +112,54 @@ describe("RailEnding", () => {
     expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 
+  // contrast-policy 波 T3（T1 review 遗留 minor b）：tech 已实测深底可读，这
+  // 里补齐另外两个深底主题 insight/luxe——避免"只测过一个深底主题"的覆盖
+  // 假象。两个主题的 colors.muted 相对各自真实渲染背景（`ctx.defaultBg`，
+  // ending 页 defaultBackgrounds）都远超 B 层 3:1 门槛，metaInk 原样保留。
+  it("insight tokens（深底）下版权行随主题派生，实测远超 B 层门槛", () => {
+    const ctx = buildCtx(resolveStyle("insight"), {})
+    const deck = ir("insight", endingWithHeading)
+    const out = renderSvgMarkup(
+      <RailEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
+    )
+
+    expect(out).toContain("#E63946") // insight primary，用在左下角块上
+    expect(out).toContain("#D4A57C") // insight accent，用在角块/org 圆点上
+    expect(out).toContain("#F5F5F5") // insight text，用在主标题/联系值上
+    expect(out).toContain("#93939C") // insight muted，用在副标题/联系标签上
+
+    // 版权行派生自 insight 自己的 colors.muted（#93939C 对 insight ending
+    // 背景 #0A0A0C 实测 6.494:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
+    const copyrightText = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
+    )!
+    expect(copyrightText.getAttribute("fill")).toBe("#93939C")
+    expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
+  })
+
+  it("luxe tokens（深底）下版权行随主题派生，实测远超 B 层门槛", () => {
+    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const deck = ir("luxe", endingWithHeading)
+    const out = renderSvgMarkup(
+      <RailEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
+    )
+
+    expect(out).toContain("#D4B876") // luxe primary，用在左下角块上
+    expect(out).toContain("#A67B45") // luxe accent，用在角块/org 圆点上
+    expect(out).toContain("#F4EDDF") // luxe text，用在主标题/联系值上
+    expect(out).toContain("#9C9386") // luxe muted，用在副标题/联系标签上
+
+    // 版权行派生自 luxe 自己的 colors.muted（#9C9386 对 luxe ending 背景
+    // #161310 实测 6.108:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
+    const copyrightText = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
+    )!
+    expect(copyrightText.getAttribute("fill")).toBe("#9C9386")
+    expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
+  })
+
   it("academic tokens 下无 heading 时标题兜底为“Thank you”，副标题没有独立兜底文案（不渲染任何斜体副标题元素）", () => {
     const ctx = buildCtx(resolveStyle("academic"), {})
     const deck = ir("academic", endingBare)
