@@ -73,7 +73,10 @@ const ROUND_TIMEOUT_MS = 180_000
  *  past this harness's own orchestrating process's timeout with no internal
  *  deadline of its own to explain why). Checked before starting each new
  *  round, not mid-round — a round already in flight is left to its own
- *  `ROUND_TIMEOUT_MS`. */
+ *  `ROUND_TIMEOUT_MS` (worst case ~2× that, since `callRound` retries a
+ *  failed request once — the run can overshoot this deadline by up to
+ *  ~6 minutes, which is acceptable slack for a kill-switch, not a
+ *  scheduler). */
 const RUN_DEADLINE_MS = 25 * 60_000
 
 // ── shared with run.mts (small enough to duplicate rather than couple two

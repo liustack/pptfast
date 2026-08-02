@@ -65,6 +65,24 @@ describe("checkPathSafety", () => {
     const result = checkPathSafety(workspace, join(workspace, "deck.json"))
     expect(result.ok).toBe(false)
   })
+
+  it("rejects a sibling directory sharing the workspace name as a prefix", () => {
+    // The classic prefix-trap: `/fake/workspace-evil/x` starts with
+    // `/fake/workspace` as a raw string but is outside it — the guard must
+    // compare against `workspace + sep`, not the bare prefix. (Wave-review
+    // finding: the implementation was correct, this pins it.)
+    const result = checkPathSafety(workspace, join("..", "workspace-evil", "x.json"))
+    expect(result.ok).toBe(false)
+  })
+
+  it("accepts an empty path as the workspace root", () => {
+    // `resolve(workspace, "")` is the workspace itself — same contract as
+    // the explicit "." case above. Downstream fs calls on a directory fail
+    // safely inside executeTool's try/catch, so ok:true here is harmless.
+    const result = checkPathSafety(workspace, "")
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.resolved).toBe(workspace)
+  })
 })
 
 // ── checkPptfastArgs — run_pptfast subcommand whitelist + path safety ──
