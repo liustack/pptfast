@@ -14,6 +14,7 @@ import { PptxIRSchema, type ChartSeries, type Component, type PptxIR, type Slide
 import { renderSlideSvg } from "../../api"
 import { PptfastError } from "../../errors"
 import { installNodePlatform } from "../../platform/node"
+import { CANONICAL_THEME_IDS } from "../../themes"
 import { renderDonut, renderPie } from "../components/chart-svg"
 import {
   auditDeck,
@@ -170,6 +171,33 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#E63946")).toBe(true)
   })
+})
+
+// contrast-policy wave, 裁定 3 (task T2): full 16-theme regression net for
+// `ending-constellation-ending.tsx`'s accent-colored trailing period.
+// Pre-fix, this block was red on 7 of 16 themes — a real, measured defect
+// (`ember` 1.57:1, the plan's own named repro), not a false positive: no
+// stress fixture had ever rendered a period-ending heading through this
+// archetype (see `stress-fixtures.ts`'s new pinned `ending`/
+// `constellation-ending` entry, added in the same commit as this block, one
+// commit ahead of the archetype fix — red-then-green, not red-and-green
+// together). Post-fix (`accessibleInk(colors.accent, ctx.defaultBg ??
+// colors.bg, heading.fontSize)`), every theme clears 3:1: the archetype
+// falls back to `readableOn`'s neutral ink on the 7 that used to fail
+// (consulting/academic/bloom/classroom/heritage/pulse/ember) and stays
+// byte-identical (still the theme's own accent fill) on the other 9.
+describe("constellation-ending accent period contrast (contrast-policy wave, task T2)", () => {
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: the accent-colored trailing period clears the required contrast ratio against ctx.defaultBg`, () => {
+      const ir = deck(themeId, [
+        { type: "ending", layout: "constellation-ending", heading: "Thank you.", components: [] },
+      ])
+      const findings = auditDeck(ir).findings.filter(
+        (f) => f.code === "low-contrast" && (f.detail as { text?: string } | undefined)?.text === ".",
+      )
+      expect(findings).toEqual([])
+    })
+  }
 })
 
 // Bench-driven fix round (defect A reclassification, Task 3 handoff): the
