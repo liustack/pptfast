@@ -334,6 +334,24 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
 //   out-of-bounds/overlap) and orthogonal to the theme-structure wave's own
 //   change — flagged here for whoever next owns contrast-policy cleanup,
 //   not fixed or allowlisted by this task.
+//   **Resolved (contrast-policy wave, Task T1):** both `COPYRIGHT_FAINT`
+//   orphan constants are gone, replaced by `metaInk(colors.muted, bg)`
+//   (`../svg/ink.ts`) tagged `data-contrast-tier="meta"` — see
+//   `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s own rewritten
+//   header comments for the new ruling (docs/contrast-system.md's B-tier
+//   meta-information-text policy) and `deck-audit.test.ts`'s "meta" tests
+//   for the audit-side mechanism. This exact fixture (consulting/
+//   banner-ending, academic/rail-ending, real contact/copyright meta) no
+//   longer produces a low-contrast finding. Left in place, not deleted —
+//   git archaeology for why this bullet used to matter.
+//   Note also: this comment's own numbers were transposed at authoring time
+//   — real measurement (`findContrastIssues` against the actual rendered
+//   markup) puts `consulting/banner-ending` at 3.22:1 and
+//   `academic/rail-ending` at 2.93:1, the reverse of the labels above. The
+//   ratios themselves were never wrong, only which theme/archetype pair
+//   they were filed under — carried into `.issues/roadmap.md` and
+//   `.issues/2026-07-28-contrast-policy/plan.md` unchecked. See
+//   task-1-report.md for the correction.
 // - `low-contrast` on `runway/fashion-chapter`'s org label (4.06:1, needs
 //   4.5:1): a near-miss of the same shape `full-matrix-contrast.test.ts`'s
 //   own `ALLOWLIST` already adjudicates for `tech/fashion-masthead`

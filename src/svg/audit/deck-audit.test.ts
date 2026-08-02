@@ -78,19 +78,15 @@ describe("auditDeck — clean deck baseline", () => {
   // it by construction), so any overlap finding here would be a real bug.
   //
   // `low-contrast` is deliberately *not* asserted zero here. Running the
-  // matrix while developing this check surfaced three distinct, genuine,
-  // pre-existing sources of borderline-WCAG decorative/semantic colour that
-  // this task did not introduce and was, at the time, out of scope to
-  // remediate (a cross-cutting theme-polish pass, not "audit core") —
-  // documented in the task report, and locked in as explicit regression
-  // tests right below this block so the *specific*, understood cases stay
-  // understood rather than silently allowlisted:
+  // matrix while developing this check surfaced genuine, pre-existing
+  // sources of borderline-WCAG decorative/semantic colour that this task did
+  // not introduce and was, at the time, out of scope to remediate (a
+  // cross-cutting theme-polish pass, not "audit core") — documented in the
+  // task report, and locked in as explicit regression tests right below this
+  // block so the *specific*, understood cases stay understood rather than
+  // silently allowlisted:
   //   1. `code.tsx`'s `LINE_NUM_COLOR` — a hardcoded editor-gutter gray.
-  //   2. `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s
-  //      `COPYRIGHT_FAINT` — an explicitly-adjudicated (see that file's own
-  //      lengthy doc comment) cross-theme "copyright is the faintest text
-  //      tier" convention.
-  //   3. `architecture.tsx`'s layer title (`ctx.colors.primary` on
+  //   2. `architecture.tsx`'s layer title (`ctx.colors.primary` on
   //      `ctx.colors.panel ?? ctx.colors.surface`) — a *theme's own*
   //      internal colour pairing, not a hardcoded value; on `insight`
   //      specifically it computes to 4.40:1, essentially a rounding
@@ -100,13 +96,28 @@ describe("auditDeck — clean deck baseline", () => {
   // defeat the point. None of them appear in `examples/basic.json` (the
   // plan's actual clean-deck gate, asserted above).
   //
-  // Two former members of this list — `kpi.tsx`'s hardcoded delta-arrow
-  // red/green and `quote.tsx`'s decorative open-quote mark — are gone as of
-  // the bench-driven fix round's B-group (Task 3): both are real defects,
-  // not out-of-scope theme polish after all, now fixed via `accessibleInk`.
-  // See the "B-group ink fixes" describe block below for the red→green
-  // re-pin (this block's own former assertions on them, `contrast.some(...)
-  // === true`, are exactly what got flipped).
+  // Three former members of this list are gone: `kpi.tsx`'s hardcoded
+  // delta-arrow red/green and `quote.tsx`'s decorative open-quote mark, as
+  // of the bench-driven fix round's B-group (Task 3, both real defects, now
+  // fixed via `accessibleInk` — see the "B-group ink fixes" describe block
+  // below for that red→green re-pin), and `ending-banner-ending.tsx`/
+  // `ending-rail-ending.tsx`'s former `COPYRIGHT_FAINT` orphan colour, as of
+  // the contrast-policy wave's Task T1: that hardcoded per-file grey is gone
+  // too, replaced by `metaInk(colors.muted, bg)` (`../ink`) tagged
+  // `data-contrast-tier="meta"` — see `findContrastIssues — low-contrast`'s
+  // own "meta" tests below for the mechanism, and `ink.test.ts`'s `metaInk`
+  // describe block for the derivation itself. `metaInk` guarantees >=3:1
+  // against the real rendered background on *any* theme (the fallback path
+  // exists exactly for a theme where `colors.muted` alone wouldn't clear
+  // it), so the `data-contrast-tier="meta"` marker alone is enough to keep
+  // both sites off this list everywhere — on the two themes each archetype
+  // actually ships natively pinned to (consulting/banner-ending,
+  // academic/rail-ending) the fix goes further still: `colors.muted` itself
+  // already clears the plain 4.5:1 body threshold against each theme's real
+  // background (`colors.muted` is calibrated to clear 4.5:1 generally —
+  // `docs/contrast-system.md`'s "Muted calibration discipline" section), so
+  // `metaInk` returns it unchanged and the copyright line produces no
+  // low-contrast finding at all, meta tier or not.
   const THEMES = ["consulting", "insight", "tech", "campaign", "luxe"] as const
   for (const themeId of THEMES) {
     for (const [name, stressDeck] of Object.entries(STRESS_DECKS)) {
@@ -146,19 +157,6 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#6A737D")).toBe(true)
-  })
-
-  it("ending-banner-ending.tsx's adjudicated COPYRIGHT_FAINT tier fails the strict WCAG body threshold", () => {
-    // Pinned explicitly (W4 full-set opening): this test is about one
-    // specific component's hardcoded color, not about auto-selection —
-    // consulting's ending curated set grew from a single-member
-    // ["banner-ending"] to the full 7-archetype set, so an unpinned slide
-    // no longer deterministically lands on banner-ending.
-    const ir = deck("consulting", [
-      { type: "ending", heading: "Thanks", layout: "banner-ending", components: [] },
-    ], { meta: { organization: "x", copyright: "© 2026 x" } })
-    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#8a8a86")).toBe(true)
   })
 
   it("architecture.tsx's theme-derived primary-on-panel pairing is a rounding distance under 4.5:1 on insight", () => {
