@@ -279,4 +279,39 @@ describe("ConstellationEnding", () => {
     const oneLineBar = oneLineRoot.querySelector("rect")
     expect(twoLineBar?.getAttribute("y")).toBe(oneLineBar?.getAttribute("y"))
   })
+
+  // contrast-policy wave, 裁定 3 (task T2): the accent-colored trailing
+  // period is A-tier large text (88px-class heading, 3:1 floor) and used to
+  // paint `colors.accent` unconditionally — ember measured 1.57:1 against
+  // its own real ending background, a real WCAG violation no fixture had
+  // ever exercised (see `stress-fixtures.ts`'s new pinned entry and
+  // `deck-audit.test.ts`'s 16-theme sweep for the full red list). Now
+  // routed through `accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg,
+  // heading.fontSize)`.
+  it("ember: the accent-colored period falls back to readableOn's neutral ink (accent measures 1.57:1 against ember's own light ending background)", () => {
+    const ctx = buildCtx(resolveStyle("ember"), {})
+    const slide: Slide = { type: "ending", heading: "Thank you.", components: [] } as Slide
+    const markup = renderSvgMarkup(<ConstellationEnding ir={ir("ember", slide)} slide={slide} index={0} ctx={ctx} />)
+    // Below the 3:1 floor against ember's real ending background — the
+    // period must not keep the raw accent fill.
+    expect(markup).not.toContain('<tspan fill="#FFC145">.</tspan>')
+    expect(markup).toContain('<tspan fill="#0A0E14">.</tspan>')
+  })
+
+  // Themes whose accent already clears 3:1 against their own real ending
+  // background stay byte-identical — `accessibleInk` is a no-op there.
+  // `tech` is already locked by this file's own "无 heading 时" test above
+  // (`<tspan fill="#2DD4E6">.</tspan>`); this adds a second, independently
+  // measured no-op witness (`enterprise`, one of the 9 themes whose accent
+  // already clears 3:1 against its own ending background — the full
+  // pass/fail split across all 16 themes is measured and recorded in
+  // `deck-audit.test.ts`'s dedicated 16-theme sweep, not repeated here).
+  it("enterprise: the accent-colored period keeps the theme's own accent fill (already clears 3:1 — accessibleInk is a no-op)", () => {
+    const ctx = buildCtx(resolveStyle("enterprise"), {})
+    const slide: Slide = { type: "ending", heading: "Thank you.", components: [] } as Slide
+    const markup = renderSvgMarkup(
+      <ConstellationEnding ir={ir("enterprise", slide)} slide={slide} index={0} ctx={ctx} />,
+    )
+    expect(markup).toContain('<tspan fill="#002FA7">.</tspan>')
+  })
 })
