@@ -148,12 +148,34 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     theme: "tech",
     layout: "fashion-masthead",
+    // Tier annotation (contrast-policy wave, task T3, 裁定 4 — see
+    // `docs/contrast-system.md`'s three-tier policy section): **B tier**
+    // (meta-information text — this is the org/date line, real attribution
+    // content deliberately kept low-key, not decoration). Re-graded against
+    // the tier's own floor rather than the old blanket 4.5:1 body line this
+    // rationale was originally written against: 3:1 is the hard B-tier
+    // floor, and the measured ~4.16:1 clears it comfortably (it only ever
+    // fell short of the *body* 4.5:1 this entry pre-dates the tier split
+    // for). Not a violation under the new policy — kept allowlisted anyway
+    // since nothing renders this line through `metaInk`/
+    // `data-contrast-tier="meta"` yet, so deck-audit still measures it at
+    // the default 4.5:1 body floor and would still flag it without this
+    // entry. Behavior unchanged by this annotation pass; whether to route
+    // `fashion-masthead`'s meta line through `metaInk` is future
+    // theme-polish scope, not this task's.
     rationale:
       "reviewer-adjudicated borderline: the org/date meta line measures ~4.16:1 against tech's bright-cyan primary block (needs 4.5:1 body) — a rounding distance under the floor, deferred to a future theme-polish pass rather than this fix round's scope.",
   },
   {
     theme: "*",
     layout: "fashion-chapter",
+    // Tier annotation (contrast-policy wave, task T3, 裁定 4): **C tier**
+    // (pure decoration — this file's own header two lines below calls the
+    // chapter-number watermark "decorative by design", and
+    // `chapter-fashion-chapter.tsx`'s own header agrees). C tier is exempt
+    // from any ratio floor by policy, on the sole condition that every
+    // instance lives in this ratio-banded allowlist (recorded, not a silent
+    // drift) — which this entry already is, unchanged.
     // Band derivation (backlog item 6,
     // `.issues/notes/engineering-history.md` #6): the text-shape
     // guard alone (`TEXT_SHAPE_GUARD["fashion-chapter"]`, "1-2 digits")
