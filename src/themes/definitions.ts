@@ -205,10 +205,64 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // (`MckinseyNavyCover`/`Chapter`/`Ending`, see each archetype file's own
     // header) — this is the theme's native "assertion banner" register, not
     // a borrowed one.
+    //
+    // Declaration-rebalance wave (`.issues/2026-08-03-declaration-rebalance/plan.md`,
+    // 裁定 1-2): cover and ending were both dead under the default `briefing`
+    // strategy — `banner-title`/`banner-ending` are each already members of
+    // `briefing.identityTendencies` (`@/narrative`'s `STRATEGY_DEFINITIONS`),
+    // so `Math.max(strategyWeight, themeWeight)` never exceeded the
+    // strategy-only weight (max(3,3)=3) and these two axes read identically
+    // to an undeclared theme under the deck's own default narrative. Native
+    // ids kept (still real, historically-honest register for the other 4
+    // strategies); a second, honest id appended to each dead axis instead of
+    // a swap, per 裁定 1.
+    //
+    // - cover `left-anchor` (read `cover-left-anchor.tsx`, not just its id):
+    //   40%-width primary color block carries the heading, with the org
+    //   kicker, confidentiality badge, italic subheading, and an explicit
+    //   author/date/version meta row on the right panel — the same formal
+    //   "state the point, then the paper trail" report-cover convention
+    //   `banner-title` itself already uses, just with the assertion moved
+    //   into a color block instead of a banner rule. Not in
+    //   `briefing.identityTendencies.cover` (`["banner-title",
+    //   "poster-center"]`), so it's the theme's first real cover pull under
+    //   the default strategy.
+    // - ending `rail-ending` (read `ending-rail-ending.tsx`): corner
+    //   color-block accents + a heading + an explicit hairline-separated
+    //   "Contact" section + copyright — `pyramid.identityTendencies.ending`'s
+    //   own doc comment already calls this id out as reading "like a
+    //   report's closing page, not a sentimental goodbye", which is
+    //   consulting's own register verbatim.
+    // - ending `tone-adaptive-ending` (read `ending-tone-adaptive-ending.tsx`):
+    //   left-aligned heading, a divider, "Contact" + copyright, zero
+    //   ornament — the pool's "万金油" ending (`@/narrative`'s own doc
+    //   comment: never a member of any strategy's `identityTendencies`), and
+    //   the plainest possible closing register, matching consulting's own
+    //   restrained-report character.
+    //
+    // Real-pull verification (direct `resolveArchetypeId` sweep, same
+    // technique the themes-16 wave's T2/T3 reviewers used, against this
+    // repo's `theme-structure.test.ts` fixture at seed=1, strategy
+    // `briefing`): a *single* appended id on `ending` cannot fix it — every
+    // valid candidate is base-weight 1 before the append and
+    // `TENDENCY_WEIGHT`(3) after, so any single append moves
+    // `weightedPickBySeed`'s modulus from 11 to 13 *regardless of which id
+    // was appended* (`variety.ts`'s `target = hash % totalWeight`) — the
+    // fixed hash for this fixture's `ending-archetype:6` salt then lands in
+    // exactly one of two possible buckets no matter the choice, and both of
+    // those buckets were already occupied byte-for-byte by academic's and
+    // runway's own pre-existing sequences (see git blame on this comment for
+    // the full derivation — recorded once here, not per-line). A second
+    // appended id (modulus 15) opens a third, previously-unreachable bucket:
+    // `[banner-ending, rail-ending, tone-adaptive-ending]` resolves to
+    // `tone-adaptive-ending` at this fixture/seed, distinct from every other
+    // theme. `ThemeDefinition.layoutTendencies`'s own doc comment already
+    // notes a theme axis using more than one id is legal, just unused before
+    // this wave ("主题层至今只用 1 个是习惯不是约束").
     layoutTendencies: {
-      cover: ["banner-title"],
+      cover: ["banner-title", "left-anchor"],
       chapter: ["banner-chapter"],
-      ending: ["banner-ending"],
+      ending: ["banner-ending", "rail-ending", "tone-adaptive-ending"],
     },
   },
   insight: {
@@ -284,10 +338,75 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // extractions of journal's own predecessor magazine.tsx render code
     // (`EditorialSerifCover`/`Chapter`/`Ending`) — this theme's native
     // masthead register.
+    //
+    // Declaration-rebalance wave (`.issues/2026-08-03-declaration-rebalance/plan.md`,
+    // 裁定 1-2): chapter and ending were both dead under the default
+    // `briefing` strategy — `masthead-chapter`/`masthead-ending` are each
+    // already members of `briefing.identityTendencies`, so both axes read
+    // identically to an undeclared theme under the deck's own default
+    // narrative (same `Math.max` no-op `banner-title`/`banner-ending` hit
+    // for consulting, see that theme's own comment above for the full
+    // mechanism). `editorial-masthead` (cover) already has real pull under
+    // `briefing` — not touched. Native chapter/ending ids kept; a second,
+    // honest id appended to each dead axis instead of a swap, per 裁定 1.
+    //
+    // - chapter `roman-chapter` (read `chapter-roman-chapter.tsx`, not just
+    //   its id): giant roman-numeral watermark + heading + optional italic
+    //   subheading + a seed/chapter-rotated arc ornament — the pool's most
+    //   literary, magazine-editorial chapter break (storytelling's own
+    //   `identityTendencies` comment already reads it the same way: "the
+    //   pool's most literary, ornamental chapter break"). Journal is a
+    //   humanities-magazine register (`corner-ornament-motif`, italic
+    //   subheadings on its own `editorial-masthead` cover) — a roman-numeral
+    //   section marker is the same editorial-magazine vocabulary, not a
+    //   borrowed one. Not in `briefing.identityTendencies.chapter`
+    //   (`["masthead-chapter", "constellation-chapter"]`), and — unlike
+    //   every other chapter id in the registry — not yet claimed by any
+    //   other theme's own `layoutTendencies.chapter` as of this wave either.
+    // - chapter `tone-adaptive-chapter` (read
+    //   `chapter-tone-adaptive-chapter.tsx`): centered heading + a large
+    //   translucent corner watermark, zero other ornament — the pool's
+    //   "万金油" chapter id (`@/narrative`'s own doc comment: never a member
+    //   of any strategy's `identityTendencies`). Appended alongside
+    //   `roman-chapter` purely for the modulus-escape reason documented
+    //   below, not for its own competing character claim — its plain,
+    //   unadorned register doesn't contradict roman-chapter's literary one,
+    //   it just never outweighs it (both share `TENDENCY_WEIGHT`, so
+    //   whichever the deterministic sampler favors for a given seed is
+    //   still one of journal's own two honest picks).
+    // - ending `poster-ending` (read `ending-poster-ending.tsx`): fully
+    //   centered, italic serif heading + italic subheading + a short accent
+    //   bar — the same italic-serif literary voice journal's own
+    //   `editorial-masthead` cover already opens with (that archetype's own
+    //   "centered literary masthead + italic subheading" register), now
+    //   closing the deck in the same voice it opened in. Not in
+    //   `briefing.identityTendencies.ending` (`["masthead-ending",
+    //   "banner-ending"]`).
+    //
+    // Real-pull verification (direct `resolveArchetypeId` sweep, same
+    // technique the themes-16 wave's T2/T3 reviewers used, against this
+    // repo's `theme-structure.test.ts` fixture at seed=1, strategy
+    // `briefing`): a *single* appended id on `chapter` cannot fix the first
+    // chapter slide (fixture index 1) without colliding — same modulus
+    // mechanism as consulting's ending above (`variety.ts`'s
+    // `target = hash % totalWeight`): any single append moves the chapter
+    // pool's modulus from 12 to 14 regardless of which id is appended, and
+    // the fixed hash for this fixture's `chapter-archetype:1` salt always
+    // lands on `fashion-chapter` at that modulus — a value already occupied
+    // (together with journal's own already-live `poster-center` cover pick
+    // at this fixture) by academic's and runway's own pre-existing
+    // sequences. A second appended id (modulus 16) opens a previously
+    // unreachable bucket: `[masthead-chapter, roman-chapter,
+    // tone-adaptive-chapter]` resolves to `constellation-chapter` at fixture
+    // index 1 and to `roman-chapter` itself at fixture index 4 (the deck's
+    // second chapter slide) — both distinct from every other theme. `ending`
+    // only needed a single append here (`poster-ending`) precisely because
+    // this chapter fix already moved journal off the crowded
+    // `poster-center` + `fashion-chapter` bucket group other themes share.
     layoutTendencies: {
       cover: ["editorial-masthead"],
-      chapter: ["masthead-chapter"],
-      ending: ["masthead-ending"],
+      chapter: ["masthead-chapter", "roman-chapter", "tone-adaptive-chapter"],
+      ending: ["masthead-ending", "poster-ending"],
     },
   },
   // enterprise（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+炸橘的

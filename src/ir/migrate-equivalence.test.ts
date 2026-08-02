@@ -308,6 +308,46 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // finding goes back to `findings: []` (the label no longer truncates
       // at the widened per-card width); `.pptx-zip.json`'s file-name set is
       // unchanged, only that same slide's XML differs.
+      //
+      // Re-recaptured again (declaration-rebalance wave —
+      // `.issues/2026-08-03-declaration-rebalance/plan.md`): consulting's
+      // cover/ending and journal's chapter/ending each gained a second
+      // `layoutTendencies` id (`../themes/definitions.ts`'s `LAYOUTS`
+      // table) to fix the two axes each theme had silently dead under the
+      // default `briefing` strategy — a real, intended selection-behavior
+      // change (the whole point of the wave), not a migration regression.
+      // Same "reweighting a pool a fixed seed's hash lands in can flip an
+      // auto-pick" posture as every weight-table recapture above. Exactly
+      // one slide changed in two of the three fixtures, the third
+      // untouched (confirmed by diffing all 5 slides of each fixture's
+      // recaptured SVG golden against its pre-recapture version):
+      //   - `basic` (`consulting`): slide index 0 (cover, auto-picked) —
+      //     `constellation` -> `banner-title`. Not `left-anchor` itself
+      //     (the newly-appended id) — a mechanical side effect of the same
+      //     append: bumping `left-anchor`'s weight 1 -> 3 grows the cover
+      //     pool's total weight from 12 to 14, which shifts where this
+      //     fixed seed's `target = hash % total` lands among the *other*
+      //     candidates' boundaries too (the same modulo-reshuffle
+      //     mechanism the theme-structure wave's own T2 recapture comment
+      //     above already documents for `scenarioBearing`/
+      //     `annualReviewPreset`).
+      //   - `scenarioBearing` (`journal`): no change — this fixture's own
+      //     cover/chapter/ending seeds don't happen to cross any of the
+      //     three axes' new weight boundaries.
+      //   - `annualReviewPreset` (`journal`): slide index 1 (chapter,
+      //     auto-picked) — `rail-chapter` -> `tone-adaptive-chapter`. This
+      //     *is* one of the two ids appended to journal's own `chapter`
+      //     tendency (`["masthead-chapter", "roman-chapter",
+      //     "tone-adaptive-chapter"]`) landing directly, not a reshuffle
+      //     onto an unrelated existing archetype.
+      // `.audit.json` needed no recapture for any of the three (findings
+      // stayed byte-identical, confirmed by computing `auditDeck` fresh
+      // against both the old and new goldens) — neither newly-landed
+      // archetype introduces a new geometry/contrast finding on either
+      // fixture. `.pptx-zip.json`'s file-name set is unchanged for all
+      // three; only `basic`'s `ppt/slides/slide1.xml` and
+      // `annualReviewPreset`'s `ppt/slides/slide2.xml` (1-indexed,
+      // matching SVG slide 0 / slide 1 above) differ.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
