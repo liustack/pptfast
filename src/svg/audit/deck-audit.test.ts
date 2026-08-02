@@ -523,6 +523,52 @@ describe("findContrastIssues — low-contrast", () => {
     expect(bodyIssues[0].required).toBe(4.5)
   })
 
+  // contrast-policy wave, Task T1: `data-contrast-tier="meta"` — B-tier
+  // meta-information text (docs/contrast-system.md's three-tier policy)
+  // holds to 3:1 at *any* font size, not just the 24px large-text cutoff
+  // above. Same #808080-vs-BG pair (3.68:1, between the two thresholds) at
+  // body font-size (20px, normally 4.5:1) — supersedes deck-audit.test.ts's
+  // former "ending-banner-ending.tsx's adjudicated COPYRIGHT_FAINT tier
+  // fails the strict WCAG body threshold" pin below this describe block,
+  // which asserted the opposite (a meta line *should* fail 4.5:1) before
+  // the policy existed to grant it a 3:1 floor instead.
+  it("data-contrast-tier=\"meta\" relaxes a body-size run to the 3:1 floor instead of 4.5:1", () => {
+    const untagged = page(BG, `<text x="0" y="40" font-size="20" fill="#808080">untagged</text>`)
+    const tagged = page(
+      BG,
+      `<text data-contrast-tier="meta" x="0" y="40" font-size="20" fill="#808080">meta</text>`,
+    )
+    const untaggedIssues = findContrastIssues(untagged)
+    expect(untaggedIssues).toHaveLength(1)
+    expect(untaggedIssues[0].required).toBe(4.5)
+    expect(findContrastIssues(tagged)).toEqual([])
+  })
+
+  it("data-contrast-tier=\"meta\" still fails a run that doesn't even clear 3:1 — the floor is relaxed, not removed", () => {
+    // #A9A9A9 vs BG (#F7F7F2) computes to ~2.32:1 — under even the relaxed
+    // 3:1 meta floor.
+    const markup = page(
+      BG,
+      `<text data-contrast-tier="meta" x="0" y="40" font-size="20" fill="#A9A9A9">still fails</text>`,
+    )
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].required).toBe(3)
+    expect(issues[0].ratio).toBeLessThan(3)
+  })
+
+  it("a <tspan> inherits data-contrast-tier=\"meta\" from its parent <text> without repeating the attribute", () => {
+    // Mirrors the multi-tspan meta-line shape this walk already supports
+    // for fill/font-size (cover-left-anchor.tsx's author/date/version line)
+    // — the tier marker inherits the identical "own attribute wins, else
+    // inherit" way.
+    const markup = page(
+      BG,
+      `<text data-contrast-tier="meta" x="0" y="40" font-size="20"><tspan fill="#808080">meta run</tspan></text>`,
+    )
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
   it("excludes decorative near-transparent text (SlideDecor-style watermark) from the check", () => {
     // Mirrors slide-decor.tsx's `big_number` watermark: near-black-on-light
     // would ordinarily pass anyway, so use a fill that *would* fail at full

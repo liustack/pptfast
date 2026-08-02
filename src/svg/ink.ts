@@ -172,3 +172,57 @@ export function accessibleOpacity(
   const blended = blendOver(inkHex, bgHex, preferredOpacity)
   return contrastRatio(blended, bgHex) >= requiredContrastRatio(fontSizePx) ? preferredOpacity : 1
 }
+
+/** `metaInk`'s own floor — the three-tier contrast policy's B tier
+ * (`docs/contrast-system.md`: meta-information text — copyright lines, page
+ * numbers, org names, dates) — happens to equal `CONTRAST_RATIO_LARGE`
+ * numerically, but is a distinct policy line, not a font-size-driven relief:
+ * it applies at every size, never 4.5:1, because a meta line is deliberately
+ * low-priority text, not because it happens to render large. Named
+ * separately so a future change to either tier's number doesn't silently
+ * move the other. */
+const META_CONTRAST_RATIO = CONTRAST_RATIO_LARGE
+
+/** How many discrete steps `metaInk` blends `preferredFill` toward
+ * `readableOn(bgHex)` before giving up and returning that neutral ink
+ * outright. 20 steps (5% increments) — finer than this buys no visible
+ * precision (a <5% ink shift is imperceptible), coarser risks overshooting
+ * past the 3:1 floor by a visually-larger jump than necessary. */
+const META_INK_STEPS = 20
+
+/**
+ * B-tier ("meta-information text": copyright lines, page numbers, org
+ * names, dates — `docs/contrast-system.md`'s three-tier contrast policy)
+ * ink pick. Same shape as `accessibleInk` — keep `preferredFill` when it
+ * already clears the tier's own floor, `META_CONTRAST_RATIO` (3:1, hard,
+ * not size-relieved), against `bgHex`.
+ *
+ * Where the two diverge: `accessibleInk`'s fallback is a single jump straight
+ * to `readableOn`'s neutral black/white. A meta line is deliberately the
+ * *faintest* legible tier on the page (see `ending-banner-ending.tsx`'s and
+ * `ending-rail-ending.tsx`'s own header comments for the layered-fade
+ * composition this feeds) — jumping straight to full-strength ink the
+ * instant `preferredFill` falls even 0.01 short of 3:1 would read as a
+ * different text tier entirely, not a minimal fix. So this walks
+ * `preferredFill` toward `readableOn(bgHex)` in `META_INK_STEPS` discrete
+ * steps (`blendOver`, the same "over" compositing `accessibleOpacity` already
+ * blends with — no new contrast algorithm, per the plan this function ships
+ * under), returning the first step that clears the floor — the smallest
+ * nudge toward full-strength ink that actually works, not the full jump.
+ *
+ * Termination is guaranteed, not just probable: `readableOn(bgHex)` (the
+ * `alpha = 1` end of the walk) always measures >= ~4.58:1 against any real
+ * background — its own two-ink max-contrast comparison bottoms out at that
+ * value at the dark/light break-even luminance (~0.179), see `readableOn`'s
+ * own doc comment — comfortably above this function's 3:1 floor, so the loop
+ * below always finds a passing step by `alpha = 1` at the latest.
+ */
+export function metaInk(preferredFill: string, bgHex: string): string {
+  if (contrastRatio(preferredFill, bgHex) >= META_CONTRAST_RATIO) return preferredFill
+  const target = readableOn(bgHex)
+  for (let step = 1; step <= META_INK_STEPS; step++) {
+    const candidate = blendOver(target, preferredFill, step / META_INK_STEPS)
+    if (contrastRatio(candidate, bgHex) >= META_CONTRAST_RATIO) return candidate
+  }
+  return target
+}
