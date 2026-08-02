@@ -173,7 +173,8 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
   })
 })
 
-// contrast-policy wave, 裁定 3 (task T2): full 16-theme regression net for
+// contrast-policy wave, 裁定 3 (task T2, corrected by T2 review + controller
+// adjudication): full 16-theme regression net for
 // `ending-constellation-ending.tsx`'s accent-colored trailing period.
 // Pre-fix, this block was red on 7 of 16 themes — a real, measured defect
 // (`ember` 1.57:1, the plan's own named repro), not a false positive: no
@@ -181,11 +182,15 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
 // archetype (see `stress-fixtures.ts`'s new pinned `ending`/
 // `constellation-ending` entry, added in the same commit as this block, one
 // commit ahead of the archetype fix — red-then-green, not red-and-green
-// together). Post-fix (`accessibleInk(colors.accent, ctx.defaultBg ??
-// colors.bg, heading.fontSize)`), every theme clears 3:1: the archetype
-// falls back to `readableOn`'s neutral ink on the 7 that used to fail
+// together). Post-fix, every theme clears 3:1: the archetype falls back to
+// its own heading ink (`colors.text` — in-sentence coherence with the rest
+// of the heading, not a shared neutral ink; see the archetype's own comment)
+// on the 7 that used to fail
 // (consulting/academic/bloom/classroom/heritage/pulse/ember) and stays
-// byte-identical (still the theme's own accent fill) on the other 9.
+// byte-identical (still the theme's own accent fill) on the other 9. See
+// `ending-constellation-ending.test.tsx`'s 16-theme coherence-property test
+// for the fill-value-level assertion this block's low-contrast-findings
+// check doesn't cover.
 describe("constellation-ending accent period contrast (contrast-policy wave, task T2)", () => {
   for (const themeId of CANONICAL_THEME_IDS) {
     it(`${themeId}: the accent-colored trailing period clears the required contrast ratio against ctx.defaultBg`, () => {

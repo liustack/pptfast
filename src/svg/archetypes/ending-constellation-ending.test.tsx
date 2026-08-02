@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
-import { resolveStyle } from "../../themes"
+import { resolveStyle, CANONICAL_THEME_IDS } from "../../themes"
+import { contrastRatio, requiredContrastRatio } from "../ink"
 import { ConstellationEnding } from "./ending-constellation-ending"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -280,22 +281,29 @@ describe("ConstellationEnding", () => {
     expect(twoLineBar?.getAttribute("y")).toBe(oneLineBar?.getAttribute("y"))
   })
 
-  // contrast-policy wave, 裁定 3 (task T2): the accent-colored trailing
-  // period is A-tier large text (88px-class heading, 3:1 floor) and used to
-  // paint `colors.accent` unconditionally — ember measured 1.57:1 against
-  // its own real ending background, a real WCAG violation no fixture had
-  // ever exercised (see `stress-fixtures.ts`'s new pinned entry and
-  // `deck-audit.test.ts`'s 16-theme sweep for the full red list). Now
-  // routed through `accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg,
-  // heading.fontSize)`.
-  it("ember: the accent-colored period falls back to readableOn's neutral ink (accent measures 1.57:1 against ember's own light ending background)", () => {
+  // contrast-policy wave, 裁定 3 (task T2, corrected by T2 review +
+  // controller adjudication): the accent-colored trailing period is A-tier
+  // large text (88px-class heading, 3:1 floor) and used to paint
+  // `colors.accent` unconditionally — ember measured 1.57:1 against its own
+  // real ending background, a real WCAG violation no fixture had ever
+  // exercised (see `stress-fixtures.ts`'s new pinned entry and
+  // `deck-audit.test.ts`'s 16-theme sweep for the full red list). The
+  // fallback is the heading's own `colors.text` ink (in-sentence
+  // coherence — the period sits mid-sentence next to text already painted
+  // `colors.text`), not a shared neutral ink — see the archetype's own
+  // comment for why `accessibleInk`'s usual contract doesn't fit this call
+  // site.
+  it("ember: the accent-colored period falls back to the heading's own colors.text ink (accent measures 1.57:1 against ember's own light ending background)", () => {
     const ctx = buildCtx(resolveStyle("ember"), {})
     const slide: Slide = { type: "ending", heading: "Thank you.", components: [] } as Slide
     const markup = renderSvgMarkup(<ConstellationEnding ir={ir("ember", slide)} slide={slide} index={0} ctx={ctx} />)
     // Below the 3:1 floor against ember's real ending background — the
-    // period must not keep the raw accent fill.
+    // period must not keep the raw accent fill, and must match the
+    // sentence's own ink (#26221E), not a generic neutral dark.
     expect(markup).not.toContain('<tspan fill="#FFC145">.</tspan>')
-    expect(markup).toContain('<tspan fill="#0A0E14">.</tspan>')
+    expect(markup).not.toContain('<tspan fill="#0A0E14">.</tspan>')
+    expect(markup).toContain('<tspan fill="#26221E">.</tspan>')
+    expect(ctx.colors.text).toBe("#26221E")
   })
 
   // Themes whose accent already clears 3:1 against their own real ending
@@ -313,5 +321,41 @@ describe("ConstellationEnding", () => {
       <ConstellationEnding ir={ir("enterprise", slide)} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain('<tspan fill="#002FA7">.</tspan>')
+  })
+
+  // T2 review correction, controller-adjudicated: the fallback ink changed
+  // from `readableOn`'s shared neutral (#0A0E14) to the heading's own
+  // `colors.text`, on the theory that `colors.text` is guaranteed >=4.5:1 on
+  // `colors.bg` by theme calibration, so this fallback always clears the 3:1
+  // large-text floor too — never mind which of the two branches
+  // (`colors.accent` kept, or `colors.text` fallback) actually fires. Proves
+  // that "coherence property" for real, across all 16 canonical themes, not
+  // just the two named witnesses above: whichever fill the period ends up
+  // with is always one of `colors.accent`/`colors.text` (never a third,
+  // neutral value) and always clears the required ratio against the real
+  // rendered background.
+  it("coherence property, all 16 themes: the period's fill is always colors.accent or colors.text, and always clears the 3:1 large-text floor", () => {
+    for (const themeId of CANONICAL_THEME_IDS) {
+      const ctx = buildCtx(resolveStyle(themeId), {})
+      const slide: Slide = { type: "ending", heading: "Thank you.", components: [] } as Slide
+      const markup = renderSvgMarkup(
+        <ConstellationEnding ir={ir(themeId, slide)} slide={slide} index={0} ctx={ctx} />,
+      )
+      const match = markup.match(/<tspan fill="(#[0-9A-Fa-f]{6})">\.<\/tspan>/)
+      expect(match, `${themeId}: expected a period tspan in ${markup}`).not.toBeNull()
+      const periodFill = match![1]
+
+      expect(
+        [ctx.colors.accent, ctx.colors.text],
+        `${themeId}: period fill ${periodFill} is neither colors.accent (${ctx.colors.accent}) nor colors.text (${ctx.colors.text})`,
+      ).toContain(periodFill)
+
+      const bg = ctx.defaultBg ?? ctx.colors.bg
+      const ratio = contrastRatio(periodFill, bg)
+      expect(
+        ratio,
+        `${themeId}: period fill ${periodFill} measures ${ratio.toFixed(2)}:1 against ${bg}, below the required ${requiredContrastRatio(88)}:1`,
+      ).toBeGreaterThanOrEqual(requiredContrastRatio(88))
+    }
   })
 })
