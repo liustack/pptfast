@@ -2,6 +2,7 @@ import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { contrastRatio, requiredContrastRatio } from "../ink"
 
 /**
  * constellation-ending archetype（spec §3.2）：底部收束的大号"Thank you."式
@@ -131,7 +132,52 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
         }
         // Signature detail: only the closing line's trailing "。" (if any)
         // splits into an accent-colored tspan.
+        //
+        // contrast-policy wave, 裁定 3 (task T2, then corrected by T2 review
+        // + controller adjudication): the period is part of a 92px-class
+        // heading — A-tier large text, 3:1 floor — and a bare `colors.accent`
+        // fill measured 1.57:1 on ember's real background (a real,
+        // structural failure the audit never caught: no stress fixture had
+        // ever exercised a period-ending heading through this archetype, so
+        // the code path itself went unaudited — closed by
+        // `stress-fixtures.ts`'s new period-ending `ending` entry). Measured
+        // against `ctx.defaultBg ?? colors.bg` (this archetype paints no
+        // surface of its own for the ending page, so that's the real
+        // rendered background, not an assumed token) with the same
+        // `contrastRatio`/`requiredContrastRatio` helpers `accessibleInk`
+        // itself is built from.
+        //
+        // The fallback is deliberately NOT `accessibleInk`'s usual neutral
+        // ink: this period sits mid-sentence, sharing one heading `<text>`
+        // with the rest of the line, which is always painted `colors.text`
+        // a few pixels to its left. `accessibleInk`'s neutral-ink contract
+        // exists for text with no sibling ink to match (a standalone
+        // accent-colored label) — here the sibling is right there, so
+        // falling back to a generic near-black instead of the heading's own
+        // ink would visibly split one sentence into two different darks on
+        // any theme whose `colors.text` isn't already near-black (bloom
+        // `#4A4258`, classroom `#48545C`, ember `#26221E`, ...). Falling
+        // back to `colors.text` keeps the sentence visually one piece, and
+        // is always safe: every theme's `colors.text` is calibrated to
+        // clear 4.5:1 against its own `colors.bg`, comfortably above this
+        // 3:1 large-text floor (asserted across all 16 themes in
+        // `deck-audit.test.ts`).
+        //
+        // A real 16-theme sweep (`deck-audit.test.ts`'s own
+        // "constellation-ending accent period contrast" block) found 7
+        // themes below the floor on the raw accent fill — consulting
+        // (1.45:1), academic (2.92:1), bloom (2.09:1), classroom (2.09:1),
+        // heritage (2.61:1), pulse (1.94:1), ember (1.57:1) — all seven now
+        // fall back to their own `colors.text` (not a shared neutral ink,
+        // and not identical to each other — see the fix commit message for
+        // the per-theme old→new fill table). The other 9
+        // (enterprise/insight/campaign/ink/tech/runway/journal/luxe/terra)
+        // already cleared 3:1 and render byte-identical accent fills.
         const { rest, period } = splitTrailingPeriod(line)
+        const periodFill =
+          contrastRatio(colors.accent, ctx.defaultBg ?? colors.bg) >= requiredContrastRatio(heading.fontSize)
+            ? colors.accent
+            : colors.text
         return (
           <text
             key={i}
@@ -146,7 +192,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
             dominantBaseline="alphabetic"
           >
             {rest}
-            {period && <tspan fill={colors.accent}>{period}</tspan>}
+            {period && <tspan fill={periodFill}>{period}</tspan>}
           </text>
         )
       })}

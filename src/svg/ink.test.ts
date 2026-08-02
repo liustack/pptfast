@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { accessibleInk, accessibleOpacity, contrastRatio, readableOn, requiredContrastRatio } from "./ink"
+import { accessibleInk, accessibleOpacity, contrastRatio, metaInk, readableOn, requiredContrastRatio } from "./ink"
 
 // `readableOn`'s own behavior is unchanged by the W4 fix-round extraction
 // out of `cover-split-diagonal.tsx` — these are the same assertions that
@@ -119,6 +119,65 @@ describe("accessibleOpacity", () => {
       const ink = readableOn(bg)
       const opacity = accessibleOpacity(ink, bg, 34, 0.7)
       expect([0.7, 1]).toContain(opacity)
+    }
+  })
+})
+
+// contrast-policy wave, Task T1: `metaInk` is the derivation the two
+// `COPYRIGHT_FAINT` file-private orphan colours (ending-banner-ending.tsx /
+// ending-rail-ending.tsx) were replaced with — see those files' own header
+// comments for why a hardcoded per-file grey was overturned. Real,
+// measured fixture values below (not invented): `#8A968F` was
+// ending-rail-ending.tsx's own former `COPYRIGHT_FAINT` literal, and
+// `#FAFAF6`/`#F7F7F2` are academic's/consulting's own real `ending`
+// `defaultBackgrounds` — this is the exact failing/passing pair the policy
+// wave's own TDD red step reproduces (see deck-audit.test.ts's "meta tier"
+// describe block for the corresponding audit-level red→green pin, and
+// task-1-report.md for the correction this uncovered against the
+// roadmap/plan's stated 2.93/3.22 theme attribution — the numbers are real,
+// which theme they were filed under was not).
+describe("metaInk", () => {
+  it("keeps the preferred fill when it already clears the 3:1 meta floor", () => {
+    // consulting's own former COPYRIGHT_FAINT against consulting's real
+    // ending background: 3.224:1, already over the B-tier floor.
+    expect(contrastRatio("#8a8a86", "#F7F7F2")).toBeGreaterThanOrEqual(3)
+    expect(metaInk("#8a8a86", "#F7F7F2")).toBe("#8a8a86")
+  })
+
+  it("nudges a failing preferred fill just far enough to clear 3:1, not all the way to readableOn", () => {
+    // academic's own former COPYRIGHT_FAINT against academic's real ending
+    // background: 2.934:1 — under the floor.
+    const pref = "#8A968F"
+    const bg = "#FAFAF6"
+    expect(contrastRatio(pref, bg)).toBeLessThan(3)
+    const out = metaInk(pref, bg)
+    expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(3)
+    // Minimal nudge, not the full jump: the result sits strictly between the
+    // failing preferred fill and readableOn's neutral extreme, not equal to
+    // either.
+    expect(out).not.toBe(pref)
+    expect(out).not.toBe(readableOn(bg))
+    expect(out).toBe("#848f89")
+  })
+
+  it("only reaches for readableOn's full-strength neutral ink when nothing subdued clears the floor", () => {
+    // A background whose own luminance sits exactly at the dark/light
+    // break-even (readableOn's tightest possible case, ~4.58:1 for either
+    // ink) leaves very little room for a light preferred fill to clear 3:1
+    // without walking almost all the way to the neutral ink itself.
+    const bg = "#6E8E9E" // classroom's own primary — see readableOn's own test above
+    const pref = "#DDE7EC" // a light, subdued preferred fill that fails 3:1 here
+    expect(contrastRatio(pref, bg)).toBeLessThan(3)
+    const out = metaInk(pref, bg)
+    expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(3)
+  })
+
+  it("never returns something worse than readableOn's own output — the walk always terminates by alpha=1", () => {
+    for (const bg of ["#006A4E", "#2DD4E6", "#3D2E78", "#F6F1EA", "#161310", "#6E8E9E", "#0A0A0C", "#161310", "#060A13"]) {
+      for (const pref of ["#8A968F", "#8a8a86", "#5D6B65", "#93939C"]) {
+        const out = metaInk(pref, bg)
+        expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(3)
+      }
     }
   })
 })

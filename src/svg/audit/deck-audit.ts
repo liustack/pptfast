@@ -165,6 +165,55 @@ const DEFAULT_FONT_SIZE = 16
  */
 const DECORATIVE_ALPHA = 0.4
 
+/**
+ * `data-contrast-tier="meta"` — a render-side marker (own protocol, same
+ * family as `data-decor`/`data-audit-box` above and `full-matrix-
+ * contrast.test.ts`'s `ALLOWLIST`: "audit reads a marker to pick which rule
+ * applies" is this codebase's existing shape for a tiered check, not a new
+ * contract) for the contrast-policy wave's **B tier**
+ * (`docs/contrast-system.md`'s three-tier policy: content text stays at the
+ * unmarked default A-tier ratio — `CONTRAST_RATIO_BODY`/`CONTRAST_RATIO_LARGE`
+ * by size — while meta-information text — copyright lines, page numbers,
+ * org names, dates: real information, deliberately de-emphasized, not
+ * `DECORATIVE_ALPHA`'s "not meant to be read at all" — only ever needs
+ * `CONTRAST_RATIO_LARGE` (3:1), *regardless of its rendered font size*).
+ *
+ * Emitted directly on the `<text>` element by a render-side call site (e.g.
+ * `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s copyright line, the
+ * two sites that motivated this policy) — read here the same "own attribute
+ * wins, else inherit from the nearest ancestor" way `fill`/`font-size`
+ * already are, so a `<tspan>` continuing a marked `<text>` run without
+ * repeating the attribute still inherits the tier. Unlike `data-decor`, this
+ * is *not* a subtree-sticky exclusion (a `<g data-contrast-tier="meta">`
+ * wrapper is not a supported call shape today — every current emitter marks
+ * the `<text>` element itself) — kept as a plain inherit rather than
+ * `data-decor`'s "sticky once entered" accumulation so a future nested
+ * unmarked A-tier `<text>` inside some larger marked wrapper wouldn't
+ * silently inherit the relaxed floor by construction; nothing in this
+ * codebase currently nests text that way, so the distinction is dormant, not
+ * exercised — documented so it stays a deliberate choice rather than an
+ * accident if that changes.
+ *
+ * Any other value (or the attribute's absence) leaves the existing
+ * size-driven A-tier requirement untouched — this is additive, not a
+ * replacement: `full-matrix-contrast.test.ts`'s regression net and
+ * `auditDeck`'s callers get this for free, no separate wiring, because both
+ * already consume `findContrastIssues`'s same `issues`/`imageBackedRuns`
+ * output this marker feeds into.
+ */
+const META_CONTRAST_TIER = "meta"
+
+/** The contrast ratio a run must clear — `META_CONTRAST_TIER`'s hard 3:1
+ * floor when `tier` marks it as meta-information text, else the existing
+ * size-driven A-tier split (`CONTRAST_RATIO_LARGE`/`CONTRAST_RATIO_BODY`).
+ * Shared by both the resolved-background (`issues`) and image-backed
+ * (`imageBackedRuns`) branches below so the two tables never disagree on
+ * what a tagged run needs. */
+function requiredRatioFor(tier: string | null, renderedFontSize: number): number {
+  if (tier === META_CONTRAST_TIER) return CONTRAST_RATIO_LARGE
+  return renderedFontSize >= LARGE_TEXT_MIN_PX ? CONTRAST_RATIO_LARGE : CONTRAST_RATIO_BODY
+}
+
 function parseHexColor(hex: string): [number, number, number] {
   let h = hex.replace("#", "")
   if (h.length === 3 || h.length === 4) {
@@ -1421,6 +1470,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     inheritedTx: number | null,
     inheritedTy: number | null,
     anchor: string,
+    tier: string | null,
   ) => {
     const { dx, dy, scale } = parseTransform(el)
     const ax = ox + os * dx
@@ -1442,6 +1492,10 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     const currentFontSize = ownFontSize ? Number(ownFontSize) : fontSize
     const currentFillOpacity = ownFillOpacity !== null ? Number(ownFillOpacity) : fillOpacity
     const currentAnchor = ownAnchor ?? anchor
+    // `data-contrast-tier` — see `META_CONTRAST_TIER`'s own doc comment.
+    // Plain inherit, not `data-decor`'s sticky subtree accumulation (own
+    // attribute wins, else the value threaded down from the parent).
+    const currentTier = el.getAttribute("data-contrast-tier") ?? tier
     // `opacity` (unlike `fill-opacity`) compounds down nested groups in real
     // SVG rendering (each ancestor's own opacity<1 further dims everything
     // inside it), so this accumulator multiplies rather than overrides.
@@ -1660,7 +1714,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
             const renderedFontSize = currentFontSize * as
             const effective = blendOver(currentFill, background, alpha)
             const ratio = contrastRatio(effective, background)
-            const required = renderedFontSize >= LARGE_TEXT_MIN_PX ? CONTRAST_RATIO_LARGE : CONTRAST_RATIO_BODY
+            const required = requiredRatioFor(currentTier, renderedFontSize)
             if (ratio < required) {
               issues.push({
                 text: content.slice(0, 24),
@@ -1684,7 +1738,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
           const renderedFontSize = currentFontSize * as
           const width = measureTextUnits(content) * renderedFontSize
           const left = currentAnchor === "end" ? tx - width : currentAnchor === "middle" ? tx - width / 2 : tx
-          const required = renderedFontSize >= LARGE_TEXT_MIN_PX ? CONTRAST_RATIO_LARGE : CONTRAST_RATIO_BODY
+          const required = requiredRatioFor(currentTier, renderedFontSize)
           imageBackedRuns.push({
             text: content.slice(0, 24),
             left,
@@ -1713,11 +1767,12 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         currentTx,
         currentTy,
         currentAnchor,
+        currentTier,
       )
     }
   }
 
-  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, null, null, "start")
+  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, null, null, "start", null)
   return { issues, regions, imageBackedRuns }
 }
 

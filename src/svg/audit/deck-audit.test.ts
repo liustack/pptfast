@@ -14,6 +14,7 @@ import { PptxIRSchema, type ChartSeries, type Component, type PptxIR, type Slide
 import { renderSlideSvg } from "../../api"
 import { PptfastError } from "../../errors"
 import { installNodePlatform } from "../../platform/node"
+import { CANONICAL_THEME_IDS } from "../../themes"
 import { renderDonut, renderPie } from "../components/chart-svg"
 import {
   auditDeck,
@@ -78,19 +79,15 @@ describe("auditDeck — clean deck baseline", () => {
   // it by construction), so any overlap finding here would be a real bug.
   //
   // `low-contrast` is deliberately *not* asserted zero here. Running the
-  // matrix while developing this check surfaced three distinct, genuine,
-  // pre-existing sources of borderline-WCAG decorative/semantic colour that
-  // this task did not introduce and was, at the time, out of scope to
-  // remediate (a cross-cutting theme-polish pass, not "audit core") —
-  // documented in the task report, and locked in as explicit regression
-  // tests right below this block so the *specific*, understood cases stay
-  // understood rather than silently allowlisted:
+  // matrix while developing this check surfaced genuine, pre-existing
+  // sources of borderline-WCAG decorative/semantic colour that this task did
+  // not introduce and was, at the time, out of scope to remediate (a
+  // cross-cutting theme-polish pass, not "audit core") — documented in the
+  // task report, and locked in as explicit regression tests right below this
+  // block so the *specific*, understood cases stay understood rather than
+  // silently allowlisted:
   //   1. `code.tsx`'s `LINE_NUM_COLOR` — a hardcoded editor-gutter gray.
-  //   2. `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s
-  //      `COPYRIGHT_FAINT` — an explicitly-adjudicated (see that file's own
-  //      lengthy doc comment) cross-theme "copyright is the faintest text
-  //      tier" convention.
-  //   3. `architecture.tsx`'s layer title (`ctx.colors.primary` on
+  //   2. `architecture.tsx`'s layer title (`ctx.colors.primary` on
   //      `ctx.colors.panel ?? ctx.colors.surface`) — a *theme's own*
   //      internal colour pairing, not a hardcoded value; on `insight`
   //      specifically it computes to 4.40:1, essentially a rounding
@@ -100,13 +97,28 @@ describe("auditDeck — clean deck baseline", () => {
   // defeat the point. None of them appear in `examples/basic.json` (the
   // plan's actual clean-deck gate, asserted above).
   //
-  // Two former members of this list — `kpi.tsx`'s hardcoded delta-arrow
-  // red/green and `quote.tsx`'s decorative open-quote mark — are gone as of
-  // the bench-driven fix round's B-group (Task 3): both are real defects,
-  // not out-of-scope theme polish after all, now fixed via `accessibleInk`.
-  // See the "B-group ink fixes" describe block below for the red→green
-  // re-pin (this block's own former assertions on them, `contrast.some(...)
-  // === true`, are exactly what got flipped).
+  // Three former members of this list are gone: `kpi.tsx`'s hardcoded
+  // delta-arrow red/green and `quote.tsx`'s decorative open-quote mark, as
+  // of the bench-driven fix round's B-group (Task 3, both real defects, now
+  // fixed via `accessibleInk` — see the "B-group ink fixes" describe block
+  // below for that red→green re-pin), and `ending-banner-ending.tsx`/
+  // `ending-rail-ending.tsx`'s former `COPYRIGHT_FAINT` orphan colour, as of
+  // the contrast-policy wave's Task T1: that hardcoded per-file grey is gone
+  // too, replaced by `metaInk(colors.muted, bg)` (`../ink`) tagged
+  // `data-contrast-tier="meta"` — see `findContrastIssues — low-contrast`'s
+  // own "meta" tests below for the mechanism, and `ink.test.ts`'s `metaInk`
+  // describe block for the derivation itself. `metaInk` guarantees >=3:1
+  // against the real rendered background on *any* theme (the fallback path
+  // exists exactly for a theme where `colors.muted` alone wouldn't clear
+  // it), so the `data-contrast-tier="meta"` marker alone is enough to keep
+  // both sites off this list everywhere — on the two themes each archetype
+  // actually ships natively pinned to (consulting/banner-ending,
+  // academic/rail-ending) the fix goes further still: `colors.muted` itself
+  // already clears the plain 4.5:1 body threshold against each theme's real
+  // background (`colors.muted` is calibrated to clear 4.5:1 generally —
+  // `docs/contrast-system.md`'s "Muted calibration discipline" section), so
+  // `metaInk` returns it unchanged and the copyright line produces no
+  // low-contrast finding at all, meta tier or not.
   const THEMES = ["consulting", "insight", "tech", "campaign", "luxe"] as const
   for (const themeId of THEMES) {
     for (const [name, stressDeck] of Object.entries(STRESS_DECKS)) {
@@ -148,19 +160,6 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#6A737D")).toBe(true)
   })
 
-  it("ending-banner-ending.tsx's adjudicated COPYRIGHT_FAINT tier fails the strict WCAG body threshold", () => {
-    // Pinned explicitly (W4 full-set opening): this test is about one
-    // specific component's hardcoded color, not about auto-selection —
-    // consulting's ending curated set grew from a single-member
-    // ["banner-ending"] to the full 7-archetype set, so an unpinned slide
-    // no longer deterministically lands on banner-ending.
-    const ir = deck("consulting", [
-      { type: "ending", heading: "Thanks", layout: "banner-ending", components: [] },
-    ], { meta: { organization: "x", copyright: "© 2026 x" } })
-    const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#8a8a86")).toBe(true)
-  })
-
   it("architecture.tsx's theme-derived primary-on-panel pairing is a rounding distance under 4.5:1 on insight", () => {
     const ir = deck("insight", [
       {
@@ -172,6 +171,38 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
     expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#E63946")).toBe(true)
   })
+})
+
+// contrast-policy wave, 裁定 3 (task T2, corrected by T2 review + controller
+// adjudication): full 16-theme regression net for
+// `ending-constellation-ending.tsx`'s accent-colored trailing period.
+// Pre-fix, this block was red on 7 of 16 themes — a real, measured defect
+// (`ember` 1.57:1, the plan's own named repro), not a false positive: no
+// stress fixture had ever rendered a period-ending heading through this
+// archetype (see `stress-fixtures.ts`'s new pinned `ending`/
+// `constellation-ending` entry, added in the same commit as this block, one
+// commit ahead of the archetype fix — red-then-green, not red-and-green
+// together). Post-fix, every theme clears 3:1: the archetype falls back to
+// its own heading ink (`colors.text` — in-sentence coherence with the rest
+// of the heading, not a shared neutral ink; see the archetype's own comment)
+// on the 7 that used to fail
+// (consulting/academic/bloom/classroom/heritage/pulse/ember) and stays
+// byte-identical (still the theme's own accent fill) on the other 9. See
+// `ending-constellation-ending.test.tsx`'s 16-theme coherence-property test
+// for the fill-value-level assertion this block's low-contrast-findings
+// check doesn't cover.
+describe("constellation-ending accent period contrast (contrast-policy wave, task T2)", () => {
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: the accent-colored trailing period clears the required contrast ratio against ctx.defaultBg`, () => {
+      const ir = deck(themeId, [
+        { type: "ending", layout: "constellation-ending", heading: "Thank you.", components: [] },
+      ])
+      const findings = auditDeck(ir).findings.filter(
+        (f) => f.code === "low-contrast" && (f.detail as { text?: string } | undefined)?.text === ".",
+      )
+      expect(findings).toEqual([])
+    })
+  }
 })
 
 // Bench-driven fix round (defect A reclassification, Task 3 handoff): the
@@ -521,6 +552,52 @@ describe("findContrastIssues — low-contrast", () => {
     const bodyIssues = findContrastIssues(body)
     expect(bodyIssues).toHaveLength(1)
     expect(bodyIssues[0].required).toBe(4.5)
+  })
+
+  // contrast-policy wave, Task T1: `data-contrast-tier="meta"` — B-tier
+  // meta-information text (docs/contrast-system.md's three-tier policy)
+  // holds to 3:1 at *any* font size, not just the 24px large-text cutoff
+  // above. Same #808080-vs-BG pair (3.68:1, between the two thresholds) at
+  // body font-size (20px, normally 4.5:1) — supersedes deck-audit.test.ts's
+  // former "ending-banner-ending.tsx's adjudicated COPYRIGHT_FAINT tier
+  // fails the strict WCAG body threshold" pin below this describe block,
+  // which asserted the opposite (a meta line *should* fail 4.5:1) before
+  // the policy existed to grant it a 3:1 floor instead.
+  it("data-contrast-tier=\"meta\" relaxes a body-size run to the 3:1 floor instead of 4.5:1", () => {
+    const untagged = page(BG, `<text x="0" y="40" font-size="20" fill="#808080">untagged</text>`)
+    const tagged = page(
+      BG,
+      `<text data-contrast-tier="meta" x="0" y="40" font-size="20" fill="#808080">meta</text>`,
+    )
+    const untaggedIssues = findContrastIssues(untagged)
+    expect(untaggedIssues).toHaveLength(1)
+    expect(untaggedIssues[0].required).toBe(4.5)
+    expect(findContrastIssues(tagged)).toEqual([])
+  })
+
+  it("data-contrast-tier=\"meta\" still fails a run that doesn't even clear 3:1 — the floor is relaxed, not removed", () => {
+    // #A9A9A9 vs BG (#F7F7F2) computes to ~2.32:1 — under even the relaxed
+    // 3:1 meta floor.
+    const markup = page(
+      BG,
+      `<text data-contrast-tier="meta" x="0" y="40" font-size="20" fill="#A9A9A9">still fails</text>`,
+    )
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].required).toBe(3)
+    expect(issues[0].ratio).toBeLessThan(3)
+  })
+
+  it("a <tspan> inherits data-contrast-tier=\"meta\" from its parent <text> without repeating the attribute", () => {
+    // Mirrors the multi-tspan meta-line shape this walk already supports
+    // for fill/font-size (cover-left-anchor.tsx's author/date/version line)
+    // — the tier marker inherits the identical "own attribute wins, else
+    // inherit" way.
+    const markup = page(
+      BG,
+      `<text data-contrast-tier="meta" x="0" y="40" font-size="20"><tspan fill="#808080">meta run</tspan></text>`,
+    )
+    expect(findContrastIssues(markup)).toEqual([])
   })
 
   it("excludes decorative near-transparent text (SlideDecor-style watermark) from the check", () => {

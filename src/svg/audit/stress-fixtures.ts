@@ -243,6 +243,29 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
         subheading: MIXED_LONG,
         components: [],
       },
+      {
+        // contrast-policy wave (task T2): closes a structural audit blind
+        // spot, not an overflow one — every pre-existing `ending` entry in
+        // this deck (both above, plus `full-matrix-contrast.test.ts`'s own
+        // fixed `HEADING`) ends in an ordinary CJK/Latin character, never a
+        // period, so `ending-constellation-ending.tsx`'s `splitTrailingPeriod`
+        // accent-colored-trailing-punctuation tspan was structurally
+        // unreachable by any sweep in this repo — a real 1.57:1 contrast
+        // defect on ember (and 6 other themes) went un-audited not because
+        // no test looked, but because no fixture's content shape could ever
+        // trigger the code path being measured. `layout` is pinned (like
+        // `quote_stage`'s own pinned entries below) so this fixture always
+        // exercises `constellation-ending` regardless of which archetype a
+        // given theme happens to curate into its `ending` pool — the point
+        // is coverage of the archetype itself, not of theme curation.
+        // Locked by `deck-audit.test.ts`'s dedicated "constellation-ending
+        // accent period contrast" 16-theme sweep.
+        type: "ending",
+        layout: "constellation-ending",
+        heading: "Thank you.",
+        subheading: MIXED_LONG,
+        components: [],
+      },
     ]),
     meta: {
       organization: "压力测试",

@@ -39,13 +39,15 @@ const ir = (theme: string, slide: Slide): PptxIR =>
     slides: [slide],
   }) as unknown as PptxIR
 
-// 档位二（观感等价档，见文件头"孤儿色处理"）：`COPYRIGHT_FAINT`(#8a8a86)
-// 是版权行专属的、比 `colors.muted` 浅一档的弱化灰，语义上不对应任何 token
-// 字段——不并入 `colors.muted`（会抹平"联系信息 > 版权"的弱化层级），原样
-// 保留为文件私有 hex 常量。验收：结构锚点 + 内容存在 + 该装饰 hex（同白字
-// 例外一样）跨主题稳定出现，而非逐字节 toBe。
+// contrast-policy 波 T1（推翻本文件头旧裁决"COPYRIGHT_FAINT 跨主题固定不
+// 变"）：版权行不再是文件私有孤儿色，改用 `metaInk(colors.muted, bg)`
+// （`../ink`）——B 层门槛 3:1 下已达标时原样保留 `colors.muted`，这里两个
+// theme 的 `colors.muted` 对各自真实背景都已经 >=3:1（consulting 4.96:1、
+// tech 5.96:1，见 task-1-report.md 的实测），所以两处断言都从"跨主题保持
+// 同一个 hex 不变"改为"等于该主题自己的 colors.muted，随主题变化"——这正是
+// 新裁决要断言的属性：派生色随背景变，不是钉死不变。
 describe("BannerEnding", () => {
-  it("consulting tokens 下渲染 org 标 + 联系区块 + 未隐形的孤儿装饰色（COPYRIGHT_FAINT），heading 存在时不兜底", () => {
+  it("consulting tokens 下渲染 org 标 + 联系区块 + B 层版权行（data-contrast-tier=meta），heading 存在时不兜底", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", endingWithHeading)
     const out = renderSvgMarkup(
@@ -71,14 +73,18 @@ describe("BannerEnding", () => {
     expect(out).toContain("#051C2C")
     expect(out).toContain("#FFC72C")
 
-    // 孤儿装饰色原样保留、未被并入 muted——版权行在 consulting 下仍然可见，
-    // 与 colors.muted(#6B6B6B，post-v0.3 W8 fix round补测二次校准值) 不同色，
-    // 是它本该有的"更浅一档"视觉层级（#6B6B6B 本身合法出现在联系标签上，
-    // 不是本断言要排除的对象）
-    expect(out).toContain("#8a8a86")
+    // 版权行现在派生自 colors.muted（consulting 的 #6B6B6B 对真实渲染背景
+    // #F7F7F2 已经 4.96:1，clears B 层 3:1，metaInk 原样保留），挂
+    // data-contrast-tier="meta"。不再是独立于 muted 的孤儿色。
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
+    const copyrightText = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
+    )!
+    expect(copyrightText.getAttribute("fill")).toBe("#6B6B6B")
+    expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 
-  it("tech tokens 下用 tech 的 primary/accent/muted，consulting 烤色不残留，COPYRIGHT_FAINT 装饰色跨主题保持不变（证明 token 化成立）", () => {
+  it("tech tokens 下用 tech 的 primary/accent/muted，consulting 烤色不残留，版权行随主题派生（不再跨主题固定同一 hex）", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const deck = ir("tech", endingWithHeading)
     const out = renderSvgMarkup(
@@ -94,8 +100,62 @@ describe("BannerEnding", () => {
     expect(out).not.toContain("#6C6C6C")
     expect(out).not.toContain("#D5D5CB")
 
-    // 装饰豁免色是文件私有常量，不随主题变化——跨主题依然渲染同一个 hex
-    expect(out).toContain("#8a8a86")
+    // 版权行派生自 tech 自己的 colors.muted（#8A94A6 对 tech ending 背景
+    // #0D1526 已经 5.96:1，clears B 层，metaInk 原样保留）——跟上一个测试
+    // consulting 断言的 #6B6B6B 不是同一个 hex，证明这是随主题派生，不是
+    // 跨主题固定不变的孤儿色。
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
+    const copyrightText = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
+    )!
+    expect(copyrightText.getAttribute("fill")).toBe("#8A94A6")
+    expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
+  })
+
+  // contrast-policy 波 T3（T1 review 遗留 minor b）：tech 已实测深底可读，这
+  // 里补齐另外两个深底主题 insight/luxe——避免"只测过一个深底主题"的覆盖
+  // 假象。两个主题的 colors.muted 相对各自真实渲染背景（`ctx.defaultBg`，
+  // ending 页 defaultBackgrounds）都远超 B 层 3:1 门槛，metaInk 原样保留。
+  it("insight tokens（深底）下版权行随主题派生，实测远超 B 层门槛", () => {
+    const ctx = buildCtx(resolveStyle("insight"), {})
+    const deck = ir("insight", endingWithHeading)
+    const out = renderSvgMarkup(
+      <BannerEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
+    )
+
+    expect(out).toContain("#E63946") // insight primary，用在标题/分隔线上
+    expect(out).toContain("#D4A57C") // insight accent，用在 org 圆点上
+    expect(out).toContain("#93939C") // insight muted，用在副标题/联系标签上
+
+    // 版权行派生自 insight 自己的 colors.muted（#93939C 对 insight ending
+    // 背景 #0A0A0C 实测 6.494:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
+    const copyrightText = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
+    )!
+    expect(copyrightText.getAttribute("fill")).toBe("#93939C")
+    expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
+  })
+
+  it("luxe tokens（深底）下版权行随主题派生，实测远超 B 层门槛", () => {
+    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const deck = ir("luxe", endingWithHeading)
+    const out = renderSvgMarkup(
+      <BannerEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
+    )
+
+    expect(out).toContain("#D4B876") // luxe primary，用在标题/分隔线上
+    expect(out).toContain("#A67B45") // luxe accent，用在 org 圆点上
+    expect(out).toContain("#9C9386") // luxe muted，用在副标题/联系标签上
+
+    // 版权行派生自 luxe 自己的 colors.muted（#9C9386 对 luxe ending 背景
+    // #161310 实测 6.108:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
+    const copyrightText = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
+    )!
+    expect(copyrightText.getAttribute("fill")).toBe("#9C9386")
+    expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 
   it("consulting tokens 下无 heading 时标题兜底为“Thank you.”，副题兜底“We appreciate your time.”（双重兜底）", () => {

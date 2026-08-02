@@ -2,6 +2,7 @@ import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { metaInk } from "../ink"
 
 /**
  * rail-ending archetype（spec §3.2）：左下角两块深浅同色系矩形（呼应
@@ -33,10 +34,30 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  *     cover-left-anchor.tsx 的既有写法（`border` 在 `StyleColors` 上是可选
  *     字段）。
  *
- * 孤儿色处理（**档位二・观感等价**，唯一孤儿色）：版权行 fill 用的一个内联
- * 十六进制字面量，在 academic.ts 的 colors 表里没有精确匹配——整个
- * academic.tsx 文件 grep 只出现这一处（不是模块级具名常量）。判断过程
- * （Step B）：
+ * 版权行颜色（contrast-policy 波，T1，推翻下方旧裁决）：不再是文件私有
+ * 孤儿色。旧裁决（原文保留在本节末尾供 git 考古）判定版权行的 hex 字面量
+ * 是"该保留的对比性装饰色"，前提是当时没有对比度策略、只能逐处封存判断。
+ * 现在有策略了（`docs/contrast-system.md` 三层对比度策略，B 层"元信息
+ * 文本"）：版权行是真实信息（署名/法务功能），不是纯装饰，理应像其余
+ * token 化颜色一样随主题派生，而不是一个跨 16 个主题原样不变的固定灰——
+ * academic 自己的实测：`0x8A968F` 对 academic 真实渲染背景 `#FAFAF6` 只有
+ * 2.93:1，连 B 层 3:1 的硬线都没过（旧裁决当时没有 3:1 这条线可对照）。
+ * 固定灰在深底主题下可能完全不可读，对比度这件事恰恰是"随背景变化"这个
+ * 属性，一个跨主题不变的常量在 token 化主题体系里是异物。
+ *
+ * 现在的做法：版权行 `fill` 用 `metaInk(colors.muted, bg)`（`../ink`，与
+ * `accessibleInk` 同族）——`colors.muted` 是页面上"联系"信息已经在用的
+ * 同一个弱化 token，`metaInk` 保证其相对**实际渲染背景**
+ * （`ctx.defaultBg ?? colors.bg`，本函数不画自己的背景面板）至少 3:1
+ * （B 层门槛），已经达标时原样保留 `colors.muted`，不达标时才在
+ * `colors.muted` 与中性墨色之间做最小幅度调整（`metaInk` 自己的 doc
+ * comment）。挂 `data-contrast-tier="meta"` 标记（`deck-audit.ts` 的
+ * `META_CONTRAST_TIER`），让审计按 3:1 而非 4.5:1 判它。
+ *
+ * 旧裁决全文（推翻前的判断过程，保留供考古，不再是当前依据）：
+ *   版权行 fill 用的一个内联十六进制字面量，在 academic.ts 的 colors 表里
+ *   没有精确匹配——整个 academic.tsx 文件 grep 只出现这一处（不是模块级
+ *   具名常量）。判断过程（Step B）：
  *   1. 十六进制差值检验——该字面量相对 `colors.muted` 是几乎均匀的三通道
  *      整体调亮，同色系、同色相，只是更浅一档——这个"数值上是某 token 的
  *      均匀偏移"模式与 cover-left-anchor.tsx 记录的 `TRIANGLE_DEEP`
@@ -52,10 +73,8 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  *      Wave 2 Task 14 孤儿色，另案处理），两个主题各自独立地为"版权行"发明
  *      了一个比 `muted` 更浅的专属灰——不是巧合的抄近似值，是"版权行天生该
  *      比其余弱化文本更淡"这条构图惯例在多个主题里各自重复出现。
- *   结论：该字面量保留为文件私有装饰常量 `COPYRIGHT_FAINT`（十六进制值见
- *   下方代码本身），不并入 `colors.muted`，不进上面的替换表。测试用同
- *   `TRIANGLE_DEEP` 一样的锁法断言其值跨主题原样出现、且不会被归并为任何
- *   主题的 `muted`。
+ *   结论（已推翻）：该字面量保留为文件私有装饰常量 `COPYRIGHT_FAINT`，
+ *   不并入 `colors.muted`，不进上面的替换表，测试锁其值跨主题原样出现。
  *
  * 副题兜底语义（按当前源码实际行为原样迁移，不改语义）：只有主标题有
  * `slide.heading || "谢谢"` 这一层兜底——`slide.heading` 缺省时标题渲染固定
@@ -64,8 +83,9 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * 文案"的双重兜底模式，两个主题的源函数写法本就不同，不强行拉齐）。测试
  * 覆盖有 heading（标题原样、不触发兜底）与无 heading（兜底"谢谢"）两种 ir。
  *
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是上面点名并测试
- * 锁死的 `COPYRIGHT_FAINT`，grep 清零门预期恰好命中它的代码定义那一行。
+ * 纪律：本文件禁 theme id、禁颜色 hex 字面量——原先唯一的豁免
+ * （`COPYRIGHT_FAINT`）随 contrast-policy 波 T1 一并删除，grep 清零门现在
+ * 应对本文件零命中，不再有点名豁免项。
  */
 
 // 随迁自 academic.tsx 模块作用域（555-557 行），只有 BCGEmeraldEnding 消费，
@@ -75,13 +95,14 @@ const ENDING_HEADING_LAST_BASELINE = 356
 const ENDING_TWO_LINE_SHIFT_MAX = 88
 const ENDING_TWO_LINE_HAIRLINE_GAP = 100
 
-// 装饰对比色（见文件头"孤儿色处理"）：版权行专属的、比 `colors.muted` 浅
-// 一档的弱化灰，不对应任何 token 字段。原样保留自 templates/academic.tsx
-// 的内联字面量，不导出、不进 token 替换表。
-const COPYRIGHT_FAINT = "#8A968F"
-
 export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
+  // This archetype paints no background panel of its own (the two corner
+  // color blocks are decor, not a full-page fill) — the copyright line's
+  // B-tier `metaInk` call below measures against the real page-level
+  // background, same `ctx.defaultBg ?? colors.bg` fallback every other
+  // no-panel archetype uses (`ComponentCtx.defaultBg`'s own doc comment).
+  const bg = ctx.defaultBg ?? colors.bg
   const org = ir.meta.organization
   const contact = ir.meta.contact
   const copyright = ir.meta.copyright
@@ -195,13 +216,20 @@ export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
         </>
       )}
 
+      {/* Copyright — B-tier meta-information text (docs/contrast-system.md's
+          three-tier contrast policy): `metaInk` keeps `colors.muted` when it
+          already clears the 3:1 floor against the real background, else
+          nudges it minimally (see that function's own doc comment).
+          `data-contrast-tier="meta"` tells deck-audit's contrast walk to
+          hold this text to 3:1 instead of the default 4.5:1. */}
       {copyright && (
         <text
+          data-contrast-tier="meta"
           x="400"
           y={hairlineY + 212}
           fontFamily={fonts.body}
           fontSize="22"
-          fill={COPYRIGHT_FAINT}
+          fill={metaInk(colors.muted, bg)}
           dominantBaseline="alphabetic"
         >
           {copyright}
