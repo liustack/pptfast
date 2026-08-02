@@ -211,9 +211,9 @@ const META_INK_STEPS = 20
  * nudge toward full-strength ink that actually works, not the full jump.
  *
  * Termination is guaranteed, not just probable: `readableOn(bgHex)` (the
- * `alpha = 1` end of the walk) always measures >= ~4.58:1 against any real
+ * `alpha = 1` end of the walk) always measures >= ~4.398:1 against any real
  * background — its own two-ink max-contrast comparison bottoms out at that
- * value at the dark/light break-even luminance (~0.179), see `readableOn`'s
+ * value at the dark/light break-even luminance (~0.1888), see `readableOn`'s
  * own doc comment — comfortably above this function's 3:1 floor, so the loop
  * below always finds a passing step by `alpha = 1` at the latest.
  */
