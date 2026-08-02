@@ -246,6 +246,72 @@ The second sanctioned run mode next to the agentic protocol above: `pnpm bench:r
 
 `run.mts` also takes optional `--questions-dir=<dir>` / `--results-dir=<dir>` flags (default: `tests/bench/questions` / `tests/bench/results`, unchanged) so a second question bank — the probe bank below — can be run without touching the main bank's result history: `pnpm bench:run <prefix> --questions-dir=tests/bench/questions-probe --results-dir=tests/bench/results-probe`. Question ids are auto-discovered from whichever `questionsDir` is in effect (`/^[a-z]\d\d$/`, matches both `q01`- and `p01`-style ids). `score.mts` already took `[questionsDir] [resultsDir]` positional args before this wave (`pnpm bench:score tests/bench/questions-probe tests/bench/results-probe`) — no scorer code changed for the probe bank.
 
+## Agentic API run mode (`run-agentic.mts`)
+
+The full implementation of the agentic protocol described above (BENCH-01,
+`.issues/2026-08-03-bench-agentic/plan.md`): `pnpm bench:agentic <prefix> [qids...]` drives an
+external OpenAI-compatible model through a real function-calling tool loop instead of one
+completion. The model gets four tools — `write_file(path, content)`, `read_file(path)`,
+`list_files(path?)`, `run_pptfast(args)` — and a private per-question workspace, and iterates on
+its own: write IR (or deck-project files), run `validate`/`audit` via `run_pptfast`, read the
+findings, fix, repeat, the same self-check loop the SKILL playbook describes, with real tool
+access instead of imagined output. Credentials use the same `.env` shape as `run.mts`:
+`<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`.
+
+**Tool surface — minimal and neutral by design.** No general shell. `run_pptfast` only accepts a
+whitelisted, read-only/artifact-producing subcommand (`render`, `validate`, `audit`,
+`asset-brief`, `schema`, `assemble`, `disassemble`, `migrate`, `themes`, `narratives`, `preview`,
+`spec validate`) — no `serve` (interactive), no removed vocabulary-v4 aliases (`plan`,
+`scenarios`), no `check-update`/`self-update` (network side effects with no benchmark value).
+Every path argument to every tool is resolved against the workspace and rejected if it is an
+absolute path or escapes the workspace via `..` — symlink-based escapes are not checked (out of
+scope: the workspace is a harness-created scratch directory the model itself populates, not
+attacker-controlled input). This keeps the benchmark measuring the model's fit with the SKILL
+rather than the harness's own cleverness.
+
+**Round cap.** 24 chat-completion calls per question — one round may contain several tool calls,
+they all count as one round. Hitting the cap stops the run with `cap_hit: true` in `meta.json`;
+whatever the model wrote up to that point is left in place, same as a natural stop. A model turn
+that makes no tool calls is classified as a spec-confirmation question, some other clarifying
+question, or a genuine stop — the harness answers the first two with the run protocol's two fixed
+scripted lines above and ends the run on the third.
+
+**`meta.json` is harness-written, never model-self-reported** — the 2026-07-20 archived round
+found model-reported identity untrustworthy, so this harness records what it actually asked for
+and what the API actually returned, side by side, without reconciling them:
+
+```jsonc
+{
+  "provider_prefix": "QWEN",
+  "base_url_host": "dashscope.aliyuncs.com",
+  "model_requested": "qwen3.6-27b",      // the .env <PREFIX>_MODEL value asked for
+  "model_reported": ["qwen3.6-27b-..."], // the `model` field the API echoed back, per round, deduped
+  "mode": "agentic",
+  "rounds": 7,
+  "tool_calls": 12,
+  "prompt_tokens": 15000,
+  "completion_tokens": 2200,
+  "started_at": "2026-08-03T01:40:00.000Z",
+  "duration_seconds": 42.0,
+  "cap_hit": false,
+  "scripted_replies": 1
+}
+```
+
+**Result layout and model tag.** Artifacts land in `tests/bench/results/<prefix>-agentic/<qid>/`
+— the `-agentic` suffix keeps agentic runs in their own model tag, never mixed with single-shot
+runs of the same provider (`score.mts`'s model-tag directories are the comparison unit; a
+`qwen-agentic` row and a `qwen` row are two different runs of two different modes, not
+comparable to each other). The model does its actual work inside a `workspace/` subdirectory one
+level below that (`tests/bench/results/<prefix>-agentic/<qid>/workspace/`) — `score.mts` reads
+`<resultsDir>/<model-tag>/<qid>/` directly and has no knowledge of `workspace/`, so after the tool
+loop ends the harness itself locates the model's final artifact inside `workspace/` (a
+`deck.spec.json` project, preferred, or a single bare IR `*.json`) and copies it up into the
+question root as `deck.json` (or the deck-project's own files) before writing `meta.json`. If the
+model never called a tool at all and just answered with IR text in its final message (a legitimate
+outcome worth recording, not a failure) — the harness saves that text as `answer.json` at the
+question root instead, the same convention `run.mts` uses for its single-shot answers.
+
 ## Probe bank (`questions-probe/`)
 
 A second, separate question bank — `tests/bench/questions-probe/p01..p08`, its own id namespace, the main `questions/q01..q20` bank untouched — built for exactly one purpose: **evidence-gate input for the candidate component pool** (`.issues/specs/2026-07-24-pptfast-layout-component-roadmap.md` §5/§7), not model benchmarking. The gate requires ≥2 distinct-scenario cases per candidate of "the model wanted to express X and the existing 33-component pool could not carry it" before that candidate gets built. The 2026-07-24 rerun (`.issues/notes/quality-evidence.md`) found the main bank structurally incapable of producing this evidence — it was authored around the existing pool, so no question in it ever puts a model in a position where only a missing component would do. The probe bank exists to put the model in exactly that position, once per candidate.

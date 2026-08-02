@@ -50,7 +50,8 @@
     "docs:list": "node scripts/docs-list.js",
     "prepublishOnly": "pnpm check && pnpm e2e",
     "release:version": "changeset version && tsx scripts/sync-version.mts",
-    "bench:run": "tsx tests/bench/run.mts"
+    "bench:run": "tsx tests/bench/run.mts",
+    "bench:agentic": "tsx tests/bench/run-agentic.mts"
   },
   "keywords": [
     "pptx",
