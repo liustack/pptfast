@@ -214,6 +214,12 @@ export function renderOp(
     case "image": {
       const opts: Record<string, unknown> = { x: op.x, y: op.y, w: op.w, h: op.h, data: op.data }
       if (op.sizing) opts.sizing = op.sizing
+      // A11Y-01 alt 链路：pptxgenjs 的 `altText` 落到导出 XML 的
+      // `p:cNvPr@descr`（PowerPoint「编辑替换文字」读写的就是它，见
+      // node_modules/pptxgenjs 的 image 分支）。没有 alt 的资产不设这个 key
+      // ——pptxgenjs 自己会退化到用 `data`（base64 图片数据）当 descr，这是
+      // 它既有的（与本波无关的）行为，原样保留，不在这里新引入分支。
+      if (op.alt) opts.altText = op.alt
       withBlockMarker(opts, op, slideIndex, opIndex)
       slide.addImage(opts)
       break

@@ -1,4 +1,5 @@
 import JSZip from "jszip"
+import type { PptxIR } from "@/ir"
 import { PptfastError } from "../errors"
 import { createPptxPackageReader, type PptxPackageReader, type PackageRelationship } from "./package-reader"
 
@@ -27,6 +28,7 @@ export type PackageAuditRuleId =
   | "duplicate-shape-id"
   | "invalid-shape-transform"
   | "dangling-animation-target"
+  | "image-alt-dropped"
 
 export interface PackageAuditViolation {
   rule: PackageAuditRuleId
@@ -378,7 +380,69 @@ function checkAnimationTargets(doc: Document, slidePart: string): PackageAuditVi
   return violations
 }
 
-async function checkSlideParts(reader: PptxPackageReader): Promise<PackageAuditViolation[]> {
+/**
+ * Rule: image-alt-dropped — A11Y-01 alt chain wave's own audit closure
+ * (plan 裁定 3): "IR 里有 alt 的资产，导出 PPTX 里必须有对应 descr". Unlike
+ * every other per-slide rule above, this one needs the source IR (`descr`
+ * has no cheap self-describing invariant on its own — the exported package
+ * alone can't say whether an image is "missing its alt" or "was never given
+ * one") — `ir` is threaded in from `auditPptxPackage`'s own optional
+ * parameter (see its doc comment for why this rule alone opts out of the
+ * "runs against the package alone" pattern the other rules follow).
+ *
+ * Scoped to `image`-type components only, matching `components/image.tsx`'s
+ * own scope this wave (image_grid/image_compare/background carry `alt`
+ * through `ComponentCtx.images` too but don't yet emit `aria-label` — a
+ * follow-up, not silently included here).
+ *
+ * `.getAttributeNode("descr")?.value`, not `.getAttribute("descr")` — same
+ * linkedom decode workaround as `svg2pptx/image.ts`'s `imageToOp` (see that
+ * function's own doc comment): `.getAttribute()` half-decodes `&amp;`/
+ * `&lt;`/`&gt;` on this parser, which would make a correctly-escaped descr
+ * compare unequal to the plain-text IR `alt` it should match.
+ */
+function checkImageAltExported(
+  doc: Document,
+  slidePart: string,
+  slide: PptxIR["slides"][number] | undefined,
+  ir: PptxIR,
+): PackageAuditViolation[] {
+  if (!slide?.components) return []
+  const violations: PackageAuditViolation[] = []
+  const descrs = new Set<string>()
+  const cNvPrNodes = doc.getElementsByTagName("p:cNvPr")
+  for (let i = 0; i < cNvPrNodes.length; i++) {
+    const d = cNvPrNodes[i]!.getAttributeNode("descr")?.value
+    if (d) descrs.add(d)
+  }
+  for (const component of slide.components) {
+    if (component.type !== "image") continue
+    const alt = ir.assets.images[component.asset_id]?.alt
+    if (!alt) continue // 裁定 4：没有 alt 的资产不在此规则的检查范围内
+    if (!descrs.has(alt)) {
+      violations.push(
+        violation(
+          "image-alt-dropped",
+          `${slidePart}: asset "${component.asset_id}" has IR alt text but no matching <p:pic> descr was found in the exported slide (expected descr="${alt}")`,
+        ),
+      )
+    }
+  }
+  return violations
+}
+
+/** This slide part's 1-based slide number, e.g. 3 for
+ * `ppt/slides/slide3.xml` — used to index `ir.slides` (pptxgenjs writes
+ * slide parts in `ir.slides.forEach` call order, `generate.ts`'s own
+ * `addSlide` loop, so slide N's part is always `ir.slides[N - 1]`). `null`
+ * for a part `SLIDE_PART_RE` wouldn't have matched in the first place —
+ * defensive only, every caller already filtered through that regex. */
+function slideNumberFromPart(slidePart: string): number | null {
+  const m = /slide(\d+)\.xml$/.exec(slidePart)
+  return m ? Number(m[1]) : null
+}
+
+async function checkSlideParts(reader: PptxPackageReader, ir?: PptxIR): Promise<PackageAuditViolation[]> {
   const violations: PackageAuditViolation[] = []
   const slideParts = reader.listParts().filter((p) => SLIDE_PART_RE.test(p)).sort()
   for (const slidePart of slideParts) {
@@ -401,6 +465,11 @@ async function checkSlideParts(reader: PptxPackageReader): Promise<PackageAuditV
     violations.push(...checkDuplicateShapeIds(doc, slidePart))
     violations.push(...checkShapeTransforms(doc, slidePart))
     violations.push(...checkAnimationTargets(doc, slidePart))
+    if (ir) {
+      const num = slideNumberFromPart(slidePart)
+      const slide = num != null ? ir.slides[num - 1] : undefined
+      violations.push(...checkImageAltExported(doc, slidePart, slide, ir))
+    }
   }
   return violations
 }
@@ -409,7 +478,7 @@ async function checkSlideParts(reader: PptxPackageReader): Promise<PackageAuditV
 // Orchestration + entry point.
 // ────────────────────────────────────────────────────────────────────────
 
-async function collectViolations(reader: PptxPackageReader): Promise<PackageAuditViolation[]> {
+async function collectViolations(reader: PptxPackageReader, ir?: PptxIR): Promise<PackageAuditViolation[]> {
   const coreViolations = checkCoreParts(reader)
   if (coreViolations.length > 0) return coreViolations // nothing else is safely checkable without these
 
@@ -419,7 +488,7 @@ async function collectViolations(reader: PptxPackageReader): Promise<PackageAudi
   const violations: PackageAuditViolation[] = []
   violations.push(...(await checkSlideListConsistency(reader)))
   violations.push(...(await checkRelationshipTargets(reader)))
-  violations.push(...(await checkSlideParts(reader)))
+  violations.push(...(await checkSlideParts(reader, ir)))
   return violations
 }
 
@@ -483,8 +552,19 @@ function formatViolations(violations: PackageAuditViolation[]): string {
  * just the first) when the package fails one or more of spec §4.4's checks.
  * No skip switch, by design — spec §4.4's closing paragraph: a violation
  * here is the generator's own bug, not a user content problem.
+ *
+ * `ir` (A11Y-01 alt chain wave): optional, source-IR-aware second parameter
+ * that gates the one rule in this file that isn't checkable from the
+ * package alone (`image-alt-dropped` — see `checkImageAltExported`'s own
+ * doc comment). `generatePptxBlob` (`generate.ts`) always passes its own
+ * already-in-scope `ir`; standalone callers (tests constructing corrupted
+ * package bytes with no IR at hand) omit it and simply don't get that one
+ * rule — every other invariant in this file stays fully enforced either way.
  */
-export async function auditPptxPackage(input: JSZip | Blob | ArrayBuffer | Uint8Array): Promise<void> {
+export async function auditPptxPackage(
+  input: JSZip | Blob | ArrayBuffer | Uint8Array,
+  ir?: PptxIR,
+): Promise<void> {
   let zip: JSZip
   if (input instanceof JSZip) {
     zip = input
@@ -499,6 +579,6 @@ export async function auditPptxPackage(input: JSZip | Blob | ArrayBuffer | Uint8
     }
   }
   const reader = createPptxPackageReader(zip)
-  const violations = await collectViolations(reader)
+  const violations = await collectViolations(reader, ir)
   if (violations.length > 0) throw new PptfastError(formatViolations(violations))
 }

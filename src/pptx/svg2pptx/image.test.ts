@@ -48,6 +48,44 @@ describe("imageToOp", () => {
   })
 })
 
+describe("imageToOp alt (A11Y-01 alt chain)", () => {
+  it("reads aria-label into op.alt when present, CJK included", () => {
+    const op = imageToOp(
+      imageEl(`x="0" y="0" width="96" height="96" href="${DATA_URI}" aria-label="团队庆祝产品发布"`),
+    )
+    expect(op.alt).toBe("团队庆祝产品发布")
+  })
+
+  it("leaves op.alt undefined when aria-label is absent (zero-byte-change guarantee)", () => {
+    const op = imageToOp(
+      imageEl(`x="0" y="0" width="96" height="96" href="${DATA_URI}"`),
+    )
+    expect(op.alt).toBeUndefined()
+    expect("alt" in op).toBe(false)
+  })
+
+  // Real production DOMParser (installNodePlatform → linkedom), not jsdom's:
+  // linkedom 0.18.12's `Element.getAttribute()` only decodes `&quot;`/
+  // `&#x27;`/numeric entities, silently leaving `&amp;`/`&lt;`/`&gt;`
+  // undecoded — verified directly against the library, not a guess. That
+  // half-decoded string, fed to pptxgenjs's own `encodeXmlEntities`, would
+  // re-escape the already-literal `&amp;` into `&amp;amp;` in the exported
+  // `descr` — a real doubling bug this test caught during implementation.
+  // `imageToOp` reads via `.getAttributeNode()?.value` specifically to route
+  // around it (see that function's own doc comment) — this test pins the
+  // exact linkedom code path in production, not jsdom's unaffected one.
+  it("decodes &, <, > correctly through linkedom (not jsdom) — no double-escaping regression", async () => {
+    const { DOMParser: LinkedomDOMParser } = await import("linkedom")
+    const doc = new LinkedomDOMParser().parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg"><image x="0" y="0" width="96" height="96" href="${DATA_URI}" aria-label="a &amp; b &lt;c&gt; &quot;d&quot; &#x27;e&#x27;"/></svg>`,
+      "image/svg+xml",
+    )
+    const el = doc.querySelector("image")!
+    const op = imageToOp(el as unknown as Element)
+    expect(op.alt).toBe(`a & b <c> "d" 'e'`)
+  })
+})
+
 describe("imageToOp sizing (2026-07-09 导出拉伸修复)", () => {
   const mk = (attrs: string) =>
     imageEl(`href="${REAL_PNG}" x="0" y="0" width="640" height="720" ${attrs}`)

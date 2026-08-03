@@ -20,6 +20,15 @@ export interface ImageOp {
    * （SVG 规范缺省即 xMidYMid meet）、显式 none→不设（保持拉伸）。
    */
   sizing?: { type: "cover" | "contain"; w: number; h: number }
+  /**
+   * A11Y-01 alt 链路：这个 `<image>` 元素的 `aria-label`（`components/image.tsx`
+   * 写入的，源头是 `ir.assets.images[asset_id].alt`），原样传给
+   * `render.ts` 去设 pptxgenjs 的 `altText`（落到 `p:cNvPr@descr`，PowerPoint
+   * 「编辑替换文字」读写的就是它）。`undefined` 而非空字符串——没有 alt 的
+   * 资产整个属性都不发（见 `resolveHref` 上方 `imageToOp` 的读取），所以这里
+   * 也不该凭空造一个空串。
+   */
+  alt?: string
   /** Set by `svg2pptx/dispatch.ts` when this leaf lives under a `data-blk`-tagged `<g>` (wave-C S3, `elements === "auto"` only). */
   blockIndex?: number
 }
@@ -106,6 +115,22 @@ export function imageToOp(el: Element): ImageOp {
     h: boxH,
     data,
   }
+  // `.getAttribute()`, not `.getAttributeNode()?.value`, would look
+  // equivalent and read cleaner — but linkedom (the Node DOMParser this
+  // export path runs under) has a real decode bug on it: parsing
+  // `aria-label="a &amp; b &lt;c&gt;"` back with `.getAttribute()` returns
+  // `"a &amp; b &lt;c&gt;"` (only `&quot;`/`&#x27;`/numeric entities decoded,
+  // `&amp;`/`&lt;`/`&gt;` left literal — verified against linkedom 0.18.12
+  // directly, no fix upstream at the time of writing), which would then get
+  // *re*-escaped by pptxgenjs's own `encodeXmlEntities` into a doubled
+  // `&amp;amp;` in the exported `descr`. `.getAttributeNode()?.value` (and
+  // equivalently, iterating `el.attributes`) hits a different linkedom code
+  // path that decodes correctly. `href`/`x`/`y`/etc. above don't carry free
+  // user text through an XML *attribute* (data URIs have no `&`/`<`/`>` to
+  // mis-decode; positions are plain numbers), so this is the first place in
+  // this file that needs the workaround.
+  const alt = el.getAttributeNode("aria-label")?.value
+  if (alt) op.alt = alt
   const par = el.getAttribute("preserveAspectRatio") ?? ""
   if (par !== "none") {
     // slice→cover（居中裁剪出血）；meet/缺省→contain（SVG 规范缺省即

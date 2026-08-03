@@ -297,3 +297,100 @@ describe("auditPptxPackage — additional invariant coverage", () => {
     expect(message.length).toBeLessThan(8_000)
   })
 })
+
+// A11Y-01 alt chain wave, task 1: "IR 里有 alt 的资产，导出 PPTX 里必须有
+// 对应 descr" (plan 裁定 3). Unlike every rule above, this one needs the
+// source IR alongside the package — `auditPptxPackage`'s second, optional
+// `ir` parameter.
+describe("auditPptxPackage — image-alt-dropped (A11Y-01)", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+  function makeIrWithAltImage(): PptxIR {
+    return makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [{ type: "image", asset_id: "hero", fit: "cover" }],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: {
+          // CJK + every char that needs XML escaping (&, <, >, ", ') in one
+          // string — the plan's own acceptance line calls out both.
+          hero: { src: REAL_PNG, alt: `团队 & <celebrating> "launch" 'day'` },
+        },
+      },
+    })
+  }
+
+  it("passes a real render whose IR asset has alt text (positive path, full pipeline)", async () => {
+    const ir = makeIrWithAltImage()
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+  })
+
+  it("the exported slide XML actually carries the exact alt text as a descr (grep proof, CJK + escaping)", async () => {
+    const ir = makeIrWithAltImage()
+    const zip = await renderCleanZip(ir)
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(
+      `descr="团队 &amp; &lt;celebrating&gt; &quot;launch&quot; &apos;day&apos;"`,
+    )
+  })
+
+  it("rejects when the exported descr was stripped off the image shape (red-first: what a future patch-bug regression would look like)", async () => {
+    const ir = makeIrWithAltImage()
+    const zip = await renderCleanZip(ir)
+    const path = "ppt/slides/slide2.xml"
+    const before = await readPart(zip, path)
+    // Surgically blank the descr the fixed pipeline just wrote — the same
+    // "corrupt a clean render" shape every other red-first fixture in this
+    // file uses, standing in for a future patch dropping the value.
+    const after = before.replace(
+      /descr="团队 &amp; &lt;celebrating&gt; &quot;launch&quot; &apos;day&apos;"/,
+      'descr=""',
+    )
+    expect(after).not.toBe(before)
+    zip.file(path, after)
+
+    await expect(auditPptxPackage(zip, ir)).rejects.toThrow(/image-alt-dropped/)
+  })
+
+  it("does not run the rule at all when the caller omits ir (backward-compatible optional parameter)", async () => {
+    const ir = makeIrWithAltImage()
+    const zip = await renderCleanZip(ir)
+    const path = "ppt/slides/slide2.xml"
+    const before = await readPart(zip, path)
+    const after = before.replace(
+      /descr="团队 &amp; &lt;celebrating&gt; &quot;launch&quot; &apos;day&apos;"/,
+      'descr=""',
+    )
+    zip.file(path, after)
+
+    // Same corrupted zip as the previous test, but no `ir` passed this time
+    // — every other invariant still ran and found nothing wrong, since the
+    // alt rule is the only one that needs `ir` in the first place.
+    await expect(auditPptxPackage(zip)).resolves.toBeUndefined()
+  })
+
+  it("passes a real render whose IR image asset has no alt text at all (nothing to check, nothing flagged)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [{ type: "image", asset_id: "hero", fit: "cover" }],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: { images: { hero: { src: REAL_PNG } } },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+  })
+})

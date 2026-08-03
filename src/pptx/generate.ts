@@ -140,7 +140,7 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
     // `PptfastError` — this `instanceof` check is the reason.
     if (e instanceof PptxSealViolationError) throw e
   }
-  await auditPptxPackage(zip)
+  await auditPptxPackage(zip, ir)
   // Whole-file byte determinism (P0 hardening Task 4 — see
   // pptx-fixed-timestamps.ts's header comment for the full root cause):
   // every entry's zip-metadata date and docProps/core.xml's created/modified

@@ -17,7 +17,10 @@ const ctx: ComponentCtx = {
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
   bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
-  images: { hero: { src: "data:image/png;base64,AAAA" } },
+  images: {
+    hero: { src: "data:image/png;base64,AAAA" },
+    "hero-alt": { src: "data:image/png;base64,AAAA", alt: "Team celebrating a product launch" },
+  },
 }
 
 function svg(node: React.ReactElement) {
@@ -41,6 +44,32 @@ describe("image component", () => {
     expect(img).not.toBeNull()
     expect(img?.getAttribute("href")).toBe("data:image/png;base64,AAAA")
     expect(img?.getAttribute("preserveAspectRatio")).toContain("slice")
+  })
+
+  it("emits aria-label from the asset's alt text when present (A11Y-01 alt chain)", () => {
+    const component = {
+      type: "image" as const,
+      asset_id: "hero-alt",
+      fit: "cover" as const,
+    }
+    const { container } = svg(
+      image.render(component, { x: 0, y: 0, w: 1120 }, ctx),
+    )
+    const img = container.querySelector("image")
+    expect(img?.getAttribute("aria-label")).toBe("Team celebrating a product launch")
+  })
+
+  it("emits no aria-label at all when the asset has no alt text (zero-byte-change guarantee)", () => {
+    const component = {
+      type: "image" as const,
+      asset_id: "hero",
+      fit: "cover" as const,
+    }
+    const { container } = svg(
+      image.render(component, { x: 0, y: 0, w: 1120 }, ctx),
+    )
+    const img = container.querySelector("image")
+    expect(img?.hasAttribute("aria-label")).toBe(false)
   })
 
   it("renders placeholder rect when asset is missing", () => {

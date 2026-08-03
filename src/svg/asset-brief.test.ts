@@ -94,6 +94,23 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
   })
 })
 
+// A11Y-01 alt chain wave, task 1: "asset-brief 的输出顺手带上 alt（若有）"
+// (plan 裁定 3) — a small additive field, not a shape change.
+describe("buildAssetBrief — alt passthrough (A11Y-01)", () => {
+  it("carries the asset's alt text through onto its item when present", () => {
+    const ir = probeDeck()
+    ir.assets.images.pic = { src: TINY_PNG, alt: "团队庆祝产品发布" }
+    const item = buildAssetBrief(ir).items[0]!
+    expect(item.alt).toBe("团队庆祝产品发布")
+  })
+
+  it("leaves alt undefined (not an empty string) when the asset has none — dropped entirely by JSON.stringify, same as this file's other optional fields (frame/suggested_pixels)", () => {
+    const item = buildAssetBrief(probeDeck()).items[0]!
+    expect(item.alt).toBeUndefined()
+    expect(JSON.parse(JSON.stringify(item))).not.toHaveProperty("alt")
+  })
+})
+
 describe("buildAssetBrief — missing-asset deck", () => {
   it("lists an unresolved asset_id with missing: true and a non-empty suggested_prompt, renderer stays untouched (no assets.images write)", () => {
     const ir = probeDeck("not-yet-generated")
