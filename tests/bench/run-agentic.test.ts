@@ -12,6 +12,7 @@ import {
   placeArtifact,
   scriptedReplyFor,
   stripFence,
+  truncateForModel,
 } from "./run-agentic.mts"
 
 // ── checkPathSafety — the tool-surface escape guard (plan 裁定 1) ──
@@ -214,6 +215,39 @@ describe("stripFence", () => {
 
   it("leaves unfenced text untouched (trimmed)", () => {
     expect(stripFence('  {"a": 1}  ')).toBe('{"a": 1}')
+  })
+})
+
+// ── truncateForModel — per-tool-result cap, truncate from the end (plan 裁定 2) ──
+
+describe("truncateForModel", () => {
+  it("returns short text untouched, no marker appended", () => {
+    expect(truncateForModel("exit 0\nok", 100)).toBe("exit 0\nok")
+  })
+
+  it("returns text exactly at the cap untouched", () => {
+    const text = "a".repeat(100)
+    expect(truncateForModel(text, 100)).toBe(text)
+  })
+
+  it("truncates from the end, keeping the head, when text exceeds the cap", () => {
+    const text = "a".repeat(50) + "b".repeat(50) // head is 'a's, tail is 'b's
+    const result = truncateForModel(text, 50)
+    expect(result.startsWith("a".repeat(50))).toBe(true)
+    expect(result).not.toContain("b")
+  })
+
+  it("appends a marker line stating the cap and the original length", () => {
+    const text = "x".repeat(9000)
+    const result = truncateForModel(text, 8000)
+    expect(result).toContain("[truncated: 8000 of 9000 chars shown]")
+  })
+
+  it("keeps the exact head content before the marker", () => {
+    const text = "0123456789".repeat(10) // 100 chars, distinct content
+    const result = truncateForModel(text, 30)
+    expect(result.startsWith(text.slice(0, 30))).toBe(true)
+    expect(result).toContain("[truncated: 30 of 100 chars shown]")
   })
 })
 

@@ -268,6 +268,13 @@ SKILL playbook already describe. This is the largest cost lever on this runner (
 vocabulary alone was most of an ~83k-token system prompt) and is more protocol-faithful, not a
 compromise — the protocol never asked for pre-injection in a mode where the model can just ask.
 
+**Tool-result cap.** Every tool result (a `read_file`, `list_files`, or `run_pptfast` return
+value) is capped at 8000 characters before it goes back to the model, truncated from the end so
+the head — where a CLI's error message or summary line lives — survives intact. An over-cap
+result gets a trailing marker line stating what was cut, e.g.
+`[truncated: 8000 of 41203 chars shown]`. Applies uniformly to every tool and every question, no
+per-question tuning.
+
 **Tool surface — minimal and neutral by design.** No general shell. `run_pptfast` only accepts a
 whitelisted, read-only/artifact-producing subcommand (`render`, `validate`, `audit`,
 `asset-brief`, `schema`, `assemble`, `disassemble`, `migrate`, `themes`, `narratives`, `preview`,

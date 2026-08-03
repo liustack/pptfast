@@ -34,6 +34,11 @@
  * not a shortcut, and it is most of this runner's ~83k-token-per-round
  * system prompt cost.
  *
+ * Tool-result cap: every tool's return string is capped at
+ * `TOOL_RESULT_MAX_CHARS` before it goes back into the conversation — see
+ * that constant's own comment for the size and the truncate-from-the-end
+ * rationale.
+ *
  * Round cap: 24 chat-completion calls total (plan 裁定 2) — one round may
  * contain several tool calls, they all count as one round. Hitting the cap
  * stops the run with `cap_hit: true` in meta.json; whatever the model wrote
@@ -68,9 +73,14 @@ const CLI = join(ROOT, "dist/cli.js")
 const ROUND_CAP = 24
 /** Tool-result content is truncated before it goes back to the model — a
  *  validate/audit dump or a long file read should not blow the context
- *  window on its own. Generous enough that real CLI output round-trips
- *  intact for a single deck (empirically a few KB). */
-const TOOL_RESULT_MAX_CHARS = 12_000
+ *  window on its own, and an unbounded result is the other big lever on
+ *  this runner's per-round token cost next to the vocabulary-injection cut
+ *  above (plan 裁定 2). 8000 chars (~2000 tokens) is standard agent-harness
+ *  practice for a single tool result — generous enough that a real
+ *  `validate`/`audit` dump or a normal IR file read round-trips intact for
+ *  a single deck (empirically a few KB), while still bounding the
+ *  pathological case (a huge stray file the model asks to read back). */
+const TOOL_RESULT_MAX_CHARS = 8_000
 /** Per-completion-call network timeout. A single round's `max_tokens` here
  *  (8192) is far smaller than `run.mts`'s single-shot 16384, so it needs
  *  much less time than that runner's 10-minute allowance — 3 minutes is
@@ -419,8 +429,19 @@ export function placeArtifact(located: LocatedArtifact, resultDir: string): stri
 
 // ── tool implementations ──
 
-function truncateForModel(text: string): string {
-  return text.length > TOOL_RESULT_MAX_CHARS ? text.slice(0, TOOL_RESULT_MAX_CHARS) + "\n...[truncated]" : text
+/**
+ * Caps a tool result at `maxChars`, truncating from the end and keeping the
+ * head — a CLI error or summary line leads its own output, so the part worth
+ * keeping under a cap is the start, not the tail (plan 裁定 2). An over-cap
+ * result gets a trailing marker line stating the original length, so the
+ * model (and a human reading a transcript) can tell truncation happened and
+ * how much was cut, rather than mistaking a cut-off result for the whole
+ * thing. Pure and exported for unit testing; production call sites pass the
+ * module constant `TOOL_RESULT_MAX_CHARS`.
+ */
+export function truncateForModel(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars)}\n\n[truncated: ${maxChars} of ${text.length} chars shown]`
 }
 
 function doWriteFile(workspace: string, args: unknown): string {
@@ -442,7 +463,7 @@ function doReadFile(workspace: string, args: unknown): string {
   if (!check.ok) return `ERROR: ${check.reason}`
   if (!existsSync(check.resolved)) return `ERROR: no such file: ${path}`
   if (statSync(check.resolved).isDirectory()) return `ERROR: ${path} is a directory, not a file`
-  return truncateForModel(readFileSync(check.resolved, "utf8"))
+  return truncateForModel(readFileSync(check.resolved, "utf8"), TOOL_RESULT_MAX_CHARS)
 }
 
 function doListFiles(workspace: string, args: unknown): string {
@@ -453,7 +474,7 @@ function doListFiles(workspace: string, args: unknown): string {
   if (!existsSync(check.resolved)) return `ERROR: no such path: ${rel}`
   if (!statSync(check.resolved).isDirectory()) return `ERROR: not a directory: ${rel}`
   const listing = walkEntries(check.resolved, check.resolved)
-  return truncateForModel(listing.length > 0 ? listing.join("\n") : "(empty)")
+  return truncateForModel(listing.length > 0 ? listing.join("\n") : "(empty)", TOOL_RESULT_MAX_CHARS)
 }
 
 function doRunPptfast(workspace: string, args: unknown): string {
@@ -471,11 +492,11 @@ function doRunPptfast(workspace: string, args: unknown): string {
       timeout: 120_000,
       maxBuffer: 10 * 1024 * 1024,
     })
-    return truncateForModel(`exit 0\n${stdout}`)
+    return truncateForModel(`exit 0\n${stdout}`, TOOL_RESULT_MAX_CHARS)
   } catch (e) {
     const err = e as { status?: number; stdout?: string; stderr?: string; message: string }
     const body = [err.stdout, err.stderr].filter(Boolean).join("\n") || err.message
-    return truncateForModel(`exit ${err.status ?? "?"}\n${body}`)
+    return truncateForModel(`exit ${err.status ?? "?"}\n${body}`, TOOL_RESULT_MAX_CHARS)
   }
 }
 
@@ -506,7 +527,7 @@ function executeTool(tc: ToolCall, workspace: string): string {
         return `ERROR: unknown tool ${tc.function.name}`
     }
   } catch (e) {
-    return truncateForModel(`ERROR: ${(e as Error).message}`)
+    return truncateForModel(`ERROR: ${(e as Error).message}`, TOOL_RESULT_MAX_CHARS)
   }
 }
 
