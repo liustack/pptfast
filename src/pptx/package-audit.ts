@@ -390,10 +390,15 @@ function checkAnimationTargets(doc: Document, slidePart: string): PackageAuditVi
  * parameter (see its doc comment for why this rule alone opts out of the
  * "runs against the package alone" pattern the other rules follow).
  *
- * Scoped to `image`-type components only, matching `components/image.tsx`'s
- * own scope this wave (image_grid/image_compare/background carry `alt`
- * through `ComponentCtx.images` too but don't yet emit `aria-label` — a
- * follow-up, not silently included here).
+ * Covers every IR binding that resolves to an emitted `<image>` (alt-closure
+ * follow-up wave, `.issues/2026-08-04-bench-agentic/q15-root-cause.md`):
+ * `image`-type components (including the 4 `image-pages.tsx` takeover
+ * renderers — same component `type`, a different render path, still one
+ * asset), `image_grid` items, `image_compare` sides, and an asset-kind
+ * `slide.background`. The original A11Y-01 wave scoped this rule to
+ * `image`-type components only, matching `components/image.tsx`'s own scope
+ * that round; this wave wires `aria-label` emission at the remaining sites
+ * and widens the rule to match.
  *
  * `.getAttributeNode("descr")?.value`, not `.getAttribute("descr")` — same
  * linkedom decode workaround as `svg2pptx/image.ts`'s `imageToOp` (see that
@@ -407,7 +412,7 @@ function checkImageAltExported(
   slide: PptxIR["slides"][number] | undefined,
   ir: PptxIR,
 ): PackageAuditViolation[] {
-  if (!slide?.components) return []
+  if (!slide) return []
   const violations: PackageAuditViolation[] = []
   const descrs = new Set<string>()
   const cNvPrNodes = doc.getElementsByTagName("p:cNvPr")
@@ -415,17 +420,32 @@ function checkImageAltExported(
     const d = cNvPrNodes[i]!.getAttributeNode("descr")?.value
     if (d) descrs.add(d)
   }
-  for (const component of slide.components) {
-    if (component.type !== "image") continue
-    const alt = ir.assets.images[component.asset_id]?.alt
-    if (!alt) continue // 裁定 4：没有 alt 的资产不在此规则的检查范围内
+
+  function checkAsset(assetId: string, context: string) {
+    const alt = ir.assets.images[assetId]?.alt
+    if (!alt) return // 裁定 4：没有 alt 的资产不在此规则的检查范围内
     if (!descrs.has(alt)) {
       violations.push(
         violation(
           "image-alt-dropped",
-          `${slidePart}: asset "${component.asset_id}" has IR alt text but no matching <p:pic> descr was found in the exported slide (expected descr="${alt}")`,
+          `${slidePart}: asset "${assetId}" (${context}) has IR alt text but no matching <p:pic> descr was found in the exported slide (expected descr="${alt}")`,
         ),
       )
+    }
+  }
+
+  if (slide.background?.kind === "asset") {
+    checkAsset(slide.background.asset_id, "slide background")
+  }
+
+  for (const component of slide.components ?? []) {
+    if (component.type === "image") {
+      checkAsset(component.asset_id, "image component")
+    } else if (component.type === "image_grid") {
+      component.items.forEach((item, i) => checkAsset(item.asset_id, `image_grid item ${i}`))
+    } else if (component.type === "image_compare") {
+      checkAsset(component.left.asset_id, "image_compare left")
+      checkAsset(component.right.asset_id, "image_compare right")
     }
   }
   return violations

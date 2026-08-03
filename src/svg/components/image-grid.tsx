@@ -75,10 +75,13 @@ function captionsVisible(component: ImageGridComponent): boolean {
 
 function renderCell({
   src,
+  alt,
   cell,
   ctx,
 }: {
   src: string | undefined
+  /** A11Y-01 alt 链路（follow-up）：每格自己资产的 alt，只在存在时发 `aria-label`。 */
+  alt: string | undefined
   cell: { x: number; y: number; w: number; h: number }
   ctx: ComponentCtx
 }) {
@@ -92,6 +95,7 @@ function renderCell({
           width={cell.w}
           height={cell.h}
           preserveAspectRatio="xMidYMid slice"
+          aria-label={alt || undefined}
         />
       ) : (
         <>
@@ -134,9 +138,10 @@ export const imageGrid: SvgComponent<ImageGridComponent> = {
         {component.items.map((item, i) => {
           const cell = cells[i]
           const src = ctx.images?.[item.asset_id]?.src
+          const alt = ctx.images?.[item.asset_id]?.alt
           return (
             <g key={i}>
-              {renderCell({ src, cell, ctx })}
+              {renderCell({ src, alt, cell, ctx })}
               {captionsVisible(component) && item.caption &&
                 (() => {
                   const fitted = fitSvgLine(item.caption, {

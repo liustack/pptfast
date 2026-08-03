@@ -456,3 +456,66 @@ describe("auditPptxPackage — image-alt-dropped, image-takeover closure (q15 mi
     expect(xml).toContain(`descr="Northbeam engineering team"`)
   })
 })
+
+// Same follow-up wave, the other two unwired emission sites the alt-chain
+// reviewer flagged: `image_grid` items and asset-kind slide backgrounds.
+// `checkImageAltExported` is widened alongside their `aria-label` wiring —
+// before this wave it only ever looked at `image`-type components.
+describe("auditPptxPackage — image-alt-dropped, image_grid/background closure", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+  it("round-trips green for an image_grid item's alt text", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [
+            {
+              type: "image_grid",
+              items: [
+                { asset_id: "grid_a", caption: "A" },
+                { asset_id: "grid_b" },
+              ],
+            },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: {
+          grid_a: { src: REAL_PNG, alt: "Team offsite group photo" },
+          grid_b: { src: REAL_PNG },
+        },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Team offsite group photo"`)
+  })
+
+  it("round-trips green for an asset-kind slide background's alt text", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          background: { kind: "asset", asset_id: "bg_photo" },
+          components: [{ type: "bullets", items: ["one", "two"] }],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { bg_photo: { src: REAL_PNG, alt: "Skyline at dusk" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Skyline at dusk"`)
+  })
+})

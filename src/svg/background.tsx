@@ -40,7 +40,7 @@ export function Background({
   autoScrimColor,
 }: {
   spec: BackgroundSpec
-  images?: Record<string, { src: string }>
+  images?: Record<string, { src: string; alt?: string }>
   /**
    * 图片排版 P1：设计主题传主题 surface 色——asset 背景**未显式给 overlay**
    * 时自动叠上浅下深的对比度遮罩（把图往主题底色拉，保证前景 tokens 文字
@@ -102,6 +102,9 @@ export function Background({
 
   // asset
   const src = images?.[spec.asset_id]?.src
+  // A11Y-01 alt 链路（follow-up）：asset-kind 背景同样是 IR 资产，只在有 alt
+  // 时才发 `aria-label`（不发空字符串——零 alt 输入零字节变化）。
+  const alt = images?.[spec.asset_id]?.alt
   return (
     <>
       {src ? (
@@ -112,6 +115,7 @@ export function Background({
           width={W}
           height={H}
           preserveAspectRatio={spec.fit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}
+          aria-label={alt || undefined}
         />
       ) : (
         <rect x={0} y={0} width={W} height={H} fill="#1A1A1A" />

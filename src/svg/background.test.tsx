@@ -62,6 +62,19 @@ describe("Background", () => {
     )
     expect(scrim?.getAttribute("fill-opacity")).toBe("0.4")
   })
+
+  it("emits aria-label from the background asset's alt text when present, none at all otherwise (A11Y-01 follow-up)", () => {
+    const spec: BackgroundSpec = { kind: "asset", asset_id: "bg1" }
+    const withAlt = svg(
+      <Background spec={spec} images={{ bg1: { src: "data:image/png;base64,AAAA", alt: "Skyline at dusk" } }} />,
+    )
+    expect(withAlt.container.querySelector("image")?.getAttribute("aria-label")).toBe("Skyline at dusk")
+
+    const withoutAlt = svg(
+      <Background spec={spec} images={{ bg1: { src: "data:image/png;base64,AAAA" } }} />,
+    )
+    expect(withoutAlt.container.querySelector("image")?.hasAttribute("aria-label")).toBe(false)
+  })
 })
 
 describe("Background auto scrim (image-layouts P1)", () => {
