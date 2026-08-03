@@ -63,9 +63,11 @@ invariants a broken patch could plausibly violate (core parts present,
 agrees with its relationships and the actual slide parts, every internal
 relationship target resolves, `p:cNvPr` ids are unique per slide, shape
 transforms are finite integers with positive `cx`/`cy` except a connector's
-one allowed zero axis, and animation timing references a real shape on the
-same slide) and throws a `PptfastError` naming the broken invariant — there
-is no opt-out. `src/pptx/package-audit.test.ts` renders a real deck and
+one allowed zero axis, animation timing references a real shape on the
+same slide, and — IR-aware, via the call's own optional second `ir`
+argument (A11Y-01 alt chain wave) — every `image` component whose asset
+has IR `alt` text exports that exact string as its shape's `descr`) and
+throws a `PptfastError` naming the broken invariant — there is no opt-out. `src/pptx/package-audit.test.ts` renders a real deck and
 surgically breaks it via JSZip to prove each invariant actually rejects the
 right corruption. `scripts/e2e.mts`'s package-audit leg re-asserts the
 three-way slide consistency and id-uniqueness invariants directly against
