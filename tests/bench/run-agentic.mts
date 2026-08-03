@@ -287,6 +287,14 @@ export interface RunMeta {
    *  run can stop short of a natural finish. */
   deadline_hit: boolean
   scripted_replies: number
+  /** Sum, across every round, of whatever prompt-cache-hit field the
+   *  provider's response carries (plan 裁定 3) — DeepSeek's
+   *  `usage.prompt_cache_hit_tokens`, dashscope/OpenAI-shaped
+   *  `usage.prompt_tokens_details.cached_tokens`. Read defensively: a
+   *  provider that reports neither field contributes 0, not undefined.
+   *  Additive field beyond plan 裁定 2's base meta shape — a diagnostic
+   *  alongside `prompt_tokens`, not used in any pass/fail decision. */
+  cached_prompt_tokens: number
 }
 
 export function buildMeta(params: {
@@ -303,6 +311,7 @@ export function buildMeta(params: {
   capHit: boolean
   deadlineHit: boolean
   scriptedReplies: number
+  cachedPromptTokens: number
 }): RunMeta {
   return {
     provider_prefix: params.providerPrefix,
@@ -319,6 +328,7 @@ export function buildMeta(params: {
     cap_hit: params.capHit,
     deadline_hit: params.deadlineHit,
     scripted_replies: params.scriptedReplies,
+    cached_prompt_tokens: params.cachedPromptTokens,
   }
 }
 
@@ -603,10 +613,34 @@ interface ChatMessage {
   name?: string
 }
 
+interface ChatCompletionUsage {
+  prompt_tokens?: number
+  completion_tokens?: number
+  /** DeepSeek's cache-hit field (plan 裁定 3). */
+  prompt_cache_hit_tokens?: number
+  /** dashscope/OpenAI-shaped cache-hit field (plan 裁定 3). */
+  prompt_tokens_details?: { cached_tokens?: number }
+}
+
 interface ChatCompletionResponse {
   model?: string
   choices: Array<{ message: { content: string | null; tool_calls?: ToolCall[] } }>
-  usage?: { prompt_tokens?: number; completion_tokens?: number }
+  usage?: ChatCompletionUsage
+}
+
+/**
+ * Reads whichever prompt-cache-hit field a provider's `usage` object
+ * carries (plan 裁定 3): DeepSeek's `prompt_cache_hit_tokens`, or
+ * dashscope/OpenAI-shaped `prompt_tokens_details.cached_tokens`. Purely
+ * defensive — a field a provider doesn't report is treated as 0, never
+ * undefined, and an `usage` that is itself absent (a failed/malformed
+ * response) also reads as 0. In the ordinary case only one of the two
+ * fields is ever populated by a given provider; if a response somehow
+ * carried both, this adds them, matching "sum" in the plan wording.
+ */
+export function extractCachedTokens(usage: ChatCompletionUsage | undefined): number {
+  if (!usage) return 0
+  return (usage.prompt_cache_hit_tokens ?? 0) + (usage.prompt_tokens_details?.cached_tokens ?? 0)
 }
 
 async function callRound(
@@ -689,6 +723,7 @@ async function runOneAgentic(
   let scriptedReplies = 0
   let promptTokens = 0
   let completionTokens = 0
+  let cachedPromptTokens = 0
   const modelReported = new Set<string>()
   let finalText: string | undefined
   let deadlineHit = false
@@ -704,6 +739,7 @@ async function runOneAgentic(
       if (data.model) modelReported.add(data.model)
       promptTokens += data.usage?.prompt_tokens ?? 0
       completionTokens += data.usage?.completion_tokens ?? 0
+      cachedPromptTokens += extractCachedTokens(data.usage)
 
       const msg = data.choices[0]?.message
       const assistantMsg: ChatMessage = { role: "assistant", content: msg?.content ?? null }
@@ -781,6 +817,7 @@ async function runOneAgentic(
     capHit,
     deadlineHit,
     scriptedReplies,
+    cachedPromptTokens,
   })
   writeFileSync(join(resultDir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
   console.log(

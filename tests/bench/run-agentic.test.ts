@@ -8,6 +8,7 @@ import {
   checkPathSafety,
   checkPptfastArgs,
   classifyModelTurn,
+  extractCachedTokens,
   locateArtifact,
   placeArtifact,
   scriptedReplyFor,
@@ -269,6 +270,7 @@ describe("buildMeta", () => {
       capHit: false,
       deadlineHit: false,
       scriptedReplies: 1,
+      cachedPromptTokens: 9000,
     })
     expect(meta).toEqual({
       provider_prefix: "QWEN",
@@ -285,6 +287,7 @@ describe("buildMeta", () => {
       cap_hit: false,
       deadline_hit: false,
       scripted_replies: 1,
+      cached_prompt_tokens: 9000,
     })
   })
 
@@ -303,6 +306,7 @@ describe("buildMeta", () => {
       capHit: false,
       deadlineHit: false,
       scriptedReplies: 0,
+      cachedPromptTokens: 0,
     })
     expect(meta.model_requested).toBe("qwen3.6-27b")
     expect(meta.model_reported).toEqual(["some-other-served-model"])
@@ -323,6 +327,7 @@ describe("buildMeta", () => {
       capHit: true,
       deadlineHit: false,
       scriptedReplies: 0,
+      cachedPromptTokens: 0,
     })
     expect(meta.model_reported).toEqual(["a-model", "b-model"])
     expect(meta.cap_hit).toBe(true)
@@ -343,9 +348,64 @@ describe("buildMeta", () => {
       capHit: false,
       deadlineHit: true,
       scriptedReplies: 0,
+      cachedPromptTokens: 0,
     })
     expect(meta.deadline_hit).toBe(true)
     expect(meta.cap_hit).toBe(false)
+  })
+
+  it("records cached_prompt_tokens as a plain additive field, 0 when no provider reported any", () => {
+    const meta = buildMeta({
+      providerPrefix: "QWEN",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      modelRequested: "qwen3.6-27b",
+      modelReported: new Set(),
+      rounds: 1,
+      toolCalls: 0,
+      promptTokens: 500,
+      completionTokens: 50,
+      startedAt: 0,
+      finishedAt: 1000,
+      capHit: false,
+      deadlineHit: false,
+      scriptedReplies: 0,
+      cachedPromptTokens: 0,
+    })
+    expect(meta.cached_prompt_tokens).toBe(0)
+  })
+})
+
+// ── extractCachedTokens — provider prompt-cache-hit fields (plan 裁定 3) ──
+
+describe("extractCachedTokens", () => {
+  it("returns 0 when usage is undefined", () => {
+    expect(extractCachedTokens(undefined)).toBe(0)
+  })
+
+  it("returns 0 when usage carries neither cache field", () => {
+    expect(extractCachedTokens({ prompt_tokens: 100, completion_tokens: 10 })).toBe(0)
+  })
+
+  it("reads DeepSeek's prompt_cache_hit_tokens field", () => {
+    expect(extractCachedTokens({ prompt_tokens: 1000, prompt_cache_hit_tokens: 400 })).toBe(400)
+  })
+
+  it("reads dashscope/OpenAI-shaped prompt_tokens_details.cached_tokens field", () => {
+    expect(extractCachedTokens({ prompt_tokens: 1000, prompt_tokens_details: { cached_tokens: 250 } })).toBe(250)
+  })
+
+  it("treats a present but undefined cached_tokens as 0", () => {
+    expect(extractCachedTokens({ prompt_tokens: 1000, prompt_tokens_details: {} })).toBe(0)
+  })
+
+  it("sums both fields if a response somehow carries both", () => {
+    expect(
+      extractCachedTokens({
+        prompt_tokens: 1000,
+        prompt_cache_hit_tokens: 300,
+        prompt_tokens_details: { cached_tokens: 100 },
+      }),
+    ).toBe(400)
   })
 })
 

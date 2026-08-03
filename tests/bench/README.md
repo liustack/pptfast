@@ -311,7 +311,8 @@ and what the API actually returned, side by side, without reconciling them:
   "started_at": "2026-08-03T01:40:00.000Z",
   "duration_seconds": 42.0,
   "cap_hit": false,
-  "scripted_replies": 1
+  "scripted_replies": 1,
+  "cached_prompt_tokens": 9000        // sum of whatever provider cache-hit field (if any) each round's usage carried
 }
 ```
 
