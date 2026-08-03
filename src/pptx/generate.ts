@@ -19,6 +19,7 @@ import {
   type GradientFillPatch,
 } from "./svg2pptx/render"
 import { slideToOps } from "@/svg/render-slide"
+import type { ImageOp } from "./svg2pptx/image"
 import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
 import { applyEaFontFaces } from "./pptx-ea-fonts"
@@ -46,9 +47,18 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   defineMastersForIR(pptx, tokens)
 
   const gradientPatches: GradientFillPatch[] = []
+  // Threaded through to `auditPptxPackage` below (alt-emission-closure fix
+  // wave) so `image-alt-dropped` can check the ops that actually reached
+  // svg2pptx rather than re-deriving them a second time — see that
+  // function's own doc comment and `checkImageAltExported`'s in
+  // package-audit.ts for why the rule needs this instead of the IR's
+  // declared component list.
+  const imageOpsBySlide: ImageOp[][] = []
   ir.slides.forEach((slide, index) => {
     const s = pptx.addSlide({ masterName: slide.type })
-    gradientPatches.push(...renderOps(s, slideToOps(ir, slide, index), index))
+    const ops = slideToOps(ir, slide, index)
+    imageOpsBySlide.push(ops.filter((op): op is ImageOp => op.kind === "image"))
+    gradientPatches.push(...renderOps(s, ops, index))
     // Speaker notes (notes+preview wave, task 1): native PowerPoint notes,
     // never drawn onto the canvas SVG — no `slideToOps`/`renderOps`
     // involvement above. pptxgenjs already emits an (empty-text)
@@ -140,7 +150,7 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
     // `PptfastError` — this `instanceof` check is the reason.
     if (e instanceof PptxSealViolationError) throw e
   }
-  await auditPptxPackage(zip, ir)
+  await auditPptxPackage(zip, ir, imageOpsBySlide)
   // Whole-file byte determinism (P0 hardening Task 4 — see
   // pptx-fixed-timestamps.ts's header comment for the full root cause):
   // every entry's zip-metadata date and docProps/core.xml's created/modified

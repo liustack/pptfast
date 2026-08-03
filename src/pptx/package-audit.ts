@@ -1,7 +1,9 @@
 import JSZip from "jszip"
 import type { PptxIR } from "@/ir"
+import { slideToOps } from "@/svg/render-slide"
 import { PptfastError } from "../errors"
 import { createPptxPackageReader, type PptxPackageReader, type PackageRelationship } from "./package-reader"
+import type { ImageOp } from "./svg2pptx/image"
 
 /**
  * PPTX package audit — Audit v2 spec §4.4's fourth layer. Runs on the
@@ -381,24 +383,79 @@ function checkAnimationTargets(doc: Document, slidePart: string): PackageAuditVi
 }
 
 /**
- * Rule: image-alt-dropped — A11Y-01 alt chain wave's own audit closure
- * (plan 裁定 3): "IR 里有 alt 的资产，导出 PPTX 里必须有对应 descr". Unlike
- * every other per-slide rule above, this one needs the source IR (`descr`
- * has no cheap self-describing invariant on its own — the exported package
- * alone can't say whether an image is "missing its alt" or "was never given
- * one") — `ir` is threaded in from `auditPptxPackage`'s own optional
- * parameter (see its doc comment for why this rule alone opts out of the
- * "runs against the package alone" pattern the other rules follow).
+ * Asset ids this slide's IR mentions an alt-bearing image binding for
+ * (`image` components, `image_grid` items, `image_compare` sides, an
+ * asset-kind `background`) — `checkImageAltExported`'s leg (b) uses this
+ * *only* to narrow which global `ir.assets.images` entries it even
+ * considers for a given slide, never to decide pass/fail on its own (see
+ * that leg's own comment). A dropped component's asset id still shows up
+ * here — the IR still mentions it — but produces no matching rendered op,
+ * so it stays correctly unflagged either way.
+ */
+function assetIdsDeclaredOnSlide(slide: PptxIR["slides"][number] | undefined): ReadonlySet<string> {
+  const ids = new Set<string>()
+  if (!slide) return ids
+  if (slide.background?.kind === "asset") ids.add(slide.background.asset_id)
+  for (const component of slide.components ?? []) {
+    if (component.type === "image") {
+      ids.add(component.asset_id)
+    } else if (component.type === "image_grid") {
+      for (const item of component.items) ids.add(item.asset_id)
+    } else if (component.type === "image_compare") {
+      ids.add(component.left.asset_id)
+      ids.add(component.right.asset_id)
+    }
+  }
+  return ids
+}
+
+/**
+ * Rule: image-alt-dropped — pipeline-preservation invariant, rewritten in
+ * the alt-emission-closure fix wave to key off what actually entered the
+ * render pipeline instead of the IR's *declared* `slide.components` list
+ * (that version's own history: A11Y-01 alt chain wave, plan 裁定 3, then
+ * widened to `image_grid`/`image_compare`/background by
+ * `.issues/2026-08-04-bench-agentic/q15-root-cause.md`).
  *
- * Covers every IR binding that resolves to an emitted `<image>` (alt-closure
- * follow-up wave, `.issues/2026-08-04-bench-agentic/q15-root-cause.md`):
- * `image`-type components (including the 4 `image-pages.tsx` takeover
- * renderers — same component `type`, a different render path, still one
- * asset), `image_grid` items, `image_compare` sides, and an asset-kind
- * `slide.background`. The original A11Y-01 wave scoped this rule to
- * `image`-type components only, matching `components/image.tsx`'s own scope
- * that round; this wave wires `aria-label` emission at the remaining sites
- * and widens the rule to match.
+ * Reviewer-caught defect this rewrite fixes: `layoutContentFit`
+ * (`src/svg/layout.ts`) can silently drop a trailing component on overflow —
+ * a deliberate graceful-degrade path (see that function's own doc comment),
+ * not a bug. A dropped `image`/`image_grid`/`image_compare` component with
+ * IR alt text never renders at all, so no `descr` can possibly exist for
+ * it — the old IR-component-keyed rule hard-failed a legitimately degraded
+ * export on that path. Rekeying on the actually-rendered image ops fixes
+ * this: a dropped component produces no op, so it is simply never checked —
+ * the rendered-visibility story (is this asset even on the slide) is
+ * already asset-brief's job (`rendered: false`), not this rule's.
+ *
+ * Two legs, both required — dropping either reopens a real gap:
+ *
+ * (a) Preservation: every rendered `ImageOp` that carries `.alt` (set from
+ *     the SVG's `aria-label` by `svg2pptx/image.ts`'s `imageToOp`) must land
+ *     as a `descr` somewhere in the exported slide. Catches a pipeline bug
+ *     between SVG emission and the finished package — e.g. `render.ts`
+ *     failing to carry `altText` through to pptxgenjs.
+ *
+ * (b) Coverage: every alt-bearing IR asset (`ir.assets.images[id].alt`) that
+ *     was actually rendered on this slide — its `src` matches some op's
+ *     `.data`, i.e. the image genuinely made it into the SVG as an
+ *     `<image>` element — must have at least one matching op that carries
+ *     its exact `.alt` string. This is the q15 defect class (a renderer
+ *     emits `<image>` but forgets `aria-label`): leg (a) alone would never
+ *     catch it, since an op with no `.alt` has nothing for leg (a) to
+ *     check. An asset that never rendered on this slide (dropped component,
+ *     or simply not used here) matches no op and is correctly skipped by
+ *     this leg too — it is never a "does the IR have alt" check, only "did
+ *     a rendered image forget to carry the alt it has". Matched by exact
+ *     string, not "some op has any alt at all" — two distinct assets can
+ *     share byte-identical `src` (e.g. a duplicated stock photo), and a
+ *     weaker check would let one asset's op cover for another's.
+ *
+ * `imageOps` is this slide's actually-rendered `ImageOp[]` — see
+ * `auditPptxPackage`'s own doc comment for where it comes from (the caller's
+ * own already-computed ops in the common case, a same-seam re-derivation via
+ * `slideToOps` as a fallback otherwise). `undefined` means neither `ir` nor
+ * ops were available — nothing to check.
  *
  * `.getAttributeNode("descr")?.value`, not `.getAttribute("descr")` — same
  * linkedom decode workaround as `svg2pptx/image.ts`'s `imageToOp` (see that
@@ -410,9 +467,10 @@ function checkImageAltExported(
   doc: Document,
   slidePart: string,
   slide: PptxIR["slides"][number] | undefined,
+  imageOps: readonly ImageOp[] | undefined,
   ir: PptxIR,
 ): PackageAuditViolation[] {
-  if (!slide) return []
+  if (!imageOps) return []
   const violations: PackageAuditViolation[] = []
   const descrs = new Set<string>()
   const cNvPrNodes = doc.getElementsByTagName("p:cNvPr")
@@ -421,31 +479,66 @@ function checkImageAltExported(
     if (d) descrs.add(d)
   }
 
-  function checkAsset(assetId: string, context: string) {
-    const alt = ir.assets.images[assetId]?.alt
-    if (!alt) return // 裁定 4：没有 alt 的资产不在此规则的检查范围内
-    if (!descrs.has(alt)) {
+  // Leg (a) — preservation: a rendered op that carries alt must have made
+  // it into the package as a descr.
+  for (const op of imageOps) {
+    if (op.alt && !descrs.has(op.alt)) {
       violations.push(
         violation(
           "image-alt-dropped",
-          `${slidePart}: asset "${assetId}" (${context}) has IR alt text but no matching <p:pic> descr was found in the exported slide (expected descr="${alt}")`,
+          `${slidePart}: a rendered image (aria-label "${op.alt}") has no matching <p:pic> descr in the exported slide — dropped somewhere between SVG emission and the finished package`,
         ),
       )
     }
   }
 
-  if (slide.background?.kind === "asset") {
-    checkAsset(slide.background.asset_id, "slide background")
+  // Leg (b) — coverage: index this slide's rendered ops by resolved src
+  // (the same string `components/image.tsx` et al. set as `href`, and
+  // `imageToOp` reads back verbatim into `.data`) so an alt-bearing asset
+  // can be matched against "did it actually make it onto the canvas".
+  //
+  // Candidates are scoped to `assetIdsDeclaredOnSlide(slide)` — a lightweight
+  // read of *which asset ids this slide's IR mentions*, used purely to
+  // narrow which global `ir.assets.images` entries even get considered here.
+  // This is not the pass/fail check reintroduced (that stays 100% ops-based
+  // below) — it exists because `src` content alone is ambiguous: two
+  // different assets on two different slides can carry byte-identical
+  // bytes (e.g. the same stock photo used twice, or two placeholder images
+  // in a fixture — real regression this scoping fixes:
+  // `generate-dedupe-media-export.test.ts`'s heroA/heroB fixture, byte-
+  // identical PNGs on different slides with different alt text, without
+  // this scope slide 1's rendered op for heroA got checked against slide
+  // 2's own heroB and vice versa). A dropped component's asset id still
+  // shows up in this scope (the IR still mentions it) but produces no op
+  // match below — still correctly skipped, since the actual check is
+  // "was a matching op found", never "was it declared".
+  const opsBySrc = new Map<string, ImageOp[]>()
+  for (const op of imageOps) {
+    const bucket = opsBySrc.get(op.data)
+    if (bucket) bucket.push(op)
+    else opsBySrc.set(op.data, [op])
   }
-
-  for (const component of slide.components ?? []) {
-    if (component.type === "image") {
-      checkAsset(component.asset_id, "image component")
-    } else if (component.type === "image_grid") {
-      component.items.forEach((item, i) => checkAsset(item.asset_id, `image_grid item ${i}`))
-    } else if (component.type === "image_compare") {
-      checkAsset(component.left.asset_id, "image_compare left")
-      checkAsset(component.right.asset_id, "image_compare right")
+  for (const assetId of assetIdsDeclaredOnSlide(slide)) {
+    const asset = ir.assets.images[assetId]
+    if (!asset?.alt) continue // 没有 alt 的资产不在此规则的检查范围内
+    const rendered = opsBySrc.get(asset.src)
+    if (!rendered) continue // never made it into this slide's SVG — not this rule's concern
+    // "At least one rendered occurrence carries this asset's exact alt",
+    // not "every op with this src carries alt" — two different components
+    // on the *same* slide can also share byte-identical `src` (e.g. two
+    // image_grid cells reusing one placeholder), each producing its own op
+    // with the same `.data`. Requiring *every* matching op to carry alt
+    // would wrongly blame asset A for asset B's own (legitimately absent)
+    // alt. Exact-string matching (not just "some op has any alt") keeps
+    // this precise even when srcs collide within one slide.
+    const hasMatchingAlt = rendered.some((op) => op.alt === asset.alt)
+    if (!hasMatchingAlt) {
+      violations.push(
+        violation(
+          "image-alt-dropped",
+          `${slidePart}: asset "${assetId}" has IR alt text and was rendered on this slide, but no rendered <image> element carries it as aria-label (expected aria-label="${asset.alt}")`,
+        ),
+      )
     }
   }
   return violations
@@ -462,9 +555,29 @@ function slideNumberFromPart(slidePart: string): number | null {
   return m ? Number(m[1]) : null
 }
 
-async function checkSlideParts(reader: PptxPackageReader, ir?: PptxIR): Promise<PackageAuditViolation[]> {
+async function checkSlideParts(
+  reader: PptxPackageReader,
+  ir?: PptxIR,
+  imageOpsBySlide?: ReadonlyArray<readonly ImageOp[]>,
+): Promise<PackageAuditViolation[]> {
   const violations: PackageAuditViolation[] = []
   const slideParts = reader.listParts().filter((p) => SLIDE_PART_RE.test(p)).sort()
+  // `image-alt-dropped` needs this slide's actually-rendered image ops, not
+  // the IR's declared component list (see `checkImageAltExported`'s own doc
+  // comment for why). `generatePptxBlob` (`generate.ts`) already computes
+  // these once per slide in its own render loop and threads them straight
+  // through via `imageOpsBySlide` — the cleanest access path, no second
+  // render pass. A caller that omits it (every package-audit unit test, and
+  // any other standalone `ir`-only caller) falls back to re-deriving the
+  // same ops via the same pure `slideToOps` seam `generatePptxBlob` itself
+  // calls — not a new rendering pass, just the one this rule already
+  // depends on, run again from the (deterministic, pure) IR.
+  const resolvedImageOpsBySlide: ReadonlyArray<readonly ImageOp[]> | undefined = ir
+    ? (imageOpsBySlide ??
+        ir.slides.map((slide, index) =>
+          slideToOps(ir, slide, index).filter((op): op is ImageOp => op.kind === "image"),
+        ))
+    : undefined
   for (const slidePart of slideParts) {
     let doc: Document
     try {
@@ -488,7 +601,8 @@ async function checkSlideParts(reader: PptxPackageReader, ir?: PptxIR): Promise<
     if (ir) {
       const num = slideNumberFromPart(slidePart)
       const slide = num != null ? ir.slides[num - 1] : undefined
-      violations.push(...checkImageAltExported(doc, slidePart, slide, ir))
+      const imageOps = num != null ? resolvedImageOpsBySlide?.[num - 1] : undefined
+      violations.push(...checkImageAltExported(doc, slidePart, slide, imageOps, ir))
     }
   }
   return violations
@@ -498,7 +612,11 @@ async function checkSlideParts(reader: PptxPackageReader, ir?: PptxIR): Promise<
 // Orchestration + entry point.
 // ────────────────────────────────────────────────────────────────────────
 
-async function collectViolations(reader: PptxPackageReader, ir?: PptxIR): Promise<PackageAuditViolation[]> {
+async function collectViolations(
+  reader: PptxPackageReader,
+  ir?: PptxIR,
+  imageOpsBySlide?: ReadonlyArray<readonly ImageOp[]>,
+): Promise<PackageAuditViolation[]> {
   const coreViolations = checkCoreParts(reader)
   if (coreViolations.length > 0) return coreViolations // nothing else is safely checkable without these
 
@@ -508,7 +626,7 @@ async function collectViolations(reader: PptxPackageReader, ir?: PptxIR): Promis
   const violations: PackageAuditViolation[] = []
   violations.push(...(await checkSlideListConsistency(reader)))
   violations.push(...(await checkRelationshipTargets(reader)))
-  violations.push(...(await checkSlideParts(reader, ir)))
+  violations.push(...(await checkSlideParts(reader, ir, imageOpsBySlide)))
   return violations
 }
 
@@ -580,10 +698,20 @@ function formatViolations(violations: PackageAuditViolation[]): string {
  * already-in-scope `ir`; standalone callers (tests constructing corrupted
  * package bytes with no IR at hand) omit it and simply don't get that one
  * rule — every other invariant in this file stays fully enforced either way.
+ *
+ * `imageOpsBySlide` (alt-emission-closure fix wave): optional third
+ * parameter, one entry per `ir.slides` index, each the slide's actually-
+ * rendered `ImageOp[]` (`kind === "image"` ops only). `generatePptxBlob`
+ * passes the ops it already computed in its own render loop — no second
+ * render. Omitted by every standalone/test caller; `checkSlideParts` then
+ * re-derives the same ops itself via the same `slideToOps` seam, so the
+ * rule still runs correctly off `ir` alone, just without the production
+ * path's single-computation optimization.
  */
 export async function auditPptxPackage(
   input: JSZip | Blob | ArrayBuffer | Uint8Array,
   ir?: PptxIR,
+  imageOpsBySlide?: ReadonlyArray<readonly ImageOp[]>,
 ): Promise<void> {
   let zip: JSZip
   if (input instanceof JSZip) {
@@ -599,6 +727,6 @@ export async function auditPptxPackage(
     }
   }
   const reader = createPptxPackageReader(zip)
-  const violations = await collectViolations(reader, ir)
+  const violations = await collectViolations(reader, ir, imageOpsBySlide)
   if (violations.length > 0) throw new PptfastError(formatViolations(violations))
 }
