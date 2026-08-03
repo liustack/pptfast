@@ -22,6 +22,23 @@
  * harness-created scratch directory the model itself populates, not
  * attacker-controlled input.
  *
+ * No pre-injected vocabulary (schema/narratives/themes JSON) in the system
+ * prompt — unlike `run.mts`, whose model has no tools and depends entirely
+ * on injection. This runner's model can call `run_pptfast schema` /
+ * `narratives --json` / `themes --json` itself, exactly what
+ * `tests/bench/README.md`'s run protocol and the SKILL playbook already
+ * describe ("give the model SKILL.md + prompt.md, let it run the SKILL's
+ * workflow"). Injecting the vocabulary anyway would be a convenience that
+ * the protocol never asked for and that `run.mts` already covers as the
+ * no-tools floor measurement — dropping it here is more protocol-faithful,
+ * not a shortcut, and it is most of this runner's ~83k-token-per-round
+ * system prompt cost.
+ *
+ * Tool-result cap: every tool's return string is capped at
+ * `TOOL_RESULT_MAX_CHARS` before it goes back into the conversation — see
+ * that constant's own comment for the size and the truncate-from-the-end
+ * rationale.
+ *
  * Round cap: 24 chat-completion calls total (plan 裁定 2) — one round may
  * contain several tool calls, they all count as one round. Hitting the cap
  * stops the run with `cap_hit: true` in meta.json; whatever the model wrote
@@ -53,12 +70,23 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const CLI = join(ROOT, "dist/cli.js")
-const ROUND_CAP = 24
+/** Fixed round cap, identical across every question and model in a batch.
+ *  Raised 24 → 32 before the first full batch: the post-slim smoke (q01,
+ *  the bank's gentlest question, on the stronger of the two weak models)
+ *  already used 21 rounds once vocabulary self-querying replaced injection.
+ *  The cap is a cost guard, not part of the benchmark's difficulty — a cap
+ *  tight enough to clip real runs would measure budget, not capability. */
+const ROUND_CAP = 32
 /** Tool-result content is truncated before it goes back to the model — a
  *  validate/audit dump or a long file read should not blow the context
- *  window on its own. Generous enough that real CLI output round-trips
- *  intact for a single deck (empirically a few KB). */
-const TOOL_RESULT_MAX_CHARS = 12_000
+ *  window on its own, and an unbounded result is the other big lever on
+ *  this runner's per-round token cost next to the vocabulary-injection cut
+ *  above (plan 裁定 2). 8000 chars (~2000 tokens) is standard agent-harness
+ *  practice for a single tool result — generous enough that a real
+ *  `validate`/`audit` dump or a normal IR file read round-trips intact for
+ *  a single deck (empirically a few KB), while still bounding the
+ *  pathological case (a huge stray file the model asks to read back). */
+const TOOL_RESULT_MAX_CHARS = 8_000
 /** Per-completion-call network timeout. A single round's `max_tokens` here
  *  (8192) is far smaller than `run.mts`'s single-shot 16384, so it needs
  *  much less time than that runner's 10-minute allowance — 3 minutes is
@@ -97,10 +125,6 @@ export function loadEnv(envPath: string): Record<string, string> {
 export function stripFence(text: string): string {
   const fenced = /^\s*```(?:json)?\s*\n([\s\S]*?)\n\s*```\s*$/.exec(text)
   return (fenced ? fenced[1]! : text).trim()
-}
-
-function cliText(args: string[]): string {
-  return execFileSync("node", [CLI, ...args], { encoding: "utf8", cwd: ROOT })
 }
 
 // ── path safety (plan 裁定 1: reject `..`/absolute escapes; symlinks out of scope) ──
@@ -269,6 +293,14 @@ export interface RunMeta {
    *  run can stop short of a natural finish. */
   deadline_hit: boolean
   scripted_replies: number
+  /** Sum, across every round, of whatever prompt-cache-hit field the
+   *  provider's response carries (plan 裁定 3) — DeepSeek's
+   *  `usage.prompt_cache_hit_tokens`, dashscope/OpenAI-shaped
+   *  `usage.prompt_tokens_details.cached_tokens`. Read defensively: a
+   *  provider that reports neither field contributes 0, not undefined.
+   *  Additive field beyond plan 裁定 2's base meta shape — a diagnostic
+   *  alongside `prompt_tokens`, not used in any pass/fail decision. */
+  cached_prompt_tokens: number
 }
 
 export function buildMeta(params: {
@@ -285,6 +317,7 @@ export function buildMeta(params: {
   capHit: boolean
   deadlineHit: boolean
   scriptedReplies: number
+  cachedPromptTokens: number
 }): RunMeta {
   return {
     provider_prefix: params.providerPrefix,
@@ -301,6 +334,7 @@ export function buildMeta(params: {
     cap_hit: params.capHit,
     deadline_hit: params.deadlineHit,
     scripted_replies: params.scriptedReplies,
+    cached_prompt_tokens: params.cachedPromptTokens,
   }
 }
 
@@ -411,8 +445,19 @@ export function placeArtifact(located: LocatedArtifact, resultDir: string): stri
 
 // ── tool implementations ──
 
-function truncateForModel(text: string): string {
-  return text.length > TOOL_RESULT_MAX_CHARS ? text.slice(0, TOOL_RESULT_MAX_CHARS) + "\n...[truncated]" : text
+/**
+ * Caps a tool result at `maxChars`, truncating from the end and keeping the
+ * head — a CLI error or summary line leads its own output, so the part worth
+ * keeping under a cap is the start, not the tail (plan 裁定 2). An over-cap
+ * result gets a trailing marker line stating the original length, so the
+ * model (and a human reading a transcript) can tell truncation happened and
+ * how much was cut, rather than mistaking a cut-off result for the whole
+ * thing. Pure and exported for unit testing; production call sites pass the
+ * module constant `TOOL_RESULT_MAX_CHARS`.
+ */
+export function truncateForModel(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars)}\n\n[truncated: ${maxChars} of ${text.length} chars shown]`
 }
 
 function doWriteFile(workspace: string, args: unknown): string {
@@ -434,7 +479,7 @@ function doReadFile(workspace: string, args: unknown): string {
   if (!check.ok) return `ERROR: ${check.reason}`
   if (!existsSync(check.resolved)) return `ERROR: no such file: ${path}`
   if (statSync(check.resolved).isDirectory()) return `ERROR: ${path} is a directory, not a file`
-  return truncateForModel(readFileSync(check.resolved, "utf8"))
+  return truncateForModel(readFileSync(check.resolved, "utf8"), TOOL_RESULT_MAX_CHARS)
 }
 
 function doListFiles(workspace: string, args: unknown): string {
@@ -445,7 +490,7 @@ function doListFiles(workspace: string, args: unknown): string {
   if (!existsSync(check.resolved)) return `ERROR: no such path: ${rel}`
   if (!statSync(check.resolved).isDirectory()) return `ERROR: not a directory: ${rel}`
   const listing = walkEntries(check.resolved, check.resolved)
-  return truncateForModel(listing.length > 0 ? listing.join("\n") : "(empty)")
+  return truncateForModel(listing.length > 0 ? listing.join("\n") : "(empty)", TOOL_RESULT_MAX_CHARS)
 }
 
 function doRunPptfast(workspace: string, args: unknown): string {
@@ -463,11 +508,11 @@ function doRunPptfast(workspace: string, args: unknown): string {
       timeout: 120_000,
       maxBuffer: 10 * 1024 * 1024,
     })
-    return truncateForModel(`exit 0\n${stdout}`)
+    return truncateForModel(`exit 0\n${stdout}`, TOOL_RESULT_MAX_CHARS)
   } catch (e) {
     const err = e as { status?: number; stdout?: string; stderr?: string; message: string }
     const body = [err.stdout, err.stderr].filter(Boolean).join("\n") || err.message
-    return truncateForModel(`exit ${err.status ?? "?"}\n${body}`)
+    return truncateForModel(`exit ${err.status ?? "?"}\n${body}`, TOOL_RESULT_MAX_CHARS)
   }
 }
 
@@ -498,7 +543,7 @@ function executeTool(tc: ToolCall, workspace: string): string {
         return `ERROR: unknown tool ${tc.function.name}`
     }
   } catch (e) {
-    return truncateForModel(`ERROR: ${(e as Error).message}`)
+    return truncateForModel(`ERROR: ${(e as Error).message}`, TOOL_RESULT_MAX_CHARS)
   }
 }
 
@@ -574,10 +619,34 @@ interface ChatMessage {
   name?: string
 }
 
+interface ChatCompletionUsage {
+  prompt_tokens?: number
+  completion_tokens?: number
+  /** DeepSeek's cache-hit field (plan 裁定 3). */
+  prompt_cache_hit_tokens?: number
+  /** dashscope/OpenAI-shaped cache-hit field (plan 裁定 3). */
+  prompt_tokens_details?: { cached_tokens?: number }
+}
+
 interface ChatCompletionResponse {
   model?: string
   choices: Array<{ message: { content: string | null; tool_calls?: ToolCall[] } }>
-  usage?: { prompt_tokens?: number; completion_tokens?: number }
+  usage?: ChatCompletionUsage
+}
+
+/**
+ * Reads whichever prompt-cache-hit field a provider's `usage` object
+ * carries (plan 裁定 3): DeepSeek's `prompt_cache_hit_tokens`, or
+ * dashscope/OpenAI-shaped `prompt_tokens_details.cached_tokens`. Purely
+ * defensive — a field a provider doesn't report is treated as 0, never
+ * undefined, and an `usage` that is itself absent (a failed/malformed
+ * response) also reads as 0. In the ordinary case only one of the two
+ * fields is ever populated by a given provider; if a response somehow
+ * carried both, this adds them, matching "sum" in the plan wording.
+ */
+export function extractCachedTokens(usage: ChatCompletionUsage | undefined): number {
+  if (!usage) return 0
+  return (usage.prompt_cache_hit_tokens ?? 0) + (usage.prompt_tokens_details?.cached_tokens ?? 0)
 }
 
 async function callRound(
@@ -610,7 +679,7 @@ async function runOneAgentic(
   cfg: { baseUrl: string; apiKey: string; model: string },
   providerPrefix: string,
   qid: string,
-  shared: { skill: string; schema: string; narratives: string; themes: string },
+  shared: { skill: string },
   dirs: { questionsDir: string; resultsDir: string },
   modelTag: string,
 ): Promise<void> {
@@ -632,20 +701,20 @@ async function runOneAgentic(
     "read-only and artifact-producing subcommands are available (render, validate, audit, asset-brief, schema,",
     "assemble, disassemble, migrate, themes, narratives, preview, spec validate) — there is no interactive",
     "serve command and no general shell access.",
+    "The IR JSON Schema, narrative presets, and theme catalog are not preloaded below — run",
+    "run_pptfast(['schema']) / run_pptfast(['narratives', '--json']) / run_pptfast(['themes', '--json']) yourself",
+    "whenever you need them, the same way the SKILL playbook expects.",
     "Use the SKILL playbook below to design and build the deck: write your IR (or deck-project files) with",
     "write_file, run validate/audit with run_pptfast, read what they report, and fix what needs fixing — the",
     "same self-check loop the playbook describes, with real tool access instead of imagined output.",
     "Save your final deck as a single IR JSON file at your workspace root (e.g. deck.json), or, for the",
     "deck-project workflow, as deck.spec.json plus pages/ at your workspace root.",
-    "You have at most 24 completion turns total for this question (a turn spent making tool calls still",
+    `You have at most ${ROUND_CAP} completion turns total for this question (a turn spent making tool calls still`,
     "counts once, no matter how many tools it calls in that turn) — use them efficiently. When the deck is",
     "finished, stop calling tools and reply in plain text confirming it's done.",
   ].join(" ")
   const user = [
     "## Skill playbook (skills/pptfast/SKILL.md)\n\n" + shared.skill,
-    "## IR JSON Schema (pptfast schema)\n\n```json\n" + shared.schema + "\n```",
-    "## Narrative presets (pptfast narratives --json)\n\n```json\n" + shared.narratives + "\n```",
-    "## Themes (pptfast themes --json)\n\n```json\n" + shared.themes + "\n```",
     "## Deck request\n\n" + prompt,
   ].join("\n\n---\n\n")
 
@@ -660,6 +729,7 @@ async function runOneAgentic(
   let scriptedReplies = 0
   let promptTokens = 0
   let completionTokens = 0
+  let cachedPromptTokens = 0
   const modelReported = new Set<string>()
   let finalText: string | undefined
   let deadlineHit = false
@@ -675,6 +745,7 @@ async function runOneAgentic(
       if (data.model) modelReported.add(data.model)
       promptTokens += data.usage?.prompt_tokens ?? 0
       completionTokens += data.usage?.completion_tokens ?? 0
+      cachedPromptTokens += extractCachedTokens(data.usage)
 
       const msg = data.choices[0]?.message
       const assistantMsg: ChatMessage = { role: "assistant", content: msg?.content ?? null }
@@ -752,6 +823,7 @@ async function runOneAgentic(
     capHit,
     deadlineHit,
     scriptedReplies,
+    cachedPromptTokens,
   })
   writeFileSync(join(resultDir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
   console.log(
@@ -780,11 +852,11 @@ async function main(): Promise<void> {
   const modelTag = `${prefix.toLowerCase()}-agentic`
 
   const questions = qids.length > 0 ? qids : readdirSync(questionsDir).filter((d) => /^[a-z]\d\d$/.test(d)).sort()
+  // Unlike run.mts's shared object, no schema/narratives/themes CLI calls
+  // here — the agentic model queries live vocabulary itself via run_pptfast
+  // (plan 裁定 1, see file header).
   const shared = {
     skill: readFileSync(join(ROOT, "skills/pptfast/SKILL.md"), "utf8"),
-    schema: cliText(["schema"]),
-    narratives: cliText(["narratives", "--json"]),
-    themes: cliText(["themes", "--json"]),
   }
   console.log(
     `model-tag ${modelTag} · ${questions.length} question(s) · round cap ${ROUND_CAP} · sequential · ` +

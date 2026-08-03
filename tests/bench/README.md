@@ -258,6 +258,23 @@ findings, fix, repeat, the same self-check loop the SKILL playbook describes, wi
 access instead of imagined output. Credentials use the same `.env` shape as `run.mts`:
 `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`.
 
+**No pre-injected vocabulary.** Unlike `run.mts`'s single-shot prompt (SKILL + schema +
+narratives + themes, because that model has no tools and injection is its only access to any of
+it), this runner's system prompt carries only SKILL.md and the question — the IR JSON Schema,
+narrative presets, and theme catalog are not embedded. The model queries them itself via
+`run_pptfast(["schema"])` / `run_pptfast(["narratives", "--json"])` /
+`run_pptfast(["themes", "--json"])`, exactly what this file's own run protocol above and the
+SKILL playbook already describe. This is the largest cost lever on this runner (the injected
+vocabulary alone was most of an ~83k-token system prompt) and is more protocol-faithful, not a
+compromise — the protocol never asked for pre-injection in a mode where the model can just ask.
+
+**Tool-result cap.** Every tool result (a `read_file`, `list_files`, or `run_pptfast` return
+value) is capped at 8000 characters before it goes back to the model, truncated from the end so
+the head — where a CLI's error message or summary line lives — survives intact. An over-cap
+result gets a trailing marker line stating what was cut, e.g.
+`[truncated: 8000 of 41203 chars shown]`. Applies uniformly to every tool and every question, no
+per-question tuning.
+
 **Tool surface — minimal and neutral by design.** No general shell. `run_pptfast` only accepts a
 whitelisted, read-only/artifact-producing subcommand (`render`, `validate`, `audit`,
 `asset-brief`, `schema`, `assemble`, `disassemble`, `migrate`, `themes`, `narratives`, `preview`,
@@ -269,7 +286,7 @@ scope: the workspace is a harness-created scratch directory the model itself pop
 attacker-controlled input). This keeps the benchmark measuring the model's fit with the SKILL
 rather than the harness's own cleverness.
 
-**Round cap.** 24 chat-completion calls per question — one round may contain several tool calls,
+**Round cap.** 32 chat-completion calls per question — one round may contain several tool calls,
 they all count as one round. Hitting the cap stops the run with `cap_hit: true` in `meta.json`;
 whatever the model wrote up to that point is left in place, same as a natural stop. A model turn
 that makes no tool calls is classified as a spec-confirmation question, some other clarifying
@@ -294,7 +311,8 @@ and what the API actually returned, side by side, without reconciling them:
   "started_at": "2026-08-03T01:40:00.000Z",
   "duration_seconds": 42.0,
   "cap_hit": false,
-  "scripted_replies": 1
+  "scripted_replies": 1,
+  "cached_prompt_tokens": 9000        // sum of whatever provider cache-hit field (if any) each round's usage carried
 }
 ```
 

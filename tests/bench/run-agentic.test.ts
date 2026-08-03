@@ -8,10 +8,12 @@ import {
   checkPathSafety,
   checkPptfastArgs,
   classifyModelTurn,
+  extractCachedTokens,
   locateArtifact,
   placeArtifact,
   scriptedReplyFor,
   stripFence,
+  truncateForModel,
 } from "./run-agentic.mts"
 
 // ── checkPathSafety — the tool-surface escape guard (plan 裁定 1) ──
@@ -217,6 +219,39 @@ describe("stripFence", () => {
   })
 })
 
+// ── truncateForModel — per-tool-result cap, truncate from the end (plan 裁定 2) ──
+
+describe("truncateForModel", () => {
+  it("returns short text untouched, no marker appended", () => {
+    expect(truncateForModel("exit 0\nok", 100)).toBe("exit 0\nok")
+  })
+
+  it("returns text exactly at the cap untouched", () => {
+    const text = "a".repeat(100)
+    expect(truncateForModel(text, 100)).toBe(text)
+  })
+
+  it("truncates from the end, keeping the head, when text exceeds the cap", () => {
+    const text = "a".repeat(50) + "b".repeat(50) // head is 'a's, tail is 'b's
+    const result = truncateForModel(text, 50)
+    expect(result.startsWith("a".repeat(50))).toBe(true)
+    expect(result).not.toContain("b")
+  })
+
+  it("appends a marker line stating the cap and the original length", () => {
+    const text = "x".repeat(9000)
+    const result = truncateForModel(text, 8000)
+    expect(result).toContain("[truncated: 8000 of 9000 chars shown]")
+  })
+
+  it("keeps the exact head content before the marker", () => {
+    const text = "0123456789".repeat(10) // 100 chars, distinct content
+    const result = truncateForModel(text, 30)
+    expect(result.startsWith(text.slice(0, 30))).toBe(true)
+    expect(result).toContain("[truncated: 30 of 100 chars shown]")
+  })
+})
+
 // ── buildMeta — harness-written, requested vs reported identity (plan 裁定 2) ──
 
 describe("buildMeta", () => {
@@ -235,6 +270,7 @@ describe("buildMeta", () => {
       capHit: false,
       deadlineHit: false,
       scriptedReplies: 1,
+      cachedPromptTokens: 9000,
     })
     expect(meta).toEqual({
       provider_prefix: "QWEN",
@@ -251,6 +287,7 @@ describe("buildMeta", () => {
       cap_hit: false,
       deadline_hit: false,
       scripted_replies: 1,
+      cached_prompt_tokens: 9000,
     })
   })
 
@@ -269,6 +306,7 @@ describe("buildMeta", () => {
       capHit: false,
       deadlineHit: false,
       scriptedReplies: 0,
+      cachedPromptTokens: 0,
     })
     expect(meta.model_requested).toBe("qwen3.6-27b")
     expect(meta.model_reported).toEqual(["some-other-served-model"])
@@ -289,6 +327,7 @@ describe("buildMeta", () => {
       capHit: true,
       deadlineHit: false,
       scriptedReplies: 0,
+      cachedPromptTokens: 0,
     })
     expect(meta.model_reported).toEqual(["a-model", "b-model"])
     expect(meta.cap_hit).toBe(true)
@@ -309,9 +348,64 @@ describe("buildMeta", () => {
       capHit: false,
       deadlineHit: true,
       scriptedReplies: 0,
+      cachedPromptTokens: 0,
     })
     expect(meta.deadline_hit).toBe(true)
     expect(meta.cap_hit).toBe(false)
+  })
+
+  it("records cached_prompt_tokens as a plain additive field, 0 when no provider reported any", () => {
+    const meta = buildMeta({
+      providerPrefix: "QWEN",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      modelRequested: "qwen3.6-27b",
+      modelReported: new Set(),
+      rounds: 1,
+      toolCalls: 0,
+      promptTokens: 500,
+      completionTokens: 50,
+      startedAt: 0,
+      finishedAt: 1000,
+      capHit: false,
+      deadlineHit: false,
+      scriptedReplies: 0,
+      cachedPromptTokens: 0,
+    })
+    expect(meta.cached_prompt_tokens).toBe(0)
+  })
+})
+
+// ── extractCachedTokens — provider prompt-cache-hit fields (plan 裁定 3) ──
+
+describe("extractCachedTokens", () => {
+  it("returns 0 when usage is undefined", () => {
+    expect(extractCachedTokens(undefined)).toBe(0)
+  })
+
+  it("returns 0 when usage carries neither cache field", () => {
+    expect(extractCachedTokens({ prompt_tokens: 100, completion_tokens: 10 })).toBe(0)
+  })
+
+  it("reads DeepSeek's prompt_cache_hit_tokens field", () => {
+    expect(extractCachedTokens({ prompt_tokens: 1000, prompt_cache_hit_tokens: 400 })).toBe(400)
+  })
+
+  it("reads dashscope/OpenAI-shaped prompt_tokens_details.cached_tokens field", () => {
+    expect(extractCachedTokens({ prompt_tokens: 1000, prompt_tokens_details: { cached_tokens: 250 } })).toBe(250)
+  })
+
+  it("treats a present but undefined cached_tokens as 0", () => {
+    expect(extractCachedTokens({ prompt_tokens: 1000, prompt_tokens_details: {} })).toBe(0)
+  })
+
+  it("sums both fields if a response somehow carries both", () => {
+    expect(
+      extractCachedTokens({
+        prompt_tokens: 1000,
+        prompt_cache_hit_tokens: 300,
+        prompt_tokens_details: { cached_tokens: 100 },
+      }),
+    ).toBe(400)
   })
 })
 
