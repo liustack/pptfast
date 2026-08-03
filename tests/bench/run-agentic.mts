@@ -70,7 +70,13 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const CLI = join(ROOT, "dist/cli.js")
-const ROUND_CAP = 24
+/** Fixed round cap, identical across every question and model in a batch.
+ *  Raised 24 → 32 before the first full batch: the post-slim smoke (q01,
+ *  the bank's gentlest question, on the stronger of the two weak models)
+ *  already used 21 rounds once vocabulary self-querying replaced injection.
+ *  The cap is a cost guard, not part of the benchmark's difficulty — a cap
+ *  tight enough to clip real runs would measure budget, not capability. */
+const ROUND_CAP = 32
 /** Tool-result content is truncated before it goes back to the model — a
  *  validate/audit dump or a long file read should not blow the context
  *  window on its own, and an unbounded result is the other big lever on
