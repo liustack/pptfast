@@ -23,6 +23,13 @@ export const image: SvgComponent<ImageComponent> = {
   render(component, box, ctx) {
     const imgH = Math.min(Math.round(box.w * 0.5), MAX_IMAGE_H)
     const src = ctx.images?.[component.asset_id]?.src
+    // A11Y-01 alt 链路：`aria-label`（非 `<title>` 子元素——SVG 1.1 的
+    // `<image>` 内容模型不含描述性子元素，2 起才允许，且 svg2pptx 的
+    // `imageToOp` 只做单元素属性读取，不解析子节点）是把 alt 文本挂在这个
+    // 空内容元素上最贴合现有序列化器的标准写法。没有 alt 的资产完全不发
+    // 这个属性——不发空字符串——这样零 alt 输入的输出逐字节不变，svg2pptx
+    // 那侧只在属性存在时才读到值。
+    const alt = ctx.images?.[component.asset_id]?.alt
 
     return (
       <g transform={`translate(${box.x},${box.y})`}>
@@ -36,6 +43,7 @@ export const image: SvgComponent<ImageComponent> = {
             preserveAspectRatio={
               component.fit === "cover" ? "xMidYMid slice" : "xMidYMid meet"
             }
+            aria-label={alt || undefined}
           />
         ) : (
           <>

@@ -151,6 +151,33 @@ describe("renderOp", () => {
     expect(slide.calls[0].method).toBe("addImage")
     expect(slide.calls[0].args[0]).toMatchObject({ data: "data:image/png;base64,AAA" })
   })
+
+  it("passes op.alt through as pptxgenjs's altText (A11Y-01 alt chain)", () => {
+    const slide = recorder()
+    renderOp(slide, {
+      kind: "image",
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      data: "data:image/png;base64,AAA",
+      alt: "团队庆祝产品发布",
+    } as Op)
+    expect(slide.calls[0].args[0]).toMatchObject({ altText: "团队庆祝产品发布" })
+  })
+
+  it("does not set altText at all when op.alt is absent (zero-byte-change guarantee)", () => {
+    const slide = recorder()
+    renderOp(slide, {
+      kind: "image",
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      data: "data:image/png;base64,AAA",
+    } as Op)
+    expect("altText" in (slide.calls[0].args[0] as Record<string, unknown>)).toBe(false)
+  })
 })
 
 describe("renderOps", () => {
