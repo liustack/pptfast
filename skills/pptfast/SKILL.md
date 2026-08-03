@@ -175,3 +175,4 @@ Set slide `decor` only when the user explicitly asks for decorative flourish. De
 - Never edit or post-process the generated `.pptx`
 - Never bypass a `validate` error by deleting the content it flagged — restructure it (split the slide, tighten the heading, pick a denser component type)
 - Public deck text follows the user's language, IR structural fields are always the English enum values from the schema
+- Never tell a user that a `chart`'s or `data_table`'s numbers are editable inside PowerPoint: those components render as grouped shapes and text, fully restylable and retypable, but with no native chart part or `<a:tbl>` behind them. To change the numbers, edit the IR and re-render.

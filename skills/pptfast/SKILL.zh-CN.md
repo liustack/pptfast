@@ -177,3 +177,4 @@ pptfast preview deck-dir/ -o preview/ --html
 - 从不编辑或后处理生成出来的 `.pptx`
 - 从不通过删除 `validate` 报错所指的内容来绕过它——去重组它（拆分 slide、收紧标题、换一个更紧凑的 component 类型）
 - 面向用户的 deck 文本跟随用户使用的语言，IR 的结构性字段永远用 schema 里的英文枚举值
+- 从不告诉用户 `chart`、`data_table` 里的数字可以在 PowerPoint 里直接编辑。这两类组件渲染出来是成组的图形加文字，样式和文字都能自由改，但背后没有原生的图表部件，也没有 `<a:tbl>`。要改数字，去改 IR 再重新渲染
