@@ -60,6 +60,15 @@ export interface AssetBriefPage {
 export interface AssetBriefItem {
   page: AssetBriefPage
   asset_id: string
+  /** `ir.assets.images[asset_id].alt` passed straight through (A11Y-01 alt
+   *  chain wave, task 1) — this is already a per-asset structure, so a
+   *  generator agent filling in `missing`/`suggested_prompt` items sees
+   *  right alongside them which ids already have an accessibility
+   *  description written and which don't. Omitted (not an empty string)
+   *  when the asset has no `alt` — same "don't fabricate a value that
+   *  isn't there" discipline the rest of this file already follows for
+   *  `frame`/`suggested_pixels`. */
+  alt?: string
   /** Discriminant reserved for v2 (asset-brief plan 裁定 4): only `"image"`
    *  is produced today (one `AssetBriefItem` per `image` component, or per
    *  shared frame — see `shared` below). `"background"` is the documented
@@ -386,6 +395,7 @@ export function buildAssetBrief(ir: PptxIR): AssetBrief {
     const page: AssetBriefPage = { index: slideIndex, id: slide.id, type: slide.type, heading: slide.heading }
     const frameMap = framesBySlide.get(slideIndex)
     const isMissing = (assetId: string) => !ir.assets.images[assetId]?.src
+    const altOf = (assetId: string) => ir.assets.images[assetId]?.alt
 
     for (const [assetId, group] of groups) {
       const frames = frameMap?.get(assetId) ?? []
@@ -399,6 +409,7 @@ export function buildAssetBrief(ir: PptxIR): AssetBrief {
         items.push({
           page,
           asset_id: assetId,
+          alt: altOf(assetId),
           kind: "image",
           missing: isMissing(assetId),
           rendered: frame !== undefined,
@@ -427,6 +438,7 @@ export function buildAssetBrief(ir: PptxIR): AssetBrief {
         items.push({
           page,
           asset_id: assetId,
+          alt: altOf(assetId),
           kind: "image",
           missing,
           rendered: true,
@@ -448,6 +460,7 @@ export function buildAssetBrief(ir: PptxIR): AssetBrief {
         items.push({
           page,
           asset_id: assetId,
+          alt: altOf(assetId),
           kind: "image",
           missing,
           rendered: false,
