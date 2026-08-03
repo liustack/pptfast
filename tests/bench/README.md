@@ -286,7 +286,7 @@ scope: the workspace is a harness-created scratch directory the model itself pop
 attacker-controlled input). This keeps the benchmark measuring the model's fit with the SKILL
 rather than the harness's own cleverness.
 
-**Round cap.** 24 chat-completion calls per question — one round may contain several tool calls,
+**Round cap.** 32 chat-completion calls per question — one round may contain several tool calls,
 they all count as one round. Hitting the cap stops the run with `cap_hit: true` in `meta.json`;
 whatever the model wrote up to that point is left in place, same as a natural stop. A model turn
 that makes no tool calls is classified as a spec-confirmation question, some other clarifying
