@@ -394,3 +394,65 @@ describe("auditPptxPackage — image-alt-dropped (A11Y-01)", () => {
     await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
   })
 })
+
+// Alt-closure follow-up wave (`.issues/2026-08-04-bench-agentic/q15-root-cause.md`):
+// the A11Y-01 wave above only wired `aria-label` emission to
+// `components/image.tsx`. The first full bench round caught a real miss — a
+// pinned `image-split`/`image-top` layout routes its `image` component
+// through `image-pages.tsx`'s bespoke takeover renderers instead, which
+// never emitted `aria-label` at all. Red-first reproduces the two minimal
+// IRs from that report — both failed package audit before this wave's fix.
+describe("auditPptxPackage — image-alt-dropped, image-takeover closure (q15 minimal repros)", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+  it("round-trips green for a pinned image-split layout (q15 slide3 minimal repro)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Where you will do your best work",
+          layout: "image-split",
+          components: [
+            { type: "image", asset_id: "office_photo", fit: "cover" },
+            { type: "bullets", items: ["Remote-first", "Flexible hours"] },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { office_photo: { src: REAL_PNG, alt: "Northbeam office and workplace" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Northbeam office and workplace"`)
+  })
+
+  it("round-trips green for a pinned image-top layout (q15 slide5 minimal repro)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Our culture",
+          layout: "image-top",
+          components: [
+            { type: "image", asset_id: "team_photo", fit: "cover" },
+            { type: "bullets", items: ["Ownership", "Craft"] },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { team_photo: { src: REAL_PNG, alt: "Northbeam engineering team" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Northbeam engineering team"`)
+  })
+})

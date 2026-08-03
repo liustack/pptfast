@@ -178,6 +178,11 @@ export function ImageSplitPage({
   const imgX = rightSide ? W - SPLIT_IMG_W : 0
   const textX = rightSide ? 96 : SPLIT_TEXT_X
   const src = ctx.images?.[imageComponent.asset_id]?.src
+  // A11Y-01 alt 链路收尾（q15 根因）：this takeover bypasses
+  // `components/image.tsx` entirely (`full-slide-svg.tsx`'s takeover
+  // dispatch), so it needs its own `aria-label` emission — same
+  // only-when-present rule as that file's own `<image>`.
+  const alt = ctx.images?.[imageComponent.asset_id]?.alt
   const rest = slide.components.filter((b) => b !== imageComponent)
   const org = ir.meta.organization
 
@@ -223,6 +228,7 @@ export function ImageSplitPage({
           width={SPLIT_IMG_W}
           height={SPLIT_IMG_H}
           preserveAspectRatio="xMidYMid slice"
+          aria-label={alt || undefined}
         />
       ) : (
         <rect x={imgX} y={0} width={SPLIT_IMG_W} height={SPLIT_IMG_H} fill={ctx.colors.surface} />
@@ -335,6 +341,8 @@ export function ImageTopPage({
   const imageComponent = findImageComponent(slide)
   if (!imageComponent) return null
   const src = ctx.images?.[imageComponent.asset_id]?.src
+  // A11Y-01 alt 链路收尾（q15 根因）：见 ImageSplitPage 同名变量的注释。
+  const alt = ctx.images?.[imageComponent.asset_id]?.alt
   const rest = slide.components.filter((b) => b !== imageComponent)
 
   const title = layoutSvgText(slide.heading, {
@@ -371,6 +379,7 @@ export function ImageTopPage({
           width={W}
           height={TOP_IMG_H}
           preserveAspectRatio="xMidYMid slice"
+          aria-label={alt || undefined}
         />
       ) : (
         <rect x={0} y={0} width={W} height={TOP_IMG_H} fill={ctx.colors.surface} />
@@ -474,6 +483,8 @@ export function ImageAnnotatePage({
   const imageComponent = findImageComponent(slide)
   if (!imageComponent) return null
   const src = ctx.images?.[imageComponent.asset_id]?.src
+  // A11Y-01 alt 链路收尾（q15 根因）：见 ImageSplitPage 同名变量的注释。
+  const alt = ctx.images?.[imageComponent.asset_id]?.alt
   const bulletsComponent = slide.components.find(
     (b): b is Extract<Slide["components"][number], { type: "bullets" }> => b.type === "bullets",
   )
@@ -544,6 +555,7 @@ export function ImageAnnotatePage({
           width={ANN_IMG_W}
           height={ANN_IMG_H}
           preserveAspectRatio="xMidYMid slice"
+          aria-label={alt || undefined}
         />
       ) : (
         <rect x={ANN_IMG_X} y={ANN_IMG_Y} width={ANN_IMG_W} height={ANN_IMG_H} fill={ctx.colors.surface} />
@@ -646,6 +658,8 @@ export function ImageBottomPage({
   const imageComponent = findImageComponent(slide)
   if (!imageComponent) return null
   const src = ctx.images?.[imageComponent.asset_id]?.src
+  // A11Y-01 alt 链路收尾（q15 根因）：见 ImageSplitPage 同名变量的注释。
+  const alt = ctx.images?.[imageComponent.asset_id]?.alt
   const rest = slide.components.filter((b) => b !== imageComponent)
 
   const title = layoutSvgText(slide.heading, {
@@ -736,6 +750,7 @@ export function ImageBottomPage({
           width={W}
           height={imgH}
           preserveAspectRatio="xMidYMid slice"
+          aria-label={alt || undefined}
         />
       ) : (
         <rect x={0} y={imgTop} width={W} height={imgH} fill={ctx.colors.surface} />
