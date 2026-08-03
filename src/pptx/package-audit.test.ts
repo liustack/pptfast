@@ -309,13 +309,13 @@ describe("auditPptxPackage — image-alt-dropped (A11Y-01)", () => {
   function makeIrWithAltImage(): PptxIR {
     return makeIr({
       slides: [
-        { type: "cover", heading: "Package Audit Fixture" },
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
         {
           type: "content",
           heading: "Body",
           components: [{ type: "image", asset_id: "hero", fit: "cover" }],
         },
-        { type: "ending", heading: "Thanks" },
+        { type: "ending", heading: "Thanks", components: [] },
       ],
       assets: {
         images: {
@@ -380,13 +380,13 @@ describe("auditPptxPackage — image-alt-dropped (A11Y-01)", () => {
   it("passes a real render whose IR image asset has no alt text at all (nothing to check, nothing flagged)", async () => {
     const ir = makeIr({
       slides: [
-        { type: "cover", heading: "Package Audit Fixture" },
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
         {
           type: "content",
           heading: "Body",
           components: [{ type: "image", asset_id: "hero", fit: "cover" }],
         },
-        { type: "ending", heading: "Thanks" },
+        { type: "ending", heading: "Thanks", components: [] },
       ],
       assets: { images: { hero: { src: REAL_PNG } } },
     })
