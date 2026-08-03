@@ -709,7 +709,7 @@ async function runOneAgentic(
     "same self-check loop the playbook describes, with real tool access instead of imagined output.",
     "Save your final deck as a single IR JSON file at your workspace root (e.g. deck.json), or, for the",
     "deck-project workflow, as deck.spec.json plus pages/ at your workspace root.",
-    "You have at most 24 completion turns total for this question (a turn spent making tool calls still",
+    `You have at most ${ROUND_CAP} completion turns total for this question (a turn spent making tool calls still`,
     "counts once, no matter how many tools it calls in that turn) — use them efficiently. When the deck is",
     "finished, stop calling tools and reply in plain text confirming it's done.",
   ].join(" ")
