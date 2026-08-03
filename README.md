@@ -9,6 +9,8 @@ DrawingML out.
 
 Freeform SVG/HTML-to-PPTX pipelines have a high ceiling but an unstable floor — a weak model (or a strong one having an off turn) produces a deck that's broken, off-brand, or unreadable. pptfast trades freeform drawing for a controlled vocabulary: a semantic IR (zod schema), 16 built-in themes bundling a style (design tokens) and a brand (identity chrome), a layout-and-component library with seeded variety, and native DrawingML output where every shape stays editable — not a picture pasted onto a slide.
 
+That editability claim has one honest boundary: shapes and text runs are the native unit pptfast emits, and every one is a real PowerPoint object you can select, restyle, and retype (that includes the shapes and text a `chart` or `data_table` component draws). What pptfast does not produce is a native PowerPoint chart part or table object: no embedded chart data, no `<a:tbl>`. A chart's bars and a table's cells are geometry and text, not a data-bound object PowerPoint can redraw from new numbers, so change the numbers by editing the IR and re-rendering, not by dragging a bar or typing into a cell. That is a deliberate trade for the deterministic, seed-stable output described above, not an oversight, and it does not weaken the editability claim for every other shape on the slide.
+
 A deck is really five things: a content model, a 2D layout, a visual style, motion, and a narrative. pptfast owns the last four — you (or your agent) own the content model by writing the IR.
 
 ## Install
