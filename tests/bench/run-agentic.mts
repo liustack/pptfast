@@ -22,6 +22,18 @@
  * harness-created scratch directory the model itself populates, not
  * attacker-controlled input.
  *
+ * No pre-injected vocabulary (schema/narratives/themes JSON) in the system
+ * prompt — unlike `run.mts`, whose model has no tools and depends entirely
+ * on injection. This runner's model can call `run_pptfast schema` /
+ * `narratives --json` / `themes --json` itself, exactly what
+ * `tests/bench/README.md`'s run protocol and the SKILL playbook already
+ * describe ("give the model SKILL.md + prompt.md, let it run the SKILL's
+ * workflow"). Injecting the vocabulary anyway would be a convenience that
+ * the protocol never asked for and that `run.mts` already covers as the
+ * no-tools floor measurement — dropping it here is more protocol-faithful,
+ * not a shortcut, and it is most of this runner's ~83k-token-per-round
+ * system prompt cost.
+ *
  * Round cap: 24 chat-completion calls total (plan 裁定 2) — one round may
  * contain several tool calls, they all count as one round. Hitting the cap
  * stops the run with `cap_hit: true` in meta.json; whatever the model wrote
@@ -97,10 +109,6 @@ export function loadEnv(envPath: string): Record<string, string> {
 export function stripFence(text: string): string {
   const fenced = /^\s*```(?:json)?\s*\n([\s\S]*?)\n\s*```\s*$/.exec(text)
   return (fenced ? fenced[1]! : text).trim()
-}
-
-function cliText(args: string[]): string {
-  return execFileSync("node", [CLI, ...args], { encoding: "utf8", cwd: ROOT })
 }
 
 // ── path safety (plan 裁定 1: reject `..`/absolute escapes; symlinks out of scope) ──
@@ -610,7 +618,7 @@ async function runOneAgentic(
   cfg: { baseUrl: string; apiKey: string; model: string },
   providerPrefix: string,
   qid: string,
-  shared: { skill: string; schema: string; narratives: string; themes: string },
+  shared: { skill: string },
   dirs: { questionsDir: string; resultsDir: string },
   modelTag: string,
 ): Promise<void> {
@@ -632,6 +640,9 @@ async function runOneAgentic(
     "read-only and artifact-producing subcommands are available (render, validate, audit, asset-brief, schema,",
     "assemble, disassemble, migrate, themes, narratives, preview, spec validate) — there is no interactive",
     "serve command and no general shell access.",
+    "The IR JSON Schema, narrative presets, and theme catalog are not preloaded below — run",
+    "run_pptfast(['schema']) / run_pptfast(['narratives', '--json']) / run_pptfast(['themes', '--json']) yourself",
+    "whenever you need them, the same way the SKILL playbook expects.",
     "Use the SKILL playbook below to design and build the deck: write your IR (or deck-project files) with",
     "write_file, run validate/audit with run_pptfast, read what they report, and fix what needs fixing — the",
     "same self-check loop the playbook describes, with real tool access instead of imagined output.",
@@ -643,9 +654,6 @@ async function runOneAgentic(
   ].join(" ")
   const user = [
     "## Skill playbook (skills/pptfast/SKILL.md)\n\n" + shared.skill,
-    "## IR JSON Schema (pptfast schema)\n\n```json\n" + shared.schema + "\n```",
-    "## Narrative presets (pptfast narratives --json)\n\n```json\n" + shared.narratives + "\n```",
-    "## Themes (pptfast themes --json)\n\n```json\n" + shared.themes + "\n```",
     "## Deck request\n\n" + prompt,
   ].join("\n\n---\n\n")
 
@@ -780,11 +788,11 @@ async function main(): Promise<void> {
   const modelTag = `${prefix.toLowerCase()}-agentic`
 
   const questions = qids.length > 0 ? qids : readdirSync(questionsDir).filter((d) => /^[a-z]\d\d$/.test(d)).sort()
+  // Unlike run.mts's shared object, no schema/narratives/themes CLI calls
+  // here — the agentic model queries live vocabulary itself via run_pptfast
+  // (plan 裁定 1, see file header).
   const shared = {
     skill: readFileSync(join(ROOT, "skills/pptfast/SKILL.md"), "utf8"),
-    schema: cliText(["schema"]),
-    narratives: cliText(["narratives", "--json"]),
-    themes: cliText(["themes", "--json"]),
   }
   console.log(
     `model-tag ${modelTag} · ${questions.length} question(s) · round cap ${ROUND_CAP} · sequential · ` +

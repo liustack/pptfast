@@ -258,6 +258,16 @@ findings, fix, repeat, the same self-check loop the SKILL playbook describes, wi
 access instead of imagined output. Credentials use the same `.env` shape as `run.mts`:
 `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`.
 
+**No pre-injected vocabulary.** Unlike `run.mts`'s single-shot prompt (SKILL + schema +
+narratives + themes, because that model has no tools and injection is its only access to any of
+it), this runner's system prompt carries only SKILL.md and the question — the IR JSON Schema,
+narrative presets, and theme catalog are not embedded. The model queries them itself via
+`run_pptfast(["schema"])` / `run_pptfast(["narratives", "--json"])` /
+`run_pptfast(["themes", "--json"])`, exactly what this file's own run protocol above and the
+SKILL playbook already describe. This is the largest cost lever on this runner (the injected
+vocabulary alone was most of an ~83k-token system prompt) and is more protocol-faithful, not a
+compromise — the protocol never asked for pre-injection in a mode where the model can just ask.
+
 **Tool surface — minimal and neutral by design.** No general shell. `run_pptfast` only accepts a
 whitelisted, read-only/artifact-producing subcommand (`render`, `validate`, `audit`,
 `asset-brief`, `schema`, `assemble`, `disassemble`, `migrate`, `themes`, `narratives`, `preview`,
