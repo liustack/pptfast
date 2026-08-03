@@ -31,6 +31,8 @@ function renderSide({
   ctx: ComponentCtx
 }) {
   const src = ctx.images?.[asset_id]?.src
+  // A11Y-01 alt 链路（follow-up）：each side is its own asset, so its own alt.
+  const alt = ctx.images?.[asset_id]?.alt
   // bold-metrics fix (round 2, 2026-07-24): this label renders
   // `fontWeight={600}` in `ctx.fonts.body` below -- bold by this codebase's
   // own threshold, and `fonts.body` resolves to Georgia for the consulting
@@ -46,6 +48,7 @@ function renderSide({
           width={w}
           height={h}
           preserveAspectRatio="xMidYMid slice"
+          aria-label={alt || undefined}
         />
       ) : (
         <>

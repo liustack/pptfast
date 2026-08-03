@@ -19,7 +19,7 @@ const ctx: ComponentCtx = {
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
   bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
   images: {
-    a: { src: "data:image/png;base64,AAAA" },
+    a: { src: "data:image/png;base64,AAAA", alt: "Team offsite, group photo" },
     b: { src: "data:image/png;base64,BBBB" },
     c: { src: "data:image/png;base64,CCCC" },
     d: { src: "data:image/png;base64,DDDD" },
@@ -91,6 +91,17 @@ describe("image_grid component", () => {
     expect(container.textContent).toContain("Image missing")
     expect(container.querySelectorAll("image")).toHaveLength(1)
   })
+
+  it("emits each cell's own asset alt as aria-label, and none at all when the asset has no alt (A11Y-01 follow-up)", () => {
+    const component = {
+      type: "image_grid" as const,
+      items: [{ asset_id: "a" }, { asset_id: "b" }],
+    }
+    const { container } = svg(<>{imageGrid.render(component, box, ctx)}</>)
+    const images = container.querySelectorAll("image")
+    expect(images[0].getAttribute("aria-label")).toBe("Team offsite, group photo")
+    expect(images[1].hasAttribute("aria-label")).toBe(false)
+  })
 })
 
 describe("image_compare component", () => {
@@ -123,5 +134,12 @@ describe("image_compare component", () => {
     const h = imageCompare.measure(component, box.w, ctx)
     expect(h).toBeLessThanOrEqual(320 + 40)
     expect(h).toBeGreaterThan(200)
+  })
+
+  it("emits each side's own asset alt as aria-label, and none at all when the asset has no alt (A11Y-01 follow-up)", () => {
+    const { container } = svg(<>{imageCompare.render(component, box, ctx)}</>)
+    const images = container.querySelectorAll("image")
+    expect(images[0].getAttribute("aria-label")).toBe("Team offsite, group photo")
+    expect(images[1].hasAttribute("aria-label")).toBe(false)
   })
 })

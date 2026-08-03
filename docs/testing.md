@@ -65,8 +65,16 @@ relationship target resolves, `p:cNvPr` ids are unique per slide, shape
 transforms are finite integers with positive `cx`/`cy` except a connector's
 one allowed zero axis, animation timing references a real shape on the
 same slide, and — IR-aware, via the call's own optional second `ir`
-argument (A11Y-01 alt chain wave) — every `image` component whose asset
-has IR `alt` text exports that exact string as its shape's `descr`) and
+argument (alt-emission-closure fix wave, rewriting the original A11Y-01 alt
+chain rule) — a two-sided alt-preservation invariant keyed on the ops that
+actually reached svg2pptx, never the IR's *declared* `slide.components`
+list (a component `layoutContentFit` gracefully drops on overflow is
+correctly not checked at all): (a) every rendered image op that carries
+`alt` (from the SVG's `aria-label`) exports that exact string as its
+shape's `descr`, and (b) every alt-bearing IR asset that was actually
+rendered on the slide has at least one matching rendered `<image>` that
+carries its alt as `aria-label` (catches an emission site that draws the
+image but forgets to wire the attribute) and
 throws a `PptfastError` naming the broken invariant — there is no opt-out. `src/pptx/package-audit.test.ts` renders a real deck and
 surgically breaks it via JSZip to prove each invariant actually rejects the
 right corruption. `scripts/e2e.mts`'s package-audit leg re-asserts the

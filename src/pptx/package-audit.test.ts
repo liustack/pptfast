@@ -19,8 +19,12 @@ import { describe, it, expect, beforeAll } from "vitest"
 import JSZip from "jszip"
 import type { PptxIR } from "@/ir"
 import { installNodePlatform } from "../platform/node"
+import { slideToOps, slideToSvgMarkup } from "@/svg/render-slide"
+import { parseSvgRoot } from "@/svg/serialize"
 import { generatePptxBlob } from "./generate"
 import { auditPptxPackage } from "./package-audit"
+import { svgToOps } from "./svg2pptx/dispatch"
+import type { ImageOp } from "./svg2pptx/image"
 
 beforeAll(() => {
   installNodePlatform()
@@ -392,5 +396,228 @@ describe("auditPptxPackage — image-alt-dropped (A11Y-01)", () => {
     })
     const zip = await renderCleanZip(ir)
     await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+  })
+})
+
+// Alt-closure follow-up wave (`.issues/2026-08-04-bench-agentic/q15-root-cause.md`):
+// the A11Y-01 wave above only wired `aria-label` emission to
+// `components/image.tsx`. The first full bench round caught a real miss — a
+// pinned `image-split`/`image-top` layout routes its `image` component
+// through `image-pages.tsx`'s bespoke takeover renderers instead, which
+// never emitted `aria-label` at all. Red-first reproduces the two minimal
+// IRs from that report — both failed package audit before this wave's fix.
+describe("auditPptxPackage — image-alt-dropped, image-takeover closure (q15 minimal repros)", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+  it("round-trips green for a pinned image-split layout (q15 slide3 minimal repro)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Where you will do your best work",
+          layout: "image-split",
+          components: [
+            { type: "image", asset_id: "office_photo", fit: "cover" },
+            { type: "bullets", items: ["Remote-first", "Flexible hours"] },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { office_photo: { src: REAL_PNG, alt: "Northbeam office and workplace" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Northbeam office and workplace"`)
+  })
+
+  it("round-trips green for a pinned image-top layout (q15 slide5 minimal repro)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Our culture",
+          layout: "image-top",
+          components: [
+            { type: "image", asset_id: "team_photo", fit: "cover" },
+            { type: "bullets", items: ["Ownership", "Craft"] },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { team_photo: { src: REAL_PNG, alt: "Northbeam engineering team" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Northbeam engineering team"`)
+  })
+})
+
+// Same follow-up wave, the other two unwired emission sites the alt-chain
+// reviewer flagged: `image_grid` items and asset-kind slide backgrounds.
+// `checkImageAltExported` is widened alongside their `aria-label` wiring —
+// before this wave it only ever looked at `image`-type components.
+describe("auditPptxPackage — image-alt-dropped, image_grid/background closure", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+  it("round-trips green for an image_grid item's alt text", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [
+            {
+              type: "image_grid",
+              items: [
+                { asset_id: "grid_a", caption: "A" },
+                { asset_id: "grid_b" },
+              ],
+            },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: {
+          grid_a: { src: REAL_PNG, alt: "Team offsite group photo" },
+          grid_b: { src: REAL_PNG },
+        },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Team offsite group photo"`)
+  })
+
+  it("round-trips green for an asset-kind slide background's alt text", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          background: { kind: "asset", asset_id: "bg_photo" },
+          components: [{ type: "bullets", items: ["one", "two"] }],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { bg_photo: { src: REAL_PNG, alt: "Skyline at dusk" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Skyline at dusk"`)
+  })
+})
+
+// Alt-emission-closure fix wave: `checkImageAltExported` rewritten to key
+// off actually-rendered image ops (`ImageOp[]`) instead of the IR's
+// *declared* `slide.components` list — the reviewer-caught defect fixed
+// here is `layoutContentFit` (`src/svg/layout.ts`) silently dropping a
+// trailing component on overflow (a deliberate graceful-degrade path, not a
+// bug) and the old component-list-keyed rule hard-failing a legitimately
+// degraded export because the dropped component's alt could never have a
+// descr. See `checkImageAltExported`'s own doc comment in package-audit.ts
+// for the full two-leg (preservation + coverage) rationale.
+describe("auditPptxPackage — image-alt-dropped, rekeyed on rendered ops (alt-emission-closure fix)", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+  const LONG_BULLET =
+    "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明与实施细则"
+
+  // Reviewer repro, verbatim: 40 long bullets ahead of an alt-bearing
+  // image_grid on one content slide, sized so `layoutContentFit`'s overflow
+  // guard drops the trailing image_grid entirely. Pre-fix this threw
+  // `image-alt-dropped: 1` (the IR still *declared* the component, so the
+  // old rule demanded a descr that could never exist for content that was
+  // never rendered) — confirmed red against the pre-fix rule before this
+  // wave's change.
+  it("a component gracefully dropped by layoutContentFit's overflow guard does not hard-fail the export (reviewer repro)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [
+            { type: "bullets", items: Array.from({ length: 40 }, () => LONG_BULLET) },
+            { type: "image_grid", items: [{ asset_id: "grid_a" }, { asset_id: "grid_b" }] },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: {
+          grid_a: { src: REAL_PNG, alt: "Team offsite group photo" },
+          grid_b: { src: REAL_PNG },
+        },
+      },
+    })
+
+    const blob = await generatePptxBlob(ir)
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer())
+    // Not vacuous: prove the drop actually happened — the image_grid's alt
+    // text is genuinely absent from the package because it was never
+    // rendered, not merely tolerated by a weaker check.
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).not.toContain(`descr="Team offsite group photo"`)
+  })
+
+  // q15 regression retained (`.issues/2026-08-04-bench-agentic/q15-root-cause.md`):
+  // a future emission site that renders `<image>` but forgets `aria-label`
+  // must still be caught — the ops-keyed rewrite must not lose the
+  // detection power the old IR-component-keyed rule had. Simulated the way
+  // this file's other red-first fixtures simulate a future regression:
+  // start from a real, correctly-wired render, then strip the aria-label
+  // the real renderer wrote from a re-derived copy of that slide's SVG (the
+  // exact shape an "unwired renderer" would produce), convert that back to
+  // ops, and pass it in via `auditPptxPackage`'s explicit third parameter —
+  // the seam a production caller (`generatePptxBlob`) uses to hand the
+  // audit the ops it actually rendered.
+  it("still catches a rendered <image> whose emission site forgot aria-label (q15 defect class, explicit imageOpsBySlide override)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [{ type: "image", asset_id: "hero", fit: "cover" }],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: { images: { hero: { src: REAL_PNG, alt: "Launch celebration" } } },
+    })
+    // The real, correctly-wired render — the package itself is clean, so a
+    // pure package-level check would find nothing wrong here.
+    const zip = await renderCleanZip(ir)
+
+    const contentIndex = 1
+    const realMarkup = slideToSvgMarkup(ir, ir.slides[contentIndex]!, contentIndex)
+    const strippedMarkup = realMarkup.replace(/ aria-label="[^"]*"/, "")
+    expect(strippedMarkup).not.toBe(realMarkup)
+    const strippedImageOps = svgToOps(parseSvgRoot(strippedMarkup)).filter(
+      (op): op is ImageOp => op.kind === "image",
+    )
+
+    const imageOpsBySlide: ImageOp[][] = ir.slides.map((slide, index) =>
+      slideToOps(ir, slide, index).filter((op): op is ImageOp => op.kind === "image"),
+    )
+    imageOpsBySlide[contentIndex] = strippedImageOps
+
+    await expect(auditPptxPackage(zip, ir, imageOpsBySlide)).rejects.toThrow(/image-alt-dropped/)
   })
 })
