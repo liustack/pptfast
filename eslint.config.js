@@ -3,7 +3,7 @@ import reactRefresh from "eslint-plugin-react-refresh"
 import tseslint from "typescript-eslint"
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules", "coverage"] },
+  { ignores: ["dist", "node_modules", "coverage", "tests/bench/results*/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
