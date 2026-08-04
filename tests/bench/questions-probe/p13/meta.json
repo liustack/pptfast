@@ -1,0 +1,14 @@
+{
+  "id": "p13",
+  "title": "Sponsor Thank-You Slide for the Conference Recap Deck",
+  "coverage": {
+    "strategy": "showcase",
+    "pacing": "spacious",
+    "expects_components": ["image_grid", "icon_cards"],
+    "workflow": "bare-ir",
+    "image_deck": true
+  },
+  "lang": "en",
+  "probe": true,
+  "probe_candidate": "logo_wall"
+}

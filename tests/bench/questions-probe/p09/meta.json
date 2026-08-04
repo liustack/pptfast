@@ -1,0 +1,14 @@
+{
+  "id": "p09",
+  "title": "Product Screenshot for the Series A Deck",
+  "coverage": {
+    "strategy": "pyramid",
+    "pacing": "spacious",
+    "expects_components": ["image", "image_compare"],
+    "workflow": "bare-ir",
+    "image_deck": true
+  },
+  "lang": "en",
+  "probe": true,
+  "probe_candidate": "device_mockup"
+}
