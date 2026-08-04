@@ -9,7 +9,9 @@ import {
   checkPptfastArgs,
   classifyModelTurn,
   copyQuestionAssets,
+  deriveModelTag,
   extractCachedTokens,
+  flagValue,
   locateArtifact,
   placeArtifact,
   scriptedReplyFor,
@@ -497,6 +499,47 @@ describe("locateArtifact + placeArtifact", () => {
     const located = locateArtifact(workspace)
     placeArtifact(located, resultDir)
     expect(existsSync(join(resultDir, "assets"))).toBe(false)
+  })
+})
+
+// ── flagValue — --model=<id> CLI override parsing ──
+
+describe("flagValue", () => {
+  it("returns the value of a present --name=value flag", () => {
+    expect(flagValue(["qwen", "--model=qwen-flash", "q01"], "model")).toBe("qwen-flash")
+  })
+
+  it("returns undefined when the flag is absent", () => {
+    expect(flagValue(["qwen", "q01"], "model")).toBeUndefined()
+  })
+
+  it("does not match a same-prefixed but different flag name", () => {
+    expect(flagValue(["--model-extra=x"], "model")).toBeUndefined()
+  })
+
+  it("handles a value that itself contains an equals sign", () => {
+    expect(flagValue(["--model=qwen=flash"], "model")).toBe("qwen=flash")
+  })
+})
+
+// ── deriveModelTag — result model-tag with/without --model (dashscope
+// cache-list swap, .issues/2026-08-04-bench-agentic/dashscope-cache-investigation.md) ──
+
+describe("deriveModelTag", () => {
+  it("defaults to <prefix>-agentic when no override is given", () => {
+    expect(deriveModelTag("QWEN", undefined)).toBe("qwen-agentic")
+  })
+
+  it("uses the override id, not the prefix, when --model is given", () => {
+    expect(deriveModelTag("QWEN", "qwen-flash")).toBe("qwen-flash-agentic")
+  })
+
+  it("keeps the override's own casing/shape rather than reprocessing it", () => {
+    expect(deriveModelTag("DEEPSEEK", "deepseek-v4-flash")).toBe("deepseek-v4-flash-agentic")
+  })
+
+  it("lowercases the default prefix-based tag even when the prefix arrives uppercase", () => {
+    expect(deriveModelTag("DEEPSEEK", undefined)).toBe("deepseek-agentic")
   })
 })
 

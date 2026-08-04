@@ -53,7 +53,11 @@
  *
  * Usage: `pnpm bench:agentic <prefix> [q01 q02 ...]` (default: all
  * questions in questionsDir). Same `.env` credential shape as `run.mts`:
- * `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`.
+ * `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`. `--model=<id>`
+ * overrides `<PREFIX>_MODEL` for this run only (same flag, same semantics as
+ * `run.mts`'s `--model` — see that file's header for the motivating case);
+ * the result model-tag then derives from the override, not the prefix — see
+ * `deriveModelTag` below.
  */
 import { execFileSync } from "node:child_process"
 import {
@@ -909,6 +913,37 @@ async function runOneAgentic(
   )
 }
 
+// ── --model=<id> override (dashscope cache-list model swap,
+// .issues/2026-08-04-bench-agentic/dashscope-cache-investigation.md) ──
+
+/** Pulls `--<name>=<value>` out of `argv`, or `undefined` when absent — the
+ *  same `--flag=value` shape `dirFlag` (below) uses for
+ *  `--questions-dir`/`--results-dir`, factored out because this one has no
+ *  path-resolution step and no fallback (an absent `--model` means "use the
+ *  `.env` `<PREFIX>_MODEL` value", decided by the caller, not this helper). */
+export function flagValue(argv: string[], name: string): string | undefined {
+  const prefix = `--${name}=`
+  const hit = argv.find((a) => a.startsWith(prefix))
+  return hit?.slice(prefix.length)
+}
+
+/**
+ * Result model-tag for one agentic run: `<prefix>-agentic` by default (e.g.
+ * `qwen-agentic`, unchanged from round 1), or `<modelOverride>-agentic`
+ * whenever `--model=<id>` is given — the tag then names the actual model id
+ * that was queried, not the `.env` prefix, so a `--model=qwen-flash` run
+ * against the `QWEN` prefix lands in `qwen-flash-agentic/`, never silently
+ * mixed into `qwen-agentic/`'s results alongside `qwen3.6-27b` runs of a
+ * different model (`score.mts`'s model-tag directories are the comparison
+ * unit — see `tests/bench/README.md`'s "Result layout and model tag").
+ * `meta.json`'s `model_requested` already records the true id regardless of
+ * this tag (`buildMeta`'s `modelRequested` param, threaded from `cfg.model`
+ * in `runOneAgentic` below) — this only decides the directory name.
+ */
+export function deriveModelTag(prefix: string, modelOverride: string | undefined): string {
+  return `${(modelOverride ?? prefix.toLowerCase())}-agentic`
+}
+
 // ── CLI entry ──
 
 async function main(): Promise<void> {
@@ -920,13 +955,18 @@ async function main(): Promise<void> {
   }
   const questionsDir = dirFlag("questions-dir", "tests/bench/questions")
   const resultsDir = dirFlag("results-dir", "tests/bench/results")
+  const modelOverride = flagValue(rawArgs, "model")
   const [prefixArg, ...qids] = rawArgs.filter((a) => !a.startsWith("--"))
-  if (!prefixArg) throw new Error("usage: pnpm bench:agentic <env-prefix e.g. qwen|deepseek> [qids...]")
+  if (!prefixArg) throw new Error("usage: pnpm bench:agentic <env-prefix e.g. qwen|deepseek> [qids...] [--model=<id>]")
   const prefix = prefixArg.toUpperCase()
   const env = loadEnv(join(ROOT, ".env"))
-  const cfg = { baseUrl: env[`${prefix}_BASE_URL`], apiKey: env[`${prefix}_API_KEY`], model: env[`${prefix}_MODEL`] }
+  const cfg = {
+    baseUrl: env[`${prefix}_BASE_URL`],
+    apiKey: env[`${prefix}_API_KEY`],
+    model: modelOverride ?? env[`${prefix}_MODEL`],
+  }
   if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) throw new Error(`missing ${prefix}_BASE_URL/_API_KEY/_MODEL in .env`)
-  const modelTag = `${prefix.toLowerCase()}-agentic`
+  const modelTag = deriveModelTag(prefix, modelOverride)
 
   const questions = qids.length > 0 ? qids : readdirSync(questionsDir).filter((d) => /^[a-z]\d\d$/.test(d)).sort()
   // Unlike run.mts's shared object, no schema/narratives/themes CLI calls

@@ -267,6 +267,8 @@ The second sanctioned run mode next to the agentic protocol above: `pnpm bench:r
 
 `run.mts` also takes optional `--questions-dir=<dir>` / `--results-dir=<dir>` flags (default: `tests/bench/questions` / `tests/bench/results`, unchanged) so a second question bank — the probe bank below — can be run without touching the main bank's result history: `pnpm bench:run <prefix> --questions-dir=tests/bench/questions-probe --results-dir=tests/bench/results-probe`. Question ids are auto-discovered from whichever `questionsDir` is in effect (`/^[a-z]\d\d$/`, matches both `q01`- and `p01`-style ids). `score.mts` already took `[questionsDir] [resultsDir]` positional args before this wave (`pnpm bench:score tests/bench/questions-probe tests/bench/results-probe`) — no scorer code changed for the probe bank.
 
+**`--model=<id>` override** (round 2, `.issues/2026-08-04-bench-agentic/dashscope-cache-investigation.md`): runs an existing prefix's credentials against a different model id for this run only, e.g. `pnpm bench:run qwen --model=qwen-flash` to test a dashscope-cache-eligible model without adding a whole new `.env` prefix. The result directory tag is the actual model id used (`cfg.model` doubles as the tag `run.mts` already writes results under), so an override never mixes into the un-overridden prefix's own result tree, and the self-reported `meta.json`'s `model` field reflects whichever id was actually queried.
+
 **Image questions in single-shot mode — no asset provisioning, unchanged.** `run.mts` has no file-access tools at all (see the run-protocol table above) — the model's only way to reference `q02`/`q12`/`q15`'s attached photography is to copy the `data:image/png;base64,...` URI straight out of the prompt's own "Materials" section into `assets.images[id].src`, which the injected prompt already carries verbatim. Reading the round-1 archive (`tests/bench/results-archive/2026-08-04-first-full-agentic/`) confirms both outcomes actually happen: several answers do copy the data URI correctly (a working, if verbose, first-shot answer), while others instead reference a plausible-looking local file path (e.g. `"assets/team-photo.png"`) that was never provisioned anywhere — `score.mts` resolves that path against the result directory and finds nothing there, so that answer fails on `renderOk` for a reason unrelated to its actual IR quality. This is a real, pre-existing gap in single-shot mode, but round 2's fix is agentic-only: `run.mts` gives the model no tool to discover or reference a provisioned `assets/` directory even if one existed, so provisioning one here would go unused. Left as documented, known behavior rather than silently "fixed" by a change that couldn't actually help.
 
 ## Agentic API run mode (`run-agentic.mts`)
@@ -279,7 +281,9 @@ completion. The model gets four tools — `write_file(path, content)`, `read_fil
 its own: write IR (or deck-project files), run `validate`/`audit` via `run_pptfast`, read the
 findings, fix, repeat, the same self-check loop the SKILL playbook describes, with real tool
 access instead of imagined output. Credentials use the same `.env` shape as `run.mts`:
-`<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`.
+`<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`. Same `--model=<id>` override as
+`run.mts` (see that section above for the motivating case) — when given, the result model-tag
+below is derived from the override id, not the prefix.
 
 **Asset provisioning for image questions** (round 2, fixes 3 of round 1's failures). A question
 directory's optional `assets/` subdirectory (see "Question bank schema" above) is copied into the
@@ -377,7 +381,10 @@ and what the API actually returned, side by side, without reconciling them:
 — the `-agentic` suffix keeps agentic runs in their own model tag, never mixed with single-shot
 runs of the same provider (`score.mts`'s model-tag directories are the comparison unit; a
 `qwen-agentic` row and a `qwen` row are two different runs of two different modes, not
-comparable to each other). The model does its actual work inside a `workspace/` subdirectory one
+comparable to each other). With `--model=<id>` given, the tag becomes `<id>-agentic` instead of
+`<prefix>-agentic` (`deriveModelTag`) — e.g. `pnpm bench:agentic qwen --model=qwen-flash` lands in
+`qwen-flash-agentic/`, never mixed into `qwen-agentic/`'s runs of the different model
+`qwen3.6-27b` the bare `QWEN` prefix normally asks for. The model does its actual work inside a `workspace/` subdirectory one
 level below that (`tests/bench/results/<prefix>-agentic/<qid>/workspace/`) — `score.mts` reads
 `<resultsDir>/<model-tag>/<qid>/` directly and has no knowledge of `workspace/`, so after the tool
 loop ends the harness itself locates the model's final artifact inside `workspace/` (a

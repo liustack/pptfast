@@ -15,8 +15,10 @@
  * Usage:
  *   pnpm bench:run <prefix> [q01 q02 ...]   (default: all questions in questionsDir)
  *   pnpm bench:run <prefix> --questions-dir=<dir> --results-dir=<dir> [ids...]
+ *   pnpm bench:run <prefix> --model=<id> [ids...]   (override the .env model id)
  * e.g. pnpm bench:run qwen · pnpm bench:run deepseek q01 q07
  *   pnpm bench:run qwen --questions-dir=tests/bench/questions-probe --results-dir=tests/bench/results-probe
+ *   pnpm bench:run qwen --model=qwen-flash
  *
  * `--questions-dir`/`--results-dir` default to `tests/bench/questions` /
  * `tests/bench/results` (unchanged default behavior) — added so a second,
@@ -25,11 +27,23 @@
  * are auto-discovered from whichever `questionsDir` is in effect via a
  * generic `/^[a-z]\d\d$/` id shape (matches both `q01`/`p01`-style prefixes),
  * not a hardcoded `q\d\d`.
+ *
+ * `--model=<id>` overrides the `.env` `<PREFIX>_MODEL` value for this run
+ * only — same flag, same semantics as `run-agentic.mts`'s `--model`
+ * (round-2 addition, `.issues/2026-08-04-bench-agentic/dashscope-cache-investigation.md`:
+ * lets an existing prefix's credentials run against a different model id,
+ * e.g. `pnpm bench:run qwen --model=qwen-flash` to test a model on
+ * dashscope's implicit-cache allow-list without adding a whole new `.env`
+ * prefix). The result directory tag is the actual model id used — `cfg.model`
+ * doubles as `runOne`'s `outDir` tag below — so an override never mixes into
+ * the un-overridden prefix's own results, and `meta.json`'s `model` field
+ * (self-reported by `runOne`) already reflects whichever id was actually
+ * queried.
  */
 import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const CLI = join(ROOT, "dist/cli.js")
@@ -48,6 +62,19 @@ function loadEnv(): Record<string, string> {
 
 function cliText(args: string[]): string {
   return execFileSync("node", [CLI, ...args], { encoding: "utf8", cwd: ROOT })
+}
+
+/** Pulls `--<name>=<value>` out of `argv`, or `undefined` when absent —
+ *  `run-agentic.mts` carries the identical helper (same `--flag=value`
+ *  shape as this file's own `dirFlag`, minus the path-resolution/fallback
+ *  step neither `--model` needs); duplicated rather than shared, same
+ *  reasoning as this file's other small overlaps with that one (see its
+ *  own header comment) — two independently-runnable scripts, not worth a
+ *  new shared module for a four-line helper. */
+export function flagValue(argv: string[], name: string): string | undefined {
+  const prefix = `--${name}=`
+  const hit = argv.find((a) => a.startsWith(prefix))
+  return hit?.slice(prefix.length)
 }
 
 /** Strip a ```json fence when the model wraps its answer in one. */
@@ -156,11 +183,22 @@ async function main(): Promise<void> {
   }
   const questionsDir = dirFlag("questions-dir", "tests/bench/questions")
   const resultsDir = dirFlag("results-dir", "tests/bench/results")
+  const modelOverride = flagValue(rawArgs, "model")
   const [prefixArg, ...qids] = rawArgs.filter((a) => !a.startsWith("--"))
-  if (!prefixArg) throw new Error("usage: pnpm bench:run <env-prefix e.g. qwen|deepseek> [qids...]")
+  if (!prefixArg) throw new Error("usage: pnpm bench:run <env-prefix e.g. qwen|deepseek> [qids...] [--model=<id>]")
   const prefix = prefixArg.toUpperCase()
   const env = loadEnv()
-  const cfg = { baseUrl: env[`${prefix}_BASE_URL`], apiKey: env[`${prefix}_API_KEY`], model: env[`${prefix}_MODEL`] }
+  // `cfg.model` is also the result-directory tag (`runOne`'s `outDir` below
+  // uses it directly) — a `--model` override therefore already lands runs
+  // under the overridden model's own id, never mixed with `.env`'s
+  // `<PREFIX>_MODEL` runs of the same prefix, with no extra tag-derivation
+  // step needed (unlike `run-agentic.mts`'s `<prefix>-agentic` tag, which
+  // does need one — see that file's `deriveModelTag`).
+  const cfg = {
+    baseUrl: env[`${prefix}_BASE_URL`],
+    apiKey: env[`${prefix}_API_KEY`],
+    model: modelOverride ?? env[`${prefix}_MODEL`],
+  }
   if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) throw new Error(`missing ${prefix}_BASE_URL/_API_KEY/_MODEL in .env`)
 
   const questions =
@@ -185,4 +223,16 @@ async function main(): Promise<void> {
   console.log("run complete")
 }
 
-await main()
+// Guarded the same way `run-agentic.mts` guards its own `main()` (added
+// round-2, alongside that file's `--model` flag): unguarded top-level
+// `await main()` ran unconditionally on import, which made this file
+// impossible to import from a test for its pure helpers (`flagValue`)
+// without also kicking off a real run. `main()` itself is unchanged.
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+if (invokedDirectly) {
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+}
