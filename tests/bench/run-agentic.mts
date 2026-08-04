@@ -39,10 +39,11 @@
  * that constant's own comment for the size and the truncate-from-the-end
  * rationale.
  *
- * Round cap: 24 chat-completion calls total (plan 裁定 2) — one round may
- * contain several tool calls, they all count as one round. Hitting the cap
- * stops the run with `cap_hit: true` in meta.json; whatever the model wrote
- * up to that point is left in place, same as a natural stop.
+ * Round cap: `ROUND_CAP` chat-completion calls total (plan 裁定 2, raised
+ * twice since — see that constant's own doc comment for the history) — one
+ * round may contain several tool calls, they all count as one round. Hitting
+ * the cap stops the run with `cap_hit: true` in meta.json; whatever the
+ * model wrote up to that point is left in place, same as a natural stop.
  *
  * meta.json is harness-written, never model-self-reported (2026-07-20's
  * archived round found model-reported identity untrustworthy) — it records
@@ -74,9 +75,18 @@ const CLI = join(ROOT, "dist/cli.js")
  *  Raised 24 → 32 before the first full batch: the post-slim smoke (q01,
  *  the bank's gentlest question, on the stronger of the two weak models)
  *  already used 21 rounds once vocabulary self-querying replaced injection.
+ *  Raised 32 → 48 before round 2 (`.issues/notes/2026-08-04-bench-first-agentic.md`):
+ *  the first full batch hit the 32-round cap on 8 of 40 deepseek runs and 7
+ *  of 40 qwen runs, concentrated in the five deck-project questions
+ *  (q03/q06/q08/q13/q17) — their five-phase spec→pages→assemble→validate→
+ *  render workflow eats rounds faster than a single bare-IR file. Those
+ *  runs' half-finished artifacts (an unfilled placeholder page, an item
+ *  missing a field) scored as failures purely from running out of budget,
+ *  not from producing wrong content — round 1's own report calls the
+ *  resulting scores "a conservative lower bound".
  *  The cap is a cost guard, not part of the benchmark's difficulty — a cap
  *  tight enough to clip real runs would measure budget, not capability. */
-const ROUND_CAP = 32
+const ROUND_CAP = 48
 /** Tool-result content is truncated before it goes back to the model — a
  *  validate/audit dump or a long file read should not blow the context
  *  window on its own, and an unbounded result is the other big lever on
@@ -95,9 +105,9 @@ const TOOL_RESULT_MAX_CHARS = 8_000
  *  otherwise be the only thing to notice. */
 const ROUND_TIMEOUT_MS = 180_000
 /** Overall wall-clock budget for one question's whole tool loop, independent
- *  of the round cap — 24 rounds at the per-round timeout above could in the
- *  worst case take hours; a batch runner that can hang for hours on one
- *  question is not shippable (found the hard way: a first smoke attempt ran
+ *  of the round cap — `ROUND_CAP` rounds at the per-round timeout above
+ *  could in the worst case take hours; a batch runner that can hang for
+ *  hours on one question is not shippable (found the hard way: a first smoke attempt ran
  *  past this harness's own orchestrating process's timeout with no internal
  *  deadline of its own to explain why). Checked before starting each new
  *  round, not mid-round — a round already in flight is left to its own
@@ -285,7 +295,7 @@ export interface RunMeta {
   duration_seconds: number
   cap_hit: boolean
   /** True when the run stopped early because it hit `RUN_DEADLINE_MS`
-   *  (25 minutes), separate from `cap_hit` (the 24-round cap) — additive
+   *  (25 minutes), separate from `cap_hit` (the `ROUND_CAP`-round cap) — additive
    *  field beyond plan 裁定 2's base meta shape, added after a first smoke
    *  attempt had no overall deadline of its own and outlived this harness's
    *  own orchestrating process with no record of why. `cap_hit` keeps its

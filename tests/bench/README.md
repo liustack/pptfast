@@ -286,12 +286,23 @@ scope: the workspace is a harness-created scratch directory the model itself pop
 attacker-controlled input). This keeps the benchmark measuring the model's fit with the SKILL
 rather than the harness's own cleverness.
 
-**Round cap.** 32 chat-completion calls per question — one round may contain several tool calls,
-they all count as one round. Hitting the cap stops the run with `cap_hit: true` in `meta.json`;
-whatever the model wrote up to that point is left in place, same as a natural stop. A model turn
-that makes no tool calls is classified as a spec-confirmation question, some other clarifying
-question, or a genuine stop — the harness answers the first two with the run protocol's two fixed
-scripted lines above and ends the run on the third.
+**Round cap.** 48 chat-completion calls per question (raised from 32 for round 2 —
+`.issues/notes/2026-08-04-bench-first-agentic.md`: round 1 hit the 32-round cap on 8 of 40
+deepseek runs and 7 of 40 qwen runs, concentrated in the five deck-project questions
+q03/q06/q08/q13/q17, whose five-phase spec→pages→assemble→validate→render workflow eats rounds
+faster than a single bare-IR file — those runs' half-finished artifacts scored as failures purely
+from running out of budget, not from producing wrong content) — one round may contain several tool
+calls, they all count as one round. The cap is fixed across every question and model in a given
+batch (never tuned per-question or per-model — a cap tight enough to clip real runs would measure
+budget, not capability, `run-agentic.mts`'s own `ROUND_CAP` doc comment states this as the
+constant's governing philosophy). Hitting the cap stops the run with `cap_hit: true` in
+`meta.json`; whatever the model wrote up to that point is left in place, same as a natural stop.
+The system prompt's own stated turn budget is interpolated straight from the `ROUND_CAP` constant
+(fixed 2026-08-03 after a first raise updated the constant and this README but missed the
+hardcoded number inside the prompt string itself, `46bcd1b`) — the two can no longer drift apart.
+A model turn that makes no tool calls is classified as a spec-confirmation question, some other
+clarifying question, or a genuine stop — the harness answers the first two with the run protocol's
+two fixed scripted lines above and ends the run on the third.
 
 **`meta.json` is harness-written, never model-self-reported** — the 2026-07-20 archived round
 found model-reported identity untrustworthy, so this harness records what it actually asked for
