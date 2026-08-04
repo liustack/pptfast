@@ -16,6 +16,8 @@ tests/bench/
   questions/q01..q20/
     prompt.md   the request handed to the model-under-test, verbatim
     meta.json   coverage annotation — never shown to the model, descriptive only
+    assets/     optional — local files an image_deck question's prompt claims are attached
+                (round-2 addition, see "Question bank schema" below)
   results/<model-tag>/<question-id>/
     ...         the model-under-test's artifact (created by a run, not checked in here)
     meta.json   optional self-reported run stats (tokens/duration/model), pass-through only
@@ -100,6 +102,25 @@ runnable question.
 choice is not wrong. `workflow` and `image_deck` are additive fields beyond the wave brief's
 base shape, added so the scorer can report the deck-project-workflow and image-asset coverage
 cells without re-deriving them from prompt text.
+
+### `assets/` (optional, round-2 addition)
+
+A question directory whose `meta.json` sets `coverage.image_deck: true` may also carry an
+`assets/` subdirectory of real local image files matching what the prompt's own "Materials"
+section describes (subject, count — filenames are the question author's choice, the prompt never
+promises a specific one). Most questions have no `assets/` directory at all — the field is
+optional, and its absence is not itself meaningful (a `bare-ir` question with no attached material
+has nothing to provision). `q02`/`q12`/`q15` are the first questions to use it: round 1
+(`.issues/notes/2026-08-04-bench-first-agentic.md`) found the agentic harness's empty workspace
+left these three questions' models with nothing real to point an image reference at — they either
+invented a file path that doesn't exist or tried to write a placeholder PNG by hand through the
+text-only `write_file` tool, landing a zero-byte or corrupt file (`resolveLocalAssets`,
+`src/cli/load-ir.ts`, rejects both). `run-agentic.mts`'s `copyQuestionAssets` copies this directory
+into the model's workspace before round 1 (see "Agentic API run mode" below) so a real file is
+there to reference instead. `prompt.md` itself is never edited to add or explain this — the file's
+mere presence in the workspace is what changes, not the request's wording (this file's own
+"answer-leak discipline" / "no manual touch-ups" posture extends to "no touching the prompt to
+compensate for a harness gap").
 
 ## Answer-leak discipline
 
@@ -246,6 +267,10 @@ The second sanctioned run mode next to the agentic protocol above: `pnpm bench:r
 
 `run.mts` also takes optional `--questions-dir=<dir>` / `--results-dir=<dir>` flags (default: `tests/bench/questions` / `tests/bench/results`, unchanged) so a second question bank — the probe bank below — can be run without touching the main bank's result history: `pnpm bench:run <prefix> --questions-dir=tests/bench/questions-probe --results-dir=tests/bench/results-probe`. Question ids are auto-discovered from whichever `questionsDir` is in effect (`/^[a-z]\d\d$/`, matches both `q01`- and `p01`-style ids). `score.mts` already took `[questionsDir] [resultsDir]` positional args before this wave (`pnpm bench:score tests/bench/questions-probe tests/bench/results-probe`) — no scorer code changed for the probe bank.
 
+**`--model=<id>` override** (round 2, `.issues/2026-08-04-bench-agentic/dashscope-cache-investigation.md`): runs an existing prefix's credentials against a different model id for this run only, e.g. `pnpm bench:run qwen --model=qwen-flash` to test a dashscope-cache-eligible model without adding a whole new `.env` prefix. The result directory tag is the actual model id used (`cfg.model` doubles as the tag `run.mts` already writes results under), so an override never mixes into the un-overridden prefix's own result tree, and the self-reported `meta.json`'s `model` field reflects whichever id was actually queried.
+
+**Image questions in single-shot mode — no asset provisioning, unchanged.** `run.mts` has no file-access tools at all (see the run-protocol table above) — the model's only way to reference `q02`/`q12`/`q15`'s attached photography is to copy the `data:image/png;base64,...` URI straight out of the prompt's own "Materials" section into `assets.images[id].src`, which the injected prompt already carries verbatim. Reading the round-1 archive (`tests/bench/results-archive/2026-08-04-first-full-agentic/`) confirms both outcomes actually happen: several answers do copy the data URI correctly (a working, if verbose, first-shot answer), while others instead reference a plausible-looking local file path (e.g. `"assets/team-photo.png"`) that was never provisioned anywhere — `score.mts` resolves that path against the result directory and finds nothing there, so that answer fails on `renderOk` for a reason unrelated to its actual IR quality. This is a real, pre-existing gap in single-shot mode, but round 2's fix is agentic-only: `run.mts` gives the model no tool to discover or reference a provisioned `assets/` directory even if one existed, so provisioning one here would go unused. Left as documented, known behavior rather than silently "fixed" by a change that couldn't actually help.
+
 ## Agentic API run mode (`run-agentic.mts`)
 
 The full implementation of the agentic protocol described above (BENCH-01,
@@ -256,7 +281,32 @@ completion. The model gets four tools — `write_file(path, content)`, `read_fil
 its own: write IR (or deck-project files), run `validate`/`audit` via `run_pptfast`, read the
 findings, fix, repeat, the same self-check loop the SKILL playbook describes, with real tool
 access instead of imagined output. Credentials use the same `.env` shape as `run.mts`:
-`<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`.
+`<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`. Same `--model=<id>` override as
+`run.mts` (see that section above for the motivating case) — when given, the result model-tag
+below is derived from the override id, not the prefix.
+
+**Asset provisioning for image questions** (round 2, fixes 3 of round 1's failures). A question
+directory's optional `assets/` subdirectory (see "Question bank schema" above) is copied into the
+model's private workspace before round 1 (`copyQuestionAssets`) — real files a model can point a
+relative `assets.images[id].src` at instead of inventing a path or hand-writing a broken
+placeholder through the text-only `write_file` tool. The system prompt mentions this mechanically
+("the actual referenced files are already present in your workspace... check with list_files")
+without describing what any specific question's material actually shows — the model still has to
+look. After the run, `placeArtifact` copies a bare-IR answer's sibling `assets/` directory (the
+same directory the model's own `run_pptfast validate`/`render` calls resolved against during the
+tool loop) up into the result root alongside `deck.json`, mirroring what it already did for a
+deck-project answer's `assets/` — otherwise a correctly-authored local-path reference would
+validate and render fine inside the tool loop but then fail `score.mts`'s own re-render, which
+resolves the same relative path against the result root, not the workspace.
+
+The system prompt also explicitly warns the model not to call `write_file` on a path already
+under `assets/` — added after the round-2 smoke (q12, QWEN) showed the provisioning path working
+exactly as designed (a real file copied into the workspace, discovered via `list_files`) but the
+model then "helpfully" overwrote that real PNG by `write_file`-ing the literal base64 text it saw
+in the prompt into the same path, corrupting it (`write_file` writes whatever text it is given
+verbatim — it has no way to decode base64 into real binary bytes). This is a model-behavior gap
+the added prompt line mitigates, not a harness defect — the copy, path-safety, and result-placement
+mechanics all worked; see the round-2 task report for the full smoke trace.
 
 **No pre-injected vocabulary.** Unlike `run.mts`'s single-shot prompt (SKILL + schema +
 narratives + themes, because that model has no tools and injection is its only access to any of
@@ -286,12 +336,23 @@ scope: the workspace is a harness-created scratch directory the model itself pop
 attacker-controlled input). This keeps the benchmark measuring the model's fit with the SKILL
 rather than the harness's own cleverness.
 
-**Round cap.** 32 chat-completion calls per question — one round may contain several tool calls,
-they all count as one round. Hitting the cap stops the run with `cap_hit: true` in `meta.json`;
-whatever the model wrote up to that point is left in place, same as a natural stop. A model turn
-that makes no tool calls is classified as a spec-confirmation question, some other clarifying
-question, or a genuine stop — the harness answers the first two with the run protocol's two fixed
-scripted lines above and ends the run on the third.
+**Round cap.** 48 chat-completion calls per question (raised from 32 for round 2 —
+`.issues/notes/2026-08-04-bench-first-agentic.md`: round 1 hit the 32-round cap on 8 of 40
+deepseek runs and 7 of 40 qwen runs, concentrated in the five deck-project questions
+q03/q06/q08/q13/q17, whose five-phase spec→pages→assemble→validate→render workflow eats rounds
+faster than a single bare-IR file — those runs' half-finished artifacts scored as failures purely
+from running out of budget, not from producing wrong content) — one round may contain several tool
+calls, they all count as one round. The cap is fixed across every question and model in a given
+batch (never tuned per-question or per-model — a cap tight enough to clip real runs would measure
+budget, not capability, `run-agentic.mts`'s own `ROUND_CAP` doc comment states this as the
+constant's governing philosophy). Hitting the cap stops the run with `cap_hit: true` in
+`meta.json`; whatever the model wrote up to that point is left in place, same as a natural stop.
+The system prompt's own stated turn budget is interpolated straight from the `ROUND_CAP` constant
+(fixed 2026-08-03 after a first raise updated the constant and this README but missed the
+hardcoded number inside the prompt string itself, `46bcd1b`) — the two can no longer drift apart.
+A model turn that makes no tool calls is classified as a spec-confirmation question, some other
+clarifying question, or a genuine stop — the harness answers the first two with the run protocol's
+two fixed scripted lines above and ends the run on the third.
 
 **`meta.json` is harness-written, never model-self-reported** — the 2026-07-20 archived round
 found model-reported identity untrustworthy, so this harness records what it actually asked for
@@ -320,7 +381,10 @@ and what the API actually returned, side by side, without reconciling them:
 — the `-agentic` suffix keeps agentic runs in their own model tag, never mixed with single-shot
 runs of the same provider (`score.mts`'s model-tag directories are the comparison unit; a
 `qwen-agentic` row and a `qwen` row are two different runs of two different modes, not
-comparable to each other). The model does its actual work inside a `workspace/` subdirectory one
+comparable to each other). With `--model=<id>` given, the tag becomes `<id>-agentic` instead of
+`<prefix>-agentic` (`deriveModelTag`) — e.g. `pnpm bench:agentic qwen --model=qwen-flash` lands in
+`qwen-flash-agentic/`, never mixed into `qwen-agentic/`'s runs of the different model
+`qwen3.6-27b` the bare `QWEN` prefix normally asks for. The model does its actual work inside a `workspace/` subdirectory one
 level below that (`tests/bench/results/<prefix>-agentic/<qid>/workspace/`) — `score.mts` reads
 `<resultsDir>/<model-tag>/<qid>/` directly and has no knowledge of `workspace/`, so after the tool
 loop ends the harness itself locates the model's final artifact inside `workspace/` (a

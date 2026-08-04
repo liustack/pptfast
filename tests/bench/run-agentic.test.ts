@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, sep } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -8,7 +8,12 @@ import {
   checkPathSafety,
   checkPptfastArgs,
   classifyModelTurn,
+  copyQuestionAssets,
+  deriveModelTag,
+  doWriteFile,
+  sanitizeTagSegment,
   extractCachedTokens,
+  flagValue,
   locateArtifact,
   placeArtifact,
   scriptedReplyFor,
@@ -477,5 +482,172 @@ describe("locateArtifact + placeArtifact", () => {
     setup()
     writeFileSync(join(workspace, "notes.txt"), "not json")
     expect(locateArtifact(workspace)).toEqual({ kind: "none" })
+  })
+
+  it("copies a bare IR's sibling assets/ directory alongside deck.json (round-2 image-question fix)", () => {
+    setup()
+    writeFileSync(join(workspace, "deck.json"), '{"slides": []}')
+    mkdirSync(join(workspace, "assets"), { recursive: true })
+    writeFileSync(join(workspace, "assets", "hero.png"), "fake-png-bytes")
+    const located = locateArtifact(workspace)
+    const note = placeArtifact(located, resultDir)
+    expect(readFileSync(join(resultDir, "assets", "hero.png"), "utf8")).toBe("fake-png-bytes")
+    expect(note).toContain("assets/")
+  })
+
+  it("does not create an assets/ dir in the result root when the workspace has none", () => {
+    setup()
+    writeFileSync(join(workspace, "deck.json"), '{"slides": []}')
+    const located = locateArtifact(workspace)
+    placeArtifact(located, resultDir)
+    expect(existsSync(join(resultDir, "assets"))).toBe(false)
+  })
+})
+
+// ── flagValue — --model=<id> CLI override parsing ──
+
+describe("flagValue", () => {
+  it("returns the value of a present --name=value flag", () => {
+    expect(flagValue(["qwen", "--model=qwen-flash", "q01"], "model")).toBe("qwen-flash")
+  })
+
+  it("returns undefined when the flag is absent", () => {
+    expect(flagValue(["qwen", "q01"], "model")).toBeUndefined()
+  })
+
+  it("does not match a same-prefixed but different flag name", () => {
+    expect(flagValue(["--model-extra=x"], "model")).toBeUndefined()
+  })
+
+  it("handles a value that itself contains an equals sign", () => {
+    expect(flagValue(["--model=qwen=flash"], "model")).toBe("qwen=flash")
+  })
+})
+
+// ── deriveModelTag — result model-tag with/without --model (dashscope
+// cache-list swap, .issues/2026-08-04-bench-agentic/dashscope-cache-investigation.md) ──
+
+describe("deriveModelTag", () => {
+  it("defaults to <prefix>-agentic when no override is given", () => {
+    expect(deriveModelTag("QWEN", undefined)).toBe("qwen-agentic")
+  })
+
+  it("uses the override id, not the prefix, when --model is given", () => {
+    expect(deriveModelTag("QWEN", "qwen-flash")).toBe("qwen-flash-agentic")
+  })
+
+  it("keeps the override's own casing/shape rather than reprocessing it", () => {
+    expect(deriveModelTag("DEEPSEEK", "deepseek-v4-flash")).toBe("deepseek-v4-flash-agentic")
+  })
+
+  it("lowercases the default prefix-based tag even when the prefix arrives uppercase", () => {
+    expect(deriveModelTag("DEEPSEEK", undefined)).toBe("deepseek-agentic")
+  })
+})
+
+// ── copyQuestionAssets — provisions a question's assets/ into the workspace
+// before round 1 (round-2 image-question fix, checkPathSafety-style escape
+// guard reused even though the question bank is trusted content) ──
+
+describe("copyQuestionAssets", () => {
+  let base: string
+  let questionDir: string
+  let workspace: string
+
+  afterEach(() => {
+    if (base) rmSync(base, { recursive: true, force: true })
+  })
+
+  function setup(): void {
+    base = mkdtempSync(join(tmpdir(), "bench-agentic-assets-test-"))
+    questionDir = join(base, "q02")
+    workspace = join(base, "workspace")
+    mkdirSync(questionDir, { recursive: true })
+    mkdirSync(workspace, { recursive: true })
+  }
+
+  it("returns an empty set and copies nothing when the question has no assets/ directory", () => {
+    setup()
+    expect(copyQuestionAssets(questionDir, workspace).size).toBe(0)
+    expect(existsSync(join(workspace, "assets"))).toBe(false)
+  })
+
+  it("copies every file under assets/ into workspace/assets/", () => {
+    setup()
+    mkdirSync(join(questionDir, "assets"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "hero.png"), "hero-bytes")
+    writeFileSync(join(questionDir, "assets", "case.png"), "case-bytes")
+    const copied = copyQuestionAssets(questionDir, workspace)
+    expect(copied.size).toBe(2)
+    expect(copied.has(join(workspace, "assets", "hero.png"))).toBe(true)
+    expect(readFileSync(join(workspace, "assets", "hero.png"), "utf8")).toBe("hero-bytes")
+    expect(readFileSync(join(workspace, "assets", "case.png"), "utf8")).toBe("case-bytes")
+  })
+
+  it("preserves a nested directory structure under assets/", () => {
+    setup()
+    mkdirSync(join(questionDir, "assets", "photos"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "photos", "team.png"), "team-bytes")
+    copyQuestionAssets(questionDir, workspace)
+    expect(readFileSync(join(workspace, "assets", "photos", "team.png"), "utf8")).toBe("team-bytes")
+  })
+
+  it("never writes outside the workspace even if a crafted entry name tries to escape", () => {
+    setup()
+    mkdirSync(join(questionDir, "assets"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "safe.png"), "safe-bytes")
+    // Simulate a malicious/misconfigured question dir with a symlink escape
+    // attempt inside assets/ — readdirSync withFileTypes reports a symlink
+    // as neither isFile() nor isDirectory(), so walkFiles never traverses
+    // it; this test pins that a symlink entry is silently skipped, not
+    // followed, and every legitimate file still copies correctly.
+    const outsideTarget = join(base, "outside-secret.txt")
+    writeFileSync(outsideTarget, "should never appear in workspace")
+    try {
+      symlinkSync(outsideTarget, join(questionDir, "assets", "escape.png"))
+    } catch {
+      // symlink creation can fail without elevated perms on some platforms
+      // (notably Windows) — the property under test is "no escape occurs",
+      // which trivially holds if the symlink was never created at all.
+    }
+    const copied = copyQuestionAssets(questionDir, workspace)
+    expect(readFileSync(join(workspace, "assets", "safe.png"), "utf8")).toBe("safe-bytes")
+    expect(existsSync(join(workspace, "assets", "escape.png"))).toBe(false)
+    expect(copied.size).toBe(1)
+  })
+
+  it("write_file refuses to overwrite a provisioned input but allows new files beside it", () => {
+    // Code-enforced guard behind the preamble's soft warning (q12 smoke:
+    // model rewrote a provided PNG with base64 text, corrupting it).
+    setup()
+    mkdirSync(join(questionDir, "assets"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "hero.png"), "hero-bytes")
+    const provisioned = copyQuestionAssets(questionDir, workspace)
+    const refused = doWriteFile(workspace, { path: "assets/hero.png", content: "base64garbage" }, provisioned)
+    expect(refused).toMatch(/^ERROR: .*provided input file/)
+    expect(readFileSync(join(workspace, "assets", "hero.png"), "utf8")).toBe("hero-bytes")
+    const allowed = doWriteFile(workspace, { path: "assets/derived.png", content: "new-bytes" }, provisioned)
+    expect(allowed).toMatch(/^wrote /)
+    expect(readFileSync(join(workspace, "assets", "derived.png"), "utf8")).toBe("new-bytes")
+  })
+})
+
+// ── sanitizeTagSegment — model ids double as result-dir names ──
+
+describe("sanitizeTagSegment", () => {
+  it("flattens a slash-bearing model id to one path segment", () => {
+    expect(sanitizeTagSegment("org/model-name")).toBe("org-model-name")
+  })
+
+  it("lowercases and collapses runs of hostile characters", () => {
+    expect(sanitizeTagSegment("Qwen Flash::v2")).toBe("qwen-flash-v2")
+  })
+
+  it("keeps already-clean ids byte-identical", () => {
+    expect(sanitizeTagSegment("qwen-flash")).toBe("qwen-flash")
+  })
+
+  it("deriveModelTag applies it to --model overrides", () => {
+    expect(deriveModelTag("QWEN", "org/custom.Model")).toBe("org-custom.model-agentic")
   })
 })

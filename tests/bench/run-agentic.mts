@@ -39,10 +39,11 @@
  * that constant's own comment for the size and the truncate-from-the-end
  * rationale.
  *
- * Round cap: 24 chat-completion calls total (plan 裁定 2) — one round may
- * contain several tool calls, they all count as one round. Hitting the cap
- * stops the run with `cap_hit: true` in meta.json; whatever the model wrote
- * up to that point is left in place, same as a natural stop.
+ * Round cap: `ROUND_CAP` chat-completion calls total (plan 裁定 2, raised
+ * twice since — see that constant's own doc comment for the history) — one
+ * round may contain several tool calls, they all count as one round. Hitting
+ * the cap stops the run with `cap_hit: true` in meta.json; whatever the
+ * model wrote up to that point is left in place, same as a natural stop.
  *
  * meta.json is harness-written, never model-self-reported (2026-07-20's
  * archived round found model-reported identity untrustworthy) — it records
@@ -52,7 +53,11 @@
  *
  * Usage: `pnpm bench:agentic <prefix> [q01 q02 ...]` (default: all
  * questions in questionsDir). Same `.env` credential shape as `run.mts`:
- * `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`.
+ * `<PREFIX>_BASE_URL` / `<PREFIX>_API_KEY` / `<PREFIX>_MODEL`. `--model=<id>`
+ * overrides `<PREFIX>_MODEL` for this run only (same flag, same semantics as
+ * `run.mts`'s `--model` — see that file's header for the motivating case);
+ * the result model-tag then derives from the override, not the prefix — see
+ * `deriveModelTag` below.
  */
 import { execFileSync } from "node:child_process"
 import {
@@ -74,9 +79,18 @@ const CLI = join(ROOT, "dist/cli.js")
  *  Raised 24 → 32 before the first full batch: the post-slim smoke (q01,
  *  the bank's gentlest question, on the stronger of the two weak models)
  *  already used 21 rounds once vocabulary self-querying replaced injection.
+ *  Raised 32 → 48 before round 2 (`.issues/notes/2026-08-04-bench-first-agentic.md`):
+ *  the first full batch hit the 32-round cap on 8 of 40 deepseek runs and 7
+ *  of 40 qwen runs, concentrated in the five deck-project questions
+ *  (q03/q06/q08/q13/q17) — their five-phase spec→pages→assemble→validate→
+ *  render workflow eats rounds faster than a single bare-IR file. Those
+ *  runs' half-finished artifacts (an unfilled placeholder page, an item
+ *  missing a field) scored as failures purely from running out of budget,
+ *  not from producing wrong content — round 1's own report calls the
+ *  resulting scores "a conservative lower bound".
  *  The cap is a cost guard, not part of the benchmark's difficulty — a cap
  *  tight enough to clip real runs would measure budget, not capability. */
-const ROUND_CAP = 32
+const ROUND_CAP = 48
 /** Tool-result content is truncated before it goes back to the model — a
  *  validate/audit dump or a long file read should not blow the context
  *  window on its own, and an unbounded result is the other big lever on
@@ -95,9 +109,9 @@ const TOOL_RESULT_MAX_CHARS = 8_000
  *  otherwise be the only thing to notice. */
 const ROUND_TIMEOUT_MS = 180_000
 /** Overall wall-clock budget for one question's whole tool loop, independent
- *  of the round cap — 24 rounds at the per-round timeout above could in the
- *  worst case take hours; a batch runner that can hang for hours on one
- *  question is not shippable (found the hard way: a first smoke attempt ran
+ *  of the round cap — `ROUND_CAP` rounds at the per-round timeout above
+ *  could in the worst case take hours; a batch runner that can hang for
+ *  hours on one question is not shippable (found the hard way: a first smoke attempt ran
  *  past this harness's own orchestrating process's timeout with no internal
  *  deadline of its own to explain why). Checked before starting each new
  *  round, not mid-round — a round already in flight is left to its own
@@ -285,7 +299,7 @@ export interface RunMeta {
   duration_seconds: number
   cap_hit: boolean
   /** True when the run stopped early because it hit `RUN_DEADLINE_MS`
-   *  (25 minutes), separate from `cap_hit` (the 24-round cap) — additive
+   *  (25 minutes), separate from `cap_hit` (the `ROUND_CAP`-round cap) — additive
    *  field beyond plan 裁定 2's base meta shape, added after a first smoke
    *  attempt had no overall deadline of its own and outlived this harness's
    *  own orchestrating process with no record of why. `cap_hit` keeps its
@@ -432,7 +446,21 @@ export function placeArtifact(located: LocatedArtifact, resultDir: string): stri
   if (located.kind === "bare-ir") {
     const dest = join(resultDir, "deck.json")
     cpSync(located.file, dest)
-    return `copied bare IR ${relative(resultDir, located.file)} -> deck.json`
+    // A bare IR's relative assets.images[id].src resolves against the IR
+    // file's own directory (score.mts's resolveLocalAssets call, and the
+    // real CLI's runRender/runValidate — see that file's own comment) — so
+    // an image question whose model correctly points at the workspace's
+    // provisioned assets/ (see copyQuestionAssets) needs that directory
+    // copied alongside deck.json, or the scorer would resolve the same
+    // relative path against an empty result root and fail to find bytes
+    // that were genuinely there during the model's own tool-loop render.
+    const assetsSrc = join(dirname(located.file), "assets")
+    const hadAssets = existsSync(assetsSrc)
+    if (hadAssets) cpSync(assetsSrc, join(resultDir, "assets"), { recursive: true })
+    return (
+      `copied bare IR ${relative(resultDir, located.file)} -> deck.json` +
+      (hadAssets ? ` (+ ${relative(resultDir, assetsSrc)} -> assets/)` : "")
+    )
   }
   // deck-project: copy deck.spec.json + pages/ + assets/ (if present) — the
   // parts `readDeckDir` (src/cli/deck-dir.ts) looks for.
@@ -441,6 +469,55 @@ export function placeArtifact(located: LocatedArtifact, resultDir: string): stri
     if (existsSync(src)) cpSync(src, join(resultDir, name), { recursive: true })
   }
   return `copied deck project ${relative(resultDir, located.dir)} -> result root`
+}
+
+// ── question asset provisioning (round-2 image-question fix,
+// .issues/2026-08-05-bench-round2/task-1-report.md): q02/q12/q15's prompts
+// claim attached photography, but round 1's empty workspace left the model
+// nothing real to point an image reference at — it either invented a path
+// or tried to smuggle bytes through the text-only write_file tool (a
+// zero-byte PNG, q12's chief failure). A question directory may now carry
+// an optional assets/ subdirectory (tests/bench/README.md's question-bank
+// schema); this copies it into the workspace before round 1 so a real file
+// is there to reference. ──
+
+/**
+ * Copies `questionDir/assets/` (if present) into `workspace/assets/` before
+ * round 1. Every destination path is run through {@link checkPathSafety} —
+ * the same "resolved path must stay inside the destination" contract the
+ * tool surface above enforces on the model's own `write_file`/`read_file`
+ * calls — even though the question bank is repo-controlled, trusted
+ * content today: a future, less-trusted question source (or a plain
+ * authoring slip — a symlink, a crafted entry name) should not be able to
+ * write outside the workspace just because it arrived through this path
+ * instead of a tool call. Returns the number of files copied (0 when there
+ * is no `assets/` directory to copy — not an error, most questions have
+ * none). {@link walkFiles} already never traverses a symlink entry (a
+ * `Dirent` reporting `DT_LNK` is neither `isFile()` nor `isDirectory()`),
+ * so a symlinked entry inside `assets/` is silently skipped rather than
+ * followed — consistent with this file's documented "symlink tricks out of
+ * scope" posture elsewhere, here applied by omission rather than a check.
+ */
+export function copyQuestionAssets(questionDir: string, workspace: string): Set<string> {
+  const assetsSrc = join(questionDir, "assets")
+  const provisioned = new Set<string>()
+  if (!existsSync(assetsSrc)) return provisioned
+  for (const rel of walkFiles(assetsSrc, assetsSrc)) {
+    const check = checkPathSafety(workspace, join("assets", rel))
+    if (!check.ok) continue // never let a malformed question dir write outside the workspace
+    mkdirSync(dirname(check.resolved), { recursive: true })
+    cpSync(join(assetsSrc, rel), check.resolved)
+    // Returned as RESOLVED paths so doWriteFile can compare its own
+    // resolved target by exact identity — the q12 smoke watched the model
+    // overwrite a provisioned PNG with base64 *text*; the prompt warning
+    // added then is soft, this set makes the guard code-enforced. Only
+    // exact provisioned paths are protected — the model stays free to
+    // create NEW files anywhere in the workspace, including under
+    // assets/ (a deck project's own asset dir is a legitimate write
+    // target).
+    provisioned.add(check.resolved)
+  }
+  return provisioned
 }
 
 // ── tool implementations ──
@@ -460,13 +537,20 @@ export function truncateForModel(text: string, maxChars: number): string {
   return `${text.slice(0, maxChars)}\n\n[truncated: ${maxChars} of ${text.length} chars shown]`
 }
 
-function doWriteFile(workspace: string, args: unknown): string {
+export function doWriteFile(workspace: string, args: unknown, provisioned?: ReadonlySet<string>): string {
   const { path, content } = (args ?? {}) as { path?: unknown; content?: unknown }
   if (typeof path !== "string" || typeof content !== "string") {
     return "ERROR: write_file requires {path: string, content: string}"
   }
   const check = checkPathSafety(workspace, path)
   if (!check.ok) return `ERROR: ${check.reason}`
+  if (provisioned?.has(check.resolved)) {
+    // Code-enforced guard behind the preamble's soft warning: harness-
+    // provisioned inputs are read-only for the model. The q12 smoke showed
+    // a model "helpfully" rewriting a provided PNG with the prompt's
+    // base64 text, corrupting it. New files (anywhere) stay writable.
+    return `ERROR: ${path} is a provided input file and cannot be overwritten — reference it as-is, or write derived output to a new path`
+  }
   mkdirSync(dirname(check.resolved), { recursive: true })
   writeFileSync(check.resolved, content, "utf8")
   return `wrote ${Buffer.byteLength(content, "utf8")} bytes to ${path}`
@@ -522,7 +606,7 @@ interface ToolCall {
   function: { name: string; arguments: string }
 }
 
-function executeTool(tc: ToolCall, workspace: string): string {
+function executeTool(tc: ToolCall, workspace: string, provisioned?: ReadonlySet<string>): string {
   let args: unknown
   try {
     args = JSON.parse(tc.function.arguments || "{}")
@@ -532,7 +616,7 @@ function executeTool(tc: ToolCall, workspace: string): string {
   try {
     switch (tc.function.name) {
       case "write_file":
-        return doWriteFile(workspace, args)
+        return doWriteFile(workspace, args, provisioned)
       case "read_file":
         return doReadFile(workspace, args)
       case "list_files":
@@ -696,6 +780,7 @@ async function runOneAgentic(
     return
   }
   mkdirSync(workspace, { recursive: true })
+  const provisioned = copyQuestionAssets(join(dirs.questionsDir, qid), workspace)
 
   const system = [
     "You are the model-under-test in the pptfast benchmark, agentic tool-loop mode.",
@@ -714,6 +799,12 @@ async function runOneAgentic(
     "same self-check loop the playbook describes, with real tool access instead of imagined output.",
     "Save your final deck as a single IR JSON file at your workspace root (e.g. deck.json), or, for the",
     "deck-project workflow, as deck.spec.json plus pages/ at your workspace root.",
+    "If the deck request describes material such as attached photos, the actual referenced files are already",
+    "present in your workspace (check with list_files, typically under assets/) — point an image reference at",
+    "the real relative path there rather than inventing a filename or fabricating placeholder image bytes.",
+    "Do not overwrite, re-encode, or otherwise rewrite any file already present under assets/ — its bytes are",
+    "already a real, valid image, and write_file writes whatever text you give it literally (it cannot decode",
+    "base64 into real binary image bytes), so calling write_file on an existing asset will corrupt it.",
     `You have at most ${ROUND_CAP} completion turns total for this question (a turn spent making tool calls still`,
     "counts once, no matter how many tools it calls in that turn) — use them efficiently. When the deck is",
     "finished, stop calling tools and reply in plain text confirming it's done.",
@@ -760,7 +851,7 @@ async function runOneAgentic(
       if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
         toolCalls += assistantMsg.tool_calls.length
         for (const tc of assistantMsg.tool_calls) {
-          const result = executeTool(tc, workspace)
+          const result = executeTool(tc, workspace, provisioned)
           messages.push({ role: "tool", tool_call_id: tc.id, name: tc.function.name, content: result })
         }
         continue
@@ -837,6 +928,48 @@ async function runOneAgentic(
   )
 }
 
+// ── --model=<id> override (dashscope cache-list model swap,
+// .issues/2026-08-04-bench-agentic/dashscope-cache-investigation.md) ──
+
+/** Pulls `--<name>=<value>` out of `argv`, or `undefined` when absent — the
+ *  same `--flag=value` shape `dirFlag` (below) uses for
+ *  `--questions-dir`/`--results-dir`, factored out because this one has no
+ *  path-resolution step and no fallback (an absent `--model` means "use the
+ *  `.env` `<PREFIX>_MODEL` value", decided by the caller, not this helper). */
+export function flagValue(argv: string[], name: string): string | undefined {
+  const prefix = `--${name}=`
+  const hit = argv.find((a) => a.startsWith(prefix))
+  return hit?.slice(prefix.length)
+}
+
+/**
+ * Result model-tag for one agentic run: `<prefix>-agentic` by default (e.g.
+ * `qwen-agentic`, unchanged from round 1), or `<modelOverride>-agentic`
+ * whenever `--model=<id>` is given — the tag then names the actual model id
+ * that was queried, not the `.env` prefix, so a `--model=qwen-flash` run
+ * against the `QWEN` prefix lands in `qwen-flash-agentic/`, never silently
+ * mixed into `qwen-agentic/`'s results alongside `qwen3.6-27b` runs of a
+ * different model (`score.mts`'s model-tag directories are the comparison
+ * unit — see `tests/bench/README.md`'s "Result layout and model tag").
+ * `meta.json`'s `model_requested` already records the true id regardless of
+ * this tag (`buildMeta`'s `modelRequested` param, threaded from `cfg.model`
+ * in `runOneAgentic` below) — this only decides the directory name.
+ */
+export function deriveModelTag(prefix: string, modelOverride: string | undefined): string {
+  return `${sanitizeTagSegment(modelOverride ?? prefix.toLowerCase())}-agentic`
+}
+
+/**
+ * A model tag becomes a results directory name, so a model id with
+ * path-hostile characters (`org/model-name` is a real id shape) must not
+ * silently create nested directories. Anything outside [a-z0-9._-]
+ * flattens to `-`; lowercased for tag-vs-prefix consistency. (Review
+ * finding on the --model override wave.)
+ */
+export function sanitizeTagSegment(raw: string): string {
+  return raw.toLowerCase().replace(/[^a-z0-9._-]+/g, "-")
+}
+
 // ── CLI entry ──
 
 async function main(): Promise<void> {
@@ -848,13 +981,18 @@ async function main(): Promise<void> {
   }
   const questionsDir = dirFlag("questions-dir", "tests/bench/questions")
   const resultsDir = dirFlag("results-dir", "tests/bench/results")
+  const modelOverride = flagValue(rawArgs, "model")
   const [prefixArg, ...qids] = rawArgs.filter((a) => !a.startsWith("--"))
-  if (!prefixArg) throw new Error("usage: pnpm bench:agentic <env-prefix e.g. qwen|deepseek> [qids...]")
+  if (!prefixArg) throw new Error("usage: pnpm bench:agentic <env-prefix e.g. qwen|deepseek> [qids...] [--model=<id>]")
   const prefix = prefixArg.toUpperCase()
   const env = loadEnv(join(ROOT, ".env"))
-  const cfg = { baseUrl: env[`${prefix}_BASE_URL`], apiKey: env[`${prefix}_API_KEY`], model: env[`${prefix}_MODEL`] }
+  const cfg = {
+    baseUrl: env[`${prefix}_BASE_URL`],
+    apiKey: env[`${prefix}_API_KEY`],
+    model: modelOverride ?? env[`${prefix}_MODEL`],
+  }
   if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) throw new Error(`missing ${prefix}_BASE_URL/_API_KEY/_MODEL in .env`)
-  const modelTag = `${prefix.toLowerCase()}-agentic`
+  const modelTag = deriveModelTag(prefix, modelOverride)
 
   const questions = qids.length > 0 ? qids : readdirSync(questionsDir).filter((d) => /^[a-z]\d\d$/.test(d)).sort()
   // Unlike run.mts's shared object, no schema/narratives/themes CLI calls
