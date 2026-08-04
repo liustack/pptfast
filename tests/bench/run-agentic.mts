@@ -640,13 +640,18 @@ interface ChatCompletionResponse {
  * dashscope/OpenAI-shaped `prompt_tokens_details.cached_tokens`. Purely
  * defensive — a field a provider doesn't report is treated as 0, never
  * undefined, and an `usage` that is itself absent (a failed/malformed
- * response) also reads as 0. In the ordinary case only one of the two
- * fields is ever populated by a given provider; if a response somehow
- * carried both, this adds them, matching "sum" in the plan wording.
+ * response) also reads as 0.
+ *
+ * The two fields are ALIASES for the same quantity, never independent
+ * counters — take one, never sum. The first full batch (2026-08-04)
+ * proved DeepSeek populates both with the same value on every response;
+ * the original "sum both" implementation double-counted every question
+ * at exactly ratio 1.96-2.00 (archived metas are the evidence), which
+ * overstated cached volume and initially misread the round's hit rate.
  */
 export function extractCachedTokens(usage: ChatCompletionUsage | undefined): number {
   if (!usage) return 0
-  return (usage.prompt_cache_hit_tokens ?? 0) + (usage.prompt_tokens_details?.cached_tokens ?? 0)
+  return usage.prompt_cache_hit_tokens ?? usage.prompt_tokens_details?.cached_tokens ?? 0
 }
 
 async function callRound(

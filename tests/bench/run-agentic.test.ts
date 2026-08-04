@@ -398,14 +398,30 @@ describe("extractCachedTokens", () => {
     expect(extractCachedTokens({ prompt_tokens: 1000, prompt_tokens_details: {} })).toBe(0)
   })
 
-  it("sums both fields if a response somehow carries both", () => {
+  it("takes ONE field when a response carries both aliases, never sums", () => {
+    // First-batch evidence (2026-08-04): DeepSeek populates BOTH fields
+    // with the same value on every response — they alias one quantity.
+    // The original sum double-counted every question at ratio ~2.0
+    // (archived metas in results-archive/2026-08-04-first-full-agentic/).
+    expect(
+      extractCachedTokens({
+        prompt_tokens: 1000,
+        prompt_cache_hit_tokens: 300,
+        prompt_tokens_details: { cached_tokens: 300 },
+      }),
+    ).toBe(300)
+  })
+
+  it("prefers the provider-specific field when the aliases disagree", () => {
+    // Disagreement should not happen in practice; the deterministic rule
+    // is documented field precedence, not summing.
     expect(
       extractCachedTokens({
         prompt_tokens: 1000,
         prompt_cache_hit_tokens: 300,
         prompt_tokens_details: { cached_tokens: 100 },
       }),
-    ).toBe(400)
+    ).toBe(300)
   })
 })
 
