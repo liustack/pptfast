@@ -3,7 +3,7 @@ import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
-import { readableOn } from "../ink"
+import { blendOver, metaInk, readableOn } from "../ink"
 
 /**
  * fashion-masthead cover archetype（2026-07-10 时尚 runway 专属表达，
@@ -15,6 +15,46 @@ import { readableOn } from "../ink"
  * 安全），满宽 accent 粗色带保持。页面节奏：黑封面→红章节→白内容→黑
  * 结尾，满版-留白交替是杂志语法。
  * 纪律：零 theme id、零 hex（readableOn 中性黑白豁免），颜色全部来自 ctx。
+ *
+ * 底部 meta 行颜色（contrast-policy 波遗留任务，metaInk 迁移）：这一行
+ * （org/confidentiality/date/version 拼接）是 B 层元信息文本
+ * （`docs/contrast-system.md` 三层对比度策略），真实署名/日期信息，故意
+ * 弱化，不是纯装饰。迁移前它一直烤 `fill={fg} fillOpacity={0.6}`——`fg`
+ * 是 `readableOn(colors.primary)` 已经选出的、相对这块满版底对比度最高的
+ * 中性墨色，0.6 是这一行自己的既有弱化倍率（同页副题用 0.72，是同一构图
+ * 语言）。`full-matrix-contrast.test.ts` 曾为此单独留一条
+ * `tech/fashion-masthead` ALLOWLIST 条目（实测 tech 主题下 ~4.16:1，够不上
+ * 旧的 4.5:1 正文线但早已清 B 层 3:1 线），该条目自己的注释已经点名"这一行
+ * 尚未接入 metaInk/data-contrast-tier=meta，是未来主题打磨范围"——本次就是
+ * 那次打磨，条目本身随之删除（`isAllowlisted` 的判定改交给 `deck-audit` 的
+ * meta 层 3:1 门槛）。
+ *
+ * 现在的做法：不是简单套用其余归档档案（ending-banner-ending.tsx /
+ * ending-rail-ending.tsx）的 `metaInk(colors.muted, bg)` 写法——那两个文件
+ * 没画自己的背板，`colors.muted` 是页面上同类弱化文本已经在用的 token，测的
+ * 是 `ctx.defaultBg`。本文件不同：整页背景是自己画的满版 `colors.primary`
+ * 色块（"测你实际画的颜色"，同一文档的 `ctx.defaultBg` 一节），且这一行历来
+ * 用的不是某个 token 而是 `fg` 按固定倍率淡出的复合色。于是保留原有构图
+ * （复合色 = `blendOver(fg, colors.primary, META_LINE_ALPHA)`，与旧
+ * `fill+fillOpacity` 渲染出的像素完全一致），把这个复合色本身作为
+ * `metaInk` 的 `preferredFill`，测的背景是 `colors.primary`——已经清 3:1 的
+ * 主题（16 个里 15 个，含 tech 自己的 ~4.16:1）`metaInk` 原样放行，输出与
+ * 复合色逐字节相同，改用纯色 `fill` 渲染（不再需要 `fillOpacity`，对不透明
+ * 底色而言两者是同一像素）不改变任何已渲染的主题。唯一改变的是 `insight`
+ * 主题：旧复合色相对 `colors.primary`（`#E63946`）实测仅 2.886:1（该主题
+ * 从未被任何既有测试覆盖过——`full-matrix-contrast.test.ts` 自己的 sweep
+ * fixture 不填 organization/date，`metaLine` 从未在那个文件的扫描里真正
+ * 渲染过），是这条 B 层 3:1 硬线下的一个真实未捕获缺陷，`metaInk` 把它按自己
+ * 的最小步进策略上调到 3.094:1（`#591d26`——这个具体产出由
+ * `full-matrix-contrast.test.ts` 的 16 主题 meta-line sweep 锁定，本文件
+ * 同名测试只提供 fixture 不做 fill 断言）。挂 `data-contrast-tier="meta"`
+ * 让 `deck-audit` 按 3:1 而非默认 4.5:1 判它。
+ *
+ * runway/fashion-chapter（`chapter-fashion-chapter.tsx`）的机构名行是独立
+ * 代码路径（不同文件、不同函数、不同背景 token `colors.accent`、不同倍率
+ * 0.85），本次不顺带迁移——16 个主题实测最低是 runway 自己的 4.056:1，
+ * 早已清 B 层 3:1，不是当前缺陷，保持`theme-structure.test.ts`已有的"deferred
+ * to a future theme-polish pass"记录不变。
  */
 export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
   const org = ir.meta.organization
@@ -59,6 +99,17 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
     metaParts.length > 0
       ? fitSvgLine(metaParts.join("    ·    "), { maxWidth: 1100, fontSize: 19, minFontSize: 14 })
       : null
+  // B-tier meta line ink (see file header's "底部 meta 行颜色" section for
+  // the full derivation): this archetype paints its own full-bleed
+  // background (`ctx.colors.primary` below), so "measure what you painted"
+  // means against that, not `ctx.defaultBg`/`colors.bg`. `META_LINE_ALPHA`
+  // preserves this line's own long-standing dim ratio (was `fillOpacity`,
+  // now folded into the composite hex `metaInk` grades) — a no-op on every
+  // theme whose composite already clears 3:1 (byte-identical fill to the
+  // old `fill+fillOpacity` render), only nudged on `insight` (~2.886:1
+  // baseline).
+  const META_LINE_ALPHA = 0.6
+  const metaFill = metaInk(blendOver(fg, ctx.colors.primary, META_LINE_ALPHA), ctx.colors.primary)
 
   return (
     <>
@@ -122,16 +173,21 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
         </text>
       ))}
 
-      {/* 底部 meta */}
+      {/* 底部 meta — B-tier meta-information text (docs/contrast-system.md's
+          three-tier contrast policy): `metaFill` (see the const above) is
+          `metaInk`-graded against the real painted background
+          (`colors.primary`). `data-contrast-tier="meta"` tells deck-audit's
+          contrast walk to hold this text to 3:1 instead of the default
+          4.5:1. */}
       {metaLine && (
         <text
+          data-contrast-tier="meta"
           data-truncated={metaLine.truncated ? "1" : undefined}
           x={640}
           y={668}
           fontFamily={ctx.fonts.body}
           fontSize={metaLine.fontSize}
-          fill={fg}
-          fillOpacity={0.6}
+          fill={metaFill}
           textAnchor="middle"
           letterSpacing={3}
           dominantBaseline="alphabetic"

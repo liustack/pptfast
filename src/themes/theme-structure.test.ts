@@ -424,8 +424,14 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
 //   `.issues/2026-07-28-contrast-policy/plan.md` unchecked. See
 //   task-1-report.md for the correction.
 // - `low-contrast` on `runway/fashion-chapter`'s org label (4.06:1, needs
-//   4.5:1): a near-miss of the same shape `full-matrix-contrast.test.ts`'s
-//   own `ALLOWLIST` already adjudicates for `tech/fashion-masthead`
-//   (~4.16:1, "a rounding distance under the floor, deferred to a future
-//   theme-polish pass") — same disposition applies here, not a new class of
-//   defect this wave caused.
+//   4.5:1): the same shape a former `tech/fashion-masthead` ALLOWLIST entry
+//   used to adjudicate (~4.16:1, "a rounding distance under the floor,
+//   deferred to a future theme-polish pass"). That entry is gone now
+//   (fashion-masthead metaInk migration,
+//   `.issues/2026-08-04-fashion-masthead-metaink/task-1-report.md`) — its
+//   own archetype migrated to B-tier `metaInk`, measured 3:1 instead of the
+//   old 4.5:1 body line. `fashion-chapter`'s org label is a separate code
+//   path (different file, different background token) that migration
+//   deliberately left untouched: it already clears the real B-tier 3:1
+//   floor (4.056:1, the worst case across all 16 themes), so it's not a
+//   current defect, just still deferred theme-polish scope.
