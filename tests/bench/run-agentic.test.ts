@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, sep } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -8,6 +8,7 @@ import {
   checkPathSafety,
   checkPptfastArgs,
   classifyModelTurn,
+  copyQuestionAssets,
   extractCachedTokens,
   locateArtifact,
   placeArtifact,
@@ -477,5 +478,95 @@ describe("locateArtifact + placeArtifact", () => {
     setup()
     writeFileSync(join(workspace, "notes.txt"), "not json")
     expect(locateArtifact(workspace)).toEqual({ kind: "none" })
+  })
+
+  it("copies a bare IR's sibling assets/ directory alongside deck.json (round-2 image-question fix)", () => {
+    setup()
+    writeFileSync(join(workspace, "deck.json"), '{"slides": []}')
+    mkdirSync(join(workspace, "assets"), { recursive: true })
+    writeFileSync(join(workspace, "assets", "hero.png"), "fake-png-bytes")
+    const located = locateArtifact(workspace)
+    const note = placeArtifact(located, resultDir)
+    expect(readFileSync(join(resultDir, "assets", "hero.png"), "utf8")).toBe("fake-png-bytes")
+    expect(note).toContain("assets/")
+  })
+
+  it("does not create an assets/ dir in the result root when the workspace has none", () => {
+    setup()
+    writeFileSync(join(workspace, "deck.json"), '{"slides": []}')
+    const located = locateArtifact(workspace)
+    placeArtifact(located, resultDir)
+    expect(existsSync(join(resultDir, "assets"))).toBe(false)
+  })
+})
+
+// ── copyQuestionAssets — provisions a question's assets/ into the workspace
+// before round 1 (round-2 image-question fix, checkPathSafety-style escape
+// guard reused even though the question bank is trusted content) ──
+
+describe("copyQuestionAssets", () => {
+  let base: string
+  let questionDir: string
+  let workspace: string
+
+  afterEach(() => {
+    if (base) rmSync(base, { recursive: true, force: true })
+  })
+
+  function setup(): void {
+    base = mkdtempSync(join(tmpdir(), "bench-agentic-assets-test-"))
+    questionDir = join(base, "q02")
+    workspace = join(base, "workspace")
+    mkdirSync(questionDir, { recursive: true })
+    mkdirSync(workspace, { recursive: true })
+  }
+
+  it("returns 0 and copies nothing when the question has no assets/ directory", () => {
+    setup()
+    expect(copyQuestionAssets(questionDir, workspace)).toBe(0)
+    expect(existsSync(join(workspace, "assets"))).toBe(false)
+  })
+
+  it("copies every file under assets/ into workspace/assets/", () => {
+    setup()
+    mkdirSync(join(questionDir, "assets"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "hero.png"), "hero-bytes")
+    writeFileSync(join(questionDir, "assets", "case.png"), "case-bytes")
+    const copied = copyQuestionAssets(questionDir, workspace)
+    expect(copied).toBe(2)
+    expect(readFileSync(join(workspace, "assets", "hero.png"), "utf8")).toBe("hero-bytes")
+    expect(readFileSync(join(workspace, "assets", "case.png"), "utf8")).toBe("case-bytes")
+  })
+
+  it("preserves a nested directory structure under assets/", () => {
+    setup()
+    mkdirSync(join(questionDir, "assets", "photos"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "photos", "team.png"), "team-bytes")
+    copyQuestionAssets(questionDir, workspace)
+    expect(readFileSync(join(workspace, "assets", "photos", "team.png"), "utf8")).toBe("team-bytes")
+  })
+
+  it("never writes outside the workspace even if a crafted entry name tries to escape", () => {
+    setup()
+    mkdirSync(join(questionDir, "assets"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "safe.png"), "safe-bytes")
+    // Simulate a malicious/misconfigured question dir with a symlink escape
+    // attempt inside assets/ — readdirSync withFileTypes reports a symlink
+    // as neither isFile() nor isDirectory(), so walkFiles never traverses
+    // it; this test pins that a symlink entry is silently skipped, not
+    // followed, and every legitimate file still copies correctly.
+    const outsideTarget = join(base, "outside-secret.txt")
+    writeFileSync(outsideTarget, "should never appear in workspace")
+    try {
+      symlinkSync(outsideTarget, join(questionDir, "assets", "escape.png"))
+    } catch {
+      // symlink creation can fail without elevated perms on some platforms
+      // (notably Windows) — the property under test is "no escape occurs",
+      // which trivially holds if the symlink was never created at all.
+    }
+    const copied = copyQuestionAssets(questionDir, workspace)
+    expect(readFileSync(join(workspace, "assets", "safe.png"), "utf8")).toBe("safe-bytes")
+    expect(existsSync(join(workspace, "assets", "escape.png"))).toBe(false)
+    expect(copied).toBe(1)
   })
 })

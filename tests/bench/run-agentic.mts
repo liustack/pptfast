@@ -442,7 +442,21 @@ export function placeArtifact(located: LocatedArtifact, resultDir: string): stri
   if (located.kind === "bare-ir") {
     const dest = join(resultDir, "deck.json")
     cpSync(located.file, dest)
-    return `copied bare IR ${relative(resultDir, located.file)} -> deck.json`
+    // A bare IR's relative assets.images[id].src resolves against the IR
+    // file's own directory (score.mts's resolveLocalAssets call, and the
+    // real CLI's runRender/runValidate — see that file's own comment) — so
+    // an image question whose model correctly points at the workspace's
+    // provisioned assets/ (see copyQuestionAssets) needs that directory
+    // copied alongside deck.json, or the scorer would resolve the same
+    // relative path against an empty result root and fail to find bytes
+    // that were genuinely there during the model's own tool-loop render.
+    const assetsSrc = join(dirname(located.file), "assets")
+    const hadAssets = existsSync(assetsSrc)
+    if (hadAssets) cpSync(assetsSrc, join(resultDir, "assets"), { recursive: true })
+    return (
+      `copied bare IR ${relative(resultDir, located.file)} -> deck.json` +
+      (hadAssets ? ` (+ ${relative(resultDir, assetsSrc)} -> assets/)` : "")
+    )
   }
   // deck-project: copy deck.spec.json + pages/ + assets/ (if present) — the
   // parts `readDeckDir` (src/cli/deck-dir.ts) looks for.
@@ -451,6 +465,47 @@ export function placeArtifact(located: LocatedArtifact, resultDir: string): stri
     if (existsSync(src)) cpSync(src, join(resultDir, name), { recursive: true })
   }
   return `copied deck project ${relative(resultDir, located.dir)} -> result root`
+}
+
+// ── question asset provisioning (round-2 image-question fix,
+// .issues/2026-08-05-bench-round2/task-1-report.md): q02/q12/q15's prompts
+// claim attached photography, but round 1's empty workspace left the model
+// nothing real to point an image reference at — it either invented a path
+// or tried to smuggle bytes through the text-only write_file tool (a
+// zero-byte PNG, q12's chief failure). A question directory may now carry
+// an optional assets/ subdirectory (tests/bench/README.md's question-bank
+// schema); this copies it into the workspace before round 1 so a real file
+// is there to reference. ──
+
+/**
+ * Copies `questionDir/assets/` (if present) into `workspace/assets/` before
+ * round 1. Every destination path is run through {@link checkPathSafety} —
+ * the same "resolved path must stay inside the destination" contract the
+ * tool surface above enforces on the model's own `write_file`/`read_file`
+ * calls — even though the question bank is repo-controlled, trusted
+ * content today: a future, less-trusted question source (or a plain
+ * authoring slip — a symlink, a crafted entry name) should not be able to
+ * write outside the workspace just because it arrived through this path
+ * instead of a tool call. Returns the number of files copied (0 when there
+ * is no `assets/` directory to copy — not an error, most questions have
+ * none). {@link walkFiles} already never traverses a symlink entry (a
+ * `Dirent` reporting `DT_LNK` is neither `isFile()` nor `isDirectory()`),
+ * so a symlinked entry inside `assets/` is silently skipped rather than
+ * followed — consistent with this file's documented "symlink tricks out of
+ * scope" posture elsewhere, here applied by omission rather than a check.
+ */
+export function copyQuestionAssets(questionDir: string, workspace: string): number {
+  const assetsSrc = join(questionDir, "assets")
+  if (!existsSync(assetsSrc)) return 0
+  let copied = 0
+  for (const rel of walkFiles(assetsSrc, assetsSrc)) {
+    const check = checkPathSafety(workspace, join("assets", rel))
+    if (!check.ok) continue // never let a malformed question dir write outside the workspace
+    mkdirSync(dirname(check.resolved), { recursive: true })
+    cpSync(join(assetsSrc, rel), check.resolved)
+    copied++
+  }
+  return copied
 }
 
 // ── tool implementations ──
@@ -706,6 +761,7 @@ async function runOneAgentic(
     return
   }
   mkdirSync(workspace, { recursive: true })
+  copyQuestionAssets(join(dirs.questionsDir, qid), workspace)
 
   const system = [
     "You are the model-under-test in the pptfast benchmark, agentic tool-loop mode.",
@@ -724,6 +780,12 @@ async function runOneAgentic(
     "same self-check loop the playbook describes, with real tool access instead of imagined output.",
     "Save your final deck as a single IR JSON file at your workspace root (e.g. deck.json), or, for the",
     "deck-project workflow, as deck.spec.json plus pages/ at your workspace root.",
+    "If the deck request describes material such as attached photos, the actual referenced files are already",
+    "present in your workspace (check with list_files, typically under assets/) — point an image reference at",
+    "the real relative path there rather than inventing a filename or fabricating placeholder image bytes.",
+    "Do not overwrite, re-encode, or otherwise rewrite any file already present under assets/ — its bytes are",
+    "already a real, valid image, and write_file writes whatever text you give it literally (it cannot decode",
+    "base64 into real binary image bytes), so calling write_file on an existing asset will corrupt it.",
     `You have at most ${ROUND_CAP} completion turns total for this question (a turn spent making tool calls still`,
     "counts once, no matter how many tools it calls in that turn) — use them efficiently. When the deck is",
     "finished, stop calling tools and reply in plain text confirming it's done.",
