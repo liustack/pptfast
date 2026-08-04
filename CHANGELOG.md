@@ -1,5 +1,37 @@
 # @liustack/pptfast
 
+## 0.13.0
+
+### Minor Changes
+
+- d011fa0: `assets.images[].alt` now flows all the way to the exported PPTX: an `image` component whose asset has `alt` text exports it as the shape's standard accessibility description (`p:cNvPr@descr`, what PowerPoint's "Edit Alt Text" reads and writes). An asset with no `alt` exports byte-for-byte unchanged. The package audit gains a matching hard-gate rule (`image-alt-dropped`) that fails the export if an IR alt somehow doesn't make it into the package, and `pptfast asset-brief` items now carry `alt` alongside their other per-asset fields when the source asset has one.
+
+  Scoped to the `image` component this round — `image_grid`/`image_compare` and background asset specs already carry `alt` through the same resolved-asset map but don't yet emit it, a natural follow-up of the same shape.
+
+- dbdf8ad: A new `pinOnly` layout tier and its first member, `quote-stage`: a thesis/quote page where a single oversized heading is the entire visual, with at most one short attribution component (capacity 1). Pin-only layouts never appear through auto-selection — set `layout: "quote-stage"` explicitly on a content page to use one, the same way an image takeover is opted into today.
+
+  Two new `validate` hard errors, scoped strictly to pin-only layouts: `pin_only_over_capacity` fires when a pinned pin-only layout carries more components than its declared capacity (an ordinary layout pinned over capacity still only warns, unchanged), and `pinned_heading_overflow` fires when a pinned layout's heading still truncates at its minimum render size (quote-stage is the only layout that declares this check today). Both point to splitting the content or removing the pin.
+
+  Layout registry count: 35 archetypes to 36 (35 auto-selectable + 1 pin-only) + 4 image takeovers.
+
+### Patch Changes
+
+- 8adeea7: `assets.images[].alt` now flows to the exported PPTX `descr` from every remaining `<image>` emission site, closing out the A11Y-01 alt chain: the 4 image-takeover layouts (`image-split`/`image-top`/`image-annotate`/`image-bottom`, previously bypassed the generic `image` component entirely), `image_grid` (each cell's own asset), `image_compare` (each side's own asset), and asset-kind slide backgrounds. An asset with no `alt` still exports byte-for-byte unchanged at every one of these sites. The `image-alt-dropped` package-audit rule is widened to match, now also checking `image_grid`/`image_compare`/background asset bindings, not just `image`-type components.
+- 0184d72: Documented a capability boundary that the "editable PPTX" claim was leaving implicit: shapes and text runs (including the ones a `chart` or `data_table` component draws) are real, restylable, retypable PowerPoint objects, but pptfast does not produce a native PowerPoint chart part or `<a:tbl>` table object, so a chart's or table's underlying numbers are not editable inside PowerPoint the way a native chart/table would be. README.md/README.zh-CN.md now state this plainly next to the editability claim, and `skills/pptfast/SKILL.md`/`SKILL.zh-CN.md` gained a matching rule so the skill never tells a user otherwise. No code or rendered output changed.
+- 4b96f23: Fixed two contrast defects and formalized the policy that catches their class going forward.
+
+  Ending-page copyright lines (`banner-ending`/`rail-ending`) now derive their color from the theme's own `colors.muted` through a new `metaInk` helper, replacing two hardcoded cross-theme gray constants that could render unreadable on a theme those constants never accounted for. Copyright text carries a `data-contrast-tier="meta"` marker so the audit checks it against a 3:1 floor instead of full body text's 4.5:1, since meta-information text like a copyright line is real content a reader can look up on demand, not decoration, but is deliberately understated.
+
+  `constellation-ending`'s trailing heading period now falls back to the heading's own ink when the accent color it used to render in doesn't clear contrast against the page background, closing a case where the period could render nearly invisible. A new stress-fixture variant exercises a period-ending heading (closing an overflow-coverage blind spot no fixture ever triggered), while the contrast regression itself is locked by a dedicated 16-theme sweep in `deck-audit.test.ts`.
+
+  `docs/contrast-system.md` documents the resulting three-tier contrast policy (content text, meta-information text, pure decoration) that governs both fixes and every future low-contrast call.
+
+- 7dae8f9: Rebalanced consulting's and journal's structural-personality declarations (`layoutTendencies`), fulfilling a known limitation the theme-structure wave's own changelog flagged: under the default `briefing` narrative strategy, consulting's cover/ending and journal's chapter/ending each named an id `briefing` already favors, so those axes carried no real weight beyond an undeclared theme and the theme's character showed on only 1 of its 3 identity page types.
+
+  Both themes keep their native id on every axis (still the historically-accurate register for the other four strategies) and gain a second, honest id on each dead axis: consulting adds `left-anchor` to cover and `rail-ending`/`tone-adaptive-ending` to ending; journal adds `roman-chapter`/`tone-adaptive-chapter` to chapter and `poster-ending` to ending. Under `briefing`, all three of each theme's identity axes now carry real selection weight.
+
+  This shifts which archetype a fixed seed's auto-pick lands on for decks that don't pin every cover/chapter/ending `layout` explicitly (the intended effect — pinned layouts and the other 14 built-in themes are unaffected, byte-for-byte).
+
 ## 0.12.0
 
 ### Minor Changes
