@@ -91,7 +91,11 @@ async function runOne(
 ): Promise<void> {
   const promptPath = join(dirs.questionsDir, qid, "prompt.md")
   const prompt = readFileSync(promptPath, "utf8")
-  const outDir = join(dirs.resultsDir, cfg.model, qid)
+  // Model id doubles as the result-dir tag; sanitize path-hostile chars
+  // (`org/model-name` id shapes) so the tag stays one flat segment —
+  // same rule as run-agentic.mts's sanitizeTagSegment (duplicated by the
+  // same two-independent-scripts reasoning as the rest of this file).
+  const outDir = join(dirs.resultsDir, cfg.model.toLowerCase().replace(/[^a-z0-9._-]+/g, "-"), qid)
   if (existsSync(join(outDir, "answer.json"))) {
     console.log(`${qid}: already answered, skipping (resume mode)`)
     return

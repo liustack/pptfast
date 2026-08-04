@@ -498,18 +498,26 @@ export function placeArtifact(located: LocatedArtifact, resultDir: string): stri
  * followed — consistent with this file's documented "symlink tricks out of
  * scope" posture elsewhere, here applied by omission rather than a check.
  */
-export function copyQuestionAssets(questionDir: string, workspace: string): number {
+export function copyQuestionAssets(questionDir: string, workspace: string): Set<string> {
   const assetsSrc = join(questionDir, "assets")
-  if (!existsSync(assetsSrc)) return 0
-  let copied = 0
+  const provisioned = new Set<string>()
+  if (!existsSync(assetsSrc)) return provisioned
   for (const rel of walkFiles(assetsSrc, assetsSrc)) {
     const check = checkPathSafety(workspace, join("assets", rel))
     if (!check.ok) continue // never let a malformed question dir write outside the workspace
     mkdirSync(dirname(check.resolved), { recursive: true })
     cpSync(join(assetsSrc, rel), check.resolved)
-    copied++
+    // Returned as RESOLVED paths so doWriteFile can compare its own
+    // resolved target by exact identity — the q12 smoke watched the model
+    // overwrite a provisioned PNG with base64 *text*; the prompt warning
+    // added then is soft, this set makes the guard code-enforced. Only
+    // exact provisioned paths are protected — the model stays free to
+    // create NEW files anywhere in the workspace, including under
+    // assets/ (a deck project's own asset dir is a legitimate write
+    // target).
+    provisioned.add(check.resolved)
   }
-  return copied
+  return provisioned
 }
 
 // ── tool implementations ──
@@ -529,13 +537,20 @@ export function truncateForModel(text: string, maxChars: number): string {
   return `${text.slice(0, maxChars)}\n\n[truncated: ${maxChars} of ${text.length} chars shown]`
 }
 
-function doWriteFile(workspace: string, args: unknown): string {
+export function doWriteFile(workspace: string, args: unknown, provisioned?: ReadonlySet<string>): string {
   const { path, content } = (args ?? {}) as { path?: unknown; content?: unknown }
   if (typeof path !== "string" || typeof content !== "string") {
     return "ERROR: write_file requires {path: string, content: string}"
   }
   const check = checkPathSafety(workspace, path)
   if (!check.ok) return `ERROR: ${check.reason}`
+  if (provisioned?.has(check.resolved)) {
+    // Code-enforced guard behind the preamble's soft warning: harness-
+    // provisioned inputs are read-only for the model. The q12 smoke showed
+    // a model "helpfully" rewriting a provided PNG with the prompt's
+    // base64 text, corrupting it. New files (anywhere) stay writable.
+    return `ERROR: ${path} is a provided input file and cannot be overwritten — reference it as-is, or write derived output to a new path`
+  }
   mkdirSync(dirname(check.resolved), { recursive: true })
   writeFileSync(check.resolved, content, "utf8")
   return `wrote ${Buffer.byteLength(content, "utf8")} bytes to ${path}`
@@ -591,7 +606,7 @@ interface ToolCall {
   function: { name: string; arguments: string }
 }
 
-function executeTool(tc: ToolCall, workspace: string): string {
+function executeTool(tc: ToolCall, workspace: string, provisioned?: ReadonlySet<string>): string {
   let args: unknown
   try {
     args = JSON.parse(tc.function.arguments || "{}")
@@ -601,7 +616,7 @@ function executeTool(tc: ToolCall, workspace: string): string {
   try {
     switch (tc.function.name) {
       case "write_file":
-        return doWriteFile(workspace, args)
+        return doWriteFile(workspace, args, provisioned)
       case "read_file":
         return doReadFile(workspace, args)
       case "list_files":
@@ -765,7 +780,7 @@ async function runOneAgentic(
     return
   }
   mkdirSync(workspace, { recursive: true })
-  copyQuestionAssets(join(dirs.questionsDir, qid), workspace)
+  const provisioned = copyQuestionAssets(join(dirs.questionsDir, qid), workspace)
 
   const system = [
     "You are the model-under-test in the pptfast benchmark, agentic tool-loop mode.",
@@ -836,7 +851,7 @@ async function runOneAgentic(
       if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
         toolCalls += assistantMsg.tool_calls.length
         for (const tc of assistantMsg.tool_calls) {
-          const result = executeTool(tc, workspace)
+          const result = executeTool(tc, workspace, provisioned)
           messages.push({ role: "tool", tool_call_id: tc.id, name: tc.function.name, content: result })
         }
         continue
@@ -941,7 +956,18 @@ export function flagValue(argv: string[], name: string): string | undefined {
  * in `runOneAgentic` below) — this only decides the directory name.
  */
 export function deriveModelTag(prefix: string, modelOverride: string | undefined): string {
-  return `${(modelOverride ?? prefix.toLowerCase())}-agentic`
+  return `${sanitizeTagSegment(modelOverride ?? prefix.toLowerCase())}-agentic`
+}
+
+/**
+ * A model tag becomes a results directory name, so a model id with
+ * path-hostile characters (`org/model-name` is a real id shape) must not
+ * silently create nested directories. Anything outside [a-z0-9._-]
+ * flattens to `-`; lowercased for tag-vs-prefix consistency. (Review
+ * finding on the --model override wave.)
+ */
+export function sanitizeTagSegment(raw: string): string {
+  return raw.toLowerCase().replace(/[^a-z0-9._-]+/g, "-")
 }
 
 // ── CLI entry ──

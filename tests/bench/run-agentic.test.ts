@@ -10,6 +10,8 @@ import {
   classifyModelTurn,
   copyQuestionAssets,
   deriveModelTag,
+  doWriteFile,
+  sanitizeTagSegment,
   extractCachedTokens,
   flagValue,
   locateArtifact,
@@ -564,9 +566,9 @@ describe("copyQuestionAssets", () => {
     mkdirSync(workspace, { recursive: true })
   }
 
-  it("returns 0 and copies nothing when the question has no assets/ directory", () => {
+  it("returns an empty set and copies nothing when the question has no assets/ directory", () => {
     setup()
-    expect(copyQuestionAssets(questionDir, workspace)).toBe(0)
+    expect(copyQuestionAssets(questionDir, workspace).size).toBe(0)
     expect(existsSync(join(workspace, "assets"))).toBe(false)
   })
 
@@ -576,7 +578,8 @@ describe("copyQuestionAssets", () => {
     writeFileSync(join(questionDir, "assets", "hero.png"), "hero-bytes")
     writeFileSync(join(questionDir, "assets", "case.png"), "case-bytes")
     const copied = copyQuestionAssets(questionDir, workspace)
-    expect(copied).toBe(2)
+    expect(copied.size).toBe(2)
+    expect(copied.has(join(workspace, "assets", "hero.png"))).toBe(true)
     expect(readFileSync(join(workspace, "assets", "hero.png"), "utf8")).toBe("hero-bytes")
     expect(readFileSync(join(workspace, "assets", "case.png"), "utf8")).toBe("case-bytes")
   })
@@ -610,6 +613,41 @@ describe("copyQuestionAssets", () => {
     const copied = copyQuestionAssets(questionDir, workspace)
     expect(readFileSync(join(workspace, "assets", "safe.png"), "utf8")).toBe("safe-bytes")
     expect(existsSync(join(workspace, "assets", "escape.png"))).toBe(false)
-    expect(copied).toBe(1)
+    expect(copied.size).toBe(1)
+  })
+
+  it("write_file refuses to overwrite a provisioned input but allows new files beside it", () => {
+    // Code-enforced guard behind the preamble's soft warning (q12 smoke:
+    // model rewrote a provided PNG with base64 text, corrupting it).
+    setup()
+    mkdirSync(join(questionDir, "assets"), { recursive: true })
+    writeFileSync(join(questionDir, "assets", "hero.png"), "hero-bytes")
+    const provisioned = copyQuestionAssets(questionDir, workspace)
+    const refused = doWriteFile(workspace, { path: "assets/hero.png", content: "base64garbage" }, provisioned)
+    expect(refused).toMatch(/^ERROR: .*provided input file/)
+    expect(readFileSync(join(workspace, "assets", "hero.png"), "utf8")).toBe("hero-bytes")
+    const allowed = doWriteFile(workspace, { path: "assets/derived.png", content: "new-bytes" }, provisioned)
+    expect(allowed).toMatch(/^wrote /)
+    expect(readFileSync(join(workspace, "assets", "derived.png"), "utf8")).toBe("new-bytes")
+  })
+})
+
+// ── sanitizeTagSegment — model ids double as result-dir names ──
+
+describe("sanitizeTagSegment", () => {
+  it("flattens a slash-bearing model id to one path segment", () => {
+    expect(sanitizeTagSegment("org/model-name")).toBe("org-model-name")
+  })
+
+  it("lowercases and collapses runs of hostile characters", () => {
+    expect(sanitizeTagSegment("Qwen Flash::v2")).toBe("qwen-flash-v2")
+  })
+
+  it("keeps already-clean ids byte-identical", () => {
+    expect(sanitizeTagSegment("qwen-flash")).toBe("qwen-flash")
+  })
+
+  it("deriveModelTag applies it to --model overrides", () => {
+    expect(deriveModelTag("QWEN", "org/custom.Model")).toBe("org-custom.model-agentic")
   })
 })
