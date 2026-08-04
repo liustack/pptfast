@@ -45,8 +45,9 @@ import { blendOver, metaInk, readableOn } from "../ink"
  * 从未被任何既有测试覆盖过——`full-matrix-contrast.test.ts` 自己的 sweep
  * fixture 不填 organization/date，`metaLine` 从未在那个文件的扫描里真正
  * 渲染过），是这条 B 层 3:1 硬线下的一个真实未捕获缺陷，`metaInk` 把它按自己
- * 的最小步进策略上调到 3.094:1（`#591d26`，`ink.test.ts`/`cover-fashion-
- * masthead.test.tsx` 锁定这个具体产出）。挂 `data-contrast-tier="meta"`
+ * 的最小步进策略上调到 3.094:1（`#591d26`——这个具体产出由
+ * `full-matrix-contrast.test.ts` 的 16 主题 meta-line sweep 锁定，本文件
+ * 同名测试只提供 fixture 不做 fill 断言）。挂 `data-contrast-tier="meta"`
  * 让 `deck-audit` 按 3:1 而非默认 4.5:1 判它。
  *
  * runway/fashion-chapter（`chapter-fashion-chapter.tsx`）的机构名行是独立
