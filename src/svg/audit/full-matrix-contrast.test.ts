@@ -145,27 +145,19 @@ interface AllowlistEntry {
  * swallow.
  */
 const ALLOWLIST: readonly AllowlistEntry[] = [
-  {
-    theme: "tech",
-    layout: "fashion-masthead",
-    // Tier annotation (contrast-policy wave, task T3, 裁定 4 — see
-    // `docs/contrast-system.md`'s three-tier policy section): **B tier**
-    // (meta-information text — this is the org/date line, real attribution
-    // content deliberately kept low-key, not decoration). Re-graded against
-    // the tier's own floor rather than the old blanket 4.5:1 body line this
-    // rationale was originally written against: 3:1 is the hard B-tier
-    // floor, and the measured ~4.16:1 clears it comfortably (it only ever
-    // fell short of the *body* 4.5:1 this entry pre-dates the tier split
-    // for). Not a violation under the new policy — kept allowlisted anyway
-    // since nothing renders this line through `metaInk`/
-    // `data-contrast-tier="meta"` yet, so deck-audit still measures it at
-    // the default 4.5:1 body floor and would still flag it without this
-    // entry. Behavior unchanged by this annotation pass; whether to route
-    // `fashion-masthead`'s meta line through `metaInk` is future
-    // theme-polish scope, not this task's.
-    rationale:
-      "reviewer-adjudicated borderline: the org/date meta line measures ~4.16:1 against tech's bright-cyan primary block (needs 4.5:1 body) — a rounding distance under the floor, deferred to a future theme-polish pass rather than this fix round's scope.",
-  },
+  // The `tech`/`fashion-masthead` entry that used to live here (the org/date
+  // meta line, ~4.16:1 against tech's primary block — under the old blanket
+  // 4.5:1 body floor this entry pre-dates the tier split for) is gone
+  // (fashion-masthead metaInk migration, task-1-report.md): the line now
+  // renders through `metaInk` and carries `data-contrast-tier="meta"`
+  // (`cover-fashion-masthead.tsx`), so `deck-audit` grades it against the
+  // real B-tier 3:1 floor directly — no allowlist needed. The migration also
+  // exposed a genuine pre-existing gap this entry's own theme scope (`tech`
+  // only) never covered: `insight`'s same composite measured 2.886:1, a real
+  // sub-3:1 miss `metaInk` now corrects to 3.094:1. See the dedicated
+  // "fashion-masthead meta line contrast" describe block below (16-theme
+  // sweep, real render) for the regression net this entry's removal now
+  // relies on instead.
   {
     theme: "*",
     layout: "fashion-chapter",
@@ -362,6 +354,68 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
       })
     })
   }
+})
+
+// fashion-masthead meta line contrast (contrast-policy wave's recorded
+// leftover, closed here): the sweep above never exercises this — its own
+// fixtures deliberately set no `ir.meta.organization`/`date` (file header),
+// so `FashionMastheadCover`'s meta line never renders under that sweep and
+// the now-removed `tech`/`fashion-masthead` ALLOWLIST entry never actually
+// matched a finding there. This dedicated block fills that real gap with a
+// real render, org/date populated, across all 16 canonical themes — the
+// same `CANONICAL_THEME_IDS` loop shape `colors.muted contrast` above uses.
+describe("fashion-masthead meta line contrast (contrast-policy wave, metaInk migration)", () => {
+  function mastheadDeck(themeId: string): PptxIR {
+    return {
+      version: "4",
+      filename: "fashion-masthead-meta-fixture",
+      theme: { id: themeId },
+      meta: { organization: "pptfast", date: "2026-08" },
+      assets: { images: {} },
+      slides: [{ type: "cover", heading: HEADING, layout: "fashion-masthead", components: [] } as Slide],
+    }
+  }
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: the org/date meta line clears the B-tier 3:1 floor against its own painted primary block`, () => {
+      const ir = mastheadDeck(themeId)
+      const findings = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+      expect(findings).toEqual([])
+    })
+
+    it(`${themeId}: the meta line renders through metaInk (data-contrast-tier="meta", fill measured >= 3:1)`, () => {
+      const ir = mastheadDeck(themeId)
+      const svg = renderSlideSvg(ir, 0)
+      const root = parseSvgRoot(svg)
+      const metaText = Array.from(root.querySelectorAll("text")).find(
+        (t) => t.getAttribute("data-contrast-tier") === "meta",
+      )
+      expect(metaText, "expected a data-contrast-tier=\"meta\" text element").toBeTruthy()
+      const fill = metaText!.getAttribute("fill")!
+      const primary = THEME_DEFINITIONS[themeId as CanonicalThemeId].style.colors.primary
+      expect(contrastRatio(fill, primary)).toBeGreaterThanOrEqual(3)
+    })
+  }
+
+  // insight is the one theme the pre-migration composite (`fg` at 60%
+  // opacity over `colors.primary`) measured under 3:1 (2.886:1) — a real,
+  // previously-uncaught defect the migration fixes, not a rendering
+  // regression. Pinned exactly (task-1-report.md's measurement) so a future
+  // token change to insight's `primary` that silently regresses this is
+  // caught here specifically, not just by the generic >=3 loop above.
+  it("insight: the pre-migration composite genuinely failed 3:1 (2.886:1) — metaInk corrects it to ~3.094:1, not just barely/accidentally", () => {
+    const ir = mastheadDeck("insight")
+    const svg = renderSlideSvg(ir, 0)
+    const root = parseSvgRoot(svg)
+    const metaText = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.getAttribute("data-contrast-tier") === "meta",
+    )!
+    const fill = metaText.getAttribute("fill")
+    const primary = THEME_DEFINITIONS.insight.style.colors.primary
+    expect(primary).toBe("#E63946")
+    expect(fill).toBe("#591d26")
+    expect(contrastRatio(fill!, primary)).toBeCloseTo(3.094, 2)
+  })
 })
 
 // pin-only matrix leg (quote-stage wave, task T2, 裁定 4): `pinOnly` layouts

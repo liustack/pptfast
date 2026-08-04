@@ -139,8 +139,13 @@ export function accessibleInk(preferredFill: string, bgHex: string, fontSizePx: 
 /** Alpha-blend `fg` over `bg` (both opaque hex) — the "over" compositing a
  * translucent fill actually renders as. Independently duplicated from
  * `deck-audit.ts`'s own `blendOver` for the same render→util dependency-
- * direction reason the rest of this file's math is (see the file header). */
-function blendOver(fg: string, bg: string, alpha: number): string {
+ * direction reason the rest of this file's math is (see the file header).
+ * Exported (fashion-masthead metaInk migration) for the one archetype call
+ * site that composes a `fillOpacity`-dimmed ink itself before handing the
+ * result to `metaInk` — see `cover-fashion-masthead.tsx`'s own header
+ * comment for why that archetype needs the raw composite, not just the two
+ * higher-level helpers below. */
+export function blendOver(fg: string, bg: string, alpha: number): string {
   const toRgb = (hex: string): [number, number, number] => {
     const n = parseInt(hex.replace("#", ""), 16)
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
