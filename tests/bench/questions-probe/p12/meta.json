@@ -1,0 +1,14 @@
+{
+  "id": "p12",
+  "title": "Speaker Lineup Slide for the Conference Program Guide",
+  "coverage": {
+    "strategy": "briefing",
+    "pacing": "dense",
+    "expects_components": ["row_cards", "icon_cards"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "en",
+  "probe": true,
+  "probe_candidate": "people_cards"
+}

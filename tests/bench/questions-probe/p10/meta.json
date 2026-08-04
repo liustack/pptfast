@@ -1,0 +1,14 @@
+{
+  "id": "p10",
+  "title": "可持续产品生命周期说明页",
+  "coverage": {
+    "strategy": "briefing",
+    "pacing": "balanced",
+    "expects_components": ["steps", "flowchart"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "zh",
+  "probe": true,
+  "probe_candidate": "cycle"
+}

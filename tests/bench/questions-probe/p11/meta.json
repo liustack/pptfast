@@ -1,0 +1,14 @@
+{
+  "id": "p11",
+  "title": "安全文化成熟度评估 - 季度安全例会",
+  "coverage": {
+    "strategy": "briefing",
+    "pacing": "balanced",
+    "expects_components": ["comparison", "matrix"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "zh",
+  "probe": true,
+  "probe_candidate": "tier_stack"
+}
