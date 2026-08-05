@@ -299,6 +299,12 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
     ],
   },
   logo_wall: logoWallDangling,
+  tag_row: {
+    type: "tag_row",
+    title: "Tech stack",
+    emphasis: "first",
+    items: ["Kubernetes", "PostgreSQL", "分布式事务", "React", "gRPC"],
+  },
 }
 
 const ONE_PX_PNG =

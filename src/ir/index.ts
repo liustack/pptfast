@@ -70,6 +70,7 @@ import { schema as deviceMockupSchema } from "./components/device-mockup"
 import { schema as cycleSchema } from "./components/cycle"
 import { schema as peopleCardsSchema } from "./components/people-cards"
 import { schema as logoWallSchema } from "./components/logo-wall"
+import { schema as tagRowSchema } from "./components/tag-row"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -314,6 +315,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
   cycleSchema,
   peopleCardsSchema,
   logoWallSchema,
+  tagRowSchema,
 ], { error: componentTypeError })
 
 /**

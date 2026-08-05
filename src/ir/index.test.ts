@@ -1473,6 +1473,98 @@ describe("logo_wall component (logo_wall wave, `.issues/2026-08-06-logo-wall/pla
   })
 })
 
+describe("tag_row component (tag_row wave, `.issues/2026-08-06-tag-row/plan.md` — 38th component)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const tags = (n: number) => Array.from({ length: n }, (_, i) => `Tag${i + 1}`)
+  const tagRowComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "tag_row",
+    items: tags(4),
+    ...overrides,
+  })
+
+  it("accepts the schema minimum (2 tags)", () => {
+    expect(parsePptxIR(withComponents([tagRowComponent({ items: tags(2) })])).success).toBe(true)
+  })
+
+  it("accepts the schema maximum (16 tags)", () => {
+    expect(parsePptxIR(withComponents([tagRowComponent({ items: tags(16) })])).success).toBe(true)
+  })
+
+  it("accepts an optional overall title and an emphasis of \"first\"/\"none\"", () => {
+    for (const emphasis of ["first", "none"] as const) {
+      const d = withComponents([tagRowComponent({ title: "Tech stack", emphasis, items: ["React", "TypeScript", "Vite"] })])
+      expect(parsePptxIR(d).success).toBe(true)
+    }
+  })
+
+  it("accepts omitting the optional title and emphasis", () => {
+    expect(parsePptxIR(withComponents([tagRowComponent({ items: tags(3) })])).success).toBe(true)
+  })
+
+  it("accepts a CJK/Latin-mixed label at the length cap", () => {
+    const d = withComponents([tagRowComponent({ items: ["基于 Kubernetes Operator", "分布式事务一致性"] })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  // ── 裁定 1: one label isn't a row — the hard floor. ──
+  it("rejects 1 tag (not a row) with a message pointing at heading/callout/verdict_banner", () => {
+    const result = parsePptxIR(withComponents([tagRowComponent({ items: tags(1) })]))
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/at least 2 tags/)
+      expect(result.error).toMatch(/callout|verdict_banner/)
+    }
+  })
+
+  it("rejects 0 tags", () => {
+    expect(parsePptxIR(withComponents([tagRowComponent({ items: tags(0) })])).success).toBe(false)
+  })
+
+  // ── 裁定 1: past 16 the row is a keyword dump — the hard ceiling. ──
+  it("rejects 17 tags with a message explaining the ceiling", () => {
+    const result = parsePptxIR(withComponents([tagRowComponent({ items: tags(17) })]))
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/at most 16/)
+  })
+
+  // ── 裁定 3: the per-item length cap is the boundary that stops a model
+  // shoving sentence-shaped bullet content into a tag — the error points at
+  // bullets/row_cards/icon_cards by name. ──
+  it("rejects a sentence-shaped item (over the 24-char cap) pointing at bullets/row_cards", () => {
+    const sentence = "This is a full descriptive sentence that belongs in bullets"
+    const result = parsePptxIR(withComponents([tagRowComponent({ items: [sentence, "ok"] })]))
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/short nominal label/)
+      expect(result.error).toMatch(/bullets/)
+      expect(result.error).toMatch(/row_cards|icon_cards/)
+    }
+  })
+
+  it("rejects an empty-string tag", () => {
+    expect(parsePptxIR(withComponents([tagRowComponent({ items: ["", "ok"] })])).success).toBe(false)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...tagRowComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown emphasis value", () => {
+    expect(parsePptxIR(withComponents([tagRowComponent({ emphasis: "last" })])).success).toBe(false)
+  })
+
+  // ── 裁定 1: items are plain strings, not objects — no per-tag icon/color/
+  // link struct. ──
+  it("rejects an object item (a tag is a plain string, not a struct)", () => {
+    expect(parsePptxIR(withComponents([tagRowComponent({ items: [{ label: "React" }, "Vite"] })])).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())
