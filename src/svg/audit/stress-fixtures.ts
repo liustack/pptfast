@@ -1395,4 +1395,47 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       ],
     },
   ]),
+
+  // logo_wall (logo_wall wave, `.issues/2026-08-06-logo-wall/plan.md`,
+  // 裁定 4): the schema max, 12 logos, at the deepest tier (3 rows × 4
+  // cols) — the case that must still fit the wall-height budget without
+  // overflowing its slot. No `assets.images` are declared, so every cell
+  // renders its degrade path: an extreme-length CJK `label` per item
+  // exercises the missing-asset label's own shrink/truncate inside the
+  // narrowest cell, and a CJK_LONG overall `title` exercises the title
+  // band's shrink/truncate in the same pass. A second page carries the
+  // schema minimum (4 logos) with EN_LONG/MIXED_LONG labels — the label
+  // fallback path weighs CJK/Latin differently, so both scripts get their
+  // own pathological page.
+  logo_wall: deck([
+    {
+      type: "content",
+      heading: "标识墙压力测试（12 个满配）",
+      components: [
+        {
+          type: "logo_wall",
+          title: CJK_LONG,
+          items: Array.from({ length: 12 }, (_, i) => ({
+            asset_id: `missing-${i + 1}`,
+            label: CJK_LONG,
+          })),
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "标识墙压力测试（4 个，混排标签）",
+      components: [
+        {
+          type: "logo_wall",
+          items: [
+            { asset_id: "missing-a", label: EN_LONG },
+            { asset_id: "missing-b", label: MIXED_LONG },
+            { asset_id: "missing-c", label: MIXED_LONG },
+            { asset_id: "missing-d", label: EN_LONG },
+          ],
+        },
+      ],
+    },
+  ]),
 }
