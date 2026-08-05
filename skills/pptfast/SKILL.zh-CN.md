@@ -135,7 +135,7 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 | 内容形态 | 用 | 不用 |
 |---|---|---|
 | 2–5 项头条指标 | `kpi_cards` | `chart` |
-| 系列数据（趋势、对比、占比） | `chart`（`bar`/`line`/`pie`/`funnel`/`dumbbell`） | 埋在 `bullets` 里的数字 |
+| 系列数据（趋势、对比、占比） | `chart`（`bar`/`line`/`pie`/`funnel`/`dumbbell`/`scatter`/`area`/`donut`/`gauge`） | 埋在 `bullets` 里的数字 |
 | 受众要逐行读的精确数字（价目表、规格表、按周期分列的指标网格） | `data_table` | `chart` |
 | 线性流程，无分支 | `steps` | `flowchart` |
 | 有分支、且最终走到终点的流程 | `flowchart` | `steps` |
@@ -158,6 +158,8 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 | 一组机构/品牌标识（赞助商、客户墙、媒体报道/"as seen in"、合作伙伴） | `logo_wall` | `image_grid` |
 
 `steps` 和 `flowchart` 是最常见的混用：只要分支路径从不出现，就是 `steps`。`flowchart` 和 `cycle` 是次常见的：这个流程最终走到一个终点，还是转回自己的起点？把一个闭环硬塞进 `flowchart`，那条收尾的回边会被画成一条横跨整张图的迷路线段或大弧线——这不是画图的 bug，是选错了 component；只要最后一个阶段的箭头是指回第一个阶段，就该换成 `cycle`。`roadmap` 和 `gantt` 是再下一个：`roadmap` 把多条工作线分组进泳道，没有共享的数值坐标轴，`gantt` 则把带日期的条形画在一根所有条目共同比对的共享坐标轴上。`pest` 和 `swot` 是再下一个：`pest` 只看外部宏观环境因素（没有内部优势/劣势这条轴），永远是同样命名的四个类别——一份内部对外部的战略评估仍然是 `swot`。`sankey` 和 `flowchart`/funnel `chart` 是再下一个：`sankey` 在分支/汇合的路径上守恒并拆分一个数量（带宽本身就承载意义），`flowchart` 是没有数量含义的决策/流程分支，funnel `chart` 则永远只沿一条线收窄，从不分支也不汇合。`data_table` 和 `chart` 和 `comparison` 是最后一组：受众要逐行读的精确数字用 `data_table`，一眼看出趋势/对比形态的用 `chart`，没有精确数字、只做定性并排属性对比的用 `comparison`。
+
+`chart` 内部，子型就是数据的形态。两根轴都是数值量时用 `scatter`（给每个点加可选 `size` 就成了气泡图）。线下方的填充区要读作累积或体量时用 `area`。部分对整体的占比用 `donut`，中心可选把总值放大居中（`center_total: true`）。单个指标对目标的完成度用 `gauge`。`gauge` 和 `kpi_cards` 最要分清：`gauge` 是单个完成度指标，画成一段填充的半环（例如 62% 达标），`kpi_cards` 则是多个各自独立的头条数字并排陈列，所以别在该用 `kpi_cards` 的地方摆一排 gauge。`scatter` 和 `line` 的区别：`scatter` 需要数值 x（两根轴都是真实坐标），x 轴是类目标签的仍然是 `line`。
 
 `architecture` 的 `layers` 数组默认从上到下画（`layers[0]` 是最顶层的那条带）——这是自顶向下撰写系统分层（表现层在前、基础设施在后）的自然顺序。如果是一个自底向上的叙事（成熟度阶梯、基础优先的能力模型），就按它自己从低到高的自然顺序撰写，并在 component 上设 `direction: "bottom_up"`，让 `layers[0]` 改画在最底部——不要手动把数组倒过来伪造这个效果，这个字段存在的意义正是让数组始终保持叙事顺序。
 

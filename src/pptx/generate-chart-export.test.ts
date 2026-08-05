@@ -23,6 +23,7 @@
 // Runs the REAL generatePptx (src/api.ts) — never a mock — the same
 // production entry point the reviewer's own probe called.
 import { beforeAll, describe, expect, it } from "vitest"
+import JSZip from "jszip"
 import type { Component, PptxIR } from "@/ir"
 import { generatePptx } from "@/api"
 import { installNodePlatform } from "../platform/node"
@@ -511,5 +512,67 @@ describe("dumbbell sub-EMU near-equal connector through the real generatePptx", 
         ],
       },
     ])
+  })
+})
+
+/**
+ * chart-depth wave: the four new subtypes (scatter/area/donut/gauge) through
+ * the REAL generatePptx + its unconditional package-audit gate — the
+ * structural half of the PowerPoint repair probe (the interactive
+ * repair-dialog check stays a release-time manual step, docs/testing.md).
+ * Includes every value that makes a point/arc geometry degenerate: a
+ * single-point scatter, a 0% gauge (no filled arc at all) and a 100% gauge
+ * (full half-turn sweep), an all-equal donut, and a negative-value area.
+ */
+describe("chart-depth subtypes through the real generatePptx (chart-depth wave)", () => {
+  const cases: Array<{ label: string; component: Component }> = [
+    { label: "scatter single point", component: { type: "chart", chart_type: "scatter", series: [{ name: "s", data: [{ x: 5, y: 5 }] }] } },
+    { label: "scatter with bubble sizes", component: { type: "chart", chart_type: "scatter", series: [{ name: "s", data: [{ x: 1, y: 2, size: 5 }, { x: 8, y: 9, size: 40 }] }] } },
+    { label: "scatter multi-series", component: { type: "chart", chart_type: "scatter", series: [{ name: "a", data: [{ x: 1, y: 2 }] }, { name: "b", data: [{ x: 3, y: 4 }] }] } },
+    { label: "area single series", component: { type: "chart", chart_type: "area", series: [{ name: "s", data: [{ x: "Q1", y: 10 }, { x: "Q2", y: 20 }] }] } },
+    { label: "area negative (dips below baseline)", component: { type: "chart", chart_type: "area", series: [{ name: "s", data: [{ x: "Q1", y: -8 }, { x: "Q2", y: 12 }] }] } },
+    { label: "area multi-series", component: { type: "chart", chart_type: "area", series: [{ name: "a", data: [{ x: "Q1", y: 10 }, { x: "Q2", y: 20 }] }, { name: "b", data: [{ x: "Q1", y: 5 }, { x: "Q2", y: 8 }] }] } },
+    { label: "donut subtype (center empty)", component: { type: "chart", chart_type: "donut", series: [{ name: "s", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }] } },
+    { label: "donut subtype (center total)", component: { type: "chart", chart_type: "donut", center_total: true, series: [{ name: "s", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }] } },
+    { label: "donut all-equal thirds", component: { type: "chart", chart_type: "donut", center_total: true, series: [{ name: "s", data: [{ x: "A", y: 1 }, { x: "B", y: 1 }, { x: "C", y: 1 }] }] } },
+    { label: "gauge 0% (no filled arc)", component: { type: "chart", chart_type: "gauge", series: [{ name: "g", data: [{ x: "done", y: 0 }] }] } },
+    { label: "gauge 62%", component: { type: "chart", chart_type: "gauge", series: [{ name: "g", data: [{ x: "done", y: 62 }] }] } },
+    { label: "gauge 100% (full half-turn)", component: { type: "chart", chart_type: "gauge", series: [{ name: "g", data: [{ x: "done", y: 100 }] }] } },
+    { label: "gauge custom range (150 of 0..200)", component: { type: "chart", chart_type: "gauge", gauge: { min: 0, max: 200 }, series: [{ name: "g", data: [{ x: "done", y: 150 }] }] } },
+  ]
+  it.each(cases)("$label exports without an invalid-shape-transform", async ({ component }) => {
+    await expectExports([component])
+  })
+})
+
+/**
+ * The gauge/donut arc `<path>`s must reach the .pptx as native editable
+ * DrawingML geometry (`<a:custGeom>`, svg2pptx/path.ts), never a flattened
+ * `<p:pic>` — the same "zero unexpected rasterization" contract
+ * generate-fidelity-export.test.ts holds for every component type, asserted
+ * here specifically for the two new radial subtypes and their arc geometry.
+ */
+describe("gauge/donut arcs export as native custGeom, never a rasterized picture (chart-depth wave)", () => {
+  async function chartSlideXml(component: Component): Promise<string> {
+    const zip = await JSZip.loadAsync(await generatePptx(makeIr([component])))
+    // Cover=slide1, content(chart)=slide2, ending=slide3 (see makeIr above).
+    return zip.file("ppt/slides/slide2.xml")!.async("string")
+  }
+
+  it("a gauge slide holds <a:custGeom> arcs and zero <p:pic>", async () => {
+    const xml = await chartSlideXml({ type: "chart", chart_type: "gauge", series: [{ name: "g", data: [{ x: "done", y: 62 }] }] })
+    expect(xml).toContain("<a:custGeom>")
+    expect(xml).not.toContain("<p:pic>")
+  })
+
+  it("a donut (center total) slide holds <a:custGeom> arcs and zero <p:pic>", async () => {
+    const xml = await chartSlideXml({
+      type: "chart",
+      chart_type: "donut",
+      center_total: true,
+      series: [{ name: "s", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+    })
+    expect(xml).toContain("<a:custGeom>")
+    expect(xml).not.toContain("<p:pic>")
   })
 })

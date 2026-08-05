@@ -750,3 +750,117 @@ describe("chart component — legend (n>=2 series)", () => {
     expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
   })
 })
+
+describe("chart component — chart-depth subtypes (scatter / area / donut / gauge dispatch)", () => {
+  it("dispatches scatter to the point renderer (one circle per numeric point)", () => {
+    const component = {
+      type: "chart" as const,
+      chart_type: "scatter" as const,
+      series: [{ name: "S", data: [{ x: 1, y: 2 }, { x: 3, y: 4 }, { x: 5, y: 1 }] }],
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    expect(container.querySelectorAll("circle").length).toBe(3)
+  })
+
+  it("dispatches area to the filled-line renderer (a polygon fill under the stroke)", () => {
+    const component = {
+      type: "chart" as const,
+      chart_type: "area" as const,
+      series: [{ name: "S", data: [{ x: "Q1", y: 10 }, { x: "Q2", y: 20 }] }],
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    expect(container.querySelectorAll("polygon").length).toBeGreaterThanOrEqual(1)
+    expect(container.querySelectorAll("polyline").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("dispatches the dedicated donut subtype to renderDonut, center empty by default", () => {
+    const component = {
+      type: "chart" as const,
+      chart_type: "donut" as const,
+      series: [{ name: "S", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    // wedges present, no center total text
+    expect(container.querySelectorAll("path").length).toBe(2)
+    expect(container.querySelectorAll("text").length).toBe(0)
+  })
+
+  it("donut center_total: true prints the total through the full render", () => {
+    const component = {
+      type: "chart" as const,
+      chart_type: "donut" as const,
+      center_total: true,
+      series: [{ name: "S", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    expect(Array.from(container.querySelectorAll("text")).map((t) => t.textContent)).toContain("100")
+  })
+
+  it("dispatches gauge to the half-ring renderer (track + arc paths and the centered value)", () => {
+    const component = {
+      type: "chart" as const,
+      chart_type: "gauge" as const,
+      series: [{ name: "G", data: [{ x: "Completion", y: 62 }] }],
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    expect(container.querySelectorAll("path").length).toBe(2)
+    expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "62")).toBe(true)
+  })
+
+  it("scatter and area are axes-applicable: measure() grows for an x_title (like bar/line)", () => {
+    for (const chart_type of ["scatter", "area"] as const) {
+      const series =
+        chart_type === "scatter"
+          ? [{ name: "S", data: [{ x: 1, y: 2 }, { x: 3, y: 4 }] }]
+          : [{ name: "S", data: [{ x: "Q1", y: 2 }, { x: "Q2", y: 4 }] }]
+      const base = { type: "chart" as const, chart_type, series }
+      const withTitle = { ...base, axes: { x_title: "Axis" } }
+      expect(chart.measure(withTitle, 1120, ctx), chart_type).toBeGreaterThan(chart.measure(base, 1120, ctx))
+    }
+  })
+
+  it("gauge and donut are NOT axes-applicable: measure() ignores axes (radial, no plot box)", () => {
+    const gauge = { type: "chart" as const, chart_type: "gauge" as const, series: [{ name: "G", data: [{ x: "x", y: 5 }] }] }
+    const donut = { type: "chart" as const, chart_type: "donut" as const, series: [{ name: "S", data: [{ x: "A", y: 5 }] }] }
+    for (const base of [gauge, donut]) {
+      const withAxes = { ...base, axes: { x_title: "X", y_title: "Y" } }
+      expect(chart.measure(withAxes, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
+    }
+  })
+
+  it("a multi-series scatter/area gains a legend; gauge/donut never do", () => {
+    const scatter2 = {
+      type: "chart" as const,
+      chart_type: "scatter" as const,
+      series: [
+        { name: "Group A", data: [{ x: 1, y: 2 }] },
+        { name: "Group B", data: [{ x: 3, y: 4 }] },
+      ],
+    }
+    const area2 = {
+      type: "chart" as const,
+      chart_type: "area" as const,
+      series: [
+        { name: "North", data: [{ x: "Q1", y: 2 }, { x: "Q2", y: 4 }] },
+        { name: "South", data: [{ x: "Q1", y: 1 }, { x: "Q2", y: 3 }] },
+      ],
+    }
+    const scatter1 = { ...scatter2, series: [scatter2.series[0]!] }
+    const area1 = { ...area2, series: [area2.series[0]!] }
+    expect(chart.measure(scatter2, 1120, ctx)).toBeGreaterThan(chart.measure(scatter1, 1120, ctx))
+    expect(chart.measure(area2, 1120, ctx)).toBeGreaterThan(chart.measure(area1, 1120, ctx))
+  })
+
+  it("renders only svg2pptx-subset primitives for every new subtype", () => {
+    const components = [
+      { type: "chart" as const, chart_type: "scatter" as const, series: [{ name: "S", data: [{ x: 1, y: 2, size: 4 }, { x: 3, y: 8 }] }] },
+      { type: "chart" as const, chart_type: "area" as const, series: [{ name: "S", data: [{ x: "Q1", y: 10 }, { x: "Q2", y: -4 }] }] },
+      { type: "chart" as const, chart_type: "donut" as const, center_total: true, series: [{ name: "S", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }] },
+      { type: "chart" as const, chart_type: "gauge" as const, gauge: { min: 0, max: 200 }, series: [{ name: "G", data: [{ x: "x", y: 150 }] }] },
+    ]
+    for (const component of components) {
+      const markup = renderSvgMarkup(<svg xmlns="http://www.w3.org/2000/svg">{chart.render(component, box, ctx)}</svg>)
+      expect(() => assertSubset(parseSvgRoot(markup)), component.chart_type).not.toThrow()
+    }
+  })
+})

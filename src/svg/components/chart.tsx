@@ -5,29 +5,42 @@ import { accessibleInk } from "../ink"
 import { buildChartModel } from "./chart-model"
 import type { RenderDef, SvgComponent } from "./types"
 import {
+  renderArea,
   renderBar,
   renderBarHorizontal,
   renderDonut,
   renderDumbbell,
+  renderGauge,
   renderLine,
   renderPie,
   renderFunnel,
+  renderScatter,
+  type ChartRenderFn,
 } from "./chart-svg"
 
 type ChartComponent = Extract<Component, { type: "chart" }>
 
 const CHART_H = 240
 
-const renderers = {
+const renderers: Record<ChartComponent["chart_type"], ChartRenderFn> = {
   bar: renderBar,
   line: renderLine,
   pie: renderPie,
   funnel: renderFunnel,
   dumbbell: renderDumbbell,
-} as const
+  scatter: renderScatter,
+  area: renderArea,
+  // `donut` (dedicated subtype) shares renderDonut with the legacy
+  // `pie`+`style:"donut"` dispatch below — renderDonut reads `component` to
+  // decide whether to print the center total, so one function serves both.
+  donut: renderDonut,
+  gauge: renderGauge,
+}
 
-/** 变体分发：bar+direction=horizontal 走横条，pie+style=donut 走环形。 */
-function resolveRenderer(component: ChartComponent) {
+/** 变体分发：bar+direction=horizontal 走横条，pie+style=donut 走环形（沿用旧
+ * 形态，中心总值恒显）；其余按 chart_type 直查 renderers（含新 donut/gauge/
+ * scatter/area）。 */
+function resolveRenderer(component: ChartComponent): ChartRenderFn {
   if (component.chart_type === "bar" && component.direction === "horizontal") {
     return renderBarHorizontal
   }
@@ -46,8 +59,12 @@ function resolveRenderer(component: ChartComponent) {
  *  - bar: APPLICABLE. A clear two-axis cartesian plot box (category axis +
  *    value axis) — the exact shape axis titles and gridlines describe.
  *  - line: APPLICABLE. Same cartesian plot box as bar.
- *  - pie (incl. `style: "donut"`, a variant of the same chart_type):
- *    NOT applicable. Purely radial — no axes, no plot box to title.
+ *  - scatter: APPLICABLE. A numeric x-y plot box — the most literally
+ *    cartesian of them all.
+ *  - area: APPLICABLE. Line's own plot box with the region under it filled.
+ *  - pie / donut / gauge: NOT applicable. Purely radial — no axes, no plot
+ *    box to title (donut is the same "no axes" case whether reached via the
+ *    dedicated chart_type or the legacy `pie`+`style: "donut"` form).
  *  - funnel: NOT applicable. A single value dimension (bar width) with no
  *    second (category) axis paired against it, and no gridline reference
  *    surface (chart-svg.tsx never draws one for funnel) — a title would
@@ -64,7 +81,12 @@ function resolveRenderer(component: ChartComponent) {
  * comment" precedent gantt.tsx's `vx` primitive already set rather than
  * reaching across files for two entries).
  */
-const AXES_APPLICABLE_TYPES: ReadonlySet<ChartComponent["chart_type"]> = new Set(["bar", "line"])
+const AXES_APPLICABLE_TYPES: ReadonlySet<ChartComponent["chart_type"]> = new Set([
+  "bar",
+  "line",
+  "scatter",
+  "area",
+])
 
 function axesApplicable(component: ChartComponent): boolean {
   return AXES_APPLICABLE_TYPES.has(component.chart_type)
@@ -278,6 +300,10 @@ export const chart: SvgComponent<ChartComponent> = {
           ctx.colors.text,
           ctx.colors.accent,
           axes?.show_grid,
+          // Threaded for the subtypes whose geometry needs component-level
+          // config (donut's center_total, gauge's min/max). The five original
+          // renderers ignore it and stay byte-identical (golden-pinned).
+          component,
         )}
         {xTitleFit ? (
           <text

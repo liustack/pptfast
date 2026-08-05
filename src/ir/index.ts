@@ -554,7 +554,10 @@ export type KpiItem = {
 }
 export type ChartSeries = {
   name: string
-  data: { x: string | number; y: number }[]
+  /** `size` is scatter-only: an optional per-point magnitude that turns a
+   * scatter dot into a bubble (chart-depth wave). Every other chart_type
+   * ignores it. Mirrors `components/chart.ts`'s `ChartPointSchema`. */
+  data: { x: string | number; y: number; size?: number }[]
 }
 export type FlowNode = {
   id: string

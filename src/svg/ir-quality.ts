@@ -95,11 +95,12 @@ function hasKpiCardsComponent(slide: Slide): boolean {
  * one a React SVG renderer — same "small local list + comment" precedent
  * `gantt.tsx`'s `vx` primitive already set for `chart-svg.tsx` rather than
  * coupling the two module kinds for two entries). See that file's own doc
- * comment for the per-type rationale (pie is radial with no axes at all —
- * funnel/dumbbell have a value axis but no plot-box gridline surface to
- * anchor a title against).
+ * comment for the per-type rationale (pie/donut/gauge are radial with no axes
+ * at all — funnel/dumbbell have a value axis but no plot-box gridline surface
+ * to anchor a title against; scatter/area are cartesian and DO render axes,
+ * added in the chart-depth wave).
  */
-const AXES_APPLICABLE_CHART_TYPES: ReadonlySet<string> = new Set(["bar", "line"])
+const AXES_APPLICABLE_CHART_TYPES: ReadonlySet<string> = new Set(["bar", "line", "scatter", "area"])
 
 /** True when `axes` carries at least one real setting — `axes: {}` (every
  * sub-field omitted, schema-legal since all three are optional) has nothing
@@ -435,7 +436,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
       slide: index,
       severity: "warn",
       code: "chart_axes_ignored",
-      message: `图表类型 "${component.chart_type}" 不支持坐标轴标题/网格线，axes 字段将被忽略（仅 bar 与 line 支持）`,
+      message: `图表类型 "${component.chart_type}" 不支持坐标轴标题/网格线，axes 字段将被忽略（仅 bar、line、scatter、area 支持）`,
       chartAxesIgnored: { chartType: component.chart_type },
     })
   }
