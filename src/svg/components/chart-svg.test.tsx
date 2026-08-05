@@ -1,9 +1,23 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
-import { renderBar, renderBarHorizontal, renderLine, renderFunnel, renderDonut, renderDumbbell } from "./chart-svg"
+import {
+  renderArea,
+  renderBar,
+  renderBarHorizontal,
+  renderDonut,
+  renderDumbbell,
+  renderFunnel,
+  renderGauge,
+  renderLine,
+  renderScatter,
+} from "./chart-svg"
 import { assertSubset } from "../subset-validate"
-import type { ChartSeries } from "@/ir"
+import { renderSvgMarkup } from "../serialize"
+import { __parseWedgePath } from "../audit/deck-audit"
+import type { ChartSeries, Component } from "@/ir"
+
+type ChartComponentFixture = Extract<Component, { type: "chart" }>
 
 // Task 8: gradient bars, endpoint emphasis and gridlines. These tests call
 // `renderBar`/`renderLine` directly (rather than going through `chart.tsx`)
@@ -983,5 +997,244 @@ describe("subset validation", () => {
     ]
     const { container } = svg(renderBarHorizontal(twoSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
     expect(() => assertSubset(container.querySelector("svg")!)).not.toThrow()
+  })
+})
+
+// ── chart-depth wave: scatter / area / gauge / donut-center ──
+
+describe("renderScatter — numeric points and bubbles (chart-depth wave)", () => {
+  const scatter = (data: { x: number; y: number; size?: number }[]): ChartSeries[] => [{ name: "S1", data }]
+
+  it("renders one circle per point, positioned by numeric x across the x-domain", () => {
+    const { container } = svg(
+      renderScatter(scatter([{ x: 0, y: 0 }, { x: 10, y: 100 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles).toHaveLength(2)
+    // x=0 is the domain min → left edge; x=10 the max → right edge.
+    expect(Number(circles[0].getAttribute("cx"))).toBeCloseTo(0)
+    expect(Number(circles[1].getAttribute("cx"))).toBeCloseTo(W)
+  })
+
+  it("uses a uniform small dot radius when no point carries a size", () => {
+    const { container } = svg(
+      renderScatter(scatter([{ x: 1, y: 2 }, { x: 3, y: 4 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    const rs = Array.from(container.querySelectorAll("circle")).map((c) => Number(c.getAttribute("r")))
+    expect(new Set(rs).size).toBe(1)
+  })
+
+  it("scales bubble radius by sqrt of size so a larger value reads as a larger bubble", () => {
+    const { container } = svg(
+      renderScatter(scatter([{ x: 1, y: 1, size: 1 }, { x: 2, y: 2, size: 100 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    const rs = Array.from(container.querySelectorAll("circle")).map((c) => Number(c.getAttribute("r")))
+    expect(rs[1]).toBeGreaterThan(rs[0])
+  })
+
+  it("renders a single-point scatter without error (pathological fixture)", () => {
+    const { container } = svg(renderScatter(scatter([{ x: 5, y: 5 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(container.querySelectorAll("circle")).toHaveLength(1)
+  })
+
+  it("colors each series from the palette in input order", () => {
+    const two: ChartSeries[] = [
+      { name: "A", data: [{ x: 1, y: 1 }] },
+      { name: "B", data: [{ x: 2, y: 2 }] },
+    ]
+    const { container } = svg(renderScatter(two, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles[0].getAttribute("fill")).toBe(PALETTE[0])
+    expect(circles[1].getAttribute("fill")).toBe(PALETTE[1])
+  })
+
+  it("renders only svg2pptx-subset primitives", () => {
+    const { container } = svg(
+      renderScatter(scatter([{ x: 1, y: 2, size: 3 }, { x: 4, y: 8 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    expect(() => assertSubset(container.querySelector("svg")!)).not.toThrow()
+  })
+})
+
+describe("renderArea — filled line variant (chart-depth wave)", () => {
+  const areaSeries = (...ys: number[]): ChartSeries[] => [{ name: "S1", data: ys.map((y, i) => ({ x: `C${i}`, y })) }]
+
+  it("renders a semi-transparent filled polygon plus a stroke polyline per series", () => {
+    const { container } = svg(renderArea(areaSeries(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(container.querySelectorAll("polygon")).toHaveLength(1)
+    expect(container.querySelectorAll("polyline")).toHaveLength(1)
+    expect(container.querySelector("polygon")!.getAttribute("fill-opacity")).toBe("0.22")
+  })
+
+  it("closes the fill polygon down to the value-zero baseline", () => {
+    const { container } = svg(renderArea(areaSeries(10, 20), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const pts = container.querySelector("polygon")!.getAttribute("points")!.trim().split(" ")
+    const baselineYs = pts.slice(-2).map((p) => Number(p.split(",")[1]))
+    for (const y of baselineYs) expect(y).toBeCloseTo(BASELINE_Y)
+  })
+
+  it("overlays multiple series (one fill + one stroke each), not stacked", () => {
+    const two: ChartSeries[] = [
+      { name: "A", data: [{ x: "C0", y: 10 }, { x: "C1", y: 20 }] },
+      { name: "B", data: [{ x: "C0", y: 5 }, { x: "C1", y: 8 }] },
+    ]
+    const { container } = svg(renderArea(two, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(container.querySelectorAll("polygon")).toHaveLength(2)
+    expect(container.querySelectorAll("polyline")).toHaveLength(2)
+  })
+
+  it("renders category labels once (off series 0), not once per series", () => {
+    const two: ChartSeries[] = [
+      { name: "A", data: [{ x: "Jan", y: 10 }, { x: "Feb", y: 20 }] },
+      { name: "B", data: [{ x: "Jan", y: 5 }, { x: "Feb", y: 8 }] },
+    ]
+    const { container } = svg(renderArea(two, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(Array.from(container.querySelectorAll("text")).map((t) => t.textContent)).toEqual(["Jan", "Feb"])
+  })
+
+  it("renders only svg2pptx-subset primitives (single and multi series)", () => {
+    const { container: a } = svg(renderArea(areaSeries(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(() => assertSubset(a.querySelector("svg")!)).not.toThrow()
+    const { container: b } = svg(
+      renderArea(
+        [
+          { name: "A", data: [{ x: "C0", y: -4 }, { x: "C1", y: 8 }] },
+          { name: "B", data: [{ x: "C0", y: 3 }, { x: "C1", y: 6 }] },
+        ],
+        PALETTE,
+        0,
+        0,
+        W,
+        H,
+        MUTED,
+        TEXT,
+        ACCENT,
+      ),
+    )
+    expect(() => assertSubset(b.querySelector("svg")!)).not.toThrow()
+  })
+})
+
+describe("renderGauge — progress half-ring (chart-depth wave)", () => {
+  const gaugeSeries = (y: number): ChartSeries[] => [{ name: "G", data: [{ x: "Done", y }] }]
+  const gaugeComponent = (y: number, range?: { min?: number; max?: number }): ChartComponentFixture => ({
+    type: "chart",
+    chart_type: "gauge",
+    ...(range ? { gauge: range } : {}),
+    series: gaugeSeries(y),
+  })
+
+  it("renders a muted track, an accent progress arc, and the centered value", () => {
+    const { container } = svg(renderGauge(gaugeSeries(62), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeComponent(62)))
+    expect(container.querySelectorAll("path")).toHaveLength(2)
+    expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "62")).toBe(true)
+  })
+
+  it("0% renders the track but no filled value arc", () => {
+    const { container } = svg(renderGauge(gaugeSeries(0), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeComponent(0)))
+    expect(container.querySelectorAll("path")).toHaveLength(1)
+    expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "0")).toBe(true)
+  })
+
+  it("100% renders a full-sweep value arc", () => {
+    const { container } = svg(renderGauge(gaugeSeries(100), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeComponent(100)))
+    expect(container.querySelectorAll("path")).toHaveLength(2)
+  })
+
+  it("honors a custom min/max range (150 of 0..200), printing the raw value", () => {
+    const { container } = svg(
+      renderGauge(gaugeSeries(150), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeComponent(150, { min: 0, max: 200 })),
+    )
+    expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "150")).toBe(true)
+  })
+
+  it("the progress arc is a parseWedgePath-recognized ring band (hole-excluding attribution, never an AABB fallback)", () => {
+    const { container } = svg(renderGauge(gaugeSeries(80), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeComponent(80)))
+    const valueArc = Array.from(container.querySelectorAll("path")).find((p) => p.getAttribute("fill") === ACCENT)!
+    const sector = __parseWedgePath(valueArc.getAttribute("d")!)
+    expect(sector).not.toBeNull()
+    expect(sector!.ri).toBeGreaterThan(0)
+    expect(sector!.ro).toBeGreaterThan(sector!.ri)
+  })
+
+  it("keeps the centered value's anchor inside the ring hole (distance from center < inner radius)", () => {
+    // The number must land in the hollow so deck-audit attributes it to the
+    // page background, not the arc band — the whole reason the arc uses the
+    // annulus idiom. Assert the geometric precondition directly.
+    const { container } = svg(renderGauge(gaugeSeries(80), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeComponent(80)))
+    const arc = __parseWedgePath(
+      Array.from(container.querySelectorAll("path")).find((p) => p.getAttribute("fill") === ACCENT)!.getAttribute("d")!,
+    )!
+    const numText = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "80")!
+    const nx = Number(numText.getAttribute("x"))
+    const ny = Number(numText.getAttribute("y"))
+    const dist = Math.hypot(nx - arc.cx, ny - arc.cy)
+    expect(dist).toBeLessThan(arc.ri)
+  })
+
+  it("renders only svg2pptx-subset primitives", () => {
+    const { container } = svg(renderGauge(gaugeSeries(62), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeComponent(62)))
+    expect(() => assertSubset(container.querySelector("svg")!)).not.toThrow()
+  })
+})
+
+describe("renderDonut — center-total toggle (chart-depth wave)", () => {
+  const donutSeries: ChartSeries[] = [{ name: "S", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }]
+  const donutComponent = (center_total?: boolean): ChartComponentFixture => ({
+    type: "chart",
+    chart_type: "donut",
+    ...(center_total !== undefined ? { center_total } : {}),
+    series: donutSeries,
+  })
+
+  it("the dedicated donut subtype keeps the center empty by default", () => {
+    const { container } = svg(renderDonut(donutSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, donutComponent()))
+    expect(container.querySelectorAll("text")).toHaveLength(0)
+    expect(container.querySelectorAll("path")).toHaveLength(2)
+  })
+
+  it("center_total: true prints the summed total plus its caption", () => {
+    const { container } = svg(renderDonut(donutSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, donutComponent(true)))
+    const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+    expect(texts).toContain("100")
+    expect(texts).toContain("Total")
+  })
+
+  it("the legacy pie+style path (component undefined) still shows the center total — byte-compat", () => {
+    const { container } = svg(renderDonut(donutSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(Array.from(container.querySelectorAll("text")).map((t) => t.textContent)).toContain("100")
+  })
+})
+
+describe("chart-depth renderers — deterministic double render (byte-identical)", () => {
+  const scatterS: ChartSeries[] = [{ name: "S", data: [{ x: 1, y: 2, size: 5 }, { x: 3, y: 9 }] }]
+  const areaS: ChartSeries[] = [
+    { name: "A", data: [{ x: "C0", y: 10 }, { x: "C1", y: 20 }] },
+    { name: "B", data: [{ x: "C0", y: 5 }, { x: "C1", y: 8 }] },
+  ]
+  const gaugeS: ChartSeries[] = [{ name: "G", data: [{ x: "Done", y: 62 }] }]
+  const gaugeC: ChartComponentFixture = { type: "chart", chart_type: "gauge", series: gaugeS }
+  const donutS: ChartSeries[] = [{ name: "S", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }]
+  const donutC: ChartComponentFixture = { type: "chart", chart_type: "donut", center_total: true, series: donutS }
+
+  it("scatter is byte-identical across two renders", () => {
+    expect(renderSvgMarkup(renderScatter(scatterS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))).toBe(
+      renderSvgMarkup(renderScatter(scatterS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT)),
+    )
+  })
+  it("area is byte-identical across two renders", () => {
+    expect(renderSvgMarkup(renderArea(areaS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))).toBe(
+      renderSvgMarkup(renderArea(areaS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT)),
+    )
+  })
+  it("gauge is byte-identical across two renders", () => {
+    expect(renderSvgMarkup(renderGauge(gaugeS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeC))).toBe(
+      renderSvgMarkup(renderGauge(gaugeS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, gaugeC)),
+    )
+  })
+  it("donut (new subtype, center on) is byte-identical across two renders", () => {
+    expect(renderSvgMarkup(renderDonut(donutS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, donutC))).toBe(
+      renderSvgMarkup(renderDonut(donutS, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false, donutC)),
+    )
   })
 })

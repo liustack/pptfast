@@ -1,5 +1,5 @@
 import type { ReactElement } from "react"
-import type { ChartSeries } from "@/ir"
+import type { ChartSeries, Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { buildChartModel, zeroAxisRatio, type ChartDomain } from "./chart-model"
 
@@ -9,6 +9,35 @@ import { buildChartModel, zeroAxisRatio, type ChartDomain } from "./chart-model"
  * Each function receives an absolute region (x0, y0, w, h) and returns SVG
  * elements positioned in page coordinates (no nested <svg viewBox>).
  */
+
+/** The `chart` IR component, for the renderers whose geometry needs
+ * component-level config beyond `series` (donut's `center_total`, gauge's
+ * `min`/`max` range). Passed as the trailing `component` arg to every
+ * renderer; the ones that don't need it simply omit the parameter and stay
+ * assignable to {@link ChartRenderFn} (a function with fewer parameters is
+ * assignable to one that declares more). */
+type ChartInput = Extract<Component, { type: "chart" }>
+
+/**
+ * The one uniform shape `chart.tsx`'s dispatch calls every chart renderer
+ * through. The trailing `component` is optional so the five original
+ * renderers (which never read it) stay callable unchanged and byte-identical,
+ * while `renderScatter`/`renderGauge`/`renderDonut` read it for their
+ * per-subtype config.
+ */
+export type ChartRenderFn = (
+  series: ChartSeries[],
+  palette: string[],
+  x0: number,
+  y0: number,
+  w: number,
+  h: number,
+  mutedColor: string,
+  textColor: string,
+  accentColor: string,
+  showGrid?: boolean,
+  component?: ChartInput,
+) => ReactElement
 
 /** Label font size (px) for category/value labels on bar and line charts. */
 const LABEL_FONT_SIZE = 11
@@ -986,6 +1015,29 @@ export function renderBarHorizontal(
  */
 const DONUT_HOLE_RATIO = 0.62
 
+/**
+ * One annulus (ring) sector as `renderDonut`'s own wedge idiom — the exact
+ * 23-token `M outer A ... L inner A ... Z` `d` string deck-audit's
+ * `parseWedgePath` recognizes (`svg/audit/deck-audit.ts`). Emitting it verbatim
+ * is what lets `renderGauge`'s progress arc be attributed as a *ring band*
+ * (hole excluded), not its bounding box — a bbox would swallow the centered
+ * gauge number and misattribute its contrast. `startA`/`endA` in radians,
+ * `atan2` convention; `large-arc-flag` derived exactly as the old inline donut
+ * code did (`endA - startA > π ? 1 : 0`) so the pinned donut goldens stay
+ * byte-identical. */
+function annulusSectorPath(cx: number, cy: number, r: number, ri: number, startA: number, endA: number): string {
+  const large = endA - startA > Math.PI ? 1 : 0
+  const ox1 = cx + Math.cos(startA) * r
+  const oy1 = cy + Math.sin(startA) * r
+  const ox2 = cx + Math.cos(endA) * r
+  const oy2 = cy + Math.sin(endA) * r
+  const ix1 = cx + Math.cos(endA) * ri
+  const iy1 = cy + Math.sin(endA) * ri
+  const ix2 = cx + Math.cos(startA) * ri
+  const iy2 = cy + Math.sin(startA) * ri
+  return `M ${ox1} ${oy1} A ${r} ${r} 0 ${large} 1 ${ox2} ${oy2} L ${ix1} ${iy1} A ${ri} ${ri} 0 ${large} 0 ${ix2} ${iy2} Z`
+}
+
 export function renderDonut(
   series: ChartSeries[],
   palette: string[],
@@ -996,12 +1048,19 @@ export function renderDonut(
   mutedColor?: string,
   textColor?: string,
   _accentColor?: string,
-  /** Unused — donut is `chart_type: "pie"` (a style variant, not a separate
-   * chart_type), so it's covered by the same not-`AXES_APPLICABLE_TYPES`
-   * rationale as `renderPie`'s own `_showGrid`. Kept for signature parity
-   * with `resolveRenderer`'s other branches. */
+  /** Unused — donut is radial (`chart_type: "donut"`, or the legacy
+   * `chart_type: "pie"` + `style: "donut"` form), so it's covered by the same
+   * not-`AXES_APPLICABLE_TYPES` rationale as `renderPie`'s own `_showGrid`.
+   * Kept for signature parity with `resolveRenderer`'s other branches. */
   _showGrid?: boolean,
+  /** Center-total gate (chart-depth wave). The legacy `pie`+`style:"donut"`
+   * form and the byte-compat golden call it with `component` undefined and
+   * MUST keep the center total — so `undefined` reads as "show it". The
+   * dedicated `chart_type: "donut"` subtype instead defaults the center to
+   * empty and only prints the total when its own `center_total` is set. */
+  component?: ChartInput,
 ): ReactElement {
+  const showCenter = component?.chart_type === "donut" ? component.center_total === true : true
   const data = series[0]?.data ?? []
   const total = data.reduce((s, d) => s + d.y, 0)
   if (total === 0) return <></>
@@ -1018,45 +1077,298 @@ export function renderDonut(
         const startA = (acc / total) * Math.PI * 2 - Math.PI / 2
         acc += d.y
         const endA = (acc / total) * Math.PI * 2 - Math.PI / 2
-        const large = endA - startA > Math.PI ? 1 : 0
-        const ox1 = cx + Math.cos(startA) * r
-        const oy1 = cy + Math.sin(startA) * r
-        const ox2 = cx + Math.cos(endA) * r
-        const oy2 = cy + Math.sin(endA) * r
-        const ix1 = cx + Math.cos(endA) * ri
-        const iy1 = cy + Math.sin(endA) * ri
-        const ix2 = cx + Math.cos(startA) * ri
-        const iy2 = cy + Math.sin(startA) * ri
+        return <path key={i} d={annulusSectorPath(cx, cy, r, ri, startA, endA)} fill={palette[i % palette.length]} />
+      })}
+      {showCenter && (
+        <>
+          <text
+            data-truncated={fitted.truncated ? "1" : undefined}
+            x={cx}
+            y={cy + fitted.fontSize * 0.15}
+            textAnchor="middle"
+            fontSize={fitted.fontSize}
+            fontWeight="bold"
+            fill={textColor}
+            dominantBaseline="alphabetic"
+          >
+            {fitted.text}
+          </text>
+          <text
+            x={cx}
+            y={cy + fitted.fontSize * 0.15 + 18}
+            textAnchor="middle"
+            fontSize={12}
+            fill={mutedColor}
+            dominantBaseline="alphabetic"
+          >
+            Total
+          </text>
+        </>
+      )}
+    </>
+  )
+}
+
+/**
+ * scatter 散点/气泡图（chart-depth wave）：数值 x/y 点集。y 复用 line 的既有轴
+ * 机制（buildChartModel 的共享零锚定域 + lineValueY），x 是真实数值坐标，走
+ * 自己的内联 min/max 域（同 renderDumbbell 的 vx() 先例，不引入新轴系统）。点
+ * 可选 size：有则半径按面积（sqrt）缩放为气泡，无则统一小圆点。多 series 按调
+ * 色板着色，图例由 chart.tsx 提供。
+ */
+const SCATTER_DOT_R = 5
+const SCATTER_MIN_BUBBLE_R = 6
+const SCATTER_MAX_BUBBLE_R = 26
+
+export function renderScatter(
+  series: ChartSeries[],
+  palette: string[],
+  x0: number,
+  y0: number,
+  w: number,
+  h: number,
+  mutedColor: string,
+  _textColor: string,
+  _accentColor: string,
+  showGrid = true,
+  _component?: ChartInput,
+): ReactElement {
+  const model = buildChartModel(series)
+  const { domain } = model
+  const plotTop = y0 + LABEL_TOP_PAD
+  const plotH = Math.max(0, h - LABEL_TOP_PAD - LABEL_BOTTOM_PAD)
+  const numX = (x: string | number): number => (typeof x === "number" ? x : Number(x))
+  const xsAll = series.flatMap((s) => s.data.map((d) => numX(d.x)))
+  const xMin = xsAll.length ? Math.min(...xsAll) : 0
+  const xMax = xsAll.length ? Math.max(...xsAll) : 1
+  const xSpan = xMax - xMin || 1
+  const xForVal = (v: number) => x0 + ((v - xMin) / xSpan) * w
+  const sizes = series.flatMap((s) => s.data.map((d) => d.size)).filter((s): s is number => s != null)
+  const sizeMax = sizes.length ? Math.max(...sizes) : 0
+  const radiusFor = (size: number | undefined): number => {
+    if (size == null || sizeMax <= 0) return SCATTER_DOT_R
+    // sqrt so bubble AREA (not radius) tracks the value — the
+    // proportional-symbol convention where a 4x value reads as 4x ink.
+    const t = Math.sqrt(Math.max(0, size) / sizeMax)
+    return SCATTER_MIN_BUBBLE_R + t * (SCATTER_MAX_BUBBLE_R - SCATTER_MIN_BUBBLE_R)
+  }
+  return (
+    <>
+      {showGrid && renderGridlines(x0, w, plotTop, plotH, mutedColor)}
+      {series.map((s, sIdx) => (
+        <g key={sIdx}>
+          {s.data.map((d, di) => {
+            const color = palette[sIdx % palette.length]
+            return (
+              <circle
+                key={di}
+                cx={xForVal(numX(d.x))}
+                cy={lineValueY(d.y, domain, plotTop, plotH)}
+                r={radiusFor(d.size)}
+                fill={color}
+                fillOpacity={0.6}
+                stroke={color}
+                strokeWidth={1}
+              />
+            )
+          })}
+        </g>
+      ))}
+      {/* x-axis extent labels only — the two real endpoints of the numeric x
+          domain, anchored to grow inward (edgeAnchor convention line's own
+          category labels use). No tick machinery: this reuses line's plot
+          surface, it does not invent a second axis system. */}
+      {xsAll.length > 0 && (
+        <>
+          <text x={x0} y={y0 + h - 4} textAnchor="start" fontSize={LABEL_FONT_SIZE} fill={mutedColor} dominantBaseline="alphabetic">
+            {String(xMin)}
+          </text>
+          {xMax !== xMin && (
+            <text x={x0 + w} y={y0 + h - 4} textAnchor="end" fontSize={LABEL_FONT_SIZE} fill={mutedColor} dominantBaseline="alphabetic">
+              {String(xMax)}
+            </text>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
+/**
+ * area 面积图（chart-depth wave）：line 渲染路径的填充分支，不是新图元——复用
+ * buildChartModel 的共享类目并集与零锚定域、xForIndex 等距 x、lineValueY、
+ * renderGridlines。每条 series 的曲线下方按基线闭合成半透明填充，多 series 按
+ * 输入次序叠放（非堆叠，各自独立基线，避免误报绝对值），填充半透明以透出彼此。
+ */
+const AREA_FILL_ALPHA = 0.22
+
+export function renderArea(
+  series: ChartSeries[],
+  palette: string[],
+  x0: number,
+  y0: number,
+  w: number,
+  h: number,
+  mutedColor: string,
+  _textColor: string,
+  _accentColor: string,
+  showGrid = true,
+  _component?: ChartInput,
+): ReactElement {
+  const model = buildChartModel(series)
+  const { categories, domain } = model
+  const plotTop = y0 + LABEL_TOP_PAD
+  const plotH = Math.max(0, h - LABEL_TOP_PAD - LABEL_BOTTOM_PAD)
+  const baselineY = plotTop + plotH - zeroAxisRatio(domain) * plotH
+  const categoryMaxWidth = w / Math.max(categories.length - 1, 1)
+  const xForIndex = (i: number) => x0 + (i / Math.max(categories.length - 1, 1)) * w
+  return (
+    <>
+      {showGrid && renderGridlines(x0, w, plotTop, plotH, mutedColor)}
+      {model.series.map((s) => {
+        const sIdx = s.seriesIndex
+        const color = palette[sIdx % palette.length]
+        type Pt = { x: number; y: number }
+        const pointAt: (Pt | null)[] = categories.map((_c, i) => {
+          const value = s.values[i]
+          if (value == null) return null
+          return { x: xForIndex(i), y: lineValueY(value, domain, plotTop, plotH) }
+        })
+        // Contiguous runs split at each gap — one filled polygon + one stroke
+        // per run, exactly renderLine's own missing-category rule.
+        const runs: Pt[][] = []
+        let cur: Pt[] = []
+        for (const p of pointAt) {
+          if (p) cur.push(p)
+          else if (cur.length > 0) {
+            runs.push(cur)
+            cur = []
+          }
+        }
+        if (cur.length > 0) runs.push(cur)
         return (
-          <path
-            key={i}
-            d={`M ${ox1} ${oy1} A ${r} ${r} 0 ${large} 1 ${ox2} ${oy2} L ${ix1} ${iy1} A ${ri} ${ri} 0 ${large} 0 ${ix2} ${iy2} Z`}
-            fill={palette[i % palette.length]}
-          />
+          <g key={sIdx}>
+            {runs.map((run, ri) => (
+              <polygon
+                key={`fill-${ri}`}
+                points={`${run.map((c) => `${c.x},${c.y}`).join(" ")} ${run[run.length - 1]!.x},${baselineY} ${run[0]!.x},${baselineY}`}
+                fill={color}
+                fillOpacity={AREA_FILL_ALPHA}
+                stroke="none"
+              />
+            ))}
+            {runs.map((run, ri) => (
+              <polyline
+                key={`ln-${ri}`}
+                points={run.map((c) => `${c.x},${c.y}`).join(" ")}
+                fill="none"
+                stroke={color}
+                strokeWidth={2}
+              />
+            ))}
+            {sIdx === 0 &&
+              categories.map((cat, i) => {
+                const category = fitSvgLine(String(cat.x), {
+                  maxWidth: categoryMaxWidth,
+                  fontSize: LABEL_FONT_SIZE,
+                  minFontSize: LABEL_MIN_FONT_SIZE,
+                })
+                return (
+                  <text
+                    key={`cat-${cat.key}`}
+                    data-truncated={category.truncated ? "1" : undefined}
+                    x={xForIndex(i)}
+                    y={y0 + h - 4}
+                    textAnchor={edgeAnchor(i, categories.length)}
+                    fontSize={category.fontSize}
+                    fill={mutedColor}
+                    dominantBaseline="alphabetic"
+                  >
+                    {category.text}
+                  </text>
+                )
+              })}
+          </g>
         )
       })}
+    </>
+  )
+}
+
+/**
+ * gauge 进度半环（chart-depth wave）：单值对目标的完成度。上半环 [π, 2π]（y 轴
+ * 向下坐标里经 3π/2＝12 点方向），muted 轨道 + accent 进度弧按 frac 填充，大数值
+ * 居中。进度弧走 annulusSectorPath 的 donut 惯用形，deck-audit 的 parseWedgePath
+ * 因此按环带（含内孔）精确归属——居中大字落在内孔（距圆心 < ri），归属到页面
+ * 背景而非弧带，杜绝误归属。非指针式表盘（与体系气质不合）。
+ */
+const GAUGE_HOLE_RATIO = 0.6
+/** Track opacity kept below deck-audit's `MIN_BG_OPACITY` (0.5) so the muted
+ * background ring never even registers as a text-background candidate. */
+const GAUGE_TRACK_OPACITY = 0.18
+
+export function renderGauge(
+  series: ChartSeries[],
+  _palette: string[],
+  x0: number,
+  y0: number,
+  w: number,
+  h: number,
+  mutedColor: string,
+  textColor: string,
+  accentColor: string,
+  _showGrid = false,
+  component?: ChartInput,
+): ReactElement {
+  const value = series[0]?.data[0]?.y
+  if (value == null) return <></>
+  const min = component?.chart_type === "gauge" ? component.gauge?.min ?? 0 : 0
+  const max = component?.chart_type === "gauge" ? component.gauge?.max ?? 100 : 100
+  const range = max - min
+  const frac = range > 0 ? Math.max(0, Math.min(1, (value - min) / range)) : 0
+  const cx = x0 + w / 2
+  // Outer radius bounded by half-width and the height above the caption band;
+  // the semicircle's [cy-ro, cy] span is centered vertically in the plot area.
+  const availH = h - LABEL_BOTTOM_PAD
+  const ro = Math.max(1, Math.min(w / 2 - 8, availH - 8))
+  const cy = y0 + (availH + ro) / 2
+  const ri = ro * GAUGE_HOLE_RATIO
+  const startA = Math.PI
+  const endValue = Math.PI + frac * Math.PI
+  const valueLabel = String(value)
+  const numFit = fitSvgLine(valueLabel, { maxWidth: ri * 1.6, fontSize: Math.min(44, ro * 0.55), minFontSize: 16 })
+  const caption = series[0]?.data[0]?.x
+  const captionText = caption == null ? "" : String(caption)
+  return (
+    <>
+      {/* full half-ring track (below the candidate-opacity floor) */}
+      <path d={annulusSectorPath(cx, cy, ro, ri, startA, 2 * Math.PI)} fill={mutedColor} fillOpacity={GAUGE_TRACK_OPACITY} />
+      {/* filled progress arc (annulus idiom → hole-excluding attribution) */}
+      {frac > 0 && <path d={annulusSectorPath(cx, cy, ro, ri, startA, endValue)} fill={accentColor} />}
       <text
-        data-truncated={fitted.truncated ? "1" : undefined}
+        data-truncated={numFit.truncated ? "1" : undefined}
         x={cx}
-        y={cy + fitted.fontSize * 0.15}
+        y={cy - ro * 0.06}
         textAnchor="middle"
-        fontSize={fitted.fontSize}
+        fontSize={numFit.fontSize}
         fontWeight="bold"
         fill={textColor}
         dominantBaseline="alphabetic"
       >
-        {fitted.text}
+        {numFit.text}
       </text>
-      <text
-        x={cx}
-        y={cy + fitted.fontSize * 0.15 + 18}
-        textAnchor="middle"
-        fontSize={12}
-        fill={mutedColor}
-        dominantBaseline="alphabetic"
-      >
-        Total
-      </text>
+      {captionText.length > 0 && (
+        <text
+          x={cx}
+          y={cy + LABEL_FONT_SIZE + 4}
+          textAnchor="middle"
+          fontSize={LABEL_FONT_SIZE}
+          fill={mutedColor}
+          dominantBaseline="alphabetic"
+        >
+          {fitSvgLine(captionText, { maxWidth: w * 0.9, fontSize: LABEL_FONT_SIZE, minFontSize: 9 }).text}
+        </text>
+      )}
     </>
   )
 }

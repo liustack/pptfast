@@ -184,6 +184,83 @@ describe("expressive components: roadmap / matrix / insight_panel", () => {
   })
 })
 
+describe("chart subtypes (chart-depth wave: scatter / area / donut / gauge)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const chart = (extra: Record<string, unknown>) => withComponents([{ type: "chart", ...extra }])
+
+  it("accepts the four new chart_type values alongside the original five", () => {
+    for (const chart_type of ["bar", "line", "pie", "funnel", "dumbbell", "scatter", "area", "donut", "gauge"]) {
+      // scatter/gauge get shape-valid single-value fixtures; the rest share one label series.
+      const series =
+        chart_type === "scatter"
+          ? [{ name: "s", data: [{ x: 1, y: 2 }] }]
+          : [{ name: "s", data: [{ x: "A", y: 5 }] }]
+      expect(parsePptxIR(chart({ chart_type, series })).success, chart_type).toBe(true)
+    }
+  })
+
+  it("scatter accepts numeric x-y pairs with an optional per-point size (bubble)", () => {
+    const d = chart({ chart_type: "scatter", series: [{ name: "s", data: [{ x: 1, y: 2, size: 8 }, { x: 3, y: 4 }] }] })
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("scatter rejects a string x — the model reaching for line/bar by the wrong name", () => {
+    const d = chart({ chart_type: "scatter", series: [{ name: "s", data: [{ x: "Q1", y: 2 }] }] })
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("scatter accepts a single point (a legal, if minimal, plot)", () => {
+    expect(parsePptxIR(chart({ chart_type: "scatter", series: [{ name: "s", data: [{ x: 5, y: 5 }] }] })).success).toBe(true)
+  })
+  it("scatter rejects a negative per-point size", () => {
+    const d = chart({ chart_type: "scatter", series: [{ name: "s", data: [{ x: 1, y: 2, size: -3 }] }] })
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("donut accepts an optional center_total flag", () => {
+    expect(parsePptxIR(chart({ chart_type: "donut", center_total: true, series: [{ name: "s", data: [{ x: "A", y: 5 }] }] })).success).toBe(true)
+    expect(parsePptxIR(chart({ chart_type: "donut", series: [{ name: "s", data: [{ x: "A", y: 5 }] }] })).success).toBe(true)
+  })
+
+  it("gauge accepts exactly one series with one point, with an optional min/max range", () => {
+    expect(parsePptxIR(chart({ chart_type: "gauge", series: [{ name: "s", data: [{ x: "Done", y: 62 }] }] })).success).toBe(true)
+    expect(parsePptxIR(chart({ chart_type: "gauge", gauge: { min: 0, max: 200 }, series: [{ name: "s", data: [{ x: "Done", y: 150 }] }] })).success).toBe(true)
+  })
+  it("gauge rejects more than one data point (kpi_cards territory)", () => {
+    const d = chart({ chart_type: "gauge", series: [{ name: "s", data: [{ x: "A", y: 1 }, { x: "B", y: 2 }] }] })
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("gauge rejects more than one series", () => {
+    const d = chart({ chart_type: "gauge", series: [{ name: "a", data: [{ x: "A", y: 1 }] }, { name: "b", data: [{ x: "B", y: 2 }] }] })
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("gauge rejects a max at or below min", () => {
+    const d = chart({ chart_type: "gauge", gauge: { min: 100, max: 50 }, series: [{ name: "s", data: [{ x: "A", y: 60 }] }] })
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("gauge boundary values 0% and 100% are legal", () => {
+    for (const y of [0, 100]) {
+      expect(parsePptxIR(chart({ chart_type: "gauge", series: [{ name: "s", data: [{ x: "P", y }] }] })).success, String(y)).toBe(true)
+    }
+  })
+
+  it("area accepts a multi-series category shape, like line", () => {
+    const d = chart({
+      chart_type: "area",
+      series: [
+        { name: "a", data: [{ x: "Q1", y: 5 }, { x: "Q2", y: 8 }] },
+        { name: "b", data: [{ x: "Q1", y: 3 }, { x: "Q2", y: 6 }] },
+      ],
+    })
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+  it("area accepts a negative value (volume can dip below the baseline)", () => {
+    expect(parsePptxIR(chart({ chart_type: "area", series: [{ name: "s", data: [{ x: "Q1", y: -4 }, { x: "Q2", y: 6 }] }] })).success).toBe(true)
+  })
+})
+
 describe("swot component (structure-components wave task 1, named-slot family)", () => {
   const withComponents = (components: any[]) => {
     const d: any = minimal()
