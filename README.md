@@ -7,7 +7,7 @@ DrawingML out.
 
 ## Why
 
-Freeform SVG/HTML-to-PPTX pipelines have a high ceiling but an unstable floor — a weak model (or a strong one having an off turn) produces a deck that's broken, off-brand, or unreadable. pptfast trades freeform drawing for a controlled vocabulary: a semantic IR (zod schema), 16 built-in themes bundling a style (design tokens) and a brand (identity chrome), a layout-and-component library with seeded variety, and native DrawingML output where every shape stays editable — not a picture pasted onto a slide.
+Freeform SVG/HTML-to-PPTX pipelines have a high ceiling but an unstable floor — a weak model (or a strong one having an off turn) produces a deck that's broken, off-brand, or unreadable. pptfast trades freeform drawing for a controlled vocabulary: a semantic IR (zod schema), 17 built-in themes bundling a style (design tokens) and a brand (identity chrome), a layout-and-component library with seeded variety, and native DrawingML output where every shape stays editable — not a picture pasted onto a slide.
 
 That editability claim has one honest boundary: shapes and text runs are the native unit pptfast emits, and every one is a real PowerPoint object you can select, restyle, and retype (that includes the shapes and text a `chart` or `data_table` component draws). What pptfast does not produce is a native PowerPoint chart part or table object: no embedded chart data, no `<a:tbl>`. A chart's bars and a table's cells are geometry and text, not a data-bound object PowerPoint can redraw from new numbers, so change the numbers by editing the IR and re-rendering, not by dragging a bar or typing into a cell. That is a deliberate trade for the deterministic, seed-stable output described above, not an oversight, and it does not weaken the editability claim for every other shape on the slide.
 
@@ -94,7 +94,7 @@ No `installPlatform()` call is needed in a browser — DOM parsing and (for `--p
 | `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
 | `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
 | `schema [--style \| --spec]` | Print the IR JSON Schema (or the style-override schema, or the deck spec schema) |
-| `themes [--json]` | List the 16 built-in themes |
+| `themes [--json]` | List the 17 built-in themes |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | Extract brand colors/fonts from a `.thmx`/`.potx`/`.pptx` into a theme file, entirely locally (see Your own brand) — load it with `--theme-file` (also on `validate`/`audit`/`preview`/`serve`) or as a deck project's `theme.json` |
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`) — same `target` forms as `render`, never gated on placeholder pages |
@@ -115,7 +115,7 @@ The v4 IR schema is frozen as of 0.4.0 — future evolution is additive only (ne
 
 ## Themes
 
-A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 16 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — none of the 16 narrows anything today (an earlier three-theme exclusion was reverted once every archetype's ink adapted to its actual background). Override the style (`--style`) to re-color a theme.
+A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 17 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — none of the 17 narrows anything today (an earlier three-theme exclusion was reverted once every archetype's ink adapted to its actual background). Override the style (`--style`) to re-color a theme.
 
 | id | label |
 |---|---|
@@ -135,6 +135,7 @@ A theme bundles a style (design tokens), a brand (identity chrome), and a layout
 | `pulse` | Health & Life Science |
 | `terra` | Sustainability & ESG |
 | `ember` | Startup Pitch |
+| `vermilion` | Official Report |
 
 ### Your own brand
 

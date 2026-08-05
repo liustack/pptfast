@@ -312,7 +312,7 @@ describe("ConstellationEnding", () => {
   // (`<tspan fill="#2DD4E6">.</tspan>`); this adds a second, independently
   // measured no-op witness (`enterprise`, one of the 9 themes whose accent
   // already clears 3:1 against its own ending background — the full
-  // pass/fail split across all 16 themes is measured and recorded in
+  // pass/fail split across all 17 themes is measured and recorded in
   // `deck-audit.test.ts`'s dedicated 16-theme sweep, not repeated here).
   it("enterprise: the accent-colored period keeps the theme's own accent fill (already clears 3:1 — accessibleInk is a no-op)", () => {
     const ctx = buildCtx(resolveStyle("enterprise"), {})
@@ -329,12 +329,12 @@ describe("ConstellationEnding", () => {
   // `colors.bg` by theme calibration, so this fallback always clears the 3:1
   // large-text floor too — never mind which of the two branches
   // (`colors.accent` kept, or `colors.text` fallback) actually fires. Proves
-  // that "coherence property" for real, across all 16 canonical themes, not
+  // that "coherence property" for real, across all 17 canonical themes, not
   // just the two named witnesses above: whichever fill the period ends up
   // with is always one of `colors.accent`/`colors.text` (never a third,
   // neutral value) and always clears the required ratio against the real
   // rendered background.
-  it("coherence property, all 16 themes: the period's fill is always colors.accent or colors.text, and always clears the 3:1 large-text floor", () => {
+  it("coherence property, all 17 themes: the period's fill is always colors.accent or colors.text, and always clears the 3:1 large-text floor", () => {
     for (const themeId of CANONICAL_THEME_IDS) {
       const ctx = buildCtx(resolveStyle(themeId), {})
       const slide: Slide = { type: "ending", heading: "Thank you.", components: [] } as Slide

@@ -673,9 +673,9 @@ describe("registerTheme: unmeasured-font-width console.warn", () => {
   // resolve to a non-exact face, or (b) starts routing builtins through
   // `registerTheme`, fails loudly here instead of silently starting to spam
   // every consumer.
-  it("regression: bloom/ink/journal/runway's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
+  it("regression: bloom/ink/journal/runway/vermilion's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const nonExactHeadingBuiltins = new Set(["bloom", "ink", "journal", "runway"])
+    const nonExactHeadingBuiltins = new Set(["bloom", "ink", "journal", "runway", "vermilion"])
     for (const id of CANONICAL_THEME_IDS) {
       const style = THEME_DEFINITIONS[id].style
       const headingFace = resolveFontFace(style.fonts.heading, "heading")

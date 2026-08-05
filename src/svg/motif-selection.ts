@@ -62,6 +62,7 @@
  * | pulse | pulse-motif *(singleton)* | themes-16 wave, task T1 (2026-07-28): pulse's thin ECG pulse-line + capsule/cell-dot vocabulary is its own new technique family with no sibling among the other 13 motifs (not organic-blob like classroom/bloom, not thin-ornamental-line like journal/heritage/luxe, not grid-geometry like consulting/enterprise) — pairing it with any existing motif would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/ink) |
  * | terra | terra-motif *(singleton)* | themes-16 wave, task T2 (2026-07-28): terra's topographic contour-line + leaf-vein/seed-dot vocabulary is its own new technique family — closer to classroom/bloom's organic register than to any grid or ornamental-line family, but its lines are irregular *closed terrain rings* (a land/growth reading), not smooth color blobs or watercolor wash, so pairing it with classroom/bloom would still read as a mismatched skin. Stays a candidate set of 1 (same rationale pattern as pulse/campaign/ink) |
  * | ember | ember-motif *(singleton)* | themes-16 wave, task T3 (2026-07-28): ember's rising-spark-particle vocabulary (dots fading along an ascending bezier arc) is its own new technique family — a directional motion mark, not a static blob/ornament/grid/glow like any of the other 15 motifs, so no existing motif reads as a compatible sibling. Stays a candidate set of 1 (same rationale pattern as pulse/terra/campaign/ink) |
+ * | vermilion | vermilion-motif *(singleton)* | gov-theme wave (2026-08-06): vermilion's flag-ribbon-arc + gold-ray-fan vocabulary is its own new technique family — a filled tapering ribbon along an ascending bezier plus a radiating thin-line ray fan, reading as ceremonial "提气/庄重" official-report identity. Not a static blob/ornament, not a grid/glow, not ember's fading particle trail — no existing motif reads as a compatible sibling, and its deliberately-restrained CJK-official register would clash with any of the other 16. Stays a candidate set of 1 (same rationale pattern as pulse/terra/ember/campaign/ink) |
  *
  * `tone-adaptive-motif` — the 13th registered motif archetype — is
  * deliberately absent from every candidate set above: its own source header
@@ -166,6 +167,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifAr
   pulse: ["pulse-motif"],
   terra: ["terra-motif"],
   ember: ["ember-motif"],
+  vermilion: ["vermilion-motif"],
 }
 
 /**

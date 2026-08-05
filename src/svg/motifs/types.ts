@@ -30,3 +30,4 @@ export type MotifArchetypeId =
   | "pulse-motif" // 2026-07-28 themes-16 wave T1：细脉搏线+胶囊/细胞圆点簇（pulse 专属，第 14 主题）
   | "terra-motif" // 2026-07-28 themes-16 wave T2：等高线+叶脉/种子点簇（terra 专属，第 15 主题）
   | "ember-motif" // 2026-07-28 themes-16 wave T3：上升火花（渐隐圆点粒子沿弧线上升，ember 专属，第 16 主题）
+  | "vermilion-motif" // 2026-08-06 gov-theme wave：旗帜感绸带弧线 + 金色光芒细线（vermilion 专属，第 17 主题；刻意不用政治符号）
