@@ -271,6 +271,14 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
     rows: [{ cells: { metric: "Revenue", q1: "120" }, emphasis: "total" }],
   },
   device_mockup: deviceMockupDangling,
+  cycle: {
+    type: "cycle",
+    items: [
+      { label: "Design" },
+      { label: "Build" },
+      { label: "Review" },
+    ],
+  },
 }
 
 const ONE_PX_PNG =
