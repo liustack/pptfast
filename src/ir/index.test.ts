@@ -1301,6 +1301,101 @@ describe("people_cards component (people_cards wave, `.issues/2026-08-05-compone
   })
 })
 
+describe("logo_wall component (logo_wall wave, `.issues/2026-08-06-logo-wall/plan.md` — 37th component)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const logos = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ asset_id: `logo-${i + 1}` }))
+  const logoWallComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "logo_wall",
+    items: logos(6),
+    ...overrides,
+  })
+
+  it("accepts the schema minimum (4 logos)", () => {
+    expect(parsePptxIR(withComponents([logoWallComponent({ items: logos(4) })])).success).toBe(true)
+  })
+
+  it("accepts the schema maximum (12 logos)", () => {
+    expect(parsePptxIR(withComponents([logoWallComponent({ items: logos(12) })])).success).toBe(true)
+  })
+
+  it("accepts an optional overall title and per-item label", () => {
+    const d = withComponents([
+      logoWallComponent({
+        title: "As seen in",
+        items: [
+          { asset_id: "the-ledger", label: "The Ledger Review" },
+          { asset_id: "vantage", label: "Vantage Wire" },
+          { asset_id: "circuit" },
+          { asset_id: "harbor", label: "Harbor Press" },
+        ],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts omitting the optional title and per-item label", () => {
+    expect(parsePptxIR(withComponents([logoWallComponent({ items: logos(4) })])).success).toBe(true)
+  })
+
+  // ── 裁定 1: fewer than 4 logos don't need a wall — the hard floor, with a
+  // clear error pointing authors at image/image_grid instead. ──
+  it("rejects 3 logos (too few for a wall) with a message pointing at image/image_grid", () => {
+    const d = withComponents([logoWallComponent({ items: logos(3) })])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/at least 4 logos/)
+      expect(result.error).toMatch(/image_grid/)
+    }
+  })
+
+  it("rejects 0 logos", () => {
+    expect(parsePptxIR(withComponents([logoWallComponent({ items: logos(0) })])).success).toBe(false)
+  })
+
+  // ── 裁定 4: past 12 each logo shrinks below a legible size — split across
+  // multiple slides instead. ──
+  it("rejects 13 logos with a message explaining the ceiling", () => {
+    const d = withComponents([logoWallComponent({ items: logos(13) })])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/at most 12/)
+    }
+  })
+
+  it("rejects an item missing asset_id", () => {
+    const d = withComponents([logoWallComponent({ items: [{ label: "no asset" }, ...logos(4)] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...logoWallComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown item-level field (strict)", () => {
+    const d = withComponents([
+      logoWallComponent({ items: [{ asset_id: "logo-x", bogus: 1 }, ...logos(4)] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  // ── 裁定 1: no grayscale/link/weight fields — not part of this
+  // component's minimal semantic surface. ──
+  it("rejects a grayscale field on an item (not part of this component's schema)", () => {
+    const d = withComponents([
+      logoWallComponent({ items: [{ asset_id: "logo-x", grayscale: true }, ...logos(4)] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

@@ -2198,4 +2198,21 @@ describe("irJsonSchema", () => {
     expect(json).toContain("the initials badge is derived from this exact string")
     expect(json).toContain("a CJK name takes only its first character (surname), never two")
   })
+
+  // logo_wall wave (`.issues/2026-08-06-logo-wall/plan.md`, 裁定 5): the
+  // model already guesses this component's own name — the selection guidance
+  // (logo_wall vs image_grid vs device_mockup) has to reach the emitted JSON
+  // Schema the model reads, not just a source comment.
+  it("surfaces logo_wall's component-selection guidance (when to use it vs `image_grid`/`device_mockup`)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("Lays 4-12 organization/brand logos out on an even wall")
+    expect(json).toContain("contain-fit (never cropped)")
+    expect(json).toContain("Keep `image_grid`")
+  })
+
+  it("surfaces logo_wall's asset_id field-level guidance (the contain-fit backing contract)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("drawn contain-fit (never cropped) on an auto-generated neutral backing panel")
+    expect(json).toContain("transparent single-ink logo")
+  })
 })

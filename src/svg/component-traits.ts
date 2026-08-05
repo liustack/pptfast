@@ -36,6 +36,7 @@ import { traits as dataTableTraits } from "@/ir/components/data-table"
 import { traits as deviceMockupTraits } from "@/ir/components/device-mockup"
 import { traits as cycleTraits } from "@/ir/components/cycle"
 import { traits as peopleCardsTraits } from "@/ir/components/people-cards"
+import { traits as logoWallTraits } from "@/ir/components/logo-wall"
 
 /**
  * Component trait registry (W2 task 5, spec §3/§6/§8 — re-derived as a pure
@@ -148,6 +149,7 @@ const ALL_TRAITS: Record<ComponentType, ComponentTraits> = {
   device_mockup: deviceMockupTraits,
   cycle: cycleTraits,
   people_cards: peopleCardsTraits,
+  logo_wall: logoWallTraits,
 }
 
 /** Every component type whose own domain-file `traits` declares `trait: true`, collected as a `ReadonlySet`. */

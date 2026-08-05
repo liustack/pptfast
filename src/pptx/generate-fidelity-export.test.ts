@@ -157,6 +157,18 @@ const deviceMockupDangling: Component = {
   url: "app.example.com",
   caption: "missing asset",
 }
+/** logo_wall shares the same "asset missing → label/placeholder, backing
+ *  panel still renders" contract (logo_wall wave) — same dangling-id pattern,
+ *  at the schema-minimum 4 items. */
+const logoWallDangling: Component = {
+  type: "logo_wall",
+  items: [
+    { asset_id: "does-not-exist-1", label: "Acme" },
+    { asset_id: "does-not-exist-2", label: "Globex" },
+    { asset_id: "does-not-exist-3" },
+    { asset_id: "does-not-exist-4", label: "Initech" },
+  ],
+}
 
 /** One minimal-valid instance per registered component type. */
 const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
@@ -286,6 +298,7 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
       { name: "王小明", role: "Product Manager", org: "Acme Corp" },
     ],
   },
+  logo_wall: logoWallDangling,
 }
 
 const ONE_PX_PNG =
