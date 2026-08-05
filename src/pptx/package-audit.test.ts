@@ -524,6 +524,67 @@ describe("auditPptxPackage — image-alt-dropped, image_grid/background closure"
   })
 })
 
+// device_mockup wave (`.issues/2026-08-05-component-waves/
+// plan-device-mockup.md`, Global Constraint 3 + plan's own "Add a
+// package-audit round-trip test case for device_mockup"): a new
+// `aria-label` emission site (`device-mockup.tsx`'s screen `<image>`),
+// wired the same way as `image.tsx`'s. Covers both device shapes since
+// each is a fully separate render branch.
+describe("auditPptxPackage — image-alt-dropped, device_mockup closure", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+  it("round-trips green for a browser device_mockup's alt text", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [
+            {
+              type: "device_mockup",
+              device: "browser",
+              asset_id: "dash",
+              url: "app.example.com/dispatch",
+              caption: "Live dispatch queue",
+            },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { dash: { src: REAL_PNG, alt: "Route optimization dashboard" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Route optimization dashboard"`)
+  })
+
+  it("round-trips green for a phone device_mockup's alt text", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "Body",
+          components: [{ type: "device_mockup", device: "phone", asset_id: "app_shot" }],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: { app_shot: { src: REAL_PNG, alt: "Mobile app home screen" } },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="Mobile app home screen"`)
+  })
+})
+
 // Alt-emission-closure fix wave: `checkImageAltExported` rewritten to key
 // off actually-rendered image ops (`ImageOp[]`) instead of the IR's
 // *declared* `slide.components` list — the reviewer-caught defect fixed
