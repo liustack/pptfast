@@ -127,7 +127,8 @@ pptfast preview deck-dir/ -o preview/ --html
 | 系列数据（趋势、对比、占比） | `chart`（`bar`/`line`/`pie`/`funnel`/`dumbbell`） | 埋在 `bullets` 里的数字 |
 | 受众要逐行读的精确数字（价目表、规格表、按周期分列的指标网格） | `data_table` | `chart` |
 | 线性流程，无分支 | `steps` | `flowchart` |
-| 有分支或循环的流程 | `flowchart` | `steps` |
+| 有分支、且最终走到终点的流程 | `flowchart` | `steps` |
+| 循环往复、没有终点的流程（首尾相连回到起点，如 PDCA、产品生命周期、飞轮、季节性循环） | `cycle` | `flowchart` |
 | 双方对比 | `comparison` | 两份 bullet 列表 |
 | 系统/组织分层（一叠层带，例如技术栈分层或成熟度阶梯） | `architecture` | `bullets` |
 | 有日期的里程碑 | `timeline` | 带日期的 `bullets` |
@@ -143,11 +144,17 @@ pptfast preview deck-dir/ -o preview/ --html
 | 跨阶段的比例流量/数量分布（例如预算分配、能源结构） | `sankey` | `chart`（funnel）或 `flowchart` |
 | 产品/软件截图，这张 slide 要让人一眼认出「这是真实、正在运行的软件」（App 仪表盘、真实产品界面） | `device_mockup` | `image` |
 
-`steps` 和 `flowchart` 是最常见的混用：只要分支路径从不出现，就是 `steps`。`roadmap` 和 `gantt` 是次常见的：`roadmap` 把多条工作线分组进泳道，没有共享的数值坐标轴，`gantt` 则把带日期的条形画在一根所有条目共同比对的共享坐标轴上。`pest` 和 `swot` 是再下一个：`pest` 只看外部宏观环境因素（没有内部优势/劣势这条轴），永远是同样命名的四个类别——一份内部对外部的战略评估仍然是 `swot`。`sankey` 和 `flowchart`/funnel `chart` 是再下一个：`sankey` 在分支/汇合的路径上守恒并拆分一个数量（带宽本身就承载意义），`flowchart` 是没有数量含义的决策/流程分支，funnel `chart` 则永远只沿一条线收窄，从不分支也不汇合。`data_table` 和 `chart` 和 `comparison` 是最后一组：受众要逐行读的精确数字用 `data_table`，一眼看出趋势/对比形态的用 `chart`，没有精确数字、只做定性并排属性对比的用 `comparison`。
+`steps` 和 `flowchart` 是最常见的混用：只要分支路径从不出现，就是 `steps`。`flowchart` 和 `cycle` 是次常见的：这个流程最终走到一个终点，还是转回自己的起点？把一个闭环硬塞进 `flowchart`，那条收尾的回边会被画成一条横跨整张图的迷路线段或大弧线——这不是画图的 bug，是选错了 component；只要最后一个阶段的箭头是指回第一个阶段，就该换成 `cycle`。`roadmap` 和 `gantt` 是再下一个：`roadmap` 把多条工作线分组进泳道，没有共享的数值坐标轴，`gantt` 则把带日期的条形画在一根所有条目共同比对的共享坐标轴上。`pest` 和 `swot` 是再下一个：`pest` 只看外部宏观环境因素（没有内部优势/劣势这条轴），永远是同样命名的四个类别——一份内部对外部的战略评估仍然是 `swot`。`sankey` 和 `flowchart`/funnel `chart` 是再下一个：`sankey` 在分支/汇合的路径上守恒并拆分一个数量（带宽本身就承载意义），`flowchart` 是没有数量含义的决策/流程分支，funnel `chart` 则永远只沿一条线收窄，从不分支也不汇合。`data_table` 和 `chart` 和 `comparison` 是最后一组：受众要逐行读的精确数字用 `data_table`，一眼看出趋势/对比形态的用 `chart`，没有精确数字、只做定性并排属性对比的用 `comparison`。
 
 `architecture` 的 `layers` 数组默认从上到下画（`layers[0]` 是最顶层的那条带）——这是自顶向下撰写系统分层（表现层在前、基础设施在后）的自然顺序。如果是一个自底向上的叙事（成熟度阶梯、基础优先的能力模型），就按它自己从低到高的自然顺序撰写，并在 component 上设 `direction: "bottom_up"`，让 `layers[0]` 改画在最底部——不要手动把数组倒过来伪造这个效果，这个字段存在的意义正是让数组始终保持叙事顺序。
 
 `swot`/`bmc`/`waterfall`/`gantt`/`pest`/`five_forces`/`heatmap`/`sankey` 是「满幅」（full-body）组件：各自占满整张 slide，且必须是该 slide 唯一的 component——见下文「容量」。
+
+### cycle vs. flowchart
+
+两者都是用箭头把一串阶段连起来，区别在于这个流程有没有终点。`flowchart` 面向一个从某处开始、到某处结束的流程，哪怕中途有分支；硬要用它画一个闭环，做法只能是从最后一个节点拉一条边指回第一个节点，而 `flowchart` 的排布引擎并不知道这条边有什么特殊——画出来就是一条横跨整张图的迷路线段或大弧线，读起来像画错了，不像「这个流程会重复」。`cycle` 面向没有终点、总会转回自己起点的流程（PDCA、产品生命周期、飞轮、季节性循环、「设计 → 构建 → 复盘 → 设计」）。判断标准很直接：最后一个阶段的箭头，指向的是一个新东西，还是指回第一个阶段？指回第一个阶段，就用 `cycle`，不用再犹豫。
+
+字段：`items`（3-8 项，每项必填 `label`，可选 `description`），可选的整体 `title`。`cycle` 不接受 `direction` 字段（阶段固定按顺时针排布，`items` 就按这个阅读顺序撰写），也没有中心文字槽——把内容留给阶段本身，别的信息放进 slide 周围的文字里。3 是硬下限（2 个阶段视觉上闭不成一个环，该用 `flowchart` 或 `steps`），8 是硬上限（第 9 个节点会把环挤到 1280x720 slide 上不够清楚的程度，超过就拆成多张 `cycle` slide，不要硬塞进一个环里）。
 
 ### 设备样机 vs. 普通图片
 
