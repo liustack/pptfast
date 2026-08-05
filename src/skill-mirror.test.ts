@@ -150,8 +150,11 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
       const next = rest.search(/^## /m)
       return next === -1 ? rest : rest.slice(0, next)
     }
+    // Commands live in ```bash fenced blocks (not inline backticks) — match
+    // whole command lines; trailing per-line comments are language-variant
+    // prose, so strip them before comparing.
     const commands = (section: string) =>
-      [...section.matchAll(/`pptfast [^`]+`/g)].map((m) => m[0])
+      [...section.matchAll(/^pptfast .+$/gm)].map((m) => m[0].replace(/\s+#.*$/, "").trimEnd())
     const en = commands(sectionAfter(read(EN_REL), /^## Brand themes[^\n]*$/m))
     const zh = commands(sectionAfter(read(ZH_REL), /^## 品牌主题[^\n]*$/m))
     expect(en.length, "SKILL.md Brand-themes section has no pptfast command lines").toBeGreaterThan(0)
