@@ -28,6 +28,14 @@ export type { PptxIRV3 } from "./ir/legacy-v3"
 export { migrateIrV3ToV4 } from "./ir/migrate"
 export { registerTheme, getInstalledThemeIds, getThemeDefinition } from "./themes/definitions"
 export type { ThemeDefinition, ThemeRegistration } from "./themes/definitions"
+// Brand extraction (brand-extract wave, roadmap §2.0.1): extract brand
+// colors/fonts from a user's own .thmx/.potx/.pptx locally — zip bytes in,
+// pure theme-file JSON out (jszip only, browser-safe) — and load such a file
+// back through the registerTheme seam (with its contrast hard gate). The
+// `pptfast brand extract` CLI command and `--theme-file` flag wrap these.
+export { extractBrandTheme } from "./themes/brand-extract"
+export type { BrandThemeFile, ExtractBrandThemeOptions } from "./themes/brand-extract"
+export { parseBrandThemeFile, registerBrandThemeFile, BrandThemeFileSchema } from "./themes/brand-theme-file"
 export {
   resolveNarrative,
   NARRATIVE_PRESETS,

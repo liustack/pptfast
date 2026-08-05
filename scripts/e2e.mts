@@ -169,6 +169,56 @@ if (!brandedSlideXml.includes("0B5FFF"))
   throw new Error("e2e: --style primary color not found in any branded slide XML")
 console.log("style override leg OK (--style color reached DrawingML)")
 
+// 3d) brand extraction leg (brand-extract wave, 裁定 5's e2e requirement):
+//     programmatically built fixture zip (never a real Microsoft file) →
+//     `pptfast brand extract` via the built CLI → `render --theme-file` →
+//     the exported PPTX's DrawingML must carry the extracted brand colors.
+//     The package-audit hard gate (leg 2b — no skip switch) already vets the
+//     branded package's structure the same way it vets every other render in
+//     this script; the interactive PowerPoint repair-dialog probe stays a
+//     release-time manual step (docs/testing.md), same as for every leg.
+console.log("--- brand extraction leg ---")
+const { buildThmxBytes, DEFAULT_THMX_COLORS } = await import("../src/themes/__fixtures__/thmx")
+const brandFixturePath = join(OUT, "brand-fixture.pptx")
+writeFileSync(brandFixturePath, Buffer.from(await buildThmxBytes({ schemeName: "E2E Brand" })))
+const brandThemePath = join(OUT, "e2e-brand.theme.json")
+const extractMsg = sh("node", ["dist/cli.js", "brand", "extract", brandFixturePath, "-o", brandThemePath])
+console.log(extractMsg)
+if (!extractMsg.includes('theme "e2e-brand"')) {
+  throw new Error("e2e: brand leg — extract output does not carry the expected theme id (output-filename slug)")
+}
+const brandThemeFile = JSON.parse(readFileSync(brandThemePath, "utf8")) as {
+  id: string
+  style: { colors: { primary: string; muted: string } }
+}
+if (brandThemeFile.style.colors.primary !== `#${DEFAULT_THMX_COLORS.accent1}`) {
+  throw new Error(
+    `e2e: brand leg — extracted primary ${brandThemeFile.style.colors.primary}, expected #${DEFAULT_THMX_COLORS.accent1}`,
+  )
+}
+const brandPptxPath = join(OUT, "brand-themed.pptx")
+console.log(
+  sh("node", ["dist/cli.js", "render", "examples/basic.json", "-o", brandPptxPath, "--theme-file", brandThemePath]),
+)
+const brandThemedZip = await JSZip.loadAsync(readFileSync(brandPptxPath))
+const brandThemedSlideXml = (
+  await Promise.all(
+    Object.keys(brandThemedZip.files)
+      .filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k))
+      .map((k) => brandThemedZip.file(k)!.async("string")),
+  )
+).join("")
+const expectedBrandHexes = [DEFAULT_THMX_COLORS.accent1, DEFAULT_THMX_COLORS.accent2]
+if (!expectedBrandHexes.some((hex) => brandThemedSlideXml.includes(hex))) {
+  throw new Error(
+    `e2e: brand leg — none of the extracted accent colors (${expectedBrandHexes.join(", ")}) reached the DrawingML`,
+  )
+}
+if (!brandThemedSlideXml.includes(brandThemeFile.style.colors.muted.replace("#", ""))) {
+  throw new Error("e2e: brand leg — the derived muted color did not reach the DrawingML")
+}
+console.log("brand extraction leg OK (fixture → extract → --theme-file render → brand colors in DrawingML)")
+
 // 4) optional visual gate: LibreOffice PDF conversion (skipped when unavailable)
 try {
   sh("soffice", ["--headless", "--convert-to", "pdf", "--outdir", OUT, pptxPath])

@@ -84,7 +84,7 @@ const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文�
 
 | 命令 | 作用 |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--style <file>] [--draft]` | 校验并渲染成 `.pptx`——`target` 可以是 IR JSON 文件、deck 项目目录，或裸名（见「Deck 项目」） |
+| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | 校验并渲染成 `.pptx`——`target` 可以是 IR JSON 文件、deck 项目目录，或裸名（见「Deck 项目」） |
 | `validate <target>` | 校验 IR，输出带页码的错误信息与提示性警告——`target` 形式同 `render` |
 | `audit <target> [--json] [--pixels]` | 确定性几何审查（溢出/越界/低对比度/重叠/内容截断/内容丢失）——`target` 形式同 `render`，一旦发现问题 exit 1（见「审查」） |
 | `asset-brief <target> [--json]` | 为每个 `image` 组件生成一份配图简报——真实渲染框、裁切模式、建议生成尺寸、主题色板/气质、可直接粘贴的提示词（见「配图简报」） |
@@ -93,6 +93,7 @@ const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文�
 | `disassemble <ir.json> -o <dir>` | 把 IR JSON 文件拆成 deck 项目目录 |
 | `schema [--style \| --spec]` | 输出 IR 的 JSON Schema（或 style 覆盖 schema，或 deck spec schema） |
 | `themes [--json]` | 列出 16 个内置主题 |
+| `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见「你自己的品牌」）——用 `--theme-file` 装载（`validate`/`audit`/`preview`/`serve` 同样支持），或作为 deck 项目的 `theme.json` |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`）——`target` 形式同 `render`，永远不受占位页拦截 |
 | `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新，批注直接提交回 deck 目录生成 `revision-request.json` |
@@ -132,6 +133,17 @@ v4 IR schema 自 0.4.0 起冻结——后续演进只走加法（新增可选字
 | `pulse` | Health & Life Science |
 | `terra` | Sustainability & ESG |
 | `ember` | Startup Pitch |
+
+### 你自己的品牌
+
+让产出看起来像*你的公司*而不是某个内置主题，最快的路径是从你已有的模板里抽取品牌。`pptfast brand extract` 从 `.thmx` 主题、`.potx` 模板或 `.pptx` 演示文稿中读出配色与字体——**完全在本地进行，文件从不离开你的机器**（已对 macOS PowerPoint 自带的全部 39 个 Office 主题逐一验证）——并写出一个 pptfast 主题文件：
+
+```bash
+pptfast brand extract corp-template.pptx -o my-brand.theme.json
+pptfast render deck.json -o deck.pptx --theme-file my-brand.theme.json
+```
+
+`--theme-file` 在 `render`、`validate`、`audit`、`preview`、`serve` 上都可用。在 deck 项目目录里，把文件放进去命名为 `theme.json` 即可在每条命令上自动装载——在 `deck.spec.json` 里引用它的 id，不需要任何 flag。OOXML 的 12 个色槽与 pptfast 的 tokens 几乎一一对应（六个强调色恰好构成图表色板）。唯一需要派生的 token 是 `muted`：向背景色逐步混合，止步于仍能保住 4.5:1 对比度的最后一档。装载时执行与所有注册主题相同的对比度底线：文字与背景过近的配色会被拒绝，错误信息写明失败的 token、实测比值与对应背景——绝不渲染出不可读的结果。自定义主题永远不能顶替内置 id。
 
 ## 叙事
 

@@ -5,6 +5,7 @@ import {
   runAssemble,
   runAssetBrief,
   runAudit,
+  runBrandExtract,
   runDisassemble,
   runInit,
   runMigrate,
@@ -39,30 +40,38 @@ program
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .requiredOption("-o, --output <file>", "output .pptx path")
   .option("--theme <id>", "override the deck theme (see `pptfast themes`)")
+  .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) and render with it")
   .option("--style <path>", "style overrides JSON re-coloring the theme (see `pptfast schema --style`)")
   .option("--draft", "allow unfilled placeholder pages (skip the draft gate)")
-  .action(async (target: string, opts: { output: string; theme?: string; style?: string; draft?: boolean }) => {
-    try {
-      console.log(
-        await runRender(target, {
-          output: opts.output,
-          theme: opts.theme,
-          stylePath: opts.style,
-          draft: opts.draft,
-        }),
-      )
-    } catch (e) {
-      fail(e)
-    }
-  })
+  .action(
+    async (
+      target: string,
+      opts: { output: string; theme?: string; themeFile?: string; style?: string; draft?: boolean },
+    ) => {
+      try {
+        console.log(
+          await runRender(target, {
+            output: opts.output,
+            theme: opts.theme,
+            themeFilePath: opts.themeFile,
+            stylePath: opts.style,
+            draft: opts.draft,
+          }),
+        )
+      } catch (e) {
+        fail(e)
+      }
+    },
+  )
 
 program
   .command("validate")
   .description("Validate an IR JSON file, deck project directory, or bare deck name against the schema")
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
-  .action(async (target: string) => {
+  .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) before validating")
+  .action(async (target: string, opts: { themeFile?: string }) => {
     try {
-      console.log(await runValidate(target))
+      console.log(await runValidate(target, process.cwd(), { themeFilePath: opts.themeFile }))
     } catch (e) {
       fail(e)
     }
@@ -76,9 +85,14 @@ program
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .option("--json", "machine-readable output (the full AuditReport)")
   .option("--pixels", "also run the optional pixel-contrast pass over image-backed text (requires sharp)")
-  .action(async (target: string, opts: { json?: boolean; pixels?: boolean }) => {
+  .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) and audit with it")
+  .action(async (target: string, opts: { json?: boolean; pixels?: boolean; themeFile?: string }) => {
     try {
-      const { output, hasFindings } = await runAudit(target, { json: opts.json, pixels: opts.pixels })
+      const { output, hasFindings } = await runAudit(target, {
+        json: opts.json,
+        pixels: opts.pixels,
+        themeFilePath: opts.themeFile,
+      })
       console.log(output)
       if (hasFindings) process.exit(1)
     } catch (e) {
@@ -188,6 +202,27 @@ program
   .option("--json", "machine-readable output")
   .action((opts: { json?: boolean }) => console.log(runThemes(Boolean(opts.json))))
 
+// `brand` is a command group (not a bare `brand-extract` command) to leave
+// room for future brand-asset extraction (logo from the slide master, etc.)
+// under the same namespace — brand-extract wave, 裁定 1.
+const brand = program.command("brand").description("Brand asset commands — extract your company's colors/fonts from an Office template")
+brand
+  .command("extract")
+  .description(
+    "Extract brand colors and fonts from a .thmx/.potx/.pptx file into a pptfast theme file — runs entirely locally, the file never leaves your machine",
+  )
+  .argument("<file>", "a .thmx theme, .potx template, or .pptx presentation")
+  .requiredOption("-o, --output <file>", "output theme JSON path (e.g. my-brand.theme.json)")
+  .option("--id <id>", "theme id to register under (default: slug of the output filename)")
+  .option("--label <label>", "human-readable theme label (default: the source theme's color-scheme name)")
+  .action(async (file: string, opts: { output: string; id?: string; label?: string }) => {
+    try {
+      console.log(await runBrandExtract(file, { output: opts.output, id: opts.id, label: opts.label }))
+    } catch (e) {
+      fail(e)
+    }
+  })
+
 program
   .command("narratives")
   .description("List named narrative presets (strategy/pacing/audience axes + theme recommendations)")
@@ -221,9 +256,10 @@ program
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .requiredOption("-o, --output <dir>", "output directory")
   .option("--html", "also write a self-contained preview.html (all slides inlined — thumbnail strip, keyboard navigation) for human review")
-  .action(async (target: string, opts: { output: string; html?: boolean }) => {
+  .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) and preview with it")
+  .action(async (target: string, opts: { output: string; html?: boolean; themeFile?: string }) => {
     try {
-      console.log(await runPreview(target, opts.output, { htmlOut: opts.html }))
+      console.log(await runPreview(target, opts.output, { htmlOut: opts.html, themeFilePath: opts.themeFile }))
     } catch (e) {
       fail(e)
     }
@@ -235,7 +271,8 @@ program
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
   .option("--port <number>", `port to listen on (default ${DEFAULT_PORT})`)
   .option("--no-open", "do not open the URL in a browser after starting")
-  .action(async (target: string, opts: { port?: string; open: boolean }) => {
+  .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) and serve with it")
+  .action(async (target: string, opts: { port?: string; open: boolean; themeFile?: string }) => {
     try {
       let port: number | undefined
       if (opts.port !== undefined) {
@@ -244,7 +281,7 @@ program
           fail(new Error(`invalid --port value "${opts.port}" — expected an integer`))
         }
       }
-      await runServe(target, { port, open: opts.open })
+      await runServe(target, { port, open: opts.open, themeFilePath: opts.themeFile })
     } catch (e) {
       fail(e)
     }

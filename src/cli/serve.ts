@@ -102,6 +102,14 @@ export interface ServeOptions {
    *  auto-increments). */
   port?: number
   cwd?: string
+  /** `--theme-file <path>` (brand-extract wave) — threaded into every
+   *  `buildDeckPreview` call (initial and each rebuild). The registration is
+   *  idempotent per id (`registerBrandThemeFile`, `../themes/brand-theme-file.ts`),
+   *  so re-running it every rebuild is safe — but note the flip side: the
+   *  first successful registration wins for the process's lifetime, so
+   *  editing the theme file itself mid-serve does not live-reload the brand
+   *  (restart `pptfast serve` for that). */
+  themeFilePath?: string
 }
 
 export interface ServeHandle {
@@ -395,7 +403,7 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
   // there is no previous-good HTML to fall back to yet, so an invalid target
   // must fail this call outright (CLI exit 1, same as every other command)
   // rather than start a server with nothing to show at `GET /`.
-  const initial = await buildDeckPreview(options.target, { cwd })
+  const initial = await buildDeckPreview(options.target, { cwd, themeFilePath: options.themeFilePath })
   let cachedHtml = injectServeClient(initial.html)
   const sseClients = new Set<ServerResponse>()
   // <deck-dir>/revision-request.json, or — bare-IR target — alongside the
@@ -431,7 +439,7 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
 
   async function rebuild(): Promise<void> {
     try {
-      const result = await buildDeckPreview(options.target, { cwd })
+      const result = await buildDeckPreview(options.target, { cwd, themeFilePath: options.themeFilePath })
       cachedHtml = injectServeClient(result.html)
       broadcast("reload", {})
     } catch (e) {
@@ -651,6 +659,8 @@ export interface RunServeOptions {
   /** `false` suppresses the browser launch (`--no-open`). Default `true`. */
   open?: boolean
   cwd?: string
+  /** `--theme-file <path>` — see {@link ServeOptions.themeFilePath}. */
+  themeFilePath?: string
 }
 
 /**
@@ -664,7 +674,7 @@ export interface RunServeOptions {
  * blocking on anything.
  */
 export async function runServe(target: string, opts: RunServeOptions = {}): Promise<void> {
-  const handle = await createServeServer({ target, port: opts.port, cwd: opts.cwd })
+  const handle = await createServeServer({ target, port: opts.port, cwd: opts.cwd, themeFilePath: opts.themeFilePath })
   console.log(`pptfast serve: ${handle.url} (Ctrl+C to stop)`)
   if (opts.open !== false) openBrowser(handle.url)
   process.on("SIGINT", () => {

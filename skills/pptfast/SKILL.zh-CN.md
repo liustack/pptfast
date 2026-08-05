@@ -55,7 +55,7 @@ pptfast themes --json      # built-in themes (id + label)
 写任何页面内容之前，先提议并确认：
 
 - 先定 narrative：从 `narratives` 输出里挑一个匹配这份 deck 目的与受众的具名预设（或单独覆盖某几条轴）——这是位于 theme 之上的一层决策，不是视觉选择
-- 再定 theme id：从选定 narrative 的 `themeRecommendations` 里挑（如果都不合适，就从 `themes` 输出里挑一个贴合这份 deck 调性的——这只是推荐，从不构成约束）
+- 再定 theme id：从选定 narrative 的 `themeRecommendations` 里挑（如果都不合适，就从 `themes` 输出里挑一个贴合这份 deck 调性的——这只是推荐，从不构成约束）。如果用户提供了公司模板，先抽成自定义 theme——见下方「品牌主题」
 - 起草 `deck.spec.json`：每页一条记录（`id`、`type`、`heading`，可选加 `beat`/`focus`/`summary`）——以 `cover` 开篇，以 `ending` 收尾，中间的每一页都是 `content` 或 `chapter`
 - 跑 `pptfast spec validate deck.spec.json`，把它报出的问题都修掉，直到打印 `OK`——边界页、标题长度、beat 轮换、页数是否匹配 pacing 这些硬门都在这一步触发，早于任何一页正文的写作
 - `spec validate` 打印 `OK` 之后，在 `deck.spec.json` 里设一个 `seed`（任意整数）以保证修订稳定——现在就写一个，或者在阶段三跑一次 `pptfast assemble`，把它打印出的 `generated seed …` 值抄进 spec。没有固化的 seed，之后改一页的标题就可能打乱其余每一页自动选出的 layout
@@ -116,6 +116,17 @@ pptfast preview deck-dir/ -o preview/ --html
 1. **改一页**（「改一下第 3 页」「把 KPI 那页写得更有冲击力」，或交回一份 `revision-request.json`）→ 走阶段六：改那一页的文件，重新 assemble、重新 validate、重新 audit。没人问起的页面绝不去碰。
 2. **一份新 deck**（不同的主题、不同的受众，或明确要求重新开始）→ 走阶段一：新建一个 deck 项目目录，重新决定 narrative/theme，重新起一份 spec。
 3. **和 deck 生成无关**（关于内容本身的问题，或任何和 slides 没有关联的事）→ 完全不要调用 pptfast。
+
+## 品牌主题——用户自己的公司模板
+
+当用户递来（或提到手头有）公司模板——`.thmx` 主题、`.potx` 模板，或任何带品牌的 `.pptx`——先把它的配色和字体抽成自定义 theme，**再**进入阶段二的 theme 决策。抽取完全在本地进行，文件从不离开这台机器。
+
+```bash
+pptfast brand extract corp-template.pptx -o deck-dir/theme.json --id acme
+pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.spec.json 里写 "theme": "acme"
+```
+
+放在 deck 项目目录里的 `theme.json` 会在每条命令（validate/render/audit/preview/serve）上自动装载——在 `deck.spec.json` 里引用它的 id 即可，不需要任何 flag。单个 IR 文件则改用 `--theme-file deck-dir/theme.json`（同样五条命令都支持）。装载时会执行对比度底线检查：文字与背景色过于接近的模板会被拒绝，错误信息里写明是哪个 token、比值是多少——把这条信息转告用户，问 TA 是想调整抽出文件里的颜色，还是退回内置 theme。
 
 ## 内容方法论
 

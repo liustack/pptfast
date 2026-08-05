@@ -1,5 +1,5 @@
-import { mkdir, rm, writeFile } from "node:fs/promises"
-import { dirname, join, relative, resolve } from "node:path"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { basename, dirname, join, relative, resolve } from "node:path"
 import {
   formatIssues,
   formatWarnings,
@@ -21,7 +21,10 @@ import { migrateDeckPlanToSpec } from "../spec/migrate"
 import { AUDIENCE_VALUES, PACING_BUDGETS, STRATEGY_DEFINITIONS, NARRATIVE_PRESETS, resolveNarrative, type NarrativeProfile } from "../narrative"
 import { auditDeck, type AuditChecks, type AuditFinding, type AuditReport } from "../svg/audit/deck-audit"
 import { buildAssetBrief, type AssetBrief, type AssetBriefItem } from "../svg/asset-brief"
-import { getInstalledThemeIds } from "../themes/definitions"
+import { assertContrastFloor, getInstalledThemeIds } from "../themes/definitions"
+import { extractBrandTheme, slugify } from "../themes/brand-extract"
+import { parseBrandThemeFile, registerBrandThemeFile } from "../themes/brand-theme-file"
+import { CANONICAL_THEME_IDS } from "../themes"
 import { CONFIG_FILENAME, findConfig, findUserConfig } from "./config"
 import {
   assertSafeFileSegment,
@@ -32,6 +35,7 @@ import {
   writeDeckAssets,
   PLAN_FILENAME,
   SPEC_FILENAME,
+  THEME_FILENAME,
 } from "./deck-dir"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 import { buildPreviewHtml } from "./preview-html"
@@ -57,6 +61,39 @@ async function loadStyleFile(path: string): Promise<StyleOverride> {
     throw new PptfastError(`invalid style file ${path}:\n${detail}`)
   }
   return r.data
+}
+
+/**
+ * Read + validate + register a brand theme file (brand-extract wave, 裁定 3:
+ * loading always goes through `registerTheme`, so its contrast hard gate
+ * fires here, before `validateIr` ever sees the deck). Returns the loaded
+ * theme's id. Throws {@link PptfastError} for an unreadable/malformed file
+ * (`parseBrandThemeFile`'s own path-naming message), a builtin-id collision
+ * (裁定 4 — a theme file must never shadow a builtin), or a contrast-floor
+ * failure (`registerTheme`'s `assertContrastFloor`, whose message names the
+ * failing token, the measured ratio, and the background). Re-loading a file
+ * whose id is already registered is a no-op (`registerBrandThemeFile`'s own
+ * idempotency — `pptfast serve`'s rebuild loop re-runs this every rebuild).
+ */
+async function loadThemeFile(path: string): Promise<string> {
+  const raw = await loadIrFile(path, "theme")
+  return registerBrandThemeFile(parseBrandThemeFile(raw, path))
+}
+
+/**
+ * Deck-project `theme.json` auto-discovery (brand-extract wave, 裁定 3's
+ * zero-flag convention): a `theme.json` in the deck project directory —
+ * typically `pptfast brand extract`'s own output, dropped there so the deck
+ * carries its brand with it — is loaded automatically before the deck is
+ * assembled, so `deck.spec.json` can reference the custom theme's id with no
+ * `--theme-file` flag on any command. Must run *before* `readDeckDir`: the
+ * assemble step's own `validateSpec` hard-gates the spec's theme id against
+ * `getInstalledThemeIds()`, which only includes the custom id once this has
+ * registered it.
+ */
+async function registerDeckThemeFile(deckDir: string): Promise<void> {
+  const themePath = join(deckDir, THEME_FILENAME)
+  if (await pathExists(themePath)) await loadThemeFile(themePath)
 }
 
 /** Names which of the four precedence layers the (invalid) resolved `theme`
@@ -115,7 +152,11 @@ function resolveDecksDirSource(
  * `theme`, or `PptxIRSchema`'s own "consulting" default when nothing
  * anywhere sets one — that bottom fallback is `irTheme.id`/`irTheme.style`
  * below, left `undefined` here for the schema to fill in). `--theme` only
- * swaps theme.id — IR-authored style survives.
+ * swaps theme.id — IR-authored style survives. `--theme-file` (brand-extract
+ * wave) slots in between `--theme` and the project config: it registers the
+ * file's theme first (see `opts.themeFilePath`'s own doc comment below),
+ * then its id competes at flag precedence, losing only to an explicit
+ * `--theme`.
  *
  * `opts.projectHit`/`opts.userHit` are the caller's own already-fetched
  * `findConfig(cwd)`/`findUserConfig()` results (`undefined` when the caller
@@ -137,7 +178,22 @@ function resolveDecksDirSource(
  */
 export async function applyDeckConfig(
   raw: unknown,
-  opts: { theme?: string; stylePath?: string; cwd: string; projectHit?: ProjectConfigHit; userHit?: UserConfigHit },
+  opts: {
+    theme?: string
+    /** `--theme-file <path>` (brand-extract wave): loads + registers the
+     *  theme file ({@link loadThemeFile} — `registerTheme`'s contrast gate
+     *  fires here, before `validateIr`), then applies the loaded id at the
+     *  CLI-flag precedence layer — an explicit `--theme` still wins the id
+     *  *selection* (the file stays registered either way, so `--theme
+     *  <the-file's-own-id>` is redundant-but-harmless, and `--theme
+     *  <some-builtin>` deliberately renders that builtin while the file's
+     *  theme sits unused). */
+    themeFilePath?: string
+    stylePath?: string
+    cwd: string
+    projectHit?: ProjectConfigHit
+    userHit?: UserConfigHit
+  },
 ): Promise<void> {
   if (typeof raw !== "object" || raw === null) return // schema error surfaces in validateIr
   const deck = raw as Record<string, unknown>
@@ -145,11 +201,13 @@ export async function applyDeckConfig(
     typeof deck.theme === "object" && deck.theme !== null
       ? (deck.theme as Record<string, unknown>)
       : {}
+  const themeFileId = opts.themeFilePath !== undefined ? await loadThemeFile(opts.themeFilePath) : undefined
   const [projectHit, userHit] = await Promise.all([
     opts.projectHit !== undefined ? Promise.resolve(opts.projectHit) : findConfig(opts.cwd),
     opts.userHit !== undefined ? Promise.resolve(opts.userHit) : findUserConfig(),
   ])
-  const theme = opts.theme ?? projectHit?.config.theme ?? userHit?.config.theme ?? (irTheme.id as string | undefined)
+  const theme =
+    opts.theme ?? themeFileId ?? projectHit?.config.theme ?? userHit?.config.theme ?? (irTheme.id as string | undefined)
   const style = opts.stylePath
     ? await loadStyleFile(opts.stylePath)
     : (projectHit?.config.style ?? userHit?.config.style ?? irTheme.style)
@@ -209,6 +267,10 @@ async function loadDeckTarget(
 ): Promise<{ raw: unknown; baseDir: string; isDir: boolean; resolvedTarget: string }> {
   const target = await resolveDeckTarget(arg, resolveDecksDirSource(projectHit, userHit), cwd)
   if (await isDeckDirectory(target)) {
+    // Brand-extract wave: a deck-local theme.json must be registered before
+    // readDeckDir's own assemble step spec-validates the theme id — see
+    // registerDeckThemeFile's doc comment.
+    await registerDeckThemeFile(target)
     const { ir, deckDir } = await readDeckDir(target)
     return { raw: ir, baseDir: deckDir, isDir: true, resolvedTarget: deckDir }
   }
@@ -220,6 +282,8 @@ async function loadDeckTarget(
 export interface RenderOptions {
   output: string
   theme?: string
+  /** `--theme-file <path>` — see `applyDeckConfig`'s own `themeFilePath` doc comment. */
+  themeFilePath?: string
   stylePath?: string
   cwd?: string
   /** Skip the unfilled-placeholder-pages gate (W5 task 1) — see `generatePptx` in `../api`. */
@@ -248,7 +312,14 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
   const { raw, baseDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
-  await applyDeckConfig(raw, { theme: opts.theme, stylePath: opts.stylePath, cwd, projectHit, userHit })
+  await applyDeckConfig(raw, {
+    theme: opts.theme,
+    themeFilePath: opts.themeFilePath,
+    stylePath: opts.stylePath,
+    cwd,
+    projectHit,
+    userHit,
+  })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
@@ -356,10 +427,14 @@ function placeholderNote(ir: PptxIR): string | undefined {
  * identical rejection semantics with `render` by construction, not by
  * keeping two copies of the same logic in sync by hand.
  */
-export async function runValidate(irPath: string, cwd = process.cwd()): Promise<string> {
+export async function runValidate(
+  irPath: string,
+  cwd = process.cwd(),
+  opts: { themeFilePath?: string } = {},
+): Promise<string> {
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
   const { raw, baseDir, isDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
-  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  await applyDeckConfig(raw, { themeFilePath: opts.themeFilePath, cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok)
     throw new PptfastError(
@@ -445,6 +520,8 @@ export interface AuditOptions {
    *  existing invalid-IR `PptfastError` path) rather than silently
    *  reporting a clean pixel check that never ran. */
   pixels?: boolean
+  /** `--theme-file <path>` — see `applyDeckConfig`'s own `themeFilePath` doc comment. */
+  themeFilePath?: string
 }
 
 export interface AuditCliResult {
@@ -491,7 +568,7 @@ export async function runAudit(target: string, opts: AuditOptions = {}): Promise
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
   const { raw, baseDir } = await loadDeckTarget(target, cwd, projectHit, userHit)
-  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  await applyDeckConfig(raw, { themeFilePath: opts.themeFilePath, cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok) {
     throw new PptfastError(
@@ -610,6 +687,13 @@ export async function runAssetBrief(target: string, opts: AssetBriefOptions = {}
  */
 export async function runSpecValidate(specPath: string): Promise<string> {
   const raw = await loadIrFile(specPath, "spec")
+  // Brand-extract wave: a spec that names a custom theme id normally sits in
+  // a deck project directory whose own theme.json defines it — auto-load it
+  // from alongside the spec file, same zero-flag convention loadDeckTarget
+  // applies for whole-directory targets, so `pptfast spec validate
+  // deck-dir/deck.spec.json` doesn't hard-fail the theme gate a later
+  // `pptfast validate deck-dir/` would pass.
+  await registerDeckThemeFile(dirname(resolve(specPath)))
   const v = validateSpec(raw)
   if (!v.ok) {
     throw new PptfastError(formatInvalidSpecError(v.errors))
@@ -637,6 +721,73 @@ export function runThemes(asJson: boolean): string {
   const themes = listThemes()
   if (asJson) return JSON.stringify(themes, null, 2)
   return themes.map((t) => `${t.id.padEnd(12)} ${t.label}`).join("\n")
+}
+
+export interface BrandExtractOptions {
+  output: string
+  /** `--id` (裁定 4) — defaults to a slug of the output filename. */
+  id?: string
+  /** `--label` — defaults to the source theme's own color-scheme name. */
+  label?: string
+}
+
+/** `basename(output)` minus a trailing `.theme.json`/`.json`, slugged — the
+ *  裁定 4 default id (`my-brand.theme.json` → `my-brand`). */
+function defaultThemeIdFor(output: string): string {
+  return slugify(basename(output).replace(/\.theme\.json$|\.json$/i, ""))
+}
+
+/**
+ * `pptfast brand extract <file> -o <out.theme.json> [--id] [--label]`
+ * (brand-extract wave, roadmap §2.0.1): extract brand colors/fonts from a
+ * user's own `.thmx`/`.potx`/`.pptx` **locally** — the file's bytes never
+ * leave the machine; there is no network call anywhere in this path — into a
+ * pptfast theme file (`extractBrandTheme`, `../themes/brand-extract.ts`).
+ *
+ * Two fail-fast checks beyond extraction itself, both mirroring what the
+ * load path would reject later, surfaced here where the fix is cheapest:
+ * - a builtin-id collision (`--id consulting`, or an output filename that
+ *   slugs to one) errors now, with the same message shape
+ *   `registerBrandThemeFile` uses — never writes a file that every load
+ *   attempt would refuse (裁定 4).
+ * - a derived palette that would fail `registerTheme`'s contrast floor
+ *   (`assertContrastFloor` — a pathological source template whose text/
+ *   background tones are too close) still writes the file but appends the
+ *   would-be load error as a warning, so the user can hand-adjust the
+ *   written JSON's colors instead of discovering the problem at render time.
+ */
+export async function runBrandExtract(file: string, opts: BrandExtractOptions): Promise<string> {
+  let bytes: Buffer
+  try {
+    bytes = await readFile(file)
+  } catch {
+    throw new PptfastError(`cannot read template file: ${file}`)
+  }
+  const id = opts.id ?? defaultThemeIdFor(opts.output)
+  if ((CANONICAL_THEME_IDS as readonly string[]).includes(id)) {
+    throw new PptfastError(
+      `theme id "${id}" collides with a built-in pptfast theme — pick a different id with --id (or a different output filename)`,
+    )
+  }
+  const theme = await extractBrandTheme(bytes, { id, label: opts.label })
+  const outPath = resolve(opts.output)
+  await mkdir(dirname(outPath), { recursive: true })
+  await writeFile(outPath, JSON.stringify(theme, null, 2) + "\n")
+  const c = theme.style.colors
+  const lines = [
+    `wrote ${opts.output} (theme "${theme.id}", label "${theme.label}")`,
+    `  colors: bg ${c.bg}, text ${c.text}, primary ${c.primary}, accent ${c.accent}, muted ${c.muted} (derived), ${c.chartPalette.length} chart colors`,
+    `  fonts: heading "${theme.style.fonts.heading[0]}", body "${theme.style.fonts.body[0]}"`,
+    `use it: pptfast render <deck> --theme-file ${opts.output} — or drop it into a deck project directory as ${THEME_FILENAME} and reference "${theme.id}" as the deck's theme`,
+  ]
+  try {
+    assertContrastFloor(theme.id, theme.style)
+  } catch (e) {
+    lines.push(
+      `warning: this theme will be refused at load time — ${e instanceof Error ? e.message : String(e)}. Edit the written file's colors (darker text, or a lighter bg) before using it`,
+    )
+  }
+  return lines.join("\n")
 }
 
 /**
@@ -703,6 +854,8 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
 
 export interface PreviewOptions {
   cwd?: string
+  /** `--theme-file <path>` — see `applyDeckConfig`'s own `themeFilePath` doc comment. */
+  themeFilePath?: string
   /** `--html` (v0.3 W7 task 1, spec §7 workflow ⑤): also write a
    *  self-contained `preview.html` alongside the per-slide SVG files —
    *  every slide's already-rendered SVG inlined into one file (thumbnail
@@ -755,11 +908,14 @@ interface DeckRenderResult {
   normalized?: string[]
 }
 
-async function renderDeckSlides(target: string, opts: { cwd?: string } = {}): Promise<DeckRenderResult> {
+async function renderDeckSlides(
+  target: string,
+  opts: { cwd?: string; themeFilePath?: string } = {},
+): Promise<DeckRenderResult> {
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
   const { raw, baseDir, isDir, resolvedTarget } = await loadDeckTarget(target, cwd, projectHit, userHit)
-  await applyDeckConfig(raw, { cwd, projectHit, userHit })
+  await applyDeckConfig(raw, { themeFilePath: opts.themeFilePath, cwd, projectHit, userHit })
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
@@ -839,7 +995,10 @@ export interface DeckPreviewResult extends DeckRenderResult {
   checks?: AuditChecks
 }
 
-export async function buildDeckPreview(target: string, opts: { cwd?: string } = {}): Promise<DeckPreviewResult> {
+export async function buildDeckPreview(
+  target: string,
+  opts: { cwd?: string; themeFilePath?: string } = {},
+): Promise<DeckPreviewResult> {
   const rendered = await renderDeckSlides(target, opts)
   const { html, findings, checks } = buildDeckAuditAndHtml(rendered.ir, rendered.svgs)
   return { ...rendered, html, findings, checks }
@@ -871,7 +1030,7 @@ export async function buildDeckPreview(target: string, opts: { cwd?: string } = 
  * in this file.
  */
 export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
-  const { ir, svgs, normalized } = await renderDeckSlides(irPath, { cwd: opts.cwd })
+  const { ir, svgs, normalized } = await renderDeckSlides(irPath, { cwd: opts.cwd, themeFilePath: opts.themeFilePath })
   // After render, not before (S1 review carry) — see this function's own doc comment.
   await mkdir(outDir, { recursive: true })
   for (let i = 0; i < ir.slides.length; i++) {
@@ -977,6 +1136,10 @@ export async function runAssemble(target: string, opts: AssembleOptions = {}): P
   if ((await pathExists(dir)) && !(await isDeckDirectory(dir))) {
     throw new PptfastError(`expected a deck project directory: ${dir}`)
   }
+  // Same deck-local theme.json auto-load `loadDeckTarget` performs (brand-
+  // extract wave) — assemble bypasses that helper but hits the same
+  // spec-level installed-theme gate inside readDeckDir's assemble step.
+  if (await isDeckDirectory(dir)) await registerDeckThemeFile(dir)
   const { ir, generatedSeed, materializedLayoutCount, deckDir } = await readDeckDir(dir)
   const outPath = opts.output ? resolve(cwd, opts.output) : join(deckDir, "deck.json")
   const outDir = dirname(outPath)
