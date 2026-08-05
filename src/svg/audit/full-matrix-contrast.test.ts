@@ -2496,3 +2496,81 @@ describe("chart legend contrast (R1 evidence wave, Task T2)", () => {
     })
   }
 })
+
+// chart-depth subtypes: contrast + wedge attribution (chart-depth wave, 裁定 3).
+// The gauge's centered number and the donut's center total both sit in the
+// ring HOLE, so deck-audit's parseWedgePath must attribute them (via the
+// annulus Sector's radius-band containment) to the page background, never the
+// opaque arc fill beneath their bounding box. A misattribution would surface
+// here as a `low-contrast` finding on whichever theme's text-on-accent pairing
+// fails its ratio — so a clean 16-theme sweep IS the zero-misattribution proof
+// (donut-annulus wave's own method, generalized to the two new radial
+// subtypes). scatter/area (cartesian, muted labels over the page background)
+// ride the same net for full-matrix completeness. The renderer-level geometric
+// precondition (arc recognized as a ring band, number anchored at distance <
+// inner radius) is pinned separately in chart-svg.test.tsx.
+describe("chart-depth subtypes contrast + wedge attribution (16-theme sweep, 裁定 3)", () => {
+  const SCATTER_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [
+      {
+        type: "chart",
+        chart_type: "scatter",
+        series: [
+          { name: "Group A", data: [{ x: 1, y: 2, size: 5 }, { x: 8, y: 9, size: 40 }, { x: 4, y: 6 }] },
+          { name: "Group B", data: [{ x: 2, y: 7 }, { x: 6, y: 3, size: 20 }] },
+        ],
+      },
+    ],
+  } as Slide
+  const AREA_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [
+      {
+        type: "chart",
+        chart_type: "area",
+        series: [
+          { name: "North", data: [{ x: "Q1", y: 10 }, { x: "Q2", y: -4 }, { x: "Q3", y: 18 }] },
+          { name: "South", data: [{ x: "Q1", y: 6 }, { x: "Q2", y: 12 }, { x: "Q3", y: 9 }] },
+        ],
+      },
+    ],
+  } as Slide
+  const DONUT_SLIDE: Slide = {
+    type: "content",
+    heading: HEADING,
+    components: [
+      {
+        type: "chart",
+        chart_type: "donut",
+        center_total: true,
+        series: [{ name: "Share", data: [{ x: "Enterprise", y: 45 }, { x: "SMB", y: 30 }, { x: "Consumer", y: 25 }] }],
+      },
+    ],
+  } as Slide
+  const gaugeSlide = (y: number): Slide =>
+    ({
+      type: "content",
+      heading: HEADING,
+      components: [{ type: "chart", chart_type: "gauge", series: [{ name: "Completion", data: [{ x: "Toward goal", y }] }] }],
+    }) as Slide
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: scatter/bubble renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, SCATTER_SLIDE))).toEqual([])
+    })
+    it(`${themeId}: area (multi-series, dips below the baseline) renders with zero auditDeck findings`, () => {
+      expect(auditFindings(deckFor(themeId, AREA_SLIDE))).toEqual([])
+    })
+    it(`${themeId}: donut center total attributes to the page background, not the ring band (zero findings)`, () => {
+      expect(auditFindings(deckFor(themeId, DONUT_SLIDE))).toEqual([])
+    })
+    it(`${themeId}: gauge 0%/62%/100% centered numbers attribute to the page background, not the arc (zero findings)`, () => {
+      for (const y of [0, 62, 100]) {
+        expect(auditFindings(deckFor(themeId, gaugeSlide(y))), `gauge ${y}%`).toEqual([])
+      }
+    })
+  }
+})

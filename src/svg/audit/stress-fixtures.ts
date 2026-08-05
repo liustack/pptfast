@@ -591,6 +591,103 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
     },
   ]),
 
+  // chart_depth（chart-depth 波）：四个新子型的病态夹具，跨 16 主题过 overflow
+  // 基线——单点 scatter（含 size 气泡）、负值 area（双 CJK 系列名，图例挤压）、
+  // 0%/100% gauge（CJK 长 caption 挤压）、donut 中心总值（CJK 扇区名）。
+  chart_depth: deck([
+    {
+      type: "content",
+      arrangement: "two_column",
+      heading: "散点与面积压力测试",
+      components: [
+        {
+          // single-point scatter carrying a bubble size + long CJK axis titles
+          type: "chart",
+          chart_type: "scatter",
+          axes: { x_title: CHART_LABEL, y_title: CHART_LABEL, show_grid: true },
+          series: [{ name: CHART_LABEL, data: [{ x: 42, y: 87, size: 12 }] }],
+        },
+        {
+          // negative-value area, two CJK-named series (baseline dips below 0,
+          // legend fit stress)
+          type: "chart",
+          chart_type: "area",
+          axes: { x_title: CHART_LABEL },
+          series: [
+            {
+              name: `${CHART_LABEL} 甲`,
+              data: [
+                { x: `${CHART_LABEL} 1`, y: -40 },
+                { x: `${CHART_LABEL} 2`, y: 60 },
+                { x: `${CHART_LABEL} 3`, y: -10 },
+              ],
+            },
+            {
+              name: `${CHART_LABEL} 乙`,
+              data: [
+                { x: `${CHART_LABEL} 1`, y: 20 },
+                { x: `${CHART_LABEL} 2`, y: -30 },
+                { x: `${CHART_LABEL} 3`, y: 50 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "content",
+      arrangement: "two_column",
+      heading: "仪表盘边界压力测试",
+      components: [
+        // 0% and 100% gauges, each with a long CJK caption (data-point x) to
+        // stress the centered caption's fit.
+        { type: "chart", chart_type: "gauge", series: [{ name: CHART_LABEL, data: [{ x: CHART_LABEL, y: 0 }] }] },
+        {
+          type: "chart",
+          chart_type: "gauge",
+          gauge: { min: 0, max: 100 },
+          series: [{ name: CHART_LABEL, data: [{ x: CHART_LABEL, y: 100 }] }],
+        },
+      ],
+    },
+    {
+      type: "content",
+      arrangement: "two_column",
+      heading: "环形与气泡压力测试",
+      components: [
+        {
+          type: "chart",
+          chart_type: "donut",
+          center_total: true,
+          series: [
+            {
+              name: CHART_LABEL,
+              data: [
+                { x: `${CHART_LABEL} A`, y: 40 },
+                { x: `${CHART_LABEL} B`, y: 35 },
+                { x: `${CHART_LABEL} C`, y: 25 },
+              ],
+            },
+          ],
+        },
+        {
+          type: "chart",
+          chart_type: "scatter",
+          series: [
+            {
+              name: CHART_LABEL,
+              data: [
+                { x: 1, y: 2, size: 5 },
+                { x: 8, y: 9, size: 50 },
+                { x: 4, y: 6, size: 20 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ]),
+
   // comparison_quote_code: comparison (4x4 long cells), quote (3x CJK_LONG
   // plus the S3c punctuation-stress segment), code (extreme-length line),
   // callout (CJK_LONG/MIXED_LONG plus the same punctuation-stress segment),
