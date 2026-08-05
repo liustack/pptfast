@@ -3,14 +3,17 @@ import { mkdir, mkdtemp, readFile, readdir, stat, unlink, writeFile } from "node
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import JSZip from "jszip"
-import { afterAll, describe, expect, it, beforeAll } from "vitest"
+import { afterAll, afterEach, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import { NARRATIVE_PRESETS } from "../narrative"
 import { CAPACITY } from "../svg/audit/capacity"
+import { __resetRegisteredThemes } from "../themes/definitions"
+import { buildThmxBytes, DEFAULT_THMX_COLORS, PATHOLOGICAL_THMX_COLORS } from "../themes/__fixtures__/thmx"
 import {
   applyDeckConfig,
   runAssemble,
   runAudit,
+  runBrandExtract,
   runDisassemble,
   runInit,
   runMigrate,
@@ -1754,5 +1757,149 @@ describe("decksDir redirect — project config precedence (W5 task 6, controller
       const msg = await runAssemble("q3-review", { cwd: projectRoot })
       expect(msg).toContain(join(deckDir, "deck.json"))
     })
+  })
+})
+
+// ── brand extraction (brand-extract wave) ────────────────────────────────
+
+describe("brand extract + --theme-file + deck theme.json", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  const freshDir = () => mkdtemp(join(tmpdir(), "pptfast-brand-"))
+
+  async function writeFixtureTemplate(d: string, opts: Parameters<typeof buildThmxBytes>[0] = {}): Promise<string> {
+    const p = join(d, "corp.pptx")
+    await writeFile(p, Buffer.from(await buildThmxBytes({ schemeName: "Acme", ...opts })))
+    return p
+  }
+
+  it("brand extract writes a loadable theme file and prints an actionable summary", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d)
+    const out = join(d, "my-brand.theme.json")
+    const msg = await runBrandExtract(src, { output: out })
+    // 裁定 4: default id is the output filename's slug.
+    expect(msg).toContain('theme "my-brand"')
+    expect(msg).toContain("--theme-file")
+    const written = JSON.parse(await readFile(out, "utf8")) as { id: string; style: { colors: { primary: string } } }
+    expect(written.id).toBe("my-brand")
+    expect(written.style.colors.primary).toBe(`#${DEFAULT_THMX_COLORS.accent1}`)
+  })
+
+  it("brand extract refuses a builtin id collision up front", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d)
+    await expect(runBrandExtract(src, { output: join(d, "out.theme.json"), id: "consulting" })).rejects.toThrow(
+      /collides with a built-in pptfast theme.*--id/,
+    )
+  })
+
+  it("brand extract on a pathological palette still writes the file but warns it will be refused at load", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d, { colors: PATHOLOGICAL_THMX_COLORS })
+    const out = join(d, "gray.theme.json")
+    const msg = await runBrandExtract(src, { output: out })
+    expect(msg).toMatch(/warning: this theme will be refused at load time.*contrast ratio/)
+    await expect(stat(out)).resolves.toBeDefined()
+  })
+
+  it("end to end: extract → render --theme-file → exported PPTX carries the extracted brand colors", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d)
+    const themeOut = join(d, "acme.theme.json")
+    await runBrandExtract(src, { output: themeOut })
+    await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
+    const pptxOut = join(d, "branded.pptx")
+    await runRender(join(d, "deck.json"), { output: pptxOut, themeFilePath: themeOut })
+    const zip2 = await JSZip.loadAsync(await readFile(pptxOut))
+    const slideXml = (
+      await Promise.all(
+        Object.keys(zip2.files)
+          .filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k))
+          .map((k) => zip2.file(k)!.async("string")),
+      )
+    ).join("")
+    // The extracted brand colors must land in the DrawingML — hex appears
+    // uppercase without "#" (same assertion shape as e2e's --style leg).
+    // This minimal 2-slide deck's selected layouts paint the accent token
+    // (source accent2) and the derived muted (#666666, the mixHex walk's
+    // first step clearing 4.5:1 against both white bg and the E7E6E6
+    // surface) — primary (accent1) has no paint site on these two layouts,
+    // so it is asserted at the theme-file level in the extract test above.
+    expect(slideXml).toContain(DEFAULT_THMX_COLORS.accent2)
+    expect(slideXml).toContain("666666")
+  })
+
+  it("--theme-file registers the theme but an explicit --theme still wins the selection", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d)
+    const themeOut = join(d, "acme.theme.json")
+    await runBrandExtract(src, { output: themeOut })
+    await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
+    const report = await runValidate(join(d, "deck.json"), process.cwd(), { themeFilePath: themeOut })
+    expect(report).toContain('theme "acme"')
+    __resetRegisteredThemes()
+    const pptxOut = join(d, "tech.pptx")
+    const msg = await runRender(join(d, "deck.json"), { output: pptxOut, themeFilePath: themeOut, theme: "tech" })
+    expect(msg).toContain("wrote")
+  })
+
+  it("--theme-file with a builtin-shadowing id fails with the fix in the message", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d)
+    const themeOut = join(d, "shadow.theme.json")
+    await runBrandExtract(src, { output: themeOut })
+    const file = JSON.parse(await readFile(themeOut, "utf8")) as { id: string; style: { id: string } }
+    file.id = "consulting"
+    await writeFile(themeOut, JSON.stringify(file))
+    await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
+    await expect(
+      runRender(join(d, "deck.json"), { output: join(d, "x.pptx"), themeFilePath: themeOut }),
+    ).rejects.toThrow(/collides with a built-in pptfast theme/)
+  })
+
+  it("loading a pathological theme file is blocked by the contrast floor with a token-naming message", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d, { colors: PATHOLOGICAL_THMX_COLORS })
+    const themeOut = join(d, "gray.theme.json")
+    await runBrandExtract(src, { output: themeOut })
+    await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
+    await expect(
+      runRender(join(d, "deck.json"), { output: join(d, "x.pptx"), themeFilePath: themeOut }),
+    ).rejects.toThrow(/colors\.(text|muted) has a contrast ratio of .* against its ".*" background .* must be at least 3\.0:1/)
+  })
+
+  it("deck project theme.json auto-loads so the spec can reference the custom id with zero flags", async () => {
+    const d = await freshDir()
+    const src = await writeFixtureTemplate(d)
+    const deckDir = join(d, "branded-deck")
+    await mkdir(deckDir, { recursive: true })
+    await runBrandExtract(src, { output: join(deckDir, "theme.json"), id: "acme-auto" })
+    await writeFile(
+      join(deckDir, "deck.spec.json"),
+      JSON.stringify(makeDeckPlan({ theme: "acme-auto", filename: "branded-deck" })),
+    )
+    const report = await runValidate(deckDir)
+    expect(report).toContain('theme "acme-auto"')
+    // spec validate on the spec file inside the same directory also resolves
+    // the custom id (theme.json auto-loads from alongside the spec file).
+    __resetRegisteredThemes()
+    const specReport = await runSpecValidate(join(deckDir, "deck.spec.json"))
+    expect(specReport).toContain('theme "acme-auto"')
+    // assemble, too (it bypasses loadDeckTarget but must hit the same auto-load).
+    __resetRegisteredThemes()
+    const assembleMsg = await runAssemble(deckDir)
+    expect(assembleMsg).toContain("deck.json")
+  })
+
+  it("a malformed theme.json in a deck directory fails loudly, naming the file", async () => {
+    const d = await freshDir()
+    const deckDir = join(d, "bad-theme-deck")
+    await mkdir(deckDir, { recursive: true })
+    await writeFile(join(deckDir, "theme.json"), JSON.stringify({ id: "x" }))
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
+    await expect(runValidate(deckDir)).rejects.toThrow(/invalid theme file .*theme\.json/)
   })
 })

@@ -49,6 +49,14 @@ export const SPEC_FILENAME = "deck.spec.json"
 // "pages"/"assets" literal that could drift from these.
 export const PAGES_DIRNAME = "pages"
 export const ASSETS_DIRNAME = "assets"
+/** Optional deck-local brand theme file (brand-extract wave, 裁定 3's
+ *  zero-flag convention): a `theme.json` sitting in the deck project
+ *  directory — typically `pptfast brand extract`'s output — is auto-loaded
+ *  (registered through `registerTheme`) before the deck is assembled, so the
+ *  spec/IR can reference its `id` with no `--theme-file` flag. Loading
+ *  happens in `./commands.ts` (`loadDeckTarget`/`runAssemble`), not here —
+ *  this module stays a pure fs shell. */
+export const THEME_FILENAME = "theme.json"
 
 // ── path-traversal safety (CWE-22 defense) ──────────────────────────────
 
