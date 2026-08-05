@@ -1535,4 +1535,45 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       ],
     },
   ]),
+
+  // tag_row (tag_row wave, `.issues/2026-08-06-tag-row/plan.md`, 裁定 1-3):
+  // the schema max, 16 tags, every item pushed to the per-item length cap (24
+  // chars) — the pathological flow-wrap case. Each label is sliced to exactly
+  // 24 chars off the file's own long fixtures so all three width regimes get
+  // exercised in one row: a 24-CJK-ideograph tag (widest possible, 1.0em
+  // each), a CJK/Latin-mixed tag (`基于 Kubernetes Operator` — the required
+  // mixed-measurement pathology), and a long atomic-Latin-run tag. `emphasis:
+  // "first"` exercises the accent-pill branch, and an extreme-length CJK
+  // `title` exercises the title band's own shrink/truncate in the same pass.
+  // A second page carries the schema minimum (2 tags), no title, default
+  // (no) emphasis — the low-key surface-pill path on its own.
+  tag_row: deck([
+    {
+      type: "content",
+      heading: "标签行压力测试（16 个满配，混排到长度上限）",
+      components: [
+        {
+          type: "tag_row",
+          title: CJK_LONG,
+          emphasis: "first",
+          items: Array.from({ length: 16 }, (_, i) => {
+            const regime = i % 3
+            if (regime === 0) return CJK_LONG.slice(0, 24)
+            if (regime === 1) return MIXED_LONG.slice(0, 24)
+            return EN_LONG.slice(0, 24)
+          }),
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "标签行压力测试（2 个，默认低调）",
+      components: [
+        {
+          type: "tag_row",
+          items: [CJK_LONG.slice(0, 24), MIXED_LONG.slice(0, 24)],
+        },
+      ],
+    },
+  ]),
 }

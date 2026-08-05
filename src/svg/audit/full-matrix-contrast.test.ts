@@ -1251,6 +1251,18 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // renders `colors.text`, and a resolvable logo is a raster `<image>`
   // with no ink of ours at all. Nothing here is a `colors.muted` fill.
   logo_wall: "no-muted-fill",
+  // tag_row wave (`.issues/2026-08-06-tag-row/plan.md`): tag-row.tsx renders
+  // no `colors.muted` text at all. A default pill is `colors.surface` fill +
+  // `colors.text` ink (the same audited text-on-surface pair as the
+  // flat-surface entries above, ≥7.78:1 on all 16 themes), an `emphasis:
+  // "first"` pill is `colors.accent` fill + `readableOn(accent)` ink
+  // (≥5.10:1 on all 16 themes by construction), and the optional title
+  // renders `colors.text` on the page background. Each pill is an opaque
+  // rect, so `deck-audit`'s area-unrestricted `PaintedShape` attribution
+  // (defect-A) measures each label against its own pill fill — never a
+  // mid-gray or a `colors.muted`. The default pill's hairline is a `stroke`
+  // (`cardStroke`/`border`/a surface→text blend), never a `<text>` fill.
+  tag_row: "no-muted-fill",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {
