@@ -20,7 +20,8 @@ import type { StyleTokens } from "./tokens";
  * 裁定 1「正文页不可整版红」），浅底又要求 text/muted 是深墨——同一对 token
  * 不可能既在红底达标又在浅底达标。结论：**cover 随 content/ending 取暖米白**，
  * 封面的庄重红金身份改由红色结构型 archetype（banner-title 的红强调条、
- * left-anchor 的 40% 红色块、split-diagonal 的红斜切块——全走 readableOn 反白）
+ * left-anchor 的 40% 红色块、split-diagonal 的红斜切块——后两者走 readableOn
+ * 反白，banner-title 则是浅底上的红标题+红条，靠 primary·bg 5.51:1 直接达标）
  * + 红金 motif 承载（红作结构色，正是裁定 1「红作结构色」的落地）。这与
  * ember/academic/consulting/pulse/terra 先例一致（封面浅、章节饱和）。
  *

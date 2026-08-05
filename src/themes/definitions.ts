@@ -639,8 +639,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     结果（ember 注释已详述：briefing 已把两者锁到权重 3，任何第三个 cover
   //     id 的声明要么零边际权重、要么被同一固定哈希打进 poster-center 桶），
   //     无真实分化空间。汇报封面的庄重红金身份本就由红色结构型 archetype
-  //     （banner-title 红强调条 / left-anchor 40% 红块 / split-diagonal 红斜切，
-  //     全走 readableOn 反白）+ 红金 motif 承载，不靠声明一个零区分度的 cover
+  //     （banner-title 红强调条——浅底红字直接达标 / left-anchor 40% 红块与
+  //     split-diagonal 红斜切——readableOn 反白）+ 红金 motif 承载，不靠声明一个零区分度的 cover
   //     tendency——没有区分度的声明是噪音，裁剪比硬凑更诚实。
   // 实测校验（`theme-structure.test.ts` 的「每个声明主题的 resolveSequence
   // 两两不同」+ divergence）：vermilion 完整 resolveSequence（seed=1）=
