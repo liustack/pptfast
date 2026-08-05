@@ -1016,6 +1016,23 @@ describe("renderScatter — numeric points and bubbles (chart-depth wave)", () =
     expect(Number(circles[1].getAttribute("cx"))).toBeCloseTo(W)
   })
 
+  it("fits the y-domain to the data band with padding (not a zero baseline), so points fill the plot height", () => {
+    // A narrow, all-positive high band [80,100]. A zero-anchored y (the old
+    // shared line/bar domain [0,100]) crams both points into the top ~20% of
+    // the plot; a data-fit y spreads them across nearly the full height.
+    const { container } = svg(
+      renderScatter(scatter([{ x: 1, y: 80 }, { x: 2, y: 100 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    const cys = Array.from(container.querySelectorAll("circle")).map((c) => Number(c.getAttribute("cy")))
+    const [lowCy, highCy] = cys // data order: y=80 first, y=100 second
+    // Higher value sits higher up (smaller cy).
+    expect(highCy).toBeLessThan(lowCy)
+    // The two points span most of the plot height, not ~20% of it.
+    expect(lowCy - highCy).toBeGreaterThan(PLOT_H * 0.7)
+    // The smaller value sits low in the plot (bottom quarter), not near the top.
+    expect(lowCy).toBeGreaterThan(PLOT_TOP + PLOT_H * 0.75)
+  })
+
   it("uses a uniform small dot radius when no point carries a size", () => {
     const { container } = svg(
       renderScatter(scatter([{ x: 1, y: 2 }, { x: 3, y: 4 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
@@ -1032,9 +1049,15 @@ describe("renderScatter — numeric points and bubbles (chart-depth wave)", () =
     expect(rs[1]).toBeGreaterThan(rs[0])
   })
 
-  it("renders a single-point scatter without error (pathological fixture)", () => {
+  it("centers a single-point scatter (degenerate x and y domains both map to the plot midpoint)", () => {
     const { container } = svg(renderScatter(scatter([{ x: 5, y: 5 }]), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
-    expect(container.querySelectorAll("circle")).toHaveLength(1)
+    const circles = container.querySelectorAll("circle")
+    expect(circles).toHaveLength(1)
+    const c = circles[0]!
+    // Degenerate x-span → horizontal midpoint (was pinned to the left edge).
+    expect(Number(c.getAttribute("cx"))).toBeCloseTo(W / 2)
+    // Degenerate y-span → vertical midpoint of the plot area.
+    expect(Number(c.getAttribute("cy"))).toBeCloseTo(PLOT_TOP + PLOT_H / 2)
   })
 
   it("colors each series from the palette in input order", () => {

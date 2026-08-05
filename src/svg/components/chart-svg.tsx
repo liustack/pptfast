@@ -1110,15 +1110,23 @@ export function renderDonut(
 }
 
 /**
- * scatter 散点/气泡图（chart-depth wave）：数值 x/y 点集。y 复用 line 的既有轴
- * 机制（buildChartModel 的共享零锚定域 + lineValueY），x 是真实数值坐标，走
- * 自己的内联 min/max 域（同 renderDumbbell 的 vx() 先例，不引入新轴系统）。点
- * 可选 size：有则半径按面积（sqrt）缩放为气泡，无则统一小圆点。多 series 按调
- * 色板着色，图例由 chart.tsx 提供。
+ * scatter 散点/气泡图（chart-depth wave）：数值 x/y 点集。x 与 y 都按各自数据范围
+ * 适配（fit-to-data），不走 bar/line 的共享零锚定域。散点图读的是点相互之间的
+ * 位置，全正的窄高数据带必须铺满绘图区，而非挤在无关的零基线之上。y 仍走
+ * lineValueY（复用 line 的线性 value→pixel 路径），只是传入本函数按 [yMin,yMax]
+ * 两侧各留 SCATTER_Y_PAD_FRAC 边距的拟合域，让极值点的气泡不贴边、不裁切。x 是
+ * 真实数值坐标，走自己的内联 min/max 域（同 renderDumbbell 的 vx() 先例，不引入
+ * 新轴系统）。x 或 y 任一为退化跨度（单点或全等值）时居中到绘图区中点。点可选
+ * size：有则半径按面积（sqrt）缩放为气泡，无则统一小圆点。多 series 按调色板着
+ * 色，图例由 chart.tsx 提供。
  */
 const SCATTER_DOT_R = 5
 const SCATTER_MIN_BUBBLE_R = 6
 const SCATTER_MAX_BUBBLE_R = 26
+/** Fraction of the y data span padded onto each side of the scatter's fitted
+ * y-domain, so points at the data extremes sit just inside the plot rather
+ * than flush against its top/bottom edge (and their bubbles don't clip). */
+const SCATTER_Y_PAD_FRAC = 0.06
 
 export function renderScatter(
   series: ChartSeries[],
@@ -1133,16 +1141,34 @@ export function renderScatter(
   showGrid = true,
   _component?: ChartInput,
 ): ReactElement {
-  const model = buildChartModel(series)
-  const { domain } = model
   const plotTop = y0 + LABEL_TOP_PAD
   const plotH = Math.max(0, h - LABEL_TOP_PAD - LABEL_BOTTOM_PAD)
   const numX = (x: string | number): number => (typeof x === "number" ? x : Number(x))
   const xsAll = series.flatMap((s) => s.data.map((d) => numX(d.x)))
   const xMin = xsAll.length ? Math.min(...xsAll) : 0
   const xMax = xsAll.length ? Math.max(...xsAll) : 1
-  const xSpan = xMax - xMin || 1
-  const xForVal = (v: number) => x0 + ((v - xMin) / xSpan) * w
+  const xSpan = xMax - xMin
+  // A real x-span maps full-bleed (xMin→x0, xMax→x0+w) so the two extent
+  // labels sit exactly under the leftmost/rightmost points. A degenerate span
+  // (single point, or every point sharing one x) maps to the horizontal
+  // midpoint instead of pinning to the left edge — the same centering policy
+  // the y-domain applies to a degenerate y-span just below.
+  const xForVal = xSpan > 0 ? (v: number) => x0 + ((v - xMin) / xSpan) * w : (_v: number) => x0 + w / 2
+  // scatter fits y to the data's OWN [yMin, yMax] (padded), NOT the shared
+  // zero-anchored domain bar/line use: a scatter reads point positions
+  // relative to one another, so a narrow high band must fill the plot rather
+  // than cram against the ceiling above an irrelevant zero baseline. Padding
+  // (SCATTER_Y_PAD_FRAC of span each side) keeps extreme-value bubbles off the
+  // plot edges; a degenerate span (all-equal y) pads symmetrically around the
+  // value so the point lands at the vertical midpoint. Mapped through
+  // lineValueY — the same linear value→pixel path line uses — just with this
+  // fitted domain, so no new axis machinery is introduced.
+  const ysAll = series.flatMap((s) => s.data.map((d) => d.y))
+  const yMin = ysAll.length ? Math.min(...ysAll) : 0
+  const yMax = ysAll.length ? Math.max(...ysAll) : 1
+  const ySpan = yMax - yMin
+  const yPad = ySpan > 0 ? ySpan * SCATTER_Y_PAD_FRAC : Math.abs(yMax) || 1
+  const yDomain: ChartDomain = { min: yMin - yPad, max: yMax + yPad, degenerate: false }
   const sizes = series.flatMap((s) => s.data.map((d) => d.size)).filter((s): s is number => s != null)
   const sizeMax = sizes.length ? Math.max(...sizes) : 0
   const radiusFor = (size: number | undefined): number => {
@@ -1163,7 +1189,7 @@ export function renderScatter(
               <circle
                 key={di}
                 cx={xForVal(numX(d.x))}
-                cy={lineValueY(d.y, domain, plotTop, plotH)}
+                cy={lineValueY(d.y, yDomain, plotTop, plotH)}
                 r={radiusFor(d.size)}
                 fill={color}
                 fillOpacity={0.6}
