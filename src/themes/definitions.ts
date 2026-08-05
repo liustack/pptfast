@@ -600,6 +600,62 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       ending: ["constellation-ending"],
     },
   },
+  // vermilion（庄重公务汇报，2026-08-06 gov-theme wave，第 17 主题）：暖米白底
+  // + 正红主色的庄重红金公务气质，旗帜感绸带弧线 + 金色光芒细线由专属
+  // vermilion-motif 承载。同 pulse/terra/ember 一样没有 legacy 预兆代码可提炼，
+  // layoutTendencies 从通用 archetype 池里挑气质相符的 id（plan 裁定 3：汇报体
+  // 的结构性格 = banner 族「横幅/庄重」+ rail 族「条理」，避开与 consulting
+  // 完全同套）。cover/chapter/ending 三池的 id 到 ember 落地时已被既有 9 个
+  // 声明主题全占（cover 8/8、chapter 除 roman-chapter 外全占、ending 7/7），
+  // 故不找「未占用 id」，改用 brief 指定的工具：复用 id + 组合交互 + 部分声明
+  // （ember 先例）。真穷举（`resolveArchetypeId` 直连，同 T2/T3 的 brute-force
+  // 方法，脚本临时写在仓库外未入库）先按 ruling 3 气质挑候选，逐一在
+  // `theme-structure.test.ts` 同款 fixture（seed=1，默认 briefing）实测——
+  // 关键发现：**chapter/ending 各自单声明只收敛到少数可达结果**（chapter 非
+  // masthead/constellation 单声明全落 fashion-chapter@idx1，ending 单声明只落
+  // masthead/banner/poster-ending 三者之一，同 ember 注释详述的硬币），最初
+  // 选的 {chapter:[banner-chapter], ending:[rail-ending]} 与 **ember 完整序列
+  // 逐字节相同**（两者都塌进同一组桶）。最终选组合交互更强的一组：
+  //   - chapter `["banner-chapter", "rail-chapter"]`（两 id 都是真实性格主张，
+  //     非纯 modulus-escape）：banner-chapter = 居中白字压整版 primary 正红
+  //     色块，正是本主题 chapter 默认背景（正红整版）+ readableOn 反白的具象
+  //     读法，庄重红底白字的断章正是汇报体的签名；rail-chapter = 底部进度点轨，
+  //     「第 N 章」的条理读法。**两 id 均有真实边际权重**（都不在
+  //     briefing.identityTendencies.chapter=["masthead-chapter",
+  //     "constellation-chapter"] 里，max(3,1)=3）。二元集合把 chapter 模数从
+  //     单声明的塌缩桶里撬开，在本 fixture 上 idx1 落 constellation-chapter、
+  //     **idx4 真的落到 banner-chapter**（签名红断章在 fixture 里实际浮现，
+  //     不是纯软权重空转）。复用 consulting 的 banner-chapter / academic 的
+  //     rail-chapter，但两者是麦肯锡藏青 / BCG 绿，vermilion 是正红金黄——
+  //     归档件零 baked hex 全吃 ctx.colors，同一构图两种气质。
+  //   - ending `rail-ending`（角落色块 + 显式「Contact」区块 + 版权）：条理化
+  //     的收尾，像一份报告的落款联系页——汇报体的收尾正是「联系方式 + 落款」
+  //     而非煽情告别。**有真实边际权重**（不在 briefing.ending=["masthead-
+  //     ending", "banner-ending"] 里，max(3,1)=3）。本 fixture/seed 上采样落到
+  //     banner-ending（同属「Contact 区块 + 版权」的务实收尾家族，语域一致，
+  //     是 rail-ending 软权重在这枚种子上的实际着陆点，非另一种气质）。
+  //   - cover 轴刻意不声明（Partial 裁剪，terra/ember 先例）：cover 池对本
+  //     fixture/seed 的单声明只收敛到 banner-title 或 poster-center 两个可达
+  //     结果（ember 注释已详述：briefing 已把两者锁到权重 3，任何第三个 cover
+  //     id 的声明要么零边际权重、要么被同一固定哈希打进 poster-center 桶），
+  //     无真实分化空间。汇报封面的庄重红金身份本就由红色结构型 archetype
+  //     （banner-title 红强调条 / left-anchor 40% 红块 / split-diagonal 红斜切，
+  //     全走 readableOn 反白）+ 红金 motif 承载，不靠声明一个零区分度的 cover
+  //     tendency——没有区分度的声明是噪音，裁剪比硬凑更诚实。
+  // 实测校验（`theme-structure.test.ts` 的「每个声明主题的 resolveSequence
+  // 两两不同」+ divergence）：vermilion 完整 resolveSequence（seed=1）=
+  // ["banner-title", "constellation-chapter", "tone-adaptive-content",
+  // "split-band", "banner-chapter", "banner-heading", "banner-ending"]，与其余
+  // 9 个既有声明主题（含 pulse/terra/ember）逐一比对均不同，也不与 7 个未声明
+  // 主题共享的默认序列相同（派生结果见 task-1-report.md）。
+  vermilion: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "vermilion-motif",
+    layoutTendencies: {
+      chapter: ["banner-chapter", "rail-chapter"],
+      ending: ["rail-ending"],
+    },
+  },
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(

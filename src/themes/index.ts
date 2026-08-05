@@ -17,18 +17,21 @@ import { HERITAGE_TOKENS } from "./heritage";
 import { PULSE_TOKENS } from "./pulse";
 import { TERRA_TOKENS } from "./terra";
 import { EMBER_TOKENS } from "./ember";
+import { VERMILION_TOKENS } from "./vermilion";
 
 /**
- * The 16 canonical themes, registered/renderable. 场景化命名：对外 theme.id
+ * The 17 canonical themes, registered/renderable. 场景化命名：对外 theme.id
  * 按内容场景命名（consulting Business Consulting / enterprise Enterprise /
  * academic Academic / insight Financial Insight / campaign Marketing Campaign /
  * bloom Soft Bloom / classroom Classroom / ink Ink Wash / tech Tech /
  * runway Fashion Runway / journal Editorial Journal / luxe Luxe /
  * heritage Heritage / pulse Health & Life Science——themes-16 wave task T1
  * 新增第 14 个 / terra Sustainability & ESG——themes-16 wave task T2 新增
- * 第 15 个 / ember Startup Pitch——themes-16 wave task T3 新增第 16、本波
- * 最后一个）。pptfast 是独立分叉，无存量 deck 兼容包袱，不维护 legacy id
- * 映射表（resolveThemeId 对未知 id 一律回落 consulting）。
+ * 第 15 个 / ember Startup Pitch——themes-16 wave task T3 新增第 16 个 /
+ * vermilion Official Report——gov-theme wave 新增第 17 个，庄重公务汇报语域，
+ * 第一个从立项即以中文语域为主的主题）。pptfast 是独立分叉，无存量 deck
+ * 兼容包袱，不维护 legacy id 映射表（resolveThemeId 对未知 id 一律回落
+ * consulting）。
  */
 export const CANONICAL_THEME_IDS = [
   "consulting",
@@ -47,6 +50,7 @@ export const CANONICAL_THEME_IDS = [
   "pulse",
   "terra",
   "ember",
+  "vermilion",
 ] as const;
 
 export type CanonicalThemeId = (typeof CANONICAL_THEME_IDS)[number];
@@ -69,6 +73,7 @@ export const THEME_LABELS: Record<CanonicalThemeId, string> = {
   pulse: "Health & Life Science",
   terra: "Sustainability & ESG",
   ember: "Startup Pitch",
+  vermilion: "Official Report",
 };
 
 /** Map any theme id onto a canonical, registered theme id. Unknown ids fall back to consulting. */
@@ -95,6 +100,7 @@ export const THEME_STYLES: Record<CanonicalThemeId, StyleTokens> = {
   pulse: PULSE_TOKENS,
   terra: TERRA_TOKENS,
   ember: EMBER_TOKENS,
+  vermilion: VERMILION_TOKENS,
 };
 
 /**

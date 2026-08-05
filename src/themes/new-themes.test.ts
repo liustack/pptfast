@@ -5,6 +5,7 @@ import { JOURNAL_TOKENS } from "./journal"
 import { PULSE_TOKENS } from "./pulse"
 import { TERRA_TOKENS } from "./terra"
 import { EMBER_TOKENS } from "./ember"
+import { VERMILION_TOKENS } from "./vermilion"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -120,5 +121,47 @@ describe("ember tokens", () => {
 
   it("shape.radius is 10 (friendly, rounded — startup-pitch register)", () => {
     expect(EMBER_TOKENS.shape?.radius).toBe(10)
+  })
+})
+
+// gov-theme wave (2026-08-06): vermilion is the 17th built-in theme (庄重公务
+// 汇报——工作汇报/述职/年度总结), the first designed Chinese-register-first.
+// Same shape-only assertions as the blocks above — registry wiring
+// (CANONICAL_THEME_IDS/THEME_STYLES/BUILTIN_THEME_IDS) is covered separately by
+// themes/index.test.ts and svg/legacy-theme-mapping.test.tsx.
+describe("vermilion tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = VERMILION_TOKENS
+    expect(t.id).toBe("vermilion")
+  })
+
+  it("heading font resolves to SimSun (the CJK-serif 汇报体 masthead — same precedent as journal/ink, no exact width table)", () => {
+    expect(resolveFontFace(VERMILION_TOKENS.fonts.heading, "heading")).toBe(
+      "SimSun",
+    )
+  })
+
+  it("body font resolves to Microsoft YaHei (exact width table, disciplined mixed CJK/Latin sans)", () => {
+    expect(resolveFontFace(VERMILION_TOKENS.fonts.body, "body")).toBe(
+      "Microsoft YaHei",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained gold accent)", () => {
+    expect(VERMILION_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 2 (庄重利落, square/restrained — official-report register)", () => {
+    expect(VERMILION_TOKENS.shape?.radius).toBe(2)
+  })
+
+  it("chapter default background is the full-bleed primary vermilion (the signature 红底白字 section divider, white ink via readableOn)", () => {
+    expect(VERMILION_TOKENS.defaultBackgrounds.chapter).toEqual({ kind: "color", value: "#C8102E" })
+  })
+
+  it("cover/content/ending default backgrounds stay the warm off-white (a red cover would fail the text/muted contrast floor — see the token file header)", () => {
+    for (const slideType of ["cover", "content", "ending"] as const) {
+      expect(VERMILION_TOKENS.defaultBackgrounds[slideType]).toEqual({ kind: "color", value: "#FBF7F0" })
+    }
   })
 })
