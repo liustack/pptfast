@@ -1,6 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { metaInk } from "../ink"
+import { metaInk, readableOn } from "../ink"
+import { mixHex } from "./color-mix"
 import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type DeviceMockupComponent = Extract<Component, { type: "device_mockup" }>
@@ -25,6 +26,28 @@ const URLBAR_H = 18
 const URLBAR_PAD_X = 10
 const URLBAR_GAP = 12
 const BROWSER_RADIUS = 8
+
+/**
+ * Fixed fraction `colors.surface` blends toward `readableOn(bg)` ink to
+ * derive the chrome bar's own fill (review fix round, Important-2). On a
+ * near-black theme (tech: bg #060A13 vs surface #0A101C) plain `colors
+ * .surface` reads as indistinguishable from the page behind it, so the
+ * browser chrome — the component's whole "this is really running" signal —
+ * disappeared into the background. `mixHex` (`./color-mix.ts`, the same
+ * "blend a token toward another token" primitive `pest.tsx`/`bmc.tsx` already
+ * use at this exact 0.14 fraction for their own tinted panels) pushes the
+ * fill a fixed, deterministic step toward whichever neutral ink
+ * `readableOn` already picked as maximally distinct from `bg` — guaranteed
+ * separation on any theme where surface≈bg, imperceptible-to-harmless on
+ * themes where they already differ (light themes with pure-white surface
+ * read as a faint grey toolbar instead, matching a real OS browser chrome).
+ * No baked hex, no per-theme branch — purely token-derived.
+ */
+const CHROME_BAR_MIX = 0.14
+/** The url pill is a second, further step past the bar it's inset into —
+ * same primitive, doubled fraction — so it reads as its own nested layer
+ * instead of matching the bar it sits on. */
+const URL_PILL_MIX = CHROME_BAR_MIX * 2
 
 /** Browser frame's own aspect ratio (裁定 3: "~16:10 含 chrome" — a
  * shallow, landscape "browser window" proportion), capped at `MAX_DEVICE_H`. */
@@ -59,7 +82,6 @@ function roundedTopBarPath(x: number, y: number, w: number, h: number, r: number
 const PHONE_ASPECT = 19 / 9
 const PHONE_BEZEL = 10
 const PHONE_RADIUS = 32
-const PHONE_SCREEN_RADIUS = PHONE_RADIUS - PHONE_BEZEL
 const PHONE_NOTCH_W = 90
 const PHONE_NOTCH_H = 18
 const PHONE_HOME_W = 90
@@ -160,17 +182,24 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
         component.url && urlBarW > URLBAR_PAD_X * 2
           ? fitSvgLine(component.url, { maxWidth: urlBarW - URLBAR_PAD_X * 2, fontSize: 12, minFontSize: 10 })
           : undefined
+      // `defaultBg ?? colors.bg` — same fallback precedent as `readableOn`'s
+      // other archetype call sites (e.g. chapter-rail-chapter.tsx): the
+      // device sits directly on whatever the slide actually paints behind
+      // it, not always the theme's bare `colors.bg`.
+      const chromeInk = readableOn(ctx.defaultBg ?? ctx.colors.bg)
+      const chromeBarFill = mixHex(ctx.colors.surface, chromeInk, CHROME_BAR_MIX)
+      const urlPillFill = mixHex(ctx.colors.surface, chromeInk, URL_PILL_MIX)
 
       return (
         <g transform={`translate(${box.x},${box.y})`}>
-          <path d={roundedTopBarPath(0, 0, box.w, CHROME_H, BROWSER_RADIUS)} fill={ctx.colors.surface} />
+          <path d={roundedTopBarPath(0, 0, box.w, CHROME_H, BROWSER_RADIUS)} fill={chromeBarFill} />
           {[0, 1, 2].map((i) => (
             <circle
               key={i}
               cx={DOT_START_X + i * (DOT_R * 2 + DOT_GAP)}
               cy={CHROME_H / 2}
               r={DOT_R}
-              fill={ctx.colors.border ?? ctx.colors.muted}
+              fill={ctx.colors.muted}
             />
           ))}
           {fittedUrl && urlBarW > URLBAR_PAD_X * 2 && (
@@ -181,7 +210,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
                 width={urlBarW}
                 height={URLBAR_H}
                 rx={URLBAR_H / 2}
-                fill={ctx.colors.bg}
+                fill={urlPillFill}
               />
               <text
                 data-truncated={fittedUrl.truncated ? "1" : undefined}
@@ -193,8 +222,10 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
                 // line or page number, not tier A body copy. `metaInk`
                 // blends `colors.muted` toward `readableOn` only as far as
                 // the tier's 3:1 hard floor requires against the url pill's
-                // own `colors.bg` fill (not the ambient page background —
-                // the pill paints its own surface underneath this text).
+                // own `urlPillFill` (review fix round, Important-2: the pill
+                // paints its own derived surface underneath this text, not
+                // the ambient page background — was `colors.bg` before that
+                // fill itself became token-mixed instead of a flat token).
                 // `data-contrast-tier="meta"` tells deck-audit's contrast
                 // walk to hold this text to 3:1 instead of the default
                 // 4.5:1 (same protocol as `ending-rail-ending.tsx`'s
@@ -204,7 +235,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
                 x={urlBarX + URLBAR_PAD_X}
                 y={CHROME_H / 2 + 4}
                 fontSize={fittedUrl.fontSize}
-                fill={metaInk(ctx.colors.muted, ctx.colors.bg)}
+                fill={metaInk(ctx.colors.muted, urlPillFill)}
                 fontFamily={ctx.fonts.body}
                 dominantBaseline="alphabetic"
               >
@@ -253,7 +284,15 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
     return (
       <g transform={`translate(${box.x + offsetX},${box.y})`}>
         <rect x={0} y={0} width={deviceW} height={deviceH} rx={PHONE_RADIUS} fill={ctx.colors.border ?? ctx.colors.muted} />
-        <rect x={screenX} y={screenY} width={screenW} height={screenH} rx={PHONE_SCREEN_RADIUS} fill={ctx.colors.surface} />
+        {/* Square-cornered on purpose (review fix round, Minor-1): this rect
+            is always fully occluded by whatever renders on top of it — the
+            asset <image> at the exact same box (no corner clipping in the
+            svg2pptx export path) or ScreenPlaceholder's own square-cornered
+            rect — so a rounded corner here was never visible. A truly
+            rounded phone screen needs clip-path support in the svg2pptx
+            export, which is unverified/out of scope here; left as a polish
+            item for a future task rather than faked with an invisible rx. */}
+        <rect x={screenX} y={screenY} width={screenW} height={screenH} fill={ctx.colors.surface} />
         <g transform={`translate(${screenX},${screenY})`}>
           {src ? (
             <image
