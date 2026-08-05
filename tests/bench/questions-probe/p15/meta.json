@@ -1,0 +1,14 @@
+{
+  "id": "p15",
+  "title": "县级党政机构设置说明页 · 机构改革情况汇报",
+  "coverage": {
+    "strategy": "briefing",
+    "pacing": "balanced",
+    "expects_components": ["flowchart", "architecture"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "zh",
+  "probe": true,
+  "probe_candidate": "org_chart"
+}

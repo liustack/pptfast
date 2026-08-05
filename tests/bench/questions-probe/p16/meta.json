@@ -1,0 +1,14 @@
+{
+  "id": "p16",
+  "title": "家庭资产配置建议页 · 私人财富管理方案",
+  "coverage": {
+    "strategy": "showcase",
+    "pacing": "balanced",
+    "expects_components": ["architecture", "chart"],
+    "workflow": "bare-ir",
+    "image_deck": false
+  },
+  "lang": "zh",
+  "probe": true,
+  "probe_candidate": "pyramid"
+}
