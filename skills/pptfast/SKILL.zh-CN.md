@@ -155,6 +155,7 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 | 跨阶段的比例流量/数量分布（例如预算分配、能源结构） | `sankey` | `chart`（funnel）或 `flowchart` |
 | 产品/软件截图，这张 slide 要让人一眼认出「这是真实、正在运行的软件」（App 仪表盘、真实产品界面） | `device_mockup` | `image` |
 | 一份人员名单（团队、讲者阵容、评委阵容、作者名单），需要一个无照片可用的身份锚点 | `people_cards` | `row_cards`/`icon_cards` |
+| 一组机构/品牌标识（赞助商、客户墙、媒体报道/"as seen in"、合作伙伴） | `logo_wall` | `image_grid` |
 
 `steps` 和 `flowchart` 是最常见的混用：只要分支路径从不出现，就是 `steps`。`flowchart` 和 `cycle` 是次常见的：这个流程最终走到一个终点，还是转回自己的起点？把一个闭环硬塞进 `flowchart`，那条收尾的回边会被画成一条横跨整张图的迷路线段或大弧线——这不是画图的 bug，是选错了 component；只要最后一个阶段的箭头是指回第一个阶段，就该换成 `cycle`。`roadmap` 和 `gantt` 是再下一个：`roadmap` 把多条工作线分组进泳道，没有共享的数值坐标轴，`gantt` 则把带日期的条形画在一根所有条目共同比对的共享坐标轴上。`pest` 和 `swot` 是再下一个：`pest` 只看外部宏观环境因素（没有内部优势/劣势这条轴），永远是同样命名的四个类别——一份内部对外部的战略评估仍然是 `swot`。`sankey` 和 `flowchart`/funnel `chart` 是再下一个：`sankey` 在分支/汇合的路径上守恒并拆分一个数量（带宽本身就承载意义），`flowchart` 是没有数量含义的决策/流程分支，funnel `chart` 则永远只沿一条线收窄，从不分支也不汇合。`data_table` 和 `chart` 和 `comparison` 是最后一组：受众要逐行读的精确数字用 `data_table`，一眼看出趋势/对比形态的用 `chart`，没有精确数字、只做定性并排属性对比的用 `comparison`。
 
@@ -179,6 +180,12 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 判据很直接：条目是不是「人」？团队名单、讲者阵容、评委阵容、作者名单，用 `people_cards`：2-12 人的等重卡片网格，每张卡是一个由 `name` 派生的确定性 initials 徽章（不需要照片资源），加姓名和可选的 `role`/`org`。非人条目仍用 `row_cards`/`icon_cards`，哪怕字段形状很像。这两个组件上限都是 6 项，`people_cards` 是 12 项：一份会撑爆 6 上限的人员名单（比如 9 位讲者的大会阵容），就是该换 `people_cards`、而不是硬拆成两页无标签 `row_cards` 的最清楚信号。
 
 字段：`people`（2-12 项，每项必填 `name`，可选 `role`/`org`），可选的整体 `title`。initials 徽章是 `name` 的纯函数：拉丁名取首两词的首字母（"Sarah Chen" → "SC"），单个拉丁词取它自己的前两个字母，CJK 名只取首字符，也就是姓（"王小明" → "王"），不取两个字。这个组件故意没有照片字段：真有头像照片的场景，`image_grid` 已经够用，`people_cards` 存在的全部理由就是这个零资产依赖的 initials 徽章。2 是硬下限（一个人的简介用不上网格，改用 `callout` 或纯文字），12 是硬上限（更大的名单拆成多张 `people_cards` slide，不要硬塞第 13 张卡进一个网格）。
+
+### 标识墙 vs. 图片网格
+
+一面第三方标识墙——赞助商、客户名录、媒体报道/"as seen in" 墙、技术合作伙伴——用 `logo_wall`，不是 `image_grid`。它存在的理由是 `image_grid` 是为照片设计的，对 logo 会同时犯两个错：格子会 cover 裁切，宽扁 wordmark 两端的文字被裁掉（"Northbridge Robotics" 渲染成 "NORTHBR"）。而且它在真实资产下方不铺任何底色，透明单色油墨 logo（press kit 实际就是这么分发的）会直接露出幻灯片背景，浅色主题上的白色油墨 logo 直接消失成一个空框。`logo_wall` 把每个 logo 都 contain 缩放（永不裁切）画在各自自动生成的中性底板上，所以深墨和浅墨 logo 在同一面墙上、任何主题下都保持可辨。内容是一组属于*其它*机构的标识时就用它。普通照片（自身铺满画面）仍用 `image_grid`，单张作为「正在运行的软件」的产品截图用 `device_mockup`。
+
+字段：`items`（4-12 项，每项必填 `asset_id`，可选 `label`），可选的整体 `title`。每个 logo 在 `assets.images` 里声明一次，用 `asset_id` 引用，和 `image` 完全一样。`label` 是机构名称——它一身两用：资产自身没有 `alt` 时作为该 logo 的无障碍文本，资产缺失时作为可见的兜底文字（永远不会画在已存在的 logo 上面）。没有灰度/单色选项（改别人 logo 的颜色是商标风险），没有单 logo 链接，也没有尺寸/权重分级——每个 logo 等重。4 是硬下限（1-3 个 logo 用 `image` 或 `image_grid`），12 是硬上限（超过 12 个后每个 logo 会缩到看不清——把更大的一组拆成多张 `logo_wall` slide）。
 
 ### 图片页
 
