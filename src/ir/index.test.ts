@@ -1118,6 +1118,96 @@ describe("device_mockup component (device_mockup wave, `.issues/2026-08-05-compo
   })
 })
 
+describe("cycle component (cycle wave, `.issues/2026-08-05-component-waves/plan-cycle.md` — 35th component)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const items = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ label: `Stage ${i + 1}` }))
+  const cycleComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "cycle",
+    items: items(4),
+    ...overrides,
+  })
+
+  it("accepts the schema minimum (3 items)", () => {
+    expect(parsePptxIR(withComponents([cycleComponent({ items: items(3) })])).success).toBe(true)
+  })
+
+  it("accepts the schema maximum (8 items)", () => {
+    expect(parsePptxIR(withComponents([cycleComponent({ items: items(8) })])).success).toBe(true)
+  })
+
+  it("accepts an optional overall title and per-item description", () => {
+    const d = withComponents([
+      cycleComponent({
+        title: "Product loop",
+        items: [
+          { label: "Plan", description: "Set goals" },
+          { label: "Execute", description: "Do the work" },
+          { label: "Review", description: "Check outcomes" },
+        ],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts omitting the optional title and per-item description", () => {
+    expect(parsePptxIR(withComponents([cycleComponent({ items: items(3) })])).success).toBe(true)
+  })
+
+  // ── 裁定 1: 2 stages can't close into a ring — the hard floor, with a
+  // clear error pointing authors at flowchart/steps instead. ──
+  it("rejects 2 items (too few to read as a closed loop) with a message pointing at flowchart/steps", () => {
+    const d = withComponents([cycleComponent({ items: items(2) })])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/closed loop/)
+      expect(result.error).toMatch(/flowchart/)
+      expect(result.error).toMatch(/steps/)
+    }
+  })
+
+  it("rejects 0 items", () => {
+    expect(parsePptxIR(withComponents([cycleComponent({ items: items(0) })])).success).toBe(false)
+  })
+
+  // ── geometric ceiling — 9+ would crowd the ring past legible size. ──
+  it("rejects 9 items with a message explaining the ceiling", () => {
+    const d = withComponents([cycleComponent({ items: items(9) })])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/at most 8/)
+    }
+  })
+
+  it("rejects an item missing a label", () => {
+    const d = withComponents([cycleComponent({ items: [{ description: "no label" }, ...items(3)] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...cycleComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown item-level field (strict)", () => {
+    const d = withComponents([cycleComponent({ items: [{ label: "Plan", bogus: 1 }, ...items(3)] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  // ── 裁定 1: no direction field, no center-text slot — not part of this
+  // component's minimal semantic surface. ──
+  it("rejects a direction field (not part of this component's schema)", () => {
+    const d = withComponents([cycleComponent({ direction: "counterclockwise" })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

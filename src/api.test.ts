@@ -2160,4 +2160,24 @@ describe("irJsonSchema", () => {
     expect(json).toContain("Frame shape to draw")
     expect(json).toContain("Address-bar text shown in the browser chrome bar")
   })
+
+  // cycle wave (`.issues/2026-08-05-component-waves/plan-cycle.md`, 裁定 3):
+  // same precedent device_mockup's Important-1 fix established — the
+  // flowchart-vs-cycle selection test (does the process reach an endpoint,
+  // or loop back to its own start) has to survive z.toJSONSchema's
+  // traversal (component-level .describe() sits underneath .strict(), and
+  // the schema is a member of a top-level z.discriminatedUnion) into the
+  // emitted JSON Schema, not just live in a source comment.
+  it("surfaces cycle's component-selection guidance (when to use it vs `flowchart`)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("Lays 3-8 stages out on a closed ring with arrow connectors")
+    expect(json).toContain("loops back to its own start")
+    expect(json).toContain("use `flowchart` instead when the process reaches a real")
+  })
+
+  it("surfaces cycle's items field-level guidance", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("connected clockwise, the last stage")
+    expect(json).toContain("Short label shown inside the stage's node on the ring")
+  })
 })
