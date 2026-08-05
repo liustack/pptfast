@@ -1,5 +1,31 @@
 # @liustack/pptfast
 
+## 0.16.0
+
+### Minor Changes
+
+- 7073b26: `chart` grows from 5 subtypes to 9: `scatter`, `area`, `donut`, and `gauge` join `bar`/`line`/`pie`/`funnel`/`dumbbell`. This closes the strongest internal enrichment signal from the benchmark archive, where weak models across independent runs kept inventing these exact chart types by name (scatter and bubble each in 3 runs, area/donut/gauge each in 2) because the subtypes did not exist.
+
+  `scatter` plots numeric x-y pairs, and an optional per-point `size` turns it into a bubble chart (one field covering both the scatter and bubble requests). `area` fills a line's region down to the baseline for volume or accumulation emphasis. `donut` is the dedicated ring form of pie, with an optional total printed big in its center (`center_total: true`). `gauge` shows one value's progress toward a target as a filled half-ring with the number centered, over an optional `{ min, max }` range that defaults to 0..100.
+
+  The schema stays purely additive: four new `chart_type` values plus the optional `size`, `center_total`, and `gauge` fields, with per-subtype validation (`scatter` requires a numeric x, `gauge` requires a single value) and selection guidance in `chart_type`'s own `.describe()`. `skills/pptfast/SKILL.md` and `SKILL.zh-CN.md` document the new subtypes and the `gauge` vs `kpi_cards` boundary (a single completion metric versus several independent headline numbers) in both languages. The component union itself is unchanged, still 37 types.
+
+  `scatter` and `area` are cartesian, so they render axis titles, gridlines, and multi-series legends like `bar`/`line`. `gauge` and `donut` are radial: their arcs emit the same annulus wedge idiom the existing donut already uses, so deck-audit attributes a gauge's centered number and a donut's center total to the ring hole (the page background), never the opaque arc fill, verified by a zero-finding 16-theme contrast sweep. Every one of the five original subtypes stays byte-identical in its rendered output (golden-pinned).
+
+- a0d57bc: New component `tag_row` (the 38th): a wrapping row of 2-16 short label pills — a technology stack, a capability or skill set, a keyword set, the certifications a vendor holds. It closes the strongest clean gap in the internal invented-name evidence, where weak models across independent benchmark runs kept reaching for this exact component by name (`tag`/`pill` each in 2 runs, `chips`/`badge` each in 2, plus `chip_row`) and, finding nothing, either buried the labels in `bullets` or burned a whole slide brute-forcing dozens of non-existent type names. It is named after the models' own most-guessed name, the same way `logo_wall` was.
+
+  Each item is a plain short string with a hard 24-character cap (a tag is a label, not a sentence — over the cap, validation points the author at `bullets` for a prose list or `row_cards`/`icon_cards` for items that carry their own description). An optional overall `title`, and an optional `emphasis: "first"` that draws the first tag in the theme accent as the primary one among the rest (the same field and semantics as `image_grid`).
+
+  Rendering reuses existing machinery only: pills flow-wrap using the codebase's exact per-character width model, so a CJK/Latin-mixed label ("基于 Kubernetes Operator") is measured and wrapped correctly, and one uniform font size is picked as the largest that fits the height budget, with a single over-long tag truncated rather than allowed to overflow. A default pill is `colors.surface` with `colors.text` ink; the emphasized pill is `colors.accent` with a readable ink — both text colors clear WCAG 4.5:1 against their own pill on all 16 built-in themes (verified by a zero-finding contrast sweep), so the component renders no low-key `colors.muted` text and needs no contrast exception.
+
+  `skills/pptfast/SKILL.md` and `SKILL.zh-CN.md` document the `tag_row` vs `bullets`/`row_cards`/`icon_cards` boundary (short labels versus described items versus a prose list) in both languages. The change is purely additive — one new component in the union, no change to any existing component's schema or rendered output.
+
+- c63b90a: Add `vermilion`, the 17th built-in theme — a solemn official-report register (工作汇报 / 述职 / 年度总结) and the first theme designed Chinese-first. Vermilion red primary (`#C8102E`) + gold accent (`#D4A017`) on a warm off-white ground, a SimSun masthead heading, and square, restrained `radius: 2` corners.
+
+  The red identity lives where the contrast architecture allows it: chapter pages are full-bleed vermilion with white headings picked by `readableOn`, while cover/content/ending stay warm off-white so the shared `text`/`muted` tokens clear the registration-time contrast floor (a red cover would force light text tokens that then fail on the light content pages). The cover still reads red-and-gold through its structural archetypes and the new `vermilion-motif` — flag-like ribbon arcs plus a fan of gold rays, deliberately abstract with no political symbols.
+
+  `vermilion` declares its own `layoutTendencies` (chapter `banner-chapter` + `rail-chapter`, ending `rail-ending`) so its official-report structure — the red section divider, the progress rail, the structured contact close — reads distinctly from every other theme. Every other built-in renders byte-identically to before.
+
 ## 0.15.0
 
 ### Minor Changes
