@@ -1230,6 +1230,17 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // of this map's scope entirely (same posture as steps.tsx's numbered
   // badge digit, which also never appears in this table).
   cycle: "page-bg",
+  // people_cards wave (`.issues/2026-08-05-component-waves/
+  // plan-people-cards.md`): people-cards.tsx's `colors.muted` usages are
+  // each person's `role`/`org` text, both rendered directly on the card's
+  // own `colors.surface`-filled rect — same "muted text on a card shell"
+  // shape as icon_cards/row_cards/steps's own entries above (their own
+  // `text`/`sub`/description fields). The name is never `colors.muted`
+  // (it renders `colors.text`), and the badge's initials digit is never
+  // `colors.muted` either — it renders `readableOn(fill)` against the
+  // badge's own filled circle, out of this map's scope entirely, same
+  // posture as steps.tsx's numbered badge digit.
+  people_cards: "flat-surface",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {

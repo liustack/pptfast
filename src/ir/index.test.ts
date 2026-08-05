@@ -1208,6 +1208,99 @@ describe("cycle component (cycle wave, `.issues/2026-08-05-component-waves/plan-
   })
 })
 
+describe("people_cards component (people_cards wave, `.issues/2026-08-05-component-waves/plan-people-cards.md` — 36th component)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const people = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ name: `Person ${i + 1}` }))
+  const peopleCardsComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "people_cards",
+    people: people(4),
+    ...overrides,
+  })
+
+  it("accepts the schema minimum (2 people)", () => {
+    expect(parsePptxIR(withComponents([peopleCardsComponent({ people: people(2) })])).success).toBe(true)
+  })
+
+  it("accepts the schema maximum (12 people)", () => {
+    expect(parsePptxIR(withComponents([peopleCardsComponent({ people: people(12) })])).success).toBe(true)
+  })
+
+  it("accepts an optional overall title and per-person role/org", () => {
+    const d = withComponents([
+      peopleCardsComponent({
+        title: "Leadership team",
+        people: [
+          { name: "Sarah Chen", role: "CEO", org: "Acme Corp" },
+          { name: "王小明", role: "CTO", org: "Acme Corp" },
+        ],
+      }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts omitting the optional title and per-person role/org", () => {
+    expect(parsePptxIR(withComponents([peopleCardsComponent({ people: people(2) })])).success).toBe(true)
+  })
+
+  // ── 裁定 1: a single person doesn't need a grid — the hard floor, with a
+  // clear error pointing authors at callout/plain text instead. ──
+  it("rejects 1 person (too few for a grid) with a message pointing at callout/plain text", () => {
+    const d = withComponents([peopleCardsComponent({ people: people(1) })])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/at least 2 people/)
+      expect(result.error).toMatch(/callout/)
+    }
+  })
+
+  it("rejects 0 people", () => {
+    expect(parsePptxIR(withComponents([peopleCardsComponent({ people: people(0) })])).success).toBe(false)
+  })
+
+  // ── 裁定 1: the p12 evidence's own ceiling — 13+ should split across
+  // multiple people_cards slides instead. ──
+  it("rejects 13 people with a message explaining the ceiling", () => {
+    const d = withComponents([peopleCardsComponent({ people: people(13) })])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/at most 12/)
+    }
+  })
+
+  it("rejects a person missing a name", () => {
+    const d = withComponents([peopleCardsComponent({ people: [{ role: "no name" }, ...people(2)] })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...peopleCardsComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown person-level field (strict)", () => {
+    const d = withComponents([
+      peopleCardsComponent({ people: [{ name: "Sarah Chen", bogus: 1 }, ...people(2)] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  // ── 裁定 1: no photo/contact/social fields — not part of this
+  // component's minimal semantic surface. ──
+  it("rejects a photo field on a person (not part of this component's schema)", () => {
+    const d = withComponents([
+      peopleCardsComponent({ people: [{ name: "Sarah Chen", photo: "asset-1" }, ...people(2)] }),
+    ])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())

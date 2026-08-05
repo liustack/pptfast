@@ -100,13 +100,20 @@ const DOMAIN_FILE_TRAITS: readonly (readonly [string, { readonly evidence: boole
  * changing render behavior.
  */
 
-describe("STRETCHABLE_TYPES equivalence (was layout.ts:137)", () => {
-  it("matches the pre-refactor members exactly", () => {
+describe("STRETCHABLE_TYPES equivalence (was layout.ts:137, plus the people_cards wave's addition)", () => {
+  it("matches the pre-refactor members plus people_cards (people_cards wave, `.issues/2026-08-05-component-waves/plan-people-cards.md` — first new stretchable:true declaration since the W2 task 5 refactor)", () => {
     // layout.ts:137 (pre-refactor):
     // `new Set<Component["type"]>(["kpi_cards", "icon_cards", "row_cards"])`
     const preRefactor = ["kpi_cards", "icon_cards", "row_cards"]
-    expect(new Set(STRETCHABLE_TYPES)).toEqual(new Set(preRefactor))
-    expect(STRETCHABLE_TYPES.size).toBe(preRefactor.length)
+    // people_cards wave: people_cards.tsx is the same "卡壳类" card-grid
+    // family as row_cards/icon_cards — a people_cards grid with fewer
+    // people than its slot has room for should grow its cards to fill the
+    // leftover height the same way, so it declares stretchable: true too.
+    // A real, intentional addition, not drift — the pre-refactor array
+    // above stays as the historical baseline this lock originally pinned.
+    const current = [...preRefactor, "people_cards"]
+    expect(new Set(STRETCHABLE_TYPES)).toEqual(new Set(current))
+    expect(STRETCHABLE_TYPES.size).toBe(current.length)
   })
 })
 

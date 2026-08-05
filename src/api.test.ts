@@ -2180,4 +2180,22 @@ describe("irJsonSchema", () => {
     expect(json).toContain("connected clockwise, the last stage")
     expect(json).toContain("Short label shown inside the stage's node on the ring")
   })
+
+  // people_cards wave (`.issues/2026-08-05-component-waves/
+  // plan-people-cards.md`, 裁定 4): same precedent — the people_cards vs.
+  // row_cards/icon_cards selection test (is the content fundamentally
+  // about people) has to survive z.toJSONSchema's traversal into the
+  // emitted JSON Schema, not just live in a source comment.
+  it("surfaces people_cards's component-selection guidance (when to use it vs `row_cards`/`icon_cards`)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("Lays 2-12 people out on an equal-weight card grid")
+    expect(json).toContain("deterministic initials badge")
+    expect(json).toContain("keep `row_cards`/`icon_cards`")
+  })
+
+  it("surfaces people_cards's name field-level guidance (the initials-derivation contract)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("the initials badge is derived from this exact string")
+    expect(json).toContain("a CJK name takes only its first character (surname), never two")
+  })
 })
