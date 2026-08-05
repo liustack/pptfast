@@ -53,7 +53,7 @@ Never write IR or a spec from memory of a previous session or from this file —
 Propose and confirm before writing any page content:
 
 - Narrative first: pick a named preset (or override individual axes) from `narratives` output that matches the deck's purpose and audience — this is a decision layer above theme, not a visual choice
-- Theme id next, from the chosen narrative's `themeRecommendations` (or pick from `themes` output to match the deck's tone if none fit — a recommendation, never a constraint)
+- Theme id next, from the chosen narrative's `themeRecommendations` (or pick from `themes` output to match the deck's tone if none fit — a recommendation, never a constraint). If the user supplied a company template, extract it into a custom theme first — see Brand themes below
 - Draft `deck.spec.json`: one entry per page (`id`, `type`, `heading`, optionally `beat`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`
 - Run `pptfast spec validate deck.spec.json` and fix whatever it reports until it prints `OK` — the hard gates (boundary pages, heading length, beat rotation, page count vs. pacing) all fire here, before a single page is written
 - Once `spec validate` prints `OK`, set a `seed` (any integer) in `deck.spec.json` for revision stability — write one now, or run `pptfast assemble` once in phase 3 and copy the `generated seed …` value it prints into the spec. Without a persisted seed, editing one page's heading later can reshuffle every other page's auto-picked layout
@@ -114,6 +114,17 @@ Once a deck project exists, a follow-up message routes into exactly one of three
 1. **Edit a page** ("change slide 3", "make the KPI page punchier", or a handed-back `revision-request.json`) → phase 6: edit that page's file, re-assemble, re-validate, re-audit. Never touch pages nobody asked about.
 2. **A new deck** (a different topic, audience, or an explicit request to start over) → phase 1: a new deck project directory, fresh narrative/theme decision, fresh spec.
 3. **Unrelated to deck generation** (a question about the content, anything with no connection to slides) → do not invoke pptfast at all.
+
+## Brand themes — the user's own company template
+
+When the user hands over (or mentions having) a company template — a `.thmx` theme, `.potx` template, or any branded `.pptx` — extract its colors and fonts into a custom theme **before** picking a built-in theme in phase 2. Extraction runs entirely locally; the file never leaves the machine.
+
+```bash
+pptfast brand extract corp-template.pptx -o deck-dir/theme.json --id acme
+pptfast render deck-dir/ -o deck.pptx     # theme.json auto-loads; set "theme": "acme" in deck.spec.json
+```
+
+A `theme.json` sitting in the deck project directory auto-loads on every command (validate/render/audit/preview/serve) — reference its id from `deck.spec.json` and no flag is needed. For a single IR file, pass `--theme-file deck-dir/theme.json` instead (works on the same five commands). Loading enforces a contrast floor: a template whose text/background tones are too close is refused with the failing token and ratio named — relay that message and ask the user whether to adjust the extracted file's colors or fall back to a built-in theme.
 
 ## Content methodology
 

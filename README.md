@@ -86,7 +86,7 @@ No `installPlatform()` call is needed in a browser — DOM parsing and (for `--p
 
 | Command | Does |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--style <file>] [--draft]` | Validate + render to a `.pptx` — `target` is an IR JSON file, a deck project directory, or a bare deck name (see Deck projects) |
+| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | Validate + render to a `.pptx` — `target` is an IR JSON file, a deck project directory, or a bare deck name (see Deck projects) |
 | `validate <target>` | Check the IR, print page-scoped errors and advisory warnings — same `target` forms as `render` |
 | `audit <target> [--json] [--pixels]` | Deterministic geometry review (overflow/out-of-bounds/low-contrast/overlap/content-truncated/content-dropped) — same `target` forms as `render`, exits 1 when it finds anything (see Auditing) |
 | `asset-brief <target> [--json]` | Image-generation brief for every `image` component — real rendered frame, fit/crop mode, suggested pixel size, theme palette/mood, and a paste-ready prompt (see Asset briefs) |
@@ -95,6 +95,7 @@ No `installPlatform()` call is needed in a browser — DOM parsing and (for `--p
 | `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
 | `schema [--style \| --spec]` | Print the IR JSON Schema (or the style-override schema, or the deck spec schema) |
 | `themes [--json]` | List the 16 built-in themes |
+| `brand extract <file> -o <out.theme.json> [--id] [--label]` | Extract brand colors/fonts from a `.thmx`/`.potx`/`.pptx` into a theme file, entirely locally (see Your own brand) — load it with `--theme-file` (also on `validate`/`audit`/`preview`/`serve`) or as a deck project's `theme.json` |
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`) — same `target` forms as `render`, never gated on placeholder pages |
 | `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes, with annotations submitting straight back to the deck directory as `revision-request.json` |
@@ -134,6 +135,17 @@ A theme bundles a style (design tokens), a brand (identity chrome), and a layout
 | `pulse` | Health & Life Science |
 | `terra` | Sustainability & ESG |
 | `ember` | Startup Pitch |
+
+### Your own brand
+
+The fastest way to make the output look like *your company* instead of a built-in theme: extract the brand from a template you already have. `pptfast brand extract` reads the colors and fonts out of a `.thmx` theme, `.potx` template, or `.pptx` presentation — **entirely locally, the file never leaves your machine** (verified against all 39 Office themes shipped with a macOS PowerPoint install) — and writes a pptfast theme file:
+
+```bash
+pptfast brand extract corp-template.pptx -o my-brand.theme.json
+pptfast render deck.json -o deck.pptx --theme-file my-brand.theme.json
+```
+
+`--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`. In a deck project directory, drop the file in as `theme.json` and it auto-loads on every command — reference its id from `deck.spec.json`, no flag needed. The 12 OOXML color slots map almost 1:1 onto pptfast's tokens (the six accent colors become the chart palette); the one derived token, `muted`, is stepped toward the background only as far as it can go while still clearing a 4.5:1 contrast ratio. Loading enforces the same contrast floor every registered theme faces: a palette whose text and background are too close is refused with the failing token, the measured ratio, and the background named — never rendered unreadable. A custom theme can never shadow a built-in id.
 
 ## Narratives
 
