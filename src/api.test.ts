@@ -2215,4 +2215,25 @@ describe("irJsonSchema", () => {
     expect(json).toContain("drawn contain-fit (never cropped) on an auto-generated neutral backing panel")
     expect(json).toContain("transparent single-ink logo")
   })
+
+  // chart-depth wave (`.issues/2026-08-06-chart-depth/task-1-report.md`): the
+  // four new chart subtypes (scatter/area/donut/gauge) and the guidance for
+  // WHICH one to reach for — including the gauge-vs-kpi_cards boundary ("never
+  // a row of gauges") — live only in chart_type's `.describe()`. That enum
+  // sits under the chart schema's `.strict().superRefine()` wrapper inside the
+  // top-level discriminatedUnion, the same two layers that could silently drop
+  // a description (same precedent device_mockup's Important-1 fix established);
+  // this locks that the subtype enum members AND their selection guidance
+  // survive z.toJSONSchema into the emitted JSON Schema the model actually
+  // reads (`pptfast schema`), not just a source comment.
+  it("surfaces chart_type's subtype selection guidance (the four chart-depth subtypes + the gauge-vs-kpi_cards boundary)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    // the new enum members reach the emitted schema
+    expect(json).toContain('"scatter","area","donut","gauge"')
+    // per-subtype selection guidance (when to reach for each)
+    expect(json).toContain("a numeric x-y point cloud")
+    expect(json).toContain("the ring form of pie")
+    // the distinctive gauge-vs-kpi_cards redirect
+    expect(json).toContain("never a row of gauges")
+  })
 })
