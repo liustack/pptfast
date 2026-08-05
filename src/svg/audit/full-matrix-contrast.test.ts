@@ -1217,6 +1217,19 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // safety argument is identical). Classified "flat-surface" for usage (1);
   // usage (2) needs no entry of its own.
   device_mockup: "flat-surface",
+  // cycle wave (`.issues/2026-08-05-component-waves/plan-cycle.md`):
+  // cycle.tsx's only `colors.muted` usages are the connecting arc's
+  // `stroke` (never a `<text>` fill, so `findContrastIssues` can never
+  // attribute a finding to it — same reasoning as bullets/comparison's own
+  // stroke-only entries above) and each item's outside `description` text,
+  // rendered directly on the ambient page background (no chip, no
+  // self-painted rect behind it — unlike flowchart.tsx's edge labels) —
+  // same "muted text on page bg" shape as timeline/comparison's own
+  // entries. The node label itself is never `colors.muted`: it renders
+  // `readableOn(colors.primary)` against the node's own filled circle, out
+  // of this map's scope entirely (same posture as steps.tsx's numbered
+  // badge digit, which also never appears in this table).
+  cycle: "page-bg",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {

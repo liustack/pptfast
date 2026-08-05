@@ -152,7 +152,7 @@ describe("SCALABLE_TYPES duplication verdict (content-bento-panel.tsx:105 vs con
 })
 
 describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-143, plus R1's data_table addition)", () => {
-  it("matches the pre-refactor members plus data_table (R1 evidence wave, Task T3 — first new passthroughShell:true declaration since the W2 task 5 refactor)", () => {
+  it("matches the pre-refactor members plus data_table and cycle (R1 evidence wave, Task T3 — first new passthroughShell:true declaration since the W2 task 5 refactor; cycle wave adds a second)", () => {
     // content-bento-panel.tsx:134-143 (pre-refactor):
     // new Set(["steps", "flowchart", "architecture", "timeline", "paragraph", "quote"])
     const preRefactor = ["steps", "flowchart", "architecture", "timeline", "paragraph", "quote"]
@@ -163,7 +163,12 @@ describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-1
     // as well. A real, intentional addition, not drift — the pre-refactor
     // array above stays as the historical baseline this lock originally
     // pinned.
-    const current = [...preRefactor, "data_table"]
+    // cycle wave (`.issues/2026-08-05-component-waves/plan-cycle.md`):
+    // cycle.tsx is the same "diagram made of self-chromed nodes" family as
+    // flowchart/architecture — a bento outline shell underneath its ring
+    // would be a redundant second shell, so it declares passthroughShell:
+    // true too.
+    const current = [...preRefactor, "data_table", "cycle"]
     expect(new Set(PASSTHROUGH_SHELL_TYPES)).toEqual(new Set(current))
     expect(PASSTHROUGH_SHELL_TYPES.size).toBe(current.length)
   })

@@ -1310,4 +1310,44 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       ],
     },
   ]),
+
+  // cycle (cycle wave, `.issues/2026-08-05-component-waves/plan-cycle.md`,
+  // 裁定 4): the schema max, 8 nodes, each with an extreme-length CJK label
+  // (shrinks-then-truncates inside a small fixed-radius circle — the
+  // pathological case a "short label" convention alone doesn't guarantee)
+  // plus an extreme-length CJK description (wraps to 2 lines, then
+  // truncates the same way steps.tsx's own description field does). A
+  // second page carries the schema minimum (3 nodes) with an EN_LONG title
+  // and MIXED_LONG labels/descriptions — the CJK/Latin mix `measureTextUnits`
+  // weighs differently from pure CJK, so both scripts get their own
+  // pathological page rather than assuming one covers the other.
+  cycle: deck([
+    {
+      type: "content",
+      heading: "循环压力测试（8 节点）",
+      components: [
+        {
+          type: "cycle",
+          items: Array.from({ length: 8 }, () => ({
+            label: CJK_LONG,
+            description: CJK_LONG,
+          })),
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "循环压力测试（3 节点，混排）",
+      components: [
+        {
+          type: "cycle",
+          title: EN_LONG,
+          items: Array.from({ length: 3 }, () => ({
+            label: MIXED_LONG,
+            description: MIXED_LONG,
+          })),
+        },
+      ],
+    },
+  ]),
 }
