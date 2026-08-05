@@ -2137,4 +2137,27 @@ describe("irJsonSchema", () => {
     expect(schema).toHaveProperty("$schema")
     expect(JSON.stringify(schema)).toContain("slides")
   })
+
+  // Review fix round, Important-1: `irJsonSchema()` is the schema surface a
+  // model actually reads before writing IR (`pptfast schema`, `cli/commands
+  // .ts`'s `schema` command) — a component-vs-alternative selection call
+  // that only lives in a source comment never reaches it. device_mockup is
+  // the first component to carry a `.describe()` (`ir/components/
+  // device-mockup.ts`); this locks that the guidance text actually survives
+  // z.toJSONSchema's traversal (component-level .describe() sits underneath
+  // a .strict().superRefine() wrapper, and the schema itself is a member of
+  // a top-level z.discriminatedUnion — either layer could have silently
+  // dropped it) all the way into the emitted JSON Schema, not just that the
+  // source file calls .describe() somewhere.
+  it("surfaces device_mockup's component-selection guidance (when to use it vs `image`)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("Frames a product or app screenshot inside a real device")
+    expect(json).toContain("keep plain photos, illustrations, and other non-screen images as `image`")
+  })
+
+  it("surfaces device_mockup's device/url field-level guidance", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("Frame shape to draw")
+    expect(json).toContain("Address-bar text shown in the browser chrome bar")
+  })
 })

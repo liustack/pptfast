@@ -66,6 +66,7 @@ import { schema as fiveForcesSchema } from "./components/five-forces"
 import { schema as heatmapSchema } from "./components/heatmap"
 import { schema as sankeySchema } from "./components/sankey"
 import { schema as dataTableSchema } from "./components/data-table"
+import { schema as deviceMockupSchema } from "./components/device-mockup"
 
 // Re-exported so `src/spec/index.ts`'s `PageSpecSchema.beat` can share this
 // exact tuple instead of a second, independently-declared one — same
@@ -270,7 +271,7 @@ export const BrandSchema = z
   })
   .strict()
 
-// ── Components（33 种）──
+// ── Components（34 种）──
 
 const ComponentSchema = z.discriminatedUnion("type", [
   bulletsSchema,
@@ -306,6 +307,7 @@ const ComponentSchema = z.discriminatedUnion("type", [
   heatmapSchema,
   sankeySchema,
   dataTableSchema,
+  deviceMockupSchema,
 ], { error: componentTypeError })
 
 /**

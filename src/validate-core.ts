@@ -524,7 +524,7 @@ function checkAssetBytes(ir: PptxIR): ValidationIssue[] {
 
 /**
  * Every `asset_id` reference in the deck (an `image`/`image_grid`/
- * `image_compare` component, an `"asset"`-kind slide background,
+ * `image_compare`/`device_mockup` component, an `"asset"`-kind slide background,
  * `brand.logo_asset_id`) against the keys actually present in
  * `assets.images` (borrow wave, Task 2 — B5). A reference to a key that
  * doesn't exist renders as pptfast's documented graceful placeholder — a
@@ -571,6 +571,8 @@ function checkAssetReferences(ir: PptxIR): ValidationIssue[] {
       } else if (c.type === "image_compare") {
         check(c.left.asset_id, `slides.${i}.components.${ci}.left.asset_id`, page, slideId)
         check(c.right.asset_id, `slides.${i}.components.${ci}.right.asset_id`, page, slideId)
+      } else if (c.type === "device_mockup") {
+        check(c.asset_id, `slides.${i}.components.${ci}.asset_id`, page, slideId)
       }
     })
   })

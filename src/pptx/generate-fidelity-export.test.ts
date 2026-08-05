@@ -148,6 +148,15 @@ const imageCompareDangling: Component = {
   left: { asset_id: "does-not-exist-left", label: "Before" },
   right: { asset_id: "does-not-exist-right", label: "After" },
 }
+/** device_mockup shares the same "asset missing → placeholder, chrome frame
+ *  still renders" contract (device_mockup wave) — same dangling-id pattern. */
+const deviceMockupDangling: Component = {
+  type: "device_mockup",
+  device: "browser",
+  asset_id: "does-not-exist",
+  url: "app.example.com",
+  caption: "missing asset",
+}
 
 /** One minimal-valid instance per registered component type. */
 const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
@@ -261,6 +270,7 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
     columns: [{ key: "metric", label: "Metric" }, { key: "q1", label: "Q1", align: "right" }],
     rows: [{ cells: { metric: "Revenue", q1: "120" }, emphasis: "total" }],
   },
+  device_mockup: deviceMockupDangling,
 }
 
 const ONE_PX_PNG =

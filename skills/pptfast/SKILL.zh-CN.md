@@ -141,12 +141,19 @@ pptfast preview deck-dir/ -o preview/ --html
 | 竞争结构分析（竞争强度 + 周边 4 种力量） | `five_forces` | `matrix` |
 | 双轴数值网格，按颜色编码单元格（例如地区 × 季度） | `heatmap` | `matrix` |
 | 跨阶段的比例流量/数量分布（例如预算分配、能源结构） | `sankey` | `chart`（funnel）或 `flowchart` |
+| 产品/软件截图，这张 slide 要让人一眼认出「这是真实、正在运行的软件」（App 仪表盘、真实产品界面） | `device_mockup` | `image` |
 
 `steps` 和 `flowchart` 是最常见的混用：只要分支路径从不出现，就是 `steps`。`roadmap` 和 `gantt` 是次常见的：`roadmap` 把多条工作线分组进泳道，没有共享的数值坐标轴，`gantt` 则把带日期的条形画在一根所有条目共同比对的共享坐标轴上。`pest` 和 `swot` 是再下一个：`pest` 只看外部宏观环境因素（没有内部优势/劣势这条轴），永远是同样命名的四个类别——一份内部对外部的战略评估仍然是 `swot`。`sankey` 和 `flowchart`/funnel `chart` 是再下一个：`sankey` 在分支/汇合的路径上守恒并拆分一个数量（带宽本身就承载意义），`flowchart` 是没有数量含义的决策/流程分支，funnel `chart` 则永远只沿一条线收窄，从不分支也不汇合。`data_table` 和 `chart` 和 `comparison` 是最后一组：受众要逐行读的精确数字用 `data_table`，一眼看出趋势/对比形态的用 `chart`，没有精确数字、只做定性并排属性对比的用 `comparison`。
 
 `architecture` 的 `layers` 数组默认从上到下画（`layers[0]` 是最顶层的那条带）——这是自顶向下撰写系统分层（表现层在前、基础设施在后）的自然顺序。如果是一个自底向上的叙事（成熟度阶梯、基础优先的能力模型），就按它自己从低到高的自然顺序撰写，并在 component 上设 `direction: "bottom_up"`，让 `layers[0]` 改画在最底部——不要手动把数组倒过来伪造这个效果，这个字段存在的意义正是让数组始终保持叙事顺序。
 
 `swot`/`bmc`/`waterfall`/`gantt`/`pest`/`five_forces`/`heatmap`/`sankey` 是「满幅」（full-body）组件：各自占满整张 slide，且必须是该 slide 唯一的 component——见下文「容量」。
+
+### 设备样机 vs. 普通图片
+
+`device_mockup` 把一份资产框进一个主题化的浏览器窗口或手机机身，而不是一个普通带边框的矩形——它只为一件事存在：一张截图需要被读成「一个真实的产品，正在运行」，而不是「slide 上的一张图」。内容是软件/App/仪表盘的截图，且这一页的论点就是「这个产品是真的、正在正常工作」时用它。除此之外——普通照片、示意图、插画,或者只是顺带用截图说明一个观点而不是断言「这在真实运行」——都用 `image`。把不是产品截图的内容硬套 `device_mockup`，读出来只是个奇怪的装饰边框，不是证据。
+
+字段：`device`（`"browser"` 或 `"phone"`，必填，pptfast 不猜）、`asset_id`（语义同 `image`）、可选 `caption`，以及——仅 `browser` 款——可选的 `url`，渲染为地址栏文字（这是「这是真的在浏览器里跑」这件事上最强的信号）。`phone` 款没有地址栏，`validate` 会硬拒绝在 `phone` 上设置 `url`。屏幕内容永远铺满裁切（cover）——不像 `image` 那样有 `fit` 可选：真实设备的屏幕就是边到边铺满的。故意不提供其它装饰选项——没有倾斜/透视、没有暗色 chrome 开关、没有多设备并排——chrome 配色完全由主题 token 决定。
 
 ### 图片页
 

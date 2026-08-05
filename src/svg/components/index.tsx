@@ -36,6 +36,7 @@ import { renderDef as fiveForcesRenderDef } from "./five-forces"
 import { renderDef as heatmapRenderDef } from "./heatmap"
 import { renderDef as sankeyRenderDef } from "./sankey"
 import { renderDef as dataTableRenderDef } from "./data-table"
+import { renderDef as deviceMockupRenderDef } from "./device-mockup"
 
 /**
  * Dispatch table (src domain reorg wave 2, spec §4.2/§4.3): replaces the
@@ -91,6 +92,7 @@ const RENDER_DEFS: Record<ComponentType, RenderDef> = {
   heatmap: heatmapRenderDef,
   sankey: sankeyRenderDef,
   data_table: dataTableRenderDef,
+  device_mockup: deviceMockupRenderDef,
 }
 
 /**

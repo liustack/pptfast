@@ -1199,6 +1199,24 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // instead, so it's out of this map's scope entirely (see the dedicated
   // "data_table contrast" sweep below for that surface's own verification).
   data_table: "page-bg",
+  // device_mockup wave (`.issues/2026-08-05-component-waves/
+  // plan-device-mockup.md`): two distinct `colors.muted` usages, only one
+  // of which this table needs to cover. (1) The missing-asset screen
+  // placeholder — verbatim copy of `image.tsx`'s own placeholder pattern,
+  // text on a `colors.surface`-filled rect — is the *same* (muted, surface)
+  // hex pair the bento-panel "flat-surface" check already locks, exactly
+  // the `image`/`image_grid`/`image_compare` precedent above. (2) The
+  // browser device's optional address-bar text is a *separate*,
+  // out-of-scope surface: it's B-tier meta-information (`metaInk(colors
+  // .muted, colors.bg)`, `data-contrast-tier="meta"` — see
+  // `device-mockup.tsx`'s own comment), safe by construction at the tier's
+  // 3:1 floor regardless of theme, the same "no separate table entry
+  // needed" reasoning `ending-rail-ending.tsx`/`ending-banner-ending.tsx`'s
+  // own metaInk-driven copyright lines already rely on (those aren't
+  // components at all, so aren't in this table either — the underlying
+  // safety argument is identical). Classified "flat-surface" for usage (1);
+  // usage (2) needs no entry of its own.
+  device_mockup: "flat-surface",
 }
 
 describe("colors.muted component-type coverage (task-2 fix round, backlog 5a completeness sweep)", () => {

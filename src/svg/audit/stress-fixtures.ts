@@ -1268,4 +1268,46 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       components: [{ type: "paragraph", text: MIXED_LONG }],
     },
   ]),
+
+  // device_mockup (device_mockup wave, `.issues/2026-08-05-component-waves/
+  // plan-device-mockup.md`, Global Constraint 2): missing asset (never
+  // fake screen content — the chrome/bezel still renders, only the screen
+  // area degrades to the shared `image.tsx`-style placeholder), an extreme
+  // CJK caption, and — browser only — an extreme mixed CJK/Latin url that
+  // must fit inside the address-bar pill without ever overhanging the
+  // chrome bar. Two pages (one per device shape) since the two shapes'
+  // chrome geometry is entirely disjoint code paths.
+  device_mockup: deck([
+    {
+      type: "content",
+      heading: "设备样机压力测试（浏览器）",
+      components: [
+        {
+          type: "device_mockup",
+          device: "browser",
+          asset_id: "missing",
+          url: `https://example.com/${MIXED_LONG}/${MIXED_LONG}?query=${EN_LONG}`,
+          caption: `${CJK_LONG}${MIXED_LONG}`,
+        },
+      ],
+    },
+    {
+      type: "content",
+      arrangement: "two_column",
+      heading: "设备样机压力测试（手机，双栏窄列）",
+      components: [
+        {
+          type: "device_mockup",
+          device: "phone",
+          asset_id: "missing",
+          caption: `${CJK_LONG}${MIXED_LONG}`,
+        },
+        {
+          type: "bullets",
+          style: "numbered",
+          items: [CJK_LONG, MIXED_LONG],
+        },
+      ],
+    },
+  ]),
 }

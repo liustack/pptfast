@@ -33,6 +33,7 @@ import { traits as fiveForcesTraits } from "@/ir/components/five-forces"
 import { traits as heatmapTraits } from "@/ir/components/heatmap"
 import { traits as sankeyTraits } from "@/ir/components/sankey"
 import { traits as dataTableTraits } from "@/ir/components/data-table"
+import { traits as deviceMockupTraits } from "@/ir/components/device-mockup"
 
 /**
  * Component trait registry (W2 task 5, spec §3/§6/§8 — re-derived as a pure
@@ -142,6 +143,7 @@ const ALL_TRAITS: Record<ComponentType, ComponentTraits> = {
   heatmap: heatmapTraits,
   sankey: sankeyTraits,
   data_table: dataTableTraits,
+  device_mockup: deviceMockupTraits,
 }
 
 /** Every component type whose own domain-file `traits` declares `trait: true`, collected as a `ReadonlySet`. */
@@ -231,10 +233,22 @@ export const PASSTHROUGH_SHELL_TYPES: ReadonlySet<ComponentType> = typesWith("pa
  * bare photo/comparison-table/kpi callout as the next-strongest evidence —
  * it carries the same "reviewable structured numbers" quality a chart does,
  * just without the visual plot.
+ *
+ * `device_mockup` inserted right after `data_table`, ranked above `image`
+ * (device_mockup wave, `.issues/2026-08-05-component-waves/
+ * plan-device-mockup.md`): both types render the same underlying asset (a
+ * screenshot), but a screenshot framed as a real device — the whole point
+ * of this component, closing the exact probe evidence gap named in its own
+ * domain file's header comment — reads as stronger "this is real, running
+ * software" proof than the identical pixels in a bare bordered rect. When a
+ * slide carries both (an unusual but legal case — an author illustrating
+ * "before/after" framing, say), the framed one is the more convincing
+ * single piece of evidence to enlarge.
  */
 export const EVIDENCE_TYPES = [
   "chart",
   "data_table",
+  "device_mockup",
   "image",
   "comparison",
   "kpi_cards",

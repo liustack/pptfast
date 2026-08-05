@@ -139,12 +139,19 @@ Once a deck project exists, a follow-up message routes into exactly one of three
 | Competitive-structure analysis (rivalry + 4 surrounding forces) | `five_forces` | `matrix` |
 | Two-axis value grid with color-coded cells (e.g. region × quarter) | `heatmap` | `matrix` |
 | Proportional flow/quantity distribution across stages (e.g. budget allocation, energy mix) | `sankey` | `chart` (funnel) or `flowchart` |
+| A product/software screenshot that the slide needs to read as "this is real, running software" (an app dashboard, a live product UI) | `device_mockup` | `image` |
 
 `steps` vs `flowchart` is the most common miss: if the edges never branch, it is `steps`. `roadmap` vs `gantt` is the next: `roadmap` groups workstreams into swimlanes with no shared numeric axis, `gantt` plots dated bars against one shared axis all items compare against. `pest` vs `swot` is the next: `pest` is external macro-environment factors only (no internal strengths/weaknesses axis), always the same four named categories — an internal-vs-external strategic assessment is still `swot`. `sankey` vs `flowchart`/funnel `chart` is the next: `sankey` conserves and splits a quantity across branching/merging paths (the band width itself carries meaning), `flowchart` is decision/process branching with no quantity, and a funnel `chart` only ever narrows in one line, never branches or merges. `data_table` vs `chart` vs `comparison` is the last: exact figures the audience reads row-by-row is `data_table`, a trend/comparison shape meant to be read at a glance is `chart`, qualitative side-by-side attributes with no exact figures is `comparison`.
 
 `architecture`'s `layers` array paints top-to-bottom by default (`layers[0]` is the topmost band) — the natural order for a system stack authored top-down (presentation layer first, infrastructure last). Author a bottom-up narrative (a maturity ladder, a foundation-first capability model) in its own natural low-to-high order and set `direction: "bottom_up"` on the component to paint `layers[0]` at the bottom instead — do not hand-reverse the array to fake it, the field exists precisely so the array stays in narrative order.
 
 `swot`/`bmc`/`waterfall`/`gantt`/`pest`/`five_forces`/`heatmap`/`sankey` are *full-body*: each fills the entire slide and must be the slide's only component — see Capacity below.
+
+### Device mockups vs. plain images
+
+`device_mockup` frames an asset inside a themed browser-window or phone chrome instead of a bare bordered rect — it exists for exactly one job: a screenshot that has to be read as "a real product, actually running", not "a picture on a slide". Reach for it when the content is a screenshot of software/an app/a dashboard and the page's own point is that this product is real and working today. Keep plain `image` for everything else — ordinary photos, diagrams, illustrations, or a screenshot used only to illustrate a point in passing, not to assert "this is live". Overusing `device_mockup` on content that isn't actually a product screenshot reads as a strange decorative border, not evidence.
+
+Fields: `device` (`"browser"` or `"phone"`, required — pptfast doesn't guess), `asset_id` (same semantics as `image`), an optional `caption`, and — `browser` only — an optional `url` that renders as the address-bar text (the single strongest "this is really running in a browser" signal available; a `phone` mockup has no address bar, so `validate` hard-rejects `url` set on one). The screen always crops to fill the frame (cover) — there's no `fit` choice, unlike `image`: a real device's screen fills edge to edge. No other decoration options exist on purpose — no tilt/perspective, no dark-chrome toggle, no side-by-side multi-device layout; the theme's own tokens pick the chrome colors.
 
 ### Image slides
 
