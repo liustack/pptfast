@@ -152,4 +152,28 @@ describe("cycle component", () => {
       expect(r).toBeCloseTo(first!, 0)
     }
   })
+
+  it("regression: title clears the top node's circle at n=8 (the worst case that once regressed via a sign error in the TITLE_BAND/originY geometry)", () => {
+    const { container } = svg(cycle.render(component8, { x: 0, y: 0, w: 900 }, ctx))
+    const titleEl = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "Product loop")
+    expect(titleEl).toBeTruthy()
+    const titleY = Number(titleEl!.getAttribute("y"))
+    const titleFontSize = Number(titleEl!.getAttribute("font-size"))
+    // Lowest extent of the title's own glyphs (baseline + descender), same
+    // TEXT_DESCENT_RATIO estimator deck-audit.ts uses for every other
+    // text-vs-shape overflow check in this codebase — not a re-derivation
+    // of cycle.tsx's own TITLE_BAND/TITLE_TOP_PAD constants, which is
+    // exactly what would let this test pass vacuously against a broken
+    // geometry.
+    const titleBottom = titleY + titleFontSize * 0.25
+
+    // Topmost extent of the ring itself, read from the rendered circles —
+    // not assumed to be node 0 (whichever node the ring layout puts
+    // highest wins).
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles.length).toBe(8)
+    const ringTop = Math.min(...circles.map((c) => Number(c.getAttribute("cy")) - Number(c.getAttribute("r"))))
+
+    expect(titleBottom).toBeLessThan(ringTop)
+  })
 })
