@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { SvgContent } from "./svg-content"
+import { measureComponent } from "./components"
 import type { ComponentCtx } from "./components/types"
 import type { Component } from "@/ir"
 
@@ -116,5 +117,53 @@ describe("assertion_evidence variant", () => {
     // The chart should be placed around y=310 (centred)
     const centredY = rect.y + (rect.h - 240) / 2 // 310
     expect(yValues.some((y) => Math.abs(y - centredY) < 1)).toBe(true)
+  })
+
+  it("keeps the support stack below evidence's real bottom edge when evidence's natural height exceeds its budget (regression: device_mockup/image overlap)", () => {
+    // A wide support stack (5 bullet items) drives the support budget past
+    // its 40%-of-rect.h cap, squeezing evidence's own available height well
+    // below `image`'s fixed MAX_IMAGE_H — reproduces the geometry
+    // `.issues/2026-08-05-component-waves/device-mockup-report.md` recorded
+    // (found there with device_mockup's own 340px cap; `image` shares the
+    // same 340px MAX_IMAGE_H mechanism, so it reproduces identically without
+    // needing an asset).
+    const evidence: Component = { type: "image", asset_id: "missing", fit: "contain" }
+    const support: Component = {
+      type: "bullets",
+      items: [
+        "First supporting point long enough to need real vertical space on the page and wrap onto more than one line",
+        "Second supporting point elaborating on reliability and measured outcomes in the field across many deployments",
+        "Third supporting point about adoption timeline and rollout across regions and customer segments",
+        "Fourth supporting point about validated cost savings and payback period across the fleet",
+        "Fifth supporting point about the operations team's own daily workflow around this dashboard",
+      ],
+      style: "default",
+    }
+    const components = [evidence, support]
+
+    // Sanity-check the fixture actually exercises the overflow path this
+    // test targets, so a future unrelated change can't silently turn this
+    // into a vacuous pass.
+    const evidenceH = measureComponent(evidence, rect.w, ctx)
+    const supportMeasuredH = measureComponent(support, rect.w, ctx)
+    expect(evidenceH).toBe(340) // image.tsx's MAX_IMAGE_H
+    expect(supportMeasuredH).toBeGreaterThan(rect.h * 0.4) // forces the support-budget cap
+
+    const { container } = renderAE(components)
+    const auditRect = container.querySelector("[data-audit-rect]")
+    expect(auditRect).toBeTruthy()
+    const [evidenceEl, supportEl] = Array.from(auditRect!.children)
+    const translateY = (el: Element): number => {
+      const t = el.getAttribute("transform") ?? ""
+      const m = t.match(/translate\(\s*[\d.-]+\s*,\s*([\d.-]+)\s*\)/)
+      if (!m) throw new Error(`element has no translate() transform: "${t}"`)
+      return parseFloat(m[1])
+    }
+    const evidenceY = translateY(evidenceEl)
+    const supportY = translateY(supportEl)
+
+    // The support stack must start at or below evidence's true rendered
+    // bottom edge — never inside it.
+    expect(supportY).toBeGreaterThanOrEqual(evidenceY + evidenceH)
   })
 })

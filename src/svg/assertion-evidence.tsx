@@ -92,15 +92,39 @@ export function AssertionEvidence({
     rect.h * 0.4,
   )
   const availableForEvidence = rect.h - supportH - SUPPORT_GAP
-  const centredY =
-    rect.y + Math.max(0, (availableForEvidence - evidenceH) / 2)
+  // Evidence can be taller than the space its own budget left after
+  // reserving room for the support stack — several EVIDENCE_TYPES members
+  // carry a fixed or capped natural height regardless of width
+  // (device_mockup/image's shared 340px MAX_*_H cap, a chart with
+  // axis-title/legend bands added on top of its own fixed plot height), so
+  // `evidenceH` is measured, never assumed to fit. When it doesn't,
+  // evidence keeps its full measured height (top-aligned, same as the
+  // already-existing `others.length === 0` branch above never shrinks
+  // evidence either) and the support stack is pushed down to evidence's
+  // true bottom edge instead of the smaller budget originally set aside for
+  // it — the same "reflow when one region needs more than its original
+  // share" precedent `content-asymmetric-triptych.tsx`'s `bottomStarved`
+  // branch and `content-image-lead-split.tsx`'s `starved` branch already
+  // use elsewhere in this codebase for this exact class of defect. The
+  // support stack's own shrink/gap-tighten/drop safety net
+  // (`layoutContentFit`, its "+N more" pill already rendered below) absorbs
+  // whatever space is left — no new layout machinery.
+  const evidenceOverflows = evidenceH > availableForEvidence
+  const centredY = evidenceOverflows
+    ? rect.y
+    : rect.y + Math.max(0, (availableForEvidence - evidenceH) / 2)
 
-  const supportY = rect.y + availableForEvidence + SUPPORT_GAP
+  const supportY = evidenceOverflows
+    ? centredY + evidenceH + SUPPORT_GAP
+    : rect.y + availableForEvidence + SUPPORT_GAP
+  const supportRectH = evidenceOverflows
+    ? Math.max(0, rect.y + rect.h - supportY)
+    : supportH
 
   const { placed, dropped } = layoutContentFit(
     "single",
     others,
-    { x: rect.x, y: supportY, w: rect.w, h: supportH },
+    { x: rect.x, y: supportY, w: rect.w, h: supportRectH },
     ctx,
   )
 
