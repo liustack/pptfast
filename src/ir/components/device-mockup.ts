@@ -16,7 +16,9 @@ import type { ComponentAliasSpec, ComponentTraits } from "./types"
 export const schema = z
   .object({
     type: z.literal("device_mockup"),
-    device: z.enum(["browser", "phone"]),
+    device: z
+      .enum(["browser", "phone"])
+      .describe('Frame shape to draw: "browser" (adds an optional address-bar `url`) or "phone" (no address bar).'),
     // Same asset_id semantics as `image` (裁定 2) — the screen area reuses
     // image.tsx's whole asset-resolution/cover-crop/aria-label/missing-asset
     // machinery verbatim, just inside a themed device frame instead of a
@@ -27,9 +29,25 @@ export const schema = z
     asset_id: z.string(),
     caption: z.string().optional(),
     // Browser-only address-bar text — see this schema's own top comment.
-    url: z.string().optional(),
+    url: z
+      .string()
+      .optional()
+      .describe('Address-bar text shown in the browser chrome bar. Only valid when device is "browser".'),
   })
   .strict()
+  // Schema guidance (review fix round, Important-1 — this is the first
+  // component schema to carry a `.describe()`; `pptfast schema`/`irJsonSchema()`
+  // is the surface a model actually reads before writing IR, so the
+  // component-vs-image decision this schema's own top comment already
+  // reasons through needs to live here too, not just in a comment nobody
+  // consuming the JSON Schema output ever sees). Style precedent for future
+  // components: name the concrete alternative component, state the one-line
+  // test that decides between them, keep it to a sentence or two.
+  .describe(
+    "Frames a product or app screenshot inside a real device (a browser window or a phone) so it reads as " +
+      "software that is actually running, not a flat picture. Use device_mockup for screenshots of a UI, " +
+      "dashboard, or app; keep plain photos, illustrations, and other non-screen images as `image`.",
+  )
   .superRefine((c, ctx) => {
     if (c.device === "phone" && c.url !== undefined) {
       ctx.addIssue({
