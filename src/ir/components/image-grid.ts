@@ -19,6 +19,9 @@ export const schema = z
     emphasis: z.enum(["none", "first"]).optional(),
   })
   .strict()
+  .describe(
+    "A 2-4 photo/screenshot grid with cover-crop cells. For a set of organization/brand LOGOS (sponsors, customers, press, partners) use logo_wall instead — it fits logos without cropping and backs each cell for light-ink marks.",
+  )
 
 export const aliases = {} satisfies ComponentAliasSpec
 

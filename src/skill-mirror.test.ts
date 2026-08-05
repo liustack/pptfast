@@ -137,6 +137,27 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     ).toEqual({ missingFromCode: [], missingFromDocs: [] })
   })
 
+  it("both files carry the Brand-themes section with the same CLI command lines", () => {
+    // brand-extract wave review noted this section's EN/ZH parity was
+    // unguarded. Structural guard: both sections exist, and every backtick
+    // `pptfast …` command line inside them matches verbatim (commands are
+    // language-invariant; prose stays free per this file's philosophy).
+    const sectionAfter = (text: string, heading: RegExp): string => {
+      const m = text.match(heading)
+      expect(m, `heading ${heading} missing`).toBeTruthy()
+      const start = m!.index! + m![0].length
+      const rest = text.slice(start)
+      const next = rest.search(/^## /m)
+      return next === -1 ? rest : rest.slice(0, next)
+    }
+    const commands = (section: string) =>
+      [...section.matchAll(/`pptfast [^`]+`/g)].map((m) => m[0])
+    const en = commands(sectionAfter(read(EN_REL), /^## Brand themes[^\n]*$/m))
+    const zh = commands(sectionAfter(read(ZH_REL), /^## 品牌主题[^\n]*$/m))
+    expect(en.length, "SKILL.md Brand-themes section has no pptfast command lines").toBeGreaterThan(0)
+    expect(zh, "Brand-themes sections' pptfast command lines diverge between EN and ZH").toEqual(en)
+  })
+
   it("both files have the same number of ### Phase N sections", () => {
     const phaseHeadings = (text: string) => text.match(/^### Phase \d+/gm) ?? []
     const en = phaseHeadings(read(EN_REL))
