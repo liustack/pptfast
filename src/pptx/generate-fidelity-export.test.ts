@@ -279,6 +279,13 @@ const COMPONENT_BY_TYPE: Record<Component["type"], Component> = {
       { label: "Review" },
     ],
   },
+  people_cards: {
+    type: "people_cards",
+    people: [
+      { name: "Sarah Chen", role: "Engineering Lead", org: "Acme Corp" },
+      { name: "王小明", role: "Product Manager", org: "Acme Corp" },
+    ],
+  },
 }
 
 const ONE_PX_PNG =
