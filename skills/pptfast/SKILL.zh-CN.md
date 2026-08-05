@@ -156,6 +156,7 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 | 产品/软件截图，这张 slide 要让人一眼认出「这是真实、正在运行的软件」（App 仪表盘、真实产品界面） | `device_mockup` | `image` |
 | 一份人员名单（团队、讲者阵容、评委阵容、作者名单），需要一个无照片可用的身份锚点 | `people_cards` | `row_cards`/`icon_cards` |
 | 一组机构/品牌标识（赞助商、客户墙、媒体报道/"as seen in"、合作伙伴） | `logo_wall` | `image_grid` |
+| 一组短平行标签（技术栈、能力清单、关键词、资质认证）——是标签，不是带描述的条目 | `tag_row` | `bullets`/`row_cards` |
 
 `steps` 和 `flowchart` 是最常见的混用：只要分支路径从不出现，就是 `steps`。`flowchart` 和 `cycle` 是次常见的：这个流程最终走到一个终点，还是转回自己的起点？把一个闭环硬塞进 `flowchart`，那条收尾的回边会被画成一条横跨整张图的迷路线段或大弧线——这不是画图的 bug，是选错了 component；只要最后一个阶段的箭头是指回第一个阶段，就该换成 `cycle`。`roadmap` 和 `gantt` 是再下一个：`roadmap` 把多条工作线分组进泳道，没有共享的数值坐标轴，`gantt` 则把带日期的条形画在一根所有条目共同比对的共享坐标轴上。`pest` 和 `swot` 是再下一个：`pest` 只看外部宏观环境因素（没有内部优势/劣势这条轴），永远是同样命名的四个类别——一份内部对外部的战略评估仍然是 `swot`。`sankey` 和 `flowchart`/funnel `chart` 是再下一个：`sankey` 在分支/汇合的路径上守恒并拆分一个数量（带宽本身就承载意义），`flowchart` 是没有数量含义的决策/流程分支，funnel `chart` 则永远只沿一条线收窄，从不分支也不汇合。`data_table` 和 `chart` 和 `comparison` 是最后一组：受众要逐行读的精确数字用 `data_table`，一眼看出趋势/对比形态的用 `chart`，没有精确数字、只做定性并排属性对比的用 `comparison`。
 
@@ -188,6 +189,12 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 一面第三方标识墙——赞助商、客户名录、媒体报道/"as seen in" 墙、技术合作伙伴——用 `logo_wall`，不是 `image_grid`。它存在的理由是 `image_grid` 是为照片设计的，对 logo 会同时犯两个错：格子会 cover 裁切，宽扁 wordmark 两端的文字被裁掉（"Northbridge Robotics" 渲染成 "NORTHBR"）。而且它在真实资产下方不铺任何底色，透明单色油墨 logo（press kit 实际就是这么分发的）会直接露出幻灯片背景，浅色主题上的白色油墨 logo 直接消失成一个空框。`logo_wall` 把每个 logo 都 contain 缩放（永不裁切）画在各自自动生成的中性底板上，所以深墨和浅墨 logo 在同一面墙上、任何主题下都保持可辨。内容是一组属于*其它*机构的标识时就用它。普通照片（自身铺满画面）仍用 `image_grid`，单张作为「正在运行的软件」的产品截图用 `device_mockup`。
 
 字段：`items`（4-12 项，每项必填 `asset_id`，可选 `label`），可选的整体 `title`。每个 logo 在 `assets.images` 里声明一次，用 `asset_id` 引用，和 `image` 完全一样。`label` 是机构名称——它一身两用：资产自身没有 `alt` 时作为该 logo 的无障碍文本，资产缺失时作为可见的兜底文字（永远不会画在已存在的 logo 上面）。没有灰度/单色选项（改别人 logo 的颜色是商标风险），没有单 logo 链接，也没有尺寸/权重分级——每个 logo 等重。4 是硬下限（1-3 个 logo 用 `image` 或 `image_grid`），12 是硬上限（超过 12 个后每个 logo 会缩到看不清——把更大的一组拆成多张 `logo_wall` slide）。
+
+### 标签行 vs. bullets/卡片
+
+一行短平行标签——技术栈、能力或技能清单、关键词、供应商持有的资质——用 `tag_row`，不是 `bullets` 或 `row_cards`。判据是每一项是不是一个短*标签*（一个名词），而不是一句话或一个带描述的条目。`tag_row` 把 2-16 个短标签排成一行会自动换行的胶囊，每个标签按其真实的逐字符宽度测量，所以 CJK/拉丁混排的标签也能正确换行，可选的 `emphasis: "first"` 把首个标签画成主题 accent 色，作为其余标签中的主标签。真正的正文列表（读起来是句子或从句的条目）仍用 `bullets`，每项自带描述文字的条目用 `row_cards`/`icon_cards`——标签没有描述。
+
+字段：`items`（2-16 个短字符串，每个 ≤24 字符——这是硬上限，因为标签是标签、不是句子；超了 `validate` 会把你指向 `bullets`/`row_cards`），可选的整体 `title`，可选的 `emphasis`（`"first"` 或 `"none"`，默认 `"none"`）。2 是硬下限（单个标签不成行——放进标题、`callout` 或 `verdict_banner`），16 是硬上限（超过 16 个后这行读起来就是一堆没排序的关键词——拆成多张 `tag_row` slide，或把标签分成带小标题的组）。
 
 ### 图片页
 
