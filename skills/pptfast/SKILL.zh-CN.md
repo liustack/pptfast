@@ -143,6 +143,7 @@ pptfast preview deck-dir/ -o preview/ --html
 | 双轴数值网格，按颜色编码单元格（例如地区 × 季度） | `heatmap` | `matrix` |
 | 跨阶段的比例流量/数量分布（例如预算分配、能源结构） | `sankey` | `chart`（funnel）或 `flowchart` |
 | 产品/软件截图，这张 slide 要让人一眼认出「这是真实、正在运行的软件」（App 仪表盘、真实产品界面） | `device_mockup` | `image` |
+| 一份人员名单（团队、讲者阵容、评委阵容、作者名单），需要一个无照片可用的身份锚点 | `people_cards` | `row_cards`/`icon_cards` |
 
 `steps` 和 `flowchart` 是最常见的混用：只要分支路径从不出现，就是 `steps`。`flowchart` 和 `cycle` 是次常见的：这个流程最终走到一个终点，还是转回自己的起点？把一个闭环硬塞进 `flowchart`，那条收尾的回边会被画成一条横跨整张图的迷路线段或大弧线——这不是画图的 bug，是选错了 component；只要最后一个阶段的箭头是指回第一个阶段，就该换成 `cycle`。`roadmap` 和 `gantt` 是再下一个：`roadmap` 把多条工作线分组进泳道，没有共享的数值坐标轴，`gantt` 则把带日期的条形画在一根所有条目共同比对的共享坐标轴上。`pest` 和 `swot` 是再下一个：`pest` 只看外部宏观环境因素（没有内部优势/劣势这条轴），永远是同样命名的四个类别——一份内部对外部的战略评估仍然是 `swot`。`sankey` 和 `flowchart`/funnel `chart` 是再下一个：`sankey` 在分支/汇合的路径上守恒并拆分一个数量（带宽本身就承载意义），`flowchart` 是没有数量含义的决策/流程分支，funnel `chart` 则永远只沿一条线收窄，从不分支也不汇合。`data_table` 和 `chart` 和 `comparison` 是最后一组：受众要逐行读的精确数字用 `data_table`，一眼看出趋势/对比形态的用 `chart`，没有精确数字、只做定性并排属性对比的用 `comparison`。
 
@@ -161,6 +162,12 @@ pptfast preview deck-dir/ -o preview/ --html
 `device_mockup` 把一份资产框进一个主题化的浏览器窗口或手机机身，而不是一个普通带边框的矩形——它只为一件事存在：一张截图需要被读成「一个真实的产品，正在运行」，而不是「slide 上的一张图」。内容是软件/App/仪表盘的截图，且这一页的论点就是「这个产品是真的、正在正常工作」时用它。除此之外——普通照片、示意图、插画,或者只是顺带用截图说明一个观点而不是断言「这在真实运行」——都用 `image`。把不是产品截图的内容硬套 `device_mockup`，读出来只是个奇怪的装饰边框，不是证据。
 
 字段：`device`（`"browser"` 或 `"phone"`，必填，pptfast 不猜）、`asset_id`（语义同 `image`）、可选 `caption`，以及——仅 `browser` 款——可选的 `url`，渲染为地址栏文字（这是「这是真的在浏览器里跑」这件事上最强的信号）。`phone` 款没有地址栏，`validate` 会硬拒绝在 `phone` 上设置 `url`。屏幕内容永远铺满裁切（cover）——不像 `image` 那样有 `fit` 可选：真实设备的屏幕就是边到边铺满的。故意不提供其它装饰选项——没有倾斜/透视、没有暗色 chrome 开关、没有多设备并排——chrome 配色完全由主题 token 决定。
+
+### 人员卡片 vs. row/icon cards
+
+判据很直接：条目是不是「人」？团队名单、讲者阵容、评委阵容、作者名单，用 `people_cards`：2-12 人的等重卡片网格，每张卡是一个由 `name` 派生的确定性 initials 徽章（不需要照片资源），加姓名和可选的 `role`/`org`。非人条目仍用 `row_cards`/`icon_cards`，哪怕字段形状很像。这两个组件上限都是 6 项，`people_cards` 是 12 项：一份会撑爆 6 上限的人员名单（比如 9 位讲者的大会阵容），就是该换 `people_cards`、而不是硬拆成两页无标签 `row_cards` 的最清楚信号。
+
+字段：`people`（2-12 项，每项必填 `name`，可选 `role`/`org`），可选的整体 `title`。initials 徽章是 `name` 的纯函数：拉丁名取首两词的首字母（"Sarah Chen" → "SC"），单个拉丁词取它自己的前两个字母，CJK 名只取首字符，也就是姓（"王小明" → "王"），不取两个字。这个组件故意没有照片字段：真有头像照片的场景，`image_grid` 已经够用，`people_cards` 存在的全部理由就是这个零资产依赖的 initials 徽章。2 是硬下限（一个人的简介用不上网格，改用 `callout` 或纯文字），12 是硬上限（更大的名单拆成多张 `people_cards` slide，不要硬塞第 13 张卡进一个网格）。
 
 ### 图片页
 
