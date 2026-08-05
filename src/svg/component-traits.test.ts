@@ -33,6 +33,7 @@ import { traits as fiveForcesTraits } from "@/ir/components/five-forces"
 import { traits as heatmapTraits } from "@/ir/components/heatmap"
 import { traits as sankeyTraits } from "@/ir/components/sankey"
 import { traits as dataTableTraits } from "@/ir/components/data-table"
+import { traits as deviceMockupTraits } from "@/ir/components/device-mockup"
 import {
   EVIDENCE_TYPES,
   FULL_BODY_TYPES,
@@ -83,6 +84,7 @@ const DOMAIN_FILE_TRAITS: readonly (readonly [string, { readonly evidence: boole
   ["heatmap", heatmapTraits],
   ["sankey", sankeyTraits],
   ["data_table", dataTableTraits],
+  ["device_mockup", deviceMockupTraits],
 ]
 
 /**
@@ -121,7 +123,12 @@ describe("SELF_VISUAL_TYPES equivalence (was bento-layout.ts:210-216, plus R1's 
     // intentional addition to this set's membership, not drift — the
     // pre-refactor array above stays as the historical baseline this lock
     // originally pinned.
-    const current = [...preRefactor, "data_table"]
+    //
+    // device_mockup wave (`.issues/2026-08-05-component-waves/
+    // plan-device-mockup.md`): device_mockup also declares selfVisual: true
+    // — the device chrome (browser window bar, phone bezel/notch) *is* its
+    // own frame, same "already carded" reasoning as every member above.
+    const current = [...preRefactor, "data_table", "device_mockup"]
     expect(new Set(SELF_VISUAL_TYPES)).toEqual(new Set(current))
     expect(SELF_VISUAL_TYPES.size).toBe(current.length)
   })
@@ -163,7 +170,7 @@ describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-1
 })
 
 describe("EVIDENCE_TYPES equivalence (was assertion-evidence.tsx:8-13) — order is load-bearing", () => {
-  it("matches the current priority order (R1 evidence wave, Task T3 inserted data_table after chart, before image)", () => {
+  it("matches the current priority order (R1 evidence wave, Task T3 inserted data_table after chart, before image; device_mockup wave inserted device_mockup after data_table, before image)", () => {
     // assertion-evidence.tsx:8-13 (pre-refactor):
     // ["chart", "image", "comparison", "kpi_cards"] as const satisfies readonly Component["type"][]
     // R1 evidence wave, Task T3 (plan's explicit ordering call): "data_table"
@@ -172,7 +179,12 @@ describe("EVIDENCE_TYPES equivalence (was assertion-evidence.tsx:8-13) — order
     // change to this array's content, not a drift — the pre-refactor value
     // above is kept in the comment as the historical baseline this lock
     // originally pinned.
-    expect(EVIDENCE_TYPES).toEqual(["chart", "data_table", "image", "comparison", "kpi_cards"])
+    //
+    // device_mockup wave (`.issues/2026-08-05-component-waves/
+    // plan-device-mockup.md`): "device_mockup" inserted right after
+    // "data_table", ranked above "image" — see EVIDENCE_TYPES' own doc
+    // comment (component-traits.ts) for the rationale.
+    expect(EVIDENCE_TYPES).toEqual(["chart", "data_table", "device_mockup", "image", "comparison", "kpi_cards"])
   })
 
   it("is a tuple (ordered array), not a Set — priority dispatch depends on iteration order", () => {

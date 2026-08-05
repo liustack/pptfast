@@ -1062,6 +1062,62 @@ describe("data_table component (R1 evidence wave Task T3 — 33rd component, fir
   })
 })
 
+describe("device_mockup component (device_mockup wave, `.issues/2026-08-05-component-waves/plan-device-mockup.md` — 34th component)", () => {
+  const withComponents = (components: any[]) => {
+    const d: any = minimal()
+    d.slides = [{ type: "content", heading: "h", components }]
+    return d
+  }
+  const deviceMockupComponent = (overrides: Record<string, unknown> = {}) => ({
+    type: "device_mockup",
+    device: "browser",
+    asset_id: "dash",
+    ...overrides,
+  })
+
+  it("accepts a minimal browser mockup (no url, no caption)", () => {
+    expect(parsePptxIR(withComponents([deviceMockupComponent()])).success).toBe(true)
+  })
+
+  it("accepts a minimal phone mockup (no url, no caption)", () => {
+    const d = withComponents([deviceMockupComponent({ device: "phone" })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("accepts a browser mockup with url and caption both set", () => {
+    const d = withComponents([
+      deviceMockupComponent({ url: "app.example.com/dashboard", caption: "Live dispatch queue" }),
+    ])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+
+  it("rejects an invalid device value", () => {
+    const d = withComponents([deviceMockupComponent({ device: "tablet" })])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  it("rejects an unknown top-level field (strict)", () => {
+    const d = withComponents([{ ...deviceMockupComponent(), extra: 1 }])
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+
+  // ── phone-has-no-address-bar contract (superRefine, device-mockup.ts) ──
+  it("rejects url set on a phone mockup (tripwire: phone has no address bar)", () => {
+    const d = withComponents([deviceMockupComponent({ device: "phone", url: "app.example.com" })])
+    const result = parsePptxIR(d)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/url/)
+      expect(result.error).toMatch(/phone/)
+    }
+  })
+
+  it("accepts url set on a browser mockup (the one legal case)", () => {
+    const d = withComponents([deviceMockupComponent({ device: "browser", url: "app.example.com" })])
+    expect(parsePptxIR(d).success).toBe(true)
+  })
+})
+
 describe("meta.animation (deck-level switch, wave-C S1)", () => {
   it("is omittable — meta.animation stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())
