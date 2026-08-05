@@ -48,3 +48,6 @@ tests/bench/results*/
 .issues/
 .superpowers
 .claude/settings.local.json
+
+# playwright-cli session artifacts (agent browser sessions)
+.playwright-cli/
