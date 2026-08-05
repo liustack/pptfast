@@ -585,6 +585,56 @@ describe("auditPptxPackage — image-alt-dropped, device_mockup closure", () => 
   })
 })
 
+// logo_wall wave (`.issues/2026-08-06-logo-wall/plan.md`, 裁定 3 + the plan's
+// own "add the package-audit round-trip case"): logo-wall.tsx's per-cell
+// `<image>` is a new `aria-label` emission site, wired the same way as
+// image.tsx's — the asset's own alt wins, then the item `label`. Both the
+// alt-bearing and label-fallback paths must survive the round trip into the
+// exported `descr`.
+describe("auditPptxPackage — image-alt-dropped, logo_wall closure", () => {
+  const REAL_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+  it("round-trips green for a logo_wall's alt text (asset alt and item-label fallback)", async () => {
+    const ir = makeIr({
+      slides: [
+        { type: "cover", heading: "Package Audit Fixture", components: [] },
+        {
+          type: "content",
+          heading: "As seen in",
+          components: [
+            {
+              type: "logo_wall",
+              title: "Featured in",
+              items: [
+                { asset_id: "ledger", label: "override" }, // asset alt wins over label
+                { asset_id: "vantage", label: "Vantage Wire" }, // no asset alt → label
+                { asset_id: "circuit", label: "Circuit Weekly" },
+                { asset_id: "harbor", label: "Harbor Press" },
+              ],
+            },
+          ],
+        },
+        { type: "ending", heading: "Thanks", components: [] },
+      ],
+      assets: {
+        images: {
+          ledger: { src: REAL_PNG, alt: "The Ledger Review" },
+          vantage: { src: REAL_PNG },
+          circuit: { src: REAL_PNG },
+          harbor: { src: REAL_PNG },
+        },
+      },
+    })
+    const zip = await renderCleanZip(ir)
+    await expect(auditPptxPackage(zip, ir)).resolves.toBeUndefined()
+    const xml = await readPart(zip, "ppt/slides/slide2.xml")
+    expect(xml).toContain(`descr="The Ledger Review"`) // asset alt
+    expect(xml).toContain(`descr="Vantage Wire"`) // item-label fallback
+    expect(xml).not.toContain(`descr="override"`) // label never beats a present asset alt
+  })
+})
+
 // Alt-emission-closure fix wave: `checkImageAltExported` rewritten to key
 // off actually-rendered image ops (`ImageOp[]`) instead of the IR's
 // *declared* `slide.components` list — the reviewer-caught defect fixed
