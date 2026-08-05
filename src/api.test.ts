@@ -2236,4 +2236,22 @@ describe("irJsonSchema", () => {
     // the distinctive gauge-vs-kpi_cards redirect
     expect(json).toContain("never a row of gauges")
   })
+
+  // tag_row wave (`.issues/2026-08-06-tag-row/plan.md`, 裁定 3): the whole
+  // point of this component is the selection boundary the model reads (short
+  // nominal labels vs bullets/row_cards prose) — lock that the boundary
+  // survives into the emitted JSON Schema, same as every component wave since
+  // device_mockup's Important-1 established the precedent.
+  it("surfaces tag_row's component-selection guidance (labels-not-sentences boundary + the bullets/row_cards redirects)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("wrapping row of pills")
+    expect(json).toContain("a name, not a sentence")
+    expect(json).toContain("If each item carries its own descriptive text")
+  })
+
+  it("surfaces tag_row's item-level length guidance (the ≤24-char nominal-label contract)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("One short, nominal label")
+    expect(json).toContain("Not a sentence and not a described item")
+  })
 })
