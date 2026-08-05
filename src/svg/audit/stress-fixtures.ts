@@ -1350,4 +1350,49 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
       ],
     },
   ]),
+
+  // people_cards (people_cards wave, `.issues/2026-08-05-component-waves/
+  // plan-people-cards.md`, 裁定 3): the schema max, 12 people, each with
+  // an extreme-length CJK name/role/org — a real name/role/org is never
+  // this long, but the pathological case is the point: the initials badge
+  // still derives cleanly (deriveInitials only ever reads the *first*
+  // character of a CJK name, so CJK_LONG's own length can't break it),
+  // while the name/role/org text itself must shrink-then-truncate inside
+  // the narrowest tier (3 rows x 4 cols at n=12) without overflowing.
+  // Overall `title` also set to CJK_LONG to exercise the title band's own
+  // shrink/truncate path in the same pass. A second page carries the
+  // schema minimum (2 people) with EN_LONG/MIXED_LONG name/role/org —
+  // `measureTextUnits` weighs CJK/Latin differently, so both scripts get
+  // their own pathological page rather than assuming one covers the other
+  // (same split cycle's own fixture above already established).
+  people_cards: deck([
+    {
+      type: "content",
+      heading: "人员卡片压力测试（12 人满配）",
+      components: [
+        {
+          type: "people_cards",
+          title: CJK_LONG,
+          people: Array.from({ length: 12 }, () => ({
+            name: CJK_LONG,
+            role: CJK_LONG,
+            org: CJK_LONG,
+          })),
+        },
+      ],
+    },
+    {
+      type: "content",
+      heading: "人员卡片压力测试（2 人，混排）",
+      components: [
+        {
+          type: "people_cards",
+          people: [
+            { name: EN_LONG, role: MIXED_LONG, org: MIXED_LONG },
+            { name: MIXED_LONG, role: EN_LONG, org: EN_LONG },
+          ],
+        },
+      ],
+    },
+  ]),
 }
