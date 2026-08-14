@@ -8,16 +8,22 @@
   "bin": {
     "pptfast": "./dist/cli.js"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dsh/index.js",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    ".": "./dsh/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
     }
   },
   "files": [
     "dist",
+    "dsh",
+    "cordis.patch.yml",
+    "skills/pptfast/SKILL.md",
+    "skills/pptfast/SKILL.zh-CN.md",
     "README.zh-CN.md"
   ],
   "engines": {
@@ -29,7 +35,7 @@
   "scripts": {
     "build": "rm -rf dist && tsup",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src scripts tests --no-error-on-unmatched-pattern",
+    "lint": "eslint src scripts tests dsh --no-error-on-unmatched-pattern",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
@@ -50,7 +56,9 @@
     "claude",
     "svg",
     "drawingml",
-    "cli"
+    "cli",
+    "dsh",
+    "dsh-plugin"
   ],
   "author": "Leon Liu",
   "repository": {

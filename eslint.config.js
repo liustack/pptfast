@@ -10,8 +10,8 @@ export default tseslint.config(
     // Plain-JS scripts (unlike *.ts/*.mts) aren't type-aware, so ESLint's base
     // recommended config doesn't know about Node globals — declare the ones
     // scripts/docs-list.js actually uses instead of pulling in the `globals` package.
-    files: ["scripts/**/*.js"],
-    languageOptions: { globals: { process: "readonly", console: "readonly" } },
+    files: ["scripts/**/*.js", "dsh/**/*.js"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", URL: "readonly" } },
   },
   {
     // 迁移自 ops-web 的 svg/*.tsx 里带 react-refresh 的 eslint-disable 注释——

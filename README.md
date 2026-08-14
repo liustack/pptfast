@@ -34,6 +34,16 @@ The repo doubles as a Claude Code plugin that ships the deck-generation skill:
 
 The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptfast`).
 
+### As a DSH plugin
+
+pptfast is also a DeepSeek Harness (DSH) plugin. One command installs it into a DSH profile:
+
+```bash
+npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast
+```
+
+The plugin card shows up as "pptfast" and registers the same deck-generation skill into DSH's skill system. The skill drives the CLI that ships inside the plugin package itself — no separate CLI install needed there. Uninstalling the plugin removes the skill with no residue.
+
 ### Other agents (Codex, etc.)
 
 [`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) is a self-contained Markdown playbook — reference it from your agent's context (e.g. `AGENTS.md`) and it teaches the same schema → outline → validate → render loop.
@@ -65,7 +75,7 @@ One shape rule worth knowing up front: `cover`/`chapter`/`ending` slides are hea
 
 ## What's public
 
-The supported surface is deliberately small: the **CLI**, the **IR schema** it speaks (`pptfast schema`), the **deck project format** (see Deck projects), and the **agent skill** ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)). The IR is the product's API — an agent talks JSON and the command line, it doesn't `import`. There is no public JS API: the package's JS internals ship for the package's own use and carry no semantic-versioning promise (see [`docs/internal-api.md`](./docs/internal-api.md)).
+The supported surface is deliberately small: the **CLI**, the **IR schema** it speaks (`pptfast schema`), the **deck project format** (see Deck projects), the **agent skill** ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)), and the **DSH plugin** (see Install above). The IR is the product's API — an agent talks JSON and the command line, it doesn't `import`. There is no public JS API: the package's JS internals ship for the package's own use and carry no semantic-versioning promise (see [`docs/internal-api.md`](./docs/internal-api.md)).
 
 ## CLI
 

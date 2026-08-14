@@ -33,6 +33,16 @@ pptfast --help
 
 skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfast`）。
 
+### 作为 DSH 插件
+
+pptfast 同时是一个 DeepSeek Harness（DSH）插件，一条命令装进 DSH profile：
+
+```bash
+npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast
+```
+
+插件卡片显示为「pptfast」，把同一套生成流程的 skill 注册进 DSH 的技能系统。skill 驱动的 CLI 就在插件包自己里面，那里不需要单独装 CLI。卸载插件即移除技能，不留残余。
+
 ### 其他 agent（Codex 等）
 
 [`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) 是一份自包含的 Markdown 操作手册——把它引入你的 agent 上下文（例如在 `AGENTS.md` 里引用），即可复用同一套 schema → 大纲 → validate → render 回路。
@@ -64,7 +74,7 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 
 ## 对外承诺的边界
 
-对外支持面刻意收得很小：**CLI**、它说的 **IR schema**（`pptfast schema`）、**deck 项目格式**（见下文「Deck 项目」），以及 **agent skill**（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。IR 才是这个产品的 API——agent 说 JSON 和命令行，不需要 `import`。没有公开的 JS API：包里的 JS 内部实现只服务于包自身，不做语义化版本承诺（见 [`docs/internal-api.md`](./docs/internal-api.md)）。
+对外支持面刻意收得很小：**CLI**、它说的 **IR schema**（`pptfast schema`）、**deck 项目格式**（见下文「Deck 项目」）、**agent skill**（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)），以及 **DSH 插件**（见上文安装一节）。IR 才是这个产品的 API——agent 说 JSON 和命令行，不需要 `import`。没有公开的 JS API：包里的 JS 内部实现只服务于包自身，不做语义化版本承诺（见 [`docs/internal-api.md`](./docs/internal-api.md)）。
 
 ## CLI
 

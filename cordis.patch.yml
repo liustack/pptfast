@@ -1,0 +1,5 @@
+# dsh bundle layer: mount the pptfast skill plugin (dsh/index.js via the
+# package root export; bin stays the CLI, nothing imports the root otherwise).
+- insert:
+    - id: pptfast
+      name: '@liustack/pptfast'
