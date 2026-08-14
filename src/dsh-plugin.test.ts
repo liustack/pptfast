@@ -4,7 +4,7 @@
 // with `new URL(..., import.meta.url)` + `fileURLToPath` at module scope,
 // which the repo-default jsdom environment breaks (jsdom swaps global URL —
 // same reason plugin-manifest.test.ts reads files by process.cwd()).
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -539,6 +539,25 @@ describe("dsh plugin tools: pptfast_render", () => {
     const value = await defs.pptfast_render!.execute({ ir, out_dir: outDir }, fakeExec())
     expect(value.pptx_path).toBe(join(outDir, "Quarterly.pptx"))
     expect(value.preview_dir).toBe(join(outDir, "Quarterly-previews"))
+  })
+
+  it("re-rendering a shorter deck at the same path leaves no stale preview SVGs behind", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pptfast-dsh-stale-"))
+    try {
+      const defs = toolsWithFakeCtx()
+      const first = await defs.pptfast_render!.execute({ ir: basicIr(), out_dir: dir }, fakeExec())
+      expect(first.preview_paths as string[]).toHaveLength(5)
+      // same deck, cut to cover + ending (the acceptance probe's shape)
+      const shortIr = basicIr()
+      const slides = shortIr.slides as unknown[]
+      shortIr.slides = [slides[0], slides[4]]
+      const value = await defs.pptfast_render!.execute({ ir: shortIr, out_dir: dir }, fakeExec())
+      expect(value.preview_paths as string[]).toHaveLength(2)
+      // one preview SVG per page, exactly — no leftovers from the 5-page round
+      expect(readdirSync(value.preview_dir as string).sort()).toEqual(["001-cover.svg", "002-ending.svg"])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it("defaults out_dir to the session workspace directory (session.header.cwd)", async () => {
