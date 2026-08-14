@@ -57,7 +57,7 @@
 // imports, resilient to rc surface drift.
 import { Buffer } from 'node:buffer'
 import { readFileSync } from 'node:fs'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -586,6 +586,12 @@ export function buildToolDefinitions(ctx, getCore) {
       const pptxPath = join(outDir, `${fileStem}.pptx`)
       await writeFile(pptxPath, bytes)
       const previewDir = join(outDir, `${fileStem}-previews`)
+      // The tool owns `<stem>-previews` wholesale: clear it before writing
+      // so re-rendering a shorter deck cannot leave last round's pages
+      // behind ("one preview SVG per page" must stay literally true). No
+      // rm/write race with another render — this tool opted out of the
+      // parallel group (isConcurrencySafe above), so calls run serially.
+      await rm(previewDir, { recursive: true, force: true })
       await mkdir(previewDir, { recursive: true })
       const previewPaths = []
       let firstPageSvg
