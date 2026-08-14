@@ -3,10 +3,42 @@ import { describe, expect, it } from "vitest"
 import {
   PIN_PATTERN,
   PKG_NAME,
+  launcherTargets,
   markdownFiles,
+  readLauncherVersions,
   readPackageVersion,
   readStampedVersions,
 } from "./stamp.mts"
+
+describe("skill launcher version stamping", () => {
+  it("keeps both launcher constants stamped to the package version", () => {
+    // The launcher pin outranks every doc line: it is the version that
+    // actually runs when a harness invokes the skill on a machine with no
+    // `pptfast` on PATH. A drifted constant ships a skill that fetches a
+    // release this repo never cut.
+    const version = readPackageVersion()
+    for (const launcher of readLauncherVersions()) {
+      expect(launcher.version, `${launcher.name} (${launcher.file}) is not stamped to ${version}`).toBe(version)
+    }
+  })
+
+  it("rewrites only the version value and leaves the constant line intact", () => {
+    for (const target of launcherTargets()) {
+      const original = target.format("0.0.0")
+      const restamped = original.replace(target.pattern, target.format("9.9.9"))
+      expect(restamped).toBe(target.format("9.9.9"))
+      expect(restamped).not.toBe(original)
+    }
+  })
+
+  it("keeps the two launchers on the same pinned version", () => {
+    // run.sh and run.ps1 are the same launcher in two shells. One stamped and
+    // one missed would give a Windows user a different pptfast than everyone
+    // else, silently.
+    const versions = readLauncherVersions().map((launcher) => launcher.version)
+    expect(new Set(versions).size, `launchers disagree: ${versions.join(" vs ")}`).toBe(1)
+  })
+})
 
 describe("install-command version stamping", () => {
   it("keeps every pinned install command stamped to the package version", () => {
@@ -42,8 +74,12 @@ describe("install-command version stamping", () => {
         if (install === null) continue
         const spec = (install[1] ?? "").slice(1)
         const lifted = line.includes("--config.minimumReleaseAge=0")
+        // `@<version>` and `@<pinned>` describe a command's shape in prose.
+        // Nobody can run one, so nobody can install a stale release with it.
+        // Only those two spellings, so the angle brackets are not a way out.
+        const placeholder = /^<(version|pinned)>$/.test(spec)
         expect(
-          /^\d+\.\d+\.\d+$/.test(spec) || lifted,
+          /^\d+\.\d+\.\d+$/.test(spec) || lifted || placeholder,
           `${file}: "${line.trim()}" installs whatever survived the release-age gate`,
         ).toBe(true)
       }

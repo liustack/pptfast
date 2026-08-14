@@ -9,14 +9,27 @@ mirror_of: skills/pptfast/SKILL.md
 
 pptfast 把一份 JSON IR（intermediate representation，中间表示）转换成原生 DrawingML 格式的 `.pptx`——每个图形在 PowerPoint 里都保持可编辑。内容模型由你掌控，layout、style 与动效由工具掌控。你从不绘制 SVG，也从不给任何东西定位：从受控词汇表里挑选，装不下的内容交给 validate 关卡去拦。
 
-## 准备工作
+## 怎么跑
+
+这份操作手册里的每一步都走 CLI：schema、spec/assemble、validate、render、audit、preview、serve、品牌提取。这些命令一律通过本 skill 自带的启动器执行，由它替你解析出一个可用的运行时。把 `<skill-dir>` 换成这份 SKILL.md 所在的目录：
 
 ```bash
-pptfast --version || npm install -g @liustack/pptfast
-pptfast check-update   # stay current — the schema and themes evolve
+bash <skill-dir>/scripts/run.sh <args>                                       # macOS / Linux
+powershell -ExecutionPolicy Bypass -File <skill-dir>\scripts\run.ps1 <args>  # Windows
 ```
 
-如果 harness 注册了 pptfast 工具（`pptfast_validate`、`pptfast_render`、`pptfast_themes`——DSH 插件就会注册），IR 校验、渲染、主题清单这三件事直接调用工具，不走对应的 CLI 命令。CLI 仍是后备路径，并且继续承担其余一切（schema、spec/assemble、audit、preview、serve、品牌提取）。
+它按顺序尝试：PATH 上版本兼容的 `pptfast`、`npx`、`bunx`，参数与退出码原样透传。不需要预先安装任何东西，跑到的版本被钉死在这份 skill 上。退出码 78 表示没有任何可用运行时：把它 stderr 里 JSON 的 `nextSteps` 转告用户，不要重试。
+
+下文凡是写 `pptfast <args>` 的地方，都通过这个启动器执行。
+
+刚装完，以及任何时候某条命令的表现不对、错误信息又解释不清时，先跑 `pptfast doctor`。它会报告运行时、机器上每一份已安装的 skill 副本及其是否过期、dsh 插件版本、可选能力是否具备，以及一次自检渲染。把它说的原样转达，不要靠猜。
+
+如果你的 harness 不允许执行脚本，就按同样的顺序自己判断，用第一条成立的：
+
+1. PATH 上有 `pptfast`，且主版本号与下面的钉版本相同、版本不低于它：`pptfast <args>`。
+2. 否则，有 `npx` 就用：`npx --yes --package @liustack/pptfast@0.18.0 pptfast <args>`。
+3. 否则，有 `bunx` 就用：`bunx --bun @liustack/pptfast@0.18.0 <args>`。
+4. 都没有就告诉用户机器上找不到 JavaScript 运行时，下一步是装 Node 22.19+（https://nodejs.org）或 Bun（https://bun.sh）。不要说成是 pptfast 本身坏了。
 
 ## 工作流程
 
@@ -105,13 +118,19 @@ pptfast preview deck-dir/ -o preview/ --html
 
 ### 用 `pptfast serve` 做实时审阅循环
 
-需要来回多轮审阅时，把同一份 preview 作为实时页面架起来，而不是交付一个静态文件。用后台任务的方式启动它（在 DSH 里遵循后台任务的规矩，记下 job id，方便之后停掉）：
+审阅发生在用户自己的浏览器里，不在对话里。这就是审阅的正式路径：绝不要往对话里贴缩略图或某一页的截图来「给用户看」。把整份 deck 架起来，让用户自己全尺寸翻页。用后台任务的方式启动服务（在 DSH 里遵循后台任务的规矩，记下 job id，方便之后停掉）：
 
 ```bash
 pptfast serve deck-dir/ --no-open
 ```
 
-必须带 `--no-open`——agent 环境里没有可以自动打开的浏览器——并把它打印的 localhost URL（默认 `http://127.0.0.1:4400`）原样报给用户，让用户自己打开。之后你每保存一次文件，页面就实时重渲染。用户在浏览器里给页面写批注并提交后，deck 目录里会生成一份 `revision-request.json`：读它，走阶段六的修订流程处理，改完的结果会直接出现在用户已打开的标签页里。审阅轮结束时停掉 serve 进程（kill 掉那个后台任务）——任务结束后绝不留着它继续跑。
+然后按这个顺序走完这一轮：
+
+1. 必须带 `--no-open`。agent 环境里没有可以自动打开的浏览器。
+2. 把它打印的 localhost URL（默认 `http://127.0.0.1:4400`）原样报给用户，让用户自己打开。这一行就是全部交付动作。
+3. 用户翻完整份 deck，把需要改的地方写成批注并提交，deck 目录里就会生成一份 `revision-request.json`，deck 内容本身不被改动。
+4. 读这份文件，把每一条都走阶段六的修订流程。你每保存一次文件页面就实时重渲染，每一次修订都直接落在用户已经打开的那个标签页里。不用发新链接，也不用重新导出。
+5. 用户还在继续批注就留在这个循环里。这一轮结束时停掉 serve 进程（kill 掉那个后台任务）。任务结束后绝不留着它继续跑。
 
 ### Phase 6 — 修订：改一页，重新 assemble
 

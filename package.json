@@ -24,10 +24,11 @@
     "cordis.patch.yml",
     "skills/pptfast/SKILL.md",
     "skills/pptfast/SKILL.zh-CN.md",
+    "skills/pptfast/scripts",
     "README.zh-CN.md"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22.19"
   },
   "publishConfig": {
     "access": "public"

@@ -162,9 +162,10 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
   })
 
   it("both files carry the serve review-loop section with the same command lines", () => {
-    // DSH plugin v1 wave: the live-review loop (`pptfast serve --no-open`,
-    // report the URL, stop the job) must exist in both files with identical
-    // command lines — same structural guard as the Brand-themes test above.
+    // `pptfast serve` is the deck's review path, in every harness: the
+    // loop (`serve --no-open`, report the URL, read the annotations back,
+    // stop the job) must exist in both files with identical command lines
+    // — same structural guard as the Brand-themes test above.
     const sectionAfter = (text: string, heading: RegExp): string => {
       const m = text.match(heading)
       expect(m, `heading ${heading} missing`).toBeTruthy()
@@ -182,6 +183,26 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
       expect(section, "the serve section must insist on --no-open").toContain("--no-open")
       expect(section, "the serve section must name the localhost URL to report").toContain("http://127.0.0.1:4400")
       expect(section, "the serve section must route annotations through revision-request.json").toContain("revision-request.json")
+    }
+  })
+
+  it("both files launch the CLI through the bundled launcher, with the same fallback commands", () => {
+    // The launcher is how the skill runs on a machine with no pptfast
+    // installed, so a translation that quietly kept the old `npm install -g`
+    // preamble would hand Chinese readers a different install story.
+    const launcherLines = (text: string) =>
+      [...text.matchAll(/^(?:bash|powershell) [^\n]*run\.(?:sh|ps1)[^\n]*$/gm)].map((m) => m[0])
+    const pinnedRunners = (text: string) => [...text.matchAll(/^\d+\. .*(?:npx --yes --package|bunx --bun) [^\n]*$/gm)].map((m) => m[0])
+    const en = read(EN_REL)
+    const zh = read(ZH_REL)
+    expect(launcherLines(en).length, "SKILL.md names neither run.sh nor run.ps1").toBe(2)
+    expect(launcherLines(zh), "launcher invocation lines diverge between EN and ZH").toEqual(launcherLines(en))
+    expect(pinnedRunners(en).length, "SKILL.md lost its npx/bunx no-script fallback").toBe(2)
+    for (const [index, line] of pinnedRunners(en).entries()) {
+      // Prose around the command is language-variant, the command is not.
+      const command = line.match(/`([^`]+)`/)?.[1]
+      expect(command, `SKILL.md fallback ${index + 1} has no backticked command`).toBeTruthy()
+      expect(pinnedRunners(zh)[index], `ZH fallback ${index + 1} runs a different command`).toContain(command!)
     }
   })
 

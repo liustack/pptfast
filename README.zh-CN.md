@@ -29,21 +29,13 @@
 
 **🎯 字节级确定性。** 渲染是纯函数：同一份 IR、同一个 seed，选出同样的版式、画出同样的几何、落盘同样的字节。预览与最终渲染永不打架，改一页也不会搅动其余页面。
 
-**✏️ 每个图形都保持可编辑。** 输出原生 DrawingML，不是贴上去的一张图：标题、要点、图表柱子、表格单元格都是 PowerPoint 里可选中、可改样式、可改文字的真实对象。17 个内置主题，`pptfast brand extract` 还能完全在本地从 `.pptx`/`.potx`/`.thmx` 里抽出你公司的配色与字体。
+**✏️ 每个图形都保持可编辑。** 输出原生 DrawingML，不是贴上去的一张图：标题、要点、图表柱子、表格单元格都是 PowerPoint 里可选中、可改样式、可改文字的真实对象。只有图表和表格里的数字是例外，它们是画出来的图形而不是活数据，换数字要改 IR 重新渲染。17 个内置主题，`pptfast brand extract` 还能完全在本地从 `.pptx`/`.potx`/`.thmx` 里抽出你公司的配色与字体。
 
-**🔌 DSH 插件，三个进程内工具。** 一条钉了版本号的命令装进 DeepSeek Harness：`pptfast_validate`、`pptfast_render`、`pptfast_themes` 直调包内渲染核心，不开子进程，也不用单独装 CLI。同一个仓库还是 Claude Code 插件，Codex 等则用纯 skill 文件夹。
+**🔌 装进你正在用的 agent。** 一条命令装进 DeepSeek Harness、Claude Code，或任何读 skill 文件夹的 agent（Codex 等），装完就会用。
 
 **🔁 为 agent 而生的审阅回路。** schema → validate → audit → render，报错带页码和可直接照抄的修法。`pptfast serve` 打开随改动自动刷新的实时预览，审阅者的批注直接落盘为 `revision-request.json`，交回 agent 处理。
 
-**🔒 零配置、全本地。** 不要 API key、不用注册、渲染时不联网：唯一前置只有 Node >= 18。
-
-## 为什么
-
-自由绘制 SVG/HTML 再转 PPTX 的路子上限很高，下限很不稳：弱模型（或状态不好的强模型）画出来的往往版式错乱、脱离品牌规范，甚至没法读。
-
-pptfast 不给模型一张白纸，只给一套固定词汇。你（或你的 agent）写一份 IR，也就是一份描述整份 PPT 内容的 JSON 文件，pptfast 负责选版式、套上 17 个主题之一，输出原生 DrawingML，也就是 PowerPoint 自己的图形格式，每个元素在 PPT 里都能直接编辑。
-
-图表和表格是用图形和文字画出来的，PowerPoint 不能靠新数字让它们重画。要改数字，改 IR 重新渲染。页面上其余元素都是普通 PowerPoint 对象：能选中、能改样式、能改文字。
+**🔒 零配置、全本地。** 不要 API key、不用注册、渲染时不联网。唯一前置是 Node 22.19+（或 Bun）。
 
 ## 安装
 
@@ -51,56 +43,19 @@ pptfast 不给模型一张白纸，只给一套固定词汇。你（或你的 ag
 
 > 按照 https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md 安装 pptfast deck 技能，装完跑一遍健康检查，把结果告诉我。
 
-没有第二步。pptfast 完全在本地渲染：不要 API key、不用注册、无需任何配置，唯一前置是 Node >= 18。
+没有第二步。你的 AI 会把 skill 文件夹放到你这个 harness 读取的位置，skill 自带钉死版本的启动器，不需要你手动装 CLI。pptfast 完全在本地渲染：不要 API key、不用注册、无需任何配置，唯一前置是 Node 22.19+（或 Bun）。
 
-### 手动安装
-
-```bash
-npm install -g @liustack/pptfast
-pptfast --help
-```
-
-需要 Node >= 18。也可从源码构建：`git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`。
-
-### 作为 Claude Code 插件
-
-本仓库同时是一个 Claude Code 插件，内置整套生成流程的 skill：
-
-```
-/plugin marketplace add liustack/pptfast
-/plugin install pptfast@pptfast
-/reload-plugins
-```
-
-skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfast`）。
-
-### 作为 DSH 插件
-
-pptfast 同时是一个 DeepSeek Harness（DSH）插件，一条命令装进 DSH profile：
+**在 DeepSeek Harness 上换成一条命令。** 那里 pptfast 是原生 DSH 插件，不走 skill 文件夹：
 
 ```bash
 npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
 ```
 
-版本号要点名。不点名的话，安装会静默落到一个更旧的版本，拿不到最新的插件能力。`npm view @liustack/pptfast version` 可查当前版本。
-
-插件卡片显示为「pptfast」，把整套生成流程的 skill 注册进 DSH 的技能系统。skill 驱动的 CLI 就在插件包自己里面，不需要再装别的。卸载插件即移除技能，不留残余。
-
-插件还注册了三个模型可以直接调用的工具，模型不必碰终端就能校验和渲染：
-
-| 工具 | 入参 | 出参 |
-|---|---|---|
-| `pptfast_validate` | deck IR JSON | 页数 + 主题，或一份带路径标注的简短修正清单 |
-| `pptfast_render` | deck IR JSON（可选 `theme`/`seed`/`out_dir`） | 工作区里的 `.pptx` + 每页一张预览 SVG（模型路由接受图片时，首页预览还会以附件进会话） |
-| `pptfast_themes` | 无 | 17 个内置主题，各配一句气质描述 |
-
-### 其他 agent（Codex 等）
-
-[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) 是一份自包含的 Markdown 操作手册。把它引入你的 agent 上下文（例如在 `AGENTS.md` 里引用），即可复用同一套 schema → 大纲 → validate → render 回路。
+版本号要点名。不点名的话，安装会静默落到一个更旧的版本，拿不到最新能力。`npm view @liustack/pptfast version` 可查当前版本。插件卡片显示为「pptfast」，把整套生成流程的 skill 注册进 DSH 技能系统，驱动的 CLI 就在插件包自己里面。卸载即移除，不留残余。
 
 ## 快速开始
 
-写一个最小 deck，跑一遍 validate → render → preview 回路：
+IR 就是一份描述整份 PPT 内容的 JSON 文件。写一个最小的，跑一遍 validate → render → preview 回路：
 
 ```bash
 cat > deck.json <<'EOF'
@@ -135,16 +90,9 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 | `serve <target>` | 随改动自动刷新的实时预览，带批注面板 |
 | `audit <target>` | 几何审查：溢出、越界、低对比度、重叠 |
 | `themes` | 列出 17 个内置主题 |
+| `doctor` | 体检这套安装：运行时、skill 副本、可选能力、自检渲染 |
 
 完整命令表见 [`docs/cli.zh-CN.md`](./docs/cli.zh-CN.md)。
-
-## 对外承诺的边界
-
-对外支持面刻意收得很小：**CLI**、它说的 **IR schema**（`pptfast schema`）、**deck 项目格式**、**agent skill**（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)），以及 **DSH 插件**。
-
-IR 才是这个产品的 API。agent 说 JSON 和命令行，不需要 `import` 任何东西。
-
-没有公开的 JS API：包里的 JS 内部实现只服务于包自身，不做语义化版本承诺（见 [`docs/internal-api.md`](./docs/internal-api.md)）。
 
 ## 致谢
 
