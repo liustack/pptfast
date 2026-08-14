@@ -1096,12 +1096,9 @@ const MUTED_SURFACE_CLASS: Record<string, MutedSurfaceClass> = {
   // `period` — same `accessibleInk` fix, same red->green pin (see
   // `deck-audit.test.ts`).
   insight_panel: "flat-surface",
-  // The neutral-tone tint rect (`fill={tone}` where tone===colors.muted,
-  // verdict-banner.tsx) renders at fillOpacity=0.08 — below deck-audit.ts's
-  // MIN_BG_OPACITY (0.5) — so it never registers as a background region at
-  // all; muted-filled `**emphasis**` runs inside a neutral banner resolve
-  // against whatever the audit already sees as the ambient page background,
-  // verified empirically (zero muted-attributable findings, all 13 themes).
+  // verdict-banner.tsx has no card fill. Its muted `**emphasis**` runs resolve
+  // directly against the ambient page background, verified empirically across
+  // every built-in theme.
   verdict_banner: "page-bg",
   citation: "page-bg", // URL tspan, no card
   image: "flat-surface", // missing-asset placeholder text on a colors.surface rect

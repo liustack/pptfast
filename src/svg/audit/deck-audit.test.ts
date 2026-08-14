@@ -378,10 +378,9 @@ describe("auditDeck — overflow / out-of-bounds", () => {
 // render chain's own markers reach the audit layer end to end.
 describe("auditDeck — content-truncated / content-dropped (bench-driven fix round, defect E)", () => {
   it("surfaces an ellipsis-truncated verdict_banner text as a 'content-truncated' finding", () => {
-    // verdict_banner renders at a fixed 18px/2-line budget regardless of how
-    // far `layoutSvgText` had to loosen its own wrap to fit (`lay`'s own doc
-    // comment) — a long enough unbroken run forces `truncateEmphasisSegments`
-    // to cut, guaranteed regardless of the resolved layout's column width.
+    // verdict_banner renders at a responsive but still fixed two-line budget
+    // for each resolved width. A long enough unbroken run forces
+    // `truncateEmphasisSegments` to cut regardless of the selected layout.
     const ir = deck("consulting", [
       {
         type: "content",

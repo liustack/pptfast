@@ -901,8 +901,7 @@ describe("BentoPanelContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
 
     // 2 units → 2 bento cells, but only the plain paragraph cell gets a
-    // bento outline shell — verdict_banner paints its own tone-tinted/
-    // stroked bar instead.
+    // bento outline shell. verdict_banner paints its own editorial rule.
     const boxes = root.querySelectorAll("[data-audit-box]")
     expect(boxes.length).toBe(3)
     const surfaceFills = Array.from(root.querySelectorAll("rect")).filter(isBentoOutlineShell)
@@ -911,11 +910,13 @@ describe("BentoPanelContent", () => {
       (r) => r.getAttribute("height") === "3",
     )
     expect(stripes).toHaveLength(0)
-    // verdict_banner still renders its own chrome: a tone-tinted rx=10 bar,
-    // resolved to tech's dark-theme bright variant.
+    // verdict_banner still renders its own chrome. Its short editorial mark
+    // resolves to tech's dark-theme bright variant without restoring a card.
     expect(markup).toContain("自带视觉的结论条。")
-    const bannerRect = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("rx") === "10")
-    expect(bannerRect?.getAttribute("fill")).toBe("#4FBF8B")
+    const bannerMark = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("height") === "4" && r.getAttribute("rx") == null,
+    )
+    expect(bannerMark?.getAttribute("fill")).toBe("#4FBF8B")
   })
 
   it("renders a single ordinary component with no shell card — bare, centered in the bento rect", () => {

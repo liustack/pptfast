@@ -21,5 +21,6 @@ export const traits = {
   scalable: false,
   passthroughShell: false,
   fullBody: false,
+  columnSpanning: true,
   evidence: false,
 } as const satisfies ComponentTraits

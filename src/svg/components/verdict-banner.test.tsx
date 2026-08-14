@@ -18,6 +18,7 @@ const ctx: ComponentCtx = {
     accent: "#00A878",
     text: "#1A2421",
     muted: "#5D6B65",
+    border: "#D8DEDB",
     chartPalette: ["#006A4E", "#00A878"],
   },
   fonts: { heading: "Georgia", body: "Microsoft YaHei", mono: "Consolas" },
@@ -39,30 +40,32 @@ describe("verdict_banner component: measure", () => {
     ).toBeGreaterThan(0)
   })
 
-  it("is 64 for a single-line text", () => {
+  it("uses the 70px wide editorial rhythm for one line", () => {
     expect(
       verdictBanner.measure(component("positive", "结论一句话"), 1088, ctx)
-    ).toBe(64)
+    ).toBe(70)
   })
 
-  it("is 88 for text that wraps to exactly 2 lines", () => {
-    // Pure-CJK unbroken run: at 1088 width (no icon, textW=1040, base budget
-    // 1040/18≈57.8 units/line) this wraps to exactly 2 lines (57+33 chars)
-    // without needing any loosening or truncation.
+  it("uses the 104px wide editorial rhythm for two lines", () => {
     const twoLineText = "结".repeat(90)
     expect(
       verdictBanner.measure(component("positive", twoLineText), 1088, ctx)
-    ).toBe(88)
+    ).toBe(104)
   })
 
-  it("caps at 88 even for far-overlong text (never grows to 3+ lines)", () => {
+  it("caps at the two-line wide height even for far-overlong text", () => {
     const veryLongText = "结".repeat(240)
     expect(
       verdictBanner.measure(component("positive", veryLongText), 1088, ctx)
-    ).toBe(88)
+    ).toBe(104)
   })
 
-  it("measure() height matches the actual rendered bar rect height", () => {
+  it("uses a compact responsive height at 528px", () => {
+    const pain = "问题不在「生成」，而在「改不动」：结果像一张成品图，而不是一份文档"
+    expect(verdictBanner.measure(component("warning", pain), 528, ctx)).toBe(94)
+  })
+
+  it("measure() height matches the rendered audit rectangle", () => {
     const b = component("warning", "结".repeat(90))
     const measuredH = verdictBanner.measure(b, 1088, ctx)
     const markup = renderSvgMarkup(
@@ -71,13 +74,13 @@ describe("verdict_banner component: measure", () => {
       </svg>
     )
     const root = parseSvgRoot(markup)
-    const barRect = root.querySelector("rect")!
-    expect(Number(barRect.getAttribute("height"))).toBeCloseTo(measuredH)
+    const audited = root.querySelector("[data-audit-rect]")!
+    expect(audited.getAttribute("data-audit-rect")).toBe(`80,100,1088,${measuredH}`)
   })
 })
 
-describe("verdict_banner component: render — shell", () => {
-  it("renders a full-width rx=10 rect stroked+tinted with the tone color", () => {
+describe("verdict_banner component: editorial rule", () => {
+  it("renders a 64px tone mark plus a remaining rule at 1088px, without a card shell", () => {
     const { container } = svg(
       verdictBanner.render(
         component("positive", "结论"),
@@ -85,13 +88,41 @@ describe("verdict_banner component: render — shell", () => {
         ctx
       )
     )
-    const rect = container.querySelector("rect")!
-    expect(rect.getAttribute("rx")).toBe("10")
-    expect(rect.getAttribute("width")).toBe("1088")
-    expect(rect.getAttribute("fill")).toBe("#2E9E6B")
-    expect(rect.getAttribute("fill-opacity")).toBe("0.08")
-    expect(rect.getAttribute("stroke")).toBe("#2E9E6B")
-    expect(rect.getAttribute("stroke-width")).toBe("1.5")
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(1)
+    expect(rects[0].getAttribute("x")).toBe("0")
+    expect(rects[0].getAttribute("y")).toBe("0")
+    expect(rects[0].getAttribute("width")).toBe("64")
+    expect(rects[0].getAttribute("height")).toBe("4")
+    expect(rects[0].getAttribute("fill")).toBe("#2E9E6B")
+    expect(rects[0].getAttribute("rx")).toBeNull()
+    expect(rects[0].getAttribute("fill-opacity")).toBeNull()
+    expect(rects[0].getAttribute("stroke")).toBeNull()
+
+    const rule = container.querySelector("line")!
+    expect(rule.getAttribute("x1")).toBe("64")
+    expect(rule.getAttribute("x2")).toBe("1088")
+    expect(rule.getAttribute("stroke")).toBe(ctx.colors.border)
+
+    const text = container.querySelector("text")!
+    expect(text.getAttribute("font-size")).toBe("26")
+  })
+
+  it("renders a 48px tone mark and 24px type at 528px", () => {
+    const { container } = svg(
+      verdictBanner.render(
+        component("warning", "问题不在生成，而在改不动"),
+        { x: 0, y: 0, w: 528 },
+        ctx
+      )
+    )
+    const mark = container.querySelector("rect")!
+    expect(mark.getAttribute("width")).toBe("48")
+    expect(mark.getAttribute("height")).toBe("4")
+    expect(mark.getAttribute("fill")).toBe("#D9822B")
+    expect(container.querySelector("line")!.getAttribute("x1")).toBe("48")
+    expect(container.querySelector("line")!.getAttribute("x2")).toBe("528")
+    expect(container.querySelector("text")!.getAttribute("font-size")).toBe("24")
   })
 
   it("annotates the whole bar with a page-coordinate data-audit-box and data-audit-rect", () => {
@@ -276,7 +307,7 @@ describe("verdict_banner component: icon states", () => {
     expect(path?.getAttribute("stroke")).toBe("#D9822B")
   })
 
-  it("omits the icon and shifts the text left to PAD_X when absent", () => {
+  it("omits the icon when absent", () => {
     const { container } = svg(
       verdictBanner.render(
         component("warning", "警示结论"),
@@ -288,7 +319,7 @@ describe("verdict_banner component: icon states", () => {
     expect(container.querySelector("path")).toBeNull()
   })
 
-  it("text x is 56 with an icon (24+20+12), 24 without", () => {
+  it("reserves 38px for a 22px icon while unadorned text stays flush", () => {
     const { container: withIcon } = svg(
       verdictBanner.render(withIconComponent, { x: 0, y: 0, w: 1088 }, ctx)
     )
@@ -299,14 +330,39 @@ describe("verdict_banner component: icon states", () => {
         ctx
       )
     )
-    expect(Number(withIcon.querySelector("text")!.getAttribute("x"))).toBe(56)
+    expect(Number(withIcon.querySelector("text")!.getAttribute("x"))).toBe(38)
     expect(Number(withoutIcon.querySelector("text")!.getAttribute("x"))).toBe(
-      24
+      0
     )
   })
 })
 
 describe("verdict_banner component: text truncation", () => {
+  it("keeps the two DSH verdicts intact at their real render widths", () => {
+    const cases = [
+      {
+        width: 528,
+        tone: "warning" as const,
+        text: "问题不在「生成」，而在「改不动」：结果像一张成品图，而不是一份文档",
+      },
+      {
+        width: 1088,
+        tone: "positive" as const,
+        text: "对团队而言：结果是可继承的资产，不是一次性惊喜 —— 谁都能接手修改",
+      },
+    ]
+
+    for (const { width, tone, text } of cases) {
+      const { container } = svg(
+        verdictBanner.render(component(tone, text), { x: 0, y: 0, w: width }, ctx)
+      )
+      const lines = Array.from(container.querySelectorAll("text"))
+      expect(lines.map((line) => line.textContent).join("")).toBe(text)
+      expect(lines.every((line) => line.getAttribute("data-truncated") == null)).toBe(true)
+      expect(lines.every((line) => !(line.textContent ?? "").endsWith("…"))).toBe(true)
+    }
+  })
+
   it("truncates an overlong line with an ellipsis instead of growing past 2 lines", () => {
     const b = component("positive", "结".repeat(240))
     const { container } = svg(

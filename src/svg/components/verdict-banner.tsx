@@ -13,30 +13,46 @@ import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type VerdictBannerComponent = Extract<Component, { type: "verdict_banner" }>
 
-/* ── Geometry ──
- * A full-width, more-prominent sibling of callout.tsx's left-bar treatment:
- * a bordered, tinted rounded strip instead of a surface card + accent bar —
- * "page-level conclusion", not "margin note" (mirrors the ppt-master green
- * verdict banner this task's brief describes — one full-bleed strip stating
- * the page's takeaway, vs. callout's smaller margin-note treatment).
+/* ── Editorial conclusion geometry ──
+ * A page verdict is editorial hierarchy, not an application alert. The
+ * component therefore uses a short semantic-color mark over a quiet rule and
+ * lets typography carry the conclusion. Width controls the rhythm: a wide
+ * page row gets larger type and a longer mark, while a column-width slot stays
+ * compact without reverting to a rounded notification card.
  */
-const RX = 10
-const PAD_X = 24
-const ICON_SIZE = 20
-const GAP_ICON_TEXT = 12
-const STROKE_WIDTH = 1.5
-const FILL_OPACITY = 0.08
-
-const FONT_SIZE = 18
+const WIDE_BREAKPOINT = 760
+const RULE_HEIGHT = 4
+const ICON_SIZE = 22
+const ICON_GAP = 16
 const MAX_LINES = 2
-// Bar height is a literal 2-state lookup (64 / 88px), not a grow-with-content
-// measurement like callout's — chosen so the gap between the two states
-// (88-64=24) is exactly one line box, i.e. PAD_Y(20)*2 + n*LINE_HEIGHT(24):
-// 1 line -> 40+24=64, 2 lines -> 40+48=88.
-const LINE_HEIGHT = 24
-const PAD_Y = 20
-const HEIGHT_ONE_LINE = PAD_Y * 2 + LINE_HEIGHT // 64
-const HEIGHT_TWO_LINE = PAD_Y * 2 + 2 * LINE_HEIGHT // 88
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+interface Geometry {
+  fontSize: number
+  lineHeight: number
+  markWidth: number
+  verticalGap: number
+}
+
+function geometry(w: number, bodyFontPx: number): Geometry {
+  if (w >= WIDE_BREAKPOINT) {
+    return {
+      fontSize: clamp(bodyFontPx + 2, 24, 28),
+      lineHeight: clamp(bodyFontPx + 2, 24, 28) + 8,
+      markWidth: 64,
+      verticalGap: 16,
+    }
+  }
+  return {
+    fontSize: clamp(bodyFontPx, 22, 24),
+    lineHeight: clamp(bodyFontPx, 22, 24) + 7,
+    markWidth: 48,
+    verticalGap: 14,
+  }
+}
 
 /** tone -> hex color. Only positive/warning have a light/dark pair here —
  * neutral deliberately bypasses this table (see `toneColor`) and reuses
@@ -84,9 +100,9 @@ function toneColor(tone: VerdictBannerComponent["tone"], ctx: ComponentCtx): str
   return isDarkTheme(ctx.colors) ? entry.dark : entry.base
 }
 
-/** Text start x — shifts left to flush with PAD_X when there's no icon. */
+/** Text stays flush with the editorial rule unless an authored icon leads it. */
 function textX(hasIcon: boolean): number {
-  return hasIcon ? PAD_X + ICON_SIZE + GAP_ICON_TEXT : PAD_X
+  return hasIcon ? ICON_SIZE + ICON_GAP : 0
 }
 
 interface Laid {
@@ -96,6 +112,7 @@ interface Laid {
    *  caught by eyeballing)? Parallel to `lineSegments`. */
   lineTruncated: boolean[]
   height: number
+  geometry: Geometry
 }
 
 /**
@@ -105,18 +122,21 @@ interface Laid {
  * established contract (see `emphasis.ts`'s `sliceEmphasisForLines` docstring:
  * slice-for-lines first, `truncateEmphasisSegments` after, never the reverse).
  *
- * Deliberately ignores `layoutSvgText`'s own returned `fontSize`/`lineHeight`
- * — this component always renders at a fixed 18px (unlike icon-cards/steps, whose
- * title/text may shrink), so a line `layoutSvgText` had to loosen past its
- * natural per-line budget (to squeeze long content into MAX_LINES) can still
- * be too wide at our fixed FONT_SIZE. `truncateEmphasisSegments` against
- * `textW / FONT_SIZE` catches exactly that case — same fix bullets.tsx applies
- * at its own clamped floor font size.
+ * The chosen responsive size is fixed for one width/body-scale pair. A line
+ * `layoutSvgText` had to loosen past its natural per-line budget can therefore
+ * still be too wide at that size. `truncateEmphasisSegments` against the same
+ * geometry catches that case.
  */
-function lay(component: VerdictBannerComponent, w: number, fontFamily: string): Laid {
+function lay(
+  component: VerdictBannerComponent,
+  w: number,
+  fontFamily: string,
+  bodyFontPx: number,
+): Laid {
   const hasIcon = Boolean(component.icon)
   const tx = textX(hasIcon)
-  const textW = Math.max(1, w - tx - PAD_X)
+  const g = geometry(w, bodyFontPx)
+  const textW = Math.max(1, w - tx)
   // bold-metrics fix (2026-07-24): every line renders `fontWeight="600"` on
   // its outer `<text>` below (the *base*, non-emphasized weight — emphasis
   // spans go bolder still, 700, via `renderEmphasisTspans`, but that's not
@@ -129,13 +149,13 @@ function lay(component: VerdictBannerComponent, w: number, fontFamily: string): 
   // bento-panel's own value/title text (see those files' identical fix).
   const l = layoutSvgText(stripEmphasis(component.text), {
     maxWidth: textW,
-    fontSize: FONT_SIZE,
+    fontSize: g.fontSize,
     maxLines: MAX_LINES,
-    lineHeightRatio: LINE_HEIGHT / FONT_SIZE,
+    lineHeightRatio: g.lineHeight / g.fontSize,
     bold: true,
     fontFamily,
   })
-  const maxUnits = textW / FONT_SIZE
+  const maxUnits = textW / g.fontSize
   const sliced = sliceEmphasisForLines(parseEmphasis(component.text), l.lines)
   const lineSegments = sliced.map((segs) =>
     truncateEmphasisSegments(segs, maxUnits, { bold: true, fontFamily }),
@@ -146,8 +166,8 @@ function lay(component: VerdictBannerComponent, w: number, fontFamily: string): 
   const lineTruncated = sliced.map(
     (before, i) => before.map((s) => s.text).join("") !== lineSegments[i].map((s) => s.text).join(""),
   )
-  const height = lineSegments.length <= 1 ? HEIGHT_ONE_LINE : HEIGHT_TWO_LINE
-  return { lineSegments, lineTruncated, height }
+  const height = RULE_HEIGHT + 2 * g.verticalGap + lineSegments.length * g.lineHeight
+  return { lineSegments, lineTruncated, height, geometry: g }
 }
 
 export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
@@ -158,37 +178,39 @@ export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
   // estimate, or the box `render` draws into can silently disagree with
   // the height `measure` reserved for it upstream.
   measure(component, w, ctx) {
-    return lay(component, w, ctx.fonts.body).height
+    return lay(component, w, ctx.fonts.body, ctx.bodyFontPx).height
   },
   render(component, box, ctx) {
-    const { lineSegments, lineTruncated, height } = lay(component, box.w, ctx.fonts.body)
+    const { lineSegments, lineTruncated, height, geometry: g } = lay(
+      component,
+      box.w,
+      ctx.fonts.body,
+      ctx.bodyFontPx,
+    )
     const hasIcon = Boolean(component.icon)
     const tone = toneColor(component.tone, ctx)
     const tx = textX(hasIcon)
-    const textComponentH = lineSegments.length * LINE_HEIGHT
-    const textTopY = (height - textComponentH) / 2
+    const textTopY = RULE_HEIGHT + g.verticalGap
     return (
       <g
         transform={`translate(${box.x},${box.y})`}
         data-audit-box={`${box.x},${box.y},${box.w}`}
         data-audit-rect={`${box.x},${box.y},${box.w},${height}`}
       >
-        <rect
-          x={0}
-          y={0}
-          width={box.w}
-          height={height}
-          rx={RX}
-          fill={tone}
-          fillOpacity={FILL_OPACITY}
-          stroke={tone}
-          strokeWidth={STROKE_WIDTH}
+        <line
+          x1={g.markWidth}
+          y1={RULE_HEIGHT / 2}
+          x2={box.w}
+          y2={RULE_HEIGHT / 2}
+          stroke={ctx.colors.border ?? ctx.colors.muted}
+          strokeWidth={1}
         />
+        <rect x={0} y={0} width={g.markWidth} height={RULE_HEIGHT} fill={tone} />
         {component.icon && (
           <Icon
             name={component.icon}
-            x={PAD_X}
-            y={(height - ICON_SIZE) / 2}
+            x={0}
+            y={textTopY + (g.lineHeight - ICON_SIZE) / 2}
             size={ICON_SIZE}
             color={tone}
           />
@@ -198,9 +220,9 @@ export const verdictBanner: SvgComponent<VerdictBannerComponent> = {
             key={i}
             data-truncated={lineTruncated[i] ? "1" : undefined}
             x={tx}
-            y={textTopY + i * LINE_HEIGHT + FONT_SIZE}
+            y={textTopY + i * g.lineHeight + g.fontSize}
             fontFamily={ctx.fonts.body}
-            fontSize={FONT_SIZE}
+            fontSize={g.fontSize}
             fontWeight="600"
             fill={ctx.colors.text}
             dominantBaseline="alphabetic"

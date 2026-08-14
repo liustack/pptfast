@@ -42,22 +42,22 @@ import { traits as tagRowTraits } from "@/ir/components/tag-row"
 /**
  * Component trait registry (W2 task 5, spec §3/§6/§8 — re-derived as a pure
  * aggregator in src domain reorg wave 2, spec §4.3). Single home for the
- * render-time layout/degrade machinery's 5 component-classification
+ * render-time layout/degrade machinery's component classifications
  * `ReadonlySet`s (`STRETCHABLE_TYPES`/`SELF_VISUAL_TYPES`/`SCALABLE_TYPES`/
- * `PASSTHROUGH_SHELL_TYPES`/`FULL_BODY_TYPES`) plus the ordered
+ * `PASSTHROUGH_SHELL_TYPES`/`FULL_BODY_TYPES`/`COLUMN_SPANNING_TYPES`) plus the ordered
  * `EVIDENCE_TYPES` tuple.
  *
- * **Aggregator, not author (src domain reorg wave 2).** Every component's 6
+ * **Aggregator, not author (src domain reorg wave 2).** Every component's
  * boolean trait flags used to live here as a hand-written literal Set
  * membership (W2 task 5's own unification of 5 previously-scattered
  * definitions). They now live beside each component's own IR schema instead —
  * a `traits: ComponentTraits` export at the bottom of the matching
  * `src/ir/components/<name>.ts` domain file (`ComponentTraits`'s own doc
- * comment there is the authority on what each of the 6 booleans means) — so
+ * comment there is the authority on what each trait means) — so
  * "take one component away whole" carries its render-time classification with
  * it instead of leaving a trailing edit in a sixth file. This file's own job
  * is now purely computational: import every domain file's `traits`, pair each
- * with its own `type` literal in `ALL_TRAITS` below, and derive the 5 Sets by
+ * with its own `type` literal in `ALL_TRAITS` below, and derive the Sets by
  * filtering on the matching boolean — never a re-export relay, never a
  * hand-maintained literal member list. Exported names and `Set` semantics are
  * unchanged from W2 task 5 (every consumer of `STRETCHABLE_TYPES` etc. reads
@@ -88,12 +88,13 @@ import { traits as tagRowTraits } from "@/ir/components/tag-row"
  * evidence-priority-ranked (AssertionEvidence's dispatch), so collapsing
  * them would force every consumer to reason about axes it doesn't care
  * about. `ComponentTraits` (the per-component declaration shape, `src/ir/
- * components/types.ts`) mirrors this same "6 independent booleans, not one
- * enum" posture at the declaration site.
+ * components/types.ts`) mirrors this same "independent axes, not one enum"
+ * posture at the declaration site. `columnSpanning` is opt-in. Its absence
+ * means false, avoiding mechanical churn in ordinary column components.
  */
 
 /** The IR's component discriminant union (`ComponentSchema`'s `type`
- * literals), aliased so the 6 sets below don't each re-spell
+ * literals), aliased so the sets below don't each re-spell
  * `Component["type"]`. Not a redefinition — always structurally identical to
  * the IR's own type, per this task's requirement that the string-literal
  * union come from the IR rather than being hand-copied here. */
@@ -104,7 +105,7 @@ export type ComponentType = Component["type"]
  * `COMPONENT_TYPES` union order (order is a readability convenience for
  * cross-checking against `src/ir/index.ts`'s own import block, not
  * load-bearing — `typesWith` below collects into a `Set`, so key order never
- * affects any exported value). The one place a new component's 6 boolean
+ * affects any exported value). The one place a new component's traits
  * trait flags become Set memberships — adding a 33rd component means adding
  * one entry here (plus, as ever, the domain file itself), not touching 5 Set
  * literals by hand. Typed as a total `Record<ComponentType, ...>` (the same
@@ -173,10 +174,18 @@ function typesWith(trait: keyof ComponentTraits): ReadonlySet<ComponentType> {
 export const STRETCHABLE_TYPES: ReadonlySet<ComponentType> = typesWith("stretchable")
 
 /**
+ * Page-level components that own the full row inside a multi-column
+ * arrangement. Ordinary components are laid out in column runs around these
+ * entries, so authored order is preserved without demoting a page verdict to
+ * a narrow sidebar cell.
+ */
+export const COLUMN_SPANNING_TYPES: ReadonlySet<ComponentType> = typesWith("columnSpanning")
+
+/**
  * Component types that already paint their own card/frame — callout's
  * left-bar-and-fill, code's dark panel, comparison's header row + rule
  * lines, quote's decorative mark/attribution treatment, verdict_banner's own
- * bordered/tinted conclusion strip. Consulted by `bento-layout.ts`'s
+ * editorial rule and typography. Consulted by `bento-layout.ts`'s
  * `sortUnitsByHeroWeight` (hero-weight ranking) and
  * `content-bento-panel.tsx`'s `renderCell`/`cellOverBudget` (these render
  * bare — stacking bento's own outline shell underneath one of them would be

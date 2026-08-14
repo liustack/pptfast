@@ -1,6 +1,6 @@
 import type { Component, Slide } from "@/ir"
 import type { ComponentBox, ComponentCtx } from "./components/types"
-import { STRETCHABLE_TYPES } from "./component-traits"
+import { COLUMN_SPANNING_TYPES, STRETCHABLE_TYPES } from "./component-traits"
 import { measureComponent } from "./components"
 
 export type Arrangement = NonNullable<Slide["arrangement"]>
@@ -56,6 +56,73 @@ function stackFrom(
   return { placed, endY: components.length ? cursor - gap : y }
 }
 
+/**
+ * Lay out one ordinary run inside a two-column section. A one-component run
+ * takes the full width, matching the arrangement's existing whole-slide
+ * degeneration rule. Longer runs keep the established first-half-left,
+ * second-half-right ordering.
+ */
+function twoColumnRun(
+  components: Component[],
+  rect: ContentRect,
+  y: number,
+  ctx: ComponentCtx,
+  gap: number,
+): { placed: PlacedComponent[]; endY: number } {
+  if (components.length === 0) return { placed: [], endY: y }
+  if (components.length === 1) return stackFrom(components, rect.x, y, rect.w, ctx, gap)
+
+  const colW = (rect.w - COLUMN_GAP) / 2
+  const mid = Math.ceil(components.length / 2)
+  const left = stackFrom(components.slice(0, mid), rect.x, y, colW, ctx, gap)
+  const right = stackFrom(
+    components.slice(mid),
+    rect.x + colW + COLUMN_GAP,
+    y,
+    colW,
+    ctx,
+    gap,
+  )
+  return { placed: [...left.placed, ...right.placed], endY: Math.max(left.endY, right.endY) }
+}
+
+/**
+ * Preserve authored order while allowing page-level components to span the
+ * full row. Consecutive ordinary components form a two-column section. Each
+ * spanning component closes that section, renders full-width, then starts a
+ * fresh section below it.
+ */
+function twoColumnWithSpanners(
+  components: Component[],
+  rect: ContentRect,
+  ctx: ComponentCtx,
+  gap: number,
+): PlacedComponent[] {
+  const placed: PlacedComponent[] = []
+  let run: Component[] = []
+  let cursorY = rect.y
+
+  const flushRun = () => {
+    if (run.length === 0) return
+    const section = twoColumnRun(run, rect, cursorY, ctx, gap)
+    placed.push(...section.placed)
+    cursorY = section.endY + gap
+    run = []
+  }
+
+  for (const component of components) {
+    if (!COLUMN_SPANNING_TYPES.has(component.type)) {
+      run.push(component)
+      continue
+    }
+    flushRun()
+    placed.push({ component, box: { x: rect.x, y: cursorY, w: rect.w } })
+    cursorY += measureComponent(component, rect.w, ctx) + gap
+  }
+  flushRun()
+  return placed
+}
+
 /** Lay out a content slide's components into page-coordinate boxes per arrangement. */
 export function layoutContent(
   arrangement: Arrangement | undefined,
@@ -79,18 +146,7 @@ export function layoutContent(
       return [...main.placed, ...aside.placed]
     }
     case "two_column": {
-      const colW = (rect.w - COLUMN_GAP) / 2
-      const mid = Math.ceil(components.length / 2)
-      const left = stackFrom(components.slice(0, mid), rect.x, rect.y, colW, ctx, gap)
-      const right = stackFrom(
-        components.slice(mid),
-        rect.x + colW + COLUMN_GAP,
-        rect.y,
-        colW,
-        ctx,
-        gap,
-      )
-      return [...left.placed, ...right.placed]
+      return twoColumnWithSpanners(components, rect, ctx, gap)
     }
     case "image_focus": {
       const colW = (rect.w - COLUMN_GAP) / 2
@@ -293,6 +349,18 @@ export function layoutContentFit(
     const placed = layoutContent(arrangement, components, rect, ctx, gap)
     const bottom = stackBottom(placed, ctx)
     if (bottom <= rect.y + rect.h + 1) {
+      // The stretch and surplus passes model each x coordinate as one
+      // continuous column rooted at rect.y. A spanning row deliberately
+      // breaks that invariant into vertical sections. Leave its successful
+      // placement untouched so a full-width verdict cannot make only the
+      // left section stretch while the matching right section stays fixed.
+      if (
+        arrangement === "two_column" &&
+        components.length >= 2 &&
+        placed.some((p) => COLUMN_SPANNING_TYPES.has(p.component.type))
+      ) {
+        return { placed, dropped: 0 }
+      }
       // 先做卡片密度拉伸（吃大头），剩余交给间距呼吸
       const grown = growStretchables(placed, rect, ctx)
       const grownBottom = grown === placed ? bottom : stackBottom(grown, ctx)

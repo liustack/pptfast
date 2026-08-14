@@ -44,10 +44,11 @@ export interface ComponentAliasSpec {
 }
 
 /**
- * The 5 render-time behavior axes `src/svg/component-traits.ts` classifies
- * today as 5 independent `ReadonlySet<ComponentType>` collections
+ * The render-time behavior axes `src/svg/component-traits.ts` classifies
+ * as independent `ReadonlySet<ComponentType>` collections
  * (`STRETCHABLE_TYPES`/`SELF_VISUAL_TYPES`/`SCALABLE_TYPES`/
- * `PASSTHROUGH_SHELL_TYPES`/`FULL_BODY_TYPES`), plus `evidence` — spec
+ * `PASSTHROUGH_SHELL_TYPES`/`FULL_BODY_TYPES`/`COLUMN_SPANNING_TYPES`),
+ * plus `evidence` — spec
  * §4.1's named exception for `EVIDENCE_TYPES`: that collection carries
  * cross-component *priority order* (which type wins when more than one
  * appears), which is comparative knowledge no single component can declare
@@ -58,15 +59,15 @@ export interface ComponentAliasSpec {
  * hand-written order (two independent sources of truth, drift between them
  * fails a test, per spec §4.1's own closing sentence).
  *
- * Field-for-field identical to the 6 axes documented in
+ * Field-for-field identical to the axes documented in
  * `src/svg/component-traits.ts`'s own module doc comment — this interface
  * doesn't redefine their semantics, only gives the per-component boolean
  * declaration a name once domain files start producing them (W2b/W2c). Kept
  * here (ir side) rather than in `component-traits.ts` (svg side) because the
  * *declaration* is an ir-domain-file concern (spec §4.3: ir declares,
- * `component-traits.ts` reconstructs the 6 sets from ir's declarations,
+ * `component-traits.ts` reconstructs the sets from ir's declarations,
  * svg→ir being an already-existing dependency direction) — this task adds
- * only the type, `component-traits.ts`'s own 6 sets are untouched.
+ * only the type, `component-traits.ts`'s own sets are untouched.
  */
 export interface ComponentTraits {
   /** Feeds `STRETCHABLE_TYPES` — may `growStretchables` stretch this component to fill leftover column height? */
@@ -79,6 +80,8 @@ export interface ComponentTraits {
   readonly passthroughShell: boolean
   /** Feeds `FULL_BODY_TYPES` — must this component be the slide's sole component, filling the whole content rect itself? */
   readonly fullBody: boolean
+  /** Feeds `COLUMN_SPANNING_TYPES` — should this page-level component span a multi-column arrangement instead of occupying one column? */
+  readonly columnSpanning?: true
   /** Feeds the membership (not the order) of `EVIDENCE_TYPES` — see this interface's own doc comment for why order stays aggregator-owned. */
   readonly evidence: boolean
 }
@@ -87,7 +90,7 @@ export interface ComponentTraits {
  * The full per-component domain-file contract: `schema` (feeds
  * `ComponentSchema`'s `discriminatedUnion` in `src/ir/index.ts`), `aliases`
  * (feeds `src/ir/field-aliases.ts`'s two tables), `traits` (feeds
- * `src/svg/component-traits.ts`'s 6 sets). See this module's own top doc
+ * `src/svg/component-traits.ts`'s sets). See this module's own top doc
  * comment for why this type documents the convention rather than being
  * `satisfies`-checked against each domain file directly.
  */

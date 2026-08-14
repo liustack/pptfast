@@ -582,32 +582,28 @@ export const CAPACITY = {
    */
   steps: { maxItems: 5, titleMaxUnits: 7, textMaxUnits: 30 },
   /**
-   * `blocks/verdict-banner.tsx`（Task 4，2026-07-07）。页级结论条，恒定全宽
-   * 渲染——不像 icon_cards/steps 那样按 items 数切分等宽卡（这里没有 items
-   * 数组，只有一条 `text`），直接取本文件"内容区最窄矩形"基准 `w=1088` 作为
-   * 推导输入（brief 明确要求按全宽推导；IR 理论上仍可能被塞进 two_column
-   * 半宽列，但那是渲染期由 `layoutSvgText`/`truncateEmphasisSegments` 兜底的
-   * 安全问题，不是这里要建模的软预算——同 iconCards/steps 行的既有原则）。
+   * `components/verdict-banner.tsx`（2026-08-15 编辑式结论线重设计）。页级
+   * 结论通过 `COLUMN_SPANNING_TYPES` 在 two_column 中也占完整一行，所以按
+   * `w=1088` 的真实最窄跨栏宽度推导。它不像 icon_cards/steps 那样按 items
+   * 数切分等宽卡，只有一条 `text`。
    *
    * 文本区宽度按"最坏情况"（带 icon）推导——`verdict-banner.tsx` 的
-   * `PAD_X(24)`/`ICON_SIZE(20)`/`GAP_ICON_TEXT(12)`：
-   *   textW = 1088 - (PAD_X + ICON_SIZE + GAP_ICON_TEXT) - PAD_X
-   *         = 1088 - 56 - 24 = 1008px
-   * （无 icon 时文本左移到 `PAD_X=24` 起，`textW=1040px`，更宽，不是约束项）。
+   * `ICON_SIZE(22)`/`ICON_GAP(16)`：
+   *   textW = 1088 - ICON_SIZE - ICON_GAP = 1050px
+   * （无 icon 时文字与规则线左缘齐平，`textW=1088px`，更宽，不是约束项）。
    *
-   * text（`layoutSvgText`，字号 18，2 行，行高 24）：先取原始 units：
-   *   rawUnits = (1008 / 18) * 2行 = 112
+   * text（balanced 下 `layoutSvgText` 字号 26，2 行，行高 34）：先取原始 units：
+   *   rawUnits = (1050 / 26) * 2行 = 80.77
    * 结论句是完整的自然语言陈述（如 ppt-master 示例"数学上严格保留目标分布 →
    * 答案分布完全不变，零质量损失"），机制上与 icon_cards/steps 的"说明"字段
    * 同属 `layoutSvgText` 2 行自然语言这一类（而非 `fitSvgLine` 单行短语），
    * 沿用同一折中权重 0.64（`measureTextUnits` 纯 CJK 权重 1.0 与纯数字/字母
    * 权重 0.56 之间，偏 CJK 一侧——见 iconCards/steps 行的同一推导）：
-   *   textMaxUnits = floor(112 / 0.64) = floor(175) = 175
+   *   textMaxUnits = floor(80.77 / 0.64) = floor(126.2) = 126
    *
    * 同 iconCards/steps 行——这是软预算（未接入 `ir-quality.ts` 校验）——
-   * `verdict-banner.tsx` 自身用 `truncateEmphasisSegments` 在渲染期于固定
-   * 18px 字号下逐行截断超宽内容，2 行高度上限（64/88px）由字面量常量保证，
-   * 不依赖这里的字数估算兜底安全。
+   * `verdict-banner.tsx` 自身用 `truncateEmphasisSegments` 在渲染期按响应式
+   * 字号逐行截断超宽内容，最多 2 行，不依赖这里的字数估算兜底安全。
    */
-  verdictBanner: { textMaxUnits: 175 },
+  verdictBanner: { textMaxUnits: 126 },
 } as const

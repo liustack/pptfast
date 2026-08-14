@@ -23,6 +23,11 @@ const list: Component = { type: "bullets", items: ["甲", "乙", "丙"] }
 const kpi: Component = { type: "kpi_cards", items: [{ value: "9", label: "x" }] }
 const img: Component = { type: "image", asset_id: "a", fit: "cover" }
 const quote: Component = { type: "quote", text: "一句引言。" }
+const verdict: Component = {
+  type: "verdict_banner",
+  tone: "warning",
+  text: "问题不在生成，而在改不动",
+}
 
 const rect: ContentRect = { x: 80, y: 264, w: 1120, h: 400 }
 
@@ -41,6 +46,27 @@ describe("layoutContent variants", () => {
     expect(placed[0].box.w).toBe(colW)
     expect(placed[2].box.x).toBe(80 + colW + COLUMN_GAP)
     expect(placed[2].box.w).toBe(colW)
+  })
+
+  it("two_column lets a leading column-spanning verdict own the full row before laying out ordinary blocks in columns", () => {
+    const contentRect: ContentRect = { x: 96, y: 228, w: 1088, h: 400 }
+    const placed = layoutContent("two_column", [verdict, para, list], contentRect, ctx)
+    const verdictHeight = measureComponent(verdict, 1088, ctx)
+    const ordinaryY = contentRect.y + verdictHeight + 16
+    const colW = (contentRect.w - COLUMN_GAP) / 2
+
+    expect(placed.map((item) => item.component.type)).toEqual([
+      "verdict_banner",
+      "paragraph",
+      "bullets",
+    ])
+    expect(placed[0].box).toEqual({ x: 96, y: 228, w: 1088 })
+    expect(placed[1].box).toEqual({ x: 96, y: ordinaryY, w: colW })
+    expect(placed[2].box).toEqual({
+      x: 96 + colW + COLUMN_GAP,
+      y: ordinaryY,
+      w: colW,
+    })
   })
 
   it("kpi_focus hoists kpi_cards to a full-width top row", () => {
@@ -253,6 +279,33 @@ describe("layoutContentFit surplus distribution", () => {
     expect(left[1].box.y).toBe(right[1].box.y)
     expect(left[1].box.y).toBe(220)
     for (const p of [...left, ...right]) expect(p.box.h).toBe(204)
+  })
+
+  it("two_column with a spanning verdict keeps the following columns aligned during fit post-processing", () => {
+    const components = [
+      verdict,
+      kpiComponent("l1"),
+      kpiComponent("l2"),
+      kpiComponent("r1"),
+      kpiComponent("r2"),
+    ]
+    const fitRect: ContentRect = { x: 0, y: 0, w: 1000, h: 700 }
+    const { placed } = layoutContentFit("two_column", components, fitRect, ctx)
+    const ordinary = placed.slice(1)
+    const left = ordinary.filter((p) => p.box.x === ordinary[0].box.x)
+    const right = ordinary.filter((p) => p.box.x !== ordinary[0].box.x)
+
+    expect(left.map((p) => p.box.y)).toEqual(right.map((p) => p.box.y))
+    expect(left.every((p) => p.box.h == null)).toBe(true)
+    expect(right.every((p) => p.box.h == null)).toBe(true)
+  })
+
+  it("single layout keeps its existing stretch and surplus behavior when it contains a verdict", () => {
+    const fitRect: ContentRect = { x: 0, y: 0, w: 1000, h: 500 }
+    const { placed } = layoutContentFit(undefined, [verdict, kpiComponent("body")], fitRect, ctx)
+
+    expect(placed[1].box.h).toBe(204)
+    expect(placed[1].box.y).toBe(110)
   })
 
   it("kpi_focus: the hoisted kpi row and the rest-stack below it count as one column (the boundary gap grows too)", () => {

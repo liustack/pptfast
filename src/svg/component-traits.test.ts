@@ -42,6 +42,13 @@ import {
   SELF_VISUAL_TYPES,
   STRETCHABLE_TYPES,
 } from "./component-traits"
+import * as componentTraitRegistry from "./component-traits"
+
+const COLUMN_SPANNING_TYPES = (
+  componentTraitRegistry as typeof componentTraitRegistry & {
+    COLUMN_SPANNING_TYPES?: ReadonlySet<(typeof COMPONENT_TYPES)[number]>
+  }
+).COLUMN_SPANNING_TYPES
 
 /**
  * Every domain file's own `[type, traits]` pair, gathered independently of
@@ -114,6 +121,13 @@ describe("STRETCHABLE_TYPES equivalence (was layout.ts:137, plus the people_card
     const current = [...preRefactor, "people_cards"]
     expect(new Set(STRETCHABLE_TYPES)).toEqual(new Set(current))
     expect(STRETCHABLE_TYPES.size).toBe(current.length)
+  })
+})
+
+describe("COLUMN_SPANNING_TYPES", () => {
+  it("classifies verdict_banner as a generic column-spanning component", () => {
+    expect(COLUMN_SPANNING_TYPES).toBeDefined()
+    expect(COLUMN_SPANNING_TYPES?.has("verdict_banner")).toBe(true)
   })
 })
 
