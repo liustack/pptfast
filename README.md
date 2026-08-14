@@ -34,53 +34,48 @@ The repo doubles as a Claude Code plugin that ships the deck-generation skill:
 
 The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptfast`).
 
+### As a DSH plugin
+
+pptfast is also a DeepSeek Harness (DSH) plugin. One command installs it into a DSH profile:
+
+```bash
+npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast
+```
+
+The plugin card shows up as "pptfast" and registers the same deck-generation skill into DSH's skill system. The skill drives the CLI that ships inside the plugin package itself — no separate CLI install needed there. Uninstalling the plugin removes the skill with no residue.
+
 ### Other agents (Codex, etc.)
 
 [`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) is a self-contained Markdown playbook — reference it from your agent's context (e.g. `AGENTS.md`) and it teaches the same schema → outline → validate → render loop.
 
 ## Quick start
 
+Write a minimal deck, then run the validate → render → preview loop:
+
 ```bash
-node dist/cli.js validate examples/basic.json
-# → OK — 5 slides, theme "consulting"
-node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, ~29 KB)
-node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
-node dist/cli.js preview examples/basic.json -o out/svgs   # SVG per slide, for a visual self-check
+cat > deck.json <<'EOF'
+{
+  "filename": "hello.pptx",
+  "theme": { "id": "consulting" },
+  "slides": [
+    { "type": "cover", "heading": "Hello pptfast", "subheading": "A first deck in ten minutes" },
+    { "type": "content", "heading": "Why it works", "components": [
+      { "type": "bullets", "items": ["Semantic IR in", "Native DrawingML out", "Every shape stays editable"] } ] },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}
+EOF
+pptfast validate deck.json                              # → OK — 3 slides, theme "consulting"
+pptfast render deck.json -o out/hello.pptx              # → wrote out/hello.pptx (3 slides, ~24 KB)
+pptfast render deck.json -o out/tech.pptx --theme tech  # same deck, different theme
+pptfast preview deck.json -o out/svgs                   # SVG per slide, for a visual self-check
 ```
 
-Or drive the SDK directly (Node requires `installNodePlatform()` once, before
-any render call — the CLI does this for you):
+One shape rule worth knowing up front: `cover`/`chapter`/`ending` slides are heading + subheading only — components live on `content` slides (`validate` says exactly this if you mix them up). No install at all also works: `npx -y @liustack/pptfast validate deck.json`. In a source checkout, `node dist/cli.js` replaces `pptfast`, and `examples/` has ready-made IR files to try.
 
-```ts
-import { installNodePlatform } from "@liustack/pptfast/node"
-import { generatePptx } from "@liustack/pptfast"
+## What's public
 
-installNodePlatform()
-const bytes = await generatePptx(ir) // Uint8Array, ready to write to a .pptx
-```
-
-## Browser
-
-The default `@liustack/pptfast` entry is browser-safe by construction — its whole dependency closure has no `fs`, no `commander`, no Node-only API (`docs/architecture.md`'s platform seam). Which subpath to import depends on how your page loads code:
-
-- **Bundler** (Vite, webpack, esbuild, Next.js, …) — the default entry, unchanged: `import { generatePptx, validateIr } from "@liustack/pptfast"`. `react`/`react-dom`/`zod`/`jszip`/`dagre`/`pptxgenjs` stay external, resolved from your own `node_modules` and deduped against whatever else you already depend on.
-- **Bare `<script type="module">`, no build step** — `@liustack/pptfast/browser` instead. Every dependency is bundled in (react + react-dom/server + zod + jszip + dagre + pptxgenjs, ~1.7 MB raw / ~455 KB gzip), so it loads with nothing else on the page and no import map:
-
-  ```html
-  <script type="module">
-    import { validateIr, generatePptx } from "https://esm.sh/@liustack/pptfast/browser"
-    const { ok, ir, errors } = validateIr(deckJson)
-    if (!ok) throw new Error(errors.map((e) => e.message).join("\n"))
-    const bytes = await generatePptx(ir) // Uint8Array — new Blob([bytes]) to download
-  </script>
-  ```
-
-- **Embedding just the validator** — a page that checks pasted/edited IR JSON and shows errors has no reason to carry the render/export chain at all. `@liustack/pptfast/validate` exports `validateIr`, `formatIssues`/`formatWarnings`, `irJsonSchema`/`styleJsonSchema`, `listThemes`, and the IR/style zod schemas — `react`, `react-dom/server`, `pptxgenjs`, `jszip`, and `dagre` are all absent from its closure by construction, not just unused at runtime, landing at a fraction of `/browser`'s size (~730 KB raw / ~155 KB gzip).
-
-No `installPlatform()` call is needed in a browser — DOM parsing and (for `--pixels`-equivalent audits) SVG rasterization both default to the real browser globals (`DOMParser`, `OffscreenCanvas`) automatically, unlike `installNodePlatform()` (Quick start above), which is a Node-only requirement. Two honest caveats, not bugs: an image asset needs to already be a `data:` URI, or an `http(s)` URL the browser's own `fetch` can read cross-origin (the host needs permissive CORS headers — reading raw bytes to inline needs more than an `<img>` tag ever does) — `generatePptx` fetches such a URL for you at export time, but `auditDeck`'s pixel path (`{ pixels: true }`) refuses a remote `http(s)` image reference outright, the same "never a surprise network request" rule the Node/Sharp path also follows. `--pixels`-equivalent auditing needs `OffscreenCanvas`, which every evergreen browser has, while Node needs the optional `sharp` dependency instead (see Auditing below).
-
-`pptfast preview --html` (see For AI agents below) is the project's most mature "ships to a browser" artifact today: a self-contained review page a Node CLI run generates once, with zero further dependencies or network calls once it's open in a tab — distinct from importing the SDK live into your own page, but worth knowing about if "zero-dependency browser artifact" is what you actually need.
+The supported surface is deliberately small: the **CLI**, the **IR schema** it speaks (`pptfast schema`), the **deck project format** (see Deck projects), the **agent skill** ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)), and the **DSH plugin** (see Install above). The IR is the product's API — an agent talks JSON and the command line, it doesn't `import`. There is no public JS API: the package's JS internals ship for the package's own use and carry no semantic-versioning promise (see [`docs/internal-api.md`](./docs/internal-api.md)).
 
 ## CLI
 
@@ -105,7 +100,7 @@ No `installPlatform()` call is needed in a browser — DOM parsing and (for `--p
 
 ## The IR
 
-Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"4"`, and now the default when omitted), `filename`, an optional `narrative` (a preset id string or a partial axes object — see Narratives below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one, see Layout selection below), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication. `alt`, when set, lands in the exported PPTX's standard accessibility-description slot for that image (what PowerPoint's "Edit Alt Text" reads and writes) — an `image` component with no `alt` on its asset exports unchanged, same as before this field did anything.
+Run `pptfast schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"4"`, and now the default when omitted), `filename`, an optional `narrative` (a preset id string or a partial axes object — see Narratives below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one, see Layout selection below), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication. `alt`, when set, lands in the exported PPTX's standard accessibility-description slot for that image (what PowerPoint's "Edit Alt Text" reads and writes) — an `image` component with no `alt` on its asset exports unchanged, same as before this field did anything.
 
 A deck also carries an optional `seed` (an integer that keeps auto-selected layouts stable across revisions — see Layout selection below for how it's derived when omitted). Any slide may set a stable `id` (what spec pages and validation error messages reference it by), `placeholder: true` (a slide with no content yet — injected by `assemble` for a spec page nobody has filled in, skipped by the content-quality checks, and blocking `render` unless `--draft`), and an optional `notes` (aliases `note`/`speaker_notes`/`speakerNotes`) that exports as a native PowerPoint speaker note — content for the presenter's own view, never drawn onto the slide canvas and never counted toward any layout capacity. Field names that commonly drift between a model's output and the schema (55 synonym pairs across component types, e.g. kpi `title`→`label`, quote `content`→`text`, swot `strength`→`strengths`, bmc `partners`→`key_partners`) are silently normalized to the canonical name at validate time — `validate`/`render`/`preview` print a note listing what changed, never a hard error. That rescue is scoped to weak-model synonym drift only — it does not cover pre-v4 vocabulary. A v4-labeled document that writes `scenario` instead of `narrative`, `mode`/`delivery` instead of `strategy`/`pacing`, or the old `narrative`/`text`/`presentation` axis values hard-rejects, listing the current names/values, exactly like any other unrecognized field or value. An explicit `version: "3"` (or `"2"`) also hard-rejects, with a migration pointer — see `pptfast migrate` below, the only supported path for old-vocabulary input.
 
@@ -234,7 +229,7 @@ pptfast asset-brief my-deck/
 
 ## For AI agents
 
-The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast audit` for the same kind of fixable-in-place feedback on what a *valid* deck can still get wrong at render time (overflow, low-contrast, overlap — exit code alone says whether it's clean), then `pptfast render`. Before generating art for any image slot, run `pptfast asset-brief` — the real rendered frame and crop mode are engine-internal knowledge no amount of looking at the IR reveals, and a mismatched aspect ratio or off-palette photo is the single most common reason a generated image looks wrong once it's actually placed. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. Add `--html` to also write a self-contained `preview.html` for a human to review (keyboard nav, placeholder badges — a remote-URL image asset stays remote, the one self-containment gap) — zero network calls and zero further dependencies once it's open in a tab, the project's most mature zero-dependency browser artifact today (see Browser above). When every page is filled, that `preview.html` also overlays the same `audit` findings (per-page badges plus a findings panel, click to jump to the page) so a human reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations right in `preview.html` and export them as a `revision-request.json` (a Blob download, no network or file write — preview stays read-only) for the agent to route back through `pages/*.json`. `pptfast serve <target>` offers the same loop live instead of as a download — a browser tab that auto-reloads on source changes, with that same annotation panel now submitting straight to `<deck-dir>/revision-request.json` on disk, no manual export/hand-back step. The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)). This exact loop is exercised by an internal, model-agnostic benchmark (`tests/bench/`, not published to npm) that mechanically scores how well a model follows the skill on a fixed question bank — see `tests/bench/README.md`.
+The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast audit` for the same kind of fixable-in-place feedback on what a *valid* deck can still get wrong at render time (overflow, low-contrast, overlap — exit code alone says whether it's clean), then `pptfast render`. Before generating art for any image slot, run `pptfast asset-brief` — the real rendered frame and crop mode are engine-internal knowledge no amount of looking at the IR reveals, and a mismatched aspect ratio or off-palette photo is the single most common reason a generated image looks wrong once it's actually placed. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. Add `--html` to also write a self-contained `preview.html` for a human to review (keyboard nav, placeholder badges — a remote-URL image asset stays remote, the one self-containment gap) — zero network calls and zero further dependencies once it's open in a tab. When every page is filled, that `preview.html` also overlays the same `audit` findings (per-page badges plus a findings panel, click to jump to the page) so a human reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations right in `preview.html` and export them as a `revision-request.json` (a Blob download, no network or file write — preview stays read-only) for the agent to route back through `pages/*.json`. `pptfast serve <target>` offers the same loop live instead of as a download — a browser tab that auto-reloads on source changes, with that same annotation panel now submitting straight to `<deck-dir>/revision-request.json` on disk, no manual export/hand-back step. The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)). This exact loop is exercised by an internal, model-agnostic benchmark (`tests/bench/`, not published to npm) that mechanically scores how well a model follows the skill on a fixed question bank — see `tests/bench/README.md`.
 
 ## Roadmap
 

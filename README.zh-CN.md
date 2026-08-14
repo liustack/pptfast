@@ -6,7 +6,7 @@
 
 ## 为什么
 
-自由绘制 SVG/HTML 再转 PPTX 的链路上限很高，但下限不稳定——弱模型（或强模型状态不好时）画出来的往往是版式错乱、脱离品牌规范、甚至无法阅读的产物。pptfast 用受控词汇取代自由绘制：一份语义化 IR（zod schema）、16 个内置主题（各自打包一套 style 设计 tokens 与 brand 品牌标识元素）、带 seed 多样性的 layout/component 版式库，以及每个图形都保持可编辑的原生 DrawingML 输出——不是贴上去的一张图。
+自由绘制 SVG/HTML 再转 PPTX 的链路上限很高，但下限不稳定——弱模型（或强模型状态不好时）画出来的往往是版式错乱、脱离品牌规范、甚至无法阅读的产物。pptfast 用受控词汇取代自由绘制：一份语义化 IR（zod schema）、17 个内置主题（各自打包一套 style 设计 tokens 与 brand 品牌标识元素）、带 seed 多样性的 layout/component 版式库，以及每个图形都保持可编辑的原生 DrawingML 输出——不是贴上去的一张图。
 
 这条「可编辑」的说法有一个需要如实说清的边界：pptfast 真正产出的原生单元是图形（shape）和文字段（text run），每一个都是 PowerPoint 里可以选中、改样式、改文字的真实对象，这也包括 `chart`、`data_table` 这两类组件画出来的图形与文字。pptfast 不会产出的是原生的 PowerPoint 图表部件或表格对象：没有内嵌的图表数据，也没有 `<a:tbl>`。图表的柱子、表格的单元格本质上是几何图形加文字，不是一个 PowerPoint 能凭新数字重新画一遍的数据绑定对象。要改数字，请去改 IR 再重新渲染，而不是在 PowerPoint 里拖动柱子或直接改单元格内容。这是为了上文说的确定性、seed 稳定输出而做的主动取舍，不是遗漏，也不影响其余每一个图形本身的可编辑性。
 
@@ -33,52 +33,48 @@ pptfast --help
 
 skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfast`）。
 
+### 作为 DSH 插件
+
+pptfast 同时是一个 DeepSeek Harness（DSH）插件，一条命令装进 DSH profile：
+
+```bash
+npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast
+```
+
+插件卡片显示为「pptfast」，把同一套生成流程的 skill 注册进 DSH 的技能系统。skill 驱动的 CLI 就在插件包自己里面，那里不需要单独装 CLI。卸载插件即移除技能，不留残余。
+
 ### 其他 agent（Codex 等）
 
 [`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) 是一份自包含的 Markdown 操作手册——把它引入你的 agent 上下文（例如在 `AGENTS.md` 里引用），即可复用同一套 schema → 大纲 → validate → render 回路。
 
 ## 快速开始
 
+写一个最小 deck，跑一遍 validate → render → preview 回路：
+
 ```bash
-node dist/cli.js validate examples/basic.json
-# → OK — 5 slides, theme "consulting"
-node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, ~29 KB)
-node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
-node dist/cli.js preview examples/basic.json -o out/svgs   # 每页一张 SVG，供人工目检
+cat > deck.json <<'EOF'
+{
+  "filename": "hello.pptx",
+  "theme": { "id": "consulting" },
+  "slides": [
+    { "type": "cover", "heading": "Hello pptfast", "subheading": "A first deck in ten minutes" },
+    { "type": "content", "heading": "Why it works", "components": [
+      { "type": "bullets", "items": ["Semantic IR in", "Native DrawingML out", "Every shape stays editable"] } ] },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}
+EOF
+pptfast validate deck.json                              # → OK — 3 slides, theme "consulting"
+pptfast render deck.json -o out/hello.pptx              # → wrote out/hello.pptx (3 slides, ~24 KB)
+pptfast render deck.json -o out/tech.pptx --theme tech  # 同一份 deck，换个主题
+pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供人工目检
 ```
 
-也可以直接调用 SDK（Node 环境下渲染前需先调用一次 `installNodePlatform()`，CLI 内部已经帮你调过）：
+一条值得提前知道的形状规则：`cover`/`chapter`/`ending` 页只有 heading + subheading，组件都放在 `content` 页上（写混了 `validate` 会原话告诉你）。不想安装也行：`npx -y @liustack/pptfast validate deck.json`。源码仓库里则用 `node dist/cli.js` 代替 `pptfast`，`examples/` 下有现成的 IR 文件可以直接试。
 
-```ts
-import { installNodePlatform } from "@liustack/pptfast/node"
-import { generatePptx } from "@liustack/pptfast"
+## 对外承诺的边界
 
-installNodePlatform()
-const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文件
-```
-
-## 浏览器
-
-`@liustack/pptfast` 默认入口天生浏览器安全——它的整个依赖闭包不含 `fs`、不含 `commander`、不含任何 Node-only API（见 `docs/architecture.md` 的 platform seam 一节）。具体该 import 哪个子路径，取决于页面怎么加载代码：
-
-- **打包器场景**（Vite、webpack、esbuild、Next.js 等）——默认入口，写法不变：`import { generatePptx, validateIr } from "@liustack/pptfast"`。`react`/`react-dom`/`zod`/`jszip`/`dagre`/`pptxgenjs` 依旧是 external，从你自己的 `node_modules` 解析，和你项目里其他依赖一起去重。
-- **裸 `<script type="module">`，零构建**——改用 `@liustack/pptfast/browser`。每个依赖都已打包进去（react + react-dom/server + zod + jszip + dagre + pptxgenjs，约 1.7MB 原始 / 约 455KB gzip），页面上不需要任何 import map 或额外脚本就能加载：
-
-  ```html
-  <script type="module">
-    import { validateIr, generatePptx } from "https://esm.sh/@liustack/pptfast/browser"
-    const { ok, ir, errors } = validateIr(deckJson)
-    if (!ok) throw new Error(errors.map((e) => e.message).join("\n"))
-    const bytes = await generatePptx(ir) // Uint8Array —— new Blob([bytes]) 即可触发下载
-  </script>
-  ```
-
-- **只嵌入校验器**——一个校验用户粘贴/编辑的 IR JSON 并展示错误的页面，完全没理由带上整条渲染/导出链。`@liustack/pptfast/validate` 导出 `validateIr`、`formatIssues`/`formatWarnings`、`irJsonSchema`/`styleJsonSchema`、`listThemes`，以及 IR/style 的 zod schema——`react`、`react-dom/server`、`pptxgenjs`、`jszip`、`dagre` 从依赖闭包层面就不存在（不是「运行时用不到」，而是构建时就没打进去），体积只有 `/browser` 的一个零头（约 730KB 原始 / 约 155KB gzip）。
-
-浏览器里不需要调用 `installPlatform()`——DOM 解析，以及（等价于 `--pixels` 的）SVG 光栅化，都会自动 fallback 到真实的浏览器全局对象（`DOMParser`、`OffscreenCanvas`），`installNodePlatform()`（见上文快速开始）只是 Node 场景下的硬性要求。两条如实说明的限制，而非缺陷：图片资产要么已经是 `data:` URI，要么是浏览器自身 `fetch` 能跨域读取的 `http(s)` URL（宿主需要开放的 CORS 头——把原始字节读出来内联，比 `<img>` 标签单纯显示图片的要求更高）——`generatePptx` 会在导出时替你 fetch 这类 URL，但 `auditDeck` 的像素审查路径（`{ pixels: true }`）会直接拒绝还带着远程 `http(s)` 图片引用的页面，和 Node/Sharp 路径共享同一条「绝不擅自发起意外网络请求」的规则。等价于 `--pixels` 的审查需要 `OffscreenCanvas`，现代浏览器都有，Node 一侧则需要可选依赖 `sharp`（见下文审查一节）。
-
-`pptfast preview --html`（见下文「面向 AI agent」）是这个项目目前最成熟的「产物直接跑在浏览器里」的例子：Node CLI 跑一次生成一个自包含的审阅页，打开后零网络请求、零进一步依赖——和「把 SDK 实时 import 进你自己的页面」是两回事，但如果你要的正好是「零依赖浏览器产物」，这个已经是现成答案。
+对外支持面刻意收得很小：**CLI**、它说的 **IR schema**（`pptfast schema`）、**deck 项目格式**（见下文「Deck 项目」）、**agent skill**（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)），以及 **DSH 插件**（见上文安装一节）。IR 才是这个产品的 API——agent 说 JSON 和命令行，不需要 `import`。没有公开的 JS API：包里的 JS 内部实现只服务于包自身，不做语义化版本承诺（见 [`docs/internal-api.md`](./docs/internal-api.md)）。
 
 ## CLI
 
@@ -92,7 +88,7 @@ const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文�
 | `assemble <dir\|name> [-o <file>]` | 把 deck 项目目录合并成单个 IR JSON 文件 |
 | `disassemble <ir.json> -o <dir>` | 把 IR JSON 文件拆成 deck 项目目录 |
 | `schema [--style \| --spec]` | 输出 IR 的 JSON Schema（或 style 覆盖 schema，或 deck spec schema） |
-| `themes [--json]` | 列出 16 个内置主题 |
+| `themes [--json]` | 列出 17 个内置主题 |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见「你自己的品牌」）——用 `--theme-file` 装载（`validate`/`audit`/`preview`/`serve` 同样支持），或作为 deck 项目的 `theme.json` |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`）——`target` 形式同 `render`，永远不受占位页拦截 |
@@ -103,7 +99,7 @@ const bytes = await generatePptx(ir) // Uint8Array，可直接写成 .pptx 文�
 
 ## IR
 
-运行 `node dist/cli.js schema` 获取完整 JSON Schema——让模型写 IR 之前先读它。一份 deck（`PptxIR`）包含 `version`（现为 `"4"`，且省略时默认就是它）、`filename`、一个可选的 `narrative`（预设 id 字符串，或部分轴对象——详见下文「叙事」一节）、`theme`（`id` 加可选的 `style`/`brand` 覆盖）、`meta`、`assets`——均可省略、有默认值——另外还有一个独立的可选 `brand`（logo 位置）字段，以及必填的有序 `slides` 列表。每张 slide 有一个 `type`（`cover`、`chapter`、`content`、`ending`）、一个可选的 `layout`（显式指定页面版式 id，一经设置恒生效、优先于自动选型——省略则由 pptfast 自动选型，详见下文「版式选型」）、一个可选的 `arrangement`（content slide 正文的排布方式，如 `two_column`、`kpi_focus`），以及一组带类型的 `components`（`bullets`、`kpi_cards`、`image`、`chart` 等）。`assets` 的形状是 `{ images: { [id]: { src, alt? } } }`，component 通过 `asset_id` 引用图片，同一张图可以在多页复用而不必重复内嵌。
+运行 `pptfast schema` 获取完整 JSON Schema——让模型写 IR 之前先读它。一份 deck（`PptxIR`）包含 `version`（现为 `"4"`，且省略时默认就是它）、`filename`、一个可选的 `narrative`（预设 id 字符串，或部分轴对象——详见下文「叙事」一节）、`theme`（`id` 加可选的 `style`/`brand` 覆盖）、`meta`、`assets`——均可省略、有默认值——另外还有一个独立的可选 `brand`（logo 位置）字段，以及必填的有序 `slides` 列表。每张 slide 有一个 `type`（`cover`、`chapter`、`content`、`ending`）、一个可选的 `layout`（显式指定页面版式 id，一经设置恒生效、优先于自动选型——省略则由 pptfast 自动选型，详见下文「版式选型」）、一个可选的 `arrangement`（content slide 正文的排布方式，如 `two_column`、`kpi_focus`），以及一组带类型的 `components`（`bullets`、`kpi_cards`、`image`、`chart` 等）。`assets` 的形状是 `{ images: { [id]: { src, alt? } } }`，component 通过 `asset_id` 引用图片，同一张图可以在多页复用而不必重复内嵌。
 
 一份 deck 还可以携带一个可选的 `seed`（整数，让自动选型的版式在多次修订之间保持稳定——省略时如何生成，详见下文「版式选型」）。任意 slide 都可以设置一个稳定的 `id`（spec 的页面和校验报错都靠它引用）、`placeholder: true`（还没有内容的占位 slide——由 `assemble` 为 spec 里没人填写的页面注入，内容质量检查会跳过它，`render` 也会因它拒绝导出，除非加 `--draft`），以及一个可选的 `notes`（同义词 `note`/`speaker_notes`/`speakerNotes`），导出为原生 PowerPoint 演讲者备注——只是给主讲人自己看的内容，不会画到幻灯片画布上，也从不计入任何版式容量。模型输出里容易和 schema 对不上的字段名（跨 component 类型共 55 组同义词，例如 kpi 的 `title`→`label`、quote 的 `content`→`text`、swot 的 `strength`→`strengths`、bmc 的 `partners`→`key_partners`）会在校验时静默改写成规范名——`validate`/`render`/`preview` 会打印一条改了什么的提示，从不因此报错。这套救援机制只覆盖弱模型的同义词漂移，不覆盖 v4 之前的旧词汇。标着 v4 却仍写 `scenario`（而不是 `narrative`）、`mode`/`delivery`（而不是 `strategy`/`pacing`）、或轴值还停留在旧的 `narrative`/`text`/`presentation` 的文档，会像任何其他未识别字段或非法值一样直接硬报错，并列出当前正确的名称和取值。显式写 `version: "3"`（或 `"2"`）同样硬拒绝并给出迁移指引——见下文 `pptfast migrate`，这是旧词汇输入唯一支持的路径。
 
@@ -113,7 +109,7 @@ v4 IR schema 自 0.4.0 起冻结——后续演进只走加法（新增可选字
 
 ## 主题
 
-主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素）与每个页型各自的版式（layout）集合——以下是 16 个内置主题。每个内置主题默认对每个页型都开放全部已注册版式（每个 archetype 都会按主题的实际背景色自适应取色，所以全集在任何主题下都保持可读）。收窄集合是主题作者的主动选择，不是常态——16 个主题里没有一个收窄任何页型（早年的三主题排除已在 ink 自适应取色修复后撤销）。覆盖 style（`--style`）即可为某个主题重新配色。
+主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素）与每个页型各自的版式（layout）集合——以下是 17 个内置主题。每个内置主题默认对每个页型都开放全部已注册版式（每个 archetype 都会按主题的实际背景色自适应取色，所以全集在任何主题下都保持可读）。收窄集合是主题作者的主动选择，不是常态——17 个主题里没有一个收窄任何页型（早年的三主题排除已在 ink 自适应取色修复后撤销）。覆盖 style（`--style`）即可为某个主题重新配色。
 
 | id | label |
 |---|---|
@@ -133,6 +129,7 @@ v4 IR schema 自 0.4.0 起冻结——后续演进只走加法（新增可选字
 | `pulse` | Health & Life Science |
 | `terra` | Sustainability & ESG |
 | `ember` | Startup Pitch |
+| `vermilion` | Official Report |
 
 ### 你自己的品牌
 
@@ -225,7 +222,7 @@ pptfast asset-brief my-deck/
 
 ## 面向 AI agent
 
-推荐给 agent 的生成回路：先读 `pptfast schema` 学词汇表，写出 IR JSON，跑 `pptfast validate` 并根据报错自纠（错误信息带页码和可直接照抄的修正方式，目的就是让这个回路不必依赖人工介入），再跑 `pptfast audit`——同样是可直接照抄的修正反馈，只是针对一份*合法* deck 在渲染层仍可能出现的问题（溢出、低对比度、重叠——exit code 本身就说明干不干净），最后执行 `pptfast render`。给任何图片位生成美术之前先跑一遍 `pptfast asset-brief`——真实渲染框和裁切模式是光看 IR 猜不出来的引擎内部知识，宽高比不对或色调跑偏是生成图片摆上去之后最常见的翻车原因。`pptfast preview` 能让 agent 在正式渲染前先看一遍 SVG，自查版式是否合理。加上 `--html` 还会额外写出一个自包含的 `preview.html`，供人工审查（键盘翻页、占位页角标——远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）——打开后零网络请求、零进一步依赖，是这个项目目前最成熟的零依赖浏览器产物（见上文「浏览器」）。当所有页面都已填写时，这份 `preview.html` 还会叠加同一份 `audit` 检查结果（每页一个数量角标，加一个可点击跳转的 findings 面板），让人工审查者不必打开终端就能看到问题——如果 deck 里还有占位页，则显示一行「audit 已跳过」的提示代替。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`（浏览器 Blob 下载，不联网也不写文件——preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本而不是下载版本——打开的浏览器标签页会随源文件变化自动刷新，同一个批注面板改为直接提交到磁盘上的 `<deck-dir>/revision-request.json`，不用再手动导出、手动交回。上文的 Claude Code 插件已把这套回路封装成 skill（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。这套回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证——固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
+推荐给 agent 的生成回路：先读 `pptfast schema` 学词汇表，写出 IR JSON，跑 `pptfast validate` 并根据报错自纠（错误信息带页码和可直接照抄的修正方式，目的就是让这个回路不必依赖人工介入），再跑 `pptfast audit`——同样是可直接照抄的修正反馈，只是针对一份*合法* deck 在渲染层仍可能出现的问题（溢出、低对比度、重叠——exit code 本身就说明干不干净），最后执行 `pptfast render`。给任何图片位生成美术之前先跑一遍 `pptfast asset-brief`——真实渲染框和裁切模式是光看 IR 猜不出来的引擎内部知识，宽高比不对或色调跑偏是生成图片摆上去之后最常见的翻车原因。`pptfast preview` 能让 agent 在正式渲染前先看一遍 SVG，自查版式是否合理。加上 `--html` 还会额外写出一个自包含的 `preview.html`，供人工审查（键盘翻页、占位页角标——远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）——打开后零网络请求、零进一步依赖，是这个项目目前最成熟的零依赖浏览器产物。当所有页面都已填写时，这份 `preview.html` 还会叠加同一份 `audit` 检查结果（每页一个数量角标，加一个可点击跳转的 findings 面板），让人工审查者不必打开终端就能看到问题——如果 deck 里还有占位页，则显示一行「audit 已跳过」的提示代替。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`（浏览器 Blob 下载，不联网也不写文件——preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本而不是下载版本——打开的浏览器标签页会随源文件变化自动刷新，同一个批注面板改为直接提交到磁盘上的 `<deck-dir>/revision-request.json`，不用再手动导出、手动交回。上文的 Claude Code 插件已把这套回路封装成 skill（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。这套回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证——固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
 
 ## 路线图
 
