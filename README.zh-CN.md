@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/banner.jpg" alt="pptfast：PPT 不用等，马上就好" width="100%"></p>
+<p align="center"><img src="assets/banner.png" alt="pptfast：PPT 不用等，马上就好" width="100%"></p>
 
 <h1 align="center">pptfast</h1>
 

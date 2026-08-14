@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/banner.jpg" alt="pptfast — make your deck in minutes, not hours" width="100%"></p>
+<p align="center"><img src="assets/banner.png" alt="pptfast — make your deck in minutes, not hours" width="100%"></p>
 
 <h1 align="center">pptfast</h1>
 
