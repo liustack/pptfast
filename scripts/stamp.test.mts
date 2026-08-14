@@ -13,8 +13,8 @@ describe("install-command version stamping", () => {
     const version = readPackageVersion()
     const stamped = readStampedVersions()
     // The pattern matching nothing would pass the loop below vacuously, so
-    // pin the floor: the two READMEs each carry at least one.
-    expect(stamped.length).toBeGreaterThanOrEqual(2)
+    // pin the floor: the two READMEs and INSTALL.md each carry at least one.
+    expect(stamped.length).toBeGreaterThanOrEqual(3)
     for (const [index, entry] of stamped.entries()) {
       expect(entry.version, `${entry.file} #${index + 1} is not stamped to ${version}`).toBe(
         version,
