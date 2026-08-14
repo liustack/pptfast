@@ -519,6 +519,28 @@ describe("dsh plugin tools: pptfast_render", () => {
     expect(String(value.preview_note)).toContain("does not declare image input")
   })
 
+  it('strips an existing .pptx extension from ir.filename (documented "hello.pptx" writes hello.pptx, never hello.pptx.pptx)', async () => {
+    const defs = toolsWithFakeCtx()
+    const ir = basicIr()
+    ir.filename = "hello.pptx"
+    const value = await defs.pptfast_render!.execute({ ir, out_dir: outDir }, fakeExec())
+    expect(value.pptx_path).toBe(join(outDir, "hello.pptx"))
+    expect(existsSync(join(outDir, "hello.pptx"))).toBe(true)
+    expect(existsSync(join(outDir, "hello.pptx.pptx"))).toBe(false)
+    // the preview directory stem drops the extension too
+    expect(value.preview_dir).toBe(join(outDir, "hello-previews"))
+    expect((value.preview_paths as string[])[0]).toBe(join(outDir, "hello-previews", "001-cover.svg"))
+  })
+
+  it("strips the .pptx extension case-insensitively (Quarterly.PPTX renders Quarterly.pptx)", async () => {
+    const defs = toolsWithFakeCtx()
+    const ir = basicIr()
+    ir.filename = "Quarterly.PPTX"
+    const value = await defs.pptfast_render!.execute({ ir, out_dir: outDir }, fakeExec())
+    expect(value.pptx_path).toBe(join(outDir, "Quarterly.pptx"))
+    expect(value.preview_dir).toBe(join(outDir, "Quarterly-previews"))
+  })
+
   it("defaults out_dir to the session workspace directory (session.header.cwd)", async () => {
     const wsDir = mkdtempSync(join(tmpdir(), "pptfast-dsh-ws-"))
     try {
