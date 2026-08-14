@@ -39,8 +39,10 @@ The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptf
 pptfast is also a DeepSeek Harness (DSH) plugin. One command installs it into a DSH profile:
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast
+npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.17.0
 ```
+
+Name the version explicitly: dsh installs plugins through pnpm 11, which holds back anything published in the last 24 hours and silently resolves `@latest` to an older release — for this package that would be 0.16.0, which has no dsh plugin entry at all. A named version is installed as a deliberate exception. `npm view @liustack/pptfast version` prints the current one.
 
 The plugin card shows up as "pptfast" and registers the same deck-generation skill into DSH's skill system. The skill drives the CLI that ships inside the plugin package itself — no separate CLI install needed there. Uninstalling the plugin removes the skill with no residue.
 
