@@ -1,10 +1,8 @@
-<p align="center"><img src="assets/banner.jpg" alt="pptfast — semantic IR in, native DrawingML out" width="100%"></p>
+<p align="center"><img src="assets/banner.jpg" alt="pptfast — ship your deck now, not in an hour" width="100%"></p>
 
 <h1 align="center">pptfast</h1>
 
-<p align="center"><b>Stable, editable PPTX generation for AI agents: semantic IR in, native DrawingML out.</b></p>
-
-<p align="center">🎯 <b>Deterministic to the byte: same IR, same seed, same PPTX</b> 🎯</p>
+<p align="center"><b>Ship your deck now, not in an hour.</b></p>
 
 <p align="center">
   <a href="./README.zh-CN.md">简体中文</a> ·
@@ -22,20 +20,20 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@liustack/pptfast?style=flat-square" alt="Node.js"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/Not%20backed%20by-Y%20Combinator-FF6600?style=flat-square&logo=ycombinator&logoColor=white" alt="Not backed by Y Combinator">
-  <img src="https://img.shields.io/badge/same%20seed-same%20bytes-4c1?style=flat-square" alt="Same seed, same bytes">
+  <img src="https://img.shields.io/badge/no%20API%20key-needed-4c1?style=flat-square" alt="No API key needed">
 </p>
 
 ## Highlights
 
-**🎯 Deterministic to the byte.** Rendering is a pure function: the same IR and seed pick the same layouts, draw the same geometry, and write the same bytes to disk. Preview never disagrees with the final render, and editing one page cannot reshuffle the rest of the deck.
+**⚡ Tell your AI what to cover, get the deck.** You bring the content, the engine handles layout, color, type size, and spacing. The same content renders the same deck every time, so there is nothing to redo and no luck involved.
 
-**✏️ Every shape stays editable.** Native DrawingML out, not a picture pasted onto a slide: headings, bullets, chart bars, and table cells are real PowerPoint objects you can select, restyle, and retype. Chart and table figures are the one exception, drawn as shapes rather than live data, so new numbers mean editing the IR and rendering again. 17 built-in themes, and `pptfast brand extract` pulls your company's colors and fonts out of a `.pptx`/`.potx`/`.thmx` entirely locally.
+**✏️ A real deck, not a picture of one.** Every heading, bullet, and chart bar opens in PowerPoint for you to retype and restyle. Chart and table figures are the exception: to change the numbers, have your AI rebuild that page. 17 ready-made styles, and you can pull the colors and fonts out of a deck your company already uses.
 
 **🔌 Installs into the agent you already use.** One command puts pptfast into DeepSeek Harness, Claude Code, or any agent that reads a skill folder (Codex and friends), and it knows how to build a deck the moment it lands.
 
-**🔁 A review loop built for agents.** schema → validate → audit → render, with errors that carry page numbers and copy-paste fixes. `pptfast serve` opens a live preview that reloads on every change, and reviewer annotations land back on disk as `revision-request.json` for the agent to act on.
+**🔁 Revisions without describing everything again.** One command opens a preview page in your browser: page through it, write your notes right on the slides, and your AI picks them up and fixes them. The page refreshes itself as each revision lands.
 
-**🔒 Zero config, fully local.** No API key, no account, no network at render time. Node 22.19+ (or Bun) is the whole prerequisite.
+**🔒 No account, no API key, no network.** Install it and it works. Node 22.19+ or Bun is all you need on the machine.
 
 ## Install
 

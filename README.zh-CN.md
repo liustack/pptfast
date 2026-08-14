@@ -1,10 +1,8 @@
-<p align="center"><img src="assets/banner.jpg" alt="pptfast：输入语义化 IR，输出原生 DrawingML" width="100%"></p>
+<p align="center"><img src="assets/banner.jpg" alt="pptfast：PPT 现在就要，不是一小时后" width="100%"></p>
 
 <h1 align="center">pptfast</h1>
 
-<p align="center"><b>面向 AI agent 的稳定、可编辑 PPTX 生成工具：输入语义化 IR，输出原生 DrawingML。</b></p>
-
-<p align="center">🎯 <b>字节级确定性：同一份 IR、同一个 seed，渲染出同一份 PPTX</b> 🎯</p>
+<p align="center"><b>PPT 现在就要，不是一小时后。</b></p>
 
 <p align="center">
   <a href="./README.md">English</a> ·
@@ -22,20 +20,20 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@liustack/pptfast?style=flat-square" alt="Node.js"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/Not%20backed%20by-Y%20Combinator-FF6600?style=flat-square&logo=ycombinator&logoColor=white" alt="Not backed by Y Combinator">
-  <img src="https://img.shields.io/badge/same%20seed-same%20bytes-4c1?style=flat-square" alt="Same seed, same bytes">
+  <img src="https://img.shields.io/badge/no%20API%20key-needed-4c1?style=flat-square" alt="No API key needed">
 </p>
 
 ## 亮点
 
-**🎯 字节级确定性。** 渲染是纯函数：同一份 IR、同一个 seed，选出同样的版式、画出同样的几何、落盘同样的字节。预览与最终渲染永不打架，改一页也不会搅动其余页面。
+**⚡ 跟 AI 说一句，PPT 就好了。** 你只管说要讲什么，版面、配色、字号、间距全由引擎排好。同一份内容做十遍是同一份，不用一遍遍重来碰运气。
 
-**✏️ 每个图形都保持可编辑。** 输出原生 DrawingML，不是贴上去的一张图：标题、要点、图表柱子、表格单元格都是 PowerPoint 里可选中、可改样式、可改文字的真实对象。只有图表和表格里的数字是例外，它们是画出来的图形而不是活数据，换数字要改 IR 重新渲染。17 个内置主题，`pptfast brand extract` 还能完全在本地从 `.pptx`/`.potx`/`.thmx` 里抽出你公司的配色与字体。
+**✏️ 交出来的是真 PPT，不是一张图。** 每个标题、每条要点、每根柱子都能在 PowerPoint 里点开改字改色。图表和表格里的数字是例外，换数字让 AI 重做一版。17 套现成风格，也能把你公司现有 PPT 里的配色和字体抽出来直接用。
 
 **🔌 装进你正在用的 agent。** 一条命令装进 DeepSeek Harness、Claude Code，或任何读 skill 文件夹的 agent（Codex 等），装完就会用。
 
-**🔁 为 agent 而生的审阅回路。** schema → validate → audit → render，报错带页码和可直接照抄的修法。`pptfast serve` 打开随改动自动刷新的实时预览，审阅者的批注直接落盘为 `revision-request.json`，交回 agent 处理。
+**🔁 改稿不用重新描述一遍。** 一条命令打开预览网页，翻页看效果，直接在页面上写批注，AI 读了就改，改完网页自动刷新。
 
-**🔒 零配置、全本地。** 不要 API key、不用注册、渲染时不联网。唯一前置是 Node 22.19+（或 Bun）。
+**🔒 不用注册、不用配 key、不联网。** 装好就能用，电脑上有 Node 22.19+ 或 Bun 就行。
 
 ## 安装
 
