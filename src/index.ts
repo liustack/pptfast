@@ -3,6 +3,7 @@ export { PptfastError } from "./errors"
 export {
   validateIr,
   formatIssues,
+  formatWarnings,
   renderSlideSvg,
   generatePptx,
   listThemes,
