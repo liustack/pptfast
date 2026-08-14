@@ -6,7 +6,7 @@
 
 ## 为什么
 
-自由绘制 SVG/HTML 再转 PPTX 的链路上限很高，但下限不稳定——弱模型（或强模型状态不好时）画出来的往往是版式错乱、脱离品牌规范、甚至无法阅读的产物。pptfast 用受控词汇取代自由绘制：一份语义化 IR（zod schema）、16 个内置主题（各自打包一套 style 设计 tokens 与 brand 品牌标识元素）、带 seed 多样性的 layout/component 版式库，以及每个图形都保持可编辑的原生 DrawingML 输出——不是贴上去的一张图。
+自由绘制 SVG/HTML 再转 PPTX 的链路上限很高，但下限不稳定——弱模型（或强模型状态不好时）画出来的往往是版式错乱、脱离品牌规范、甚至无法阅读的产物。pptfast 用受控词汇取代自由绘制：一份语义化 IR（zod schema）、17 个内置主题（各自打包一套 style 设计 tokens 与 brand 品牌标识元素）、带 seed 多样性的 layout/component 版式库，以及每个图形都保持可编辑的原生 DrawingML 输出——不是贴上去的一张图。
 
 这条「可编辑」的说法有一个需要如实说清的边界：pptfast 真正产出的原生单元是图形（shape）和文字段（text run），每一个都是 PowerPoint 里可以选中、改样式、改文字的真实对象，这也包括 `chart`、`data_table` 这两类组件画出来的图形与文字。pptfast 不会产出的是原生的 PowerPoint 图表部件或表格对象：没有内嵌的图表数据，也没有 `<a:tbl>`。图表的柱子、表格的单元格本质上是几何图形加文字，不是一个 PowerPoint 能凭新数字重新画一遍的数据绑定对象。要改数字，请去改 IR 再重新渲染，而不是在 PowerPoint 里拖动柱子或直接改单元格内容。这是为了上文说的确定性、seed 稳定输出而做的主动取舍，不是遗漏，也不影响其余每一个图形本身的可编辑性。
 
@@ -39,14 +39,28 @@ skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfas
 
 ## 快速开始
 
+写一个最小 deck，跑一遍 validate → render → preview 回路：
+
 ```bash
-node dist/cli.js validate examples/basic.json
-# → OK — 5 slides, theme "consulting"
-node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, ~29 KB)
-node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
-node dist/cli.js preview examples/basic.json -o out/svgs   # 每页一张 SVG，供人工目检
+cat > deck.json <<'EOF'
+{
+  "filename": "hello.pptx",
+  "theme": { "id": "consulting" },
+  "slides": [
+    { "type": "cover", "heading": "Hello pptfast", "subheading": "A first deck in ten minutes" },
+    { "type": "content", "heading": "Why it works", "components": [
+      { "type": "bullets", "items": ["Semantic IR in", "Native DrawingML out", "Every shape stays editable"] } ] },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}
+EOF
+pptfast validate deck.json                              # → OK — 3 slides, theme "consulting"
+pptfast render deck.json -o out/hello.pptx              # → wrote out/hello.pptx (3 slides, ~24 KB)
+pptfast render deck.json -o out/tech.pptx --theme tech  # 同一份 deck，换个主题
+pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供人工目检
 ```
+
+一条值得提前知道的形状规则：`cover`/`chapter`/`ending` 页只有 heading + subheading，组件都放在 `content` 页上（写混了 `validate` 会原话告诉你）。不想安装也行：`npx -y @liustack/pptfast validate deck.json`。源码仓库里则用 `node dist/cli.js` 代替 `pptfast`，`examples/` 下有现成的 IR 文件可以直接试。
 
 ## 对外承诺的边界
 
@@ -64,7 +78,7 @@ node dist/cli.js preview examples/basic.json -o out/svgs   # 每页一张 SVG，
 | `assemble <dir\|name> [-o <file>]` | 把 deck 项目目录合并成单个 IR JSON 文件 |
 | `disassemble <ir.json> -o <dir>` | 把 IR JSON 文件拆成 deck 项目目录 |
 | `schema [--style \| --spec]` | 输出 IR 的 JSON Schema（或 style 覆盖 schema，或 deck spec schema） |
-| `themes [--json]` | 列出 16 个内置主题 |
+| `themes [--json]` | 列出 17 个内置主题 |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见「你自己的品牌」）——用 `--theme-file` 装载（`validate`/`audit`/`preview`/`serve` 同样支持），或作为 deck 项目的 `theme.json` |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`）——`target` 形式同 `render`，永远不受占位页拦截 |
@@ -75,7 +89,7 @@ node dist/cli.js preview examples/basic.json -o out/svgs   # 每页一张 SVG，
 
 ## IR
 
-运行 `node dist/cli.js schema` 获取完整 JSON Schema——让模型写 IR 之前先读它。一份 deck（`PptxIR`）包含 `version`（现为 `"4"`，且省略时默认就是它）、`filename`、一个可选的 `narrative`（预设 id 字符串，或部分轴对象——详见下文「叙事」一节）、`theme`（`id` 加可选的 `style`/`brand` 覆盖）、`meta`、`assets`——均可省略、有默认值——另外还有一个独立的可选 `brand`（logo 位置）字段，以及必填的有序 `slides` 列表。每张 slide 有一个 `type`（`cover`、`chapter`、`content`、`ending`）、一个可选的 `layout`（显式指定页面版式 id，一经设置恒生效、优先于自动选型——省略则由 pptfast 自动选型，详见下文「版式选型」）、一个可选的 `arrangement`（content slide 正文的排布方式，如 `two_column`、`kpi_focus`），以及一组带类型的 `components`（`bullets`、`kpi_cards`、`image`、`chart` 等）。`assets` 的形状是 `{ images: { [id]: { src, alt? } } }`，component 通过 `asset_id` 引用图片，同一张图可以在多页复用而不必重复内嵌。
+运行 `pptfast schema` 获取完整 JSON Schema——让模型写 IR 之前先读它。一份 deck（`PptxIR`）包含 `version`（现为 `"4"`，且省略时默认就是它）、`filename`、一个可选的 `narrative`（预设 id 字符串，或部分轴对象——详见下文「叙事」一节）、`theme`（`id` 加可选的 `style`/`brand` 覆盖）、`meta`、`assets`——均可省略、有默认值——另外还有一个独立的可选 `brand`（logo 位置）字段，以及必填的有序 `slides` 列表。每张 slide 有一个 `type`（`cover`、`chapter`、`content`、`ending`）、一个可选的 `layout`（显式指定页面版式 id，一经设置恒生效、优先于自动选型——省略则由 pptfast 自动选型，详见下文「版式选型」）、一个可选的 `arrangement`（content slide 正文的排布方式，如 `two_column`、`kpi_focus`），以及一组带类型的 `components`（`bullets`、`kpi_cards`、`image`、`chart` 等）。`assets` 的形状是 `{ images: { [id]: { src, alt? } } }`，component 通过 `asset_id` 引用图片，同一张图可以在多页复用而不必重复内嵌。
 
 一份 deck 还可以携带一个可选的 `seed`（整数，让自动选型的版式在多次修订之间保持稳定——省略时如何生成，详见下文「版式选型」）。任意 slide 都可以设置一个稳定的 `id`（spec 的页面和校验报错都靠它引用）、`placeholder: true`（还没有内容的占位 slide——由 `assemble` 为 spec 里没人填写的页面注入，内容质量检查会跳过它，`render` 也会因它拒绝导出，除非加 `--draft`），以及一个可选的 `notes`（同义词 `note`/`speaker_notes`/`speakerNotes`），导出为原生 PowerPoint 演讲者备注——只是给主讲人自己看的内容，不会画到幻灯片画布上，也从不计入任何版式容量。模型输出里容易和 schema 对不上的字段名（跨 component 类型共 55 组同义词，例如 kpi 的 `title`→`label`、quote 的 `content`→`text`、swot 的 `strength`→`strengths`、bmc 的 `partners`→`key_partners`）会在校验时静默改写成规范名——`validate`/`render`/`preview` 会打印一条改了什么的提示，从不因此报错。这套救援机制只覆盖弱模型的同义词漂移，不覆盖 v4 之前的旧词汇。标着 v4 却仍写 `scenario`（而不是 `narrative`）、`mode`/`delivery`（而不是 `strategy`/`pacing`）、或轴值还停留在旧的 `narrative`/`text`/`presentation` 的文档，会像任何其他未识别字段或非法值一样直接硬报错，并列出当前正确的名称和取值。显式写 `version: "3"`（或 `"2"`）同样硬拒绝并给出迁移指引——见下文 `pptfast migrate`，这是旧词汇输入唯一支持的路径。
 
@@ -85,7 +99,7 @@ v4 IR schema 自 0.4.0 起冻结——后续演进只走加法（新增可选字
 
 ## 主题
 
-主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素）与每个页型各自的版式（layout）集合——以下是 16 个内置主题。每个内置主题默认对每个页型都开放全部已注册版式（每个 archetype 都会按主题的实际背景色自适应取色，所以全集在任何主题下都保持可读）。收窄集合是主题作者的主动选择，不是常态——16 个主题里没有一个收窄任何页型（早年的三主题排除已在 ink 自适应取色修复后撤销）。覆盖 style（`--style`）即可为某个主题重新配色。
+主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素）与每个页型各自的版式（layout）集合——以下是 17 个内置主题。每个内置主题默认对每个页型都开放全部已注册版式（每个 archetype 都会按主题的实际背景色自适应取色，所以全集在任何主题下都保持可读）。收窄集合是主题作者的主动选择，不是常态——17 个主题里没有一个收窄任何页型（早年的三主题排除已在 ink 自适应取色修复后撤销）。覆盖 style（`--style`）即可为某个主题重新配色。
 
 | id | label |
 |---|---|
@@ -105,6 +119,7 @@ v4 IR schema 自 0.4.0 起冻结——后续演进只走加法（新增可选字
 | `pulse` | Health & Life Science |
 | `terra` | Sustainability & ESG |
 | `ember` | Startup Pitch |
+| `vermilion` | Official Report |
 
 ### 你自己的品牌
 

@@ -40,14 +40,28 @@ The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptf
 
 ## Quick start
 
+Write a minimal deck, then run the validate → render → preview loop:
+
 ```bash
-node dist/cli.js validate examples/basic.json
-# → OK — 5 slides, theme "consulting"
-node dist/cli.js render examples/basic.json -o out/basic.pptx
-# → wrote out/basic.pptx (5 slides, ~29 KB)
-node dist/cli.js render examples/basic.json -o out/basic-tech.pptx --theme tech
-node dist/cli.js preview examples/basic.json -o out/svgs   # SVG per slide, for a visual self-check
+cat > deck.json <<'EOF'
+{
+  "filename": "hello.pptx",
+  "theme": { "id": "consulting" },
+  "slides": [
+    { "type": "cover", "heading": "Hello pptfast", "subheading": "A first deck in ten minutes" },
+    { "type": "content", "heading": "Why it works", "components": [
+      { "type": "bullets", "items": ["Semantic IR in", "Native DrawingML out", "Every shape stays editable"] } ] },
+    { "type": "ending", "heading": "Thanks" }
+  ]
+}
+EOF
+pptfast validate deck.json                              # → OK — 3 slides, theme "consulting"
+pptfast render deck.json -o out/hello.pptx              # → wrote out/hello.pptx (3 slides, ~24 KB)
+pptfast render deck.json -o out/tech.pptx --theme tech  # same deck, different theme
+pptfast preview deck.json -o out/svgs                   # SVG per slide, for a visual self-check
 ```
+
+One shape rule worth knowing up front: `cover`/`chapter`/`ending` slides are heading + subheading only — components live on `content` slides (`validate` says exactly this if you mix them up). No install at all also works: `npx -y @liustack/pptfast validate deck.json`. In a source checkout, `node dist/cli.js` replaces `pptfast`, and `examples/` has ready-made IR files to try.
 
 ## What's public
 
@@ -76,7 +90,7 @@ The supported surface is deliberately small: the **CLI**, the **IR schema** it s
 
 ## The IR
 
-Run `node dist/cli.js schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"4"`, and now the default when omitted), `filename`, an optional `narrative` (a preset id string or a partial axes object — see Narratives below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one, see Layout selection below), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication. `alt`, when set, lands in the exported PPTX's standard accessibility-description slot for that image (what PowerPoint's "Edit Alt Text" reads and writes) — an `image` component with no `alt` on its asset exports unchanged, same as before this field did anything.
+Run `pptfast schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"4"`, and now the default when omitted), `filename`, an optional `narrative` (a preset id string or a partial axes object — see Narratives below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one, see Layout selection below), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication. `alt`, when set, lands in the exported PPTX's standard accessibility-description slot for that image (what PowerPoint's "Edit Alt Text" reads and writes) — an `image` component with no `alt` on its asset exports unchanged, same as before this field did anything.
 
 A deck also carries an optional `seed` (an integer that keeps auto-selected layouts stable across revisions — see Layout selection below for how it's derived when omitted). Any slide may set a stable `id` (what spec pages and validation error messages reference it by), `placeholder: true` (a slide with no content yet — injected by `assemble` for a spec page nobody has filled in, skipped by the content-quality checks, and blocking `render` unless `--draft`), and an optional `notes` (aliases `note`/`speaker_notes`/`speakerNotes`) that exports as a native PowerPoint speaker note — content for the presenter's own view, never drawn onto the slide canvas and never counted toward any layout capacity. Field names that commonly drift between a model's output and the schema (55 synonym pairs across component types, e.g. kpi `title`→`label`, quote `content`→`text`, swot `strength`→`strengths`, bmc `partners`→`key_partners`) are silently normalized to the canonical name at validate time — `validate`/`render`/`preview` print a note listing what changed, never a hard error. That rescue is scoped to weak-model synonym drift only — it does not cover pre-v4 vocabulary. A v4-labeled document that writes `scenario` instead of `narrative`, `mode`/`delivery` instead of `strategy`/`pacing`, or the old `narrative`/`text`/`presentation` axis values hard-rejects, listing the current names/values, exactly like any other unrecognized field or value. An explicit `version: "3"` (or `"2"`) also hard-rejects, with a migration pointer — see `pptfast migrate` below, the only supported path for old-vocabulary input.
 
