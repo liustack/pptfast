@@ -55,6 +55,7 @@
 // This file is plain dependency-free JS by design (node builtins only, the
 // render core lazily imported from ../dist): no build step, no dsh type
 // imports, resilient to rc surface drift.
+import { Buffer } from 'node:buffer'
 import { readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, resolve } from 'node:path'
@@ -281,7 +282,7 @@ function throwIfAborted(signal) {
 
 /** Windows-safe file stem from the IR's own `filename` field. */
 function safeFileStem(filename) {
-  const stem = basename(String(filename ?? 'presentation')).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim()
+  const stem = basename(String(filename ?? 'presentation')).replace(/[<>:"/\\|?*]/g, '_').trim()
   return stem === '' || stem === '.' || stem === '..' ? 'presentation' : stem
 }
 
@@ -542,7 +543,9 @@ export function buildToolDefinitions(ctx, getCore) {
           throw new Error(`unknown theme "${args.theme}" — available: ${installed.join(', ')} (run pptfast_themes for descriptions)`)
         }
       }
-      const ir = structuredClone(rawIr)
+      // Lossless-JSON deep clone: model arguments are deep-frozen snapshots,
+      // and the theme/seed overrides must not mutate the caller's object.
+      const ir = JSON.parse(JSON.stringify(rawIr))
       if (args.theme !== undefined) {
         ir.theme = { ...(typeof ir.theme === 'object' && ir.theme !== null ? ir.theme : {}), id: args.theme }
       }
