@@ -27,8 +27,8 @@ powershell -ExecutionPolicy Bypass -File <skill-dir>\scripts\run.ps1 <args>  # W
 如果你的 harness 不允许执行脚本，就按同样的顺序自己判断，用第一条成立的：
 
 1. PATH 上有 `pptfast`，且主版本号与下面的钉版本相同、版本不低于它：`pptfast <args>`。
-2. 否则，有 `npx` 就用：`npx --yes --package @liustack/pptfast@0.19.0 pptfast <args>`。
-3. 否则，有 `bunx` 就用：`bunx --bun @liustack/pptfast@0.19.0 <args>`。
+2. 否则，有 `npx` 就用：`npx --yes --package @liustack/pptfast@0.19.1 pptfast <args>`。
+3. 否则，有 `bunx` 就用：`bunx --bun @liustack/pptfast@0.19.1 <args>`。
 4. 都没有就告诉用户机器上找不到 JavaScript 运行时，下一步是装 Node 22.19+（https://nodejs.org）或 Bun（https://bun.sh）。不要说成是 pptfast 本身坏了。
 
 ## 工作流程

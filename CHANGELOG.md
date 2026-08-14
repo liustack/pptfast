@@ -1,5 +1,11 @@
 # @liustack/pptfast
 
+## 0.19.1
+
+### Patch Changes
+
+- 1259d95: Lead the README with what you get instead of how it works: a plain-language tagline, benefit-first highlights, and a repainted banner.
+
 ## 0.19.0
 
 ### Minor Changes
