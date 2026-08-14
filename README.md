@@ -1,8 +1,8 @@
-<p align="center"><img src="assets/banner.jpg" alt="pptfast — ship your deck now, not in an hour" width="100%"></p>
+<p align="center"><img src="assets/banner.jpg" alt="pptfast — ship your deck in minutes, not hours" width="100%"></p>
 
 <h1 align="center">pptfast</h1>
 
-<p align="center"><b>Ship your deck now, not in an hour.</b></p>
+<p align="center"><b>Ship your deck in minutes, not hours.</b></p>
 
 <p align="center">
   <a href="./README.zh-CN.md">简体中文</a> ·

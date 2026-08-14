@@ -1,8 +1,8 @@
-<p align="center"><img src="assets/banner.jpg" alt="pptfast：PPT 现在就要，不是一小时后" width="100%"></p>
+<p align="center"><img src="assets/banner.jpg" alt="pptfast：PPT 不用等，马上就好" width="100%"></p>
 
 <h1 align="center">pptfast</h1>
 
-<p align="center"><b>PPT 现在就要，不是一小时后。</b></p>
+<p align="center"><b>PPT 不用等，马上就好。</b></p>
 
 <p align="center">
   <a href="./README.md">English</a> ·
