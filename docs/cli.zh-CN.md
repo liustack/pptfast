@@ -5,6 +5,7 @@ read_when:
   - 读到 audit 的报错，想知道这条检查在查什么
   - 给图片位生成美术之前（`asset-brief`）
   - 给 agent 接上 validate → audit → render 回路
+  - 装完之后想确认这台机器上一切正常（`doctor`）
 ---
 
 # CLI 命令参考
@@ -28,6 +29,7 @@ read_when:
 | `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新，批注直接提交回 deck 目录生成 `revision-request.json` |
 | `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`，确定性转换，不调模型 |
 | `init` | 生成 `pptfast.config.json` 模板 |
+| `doctor [--json]` | 体检本机安装：skill 副本、dsh 插件、运行时、可选能力、自检渲染（见[体检](#体检)） |
 | `check-update` / `self-update` | 检查 npm 上的新版本 / 更新全局安装 |
 
 `--theme-file` 在 `render`、`validate`、`audit`、`preview`、`serve` 上都可用。
@@ -74,6 +76,32 @@ pptfast asset-brief my-deck/
 #     ...
 ```
 
+## 体检
+
+`pptfast doctor [--json]` 体检本机的安装状况。它只读本地状态：不写任何文件，不发任何网络请求，也没有凭据可查，因为本来就没有需要配置的东西。
+
+五项检查，报告按这个顺序输出：
+
+- **已安装的 skill 副本。** 装好的 skill 是一份*拷贝*：[`INSTALL.md`](../INSTALL.md) 第 2 步把整个文件夹复制进 harness 的 skill 目录，那份拷贝就永远停在复制当天的启动器上。升级 CLI 不会碰它，于是 `pptfast --version` 报着新版本，机器上的副本却可能停在几个月前。doctor 会扫 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills`（Pi 和 OpenCode 都读最后这个）下有没有 `pptfast/` 文件夹，从每份副本的 `scripts/run.sh` 里读出 `PINNED` 版本，落后于当前 CLI 的标为 stale，并给出就地覆盖它的那一条 clone + copy（就是 [`INSTALL.md`](../INSTALL.md) 第 2 步的命令，指向那份副本）。一份副本都没找到是正常状态，不是问题：dsh 上 skill 随插件一起发，CLI 本身也能单独用。副本里没有 `run.sh`、或者 `run.sh` 里没有 `PINNED` 行，报成「版本未知」，而不是让扫描失败。
+- **DSH 插件。** `~/.dsh/` 存在时，逐个检查 `~/.dsh/profiles/` 下的每个 profile 有没有装 `@liustack/pptfast`，版本优先从该 profile 自己的 `node_modules` 里读（那才是真正会被加载的那份），读不到再退回它 `package.json` 里声明的版本。落后于当前 CLI 的 profile 会给出带版本号的安装命令 `npx -y @deepseek-ai/dsh plugin --profile <profile> add @liustack/pptfast@<version>`：版本是故意写死的，因为 dsh 走的 pnpm 会压住 24 小时内发布的版本，`@latest` 会被悄悄解析成一个更旧的版本。没有 `~/.dsh/` 就是这项不适用，跟没通过不是一回事。
+- **运行时。** Node 版本对照 `engines` 下限（22.19）；跑在 Bun 上时额外报出 Bun 自己的版本。
+- **可选能力。** `sharp` 能不能 import、`soffice` 在不在 PATH 上。没有 sharp，预览光栅化和 `audit --pixels` 用不了，纯 SVG 预览和 `.pptx` 渲染不受影响。没有 soffice，PDF 导出这条路用不了，同样不影响主流程。
+- **自检渲染。** 一份内置的小 deck 走一遍真实管线，全程在内存里：校验、渲染一页 SVG、生成 `.pptx` 字节，不落盘。报告里带耗时毫秒数。其余四项都是在观察环境，这一项直接证明东西是能用的。
+
+exit code 只有硬失败才是 `1`：Node 低于下限，或自检渲染没跑通。skill 副本落后、dsh 插件落后、可选能力缺失都算 warning，仍然 exit `0`，因为写 IR → validate → render 这条主流程在这些情况下照样能走完。`--json` 输出完整的结构化报告（`skills.copies[]`、`dsh.profiles[]`、`capabilities[]`、`selfTest`，以及 exit code 所依据的 `errors`/`warnings` 两个数组）。
+
+```bash
+pptfast doctor
+# → Installed skill copies (a copy keeps its install-time version forever)
+#     [!] Codex: /Users/me/.codex/skills/pptfast — pins 0.14.0 (stale)
+#         fix: rm -rf /tmp/pptfast-src && git clone --depth 1 https://github.com/liustack/pptfast.git /tmp/pptfast-src && cp -R /tmp/pptfast-src/skills/pptfast/. /Users/me/.codex/skills/pptfast/
+#   ...
+#   Self-test render (a built-in deck through the real pipeline, in memory)
+#     [ok] 2 slides validated, rendered, and packed into 20952 bytes in 244ms
+#
+#   0 errors, 1 warning
+```
+
 ## agent 回路
 
 推荐给 agent 的生成回路：
@@ -90,7 +118,7 @@ pptfast asset-brief my-deck/
 
 审阅者可以直接在 `preview.html` 里给每页写自由文本批注，导出为 `revision-request.json`（浏览器下载，不联网也不写文件，preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本：浏览器标签页随源文件变化自动刷新，批注面板直接提交到磁盘上的 `<deck-dir>/revision-request.json`。
 
-Claude Code 插件与 DSH 插件都把这套回路封装成了 skill（[`skills/pptfast/SKILL.zh-CN.md`](../skills/pptfast/SKILL.zh-CN.md)）。回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证，固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
+这套回路由 skill 封装给 agent 使用（[`skills/pptfast/SKILL.zh-CN.md`](../skills/pptfast/SKILL.zh-CN.md)），不论装的是 skill 文件夹还是 DSH 插件。回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证，固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
 
 ## 延伸
 

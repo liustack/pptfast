@@ -20,6 +20,8 @@ It tries a compatible `pptfast` on `PATH` first, then `npx`, then `bunx`, forwar
 
 Wherever this playbook writes `pptfast <args>`, run it through that launcher.
 
+Right after an install, and any time a command misbehaves in a way the error message does not explain, run `pptfast doctor` before anything else. It reports the runtime, every installed skill copy and whether one is stale, the dsh plugin's version, which optional capabilities are present, and a self-test render. Relay what it says instead of guessing.
+
 If your harness forbids running scripts, work down the same order by hand and use the first line that applies:
 
 1. A `pptfast` on `PATH` at the same major version as the pin below and no older: `pptfast <args>`.

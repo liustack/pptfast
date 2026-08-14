@@ -22,6 +22,8 @@ powershell -ExecutionPolicy Bypass -File <skill-dir>\scripts\run.ps1 <args>  # W
 
 下文凡是写 `pptfast <args>` 的地方，都通过这个启动器执行。
 
+刚装完，以及任何时候某条命令的表现不对、错误信息又解释不清时，先跑 `pptfast doctor`。它会报告运行时、机器上每一份已安装的 skill 副本及其是否过期、dsh 插件版本、可选能力是否具备，以及一次自检渲染。把它说的原样转达，不要靠猜。
+
 如果你的 harness 不允许执行脚本，就按同样的顺序自己判断，用第一条成立的：
 
 1. PATH 上有 `pptfast`，且主版本号与下面的钉版本相同、版本不低于它：`pptfast <args>`。

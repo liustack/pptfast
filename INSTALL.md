@@ -149,18 +149,26 @@ by its GitHub URL. The skill is plain Markdown and self-contained.
 Everything runs through the launcher you just installed. Replace the path with
 your own `TARGET` in both commands below.
 
-**1. The launcher resolves a runtime and the CLI answers.**
+**1. The built-in check.** One command reports the whole install:
 
 ```bash
-bash ~/.claude/skills/pptfast/scripts/run.sh --version
+bash ~/.claude/skills/pptfast/scripts/run.sh doctor
 ```
 
-Expected: a bare version number. On a machine with no `pptfast` installed, the
-first call may take a few seconds while `npx` fetches the pinned package. That
-is how npx works, not a failure.
+On a machine with no `pptfast` installed, this first call may take a few
+seconds while `npx` fetches the pinned package. That is how npx works, not a
+failure.
 
-**2. The render loop works end to end.** Write the minimal deck, then validate
-and render it:
+`doctor` checks the runtime against the version floor, finds every installed
+skill copy on the machine and flags any that is behind, reports the dsh
+plugin's version when dsh is present, says which optional capabilities are
+available, and renders a test deck end to end. It exits 0 when nothing is
+actually broken. Read the report and act on what it says: an error names the
+thing to fix, a warning is worth relaying to the user but does not block
+anything. `--json` prints the same report machine-readably.
+
+**2. The render loop, on a real file.** `doctor`'s self-test renders in
+memory, so run one deck through the file path too:
 
 ```bash
 cat > /tmp/pptfast-hello.json <<'EOF'
@@ -200,6 +208,10 @@ The expected output is identical.
   `nextSteps` field in that JSON and relay it. The fix is installing Node
   22.19+ (https://nodejs.org) or Bun (https://bun.sh), then re-running this
   step. Do not report pptfast as broken.
+- `doctor` reports the runtime below the version floor -> install Node 22.19+
+  (https://nodejs.org) or Bun (https://bun.sh), then re-run.
+- `doctor` flags an installed skill copy as stale -> re-run step 2's copy for
+  that copy's path. That is the whole update procedure.
 - `validate` reports errors -> each one carries a page number and a fix. The
   JSON above is known-good, so an error here means the file was written
   incompletely. Rewrite the heredoc and re-run.

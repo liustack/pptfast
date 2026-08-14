@@ -74,8 +74,12 @@ describe("install-command version stamping", () => {
         if (install === null) continue
         const spec = (install[1] ?? "").slice(1)
         const lifted = line.includes("--config.minimumReleaseAge=0")
+        // `@<version>` and `@<pinned>` describe a command's shape in prose.
+        // Nobody can run one, so nobody can install a stale release with it.
+        // Only those two spellings, so the angle brackets are not a way out.
+        const placeholder = /^<(version|pinned)>$/.test(spec)
         expect(
-          /^\d+\.\d+\.\d+$/.test(spec) || lifted,
+          /^\d+\.\d+\.\d+$/.test(spec) || lifted || placeholder,
           `${file}: "${line.trim()}" installs whatever survived the release-age gate`,
         ).toBe(true)
       }

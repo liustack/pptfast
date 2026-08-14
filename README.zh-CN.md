@@ -90,6 +90,7 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 | `serve <target>` | 随改动自动刷新的实时预览，带批注面板 |
 | `audit <target>` | 几何审查：溢出、越界、低对比度、重叠 |
 | `themes` | 列出 17 个内置主题 |
+| `doctor` | 体检这套安装：运行时、skill 副本、可选能力、自检渲染 |
 
 完整命令表见 [`docs/cli.zh-CN.md`](./docs/cli.zh-CN.md)。
 

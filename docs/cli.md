@@ -5,6 +5,7 @@ read_when:
   - reading an `audit` finding and wanting to know what the check means
   - generating art for an image slot (`asset-brief`)
   - wiring an agent around the validate → audit → render loop
+  - checking whether the install on this machine is healthy (`doctor`)
 ---
 
 # CLI reference
@@ -28,6 +29,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes, with annotations submitting straight back to the deck directory as `revision-request.json` |
 | `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call |
 | `init` | Scaffold `pptfast.config.json` |
+| `doctor [--json]` | Diagnose this machine's install: skill copies, dsh plugin, runtime, optional capabilities, self-test render (see [Doctor](#doctor)) |
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
 `--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`.
@@ -74,6 +76,32 @@ pptfast asset-brief my-deck/
 #     ...
 ```
 
+## Doctor
+
+`pptfast doctor [--json]` diagnoses the install on this machine. It reads local state only: nothing is written, no network call is made, and there are no credentials to inspect, because there is nothing to configure.
+
+Five checks, in the order the report prints them:
+
+- **Installed skill copies.** An installed skill is a *copy* — [`INSTALL.md`](../INSTALL.md) step 2 copies the folder into the harness's skill directory, and that copy keeps its install-time launcher forever. Upgrading the CLI never touches it, so a machine can sit on a months-old version while `pptfast --version` reports something much newer. Doctor scans `~/.claude/skills`, `~/.codex/skills`, and `~/.agents/skills` (Pi and OpenCode both read the last one) for a `pptfast/` folder, reads the `PINNED` version out of each copy's `scripts/run.sh`, and names any copy behind the running CLI as stale, with the clone-and-copy line that refreshes it in place ([`INSTALL.md`](../INSTALL.md) step 2's own command, aimed at that copy). Finding no copy at all is normal, not a problem: on dsh the skill ships inside the plugin, and the CLI works on its own. A copy with no `run.sh`, or a `run.sh` with no `PINNED` line, is reported as "version unknown" rather than failing the scan.
+- **DSH plugin.** When `~/.dsh/` exists, every profile directory under `~/.dsh/profiles/` is checked for `@liustack/pptfast` — read from the profile's own `node_modules` (what would really load), falling back to the version its `package.json` declares. A profile behind the CLI gets the pinned install command, `npx -y @deepseek-ai/dsh plugin --profile <profile> add @liustack/pptfast@<version>`, the version named on purpose because dsh installs through a pnpm that holds back fresh releases and silently resolves `@latest` to an older one. No `~/.dsh/` means the check does not apply, which is not the same as failing it.
+- **Runtime.** Node against the `engines` floor (22.19), plus Bun's own version when running under Bun.
+- **Optional capabilities.** Whether `sharp` is importable and whether `soffice` is on PATH. Without sharp, preview rasterization and `audit --pixels` are unavailable — plain SVG preview and `.pptx` rendering are unaffected. Without soffice, the PDF export path is unavailable, likewise with no effect on the main flow.
+- **Self-test render.** A tiny built-in deck goes through the real pipeline in memory — validate, render a slide to SVG, generate the `.pptx` bytes — with nothing written to disk. The report says how many milliseconds it took. Every other check is an observation about the environment; this one proves the thing actually works.
+
+The exit code is `1` only for a hard failure: a Node below the floor, or a self-test render that did not complete. Skill drift, a stale dsh plugin, and missing optional capabilities are warnings and still exit `0` — the main write-IR → validate → render flow keeps working through all of them. `--json` prints the full structured report (`skills.copies[]`, `dsh.profiles[]`, `capabilities[]`, `selfTest`, and the `errors`/`warnings` arrays the exit code is derived from).
+
+```bash
+pptfast doctor
+# → Installed skill copies (a copy keeps its install-time version forever)
+#     [!] Codex: /Users/me/.codex/skills/pptfast — pins 0.14.0 (stale)
+#         fix: rm -rf /tmp/pptfast-src && git clone --depth 1 https://github.com/liustack/pptfast.git /tmp/pptfast-src && cp -R /tmp/pptfast-src/skills/pptfast/. /Users/me/.codex/skills/pptfast/
+#   ...
+#   Self-test render (a built-in deck through the real pipeline, in memory)
+#     [ok] 2 slides validated, rendered, and packed into 20952 bytes in 244ms
+#
+#   0 errors, 1 warning
+```
+
 ## The agent loop
 
 The loop an agent should run when it generates a deck:
@@ -90,7 +118,7 @@ The loop an agent should run when it generates a deck:
 
 The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` (a browser download, no network and no file write — preview stays read-only) for the agent to route back through `pages/*.json`. `pptfast serve <target>` runs the same loop live: a browser tab that auto-reloads on source changes, with the annotation panel submitting straight to `<deck-dir>/revision-request.json` on disk.
 
-The Claude Code and DSH plugins wrap this loop as a skill ([`skills/pptfast/SKILL.md`](../skills/pptfast/SKILL.md)). An internal, model-agnostic benchmark (`tests/bench/`, not published to npm) scores how well a model follows that skill on a fixed question bank — see `tests/bench/README.md`.
+The skill wraps this loop for an agent ([`skills/pptfast/SKILL.md`](../skills/pptfast/SKILL.md)), whether it was installed as a skill folder or as the DSH plugin. An internal, model-agnostic benchmark (`tests/bench/`, not published to npm) scores how well a model follows that skill on a fixed question bank — see `tests/bench/README.md`.
 
 ## More
 
