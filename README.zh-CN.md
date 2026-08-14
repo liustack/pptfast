@@ -45,6 +45,14 @@ npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.17.0
 
 插件卡片显示为「pptfast」，把同一套生成流程的 skill 注册进 DSH 的技能系统。skill 驱动的 CLI 就在插件包自己里面，那里不需要单独装 CLI。卸载插件即移除技能，不留残余。
 
+插件同时注册三个模型可直接调用的工具，进程内直调包内渲染核心（不开子进程）。模型校验、渲染都不必碰终端，CLI 退居后备，继续承担其余一切：
+
+| 工具 | 入参 | 出参 |
+|---|---|---|
+| `pptfast_validate` | deck IR JSON | 页数 + 主题，或一份带路径标注的简短修正清单 |
+| `pptfast_render` | deck IR JSON（可选 `theme`/`seed`/`out_dir`） | 工作区里的 `.pptx` + 每页一张预览 SVG（模型路由接受图片时，首页预览还会以附件进会话） |
+| `pptfast_themes` | 无 | 17 个内置主题，各配一句气质描述 |
+
 ### 其他 agent（Codex 等）
 
 [`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) 是一份自包含的 Markdown 操作手册——把它引入你的 agent 上下文（例如在 `AGENTS.md` 里引用），即可复用同一套 schema → 大纲 → validate → render 回路。
