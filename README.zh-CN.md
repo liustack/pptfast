@@ -274,13 +274,6 @@ pptfast asset-brief my-deck/
 
 推荐给 agent 的生成回路：先读 `pptfast schema` 学词汇表，写出 IR JSON，跑 `pptfast validate` 并根据报错自纠（错误信息带页码和可直接照抄的修正方式，目的就是让这个回路不必依赖人工介入），再跑 `pptfast audit`——同样是可直接照抄的修正反馈，只是针对一份*合法* deck 在渲染层仍可能出现的问题（溢出、低对比度、重叠——exit code 本身就说明干不干净），最后执行 `pptfast render`。给任何图片位生成美术之前先跑一遍 `pptfast asset-brief`——真实渲染框和裁切模式是光看 IR 猜不出来的引擎内部知识，宽高比不对或色调跑偏是生成图片摆上去之后最常见的翻车原因。`pptfast preview` 能让 agent 在正式渲染前先看一遍 SVG，自查版式是否合理。加上 `--html` 还会额外写出一个自包含的 `preview.html`，供人工审查（键盘翻页、占位页角标——远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）——打开后零网络请求、零进一步依赖，是这个项目目前最成熟的零依赖浏览器产物。当所有页面都已填写时，这份 `preview.html` 还会叠加同一份 `audit` 检查结果（每页一个数量角标，加一个可点击跳转的 findings 面板），让人工审查者不必打开终端就能看到问题——如果 deck 里还有占位页，则显示一行「audit 已跳过」的提示代替。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`（浏览器 Blob 下载，不联网也不写文件——preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本而不是下载版本——打开的浏览器标签页会随源文件变化自动刷新，同一个批注面板改为直接提交到磁盘上的 `<deck-dir>/revision-request.json`，不用再手动导出、手动交回。上文的 Claude Code 插件已把这套回路封装成 skill（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)）。这套回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证——固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
 
-## 路线图
-
-- **v0.2**——封装该回路的 Claude Code plugin + skill（已落地）、design token 覆盖（`--style`）、`init`/自更新命令。
-- **v0.3**——叙事驱动的轴（strategy/pacing/audience）、显式 layout + component 注册表与加权 seed 选型、deck spec/assemble 工作流、确定性几何审查、自包含 HTML 预览、六阶段 skill（已落地。这几条轴当时叫 `scenario`/`mode`/`delivery`，在下面 v0.4 的词汇重构里改名为 `narrative`/`strategy`/`pacing`，行为不变）。
-- **v0.4**——vocabulary-v4 词汇重构：`scenario`→`narrative`、`mode`→`strategy`、`delivery`→`pacing`、`plan`→`spec`（`deck.plan.json`→`deck.spec.json`）、页面级 `rhythm`→`beat`，新增确定性的 `pptfast migrate` 命令，行为不变（已落地，schema 已冻结，自 0.4.0 起——见上文「IR」一节）。
-- **v0.5+**——主题生态（可分发主题注册表、主题定制 skill、自定义品牌插槽）、更丰富的动效（更多入场动画）、Office 真机实测、web playground、1.0 版本。
-
 ## 致谢
 
 图标原语抽取自 [lucide](https://lucide.dev)（ISC License）。pptfast 本身从一套生产环境的 AI 出 PPT 系统中抽取而来，从第一天起就针对 CJK 排版做了优化（全角标点宽度、中文换行、雅黑优先字体栈、显式东亚字体槽声明）。
