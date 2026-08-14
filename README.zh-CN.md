@@ -54,18 +54,6 @@ pptfast --help
 
 需要 Node >= 18。也可从源码构建：`git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`。
 
-### 作为 Claude Code 插件
-
-本仓库同时是一个 Claude Code 插件，内置整套生成流程的 skill：
-
-```
-/plugin marketplace add liustack/pptfast
-/plugin install pptfast@pptfast
-/reload-plugins
-```
-
-skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfast`）。
-
 ### 作为 DSH 插件
 
 pptfast 同时是一个 DeepSeek Harness（DSH）插件，一条命令装进 DSH profile：

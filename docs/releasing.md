@@ -11,9 +11,8 @@ read_when:
 Versioning uses [changesets](https://github.com/changesets/changesets) in local
 mode — no CI is involved today (the CI rebuild is a recorded future item, and
 publishing uses an interactive npm passkey that automation cannot hold). The
-version's single source of truth is `package.json`. Two mirrors follow it:
-`.claude-plugin/plugin.json` and `src/version.ts`, both pinned by
-`src/plugin-manifest.test.ts`, so a missed sync fails `pnpm check`.
+version's single source of truth is `package.json`. `src/version.ts` mirrors
+it, pinned by `src/version-sync.test.ts`, so a missed sync fails `pnpm check`.
 
 ## During development
 
@@ -32,8 +31,8 @@ one correct bump (two minors do not become two bumps).
 On a release branch off `main`:
 
 ```bash
-pnpm release:version   # changeset version + sync the two mirrors + stamp the docs
-pnpm check             # guard tests confirm the three-way version agreement
+pnpm release:version   # changeset version + sync src/version.ts + stamp the docs
+pnpm check             # guard tests confirm every copy of the version agrees
 ```
 
 `release:version` also runs `scripts/stamp.mts`, which rewrites every pinned

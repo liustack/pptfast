@@ -54,18 +54,6 @@ pptfast --help
 
 Node >= 18. Or build from source: `git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`.
 
-### As a Claude Code plugin
-
-The repo doubles as a Claude Code plugin that ships the deck-generation skill:
-
-```
-/plugin marketplace add liustack/pptfast
-/plugin install pptfast@pptfast
-/reload-plugins
-```
-
-The skill drives the CLI, so install the CLI too (`npm install -g @liustack/pptfast`).
-
 ### As a DSH plugin
 
 pptfast is also a DeepSeek Harness (DSH) plugin. One command installs it into a DSH profile:

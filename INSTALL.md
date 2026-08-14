@@ -82,29 +82,11 @@ The skill is the `skills/pptfast` folder: a `SKILL.md` (and its Chinese
 sibling `SKILL.zh-CN.md`), a self-contained playbook that drives the CLI from
 step 1. How it reaches your harness depends on which harness you are.
 
-### Claude Code: the plugin marketplace
-
-The repo doubles as a Claude Code plugin that ships the skill. These are
-slash commands typed into the Claude Code session; if you cannot execute
-them yourself, hand them to the user:
-
-```
-/plugin marketplace add liustack/pptfast
-/plugin install pptfast@pptfast
-/reload-plugins
-```
-
-**If it fails** (the marketplace is unreachable, or the Claude Code version
-predates plugins): fall back to the skill-folder path below with `TARGET`
-`~/.claude/skills/`.
-
-### Codex, Pi, OpenCode: the skill folder
-
 Each harness reads skills from a fixed location:
 
 | Harness | Skill directory (`TARGET`) |
 | :-- | :-- |
-| Claude Code (manual fallback) | `~/.claude/skills/` |
+| Claude Code | `~/.claude/skills/` |
 | Codex | `~/.codex/skills/` |
 | Pi, OpenCode | `~/.agents/skills/` |
 
