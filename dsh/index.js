@@ -57,7 +57,7 @@
 // imports, resilient to rc surface drift.
 import { Buffer } from 'node:buffer'
 import { readFileSync } from 'node:fs'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -280,9 +280,17 @@ function throwIfAborted(signal) {
   }
 }
 
-/** Windows-safe file stem from the IR's own `filename` field. */
+/**
+ * Windows-safe file stem from the IR's own `filename` field. The docs'
+ * standard IR writes `"filename": "hello.pptx"`, and render appends
+ * `.pptx` itself — so an existing extension comes off first (case
+ * insensitively), or the output would read `hello.pptx.pptx`.
+ */
 function safeFileStem(filename) {
-  const stem = basename(String(filename ?? 'presentation')).replace(/[<>:"/\\|?*]/g, '_').trim()
+  const stem = basename(String(filename ?? 'presentation'))
+    .replace(/\.pptx$/i, '')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .trim()
   return stem === '' || stem === '.' || stem === '..' ? 'presentation' : stem
 }
 
@@ -518,7 +526,14 @@ export function buildToolDefinitions(ctx, getCore) {
     // Cooperative budget: execute checks exec.signal between pipeline
     // stages (validate → assets → pptx → per-page previews).
     timeoutMs: 180_000,
-    isConcurrencySafe: () => true,
+    // Not parallel-safe on purpose: the output paths derive from
+    // ir.filename, so two parallel calls with the same filename (say, two
+    // theme candidates of one deck) would write the same .pptx and preview
+    // directory and at least one reported result would be a lie. DSH's
+    // scheduler only parallelizes calls that return exactly `true`, so
+    // `false` serializes every render and keeps each result truthful.
+    // (pptfast_validate / pptfast_themes write nothing and stay parallel.)
+    isConcurrencySafe: () => false,
     presentCall: (args) => ({
       card: 'generic',
       title: 'Render pptfast deck to PPTX',
@@ -571,6 +586,12 @@ export function buildToolDefinitions(ctx, getCore) {
       const pptxPath = join(outDir, `${fileStem}.pptx`)
       await writeFile(pptxPath, bytes)
       const previewDir = join(outDir, `${fileStem}-previews`)
+      // The tool owns `<stem>-previews` wholesale: clear it before writing
+      // so re-rendering a shorter deck cannot leave last round's pages
+      // behind ("one preview SVG per page" must stay literally true). No
+      // rm/write race with another render — this tool opted out of the
+      // parallel group (isConcurrencySafe above), so calls run serially.
+      await rm(previewDir, { recursive: true, force: true })
       await mkdir(previewDir, { recursive: true })
       const previewPaths = []
       let firstPageSvg

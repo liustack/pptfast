@@ -1,8 +1,40 @@
-# pptfast
+<p align="center"><img src="assets/banner.jpg" alt="pptfast：输入语义化 IR，输出原生 DrawingML" width="100%"></p>
 
-面向 AI agent 的稳定、可编辑 PPTX 生成工具：输入语义化 IR，输出原生 DrawingML。
+<h1 align="center">pptfast</h1>
 
-[English](./README.md) | [简体中文]
+<p align="center"><b>面向 AI agent 的稳定、可编辑 PPTX 生成工具：输入语义化 IR，输出原生 DrawingML。</b></p>
+
+<p align="center">🎯 <b>字节级确定性：同一份 IR、同一个 seed，渲染出同一份 PPTX</b> 🎯</p>
+
+<p align="center">
+  <a href="./README.md">English</a> ·
+  <a href="./INSTALL.md">安装（转发给你的 AI）</a> ·
+  <a href="./skills/pptfast/SKILL.zh-CN.md">Agent skill</a> ·
+  <a href="./docs/concepts.md">概念</a> ·
+  <a href="./docs/deck-projects.md">Deck 项目</a> ·
+  <a href="https://github.com/liustack/modlens">ModLens（视觉）</a>
+</p>
+
+<p align="center">
+  <a href="https://x.com/liustack"><img src="https://img.shields.io/badge/follow-%40liustack-black?style=flat-square&logo=x&logoColor=white" alt="Follow @liustack on X"></a>
+  <a href="https://www.npmjs.com/package/@liustack/pptfast"><img src="https://img.shields.io/npm/v/@liustack/pptfast?style=flat-square&label=npm&color=cb3837" alt="npm"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@liustack/pptfast?style=flat-square" alt="Node.js"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
+  <img src="https://img.shields.io/badge/Not%20backed%20by-Y%20Combinator-FF6600?style=flat-square&logo=ycombinator&logoColor=white" alt="Not backed by Y Combinator">
+  <img src="https://img.shields.io/badge/same%20seed-same%20bytes-4c1?style=flat-square" alt="Same seed, same bytes">
+</p>
+
+## 亮点
+
+**🎯 字节级确定性。** 渲染是纯函数：同一份 IR、同一个 seed，选出同样的版式、画出同样的几何、落盘同样的字节。预览与最终渲染永不打架，改一页也不会搅动其余页面。
+
+**✏️ 每个图形都保持可编辑。** 输出原生 DrawingML，不是贴上去的一张图：标题、要点、图表柱子、表格单元格都是 PowerPoint 里可选中、可改样式、可改文字的真实对象。17 个内置主题，`pptfast brand extract` 还能完全在本地从 `.pptx`/`.potx`/`.thmx` 里抽出你公司的配色与字体。
+
+**🔌 DSH 插件，三个进程内工具。** 一条钉了版本号的命令装进 DeepSeek Harness：`pptfast_validate`、`pptfast_render`、`pptfast_themes` 直调包内渲染核心，不开子进程，也不用单独装 CLI。同一个仓库还是 Claude Code 插件，Codex 等则用纯 skill 文件夹。
+
+**🔁 为 agent 而生的审阅回路。** schema → validate → audit → render，报错带页码和可直接照抄的修法。`pptfast serve` 打开随改动自动刷新的实时预览，审阅者的批注直接落盘为 `revision-request.json`，交回 agent 处理。
+
+**🔒 零配置、全本地。** 不要 API key、不用注册、渲染时不联网：唯一前置只有 Node >= 18。
 
 ## 为什么
 
@@ -13,6 +45,14 @@
 一份 PPT 本质上是五件事：内容模型、二维布局、视觉样式、动效、叙事。pptfast 负责后四项，内容模型交给你（或你的 agent）通过写 IR 来掌控。
 
 ## 安装
+
+**第一步，交给你的 AI。** 把这行话发给它：
+
+> 按照 https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md 安装 pptfast deck 技能，装完跑一遍健康检查，把结果告诉我。
+
+没有第二步。pptfast 完全在本地渲染：不要 API key、不用注册、无需任何配置，唯一前置是 Node >= 18。
+
+### 手动安装
 
 ```bash
 npm install -g @liustack/pptfast

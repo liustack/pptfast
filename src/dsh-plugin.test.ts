@@ -4,7 +4,7 @@
 // with `new URL(..., import.meta.url)` + `fileURLToPath` at module scope,
 // which the repo-default jsdom environment breaks (jsdom swaps global URL —
 // same reason plugin-manifest.test.ts reads files by process.cwd()).
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -280,9 +280,16 @@ describe("dsh plugin tools (v1): registration", () => {
       expect(typeof def.output.render).toBe("function")
       expect(def.output.schema).toMatchObject({ type: "object" })
       expect(typeof def.execute).toBe("function")
-      // PTC-friendly: parallel-safe, pure-JSON params, no callbacks in the schema
-      expect(def.isConcurrencySafe?.()).toBe(true)
+      // pure-JSON params, no callbacks in the schema
+      expect(typeof def.isConcurrencySafe?.()).toBe("boolean")
     }
+  })
+
+  it("keeps pptfast_render out of the parallel group — same-filename parallel calls would race on one output path (validate/themes stay parallel-safe)", () => {
+    const defs = toolsWithFakeCtx()
+    expect(defs.pptfast_render!.isConcurrencySafe?.()).toBe(false)
+    expect(defs.pptfast_validate!.isConcurrencySafe?.()).toBe(true)
+    expect(defs.pptfast_themes!.isConcurrencySafe?.()).toBe(true)
   })
 
   it("parameter schemas are stable (model-facing contract snapshot)", () => {
@@ -510,6 +517,47 @@ describe("dsh plugin tools: pptfast_render", () => {
     const value = await defs.pptfast_render!.execute({ ir: basicIr(), out_dir: outDir }, exec)
     expect(value.preview_image).toBeUndefined()
     expect(String(value.preview_note)).toContain("does not declare image input")
+  })
+
+  it('strips an existing .pptx extension from ir.filename (documented "hello.pptx" writes hello.pptx, never hello.pptx.pptx)', async () => {
+    const defs = toolsWithFakeCtx()
+    const ir = basicIr()
+    ir.filename = "hello.pptx"
+    const value = await defs.pptfast_render!.execute({ ir, out_dir: outDir }, fakeExec())
+    expect(value.pptx_path).toBe(join(outDir, "hello.pptx"))
+    expect(existsSync(join(outDir, "hello.pptx"))).toBe(true)
+    expect(existsSync(join(outDir, "hello.pptx.pptx"))).toBe(false)
+    // the preview directory stem drops the extension too
+    expect(value.preview_dir).toBe(join(outDir, "hello-previews"))
+    expect((value.preview_paths as string[])[0]).toBe(join(outDir, "hello-previews", "001-cover.svg"))
+  })
+
+  it("strips the .pptx extension case-insensitively (Quarterly.PPTX renders Quarterly.pptx)", async () => {
+    const defs = toolsWithFakeCtx()
+    const ir = basicIr()
+    ir.filename = "Quarterly.PPTX"
+    const value = await defs.pptfast_render!.execute({ ir, out_dir: outDir }, fakeExec())
+    expect(value.pptx_path).toBe(join(outDir, "Quarterly.pptx"))
+    expect(value.preview_dir).toBe(join(outDir, "Quarterly-previews"))
+  })
+
+  it("re-rendering a shorter deck at the same path leaves no stale preview SVGs behind", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pptfast-dsh-stale-"))
+    try {
+      const defs = toolsWithFakeCtx()
+      const first = await defs.pptfast_render!.execute({ ir: basicIr(), out_dir: dir }, fakeExec())
+      expect(first.preview_paths as string[]).toHaveLength(5)
+      // same deck, cut to cover + ending (the acceptance probe's shape)
+      const shortIr = basicIr()
+      const slides = shortIr.slides as unknown[]
+      shortIr.slides = [slides[0], slides[4]]
+      const value = await defs.pptfast_render!.execute({ ir: shortIr, out_dir: dir }, fakeExec())
+      expect(value.preview_paths as string[]).toHaveLength(2)
+      // one preview SVG per page, exactly — no leftovers from the 5-page round
+      expect(readdirSync(value.preview_dir as string).sort()).toEqual(["001-cover.svg", "002-ending.svg"])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it("defaults out_dir to the session workspace directory (session.header.cwd)", async () => {
