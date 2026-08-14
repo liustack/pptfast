@@ -280,9 +280,16 @@ describe("dsh plugin tools (v1): registration", () => {
       expect(typeof def.output.render).toBe("function")
       expect(def.output.schema).toMatchObject({ type: "object" })
       expect(typeof def.execute).toBe("function")
-      // PTC-friendly: parallel-safe, pure-JSON params, no callbacks in the schema
-      expect(def.isConcurrencySafe?.()).toBe(true)
+      // pure-JSON params, no callbacks in the schema
+      expect(typeof def.isConcurrencySafe?.()).toBe("boolean")
     }
+  })
+
+  it("keeps pptfast_render out of the parallel group — same-filename parallel calls would race on one output path (validate/themes stay parallel-safe)", () => {
+    const defs = toolsWithFakeCtx()
+    expect(defs.pptfast_render!.isConcurrencySafe?.()).toBe(false)
+    expect(defs.pptfast_validate!.isConcurrencySafe?.()).toBe(true)
+    expect(defs.pptfast_themes!.isConcurrencySafe?.()).toBe(true)
   })
 
   it("parameter schemas are stable (model-facing contract snapshot)", () => {
