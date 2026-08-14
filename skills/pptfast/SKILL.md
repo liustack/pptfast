@@ -14,6 +14,8 @@ pptfast --version || npm install -g @liustack/pptfast
 pptfast check-update   # stay current — the schema and themes evolve
 ```
 
+If the harness registers pptfast tools (`pptfast_validate`, `pptfast_render`, `pptfast_themes` — the DSH plugin does), call them directly for IR validation, rendering, and theme listing instead of the equivalent CLI commands. The CLI remains the fallback path and still covers everything else (schema, spec/assemble, audit, preview, serve, brand extract).
+
 ## Workflow
 
 Six phases: read the vocabulary, spec and confirm, fill pages in batches, render, self-check, revise. For a very small deck (a handful of slides), skip the spec and write a single IR file directly, validating with `pptfast validate` — everything below still applies with "the deck project directory" read as "the IR file", minus phase 2's spec step.
@@ -98,6 +100,16 @@ pptfast preview deck-dir/ -o preview/ --html
 ```
 
 Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` — read only, never edits the deck itself — route that back through phase 6 when it comes back to you.
+
+### Live review loop with `pptfast serve`
+
+For a back-and-forth review round, serve the same preview as a live page instead of handing over a static file. Start it as a background task (in DSH, follow the background-job convention and note the job id so you can stop it later):
+
+```bash
+pptfast serve deck-dir/ --no-open
+```
+
+Always pass `--no-open` — there is no browser to auto-open in an agent environment — and report the exact localhost URL it prints (default `http://127.0.0.1:4400`) to the user so they can open it themselves. The page live-reloads on every file you save. When the user annotates pages in the browser and submits, a `revision-request.json` lands in the deck directory: read it, route it through phase 6's revision flow, and the re-rendered result appears in their open tab. When the review round is over, stop the serve process (kill the background job) — never leave it running after the task ends.
 
 ### Phase 6 — Revision: edit one page, re-assemble
 

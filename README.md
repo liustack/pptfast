@@ -46,6 +46,14 @@ Name the version explicitly: dsh installs plugins through pnpm 11, which holds b
 
 The plugin card shows up as "pptfast" and registers the same deck-generation skill into DSH's skill system. The skill drives the CLI that ships inside the plugin package itself — no separate CLI install needed there. Uninstalling the plugin removes the skill with no residue.
 
+The plugin also registers three model-facing tools that call the packaged render core in-process (no subprocess), so the model validates and renders without touching the terminal — the CLI stays the fallback and covers everything else:
+
+| Tool | In | Out |
+|---|---|---|
+| `pptfast_validate` | deck IR JSON | slide count + theme, or a short path-annotated fix list |
+| `pptfast_render` | deck IR JSON (+ optional `theme`/`seed`/`out_dir`) | `.pptx` in the workspace + one preview SVG per page (first page attached into the session when the model route accepts images) |
+| `pptfast_themes` | — | the 17 built-in themes, each with a one-line character note |
+
 ### Other agents (Codex, etc.)
 
 [`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) is a self-contained Markdown playbook — reference it from your agent's context (e.g. `AGENTS.md`) and it teaches the same schema → outline → validate → render loop.
