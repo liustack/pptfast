@@ -280,9 +280,17 @@ function throwIfAborted(signal) {
   }
 }
 
-/** Windows-safe file stem from the IR's own `filename` field. */
+/**
+ * Windows-safe file stem from the IR's own `filename` field. The docs'
+ * standard IR writes `"filename": "hello.pptx"`, and render appends
+ * `.pptx` itself — so an existing extension comes off first (case
+ * insensitively), or the output would read `hello.pptx.pptx`.
+ */
 function safeFileStem(filename) {
-  const stem = basename(String(filename ?? 'presentation')).replace(/[<>:"/\\|?*]/g, '_').trim()
+  const stem = basename(String(filename ?? 'presentation'))
+    .replace(/\.pptx$/i, '')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .trim()
   return stem === '' || stem === '.' || stem === '..' ? 'presentation' : stem
 }
 
