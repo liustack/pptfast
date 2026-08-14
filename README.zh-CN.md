@@ -48,7 +48,7 @@
 **在 DeepSeek Harness 上换成一条命令。** 那里 pptfast 是原生 DSH 插件，不走 skill 文件夹：
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
+npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.19.0
 ```
 
 版本号要点名。不点名的话，安装会静默落到一个更旧的版本，拿不到最新能力。`npm view @liustack/pptfast version` 可查当前版本。插件卡片显示为「pptfast」，把整套生成流程的 skill 注册进 DSH 技能系统，驱动的 CLI 就在插件包自己里面。卸载即移除，不留残余。

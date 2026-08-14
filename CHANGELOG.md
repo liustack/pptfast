@@ -1,5 +1,37 @@
 # @liustack/pptfast
 
+## 0.19.0
+
+### Minor Changes
+
+- e7405af: pptfast now ships in exactly two shapes: one skill folder any harness reads, and one DSH plugin. Installing it no longer involves installing a CLI.
+
+  **The Claude Code plugin form is gone.** `.claude-plugin/` (marketplace and plugin manifests) delivered the same `skills/pptfast` folder that Claude Code already reads from `~/.claude/skills/`, at the cost of a third distribution shape with its own version mirror. Claude Code installs the skill folder like every other harness now.
+
+  **The skill carries a version-pinned launcher.** `skills/pptfast/scripts/run.sh` and `run.ps1` resolve a runtime on every call: a compatible `pptfast` on `PATH`, then `npx` at the pinned version, then `bunx` at the pinned version, with a structured diagnosis and exit 78 when a machine has no JavaScript runtime at all. The pin is stamped from `package.json` at release time and guarded by drift tests, so an installed skill copy runs the release it was installed with instead of whatever happened to be on the machine. Both SKILL files drive the CLI through it, with a hand-run fallback for harnesses that forbid scripts. The DSH path is unchanged and still uses the CLI inside the plugin package.
+
+  **Node floor raised to 22.19.** `engines` said `>=18`, which had not been true for a while: the repo's own test runner cannot start below 20, and CI was quietly running 20 and 22. The floor now matches what is actually supported and tested, and the CI matrix runs 22 and 24.
+
+  Install docs are rewritten around this: the READMEs lead with the one line you forward to your AI, and manual install (`npm install -g`, building from source) drops to an INSTALL.md appendix for the rare case someone wants `pptfast` as their own terminal command.
+
+- e10f852: Add `pptfast doctor`: one command that says whether this machine's install is actually healthy, with no network call and nothing written to disk.
+
+  The check that earns it is skill drift. An installed skill is a copy, and that copy keeps its install-time launcher forever, so `pptfast --version` can report something months newer than what the harness actually runs and nothing surfaces the gap. Doctor scans the three skill directories INSTALL.md documents, reads the pinned version out of each copy's launcher, and names any copy that is behind, with the clone-and-copy line that refreshes exactly that one.
+
+  It also reports the dsh plugin's version per profile (read from the profile's own `node_modules`, which is what really loads), Node against the `engines` floor, whether the optional `sharp` and `soffice` capabilities are present and what each one costs when missing, and a self-test render of a built-in deck through the real pipeline in memory.
+
+  Exit code 1 is reserved for a hard failure: a runtime below the floor, or a self-test render that did not complete. Skill drift, a stale dsh plugin, and missing optional capabilities are warnings and still exit 0, because the write-IR to validate to render flow keeps working through all of them. `--json` prints the same report machine-readably.
+
+### Patch Changes
+
+- b6561e7: Revert the DSH plugin's v1 model tools and session attachments. The plugin is a single skill registration again.
+
+  `pptfast_validate`, `pptfast_render`, and `pptfast_themes` did nothing the CLI cannot do, and each one cost a parameter schema, a collision-proof name, and an in-process loader to keep in sync with the render core. The first-page thumbnail the render tool pushed into the session is beaten outright by `pptfast serve`: one command opens a web page carrying every slide, reloading as the deck changes, with reviewer annotations coming back as `revision-request.json`.
+
+  That serve loop is now the deck's review path in the skill, written as a numbered round: start the server as a background job, hand the user the localhost URL, read their annotations back, stop the job when the round ends. The skill routes every step through the CLI, and the README and INSTALL guide drop the tool tables.
+
+  This also withdraws the internal exports the tools needed (`formatWarnings` from the SDK barrel, `resolveLocalAssets` from the node entry), and supersedes the unreleased `pptfast_render` acceptance fixes.
+
 ## 0.18.0
 
 ### Minor Changes

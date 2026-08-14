@@ -23,7 +23,7 @@ $ErrorActionPreference = 'Stop'
 # package.json version, and `pnpm release:version` rewrites it on every bump.
 $Package = '@liustack/pptfast'
 $Bin = 'pptfast'
-$Pinned = '0.18.0'
+$Pinned = '0.19.0'
 # ------------------------------------------------------------------------------
 
 # Environment snapshot, filled by Collect and read by the emitter.
