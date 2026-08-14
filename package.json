@@ -14,18 +14,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./node": {
-      "types": "./dist/node.d.ts",
-      "import": "./dist/node.js"
-    },
-    "./browser": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/browser.js"
-    },
-    "./validate": {
-      "types": "./dist/validate.d.ts",
-      "import": "./dist/validate.js"
     }
   },
   "files": [
