@@ -93,14 +93,6 @@ The commands you will reach for most:
 
 Full reference: [`docs/cli.md`](./docs/cli.md).
 
-## What's public
-
-The supported surface is deliberately small: the **CLI**, the **IR schema** it speaks (`pptfast schema`), the **deck project format**, the **agent skill** ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)), and the **DSH plugin**.
-
-The IR is the product's API. An agent talks JSON and the command line, it does not `import` anything.
-
-There is no public JS API: the package's JS internals ship for the package's own use and carry no semantic-versioning promise (see [`docs/internal-api.md`](./docs/internal-api.md)).
-
 ## Credits
 
 Icon primitives are extracted from [lucide](https://lucide.dev) (ISC License). pptfast itself was extracted from a production AI-deck-generation system and CJK-typography-tuned (full-width punctuation width, Chinese line breaking, a Chinese-first font stack, explicit east-asian font-slot declarations) from day one.

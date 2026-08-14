@@ -93,14 +93,6 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 
 完整命令表见 [`docs/cli.zh-CN.md`](./docs/cli.zh-CN.md)。
 
-## 对外承诺的边界
-
-对外支持面刻意收得很小：**CLI**、它说的 **IR schema**（`pptfast schema`）、**deck 项目格式**、**agent skill**（[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)），以及 **DSH 插件**。
-
-IR 才是这个产品的 API。agent 说 JSON 和命令行，不需要 `import` 任何东西。
-
-没有公开的 JS API：包里的 JS 内部实现只服务于包自身，不做语义化版本承诺（见 [`docs/internal-api.md`](./docs/internal-api.md)）。
-
 ## 致谢
 
 图标原语抽取自 [lucide](https://lucide.dev)（ISC License）。pptfast 本身从一套生产环境的 AI 出 PPT 系统中抽取而来，从第一天起就针对 CJK 排版做了优化（全角标点宽度、中文换行、雅黑优先字体栈、显式东亚字体槽声明）。
