@@ -9,9 +9,10 @@
 <p align="center">
   <a href="./README.zh-CN.md">简体中文</a> ·
   <a href="./INSTALL.md">Install (hand it to your AI)</a> ·
+  <a href="./docs/cli.md">Commands</a> ·
+  <a href="./docs/ir.md">IR</a> ·
+  <a href="./docs/themes.md">Themes</a> ·
   <a href="./skills/pptfast/SKILL.md">Agent skill</a> ·
-  <a href="./docs/concepts.md">Concepts</a> ·
-  <a href="./docs/deck-projects.md">Deck projects</a> ·
   <a href="https://github.com/liustack/modlens">ModLens (vision)</a>
 </p>
 
@@ -38,11 +39,11 @@
 
 ## Why
 
-Freeform SVG/HTML-to-PPTX pipelines have a high ceiling but an unstable floor — a weak model (or a strong one having an off turn) produces a deck that's broken, off-brand, or unreadable. pptfast trades freeform drawing for a controlled vocabulary: a semantic IR (zod schema), 17 built-in themes bundling a style (design tokens) and a brand (identity chrome), a layout-and-component library with seeded variety, and native DrawingML output where every shape stays editable — not a picture pasted onto a slide.
+Freeform SVG/HTML-to-PPTX pipelines have a high ceiling and an unstable floor: a weak model, or a strong one having an off turn, produces a deck that is broken, off-brand, or unreadable.
 
-That editability claim has one honest boundary: shapes and text runs are the native unit pptfast emits, and every one is a real PowerPoint object you can select, restyle, and retype (that includes the shapes and text a `chart` or `data_table` component draws). What pptfast does not produce is a native PowerPoint chart part or table object: no embedded chart data, no `<a:tbl>`. A chart's bars and a table's cells are geometry and text, not a data-bound object PowerPoint can redraw from new numbers, so change the numbers by editing the IR and re-rendering, not by dragging a bar or typing into a cell. That is a deliberate trade for the deterministic, seed-stable output described above, not an oversight, and it does not weaken the editability claim for every other shape on the slide.
+pptfast hands the model a fixed vocabulary instead of a blank canvas. You (or your agent) write an IR — a JSON file describing the whole deck — and pptfast picks the layouts, applies one of 17 themes, and writes native DrawingML: PowerPoint's own shape format, where every element is directly editable in PowerPoint.
 
-A deck is really five things: a content model, a 2D layout, a visual style, motion, and a narrative. pptfast owns the last four — you (or your agent) own the content model by writing the IR.
+Charts and tables are drawn as shapes and text. PowerPoint cannot re-plot them from new numbers — to change the numbers, edit the IR and render again. Everything else on a slide is a normal PowerPoint object: select it, restyle it, retype it.
 
 ## Install
 
@@ -81,11 +82,11 @@ pptfast is also a DeepSeek Harness (DSH) plugin. One command installs it into a 
 npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
 ```
 
-Name the version explicitly: dsh installs plugins through pnpm 11, which holds back anything published in the last 24 hours and silently resolves `@latest` to an older release — missing the newest plugin features, or (before 0.17.0) the plugin entirely. A named version is installed as a deliberate exception. `npm view @liustack/pptfast version` prints the current one.
+Name the version. Without it, the install quietly lands on an older release and you miss the newest plugin features. `npm view @liustack/pptfast version` prints the current one.
 
-The plugin card shows up as "pptfast" and registers the same deck-generation skill into DSH's skill system. The skill drives the CLI that ships inside the plugin package itself — no separate CLI install needed there. Uninstalling the plugin removes the skill with no residue.
+The plugin card shows up as "pptfast" and registers the deck-generation skill into DSH's skill system. The CLI it drives ships inside the plugin package, so there is nothing else to install. Uninstalling the plugin removes the skill with no residue.
 
-The plugin also registers three model-facing tools that call the packaged render core in-process (no subprocess), so the model validates and renders without touching the terminal — the CLI stays the fallback and covers everything else:
+The plugin also registers three tools the model calls directly, so it validates and renders without touching the terminal:
 
 | Tool | In | Out |
 |---|---|---|
@@ -95,7 +96,7 @@ The plugin also registers three model-facing tools that call the packaged render
 
 ### Other agents (Codex, etc.)
 
-[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) is a self-contained Markdown playbook — reference it from your agent's context (e.g. `AGENTS.md`) and it teaches the same schema → outline → validate → render loop.
+[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) is a self-contained Markdown playbook. Reference it from your agent's context (for example `AGENTS.md`) and it teaches the same schema → outline → validate → render loop.
 
 ## Quick start
 
@@ -120,165 +121,30 @@ pptfast render deck.json -o out/tech.pptx --theme tech  # same deck, different t
 pptfast preview deck.json -o out/svgs                   # SVG per slide, for a visual self-check
 ```
 
-One shape rule worth knowing up front: `cover`/`chapter`/`ending` slides are heading + subheading only — components live on `content` slides (`validate` says exactly this if you mix them up). No install at all also works: `npx -y @liustack/pptfast validate deck.json`. In a source checkout, `node dist/cli.js` replaces `pptfast`, and `examples/` has ready-made IR files to try.
+One shape rule: `cover`/`chapter`/`ending` slides are heading + subheading only, components live on `content` slides. `validate` says exactly this if you mix them up.
 
-## What's public
+No install at all also works: `npx -y @liustack/pptfast validate deck.json`. In a source checkout, `node dist/cli.js` replaces `pptfast`, and `examples/` has ready-made IR files to try.
 
-The supported surface is deliberately small: the **CLI**, the **IR schema** it speaks (`pptfast schema`), the **deck project format** (see Deck projects), the **agent skill** ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)), and the **DSH plugin** (see Install above). The IR is the product's API — an agent talks JSON and the command line, it doesn't `import`. There is no public JS API: the package's JS internals ship for the package's own use and carry no semantic-versioning promise (see [`docs/internal-api.md`](./docs/internal-api.md)).
-
-## CLI
+The commands you will reach for most:
 
 | Command | Does |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | Validate + render to a `.pptx` — `target` is an IR JSON file, a deck project directory, or a bare deck name (see Deck projects) |
-| `validate <target>` | Check the IR, print page-scoped errors and advisory warnings — same `target` forms as `render` |
-| `audit <target> [--json] [--pixels]` | Deterministic geometry review (overflow/out-of-bounds/low-contrast/overlap/content-truncated/content-dropped) — same `target` forms as `render`, exits 1 when it finds anything (see Auditing) |
-| `asset-brief <target> [--json]` | Image-generation brief for every `image` component — real rendered frame, fit/crop mode, suggested pixel size, theme palette/mood, and a paste-ready prompt (see Asset briefs) |
-| `spec validate <spec.json>` | Check a deck spec against the schema and strategy-aware hard gates (see Deck projects) |
-| `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
-| `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
-| `schema [--style \| --spec]` | Print the IR JSON Schema (or the style-override schema, or the deck spec schema) |
-| `themes [--json]` | List the 17 built-in themes |
-| `brand extract <file> -o <out.theme.json> [--id] [--label]` | Extract brand colors/fonts from a `.thmx`/`.potx`/`.pptx` into a theme file, entirely locally (see Your own brand) — load it with `--theme-file` (also on `validate`/`audit`/`preview`/`serve`) or as a deck project's `theme.json` |
-| `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
-| `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`) — same `target` forms as `render`, never gated on placeholder pages |
-| `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes, with annotations submitting straight back to the deck directory as `revision-request.json` |
-| `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call (see The IR and Deck projects) |
-| `init` | Scaffold `pptfast.config.json` |
-| `check-update` / `self-update` | Check npm for a newer release / update the global install |
+| `validate <target>` | Check the IR, with page numbers on every error |
+| `render <target> -o <out.pptx> [--theme <id>]` | Render a `.pptx` |
+| `preview <target> -o <dir> [--html]` | One SVG per slide, plus a self-contained review page |
+| `serve <target>` | Live preview that reloads on every change, with reviewer annotations |
+| `audit <target>` | Geometry review: overflow, out-of-bounds, low contrast, overlap |
+| `themes` | List the 17 built-in themes |
 
-## The IR
+Full reference: [`docs/cli.md`](./docs/cli.md).
 
-Run `pptfast schema` for the full JSON Schema — feed it to a model before asking it to write IR. A deck (`PptxIR`) has `version` (currently `"4"`, and now the default when omitted), `filename`, an optional `narrative` (a preset id string or a partial axes object — see Narratives below), `theme` (`id` plus optional `style`/`brand` overrides), `meta`, and `assets` — all optional with sane defaults — plus a separate optional `brand` (logo placement) and a required ordered list of `slides`. Each slide has a `type` (`cover`, `chapter`, `content`, `ending`), an optional `layout` (an explicit page-layout id that always wins over auto-selection — omit it and pptfast auto-selects one, see Layout selection below), an optional `arrangement` (how a content slide's body is laid out, e.g. `two_column`, `kpi_focus`), and a list of typed `components` (`bullets`, `kpi_cards`, `image`, `chart`, …). `assets` is `{ images: { [id]: { src, alt? } } }` — components reference images by `asset_id`, so the same image can be reused across slides without duplication. `alt`, when set, lands in the exported PPTX's standard accessibility-description slot for that image (what PowerPoint's "Edit Alt Text" reads and writes) — an `image` component with no `alt` on its asset exports unchanged, same as before this field did anything.
+## What's public
 
-A deck also carries an optional `seed` (an integer that keeps auto-selected layouts stable across revisions — see Layout selection below for how it's derived when omitted). Any slide may set a stable `id` (what spec pages and validation error messages reference it by), `placeholder: true` (a slide with no content yet — injected by `assemble` for a spec page nobody has filled in, skipped by the content-quality checks, and blocking `render` unless `--draft`), and an optional `notes` (aliases `note`/`speaker_notes`/`speakerNotes`) that exports as a native PowerPoint speaker note — content for the presenter's own view, never drawn onto the slide canvas and never counted toward any layout capacity. Field names that commonly drift between a model's output and the schema (55 synonym pairs across component types, e.g. kpi `title`→`label`, quote `content`→`text`, swot `strength`→`strengths`, bmc `partners`→`key_partners`) are silently normalized to the canonical name at validate time — `validate`/`render`/`preview` print a note listing what changed, never a hard error. That rescue is scoped to weak-model synonym drift only — it does not cover pre-v4 vocabulary. A v4-labeled document that writes `scenario` instead of `narrative`, `mode`/`delivery` instead of `strategy`/`pacing`, or the old `narrative`/`text`/`presentation` axis values hard-rejects, listing the current names/values, exactly like any other unrecognized field or value. An explicit `version: "3"` (or `"2"`) also hard-rejects, with a migration pointer — see `pptfast migrate` below, the only supported path for old-vocabulary input.
+The supported surface is deliberately small: the **CLI**, the **IR schema** it speaks (`pptfast schema`), the **deck project format**, the **agent skill** ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)), and the **DSH plugin**.
 
-Eight component types are *full-body*: `swot` (strengths/weaknesses/opportunities/threats), `bmc` (the nine-block Business Model Canvas), `waterfall` (a running-total bridge chart), `gantt` (dated bars on a shared numeric axis), `pest` (a political/economic/social/technological macro-environment scan), `five_forces` (Porter's competitive-forces hub-and-spoke), `heatmap` (a value-driven color grid), and `sankey` (a layered, quantity-proportional flow diagram — shipped as native editable vectors, not the rasterized image the type gets elsewhere). Each fills a slide's entire content rect and must be the only component on its slide — mixing one in with anything else fails `validate` instead of silently dropping the sibling.
+The IR is the product's API. An agent talks JSON and the command line, it does not `import` anything.
 
-The v4 IR schema is frozen as of 0.4.0 — future evolution is additive only (new optional fields, new enum members), and any breaking change ships under a new top-level `version` value with the same hard-reject-and-migration treatment v3 got. `pptfast migrate <v3-file.json> -o <out.json>` deterministically converts a v3 file to v4 (field renames only — same theme, layout selection, content budgets, and visual output) — see Deck projects below for the sibling `deck.plan.json` → `deck.spec.json` conversion.
-
-## Themes
-
-A theme bundles a style (design tokens), a brand (identity chrome), and a layout set for each page type — the 17 built-ins below. Every built-in defaults to the *full* set of registered layouts for each page type (every archetype adapts its text color to the theme's actual background, so the full set stays readable everywhere). Narrowing it is a deliberate theme-author choice, not the norm — none of the 17 narrows anything today (an earlier three-theme exclusion was reverted once every archetype's ink adapted to its actual background). Override the style (`--style`) to re-color a theme.
-
-| id | label |
-|---|---|
-| `consulting` | Business Consulting |
-| `enterprise` | Enterprise |
-| `academic` | Academic |
-| `insight` | Financial Insight |
-| `campaign` | Marketing Campaign |
-| `bloom` | Soft Bloom |
-| `classroom` | Classroom |
-| `ink` | Ink Wash |
-| `tech` | Tech |
-| `runway` | Fashion Runway |
-| `journal` | Editorial Journal |
-| `luxe` | Luxe |
-| `heritage` | Heritage |
-| `pulse` | Health & Life Science |
-| `terra` | Sustainability & ESG |
-| `ember` | Startup Pitch |
-| `vermilion` | Official Report |
-
-### Your own brand
-
-The fastest way to make the output look like *your company* instead of a built-in theme: extract the brand from a template you already have. `pptfast brand extract` reads the colors and fonts out of a `.thmx` theme, `.potx` template, or `.pptx` presentation — **entirely locally, the file never leaves your machine** (verified against all 39 Office themes shipped with a macOS PowerPoint install) — and writes a pptfast theme file:
-
-```bash
-pptfast brand extract corp-template.pptx -o my-brand.theme.json
-pptfast render deck.json -o deck.pptx --theme-file my-brand.theme.json
-```
-
-`--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`. In a deck project directory, drop the file in as `theme.json` and it auto-loads on every command — reference its id from `deck.spec.json`, no flag needed. The 12 OOXML color slots map almost 1:1 onto pptfast's tokens (the six accent colors become the chart palette); the one derived token, `muted`, is stepped toward the background only as far as it can go while still clearing a 4.5:1 contrast ratio. Loading enforces the same contrast floor every registered theme faces: a palette whose text and background are too close is refused with the failing token, the measured ratio, and the background named — never rendered unreadable. A custom theme can never shadow a built-in id.
-
-## Narratives
-
-A narrative is three axes, independent of theme (visual style), that set editorial discipline: `strategy` (how the argument is built — `pyramid`, `storytelling`, `instructional`, `showcase`, `briefing`), `pacing` (how dense the content is — `dense`, `balanced`, `spacious`), and `audience` (a tone anchor — `executive`, `technical`, `customer`, `public`, no rendering effect yet). Set the IR's top-level `narrative` to a named preset string (e.g. `"boardroom-report"`) or a partial axes object (e.g. `{ "pacing": "spacious" }`) — an omitted axis, or an omitted `narrative` field entirely, falls back to `general` (`briefing` × `balanced` × `public`). An unknown preset name or axis value is a hard validate error listing what's available.
-
-`pacing` drives the content-quality gate and the body-text baseline (paragraph/bullets/callout only — every other component's own type scale and the heading system are unaffected): the per-slide component budget and the bullets budget (item count and per-item length) both tighten from `dense` toward `spacious`, while the body font size grows the other way — density is additionally capped by whichever layout the slide resolves to, whichever ceiling is tighter. These are editorial guidance, not hard limits: `validate` reports them as warnings and still succeeds — only genuine render-safety ceilings (below) can block generation.
-
-| pacing | body text | components / slide | bullets |
-|---|---|---|---|
-| `dense` | 20px | 5 | up to 6 items, ~48 characters each |
-| `balanced` (the default) | 24px | 4 | up to 5 items, ~40 characters each |
-| `spacious` | 32px | 3 | up to 4 items, ~30 characters each |
-
-Bullets shrink below their tier's baseline to fit when needed, down to a 14px floor, before any overflow handling kicks in. Across every bullet style — `default`, `plain`, `divided`, `numbered`, and `checklist` alike — an item long enough to still overflow at that floor is a hard validate error, distinct from, and looser than, the per-pacing length guidance above, since it genuinely loses text to an ellipsis at render, not just reads as verbose. `pptfast validate` reports the exact numbers that applied to each slide.
-
-Run `pptfast narratives [--json]` to list the named presets (each carries soft theme recommendations — a starting suggestion, never a constraint) plus the raw axes tables.
-
-## Layout selection
-
-When a slide omits `layout`, pptfast resolves one automatically in four deterministic steps: the page type's full registry pool → the theme's layout set for that page type (full by default, see Themes above) → the narrative's `strategy` softly upweights (×3) a handful of content-layout ids that suit that strategy, everything else stays at a ×1 floor (cover/chapter/ending are never weighted — their character comes from the theme, not the strategy) → a seeded weighted pick, swapped deterministically to the runner-up when it would repeat the immediately preceding slide's layout. An explicit `layout` always wins and skips every step above. Whether the content fits is flagged separately by `validate`'s density gate (editorial guidance, not a hard block — see Narratives above), never by selection — so editing a page's content cannot silently flip its layout.
-
-The pick is fully deterministic — the same IR always resolves the same way, so preview and the final render never disagree. Staying stable *across revisions* (editing one page without reshuffling every other page's auto-picked layout) additionally needs a persisted `seed`, resolved in this order:
-
-1. An explicit `ir.seed` — full revision stability, always wins.
-2. A deck project's own seed: `pptfast assemble` derives one from the spec's filename and page ids the first time a spec omits `seed`, and prints a note with the value — copy it into `deck.spec.json`'s `seed` field to persist it.
-3. Neither set: a content hash of `filename` + every slide's `heading` (legacy-compatible) — editing any heading reshuffles every auto-picked layout deck-wide.
-
-`pptfast assemble` also writes every auto-picked `layout` back into the assembled `deck.json` (a page file's own explicit `layout` is left untouched) — the CLI notes how many pages it filled in.
-
-## Style overrides & project config
-
-Override the built-in palette without forking a theme: write a style JSON
-(schema: `pptfast schema --style`) and pass it per-render
-(`--style brand.json`), or pin it project-wide in a `pptfast.config.json`
-(found by walking up from cwd, scaffold one with `pptfast init`).
-Precedence: CLI flag > project config file > user config file > IR (Deck
-projects below has the full four-layer chain). The IR itself can carry the
-same override in `theme.style` for fully self-contained decks.
-
-```json
-{ "theme": "consulting", "style": { "colors": { "primary": "#0B5FFF", "accent": "#FF6A00" } } }
-```
-
-## Deck projects
-
-A deck can be authored two ways, and every command that takes IR accepts either: a single **IR JSON file** (everything above), or a **deck project directory** — the same content split across files so an agent can spec out a deck's structure first, then write and revise it page by page instead of holding one growing JSON blob in context.
-
-```
-my-deck/
-  deck.spec.json         the locked spec: page order, type, and heading for every page
-  pages/<page-id>.json   one file per filled page (components/layout/arrangement/background/image_side/footnote)
-  assets/                local images, auto-registered by filename (image id = filename without extension)
-```
-
-`deck.spec.json` validates on its own, before any page exists: `pptfast spec validate deck.spec.json` checks the schema plus strategy-aware hard gates (boundary pages, heading length, beat rotation, page count vs. pacing). A spec page with no matching `pages/<id>.json` becomes a **placeholder** slide — heading only, not missing — so a partially-written deck always assembles and previews. `pptfast render` refuses to export a deck with unfilled placeholders unless you pass `--draft`. `pptfast preview` never gates on them. A directory still carrying the pre-v4 `deck.plan.json` instead of `deck.spec.json` is not read directly — `pptfast migrate <dir> -o <dir>` converts it in place (writes `deck.spec.json` alongside, never overwrites, never deletes the source — delete `deck.plan.json` yourself once you've confirmed the new file); a directory with both files present is a hard error, never a guessed priority.
-
-`pptfast assemble <dir>` materializes spec + pages + assets into a single IR JSON file (`deck.json` by default). `pptfast disassemble <ir.json> -o <dir>` does the reverse (documented-lossy — spec-only fields like `beat`/`focus` have no IR-side home to recover). `render`/`validate`/`preview` accept a directory directly too, assembling in memory first.
-
-Deck project directories can be referenced by a bare name instead of a path — `pptfast render my-deck -o out.pptx` resolves `my-deck` under `$PPTFAST_HOME/decks` (`$PPTFAST_HOME` defaults to `~/.pptfast`) when no local file or directory of that name exists. All deck defaults resolve in four layers, highest wins: CLI flag > project `pptfast.config.json` > user `~/.pptfast/config.json` > the deck's own values. Both config layers can set `decksDir` to redirect where bare names resolve — the project layer's value resolves against that config file's own directory (for a team that wants deck projects checked into the repo), the user layer's against `$PPTFAST_HOME`. Project wins when both are set.
-
-## Auditing
-
-`pptfast audit <target> [--json]` renders every page off-screen and runs a deterministic geometry review — no LLM screenshot squinting, no variance. Six checks: **overflow** (text past its own box or column), **out-of-bounds** (past the page edge), **low-contrast** (WCAG relative-luminance ratio between text and its resolved background), **overlap** (two components' regions substantially colliding), **content-truncated** (text the renderer had to cut short with an ellipsis to fit), and **content-dropped** (a "+N more" marker — a card list or a whole component that didn't fit and got hidden). Advisory, not a hard gate — `validate` already rejects structurally invalid or over-dense decks. Audit catches what a valid deck can still get wrong at render time (an author-chosen near-background text color, two components whose combined content collides, a card list that had to drop an item to fit).
-
-Add `--pixels` (Node only, needs the optional `sharp` dependency) to also catch the one thing the SVG-only checks can't see — text sitting directly on an unscrimmed photo background — by rasterizing the page and sampling real pixels. Every response now also carries a `checks` field (`{ svg: "completed", pixels: "not-requested" | "completed" }`) so a caller can always tell what actually ran instead of reading a missing check as a pass (see `docs/contrast-system.md` for the pixel layer's own determinism caveat).
-
-Run it once every page is filled, on the same `target` forms as `validate`/`render` (file, deck project directory, or bare name). Human output groups findings by page (`page 3 (p-kpi): [low-contrast] …`, each message carries a fix suggestion) plus a summary line. `--json` prints the full machine-readable report. The exit code alone is agent-judgeable: `0` clean, `1` when it finds anything — fix the flagged page and re-run `audit` alone, no need to re-render. Skipped placeholder pages are noted, the same "not missing, just not written yet" treatment used everywhere else.
-
-```bash
-pptfast audit examples/basic.json
-# → audited 5 pages, 0 skipped, 0 findings
-```
-
-## Asset briefs
-
-`pptfast asset-brief <target> [--json]` turns engine-internal knowledge an image-generation prompt needs but a caller can't see — the real rendered frame, not the layout's nominal slot — into a brief: for every `image` component, the actual rendered `frame` (x/y/w/h + aspect ratio, from an off-screen render pass, never a hand-copied constant), its `fit` mode with a crop-safe-zone note, `suggested_pixels` (2× the frame), the resolved theme's `palette`/`mood`, and a paste-ready English `suggested_prompt`. An `asset_id` with nothing usable in `assets.images` still gets a full brief entry (`missing: true`) — that's the generation to-do list, not a defect — and a component the selected layout never actually draws is reported as `rendered: false` rather than silently dropped. Same `target` forms as `audit`/`render`. Purely informational — no exit-code gate, no rendering-pipeline changes, no generation API call.
-
-```bash
-pptfast asset-brief my-deck/
-# → page 3 (content, p-hero) — pic (missing)
-#     frame: 613x307 @ (571,203), aspect 2:1, cover
-#     suggested pixels: 1226x614
-#     ...
-```
-
-## For AI agents
-
-The recommended loop for an agent generating a deck: read `pptfast schema` to learn the vocabulary, write an IR JSON, run `pptfast validate` and fix whatever it reports (errors carry a page number and a fixable-in-place message — the point is to close this loop without a human), then `pptfast audit` for the same kind of fixable-in-place feedback on what a *valid* deck can still get wrong at render time (overflow, low-contrast, overlap — exit code alone says whether it's clean), then `pptfast render`. Before generating art for any image slot, run `pptfast asset-brief` — the real rendered frame and crop mode are engine-internal knowledge no amount of looking at the IR reveals, and a mismatched aspect ratio or off-palette photo is the single most common reason a generated image looks wrong once it's actually placed. `pptfast preview` gives the agent SVG files it can look at to self-check layout before committing to a render. Add `--html` to also write a self-contained `preview.html` for a human to review (keyboard nav, placeholder badges — a remote-URL image asset stays remote, the one self-containment gap) — zero network calls and zero further dependencies once it's open in a tab. When every page is filled, that `preview.html` also overlays the same `audit` findings (per-page badges plus a findings panel, click to jump to the page) so a human reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations right in `preview.html` and export them as a `revision-request.json` (a Blob download, no network or file write — preview stays read-only) for the agent to route back through `pages/*.json`. `pptfast serve <target>` offers the same loop live instead of as a download — a browser tab that auto-reloads on source changes, with that same annotation panel now submitting straight to `<deck-dir>/revision-request.json` on disk, no manual export/hand-back step. The Claude Code plugin above wraps this loop as a skill ([`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md)). This exact loop is exercised by an internal, model-agnostic benchmark (`tests/bench/`, not published to npm) that mechanically scores how well a model follows the skill on a fixed question bank — see `tests/bench/README.md`.
+There is no public JS API: the package's JS internals ship for the package's own use and carry no semantic-versioning promise (see [`docs/internal-api.md`](./docs/internal-api.md)).
 
 ## Credits
 

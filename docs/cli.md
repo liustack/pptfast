@@ -1,0 +1,100 @@
+---
+summary: 'Full CLI command reference, the audit checks, asset briefs, and the recommended agent loop'
+read_when:
+  - looking for a command the README does not list
+  - reading an `audit` finding and wanting to know what the check means
+  - generating art for an image slot (`asset-brief`)
+  - wiring an agent around the validate → audit → render loop
+---
+
+# CLI reference
+
+Every command that takes a `<target>` accepts the same three forms: an IR JSON file, a [deck project directory](./ir.md#deck-projects), or a bare deck name.
+
+| Command | Does |
+|---|---|
+| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | Validate + render to a `.pptx` |
+| `validate <target>` | Check the IR, print page-scoped errors and advisory warnings |
+| `audit <target> [--json] [--pixels]` | Deterministic geometry review, exits 1 when it finds anything (see [Auditing](#auditing)) |
+| `asset-brief <target> [--json]` | Image-generation brief for every `image` component (see [Asset briefs](#asset-briefs)) |
+| `spec validate <spec.json>` | Check a deck spec against the schema and the strategy-aware hard gates |
+| `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
+| `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
+| `schema [--style \| --spec]` | Print the IR JSON Schema (or the style-override schema, or the deck spec schema) |
+| `themes [--json]` | List the 17 built-in themes |
+| `brand extract <file> -o <out.theme.json> [--id] [--label]` | Extract brand colors and fonts from a `.thmx`/`.potx`/`.pptx` into a theme file, entirely locally (see [Themes](./themes.md#your-own-brand)) |
+| `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
+| `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`), never gated on placeholder pages |
+| `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes, with annotations submitting straight back to the deck directory as `revision-request.json` |
+| `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call |
+| `init` | Scaffold `pptfast.config.json` |
+| `check-update` / `self-update` | Check npm for a newer release / update the global install |
+
+`--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`.
+
+## Auditing
+
+`pptfast audit <target> [--json]` renders every page off-screen and runs a deterministic geometry review — no screenshots for a model to squint at, no variance between runs.
+
+Six checks:
+
+- **overflow** — text past its own box or column.
+- **out-of-bounds** — anything past the page edge.
+- **low-contrast** — the WCAG luminance ratio between text and its resolved background.
+- **overlap** — two components' regions substantially colliding.
+- **content-truncated** — text the renderer had to cut short with an ellipsis to fit.
+- **content-dropped** — a "+N more" marker, where a card list or a whole component didn't fit and got hidden.
+
+Audit is advisory, not a hard gate. `validate` already rejects a structurally invalid or over-dense deck. Audit catches what a *valid* deck can still get wrong at render time: an author-chosen text color that sits too close to the background, two components whose combined content collides, a card list that had to drop an item.
+
+Add `--pixels` (Node only, needs the optional `sharp` dependency) to also catch text sitting directly on an unscrimmed photo background, by rasterizing the page and sampling real pixels. Every response carries a `checks` field (`{ svg: "completed", pixels: "not-requested" | "completed" }`) so a caller can tell a skipped check from a passed one. The pixel layer's own determinism caveat is in [`contrast-system.md`](./contrast-system.md).
+
+Run it once every page is filled. Human output groups findings by page (`page 3 (p-kpi): [low-contrast] …`, each message carrying a fix suggestion) plus a summary line. `--json` prints the full machine-readable report. The exit code alone is enough for an agent to judge: `0` clean, `1` when it finds anything. Fix the flagged page and re-run `audit` alone, no need to re-render. Skipped placeholder pages are noted in the summary.
+
+```bash
+pptfast audit examples/basic.json
+# → audited 5 pages, 0 skipped, 0 findings
+```
+
+## Asset briefs
+
+`pptfast asset-brief <target> [--json]` writes the brief an image-generation prompt needs and a caller cannot see: the real rendered frame of every `image` component, not the layout's nominal slot.
+
+For each `image` component the brief carries the rendered `frame` (x/y/w/h plus aspect ratio, measured in an off-screen render pass, never a hand-copied constant), the `fit` mode with a crop-safe-zone note, `suggested_pixels` (2× the frame), the resolved theme's `palette` and `mood`, and a paste-ready English `suggested_prompt`.
+
+An `asset_id` with nothing usable in `assets.images` still gets a full entry, marked `missing: true` — that is the generation to-do list. A component the selected layout never draws is reported as `rendered: false` rather than silently dropped.
+
+The brief is purely informational: no exit-code gate, no change to the rendering pipeline, no generation API call.
+
+```bash
+pptfast asset-brief my-deck/
+# → page 3 (content, p-hero) — pic (missing)
+#     frame: 613x307 @ (571,203), aspect 2:1, cover
+#     suggested pixels: 1226x614
+#     ...
+```
+
+## The agent loop
+
+The loop an agent should run when it generates a deck:
+
+1. `pptfast schema` — read the vocabulary before writing anything.
+2. Write the IR JSON.
+3. `pptfast validate` and fix what it reports. Errors carry a page number and a message that can be applied in place, so the loop closes without a human.
+4. `pptfast asset-brief` before generating art for any image slot. The real rendered frame and crop mode are not visible in the IR, and a mismatched aspect ratio is the most common reason a generated image looks wrong once it is placed.
+5. `pptfast audit` for the same kind of feedback on what a valid deck can still get wrong at render time. The exit code alone says whether it is clean.
+6. `pptfast preview` to write SVG files the agent can look at and self-check the layout.
+7. `pptfast render`.
+
+`pptfast preview --html` also writes a self-contained `preview.html` for a human reviewer: keyboard navigation, placeholder badges, zero network calls once it is open in a tab (a remote-URL image asset stays remote, the one gap in self-containment). When every page is filled, that page also overlays the same `audit` findings — per-page badges plus a findings panel, click to jump to the page. A deck with any placeholder page shows a one-line "audit skipped" notice instead.
+
+The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` (a browser download, no network and no file write — preview stays read-only) for the agent to route back through `pages/*.json`. `pptfast serve <target>` runs the same loop live: a browser tab that auto-reloads on source changes, with the annotation panel submitting straight to `<deck-dir>/revision-request.json` on disk.
+
+The Claude Code and DSH plugins wrap this loop as a skill ([`skills/pptfast/SKILL.md`](../skills/pptfast/SKILL.md)). An internal, model-agnostic benchmark (`tests/bench/`, not published to npm) scores how well a model follows that skill on a fixed question bank — see `tests/bench/README.md`.
+
+## More
+
+- [`ir.md`](./ir.md) — what goes in the IR, narratives, layout selection, deck projects.
+- [`themes.md`](./themes.md) — the 17 built-in themes, brand extraction, style overrides.
+- [`concepts.md`](./concepts.md) — the theme/layout/component/narrative model.
+- [`deck-projects.md`](./deck-projects.md) — the deck project format in depth.
