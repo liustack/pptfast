@@ -1,9 +1,10 @@
 ---
-summary: 'Test layers: vitest+snapshots, node smoke, e2e with soffice, PowerPoint repair-dialog gate'
+summary: 'Test layers: vitest+snapshots, node smoke, CLI and DSH e2e, PowerPoint repair-dialog gate'
 read_when:
   - adding or debugging tests
   - before publishing a release
   - export XML structure changed
+  - validating the installed DSH plugin
 ---
 
 # Testing
@@ -51,6 +52,64 @@ read_when:
 `pnpm check` runs typecheck + lint + `pnpm test` and is the default merge gate.
 `pnpm e2e` is not part of `pnpm check` (it needs a build and is slower) — run
 it whenever the render chain (`src/svg/`, `src/pptx/`, `src/themes/`) changes.
+
+## Installed DSH plugin E2E
+
+The DSH browser flow is a host-level smoke test. It proves that the selected
+profile loads the published plugin, the model sees the registered skill, and
+the plugin's packaged CLI can make a PPTX in a real workspace. Prepare an
+isolated existing directory, then run the read-only preflight:
+
+```bash
+mkdir -p /tmp/pptfast-dsh-e2e
+pnpm e2e:dsh --workspace /tmp/pptfast-dsh-e2e --profile web
+```
+
+The preflight checks four boundaries. The selected profile must declare
+`@liustack/pptfast`. Its own `node_modules` must contain the same version as
+this checkout plus the plugin entry, bundle patch, skill, and packaged CLI.
+DSH's composed config must mount the `pptfast` row. The workspace path is
+resolved with `fs.realpath`, matching DSH's `WorkspaceRegistry.create`
+identity rule, and the canonical value is printed for the browser leg.
+
+On macOS this distinction is observable because `/tmp/...` normally resolves
+to `/private/tmp/...`. Add the workspace through DSH's own directory picker
+when testing by hand. The picker crosses the host API and preserves the
+registry invariant. Chrome automation cannot drive the native directory
+picker. If a browser fixture must be seeded outside the UI, store the exact
+`canonical workspace` value printed by the preflight. Do not write the
+unresolved `/tmp` spelling into the storage fixture. A fresh session records
+its canonical cwd, and DSH rejects attachment when that value differs from a
+fixture path by strict string comparison.
+
+Start the web profile from the same canonical workspace, then open its URL in
+Chrome:
+
+```bash
+cd /private/tmp/pptfast-dsh-e2e
+npx -y @deepseek-ai/dsh web
+```
+
+Create a fresh session in that workspace and ask DSH to make a small deck with
+pptfast, saving its source as `dsh-pptfast-e2e.json` and its output as
+`dsh-pptfast-e2e.pptx`. The source must pass the installed CLI's validate and
+audit commands. The result must be a non-empty package and render through
+LibreOffice when available:
+
+```bash
+test -s /private/tmp/pptfast-dsh-e2e/dsh-pptfast-e2e.pptx
+unzip -tq /private/tmp/pptfast-dsh-e2e/dsh-pptfast-e2e.pptx
+node ~/.dsh/profiles/web/node_modules/@liustack/pptfast/dist/cli.js \
+  validate /private/tmp/pptfast-dsh-e2e/dsh-pptfast-e2e.json
+node ~/.dsh/profiles/web/node_modules/@liustack/pptfast/dist/cli.js \
+  audit /private/tmp/pptfast-dsh-e2e/dsh-pptfast-e2e.json
+soffice --headless --convert-to pdf --outdir /private/tmp/pptfast-dsh-e2e \
+  /private/tmp/pptfast-dsh-e2e/dsh-pptfast-e2e.pptx
+```
+
+The browser session, generated file, audit output, and rendered PDF together
+are the DSH plugin evidence. The normal `pnpm e2e` remains the deterministic
+render-chain gate and does not require DSH or model credentials.
 
 ## Package-audit hard gate
 

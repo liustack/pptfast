@@ -41,6 +41,7 @@
     "test:watch": "vitest",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "e2e": "pnpm build && tsx scripts/e2e.mts",
+    "e2e:dsh": "tsx scripts/dsh-e2e.mts",
     "bench:score": "tsx tests/bench/score.mts",
     "docs:list": "node scripts/docs-list.js",
     "prepublishOnly": "pnpm check && pnpm e2e",
