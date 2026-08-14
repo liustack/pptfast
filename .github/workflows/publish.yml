@@ -12,10 +12,11 @@
 # Trigger: release tags (v1.2.3). The changesets flow stays local/manual
 # (`pnpm release:version`, commit, tag, push the tag).
 #
-# `pnpm publish` is used (not npm) so the pnpm-managed workspace publishes the
-# same artifact contents as a local release would. pnpm 10.13+ supports npm
-# trusted publishing natively, and CI pins pnpm 10 (see ci.yml's version
-# alignment note — same reasoning, no `packageManager` field in package.json).
+# `npm publish` (npm 11, installed explicitly) does the OIDC exchange — the
+# proven pattern from modlens's release.yml. The first tag attempt used
+# `pnpm publish`, which skipped the OIDC exchange and died with E404 on the
+# unauthenticated PUT (2026-08-15); npm 11.5.1+ handles trusted publishing
+# natively.
 #
 # `prepublishOnly` runs `pnpm check && pnpm e2e` automatically at publish
 # time, so LibreOffice is installed here for the same reason as ci.yml's e2e
@@ -51,8 +52,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libreoffice-impress
+      - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
-      # --no-git-checks: the checkout is a detached HEAD at the tag, which
-      # pnpm's default branch check would refuse. prepublishOnly still runs
-      # the full check + e2e gate before anything is uploaded.
-      - run: pnpm publish --access public --no-git-checks
+      # prepublishOnly still runs the full check + e2e gate before anything
+      # is uploaded. npm has no branch check, so no --no-git-checks needed.
+      - run: npm publish --provenance --access public
