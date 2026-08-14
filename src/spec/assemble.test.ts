@@ -144,6 +144,29 @@ describe("assembleDeck", () => {
   // ── step 5 ──────────────────────────────────────────────────────────
 
   describe("step 5 — present pages", () => {
+    it("carries filled boundary-page summaries into their subheadings", () => {
+      const withSummary = makePlan({
+        pages: [
+          { id: "p-cover", type: "cover", heading: "Q3 Review", summary: "Results and outlook" },
+          { id: "p-chapter", type: "chapter", heading: "Performance", summary: "What changed this quarter" },
+          { id: "p-kpi", type: "content", heading: "Revenue is up", summary: "Fill prompt only" },
+          { id: "p-ending", type: "ending", heading: "Thanks", summary: "Questions and discussion" },
+        ],
+      })
+
+      const { ir } = assembleDeck(withSummary, {
+        "p-cover": {},
+        "p-chapter": {},
+        "p-kpi": {},
+        "p-ending": {},
+      })
+
+      expect(ir.slides.find((slide) => slide.id === "p-cover")?.subheading).toBe("Results and outlook")
+      expect(ir.slides.find((slide) => slide.id === "p-chapter")?.subheading).toBe("What changed this quarter")
+      expect(ir.slides.find((slide) => slide.id === "p-kpi")?.subheading).toBeUndefined()
+      expect(ir.slides.find((slide) => slide.id === "p-ending")?.subheading).toBe("Questions and discussion")
+    })
+
     it("injects id/type/heading from the spec and content fields from the page record", () => {
       const pages: Record<string, PageContent> = {
         "p-kpi": {
@@ -167,7 +190,7 @@ describe("assembleDeck", () => {
       expect(kpi?.placeholder).toBeUndefined()
     })
 
-    it("carries a declared beat straight into the IR for a present page (P1 variety wave, task 1 — no longer dropped)", () => {
+    it("carries a declared beat into the IR while keeping a content-page summary fill-only", () => {
       const withAnchors = makePlan({
         pages: [
           { id: "p-cover", type: "cover", heading: "Q3 Review" },
@@ -186,7 +209,7 @@ describe("assembleDeck", () => {
       const { ir } = assembleDeck(withAnchors, { "p-kpi": {} })
       const kpi = ir.slides.find((s) => s.id === "p-kpi") as unknown as Record<string, unknown>
       expect(kpi.beat).toBe("anchor")
-      // focus/summary stay spec-only authoring anchors — no IR-side home for either.
+      // Focus and content-page summary stay spec-only authoring anchors.
       expect(kpi.focus).toBeUndefined()
       expect(kpi.subheading).toBeUndefined()
     })
@@ -546,6 +569,26 @@ describe("disassembleDeck", () => {
     expect(spec.pages.find((p) => p.id === "p-gap")?.summary).toBe("fill me in")
   })
 
+  it("recovers filled boundary-page subheadings as summaries without reinterpreting content subheadings", () => {
+    const ir = PptxIRSchema.parse({
+      version: "4",
+      theme: { id: "consulting" },
+      slides: [
+        { id: "p-cover", type: "cover", heading: "Cover", subheading: "Results and outlook" },
+        { id: "p-chapter", type: "chapter", heading: "Chapter", subheading: "What changed" },
+        { id: "p-body", type: "content", heading: "Body", subheading: "Authored slide copy" },
+        { id: "p-ending", type: "ending", heading: "End", subheading: "Questions and discussion" },
+      ],
+    })
+
+    const { spec } = disassembleDeck(ir)
+
+    expect(spec.pages.find((page) => page.id === "p-cover")?.summary).toBe("Results and outlook")
+    expect(spec.pages.find((page) => page.id === "p-chapter")?.summary).toBe("What changed")
+    expect(spec.pages.find((page) => page.id === "p-body")?.summary).toBeUndefined()
+    expect(spec.pages.find((page) => page.id === "p-ending")?.summary).toBe("Questions and discussion")
+  })
+
   it("never sets focus on any produced spec page (no IR-side home for it)", () => {
     const ir = PptxIRSchema.parse({
       version: "4",
@@ -589,7 +632,7 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
       seed: 555,
       brand: { logo_asset_id: "logo-1", position: "tl" },
       slides: [
-        { id: "p-cover", type: "cover", heading: "Cover" },
+        { id: "p-cover", type: "cover", heading: "Cover", subheading: "Results and outlook" },
         {
           id: "p-kpi",
           type: "content",
@@ -602,7 +645,7 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
           notes: "mention the FX headwind",
         },
         { id: "p-gap", type: "content", heading: "Gap page", placeholder: true, subheading: "fill me in" },
-        { id: "p-ending", type: "ending", heading: "End" },
+        { id: "p-ending", type: "ending", heading: "End", subheading: "Questions and discussion" },
       ],
     })
 

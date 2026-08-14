@@ -37,8 +37,8 @@
  * — the inverse of assemble, an optional tail item for W5"): it reconstructs a spec + pages record from
  * an existing IR, well enough that re-`assembleDeck`-ing the result
  * reproduces the same slide content, but spec-only fields that never made it
- * into the IR in the first place (`focus`, and `summary` on anything but a
- * placeholder page) cannot be recovered — see that function's own doc
+ * into the IR in the first place (`focus`, and `summary` on a filled content
+ * page) cannot be recovered. See that function's own doc
  * comment for the full accounting. `beat` *did* have this same "never made
  * it into the IR" status until the P1 variety wave's task 1 gave it a real
  * `Slide.beat` field (`../ir/index.ts`) — it is now a plain passthrough on
@@ -185,10 +185,11 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    slide — never an error. Spec §7's own words: "assemble's precise
  *    semantics — a missing page always succeeds (placeholder), a structural
  *    contradiction (orphan file / bad spec / id conflict) errors". A
- *    declared `summary` becomes the placeholder's `subheading` (the one spot
- *    `summary` — otherwise a spec-only anchor, see step 5 — does reach the
- *    IR) so a `--draft` preview of an unfilled deck still reads as more than
- *    a bare "Untitled". A declared `beat` carries straight into the
+ *    declared `summary` becomes the placeholder's `subheading` so a
+ *    `--draft` preview of an unfilled deck still reads as more than a bare
+ *    "Untitled". Step 5 preserves the same visible line for filled boundary
+ *    pages while keeping it fill-only on filled content pages. A declared
+ *    `beat` carries straight into the
  *    placeholder's own `Slide.beat` too (P1 variety wave, task 1 — see step
  *    5's note below). A placeholder page still participates in this
  *    function's own layout materialization below, so its beat still needs
@@ -203,10 +204,12 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    the P1 variety wave's task 1. Previously dropped here as a spec-only
  *    authoring anchor, `SlideSchema.beat`'s own doc comment
  *    (`../ir/index.ts`) has the full accounting of what it now does
- *    downstream. `focus`/`summary` still never reach the IR for a present
- *    page — they remain spec-only authoring anchors (focus steers a future
- *    fill/select step, summary is "for the fill step's own reading only"),
- *    not slide content.
+ *    downstream. `focus` remains a spec-only authoring anchor. A filled
+ *    boundary page (`cover`, `chapter`, or `ending`) carries `summary` into
+ *    `subheading`, because its page file has no body-content field that can
+ *    express the line after filling. A filled `content` page keeps summary
+ *    spec-only, so its fill prompt does not become duplicate visible slide
+ *    content.
  * 6. Top-level: `version` is always the literal `"4"` (IR's own version,
  *    unrelated to the deck spec's own `version: "1"`) — the deck spec's own
  *    `narrative` field (renamed this task from `scenario`, spec §8.1's
@@ -390,6 +393,7 @@ function buildSlide(page: PageSpec, raw: PageContent | undefined): Record<string
     type: page.type,
     heading: page.heading,
     ...(page.beat !== undefined ? { beat: page.beat } : {}),
+    ...(page.type !== "content" && page.summary !== undefined ? { subheading: page.summary } : {}),
     ...(raw.components !== undefined ? { components: raw.components } : {}),
     ...(raw.layout !== undefined ? { layout: raw.layout } : {}),
     ...(raw.arrangement !== undefined ? { arrangement: raw.arrangement } : {}),
@@ -423,11 +427,9 @@ const UNTITLED_HEADING = "Untitled"
 /**
  * Inverse of {@link assembleDeck}: reconstructs `{ spec, pages }` from an
  * existing IR well enough that `assembleDeck(...disassembleDeck(ir))`
- * reproduces every slide's content — but the map is not lossless in both
- * directions, only in the direction the round trip actually exercises
- * (IR → spec/pages → IR). Fields with no IR-side home never survive being
- * written *to* the IR in the first place, so there is nothing here to read
- * back:
+ * reproduces the deck-project content surface. The map is not lossless for
+ * fields that the spec/pages format cannot represent. The known losses and
+ * recoveries are:
  *
  * - `focus` never appears on any produced {@link PageSpec} — it is a
  *   spec-only authoring anchor with no corresponding `Slide` field at all
@@ -437,16 +439,13 @@ const UNTITLED_HEADING = "Untitled"
  *   plain passthrough on both sides, exactly like `layout`/`heading` below —
  *   `assembleDeck` step 5/6 reads `pageSpec.beat` into `slide.beat`, this
  *   function reads `slide.beat` straight back below.
- * - `summary` is recovered *only* for a placeholder slide, by reversing
- *   step 4's `summary` → `subheading` injection (`slide.subheading` back to
- *   `pageSpec.summary`). A non-placeholder slide's own `subheading` — a
- *   legitimate, independent `Slide` field a hand-authored bare IR is free to
- *   set — has no {@link PageContent} field to land in (spec §7's pages/
- *   record is deliberately narrower than `Slide` itself, see that
- *   interface's own doc comment) and no `summary` semantics either (`summary`
- *   only ever flows to a *placeholder*'s `subheading`, never the reverse for
- *   a filled page) — so it is dropped. Same for `decor`: a real `Slide`
- *   field, absent from `PageContent`'s shape entirely.
+ * - `summary` is recovered from `subheading` for every placeholder slide and
+ *   for filled boundary slides (`cover`, `chapter`, and `ending`). This
+ *   reverses steps 4 and 5 without losing their visible subtitle. A filled
+ *   content slide's own `subheading` remains a separate authored field. It
+ *   has no {@link PageContent} field to land in, and treating it as summary
+ *   would turn visible slide copy into a fill-only prompt, so it is dropped.
+ *   Same for `decor`: a real `Slide` field absent from `PageContent`.
  * - `theme.style` / `theme.brand` overrides collapse to a bare theme-id
  *   string (`DeckSpecSchema.theme` has no shape for either) — only `theme.id`
  *   survives. That `theme.brand` is `ThemeSchema.brand` (`BrandConfigSchema`
@@ -534,7 +533,9 @@ export function disassembleDeck(ir: PptxIR): { spec: DeckSpec; pages: Record<str
       type: slide.type,
       heading,
       ...(slide.beat !== undefined ? { beat: slide.beat } : {}),
-      ...(slide.placeholder === true && slide.subheading !== undefined ? { summary: slide.subheading } : {}),
+      ...((slide.placeholder === true || slide.type !== "content") && slide.subheading !== undefined
+        ? { summary: slide.subheading }
+        : {}),
     }
     if (slide.placeholder !== true) pages[id] = extractPageContent(slide)
     return pageSpec

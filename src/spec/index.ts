@@ -92,8 +92,10 @@ export const PageSpecSchema = z
     /** Optional authoring hint pointing fill/select at a preferred
      *  component type or layout id — see {@link checkFocusVocabulary}. */
     focus: z.string().optional(),
-    /** Free-text content anchor, "for the fill step's own reading only" (spec §5) — read by a later
-     *  fill step, never validated or interpreted here. */
+    /** Free-text content anchor read by the fill step and never validated or
+     *  interpreted here. Assemble also surfaces it as `subheading` on
+     *  boundary pages, which have no page-content field for that line. On a
+     *  filled content page it remains a fill-only authoring hint. */
     summary: z.string().optional(),
   })
   .strict()
