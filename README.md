@@ -1,9 +1,40 @@
-# pptfast
+<p align="center"><img src="assets/banner.jpg" alt="pptfast — semantic IR in, native DrawingML out" width="100%"></p>
 
-Stable, editable PPTX generation for AI agents — semantic IR in, native
-DrawingML out.
+<h1 align="center">pptfast</h1>
 
-[English] | [简体中文](./README.zh-CN.md)
+<p align="center"><b>Stable, editable PPTX generation for AI agents: semantic IR in, native DrawingML out.</b></p>
+
+<p align="center">🎯 <b>Deterministic to the byte: same IR, same seed, same PPTX</b> 🎯</p>
+
+<p align="center">
+  <a href="./README.zh-CN.md">简体中文</a> ·
+  <a href="./INSTALL.md">Install (hand it to your AI)</a> ·
+  <a href="./skills/pptfast/SKILL.md">Agent skill</a> ·
+  <a href="./docs/concepts.md">Concepts</a> ·
+  <a href="./docs/deck-projects.md">Deck projects</a> ·
+  <a href="https://github.com/liustack/modlens">ModLens (vision)</a>
+</p>
+
+<p align="center">
+  <a href="https://x.com/liustack"><img src="https://img.shields.io/badge/follow-%40liustack-black?style=flat-square&logo=x&logoColor=white" alt="Follow @liustack on X"></a>
+  <a href="https://www.npmjs.com/package/@liustack/pptfast"><img src="https://img.shields.io/npm/v/@liustack/pptfast?style=flat-square&label=npm&color=cb3837" alt="npm"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@liustack/pptfast?style=flat-square" alt="Node.js"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
+  <img src="https://img.shields.io/badge/Not%20backed%20by-Y%20Combinator-FF6600?style=flat-square&logo=ycombinator&logoColor=white" alt="Not backed by Y Combinator">
+  <img src="https://img.shields.io/badge/same%20seed-same%20bytes-4c1?style=flat-square" alt="Same seed, same bytes">
+</p>
+
+## Highlights
+
+**🎯 Deterministic to the byte.** Rendering is a pure function: the same IR and seed pick the same layouts, draw the same geometry, and write the same bytes to disk. Preview never disagrees with the final render, and editing one page cannot reshuffle the rest of the deck.
+
+**✏️ Every shape stays editable.** Native DrawingML out, not a picture pasted onto a slide: headings, bullets, chart bars, and table cells are real PowerPoint objects you can select, restyle, and retype. 17 built-in themes, and `pptfast brand extract` pulls your company's colors and fonts out of a `.pptx`/`.potx`/`.thmx` entirely locally.
+
+**🔌 A DSH plugin with three in-process tools.** One pinned command installs it into DeepSeek Harness: `pptfast_validate`, `pptfast_render`, and `pptfast_themes` call the packaged render core directly, no subprocess and no separate CLI install. The same repo is also a Claude Code plugin, and a plain skill folder for Codex and friends.
+
+**🔁 A review loop built for agents.** schema → validate → audit → render, with errors that carry page numbers and copy-paste fixes. `pptfast serve` opens a live preview that reloads on every change, and reviewer annotations land back on disk as `revision-request.json` for the agent to act on.
+
+**🔒 Zero config, fully local.** No API key, no account, no network at render time: Node >= 18 is the whole prerequisite.
 
 ## Why
 
@@ -14,6 +45,14 @@ That editability claim has one honest boundary: shapes and text runs are the nat
 A deck is really five things: a content model, a 2D layout, a visual style, motion, and a narrative. pptfast owns the last four — you (or your agent) own the content model by writing the IR.
 
 ## Install
+
+**Step 1, hand it to your AI.** Send it this line:
+
+> Install the pptfast deck skill following https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md, then run the health check and tell me the result.
+
+There is no step 2. pptfast renders entirely locally: no API key, no account, nothing to configure. The only prerequisite is Node >= 18.
+
+### Manual install
 
 ```bash
 npm install -g @liustack/pptfast
