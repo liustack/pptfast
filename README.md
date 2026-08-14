@@ -43,32 +43,15 @@
 
 > Install the pptfast deck skill following https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md, then run the health check and tell me the result.
 
-There is no step 2. pptfast renders entirely locally: no API key, no account, nothing to configure. The only prerequisite is Node 22.19+ (or Bun).
+There is no step 2. Your AI puts the skill folder where your harness reads it, and the skill brings its own version-pinned launcher, so there is no CLI to install by hand. pptfast renders entirely locally: no API key, no account, nothing to configure. The only prerequisite is Node 22.19+ (or Bun).
 
-### Manual install
-
-```bash
-npm install -g @liustack/pptfast
-pptfast --help
-```
-
-Node 22.19+ or Bun. Or build from source: `git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`.
-
-### As a DSH plugin
-
-pptfast is also a DeepSeek Harness (DSH) plugin. One command installs it into a DSH profile:
+**On DeepSeek Harness, it is one command instead.** pptfast is a native DSH plugin there, not a skill folder:
 
 ```bash
 npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
 ```
 
-Name the version. Without it, the install quietly lands on an older release and you miss the newest plugin features. `npm view @liustack/pptfast version` prints the current one.
-
-The plugin card shows up as "pptfast" and registers the deck-generation skill into DSH's skill system. The CLI it drives ships inside the plugin package, so there is nothing else to install. Uninstalling the plugin removes the skill with no residue.
-
-### Other agents (Codex, etc.)
-
-[`skills/pptfast/SKILL.md`](./skills/pptfast/SKILL.md) is a self-contained Markdown playbook. Reference it from your agent's context (for example `AGENTS.md`) and it teaches the same schema → outline → validate → render loop.
+Name the version. Without it, the install quietly lands on an older release and you miss the newest features. `npm view @liustack/pptfast version` prints the current one. The plugin card shows up as "pptfast", registers the deck-generation skill, and carries the CLI inside its own package. Uninstalling removes the skill with no residue.
 
 ## Quick start
 
