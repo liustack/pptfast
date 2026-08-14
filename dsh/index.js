@@ -518,7 +518,14 @@ export function buildToolDefinitions(ctx, getCore) {
     // Cooperative budget: execute checks exec.signal between pipeline
     // stages (validate → assets → pptx → per-page previews).
     timeoutMs: 180_000,
-    isConcurrencySafe: () => true,
+    // Not parallel-safe on purpose: the output paths derive from
+    // ir.filename, so two parallel calls with the same filename (say, two
+    // theme candidates of one deck) would write the same .pptx and preview
+    // directory and at least one reported result would be a lie. DSH's
+    // scheduler only parallelizes calls that return exactly `true`, so
+    // `false` serializes every render and keeps each result truthful.
+    // (pptfast_validate / pptfast_themes write nothing and stay parallel.)
+    isConcurrencySafe: () => false,
     presentCall: (args) => ({
       card: 'generic',
       title: 'Render pptfast deck to PPTX',
