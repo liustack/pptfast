@@ -38,10 +38,10 @@ skill 依赖 CLI 驱动，请一并安装 CLI（`npm install -g @liustack/pptfas
 pptfast 同时是一个 DeepSeek Harness（DSH）插件，一条命令装进 DSH profile：
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.17.0
+npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
 ```
 
-版本号要点名：dsh 用 pnpm 11 装插件，pnpm 11 默认压住 24 小时内发布的版本，`@latest` 会被静默解析到更旧的一版。对本包来说旧版是 0.16.0，里面根本没有 dsh 插件入口。点名版本号属于明确指定，pnpm 会照装。`npm view @liustack/pptfast version` 可查当前版本。
+版本号要点名：dsh 用 pnpm 11 装插件，pnpm 11 默认压住 24 小时内发布的版本，`@latest` 会被静默解析到更旧的一版，拿不到最新的插件能力（0.17.0 之前的版本更是完全没有插件入口）。点名版本号属于明确指定，pnpm 会照装。`npm view @liustack/pptfast version` 可查当前版本。
 
 插件卡片显示为「pptfast」，把同一套生成流程的 skill 注册进 DSH 的技能系统。skill 驱动的 CLI 就在插件包自己里面，那里不需要单独装 CLI。卸载插件即移除技能，不留残余。
 
