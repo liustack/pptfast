@@ -161,6 +161,30 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(zh, "Brand-themes sections' pptfast command lines diverge between EN and ZH").toEqual(en)
   })
 
+  it("both files carry the serve review-loop section with the same command lines", () => {
+    // DSH plugin v1 wave: the live-review loop (`pptfast serve --no-open`,
+    // report the URL, stop the job) must exist in both files with identical
+    // command lines — same structural guard as the Brand-themes test above.
+    const sectionAfter = (text: string, heading: RegExp): string => {
+      const m = text.match(heading)
+      expect(m, `heading ${heading} missing`).toBeTruthy()
+      const rest = text.slice(m!.index! + m![0].length)
+      const next = rest.search(/^##+ /m)
+      return next === -1 ? rest : rest.slice(0, next)
+    }
+    const commands = (section: string) =>
+      [...section.matchAll(/^pptfast .+$/gm)].map((mm) => mm[0].replace(/\s+#.*$/, "").trimEnd())
+    const en = sectionAfter(read(EN_REL), /^### Live review loop with `pptfast serve`$/m)
+    const zh = sectionAfter(read(ZH_REL), /^### 用 `pptfast serve` 做实时审阅循环$/m)
+    expect(commands(en).length, "SKILL.md serve section has no pptfast command lines").toBeGreaterThan(0)
+    expect(commands(zh), "serve sections' pptfast command lines diverge between EN and ZH").toEqual(commands(en))
+    for (const section of [en, zh]) {
+      expect(section, "the serve section must insist on --no-open").toContain("--no-open")
+      expect(section, "the serve section must name the localhost URL to report").toContain("http://127.0.0.1:4400")
+      expect(section, "the serve section must route annotations through revision-request.json").toContain("revision-request.json")
+    }
+  })
+
   it("both files have the same number of ### Phase N sections", () => {
     const phaseHeadings = (text: string) => text.match(/^### Phase \d+/gm) ?? []
     const en = phaseHeadings(read(EN_REL))

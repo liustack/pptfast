@@ -16,6 +16,8 @@ pptfast --version || npm install -g @liustack/pptfast
 pptfast check-update   # stay current — the schema and themes evolve
 ```
 
+如果 harness 注册了 pptfast 工具（`pptfast_validate`、`pptfast_render`、`pptfast_themes`——DSH 插件就会注册），IR 校验、渲染、主题清单这三件事直接调用工具，不走对应的 CLI 命令。CLI 仍是后备路径，并且继续承担其余一切（schema、spec/assemble、audit、preview、serve、品牌提取）。
+
 ## 工作流程
 
 六个阶段：读词汇表、定 spec 并确认、分批填页面、渲染、自查、修订。对于很小的 deck（页数屈指可数），可以跳过 spec，直接写一个单独的 IR 文件，用 `pptfast validate` 校验——下文所有内容依然适用，只需把「deck 项目目录」读作「这个 IR 文件」，并跳过阶段二的 spec 步骤。
@@ -100,6 +102,16 @@ pptfast preview deck-dir/ -o preview/ --html
 ```
 
 为每张 slide 各写一个独立 SVG，外加一个自包含的 `preview.html`，永远不受占位页拦截。交付之前自己读几个 SVG（它们就是纯文本文件），核对 layout 与密度是否合理，图片较多的 deck 尤其要看——把 `preview.html`（缩略图条、键盘翻页、占位页角标）交给用户自己看，而不是代替这一步。所有页面都填完时，`preview.html` 还会叠加同一份 `audit` 检查结果（每页一个角标 + 一个 findings 面板），让审查者不用打开终端就能看到问题——deck 里如果还有占位页，则改为显示一行「audit skipped」的提示。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`——只读，从不直接改动 deck 本身——等它交回给你时，走阶段六的流程处理。
+
+### 用 `pptfast serve` 做实时审阅循环
+
+需要来回多轮审阅时，把同一份 preview 作为实时页面架起来，而不是交付一个静态文件。用后台任务的方式启动它（在 DSH 里遵循后台任务的规矩，记下 job id，方便之后停掉）：
+
+```bash
+pptfast serve deck-dir/ --no-open
+```
+
+必须带 `--no-open`——agent 环境里没有可以自动打开的浏览器——并把它打印的 localhost URL（默认 `http://127.0.0.1:4400`）原样报给用户，让用户自己打开。之后你每保存一次文件，页面就实时重渲染。用户在浏览器里给页面写批注并提交后，deck 目录里会生成一份 `revision-request.json`：读它，走阶段六的修订流程处理，改完的结果会直接出现在用户已打开的标签页里。审阅轮结束时停掉 serve 进程（kill 掉那个后台任务）——任务结束后绝不留着它继续跑。
 
 ### Phase 6 — 修订：改一页，重新 assemble
 
