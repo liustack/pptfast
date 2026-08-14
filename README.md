@@ -29,21 +29,13 @@
 
 **🎯 Deterministic to the byte.** Rendering is a pure function: the same IR and seed pick the same layouts, draw the same geometry, and write the same bytes to disk. Preview never disagrees with the final render, and editing one page cannot reshuffle the rest of the deck.
 
-**✏️ Every shape stays editable.** Native DrawingML out, not a picture pasted onto a slide: headings, bullets, chart bars, and table cells are real PowerPoint objects you can select, restyle, and retype. 17 built-in themes, and `pptfast brand extract` pulls your company's colors and fonts out of a `.pptx`/`.potx`/`.thmx` entirely locally.
+**✏️ Every shape stays editable.** Native DrawingML out, not a picture pasted onto a slide: headings, bullets, chart bars, and table cells are real PowerPoint objects you can select, restyle, and retype. Chart and table figures are the one exception, drawn as shapes rather than live data, so new numbers mean editing the IR and rendering again. 17 built-in themes, and `pptfast brand extract` pulls your company's colors and fonts out of a `.pptx`/`.potx`/`.thmx` entirely locally.
 
 **🔌 Installs into the agent you already use.** One command puts pptfast into DeepSeek Harness, Claude Code, or any agent that reads a skill folder (Codex and friends), and it knows how to build a deck the moment it lands.
 
 **🔁 A review loop built for agents.** schema → validate → audit → render, with errors that carry page numbers and copy-paste fixes. `pptfast serve` opens a live preview that reloads on every change, and reviewer annotations land back on disk as `revision-request.json` for the agent to act on.
 
 **🔒 Zero config, fully local.** No API key, no account, no network at render time: Node >= 18 is the whole prerequisite.
-
-## Why
-
-Freeform SVG/HTML-to-PPTX pipelines have a high ceiling and an unstable floor: a weak model, or a strong one having an off turn, produces a deck that is broken, off-brand, or unreadable.
-
-pptfast hands the model a fixed vocabulary instead of a blank canvas. You (or your agent) write an IR — a JSON file describing the whole deck — and pptfast picks the layouts, applies one of 17 themes, and writes native DrawingML: PowerPoint's own shape format, where every element is directly editable in PowerPoint.
-
-Charts and tables are drawn as shapes and text. PowerPoint cannot re-plot them from new numbers — to change the numbers, edit the IR and render again. Everything else on a slide is a normal PowerPoint object: select it, restyle it, retype it.
 
 ## Install
 
@@ -92,7 +84,7 @@ The plugin card shows up as "pptfast" and registers the deck-generation skill in
 
 ## Quick start
 
-Write a minimal deck, then run the validate → render → preview loop:
+An IR is one JSON file describing the whole deck. Write a minimal one, then run the validate → render → preview loop:
 
 ```bash
 cat > deck.json <<'EOF'

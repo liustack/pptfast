@@ -29,21 +29,13 @@
 
 **🎯 字节级确定性。** 渲染是纯函数：同一份 IR、同一个 seed，选出同样的版式、画出同样的几何、落盘同样的字节。预览与最终渲染永不打架，改一页也不会搅动其余页面。
 
-**✏️ 每个图形都保持可编辑。** 输出原生 DrawingML，不是贴上去的一张图：标题、要点、图表柱子、表格单元格都是 PowerPoint 里可选中、可改样式、可改文字的真实对象。17 个内置主题，`pptfast brand extract` 还能完全在本地从 `.pptx`/`.potx`/`.thmx` 里抽出你公司的配色与字体。
+**✏️ 每个图形都保持可编辑。** 输出原生 DrawingML，不是贴上去的一张图：标题、要点、图表柱子、表格单元格都是 PowerPoint 里可选中、可改样式、可改文字的真实对象。只有图表和表格里的数字是例外，它们是画出来的图形而不是活数据，换数字要改 IR 重新渲染。17 个内置主题，`pptfast brand extract` 还能完全在本地从 `.pptx`/`.potx`/`.thmx` 里抽出你公司的配色与字体。
 
 **🔌 装进你正在用的 agent。** 一条命令装进 DeepSeek Harness、Claude Code，或任何读 skill 文件夹的 agent（Codex 等），装完就会用。
 
 **🔁 为 agent 而生的审阅回路。** schema → validate → audit → render，报错带页码和可直接照抄的修法。`pptfast serve` 打开随改动自动刷新的实时预览，审阅者的批注直接落盘为 `revision-request.json`，交回 agent 处理。
 
 **🔒 零配置、全本地。** 不要 API key、不用注册、渲染时不联网：唯一前置只有 Node >= 18。
-
-## 为什么
-
-自由绘制 SVG/HTML 再转 PPTX 的路子上限很高，下限很不稳：弱模型（或状态不好的强模型）画出来的往往版式错乱、脱离品牌规范，甚至没法读。
-
-pptfast 不给模型一张白纸，只给一套固定词汇。你（或你的 agent）写一份 IR，也就是一份描述整份 PPT 内容的 JSON 文件，pptfast 负责选版式、套上 17 个主题之一，输出原生 DrawingML，也就是 PowerPoint 自己的图形格式，每个元素在 PPT 里都能直接编辑。
-
-图表和表格是用图形和文字画出来的，PowerPoint 不能靠新数字让它们重画。要改数字，改 IR 重新渲染。页面上其余元素都是普通 PowerPoint 对象：能选中、能改样式、能改文字。
 
 ## 安装
 
@@ -92,7 +84,7 @@ npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
 
 ## 快速开始
 
-写一个最小 deck，跑一遍 validate → render → preview 回路：
+IR 就是一份描述整份 PPT 内容的 JSON 文件。写一个最小的，跑一遍 validate → render → preview 回路：
 
 ```bash
 cat > deck.json <<'EOF'
