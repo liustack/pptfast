@@ -7,14 +7,25 @@ description: Generate a native, editable PPTX deck from an outline, notes, or a 
 
 pptfast turns a JSON IR (intermediate representation) into a native DrawingML `.pptx` — every shape stays editable in PowerPoint. You own the content model. The tool owns layout, style, and motion. You never draw SVG or position anything: pick from a controlled vocabulary and let the validate gate catch what will not fit.
 
-## Prerequisites
+## Run it
+
+Everything in this playbook runs through the CLI: schema, spec/assemble, validate, render, audit, preview, serve, brand extract. Every one of those commands goes through the launcher bundled with this skill, which resolves a working runtime for you. Replace `<skill-dir>` with the directory this SKILL.md lives in:
 
 ```bash
-pptfast --version || npm install -g @liustack/pptfast
-pptfast check-update   # stay current — the schema and themes evolve
+bash <skill-dir>/scripts/run.sh <args>                                       # macOS / Linux
+powershell -ExecutionPolicy Bypass -File <skill-dir>\scripts\run.ps1 <args>  # Windows
 ```
 
-Everything in this playbook runs through the CLI: schema, spec/assemble, validate, render, audit, preview, serve, brand extract.
+It tries a compatible `pptfast` on `PATH` first, then `npx`, then `bunx`, forwarding your arguments and its exit code unchanged. Nothing to install first, and the version it runs is pinned to this skill. Exit 78 means no runtime at all: relay the `nextSteps` from its stderr JSON instead of retrying.
+
+Wherever this playbook writes `pptfast <args>`, run it through that launcher.
+
+If your harness forbids running scripts, work down the same order by hand and use the first line that applies:
+
+1. A `pptfast` on `PATH` at the same major version as the pin below and no older: `pptfast <args>`.
+2. Otherwise, if `npx` exists: `npx --yes --package @liustack/pptfast@0.18.0 pptfast <args>`.
+3. Otherwise, if `bunx` exists: `bunx --bun @liustack/pptfast@0.18.0 <args>`.
+4. Otherwise tell the user no JavaScript runtime was found, and that installing Node 22.19+ (https://nodejs.org) or Bun (https://bun.sh) is the next step. Do not report pptfast itself as broken.
 
 ## Workflow
 

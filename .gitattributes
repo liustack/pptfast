@@ -1,0 +1,10 @@
+# Normalize line endings to LF on checkout across every platform. The skill
+# launcher (skills/pptfast/scripts/run.sh) is the reason this matters: a
+# checkout that converts it to CRLF ships a shell script no POSIX shell can
+# run, and the failure looks like a broken skill rather than a line ending.
+* text=auto eol=lf
+
+# Image assets are binary and must never be line-ending normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary

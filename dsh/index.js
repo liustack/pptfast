@@ -75,7 +75,7 @@ export function dshRuntimePreamble(cliPath) {
     `node "${cliPath}" <args>`,
     '```',
     '',
-    'That CLI ships inside this plugin\'s own package, version-locked to this skill — skip the "Prerequisites" install step below. Only if that file is missing, fall back to `npx -y @liustack/pptfast <args>`.',
+    'That CLI ships inside this plugin\'s own package, version-locked to this skill, so it wins over the "Run it" section below: ignore the launcher scripts there, this line is the mapping. Only if that file is missing, fall back to `npx -y @liustack/pptfast <args>`.',
   ].join('\n')
 }
 

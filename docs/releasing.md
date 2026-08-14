@@ -35,11 +35,19 @@ pnpm release:version   # changeset version + sync src/version.ts + stamp the doc
 pnpm check             # guard tests confirm every copy of the version agrees
 ```
 
-`release:version` also runs `scripts/stamp.mts`, which rewrites every pinned
-install command in the repo's markdown (the dsh `plugin add` lines in the
-READMEs and `INSTALL.md`) to the new version. The drift test
-(`scripts/stamp.test.mts`, part of `pnpm check`) reads each command back, so
-a forgotten stamp fails the release before it ships stale numbers.
+`release:version` also runs `scripts/stamp.mts`, which rewrites two kinds of
+pinned version to the new one:
+
+- **The skill launchers.** `PINNED` in `skills/pptfast/scripts/run.sh` and
+  `$Pinned` in `run.ps1`. This is the one that matters most: on a machine with
+  no `pptfast` on `PATH`, that constant decides which release actually runs
+  when a harness invokes the skill.
+- **Every pinned install command in the repo's markdown** (the dsh
+  `plugin add` lines in the READMEs and `INSTALL.md`, the no-script fallback
+  commands in both SKILL files).
+
+The drift test (`scripts/stamp.test.mts`, part of `pnpm check`) reads each one
+back, so a forgotten stamp fails the release before it ships stale numbers.
 
 Review `CHANGELOG.md`, commit, merge to `main`, then tag the merge:
 

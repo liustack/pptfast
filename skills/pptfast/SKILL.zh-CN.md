@@ -9,14 +9,25 @@ mirror_of: skills/pptfast/SKILL.md
 
 pptfast 把一份 JSON IR（intermediate representation，中间表示）转换成原生 DrawingML 格式的 `.pptx`——每个图形在 PowerPoint 里都保持可编辑。内容模型由你掌控，layout、style 与动效由工具掌控。你从不绘制 SVG，也从不给任何东西定位：从受控词汇表里挑选，装不下的内容交给 validate 关卡去拦。
 
-## 准备工作
+## 怎么跑
+
+这份操作手册里的每一步都走 CLI：schema、spec/assemble、validate、render、audit、preview、serve、品牌提取。这些命令一律通过本 skill 自带的启动器执行，由它替你解析出一个可用的运行时。把 `<skill-dir>` 换成这份 SKILL.md 所在的目录：
 
 ```bash
-pptfast --version || npm install -g @liustack/pptfast
-pptfast check-update   # stay current — the schema and themes evolve
+bash <skill-dir>/scripts/run.sh <args>                                       # macOS / Linux
+powershell -ExecutionPolicy Bypass -File <skill-dir>\scripts\run.ps1 <args>  # Windows
 ```
 
-这份操作手册里的每一步都走 CLI：schema、spec/assemble、validate、render、audit、preview、serve、品牌提取。
+它按顺序尝试：PATH 上版本兼容的 `pptfast`、`npx`、`bunx`，参数与退出码原样透传。不需要预先安装任何东西，跑到的版本被钉死在这份 skill 上。退出码 78 表示没有任何可用运行时：把它 stderr 里 JSON 的 `nextSteps` 转告用户，不要重试。
+
+下文凡是写 `pptfast <args>` 的地方，都通过这个启动器执行。
+
+如果你的 harness 不允许执行脚本，就按同样的顺序自己判断，用第一条成立的：
+
+1. PATH 上有 `pptfast`，且主版本号与下面的钉版本相同、版本不低于它：`pptfast <args>`。
+2. 否则，有 `npx` 就用：`npx --yes --package @liustack/pptfast@0.18.0 pptfast <args>`。
+3. 否则，有 `bunx` 就用：`bunx --bun @liustack/pptfast@0.18.0 <args>`。
+4. 都没有就告诉用户机器上找不到 JavaScript 运行时，下一步是装 Node 22.19+（https://nodejs.org）或 Bun（https://bun.sh）。不要说成是 pptfast 本身坏了。
 
 ## 工作流程
 

@@ -1,5 +1,6 @@
 /**
- * Version stamping for the pinned install commands in the docs.
+ * Version stamping for every place that names a version: the skill launchers
+ * and the pinned install commands in the docs.
  *
  * The dsh install command must name a version: dsh installs plugins through
  * pnpm 11, which holds back anything published in the last 24 hours and
@@ -11,8 +12,12 @@
  * same occurrences back and asserts each one matches. Keeping the read and
  * the write in one module is what keeps the two in step.
  *
- * Files are discovered by scanning every markdown file rather than by a fixed
- * list, so a new doc with a pinned command is covered the day it appears.
+ * Markdown files are discovered by scanning rather than by a fixed list, so a
+ * new doc with a pinned command is covered the day it appears. The launchers
+ * (`skills/pptfast/scripts/run.sh` and `run.ps1`) carry the same version in a
+ * shell and a PowerShell constant, and matter more than any doc line: the
+ * pinned version there is what actually runs when a harness invokes the skill
+ * without a `pptfast` on PATH. They are stamped by exact line pattern.
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -65,6 +70,62 @@ export function readStampedVersions(root = repoRoot): { file: string; version: s
   return entries
 }
 
+/**
+ * The launcher constants: one line each, the version captured in group 1.
+ * `skills/pptfast/scripts/run.sh` and `run.ps1` must agree with package.json
+ * or the skill runs a version this repo never shipped.
+ */
+export function launcherTargets(root = repoRoot): {
+  name: string
+  file: string
+  pattern: RegExp
+  format: (version: string) => string
+}[] {
+  const scripts = join(root, "skills", "pptfast", "scripts")
+  return [
+    {
+      name: "run.sh PINNED",
+      file: join(scripts, "run.sh"),
+      pattern: /^PINNED="(\d+\.\d+\.\d+)"$/m,
+      format: (version) => `PINNED="${version}"`,
+    },
+    {
+      name: "run.ps1 $Pinned",
+      file: join(scripts, "run.ps1"),
+      pattern: /^\$Pinned = '(\d+\.\d+\.\d+)'$/m,
+      format: (version) => `$Pinned = '${version}'`,
+    },
+  ]
+}
+
+/** The version each launcher currently carries, for the drift test. */
+export function readLauncherVersions(root = repoRoot): { name: string; file: string; version: string | null }[] {
+  return launcherTargets(root).map((target) => ({
+    name: target.name,
+    file: target.file,
+    version: readFileSync(target.file, "utf8").match(target.pattern)?.[1] ?? null,
+  }))
+}
+
+/** Rewrite both launcher constants to the package version. */
+export function stampLaunchers(root = repoRoot): { version: string; stamped: string[] } {
+  const version = readPackageVersion(root)
+  const stamped: string[] = []
+  for (const target of launcherTargets(root)) {
+    const before = readFileSync(target.file, "utf8")
+    if (!target.pattern.test(before)) {
+      // A launcher whose constant line changed shape would otherwise ship
+      // silently unstamped, which is the one failure this module exists to
+      // prevent.
+      throw new Error(`no version line to stamp in ${target.file} — check ${target.name}`)
+    }
+    const after = before.replace(target.pattern, target.format(version))
+    if (after !== before) writeFileSync(target.file, after)
+    stamped.push(target.name)
+  }
+  return { version, stamped }
+}
+
 /** Rewrite every pinned occurrence to the package version. */
 export function stampDocs(root = repoRoot): { version: string; occurrences: number } {
   const version = readPackageVersion(root)
@@ -87,5 +148,6 @@ export function stampDocs(root = repoRoot): { version: string; occurrences: numb
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { version, occurrences } = stampDocs()
-  console.log(`stamped ${occurrences} pinned install command(s) to ${version}`)
+  const { stamped } = stampLaunchers()
+  console.log(`stamped ${occurrences} pinned install command(s) and ${stamped.length} launcher constant(s) to ${version}`)
 }
