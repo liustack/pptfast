@@ -4,6 +4,8 @@
 
 <p align="center"><b>PPT 不用等，马上就好。</b></p>
 
+<p align="center">🥇 <b>全网第一个 DeepSeek Harness PPT 生成插件</b> 🥇</p>
+
 <p align="center">
   <a href="./README.md">English</a> ·
   <a href="./INSTALL.md">安装（转发给你的 AI）</a> ·
