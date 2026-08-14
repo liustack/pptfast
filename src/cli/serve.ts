@@ -38,10 +38,10 @@
  * (`./commands.ts`) already resolved `target` to — rather than this module
  * re-deriving the bare-name/`decksDir` resolution a second time: a deck
  * project directory watches `deck.spec.json` + `pages/` + `assets/`
- * (non-recursive `fs.watch` on each — `{recursive: true}` is macOS/Windows
- * only below Node 20 (ENOSYS on Linux otherwise), and this repo's floor is
- * Node 18, `package.json#engines` — three flat, non-nested directories cover
- * the whole deck-project layout anyway, `docs/deck-projects.md`); a bare IR
+ * (non-recursive `fs.watch` on each — three flat, non-nested directories
+ * cover the whole deck-project layout anyway, `docs/deck-projects.md`, so
+ * `{recursive: true}` buys nothing here even now that the repo's floor
+ * (Node 22.19, `package.json#engines`) has it on every platform); a bare IR
  * target watches that one file. Multiple `fs.watch` events firing for a
  * single logical save (editors that write via a temp file + rename, or
  * saving several page files in one "save all") are coalesced by a 200ms
@@ -606,19 +606,13 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
     // ever accepted has actually closed, so a lingering keep-alive socket
     // can otherwise leave it hanging indefinitely (S1 review carry).
     // `closeIdleConnections`/`closeAllConnections` ("http: added connection
-    // closing methods", nodejs/node#42812) exist since Node 18.2.0 — this
-    // repo's actual floor is 18.0.0 (package.json#engines: ">=18"), hence
-    // the `typeof` guard rather than a direct call. Calling both
-    // unconditionally on every Node 18+ patch is deliberate, not redundant
-    // belt-and-suspenders: Node's own `close()` briefly, accidentally
-    // auto-invoked `closeIdleConnections()` internally on some Node 18.x
-    // releases — a v19-only behavior mistakenly backported and later
-    // reverted (nodejs/node#52336, landed 18.20.3: "closeIdleConnections
-    // should not be called while server.close in node v18. This behavior is
-    // for node v19 and above") — so whether `close()` alone is already
-    // sufficient varies by exact patch and cannot be assumed; calling both
-    // methods explicitly here is correct on every patch, a harmless no-op
-    // wherever `close()` already handled it.
+    // closing methods", nodejs/node#42812) exist on every Node this repo
+    // supports (floor 22.19, package.json#engines), so the `typeof` guard is
+    // only there for a non-node http server double passed in by a test.
+    // Calling both explicitly rather than trusting `close()` is deliberate:
+    // whether `close()` alone releases idle keep-alive sockets has varied by
+    // release (nodejs/node#52336), and calling both is correct either way, a
+    // harmless no-op wherever `close()` already handled it.
     if (typeof server.closeIdleConnections === "function") server.closeIdleConnections()
     if (typeof server.closeAllConnections === "function") server.closeAllConnections()
     await new Promise<void>((resolveClose, rejectClose) => {

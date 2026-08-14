@@ -35,7 +35,7 @@
 
 **🔁 A review loop built for agents.** schema → validate → audit → render, with errors that carry page numbers and copy-paste fixes. `pptfast serve` opens a live preview that reloads on every change, and reviewer annotations land back on disk as `revision-request.json` for the agent to act on.
 
-**🔒 Zero config, fully local.** No API key, no account, no network at render time: Node >= 18 is the whole prerequisite.
+**🔒 Zero config, fully local.** No API key, no account, no network at render time. Node 22.19+ (or Bun) is the whole prerequisite.
 
 ## Install
 
@@ -43,7 +43,7 @@
 
 > Install the pptfast deck skill following https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md, then run the health check and tell me the result.
 
-There is no step 2. pptfast renders entirely locally: no API key, no account, nothing to configure. The only prerequisite is Node >= 18.
+There is no step 2. pptfast renders entirely locally: no API key, no account, nothing to configure. The only prerequisite is Node 22.19+ (or Bun).
 
 ### Manual install
 
@@ -52,7 +52,7 @@ npm install -g @liustack/pptfast
 pptfast --help
 ```
 
-Node >= 18. Or build from source: `git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`.
+Node 22.19+ or Bun. Or build from source: `git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`.
 
 ### As a DSH plugin
 

@@ -7,7 +7,7 @@ Linux). A Windows note follows each block that needs one.
 
 There is nothing to configure. pptfast renders entirely locally: no API key,
 no account, no engine to set up, no network calls at render time. The only
-prerequisite is Node >= 18.
+prerequisite is Node 22.19+ (or Bun).
 
 ## Step 0: are you inside DeepSeek Harness (dsh)?
 
@@ -61,7 +61,7 @@ This command is deliberately unpinned: plain npm has no release-age gate, so
 `latest` here really is the current release.
 
 **If it fails:**
-- `node: command not found`, or `node --version` prints something below 18 ->
+- `node: command not found`, or `node --version` prints something below 22.19 ->
   install Node from [nodejs.org](https://nodejs.org) (or via nvm), open a new
   shell, re-run.
 - `EACCES` or another permission error on the global install -> do not

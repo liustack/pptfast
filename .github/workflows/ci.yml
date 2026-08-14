@@ -2,10 +2,9 @@
 # On main pushes, a second job also runs the full `pnpm e2e` chain.
 #
 # Version alignment:
-# - package.json `engines` says node >=18, but vitest 4 (a devDependency)
-#   requires ^20.0.0 || ^22.0.0 || >=24.0.0 — so 20 is the lowest version this
-#   repo's own test runner can honestly exercise. The matrix covers that floor
-#   (20) plus the current LTS line (22).
+# - package.json `engines` says node >=22.19, so the matrix runs the LTS line
+#   that floor sits on (22) and the next one (24). Nothing below 22 is tested
+#   because nothing below 22 is supported.
 # - package.json has no `packageManager` field. The lockfile is
 #   lockfileVersion 9.0 (pnpm 9/10 format) and the repo is developed with
 #   pnpm 10, so pnpm is pinned to major 10 here. If a `packageManager` field
@@ -23,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20, 22]
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

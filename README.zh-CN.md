@@ -35,7 +35,7 @@
 
 **🔁 为 agent 而生的审阅回路。** schema → validate → audit → render，报错带页码和可直接照抄的修法。`pptfast serve` 打开随改动自动刷新的实时预览，审阅者的批注直接落盘为 `revision-request.json`，交回 agent 处理。
 
-**🔒 零配置、全本地。** 不要 API key、不用注册、渲染时不联网：唯一前置只有 Node >= 18。
+**🔒 零配置、全本地。** 不要 API key、不用注册、渲染时不联网。唯一前置是 Node 22.19+（或 Bun）。
 
 ## 安装
 
@@ -43,7 +43,7 @@
 
 > 按照 https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md 安装 pptfast deck 技能，装完跑一遍健康检查，把结果告诉我。
 
-没有第二步。pptfast 完全在本地渲染：不要 API key、不用注册、无需任何配置，唯一前置是 Node >= 18。
+没有第二步。pptfast 完全在本地渲染：不要 API key、不用注册、无需任何配置，唯一前置是 Node 22.19+（或 Bun）。
 
 ### 手动安装
 
@@ -52,7 +52,7 @@ npm install -g @liustack/pptfast
 pptfast --help
 ```
 
-需要 Node >= 18。也可从源码构建：`git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`。
+需要 Node 22.19+ 或 Bun。也可从源码构建：`git clone https://github.com/liustack/pptfast.git && cd pptfast && pnpm install && pnpm build`。
 
 ### 作为 DSH 插件
 
