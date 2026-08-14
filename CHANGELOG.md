@@ -1,5 +1,11 @@
 # @liustack/pptfast
 
+## 0.19.2
+
+### Patch Changes
+
+- README: "Make your deck in minutes, not hours." tagline and the first-DSH-deck-plugin honor line, both languages.
+
 ## 0.19.1
 
 ### Patch Changes

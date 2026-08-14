@@ -21,7 +21,7 @@ set -eu
 # package.json version, and `pnpm release:version` rewrites it on every bump.
 PKG="@liustack/pptfast"
 BIN="pptfast"
-PINNED="0.19.1"
+PINNED="0.19.2"
 # ------------------------------------------------------------------------------
 
 # Split "X.Y.Z" (extra suffix ignored) into the globals _MAJ, _MIN, _PAT.
