@@ -9,11 +9,12 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "isolatedModules": true,
-    // Scoped to one import: tests/bench/score.test.ts's `from "./score.mts"` (a
-    // static .mts import, TS5097 without this flag). Emit-inert for the
+    // Scoped to the .mts test imports: tests/bench/score.test.ts's
+    // `from "./score.mts"` and scripts/stamp.test.mts's `from "./stamp.mts"`
+    // (static .mts imports, TS5097 without this flag). Emit-inert for the
     // shipped build — tsc runs noEmit here, and tsup's entry graph never
-    // walks into tests/bench/, so this never reaches the bundler either. Not
-    // house style for extension-qualified imports generally.
+    // walks into tests/bench/ or scripts/, so this never reaches the bundler
+    // either. Not house style for extension-qualified imports generally.
     "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,

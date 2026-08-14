@@ -43,7 +43,7 @@
     "bench:score": "tsx tests/bench/score.mts",
     "docs:list": "node scripts/docs-list.js",
     "prepublishOnly": "pnpm check && pnpm e2e",
-    "release:version": "changeset version && tsx scripts/sync-version.mts",
+    "release:version": "changeset version && tsx scripts/sync-version.mts && tsx scripts/stamp.mts",
     "bench:run": "tsx tests/bench/run.mts",
     "bench:agentic": "tsx tests/bench/run-agentic.mts"
   },

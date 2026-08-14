@@ -32,9 +32,15 @@ one correct bump (two minors do not become two bumps).
 On a release branch off `main`:
 
 ```bash
-pnpm release:version   # changeset version + sync the two mirrors
+pnpm release:version   # changeset version + sync the two mirrors + stamp the docs
 pnpm check             # guard tests confirm the three-way version agreement
 ```
+
+`release:version` also runs `scripts/stamp.mts`, which rewrites every pinned
+install command in the repo's markdown (the dsh `plugin add` lines in the
+READMEs and `INSTALL.md`) to the new version. The drift test
+(`scripts/stamp.test.mts`, part of `pnpm check`) reads each command back, so
+a forgotten stamp fails the release before it ships stale numbers.
 
 Review `CHANGELOG.md`, commit, merge to `main`, then tag the merge:
 
