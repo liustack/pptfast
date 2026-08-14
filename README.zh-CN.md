@@ -31,7 +31,7 @@
 
 **✏️ 每个图形都保持可编辑。** 输出原生 DrawingML，不是贴上去的一张图：标题、要点、图表柱子、表格单元格都是 PowerPoint 里可选中、可改样式、可改文字的真实对象。17 个内置主题，`pptfast brand extract` 还能完全在本地从 `.pptx`/`.potx`/`.thmx` 里抽出你公司的配色与字体。
 
-**🔌 DSH 插件，三个进程内工具。** 一条钉了版本号的命令装进 DeepSeek Harness：`pptfast_validate`、`pptfast_render`、`pptfast_themes` 直调包内渲染核心，不开子进程，也不用单独装 CLI。同一个仓库还是 Claude Code 插件，Codex 等则用纯 skill 文件夹。
+**🔌 装进你正在用的 agent。** 一条命令装进 DeepSeek Harness、Claude Code，或任何读 skill 文件夹的 agent（Codex 等），装完就会用。
 
 **🔁 为 agent 而生的审阅回路。** schema → validate → audit → render，报错带页码和可直接照抄的修法。`pptfast serve` 打开随改动自动刷新的实时预览，审阅者的批注直接落盘为 `revision-request.json`，交回 agent 处理。
 
@@ -85,14 +85,6 @@ npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
 版本号要点名。不点名的话，安装会静默落到一个更旧的版本，拿不到最新的插件能力。`npm view @liustack/pptfast version` 可查当前版本。
 
 插件卡片显示为「pptfast」，把整套生成流程的 skill 注册进 DSH 的技能系统。skill 驱动的 CLI 就在插件包自己里面，不需要再装别的。卸载插件即移除技能，不留残余。
-
-插件还注册了三个模型可以直接调用的工具，模型不必碰终端就能校验和渲染：
-
-| 工具 | 入参 | 出参 |
-|---|---|---|
-| `pptfast_validate` | deck IR JSON | 页数 + 主题，或一份带路径标注的简短修正清单 |
-| `pptfast_render` | deck IR JSON（可选 `theme`/`seed`/`out_dir`） | 工作区里的 `.pptx` + 每页一张预览 SVG（模型路由接受图片时，首页预览还会以附件进会话） |
-| `pptfast_themes` | 无 | 17 个内置主题，各配一句气质描述 |
 
 ### 其他 agent（Codex 等）
 

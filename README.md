@@ -31,7 +31,7 @@
 
 **✏️ Every shape stays editable.** Native DrawingML out, not a picture pasted onto a slide: headings, bullets, chart bars, and table cells are real PowerPoint objects you can select, restyle, and retype. 17 built-in themes, and `pptfast brand extract` pulls your company's colors and fonts out of a `.pptx`/`.potx`/`.thmx` entirely locally.
 
-**🔌 A DSH plugin with three in-process tools.** One pinned command installs it into DeepSeek Harness: `pptfast_validate`, `pptfast_render`, and `pptfast_themes` call the packaged render core directly, no subprocess and no separate CLI install. The same repo is also a Claude Code plugin, and a plain skill folder for Codex and friends.
+**🔌 Installs into the agent you already use.** One command puts pptfast into DeepSeek Harness, Claude Code, or any agent that reads a skill folder (Codex and friends), and it knows how to build a deck the moment it lands.
 
 **🔁 A review loop built for agents.** schema → validate → audit → render, with errors that carry page numbers and copy-paste fixes. `pptfast serve` opens a live preview that reloads on every change, and reviewer annotations land back on disk as `revision-request.json` for the agent to act on.
 
@@ -85,14 +85,6 @@ npx -y @deepseek-ai/dsh plugin --profile web add @liustack/pptfast@0.18.0
 Name the version. Without it, the install quietly lands on an older release and you miss the newest plugin features. `npm view @liustack/pptfast version` prints the current one.
 
 The plugin card shows up as "pptfast" and registers the deck-generation skill into DSH's skill system. The CLI it drives ships inside the plugin package, so there is nothing else to install. Uninstalling the plugin removes the skill with no residue.
-
-The plugin also registers three tools the model calls directly, so it validates and renders without touching the terminal:
-
-| Tool | In | Out |
-|---|---|---|
-| `pptfast_validate` | deck IR JSON | slide count + theme, or a short path-annotated fix list |
-| `pptfast_render` | deck IR JSON (+ optional `theme`/`seed`/`out_dir`) | `.pptx` in the workspace + one preview SVG per page (first page attached into the session when the model route accepts images) |
-| `pptfast_themes` | — | the 17 built-in themes, each with a one-line character note |
 
 ### Other agents (Codex, etc.)
 

@@ -13,9 +13,8 @@ prerequisite is Node >= 18.
 
 If you are, this section is the whole install: stop here and skip steps 1
 and 2. On dsh pptfast is a native plugin, not a skill folder. The plugin
-registers the deck skill plus three model-facing tools (`pptfast_validate`,
-`pptfast_render`, `pptfast_themes`) and ships the CLI inside the plugin
-package, so nothing else needs installing.
+registers the deck skill and ships the CLI inside the plugin package, so
+nothing else needs installing.
 
 You are on dsh if `~/.dsh/` exists, or the conversation runs in the DeepSeek
 Harness web or desktop app. One command installs the plugin:
@@ -30,10 +29,9 @@ holds back anything published in the last 24 hours and silently resolves
 request. `npm view @liustack/pptfast version` prints the current one.
 
 Then tell the user to restart dsh and look at the plugin list: a card named
-"pptfast" means the plugin is live, and the three tools above are available to
-the model. Verify by running the step 3 health check through the tools
-instead of the CLI: pass the minimal deck JSON to `pptfast_validate`, then to
-`pptfast_render`.
+"pptfast" means the plugin is live and the deck skill is registered. Verify by
+running the step 3 health check in the dsh terminal, with `pptfast` replaced
+by the packaged-CLI command the skill's own opening note spells out.
 
 **If it fails:**
 - `dsh` warns `declares no dsh.bundle` -> the release-age gate installed an
@@ -199,10 +197,9 @@ wrote /tmp/pptfast-hello.pptx (3 slides, 23783 bytes)
 the same IR produces the same bytes. A nearby number on another release is
 still a pass.)
 
-On dsh, run the same two checks through the plugin tools: pass the JSON above
-to `pptfast_validate` (expect the slide count and theme back), then to
-`pptfast_render` (expect a `.pptx` in the workspace plus one preview SVG per
-page).
+On dsh, run the same two checks in the terminal, with `pptfast` replaced by
+the packaged-CLI command the registered skill's opening note spells out
+(`node <plugin package>/dist/cli.js`). The expected output is identical.
 
 **If it fails:**
 - `validate` reports errors -> each one carries a page number and a fix. The
