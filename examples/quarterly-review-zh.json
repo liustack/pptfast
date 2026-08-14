@@ -1,0 +1,104 @@
+{
+  "version": "4",
+  "filename": "q2-jingying-huibao",
+  "narrative": "weekly-brief",
+  "theme": { "id": "vermilion" },
+  "meta": { "organization": "云帆科技", "date": "2026-08-15", "confidentiality": "internal" },
+  "seed": 22,
+  "slides": [
+    {
+      "type": "cover",
+      "heading": "二季度经营回顾",
+      "subheading": "收入、成本与下季度重点"
+    },
+    { "type": "chapter", "heading": "业绩总览" },
+    {
+      "type": "content",
+      "heading": "核心指标",
+      "arrangement": "kpi_focus",
+      "components": [
+        {
+          "type": "kpi_cards",
+          "items": [
+            { "value": "4860", "label": "季度营收（万元）", "delta": "up" },
+            { "value": "62%", "label": "毛利率", "delta": "up" },
+            { "value": "318", "label": "付费客户数", "delta": "up" },
+            { "value": "2.1%", "label": "月度流失率", "delta": "down" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "分区域营收",
+      "components": [
+        {
+          "type": "data_table",
+          "columns": [
+            { "key": "region", "label": "区域" },
+            { "key": "revenue", "label": "营收（万元）", "align": "right" },
+            { "key": "yoy", "label": "同比", "align": "right" },
+            { "key": "share", "label": "占比", "align": "right" }
+          ],
+          "rows": [
+            { "cells": { "region": "华东", "revenue": "2,150", "yoy": "+21%", "share": "44%" } },
+            { "cells": { "region": "华南", "revenue": "1,280", "yoy": "+12%", "share": "26%" } },
+            { "cells": { "region": "华北", "revenue": "960", "yoy": "+8%", "share": "20%" } },
+            { "cells": { "region": "其他", "revenue": "470", "yoy": "+35%", "share": "10%" } },
+            { "cells": { "region": "合计", "revenue": "4,860", "yoy": "+17%", "share": "100%" }, "emphasis": "total" }
+          ],
+          "source": "财务系统 2026 年 Q2 结账数据"
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "利润桥：Q1 到 Q2",
+      "components": [
+        {
+          "type": "waterfall",
+          "unit": "万元",
+          "items": [
+            { "label": "Q1 利润", "value": 820, "kind": "total" },
+            { "label": "新签收入", "value": 340 },
+            { "label": "续费扩容", "value": 180 },
+            { "label": "流失", "value": -95 },
+            { "label": "人力成本", "value": -210 },
+            { "label": "Q2 利润", "value": 1035, "kind": "total" }
+          ]
+        }
+      ]
+    },
+    { "type": "chapter", "heading": "下季度重点" },
+    {
+      "type": "content",
+      "heading": "三件必须做成的事",
+      "components": [
+        {
+          "type": "numbered_cards",
+          "items": [
+            { "title": "华北渠道下沉", "text": "复制华东打法，目标新增 40 家客户" },
+            { "title": "续费前置", "text": "到期前 90 天启动续约，压住流失率" },
+            { "title": "毛利守线", "text": "交付标准化，毛利率不低于 60%" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "风险提示",
+      "components": [
+        {
+          "type": "callout",
+          "variant": "warn",
+          "text": "头部三家客户贡献了 28% 营收，任何一家流失都会直接击穿季度目标，续约谈判需要管理层直接介入。"
+        }
+      ]
+    },
+    {
+      "type": "ending",
+      "heading": "谢谢",
+      "subheading": "数据明细见附件"
+    }
+  ]
+}

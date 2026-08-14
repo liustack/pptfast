@@ -1,0 +1,12 @@
+{
+  "components": [
+    {
+      "type": "icon_cards",
+      "items": [
+        { "icon": "globe", "title": "Live embeds", "text": "Review the running app, not a picture of it" },
+        { "icon": "target", "title": "Threaded pins", "text": "Comments anchored to real elements, not pixels" },
+        { "icon": "layers", "title": "Snapshots", "text": "Every review round is versioned and diffable" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "version": "4",
+  "filename": "platform-team-onboarding",
+  "narrative": "training",
+  "theme": { "id": "classroom" },
+  "meta": { "organization": "Relay Engineering", "date": "2026-08-15" },
+  "seed": 5,
+  "slides": [
+    {
+      "type": "cover",
+      "heading": "Platform Team Onboarding",
+      "subheading": "Who we are, what we run, how we ship"
+    },
+    {
+      "type": "content",
+      "heading": "The team",
+      "components": [
+        {
+          "type": "people_cards",
+          "people": [
+            { "name": "Mara Chen", "role": "Engineering Manager", "org": "Platform" },
+            { "name": "Diego Alvarez", "role": "Staff Engineer", "org": "Runtime" },
+            { "name": "Priya Nair", "role": "SRE Lead", "org": "Reliability" },
+            { "name": "Tom Okafor", "role": "Backend Engineer", "org": "Runtime" },
+            { "name": "Lena Fischer", "role": "Backend Engineer", "org": "Delivery" },
+            { "name": "Sam Whitaker", "role": "Intern", "org": "Delivery" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "The stack you'll touch",
+      "components": [
+        {
+          "type": "tag_row",
+          "title": "Core",
+          "items": ["Go", "PostgreSQL", "Kafka", "Kubernetes", "Terraform", "Grafana", "ArgoCD"],
+          "emphasis": "first"
+        },
+        {
+          "type": "paragraph",
+          "text": "Everything deploys through the same pipeline. If a tool is not on this row, ask before adding it."
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "How a change ships",
+      "components": [
+        {
+          "type": "steps",
+          "items": [
+            { "title": "Propose", "text": "One-page design doc in the RFC repo" },
+            { "title": "Review", "text": "Two approvals, one from the owning service" },
+            { "title": "Ship", "text": "Merge triggers staged rollout via ArgoCD" },
+            { "title": "Watch", "text": "You own the dashboards for 24 hours" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "The on-call loop",
+      "components": [
+        {
+          "type": "cycle",
+          "items": [
+            { "label": "Detect", "description": "Alert fires, pager rings" },
+            { "label": "Fix", "description": "Stop the bleeding first" },
+            { "label": "Review", "description": "Blameless postmortem within 48h" },
+            { "label": "Harden", "description": "Action items land in the sprint" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Your first two weeks",
+      "components": [
+        {
+          "type": "timeline",
+          "layout": "vertical",
+          "milestones": [
+            { "date": "Day 1", "title": "Access and pairing buddy assigned" },
+            { "date": "Day 3", "title": "First PR merged", "desc": "A starter ticket, reviewed by your buddy" },
+            { "date": "Week 2", "title": "Shadow on-call" },
+            { "date": "Week 4", "title": "Own a service dashboard" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ending",
+      "heading": "Welcome aboard",
+      "subheading": "Questions go in #platform-help",
+      "layout": "banner-ending"
+    }
+  ]
+}

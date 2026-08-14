@@ -1,0 +1,114 @@
+{
+  "version": "4",
+  "filename": "saas-metrics-review",
+  "narrative": "general",
+  "theme": { "id": "insight" },
+  "meta": { "organization": "Meridian Analytics", "date": "2026-08-15" },
+  "seed": 41,
+  "slides": [
+    {
+      "type": "cover",
+      "heading": "SaaS Metrics Review",
+      "subheading": "Four quarters of growth, in four charts"
+    },
+    {
+      "type": "content",
+      "heading": "Revenue vs target, by quarter",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "axes": { "y_title": "ARR ($M)", "show_grid": true },
+          "series": [
+            {
+              "name": "Actual",
+              "data": [
+                { "x": "Q3 25", "y": 12.1 },
+                { "x": "Q4 25", "y": 13.8 },
+                { "x": "Q1 26", "y": 15.9 },
+                { "x": "Q2 26", "y": 18.4 }
+              ]
+            },
+            {
+              "name": "Target",
+              "data": [
+                { "x": "Q3 25", "y": 12.0 },
+                { "x": "Q4 25", "y": 14.5 },
+                { "x": "Q1 26", "y": 16.0 },
+                { "x": "Q2 26", "y": 17.5 }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Retention is compounding",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "line",
+          "axes": { "x_title": "Month", "y_title": "NRR (%)" },
+          "series": [
+            {
+              "name": "NRR",
+              "data": [
+                { "x": "Mar", "y": 104 },
+                { "x": "Apr", "y": 106 },
+                { "x": "May", "y": 109 },
+                { "x": "Jun", "y": 111 },
+                { "x": "Jul", "y": 114 }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Where revenue comes from",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "donut",
+          "center_total": true,
+          "series": [
+            {
+              "name": "ARR by segment ($M)",
+              "data": [
+                { "x": "Enterprise", "y": 9.6 },
+                { "x": "Mid-market", "y": 5.4 },
+                { "x": "Self-serve", "y": 3.4 }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Feature adoption by cohort",
+      "components": [
+        {
+          "type": "heatmap",
+          "x_labels": ["Dashboards", "Alerts", "API", "Exports"],
+          "y_labels": ["Enterprise", "Mid-market", "Self-serve"],
+          "values": [
+            [92, 81, 74, 66],
+            [85, 62, 41, 58],
+            [71, 35, 12, 44]
+          ],
+          "show_values": true,
+          "x_title": "Feature",
+          "y_title": "Cohort"
+        }
+      ]
+    },
+    {
+      "type": "ending",
+      "heading": "Takeaway",
+      "subheading": "Enterprise adoption drives everything else"
+    }
+  ]
+}

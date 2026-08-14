@@ -1,0 +1,33 @@
+{
+  "components": [
+    {
+      "type": "roadmap",
+      "items": [
+        {
+          "title": "GA launch",
+          "period": "2026 Q4",
+          "rows": [
+            { "label": "SSO", "value": "SAML + OIDC" },
+            { "label": "Pricing", "value": "Per-seat" }
+          ]
+        },
+        {
+          "title": "Enterprise",
+          "period": "2027 Q1",
+          "rows": [
+            { "label": "Audit log", "value": "Full export" },
+            { "label": "Residency", "value": "EU region" }
+          ]
+        },
+        {
+          "title": "Platform",
+          "period": "2027 Q2",
+          "rows": [
+            { "label": "API", "value": "Public v1" },
+            { "label": "Plugins", "value": "Figma, Linear" }
+          ]
+        }
+      ]
+    }
+  ]
+}

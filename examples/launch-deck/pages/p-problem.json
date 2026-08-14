@@ -1,0 +1,13 @@
+{
+  "components": [
+    {
+      "type": "bullets",
+      "items": [
+        "Feedback lives in chat threads",
+        "Screenshots go stale in a day",
+        "Nobody knows which build is current"
+      ]
+    }
+  ],
+  "notes": "Open with the pain: ask the room how many design decisions they made this week against an outdated screenshot."
+}

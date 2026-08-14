@@ -1,0 +1,58 @@
+# npm publish via trusted publishing (OIDC) — skeleton.
+#
+# No npm token, no repository secret: trusted publishing exchanges this
+# workflow's GitHub OIDC identity (the `id-token: write` permission below) for
+# a short-lived npm credential at publish time. Before this workflow can
+# actually publish, someone with npm publish rights must register this exact
+# repo + workflow as a trusted publisher for @liustack/pptfast on npmjs.com
+# (package Settings → Trusted Publisher: GitHub Actions, liustack/pptfast,
+# workflow file publish.yml). Until then a tag push simply fails at the
+# publish step — nothing is released, by design.
+#
+# Trigger: release tags (v1.2.3). The changesets flow stays local/manual
+# (`pnpm release:version`, commit, tag, push the tag).
+#
+# `pnpm publish` is used (not npm) so the pnpm-managed workspace publishes the
+# same artifact contents as a local release would. pnpm 10.13+ supports npm
+# trusted publishing natively, and CI pins pnpm 10 (see ci.yml's version
+# alignment note — same reasoning, no `packageManager` field in package.json).
+#
+# `prepublishOnly` runs `pnpm check && pnpm e2e` automatically at publish
+# time, so LibreOffice is installed here for the same reason as ci.yml's e2e
+# job: without soffice the e2e visual gate self-skips silently, and a release
+# gate should not be quietly weaker than the main-branch gate.
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  # Required for npm trusted publishing — this is what npm exchanges for the
+  # short-lived publish credential.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+      - name: Install LibreOffice (soffice) for prepublishOnly's e2e visual gate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-impress
+      - run: pnpm install --frozen-lockfile
+      # --no-git-checks: the checkout is a detached HEAD at the tag, which
+      # pnpm's default branch check would refuse. prepublishOnly still runs
+      # the full check + e2e gate before anything is uploaded.
+      - run: pnpm publish --access public --no-git-checks
