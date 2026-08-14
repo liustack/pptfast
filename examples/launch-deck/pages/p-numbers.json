@@ -1,0 +1,14 @@
+{
+  "arrangement": "kpi_focus",
+  "components": [
+    {
+      "type": "kpi_cards",
+      "items": [
+        { "value": "42", "label": "beta teams onboarded" },
+        { "value": "2.4", "unit": "days", "label": "faster review cycles", "delta": "up" },
+        { "value": "91%", "label": "weekly active reviewers" }
+      ]
+    }
+  ],
+  "footnote": "8-week private beta, Jun-Aug 2026"
+}

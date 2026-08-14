@@ -1,0 +1,90 @@
+{
+  "version": "4",
+  "filename": "atlas-product-pitch",
+  "narrative": "pitch",
+  "theme": { "id": "tech" },
+  "meta": { "organization": "Atlas Robotics", "date": "2026-08-15" },
+  "seed": 7,
+  "slides": [
+    {
+      "type": "cover",
+      "heading": "Atlas Fulfilment",
+      "subheading": "Warehouse robotics that pays for itself in a year"
+    },
+    {
+      "type": "content",
+      "heading": "Picking is the bottleneck",
+      "components": [
+        {
+          "type": "bullets",
+          "items": [
+            "60% of warehouse labor is picking",
+            "Peak-season hiring misses targets",
+            "Error rates climb with turnover"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "What Atlas delivers",
+      "components": [
+        {
+          "type": "icon_cards",
+          "items": [
+            { "icon": "zap", "title": "Fast", "text": "340 picks per hour, sustained across a full shift" },
+            { "icon": "target", "title": "Accurate", "text": "99.7% pick accuracy, verified by onboard vision" },
+            { "icon": "layers", "title": "Drop-in", "text": "Runs on existing shelving, no facility rebuild" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Proof from the floor",
+      "arrangement": "kpi_focus",
+      "components": [
+        {
+          "type": "kpi_cards",
+          "items": [
+            { "value": "14", "unit": "mo", "label": "average payback period", "delta": "down" },
+            { "value": "3.2", "unit": "x", "label": "throughput vs manual", "delta": "up" },
+            { "value": "11", "label": "sites live in production" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "How we compare",
+      "components": [
+        {
+          "type": "comparison",
+          "columns": ["Atlas", "Legacy AMR", "Manual"],
+          "rows": [
+            { "label": "Picks per hour", "cells": ["340", "180", "105"] },
+            { "label": "Deployment time", "cells": ["2 weeks", "6 months", "n/a"] },
+            { "label": "Facility changes", "cells": ["None", "New racking", "None"] }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "A customer's verdict",
+      "arrangement": "quote",
+      "components": [
+        {
+          "type": "quote",
+          "text": "Atlas cleared our Black Friday backlog in one shift. We stopped planning around seasonal hiring entirely.",
+          "attribution": "COO, Nordic 3PL operator"
+        }
+      ]
+    },
+    {
+      "type": "ending",
+      "heading": "Let's run a pilot",
+      "subheading": "Two weeks from contract to first pick"
+    }
+  ]
+}

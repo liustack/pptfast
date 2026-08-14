@@ -1,0 +1,76 @@
+{
+  "version": "4",
+  "filename": "market-entry-analysis",
+  "narrative": "boardroom-report",
+  "theme": { "id": "academic" },
+  "meta": { "organization": "Harbor Advisory", "date": "2026-08-15", "confidentiality": "confidential" },
+  "seed": 13,
+  "slides": [
+    {
+      "type": "cover",
+      "heading": "Market Entry Analysis",
+      "subheading": "Should Harbor enter the SMB payments market"
+    },
+    {
+      "type": "content",
+      "heading": "Where we stand",
+      "components": [
+        {
+          "type": "swot",
+          "strengths": ["Trusted enterprise brand", "Existing banking licenses"],
+          "weaknesses": ["No self-serve onboarding", "High cost per account"],
+          "opportunities": ["SMB segment growing 19% a year", "Incumbents raising prices"],
+          "threats": ["Fintechs undercut on fees", "Regulatory scrutiny rising"]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Competitive pressure",
+      "components": [
+        {
+          "type": "five_forces",
+          "rivalry": { "items": ["Three incumbents hold 70% share"], "intensity": "high" },
+          "new_entrants": { "items": ["Licensing takes 18+ months"], "intensity": "low" },
+          "supplier_power": { "items": ["Card networks set the floor"], "intensity": "medium" },
+          "buyer_power": { "items": ["SMBs switch on price alone"], "intensity": "high" },
+          "substitutes": { "items": ["Wallets bypass cards entirely"], "intensity": "medium" }
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Options on the table",
+      "components": [
+        {
+          "type": "matrix",
+          "x_title": "Time to market",
+          "y_title": "Investment required",
+          "cols": 2,
+          "items": [
+            { "title": "Build in-house", "tag": "24 mo", "tone": "neutral" },
+            { "title": "Acquire a fintech", "tag": "9 mo", "tone": "accent" },
+            { "title": "White-label partner", "tag": "6 mo", "tone": "info" },
+            { "title": "Do nothing", "tag": "0 mo", "tone": "neutral" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "heading": "Recommendation",
+      "components": [
+        {
+          "type": "verdict_banner",
+          "tone": "positive",
+          "text": "Acquire: the 9-month path captures the growth window before incumbents reprice, and the license backlog blocks fast followers."
+        }
+      ]
+    },
+    {
+      "type": "ending",
+      "heading": "Appendix on request",
+      "subheading": "Deal screen and valuation model available"
+    }
+  ]
+}

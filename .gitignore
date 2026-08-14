@@ -7,6 +7,8 @@ dist/
 
 # generated outputs
 skills/**/outputs/
+# assembled from deck.spec.json + pages/ — regenerate with `pptfast assemble`
+examples/launch-deck/deck.json
 
 # logs
 *.log
