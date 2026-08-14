@@ -1,0 +1,66 @@
+# CI: `pnpm check` (typecheck + lint + test) on every PR and on main pushes.
+# On main pushes, a second job also runs the full `pnpm e2e` chain.
+#
+# Version alignment:
+# - package.json `engines` says node >=18, but vitest 4 (a devDependency)
+#   requires ^20.0.0 || ^22.0.0 || >=24.0.0 — so 20 is the lowest version this
+#   repo's own test runner can honestly exercise. The matrix covers that floor
+#   (20) plus the current LTS line (22).
+# - package.json has no `packageManager` field. The lockfile is
+#   lockfileVersion 9.0 (pnpm 9/10 format) and the repo is developed with
+#   pnpm 10, so pnpm is pinned to major 10 here. If a `packageManager` field
+#   is added later, drop the explicit `version:` below — pnpm/action-setup
+#   reads that field on its own.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+  # Full end-to-end chain (build + CLI e2e + LibreOffice visual gate), main only —
+  # it is slower than `pnpm check` and needs a LibreOffice install, so PRs stay
+  # on the fast check job.
+  e2e:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # scripts/e2e.mts silently skips its LibreOffice PDF visual gate when
+      # `soffice` is missing ("soffice unavailable — visual gate skipped").
+      # A green run without soffice would therefore be quietly weaker than it
+      # looks, so LibreOffice is installed explicitly here — apt on
+      # ubuntu-latest handles it fine, no skip needed. If this install ever
+      # becomes impossible on the runner image, remove this step and note here
+      # that the visual gate is skipped in CI, do not let it pass silently.
+      - name: Install LibreOffice (soffice) for the e2e visual gate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-impress
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm e2e
