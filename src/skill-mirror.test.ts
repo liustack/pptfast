@@ -162,9 +162,10 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
   })
 
   it("both files carry the serve review-loop section with the same command lines", () => {
-    // DSH plugin v1 wave: the live-review loop (`pptfast serve --no-open`,
-    // report the URL, stop the job) must exist in both files with identical
-    // command lines — same structural guard as the Brand-themes test above.
+    // `pptfast serve` is the deck's review path, in every harness: the
+    // loop (`serve --no-open`, report the URL, read the annotations back,
+    // stop the job) must exist in both files with identical command lines
+    // — same structural guard as the Brand-themes test above.
     const sectionAfter = (text: string, heading: RegExp): string => {
       const m = text.match(heading)
       expect(m, `heading ${heading} missing`).toBeTruthy()

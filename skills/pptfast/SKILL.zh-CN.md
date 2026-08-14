@@ -16,7 +16,7 @@ pptfast --version || npm install -g @liustack/pptfast
 pptfast check-update   # stay current — the schema and themes evolve
 ```
 
-如果 harness 注册了 pptfast 工具（`pptfast_validate`、`pptfast_render`、`pptfast_themes`——DSH 插件就会注册），IR 校验、渲染、主题清单这三件事直接调用工具，不走对应的 CLI 命令。CLI 仍是后备路径，并且继续承担其余一切（schema、spec/assemble、audit、preview、serve、品牌提取）。
+这份操作手册里的每一步都走 CLI：schema、spec/assemble、validate、render、audit、preview、serve、品牌提取。
 
 ## 工作流程
 
@@ -105,13 +105,19 @@ pptfast preview deck-dir/ -o preview/ --html
 
 ### 用 `pptfast serve` 做实时审阅循环
 
-需要来回多轮审阅时，把同一份 preview 作为实时页面架起来，而不是交付一个静态文件。用后台任务的方式启动它（在 DSH 里遵循后台任务的规矩，记下 job id，方便之后停掉）：
+审阅发生在用户自己的浏览器里，不在对话里。这就是审阅的正式路径：绝不要往对话里贴缩略图或某一页的截图来「给用户看」。把整份 deck 架起来，让用户自己全尺寸翻页。用后台任务的方式启动服务（在 DSH 里遵循后台任务的规矩，记下 job id，方便之后停掉）：
 
 ```bash
 pptfast serve deck-dir/ --no-open
 ```
 
-必须带 `--no-open`——agent 环境里没有可以自动打开的浏览器——并把它打印的 localhost URL（默认 `http://127.0.0.1:4400`）原样报给用户，让用户自己打开。之后你每保存一次文件，页面就实时重渲染。用户在浏览器里给页面写批注并提交后，deck 目录里会生成一份 `revision-request.json`：读它，走阶段六的修订流程处理，改完的结果会直接出现在用户已打开的标签页里。审阅轮结束时停掉 serve 进程（kill 掉那个后台任务）——任务结束后绝不留着它继续跑。
+然后按这个顺序走完这一轮：
+
+1. 必须带 `--no-open`。agent 环境里没有可以自动打开的浏览器。
+2. 把它打印的 localhost URL（默认 `http://127.0.0.1:4400`）原样报给用户，让用户自己打开。这一行就是全部交付动作。
+3. 用户翻完整份 deck，把需要改的地方写成批注并提交，deck 目录里就会生成一份 `revision-request.json`，deck 内容本身不被改动。
+4. 读这份文件，把每一条都走阶段六的修订流程。你每保存一次文件页面就实时重渲染，每一次修订都直接落在用户已经打开的那个标签页里。不用发新链接，也不用重新导出。
+5. 用户还在继续批注就留在这个循环里。这一轮结束时停掉 serve 进程（kill 掉那个后台任务）。任务结束后绝不留着它继续跑。
 
 ### Phase 6 — 修订：改一页，重新 assemble
 

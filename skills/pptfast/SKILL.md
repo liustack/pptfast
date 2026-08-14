@@ -14,7 +14,7 @@ pptfast --version || npm install -g @liustack/pptfast
 pptfast check-update   # stay current — the schema and themes evolve
 ```
 
-If the harness registers pptfast tools (`pptfast_validate`, `pptfast_render`, `pptfast_themes` — the DSH plugin does), call them directly for IR validation, rendering, and theme listing instead of the equivalent CLI commands. The CLI remains the fallback path and still covers everything else (schema, spec/assemble, audit, preview, serve, brand extract).
+Everything in this playbook runs through the CLI: schema, spec/assemble, validate, render, audit, preview, serve, brand extract.
 
 ## Workflow
 
@@ -103,13 +103,19 @@ Writes one standalone SVG per slide plus a self-contained `preview.html`, never 
 
 ### Live review loop with `pptfast serve`
 
-For a back-and-forth review round, serve the same preview as a live page instead of handing over a static file. Start it as a background task (in DSH, follow the background-job convention and note the job id so you can stop it later):
+A review round happens in the user's own browser, not in the transcript. This is the review path: never try to show the deck by pasting a thumbnail or a screenshot of one page into the conversation. Serve the whole thing and let the user page through it at full size. Start the server as a background task (in DSH, follow the background-job convention and note the job id so you can stop it later):
 
 ```bash
 pptfast serve deck-dir/ --no-open
 ```
 
-Always pass `--no-open` — there is no browser to auto-open in an agent environment — and report the exact localhost URL it prints (default `http://127.0.0.1:4400`) to the user so they can open it themselves. The page live-reloads on every file you save. When the user annotates pages in the browser and submits, a `revision-request.json` lands in the deck directory: read it, route it through phase 6's revision flow, and the re-rendered result appears in their open tab. When the review round is over, stop the serve process (kill the background job) — never leave it running after the task ends.
+Then run the round in this order:
+
+1. Always pass `--no-open`. There is no browser to auto-open in an agent environment.
+2. Report the exact localhost URL it prints (default `http://127.0.0.1:4400`) to the user, so they can open it themselves. That one line is the whole handoff.
+3. The user pages through the deck, annotates whatever needs changing, and submits. That writes a `revision-request.json` into the deck directory, deck content untouched.
+4. Read that file and route every entry through phase 6's revision flow. The page live-reloads on each file you save, so every revision lands in the tab the user already has open. No new link, no re-export.
+5. Stay in the loop while the user keeps annotating. When the round is over, stop the serve process (kill the background job). Never leave it running after the task ends.
 
 ### Phase 6 — Revision: edit one page, re-assemble
 
