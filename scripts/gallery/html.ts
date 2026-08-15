@@ -219,6 +219,16 @@ kbd {
   border-bottom-width: 2px; border-radius: 4px; background: var(--panel);
 }
 .empty { color: var(--ink-dim); padding: 40px 0; text-align: center; }
+
+/* The whole gallery is one self-contained file, so the browser parses
+   several megabytes of inline SVG before the first card can exist —
+   measured at roughly 240ms to first paint and 370ms to first card on the
+   full 431-page build. Fast, but not instant, and the gap grows with the
+   corpus. The header and this notice sit ahead of the payload in the
+   document, so something is on screen for that gap instead of white. The
+   first render pass replaces this. */
+.booting { color: var(--ink-dim); padding: 60px 0; text-align: center; line-height: 2; }
+.booting small { font-size: 12px; }
 </style>
 </head>
 <body data-surround="light">
@@ -268,7 +278,7 @@ kbd {
   <button class="btn primary" id="export">导出 verdicts.json</button>
 </header>
 
-<main id="main"></main>
+<main id="main"><p class="booting">正在装入 ${manifest.pages.length} 页……<br><small>整页自包含，所有幻灯片都在这个文件里，首次装入约需几秒。</small></p></main>
 
 <dialog class="viewer" id="viewer">
   <div class="viewer-inner">
