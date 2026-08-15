@@ -131,6 +131,36 @@ describe("layoutContentFit", () => {
     expect(dropped).toBe(0)
   })
 
+  it("falls back to one full-width column rather than losing content to a split", () => {
+    // Visual review 2026-08-15: a two-column page halves the width every
+    // block gets, and blocks sized for a full-width rect routinely fail to
+    // fit a half-width one. The page then rendered as one column of content
+    // beside an empty one, with the rest silently dropped. A full-width
+    // stack that keeps everything beats a split that loses some.
+    // One block that only fits at full width plus a short one — the exact
+    // pairing that produced "one column of content beside an empty one".
+    const tall = [paragraphComponent(4), bulletsComponent(["甲"])]
+    const splitRect: ContentRect = { x: 0, y: 0, w: 800, h: 400 }
+
+    const split = layoutContentFit("two_column", tall, splitRect, ctx)
+    expect(split.dropped).toBe(0)
+    expect(split.placed).toHaveLength(2)
+    // Both blocks now sit in one column at the rect's own full width, not
+    // side by side at half of it.
+    expect(new Set(split.placed.map((p) => p.box.x)).size).toBe(1)
+    expect(split.placed[0].box.w).toBe(800)
+  })
+
+  it("keeps the split when one column alone cannot hold everything either", () => {
+    // The fallback is about the arrangement costing content, not about
+    // abandoning the theme's chosen layout whenever anything overflows: if
+    // a single stack would drop something too, the split stands.
+    const many = Array.from({ length: 8 }, () => paragraphComponent(3))
+    const splitRect: ContentRect = { x: 0, y: 0, w: 800, h: 400 }
+    const { dropped } = layoutContentFit("two_column", many, splitRect, ctx)
+    expect(dropped).toBeGreaterThan(0)
+  })
+
   it("keeps at least one component even when the first of several overflows on its own", () => {
     const mega = paragraphComponent(40)
     const many = [mega, bulletsComponent(["甲"]), bulletsComponent(["乙"])]
