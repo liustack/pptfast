@@ -147,7 +147,17 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
   // low-contrast finding under the stress matrix above, so a future change
   // to any of these three colours shows up here instead of silently
   // vanishing from (or reappearing in) the broader regression net.
-  it("code.tsx's hardcoded line-number gray is borderline against a dark code-block background", () => {
+  it("code.tsx's line numbers are meta tier, so the gutter gray no longer reads as a body-copy failure", () => {
+    // Was pinned here as an accepted defect: the gutter gray measures
+    // 3.46:1 on the block's own #1E1E1E, under the 4.5:1 body floor, and
+    // the 2026-08-15 visual review duly reported every line of every code
+    // block (20 findings from one component). The colour was never the
+    // problem — the tier was. A line number is information a reader
+    // consults on demand and is conventionally understated, the same case
+    // `docs/contrast-system.md` already makes for page numbers, so it is
+    // meta tier and held to the hard 3:1 floor it comfortably clears. The
+    // gray is unchanged; what changed is that the renderer now says which
+    // floor applies.
     const ir = deck("consulting", [
       {
         type: "content",
@@ -157,7 +167,14 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
       },
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#6A737D")).toBe(true)
+    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#6A737D")).toBe(false)
+
+    // The pairing itself must stay exactly as adjudicated: `metaInk` keeps
+    // the theme-independent gutter gray because it already clears 3:1, and
+    // the attribute that tells the audit so ships with it.
+    const svg = renderSlideSvg(ir, 0)
+    expect(svg).toContain('data-contrast-tier="meta"')
+    expect(svg).toContain("#6A737D")
   })
 
   it("architecture.tsx's theme-derived primary-on-panel pairing is a rounding distance under 4.5:1 on insight", () => {

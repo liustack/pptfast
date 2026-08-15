@@ -304,6 +304,9 @@ export const chart: SvgComponent<ChartComponent> = {
           // config (donut's center_total, gauge's min/max). The five original
           // renderers ignore it and stay byte-identical (golden-pinned).
           component,
+          // The background the marks land on, for text ink only — see
+          // `ChartRenderFn`'s own `bgHex` doc comment.
+          legendBg,
         )}
         {xTitleFit ? (
           <text

@@ -4,6 +4,7 @@ import {
   truncateToMonoUnits,
 } from "../../lib/svg-text-layout"
 import type { RenderDef, SvgComponent } from "./types"
+import { metaInk } from "../ink"
 
 type CodeComponent = Extract<Component, { type: "code" }>
 
@@ -14,6 +15,23 @@ const LINE_NUM_COL = 40
 const MIN_FONT_SIZE = 9
 const BG_COLOR = "#1E1E1E"
 const TEXT_COLOR = "#D4D4D4"
+/**
+ * Gutter line numbers.
+ *
+ * Meta tier, not content (see `docs/contrast-system.md`): a line number is
+ * real information a reader consults on demand and is conventionally
+ * rendered understated — the same case the policy already makes for page
+ * numbers — so it is held to the hard 3:1 meta floor rather than the 4.5:1
+ * body floor. Before this was declared, the audit measured it as body copy
+ * and reported every line of every code block as low-contrast (20 findings
+ * from one component in the 2026-08-15 visual review).
+ *
+ * `metaInk` against the block's own painted background, not the page's:
+ * this component paints its own dark surface, and the rule for a
+ * self-painted surface is to measure against the color you painted.
+ * `metaInk` and the `data-contrast-tier="meta"` attribute always ship
+ * together at a call site — one without the other is a bug.
+ */
 const LINE_NUM_COLOR = "#6A737D"
 const BORDER_RADIUS = 6
 const LINE_HEIGHT_RATIO = 1.45
@@ -126,11 +144,12 @@ export const code: SvgComponent<CodeComponent> = {
         {renderLines.map((line, i) => (
           <g key={i}>
             <text
+              data-contrast-tier="meta"
               x={PADDING + LINE_NUM_COL - 8}
               y={PADDING + i * lineHeight + fontSize}
               fontFamily={ctx.fonts.mono}
               fontSize={fontSize}
-              fill={LINE_NUM_COLOR}
+              fill={metaInk(LINE_NUM_COLOR, BG_COLOR)}
               dominantBaseline="alphabetic"
               textAnchor="end"
             >

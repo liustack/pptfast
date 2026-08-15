@@ -148,20 +148,23 @@ describe("scoreQuestion — degraded-model (validate-failing / audit-positive / 
     expect(score.deterministic).toBeNull()
   })
 
-  it("fx03 (degraded): validates clean but auditDeck flags a real low-contrast finding (code.tsx's line-number gray)", async () => {
-    // Bench-driven fix round, defect B (Task 3): this fixture's own
-    // low-contrast source used to be kpi_cards' hardcoded delta-arrow red
-    // on luxe (#DC2626 vs #211D18, 3.47:1) — fixed (accessibleInk, see
-    // kpi.tsx's own `deltaColor` comment), so it no longer produces a
-    // finding on any theme. Swapped for a `code` component (arrangement
-    // "code") — `code.tsx`'s own hardcoded `LINE_NUM_COLOR` (#6A737D)
-    // measures 3.46:1 against the code block's fixed #1E1E1E background on
-    // all 13 themes uniformly (theme-independent by construction, unlike
-    // the old kpi repro), still a real, deliberately out-of-scope pre-
-    // existing source (`deck-audit.test.ts`'s "understood pre-existing
-    // low-contrast sources"). The `kpi_cards` component stays in the
-    // fixture (still needed for `coverageHits` below) but no longer
-    // contributes to `auditFindingCount`.
+  it("fx03 (degraded): validates clean but auditDeck flags a real low-contrast finding (architecture on insight)", async () => {
+    // This fixture needs a low-contrast source that is real, theme-stable
+    // and out of scope for whatever fix round is running — and it has now
+    // outlived two of them. It started as kpi_cards' hardcoded delta-arrow
+    // red on luxe (fixed via `accessibleInk`, see kpi.tsx's `deltaColor`),
+    // then became `code.tsx`'s gutter gray (2026-08-15 visual review: the
+    // gray was fine, the tier was wrong — line numbers are meta tier now,
+    // see `code.tsx`'s own `LINE_NUM_COLOR` comment).
+    //
+    // Now `architecture`'s theme-derived primary-on-panel pairing on
+    // `insight`, which `deck-audit.test.ts`'s "understood pre-existing
+    // low-contrast sources" block pins from the other side. Unlike the two
+    // before it this one is not a hardcoded literal at all — it is a real
+    // theme token pairing a rounding distance under 4.5:1 — so a future
+    // ink fix here is a theme-curation decision rather than a one-line
+    // component change, and this fixture should outlive more rounds.
+    // `kpi_cards` stays in the fixture for `coverageHits` below.
     const metas = await loadQuestionMetas(QUESTIONS_DIR)
     const meta = metas.find((m) => m.id === "fx03")!
     const score = await scoreQuestion("fx03", join(RESULTS_DIR, "degraded-model", "fx03"), meta)

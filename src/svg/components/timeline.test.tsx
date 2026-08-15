@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { timeline } from "./timeline"
 import type { ComponentCtx } from "./types"
+import { contrastRatio } from "../ink"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -65,12 +66,16 @@ describe("timeline component", () => {
     // 3 dates + 3 titles(单行) + 2 descs(可换行 ≥1 行) ≥ 8 text elements
     expect(texts.length).toBeGreaterThanOrEqual(8)
 
-    // Check that date texts use accent color and title texts use text color
-    const dateTexts = Array.from(texts).filter(
-      (t) => t.getAttribute("fill") === "#00A878",
-    )
+    // Dates are accent-colored *when the accent is readable on the page*.
+    // This ctx's accent (#00A878 on white, ~2.6:1) is not, so `accessibleInk`
+    // substitutes a readable ink — the 2026-08-15 visual review found the
+    // unsubstituted version rendering date labels at 1.45:1 on consulting,
+    // whose accent is a light yellow. The date is content a reader is meant
+    // to read, not decoration, so it takes the content floor.
+    const dateTexts = Array.from(texts).filter((t) => t.textContent === "2024-01" || t.textContent === "2024-06" || t.textContent === "2024-12")
     expect(dateTexts.length).toBe(3)
-    expect(dateTexts[0].textContent).toBe("2024-01")
+    expect(dateTexts[0].getAttribute("fill")).not.toBe("#00A878")
+    expect(contrastRatio(dateTexts[0].getAttribute("fill")!, "#FFFFFF")).toBeGreaterThanOrEqual(4.5)
 
     const titleTexts = Array.from(texts).filter(
       (t) => t.getAttribute("fill") === "#1A2421",

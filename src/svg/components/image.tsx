@@ -1,6 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import type { RenderDef, SvgComponent } from "./types"
+import { accessibleInk } from "../ink"
 
 type ImageComponent = Extract<Component, { type: "image" }>
 
@@ -100,7 +101,14 @@ export const image: SvgComponent<ImageComponent> = {
                   y={imgH - 11}
                   textAnchor="middle"
                   fontSize={fittedCaption.fontSize}
-                  fill={ctx.colors.surface}
+                  // Self-painted surface: measure the caption ink against
+                  // the band this component just painted, not the ambient
+                  // page background (docs/contrast-system.md's own rule).
+                  // `colors.surface` is near-white on most themes and fails
+                  // outright on a bright primary — campaign's pink measured
+                  // 2.84:1 in the 2026-08-15 visual review, with classroom,
+                  // ember and insight all under the floor too.
+                  fill={accessibleInk(ctx.colors.surface, ctx.colors.primary, fittedCaption.fontSize)}
                   fontFamily={ctx.fonts.body}
                   dominantBaseline="alphabetic"
                 >

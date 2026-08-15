@@ -2,6 +2,7 @@ import type React from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
+import { accessibleInk } from "../ink"
 
 type TimelineComponent = Extract<Component, { type: "timeline" }>
 
@@ -184,7 +185,7 @@ function renderVertical(
               textAnchor="end"
               fontSize={date.fontSize}
               fontWeight="bold"
-              fill={hl ? ctx.colors.accent : ctx.colors.muted}
+              fill={accessibleInk(hl ? ctx.colors.accent : ctx.colors.muted, ctx.defaultBg ?? ctx.colors.bg, 14)}
               fontFamily={ctx.fonts.heading}
               dominantBaseline="alphabetic"
             >
@@ -194,7 +195,7 @@ function renderVertical(
               cx={V_AXIS_X}
               cy={nodeCy}
               r={hl ? 10 : 7}
-              fill={hl ? ctx.colors.accent : ctx.colors.primary}
+              fill={accessibleInk(hl ? ctx.colors.accent : ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, 16)}
             />
             <text
               data-truncated={title.truncated ? "1" : undefined}
@@ -283,7 +284,7 @@ export const timeline: SvgComponent<TimelineComponent> = {
                 x={tx}
                 y={AXIS_Y - 24}
                 textAnchor={anchor}
-                fill={ctx.colors.accent}
+                fill={accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, date.fontSize)}
                 fontSize={date.fontSize}
                 fontFamily={ctx.fonts.body}
                 dominantBaseline="alphabetic"
