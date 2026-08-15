@@ -1,10 +1,11 @@
 ---
-summary: 'Test layers: vitest+snapshots, node smoke, CLI and DSH e2e, PowerPoint repair-dialog gate'
+summary: 'Test layers: vitest+snapshots, node smoke, CLI and DSH e2e, the visual review gallery, PowerPoint repair-dialog gate'
 read_when:
   - adding or debugging tests
   - before publishing a release
   - export XML structure changed
   - validating the installed DSH plugin
+  - reviewing how themes/layouts/components actually look (`pnpm gallery`)
 ---
 
 # Testing
@@ -141,6 +142,50 @@ three-way slide consistency and id-uniqueness invariants directly against
 the built CLI's own output. Read-only by construction —
 `PptxPackageReader` (`src/pptx/package-reader.ts`) exposes no mutating
 method.
+
+## Visual review gallery
+
+Automated checks answer "does anything overflow, clip, or fall below the
+contrast floor". They cannot answer "would you put this in front of a
+customer". `pnpm gallery` produces the material for the second question:
+
+```bash
+pnpm gallery                    # every table, into .gallery/
+pnpm gallery --only=layout      # one table
+pnpm gallery --languages=zh,en  # narrow the language axis
+```
+
+It renders two tables through the real chain (`validateIr` →
+`renderSlideSvg`, the same two calls `render`/`preview` make — no
+gallery-specific rendering branch exists, and promotional images are meant
+to come from what passes review here):
+
+- **主题表** — all 17 themes running one identical nine-page deck, so two
+  themes differ by exactly one variable
+- **版式表 / 组件表** — every layout and every component on one baseline
+  theme, each in Chinese, English and mixed-script content
+
+Output is `.gallery/`: per-page SVGs, a machine-readable `manifest.json`,
+and a self-contained `index.html` that can be double-clicked offline. In
+that page each slide takes one of three verdicts (通过 / 限制使用 / 返工)
+plus a note; judgements persist in `localStorage` and export as
+`verdicts.json`, keyed by page ids derived from identity rather than
+position so they survive a re-run.
+
+The corpus (`scripts/gallery/corpus/`) is deliberately **not**
+`src/svg/audit/stress-fixtures.ts` — those decks are pathological on
+purpose. This one is ordinary, plausible content at the length a real
+author writes, because the ordinary case is what a human can judge and a
+test cannot.
+
+`scripts/gallery.test.mts` runs the whole matrix on every `pnpm check`, so a
+renderer change that breaks a corpus page fails there rather than turning up
+as a hole partway through a review sitting. It also fails if a component
+type gains no corpus builder — silently dropping a component off the table
+would let the review sign off on something nobody looked at.
+
+Background and the reasoning behind how the matrix is cut:
+`.issues/2026-08-15-release-readiness/spec.md`.
 
 ## Snapshot policy
 
