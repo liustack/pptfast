@@ -176,9 +176,16 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
     })),
   }),
 
+  // Three cards, not four. Each card carries title + text + sub, and four of
+  // those plus this table's lead-in paragraph exceed the content rect in all
+  // three languages — the component then truncates itself correctly and the
+  // table showed its degrade path instead of the component. The component
+  // table's question is "does this component draw well", so it gets a count
+  // that fits. That four rich cards do not fit a full content rect is worth
+  // knowing, but it is a question about capacity, not about this drawing.
   row_cards: (lex) => ({
     type: "row_cards",
-    items: slice(lex.phrases, 4, 4).map((title, i) => ({
+    items: slice(lex.phrases, 3, 4).map((title, i) => ({
       icon: (["layers", "cpu", "database", "globe"] as const)[i]!,
       title,
       text: lex.sentences[i + 1]!,
