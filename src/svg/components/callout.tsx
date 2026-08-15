@@ -8,14 +8,29 @@ type CalloutComponent = Extract<Component, { type: "callout" }>
 
 const LINE_RATIO = 1.4
 const PAD_Y = 16
-const BAR_WIDTH = 4
 const RX = 6
 const MIN_HEIGHT = 56
 
+/**
+ * The variant accent is a rule across the *top* of the card, not a bar down
+ * its left edge (visual review 2026-08-15: a left-edge bar was rejected on
+ * every callout in every theme and language). A card may carry a horizontal
+ * edge; a vertical one down the side reads as a quoted-text marker bolted
+ * onto a panel, and it fights the card's own rounded corner.
+ *
+ * Drawn by layering rather than by insetting: the accent rect sits behind
+ * the surface rect with the same corner radius, so the visible sliver is a
+ * true top border that follows the corner curve instead of a floating dash
+ * with gaps at both ends. On a square-cornered theme (radius 0) the same
+ * two rects degrade to a plain full-width rule.
+ */
+const TOP_RULE_H = 3
+
 /** Icon rendering constants — icon lives inside the left padding zone. */
+const PAD_X = 14
 const ICON_SIZE = 20
-const ICON_LEFT = BAR_WIDTH + 8
-const TEXT_X = ICON_LEFT + ICON_SIZE + 8
+const ICON_LEFT = PAD_X
+const TEXT_X = ICON_LEFT + ICON_SIZE + 10
 
 /** Map callout variant to icon name. */
 const VARIANT_ICON: Record<CalloutComponent["variant"], string> = {
@@ -31,7 +46,7 @@ const VARIANT_ICON: Record<CalloutComponent["variant"], string> = {
  */
 function lay(text: string, w: number, fontSize: number) {
   return layoutSvgText(stripEmphasis(text), {
-    maxWidth: w - 48,
+    maxWidth: w - TEXT_X - PAD_X,
     fontSize,
     maxLines: 99,
     lineHeightRatio: LINE_RATIO,
@@ -47,34 +62,37 @@ function accentColor(variant: CalloutComponent["variant"], ctx: { colors: { prim
 export const callout: SvgComponent<CalloutComponent> = {
   measure(component, w, ctx) {
     const l = lay(component.text, w, ctx.bodyFontPx)
-    return Math.max(l.lines.length * l.lineHeight + 2 * PAD_Y, MIN_HEIGHT)
+    return Math.max(l.lines.length * l.lineHeight + 2 * PAD_Y + TOP_RULE_H, MIN_HEIGHT)
   },
   render(component, box, ctx) {
     const l = lay(component.text, box.w, ctx.bodyFontPx)
     const lineSegments = sliceEmphasisForLines(parseEmphasis(component.text), l.lines)
-    const h = Math.max(l.lines.length * l.lineHeight + 2 * PAD_Y, MIN_HEIGHT)
+    const h = Math.max(l.lines.length * l.lineHeight + 2 * PAD_Y + TOP_RULE_H, MIN_HEIGHT)
     const accent = accentColor(component.variant, ctx)
-    const iconY = (h - ICON_SIZE) / 2
+    const radius = ctx.shape?.radius ?? RX
+    // Icon centers on the text block, not on the card, so the top rule does
+    // not drag it off-center against the copy it belongs to.
+    const iconY = TOP_RULE_H + (h - TOP_RULE_H - ICON_SIZE) / 2
     return (
       <g transform={`translate(${box.x},${box.y})`}>
+        <rect x={0} y={0} width={box.w} height={h} rx={radius} fill={accent} />
         <rect
           x={0}
-          y={0}
+          y={TOP_RULE_H}
           width={box.w}
-          height={h}
-          rx={ctx.shape?.radius ?? RX}
+          height={h - TOP_RULE_H}
+          rx={radius}
           fill={ctx.colors.surface}
           {...(ctx.colors.cardStroke
             ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 }
             : {})}
         />
-        <rect x={0} y={0} width={BAR_WIDTH} height={h} fill={accent} />
         <Icon name={component.icon ?? VARIANT_ICON[component.variant]} x={ICON_LEFT} y={iconY} size={ICON_SIZE} color={accent} />
         {lineSegments.map((segments, i) => (
           <text
             key={i}
             x={TEXT_X}
-            y={PAD_Y + i * l.lineHeight + l.fontSize}
+            y={TOP_RULE_H + PAD_Y + i * l.lineHeight + l.fontSize}
             fontFamily={ctx.fonts.body}
             fontSize={l.fontSize}
             fill={ctx.colors.text}

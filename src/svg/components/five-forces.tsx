@@ -96,8 +96,20 @@ const CARD_RADIUS = 10
 
 const LABEL_SIZE = 13.5
 const LABEL_SIZE_MIN = 10.5
-const GAP_LABEL_MARKER = 6
-const GAP_HEADER_ITEMS = 8
+/**
+ * Air between the panel's title and the intensity dots under it, and
+ * between that header block and the item list.
+ *
+ * Both were raised on 2026-08-15 after the visual review found the dots
+ * reading as if they were stuck to the underside of the title ("圆点跟文本
+ * 挤在一起…没有呼吸感") in both Chinese and English. The dot meter is a
+ * separate statement from the title, not a diacritic on it, so it needs
+ * enough room to read as its own line — and the header as a whole needs to
+ * separate from the items more than it separates internally, or the three
+ * elements read as one undifferentiated block.
+ */
+const GAP_LABEL_MARKER = 11
+const GAP_HEADER_ITEMS = 13
 
 const ITEM_SIZE = 12
 const ITEM_SIZE_MIN = 9.5

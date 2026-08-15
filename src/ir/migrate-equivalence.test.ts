@@ -348,6 +348,26 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // three; only `basic`'s `ppt/slides/slide1.xml` and
       // `annualReviewPreset`'s `ppt/slides/slide2.xml` (1-indexed,
       // matching SVG slide 0 / slide 1 above) differ.
+      // Recaptured (visual review round 1, 2026-08-15): `quote.tsx`'s
+      // decorative open-quote mark used to reserve its own *baseline* plus a
+      // gap above the first body line (`QUOTE_ZONE` 60 against a mark
+      // baseline of 44), but a quotation glyph carries its ink high in the
+      // em box, so the mark floated far above the text it opens — flagged on
+      // every quote page the review saw. `QUOTE_ZONE` is now sized off the
+      // mark's ink (34, baseline 40).
+      // `scenarioBearing` and `annualReviewPreset` each carry one quote
+      // slide, so each has exactly one changed slide (SVG slide 1 / slide 3;
+      // PPTX `slide2.xml` / `slide4.xml`, 1-indexed). Targeted diff against
+      // the pre-recapture goldens, same discipline as every recapture above:
+      // the *only* changes anywhere in either fixture are that mark's
+      // `y` 44 → 40, the body/attribution baselines moving up 26px with
+      // `QUOTE_ZONE`, and the enclosing block's own `y` shifting by the
+      // ~9.9px `distributeSurplus` redistributes once the block measures
+      // shorter — plus the matching `<a:off>` y values in the PPTX. No other
+      // element, attribute, or file changed; `.audit.json` needed no
+      // recapture for any of the three (findings byte-identical, the shift
+      // introduces no new geometry or contrast finding), and `basic` needed
+      // no recapture at all (it has no quote component).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

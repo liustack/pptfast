@@ -72,7 +72,13 @@ const ORG_LINE_HEIGHT = Math.round(ORG_FONT_SIZE * 1.25)
 // (an absent title costs nothing, no dead band).
 const TITLE_FONT_SIZE = 16
 const TITLE_MIN_FONT_SIZE = 12
-const TITLE_BAND = 24
+// Raised from 24 on 2026-08-15. The title's baseline sits at
+// TITLE_FONT_SIZE, so a 24px band left barely 4px between the title's
+// descenders and the top of the first card — the visual review read the
+// two as one glued block ("标题距离卡片太近了，没有呼吸感"). 36 leaves the
+// title its own line of air, the same relationship cycle.tsx's band
+// already has at its larger type size.
+const TITLE_BAND = 36
 
 interface PersonCardLayout {
   name: { text: string; fontSize: number; truncated: boolean }

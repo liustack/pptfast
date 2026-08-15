@@ -334,18 +334,24 @@ describe("auditDeck — B-group ink fixes (bench-driven fix round, defect A hand
   })
 })
 
+/** Long enough to overflow any content rect on its own — see the first test. */
+const CODE_OVERFLOW = Array.from({ length: 60 }, (_, i) => `const line${i} = ${i};`).join("\n")
+
 describe("auditDeck — overflow / out-of-bounds", () => {
   it("surfaces a v-overflow as an 'overflow' finding with page context and a fix suggestion", () => {
-    // `paragraph.tsx` never shrinks/truncates by design ("wrap freely; never
-    // shrink/truncate a body paragraph") — its *only* overflow guard is the
-    // caller (`layoutContentFit`). A single paragraph this long overflows
-    // the tightest gap tier by itself, so `layoutContentFit` falls into its
-    // documented "keep the first placed component even if it alone doesn't
-    // fit" branch (`layout.ts`) and hands it a `box.h` the component then
-    // ignores — a genuine, real (not synthetic-markup) render overflow.
-    // Confirmed empirically before writing this test (see task report).
+    // The overflow vehicle is `code`, not `paragraph`. `layoutContentFit`'s
+    // last-resort branch ("keep the first placed component even if it alone
+    // doesn't fit", `layout.ts`) hands the block a `box.h` smaller than its
+    // measured height and expects it to truncate into that budget; `code`
+    // does not honor that contract, so it still paints past the rect — a
+    // genuine, real (not synthetic-markup) render overflow.
+    // `paragraph` used to be this fixture's vehicle and no longer overflows
+    // at all: the visual review found it painting off the bottom of the
+    // canvas and over the footer, so it now honors `box.h` like `bullets`
+    // and `row_cards` already did. Its new behaviour is locked in by the
+    // content-truncated test below rather than here.
     const ir = deck("consulting", [
-      { type: "content", id: "s1", heading: "overflow probe", components: [{ type: "paragraph", text: LONG_CJK.repeat(20) }] },
+      { type: "content", id: "s1", heading: "overflow probe", components: [{ type: "code", language: "js", code: CODE_OVERFLOW }] },
     ])
     const report = auditDeck(ir)
     const overflow = report.findings.filter((f) => f.code === "overflow")
@@ -357,12 +363,29 @@ describe("auditDeck — overflow / out-of-bounds", () => {
 
   it("omits slideId when the slide carries none", () => {
     const ir = deck("consulting", [
-      { type: "content", heading: "overflow probe", components: [{ type: "paragraph", text: LONG_CJK.repeat(20) }] },
+      { type: "content", heading: "overflow probe", components: [{ type: "code", language: "js", code: CODE_OVERFLOW }] },
     ])
     const report = auditDeck(ir)
     const overflow = report.findings.filter((f) => f.code === "overflow")
     expect(overflow.length).toBeGreaterThan(0)
     expect(overflow[0].slideId).toBeUndefined()
+  })
+
+  it("reports an over-long paragraph as truncated, not as an overflow off the canvas", () => {
+    // Visual review 2026-08-15: a paragraph too tall for its slot used to
+    // paint straight off the bottom of the slide and across the footer
+    // (seen on the image takeovers' text column and quote-stage's
+    // capacity-1 annotation slot). It now truncates into the budget
+    // `layoutContentFit` hands it and stamps `data-truncated`, so the loss
+    // is reported instead of being discovered by the reader.
+    const ir = deck("consulting", [
+      { type: "content", id: "s1", heading: "overflow probe", components: [{ type: "paragraph", text: LONG_CJK.repeat(20) }] },
+    ])
+    const report = auditDeck(ir)
+    expect(report.findings.filter((f) => f.code === "overflow")).toEqual([])
+    const truncated = report.findings.filter((f) => f.code === "content-truncated")
+    expect(truncated.length).toBeGreaterThan(0)
+    expect(truncated[0]).toMatchObject({ page: 1, slideId: "s1" })
   })
 })
 

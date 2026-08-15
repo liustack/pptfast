@@ -129,6 +129,27 @@ function wantsImage(def: LayoutDefinition): boolean {
 function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
   const b = COMPONENT_BUILDERS
   const capacity = bodyCapacity(def)
+
+  // A capacity-1 body is an annotation position, not a content region —
+  // quote-stage's own registry entry calls it "a small attribution/footnote
+  // annotation slot below an oversized heading". Feeding it a full
+  // paragraph is authoring the page wrong, and the first review round spent
+  // three findings on the resulting mess rather than on the layout itself.
+  if (capacity <= 1) return [b.citation!(lex)]
+
+  // Two-column layouts split the body's height between columns but declare
+  // capacity per slot, so a block sized for a full-width rect does not fit
+  // a half-width one. When it doesn't, `layoutContentFit` drops it whole
+  // (its truncation budget only applies when nothing at all fits), and the
+  // page renders as one column of content beside an empty one — which is
+  // what the first review round saw. Compact blocks, and only two of them,
+  // are what a two-column page actually holds.
+  const splitsColumns =
+    def.arrangements === "all" || (Array.isArray(def.arrangements) && def.arrangements.includes("two_column"))
+  if (splitsColumns && !wantsImage(def)) {
+    return [b.bullets!(lex), b.kpi_cards!(lex)]
+  }
+
   const pool: Component[] = wantsImage(def)
     ? [b.image!(lex), b.paragraph!(lex), b.bullets!(lex), b.callout!(lex)]
     : [b.paragraph!(lex), b.bullets!(lex), b.kpi_cards!(lex), b.callout!(lex)]

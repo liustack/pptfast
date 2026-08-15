@@ -86,20 +86,15 @@ export function AssertionEvidence({
         {placed.map((p, i) => (
           <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
         ))}
-        {dropped > 0 && (
-          <text
-            data-dropped={dropped}
-            x={rect.x + rect.w}
-            y={rect.y + rect.h - 6}
-            textAnchor="end"
-            fontSize={14}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${dropped} more`}
-          </text>
-        )}
+      {/* Page-level content loss is recorded for the audit but never
+          painted (visual review 2026-08-15: "+1 more" in the corner of a
+          finished slide is a debug affordance that reached the customer,
+          and nobody outside this repo can read it). `deck-audit.ts`'s
+          `droppedFindings` selects on `data-dropped`, not on the text, so
+          the maintainer-facing signal is unchanged while the reader sees
+          nothing cryptic. Upstream quality gates are what should stop a
+          deck reaching this path at all. */}
+      {dropped > 0 && <g data-dropped={dropped} />}
       </>
     )
   }
@@ -214,19 +209,12 @@ export function AssertionEvidence({
       {placed.map((p, i) => (
         <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
-      {dropped > 0 && (
-        <text
-          x={rect.x + rect.w}
-          y={rect.y + rect.h - 6}
-          textAnchor="end"
-          fontSize={14}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${dropped} more`}
-        </text>
-      )}
+      {/* Same audit-only marker as the sibling branch above. This site
+          previously painted "+N more" *without* a `data-dropped` attribute,
+          so content lost here was visible to the reader and invisible to
+          `deck-audit.ts` — exactly backwards. Now it is the other way
+          round. */}
+      {dropped > 0 && <g data-dropped={dropped} />}
     </>
   )
 }

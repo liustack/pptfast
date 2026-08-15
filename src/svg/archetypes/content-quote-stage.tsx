@@ -70,9 +70,18 @@ const BODY_RECT_H = 80
 // this ceiling only protects the *direct* render call
 // `audit-baseline.test.ts` exercises (that fixture deliberately bypasses
 // validate — see its own file header).
-const BODY_RECT_MAX_Y = 616
+// Lowered from 616 on 2026-08-15: at 616 the body rect's own bottom edge
+// (616 + 80) reached 696, i.e. past the brand chrome's footer divider at
+// y=664, so a body block that used its full height collided with the
+// footer. 528 keeps the rect's bottom at 608, clear of the footnote below.
+const BODY_RECT_MAX_Y = 528
 
-const FOOTNOTE_Y = 676
+// Above the brand chrome's footer divider (`brand-chrome.tsx`, y=664), not
+// below it. At the previous 676 this baseline put the footnote's ascenders
+// straight through that rule and into the footer's own text row — the
+// visual review caught it in Chinese and mixed-script, where the taller ink
+// made the collision unmistakable.
+const FOOTNOTE_Y = 644
 
 export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx

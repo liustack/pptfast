@@ -34,26 +34,39 @@ describe("callout component", () => {
     expect(h).toBeGreaterThan(0)
   })
 
-  it("renders a background rect with surface fill", () => {
+  it("renders a surface card over the full width", () => {
     const { container } = svg(
       callout.render(component, { x: 80, y: 100, w: 1120 }, ctx),
     )
-    const rects = container.querySelectorAll("rect")
-    const bgRect = rects[0]
-    expect(bgRect.getAttribute("fill")).toBe("#F4F4F4")
-    expect(bgRect.getAttribute("width")).toBe("1120")
-    expect(bgRect.getAttribute("rx")).toBe("6")
+    // The accent rect is painted first and the surface sits on top of it,
+    // covering everything but the top rule — see callout.tsx's TOP_RULE_H.
+    const surface = container.querySelectorAll("rect")[1]
+    expect(surface.getAttribute("fill")).toBe("#F4F4F4")
+    expect(surface.getAttribute("width")).toBe("1120")
+    expect(surface.getAttribute("rx")).toBe("6")
   })
 
-  it("renders a left bar rect with width=4 and warn variant uses #DC2626", () => {
+  it("marks the variant with a full-width rule along the top edge, never a bar down the side", () => {
+    // Visual review 2026-08-15 rejected the left-edge accent bar on every
+    // callout in every theme and language: a card may carry a horizontal
+    // edge, not a vertical one. The accent is now the sliver of the
+    // underlying rect left visible above the surface, so it spans the card's
+    // whole width and is only TOP_RULE_H tall.
     const warnComponent = { type: "callout" as const, variant: "warn" as const, text: "警告" }
     const { container } = svg(
       callout.render(warnComponent, { x: 0, y: 0, w: 800 }, ctx),
     )
     const rects = container.querySelectorAll("rect")
-    const barRect = rects[1]
-    expect(barRect.getAttribute("width")).toBe("4")
-    expect(barRect.getAttribute("fill")).toBe("#DC2626")
+    const accent = rects[0]
+    const surface = rects[1]
+    expect(accent.getAttribute("fill")).toBe("#DC2626")
+    expect(accent.getAttribute("width")).toBe("800")
+    // The surface starts 3px down and is 3px shorter, so exactly a 3px rule
+    // of accent shows along the top and nothing shows down either side.
+    expect(surface.getAttribute("y")).toBe("3")
+    expect(Number(accent.getAttribute("height")) - Number(surface.getAttribute("height"))).toBe(3)
+    expect(surface.getAttribute("x")).toBe("0")
+    expect(surface.getAttribute("width")).toBe("800")
   })
 
   it("renders text with ctx.colors.text fill", () => {
@@ -98,7 +111,7 @@ describe("callout card stroke (Task 5d)", () => {
 
   it("does not draw a stroke when ctx.colors.cardStroke is unset (every theme before this task)", () => {
     const { container } = svg(callout.render(component, { x: 80, y: 100, w: 1120 }, ctx))
-    const bgRect = container.querySelectorAll("rect")[0]
+    const bgRect = container.querySelectorAll("rect")[1]
     expect(bgRect.getAttribute("stroke")).toBeNull()
   })
 
@@ -108,7 +121,7 @@ describe("callout card stroke (Task 5d)", () => {
       colors: { ...ctx.colors, cardStroke: "#ABCDEF" },
     }
     const { container } = svg(callout.render(component, { x: 80, y: 100, w: 1120 }, strokedCtx))
-    const bgRect = container.querySelectorAll("rect")[0]
+    const bgRect = container.querySelectorAll("rect")[1]
     expect(bgRect.getAttribute("stroke")).toBe("#ABCDEF")
     expect(bgRect.getAttribute("stroke-width")).toBe("1")
   })
@@ -117,7 +130,7 @@ describe("callout card stroke (Task 5d)", () => {
     for (const id of CANONICAL_THEME_IDS) {
       const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(callout.render(component, { x: 80, y: 100, w: 1120 }, themeCtx))
-      const bgRect = container.querySelectorAll("rect")[0]
+      const bgRect = container.querySelectorAll("rect")[1]
       if (id === "enterprise" || id === "runway") {
         expect(bgRect.getAttribute("stroke")).toBe(themeCtx.colors.cardStroke)
       } else {

@@ -30,9 +30,27 @@ export const paragraph: SvgComponent<ParagraphComponent> = {
   render(component, box, ctx) {
     const l = lay(component.text, box.w, ctx.bodyFontPx)
     const lineSegments = sliceEmphasisForLines(parseEmphasis(component.text), l.lines)
+
+    // Truncation budget (visual review 2026-08-15). `layoutContentFit`'s
+    // last-resort branch — a single component too tall for its rect, kept
+    // rather than dropped so the slide isn't left empty — hands the block a
+    // `box.h` *smaller* than its measured height and expects the block to
+    // truncate itself into it. `row_cards` and `bullets` already honor that
+    // contract; this one did not, so an over-long paragraph in a short slot
+    // (an image takeover's text column, quote-stage's capacity-1 annotation
+    // slot) painted straight off the bottom of the canvas and over the
+    // footer. Now it stops at the budget and marks itself truncated, which
+    // is also what makes `deck-audit.ts` report it instead of the reader
+    // discovering it.
+    const measuredH = l.lines.length * l.lineHeight
+    const overBudget = box.h != null && box.h < measuredH
+    const maxLines = overBudget ? Math.max(1, Math.floor(box.h! / l.lineHeight)) : lineSegments.length
+    const visible = lineSegments.slice(0, maxLines)
+    const truncated = visible.length < lineSegments.length
+
     return (
-      <g transform={`translate(${box.x},${box.y})`}>
-        {lineSegments.map((segments, i) => (
+      <g transform={`translate(${box.x},${box.y})`} data-truncated={truncated ? "1" : undefined}>
+        {visible.map((segments, i) => (
           <text
             key={i}
             x="0"

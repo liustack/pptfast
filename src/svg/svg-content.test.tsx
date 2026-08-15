@@ -57,7 +57,7 @@ describe("SvgContent", () => {
     expect(markup).toContain('data-audit-box="96,176,1088"')
   })
 
-  it("renders a dropped-count marker when components overflow the rect", () => {
+  it("records dropped components for the audit without painting anything the reader can see", () => {
     const longText =
       "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
     const many: Component[] = Array.from({ length: 8 }, () => ({
@@ -69,7 +69,12 @@ describe("SvgContent", () => {
         <SvgContent components={many} rect={{ x: 0, y: 0, w: 800, h: 400 }} ctx={ctx} />
       </svg>,
     )
-    expect(markup).toMatch(/\+\d+ more/)
+    // The marker is audit-only (visual review 2026-08-15): `deck-audit.ts`'s
+    // `droppedFindings` selects on the attribute, and a "+N more" string in
+    // the corner of a finished slide is a debug affordance no reader outside
+    // this repo can act on.
+    expect(markup).toMatch(/data-dropped="\d+"/)
+    expect(markup).not.toMatch(/\+\d+ more/)
   })
 
   it("annotates bespoke variants with the content rect", () => {
