@@ -26,6 +26,13 @@ import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
 import { assertFullCoverage, buildMatrix } from "./gallery/matrix"
+import { installNodePlatform } from "@/platform/node"
+
+// `renderMatrix` audits every page it renders, and the auditor parses SVG
+// through the Node DOM seam. Without this the audit throws on every page
+// and `renderMatrix` refuses to hand back a gallery whose findings column
+// would be a misleadingly clean bill of health.
+await installNodePlatform()
 
 const themeIds = listThemes()
   .map((t) => t.id)
@@ -128,6 +135,30 @@ describe("gallery page", () => {
     // citation), so the check above must not be satisfied by the corpus
     // simply having no URLs in it.
     expect(html).toContain("example.com")
+  }, 60_000)
+
+  it("emits a script that actually parses", async () => {
+    // Learned the hard way: a single under-escaped `\n` inside the inlined
+    // script turned the whole page into a blank screen, and every other
+    // check here still passed because they only look at the JSON payloads.
+    // The page is one file with one script — if it does not parse, nothing
+    // renders at all, so parsing it is the cheapest possible smoke test.
+    const { renderMatrix } = await import("./gallery/render")
+    const { mkdtempSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const vm = await import("node:vm")
+
+    const jobs = buildMatrix(themeIds, await assets(), { only: "component", languages: ["zh"] })
+    const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-parse-"))
+    const { manifest, svgs } = renderMatrix(jobs, outDir, "test")
+    const html = buildGalleryHtml(manifest, svgs)
+
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!)
+    expect(scripts.length).toBeGreaterThan(0)
+    for (const source of scripts) {
+      expect(() => new vm.Script(source)).not.toThrow()
+    }
   }, 60_000)
 
   it("escapes the payload so no embedded content can close the script block", async () => {

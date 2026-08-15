@@ -89,9 +89,14 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
     { type: "cover", heading: lex.deckTitle, subheading: lex.deckSubtitle, components: [] },
     { type: "chapter", heading: lex.chapters[0]!, subheading: lex.kickers[0], components: [] },
     {
+      // A full paragraph *and* five bullets is more than one content rect
+      // holds, and the deck audit reported the overflow on all 17 themes —
+      // the corpus authoring the page badly, not the themes failing. Three
+      // bullets under the paragraph is what a real page of this shape
+      // carries.
       type: "content",
       heading: lex.headings[0]!,
-      components: [b.paragraph!(lex), b.bullets!(lex)],
+      components: [b.paragraph!(lex), { type: "bullets", items: lex.bullets.slice(0, 3), style: "default" }],
       footnote: lex.sources[0]!.label,
     },
     { type: "content", heading: lex.headings[1]!, components: [b.kpi_cards!(lex)] },
@@ -135,7 +140,13 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
   // annotation slot below an oversized heading". Feeding it a full
   // paragraph is authoring the page wrong, and the first review round spent
   // three findings on the resulting mess rather than on the layout itself.
-  if (capacity <= 1) return [b.citation!(lex)]
+  // One source, not the corpus' full three: the slot is ~80px tall and a
+  // three-entry citation does not fit, which showed up as dropped content
+  // on every quote-stage page.
+  if (capacity <= 1) {
+    const s = lex.sources[0]!
+    return [{ type: "citation", sources: [{ label: s.label, ref: s.ref }] }]
+  }
 
   // Two-column layouts split the body's height between columns but declare
   // capacity per slot, so a block sized for a full-width rect does not fit
@@ -207,10 +218,17 @@ export function componentPage(
 ): PptxIR {
   const component = build(lex)
   const solo = FULL_BODY_TYPES.has(component.type)
+
+  // A one-sentence lead-in, not the full corpus paragraph. The paragraph
+  // runs long enough in English that it consumed the content rect and the
+  // component under review got dropped — the review table was showing the
+  // lead-in instead of the thing it exists to show, on 40 pages.
+  const leadIn: Component = { type: "paragraph", text: lex.sentences[0]! }
+
   const slide: Slide = {
     type: "content",
     heading: lex.headings[8]!,
-    components: solo ? [component] : [COMPONENT_BUILDERS.paragraph!(lex), component],
+    components: solo ? [component] : [leadIn, component],
     footnote: solo ? undefined : lex.sources[2]!.label,
   }
   const safeId = componentId.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")

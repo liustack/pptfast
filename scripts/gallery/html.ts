@@ -228,6 +228,20 @@ kbd {
    document, so something is on screen for that gap instead of white. The
    first render pass replaces this. */
 .booting { color: var(--ink-dim); padding: 60px 0; text-align: center; line-height: 2; }
+
+/* Machine findings. Deliberately quiet — the auditor is an assistant to the
+   reviewer's eye, not a verdict. A loud red panel on 90 of 431 cards would
+   train the reviewer to stop reading it. */
+.flags { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 11px 0; }
+.flag {
+  font-size: 11px; padding: 1px 7px; border-radius: 999px;
+  background: var(--stage); color: var(--ink-dim); border: 1px solid var(--line);
+  cursor: default;
+}
+.flag.sev { color: var(--rework); border-color: var(--rework); }
+.findings-list { margin: 0; padding: 0 0 0 16px; font-size: 12px; color: var(--ink-dim); max-height: 84px; overflow-y: auto; }
+.findings-list li { margin: 2px 0; }
+.viewer-bar .findings-list { flex: 1 1 260px; }
 .booting small { font-size: 12px; }
 </style>
 </head>
@@ -257,6 +271,12 @@ kbd {
     <option value="pass">通过</option>
     <option value="limit">限制使用</option>
     <option value="rework">返工</option>
+  </select>
+
+  <select id="finding-filter" aria-label="机器发现">
+    <option value="all">全部页面</option>
+    <option value="any">机器有发现</option>
+    <option value="clean">机器无发现</option>
   </select>
 
   <input type="search" id="search" placeholder="搜标题或 id" aria-label="搜索">
@@ -293,6 +313,7 @@ kbd {
         <button class="v-limit" data-verdict="limit" aria-pressed="false">限制 <kbd>2</kbd></button>
         <button class="v-rework" data-verdict="rework" aria-pressed="false">返工 <kbd>3</kbd></button>
       </div>
+      <ul class="findings-list" id="viewer-findings"></ul>
       <input class="note" id="viewer-note" placeholder="备注（自动保存）">
       <span class="hint"><kbd>←</kbd><kbd>→</kbd> 翻页 · <kbd>Esc</kbd> 关闭</span>
     </div>
@@ -308,6 +329,29 @@ kbd {
   const SVGS = JSON.parse(document.getElementById("svg-data").textContent);
   const STORE_KEY = "pptfast-gallery-verdicts-v1";
   const VERDICT_LABELS = { pass: "通过", limit: "限制使用", rework: "返工" };
+  // Short Chinese labels for the auditor's codes, plus which ones are worth
+  // drawing in the alarm color. Truncation and dropped content mean the
+  // reader is missing text outright; the rest are worth knowing but are
+  // judgement calls the human is making anyway.
+  const FINDING_LABELS = {
+    "overflow": "溢出",
+    "out-of-bounds": "出血",
+    "low-contrast": "对比度",
+    "overlap": "重叠",
+    "content-truncated": "截断",
+    "content-dropped": "内容丢失",
+  };
+  const SEVERE = new Set(["content-dropped", "out-of-bounds", "overflow"]);
+
+  function summarizeFindings(findings) {
+    const counts = new Map();
+    for (const f of findings || []) counts.set(f.code, (counts.get(f.code) || 0) + 1);
+    return [...counts].map(([code, n]) => ({
+      code,
+      label: (FINDING_LABELS[code] || code) + (n > 1 ? " ×" + n : ""),
+      severe: SEVERE.has(code),
+    }));
+  }
 
   // ── verdict state ──────────────────────────────────────────────────────
   // Keyed by page id, which is derived from theme/layout/component identity
@@ -418,6 +462,23 @@ kbd {
     note.addEventListener("input", () => setNote(p.id, note.value.trim()));
 
     card.append(stage, meta, verdictsRow, note);
+
+    // Machine findings ride along with the page instead of the reviewer
+    // re-deriving them by eye. Placed under the verdict row so they inform
+    // the judgement without pre-empting it.
+    const flags = summarizeFindings(p.findings);
+    if (flags.length > 0) {
+      const row = document.createElement("div");
+      row.className = "flags";
+      for (const f of flags) {
+        const chip = document.createElement("span");
+        chip.className = "flag" + (f.severe ? " sev" : "");
+        chip.textContent = f.label;
+        chip.title = (p.findings || []).filter((x) => x.code === f.code).map((x) => x.message).join("\\n");
+        row.appendChild(chip);
+      }
+      card.insertBefore(row, note);
+    }
     cards.set(p.id, { card, stage, verdictsRow, note, page: p, mounted: false });
     refreshCard(p.id);
     return card;
@@ -466,7 +527,7 @@ kbd {
   }, { rootMargin: "600px 0px" });
 
   // ── filtering and layout ───────────────────────────────────────────────
-  const state = { table: "all", language: "all", theme: "all", verdict: "all", query: "" };
+  const state = { table: "all", language: "all", theme: "all", verdict: "all", finding: "all", query: "" };
   let visible = [];
 
   function matches(p) {
@@ -476,6 +537,10 @@ kbd {
     if (state.verdict !== "all") {
       const v = (verdicts[p.id] || {}).verdict;
       if (state.verdict === "none" ? Boolean(v) : v !== state.verdict) return false;
+    }
+    if (state.finding !== "all") {
+      const has = (p.findings || []).length > 0;
+      if (state.finding === "any" ? !has : has) return false;
     }
     if (state.query) {
       const hay = (p.subject + " " + p.heading + " " + p.id).toLowerCase();
@@ -554,6 +619,13 @@ kbd {
       btn.setAttribute("aria-pressed", String(btn.dataset.verdict === v));
     }
     document.getElementById("viewer-note").value = (verdicts[p.id] || {}).note || "";
+    const list = document.getElementById("viewer-findings");
+    list.textContent = "";
+    for (const f of p.findings || []) {
+      const li = document.createElement("li");
+      li.textContent = (FINDING_LABELS[f.code] || f.code) + " — " + f.message;
+      list.appendChild(li);
+    }
   }
 
   function step(delta) {
@@ -602,6 +674,7 @@ kbd {
   document.getElementById("lang-filter").addEventListener("change", (e) => { state.language = e.target.value; render(); });
   document.getElementById("theme-filter").addEventListener("change", (e) => { state.theme = e.target.value; render(); });
   document.getElementById("verdict-filter").addEventListener("change", (e) => { state.verdict = e.target.value; render(); });
+  document.getElementById("finding-filter").addEventListener("change", (e) => { state.finding = e.target.value; render(); });
   let searchTimer;
   document.getElementById("search").addEventListener("input", (e) => {
     clearTimeout(searchTimer);
@@ -628,6 +701,7 @@ kbd {
           page: p.page,
           verdict: verdicts[p.id].verdict || null,
           note: verdicts[p.id].note || null,
+          findings: (p.findings || []).map((f) => f.code),
         })),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });

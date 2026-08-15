@@ -19,6 +19,7 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { renderSlideSvg, validateIr } from "@/api"
 import { CANVAS_H_PX, CANVAS_W_PX } from "@/constants"
+import { auditDeck } from "@/svg/audit/deck-audit"
 import type { Job, TableId } from "./matrix"
 
 export interface ManifestPage {
@@ -38,6 +39,15 @@ export interface ManifestPage {
   readonly height: number
   /** Set when the page could not be produced — the reason is shown in the gallery. */
   readonly skipped?: string
+  /**
+   * What the deterministic auditor already knows about this page.
+   *
+   * Carried into the gallery so a human pass is spent on taste rather than
+   * on re-deriving things the machine measured better — nobody should be
+   * eyeballing a contrast ratio. The first review round produced several
+   * notes the auditor could have supplied verbatim.
+   */
+  readonly findings?: readonly { code: string; message: string }[]
 }
 
 export interface ManifestTable {
@@ -84,6 +94,8 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
 
   const pages: ManifestPage[] = []
   const svgs = new Map<string, string>()
+  const auditCache = new Map<unknown, Map<number, { code: string; message: string }[]>>()
+  const auditErrors: string[] = []
 
   for (const job of jobs) {
     const base: Omit<ManifestPage, "file" | "skipped"> = {
@@ -121,7 +133,30 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     const file = `pages/${job.id}.svg`
     writeFileSync(join(outDir, file), svg, "utf8")
     svgs.set(job.id, svg)
-    pages.push({ ...base, file })
+
+    // `auditDeck` works per deck, so audit each one once and index its
+    // findings by page rather than re-auditing for every slide.
+    let deckFindings = auditCache.get(job.ir)
+    if (!deckFindings) {
+      deckFindings = new Map<number, { code: string; message: string }[]>()
+      try {
+        for (const f of auditDeck(v.ir!).findings) {
+          const list = deckFindings.get(f.page) ?? []
+          list.push({ code: f.code, message: f.message })
+          deckFindings.set(f.page, list)
+        }
+      } catch (error) {
+        // An auditor failure must not cost the reviewer the page itself —
+        // but it must not pass for a clean bill of health either. A silently
+        // empty findings column is worse than none at all, because it reads
+        // as "the machine checked and found nothing".
+        auditErrors.push(`${job.id}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+      auditCache.set(job.ir, deckFindings)
+    }
+    const findings = deckFindings.get(job.slideIndex + 1) ?? []
+
+    pages.push({ ...base, file, ...(findings.length > 0 ? { findings } : {}) })
   }
 
   const tables: ManifestTable[] = (["theme", "layout", "component"] as const)
@@ -144,6 +179,12 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
   }
 
   writeFileSync(join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8")
+
+  if (auditErrors.length > 0) {
+    throw new Error(
+      `the deck auditor failed on ${auditErrors.length} page(s), so the gallery's findings column would be misleadingly empty:\n  ${auditErrors.slice(0, 5).join("\n  ")}`,
+    )
+  }
 
   return { manifest, svgs }
 }

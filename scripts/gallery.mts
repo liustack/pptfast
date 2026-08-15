@@ -18,6 +18,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { listThemes } from "../src/api"
+import { installNodePlatform } from "../src/platform/node"
 import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml, summarize } from "./gallery/html"
@@ -67,6 +68,11 @@ const themeIds = listThemes()
   .sort()
 
 assertFullCoverage(themeIds, EXPECTED_THEMES)
+
+// `auditDeck` parses the rendered SVG, which needs the Node DOM/raster seam.
+// Without it every audit call throws and the gallery would ship with an
+// empty findings column that looks like a clean bill of health.
+await installNodePlatform()
 
 const started = Date.now()
 
