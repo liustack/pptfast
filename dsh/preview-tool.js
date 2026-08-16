@@ -25,7 +25,7 @@
 // the review conclusions would stop describing the same product.
 
 import { spawn } from 'node:child_process'
-import { mkdtemp, readFile, readdir } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 

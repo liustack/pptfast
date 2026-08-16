@@ -175,12 +175,15 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     }
     const commands = (section: string) =>
       [...section.matchAll(/^pptfast .+$/gm)].map((mm) => mm[0].replace(/\s+#.*$/, "").trimEnd())
-    const en = sectionAfter(read(EN_REL), /^### Live review loop with `pptfast serve`$/m)
-    const zh = sectionAfter(read(ZH_REL), /^### 用 `pptfast serve` 做实时审阅循环$/m)
+    const en = sectionAfter(read(EN_REL), /^### Showing the deck to the user$/m)
+    const zh = sectionAfter(read(ZH_REL), /^### 把 deck 拿给用户看$/m)
     expect(commands(en).length, "SKILL.md serve section has no pptfast command lines").toBeGreaterThan(0)
     expect(commands(zh), "serve sections' pptfast command lines diverge between EN and ZH").toEqual(commands(en))
     for (const section of [en, zh]) {
-      expect(section, "the serve section must insist on --no-open").toContain("--no-open")
+      // The tool comes first where it exists, and the fallback still has to
+      // carry its own discipline — both halves are pinned, in both languages.
+      expect(section, "the section must name the preview tool as the first choice").toContain("pptfast_preview")
+      expect(section, "the serve fallback must insist on --no-open").toContain("--no-open")
       expect(section, "the serve section must name the localhost URL to report").toContain("http://127.0.0.1:4400")
       // Was: "must route annotations through revision-request.json". That
       // loop is gone (2026-08-16) — the preview is read-only and the

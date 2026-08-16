@@ -11,11 +11,16 @@
   "main": "./dsh/index.js",
   "exports": {
     ".": "./dsh/index.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./client": "./dsh/client.js"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
     }
   },
   "files": [

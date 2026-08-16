@@ -114,9 +114,13 @@ pptfast preview deck-dir/ -o preview/ --html
 
 Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. `preview.html` is read-only: it shows the deck, it never edits it. When the reviewer wants something changed, they tell you in the conversation — a screenshot of the page in question is the fastest way for both of you — and you route it through phase 6.
 
-### Live review loop with `pptfast serve`
+### Showing the deck to the user
 
-A review round happens in the user's own browser, not in the transcript. This is the review path: never try to show the deck by pasting a thumbnail or a screenshot of one page into the conversation. Serve the whole thing and let the user page through it at full size. Start the server as a background task (in DSH, follow the background-job convention and note the job id so you can stop it later):
+How you hand a deck over depends on what the harness can render, and the two options are not equivalent — take the first one that is available.
+
+**If a `pptfast_preview` tool exists, call it.** It renders the deck and puts a real slide preview in the conversation: a thumbnail strip in the tool card, full size on click, arrow keys to page. The user sees the deck without leaving the thread and without opening anything. Never fall back to handing over a URL when this tool is present — that is the experience it was built to replace. The tool reports only a summary line back to you (page count, audit state); that is deliberate, the deck itself goes to the user's screen, not into your context.
+
+**Otherwise, serve it.** Most harnesses have no way to draw a slide in the transcript, so the review happens in the user's own browser. Never try to substitute by pasting a thumbnail or a screenshot of one page into the conversation. Serve the whole thing and let the user page through it at full size. Start the server as a background task (in DSH, follow the background-job convention and note the job id so you can stop it later):
 
 ```bash
 pptfast serve deck-dir/ --no-open

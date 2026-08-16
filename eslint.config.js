@@ -11,7 +11,16 @@ export default tseslint.config(
     // recommended config doesn't know about Node globals — declare the ones
     // scripts/docs-list.js actually uses instead of pulling in the `globals` package.
     files: ["scripts/**/*.js", "dsh/**/*.js"],
-    languageOptions: { globals: { process: "readonly", console: "readonly", URL: "readonly" } },
+    languageOptions: { globals: { process: "readonly", console: "readonly", URL: "readonly", Buffer: "readonly" } },
+  },
+  {
+    // `dsh/client.js` is the plugin's browser half — it runs in the DSH web
+    // shell, not in Node, so it sees DOM globals instead. Same "declare what
+    // the file actually uses" posture as the Node block above.
+    files: ["dsh/client.js"],
+    languageOptions: {
+      globals: { window: "readonly", document: "readonly", console: "readonly" },
+    },
   },
   {
     // 迁移自 ops-web 的 svg/*.tsx 里带 react-refresh 的 eslint-disable 注释——

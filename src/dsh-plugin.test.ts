@@ -229,3 +229,107 @@ describe("pptfast_preview tool", () => {
     expect(definePreviewTool("/x.js").description).toMatch(/preview URL/)
   })
 })
+
+/**
+ * Load the browser half the way the DSH shell does: evaluating the bundle
+ * registers a factory with the module loader, and the factory runs at
+ * materialization with a `require` the shell supplies. The module evaluates
+ * once, so the registration is captured once and the factory — which is
+ * re-runnable by design — is called per test with its own `require`.
+ */
+type ClientBundle = {
+  apply: (ctx: unknown) => void
+  inject: string[]
+  __testing: {
+    TOOL_NAME: string
+    bundleOf: (block: unknown) => { pages: unknown[] } | null
+    namespaceIds: (svg: string, prefix: string) => string
+    drawablePages: (bundle: { pages: { svg?: string | null }[] }) => unknown[]
+  }
+}
+
+let clientFactory: ((r: (id: string) => unknown) => ClientBundle) | undefined
+
+async function loadClientBundle(requireImpl: (id: string) => unknown): Promise<ClientBundle> {
+  if (!clientFactory) {
+    let registered: { id: string; factory: (r: (id: string) => unknown) => ClientBundle } | undefined
+    ;(globalThis as { window?: unknown }).window = {
+      __ModuleLoader__: { load: (r: typeof registered) => { registered = r } },
+    }
+    // @ts-expect-error untyped on purpose, same as the host half
+    await import("../dsh/client.js")
+    if (!registered) throw new Error("client bundle registered no factory")
+    expect(registered.id).toBe("@liustack/pptfast")
+    clientFactory = registered.factory
+  }
+  return clientFactory(requireImpl)
+}
+
+const fakeReact = {
+  createElement: () => null,
+  useState: () => [0, () => {}],
+  useEffect: () => {},
+  useRef: () => ({}),
+}
+
+describe("pptfast preview card (browser half)", () => {
+  it("claims the tool.call.toolview key its own tool registers under", async () => {
+    // The card and the tool have to agree on one wire name; a typo here
+    // simply never renders, which is silent — so it is pinned from both
+    // sides against the same constant.
+    let spec: { name?: string; key?: string } | undefined
+    const bundle = await loadClientBundle((id) => (id === "react" ? fakeReact : {}))
+    bundle.apply({
+      slots: {
+        inject: (_name: string, gen: () => Iterable<unknown>) => {
+          for (const _ of gen()) { /* drain the generator */ }
+        },
+        register: (s: { name: string; key: string }) => { spec = s },
+      },
+    })
+    expect(spec).toEqual({ name: "tool.call.toolview", key: "pptfast_preview" })
+    expect(bundle.__testing.TOOL_NAME).toBe("pptfast_preview")
+  })
+
+  it("degrades to a console line rather than taking the turn down with it", async () => {
+    // A card that throws would break rendering for the whole conversation
+    // turn, so both absences it can actually meet are survivable: a shell
+    // with no slot service, and one where react is not resolvable.
+    const noReact = await loadClientBundle((id) => {
+      if (id === "react") throw new Error("react unavailable")
+      return {}
+    })
+    expect(() => noReact.apply({})).not.toThrow()
+    expect(() => noReact.apply({ slots: { inject: () => {} } })).not.toThrow()
+  })
+
+  it("namespaces each slide's ids so several in one DOM cannot cross-wire", async () => {
+    // Same defect `src/lib/svg-ids.ts` documents: every slide is a standalone
+    // document whose ids are only unique inside itself, and this card mounts
+    // several into one page.
+    const bundle = await loadClientBundle(() => ({}))
+    const out = bundle.__testing.namespaceIds(
+      '<svg><linearGradient id="sky"/><rect fill="url(#sky)"/></svg>',
+      "p2-",
+    )
+    expect(out).toContain('id="p2-sky"')
+    expect(out).toContain("url(#p2-sky)")
+    expect(out).not.toContain('id="sky"')
+  })
+
+  it("falls through to the generic card instead of throwing on an unrecognized result", async () => {
+    const bundle = await loadClientBundle(() => ({}))
+    expect(bundle.__testing.bundleOf({})).toBeNull()
+    expect(bundle.__testing.bundleOf(undefined)).toBeNull()
+    expect(
+      bundle.__testing.bundleOf({ meta: { card: "pptfast-preview", bundle: { pages: [{ id: "a" }] } } }),
+    ).toEqual({ pages: [{ id: "a" }] })
+  })
+
+  it("skips pages an oversized deck shipped without markup", async () => {
+    const bundle = await loadClientBundle(() => ({}))
+    expect(
+      bundle.__testing.drawablePages({ pages: [{ svg: "<svg/>" }, { svg: null }, { svg: "" }] }),
+    ).toHaveLength(1)
+  })
+})
