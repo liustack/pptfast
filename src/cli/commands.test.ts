@@ -171,6 +171,27 @@ const IR_WITH_BULLET_OVERFLOW = {
   ],
 }
 
+// A page holding far more than its content area can fit: `layoutContentFit`
+// drops the surplus blocks and the slide says nothing about it, which is
+// what `generatePptx`'s content-drop gate refuses to export.
+const IR_WITH_DROPPED_CONTENT = {
+  version: "4",
+  filename: "cli-test-dropped",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover", heading: "CLI" },
+    {
+      type: "content",
+      id: "p-2",
+      heading: "Too much",
+      components: Array.from({ length: 8 }, () => ({
+        type: "paragraph",
+        text: "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明".repeat(3),
+      })),
+    },
+  ],
+}
+
 let dir: string
 const originalPptfastHome = process.env.PPTFAST_HOME
 beforeAll(async () => {
@@ -187,6 +208,7 @@ beforeAll(async () => {
   await writeFile(join(dir, "deck-with-alias.json"), JSON.stringify(IR_WITH_FIELD_ALIAS))
   await writeFile(join(dir, "deck-warn-only.json"), JSON.stringify(IR_WITH_WARN_ONLY))
   await writeFile(join(dir, "deck-bullet-overflow.json"), JSON.stringify(IR_WITH_BULLET_OVERFLOW))
+  await writeFile(join(dir, "deck-dropped-content.json"), JSON.stringify(IR_WITH_DROPPED_CONTENT))
   await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
   await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
   await writeFile(join(dir, "plan-with-narrative-id-shape.json"), JSON.stringify(PLAN_WITH_NARRATIVE_ID_SHAPE))
@@ -525,6 +547,33 @@ describe("runRender", () => {
       expect(msg).toContain("2 slides")
       const bytes = await readFile(out)
       expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+    })
+  })
+
+  describe("--allow-dropped-content threading (deep-review P1)", () => {
+    it("rejects a deck whose layout silently drops content when the flag is not passed", async () => {
+      const out = join(dir, "out-dropped-blocked.pptx")
+      await expect(
+        runRender(join(dir, "deck-dropped-content.json"), { output: out }),
+      ).rejects.toThrow(/deck drops \d+ content blocks.*p-2 \(page 2.*--allow-dropped-content/s)
+    })
+
+    it("renders the deck when --allow-dropped-content is passed", async () => {
+      const out = join(dir, "out-dropped-allowed.pptx")
+      const msg = await runRender(join(dir, "deck-dropped-content.json"), {
+        output: out,
+        allowDroppedContent: true,
+      })
+      expect(msg).toContain("2 slides")
+      const bytes = await readFile(out)
+      expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+    })
+
+    it("still previews the same deck — preview is for looking at work in progress", async () => {
+      const out = join(dir, "dropped-preview.html")
+      await expect(
+        runPreview(join(dir, "deck-dropped-content.json"), out, { htmlOut: true }),
+      ).resolves.toBeTruthy()
     })
   })
 

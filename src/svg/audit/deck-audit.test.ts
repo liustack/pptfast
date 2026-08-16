@@ -448,7 +448,9 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
     const dropped = report.findings.filter((f) => f.code === "content-dropped")
     expect(dropped.length).toBeGreaterThan(0)
     expect(dropped[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-dropped" })
-    expect(dropped[0].message).toMatch(/hidden behind a "\+\d+ more" marker/)
+    // The page-level drop paints nothing on the slide any more, so the
+    // message no longer points at a "+N more" marker that is not there.
+    expect(dropped[0].message).toMatch(/missing from the rendered slide, with nothing on it to say so/)
     expect((dropped[0].detail as { count?: number }).count).toBeGreaterThan(0)
   })
 

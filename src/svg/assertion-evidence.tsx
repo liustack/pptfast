@@ -4,6 +4,7 @@ import type { ComponentCtx } from "./components/types"
 import { EVIDENCE_TYPES } from "./component-traits"
 import { renderComponent, measureComponent } from "./components"
 import { BLOCK_GAP, layoutContentFit, type ContentRect } from "./layout"
+import { DroppedContentMarker } from "./drop-marker"
 
 /**
  * Render `component` scaled uniformly (never enlarged) to fit within
@@ -86,15 +87,9 @@ export function AssertionEvidence({
         {placed.map((p, i) => (
           <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
         ))}
-      {/* Page-level content loss is recorded for the audit but never
-          painted (visual review 2026-08-15: "+1 more" in the corner of a
-          finished slide is a debug affordance that reached the customer,
-          and nobody outside this repo can read it). `deck-audit.ts`'s
-          `droppedFindings` selects on `data-dropped`, not on the text, so
-          the maintainer-facing signal is unchanged while the reader sees
-          nothing cryptic. Upstream quality gates are what should stop a
-          deck reaching this path at all. */}
-      {dropped > 0 && <g data-dropped={dropped} />}
+      {/* Recorded, never painted — and the export refuses to ship it.
+          See `DroppedContentMarker`'s own doc comment. */}
+      <DroppedContentMarker count={dropped} />
       </>
     )
   }
@@ -209,12 +204,11 @@ export function AssertionEvidence({
       {placed.map((p, i) => (
         <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
-      {/* Same audit-only marker as the sibling branch above. This site
-          previously painted "+N more" *without* a `data-dropped` attribute,
-          so content lost here was visible to the reader and invisible to
-          `deck-audit.ts` — exactly backwards. Now it is the other way
-          round. */}
-      {dropped > 0 && <g data-dropped={dropped} />}
+      {/* Same marker as the sibling branch above. This site previously
+          painted "+N more" *without* a `data-dropped` attribute, so content
+          lost here was visible to the reader and invisible to
+          `deck-audit.ts` — exactly backwards. */}
+      <DroppedContentMarker count={dropped} />
     </>
   )
 }

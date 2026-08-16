@@ -94,7 +94,7 @@ pptfast validate deck-dir/     # content-quality gate: heading length, density, 
 pptfast render deck-dir/ -o deck.pptx
 ```
 
-`--theme <id>` 在不改动 spec 的前提下覆盖 deck 的 theme。`--style <path>` 在其上叠加一层 style-token 覆盖（不用分叉 theme 就能重新配色，schema 见 `pptfast schema --style`）。deck 里还有未填的占位页时，render 会拒绝导出，除非加上 `--draft`——只有当用户明确想在所有页面都写完之前先看一眼时，才用它。
+`--theme <id>` 在不改动 spec 的前提下覆盖 deck 的 theme。`--style <path>` 在其上叠加一层 style-token 覆盖（不用分叉 theme 就能重新配色，schema 见 `pptfast schema --style`）。deck 里还有未填的占位页时，render 会拒绝导出，除非加上 `--draft`——只有当用户明确想在所有页面都写完之前先看一眼时，才用它。某一页装不下、版面丢掉了放不下的块而页面上毫无提示时，render 同样拒绝导出，报错会写清哪几页各丢了几块。正确做法是把那一页缩短或拆成两页再重新渲染，`--allow-dropped-content` 会带着缺失的内容出片，只有用户明确要求时才用。
 
 如果项目里有 `pptfast.config.json`，它的 theme/style 就是项目默认值——除非用户要求，不要用 `--theme` 跟它对着干。阶段三里写的任何页面 `notes` 都会导出成原生 PowerPoint 演讲者备注（PowerPoint/Keynote 里的 View → Notes）——从不会画到幻灯片本身上。
 

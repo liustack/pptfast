@@ -291,6 +291,8 @@ export interface RenderOptions {
   cwd?: string
   /** Skip the unfilled-placeholder-pages gate (W5 task 1) — see `generatePptx` in `../api`. */
   draft?: boolean
+  /** Skip the content-drop gate — see `checkContentDropGate` in `../pptx/generate`. */
+  allowDroppedContent?: boolean
 }
 
 /**
@@ -300,7 +302,9 @@ export interface RenderOptions {
  * follows the exact same validate → resolve-assets → generate pipeline a
  * single file always has. `--draft` threads through unchanged either way
  * (`generatePptx`'s own gate, W5 task 1) — a deck project's own placeholder
- * pages are exactly what that gate exists to catch.
+ * pages are exactly what that gate exists to catch. `--allow-dropped-content`
+ * threads the same way for the sibling content-drop gate
+ * (`checkContentDropGate`, `../pptx/generate`).
  *
  * Appends the same field-alias {@link normalizedNote} `runValidate` below
  * prints (W5 whole-branch review finding 3 — the README already claimed
@@ -326,7 +330,10 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
-  const bytes = await generatePptx(v.ir!, { draft: opts.draft })
+  const bytes = await generatePptx(v.ir!, {
+    draft: opts.draft,
+    allowDroppedContent: opts.allowDroppedContent,
+  })
   await mkdir(dirname(resolve(opts.output)), { recursive: true })
   await writeFile(opts.output, bytes)
   const ok = `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`

@@ -679,7 +679,11 @@ describe("auditPptxPackage — image-alt-dropped, rekeyed on rendered ops (alt-e
       },
     })
 
-    const blob = await generatePptxBlob(ir)
+    // The dropped component is exactly what the content-drop gate now
+    // refuses to export unattended (deep-review P1) — this test is about
+    // the `image-alt-dropped` rule not misfiring on the leftovers, so it
+    // takes the same explicit opt-in a caller would.
+    const blob = await generatePptxBlob(ir, { allowDroppedContent: true })
     const zip = await JSZip.loadAsync(await blob.arrayBuffer())
     // Not vacuous: prove the drop actually happened — the image_grid's alt
     // text is genuinely absent from the package because it was never

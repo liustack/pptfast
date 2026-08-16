@@ -92,7 +92,7 @@ Fix whatever either command reports as an error and re-run until both print `OK`
 pptfast render deck-dir/ -o deck.pptx
 ```
 
-`--theme <id>` overrides the deck theme without editing the spec. `--style <path>` layers a style-token override on top (re-color without forking a theme, schema: `pptfast schema --style`). Render refuses a deck with unfilled placeholder pages unless you add `--draft` — reach for that only when the user explicitly wants a look before every page is done.
+`--theme <id>` overrides the deck theme without editing the spec. `--style <path>` layers a style-token override on top (re-color without forking a theme, schema: `pptfast schema --style`). Render refuses a deck with unfilled placeholder pages unless you add `--draft` — reach for that only when the user explicitly wants a look before every page is done. It also refuses a deck where a page holds more than fits, so the layout left blocks out with nothing on the slide to say so: the error names the pages and how many blocks each lost. Fix it by shortening that page or splitting it in two, and re-render — `--allow-dropped-content` ships the file with the content missing, so only pass it if the user says to.
 
 If the project has a `pptfast.config.json`, its theme/style are project defaults — do not fight them with `--theme` unless the user asks. Any page `notes` you wrote in phase 3 export as native PowerPoint speaker notes (View → Notes in PowerPoint/Keynote) — never drawn onto the slide itself.
 

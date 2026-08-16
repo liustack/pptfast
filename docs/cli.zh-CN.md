@@ -14,7 +14,7 @@ read_when:
 
 | 命令 | 作用 |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | 校验并渲染成 `.pptx` |
+| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content]` | 校验并渲染成 `.pptx` |
 | `validate <target>` | 校验 IR，输出带页码的错误信息与提示性警告 |
 | `audit <target> [--json] [--pixels]` | 确定性几何审查，发现问题 exit 1（见[审查](#审查)） |
 | `asset-brief <target> [--json]` | 为每个 `image` 组件生成一份配图简报（见[配图简报](#配图简报)） |
@@ -34,6 +34,8 @@ read_when:
 
 `--theme-file` 在 `render`、`validate`、`audit`、`preview`、`serve` 上都可用。
 
+`render` 不会把一份悄悄缺内容的文件交给你。deck 里有未填的占位页时，要加 `--draft`。某一页装的内容超过内容区容量、版面只能丢掉放不下的块，而页面上没有任何提示时，要加 `--allow-dropped-content`，报错会写清哪几页各丢了几块。真正的修法是把这一页缩短或拆成两页，`audit` 会指向同样这几页。这两个开关是给「我知道，我就要这份文件」的场合用的。两道闸门都不影响 `preview` 和 `serve`：看半成品正是它们的用途。
+
 ## 审查
 
 `pptfast audit <target> [--json]` 离屏渲染每一页，跑一遍确定性几何审查，不靠模型看截图，两次跑出来的结果一样。
@@ -45,7 +47,7 @@ read_when:
 - **低对比度**：文字与其所在背景的 WCAG 相对亮度对比度不达标。
 - **重叠**：两个组件的区域大面积相交。
 - **内容截断**：渲染器为适配版面用省略号截断了文字。
-- **内容丢失**：出现「+N 更多」标记，一张卡片列表或整个组件放不下被隐藏了。
+- **内容丢失**：一张卡片列表被截断到放得下的条数（页面上会显示「+N 更多」），或者整个组件放不下被整块丢掉、页面上没有任何痕迹。
 
 audit 是建议性工具，不是硬门。结构非法或密度超标的 deck 由 `validate` 拦下，audit 抓的是一份*合法* deck 在渲染层仍可能出现的问题：作者选了一个贴近背景色的文字颜色、两个组件的内容恰好撞在一起、一张卡片列表放不下丢了一条。
 

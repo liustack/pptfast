@@ -14,7 +14,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 
 | Command | Does |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | Validate + render to a `.pptx` |
+| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content]` | Validate + render to a `.pptx` |
 | `validate <target>` | Check the IR, print page-scoped errors and advisory warnings |
 | `audit <target> [--json] [--pixels]` | Deterministic geometry review, exits 1 when it finds anything (see [Auditing](#auditing)) |
 | `asset-brief <target> [--json]` | Image-generation brief for every `image` component (see [Asset briefs](#asset-briefs)) |
@@ -34,6 +34,8 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 
 `--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`.
 
+`render` refuses to hand you a file that is quietly incomplete. A deck with unfilled placeholder pages needs `--draft`. A deck where a page holds more than its content area can fit — so the layout leaves blocks out, with nothing on the slide to tell a reader — needs `--allow-dropped-content`; the error names the pages and how many blocks each lost. Shortening the page or splitting it in two is the real fix, and `audit` will point at the same pages. Both flags are for the case where you already know and want the file anyway. Neither gate touches `preview` or `serve` — looking at work in progress is what those are for.
+
 ## Auditing
 
 `pptfast audit <target> [--json]` renders every page off-screen and runs a deterministic geometry review — no screenshots for a model to squint at, no variance between runs.
@@ -45,7 +47,7 @@ Six checks:
 - **low-contrast** — the WCAG luminance ratio between text and its resolved background.
 - **overlap** — two components' regions substantially colliding.
 - **content-truncated** — text the renderer had to cut short with an ellipsis to fit.
-- **content-dropped** — a "+N more" marker, where a card list or a whole component didn't fit and got hidden.
+- **content-dropped** — a card list trimmed to what fits (the slide shows a "+N more" line), or a whole component the page had no room for and left out with nothing on the page to say so.
 
 Audit is advisory, not a hard gate. `validate` already rejects a structurally invalid or over-dense deck. Audit catches what a *valid* deck can still get wrong at render time: an author-chosen text color that sits too close to the background, two components whose combined content collides, a card list that had to drop an item.
 

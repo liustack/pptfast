@@ -57,11 +57,23 @@ function checkDraftGate(ir: PptxIR): void {
   )
 }
 
-/** Full pipeline: validate → SVG → DrawingML → animation patches → pptx bytes. */
-export async function generatePptx(input: unknown, opts?: { draft?: boolean }): Promise<Uint8Array> {
+/**
+ * Full pipeline: validate → SVG → DrawingML → animation patches → pptx bytes.
+ *
+ * Two export gates, both "refuse to hand over a deliverable the caller
+ * cannot see is broken, unless they say they know": `draft` skips the
+ * unfilled-placeholder gate above, `allowDroppedContent` skips the
+ * content-drop gate (`checkContentDropGate` in `./pptx/generate` — it lives
+ * there because only a real layout can answer it, and the export renders
+ * every slide there already).
+ */
+export async function generatePptx(
+  input: unknown,
+  opts?: { draft?: boolean; allowDroppedContent?: boolean },
+): Promise<Uint8Array> {
   const v = validateIr(input)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   if (!opts?.draft) checkDraftGate(v.ir!)
-  const blob = await generatePptxBlob(v.ir!)
+  const blob = await generatePptxBlob(v.ir!, { allowDroppedContent: opts?.allowDroppedContent })
   return new Uint8Array(await blob.arrayBuffer())
 }

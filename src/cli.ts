@@ -44,10 +44,21 @@ program
   .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) and render with it")
   .option("--style <path>", "style overrides JSON re-coloring the theme (see `pptfast schema --style`)")
   .option("--draft", "allow unfilled placeholder pages (skip the draft gate)")
+  .option(
+    "--allow-dropped-content",
+    "export anyway when a page holds more than fits and the layout drops blocks (skip the content-drop gate)",
+  )
   .action(
     async (
       target: string,
-      opts: { output: string; theme?: string; themeFile?: string; style?: string; draft?: boolean },
+      opts: {
+        output: string
+        theme?: string
+        themeFile?: string
+        style?: string
+        draft?: boolean
+        allowDroppedContent?: boolean
+      },
     ) => {
       try {
         console.log(
@@ -57,6 +68,7 @@ program
             themeFilePath: opts.themeFile,
             stylePath: opts.style,
             draft: opts.draft,
+            allowDroppedContent: opts.allowDroppedContent,
           }),
         )
       } catch (e) {

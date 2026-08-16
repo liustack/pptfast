@@ -340,7 +340,12 @@ function noAssetIr(): PptxIR {
       contentSlide("Sankey", [COMPONENT_BY_TYPE.sankey]),
       contentSlide("Flow + Architecture", [COMPONENT_BY_TYPE.flowchart, COMPONENT_BY_TYPE.architecture]),
       contentSlide("Timeline + Comparison", [COMPONENT_BY_TYPE.timeline, COMPONENT_BY_TYPE.comparison]),
-      contentSlide("RowCards + Steps", [COMPONENT_BY_TYPE.row_cards, COMPONENT_BY_TYPE.steps]),
+      // row_cards and steps each get a page: paired, the two overflowed the
+      // content area and the layout silently dropped one (content-drop gate,
+      // deep-review P1 — this fixture is about component coverage, not about
+      // how much fits on a page).
+      contentSlide("RowCards", [COMPONENT_BY_TYPE.row_cards]),
+      contentSlide("Steps", [COMPONENT_BY_TYPE.steps]),
       contentSlide("Rings + Numbered", [COMPONENT_BY_TYPE.rings, COMPONENT_BY_TYPE.numbered_cards]),
       contentSlide("Roadmap + Matrix", [COMPONENT_BY_TYPE.roadmap, COMPONENT_BY_TYPE.matrix]),
       contentSlide("Insight + Verdict", [COMPONENT_BY_TYPE.insight_panel, COMPONENT_BY_TYPE.verdict_banner]),
@@ -350,11 +355,11 @@ function noAssetIr(): PptxIR {
       contentSlide("Data Table", [COMPONENT_BY_TYPE.data_table]),
       // The 3 image-family types, all pointed at unresolvable asset ids —
       // must fall back to a placeholder, never emit `<image>`.
-      contentSlide("Image family (no resolvable asset)", [
-        COMPONENT_BY_TYPE.image,
-        COMPONENT_BY_TYPE.image_grid,
-        COMPONENT_BY_TYPE.image_compare,
-      ]),
+      // One per page for the same reason as RowCards/Steps above — all
+      // three on one page dropped two of them.
+      contentSlide("Image (no resolvable asset)", [COMPONENT_BY_TYPE.image]),
+      contentSlide("Image grid (no resolvable asset)", [COMPONENT_BY_TYPE.image_grid]),
+      contentSlide("Image compare (no resolvable asset)", [COMPONENT_BY_TYPE.image_compare]),
       { type: "ending", heading: "Thanks", components: [] },
     ],
   }

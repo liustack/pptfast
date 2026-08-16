@@ -3,6 +3,7 @@ import type { Component } from "@/ir"
 import type { ComponentCtx } from "./components/types"
 import { renderComponent } from "./components"
 import { layoutContentFit, type ContentRect } from "./layout"
+import { DroppedContentMarker } from "./drop-marker"
 import {
   fitSvgLine,
   measureTextUnits,
@@ -130,15 +131,9 @@ export function BigNumber({
       {placed.map((p, i) => (
         <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
-      {/* Page-level content loss is recorded for the audit but never
-          painted (visual review 2026-08-15: "+1 more" in the corner of a
-          finished slide is a debug affordance that reached the customer,
-          and nobody outside this repo can read it). `deck-audit.ts`'s
-          `droppedFindings` selects on `data-dropped`, not on the text, so
-          the maintainer-facing signal is unchanged while the reader sees
-          nothing cryptic. Upstream quality gates are what should stop a
-          deck reaching this path at all. */}
-      {dropped > 0 && <g data-dropped={dropped} />}
+      {/* Recorded, never painted — and the export refuses to ship it.
+          See `DroppedContentMarker`'s own doc comment. */}
+      <DroppedContentMarker count={dropped} />
     </>
   )
 }
