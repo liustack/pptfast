@@ -363,8 +363,18 @@ header{display:flex;align-items:center;gap:14px;padding:11px 18px;background:var
 .pf-finding-code{display:inline-block;font-size:11px;font-weight:700;color:var(--bad)}
 .pf-finding-msg{display:block;font-size:12px;color:var(--ink-dim);margin-top:2px}
 
+/* The strip is cut off by its own right edge when it scrolls, which reads as
+   a clipping bug rather than as "there is more this way" -- the last thumbnail
+   is simply sliced, and inside an embedder's rounded frame it is sliced on a
+   curve. The two widths are driven from script (see fadeStrip) and are 0 until
+   there is really something hidden on that side, so a strip that fits is
+   untouched: at 0 the gradient is opaque from edge to edge. */
 #pf-filmstrip{display:flex;gap:10px;padding:11px 18px;overflow-x:auto;background:var(--panel);
-  border-top:1px solid var(--line);flex:0 0 auto}
+  border-top:1px solid var(--line);flex:0 0 auto;--pf-fade-l:0px;--pf-fade-r:0px;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 var(--pf-fade-l),
+    #000 calc(100% - var(--pf-fade-r)),transparent 100%);
+  mask-image:linear-gradient(to right,transparent 0,#000 var(--pf-fade-l),
+    #000 calc(100% - var(--pf-fade-r)),transparent 100%)}
 .pf-thumb{flex:0 0 auto;width:154px;padding:0;margin:0;border:1px solid var(--line);background:var(--panel);
   cursor:pointer;border-radius:8px;overflow:hidden;position:relative;font:inherit;text-align:left}
 .pf-thumb:hover{border-color:var(--ink-dim)}
@@ -450,6 +460,55 @@ const JS = `
       activate(parseInt(b.getAttribute('data-page-index'), 10))
     })
   })
+
+  // Fade whichever end of the strip has more thumbnails behind it. Driven
+  // from here rather than left to CSS because no CSS rule can ask whether a
+  // box currently overflows. See the #pf-filmstrip rule for why it matters.
+  var strip = document.getElementById('pf-filmstrip')
+  function fadeStrip() {
+    if (!strip || thumbs.length === 0) return
+    // Measured off the thumbnails, not off scrollWidth. The strip's own
+    // 18px of padding counts as scrollable width, so scrollWidth says there
+    // is more to the right while a reader is already looking at the last
+    // thumbnail — and activate()'s scrollIntoView stops exactly there,
+    // leaving the padding unscrolled. The fade would then claim there is
+    // more to see and dim the selected thumbnail's own ring to do it. Asking
+    // whether a thumbnail is actually cut off is what the fade means anyway.
+    var box = strip.getBoundingClientRect()
+    var hiddenLeft = box.left - thumbs[0].getBoundingClientRect().left
+    var hiddenRight = thumbs[thumbs.length - 1].getBoundingClientRect().right - box.right
+    // A pixel of slack: sub-pixel layout leaves a fraction of overflow on
+    // strips that visibly fit, and fading those is the bug in reverse.
+    strip.style.setProperty('--pf-fade-l', (hiddenLeft > 1 ? 28 : 0) + 'px')
+    strip.style.setProperty('--pf-fade-r', (hiddenRight > 1 ? 28 : 0) + 'px')
+  }
+  if (strip) {
+    fadeStrip()
+    strip.addEventListener('scroll', fadeStrip, { passive: true })
+    // The strip also stops and starts overflowing as the window changes width,
+    // and scrollIntoView moves it without a resize.
+    window.addEventListener('resize', fadeStrip)
+    if (window.ResizeObserver) new ResizeObserver(fadeStrip).observe(strip)
+  }
+
+  // Open on a given page: #page=3 is the third thumbnail, not slide index 3.
+  // A reader who clicks page 3 in a harness that embeds this file expects to
+  // land on page 3, and the embedder has no other way to say so — it holds a
+  // URL, not a handle on this script. Reading the position rather than the
+  // index keeps that promise honest for a deck whose slides are not numbered
+  // 0..n-1. Silently ignored when it names a page this deck does not have.
+  function fromHash() {
+    var m = /(?:^|[#&])page=(\\d+)/.exec(location.hash || '')
+    if (!m) return
+    var pos = parseInt(m[1], 10) - 1
+    // >= 0, not > 0. Page 1 is a no-op on first load, but not afterwards: a
+    // reader who pages forward and then hits Back gets #page=1 in the URL,
+    // and skipping it leaves the address bar and the deck disagreeing.
+    // activate() already returns early when it is handed the current page.
+    if (pos >= 0 && pos < total) activate(parseInt(thumbs[pos].getAttribute('data-index'), 10))
+  }
+  fromHash()
+  window.addEventListener('hashchange', fromHash)
 
   // Light/dark surround. A deck is judged on color and weight, and the
   // surround it sits on changes both — a dark theme reads muddy on a light

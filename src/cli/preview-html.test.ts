@@ -385,4 +385,75 @@ describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)
     expect(guess).toBeGreaterThan(-1)
     expect(measured).toBeGreaterThan(guess)
   })
+
+  it("emits a script that actually parses", () => {
+    // This page's JS is written inside a TS template literal, where a stray
+    // backtick ends the string early and a broken script is still a
+    // well-formed HTML file. Nothing else here would notice.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1].map((index) => slide({ index })),
+      findings: [{ page: 1, code: "overflow", message: "m" }],
+    })
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)?.[1]
+    expect(body).toBeTruthy()
+    expect(() => new Function(body!)).not.toThrow()
+  })
+
+  it("opens on the page the embedder asked for, since a URL is all it can pass", () => {
+    // A harness that embeds this file in a frame holds a URL and nothing else,
+    // so a reader who clicks page 3 in its own strip lands on page 1 without
+    // this. `#page=3` counts thumbnails, not slide indices, so it still means
+    // the third page for a deck whose slides are not numbered 0..n-1.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1, 2].map((index) => slide({ index })),
+    })
+    expect(html).toContain("page=(")
+    expect(html).toContain("hashchange")
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)![1]!
+    // The position→index hop is the whole point: reading the number as an
+    // index would send a re-numbered deck to the wrong slide.
+    expect(body).toContain("thumbs[pos].getAttribute('data-index')")
+  })
+
+  it("fades the filmstrip only on the side that has thumbnails hidden behind it", () => {
+    // A strip cut off by its own edge reads as a clipping bug, not as "there
+    // is more this way" — and inside an embedder's rounded frame the last
+    // thumbnail is sliced on a curve. Fading a strip that fits would be the
+    // same mistake pointing the other way, so both widths start at 0, where
+    // the gradient is opaque edge to edge.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1].map((index) => slide({ index })),
+    })
+    expect(html).toContain("--pf-fade-l:0px")
+    expect(html).toContain("--pf-fade-r:0px")
+    expect(html).toContain("mask-image:linear-gradient(to right,transparent 0,#000 var(--pf-fade-l)")
+
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)![1]!
+    // Measured off the thumbnails, never off scrollWidth. The strip's own
+    // padding is scrollable width, so scrollWidth reports room to the right
+    // while the reader is already on the last thumbnail — and that is exactly
+    // where activate()'s scrollIntoView parks. The fade then claims there is
+    // more to see and dims the selected thumbnail's ring to say it.
+    expect(body).not.toContain("strip.scrollWidth")
+    expect(body).toContain("thumbs[thumbs.length - 1].getBoundingClientRect().right")
+    expect(body).toContain("box.left - thumbs[0].getBoundingClientRect().left")
+    // Re-measured on scroll and on resize: a strip that fits at one window
+    // width overflows at another, and activate() scrolls it without either.
+    expect(body).toContain("'scroll', fadeStrip")
+    expect(body).toContain("'resize', fadeStrip")
+  })
+
+  it("lets #page=1 pull the deck back to the first page, not just start there", () => {
+    // Page 1 is a no-op on first load and a real move afterwards: page
+    // forward, hit Back, and the URL says page 1 while the deck sits on 6.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1, 2].map((index) => slide({ index })),
+    })
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)![1]!
+    expect(body).toContain("pos >= 0 && pos < total")
+  })
 })
