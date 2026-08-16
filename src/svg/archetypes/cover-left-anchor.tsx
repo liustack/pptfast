@@ -265,10 +265,22 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
             fontSize={metaFit.fontSize}
             dominantBaseline="alphabetic"
           >
-            {authorText && <tspan fill={colors.text}>{authorText}</tspan>}
-            {date && <tspan fill={colors.muted}>{`${authorText ? "    ·    " : ""}${date}`}</tspan>}
-            {version && (
-              <tspan fill={colors.muted}>{`${authorText || date ? "    ·    " : ""}${version}`}</tspan>
+            {metaFit.truncated ? (
+              // Shrinking and then dropping the role both failed, so the fit
+              // had to ellipsize. Render its text — the whole point of
+              // computing it — as one run: the per-part fills below can only
+              // be reassembled from parts that survived intact, and a line
+              // that keeps its colours while overflowing the page is the
+              // defect this fit exists to prevent.
+              <tspan fill={colors.text}>{metaFit.text}</tspan>
+            ) : (
+              <>
+                {authorText && <tspan fill={colors.text}>{authorText}</tspan>}
+                {date && <tspan fill={colors.muted}>{`${authorText ? "    ·    " : ""}${date}`}</tspan>}
+                {version && (
+                  <tspan fill={colors.muted}>{`${authorText || date ? "    ·    " : ""}${version}`}</tspan>
+                )}
+              </>
             )}
           </text>
         </>

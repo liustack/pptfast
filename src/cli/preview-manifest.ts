@@ -86,7 +86,7 @@ export interface PreviewManifestInput {
 }
 
 /** Filename-safe id from a slide id, falling back to the page number. */
-function pageId(slide: PreviewManifestSlideInput): string {
+function pageSlug(slide: PreviewManifestSlideInput): string {
   const raw = slide.id?.trim()
   if (raw) {
     const safe = raw
@@ -98,6 +98,29 @@ function pageId(slide: PreviewManifestSlideInput): string {
   return `page-${String(slide.index + 1).padStart(3, "0")}`
 }
 
+/**
+ * Page ids for a whole deck, guaranteed distinct.
+ *
+ * Slugging is lossy — `"Q2 Cover"` and `"q2-cover"` are two legal, distinct
+ * slide ids that reduce to the same slug — and these ids are exactly what a
+ * consumer anchors a selection, a comment or a scroll position to. Two pages
+ * sharing one would send those to the wrong page, so a repeat falls back to
+ * the page-number form, which cannot collide with anything.
+ */
+function pageIds(slides: readonly PreviewManifestSlideInput[]): string[] {
+  const taken = new Set<string>()
+  return slides.map((slide) => {
+    const slug = pageSlug(slide)
+    if (!taken.has(slug)) {
+      taken.add(slug)
+      return slug
+    }
+    const fallback = `page-${String(slide.index + 1).padStart(3, "0")}`
+    taken.add(fallback)
+    return fallback
+  })
+}
+
 export function buildPreviewManifest(input: PreviewManifestInput): PreviewManifest {
   const byPage = new Map<number, { code: string; message: string }[]>()
   for (const f of input.findings ?? []) {
@@ -106,10 +129,11 @@ export function buildPreviewManifest(input: PreviewManifestInput): PreviewManife
     byPage.set(f.page, list)
   }
 
-  const pages: PreviewManifestPage[] = input.slides.map((slide) => {
+  const ids = pageIds(input.slides)
+  const pages: PreviewManifestPage[] = input.slides.map((slide, i) => {
     const findings = byPage.get(slide.index + 1) ?? []
     return {
-      id: pageId(slide),
+      id: ids[i]!,
       page: slide.index + 1,
       type: slide.type,
       file: slide.file,

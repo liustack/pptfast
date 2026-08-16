@@ -73,10 +73,17 @@ export function SvgContent({ arrangement, components, rect, ctx }: SvgContentPro
     const h = placed[0].box.h ?? measureComponent(placed[0].component, placed[0].box.w, ctx)
     dy = Math.max(0, (rect.h - h) * 0.38)
   }
-  // aside 版式的侧栏分隔竖线（几何与 layoutContent 同源 asideSplit）——
-  // 退化条件与 layoutContent 一致（<2 块走 single 不画线）。
+  // aside 版式的侧栏分隔竖线（几何与 layoutContent 同源 asideSplit）。
+  //
+  // Read off the *actual* placement, not the requested arrangement: since
+  // `layoutContentFit` gained its single-column fallback (layout.ts — a
+  // split that would drop content retries as one full-width stack), asking
+  // for `aside` no longer means the result split. Drawing the divider from
+  // the request painted a vertical rule straight through the content of a
+  // page that had degraded to one column.
+  const laidOutColumns = new Set(placed.map((p) => p.box.x))
   const asideDivider =
-    arrangement === "aside" && components.length >= 2 ? asideSplit(rect).dividerX : null
+    arrangement === "aside" && laidOutColumns.size >= 2 ? asideSplit(rect).dividerX : null
   return (
     <g data-audit-rect={auditRect}>
       {asideDivider != null && (

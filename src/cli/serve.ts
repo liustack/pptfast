@@ -242,82 +242,10 @@ export const SERVE_CLIENT_JS = `
     })
   }
 
-  function setUpRevisionRequestSubmit() {
-    var originalBtn = document.getElementById('pf-export-btn')
-    if (!originalBtn) return
-
-    var submitBtn = originalBtn.cloneNode(true)
-    submitBtn.textContent = 'Submit revision request'
-    originalBtn.replaceWith(submitBtn)
-
-    var status = document.createElement('span')
-    status.id = 'pptfast-serve-submit-status'
-    status.setAttribute('aria-live', 'polite')
-    status.style.cssText = 'margin-left:8px;font-size:12px'
-
-    var downloadLink = document.createElement('a')
-    downloadLink.id = 'pptfast-serve-download-fallback'
-    downloadLink.href = '#'
-    downloadLink.textContent = 'download a copy instead'
-    downloadLink.style.cssText = 'margin-left:8px;font-size:12px;color:#2563eb'
-
-    submitBtn.insertAdjacentElement('afterend', status)
-    status.insertAdjacentElement('afterend', downloadLink)
-
-    submitBtn.addEventListener('click', function () {
-      if (typeof window.__pptfastBuildExportBlob !== 'function') {
-        status.style.color = '#dc2626'
-        status.textContent = 'failed to submit revision request (export function unavailable — try reloading the page)'
-        return
-      }
-      status.style.color = ''
-      status.textContent = 'submitting…'
-      // The extra Promise.resolve().then(...) wrapper (rather than calling
-      // window.__pptfastBuildExportBlob() directly and chaining off its
-      // result) means a synchronous throw from that call lands in the same
-      // .catch below as an async rejection or a network failure — every
-      // failure mode this chain can hit surfaces as the same inline
-      // status-line feedback, none of them silent.
-      Promise.resolve()
-        .then(function () {
-          return window.__pptfastBuildExportBlob()
-        })
-        .then(function (blob) {
-          return blob.text()
-        })
-        .then(function (text) {
-          return fetch('/revision-request', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: text,
-          })
-        })
-        .then(function (res) {
-          if (!res.ok) throw new Error('server responded ' + res.status)
-          status.style.color = '#16a34a'
-          status.textContent = 'Revision request saved to the deck directory'
-        })
-        .catch(function (err) {
-          status.style.color = '#dc2626'
-          status.textContent = 'failed to submit revision request' + (err && err.message ? ' (' + err.message + ')' : '')
-        })
-    })
-
-    downloadLink.addEventListener('click', function (e) {
-      e.preventDefault()
-      originalBtn.click()
-    })
-  }
-
   try {
     setUpLiveReload()
   } catch (e) {
     console.error('pptfast serve: failed to set up live reload', e)
-  }
-  try {
-    setUpRevisionRequestSubmit()
-  } catch (e) {
-    console.error('pptfast serve: failed to set up revision-request submit', e)
   }
 })()
 `.trim()

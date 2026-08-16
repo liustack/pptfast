@@ -504,9 +504,15 @@ kbd {
   }
 
   function refreshTally() {
+    // Counted over this build's own pages, not over everything in storage.
+    // Verdicts persist across runs by design (that is what makes the ids
+    // stable), so a narrowed run (--only=layout, fewer languages) still
+    // sees the full matrix's judgements in localStorage. Tallying those
+    // would report more pages reviewed than the page even has, and would
+    // disagree with the export, which already filters to the manifest.
     let pass = 0, limit = 0, rework = 0;
-    for (const id of Object.keys(verdicts)) {
-      const v = verdicts[id].verdict;
+    for (const p of MANIFEST.pages) {
+      const v = (verdicts[p.id] || {}).verdict;
       if (v === "pass") pass++;
       else if (v === "limit") limit++;
       else if (v === "rework") rework++;

@@ -86,4 +86,25 @@ describe("buildPreviewManifest", () => {
     // And the unfilled page says so, so no consumer can present it as finished.
     expect(skipped.pages[0]!.placeholder).toBe(true)
   })
+
+  it("never hands two pages the same id, even when distinct slide ids slug alike", () => {
+    // "Q2 Cover" and "q2-cover" are two legal, distinct slide ids that
+    // reduce to one slug. These ids are what a consumer anchors a selection
+    // or a comment to, so a collision sends those to the wrong page.
+    const m = buildPreviewManifest({
+      ...base,
+      slides: [
+        { index: 0, type: "cover", id: "Q2 Cover", file: "a.svg" },
+        { index: 1, type: "content", id: "q2-cover", file: "b.svg" },
+      ],
+    })
+    const ids = m.pages.map((p) => p.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    // The first claim keeps the slug; the loser falls back to its page
+    // number, which cannot collide with anything.
+    expect(ids[0]).toBe("q2-cover")
+    expect(ids[1]).toBe("page-002")
+    // Both keep their real slide id, so nothing is lost, only disambiguated.
+    expect(m.pages[1]!.slideId).toBe("q2-cover")
+  })
 })

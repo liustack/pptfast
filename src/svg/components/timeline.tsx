@@ -195,7 +195,13 @@ function renderVertical(
               cx={V_AXIS_X}
               cy={nodeCy}
               r={hl ? 10 : 7}
-              fill={accessibleInk(hl ? ctx.colors.accent : ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, 16)}
+              // Raw tokens, not `accessibleInk`: a filled shape carries no
+              // contrast floor, and running one through a text ink pick
+              // collapsed the highlighted and ordinary dots to the same
+              // near-black on classroom and ember — losing exactly the
+              // theme-colored distinction the highlight exists to make. The
+              // date text above is the part that needed the floor.
+              fill={hl ? ctx.colors.accent : ctx.colors.primary}
             />
             <text
               data-truncated={title.truncated ? "1" : undefined}

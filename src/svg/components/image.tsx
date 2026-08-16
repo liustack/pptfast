@@ -93,7 +93,14 @@ export const image: SvgComponent<ImageComponent> = {
                   width={box.w}
                   height={32}
                   fill={ctx.colors.primary}
-                  fillOpacity={0.88}
+                  // Opaque, not 0.88. The caption ink is picked against this
+                  // band (the self-painted-surface rule), and at 0.88 the
+                  // real background was primary blended with whatever pixels
+                  // the photo happened to have underneath — so the ink was
+                  // measured against a color that was never painted, and on
+                  // a light photo the true ratio stayed under the floor even
+                  // after the ink fix. An opaque band is the only version of
+                  // this the contrast pick can actually guarantee.
                 />
                 <text
                   data-truncated={fittedCaption.truncated ? "1" : undefined}

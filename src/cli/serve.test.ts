@@ -418,7 +418,12 @@ describe("createServeServer — serve-mode client injection", () => {
     // Still the same preview markup the non-serve download path renders —
     // injection is additive, not a replacement.
     expect(res.body).toContain("<svg")
-    expect(res.body).toContain("pf-export-btn")
+    expect(res.body).toContain("pf-filmstrip")
+    // Not `pf-export-btn`: that assertion kept passing after the button was
+    // removed from the preview, because the string still occurred inside the
+    // injected client's own source. It was matching the script text, not the
+    // DOM — a false green, and exactly what let the dead submit hook sit
+    // here unnoticed.
   })
 })
 
