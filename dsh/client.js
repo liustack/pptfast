@@ -315,7 +315,14 @@ window.__ModuleLoader__.load({
               },
               '→',
             ),
-            props.previewId ? h(ExportButton, { previewId: props.previewId, name: props.name, style: modalBtn(false) }) : null,
+            props.previewId
+              ? h(ExportButton, {
+                  previewId: props.previewId,
+                  name: props.name,
+                  draft: props.draft,
+                  style: modalBtn(false),
+                })
+              : null,
             h('button', { onClick: props.onClose, style: modalBtn(false) }, 'Close'),
           ),
         )
@@ -348,7 +355,10 @@ window.__ModuleLoader__.load({
               var url = URL.createObjectURL(blob)
               var a = document.createElement('a')
               a.href = url
-              a.download = (props.name || 'deck') + '.pptx'
+              // Matches the name the host half gave the file it is serving
+              // (`exportName`, preview-tool.js): a deck with unfilled pages
+              // must not be saved under a name that reads as finished work.
+              a.download = (props.name || 'deck') + (props.draft ? '-draft' : '') + '.pptx'
               document.body.appendChild(a)
               a.click()
               a.remove()
@@ -367,7 +377,12 @@ window.__ModuleLoader__.load({
           {
             onClick: save,
             style: props.style,
-            title: status === 'gone' ? '这份预览已过期，重新生成一次即可' : '下载可编辑的 .pptx',
+            title:
+              status === 'gone'
+                ? '这份预览已过期，重新生成一次即可'
+                : props.draft
+                  ? 'Download the editable .pptx — a draft: some pages are still unfilled placeholders'
+                  : '下载可编辑的 .pptx',
           },
           status === 'busy' ? '导出中…' : status === 'gone' ? '已过期' : '下载 PPTX',
         )
@@ -438,6 +453,29 @@ window.__ModuleLoader__.load({
             'div',
             { style: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: COLORS.dim } },
             h('span', { style: { color: COLORS.text, fontWeight: 600 } }, bundle.title || 'deck'),
+            // The deck still has placeholder pages. The export goes out
+            // anyway (see `--draft` in preview-tool.js's `execute`), so this
+            // badge is what keeps that from being a silent substitution: the
+            // user is looking at unfinished work and the file they save says
+            // so too.
+            bundle.draft
+              ? h(
+                  'span',
+                  {
+                    title: 'Some pages are still unfilled placeholders — the export is labelled a draft',
+                    style: {
+                      border: '1px solid ' + COLORS.line,
+                      borderRadius: 5,
+                      padding: '0 6px',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      fontSize: 10,
+                      letterSpacing: '0.04em',
+                    },
+                  },
+                  'draft',
+                )
+              : null,
             h('span', null, bundle.pages.length + ' pages'),
             findingCount > 0 ? h('span', null, findingCount + ' audit findings') : null,
             bundle.markupTruncated ? h('span', null, 'preview shortened') : null,
@@ -466,6 +504,7 @@ window.__ModuleLoader__.load({
               ? h(ExportButton, {
                   previewId: previewId,
                   name: bundle.title,
+                  draft: bundle.draft,
                   style: {
                     font: 'inherit',
                     fontSize: 12,
@@ -512,6 +551,7 @@ window.__ModuleLoader__.load({
                 slide: slide,
                 previewId: previewId,
                 name: bundle.title,
+                draft: bundle.draft,
                 start: start[0],
                 onClose: function () { open[1](false) },
               })

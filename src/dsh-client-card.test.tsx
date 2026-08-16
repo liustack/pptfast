@@ -29,6 +29,7 @@ interface Bundle {
   slide?: { width: number; height: number }
   pages: Page[]
   markupTruncated?: boolean
+  draft?: boolean
 }
 
 type CardProps = { block: unknown }
@@ -161,6 +162,36 @@ describe("dsh preview card — the thumbnail strip", () => {
     expect(titles[2]).toBe("content 3")
   })
 
+  it("namespaces every id it mounts, so two slides in one DOM cannot cross-wire", () => {
+    // Each slide is a standalone document whose ids only have to be unique
+    // inside itself; several of them in one page share an id space, so a
+    // `url(#glow)` on slide 3 would resolve against slide 1's definition of
+    // it. Writing `props.svg` straight into `innerHTML` looks identical in a
+    // test that only counts <svg> elements — this one reads the ids.
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "abc")} />)
+
+    const ids = Array.from(container.querySelectorAll("[id]")).map((el) => el.id)
+    expect(ids).toEqual(["pft0-root1", "pft0-r1", "pft1-root2", "pft1-r2"])
+    // The raw ids must be gone, not merely joined by prefixed copies.
+    expect(container.querySelector("#root1")).toBeNull()
+    expect(container.querySelector("#r2")).toBeNull()
+  })
+
+  it("re-namespaces per mount point, so the modal's copy does not collide with the thumbnail's", () => {
+    // The same slide is on screen twice once the modal opens. Sharing one
+    // prefix would put two elements with the same id in one document, and
+    // `url(#…)` resolves to whichever came first.
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
+    fireEvent.click(screen.getByText("预览"))
+
+    const ids = Array.from(container.querySelectorAll("[id]")).map((el) => el.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids).toContain("pft0-root1")
+    expect(ids).toContain("pfm0-root1")
+  })
+
   it("renders nothing at all when the block carries no recognisable payload", () => {
     const Card = makeCard()
     const { container } = render(<Card block={{ content: [{ text: "no preview here" }] }} />)
@@ -245,6 +276,58 @@ describe("dsh preview card — the modal", () => {
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
     fireEvent.click(thumbnails(container)[4]!)
     expect(counter()).toHaveTextContent("5 / 9")
+  })
+
+  it("opens from the keyboard on the thumbnail that has focus", () => {
+    // A thumbnail is a div with `role="button"` and `tabIndex`, which promises
+    // the keyboard behaviour a real <button> would have given for free. Every
+    // other keyboard test here fires at an already-open modal, so deleting
+    // this handler left them all green and the strip unreachable without a
+    // mouse.
+    for (const key of ["Enter", " "]) {
+      const Card = makeCard()
+      const { container, unmount } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
+      const thumb = thumbnails(container)[2]!
+      expect(thumb).toHaveAttribute("tabIndex", "0")
+
+      fireEvent.keyDown(thumb, { key })
+      expect(counter(), key).toHaveTextContent("3 / 9")
+      unmount()
+      cleanup()
+    }
+  })
+
+  it("ignores the keys that are not an activation", () => {
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
+    fireEvent.keyDown(thumbnails(container)[2]!, { key: "a" })
+    fireEvent.keyDown(thumbnails(container)[2]!, { key: "Tab" })
+    expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
+  })
+
+  it("closes on the Close button", () => {
+    // Escape is the only close path the previous round tested, so the button
+    // could have been wired to nothing.
+    openModal()
+    fireEvent.click(screen.getByText("Close"))
+    expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
+  })
+
+  it("closes on a click outside the slide, but never on one inside it", () => {
+    const { container } = openModal()
+    // The backdrop is the modal's own outermost element: clicking it means
+    // "not on anything", which is a dismissal.
+    const backdrop = container.querySelector('[style*="position: fixed"]') as HTMLElement
+    expect(backdrop).toBeTruthy()
+
+    // A click that started on the slide bubbles to the same element and must
+    // not be mistaken for one on the backdrop — that would close the viewer
+    // every time somebody clicked the deck they came to read.
+    fireEvent.click(screen.getByText("→"))
+    expect(counter()).toHaveTextContent("2 / 9")
+
+    fireEvent.click(backdrop)
+    expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
   })
 
   it("stays closed once it is closed", () => {
@@ -344,5 +427,78 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/missing"))
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it("falls back to the generic row when the fetch itself fails", async () => {
+    // A rejected promise, not a non-ok response: the harness restarting
+    // mid-render, or the route not registered at all. Without its own catch
+    // this is an unhandled rejection inside an effect, and the export
+    // button's catch is a different function that never sees it.
+    // Listened for on `process`, not on `window`: the promise is a native one
+    // created by this file, so jsdom's own event never fires for it and a
+    // window listener would sit there proving nothing. Remove the `.catch` in
+    // the effect and this goes red.
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown) => rejections.push(reason)
+    process.on("unhandledRejection", onRejection)
+    try {
+      fetchMock.mockRejectedValue(new Error("connection refused"))
+      const Card = makeCard()
+      const { container } = render(<Card block={blockWith(null, "A")} />)
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/A"))
+      // Two turns: `unhandledRejection` is only decided once the microtask
+      // queue has drained and nobody has attached a handler.
+      await new Promise((r) => setTimeout(r, 0))
+      await new Promise((r) => setTimeout(r, 0))
+      expect(rejections).toEqual([])
+      expect(container).toBeEmptyDOMElement()
+    } finally {
+      process.off("unhandledRejection", onRejection)
+    }
+  })
+
+  it("does not keep asking after a failure it cannot recover from", async () => {
+    fetchMock.mockRejectedValue(new Error("connection refused"))
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(null, "A")} />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    rerender(<Card block={blockWith(null, "A")} />)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("dsh preview card — a deck with unfilled pages", () => {
+  function draftBundle(): Bundle {
+    return { ...bundleOf([page(1), page(2)]), draft: true }
+  }
+
+  it("says so on the card, because the export goes out anyway", () => {
+    // The host half renders these with `--draft` rather than letting the
+    // download button fail forever (see preview-tool.js's `execute`). That
+    // trade only holds while the card admits the deck is unfinished.
+    const Card = makeCard()
+    render(<Card block={blockWith(draftBundle(), "abc")} />)
+    expect(screen.getByText("draft")).toBeInTheDocument()
+  })
+
+  it("keeps quiet about drafts on a finished deck", () => {
+    const Card = makeCard()
+    render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
+    expect(screen.queryByText("draft")).toBeNull()
+  })
+
+  it("saves the file under a name that says draft too", async () => {
+    // The card is a conversation the file will outlive: it gets mailed and
+    // opened by people who never saw the badge.
+    fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob(["deck"]) })
+    const Card = makeCard()
+    render(<Card block={blockWith(draftBundle(), "abc123")} />)
+
+    fireEvent.click(screen.getByText("下载 PPTX"))
+
+    await waitFor(() => expect(anchorClicks).toHaveLength(1))
+    expect(anchorClicks[0]!.download).toBe("Quarterly deck-draft.pptx")
   })
 })

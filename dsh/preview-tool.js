@@ -45,15 +45,32 @@
 //
 // ONE RENDER WINDOW is the rule everything else here follows. A preview and
 // its .pptx are produced by a single `execute` call, from one snapshot, by
-// one CLI process generation, while the source assets still hold the bytes
-// they held. Pinning the IR alone was not enough: a second CLI run re-reads
-// project and user configuration (theme, style), re-reads image files off
-// disk, re-fetches http assets, and may even be a different renderer version
-// after a plugin upgrade. None of that is captured by an IR file, so the
-// export could differ from the deck the user just approved in four separate
-// ways. The download route therefore serves a file, and starts no process.
-// The cost is one export per preview, including the previews nobody
-// downloads. That is the deliberate price of the guarantee.
+// one CLI process generation. Pinning the IR alone was not enough: a second
+// CLI run re-reads project and user configuration (theme, style), re-reads
+// image files off disk, re-fetches http assets, and may even be a different
+// renderer version after a plugin upgrade. None of that is captured by an IR
+// file, so the export could differ from the deck the user just approved in
+// four separate ways. The download route therefore serves a file, and starts
+// no process. The cost is one export per preview, including the previews
+// nobody downloads. That is the deliberate price.
+//
+// What that buys, precisely — the earlier wording here claimed more than the
+// code delivers, so here is the honest list:
+//
+//  - the deck structure and text: pinned, by the snapshot.
+//  - local image BYTES: pinned, by inlining them into the snapshot as data
+//    URIs (`inlineLocalImages`). Preview and render are still two processes
+//    with a real window between them, and an image file edited inside that
+//    window used to land in the export but not in the preview. Neither
+//    process reads those files any more.
+//  - the renderer build: the same `cliPath` for both runs, so only an
+//    upgrade mid-`execute` could split them. Not defended against.
+//  - project/user configuration: both runs read it, milliseconds apart, from
+//    the same cwd. Not pinned — an edit landing exactly between them would
+//    split preview from export. Small enough to accept, too small to claim
+//    it cannot happen.
+//  - http(s) assets, and local images in formats that need a recode (webp
+//    and friends): still fetched or read per run. See `inlineLocalImages`.
 
 import { spawn } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
@@ -150,26 +167,51 @@ class PreviewExpired extends Error {}
 const OUT_DIR_PREFIX = 'pptfast-preview-'
 
 /**
+ * Written into every directory this module creates, and required before it
+ * will delete one again.
+ *
+ * The name alone is not ownership. `pptfast-preview-` is a public string
+ * sitting in a world-writable directory, so anyone — another tool, an older
+ * pptfast, a person with a shell — can produce a path that passes a prefix
+ * test, and eviction would then recurse into it with `force: true`. This file
+ * is the part an outsider has no reason to have created, so it is the part
+ * worth checking.
+ */
+const OWNER_MARKER = '.pptfast-preview-owner'
+
+/** A fresh, marked directory for one preview's rendered deck. */
+async function createOutDir() {
+  const dir = await mkdtemp(join(tmpdir(), OUT_DIR_PREFIX))
+  await writeFile(join(dir, OWNER_MARKER), JSON.stringify({ tool: TOOL_NAME, created: Date.now() }))
+  return dir
+}
+
+/**
  * Is this directory one of ours to delete?
  *
- * Eviction now removes the rendered deck as well as the record pointing at
- * it, which turns a bad `outDir` into a destructive operation. `remember` is
- * an exported entry point and a record is just JSON on disk, so the value is
- * checked rather than trusted: only a `mkdtemp` directory sitting directly in
- * the system temp directory under this module's own prefix qualifies. A
- * record pointing anywhere else keeps its record deleted and its directory
- * untouched, which is the safe direction to be wrong in.
+ * Eviction removes the rendered deck as well as the record pointing at it,
+ * which turns a bad `outDir` into a destructive operation. `remember` is an
+ * exported entry point and a record is just JSON on disk, so the value is
+ * checked rather than trusted. Three things have to hold: the directory sits
+ * directly in the system temp directory, it carries this module's prefix, and
+ * it holds the marker file `createOutDir` writes. The first two are cheap
+ * filters over a name anyone can choose; the third is the one that actually
+ * says "we made this". A directory failing any of them keeps its record
+ * deleted and its own contents untouched, which is the safe direction to be
+ * wrong in.
  */
-function isDisposableOutDir(dir) {
+async function isDisposableOutDir(dir) {
   if (typeof dir !== 'string' || dir === '') return false
   const resolved = resolve(dir)
-  return dirname(resolved) === resolve(tmpdir()) && basename(resolved).startsWith(OUT_DIR_PREFIX)
+  if (dirname(resolved) !== resolve(tmpdir())) return false
+  if (!basename(resolved).startsWith(OUT_DIR_PREFIX)) return false
+  return await isFile(join(resolved, OWNER_MARKER))
 }
 
 /** Best-effort removal of an evicted preview's rendered deck. */
 async function discardOutDir(record) {
   const dir = record && record.outDir
-  if (!isDisposableOutDir(dir)) return
+  if (!(await isDisposableOutDir(dir))) return
   await rm(dir, { recursive: true, force: true }).catch(() => {})
 }
 
@@ -367,6 +409,100 @@ async function snapshotIrFile(target, snapshotPath) {
 }
 
 /**
+ * Extension -> mime, for the formats a data URI can carry straight through
+ * both the preview renderer and the export. Deliberately the same four the
+ * CLI's own `resolveLocalAssets` recognizes by extension (`src/cli/load-ir.ts`).
+ */
+const MIME_BY_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif' }
+
+/**
+ * What these bytes actually are, by magic number — never by filename.
+ *
+ * Trusting the extension here would quietly undo a check the CLI makes on
+ * purpose: it rejects a file whose header disagrees with its name rather than
+ * relabelling it, because a media part whose declared type and real bytes
+ * disagree is exactly what the package audit cannot see. Returning null for
+ * anything unrecognized keeps that judgement where it already lives.
+ */
+function sniffImageMime(bytes) {
+  if (bytes.length >= 8 && bytes.readUInt32BE(0) === 0x89504e47 && bytes.readUInt32BE(4) === 0x0d0a1a0a) {
+    return 'image/png'
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg'
+  if (bytes.length >= 6 && bytes.toString('latin1', 0, 6).match(/^GIF8[79]a$/)) return 'image/gif'
+  return null
+}
+
+/**
+ * Replace local image paths in the snapshot with the bytes they point at.
+ *
+ * This is the other half of pinning a deck. `execute` runs the CLI twice —
+ * once for the preview, once for the export — and between those two processes
+ * there is a real window: an agent regenerating a logo, a designer saving over
+ * a file, a build step rewriting `assets/`. A snapshot that names images by
+ * path lets each run resolve them independently, so the deck on screen and the
+ * file the user downloads could genuinely be built from different pictures,
+ * with nothing anywhere to say so. Inlined, neither run reads those files at
+ * all.
+ *
+ * Deliberately narrow, and these are the edges it does not cover:
+ *
+ *  - `http(s)` sources stay URLs. Fetching them here would mean a second
+ *    fetcher, a second cache policy and a second failure vocabulary next to
+ *    the one the export pipeline already has (`src/platform/inline-assets.ts`),
+ *    and a remote asset can change under a stable URL regardless.
+ *  - formats needing a recode (webp and friends) stay paths. Turning those
+ *    into something PowerPoint accepts is a sharp/canvas job, and this file is
+ *    dependency-free by design; the CLI already owns that decode, and owning
+ *    it twice is how two renderers start disagreeing.
+ *  - a file that fails a check — unreadable, empty, header not matching its
+ *    extension — is left as a path on purpose, so the CLI raises its own
+ *    precise error instead of this function inventing a worse one.
+ *
+ * Anything left as a path keeps the old exposure, which is why the cases are
+ * listed rather than waved at.
+ */
+async function inlineLocalImages(snapshotPath) {
+  let ir
+  try {
+    ir = JSON.parse(await readFile(snapshotPath, 'utf8'))
+  } catch {
+    // Not valid JSON, so not this function's file to rewrite — the CLI's own
+    // parser owns that error message.
+    return
+  }
+  const images = ir?.assets?.images
+  if (!images || typeof images !== 'object') return
+
+  let changed = false
+  await Promise.all(
+    Object.values(images).map(async (asset) => {
+      const src = asset?.src
+      if (typeof src !== 'string' || src === '') return
+      if (src.startsWith('data:') || /^https?:\/\//.test(src)) return
+      let bytes
+      try {
+        bytes = await readFile(src)
+      } catch {
+        return
+      }
+      if (bytes.length === 0) return
+      const sniffed = sniffImageMime(bytes)
+      if (!sniffed) return
+      // An extension the CLI knows must agree with the bytes. When it does
+      // not, the deck is already broken and the CLI says so precisely; when
+      // the extension is unknown to it (webp and friends), the recode path
+      // owns the file and inlining would take it away from there.
+      const declared = MIME_BY_EXT[(src.match(/\.[^.\\/]+$/)?.[0] || '').toLowerCase()]
+      if (declared !== sniffed) return
+      asset.src = `data:${sniffed};base64,${bytes.toString('base64')}`
+      changed = true
+    }),
+  )
+  if (changed) await writeFile(snapshotPath, JSON.stringify(ir))
+}
+
+/**
  * Pin the target to one immutable deck, written into `outDir`.
  *
  * This is what makes the preview, the export and every later recall the same
@@ -376,20 +512,21 @@ async function snapshotIrFile(target, snapshotPath) {
  * target is read exactly once, here, and nothing downstream ever touches it
  * again.
  *
- * Local image files are the one thing the snapshot still points at rather
- * than owning — `assemble` rewrites their paths, it does not inline them. So
- * the snapshot pins *which* deck, not the bytes it is made of, and it is only
- * half the guarantee. The other half is that it is used exactly once, by the
- * `execute` that wrote it, to produce both the preview and the export before
- * anything on disk has a chance to move. Nothing reads it afterwards.
+ * `assemble` rewrites local image paths, it does not inline them, so a
+ * snapshot on its own pins *which* deck rather than the bytes it is made of —
+ * which left every later run free to re-read those files. `inlineLocalImages`
+ * closes that for the formats it can (see its own note for the ones it
+ * cannot).
  */
 async function captureSnapshot(cliPath, target, outDir, signal) {
   const snapshot = join(outDir, SNAPSHOT_FILE)
   if (await isFile(target)) {
     await snapshotIrFile(target, snapshot)
+    await inlineLocalImages(snapshot)
     return { snapshot, themeFile: undefined }
   }
   await runCli(cliPath, ['assemble', target, '-o', snapshot], signal)
+  await inlineLocalImages(snapshot)
   const deckDir = await locateDeckDir(target)
   if (deckDir) {
     const source = join(deckDir, THEME_FILE)
@@ -432,7 +569,11 @@ async function readPreviewBundle(outDir) {
     total += size
     pages.push({ ...page, svg })
   }
-  return { ...manifest, pages, markupTruncated: truncated }
+  // `draft` travels with the bundle rather than with the record, so a card
+  // reopened after a restart still says so: `recallAnywhere` rebuilds the
+  // bundle from this manifest, and the manifest is where the unfilled pages
+  // are named in the first place.
+  return { ...manifest, pages, markupTruncated: truncated, draft: pages.some((p) => p.placeholder === true) }
 }
 
 /**
@@ -442,12 +583,17 @@ async function readPreviewBundle(outDir) {
  * on disk before anyone asks for it. Everything outside `\w.-` collapses to a
  * dash so the value is safe both as a path segment and inside a quoted
  * `content-disposition` header.
+ *
+ * A deck with unfilled pages says so in its filename. The card already carries
+ * a badge, but the file outlives the card: it gets mailed, uploaded and opened
+ * by people who never saw this conversation, and `-draft` is the one part of
+ * it that travels with the bytes.
  */
 function exportName(bundle, target) {
   const raw =
     (bundle && bundle.title) || String(target).split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'deck'
   const safe = raw.replace(/[^\w.-]+/g, '-').replace(/^[.-]+/, '')
-  return `${safe || 'deck'}.pptx`
+  return `${safe || 'deck'}${bundle && bundle.draft ? '-draft' : ''}.pptx`
 }
 
 /** One short model-facing line — never the markup. */
@@ -458,6 +604,9 @@ function modelSummary(value) {
   // guaranteed to see — see this module's own header for why the structured
   // channel was not an option.
   bits.unshift(`pptfast-preview:${value.previewId}`)
+  // The model is the one who can act on this: the pages are still unfilled,
+  // and the export it just handed the user is labelled a draft.
+  if (value.bundle && value.bundle.draft) bits.push('draft — some pages are unfilled placeholders')
   if (value.findingCount > 0) bits.push(`${value.findingCount} audit finding${value.findingCount === 1 ? '' : 's'}`)
   else if (value.audited) bits.push('audit clean')
   else bits.push('audit skipped')
@@ -666,7 +815,7 @@ export function createPreviewService(cliPath) {
     },
     async execute(args, exec) {
       const target = String(args.target)
-      const outDir = await mkdtemp(join(tmpdir(), OUT_DIR_PREFIX))
+      const outDir = await createOutDir()
       const { snapshot, themeFile } = await captureSnapshot(cliPath, target, outDir, exec?.signal)
       // Previewed from the snapshot, not the target: this is the single read
       // that everything the user later does with this preview refers back to.
@@ -685,7 +834,25 @@ export function createPreviewService(cliPath) {
       const pptxPath = join(outDir, exportName(bundle, target))
       let pptxError
       try {
-        await runCli(cliPath, ['render', snapshot, '-o', pptxPath, ...themeArgs({ themeFile })], exec?.signal)
+        // `--draft` exactly when the preview shows unfilled pages, and never
+        // otherwise. `render` refuses a deck with placeholders by default,
+        // while `preview` renders it happily — so without this the card looked
+        // fine and its download button was guaranteed to fail, forever, with
+        // the user finding out only by clicking. Exporting is the better half
+        // of that trade: an unfinished deck is still the thing the user is
+        // iterating on, and refusing to hand it over means they cannot show it
+        // to anyone or open it in PowerPoint to judge it. The gate exists so
+        // nobody ships placeholders unknowingly, so the knowing is what is
+        // restored: the card carries a draft badge, the model is told, and the
+        // file itself is named `-draft`. Passing the flag unconditionally
+        // would instead disable the gate for every deck, including the ones
+        // whose placeholders the user has not seen.
+        const draftArgs = bundle.draft ? ['--draft'] : []
+        await runCli(
+          cliPath,
+          ['render', snapshot, '-o', pptxPath, ...draftArgs, ...themeArgs({ themeFile })],
+          exec?.signal,
+        )
       } catch (error) {
         // A failed export must not cost the user the preview: paging through
         // the deck is most of the value, and the audit findings on screen may
@@ -739,9 +906,13 @@ export const __testing = {
   writeRecord,
   pruneRecords,
   isDisposableOutDir,
+  createOutDir,
+  inlineLocalImages,
+  discardOutDir,
   recordDirFor,
   RECORD_ROOT,
   OUT_DIR_PREFIX,
+  OWNER_MARKER,
   SCRATCH_MAX_AGE_MS,
   MAX_PRESENTED_BYTES,
   MAX_PERSISTED,

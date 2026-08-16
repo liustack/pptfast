@@ -181,7 +181,7 @@ interface PreviewValue {
   pageCount: number
   findingCount: number
   audited: boolean
-  bundle: { title?: string; pages: { svg?: string | null }[] }
+  bundle: { title?: string; draft?: boolean; pages: { svg?: string | null }[] }
 }
 
 interface RouteRegistration {
@@ -219,20 +219,26 @@ interface PreviewModule {
   recordDirFor: (cliPath: string) => string
   PREVIEW_ROUTE: string
   __testing: {
-    readPreviewBundle: (outDir: string) => Promise<{ pages: { svg: string | null }[]; markupTruncated: boolean }>
+    readPreviewBundle: (
+      outDir: string,
+    ) => Promise<{ pages: { svg: string | null }[]; markupTruncated: boolean; draft: boolean }>
     captureSnapshot: (
       cliPath: string,
       target: string,
       outDir: string,
     ) => Promise<{ snapshot: string; themeFile?: string }>
-    exportName: (bundle: { title?: string } | undefined, target: string) => string
+    exportName: (bundle: { title?: string; draft?: boolean } | undefined, target: string) => string
     readRecord: (dir: string, id: string) => Promise<PreviewEntry | undefined>
     writeRecord: (dir: string, id: string, record: unknown) => Promise<void>
     pruneRecords: (dir: string) => Promise<void>
-    isDisposableOutDir: (dir: unknown) => boolean
+    isDisposableOutDir: (dir: unknown) => Promise<boolean>
+    createOutDir: () => Promise<string>
+    inlineLocalImages: (snapshotPath: string) => Promise<void>
+    discardOutDir: (record: { outDir: string }) => Promise<void>
     recordDirFor: (cliPath: string) => string
     RECORD_ROOT: string
     OUT_DIR_PREFIX: string
+    OWNER_MARKER: string
     SCRATCH_MAX_AGE_MS: number
     MAX_PRESENTED_BYTES: number
     MAX_PERSISTED: number
@@ -495,6 +501,17 @@ async function scratchTmp(prefix: string): Promise<string> {
   return dir
 }
 
+/**
+ * A rendered-deck directory made the way the tool makes them — marker file and
+ * all — queued for removal when the file is done.
+ */
+async function scratchOutDir(): Promise<string> {
+  const { __testing } = await loadPreviewTool()
+  const dir = await __testing.createOutDir()
+  scratchDirs.add(dir)
+  return dir
+}
+
 function uniqueCli(tag: string): string {
   return `/pptfast-test/${tag}/${Math.random().toString(36).slice(2)}/cli.js`
 }
@@ -680,12 +697,23 @@ describe("instance isolation", () => {
  *
  * The tests below have to observe what the renderer saw at the moment it ran,
  * which the real CLI cannot tell them and a build step should not be required
- * to find out. This one does the one thing that matters for these defects: it
- * reads every image src off disk *at render time* and stamps the bytes into
- * its output, exactly as a real renderer resolving assets would. A deck
- * rendered twice around an edited image therefore produces two different
- * files, and any test that gets the same file twice has proved the second
- * render never happened.
+ * to find out. This one resolves every image the way a real renderer does —
+ * a `data:` payload from the IR itself, anything else read off disk *at render
+ * time* — and stamps what it got into its output. A deck rendered twice around
+ * an edited image therefore produces two different files if and only if the
+ * two runs really did read that file twice.
+ *
+ * Three switches, each a file in the CLI's own directory:
+ *
+ *  - `fail-render` — the export refuses, the preview still works.
+ *  - `mutate-asset` — holds a path the *preview* run overwrites just before
+ *    it exits. That is the window between the two spawns, reproduced
+ *    deterministically: the parent waits for this process to die before it
+ *    starts the export, so an export that reads files off disk is guaranteed
+ *    to see the new bytes and disagree with the preview it came from.
+ *  - the IR's own `placeholder` flag — makes the manifest mark the page
+ *    unfilled and makes `render` refuse without `--draft`, which is the real
+ *    CLI's draft gate in miniature.
  *
  * It also appends every invocation to `cli.log`, which is how "the download
  * route starts no process" is checked rather than asserted.
@@ -701,11 +729,18 @@ const FAKE_CLI_SOURCE = [
   "const home = dirname(process.argv[1])",
   'appendFileSync(join(home, "cli.log"), argv.join(" ") + "\\n")',
   "",
+  "// The fixture images are a real PNG signature followed by a marker string,",
+  "// so this fake can name what it saw the way a renderer names pixels.",
+  "const payload = (buf) =>",
+  '  buf.length >= 8 && buf[0] === 0x89 && buf.toString("latin1", 1, 4) === "PNG" ? buf.subarray(8).toString("utf8") : buf.toString("utf8")',
+  "",
   'const ir = JSON.parse(readFileSync(target, "utf8"))',
   "const images = ir.assets && ir.assets.images ? Object.values(ir.assets.images) : []",
   "const bytes = images",
   "  .map((asset) => {",
-  '    try { return readFileSync(asset.src, "utf8") } catch { return "MISSING" }',
+  '    const src = String(asset.src || "")',
+  '    if (src.startsWith("data:")) return payload(Buffer.from(src.slice(src.indexOf(",") + 1), "base64"))',
+  "    try { return payload(readFileSync(src)) } catch { return \"MISSING\" }",
   "  })",
   '  .join(",")',
   'const marker = ir.filename + "|" + bytes',
@@ -715,12 +750,26 @@ const FAKE_CLI_SOURCE = [
   '  writeFileSync(join(out, "001.svg"), "<svg>" + marker + "</svg>")',
   "  writeFileSync(",
   '    join(out, "manifest.json"),',
-  '    JSON.stringify({ title: ir.filename, checks: { ran: true }, pages: [{ page: 1, id: "page-1", file: "001.svg" }] }),',
+  "    JSON.stringify({",
+  "      title: ir.filename,",
+  "      checks: { ran: true },",
+  '      pages: [{ page: 1, id: "page-1", file: "001.svg", ...(ir.placeholder ? { placeholder: true } : {}) }],',
+  "    }),",
   "  )",
+  "  // Last thing before exit: move the source out from under whoever runs next.",
+  '  const mutate = join(home, "mutate-asset")',
+  "  if (existsSync(mutate)) {",
+  '    const [path, replacement] = readFileSync(mutate, "utf8").split("\\n")',
+  '    writeFileSync(path, Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from(replacement)]))',
+  "  }",
   '} else if (cmd === "render") {',
   '  if (existsSync(join(home, "fail-render"))) {',
   '    process.stderr.write("fake render refused\\n")',
   "    process.exit(2)",
+  "  }",
+  '  if (ir.placeholder && !argv.includes("--draft")) {',
+  '    process.stderr.write("deck has 1 unfilled placeholder page — fill it or pass --draft\\n")',
+  "    process.exit(4)",
   "  }",
   "  mkdirSync(dirname(out), { recursive: true })",
   '  writeFileSync(out, "PPTX:" + marker)',
@@ -742,6 +791,16 @@ async function fakeCli(options: { failRender?: boolean } = {}): Promise<string> 
   return cliPath
 }
 
+/**
+ * Arm the fake CLI to overwrite `path` with `replacement` at the end of its
+ * preview run — the source edit that lands between the two spawns.
+ */
+async function mutateDuringPreview(cliPath: string, path: string, replacement: string): Promise<void> {
+  const { writeFile } = await import("node:fs/promises")
+  const { dirname, join } = await import("node:path")
+  await writeFile(join(dirname(cliPath), "mutate-asset"), `${path}\n${replacement}`)
+}
+
 async function cliInvocations(cliPath: string): Promise<string[]> {
   const { readFile } = await import("node:fs/promises")
   const { dirname, join } = await import("node:path")
@@ -749,18 +808,40 @@ async function cliInvocations(cliPath: string): Promise<string[]> {
   return log.split("\n").filter((line) => line !== "")
 }
 
+/**
+ * PNG's own eight-byte signature.
+ *
+ * The fixtures carry it because the snapshot inliner sniffs magic numbers
+ * rather than trusting a filename — a fixture that is only pretending to be a
+ * PNG would be declined and silently left as a path, which would make every
+ * test below pass for the wrong reason.
+ */
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+
+/** A valid-enough PNG whose payload is a marker the fake CLI can echo back. */
+function pngWith(marker: string): Buffer {
+  return Buffer.concat([PNG_SIGNATURE, Buffer.from(marker)])
+}
+
 /** A deck directory holding one IR file and the local image it points at. */
-async function deckFixture(logo: string): Promise<{ deck: string; logoPath: string }> {
+async function deckFixture(
+  logo: string,
+  options: { placeholder?: boolean } = {},
+): Promise<{ deck: string; logoPath: string }> {
   const { mkdir, writeFile } = await import("node:fs/promises")
   const { join } = await import("node:path")
   const src = await scratchTmp("pptfast-src-")
   await mkdir(join(src, "assets"), { recursive: true })
   const logoPath = join(src, "assets", "logo.png")
-  await writeFile(logoPath, logo)
+  await writeFile(logoPath, pngWith(logo))
   const deck = join(src, "deck.json")
   await writeFile(
     deck,
-    JSON.stringify({ filename: "e2e", assets: { images: { local: { src: "assets/logo.png" } } } }),
+    JSON.stringify({
+      filename: "e2e",
+      ...(options.placeholder ? { placeholder: true } : {}),
+      assets: { images: { local: { src: "assets/logo.png" } } },
+    }),
   )
   return { deck, logoPath }
 }
@@ -798,11 +879,15 @@ async function request(handler: RouteRegistration["handler"], path: string): Pro
 }
 
 describe("preview route (the handler DSH actually calls)", () => {
-  async function servedPreview(tag: string, options: { failRender?: boolean } = {}) {
+  async function servedPreview(
+    tag: string,
+    options: { failRender?: boolean; placeholder?: boolean; mutateTo?: string } = {},
+  ) {
     const { PREVIEW_ROUTE } = await loadPreviewTool()
     const cliPath = await fakeCli(options)
     const svc = await makeService(tag, cliPath)
-    const { deck, logoPath } = await deckFixture("LOGO-V1")
+    const { deck, logoPath } = await deckFixture("LOGO-V1", { placeholder: options.placeholder })
+    if (options.mutateTo) await mutateDuringPreview(cliPath, logoPath, options.mutateTo)
     const value = await svc.tool.execute({ target: deck })
     scratchDirs.add(value.outDir)
     return { svc, cliPath, deck, logoPath, value, handler: routeHandlerOf(svc), route: PREVIEW_ROUTE }
@@ -855,6 +940,76 @@ describe("preview route (the handler DSH actually calls)", () => {
       pages: { svg: string }[]
     }
     expect(bundle.pages[0]!.svg).toContain("LOGO-V1")
+  })
+
+  it("survives a source image edited in the window between the preview and the export", async () => {
+    // The defect the previous round's "same source" test could not see. It
+    // edited the image after `execute` had finished, which only proves the
+    // download starts no renderer. The window that actually exists is *inside*
+    // `execute`: preview and render are two separate child processes, and the
+    // parent waits for the first to exit before spawning the second. Anything
+    // that writes to the source file in between — an agent regenerating a
+    // logo, a build step, a designer hitting save — is seen by exactly one of
+    // them.
+    //
+    // Here the preview process itself performs that write on its way out, so
+    // the ordering is deterministic rather than lucky: the export process
+    // starts strictly afterwards and would read LOGO-V2 off disk. It does not,
+    // because the snapshot no longer names a path — it carries the bytes.
+    // Remove the `inlineLocalImages` call in `captureSnapshot` and this goes
+    // red on the .pptx.
+    const { readFile } = await import("node:fs/promises")
+    const { handler, route, value, logoPath } = await servedPreview("route-mid-window", { mutateTo: "LOGO-V2" })
+
+    // The edit really did land, and really did land before the export ran.
+    expect((await readFile(logoPath)).toString("utf8")).toContain("LOGO-V2")
+
+    const pptx = await request(handler, `${route}/${value.previewId}/pptx`)
+    expect(pptx.body.toString("utf8")).toBe("PPTX:e2e|LOGO-V1")
+    const bundle = JSON.parse((await request(handler, `${route}/${value.previewId}`)).body.toString("utf8")) as {
+      pages: { svg: string }[]
+    }
+    expect(bundle.pages[0]!.svg).toContain("LOGO-V1")
+    // Said the way a user would say it: what is on screen is what got saved.
+    expect(pptx.body.toString("utf8")).not.toContain("LOGO-V2")
+    expect(bundle.pages[0]!.svg).not.toContain("LOGO-V2")
+  })
+
+  it("exports a deck with unfilled pages as a draft instead of leaving the button broken forever", async () => {
+    // `preview` renders a placeholder page happily and `render` refuses it, so
+    // the card used to show a deck whose download was guaranteed to fail —
+    // discoverable only by clicking, and permanent, because the export is
+    // rendered once inside `execute` and never retried. Drop the `--draft`
+    // argument and this goes red at the first assertion, with a 410 on the
+    // download.
+    const { handler, route, value, cliPath } = await servedPreview("route-draft", { placeholder: true })
+
+    const res = await request(handler, `${route}/${value.previewId}/pptx`)
+    expect(res.status).toBe(200)
+    expect(res.body.toString("utf8")).toBe("PPTX:e2e|LOGO-V1")
+
+    // Not a silent substitution: the flag is passed exactly once, and only to
+    // the render that needed it.
+    const invocations = await cliInvocations(cliPath)
+    expect(invocations.filter((line) => line.includes("--draft"))).toHaveLength(1)
+    expect(invocations.find((line) => line.startsWith("render"))).toContain("--draft")
+
+    // ...and everything the user sees says "draft": the card badge rides the
+    // bundle, the saved file's own name carries it, and so does the line the
+    // model reads.
+    expect(value.bundle.draft).toBe(true)
+    expect(res.headers["content-disposition"]).toBe('attachment; filename="e2e-draft.pptx"')
+    const { definePreviewTool } = await loadPreviewTool()
+    expect(definePreviewTool("/x.js").output.render({}, value)[0]!.text).toContain("draft")
+  })
+
+  it("keeps the draft gate armed for every deck that has no unfilled pages", async () => {
+    // The lazy fix is to pass `--draft` always, which disables the gate for
+    // decks whose placeholders nobody has looked at. The flag has to be a
+    // consequence of what the preview showed.
+    const { cliPath, value } = await servedPreview("route-no-draft")
+    expect((await cliInvocations(cliPath)).some((line) => line.includes("--draft"))).toBe(false)
+    expect(value.bundle.draft).toBe(false)
   })
 
   it("answers an unknown id with 404 and a malformed one with the same, never a stack trace", async () => {
@@ -955,12 +1110,15 @@ describe("preview lifecycle cleanup", () => {
     const { join } = await import("node:path")
     const dir = await scratchRecordDir("evict")
 
-    const doomed = await scratchTmp(__testing.OUT_DIR_PREFIX)
+    const doomed = await scratchOutDir()
     await writeFile(join(doomed, "001.svg"), "<svg/>")
-    const survivor = await scratchTmp(__testing.OUT_DIR_PREFIX)
+    const survivor = await scratchOutDir()
     // A record can point anywhere — `remember` is exported — so eviction must
-    // refuse to recurse into a directory it did not create.
-    const foreign = await scratchTmp("pptfast-not-ours-")
+    // refuse to recurse into a directory it did not create. This one is the
+    // hard case, not the easy one: same prefix, same parent, created by
+    // somebody else. A name-shaped guard passes it straight through.
+    const foreign = await scratchTmp(__testing.OUT_DIR_PREFIX)
+    await writeFile(join(foreign, "someone-elses-work.txt"), "keep me")
 
     await __testing.writeRecord(dir, previewId("90"), { target: "old", outDir: doomed })
     await __testing.writeRecord(dir, previewId("91"), { target: "foreign", outDir: foreign })
@@ -978,8 +1136,9 @@ describe("preview lifecycle cleanup", () => {
     expect(await __testing.readRecord(dir, previewId("90"))).toBeUndefined()
     await expect(stat(doomed)).rejects.toThrow()
     expect(await __testing.readRecord(dir, previewId("91"))).toBeUndefined()
-    // Its record is gone, its directory is not — the guard held.
+    // Its record is gone, its contents are not — the guard held.
     expect((await stat(foreign)).isDirectory()).toBe(true)
+    expect((await readdir(foreign))).toContain("someone-elses-work.txt")
     expect((await readdir(dir)).length).toBe(__testing.MAX_PERSISTED)
     expect((await stat(survivor)).isDirectory()).toBe(true)
   })
@@ -1007,17 +1166,51 @@ describe("preview lifecycle cleanup", () => {
     expect(left).toContain(".in-flight.tmp")
   })
 
-  it("only ever deletes a directory it made itself", async () => {
+  it("only ever deletes a directory it made itself, and asks for proof rather than a name", async () => {
+    // The previous version of this test named its foreign fixture
+    // `pptfast-not-ours-`, so all it established was that the prefix filter
+    // worked. `pptfast-preview-` is a public string in a world-writable
+    // directory: anyone can create a path that satisfies it, and eviction
+    // recurses with `force: true`. Ownership has to be something an outsider
+    // has no reason to have produced.
     const { __testing } = await loadPreviewTool()
+    const { rm } = await import("node:fs/promises")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
-    expect(__testing.isDisposableOutDir(join(tmpdir(), `${__testing.OUT_DIR_PREFIX}abc`))).toBe(true)
-    expect(__testing.isDisposableOutDir(join(tmpdir(), "something-else"))).toBe(false)
-    expect(__testing.isDisposableOutDir(join(tmpdir(), "sub", `${__testing.OUT_DIR_PREFIX}abc`))).toBe(false)
-    expect(__testing.isDisposableOutDir("/")).toBe(false)
-    expect(__testing.isDisposableOutDir(process.cwd())).toBe(false)
-    expect(__testing.isDisposableOutDir(undefined)).toBe(false)
-    expect(__testing.isDisposableOutDir("")).toBe(false)
+
+    const ours = await scratchOutDir()
+    expect(await __testing.isDisposableOutDir(ours)).toBe(true)
+
+    // Same prefix, same parent directory, not ours.
+    const impostor = await scratchTmp(__testing.OUT_DIR_PREFIX)
+    expect(await __testing.isDisposableOutDir(impostor)).toBe(false)
+    // ...and it becomes ours only when the marker is really there.
+    await rm(join(ours, __testing.OWNER_MARKER))
+    expect(await __testing.isDisposableOutDir(ours)).toBe(false)
+
+    expect(await __testing.isDisposableOutDir(join(tmpdir(), "something-else"))).toBe(false)
+    expect(await __testing.isDisposableOutDir(join(tmpdir(), "sub", `${__testing.OUT_DIR_PREFIX}abc`))).toBe(false)
+    expect(await __testing.isDisposableOutDir("/")).toBe(false)
+    expect(await __testing.isDisposableOutDir(process.cwd())).toBe(false)
+    expect(await __testing.isDisposableOutDir(undefined)).toBe(false)
+    expect(await __testing.isDisposableOutDir("")).toBe(false)
+  })
+
+  it("refuses to recurse into a same-named directory somebody else left in tmp", async () => {
+    // The end-to-end form of the check above, through the entry point that
+    // actually deletes things.
+    const { __testing } = await loadPreviewTool()
+    const { readdir, writeFile } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+
+    const impostor = await scratchTmp(__testing.OUT_DIR_PREFIX)
+    await writeFile(join(impostor, "not-a-deck.txt"), "someone else's file")
+    await __testing.discardOutDir({ outDir: impostor })
+    expect(await readdir(impostor)).toEqual(["not-a-deck.txt"])
+
+    const ours = await scratchOutDir()
+    await __testing.discardOutDir({ outDir: ours })
+    await expect(readdir(ours)).rejects.toThrow()
   })
 })
 
@@ -1072,6 +1265,89 @@ describe("preview deck snapshot", () => {
     expect(pinned.assets.images.local.src).toBe(join(src, "assets", "logo.png"))
     expect(pinned.assets.images.remote.src).toBe("https://example.com/a.png")
     expect(pinned.assets.images.inline.src).toBe("data:image/png;base64,AA")
+  })
+
+  it("carries the image bytes, not just the path they were at", async () => {
+    // A path is a promise about a file, and the file can be rewritten before
+    // anyone follows it. Two CLI processes follow it — one for the preview,
+    // one for the export — so a path in the snapshot is two independent reads
+    // of something that is free to change in between.
+    const { __testing } = await loadPreviewTool()
+    const { mkdir, readFile, writeFile } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+
+    const src = await scratchTmp("pptfast-src-")
+    await mkdir(join(src, "assets"), { recursive: true })
+    await writeFile(join(src, "assets", "logo.png"), pngWith("BYTES-V1"))
+    const deck = join(src, "deck.json")
+    await writeFile(deck, JSON.stringify({ assets: { images: { local: { src: "assets/logo.png" } } } }))
+
+    const outDir = await scratchTmp("pptfast-out-")
+    const { snapshot } = await __testing.captureSnapshot("/x.js", deck, outDir)
+    await writeFile(join(src, "assets", "logo.png"), pngWith("BYTES-V2"))
+
+    const pinned = JSON.parse(await readFile(snapshot, "utf8"))
+    expect(pinned.assets.images.local.src.startsWith("data:image/png;base64,")).toBe(true)
+    const payload = Buffer.from(pinned.assets.images.local.src.split(",")[1], "base64")
+    expect(payload.subarray(8).toString("utf8")).toBe("BYTES-V1")
+  })
+
+  it("leaves alone every asset it cannot pin, rather than guessing", async () => {
+    // Each of these is a deliberate pass-through, and each one is a path the
+    // renderer still resolves per run — so they are pinned here as documented
+    // exposure, not as an oversight nobody noticed.
+    const { __testing } = await loadPreviewTool()
+    const { readFile, writeFile } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+
+    const src = await scratchTmp("pptfast-src-")
+    // A PNG that somebody saved as .jpg. The CLI rejects this loudly by
+    // design; inlining it would relabel it as valid and lose that error.
+    await writeFile(join(src, "mislabelled.jpg"), pngWith("X"))
+    // A format that needs a recode before PowerPoint will take it — the CLI
+    // owns that decode, and this file has no image library of its own.
+    await writeFile(join(src, "logo.webp"), Buffer.concat([Buffer.from("RIFF____WEBPVP8 "), Buffer.from("X")]))
+    await writeFile(join(src, "empty.png"), "")
+    await writeFile(join(src, "garbage.png"), "not an image at all")
+
+    const snapshot = join(src, "snap.json")
+    await writeFile(
+      snapshot,
+      JSON.stringify({
+        assets: {
+          images: {
+            mislabelled: { src: join(src, "mislabelled.jpg") },
+            webp: { src: join(src, "logo.webp") },
+            empty: { src: join(src, "empty.png") },
+            garbage: { src: join(src, "garbage.png") },
+            missing: { src: join(src, "gone.png") },
+            remote: { src: "https://example.com/a.png" },
+            already: { src: "data:image/png;base64,AA" },
+          },
+        },
+      }),
+    )
+    await __testing.inlineLocalImages(snapshot)
+
+    const ir = JSON.parse(await readFile(snapshot, "utf8"))
+    for (const id of ["mislabelled", "webp", "empty", "garbage", "missing"]) {
+      expect(ir.assets.images[id].src.startsWith("data:"), id).toBe(false)
+    }
+    expect(ir.assets.images.remote.src).toBe("https://example.com/a.png")
+    expect(ir.assets.images.already.src).toBe("data:image/png;base64,AA")
+  })
+
+  it("survives a snapshot it cannot parse, since that error belongs to the CLI", async () => {
+    const { __testing } = await loadPreviewTool()
+    const { readFile, writeFile } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+    const dir = await scratchTmp("pptfast-src-")
+    const broken = join(dir, "snap.json")
+    await writeFile(broken, "{ not json")
+    await expect(__testing.inlineLocalImages(broken)).resolves.toBeUndefined()
+    // Handed on untouched: the CLI's own parser writes the message the user
+    // should read.
+    expect(await readFile(broken, "utf8")).toBe("{ not json")
   })
 })
 
