@@ -219,9 +219,7 @@ interface PreviewModule {
   recordDirFor: (cliPath: string) => string
   PREVIEW_ROUTE: string
   __testing: {
-    readPreviewBundle: (
-      outDir: string,
-    ) => Promise<{ pages: { svg: string | null }[]; markupTruncated: boolean; draft: boolean }>
+    readPreviewBundle: (outDir: string) => Promise<{ pages: { svg: string | null }[]; draft: boolean }>
     captureSnapshot: (
       cliPath: string,
       target: string,
@@ -240,7 +238,8 @@ interface PreviewModule {
     OUT_DIR_PREFIX: string
     OWNER_MARKER: string
     SCRATCH_MAX_AGE_MS: number
-    MAX_PRESENTED_BYTES: number
+    THUMBNAIL_STRIP_PAGES: number
+    PREVIEW_HTML_FILE: string
     MAX_PERSISTED: number
     PreviewExpired: new (m?: string) => Error
   }
@@ -320,8 +319,11 @@ type ClientBundle = {
       svg?: string | null
       page?: number
     }[]
+    stripPages: (pages: { svg?: string | null; page?: number }[]) => { svg?: string | null; page?: number }[]
     hasMarkup: (page: { svg?: string | null } | undefined) => boolean
     pageNumberOf: (page: { page?: number } | undefined, index: number) => number
+    previewHtmlUrl: (previewId: string) => string
+    STRIP_PAGES: number
   }
 }
 
@@ -403,10 +405,10 @@ describe("pptfast preview card (browser half)", () => {
     ).toEqual({ pages: [{ id: "a" }] })
   })
 
-  it("keeps pages an oversized deck shipped without markup, so none of them vanish", async () => {
-    // Dropping them renumbered the strip and, when every page was over
-    // budget, returned an empty list — which made the entire card
-    // disappear with nothing on screen to explain why.
+  it("counts every page the deck has, including the ones sent without markup", async () => {
+    // The pages past the strip arrive as metadata only. They still have to
+    // reach the card, or a twenty-page deck's header would call itself twelve
+    // pages long.
     const bundle = await loadClientBundle(() => ({}))
     const pages = bundle.__testing.viewablePages({
       pages: [{ svg: "<svg/>", page: 1 }, { svg: null, page: 2 }, { svg: "", page: 3 }],
@@ -419,6 +421,33 @@ describe("pptfast preview card (browser half)", () => {
   it("still shows the card when no page at all carries markup", async () => {
     const bundle = await loadClientBundle(() => ({}))
     expect(bundle.__testing.viewablePages({ pages: [{ svg: null }, { svg: null }] })).toHaveLength(2)
+  })
+
+  it("draws thumbnails only for the pages that arrived with markup", async () => {
+    // The strip's cap and the host half's inlining cap are one decision
+    // written down in two files (`STRIP_PAGES` / `THUMBNAIL_STRIP_PAGES`).
+    // Slicing alone would turn a disagreement between them into a row of
+    // empty boxes; this is the filter that makes it a shorter strip instead.
+    const { __testing: host } = await loadPreviewTool()
+    const bundle = await loadClientBundle(() => ({}))
+    expect(bundle.__testing.STRIP_PAGES).toBe(host.THUMBNAIL_STRIP_PAGES)
+
+    const pages = Array.from({ length: bundle.__testing.STRIP_PAGES + 5 }, (_x, i) => ({
+      page: i + 1,
+      svg: i < bundle.__testing.STRIP_PAGES ? "<svg/>" : null,
+    }))
+    expect(bundle.__testing.stripPages(pages)).toHaveLength(bundle.__testing.STRIP_PAGES)
+    expect(bundle.__testing.stripPages([{ svg: "<svg/>", page: 1 }, { svg: null, page: 2 }])).toEqual([
+      { svg: "<svg/>", page: 1 },
+    ])
+  })
+
+  it("points the viewer at the html the CLI already wrote", async () => {
+    // The one string the card and the route have to agree on for the modal to
+    // show anything at all.
+    const bundle = await loadClientBundle(() => ({}))
+    const { PREVIEW_ROUTE } = await loadPreviewTool()
+    expect(bundle.__testing.previewHtmlUrl("abc-123")).toBe(`${PREVIEW_ROUTE}/abc-123/html`)
   })
 
   it("returns nothing only when the deck itself has no pages", async () => {
@@ -748,6 +777,10 @@ const FAKE_CLI_SOURCE = [
   'if (cmd === "preview") {',
   "  mkdirSync(out, { recursive: true })",
   '  writeFileSync(join(out, "001.svg"), "<svg>" + marker + "</svg>")',
+  "  // The self-contained review page the real `preview --html` writes, and",
+  "  // the file the card's modal loads in an iframe. Stamped with the same",
+  "  // marker as everything else, so a test can tell which render produced it.",
+  '  writeFileSync(join(out, "preview.html"), "<!doctype html><title>" + marker + "</title>")',
   "  writeFileSync(",
   '    join(out, "manifest.json"),',
   "    JSON.stringify({",
@@ -903,6 +936,59 @@ describe("preview route (the handler DSH actually calls)", () => {
     expect(bundle.pages[0]!.svg).toContain("LOGO-V1")
   })
 
+  it("serves the deck's own preview.html, which is what the card's viewer loads", async () => {
+    // The modal is an iframe pointing here. Before this route existed the card
+    // reimplemented the viewer in React — its own arrow keys, its own counter,
+    // its own idea of which pages were too big to show — next to the finished
+    // page `preview --html` writes for every run. Delete this branch and the
+    // modal opens on a 404.
+    const { handler, route, value, cliPath } = await servedPreview("route-html")
+    const res = await request(handler, `${route}/${value.previewId}/html`)
+
+    expect(res.status).toBe(200)
+    // Served as a page, not as a download and not as JSON: an iframe renders
+    // what the content type says it is.
+    expect(res.headers["content-type"]).toBe("text/html; charset=utf-8")
+    expect(res.headers["content-disposition"]).toBeUndefined()
+    expect(res.body.toString("utf8")).toContain("<!doctype html>")
+    // ...and it is the file that render wrote, not one built now.
+    expect(res.body.toString("utf8")).toContain("e2e|LOGO-V1")
+    expect(await cliInvocations(cliPath)).toHaveLength(2)
+  })
+
+  it("serves the same deck to the iframe, the strip and the download", async () => {
+    // One render window, said from the third side. The viewer is the surface
+    // the user actually judges the deck on, so a viewer that could be built
+    // from anything newer than the card would make the other two guarantees
+    // decorative.
+    const { handler, route, value, logoPath } = await servedPreview("route-html-same-source")
+    const { writeFile } = await import("node:fs/promises")
+    await writeFile(logoPath, "LOGO-V2")
+
+    const html = await request(handler, `${route}/${value.previewId}/html`)
+    expect(html.body.toString("utf8")).toContain("LOGO-V1")
+    expect(html.body.toString("utf8")).not.toContain("LOGO-V2")
+    expect((await request(handler, `${route}/${value.previewId}/pptx`)).body.toString("utf8")).toBe(
+      "PPTX:e2e|LOGO-V1",
+    )
+  })
+
+  it("reports 410 for a viewer page that is gone, rather than an empty frame", async () => {
+    const { handler, route, value } = await servedPreview("route-html-gone")
+    const { rm } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+    const { __testing } = await loadPreviewTool()
+    await rm(join(value.outDir, __testing.PREVIEW_HTML_FILE), { force: true })
+
+    const res = await request(handler, `${route}/${value.previewId}/html`)
+    expect(res.status).toBe(410)
+    expect(res.headers["content-type"]).toBe("application/json")
+    expect(JSON.parse(res.body.toString("utf8")).error).toMatch(/preview page for this preview is gone/)
+    // Losing the viewer does not cost the card its strip or its export.
+    expect((await request(handler, `${route}/${value.previewId}`)).status).toBe(200)
+    expect((await request(handler, `${route}/${value.previewId}/pptx`)).status).toBe(200)
+  })
+
   it("serves the .pptx as a file, and starts no process to do it", async () => {
     const { handler, route, value, cliPath } = await servedPreview("route-pptx")
     // Two runs so far: the preview and the export, both inside `execute`.
@@ -1023,8 +1109,12 @@ describe("preview route (the handler DSH actually calls)", () => {
       const res = await request(handler, `${route}/${bad}`)
       expect(res.status, bad).toBe(404)
     }
-    // The suffix router must not let a traversal in through the export path either.
+    // The suffix router must not let a traversal in through either of the
+    // paths that end in one — the id is what becomes a filesystem lookup, and
+    // it is the same id whichever suffix follows it.
     expect((await request(handler, `${route}/../../etc/passwd/pptx`)).status).toBe(404)
+    expect((await request(handler, `${route}/../../etc/passwd/html`)).status).toBe(404)
+    expect((await request(handler, `${route}/${previewId("e1")}/html`)).status).toBe(404)
   })
 
   it("reports 410 for a preview whose rendered deck was cleaned up, rather than rebuilding it", async () => {
@@ -1038,6 +1128,12 @@ describe("preview route (the handler DSH actually calls)", () => {
     const bundle = await request(afterReload, `${route}/${value.previewId}`)
     expect(bundle.status).toBe(410)
     expect(JSON.parse(bundle.body.toString("utf8")).error).toMatch(/rendered deck for this preview is gone/)
+
+    // The viewer answers the same way. An iframe handed a 404 body renders it,
+    // so "expired" has to be said in words rather than left to the browser.
+    const html = await request(afterReload, `${route}/${value.previewId}/html`)
+    expect(html.status).toBe(410)
+    expect(html.headers["content-type"]).toBe("application/json")
 
     const pptx = await request(afterReload, `${route}/${value.previewId}/pptx`)
     expect(pptx.status).toBe(410)
@@ -1351,11 +1447,11 @@ describe("preview deck snapshot", () => {
   })
 })
 
-describe("oversized deck budget", () => {
+describe("what the bundle inlines", () => {
   async function bundleDir(sizes: number[]): Promise<string> {
     const { writeFile } = await import("node:fs/promises")
     const { join } = await import("node:path")
-    const dir = await scratchTmp("pptfast-budget-")
+    const dir = await scratchTmp("pptfast-strip-")
     const pages = sizes.map((size, i) => {
       const file = `${String(i + 1).padStart(3, "0")}.svg`
       return { page: i + 1, id: `page-${i + 1}`, file, size }
@@ -1365,22 +1461,36 @@ describe("oversized deck budget", () => {
     return dir
   }
 
-  it("skips only the page that does not fit, not every page after it", async () => {
-    // The cascade meant one heavy slide cost the user every slide behind it,
-    // and an over-budget first page blanked the whole deck.
+  it("inlines the pages the strip draws and no more, whatever they weigh", async () => {
+    // The defect this replaced: a byte budget shared across the deck, which
+    // made a page's fate depend on its neighbours. A real nine-page deck with
+    // a photo per slide came back with pages 2 and 6 blank, because the early
+    // photos had spent the budget and the later, lighter pages fit in what was
+    // left. Restore any total-bytes cap and this goes red on the first
+    // assertion: the heavy pages here are heavy enough to blow any of them,
+    // and they still have to arrive with markup.
     const { __testing } = await loadPreviewTool()
-    const big = __testing.MAX_PRESENTED_BYTES + 1
-    const bundle = await __testing.readPreviewBundle(await bundleDir([big, 10, big, 10]))
-    expect(bundle.pages.map((p) => p.svg !== null)).toEqual([false, true, false, true])
-    expect(bundle.markupTruncated).toBe(true)
+    const heavy = 4 * 1024 * 1024
+    const sizes = Array.from({ length: __testing.THUMBNAIL_STRIP_PAGES + 3 }, (_x, i) => (i % 2 === 0 ? heavy : 10))
+    const bundle = await __testing.readPreviewBundle(await bundleDir(sizes))
+
+    expect(bundle.pages.map((p) => p.svg !== null)).toEqual(
+      sizes.map((_s, i) => i < __testing.THUMBNAIL_STRIP_PAGES),
+    )
+    // The pages past the strip are still there, with everything but markup —
+    // the card counts them, and the html the modal opens shows them.
+    expect(bundle.pages).toHaveLength(sizes.length)
+    expect((bundle.pages[sizes.length - 1] as unknown as { id: string }).id).toBe(`page-${sizes.length}`)
   })
 
-  it("keeps every page's metadata whether or not its markup fit", async () => {
+  it("inlines a short deck whole", async () => {
     const { __testing } = await loadPreviewTool()
     const bundle = await __testing.readPreviewBundle(await bundleDir([10, 10]))
-    expect(bundle.pages).toHaveLength(2)
-    expect(bundle.markupTruncated).toBe(false)
-    expect((bundle.pages[0] as unknown as { id: string }).id).toBe("page-1")
+    expect(bundle.pages.map((p) => p.svg !== null)).toEqual([true, true])
+    // No "we cut this short" flag survives: a fixed-length strip is the
+    // design, and a card announcing it as damage on every long deck would be
+    // reporting the design as a defect.
+    expect(bundle).not.toHaveProperty("markupTruncated")
   })
 })
 

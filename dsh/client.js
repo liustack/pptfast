@@ -26,6 +26,15 @@
 // rendering path the CLI, the review gallery and the promotional images all
 // read from. A second renderer living in a UI is how those would drift into
 // describing different products.
+//
+// It also *views* nothing of its own any more. The modal used to be a small
+// React slideshow — arrow keys, a page counter, prev/next buttons, a stand-in
+// for pages the server had declined to send — sitting next to the finished
+// `preview.html` that `pptfast preview --html` writes for every run and that
+// harnesses without a plugin UI are told to open. Two viewers, one deck, and
+// only one of them tested. The modal is now an iframe pointing at that file,
+// and keeps only the two things the file cannot do for itself: close, and hand
+// over the .pptx.
 window.__ModuleLoader__.load({
   id: '@liustack/pptfast',
   factory: (require) => {
@@ -33,6 +42,23 @@ window.__ModuleLoader__.load({
     var exports = module.exports
 
     var TOOL_NAME = 'pptfast_preview'
+
+    /**
+     * How many thumbnails the strip draws.
+     *
+     * The host half inlines exactly this many pages' markup
+     * (`THUMBNAIL_STRIP_PAGES`, ./preview-tool.js) and sends the rest as
+     * metadata only, so the two numbers are one decision written down twice.
+     * `stripPages` filters on markup as well as slicing, which is what keeps a
+     * disagreement between them showing up as a shorter strip instead of a row
+     * of empty boxes.
+     */
+    var STRIP_PAGES = 12
+
+    /** Where the full-size viewer lives — the html `preview --html` wrote. */
+    function previewHtmlUrl(previewId) {
+      return '/pptfast/preview/' + previewId + '/html'
+    }
 
     /**
      * Pull the preview bundle out of a frozen tool-call node.
@@ -77,12 +103,11 @@ window.__ModuleLoader__.load({
     /**
      * Every page the deck has, markup or not.
      *
-     * An oversized deck arrives with `svg: null` on the pages that blew the
-     * budget, and those pages used to be filtered out here — which silently
-     * renumbered the strip, and made the whole card vanish when no page had
-     * survived. A deck that exists is never nothing to show: the pages
-     * without markup keep their slot and get a placeholder, so the count in
-     * the modal stays the deck's real page count.
+     * The pages past the strip arrive with `svg: null`, and they still belong
+     * here: this is what the card counts and what decides whether there is a
+     * deck at all. Filtering them out would make the header under-report a
+     * long deck's length, and would make a card vanish rather than say
+     * anything if a bundle ever arrived carrying no markup at all.
      */
     function viewablePages(bundle) {
       return bundle && Array.isArray(bundle.pages) ? bundle.pages : []
@@ -90,6 +115,15 @@ window.__ModuleLoader__.load({
 
     function hasMarkup(page) {
       return !!page && typeof page.svg === 'string' && page.svg.length > 0
+    }
+
+    /**
+     * The pages the strip can actually draw: the first `STRIP_PAGES`, minus
+     * any that arrived without markup. See `STRIP_PAGES` for why the filter is
+     * normally a no-op and why it is here anyway.
+     */
+    function stripPages(pages) {
+      return pages.slice(0, STRIP_PAGES).filter(hasMarkup)
     }
 
     /** The number a reader would call this page, not its index in the array. */
@@ -155,47 +189,7 @@ window.__ModuleLoader__.load({
         })
       }
 
-      /**
-       * Stand-in for a page the server could not inline.
-       *
-       * Colours are passed in rather than read from the theme aliases: the
-       * modal paints its own dark backdrop, where a light theme's
-       * `label-primary` would be near-invisible.
-       */
-      function Missing(props) {
-        var onDark = props.onDark
-        var compact = props.compact
-        return h(
-          'div',
-          {
-            style: {
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: compact ? 2 : 6,
-              padding: compact ? 6 : 20,
-              textAlign: 'center',
-              lineHeight: 1.35,
-              fontSize: compact ? 10 : 13,
-              color: onDark ? 'rgba(255,255,255,0.7)' : COLORS.dim,
-            },
-          },
-          h(
-            'span',
-            { style: { fontWeight: 600, color: onDark ? '#fff' : COLORS.text } },
-            'Page ' + props.pageNumber,
-          ),
-          h(
-            'span',
-            null,
-            compact ? 'Preview too large' : 'This page was too large to inline. It is still in the exported deck.',
-          ),
-        )
-      }
-
+      /** One thumbnail: a 16:9 box holding the slide, clickable into the viewer. */
       function Frame(props) {
         return h(
           'div',
@@ -204,7 +198,7 @@ window.__ModuleLoader__.load({
               position: 'relative',
               aspectRatio: (props.width || 1280) + ' / ' + (props.height || 720),
               background: COLORS.stage,
-              borderRadius: props.radius || 6,
+              borderRadius: 6,
               overflow: 'hidden',
               border: '1px solid ' + COLORS.line,
               cursor: props.onClick ? 'zoom-in' : 'default',
@@ -223,35 +217,54 @@ window.__ModuleLoader__.load({
               : undefined,
             title: props.title,
           },
-          hasMarkup(props.page)
-            ? h(Slide, { svg: props.page.svg, prefix: props.prefix })
-            : h(Missing, { pageNumber: props.pageNumber, compact: props.compact, onDark: props.onDark }),
+          h(Slide, { svg: props.page.svg, prefix: props.prefix }),
         )
       }
 
-      /** Full-size viewer. Arrow keys page, Escape closes — same as the CLI's own preview. */
+      /**
+       * Full-size viewer: the deck's own `preview.html`, in an iframe.
+       *
+       * Everything a reader does inside it — ←/→, the filmstrip, the
+       * light/dark surround, the audit findings panel — belongs to that page,
+       * which was written, tested and shipped for the harnesses that have no
+       * plugin UI. This modal contributes the two things the page has no way
+       * to offer from inside itself: a way out, and the export.
+       */
       function Modal(props) {
-        var pages = props.pages
-        var state = useState(props.start || 0)
-        var index = Math.min(Math.max(state[0], 0), pages.length - 1)
-        var setIndex = state[1]
+        var frameRef = react.useRef(null)
 
         useEffect(
           function () {
             function onKey(e) {
               if (e.key === 'Escape') props.onClose()
-              else if (e.key === 'ArrowRight') setIndex(function (i) { return Math.min(i + 1, pages.length - 1) })
-              else if (e.key === 'ArrowLeft') setIndex(function (i) { return Math.max(i - 1, 0) })
             }
             document.addEventListener('keydown', onKey)
+            // Once the reader clicks the deck, keystrokes go to the iframe's
+            // own document and never reach this one — so Escape has to be
+            // heard there too, or it stops working exactly when the modal is
+            // in use. The frame is same-origin by construction (its src is
+            // this plugin's own route), and the access is guarded anyway:
+            // losing Escape is not worth throwing inside an effect for. The
+            // listener needs no removal of its own, since it dies with the
+            // document when this modal unmounts.
+            var frame = frameRef.current
+            function listenInside() {
+              try {
+                var doc = frame.contentDocument
+                if (doc) doc.addEventListener('keydown', onKey)
+              } catch {
+                /* not reachable from here after all — the outer listener stands */
+              }
+            }
+            if (frame) frame.addEventListener('load', listenInside)
             return function () {
               document.removeEventListener('keydown', onKey)
+              if (frame) frame.removeEventListener('load', listenInside)
             }
           },
-          [pages.length, props.onClose],
+          [props.onClose, props.src],
         )
 
-        var page = pages[index]
         return h(
           'div',
           {
@@ -271,50 +284,29 @@ window.__ModuleLoader__.load({
               if (e.target === e.currentTarget) props.onClose()
             },
           },
-          h(
-            'div',
-            { style: { width: 'min(100%, calc((100vh - 160px) * 16 / 9))', maxWidth: '100%' } },
-            h(Frame, {
-              page: page,
-              prefix: 'pfm' + index + '-',
-              pageNumber: pageNumberOf(page, index),
-              onDark: true,
-              width: props.slide && props.slide.width,
-              height: props.slide && props.slide.height,
-              radius: 4,
-            }),
-          ),
-          h(
-            'div',
-            {
-              style: {
-                display: 'flex',
-                alignItems: 'center',
-                gap: 14,
-                color: '#fff',
-                fontSize: 13,
-                fontVariantNumeric: 'tabular-nums',
-              },
+          h('iframe', {
+            ref: frameRef,
+            src: props.src,
+            title: 'pptfast deck preview',
+            style: {
+              // Takes the whole dialog and lets the page inside do its own
+              // layout. Its stage carries `aspect-ratio: 16/9` and sizes
+              // itself off the viewport it is handed, so the slide keeps its
+              // shape at any frame size. Pinning the *frame* to 16:9 instead
+              // would have to reserve room for that page's header and
+              // filmstrip, and every guess at how much is wrong the moment
+              // either one changes height.
+              flex: '1 1 auto',
+              width: 'min(100%, 1600px)',
+              minHeight: 0,
+              border: 0,
+              borderRadius: 8,
+              background: COLORS.stage,
             },
-            h(
-              'button',
-              {
-                onClick: function () { setIndex(Math.max(index - 1, 0)) },
-                disabled: index === 0,
-                style: modalBtn(index === 0),
-              },
-              '←',
-            ),
-            h('span', null, index + 1 + ' / ' + pages.length + (page.type ? ' · ' + page.type : '')),
-            h(
-              'button',
-              {
-                onClick: function () { setIndex(Math.min(index + 1, pages.length - 1)) },
-                disabled: index === pages.length - 1,
-                style: modalBtn(index === pages.length - 1),
-              },
-              '→',
-            ),
+          }),
+          h(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', gap: 14, flex: '0 0 auto' } },
             props.previewId
               ? h(ExportButton, {
                   previewId: props.previewId,
@@ -379,12 +371,12 @@ window.__ModuleLoader__.load({
             style: props.style,
             title:
               status === 'gone'
-                ? '这份预览已过期，重新生成一次即可'
+                ? 'This preview has expired. Run the tool again to rebuild it'
                 : props.draft
-                  ? 'Download the editable .pptx — a draft: some pages are still unfilled placeholders'
-                  : '下载可编辑的 .pptx',
+                  ? 'Download the editable .pptx. It is a draft: some pages are still unfilled placeholders'
+                  : 'Download the editable .pptx',
           },
-          status === 'busy' ? '导出中…' : status === 'gone' ? '已过期' : '下载 PPTX',
+          status === 'busy' ? 'Saving…' : status === 'gone' ? 'Expired' : 'Download .pptx',
         )
       }
 
@@ -407,7 +399,6 @@ window.__ModuleLoader__.load({
         var direct = bundleOf(props.block)
         var fetched = useState(null)
         var open = useState(false)
-        var start = useState(0)
         var previewId = previewIdOf(props.block)
 
         // Structured payload when the runtime computed one (native-mode,
@@ -478,28 +469,30 @@ window.__ModuleLoader__.load({
               : null,
             h('span', null, bundle.pages.length + ' pages'),
             findingCount > 0 ? h('span', null, findingCount + ' audit findings') : null,
-            bundle.markupTruncated ? h('span', null, 'preview shortened') : null,
-            h(
-              'button',
-              {
-                onClick: function () {
-                  start[1](0)
-                  open[1](true)
-                },
-                style: {
-                  marginLeft: 'auto',
-                  font: 'inherit',
-                  fontSize: 12,
-                  padding: '3px 10px',
-                  borderRadius: 7,
-                  border: '1px solid ' + COLORS.line,
-                  background: 'transparent',
-                  color: COLORS.text,
-                  cursor: 'pointer',
-                },
-              },
-              '预览',
-            ),
+            // No viewer without an id: the full-size view is a route keyed by
+            // it. A button that opened an empty frame would be worse than an
+            // absent one, and the thumbnails below go inert for the same
+            // reason.
+            previewId
+              ? h(
+                  'button',
+                  {
+                    onClick: function () { open[1](true) },
+                    style: {
+                      marginLeft: 'auto',
+                      font: 'inherit',
+                      fontSize: 12,
+                      padding: '3px 10px',
+                      borderRadius: 7,
+                      border: '1px solid ' + COLORS.line,
+                      background: 'transparent',
+                      color: COLORS.text,
+                      cursor: 'pointer',
+                    },
+                  },
+                  'Open',
+                )
+              : null,
             previewId
               ? h(ExportButton, {
                   previewId: previewId,
@@ -521,38 +514,30 @@ window.__ModuleLoader__.load({
           h(
             'div',
             { style: { display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 } },
-            pages.slice(0, 12).map(function (page, i) {
+            stripPages(pages).map(function (page, i) {
               return h(
                 'div',
                 { key: page.id || i, style: { flex: '0 0 auto', width: 132 } },
                 h(Frame, {
                   page: page,
                   prefix: 'pft' + i + '-',
-                  pageNumber: pageNumberOf(page, i),
-                  compact: true,
                   width: slide.width,
                   height: slide.height,
-                  title:
-                    (page.type || 'page') +
-                    ' ' +
-                    pageNumberOf(page, i) +
-                    (hasMarkup(page) ? '' : ' — too large to preview inline'),
-                  onClick: function () {
-                    start[1](i)
-                    open[1](true)
-                  },
+                  title: (page.type || 'page') + ' ' + pageNumberOf(page, i),
+                  // Every thumbnail opens the same viewer. It used to carry a
+                  // start page, which the html has no way to honour — see the
+                  // note on `Modal`.
+                  onClick: previewId ? function () { open[1](true) } : undefined,
                 }),
               )
             }),
           ),
-          open[0]
+          open[0] && previewId
             ? h(Modal, {
-                pages: pages,
-                slide: slide,
+                src: previewHtmlUrl(previewId),
                 previewId: previewId,
                 name: bundle.title,
                 draft: bundle.draft,
-                start: start[0],
                 onClose: function () { open[1](false) },
               })
             : null,
@@ -607,8 +592,11 @@ window.__ModuleLoader__.load({
       previewIdOf: previewIdOf,
       namespaceIds: namespaceIds,
       viewablePages: viewablePages,
+      stripPages: stripPages,
       hasMarkup: hasMarkup,
       pageNumberOf: pageNumberOf,
+      previewHtmlUrl: previewHtmlUrl,
+      STRIP_PAGES: STRIP_PAGES,
       TOOL_NAME: TOOL_NAME,
     }
     return module.exports

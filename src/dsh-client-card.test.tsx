@@ -28,7 +28,6 @@ interface Bundle {
   title?: string
   slide?: { width: number; height: number }
   pages: Page[]
-  markupTruncated?: boolean
   draft?: boolean
 }
 
@@ -77,14 +76,23 @@ beforeAll(async () => {
   }
 })
 
-/** A page whose markup made it into the bundle. */
+/** A page whose markup made it into the bundle — one the strip can draw. */
 function page(n: number, type = "content"): Page {
-  return { id: "p" + n, type, svg: `<svg xmlns="http://www.w3.org/2000/svg" id="root${n}"><rect id="r${n}"/></svg>` }
+  return {
+    id: "p" + n,
+    page: n,
+    type,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" id="root${n}"><rect id="r${n}"/></svg>`,
+  }
 }
 
-/** A page the server could not inline — the oversized-deck case. */
-function oversized(n: number, type = "content"): Page {
-  return { id: "p" + n, type, svg: null }
+/**
+ * A page past the end of the strip: metadata only, no markup. The host half
+ * inlines the first `THUMBNAIL_STRIP_PAGES` pages and sends the rest like
+ * this, since the viewer that shows them is a whole html page of its own.
+ */
+function beyondStrip(n: number, type = "content"): Page {
+  return { id: "p" + n, page: n, type, svg: null }
 }
 
 function bundleOf(pages: Page[], title = "Quarterly deck"): Bundle {
@@ -104,9 +112,9 @@ function thumbnails(container: HTMLElement) {
   return Array.from(container.querySelectorAll('[role="button"]'))
 }
 
-/** The modal's counter span, e.g. "8 / 9 · content". */
-function counter() {
-  return screen.getByText(/^\d+ \/ \d+/)
+/** The viewer, when it is open: one iframe holding the deck's own preview.html. */
+function viewer(container: HTMLElement) {
+  return container.querySelector("iframe")
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -134,32 +142,46 @@ afterEach(() => {
 })
 
 describe("dsh preview card — the thumbnail strip", () => {
-  it("keeps a slot for every page, including the ones too large to inline", () => {
+  it("draws only the pages that arrived with markup, and still counts the rest", () => {
     const Card = makeCard()
-    const pages = [page(1, "cover"), oversized(2), page(3)]
+    const pages = [page(1, "cover"), page(2), beyondStrip(3)]
     const { container } = render(<Card block={blockWith(bundleOf(pages), "abc")} />)
 
-    // Filtering markup-less pages back out would drop this to 2.
-    expect(thumbnails(container)).toHaveLength(3)
-    // ...and the placeholder has to say something a reader can act on.
-    expect(screen.getByText("Preview too large")).toBeInTheDocument()
-    expect(screen.getByText("Page 2")).toBeInTheDocument()
-    // The pages that do have markup are mounted as real SVG, not text.
+    // Two frames for three pages. Drawing the third would put an empty box in
+    // the strip, which reads as a broken slide rather than as the end of a
+    // teaser.
+    expect(thumbnails(container)).toHaveLength(2)
     expect(container.querySelectorAll("svg")).toHaveLength(2)
+    // The deck's real length is what the header reports, not the strip's.
     expect(screen.getByText("3 pages")).toBeInTheDocument()
+    // And nothing on screen calls a page too big to show: the viewer has
+    // every page, so a page without a thumbnail is not a page anybody lost.
+    expect(screen.queryByText(/too large/i)).toBeNull()
   })
 
-  it("does not renumber the pages after a missing one", () => {
+  it("stops the strip at twelve however much markup it is handed", () => {
+    // The strip is a fixed-length teaser. Every page here carries markup —
+    // a host half more generous than this one, or one whose cap has been
+    // raised and this one's has not — and the strip still stops where it
+    // says it stops, rather than growing into a scrollbar with the deck.
     const Card = makeCard()
-    // No explicit `page` field: the number falls out of the slot index, which
-    // is exactly what silently shifted when missing pages were filtered.
-    const pages = [page(1, "cover"), oversized(2), page(3)]
+    const pages = Array.from({ length: 20 }, (_x, i) => page(i + 1))
     const { container } = render(<Card block={blockWith(bundleOf(pages), "abc")} />)
 
-    const titles = thumbnails(container).map((el) => el.getAttribute("title"))
-    expect(titles[0]).toBe("cover 1")
-    expect(titles[1]).toBe("content 2 — too large to preview inline")
-    expect(titles[2]).toBe("content 3")
+    expect(thumbnails(container)).toHaveLength(12)
+    expect(screen.getByText("20 pages")).toBeInTheDocument()
+  })
+
+  it("titles each thumbnail with the deck's own numbering", () => {
+    const Card = makeCard()
+    const pages = [page(1, "cover"), page(2), page(3, "ending")]
+    const { container } = render(<Card block={blockWith(bundleOf(pages), "abc")} />)
+
+    expect(thumbnails(container).map((el) => el.getAttribute("title"))).toEqual([
+      "cover 1",
+      "content 2",
+      "ending 3",
+    ])
   })
 
   it("namespaces every id it mounts, so two slides in one DOM cannot cross-wire", () => {
@@ -178,20 +200,6 @@ describe("dsh preview card — the thumbnail strip", () => {
     expect(container.querySelector("#r2")).toBeNull()
   })
 
-  it("re-namespaces per mount point, so the modal's copy does not collide with the thumbnail's", () => {
-    // The same slide is on screen twice once the modal opens. Sharing one
-    // prefix would put two elements with the same id in one document, and
-    // `url(#…)` resolves to whichever came first.
-    const Card = makeCard()
-    const { container } = render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
-    fireEvent.click(screen.getByText("预览"))
-
-    const ids = Array.from(container.querySelectorAll("[id]")).map((el) => el.id)
-    expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toContain("pft0-root1")
-    expect(ids).toContain("pfm0-root1")
-  })
-
   it("renders nothing at all when the block carries no recognisable payload", () => {
     const Card = makeCard()
     const { container } = render(<Card block={{ content: [{ text: "no preview here" }] }} />)
@@ -206,7 +214,7 @@ describe("dsh preview card — the thumbnail strip", () => {
   })
 })
 
-describe("dsh preview card — the modal", () => {
+describe("dsh preview card — the viewer", () => {
   const nine = () => [
     page(1, "cover"),
     page(2),
@@ -215,75 +223,46 @@ describe("dsh preview card — the modal", () => {
     page(5),
     page(6),
     page(7),
-    oversized(8),
+    page(8),
     page(9, "ending"),
   ]
 
-  function openModal() {
+  function openViewer(id = "abc") {
     const Card = makeCard()
-    const view = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
-    fireEvent.click(screen.getByText("预览"))
+    const view = render(<Card block={blockWith(bundleOf(nine()), id)} />)
+    fireEvent.click(screen.getByText("Open"))
     return view
   }
 
-  it("counts the deck's real pages and can reach the one without markup", () => {
-    openModal()
-    expect(counter()).toHaveTextContent("1 / 9")
+  it("loads the deck's own preview.html instead of paging slides itself", () => {
+    // The whole point of the change. That page already has a filmstrip,
+    // ←/→, a light/dark surround and an audit panel, was written once and is
+    // what every harness without a plugin UI is told to open. The card used
+    // to run a thinner copy of it beside the original.
+    const { container } = openViewer("abc123")
 
-    for (let i = 0; i < 7; i++) fireEvent.keyDown(document, { key: "ArrowRight" })
-
-    // Page 8 has no markup. If the modal fed on markup-bearing pages only,
-    // this would read "8 / 8" and stop one page short of the deck.
-    expect(counter()).toHaveTextContent("8 / 9")
-    expect(screen.getByText("This page was too large to inline. It is still in the exported deck.")).toBeInTheDocument()
-  })
-
-  it("clamps arrow keys at both ends and closes on Escape", () => {
-    openModal()
-
-    // Three presses past the front, then one forward: page 2, not page 1.
-    // Only clamping on the way down keeps the counter honest but leaves the
-    // reader pressing → three times to move one page.
-    for (let i = 0; i < 3; i++) fireEvent.keyDown(document, { key: "ArrowLeft" })
-    expect(counter()).toHaveTextContent("1 / 9")
-    fireEvent.keyDown(document, { key: "ArrowRight" })
-    expect(counter()).toHaveTextContent("2 / 9")
-
-    for (let i = 0; i < 12; i++) fireEvent.keyDown(document, { key: "ArrowRight" })
-    expect(counter()).toHaveTextContent("9 / 9")
-    fireEvent.keyDown(document, { key: "ArrowLeft" })
-    expect(counter()).toHaveTextContent("8 / 9")
-
-    fireEvent.keyDown(document, { key: "Escape" })
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/abc123/html")
+    // None of the second implementation is left: no counter, no arrows...
     expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
+    expect(screen.queryByText("←")).toBeNull()
+    expect(screen.queryByText("→")).toBeNull()
+    // ...and no second copy of any slide mounted next to the strip's nine.
+    expect(container.querySelectorAll("svg")).toHaveLength(9)
   })
 
-  it("clamps the on-screen arrow buttons the same way", () => {
-    openModal()
-    const back = screen.getByText("←")
-    const forward = screen.getByText("→")
-
-    expect(back).toBeDisabled()
-    for (let i = 0; i < 8; i++) fireEvent.click(forward)
-    expect(counter()).toHaveTextContent("9 / 9")
-    expect(forward).toBeDisabled()
-    fireEvent.click(forward)
-    expect(counter()).toHaveTextContent("9 / 9")
-  })
-
-  it("opens on the thumbnail that was clicked", () => {
+  it("opens the same viewer from any thumbnail", () => {
+    // Thumbnails used to carry a start page into a React slideshow. The html
+    // opens on page one whichever thumbnail was clicked, and that is the
+    // whole of the behaviour now.
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
     fireEvent.click(thumbnails(container)[4]!)
-    expect(counter()).toHaveTextContent("5 / 9")
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/abc/html")
   })
 
   it("opens from the keyboard on the thumbnail that has focus", () => {
     // A thumbnail is a div with `role="button"` and `tabIndex`, which promises
-    // the keyboard behaviour a real <button> would have given for free. Every
-    // other keyboard test here fires at an already-open modal, so deleting
-    // this handler left them all green and the strip unreachable without a
-    // mouse.
+    // the keyboard behaviour a real <button> would have given for free.
     for (const key of ["Enter", " "]) {
       const Card = makeCard()
       const { container, unmount } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
@@ -291,7 +270,7 @@ describe("dsh preview card — the modal", () => {
       expect(thumb).toHaveAttribute("tabIndex", "0")
 
       fireEvent.keyDown(thumb, { key })
-      expect(counter(), key).toHaveTextContent("3 / 9")
+      expect(viewer(container), key).not.toBeNull()
       unmount()
       cleanup()
     }
@@ -302,40 +281,84 @@ describe("dsh preview card — the modal", () => {
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
     fireEvent.keyDown(thumbnails(container)[2]!, { key: "a" })
     fireEvent.keyDown(thumbnails(container)[2]!, { key: "Tab" })
-    expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
+    expect(viewer(container)).toBeNull()
+  })
+
+  it("closes on Escape", () => {
+    const { container } = openViewer()
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(viewer(container)).toBeNull()
+  })
+
+  it("closes on Escape pressed inside the frame, where the deck actually has focus", () => {
+    // The keystroke a reader really makes: they click the deck first, so the
+    // keydown lands on the frame's own document and never reaches this one.
+    // Listen on the outer document alone and Escape stops working the moment
+    // the viewer is touched, which is the only moment it is wanted.
+    const { container } = openViewer()
+    const frame = viewer(container)!
+    fireEvent.load(frame)
+    const inner = frame.contentDocument!
+    expect(inner).toBeTruthy()
+
+    fireEvent.keyDown(inner, { key: "Escape" })
+    expect(viewer(container)).toBeNull()
   })
 
   it("closes on the Close button", () => {
-    // Escape is the only close path the previous round tested, so the button
-    // could have been wired to nothing.
-    openModal()
+    const { container } = openViewer()
     fireEvent.click(screen.getByText("Close"))
-    expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
+    expect(viewer(container)).toBeNull()
   })
 
-  it("closes on a click outside the slide, but never on one inside it", () => {
-    const { container } = openModal()
-    // The backdrop is the modal's own outermost element: clicking it means
-    // "not on anything", which is a dismissal.
+  it("closes on a click on the backdrop, but never on one on the deck", () => {
+    const { container } = openViewer()
     const backdrop = container.querySelector('[style*="position: fixed"]') as HTMLElement
     expect(backdrop).toBeTruthy()
 
-    // A click that started on the slide bubbles to the same element and must
-    // not be mistaken for one on the backdrop — that would close the viewer
+    // A click that started on the frame bubbles to the same element and must
+    // not be mistaken for one on the backdrop — that would dismiss the viewer
     // every time somebody clicked the deck they came to read.
-    fireEvent.click(screen.getByText("→"))
-    expect(counter()).toHaveTextContent("2 / 9")
+    fireEvent.click(viewer(container)!)
+    expect(viewer(container)).not.toBeNull()
 
     fireEvent.click(backdrop)
-    expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
+    expect(viewer(container)).toBeNull()
   })
 
   it("stays closed once it is closed", () => {
-    openModal()
+    const { container } = openViewer()
     fireEvent.keyDown(document, { key: "Escape" })
-    // Keys that land after the modal is gone belong to the page, not to it.
-    expect(() => fireEvent.keyDown(document, { key: "ArrowRight" })).not.toThrow()
-    expect(screen.queryByText(/^\d+ \/ \d+/)).toBeNull()
+    // Keys that land after the viewer is gone belong to the page, not to it.
+    expect(() => fireEvent.keyDown(document, { key: "Escape" })).not.toThrow()
+    expect(viewer(container)).toBeNull()
+  })
+
+  it("keeps the download inside the viewer, since the html cannot offer it", async () => {
+    // The one card ability the page has no way to reach: it is a static file
+    // on a route of its own, with no idea an export exists.
+    fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob(["deck"]) })
+    openViewer("abc123")
+
+    const buttons = screen.getAllByText("Download .pptx")
+    expect(buttons).toHaveLength(2) // one on the card, one in the viewer
+    fireEvent.click(buttons[1]!)
+
+    await waitFor(() => expect(anchorClicks).toHaveLength(1))
+    expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/abc123/pptx")
+  })
+
+  it("offers no viewer at all without a preview id, rather than an empty frame", () => {
+    // The viewer is a route keyed by that id. A button that opened a 404
+    // would be worse than no button.
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf([page(1)]), null)} />)
+
+    expect(screen.queryByText("Open")).toBeNull()
+    expect(thumbnails(container)).toHaveLength(0)
+    expect(viewer(container)).toBeNull()
+    // The deck is still on screen: drawing the strip needs no id.
+    expect(container.querySelectorAll("svg")).toHaveLength(1)
   })
 })
 
@@ -345,7 +368,7 @@ describe("dsh preview card — the export button", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc123")} />)
 
-    fireEvent.click(screen.getByText("下载 PPTX"))
+    fireEvent.click(screen.getByText("Download .pptx"))
 
     await waitFor(() => expect(anchorClicks).toHaveLength(1))
     expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/abc123/pptx")
@@ -361,9 +384,9 @@ describe("dsh preview card — the export button", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "expired")} />)
 
-    fireEvent.click(screen.getByText("下载 PPTX"))
+    fireEvent.click(screen.getByText("Download .pptx"))
 
-    expect(await screen.findByText("已过期")).toBeInTheDocument()
+    expect(await screen.findByText("Expired")).toBeInTheDocument()
     expect(anchorClicks).toEqual([])
     expect(URL.createObjectURL).not.toHaveBeenCalled()
   })
@@ -373,16 +396,16 @@ describe("dsh preview card — the export button", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
 
-    fireEvent.click(screen.getByText("下载 PPTX"))
+    fireEvent.click(screen.getByText("Download .pptx"))
 
-    expect(await screen.findByText("已过期")).toBeInTheDocument()
+    expect(await screen.findByText("Expired")).toBeInTheDocument()
     expect(anchorClicks).toEqual([])
   })
 
   it("is absent when the result carries no preview id", () => {
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), null)} />)
-    expect(screen.queryByText("下载 PPTX")).toBeNull()
+    expect(screen.queryByText("Download .pptx")).toBeNull()
   })
 })
 
@@ -397,7 +420,7 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
   }
 
   it("pulls the bundle from the plugin route when the block has no structured payload", async () => {
-    respondWith({ A: bundleOf([page(1), oversized(2)], "Deck A") })
+    respondWith({ A: bundleOf([page(1), beyondStrip(2)], "Deck A") })
     const Card = makeCard()
     render(<Card block={blockWith(null, "A")} />)
 
@@ -496,7 +519,7 @@ describe("dsh preview card — a deck with unfilled pages", () => {
     const Card = makeCard()
     render(<Card block={blockWith(draftBundle(), "abc123")} />)
 
-    fireEvent.click(screen.getByText("下载 PPTX"))
+    fireEvent.click(screen.getByText("Download .pptx"))
 
     await waitFor(() => expect(anchorClicks).toHaveLength(1))
     expect(anchorClicks[0]!.download).toBe("Quarterly deck-draft.pptx")

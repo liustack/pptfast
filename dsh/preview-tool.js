@@ -24,16 +24,20 @@
 // - the MODEL sees one short line from `output.render`, plus a preview id.
 //   A deck's SVG runs to tens of kilobytes and carries nothing the model can
 //   act on, so it never enters the transcript.
-// - the CARD reads that id out of the result text and fetches the bundle
-//   from the route. Same-origin loopback only, and the bundle is held in
-//   memory for the life of the process.
+// - the CARD reads that id out of the result text and fetches from the route:
+//   the bundle for its thumbnail strip, and `preview.html` for the viewer it
+//   opens in an iframe. Same-origin loopback only.
 //
-// Nothing here re-renders anything of its own. It shells out to the same
-// packaged CLI the skill teaches, and reads the bundle that `preview --html`
-// already writes — `manifest.json` plus one SVG per page. Keeping one
-// rendering path is the point: a second renderer in a UI is how the
-// promotional images and the review conclusions would stop describing the
-// same product.
+// Nothing here re-renders anything of its own, and — since the viewer became
+// an iframe — nothing here reimplements anything either. It shells out to the
+// same packaged CLI the skill teaches and serves what `preview --html` already
+// wrote: `manifest.json` plus one SVG per page for the strip, and the
+// self-contained `preview.html` (filmstrip, keyboard paging, light/dark
+// surround, audit findings) for the full-size view. Keeping one rendering path
+// is the point, and it now covers the reading path too: a second renderer in a
+// UI is how the promotional images and the review conclusions would stop
+// describing the same product, and a second *viewer* is how the card and the
+// review bundle would stop showing the same deck.
 //
 // Everything stateful lives inside `createPreviewService`, never at module
 // scope. Two services (a plugin reload, a second profile, a test) must not
@@ -78,8 +82,28 @@ import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat, unlink, writeFile 
 import { homedir, tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 
-/** Cap on how much rendered SVG rides the presentation channel, in bytes. */
-const MAX_PRESENTED_BYTES = 8 * 1024 * 1024
+/**
+ * How many pages get their SVG inlined into the bundle.
+ *
+ * This is a count of pages, not a budget of bytes, and it is bound to one
+ * thing only: how many thumbnails the card's strip draws (`STRIP_PAGES`,
+ * ./client.js). The bundle has no other consumer — the full-size viewer is the
+ * `preview.html` served below, which carries every page inside itself and asks
+ * this route for no markup at all. Pages past this point still travel, with
+ * their metadata, so the card can count and name them.
+ *
+ * What stood here before was an 8 MB budget on the total inlined markup, and
+ * the difference matters. A byte budget makes a page's fate depend on the
+ * pages before it: a real nine-page deck with a photo on every slide came back
+ * with pages 2 and 6 blank — the early photos had spent the budget, and the
+ * later, cheaper pages fit in what was left. Counting pages cannot produce
+ * that, because which pages arrive without markup no longer has anything to do
+ * with how heavy their neighbours were.
+ */
+const THUMBNAIL_STRIP_PAGES = 12
+
+/** The self-contained review page `preview --html` writes into `outDir`. */
+const PREVIEW_HTML_FILE = 'preview.html'
 
 export const TOOL_NAME = 'pptfast_preview'
 
@@ -544,36 +568,30 @@ function themeArgs(record) {
 }
 
 /**
- * Read the bundle `preview --html` wrote: the manifest, plus each page's SVG
- * inlined so the card needs no filesystem access of its own (it runs in a
- * browser).
+ * Read what the card's thumbnail strip needs: the manifest, plus the SVG of
+ * every page the strip will actually draw, inlined so the card needs no
+ * filesystem access of its own (it runs in a browser).
  *
- * Every page keeps its metadata; `svg: null` means that one page's markup did
- * not fit the budget. Only the oversized page is dropped, never the pages
- * after it — a first page over the cap used to blank the entire deck, so one
- * heavy photo slide cost the user every other slide as well.
+ * Every page keeps its metadata. `svg: null` means "this page is past the end
+ * of the strip", never "this page failed" — the deck in full is one route away
+ * (`preview.html`), so a page without markup here is not a page the user
+ * cannot see. There is deliberately no flag saying the markup was cut short:
+ * the strip is a fixed-length teaser by design, and a card that announced
+ * "preview shortened" for every deck over twelve pages would be reporting the
+ * design as a defect.
  */
 async function readPreviewBundle(outDir) {
   const manifest = JSON.parse(await readFile(join(outDir, 'manifest.json'), 'utf8'))
   const pages = []
-  let total = 0
-  let truncated = false
   for (const page of manifest.pages) {
-    const svg = await readFile(join(outDir, page.file), 'utf8')
-    const size = Buffer.byteLength(svg, 'utf8')
-    if (total + size > MAX_PRESENTED_BYTES) {
-      truncated = true
-      pages.push({ ...page, svg: null })
-      continue
-    }
-    total += size
-    pages.push({ ...page, svg })
+    const drawn = pages.length < THUMBNAIL_STRIP_PAGES
+    pages.push({ ...page, svg: drawn ? await readFile(join(outDir, page.file), 'utf8') : null })
   }
   // `draft` travels with the bundle rather than with the record, so a card
   // reopened after a restart still says so: `recallAnywhere` rebuilds the
   // bundle from this manifest, and the manifest is where the unfilled pages
   // are named in the first place.
-  return { ...manifest, pages, markupTruncated: truncated, draft: pages.some((p) => p.placeholder === true) }
+  return { ...manifest, pages, draft: pages.some((p) => p.placeholder === true) }
 }
 
 /**
@@ -705,8 +723,12 @@ export function createPreviewService(cliPath) {
       path: PREVIEW_ROUTE,
       handler: async (req, res) => {
         const rest = String(req.url || '').split(PREVIEW_ROUTE)[1]?.split('?')[0]?.replace(/^\//, '') ?? ''
-        const wantsPptx = rest.endsWith('/pptx')
-        const id = wantsPptx ? rest.slice(0, -'/pptx'.length) : rest
+        // `<id>`, `<id>/pptx` or `<id>/html`. Matched off the end so the id is
+        // whatever is left, and then shape-checked before anything touches the
+        // filesystem — a traversal attempt has to fail on all three paths, not
+        // only on the bare one.
+        const want = rest.endsWith('/pptx') ? 'pptx' : rest.endsWith('/html') ? 'html' : 'bundle'
+        const id = want === 'bundle' ? rest : rest.slice(0, -(want.length + 1))
         let entry
         try {
           entry = ID_PATTERN.test(id) ? await recallAnywhere(id) : undefined
@@ -724,9 +746,35 @@ export function createPreviewService(cliPath) {
           res.end(JSON.stringify({ error: 'unknown preview id' }))
           return
         }
-        if (!wantsPptx) {
+        if (want === 'bundle') {
           res.writeHead(200, { 'content-type': 'application/json' })
           res.end(JSON.stringify(entry.bundle))
+          return
+        }
+        if (want === 'html') {
+          // The viewer the card's modal loads in an iframe. Served straight
+          // off disk exactly as `preview --html` wrote it: it already has the
+          // filmstrip, the keyboard paging, the light/dark surround and the
+          // audit panel, and it is the same file a harness with no plugin UI
+          // is told to open. Reimplementing any of that in React here is how
+          // the card ended up with a page-count budget, a stand-in for
+          // "missing" pages and its own arrow keys, none of which the real
+          // preview has.
+          const htmlPath = join(entry.outDir, PREVIEW_HTML_FILE)
+          let html
+          try {
+            html = await readFile(htmlPath)
+          } catch {
+            // Same disposition as a missing .pptx: the id was real, the file
+            // behind it is not. 410 rather than 404 or a re-render, so the
+            // iframe cannot be handed a page rebuilt out of today's
+            // configuration and passed off as the deck in the card.
+            res.writeHead(410, { 'content-type': 'application/json' })
+            res.end(JSON.stringify({ error: `the preview page for this preview is gone (${htmlPath})` }))
+            return
+          }
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': html.length })
+          res.end(html)
           return
         }
         // Served, not rendered. This handler starts no process and writes
@@ -914,7 +962,8 @@ export const __testing = {
   OUT_DIR_PREFIX,
   OWNER_MARKER,
   SCRATCH_MAX_AGE_MS,
-  MAX_PRESENTED_BYTES,
+  THUMBNAIL_STRIP_PAGES,
+  PREVIEW_HTML_FILE,
   MAX_PERSISTED,
   PreviewExpired,
 }
