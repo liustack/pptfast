@@ -48,7 +48,10 @@ function applyWithFakeCtx(overrides: { register?: (r: Registration) => () => voi
 describe("dsh plugin (skill registration, v0)", () => {
   it("exports the Cordis plugin shape: name, inject, apply", () => {
     expect(plugin.name).toBe("pptfast")
-    expect(plugin.inject).toEqual(["skills"])
+    // `tools` joined `skills` when the preview tool landed: the skill teaches
+    // the model to drive the CLI, and the tool is what gives pptfast a card of
+    // its own to preview into.
+    expect(plugin.inject).toEqual(["skills", "tools"])
     expect(typeof plugin.apply).toBe("function")
   })
 
@@ -154,5 +157,75 @@ describe("dsh plugin bundle manifest", () => {
     const patch = readFileSync(join(ROOT, "cordis.patch.yml"), "utf8")
     expect(patch).toContain("name: '@liustack/pptfast'")
     expect(patch).toContain("id: pptfast")
+  })
+})
+
+/**
+ * The plugin half is plain dependency-free JS by design (see dsh/index.js's
+ * own header), so it carries no declaration file. Same `@ts-expect-error`
+ * idiom the plugin import above already uses, in one place.
+ */
+async function loadPreviewTool(): Promise<{
+  definePreviewTool: (cliPath: string) => {
+    name: string
+    description: string
+    output: {
+      render: (a: unknown, v: unknown) => { type: string; text: string }[]
+      presentationMeta: (a: unknown, v: unknown) => { card: string; bundle: { pages: unknown[] } }
+    }
+  }
+}> {
+  // @ts-expect-error untyped on purpose
+  return import("../dsh/preview-tool.js")
+}
+
+describe("pptfast_preview tool", () => {
+  it("shows the model one line and the card the whole deck", async () => {
+    // The split this tool exists for. A deck's markup is tens of kilobytes
+    // and tells the model nothing it can act on, so it rides
+    // `presentationMeta` (persisted, card-facing) while the model gets a
+    // summary. Putting the deck in the model-facing content instead would
+    // spend the context window on SVG.
+    const { definePreviewTool } = await loadPreviewTool()
+    const tool = definePreviewTool("/does/not/run/here.js")
+    const value = {
+      outDir: "/tmp/x",
+      pageCount: 9,
+      findingCount: 0,
+      audited: true,
+      bundle: { pages: [{ id: "page-001", svg: "<svg/>" }] },
+    }
+
+    const modelText = tool.output.render({}, value)[0]!.text
+    expect(modelText).toContain("9 pages")
+    expect(modelText).toContain("audit clean")
+    expect(modelText).not.toContain("<svg")
+
+    const meta = tool.output.presentationMeta({}, value)
+    expect(meta.card).toBe("pptfast-preview")
+    expect(meta.bundle.pages).toHaveLength(1)
+  })
+
+  it("never reports an unaudited deck as clean", async () => {
+    // `checks` absent means the audit never ran (a deck with placeholder
+    // pages). The preview manifest keeps "ran and found nothing" apart from
+    // "never ran" on purpose; collapsing them here would undo that.
+    const { definePreviewTool } = await loadPreviewTool()
+    const tool = definePreviewTool("/x.js")
+    const text = tool.output.render({}, {
+      outDir: "/tmp/x",
+      pageCount: 3,
+      findingCount: 0,
+      audited: false,
+      bundle: { pages: [] },
+    })[0]!.text
+    expect(text).toContain("audit skipped")
+    expect(text).not.toContain("clean")
+  })
+
+  it("tells the model not to fall back to handing over a URL", async () => {
+    // The behaviour this whole tool exists to replace.
+    const { definePreviewTool } = await loadPreviewTool()
+    expect(definePreviewTool("/x.js").description).toMatch(/preview URL/)
   })
 })
