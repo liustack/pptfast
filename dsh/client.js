@@ -337,20 +337,29 @@ window.__ModuleLoader__.load({
         // Structured payload when the runtime computed one (native-mode,
         // top-level call); otherwise fetch it by id from the plugin's own
         // route, which is what Code Mode's sub-calls need.
+        // Keyed by preview id, not by "have I fetched anything yet". A React
+        // instance is reused when the block it renders changes, so gating on
+        // a non-empty cache left the card showing the previous deck forever.
         useEffect(
           function () {
-            if (direct || !previewId || fetched[0]) return
+            if (direct || !previewId) return
+            if (fetched[0] && fetched[0].__previewId === previewId) return
             var cancelled = false
             fetch('/pptfast/preview/' + previewId)
               .then(function (r) { return r.ok ? r.json() : null })
-              .then(function (b) { if (!cancelled && b) fetched[1](b) })
+              .then(function (b) {
+                if (cancelled || !b) return
+                b.__previewId = previewId
+                fetched[1](b)
+              })
               .catch(function () { /* the generic row is the degrade */ })
             return function () { cancelled = true }
           },
           [direct, previewId, fetched[0]],
         )
 
-        var bundle = direct || fetched[0]
+        var cached = fetched[0] && fetched[0].__previewId === previewId ? fetched[0] : null
+        var bundle = direct || cached
         if (!bundle) return null
 
         var pages = drawablePages(bundle)

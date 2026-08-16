@@ -486,7 +486,11 @@ kbd {
     note.className = "note";
     note.rows = 1;
     note.placeholder = "备注";
-    note.addEventListener("input", () => setNote(p.id, note.value.trim()));
+    // Stored verbatim while typing. Trimming on every input event and writing
+    // the trimmed value straight back deleted a space the moment it was
+    // typed, so "needs more spacing" came out "needsmore spacing". Trimming
+    // is an export-time concern, not a per-keystroke one.
+    note.addEventListener("input", () => setNote(p.id, note.value));
 
     card.append(stage, meta, verdictsRow, note);
 
@@ -592,6 +596,10 @@ kbd {
 
   function render() {
     const main = document.getElementById("main");
+    // Every past filter pass left its cards observed: they leave the DOM but
+    // stay in the observer, so switching theme or typing in the search box
+    // accumulated dead references and callbacks for the life of the page.
+    io.disconnect();
     main.textContent = "";
     cards.clear();
     visible = MANIFEST.pages.filter(matches);
@@ -683,7 +691,7 @@ kbd {
   }
   document.getElementById("viewer-note").addEventListener("input", (ev) => {
     const p = visible[viewerIndex];
-    if (p) { setNote(p.id, ev.target.value.trim()); refreshCard(p.id); }
+    if (p) { setNote(p.id, ev.target.value); refreshCard(p.id); }
   });
 
   document.addEventListener("keydown", (ev) => {
@@ -744,7 +752,7 @@ kbd {
           theme: p.theme,
           page: p.page,
           verdict: verdicts[p.id].verdict || null,
-          note: verdicts[p.id].note || null,
+          note: (verdicts[p.id].note || "").trim() || null,
           findings: (p.findings || []).map((f) => f.code),
           // Set when this judgement was made about a version of the page
           // that no longer exists. A reader acting on it would be fixing

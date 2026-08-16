@@ -109,15 +109,28 @@ function pageSlug(slide: PreviewManifestSlideInput): string {
  */
 function pageIds(slides: readonly PreviewManifestSlideInput[]): string[] {
   const taken = new Set<string>()
+  const claim = (candidate: string): string => {
+    if (!taken.has(candidate)) {
+      taken.add(candidate)
+      return candidate
+    }
+    // The fallback can itself be taken: a deck whose page 1 carries the
+    // literal slide id "page-002" owns the very name page 2 would fall back
+    // to. The first version of this stopped at one fallback and shipped a
+    // duplicate anyway, with a test that only covered the easy collision.
+    // Probing until free is the only version that can promise uniqueness.
+    for (let n = 2; ; n++) {
+      const suffixed = `${candidate}-${n}`
+      if (!taken.has(suffixed)) {
+        taken.add(suffixed)
+        return suffixed
+      }
+    }
+  }
   return slides.map((slide) => {
     const slug = pageSlug(slide)
-    if (!taken.has(slug)) {
-      taken.add(slug)
-      return slug
-    }
-    const fallback = `page-${String(slide.index + 1).padStart(3, "0")}`
-    taken.add(fallback)
-    return fallback
+    if (!taken.has(slug)) return claim(slug)
+    return claim(`page-${String(slide.index + 1).padStart(3, "0")}`)
   })
 }
 

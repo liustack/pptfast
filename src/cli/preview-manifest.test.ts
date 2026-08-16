@@ -104,7 +104,24 @@ describe("buildPreviewManifest", () => {
     // number, which cannot collide with anything.
     expect(ids[0]).toBe("q2-cover")
     expect(ids[1]).toBe("page-002")
+  })
+
+  it("keeps probing when the fallback is itself already taken", () => {
+    // A deck whose page 1 carries the literal slide id "page-002" owns the
+    // exact name page 2 would fall back to. The first version stopped at one
+    // fallback and emitted a duplicate — the promise this whole function
+    // makes, broken by the case its own test did not cover.
+    const m = buildPreviewManifest({
+      ...base,
+      slides: [
+        { index: 0, type: "cover", id: "page-002", file: "a.svg" },
+        { index: 1, type: "content", id: "Page 002", file: "b.svg" },
+      ],
+    })
+    const ids = m.pages.map((p) => p.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids[0]).toBe("page-002")
     // Both keep their real slide id, so nothing is lost, only disambiguated.
-    expect(m.pages[1]!.slideId).toBe("q2-cover")
+    expect(m.pages[1]!.slideId).toBe("Page 002")
   })
 })
