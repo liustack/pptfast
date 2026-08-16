@@ -74,11 +74,27 @@ window.__ModuleLoader__.load({
       return null
     }
 
-    /** Pages that actually carry markup — an oversized deck ships some without. */
-    function drawablePages(bundle) {
-      return bundle.pages.filter(function (p) {
-        return typeof p.svg === 'string' && p.svg.length > 0
-      })
+    /**
+     * Every page the deck has, markup or not.
+     *
+     * An oversized deck arrives with `svg: null` on the pages that blew the
+     * budget, and those pages used to be filtered out here — which silently
+     * renumbered the strip, and made the whole card vanish when no page had
+     * survived. A deck that exists is never nothing to show: the pages
+     * without markup keep their slot and get a placeholder, so the count in
+     * the modal stays the deck's real page count.
+     */
+    function viewablePages(bundle) {
+      return bundle && Array.isArray(bundle.pages) ? bundle.pages : []
+    }
+
+    function hasMarkup(page) {
+      return !!page && typeof page.svg === 'string' && page.svg.length > 0
+    }
+
+    /** The number a reader would call this page, not its index in the array. */
+    function pageNumberOf(page, index) {
+      return (page && typeof page.page === 'number' ? page.page : null) || index + 1
     }
 
     /**
@@ -139,6 +155,47 @@ window.__ModuleLoader__.load({
         })
       }
 
+      /**
+       * Stand-in for a page the server could not inline.
+       *
+       * Colours are passed in rather than read from the theme aliases: the
+       * modal paints its own dark backdrop, where a light theme's
+       * `label-primary` would be near-invisible.
+       */
+      function Missing(props) {
+        var onDark = props.onDark
+        var compact = props.compact
+        return h(
+          'div',
+          {
+            style: {
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: compact ? 2 : 6,
+              padding: compact ? 6 : 20,
+              textAlign: 'center',
+              lineHeight: 1.35,
+              fontSize: compact ? 10 : 13,
+              color: onDark ? 'rgba(255,255,255,0.7)' : COLORS.dim,
+            },
+          },
+          h(
+            'span',
+            { style: { fontWeight: 600, color: onDark ? '#fff' : COLORS.text } },
+            'Page ' + props.pageNumber,
+          ),
+          h(
+            'span',
+            null,
+            compact ? 'Preview too large' : 'This page was too large to inline. It is still in the exported deck.',
+          ),
+        )
+      }
+
       function Frame(props) {
         return h(
           'div',
@@ -166,7 +223,9 @@ window.__ModuleLoader__.load({
               : undefined,
             title: props.title,
           },
-          h(Slide, { svg: props.page.svg, prefix: props.prefix }),
+          hasMarkup(props.page)
+            ? h(Slide, { svg: props.page.svg, prefix: props.prefix })
+            : h(Missing, { pageNumber: props.pageNumber, compact: props.compact, onDark: props.onDark }),
         )
       }
 
@@ -218,6 +277,8 @@ window.__ModuleLoader__.load({
             h(Frame, {
               page: page,
               prefix: 'pfm' + index + '-',
+              pageNumber: pageNumberOf(page, index),
+              onDark: true,
               width: props.slide && props.slide.width,
               height: props.slide && props.slide.height,
               radius: 4,
@@ -362,7 +423,7 @@ window.__ModuleLoader__.load({
         var bundle = direct || cached
         if (!bundle) return null
 
-        var pages = drawablePages(bundle)
+        var pages = viewablePages(bundle)
         if (pages.length === 0) return null
 
         var slide = bundle.slide || { width: 1280, height: 720 }
@@ -428,9 +489,15 @@ window.__ModuleLoader__.load({
                 h(Frame, {
                   page: page,
                   prefix: 'pft' + i + '-',
+                  pageNumber: pageNumberOf(page, i),
+                  compact: true,
                   width: slide.width,
                   height: slide.height,
-                  title: (page.type || 'page') + ' ' + (page.page || i + 1),
+                  title:
+                    (page.type || 'page') +
+                    ' ' +
+                    pageNumberOf(page, i) +
+                    (hasMarkup(page) ? '' : ' — too large to preview inline'),
                   onClick: function () {
                     start[1](i)
                     open[1](true)
@@ -495,7 +562,15 @@ window.__ModuleLoader__.load({
     // the same reason.
     exports.inject = ['slots']
     // Exposed for this repo's tests only; not part of the plugin contract.
-    exports.__testing = { bundleOf: bundleOf, previewIdOf: previewIdOf, namespaceIds: namespaceIds, drawablePages: drawablePages, TOOL_NAME: TOOL_NAME }
+    exports.__testing = {
+      bundleOf: bundleOf,
+      previewIdOf: previewIdOf,
+      namespaceIds: namespaceIds,
+      viewablePages: viewablePages,
+      hasMarkup: hasMarkup,
+      pageNumberOf: pageNumberOf,
+      TOOL_NAME: TOOL_NAME,
+    }
     return module.exports
   },
 })

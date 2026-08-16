@@ -165,16 +165,43 @@ describe("dsh plugin bundle manifest", () => {
  * own header), so it carries no declaration file. Same `@ts-expect-error`
  * idiom the plugin import above already uses, in one place.
  */
-async function loadPreviewTool(): Promise<{
-  rememberBundle: (id: string, bundle: unknown, target: string, outDir: string) => void
-  recallBundle: (id: string) => unknown
-  definePreviewTool: (cliPath: string) => {
+interface PreviewEntry {
+  bundle?: unknown
+  target: string
+  outDir: string
+  snapshot?: string
+  themeFile?: string
+}
+
+interface PreviewService {
+  tool: {
     name: string
     description: string
     output: {
       render: (a: unknown, v: unknown) => { type: string; text: string }[]
       presentationMeta: (a: unknown, v: unknown) => { card: string; bundle: { pages: unknown[] } }
     }
+  }
+  registerRoute: (ctx: unknown) => void
+  remember: (id: string, entry: PreviewEntry) => Promise<void>
+  recall: (id: string) => PreviewEntry | undefined
+  recallAnywhere: (id: string) => Promise<PreviewEntry | undefined>
+}
+
+async function loadPreviewTool(): Promise<{
+  createPreviewService: (cliPath: string) => PreviewService
+  definePreviewTool: (cliPath: string) => PreviewService["tool"]
+  __testing: {
+    readPreviewBundle: (outDir: string) => Promise<{ pages: { svg: string | null }[]; markupTruncated: boolean }>
+    captureSnapshot: (
+      cliPath: string,
+      target: string,
+      outDir: string,
+    ) => Promise<{ snapshot: string; themeFile?: string }>
+    readRecord: (id: string) => Promise<PreviewEntry | undefined>
+    RECORD_DIR: string
+    MAX_PRESENTED_BYTES: number
+    PreviewExpired: new (m?: string) => Error
   }
 }> {
   // @ts-expect-error untyped on purpose
@@ -246,7 +273,12 @@ type ClientBundle = {
     TOOL_NAME: string
     bundleOf: (block: unknown) => { pages: unknown[] } | null
     namespaceIds: (svg: string, prefix: string) => string
-    drawablePages: (bundle: { pages: { svg?: string | null }[] }) => unknown[]
+    viewablePages: (bundle: { pages: { svg?: string | null; page?: number }[] }) => {
+      svg?: string | null
+      page?: number
+    }[]
+    hasMarkup: (page: { svg?: string | null } | undefined) => boolean
+    pageNumberOf: (page: { page?: number } | undefined, index: number) => number
   }
 }
 
@@ -328,11 +360,39 @@ describe("pptfast preview card (browser half)", () => {
     ).toEqual({ pages: [{ id: "a" }] })
   })
 
-  it("skips pages an oversized deck shipped without markup", async () => {
+  it("keeps pages an oversized deck shipped without markup, so none of them vanish", async () => {
+    // Dropping them renumbered the strip and, when every page was over
+    // budget, returned an empty list — which made the entire card
+    // disappear with nothing on screen to explain why.
     const bundle = await loadClientBundle(() => ({}))
+    const pages = bundle.__testing.viewablePages({
+      pages: [{ svg: "<svg/>", page: 1 }, { svg: null, page: 2 }, { svg: "", page: 3 }],
+    })
+    expect(pages).toHaveLength(3)
+    expect(pages.map((_p, i) => bundle.__testing.pageNumberOf(pages[i], i))).toEqual([1, 2, 3])
+    expect(pages.map((p) => bundle.__testing.hasMarkup(p))).toEqual([true, false, false])
+  })
+
+  it("still shows the card when no page at all carries markup", async () => {
+    const bundle = await loadClientBundle(() => ({}))
+    expect(bundle.__testing.viewablePages({ pages: [{ svg: null }, { svg: null }] })).toHaveLength(2)
+  })
+
+  it("returns nothing only when the deck itself has no pages", async () => {
+    const bundle = await loadClientBundle(() => ({}))
+    expect(bundle.__testing.viewablePages({ pages: [] })).toHaveLength(0)
     expect(
-      bundle.__testing.drawablePages({ pages: [{ svg: "<svg/>" }, { svg: null }, { svg: "" }] }),
-    ).toHaveLength(1)
+      bundle.__testing.viewablePages(undefined as unknown as { pages: { svg?: string | null }[] }),
+    ).toHaveLength(0)
+  })
+
+  it("numbers a page by its own page field, falling back to its slot", async () => {
+    // The modal counter has to read as the deck's real numbering; an
+    // over-budget page in the middle must not shift the ones after it.
+    const bundle = await loadClientBundle(() => ({}))
+    expect(bundle.__testing.pageNumberOf({ page: 7 }, 2)).toBe(7)
+    expect(bundle.__testing.pageNumberOf({}, 2)).toBe(3)
+    expect(bundle.__testing.pageNumberOf(undefined, 0)).toBe(1)
   })
 })
 
@@ -368,27 +428,186 @@ describe("preview payload channel", () => {
   })
 })
 
+/** A uuid-shaped id, since the route only accepts that shape. */
+function previewId(tag: string): string {
+  return `00000000-0000-4000-8000-${tag.padStart(12, "0")}`
+}
+
 describe("preview recall across restarts", () => {
-  it("keeps a lookup table on disk, because a transcript outlives the process", async () => {
+  it("keeps one record per preview on disk, because a transcript outlives the process", async () => {
     // A card lives in a transcript the user scrolls back to days later, and
     // DSH restarts on every plugin reload. In-memory alone meant a
     // historical session rendered an empty card and an export that saved a
     // 404 body as `pptx.json` — a failure disguised as a download.
-    const mod = (await loadPreviewTool()) as unknown as {
-      rememberBundle: (id: string, bundle: unknown, target: string, outDir: string) => void
-      recallBundle: (id: string) => unknown
-    }
-    mod.rememberBundle("id-1", { title: "d", pages: [] }, "deck.json", "/tmp/out")
-    expect(mod.recallBundle("id-1")).toMatchObject({ target: "deck.json", outDir: "/tmp/out" })
+    const { createPreviewService, __testing } = await loadPreviewTool()
+    const svc = createPreviewService("/x.js")
+    const id = previewId("a1")
+    await svc.remember(id, {
+      bundle: { title: "d", pages: [] },
+      target: "deck.json",
+      outDir: "/tmp/out",
+      snapshot: "/tmp/out/snapshot.ir.json",
+    })
+    expect(svc.recall(id)).toMatchObject({ target: "deck.json", outDir: "/tmp/out" })
 
-    // The index is written asynchronously and best-effort; what this pins is
-    // that the entry carries the two fields recall needs, not the file's own
-    // timing (the three recall tiers are exercised against a running DSH).
-    const { readFile } = await import("node:fs/promises")
+    // Awaited by `remember`, not fired and forgotten: the tool must not be
+    // able to return an id the disk has never heard of.
+    expect(await __testing.readRecord(id)).toEqual({
+      target: "deck.json",
+      outDir: "/tmp/out",
+      snapshot: "/tmp/out/snapshot.ir.json",
+    })
+    // The deck itself is never persisted — this is a lookup table for
+    // re-rendering, not a cache of markup.
+    expect(await __testing.readRecord(id)).not.toHaveProperty("bundle")
+  })
+
+  it("does not lose a record to a preview that finished at the same moment", async () => {
+    // The old shared index was a read-modify-write over one file: two
+    // previews landing together meant the second write erased the first, and
+    // a reader that caught the file mid-write fell back to an empty object
+    // and then overwrote everything in it.
+    const { createPreviewService, __testing } = await loadPreviewTool()
+    const svc = createPreviewService("/x.js")
+    const ids = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"].map(previewId)
+    await Promise.all(
+      ids.map((id) =>
+        svc.remember(id, { bundle: { pages: [] }, target: `${id}.json`, outDir: "/tmp/out", snapshot: "/s.json" }),
+      ),
+    )
+    const records = await Promise.all(ids.map((id) => __testing.readRecord(id)))
+    expect(records.map((r) => r?.target)).toEqual(ids.map((id) => `${id}.json`))
+  })
+
+  it("rejects an id that is not the shape it hands out, since ids become filenames", async () => {
+    const { __testing } = await loadPreviewTool()
+    expect(await __testing.readRecord("../../etc/passwd")).toBeUndefined()
+    expect(await __testing.readRecord("")).toBeUndefined()
+  })
+
+  it("gives each service its own decks and its own CLI", async () => {
+    // These two used to share a module-level map and, worse, a module-level
+    // CLI path that the newest `definePreviewTool` call overwrote — so a
+    // reload silently re-pointed the route the previous apply() registered.
+    const { createPreviewService, __testing } = await loadPreviewTool()
+    const first = createPreviewService("/cli-alpha/does-not-exist.js")
+    const second = createPreviewService("/cli-beta/does-not-exist.js")
+    const id = previewId("b1")
+    await first.remember(id, { bundle: { pages: [] }, target: "a.json", outDir: "/tmp/out", snapshot: "/s.json" })
+    expect(first.recall(id)).toBeDefined()
+    expect(second.recall(id)).toBeUndefined()
+
+    // Each service shells out to the CLI it was built with. Both paths are
+    // missing, so the spawn fails naming the one it actually tried.
+    const { mkdtemp, writeFile } = await import("node:fs/promises")
     const { tmpdir } = await import("node:os")
     const { join } = await import("node:path")
-    await new Promise((r) => setTimeout(r, 50))
-    const index = JSON.parse(await readFile(join(tmpdir(), "pptfast-preview-index.json"), "utf8"))
-    expect(index["id-1"]).toEqual({ target: "deck.json", outDir: "/tmp/out" })
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-test-"))
+    const snapshot = join(dir, "snapshot.ir.json")
+    await writeFile(snapshot, "{}")
+    const gone = previewId("b2")
+    await second.remember(gone, {
+      bundle: { pages: [] },
+      target: "a.json",
+      outDir: join(dir, "no-such-out"),
+      snapshot,
+    })
+    // Drop the in-memory entry so recall has to take the re-render tier.
+    const fresh = createPreviewService("/cli-beta/does-not-exist.js")
+    await expect(fresh.recallAnywhere(gone)).rejects.toThrow(/cli-beta/)
+    expect(__testing.RECORD_DIR).toContain("pptfast-previews")
+  })
+
+  it("fails loudly when the snapshot is gone instead of re-reading the target", async () => {
+    // The whole point of pinning a snapshot: a card must never quietly start
+    // showing today's version of a file the user edited after previewing it.
+    const { createPreviewService, __testing } = await loadPreviewTool()
+    const svc = createPreviewService("/x.js")
+    const id = previewId("d1")
+    await svc.remember(id, {
+      bundle: { pages: [] },
+      target: "deck-dir",
+      outDir: "/tmp/pptfast-no-such-outdir",
+      snapshot: "/tmp/pptfast-no-such-snapshot.ir.json",
+    })
+    const fresh = createPreviewService("/x.js")
+    await expect(fresh.recallAnywhere(id)).rejects.toBeInstanceOf(__testing.PreviewExpired)
+    // An id nobody ever handed out is a different answer: not found, not expired.
+    expect(await fresh.recallAnywhere(previewId("d2"))).toBeUndefined()
+  })
+})
+
+describe("preview deck snapshot", () => {
+  it("pins a single-file target so later edits cannot change what the card shows", async () => {
+    // Preview, export and every later recall all read this one file. Before
+    // it existed they were three independent readings of the user's target:
+    // preview deck A, edit a page, hit download, get deck B.
+    const { __testing } = await loadPreviewTool()
+    const { mkdtemp, mkdir, readFile, writeFile } = await import("node:fs/promises")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+
+    const src = await mkdtemp(join(tmpdir(), "pptfast-src-"))
+    await mkdir(join(src, "assets"), { recursive: true })
+    const deck = join(src, "deck.json")
+    await writeFile(
+      deck,
+      JSON.stringify({
+        filename: "before",
+        assets: {
+          images: {
+            local: { src: "assets/logo.png" },
+            remote: { src: "https://example.com/a.png" },
+            inline: { src: "data:image/png;base64,AA" },
+          },
+        },
+      }),
+    )
+    const outDir = await mkdtemp(join(tmpdir(), "pptfast-out-"))
+    const { snapshot } = await __testing.captureSnapshot("/x.js", deck, outDir)
+    expect(snapshot).toBe(join(outDir, "snapshot.ir.json"))
+
+    await writeFile(deck, JSON.stringify({ filename: "after", assets: { images: {} } }))
+    const pinned = JSON.parse(await readFile(snapshot, "utf8"))
+    expect(pinned.filename).toBe("before")
+    // A relative src resolves against the IR file's own directory, so the
+    // copy has to carry absolute paths or it would silently lose every image.
+    expect(pinned.assets.images.local.src).toBe(join(src, "assets", "logo.png"))
+    expect(pinned.assets.images.remote.src).toBe("https://example.com/a.png")
+    expect(pinned.assets.images.inline.src).toBe("data:image/png;base64,AA")
+  })
+})
+
+describe("oversized deck budget", () => {
+  async function bundleDir(sizes: number[]): Promise<string> {
+    const { mkdtemp, writeFile } = await import("node:fs/promises")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-budget-"))
+    const pages = sizes.map((size, i) => {
+      const file = `${String(i + 1).padStart(3, "0")}.svg`
+      return { page: i + 1, id: `page-${i + 1}`, file, size }
+    })
+    for (const p of pages) await writeFile(join(dir, p.file), "x".repeat(p.size))
+    await writeFile(join(dir, "manifest.json"), JSON.stringify({ title: "d", pages }))
+    return dir
+  }
+
+  it("skips only the page that does not fit, not every page after it", async () => {
+    // The cascade meant one heavy slide cost the user every slide behind it,
+    // and an over-budget first page blanked the whole deck.
+    const { __testing } = await loadPreviewTool()
+    const big = __testing.MAX_PRESENTED_BYTES + 1
+    const bundle = await __testing.readPreviewBundle(await bundleDir([big, 10, big, 10]))
+    expect(bundle.pages.map((p) => p.svg !== null)).toEqual([false, true, false, true])
+    expect(bundle.markupTruncated).toBe(true)
+  })
+
+  it("keeps every page's metadata whether or not its markup fit", async () => {
+    const { __testing } = await loadPreviewTool()
+    const bundle = await __testing.readPreviewBundle(await bundleDir([10, 10]))
+    expect(bundle.pages).toHaveLength(2)
+    expect(bundle.markupTruncated).toBe(false)
+    expect((bundle.pages[0] as unknown as { id: string }).id).toBe("page-1")
   })
 })

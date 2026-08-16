@@ -28,7 +28,7 @@
 // no build step, no dsh type imports, resilient to rc surface drift.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { definePreviewTool, registerPreviewRoute, TOOL_NAME } from './preview-tool.js'
+import { createPreviewService, TOOL_NAME } from './preview-tool.js'
 
 const SKILL_FILE_URL = new URL('../skills/pptfast/SKILL.md', import.meta.url)
 const SKILL_DIR = fileURLToPath(new URL('../skills/pptfast/', import.meta.url))
@@ -96,8 +96,14 @@ export function apply(ctx) {
   // cannot contribute to — which is why the review loop used to end in "open
   // this URL yourself". Registered first and independently: a tool failure
   // must not cost the skill, and vice versa.
+  //
+  // One service per apply(), and the tool and the route below are its two
+  // halves: they must agree on the same CLI path and the same decks, and a
+  // second apply() (plugin reload, a second profile) must get its own pair
+  // rather than reaching into the first one's.
+  const preview = createPreviewService(CLI_PATH)
   try {
-    ctx.tools.register(definePreviewTool(CLI_PATH))
+    ctx.tools.register(preview.tool)
   } catch (error) {
     console.error(`[pptfast] preview tool registration skipped: ${error}`)
   }
@@ -110,7 +116,7 @@ export function apply(ctx) {
   if (typeof ctx.inject === 'function') {
     ctx.inject(['webServer'], (scope) => {
       try {
-        registerPreviewRoute(scope)
+        preview.registerRoute(scope)
       } catch (error) {
         console.error(`[pptfast] preview route skipped: ${error}`)
       }
