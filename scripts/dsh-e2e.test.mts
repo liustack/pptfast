@@ -4,11 +4,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import {
+  applyInstalledDshPlugin,
   assertPptfastMountedInDshConfig,
   buildDshDumpConfigInvocation,
   canonicalWorkspacePath,
   inspectInstalledDshPlugin,
-  verifyInstalledDshRegistration,
+  verifyInstalledDshRoute,
+  verifyInstalledDshSkill,
+  verifyInstalledDshTool,
 } from "./dsh-e2e.mts"
 
 describe("dsh e2e preflight", () => {
@@ -53,9 +56,17 @@ describe("dsh e2e preflight", () => {
       join(pluginDir, "dsh", "index.js"),
       [
         "export const name = 'pptfast'",
-        "export const inject = ['skills']",
+        "export const inject = ['skills', 'tools']",
         "export function apply(ctx) {",
         `  ctx.skills.register({ name: 'pptfast', content: 'node "${join(pluginDir, "dist", "cli.js")}" <args>' })`,
+        "  ctx.tools.register({",
+        "    name: 'pptfast_preview',",
+        "    execute: async () => ({}),",
+        "    output: { render: () => [], presentationMeta: () => ({}) },",
+        "  })",
+        "  ctx.inject(['webServer'], (scope) => {",
+        "    scope.webServer.register({ name: 'pptfast-preview', kind: 'prefix', path: '/pptfast/preview', handler: async () => {} })",
+        "  })",
         "}",
       ].join("\n"),
     )
@@ -74,9 +85,21 @@ describe("dsh e2e preflight", () => {
       installedVersion: "0.19.2",
       pluginDir,
     })
-    await expect(verifyInstalledDshRegistration(installed)).resolves.toMatchObject({
-      name: "pptfast",
-    })
+    const applied = await applyInstalledDshPlugin(installed)
+    await expect(verifyInstalledDshSkill(installed, applied)).resolves.toMatchObject({ name: "pptfast" })
+    expect(verifyInstalledDshTool(applied)).toMatchObject({ name: "pptfast_preview" })
+    expect(verifyInstalledDshRoute(applied)).toMatchObject({ path: "/pptfast/preview" })
+
+    // The gate's whole point: each half must be able to fail on its own.
+    expect(() => verifyInstalledDshTool({ ...applied, tools: [] })).toThrow(/did not register the pptfast_preview/)
+    expect(() =>
+      verifyInstalledDshTool({ ...applied, tools: [{ name: "pptfast_preview", execute: undefined }] }),
+    ).toThrow(/missing required members: execute, output\.render, output\.presentationMeta/)
+    expect(() => verifyInstalledDshRoute({ ...applied, routes: [] })).toThrow(
+      /did not register a \/pptfast\/preview route/,
+    )
+    expect(() => verifyInstalledDshRoute({ ...applied, injected: [], routes: [] })).toThrow(/never asked for/)
+
     await expect(
       inspectInstalledDshPlugin({ dshHome, profile: "web", expectedVersion: "0.20.0" }),
     ).rejects.toThrow(/has @liustack\/pptfast@0\.19\.2, expected 0\.20\.0/)
