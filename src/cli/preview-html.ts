@@ -193,6 +193,8 @@ export interface PreviewHtmlInput {
   checks?: PreviewHtmlChecks
 }
 
+import { namespaceSvgIds, svgIdPrefix } from "../lib/svg-ids"
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -246,7 +248,12 @@ function slideNode(slide: PreviewHtmlSlideInput, findingCount: number): string {
   const idAttr = slide.id !== undefined ? ` data-id="${escapeHtml(slide.id)}"` : ""
   const badge = slide.placeholder ? `<div class="pf-badge" aria-hidden="true">unfilled</div>` : ""
   const fBadge = findingBadge(findingCount, "pf-finding-badge")
-  return `<div class="pf-slide" id="pf-slide-${slide.index}" data-index="${slide.index}"${idAttr}>${badge}${fBadge}${slide.svg}</div>`
+  // Every slide's SVG lands in one shared document here, so its internal
+  // ids get a per-slide namespace first — otherwise a `url(#…)` on a later
+  // slide resolves against an earlier slide's definition of the same id.
+  // See `../lib/svg-ids.ts` for the defect this prevents.
+  const svg = namespaceSvgIds(slide.svg, svgIdPrefix(slide.index))
+  return `<div class="pf-slide" id="pf-slide-${slide.index}" data-index="${slide.index}"${idAttr}>${badge}${fBadge}${svg}</div>`
 }
 
 /** `"slide 3 · content · p-body · unfilled"` — shared by the thumbnail

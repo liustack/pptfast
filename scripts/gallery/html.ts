@@ -21,6 +21,7 @@
  * cross-wire each other's gradients.
  */
 
+import { namespaceSvgIds, svgIdPrefix } from "@/lib/svg-ids"
 import type { Manifest } from "./render"
 
 /** Escape for embedding arbitrary text inside an HTML text node/attribute. */
@@ -46,8 +47,13 @@ function jsonScript(value: unknown): string {
 }
 
 export function buildGalleryHtml(manifest: Manifest, svgs: ReadonlyMap<string, string>): string {
+  // Namespaced here rather than in the browser: several hundred standalone
+  // SVG documents share one page, and their id spaces would otherwise merge
+  // (see `src/lib/svg-ids.ts`). Doing it at build time is the same transform
+  // `preview --html` applies, and it keeps the client script to mounting.
   const svgRecord: Record<string, string> = {}
-  for (const [id, markup] of svgs) svgRecord[id] = markup
+  let seq = 0
+  for (const [id, markup] of svgs) svgRecord[id] = namespaceSvgIds(markup, svgIdPrefix(seq++))
 
   const themes = [...new Set(manifest.pages.map((p) => p.theme))].sort()
   const languages = [...new Set(manifest.pages.map((p) => p.language))]
@@ -381,19 +387,18 @@ kbd {
   }
 
   // ── svg mounting ───────────────────────────────────────────────────────
-  // Every SVG is a separate document sharing one DOM, and several of them
-  // define gradients/filters under the same local id. Namespacing on mount
-  // keeps the second copy of "sky" from resolving to the first one's paint.
-  let mountSeq = 0;
+  // Ids were already namespaced at build time (src/lib/svg-ids.ts), so
+  // mounting is a plain innerHTML — no rewriting in the hot path.
+  //
+  // Opening the viewer does put a second copy of one slide in the DOM
+  // alongside its card, and those two copies share a namespace. That is the
+  // one duplicate this scheme allows, and it is safe by construction rather
+  // than by luck: both copies are the same document, so every colliding id
+  // resolves to a byte-identical definition.
   function mountSvg(container, id) {
     const markup = SVGS[id];
     if (!markup) return false;
-    const ns = "g" + (mountSeq++) + "-";
-    const scoped = markup
-      .replace(/\\bid="([^"]+)"/g, (_m, v) => 'id="' + ns + v + '"')
-      .replace(/url\\(#([^)]+)\\)/g, (_m, v) => "url(#" + ns + v + ")")
-      .replace(/(xlink:href|href)="#([^"]+)"/g, (_m, a, v) => a + '="#' + ns + v + '"');
-    container.innerHTML = scoped;
+    container.innerHTML = markup;
     return true;
   }
 
