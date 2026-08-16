@@ -106,6 +106,14 @@ const THEME_FILE = 'theme.json'
 class PreviewExpired extends Error {}
 
 async function writeRecord(id, record) {
+  // Checked here, at the write boundary, not only where records are read.
+  // The id becomes a filename the moment the index went one-file-per-preview,
+  // and validating reads alone left `remember` — an exported entry point —
+  // able to write outside RECORD_DIR entirely: `remember("../../victim", …)`
+  // resolves right out of it. The plugin itself only ever passes a
+  // `randomUUID`, so nothing in production reached this, but the guarantee
+  // was claimed before it was true.
+  if (!ID_PATTERN.test(id)) throw new Error(`refusing to write a preview record for an unsafe id: ${id}`)
   await mkdir(RECORD_DIR, { recursive: true })
   // Published by rename: a concurrent reader never sees a partial file, and
   // the temp name carries its own uuid so two writers for the same id cannot

@@ -611,3 +611,29 @@ describe("oversized deck budget", () => {
     expect((bundle.pages[0] as unknown as { id: string }).id).toBe("page-1")
   })
 })
+
+describe("preview service — adversarial acceptance follow-ups", () => {
+  it("refuses an unsafe id at the write boundary, not only when reading one back", async () => {
+    // The commit that introduced per-id record files claimed ids were
+    // "shape-checked before they ever reach the filesystem". They were not:
+    // validation sat on the read path and the HTTP route, while `remember` —
+    // an exported entry point — handed the id straight to `join`, so
+    // "../../victim" resolved clean out of the record directory. Nothing in
+    // production reached it (the plugin only ever passes a randomUUID), but
+    // the guarantee was asserted before it was true.
+    const { createPreviewService } = (await loadPreviewTool()) as unknown as {
+      createPreviewService: (cli: string) => {
+        remember: (id: string, entry: unknown) => Promise<unknown>
+      }
+    }
+    const svc = createPreviewService("/x/cli.js")
+    const entry = { outDir: "/tmp", target: "t", snapshot: "s", bundle: { pages: [] } }
+    await expect(svc.remember("../../victim", entry)).rejects.toThrow(/unsafe id/)
+    await expect(svc.remember("..%2f..%2fvictim", entry)).rejects.toThrow(/unsafe id/)
+    await expect(svc.remember("", entry)).rejects.toThrow(/unsafe id/)
+    // A real id still goes through, or the guard would be a denial of service.
+    await expect(
+      svc.remember("4a00e929-4e67-40a0-9292-1e2e72e4377f", entry),
+    ).resolves.not.toThrow()
+  })
+})
