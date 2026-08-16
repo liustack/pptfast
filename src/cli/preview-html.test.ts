@@ -363,4 +363,26 @@ describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)
     })
     expect(dirty).toContain('id="pf-side"')
   })
+
+  it("sizes the stage from the room it measures, not from a guess at the chrome", () => {
+    // The stage used to take its width from `100vh - 210px`, a guess at what
+    // the header and filmstrip cost. Guess low and the box comes out wider
+    // than 16:9 — `aspect-ratio` cannot pull it back once width and
+    // max-height are both set — so the slide letterboxes inside its own stage
+    // and paints a grey bar down each side. Reported from a real deck.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+    })
+    // The wrap has to be a size container, or `cqh` below means nothing.
+    expect(html).toContain("#pf-stage-wrap{container-type:size")
+    expect(html).toContain("calc(100cqh * 16 / 9)")
+
+    // The viewport guess may stay as a fallback, but only ahead of the
+    // measured rule — behind it, it wins the cascade and nothing changed.
+    const guess = html.indexOf("calc((100vh - 210px) * 16 / 9)")
+    const measured = html.indexOf("calc(100cqh * 16 / 9)")
+    expect(guess).toBeGreaterThan(-1)
+    expect(measured).toBeGreaterThan(guess)
+  })
 })

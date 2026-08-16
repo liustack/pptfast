@@ -326,9 +326,29 @@ header{display:flex;align-items:center;gap:14px;padding:11px 18px;background:var
 .pf-seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
 .pf-seg button:hover:not([aria-pressed="true"]){background:var(--stage)}
 
-#pf-stage-wrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:16px;padding:18px}
+/* container-type:size so the stage below can ask this box how tall it is
+   instead of guessing. Legal here because the box's own size never depends on
+   its contents: it is a flex item stretched to the body's width and given the
+   leftover height by flex:1 1 auto. */
+#pf-stage-wrap{container-type:size;flex:1 1 auto;min-height:0;display:flex;align-items:center;
+  justify-content:center;gap:16px;padding:18px}
+/* The stage has to fit both ways: as wide as its height allows, never wider
+   than the room left beside the findings panel. Sizing it off its height and
+   capping the width is the only arrangement that holds in both directions.
+   Measured, not reasoned about: height-driven rules (height:100%) overflow
+   when width is the tighter axis, and width-driven ones
+   (width:100%;max-height:100%) stop being 16:9 when height is.
+   100cqh is the wrap's real content height. It used to be 100vh - 210px, a
+   guess at what the header and filmstrip take. Guess high and the slide comes
+   out smaller than the window allows; guess low and the box comes out wider
+   than 16:9, which aspect-ratio cannot correct once both width and max-height
+   are set -- the slide then letterboxes inside its own stage and paints a grey
+   bar down each side. The first declaration is that old guess, left in as the
+   fallback a browser without container query units will land on. */
 #pf-stage{position:relative;background:var(--stage);box-shadow:0 10px 40px rgba(0,0,0,.18);
-  aspect-ratio:16/9;width:min(100%,calc((100vh - 210px) * 16 / 9));max-height:100%}
+  aspect-ratio:16/9;max-height:100%;
+  width:min(100%,calc((100vh - 210px) * 16 / 9));
+  width:min(100%,calc(100cqh * 16 / 9))}
 #pf-stage,.pf-thumb-slot{position:relative}
 .pf-slide{position:absolute;inset:0}
 .pf-slide svg{display:block;width:100%;height:100%}
