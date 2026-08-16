@@ -27,6 +27,21 @@
 // read from. A second renderer living in a UI is how those would drift into
 // describing different products.
 //
+// The two halves of a card have different lifetimes, and that is the whole of
+// what went wrong in the field. What it draws comes from one request; what its
+// buttons do is a second request made minutes or days later, against files
+// living in a temp directory that a harness restart, a plugin upgrade or the
+// operating system's own sweep can take away. Reopen a transcript after that
+// and the card used to have two failure modes and no words for either: under
+// Code Mode the fetch 404'd and the entire card — strip, Open, Download —
+// rendered nothing, so the tool call read as if it had produced nothing; with
+// a payload already in hand, the strip drew perfectly and the viewer opened on
+// `{"error":"unknown preview id"}`, displayed as a document, framed by this
+// card's own Close button. So: a non-ok answer is now an answer (the card
+// says the preview expired, and how long the deck was), every way into the
+// viewer asks the route first, and the host half answers the iframe with a
+// page rather than with JSON.
+//
 // It also *views* nothing of its own any more. The modal used to be a small
 // React slideshow — arrow keys, a page counter, prev/next buttons, a stand-in
 // for pages the server had declined to send — sitting next to the finished
@@ -60,35 +75,78 @@ window.__ModuleLoader__.load({
       return '/pptfast/preview/' + previewId + '/html'
     }
 
+    /** Where the deck itself lives — the bundle the strip draws from. */
+    function previewBundleUrl(previewId) {
+      return '/pptfast/preview/' + previewId
+    }
+
+    /**
+     * What the card says once it knows the deck behind its id is gone.
+     *
+     * One sentence, used by the badge, the export button and the degraded row
+     * alike, because they are all reporting the same fact and a card that
+     * words it three ways reads as three different problems.
+     */
+    var EXPIRED_HINT =
+      'This preview has expired: the rendered deck lived in a temporary directory and is no longer on disk. ' +
+      'Run pptfast_preview again to rebuild it.'
+
+    /**
+     * Everything the tool said in text, joined.
+     *
+     * This is the channel that survives Code Mode: a tool invoked from inside
+     * `run_code` is a sub-call, and the registry computes `presentationMeta`
+     * for top-level calls only, so on this repo's default agent preset the
+     * structured payload never exists. The result text always does — which is
+     * why both the preview id and, when the deck itself is gone, the one fact
+     * left about it are read back out of here.
+     */
+    function resultTextOf(block) {
+      var text = ''
+      var content = (block && (block.content || (block.result && block.result.content))) || []
+      for (var i = 0; i < content.length; i++) {
+        if (content[i] && typeof content[i].text === 'string') text += content[i].text
+      }
+      return text
+    }
+
+    /** The preview id the tool stamped into its own result text. */
+    function previewIdOf(block) {
+      var m = /pptfast-preview:([A-Za-z0-9-]+)/.exec(resultTextOf(block))
+      return m ? m[1] : null
+    }
+
+    /**
+     * How long the deck was, read back out of the tool's own summary line.
+     *
+     * This is the only fact about the deck that survives in a transcript once
+     * the rendered files are gone. The bundle does not: it never enters the
+     * session log under Code Mode, and putting it there would mean a session
+     * log that grows by a deck's worth of SVG per call — the trade this
+     * plugin already decided against. So when the route can no longer serve
+     * the deck, one number parsed from a line already in the log is the
+     * difference between a card that says "there were nine pages here" and a
+     * card that vanishes as if the tool had never run.
+     *
+     * Parsed rather than carried in a second machine-readable stamp: the
+     * sentence is written by `modelSummary` in this plugin's own host half,
+     * one file away, and a test drives the real output of that function
+     * through this parser so the pair cannot drift apart quietly.
+     */
+    function pageCountOf(block) {
+      var m = /\brendered (\d+) pages?\b/.exec(resultTextOf(block))
+      return m ? Number(m[1]) : null
+    }
+
     /**
      * Pull the preview bundle out of a frozen tool-call node.
      *
      * `presentationMeta` is projected into the result's view/meta by the
      * host; the exact field the runtime lands it on has moved between rc
      * builds, so this reads the handful of shapes it can appear under rather
-     * than pinning one. Returning null simply falls through to the generic
-     * card, which is the correct degrade: a card that throws would take the
-     * whole turn's rendering with it.
+     * than pinning one. Returning null simply falls through to the route,
+     * which is where a Code Mode sub-call's deck has to come from anyway.
      */
-    /**
-     * The preview id the tool stamped into its own result text.
-     *
-     * This is the channel that survives Code Mode: a tool invoked from
-     * inside `run_code` is a sub-call, and the registry computes
-     * `presentationMeta` for top-level calls only, so on this repo's default
-     * agent preset the structured payload never exists. The id in the text
-     * always does.
-     */
-    function previewIdOf(block) {
-      var text = ''
-      var content = (block && (block.content || (block.result && block.result.content))) || []
-      for (var i = 0; i < content.length; i++) {
-        if (content[i] && typeof content[i].text === 'string') text += content[i].text
-      }
-      var m = /pptfast-preview:([A-Za-z0-9-]+)/.exec(text)
-      return m ? m[1] : null
-    }
-
     function bundleOf(block) {
       if (!block) return null
       var candidates = [block.meta, block.resultView, block.result && block.result.meta, block.presentationMeta]
@@ -421,11 +479,16 @@ window.__ModuleLoader__.load({
        */
       function ExportButton(props) {
         var state = useState('idle')
-        var status = state[0]
+        // `props.gone` is the card telling this button what it already learned
+        // from the route: there is no deck behind this id any more. Before
+        // this, the only way to find that out was to click and wait for the
+        // fetch to fail, so a card that knew perfectly well the export was
+        // dead still offered it as `Download .pptx`.
+        var status = props.gone ? 'gone' : state[0]
         var setStatus = state[1]
 
         function save() {
-          if (status === 'busy') return
+          if (status === 'busy' || status === 'gone') return
           setStatus('busy')
           fetch('/pptfast/preview/' + props.previewId + '/pptx')
             .then(function (res) {
@@ -461,7 +524,7 @@ window.__ModuleLoader__.load({
             style: props.style,
             title:
               status === 'gone'
-                ? 'This preview has expired. Run the tool again to rebuild it'
+                ? EXPIRED_HINT
                 : props.draft
                   ? 'Download the editable .pptx. It is a draft: some pages are still unfilled placeholders'
                   : 'Download the editable .pptx',
@@ -470,12 +533,53 @@ window.__ModuleLoader__.load({
         )
       }
 
+      /**
+       * The expired card's own line, under the header.
+       *
+       * Said out loud rather than left to a tooltip: the whole complaint this
+       * exists to answer is a card that told the user nothing at all.
+       */
+      function ExpiredNote() {
+        return h(
+          'div',
+          { style: { fontSize: 12, color: COLORS.dim, paddingTop: 2 } },
+          'Preview expired — the rendered deck is no longer on disk. Run the tool again to rebuild it.',
+        )
+      }
+
+      /** The badge that marks a deck the route can no longer serve. */
+      function ExpiredBadge() {
+        return h(
+          'span',
+          {
+            title: EXPIRED_HINT,
+            style: {
+              border: '1px solid ' + COLORS.line,
+              borderRadius: 5,
+              padding: '0 6px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              fontSize: 10,
+              letterSpacing: '0.04em',
+            },
+          },
+          'expired',
+        )
+      }
+
       /** The card itself: a strip of thumbnails, and a button that opens the viewer. */
       return function PptfastPreviewCard(props) {
         var direct = bundleOf(props.block)
         var fetched = useState(null)
         var open = useState(false)
+        // What the route last said about this id, and which id it said it
+        // about. Keyed, because one React instance is reused as the block it
+        // renders changes, and a verdict carried over from the previous deck
+        // would expire a perfectly live one.
+        var checked = useState(null)
         var previewId = previewIdOf(props.block)
+        var pageCount = pageCountOf(props.block)
+        var gone = checked[0] !== null && checked[0].id === previewId && checked[0].state === 'gone'
 
         // Structured payload when the runtime computed one (native-mode,
         // top-level call); otherwise fetch it by id from the plugin's own
@@ -488,22 +592,97 @@ window.__ModuleLoader__.load({
             if (direct || !previewId) return
             if (fetched[0] && fetched[0].__previewId === previewId) return
             var cancelled = false
-            fetch('/pptfast/preview/' + previewId)
-              .then(function (r) { return r.ok ? r.json() : null })
+            fetch(previewBundleUrl(previewId))
+              .then(function (r) {
+                // A 404 or 410 is an answer, not a failure to get one: the
+                // harness is there and it has never heard of this deck, or
+                // has and cannot serve it any more. Swallowing that is what
+                // made a whole card — thumbnails, Open, Download — disappear
+                // out of a reopened transcript without a word.
+                if (!r.ok) {
+                  if (!cancelled) checked[1]({ id: previewId, state: 'gone' })
+                  return null
+                }
+                return r.json()
+              })
               .then(function (b) {
                 if (cancelled || !b) return
                 b.__previewId = previewId
                 fetched[1](b)
+                checked[1]({ id: previewId, state: 'alive' })
               })
-              .catch(function () { /* the generic row is the degrade */ })
+              .catch(function () {
+                // Not an answer: the request never landed. That is the harness
+                // being unreachable rather than the deck being gone, and
+                // reporting it as an expired preview would outlive its cause.
+                // The generic row is the degrade.
+              })
             return function () { cancelled = true }
           },
-          [direct, previewId, fetched[0]],
+          [direct, previewId, fetched[0], checked[1]],
         )
 
         var cached = fetched[0] && fetched[0].__previewId === previewId ? fetched[0] : null
         var bundle = direct || cached
-        if (!bundle) return null
+
+        /**
+         * Ask before opening, every time.
+         *
+         * The bundle a card is drawing came from one request, and the viewer
+         * is a second one made minutes or days later — a browser tab left open
+         * across a harness restart is enough to put a whole deck's lifetime
+         * between them. Opening on the strength of the first request is how
+         * the viewer landed on `{"error":"unknown preview id"}` rendered as a
+         * document, framed by this card's own Close button. The check is one
+         * loopback request against the route the iframe is about to hit
+         * anyway, and it doubles as a refresh of the strip.
+         */
+        function openViewer() {
+          if (!previewId || gone) return
+          fetch(previewBundleUrl(previewId))
+            .then(function (r) {
+              if (!r.ok) {
+                checked[1]({ id: previewId, state: 'gone' })
+                return null
+              }
+              return r.json()
+            })
+            .then(function (b) {
+              if (!b) return
+              b.__previewId = previewId
+              fetched[1](b)
+              checked[1]({ id: previewId, state: 'alive' })
+              open[1](true)
+            })
+            .catch(function () {
+              // Same disposition the export button has taken all along: at
+              // click time the user is owed an answer, and every way this can
+              // fail leaves the viewer with nothing to show.
+              checked[1]({ id: previewId, state: 'gone' })
+            })
+        }
+
+        if (!bundle) {
+          // Nothing to draw and no reason to think there ever will be: this is
+          // the card refusing to invent a deck it does not have.
+          if (!gone) return null
+          // ...but the tool did run, and the transcript still says how long
+          // the deck was. A card that vanishes here is the one thing worse
+          // than an expired card — the user is left doubting the deck was
+          // ever generated.
+          return h(
+            'div',
+            { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '2px 0 6px' } },
+            h(
+              'div',
+              { style: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: COLORS.dim } },
+              h('span', { style: { color: COLORS.text, fontWeight: 600 } }, 'deck'),
+              h(ExpiredBadge, null),
+              pageCount !== null ? h('span', null, pageCount + ' pages') : null,
+            ),
+            h(ExpiredNote, null),
+          )
+        }
 
         var pages = viewablePages(bundle)
         if (pages.length === 0) return null
@@ -520,6 +699,12 @@ window.__ModuleLoader__.load({
             'div',
             { style: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: COLORS.dim } },
             h('span', { style: { color: COLORS.text, fontWeight: 600 } }, bundle.title || 'deck'),
+            // The deck is on screen and the route has already said it cannot
+            // serve it any more. Both halves are true, and the thumbnails are
+            // the half worth keeping — they are the deck, not a picture of a
+            // button. What goes is the promise that clicking them leads
+            // anywhere.
+            gone ? h(ExpiredBadge, null) : null,
             // The deck still has placeholder pages. The export goes out
             // anyway (see `--draft` in preview-tool.js's `execute`), so this
             // badge is what keeps that from being a silent substitution: the
@@ -545,15 +730,15 @@ window.__ModuleLoader__.load({
               : null,
             h('span', null, bundle.pages.length + ' pages'),
             findingCount > 0 ? h('span', null, findingCount + ' audit findings') : null,
-            // No viewer without an id: the full-size view is a route keyed by
-            // it. A button that opened an empty frame would be worse than an
-            // absent one, and the thumbnails below go inert for the same
-            // reason.
-            previewId
+            // No viewer without an id, and none for an id the route has
+            // already disowned: the full-size view is a route keyed by it. A
+            // button that opened an empty frame would be worse than an absent
+            // one, and the thumbnails below go inert for the same reason.
+            previewId && !gone
               ? h(
                   'button',
                   {
-                    onClick: function () { open[1](true) },
+                    onClick: openViewer,
                     style: {
                       marginLeft: 'auto',
                       font: 'inherit',
@@ -574,6 +759,7 @@ window.__ModuleLoader__.load({
                   previewId: previewId,
                   name: bundle.title,
                   draft: bundle.draft,
+                  gone: gone,
                   style: {
                     font: 'inherit',
                     fontSize: 12,
@@ -603,12 +789,13 @@ window.__ModuleLoader__.load({
                   // Every thumbnail opens the same viewer. It used to carry a
                   // start page, which the html has no way to honour — see the
                   // note on `Modal`.
-                  onClick: previewId ? function () { open[1](true) } : undefined,
+                  onClick: previewId && !gone ? openViewer : undefined,
                 }),
               )
             }),
           ),
-          open[0] && previewId
+          gone ? h(ExpiredNote, null) : null,
+          open[0] && previewId && !gone
             ? h(Modal, {
                 src: previewHtmlUrl(previewId),
                 previewId: previewId,
@@ -666,12 +853,14 @@ window.__ModuleLoader__.load({
     exports.__testing = {
       bundleOf: bundleOf,
       previewIdOf: previewIdOf,
+      pageCountOf: pageCountOf,
       namespaceIds: namespaceIds,
       viewablePages: viewablePages,
       stripPages: stripPages,
       hasMarkup: hasMarkup,
       pageNumberOf: pageNumberOf,
       previewHtmlUrl: previewHtmlUrl,
+      previewBundleUrl: previewBundleUrl,
       STRIP_PAGES: STRIP_PAGES,
       TOOL_NAME: TOOL_NAME,
     }

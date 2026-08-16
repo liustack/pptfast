@@ -105,6 +105,55 @@ const THUMBNAIL_STRIP_PAGES = 12
 /** The self-contained review page `preview --html` writes into `outDir`. */
 const PREVIEW_HTML_FILE = 'preview.html'
 
+/**
+ * What a dead preview looks like to the one consumer that renders what it is
+ * handed rather than parsing it.
+ *
+ * Every other thing this route serves is read by code, so JSON is the right
+ * answer for it. `/html` is the exception: its consumer is the card's iframe,
+ * and an iframe displays the response body whatever the status line said. So
+ * an expired preview reached the user as a bare browser document reading
+ * `{"error":"unknown preview id"}`, pretty-print checkbox and all, framed by
+ * the viewer's own Close and Download buttons. The status code is unchanged —
+ * a status code is not a document, and the card still reads it — but the body
+ * is now a sentence a person can act on.
+ *
+ * Self-contained and colourless on purpose: it renders inside a modal that is
+ * already black, in a browser that may be in either theme, with no stylesheet
+ * of its own to inherit.
+ */
+function expiredPage(message) {
+  return [
+    '<!doctype html>',
+    '<meta charset="utf-8">',
+    '<meta name="color-scheme" content="dark light">',
+    '<title>Preview expired</title>',
+    '<style>',
+    'html,body{height:100%;margin:0}',
+    'body{display:flex;align-items:center;justify-content:center;background:#111;color:#eee;',
+    'font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px}',
+    'main{max-width:44ch;text-align:center}',
+    'h1{font-size:15px;font-weight:600;margin:0 0 8px}',
+    'p{margin:0;color:#aaa}',
+    'code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#ccc}',
+    '</style>',
+    '<main>',
+    '<h1>This preview has expired</h1>',
+    `<p>${escapeHtml(message)}</p>`,
+    '<p>Run <code>pptfast_preview</code> again to rebuild it.</p>',
+    '</main>',
+  ].join('\n')
+}
+
+/** The four characters that could turn a filesystem path in a message into markup. */
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export const TOOL_NAME = 'pptfast_preview'
 
 export const PREVIEW_ROUTE = '/pptfast/preview'
@@ -729,6 +778,24 @@ export function createPreviewService(cliPath) {
         // only on the bare one.
         const want = rest.endsWith('/pptx') ? 'pptx' : rest.endsWith('/html') ? 'html' : 'bundle'
         const id = want === 'bundle' ? rest : rest.slice(0, -(want.length + 1))
+        // One failure vocabulary, two representations. The card and the
+        // download button parse what they get, so they keep JSON; the viewer
+        // is an iframe, so it gets the same message as a page. Splitting this
+        // per branch is how the html route ended up answering a person with a
+        // JSON object.
+        const fail = (status, message) => {
+          if (want === 'html') {
+            const page = expiredPage(message)
+            res.writeHead(status, {
+              'content-type': 'text/html; charset=utf-8',
+              'content-length': Buffer.byteLength(page),
+            })
+            res.end(page)
+            return
+          }
+          res.writeHead(status, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({ error: message }))
+        }
         let entry
         try {
           entry = ID_PATTERN.test(id) ? await recallAnywhere(id) : undefined
@@ -737,13 +804,11 @@ export function createPreviewService(cliPath) {
           // 410, not 404: the id was real, the deck behind it is not. Saying
           // so is the whole point — the alternative is re-rendering today's
           // version of a file and passing it off as the one in the card.
-          res.writeHead(410, { 'content-type': 'application/json' })
-          res.end(JSON.stringify({ error: error.message }))
+          fail(410, error.message)
           return
         }
         if (!entry) {
-          res.writeHead(404, { 'content-type': 'application/json' })
-          res.end(JSON.stringify({ error: 'unknown preview id' }))
+          fail(404, 'unknown preview id')
           return
         }
         if (want === 'bundle') {
@@ -769,8 +834,7 @@ export function createPreviewService(cliPath) {
             // behind it is not. 410 rather than 404 or a re-render, so the
             // iframe cannot be handed a page rebuilt out of today's
             // configuration and passed off as the deck in the card.
-            res.writeHead(410, { 'content-type': 'application/json' })
-            res.end(JSON.stringify({ error: `the preview page for this preview is gone (${htmlPath})` }))
+            fail(410, `the preview page for this preview is gone (${htmlPath})`)
             return
           }
           res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': html.length })
@@ -787,12 +851,7 @@ export function createPreviewService(cliPath) {
           // Either the export failed while the preview itself succeeded, or
           // this record predates exports being rendered up front. Both are
           // permanent for this id: there is no second render to fall back to.
-          res.writeHead(410, { 'content-type': 'application/json' })
-          res.end(
-            JSON.stringify({
-              error: entry.pptxError || 'this preview has no exported deck and cannot produce one now',
-            }),
-          )
+          fail(410, entry.pptxError || 'this preview has no exported deck and cannot produce one now')
           return
         }
         let bytes
@@ -803,8 +862,7 @@ export function createPreviewService(cliPath) {
           // behind it is not. Re-rendering from the snapshot would hand back
           // a deck built from today's configuration and today's image bytes,
           // which is exactly the substitution this design exists to prevent.
-          res.writeHead(410, { 'content-type': 'application/json' })
-          res.end(JSON.stringify({ error: `the exported deck for this preview is gone (${entry.pptxPath})` }))
+          fail(410, `the exported deck for this preview is gone (${entry.pptxPath})`)
           return
         }
         res.writeHead(200, {
@@ -955,6 +1013,7 @@ export const __testing = {
   pruneRecords,
   isDisposableOutDir,
   createOutDir,
+  expiredPage,
   inlineLocalImages,
   discardOutDir,
   recordDirFor,

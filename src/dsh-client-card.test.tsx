@@ -13,7 +13,7 @@
 // every test green. Everything below is written so that breaking the behaviour
 // it names turns it red.
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest"
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react"
 import * as React from "react"
 
 interface Page {
@@ -99,12 +99,29 @@ function bundleOf(pages: Page[], title = "Quarterly deck"): Bundle {
   return { title, slide: { width: 1280, height: 720 }, pages }
 }
 
-/** A tool-call block carrying the structured payload (native mode). */
-function blockWith(bundle: Bundle | null, previewId: string | null) {
+/**
+ * A tool-call block carrying the structured payload (native mode).
+ *
+ * `pages` puts the host half's own summary phrasing in the result text. That
+ * sentence is the only thing left about the deck once the rendered files are
+ * gone, so a card with no bundle reads its page count back out of it.
+ */
+function blockWith(bundle: Bundle | null, previewId: string | null, facts: { pages?: number } = {}) {
+  const summary = `deck ready${facts.pages === undefined ? "" : `\nrendered ${facts.pages} pages to /tmp/out`}`
   return {
-    content: previewId ? [{ text: `deck ready\npptfast-preview:${previewId}\n` }] : [{ text: "deck ready" }],
+    content: previewId ? [{ text: `${summary}\npptfast-preview:${previewId}\n` }] : [{ text: summary }],
     meta: bundle ? { card: "pptfast-preview", bundle } : undefined,
   }
+}
+
+/**
+ * The plugin's host half, for the one thing this suite cannot fake: the exact
+ * sentence the card parses a dead deck's page count out of.
+ */
+async function loadHostHalf(): Promise<{ modelSummary: (value: unknown) => string }> {
+  // @ts-expect-error untyped on purpose, same as its own suite imports it
+  const mod = await import("../dsh/preview-tool.js")
+  return mod.__testing
 }
 
 /** The thumbnails: Frame renders a clickable div with an explicit role. */
@@ -227,19 +244,73 @@ describe("dsh preview card — the viewer", () => {
     page(9, "ending"),
   ]
 
-  function openViewer(id = "abc") {
+  /**
+   * The bundle route answering that the deck is still there.
+   *
+   * Every way into the viewer asks first (see `openViewer` in client.js), so
+   * a test that clicks "Open" without this is testing a card whose id the
+   * harness has just disowned.
+   */
+  function routeIsAlive(bundle: Bundle = bundleOf(nine())) {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/pptx")
+        ? { ok: true, status: 200, blob: async () => new Blob(["deck"]) }
+        : { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(bundle)) },
+    )
+  }
+
+  /**
+   * Open the viewer and wait until it is actually usable.
+   *
+   * The frame appearing is not enough. Opening is asynchronous now — the card
+   * asks the route whether the id is still live before it renders anything —
+   * and `waitFor` can return on the render that mounts the frame, one turn
+   * before React runs the modal's effect. That effect is what registers the
+   * Escape listener, so a test that pressed Escape on the strength of the
+   * frame alone was pressing it into a document nobody was listening to.
+   */
+  async function openViewer(id = "abc") {
+    routeIsAlive()
     const Card = makeCard()
     const view = render(<Card block={blockWith(bundleOf(nine()), id)} />)
     fireEvent.click(screen.getByText("Open"))
+    await waitFor(() => expect(viewer(view.container)).not.toBeNull())
+    await act(async () => {})
     return view
   }
 
-  it("loads the deck's own preview.html instead of paging slides itself", () => {
+  it("checks the id is still live before opening, instead of walking into a wall", async () => {
+    // The failure this exists for: a browser tab left open across a harness
+    // restart. The card is drawing a bundle it fetched minutes ago, the
+    // record behind the id is gone, and the viewer's iframe navigates to a
+    // route that answers 404 — which the browser renders as a document. The
+    // deck stays on screen, because those thumbnails are real; what goes is
+    // the promise that clicking them leads anywhere.
+    fetchMock.mockResolvedValue({ ok: false, status: 404, json: async () => null })
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+
+    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(viewer(container)).toBeNull()
+    // The strip survives: it is the deck, and it is already in the browser.
+    expect(container.querySelectorAll("svg")).toHaveLength(9)
+    // ...and no way back in is left lying around: no Open button, and the
+    // thumbnails give up their button role rather than sit there looking
+    // clickable.
+    expect(screen.queryByText("Open")).toBeNull()
+    expect(thumbnails(container)).toHaveLength(0)
+    fireEvent.click(container.querySelectorAll("svg")[0]!)
+    expect(viewer(container)).toBeNull()
+  })
+
+  it("loads the deck's own preview.html instead of paging slides itself", async () => {
     // The whole point of the change. That page already has a filmstrip,
     // ←/→, a light/dark surround and an audit panel, was written once and is
     // what every harness without a plugin UI is told to open. The card used
     // to run a thinner copy of it beside the original.
-    const { container } = openViewer("abc123")
+    const { container } = await openViewer("abc123")
 
     expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/abc123/html")
     // None of the second implementation is left: no counter, no arrows...
@@ -250,33 +321,37 @@ describe("dsh preview card — the viewer", () => {
     expect(container.querySelectorAll("svg")).toHaveLength(9)
   })
 
-  it("opens the same viewer from any thumbnail", () => {
+  it("opens the same viewer from any thumbnail", async () => {
     // Thumbnails used to carry a start page into a React slideshow. The html
     // opens on page one whichever thumbnail was clicked, and that is the
     // whole of the behaviour now.
+    routeIsAlive()
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
     fireEvent.click(thumbnails(container)[4]!)
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
     expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/abc/html")
   })
 
-  it("opens from the keyboard on the thumbnail that has focus", () => {
+  it("opens from the keyboard on the thumbnail that has focus", async () => {
     // A thumbnail is a div with `role="button"` and `tabIndex`, which promises
     // the keyboard behaviour a real <button> would have given for free.
     for (const key of ["Enter", " "]) {
+      routeIsAlive()
       const Card = makeCard()
       const { container, unmount } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
       const thumb = thumbnails(container)[2]!
       expect(thumb).toHaveAttribute("tabIndex", "0")
 
       fireEvent.keyDown(thumb, { key })
-      expect(viewer(container), key).not.toBeNull()
+      await waitFor(() => expect(viewer(container), key).not.toBeNull())
       unmount()
       cleanup()
     }
   })
 
   it("ignores the keys that are not an activation", () => {
+    routeIsAlive()
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
     fireEvent.keyDown(thumbnails(container)[2]!, { key: "a" })
@@ -284,18 +359,18 @@ describe("dsh preview card — the viewer", () => {
     expect(viewer(container)).toBeNull()
   })
 
-  it("closes on Escape", () => {
-    const { container } = openViewer()
+  it("closes on Escape", async () => {
+    const { container } = await openViewer()
     fireEvent.keyDown(document, { key: "Escape" })
     expect(viewer(container)).toBeNull()
   })
 
-  it("closes on Escape pressed inside the frame, where the deck actually has focus", () => {
+  it("closes on Escape pressed inside the frame, where the deck actually has focus", async () => {
     // The keystroke a reader really makes: they click the deck first, so the
     // keydown lands on the frame's own document and never reaches this one.
     // Listen on the outer document alone and Escape stops working the moment
     // the viewer is touched, which is the only moment it is wanted.
-    const { container } = openViewer()
+    const { container } = await openViewer()
     const frame = viewer(container)!
     fireEvent.load(frame)
     const inner = frame.contentDocument!
@@ -305,14 +380,14 @@ describe("dsh preview card — the viewer", () => {
     expect(viewer(container)).toBeNull()
   })
 
-  it("closes on the Close button", () => {
-    const { container } = openViewer()
+  it("closes on the Close button", async () => {
+    const { container } = await openViewer()
     fireEvent.click(screen.getByText("Close"))
     expect(viewer(container)).toBeNull()
   })
 
-  it("closes on a click on the backdrop, but never on one on the deck", () => {
-    const { container } = openViewer()
+  it("closes on a click on the backdrop, but never on one on the deck", async () => {
+    const { container } = await openViewer()
     const backdrop = container.querySelector('[style*="position: fixed"]') as HTMLElement
     expect(backdrop).toBeTruthy()
 
@@ -326,11 +401,11 @@ describe("dsh preview card — the viewer", () => {
     expect(viewer(container)).toBeNull()
   })
 
-  it("closes on a click on any dark surface, including the button row's own", () => {
+  it("closes on a click on any dark surface, including the button row's own", async () => {
     // Every black area in the viewer dismisses it — except, before this,
     // the band the buttons sit in, which looks exactly like the rest of the
     // backdrop and is nearly a thousand pixels wide.
-    const { container } = openViewer()
+    const { container } = await openViewer()
     const row = screen.getByText("Close").parentElement as HTMLElement
     expect(row).toBeTruthy()
 
@@ -338,14 +413,15 @@ describe("dsh preview card — the viewer", () => {
     expect(viewer(container)).toBeNull()
   })
 
-  it("gives the viewer's buttons a hover state, which inline styles cannot", () => {
+  it("gives the viewer's buttons a hover state, which inline styles cannot", async () => {
     // A solid white button that does not answer the pointer reads as broken
     // before it reads as plain, and `:hover` is unreachable from the inline
     // styles the rest of this card is built from.
-    const { container } = openViewer()
-    const sheets = document.querySelectorAll("#pptfast-modal-style")
-    expect(sheets).toHaveLength(1)
-    const css = sheets[0]!.textContent ?? ""
+    const { container } = await openViewer()
+    // Waited for rather than read straight off: the sheet is appended by the
+    // modal's own effect, one turn after the frame it is asserted through.
+    await waitFor(() => expect(document.querySelectorAll("#pptfast-modal-style")).toHaveLength(1))
+    const css = document.querySelector("#pptfast-modal-style")!.textContent ?? ""
     expect(css).toContain(".pf-mbtn:hover")
     expect(css).toContain(".pf-mbtn-primary:hover")
 
@@ -376,11 +452,13 @@ describe("dsh preview card — the viewer", () => {
     fireEvent.keyDown(document, { key: "Escape" })
     expect(viewer(container)).toBeNull()
     fireEvent.click(screen.getByText("Open"))
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
+    await act(async () => {})
     expect(document.querySelectorAll("#pptfast-modal-style")).toHaveLength(1)
   })
 
-  it("stays closed once it is closed", () => {
-    const { container } = openViewer()
+  it("stays closed once it is closed", async () => {
+    const { container } = await openViewer()
     fireEvent.keyDown(document, { key: "Escape" })
     // Keys that land after the viewer is gone belong to the page, not to it.
     expect(() => fireEvent.keyDown(document, { key: "Escape" })).not.toThrow()
@@ -390,8 +468,7 @@ describe("dsh preview card — the viewer", () => {
   it("keeps the download inside the viewer, since the html cannot offer it", async () => {
     // The one card ability the page has no way to reach: it is a static file
     // on a route of its own, with no idea an export exists.
-    fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob(["deck"]) })
-    openViewer("abc123")
+    await openViewer("abc123")
 
     const buttons = screen.getAllByText("Download .pptx")
     expect(buttons).toHaveLength(2) // one on the card, one in the viewer
@@ -460,6 +537,25 @@ describe("dsh preview card — the export button", () => {
     render(<Card block={blockWith(bundleOf([page(1)]), null)} />)
     expect(screen.queryByText("Download .pptx")).toBeNull()
   })
+
+  it("says Expired before the click, once the card already knows", async () => {
+    // Offering `Download .pptx` for a deck the card has just been told is
+    // gone is an invitation to a failure it can already predict. The label is
+    // the same word the button reaches on its own after a failed click, so
+    // the two ways of learning it do not read as two different states.
+    fetchMock.mockResolvedValue({ ok: false, status: 410, json: async () => null })
+    const Card = makeCard()
+    render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+
+    expect(await screen.findByText("Expired")).toBeInTheDocument()
+    expect(screen.queryByText("Download .pptx")).toBeNull()
+    // And clicking it starts nothing: the route already gave its answer.
+    const calls = fetchMock.mock.calls.length
+    fireEvent.click(screen.getByText("Expired"))
+    expect(fetchMock.mock.calls).toHaveLength(calls)
+  })
 })
 
 describe("dsh preview card — fetching by id (Code Mode)", () => {
@@ -496,13 +592,97 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
     expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/B")
   })
 
-  it("stays quiet when the route 404s", async () => {
+  it("says the preview expired when the route 404s, instead of vanishing", async () => {
+    // The reported failure, in one test. A transcript reopened after the
+    // harness has forgotten the id used to render exactly nothing: no strip,
+    // no buttons, no line of text — the tool call looked like it had never
+    // produced anything. Under Code Mode the bundle is not in the session log
+    // and cannot be recovered, so the honest answer is not a deck: it is the
+    // fact that there was one, how long it was, and why it will not open.
     respondWith({})
     const Card = makeCard()
-    const { container } = render(<Card block={blockWith(null, "missing")} />)
+    render(<Card block={blockWith(null, "missing", { pages: 9 })} />)
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/missing"))
+    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(screen.getByText("9 pages")).toBeInTheDocument()
+    expect(screen.getByText(/no longer on disk/)).toBeInTheDocument()
+    // Nothing that promises a deck it cannot show.
+    expect(screen.queryByText("Open")).toBeNull()
+  })
+
+  it("reads the page count out of the summary the host half actually writes", async () => {
+    // The degraded card's one fact comes from prose, so the prose is pinned:
+    // this is `modelSummary`'s real output, not a hand-written lookalike, and
+    // rewording it in preview-tool.js turns this red.
+    const summary = (await loadHostHalf()).modelSummary({
+      previewId: "S1",
+      pageCount: 9,
+      outDir: "/tmp/out",
+      findingCount: 0,
+      audited: true,
+    })
+
+    respondWith({})
+    const Card = makeCard()
+    render(<Card block={{ content: [{ text: summary }] }} />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/S1"))
+    expect(await screen.findByText("9 pages")).toBeInTheDocument()
+  })
+
+  it("does not carry one deck's expiry over to the next one it renders", async () => {
+    // The same React instance is reused as the block it renders changes. A
+    // verdict remembered without the id it was about would expire a live deck
+    // on the strength of a dead one that happened to render here first — and
+    // it shows in the gap, so the gap is what this test holds open: B's
+    // answer is withheld until after the assertions that matter.
+    let answerB = (_value: unknown) => {}
+    const pendingB = new Promise((resolve) => {
+      answerB = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/B") ? pendingB : { ok: false, status: 404, json: async () => null },
+    )
+    const Card = makeCard()
+    const { container, rerender } = render(<Card block={blockWith(null, "A", { pages: 4 })} />)
+    expect(await screen.findByText("expired")).toBeInTheDocument()
+
+    rerender(<Card block={blockWith(null, "B", { pages: 2 })} />)
+
+    // B has been asked and has not answered. Until it does, this card knows
+    // nothing about B — least of all that it has expired.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/B"))
+    expect(screen.queryByText("expired")).toBeNull()
     expect(container).toBeEmptyDOMElement()
+
+    answerB({ ok: true, status: 200, json: async () => bundleOf([page(1), page(2)], "Deck B") })
+
+    expect(await screen.findByText("Deck B")).toBeInTheDocument()
+    expect(screen.queryByText("expired")).toBeNull()
+    expect(screen.getByText("Open")).toBeInTheDocument()
+  })
+
+  it("still admits the deck existed when the summary carried no page count", async () => {
+    // A result text this card cannot mine for a page count is no reason to
+    // pretend the call never happened — the id in it is proof enough.
+    respondWith({})
+    const Card = makeCard()
+    render(<Card block={blockWith(null, "missing")} />)
+
+    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(screen.queryByText(/\d+ pages/)).toBeNull()
+  })
+
+  it("keeps a 410 apart from a harness it could not reach at all", async () => {
+    // A 410 is the route answering: the deck is gone. A rejected fetch is no
+    // answer at all — the harness may simply not be up yet — and reporting
+    // that as an expired preview would leave a wrong verdict on screen long
+    // after its cause passed.
+    fetchMock.mockResolvedValue({ ok: false, status: 410, json: async () => null })
+    const Card = makeCard()
+    render(<Card block={blockWith(null, "A", { pages: 3 })} />)
+    expect(await screen.findByText("expired")).toBeInTheDocument()
   })
 
   it("falls back to the generic row when the fetch itself fails", async () => {

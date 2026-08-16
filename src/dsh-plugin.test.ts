@@ -231,6 +231,7 @@ interface PreviewModule {
     pruneRecords: (dir: string) => Promise<void>
     isDisposableOutDir: (dir: unknown) => Promise<boolean>
     createOutDir: () => Promise<string>
+    expiredPage: (message: string) => string
     inlineLocalImages: (snapshotPath: string) => Promise<void>
     discardOutDir: (record: { outDir: string }) => Promise<void>
     recordDirFor: (cliPath: string) => string
@@ -982,11 +983,28 @@ describe("preview route (the handler DSH actually calls)", () => {
 
     const res = await request(handler, `${route}/${value.previewId}/html`)
     expect(res.status).toBe(410)
-    expect(res.headers["content-type"]).toBe("application/json")
-    expect(JSON.parse(res.body.toString("utf8")).error).toMatch(/preview page for this preview is gone/)
+    // Said as a page, because the only consumer of this route is an iframe
+    // and an iframe renders whatever body it is handed. A JSON body here
+    // reached the user as a bare browser document showing
+    // `{"error":"..."}` inside the viewer's own frame.
+    expect(res.headers["content-type"]).toBe("text/html; charset=utf-8")
+    const page = res.body.toString("utf8")
+    expect(page).toContain("<!doctype html>")
+    expect(page).toContain("This preview has expired")
+    expect(page).toMatch(/preview page for this preview is gone/)
+    expect(page).not.toContain('{"error"')
     // Losing the viewer does not cost the card its strip or its export.
     expect((await request(handler, `${route}/${value.previewId}`)).status).toBe(200)
     expect((await request(handler, `${route}/${value.previewId}/pptx`)).status).toBe(200)
+  })
+
+  it("escapes the path it names, so a message can never become markup", async () => {
+    // The message carries a filesystem path, and this route now answers the
+    // viewer with a document. A path is chosen by whoever created the deck.
+    const { __testing } = await loadPreviewTool()
+    const page = __testing.expiredPage('gone (/tmp/<script>alert("x")</script>/deck)')
+    expect(page).not.toContain("<script>")
+    expect(page).toContain("&lt;script&gt;")
   })
 
   it("serves the .pptx as a file, and starts no process to do it", async () => {
@@ -1114,7 +1132,15 @@ describe("preview route (the handler DSH actually calls)", () => {
     // it is the same id whichever suffix follows it.
     expect((await request(handler, `${route}/../../etc/passwd/pptx`)).status).toBe(404)
     expect((await request(handler, `${route}/../../etc/passwd/html`)).status).toBe(404)
-    expect((await request(handler, `${route}/${previewId("e1")}/html`)).status).toBe(404)
+
+    // The viewer's 404 is the one a person reads. This is the exact response
+    // that reached a user as a bare browser document reading
+    // `{"error":"unknown preview id"}`, framed by the viewer's own buttons.
+    const viewer = await request(handler, `${route}/${previewId("e1")}/html`)
+    expect(viewer.status).toBe(404)
+    expect(viewer.headers["content-type"]).toBe("text/html; charset=utf-8")
+    expect(viewer.body.toString("utf8")).toContain("This preview has expired")
+    expect(viewer.body.toString("utf8")).not.toContain('{"error"')
   })
 
   it("reports 410 for a preview whose rendered deck was cleaned up, rather than rebuilding it", async () => {
@@ -1129,11 +1155,13 @@ describe("preview route (the handler DSH actually calls)", () => {
     expect(bundle.status).toBe(410)
     expect(JSON.parse(bundle.body.toString("utf8")).error).toMatch(/rendered deck for this preview is gone/)
 
-    // The viewer answers the same way. An iframe handed a 404 body renders it,
-    // so "expired" has to be said in words rather than left to the browser.
+    // The viewer answers the same way, and says it in a document rather than
+    // in JSON: an iframe renders the body it is handed, so this is the one
+    // response on this route a person reads with their eyes.
     const html = await request(afterReload, `${route}/${value.previewId}/html`)
     expect(html.status).toBe(410)
-    expect(html.headers["content-type"]).toBe("application/json")
+    expect(html.headers["content-type"]).toBe("text/html; charset=utf-8")
+    expect(html.body.toString("utf8")).toContain("This preview has expired")
 
     const pptx = await request(afterReload, `${route}/${value.previewId}/pptx`)
     expect(pptx.status).toBe(410)
