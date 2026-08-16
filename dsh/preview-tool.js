@@ -39,13 +39,27 @@
 // scope. Two services (a plugin reload, a second profile, a test) must not
 // be able to see each other's decks or each other's CLI path — a module-level
 // `cliPath` meant the second `apply()` silently re-pointed the route the
-// first one had already registered.
+// first one had already registered. That extends to the on-disk records: each
+// service gets its own subdirectory keyed by its CLI path, so one service can
+// neither read another's decks nor evict them.
+//
+// ONE RENDER WINDOW is the rule everything else here follows. A preview and
+// its .pptx are produced by a single `execute` call, from one snapshot, by
+// one CLI process generation, while the source assets still hold the bytes
+// they held. Pinning the IR alone was not enough: a second CLI run re-reads
+// project and user configuration (theme, style), re-reads image files off
+// disk, re-fetches http assets, and may even be a different renderer version
+// after a plugin upgrade. None of that is captured by an IR file, so the
+// export could differ from the deck the user just approved in four separate
+// ways. The download route therefore serves a file, and starts no process.
+// The cost is one export per preview, including the previews nobody
+// downloads. That is the deliberate price of the guarantee.
 
 import { spawn } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
-import { access, mkdir, mkdtemp, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { createHash, randomUUID } from 'node:crypto'
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 
 /** Cap on how much rendered SVG rides the presentation channel, in bytes. */
 const MAX_PRESENTED_BYTES = 8 * 1024 * 1024
@@ -81,7 +95,32 @@ const MAX_PERSISTED = MAX_RETAINED * 20
  * shared region to lose, and each one is published by rename, which is
  * atomic — a reader sees the old file or the new one, never half of either.
  */
-const RECORD_DIR = join(tmpdir(), 'pptfast-previews')
+const RECORD_ROOT = join(tmpdir(), 'pptfast-previews')
+
+/**
+ * Records live one directory down, keyed by the service's CLI path.
+ *
+ * A flat shared directory made every service a peer of every other one:
+ * service B's `recallAnywhere` happily found a deck service A had rendered
+ * and served it, and the eviction budget was shared too, so a busy profile
+ * silently deleted a quiet one's history. Splitting by CLI path is the
+ * cheapest key that separates the cases that actually differ (a second
+ * profile, an upgraded install, a test), and it doubles as a version fence:
+ * a record written by a different renderer build is simply not visible.
+ *
+ * Hashed rather than embedded, because the CLI path is an absolute filesystem
+ * path and would otherwise have to be flattened into a directory name.
+ */
+export function recordDirFor(cliPath) {
+  return join(RECORD_ROOT, createHash('sha256').update(String(cliPath)).digest('hex').slice(0, 16))
+}
+
+/**
+ * Age at which an orphaned scratch file is considered abandoned rather than
+ * in flight. Scratch files are published by rename within a single write, so
+ * anything this old belongs to a process that died mid-write.
+ */
+const SCRATCH_MAX_AGE_MS = 60 * 60 * 1000
 
 /**
  * Ids reach this module from a URL path and are used as filenames, so the
@@ -99,62 +138,141 @@ const THEME_FILE = 'theme.json'
  * Thrown when the record survived but the deck it points at did not.
  *
  * The old code answered this case by re-reading the user's original target,
- * which is exactly the bug: the target may have moved on, so the card would
- * quietly start showing a different deck than the one it was created for. A
- * preview whose snapshot is gone is gone, and says so.
+ * and the round after that by re-rendering the pinned snapshot. Both are the
+ * same bug at different depths: what comes back is built now, out of whatever
+ * the configuration, the image files and the installed renderer happen to be
+ * now, and is then presented as the deck sitting in the card. A preview whose
+ * files are gone is gone, and says so.
  */
 class PreviewExpired extends Error {}
 
-async function writeRecord(id, record) {
+/** Prefix of every directory this module creates for a preview's rendered deck. */
+const OUT_DIR_PREFIX = 'pptfast-preview-'
+
+/**
+ * Is this directory one of ours to delete?
+ *
+ * Eviction now removes the rendered deck as well as the record pointing at
+ * it, which turns a bad `outDir` into a destructive operation. `remember` is
+ * an exported entry point and a record is just JSON on disk, so the value is
+ * checked rather than trusted: only a `mkdtemp` directory sitting directly in
+ * the system temp directory under this module's own prefix qualifies. A
+ * record pointing anywhere else keeps its record deleted and its directory
+ * untouched, which is the safe direction to be wrong in.
+ */
+function isDisposableOutDir(dir) {
+  if (typeof dir !== 'string' || dir === '') return false
+  const resolved = resolve(dir)
+  return dirname(resolved) === resolve(tmpdir()) && basename(resolved).startsWith(OUT_DIR_PREFIX)
+}
+
+/** Best-effort removal of an evicted preview's rendered deck. */
+async function discardOutDir(record) {
+  const dir = record && record.outDir
+  if (!isDisposableOutDir(dir)) return
+  await rm(dir, { recursive: true, force: true }).catch(() => {})
+}
+
+async function writeRecord(dir, id, record) {
   // Checked here, at the write boundary, not only where records are read.
   // The id becomes a filename the moment the index went one-file-per-preview,
   // and validating reads alone left `remember` — an exported entry point —
-  // able to write outside RECORD_DIR entirely: `remember("../../victim", …)`
+  // able to write outside the record directory entirely: `remember("../../victim", …)`
   // resolves right out of it. The plugin itself only ever passes a
   // `randomUUID`, so nothing in production reached this, but the guarantee
   // was claimed before it was true.
   if (!ID_PATTERN.test(id)) throw new Error(`refusing to write a preview record for an unsafe id: ${id}`)
-  await mkdir(RECORD_DIR, { recursive: true })
+  await mkdir(dir, { recursive: true })
   // Published by rename: a concurrent reader never sees a partial file, and
   // the temp name carries its own uuid so two writers for the same id cannot
   // collide on the scratch file either.
-  const scratch = join(RECORD_DIR, `.${id}.${randomUUID()}.tmp`)
+  const scratch = join(dir, `.${id}.${randomUUID()}.tmp`)
   await writeFile(scratch, JSON.stringify(record))
-  await rename(scratch, join(RECORD_DIR, `${id}.json`))
+  await rename(scratch, join(dir, `${id}.json`))
 }
 
-async function readRecord(id) {
+async function readRecord(dir, id) {
   if (!ID_PATTERN.test(id)) return undefined
   try {
-    return JSON.parse(await readFile(join(RECORD_DIR, `${id}.json`), 'utf8'))
+    return JSON.parse(await readFile(join(dir, `${id}.json`), 'utf8'))
   } catch {
     return undefined
   }
 }
 
 /**
- * Trim the oldest records by mtime. Best-effort by design: a preview that
- * cannot be tidied up after is still a working preview, so nothing here is
- * allowed to fail the call that triggered it.
+ * Trim the oldest records by mtime, and take their rendered decks with them.
+ *
+ * Deleting the record alone was a leak with a straight face: the record is a
+ * few hundred bytes, the directory it points at is an entire rendered deck
+ * plus (now) an exported .pptx, and dropping the only pointer to it meant
+ * nothing would ever clean it up. Abandoned scratch files got the same
+ * treatment — the old filter skipped them explicitly, so a process that died
+ * mid-write left one behind forever.
+ *
+ * Best-effort by design: a preview that cannot be tidied up after is still a
+ * working preview, so nothing here is allowed to fail the call that
+ * triggered it.
  */
-async function pruneRecords() {
+async function pruneRecords(dir) {
+  let names
   try {
-    const names = (await readdir(RECORD_DIR)).filter((n) => n.endsWith('.json'))
-    if (names.length <= MAX_PERSISTED) return
-    const dated = await Promise.all(
-      names.map(async (name) => {
-        try {
-          return { name, mtime: (await stat(join(RECORD_DIR, name))).mtimeMs }
-        } catch {
-          return { name, mtime: 0 }
-        }
-      }),
-    )
-    dated.sort((a, b) => b.mtime - a.mtime)
-    await Promise.all(dated.slice(MAX_PERSISTED).map((e) => unlink(join(RECORD_DIR, e.name)).catch(() => {})))
+    names = await readdir(dir)
   } catch {
     // No record directory yet, or an unreadable one. Neither is this call's problem.
+    return
   }
+
+  const now = Date.now()
+  await Promise.all(
+    names
+      .filter((n) => n.endsWith('.tmp'))
+      .map(async (name) => {
+        const path = join(dir, name)
+        try {
+          // Age-gated, because a scratch file that is still young probably
+          // belongs to a write happening right now in another process.
+          if (now - (await stat(path)).mtimeMs < SCRATCH_MAX_AGE_MS) return
+          await unlink(path)
+        } catch {
+          // Already gone, or renamed out from under us mid-check. Fine either way.
+        }
+      }),
+  )
+
+  const records = names.filter((n) => n.endsWith('.json'))
+  if (records.length <= MAX_PERSISTED) return
+  const dated = await Promise.all(
+    records.map(async (name) => {
+      try {
+        return { name, mtime: (await stat(join(dir, name))).mtimeMs }
+      } catch {
+        return { name, mtime: 0 }
+      }
+    }),
+  )
+  dated.sort((a, b) => b.mtime - a.mtime)
+  await Promise.all(
+    dated.slice(MAX_PERSISTED).map(async (entry) => {
+      const path = join(dir, entry.name)
+      try {
+        // The mtime that made this record look oldest was read before the
+        // sort; by now another process may have refreshed it. Re-check, and
+        // leave anything that moved. This narrows the window rather than
+        // closing it — the record can still be rewritten between this stat
+        // and the unlink below, and closing that properly needs a lock file,
+        // which is more machinery than an eviction of the 240th-oldest
+        // preview deserves. The consequence of losing the race is one card
+        // reporting an expired preview earlier than it had to.
+        if ((await stat(path)).mtimeMs !== entry.mtime) return
+        const record = JSON.parse(await readFile(path, 'utf8'))
+        await unlink(path)
+        await discardOutDir(record)
+      } catch {
+        // Unreadable or already collected. Not this call's problem.
+      }
+    }),
+  )
 }
 
 /** Run the packaged CLI, resolving with its combined output. */
@@ -259,7 +377,11 @@ async function snapshotIrFile(target, snapshotPath) {
  * again.
  *
  * Local image files are the one thing the snapshot still points at rather
- * than owning — `assemble` rewrites their paths, it does not inline them.
+ * than owning — `assemble` rewrites their paths, it does not inline them. So
+ * the snapshot pins *which* deck, not the bytes it is made of, and it is only
+ * half the guarantee. The other half is that it is used exactly once, by the
+ * `execute` that wrote it, to produce both the preview and the export before
+ * anything on disk has a chance to move. Nothing reads it afterwards.
  */
 async function captureSnapshot(cliPath, target, outDir, signal) {
   const snapshot = join(outDir, SNAPSHOT_FILE)
@@ -313,6 +435,21 @@ async function readPreviewBundle(outDir) {
   return { ...manifest, pages, markupTruncated: truncated }
 }
 
+/**
+ * The filename the browser will save the export under.
+ *
+ * Computed at render time, not at download time, because the file now exists
+ * on disk before anyone asks for it. Everything outside `\w.-` collapses to a
+ * dash so the value is safe both as a path segment and inside a quoted
+ * `content-disposition` header.
+ */
+function exportName(bundle, target) {
+  const raw =
+    (bundle && bundle.title) || String(target).split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'deck'
+  const safe = raw.replace(/[^\w.-]+/g, '-').replace(/^[.-]+/, '')
+  return `${safe || 'deck'}.pptx`
+}
+
 /** One short model-facing line — never the markup. */
 function modelSummary(value) {
   const bits = [`rendered ${value.pageCount} page${value.pageCount === 1 ? '' : 's'} to ${value.outDir}`]
@@ -339,15 +476,17 @@ function modelSummary(value) {
  * exactly the situations (reload, second profile, test) where it matters.
  */
 export function createPreviewService(cliPath) {
+  /** This service's own record directory — never shared with another service. */
+  const recordDir = recordDirFor(cliPath)
+
   /**
-   * `id -> { bundle, target, outDir, snapshot, themeFile }`, for the route
-   * the card fetches from.
+   * `id -> { bundle, target, outDir, snapshot, themeFile, pptxPath }`, for
+   * the route the card fetches from.
    *
-   * The snapshot is kept alongside the deck because the preview's whole
-   * purpose is deciding whether to keep the thing — so the card offers the
-   * .pptx, rendered on demand from that snapshot rather than eagerly on
-   * every preview. Rendering an export nobody asked for would double the
-   * work of every preview call to serve the minority that end in a download.
+   * `pptxPath` points at a file that already exists by the time an id is
+   * handed out. The card's download button reads it and nothing else — see
+   * the ONE RENDER WINDOW note at the top of this file for why a second
+   * render, however faithfully it re-read the snapshot, is not the same deck.
    */
   const bundles = new Map()
 
@@ -362,59 +501,44 @@ export function createPreviewService(cliPath) {
     const { bundle: _bundle, ...record } = entry
     // Awaited, not fired and forgotten: the tool returning before its own
     // record lands means a card can fetch an id the disk has never heard of.
-    await writeRecord(id, record)
-    await pruneRecords()
+    await writeRecord(recordDir, id, record)
+    await pruneRecords(recordDir)
   }
 
   /**
-   * Find a preview by id, in increasing order of cost.
+   * Find a preview by id: in memory, else from this service's own records.
    *
    * A card lives in a transcript, and a transcript outlives everything: the
    * user scrolls back to a session from last week, and the card has to show
    * the deck it showed then. In-memory alone cannot do that — the map dies
    * with the process, and DSH restarts on every plugin reload — so a
    * historical session would have rendered an empty card and a download that
-   * saved a 404 body.
+   * saved a 404 body. The record survives the restart, and the rendered
+   * bundle is still sitting in `outDir`, so a reload costs a re-read.
    *
-   * 1. memory — the same process that rendered it
-   * 2. the bundle still on disk — `preview --html` already wrote manifest and
-   *    SVGs to `outDir`, so a restart costs a re-read, not a re-render
-   * 3. re-render from the snapshot — the temp directory is gone (a reboot, a
-   *    cleaner), but the pinned deck is not
-   *
-   * All three answer with the same deck. Step 3 renders the snapshot taken
-   * when the preview was created, never the user's target, so a card cannot
-   * start showing a deck the user edited afterwards.
+   * There used to be a third tier: when `outDir` was gone, re-render the deck
+   * from the pinned snapshot. It is deliberately gone, for two reasons.
+   * `captureSnapshot` writes the snapshot *into* `outDir`, so "the directory
+   * is gone but the snapshot survives" was close to unreachable in the first
+   * place. And a re-render today is not the deck this card is showing: it
+   * reads whatever configuration, theme and image bytes exist now, through
+   * whatever renderer version is installed now. It could not reproduce the
+   * .pptx either, so keeping it would have left the card showing one deck and
+   * the download button reporting an expired preview. One honest 410 beats
+   * two halves that disagree.
    */
   async function recallAnywhere(id) {
     const live = bundles.get(id)
     if (live) return live
 
-    const record = await readRecord(id)
+    const record = await readRecord(recordDir, id)
     if (!record) return undefined
 
     try {
       return cache(id, { ...record, bundle: await readPreviewBundle(record.outDir) })
     } catch {
-      // Step 3: the output directory is gone, but the snapshot may not be.
+      throw new PreviewExpired(`the rendered deck for this preview is gone (${record.outDir})`)
     }
-
-    if (!record.snapshot) {
-      // Written before previews were pinned to a snapshot. Re-reading the
-      // target would be a guess dressed up as a result.
-      throw new PreviewExpired('this preview predates deck snapshots and can no longer be reproduced')
-    }
-    try {
-      await access(record.snapshot)
-    } catch {
-      throw new PreviewExpired(`the deck snapshot for this preview is gone (${record.snapshot})`)
-    }
-
-    const outDir = await mkdtemp(join(tmpdir(), 'pptfast-preview-'))
-    await runCli(cliPath, ['preview', record.snapshot, '-o', outDir, '--html', ...themeArgs(record)])
-    const entry = cache(id, { ...record, outDir, bundle: await readPreviewBundle(outDir) })
-    await writeRecord(id, { ...record, outDir })
-    return entry
   }
 
   /**
@@ -456,29 +580,42 @@ export function createPreviewService(cliPath) {
           res.end(JSON.stringify(entry.bundle))
           return
         }
-        // Rendered here, not at preview time: the export is what the user
-        // asks for after deciding they like the deck, and most previews never
-        // get that far. From the snapshot, so the .pptx the user saves is the
-        // deck they just paged through.
-        try {
-          const base =
-            (entry.bundle && entry.bundle.title) ||
-            String(entry.target).split(/[\\/]/).pop().replace(/\.[^.]+$/, '') ||
-            'deck'
-          const name = base.replace(/[^\w.-]+/g, '-') + '.pptx'
-          const pptxPath = join(entry.outDir, name)
-          await runCli(cliPath, ['render', entry.snapshot, '-o', pptxPath, ...themeArgs(entry)])
-          const bytes = await readFile(pptxPath)
-          res.writeHead(200, {
-            'content-type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'content-disposition': `attachment; filename="${name}"`,
-            'content-length': bytes.length,
-          })
-          res.end(bytes)
-        } catch (error) {
-          res.writeHead(500, { 'content-type': 'application/json' })
-          res.end(JSON.stringify({ error: String(error && error.message ? error.message : error) }))
+        // Served, not rendered. This handler starts no process and writes
+        // nothing — the .pptx was produced during the same `execute` that
+        // produced the SVGs the user paged through, which is the only way the
+        // two can be guaranteed to be the same deck. It also means two
+        // browsers hitting the same id at once are two readers of one file
+        // rather than two renderers racing to write it.
+        if (!entry.pptxPath) {
+          // Either the export failed while the preview itself succeeded, or
+          // this record predates exports being rendered up front. Both are
+          // permanent for this id: there is no second render to fall back to.
+          res.writeHead(410, { 'content-type': 'application/json' })
+          res.end(
+            JSON.stringify({
+              error: entry.pptxError || 'this preview has no exported deck and cannot produce one now',
+            }),
+          )
+          return
         }
+        let bytes
+        try {
+          bytes = await readFile(entry.pptxPath)
+        } catch {
+          // Same disposition as a missing bundle: the id was real, the file
+          // behind it is not. Re-rendering from the snapshot would hand back
+          // a deck built from today's configuration and today's image bytes,
+          // which is exactly the substitution this design exists to prevent.
+          res.writeHead(410, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({ error: `the exported deck for this preview is gone (${entry.pptxPath})` }))
+          return
+        }
+        res.writeHead(200, {
+          'content-type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'content-disposition': `attachment; filename="${basename(entry.pptxPath)}"`,
+          'content-length': bytes.length,
+        })
+        res.end(bytes)
       },
     })
   }
@@ -529,7 +666,7 @@ export function createPreviewService(cliPath) {
     },
     async execute(args, exec) {
       const target = String(args.target)
-      const outDir = await mkdtemp(join(tmpdir(), 'pptfast-preview-'))
+      const outDir = await mkdtemp(join(tmpdir(), OUT_DIR_PREFIX))
       const { snapshot, themeFile } = await captureSnapshot(cliPath, target, outDir, exec?.signal)
       // Previewed from the snapshot, not the target: this is the single read
       // that everything the user later does with this preview refers back to.
@@ -541,7 +678,31 @@ export function createPreviewService(cliPath) {
       const bundle = await readPreviewBundle(outDir)
       const findingCount = bundle.pages.reduce((n, p) => n + (p.findings?.length ?? 0), 0)
       const previewId = randomUUID()
-      await remember(previewId, { bundle, target, outDir, snapshot, themeFile })
+
+      // The export, here, now, in the same call — see ONE RENDER WINDOW at
+      // the top of this file. The directory is a fresh `mkdtemp` owned by
+      // this call alone, so there is no other writer to publish around.
+      const pptxPath = join(outDir, exportName(bundle, target))
+      let pptxError
+      try {
+        await runCli(cliPath, ['render', snapshot, '-o', pptxPath, ...themeArgs({ themeFile })], exec?.signal)
+      } catch (error) {
+        // A failed export must not cost the user the preview: paging through
+        // the deck is most of the value, and the audit findings on screen may
+        // well explain the failure. The reason is recorded so the download
+        // route can state it instead of returning a bare 404 the browser
+        // saves as a file.
+        pptxError = `the export for this preview failed to render: ${String(error && error.message ? error.message : error)}`
+      }
+      await remember(previewId, {
+        bundle,
+        target,
+        outDir,
+        snapshot,
+        themeFile,
+        pptxPath: pptxError ? undefined : pptxPath,
+        pptxError,
+      })
       return {
         previewId,
         outDir,
@@ -557,7 +718,7 @@ export function createPreviewService(cliPath) {
     timeoutMs: 120_000,
   }
 
-  return { tool, registerRoute, remember, recall: (id) => bundles.get(id), recallAnywhere }
+  return { tool, registerRoute, remember, recall: (id) => bundles.get(id), recallAnywhere, recordDir }
 }
 
 /**
@@ -573,8 +734,15 @@ export const __testing = {
   readPreviewBundle,
   modelSummary,
   captureSnapshot,
+  exportName,
   readRecord,
-  RECORD_DIR,
+  writeRecord,
+  pruneRecords,
+  isDisposableOutDir,
+  recordDirFor,
+  RECORD_ROOT,
+  OUT_DIR_PREFIX,
+  SCRATCH_MAX_AGE_MS,
   MAX_PRESENTED_BYTES,
   MAX_PERSISTED,
   PreviewExpired,
