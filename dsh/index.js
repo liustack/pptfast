@@ -28,7 +28,7 @@
 // no build step, no dsh type imports, resilient to rc surface drift.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { definePreviewTool, TOOL_NAME } from './preview-tool.js'
+import { definePreviewTool, registerPreviewRoute, TOOL_NAME } from './preview-tool.js'
 
 const SKILL_FILE_URL = new URL('../skills/pptfast/SKILL.md', import.meta.url)
 const SKILL_DIR = fileURLToPath(new URL('../skills/pptfast/', import.meta.url))
@@ -100,6 +100,21 @@ export function apply(ctx) {
     ctx.tools.register(definePreviewTool(CLI_PATH))
   } catch (error) {
     console.error(`[pptfast] preview tool registration skipped: ${error}`)
+  }
+
+  // The route the preview card fetches a rendered deck from. `webServer`
+  // exists only under the web profile and this cordis has no optional-inject
+  // form, so it rides a scoped `ctx.inject`: the closure runs when the
+  // service appears and never runs where it does not, leaving headless
+  // untouched (modlens's own routes take the same shape).
+  if (typeof ctx.inject === 'function') {
+    ctx.inject(['webServer'], (scope) => {
+      try {
+        registerPreviewRoute(scope)
+      } catch (error) {
+        console.error(`[pptfast] preview route skipped: ${error}`)
+      }
+    })
   }
 
   try {

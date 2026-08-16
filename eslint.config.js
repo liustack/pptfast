@@ -19,7 +19,7 @@ export default tseslint.config(
     // the file actually uses" posture as the Node block above.
     files: ["dsh/client.js"],
     languageOptions: {
-      globals: { window: "readonly", document: "readonly", console: "readonly" },
+      globals: { window: "readonly", document: "readonly", console: "readonly", fetch: "readonly" },
     },
   },
   {

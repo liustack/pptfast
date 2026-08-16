@@ -333,3 +333,35 @@ describe("pptfast preview card (browser half)", () => {
     ).toHaveLength(1)
   })
 })
+
+describe("preview payload channel", () => {
+  it("carries the preview id in model-facing text, because that is what a sub-call keeps", async () => {
+    // `presentationMeta` is computed for top-level calls only, and this
+    // repo's default agent preset runs Code Mode, where every tool is
+    // invoked from inside `run_code` and is therefore a sub-call. Verified
+    // against a real session log: 34 top-level `run_code` calls, no
+    // `pptfast_preview` among them, and no presentationMeta persisted at
+    // all — the card rendered nothing and nothing said why. The id in the
+    // result text is the channel that survives.
+    const { definePreviewTool } = await loadPreviewTool()
+    const text = definePreviewTool("/x.js").output.render({}, {
+      previewId: "abc-123",
+      outDir: "/tmp/x",
+      pageCount: 4,
+      findingCount: 0,
+      audited: true,
+      bundle: { pages: [] },
+    })[0]!.text
+    expect(text).toContain("pptfast-preview:abc-123")
+    expect(text).not.toContain("<svg")
+  })
+
+  it("reads that id back out of a result block the way the card does", async () => {
+    const bundle = await loadClientBundle(() => ({}))
+    const idOf = (bundle.__testing as unknown as { previewIdOf: (b: unknown) => string | null }).previewIdOf
+    expect(idOf({ content: [{ type: "text", text: "pptfast-preview:abc-123 · rendered 4 pages" }] })).toBe("abc-123")
+    expect(idOf({ result: { content: [{ text: "pptfast-preview:zz-9" }] } })).toBe("zz-9")
+    expect(idOf({ content: [{ type: "text", text: "no id here" }] })).toBeNull()
+    expect(idOf({})).toBeNull()
+  })
+})

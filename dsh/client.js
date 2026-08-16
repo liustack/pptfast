@@ -7,6 +7,13 @@
 // card, and a full-size modal on click. No new tab, no localhost URL, no
 // "open this link yourself", which is the whole reason the tool exists.
 //
+// `dsh.client.immediately` is not optional for this plugin. The client module
+// table is lazy: a boot-graph row only loads when something imports its id,
+// and nothing in the shell imports a third-party plugin. Without the flag
+// this file is served and never executed — which is exactly how the first
+// build shipped, with the tool rendering in the generic row and no error
+// anywhere to say the card had never been loaded at all.
+//
 // Hand-written in the lazy-CJS bundle protocol (`window.__ModuleLoader__.load`
 // with a factory returning cordis-plugin exports), matching the host half's
 // zero-dependency stance and modlens's precedent: no build step, no JSX, no
@@ -37,6 +44,25 @@ window.__ModuleLoader__.load({
      * card, which is the correct degrade: a card that throws would take the
      * whole turn's rendering with it.
      */
+    /**
+     * The preview id the tool stamped into its own result text.
+     *
+     * This is the channel that survives Code Mode: a tool invoked from
+     * inside `run_code` is a sub-call, and the registry computes
+     * `presentationMeta` for top-level calls only, so on this repo's default
+     * agent preset the structured payload never exists. The id in the text
+     * always does.
+     */
+    function previewIdOf(block) {
+      var text = ''
+      var content = (block && (block.content || (block.result && block.result.content))) || []
+      for (var i = 0; i < content.length; i++) {
+        if (content[i] && typeof content[i].text === 'string') text += content[i].text
+      }
+      var m = /pptfast-preview:([A-Za-z0-9-]+)/.exec(text)
+      return m ? m[1] : null
+    }
+
     function bundleOf(block) {
       if (!block) return null
       var candidates = [block.meta, block.resultView, block.result && block.result.meta, block.presentationMeta]
@@ -249,9 +275,29 @@ window.__ModuleLoader__.load({
 
       /** The card itself: a strip of thumbnails, and a button that opens the viewer. */
       return function PptfastPreviewCard(props) {
-        var bundle = bundleOf(props.block)
+        var direct = bundleOf(props.block)
+        var fetched = useState(null)
         var open = useState(false)
         var start = useState(0)
+        var previewId = previewIdOf(props.block)
+
+        // Structured payload when the runtime computed one (native-mode,
+        // top-level call); otherwise fetch it by id from the plugin's own
+        // route, which is what Code Mode's sub-calls need.
+        useEffect(
+          function () {
+            if (direct || !previewId || fetched[0]) return
+            var cancelled = false
+            fetch('/pptfast/preview/' + previewId)
+              .then(function (r) { return r.ok ? r.json() : null })
+              .then(function (b) { if (!cancelled && b) fetched[1](b) })
+              .catch(function () { /* the generic row is the degrade */ })
+            return function () { cancelled = true }
+          },
+          [direct, previewId, fetched[0]],
+        )
+
+        var bundle = direct || fetched[0]
         if (!bundle) return null
 
         var pages = drawablePages(bundle)
@@ -328,7 +374,17 @@ window.__ModuleLoader__.load({
     }
 
     function registerCard(ctx) {
-      if (!ctx.slots || typeof ctx.slots.inject !== 'function') return
+      // `slots` is a declared dependency (see `exports.inject` below), so
+      // cordis does not apply this plugin until the service exists. The guard
+      // stays as a belt-and-braces check, but it must never be the thing that
+      // silently makes this card a no-op — which is exactly what happened
+      // when `inject` was empty: apply ran before the slot registry was up,
+      // this returned quietly, and the tool rendered in the generic row with
+      // no sign anything had failed.
+      if (!ctx.slots || typeof ctx.slots.inject !== 'function') {
+        console.error('[pptfast] preview card skipped: no slot registry on this context')
+        return
+      }
       var react
       try {
         react = require('react')
@@ -354,10 +410,12 @@ window.__ModuleLoader__.load({
     }
 
     exports.apply = apply
-    // `slots` is optional (registerCard checks), so it is not injected here.
-    exports.inject = []
+    // Declared, not sniffed: cordis holds this plugin until the slot registry
+    // is up. The shipped `ui-skill` registrant declares the same service for
+    // the same reason.
+    exports.inject = ['slots']
     // Exposed for this repo's tests only; not part of the plugin contract.
-    exports.__testing = { bundleOf: bundleOf, namespaceIds: namespaceIds, drawablePages: drawablePages, TOOL_NAME: TOOL_NAME }
+    exports.__testing = { bundleOf: bundleOf, previewIdOf: previewIdOf, namespaceIds: namespaceIds, drawablePages: drawablePages, TOOL_NAME: TOOL_NAME }
     return module.exports
   },
 })
