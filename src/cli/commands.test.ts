@@ -614,10 +614,19 @@ describe("runPreview --html (W7 task 1)", () => {
     const out = join(dir, "svgs-html")
     const msg = await runPreview(join(dir, "deck.json"), out, { htmlOut: true })
     const files = await readdir(out)
-    expect(files.sort()).toEqual(["001-cover.svg", "002-content.svg", "preview.html"])
+    // The bundle is three things, not two: the per-slide SVGs, the page a
+    // human opens, and the manifest a program reads (`./preview-manifest.ts`).
+    expect(files.sort()).toEqual(["001-cover.svg", "002-content.svg", "manifest.json", "preview.html"])
     const html = await readFile(join(out, "preview.html"), "utf8")
     expect(html.match(/<svg\b/g)).toHaveLength(2)
     expect(msg).toContain(join(out, "preview.html"))
+    expect(msg).toContain(join(out, "manifest.json"))
+
+    // Every page the manifest lists points at a file that is actually there,
+    // which is the only reason a consumer can trust it without re-rendering.
+    const manifest = JSON.parse(await readFile(join(out, "manifest.json"), "utf8"))
+    expect(manifest.pages.map((p: { file: string }) => p.file)).toEqual(["001-cover.svg", "002-content.svg"])
+    expect(manifest.slide).toEqual({ width: 1280, height: 720 })
   })
 
   it("shows the 'unfilled' badge for a placeholder page (deck-directory input, same as SVG output)", async () => {
@@ -689,12 +698,15 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).not.toContain('id="pf-audit-checks"')
   })
 
-  it("always includes the annotation UI and export button, independent of audit results", async () => {
+  it("ships no annotation or revision-request UI", async () => {
+    // Removed 2026-08-16: the preview shows the deck, and a reviewer who
+    // spots something screenshots it and tells the agent — faster than
+    // typing into a panel whose output then has to be exported and re-read.
     const out = join(dir, "svgs-html-audit-annotate")
     await runPreview(join(dir, "deck.json"), out, { htmlOut: true })
     const html = await readFile(join(out, "preview.html"), "utf8")
-    expect(html).toContain('id="pf-annotate-panel"')
-    expect(html).toContain('id="pf-export-btn"')
+    expect(html).not.toContain("pf-annotate")
+    expect(html).not.toContain("pf-export-btn")
   })
 })
 

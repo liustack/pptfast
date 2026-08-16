@@ -312,46 +312,72 @@ function findingPanelEntry(f: PreviewHtmlFinding): string {
 }
 
 const CSS = `
-:root{color-scheme:light}
+:root{
+  --bg:#f4f4f2;--panel:#fff;--line:#d9d9d4;--ink:#1b1b19;--ink-dim:#6d6d66;
+  --stage:#e8e8e4;--warn:#9a6b16;--bad:#a8342d;--radius:10px;
+  color-scheme:light
+}
+body[data-surround="dark"]{
+  --bg:#17181a;--panel:#1f2124;--line:#34373c;--ink:#e9eaec;--ink-dim:#9195a0;--stage:#101113;
+  color-scheme:dark
+}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:#f4f4f4;color:#1a1a1a}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:#fff;border-bottom:1px solid #ddd;font-size:14px;flex:0 0 auto}
-#pf-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#pf-counter{font-variant-numeric:tabular-nums;color:#555;white-space:nowrap}
-#pf-audit-note{color:#b45309;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#pf-export-btn{font:inherit;font-size:13px;padding:6px 10px;border:1px solid #2563eb;background:#2563eb;color:#fff;border-radius:4px;cursor:pointer;white-space:nowrap;flex:0 0 auto}
-#pf-export-btn:hover{background:#1d4ed8}
-#pf-stage-wrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:16px;padding:16px}
-#pf-stage{position:relative;background:#000;box-shadow:0 2px 16px rgba(0,0,0,.15);aspect-ratio:16/9;width:min(100%,calc((100vh - 190px) * 16 / 9));max-height:100%}
+body{display:flex;flex-direction:column;background:var(--bg);color:var(--ink);
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB",sans-serif;
+  -webkit-font-smoothing:antialiased}
+
+header{display:flex;align-items:center;gap:14px;padding:11px 18px;background:var(--panel);
+  border-bottom:1px solid var(--line);flex:0 0 auto}
+#pf-title{font-weight:650;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pf-counter{font-variant-numeric:tabular-nums;color:var(--ink-dim);white-space:nowrap;font-size:13px}
+.pf-spacer{flex:1 1 auto}
+#pf-audit-note{color:var(--warn);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46ch}
+#pf-audit-checks{color:var(--ink-dim);font-size:12px;white-space:nowrap}
+
+.pf-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto}
+.pf-seg button{appearance:none;border:0;border-right:1px solid var(--line);background:transparent;color:var(--ink);
+  font:inherit;font-size:13px;padding:4px 10px;cursor:pointer}
+.pf-seg button:last-child{border-right:0}
+.pf-seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.pf-seg button:hover:not([aria-pressed="true"]){background:var(--stage)}
+
+#pf-stage-wrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:16px;padding:18px}
+#pf-stage{position:relative;background:var(--stage);box-shadow:0 10px 40px rgba(0,0,0,.18);
+  aspect-ratio:16/9;width:min(100%,calc((100vh - 210px) * 16 / 9));max-height:100%}
 #pf-stage,.pf-thumb-slot{position:relative}
 .pf-slide{position:absolute;inset:0}
 .pf-slide svg{display:block;width:100%;height:100%}
-#pf-side{flex:0 0 260px;align-self:stretch;overflow-y:auto;background:#fff;border:1px solid #ddd;border-radius:6px;padding:12px;font-size:13px}
-#pf-side h2{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#666}
-#pf-side section+section{margin-top:16px;padding-top:16px;border-top:1px solid #eee}
-#pf-audit-checks{margin:0 0 12px;font-size:12px;color:#555}
-.pf-finding{display:block;width:100%;text-align:left;background:#fff;border:1px solid #eee;border-radius:4px;padding:6px 8px;margin-bottom:6px;cursor:pointer;font:inherit}
-.pf-finding:hover{border-color:#93c5fd}
-.pf-finding-loc{display:block;font-size:11px;color:#888}
-.pf-finding-code{display:inline-block;font-size:11px;font-weight:700;color:#b91c1c}
-.pf-finding-msg{font-size:12px;color:#333}
-#pf-annotate-current-label{font-size:11px;color:#888;margin-bottom:6px}
-#pf-annotate-list{list-style:none;margin:0 0 8px;padding:0}
-.pf-annotate-item{display:flex;justify-content:space-between;gap:6px;align-items:flex-start;padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
-.pf-annotate-remove{border:none;background:none;color:#999;cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
-.pf-annotate-remove:hover{color:#dc2626}
-#pf-annotate-input{width:100%;box-sizing:border-box;font:inherit;font-size:12px;padding:6px;border:1px solid #ddd;border-radius:4px;resize:vertical}
-#pf-annotate-add{font:inherit;font-size:12px;margin-top:6px;width:100%;padding:6px 10px;border:1px solid #2563eb;background:#2563eb;color:#fff;border-radius:4px;cursor:pointer}
-#pf-annotate-add:hover{background:#1d4ed8}
-#pf-filmstrip{display:flex;gap:8px;padding:10px 16px;overflow-x:auto;background:#fff;border-top:1px solid #ddd;flex:0 0 auto}
-.pf-thumb{flex:0 0 auto;width:160px;padding:0;margin:0;border:2px solid transparent;background:#eee;cursor:pointer;border-radius:6px;overflow:hidden;position:relative;font:inherit;text-align:left}
-.pf-thumb:hover{border-color:#93c5fd}
-.pf-thumb-active,.pf-thumb-active:hover{border-color:#2563eb;background:#dbeafe}
-.pf-thumb-slot{display:block;width:100%;aspect-ratio:16/9;background:#ddd}
-.pf-thumb-label{display:block;font-size:11px;line-height:1.4;padding:3px 6px;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pf-badge,.pf-thumb-badge{position:absolute;top:4px;right:4px;background:#d97706;color:#fff;font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:3px;text-transform:uppercase;z-index:2;pointer-events:none}
-.pf-finding-badge,.pf-thumb-finding-badge{position:absolute;top:4px;left:4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;z-index:2;pointer-events:none}
+
+#pf-side{flex:0 0 250px;align-self:stretch;overflow-y:auto;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--radius);padding:12px 13px;font-size:13px}
+#pf-side h2{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
+.pf-finding{display:block;width:100%;text-align:left;background:transparent;border:1px solid var(--line);
+  border-radius:8px;padding:7px 9px;margin-bottom:7px;cursor:pointer;font:inherit;color:var(--ink)}
+.pf-finding:hover{background:var(--stage)}
+.pf-finding-loc{display:block;font-size:11px;color:var(--ink-dim)}
+.pf-finding-code{display:inline-block;font-size:11px;font-weight:700;color:var(--bad)}
+.pf-finding-msg{display:block;font-size:12px;color:var(--ink-dim);margin-top:2px}
+
+#pf-filmstrip{display:flex;gap:10px;padding:11px 18px;overflow-x:auto;background:var(--panel);
+  border-top:1px solid var(--line);flex:0 0 auto}
+.pf-thumb{flex:0 0 auto;width:154px;padding:0;margin:0;border:1px solid var(--line);background:var(--panel);
+  cursor:pointer;border-radius:8px;overflow:hidden;position:relative;font:inherit;text-align:left}
+.pf-thumb:hover{border-color:var(--ink-dim)}
+.pf-thumb-active,.pf-thumb-active:hover{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.pf-thumb-slot{display:block;width:100%;aspect-ratio:16/9;background:var(--stage)}
+/* The active slide's SVG lives in the stage, not here — one node per slide,
+   moved between the two homes. Without this the vacated slot reads as a
+   broken empty box, so it states what it is instead. */
+.pf-thumb-active .pf-thumb-slot::after{content:"on stage";position:absolute;inset:0;display:flex;
+  align-items:center;justify-content:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-dim)}
+.pf-thumb-label{display:block;font-size:11px;line-height:1.5;padding:4px 7px;color:var(--ink-dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-badge,.pf-thumb-badge{position:absolute;top:5px;right:5px;background:var(--warn);color:#fff;font-size:10px;
+  font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:999px;text-transform:uppercase;z-index:2;pointer-events:none}
+.pf-finding-badge,.pf-thumb-finding-badge{position:absolute;top:5px;left:5px;background:var(--bad);color:#fff;
+  font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;z-index:2;pointer-events:none}
 `.trim()
 
 const JS = `
@@ -394,9 +420,9 @@ const JS = `
     if (prevThumb) prevThumb.classList.remove('pf-thumb-active')
     stage.appendChild(nextSlide)
     nextThumb.classList.add('pf-thumb-active')
+    nextThumb.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     current = i
     updateCounter(i)
-    renderAnnotations()
   }
 
   thumbs.forEach(function (t) {
@@ -414,129 +440,30 @@ const JS = `
     }
   })
 
-  // ---- audit findings panel: click a finding, jump to its page (same
-  // activate() every thumbnail click already uses) ----
+  // Click a finding, jump to its page — the same activate() a thumbnail uses.
   Array.prototype.slice.call(document.querySelectorAll('.pf-finding')).forEach(function (b) {
     b.addEventListener('click', function () {
       activate(parseInt(b.getAttribute('data-page-index'), 10))
     })
   })
 
-  // ---- annotations: in-memory only, keyed by the slide's 0-based array
-  // index (current) — never by pageId, since an object key coerces every
-  // key to a string and would silently collide a numeric page-fallback
-  // pageId with a same-looking slide id (or lose the numeric/string type
-  // distinction the exported JSON needs); pageIdFor() below resolves the
-  // real pageId fresh from the DOM only at render/export time. ----
-  var annotations = {}
-  var annotateList = document.getElementById('pf-annotate-list')
-  var annotateInput = document.getElementById('pf-annotate-input')
-  var annotateLabel = document.getElementById('pf-annotate-current-label')
-  var annotateAdd = document.getElementById('pf-annotate-add')
-  var exportBtn = document.getElementById('pf-export-btn')
-
-  // Slide id when the active slide has one, else its 1-based page number —
-  // mirrors AuditFinding.page's own "1-based page number when there is no
-  // slide id" convention (../svg/audit/deck-audit.ts) rather than this
-  // file's internal 0-based data-index, so a revision-request.json's
-  // pageId lines up with what pptfast audit/validate already print.
-  function pageIdFor(i) {
-    var el = slideEl(i)
-    var id = el ? el.getAttribute('data-id') : null
-    return id !== null ? id : thumbPos(i) + 1
-  }
-
-  function renderAnnotations() {
-    var pid = pageIdFor(current)
-    annotateLabel.textContent = 'page ' + (thumbPos(current) + 1) + (typeof pid === 'string' ? ' · ' + pid : '')
-    var list = annotations[current] || []
-    annotateList.innerHTML = ''
-    list.forEach(function (text, idx) {
-      var li = document.createElement('li')
-      li.className = 'pf-annotate-item'
-      var span = document.createElement('span')
-      span.textContent = text
-      var rm = document.createElement('button')
-      rm.type = 'button'
-      rm.className = 'pf-annotate-remove'
-      rm.setAttribute('aria-label', 'remove annotation')
-      rm.textContent = '\\u00d7'
-      rm.addEventListener('click', function () {
-        list.splice(idx, 1)
-        renderAnnotations()
-      })
-      li.appendChild(span)
-      li.appendChild(rm)
-      annotateList.appendChild(li)
-    })
-  }
-
-  annotateAdd.addEventListener('click', function () {
-    var text = annotateInput.value.trim()
-    if (!text) return
-    if (!annotations[current]) annotations[current] = []
-    annotations[current].push(text)
-    annotateInput.value = ''
-    renderAnnotations()
-  })
-
-  // "Export revision requests": preview.html stays read-only end to end —
-  // this never writes back into the deck itself, only produces a JSON file
-  // of requests for an agent/human to route through pages/*.json (see
-  // skills/pptfast/SKILL.md's phase-6 revision-request handling). Zero
-  // network/storage — an in-memory Blob + a synthetic <a download> click,
-  // the standard browser-only download pattern.
-  // pptfast serve (src/cli/serve.ts) depends on this function's
-  // callable-and-synchronous contract and return type — think before
-  // changing.
-  function buildExportBlob() {
-    var requests = []
-    Object.keys(annotations).forEach(function (key) {
-      var i = parseInt(key, 10)
-      var pid = pageIdFor(i)
-      annotations[i].forEach(function (text) {
-        requests.push({ pageId: pid, annotation: text, createdAt: new Date().toISOString() })
+  // Light/dark surround. A deck is judged on color and weight, and the
+  // surround it sits on changes both — a dark theme reads muddy on a light
+  // page and vice versa, so the reviewer picks rather than the page deciding.
+  var seg = document.getElementById('pf-surround')
+  if (seg) {
+    seg.addEventListener('click', function (e) {
+      var btn = e.target.closest('button')
+      if (!btn) return
+      document.body.setAttribute('data-surround', btn.getAttribute('data-surround'))
+      Array.prototype.slice.call(seg.children).forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b === btn))
       })
     })
-    var deckTitle = document.getElementById('pf-title').textContent
-    var payload = { version: '1', deck: deckTitle, requests: requests }
-    return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   }
-  // The one sanctioned cross-module seam this file exposes (see this
-  // module's own doc comment) — a plain function reference, not data, so
-  // the caller always gets this build's live annotation state, never a
-  // stale snapshot.
-  window.__pptfastBuildExportBlob = buildExportBlob
-
-  exportBtn.addEventListener('click', function () {
-    var blob = buildExportBlob()
-    var url = URL.createObjectURL(blob)
-    var a = document.createElement('a')
-    a.href = url
-    a.download = 'revision-request.json'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  })
-
-  renderAnnotations()
 })()
 `.trim()
 
-/** Always-present "Annotations" side panel — static markup, no per-build
- *  data (the annotation list itself lives only in `<script>`'s in-memory
- *  `annotations` state, populated and re-rendered at runtime, see `JS`
- *  above's `renderAnnotations()`). Unlike the audit findings panel, this one
- *  is never conditionally omitted — annotating is available regardless of
- *  whether the audit ran, found anything, or was skipped for placeholders. */
-const ANNOTATE_PANEL = `<section id="pf-annotate-panel">
-<h2>Annotations</h2>
-<div id="pf-annotate-current-label"></div>
-<ul id="pf-annotate-list"></ul>
-<textarea id="pf-annotate-input" rows="3" placeholder="Add a note for this page…"></textarea>
-<button type="button" id="pf-annotate-add">Add annotation</button>
-</section>`
 
 /**
  * Build the self-contained `preview.html` bundle. Pure — no `fs`, safe to
@@ -592,8 +519,13 @@ export function buildPreviewHtml(input: PreviewHtmlInput): string {
   // for a `pixels: "not-requested"` report.
   const checksLine =
     checks !== undefined
-      ? `<div id="pf-audit-checks">audit checks: svg ${checks.svg} · pixels ${checks.pixels}</div>`
+      ? `<span id="pf-audit-checks">audit: svg ${checks.svg} · pixels ${checks.pixels}</span>`
       : ""
+
+  // The findings rail only exists when there is something in it. An empty
+  // panel used to sit there taking a quarter of the width on every clean
+  // deck, which is most of them.
+  const sideHtml = auditPanel ? `<aside id="pf-side">${auditPanel}</aside>` : ""
 
   return `<!doctype html>
 <html lang="en">
@@ -603,14 +535,19 @@ export function buildPreviewHtml(input: PreviewHtmlInput): string {
 <title>${escapedTitle} — pptfast preview</title>
 <style>${CSS}</style>
 </head>
-<body>
+<body data-surround="light">
 <header>
 <span id="pf-title">${escapedTitle}</span>
 <span id="pf-counter">${initialCounter}</span>
+<span class="pf-spacer"></span>
 ${auditNoteHtml}
-<button type="button" id="pf-export-btn">Export revision requests</button>
+${checksLine}
+<div class="pf-seg" id="pf-surround" role="group" aria-label="surround">
+<button type="button" data-surround="light" aria-pressed="true">Light</button>
+<button type="button" data-surround="dark" aria-pressed="false">Dark</button>
+</div>
 </header>
-<div id="pf-stage-wrap"><div id="pf-stage">${stageSlide}</div><aside id="pf-side">${checksLine}${auditPanel}${ANNOTATE_PANEL}</aside></div>
+<div id="pf-stage-wrap"><div id="pf-stage">${stageSlide}</div>${sideHtml}</div>
 <nav id="pf-filmstrip" aria-label="slides">${thumbs}</nav>
 ${findingsDataScript}
 <script>${JS}</script>

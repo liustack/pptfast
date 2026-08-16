@@ -304,53 +304,63 @@ describe("buildPreviewHtml — audit checks summary (notes+preview wave, task 2)
 })
 
 describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)", () => {
-  it("always renders the annotation UI (textarea, add button, per-page list) regardless of findings", () => {
-    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
-    expect(html).toContain('id="pf-annotate-panel"')
-    expect(html).toContain('id="pf-annotate-input"')
-    expect(html).toContain('id="pf-annotate-add"')
-    expect(html).toContain('id="pf-annotate-list"')
-  })
-
-  it("always renders the 'Export revision requests' button", () => {
-    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
-    expect(html).toContain('id="pf-export-btn"')
-    expect(html).toContain("Export revision requests")
-  })
-
-  it("includes the annotation add/remove JS and the export button's revision-request JSON shape", () => {
-    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
-    // add/remove wiring
-    expect(html).toContain("annotateAdd.addEventListener")
-    expect(html).toContain("renderAnnotations()")
-    // pageId resolution: slide id when present, else 1-based page number —
-    // matches AuditFinding.page's own convention (see the JS's own comment).
-    expect(html).toContain("function pageIdFor(i)")
-    // the exported payload's shape, asserted at the source-text level (this
-    // file's existing tests are all string-level, not jsdom-executed) —
-    // `{ version: "1", deck: <filename/title>, requests: [{ pageId,
-    // annotation, createdAt }] }` per the plan's spec.
-    expect(html).toContain("version: '1'")
-    expect(html).toContain("deck: deckTitle")
-    expect(html).toContain("pageId: pid, annotation: text, createdAt: new Date().toISOString()")
-    // zero-network, zero-storage download — a Blob + a synthetic <a download>
-    // click, never fetch/XMLHttpRequest/a form submission.
-    expect(html).toContain("new Blob(")
-    expect(html).toContain("URL.createObjectURL(blob)")
-    expect(html).toContain('a.download = \'revision-request.json\'')
-    // The explicit seam `pptfast serve`'s injected client calls
-    // (src/cli/serve.ts) — pinned by name so a drift between the assignment
-    // here and the consumption there fails a test instead of only a browser.
-    expect(html).toContain("window.__pptfastBuildExportBlob = buildExportBlob")
-    expect(html).not.toMatch(/\bfetch\(/)
-    expect(html).not.toContain("XMLHttpRequest")
-  })
-
+  
+  
+  
   it("self-containment: the annotation/export JS introduces no external reference either", () => {
     const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
     const KNOWN_NAMESPACE_URIS = new Set(["http://www.w3.org/2000/svg"])
     const matches = html.match(/https?:\/\/[^\s"'<>)]+/g) ?? []
     const unexpected = matches.filter((m) => !KNOWN_NAMESPACE_URIS.has(m))
     expect(unexpected).toEqual([])
+  })
+  it("carries no annotation or revision-request UI at all", () => {
+    // Deliberately removed 2026-08-16. The preview's job is to show the
+    // deck; a reviewer who spots something screenshots it and says so to the
+    // agent, which is faster than typing into a panel that then has to be
+    // exported and re-read. Pinned as an absence so it cannot creep back in
+    // as a half-feature.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+      findings: [{ page: 1, code: "overflow", message: "m" }],
+    })
+    for (const gone of [
+      "pf-annotate",
+      "pf-export-btn",
+      "Export revision requests",
+      "Add annotation",
+      "revision-request",
+    ]) {
+      expect(html).not.toContain(gone)
+    }
+  })
+
+  it("offers a light/dark surround, because the surround changes how a theme reads", () => {
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+    })
+    expect(html).toContain('id="pf-surround"')
+    expect(html).toContain('data-surround="dark"')
+    expect(html).toContain('<body data-surround="light">')
+  })
+
+  it("omits the findings rail entirely when the deck audits clean", () => {
+    // An empty panel used to occupy a quarter of the width on every clean
+    // deck, which is most of them.
+    const clean = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+      findings: [],
+    })
+    expect(clean).not.toContain('id="pf-side"')
+
+    const dirty = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+      findings: [{ page: 1, code: "overflow", message: "m" }],
+    })
+    expect(dirty).toContain('id="pf-side"')
   })
 })
