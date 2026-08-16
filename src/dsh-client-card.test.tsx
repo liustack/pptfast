@@ -326,6 +326,59 @@ describe("dsh preview card — the viewer", () => {
     expect(viewer(container)).toBeNull()
   })
 
+  it("closes on a click on any dark surface, including the button row's own", () => {
+    // Every black area in the viewer dismisses it — except, before this,
+    // the band the buttons sit in, which looks exactly like the rest of the
+    // backdrop and is nearly a thousand pixels wide.
+    const { container } = openViewer()
+    const row = screen.getByText("Close").parentElement as HTMLElement
+    expect(row).toBeTruthy()
+
+    fireEvent.click(row)
+    expect(viewer(container)).toBeNull()
+  })
+
+  it("gives the viewer's buttons a hover state, which inline styles cannot", () => {
+    // A solid white button that does not answer the pointer reads as broken
+    // before it reads as plain, and `:hover` is unreachable from the inline
+    // styles the rest of this card is built from.
+    const { container } = openViewer()
+    const sheets = document.querySelectorAll("#pptfast-modal-style")
+    expect(sheets).toHaveLength(1)
+    const css = sheets[0]!.textContent ?? ""
+    expect(css).toContain(".pf-mbtn:hover")
+    expect(css).toContain(".pf-mbtn-primary:hover")
+
+    const close = screen.getByText("Close")
+    expect(close.className).toBe("pf-mbtn")
+    // The card carries a download button too, so reach the viewer's through
+    // the row it shares with Close rather than by its label.
+    const row = close.parentElement as HTMLElement
+    const download = row.querySelector(".pf-mbtn-primary") as HTMLElement
+    expect(download?.textContent).toBe("Download .pptx")
+
+    // The part a passing className does not prove, and the reason the first
+    // version of this shipped broken: an element's own `style` attribute
+    // outranks any sheet, so a `background` or `border` left inline wins
+    // every hover. The transition still runs, so it looks wired up while the
+    // colour never moves. Both buttons must take their whole appearance from
+    // the sheet, or the rules above are decoration.
+    for (const btn of [close, download]) {
+      expect(btn.style.background).toBe("")
+      expect(btn.style.backgroundColor).toBe("")
+      expect(btn.style.border).toBe("")
+      expect(btn.style.borderColor).toBe("")
+    }
+    expect(css).toContain("background:#fff")
+    expect(css).toContain("background:transparent")
+
+    // Opening a second viewer must not stack a second copy in the head.
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(viewer(container)).toBeNull()
+    fireEvent.click(screen.getByText("Open"))
+    expect(document.querySelectorAll("#pptfast-modal-style")).toHaveLength(1)
+  })
+
   it("stays closed once it is closed", () => {
     const { container } = openViewer()
     fireEvent.keyDown(document, { key: "Escape" })

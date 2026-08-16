@@ -166,6 +166,48 @@ window.__ModuleLoader__.load({
         stage: 'var(--dsw-alias-fill-quaternary, rgba(127,127,127,0.12))',
       }
 
+      /**
+       * The viewer's own two buttons, styled in a sheet rather than inline.
+       *
+       * Everything else in this file styles elements directly, which is fine
+       * until a button has to answer the pointer: a solid white button that
+       * does not change under the cursor reads as broken before it reads as
+       * plain, and `:hover` cannot be written inline at all.
+       *
+       * The colours have to live here too, not just the hover rules. An
+       * element's own `style` attribute outranks any sheet, so leaving
+       * `background` and `border` inline lets them win every hover — the
+       * transition still runs, which is what makes the result look wired up
+       * while the colour never moves. The alternative is `!important` on four
+       * declarations, which is the same bug with an override on top.
+       *
+       * Sized against the harness's chrome rather than the card's: these sit
+       * over a full-screen view, so at the card's 13px/23px they read as
+       * smaller than the controls they are covering. Solid marks the errand —
+       * taking the deck away is why the row exists — and the outline marks
+       * the exit.
+       */
+      var MODAL_STYLE_ID = 'pptfast-modal-style'
+      var MODAL_BTN_BASE =
+        'font:inherit;font-size:13px;padding:7px 16px;border-radius:8px;cursor:pointer;'
+      function ensureModalStyles() {
+        if (document.getElementById(MODAL_STYLE_ID)) return
+        var el = document.createElement('style')
+        el.id = MODAL_STYLE_ID
+        el.textContent =
+          '.pf-mbtn{' +
+          MODAL_BTN_BASE +
+          'border:1px solid rgba(255,255,255,0.5);background:transparent;color:#fff;' +
+          'transition:background-color .12s,border-color .12s}' +
+          '.pf-mbtn:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.8)}' +
+          '.pf-mbtn-primary{' +
+          MODAL_BTN_BASE +
+          'font-weight:600;border:1px solid transparent;background:#fff;color:#111;' +
+          'transition:background-color .12s}' +
+          '.pf-mbtn-primary:hover{background:#e2e2e2}'
+        document.head.appendChild(el)
+      }
+
       /** One slide, mounted as real SVG so it scales with its box. */
       function Slide(props) {
         var ref = react.useRef(null)
@@ -235,6 +277,7 @@ window.__ModuleLoader__.load({
 
         useEffect(
           function () {
+            ensureModalStyles()
             function onKey(e) {
               if (e.key === 'Escape') props.onClose()
             }
@@ -272,50 +315,96 @@ window.__ModuleLoader__.load({
               position: 'fixed',
               inset: 0,
               zIndex: 9999,
-              background: 'rgba(0,0,0,0.8)',
+              // Opaque, not the usual translucent backdrop. This covers the
+              // whole viewport with a document, so there is nothing behind it
+              // worth a glimpse of — and a glimpse is all a translucent one
+              // gives. At 0.8 the harness's own composer stayed legible right
+              // under this modal's buttons and the eye read the two as one
+              // strip of controls; at 0.94 its title bar and its `Session
+              // log` pill still ghosted through at 6% white, the pill landing
+              // 14px outside the edge these buttons are aligned to.
+              background: '#000',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 12,
               padding: 24,
             },
             onClick: function (e) {
               if (e.target === e.currentTarget) props.onClose()
             },
           },
-          h('iframe', {
-            ref: frameRef,
-            src: props.src,
-            title: 'pptfast deck preview',
-            style: {
-              // Takes the whole dialog and lets the page inside do its own
-              // layout. Its stage carries `aspect-ratio: 16/9` and sizes
-              // itself off the viewport it is handed, so the slide keeps its
-              // shape at any frame size. Pinning the *frame* to 16:9 instead
-              // would have to reserve room for that page's header and
-              // filmstrip, and every guess at how much is wrong the moment
-              // either one changes height.
-              flex: '1 1 auto',
-              width: 'min(100%, 1600px)',
-              minHeight: 0,
-              border: 0,
-              borderRadius: 8,
-              background: COLORS.stage,
-            },
-          }),
           h(
             'div',
-            { style: { display: 'flex', alignItems: 'center', gap: 14, flex: '0 0 auto' } },
-            props.previewId
-              ? h(ExportButton, {
-                  previewId: props.previewId,
-                  name: props.name,
-                  draft: props.draft,
-                  style: modalBtn(false),
-                })
-              : null,
-            h('button', { onClick: props.onClose, style: modalBtn(false) }, 'Close'),
+            {
+              style: {
+                width: 'min(100%, 1600px)',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+              },
+              onClick: function (e) {
+                if (e.target === e.currentTarget) props.onClose()
+              },
+            },
+            // Above the frame, not below it. Below, this row lands in the
+            // strip of backdrop the harness's own input area occupies, and
+            // whatever the backdrop lets through sits on the same baseline.
+            h(
+              'div',
+              {
+                style: {
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  flex: '0 0 auto',
+                  // Lines this row's right edge up with the Light/Dark toggle
+                  // in the previewed page's own header, which sits one row
+                  // below it. That page's own `header` rule reserves the same
+                  // inset (`padding:11px 18px`, preview-html.ts); without
+                  // matching it, two right-aligned rows 14px apart miss each
+                  // other by just enough to look like a mistake, not a choice.
+                  paddingRight: 18,
+                },
+                onClick: function (e) {
+                  if (e.target === e.currentTarget) props.onClose()
+                },
+              },
+              props.previewId
+                ? h(ExportButton, {
+                    previewId: props.previewId,
+                    name: props.name,
+                    draft: props.draft,
+                    className: 'pf-mbtn-primary',
+                  })
+                : null,
+              h(
+                'button',
+                { onClick: props.onClose, className: 'pf-mbtn' },
+                'Close',
+              ),
+            ),
+            h('iframe', {
+              ref: frameRef,
+              src: props.src,
+              title: 'pptfast deck preview',
+              style: {
+                // Takes the rest of the dialog and lets the page inside do its
+                // own layout. Its stage carries `aspect-ratio: 16/9` and sizes
+                // itself off the viewport it is handed, so the slide keeps its
+                // shape at any frame size. Pinning the *frame* to 16:9 instead
+                // would have to reserve room for that page's header and
+                // filmstrip, and every guess at how much is wrong the moment
+                // either one changes height.
+                flex: '1 1 auto',
+                width: '100%',
+                minHeight: 0,
+                border: 0,
+                borderRadius: 8,
+                background: COLORS.stage,
+              },
+            }),
           ),
         )
       }
@@ -368,6 +457,7 @@ window.__ModuleLoader__.load({
           'button',
           {
             onClick: save,
+            className: props.className,
             style: props.style,
             title:
               status === 'gone'
@@ -378,20 +468,6 @@ window.__ModuleLoader__.load({
           },
           status === 'busy' ? 'Saving…' : status === 'gone' ? 'Expired' : 'Download .pptx',
         )
-      }
-
-      function modalBtn(disabled) {
-        return {
-          font: 'inherit',
-          fontSize: 13,
-          padding: '4px 12px',
-          borderRadius: 7,
-          border: '1px solid rgba(255,255,255,0.35)',
-          background: 'transparent',
-          color: '#fff',
-          cursor: disabled ? 'default' : 'pointer',
-          opacity: disabled ? 0.4 : 1,
-        }
       }
 
       /** The card itself: a strip of thumbnails, and a button that opens the viewer. */
