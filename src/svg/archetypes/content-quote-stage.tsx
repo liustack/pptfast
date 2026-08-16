@@ -4,6 +4,7 @@ import type { ContentRect } from "../layout"
 import { SvgContent } from "../svg-content"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * quote-stage content archetype（quote-stage 波，Task T2 ——
@@ -81,7 +82,7 @@ const BODY_RECT_MAX_Y = 528
 // straight through that rule and into the footer's own text row — the
 // visual review caught it in Chinese and mixed-script, where the taller ink
 // made the collision unmistakable.
-const FOOTNOTE_Y = 644
+const FOOTNOTE_Y = FOOTNOTE_BASELINE_Y
 
 export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx

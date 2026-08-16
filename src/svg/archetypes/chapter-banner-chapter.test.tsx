@@ -48,7 +48,7 @@ const ir = (theme: string): PptxIR =>
 // for these exact fixtures before templates/ was deleted — see P2 Task 26
 // dependency-break note (same pattern as cover-banner-title.test.tsx).
 const LEGACY_CHAPTER1_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">01</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第一章：市场洞察</text><line x1="560" y1="452" x2="720" y2="452" stroke="#FFC72C" stroke-width="1.6" opacity="0.6"></line>`
-const LEGACY_CHAPTER2_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第二章：战略选择与路径</text><text x="640" y="460" font-family="Georgia, Songti SC, STSong, serif" font-size="36" fill="#FFFFFF" opacity="0.7" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的三个决定</text><line x1="560" y1="452" x2="720" y2="452" stroke="#FFC72C" stroke-width="1.6" opacity="0.6"></line>`
+const LEGACY_CHAPTER2_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第二章：战略选择与路径</text><text x="640" y="460" font-family="Georgia, Songti SC, STSong, serif" font-size="36" fill="#FFFFFF" opacity="0.7" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的三个决定</text><line x1="560" y1="490" x2="720" y2="490" stroke="#FFC72C" stroke-width="1.6" opacity="0.6"></line>`
 
 describe("BannerChapter", () => {
   it("consulting tokens 下与旧 MckinseyNavyChapter 输出逐字节一致（档位一，含多 chapter 序号）", () => {
@@ -69,7 +69,7 @@ describe("BannerChapter", () => {
   // headingY/subheadingY/hairlineY 的三个固定基线值。上面的逐字节测试已经
   // 隐含验证了这些数字（字面量里就是 404/460/452），这里显式断言，避免
   // 「值虽正确但没有可读断言」。
-  it("单行标题时 heading/subheading/hairline 落在固定基线 y=404/460/452 上", () => {
+  it("单行标题时 heading/subheading 落在固定基线 y=404/460，hairline 落在副标题之下", () => {
     const ctx = chapterCtx("consulting")
     const deck = ir("consulting")
     const markup = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)
@@ -83,9 +83,18 @@ describe("BannerChapter", () => {
       (t.textContent ?? "").includes("面向 2027 的三个决定"),
     )!
     expect(subheadingText.getAttribute("y")).toBe("460")
+    // The hairline used to be pinned at 452 — 8px *above* the subheading's
+    // own baseline of 460, so a 160px accent rule ran through the middle of
+    // that text and read as a strikethrough (visual review 2026-08-16:
+    // "客户洞察怎么画了个黄色删除线"). It only ever looked right on the
+    // subheading-less case it was measured against, which is why the number
+    // survived this long. It now sits below whatever the block ends with.
     const hairline = root.querySelector("line")!
-    expect(hairline.getAttribute("y1")).toBe("452")
-    expect(hairline.getAttribute("y2")).toBe("452")
+    expect(hairline.getAttribute("y1")).toBe("490")
+    expect(hairline.getAttribute("y1")).toBe(hairline.getAttribute("y2"))
+    expect(Number(hairline.getAttribute("y1"))).toBeGreaterThan(
+      Number(subheadingText.getAttribute("y")),
+    )
   })
 
   // 回填旧测试「Chapter shrinks a pathologically long heading onto <=2 lines

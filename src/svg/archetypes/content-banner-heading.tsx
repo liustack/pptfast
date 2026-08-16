@@ -7,6 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * banner-heading content archetype（spec §3.2，Wave 3 Task 19）：consulting
@@ -67,7 +68,6 @@ const BANNER_TITLE_X = 120
 // matching the spec's fixed reference point, while staying proportional if
 // the heading shrinks toward its 22px floor on pathologically long titles.
 const BANNER_BASELINE_FUDGE_RATIO = 0.32
-const SOURCE_LINE_Y = 648
 const CONTENT_RECT_BOTTOM = 620
 
 // Kicker (section-name label) sits above the banner, fully inside
@@ -234,7 +234,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={BANNER_X}
-          y={SOURCE_LINE_Y + 28}
+          y={FOOTNOTE_BASELINE_Y}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

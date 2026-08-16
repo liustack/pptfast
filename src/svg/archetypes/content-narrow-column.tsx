@@ -6,6 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * narrow-column content archetype（spec §3.2，Wave 3 Task 17）：trades the
@@ -205,7 +206,7 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x="96"
-          y="652"
+          y={FOOTNOTE_BASELINE_Y}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

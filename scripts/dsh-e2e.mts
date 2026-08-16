@@ -125,8 +125,20 @@ export async function verifyInstalledDshRegistration(
     throw new Error("The installed pptfast DSH plugin did not register exactly one pptfast skill")
   }
   const registration = registrations[0]
-  if (typeof registration.content !== "string" || !registration.content.includes(installed.cliPath)) {
-    throw new Error("The installed pptfast skill does not point at its packaged CLI")
+  // Compared on the resolved real path, not the path the profile happens to
+  // reach the package by. Under a `link:` install — how a local checkout is
+  // tried out in a real DSH profile — `node_modules/@liustack/pptfast` is a
+  // symlink, and the plugin computes its own CLI path from `import.meta.url`,
+  // which resolves it. The two strings then differ while naming the same
+  // file, and this check failed every link install. A gate that cries wolf
+  // on the one workflow it is most needed for is worse than no gate.
+  const expectedCliPath = await realpath(installed.cliPath)
+  const cliPathInSkill =
+    registration.content.includes(installed.cliPath) || registration.content.includes(expectedCliPath)
+  if (typeof registration.content !== "string" || !cliPathInSkill) {
+    throw new Error(
+      `The installed pptfast skill does not point at its packaged CLI (expected ${installed.cliPath} or its real path ${expectedCliPath})`,
+    )
   }
   return registration
 }

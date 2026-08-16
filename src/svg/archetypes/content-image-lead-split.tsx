@@ -11,6 +11,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * image-lead-split content archetype (content-archetype expansion wave, task
@@ -383,7 +384,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={TEXT_X}
-          y={652}
+          y={FOOTNOTE_BASELINE_Y}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

@@ -245,6 +245,11 @@ kbd {
   cursor: default;
 }
 .flag.sev { color: var(--rework); border-color: var(--rework); }
+/* A verdict recorded against a version of the page that no longer exists.
+   Verdicts persist across runs by design; this is what keeps a fixed page's
+   old judgement from reading as a live one. */
+.flag.stale { color: var(--limit); border-color: var(--limit); }
+.card.is-stale .stage { opacity: 0.55; }
 .findings-list { margin: 0; padding: 0 0 0 16px; font-size: 12px; color: var(--ink-dim); max-height: 84px; overflow-y: auto; }
 .findings-list li { margin: 2px 0; }
 .viewer-bar .findings-list { flex: 1 1 260px; }
@@ -283,6 +288,7 @@ kbd {
     <option value="all">全部页面</option>
     <option value="any">机器有发现</option>
     <option value="clean">机器无发现</option>
+    <option value="stale">结论已过期</option>
   </select>
 
   <input type="search" id="search" placeholder="搜标题或 id" aria-label="搜索">
@@ -301,7 +307,7 @@ kbd {
     <button data-surround="dark" aria-pressed="false">深</button>
   </div>
 
-  <button class="btn primary" id="export">导出 verdicts.json</button>
+  <button class="btn primary" id="export">复制结论</button>
 </header>
 
 <main id="main"><p class="booting">正在装入 ${manifest.pages.length} 页……<br><small>整页自包含，所有幻灯片都在这个文件里，首次装入约需几秒。</small></p></main>
@@ -373,17 +379,33 @@ kbd {
 
   const entry = (id) => verdicts[id] || (verdicts[id] = {});
 
+  // Every write stamps the page's current fingerprint. That is what makes a
+  // later run able to say "this judgement was made about a page that has
+  // since changed" instead of presenting it as current.
+  const pageById = new Map(MANIFEST.pages.map((p) => [p.id, p]));
+  const stampHash = (id, e) => {
+    const page = pageById.get(id);
+    if (page) e.hash = page.hash;
+  };
+  const isStale = (id) => {
+    const e = verdicts[id];
+    const page = pageById.get(id);
+    return Boolean(e && e.hash && page && page.hash && e.hash !== page.hash);
+  };
+
   function setVerdict(id, value) {
     const e = entry(id);
     e.verdict = e.verdict === value ? undefined : value;
+    stampHash(id, e);
     if (!e.verdict && !e.note) delete verdicts[id];
     save(); refreshCard(id); refreshTally();
   }
   function setNote(id, text) {
     const e = entry(id);
     e.note = text || undefined;
+    stampHash(id, e);
     if (!e.verdict && !e.note) delete verdicts[id];
-    save(); refreshTally();
+    save(); refreshCard(id); refreshTally();
   }
 
   // ── svg mounting ───────────────────────────────────────────────────────
@@ -472,14 +494,19 @@ kbd {
     // re-deriving them by eye. Placed under the verdict row so they inform
     // the judgement without pre-empting it.
     const flags = summarizeFindings(p.findings);
+    if (isStale(p.id)) {
+      flags.unshift({ code: "stale", label: "结论已过期", severe: false, stale: true });
+    }
     if (flags.length > 0) {
       const row = document.createElement("div");
       row.className = "flags";
       for (const f of flags) {
         const chip = document.createElement("span");
-        chip.className = "flag" + (f.severe ? " sev" : "");
+        chip.className = "flag" + (f.severe ? " sev" : "") + (f.stale ? " stale" : "");
         chip.textContent = f.label;
-        chip.title = (p.findings || []).filter((x) => x.code === f.code).map((x) => x.message).join("\\n");
+        chip.title = f.stale
+          ? "这条结论是对这一页的旧版本做出的，那一版已经不存在了 — 重新看一眼再决定"
+          : (p.findings || []).filter((x) => x.code === f.code).map((x) => x.message).join("\\n");
         row.appendChild(chip);
       }
       card.insertBefore(row, note);
@@ -493,6 +520,7 @@ kbd {
     const c = cards.get(id);
     if (!c) return;
     const v = (verdicts[id] || {}).verdict;
+    c.card.classList.toggle("is-stale", isStale(id));
     c.card.classList.toggle("is-pass", v === "pass");
     c.card.classList.toggle("is-limit", v === "limit");
     c.card.classList.toggle("is-rework", v === "rework");
@@ -549,7 +577,9 @@ kbd {
       const v = (verdicts[p.id] || {}).verdict;
       if (state.verdict === "none" ? Boolean(v) : v !== state.verdict) return false;
     }
-    if (state.finding !== "all") {
+    if (state.finding === "stale") {
+      if (!isStale(p.id)) return false;
+    } else if (state.finding !== "all") {
       const has = (p.findings || []).length > 0;
       if (state.finding === "any" ? !has : has) return false;
     }
@@ -693,13 +723,16 @@ kbd {
     searchTimer = setTimeout(() => { state.query = value; render(); }, 160);
   });
 
-  document.getElementById("export").addEventListener("click", () => {
+  // Copy, not download. The judgements exist to be handed to an agent, and
+  // a file on disk has to be found and attached before that can happen —
+  // whereas a clipboard paste goes straight into the conversation. The
+  // 2026-08-16 round was handed over by pasting, which is what prompted this.
+  document.getElementById("export").addEventListener("click", async () => {
+    const btn = document.getElementById("export");
     const payload = {
-      schema: "pptfast-gallery-verdicts/1",
-      manifestVersion: MANIFEST.manifestVersion,
+      schema: "pptfast-gallery-verdicts/2",
       pptfastVersion: MANIFEST.pptfastVersion,
       renderedAt: MANIFEST.generatedAt,
-      exportedAt: new Date().toISOString(),
       total: MANIFEST.pages.length,
       verdicts: MANIFEST.pages
         .filter((p) => verdicts[p.id] && (verdicts[p.id].verdict || verdicts[p.id].note))
@@ -713,17 +746,45 @@ kbd {
           verdict: verdicts[p.id].verdict || null,
           note: verdicts[p.id].note || null,
           findings: (p.findings || []).map((f) => f.code),
+          // Set when this judgement was made about a version of the page
+          // that no longer exists. A reader acting on it would be fixing
+          // something already fixed, so it says so rather than staying
+          // indistinguishable from a live verdict.
+          ...(isStale(p.id) ? { stale: true } : {}),
         })),
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "verdicts.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const text = JSON.stringify(payload, null, 2);
+
+    const flash = (msg) => {
+      const original = btn.textContent;
+      btn.textContent = msg;
+      setTimeout(() => { btn.textContent = original; }, 1600);
+    };
+
+    try {
+      await navigator.clipboard.writeText(text);
+      const n = payload.verdicts.length;
+      const stale = payload.verdicts.filter((v) => v.stale).length;
+      flash(stale > 0 ? "已复制 " + n + " 条（" + stale + " 条已过期）" : "已复制 " + n + " 条");
+      return;
+    } catch (_) {
+      // Clipboard API unavailable or permission-denied (some browsers gate
+      // it on file:// despite it being a secure context). Fall through.
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;top:-1000px;left:-1000px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      flash(ok ? "已复制 " + payload.verdicts.length + " 条" : "复制失败，见控制台");
+      if (!ok) console.log(text);
+    } catch (_) {
+      flash("复制失败，见控制台");
+      console.log(text);
+    }
   });
 
   render();

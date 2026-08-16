@@ -242,7 +242,7 @@ describe("StackedPosterContent", () => {
     const { markup: posterOut, root: posterRoot } = render(
       <StackedPosterContent ir={ir("insight", [posterFootnoteSlide])} slide={posterFootnoteSlide} index={0} ctx={ctx} />,
     )
-    const posterFootnote = posterRoot.querySelector("text[y='656']")!
+    const posterFootnote = posterRoot.querySelector("text[y='648']")!
     expect(posterFootnote.getAttribute("fill")).toBe(ctx.colors.muted)
     expect(posterOut).not.toContain("#666670")
 
@@ -319,7 +319,7 @@ describe("StackedPosterContent", () => {
     expect(box.x).toBeGreaterThanOrEqual(54)
   })
 
-  it("1 component + footnote: hero rect shrinks to bottom=600, leaving room above the y=656 footnote", () => {
+  it("1 component + footnote: hero rect shrinks to bottom=600, leaving room above the y=648 footnote", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = { ...oneComponentSlide, footnote: "数据来源：内部审计" } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
@@ -333,7 +333,7 @@ describe("StackedPosterContent", () => {
     const footnote = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("数据来源"),
     )!
-    expect(footnote.getAttribute("y")).toBe("656")
+    expect(footnote.getAttribute("y")).toBe("648")
   })
 
   it("2 components + footnote: strip bottom shrinks to 600 while the hero/divider split (520) stays put", () => {

@@ -3,6 +3,7 @@ import type { ComponentCtx } from "./components/types"
 import { CONF_LABEL } from "../lib/conf-labels"
 import { resolveBrand } from "../themes/definitions"
 import { cachedDeckSeed, pickBySeed } from "./variety"
+import { FOOTER_DIVIDER_Y } from "./chrome-geometry"
 
 /**
  * Shared footer/logo chrome as an SVG fragment. Ported from MasterFrame so the
@@ -85,7 +86,7 @@ export function BrandChrome({
           {/* 分隔线可被 theme 的 brand.suppressFooterRule 抑制（主题自带
               版框线时避免双线，ink 先例，2026-07-10 用户裁决） */}
           {!brandConfig.suppressFooterRule && (
-            <line x1="56" y1="664" x2="1224" y2="664" stroke={border} strokeWidth="1.2" />
+            <line x1="56" y1={FOOTER_DIVIDER_Y} x2="1224" y2={FOOTER_DIVIDER_Y} stroke={border} strokeWidth="1.2" />
           )}
           {/* meta 两端排布（2026-07-10 用户裁决：时间居中而右侧空很奇怪）：
               org 组与 date 组各占一端，左右归属随 deck seed 交换（多样性——

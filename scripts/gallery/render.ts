@@ -48,6 +48,19 @@ export interface ManifestPage {
    * notes the auditor could have supplied verbatim.
    */
   readonly findings?: readonly { code: string; message: string }[]
+  /**
+   * Fingerprint of this page's rendered markup.
+   *
+   * Verdicts are keyed by page id and persist across runs, which is what
+   * lets a review span several sittings. The cost is that a page whose
+   * defect has since been fixed keeps its old "rework" and its old note,
+   * and nothing said so — the 2026-08-16 round handed back eight verdicts
+   * describing bugs that had already been fixed, and reading them cost a
+   * full round of re-diagnosis before the pages themselves were checked.
+   * Comparing this against the hash recorded alongside the verdict is what
+   * tells a live judgement from a stale one.
+   */
+  readonly hash: string
 }
 
 export interface ManifestTable {
@@ -88,6 +101,16 @@ export interface RenderResult {
   readonly svgs: ReadonlyMap<string, string>
 }
 
+/** Small, stable, non-cryptographic fingerprint — this detects change, not tampering. */
+function fingerprint(markup: string): string {
+  let h = 2166136261
+  for (let i = 0; i < markup.length; i++) {
+    h ^= markup.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0).toString(36)
+}
+
 export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersion: string): RenderResult {
   const pagesDir = join(outDir, "pages")
   mkdirSync(pagesDir, { recursive: true })
@@ -98,7 +121,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
   const auditErrors: string[] = []
 
   for (const job of jobs) {
-    const base: Omit<ManifestPage, "file" | "skipped"> = {
+    const base: Omit<ManifestPage, "file" | "skipped" | "hash"> = {
       id: job.id,
       table: job.table,
       subject: job.subject,
@@ -118,7 +141,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     // as if it were a legitimate render.
     const v = validateIr(job.ir)
     if (!v.ok) {
-      pages.push({ ...base, skipped: `IR rejected: ${v.errors.map((e) => `${e.path}: ${e.message}`).join("; ")}` })
+      pages.push({ ...base, hash: "", skipped: `IR rejected: ${v.errors.map((e) => `${e.path}: ${e.message}`).join("; ")}` })
       continue
     }
 
@@ -126,7 +149,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     try {
       svg = renderSlideSvg(v.ir!, job.slideIndex)
     } catch (error) {
-      pages.push({ ...base, skipped: `render threw: ${error instanceof Error ? error.message : String(error)}` })
+      pages.push({ ...base, hash: "", skipped: `render threw: ${error instanceof Error ? error.message : String(error)}` })
       continue
     }
 
@@ -156,7 +179,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     }
     const findings = deckFindings.get(job.slideIndex + 1) ?? []
 
-    pages.push({ ...base, file, ...(findings.length > 0 ? { findings } : {}) })
+    pages.push({ ...base, file, hash: fingerprint(svg), ...(findings.length > 0 ? { findings } : {}) })
   }
 
   const tables: ManifestTable[] = (["theme", "layout", "component"] as const)
