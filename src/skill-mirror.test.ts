@@ -182,7 +182,14 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     for (const section of [en, zh]) {
       expect(section, "the serve section must insist on --no-open").toContain("--no-open")
       expect(section, "the serve section must name the localhost URL to report").toContain("http://127.0.0.1:4400")
-      expect(section, "the serve section must route annotations through revision-request.json").toContain("revision-request.json")
+      // Was: "must route annotations through revision-request.json". That
+      // loop is gone (2026-08-16) — the preview is read-only and the
+      // reviewer says what they want changed in the conversation. What the
+      // section still has to do is tell the agent to keep serving while the
+      // review is happening and to stop when it is done, since a serve
+      // process left running after the task is the failure this section
+      // exists to prevent.
+      expect(section, "the serve section must say to stop the serve process when the round ends").toMatch(/kill|停掉/)
     }
   })
 

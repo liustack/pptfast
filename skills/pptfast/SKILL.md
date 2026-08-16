@@ -112,7 +112,7 @@ If any page has a cover/chapter photo background, add `--pixels` — it rasteriz
 pptfast preview deck-dir/ -o preview/ --html
 ```
 
-Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` — read only, never edits the deck itself — route that back through phase 6 when it comes back to you.
+Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. `preview.html` is read-only: it shows the deck, it never edits it. When the reviewer wants something changed, they tell you in the conversation — a screenshot of the page in question is the fastest way for both of you — and you route it through phase 6.
 
 ### Live review loop with `pptfast serve`
 
@@ -126,9 +126,9 @@ Then run the round in this order:
 
 1. Always pass `--no-open`. There is no browser to auto-open in an agent environment.
 2. Report the exact localhost URL it prints (default `http://127.0.0.1:4400`) to the user, so they can open it themselves. That one line is the whole handoff.
-3. The user pages through the deck, annotates whatever needs changing, and submits. That writes a `revision-request.json` into the deck directory, deck content untouched.
-4. Read that file and route every entry through phase 6's revision flow. The page live-reloads on each file you save, so every revision lands in the tab the user already has open. No new link, no re-export.
-5. Stay in the loop while the user keeps annotating. When the round is over, stop the serve process (kill the background job). Never leave it running after the task ends.
+3. The user pages through the deck and tells you what needs changing, in the conversation. A screenshot of the offending page is the fastest hand-off — you see exactly what they see.
+4. Route each request through phase 6's revision flow. The page live-reloads on every file you save, so each revision lands in the tab the user already has open. No new link, no re-export, nothing for them to click.
+5. Stay in the loop while they keep looking. When the round is over, stop the serve process (kill the background job). Never leave it running after the task ends.
 
 ### Phase 6 — Revision: edit one page, re-assemble
 
@@ -136,13 +136,13 @@ A revision touches the smallest file that captures it:
 
 - Content change ("punch up the KPI page") → edit that page's `pages/<id>.json` only, then repeat phase 3's `assemble` + `validate` pair, and phase 5's `audit`, before re-rendering. Never regenerate pages nobody asked you to touch.
 - Structural change (reorder, add/remove a page, change a page's type or heading) → edit `deck.spec.json` instead, re-run `pptfast spec validate` first (phase 2's no-respeccing rule still applies: only do this when the user actually asked for a structural change).
-- `revision-request.json` handed back (exported from `preview.html`'s "Export revision requests" button, phase 5) → route each entry in `requests` by `pageId` to that page's `pages/<id>.json`. `pageId` is the page's slide id when it has one, else its 1-based page number — match it against `deck.spec.json`/`pages/` to find the right file when there is no id. Treat `annotation` as a requirement to interpret, not a patch to apply verbatim: it is free-text from a reviewer looking at the rendered slide, not valid page-file JSON — translate it into a concrete content edit yourself, then run the same content-change loop above (`assemble` + `validate` + `audit`) for every page a request touched. Preview stays read-only end to end: nothing about this flow ever writes into `pages/*.json` except your own deliberate edit.
+- A change the reviewer asked for in conversation (usually with a screenshot of the page) → find that page's `pages/<id>.json` by matching what they described against `deck.spec.json`/`pages/`, and treat their words as a requirement to interpret, not a patch to apply verbatim: they are describing a rendered slide, not writing page-file JSON. Translate it into a concrete content edit, then run the same content-change loop above (`assemble` + `validate` + `audit`) for every page you touched. Preview stays read-only end to end: nothing writes into `pages/*.json` except your own deliberate edit.
 
 ## Routing a follow-up request
 
 Once a deck project exists, a follow-up message routes into exactly one of three branches — decide which before doing anything:
 
-1. **Edit a page** ("change slide 3", "make the KPI page punchier", or a handed-back `revision-request.json`) → phase 6: edit that page's file, re-assemble, re-validate, re-audit. Never touch pages nobody asked about.
+1. **Edit a page** ("change slide 3", "make the KPI page punchier", or a screenshot with a note) → phase 6: edit that page's file, re-assemble, re-validate, re-audit. Never touch pages nobody asked about.
 2. **A new deck** (a different topic, audience, or an explicit request to start over) → phase 1: a new deck project directory, fresh narrative/theme decision, fresh spec.
 3. **Unrelated to deck generation** (a question about the content, anything with no connection to slides) → do not invoke pptfast at all.
 

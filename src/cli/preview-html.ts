@@ -71,37 +71,14 @@
  * otherwise use to end the `<script>` element early), the standard technique
  * for safely inlining untrusted JSON into a script tag.
  *
- * Annotations are a pure client-side, in-memory feature (no `fs`, no network
- * — this module builds a static page, `<script>`'s own closure holds the
- * state) keyed by each slide's 0-based array index, not by its `pageId` —
- * the id/index duality only matters at *export* time (`pageIdFor()` in
- * `JS` below derives `slide.id` when the active `.pf-slide` node carries a
- * `data-id`, else falls back to the 1-based page number — matching
- * `AuditFinding.page`'s own established "1-based page number when there is
- * no slide id" convention, `../svg/audit/deck-audit.ts`, rather than the
- * 0-based `data-index` this file otherwise uses internally). "Export
- * revision requests" reads the deck title back out of `#pf-title`'s already-
- * escaped `textContent` (browser-decoded HTML entities, exactly the original
- * `title` string) instead of embedding a second JS string literal for it —
- * one fewer thing that needs its own escaping discipline. The exported file
- * never touches disk or a server: `URL.createObjectURL` on an in-memory
- * `Blob` plus a synthetic `<a download>` click, the standard zero-backend
- * browser download pattern — keeping the self-containment invariant this
- * whole module exists to protect (no `fetch`, no `XMLHttpRequest`, no form
- * `action`).
- *
- * `buildExportBlob()` (serve wave, task S2 rework) factors the payload/Blob
- * construction half of that click handler into its own named function,
- * still private to the same `<script>` closure (it still reads `annotations`
- * and calls `pageIdFor()` directly) — and additionally assigns a reference
- * to it onto `window.__pptfastBuildExportBlob`. That one global function
- * handle is the sanctioned seam `pptfast serve` (`../cli/serve.ts`) calls to
- * reuse this exact serialization for its own `POST /revision-request`
- * submit flow, instead of forking a second copy of it (spec-plan.md design
- * ruling 5) — this module itself stays exactly as ignorant of
- * networking/serve as ever (still no `fetch` call anywhere in this file,
- * still a pure download feature); only the caller on the other side of that
- * global reaches for `fetch`.
+ * Annotations were removed on 2026-08-16, along with the "Export revision
+ * requests" download and the `window.__pptfastBuildExportBlob` seam that
+ * `pptfast serve` used to POST the same payload to disk. The page shows the
+ * deck and nothing else: a reviewer who wants something changed says so in
+ * the conversation, usually with a screenshot, which reaches the agent
+ * faster than typing into a panel whose output then has to be exported and
+ * read back. `preview-html.test.ts` pins the absence so it cannot return as
+ * a half-feature.
  */
 
 export interface PreviewHtmlSlideInput {

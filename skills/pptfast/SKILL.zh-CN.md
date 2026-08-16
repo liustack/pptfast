@@ -114,7 +114,7 @@ pptfast audit deck-dir/
 pptfast preview deck-dir/ -o preview/ --html
 ```
 
-为每张 slide 各写一个独立 SVG，外加一个自包含的 `preview.html`，永远不受占位页拦截。交付之前自己读几个 SVG（它们就是纯文本文件），核对 layout 与密度是否合理，图片较多的 deck 尤其要看——把 `preview.html`（缩略图条、键盘翻页、占位页角标）交给用户自己看，而不是代替这一步。所有页面都填完时，`preview.html` 还会叠加同一份 `audit` 检查结果（每页一个角标 + 一个 findings 面板），让审查者不用打开终端就能看到问题——deck 里如果还有占位页，则改为显示一行「audit skipped」的提示。审查者可以直接在 `preview.html` 里给每页写自由文本批注，并导出为 `revision-request.json`——只读，从不直接改动 deck 本身——等它交回给你时，走阶段六的流程处理。
+为每张 slide 各写一个独立 SVG，外加一个自包含的 `preview.html`，永远不受占位页拦截。交付之前自己读几个 SVG（它们就是纯文本文件），核对 layout 与密度是否合理，图片较多的 deck 尤其要看——把 `preview.html`（缩略图条、键盘翻页、占位页角标）交给用户自己看，而不是代替这一步。所有页面都填完时，`preview.html` 还会叠加同一份 `audit` 检查结果（每页一个角标 + 一个 findings 面板），让审查者不用打开终端就能看到问题——deck 里如果还有占位页，则改为显示一行「audit skipped」的提示。`preview.html` 是只读的：它只负责把 deck 呈现出来，从不改动它。审查者想改什么，直接在对话里告诉你——把那一页截图发给你是最快的交接方式——你再走阶段六处理。
 
 ### 用 `pptfast serve` 做实时审阅循环
 
@@ -128,9 +128,9 @@ pptfast serve deck-dir/ --no-open
 
 1. 必须带 `--no-open`。agent 环境里没有可以自动打开的浏览器。
 2. 把它打印的 localhost URL（默认 `http://127.0.0.1:4400`）原样报给用户，让用户自己打开。这一行就是全部交付动作。
-3. 用户翻完整份 deck，把需要改的地方写成批注并提交，deck 目录里就会生成一份 `revision-request.json`，deck 内容本身不被改动。
-4. 读这份文件，把每一条都走阶段六的修订流程。你每保存一次文件页面就实时重渲染，每一次修订都直接落在用户已经打开的那个标签页里。不用发新链接，也不用重新导出。
-5. 用户还在继续批注就留在这个循环里。这一轮结束时停掉 serve 进程（kill 掉那个后台任务）。任务结束后绝不留着它继续跑。
+3. 用户翻完整份 deck，在对话里告诉你哪里要改。把出问题的那一页截图发过来是最快的交接方式——你看到的和他看到的完全一致。
+4. 把每一条请求都走阶段六的修订流程。你每保存一次文件页面就实时重渲染，每一次修订都直接落在用户已经打开的那个标签页里。不用发新链接，也不用让他点任何东西。
+5. 用户还在继续看就留在这个循环里。这一轮结束时停掉 serve 进程（kill 掉那个后台任务）。任务结束后绝不留着它继续跑。
 
 ### Phase 6 — 修订：改一页，重新 assemble
 
@@ -138,13 +138,13 @@ pptfast serve deck-dir/ --no-open
 
 - 内容改动（「把 KPI 那页写得更有冲击力」）→ 只改那一页的 `pages/<id>.json`，然后重复阶段三的 `assemble` + `validate` 组合，以及阶段五的 `audit`，再重新渲染。没人要求你改的页面，绝不重新生成。
 - 结构性改动（调整顺序、增删页面、改某页的 type 或 heading）→ 改 `deck.spec.json`，先重新跑一次 `pptfast spec validate`（阶段二的「不要重新定 spec」规则依然适用：只有在用户确实要求结构性改动时才这么做）。
-- 交回一份 `revision-request.json`（阶段五 `preview.html` 里「Export revision requests」按钮导出的）→ 把 `requests` 里的每一条按 `pageId` 分流到对应页面的 `pages/<id>.json`。`pageId` 有 slide id 时就是那个 id，没有时是它的 1-based 页码——没有 id 时，对照 `deck.spec.json`/`pages/` 找到正确的文件。把 `annotation` 当成一条需要你去理解的需求，而不是可以照抄的补丁：它是审查者看着渲染出的 slide 写下的自由文本，不是合法的页面文件 JSON——你自己要把它翻译成具体的内容改动，然后对每一页被请求触及的页面跑上面同一套内容改动流程（`assemble` + `validate` + `audit`）。preview 全程只读：这条流程里除了你自己主动做出的编辑之外，没有任何环节会写入 `pages/*.json`。
+- 审查者在对话里提出的改动（通常附一张页面截图）→ 对照他描述的内容在 `deck.spec.json`/`pages/` 里找到那一页的 `pages/<id>.json`。把他的话当成一条需要你去理解的需求，而不是可以照抄的补丁：他描述的是渲染出来的 slide，不是在写页面文件 JSON——你自己要把它翻译成具体的内容改动，然后对每一页你动过的页面跑上面同一套内容改动流程（`assemble` + `validate` + `audit`）。preview 全程只读：除了你自己主动做出的编辑之外，没有任何环节会写入 `pages/*.json`。
 
 ## 后续请求怎么分流
 
 一旦 deck 项目已经存在，后续消息恰好分流进三条分支之一——动手之前先判断走哪一条：
 
-1. **改一页**（「改一下第 3 页」「把 KPI 那页写得更有冲击力」，或交回一份 `revision-request.json`）→ 走阶段六：改那一页的文件，重新 assemble、重新 validate、重新 audit。没人问起的页面绝不去碰。
+1. **改一页**（「改一下第 3 页」「把 KPI 那页写得更有冲击力」，或者一张截图加一句说明）→ 走阶段六：改那一页的文件，重新 assemble、重新 validate、重新 audit。没人问起的页面绝不去碰。
 2. **一份新 deck**（不同的主题、不同的受众，或明确要求重新开始）→ 走阶段一：新建一个 deck 项目目录，重新决定 narrative/theme，重新起一份 spec。
 3. **和 deck 生成无关**（关于内容本身的问题，或任何和 slides 没有关联的事）→ 完全不要调用 pptfast。
 

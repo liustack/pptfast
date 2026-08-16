@@ -1,11 +1,11 @@
 // @vitest-environment node
-import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
 import http from "node:http"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { installNodePlatform } from "@/platform/node"
-import { createServeServer, MAX_REVISION_REQUEST_BYTES, SERVE_CLIENT_SCRIPT_ID, type ServeHandle } from "./serve"
+import { createServeServer, SERVE_CLIENT_SCRIPT_ID, type ServeHandle } from "./serve"
 
 installNodePlatform()
 
@@ -36,14 +36,6 @@ function makeDir(prefix = "pptfast-serve-"): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix))
 }
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await readFile(path)
-    return true
-  } catch {
-    return false
-  }
-}
 
 /** 5 pages (cover + 3 content + ending) clears "spacious" pacing's
  *  page-count floor with room to leave some unfilled — same fixture-sizing
@@ -427,148 +419,18 @@ describe("createServeServer — serve-mode client injection", () => {
   })
 })
 
-describe("createServeServer — POST /revision-request", () => {
-  function makeRevisionRequestPayload(): Record<string, unknown> {
-    return {
-      version: "1",
-      deck: "serve-deck",
-      requests: [{ pageId: "p-a", annotation: "fix the heading", createdAt: "2026-07-25T00:00:00.000Z" }],
-    }
-  }
-
-  it("200s a valid POST and writes a file that deep-equals the posted body", async () => {
-    const deckDir = await makeDir()
-    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
-    await mkdir(join(deckDir, "pages"))
-    await writeFile(
-      join(deckDir, "pages", "p-a.json"),
-      JSON.stringify({ components: [{ type: "paragraph", text: "first draft" }] }),
-    )
-    const handle = await startServe(deckDir)
-    const payload = JSON.stringify(makeRevisionRequestPayload())
-
-    const res = await post(handle.port, "/revision-request", payload)
-    expect(res.status).toBe(200)
-    expect(JSON.parse(res.body)).toMatchObject({ ok: true })
-
-    const written = await readFile(join(deckDir, "revision-request.json"), "utf8")
-    expect(written).toBe(payload) // byte-identical, not a re-serialization
-    expect(JSON.parse(written)).toEqual(makeRevisionRequestPayload())
-  })
-
-  it("400s an invalid-JSON POST and writes no file", async () => {
-    const deckDir = await makeDir()
-    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
-    await mkdir(join(deckDir, "pages"))
-    await writeFile(
-      join(deckDir, "pages", "p-a.json"),
-      JSON.stringify({ components: [{ type: "paragraph", text: "first draft" }] }),
-    )
-    const handle = await startServe(deckDir)
-
-    const res = await post(handle.port, "/revision-request", "{not valid json")
-    expect(res.status).toBe(400)
-    expect(await fileExists(join(deckDir, "revision-request.json"))).toBe(false)
-  })
-
-  it("413s a POST body over the 1MB cap", async () => {
-    const deckDir = await makeDir()
-    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
-    await mkdir(join(deckDir, "pages"))
-    await writeFile(
-      join(deckDir, "pages", "p-a.json"),
-      JSON.stringify({ components: [{ type: "paragraph", text: "first draft" }] }),
-    )
-    const handle = await startServe(deckDir)
-
-    const oversized = "x".repeat(MAX_REVISION_REQUEST_BYTES + 1024)
-    const res = await post(handle.port, "/revision-request", oversized, "text/plain")
-    expect(res.status).toBe(413)
-    expect(await fileExists(join(deckDir, "revision-request.json"))).toBe(false)
-  })
-
-  it("405s any non-POST method on /revision-request", async () => {
-    const deckDir = await makeDir()
-    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
-    await mkdir(join(deckDir, "pages"))
-    await writeFile(
-      join(deckDir, "pages", "p-a.json"),
-      JSON.stringify({ components: [{ type: "paragraph", text: "first draft" }] }),
-    )
-    const handle = await startServe(deckDir)
-
-    const res = await get(handle.port, "/revision-request")
-    expect(res.status).toBe(405)
-  })
-
-  it("cleans up the tmp file when the final rename fails, leaving no orphan behind (S2 rework carry)", async () => {
-    const deckDir = await makeDir()
-    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
-    await mkdir(join(deckDir, "pages"))
-    await writeFile(
-      join(deckDir, "pages", "p-a.json"),
-      JSON.stringify({ components: [{ type: "paragraph", text: "first draft" }] }),
-    )
-    // The write target pre-exists as a *directory* — `rename` onto an
-    // existing directory reliably fails (EISDIR, POSIX) without needing to
-    // fake a filesystem, forcing atomicWriteFile's cleanup path.
-    await mkdir(join(deckDir, "revision-request.json"))
-    const handle = await startServe(deckDir)
-
-    const res = await post(handle.port, "/revision-request", JSON.stringify(makeRevisionRequestPayload()))
-    expect(res.status).toBe(500)
-
-    const entries = await readdir(deckDir)
-    expect(entries.filter((name) => name.includes(".tmp"))).toEqual([])
-  })
-
-  it("writes alongside the IR file for a bare-IR target, not into a deck directory", async () => {
+describe("createServeServer — /revision-request, removed", () => {
+  it("no longer accepts a revision-request POST", async () => {
+    // The endpoint's only client was the preview's annotation export, which
+    // was removed on 2026-08-16. An endpoint with no producer is a
+    // half-feature, so the whole path went with it — the revise loop is now
+    // "screenshot the page, tell the agent", which is what it had become in
+    // practice anyway.
     const dir = await makeDir()
     const irPath = join(dir, "deck.json")
     await writeFile(irPath, JSON.stringify(VALID_IR))
     const handle = await startServe(irPath)
-    const payload = JSON.stringify(makeRevisionRequestPayload())
-
-    const res = await post(handle.port, "/revision-request", payload)
-    expect(res.status).toBe(200)
-
-    const written = await readFile(join(dirname(irPath), "revision-request.json"), "utf8")
-    expect(written).toBe(payload)
-  })
-})
-
-describe("createServeServer — full loop (watch → SSE reload → POST → file on disk)", () => {
-  it("carries a page edit through to a reload, then a submitted revision request through to disk, in one server session", async () => {
-    const deckDir = await makeDir()
-    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
-    await mkdir(join(deckDir, "pages"))
-    await writeFile(
-      join(deckDir, "pages", "p-a.json"),
-      JSON.stringify({ components: [{ type: "paragraph", text: "first draft" }] }),
-    )
-    const handle = await startServe(deckDir)
-    const sse = connectSSE(handle.port)
-
-    // 1. A source edit reaches the browser as a reload (existing S1 coverage
-    //    — exercised again here as this test's own precondition, not a
-    //    re-test of the watch mechanism itself).
-    await writeFile(
-      join(deckDir, "pages", "p-a.json"),
-      JSON.stringify({ components: [{ type: "paragraph", text: "revised draft" }] }),
-    )
-    await sse.waitFor("reload")
-    const revised = await get(handle.port, "/")
-    expect(revised.body).toContain("revised draft")
-    sse.close()
-
-    // 2. The reviewer submits a revision request against that same session.
-    const payload = JSON.stringify({
-      version: "1",
-      deck: "serve-deck",
-      requests: [{ pageId: "p-a", annotation: "tighten this copy", createdAt: "2026-07-25T00:00:00.000Z" }],
-    })
-    const res = await post(handle.port, "/revision-request", payload)
-    expect(res.status).toBe(200)
-    expect(await readFile(join(deckDir, "revision-request.json"), "utf8")).toBe(payload)
+    const res = await post(handle.port, "/revision-request", JSON.stringify({ version: 1, requests: [] }))
+    expect(res.status).toBe(404)
   })
 })

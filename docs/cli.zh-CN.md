@@ -26,7 +26,7 @@ read_when:
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见[主题](./themes.zh-CN.md#你自己的品牌)） |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`），永远不受占位页拦截 |
-| `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新，批注直接提交回 deck 目录生成 `revision-request.json` |
+| `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新 |
 | `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`，确定性转换，不调模型 |
 | `init` | 生成 `pptfast.config.json` 模板 |
 | `doctor [--json]` | 体检本机安装：skill 副本、dsh 插件、运行时、可选能力、自检渲染（见[体检](#体检)） |
@@ -116,7 +116,9 @@ pptfast doctor
 
 `pptfast preview --html` 还会额外写出一个自包含的 `preview.html` 供人工审查：支持键盘翻页、占位页角标，打开后零网络请求（远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）。所有页面都填好之后，这份页面还会叠加同一份 `audit` 结果：每页一个数量角标，加一个可点击跳转的 findings 面板。deck 里还有占位页时，显示一行「audit 已跳过」的提示代替。
 
-审阅者可以直接在 `preview.html` 里给每页写自由文本批注，导出为 `revision-request.json`（浏览器下载，不联网也不写文件，preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本：浏览器标签页随源文件变化自动刷新，批注面板直接提交到磁盘上的 `<deck-dir>/revision-request.json`。
+`preview.html` 是只读的：它只呈现 deck，从不写入。审阅者想改什么就在对话里说——把那一页截图发过去是最快的交接方式——由 agent 改回 `pages/*.json`。`pptfast serve <target>` 把同一个页面做成实时版本：源文件一变浏览器标签页就自动刷新，每次修订都落在审阅者已经打开的那个标签页里。
+
+除了 `preview.html`，`preview --html` 还会写出 `manifest.json`：一份扁平的页面清单，含稳定 id、每页对应的 SVG 文件、画布尺寸，以及逐页的审计发现。这是给**程序**读的那一半——自带 UI 的 harness 据此把 deck 画出来，没有 UI 的就打开那个 HTML，两边都不需要重新渲染一遍。
 
 这套回路由 skill 封装给 agent 使用（[`skills/pptfast/SKILL.zh-CN.md`](../skills/pptfast/SKILL.zh-CN.md)），不论装的是 skill 文件夹还是 DSH 插件。回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证，固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
 
