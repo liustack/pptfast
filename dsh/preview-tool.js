@@ -36,7 +36,7 @@
 
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -45,19 +45,121 @@ const MAX_PRESENTED_BYTES = 8 * 1024 * 1024
 
 export const TOOL_NAME = 'pptfast_preview'
 
-/** `id -> bundle`, for the route the card fetches from. */
+/**
+ * `id -> { bundle, target }`, for the route the card fetches from.
+ *
+ * The target is kept alongside the deck because the preview's whole purpose
+ * is deciding whether to keep the thing — so the card offers the .pptx, and
+ * that is rendered on demand from this target rather than eagerly on every
+ * preview. Rendering an export nobody asked for would double the work of
+ * every preview call to serve the minority of them that end in a download.
+ */
 const bundles = new Map()
 
 /** Cap on retained previews — a long session should not pin every deck it rendered. */
 const MAX_RETAINED = 12
 
-export function rememberBundle(id, bundle) {
-  bundles.set(id, bundle)
+/**
+ * Where the id -> deck mapping outlives this process.
+ *
+ * The map above is in-memory, and a preview id that dies with the server is
+ * a broken promise: the card sits in a transcript the user scrolls back to
+ * days later, and DSH restarts for every plugin reload. Before this existed,
+ * clicking the export on any pre-restart card produced a 404 that the
+ * browser dutifully saved as `pptx.json` — the worst possible failure, since
+ * it looks like a download that worked.
+ *
+ * Only the target and the output directory are persisted, never the markup:
+ * this is a lookup table for re-rendering, not a cache of decks.
+ */
+const INDEX_PATH = join(tmpdir(), 'pptfast-preview-index.json')
+
+async function readIndex() {
+  try {
+    return JSON.parse(await readFile(INDEX_PATH, 'utf8'))
+  } catch {
+    return {}
+  }
+}
+
+async function writeIndex(index) {
+  try {
+    await writeFile(INDEX_PATH, JSON.stringify(index))
+  } catch {
+    // A preview that cannot be indexed still works for this process's life.
+  }
+}
+
+function rememberIndex(id, target, outDir) {
+  return readIndex().then((index) => {
+    index[id] = { target, outDir }
+    const ids = Object.keys(index)
+    // Kept generously longer than the in-memory cap: this table is two short
+    // strings per preview, and its whole job is to still be there when a
+    // transcript is reopened.
+    for (const stale of ids.slice(0, Math.max(0, ids.length - MAX_RETAINED * 20))) delete index[stale]
+    return writeIndex(index)
+  })
+}
+
+export function rememberBundle(id, bundle, target, outDir) {
+  bundles.set(id, { bundle, target, outDir })
   while (bundles.size > MAX_RETAINED) bundles.delete(bundles.keys().next().value)
+  void rememberIndex(id, target, outDir)
 }
 
 export function recallBundle(id) {
   return bundles.get(id)
+}
+
+/**
+ * Find a preview by id, in increasing order of cost.
+ *
+ * A card lives in a transcript, and a transcript outlives everything: the
+ * user scrolls back to a session from last week, and the card has to show
+ * the deck it showed then. In-memory alone cannot do that — the map dies
+ * with the process, and DSH restarts on every plugin reload — so a
+ * historical session would have rendered an empty card and a download that
+ * saved a 404 body.
+ *
+ * 1. memory — the same process that rendered it
+ * 2. the bundle still on disk — `preview --html` already wrote manifest and
+ *    SVGs to `outDir`, so a restart costs a re-read, not a re-render
+ * 3. re-render from the target — the temp directory is gone (a reboot, a
+ *    cleaner), but the deck itself is still in the workspace
+ *
+ * Only step 3 can be wrong: the deck may have been edited since, so what
+ * comes back is today's deck rather than the one the card first showed. That
+ * is the honest answer for a preview of a file that has moved on, and it
+ * beats an empty card.
+ */
+async function recallAnywhere(id) {
+  const live = bundles.get(id)
+  if (live) return live
+
+  const persisted = (await readIndex())[id]
+  if (!persisted) return undefined
+
+  try {
+    const bundle = await readPreviewBundle(persisted.outDir)
+    const entry = { ...persisted, bundle }
+    bundles.set(id, entry)
+    return entry
+  } catch {
+    // Step 3: the output directory is gone, but the deck is not.
+  }
+
+  try {
+    const outDir = await mkdtemp(join(tmpdir(), 'pptfast-preview-'))
+    await runCli(cliPathForRoute, ['preview', String(persisted.target), '-o', outDir, '--html'])
+    const bundle = await readPreviewBundle(outDir)
+    const entry = { ...persisted, outDir, bundle }
+    bundles.set(id, entry)
+    void rememberIndex(id, persisted.target, outDir)
+    return entry
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -68,21 +170,53 @@ export function recallBundle(id) {
  * random rather than sequential so a page on another origin cannot walk the
  * space even if it somehow reached the port.
  */
+/** Set by `definePreviewTool` so the route can re-run the same packaged CLI. */
+let cliPathForRoute = ''
+
 export function registerPreviewRoute(ctx) {
   ctx.webServer.register({
     name: 'pptfast-preview',
     kind: 'prefix',
     path: PREVIEW_ROUTE,
     handler: async (req, res) => {
-      const id = String(req.url || '').split(PREVIEW_ROUTE)[1]?.split('?')[0]?.replace(/^\//, '')
-      const bundle = id && bundles.get(id)
-      if (!bundle) {
+      const rest = String(req.url || '').split(PREVIEW_ROUTE)[1]?.split('?')[0]?.replace(/^\//, '') ?? ''
+      const wantsPptx = rest.endsWith('/pptx')
+      const id = wantsPptx ? rest.slice(0, -'/pptx'.length) : rest
+      let entry = id ? await recallAnywhere(id) : undefined
+      if (!entry) {
         res.writeHead(404, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ error: 'unknown preview id' }))
         return
       }
-      res.writeHead(200, { 'content-type': 'application/json' })
-      res.end(JSON.stringify(bundle))
+      if (!wantsPptx) {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify(entry.bundle))
+        return
+      }
+      // Rendered here, not at preview time: the export is what the user asks
+      // for after deciding they like the deck, and most previews never get
+      // that far.
+      try {
+        // A persisted entry carries no bundle (only the target), so the
+        // filename falls back to the target's own basename.
+        const base =
+          (entry.bundle && entry.bundle.title) ||
+          String(entry.target).split(/[\\/]/).pop().replace(/\.[^.]+$/, '') ||
+          'deck'
+        const name = base.replace(/[^\w.-]+/g, '-') + '.pptx'
+        const pptxPath = join(entry.outDir, name)
+        await runCli(cliPathForRoute, ['render', String(entry.target), '-o', pptxPath])
+        const bytes = await readFile(pptxPath)
+        res.writeHead(200, {
+          'content-type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'content-disposition': `attachment; filename="${name}"`,
+          'content-length': bytes.length,
+        })
+        res.end(bytes)
+      } catch (error) {
+        res.writeHead(500, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ error: String(error && error.message ? error.message : error) }))
+      }
     },
   })
 }
@@ -156,6 +290,7 @@ function modelSummary(value) {
 }
 
 export function definePreviewTool(cliPath) {
+  cliPathForRoute = cliPath
   return {
     name: TOOL_NAME,
     description:
@@ -206,7 +341,7 @@ export function definePreviewTool(cliPath) {
       const bundle = await readPreviewBundle(outDir)
       const findingCount = bundle.pages.reduce((n, p) => n + (p.findings?.length ?? 0), 0)
       const previewId = randomUUID()
-      rememberBundle(previewId, bundle)
+      rememberBundle(previewId, bundle, args.target, outDir)
       return {
         previewId,
         outDir,

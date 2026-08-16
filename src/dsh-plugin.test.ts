@@ -166,6 +166,8 @@ describe("dsh plugin bundle manifest", () => {
  * idiom the plugin import above already uses, in one place.
  */
 async function loadPreviewTool(): Promise<{
+  rememberBundle: (id: string, bundle: unknown, target: string, outDir: string) => void
+  recallBundle: (id: string) => unknown
   definePreviewTool: (cliPath: string) => {
     name: string
     description: string
@@ -363,5 +365,30 @@ describe("preview payload channel", () => {
     expect(idOf({ result: { content: [{ text: "pptfast-preview:zz-9" }] } })).toBe("zz-9")
     expect(idOf({ content: [{ type: "text", text: "no id here" }] })).toBeNull()
     expect(idOf({})).toBeNull()
+  })
+})
+
+describe("preview recall across restarts", () => {
+  it("keeps a lookup table on disk, because a transcript outlives the process", async () => {
+    // A card lives in a transcript the user scrolls back to days later, and
+    // DSH restarts on every plugin reload. In-memory alone meant a
+    // historical session rendered an empty card and an export that saved a
+    // 404 body as `pptx.json` — a failure disguised as a download.
+    const mod = (await loadPreviewTool()) as unknown as {
+      rememberBundle: (id: string, bundle: unknown, target: string, outDir: string) => void
+      recallBundle: (id: string) => unknown
+    }
+    mod.rememberBundle("id-1", { title: "d", pages: [] }, "deck.json", "/tmp/out")
+    expect(mod.recallBundle("id-1")).toMatchObject({ target: "deck.json", outDir: "/tmp/out" })
+
+    // The index is written asynchronously and best-effort; what this pins is
+    // that the entry carries the two fields recall needs, not the file's own
+    // timing (the three recall tiers are exercised against a running DSH).
+    const { readFile } = await import("node:fs/promises")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    await new Promise((r) => setTimeout(r, 50))
+    const index = JSON.parse(await readFile(join(tmpdir(), "pptfast-preview-index.json"), "utf8"))
+    expect(index["id-1"]).toEqual({ target: "deck.json", outDir: "/tmp/out" })
   })
 })

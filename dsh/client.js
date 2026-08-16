@@ -254,8 +254,61 @@ window.__ModuleLoader__.load({
               },
               '→',
             ),
+            props.previewId ? h(ExportButton, { previewId: props.previewId, name: props.name, style: modalBtn(false) }) : null,
             h('button', { onClick: props.onClose, style: modalBtn(false) }, 'Close'),
           ),
+        )
+      }
+
+      /**
+       * The export.
+       *
+       * Fetched and saved by hand rather than left to a plain `download`
+       * anchor. A preview id can genuinely expire — the deck it names lives
+       * in a temp dir — and on a bare anchor that failure arrives as a 404
+       * body the browser saves as a file, which is how the first version
+       * handed people a `pptx.json` and called it a download. Going through
+       * fetch means a failure can say so.
+       */
+      function ExportButton(props) {
+        var state = useState('idle')
+        var status = state[0]
+        var setStatus = state[1]
+
+        function save() {
+          if (status === 'busy') return
+          setStatus('busy')
+          fetch('/pptfast/preview/' + props.previewId + '/pptx')
+            .then(function (res) {
+              if (!res.ok) throw new Error(String(res.status))
+              return res.blob()
+            })
+            .then(function (blob) {
+              var url = URL.createObjectURL(blob)
+              var a = document.createElement('a')
+              a.href = url
+              a.download = (props.name || 'deck') + '.pptx'
+              document.body.appendChild(a)
+              a.click()
+              a.remove()
+              setTimeout(function () { URL.revokeObjectURL(url) }, 1000)
+              setStatus('idle')
+            })
+            .catch(function () {
+              // Almost always an expired preview: the deck lived in a temp
+              // directory and the harness has restarted since.
+              setStatus('gone')
+            })
+        }
+
+        return h(
+          'button',
+          {
+            onClick: save,
+            style: props.style,
+            title: status === 'gone' ? '这份预览已过期，重新生成一次即可' : '下载可编辑的 .pptx',
+          },
+          status === 'busy' ? '导出中…' : status === 'gone' ? '已过期' : '下载 PPTX',
         )
       }
 
@@ -339,6 +392,22 @@ window.__ModuleLoader__.load({
               },
               '预览',
             ),
+            previewId
+              ? h(ExportButton, {
+                  previewId: previewId,
+                  name: bundle.title,
+                  style: {
+                    font: 'inherit',
+                    fontSize: 12,
+                    padding: '3px 10px',
+                    borderRadius: 7,
+                    border: '1px solid ' + COLORS.line,
+                    background: 'transparent',
+                    color: COLORS.text,
+                    cursor: 'pointer',
+                  },
+                })
+              : null,
           ),
           h(
             'div',
@@ -365,6 +434,8 @@ window.__ModuleLoader__.load({
             ? h(Modal, {
                 pages: pages,
                 slide: slide,
+                previewId: previewId,
+                name: bundle.title,
                 start: start[0],
                 onClose: function () { open[1](false) },
               })
