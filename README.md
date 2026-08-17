@@ -25,6 +25,10 @@
   <img src="https://img.shields.io/badge/no%20API%20key-needed-4c1?style=flat-square" alt="No API key needed">
 </p>
 
+## Talk to us
+
+Issues are welcome any time. [Open one](https://github.com/liustack/pptfast/issues/new/choose), or follow **[@liustack](https://x.com/liustack)** on X. Share what you made with pptfast, which harness you use, and what the next release should solve. New releases land there first.
+
 ## Highlights
 
 **⚡ Tell your AI what to cover, get the deck.** You bring the content, the engine handles layout, color, type size, and spacing. The same content renders the same deck every time, so there is nothing to redo and no luck involved.
@@ -93,6 +97,25 @@ The commands you will reach for most:
 | `doctor` | Check the install: runtime, skill copies, optional capabilities, self-test render |
 
 Full reference: [`docs/cli.md`](./docs/cli.md).
+
+## Documentation
+
+| Doc | Read it when |
+| :-- | :-- |
+| [Install guide](./INSTALL.md) | Handing installation to an agent or checking prerequisites |
+| [Agent skill](./skills/pptfast/SKILL.md) | Learning the workflow pptfast teaches an agent |
+| [CLI manual](./docs/cli.md) | Looking up commands, flags, audits, previews, and health checks |
+| [IR reference](./docs/ir.md) | Writing a deck, slide, component, or narrative in JSON |
+| [Themes](./docs/themes.md) | Picking a built-in theme or extracting your own brand |
+| [Core concepts](./docs/concepts.md) | Understanding themes, layouts, components, narratives, and capacity |
+| [Architecture](./docs/architecture.md) | Working on the render chain or adding a theme, layout, or component |
+| [Deck projects](./docs/deck-projects.md) | Building a multi-file deck with locked specs, assets, and live review |
+| [Layout selection and seed](./docs/selection-and-seed.md) | Explaining why a layout was picked or keeping revisions stable |
+| [Contrast system](./docs/contrast-system.md) | Debugging text color, painted backgrounds, or contrast findings |
+| [Testing](./docs/testing.md) | Running the right gate, inspecting snapshots, or changing exported XML |
+| [Internal API](./docs/internal-api.md) | Understanding why the JavaScript internals carry no semver promise |
+| [Release guide](./docs/releasing.md) | Preparing and publishing an npm release |
+| [CHANGELOG](./CHANGELOG.md) | Finding what changed in a version |
 
 ## Credits
 
