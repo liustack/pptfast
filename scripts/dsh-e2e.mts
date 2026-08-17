@@ -14,7 +14,7 @@
 import { execFileSync } from "node:child_process"
 import { access, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises"
 import { homedir, tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { createRequire } from "node:module"
 import { pathToFileURL } from "node:url"
 
@@ -435,6 +435,35 @@ export interface PreviewToolRun {
   modelText: string
 }
 
+/** Where the plugin keeps previews, resolved by the plugin's own two rules. */
+function previewRootForGate(): string {
+  const home = process.env.PPTFAST_HOME
+  return join(resolve(home === undefined || home === "" ? join(homedir(), ".pptfast") : home), "previews")
+}
+
+/**
+ * Delete a preview this gate produced, and refuse anything it did not.
+ *
+ * Deliberately not a one-line `rm -rf` of whatever the tool reported. The gate
+ * exists to run a plugin that might be broken, the value is a string that
+ * plugin chose, and the deletion is recursive and forced into the user's home
+ * directory. A bug that made `execute` report `outDir: "/Users/leon"` should
+ * fail this check, not empty a home directory.
+ */
+async function removeGeneratedPreview(outDir: string): Promise<void> {
+  const root = previewRootForGate()
+  const resolved = resolve(outDir)
+  if (dirname(resolved) !== root) {
+    process.stderr.write(`Refusing to delete ${resolved}: not a direct child of ${root}\n`)
+    return
+  }
+  if (!(await access(join(resolved, ".pptfast-preview-owner")).then(() => true, () => false))) {
+    process.stderr.write(`Refusing to delete ${resolved}: no pptfast owner marker\n`)
+    return
+  }
+  await rm(resolved, { recursive: true, force: true }).catch(() => {})
+}
+
 /**
  * Run the registered tool end to end against a throwaway deck.
  *
@@ -521,9 +550,18 @@ export async function verifyPreviewToolRun(tool: DshToolRegistration): Promise<P
     return { previewId: value.previewId, outDir, pageCount: pages.length, pptxPath, modelText }
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => {})
-    // The gate's own deck, not the user's: cleaned up so a release check does
-    // not leave a rendered deck plus a .pptx in the temp directory every run.
-    if (outDir !== undefined) await rm(outDir, { recursive: true, force: true }).catch(() => {})
+    // The gate's own deck, not the user's, and nothing deletes it on its own:
+    // previews live in `~/.pptfast/previews` until somebody removes them, so a
+    // release check that skipped this would leave a rendered deck plus a .pptx
+    // in the user's home every run.
+    //
+    // Proven before it is removed, rather than taken on the tool's word.
+    // `outDir` arrives as a string out of a plugin this script is here to test,
+    // it is handed to a recursive forced delete, and the directory it names now
+    // sits in the user's home rather than in a temp directory. Two proofs: the
+    // path resolves inside the preview root, and it carries the marker the
+    // plugin writes into directories it created.
+    if (outDir !== undefined) await removeGeneratedPreview(outDir)
   }
 }
 

@@ -13,6 +13,7 @@
 // every test green. Everything below is written so that breaking the behaviour
 // it names turns it red.
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest"
+import type { Node as TsNode } from "typescript"
 import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react"
 import * as React from "react"
 
@@ -35,6 +36,7 @@ type CardProps = { block: unknown }
 type Card = React.ComponentType<CardProps>
 
 let makeCard: () => Card
+let makeTesting: () => { isZip: (blob: Blob) => Promise<boolean> }
 
 beforeAll(async () => {
   let captured: { factory: (require: (id: string) => unknown) => unknown } | null = null
@@ -47,6 +49,13 @@ beforeAll(async () => {
   await import("../dsh/client.js")
   const mod = captured as unknown as { factory: (require: (id: string) => unknown) => unknown } | null
   if (!mod) throw new Error("dsh/client.js never registered a module")
+
+  makeTesting = () =>
+    (
+      mod.factory((id: string) => (id === "react" ? React : {})) as {
+        __testing: { isZip: (blob: Blob) => Promise<boolean> }
+      }
+    ).__testing
 
   // The module body only evaluates once; the factory may run per test.
   makeCard = () => {
@@ -122,6 +131,61 @@ async function loadHostHalf(): Promise<{ modelSummary: (value: unknown) => strin
   // @ts-expect-error untyped on purpose, same as its own suite imports it
   const mod = await import("../dsh/preview-tool.js")
   return mod.__testing
+}
+
+/**
+ * The browser half's own exported helpers, for the checks a rendered card
+ * cannot show — the export's byte sniffing has no visible surface of its own.
+ */
+function clientTesting(): { isZip: (blob: Blob) => Promise<boolean> } {
+  return makeTesting()
+}
+
+/**
+ * A response shaped the way the plugin's own route writes one.
+ *
+ * Every answer the host half sends carries `x-pptfast-preview: 1`, and the card
+ * refuses to read a verdict off a response without it — a bare 404 could have
+ * come from a proxy, or from a shell that never loaded this plugin at all.
+ * Building the mocks through here is what keeps this suite testing the card's
+ * real contract rather than a looser one that would also accept a stranger's
+ * 404 as proof a deck is gone.
+ */
+function routeAnswer(init: {
+  status: number
+  json?: unknown
+  blob?: Blob
+  stamped?: boolean
+  code?: string
+}) {
+  const stamped = init.stamped !== false
+  return {
+    ok: init.status >= 200 && init.status < 300,
+    status: init.status,
+    headers: {
+      get: (name: string) => (stamped && name.toLowerCase() === "x-pptfast-preview" ? "1" : null),
+    },
+    // Failures carry a machine-readable code beside the sentence, which is how
+    // the card tells a deleted preview from a damaged one — both are 410, so
+    // the status cannot say it and the prose must not have to.
+    json: async () => init.json ?? (init.code ? { code: init.code, error: "…" } : null),
+    blob: async () => init.blob ?? pptxBytes(),
+  }
+}
+
+/**
+ * Bytes that begin like a zip, which is what a .pptx is.
+ *
+ * The export button checks this before saving, so a mock that returns an
+ * arbitrary blob would be testing the failure path by accident.
+ */
+function pptxBytes(): Blob {
+  return new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00])])
+}
+
+/** A 200 whose body is not a deck at all — the `pptx.json` incident, reproduced. */
+function notADeck(): Blob {
+  return new Blob(["<!doctype html><title>Sign in</title>"])
 }
 
 /** The thumbnails: Frame renders a clickable div with an explicit role. */
@@ -254,8 +318,8 @@ describe("dsh preview card — the viewer", () => {
   function routeIsAlive(bundle: Bundle = bundleOf(nine())) {
     fetchMock.mockImplementation(async (url: string) =>
       url.endsWith("/pptx")
-        ? { ok: true, status: 200, blob: async () => new Blob(["deck"]) }
-        : { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(bundle)) },
+        ? routeAnswer({ status: 200 })
+        : routeAnswer({ status: 200, json: JSON.parse(JSON.stringify(bundle)) }),
     )
   }
 
@@ -286,13 +350,13 @@ describe("dsh preview card — the viewer", () => {
     // route that answers 404 — which the browser renders as a document. The
     // deck stays on screen, because those thumbnails are real; what goes is
     // the promise that clicking them leads anywhere.
-    fetchMock.mockResolvedValue({ ok: false, status: 404, json: async () => null })
+    fetchMock.mockResolvedValue(routeAnswer({ status: 404 }))
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
 
     fireEvent.click(screen.getByText("Open"))
 
-    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(await screen.findByText("gone")).toBeInTheDocument()
     expect(viewer(container)).toBeNull()
     // The strip survives: it is the deck, and it is already in the browser.
     expect(container.querySelectorAll("svg")).toHaveLength(9)
@@ -321,14 +385,24 @@ describe("dsh preview card — the viewer", () => {
     expect(container.querySelectorAll("svg")).toHaveLength(9)
   })
 
-  it("opens the same viewer from any thumbnail", async () => {
-    // Thumbnails used to carry a start page into a React slideshow. The html
-    // opens on page one whichever thumbnail was clicked, and that is the
-    // whole of the behaviour now.
+  it("opens the viewer on the thumbnail that was clicked", async () => {
+    // `#page=N` is the html's own way in (`src/cli/preview-html.ts` reads it
+    // off `location.hash`), and a URL is the only thing this card can hand a
+    // document. Clicking page five and landing on page one is the kind of
+    // small lie that makes a strip feel decorative.
     routeIsAlive()
     const Card = makeCard()
     const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
     fireEvent.click(thumbnails(container)[4]!)
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/abc/html#page=5")
+  })
+
+  it("opens on page one from the header button, with no hash to undo", async () => {
+    routeIsAlive()
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf(nine()), "abc")} />)
+    fireEvent.click(screen.getByText("Open"))
     await waitFor(() => expect(viewer(container)).not.toBeNull())
     expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/abc/html")
   })
@@ -494,7 +568,7 @@ describe("dsh preview card — the viewer", () => {
 
 describe("dsh preview card — the export button", () => {
   it("fetches the pptx route and hands the browser a real .pptx", async () => {
-    fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob(["deck"]) })
+    fetchMock.mockResolvedValue(routeAnswer({ status: 200 }))
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc123")} />)
 
@@ -507,29 +581,81 @@ describe("dsh preview card — the export button", () => {
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
   })
 
-  it("says the preview expired instead of saving the error body as a file", async () => {
-    // The real incident: a bare <a download> on an expired id saved the 404
-    // JSON and called it `pptx.json`.
-    fetchMock.mockResolvedValue({ ok: false, status: 404, blob: async () => new Blob(['{"error":"gone"}']) })
+  it("says the deck is gone instead of saving the error body as a file", async () => {
+    // The real incident: a bare <a download> on a dead id saved the 404 JSON
+    // and called it `pptx.json`.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 404, blob: notADeck() }))
     const Card = makeCard()
-    render(<Card block={blockWith(bundleOf([page(1)]), "expired")} />)
+    render(<Card block={blockWith(bundleOf([page(1)]), "missing")} />)
 
     fireEvent.click(screen.getByText("Download .pptx"))
 
-    expect(await screen.findByText("Expired")).toBeInTheDocument()
+    expect(await screen.findByText("Unavailable")).toBeInTheDocument()
     expect(anchorClicks).toEqual([])
     expect(URL.createObjectURL).not.toHaveBeenCalled()
   })
 
-  it("reports a network failure the same way", async () => {
-    fetchMock.mockRejectedValue(new Error("offline"))
+  it("offers a retry after a failure that was not about the deck, rather than retiring itself", async () => {
+    // The bug: every failed download latched this button to "expired", so one
+    // 502 from a restarting harness — or a request that never left the tab —
+    // disabled the export of a deck sitting on disk the whole time, for the
+    // life of the page. Collapse `verdictOf` back to `!res.ok` and this goes
+    // red on the first assertion.
+    for (const failure of [
+      { name: "5xx", mock: () => fetchMock.mockResolvedValue(routeAnswer({ status: 502 })) },
+      { name: "rejected fetch", mock: () => fetchMock.mockRejectedValue(new Error("offline")) },
+    ]) {
+      fetchMock.mockReset()
+      failure.mock()
+      const Card = makeCard()
+      const view = render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
+
+      fireEvent.click(screen.getByText("Download .pptx"))
+      expect(await screen.findByText("Retry download"), failure.name).toBeInTheDocument()
+      expect(anchorClicks).toEqual([])
+      // Still a button, and still wired: the whole point of not calling this
+      // gone is that clicking again is the obvious next move.
+      const attempts = fetchMock.mock.calls.length
+      fetchMock.mockResolvedValue(routeAnswer({ status: 200 }))
+      fireEvent.click(screen.getByText("Retry download"))
+      expect(fetchMock.mock.calls.length, failure.name).toBe(attempts + 1)
+      await waitFor(() => expect(anchorClicks).toHaveLength(1))
+      expect(await screen.findByText("Download .pptx"), failure.name).toBeInTheDocument()
+
+      anchorClicks.length = 0
+      view.unmount()
+    }
+  })
+
+  it("refuses to save a 200 whose body is not a deck", async () => {
+    // The `pptx.json` incident, in its second form. The first version saved a
+    // 404 body because it never looked at the status; this checks the status
+    // and would still have saved a login page, a proxy notice or an error
+    // document served with 200 — the failure mode a captive portal or a
+    // misrouted request produces. A .pptx is a zip, so its first four bytes are
+    // the claim worth checking. Drop `isZip` and this goes red by handing the
+    // user an HTML file named `Quarterly deck.pptx`.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 200, blob: notADeck() }))
     const Card = makeCard()
-    render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
+    render(<Card block={blockWith(bundleOf([page(1)]), "abc123")} />)
 
     fireEvent.click(screen.getByText("Download .pptx"))
 
-    expect(await screen.findByText("Expired")).toBeInTheDocument()
+    expect(await screen.findByText("Retry download")).toBeInTheDocument()
     expect(anchorClicks).toEqual([])
+    expect(URL.createObjectURL).not.toHaveBeenCalled()
+    // Not `gone` either: the route answered 200, so it has said nothing about
+    // the deck being missing, and the next click is allowed to try again.
+    expect(screen.queryByText("gone")).toBeNull()
+  })
+
+  it("recognises the bytes of a real export", async () => {
+    // The other half, so the check above cannot pass by rejecting everything.
+    const helpers = clientTesting()
+    expect(await helpers.isZip(pptxBytes())).toBe(true)
+    expect(await helpers.isZip(notADeck())).toBe(false)
+    expect(await helpers.isZip(new Blob([new Uint8Array([0x50, 0x4b])]))).toBe(false)
+    expect(await helpers.isZip(undefined as unknown as Blob)).toBe(false)
   })
 
   it("is absent when the result carries no preview id", () => {
@@ -538,22 +664,22 @@ describe("dsh preview card — the export button", () => {
     expect(screen.queryByText("Download .pptx")).toBeNull()
   })
 
-  it("says Expired before the click, once the card already knows", async () => {
+  it("says Unavailable before the click, once the card already knows", async () => {
     // Offering `Download .pptx` for a deck the card has just been told is
     // gone is an invitation to a failure it can already predict. The label is
     // the same word the button reaches on its own after a failed click, so
     // the two ways of learning it do not read as two different states.
-    fetchMock.mockResolvedValue({ ok: false, status: 410, json: async () => null })
+    fetchMock.mockResolvedValue(routeAnswer({ status: 410 }))
     const Card = makeCard()
     render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
 
     fireEvent.click(screen.getByText("Open"))
 
-    expect(await screen.findByText("Expired")).toBeInTheDocument()
+    expect(await screen.findByText("Unavailable")).toBeInTheDocument()
     expect(screen.queryByText("Download .pptx")).toBeNull()
     // And clicking it starts nothing: the route already gave its answer.
     const calls = fetchMock.mock.calls.length
-    fireEvent.click(screen.getByText("Expired"))
+    fireEvent.click(screen.getByText("Unavailable"))
     expect(fetchMock.mock.calls).toHaveLength(calls)
   })
 })
@@ -563,8 +689,8 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
     fetchMock.mockImplementation(async (url: string) => {
       const id = /\/pptfast\/preview\/([^/]+)$/.exec(url)?.[1]
       const found = id ? bundles[id] : undefined
-      if (!found) return { ok: false, status: 404, json: async () => null }
-      return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(found)) }
+      if (!found) return routeAnswer({ status: 404 })
+      return routeAnswer({ status: 200, json: JSON.parse(JSON.stringify(found)) })
     })
   }
 
@@ -604,7 +730,7 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
     render(<Card block={blockWith(null, "missing", { pages: 9 })} />)
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/missing"))
-    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(await screen.findByText("gone")).toBeInTheDocument()
     expect(screen.getByText("9 pages")).toBeInTheDocument()
     expect(screen.getByText(/no longer on disk/)).toBeInTheDocument()
     // Nothing that promises a deck it cannot show.
@@ -642,24 +768,24 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
       answerB = resolve
     })
     fetchMock.mockImplementation(async (url: string) =>
-      url.endsWith("/B") ? pendingB : { ok: false, status: 404, json: async () => null },
+      url.endsWith("/B") ? pendingB : routeAnswer({ status: 404 }),
     )
     const Card = makeCard()
     const { container, rerender } = render(<Card block={blockWith(null, "A", { pages: 4 })} />)
-    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(await screen.findByText("gone")).toBeInTheDocument()
 
     rerender(<Card block={blockWith(null, "B", { pages: 2 })} />)
 
     // B has been asked and has not answered. Until it does, this card knows
     // nothing about B — least of all that it has expired.
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/B"))
-    expect(screen.queryByText("expired")).toBeNull()
+    expect(screen.queryByText("gone")).toBeNull()
     expect(container).toBeEmptyDOMElement()
 
-    answerB({ ok: true, status: 200, json: async () => bundleOf([page(1), page(2)], "Deck B") })
+    answerB(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)], "Deck B") }))
 
     expect(await screen.findByText("Deck B")).toBeInTheDocument()
-    expect(screen.queryByText("expired")).toBeNull()
+    expect(screen.queryByText("gone")).toBeNull()
     expect(screen.getByText("Open")).toBeInTheDocument()
   })
 
@@ -670,22 +796,124 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
     const Card = makeCard()
     render(<Card block={blockWith(null, "missing")} />)
 
-    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(await screen.findByText("gone")).toBeInTheDocument()
     expect(screen.queryByText(/\d+ pages/)).toBeNull()
   })
 
   it("keeps a 410 apart from a harness it could not reach at all", async () => {
-    // A 410 is the route answering: the deck is gone. A rejected fetch is no
-    // answer at all — the harness may simply not be up yet — and reporting
-    // that as an expired preview would leave a wrong verdict on screen long
-    // after its cause passed.
-    fetchMock.mockResolvedValue({ ok: false, status: 410, json: async () => null })
+    // A 410 is the route answering: the deck survived only in part. A rejected
+    // fetch is no answer at all — the harness may simply not be up yet — and
+    // reporting that as a missing deck would leave a wrong verdict on screen
+    // long after its cause passed.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 410 }))
     const Card = makeCard()
     render(<Card block={blockWith(null, "A", { pages: 3 })} />)
-    expect(await screen.findByText("expired")).toBeInTheDocument()
+    expect(await screen.findByText("gone")).toBeInTheDocument()
   })
 
-  it("falls back to the generic row when the fetch itself fails", async () => {
+  it("does not retire a deck because one request came back 5xx", async () => {
+    // The bug, at the level a person sees it. A 502 from a harness that is
+    // restarting says nothing about the deck, and this card used to answer it
+    // with a `gone` badge over files that were on disk the whole time —
+    // permanently, because nothing ever re-asked. Widen the check back to
+    // `!r.ok` and this goes red on the badge.
+    for (const status of [500, 502, 503]) {
+      fetchMock.mockReset()
+      fetchMock.mockResolvedValue(routeAnswer({ status }))
+      const Card = makeCard()
+      const view = render(<Card block={blockWith(null, "A", { pages: 3 })} />)
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/A"))
+      await act(async () => {})
+      expect(screen.queryByText("gone"), String(status)).toBeNull()
+      expect(screen.queryByText(/no longer on disk/), String(status)).toBeNull()
+      // ...and the deck is not silently forgotten either: the transcript still
+      // says how long it was, and the row says what to do about it.
+      expect(screen.getByText("3 pages"), String(status)).toBeInTheDocument()
+      expect(screen.getByText("Retry"), String(status)).toBeInTheDocument()
+      view.unmount()
+    }
+  })
+
+  it("offers a retry that actually retries, rather than only calling itself retryable", async () => {
+    // The gap this closes: the card recorded a 5xx as `unreachable` — correct —
+    // and then rendered nothing at all, so "retryable" was a property of an
+    // internal variable and not of anything a person could do. The effect will
+    // not re-run on its own, so with no button the only way back was reloading
+    // the whole page.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 503 }))
+    const Card = makeCard()
+    render(<Card block={blockWith(null, "A", { pages: 3 })} />)
+
+    const retry = await screen.findByText("Retry")
+    expect(retry).toHaveAttribute("title", expect.stringMatching(/try again/i))
+    const before = fetchMock.mock.calls.length
+
+    // The harness comes back between the two clicks, which is the whole
+    // scenario: nothing about the deck ever changed.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 200, json: bundleOf([page(1), page(2), page(3)], "Deck A") }))
+    fireEvent.click(retry)
+
+    expect(await screen.findByText("Deck A")).toBeInTheDocument()
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(before)
+    expect(screen.getByText("Open")).toBeInTheDocument()
+    expect(screen.queryByText("Retry")).toBeNull()
+  })
+
+  it("says refused rather than unreachable when the route answered and said no", async () => {
+    // 401/403 are the route answering. Offering "try again" for a closed door
+    // is a button that cannot work, so the sentence has to be different even
+    // though the deck's standing is untouched in both cases.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 403 }))
+    const Card = makeCard()
+    render(<Card block={blockWith(null, "A", { pages: 3 })} />)
+
+    expect(await screen.findByText(/refused this request/)).toBeInTheDocument()
+    expect(screen.queryByText("gone")).toBeNull()
+    expect(screen.queryByText(/no longer on disk/)).toBeNull()
+  })
+
+  it("keeps quiet when a 404 could have come from anywhere but this route", async () => {
+    // An unstamped 404 is the shape of a plugin whose route never registered,
+    // or a proxy answering first. The card must not read a verdict off it — and
+    // must not invent a missing deck out of a response that was never about one.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 404, stamped: false }))
+    const Card = makeCard()
+    render(<Card block={blockWith(null, "A", { pages: 3 })} />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/A"))
+    await act(async () => {})
+    expect(screen.queryByText("gone")).toBeNull()
+    expect(screen.queryByText(/no longer on disk/)).toBeNull()
+    // Treated as "could not reach it", which is the honest reading and leaves
+    // a way forward.
+    expect(screen.getByText("Retry")).toBeInTheDocument()
+  })
+
+  it("still opens a deck it already has when a later request comes back 5xx", async () => {
+    // The half of "retryable" that has an affordance. The strip is already in
+    // the browser, so a 502 on the pre-open check must leave the Open button
+    // and the thumbnails alive — otherwise one bad response takes away the
+    // only way to try again.
+    const pages = [page(1, "cover"), page(2), page(3)]
+    fetchMock.mockResolvedValue(routeAnswer({ status: 503 }))
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf(pages), "abc")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+    expect(viewer(container)).toBeNull()
+    expect(screen.queryByText("gone")).toBeNull()
+    expect(screen.getByText("Open")).toBeInTheDocument()
+    expect(thumbnails(container)).toHaveLength(3)
+
+    // ...and the retry the card left available actually works.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 200, json: bundleOf(pages) }))
+    fireEvent.click(screen.getByText("Open"))
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
+  })
+
+  it("survives a fetch that rejects, and offers the same way out", async () => {
     // A rejected promise, not a non-ok response: the harness restarting
     // mid-render, or the route not registered at all. Without its own catch
     // this is an unhandled rejection inside an effect, and the export
@@ -700,7 +928,7 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
     try {
       fetchMock.mockRejectedValue(new Error("connection refused"))
       const Card = makeCard()
-      const { container } = render(<Card block={blockWith(null, "A")} />)
+      render(<Card block={blockWith(null, "A")} />)
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/A"))
       // Two turns: `unhandledRejection` is only decided once the microtask
@@ -708,7 +936,10 @@ describe("dsh preview card — fetching by id (Code Mode)", () => {
       await new Promise((r) => setTimeout(r, 0))
       await new Promise((r) => setTimeout(r, 0))
       expect(rejections).toEqual([])
-      expect(container).toBeEmptyDOMElement()
+      // A request that never landed says nothing about the deck, so the card
+      // claims nothing about it — and still leaves a button.
+      expect(screen.queryByText("gone")).toBeNull()
+      expect(screen.getByText("Retry")).toBeInTheDocument()
     } finally {
       process.off("unhandledRejection", onRejection)
     }
@@ -748,7 +979,7 @@ describe("dsh preview card — a deck with unfilled pages", () => {
   it("saves the file under a name that says draft too", async () => {
     // The card is a conversation the file will outlive: it gets mailed and
     // opened by people who never saw the badge.
-    fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob(["deck"]) })
+    fetchMock.mockResolvedValue(routeAnswer({ status: 200 }))
     const Card = makeCard()
     render(<Card block={blockWith(draftBundle(), "abc123")} />)
 
@@ -756,5 +987,891 @@ describe("dsh preview card — a deck with unfilled pages", () => {
 
     await waitFor(() => expect(anchorClicks).toHaveLength(1))
     expect(anchorClicks[0]!.download).toBe("Quarterly deck-draft.pptx")
+  })
+})
+
+describe("dsh preview card — a preview whose bookkeeping is damaged", () => {
+  /**
+   * Every assertion below is about what a person reads on screen.
+   *
+   * The previous round shipped a server-side `PreviewDamaged`, its own message
+   * and its own tests — and all of those tests asserted JSON. None of them
+   * drove this card, so the distinction never reached a user: the card mapped
+   * every 410 to `gone` and told people their deck had been deleted. Asserting
+   * an internal value and calling the behaviour verified is the mistake this
+   * suite exists to stop making.
+   */
+  const damaged = () => routeAnswer({ status: 410, code: "preview_damaged" })
+
+  it("never tells the user a damaged preview was deleted", async () => {
+    fetchMock.mockResolvedValue(damaged())
+    const Card = makeCard()
+    render(<Card block={blockWith(null, "A", { pages: 9 })} />)
+
+    expect(await screen.findByText("damaged")).toBeInTheDocument()
+    // The three phrasings that would all be false here.
+    expect(screen.queryByText(/deleted/)).toBeNull()
+    expect(screen.queryByText(/no longer on disk/)).toBeNull()
+    expect(screen.queryByText("gone")).toBeNull()
+    // ...and what it says instead is the true thing, plus the page count the
+    // transcript still carries.
+    expect(screen.getByText(/present but unreadable/)).toBeInTheDocument()
+    expect(screen.getByText("9 pages")).toBeInTheDocument()
+  })
+
+  it("keeps the thumbnails it already has, because the deck really was rendered", async () => {
+    // Damaged bookkeeping is not a missing deck. The strip is already in the
+    // browser and it is the deck, so throwing it away would destroy the one
+    // thing that still works to make a point about a file the user cannot see.
+    fetchMock.mockResolvedValue(damaged())
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2), page(3)]), "abc")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+
+    expect(await screen.findByText("damaged")).toBeInTheDocument()
+    expect(container.querySelectorAll("svg")).toHaveLength(3)
+    expect(screen.queryByText(/no longer on disk/)).toBeNull()
+  })
+
+  it("stops pretending the same request will work next time", async () => {
+    fetchMock.mockResolvedValue(damaged())
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "abc")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+    await screen.findByText("damaged")
+
+    // No viewer, no way back into one, and no Retry: nothing about clicking
+    // again would change what the route reads off the disk.
+    expect(viewer(container)).toBeNull()
+    expect(screen.queryByText("Open")).toBeNull()
+    expect(screen.queryByText("Retry")).toBeNull()
+    expect(thumbnails(container)).toHaveLength(0)
+    // The export says which kind of unavailable, not the generic one.
+    expect(screen.getByText("Damaged")).toBeInTheDocument()
+    expect(screen.queryByText("Unavailable")).toBeNull()
+  })
+})
+
+describe("dsh preview card — a route that refuses", () => {
+  /**
+   * `refused` used to exist as a name and nothing else: `isRetryable` said it
+   * was not retryable and no rendering path ever called `isRetryable`. So the
+   * card offered a Retry button on a 403, the viewer swallowed one silently,
+   * and the download reported it as a network problem. Three behaviours for
+   * one verdict, none of them the one that was designed.
+   */
+  const refused = () => routeAnswer({ status: 403 })
+
+  it("offers no retry it cannot honour, when there is no deck in hand", async () => {
+    fetchMock.mockResolvedValue(refused())
+    const Card = makeCard()
+    render(<Card block={blockWith(null, "A", { pages: 3 })} />)
+
+    expect(await screen.findByText(/refused this request/)).toBeInTheDocument()
+    expect(screen.getByText("refused")).toBeInTheDocument()
+    // The button that would send the identical request to the same closed door.
+    expect(screen.queryByText("Retry")).toBeNull()
+    expect(screen.queryByText("gone")).toBeNull()
+    expect(screen.queryByText(/no longer on disk/)).toBeNull()
+  })
+
+  it("says so when the viewer is refused, instead of doing nothing visible", async () => {
+    // The click that used to be swallowed whole: the modal did not open, the
+    // card said nothing, the button stayed, and the only feedback available was
+    // clicking it again.
+    fetchMock.mockResolvedValue(refused())
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "abc")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+
+    expect(await screen.findByText("refused")).toBeInTheDocument()
+    expect(screen.getByText(/refused this request/)).toBeInTheDocument()
+    expect(viewer(container)).toBeNull()
+    // The deck stays on screen; the promise that clicking leads anywhere does not.
+    expect(container.querySelectorAll("svg")).toHaveLength(2)
+    expect(screen.queryByText("Open")).toBeNull()
+    expect(screen.queryByText("Retry")).toBeNull()
+  })
+
+  it("calls a refused download refused, not a network problem", async () => {
+    for (const status of [401, 403]) {
+      fetchMock.mockReset()
+      fetchMock.mockResolvedValue(routeAnswer({ status }))
+      const Card = makeCard()
+      const view = render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
+
+      fireEvent.click(screen.getByText("Download .pptx"))
+
+      expect(await screen.findByText("Refused"), String(status)).toBeInTheDocument()
+      // The two things it used to say instead: a retry it could not honour, and
+      // a sentence blaming the network for a door the route closed on purpose.
+      expect(screen.queryByText("Retry download"), String(status)).toBeNull()
+      expect(screen.getByText("Refused").title, String(status)).toMatch(/refused this request/)
+      expect(anchorClicks).toEqual([])
+      view.unmount()
+    }
+  })
+})
+
+describe("dsh preview card — one button, many decks", () => {
+  it("does not carry a dead download from one deck onto the next", async () => {
+    // Introduced by the verdict model itself: the card keys its bundle and its
+    // verdict by preview id, and the export button kept a plain `useState`. One
+    // React instance is reused as the block it renders changes, so deck A's
+    // 410 latched the button and deck B — a live deck, on disk, with a working
+    // export — rendered `Unavailable` for the rest of the session.
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("/A/") ? routeAnswer({ status: 410, code: "preview_missing" }) : routeAnswer({ status: 200 }),
+    )
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+
+    fireEvent.click(screen.getByText("Download .pptx"))
+    expect(await screen.findByText("Unavailable")).toBeInTheDocument()
+
+    rerender(<Card block={blockWith(bundleOf([page(1), page(2)]), "B")} />)
+
+    // B has been asked nothing yet, so the button offers what it always offers.
+    expect(screen.getByText("Download .pptx")).toBeInTheDocument()
+    expect(screen.queryByText("Unavailable")).toBeNull()
+    // ...and it works, which is the half that says the state really did reset
+    // rather than merely being hidden.
+    fireEvent.click(screen.getByText("Download .pptx"))
+    await waitFor(() => expect(anchorClicks).toHaveLength(1))
+    expect(fetchMock).toHaveBeenCalledWith("/pptfast/preview/B/pptx")
+  })
+
+  it("does not carry a transient download failure across decks either", async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("/A/") ? routeAnswer({ status: 502 }) : routeAnswer({ status: 200 }),
+    )
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+
+    fireEvent.click(screen.getByText("Download .pptx"))
+    expect(await screen.findByText("Retry download")).toBeInTheDocument()
+
+    rerender(<Card block={blockWith(bundleOf([page(1)]), "B")} />)
+    expect(screen.getByText("Download .pptx")).toBeInTheDocument()
+    expect(screen.queryByText("Retry download")).toBeNull()
+  })
+})
+
+describe("dsh preview card — one instance, decks going past", () => {
+  /**
+   * A card is a long-lived React instance that watches decks scroll by, and
+   * every round of this work has broken the same way: a piece of state, or an
+   * async write, that could not say which preview it was about. The host's
+   * bundle cache, then the export button's status, then the viewer. These tests
+   * are about the class, not any one of them.
+   */
+  it("does not open deck B's viewer because deck A's check came back", async () => {
+    // The race, produced rather than asserted about. A's pre-open check is
+    // still in flight when the instance moves to B; A then succeeds. The modal
+    // used to open on the strength of that success — pointed at B, whose id had
+    // never been checked at all. The check that exists to stop the viewer
+    // walking into a wall was walking it into a different one.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/A") ? pendingA : routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck B") }),
+    )
+
+    const Card = makeCard()
+    const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
+    fireEvent.click(screen.getByText("Open"))
+    // In flight, nothing open yet.
+    await act(async () => {})
+    expect(viewer(container)).toBeNull()
+
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    answerA(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)], "Deck A") }))
+    await act(async () => {})
+
+    // B is on screen and B was never asked, so nothing may be open.
+    expect(screen.getByText("Deck B")).toBeInTheDocument()
+    expect(viewer(container)).toBeNull()
+    // ...and A's bundle did not overwrite B's either.
+    expect(screen.queryByText("Deck A")).toBeNull()
+  })
+
+  it("does not let deck A's verdict retire deck B", async () => {
+    // The same race with the other outcome: A comes back 410 after the card has
+    // moved on. B is live, and must not inherit A's obituary.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/A") ? pendingA : routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck B") }),
+    )
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    answerA(routeAnswer({ status: 410, code: "preview_missing" }))
+    await act(async () => {})
+
+    expect(screen.queryByText("gone")).toBeNull()
+    expect(screen.queryByText(/no longer on disk/)).toBeNull()
+    expect(screen.getByText("Open")).toBeInTheDocument()
+  })
+
+  it("closes the viewer when the deck under it changes", async () => {
+    // The un-keyed half of the same state. With the modal open on A, moving the
+    // instance to B kept it open — and pointed it at B, a deck the user had not
+    // asked to see and the card had not checked.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)]) }))
+    const Card = makeCard()
+    const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/A/html")
+
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    await act(async () => {})
+    expect(viewer(container)).toBeNull()
+  })
+
+  it("does not carry one deck's start page onto another", async () => {
+    // `#page=` lived in unkeyed state too: open A on page 2, switch to B, open
+    // B — and B opened on page 2 because that number belonged to nobody.
+    fetchMock.mockResolvedValue(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)]) }))
+    const Card = makeCard()
+    const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
+
+    fireEvent.click(thumbnails(container)[1]!)
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/A/html#page=2")
+
+    rerender(<Card block={blockWith(bundleOf([page(1), page(2)], "Deck B"), "B")} />)
+    await act(async () => {})
+    fireEvent.click(screen.getByText("Open"))
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/B/html")
+  })
+
+  it("does not let a stale answer close the viewer the user is looking at", async () => {
+    // The consequence that isolates the ownership check on the viewer write,
+    // and the reason it is load-bearing rather than decorative. `viewer` is
+    // replaced wholesale, not compared and ignored like `checked` and
+    // `fetched` — so a late response does not merely fail to open something,
+    // it overwrites what is open. A is in flight, the card moves to B, B's
+    // viewer opens, and then A lands: without the check A's write replaces the
+    // viewer state and B's modal, open in front of the user, disappears.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/A") ? pendingA : routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck B") }),
+    )
+
+    const Card = makeCard()
+    const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    fireEvent.click(screen.getByText("Open"))
+    await waitFor(() => expect(viewer(container)).not.toBeNull())
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/B/html")
+
+    // A finally answers, minutes late and about a deck nobody is looking at.
+    answerA(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)], "Deck A") }))
+    await act(async () => {})
+
+    expect(viewer(container)).not.toBeNull()
+    expect(viewer(container)).toHaveAttribute("src", "/pptfast/preview/B/html")
+  })
+})
+
+describe("dsh preview card — the store", () => {
+  it("keeps state in one place, checked against the syntax tree rather than the text", async () => {
+    // A TRIPWIRE, NOT A PROOF — and the difference is worth stating plainly,
+    // because the previous version of this test claimed more than it could do.
+    //
+    // It was a string match on `useState(`, which `react.useState ('x')`,
+    // `const h = react.useState; h()`, `react['useState']()`, `useReducer`, a
+    // `useRef` holding deck state, or a direct call to the setter all walk
+    // straight past. It went red for the one mutation written to match it,
+    // which proved the mutation was killable and nothing else.
+    //
+    // This version parses the file and asks questions of the tree, which
+    // closes some of those holes. It does NOT close all of them, and the ones
+    // it misses are worth naming rather than leaving to be discovered:
+    //
+    //  - `const h = useState` then `h()`  — the callee is `h`, not `useState`
+    //  - `react['use' + 'State']()`       — the name is not a literal
+    //  - `useSyncExternalStore` or `useRef` reached through an alias
+    //  - `useOptimistic` and any hook added to React after this was written
+    //  - `const set = store[1]` then `set()` outside `commit`
+    //  - passing the setter to a function defined elsewhere
+    //  - a mutable object at module scope, or captured in a factory closure
+    //
+    // The root cause is that this inspects call expressions by their final
+    // name; it has no symbol resolution and no data flow. Closing that needs a
+    // type-aware lint rule, which is a bigger commitment than this file has
+    // earned so far.
+    //
+    // So: a tripwire for the shapes that have actually gone wrong, not a proof.
+    // Its value is that a new bypass has to be invented rather than stumbled
+    // into — and that is all it should ever be described as.
+    const { readFile } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+    const ts = await import("typescript")
+    const path = join(process.cwd(), "dsh", "client.js")
+    const tree = ts.createSourceFile(path, await readFile(path, "utf8"), ts.ScriptTarget.ES2020, true)
+
+    /** The nearest named function around a node, for "where is this call?". */
+    const enclosingFunction = (node: TsNode): string => {
+      for (let at = node.parent; at; at = at.parent) {
+        if (ts.isFunctionDeclaration(at) && at.name) return at.name.text
+        if (ts.isVariableDeclaration(at.parent ?? at) && ts.isIdentifier((at.parent as never as { name: unknown }).name as never)) {
+          return ((at.parent as never as { name: { text: string } }).name).text
+        }
+      }
+      return "<top level>"
+    }
+
+    /** Every call in the file, as `{ callee, insideFunction }`. */
+    const calls: { callee: string; inside: string }[] = []
+    const walk = (node: TsNode): void => {
+      if (ts.isCallExpression(node)) {
+        const callee = node.expression
+        let name = ""
+        if (ts.isIdentifier(callee)) name = callee.text
+        else if (ts.isPropertyAccessExpression(callee)) name = callee.name.text
+        else if (ts.isElementAccessExpression(callee)) {
+          const arg = callee.argumentExpression
+          name = ts.isStringLiteral(arg) ? arg.text : `${callee.expression.getText()}[${arg.getText()}]`
+        }
+        calls.push({ callee: name, inside: enclosingFunction(node) })
+      }
+      ts.forEachChild(node, walk)
+    }
+    walk(tree)
+
+    // One state container, whatever spelling is used to reach it.
+    expect(calls.filter((c) => c.callee === "useState")).toHaveLength(1)
+    // No second one under another name.
+    for (const hook of ["useReducer", "useSyncExternalStore", "useDeferredValue"]) {
+      expect(calls.filter((c) => c.callee === hook), hook).toHaveLength(0)
+    }
+    // `useRef` only where it holds a DOM node. A ref holding deck state is the
+    // shape that broke under a discarded render.
+    const refs = calls.filter((c) => c.callee === "useRef").map((c) => c.inside)
+    expect(refs.sort()).toEqual(["Modal", "Slide"])
+    // `commit` touches one entry and does not survey the store. A capacity rule
+    // is the shape that turned an isolated write into a cross-deck effect: a
+    // late answer re-inserted its own entry and pushed the deck on screen out,
+    // resetting a download that was in progress. Put a budget back in `commit`
+    // on its own and no behaviour test can see it, because `maintainStore`
+    // prunes to a single entry and a budget of eight is never reached — the
+    // mutation has to strip the prune out as well before anything moves (round
+    // 8, E1). That is what the assertion below is for: it fails on the half
+    // that behaviour cannot reach.
+    const commitBody = (() => {
+      let found = ""
+      const find = (node: TsNode): void => {
+        if (ts.isFunctionDeclaration(node) && node.name?.text === "commit") found = node.getText()
+        ts.forEachChild(node, find)
+      }
+      find(tree)
+      return found
+    })()
+    expect(commitBody).not.toBe("")
+    for (const survey of ["Object.keys", "while (", "for (", ".length >", "delete next["]) {
+      expect(commitBody, survey).not.toContain(survey)
+    }
+
+    // The setter is called in exactly two functions, and both are named for the
+    // job: `maintainStore` creates and drops entries on commit, `commit`
+    // updates the one that exists. A third would be a writer nobody decided on.
+    const writes = calls.filter((c) => /^store\[1\]$/.test(c.callee))
+    expect(writes.length).toBeGreaterThan(0)
+    expect([...new Set(writes.map((w) => w.inside))].sort()).toEqual(["commit", "maintainStore"])
+    // And nothing aliases the hook out of `react` to dodge the count above.
+    const aliased = tree.getText().match(/=\s*react\s*(\.\s*useState|\[\s*['"]useState['"]\s*\])/g) ?? []
+    expect(aliased).toHaveLength(1)
+  })
+
+  it("drops a stale answer instead of letting it erase the deck on screen", async () => {
+    // The correction to last round's reasoning, and the reason it matters. I
+    // argued this guard was defence-in-depth because a stale verdict carries
+    // deck A's id and the render compares ids before using it. That is true of
+    // *reading* and irrelevant to *writing*: the verdict lives in one slot, so
+    // A's late write does not get ignored — it overwrites whatever B had put
+    // there. B was settled as `gone`, and A's arrival un-settles it, putting
+    // the Open button back on a deck the route has already disowned.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/A") ? pendingA : routeAnswer({ status: 410, code: "preview_missing" }),
+    )
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+
+    rerender(<Card block={blockWith(bundleOf([page(1), page(2)], "Deck B"), "B")} />)
+    fireEvent.click(screen.getByText("Open"))
+    expect(await screen.findByText("gone")).toBeInTheDocument()
+    expect(screen.queryByText("Open")).toBeNull()
+
+    // A answers at last, about a deck nobody is looking at.
+    answerA(routeAnswer({ status: 410, code: "preview_missing" }))
+    await act(async () => {})
+
+    // B is still settled. Without the check in `commit`, A's write lands in the
+    // same slot, B's verdict is erased, and `Open` comes back.
+    expect(screen.getByText("gone")).toBeInTheDocument()
+    expect(screen.queryByText("Open")).toBeNull()
+  })
+
+  it("does not let a stale download answer cancel the download in progress", async () => {
+    // The fourth defect of the class, and the one that arrived in the round
+    // whose whole subject was sweeping the class up. A's download is in flight,
+    // the card moves to B, B's download starts and the button reads `Saving…` —
+    // then A's 410 lands, resets the shared status, and B's button goes back to
+    // `Download .pptx` mid-request, inviting a second submission of a download
+    // that is already running.
+    let answerA = (_value: unknown) => {}
+    let answerB = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    const pendingB = new Promise((resolve) => {
+      answerB = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) => (url.includes("/A/") ? pendingA : pendingB))
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+    fireEvent.click(screen.getByText("Download .pptx"))
+    await act(async () => {})
+
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    fireEvent.click(screen.getByText("Download .pptx"))
+    expect(await screen.findByText("Saving…")).toBeInTheDocument()
+
+    answerA(routeAnswer({ status: 410, code: "preview_missing" }))
+    await act(async () => {})
+
+    // B is still saving. Its request has not come back and nothing about A can
+    // say otherwise.
+    expect(screen.getByText("Saving…")).toBeInTheDocument()
+    expect(screen.queryByText("Download .pptx")).toBeNull()
+    expect(screen.queryByText("Unavailable")).toBeNull()
+
+    answerB(routeAnswer({ status: 200 }))
+    await waitFor(() => expect(anchorClicks).toHaveLength(1))
+  })
+})
+
+describe("dsh preview card — renders that never commit", () => {
+  /**
+   * The defect this exists for was introduced by the fix for the previous one,
+   * which is the fifth time that has happened and the reason the mechanism
+   * changed rather than the care taken.
+   *
+   * Ownership used to be read out of a ref assigned during render. React
+   * forbids that, and the reason is exactly this: a render can happen and be
+   * thrown away. Under a transition, React renders the next deck to see
+   * whether it can show it; if that render suspends, nothing is committed and
+   * the previous deck stays on screen. The ref had already moved, so the deck
+   * the user was still looking at was locked out of its own state — every
+   * answer about it now looked stale and was dropped.
+   */
+  it("lets the deck on screen finish its own download when the next one never commits", async () => {
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("/A/") ? pendingA : routeAnswer({ status: 200 }),
+    )
+
+    // A component that suspends for ever: rendering it produces no commit.
+    const Never = () => {
+      throw new Promise(() => {})
+    }
+    const Card = makeCard()
+
+    const { rerender } = render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <Card block={blockWith(bundleOf([page(1)]), "A")} />
+      </React.Suspense>,
+    )
+    fireEvent.click(screen.getByText("Download .pptx"))
+    expect(await screen.findByText("Saving…")).toBeInTheDocument()
+
+    // React starts rendering B and never gets to commit it. On screen, A.
+    await act(async () => {
+      React.startTransition(() => {
+        rerender(
+          <React.Suspense fallback={<div>loading</div>}>
+            <Card block={blockWith(bundleOf([page(1)]), "B")} />
+            <Never />
+          </React.Suspense>,
+        )
+      })
+    })
+
+    // A answers. It is the deck that is committed, so its own answer must reach
+    // it. With ownership read from a render-time ref, the discarded B render had
+    // already claimed the pointer and this stayed `Saving…` for ever.
+    answerA(routeAnswer({ status: 410, code: "preview_missing" }))
+    await act(async () => {})
+
+    expect(screen.queryByText("Saving…")).toBeNull()
+    expect(screen.getByText("Unavailable")).toBeInTheDocument()
+  })
+
+  it("decides ownership without writing anything during a render", async () => {
+    // The property behind the test above, checked against the source so a
+    // future fix cannot reintroduce a render-phase mutable write and still
+    // pass. React forbids writing `ref.current` during a render, and this file
+    // did it anyway — the two surviving refs hold DOM nodes and are assigned by
+    // React, never by this code.
+    const { readFile } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+    const source = await readFile(join(process.cwd(), "dsh", "client.js"), "utf8")
+
+    expect(source).not.toMatch(/\.current\s*(\.\s*\w+\s*)?=[^=]/)
+  })
+})
+
+describe("dsh preview card — decks that have left the screen", () => {
+  it("does not let a late answer about a departed deck disturb the one on screen", async () => {
+    // The reachable half of the eviction counterexample. A's download is in
+    // flight when the card moves to B; B starts its own; A answers late. B must
+    // still be saving.
+    //
+    // Note what this test can and cannot do, because getting that wrong is how
+    // three rounds of tests passed against their own mutations. The original
+    // counterexample needed nine decks' worth of entries so that a late write
+    // could push the current one out of a capacity-bounded store. The store has
+    // no capacity now and keeps only the deck on screen, so those entries
+    // cannot exist and the scenario is unreachable — the fix removed the
+    // precondition, not just the effect. What guards *that* is the structural
+    // assertion in "keeps state in one place", which fails if `commit` ever
+    // starts iterating or trimming the store again.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    const pendingForever = new Promise(() => {})
+    fetchMock.mockImplementation(async (url: string) => (url.includes("/A/") ? pendingA : pendingForever))
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+    fireEvent.click(screen.getByText("Download .pptx"))
+    await act(async () => {})
+
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    fireEvent.click(screen.getByText("Download .pptx"))
+    expect(await screen.findByText("Saving…")).toBeInTheDocument()
+
+    answerA(routeAnswer({ status: 410, code: "preview_missing" }))
+    await act(async () => {})
+
+    expect(screen.getByText("Saving…")).toBeInTheDocument()
+    expect(screen.queryByText("Download .pptx")).toBeNull()
+    expect(screen.queryByText("gone")).toBeNull()
+    expect(screen.queryByText("Unavailable")).toBeNull()
+  })
+
+  it("ignores a departed deck's answer rather than recreating its state", async () => {
+    // The other half of the rule: `commit` never creates an entry. A response
+    // that lands while its deck has no entry is genuinely stale, and the place
+    // that shows is when the card comes BACK to that deck — with the rule, it
+    // asks again; without it, a verdict appears out of a reply the card had
+    // already decided not to be listening for.
+    //
+    // The first version of this test asserted only that the other deck was
+    // untouched, which is true either way once eviction is gone. It passed
+    // against the mutation, which is the failure mode this suite keeps having
+    // to be rescued from: asserting the safe neighbour instead of the effect.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/A") ? pendingA : routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck B") }),
+    )
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(null, "A", { pages: 4 })} />)
+    await act(async () => {})
+
+    rerender(<Card block={blockWith(null, "B", { pages: 2 })} />)
+    expect(await screen.findByText("Deck B")).toBeInTheDocument()
+
+    // A answers long after it left the screen, with a whole deck.
+    answerA(routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck A as it was") }))
+    await act(async () => {})
+    expect(screen.getByText("Deck B")).toBeInTheDocument()
+
+    // Now come back to A. The route has moved on since; A must ask it rather
+    // than draw a deck assembled from a reply that landed while it had no
+    // entry. A bundle is the right thing to check for: a stale *verdict* would
+    // be masked by the refetch that follows it, so an earlier version of this
+    // test could not see the difference at all.
+    const before = fetchMock.mock.calls.length
+    fetchMock.mockImplementation(async () => routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck A now") }))
+    rerender(<Card block={blockWith(null, "A", { pages: 4 })} />)
+    await act(async () => {})
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(before)
+    expect(await screen.findByText("Deck A now")).toBeInTheDocument()
+    expect(screen.queryByText("Deck A as it was")).toBeNull()
+  })
+})
+
+describe("dsh preview card — an answer that arrives while nothing is on screen", () => {
+  it("keeps a reply out of a store that is empty, rather than letting it move in", async () => {
+    // The same rule as "ignores a departed deck's answer", through the one
+    // sequence where a created entry would survive to be read. `maintainStore`
+    // leaves a store alone when it already holds exactly the deck being
+    // rendered — so if a late reply is allowed to *create* the entry for A
+    // while the card is showing no preview at all, that entry is the only one
+    // there, and coming back to A finds it settled and draws it. `commit`
+    // refusing to create is the whole of what keeps that reply out.
+    //
+    // The card being between previews is not exotic: `previewId` is parsed out
+    // of the tool's own result text, and the card renders with it null for
+    // every block that has not got one.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async () => pendingA)
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(null, "A", { pages: 4 })} />)
+    await act(async () => {})
+
+    // A block with no preview in it at all: the store now holds nothing.
+    rerender(<Card block={{ content: [{ text: "no preview here" }] }} />)
+    await act(async () => {})
+
+    // A answers into that emptiness, with a whole deck.
+    answerA(routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck A as it was") }))
+    await act(async () => {})
+
+    // Back to A. It has to ask the route, not read a reply it was not listening
+    // for by the time it arrived.
+    fetchMock.mockImplementation(async () => routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck A now") }))
+    rerender(<Card block={blockWith(null, "A", { pages: 4 })} />)
+
+    expect(await screen.findByText("Deck A now")).toBeInTheDocument()
+    expect(screen.queryByText("Deck A as it was")).toBeNull()
+  })
+})
+
+describe("dsh preview card — a deck the card comes back to", () => {
+  /**
+   * The seventh defect of the class, and the first one about time rather than
+   * about which deck.
+   *
+   * Entries are addressed by preview id, and `commit` refuses to write into an
+   * id that has no entry — which retired every late answer from a deck that had
+   * left the screen. But leaving is not permanent: a card that goes A → B → A
+   * builds a *second* entry under the same id, with none of the first one's
+   * bookkeeping. The old A request, still in flight from the first stay, then
+   * found an entry under its own id and was applied to it: a viewer the user
+   * had asked for minutes ago, opening by itself over a deck they had only just
+   * come back to.
+   */
+  it("does not open a viewer for an Open the user clicked on a previous visit", async () => {
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/A") ? pendingA : routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck B") }),
+    )
+
+    const Card = makeCard()
+    const { container, rerender } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+    expect(viewer(container)).toBeNull()
+
+    // Away, which drops A's entry…
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    await act(async () => {})
+    // …and back, which builds a new one under the same id.
+    rerender(<Card block={blockWith(bundleOf([page(1), page(2)]), "A")} />)
+    await act(async () => {})
+    expect(viewer(container)).toBeNull()
+
+    // The first stay's request finally answers.
+    answerA(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)]) }))
+    await act(async () => {})
+
+    // Nothing opened. The user is looking at the deck they came back to, not at
+    // a modal they asked for before they left.
+    expect(viewer(container)).toBeNull()
+    expect(screen.getByText("Open")).toBeInTheDocument()
+  })
+
+  it("does not mark the export unavailable because the previous visit's download failed", async () => {
+    // The download lane has the same shape and its own visible damage: come
+    // back to a deck that is perfectly fine and find its export already
+    // labelled `Unavailable`, on the strength of a request from a visit the
+    // user has left behind.
+    let answerA = (_value: unknown) => {}
+    const pendingA = new Promise((resolve) => {
+      answerA = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("/A/") ? pendingA : routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck B") }),
+    )
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+    fireEvent.click(screen.getByText("Download .pptx"))
+    expect(await screen.findByText("Saving…")).toBeInTheDocument()
+
+    rerender(<Card block={blockWith(bundleOf([page(1)], "Deck B"), "B")} />)
+    await act(async () => {})
+    rerender(<Card block={blockWith(bundleOf([page(1)]), "A")} />)
+    await act(async () => {})
+    // A fresh visit: nothing is downloading, so the button offers the download.
+    expect(screen.getByText("Download .pptx")).toBeInTheDocument()
+
+    answerA(routeAnswer({ status: 410, code: "preview_missing" }))
+    await act(async () => {})
+
+    expect(screen.getByText("Download .pptx")).toBeInTheDocument()
+    expect(screen.queryByText("Unavailable")).toBeNull()
+    expect(screen.queryByText(/no longer on disk/)).toBeNull()
+  })
+
+  it("draws nothing from the bundle the previous visit was told about", async () => {
+    // Code Mode, where the bundle itself arrives by request — and the ordering
+    // rule cannot help here, because the stale answer lands *first*. The high
+    // water mark it would have been measured against went out with the old
+    // entry, so on the second visit there is nothing left to say this reply is
+    // older than the one still in flight.
+    const answers: ((value: unknown) => void)[] = []
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/A")
+        ? new Promise((resolve) => {
+            answers.push(resolve)
+          })
+        : routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck B") }),
+    )
+
+    const Card = makeCard()
+    const { rerender } = render(<Card block={blockWith(null, "A", { pages: 4 })} />)
+    await act(async () => {})
+    expect(answers).toHaveLength(1)
+
+    rerender(<Card block={blockWith(null, "B", { pages: 2 })} />)
+    expect(await screen.findByText("Deck B")).toBeInTheDocument()
+
+    // Back to A, which asks the route for itself. That request is still out.
+    rerender(<Card block={blockWith(null, "A", { pages: 4 })} />)
+    await act(async () => {})
+    expect(answers).toHaveLength(2)
+
+    // The first visit's request answers, ahead of the one this visit made.
+    answers[0]!(routeAnswer({ status: 200, json: bundleOf([page(1)], "Deck A as it was") }))
+    await act(async () => {})
+    expect(screen.queryByText("Deck A as it was")).toBeNull()
+
+    // This visit's own answer is the one that decides.
+    answers[1]!(routeAnswer({ status: 410, code: "preview_missing" }))
+    expect(await screen.findByText("gone")).toBeInTheDocument()
+    expect(screen.queryByText("Deck A as it was")).toBeNull()
+  })
+})
+
+describe("dsh preview card — two requests for the same deck", () => {
+  it("does not let an older answer overturn a newer one", async () => {
+    // Round five called this "two requests for the same preview race each
+    // other, last writer wins — intended". It is not: last to *arrive* is not
+    // most *recent*, and `alive` after `gone` is not a race, it is time running
+    // backwards. The second Open answered 410 and settled the card; the first,
+    // older request then answered 200 and un-settled it, reopening the viewer
+    // on a deck the route had just disowned.
+    const answers: ((value: unknown) => void)[] = []
+    fetchMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answers.push(resolve)
+        }),
+    )
+
+    const Card = makeCard()
+    const { container } = render(<Card block={blockWith(bundleOf([page(1), page(2)]), "abc")} />)
+
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+    expect(answers).toHaveLength(2)
+
+    // The newer request answers first: this deck is gone.
+    answers[1]!(routeAnswer({ status: 410, code: "preview_missing" }))
+    await act(async () => {})
+    expect(screen.getByText("gone")).toBeInTheDocument()
+
+    // The older one answers afterwards, with news from before that.
+    answers[0]!(routeAnswer({ status: 200, json: bundleOf([page(1), page(2)]) }))
+    await act(async () => {})
+
+    expect(screen.getByText("gone")).toBeInTheDocument()
+    expect(viewer(container)).toBeNull()
+    expect(screen.queryByText("Open")).toBeNull()
+  })
+
+  it("keeps the download's ordering separate from the deck's", async () => {
+    // Two lanes, because one ticket space would let a slow export make a fresh
+    // verdict look stale, or a fresh verdict discard the export's own outcome.
+    const deckAnswers: ((value: unknown) => void)[] = []
+    const downloadAnswers: ((value: unknown) => void)[] = []
+    fetchMock.mockImplementation(
+      (url: string) =>
+        new Promise((resolve) => {
+          ;(url.endsWith("/pptx") ? downloadAnswers : deckAnswers).push(resolve)
+        }),
+    )
+
+    const Card = makeCard()
+    render(<Card block={blockWith(bundleOf([page(1)]), "abc")} />)
+
+    fireEvent.click(screen.getByText("Download .pptx"))
+    await act(async () => {})
+    fireEvent.click(screen.getByText("Open"))
+    await act(async () => {})
+
+    // The deck answers second but with a later ticket; the download's own
+    // outcome, ticketed earlier, must still land in its own lane.
+    deckAnswers[0]!(routeAnswer({ status: 200, json: bundleOf([page(1)]) }))
+    await act(async () => {})
+    downloadAnswers[0]!(routeAnswer({ status: 200 }))
+    await waitFor(() => expect(anchorClicks).toHaveLength(1))
+    // Both copies of the button — the card's and the viewer's, which the deck
+    // answer opened — are back to offering the download rather than stuck on
+    // `Saving…` because a newer deck ticket discarded the export's outcome.
+    const buttons = screen.getAllByText("Download .pptx")
+    expect(buttons.length).toBeGreaterThan(0)
+    expect(screen.queryByText("Saving…")).toBeNull()
   })
 })
