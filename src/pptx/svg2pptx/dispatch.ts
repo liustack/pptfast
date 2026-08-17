@@ -1,7 +1,7 @@
 import { pxToIn } from "../../constants"
 import { rectToOp, type ShapeOp } from "./rect"
 import { circleToOp, ellipseToOp, type EllipseOp } from "./ellipse"
-import { textToOp, type TextOp } from "./text"
+import { anchorTextBox, textToOp, type TextOp } from "./text"
 import { lineToOp, type LineOp } from "./line"
 import { polygonToOp, polylineToOp, pathToOp, type PathOp, type PathPoint } from "./path"
 import { imageToOp, type ImageOp } from "./image"
@@ -175,7 +175,13 @@ function walk(
   // 本渲染器只发 translate/scale：先按矩阵对角项缩放局部几何，再平移到
   // 原点像。旋转/斜切不在受控子集内（出现时按未缩放处理并靠门测试拦截）。
   const origin = applyPoint(ctm, 0, 0)
-  const positioned = translateOp(scaleOp(op, ctm[0], ctm[3]), pxToIn(origin.x), pxToIn(origin.y))
+  let positioned = translateOp(scaleOp(op, ctm[0], ctm[3]), pxToIn(origin.x), pxToIn(origin.y))
+  // A text box's width is measured against the canvas, so it is only right
+  // once the op is *in* canvas coordinates — which is here, and nowhere
+  // earlier (`textToOp` sees this element's local x and nothing else). Every
+  // other op kind carries real local geometry that the scale+translate above
+  // already maps correctly. See `anchorTextBox`'s own doc comment.
+  if (positioned.kind === "text") positioned = anchorTextBox(positioned)
   out.push(ownBlockIndex != null ? { ...positioned, blockIndex: ownBlockIndex } : positioned)
 }
 
