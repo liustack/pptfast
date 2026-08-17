@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "../layouts/registry"
 import { fitHeadingLines } from "../heading-fit"
-import { layoutSvgText } from "../../lib/svg-text-layout"
+import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { readableOn } from "../ink"
 
@@ -62,6 +62,8 @@ const COVER_TITLE_X = 64
 const COVER_TITLE_MAX_W = 360
 const COVER_BLOCK_CENTER_Y = 360 // vertical center of the full-height block
 const COVER_RIGHT_X = COVER_BLOCK_W + 64 // 576
+const META_FONT_SIZE = 26
+const META_MIN_FONT_SIZE = 18
 const COVER_RIGHT_EDGE = 1184 // mirrors the 96px page margin used elsewhere (1280 - 96)
 const COVER_RIGHT_MAX_W = COVER_RIGHT_EDGE - COVER_RIGHT_X
 
@@ -110,11 +112,36 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
   const conf = ir.meta.confidentiality
   const confLabel = conf ? CONF_LABEL[conf] : null
   const author = ir.meta.authors?.[0]
-  const authorText = author
-    ? [author.name, author.role].filter(Boolean).join(" · ")
-    : null
   const date = ir.meta.date
   const version = ir.meta.version
+
+  // The meta line is composed from up to three parts and used to be painted
+  // at a fixed 26px with no width fit at all, so a long name-plus-role in
+  // English ran straight off the right edge of the page (the 2026-08-15
+  // visual review's only out-of-bounds finding: text ending at x=1340 on a
+  // 1280px canvas).
+  //
+  // Fitted in the order a person would shorten it: shrink the type first,
+  // and only if that still does not fit, drop the role — a job title is the
+  // most droppable part of "name · title · date", and losing it entirely is
+  // better than ellipsizing someone's name. Re-composed from the parts each
+  // time so the per-part fills below stay intact.
+  const composeAuthor = (withRole: boolean) =>
+    author ? [author.name, withRole ? author.role : undefined].filter(Boolean).join(" · ") : null
+  const composeMeta = (withRole: boolean) =>
+    [composeAuthor(withRole), date, version].filter(Boolean).join("    ·    ")
+
+  const metaFitOpts = {
+    maxWidth: COVER_RIGHT_EDGE - COVER_RIGHT_X,
+    fontSize: META_FONT_SIZE,
+    minFontSize: META_MIN_FONT_SIZE,
+  }
+  let metaFit = fitSvgLine(composeMeta(true), metaFitOpts)
+  let authorText = composeAuthor(true)
+  if (metaFit.truncated && author?.role) {
+    metaFit = fitSvgLine(composeMeta(false), metaFitOpts)
+    authorText = composeAuthor(false)
+  }
 
   const orgY = 168
   const subtitleY = orgY + 64
@@ -233,14 +260,27 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
           <text
             x={COVER_RIGHT_X}
             y={metaTextY}
+            data-truncated={metaFit.truncated ? "1" : undefined}
             fontFamily={fonts.body}
-            fontSize="26"
+            fontSize={metaFit.fontSize}
             dominantBaseline="alphabetic"
           >
-            {authorText && <tspan fill={colors.text}>{authorText}</tspan>}
-            {date && <tspan fill={colors.muted}>{`${authorText ? "    ·    " : ""}${date}`}</tspan>}
-            {version && (
-              <tspan fill={colors.muted}>{`${authorText || date ? "    ·    " : ""}${version}`}</tspan>
+            {metaFit.truncated ? (
+              // Shrinking and then dropping the role both failed, so the fit
+              // had to ellipsize. Render its text — the whole point of
+              // computing it — as one run: the per-part fills below can only
+              // be reassembled from parts that survived intact, and a line
+              // that keeps its colours while overflowing the page is the
+              // defect this fit exists to prevent.
+              <tspan fill={colors.text}>{metaFit.text}</tspan>
+            ) : (
+              <>
+                {authorText && <tspan fill={colors.text}>{authorText}</tspan>}
+                {date && <tspan fill={colors.muted}>{`${authorText ? "    ·    " : ""}${date}`}</tspan>}
+                {version && (
+                  <tspan fill={colors.muted}>{`${authorText || date ? "    ·    " : ""}${version}`}</tspan>
+                )}
+              </>
             )}
           </text>
         </>

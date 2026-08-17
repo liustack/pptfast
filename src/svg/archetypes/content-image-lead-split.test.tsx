@@ -52,6 +52,14 @@ const chartLead: Slide = {
   ],
 } as Slide
 
+const chartOnly: Slide = {
+  type: "content",
+  heading: "数据图表独占一页",
+  components: [
+    { type: "chart", chart_type: "bar", series: [{ name: "收入", data: [{ x: "Q1", y: 1 }] }] },
+  ],
+} as Slide
+
 function ir(slides: Slide[], images: PptxIR["assets"]["images"] = {}): PptxIR {
   return {
     version: "4",
@@ -387,5 +395,39 @@ describe("ImageLeadSplitContent determinism", () => {
     const a = render(ir([zeroComponents]), zeroComponents)
     const b = render(ir([zeroComponents]), zeroComponents)
     expect(a.markup).toBe(b.markup)
+  })
+})
+
+describe("ImageLeadSplitContent header-only balance", () => {
+  it("centers the text block against the visual column when the body is empty", () => {
+    // Visual review 2026-08-15: a single-chart page kept the 60/40 split but
+    // top-aligned a two-line heading in the 435px column, leaving ~450px of
+    // dead space under it beside a full-height chart — read as content
+    // having gone missing ("这个页面为什么左侧全空白" / "主体为什么不居中").
+    // The fix moves the text down to share a center line with the visual;
+    // no width changes, so the archetype keeps its own skeleton.
+    const deck = ir([chartOnly])
+    const { root } = render(deck, chartOnly)
+    const headings = Array.from(root.querySelectorAll("text")).filter(
+      (t) => t.textContent && chartOnly.heading!.includes(t.textContent.slice(0, 4)),
+    )
+    expect(headings.length).toBeGreaterThan(0)
+    const firstBaseline = Number(headings[0]!.getAttribute("y"))
+    // The visual column spans y=72..640, so its center is 356. A top-aligned
+    // heading would sit at the 150 baseline; the centered one sits well
+    // below that and near the column's own middle.
+    expect(firstBaseline).toBeGreaterThan(250)
+    expect(firstBaseline).toBeLessThan(430)
+  })
+
+  it("leaves the text block top-aligned as soon as the body carries anything", () => {
+    // With body content the stack must keep the full column height to grow
+    // into, so the centering is strictly the empty-body case.
+    const deck = ir([chartLead])
+    const { root } = render(deck, chartLead)
+    const headings = Array.from(root.querySelectorAll("text")).filter(
+      (t) => t.textContent && chartLead.heading!.includes(t.textContent.slice(0, 4)),
+    )
+    expect(Number(headings[0]!.getAttribute("y"))).toBe(150)
   })
 })

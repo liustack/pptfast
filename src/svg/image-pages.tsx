@@ -4,6 +4,7 @@ import type { ComponentCtx } from "./components/types"
 import type { LayoutDefinition } from "./layouts/registry"
 import { renderComponent } from "./components"
 import { layoutContentFit, stackBottom } from "./layout"
+import { DroppedContentMarker } from "./drop-marker"
 import { findImageComponent } from "./layouts/find-image"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
@@ -303,20 +304,9 @@ export function ImageSplitPage({
       {placed.map((p, i) => (
         <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
-      {dropped > 0 && (
-        <text
-          data-dropped={dropped}
-          x={W - 96}
-          y={H - 76}
-          textAnchor="end"
-          fontSize={14}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${dropped} more`}
-        </text>
-      )}
+      {/* Recorded, never painted — and the export refuses to ship it.
+          See `DroppedContentMarker`'s own doc comment. */}
+      <DroppedContentMarker count={dropped} />
     </g>
   )
 }

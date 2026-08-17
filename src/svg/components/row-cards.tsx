@@ -2,6 +2,7 @@ import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { Icon } from "../icons"
 import type { RenderDef, SvgComponent } from "./types"
+import { accessibleInk } from "../ink"
 
 type RowCardsComponent = Extract<Component, { type: "row_cards" }>
 
@@ -79,6 +80,16 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
       visible = Math.max(1, visible)
     }
     const hidden = component.items.length - visible
+    // A highlighted card paints its number and title in the accent, on the
+    // card's own surface — a self-painted surface, so the ink is measured
+    // against what this component painted rather than the page. Consulting's
+    // accent is a light yellow that measures 1.56:1 on its near-white card,
+    // i.e. the highlighted row (the one meant to stand out most) was the
+    // least readable thing on the slide. Found once the 2026-08-15 review
+    // corpus stopped over-filling this component, which had been truncating
+    // the highlighted card out of the render entirely.
+    const highlightInk = accessibleInk(ctx.colors.accent, ctx.colors.surface, TITLE_SIZE)
+
     let cursor = 0
     return (
       <g transform={`translate(${box.x},${box.y})`}>
@@ -131,7 +142,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
                 textAnchor="middle"
                 fontSize={16}
                 fontWeight="bold"
-                fill={hl ? ctx.colors.accent : ctx.colors.text}
+                fill={hl ? highlightInk : ctx.colors.text}
                 fontFamily={ctx.fonts.heading}
                 dominantBaseline="alphabetic"
               >
@@ -152,7 +163,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
                 y={titleBaseline}
                 fontSize={title.fontSize}
                 fontWeight="bold"
-                fill={hl ? ctx.colors.accent : ctx.colors.text}
+                fill={hl ? highlightInk : ctx.colors.text}
                 fontFamily={ctx.fonts.heading}
                 dominantBaseline="alphabetic"
               >

@@ -18,7 +18,7 @@ import {
   applyGradientFills,
   type GradientFillPatch,
 } from "./svg2pptx/render"
-import { slideToOps } from "@/svg/render-slide"
+import { slideToRender } from "@/svg/render-slide"
 import type { ImageOp } from "./svg2pptx/image"
 import { dedupeMediaInZip } from "./pptx-dedupe-media"
 import { applySlideTransitions, applyElementAnimations } from "./pptx-animations"
@@ -28,7 +28,62 @@ import { finalizePptxZip, normalizePptxTimestamps, PptxSealViolationError } from
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
-export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
+/** One page that lost content at layout time, for the gate's error message. */
+interface DroppedPage {
+  page: number
+  slideId?: string
+  count: number
+}
+
+/**
+ * Content-drop gate (deep-review P1): refuse to export a deck whose layout
+ * had to throw content away to make the rest fit, unless the caller opts in
+ * with `{ allowDroppedContent: true }` (`--allow-dropped-content`).
+ *
+ * Same shape and same reason as `checkDraftGate` in `../api.ts`: shipping a
+ * deck that is quietly missing content is a worse failure mode than a loud
+ * refusal, and the reader of the finished file is the one person who cannot
+ * tell. `layoutContentFit` drops blocks that do not fit and marks them with
+ * an invisible `data-dropped-silent` (`DroppedContentMarker` — the visible
+ * "+N more" text was removed because a debug marker on a customer-facing
+ * slide helps nobody), so before this gate the only trace was an `audit`
+ * run nobody was obliged to make.
+ *
+ * Scoped to the silent kind on purpose. A component that trims its own
+ * items still paints "+N more" on the slide (`components/bullets.tsx`,
+ * `data-table.tsx`, `timeline.tsx`) — the reader is told, the deck is not
+ * pretending to be complete, and `docs/concepts.md` already adjudicated
+ * that case as graceful degradation plus an advisory audit finding. This
+ * gate is for the case where nothing on the page admits anything is gone.
+ *
+ * It lives here rather than beside `checkDraftGate` because the question
+ * "will this deck lose content?" can only be answered by a real layout, and
+ * this is where the export already renders every slide — `slideToRender`
+ * hands back the drop count from the same parse that produces the ops, so
+ * the check costs no extra render and reads the exact markup that becomes
+ * the file. Runs before `pptx.write`, so a refused export never pays for
+ * serialization, patching or zipping.
+ *
+ * Deliberately not applied to `renderSlideSvg` (single-slide preview),
+ * `preview --html`, `serve` or the gallery: rendering a deck that still has
+ * problems is exactly what those exist for — the gate belongs on the one
+ * path that produces a deliverable.
+ */
+function checkContentDropGate(dropped: DroppedPage[]): void {
+  if (dropped.length === 0) return
+  const total = dropped.reduce((sum, d) => sum + d.count, 0)
+  const refs = dropped
+    .map((d) => (d.slideId ? `${d.slideId} (page ${d.page}, ${d.count})` : `page ${d.page} (${d.count})`))
+    .join(", ")
+  throw new PptfastError(
+    `deck drops ${total} content block${total === 1 ? "" : "s"} that do not fit the content area, on ${dropped.length} page${dropped.length === 1 ? "" : "s"}: ${refs} — shorten the content, split the page in two, or pass --allow-dropped-content`,
+  )
+}
+
+export async function generatePptxBlob(
+  input: PptxIR,
+  opts?: { allowDroppedContent?: boolean },
+): Promise<Blob> {
   // `kind` is an optional file-type discriminator some callers attach to the
   // IR (e.g. `{ kind: "pptx", ...IR }`), not an IR field — the strict
   // PptxIRSchema rejects unrecognized keys, so strip it before the strict
@@ -54,9 +109,15 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
   // package-audit.ts for why the rule needs this instead of the IR's
   // declared component list.
   const imageOpsBySlide: ImageOp[][] = []
+  // Fed to `checkContentDropGate` after the loop — collected here because
+  // the render that answers it is the render the export is doing anyway.
+  const droppedPages: DroppedPage[] = []
   ir.slides.forEach((slide, index) => {
     const s = pptx.addSlide({ masterName: slide.type })
-    const ops = slideToOps(ir, slide, index)
+    const { ops, dropped } = slideToRender(ir, slide, index)
+    if (dropped > 0) {
+      droppedPages.push({ page: index + 1, ...(slide.id ? { slideId: slide.id } : {}), count: dropped })
+    }
     imageOpsBySlide.push(ops.filter((op): op is ImageOp => op.kind === "image"))
     gradientPatches.push(...renderOps(s, ops, index))
     // Speaker notes (notes+preview wave, task 1): native PowerPoint notes,
@@ -73,6 +134,8 @@ export async function generatePptxBlob(input: PptxIR): Promise<Blob> {
     // conditional guard against new structure.
     if (slide.notes) s.addNotes(slide.notes)
   })
+
+  if (!opts?.allowDroppedContent) checkContentDropGate(droppedPages)
 
   const rawBlob = (await pptx.write({ outputType: "blob" })) as Blob
   // pptxgenjs itself has no gradient-fill API (render.ts, vc-task-6 pre-check

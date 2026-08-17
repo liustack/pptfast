@@ -11,6 +11,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * stacked-poster content archetype（spec §3.2，Wave 3 Task 20）：creative
@@ -476,7 +477,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={CENTER_X}
-          y="656"
+          y={FOOTNOTE_BASELINE_Y}
           textAnchor="middle"
           fontFamily={ctx.fonts.body}
           fontSize={footnote.fontSize}

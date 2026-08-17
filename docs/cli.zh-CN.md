@@ -14,7 +14,7 @@ read_when:
 
 | 命令 | 作用 |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | 校验并渲染成 `.pptx` |
+| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content]` | 校验并渲染成 `.pptx` |
 | `validate <target>` | 校验 IR，输出带页码的错误信息与提示性警告 |
 | `audit <target> [--json] [--pixels]` | 确定性几何审查，发现问题 exit 1（见[审查](#审查)） |
 | `asset-brief <target> [--json]` | 为每个 `image` 组件生成一份配图简报（见[配图简报](#配图简报)） |
@@ -26,13 +26,15 @@ read_when:
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见[主题](./themes.zh-CN.md#你自己的品牌)） |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`），永远不受占位页拦截 |
-| `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新，批注直接提交回 deck 目录生成 `revision-request.json` |
+| `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新 |
 | `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`，确定性转换，不调模型 |
 | `init` | 生成 `pptfast.config.json` 模板 |
 | `doctor [--json]` | 体检本机安装：skill 副本、dsh 插件、运行时、可选能力、自检渲染（见[体检](#体检)） |
 | `check-update` / `self-update` | 检查 npm 上的新版本 / 更新全局安装 |
 
 `--theme-file` 在 `render`、`validate`、`audit`、`preview`、`serve` 上都可用。
+
+`render` 不会把一份悄悄缺内容的文件交给你。deck 里有未填的占位页时，要加 `--draft`。某一页装的内容超过内容区容量、版面只能丢掉放不下的块，而页面上没有任何提示时，要加 `--allow-dropped-content`，报错会写清哪几页各丢了几块。真正的修法是把这一页缩短或拆成两页，`audit` 会指向同样这几页。这两个开关是给「我知道，我就要这份文件」的场合用的。两道闸门都不影响 `preview` 和 `serve`：看半成品正是它们的用途。
 
 ## 审查
 
@@ -45,7 +47,7 @@ read_when:
 - **低对比度**：文字与其所在背景的 WCAG 相对亮度对比度不达标。
 - **重叠**：两个组件的区域大面积相交。
 - **内容截断**：渲染器为适配版面用省略号截断了文字。
-- **内容丢失**：出现「+N 更多」标记，一张卡片列表或整个组件放不下被隐藏了。
+- **内容丢失**：一张卡片列表被截断到放得下的条数（页面上会显示「+N 更多」），或者整个组件放不下被整块丢掉、页面上没有任何痕迹。
 
 audit 是建议性工具，不是硬门。结构非法或密度超标的 deck 由 `validate` 拦下，audit 抓的是一份*合法* deck 在渲染层仍可能出现的问题：作者选了一个贴近背景色的文字颜色、两个组件的内容恰好撞在一起、一张卡片列表放不下丢了一条。
 
@@ -116,7 +118,9 @@ pptfast doctor
 
 `pptfast preview --html` 还会额外写出一个自包含的 `preview.html` 供人工审查：支持键盘翻页、占位页角标，打开后零网络请求（远程 URL 的图片资产仍是远程链接，这是自包含性上唯一的缺口）。所有页面都填好之后，这份页面还会叠加同一份 `audit` 结果：每页一个数量角标，加一个可点击跳转的 findings 面板。deck 里还有占位页时，显示一行「audit 已跳过」的提示代替。
 
-审阅者可以直接在 `preview.html` 里给每页写自由文本批注，导出为 `revision-request.json`（浏览器下载，不联网也不写文件，preview 始终只读），交给 agent 通过 `pages/*.json` 回填。`pptfast serve <target>` 把同一套回路做成实时版本：浏览器标签页随源文件变化自动刷新，批注面板直接提交到磁盘上的 `<deck-dir>/revision-request.json`。
+`preview.html` 是只读的：它只呈现 deck，从不写入。审阅者想改什么就在对话里说——把那一页截图发过去是最快的交接方式——由 agent 改回 `pages/*.json`。`pptfast serve <target>` 把同一个页面做成实时版本：源文件一变浏览器标签页就自动刷新，每次修订都落在审阅者已经打开的那个标签页里。
+
+除了 `preview.html`，`preview --html` 还会写出 `manifest.json`：一份扁平的页面清单，含稳定 id、每页对应的 SVG 文件、画布尺寸，以及逐页的审计发现。这是给**程序**读的那一半——自带 UI 的 harness 据此把 deck 画出来，没有 UI 的就打开那个 HTML，两边都不需要重新渲染一遍。
 
 这套回路由 skill 封装给 agent 使用（[`skills/pptfast/SKILL.zh-CN.md`](../skills/pptfast/SKILL.zh-CN.md)），不论装的是 skill 文件夹还是 DSH 插件。回路本身由一个模型无关的内部基准测试（`tests/bench/`，不发布到 npm）机械化验证，固定题库，评估模型跟随该 skill 的表现，细节见 `tests/bench/README.md`。
 

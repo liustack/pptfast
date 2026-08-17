@@ -1,6 +1,7 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import type { RenderDef, SvgComponent } from "./types"
+import { accessibleInk } from "../ink"
 
 type ImageComponent = Extract<Component, { type: "image" }>
 
@@ -92,7 +93,14 @@ export const image: SvgComponent<ImageComponent> = {
                   width={box.w}
                   height={32}
                   fill={ctx.colors.primary}
-                  fillOpacity={0.88}
+                  // Opaque, not 0.88. The caption ink is picked against this
+                  // band (the self-painted-surface rule), and at 0.88 the
+                  // real background was primary blended with whatever pixels
+                  // the photo happened to have underneath — so the ink was
+                  // measured against a color that was never painted, and on
+                  // a light photo the true ratio stayed under the floor even
+                  // after the ink fix. An opaque band is the only version of
+                  // this the contrast pick can actually guarantee.
                 />
                 <text
                   data-truncated={fittedCaption.truncated ? "1" : undefined}
@@ -100,7 +108,14 @@ export const image: SvgComponent<ImageComponent> = {
                   y={imgH - 11}
                   textAnchor="middle"
                   fontSize={fittedCaption.fontSize}
-                  fill={ctx.colors.surface}
+                  // Self-painted surface: measure the caption ink against
+                  // the band this component just painted, not the ambient
+                  // page background (docs/contrast-system.md's own rule).
+                  // `colors.surface` is near-white on most themes and fails
+                  // outright on a bright primary — campaign's pink measured
+                  // 2.84:1 in the 2026-08-15 visual review, with classroom,
+                  // ember and insight all under the floor too.
+                  fill={accessibleInk(ctx.colors.surface, ctx.colors.primary, fittedCaption.fontSize)}
                   fontFamily={ctx.fonts.body}
                   dominantBaseline="alphabetic"
                 >

@@ -49,7 +49,10 @@ vi.mock("@/svg/render-slide", async () => {
     fill: { color: midpoint(GRADIENT_FIXTURE.gradientFill) },
     gradientFill: GRADIENT_FIXTURE.gradientFill,
   }
-  return { slideToOps: vi.fn(() => [op]) }
+  // `generatePptxBlob` reads ops and the content-drop count from one call
+  // (`slideToRender`, `render-slide.tsx`) so the drop gate costs no extra
+  // render — the stub hands back the fixture op and "nothing dropped".
+  return { slideToRender: vi.fn(() => ({ ops: [op], dropped: 0 })) }
 })
 
 function makeSlide(): Slide {

@@ -27,11 +27,16 @@
  * the connection alive through an idle-timeout proxy — pure SSE comment
  * syntax, invisible to `EventSource`), an `event: reload` frame after every
  * successful rebuild, an `event: error` frame with a JSON `{message}` body
- * after a failed one. `POST /revision-request` (task S2) accepts the
- * injected client's submit and atomically writes it to disk — see
- * {@link atomicWriteFile}'s and `createServeServer`'s own `revisionRequestPath`
- * doc comments for the write path and body-handling detail. Everything else
- * 404s.
+ * after a failed one. Everything else 404s.
+ *
+ * This server is read-only. It carried a `POST /revision-request` endpoint
+ * until 2026-08-16, which took the preview annotation panel's export and
+ * wrote it into the deck directory; the panel went first, leaving the
+ * endpoint with no producer, and the pair was removed together. A reviewer
+ * who wants something changed says so in the conversation — a screenshot
+ * reaches the agent faster than a panel whose output has to be exported and
+ * routed back — and the agent edits `pages/*.json` through the same gate as
+ * every other change.
  *
  * Watch roots (design ruling 3) come straight from {@link buildDeckPreview}'s
  * own `resolvedTarget`/`isDir` — the exact path `loadDeckTarget`
@@ -58,12 +63,10 @@
  * there is no previous-good HTML yet to fall back to.
  */
 import { spawn } from "node:child_process"
-import { randomUUID } from "node:crypto"
 import { type FSWatcher, watch } from "node:fs"
-import { rename, unlink, writeFile } from "node:fs/promises"
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
+import { createServer, type Server, type ServerResponse } from "node:http"
 import { platform as osPlatform } from "node:os"
-import { dirname, join } from "node:path"
+import { join } from "node:path"
 import { PptfastError } from "../errors"
 import { buildDeckPreview } from "./commands"
 import { ASSETS_DIRNAME, PAGES_DIRNAME, SPEC_FILENAME } from "./deck-dir"
@@ -79,17 +82,7 @@ export const DEFAULT_PORT = 4400
 const DEBOUNCE_MS = 200
 const HEARTBEAT_MS = 30_000
 
-/** `<deck-dir>/revision-request.json`, or alongside the IR file for a
- *  bare-IR target (design ruling 4) — see `createServeServer`'s own
- *  `revisionRequestPath` derivation below. */
-const REVISION_REQUEST_FILENAME = "revision-request.json"
 
-/** `POST /revision-request`'s body cap (design ruling 6: "POST 限
- *  /revision-request 单路径 + 1MB body 上限") — 1 MiB, enforced against bytes
- *  actually received while streaming the body in, never trusted off a
- *  `Content-Length` header a client could misreport. Exported so a test can
- *  assert the 413 boundary without duplicating the literal. */
-export const MAX_REVISION_REQUEST_BYTES = 1024 * 1024
 
 export interface ServeOptions {
   /** Same target shape every deck-accepting command accepts: an IR JSON
@@ -206,12 +199,12 @@ export const SERVE_CLIENT_SCRIPT_ID = "pptfast-serve-client"
  */
 export const SERVE_CLIENT_JS = `
 (function () {
-  // Each of the two jobs below is independently wrapped (own function, own
-  // try/catch at its call site at the bottom) so a failure in one — an
-  // EventSource construction that throws in some unusual embedding, a
-  // future buildPreviewHtml markup change that drops #pf-export-btn — can
-  // never take the other down with it; a single un-isolated top-level
-  // throw would otherwise abort the rest of this IIFE.
+  // Live reload is the whole of this client (the revision-request submit
+  // that used to sit beside it was removed on 2026-08-16 — see this
+  // module's own header). It keeps its own function and its own try/catch
+  // at the call site below: an EventSource construction that throws in some
+  // unusual embedding must degrade to a page that simply does not
+  // auto-refresh, not abort the IIFE.
 
   function setUpLiveReload() {
     var es = new EventSource('/events')
@@ -242,82 +235,10 @@ export const SERVE_CLIENT_JS = `
     })
   }
 
-  function setUpRevisionRequestSubmit() {
-    var originalBtn = document.getElementById('pf-export-btn')
-    if (!originalBtn) return
-
-    var submitBtn = originalBtn.cloneNode(true)
-    submitBtn.textContent = 'Submit revision request'
-    originalBtn.replaceWith(submitBtn)
-
-    var status = document.createElement('span')
-    status.id = 'pptfast-serve-submit-status'
-    status.setAttribute('aria-live', 'polite')
-    status.style.cssText = 'margin-left:8px;font-size:12px'
-
-    var downloadLink = document.createElement('a')
-    downloadLink.id = 'pptfast-serve-download-fallback'
-    downloadLink.href = '#'
-    downloadLink.textContent = 'download a copy instead'
-    downloadLink.style.cssText = 'margin-left:8px;font-size:12px;color:#2563eb'
-
-    submitBtn.insertAdjacentElement('afterend', status)
-    status.insertAdjacentElement('afterend', downloadLink)
-
-    submitBtn.addEventListener('click', function () {
-      if (typeof window.__pptfastBuildExportBlob !== 'function') {
-        status.style.color = '#dc2626'
-        status.textContent = 'failed to submit revision request (export function unavailable — try reloading the page)'
-        return
-      }
-      status.style.color = ''
-      status.textContent = 'submitting…'
-      // The extra Promise.resolve().then(...) wrapper (rather than calling
-      // window.__pptfastBuildExportBlob() directly and chaining off its
-      // result) means a synchronous throw from that call lands in the same
-      // .catch below as an async rejection or a network failure — every
-      // failure mode this chain can hit surfaces as the same inline
-      // status-line feedback, none of them silent.
-      Promise.resolve()
-        .then(function () {
-          return window.__pptfastBuildExportBlob()
-        })
-        .then(function (blob) {
-          return blob.text()
-        })
-        .then(function (text) {
-          return fetch('/revision-request', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: text,
-          })
-        })
-        .then(function (res) {
-          if (!res.ok) throw new Error('server responded ' + res.status)
-          status.style.color = '#16a34a'
-          status.textContent = 'Revision request saved to the deck directory'
-        })
-        .catch(function (err) {
-          status.style.color = '#dc2626'
-          status.textContent = 'failed to submit revision request' + (err && err.message ? ' (' + err.message + ')' : '')
-        })
-    })
-
-    downloadLink.addEventListener('click', function (e) {
-      e.preventDefault()
-      originalBtn.click()
-    })
-  }
-
   try {
     setUpLiveReload()
   } catch (e) {
     console.error('pptfast serve: failed to set up live reload', e)
-  }
-  try {
-    setUpRevisionRequestSubmit()
-  } catch (e) {
-    console.error('pptfast serve: failed to set up revision-request submit', e)
   }
 })()
 `.trim()
@@ -347,40 +268,6 @@ export function injectServeClient(html: string): string {
   return html.replace("</body>", `${buildServeClientScriptTag()}\n</body>`)
 }
 
-/**
- * tmp-file + rename (design ruling 4: "原子写"). A plain `writeFile` can
- * leave a half-written file visible to a concurrent reader (an agent
- * polling for `revision-request.json`) if the process dies mid-write;
- * writing to a throwaway sibling path first and `rename`-ing it into place
- * only once the write has fully landed makes the file's *appearance*
- * atomic to any other process (`rename` within the same directory/
- * filesystem is POSIX-atomic — the tmp path is always a sibling of
- * `targetPath`, guaranteeing the same directory). The random suffix
- * (`randomUUID`, not a fixed `.tmp` name) means two overlapping POSTs never
- * collide on the same tmp file, even though they'd still race on whose
- * `rename` lands last — acceptable for a single local user submitting from
- * one browser tab (design ruling 6: no auth, a local dev tool).
- *
- * A `rename` that itself fails (permissions, a full disk, ...) would
- * otherwise leave the tmp file behind forever — nothing else in this
- * module ever revisits it. On that path this now best-effort `unlink`s the
- * orphan before rethrowing the original error (the caller,
- * `handleRevisionRequestPost` below, turns that rethrow into a 500) — the
- * cleanup's own failure is swallowed (`.catch(() => {})`) since it must
- * never mask the real error, but a permissions problem that blocks
- * `rename` typically blocks `unlink` the same way, so this is best-effort,
- * not a guarantee.
- */
-async function atomicWriteFile(targetPath: string, data: string): Promise<void> {
-  const tmpPath = `${targetPath}.${randomUUID()}.tmp`
-  await writeFile(tmpPath, data, "utf8")
-  try {
-    await rename(tmpPath, targetPath)
-  } catch (e) {
-    await unlink(tmpPath).catch(() => {})
-    throw e
-  }
-}
 
 /**
  * The testable factory (serve wave, task S1). Builds once up front — a
@@ -406,19 +293,6 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
   const initial = await buildDeckPreview(options.target, { cwd, themeFilePath: options.themeFilePath })
   let cachedHtml = injectServeClient(initial.html)
   const sseClients = new Set<ServerResponse>()
-  // <deck-dir>/revision-request.json, or — bare-IR target — alongside the
-  // IR file (design ruling 4). Derived once, here, off `initial`'s own
-  // `resolvedTarget`/`isDir` — the exact path `loadDeckTarget`
-  // (`./commands.ts`) already resolved `options.target` to, the same value
-  // `watchRoots` above is built from — rather than re-deriving the
-  // bare-name/`decksDir` resolution a second time. Path-traversal is a
-  // non-issue by construction, not by validation: the filename is a fixed
-  // literal ({@link REVISION_REQUEST_FILENAME}) and this directory never
-  // changes for the server's lifetime, so nothing about *where* this writes
-  // is ever influenced by a request's URL or body.
-  const revisionRequestPath = initial.isDir
-    ? join(initial.resolvedTarget, REVISION_REQUEST_FILENAME)
-    : join(dirname(initial.resolvedTarget), REVISION_REQUEST_FILENAME)
 
   function writeToAll(chunk: string): void {
     for (const res of sseClients) {
@@ -447,57 +321,6 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
     }
   }
 
-  /**
-   * `POST /revision-request` (task S2, design ruling 4). Streams the body
-   * in (never buffers past {@link MAX_REVISION_REQUEST_BYTES} — rejecting
-   * on actual bytes received, not a client-reported `Content-Length`),
-   * requires it to parse as JSON, then {@link atomicWriteFile}s the raw
-   * body — verbatim, not a re-serialization of the parsed value — to
-   * `revisionRequestPath`, so the file on disk is byte-for-byte what the
-   * client posted (which is, by construction, byte-for-byte what
-   * `buildPreviewHtml`'s own download flow would have produced — see
-   * {@link SERVE_CLIENT_JS}'s own doc comment). The caller
-   * (`createServer`'s request handler below) has already confirmed
-   * `req.method === "POST"` before calling this.
-   */
-  async function handleRevisionRequestPost(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const chunks: Buffer[] = []
-    let total = 0
-    try {
-      for await (const chunk of req as AsyncIterable<Buffer>) {
-        total += chunk.length
-        if (total > MAX_REVISION_REQUEST_BYTES) {
-          res.writeHead(413, { "Content-Type": "text/plain; charset=utf-8" })
-          res.end(`revision request body exceeds the ${MAX_REVISION_REQUEST_BYTES}-byte limit`)
-          req.destroy()
-          return
-        }
-        chunks.push(chunk)
-      }
-    } catch {
-      // The client aborted mid-upload (or `req.destroy()` above already
-      // ended it) — the connection is gone, nothing left to respond to.
-      return
-    }
-    const body = Buffer.concat(chunks).toString("utf8")
-    try {
-      JSON.parse(body)
-    } catch {
-      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" })
-      res.end("invalid JSON body")
-      return
-    }
-    try {
-      await atomicWriteFile(revisionRequestPath, body)
-    } catch (e) {
-      res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" })
-      res.end(`failed to write ${REVISION_REQUEST_FILENAME}: ${e instanceof Error ? e.message : String(e)}`)
-      return
-    }
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" })
-    res.end(JSON.stringify({ ok: true }))
-  }
-
   const server = createServer((req, res) => {
     const pathname = (req.url ?? "/").split("?")[0]
     if (req.method === "GET" && pathname === "/") {
@@ -515,15 +338,6 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
       sseClients.add(res)
       res.on("close", () => sseClients.delete(res))
       res.on("error", () => sseClients.delete(res))
-      return
-    }
-    if (pathname === "/revision-request") {
-      if (req.method !== "POST") {
-        res.writeHead(405, { "Content-Type": "text/plain; charset=utf-8", Allow: "POST" })
-        res.end("method not allowed — only POST is accepted on /revision-request")
-        return
-      }
-      void handleRevisionRequestPost(req, res)
       return
     }
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" })

@@ -6,6 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * rail-numbered content archetype（spec §3.2，Wave 3 Task 18）：grammar break
@@ -246,7 +247,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={CONTENT_X}
-          y="656"
+          y={FOOTNOTE_BASELINE_Y}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

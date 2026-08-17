@@ -25,6 +25,10 @@
   <img src="https://img.shields.io/badge/no%20API%20key-needed-4c1?style=flat-square" alt="No API key needed">
 </p>
 
+## 交流
+
+欢迎随时提 [issue](https://github.com/liustack/pptfast/issues/new/choose)。也欢迎在 X 关注 **[@liustack](https://x.com/liustack)**，聊聊你用 pptfast 做了什么、在哪个 harness 上运行，以及下一版最该解决什么。新版本也会第一时间在那里发布。
+
 ## 亮点
 
 **⚡ 跟 AI 说一句，PPT 就好了。** 你只管说要讲什么，版面、配色、字号、间距全由引擎排好。同一份内容做十遍是同一份，不用一遍遍重来碰运气。
@@ -93,6 +97,35 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 | `doctor` | 体检这套安装：运行时、skill 副本、可选能力、自检渲染 |
 
 完整命令表见 [`docs/cli.zh-CN.md`](./docs/cli.zh-CN.md)。
+
+## 文档
+
+| 文档 | 适用场景 |
+| :-- | :-- |
+| [安装手册](./INSTALL.md) | 把安装交给 agent，或检查运行前提 |
+| [Agent skill](./skills/pptfast/SKILL.zh-CN.md) | 了解 pptfast 教给 agent 的完整工作流 |
+| [CLI 手册](./docs/cli.zh-CN.md) | 查询命令、参数、审查、预览与健康检查 |
+| [IR 参考](./docs/ir.zh-CN.md) | 用 JSON 编写 deck、页面、组件与叙事 |
+| [主题](./docs/themes.zh-CN.md) | 挑选内置主题，或从自家 PPT 提取品牌 |
+| [核心概念](./docs/concepts.md) | 理解主题、版式、组件、叙事与容量模型 |
+| [架构](./docs/architecture.md) | 修改渲染链，或新增主题、版式与组件 |
+| [Deck 项目](./docs/deck-projects.md) | 用锁定 spec、页面文件、素材与实时审阅制作复杂 PPT |
+| [版式选型与 seed](./docs/selection-and-seed.md) | 排查版式为何被选中，或保持多次修订稳定 |
+| [对比度系统](./docs/contrast-system.md) | 排查文字颜色、自绘背景与低对比度问题 |
+| [测试](./docs/testing.md) | 选择验证命令、检查快照，或修改导出 XML |
+| [内部 API](./docs/internal-api.md) | 了解 JavaScript 内部模块为何不承诺 semver 稳定性 |
+| [发布手册](./docs/releasing.md) | 准备并发布 npm 版本 |
+| [更新日志](./CHANGELOG.md) | 查询各版本的变化 |
+
+## 关注「liustack」
+
+关注微信公众号「liustack」：AI 创业机会、独立开发见解、AI 实战与工具，第一时间推送。微信扫码，或搜一搜「liustack」：
+
+<p align="center">
+  <img src="assets/wechat-qrcode.png" width="420" alt="微信公众号 liustack" />
+</p>
+
+⭐ 如果 pptfast 对你有用，请给[项目](https://github.com/liustack/pptfast)一个 star，并在 X 关注 **[@liustack](https://x.com/liustack)**。这是让更多开发者找到它最直接的方式。
 
 ## 致谢
 

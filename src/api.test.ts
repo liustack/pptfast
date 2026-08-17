@@ -1992,6 +1992,89 @@ describe("generatePptx draft gate (W5 task 1)", () => {
   })
 })
 
+describe("generatePptx content-drop gate (deep-review P1)", () => {
+  // Eight long CJK paragraphs on one page: `layoutContentFit` compresses the
+  // gaps, then drops whatever still does not fit (same fixture shape as
+  // `svg/layout.test.ts`'s own drop case). Nothing on the rendered slide
+  // says the missing blocks ever existed — which is the whole reason the
+  // export refuses.
+  const LONG =
+    "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
+  const overfull = (n: number) =>
+    Array.from({ length: n }, () => ({ type: "paragraph" as const, text: LONG.repeat(3) }))
+  const dropping = {
+    ...raw,
+    slides: [
+      raw.slides[0],
+      { type: "content" as const, id: "p-2", heading: "Too much", components: overfull(8) },
+    ],
+  }
+
+  it("the fixture really does lose content silently — no marker text on the rendered slide", () => {
+    const v = validateIr(dropping)
+    expect(v.ok).toBe(true)
+    const svg = renderSlideSvg(v.ir!, 1)
+    expect(svg).toMatch(/data-dropped-silent="[1-9]/)
+    expect(svg).not.toContain("more")
+  })
+
+  it("throws PptfastError naming the page, the count and the way out", async () => {
+    await expect(generatePptx(dropping)).rejects.toThrow(
+      /deck drops \d+ content blocks that do not fit the content area, on 1 page: p-2 \(page 2, \d+\) — shorten the content, split the page in two, or pass --allow-dropped-content/,
+    )
+  })
+
+  it("falls back to a page-only reference when the slide has no id", async () => {
+    const noId = {
+      ...raw,
+      slides: [raw.slides[0], { type: "content" as const, heading: "Too much", components: overfull(8) }],
+    }
+    await expect(generatePptx(noId)).rejects.toThrow(/on 1 page: page 2 \(\d+\)/)
+  })
+
+  it("exports when { allowDroppedContent: true } is passed", async () => {
+    const bytes = await generatePptx(dropping, { allowDroppedContent: true })
+    expect(bytes.length).toBeGreaterThan(10_000)
+    expect([bytes[0], bytes[1]]).toEqual([0x50, 0x4b])
+  })
+
+  it("is unaffected by a deck that fits", async () => {
+    const bytes = await generatePptx(raw)
+    expect(bytes.length).toBeGreaterThan(10_000)
+  })
+
+  it("renderSlideSvg never gates on dropped content (preview shows work in progress)", () => {
+    const v = validateIr(dropping)
+    expect(() => renderSlideSvg(v.ir!, 1)).not.toThrow()
+  })
+
+  it("does not fire on a component's own visible '+N more' trim", async () => {
+    // `bullets.tsx` caps its items to what `box.h` holds and *says so* on
+    // the slide. The reader is not misled, so this stays an advisory audit
+    // finding — blocking it here would make the gate unfalsifiable noise.
+    const manyBullets = {
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content" as const,
+          heading: "Long list",
+          components: [
+            { type: "bullets" as const, items: Array.from({ length: 40 }, (_, i) => `${LONG} ${i}`) },
+          ],
+        },
+      ],
+    }
+    const v = validateIr(manyBullets)
+    expect(v.ok).toBe(true)
+    const svg = renderSlideSvg(v.ir!, 1)
+    expect(svg).toContain("data-dropped=")
+    expect(svg).not.toContain("data-dropped-silent")
+    const bytes = await generatePptx(manyBullets)
+    expect([bytes[0], bytes[1]]).toEqual([0x50, 0x4b])
+  })
+})
+
 describe("checkAssetBytes: byte-level asset validation (Task 2, borrow wave — D3)", () => {
   const irWithImage = (src: string) => ({
     ...raw,

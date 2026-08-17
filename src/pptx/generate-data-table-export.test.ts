@@ -135,7 +135,13 @@ describe("data_table pathological content through the real generatePptx", () => 
       { type: "paragraph", text: "Sibling column content to force a two-column squeeze." },
     ])
     ir.slides[1] = { ...ir.slides[1], arrangement: "two_column" }
-    const bytes = await generatePptx(ir)
+    // The squeeze is the point of the fixture: something has to go, and the
+    // slide says nothing about it — so the export now refuses first
+    // (content-drop gate, deep-review P1). What this test is actually about
+    // is the other half: once the caller accepts the loss, the drop path
+    // still produces a clean package rather than a package-audit rejection.
+    await expect(generatePptx(ir)).rejects.toThrow(/--allow-dropped-content/)
+    const bytes = await generatePptx(ir, { allowDroppedContent: true })
     expect(bytes.length).toBeGreaterThan(10_000)
     expect([bytes[0], bytes[1]]).toEqual([0x50, 0x4b])
   })

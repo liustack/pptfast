@@ -147,7 +147,17 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
   // low-contrast finding under the stress matrix above, so a future change
   // to any of these three colours shows up here instead of silently
   // vanishing from (or reappearing in) the broader regression net.
-  it("code.tsx's hardcoded line-number gray is borderline against a dark code-block background", () => {
+  it("code.tsx's line numbers are meta tier, so the gutter gray no longer reads as a body-copy failure", () => {
+    // Was pinned here as an accepted defect: the gutter gray measures
+    // 3.46:1 on the block's own #1E1E1E, under the 4.5:1 body floor, and
+    // the 2026-08-15 visual review duly reported every line of every code
+    // block (20 findings from one component). The colour was never the
+    // problem — the tier was. A line number is information a reader
+    // consults on demand and is conventionally understated, the same case
+    // `docs/contrast-system.md` already makes for page numbers, so it is
+    // meta tier and held to the hard 3:1 floor it comfortably clears. The
+    // gray is unchanged; what changed is that the renderer now says which
+    // floor applies.
     const ir = deck("consulting", [
       {
         type: "content",
@@ -157,7 +167,14 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
       },
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#6A737D")).toBe(true)
+    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#6A737D")).toBe(false)
+
+    // The pairing itself must stay exactly as adjudicated: `metaInk` keeps
+    // the theme-independent gutter gray because it already clears 3:1, and
+    // the attribute that tells the audit so ships with it.
+    const svg = renderSlideSvg(ir, 0)
+    expect(svg).toContain('data-contrast-tier="meta"')
+    expect(svg).toContain("#6A737D")
   })
 
   it("architecture.tsx's theme-derived primary-on-panel pairing is a rounding distance under 4.5:1 on insight", () => {
@@ -334,18 +351,24 @@ describe("auditDeck — B-group ink fixes (bench-driven fix round, defect A hand
   })
 })
 
+/** Long enough to overflow any content rect on its own — see the first test. */
+const CODE_OVERFLOW = Array.from({ length: 60 }, (_, i) => `const line${i} = ${i};`).join("\n")
+
 describe("auditDeck — overflow / out-of-bounds", () => {
   it("surfaces a v-overflow as an 'overflow' finding with page context and a fix suggestion", () => {
-    // `paragraph.tsx` never shrinks/truncates by design ("wrap freely; never
-    // shrink/truncate a body paragraph") — its *only* overflow guard is the
-    // caller (`layoutContentFit`). A single paragraph this long overflows
-    // the tightest gap tier by itself, so `layoutContentFit` falls into its
-    // documented "keep the first placed component even if it alone doesn't
-    // fit" branch (`layout.ts`) and hands it a `box.h` the component then
-    // ignores — a genuine, real (not synthetic-markup) render overflow.
-    // Confirmed empirically before writing this test (see task report).
+    // The overflow vehicle is `code`, not `paragraph`. `layoutContentFit`'s
+    // last-resort branch ("keep the first placed component even if it alone
+    // doesn't fit", `layout.ts`) hands the block a `box.h` smaller than its
+    // measured height and expects it to truncate into that budget; `code`
+    // does not honor that contract, so it still paints past the rect — a
+    // genuine, real (not synthetic-markup) render overflow.
+    // `paragraph` used to be this fixture's vehicle and no longer overflows
+    // at all: the visual review found it painting off the bottom of the
+    // canvas and over the footer, so it now honors `box.h` like `bullets`
+    // and `row_cards` already did. Its new behaviour is locked in by the
+    // content-truncated test below rather than here.
     const ir = deck("consulting", [
-      { type: "content", id: "s1", heading: "overflow probe", components: [{ type: "paragraph", text: LONG_CJK.repeat(20) }] },
+      { type: "content", id: "s1", heading: "overflow probe", components: [{ type: "code", language: "js", code: CODE_OVERFLOW }] },
     ])
     const report = auditDeck(ir)
     const overflow = report.findings.filter((f) => f.code === "overflow")
@@ -357,12 +380,29 @@ describe("auditDeck — overflow / out-of-bounds", () => {
 
   it("omits slideId when the slide carries none", () => {
     const ir = deck("consulting", [
-      { type: "content", heading: "overflow probe", components: [{ type: "paragraph", text: LONG_CJK.repeat(20) }] },
+      { type: "content", heading: "overflow probe", components: [{ type: "code", language: "js", code: CODE_OVERFLOW }] },
     ])
     const report = auditDeck(ir)
     const overflow = report.findings.filter((f) => f.code === "overflow")
     expect(overflow.length).toBeGreaterThan(0)
     expect(overflow[0].slideId).toBeUndefined()
+  })
+
+  it("reports an over-long paragraph as truncated, not as an overflow off the canvas", () => {
+    // Visual review 2026-08-15: a paragraph too tall for its slot used to
+    // paint straight off the bottom of the slide and across the footer
+    // (seen on the image takeovers' text column and quote-stage's
+    // capacity-1 annotation slot). It now truncates into the budget
+    // `layoutContentFit` hands it and stamps `data-truncated`, so the loss
+    // is reported instead of being discovered by the reader.
+    const ir = deck("consulting", [
+      { type: "content", id: "s1", heading: "overflow probe", components: [{ type: "paragraph", text: LONG_CJK.repeat(20) }] },
+    ])
+    const report = auditDeck(ir)
+    expect(report.findings.filter((f) => f.code === "overflow")).toEqual([])
+    const truncated = report.findings.filter((f) => f.code === "content-truncated")
+    expect(truncated.length).toBeGreaterThan(0)
+    expect(truncated[0]).toMatchObject({ page: 1, slideId: "s1" })
   })
 })
 
@@ -408,7 +448,9 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
     const dropped = report.findings.filter((f) => f.code === "content-dropped")
     expect(dropped.length).toBeGreaterThan(0)
     expect(dropped[0]).toMatchObject({ page: 1, slideId: "s1", code: "content-dropped" })
-    expect(dropped[0].message).toMatch(/hidden behind a "\+\d+ more" marker/)
+    // The page-level drop paints nothing on the slide any more, so the
+    // message no longer points at a "+N more" marker that is not there.
+    expect(dropped[0].message).toMatch(/missing from the rendered slide, with nothing on it to say so/)
     expect((dropped[0].detail as { count?: number }).count).toBeGreaterThan(0)
   })
 

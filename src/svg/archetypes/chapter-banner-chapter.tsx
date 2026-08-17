@@ -62,7 +62,14 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const subheadingOpacity = subheading
     ? accessibleOpacity(ink, defaultBg, subheading.fontSize, 0.7)
     : 0.7
-  const hairlineY = headingLastY + 48
+  // The decorative hairline sits below whatever the chapter block ends
+  // with. It used to be pinned at `headingLastY + 48` unconditionally,
+  // which is 8px *above* the subheading's own baseline (+56) — so on any
+  // chapter page that carries a subheading, a 160px accent rule ran
+  // straight through the middle of that text and read as a strikethrough
+  // (visual review 2026-08-16: "客户洞察怎么画了个黄色删除线"). It only
+  // ever looked right on the subheading-less case it was measured against.
+  const hairlineY = subheading ? subheadingY + 30 : headingLastY + 48
 
   return (
     <>

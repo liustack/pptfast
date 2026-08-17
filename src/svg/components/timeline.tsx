@@ -2,6 +2,7 @@ import type React from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
+import { accessibleInk } from "../ink"
 
 type TimelineComponent = Extract<Component, { type: "timeline" }>
 
@@ -184,7 +185,7 @@ function renderVertical(
               textAnchor="end"
               fontSize={date.fontSize}
               fontWeight="bold"
-              fill={hl ? ctx.colors.accent : ctx.colors.muted}
+              fill={accessibleInk(hl ? ctx.colors.accent : ctx.colors.muted, ctx.defaultBg ?? ctx.colors.bg, 14)}
               fontFamily={ctx.fonts.heading}
               dominantBaseline="alphabetic"
             >
@@ -194,6 +195,12 @@ function renderVertical(
               cx={V_AXIS_X}
               cy={nodeCy}
               r={hl ? 10 : 7}
+              // Raw tokens, not `accessibleInk`: a filled shape carries no
+              // contrast floor, and running one through a text ink pick
+              // collapsed the highlighted and ordinary dots to the same
+              // near-black on classroom and ember — losing exactly the
+              // theme-colored distinction the highlight exists to make. The
+              // date text above is the part that needed the floor.
               fill={hl ? ctx.colors.accent : ctx.colors.primary}
             />
             <text
@@ -283,7 +290,7 @@ export const timeline: SvgComponent<TimelineComponent> = {
                 x={tx}
                 y={AXIS_Y - 24}
                 textAnchor={anchor}
-                fill={ctx.colors.accent}
+                fill={accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, date.fontSize)}
                 fontSize={date.fontSize}
                 fontFamily={ctx.fonts.body}
                 dominantBaseline="alphabetic"

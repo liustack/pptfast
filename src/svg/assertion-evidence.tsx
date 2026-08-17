@@ -4,6 +4,7 @@ import type { ComponentCtx } from "./components/types"
 import { EVIDENCE_TYPES } from "./component-traits"
 import { renderComponent, measureComponent } from "./components"
 import { BLOCK_GAP, layoutContentFit, type ContentRect } from "./layout"
+import { DroppedContentMarker } from "./drop-marker"
 
 /**
  * Render `component` scaled uniformly (never enlarged) to fit within
@@ -86,20 +87,9 @@ export function AssertionEvidence({
         {placed.map((p, i) => (
           <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
         ))}
-        {dropped > 0 && (
-          <text
-            data-dropped={dropped}
-            x={rect.x + rect.w}
-            y={rect.y + rect.h - 6}
-            textAnchor="end"
-            fontSize={14}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${dropped} more`}
-          </text>
-        )}
+      {/* Recorded, never painted — and the export refuses to ship it.
+          See `DroppedContentMarker`'s own doc comment. */}
+      <DroppedContentMarker count={dropped} />
       </>
     )
   }
@@ -214,19 +204,11 @@ export function AssertionEvidence({
       {placed.map((p, i) => (
         <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
-      {dropped > 0 && (
-        <text
-          x={rect.x + rect.w}
-          y={rect.y + rect.h - 6}
-          textAnchor="end"
-          fontSize={14}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${dropped} more`}
-        </text>
-      )}
+      {/* Same marker as the sibling branch above. This site previously
+          painted "+N more" *without* a `data-dropped` attribute, so content
+          lost here was visible to the reader and invisible to
+          `deck-audit.ts` — exactly backwards. */}
+      <DroppedContentMarker count={dropped} />
     </>
   )
 }

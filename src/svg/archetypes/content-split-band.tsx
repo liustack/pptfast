@@ -7,6 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * split-band content archetype (content-archetype expansion wave, task T2 —
@@ -165,7 +166,7 @@ const BODY_GAP = 16
 const BODY_Y = HEADER_H + BODY_GAP // 240
 const BODY_BOTTOM_BASE = 640
 const BODY_BOTTOM_FOOTNOTE_SHRINK = 20 // -> 620 with a footnote
-const FOOTNOTE_Y = 652
+const FOOTNOTE_Y = FOOTNOTE_BASELINE_Y
 
 function hasTlLogo(ir: PptxIR): boolean {
   const { brand, assets } = ir

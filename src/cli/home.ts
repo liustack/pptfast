@@ -13,9 +13,20 @@ import { join, resolve } from "node:path"
  * benefit more from one predictable path than from OS-idiomatic placement.
  * Read fresh on every call (never cached) — `PPTFAST_HOME` is meant to be
  * redirectable per-process (tests set it via `process.env` before calling).
+ *
+ * An empty value counts as unset, which `??` alone does not do. `PPTFAST_HOME=`
+ * in a shell profile, or a container runtime that passes every declared
+ * variable through whether or not it has a value, both produce `""` — and `""`
+ * resolved to a relative path, so the deck root became `./decks`, moved
+ * whenever the process's cwd did, and put `config.json` wherever the user
+ * happened to be standing. The DSH plugin resolves its own preview root by the
+ * same two rules (`previewRoot`, dsh/preview-tool.js), and it deletes
+ * directories under that root, so the two agreeing is worth more than one
+ * character of `??`.
  */
 export function pptfastHome(): string {
-  return process.env.PPTFAST_HOME ?? join(homedir(), ".pptfast")
+  const home = process.env.PPTFAST_HOME
+  return home === undefined || home === "" ? join(homedir(), ".pptfast") : home
 }
 
 /**

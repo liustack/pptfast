@@ -28,15 +28,17 @@
 // no build step, no dsh type imports, resilient to rc surface drift.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { createPreviewService, TOOL_NAME } from './preview-tool.js'
 
 const SKILL_FILE_URL = new URL('../skills/pptfast/SKILL.md', import.meta.url)
 const SKILL_DIR = fileURLToPath(new URL('../skills/pptfast/', import.meta.url))
 const CLI_PATH = fileURLToPath(new URL('../dist/cli.js', import.meta.url))
 
 export const name = 'pptfast'
-export const inject = ['skills']
+export const inject = ['skills', 'tools']
 
 export const SKILL_NAME = 'pptfast'
+export const PREVIEW_TOOL_NAME = TOOL_NAME
 
 /**
  * Split SKILL.md into { description, body }. DSH's runtime registry does
@@ -89,6 +91,38 @@ export function apply(ctx) {
     console.error(`[pptfast] skill registration skipped (cannot read ${fileURLToPath(SKILL_FILE_URL)}): ${error}`)
     return
   }
+  // The preview tool is what gives pptfast a seat in the conversation. The
+  // skill alone leaves every call belonging to `bash`, whose card this plugin
+  // cannot contribute to — which is why the review loop used to end in "open
+  // this URL yourself". Registered first and independently: a tool failure
+  // must not cost the skill, and vice versa.
+  //
+  // One service per apply(), and the tool and the route below are its two
+  // halves: they must agree on the same CLI path and the same decks, and a
+  // second apply() (plugin reload, a second profile) must get its own pair
+  // rather than reaching into the first one's.
+  const preview = createPreviewService(CLI_PATH)
+  try {
+    ctx.tools.register(preview.tool)
+  } catch (error) {
+    console.error(`[pptfast] preview tool registration skipped: ${error}`)
+  }
+
+  // The route the preview card fetches a rendered deck from. `webServer`
+  // exists only under the web profile and this cordis has no optional-inject
+  // form, so it rides a scoped `ctx.inject`: the closure runs when the
+  // service appears and never runs where it does not, leaving headless
+  // untouched (modlens's own routes take the same shape).
+  if (typeof ctx.inject === 'function') {
+    ctx.inject(['webServer'], (scope) => {
+      try {
+        preview.registerRoute(scope)
+      } catch (error) {
+        console.error(`[pptfast] preview route skipped: ${error}`)
+      }
+    })
+  }
+
   try {
     // The returned disposer is intentionally unused here: register() wires
     // itself as a Cordis effect on the calling context, so disposing this

@@ -367,6 +367,24 @@ export function layoutContentFit(
       return { placed: distributeSurplus(grown, rect, gap, grownBottom), dropped: 0 }
     }
   }
+  // Before giving up and dropping content: a column-splitting arrangement
+  // halves the width available to every block, and a block sized for a
+  // full-width rect routinely fails to fit a half-width one. When that
+  // happens the page renders as one column of content beside an empty one,
+  // with the rest silently gone — the shape the 2026-08-15 visual review
+  // kept flagging as "左侧空白" on `two-column` pages.
+  //
+  // A full-width single stack that keeps every block beats a split that
+  // loses some, so retry as one column before accepting any loss. Only
+  // when the single stack *also* has to drop something does the original
+  // split stand: at that point the arrangement is not what is costing the
+  // content, and the layout the theme chose is worth preserving.
+  const SPLITTING: readonly Arrangement[] = ["two_column", "image_focus", "aside"]
+  if (arrangement && SPLITTING.includes(arrangement)) {
+    const single = layoutContentFit("single", components, rect, ctx)
+    if (single.dropped === 0) return single
+  }
+
   const placed = layoutContent(arrangement, components, rect, ctx, GAP_TIERS[GAP_TIERS.length - 1])
   const kept = placed.filter(
     (p) => p.box.y + measureComponent(p.component, p.box.w, ctx) <= rect.y + rect.h + 1,

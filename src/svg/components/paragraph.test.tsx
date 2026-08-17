@@ -131,3 +131,26 @@ describe("paragraph component pacing tiers", () => {
     }
   })
 })
+
+describe("paragraph truncation budget", () => {
+  it("marks a cut with a visible ellipsis, not just a data attribute", () => {
+    // `data-truncated` means "cut short with an ellipsis" to `deck-audit.ts`'s
+    // own finding message and to docs/cli.md. Dropping lines silently would
+    // make the audit report something the reader cannot see, and leave them
+    // with no way to know the tail is gone.
+    const long = { type: "paragraph" as const, text: "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范。".repeat(20) }
+    const { container } = render(<svg>{paragraph.render(long, { x: 0, y: 0, w: 600, h: 90 }, ctx)}</svg>)
+    const markup = container.innerHTML
+    expect(markup).toContain('data-truncated="1"')
+    expect(markup).toContain("…")
+  })
+
+  it("adds no ellipsis when everything fits", () => {
+    const short = { type: "paragraph" as const, text: "短句。" }
+    const { container } = render(<svg>{paragraph.render(short, { x: 0, y: 0, w: 600, h: 400 }, ctx)}</svg>)
+    const markup = container.innerHTML
+    expect(markup).not.toContain("data-truncated")
+    expect(markup).not.toContain("…")
+  })
+})
+

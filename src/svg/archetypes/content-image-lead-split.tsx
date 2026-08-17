@@ -11,6 +11,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
 
 /**
  * image-lead-split content archetype (content-archetype expansion wave, task
@@ -241,6 +242,23 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
   const starved = !visualComponent
   const TEXT_W = starved ? STARVED_TEXT_W : LEAD_TEXT_W
 
+  // The mirror of the starved case (visual review 2026-08-15): a real
+  // scalable lead, but *nothing* in the body — a single-chart page is the
+  // common shape. The 60/40 geometry is right here (that is the archetype's
+  // whole premise), but top-aligning a two-line heading in the narrow
+  // column leaves ~450px of dead space under it beside a full-height
+  // visual, which reads as content having gone missing rather than as a
+  // composition ("这个页面为什么左侧全空白" / "主体为什么不居中").
+  //
+  // Fixed by centering the text block against the visual column's own
+  // vertical span rather than by changing any width — the column stays
+  // 435px, so the archetype keeps the distinct skeleton the pool's
+  // diversity test tracks, and the two protagonists simply line up on a
+  // shared center line. Only applies when the body is genuinely empty: with
+  // any body content the stack must stay top-aligned so the body has the
+  // full column height to grow into.
+  const textOnlyHeader = !starved && bodyComponents.length === 0 && !slide.footnote
+
   const kicker = section
     ? fitSvgLine(section, { maxWidth: TEXT_W, fontSize: 17, minFontSize: 13, letterSpacing: 2 })
     : null
@@ -272,6 +290,17 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
       })
     : null
   const subheadingY = headingLastY + 42
+
+  // Vertical offset applied to the whole text block in the header-only case
+  // above. The block runs from the kicker's ascender down to the last
+  // baseline it actually uses; centering that span against the visual
+  // column puts the two on one center line. Never negative — a tall block
+  // stays where it is rather than being pushed off the top of the page.
+  const textBlockTop = kicker ? KICKER_Y - 17 : HEADING_BASELINE - heading.fontSize
+  const textBlockBottom = subheading ? subheadingY : headingLastY
+  const textShift = textOnlyHeader
+    ? Math.max(0, Math.round(VISUAL_Y + (VISUAL_H - (textBlockBottom - textBlockTop)) / 2 - textBlockTop))
+    : 0
   const subheadingBudget = subheading ? SUBHEADING_SLOT : 0
   const subheadingFill = subheading
     ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
@@ -295,7 +324,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
         <text
           data-truncated={kicker.truncated ? "1" : undefined}
           x={TEXT_X}
-          y={KICKER_Y}
+          y={KICKER_Y + textShift}
           fontFamily={fonts.body}
           fontSize={kicker.fontSize}
           fill={colors.muted}
@@ -311,7 +340,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
           key={i}
           data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x={TEXT_X}
-          y={HEADING_BASELINE + i * heading.lineHeight}
+          y={HEADING_BASELINE + textShift + i * heading.lineHeight}
           fontFamily={fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="700"
@@ -325,7 +354,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
       {subheading && (
         <text
           x={TEXT_X}
-          y={subheadingY}
+          y={subheadingY + textShift}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
           fill={subheadingFill}
@@ -355,7 +384,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={TEXT_X}
-          y={652}
+          y={FOOTNOTE_BASELINE_Y}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

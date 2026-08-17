@@ -5,8 +5,26 @@ import type { RenderDef, SvgComponent } from "./types"
 
 type QuoteComponent = Extract<Component, { type: "quote" }>
 
-/** Height of the decorative open-quote region (character baseline at 44, plus gap). */
-const QUOTE_ZONE = 60
+/**
+ * Vertical space reserved above the first body line for the decorative
+ * open-quote mark.
+ *
+ * The mark is set at {@link MARK_FONT_SIZE} on a baseline of
+ * {@link MARK_BASELINE}, and a quotation glyph carries its ink high in the
+ * em box — visible ink runs roughly from the top of the box down to a third
+ * of the way to the baseline, so the mark stops well above its own
+ * baseline. Reserving the *baseline* plus a gap (the pre-2026-08-15
+ * behaviour: zone 60 against a baseline of 44) therefore left the mark
+ * floating far above the text it opens, which the visual review flagged on
+ * every quote page it saw.
+ *
+ * Sized off the mark's ink rather than its baseline: the ink ends near
+ * `MARK_BASELINE - MARK_FONT_SIZE * 0.42`, and this leaves a deliberate
+ * ~14px of air under it before the first line's ascender.
+ */
+const MARK_FONT_SIZE = 64
+const MARK_BASELINE = 40
+const QUOTE_ZONE = 34
 const BODY_FONT_SIZE = 26
 const BODY_LINE_RATIO = 1.35
 const BODY_INDENT = 20
@@ -50,9 +68,9 @@ export const quote: SvgComponent<QuoteComponent> = {
             that already passed, byte-identical. */}
         <text
           x={0}
-          y={44}
-          fontSize={64}
-          fill={accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, 64)}
+          y={MARK_BASELINE}
+          fontSize={MARK_FONT_SIZE}
+          fill={accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, MARK_FONT_SIZE)}
           fontFamily={ctx.fonts.body}
           dominantBaseline="alphabetic"
         >

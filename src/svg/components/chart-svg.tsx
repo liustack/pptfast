@@ -1,5 +1,6 @@
 import type { ReactElement } from "react"
 import type { ChartSeries, Component } from "@/ir"
+import { accessibleInk } from "../ink"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { buildChartModel, zeroAxisRatio, type ChartDomain } from "./chart-model"
 
@@ -37,6 +38,22 @@ export type ChartRenderFn = (
   accentColor: string,
   showGrid?: boolean,
   component?: ChartInput,
+  /**
+   * The background these marks are actually painted on
+   * (`ctx.defaultBg ?? colors.bg`, resolved by `chart.tsx`).
+   *
+   * Threaded in for *text* ink only. `accentColor` is right for bars, dots
+   * and wedges — a fill has no contrast floor — but wrong for a value or
+   * category label painted straight onto the page: consulting's accent is a
+   * light yellow that measures 1.45:1 on its own light background, which is
+   * how the 2026-08-15 visual review found unreadable value labels on
+   * dumbbell, timeline and the horizontal bar. Text sites route the accent
+   * through `accessibleInk` against this; shape fills keep using it raw.
+   *
+   * Optional and trailing so every existing positional call site keeps
+   * working, the same way `showGrid` and `component` were added.
+   */
+  bgHex?: string,
 ) => ReactElement
 
 /** Label font size (px) for category/value labels on bar and line charts. */
@@ -767,7 +784,13 @@ export function renderDumbbell(
    * anchor a title against either. Kept for signature parity, same as
    * `renderPie`'s own `_showGrid`. */
   _showGrid?: boolean,
+  _component?: ChartInput,
+  bgHex?: string,
 ): ReactElement {
+  // Value labels sit on the page, not on a mark, so the accent has to clear
+  // a contrast floor here even though the endpoint dots painted in the same
+  // color do not. See `ChartRenderFn`'s `bgHex` doc comment.
+  const accentInk = bgHex ? accessibleInk(accentColor, bgHex, 12.5) : accentColor
   const fromData = series[0]?.data ?? []
   const toData = series[1]?.data ?? []
   const rows = Math.min(fromData.length, toData.length)
@@ -857,7 +880,7 @@ export function renderDumbbell(
               y={cy + 4}
               fontSize={toValueLabel.fontSize}
               fontWeight="bold"
-              fill={accentColor}
+              fill={accentInk}
               dominantBaseline="alphabetic"
             >
               {toValueLabel.text}
@@ -875,6 +898,25 @@ export function renderDumbbell(
  * 最大条实色 accent，其余同竖版走渐变（横向）。
  */
 const BAR_H_LABEL_W = 110
+/**
+ * Fit budget headroom for the horizontal bar's category labels.
+ *
+ * The label band is flush against the chart's own left edge and the label
+ * is right-anchored at the band's right edge, so any width the estimator
+ * underestimates spills *left*, straight out of the component's box —
+ * there is no margin on that side to absorb it. `measureTextUnits` is an
+ * estimator with known signed error (see `svg-audit.ts`'s own notes on
+ * per-character weights), and lowercase hyphenated Latin is exactly where
+ * it runs short: the 2026-08-15 visual review caught "ArgoCD app-of-apps"
+ * rendering 10px past the box edge after fitting "successfully" to 110.
+ *
+ * Fitting to a slightly smaller budget than the band keeps that drift
+ * inside the band instead of outside the chart. Preferred over switching
+ * the label to a left anchor, which would send the spill into the plot
+ * gap but cost the flush-right alignment against the bars that makes a
+ * horizontal bar chart readable in the first place.
+ */
+const BAR_H_LABEL_FIT_MARGIN = 8
 /** Row edge margin (px, was the inline literals `5`/`rowH - 10`) — reused as
  * the intra-group gap between sibling sub-rows in a grouped (n>=2) category,
  * same rationale as `renderBar`'s own `BAR_GROUP_EDGE_GAP`. */
@@ -903,7 +945,12 @@ export function renderBarHorizontal(
    * tests) omits the arg and stays gridline-free.
    */
   showGrid = false,
+  _component?: ChartInput,
+  bgHex?: string,
 ): ReactElement {
+  // Value labels sit on the page background, so the accent has to clear a
+  // contrast floor here — see `ChartRenderFn`'s `bgHex` doc comment.
+  const accentInk = bgHex ? accessibleInk(accentColor, bgHex, 11) : accentColor
   // R1 evidence wave, Task T2 — same category-union/shared-domain wiring as
   // `renderBar`, mirrored onto the perpendicular axis (rows instead of
   // columns, `horizontalBarExtent` instead of `verticalBarExtent`). This
@@ -947,7 +994,7 @@ export function renderBarHorizontal(
         // `barY + barH / 2 + 4` both the row label and value label read.
         const labelCenterY = n <= 1 ? rowY0 + perBarH / 2 + 4 : rowY0 + usableH / 2 + 4
         const label = fitSvgLine(String(cat.x), {
-          maxWidth: BAR_H_LABEL_W,
+          maxWidth: BAR_H_LABEL_W - BAR_H_LABEL_FIT_MARGIN,
           fontSize: 13,
           minFontSize: 10,
         })
@@ -980,7 +1027,7 @@ export function renderBarHorizontal(
               y={barY + perBarH / 2 + 4}
               fontSize={12.5}
               fontWeight="bold"
-              fill={isSingle ? (isMax ? accentColor : mutedColor) : mutedColor}
+              fill={isSingle ? (isMax ? accentInk : mutedColor) : mutedColor}
               dominantBaseline="alphabetic"
             >
               {value}

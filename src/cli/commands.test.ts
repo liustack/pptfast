@@ -171,6 +171,27 @@ const IR_WITH_BULLET_OVERFLOW = {
   ],
 }
 
+// A page holding far more than its content area can fit: `layoutContentFit`
+// drops the surplus blocks and the slide says nothing about it, which is
+// what `generatePptx`'s content-drop gate refuses to export.
+const IR_WITH_DROPPED_CONTENT = {
+  version: "4",
+  filename: "cli-test-dropped",
+  theme: { id: "tech" },
+  slides: [
+    { type: "cover", heading: "CLI" },
+    {
+      type: "content",
+      id: "p-2",
+      heading: "Too much",
+      components: Array.from({ length: 8 }, () => ({
+        type: "paragraph",
+        text: "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明".repeat(3),
+      })),
+    },
+  ],
+}
+
 let dir: string
 const originalPptfastHome = process.env.PPTFAST_HOME
 beforeAll(async () => {
@@ -187,6 +208,7 @@ beforeAll(async () => {
   await writeFile(join(dir, "deck-with-alias.json"), JSON.stringify(IR_WITH_FIELD_ALIAS))
   await writeFile(join(dir, "deck-warn-only.json"), JSON.stringify(IR_WITH_WARN_ONLY))
   await writeFile(join(dir, "deck-bullet-overflow.json"), JSON.stringify(IR_WITH_BULLET_OVERFLOW))
+  await writeFile(join(dir, "deck-dropped-content.json"), JSON.stringify(IR_WITH_DROPPED_CONTENT))
   await writeFile(join(dir, "plan.json"), JSON.stringify(VALID_PLAN))
   await writeFile(join(dir, "bad-plan.json"), JSON.stringify(BAD_PLAN))
   await writeFile(join(dir, "plan-with-narrative-id-shape.json"), JSON.stringify(PLAN_WITH_NARRATIVE_ID_SHAPE))
@@ -528,6 +550,33 @@ describe("runRender", () => {
     })
   })
 
+  describe("--allow-dropped-content threading (deep-review P1)", () => {
+    it("rejects a deck whose layout silently drops content when the flag is not passed", async () => {
+      const out = join(dir, "out-dropped-blocked.pptx")
+      await expect(
+        runRender(join(dir, "deck-dropped-content.json"), { output: out }),
+      ).rejects.toThrow(/deck drops \d+ content blocks.*p-2 \(page 2.*--allow-dropped-content/s)
+    })
+
+    it("renders the deck when --allow-dropped-content is passed", async () => {
+      const out = join(dir, "out-dropped-allowed.pptx")
+      const msg = await runRender(join(dir, "deck-dropped-content.json"), {
+        output: out,
+        allowDroppedContent: true,
+      })
+      expect(msg).toContain("2 slides")
+      const bytes = await readFile(out)
+      expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+    })
+
+    it("still previews the same deck — preview is for looking at work in progress", async () => {
+      const out = join(dir, "dropped-preview.html")
+      await expect(
+        runPreview(join(dir, "deck-dropped-content.json"), out, { htmlOut: true }),
+      ).resolves.toBeTruthy()
+    })
+  })
+
   describe("field-alias note (W5 whole-branch review finding 3: README claimed render printed this note; it never actually did)", () => {
     it("prints a note after the wrote-file summary listing the normalized field aliases", async () => {
       const out = join(dir, "out-alias.pptx")
@@ -614,10 +663,19 @@ describe("runPreview --html (W7 task 1)", () => {
     const out = join(dir, "svgs-html")
     const msg = await runPreview(join(dir, "deck.json"), out, { htmlOut: true })
     const files = await readdir(out)
-    expect(files.sort()).toEqual(["001-cover.svg", "002-content.svg", "preview.html"])
+    // The bundle is three things, not two: the per-slide SVGs, the page a
+    // human opens, and the manifest a program reads (`./preview-manifest.ts`).
+    expect(files.sort()).toEqual(["001-cover.svg", "002-content.svg", "manifest.json", "preview.html"])
     const html = await readFile(join(out, "preview.html"), "utf8")
     expect(html.match(/<svg\b/g)).toHaveLength(2)
     expect(msg).toContain(join(out, "preview.html"))
+    expect(msg).toContain(join(out, "manifest.json"))
+
+    // Every page the manifest lists points at a file that is actually there,
+    // which is the only reason a consumer can trust it without re-rendering.
+    const manifest = JSON.parse(await readFile(join(out, "manifest.json"), "utf8"))
+    expect(manifest.pages.map((p: { file: string }) => p.file)).toEqual(["001-cover.svg", "002-content.svg"])
+    expect(manifest.slide).toEqual({ width: 1280, height: 720 })
   })
 
   it("shows the 'unfilled' badge for a placeholder page (deck-directory input, same as SVG output)", async () => {
@@ -689,12 +747,15 @@ describe("runPreview --html audit overlay (notes+preview wave, task 2)", () => {
     expect(html).not.toContain('id="pf-audit-checks"')
   })
 
-  it("always includes the annotation UI and export button, independent of audit results", async () => {
+  it("ships no annotation or revision-request UI", async () => {
+    // Removed 2026-08-16: the preview shows the deck, and a reviewer who
+    // spots something screenshots it and tells the agent — faster than
+    // typing into a panel whose output then has to be exported and re-read.
     const out = join(dir, "svgs-html-audit-annotate")
     await runPreview(join(dir, "deck.json"), out, { htmlOut: true })
     const html = await readFile(join(out, "preview.html"), "utf8")
-    expect(html).toContain('id="pf-annotate-panel"')
-    expect(html).toContain('id="pf-export-btn"')
+    expect(html).not.toContain("pf-annotate")
+    expect(html).not.toContain("pf-export-btn")
   })
 })
 

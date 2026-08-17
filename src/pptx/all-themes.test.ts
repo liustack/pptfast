@@ -28,7 +28,18 @@ describe("all themes export v2 (download path)", () => {
         slides: [
           { type: "cover", heading: "封面标题", subheading: "副标题", components: [] },
           { type: "chapter", heading: "第一章", components: [] },
-          { type: "content", heading: "数据页", components, footnote: "来源：测试" },
+          // Spread over five content pages (content-drop gate, deep-review
+          // P1): all eight components on one page overflowed its content
+          // area in every one of the 17 themes, so this fixture was itself
+          // an example of the silent content loss the export now refuses.
+          // The chart and the flowchart each need a page to themselves —
+          // paired with anything else they still overflowed in half the
+          // themes. Same per-theme component coverage, no loss.
+          { type: "content", heading: "数据页 1", components: components.slice(0, 2), footnote: "来源：测试" },
+          { type: "content", heading: "数据页 2", components: [components[2]] },
+          { type: "content", heading: "数据页 3", components: [components[3]] },
+          { type: "content", heading: "数据页 4", components: components.slice(4, 6) },
+          { type: "content", heading: "数据页 5", components: components.slice(6) },
           { type: "ending", heading: "Questions", components: [] },
         ],
       }

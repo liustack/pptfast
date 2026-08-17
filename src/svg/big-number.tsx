@@ -3,6 +3,7 @@ import type { Component } from "@/ir"
 import type { ComponentCtx } from "./components/types"
 import { renderComponent } from "./components"
 import { layoutContentFit, type ContentRect } from "./layout"
+import { DroppedContentMarker } from "./drop-marker"
 import {
   fitSvgLine,
   measureTextUnits,
@@ -130,20 +131,9 @@ export function BigNumber({
       {placed.map((p, i) => (
         <Fragment key={i}>{renderComponent(p.component, p.box, ctx)}</Fragment>
       ))}
-      {dropped > 0 && (
-        <text
-          data-dropped={dropped}
-          x={supportRect.x + supportRect.w}
-          y={supportRect.y + supportRect.h - 6}
-          textAnchor="end"
-          fontSize={14}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${dropped} more`}
-        </text>
-      )}
+      {/* Recorded, never painted — and the export refuses to ship it.
+          See `DroppedContentMarker`'s own doc comment. */}
+      <DroppedContentMarker count={dropped} />
     </>
   )
 }

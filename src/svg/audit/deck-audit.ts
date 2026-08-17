@@ -2079,9 +2079,12 @@ function truncatedFindings(markup: string, page: number, slideId: string | undef
 function droppedMessage(count: number): string {
   const unit = count === 1 ? "item" : "items"
   const verb = count === 1 ? "is" : "are"
+  // No "+N more" text on the slide any more (`svg-content.tsx`, visual
+  // review 2026-08-15) — the drop is invisible to a reader, so the message
+  // says so rather than pointing at a marker that is no longer painted.
   return (
-    `${count} more ${unit} of content ${verb} hidden behind a "+${count} more" marker — the content ` +
-    `area is over capacity, split the slide or trim its content`
+    `${count} ${unit} of content ${verb} missing from the rendered slide, with nothing on it to say so — ` +
+    `the content area is over capacity, split the slide or trim its content`
   )
 }
 

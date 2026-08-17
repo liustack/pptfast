@@ -11,11 +11,19 @@
   "main": "./dsh/index.js",
   "exports": {
     ".": "./dsh/index.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./client": "./dsh/client.js"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-tool"
+      ],
+      "platform": "web",
+      "immediately": true
     }
   },
   "files": [
@@ -44,6 +52,7 @@
     "e2e:dsh": "tsx scripts/dsh-e2e.mts",
     "bench:score": "tsx tests/bench/score.mts",
     "docs:list": "node scripts/docs-list.js",
+    "gallery": "tsx scripts/gallery.mts",
     "prepublishOnly": "pnpm check && pnpm e2e",
     "release:version": "changeset version && tsx scripts/sync-version.mts && tsx scripts/stamp.mts",
     "bench:run": "tsx tests/bench/run.mts",

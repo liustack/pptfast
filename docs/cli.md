@@ -14,7 +14,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 
 | Command | Does |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft]` | Validate + render to a `.pptx` |
+| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content]` | Validate + render to a `.pptx` |
 | `validate <target>` | Check the IR, print page-scoped errors and advisory warnings |
 | `audit <target> [--json] [--pixels]` | Deterministic geometry review, exits 1 when it finds anything (see [Auditing](#auditing)) |
 | `asset-brief <target> [--json]` | Image-generation brief for every `image` component (see [Asset briefs](#asset-briefs)) |
@@ -26,13 +26,15 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | Extract brand colors and fonts from a `.thmx`/`.potx`/`.pptx` into a theme file, entirely locally (see [Themes](./themes.md#your-own-brand)) |
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`), never gated on placeholder pages |
-| `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes, with annotations submitting straight back to the deck directory as `revision-request.json` |
+| `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes |
 | `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call |
 | `init` | Scaffold `pptfast.config.json` |
 | `doctor [--json]` | Diagnose this machine's install: skill copies, dsh plugin, runtime, optional capabilities, self-test render (see [Doctor](#doctor)) |
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
 `--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`.
+
+`render` refuses to hand you a file that is quietly incomplete. A deck with unfilled placeholder pages needs `--draft`. A deck where a page holds more than its content area can fit — so the layout leaves blocks out, with nothing on the slide to tell a reader — needs `--allow-dropped-content`; the error names the pages and how many blocks each lost. Shortening the page or splitting it in two is the real fix, and `audit` will point at the same pages. Both flags are for the case where you already know and want the file anyway. Neither gate touches `preview` or `serve` — looking at work in progress is what those are for.
 
 ## Auditing
 
@@ -45,7 +47,7 @@ Six checks:
 - **low-contrast** — the WCAG luminance ratio between text and its resolved background.
 - **overlap** — two components' regions substantially colliding.
 - **content-truncated** — text the renderer had to cut short with an ellipsis to fit.
-- **content-dropped** — a "+N more" marker, where a card list or a whole component didn't fit and got hidden.
+- **content-dropped** — a card list trimmed to what fits (the slide shows a "+N more" line), or a whole component the page had no room for and left out with nothing on the page to say so.
 
 Audit is advisory, not a hard gate. `validate` already rejects a structurally invalid or over-dense deck. Audit catches what a *valid* deck can still get wrong at render time: an author-chosen text color that sits too close to the background, two components whose combined content collides, a card list that had to drop an item.
 
@@ -116,7 +118,9 @@ The loop an agent should run when it generates a deck:
 
 `pptfast preview --html` also writes a self-contained `preview.html` for a human reviewer: keyboard navigation, placeholder badges, zero network calls once it is open in a tab (a remote-URL image asset stays remote, the one gap in self-containment). When every page is filled, that page also overlays the same `audit` findings — per-page badges plus a findings panel, click to jump to the page. A deck with any placeholder page shows a one-line "audit skipped" notice instead.
 
-The reviewer can leave free-text per-page annotations in `preview.html` and export them as `revision-request.json` (a browser download, no network and no file write — preview stays read-only) for the agent to route back through `pages/*.json`. `pptfast serve <target>` runs the same loop live: a browser tab that auto-reloads on source changes, with the annotation panel submitting straight to `<deck-dir>/revision-request.json` on disk.
+`preview.html` is read-only: it shows the deck and never writes to it. A reviewer who wants something changed says so in the conversation — a screenshot of the page is the fastest hand-off — and the agent routes it through `pages/*.json`. `pptfast serve <target>` runs the same page live: a browser tab that auto-reloads on every source change, so each revision lands in the tab the reviewer already has open.
+
+Alongside `preview.html`, `preview --html` also writes `manifest.json`: a flat page list with stable ids, the SVG file each page lives in, the canvas size, and the audit findings per page. That is the half a *program* can read — a harness with its own UI draws the deck from it, one without opens the HTML instead, and neither has to re-render the deck to do it.
 
 The skill wraps this loop for an agent ([`skills/pptfast/SKILL.md`](../skills/pptfast/SKILL.md)), whether it was installed as a skill folder or as the DSH plugin. An internal, model-agnostic benchmark (`tests/bench/`, not published to npm) scores how well a model follows that skill on a fixed question bank — see `tests/bench/README.md`.
 

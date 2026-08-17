@@ -11,7 +11,9 @@ import {
   validateIr,
   type ValidationIssue,
 } from "../api"
+import { CANVAS_H_PX, CANVAS_W_PX } from "../constants"
 import { PptfastError } from "../errors"
+import { VERSION } from "../version"
 import { StyleOverrideSchema, type PptxIR, type StyleOverride } from "../ir"
 import { PptxIRV3Schema } from "../ir/legacy-v3"
 import { migrateIrV3ToV4 } from "../ir/migrate"
@@ -39,6 +41,7 @@ import {
 } from "./deck-dir"
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 import { buildPreviewHtml } from "./preview-html"
+import { buildPreviewManifest } from "./preview-manifest"
 
 /** `findUserConfig()`'s own return shape, named here so it can be threaded as
  *  a parameter (`loadDeckTarget`/`applyDeckConfig` below) instead of each
@@ -288,6 +291,8 @@ export interface RenderOptions {
   cwd?: string
   /** Skip the unfilled-placeholder-pages gate (W5 task 1) — see `generatePptx` in `../api`. */
   draft?: boolean
+  /** Skip the content-drop gate — see `checkContentDropGate` in `../pptx/generate`. */
+  allowDroppedContent?: boolean
 }
 
 /**
@@ -297,7 +302,9 @@ export interface RenderOptions {
  * follows the exact same validate → resolve-assets → generate pipeline a
  * single file always has. `--draft` threads through unchanged either way
  * (`generatePptx`'s own gate, W5 task 1) — a deck project's own placeholder
- * pages are exactly what that gate exists to catch.
+ * pages are exactly what that gate exists to catch. `--allow-dropped-content`
+ * threads the same way for the sibling content-drop gate
+ * (`checkContentDropGate`, `../pptx/generate`).
  *
  * Appends the same field-alias {@link normalizedNote} `runValidate` below
  * prints (W5 whole-branch review finding 3 — the README already claimed
@@ -323,7 +330,10 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
   const v = validateIr(raw)
   if (!v.ok) throw new PptfastError(`invalid IR:\n${formatIssues(v.errors)}`)
   await resolveLocalAssets(v.ir!, baseDir)
-  const bytes = await generatePptx(v.ir!, { draft: opts.draft })
+  const bytes = await generatePptx(v.ir!, {
+    draft: opts.draft,
+    allowDroppedContent: opts.allowDroppedContent,
+  })
   await mkdir(dirname(resolve(opts.output)), { recursive: true })
   await writeFile(opts.output, bytes)
   const ok = `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`
@@ -1033,8 +1043,10 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
   const { ir, svgs, normalized } = await renderDeckSlides(irPath, { cwd: opts.cwd, themeFilePath: opts.themeFilePath })
   // After render, not before (S1 review carry) — see this function's own doc comment.
   await mkdir(outDir, { recursive: true })
+  const svgNames: string[] = []
   for (let i = 0; i < ir.slides.length; i++) {
     const name = `${String(i + 1).padStart(3, "0")}-${ir.slides[i]!.type}.svg`
+    svgNames.push(name)
     await writeFile(join(outDir, name), svgs[i]!)
   }
   const ok = `wrote ${ir.slides.length} SVG files to ${outDir}`
@@ -1042,10 +1054,39 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
   const aliasNote = normalizedNote(normalized)
   if (aliasNote) notes.push(aliasNote)
   if (opts.htmlOut) {
-    const { html, findings } = buildDeckAuditAndHtml(ir, svgs)
+    const { html, findings, checks } = buildDeckAuditAndHtml(ir, svgs)
     const htmlPath = join(outDir, "preview.html")
     await writeFile(htmlPath, html)
+
+    // The machine-readable half of the same bundle (`./preview-manifest.ts`).
+    // A harness with its own UI reads this and draws the deck however it
+    // likes; one without a UI opens the HTML sitting next to it. Neither has
+    // to re-implement the renderer, which is the only way there stays exactly
+    // one rendering path.
+    const hasPlaceholder = ir.slides.some((s) => s.placeholder)
+    const manifest = buildPreviewManifest({
+      title: ir.filename,
+      pptfastVersion: VERSION,
+      width: CANVAS_W_PX,
+      height: CANVAS_H_PX,
+      slides: ir.slides.map((slide, i) => ({
+        index: i,
+        type: slide.type ?? "content",
+        id: slide.id,
+        placeholder: slide.placeholder,
+        file: svgNames[i]!,
+      })),
+      findings: findings.map((f) => ({ page: f.page, code: f.code, message: f.message })),
+      checks,
+      auditNote: hasPlaceholder
+        ? "audit skipped — deck has unfilled placeholder pages"
+        : undefined,
+    })
+    const manifestPath = join(outDir, "manifest.json")
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+
     notes.push(`note: wrote self-contained preview to ${htmlPath}`)
+    notes.push(`note: wrote machine-readable page manifest to ${manifestPath}`)
     if (findings.length > 0) {
       notes.push(`note: audit found ${findings.length} finding${findings.length === 1 ? "" : "s"} — see preview.html`)
     }

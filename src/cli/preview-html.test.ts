@@ -304,53 +304,156 @@ describe("buildPreviewHtml — audit checks summary (notes+preview wave, task 2)
 })
 
 describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)", () => {
-  it("always renders the annotation UI (textarea, add button, per-page list) regardless of findings", () => {
-    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
-    expect(html).toContain('id="pf-annotate-panel"')
-    expect(html).toContain('id="pf-annotate-input"')
-    expect(html).toContain('id="pf-annotate-add"')
-    expect(html).toContain('id="pf-annotate-list"')
-  })
-
-  it("always renders the 'Export revision requests' button", () => {
-    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
-    expect(html).toContain('id="pf-export-btn"')
-    expect(html).toContain("Export revision requests")
-  })
-
-  it("includes the annotation add/remove JS and the export button's revision-request JSON shape", () => {
-    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
-    // add/remove wiring
-    expect(html).toContain("annotateAdd.addEventListener")
-    expect(html).toContain("renderAnnotations()")
-    // pageId resolution: slide id when present, else 1-based page number —
-    // matches AuditFinding.page's own convention (see the JS's own comment).
-    expect(html).toContain("function pageIdFor(i)")
-    // the exported payload's shape, asserted at the source-text level (this
-    // file's existing tests are all string-level, not jsdom-executed) —
-    // `{ version: "1", deck: <filename/title>, requests: [{ pageId,
-    // annotation, createdAt }] }` per the plan's spec.
-    expect(html).toContain("version: '1'")
-    expect(html).toContain("deck: deckTitle")
-    expect(html).toContain("pageId: pid, annotation: text, createdAt: new Date().toISOString()")
-    // zero-network, zero-storage download — a Blob + a synthetic <a download>
-    // click, never fetch/XMLHttpRequest/a form submission.
-    expect(html).toContain("new Blob(")
-    expect(html).toContain("URL.createObjectURL(blob)")
-    expect(html).toContain('a.download = \'revision-request.json\'')
-    // The explicit seam `pptfast serve`'s injected client calls
-    // (src/cli/serve.ts) — pinned by name so a drift between the assignment
-    // here and the consumption there fails a test instead of only a browser.
-    expect(html).toContain("window.__pptfastBuildExportBlob = buildExportBlob")
-    expect(html).not.toMatch(/\bfetch\(/)
-    expect(html).not.toContain("XMLHttpRequest")
-  })
-
+  
+  
+  
   it("self-containment: the annotation/export JS introduces no external reference either", () => {
     const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0 })] })
     const KNOWN_NAMESPACE_URIS = new Set(["http://www.w3.org/2000/svg"])
     const matches = html.match(/https?:\/\/[^\s"'<>)]+/g) ?? []
     const unexpected = matches.filter((m) => !KNOWN_NAMESPACE_URIS.has(m))
     expect(unexpected).toEqual([])
+  })
+  it("carries no annotation or revision-request UI at all", () => {
+    // Deliberately removed 2026-08-16. The preview's job is to show the
+    // deck; a reviewer who spots something screenshots it and says so to the
+    // agent, which is faster than typing into a panel that then has to be
+    // exported and re-read. Pinned as an absence so it cannot creep back in
+    // as a half-feature.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+      findings: [{ page: 1, code: "overflow", message: "m" }],
+    })
+    for (const gone of [
+      "pf-annotate",
+      "pf-export-btn",
+      "Export revision requests",
+      "Add annotation",
+      "revision-request",
+    ]) {
+      expect(html).not.toContain(gone)
+    }
+  })
+
+  it("offers a light/dark surround, because the surround changes how a theme reads", () => {
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+    })
+    expect(html).toContain('id="pf-surround"')
+    expect(html).toContain('data-surround="dark"')
+    expect(html).toContain('<body data-surround="light">')
+  })
+
+  it("omits the findings rail entirely when the deck audits clean", () => {
+    // An empty panel used to occupy a quarter of the width on every clean
+    // deck, which is most of them.
+    const clean = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+      findings: [],
+    })
+    expect(clean).not.toContain('id="pf-side"')
+
+    const dirty = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+      findings: [{ page: 1, code: "overflow", message: "m" }],
+    })
+    expect(dirty).toContain('id="pf-side"')
+  })
+
+  it("sizes the stage from the room it measures, not from a guess at the chrome", () => {
+    // The stage used to take its width from `100vh - 210px`, a guess at what
+    // the header and filmstrip cost. Guess low and the box comes out wider
+    // than 16:9 — `aspect-ratio` cannot pull it back once width and
+    // max-height are both set — so the slide letterboxes inside its own stage
+    // and paints a grey bar down each side. Reported from a real deck.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [{ index: 0, type: "cover", svg: "<svg/>" }],
+    })
+    // The wrap has to be a size container, or `cqh` below means nothing.
+    expect(html).toContain("#pf-stage-wrap{container-type:size")
+    expect(html).toContain("calc(100cqh * 16 / 9)")
+
+    // The viewport guess may stay as a fallback, but only ahead of the
+    // measured rule — behind it, it wins the cascade and nothing changed.
+    const guess = html.indexOf("calc((100vh - 210px) * 16 / 9)")
+    const measured = html.indexOf("calc(100cqh * 16 / 9)")
+    expect(guess).toBeGreaterThan(-1)
+    expect(measured).toBeGreaterThan(guess)
+  })
+
+  it("emits a script that actually parses", () => {
+    // This page's JS is written inside a TS template literal, where a stray
+    // backtick ends the string early and a broken script is still a
+    // well-formed HTML file. Nothing else here would notice.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1].map((index) => slide({ index })),
+      findings: [{ page: 1, code: "overflow", message: "m" }],
+    })
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)?.[1]
+    expect(body).toBeTruthy()
+    expect(() => new Function(body!)).not.toThrow()
+  })
+
+  it("opens on the page the embedder asked for, since a URL is all it can pass", () => {
+    // A harness that embeds this file in a frame holds a URL and nothing else,
+    // so a reader who clicks page 3 in its own strip lands on page 1 without
+    // this. `#page=3` counts thumbnails, not slide indices, so it still means
+    // the third page for a deck whose slides are not numbered 0..n-1.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1, 2].map((index) => slide({ index })),
+    })
+    expect(html).toContain("page=(")
+    expect(html).toContain("hashchange")
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)![1]!
+    // The position→index hop is the whole point: reading the number as an
+    // index would send a re-numbered deck to the wrong slide.
+    expect(body).toContain("thumbs[pos].getAttribute('data-index')")
+  })
+
+  it("fades the filmstrip only on the side that has thumbnails hidden behind it", () => {
+    // A strip cut off by its own edge reads as a clipping bug, not as "there
+    // is more this way" — and inside an embedder's rounded frame the last
+    // thumbnail is sliced on a curve. Fading a strip that fits would be the
+    // same mistake pointing the other way, so both widths start at 0, where
+    // the gradient is opaque edge to edge.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1].map((index) => slide({ index })),
+    })
+    expect(html).toContain("--pf-fade-l:0px")
+    expect(html).toContain("--pf-fade-r:0px")
+    expect(html).toContain("mask-image:linear-gradient(to right,transparent 0,#000 var(--pf-fade-l)")
+
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)![1]!
+    // Measured off the thumbnails, never off scrollWidth. The strip's own
+    // padding is scrollable width, so scrollWidth reports room to the right
+    // while the reader is already on the last thumbnail — and that is exactly
+    // where activate()'s scrollIntoView parks. The fade then claims there is
+    // more to see and dims the selected thumbnail's ring to say it.
+    expect(body).not.toContain("strip.scrollWidth")
+    expect(body).toContain("thumbs[thumbs.length - 1].getBoundingClientRect().right")
+    expect(body).toContain("box.left - thumbs[0].getBoundingClientRect().left")
+    // Re-measured on scroll and on resize: a strip that fits at one window
+    // width overflows at another, and activate() scrolls it without either.
+    expect(body).toContain("'scroll', fadeStrip")
+    expect(body).toContain("'resize', fadeStrip")
+  })
+
+  it("lets #page=1 pull the deck back to the first page, not just start there", () => {
+    // Page 1 is a no-op on first load and a real move afterwards: page
+    // forward, hit Back, and the URL says page 1 while the deck sits on 6.
+    const html = buildPreviewHtml({
+      title: "d",
+      slides: [0, 1, 2].map((index) => slide({ index })),
+    })
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)![1]!
+    expect(body).toContain("pos >= 0 && pos < total")
   })
 })
