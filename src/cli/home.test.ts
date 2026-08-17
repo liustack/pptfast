@@ -28,6 +28,19 @@ describe("pptfastHome", () => {
     process.env.PPTFAST_HOME = "/tmp/other-home"
     expect(pptfastHome()).toBe("/tmp/other-home")
   })
+
+  it("treats an empty PPTFAST_HOME as unset, not as a relative path", () => {
+    // `PPTFAST_HOME=` in a shell profile, or a container runtime that passes
+    // every declared variable through whether or not it has a value, both hand
+    // this an empty string. `??` alone kept it, so the deck root resolved to
+    // `./decks` and moved with the process's cwd — and the DSH plugin, which
+    // deletes directories under its own root, resolved the same variable the
+    // other way. One of the two had to change and this is the safe one.
+    process.env.PPTFAST_HOME = ""
+    expect(pptfastHome()).toBe(join(homedir(), ".pptfast"))
+    expect(decksRoot()).toBe(join(homedir(), ".pptfast", "decks"))
+    expect(userConfigPath()).toBe(join(homedir(), ".pptfast", "config.json"))
+  })
 })
 
 describe("decksRoot", () => {
