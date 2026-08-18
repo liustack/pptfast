@@ -43,11 +43,10 @@ import { readableOn } from "../ink"
  * (`enterprise`, whose chapter background is `#FFFFFF`), the hard-coded
  * white grid became invisible white-on-white — contradicting
  * `motif-selection.ts`'s own contrast-safety claim (that claim only ever
- * covered `findContrastIssues`' text/background walk, which structurally
- * excludes every `<g data-decor>` shape from candidacy — see that file's
- * "Contrast safety" section — so it never caught a decor shape rendering
- * invisibly against its *own* background; it only ever proved decor never
- * makes *other* text unreadable). Fixed by deriving the ink from the actual
+ * covered `findContrastIssues`' text/background walk, which grades *text* —
+ * see that file's "Contrast safety" section — so it never caught a decor
+ * shape rendering invisibly against its *own* background; it only ever
+ * proved decor never makes *other* text unreadable). Fixed by deriving the ink from the actual
  * background instead of a hard-coded literal: `readableOn(ctx.defaultBg ??
  * ctx.colors.bg)` (`../ink.ts`) — the same two-ink, real-contrast-measured
  * chooser the layout-side contrast fix round already uses for exactly

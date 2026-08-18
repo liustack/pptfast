@@ -166,6 +166,43 @@ const DEFAULT_FONT_SIZE = 16
 const DECORATIVE_ALPHA = 0.4
 
 /**
+ * A text run's ink box, as fractions of its rendered font size above and
+ * below the baseline — the band `backgroundsUnderRun` grids over. The
+ * descent mirrors `TEXT_DESCENT_RATIO` further down this file (which
+ * `findOverlapIssues` and `svg-audit.ts`'s v-overflow check already share),
+ * and the pair together mirrors `pixel-audit.ts`'s own
+ * `SAMPLE_ASCENT_RATIO`/`SAMPLE_DESCENT_RATIO` — the raster auditor grids
+ * exactly this same estimated box, so the two auditors agree on where a
+ * run's ink actually is. No real font metrics exist at audit time (this
+ * renderer never embeds or queries a font file), so both numbers are the
+ * usual declared-size-relative approximation, not measurements.
+ */
+const TEXT_INK_ASCENT_RATIO = 0.75
+const TEXT_INK_DESCENT_RATIO = 0.25
+
+/**
+ * Sample spacing for `backgroundsUnderRun`, as a fraction of the run's own
+ * rendered font size — so the grid gets denser exactly where the text is
+ * smaller, and the guarantee it buys reads the same at every scale. The
+ * guarantee: samples sit on both edges of the ink box and no more than one
+ * stride apart, so any patch at least this wide *and* this tall, lying
+ * inside the box, must contain one. Below that size a patch may or may not
+ * be hit depending on where it falls — an honest limit, not a claim that
+ * smaller patches don't matter. Half an em is roughly one character, which
+ * is the scale at which "this text is sitting on that colour" starts being
+ * something a reader would say.
+ *
+ * `pixel-audit.ts` states the same idea in absolute pixels
+ * (`MIN_GUARANTEED_PATCH_PX`/`SAMPLE_STRIDE_PX`, "glyph scale") because it
+ * grids a rasterized page where a run's font size is no longer available;
+ * here it is, so the run's own size is the more direct anchor. Deliberately
+ * not shared as one constant between the two: they are stride rules for two
+ * different domains, and forcing them into one would make each read as a
+ * consequence of the other rather than of its own argument.
+ */
+const BG_SAMPLE_STRIDE_EM = 0.5
+
+/**
  * `data-contrast-tier="meta"` — a render-side marker (own protocol, same
  * family as `data-decor`/`data-audit-box` above and `full-matrix-
  * contrast.test.ts`'s `ALLOWLIST`: "audit reads a marker to pick which rule
@@ -358,12 +395,51 @@ interface PaintedShape {
 
 /** Axis-aligned rect containment — shared by `<rect>`/`<image>`/`<path>`/
  * `<polygon>` (the last two via `pathBoundingBox`/`polygonBoundingBox`'s own
- * bbox, see each function's doc comment) — every one of those four is
- * checked against its bounding box, never an exact outline, even where the
- * bbox itself is now tight/exact (line and arc geometry) rather than an
- * over-approximation. */
-function rectShape(x: number, y: number, w: number, h: number, fill: string | null): PaintedShape {
-  return { fill, contains: (px, py) => px >= x && px <= x + w && py >= y && py <= y + h }
+ * bbox, see each function's doc comment). For `<path>`/`<polygon>`/`<image>`
+ * this is the shape's *bounding box*, never its outline, even where the bbox
+ * itself is now tight/exact (line and arc geometry) rather than an
+ * over-approximation. For `<rect>` the box **is** the outline — except at a
+ * rounded corner, which `rx`/`ry` cut back exactly (see below), so a `<rect>`
+ * always gets its real painted outline rather than an outer approximation of
+ * it.
+ *
+ * `rx`/`ry` default to `0` (square corners) so every bbox caller is
+ * byte-identical to the pre-`fix/decor-contrast-attribution` behavior. When
+ * set, a point in one of the four corner quadrants is tested against that
+ * corner's quarter-ellipse instead of the box — the same normalized-distance
+ * form `ellipseShape` uses. Radii are clamped to half the side, as the SVG
+ * spec itself clamps them; a degenerate radius collapses that corner back to
+ * a square one. This matters because the decor-attribution gate below
+ * ("`decorShapeIsExact`") admits a shape only when the containment test
+ * registered for it is the painted outline, and a rounded rect whose corners
+ * were tested as square would not have been. */
+function rectShape(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill: string | null,
+  rx = 0,
+  ry = 0,
+): PaintedShape {
+  const crx = Math.min(Math.max(rx, 0), w / 2)
+  const cry = Math.min(Math.max(ry, 0), h / 2)
+  return {
+    fill,
+    contains: (px, py) => {
+      if (px < x || px > x + w || py < y || py > y + h) return false
+      if (crx <= 0 || cry <= 0) return true
+      // Distance past the inner (un-rounded) cross, per axis — zero
+      // everywhere but the four corner quadrants, which is exactly where a
+      // rounded rect is not its own box.
+      const ox = Math.max(x + crx - px, px - (x + w - crx), 0)
+      const oy = Math.max(y + cry - py, py - (y + h - cry), 0)
+      if (ox === 0 || oy === 0) return true
+      const nx = ox / crx
+      const ny = oy / cry
+      return nx * nx + ny * ny <= 1
+    },
+  }
 }
 
 /** Exact ellipse containment (`circle` is the `rx === ry` case, computed
@@ -1350,29 +1426,58 @@ function directText(el: Element): string {
  * an unfloored "unknown, skip" candidate would only ever shrink coverage,
  * never fix a misattribution.
  *
- * One more exclusion sits on top of the shape model above: anything inside
- * a `<g data-decor>` subtree (`full-slide-svg.tsx`'s exact wrapper around
- * `themeDef.motif`'s output — verified there, not assumed) never becomes a
- * candidate, full stop, regardless of size/opacity/fill. Decoration is
- * layered *over* the real background, not a stand-in for it — but nothing in
- * this renderer's motif discipline stops a motif from drawing large, opaque-
- * enough shapes: `motif-campaign-motif.tsx`'s crayon-stroke paths are
- * exactly that (each stroke's core-density bucket alone renders at >=0.64
- * effective opacity across every call site in that file, comfortably clear
- * of `MIN_BG_OPACITY`), which would otherwise register as spurious
- * background candidates and could shadow the real background for any text
- * that happens to sit inside their (`pathBoundingBox`-over-approximated)
- * bounding box — see that function's own doc comment. `findOverlapIssues`
- * needs no equivalent exclusion (decoration never carries
- * `data-audit-box`), but this walk sees every
- * `<rect>`/`<circle>`/`<ellipse>`/`<image>`/`<path>`/`<polygon>` regardless
- * of what drew it, so the exclusion has to be explicit here. Implemented as a boolean
- * threaded through `visit`'s recursion (once a `data-decor` ancestor is
- * entered it stays true for the whole subtree) rather than a string/regex
- * pre-pass on `markup` — this function already fully parses to DOM, and
- * regex-stripping a `<g>...</g>` span is unsound the moment the subtree
- * nests further `<g>` elements of its own (every motif does), which would
- * truncate at the first nested `</g>` instead of the matching one.
+ * One more gate sits on top of the shape model above, for anything inside a
+ * `<g data-decor>` subtree (`full-slide-svg.tsx`'s exact wrapper around
+ * `themeDef.motif`'s output — verified there, not assumed). Decoration is
+ * layered *over* the real background, not a stand-in for it, so it never
+ * joins the page-level `regions` table at all. For *attribution* it used to
+ * be excluded on the same blanket terms, which was half right and half a
+ * lie — see the two paragraphs below. Implemented as a boolean threaded
+ * through `visit`'s recursion (once a `data-decor` ancestor is entered it
+ * stays true for the whole subtree) rather than a string/regex pre-pass on
+ * `markup` — this function already fully parses to DOM, and regex-stripping
+ * a `<g>...</g>` span is unsound the moment the subtree nests further `<g>`
+ * elements of its own (every motif does), which would truncate at the first
+ * nested `</g>` instead of the matching one. `findOverlapIssues` needs no
+ * equivalent gate (decoration never carries `data-audit-box`), but this walk
+ * sees every `<rect>`/`<circle>`/`<ellipse>`/`<image>`/`<path>`/`<polygon>`
+ * regardless of what drew it, so it has to be explicit here.
+ *
+ * **Decoration participates by shape, not by layer
+ * (`fix/decor-contrast-attribution`).** The blanket attribution exclusion
+ * was written for a real problem: nothing in this renderer's motif
+ * discipline stops a motif from drawing large, opaque-enough shapes, and
+ * `motif-campaign-motif.tsx`'s crayon strokes are exactly that (each
+ * stroke's core-density bucket alone renders at >=0.64 effective opacity
+ * across every call site in that file, comfortably clear of
+ * `MIN_BG_OPACITY`). Those are `<path>`s, registered by their
+ * `pathBoundingBox` — a box far larger than the stroke — so letting them
+ * attribute would convict text that is nowhere near the ink. But the same
+ * blanket rule also hid shapes whose registered geometry *is* their
+ * outline. The ink theme's motif signs off with a 32px vermilion seal
+ * (`<rect fill="#C3272B">`); the tone-adaptive-header cover paints its date
+ * line straight across it. Real contrast: 1.07:1. What this walk reported
+ * before the fix: 5.44:1, measured against the page background the seal
+ * completely covers — not a missing check but a wrong answer, which is
+ * worse. Same shape in tech (1.70:1 on a corner-ornament square) and
+ * consulting (3.26:1). So the gate is now
+ * `registersExactOutline(tag) && !hasUnmodelledTransform(...)`:
+ * `rect`/`circle`/`ellipse` under a transform this walk actually models
+ * join attribution, `path`/`polygon` and anything rotated/skewed stay out.
+ * See both helpers' own doc comments for the criterion and its evidence.
+ *
+ * **A run is graded over its ink box, not at its anchor point
+ * (`fix/decor-contrast-attribution`, same defect, second half).** Admitting
+ * the seal as a candidate is not enough on its own: this branch used to ask
+ * `backgroundAt(tx, ty)` for the run's *anchor* position, which sits on the
+ * baseline — the bottom edge of the glyph box — and, under
+ * `text-anchor="end"`, at the far right of the run. The ink seal's bottom
+ * edge is 10px above that baseline and its right edge 14px to the left of
+ * that anchor, so a point test saw nothing while the glyphs sat squarely on
+ * the seal. `backgroundsUnderRun` (own doc comment) replaces the single
+ * point with a grid over the run's estimated ink box and keeps the
+ * least-favorable background it resolves; a run that sits on one background
+ * — the overwhelmingly common case — resolves exactly as it did before.
  */
 export function findContrastIssues(markup: string): ContrastIssue[] {
   return runContrastWalk(markup).issues
@@ -1431,6 +1536,64 @@ function resolveCandidateFill(rawFill: string | null): string | null | undefined
   return undefined
 }
 
+/**
+ * Every transform form `parseTransform` (`svg-audit.ts`) actually models:
+ * a two-argument `translate(dx, dy)` and a single-argument, therefore
+ * uniform, `scale(s)`. Used by `hasUnmodelledTransform` below as a
+ * subtract-and-check-empty parse, so anything *else* in the attribute —
+ * `rotate`, `skewX`/`skewY`, `matrix`, a one-argument `translate(dx)`, a
+ * non-uniform `scale(sx, sy)` — is detected rather than silently dropped.
+ * Global flag: the attribute is a transform *list*, so every occurrence has
+ * to be consumed, not just the first.
+ */
+const MODELLED_TRANSFORM_RE = /translate\(\s*-?[\d.]+[\s,]+-?[\d.]+\s*\)|scale\(\s*-?[\d.]+\s*\)/g
+
+/**
+ * Whether `el` carries a `transform` this walk does not model.
+ * `parseTransform` reduces the whole attribute to `(dx, dy, uniform scale)`
+ * and silently ignores everything it doesn't match — fine for the content
+ * layer, which provably emits nothing else (grepped across `src/svg/layouts`
+ * and `src/svg/components`; `parseTransform`'s own doc comment states the
+ * same contract), but *not* fine for decoration, which really does rotate:
+ * `motif-pulse-motif.tsx`'s `capsule()` emits a filled `<rect>` under
+ * `rotate(angle cx cy)` and `motif-terra-motif.tsx`'s `leafVein()` wraps its
+ * strokes in a rotated `<g>`. A rotated rect is registered by
+ * `parseTransform` at its *un-rotated* position, and its axis-aligned box is
+ * no longer its outline either — both reasons a shape under one of these is
+ * excluded from decor attribution below, exactly like a `<path>` is.
+ */
+function hasUnmodelledTransform(el: Element): boolean {
+  const t = el.getAttribute("transform")
+  if (!t) return false
+  return t.replace(MODELLED_TRANSFORM_RE, "").trim() !== ""
+}
+
+/**
+ * Whether the `PaintedShape` this walk registers for `tag` is the painted
+ * outline itself rather than an outer approximation of it — the single
+ * criterion the decor-attribution gate turns on (see `findContrastIssues`'s
+ * own doc comment, "**Decoration participates by shape, not by layer**").
+ *
+ * `<rect>` registers through `rectShape`, whose box *is* the rect (rounded
+ * corners included, see that function's own doc comment). `<circle>`/
+ * `<ellipse>` register through `ellipseShape`'s exact normalized-distance
+ * test. `<path>`/`<polygon>` register through `pathBoundingBox`/
+ * `polygonBoundingBox` — a *bounding box*, which for a curved stroke covers
+ * far more area than the stroke does (`motif-campaign-motif.tsx`'s crayon
+ * strokes are the live case the blanket exclusion was written for). `<image>`
+ * is a bbox too, and decoration never emits one.
+ *
+ * The tag list is evidence for the criterion, not the criterion itself: a
+ * `<path>` recognized as a donut/pie wedge does get an exact `sectorShape`,
+ * but that idiom is `chart-svg.tsx`'s alone and never appears in a motif, so
+ * admitting it here would widen the gate for a case that cannot occur while
+ * making the rule harder to state. The transform half of the criterion lives
+ * in `hasUnmodelledTransform` above.
+ */
+function registersExactOutline(tag: string): boolean {
+  return tag === "rect" || tag === "circle" || tag === "ellipse"
+}
+
 function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: BgRegion[]; imageBackedRuns: ImageBackedTextRun[] } {
   const root = parseSvg(markup)
   const issues: ContrastIssue[] = []
@@ -1457,6 +1620,64 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     return null
   }
 
+  /**
+   * Every solid background this walk can resolve anywhere under a text run's
+   * own ink box, deduplicated — the second half of
+   * `fix/decor-contrast-attribution` (see `findContrastIssues`'s own doc
+   * comment, "**A run is graded over its ink box**").
+   *
+   * `backgroundAt` above answers for a *point*. The point the text branch
+   * had always handed it is the run's anchor position, which sits on the
+   * baseline — the bottom edge of the glyph box — and at one end of the run
+   * (`text-anchor="end"`) or its middle. So a shape covering part of the
+   * glyph bodies but not that one corner was invisible to attribution even
+   * once it was a registered candidate: the ink theme's cover date renders
+   * its last characters over the motif's vermilion seal (a 32px square whose
+   * bottom edge is 10px *above* that baseline), and the tech/consulting
+   * covers put the same date's tail on a 24px decor square whose bottom edge
+   * clears the baseline by 2px. Point-sampling the baseline corner reports a
+   * clean 5.44:1 against the page background for text that really renders at
+   * 1.07:1 — which is the whole defect this branch exists to stop telling.
+   *
+   * Grid rather than a rectangle-intersection test, because `PaintedShape`'s
+   * whole contract is a `contains(px, py)` predicate — `ellipseShape` and
+   * `sectorShape` are exact precisely because they are *not* boxes, and
+   * giving each shape kind a second, box-shaped overlap test would trade
+   * that exactness away. Same reduction `pixel-audit.ts`'s `worstCaseSample`
+   * already applies on the raster side: grid the run's estimated box, keep
+   * the least favorable answer.
+   *
+   * Samples that resolve to `null` are skipped rather than collected. That
+   * is not a new blind spot: a run whose *anchor* resolves `null` still
+   * routes to `imageBackedRuns` exactly as before (see the caller), and a
+   * run that merely overhangs an image at one end was already graded on a
+   * single solid colour before this change.
+   */
+  const backgroundsUnderRun = (
+    left: number,
+    right: number,
+    top: number,
+    bottom: number,
+    step: number,
+  ): string[] => {
+    const fills = new Set<string>()
+    // `<= cols`/`<= rows` with an even split puts a sample exactly on each
+    // edge and never more than `step` apart, whatever the box measures — no
+    // dependence on where the box happens to start, which is the alignment
+    // luck `pixel-audit.ts`'s own stride comment documents getting burned by.
+    const cols = Math.max(1, Math.ceil((right - left) / step))
+    const rows = Math.max(1, Math.ceil((bottom - top) / step))
+    for (let i = 0; i <= cols; i++) {
+      const px = left + ((right - left) * i) / cols
+      for (let j = 0; j <= rows; j++) {
+        const py = top + ((bottom - top) * j) / rows
+        const found = backgroundAt(px, py)
+        if (found !== null) fills.add(found)
+      }
+    }
+    return Array.from(fills)
+  }
+
   const visit = (
     el: Element,
     ox: number,
@@ -1467,6 +1688,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     fillOpacity: number,
     opacityProduct: number,
     inDecor: boolean,
+    underUnmodelledTransform: boolean,
     inheritedTx: number | null,
     inheritedTy: number | null,
     anchor: string,
@@ -1505,8 +1727,20 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     // (subtree exclusion, not just this node), same "sticky" accumulation
     // pattern as `currentOpacityProduct` above.
     const inDecorSubtree = inDecor || el.getAttribute("data-decor") !== null
+    // Same sticky-subtree accumulation as `inDecorSubtree`: a rotated `<g>`
+    // taints every descendant's geometry, not only its own (see
+    // `hasUnmodelledTransform` — `motif-terra-motif.tsx`'s `leafVein()` is
+    // exactly that shape, a rotated wrapper around the shapes that matter).
+    const unmodelledTransformHere = underUnmodelledTransform || hasUnmodelledTransform(el)
 
     const tag = el.tagName.toLowerCase()
+    // Decoration participates in text-background *attribution* by shape, not
+    // by layer (see `findContrastIssues`'s own doc comment). Never in the
+    // page-level `regions` table — decoration is painted *over* the real
+    // background, not a stand-in for it, which is the half of the original
+    // blanket exclusion's reasoning that still holds.
+    const decorShapeIsExact = registersExactOutline(tag) && !unmodelledTransformHere
+    const mayAttribute = !inDecorSubtree || decorShapeIsExact
     // Threaded down to children unchanged by every non-text tag (a plain
     // <g> wrapper, a background <rect>, ...) — only a text/tspan branch
     // below ever overwrites it, and only a <tspan> descendant of a
@@ -1559,14 +1793,26 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         localW = Number(el.getAttribute("width") ?? 0)
         localH = Number(el.getAttribute("height") ?? 0)
       }
+      // `<rect rx>`/`<rect ry>` — SVG's own "the missing one mirrors the one
+      // that is set" rule (a `rx`-only rounded rect, which is what every
+      // rounded card/badge/seal in this renderer emits). Zero for
+      // `image`/`path`/`polygon`, whose registered geometry is a bounding box
+      // with square corners by construction.
+      const rawRx = tag === "rect" ? el.getAttribute("rx") : null
+      const rawRy = tag === "rect" ? el.getAttribute("ry") : null
+      const localRx = Number(rawRx ?? rawRy ?? 0)
+      const localRy = Number(rawRy ?? rawRx ?? 0)
       const w = localW * as
       const h = localH * as
       const absX = ax + x * as
       const absY = ay + y * as
-      // `!inDecorSubtree` — see findContrastIssues's own doc comment: a
-      // motif/decor shape never counts as a background candidate no matter
-      // how large or opaque it renders.
-      if (!inDecorSubtree) {
+      // `mayAttribute` — see `findContrastIssues`'s own doc comment: a decor
+      // shape is an attribution candidate only when the containment test
+      // registered for it is its painted outline (`registersExactOutline` +
+      // `hasUnmodelledTransform`). `image`/`path`/`polygon` never satisfy
+      // that, so inside a decor subtree this whole block is unreachable for
+      // them — identical to the blanket exclusion it replaces.
+      if (mayAttribute) {
         if (tag === "image") {
           // Unchanged from before this fix, for both tables: a real photo's
           // pixels are genuinely unknown, and this renderer only ever emits
@@ -1623,12 +1869,17 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
                 ),
               )
             } else {
-              paintedShapes.push(rectShape(absX, absY, w, h, resolvedFill))
+              paintedShapes.push(
+                rectShape(absX, absY, w, h, resolvedFill, localRx * as, localRy * as),
+              )
             }
-            // Page-level table: unchanged, still area-floored —
-            // `__collectBgRegions`'s own contract (and its dedicated
-            // regression test) is untouched by this fix.
-            if (w * h >= MIN_BG_REGION_AREA) {
+            // Page-level table: unchanged, still area-floored *and* still
+            // decor-free — `__collectBgRegions`'s own contract (and its
+            // dedicated regression test) is untouched by this fix. A decor
+            // shape is layered over the real page background, never a
+            // stand-in for it, so widening attribution above does not widen
+            // this table.
+            if (!inDecorSubtree && w * h >= MIN_BG_REGION_AREA) {
               regions.push({ x: absX, y: absY, w, h, fill: resolvedFill })
             }
           }
@@ -1655,7 +1906,12 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       // branch above — a gradient-filled badge/dot circle now registers as
       // `fill: null` instead of silently never becoming a candidate at all.
       const resolvedFill = resolveCandidateFill(shapeFill)
-      if (!inDecorSubtree && resolvedFill !== undefined && opaqueEnough) {
+      // `mayAttribute` rather than `!inDecorSubtree` — a decor `<circle>`/
+      // `<ellipse>` registers through `ellipseShape`'s exact containment
+      // test, so it joins attribution on the same footing as a content one
+      // (see `registersExactOutline`). `regions` still never sees it, for
+      // the two independent reasons this branch's own comment above gives.
+      if (mayAttribute && resolvedFill !== undefined && opaqueEnough) {
         paintedShapes.push(
           ellipseShape(ax + cx * as, ay + cy * as, localRx * as, localRy * as, resolvedFill),
         )
@@ -1712,15 +1968,46 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
             // once, here, at the point of use — same split svg-audit.ts's
             // own overflow walker uses for its `fontSize * as`.
             const renderedFontSize = currentFontSize * as
-            const effective = blendOver(currentFill, background, alpha)
-            const ratio = contrastRatio(effective, background)
+            // The run's ink box, then the worst background under it
+            // (fix/decor-contrast-attribution — see `backgroundsUnderRun`'s
+            // own doc comment). Anchor-aware left/right is the identical
+            // formula the `imageBackedRuns` branch below already used; the
+            // vertical band is `TEXT_INK_ASCENT_RATIO`/
+            // `TEXT_INK_DESCENT_RATIO`. A run whose whole box sits on one
+            // background resolves to exactly what `backgroundAt(tx, ty)`
+            // returned before this change — the single-background case is
+            // every page's overwhelmingly common one, so this is a widening
+            // of what the walk can see, not a rewrite of what it decides.
+            const width = measureTextUnits(content) * renderedFontSize
+            const left =
+              currentAnchor === "end" ? tx - width : currentAnchor === "middle" ? tx - width / 2 : tx
+            const candidates = backgroundsUnderRun(
+              left,
+              left + width,
+              ty - renderedFontSize * TEXT_INK_ASCENT_RATIO,
+              ty + renderedFontSize * TEXT_INK_DESCENT_RATIO,
+              renderedFontSize * BG_SAMPLE_STRIDE_EM,
+            )
             const required = requiredRatioFor(currentTier, renderedFontSize)
-            if (ratio < required) {
+            // `background` (the anchor point's own answer) is always in the
+            // running, even for a zero-width run the grid would otherwise
+            // sample outside of — this can only ever lower the reported
+            // ratio relative to the pre-change behavior, never raise it.
+            let worstBg = background
+            let worstRatio = contrastRatio(blendOver(currentFill, background, alpha), background)
+            for (const candidate of candidates) {
+              const ratio = contrastRatio(blendOver(currentFill, candidate, alpha), candidate)
+              if (ratio < worstRatio) {
+                worstRatio = ratio
+                worstBg = candidate
+              }
+            }
+            if (worstRatio < required) {
               issues.push({
                 text: content.slice(0, 24),
                 fill: currentFill,
-                background,
-                ratio,
+                background: worstBg,
+                ratio: worstRatio,
                 required,
                 fontSize: renderedFontSize,
               })
@@ -1764,6 +2051,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         currentFillOpacity,
         currentOpacityProduct,
         inDecorSubtree,
+        unmodelledTransformHere,
         currentTx,
         currentTy,
         currentAnchor,
@@ -1772,7 +2060,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     }
   }
 
-  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, null, null, "start", null)
+  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, false, null, null, "start", null)
   return { issues, regions, imageBackedRuns }
 }
 
