@@ -831,49 +831,52 @@ window.__ModuleLoader__.load({
       // Seven review rounds produced seven defects of one shape: state that
       // could not say which preview it was about, or a write that landed on the
       // wrong one. Three of those were introduced by the fix for the previous
-      // one. The mechanism has therefore been rebuilt rather than patched, and
-      // this note describes only what the code in front of you does.
+      // one. What is left is one entry and one number, and this note describes
+      // only what the code in front of you does.
       //
-      // Three rules, and each exists because breaking it produced a defect that
-      // reached a user:
+      // ONE ENTRY. The card draws one deck at a time, so the store holds one
+      // deck's state, stamped with the preview id it belongs to. A render reads
+      // it only while that stamp matches the deck it is drawing (`mine`);
+      // otherwise it reads `UNASKED` and the deck that has scrolled past lends
+      // nothing to the one that replaced it — not its verdict, not its open
+      // viewer, not its download status. Arriving at a deck replaces the entry
+      // outright rather than adjusting the one already there, which is what
+      // makes that true of every field at once instead of field by field.
       //
-      //  1. State is ADDRESSED, and an address is a preview id AND a visit:
-      //     `{ [previewId]: entry }`, where each entry is stamped with the
-      //     visit that created it. A change about deck A is written into A's
-      //     entry, which is not B's — and not the entry A had the last time
-      //     this card was showing it, either. A single slot plus a per-field id
-      //     stamp is not enough, because that filters on read while the write
-      //     still clobbers the slot; an id on its own is not enough, because
-      //     the same id can be shown, dropped and shown again while one request
-      //     about the first showing is still in flight.
+      // ONE NUMBER. A monotonic counter hands out a ticket per request, and one
+      // per arrival. An entry starts life holding its arrival's ticket as the
+      // high-water mark of both lanes, and a write is accepted only if its
+      // ticket is at least the mark of the lane it names. That single
+      // comparison does two jobs:
       //
-      //  2. `commit` only ever UPDATES the entry it is addressed to. It never
-      //     creates one. Creation belongs to the layout effect below, which
-      //     runs only when a render is committed. So an answer to a request
-      //     from a stay the card has left is a no-op: the entry it names is
-      //     gone, and the entry sitting under that id now carries a different
-      //     visit. An earlier version let a late write re-insert its entry and
-      //     evict the oldest — which could be the deck on screen, whose
-      //     in-flight download then reset itself. The version after that
-      //     stopped late writes from creating entries but still let them into
-      //     an entry the *next* visit had built, which opened a viewer nobody
-      //     had asked for since before they left.
+      //  - within one stay, an older answer cannot overwrite a newer one. Two
+      //    clicks on Open used to race last-writer-wins: the second request
+      //    answered 410 and settled the card, then the first answered 200 and
+      //    un-settled it, reopening a viewer for a deck the route had just
+      //    disowned. "Last to arrive" and "most recent" are not the same thing,
+      //    and only one of them is a fact about the deck.
       //
-      //  3. Every asynchronous write carries a TICKET, and a lane. Within one
-      //     lane, an older response can never overwrite a newer one. Without
-      //     this, two clicks on Open raced last-writer-wins: the second request
-      //     answered 410 and settled the card, then the first answered 200 and
-      //     un-settled it, reopening a viewer for a deck the route had just
-      //     disowned. "Last to arrive" and "most recent" are not the same
-      //     thing, and only one of them is a fact about the deck. Rule 1 is
-      //     what makes this comparison meaningful: a ticket is only ever
-      //     compared against one taken during the same visit.
+      //  - across stays, an answer from a stay the card has left is refused by
+      //    the same line, because the current entry's mark was taken when the
+      //    card arrived — which is after that request went out. This is why
+      //    there is no second stamp to compare. An earlier version addressed
+      //    entries by `{ id, visit }` and matched the visit exactly, and it had
+      //    to: a new entry started both lanes at zero, so a departed stay's
+      //    ticket was the higher number and won. Seeding the marks from the
+      //    arrival inverts that. The danger did not go away, the arithmetic
+      //    turned round — leave the seed at zero and a viewer opens by itself
+      //    over a deck the user has only just come back to.
+      //
+      // Two lanes, deck and download, each with a mark of its own, so a slow
+      // export cannot make a fresh verdict look stale, or the reverse.
       //
       // Nothing is written during a render — not the store, and not the counter
       // below. The store is *read* during one, in `deck`, which is ordinary
       // React. What this file must not do is let a render decide or remember
       // anything, which is how the ref-based version broke under a render that
-      // was thrown away.
+      // was thrown away. Nothing is captured from a render either: a request
+      // takes its ticket when it is sent, and what it is measured against is
+      // whatever the store holds when it answers.
       //
       // `useLayoutEffect` rather than `useEffect` for the maintenance, and the
       // reason is narrow: it puts the entry in place during the commit that
@@ -890,8 +893,6 @@ window.__ModuleLoader__.load({
       // What this does NOT do, stated because overclaiming here has itself been
       // a recurring defect:
       //
-      //  - it does not bound how long one entry lives while its deck is on
-      //    screen. It does not need to: only the rendered deck has an entry.
       //  - it does not stop a request that has been left behind from finishing.
       //    A download started on a previous visit still saves its file, because
       //    the user did ask for it; what it cannot do is report back.
@@ -899,6 +900,17 @@ window.__ModuleLoader__.load({
       //    around the store. See the tripwire test for what is and is not
       //    caught, and `.issues/…/design.md` §5.12 for the list of shapes that
       //    are known to slip past it.
+      //  - the id stamp is not something a behaviour test in this suite can
+      //    see, and that half was measured: drop it from the read and all 189
+      //    tests stay green (round 9, K1). `maintainStore` is a layout effect,
+      //    so the render that pairs the old entry with the new id is replaced
+      //    before the browser paints and before any assertion runs. It is kept
+      //    for what that render would do on the way past — mount the viewer's
+      //    iframe against the new deck's URL on the strength of the old deck's
+      //    open flag, and send the bundle request while the old entry still
+      //    holds the marks it would be measured against. That half is read off
+      //    React's commit order, not off a failing test, and it is free: the
+      //    same comparison is already there for the fetch effect to wait on.
       //
       // `AbortController` was considered and left out: cancelling still leaves
       // an abort rejection to handle, so it moves a check rather than removing
@@ -906,39 +918,43 @@ window.__ModuleLoader__.load({
 
       /**
        * What a preview is, to this card, before anything has been asked about
-       * it. `accepted` is the per-lane high-water mark rule 3 compares against,
-       * and `visit` is the stamp rule 1 addresses by — null here, because this
-       * value stands for "no entry", and every real entry has one.
+       * it — and what a render reads for a deck whose entry is not in place
+       * yet. `id` is null because that is precisely what makes it nobody's.
        */
       var UNASKED = {
+        id: null,
         bundle: null,
         verdict: null,
         viewerOpen: false,
         viewerPage: 1,
         download: 'idle',
         attempt: 0,
-        accepted: null,
-        visit: null,
+        seen: { deck: 0, download: 0 },
       }
 
-      /** A brand new entry for a deck this card has just arrived at. */
-      function unaskedAt(visit) {
-        return Object.assign({}, UNASKED, { visit: visit })
+      /**
+       * A brand new entry for a deck this card has just arrived at.
+       *
+       * Both lanes start at the arrival's own ticket, which is the whole of how
+       * a request from an earlier stay is turned away: it took a smaller number
+       * before this arrival took its own.
+       */
+      function arrivalAt(id, ticket) {
+        return Object.assign({}, UNASKED, { id: id, seen: { deck: ticket, download: ticket } })
       }
 
       /**
        * The card's monotonic counter: one number per request, and one per
-       * visit.
+       * arrival.
        *
        * It lives in this factory's closure, so every card the plugin renders
        * draws from the same sequence — which is more than the store needs (each
        * card's numbers are only ever compared with its own) and keeps it out of
        * component state, and therefore out of the render.
        *
-       * Two lanes use it independently for ordering — the deck itself and the
-       * download — so a slow export cannot make a fresh verdict look stale, or
-       * the reverse. Visits take numbers from the same sequence because all
-       * they need is to be unlike every other visit.
+       * Arrivals draw from the same sequence as requests on purpose, and it is
+       * not a convenience: an arrival's number has to be comparable with the
+       * tickets of requests already in flight, or it could not outrank them.
        */
       var lastTicket = 0
       function nextTicket() {
@@ -952,53 +968,32 @@ window.__ModuleLoader__.load({
         var previewId = previewIdOf(props.block)
         var pageCount = pageCountOf(props.block)
 
-        // One store, `{ [previewId]: entry }`, where every entry also knows
-        // which visit built it. Both halves of the address matter — see THE
-        // STORE, rule 1.
-        var store = useState({})
+        // One entry, stamped with the deck it belongs to — see THE STORE.
+        var store = useState(UNASKED)
 
         /**
-         * Keep the store pointed at the deck this card is showing.
+         * Keep the entry pointed at the deck this card is showing.
          *
-         * The only place an entry is created, and the only place one is
-         * removed. Runs on commit, so a render React threw away changes
-         * nothing.
+         * The only place an entry is replaced. Runs on commit, so a render
+         * React threw away changes nothing.
          *
-         * Arriving at a deck creates a NEW entry, always, even for an id this
+         * Arriving at a deck builds a NEW entry, always, even for an id this
          * card was showing a moment ago. That is the point: the previous stay
          * and this one are two different recipients, so the requests still in
-         * flight from the previous one have somewhere to be turned away (see
-         * `commit`). Nothing is carried over from an entry found under the same
-         * id, and there is nothing to carry: the store is already showing this
-         * deck, or it is not holding it at all. An earlier spelling reused
-         * `prev[previewId]` when it existed, which was unreachable and, had it
-         * ever become reachable, would have handed the previous stay's
-         * bookkeeping to this one — the whole defect, spelled defensively.
+         * flight from the previous one have a number to be turned away by (see
+         * `arrivalAt`). Nothing is carried over — carrying the download status
+         * alone was enough, once, to label a live deck's export `Unavailable`
+         * on the strength of the previous deck's 410.
          *
-         * `settled` is what makes that safe: if the store is already holding
-         * exactly this deck, nothing happens at all, so a second run of this
-         * effect cannot replace a live entry. The number is taken outside the
-         * updater because React may run an updater more than once, and this one
-         * has to stay a plain function of `prev`.
-         *
-         * Everything for other decks is dropped here rather than aged out by
-         * some budget. Only one preview is ever on screen, so the rest is dead
-         * weight — and a budget is a side effect that crosses decks, which is
-         * precisely what this store exists to prevent.
+         * The store is left strictly alone when it already holds this deck, so
+         * a second run of this effect cannot replace a live entry. The number
+         * is taken outside the updater because React may run an updater more
+         * than once, and this one has to stay a plain function of `entry`.
          */
         function maintainStore() {
-          var visit = nextTicket()
-          store[1](function (prev) {
-            var wanted = previewId === null ? [] : [previewId]
-            var settled =
-              Object.keys(prev).length === wanted.length &&
-              wanted.every(function (id) {
-                return prev[id] !== undefined
-              })
-            if (settled) return prev
-            var next = {}
-            if (previewId !== null) next[previewId] = unaskedAt(visit)
-            return next
+          var arrival = nextTicket()
+          store[1](function (entry) {
+            return entry.id === previewId ? entry : arrivalAt(previewId, arrival)
           })
         }
         react.useLayoutEffect(maintainStore, [previewId])
@@ -1006,49 +1001,30 @@ window.__ModuleLoader__.load({
         /**
          * The only way an asynchronous result changes anything.
          *
-         * `to` is the address the change is about — `{ id, visit }`, taken from
-         * the render the work started in. `order` is `{ lane, ticket }` for
-         * anything that came back from a request; UI actions that are their own
-         * newest intent pass a fresh ticket, and the two lanes are independent.
+         * `order` is `{ lane, ticket }`: which sequence this write belongs to,
+         * and where in it. UI actions that are their own newest intent take a
+         * fresh ticket, and the two lanes are independent.
          *
-         * Two refusals live here, and both are load-bearing:
-         *
-         *  - wrong address, no write. A deck that has left the screen has no
-         *    entry at all, and a deck that has left and come back has a new one
-         *    under the same id, stamped with a different visit. Either way an
-         *    answer from the earlier stay lands nowhere: it cannot recreate an
-         *    entry, and it cannot be mistaken for news about the current one.
-         *  - an older ticket never overwrites a newer one in the same lane.
-         *    Tickets are only ever compared within a single entry, so this is a
-         *    comparison between two requests made during the same visit.
+         * One refusal, doing two jobs — see THE STORE. An older ticket never
+         * overwrites a newer one in the same lane, and an answer from a stay
+         * this card has left is older than the arrival that replaced it.
          */
-        function commit(to, change, order) {
-          store[1](function (prev) {
-            var entry = prev[to.id]
-            if (!entry || entry.visit !== to.visit) return prev
-            var lane = order && order.lane
-            var seen = lane && entry.accepted ? entry.accepted[lane] : undefined
-            if (order && seen !== undefined && order.ticket < seen) return prev
-            var updated = Object.assign({}, entry, change)
-            if (lane) {
-              updated.accepted = Object.assign({}, entry.accepted)
-              updated.accepted[lane] = order.ticket
-            }
-            var next = Object.assign({}, prev)
-            next[to.id] = updated
-            return next
+        function commit(change, order) {
+          store[1](function (entry) {
+            if (order.ticket < entry.seen[order.lane]) return entry
+            var seen = Object.assign({}, entry.seen)
+            seen[order.lane] = order.ticket
+            return Object.assign({}, entry, change, { seen: seen })
           })
         }
 
         // Read side: this preview's own entry, or the state of a preview
         // nobody has asked about yet. Derived from props, so a render decides
-        // nothing and remembers nothing.
-        var deck = (previewId !== null && store[0][previewId]) || UNASKED
-        // Where anything this render starts must report back to. Every
-        // callback below closes over this, so an answer carries the address it
-        // was sent from rather than looking up whatever is current when it
-        // happens to arrive.
-        var address = { id: previewId, visit: deck.visit }
+        // nothing and remembers nothing. `mine` is also what the fetch effect
+        // waits on: until the entry is this deck's, a request sent from here
+        // would be measured against the previous deck's marks.
+        var mine = previewId !== null && store[0].id === previewId
+        var deck = mine ? store[0] : UNASKED
         var verdict = deck.verdict
         // Every way this deck will not open, under one name. `gone` used to
         // stand in for all of them, which is why a damaged preview and a
@@ -1060,14 +1036,13 @@ window.__ModuleLoader__.load({
         // route, which is what Code Mode's sub-calls need.
         useEffect(
           function () {
-            if (direct || !previewId || deck.bundle) return
-            // No entry yet, so an answer would have nowhere to land. This is
-            // the render between arriving at a deck and `maintainStore`
-            // creating its entry; `deck.visit` is in the dependency list, so
-            // this runs again the moment there is somewhere to write to. It
-            // replaces the old dependence on hook declaration order with a
-            // dependence on the thing actually being waited for.
-            if (deck.visit === null) return
+            // `!mine` is the render between arriving at a deck and
+            // `maintainStore` putting its entry in place. A request sent from
+            // there would be ordered against the *previous* deck's marks, and
+            // the entry it wrote into would be thrown away a moment later — so
+            // it waits, and `mine` is in the dependency list below, which is
+            // what brings it back the moment there is somewhere to write to.
+            if (direct || !mine || deck.bundle) return
             var order = { lane: 'deck', ticket: nextTicket() }
             fetch(previewBundleUrl(previewId))
               .then(function (r) {
@@ -1080,7 +1055,7 @@ window.__ModuleLoader__.load({
                 // reads as "no verdict yet" rather than as a dead deck.
                 return verdictOf(r).then(function (answer) {
                   if (answer !== 'alive') {
-                    commit(address, { verdict: answer }, order)
+                    commit({ verdict: answer }, order)
                     return null
                   }
                   return r.json()
@@ -1088,7 +1063,7 @@ window.__ModuleLoader__.load({
               })
               .then(function (b) {
                 if (!b) return
-                commit(address, { bundle: b, verdict: 'alive' }, order)
+                commit({ bundle: b, verdict: 'alive' }, order)
               })
               .catch(function () {
                 // Not a verdict: the request never landed, or it landed and the
@@ -1097,10 +1072,10 @@ window.__ModuleLoader__.load({
                 // preview would outlive its cause. The generic row is the
                 // degrade, and every later click — Open, Download — asks the
                 // route again from scratch.
-                commit(address, { verdict: UNREACHABLE_VERDICT }, order)
+                commit({ verdict: UNREACHABLE_VERDICT }, order)
               })
           },
-          [direct, previewId, deck.visit, deck.bundle, deck.attempt],
+          [direct, previewId, mine, deck.bundle, deck.attempt],
         )
 
         var bundle = direct || deck.bundle
@@ -1117,10 +1092,10 @@ window.__ModuleLoader__.load({
          * loopback request against the route the iframe is about to hit
          * anyway, and it doubles as a refresh of the strip.
          *
-         * The address comes from the render the click landed in, and every
-         * write is sent to it — see THE STORE. No write asks "is this still current": a deck
-         * that has left the screen has no entry, and one that has left and come
-         * back has a different one, so an answer to a click the user walked
+         * The ticket is taken here, when the click happens, and it is the only
+         * thing this request carries — see THE STORE. No write asks "is this
+         * still current": arriving anywhere else, including back at this same
+         * deck, takes a higher number, so an answer to a click the user walked
          * away from lands nowhere. Both halves of that have been a defect here.
          * First the wrong deck: click Open on A, let the card move to B while
          * A's request is in flight, and A's success opened the viewer — pointed
@@ -1136,7 +1111,7 @@ window.__ModuleLoader__.load({
           // an older 200 from undoing a newer 410 and reopening the viewer on
           // a deck the route has just disowned.
           var order = { lane: 'deck', ticket: nextTicket() }
-          fetch(previewBundleUrl(address.id))
+          fetch(previewBundleUrl(previewId))
             .then(function (r) {
               return verdictOf(r).then(function (answer) {
                 if (answer !== 'alive') {
@@ -1144,7 +1119,7 @@ window.__ModuleLoader__.load({
                   // that used to do nothing visible at all when the route
                   // refused it, leaving the button in place and the user
                   // clicking it again. Every verdict now reaches the card.
-                  commit(address, { verdict: answer }, order)
+                  commit({ verdict: answer }, order)
                   return null
                 }
                 return r.json()
@@ -1152,7 +1127,7 @@ window.__ModuleLoader__.load({
             })
             .then(function (b) {
               if (!b) return
-              commit(address, { bundle: b, verdict: 'alive', viewerOpen: true, viewerPage: startAt }, order)
+              commit({ bundle: b, verdict: 'alive', viewerOpen: true, viewerPage: startAt }, order)
             })
             .catch(function () {
               // The modal stays shut either way, but only the route's own
@@ -1160,7 +1135,7 @@ window.__ModuleLoader__.load({
               // harness, or reached it and came back unreadable, leaves the
               // strip live and the button clickable, which is what makes trying
               // again the obvious next move rather than an impossible one.
-              commit(address, { verdict: UNREACHABLE_VERDICT }, order)
+              commit({ verdict: UNREACHABLE_VERDICT }, order)
             })
         }
 
@@ -1194,7 +1169,7 @@ window.__ModuleLoader__.load({
                     'button',
                     {
                       onClick: function () {
-                        commit(address, { attempt: deck.attempt + 1 }, { lane: 'deck', ticket: nextTicket() })
+                        commit({ attempt: deck.attempt + 1 }, { lane: 'deck', ticket: nextTicket() })
                       },
                       title: hintFor(verdict),
                       style: {
@@ -1294,7 +1269,7 @@ window.__ModuleLoader__.load({
                   draft: bundle.draft,
                   verdict: verdict,
                   status: deck.download,
-                  onStatus: function (next, order) { commit(address, { download: next }, order) },
+                  onStatus: function (next, order) { commit({ download: next }, order) },
                   style: {
                     font: 'inherit',
                     fontSize: 12,
@@ -1343,9 +1318,9 @@ window.__ModuleLoader__.load({
                 name: bundle.title,
                 draft: bundle.draft,
                 downloadStatus: deck.download,
-                onDownloadStatus: function (next, order) { commit(address, { download: next }, order) },
+                onDownloadStatus: function (next, order) { commit({ download: next }, order) },
                 onClose: function () {
-                  commit(address, { viewerOpen: false, viewerPage: 1 }, { lane: 'deck', ticket: nextTicket() })
+                  commit({ viewerOpen: false, viewerPage: 1 }, { lane: 'deck', ticket: nextTicket() })
                 },
               })
             : null,
