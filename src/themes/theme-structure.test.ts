@@ -71,9 +71,9 @@ function resolveSequence(themeId: string, seed: number): (string | null)[] {
 const DECLARED_THEME_IDS = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].layoutTendencies !== undefined)
 const UNDECLARED_THEME_IDS = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].layoutTendencies === undefined)
 
-it("sanity: 10 themes declare layoutTendencies, 7 don't (task T2's 6 + themes-16 wave task T1's pulse + task T2's terra + task T3's ember + gov-theme wave's vermilion — if this drifts, the numbers this file pins below must be re-measured, not silently kept)", () => {
-  expect(DECLARED_THEME_IDS).toHaveLength(10)
-  expect(UNDECLARED_THEME_IDS).toHaveLength(7)
+it("sanity: 11 themes declare layoutTendencies, 6 don't (task T2's 6 + themes-16 wave task T1's pulse + task T2's terra + task T3's ember + gov-theme wave's vermilion + theme-redesign wave's ink — if this drifts, the numbers this file pins below must be re-measured, not silently kept)", () => {
+  expect(DECLARED_THEME_IDS).toHaveLength(11)
+  expect(UNDECLARED_THEME_IDS).toHaveLength(6)
 })
 
 // ── 1. Divergence test ──
@@ -98,8 +98,9 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // themes still share the single pre-wave sequence — 10 + 1 = 11 distinct
     // sequences total (re-measured after vermilion landed — a real
     // resolveEffectiveLayoutId sweep of all 17 canonical themes, see
-    // task-1-report.md).
-    expect(distinct.size).toBe(11)
+    // task-1-report.md). Re-measured after the theme-redesign wave made ink
+    // the 11th declaring theme: 11 + 1 = 12.
+    expect(distinct.size).toBe(12)
   })
 
   it("every declared theme's sequence differs from every other declared theme's (none of the 10 are accidentally colliding with each other)", () => {
@@ -239,17 +240,91 @@ const preWaveFixture = JSON.parse(
 
 const FIXTURE_SEEDS = [1, 2, 3, 4, 5]
 
+/**
+ * Cover-slot drift introduced by the theme-redesign wave (2026-08-18), pinned
+ * here as a table rather than folded into a re-captured fixture.
+ *
+ * **The fixture file is deliberately NOT re-captured.** Its whole meaning is
+ * "this is what commit 709605a produced"; overwriting it with today's output
+ * would keep the test green and destroy the only thing it proves. So the
+ * pre-wave bytes stay, and the part of the guarantee that still holds is
+ * asserted directly against them (every page except the cover), while the
+ * part that broke is written out in full below.
+ *
+ * What broke and why: registering a 9th cover layout (`colophon`) grows the
+ * cover pool's weighted-sampling denominator, and `weightedPickBySeed` picks
+ * by `target = hash % totalWeight` — so a *fixed* seed lands on a different
+ * candidate even though nothing about the existing 8 layouts changed. This is
+ * structural to the sampler, not a property of this particular layout: every
+ * previous pool growth in this repo did the same thing on its own axis (see
+ * `migrate-equivalence.test.ts`'s recapture chain for image-lead-split /
+ * split-band). It is the first one to hit the cover axis, and covers are the
+ * page people look at, which is why it is written down here instead of
+ * absorbed.
+ *
+ * Measured scope beyond this fixture (17 themes × 40 seeds, the wave's own
+ * sweep): 505 of 640 non-ink cover picks move; nothing outside the cover slot
+ * moves for any theme other than ink, which moved on purpose.
+ *
+ * Seeds 1 and 4 are absent because those two seeds' covers did not move.
+ */
+const REDESIGN_WAVE_COVER_DRIFT: Record<number, { from: string; to: string }> = {
+  2: { from: "banner-title", to: "fashion-masthead" },
+  3: { from: "fashion-masthead", to: "banner-title" },
+  5: { from: "banner-title", to: "editorial-masthead" },
+}
+
 describe("control-group byte identity (migration-period guard — deletable once the wave is trusted)", () => {
-  it("the fixture covers exactly the 7 undeclared themes, nothing more or less", () => {
-    expect(Object.keys(preWaveFixture).sort()).toEqual([...UNDECLARED_THEME_IDS].sort())
+  it("the fixture covers every still-undeclared theme, plus ink — which the theme-redesign wave moved to the declared side", () => {
+    expect(Object.keys(preWaveFixture).sort()).toEqual([...UNDECLARED_THEME_IDS, "ink"].sort())
   })
 
-  it("the 7 undeclared themes resolve exactly as they did pre-wave (commit 709605a), across multiple seeds", () => {
+  it("every non-cover page of the still-undeclared themes resolves exactly as it did pre-wave (commit 709605a)", () => {
     for (const themeId of UNDECLARED_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
-        expect(resolveSequence(themeId, seed), `${themeId} seed=${seed}`).toEqual(preWaveFixture[themeId]?.[String(seed)])
+        const pre = preWaveFixture[themeId]?.[String(seed)]
+        expect(resolveSequence(themeId, seed).slice(1), `${themeId} seed=${seed}`).toEqual(pre?.slice(1))
       }
     }
+  })
+
+  it("the cover page moved for exactly the recorded seeds, to exactly the recorded layouts (pool 8 -> 9 denominator shift)", () => {
+    for (const themeId of UNDECLARED_THEME_IDS) {
+      for (const seed of FIXTURE_SEEDS) {
+        const pre = preWaveFixture[themeId]?.[String(seed)]?.[0]
+        const now = resolveSequence(themeId, seed)[0]
+        const drift = REDESIGN_WAVE_COVER_DRIFT[seed]
+        if (!drift) {
+          expect(now, `${themeId} seed=${seed} was expected to be undisturbed`).toBe(pre)
+          continue
+        }
+        // Both halves asserted: the pre-wave value really was what the table
+        // claims (so the table can't quietly describe a fiction), and today's
+        // value is the recorded one (so any *further* drift fails here).
+        expect(pre, `${themeId} seed=${seed} pre-wave cover`).toBe(drift.from)
+        expect(now, `${themeId} seed=${seed} cover after the redesign wave`).toBe(drift.to)
+      }
+    }
+  })
+
+  it("ink left the control group: its own declaration, not the pool growth, is what moves it now", () => {
+    // ink is the wave's subject — it gained `layoutTendencies` for cover and
+    // content, so its sequence is expected to diverge from the pre-wave
+    // capture on those two page types. Chapter and ending stay undeclared,
+    // and stay put. Pinned as a differential so "ink changed" doesn't become
+    // an unexamined blanket excuse.
+    const CHAPTER_PAGES = [1, 4] // the two chapter slots in `fixedSlides()`
+    const ENDING_PAGE = 6
+    for (const seed of FIXTURE_SEEDS) {
+      const pre = preWaveFixture.ink?.[String(seed)]
+      const now = resolveSequence("ink", seed)
+      for (const i of [...CHAPTER_PAGES, ENDING_PAGE]) {
+        expect(now[i], `ink seed=${seed} page ${i} (undeclared page type)`).toBe(pre?.[i])
+      }
+    }
+    // …and the cover really does land on the new construction for at least
+    // some seeds, which is the whole point of declaring it.
+    expect(FIXTURE_SEEDS.map((seed) => resolveSequence("ink", seed)[0])).toContain("colophon")
   })
 })
 
@@ -362,8 +437,8 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: exactly 34 declared theme×layout combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 + task T3's ember × 2 (= 25), + declaration-rebalance wave's own +3 each for consulting/journal — both grew from 3 to 6 declared ids apiece to fix their two briefing-dead axes, `.issues/2026-08-03-declaration-rebalance/plan.md` (= 31) — + gov-theme wave's vermilion × 3 (chapter's two ids banner-chapter/rail-chapter + ending's rail-ending; vermilion curates chapter/ending only, no cover id))", () => {
-    expect(combos).toHaveLength(34)
+  it("sanity: exactly 36 declared theme×layout combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 + task T3's ember × 2 (= 25), + declaration-rebalance wave's own +3 each for consulting/journal — both grew from 3 to 6 declared ids apiece to fix their two briefing-dead axes, `.issues/2026-08-03-declaration-rebalance/plan.md` (= 31) — + gov-theme wave's vermilion × 3 (chapter's two ids banner-chapter/rail-chapter + ending's rail-ending; vermilion curates chapter/ending only, no cover id) (= 34) — + theme-redesign wave's ink × 2 (cover's colophon + fashion-masthead; ink's content pair is out of this block's cover/chapter/ending scope, and it declares no chapter/ending id))", () => {
+    expect(combos).toHaveLength(36)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {

@@ -7,6 +7,7 @@ import { ConstellationCover } from "./cover-constellation"
 import { EditorialMastheadCover } from "./cover-editorial-masthead"
 import { ToneAdaptiveHeaderCover } from "./cover-tone-adaptive-header"
 import { FashionMastheadCover } from "./cover-fashion-masthead"
+import { ColophonCover } from "./cover-colophon"
 
 export type { CoverLayout, CoverLayoutId } from "./types"
 
@@ -21,4 +22,5 @@ export const COVER_LAYOUTS: Record<CoverLayoutId, CoverLayout> = {
   "tone-adaptive-header": ToneAdaptiveHeaderCover,
   "fashion-masthead": FashionMastheadCover,
   "split-diagonal": SplitDiagonalCover,
+  colophon: ColophonCover,
 }

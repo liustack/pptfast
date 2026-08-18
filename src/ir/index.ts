@@ -179,8 +179,16 @@ export type StyleOverride = z.infer<typeof StyleOverrideSchema>
 
 /**
  * Brand (logical slide-master) config: brand-chrome behavior owned by a theme.
- * W1 scope = exactly the two flags migrated from the old manifest.chrome.
+ * W1 scope was exactly the two flags migrated from the old manifest.chrome;
+ * the ink v3 redesign (2026-08-18) added a third, orthogonal one.
  * Single source of truth — the TS type is inferred, never hand-written.
+ *
+ * All three are independent switches, not a ladder: a theme may set any
+ * combination, and each names exactly one piece of footer chrome. They are
+ * deliberately not collapsed into one "footer style" enum — a theme that
+ * draws its own divider is a different situation from one whose motif
+ * already carries the org/date, and merging them would force one to imply
+ * the other.
  */
 export const BrandConfigSchema = z
   .object({
@@ -188,6 +196,20 @@ export const BrandConfigSchema = z
     suppressFooterOnCardContent: z.boolean().optional(),
     /** Skip the footer divider line — for themes that draw their own frame (ink). */
     suppressFooterRule: z.boolean().optional(),
+    /**
+     * Skip the footer's org/confidentiality/version/date text row on content
+     * slides — for themes whose motif already carries that information
+     * somewhere else on the page, where leaving the footer row on would print
+     * the same organization and date twice (ink v3's right-edge colophon
+     * rail, `src/svg/motifs/motif-ink-motif.tsx`).
+     *
+     * Scoped to the ordinary footer row only. The image-bottom overlay footer
+     * (a light-on-dark scrim over a full-bleed photo) is untouched: a motif
+     * is painted *under* the layout, so a full-bleed image covers the rail
+     * completely and the overlay row is the only place that information
+     * survives on such a page.
+     */
+    suppressFooterMeta: z.boolean().optional(),
   })
   .strict()
 

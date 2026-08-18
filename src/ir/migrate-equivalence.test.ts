@@ -368,6 +368,37 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // recapture for any of the three (findings byte-identical, the shift
       // introduces no new geometry or contrast finding), and `basic` needed
       // no recapture at all (it has no quote component).
+      //
+      // Re-recaptured again (theme-redesign wave, ink v3 —
+      // `.issues/2026-08-18-theme-redesign/ink/decisions.md`): registering a
+      // 9th cover layout (`colophon`, `@/svg/layouts/cover-colophon.tsx`)
+      // grows the cover pool's weighted-sampling denominator on every theme
+      // that curates the full set — which is all 17 — so a fixed seed's
+      // `target = hash % total` lands on a different candidate. Exactly the
+      // same "real, intended selection-behavior change, not a migration
+      // regression" mechanism as the content-pool growths above
+      // (image-lead-split / split-band), just on the cover axis, and the
+      // first time it has hit that axis. **This is a wide change, not a
+      // narrow one** — measured across all 17 themes × 40 seeds, 505 of 640
+      // non-ink cover picks move (see the wave's own report); the three
+      // fixtures here are simply three of them. Neither fixture theme is
+      // `ink`, so none of the ink v3 token/motif work is visible in these
+      // goldens at all.
+      //
+      // Exactly one slide changed in each of the three (index 0, the cover;
+      // PPTX `ppt/slides/slide1.xml`), verified by diffing all 5 slides of
+      // each fixture's recaptured SVG golden against its pre-recapture
+      // version:
+      //   - `basic` (`consulting`): `banner-title` -> `left-anchor`.
+      //   - `scenarioBearing` (`journal`): `editorial-masthead` ->
+      //     `tone-adaptive-header`.
+      //   - `annualReviewPreset` (`journal`): `banner-title` ->
+      //     `tone-adaptive-header`.
+      // `colophon` itself is never any of the three seeds' landed pick —
+      // pure denominator reshuffle onto existing layouts, same as most
+      // prior pool-growth recaptures. `.audit.json` needed no recapture for
+      // any of the three (findings stayed the empty array, confirmed by
+      // computing `auditDeck` fresh against both the old and new goldens).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

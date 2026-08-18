@@ -31,6 +31,9 @@ export type CoverLayoutId =
   | "left-anchor" | "constellation" | "editorial-masthead" | "tone-adaptive-header"
   | "split-diagonal" // P3 Item ①：新表达（非提炼），academic/tech 吸纳
   | "fashion-masthead" // 2026-07-10：时尚 magazine 超大报头（新表达）
+  // 主题重设计第一期（2026-08-18，cover 池 8 -> 9）：左轴单栏 + 引首块，
+  // 内容右边界收在 x1180 给右缘落款列让路——见 cover-colophon.tsx 的文件头。
+  | "colophon"
 
 // Wave 2（chapter/ending）新增 id：每主题 1 个（命名见 Wave 2 任务表）
 export type ChapterLayoutId =

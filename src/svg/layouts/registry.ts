@@ -81,6 +81,7 @@ import { layoutDef as coverEditorialMasthead } from "./cover-editorial-masthead"
 import { layoutDef as coverToneAdaptiveHeader } from "./cover-tone-adaptive-header"
 import { layoutDef as coverFashionMasthead } from "./cover-fashion-masthead"
 import { layoutDef as coverSplitDiagonal } from "./cover-split-diagonal"
+import { layoutDef as coverColophon } from "./cover-colophon"
 
 import { layoutDef as chapterMastheadChapter } from "./chapter-masthead-chapter"
 import { layoutDef as chapterConstellationChapter } from "./chapter-constellation-chapter"
@@ -318,7 +319,10 @@ export function excludePinOnly<T extends { pinOnly?: boolean }>(defs: readonly T
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Cover layouts (8) — cover/chapter/ending never read `slide.components`
+// Cover layouts (9, theme-redesign wave 2026-08-18: 8 -> 9 — colophon, a
+// left-axis single-column construction with a reserved right-edge corridor,
+// see `cover-colophon.tsx`'s own composition header) — cover/chapter/ending
+// never read `slide.components`
 // (inventory headline finding — see each layout's own `layoutDef`
 // comment for the file-by-file confirmation), so none of them declare a
 // `body` slot.
@@ -332,6 +336,13 @@ const COVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [coverToneAdaptiveHeader.id]: coverToneAdaptiveHeader,
   [coverFashionMasthead.id]: coverFashionMasthead,
   [coverSplitDiagonal.id]: coverSplitDiagonal,
+  // Theme-redesign wave (2026-08-18, cover pool 8 -> 9): appended at the end
+  // of the cover group, same position discipline every earlier pool growth
+  // used (image-lead-split / split-band / quote-stage each landed last in
+  // their own family) — key insertion order is what `weightedPickBySeed`
+  // samples positionally, so a new member goes on the end rather than in the
+  // middle of the existing ones.
+  [coverColophon.id]: coverColophon,
 }
 
 // ─────────────────────────────────────────────────────────────────────────

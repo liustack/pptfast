@@ -43,6 +43,8 @@ describe("THEME_DEFINITIONS", () => {
   it("carries the two legacy chrome flags to their owners", () => {
     expect(THEME_DEFINITIONS.enterprise.brand.suppressFooterOnCardContent).toBe(true)
     expect(THEME_DEFINITIONS.ink.brand.suppressFooterRule).toBe(true)
+    // ink v3：落款列吞并页脚 meta 文字（`BRANDS.ink` 自己的注释交代了代价）
+    expect(THEME_DEFINITIONS.ink.brand.suppressFooterMeta).toBe(true)
     expect(THEME_DEFINITIONS.consulting.brand).toEqual({})
   })
 
@@ -93,6 +95,11 @@ describe("THEME_DEFINITIONS", () => {
     "tone-adaptive-header",
     "fashion-masthead",
     "split-diagonal",
+    // theme-redesign wave (2026-08-18): the 9th cover layout, appended last
+    // in `registry.ts`'s own COVER_LAYOUT_DEFS — order is load-bearing here
+    // (it feeds `weightedPickBySeed`'s positional sampling), so this list is
+    // re-推 by hand against that file, not derived.
+    "colophon",
   ]
   const FULL_CHAPTER = [
     "masthead-chapter",
@@ -230,6 +237,12 @@ describe("THEME_DEFINITIONS", () => {
       ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.ink.motif).toBe("ink-motif")
+    // ink v3（2026-08-18 主题重设计第一期）：策展集仍是四页型全集——本期加的
+    // 是 layoutTendencies（软权重），不是 layouts 的收窄，两者是不同的机制。
+    expect(THEME_DEFINITIONS.ink.layoutTendencies).toEqual({
+      cover: ["colophon", "fashion-masthead"],
+      content: ["quiet-frame", "narrow-column"],
+    })
 
     // heritage：同上，chapter 排除已撤销。
     expect(THEME_DEFINITIONS.heritage.layouts).toEqual({
@@ -248,10 +261,13 @@ describe("THEME_DEFINITIONS", () => {
 
 describe("resolveBrand", () => {
   it("returns the style default when no override", () => {
-    expect(resolveBrand("ink")).toEqual({ suppressFooterRule: true })
+    expect(resolveBrand("ink")).toEqual({ suppressFooterRule: true, suppressFooterMeta: true })
   })
   it("merges IR-level override over the default", () => {
-    expect(resolveBrand("ink", { suppressFooterRule: false })).toEqual({ suppressFooterRule: false })
+    expect(resolveBrand("ink", { suppressFooterRule: false })).toEqual({
+      suppressFooterRule: false,
+      suppressFooterMeta: true,
+    })
   })
   it("falls back to consulting for unknown ids", () => {
     expect(resolveBrand("nope")).toEqual({})

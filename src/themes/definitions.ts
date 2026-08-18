@@ -163,7 +163,28 @@ const FULL_LAYOUTS: Record<Slide["type"], readonly string[]> = {
 
 const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
   enterprise: { suppressFooterOnCardContent: true },
-  ink: { suppressFooterRule: true },
+  // ink v3（2026-08-18 主题重设计第一期）：两个开关都开，理由各不相同，
+  // 不是一件事的两半。
+  //   - `suppressFooterRule` 是 2026-07-10 的旧裁决（motif 自带版框线会与
+  //     页脚分隔线撞成双线）。v3 已经把版框线删了，但这条继续留着——落款列
+  //     那条 x1220 竖界线加上一条横分隔线仍是两道线交叉在右下角，正是当初
+  //     要避免的观感。
+  //   - `suppressFooterMeta` 是本期新增：ink-motif v3 的右缘落款列已经把
+  //     机构名和年月排在页面右缘，页脚再排一遍就是同一页上印两份。
+  //
+  //     **两处代价写清楚，都是本期裁决的已知后果，不是漏了：**
+  //     1. 密级标与版本号只活在页脚这一行，ink 的内容页因此不再显示这两项
+  //        （落款列按设计只收机构名 + 年月 + 印）。
+  //     2. 落款列是逐字竖排，一列排得下 11 个字（带年月时；不带年月 17 个）
+  //        ——`motif-ink-motif.tsx` 的 `orgCapacity()` 按几何算的。超过这个
+  //        长度的机构名会被截断并挂 `data-truncated`，`pptfast audit` 照常
+  //        报 content-truncated。**这不是小概率**：`Meridian Analytics`
+  //        （18）、`北京云帆科技有限责任公司`（12）都超。竖排是 CJK 短款识的
+  //        写法，拉丁长名逐字母竖排本来也不成体统——落款列吃不下的机构名，
+  //        正确的出路是 IR 里写 `theme.brand.suppressFooterMeta: false` 把
+  //        页脚这一行要回来（`resolveBrand` 的浅合并，override 胜出），
+  //        或者换个短名。审计会大声说出来，不会无声吞掉。
+  ink: { suppressFooterRule: true, suppressFooterMeta: true },
 }
 
 /**
@@ -446,13 +467,35 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     motif: "bloom-motif",
   },
   // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：宣纸/墨/朱砂/
-  // 楷体靠 tokens + 专属 ink-motif（古籍版框+朱砂印章+淡墨远山）。
+  // 楷体靠 tokens + 专属 ink-motif。**v3 重设计（2026-08-18 第一期）**把
+  // motif 换成了右缘落款列 + 一角残山（旧的版框线/大远山/旧印位全部删，见
+  // `../svg/motifs/motif-ink-motif.tsx` 的文件头），页脚 chrome 的两个抑制
+  // 开关见上方 `BRANDS.ink`。
+  //
+  // layoutTendencies（本期新声明——ink 此前是 `structure-map.md` 点名的七个
+  // 「全盲」主题之一：不声明任何结构倾向，同 IR 同 seed 与其它全盲主题渲染
+  // 出逐字节相同的版式序列）。定稿分配表给 ink 的四轴是
+  // 左轴 / side-rail / light / airy，cover-picks 是 colophon + fashion-masthead：
+  //   - cover `colophon`：本期新造的构造（`../svg/layouts/cover-colophon.tsx`），
+  //     左轴大标题 + 引首块，右边界收在 x1180——它和落款列（x>=1220）是配套
+  //     设计的一对，side-rail 这一轴的完整表达只在这个组合里成立。
+  //   - cover `fashion-masthead`：第二选择，满版焦墨底 + 超大报头。与 ink 的
+  //     「素」不冲突：宋人也画过满幅浓墨，且这是 runway 之外无人声明的构造，
+  //     两个 cover 候选让抽签结果不至于只有一种脸。
+  //   - content `quiet-frame` / `narrow-column`：分配表的 airy 留白档在 content
+  //     池里就这两位——一个居中留白框、一个窄单栏，都是「疏可走马」那一路。
+  //     content 页型此前全 17 主题无人声明（`inventory.md` 的第二病），ink 是
+  //     第一个开口的。
+  //   - chapter / ending 本期不声明：chapter-inkfield 与 ending-seal 两个构造
+  //     推到二期（decisions.md），在它们落地之前，从通用池里硬挑一个 id 只是
+  //     为了填表，不是结构判断。
   ink: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "ink-motif",
-    // ink-motif 自带古籍版框线，BrandChrome 的页脚分隔线会形成双线
-    // （2026-07-10 用户截图指出）——style 的 brand.suppressFooterRule
-    // 抑制该分隔线（W1 从这里的 chrome 拆到 themes/definitions.ts），meta 文字照排。
+    layoutTendencies: {
+      cover: ["colophon", "fashion-masthead"],
+      content: ["quiet-frame", "narrow-column"],
+    },
   },
   // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty 浅底混搭，酒红横幅
   // 上 baked 白字对比充足。chapter 曾排除 fashion-chapter，post-v0.3 W8 fix
