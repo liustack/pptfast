@@ -52,8 +52,7 @@ import { readableOn } from "../ink"
  * white — the same class of bug `motif-banner-motif.tsx`'s own chapter
  * branch had (see that file's own doc comment for the full story, including
  * why `motif-selection.ts`'s existing contrast sweep couldn't have caught
- * this: `<g data-decor>` shapes are structurally excluded from that walk's
- * background candidacy). Fixed the same way: `readableOn(ctx.defaultBg ??
+ * this: that walk only ever grades text, and a decorative arc is not text). Fixed the same way: `readableOn(ctx.defaultBg ??
  * ctx.colors.bg)` (`../ink.ts`) instead of a hard-coded literal, same 0.06
  * opacity either way. On academic's own dark chapter bg this still resolves
  * to exactly `#FFFFFF` (white beats `readableOn`'s other neutral ink,

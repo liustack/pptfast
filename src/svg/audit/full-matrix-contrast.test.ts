@@ -77,6 +77,11 @@ beforeAll(() => {
   installNodePlatform()
 })
 
+/** The org/date meta this file's own sweep deliberately leaves unset (see
+ *  the header) — populated only by the decor-collision block at the bottom,
+ *  which needs the one text a motif's corner shape actually lands under. */
+const DECOR_META = { organization: "云帆科技", date: "2026-08-15" } as const
+
 const HEADING = "示例标题：验证对比度矩阵"
 const SUBHEADING = "示例副标题：用于穷举扫描的**所见即所得**文案"
 
@@ -204,6 +209,30 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     rationale:
       "the chapter-number watermark digit (mixHex(accent, fg, 0.22) — chapter-fashion-chapter.tsx's own header calls it decorative by design) measures under 3:1 against every theme's accent (runway's ~1.24:1 is the current lowest, enterprise's ~1.75:1 the current highest — see the ratioMin/ratioMax comment above for the full 13-theme spread) — a deliberately faint blend, not body text, blanket-allowlisted by content (a bare 1-2 digit chapter number) rather than enumerated per theme since the blend's whole point is to be faint everywhere it's used. Unlike when this entry was first written, no theme curation-excludes fashion-chapter any more (post-v0.3 W8 fix round revoked the last three exclusions once their *heading* text — the actual failure — cleared 3:1 under the fixed `readableOn`) — this entry now covers all 13 themes' watermark uniformly. It never matches non-numeric text, so a real heading failure under this layout still fails the net. The added ratio band is a second, independent guard on top of that shape match, not a replacement for it.",
   },
+  {
+    theme: "*",
+    layout: "tone-adaptive-header",
+    // fix/decor-contrast-attribution. Scoped by `TEXT_SHAPE_GUARD` below to
+    // this layout's org/date meta chrome — never its heading or subheading,
+    // so a real heading failure here still fails the net.
+    // Band derivation: measured across the decor-collision sweep's own three
+    // fixtures (default deck hash + seeds 0 and 1, the motif rolls those
+    // reach) — ink 1.073 (its motif's vermilion seal under the date), tech
+    // 1.700 and enterprise 1.756 (each theme's own corner-ornament square
+    // under the date, and under the org line where the roll puts one at the
+    // top-left too). Rounded outward to [1.0, 1.8] the same way the
+    // fashion-chapter entry above rounds its own spread. Consulting's
+    // 3.26:1 belongs to the same family and is measured in
+    // `deck-audit.test.ts`'s own real-render block, but clears the 3:1
+    // floor its 24px date line is graded against, so it never becomes a
+    // finding and is deliberately outside this band: a `tone-adaptive-header`
+    // meta finding above 1.8 is not one of the three adjudicated here and
+    // should fail until someone looks at it.
+    ratioMin: 1.0,
+    ratioMax: 1.8,
+    rationale:
+      "true finding, collision pending theme redesign, see .issues/2026-08-17-spatial-contract. This layout's org/date meta chrome shares its bottom-right (and, on some motif rolls, top-left) corner with whatever the theme's motif draws there, and the motif has no way to know the layout claimed it — that design doc's §4 traces it to the layout's slot, not to any one motif, and its §6.2 puts the fix in the layout/motif contract rather than in the audit. The audit's own job here is finished the moment it stops reporting these as clean: before fix/decor-contrast-attribution it measured the ink cover's date at 5.44:1 against a page background the seal completely covers, where the real pairing is 1.07:1. Registered rather than silenced, and deliberately not fixed by nudging coordinates — that would hide the collision instead of the theme redesign resolving it.",
+  },
   // The rail-numbered entry that used to live here (audit-tool false
   // positive: the badge rect's 2,048px^2 area sitting below
   // MIN_BG_REGION_AREA made findContrastIssues fall back to the *page*
@@ -233,6 +262,11 @@ const TEXT_SHAPE_GUARD: Readonly<Record<string, RegExp>> = {
   // "rail-numbered badge attribution" describe block below to locate the
   // badge finding/text without hardcoding its position.
   "rail-numbered": /^\d+\.\d+$/,
+  // tone-adaptive-header's org/date meta chrome — the two strings
+  // `DECOR_META` below actually renders — never its heading/subheading.
+  // Built from those constants rather than repeating them, so a fixture
+  // edit can't silently widen what the ALLOWLIST entry waves through.
+  "tone-adaptive-header": new RegExp(`^(${DECOR_META.organization}|${DECOR_META.date})$`),
 }
 
 function isAllowlisted(theme: string, layout: string, finding: AuditFinding): boolean {
@@ -2580,6 +2614,87 @@ describe("chart-depth subtypes contrast + wedge attribution (16-theme sweep, 裁
       for (const y of [0, 62, 100]) {
         expect(auditFindings(deckFor(themeId, gaugeSlide(y))), `gauge ${y}%`).toEqual([])
       }
+    })
+  }
+})
+
+// Decor-collision sweep (fix/decor-contrast-attribution). The sweep at the
+// top of this file renders no `meta.organization`/`meta.date` — a deliberate
+// scope choice, argued in this file's own header — and a theme motif's corner
+// shapes land almost exclusively under exactly that meta chrome. So the
+// defect this fix closes was invisible to every net in this file: a motif's
+// solid corner square sitting under the cover date, with the audit reporting
+// the *page background* the square covers instead of the square.
+//
+// Scoped by attribution rather than by hand-picked theme/layout pairs: a
+// finding counts here only when the background it resolved to is a fill that
+// appears inside this page's `<g data-decor>` subtree and nowhere on its
+// content layer. That is exactly the set of verdicts this fix newly makes
+// possible, so the block cannot drift into re-litigating the meta-line
+// contrast family the file header already excludes (measured: 41 findings on
+// a meta-populated sweep, none of them decor-attributed, all of them
+// pre-existing and unrelated).
+//
+// Three deck hashes rather than one — the default plus explicit seeds 0 and 1
+// — because `resolveMotifId` picks a different motif per hash and a theme's
+// corner ornament is only present on some rolls. Not an exhaustive motif
+// sweep (that is `motif-candidate-contrast.test.ts`'s job); enough to keep
+// more than one theme's collision under a regression net.
+describe("decor-collision sweep (fix/decor-contrast-attribution)", () => {
+  /** Every solid fill painted inside `markup`'s `<g data-decor>` subtree that
+   *  no content-layer shape on the same page also paints. The "and nowhere on
+   *  the content layer" half matters: a motif draws with the theme's own
+   *  tokens, so a bare "appears in decor" test would also match a content
+   *  panel that happens to use the same token, and pull pre-existing findings
+   *  into a block that is not about them. */
+  function decorOnlyFills(markup: string): Set<string> {
+    const root = parseSvgRoot(markup)
+    const decor = root.querySelector("[data-decor]")
+    const inDecor = new Set<string>()
+    const inContent = new Set<string>()
+    for (const el of Array.from(root.querySelectorAll("rect, circle, ellipse, path, polygon"))) {
+      const fill = el.getAttribute("fill")
+      if (!fill?.startsWith("#")) continue
+      if (decor?.contains(el)) inDecor.add(fill)
+      else inContent.add(fill)
+    }
+    for (const fill of inContent) inDecor.delete(fill)
+    return inDecor
+  }
+
+  const SEEDS: readonly (number | undefined)[] = [undefined, 0, 1]
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: every text run attributed to a decor shape is an adjudicated, allowlisted collision`, () => {
+      const layouts = THEME_DEFINITIONS[themeId as CanonicalThemeId].layouts
+      const failures: string[] = []
+      for (const seed of SEEDS) {
+        for (const type of ["cover", "chapter", "content", "ending"] as const) {
+          for (const layout of layouts[type]) {
+            const slide: Slide = {
+              type,
+              heading: HEADING,
+              layout,
+              ...(type === "chapter" || type === "content" ? { subheading: SUBHEADING } : {}),
+              components: type === "content" ? CONTENT_BODY : [],
+            } as Slide
+            const ir: PptxIR = {
+              ...deckFor(themeId, slide),
+              meta: { ...DECOR_META },
+              ...(seed !== undefined ? { seed } : {}),
+            }
+            const fills = decorOnlyFills(renderSlideSvg(ir, 0))
+            if (fills.size === 0) continue
+            for (const finding of auditDeck(ir).findings) {
+              const background = (finding.detail as { background?: string } | undefined)?.background
+              if (finding.code !== "low-contrast" || !background || !fills.has(background)) continue
+              if (isAllowlisted(themeId, layout, finding)) continue
+              failures.push(`seed=${seed ?? "default"} ${layout}: ${findingSummary(finding)}`)
+            }
+          }
+        }
+      }
+      expect(failures).toEqual([])
     })
   }
 })

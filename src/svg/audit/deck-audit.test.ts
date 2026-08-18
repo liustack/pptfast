@@ -27,6 +27,9 @@ import {
   type AuditFinding,
 } from "./deck-audit"
 import { STRESS_DECKS } from "./stress-fixtures"
+import { contrastRatio } from "../ink"
+import { measureTextUnits } from "../../lib/svg-text-layout"
+import { parseSvgRoot } from "../serialize"
 
 beforeAll(() => {
   installNodePlatform()
@@ -1060,14 +1063,15 @@ describe("gradient (url()) shape fills route to pixel-audit instead of misattrib
     expect(regions[0]!.fill).toBeNull()
   })
 
-  it("still excludes a gradient-filled shape inside <g data-decor>, same as a solid one (decor exclusion unaffected by the widened gate)", () => {
+  it("still excludes a gradient-filled <path> inside <g data-decor> (the shape kind whose bbox is not its outline)", () => {
     // Regression guard for the recon's own "decor exception awareness"
     // question: the widened gate must stay strictly subordinate to the
-    // pre-existing `!inDecorSubtree` check, not bypass it. If it didn't,
-    // this decor gradient would register with `fill: null` and swallow the
-    // text into imageBackedRuns; correctly excluded, the text falls through
-    // to the solid white page background and passes contrast outright — the
-    // same verdict this markup would have produced before this task's fix.
+    // decor gate, not bypass it. `fix/decor-contrast-attribution` made that
+    // decor gate turn on *shape* rather than layer, so the shape kind this
+    // guard has to use is a `<path>` — registered by its bounding box, which
+    // for a curved stroke covers far more than the stroke does. Correctly
+    // excluded, the text falls through to the solid white page background
+    // and passes contrast outright.
     const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
       <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
       <defs>
@@ -1077,12 +1081,38 @@ describe("gradient (url()) shape fills route to pixel-audit instead of misattrib
         </linearGradient>
       </defs>
       <g data-decor="true">
-        <rect x="0" y="0" width="1280" height="720" fill="url(#g4)"/>
+        <path d="M 0 0 L 1280 0 L 1280 720 L 0 720 Z" fill="url(#g4)"/>
       </g>
       <text x="200" y="200" font-size="20" fill="#000000">over the decor gradient</text>
     </svg>`
     expect(findContrastIssues(markup)).toEqual([])
     expect(__collectImageBackedTextRuns(markup)).toEqual([])
+  })
+
+  it("routes a gradient-filled <rect> inside <g data-decor> to pixel-audit, since a rect's box is its outline (fix/decor-contrast-attribution)", () => {
+    // Same markup as the guard above with `<path>` swapped for `<rect>` —
+    // the one difference the fix's criterion turns on. A full-bleed, fully
+    // opaque decor rect really is the surface this text is painted on;
+    // resolving it to the white page background underneath (the pre-fix
+    // answer) would be a wrong colour, not a missing check. `fill: null` +
+    // an `ImageBackedTextRun` is the same "resolvable no further, sample the
+    // real pixels" route `resolveCandidateFill` already gives a content-layer
+    // gradient.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <defs>
+        <linearGradient id="g5" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000000"/>
+          <stop offset="100%" stop-color="#111111"/>
+        </linearGradient>
+      </defs>
+      <g data-decor="true">
+        <rect x="0" y="0" width="1280" height="720" fill="url(#g5)"/>
+      </g>
+      <text x="200" y="200" font-size="20" fill="#000000">over the decor gradient</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+    expect(__collectImageBackedTextRuns(markup)).toHaveLength(1)
   })
 })
 
@@ -1165,16 +1195,23 @@ describe("findContrastIssues — circle/ellipse containment and paint-order safe
   it("does not attribute text anchored in a circle's bbox corner to that circle when the point sits outside the disk", () => {
     // Circle cx=200,cy=200,r=20 — its AABB corners sit at distance
     // r*sqrt(2)≈28.28 from the center, always outside the disk itself no
-    // matter the radius. Text placed exactly at the top-left bbox corner
+    // matter the radius. Text anchored exactly at the top-left bbox corner
     // (180,180) must fall through to the real white card beneath, not the
     // circle's own near-black fill — a cruder AABB containment test (the
     // shape's bounding box, not its actual outline) would wrongly say
     // "inside" and misattribute it.
+    // `text-anchor="end"` (fix/decor-contrast-attribution): the run is now
+    // graded over its whole ink box rather than at its anchor point alone
+    // (`backgroundsUnderRun`), and a run *starting* at this corner runs
+    // right and down across the disk's own top cap — a real overlap, which
+    // would confound the one thing this fixture exists to isolate. Anchored
+    // at the end, the same corner point is still the probe, and the ink box
+    // extends away from the disk instead of through it.
     const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
       <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
       <rect x="96" y="96" width="536" height="336" fill="#FFFFFF"/>
       <circle cx="200" cy="200" r="20" fill="#050505"/>
-      <text x="180" y="180" font-size="20" fill="#000000">beside the badge, not on it</text>
+      <text x="180" y="180" font-size="20" fill="#000000" text-anchor="end">beside the badge, not on it</text>
     </svg>`
     // Wrongly attributed to the circle: #000000-on-#050505 ≈ 1:1, a finding.
     // Correctly falls through to the white card: #000000-on-#FFFFFF passes.
@@ -1232,18 +1269,15 @@ describe("findContrastIssues — circle/ellipse containment and paint-order safe
     expect(findContrastIssues(markup)).toEqual([])
   })
 
-  it("does not attribute text to an opaque, adequately-sized shape inside a <g data-decor> subtree", () => {
-    // Mirrors the real-render decor-exclusion lock below (a campaign-theme
-    // cover's motif), but targets *attribution* specifically with synthetic
-    // markup: this circle is large, fully opaque, and geometrically contains
-    // the text — every property that would normally make it win
-    // backgroundAt's search — except that it sits inside a data-decor
-    // subtree (`data-decor="true"`, this renderer's own real serialized
-    // form — confirmed against a live render, not assumed). Worth locking
-    // explicitly post-fix: attribution now has no area floor at all, so
-    // without this guard *any* decor shape, however small, could shadow
-    // nearby text — a strictly larger blast radius than pre-fix, when only
-    // decor shapes big enough to clear MIN_BG_REGION_AREA could ever matter.
+  it("attributes text to an opaque <circle> inside a <g data-decor> subtree — decoration participates by shape (fix/decor-contrast-attribution)", () => {
+    // Same markup this fixture has always used, with the verdict inverted by
+    // `fix/decor-contrast-attribution`: a `<circle>` registers through
+    // `ellipseShape`'s exact containment test, so its registered geometry is
+    // its painted outline and it is a legitimate background for whatever is
+    // drawn on top of it. Reporting #000000-on-#FFFFFF here (the pre-fix
+    // answer, read off a page background this circle completely covers)
+    // was not a conservative skip — it was a wrong colour, which is exactly
+    // the defect that branch exists to stop producing.
     const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
       <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
       <g data-decor="true">
@@ -1251,8 +1285,88 @@ describe("findContrastIssues — circle/ellipse containment and paint-order safe
       </g>
       <text x="200" y="200" font-size="20" fill="#000000">over the decor watermark</text>
     </svg>`
-    // Wrongly attributed to the decor circle: #000000-on-#000000, a finding.
-    // Correctly excluded: falls through to the white page background, passes.
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#000000")
+    expect(issues[0].ratio).toBeCloseTo(1, 5)
+  })
+
+  it("does not attribute text to an opaque <path> inside a <g data-decor> subtree — a bbox is not an outline (fix/decor-contrast-attribution)", () => {
+    // The other half of the same criterion, and the case the original
+    // blanket exclusion was really written for: `motif-campaign-motif.tsx`'s
+    // crayon strokes are large, opaque `<path>`s whose `pathBoundingBox`
+    // covers far more of the page than the stroke's own ink does. This
+    // fixture is that shape in miniature — a thin diagonal stroke whose bbox
+    // spans the text, while the stroke itself passes nowhere near it. Text
+    // must resolve to the real white page background.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <g data-decor="true">
+        <path d="M 40 40 L 60 40 L 460 440 L 440 440 Z" fill="#000000"/>
+      </g>
+      <text x="200" y="400" font-size="20" fill="#000000">inside the stroke's bbox, nowhere near its ink</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("does not attribute text to a rotated <rect> inside a <g data-decor> subtree — a rotated box is neither its outline nor where parseTransform puts it", () => {
+    // `motif-pulse-motif.tsx`'s `capsule()` is exactly this shape: a filled
+    // `<rect>` under `rotate(angle cx cy)`. `parseTransform` models only
+    // translate + uniform scale, so it would register this rect at its
+    // *un-rotated* position, and an axis-aligned box is not a rotated rect's
+    // outline either. Both reasons put it on the `<path>` side of the
+    // criterion (`hasUnmodelledTransform`). The rect below is placed so the
+    // un-rotated box would contain the text and the real rotated one does
+    // not — so a walk that ignored the rotation would produce a 1:1 finding.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <g data-decor="true">
+        <rect x="160" y="160" width="200" height="80" fill="#000000" transform="rotate(45 260 200)"/>
+      </g>
+      <text x="180" y="180" font-size="20" fill="#000000">in the unrotated box only</text>
+    </svg>`
+    expect(findContrastIssues(markup)).toEqual([])
+  })
+
+  it("lets a content shape painted after a decor shape win the same point (paint order still decides, now that decor is in the table)", () => {
+    // `full-slide-svg.tsx` renders `<g data-decor>` *before* the layout, so
+    // content is always painted over decoration and "most recent wins" is
+    // already the visually correct rule — but only now that decor shapes are
+    // in `paintedShapes` at all does the two-candidate case exist to get
+    // wrong. The card below covers the same point as the decor square and is
+    // painted after it, so the text sits on the card, not the square. The run
+    // is kept short deliberately: at 20px it spans ~110px inside a 260px
+    // card, so its whole ink box stays on the card — a longer run would
+    // overhang onto the square and (correctly) report the square as the
+    // worse of the two backgrounds it really crosses, which is a different
+    // question than the one this fixture asks.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <g data-decor="true">
+        <rect x="100" y="100" width="300" height="300" fill="#050505"/>
+      </g>
+      <rect x="120" y="120" width="260" height="260" fill="#101010"/>
+      <text x="150" y="250" font-size="20" fill="#000000">on the card</text>
+    </svg>`
+    const issues = findContrastIssues(markup)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].background).toBe("#101010")
+  })
+
+  it("keeps a rotated ancestor <g> sticky over the whole decor subtree", () => {
+    // `motif-terra-motif.tsx`'s `leafVein()` puts the rotation on a wrapper
+    // `<g>`, not on the shapes themselves — so the taint has to accumulate
+    // down the subtree the same way `data-decor` itself does, not be read
+    // off each element in isolation.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+      <g data-decor="true">
+        <g transform="rotate(45 260 200)">
+          <rect x="160" y="160" width="200" height="80" fill="#000000"/>
+        </g>
+      </g>
+      <text x="180" y="180" font-size="20" fill="#000000">in the unrotated box only</text>
+    </svg>`
     expect(findContrastIssues(markup)).toEqual([])
   })
 })
@@ -1317,10 +1431,17 @@ describe("findContrastIssues — donut/pie wedge sector containment (fix/donut-a
     // [-90°, 170°] angular span. Pre-fix: AABB says "inside" (r-only test,
     // no angle), same misattribution class. Post-fix: falls through to the
     // real page background.
+    // `text-anchor="end"` (fix/decor-contrast-attribution): same reason as
+    // the circle-bbox-corner fixture above. The bite is a wedge whose apex
+    // is the pie's own center, so a run *starting* at this point and running
+    // right genuinely crosses into the slice's fill within ~40px — a real
+    // overlap the ink-box walk now sees, and a confound for the angular-span
+    // question this fixture is about. Anchored at the end, the whole ink box
+    // stays inside the bite (checked at all four corners).
     const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
       <rect x="0" y="0" width="1280" height="720" fill="#F7F7F2"/>
       <path d="${PIE_WEDGE_A_D}" fill="#050505"/>
-      <text x="563.3955556881021" y="295.72123903134604" font-size="16" fill="#000000">in the bite</text>
+      <text x="563.3955556881021" y="295.72123903134604" font-size="16" fill="#000000" text-anchor="end">in the bite</text>
     </svg>`
     expect(findContrastIssues(markup)).toEqual([])
   })
@@ -1629,6 +1750,142 @@ describe("findContrastIssues — decor/motif subtrees excluded from background-r
     const regions = __collectBgRegions(markup)
     expect(regions).toHaveLength(2)
     expect(regions.map((r) => r.fill).sort()).toEqual(["#3D2E78", "#F0559E"])
+  })
+})
+
+// fix/decor-contrast-attribution — the defect this branch exists to close,
+// pinned against real renders rather than synthetic markup. Reported symptom:
+// `pptfast audit` returned `0 findings, exit 0` on a cover with a collision
+// visible at a glance, and one of those zero findings was an *answer*, not a
+// gap — the ink theme's cover date measured 5.44:1 against a page background
+// its own motif's vermilion seal completely covers, where the real pairing is
+// 1.07:1. See `.issues/2026-08-17-spatial-contract/design.md` §3.1 ("看不见是
+// 缺检查，算错是主动说谊" — a missing check is a hole, a wrong answer breaks
+// the point of auditing) for the full adjudication, and `findContrastIssues`'s
+// own doc comment for the two halves of the fix.
+//
+// Fixture is the task's own reproduction, unchanged: `examples/
+// quarterly-review-zh.json` (which carries `seed: 22`, `meta.organization`
+// and `meta.date` — the matrix sweep in `full-matrix-contrast.test.ts`
+// deliberately sets no meta, which is exactly why that sweep never saw any of
+// this), theme swapped, cover layout pinned to `tone-adaptive-header`.
+describe("findContrastIssues — text painted on a decor shape resolves against that shape (fix/decor-contrast-attribution)", () => {
+  // Through the real schema, same as the `examples/basic.json` baseline at
+  // the top of this file — `assets` is optional in the authored JSON and
+  // `auditDeck` requires the validated shape.
+  const QUARTERLY = PptxIRSchema.parse(
+    JSON.parse(readFileSync(new URL("../../../examples/quarterly-review-zh.json", import.meta.url), "utf8")),
+  ) as PptxIR
+
+  /** The task's own repro deck, theme-swapped, cover layout pinned. */
+  function quarterly(themeId: string, overrides: Partial<PptxIR> = {}): PptxIR {
+    return {
+      ...QUARTERLY,
+      theme: { id: themeId },
+      slides: QUARTERLY.slides.map((slide, i) =>
+        i === 0 ? ({ ...slide, layout: "tone-adaptive-header" } as Slide) : slide,
+      ),
+      ...overrides,
+    }
+  }
+
+  function contrastFindings(ir: PptxIR): AuditFinding[] {
+    return auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
+  }
+
+  it("ink: the cover date reports ~1.07:1 against the motif's vermilion seal, not 5.44:1 against the page background it covers", () => {
+    // `motif-ink-motif.tsx`'s 落款 seal — `<rect x=1170 y=608 width=32
+    // height=32 rx=3 fill={colors.accent}>`, vermilion `#C3272B` — and
+    // `cover-tone-adaptive-header.tsx`'s date line, `colors.muted` `#686056`
+    // at font-size 24, `text-anchor="end"` at x=1216 on baseline y=650. The
+    // glyphs "8-1" sit on the seal; the anchor point does not (the seal's
+    // bottom edge is 10px above that baseline, its right edge 14px to the
+    // left), which is why admitting the seal as a candidate was only half
+    // the fix — see `backgroundsUnderRun`.
+    const findings = contrastFindings(quarterly("ink")).filter((f) => f.page === 1)
+    expect(findings).toHaveLength(1)
+    const detail = findings[0].detail as { text: string; background: string; ratio: number; fill: string }
+    expect(detail.text).toBe("2026-08-15")
+    expect(detail.fill).toBe("#686056")
+    expect(detail.background).toBe("#C3272B")
+    expect(detail.ratio).toBeCloseTo(1.073, 3)
+  })
+
+  it("tech: the same cover slot reports ~1.70:1 against the motif's own corner square", () => {
+    // Same layout slot, different motif: a 24px `#2DD4E6` accent square at
+    // (1200, 624). Its bottom edge clears the date's baseline by 2px — an
+    // even narrower miss for a point test than ink's, and the same wrong
+    // answer before this fix. `.issues/2026-08-17-spatial-contract/design.md`
+    // §4 names the shared cause: four themes' motifs each land on the *same*
+    // bottom-right slot of this one cover layout, so this is the layout's
+    // defect, not any single motif's.
+    const findings = contrastFindings(quarterly("tech")).filter((f) => f.page === 1)
+    expect(findings).toHaveLength(1)
+    const detail = findings[0].detail as { text: string; background: string; ratio: number }
+    expect(detail.text).toBe("2026-08-15")
+    expect(detail.background).toBe("#2DD4E6")
+    expect(detail.ratio).toBeCloseTo(1.700, 3)
+  })
+
+  it("consulting: the same collision measures 3.26:1 against its decor square — a real pairing that clears the 3:1 floor, so no finding", () => {
+    // The third theme in the same slot (`#051C2C` square, same geometry as
+    // tech's). Measured 3.26:1, which clears the B-tier/large-text 3:1 floor
+    // the 24px date line is graded against, so the honest verdict here is
+    // silence — recorded rather than left implicit, because "no finding" now
+    // means "measured against the square and passed" instead of the
+    // pre-fix "measured against the page background and passed", and only
+    // one of those two silences is worth anything.
+    expect(contrastRatio("#6B6B6B", "#051C2C")).toBeCloseTo(3.26, 2)
+    expect(contrastFindings(quarterly("consulting")).filter((f) => f.page === 1)).toEqual([])
+  })
+
+  it("consulting: a muted token that fails only against the decor square proves the square really is what the date resolves to", () => {
+    // The differential the test above can't show on its own. `#3A4E60`
+    // measures 2.02:1 against the decor square and 8.01:1 against the page
+    // background `#F7F7F2` — so a finding can only appear here if attribution
+    // reaches the square, and its reported background says which one it
+    // found. `theme.style` is a schema-legal deep-partial override (same
+    // mechanism the "low-contrast via a real style-token override" block
+    // below uses), not a test-only hook.
+    const ir = quarterly("consulting", {
+      theme: { id: "consulting", style: { colors: { muted: "#3A4E60" } } },
+    })
+    const dateFindings = contrastFindings(ir).filter(
+      (f) => f.page === 1 && (f.detail as { text?: string }).text === "2026-08-15",
+    )
+    expect(dateFindings).toHaveLength(1)
+    expect((dateFindings[0].detail as { background: string }).background).toBe("#051C2C")
+  })
+
+  it("campaign: crayon-stroke <path>s stay out of attribution even where their bounding boxes cover the date and their opacity clears the gate", () => {
+    // The exclusion's original and still-valid case, pinned against a real
+    // render so it cannot rot into a vacuous assertion. This cover's motif
+    // draws crayon strokes whose `pathBoundingBox` covers the date run while
+    // the stroke ink itself is nowhere near it — the over-approximation
+    // `registersExactOutline` keeps out. The two assertions below are one
+    // argument: first that the trap is genuinely armed (at least one decor
+    // `<path>` both covers the run and clears `MIN_BG_OPACITY` — at the time
+    // of writing `#F0559E` at 0.828 and `#7FE0C3` at 0.644, against which the
+    // date's `#D5CFE8` would measure 2.14:1 and 1.04:1), then that the audit
+    // still reports nothing.
+    const ir = quarterly("campaign")
+    const root = parseSvgRoot(renderSlideSvg(ir, 0))
+    const decor = root.querySelector("[data-decor]")
+    expect(decor, "expected a <g data-decor> subtree on a campaign cover").toBeTruthy()
+    // The date run's own ink box, from the values the layout renders with:
+    // font-size 24, `text-anchor="end"` at x=1216, baseline 650.
+    const width = measureTextUnits("2026-08-15") * 24
+    const box = { x0: 1216 - width, x1: 1216, y0: 650 - 24 * 0.75, y1: 650 + 24 * 0.25 }
+    const armed = Array.from(decor!.querySelectorAll("path")).filter((path) => {
+      if (Number(path.getAttribute("opacity") ?? 1) < 0.5) return false
+      const bbox = __pathBoundingBox(path.getAttribute("d") ?? "")
+      if (!bbox) return false
+      return (
+        bbox.x <= box.x1 && bbox.x + bbox.w >= box.x0 && bbox.y <= box.y1 && bbox.y + bbox.h >= box.y0
+      )
+    })
+    expect(armed.length).toBeGreaterThan(0)
+    expect(contrastFindings(ir).filter((f) => f.page === 1)).toEqual([])
   })
 })
 

@@ -81,13 +81,14 @@
  * 1. **Does a candidate motif make *other* page text unreadable?**
  *    `motif-candidate-contrast.test.ts`'s first sweep runs the existing
  *    `findContrastIssues`/`auditDeck` machinery against every candidate —
- *    but that machinery *structurally excludes* every `<g data-decor>` shape
- *    from background candidacy (`deck-audit.ts`'s own "One more exclusion"
- *    doc comment), by design (a faint decorative shape must never be
- *    mistaken for the real page background a heading was contrast-tuned
- *    against). That exclusion means this sweep can prove decor never breaks
- *    *other* text — it structurally cannot prove decor is itself visible
- *    against its own background.
+ *    but that machinery only ever grades *text*, and a motif's arc/grid/
+ *    stroke is not text. So this sweep can prove decor never breaks *other*
+ *    text — it structurally cannot prove decor is itself visible against its
+ *    own background. (Which decor *shapes* count as a background for other
+ *    text is a separate question, and no longer a blanket exclusion:
+ *    `fix/decor-contrast-attribution` admits a decor `rect`/`circle`/
+ *    `ellipse` whose registered geometry is its painted outline, and keeps
+ *    `path`/`polygon` out — see `findContrastIssues`'s own doc comment.)
  * 2. **Does a candidate motif's own decor render invisibly against its own
  *    background?** A distinct question, added by `motif-candidate-contrast
  *    .test.ts`'s second sweep (review fix round, Moderate finding): every
