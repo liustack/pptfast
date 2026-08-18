@@ -17,7 +17,7 @@ A theme bundles a style (design tokens), a brand (identity chrome: logo, footer,
 | `academic` | Academic |
 | `insight` | Financial Insight |
 | `campaign` | Marketing Campaign |
-| `bloom` | Soft Bloom |
+| `bloom` | Soft Bloom (a recolor of `classroom`) |
 | `classroom` | Classroom |
 | `ink` | Ink Wash |
 | `tech` | Tech |
@@ -33,6 +33,10 @@ A theme bundles a style (design tokens), a brand (identity chrome: logo, footer,
 `pptfast themes [--json]` prints the same list from the installed version.
 
 Every built-in points each page type at the full set of registered layouts. Every layout adapts its text color to the theme's actual background, so the full set stays readable everywhere. Narrowing that set is a theme author's deliberate choice, and none of the 17 narrows anything today.
+
+What each theme *does* narrow is its preference: every built-in names the covers it leans toward, so two themes rendering the same deck under the same seed usually pick different covers. It stays a preference, not a lock — pin `slide.layout` when a cover has to be exactly one thing.
+
+`bloom` and `classroom` share one structure and differ in palette and decoration. Pick `bloom` for the soft violet and apricot, `classroom` for the misty blue; the same deck picks the same layouts under either. That makes 17 theme ids and 16 distinct structures.
 
 ## Your own brand
 

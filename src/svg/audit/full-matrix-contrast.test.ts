@@ -68,7 +68,7 @@ import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { LAYOUT_REGISTRY } from "../layouts/registry"
 import { resolveBackgroundHex } from "../full-slide-svg"
-import { contrastRatio, requiredContrastRatio } from "../ink"
+import { blendOver, contrastRatio, metaInk, readableOn, requiredContrastRatio } from "../ink"
 import { parseSvgRoot } from "../serialize"
 import { mixHex } from "../components/color-mix"
 import { BAND_OPACITY } from "../components/sankey"
@@ -465,6 +465,112 @@ describe("fashion-masthead meta line contrast (contrast-policy wave, metaInk mig
     expect(primary).toBe("#E63946")
     expect(fill).toBe("#591d26")
     expect(contrastRatio(fill!, primary)).toBeCloseTo(3.094, 2)
+  })
+})
+
+// split-diagonal org kicker (2026-08-19, the theme-allocation branch's
+// tag-along fix). Same gap this file's own header admits and the
+// fashion-masthead block above fills: the main sweep's fixtures carry no
+// `organization`, so the kicker painted on split-diagonal's primary block
+// never rendered under it and its contrast was never measured by any gate.
+//
+// Rendered with org meta across all 17 themes, exactly one theme failed:
+// insight's `#E63946` composites the adaptive dark ink at 92% to 4.409:1,
+// which clears WCAG's large-text 3:1 but misses the 4.5:1 body floor
+// deck-audit applied to a 22px run. The org name is B-tier
+// meta-information (`docs/contrast-system.md`'s three-tier policy puts
+// organization names alongside copyright lines and dates), so 3:1 is its
+// real floor and the old verdict was a tier misclassification, not a color
+// defect — fixed by routing the fill through `metaInk` and tagging the
+// element `data-contrast-tier="meta"`, the paired idiom the block above
+// established.
+describe("split-diagonal org kicker contrast (B-tier reclassification)", () => {
+  function splitDiagonalDeck(themeId: string): PptxIR {
+    return {
+      version: "4",
+      filename: "split-diagonal-kicker-fixture",
+      theme: { id: themeId },
+      meta: { organization: "pptfast", date: "2026-08" },
+      assets: { images: {} },
+      slides: [{ type: "cover", heading: HEADING, layout: "split-diagonal", components: [] } as Slide],
+    }
+  }
+
+  /** The kicker element itself — anchored at the layout's own x=96, y=128, which no other text on this page shares (title/rule/subheading/meta all sit at x=596). */
+  function kicker(themeId: string): Element {
+    const root = parseSvgRoot(renderSlideSvg(splitDiagonalDeck(themeId), 0))
+    const el = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.getAttribute("x") === "96" && t.getAttribute("y") === "128",
+    )
+    expect(el, `${themeId}: expected the org kicker at x=96,y=128`).toBeTruthy()
+    return el!
+  }
+
+  for (const themeId of CANONICAL_THEME_IDS) {
+    it(`${themeId}: the org kicker renders as B-tier meta and clears 3:1 against the block it is painted on`, () => {
+      const el = kicker(themeId)
+      expect(el.getAttribute("data-contrast-tier")).toBe("meta")
+      const primary = THEME_DEFINITIONS[themeId as CanonicalThemeId].style.colors.primary
+      expect(contrastRatio(el.getAttribute("fill")!, primary)).toBeGreaterThanOrEqual(3)
+    })
+
+    it(`${themeId}: the deck audits clean with the kicker actually rendered`, () => {
+      expect(auditDeck(splitDiagonalDeck(themeId)).findings.filter((f) => f.code === "low-contrast")).toEqual([])
+    })
+
+    // The pixel-identity half. `fillOpacity` moved into the fill hex rather
+    // than being dropped, so the composited color on screen is the one this
+    // layout always drew — the fix changes which floor the auditor applies,
+    // not what a reader sees. Asserted per theme against the arithmetic the
+    // old `fill=readableOn(primary)` + `fill-opacity=0.92` pair produced.
+    it(`${themeId}: the composited kicker color is unchanged from the pre-fix fill+fill-opacity pair`, () => {
+      const el = kicker(themeId)
+      const primary = THEME_DEFINITIONS[themeId as CanonicalThemeId].style.colors.primary
+      expect(el.getAttribute("fill")).toBe(blendOver(readableOn(primary), primary, 0.92))
+      expect(el.getAttribute("fill-opacity")).toBeNull()
+    })
+  }
+
+  // insight is the whole reason this block exists — pinned exactly so a
+  // future recalibration of insight's `primary` that silently moves this
+  // number is caught here by name, not just by the generic >=3 loop.
+  it("insight: the composite really does sit at 4.409:1 — under the 4.5:1 body floor it used to be graded against, comfortably over the 3:1 tier it belongs to", () => {
+    const primary = THEME_DEFINITIONS.insight.style.colors.primary
+    expect(primary).toBe("#E63946")
+    const fill = kicker("insight").getAttribute("fill")!
+    expect(fill).toBe("#1c1118")
+    expect(contrastRatio(fill, primary)).toBeCloseTo(4.409, 3)
+    expect(contrastRatio(fill, primary)).toBeLessThan(4.5)
+  })
+
+  // Scope pin: insight was the only theme that ever failed here, so the fix
+  // must not read as "16 themes were quietly repaired too". Every other
+  // theme already cleared 4.5:1 before the reclassification and still does.
+  it("insight was the only theme under the old 4.5:1 body floor — the other 16 were and remain above it", () => {
+    const below = CANONICAL_THEME_IDS.filter((themeId) => {
+      const primary = THEME_DEFINITIONS[themeId].style.colors.primary
+      return contrastRatio(blendOver(readableOn(primary), primary, 0.92), primary) < 4.5
+    })
+    expect(below).toEqual(["insight"])
+  })
+
+  // Why `metaInk` is in the call at all, given it returns its input for all
+  // 17 themes: it is the guard, not the repair. Sampling the whole RGB cube
+  // at 15 steps per channel (3375 synthetic primaries) finds zero where the
+  // 92%-alpha composite of `readableOn`'s own ink drops under 3:1 — so the
+  // pass-through is a property of this alpha, and `metaInk` is what would
+  // catch a future alpha change or a brand-extracted primary that breaks it.
+  it("metaInk is an identity pass-through at this alpha for every reachable primary — the guard has nothing to repair today", () => {
+    const breached: string[] = []
+    for (let r = 0; r < 256; r += 17)
+      for (let g = 0; g < 256; g += 17)
+        for (let b = 0; b < 256; b += 17) {
+          const primary = `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`
+          const composite = blendOver(readableOn(primary), primary, 0.92)
+          if (contrastRatio(composite, primary) < 3) breached.push(primary)
+          else if (metaInk(composite, primary) !== composite) breached.push(`${primary} (nudged)`)
+        }
+    expect(breached).toEqual([])
   })
 })
 

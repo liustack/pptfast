@@ -3,7 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
-import { readableOn } from "../ink"
+import { blendOver, metaInk, readableOn } from "../ink"
 
 /**
  * split-diagonal cover layout（P3 Item ①，spec §3.2）：左侧 primary 色块以
@@ -18,6 +18,27 @@ import { readableOn } from "../ink"
  * round：提炼进 `../ink` 单一共享实现——`chapter-fashion-chapter.tsx`/
  * `ending-fashion-ending.tsx`/`cover-fashion-masthead.tsx` 与本文件同款
  * 消费，本文件不再是它唯一的物理归属地）。
+ *
+ * org kicker 的取色（split-diagonal metaInk 迁移，2026-08-19）：色块上那行
+ * 机构名是三层对比度政策里的 B 层 meta-information text
+ * （`docs/contrast-system.md` — 机构名与版权行、页码、日期同层），不是 A 层
+ * 正文。此前它按 `fill={readableOn(primary)} fillOpacity={0.92}` 画，
+ * deck-audit 按 22px 正文的 4.5:1 去量它——十七个主题里十六个过，insight
+ * 的 `#E63946` 上深墨复合出 4.409:1，差 0.09 卡在 A 层线下。这不是取色错
+ * 了，是层级判错了：B 层的硬线是 3:1，4.409 过得很稳。
+ *
+ * 修法照搬 `cover-fashion-masthead.tsx` 已经立过的先例（同一波
+ * contrast-policy 的 metaInk 迁移）：`fillOpacity` 折进复合色，交给
+ * `metaInk` 按这块真正画出来的底（`colors.primary`，不是
+ * `ctx.defaultBg`——「自己画的面自己量」）评级，元素上挂
+ * `data-contrast-tier="meta"` 让 deck-audit 改用 3:1。两者永远成对出现，
+ * 只写一半是 bug（`docs/contrast-system.md` 明文）。
+ *
+ * 像素零变化，而且这里的 `metaInk` 至今是恒等透传：`readableOn` 选出的中
+ * 性墨即便再压到 0.92 也从不掉到 3:1 以下（全 RGB 立方体 15³ 采样，0 例
+ * 击穿——见本文件同名测试）。所以这次改的是分级，不是颜色。透传不等于摆
+ * 设：它是这条线以后的护栏，谁把 alpha 调低、或者哪个自定义主题的 primary
+ * 把复合色压穿 3:1，`metaInk` 就会替它抬上来。
  */
 
 /** 斜切色块几何：顶宽 560、底宽 460（向下内收，形成右倾斜切线）。 */
@@ -38,6 +59,11 @@ export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
   const version = ir.meta.version
 
   const onBlock = readableOn(ctx.colors.primary)
+  // B 层 meta 取色（见文件头 "org kicker 的取色"）：ORG_ALPHA 保留这行机构名
+  // 一直以来的压暗比例，只是从 `fillOpacity` 折进 `metaInk` 评级的复合色里，
+  // 这样 deck-audit 读到的 fill 就是真正画出来的那个颜色。
+  const ORG_ALPHA = 0.92
+  const orgFill = metaInk(blendOver(onBlock, ctx.colors.primary, ORG_ALPHA), ctx.colors.primary)
 
   const title = fitHeadingLines(slide.heading, {
     maxWidth: TITLE_MAX_W,
@@ -76,15 +102,19 @@ export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
       {/* 斜切色块 */}
       <path d={BLOCK_PATH} fill={ctx.colors.primary} />
 
-      {/* org 标签压在色块上（readableOn 自适应前景色） */}
+      {/* org 标签压在色块上 — B-tier meta-information text
+          (docs/contrast-system.md 的三层对比度政策)：`orgFill` 是
+          `metaInk` 按真正画出来的底（`colors.primary`）评级过的复合色，
+          `data-contrast-tier="meta"` 告诉 deck-audit 用 3:1 量它，而不是
+          22px 正文默认的 4.5:1。 */}
       {org && (
         <text
+          data-contrast-tier="meta"
           x={96}
           y={128}
           fontFamily={ctx.fonts.body}
           fontSize={22}
-          fill={onBlock}
-          fillOpacity={0.92}
+          fill={orgFill}
           letterSpacing={2}
           dominantBaseline="alphabetic"
         >

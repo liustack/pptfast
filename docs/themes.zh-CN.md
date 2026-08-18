@@ -17,7 +17,7 @@ read_when:
 | `academic` | Academic |
 | `insight` | Financial Insight |
 | `campaign` | Marketing Campaign |
-| `bloom` | Soft Bloom |
+| `bloom` | Soft Bloom（`classroom` 的换色版）|
 | `classroom` | Classroom |
 | `ink` | Ink Wash |
 | `tech` | Tech |
@@ -33,6 +33,10 @@ read_when:
 `pptfast themes [--json]` 会从你装的这一版里打印同一份清单。
 
 每个内置主题默认对每个页型都开放全部已注册版式。每个版式都会按主题的实际背景色自适应取色，所以全集在任何主题下都保持可读。收窄集合是主题作者的主动选择，17 个主题里目前没有一个收窄任何页型。
+
+主题收窄的不是集合，是偏好：每个内置主题都写明了自己偏向哪几个封面，所以同一份 deck、同一个 seed，换个主题通常会抽到不一样的封面。偏好不是锁定，封面必须是某一个时，在这一页上写 `slide.layout` 钉死。
+
+`bloom` 和 `classroom` 共用一套结构，差别在配色和装饰。想要雾紫杏粉选 `bloom`，想要雾蓝板书选 `classroom`，同一份 deck 在两者下抽到的版式相同。所以是 17 个主题 id、16 套结构。
 
 ## 你自己的品牌
 
