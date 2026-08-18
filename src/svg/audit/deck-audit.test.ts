@@ -111,7 +111,7 @@ describe("auditDeck — clean deck baseline", () => {
   // against the real rendered background on *any* theme (the fallback path
   // exists exactly for a theme where `colors.muted` alone wouldn't clear
   // it), so the `data-contrast-tier="meta"` marker alone is enough to keep
-  // both sites off this list everywhere — on the two themes each archetype
+  // both sites off this list everywhere — on the two themes each layout
   // actually ships natively pinned to (consulting/banner-ending,
   // academic/rail-ending) the fix goes further still: `colors.muted` itself
   // already clears the plain 4.5:1 body threshold against each theme's real
@@ -196,12 +196,12 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
 // Pre-fix, this block was red on 7 of 16 themes — a real, measured defect
 // (`ember` 1.57:1, the plan's own named repro), not a false positive: no
 // stress fixture had ever rendered a period-ending heading through this
-// archetype (see `stress-fixtures.ts`'s new pinned `ending`/
+// layout (see `stress-fixtures.ts`'s new pinned `ending`/
 // `constellation-ending` entry, added in the same commit as this block, one
-// commit ahead of the archetype fix — red-then-green, not red-and-green
-// together). Post-fix, every theme clears 3:1: the archetype falls back to
+// commit ahead of the layout fix — red-then-green, not red-and-green
+// together). Post-fix, every theme clears 3:1: the layout falls back to
 // its own heading ink (`colors.text` — in-sentence coherence with the rest
-// of the heading, not a shared neutral ink; see the archetype's own comment)
+// of the heading, not a shared neutral ink; see the layout's own comment)
 // on the 7 that used to fail
 // (consulting/academic/bloom/classroom/heritage/pulse/ember) and stays
 // byte-identical (still the theme's own accent fill) on the other 9. See
@@ -483,15 +483,15 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
 
   // truncation-visibility wave, Task 2: closes the one gap `ir-quality.ts`'s
   // long_heading comment recorded — heading truncation (`fitHeadingLines`'s
-  // internal `truncateToUnits` cut, fired when even the archetype's `minPt`
+  // internal `truncateToUnits` cut, fired when even the layout's `minPt`
   // floor can't fit the text) used to have zero render-time visibility, so
   // `content-truncated` never fired for it the way it does for every other
   // `fitSvgLine`-based text role. `layout: "fashion-masthead"` pins
   // `cover-fashion-masthead.tsx` deterministically — it declares the
-  // highest `minPt` (72) of any archetype (`ir-quality.ts`'s own survey),
+  // highest `minPt` (72) of any layout (`ir-quality.ts`'s own survey),
   // so the least amount of shrink headroom before a pathological heading
   // hits the truncate branch.
-  it("surfaces a heading that outgrows even its archetype's minPt floor as 'content-truncated'", () => {
+  it("surfaces a heading that outgrows even its layout's minPt floor as 'content-truncated'", () => {
     const ir = deck("campaign", [
       {
         type: "cover",
@@ -511,14 +511,14 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
   })
 
   // Review fix round — Critical 1's exact repro, at the render+audit level:
-  // a plain 30-char CJK heading on the same `fashion-masthead` archetype
+  // a plain 30-char CJK heading on the same `fashion-masthead` layout
   // takes `fitHeadingLines`'s minPt-floor branch (shrinks to 72px) but
   // — unlike the case above — never actually loses a character. Before the
   // fix this rendered `data-truncated="1"` and a false `content-truncated`
   // finding anyway (`truncated` was set on taking the branch, not on
   // whether `truncateToUnits` changed anything). Locks the negative case
   // permanently, next to the positive one above.
-  it("does not mark or report a heading that only shrinks to its archetype's minPt floor", () => {
+  it("does not mark or report a heading that only shrinks to its layout's minPt floor", () => {
     const plain = "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及"
     const ir = deck("campaign", [
       {
@@ -530,7 +530,7 @@ describe("auditDeck — content-truncated / content-dropped (bench-driven fix ro
       },
     ])
     const markup = renderSlideSvg(ir, 0)
-    // The archetype wraps this heading across 2 balanced lines (separate
+    // The layout wraps this heading across 2 balanced lines (separate
     // `<text>` elements), so assert on the substrings that survive the
     // wrap rather than the joined original — same "no character dropped"
     // check as the unit-level fixture, split at the wrap point.
@@ -1605,9 +1605,9 @@ describe("findContrastIssues — decor/motif subtrees excluded from background-r
   // accept as real backgrounds — inside the `<g data-decor>` wrapper
   // `full-slide-svg.tsx` renders around every theme motif's output.
   //
-  // `layout: "split-diagonal"` pins the cover archetype deterministically
+  // `layout: "split-diagonal"` pins the cover layout deterministically
   // (an explicit `slide.layout` short-circuits the seed-based pick per
-  // `resolveArchetypeId`'s own doc comment in `layout-selection.ts`) to
+  // `resolveLayoutId`'s own doc comment in `layout-selection.ts`) to
   // `cover-split-diagonal.tsx` — chosen specifically because it exercises
   // `pathBoundingBox`'s one remaining *exact* (non-decor) solid-path case
   // side-by-side with the decor exclusion in the same render, tying both

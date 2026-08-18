@@ -62,11 +62,11 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // soft-weighting + the pyramid/briefing content layoutTendencies
       // re-derivation). None of these three decks pin every identity page's
       // `layout`, so weighting the previously-uniform cover/chapter/ending
-      // auto-pick can legitimately flip which archetype a given seed lands
+      // auto-pick can legitimately flip which layout a given seed lands
       // on — a real, intended selection-behavior change, not a migration
       // regression. Verified via a targeted diff against the pre-recapture
       // goldens (`.svg.json`/`.pptx-zip.json` only — `.audit.json` needed no
-      // recapture, the newly-picked archetypes introduce no new findings on
+      // recapture, the newly-picked layouts introduce no new findings on
       // any of these three fixtures). Only these specific slides change,
       // every other slide (including every explicitly `layout`-pinned
       // ending) stays byte-identical to the pre-task-3 golden:
@@ -82,16 +82,16 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     `banner-chapter`).
       //
       // Re-recaptured (P1 variety wave, task 4 — content-pool expansion, 7
-      // -> 10 new archetypes side-highlight/asymmetric-triptych/quiet-frame,
+      // -> 10 new layouts side-highlight/asymmetric-triptych/quiet-frame,
       // plus their strategy `layoutTendencies`/beat `BEAT_TENDENCIES`
       // placement). None of these three decks pin every content page's
       // `layout` either, so a pool-wide reweighting can legitimately flip
-      // which archetype a given seed's auto-pick lands on — the same
+      // which layout a given seed's auto-pick lands on — the same
       // "real, intended selection-behavior change, not a migration
       // regression" posture as the task-3 recapture above. Verified via the
       // identical targeted-diff discipline: `.audit.json` needed no
       // recapture for any of the three (findings stayed the empty array on
-      // both sides — the newly-picked archetypes introduce no new
+      // both sides — the newly-picked layouts introduce no new
       // findings). Exactly the same two slide indices changed in all three
       // fixtures, nothing else:
       //   - `basic`: slide indices 2 and 3 (content pages, both auto-picked
@@ -174,7 +174,7 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // (`../themes/definitions.ts`'s `LAYOUTS` table) -- a real, intended
       // selection-behavior change (design decision 2's whole point: the
       // theme layer is now a live weighting input to auto-picked
-      // cover/chapter/ending archetypes), not a migration regression. None
+      // cover/chapter/ending layouts), not a migration regression. None
       // of these three decks pins every identity page's `layout`, so
       // reweighting the pool can legitimately flip a given seed's pick --
       // same posture as every recapture above. Exactly one slide changed
@@ -204,12 +204,12 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // `.audit.json` needed no recapture for any of the three (findings
       // stayed the empty array both sides, confirmed by computing
       // `auditDeck` fresh against both the old and new goldens) -- the
-      // newly-picked archetypes introduce no new geometry/contrast defect
+      // newly-picked layouts introduce no new geometry/contrast defect
       // on any of these three fixtures.
       //
-      // Re-recaptured again (content-archetype expansion wave, task T1 --
+      // Re-recaptured again (content-layout expansion wave, task T1 --
       // `.issues/2026-07-26-content-archetypes/plan.md`): registering an
-      // 11th content archetype (`image-lead-split`) grows the content
+      // 11th content layout (`image-lead-split`) grows the content
       // pool's weighted-sampling denominator on every theme that curates
       // the full set (`consulting`/`journal`, the two themes these three
       // fixtures use, both do) -- the same "real, intended selection-
@@ -217,13 +217,13 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // growth recapture above (P1 variety wave task 4's own 7 -> 10
       // recapture is the direct precedent). None of these three decks pins
       // every content page's `layout`, so a pool-wide reweighting can
-      // legitimately flip which archetype a given seed's auto-pick lands
+      // legitimately flip which layout a given seed's auto-pick lands
       // on. Verified via the same targeted-diff discipline: `.audit.json`
       // needed no recapture for any of the three (findings stayed the
       // empty array both sides) -- `image-lead-split` itself was never the
-      // archetype any of these three fixtures' seeds actually landed on;
+      // layout any of these three fixtures' seeds actually landed on;
       // the shift is purely the denominator changing which of the
-      // *existing* 10 archetypes each seed's hash lands on:
+      // *existing* 10 layouts each seed's hash lands on:
       //   - `basic`: slide index 2 (content, auto-picked) --
       //     `stacked-poster` -> `tone-adaptive-content`; slide index 3
       //     (content, auto-picked) -- `two-column` -> `stacked-poster`.
@@ -233,9 +233,9 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `annualReviewPreset`: slide index 2 (content, auto-picked) --
       //     `narrow-column` -> `quiet-frame`.
       //
-      // Re-recaptured again (content-archetype expansion wave, task T2 --
+      // Re-recaptured again (content-layout expansion wave, task T2 --
       // `.issues/2026-07-26-content-archetypes/plan.md`): registering a
-      // 12th content archetype (`split-band`) grows the content pool's
+      // 12th content layout (`split-band`) grows the content pool's
       // weighted-sampling denominator again, on the same two full-set
       // themes (`consulting`/`journal`) as every prior pool-growth
       // recapture -- same "real, intended selection-behavior change"
@@ -247,13 +247,13 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     (content, auto-picked) -- `stacked-poster` -> `split-band`.
       //     `split-band` itself *is* the actual landed pick here, the
       //     first of these three fixtures where the newly-registered
-      //     archetype is the seed's real choice, not just a denominator
+      //     layout is the seed's real choice, not just a denominator
       //     reshuffle onto an existing one.
       //   - `scenarioBearing`: slide index 1 (content, auto-picked) --
       //     `bento-panel` -> `narrow-column`; slide index 2 (content,
       //     auto-picked) -- `narrow-column` -> `side-highlight`.
       //     `split-band` was never this fixture's landed pick -- pure
-      //     denominator reshuffle onto existing archetypes, same
+      //     denominator reshuffle onto existing layouts, same
       //     mechanism as every prior pool-growth recapture.
       //   - `annualReviewPreset`: slide indices 2 and 3 (content,
       //     auto-picked) -- `quiet-frame` -> `image-lead-split`,
@@ -294,12 +294,12 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // convention — `image-lead-split`'s unconditional 435px text column
       // squeezed this exact kpi_cards-only page for no reason, since it has
       // no scalable (image/chart) lead component to justify narrowing
-      // beside a real visual column. The archetype now widens the text
+      // beside a real visual column. The layout now widens the text
       // column to 788px (and shrinks the decorative visual column to a
       // 260px accent panel) whenever there is no scalable lead — see that
       // file's own header for the full rationale and the skeleton-diversity
       // check that the widened width doesn't collide with an existing
-      // archetype's own region class. Only `annualReviewPreset`'s slide
+      // layout's own region class. Only `annualReviewPreset`'s slide
       // index 2 is affected across all three fixtures (the only slide, in
       // any of them, that actually lands on `image-lead-split` with no
       // scalable lead — confirmed by diffing all 5 slides of each fixture's
@@ -339,11 +339,11 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     *is* one of the two ids appended to journal's own `chapter`
       //     tendency (`["masthead-chapter", "roman-chapter",
       //     "tone-adaptive-chapter"]`) landing directly, not a reshuffle
-      //     onto an unrelated existing archetype.
+      //     onto an unrelated existing layout.
       // `.audit.json` needed no recapture for any of the three (findings
       // stayed byte-identical, confirmed by computing `auditDeck` fresh
       // against both the old and new goldens) — neither newly-landed
-      // archetype introduces a new geometry/contrast finding on either
+      // layout introduces a new geometry/contrast finding on either
       // fixture. `.pptx-zip.json`'s file-name set is unchanged for all
       // three; only `basic`'s `ppt/slides/slide1.xml` and
       // `annualReviewPreset`'s `ppt/slides/slide2.xml` (1-indexed,

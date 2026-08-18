@@ -3,7 +3,7 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
 import { readableOn } from "../ink"
 
 /**
- * banner-motif archetype（spec §3.2，Wave 3 Task 19）：cover/chapter ("强",
+ * banner-motif（spec §3.2，Wave 3 Task 19）：cover/chapter ("强",
  * chapter mirrors cover, no separable cover-only bonus withheld) get a
  * faint grid-line texture — 5 verticals @ 256px spacing clipped to y
  * 100-620 so none cross the header/footer logo bands, 3 candidate
@@ -50,7 +50,7 @@ import { readableOn } from "../ink"
  * makes *other* text unreadable). Fixed by deriving the ink from the actual
  * background instead of a hard-coded literal: `readableOn(ctx.defaultBg ??
  * ctx.colors.bg)` (`../ink.ts`) — the same two-ink, real-contrast-measured
- * chooser the archetype-side contrast fix round already uses for exactly
+ * chooser the layout-side contrast fix round already uses for exactly
  * this "self-painted surface, adaptive ink" problem, applied here to a
  * decorative line instead of body text. Kept at the same low opacity
  * (`GRID_STROKE_OPACITY_CHAPTER`) either way — a low-opacity blend of

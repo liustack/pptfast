@@ -3,8 +3,8 @@ import type { PptxIR, Slide } from "@/ir"
 import type { ComponentCtx } from "../components/types"
 
 /**
- * Props for a motif archetype（原 templates/types.ts 的 DecorProps）。与
- * SvgTemplateProps（archetypes/types.ts）相比无 index：装饰几何是
+ * Props for a motif（原 templates/types.ts 的 DecorProps）。与
+ * SvgTemplateProps（layouts/types.ts）相比无 index：装饰几何是
  * (theme, slide.type) 的纯函数。
  */
 export interface DecorProps {
@@ -14,10 +14,10 @@ export interface DecorProps {
 }
 
 /** Motif（原 per-theme Decor）：签名对齐 templates/types.ts 的 DecorProps，可为 null。 */
-export type MotifArchetype = (p: DecorProps) => React.ReactElement | null
+export type Motif = (p: DecorProps) => React.ReactElement | null
 
 // Wave 3（motif，随 content 任务迁移）
-export type MotifArchetypeId =
+export type MotifId =
   | "banner-motif" | "rail-motif" | "poster-motif"
   | "constellation-motif" | "corner-ornament-motif" | "tone-adaptive-motif"
   | "campaign-motif" // 2026-07-13：多彩笔刷涂鸦（campaign 专属，memphis 拆分 A）

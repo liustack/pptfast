@@ -14,12 +14,12 @@ import type { StyleTokens } from "./tokens";
  * （`definitions.ts`）对 cover/content/ending 三页型逐一实测 text/muted 与该
  * 页型默认背景的对比度，要求 ≥3.0——且 text/muted 是全主题单值 token。若
  * cover 取正红 #C8102E，则 text #2B2020 对红仅 ~2.68:1、muted 对红 ~1.0-1.3:1，
- * 双双跌破 3.0 地板（chapter 因八个 chapter archetype 全部走
+ * 双双跌破 3.0 地板（chapter 因八个 chapter layout 全部走
  * `readableOn`/`accessibleInk` 自适应取墨，被 `CONTRAST_CHECKED_SLIDE_TYPES`
  * 刻意豁免，故可整版红）。而 content/ending 必须是浅底（正文可读性，plan
  * 裁定 1「正文页不可整版红」），浅底又要求 text/muted 是深墨——同一对 token
  * 不可能既在红底达标又在浅底达标。结论：**cover 随 content/ending 取暖米白**，
- * 封面的庄重红金身份改由红色结构型 archetype（banner-title 的红强调条、
+ * 封面的庄重红金身份改由红色结构型 layout（banner-title 的红强调条、
  * left-anchor 的 40% 红色块、split-diagonal 的红斜切块——后两者走 readableOn
  * 反白，banner-title 则是浅底上的红标题+红条，靠 primary·bg 5.51:1 直接达标）
  * + 红金 motif 承载（红作结构色，正是裁定 1「红作结构色」的落地）。这与
@@ -39,7 +39,7 @@ import type { StyleTokens } from "./tokens";
  *     ~6.48:1，双双清 4.5:1 正文门槛（`colors.muted contrast` 套件要求），
  *     起点即达标，无需二次校准。
  *   - chapter 底色取 primary 正红：白字对 red ~5.88:1（≥4.5），text 墨对 red
- *     ~2.68:1——`readableOn` 两墨取优，chapter archetype 稳态选中白字，大字
+ *     ~2.68:1——`readableOn` 两墨取优，chapter layout 稳态选中白字，大字
  *     可读；正是 chapter 被对比度地板豁免、可整版红的原因。
  */
 export const VERMILION_TOKENS: StyleTokens = {
@@ -68,7 +68,7 @@ export const VERMILION_TOKENS: StyleTokens = {
   },
   shape: { radius: 2, gapScale: 1 }, // 庄重利落（方正克制，汇报体不求圆润）
   defaultBackgrounds: {
-    cover: { kind: "color", value: "#FBF7F0" }, // 浅底（红身份来自结构型 archetype + motif，见文件头背景裁定）
+    cover: { kind: "color", value: "#FBF7F0" }, // 浅底（红身份来自结构型 layout + motif，见文件头背景裁定）
     chapter: { kind: "color", value: "#C8102E" }, // 正红整版（白字走 readableOn，chapter 被对比度地板豁免）
     content: { kind: "color", value: "#FBF7F0" },
     ending: { kind: "color", value: "#FBF7F0" },

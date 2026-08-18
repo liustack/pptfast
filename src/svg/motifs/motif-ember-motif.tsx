@@ -2,14 +2,14 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * ember-motif archetype（themes-16 wave, task T3）：创业路演/暖色能量主题
+ * ember-motif（themes-16 wave, task T3）：创业路演/暖色能量主题
  * 专属装饰语言——**上升火花**：沿一段上升弧线（二次贝塞尔曲线取样，非直线）
  * 渐次缩小、渐次淡出的圆点粒子串，读出「起飞/热身」的上升动势。每串粒子
  * 起点最大最亮（贴近地面/角落，能量最足），沿弧线向上飘散时半径与不透明度
  * 同步衰减，尾部几颗几乎融入背景——克制布置，参考 classroom-motif 的角落
  * 策略：cover/ending 强档（角落多串火花+弱一档的伴随小火花），content 极轻
  * （单角一串短火花），chapter 完全退让（return null，同 pulse-motif/
- * terra-motif 的 chrome 碰撞判断——8 个 chapter archetype 都在整页满版
+ * terra-motif 的 chrome 碰撞判断——8 个 chapter layout 都在整页满版
  * primary 色块上画巨幅居中标题，可用净空本就零碎，不额外叠加装饰）。
  * 颜色取 ctx.colors（primary/accent/chartPalette），零 baked hex。实色
  * circle + opacity（无渐变无 filter，预览/导出一致）。LCG 确定性
@@ -56,7 +56,7 @@ export function EmberMotif({ ir, slide, ctx }: DecorProps) {
   const { primary, accent, chartPalette } = ctx.colors
   const [, navy, , warmGray] = chartPalette
 
-  // chapter 全部 8 个 archetype 都在整页满版 primary 色块上画巨幅居中标题
+  // chapter 全部 8 个 layout 都在整页满版 primary 色块上画巨幅居中标题
   // （部分还带右下角编号水印/底部进度轨），可用净空本就零碎——同
   // pulse-motif/terra-motif 的 chrome 碰撞判断，chapter 完全退让。
   if (slide.type === "chapter") return null

@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * pulse-motif archetype（themes-16 wave, task T1）：医疗健康主题专属装饰
+ * pulse-motif（themes-16 wave, task T1）：医疗健康主题专属装饰
  * 语言——**细脉搏线**（ECG 心跳线：贯穿的细折线，平直基线中夹一段
  * QRS 波形尖峰）+ **圆润胶囊/细胞圆点簇**（药丸形状 + 大小错落的圆点，
  * 部分空心描边像细胞膜）。克制布置，参考 classroom-motif 的角落策略：
@@ -63,7 +63,7 @@ export function PulseMotif({ ir, slide, ctx }: DecorProps) {
   const { primary, accent, chartPalette } = ctx.colors
   const [, , sky, sand] = chartPalette
 
-  // chapter 全部 8 个 archetype 都在整页满版 primary 色块上画巨幅居中标题
+  // chapter 全部 8 个 layout 都在整页满版 primary 色块上画巨幅居中标题
   // （部分还带右下角编号水印/底部进度轨），可用净空本就零碎——同
   // classroom-motif 的 chrome 碰撞判断，chapter 完全退让，不额外叠加装饰。
   if (slide.type === "chapter") return null

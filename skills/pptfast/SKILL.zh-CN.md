@@ -46,7 +46,7 @@ pptfast themes --json      # built-in themes (id + label)
 
 永远不要凭上一个 session 的记忆、或凭这份文件本身的记忆去写 IR 或 spec——schema 会演进，`schema`/`narratives`/`themes` 的实际输出永远优先。
 
-**边界页规则——现在就记住，这是最常见的错误：** `cover`、`chapter`、`ending` 三种页面，不论用哪个 archetype，永远不渲染 `components` 或 `footnote`，没有例外。这类内容要放到 `content` 页面上。在 spec 阶段就弄错，意味着之后要重写已经写好的真实内容——`validate` 会用 `"<type>" slides do not render components/footnote — move this content to a content slide or remove it` 这条报错抓到它，但那时你已经把内容写完了，还得再搬一次。
+**边界页规则——现在就记住，这是最常见的错误：** `cover`、`chapter`、`ending` 三种页面，不论用哪个 layout，永远不渲染 `components` 或 `footnote`，没有例外。这类内容要放到 `content` 页面上。在 spec 阶段就弄错，意味着之后要重写已经写好的真实内容——`validate` 会用 `"<type>" slides do not render components/footnote — move this content to a content slide or remove it` 这条报错抓到它，但那时你已经把内容写完了，还得再搬一次。
 
 ```json
 // pages/closing.json — spec type "ending" — WRONG: components never render on an ending page

@@ -59,7 +59,7 @@ type WaterfallItem = WaterfallComponent["items"][number]
  * `MUTED_SURFACE_CLASS`) — but this file threads every one of them through
  * `accessibleInk` regardless (against the real resolved page background,
  * `ctx.defaultBg ?? ctx.colors.bg`) since a full-body component renders
- * without any surrounding archetype chrome to fall back on. The zero-baseline
+ * without any surrounding layout chrome to fall back on. The zero-baseline
  * reference line and inter-bar dashed connectors are strokes, never a text
  * fill, using `colors.muted` — the same "stroke-only, not a muted *fill*"
  * carve-out `bullets.tsx`/`rings.tsx`/`comparison.tsx` already rely on

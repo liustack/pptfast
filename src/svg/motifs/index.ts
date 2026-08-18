@@ -1,4 +1,4 @@
-import type { MotifArchetype, MotifArchetypeId } from "./types"
+import type { Motif, MotifId } from "./types"
 import { CornerOrnamentMotif } from "./motif-corner-ornament-motif"
 import { RailMotif } from "./motif-rail-motif"
 import { BannerMotif } from "./motif-banner-motif"
@@ -17,13 +17,13 @@ import { TerraMotif } from "./motif-terra-motif"
 import { EmberMotif } from "./motif-ember-motif"
 import { VermilionMotif } from "./motif-vermilion-motif"
 
-export type { MotifArchetype, MotifArchetypeId } from "./types"
+export type { Motif, MotifId } from "./types"
 
 // Wave 3 motif 注册表：六 motif id（每主题一个）已随各自的 content 任务
 // 全部迁完，tech 的 constellation-motif 是最后一个（Wave 3 Task 22）——收紧
 // 回完整 Record，不再是 Partial 过渡态（沿用 chapter 页型在 Wave 2 收尾任务
 // 的同一模式，见 index-chapter.ts）。
-export const MOTIF_ARCHETYPES: Record<MotifArchetypeId, MotifArchetype> = {
+export const MOTIFS: Record<MotifId, Motif> = {
   "corner-ornament-motif": CornerOrnamentMotif,
   "rail-motif": RailMotif,
   "banner-motif": BannerMotif,

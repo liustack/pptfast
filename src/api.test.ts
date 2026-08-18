@@ -145,7 +145,7 @@ describe("validateIr", () => {
       expect(v.ok).toBe(true)
     })
 
-    it("accepts a content slide naming a valid archetype layout id", () => {
+    it("accepts a content slide naming a valid layout id", () => {
       const v = validateIr({
         ...raw,
         slides: [
@@ -184,7 +184,7 @@ describe("validateIr", () => {
     // stands in for the not-yet-built `quote-stage` (T2's job) — this task
     // is the mechanism only.
     describe("pinOnly layout: explicit pin still passes applicability", () => {
-      const PIN_ONLY_TEST_ID = "test-pin-only-archetype"
+      const PIN_ONLY_TEST_ID = "test-pin-only-layout"
 
       beforeEach(() => {
         LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = {
@@ -199,7 +199,7 @@ describe("validateIr", () => {
         delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
       })
 
-      it("accepts a content slide explicitly pinning a pinOnly archetype layout id", () => {
+      it("accepts a content slide explicitly pinning a pinOnly layout id", () => {
         const v = validateIr({
           ...raw,
           slides: [
@@ -594,7 +594,7 @@ describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)"
   const bullets = { type: "bullets" as const, items: ["a"] }
 
   it.each(["cover", "chapter", "ending"] as const)(
-    "hard-rejects a %s slide carrying components — every archetype in that family drops them silently",
+    "hard-rejects a %s slide carrying components — every layout in that family drops them silently",
     (type) => {
       const v = validateIr({
         ...raw,
@@ -636,7 +636,7 @@ describe("boundary-page render-surface gate (bench-driven fixes wave, defect D)"
   })
 
   it.each(["cover", "chapter", "ending"] as const)(
-    "accepts a %s slide carrying only a subheading — never gated, since no type drops it on every archetype (corrects the benchmark's initial hypothesis that subheading might belong here too)",
+    "accepts a %s slide carrying only a subheading — never gated, since no type drops it on every layout (corrects the benchmark's initial hypothesis that subheading might belong here too)",
     (type) => {
       const v = validateIr({
         ...raw,
@@ -802,7 +802,7 @@ describe("describeQualityIssue: density/bullets English messages (W3 task 3, spe
   // `n` is the slide's total component count (what the density gate counts
   // against); `withImage` prepends one `image` component (counted as one of
   // `n`) so a pinned takeover layout actually takes over (findImageComponent
-  // must find something) instead of falling through to archetype auto-pick.
+  // must find something) instead of falling through to layout auto-pick.
   const denseSlide = (n: number, opts: { layout?: string; withImage?: boolean } = {}) => ({
     type: "content" as const,
     heading: "Dense",
@@ -1870,7 +1870,7 @@ describe("registerTheme end-to-end (W3 task 4)", () => {
       },
       brand: {},
       tags: [],
-      // Narrow (single-archetype) curated set per slide type — proves
+      // Narrow (single-layout) curated set per slide type — proves
       // selection actually respects the registered theme's own curation
       // rather than falling back to consulting's allowed set.
       layouts: {

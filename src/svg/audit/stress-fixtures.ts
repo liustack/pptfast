@@ -62,7 +62,7 @@ export const MIXED_LONG =
  * unshrunk-fontSize repro of the same defect class, using the reviewer's
  * exact 101-char sample) for the component-level, box-width-swept proof.
  * This fixture's job is end-to-end coverage across all 13 real themes'
- * real archetype selection, not an isolated width sweep.
+ * real layout selection, not an isolated width sweep.
  */
 export const SCREAMING_SNAKE_LONG =
   "export const MAX_RETRY_COUNT_FOR_DISTRIBUTED_TRANSACTION_COMPENSATION_STRATEGY_ACROSS_MULTIPLE_AVAILABILITY_ZONES_AND_REGIONS = 3"
@@ -255,9 +255,9 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
         // no test looked, but because no fixture's content shape could ever
         // trigger the code path being measured. `layout` is pinned (like
         // `quote_stage`'s own pinned entries below) so this fixture always
-        // exercises `constellation-ending` regardless of which archetype a
+        // exercises `constellation-ending` regardless of which layout a
         // given theme happens to curate into its `ending` pool — the point
-        // is coverage of the archetype itself, not of theme curation.
+        // is coverage of the layout itself, not of theme curation.
         // Locked by `deck-audit.test.ts`'s dedicated "constellation-ending
         // accent period contrast" 16-theme sweep.
         type: "ending",
@@ -1332,13 +1332,13 @@ export const STRESS_DECKS: Record<string, PptxIR> = {
   ]),
 
   // quote_stage (quote-stage wave, task T2, 裁定 4): pptfast's first
-  // `pinOnly` archetype (registry.ts's `LayoutDefinition.pinOnly`) — the
-  // "content archetypes" auto-pick fixtures throughout the rest of this
+  // `pinOnly` layout (registry.ts's `LayoutDefinition.pinOnly`) — the
+  // "content layouts" auto-pick fixtures throughout the rest of this
   // file never reach it (it's excluded from every theme's curated pool by
   // construction), so it needs its own explicitly-pinned deck to get any
   // pathological-content coverage from this baseline at all. Two pages:
   // an extreme CJK quote at capacity 0 (a pure quote, no attribution — the
-  // archetype's own most minimal legal shape) and an extreme mixed
+  // layout's own most minimal legal shape) and an extreme mixed
   // CJK/Latin/digit quote at capacity 1 (heading + subheading + one
   // attribution component all extreme simultaneously) — both must still
   // report zero overflow findings: `fitHeadingLines`'s shrink-then-truncate

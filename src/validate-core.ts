@@ -246,7 +246,7 @@ function describeQualityIssue(issue: QualityIssue): string {
       // in task T3 to match the check going metadata-driven off `headingFit`
       // (ir-quality.ts's own comment on that field) — fires for any pinned
       // layout that declares `headingFit`, whose heading *is* the page's
-      // entire content (unlike an ordinary archetype's decorative heading,
+      // entire content (unlike an ordinary layout's decorative heading,
       // long_heading's warn-only case above) — a heading that still can't
       // fit even at fitHeadingLines's own minimum font size is real content
       // loss, the same class bullet_item_overflow already hard-blocks for
@@ -336,11 +336,11 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
 /**
  * Boundary-page render-surface hard gate (bench-driven fixes wave, defect
  * D): `cover`, `chapter`, and `ending` slides can never render `components`
- * or `footnote` — every archetype in all three families
- * (`src/svg/archetypes/index-{chapter,ending}.ts`'s registries, the 8 cover
- * archetypes `index.ts` re-exports, plus the background-asset
+ * or `footnote` — every layout in all three families
+ * (`src/svg/layouts/index-{chapter,ending}.ts`'s registries, the 8 cover
+ * layouts `index.ts` re-exports, plus the background-asset
  * `ImageCoverPage` takeover that intercepts cover/chapter before any
- * archetype runs, `src/svg/image-pages.tsx` — `full-slide-svg.tsx`'s
+ * layout runs, `src/svg/image-pages.tsx` — `full-slide-svg.tsx`'s
  * `imageCoverTakeover` branch) was read to confirm zero exceptions before
  * this gate was written. A slide carrying either field on one of these
  * three types was previously silently dropped at render with no signal
@@ -350,16 +350,16 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
  * the "always dead, zero exceptions" subset of.
  *
  * `content` is deliberately never gated on any field: its own `footnote`
- * (dropped only by the `two-column` archetype) and `subheading` (dropped
+ * (dropped only by the `two-column` layout) and `subheading` (dropped
  * only by the `image-top` takeover) are each a minority exception among
- * that type's full archetype set, not a universal "never" — the same
+ * that type's full layout set, not a universal "never" — the same
  * reason `subheading` is deliberately absent from `cover`/`chapter`/
  * `ending`'s rule below despite the benchmark evidence that first flagged
  * this defect suspecting it might belong: `subheading` renders
- * unconditionally on all 8 cover archetypes, on 5 of `chapter`'s 8 (all but
+ * unconditionally on all 8 cover layouts, on 5 of `chapter`'s 8 (all but
  * `fashion-chapter`/`poster-chapter`/`tone-adaptive-chapter`), and on 6 of
  * `ending`'s 7 (all but `tone-adaptive-ending`) — gating any of those at
- * the type level would be a false positive for the majority archetype that
+ * the type level would be a false positive for the majority layout that
  * does render it. A hard gate must be sound for every reachable render
  * path, not just the one the benchmark's four questions happened to hit.
  *

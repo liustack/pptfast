@@ -97,7 +97,7 @@ const DOMAIN_FILE_TRAITS: readonly (readonly [string, { readonly evidence: boole
 /**
  * Equivalence lock (W2 task 5): `component-traits.ts` unifies 5 component-
  * classification sets that used to live scattered across `layout.ts`,
- * `bento-layout.ts`, two archetype files (a duplicate pair), and
+ * `bento-layout.ts`, two layout files (a duplicate pair), and
  * `assertion-evidence.tsx` (inventory §"容量双系统"). Unifying them doesn't
  * change what any of them classify — every export below is pinned against
  * the exact members transcribed from its pre-refactor definition (file:line

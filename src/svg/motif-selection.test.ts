@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
 import { CANONICAL_THEME_IDS } from "../themes"
 import { THEME_DEFINITIONS, registerTheme, __resetRegisteredThemes } from "../themes/definitions"
-import { MOTIF_ARCHETYPES } from "./motifs"
+import { MOTIFS } from "./motifs"
 import { MOTIF_ANCHOR_WEIGHT, MOTIF_BASE_WEIGHT, MOTIF_CANDIDATES, resolveMotifId } from "./motif-selection"
 
 function makeIR(slides: Slide[], themeId: string, seed?: number): PptxIR {
@@ -43,12 +43,12 @@ describe("MOTIF_CANDIDATES (P1 variety wave, task 2 — table shape)", () => {
     }
   })
 
-  it("every candidate id names a real, registered motif archetype", () => {
+  it("every candidate id names a real, registered motif", () => {
     for (const id of CANONICAL_THEME_IDS) {
       const candidates = MOTIF_CANDIDATES[id]
       if (!candidates) continue
       for (const motifId of candidates) {
-        expect(MOTIF_ARCHETYPES[motifId], `theme "${id}" candidate "${motifId}" is not registered`).toBeTypeOf(
+        expect(MOTIFS[motifId], `theme "${id}" candidate "${motifId}" is not registered`).toBeTypeOf(
           "function",
         )
       }

@@ -1131,7 +1131,7 @@ function withRewrittenAssetPaths(ir: PptxIR, deckDir: string, outDir: string): P
  * *not* call `applyDeckConfig` — `assemble` materializes exactly what the
  * spec says plus each page's own auto-selected `layout` where the page file
  * left it implicit (`assembleDeck`'s own doc comment, W4 design decision
- * 10) — a portable IR file, self-contained down to which archetype each page
+ * 10) — a portable IR file, self-contained down to which layout each page
  * will render with. Theme/style overrides are `validate`/`render`/
  * `preview`'s job (each already applies the four-layer chain whether given
  * this same directory or the `deck.json` this command just wrote).

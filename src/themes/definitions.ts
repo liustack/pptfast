@@ -1,6 +1,6 @@
 import type { BackgroundSpec, BrandConfig, Slide } from "@/ir"
 import { PptfastError } from "../errors"
-import type { MotifArchetypeId } from "../svg/motifs/types"
+import type { MotifId } from "../svg/motifs/types"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 import { contrastRatio } from "../svg/ink"
 import { excludePinOnly, getLayout, layoutsForSlideType } from "../svg/layouts/registry"
@@ -25,9 +25,9 @@ export interface ThemeDefinition {
   /**
    * 主题的「选择权」配置（spec §3 theme.layouts 命名裁决；W2 任务 2 由
    * src/themes/manifest.ts〔已删除〕的旧选择权类型原地迁居于此）——四页型
-   * 各自允许哪些 archetype 参与自动选型。排印/色彩在 style，这里只放集合。
+   * 各自允许哪些 layout 参与自动选型。排印/色彩在 style，这里只放集合。
    * **W4 全集放开**（spec §3「缺省 = 全集，策展收窄塑造个性」，design
-   * decision 7）：十三内置主题四页型默认均为 {@link fullArchetypeSet} 的
+   * decision 7）：十三内置主题四页型默认均为 {@link fullLayoutSet} 的
    * 全集。design decision 7/8 曾经的六处对比度策展排除（luxe/campaign/
    * classroom 的 content 排除 banner-heading、tech 的 cover/content、
    * consulting 的 chapter）已在 W4 fix round 随对比度自适应 ink helper
@@ -37,15 +37,15 @@ export interface ThemeDefinition {
    * 撤销（backlog item 2）——十三主题四页型现在均为不折不扣的全集，无任何
    * 排除残留。页型空集 = 该页型回落调用侧兜底（十三主题四页型均非空，
    * `definitions.test.ts` 锁死）。id 是通用 string（不再按页型区分
-   * archetype id 联合类型）。
+   * layout id 联合类型）。
    */
   layouts: Record<Slide["type"], readonly string[]>
   /** Motif：单值，非 allowed-set（spec §3 示意）。undefined = 该主题无 motif 装饰（十三主题中 runway 留空，其余均已设）。 */
-  motif?: MotifArchetypeId
+  motif?: MotifId
   /**
    * A theme's own structural personality (theme-structure wave, task T1 —
    * `.issues/2026-07-26-theme-structure/plan.md`'s 控制器设计裁定 2): per
-   * page type, the archetype ids this theme's author wants `resolveArchetypeId`
+   * page type, the layout ids this theme's author wants `resolveLayoutId`
    * (`src/svg/layout-selection.ts`) to lean toward. Shape mirrors
    * `StrategyDefinition.layoutTendencies` (`@/narrative`) — the same "named
    * ids get a soft weight bump, everyone else stays at the floor" contract —
@@ -67,7 +67,7 @@ export interface ThemeDefinition {
    *
    * **Soft weight, not a whitelist — `layouts` above stays the one hard
    * boundary.** A slide type's candidate pool is built from `layouts[slideType]`
-   * *before* any tendency is ever consulted (`resolveArchetypeId`'s own
+   * *before* any tendency is ever consulted (`resolveLayoutId`'s own
    * `pool` construction), so an id this record names for a page type it is
    * not also present in that same page type's `layouts` set can never be
    * scored — it is invisible to `weightOf`, not merely down-weighted. That
@@ -94,44 +94,44 @@ export interface ThemeDefinition {
 }
 
 /**
- * Every registered *archetype* layout id applicable to `slideType`, in
+ * Every registered standard layout id applicable to `slideType`, in
  * `LAYOUT_REGISTRY`'s own insertion order (W4, spec §3's curation default:
  * "layouts 主题引用的 layout 精选集...缺省 = 全集"). Takeover layouts are
  * excluded — `layoutsForSlideType("content")` also returns the 4 image
  * takeovers (their `slideTypes` includes `"content"` too), but a curated
- * auto-pick set may only ever contain archetypes (`registerTheme`'s own
+ * auto-pick set may only ever contain standard layouts (`registerTheme`'s own
  * validation below enforces the same constraint on any caller-supplied
  * set — takeovers are addressed only via an explicit `slide.layout` pin,
- * never auto-selected). Also excludes any `pinOnly` archetype (quote-stage
+ * never auto-selected). Also excludes any `pinOnly` layout (quote-stage
  * wave, task T1 -- see `LayoutDefinition.pinOnly`'s own doc comment,
  * `../svg/layouts/registry.ts`): a pinOnly layout must never enter any
  * pool, curated or not, so the exclusion happens here rather than as a
  * later, softer filter the way `narrativesOnly` is.
  */
-function fullArchetypeSet(slideType: Slide["type"]): readonly string[] {
+function fullLayoutSet(slideType: Slide["type"]): readonly string[] {
   return excludePinOnly(layoutsForSlideType(slideType).filter((layout) => layout.kind === "archetype")).map(
     (layout) => layout.id,
   )
 }
 
 /**
- * Test-only: `fullArchetypeSet` under a `__`-prefixed name (same convention
+ * Test-only: `fullLayoutSet` under a `__`-prefixed name (same convention
  * as `__resetRegisteredThemes` below) so a pinOnly regression test can call
  * it directly against a synthetic `LAYOUT_REGISTRY` mutation -- `FULL_LAYOUTS`
- * below only ever snapshots `fullArchetypeSet`'s result once, at module
+ * below only ever snapshots `fullLayoutSet`'s result once, at module
  * load, long before any test could inject a fixture entry. Deliberately not
  * exported from `src/index.ts` (the public SDK barrel).
  */
-export function __fullArchetypeSet(slideType: Slide["type"]): readonly string[] {
-  return fullArchetypeSet(slideType)
+export function __fullLayoutSet(slideType: Slide["type"]): readonly string[] {
+  return fullLayoutSet(slideType)
 }
 
 /** The full-set default for every slide type (W4) — one registry walk, shared by every builtin theme below and by `registerTheme`'s own per-slide-type default. */
 const FULL_LAYOUTS: Record<Slide["type"], readonly string[]> = {
-  cover: fullArchetypeSet("cover"),
-  chapter: fullArchetypeSet("chapter"),
-  content: fullArchetypeSet("content"),
-  ending: fullArchetypeSet("ending"),
+  cover: fullLayoutSet("cover"),
+  chapter: fullLayoutSet("chapter"),
+  content: fullLayoutSet("content"),
+  ending: fullLayoutSet("ending"),
 }
 
 /**
@@ -170,7 +170,7 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 每主题的 layouts + motif。**W4 全集放开**（spec §3「缺省 = 全集，策展收窄
  * 塑造个性」，design decision 7）：十三主题的 cover/chapter/content/ending
  * 均是 {@link FULL_LAYOUTS} 对应页型的全集，本表下面各条目因此不再需要逐
- * archetype 罗列——只保留仍然成立的策展叙事（motif/tokens 气质的由来）。
+ * layout 罗列——只保留仍然成立的策展叙事（motif/tokens 气质的由来）。
  * W2 任务 2～W4 之前的窄策展集（chapter=1、ending=1、content=2、cover=1-3）
  * 随本表一起退役：那段历史留在 git blame，不再复述于此。与 BRANDS 分开维护
  * 是因为这两块是全量 Record（十三主题每个都必须有非空 layouts），不像
@@ -179,11 +179,11 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * **W4 fix round（design decision 8 的根因处置收官）**：design decision 7 的
  * 三处既有对比度裁定（luxe/campaign/classroom 的 content 排除
  * banner-heading）与本任务实现期新增的三处阳性裁定（tech 的 cover/content、
- * consulting 的 chapter）——共六处——全部源于同一枚缺陷模式：archetype 画在
+ * consulting 的 chapter）——共六处——全部源于同一枚缺陷模式：layout 画在
  * 一块自己不控制（或自画但未检查明度）的背景上、baked 死一个文字色。fix
  * round 引入的对比度自适应 ink helper（`src/svg/ink.ts` 的
  * `readableOn`/`accessibleInk`）从根上修复了这枚缺陷，六处例外逐一用
- * `auditDeck` 复核（对应 archetype 现在自适应取色）后确认全部转为可读，予以
+ * `auditDeck` 复核（对应 layout 现在自适应取色）后确认全部转为可读，予以
  * 撤销——`LAYOUTS` 现在是十三主题的纯 {@link FULL_LAYOUTS} 全集（A 方案纯
  * 终态），不再有任何 content/cover/chapter 排除残留于这六处。
  *
@@ -202,7 +202,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // Theme-structure wave, task T2: consulting's own motif is
     // `banner-motif`, and `banner-title`/`banner-chapter`/`banner-ending`
     // are verbatim extractions of consulting's own predecessor render code
-    // (`MckinseyNavyCover`/`Chapter`/`Ending`, see each archetype file's own
+    // (`MckinseyNavyCover`/`Chapter`/`Ending`, see each layout file's own
     // header) — this is the theme's native "assertion banner" register, not
     // a borrowed one.
     //
@@ -240,7 +240,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     //   the plainest possible closing register, matching consulting's own
     //   restrained-report character.
     //
-    // Real-pull verification (direct `resolveArchetypeId` sweep, same
+    // Real-pull verification (direct `resolveLayoutId` sweep, same
     // technique the themes-16 wave's T2/T3 reviewers used, against this
     // repo's `theme-structure.test.ts` fixture at seed=1, strategy
     // `briefing`): a *single* appended id on `ending` cannot fix it — every
@@ -248,7 +248,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // `TENDENCY_WEIGHT`(3) after, so any single append moves
     // `weightedPickBySeed`'s modulus from 11 to 13 *regardless of which id
     // was appended* (`variety.ts`'s `target = hash % totalWeight`) — the
-    // fixed hash for this fixture's `ending-archetype:6` salt then lands in
+    // fixed hash for this fixture's `ending-layout:6` salt then lands in
     // exactly one of two possible buckets no matter the choice, and both of
     // those buckets were already occupied byte-for-byte by academic's and
     // runway's own pre-existing sequences (see git blame on this comment for
@@ -320,7 +320,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // Theme-structure wave, task T2: `fashion-masthead`/`fashion-chapter`/
     // `fashion-ending` were built exclusively for runway (2026-07-10, pure
     // new writes, extreme-scale full-bleed typography) — with no motif of
-    // its own, this archetype family is runway's only structural signature
+    // its own, this layout family is runway's only structural signature
     // beyond token colors.
     layoutTendencies: {
       cover: ["fashion-masthead"],
@@ -377,13 +377,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // - ending `poster-ending` (read `ending-poster-ending.tsx`): fully
     //   centered, italic serif heading + italic subheading + a short accent
     //   bar — the same italic-serif literary voice journal's own
-    //   `editorial-masthead` cover already opens with (that archetype's own
+    //   `editorial-masthead` cover already opens with (that layout's own
     //   "centered literary masthead + italic subheading" register), now
     //   closing the deck in the same voice it opened in. Not in
     //   `briefing.identityTendencies.ending` (`["masthead-ending",
     //   "banner-ending"]`).
     //
-    // Real-pull verification (direct `resolveArchetypeId` sweep, same
+    // Real-pull verification (direct `resolveLayoutId` sweep, same
     // technique the themes-16 wave's T2/T3 reviewers used, against this
     // repo's `theme-structure.test.ts` fixture at seed=1, strategy
     // `briefing`): a *single* appended id on `chapter` cannot fix the first
@@ -391,7 +391,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // mechanism as consulting's ending above (`variety.ts`'s
     // `target = hash % totalWeight`): any single append moves the chapter
     // pool's modulus from 12 to 14 regardless of which id is appended, and
-    // the fixed hash for this fixture's `chapter-archetype:1` salt always
+    // the fixed hash for this fixture's `chapter-layout:1` salt always
     // lands on `fashion-chapter` at that modulus — a value already occupied
     // (together with journal's own already-live `poster-center` cover pick
     // at this fixture) by academic's and runway's own pre-existing
@@ -465,18 +465,18 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // pulse（医疗健康/生命科学，2026-07-28 themes-16 wave task T1，第 14 主题）：
   // 极浅薄荷白底+深青绿主色的清洁诊疗气质，细脉搏线+胶囊/细胞圆点簇由专属
   // pulse-motif 承载。pulse 没有 legacy 预兆代码可提炼（不像 academic/tech
-  // 等六个既有声明主题那样有自己的原生 archetype 家族——那六家各自占用
+  // 等六个既有声明主题那样有自己的原生 layout 家族——那六家各自占用
   // cover/chapter/ending 三池里互不重叠的一整个「家族」：banner/poster/
   // rail/constellation/fashion/masthead），layoutTendencies 因此从通用
-  // archetype 池里挑选气质相符的 id（plan 裁定 3）：
+  // layout 池里挑选气质相符的 id（plan 裁定 3）：
   //   - cover `split-diagonal`：primary 色块以硬斜切线收边，标题在净空区
   //     跨近斜切线——一道果断的斜切像心电图尖峰的陡直落笔，呼应 pulse 自己
-  //     的脉搏节律气质，同时是 P3「新表达」archetype，不与任何既有声明
+  //     的脉搏节律气质，同时是 P3「新表达」layout，不与任何既有声明
   //     主题的 cover 家族重合（重合仅 strategy 层的 instructional 一家，
   //     不与默认 briefing 重合）。
   //   - chapter `tone-adaptive-chapter`：居中大标题+右下角编号水印，朴素
   //     无花哨——`narrative/index.ts` 里明确"从不出现在任何 strategy 的
-  //     identityTendencies 字段里"的三个"万金油" identity archetype 之一
+  //     identityTendencies 字段里"的三个"万金油" identity layout 之一
   //     （该文件自己的文档用语），pulse 在它上面永远拿到满额差异化权重，
   //     零 strategy 重合。
   //   - ending `banner-ending`："联系"区块+版权行的务实收尾——生物医药 BD/
@@ -504,7 +504,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // terra（可持续/ESG，2026-07-28 themes-16 wave task T2，第 15 主题）：
   // 沙色底+橄榄绿主色的朴素大地气质，等高线+叶脉/种子点由专属 terra-motif
   // 承载。同 pulse 一样没有 legacy 预兆代码可提炼，layoutTendencies 从通用
-  // archetype 池里挑（plan 裁定 3）——挑选时先盘点 8 个既有声明主题（含
+  // layout 池里挑（plan 裁定 3）——挑选时先盘点 8 个既有声明主题（含
   // pulse）已经用掉的 id：cover 池 8 个 id 里 7 个已被声明（banner-title/
   // poster-center/left-anchor/constellation/fashion-masthead/editorial-
   // masthead/split-diagonal），ending 池 7 个里 6 个已被声明（banner-ending/
@@ -512,11 +512,11 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // ending）——两池各自只剩一个从未被任何主题声明过的 id：
   //   - cover `tone-adaptive-header`：唯一零主题重合的 cover id，同时是
   //     `narrative/index.ts` 里"从不出现在任何 strategy 的 identityTendencies
-  //     字段里"的万金油 identity archetype——自适应留白的克制封面，恰好呼应
+  //     字段里"的万金油 identity layout——自适应留白的克制封面，恰好呼应
   //     terra「朴素、根系」气质里"朴素"的那一半：不靠硬构图抢眼，靠底色和
   //     motif 本身的地形线说话。
   //   - ending `tone-adaptive-ending`：唯一零主题重合的 ending id，同 cover
-  //     一样是万金油 identity archetype，零 strategy 重合——"长期主义"收尾
+  //     一样是万金油 identity layout，零 strategy 重合——"长期主义"收尾
   //     不需要一句响亮的收官宣言，克制留白比横幅更贴题。
   //   - chapter 轴刻意不声明：masthead-chapter 落在 strategy `briefing` 的
   //     identityTendencies.chapter 里，默认 strategy 下 max(3,3)=3，声明它
@@ -549,7 +549,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 因此不找"未占用 id"，改用 brief 指定的工具：复用 id + 组合交互 +
   // 部分声明。
   //
-  // 实测穷举（`resolveArchetypeId` 直连，同 T2 terra 的 brute-force 方法，
+  // 实测穷举（`resolveLayoutId` 直连，同 T2 terra 的 brute-force 方法，
   // 脚本临时写在仓库外未入库）：先按气质从每轴挑 2-3 个候选——cover
   // {fashion-masthead, poster-center, split-diagonal}（满版色块/居中海报/
   // 硬切对角，都读"发布感"）、chapter {fashion-chapter, poster-chapter,
@@ -603,12 +603,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // vermilion（庄重公务汇报，2026-08-06 gov-theme wave，第 17 主题）：暖米白底
   // + 正红主色的庄重红金公务气质，旗帜感绸带弧线 + 金色光芒细线由专属
   // vermilion-motif 承载。同 pulse/terra/ember 一样没有 legacy 预兆代码可提炼，
-  // layoutTendencies 从通用 archetype 池里挑气质相符的 id（plan 裁定 3：汇报体
+  // layoutTendencies 从通用 layout 池里挑气质相符的 id（plan 裁定 3：汇报体
   // 的结构性格 = banner 族「横幅/庄重」+ rail 族「条理」，避开与 consulting
   // 完全同套）。cover/chapter/ending 三池的 id 到 ember 落地时已被既有 9 个
   // 声明主题全占（cover 8/8、chapter 除 roman-chapter 外全占、ending 7/7），
   // 故不找「未占用 id」，改用 brief 指定的工具：复用 id + 组合交互 + 部分声明
-  // （ember 先例）。真穷举（`resolveArchetypeId` 直连，同 T2/T3 的 brute-force
+  // （ember 先例）。真穷举（`resolveLayoutId` 直连，同 T2/T3 的 brute-force
   // 方法，脚本临时写在仓库外未入库）先按 ruling 3 气质挑候选，逐一在
   // `theme-structure.test.ts` 同款 fixture（seed=1，默认 briefing）实测——
   // 关键发现：**chapter/ending 各自单声明只收敛到少数可达结果**（chapter 非
@@ -638,7 +638,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     fixture/seed 的单声明只收敛到 banner-title 或 poster-center 两个可达
   //     结果（ember 注释已详述：briefing 已把两者锁到权重 3，任何第三个 cover
   //     id 的声明要么零边际权重、要么被同一固定哈希打进 poster-center 桶），
-  //     无真实分化空间。汇报封面的庄重红金身份本就由红色结构型 archetype
+  //     无真实分化空间。汇报封面的庄重红金身份本就由红色结构型 layout
   //     （banner-title 红强调条——浅底红字直接达标 / left-anchor 40% 红块与
   //     split-diagonal 红斜切——readableOn 反白）+ 红金 motif 承载，不靠声明一个零区分度的 cover
   //     tendency——没有区分度的声明是噪音，裁剪比硬凑更诚实。
@@ -748,15 +748,15 @@ const CONTRAST_FLOOR = 3.0
  * Slide types this check actually walks — `"chapter"` is deliberately
  * excluded, same as `full-matrix-contrast.test.ts`'s `colors.muted contrast`
  * suite (see that block's own comment). Verified by reading, not assumed:
- * every one of the 8 chapter archetypes (`chapter-*.tsx`) imports
+ * every one of the 8 chapter layouts (`chapter-*.tsx`) imports
  * `accessibleInk`/`readableOn` from `../svg/ink` and routes *both*
  * `colors.text` and `colors.muted` through it before ever painting a fill —
  * none paints either token raw against `ctx.defaultBg`. This isn't a
  * per-theme coincidence this function would need to re-verify per
  * registration: `registerTheme` can only curate a subset of *already
- * existing* archetypes ("a theme never ships new render code", this
+ * existing* layouts ("a theme never ships new render code", this
  * function's own doc comment above) drawn from that same shared, fixed
- * chapter-archetype set — so the raw-token-vs-chapter-background pairing
+ * chapter-layout set — so the raw-token-vs-chapter-background pairing
  * this check would otherwise measure is structurally never what actually
  * renders, for any theme this function could ever accept, not just the 13
  * builtins. A probe against all 13 builtins' real tokens confirms this is
@@ -767,7 +767,7 @@ const CONTRAST_FLOOR = 3.0
  * and/or `colors.muted` for all 3 of them (measured 1.00:1/2.41:1/2.23:1 for
  * text, 3.26:1/1.18:1/1.46:1 for muted, against their own chapter
  * background) despite every one of them rendering correctly today, precisely
- * because their chapter archetypes never read these tokens raw.
+ * because their chapter layouts never read these tokens raw.
  */
 const CONTRAST_CHECKED_SLIDE_TYPES = ["cover", "content", "ending"] as const
 
@@ -832,12 +832,12 @@ function warnUnmeasuredFace(id: string, role: "heading" | "body", stack: string[
  * each of its four slide-type entries is independently optional too. A
  * slide type this theme doesn't narrow (its own key omitted, or the whole
  * `layouts` object omitted) defaults to that type's full registered-
- * archetype set ({@link FULL_LAYOUTS}) — the exact same default every
+ * layout set ({@link FULL_LAYOUTS}) — the exact same default every
  * builtin theme in `LAYOUTS` above resolves to for a slide type it doesn't
  * curate away from. `getThemeDefinition`/`REGISTERED_THEMES` still only ever
  * hold the fully-resolved `ThemeDefinition` shape (`layouts` total over all
  * four types) — `registerTheme` performs the defaulting once, here, so
- * every downstream reader (`resolveArchetypeId` foremost) can keep assuming
+ * every downstream reader (`resolveLayoutId` foremost) can keep assuming
  * a total record and never re-derive "was this slide type curated or
  * defaulted".
  */
@@ -854,8 +854,8 @@ export type ThemeRegistration = Omit<ThemeDefinition, "layouts"> & {
  * - each of the four slide types, once defaulted ({@link ThemeRegistration}),
  *   must have at least one layout id that is both registered in
  *   `LAYOUT_REGISTRY` and valid for that slide type (the same registry
- *   `resolveArchetypeId`/`FullSlideSvg` select from — a theme never ships
- *   new render code, only a curated subset of the existing 30 archetypes +
+ *   `resolveLayoutId`/`FullSlideSvg` select from — a theme never ships
+ *   new render code, only a curated subset of the existing 30 layouts +
  *   4 takeovers, per `docs/architecture.md`'s "Adding a theme" section). An
  *   *explicit* empty array for a slide type still fails this check (the
  *   default only kicks in when the key — or `layouts` itself — is omitted
@@ -897,7 +897,7 @@ export function registerTheme(def: ThemeRegistration): void {
       if (!layout) {
         throw new PptfastError(`theme "${def.id}" layouts.${slideType} references unknown layout id "${id}"`)
       }
-      // Curated sets feed the auto-selection path, which assumes archetype ids
+      // Curated sets feed the auto-selection path, which assumes layout ids
       // only — a takeover id here would crash at render (undefined component).
       if (layout.kind !== "archetype") {
         throw new PptfastError(

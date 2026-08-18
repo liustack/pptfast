@@ -3,7 +3,7 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
 import { readableOn } from "../ink"
 
 /**
- * rail-motif archetype（spec §3.2，Wave 3 Task 18）：a soft quarter-disc arc
+ * rail-motif（spec §3.2，Wave 3 Task 18）：a soft quarter-disc arc
  * in the page's bottom-right corner, drawn via `path` (svg2pptx's `path`
  * primitive, allowed starting P2 — see magazine's `CornerOrnamentMotif` for
  * the other P2 precedent, this file's second use). Cover gets nothing here

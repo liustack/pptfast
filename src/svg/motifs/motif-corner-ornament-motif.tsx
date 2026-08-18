@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * corner-ornament-motif archetype（spec §3.2，Wave 3 Task 17）：four L-shaped
+ * corner-ornament-motif（spec §3.2，Wave 3 Task 17）：four L-shaped
  * double-line corner ornaments on cover/chapter ("强", the 4-corner
  * treatment is the tier's whole look — chapter mirrors cover, no
  * separable cover-only bonus withheld); content/ending ("弱", ending

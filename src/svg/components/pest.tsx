@@ -49,7 +49,7 @@ type QuadrantKey = "political" | "economic" | "social" | "technological"
  * this same task — `pest.tsx` had inherited `swot.tsx`'s original
  * `Math.max(cellH, ...)` floor byte-for-byte instead, which only ever grows
  * a row, never shrinks it below its own unstretched natural height). A
- * full-body component gets the archetype's *fixed* content-rect height
+ * full-body component gets the layout's *fixed* content-rect height
  * verbatim (`svg-content.tsx`), never a box sized to its own `measure()`
  * value, and schema-max content (5 items in every one of the 4 quadrants)
  * combined with a heading long enough to force a 2-line wrap can shrink that
@@ -65,7 +65,7 @@ type QuadrantKey = "political" | "economic" | "social" | "technological"
  * handles `box.h` exceeding the natural total — the two never engage at
  * once. Same one compound residual as `five-forces.tsx`'s own admission:
  * schema-max content *and* a 2-line-wrapped heading *and* the narrowest
- * curated archetype, all three at once, can still reintroduce a small
+ * curated layout, all three at once, can still reintroduce a small
  * overflow even at the font-scale floor — out of scope to chase further,
  * documented rather than silently left unmentioned (see this file's own
  * dedicated 13-theme schema-max + long-heading sweep in

@@ -8,7 +8,7 @@
 // pins vermilion's own declared chapter/ending ids under CJK_LONG/MIXED_LONG —
 // this file closes the remaining gap: **pathological CJK across all four slide
 // types at once, in one deck**, including the red-forward cover/chapter
-// archetypes where `readableOn` must pick white ink on the full-bleed
+// layouts where `readableOn` must pick white ink on the full-bleed
 // vermilion (the theme's signature 红底白字), all audited for zero geometry
 // findings (overflow / out-of-bounds / overlap).
 import { describe, expect, it } from "vitest"
@@ -65,7 +65,7 @@ describe("vermilion CJK-first typography (plan 裁定 4)", () => {
   })
 
   // The red identity lives on the full-bleed vermilion chapter and on the
-  // red-forward cover archetypes (banner-title's accent bar, left-anchor's
+  // red-forward cover layouts (banner-title's accent bar, left-anchor's
   // 40% primary block, split-diagonal's diagonal primary cut) — each pinned
   // here so the CJK heading is forced through the exact readableOn-on-red path
   // that makes the 红底白字 register work, and audited for zero overflow.

@@ -104,9 +104,9 @@ function computeColumnWidths(
       }
     }
   }
-  // Last-resort uniform clamp (content-archetype expansion wave, task T1 —
+  // Last-resort uniform clamp (content-layout expansion wave, task T1 —
   // found via `audit-baseline.test.ts`'s `structure_bold_headings` fixture
-  // once a content archetype narrow enough to expose it entered the pool):
+  // once a content layout narrow enough to expose it entered the pool):
   // the shrink loop above never lets a column go below `MIN_COL_W`, so when
   // `totalW` itself is narrower than `columns.length * MIN_COL_W` (schema
   // max is 8 columns — 8*64=512px, wider than this file's own author ever

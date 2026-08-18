@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * campaign-motif archetype v4（2026-07-13 用户裁决三轮返工：圆头 stroke
+ * campaign-motif v4（2026-07-13 用户裁决三轮返工：圆头 stroke
  * 弧线「没有纹理没有笔刷感」——参考图的蜡笔/干刷条是**毛糙锯齿边 +
  * 内部露底条痕 + 端头飞散颗粒**）。
  * 蜡笔条 crayon()：矩形起始 + Hobbs 边中点位移变形（长边中等方差=毛边、

@@ -17,7 +17,7 @@ import type { StyleTokens } from "./tokens";
  * 2026-07-10 三轮：炸橘辅助被否（橘只在小元素出现无大色块，「撞色」名不
  * 副实且不好看）——转企业单色系：点缀用 IKB 本色、图表天蓝/蓝灰渐次。
  * 存量 custom/gallery deck 经 LEGACY_THEME_MAP 兜底到本主题。
- * **零版式代码**：全部借用现有 archetype（split-diagonal 在 IKB 上
+ * **零版式代码**：全部借用现有 layout（split-diagonal 在 IKB 上
  * readableOn 出白字，banner-heading 横幅 baked 白字在 IKB 上对比充足）。
  */
 export const ENTERPRISE_TOKENS: StyleTokens = {

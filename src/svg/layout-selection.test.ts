@@ -9,7 +9,7 @@ import { getLayout, LAYOUT_REGISTRY, layoutsForSlideType } from "./layouts/regis
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 import { __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
 import {
-  resolveArchetypeId,
+  resolveLayoutId,
   resolveEffectiveLayoutBodyCapacity,
   resolveEffectiveLayoutId,
   resolveIrStrategy,
@@ -28,12 +28,12 @@ function makeIR(slides: Slide[], themeId: string = "consulting"): PptxIR {
   } as PptxIR
 }
 
-// Order matches `CONTENT_LAYOUTS`' own declaration order in registry.ts —
+// Order matches `CONTENT_LAYOUT_DEFS`' own declaration order in registry.ts —
 // `weightedPickBySeed` maps candidates to a weight interval in list order,
 // so tests that independently recompute an *exact* expected pick (not just
 // a distribution smoke test) need this array byte-order-identical to the
-// real pool `resolveArchetypeId` builds from `theme.layouts.content`.
-const CONTENT_ARCHETYPE_IDS = [
+// real pool `resolveLayoutId` builds from `theme.layouts.content`.
+const CONTENT_LAYOUT_IDS = [
   "narrow-column",
   "two-column",
   "rail-numbered",
@@ -45,64 +45,64 @@ const CONTENT_ARCHETYPE_IDS = [
   "side-highlight",
   "asymmetric-triptych",
   "quiet-frame",
-  // content-archetype expansion wave, task T1: content pool 10 -> 11.
+  // content-layout expansion wave, task T1: content pool 10 -> 11.
   "image-lead-split",
-  // content-archetype expansion wave, task T2: content pool 11 -> 12.
+  // content-layout expansion wave, task T2: content pool 11 -> 12.
   "split-band",
 ]
 
-// ── resolveArchetypeId (pure seed+ordinal selection, extracted from FullSlideSvg) ──
+// ── resolveLayoutId (pure seed+ordinal selection, extracted from FullSlideSvg) ──
 
-describe("resolveArchetypeId", () => {
+describe("resolveLayoutId", () => {
   const consultingLayouts = THEME_DEFINITIONS.consulting.layouts
 
   it("an explicit pin within the allowed set is honored for every member (not just seed-consistent with one)", () => {
     for (const id of consultingLayouts.cover) {
-      expect(resolveArchetypeId("cover", consultingLayouts, 999, "0", id, "briefing", null)).toBe(id)
+      expect(resolveLayoutId("cover", consultingLayouts, 999, "0", id, "briefing", null)).toBe(id)
     }
   })
 
-  it("an explicit pin outside the allowed set is still honored when it's a registered archetype applicable to the slide type (spec §3: explicit bypasses curation)", () => {
+  it("an explicit pin outside the allowed set is still honored when it's a registered layout applicable to the slide type (spec §3: explicit bypasses curation)", () => {
     // "banner-heading" is luxe's one curated content exclusion (W4 design
     // decision 7's contrast adjudication — see definitions.ts) — not a
     // member of luxe's own curated set, proving an explicit pin still
-    // bypasses curation even for the one archetype a theme deliberately
-    // excludes (every other archetype id is now in every theme's full-set
+    // bypasses curation even for the one layout a theme deliberately
+    // excludes (every other layout id is now in every theme's full-set
     // curated pool, so this exclusion is the only "outside the family"
     // example left post-W4).
     expect(
-      resolveArchetypeId("content", THEME_DEFINITIONS.luxe.layouts, 1, "0", "banner-heading", "briefing", null),
+      resolveLayoutId("content", THEME_DEFINITIONS.luxe.layouts, 1, "0", "banner-heading", "briefing", null),
     ).toBe("banner-heading")
   })
 
   it("falls back to seed-pick when the pin is unregistered, wrong kind, or has the wrong slideTypes", () => {
     for (const bad of ["not-a-real-layout", "image-split", "banner-title"]) {
-      const picked = resolveArchetypeId("content", THEME_DEFINITIONS.tech.layouts, 5, "0", bad, "briefing", null)
-      expect(CONTENT_ARCHETYPE_IDS).toContain(picked)
+      const picked = resolveLayoutId("content", THEME_DEFINITIONS.tech.layouts, 5, "0", bad, "briefing", null)
+      expect(CONTENT_LAYOUT_IDS).toContain(picked)
     }
   })
 
   it("returns null for an empty allowed set with no pin (defensive fallback — unreachable for the 13 built-in themes)", () => {
     const empty = { cover: [], chapter: [], content: [], ending: [] }
-    expect(resolveArchetypeId("content", empty, 1, "0", undefined, "briefing", null)).toBeNull()
+    expect(resolveLayoutId("content", empty, 1, "0", undefined, "briefing", null)).toBeNull()
   })
 
   it("is deterministic: the same (slideType, layouts, seed, pageKey, requested, mode, previous) always resolves the same id", () => {
-    const a = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, "1", undefined, "briefing", null)
-    const b = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, "1", undefined, "briefing", null)
+    const a = resolveLayoutId("content", THEME_DEFINITIONS.academic.layouts, 42, "1", undefined, "briefing", null)
+    const b = resolveLayoutId("content", THEME_DEFINITIONS.academic.layouts, 42, "1", undefined, "briefing", null)
     expect(a).toBe(b)
   })
 
   it("pageKey (not an incrementing ordinal) drives the salt: different pageKey values surface more than one distinct pick", () => {
     const picks = new Set(
       Array.from({ length: 20 }, (_, i) =>
-        resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 42, String(i), undefined, "briefing", null),
+        resolveLayoutId("content", THEME_DEFINITIONS.academic.layouts, 42, String(i), undefined, "briefing", null),
       ),
     )
     expect(picks.size).toBeGreaterThan(1)
   })
 
-  it("narrative weighting: a strategy's layoutTendencies members are picked more often than non-members (integration through resolveArchetypeId, W4 design decisions 1 + 6)", () => {
+  it("narrative weighting: a strategy's layoutTendencies members are picked more often than non-members (integration through resolveLayoutId, W4 design decisions 1 + 6)", () => {
     const tendencyIds = STRATEGY_DEFINITIONS.pyramid.layoutTendencies // bento-panel/banner-heading/two-column, x3 weight
     const N = 600
     let tendencyHits = 0
@@ -111,7 +111,7 @@ describe("resolveArchetypeId", () => {
     // the expected ratio below doesn't quietly drift if a theme's
     // exclusion list grows again later.
     for (let i = 0; i < N; i++) {
-      const picked = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, i, String(i), undefined, "pyramid", null)!
+      const picked = resolveLayoutId("content", THEME_DEFINITIONS.academic.layouts, i, String(i), undefined, "pyramid", null)!
       if (tendencyIds.includes(picked)) tendencyHits++
     }
     // 3 ids at weight 3 (=9) vs 7 ids (10-3=7) at weight 1 (=7) over the
@@ -130,7 +130,7 @@ describe("resolveArchetypeId", () => {
   it("an omitted beat is a mathematical no-op: passing beat=undefined explicitly matches omitting the 8th argument entirely, across strategies and seeds", () => {
     for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
       for (let seed = 0; seed < 30; seed++) {
-        const withoutArg = resolveArchetypeId(
+        const withoutArg = resolveLayoutId(
           "content",
           THEME_DEFINITIONS.academic.layouts,
           seed,
@@ -139,7 +139,7 @@ describe("resolveArchetypeId", () => {
           strategy,
           null,
         )
-        const withExplicitUndefined = resolveArchetypeId(
+        const withExplicitUndefined = resolveLayoutId(
           "content",
           THEME_DEFINITIONS.academic.layouts,
           seed,
@@ -159,7 +159,7 @@ describe("resolveArchetypeId", () => {
       const tendencyIds = STRATEGY_DEFINITIONS[strategy].layoutTendencies
       for (let seed = 0; seed < 50; seed++) {
         const pageKey = String(seed)
-        const actual = resolveArchetypeId(
+        const actual = resolveLayoutId(
           "content",
           THEME_DEFINITIONS.academic.layouts,
           seed,
@@ -168,7 +168,7 @@ describe("resolveArchetypeId", () => {
           strategy,
           null,
         )
-        const expected = weightedPickBySeed(seed, `content-archetype:${pageKey}`, CONTENT_ARCHETYPE_IDS, (id) =>
+        const expected = weightedPickBySeed(seed, `content-archetype:${pageKey}`, CONTENT_LAYOUT_IDS, (id) =>
           tendencyIds.includes(id) ? 3 : 1,
         )
         expect(actual).toBe(expected)
@@ -187,7 +187,7 @@ describe("resolveArchetypeId", () => {
     const N = 600
     let anchorHits = 0
     for (let i = 0; i < N; i++) {
-      const picked = resolveArchetypeId(
+      const picked = resolveLayoutId(
         "content",
         THEME_DEFINITIONS.academic.layouts,
         i,
@@ -225,7 +225,7 @@ describe("resolveArchetypeId", () => {
     let narrowColumnHits = 0
     let quietFrameHits = 0
     for (let i = 0; i < N; i++) {
-      const picked = resolveArchetypeId(
+      const picked = resolveLayoutId(
         "content",
         THEME_DEFINITIONS.academic.layouts,
         i,
@@ -260,7 +260,7 @@ describe("resolveArchetypeId", () => {
     const N = 1000
     let hits = 0
     for (let i = 0; i < N; i++) {
-      const picked = resolveArchetypeId(
+      const picked = resolveLayoutId(
         "content",
         THEME_DEFINITIONS.academic.layouts,
         i,
@@ -291,7 +291,7 @@ describe("resolveArchetypeId", () => {
     // storytelling's layoutTendencies is now {narrow-column, stacked-poster,
     // quiet-frame} (P1 variety wave, task 4 added quiet-frame) and beat
     // "breathing"'s tendency set is now {narrow-column, quiet-frame,
-    // image-lead-split} (image-lead-split added by the content-archetype
+    // image-lead-split} (image-lead-split added by the content-layout
     // expansion wave's own T3 task, see `layout-selection.ts`'s
     // `BEAT_TENDENCIES` doc comment) — narrow-column stays a member of
     // *both* sets, still the most natural real-author pairing (an
@@ -307,7 +307,7 @@ describe("resolveArchetypeId", () => {
     const N = 5000
     let narrowColumnHits = 0
     for (let i = 0; i < N; i++) {
-      const picked = resolveArchetypeId(
+      const picked = resolveLayoutId(
         "content",
         THEME_DEFINITIONS.academic.layouts,
         i,
@@ -319,7 +319,7 @@ describe("resolveArchetypeId", () => {
       )!
       if (picked === "narrow-column") narrowColumnHits++
     }
-    // Weights under Math.max, full 12-id pool (content-archetype expansion
+    // Weights under Math.max, full 12-id pool (content-layout expansion
     // wave, task T3 re-derivation — image-lead-split joining `breathing`
     // moves narrow-column's share down from the pre-T3 3/16 = 0.1875):
     // narrow-column=max(3,3)=3 and quiet-frame=max(3,3)=3 (both layers
@@ -350,23 +350,23 @@ describe("resolveArchetypeId", () => {
   // `Math.max` alongside strategy and beat. None of the 13 builtins declare
   // this field yet (task T2's job — declaring builtin tendencies is
   // explicitly out of this task's scope) — every test below uses a locally-
-  // constructed pool (this file's own `CONTENT_ARCHETYPE_IDS`/academic's
+  // constructed pool (this file's own `CONTENT_LAYOUT_IDS`/academic's
   // identity pools), never a builtin theme's own `layoutTendencies`.
 
   describe("theme tendency weighting", () => {
     // Reuses academic's full identity pools (never curated away from the
-    // full set) with `content` pinned to `CONTENT_ARCHETYPE_IDS`'s own
+    // full set) with `content` pinned to `CONTENT_LAYOUT_IDS`'s own
     // declaration order, so an independently-recomputed expectation stays
-    // byte-order-identical to the real pool `resolveArchetypeId` builds.
-    const testLayouts = { ...THEME_DEFINITIONS.academic.layouts, content: CONTENT_ARCHETYPE_IDS }
+    // byte-order-identical to the real pool `resolveLayoutId` builds.
+    const testLayouts = { ...THEME_DEFINITIONS.academic.layouts, content: CONTENT_LAYOUT_IDS }
 
-    it("undeclared theme (themeTendencies omitted): resolveArchetypeId's picks are byte-identical to the pre-theme-layer formula (today's values, captured independently — not reusing this module's own themeWeight code, same discipline as the beat byte-inertness test above)", () => {
+    it("undeclared theme (themeTendencies omitted): resolveLayoutId's picks are byte-identical to the pre-theme-layer formula (today's values, captured independently — not reusing this module's own themeWeight code, same discipline as the beat byte-inertness test above)", () => {
       for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
         const tendencyIds = STRATEGY_DEFINITIONS[strategy].layoutTendencies
         for (let seed = 0; seed < 50; seed++) {
           const pageKey = String(seed)
-          const actual = resolveArchetypeId("content", testLayouts, seed, pageKey, undefined, strategy, null)
-          const expected = weightedPickBySeed(seed, `content-archetype:${pageKey}`, CONTENT_ARCHETYPE_IDS, (id) =>
+          const actual = resolveLayoutId("content", testLayouts, seed, pageKey, undefined, strategy, null)
+          const expected = weightedPickBySeed(seed, `content-archetype:${pageKey}`, CONTENT_LAYOUT_IDS, (id) =>
             tendencyIds.includes(id) ? 3 : 1,
           )
           expect(actual).toBe(expected)
@@ -377,8 +377,8 @@ describe("resolveArchetypeId", () => {
     it("an omitted themeTendencies is a mathematical no-op: passing themeTendencies=undefined explicitly matches omitting the 9th argument entirely, across strategies and seeds", () => {
       for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
         for (let seed = 0; seed < 30; seed++) {
-          const withoutArg = resolveArchetypeId("content", testLayouts, seed, String(seed), undefined, strategy, null)
-          const withExplicitUndefined = resolveArchetypeId(
+          const withoutArg = resolveLayoutId("content", testLayouts, seed, String(seed), undefined, strategy, null)
+          const withExplicitUndefined = resolveLayoutId(
             "content",
             testLayouts,
             seed,
@@ -399,7 +399,7 @@ describe("resolveArchetypeId", () => {
       const N = 2000
       let hits = 0
       for (let i = 0; i < N; i++) {
-        const picked = resolveArchetypeId(
+        const picked = resolveLayoutId(
           "content",
           testLayouts,
           i,
@@ -431,7 +431,7 @@ describe("resolveArchetypeId", () => {
       const N = 2000
       let hits = 0
       for (let i = 0; i < N; i++) {
-        const picked = resolveArchetypeId(
+        const picked = resolveLayoutId(
           "content",
           testLayouts,
           i,
@@ -457,9 +457,9 @@ describe("resolveArchetypeId", () => {
     })
 
     it("out-of-pool theme tendency has zero effect: an id not in this theme's own layouts.content set never affects the pick, byte-identical to the same setup with layoutTendencies omitted (the hard boundary — layouts stays the pool, tendencies only weight within it)", () => {
-      const narrowedLayouts = { ...testLayouts, content: CONTENT_ARCHETYPE_IDS.filter((id) => id !== "quiet-frame") }
+      const narrowedLayouts = { ...testLayouts, content: CONTENT_LAYOUT_IDS.filter((id) => id !== "quiet-frame") }
       for (let seed = 0; seed < 50; seed++) {
-        const withOutOfPoolTendency = resolveArchetypeId(
+        const withOutOfPoolTendency = resolveLayoutId(
           "content",
           narrowedLayouts,
           seed,
@@ -470,7 +470,7 @@ describe("resolveArchetypeId", () => {
           undefined,
           ["quiet-frame"],
         )
-        const withoutTendency = resolveArchetypeId(
+        const withoutTendency = resolveLayoutId(
           "content",
           narrowedLayouts,
           seed,
@@ -496,7 +496,7 @@ describe("resolveArchetypeId", () => {
       const N = 3000
       let hits = 0
       for (let i = 0; i < N; i++) {
-        const picked = resolveArchetypeId(
+        const picked = resolveLayoutId(
           "cover",
           { ...testLayouts, cover: coverPool },
           i,
@@ -519,7 +519,7 @@ describe("resolveArchetypeId", () => {
     })
 
     it("deterministic: repeated resolution with identical inputs (including themeTendencies) yields identical picks", () => {
-      const a = resolveArchetypeId(
+      const a = resolveLayoutId(
         "content",
         testLayouts,
         42,
@@ -530,7 +530,7 @@ describe("resolveArchetypeId", () => {
         undefined,
         ["quiet-frame"],
       )
-      const b = resolveArchetypeId(
+      const b = resolveLayoutId(
         "content",
         testLayouts,
         42,
@@ -549,7 +549,7 @@ describe("resolveArchetypeId", () => {
   // cover/chapter/ending used to be uniformly sampled (no strategy signal
   // ever reached them). academic's identity pools are each the full
   // registry set (8 cover / 8 chapter / 7 ending — `layoutsForSlideType`,
-  // asserted below rather than hardcoded so a future archetype-pool
+  // asserted below rather than hardcoded so a future layout-pool
   // expansion can't silently desync this file's own algebra).
 
   describe("identity-page strategy weighting", () => {
@@ -565,7 +565,7 @@ describe("resolveArchetypeId", () => {
       const N = 5000
       let hits = 0
       for (let i = 0; i < N; i++) {
-        const picked = resolveArchetypeId(
+        const picked = resolveLayoutId(
           "cover",
           THEME_DEFINITIONS.academic.layouts,
           i,
@@ -589,7 +589,7 @@ describe("resolveArchetypeId", () => {
       const N = 5000
       let hits = 0
       for (let i = 0; i < N; i++) {
-        const picked = resolveArchetypeId(
+        const picked = resolveLayoutId(
           "chapter",
           THEME_DEFINITIONS.academic.layouts,
           i,
@@ -616,7 +616,7 @@ describe("resolveArchetypeId", () => {
       const N = 5000
       let hits = 0
       for (let i = 0; i < N; i++) {
-        const picked = resolveArchetypeId(
+        const picked = resolveLayoutId(
           "ending",
           THEME_DEFINITIONS.academic.layouts,
           i,
@@ -632,11 +632,11 @@ describe("resolveArchetypeId", () => {
       expect(share).toBeLessThan(0.65)
     })
 
-    it("no single identity archetype's realized share exceeds ~35% under any strategy (T1 reviewer's concentration ceiling, checked algebraically for every strategy x page type)", () => {
+    it("no single identity layout's realized share exceeds ~35% under any strategy (T1 reviewer's concentration ceiling, checked algebraically for every strategy x page type)", () => {
       // Every strategy uses a 2-member set — the worst case (smallest pool,
       // ending=7) still gives a single marked member weight 3 / (2*3 + 5*1)
       // = 3/11 ≈ 0.273, well under the 0.35 ceiling the T1 reviewer flagged
-      // (storytelling x beat "breathing" compounding a single archetype to
+      // (storytelling x beat "breathing" compounding a single layout to
       // ~0.53% before the max() fix). Computed directly from the weight
       // formula (no sampling needed — this is closed-form, not a Monte
       // Carlo estimate) so it stays exact regardless of the seeded-hash
@@ -652,7 +652,7 @@ describe("resolveArchetypeId", () => {
           const perMemberShare = 3 / totalWeight
           expect(
             perMemberShare,
-            `${strategy}.${pageType}: a single marked archetype would claim ${(perMemberShare * 100).toFixed(1)}%`,
+            `${strategy}.${pageType}: a single marked layout would claim ${(perMemberShare * 100).toFixed(1)}%`,
           ).toBeLessThan(0.35)
         }
       }
@@ -664,7 +664,7 @@ describe("resolveArchetypeId", () => {
       for (const strategy of ["pyramid", "storytelling", "instructional", "showcase", "briefing"] as const) {
         for (const slideType of identitySlideTypes) {
           for (let seed = 0; seed < 15; seed++) {
-            const withoutBeat = resolveArchetypeId(
+            const withoutBeat = resolveLayoutId(
               slideType,
               THEME_DEFINITIONS.academic.layouts,
               seed,
@@ -674,7 +674,7 @@ describe("resolveArchetypeId", () => {
               null,
             )
             for (const beat of beats) {
-              const withBeat = resolveArchetypeId(
+              const withBeat = resolveLayoutId(
                 slideType,
                 THEME_DEFINITIONS.academic.layouts,
                 seed,
@@ -707,7 +707,7 @@ describe("resolveArchetypeId", () => {
       const N = 3000
       let hits = 0
       for (let i = 0; i < N; i++) {
-        const picked = resolveArchetypeId(
+        const picked = resolveLayoutId(
           "cover",
           THEME_DEFINITIONS.academic.layouts,
           i,
@@ -732,8 +732,8 @@ describe("resolveArchetypeId", () => {
     // raw pick (previous=null) is always a real id — feed that same id back
     // in as previousEffectiveLayoutId and confirm W4 design decision 4's
     // redraw fires and lands on a *different* member of the same pool.
-    const raw = resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 1, "0", undefined, "briefing", null)
-    const withCollision = resolveArchetypeId(
+    const raw = resolveLayoutId("content", THEME_DEFINITIONS.academic.layouts, 1, "0", undefined, "briefing", null)
+    const withCollision = resolveLayoutId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
       1,
@@ -743,18 +743,18 @@ describe("resolveArchetypeId", () => {
       raw,
     )
     expect(withCollision).not.toBe(raw)
-    expect(CONTENT_ARCHETYPE_IDS).toContain(withCollision)
+    expect(CONTENT_LAYOUT_IDS).toContain(withCollision)
   })
 
   it("adjacent anti-repetition never fires for an explicit pin, even when it equals previousEffectiveLayoutId", () => {
     expect(
-      resolveArchetypeId("content", THEME_DEFINITIONS.academic.layouts, 1, "0", "two-column", "briefing", "two-column"),
+      resolveLayoutId("content", THEME_DEFINITIONS.academic.layouts, 1, "0", "two-column", "briefing", "two-column"),
     ).toBe("two-column")
   })
 
   it("adjacent anti-repetition does not redraw when the pool has exactly 1 member (no alternative to redraw to)", () => {
     const single = { cover: [], chapter: [], content: ["two-column"], ending: [] }
-    expect(resolveArchetypeId("content", single, 1, "0", undefined, "briefing", "two-column")).toBe("two-column")
+    expect(resolveLayoutId("content", single, 1, "0", undefined, "briefing", "two-column")).toBe("two-column")
   })
 })
 
@@ -775,7 +775,7 @@ describe("resolveEffectiveLayoutId", () => {
     expect(sawADifference).toBe(true)
   })
 
-  it("cover/chapter with an asset background bypasses archetypes entirely (returns null — ImageCoverPage has no registry entry)", () => {
+  it("cover/chapter with an asset background bypasses layouts entirely (returns null — ImageCoverPage has no registry entry)", () => {
     for (const type of ["cover", "chapter"] as const) {
       const slide: Slide = { type, heading: "x", background: { kind: "asset", asset_id: "bg" }, components: [] }
       const ir = makeIR([slide])
@@ -783,7 +783,7 @@ describe("resolveEffectiveLayoutId", () => {
     }
   })
 
-  it("content/ending with an asset background does NOT bypass — stays on the normal archetype path (P1 frosted scrim, not a takeover)", () => {
+  it("content/ending with an asset background does NOT bypass — stays on the normal layout path (P1 frosted scrim, not a takeover)", () => {
     for (const type of ["content", "ending"] as const) {
       const slide: Slide = { type, heading: "x", background: { kind: "asset", asset_id: "bg" }, components: [] }
       const ir = makeIR([slide])
@@ -802,7 +802,7 @@ describe("resolveEffectiveLayoutId", () => {
     expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("image-annotate")
   })
 
-  it("a pinned takeover layout with NO image component falls through to archetype auto-pick (mirrors FullSlideSvg's splitTakeover guard)", () => {
+  it("a pinned takeover layout with NO image component falls through to layout auto-pick (mirrors FullSlideSvg's splitTakeover guard)", () => {
     const slide: Slide = {
       type: "content",
       heading: "x",
@@ -810,10 +810,10 @@ describe("resolveEffectiveLayoutId", () => {
       components: [{ type: "paragraph", text: "no image here" }],
     }
     const ir = makeIR([slide], "tech")
-    expect(CONTENT_ARCHETYPE_IDS).toContain(resolveEffectiveLayoutId(ir, slide, 0))
+    expect(CONTENT_LAYOUT_IDS).toContain(resolveEffectiveLayoutId(ir, slide, 0))
   })
 
-  it("an explicit archetype pin is honored even outside the theme's curated family", () => {
+  it("an explicit layout pin is honored even outside the theme's curated family", () => {
     const slide: Slide = {
       type: "content",
       heading: "x",
@@ -822,7 +822,7 @@ describe("resolveEffectiveLayoutId", () => {
     }
     // luxe's own content set excludes banner-heading (W4 design decision 7's
     // contrast adjudication, definitions.ts) — the one "outside the family"
-    // archetype left once every other theme×archetype content pair opened
+    // layout left once every other theme×layout content pair opened
     // to the full set.
     const ir = makeIR([slide], "luxe")
     expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("banner-heading")
@@ -874,10 +874,10 @@ describe("resolveEffectiveLayoutId", () => {
     expect(resolveEffectiveLayoutId(irAtFront, stable, 0)).toBe(resolveEffectiveLayoutId(irAfterInsert, stable, 2))
   })
 
-  it("a page with no id salts off its absolute index — matches resolveArchetypeId called directly with pageKey=String(index)", () => {
+  it("a page with no id salts off its absolute index — matches resolveLayoutId called directly with pageKey=String(index)", () => {
     const slide: Slide = { type: "content", heading: "no-id-probe", components: [{ type: "paragraph", text: "x" }] }
     const ir = makeIR([slide], "academic")
-    const expected = resolveArchetypeId(
+    const expected = resolveLayoutId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
       cachedDeckSeed(ir),
@@ -891,7 +891,7 @@ describe("resolveEffectiveLayoutId", () => {
 
   // ── adjacent anti-repetition (W4 design decision 4) ──
 
-  it("adjacent content pages never render the same auto-picked archetype back to back when the pool has more than one member", () => {
+  it("adjacent content pages never render the same auto-picked layout back to back when the pool has more than one member", () => {
     // A run of same-type auto-pick content pages, no explicit seed (content
     // hash) — every consecutive pair must differ (or the theme's own pool
     // has exactly 1 member, which none of the 13 built-ins do post-W4).
@@ -926,13 +926,13 @@ describe("resolveEffectiveLayoutId", () => {
   })
 
   // ── beat integration (P1 variety wave, task 1): end-to-end through
-  // resolveEffectiveLayoutId, not just the resolveArchetypeId unit above ──
+  // resolveEffectiveLayoutId, not just the resolveLayoutId unit above ──
 
-  it("a slide's own beat reaches resolveArchetypeId end-to-end: forcing it to 'anchor' visibly shifts which id resolves, for at least one seed in a spread", () => {
+  it("a slide's own beat reaches resolveLayoutId end-to-end: forcing it to 'anchor' visibly shifts which id resolves, for at least one seed in a spread", () => {
     // Same 30-seed spread the byte-inertness test below reuses — proves the
     // wiring is live (beat isn't silently ignored by resolveEffectiveLayoutId
     // the way pacing's own PACING_BUDGETS are for selection), not just that
-    // resolveArchetypeId's own weightOf accepts the parameter.
+    // resolveLayoutId's own weightOf accepts the parameter.
     let sawADifference = false
     for (let seed = 0; seed < 30; seed++) {
       const plain: Slide = { type: "content", heading: "x", components: [{ type: "paragraph", text: "x" }] }
@@ -999,7 +999,7 @@ describe("resolveEffectiveLayoutId", () => {
 // ── resolveEffectiveLayoutBodyCapacity (the density gate's geometric term) ──
 
 describe("resolveEffectiveLayoutBodyCapacity", () => {
-  it("a generic content archetype (explicit pin) reports capacity 4", () => {
+  it("a generic content layout (explicit pin) reports capacity 4", () => {
     const slide: Slide = { type: "content", heading: "x", layout: "two-column", components: [] }
     const ir = makeIR([slide])
     expect(resolveEffectiveLayoutBodyCapacity(ir, slide, 0)).toEqual({ layoutId: "two-column", capacity: 4 })
@@ -1011,8 +1011,8 @@ describe("resolveEffectiveLayoutBodyCapacity", () => {
     expect(resolveEffectiveLayoutBodyCapacity(ir, slide, 0)).toEqual({ layoutId: "bento-panel", capacity: 6 })
   })
 
-  it("every content archetype's reported capacity matches its own LAYOUT_REGISTRY body-slot entry (consistency with registry.test.ts's pinned numbers)", () => {
-    for (const id of CONTENT_ARCHETYPE_IDS) {
+  it("every content layout's reported capacity matches its own LAYOUT_REGISTRY body-slot entry (consistency with registry.test.ts's pinned numbers)", () => {
+    for (const id of CONTENT_LAYOUT_IDS) {
       const slide: Slide = { type: "content", heading: "x", layout: id, components: [] }
       const ir = makeIR([slide], "tech") // explicit pin bypasses curation, so any theme works for every id
       const expected = getLayout(id)?.slots.find((s) => s.name === "body")?.capacity
@@ -1060,18 +1060,18 @@ describe("resolveEffectiveLayoutBodyCapacity", () => {
 // ── render parity: the "validate sees what render uses" promise, proven by actually rendering ──
 
 describe("render parity with FullSlideSvg", () => {
-  function renderedArchetypeId(ir: PptxIR, slide: Slide, index: number): string | null {
+  function renderedLayoutId(ir: PptxIR, slide: Slide, index: number): string | null {
     const { container } = render(createElement(FullSlideSvg, { ir, slide, index }))
     return container.querySelector("[data-archetype]")?.getAttribute("data-archetype") ?? null
   }
 
-  const archetypePathCases: { label: string; themeId: string; slide: Slide }[] = [
+  const layoutPathCases: { label: string; themeId: string; slide: Slide }[] = [
     { label: "tech cover, auto-pick", themeId: "tech", slide: { type: "cover", heading: "x", components: [] } },
     {
       // Backlog item 7c (`.issues/notes/engineering-history.md` #7c):
       // this sweep previously covered cover/content/ending only — chapter
       // had zero render-parity coverage even though it resolves through the
-      // exact same archetype path (image-cover takeover aside, already
+      // exact same layout path (image-cover takeover aside, already
       // covered by the bypass case below).
       label: "classroom chapter, auto-pick",
       themeId: "classroom",
@@ -1099,8 +1099,8 @@ describe("render parity with FullSlideSvg", () => {
     },
     {
       // P1 variety wave, task 1: proves FullSlideSvg's own local
-      // `resolveArchetype` wrapper (`full-slide-svg.tsx`) threads `slide.beat`
-      // through to `resolveArchetypeId` the same way this module's
+      // `resolvePageLayout` wrapper (`full-slide-svg.tsx`) threads `slide.beat`
+      // through to `resolveLayoutId` the same way this module's
       // `resolveOneEffectiveLayoutId` does — a render-time drift here (one
       // side reading beat, the other silently dropping it) would break the
       // "validate sees what render draws" promise for beat specifically.
@@ -1110,10 +1110,10 @@ describe("render parity with FullSlideSvg", () => {
     },
   ]
 
-  for (const c of archetypePathCases) {
+  for (const c of layoutPathCases) {
     it(`${c.label}: resolveEffectiveLayoutId matches the actual rendered data-archetype`, () => {
       const ir = makeIR([c.slide], c.themeId)
-      expect(resolveEffectiveLayoutId(ir, c.slide, 0)).toBe(renderedArchetypeId(ir, c.slide, 0))
+      expect(resolveEffectiveLayoutId(ir, c.slide, 0)).toBe(renderedLayoutId(ir, c.slide, 0))
     })
   }
 
@@ -1122,14 +1122,14 @@ describe("render parity with FullSlideSvg", () => {
   // `previousEffectiveLayoutId` is always `null` — the adjacent
   // anti-repetition redraw (W4 design decision 4) never fires in any
   // render-parity case. The dedicated anti-repetition unit tests (this
-  // file's `resolveArchetypeId` describe block, and
+  // file's `resolveLayoutId` describe block, and
   // `full-slide-svg.test.tsx`'s own "content 页相邻防重复") cover the
   // mechanism itself, but never through an actual `FullSlideSvg` render at
   // the page where the swap lands. This fixture closes that gap: a genuine
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Seed 1 (content-archetype expansion wave, task T2 re-pin — content
+    // Seed 1 (content-layout expansion wave, task T2 re-pin — content
     // pool grew 11 -> 12 (split-band), reweighting every hash-interval
     // boundary again, so seed 3's old collision (T1's own re-pin) stopped
     // colliding; re-found by brute-force search over this exact 2-page
@@ -1154,17 +1154,17 @@ describe("render parity with FullSlideSvg", () => {
     // Page 1: the actual point of this test. Render parity on the one page
     // where the swap-to-runner-up branch is live.
     const resolved = resolveEffectiveLayoutId(ir, slides[1], 1)
-    expect(resolved).toBe(renderedArchetypeId(ir, slides[1], 1))
+    expect(resolved).toBe(renderedLayoutId(ir, slides[1], 1))
 
     // Non-vacuity: prove the swap actually fired, not merely that render
     // agrees with whatever validate happened to compute (which would also
     // be true if the pool had collapsed to a single member, or if this
-    // seed simply never collided at all). `resolveArchetypeId` is called
+    // seed simply never collided at all). `resolveLayoutId` is called
     // directly with `previousEffectiveLayoutId` forced to `null` — same
     // seed/pageKey/pool/mode as the real page-1 resolution above, the only
     // difference being that the anti-repetition redraw never runs — which
     // recomputes page 1's *raw*, pre-redraw pick.
-    const unswappedRawPick = resolveArchetypeId(
+    const unswappedRawPick = resolveLayoutId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
       1,
@@ -1182,7 +1182,7 @@ describe("render parity with FullSlideSvg", () => {
     expect(resolved).toBe("asymmetric-triptych")
   })
 
-  it("a takeover or image-cover bypass never renders [data-archetype] (the archetype branch is correctly skipped both sides)", () => {
+  it("a takeover or image-cover bypass never renders [data-archetype] (the layout branch is correctly skipped both sides)", () => {
     const bypassCases: { themeId: string; slide: Slide }[] = [
       {
         themeId: "consulting",
@@ -1203,13 +1203,13 @@ describe("render parity with FullSlideSvg", () => {
         ...makeIR([slide], themeId),
         assets: { images: { bg: { src: "data:image/png;base64,AAAA" }, a: { src: "data:image/png;base64,AAAA" } } },
       }
-      expect(renderedArchetypeId(ir, slide, 0)).toBeNull()
+      expect(renderedLayoutId(ir, slide, 0)).toBeNull()
     }
   })
 
   // ── theme-structure wave, T1 fix round: `full-slide-svg.tsx`'s own local
-  // `resolveArchetype` wrapper is a *second* production call site of
-  // `resolveArchetypeId` (the first is `resolveOneEffectiveLayoutId` in
+  // `resolvePageLayout` wrapper is a *second* production call site of
+  // `resolveLayoutId` (the first is `resolveOneEffectiveLayoutId` in
   // `layout-selection.ts`, which `resolveEffectiveLayoutId` above answers
   // from) — a reviewer-caught Critical: the render-path wrapper wasn't
   // threading `themeTendencies` through, so the single-file IR render path
@@ -1227,7 +1227,7 @@ describe("render parity with FullSlideSvg", () => {
       __resetRegisteredThemes()
     })
 
-    it("a theme with declared content layoutTendencies: FullSlideSvg's actual rendered archetype agrees with resolveEffectiveLayoutId across a seed spread", () => {
+    it("a theme with declared content layoutTendencies: FullSlideSvg's actual rendered layout agrees with resolveEffectiveLayoutId across a seed spread", () => {
       registerTheme({
         id: "t1-fixture-theme-render-parity",
         style: THEME_DEFINITIONS.academic.style,
@@ -1236,7 +1236,7 @@ describe("render parity with FullSlideSvg", () => {
         layouts: {
           cover: THEME_DEFINITIONS.academic.layouts.cover,
           chapter: THEME_DEFINITIONS.academic.layouts.chapter,
-          content: CONTENT_ARCHETYPE_IDS,
+          content: CONTENT_LAYOUT_IDS,
           ending: THEME_DEFINITIONS.academic.layouts.ending,
         },
         // "quiet-frame" is deliberately not a member of briefing's own
@@ -1256,7 +1256,7 @@ describe("render parity with FullSlideSvg", () => {
         }
         const ir: PptxIR = { ...makeIR([slide], "t1-fixture-theme-render-parity"), seed }
         const validated = resolveEffectiveLayoutId(ir, slide, 0)
-        const rendered = renderedArchetypeId(ir, slide, 0)
+        const rendered = renderedLayoutId(ir, slide, 0)
         expect(rendered, `seed ${seed}: rendered "${rendered}" vs. validated "${validated}"`).toBe(validated)
       }
     })
@@ -1273,7 +1273,7 @@ describe("render parity with FullSlideSvg", () => {
   // of `pinOnly` — indistinguishable from the exclusion this suite means to
   // prove.
   describe("pinOnly layout tier: excluded from sampling, pin path unaffected", () => {
-    const PIN_ONLY_TEST_ID = "test-pin-only-archetype"
+    const PIN_ONLY_TEST_ID = "test-pin-only-layout"
 
     beforeEach(() => {
       LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = {
@@ -1296,7 +1296,7 @@ describe("render parity with FullSlideSvg", () => {
         ending: THEME_DEFINITIONS.consulting.layouts.ending,
       }
       for (let seed = 0; seed < 60; seed++) {
-        const picked = resolveArchetypeId("content", layouts, seed, String(seed), undefined, "briefing", null)
+        const picked = resolveLayoutId("content", layouts, seed, String(seed), undefined, "briefing", null)
         expect(picked, `seed ${seed} picked the pinOnly id`).not.toBe(PIN_ONLY_TEST_ID)
       }
     })
@@ -1308,13 +1308,13 @@ describe("render parity with FullSlideSvg", () => {
         content: [PIN_ONLY_TEST_ID],
         ending: THEME_DEFINITIONS.consulting.layouts.ending,
       }
-      expect(resolveArchetypeId("content", layouts, 1, "0", undefined, "briefing", null)).toBeNull()
+      expect(resolveLayoutId("content", layouts, 1, "0", undefined, "briefing", null)).toBeNull()
     })
 
     it("an explicit pin naming the pinOnly id still resolves it (pin path untouched — pinOnly means 'only this road reaches it')", () => {
       const layouts: ThemeDefinition["layouts"] = THEME_DEFINITIONS.consulting.layouts
       expect(
-        resolveArchetypeId("content", layouts, 1, "0", PIN_ONLY_TEST_ID, "briefing", null),
+        resolveLayoutId("content", layouts, 1, "0", PIN_ONLY_TEST_ID, "briefing", null),
       ).toBe(PIN_ONLY_TEST_ID)
     })
   })

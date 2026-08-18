@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * vermilion-motif archetype（gov-theme wave，第 17 主题）：庄重公务汇报主题
+ * vermilion-motif（gov-theme wave，第 17 主题）：庄重公务汇报主题
  * 专属装饰语言——**旗帜感绸带弧线**（沿上升二次贝塞尔曲线的渐变宽度实心
  * 绸带，起点宽、尾部收窄，像一面正在展开的旗/一条飘起的绸带，读出「提气/
  * 庄重」的仪式感）+ **金色光芒细线**（自一角放射的一束等距细线，像报头背后
@@ -10,7 +10,7 @@ import { cachedDeckSeed, pickBySeed } from "../variety"
  * 2——用抽象的绸带/光芒传达提气感）。克制布置，参考 ember-motif/terra-motif
  * 的角落策略：cover/ending 强档（绸带 + 光芒束成对布置），content 极轻（单角
  * 小光芒束 + 一条淡绸带短弧），chapter 完全退让（return null——同
- * pulse/terra/ember-motif 的 chrome 碰撞判断：八个 chapter archetype 都在整版
+ * pulse/terra/ember-motif 的 chrome 碰撞判断：八个 chapter layout 都在整版
  * primary 正红色块上画巨幅居中标题，可用净空本就零碎，不额外叠加装饰）。
  * 颜色取 ctx.colors（primary/accent/chartPalette），零 baked hex。实色 path/
  * line + opacity（无渐变无 filter，预览/导出一致）。LCG 确定性（cachedDeckSeed
@@ -91,7 +91,7 @@ export function VermilionMotif({ ir, slide, ctx }: DecorProps) {
   const { primary, accent, chartPalette } = ctx.colors
   const [, , navy, warm] = chartPalette
 
-  // chapter 全部 8 个 archetype 都在整版 primary 正红色块上画巨幅居中标题——
+  // chapter 全部 8 个 layout 都在整版 primary 正红色块上画巨幅居中标题——
   // 同 pulse/terra/ember-motif 的 chrome 碰撞判断，chapter 完全退让。
   if (slide.type === "chapter") return null
 

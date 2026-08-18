@@ -135,7 +135,7 @@ const WIDE_CHAR_RE = /[\u2014\u2018-\u201f\u2e80-\u9fff\uff00-\uffef]/
 // review found the class-average approach below structurally insufficient
 // -- see "EPITAPH" further down before trusting anything about
 // "class-average factors" in old comments elsewhere in this codebase).
-// 96% of this codebase's archetype heading `<text>` declarations render
+// 96% of this codebase's layout heading `<text>` declarations render
 // `font-weight >= 600` (root-cause.md S5), and OOXML export collapses any
 // of those into a real Bold glyph outline (`isBold()`, `src/svg/fonts.ts`).
 // The user-reported defect is exactly this gap: cover-fashion-masthead.tsx's

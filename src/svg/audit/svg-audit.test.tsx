@@ -7,7 +7,7 @@ import { auditSvgMarkup } from "./svg-audit"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { renderSvgMarkup } from "../serialize"
-import { FashionMastheadCover } from "../archetypes/cover-fashion-masthead"
+import { FashionMastheadCover } from "../layouts/cover-fashion-masthead"
 import type { PptxIR, Slide } from "@/ir"
 
 const wrap = (inner: string) =>
@@ -290,10 +290,10 @@ describe("auditSvgMarkup — bold-weight alignment with the real exporter (bold-
   // Renderer/auditor non-divergence, real components on both sides (mono
   // round's own precedent — real `code.render()` + real `auditSvgMarkup`,
   // no reimplementation on either side). `FashionMastheadCover` paints no
-  // `data-audit-box` of its own around its heading (confirmed: no archetype
+  // `data-audit-box` of its own around its heading (confirmed: no layout
   // does — headings rely on `fitHeadingLines`'s own `Math.floor` sizing as
   // their safety net, not audit instrumentation), so this test supplies the
-  // same box the archetype itself declares to `fitHeadingLines`
+  // same box the layout itself declares to `fitHeadingLines`
   // (maxWidth=1168) to ask the honest question this fix's brief item 3
   // requires: given the box the renderer itself sized against, do the two
   // now agree? Before this fix both sides shared one unweighted formula and
@@ -311,7 +311,7 @@ describe("auditSvgMarkup — bold-weight alignment with the real exporter (bold-
       slides: [slide],
     } as unknown as PptxIR
     const out = renderSvgMarkup(<FashionMastheadCover ir={ir} slide={slide} index={0} ctx={ctx} />)
-    // Wrap exactly the box the archetype itself passed to `fitHeadingLines`
+    // Wrap exactly the box the layout itself passed to `fitHeadingLines`
     // (x=56, maxWidth=1168) around the real rendered markup — same
     // convention as the mono round's own `data-audit-box` envelope above.
     const markup = wrap(`<g data-audit-box="56,0,1168">${out}</g>`)

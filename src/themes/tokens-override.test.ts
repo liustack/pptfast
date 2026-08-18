@@ -27,10 +27,10 @@ describe("theme.style override merging", () => {
       theme: { id: "consulting", style: { colors: { primary: "#0B5FFF" } } },
       // Explicit `layout` pin (P1 variety wave, task 3 re-pin): this test
       // only cares whether a `theme.style` override reaches render, not
-      // which cover archetype auto-pick lands on — an omitted `layout` left
+      // which cover layout auto-pick lands on — an omitted `layout` left
       // that pick to the seed/strategy-weighted auto-pick, which cover
       // identity weighting (task 3) can now legitimately shift to an
-      // archetype that never paints `colors.primary` at all (e.g.
+      // layout that never paints `colors.primary` at all (e.g.
       // `tone-adaptive-header`, no color-block). `left-anchor` always
       // paints its 40%-width heading block in `colors.primary`
       // (`cover-left-anchor.tsx`), so pinning it decouples this assertion

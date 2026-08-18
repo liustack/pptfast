@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { STRATEGY_VALUES, type Strategy } from "@/narrative"
-import { COVER_ARCHETYPES } from "../archetypes"
-import { CHAPTER_ARCHETYPES } from "../archetypes/index-chapter"
-import { CONTENT_ARCHETYPES } from "../archetypes/index-content"
-import { ENDING_ARCHETYPES } from "../archetypes/index-ending"
+import { COVER_LAYOUTS } from "./index-cover"
+import { CHAPTER_LAYOUTS } from "./index-chapter"
+import { CONTENT_LAYOUTS } from "./index-content"
+import { ENDING_LAYOUTS } from "./index-ending"
 import {
   excludePinOnly,
   filterByNarrativesOnly,
@@ -15,27 +15,27 @@ import {
 } from "./registry"
 
 /**
- * The four real archetype registries paired with the `SlideType` their family
+ * The four real layout registries paired with the `SlideType` their family
  * renders as — this is the drift guard: every id the render chain actually
  * dispatches through must have a matching `LAYOUT_REGISTRY` entry, so if a
- * future archetype is added to one of these without a registry entry, this
+ * future layout is added to one of these without a registry entry, this
  * test fails loudly instead of the metadata silently going stale.
  */
 const FAMILIES: { registry: Record<string, unknown>; slideType: SlideType }[] = [
-  { registry: COVER_ARCHETYPES, slideType: "cover" },
-  { registry: CHAPTER_ARCHETYPES, slideType: "chapter" },
-  { registry: CONTENT_ARCHETYPES, slideType: "content" },
-  { registry: ENDING_ARCHETYPES, slideType: "ending" },
+  { registry: COVER_LAYOUTS, slideType: "cover" },
+  { registry: CHAPTER_LAYOUTS, slideType: "chapter" },
+  { registry: CONTENT_LAYOUTS, slideType: "content" },
+  { registry: ENDING_LAYOUTS, slideType: "ending" },
 ]
 
 const TAKEOVER_IDS = ["image-split", "image-top", "image-bottom", "image-annotate"] as const
 
-describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
+describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
   for (const { registry, slideType } of FAMILIES) {
     for (const id of Object.keys(registry)) {
-      it(`${slideType} archetype "${id}" has a matching registry entry`, () => {
+      it(`${slideType} layout "${id}" has a matching registry entry`, () => {
         const entry = LAYOUT_REGISTRY[id]
-        expect(entry, `missing LAYOUT_REGISTRY entry for archetype id "${id}"`).toBeDefined()
+        expect(entry, `missing LAYOUT_REGISTRY entry for layout id "${id}"`).toBeDefined()
         expect(entry.id).toBe(id)
         expect(entry.kind).toBe("archetype")
         expect(entry.slideTypes).toContain(slideType)
@@ -43,17 +43,17 @@ describe("LAYOUT_REGISTRY completeness (archetype ids)", () => {
     }
   }
 
-  it("has exactly 36 archetype-kind entries, all traceable to one of the four real registries (quote-stage wave task T2: content 12 -> 13)", () => {
+  it("has exactly 36 layout-kind entries, all traceable to one of the four real registries (quote-stage wave task T2: content 12 -> 13)", () => {
     const knownIds = new Set([
-      ...Object.keys(COVER_ARCHETYPES),
-      ...Object.keys(CHAPTER_ARCHETYPES),
-      ...Object.keys(CONTENT_ARCHETYPES),
-      ...Object.keys(ENDING_ARCHETYPES),
+      ...Object.keys(COVER_LAYOUTS),
+      ...Object.keys(CHAPTER_LAYOUTS),
+      ...Object.keys(CONTENT_LAYOUTS),
+      ...Object.keys(ENDING_LAYOUTS),
     ])
-    const archetypeEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(archetypeEntries).toHaveLength(36)
-    for (const entry of archetypeEntries) {
-      expect(knownIds.has(entry.id), `"${entry.id}" is not a real archetype id`).toBe(true)
+    const layoutEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
+    expect(layoutEntries).toHaveLength(36)
+    for (const entry of layoutEntries) {
+      expect(knownIds.has(entry.id), `"${entry.id}" is not a real layout id`).toBe(true)
     }
   })
 })
@@ -84,7 +84,7 @@ describe("LAYOUT_REGISTRY completeness (takeover ids)", () => {
 })
 
 describe("content family: body slot + declared arrangements", () => {
-  for (const id of Object.keys(CONTENT_ARCHETYPES)) {
+  for (const id of Object.keys(CONTENT_LAYOUTS)) {
     it(`"${id}" has a body slot and declares arrangements`, () => {
       const entry = LAYOUT_REGISTRY[id]
       expect(entry.slots.some((s) => s.name === "body"), `"${id}" is missing a body slot`).toBe(true)
@@ -92,16 +92,16 @@ describe("content family: body slot + declared arrangements", () => {
     })
   }
 
-  it("cover/chapter/ending archetypes never read components, so none declare a body slot", () => {
+  it("cover/chapter/ending layouts never read components, so none declare a body slot", () => {
     for (const { registry, slideType } of FAMILIES) {
       if (slideType === "content") continue
       for (const id of Object.keys(registry)) {
         const entry = LAYOUT_REGISTRY[id]
         expect(
           entry.slots.some((s) => s.name === "body"),
-          `${slideType} archetype "${id}" should not declare a body slot`,
+          `${slideType} layout "${id}" should not declare a body slot`,
         ).toBe(false)
-        expect(entry.arrangements, `${slideType} archetype "${id}" should not declare arrangements`).toBeUndefined()
+        expect(entry.arrangements, `${slideType} layout "${id}" should not declare arrangements`).toBeUndefined()
       }
     }
   })
@@ -118,11 +118,11 @@ describe("content family: body slot + declared arrangements", () => {
     expect(LAYOUT_REGISTRY["asymmetric-triptych"].arrangements).toEqual(["single"])
   })
 
-  it("stacked-poster declares arrangements \"all\" (W2 task 3 adjudication: its degrade path passes slide.arrangement straight through unchanged, same as the four plain pass-through archetypes — the conditional hero/strip takeover only applies to 1-2 fitting components)", () => {
+  it("stacked-poster declares arrangements \"all\" (W2 task 3 adjudication: its degrade path passes slide.arrangement straight through unchanged, same as the four plain pass-through layouts — the conditional hero/strip takeover only applies to 1-2 fitting components)", () => {
     expect(LAYOUT_REGISTRY["stacked-poster"].arrangements).toBe("all")
   })
 
-  it("the remaining seven arrangement-respecting archetypes declare arrangements: \"all\" (P1 variety wave task 4 adds side-highlight/quiet-frame to the five pre-existing members)", () => {
+  it("the remaining seven arrangement-respecting layouts declare arrangements: \"all\" (P1 variety wave task 4 adds side-highlight/quiet-frame to the five pre-existing members)", () => {
     for (const id of [
       "banner-heading",
       "narrow-column",
@@ -154,8 +154,8 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
     expect(body?.capacity).toBe(6)
   })
 
-  it("the remaining content archetypes' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3; P1 variety wave task 4's three new archetypes join at the same flat default — see registry.ts's CONTENT_LAYOUTS header comment) — except bento-panel (6, its own grid capacity, asserted separately above) and quote-stage (1, a deliberate authoring contract, not a geometric flat-default — see that archetype's own registry.ts derivation comment, quote-stage wave task T2)", () => {
-    for (const id of Object.keys(CONTENT_ARCHETYPES)) {
+  it("the remaining content layouts' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3; P1 variety wave task 4's three new layouts join at the same flat default — see registry.ts's CONTENT_LAYOUT_DEFS header comment) — except bento-panel (6, its own grid capacity, asserted separately above) and quote-stage (1, a deliberate authoring contract, not a geometric flat-default — see that layout's own registry.ts derivation comment, quote-stage wave task T2)", () => {
+    for (const id of Object.keys(CONTENT_LAYOUTS)) {
       if (id === "bento-panel" || id === "quote-stage") continue
       const body = LAYOUT_REGISTRY[id].slots.find((s) => s.name === "body")
       expect(body?.capacity, `"${id}" body slot should carry capacity 4`).toBe(4)
@@ -169,7 +169,7 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
 })
 
 describe("getLayout", () => {
-  it("returns the entry for a known archetype id", () => {
+  it("returns the entry for a known layout id", () => {
     expect(getLayout("banner-title")?.kind).toBe("archetype")
   })
   it("returns the entry for a known takeover id", () => {
@@ -187,13 +187,13 @@ describe("layoutsForSlideType", () => {
     for (const l of covers) expect(l.slideTypes).toContain("cover")
   })
 
-  it("cover/chapter/ending each resolve to exactly their 7 or 8 archetypes (no takeovers)", () => {
+  it("cover/chapter/ending each resolve to exactly their 7 or 8 layouts (no takeovers)", () => {
     expect(layoutsForSlideType("cover")).toHaveLength(8)
     expect(layoutsForSlideType("chapter")).toHaveLength(8)
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 13 archetypes and the 4 takeovers (quote-stage wave task T2: content 12 -> 13 — quote-stage, pptfast's first pinOnly member; layoutsForSlideType reads slideTypes only, unaffected by pinOnly, which only gates auto-selection pool construction — see LayoutDefinition.pinOnly's own doc comment)", () => {
+  it("content includes both the 13 layouts and the 4 takeovers (quote-stage wave task T2: content 12 -> 13 — quote-stage, pptfast's first pinOnly member; layoutsForSlideType reads slideTypes only, unaffected by pinOnly, which only gates auto-selection pool construction — see LayoutDefinition.pinOnly's own doc comment)", () => {
     const contents = layoutsForSlideType("content")
     expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(13)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
@@ -205,7 +205,7 @@ describe("filterByNarrativesOnly (W4, spec §6 step 4's rare narratives_only har
   // Synthetic fixtures, not real registry entries — the whole point of this
   // being a standalone pure function (design decision 5) is that it can be
   // unit-tested without any real LAYOUT_REGISTRY id or a live selection
-  // pass through `resolveArchetypeId`.
+  // pass through `resolveLayoutId`.
   function synthetic(id: string, narrativesOnly?: readonly Strategy[]): LayoutDefinition {
     return { id, kind: "archetype", slideTypes: ["content"], slots: [], narrativesOnly }
   }

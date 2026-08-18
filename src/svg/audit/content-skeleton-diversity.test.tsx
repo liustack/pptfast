@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 //
-// Content-archetype expansion wave, task T3 (`.issues/2026-07-26-content-
-// archetypes/plan.md`) — the wave's own acceptance metric ("skeleton
-// diversity"): with content-pool growth going from 10 to 12 archetypes
+// Content-layout expansion wave, task T3 (`.issues/2026-07-26-content-
+// layouts/plan.md`) — the wave's own acceptance metric ("skeleton
+// diversity"): with content-pool growth going from 10 to 12 layouts
 // (`image-lead-split`/`split-band`, tasks T1/T2), does the pool actually
 // read as more than ~4 distinct page skeletons for a fixed piece of content?
 //
@@ -14,15 +14,15 @@
 // x=96 cluster, and its width is only 197px narrower than the pool's
 // previous floor (632px), 3px short of the 200px "clearly different"
 // threshold an earlier review pass used informally. But that first box
-// isn't this archetype's actual novelty — the real new composition is the
+// isn't this layout's actual novelty — the real new composition is the
 // *second*, co-existing 613px visual column at x=571, which the
 // first-box-only metric never looks at. **The metric was wrong, not the
-// archetype.** (See this suite's own "regression: first-box-only would
+// layout.** (See this suite's own "regression: first-box-only would
 // under-count" test below, which pins this concretely rather than only
 // narrating it.)
 //
 // Corrected judgment: resolve the FULL set of `data-audit-box` regions (not
-// just the first) for a fixed IR, once per content archetype. A page's
+// just the first) for a fixed IR, once per content layout. A page's
 // "skeleton" = its region *count* plus each region's quantized (x, width)
 // tuple — y is deliberately excluded from the fingerprint (spec's own
 // wording: "y 允许浮动，它随标题行数变化") since a taller/shorter heading
@@ -32,7 +32,7 @@
 // first-box-only reading).
 import { describe, expect, it } from "vitest"
 import type { PptxIR, Slide } from "@/ir"
-import { CONTENT_ARCHETYPES, type ContentArchetypeId } from "../archetypes/index-content"
+import { CONTENT_LAYOUTS, type ContentLayoutId } from "../layouts/index-content"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { parseSvgRoot, renderSvgMarkup } from "../serialize"
@@ -53,23 +53,23 @@ function quantize(n: number): number {
 }
 
 /**
- * Fixed input shape, applied identically to all 12 archetypes (T2's review
- * named `quiet-frame` as an archetype whose own region set changes shape
+ * Fixed input shape, applied identically to all 12 layouts (T2's review
+ * named `quiet-frame` as a layout whose own region set changes shape
  * with component *count* — its lone-non-full-body-component case narrows
  * and re-centers its content rect, full width otherwise — so "the region
  * set" is only a well-defined, comparable quantity once the input shape
- * feeding every archetype is fixed and stated, not measured ad hoc per
- * archetype).
+ * feeding every layout is fixed and stated, not measured ad hoc per
+ * layout).
  *
  * Chosen shape: exactly 2 components — a lead `image` (unresolved asset,
- * same "Image missing" placeholder path every archetype's own image
+ * same "Image missing" placeholder path every layout's own image
  * handling already exercises, see `image.tsx`) followed by one short
  * `paragraph`. Deliberately not 0 or 1 component: `quiet-frame`'s own
  * single-narrowing branch only fires at exactly 1 *non-full-body* component,
  * and `stacked-poster`'s poster grammar (its own most differentiated region
  * shape — a `hero` + `strip`, not the flat degrade stack) only activates at
  * 1-2 *fitting* components — 0 or >=3 would silently degrade it back to the
- * same flat single-stack shape every other archetype already has, hiding
+ * same flat single-stack shape every other layout already has, hiding
  * exactly the kind of structural distinctiveness this metric exists to
  * measure. A scalable (image) lead is also required for `image-lead-split`
  * specifically: its visual column only gets a `data-audit-box` at all when
@@ -77,13 +77,13 @@ function quantize(n: number): number {
  * function) — the placeholder-fallback path draws a `data-audit-rect` but
  * deliberately no `data-audit-box` (nothing to scale-audit when there's no
  * real component behind it), so a non-image fixture would silently under-
- * count this archetype's own region set the same way the rejected
+ * count this layout's own region set the same way the rejected
  * first-box-only metric did, just via a different blind spot.
  *
  * Note: this shape does legitimately drop the paragraph on `narrow-column`
  * specifically (its column is wide enough that the image's own height
  * — `min(w*0.5, 340)` = 340px at 880px width — already consumes nearly all
- * of that archetype's vertical budget, so `layoutContentFit`'s overflow
+ * of that layout's vertical budget, so `layoutContentFit`'s overflow
  * guard drops the second component rather than overflow the page). That's
  * `layoutContentFit` doing its job, not a fixture bug: a dropped component
  * renders no box at all, so it simply removes nothing this metric would
@@ -114,13 +114,13 @@ function fixedIr(): PptxIR {
 type RegionTuple = readonly [x: number, w: number]
 
 /** A skeleton: the sorted, de-duplicated set of quantized (x, width)
- * region tuples an archetype renders for the fixed slide above. Two
+ * region tuples a layout renders for the fixed slide above. Two
  * components stacked in the *same* column produce the same (x, width) twice
  * (only their y differs) — de-duplicating collapses that back to one
  * region, matching "region" meaning a distinct geometric slot, not a
  * distinct rendered box. */
-function skeletonFor(id: ContentArchetypeId): readonly RegionTuple[] {
-  const Component = CONTENT_ARCHETYPES[id]
+function skeletonFor(id: ContentLayoutId): readonly RegionTuple[] {
+  const Component = CONTENT_LAYOUTS[id]
   const ir = fixedIr()
   const slide = ir.slides[0]
   const ctx = buildCtx(resolveStyle(ir.theme.id), ir.assets.images)
@@ -143,10 +143,10 @@ function skeletonKey(skeleton: readonly RegionTuple[]): string {
   return JSON.stringify(skeleton)
 }
 
-const ALL_CONTENT_IDS = Object.keys(CONTENT_ARCHETYPES) as ContentArchetypeId[]
+const ALL_CONTENT_IDS = Object.keys(CONTENT_LAYOUTS) as ContentLayoutId[]
 
-describe("content archetype skeleton diversity (content-archetype expansion wave, T3 acceptance metric)", () => {
-  it("covers all 13 registered content archetypes (sanity — this metric is meaningless over a stale/partial list)", () => {
+describe("content layout skeleton diversity (content-layout expansion wave, T3 acceptance metric)", () => {
+  it("covers all 13 registered content layouts (sanity — this metric is meaningless over a stale/partial list)", () => {
     expect(ALL_CONTENT_IDS).toHaveLength(13)
   })
 
@@ -154,7 +154,7 @@ describe("content archetype skeleton diversity (content-archetype expansion wave
     const skeletons = new Map(ALL_CONTENT_IDS.map((id) => [id, skeletonFor(id)] as const))
     const classes = new Set(Array.from(skeletons.values()).map(skeletonKey))
 
-    // Non-vacuity: prove some archetypes really do still legitimately share
+    // Non-vacuity: prove some layouts really do still legitimately share
     // a class (e.g. `narrow-column`/`side-highlight` are both a lone
     // (x=96, w=880) column under this fixture — `side-highlight`'s own
     // accent rail is decorative chrome, not itself an audited region) — so
@@ -191,7 +191,7 @@ describe("content archetype skeleton diversity (content-archetype expansion wave
     expect(fullRegionSkeleton.length).toBeGreaterThan(1)
     // ...but a first-box-only reading of the very same render only ever
     // sees 1 — indistinguishable in *shape* (region count) from every other
-    // lone-single-column archetype in the pool, even though its numeric
+    // lone-single-column layout in the pool, even though its numeric
     // width happens not to collide with any of them under this fixture.
     expect(firstBoxOnly.get("image-lead-split")).toHaveLength(1)
     // Sanity: the first-box reading is not itself vacuous (it still finds

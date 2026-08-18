@@ -86,7 +86,7 @@ export const PageSpecSchema = z
      *  `SlideSchema.beat`'s own doc comment, `../ir/index.ts`, and
      *  `BEAT_TENDENCY_WEIGHT`'s in `../svg/layout-selection.ts` for why) —
      *  the checks below (rotation shape) and that downstream weighting
-     *  (which archetypes a given beat favors) are two independent consumers
+     *  (which layouts a given beat favors) are two independent consumers
      *  of the same declared value, not two views of one mechanism. */
     beat: z.enum(BEAT_VALUES).optional(),
     /** Optional authoring hint pointing fill/select at a preferred

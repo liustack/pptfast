@@ -776,8 +776,8 @@ export function ImageBottomPage({
 }
 
 // T1d (src domain reorg wave 1): the 4 takeover LayoutDefinitions inlined
-// verbatim from registry.ts's former `TAKEOVER_LAYOUTS` entries — one file,
-// 4 named exports (not `layoutDef`, unlike the 35 archetype files: all four
+// verbatim from registry.ts's former `TAKEOVER_LAYOUT_DEFS` entries — one file,
+// 4 named exports (not `layoutDef`, unlike the 35 layout files: all four
 // takeovers are implemented in this single file, so they need distinct
 // export names to coexist). `LayoutDefinition` is a type-only import from
 // registry.ts — registry.ts value-imports these 4 exports back, and a
@@ -789,7 +789,7 @@ export const imageSplitLayoutDef: LayoutDefinition = {
   // + rule + subheading in the text column, then the remaining components as
   // body — hardcoded arrangement "single" (layoutContentFit("single", ...),
   // image-pages.tsx:209-214), not exposed via `arrangements` (takeover
-  // kind, not archetype).
+  // kind, not layout).
   id: "image-split",
   kind: "takeover",
   slideTypes: ["content"],

@@ -1,15 +1,15 @@
 // @vitest-environment node
 //
 // Durable regression net for the W4 fix round (contrast defect class fixed
-// in this task: archetypes baking a text fill while assuming the theme's
+// in this task: layouts baking a text fill while assuming the theme's
 // default background tone — see `../ink.ts`'s own header and the task
 // report's "修复轮" section for the full defect family). Runs under the
 // real Node platform (`installNodePlatform()`, same posture as
 // `deck-audit.test.ts`) so `auditDeck`'s actual documented Node consumption
 // path is exercised end-to-end.
 //
-// Scope: every canonical theme × every slide type × every archetype
-// currently in that theme's curated set (now the full registered-archetype
+// Scope: every canonical theme × every slide type × every layout
+// currently in that theme's curated set (now the full registered-layout
 // set for all four slide types on all but a small, explicitly-adjudicated
 // handful of curation exclusions — see `themes/definitions.ts`). Each
 // combination is rendered with `heading` populated on every slide type, plus
@@ -19,15 +19,15 @@
 // deliberately omit `subheading` — see below.
 //
 // Deliberately minimal otherwise — no `organization`/`date` meta, no
-// `footnote`, no preceding chapter (so a content archetype's section-label
+// `footnote`, no preceding chapter (so a content layout's section-label
 // kicker never renders), no `kpi_cards`(+delta)/`code`/`quote`/
 // `architecture` components, no `cover`/`ending` subheading. Every one of
 // those was tried while building this test and each surfaces a *different*,
 // pre-existing, cross-cutting issue unrelated to this task's defect class:
 //   - `colors.muted` (the org/meta/footnote/kicker token nearly every
-//     archetype uses) used to be marginally under the 4.5:1 body floor
+//     layout uses) used to be marginally under the 4.5:1 body floor
 //     against several themes' own backgrounds — a theme-token-calibration
-//     gap, not an archetype assuming the wrong background. **Fixed** in a
+//     gap, not a layout assuming the wrong background. **Fixed** in a
 //     later task (post-v0.3 W8 fix round, backlog item 5a —
 //     `.issues/notes/engineering-history.md` #5 — a minimal
 //     hue/saturation-preserving lightness recalibration across the 7
@@ -37,11 +37,11 @@
 //     real backgrounds this token actually renders against instead of this
 //     file's own deliberately meta-free fixtures. Kept out of *this* sweep's
 //     fixtures regardless, even post-fix — this sweep's own job is the W4
-//     defect class (an archetype assuming the wrong background for a token
+//     defect class (a layout assuming the wrong background for a token
 //     it bakes), and adding meta/footnote content here would just
 //     duplicate the dedicated block's coverage through a second, noisier
 //     path instead of adding any.
-//   - every `cover`/`ending` archetype's *subheading/subtitle* also reads
+//   - every `cover`/`ending` layout's *subheading/subtitle* also reads
 //     `colors.muted` (unlike `chapter`/`content`, whose subheading uses
 //     `colors.text`/`colors.accent`/`colors.primary` — the tokens this
 //     task's own fix touches) — same token now covered by the fix and
@@ -179,7 +179,7 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     // `CHAPTER_WITHOUT_FASHION`) and **re-measured all 13/13** the same day
     // after the post-v0.3 W8 fix round (backlog item 2) revoked that
     // exclusion (`readableOn` moved from a fixed 0.4 luminance threshold to
-    // a real two-ink contrast comparison, which flips the archetype's own
+    // a real two-ink contrast comparison, which flips the layout's own
     // `fg = readableOn(ctx.colors.accent)` for academic/heritage — same
     // fix also cleared the *heading* text that used to fail on
     // bloom/classroom/heritage, the actual reason those three were
@@ -221,7 +221,7 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
 /** Per-layout text-shape guards, keyed by layout id — a finding under that
  * layout only counts as allowlisted when its text also looks like the
  * specific decorative/chrome element the entry names, not any other text
- * that archetype might someday draw badly. */
+ * that layout might someday draw badly. */
 const TEXT_SHAPE_GUARD: Readonly<Record<string, RegExp>> = {
   // fashion-chapter's giant watermark digit ("01", "12", ...) — never its
   // heading or "CHAPTER NN" label.
@@ -305,7 +305,7 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
     describe(themeId, () => {
       const layouts = THEME_DEFINITIONS[themeId as CanonicalThemeId].layouts
 
-      it("cover archetypes", () => {
+      it("cover layouts", () => {
         const failures: string[] = []
         for (const layout of layouts.cover) {
           // No subheading — see file header on colors.muted's subtitle gap.
@@ -316,7 +316,7 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
         expect(failures).toEqual([])
       })
 
-      it("chapter archetypes", () => {
+      it("chapter layouts", () => {
         const failures: string[] = []
         for (const layout of layouts.chapter) {
           const slide: Slide = { type: "chapter", heading: HEADING, subheading: SUBHEADING, layout, components: [] } as Slide
@@ -326,7 +326,7 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
         expect(failures).toEqual([])
       })
 
-      it("content archetypes", () => {
+      it("content layouts", () => {
         const failures: string[] = []
         for (const layout of layouts.content) {
           const slide: Slide = {
@@ -342,7 +342,7 @@ describe("full-matrix contrast/overflow regression net (W4 fix round)", () => {
         expect(failures).toEqual([])
       })
 
-      it("ending archetypes", () => {
+      it("ending layouts", () => {
         const failures: string[] = []
         for (const layout of layouts.ending) {
           // No subheading — see file header on colors.muted's subtitle gap.
@@ -421,9 +421,9 @@ describe("fashion-masthead meta line contrast (contrast-policy wave, metaInk mig
 // pin-only matrix leg (quote-stage wave, task T2, 裁定 4): `pinOnly` layouts
 // (registry.ts's `LayoutDefinition.pinOnly`) are reachable only through an
 // explicit `slide.layout` pin, so `THEME_DEFINITIONS[themeId].layouts`
-// never lists one — the "content archetypes" sweep right above, which
+// never lists one — the "content layouts" sweep right above, which
 // enumerates *that* curated set, has zero coverage of them by construction.
-// Without a dedicated leg, a `pinOnly` archetype (currently just
+// Without a dedicated leg, a `pinOnly` layout (currently just
 // quote-stage) would sit outside every contrast/overflow regression net in
 // this repo. Enumerate every `pinOnly` entry in `LAYOUT_REGISTRY` directly
 // (not hardcoded to "quote-stage") × all 16 canonical themes, pin each one
@@ -432,7 +432,7 @@ describe("fashion-masthead meta line contrast (contrast-policy wave, metaInk mig
 //
 // Two content shapes per (theme, layout) pair, at capacity 0 and capacity 1
 // (quote-stage's own declared `body` capacity — see registry.ts's
-// CONTENT_LAYOUTS header) rather than the shared `CONTENT_BODY` fixture
+// CONTENT_LAYOUT_DEFS header) rather than the shared `CONTENT_BODY` fixture
 // (2 components, `paragraph`+`bullets`) the sweep above uses: pinning a
 // `pinOnly` layout with more components than its own declared capacity is a
 // hard *error* at the `checkIrQuality` layer (`pin_only_over_capacity`,
@@ -489,10 +489,10 @@ describe("pin-only matrix contrast/overflow regression net (quote-stage wave, ta
 
 // Targeted addition (W8 fix round): kpi_cards flowing through bento-panel
 // specifically — deliberately *not* folded into `CONTENT_BODY` above.
-// `CONTENT_BODY` is shared by every content archetype across all 13 themes;
+// `CONTENT_BODY` is shared by every content layout across all 13 themes;
 // the file header already documents that kpi_cards was tried there once and
 // reverted because it used to drag kpi.tsx's own row-layout delta-arrow
-// defect into every archetype that renders it via the shared row-layout
+// defect into every layout that renders it via the shared row-layout
 // component — historically a *different, already-pinned* defect from this
 // block's own (both are now fixed, see the "defect B real contrast fixes"
 // describe block below; this block's own targeted fixture below predates
@@ -560,7 +560,7 @@ describe("bento-panel kpi_cards contrast (W8 fix round, targeted — see comment
 // against one representative theme each — swept here across all 13 themes
 // for the full regression net, same targeted-fixture idiom as the
 // bento-panel kpi_cards block above (a component-level defect, not an
-// archetype one, so a single fixed layout is the right scope, not a
+// layout one, so a single fixed layout is the right scope, not a
 // per-theme layout sweep). All five hardcoded an unwrapped ink with no
 // `accessibleInk`/`readableOn` call — `steps.tsx`/`roadmap.tsx`'s
 // `fill="#FFFFFF"` badge digit, `rings.tsx`/`image-compare.tsx`'s "VS"
@@ -663,7 +663,7 @@ describe("B-group ink fixes — full 13-theme sweep (bench-driven fix round, def
 // The other two named items were measured and found **not reproducible**
 // as new/un-adjudicated defects:
 //   - "journal chapter folio numerals": every one of journal's 8 curated
-//     chapter archetypes renders zero low-contrast findings except
+//     chapter layouts renders zero low-contrast findings except
 //     `fashion-chapter`, whose only numeral-shaped finding is its giant
 //     chapter-number watermark digit — already covered by this file's own
 //     `ALLOWLIST` entry above (`theme: "*"`, `ratioMin`/`ratioMax`
@@ -886,11 +886,11 @@ describe("defect B ink guards hold on the asset-scrim ctx.defaultBg branch (Task
 // background this renderer actually paints behind it:
 //   - each theme's own cover/content/ending page background (its
 //     `defaultBackgrounds`, reduced the same way `full-slide-svg.tsx` does).
-//     `chapter` is deliberately excluded: every chapter archetype either
+//     `chapter` is deliberately excluded: every chapter layout either
 //     never reads `colors.muted` at all, or reads it through
 //     `accessibleInk` (`chapter-masthead-chapter.tsx`/`chapter-poster-
 //     chapter.tsx`/`chapter-constellation-chapter.tsx`/`chapter-roman-
-//     chapter.tsx` — confirmed by reading every chapter archetype file),
+//     chapter.tsx` — confirmed by reading every chapter layout file),
 //     which self-heals independently of this token's own calibration — so
 //     there is no real raw-fill surface to lock there.
 //   - the bento-panel kpi card's own real rendered surface, via an actual
@@ -1457,7 +1457,7 @@ describe("five_forces tinted-panel contrast (structure-components wave 2 task 1,
 // qwen3.6-27b answer.json: 4 items in all 9 blocks, verbatim below). Pre-fix,
 // `bmc.tsx`'s `render` floored its own drawn height at the natural
 // (unstretched) total and never shrank below `box.h` — a full-body
-// component (`svg-content.tsx`) gets the archetype's *fixed* content-rect
+// component (`svg-content.tsx`) gets the layout's *fixed* content-rect
 // height verbatim, never a box sized to its own `measure()` return value —
 // so schema-max content overflowed the content rect on every one of the 13
 // themes (empirically confirmed pre-fix: 2 v-overflow findings per theme,
@@ -1465,12 +1465,12 @@ describe("five_forces tinted-panel contrast (structure-components wave 2 task 1,
 // band painted and the first to spill). Fixed by shrinking every cell's font
 // size/vertical rhythm by the same proportion the box is short by (`bmc.tsx`
 // file header, "The inverse case"). `narrow-column` specifically (not one of
-// the other 6 content archetypes) — the narrowest, most content-constrained
+// the other 6 content layouts) — the narrowest, most content-constrained
 // curated layout (880px column, 410px content-rect height at this heading),
 // so a clean sweep here is real headroom evidence, not a softball; the task
-// report's own probe additionally swept all 7 content archetypes × all 13
+// report's own probe additionally swept all 7 content layouts × all 13
 // themes at this same schema-max fixture (91 combinations, 0 findings) for
-// broader confidence beyond this committed regression's one archetype.
+// broader confidence beyond this committed regression's one layout.
 describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
   const BMC_SCHEMA_MAX_SLIDE: Slide = {
     type: "content",
@@ -1493,7 +1493,7 @@ describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
   } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: schema-max bmc (4 items in every block) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+    it(`${themeId}: schema-max bmc (4 items in every block) renders with zero auditDeck findings on the narrowest curated content layout`, () => {
       expect(auditFindings(deckFor(themeId, BMC_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
@@ -1505,7 +1505,7 @@ describe("bmc bottom-row overflow (bench-driven fix round, defect F)", () => {
 // `swot.tsx` carries the same `fontScale` defect-F fix `bmc.tsx`/
 // `pest.tsx`/`five-forces.tsx` already have. 5 items in every one of swot's
 // 4 quadrants (`z.array(z.string()).min(1).max(5)`, `ir/index.ts`), on
-// `narrow-column`, this suite's own narrowest curated content archetype.
+// `narrow-column`, this suite's own narrowest curated content layout.
 describe("swot schema-max content (fix round, controller scope addition)", () => {
   const SWOT_SCHEMA_MAX_SLIDE: Slide = {
     type: "content",
@@ -1523,7 +1523,7 @@ describe("swot schema-max content (fix round, controller scope addition)", () =>
   } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: schema-max swot (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+    it(`${themeId}: schema-max swot (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content layout`, () => {
       expect(auditFindings(deckFor(themeId, SWOT_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
@@ -1531,7 +1531,7 @@ describe("swot schema-max content (fix round, controller scope addition)", () =>
 
 // Task 1 fix round (post-review, controller scope addition): the
 // reviewer's own repro shape — schema-max content *and* a heading long
-// enough to force a 2-line wrap *and* the narrowest curated archetype, all
+// enough to force a 2-line wrap *and* the narrowest curated layout, all
 // three at once (`five-forces.tsx`'s file header already named this
 // compound gap as an unresolved residual for that component; this pins
 // whether `swot` — now carrying the identical fix — clears it too, rather
@@ -1566,7 +1566,7 @@ describe("swot zero-residual under a 2-line-wrapped heading + schema-max content
 // schema-max sweep above: 5 items in every one of pest's 4 quadrants
 // (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own
 // ceiling), on `narrow-column`, this suite's own narrowest curated content
-// archetype.
+// layout.
 describe("pest schema-max content (structure-components wave 2 task 1)", () => {
   const PEST_SCHEMA_MAX_SLIDE: Slide = {
     type: "content",
@@ -1592,7 +1592,7 @@ describe("pest schema-max content (structure-components wave 2 task 1)", () => {
   } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: schema-max pest (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+    it(`${themeId}: schema-max pest (5 items in every quadrant) renders with zero auditDeck findings on the narrowest curated content layout`, () => {
       expect(auditFindings(deckFor(themeId, PEST_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
@@ -1600,7 +1600,7 @@ describe("pest schema-max content (structure-components wave 2 task 1)", () => {
 
 // Task 1 fix round (post-review, High finding): the reviewer's own repro
 // shape — schema-max content *and* a heading long enough to force a 2-line
-// wrap *and* the narrowest curated archetype, all three at once
+// wrap *and* the narrowest curated layout, all three at once
 // (`five-forces.tsx`'s file header already named this compound gap as an
 // unresolved residual for that component; this pins whether `pest` — now
 // carrying the identical fix — clears it too, rather than leaving that
@@ -1635,7 +1635,7 @@ describe("pest zero-residual under a 2-line-wrapped heading + schema-max content
 // schema-max sweep above: 5 items in every one of five_forces' 5 panels
 // (`z.array(z.string()).min(1).max(5)`, `ir/index.ts` — the schema's own
 // ceiling), on `narrow-column`, this suite's own narrowest curated content
-// archetype. This is the fixture that first surfaced this file's own
+// layout. This is the fixture that first surfaced this file's own
 // bench-driven-fix-round-style defect (three stacked full-width bands need
 // more vertical room than bmc's own two-band, multi-column canvas) — see
 // `five-forces.tsx`'s own file header for the fix (`fontScale`, ported from
@@ -1673,7 +1673,7 @@ describe("five_forces schema-max content (structure-components wave 2 task 1)", 
   } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: schema-max five_forces (5 items in every panel, all intensity levels) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+    it(`${themeId}: schema-max five_forces (5 items in every panel, all intensity levels) renders with zero auditDeck findings on the narrowest curated content layout`, () => {
       expect(auditFindings(deckFor(themeId, FIVE_FORCES_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
@@ -1739,7 +1739,7 @@ describe("heatmap contrast (structure-components wave 2 task 2)", () => {
   } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: schema-max heatmap (10x10 grid, show_values on) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+    it(`${themeId}: schema-max heatmap (10x10 grid, show_values on) renders with zero auditDeck findings on the narrowest curated content layout`, () => {
       expect(auditFindings(deckFor(themeId, HEATMAP_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
@@ -1819,7 +1819,7 @@ describe("heatmap cell-fill x ink (structure-components wave 2 task 2, decision 
 // R1 evidence wave, Task T3 — data_table (33rd component, first through the
 // wave-2 domain-file flow). Mirrors heatmap's own two-sweep shape directly
 // above: a realistic-content sweep (representative column count/content,
-// narrowest curated content archetype) plus a schema-max sweep (8 columns x
+// narrowest curated content layout) plus a schema-max sweep (8 columns x
 // 12 rows) — both assert zero `auditFindings` (contrast + overflow +
 // out-of-bounds) across every canonical theme.
 describe("data_table contrast (R1 evidence wave, Task T3)", () => {
@@ -1871,7 +1871,7 @@ describe("data_table contrast (R1 evidence wave, Task T3)", () => {
   }
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: schema-max data_table (8 columns x 12 rows, emphasis mix) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+    it(`${themeId}: schema-max data_table (8 columns x 12 rows, emphasis mix) renders with zero auditDeck findings on the narrowest curated content layout`, () => {
       expect(auditFindings(deckFor(themeId, dataTableSchemaMaxSlide()))).toEqual([])
     })
   }
@@ -2069,7 +2069,7 @@ describe("sankey contrast (structure-components wave 2 task 3)", () => {
   }
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: schema-max sankey (16 nodes, 30 links) renders with zero auditDeck findings on the narrowest curated content archetype`, () => {
+    it(`${themeId}: schema-max sankey (16 nodes, 30 links) renders with zero auditDeck findings on the narrowest curated content layout`, () => {
       expect(auditFindings(deckFor(themeId, SANKEY_SCHEMA_MAX_SLIDE))).toEqual([])
     })
   }
@@ -2332,7 +2332,7 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 // (`background.tsx`'s auto-scrim, colored `themeDefaultBg` — see
 // `full-slide-svg.tsx`'s own `autoScrimColor` assignment and
 // `resolveOverrideBackgroundHex`'s "Asset policy rationale" doc comment).
-// This sweep closes exactly that gap: every content archetype, every theme,
+// This sweep closes exactly that gap: every content layout, every theme,
 // with a real asset background (a data-URI `<image>`, not the missing-asset
 // placeholder rect) through the real `auditDeck` pipeline.
 //
@@ -2340,7 +2340,7 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 // a non-takeover asset background's auto-scrim — applies identically to
 // both slide types, see `full-slide-svg.tsx`'s own "content/ending 的 asset
 // 背景维持 P1 雾面 scrim" comment): grepping every `ctx.defaultBg`/
-// `defaultBg` reference under `src/svg/archetypes/` (same methodology the
+// `defaultBg` reference under `src/svg/layouts/` (same methodology the
 // review itself used) finds zero `ending-*.tsx` consumers today, so an
 // `ending` sweep here would render successfully but could never actually
 // exercise the fixed code path — indistinguishable from a vacuous check.
@@ -2348,7 +2348,7 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 // (`full-slide-svg.test.tsx`) cover the `asset` branch regardless of which
 // slide type calls it, so the fix itself is not undertested for `ending` —
 // only this particular real-render net is narrowed to where it can actually
-// discriminate today. A future `ending` archetype that starts reading
+// discriminate today. A future `ending` layout that starts reading
 // `ctx.defaultBg` should extend this block, not silently rely on it.
 //
 // Expected to stay green both before and after the fix, by the review's own
@@ -2357,11 +2357,11 @@ describe("colors.muted opacity-blend fix (post-v0.3 W8 fix round, task-2 review 
 // `colors.accent`/`colors.primary` against both `colors.surface` and the
 // real `themeDefaultBg`): today's real flips are either latent
 // (academic/campaign's dangerous-direction flip needs a >=24px subheading no
-// current content archetype requests — every real subheading call site is
+// current content layout requests — every real subheading call site is
 // 20-22px) or cosmetic-safe (insight/luxe's flip swaps *which* ink renders,
 // from the theme's own accent/primary token to `readableOn`'s neutral pick,
 // never producing a sub-threshold pairing either way). This sweep's job is
-// durable regression coverage against a *future* archetype/theme combination
+// durable regression coverage against a *future* layout/theme combination
 // crossing into the dangerous direction, not red-then-green proof for *this*
 // fix — see `full-slide-svg.test.tsx`'s dedicated
 // `resolveOverrideBackgroundHex`/`ctx.defaultBg` tests for that (independently
@@ -2388,7 +2388,7 @@ describe("asset-background content contrast (final-review Major finding, backlog
   // token (correct for *their own* page backgrounds) — broke for the 4 whose
   // `colors.text` is light because *their* own surface is dark
   // (`campaign`/`insight`/`luxe`/`tech`, confirmed by grepping every theme's
-  // own `text:` token): a light token painted on this archetype's own
+  // own `text:` token): a light token painted on this layout's own
   // hardcoded-white card measured ~1:1, not a near-miss. Reproduced directly
   // (`campaign`, real render): heading/paragraph/bullets all rendered
   // `fill="#FFFFFF"` on the `fill="#FFFFFF"` card.
@@ -2400,10 +2400,10 @@ describe("asset-background content contrast (final-review Major finding, backlog
   // subheading already used, against the same card `"#FFFFFF"` reference —
   // see `content-tone-adaptive-content.tsx`'s own "白卡分支墨色修复" file-header
   // paragraph. Exclusion removed; this sweep now exercises every content
-  // archetype including this one, for all 13 themes, with zero exceptions.
+  // layout including this one, for all 13 themes, with zero exceptions.
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: content archetypes clear contrast against the real painted auto-scrim, not colors.surface`, () => {
+    it(`${themeId}: content layouts clear contrast against the real painted auto-scrim, not colors.surface`, () => {
       const failures: string[] = []
       for (const layout of THEME_DEFINITIONS[themeId].layouts.content) {
         const slide: Slide = {

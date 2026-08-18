@@ -123,7 +123,7 @@ describe("STRATEGY_DEFINITIONS", () => {
   // gain a third member, closing the plan's "instructional/showcase have
   // only 2-3 preferred content ids" representation gap; storytelling joins
   // them for thematic parity since its own two pre-existing members are
-  // already the pool's other "unhurried" archetypes) ──
+  // already the pool's other "unhurried" layouts) ──
 
   it("pins storytelling's re-derived content set: narrow-column + stacked-poster + quiet-frame (its two pre-existing atmospheric picks gain a third, equally restrained sibling)", () => {
     expect(STRATEGY_DEFINITIONS.storytelling.layoutTendencies).toEqual([
@@ -177,7 +177,7 @@ describe("STRATEGY_DEFINITIONS", () => {
       }
     })
 
-    it("every declared id is a real registered archetype applicable to its own page type", () => {
+    it("every declared id is a real registered layout applicable to its own page type", () => {
       for (const pageType of pageTypes) {
         const validIds = layoutsForSlideType(pageType).map((def) => def.id)
         for (const strategy of strategies) {
@@ -200,7 +200,7 @@ describe("STRATEGY_DEFINITIONS", () => {
       }
     })
 
-    it("the tone-adaptive-* neutral archetype never appears in any strategy's identity set, mirroring tone-adaptive-content's absence from every layoutTendencies list", () => {
+    it("the tone-adaptive-* neutral layout never appears in any strategy's identity set, mirroring tone-adaptive-content's absence from every layoutTendencies list", () => {
       const neutralIds = { cover: "tone-adaptive-header", chapter: "tone-adaptive-chapter", ending: "tone-adaptive-ending" } as const
       for (const pageType of pageTypes) {
         for (const strategy of strategies) {

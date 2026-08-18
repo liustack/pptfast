@@ -330,7 +330,7 @@ export function assembleDeck(spec: unknown, pages: Record<string, PageContent>):
  * - `slide.layout` already set (the page file wrote one explicitly, `step 5`
  *   of {@link assembleDeck}'s own doc comment) — skipped without even calling
  *   the resolver. `resolveEffectiveLayoutId` would just echo a valid
- *   archetype pin straight back anyway (its own explicit-pin short-circuit),
+ *   layout pin straight back anyway (its own explicit-pin short-circuit),
  *   but skipping the call keeps "an explicit page file value survives
  *   untouched" true by construction, not by coincidence of what the resolver
  *   happens to do with it.

@@ -13,7 +13,7 @@
  * deterministic (double-render identical) and editing one page never
  * reshuffles another (pageKey-scoped, no cross-page fold — unlike layout
  * selection's adjacent anti-repetition, motif has no cross-page dependency
- * at all, so this is structurally simpler than `resolveArchetypeId`).
+ * at all, so this is structurally simpler than `resolveLayoutId`).
  *
  * ## Candidate-set design (the content decision, argued per theme below)
  *
@@ -64,7 +64,7 @@
  * | ember | ember-motif *(singleton)* | themes-16 wave, task T3 (2026-07-28): ember's rising-spark-particle vocabulary (dots fading along an ascending bezier arc) is its own new technique family — a directional motion mark, not a static blob/ornament/grid/glow like any of the other 15 motifs, so no existing motif reads as a compatible sibling. Stays a candidate set of 1 (same rationale pattern as pulse/terra/campaign/ink) |
  * | vermilion | vermilion-motif *(singleton)* | gov-theme wave (2026-08-06): vermilion's flag-ribbon-arc + gold-ray-fan vocabulary is its own new technique family — a filled tapering ribbon along an ascending bezier plus a radiating thin-line ray fan, reading as ceremonial "提气/庄重" official-report identity. Not a static blob/ornament, not a grid/glow, not ember's fading particle trail — no existing motif reads as a compatible sibling, and its deliberately-restrained CJK-official register would clash with any of the other 16. Stays a candidate set of 1 (same rationale pattern as pulse/terra/ember/campaign/ink) |
  *
- * `tone-adaptive-motif` — the 13th registered motif archetype — is
+ * `tone-adaptive-motif` — the 13th registered motif — is
  * deliberately absent from every candidate set above: its own source header
  * describes it as an almost-invisible full-page tint used as a
  * theme-agnostic *fallback* texture, not a themed decorative mark. Adding it
@@ -127,7 +127,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import type { CanonicalThemeId } from "../themes"
 import { getThemeDefinition } from "../themes/definitions"
-import type { MotifArchetypeId } from "./motifs/types"
+import type { MotifId } from "./motifs/types"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
 
 /**
@@ -150,7 +150,7 @@ export const MOTIF_BASE_WEIGHT = 1
  * `runway` has no entry (its own motif is `undefined` by settled design
  * decision, nothing to rotate).
  */
-export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifArchetypeId[]>> = {
+export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId[]>> = {
   consulting: ["banner-motif", "rail-motif", "enterprise-motif"],
   insight: ["poster-motif", "constellation-motif"],
   academic: ["rail-motif", "banner-motif", "corner-ornament-motif"],
@@ -171,7 +171,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifAr
 }
 
 /**
- * Resolve which motif archetype id `slide` (the `index`-th page of `ir`)
+ * Resolve which motif id `slide` (the `index`-th page of `ir`)
  * should draw its decor with. Mirrors `layout-selection.ts`'s
  * `resolveEffectiveLayoutId` signature/posture for the same reason: a single
  * authoritative function callable from both the render path
@@ -198,7 +198,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifAr
  *   motif picks are trivially revision-stable without needing a deck-wide
  *   fold or cache the way `resolveDeckEffectiveLayoutIds` needs one.
  */
-export function resolveMotifId(ir: PptxIR, slide: Slide, index: number): MotifArchetypeId | undefined {
+export function resolveMotifId(ir: PptxIR, slide: Slide, index: number): MotifId | undefined {
   const themeDef = getThemeDefinition(ir.theme.id)
   const candidates = MOTIF_CANDIDATES[ir.theme.id as CanonicalThemeId]
   if (!candidates || candidates.length === 0) return themeDef.motif

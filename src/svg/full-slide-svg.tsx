@@ -6,7 +6,7 @@ import { resolveStyle } from "../themes"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { resolveFontStack } from "./fonts"
 import type { ComponentCtx } from "./components/types"
-import type { SvgTemplateProps } from "./archetypes/types"
+import type { SvgTemplateProps } from "./layouts/types"
 import { Background } from "./background"
 import { BrandChrome } from "./brand-chrome"
 import { SlideDecor } from "./slide-decor"
@@ -21,15 +21,15 @@ import { findImageComponent } from "./layouts/find-image"
 import { gradientBands } from "./gradient-bands"
 import { getLayout } from "./layouts/registry"
 import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
-import { COVER_ARCHETYPES } from "./archetypes"
-import { CHAPTER_ARCHETYPES } from "./archetypes/index-chapter"
-import { CONTENT_ARCHETYPES } from "./archetypes/index-content"
-import { ENDING_ARCHETYPES } from "./archetypes/index-ending"
-import { MOTIF_ARCHETYPES } from "./motifs"
+import { COVER_LAYOUTS } from "./layouts/index-cover"
+import { CHAPTER_LAYOUTS } from "./layouts/index-chapter"
+import { CONTENT_LAYOUTS } from "./layouts/index-content"
+import { ENDING_LAYOUTS } from "./layouts/index-ending"
+import { MOTIFS } from "./motifs"
 import { resolveMotifId } from "./motif-selection"
 import { resolveChartPaletteOffset } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
-import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from "./layout-selection"
+import { resolveLayoutId, resolveEffectiveLayoutId, resolveIrStrategy } from "./layout-selection"
 
 /**
  * Reduce a `BackgroundSpec` to one representative hex color — a color spec
@@ -40,7 +40,7 @@ import { resolveArchetypeId, resolveEffectiveLayoutId, resolveIrStrategy } from 
  * instead (mirrors the pre-existing `autoScrimColor` computation below,
  * which this function now backs).
  *
- * Exported (W4 fix round) so archetype tests can build a `ComponentCtx`
+ * Exported (W4 fix round) so layout tests can build a `ComponentCtx`
  * whose `defaultBg` matches a theme's *true* `defaultBackgrounds[slideType]`
  * — required whenever the theme under test gives that slide type a
  * different default than its own `colors.bg` (only `academic`/`classroom`/
@@ -77,7 +77,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * and looks up whichever band a text element's own resolved position
  * actually falls inside. A single scalar `ctx.defaultBg` can't reproduce
  * that per-position precision for every consumer at once — it backs many
- * archetypes' ink decisions at many different y-positions on the same slide
+ * layouts' ink decisions at many different y-positions on the same slide
  * (`ComponentCtx.defaultBg`'s own doc comment) — so no single pick agrees
  * with the audit's real per-position lookup everywhere. Of the two natural
  * single-value picks, the midpoint is the one actually representative of
@@ -86,7 +86,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * `lr`-direction gradient) edge a `.from`-stop pick would implicitly stand
  * in for — chapter headings sit at y=352-408 (close to the canvas's own
  * vertical center, 360), content subheadings at y=88-220 — see the task
- * report's per-archetype y-coordinate survey for the full list. Computed
+ * report's per-layout y-coordinate survey for the full list. Computed
  * via the renderer's own `gradientBands` (not a separately hand-rolled
  * blend formula), so the exact colour law matches what `background.tsx`
  * actually paints — a real point on the true 24-band gradient, not a
@@ -116,7 +116,7 @@ export function resolveBackgroundHex(spec: BackgroundSpec, surfaceFallback: stri
  * caller already computes that exact value for `autoScrimColor`'s own use,
  * so this is the same value, not a re-derivation of it. Moot for a
  * cover/chapter override — `imageCoverTakeover` intercepts those before any
- * archetype ever reads `ctx.defaultBg` (see `FullSlideSvg`'s own comment at
+ * layout ever reads `ctx.defaultBg` (see `FullSlideSvg`'s own comment at
  * that assignment) — so this value is simply never read in that case; it is
  * live for content/ending, the only slide types where the auto-scrim (and
  * so this exact color) is what actually renders behind text.
@@ -206,30 +206,30 @@ export interface FullSlideSvgProps {
   preserveAspectRatio?: string
 }
 
-/** 四页型 archetype 共用同一签名（archetypes/types.ts 逐个定义但结构相同）。 */
-type PageArchetype = (p: SvgTemplateProps) => React.ReactElement
+/** 四页型 layout 共用同一签名（layouts/types.ts 逐个定义但结构相同）。 */
+type PageLayout = (p: SvgTemplateProps) => React.ReactElement
 
-/** `slide.type` → 该页型的 archetype 注册表（Wave 1-3 各自建的四张表）。 */
-const PAGE_ARCHETYPE_REGISTRIES: Record<Slide["type"], Record<string, PageArchetype>> = {
-  cover: COVER_ARCHETYPES,
-  chapter: CHAPTER_ARCHETYPES,
-  content: CONTENT_ARCHETYPES,
-  ending: ENDING_ARCHETYPES,
+/** `slide.type` → 该页型的 layout 注册表（Wave 1-3 各自建的四张表）。 */
+const PAGE_LAYOUT_REGISTRIES: Record<Slide["type"], Record<string, PageLayout>> = {
+  cover: COVER_LAYOUTS,
+  chapter: CHAPTER_LAYOUTS,
+  content: CONTENT_LAYOUTS,
+  ending: ENDING_LAYOUTS,
 }
 
 /**
- * theme.layouts archetype 分发泛化（P2 Task 24，spec §4.2→v0.3 spec §6
+ * theme.layouts 分发泛化（P2 Task 24，spec §4.2→v0.3 spec §6
  * strangler）：四页型共用「查 theme 的 layouts allowed set → 按 deck seed 加权
  * 取样一个 → 查对应页型的注册表」这段逻辑，含 `requestedLayout`（W2 任务 3，即
  * `slide.layout`）显式指定短路——完整选型算法（narrative 加权取样、
  * narrativesOnly 硬约束、相邻防重复、allowed 空集防御性回退，W4 终态）现由
- * `./layout-selection` 的 `resolveArchetypeId` 持有（W3 任务 3 抽取：
+ * `./layout-selection` 的 `resolveLayoutId` 持有（W3 任务 3 抽取：
  * `checkIrQuality` 的 density 门在 validate 期要跑同一条选型路径，两处各自维护
  * 一份会有漂移风险，故只留一份）。这里只做 render 专属的收尾——按选中 id 查
- * 这个文件自己的 `PAGE_ARCHETYPE_REGISTRIES` 取 JSX Component（validate 侧不
+ * 这个文件自己的 `PAGE_LAYOUT_REGISTRIES` 取 JSX Component（validate 侧不
  * 需要、也不该关心这一步）。
  */
-function resolveArchetype(
+function resolvePageLayout(
   slideType: Slide["type"],
   layouts: ThemeDefinition["layouts"],
   seed: number,
@@ -241,15 +241,15 @@ function resolveArchetype(
   // Theme-structure wave, task T1 fix-round: the theme's own structural
   // personality (`ThemeDefinition.layoutTendencies`, `../themes/definitions.ts`),
   // already sliced to this slide type by the caller below — threaded through
-  // to `resolveArchetypeId` for the exact same reason `beat` already is: this
+  // to `resolveLayoutId` for the exact same reason `beat` already is: this
   // is the render path's copy of the selection call, and
   // `resolveOneEffectiveLayoutId` (`./layout-selection.ts`) is the
   // validate-path copy. Both must pass every weighting input identically or
   // the module's own file-header invariant ("what validate sees is what
   // render uses") breaks the moment any theme declares a tendency.
   themeTendencies: readonly string[] | undefined,
-): { id: string; Component: PageArchetype } | null {
-  const id = resolveArchetypeId(
+): { id: string; Component: PageLayout } | null {
+  const id = resolveLayoutId(
     slideType,
     layouts,
     seed,
@@ -260,7 +260,7 @@ function resolveArchetype(
     beat,
     themeTendencies,
   )
-  return id === null ? null : { id, Component: PAGE_ARCHETYPE_REGISTRIES[slideType][id] }
+  return id === null ? null : { id, Component: PAGE_LAYOUT_REGISTRIES[slideType][id] }
 }
 
 /**
@@ -285,7 +285,7 @@ export function FullSlideSvg({
   const themeDefaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slide.type], tokens.colors.surface)
   // ctx.defaultBg (post-v0.3 W8 fix round, backlog item 1 —
   // `.issues/notes/engineering-history.md` #1): prefer the slide's
-  // own `slide.background` override when it sets one, so an archetype that
+  // own `slide.background` override when it sets one, so a layout that
   // paints no panel of its own (and so reads this field to pick readable
   // ink — see `ComponentCtx.defaultBg`'s own doc comment) measures contrast
   // against the background the slide actually renders, not always the
@@ -339,7 +339,7 @@ export function FullSlideSvg({
   // seed+pageKey 加权采样，同 deck 内不同页常态性拿到不同贴纸；runway〔无
   // motif〕与 registered/自定义主题走该函数自己的直通回落，行为不变）。
   const motifId = resolveMotifId(ir, slide, index)
-  const Decor = motifId ? MOTIF_ARCHETYPES[motifId] : undefined
+  const Decor = motifId ? MOTIFS[motifId] : undefined
   let bgSpec = slide.background ?? tokens.defaultBackgrounds[slide.type]
   // 压图页接管（图片排版 polish，2026-07-09 用户反馈）：cover/chapter 的
   // asset 背景 → 暗遮罩 + 白字 bespoke 版式（ImageCoverPage）——图保持清晰
@@ -380,9 +380,9 @@ export function FullSlideSvg({
   const requestedLayoutDef = slide.layout ? getLayout(slide.layout) : undefined
   const isTakeoverLayout = requestedLayoutDef?.kind === "takeover"
   const splitTakeover = isTakeoverLayout && findImageComponent(slide) != null
-  // theme.layouts archetype 层（P1 cover-only → P2 Task 24 泛化四页型，spec
+  // theme.layouts 层（P1 cover-only → P2 Task 24 泛化四页型，spec
   // §4.2→v0.3 spec §6 strangler）：允许集非空才接管（十三主题四页型 Wave 5 后
-  // 恒非空）。image 接管优先级更高（压图页/图文版式语义不归 archetype 管，
+  // 恒非空）。image 接管优先级更高（压图页/图文版式语义不归 layout 管，
   // imageCoverTakeover 仅 cover/chapter 生效、splitTakeover 对所有页型生效，
   // 两条优先级原样保留）。
   // 盐 pageKey（W4 design decision 2，同类型页序 ordinal 机制已废弃）：优先
@@ -393,10 +393,10 @@ export function FullSlideSvg({
   const pageKey = slide.id ?? String(index)
   const strategy = resolveIrStrategy(ir)
   const previousEffectiveLayoutId = index > 0 ? resolveEffectiveLayoutId(ir, ir.slides[index - 1], index - 1) : null
-  const archetype =
+  const pageLayout =
     imageCoverTakeover || splitTakeover
       ? null
-      : resolveArchetype(
+      : resolvePageLayout(
           slide.type,
           themeDef.layouts,
           cachedDeckSeed(ir),
@@ -432,11 +432,19 @@ export function FullSlideSvg({
         <ImageAnnotatePage ir={ir} slide={slide} ctx={ctx} />
       ) : splitTakeover ? (
         <ImageSplitPage ir={ir} slide={slide} ctx={ctx} />
-      ) : archetype ? (
-        <g data-archetype={archetype.id}>
-          <archetype.Component ir={ir} slide={slide} index={index} ctx={ctx} />
+      ) : pageLayout ? (
+        /* `data-archetype` is a wire-format fossil. The vocabulary merged into
+           "layout" — archetype was the second name for the same thing — but this
+           attribute name stays put, because it is emitted into every rendered
+           SVG: the committed goldens (`src/ir/__fixtures__/equivalence-golden/
+           *.svg.json`), the checked-in previews (`examples/previews/*.svg`), and
+           the render-side tests that read the id back out all depend on the exact
+           bytes. Renaming it to `data-layout` is its own change, with a targeted
+           diff and a deliberate re-record of those artifacts. */
+        <g data-archetype={pageLayout.id}>
+          <pageLayout.Component ir={ir} slide={slide} index={index} ctx={ctx} />
         </g>
-      ) : null /* 不可达：非 takeover 时 resolveArchetype 恒命中（十三主题四页型
+      ) : null /* 不可达：非 takeover 时 resolvePageLayout 恒命中（十三主题四页型
         allowed 全非空，definitions.test「Wave 5 前置门」锁死）。空集才返回 null，
         渲空白而非崩溃是防御性兜底，正常运行不会到这里。 */}
       <BrandChrome ir={ir} slide={slide} ctx={ctx} />

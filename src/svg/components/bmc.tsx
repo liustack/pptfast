@@ -74,7 +74,7 @@ type BlockKey =
  *
  * **The inverse case — `box.h` *smaller* than the natural total (bench-
  * driven fix round, defect F)**: real, not hypothetical. `svg-content.tsx`
- * hands a full-body component (`FULL_BODY_TYPES`) the archetype's fixed
+ * hands a full-body component (`FULL_BODY_TYPES`) the layout's fixed
  * content-rect height verbatim, never a box sized to this file's own
  * `measure()` return value — and schema-max content (4 items in every one
  * of the 9 blocks, the IR schema's own ceiling — a real bench-observed
@@ -104,7 +104,7 @@ type BlockKey =
  * concrete verified ratios (~0.92 for the schema-max 13-theme regression
  * fixture below; the plan's own literal "3 items" repro needs ~0.90) and
  * the one compound edge case (a forced 2-line heading *and* a subheading
- * *and* the narrowest curated content archetype, all at once) the floor
+ * *and* the narrowest curated content layout, all at once) the floor
  * still doesn't fully absorb — out of this task's own scope (no subheading
  * or multi-line heading in the bench evidence), documented as a bounded
  * residual rather than silently left unmentioned.
@@ -392,7 +392,7 @@ export const bmc: SvgComponent<BmcComponent> = {
     const totalH = box.h ?? naturalTotal
 
     // bench-driven fix round, defect F: a box shorter than the natural
-    // total is real (full-body components get the archetype's fixed
+    // total is real (full-body components get the layout's fixed
     // content-rect height verbatim, never their own `measure()` value —
     // `svg-content.tsx`), so this shrinks every cell's font size/vertical
     // rhythm by the same proportion the box is short by instead of

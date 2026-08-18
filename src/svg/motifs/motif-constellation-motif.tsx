@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * constellation-motif archetype（spec §3.2，Wave 3 Task 22，motif 段收尾）：
+ * constellation-motif（spec §3.2，Wave 3 Task 22，motif 段收尾）：
  * 全页 135° 对角深空渐变场，充当所有 slide.type 共用的默认底色纹理（同其余
  * 5 个已提炼 motif 的"渐变场 + hasExplicitBackground 跳过"骨架），Ending
  * 页型额外叠加一个小号 3 点星座签名 motif（Cover 自己的 9 点大星座画在
