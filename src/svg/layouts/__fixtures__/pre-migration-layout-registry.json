@@ -8,6 +8,7 @@
     "tone-adaptive-header",
     "fashion-masthead",
     "split-diagonal",
+    "colophon",
     "masthead-chapter",
     "constellation-chapter",
     "rail-chapter",
@@ -856,6 +857,35 @@
         "maxLines": 4,
         "minPt": 36
       }
+    },
+    "colophon": {
+      "id": "colophon",
+      "kind": "archetype",
+      "slideTypes": [
+        "cover"
+      ],
+      "slots": [
+        {
+          "name": "decor",
+          "accepts": []
+        },
+        {
+          "name": "heading",
+          "accepts": []
+        },
+        {
+          "name": "kicker",
+          "accepts": []
+        },
+        {
+          "name": "subheading",
+          "accepts": []
+        },
+        {
+          "name": "meta",
+          "accepts": []
+        }
+      ]
     },
     "rail-chapter": {
       "id": "rail-chapter",

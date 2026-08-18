@@ -548,18 +548,21 @@ describe("resolveLayoutId", () => {
   // ── identity-page strategy weighting (P1 variety wave, task 3) ──
   // cover/chapter/ending used to be uniformly sampled (no strategy signal
   // ever reached them). academic's identity pools are each the full
-  // registry set (8 cover / 8 chapter / 7 ending — `layoutsForSlideType`,
+  // registry set (9 cover / 8 chapter / 7 ending — `layoutsForSlideType`,
   // asserted below rather than hardcoded so a future layout-pool
   // expansion can't silently desync this file's own algebra).
 
   describe("identity-page strategy weighting", () => {
     it("a strategy's cover identityTendencies members are picked more often than non-members (N=5000, algebra-derived bounds)", () => {
       // pyramid.identityTendencies.cover = [banner-title, left-anchor], 2
-      // members at weight 3 against a full 8-id cover pool (the other 6 at
-      // weight 1): total = 2*3 + 6*1 = 12, expected combined tendency share
-      // = 6/12 = 0.5 exactly.
+      // members at weight 3 against a full 9-id cover pool (the other 7 at
+      // weight 1): total = 2*3 + 7*1 = 13, expected combined tendency share
+      // = 6/13 ≈ 0.462. (Was 8 ids / 6 of 12 = 0.5 exactly, before the
+      // theme-redesign wave registered `colophon` — the bounds below are
+      // wide enough that the re-derived expectation still sits inside them,
+      // but the algebra is restated rather than left stale.)
       const coverPool = layoutsForSlideType("cover").length
-      expect(coverPool).toBe(8)
+      expect(coverPool).toBe(9)
       const tendencyIds = STRATEGY_DEFINITIONS.pyramid.identityTendencies.cover
       expect(tendencyIds.length).toBe(2)
       const N = 5000

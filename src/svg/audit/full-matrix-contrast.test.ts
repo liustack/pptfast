@@ -421,8 +421,24 @@ describe("fashion-masthead meta line contrast (contrast-policy wave, metaInk mig
       const ir = mastheadDeck(themeId)
       const svg = renderSlideSvg(ir, 0)
       const root = parseSvgRoot(svg)
+      // Skip anything inside the theme motif's own `<g data-decor>` subtree
+      // (`full-slide-svg.tsx`'s wrapper): this block is about *this layout's*
+      // meta line, and since the theme-redesign wave a motif may carry
+      // `data-contrast-tier="meta"` text of its own — ink v3's colophon rail
+      // does, and it renders before the layout, so a bare document-order
+      // `.find` picked up the motif's glyph instead and measured it against
+      // a background it never sits on. (It sits on the page background,
+      // which this same file's own `colors.muted contrast` suite already
+      // covers; on this layout it is painted over entirely by the full-bleed
+      // primary block, since a motif renders under the layout.)
+      const inDecor = (el: Element): boolean => {
+        for (let n: Element | null = el; n; n = n.parentElement) {
+          if (n.getAttribute?.("data-decor") !== null && n.getAttribute?.("data-decor") !== undefined) return true
+        }
+        return false
+      }
       const metaText = Array.from(root.querySelectorAll("text")).find(
-        (t) => t.getAttribute("data-contrast-tier") === "meta",
+        (t) => t.getAttribute("data-contrast-tier") === "meta" && !inDecor(t),
       )
       expect(metaText, "expected a data-contrast-tier=\"meta\" text element").toBeTruthy()
       const fill = metaText!.getAttribute("fill")!

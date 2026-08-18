@@ -1793,22 +1793,33 @@ describe("findContrastIssues — text painted on a decor shape resolves against 
     return auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
   }
 
-  it("ink: the cover date reports ~1.07:1 against the motif's vermilion seal, not 5.44:1 against the page background it covers", () => {
-    // `motif-ink-motif.tsx`'s 落款 seal — `<rect x=1170 y=608 width=32
-    // height=32 rx=3 fill={colors.accent}>`, vermilion `#C3272B` — and
-    // `cover-tone-adaptive-header.tsx`'s date line, `colors.muted` `#686056`
-    // at font-size 24, `text-anchor="end"` at x=1216 on baseline y=650. The
-    // glyphs "8-1" sit on the seal; the anchor point does not (the seal's
-    // bottom edge is 10px above that baseline, its right edge 14px to the
-    // left), which is why admitting the seal as a candidate was only half
-    // the fix — see `backgroundsUnderRun`.
-    const findings = contrastFindings(quarterly("ink")).filter((f) => f.page === 1)
-    expect(findings).toHaveLength(1)
-    const detail = findings[0].detail as { text: string; background: string; ratio: number; fill: string }
-    expect(detail.text).toBe("2026-08-15")
-    expect(detail.fill).toBe("#686056")
-    expect(detail.background).toBe("#C3272B")
-    expect(detail.ratio).toBeCloseTo(1.073, 3)
+  it("ink: the cover date no longer lands on a seal at all — the v3 motif moved its 落款 out of this slot (was 1.07:1)", () => {
+    // History, because a silent pass is worth nothing on its own. This case
+    // used to be the headline example of the whole fix this describe block
+    // exists for: `motif-ink-motif.tsx` v2's 落款 seal — `<rect x=1170 y=608
+    // width=32 height=32 rx=3 fill={colors.accent}>`, vermilion `#C3272B` —
+    // sat under `cover-tone-adaptive-header.tsx`'s date line (`colors.muted`
+    // at font-size 24, `text-anchor="end"` at x=1216, baseline y=650), and
+    // attribution reported the real 1.07:1 instead of the page background's
+    // 5.44:1.
+    //
+    // The theme-redesign wave (2026-08-18, ink v3 —
+    // `.issues/2026-08-18-theme-redesign/ink/decisions.md`) fixed the
+    // *collision*, not the measurement: the seal moved to (1231, 614) inside
+    // the motif's new right-edge colophon rail, whose whole design rule is
+    // "every declared coordinate >= x1220", clearing both this date line
+    // (ends at x1216) and the BrandChrome logo box (right edge x1216). So
+    // the honest assertion here is now silence — and this stays a live
+    // regression net, not a deleted test: a future motif edit that walks any
+    // opaque decor shape back into the bottom-right slot re-lands a finding
+    // here and fails. The mechanism itself is still pinned by the tech and
+    // consulting cases below, which still collide.
+    expect(contrastFindings(quarterly("ink")).filter((f) => f.page === 1)).toEqual([])
+    // Differential, so "no finding" can't be mistaken for "attribution went
+    // blind": the very same page still reports tech's collision (below), and
+    // ink's own seal fill would still fail if it were under the run —
+    // `#686056` on `#C3272B` is the 1.07:1 that used to be reported here.
+    expect(contrastRatio("#686056", "#C3272B")).toBeCloseTo(1.073, 3)
   })
 
   it("tech: the same cover slot reports ~1.70:1 against the motif's own corner square", () => {

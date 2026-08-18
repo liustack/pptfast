@@ -449,8 +449,8 @@ const UNTITLED_HEADING = "Untitled"
  * - `theme.style` / `theme.brand` overrides collapse to a bare theme-id
  *   string (`DeckSpecSchema.theme` has no shape for either) — only `theme.id`
  *   survives. That `theme.brand` is `ThemeSchema.brand` (`BrandConfigSchema`
- *   — `suppressFooterOnCardContent`/`suppressFooterRule`, footer-chrome
- *   flags owned by the *theme*) — not to be confused with the deck-level
+ *   — `suppressFooterOnCardContent`/`suppressFooterRule`/`suppressFooterMeta`,
+ *   footer-chrome flags owned by the *theme*) — not to be confused with the deck-level
  *   `brand` field below, a different, unrelated schema despite the shared
  *   name.
  * - `ir.assets.images` is not part of this function's return value at all —

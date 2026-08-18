@@ -90,8 +90,14 @@ export function BrandChrome({
           )}
           {/* meta 两端排布（2026-07-10 用户裁决：时间居中而右侧空很奇怪）：
               org 组与 date 组各占一端，左右归属随 deck seed 交换（多样性——
-              固定位置会千篇一律） */}
-          {(() => {
+              固定位置会千篇一律）。
+
+              整行可被 theme 的 brand.suppressFooterMeta 抑制（2026-08-18
+              ink v3：主题的 motif 自己已经把机构名/日期排在别处时，这一行会
+              把同一份信息在一页上印两遍——ink 的右缘落款列先例）。与
+              suppressFooterRule 正交：那个只关分隔线，这个只关文字，两个开关
+              互不预设对方。别的主题不设 = 默认 false，输出逐字节不变。 */}
+          {!brandConfig.suppressFooterMeta && (() => {
             const orgGroup = [conf ? CONF_LABEL[conf] : null, org].filter(Boolean).join(" · ")
             const dateGroup = [version, date].filter(Boolean).join(" · ")
             const swapped = pickBySeed(cachedDeckSeed(ir), "footer-side", [false, true])
