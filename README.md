@@ -113,7 +113,6 @@ Full reference: [`docs/cli.md`](./docs/cli.md).
 | [Layout selection and seed](./docs/selection-and-seed.md) | Explaining why a layout was picked or keeping revisions stable |
 | [Contrast system](./docs/contrast-system.md) | Debugging text color, painted backgrounds, or contrast findings |
 | [Designing themes](./docs/designing-themes.md) | Drawing a theme redesign that can actually compile to PPTX |
-| [Theme structure map](./docs/theme-structure-map.md) | Allocating structural territory across the 17 themes before redesigning any one |
 | [Testing](./docs/testing.md) | Running the right gate, inspecting snapshots, or changing exported XML |
 | [Internal API](./docs/internal-api.md) | Understanding why the JavaScript internals carry no semver promise |
 | [Release guide](./docs/releasing.md) | Preparing and publishing an npm release |
