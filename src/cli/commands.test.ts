@@ -439,7 +439,7 @@ describe("runAudit (W6 task 2)", () => {
     // `findings?` (P1 variety wave, task 3 re-pin): this fixture's single
     // content page has no declared narrative, so it resolves through
     // briefing's re-derived content layoutTendencies (task 3 item 2) —
-    // its auto-picked archetype now renders exactly one low-contrast text
+    // its auto-picked layout now renders exactly one low-contrast text
     // element instead of the pre-task-3 pick's two, correctly singularizing
     // the CLI's own count-aware "finding"/"findings" grammar
     // (`commands.ts`'s summary line). The assertion only ever cared about

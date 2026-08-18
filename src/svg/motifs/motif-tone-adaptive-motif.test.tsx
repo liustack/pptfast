@@ -6,7 +6,7 @@ import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { ToneAdaptiveMotif } from "./motif-tone-adaptive-motif"
 import type { PptxIR, Slide } from "@/ir"
-import { LEGACY_CUSTOM_TOKENS } from "../archetypes/legacy-custom-tokens"
+import { LEGACY_CUSTOM_TOKENS } from "../layouts/legacy-custom-tokens"
 
 function wrap(el: React.ReactElement): React.ReactElement {
   return <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">{el}</svg>
@@ -53,7 +53,7 @@ function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
 // tokens when the slide has no explicit background — captured once from this
 // component (not from the legacy `templates/custom.tsx` `CustomDecor`, which
 // templates/ deletion will remove) so this file has zero runtime dependency
-// on templates/. Identical across all four slide.type rows (this archetype
+// on templates/. Identical across all four slide.type rows (this layout
 // doesn't vary by slide type) — verified byte-identical to the legacy output
 // before this migration (see the "无 CRITICAL 发现" report).
 const EXPECTED_MOTIF_DECOR =

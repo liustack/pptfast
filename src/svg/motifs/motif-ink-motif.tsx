@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * ink-motif archetype v2（2026-07-10 精髓返工，检索背书）：水墨的精髓是
+ * ink-motif v2（2026-07-10 精髓返工，检索背书）：水墨的精髓是
  * **墨而非线**——「墨分五色」的大面积淡墨晕染（多层 fill 大形叠不同
  * opacity，消除边界感的气韵）+ 留白对比（疏可走马密不透风）+ **竖排
  * 落款**（竖字+印章是水墨画的完整落款语言）。v1 全是细线条（版框/线描

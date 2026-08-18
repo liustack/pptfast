@@ -29,7 +29,7 @@ describe("row_cards truncation-budget marker geometry (R1 evidence wave, Task T3
   // Regression test for a real, production-reachable defect — found via a
   // stress-fixture reshuffle (adding an unrelated data_table page to
   // structure_bold_headings changed the deck's implicit content-hash seed,
-  // which auto-selected row_cards onto a narrower archetype than it had ever
+  // which auto-selected row_cards onto a narrower layout than it had ever
   // been exercised against — content-quiet-frame's own auto-picked width,
   // confirmed live across all 13 themes), fixed at the renderer per Global
   // Constraint 6 / the I3 precedent (matrix.tsx's own bold-width fix), not

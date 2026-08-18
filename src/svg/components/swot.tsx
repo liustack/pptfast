@@ -47,7 +47,7 @@ type QuadrantKey = "strengths" | "weaknesses" | "opportunities" | "threats"
  * carry — `swot.tsx` is this whole family's original ancestor and had never
  * gotten the fix itself, only ever the `Math.max(cellH, ...)` floor below,
  * which grows a row but never shrinks it below its own unstretched natural
- * height). A full-body component gets the archetype's *fixed* content-rect
+ * height). A full-body component gets the layout's *fixed* content-rect
  * height verbatim (`svg-content.tsx`), never a box sized to its own
  * `measure()` value, and schema-max content (5 items in every one of the 4
  * quadrants) combined with a heading long enough to force a 2-line wrap can

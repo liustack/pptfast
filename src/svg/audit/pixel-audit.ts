@@ -354,7 +354,7 @@ async function pixelFindingsForPage(
  * (confirmed empirically while building this task's own test suite: even a
  * pure-white source image only reaches ~1.83), which is the calibration
  * working as designed (spec §4.3's own "control false positives" gate) but
- * makes the threshold-crossing branch unreachable through real IR/archetype
+ * makes the threshold-crossing branch unreachable through real IR/layout
  * fixtures alone.
  */
 export const __pixelFindingsForPage = pixelFindingsForPage

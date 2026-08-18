@@ -30,7 +30,7 @@ type Intensity = "low" | "medium" | "high"
  *
  * **Undersized-box shrink is real here too** (`bmc.tsx`'s own bench-driven
  * fix-round defect F, ported proactively rather than rediscovered): a
- * full-body component gets the archetype's *fixed* content-rect height
+ * full-body component gets the layout's *fixed* content-rect height
  * verbatim (`svg-content.tsx`), never a box sized to its own `measure()`
  * value, and this component's schema-max content (5 items in every one of
  * the 5 panels) can exceed even the narrowest curated content rect —
@@ -50,7 +50,7 @@ type Intensity = "low" | "medium" | "high"
  * block). The one compound edge case it doesn't fully absorb — the same
  * residual `bmc.tsx`'s own header already names — is schema-max content
  * *and* a heading long enough to force a 2-line wrap *and* the narrowest
- * curated archetype, all three at once (verified manually during this
+ * curated layout, all three at once (verified manually during this
  * task: a synthetic 34-char heading shrinks `narrow-column`'s content rect
  * enough to reintroduce a small bottom-band v-overflow even at the
  * font-scale floor; a realistic short heading does not reach it). Out of

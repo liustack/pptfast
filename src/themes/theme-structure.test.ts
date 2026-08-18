@@ -3,10 +3,10 @@
 // Theme-structure wave, task T3 (`.issues/2026-07-26-theme-structure/plan.md`)
 // — the wave's acceptance suite: measurable cross-theme layout divergence,
 // determinism, the undeclared-theme byte-identity control group, the
-// selection-time hard boundary, and the forced theme×archetype stress audit
+// selection-time hard boundary, and the forced theme×layout stress audit
 // that closes the coverage gap the T2 review found (10 of 18 newly-declared
 // tendency ids were never auto-picked by any theme×STRESS_DECKS combination,
-// the other 8 hit exactly once — "a theme's newly-favored archetype
+// the other 8 hit exactly once — "a theme's newly-favored layout
 // rendering pathological content" was essentially unaudited).
 import { readFileSync } from "node:fs"
 import path from "node:path"
@@ -17,7 +17,7 @@ import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
 import { renderSlideSvg } from "../api"
 import { auditDeck, type AuditFinding } from "../svg/audit/deck-audit"
 import { CJK_LONG, MIXED_LONG, STRESS_DECKS } from "../svg/audit/stress-fixtures"
-import { resolveArchetypeId, resolveEffectiveLayoutId } from "../svg/layout-selection"
+import { resolveLayoutId, resolveEffectiveLayoutId } from "../svg/layout-selection"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "./index"
 import { THEME_DEFINITIONS, type ThemeDefinition } from "./definitions"
 
@@ -120,7 +120,7 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
 // undeclared theme. This wave appends a second, honest id to each dead axis
 // (native id kept, per the plan's 裁定 1) — see consulting's and journal's
 // own `layoutTendencies` comments (`./definitions.ts`) for the per-id
-// character rationale and the real `resolveArchetypeId` sweep that picked
+// character rationale and the real `resolveLayoutId` sweep that picked
 // each combination.
 
 /** `briefing`'s own soft-weight id set for `slideType` — the set a theme's own tendency must add *something new* to, to have any real (non-dead) pull under the deck's default narrative. */
@@ -260,7 +260,7 @@ describe("control-group byte identity (migration-period guard — deletable once
 // tendency naming an id outside the theme's own `layouts[slideType]` set
 // throws at registration). This block is the *selection-time* complement:
 // given a real, deliberately narrowed `layouts` set (every builtin theme
-// today curates the full archetype set for all four page types —
+// today curates the full layout set for all four page types —
 // `definitions.test.ts`'s own "全集放开基线" pin — so this narrowing is
 // synthetic, exercising the boundary itself rather than a real theme), no
 // combination of strategy/beat/theme weighting — even a themeTendencies
@@ -289,7 +289,7 @@ describe("hard boundary: a narrowed layouts set still gates every pick, regardle
       for (const strategy of STRATEGIES) {
         for (const beat of BEATS) {
           for (let seed = 0; seed < 60; seed++) {
-            const picked = resolveArchetypeId(
+            const picked = resolveLayoutId(
               slideType,
               NARROWED_LAYOUTS,
               seed,
@@ -310,12 +310,12 @@ describe("hard boundary: a narrowed layouts set still gates every pick, regardle
   })
 })
 
-// ── 5. Closing the T2 review's coverage gap: forced theme×archetype stress audit ──
+// ── 5. Closing the T2 review's coverage gap: forced theme×layout stress audit ──
 //
 // The T2 review instrumented the audit sweeps and found: 10 of the 18
 // newly-declared tendency ids are never auto-picked by any theme×
 // STRESS_DECKS combination, and the other 8 are hit exactly once —
-// `full-matrix-contrast.test.ts` pins every theme×archetype pair but only
+// `full-matrix-contrast.test.ts` pins every theme×layout pair but only
 // with tame content, and `audit-baseline.test.ts` uses pathological content
 // but never pins `layout`. This block forces the combination explicitly
 // instead of hoping auto-pick lands there: for each of the 6 declared
@@ -362,7 +362,7 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: exactly 34 declared theme×archetype combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 + task T3's ember × 2 (= 25), + declaration-rebalance wave's own +3 each for consulting/journal — both grew from 3 to 6 declared ids apiece to fix their two briefing-dead axes, `.issues/2026-08-03-declaration-rebalance/plan.md` (= 31) — + gov-theme wave's vermilion × 3 (chapter's two ids banner-chapter/rail-chapter + ending's rail-ending; vermilion curates chapter/ending only, no cover id))", () => {
+  it("sanity: exactly 34 declared theme×layout combinations exist to force-audit (T2's original 6 themes × 3 declared ids + themes-16 wave task T1's pulse × 3 + task T2's terra × 2 + task T3's ember × 2 (= 25), + declaration-rebalance wave's own +3 each for consulting/journal — both grew from 3 to 6 declared ids apiece to fix their two briefing-dead axes, `.issues/2026-08-03-declaration-rebalance/plan.md` (= 31) — + gov-theme wave's vermilion × 3 (chapter's two ids banner-chapter/rail-chapter + ending's rail-ending; vermilion curates chapter/ending only, no cover id))", () => {
     expect(combos).toHaveLength(34)
   })
 
@@ -390,14 +390,14 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
 // - `low-contrast` on `consulting/banner-ending` (3.22:1) and
 //   `academic/rail-ending` (2.93:1)'s copyright line, both against the
 //   real `contact`/`copyright` meta this fixture populates: traced to each
-//   archetype's own `COPYRIGHT_FAINT` — a hardcoded, pre-existing decorative
+//   layout's own `COPYRIGHT_FAINT` — a hardcoded, pre-existing decorative
 //   constant (see `ending-banner-ending.tsx`/`ending-rail-ending.tsx`'s own
 //   "孤儿色处理" header comment, migrated verbatim from the original
 //   `templates/*.tsx` sources, predating this wave) deliberately fainter
 //   than `colors.muted` by design. Confirmed theme-wide-independent: the
 //   same theme's `tone-adaptive-ending`/`masthead-ending` render the
 //   identical copyright text with zero low-contrast finding — the gap is
-//   specific to these two archetypes' own long-standing color choice, not
+//   specific to these two layouts' own long-standing color choice, not
 //   something task T1/T2 introduced, and it was simply never exercised with
 //   real contact/copyright content before (`full-matrix-contrast.test.ts`'s
 //   own file header: deliberately meta-free; `audit-baseline.test.ts`
@@ -420,7 +420,7 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
 //   — real measurement (`findContrastIssues` against the actual rendered
 //   markup) puts `consulting/banner-ending` at 3.22:1 and
 //   `academic/rail-ending` at 2.93:1, the reverse of the labels above. The
-//   ratios themselves were never wrong, only which theme/archetype pair
+//   ratios themselves were never wrong, only which theme/layout pair
 //   they were filed under — carried into `.issues/roadmap.md` and
 //   `.issues/2026-07-28-contrast-policy/plan.md` unchecked. See
 //   task-1-report.md for the correction.
@@ -430,7 +430,7 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
 //   deferred to a future theme-polish pass"). That entry is gone now
 //   (fashion-masthead metaInk migration,
 //   `.issues/2026-08-04-fashion-masthead-metaink/task-1-report.md`) — its
-//   own archetype migrated to B-tier `metaInk`, measured 3:1 instead of the
+//   own layout migrated to B-tier `metaInk`, measured 3:1 instead of the
 //   old 4.5:1 body line. `fashion-chapter`'s org label is a separate code
 //   path (different file, different background token) that migration
 //   deliberately left untouched: it already clears the real B-tier 3:1

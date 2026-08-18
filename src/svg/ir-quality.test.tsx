@@ -44,7 +44,7 @@ function pacingAxes(pacing: Pacing): NarrativeProfile {
  * for theme "tech", whose content allowed set (`["bento-panel",
  * "two-column"]`) mixes two different body capacities (6 vs 4) — every
  * other built-in theme's content allowed set is two same-capacity (4)
- * archetypes, so which one gets picked never changes the expected limit.
+ * layouts, so which one gets picked never changes the expected limit.
  */
 function findAutoPickHeading(themeId: string, targetLayoutId: string): string {
   for (let i = 0; i < 500; i++) {
@@ -96,16 +96,16 @@ describe("checkIrQuality", () => {
   // term at all).
   //
   // W4 amendment: every built-in theme's content curated set is now a
-  // 6-7-archetype full set (`definitions.ts`) that *can* include bento-panel
+  // 6-7-layout full set (`definitions.ts`) that *can* include bento-panel
   // (capacity 6) for any auto-pick case, not just tech — the pre-W4 "every
-  // non-tech theme's content set is 2 same-capacity archetypes" premise this
+  // non-tech theme's content set is 2 same-capacity layouts" premise this
   // comment used to state is gone. In practice this only makes the
   // *balanced*/*spacious* auto-pick cases below ambiguity-proof by
   // arithmetic coincidence (pacing's own budget, 4 and 3 respectively, is
   // <= bento-panel's capacity, so it binds either way — same expectedLimit
-  // regardless of which archetype gets picked); *dense* pacing's budget (5)
+  // regardless of which layout gets picked); *dense* pacing's budget (5)
   // sits strictly between the two possible layout capacities (4 and 6), so
-  // it's the one case where the auto-picked archetype's identity actually
+  // it's the one case where the auto-picked layout's identity actually
   // changes the expected limit. The "journal / dense" case below has been
   // re-verified empirically against W4's weighted+anti-repetition algorithm
   // (not assumed): for this fixture's exact heading/seed it still resolves
@@ -267,7 +267,7 @@ describe("checkIrQuality", () => {
       expect(density.pacingBudget).toBe(4)
     })
 
-    it("a pinned takeover id with no image component falls through to archetype auto-pick (mirrors FullSlideSvg's own fallback — validate=render)", () => {
+    it("a pinned takeover id with no image component falls through to layout auto-pick (mirrors FullSlideSvg's own fallback — validate=render)", () => {
       // "image-split" is registered and kind "takeover", but render's own
       // splitTakeover check (and this module's mirror of it) only fires
       // when an image component is present too — with none here it falls
@@ -363,7 +363,7 @@ describe("checkIrQuality", () => {
   })
 
   // ── quote-stage heading width-limit hard error (quote-stage wave, task T2) ──
-  describe("pinned_heading_overflow (quote-stage only — never fires for any other archetype's heading)", () => {
+  describe("pinned_heading_overflow (quote-stage only — never fires for any other layout's heading)", () => {
     const CJK_LONG =
       "微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及跨可用区容灾演练的完整落地路径说明"
     const MIXED_LONG =
@@ -410,7 +410,7 @@ describe("checkIrQuality", () => {
       expect(codes(issues)).toContain("pinned_heading_overflow")
     })
 
-    it("the exact same pathologically long heading on a non-quote-stage archetype never fires this code (scope-distinct from long_heading's warn above)", () => {
+    it("the exact same pathologically long heading on a non-quote-stage layout never fires this code (scope-distinct from long_heading's warn above)", () => {
       const ir = makeIR([
         { type: "content", heading: `${CJK_LONG}${CJK_LONG}`, components: [] },
       ])

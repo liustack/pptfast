@@ -95,25 +95,25 @@ export interface StrategyDefinition {
    */
   tendencies: readonly string[]
   /**
-   * Content-archetype soft-weight set for W4's weighted layout selection
+   * Content-layout soft-weight set for W4's weighted layout selection
    * (spec §6 step 4: in-set candidates get `TENDENCY_WEIGHT` (×3), out-of-set
    * get the `BASE_WEIGHT` floor (×1) — both named constants live in
-   * `svg/layout-selection.ts`, next to `resolveArchetypeId`, the sole
+   * `svg/layout-selection.ts`, next to `resolveLayoutId`, the sole
    * consumer). Deliberately a separate field from {@link tendencies} above,
    * not a reinterpretation of it: `tendencies` mixes component-type names and
    * layout ids drawn from spec §5's strategy table verbatim and also feeds W5's
    * spec `focus` vocabulary gate, so narrowing its meaning here would be a
    * breaking change to an existing consumer. This field holds only
-   * `LAYOUT_REGISTRY` content-archetype ids (`svg/layouts/registry.ts`'s
-   * `CONTENT_LAYOUTS` keys) — cover/chapter/ending ids never appear in this
-   * field's list, `resolveArchetypeId` reads {@link identityTendencies}
+   * `LAYOUT_REGISTRY` content-layout ids (`svg/layouts/registry.ts`'s
+   * `CONTENT_LAYOUT_DEFS` keys) — cover/chapter/ending ids never appear in this
+   * field's list, `resolveLayoutId` reads {@link identityTendencies}
    * below for those three slide types instead, so the two fields' id
    * namespaces stay disjoint by construction rather than by convention.
    * `tone-adaptive-content` appears in no strategy's list here (spec's "万金
-   * 油" call-out: it is the one content archetype meant to read as
+   * 油" call-out: it is the one content layout meant to read as
    * strategy-neutral, so it always gets the ×1 floor).
    *
-   * **`image-lead-split` (content-archetype expansion wave, task T3) joins
+   * **`image-lead-split` (content-layout expansion wave, task T3) joins
    * it, deliberately, as this field's third permanently-neutral member** — a
    * decision, not an oversight (T1's own review flagged its absence here as
    * looking accidental, so this note exists to close that off explicitly).
@@ -130,7 +130,7 @@ export interface StrategyDefinition {
    * entry in `showcase.layoutTendencies` below): showcase's register is
    * visual *punch* (bold color blocks, opaque highlight panels), not visual
    * *presence* — having an image at all doesn't say anything about how
-   * loudly the page asserts itself, so this archetype's asset-dependence
+   * loudly the page asserts itself, so this layout's asset-dependence
    * still doesn't map onto showcase's own membership criterion the way
    * `split-band`'s full-bleed color band does. It still went back to
    * neutral, not out of inertia. It *does* carry a beat-level personality
@@ -160,7 +160,7 @@ export interface StrategyDefinition {
    * see `.issues/.../dr/c-diversity.md`'s §1.1 measurement). Identity pages
    * now get their own strategy-driven soft weighting via
    * {@link identityTendencies} — theme's role stays exactly what step 3
-   * always said it was — pool curation, not per-archetype preference — for
+   * always said it was — pool curation, not per-layout preference — for
    * both content and identity slides alike.
    */
   layoutTendencies: readonly string[]
@@ -168,34 +168,34 @@ export interface StrategyDefinition {
    * Cover/chapter/ending soft-weight sets (P1 variety wave, task 3 — "身份页
    * strategy 软加权"), one per identity slide type. Same ×3/×1 mechanics as
    * {@link layoutTendencies} (`TENDENCY_WEIGHT`/`BASE_WEIGHT`,
-   * `svg/layout-selection.ts`) and the same consumer (`resolveArchetypeId`),
+   * `svg/layout-selection.ts`) and the same consumer (`resolveLayoutId`),
    * just scoped to a disjoint id namespace: this field holds only
-   * `LAYOUT_REGISTRY` cover/chapter/ending archetype ids
-   * (`svg/layouts/registry.ts`'s `COVER_LAYOUTS`/`CHAPTER_LAYOUTS`/
-   * `ENDING_LAYOUTS` keys), never a content id — `resolveArchetypeId` picks
+   * `LAYOUT_REGISTRY` cover/chapter/ending layout ids
+   * (`svg/layouts/registry.ts`'s `COVER_LAYOUT_DEFS`/`CHAPTER_LAYOUT_DEFS`/
+   * `ENDING_LAYOUT_DEFS` keys), never a content id — `resolveLayoutId` picks
    * this field or {@link layoutTendencies} based on the slide type being
    * resolved, never both for the same candidate.
    *
    * Deliberately small (2-3 members per page type, out of a 7-8-id pool) —
-   * spec: "映射表提案是内容决策...权重不是排除", so every non-member archetype
+   * spec: "映射表提案是内容决策...权重不是排除", so every non-member layout
    * still stays reachable at the `BASE_WEIGHT` floor, just less often. Each
    * member's rationale is documented next to its own strategy entry below,
-   * grounded in that archetype's own body comment in
-   * `svg/layouts/registry.ts` (`COVER_LAYOUTS`/`CHAPTER_LAYOUTS`/
-   * `ENDING_LAYOUTS`), not its name alone.
+   * grounded in that layout's own body comment in
+   * `svg/layouts/registry.ts` (`COVER_LAYOUT_DEFS`/`CHAPTER_LAYOUT_DEFS`/
+   * `ENDING_LAYOUT_DEFS`), not its name alone.
    *
    * `tone-adaptive-header`/`tone-adaptive-chapter`/`tone-adaptive-ending`
    * never appear in any strategy's set here, mirroring
    * `tone-adaptive-content`'s absence from every {@link layoutTendencies}
    * list: each is its page type's "万金油" (registry.ts's own convention),
-   * the one archetype each identity slide type is meant to keep reading as
+   * the one layout each identity slide type is meant to keep reading as
    * strategy-neutral.
    *
    * Supersedes the old design note this field replaces (formerly recorded
    * on {@link layoutTendencies} below, now corrected there): identity pages
    * were never actually reading `theme.id` for their character either
    * (`theme.layouts` only curates the *pool*, spec §6 step 3 — it was never
-   * a per-archetype weighting signal, for content or identity slides alike)
+   * a per-layout weighting signal, for content or identity slides alike)
    * — this field is what now gives cover/chapter/ending a strategy-driven
    * personality, the same soft-weight mechanism content pages have had since
    * W4.
@@ -304,7 +304,7 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     tendencies: ["quote", "image-split", "image-top", "image-bottom", "image-annotate", "timeline", "callout"],
     // 情境→张力→解决——单栏行文（narrow-column）+ 海报式单点强调（stacked-
     // poster）+ 留白居中的静谧构图（quiet-frame，P1 variety wave task 4：
-    // content 池扩容新增的 breathing 适格 archetype——storytelling 本就是
+    // content 池扩容新增的 breathing 适格 layout——storytelling 本就是
     // 池里唯一同时偏好 narrow-column/stacked-poster 两个「从容」版式的
     // strategy，quiet-frame 的对称留白构图是同一气质的第三种表达，不是
     // 勉强凑数）。
@@ -356,7 +356,7 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // - cover `banner-title`: the same formal-document convention pyramid
     //   borrows, doubly apt for training material that also states a
     //   version number in its meta row.
-    // - chapter `rail-chapter`: the only chapter archetype carrying an
+    // - chapter `rail-chapter`: the only chapter layout carrying an
     //   explicit progress-dot rail/track — a literal "step N of M" cue.
     // - chapter `constellation-chapter`: left opaque accent number +
     //   right-aligned heading — a crisp, numbered division between
@@ -389,7 +389,7 @@ export const STRATEGY_DEFINITIONS: Record<Strategy, StrategyDefinition> = {
     // 优先落给代表性不足的 showcase，此前仅 2 项。一块不透明主色高亮面板
     // 是这个池子里视觉冲击力最直接的新表达，与 showcase 的门面页选型
     // poster-center/fashion-masthead/fashion-chapter/fashion-ending 同一
-    // 「大胆色块」气质）+ 满版色块通栏（split-band，content-archetype
+    // 「大胆色块」气质）+ 满版色块通栏（split-band，content-layout
     // expansion wave task T3 final-review correction：`split-band` 的
     // header 是一块贯穿整页宽度（x=0, w=1280）的不透明 colors.primary 通栏，
     // 是 side-highlight 那块「常驻高亮面板」同一套「大胆色块」表达的更强

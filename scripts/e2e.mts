@@ -721,12 +721,12 @@ console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixel
 //    `layout: "narrow-column"` is pinned on every content slide (same
 //    precedent as full-matrix-contrast.test.ts's own SWOT_SLIDE/BMC_SLIDE/
 //    WATERFALL_SLIDE/GANTT_SLIDE fixtures) — a full-body component ignores
-//    its resolved archetype's own content-fit geometry either way, so the
+//    its resolved layout's own content-fit geometry either way, so the
 //    pin exists only to keep this leg clear of a documented, unrelated
 //    audit-tool blind spot (this file's own ALLOWLIST["rail-numbered"]
 //    entry: content-rail-numbered.tsx's small self-painted "N.N" badge rect
 //    falls below deck-audit.ts's MIN_BG_REGION_AREA, so a real page that
-//    happens to auto-select that archetype gets a false-positive low-
+//    happens to auto-select that layout gets a false-positive low-
 //    contrast finding on the badge text — a pre-existing tool gap, not
 //    something this wave's components caused or should paper over here).
 //
@@ -737,7 +737,7 @@ console.log("audit --pixels leg OK (real Sharp through dist/cli.js, checks.pixel
 //    every earlier slide index (including sankey's own slide9.xml assertion
 //    below) stays unchanged. Neither pins `layout`: unlike the eight
 //    full-body components above, data_table/chart are NOT full-body, so
-//    their geometry genuinely depends on whichever archetype auto-selection
+//    their geometry genuinely depends on whichever layout auto-selection
 //    resolves — left to the real (unpinned) path deliberately, matching this
 //    wave's own precedent for this exact fixture family (b7a3754: an earlier
 //    seed pin elsewhere in this wave was reverted once the renderer bug it

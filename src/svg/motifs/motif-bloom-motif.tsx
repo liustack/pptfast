@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * bloom-motif archetype v5（2026-07-13 联网核实最佳实践后重写：Tyler
+ * bloom-motif v5（2026-07-13 联网核实最佳实践后重写：Tyler
  * Hobbs 水彩模拟算法——生成艺术圈标准做法，来源
  * tylerxhobbs.com/words/a-guide-to-simulating-watercolor-paint-with-generative-art
  * 与 sighack.com 的 Processing 实现）。

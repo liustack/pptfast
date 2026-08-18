@@ -226,7 +226,7 @@ describe("matrix component", () => {
     }
 
     it("does not double-subtract the x_title band from the box.h-undefined fallback (regression: x_title present + box.h left undefined spuriously truncated a title that already fit)", () => {
-      // Reviewer's exact repro: tech theme, content-bento-panel archetype
+      // Reviewer's exact repro: tech theme, content-bento-panel layout
       // (which never sets a child's box.h — `renderCell` calls
       // `renderComponent(component, { x, y, w }, ctx)` with no `h` field),
       // x_title="Customer Demand", y_title="Investment Level" (16 chars),

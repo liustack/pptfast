@@ -351,7 +351,7 @@ export const SlideSchema = z
     // `{ draft: true }` 时对含占位页的 deck 硬拦（api.ts 的 draft
     // gate），renderSlideSvg（预览）永远不拦。
     placeholder: z.literal(true).optional(),
-    // Layout registry id（archetype 或 takeover 皆可，src/svg/layouts/registry.ts
+    // Layout registry id（layout 或 takeover 皆可，src/svg/layouts/registry.ts
     // 的 LAYOUT_REGISTRY 键）。schema 层是开放 string——已注册 + slideTypes 适用
     // 是 validateIr 的硬门（api.ts，报错带可用清单与页号），同 theme.id「schema
     // 开放、validate 收口」的分层哲学（spec §6）。省略 = 四步确定性选型（页型
@@ -366,9 +366,9 @@ export const SlideSchema = z
      * Page-level rhythm hint (P1 variety wave, task 1 — additive v4 field,
      * spec's own beat vocabulary, `BEAT_VALUES`/`./narrative-values.ts`:
      * "anchor" | "dense" | "breathing"). **A selection-weight hint, not a
-     * hard filter**: `resolveArchetypeId` (`svg/layout-selection.ts`)
+     * hard filter**: `resolveLayoutId` (`svg/layout-selection.ts`)
      * combines a small tendency-weight factor for whichever content
-     * archetypes the declared beat favors with the existing
+     * layouts the declared beat favors with the existing
      * `narrative.strategy` weight via `Math.max` (a P1 fix-round revision —
      * see `BEAT_TENDENCY_WEIGHT`'s own doc comment for why a product
      * measurably compounded into a monotony bug and `max` doesn't) — an
@@ -385,7 +385,7 @@ export const SlideSchema = z
      * layer (same open posture as every other optional `Slide` field), but
      * only ever has a real weighting effect there in practice: every
      * `BEAT_TENDENCIES` entry (`svg/layout-selection.ts`) names only content
-     * archetype ids, the identical "cover/chapter/ending weighting is a
+     * layout ids, the identical "cover/chapter/ending weighting is a
      * structural no-op" convention `StrategyDefinition.layoutTendencies`
      * already relies on for the same reason (that field's own doc comment).
      */

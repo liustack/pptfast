@@ -22,13 +22,13 @@ type PersonItem = PeopleCardsComponent["people"][number]
  */
 // Sizing constants are deliberately compact — chosen so that even the
 // schema-maximum 12-person, 3-row tier stays comfortably inside the
-// tightest real content-rect budget this codebase's own archetypes grant a
+// tightest real content-rect budget this codebase's own layouts grant a
 // single component (`content-tone-adaptive-content.tsx`'s `contentH = 420`
 // with a footnote present is the tightest observed), verified empirically
 // against `stress-fixtures.ts`'s own `people_cards` pathological entry
 // (12 people, every field at CJK_LONG length) across all 16 themes in
 // `audit-baseline.test.ts` — not merely eyeballed. A generous, larger set
-// of constants was tried first and overflowed the tightest archetypes at
+// of constants was tried first and overflowed the tightest layouts at
 // n=12; unlike flowchart.tsx/cycle.tsx's own self-bounding proportional
 // `fitScale`, this component uses one fixed compact profile rather than a
 // dynamic scale factor (裁定 3 — no new mechanism: `fitSvgLine`/

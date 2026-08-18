@@ -17,18 +17,18 @@ another (layout code stays style-agnostic).
 | Dimension | Owning layer | Location |
 |---|---|---|
 | Content model | IR (zod schema, semantic components) | `src/ir/` |
-| 2D layout | layout registry (archetypes + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
+| 2D layout | layout registry (standard layouts + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
 | Visual style | style tokens + theme definitions (curated layout sets + motif + optional per-page-type layout tendencies, 17 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
 | Narrative | narrative axes (strategy × pacing × audience, named presets) resolving editorial discipline, plus a first-class spec artifact (`deck.spec.json` — locked page order/type/heading, strategy-aware hard gates via `spec validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase spec→fill skill methodology for slide sequencing | `src/spec/`, `src/narrative/`, `skills/` |
 
 The core insight, carried over from the production system pptfast was extracted
-from: **visual variety comes from tokens × archetype library × seed — not
+from: **visual variety comes from tokens × layout library × seed — not
 freeform drawing.** Swapping only color tokens (the shadcn-style reskin) still
-converges on sameness. The archetype library is what raises the ceiling — and,
+converges on sameness. The layout library is what raises the ceiling — and,
 as of the theme-structure wave, the theme axis is no longer a constant term in
 that product: a theme's optional `layoutTendencies` (`docs/concepts.md`'s theme
-section) softly steers *which* archetype the seeded pick favors, per page type,
+section) softly steers *which* layout the seeded pick favors, per page type,
 so swapping only the theme (same IR, same seed) can now itself change the
 realized layout sequence, not just the palette — see `docs/selection-and-seed.md`
 for the mechanics.
@@ -170,9 +170,9 @@ these domain files by importing and combining them, never by holding the
 content themselves:
 
 - **A layout definition lives with its implementation.** Each of the 33
-  single-layout archetypes exports `layoutDef: LayoutDefinition` at the
-  bottom of its own `src/svg/archetypes/<name>.tsx` file, beside the JSX
-  that draws it (`src/svg/image-pages.tsx` — one level above `archetypes/` — exports 4 uniquely-named ones instead,
+  single-layout files exports `layoutDef: LayoutDefinition` at the
+  bottom of its own `src/svg/layouts/<name>.tsx` file, beside the JSX
+  that draws it (`src/svg/image-pages.tsx` — one level above `layouts/` — exports 4 uniquely-named ones instead,
   since one file implements all 4 image takeovers and they can't share the
   bare `layoutDef` name the 33 single-layout files use). `src/svg/layouts/registry.ts`
   imports every one and assembles `LAYOUT_REGISTRY` from them — "take one
@@ -250,7 +250,7 @@ automatically — add a `BRANDS` entry there only if the theme needs
 non-default brand chrome. A new theme also needs a `layouts` entry in
 `LAYOUTS` (`src/themes/definitions.ts`) — that record stays total over
 `CanonicalThemeId`, so a missing entry fails to compile. Each of the four
-page types defaults to `FULL_LAYOUTS.<type>` (every registered archetype for
+page types defaults to `FULL_LAYOUTS.<type>` (every registered layout for
 that type), and as of the post-v0.3 W8 fix round **all 17 built-ins point
 every page type there** — the last three chapter-only curation exclusions
 (bloom/classroom/heritage excluding `fashion-chapter`, an artifact of
@@ -263,8 +263,8 @@ narrowing usually turns out to be a contrast bug in disguise rather than a
 real design constraint. The SDK registration seam (`registerTheme`,
 same file) mirrors the full-set default: its `layouts` argument, and each of
 its four page-type entries, are independently optional and fall back to the
-same full set when omitted. Archetypes and components read only from tokens,
-so no archetype file changes. A theme may also optionally declare
+same full set when omitted. Layouts and components read only from tokens,
+so no layout file changes. A theme may also optionally declare
 `layoutTendencies` (theme-structure wave) — a per-page-type soft weight over
 ids already in that same page type's `layouts` entry, giving the new theme a
 structural personality rather than only a palette; see `docs/concepts.md`'s

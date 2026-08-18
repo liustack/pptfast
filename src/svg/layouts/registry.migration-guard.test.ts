@@ -7,14 +7,14 @@
 // (see the task report for the capture method — a temporary
 // `__tmp-dump-registry.test.ts`, deleted before this commit, that imported
 // the pre-migration `LAYOUT_REGISTRY` — still built from literal
-// `COVER_LAYOUTS`/`CHAPTER_LAYOUTS`/`ENDING_LAYOUTS`/`CONTENT_LAYOUTS`/
-// `TAKEOVER_LAYOUTS` Records — and serialized it). This test replays the
+// `COVER_LAYOUT_DEFS`/`CHAPTER_LAYOUT_DEFS`/`ENDING_LAYOUT_DEFS`/`CONTENT_LAYOUT_DEFS`/
+// `TAKEOVER_LAYOUT_DEFS` Records — and serialized it). This test replays the
 // post-migration aggregator (`LAYOUT_REGISTRY` rebuilt from `layoutDef`
-// imports scattered across `archetypes/*.tsx` + `image-pages.tsx`) and
+// imports scattered across `layouts/*.tsx` + `image-pages.tsx`) and
 // asserts it is unchanged, both in content (every definition, deep-equal)
 // and in key order (insertion order feeds `layoutsForSlideType`'s
 // `Object.values` walk, which feeds `theme.layouts[type]`'s array order,
-// which `resolveArchetypeId`'s `weightedPickBySeed` samples from
+// which `resolveLayoutId`'s `weightedPickBySeed` samples from
 // positionally — a silent reorder would not fail typecheck or most tests,
 // but would silently redistribute deterministic seed-based layout picks).
 import { readFileSync } from "node:fs"

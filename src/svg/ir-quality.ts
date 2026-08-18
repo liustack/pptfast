@@ -173,19 +173,19 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
   // rejected, not overlooked — one structural reason still blocks it:
   //   No clean geometric error derivation exists yet.
   //   `bullet_item_overflow` leans on one flat shrink floor
-  //   (bullets.tsx's MIN_FONT=14) shared by every archetype. Headings
+  //   (bullets.tsx's MIN_FONT=14) shared by every layout. Headings
   //   have no equivalent single floor — `fitHeadingLines`'s `minPt`
   //   ranges from 22 (content-banner-heading.tsx,
   //   content-tone-adaptive-content.tsx) to 72 (cover-fashion-
-  //   masthead.tsx) depending on archetype, so one global units ceiling
-  //   would either under-protect the tightest archetypes or
-  //   false-positive on the roomiest ones. Deriving per-archetype-family
+  //   masthead.tsx) depending on layout, so one global units ceiling
+  //   would either under-protect the tightest layouts or
+  //   false-positive on the roomiest ones. Deriving per-layout-family
   //   minPt buckets is the likely path, not attempted here.
   // The other reason this analysis originally cited — no render-time
   // visibility to back a threshold — is closed (truncation-visibility
   // wave, Task 2): `SvgTextLayout` (src/lib/svg-text-layout.ts) now
   // carries a `truncated` field, `fitHeadingLines` sets it `true` on its
-  // `truncateToUnits` fallback, and every archetype's heading `<text>`
+  // `truncateToUnits` fallback, and every layout's heading `<text>`
   // stamps `data-truncated="1"` on its last line when it fires — the same
   // generic `[data-truncated="1"]` reader `deck-audit.ts`'s
   // `content-truncated` check already used for every `fitSvgLine`-based
@@ -234,11 +234,11 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
   // Two pinned-layout hard errors below share one `getLayout` lookup
   // (T2 fix round — whole-branch review flagged the pre-fix version's
   // heading check as a shadow copy: it hardcoded `slide.layout ===
-  // "quote-stage"` and hand-mirrored this archetype's four fit constants
+  // "quote-stage"` and hand-mirrored this layout's four fit constants
   // with no sync guard, the one place in this file that knew an individual
-  // archetype id — everything else here, including the capacity check right
+  // layout id — everything else here, including the capacity check right
   // below, is metadata-driven). Both checks only look at the pinned
-  // layout's own declared `LayoutDefinition` fields now — no archetype id
+  // layout's own declared `LayoutDefinition` fields now — no layout id
   // appears in either condition.
   if (slide.layout !== undefined) {
     const pinnedDef = getLayout(slide.layout)
@@ -279,14 +279,14 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
     // name was the only thing still naming quote-stage specifically): fires
     // for *any* pinned layout that declares `headingFit` (`registry.ts`'s
     // `LayoutDefinition.headingFit` — see that field's own doc comment for
-    // the full rationale and why it replaces a hardcoded archetype-id
+    // the full rationale and why it replaces a hardcoded layout-id
     // check), running the exact same `fitHeadingLines` call the layout's
-    // own archetype file uses to render — one declared source, not two
+    // own layout file uses to render — one declared source, not two
     // hand-mirrored copies. Only `quote-stage` sets `headingFit` as of this
-    // task, so behavior is unchanged: unlike an ordinary archetype's heading
+    // task, so behavior is unchanged: unlike an ordinary layout's heading
     // — decorative relative to its own body content, hence `long_heading`'s
     // warn-only posture above (see that block's own comment on why a
-    // *general* per-archetype minPt-bucket error derivation was evaluated
+    // *general* per-layout minPt-bucket error derivation was evaluated
     // and deferred, not overlooked) — a `headingFit`-declaring pinned
     // layout's heading *is* the page's entire content (裁定 3: heading as
     // the page's oversized main visual, quote-stage being the first such

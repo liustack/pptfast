@@ -3,7 +3,7 @@ import { accessibleInk, accessibleOpacity, contrastRatio, metaInk, readableOn, r
 
 // `readableOn`'s own behavior is unchanged by the W4 fix-round extraction
 // out of `cover-split-diagonal.tsx` — these are the same assertions that
-// used to live in that archetype's test file, now testing the shared
+// used to live in that layout's test file, now testing the shared
 // module directly.
 describe("readableOn", () => {
   it("dark background (academic primary #006A4E) gets white ink", () => {
@@ -99,7 +99,7 @@ describe("accessibleOpacity", () => {
     // luminance ~0.251) used to get white ink under the old fixed-0.4
     // threshold (white measures only ~3.48:1 there — the tightest margin of
     // any theme chapter-rail-chapter.tsx/chapter-banner-chapter.tsx's ink
-    // covers, and blending at the archetypes' usual 0.7 subheading opacity
+    // covers, and blending at the layouts' usual 0.7 subheading opacity
     // dropped it to ~2.53:1, under the 3:1 large-text floor, hence the old
     // fallback-to-1 assertion this test used to make). Post backlog item 2
     // (`readableOn`'s real two-ink contrast comparison, `src/svg/ink.ts`):

@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * classroom-motif archetype（2026-07-13 第 13 主题）：莫兰迪教学模板
+ * classroom-motif（2026-07-13 第 13 主题）：莫兰迪教学模板
  * 语言——**平滑有机斑块**（大圆润 blob，2-3 档灰调色错落，与 bloom 的
  * 水彩纹理刻意区分：参考图斑块是平滑无纹理的）+ **手绘小装饰**（点阵
  * /短线组/波浪线/空心圆线描——课堂手账气质）。

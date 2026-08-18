@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * enterprise-motif archetype（2026-07-10 motif 全覆盖补齐）：瑞士网格
+ * enterprise-motif（2026-07-10 motif 全覆盖补齐）：瑞士网格
  * 语言的 IKB 几何点缀——小方块阵/细基线/方点散点，白墙上克制的企业
  * 秩序感。构图变体：a=右上 3×3 小方块阵、b=左缘竖细条+右下方块、
  * c=对角双方块。强档（仅 cover）全量，弱档单元素。

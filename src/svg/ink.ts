@@ -1,5 +1,5 @@
 /**
- * Contrast-aware ink selection, shared by every archetype that either paints
+ * Contrast-aware ink selection, shared by every layout that either paints
  * its own background panel (a `colors.primary`/`colors.accent`-filled block)
  * or relies on the page-level default background `FullSlideSvg` paints
  * behind it (`ctx.defaultBg` — see `full-slide-svg.tsx`'s `buildCtx`).
@@ -7,7 +7,7 @@
  * Extracted (W4 fix round) from `cover-split-diagonal.tsx`'s `readableOn` —
  * that function already had cross-file consumers before this extraction
  * (`chapter-fashion-chapter.tsx`, `ending-fashion-ending.tsx`,
- * `cover-fashion-masthead.tsx` all imported it from a sibling archetype
+ * `cover-fashion-masthead.tsx` all imported it from a sibling layout
  * file), so this module formalizes an already-shared helper into its own
  * home rather than inventing a new color policy.
  *
@@ -124,9 +124,9 @@ export function readableOn(bgHex: string): "#FFFFFF" | "#0A0E14" {
  * when it clears the size-appropriate WCAG ratio against `bgHex`;
  * otherwise fall back to `readableOn`'s neutral ink.
  *
- * This is the one call every archetype in the W4 contrast fix round makes
+ * This is the one call every layout in the W4 contrast fix round makes
  * at each flagged text element: it is a no-op (byte-identical output) for
- * every theme+archetype pairing that already passed contrast, and only
+ * every theme+layout pairing that already passed contrast, and only
  * changes the ones `auditDeck` actually flagged — the invariant the fix
  * round's report verifies against existing pinned renders.
  */
@@ -140,10 +140,10 @@ export function accessibleInk(preferredFill: string, bgHex: string, fontSizePx: 
  * translucent fill actually renders as. Independently duplicated from
  * `deck-audit.ts`'s own `blendOver` for the same render→util dependency-
  * direction reason the rest of this file's math is (see the file header).
- * Exported (fashion-masthead metaInk migration) for the one archetype call
+ * Exported (fashion-masthead metaInk migration) for the one layout call
  * site that composes a `fillOpacity`-dimmed ink itself before handing the
  * result to `metaInk` — see `cover-fashion-masthead.tsx`'s own header
- * comment for why that archetype needs the raw composite, not just the two
+ * comment for why that layout needs the raw composite, not just the two
  * higher-level helpers below. */
 export function blendOver(fg: string, bg: string, alpha: number): string {
   const toRgb = (hex: string): [number, number, number] => {

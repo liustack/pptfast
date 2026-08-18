@@ -1,7 +1,7 @@
 import type { DecorProps } from "./types"
 
 /**
- * tone-adaptive-motif archetype（spec §3.2，Wave 3 Task 21）：全页极淡的
+ * tone-adaptive-motif（spec §3.2，Wave 3 Task 21）：全页极淡的
  * 180° 竖直渐变场（`colors.bg` → 一个固定的"轻度混黑"灰阶），充当所有
  * slide.type 共用的默认底色纹理，代替 background.tsx 那块纯色矩形之上的一层
  * 微妙层次（background.tsx 仍照常画自己的纯色矩形，本渐变场在 FullSlideSvg

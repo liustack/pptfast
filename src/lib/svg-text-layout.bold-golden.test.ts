@@ -47,7 +47,7 @@ function estimateUnits(text: string, fontFamily: string): number {
 describe("measureTextUnits — bold golden widths (data-anchored, bold-metrics fix)", () => {
   describe("Georgia bold (consulting/academic/insight heading) — exact per-character model", () => {
     // The user-reported defect's own trigger line — see
-    // cover-fashion-masthead.test.tsx for the full archetype-level
+    // cover-fashion-masthead.test.tsx for the full layout-level
     // red-first assertion. "Components Demo" (the actual overflowing
     // second line, not the full two-word title) is the anchor that
     // matters most here — real_em derived from root-cause.md's own table
@@ -211,7 +211,7 @@ describe("measureTextUnits — bold golden widths (data-anchored, bold-metrics f
   // headings, permanently locked. Both are real, ordinary marketing-style
   // titles (not synthetic worst-case strings) that clipped visibly in a
   // real LibreOffice render under round 1's class-average-plus-margin
-  // model, on the *exact* archetype+theme combination the original user
+  // model, on the *exact* layout+theme combination the original user
   // report traced to (cover-fashion-masthead + consulting/Georgia). See
   // this fix's report round-2 section for the LibreOffice screenshots
   // (scratchpad, not shipped in this repo) and the single-character
@@ -230,7 +230,7 @@ describe("measureTextUnits — bold golden widths (data-anchored, bold-metrics f
         minPt: 72,
         fontFamily: GEORGIA_ROLE_FONT_FAMILY,
       })
-      expect(r.fontSize).toBeLessThan(150) // must have shrunk from the archetype's declared max
+      expect(r.fontSize).toBeLessThan(150) // must have shrunk from the layout's declared max
       for (const line of r.lines) {
         const w = estimateUnits(line, GEORGIA_ROLE_FONT_FAMILY) * r.fontSize
         expect(w).toBeLessThanOrEqual(1168 + 1) // +1: float rounding slack, same convention as heading-fit.test.ts

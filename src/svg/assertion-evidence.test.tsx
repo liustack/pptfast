@@ -169,7 +169,7 @@ describe("assertion_evidence variant", () => {
 
   it("never lets the support stack (including its drop-pill) spill past the content rect — flagship 2-item recipe and a 5-item extreme squeeze, at quiet-frame's own real geometry (regression round 2: footer spill)", () => {
     // `.issues/2026-08-05-component-waves/device-mockup-report.md`'s own
-    // repro geometry: `consulting` theme, `quiet-frame` archetype, a content
+    // repro geometry: `consulting` theme, `quiet-frame` layout, a content
     // rect of exactly this shape — computed once by hand from quiet-frame's
     // own constants (`content-quiet-frame.tsx`: FRAME_X=200, FRAME_W=880,
     // contentY=228 at this heading's line count, contentBottom=620) and

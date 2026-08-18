@@ -93,7 +93,7 @@ describe("pest pathological content through the real generatePptx", () => {
     ])
   })
 
-  it("schema-max content on the narrowest curated archetype (defect-F fontScale floor) still exports cleanly", async () => {
+  it("schema-max content on the narrowest curated layout (defect-F fontScale floor) still exports cleanly", async () => {
     const bytes = await generatePptx({
       version: "4",
       filename: "pest-narrow-fixture",

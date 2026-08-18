@@ -1,18 +1,18 @@
 /**
  * Layout registry (W2 task 1, spec §3/§6/§8): an explicit, statically-checked
- * description of what the render chain's 36 archetype components + 4
+ * description of what the render chain's 36 standard layouts + 4
  * page-level image takeovers already draw. This is a metadata layer only —
- * it formalizes today's implicit page structure (archetype JSX + the
+ * it formalizes today's implicit page structure (layout JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
  * drawing code.
  *
  * **Aggregator, not author (src domain reorg wave 1, task T1d).** Every
  * individual `LayoutDefinition` used to live here as a literal Record entry.
- * Each one now lives beside the archetype JSX it describes instead — an
+ * Each one now lives beside the layout JSX it describes instead — an
  * `export const layoutDef: LayoutDefinition` at the bottom of the matching
- * `archetypes/*.tsx` file, or one of 4 uniquely-named exports at the bottom
+ * `layouts/*.tsx` file, or one of 4 uniquely-named exports at the bottom
  * of `image-pages.tsx` for the takeovers (one file implements all 4, so they
- * can't share the uniform `layoutDef` name the 33 single-layout archetype
+ * can't share the uniform `layoutDef` name the 33 single-layout
  * files use) — so "take one layout away whole" is a single-file operation
  * instead of a two-file archaeology dig. This file's own job is now purely
  * computational aggregation: import every `layoutDef`, assemble the five
@@ -25,9 +25,9 @@
  * — every line below either constructs a Record or queries/validates one
  * (this wave's aggregator discipline).
  *
- * Source of truth for each definition's own content: the archetype file it
+ * Source of truth for each definition's own content: the layout file it
  * now lives in, `.issues/notes/engineering-history.md`
- * (the W2 pre-flight inventory), plus a direct re-read of the archetype file
+ * (the W2 pre-flight inventory), plus a direct re-read of the layout file
  * itself — where the inventory's summary and the code disagreed, the code
  * won (see the W2 task report for the one confirmed case: image-annotate).
  *
@@ -37,7 +37,7 @@
  *    `slide.subheading`), `ir.meta.*` (organization/date/version/contact/
  *    copyright/confidentiality), or pure computed geometry (chapter-number
  *    watermarks, rail progress dots, decorative motifs inline in the
- *    archetype file). There is nothing here for an author to place.
+ *    layout file). There is nothing here for an author to place.
  *  - `"any"`: the slot renders whatever `Component`s it's handed, unfiltered
  *    (`SvgContent`'s body, bento's grid, stacked-poster's hero/strip).
  *  - a literal component-type list: the slot requires that specific component
@@ -57,61 +57,61 @@
 // literal union (derived from the identical tuple) — TypeScript's
 // structural typing makes them freely interchangeable at every call site, so
 // no cast is ever needed where the two meet (`layout-selection.ts`'s
-// `resolveArchetypeId`).
+// `resolveLayoutId`).
 import type { STRATEGY_VALUES } from "@/ir/narrative-values"
 
-// ── layoutDef imports (src domain reorg wave 1, task T1d): 36 archetype
+// ── layoutDef imports (src domain reorg wave 1, task T1d): 36 layout
 // files (one `layoutDef` each) + image-pages.tsx's 4 uniquely-named takeover
-// exports — 40 bindings total (content-archetype expansion wave grew this
+// exports — 40 bindings total (content-layout expansion wave grew this
 // from 33/37 to 35/39 — image-lead-split + split-band, tasks T1/T2; the
 // quote-stage wave grew it once more, 35/39 to 36/40 — quote-stage, T2,
 // pptfast's first `pinOnly` member, see {@link LayoutDefinition.pinOnly}).
 // Grouped by family, each group in the exact
 // order its former literal Record held (order feeds `layoutsForSlideType`'s
 // `Object.values` walk below, which feeds `theme.layouts[type]`'s array
-// order, which `resolveArchetypeId`'s `weightedPickBySeed` samples from
+// order, which `resolveLayoutId`'s `weightedPickBySeed` samples from
 // positionally — see registry.migration-guard.test.ts). Aliased to a
 // family-prefixed camelCase name (mirrors each file's own name) since 33
 // files all export the same bare `layoutDef`.
-import { layoutDef as coverBannerTitle } from "../archetypes/cover-banner-title"
-import { layoutDef as coverPosterCenter } from "../archetypes/cover-poster-center"
-import { layoutDef as coverLeftAnchor } from "../archetypes/cover-left-anchor"
-import { layoutDef as coverConstellation } from "../archetypes/cover-constellation"
-import { layoutDef as coverEditorialMasthead } from "../archetypes/cover-editorial-masthead"
-import { layoutDef as coverToneAdaptiveHeader } from "../archetypes/cover-tone-adaptive-header"
-import { layoutDef as coverFashionMasthead } from "../archetypes/cover-fashion-masthead"
-import { layoutDef as coverSplitDiagonal } from "../archetypes/cover-split-diagonal"
+import { layoutDef as coverBannerTitle } from "./cover-banner-title"
+import { layoutDef as coverPosterCenter } from "./cover-poster-center"
+import { layoutDef as coverLeftAnchor } from "./cover-left-anchor"
+import { layoutDef as coverConstellation } from "./cover-constellation"
+import { layoutDef as coverEditorialMasthead } from "./cover-editorial-masthead"
+import { layoutDef as coverToneAdaptiveHeader } from "./cover-tone-adaptive-header"
+import { layoutDef as coverFashionMasthead } from "./cover-fashion-masthead"
+import { layoutDef as coverSplitDiagonal } from "./cover-split-diagonal"
 
-import { layoutDef as chapterMastheadChapter } from "../archetypes/chapter-masthead-chapter"
-import { layoutDef as chapterConstellationChapter } from "../archetypes/chapter-constellation-chapter"
-import { layoutDef as chapterRailChapter } from "../archetypes/chapter-rail-chapter"
-import { layoutDef as chapterBannerChapter } from "../archetypes/chapter-banner-chapter"
-import { layoutDef as chapterPosterChapter } from "../archetypes/chapter-poster-chapter"
-import { layoutDef as chapterRomanChapter } from "../archetypes/chapter-roman-chapter"
-import { layoutDef as chapterToneAdaptiveChapter } from "../archetypes/chapter-tone-adaptive-chapter"
-import { layoutDef as chapterFashionChapter } from "../archetypes/chapter-fashion-chapter"
+import { layoutDef as chapterMastheadChapter } from "./chapter-masthead-chapter"
+import { layoutDef as chapterConstellationChapter } from "./chapter-constellation-chapter"
+import { layoutDef as chapterRailChapter } from "./chapter-rail-chapter"
+import { layoutDef as chapterBannerChapter } from "./chapter-banner-chapter"
+import { layoutDef as chapterPosterChapter } from "./chapter-poster-chapter"
+import { layoutDef as chapterRomanChapter } from "./chapter-roman-chapter"
+import { layoutDef as chapterToneAdaptiveChapter } from "./chapter-tone-adaptive-chapter"
+import { layoutDef as chapterFashionChapter } from "./chapter-fashion-chapter"
 
-import { layoutDef as endingMastheadEnding } from "../archetypes/ending-masthead-ending"
-import { layoutDef as endingConstellationEnding } from "../archetypes/ending-constellation-ending"
-import { layoutDef as endingRailEnding } from "../archetypes/ending-rail-ending"
-import { layoutDef as endingBannerEnding } from "../archetypes/ending-banner-ending"
-import { layoutDef as endingPosterEnding } from "../archetypes/ending-poster-ending"
-import { layoutDef as endingToneAdaptiveEnding } from "../archetypes/ending-tone-adaptive-ending"
-import { layoutDef as endingFashionEnding } from "../archetypes/ending-fashion-ending"
+import { layoutDef as endingMastheadEnding } from "./ending-masthead-ending"
+import { layoutDef as endingConstellationEnding } from "./ending-constellation-ending"
+import { layoutDef as endingRailEnding } from "./ending-rail-ending"
+import { layoutDef as endingBannerEnding } from "./ending-banner-ending"
+import { layoutDef as endingPosterEnding } from "./ending-poster-ending"
+import { layoutDef as endingToneAdaptiveEnding } from "./ending-tone-adaptive-ending"
+import { layoutDef as endingFashionEnding } from "./ending-fashion-ending"
 
-import { layoutDef as contentNarrowColumn } from "../archetypes/content-narrow-column"
-import { layoutDef as contentTwoColumn } from "../archetypes/content-two-column"
-import { layoutDef as contentRailNumbered } from "../archetypes/content-rail-numbered"
-import { layoutDef as contentBannerHeading } from "../archetypes/content-banner-heading"
-import { layoutDef as contentStackedPoster } from "../archetypes/content-stacked-poster"
-import { layoutDef as contentBentoPanel } from "../archetypes/content-bento-panel"
-import { layoutDef as contentToneAdaptiveContent } from "../archetypes/content-tone-adaptive-content"
-import { layoutDef as contentSideHighlight } from "../archetypes/content-side-highlight"
-import { layoutDef as contentAsymmetricTriptych } from "../archetypes/content-asymmetric-triptych"
-import { layoutDef as contentQuietFrame } from "../archetypes/content-quiet-frame"
-import { layoutDef as contentImageLeadSplit } from "../archetypes/content-image-lead-split"
-import { layoutDef as contentSplitBand } from "../archetypes/content-split-band"
-import { layoutDef as contentQuoteStage } from "../archetypes/content-quote-stage"
+import { layoutDef as contentNarrowColumn } from "./content-narrow-column"
+import { layoutDef as contentTwoColumn } from "./content-two-column"
+import { layoutDef as contentRailNumbered } from "./content-rail-numbered"
+import { layoutDef as contentBannerHeading } from "./content-banner-heading"
+import { layoutDef as contentStackedPoster } from "./content-stacked-poster"
+import { layoutDef as contentBentoPanel } from "./content-bento-panel"
+import { layoutDef as contentToneAdaptiveContent } from "./content-tone-adaptive-content"
+import { layoutDef as contentSideHighlight } from "./content-side-highlight"
+import { layoutDef as contentAsymmetricTriptych } from "./content-asymmetric-triptych"
+import { layoutDef as contentQuietFrame } from "./content-quiet-frame"
+import { layoutDef as contentImageLeadSplit } from "./content-image-lead-split"
+import { layoutDef as contentSplitBand } from "./content-split-band"
+import { layoutDef as contentQuoteStage } from "./content-quote-stage"
 
 import {
   imageSplitLayoutDef,
@@ -125,7 +125,7 @@ export type Strategy = (typeof STRATEGY_VALUES)[number]
 export type SlideType = "cover" | "chapter" | "content" | "ending"
 
 /** The 16-word slot vocabulary — the union of every distinct visual region
- * observed across all 35 archetypes + 4 takeovers (inventory's "建议 slot
+ * observed across all 35 layouts + 4 takeovers (inventory's "建议 slot
  * 词汇表"). Not every word is used by every entry, and `aside` currently
  * has zero occurrences as a *slot* (it only exists today as a body
  * `arrangement` — see `Arrangement` below) — kept in the vocabulary because
@@ -156,7 +156,7 @@ export type SlotName =
 
 /** Body-arrangement enum (the retired `variant` field's 9-value non-image
  * subset — W2 task 3 split the other 4 image values off into first-class
- * takeover layouts — see `TAKEOVER_LAYOUTS` below). snake_case, matching
+ * takeover layouts — see `TAKEOVER_LAYOUT_DEFS` below). snake_case, matching
  * component-type naming convention. */
 export type Arrangement =
   | "single"
@@ -183,10 +183,21 @@ export interface LayoutSlot {
 
 export interface LayoutDefinition {
   id: string
+  /**
+   * The standard tier vs. the 4 page-level image takeovers.
+   *
+   * `"archetype"` is the standard tier's fossilized spelling. The two words
+   * merged into one vocabulary — a layout is the registry entry plus the JSX
+   * that draws it — but this literal is serialized into
+   * `__fixtures__/pre-migration-layout-registry.json`, which
+   * `registry.migration-guard.test.ts` deep-equals against the live registry,
+   * so renaming it to `"standard"` means re-recording a golden fixture. That
+   * belongs in its own change, not in a rename.
+   */
   kind: "archetype" | "takeover"
   slideTypes: readonly SlideType[]
   slots: readonly LayoutSlot[]
-  /** content archetypes only: which body arrangements this layout honors
+  /** content layouts only: which body arrangements this layout honors
    *  (inventory's 4 直接尊重全部 + stacked-poster（W2 任务 3 裁决，条件接管
    *  路径见其注释）共 5 个 → "all"，two-column → ["two_column"]，
    *  bento-panel → ["single"]) */
@@ -195,7 +206,7 @@ export interface LayoutDefinition {
    * Auto-selection strategy allowlist (W4, spec §6 step 4's rare
    * `narratives_only` hard constraint — distinct from the soft ×3/×1
    * `layoutTendencies` weighting in `STRATEGY_DEFINITIONS`, `src/narrative`):
-   * when set, `resolveArchetypeId` (`../layout-selection.ts`) drops this
+   * when set, `resolveLayoutId` (`../layout-selection.ts`) drops this
    * layout from the auto-pick pool unless the resolved narrative's
    * `strategy` is a member. An explicit `slide.layout` pin bypasses
    * selection entirely (spec §3: "显式指定不经选型"), so this field never
@@ -221,16 +232,16 @@ export interface LayoutDefinition {
    * Enforced at exactly two candidate-pool construction points — never at
    * the pin path itself, which is the whole point of the tier ("pin-only"
    * means *only* that road reaches it):
-   * - `../themes/definitions.ts`'s `fullArchetypeSet` (every built-in
+   * - `../themes/definitions.ts`'s `fullLayoutSet` (every built-in
    *   theme's default pool, since it defaults to the full registered-
-   *   archetype set)
-   * - `../layout-selection.ts`'s `resolveArchetypeId` candidate-pool
+   *   layout set)
+   * - `../layout-selection.ts`'s `resolveLayoutId` candidate-pool
    *   construction (defensive: `registerTheme` legally allows a custom
    *   theme to list a pinOnly id in its own curated `layouts` set — that
    *   registration-time check validates existence/kind/slideTypes, not
    *   this flag — so sampling itself must re-exclude it here too)
    *
-   * `resolveArchetypeId`'s `requestedLayout` short-circuit and
+   * `resolveLayoutId`'s `requestedLayout` short-circuit and
    * `checkLayoutApplicability` (`../../validate-core.ts`) both stay
    * unmodified by this flag: an explicit pin bypasses selection
    * unconditionally regardless of `pinOnly`, and applicability only ever
@@ -253,16 +264,16 @@ export interface LayoutDefinition {
    * metadata-driven, so the code no longer names quote-stage specifically)
    * if even `minPt` still truncates it. Shape mirrors `fitHeadingLines`'s
    * own options (minus `fontFamily`,
-   * which the archetype supplies from its render `ctx` and the validate-side
+   * which the layout supplies from its render `ctx` and the validate-side
    * check deliberately omits — see `ir-quality.ts`'s call site comment for
    * why a theme-agnostic fallback width table is the right posture there).
    *
    * Replaces the pre-fix design where `ir-quality.ts` hardcoded
    * `slide.layout === "quote-stage"` plus its own hand-mirrored copy of this
-   * archetype's four fit constants (a shadow-copy with no sync guard,
+   * layout's four fit constants (a shadow-copy with no sync guard,
    * flagged by whole-branch review) — this field makes the layout's own
    * `layoutDef` (`content-quote-stage.tsx`) the single source for both the
-   * archetype's own render-time fit call *and* validate's hard-error check,
+   * layout's own render-time fit call *and* validate's hard-error check,
    * the same "declarative metadata `ir-quality.ts` reads generically" shape
    * `pinOnly` above and `slots[].capacity` already established (see
    * `pin_only_over_capacity`'s own check, same file, for the precedent this
@@ -298,8 +309,8 @@ export function filterByNarrativesOnly<T extends { narrativesOnly?: readonly Str
  * semantics): drop every layout whose `pinOnly` is `true`, keep the rest.
  * Generic over any `pinOnly`-shaped record, same synthetic-fixture-testable
  * shape {@link filterByNarrativesOnly} already established. Two real call
- * sites: `../themes/definitions.ts`'s `fullArchetypeSet` and
- * `../layout-selection.ts`'s `resolveArchetypeId` candidate-pool
+ * sites: `../themes/definitions.ts`'s `fullLayoutSet` and
+ * `../layout-selection.ts`'s `resolveLayoutId` candidate-pool
  * construction — see the field doc comment for why both are needed.
  */
 export function excludePinOnly<T extends { pinOnly?: boolean }>(defs: readonly T[]): T[] {
@@ -307,12 +318,12 @@ export function excludePinOnly<T extends { pinOnly?: boolean }>(defs: readonly T
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Cover archetypes (8) — cover/chapter/ending never read `slide.components`
-// (inventory headline finding — see each archetype's own `layoutDef`
+// Cover layouts (8) — cover/chapter/ending never read `slide.components`
+// (inventory headline finding — see each layout's own `layoutDef`
 // comment for the file-by-file confirmation), so none of them declare a
 // `body` slot.
 // ─────────────────────────────────────────────────────────────────────────
-const COVER_LAYOUTS: Record<string, LayoutDefinition> = {
+const COVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [coverBannerTitle.id]: coverBannerTitle,
   [coverPosterCenter.id]: coverPosterCenter,
   [coverLeftAnchor.id]: coverLeftAnchor,
@@ -324,11 +335,11 @@ const COVER_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Chapter archetypes (8) — every one carries a chapter-number `watermark`
+// Chapter layouts (8) — every one carries a chapter-number `watermark`
 // (translucent or opaque numeral; inventory's "watermark numerals" example),
 // paired with `heading`. No body slot (chapter never reads components).
 // ─────────────────────────────────────────────────────────────────────────
-const CHAPTER_LAYOUTS: Record<string, LayoutDefinition> = {
+const CHAPTER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [chapterMastheadChapter.id]: chapterMastheadChapter,
   [chapterConstellationChapter.id]: chapterConstellationChapter,
   [chapterRailChapter.id]: chapterRailChapter,
@@ -340,10 +351,10 @@ const CHAPTER_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Ending archetypes (7) — heading + meta (contact/copyright/org) is the
+// Ending layouts (7) — heading + meta (contact/copyright/org) is the
 // universal pair; no body slot (ending never reads components).
 // ─────────────────────────────────────────────────────────────────────────
-const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
+const ENDING_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [endingMastheadEnding.id]: endingMastheadEnding,
   [endingConstellationEnding.id]: endingConstellationEnding,
   [endingRailEnding.id]: endingRailEnding,
@@ -354,23 +365,23 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Content archetypes (13, quote-stage wave task T2: 12 -> 13 — quote-stage,
+// Content layouts (13, quote-stage wave task T2: 12 -> 13 — quote-stage,
 // pptfast's first `pinOnly` member (see {@link LayoutDefinition.pinOnly}):
 // reachable only through an explicit `slide.layout` pin, never auto-picked,
 // so it doesn't grow any theme's curated pool — "12 auto-selectable + 1
 // pin-only", not a flat +1 (see that file's own composition-sketch header);
-// content-archetype expansion wave task T2 grew the auto-selectable count
+// content-layout expansion wave task T2 grew the auto-selectable count
 // 11 -> 12 just before it — split-band, the pool's first *horizontal* split
 // (a full-bleed header band over an ordinary body band) — see that file's
 // own composition-sketch header for the capacity measurement that chose its
 // ratio; task T1 grew this same family 10 -> 11 just before it —
-// image-lead-split, the first archetype whose column split is genuinely
+// image-lead-split, the first layout whose column split is genuinely
 // unequal — see that file's own composition-sketch header; P1 variety wave
 // task 4 grew this same family 7 -> 10 before it, content having been the
 // pool's thinnest page type, the C-investigation's own finding, dr/
 // c-diversity.md) — the only family that reads `slide.components`, so
 // every entry carries a `body` slot plus its own header chrome, and declares
-// `arrangements` (inventory decision #2: archetypes that don't obey the
+// `arrangements` (inventory decision #2: layouts that don't obey the
 // author's arrangement still truthfully declare which arrangement(s) they
 // honor, behavior unchanged).
 //
@@ -385,7 +396,7 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     tone-adaptive-content, plus stacked-poster's degrade path
 //     (content-stacked-poster.tsx's own comment on its layoutDef already
 //     establishes it behaves like the
-//     other four "all" archetypes once it falls back to SvgContent): 4,
+//     other four "all" layouts once it falls back to SvgContent): 4,
 //     mirroring the former `CAPACITY.maxBlocksPerSlide` (deleted in W3 — the editorial side now lives in PACING_BUDGETS) — audit/capacity.ts's flat,
 //     theme-independent default (`floor(minRectH / perBlock)`, the shared
 //     derivation for every linear-stack theme).
@@ -393,11 +404,11 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     columns (`(rect.w - COLUMN_GAP) / 2`, layout.ts) but shares the same
 //     content-height budget as the single-stack layouts, not a taller one,
 //     so two columns doesn't earn a higher total than one.
-//   - bento-panel: 6, matching this same archetype's own `grid` slot
+//   - bento-panel: 6, matching this same layout's own `grid` slot
 //     capacity below — not the flat default. `layoutBento`'s hard 6-cell
 //     ceiling (bento-layout.ts: "the bento grid only ever has 6 cells") and
 //     the former theme-keyed `CAPACITY.maxBlocksPerSlideOverrides.tech = 6`
-//     (deleted in W3 — this archetype-keyed entry is its home now) both land on the
+//     (deleted in W3 — this layout-keyed entry is its home now) both land on the
 //     same number for the same non-linear grid geometry independently.
 //     `body` is bento-panel's *degraded* single-stack rendering of the exact
 //     same component sequence the grid would otherwise hold (see that
@@ -408,28 +419,28 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     ceiling never actually binds the `min(pacing editorial budget, layout
 //     capacity)` density gate. `PACING_BUDGETS`'s loosest pacing
 //     (`dense`) tops out at 5 components/slide — still under 6 — so every
-//     pacing's own editorial budget wins the `min()` for this archetype
+//     pacing's own editorial budget wins the `min()` for this layout
 //     (5/4/3 for dense/balanced/spacious, never 6). The number above is
 //     bento-panel's true geometric ceiling and stays for documentation and
 //     for any future pacing tier looser than 5, but no deck can reach it
 //     through today's gate.
 //   - side-highlight/asymmetric-triptych/quiet-frame (task 4's three new
-//     archetypes): 4, the same flat single-stack default every archetype
+//     layouts): 4, the same flat single-stack default every layout
 //     but bento-panel already carries — none of the three's own body
 //     column/region ever exceeds the pool's existing narrowest single-stack
-//     width (880px, `narrow-column`'s `COLUMN_W`), so no new per-archetype
+//     width (880px, `narrow-column`'s `COLUMN_W`), so no new per-layout
 //     number is warranted (each file's own composition-sketch header
 //     derives this explicitly, not just asserts it).
 //   - image-lead-split (task T1): body 4 too, and visual 1 — its 435px text
-//     column is narrower than every other archetype's own single-stack
+//     column is narrower than every other layout's own single-stack
 //     column, but still wider than the pool's already-audited narrowest
 //     single-stack region (asymmetric-triptych's 424px `top`/`bottom`
 //     panels), so this doesn't warrant a new number either, nor tightening
 //     any `audit/capacity.ts` floor — the file's own header derives this.
 //   - split-band (task T2): body 4 too — its 400px (380px with a footnote)
-//     body height is *shorter* than every other archetype's own body
+//     body height is *shorter* than every other layout's own body
 //     region (the pool's previous floor was width, not height; this is the
-//     first archetype whose header chrome eats vertical rather than
+//     first layout whose header chrome eats vertical rather than
 //     horizontal budget), which is exactly why this task's own capacity
 //     measurement (see the file's own composition-sketch header) tested
 //     candidate ratios against realistic per-tier content *before* fixing
@@ -454,14 +465,14 @@ const ENDING_LAYOUTS: Record<string, LayoutDefinition> = {
 //     silently dropping content past capacity 1 would be real content loss,
 //     not an editorial nudge.
 //
-// This essay is what every content archetype's own body-slot capacity
-// comment means by "see registry.ts's CONTENT_LAYOUTS header for the
+// This essay is what every content layout's own body-slot capacity
+// comment means by "see registry.ts's CONTENT_LAYOUT_DEFS header for the
 // derivation" (src domain reorg wave 1, task T1d — reworded from the
 // pre-migration "see file header derivation" once each entry moved into its
-// own archetype file). It stays here, comparative across all 13, rather
+// own layout file). It stays here, comparative across all 13, rather
 // than traveling with any one entry.
 // ─────────────────────────────────────────────────────────────────────────
-const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
+const CONTENT_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [contentNarrowColumn.id]: contentNarrowColumn,
   [contentTwoColumn.id]: contentTwoColumn,
   [contentRailNumbered.id]: contentRailNumbered,
@@ -483,7 +494,7 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 // (full-slide-svg.tsx's splitTakeover branch, keyed off `getLayout(slide.
 // layout)?.kind === "takeover"` since W2 task 3 — originally 4 snake_case
 // `slide.variant` values): bespoke full-page compositions that intercept
-// *before* any archetype runs, implemented by src/svg/image-pages.tsx.
+// *before* any layout runs, implemented by src/svg/image-pages.tsx.
 // `slideTypes` is written as `["content"]`, and task 3's applicability gate
 // (api.ts `checkLayoutApplicability`) now enforces it as a validate hard
 // error — before that gate existed, these ids were schema-legal on any
@@ -491,28 +502,30 @@ const CONTENT_LAYOUTS: Record<string, LayoutDefinition> = {
 // at render (the confirmed bug the inventory flagged; this registry entry
 // used to just state the intended applicability without enforcing it).
 // ─────────────────────────────────────────────────────────────────────────
-const TAKEOVER_LAYOUTS: Record<string, LayoutDefinition> = {
+const TAKEOVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [imageSplitLayoutDef.id]: imageSplitLayoutDef,
   [imageTopLayoutDef.id]: imageTopLayoutDef,
   [imageBottomLayoutDef.id]: imageBottomLayoutDef,
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 36 archetype layouts + 4 takeover layouts, keyed by id. */
+/** All 36 standard layouts + 4 takeover layouts, keyed by id (`kind`
+ *  still spells the standard tier `"archetype"` — a wire-format fossil, see
+ *  {@link LayoutDefinition.kind}). */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {
-  ...COVER_LAYOUTS,
-  ...CHAPTER_LAYOUTS,
-  ...ENDING_LAYOUTS,
-  ...CONTENT_LAYOUTS,
-  ...TAKEOVER_LAYOUTS,
+  ...COVER_LAYOUT_DEFS,
+  ...CHAPTER_LAYOUT_DEFS,
+  ...ENDING_LAYOUT_DEFS,
+  ...CONTENT_LAYOUT_DEFS,
+  ...TAKEOVER_LAYOUT_DEFS,
 }
 
-/** Look up a single layout definition by id (archetype or takeover). */
+/** Look up a single layout definition by id (layout or takeover). */
 export function getLayout(id: string): LayoutDefinition | undefined {
   return LAYOUT_REGISTRY[id]
 }
 
-/** Every layout definition (archetype or takeover) applicable to a slide type. */
+/** Every layout definition (layout or takeover) applicable to a slide type. */
 export function layoutsForSlideType(t: SlideType): readonly LayoutDefinition[] {
   return Object.values(LAYOUT_REGISTRY).filter((layout) => layout.slideTypes.includes(t))
 }

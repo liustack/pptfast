@@ -1,0 +1,316 @@
+import type { SvgTemplateProps } from "./types"
+import type { LayoutDefinition } from "./registry"
+import type { ContentRect } from "../layout"
+import { SvgContent } from "../svg-content"
+import { sectionNameFor } from "../../lib/derive"
+import { fitHeadingLines } from "../heading-fit"
+import { fitSvgLine } from "../../lib/svg-text-layout"
+import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
+import { accessibleInk } from "../ink"
+import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+
+/**
+ * asymmetric-triptych content layout (P1 variety wave, task 4 — content-
+ * pool expansion, new layout 2 of 3): a three-region body grammar, never
+ * a two-region even split — a wide LEAD column carries the first component
+ * (a hero item), and a narrower RIGHT column is itself split top/bottom
+ * into two framed secondary panels.
+ *
+ * Composition sketch (geometry, written before this file per the task
+ * contract): heading chrome spans the usual full 1088px content width
+ * (x=96..1184, matching `bento-panel`/`two-column`'s own convention of a
+ * full-width header sitting above a split body). Below it: LEAD region
+ * x=96, w=632 (58%); a persistent vertical divider hairline at the gap's
+ * midpoint (x=744); RIGHT region x=760, w=424 (39% — deliberately equal to
+ * `two-column`'s own worst-case half-width at the pool's narrowest 880px
+ * single-stack basis, `(880-32)/2=424` — this layout introduces no
+ * width narrower than `audit/capacity.ts` already accounts for). RIGHT
+ * splits vertically into a TOP and a BOTTOM sub-panel (a persistent
+ * horizontal divider between them), each framed by a thin outline rect
+ * drawn unconditionally — the frame exists whether or not a component
+ * lands inside it.
+ *
+ * Component placement: `components[0]` (if any) goes to LEAD alone — a
+ * single hero item at the widest column, the same "one dominant subject"
+ * instinct `stacked-poster`'s capacity-1 `hero` slot already encodes, just
+ * without that layout's scale-to-fill behavior. The remainder splits
+ * across TOP (first half) then BOTTOM (second half). Each region is an
+ * independent `SvgContent` call with `arrangement` hardcoded to the
+ * default single-stack (never `slide.arrangement` — this layout's
+ * three-region split *is* its own arrangement, the same hardcode
+ * `bento-panel`/`two-column` already use for their own bespoke grammars),
+ * so `layoutContentFit`'s existing gap-tier/drop safety net applies to
+ * each region independently.
+ *
+ * Why this clears the T1 handoff's hard requirement (dense-capable
+ * layouts must be visibly different from `two-column`/`rail-numbered`
+ * on a *single-component* page): the LEAD/RIGHT divider and the TOP/BOTTOM
+ * frame are drawn unconditionally, not derived from `slide.components`.
+ * `two-column` collapses to one full-width column below 2 components (its
+ * own file comment); `rail-numbered`'s only persistent mark is a 4px rail
+ * at the page's far-left edge, the content region itself staying a single
+ * full-width block. A 1-component asymmetric-triptych page still shows
+ * three visibly bounded regions — a genuinely different silhouette, not
+ * just a narrower single column.
+ *
+ * Assigned `instructional` (procedural, step-by-step-breakdown strategy —
+ * "one lead topic + a secondary breakdown split into two framed panels"
+ * reads like a main step with sub-steps, the same "分步拆解" character
+ * `rail-numbered`/`two-column` already carry for this strategy) and beat
+ * `dense` (three independently-filled regions is this pool's highest
+ * *structural* item count after `bento-panel`'s 6-cell grid, and unlike
+ * `two-column`/`rail-numbered` its density signal survives visibly even
+ * with only 1 component present — see the previous paragraph, and the T1
+ * handoff note this addresses directly).
+ *
+ * Discipline: no theme id, no hex literal — every color is a token or an
+ * `../ink` call.
+ */
+
+const HEADING_MAX_W = 1088
+const HEADING_BASELINE = 150
+const KICKER_Y = 96
+
+const SUBHEADING_FONT_SIZE = 22
+const SUBHEADING_MIN_FONT_SIZE = 16
+const SUBHEADING_SLOT = 46
+
+const LEAD_X = 96
+const LEAD_W = 632
+const COL_GAP = 32
+const RIGHT_X = LEAD_X + LEAD_W + COL_GAP // 760
+const RIGHT_W = 1184 - RIGHT_X // 424
+const DIVIDER_X = LEAD_X + LEAD_W + COL_GAP / 2 // 744
+
+const ROW_GAP = 24
+const PANEL_RADIUS = 6
+
+export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const { colors, fonts } = ctx
+  const section = sectionNameFor(ir.slides, index)
+  const kicker = section
+    ? fitSvgLine(section, { maxWidth: HEADING_MAX_W, fontSize: 12, minFontSize: 9, letterSpacing: 4 })
+    : null
+
+  const heading = fitHeadingLines(slide.heading, {
+    maxWidth: HEADING_MAX_W,
+    fontSize: 42,
+    maxLines: 2,
+    minPt: 26,
+    fontFamily: fonts.heading,
+  })
+  const headingLastY =
+    HEADING_BASELINE + Math.max(0, heading.lines.length - 1) * heading.lineHeight
+
+  const subheading = slide.subheading
+    ? fitEmphasisLine(slide.subheading, {
+        maxWidth: HEADING_MAX_W,
+        fontSize: SUBHEADING_FONT_SIZE,
+        minFontSize: SUBHEADING_MIN_FONT_SIZE,
+      })
+    : null
+  const subheadingY = headingLastY + 42
+  const subheadingBudget = subheading ? SUBHEADING_SLOT : 0
+  const subheadingFill = subheading
+    ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
+    : colors.accent
+
+  const bodyTop = headingLastY + 36 + subheadingBudget
+  const bodyBottom = slide.footnote ? 616 : 632
+  const bodyH = Math.max(120, bodyBottom - bodyTop)
+
+  const [leadComponent, ...rest] = slide.components
+  const topHalfCount = Math.ceil(rest.length / 2)
+  const topComponents = rest.slice(0, topHalfCount)
+  const bottomComponents = rest.slice(topHalfCount)
+
+  const leadRect: ContentRect = { x: LEAD_X, y: bodyTop, w: LEAD_W, h: bodyH }
+  // Pool-growth-exposed pre-existing defect (content-layout expansion
+  // wave, task T1 — found via `audit-baseline.test.ts`'s
+  // `new_components_stress` fixture: registering an 11th content layout
+  // shifted seeded auto-selection onto this layout for a page it had
+  // never landed on before, exposing this). With exactly one secondary
+  // component, TOP used to be squeezed into a half-height box while BOTTOM
+  // sat empty beside it — starving a real component of half its available
+  // height for no reason (a heavy 5-item `steps` list overflowed the
+  // half-height box even after its own font-shrink floor). TOP now claims
+  // the *full* `bodyH` whenever BOTTOM has nothing to show, the same "sole
+  // occupant gets the full column" precedent LEAD itself already follows —
+  // BOTTOM's frame/divider are skipped in that case (there is no region to
+  // show). `topComponents.length > 0` scopes this to exactly that case, not
+  // the `rest.length === 0` one (both TOP/BOTTOM empty) the file header's
+  // "a lone-component page still shows 3 regions" T1-handoff guarantee is
+  // about — that case's own dedicated test (`content-asymmetric-
+  // triptych.test.tsx`, "with 0 components") is untouched by this change.
+  const bottomStarved = topComponents.length > 0 && bottomComponents.length === 0
+  const halfRowH = Math.max(60, (bodyH - ROW_GAP) / 2)
+  const rowH = bottomStarved ? bodyH : halfRowH
+  const topRect: ContentRect = { x: RIGHT_X, y: bodyTop, w: RIGHT_W, h: rowH }
+  const dividerY = bodyTop + rowH + ROW_GAP / 2
+  const bottomRect: ContentRect = { x: RIGHT_X, y: bodyTop + rowH + ROW_GAP, w: RIGHT_W, h: halfRowH }
+
+  const footnote = slide.footnote
+    ? fitSvgLine(slide.footnote, { maxWidth: HEADING_MAX_W, fontSize: 14, minFontSize: 11 })
+    : null
+
+  return (
+    <>
+      {kicker && (
+        <text
+          data-truncated={kicker.truncated ? "1" : undefined}
+          x="96"
+          y={KICKER_Y}
+          fontFamily={fonts.body}
+          fontSize={kicker.fontSize}
+          fill={colors.muted}
+          letterSpacing="4"
+          dominantBaseline="alphabetic"
+        >
+          {kicker.text}
+        </text>
+      )}
+
+      {heading.lines.map((line, i) => (
+        <text
+          key={i}
+          data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
+          x="96"
+          y={HEADING_BASELINE + i * heading.lineHeight}
+          fontFamily={fonts.heading}
+          fontSize={heading.fontSize}
+          fontWeight="700"
+          fill={colors.text}
+          dominantBaseline="alphabetic"
+        >
+          {line}
+        </text>
+      ))}
+
+      {subheading && (
+        <text
+          x="96"
+          y={subheadingY}
+          fontFamily={fonts.body}
+          fontSize={subheading.fontSize}
+          fill={subheadingFill}
+          dominantBaseline="alphabetic"
+        >
+          {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
+        </text>
+      )}
+
+      {/* Persistent structure: unconditional regardless of component count
+          (see file header — the T1 handoff's single-component visibility
+          requirement). */}
+      <line
+        x1={DIVIDER_X}
+        y1={bodyTop}
+        x2={DIVIDER_X}
+        y2={bodyTop + bodyH}
+        stroke={colors.border ?? colors.muted}
+        strokeWidth={1}
+        strokeOpacity={0.6}
+      />
+      <rect
+        x={topRect.x}
+        y={topRect.y}
+        width={topRect.w}
+        height={topRect.h}
+        rx={PANEL_RADIUS}
+        fill="none"
+        stroke={colors.border ?? colors.muted}
+        strokeOpacity={0.45}
+        strokeWidth={1}
+      />
+      {/* BOTTOM's frame/divider are skipped when TOP has absorbed the full
+          bodyH (see `bottomStarved` above) — there is no region left to
+          outline. Untouched for every other case (0 or >=2 rest
+          components), including the 0-rest showcase this file's header
+          documents. */}
+      {!bottomStarved && (
+        <>
+          <rect
+            x={bottomRect.x}
+            y={bottomRect.y}
+            width={bottomRect.w}
+            height={bottomRect.h}
+            rx={PANEL_RADIUS}
+            fill="none"
+            stroke={colors.border ?? colors.muted}
+            strokeOpacity={0.45}
+            strokeWidth={1}
+          />
+          <line
+            x1={RIGHT_X}
+            y1={dividerY}
+            x2={RIGHT_X + RIGHT_W}
+            y2={dividerY}
+            stroke={colors.border ?? colors.muted}
+            strokeWidth={1}
+            strokeOpacity={0.3}
+          />
+        </>
+      )}
+
+      {leadComponent && (
+        <SvgContent arrangement={undefined} components={[leadComponent]} rect={leadRect} ctx={ctx} />
+      )}
+      {topComponents.length > 0 && (
+        <SvgContent arrangement={undefined} components={topComponents} rect={topRect} ctx={ctx} />
+      )}
+      {bottomComponents.length > 0 && (
+        <SvgContent arrangement={undefined} components={bottomComponents} rect={bottomRect} ctx={ctx} />
+      )}
+
+      {footnote && (
+        <text
+          data-truncated={footnote.truncated ? "1" : undefined}
+          x="96"
+          y={FOOTNOTE_BASELINE_Y}
+          fontFamily={fonts.body}
+          fontSize={footnote.fontSize}
+          fill={colors.muted}
+          fontStyle="italic"
+          dominantBaseline="alphabetic"
+        >
+          {footnote.text}
+        </text>
+      )}
+    </>
+  )
+}
+
+// T1d (src domain reorg wave 1): inlined verbatim from registry.ts's former
+// CONTENT_LAYOUT_DEFS["asymmetric-triptych"] entry. `CHROME` (registry.ts's
+// private `readonly string[] = []` alias, "not fed by an authored
+// component") is inlined here to the literal `[]` it always held, to avoid a
+// value-import cycle with the registry aggregator (which value-imports this
+// export) — see registry.ts's slot-`accepts` convention doc for what `[]`
+// means. The body slot's capacity comment is reworded from "see file header
+// derivation" to name registry.ts explicitly, since that derivation essay
+// lives in registry.ts's CONTENT_LAYOUT_DEFS aggregation block, not in this file.
+export const layoutDef: LayoutDefinition = {
+  // content-asymmetric-triptych.tsx: full-width kicker/heading/subheading
+  // chrome above a three-region body — a wide `lead` column (the first
+  // component alone) plus a narrower right column split into `top`/
+  // `bottom` framed secondary panels. All three internal SvgContent calls
+  // hardcode arrangement to the default single-stack (never
+  // `slide.arrangement` — the three-region split is this layout's own
+  // grammar, same hardcode convention as bento-panel/two-column).
+  // Persistent dividers/panel frames are unconditional chrome, not
+  // component-count-dependent.
+  id: "asymmetric-triptych",
+  kind: "archetype",
+  slideTypes: ["content"],
+  slots: [
+    { name: "kicker", accepts: [] },
+    { name: "heading", accepts: [] },
+    { name: "subheading", accepts: [] },
+    { name: "body", accepts: "any", capacity: 4 }, // 1 lead + up to 3 secondary — see registry.ts's CONTENT_LAYOUT_DEFS header for the derivation
+    { name: "lead", accepts: "any", capacity: 1 },
+    { name: "top", accepts: "any" },
+    { name: "bottom", accepts: "any" },
+    { name: "meta", accepts: [] },
+  ],
+  arrangements: ["single"],
+}

@@ -7,10 +7,10 @@
  * lives in `@/narrative`; this module owns the layout side and nothing else.
  *
  * CRITICAL invariant (spec §5's W3 amendment note: "选型确定性保证 validate
- * 所见 = render 所用"): `resolveArchetypeId` below is the *only* place the
+ * 所见 = render 所用"): `resolveLayoutId` below is the *only* place the
  * narrative-weighted seed-sampling + adjacent-anti-repetition
- * archetype-selection mechanics live. `full-slide-svg.tsx`'s own
- * `resolveArchetype` calls it instead of reimplementing it — any drift
+ * layout-selection mechanics live. `full-slide-svg.tsx`'s own
+ * `resolvePageLayout` calls it instead of reimplementing it — any drift
  * between a validate-time copy and the render-time original would silently
  * break the "what validate approved is what render draws" promise this gate
  * exists to keep. Do not duplicate this function's body elsewhere; extend or
@@ -70,11 +70,11 @@ function tendencyIdsFor(slideType: Slide["type"], strategy: Strategy): readonly 
 type PageBeat = NonNullable<Slide["beat"]>
 
 /**
- * Beat→content-archetype tendency sets (spec: beat's weight layer is a
+ * Beat→content-layout tendency sets (spec: beat's weight layer is a
  * second, independent preference signal at the same initial magnitude as
  * `TENDENCY_WEIGHT` above — see `weightOf` below for how it combines with
  * strategy's own weight, a P1 fix-round revision of the original
- * "multiplies onto strategy" ruling). Each set names only `CONTENT_LAYOUTS` ids
+ * "multiplies onto strategy" ruling). Each set names only `CONTENT_LAYOUT_DEFS` ids
  * (`svg/layouts/registry.ts`) for the identical structural reason
  * `StrategyDefinition.layoutTendencies` does (that field's own doc comment,
  * `@/narrative`): a content page is the only slide type `checkBeatRotation`
@@ -84,14 +84,14 @@ type PageBeat = NonNullable<Slide["beat"]>
  * needed, same "no id can ever match" no-op every other weighting layer here
  * already relies on.
  *
- * One-line rationale per member, grounded in each archetype's own body
- * comment (`CONTENT_LAYOUTS`, `svg/layouts/registry.ts`) rather than its
+ * One-line rationale per member, grounded in each layout's own body
+ * comment (`CONTENT_LAYOUT_DEFS`, `svg/layouts/registry.ts`) rather than its
  * name alone:
  *
  * - **anchor** (one bold, high-impact statement):
  *   - `banner-heading` — the heading sits *inside* a filled "assertion
  *     banner". The banner rect is the heading treatment, not a container
- *     wrapped around a plain title, so this archetype's whole identity is
+ *     wrapped around a plain title, so this layout's whole identity is
  *     already "one bold claim, loudly stated".
  *   - `stacked-poster` — its non-degrade path routes component 1 into a
  *     dedicated `hero` slot (capacity 1): poster-scale single-subject
@@ -101,7 +101,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     unconditionally, regardless of `slide.components` — the same "loud,
  *     unmissable page identity" register as the two members above, just
  *     asserted beside the body instead of above or inside it.
- *   - `split-band` (content-archetype expansion wave, task T3 —
+ *   - `split-band` (content-layout expansion wave, task T3 —
  *     `.issues/2026-07-26-content-archetypes/plan.md`) — its full-bleed
  *     `header` band *is* the heading treatment (a filled `colors.primary`
  *     rect spanning the entire page width, not inset to the usual x=96..
@@ -110,11 +110,11 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     already earns `banner-heading` its anchor membership, just escalated
  *     to genuinely full-bleed. Distinct from `image-lead-split` below
  *     (`content-image-lead-split.tsx`'s own file header explicitly frames
- *     that archetype as "两个真正共存的主角", not one loud statement) —
- *     the two new archetypes deliberately land in different beats, not the
+ *     that layout as "两个真正共存的主角", not one loud statement) —
+ *     the two new layouts deliberately land in different beats, not the
  *     same one by default.
  * - **dense** (many discrete items, high information density):
- *   - `bento-panel` — the only content archetype whose `body` capacity is 6
+ *   - `bento-panel` — the only content layout whose `body` capacity is 6
  *     (every other is 4): a multi-cell grid sized to hold the most, not the
  *     boldest.
  *   - `two-column` — splits the body into two narrower columns running in
@@ -130,7 +130,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     `two-column`/`rail-numbered` read as visually thin on a
  *     single-component page, its region dividers/frames are unconditional
  *     chrome that stays visible even with exactly 1 component (see the
- *     archetype file's own composition-sketch header).
+ *     layout file's own composition-sketch header).
  * - **breathing** (generous whitespace, one unhurried flow):
  *   - `narrow-column` — the narrowest body column in the pool, paired with
  *     a large muted page-number watermark filling the right gutter: spacious
@@ -142,7 +142,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     to the max-composition agreement case — any strategy that also favors
  *     that one id gets a "free" corroboration with nothing else to spread
  *     across).
- *   - `image-lead-split` (content-archetype expansion wave, task T3;
+ *   - `image-lead-split` (content-layout expansion wave, task T3;
  *     rationale strengthened in the wave's final review round — see below
  *     for why the original column-width analogy alone was underargued) —
  *     `breathing`'s actual common trait across its three members isn't
@@ -161,7 +161,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  *     `image-lead-split` fills it with a real visual instead — but the
  *     structural shape is the same "single flow + single quiet companion",
  *     not a coincidence of column width. That holds under *both* of this
- *     archetype's geometries (see its own file header and
+ *     layout's geometries (see its own file header and
  *     `STARVED_TEXT_W`'s derivation):
  *     - **With a scalable lead** (435px text + 613px visual): the text
  *       column is a single ordinary rect, never split (unlike every `dense`
@@ -188,7 +188,7 @@ type PageBeat = NonNullable<Slide["beat"]>
  *
  * `tone-adaptive-content` — the pool's "万金油" (already strategy-neutral by
  * `layoutTendencies`' own convention) — is deliberately absent from every
- * set here too, for the same reason: it is the one content archetype meant
+ * set here too, for the same reason: it is the one content layout meant
  * to read as beat-neutral as well.
  */
 const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
@@ -209,9 +209,9 @@ const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
  * task's own original ruling).** The first cut of `weightOf` multiplied the
  * two layers (`strategyWeight * beatWeight`), which measurably compounded
  * whenever a strategy's own `layoutTendencies` and a beat's `BEAT_TENDENCIES`
- * happened to name the same archetype — storytelling already favors
+ * happened to name the same layout — storytelling already favors
  * `narrow-column`, and `breathing` favors it too, so `storytelling` × beat
- * `"breathing"` squared that agreement into a single archetype claiming ~53%
+ * `"breathing"` squared that agreement into a single layout claiming ~53%
  * of realized picks (measured, N=5000. Algebra: weight 9 vs. the pool's five
  * other weight-1 members and one weight-3 member, 9/17 ≈ 52.9%) — the exact
  * pathology this weighting system exists to fix, now reproduced by it, for
@@ -219,7 +219,7 @@ const BEAT_TENDENCIES: Record<PageBeat, readonly string[]> = {
  * beat under a "tension, image-forward" strategy that already reaches for
  * the same spacious layout). `weightOf` below now takes
  * `Math.max(strategyWeight, beatWeight)` instead: **both layers assert the
- * same underlying preference dimension** ("which archetype should this
+ * same underlying preference dimension** ("which layout should this
  * candidate set favor"), not two orthogonal ones whose signals should stack
  * multiplicatively — agreement between them is corroboration, not a reason
  * to square the pull, while disagreement (one layer favors an id the other
@@ -281,7 +281,7 @@ const BEAT_BASE_WEIGHT = 1
  */
 
 /**
- * Resolve the archetype registry id for one page-type slot (spec §6 steps
+ * Resolve the layout registry id for one page-type slot (spec §6 steps
  * 3-5, W4 final form). An explicit `requestedLayout` short-circuits every
  * step below when it names a registered `kind: "archetype"` layout
  * applicable to `slideType` (spec §3: "要版式完全不动就显式写 layout 字段" —
@@ -338,12 +338,12 @@ const BEAT_BASE_WEIGHT = 1
  * allowed set for all four slide types — kept for future/custom themes,
  * same "total function, never crash" posture as `resolveThemeId`).
  *
- * Pulled out of `full-slide-svg.tsx`'s old private `resolveArchetype` (W3 task
+ * Pulled out of `full-slide-svg.tsx`'s old private `resolvePageLayout` (W3 task
  * 3 extraction) so this exact selection logic has exactly one copy, callable
  * from both the render path and this module's own
  * `resolveEffectiveLayoutId` below.
  */
-export function resolveArchetypeId(
+export function resolveLayoutId(
   slideType: Slide["type"],
   layouts: ThemeDefinition["layouts"],
   seed: number,
@@ -371,7 +371,7 @@ export function resolveArchetypeId(
     .map((id) => getLayout(id))
     .filter((def): def is NonNullable<typeof def> => def !== undefined)
   // `excludePinOnly` first (quote-stage wave, task T1): defensive re-check,
-  // not a duplicate of `fullArchetypeSet`'s own exclusion — `registerTheme`
+  // not a duplicate of `fullLayoutSet`'s own exclusion — `registerTheme`
   // (`../themes/definitions.ts`) legally allows a custom theme to list a
   // pinOnly id in its own curated `layouts[slideType]` set (that
   // registration-time check validates existence/kind/slideTypes, never this
@@ -403,6 +403,10 @@ export function resolveArchetypeId(
       themeTendencies === undefined ? 1 : themeTendencies.includes(id) ? TENDENCY_WEIGHT : BASE_WEIGHT
     return Math.max(strategyWeight, beatWeight, themeWeight)
   }
+  // `-archetype:` is a fossil too, for a harder reason than the `data-archetype`
+  // attribute (`full-slide-svg.tsx`): this string is hashed into the seed, so a
+  // single changed character redistributes every deterministic layout pick in
+  // every deck. It is load-bearing bytes, not vocabulary — leave it alone.
   const salt = `${slideType}-archetype:${pageKey}`
   const picked = weightedPickBySeed(seed, salt, pool, weightOf)
 
@@ -444,18 +448,18 @@ export function resolveIrStrategy(ir: PptxIR): Strategy {
  * 1. **Image-cover takeover** (cover/chapter with an asset background —
  *    `ImageCoverPage`): bespoke full-page chrome with no `LAYOUT_REGISTRY`
  *    entry to cite, so this returns `null`. Content/ending asset backgrounds
- *    stay on the normal archetype path (P1 frosted scrim, not a takeover —
+ *    stay on the normal layout path (P1 frosted scrim, not a takeover —
  *    unaffected).
  * 2. **Image-family takeover** (`image-split`/`image-top`/`image-bottom`/
  *    `image-annotate` — `slide.layout` pinned to one of these *and* an
  *    `image` component present, `image-pages.tsx`): returns that takeover id
  *    itself. A pinned takeover id with no image component does **not**
  *    count — render's own `splitTakeover` check requires both, and falls
- *    through to the archetype path below when only the id is set (see
+ *    through to the layout path below when only the id is set (see
  *    `full-slide-svg.test.tsx`'s "falls back to seed-pick... kind takeover not
- *    archetype" case) — replicated here via the same `findImageComponent`
+ *    layout" case) — replicated here via the same `findImageComponent`
  *    helper render itself calls, not a re-derived condition.
- * 3. **Archetype** (the common case): delegates to `resolveArchetypeId`
+ * 3. **Layout** (the common case): delegates to `resolveLayoutId`
  *    above with this slide's salt `pageKey` and `previousEffectiveLayoutId`
  *    (both supplied by the caller — this function never re-derives them, so
  *    there is exactly one place that walks the deck to produce them, see
@@ -466,7 +470,7 @@ export function resolveIrStrategy(ir: PptxIR): Strategy {
  *    resolve beyond the field read itself — plus `themeDef.layoutTendencies?.[slide.type]`
  *    (theme-structure wave, task T1): the theme is already resolved here
  *    (`getThemeDefinition` right below), so this is the one place that slices
- *    its per-slide-type tendency record down to the slice `resolveArchetypeId`
+ *    its per-slide-type tendency record down to the slice `resolveLayoutId`
  *    actually weighs, same "resolve once at the call site" posture as `beat`.
  */
 function resolveOneEffectiveLayoutId(
@@ -490,7 +494,7 @@ function resolveOneEffectiveLayoutId(
   }
 
   const themeDef = getThemeDefinition(ir.theme.id)
-  return resolveArchetypeId(
+  return resolveLayoutId(
     slide.type,
     themeDef.layouts,
     seed,
@@ -578,9 +582,9 @@ export interface EffectiveLayoutBodyCapacity {
  * budget, resolved layout's block capacity)`) — `src/svg/ir-quality.ts`'s
  * sole consumer. Looks up the `body` slot on whatever
  * `resolveEffectiveLayoutId` resolved; every non-bypass path (explicit
- * archetype pin, auto-pick, or a pinned takeover) funnels through the same
+ * layout pin, auto-pick, or a pinned takeover) funnels through the same
  * `LAYOUT_REGISTRY` lookup, so bento-panel's declared capacity 6 (vs. the
- * other 6 content archetypes' flat 4) and the 4 takeovers' "no capacity"
+ * other 6 content layouts' flat 4) and the 4 takeovers' "no capacity"
  * fall out of this one lookup without a separate case per layout kind.
  */
 export function resolveEffectiveLayoutBodyCapacity(

@@ -125,7 +125,7 @@ describe("fitHeadingLines", () => {
     // truncation-visibility wave, Task 2: the one gap `ir-quality.ts`'s
     // long_heading comment recorded — `fitHeadingLines`'s internal
     // `truncateToUnits` cut used to be invisible outside this module. The
-    // render layer (every archetype's heading `<text>`) and `deck-audit.ts`'s
+    // render layer (every layout's heading `<text>`) and `deck-audit.ts`'s
     // generic `[data-truncated="1"]` reader both key off this flag.
     expect(r.truncated).toBe(true)
   })
@@ -138,7 +138,7 @@ describe("fitHeadingLines", () => {
   // a heading can fail that fontSize check yet still measure under `budget`
   // once re-wrapped at `minPt`, so it renders in full with no ellipsis. Real
   // production params (cover-fashion-masthead.tsx): maxWidth 1168, fontSize
-  // 150, maxLines 2, minPt 72 — the archetype with the least shrink headroom
+  // 150, maxLines 2, minPt 72 — the layout with the least shrink headroom
   // in the whole codebase (ir-quality.ts's own survey), so the easiest place
   // to hit this false positive.
   it("does not report truncated when the minPt-floor branch fires but no character is actually dropped", () => {

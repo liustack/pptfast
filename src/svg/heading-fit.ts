@@ -85,8 +85,8 @@ export function fitHeadingLines(
 ): SvgTextLayout {
   const { maxWidth, fontSize, maxLines = 2, minPt = 28, lineHeightRatio, fontFamily } = opts
   // bold-metrics fix (2026-07-24): default flipped to `true`, not `false`.
-  // root-cause.md S5: 50/52 archetype `fontWeight` declarations across
-  // src/svg/archetypes/*.tsx are >=600 (96%) -- this is the primary heading
+  // root-cause.md S5: 50/52 layout `fontWeight` declarations across
+  // src/svg/layouts/*.tsx are >=600 (96%) -- this is the primary heading
   // sizing entry point every one of those headings' rendered `<text>` goes
   // through, so "heading" and "bold" are the same case in practice. The 2
   // genuine exceptions (ending-banner-ending.tsx / content-stacked-poster.tsx,

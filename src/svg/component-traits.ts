@@ -62,7 +62,7 @@ import { traits as tagRowTraits } from "@/ir/components/tag-row"
  * hand-maintained literal member list. Exported names and `Set` semantics are
  * unchanged from W2 task 5 (every consumer of `STRETCHABLE_TYPES` etc. reads
  * this file exactly as before); only *how* each Set's membership is produced
- * moved, same as T1d's `layouts/registry.ts` precedent for archetype
+ * moved, same as T1d's `layouts/registry.ts` precedent for layout
  * `layoutDef`s.
  *
  * `EVIDENCE_TYPES` is the one export this aggregator does not derive

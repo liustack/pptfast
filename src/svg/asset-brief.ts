@@ -340,7 +340,7 @@ function buildPrompt(mood: AssetBriefMood, palette: AssetBriefPalette, frame: As
  * its visual-lead column in the JSX it returns, so the queue was backwards
  * and every frame ended up attributed to the wrong occurrence. Not a fixable
  * ordering bug: no ordering convention could be relied on across every
- * archetype's own JSX emission order, present and future.) The honest fix:
+ * layout's own JSX emission order, present and future.) The honest fix:
  * per page, group `image` components by `asset_id` first. A group of size 1
  * (the overwhelmingly common case) keeps the exact single-item shape this
  * function always produced. A group of size >1 abandons per-component

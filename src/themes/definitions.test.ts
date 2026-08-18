@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { CANONICAL_THEME_IDS, THEME_STYLES, resolveThemeId } from "./index"
 import {
-  __fullArchetypeSet,
+  __fullLayoutSet,
   __resetRegisteredThemes,
   assertContrastFloor,
   getInstalledThemeIds,
@@ -12,22 +12,22 @@ import {
   type ThemeDefinition,
   type ThemeRegistration,
 } from "./definitions"
-import { COVER_ARCHETYPES } from "../svg/archetypes"
-import { CHAPTER_ARCHETYPES } from "../svg/archetypes/index-chapter"
-import { CONTENT_ARCHETYPES } from "../svg/archetypes/index-content"
-import { ENDING_ARCHETYPES } from "../svg/archetypes/index-ending"
-import { MOTIF_ARCHETYPES } from "../svg/motifs"
+import { COVER_LAYOUTS } from "../svg/layouts/index-cover"
+import { CHAPTER_LAYOUTS } from "../svg/layouts/index-chapter"
+import { CONTENT_LAYOUTS } from "../svg/layouts/index-content"
+import { ENDING_LAYOUTS } from "../svg/layouts/index-ending"
+import { MOTIFS } from "../svg/motifs"
 import { LAYOUT_REGISTRY, layoutsForSlideType, excludePinOnly, type LayoutDefinition } from "../svg/layouts/registry"
 import { hasExactWidthTable, resolveFontFace } from "../svg/fonts"
 
-// 四页型注册表按 id 分发用的宽字符串索引视图（PAGE_ARCHETYPE_REGISTRIES 在
+// 四页型注册表按 id 分发用的宽字符串索引视图（PAGE_LAYOUT_REGISTRIES 在
 // full-slide-svg.tsx 用的同一模式）：THEME_DEFINITIONS.layouts 的 id 是通用
 // string（W2 任务 2 起不再分页型细分 ID 联合类型），直接用窄 Record 类型索引
 // 会编译失败，故在测试里做同样的宽化视图。
-const COVER_REGISTRY: Record<string, unknown> = COVER_ARCHETYPES
-const CHAPTER_REGISTRY: Record<string, unknown> = CHAPTER_ARCHETYPES
-const CONTENT_REGISTRY: Record<string, unknown> = CONTENT_ARCHETYPES
-const ENDING_REGISTRY: Record<string, unknown> = ENDING_ARCHETYPES
+const COVER_REGISTRY: Record<string, unknown> = COVER_LAYOUTS
+const CHAPTER_REGISTRY: Record<string, unknown> = CHAPTER_LAYOUTS
+const CONTENT_REGISTRY: Record<string, unknown> = CONTENT_LAYOUTS
+const ENDING_REGISTRY: Record<string, unknown> = ENDING_LAYOUTS
 
 describe("THEME_DEFINITIONS", () => {
   it("covers all 13 canonical ids with theme tokens and brand", () => {
@@ -61,14 +61,14 @@ describe("THEME_DEFINITIONS", () => {
     }
   })
 
-  it("清单-注册表一致性锁：四页型 layouts + motif 里的每个 id 都已在对应 archetype 注册表注册", () => {
+  it("清单-注册表一致性锁：四页型 layouts + motif 里的每个 id 都已在对应 layout 注册表注册", () => {
     for (const id of CANONICAL_THEME_IDS) {
       const def = THEME_DEFINITIONS[id]
       for (const lid of def.layouts.cover) expect(COVER_REGISTRY[lid]).toBeTypeOf("function")
       for (const lid of def.layouts.chapter) expect(CHAPTER_REGISTRY[lid]).toBeTypeOf("function")
       for (const lid of def.layouts.content) expect(CONTENT_REGISTRY[lid]).toBeTypeOf("function")
       for (const lid of def.layouts.ending) expect(ENDING_REGISTRY[lid]).toBeTypeOf("function")
-      if (def.motif !== undefined) expect(MOTIF_ARCHETYPES[def.motif]).toBeTypeOf("function")
+      if (def.motif !== undefined) expect(MOTIFS[def.motif]).toBeTypeOf("function")
     }
   })
 
@@ -83,7 +83,7 @@ describe("THEME_DEFINITIONS", () => {
   // 固定 0.4 明度阈值换成两墨实测对比度取优）全部撤销：十三主题四页型现在
   // **没有任何例外**，均为各页型全集。四个 FULL_* 常量是手工钉的字面数组
   // （人审基线，不经 layoutsForSlideType 派生）——未来 registry 新增/删除
-  // archetype 时，这里必须跟着人工重推，而不是无声通过。
+  // layout 时，这里必须跟着人工重推，而不是无声通过。
   const FULL_COVER = [
     "banner-title",
     "poster-center",
@@ -116,9 +116,9 @@ describe("THEME_DEFINITIONS", () => {
     "side-highlight",
     "asymmetric-triptych",
     "quiet-frame",
-    // content-archetype expansion wave, task T1: content pool 10 -> 11.
+    // content-layout expansion wave, task T1: content pool 10 -> 11.
     "image-lead-split",
-    // content-archetype expansion wave, task T2: content pool 11 -> 12.
+    // content-layout expansion wave, task T2: content pool 11 -> 12.
     "split-band",
   ]
   const FULL_ENDING = [
@@ -261,7 +261,7 @@ describe("resolveBrand", () => {
 // ── registerTheme (W3 task 4: theme registration seam) ──────────────────
 
 /** A structurally valid `ThemeRegistration` fixture — real LAYOUT_REGISTRY
- *  ids (one archetype per slide type, each already applicable to that type
+ *  ids (one layout per slide type, each already applicable to that type
  *  per registry.ts), a minimal-but-complete StyleTokens. `overrides` lets
  *  each test tweak just the field it's exercising, including setting
  *  `layouts` to `undefined` or a partial slide-type subset (W4: `layouts`
@@ -341,7 +341,7 @@ describe("registerTheme", () => {
   it("rejects a layout id that exists but does not apply to the slide type", () => {
     expect(() =>
       registerTheme(
-        // "two-column" is a content-only archetype (registry.ts) — invalid under `cover`.
+        // "two-column" is a content-only layout (registry.ts) — invalid under `cover`.
         testTheme({
           layouts: {
             cover: ["two-column"],
@@ -354,7 +354,7 @@ describe("registerTheme", () => {
     ).toThrow(/layout "two-column" is not valid for "cover" slides/)
   })
 
-  it("rejects a takeover layout id in a curated set (auto-selection assumes archetypes — render would crash)", () => {
+  it("rejects a takeover layout id in a curated set (auto-selection assumes layouts — render would crash)", () => {
     // image-split is kind "takeover" with slideTypes ["content"] — slide-type
     // matching alone would let it through, the kind check must stop it.
     expect(() =>
@@ -393,10 +393,10 @@ describe("registerTheme", () => {
   })
 
   // ── W4: layouts (and each of its four slide-type entries) is optional,
-  // defaulting to the full registered-archetype set (spec §3 "缺省 = 全集")
+  // defaulting to the full registered-layout set (spec §3 "缺省 = 全集")
   // ──────────────────────────────────────────────────────────────────────
 
-  it("omitting layouts entirely defaults every slide type to its full registered-archetype set, minus any pinOnly member (quote-stage wave, task T1's fullArchetypeSet filter — now exercised by a real member, task T2's quote-stage)", () => {
+  it("omitting layouts entirely defaults every slide type to its full registered-layout set, minus any pinOnly member (quote-stage wave, task T1's fullLayoutSet filter — now exercised by a real member, task T2's quote-stage)", () => {
     registerTheme(testTheme({ layouts: undefined }))
     const def = getThemeDefinition("acme")
     for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
@@ -548,7 +548,7 @@ describe("registerTheme: layoutTendencies consistency", () => {
 
   it("rejects a layoutTendencies id that is not in this theme's own layouts set for that slide type, naming the id and slide type", () => {
     // testTheme()'s own content pool is exactly ["two-column"] — "narrow-column"
-    // is a real, registered content archetype (so it can't be caught by the
+    // is a real, registered content layout (so it can't be caught by the
     // unrelated "unknown layout id" check above), just not a member of this
     // particular theme's curated content set.
     expect(() =>
@@ -565,7 +565,7 @@ describe("registerTheme: layoutTendencies consistency", () => {
         }),
       ),
       // testTheme()'s cover pool is exactly ["poster-center"] — "left-anchor" is
-      // a real cover archetype, just outside this theme's own curated set.
+      // a real cover layout, just outside this theme's own curated set.
     ).toThrow(/layoutTendencies\.cover.*"left-anchor"/)
   })
 
@@ -752,21 +752,21 @@ describe("getThemeDefinition", () => {
 // ── pinOnly layout tier (quote-stage wave, task T1 —
 // `.issues/2026-07-28-quote-stage/plan.md`'s 裁定 1) ──────────────────────
 //
-// `fullArchetypeSet` (the module-private function `__fullArchetypeSet`
+// `fullLayoutSet` (the module-private function `__fullLayoutSet`
 // re-exports under this file's own test-only convention) only ever snapshots
 // its result once, at module load (`FULL_LAYOUTS`), long before any test
 // could mutate `LAYOUT_REGISTRY` — so this suite injects a synthetic
-// pinOnly-tagged registry entry directly and calls `__fullArchetypeSet`
+// pinOnly-tagged registry entry directly and calls `__fullLayoutSet`
 // itself, rather than reading `THEME_DEFINITIONS`/`FULL_LAYOUTS` (both frozen
 // at import time).
 
-const PIN_ONLY_TEST_ID = "test-pin-only-archetype"
+const PIN_ONLY_TEST_ID = "test-pin-only-layout"
 
 function pinOnlyTestLayout(): LayoutDefinition {
   return { id: PIN_ONLY_TEST_ID, kind: "archetype", slideTypes: ["content"], slots: [], pinOnly: true }
 }
 
-describe("pinOnly layout tier: fullArchetypeSet exclusion", () => {
+describe("pinOnly layout tier: fullLayoutSet exclusion", () => {
   beforeEach(() => {
     LAYOUT_REGISTRY[PIN_ONLY_TEST_ID] = pinOnlyTestLayout()
   })
@@ -774,15 +774,15 @@ describe("pinOnly layout tier: fullArchetypeSet exclusion", () => {
     delete LAYOUT_REGISTRY[PIN_ONLY_TEST_ID]
   })
 
-  it("a pinOnly archetype never appears in fullArchetypeSet for its slide type", () => {
-    expect(__fullArchetypeSet("content")).not.toContain(PIN_ONLY_TEST_ID)
+  it("a pinOnly layout never appears in fullLayoutSet for its slide type", () => {
+    expect(__fullLayoutSet("content")).not.toContain(PIN_ONLY_TEST_ID)
   })
 
-  it("a plain (non-pinOnly) archetype registered the same way does appear — proves the exclusion is pinOnly-specific, not a generic new-id miss", () => {
-    const plainId = "test-plain-archetype"
+  it("a plain (non-pinOnly) layout registered the same way does appear — proves the exclusion is pinOnly-specific, not a generic new-id miss", () => {
+    const plainId = "test-plain-layout"
     LAYOUT_REGISTRY[plainId] = { id: plainId, kind: "archetype", slideTypes: ["content"], slots: [] }
     try {
-      expect(__fullArchetypeSet("content")).toContain(plainId)
+      expect(__fullLayoutSet("content")).toContain(plainId)
     } finally {
       delete LAYOUT_REGISTRY[plainId]
     }

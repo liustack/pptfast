@@ -26,10 +26,10 @@ export interface ComponentCtx {
    * `resolveBackgroundHex`, `.from` for a gradient — W4 fix round; per-slide
    * override awareness is the post-v0.3 W8 fix round, backlog item 1,
    * `.issues/notes/engineering-history.md` #1). Consumed by
-   * `../ink`'s `readableOn`/`accessibleInk` in archetypes that paint no
+   * `../ink`'s `readableOn`/`accessibleInk` in layouts that paint no
    * background panel of their own and so sit directly on whatever
    * `background.tsx` painted behind them (e.g. `chapter-rail-chapter.tsx`)
-   * — an archetype that paints its *own* panel (e.g.
+   * — a layout that paints its *own* panel (e.g.
    * `content-banner-heading.tsx`'s banner rect) uses that panel's own color
    * (`ctx.colors.primary`) instead, not this field.
    *
@@ -70,7 +70,7 @@ export interface ComponentCtx {
    * this repo's component-level tests. `buildCtx` itself keeps its own
    * corresponding parameter optional (defaults to
    * `PACING_BUDGETS.balanced.bodyBaselinePx`), so the many
-   * `buildCtx(...)`-calling archetype tests that don't care about
+   * `buildCtx(...)`-calling layout tests that don't care about
    * body-text sizing are unaffected — only the smaller set of tests that
    * construct a `ComponentCtx` object literal directly needed a value
    * added (W4 task 3 re-pin round).

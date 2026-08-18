@@ -433,7 +433,7 @@ describe("layoutSvgText word-integrity retry-ladder preference (task R2 scope ex
   // (see the describe block above) kept getting cut mid-run even after the
   // tokenizer itself learned to treat it as one atomic token. These tests
   // pin the ladder's own new selection rule directly (independent of any
-  // one archetype's exact pixel budget): prefer a split-free candidate
+  // one layout's exact pixel budget): prefer a split-free candidate
   // whenever one exists within `maxLines` and (when supplied) `minPt`,
   // otherwise fall back to exactly what the ladder always returned.
   const POSITION_0_PIN = "Brandxxxxxxxxxxxxxxx：让工程团队将大模型推理性能提升"

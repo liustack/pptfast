@@ -41,7 +41,7 @@ describe("registerBrandThemeFile", () => {
     expect(getInstalledThemeIds()).toContain("acme")
     const def = getThemeDefinition("acme")
     expect(def.style.colors.text).toBe(theme.style.colors.text)
-    // 裁定 3: pure data — layouts default to the full archetype set.
+    // 裁定 3: pure data — layouts default to the full layout set.
     expect(def.layouts.cover.length).toBeGreaterThan(0)
     expect(def.layouts.content.length).toBeGreaterThan(0)
   })

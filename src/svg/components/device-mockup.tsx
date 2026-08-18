@@ -183,7 +183,7 @@ export const deviceMockup: SvgComponent<DeviceMockupComponent> = {
           ? fitSvgLine(component.url, { maxWidth: urlBarW - URLBAR_PAD_X * 2, fontSize: 12, minFontSize: 10 })
           : undefined
       // `defaultBg ?? colors.bg` — same fallback precedent as `readableOn`'s
-      // other archetype call sites (e.g. chapter-rail-chapter.tsx): the
+      // other layout call sites (e.g. chapter-rail-chapter.tsx): the
       // device sits directly on whatever the slide actually paints behind
       // it, not always the theme's bare `colors.bg`.
       const chromeInk = readableOn(ctx.defaultBg ?? ctx.colors.bg)

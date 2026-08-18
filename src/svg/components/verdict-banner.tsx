@@ -140,7 +140,7 @@ function lay(
   // bold-metrics fix (2026-07-24): every line renders `fontWeight="600"` on
   // its outer `<text>` below (the *base*, non-emphasized weight — emphasis
   // spans go bolder still, 700, via `renderEmphasisTspans`, but that's not
-  // this component's exemption case: unlike an archetype subheading whose
+  // this component's exemption case: unlike a layout subheading whose
   // *unmarked* text defaults to Regular and only `**marked**` runs go bold,
   // every character of this component's line is already bold before
   // emphasis is even considered). audit-baseline.test.ts's own "if a case

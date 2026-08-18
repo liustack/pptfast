@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * luxe-motif archetype（2026-07-10 motif 全覆盖补齐）：奢侈品包装的烫金
+ * luxe-motif（2026-07-10 motif 全覆盖补齐）：奢侈品包装的烫金
  * 细线语言——细金线角饰/金点/细分隔线组，深炭底上克制的金色细节。
  * 构图变体：a=右上双细线角+左下金点、b=顶部细线横贯+双端金点、c=四角
  * 细短线。强档（仅 cover）全量，弱档（content/ending）单元素。

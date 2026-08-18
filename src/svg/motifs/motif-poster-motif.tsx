@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * poster-motif archetype（spec §3.2，Wave 3 Task 20）：一个共享的角落
+ * poster-motif（spec §3.2，Wave 3 Task 20）：一个共享的角落
  * 径向渐变光晕（不透明中心 → 透明边缘的单一 gradient def，强弱两档全靠
  * `<circle>` 自身的 `opacity` 承载——svg2pptx 的 `withElementOpacity` 会在
  * 导出时把元素自身 opacity 折进每个 stop，等价于直接把 12%/6% 烤进 stop，

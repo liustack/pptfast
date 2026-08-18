@@ -13,7 +13,7 @@ read_when:
 ## Layers
 
 1. **Unit + snapshot** (`pnpm test`, vitest) — 157 files / 2878 cases, colocated
-   with source as `*.test.ts(x)`. Covers the IR schema, every archetype/component,
+   with source as `*.test.ts(x)`. Covers the IR schema, every layout/component,
    the svg2pptx element converters, style tokens, the animation/gradient/
    ea-font/media-dedupe JSZip patches, the deck spec schema and hard gates,
    assemble/disassemble plus the deck-project-directory CLI shell, the v3→v4

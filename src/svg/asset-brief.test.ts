@@ -66,7 +66,7 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     expect(item.asset_id).toBe("pic")
     expect(item.rendered).toBe(true)
     expect(item.missing).toBe(true) // no assets.images entry was supplied
-    // x/y measured off the real render, not copied from the archetype's own
+    // x/y measured off the real render, not copied from the layout's own
     // geometry-sketch doc comment ("y=72..640" describes the 568px-tall
     // *slot*, not the 307px-tall image's position within it — the renderer
     // centers the capped-height image inside that slot, landing at y=203;
@@ -125,7 +125,7 @@ describe("buildAssetBrief — missing-asset deck", () => {
 
 describe("buildAssetBrief — component never rendered under the selected layout", () => {
   it("marks rendered: false and omits frame/suggested_pixels rather than dropping the item", () => {
-    // A cover archetype's own template never reads `slide.components` at all
+    // A cover layout's own template never reads `slide.components` at all
     // (it renders a fixed heading/subheading/decor layout) — an `image`
     // component placed on a cover slide (with a non-asset background, so
     // `imageCoverTakeover` never engages) is guaranteed to be present in the
@@ -169,7 +169,7 @@ describe("buildAssetBrief — shared asset_id across multiple components on one 
   // (the previous `Array.prototype.shift()`-off-a-FIFO-queue logic silently
   // paired frames to occurrences in DOM/extraction order, which is *not*
   // `slide.components` order here — body renders before the visual column in
-  // the archetype's own JSX, so the queue was backwards and every frame was
+  // the layout's own JSX, so the queue was backwards and every frame was
   // swapped) — instead emit one honest, explicitly `shared` item per real
   // rendered frame, both present, neither claiming a specific component.
   it("emits one shared item per rendered frame, both real frames present and correctly valued, no swapped attribution claim", () => {

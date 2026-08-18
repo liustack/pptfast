@@ -2,7 +2,7 @@ import type { DecorProps } from "./types"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * heritage-motif archetype v2（2026-07-11 用户裁决重设计：v1 四角单弧
+ * heritage-motif v2（2026-07-11 用户裁决重设计：v1 四角单弧
  * 「不好看」像随手括号，且与 chapter chrome / footer 多处碰撞）：典藏
  * 书籍装帧语言——扉页徽记 / 扉页双线框 / 书页缘竖线。
  * 构图变体（仅 cover）：a=顶部中央菱形双线徽记+两侧延伸线、b=四角

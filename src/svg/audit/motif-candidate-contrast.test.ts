@@ -56,16 +56,16 @@ function deckFor(themeId: string, slide: Slide, seed: number): PptxIR {
 }
 
 /**
- * The `fashion-chapter` archetype's own decorative chapter-number watermark
+ * The `fashion-chapter` layout's own decorative chapter-number watermark
  * (`chapter-fashion-chapter.tsx`'s own header calls it decorative by
  * design) — already adjudicated and blanket-allowlisted for all 13 themes
  * in `full-matrix-contrast.test.ts`'s own `ALLOWLIST` (ratio band
  * [1.2, 1.8], 1-2 digit text, current 13-theme spread 1.24-1.75). Unpinned
  * `layout` here means the seed search below can land the chapter fixture on
- * this archetype for some (theme, candidate) pairs — filtering the same
+ * this layout for some (theme, candidate) pairs — filtering the same
  * already-adjudicated finding out here (rather than re-litigating it) keeps
  * this file's own job scoped to what it actually exists to check: motif
- * contrast, not a pre-existing, motif-unrelated archetype finding this repo
+ * contrast, not a pre-existing, motif-unrelated layout finding this repo
  * already has a durable regression net for.
  */
 function isKnownFashionChapterWatermark(f: AuditFinding): boolean {

@@ -89,7 +89,7 @@ describe("explicit seed: revision stability", () => {
     // p-2's own raw pick from "rail-numbered" to "bento-panel" for this seed
     // — neither id is in "anchor"'s own tendency set (banner-heading/
     // stacked-poster/side-highlight/split-band, `BEAT_TENDENCIES`,
-    // layout-selection.ts — `split-band` joined by the content-archetype
+    // layout-selection.ts — `split-band` joined by the content-layout
     // expansion wave's own T3 task), so this isn't beat directly favoring
     // the new pick. It's the standard weighted-interval-sampling effect:
     // boosting banner-heading/stacked-poster/side-highlight/split-band's own
@@ -102,7 +102,7 @@ describe("explicit seed: revision stability", () => {
     // declaring page's own pick, and that change really doesn't cascade
     // past the one page beat was declared on.
     //
-    // Re-pinned (content-archetype expansion wave, task T3 — `split-band`
+    // Re-pinned (content-layout expansion wave, task T3 — `split-band`
     // joining `BEAT_TENDENCIES.anchor` reweighted every hash-interval
     // boundary again, so seed 1's own before/after pair collapsed to the
     // same pick for p-2, "banner-heading" both times, breaking this test's
@@ -141,7 +141,7 @@ describe("explicit seed: revision stability", () => {
   })
 
   it("inserting a new page mid-deck only disturbs the new page and its immediate successor", () => {
-    // Seed 3 (content-archetype expansion wave, task T2 re-pin — content
+    // Seed 3 (content-layout expansion wave, task T2 re-pin — content
     // pool grew 11 -> 12 (split-band), reweighting every hash-interval
     // boundary again, so seed 0's own collision (T1's own re-pin) stopped
     // exercising this property; re-found by brute-force search over this
