@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { svgToOps } from "./dispatch"
+import { pxToIn, SLIDE_W_IN } from "../../constants"
 
 function parseSvg(inner: string): Element {
   const doc = new DOMParser().parseFromString(
@@ -75,6 +76,49 @@ describe("svgToOps", () => {
     )
     expect(ops[0].kind).toBe("text")
     expect(ops[0].x).toBeCloseTo(1, 3)
+  })
+
+  // A text box's width is measured against the canvas, so it can only be
+  // computed once the op is in canvas coordinates. Before `anchorTextBox`
+  // ran here it was computed from the `<text>` element's own (local) x, and
+  // a `<g>` centered on its own content — `svg/components/cycle.tsx` puts
+  // the ring's center at 0,0, so its top node's label sits at local x=0 and
+  // its left node's label at a negative one — produced a zero or negative
+  // `w`, i.e. an `a:ext cx <= 0` that `package-audit.ts` rejects. Every
+  // `cycle` ever exported failed this way; these three cases are that shape
+  // of group, reduced.
+  it("sizes a centered text at a group's own origin against the canvas, not the local zero", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g transform="translate(640,360)"><text x="0" y="0" text-anchor="middle" font-size="16">Detect</text></g>`,
+      ),
+    )
+    expect(ops[0].w).toBeGreaterThan(0)
+    // Centered on the canvas center it landed on, and as wide as the slide
+    // can give on both sides of it.
+    expect(ops[0].x + ops[0].w / 2).toBeCloseTo(SLIDE_W_IN / 2, 3)
+    expect(ops[0].w).toBeCloseTo(SLIDE_W_IN, 3)
+  })
+
+  it("sizes a right-anchored text at a negative local x from its canvas anchor", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g transform="translate(640,360)"><text x="-100" y="0" text-anchor="end" font-size="16">Harden</text></g>`,
+      ),
+    )
+    expect(ops[0].w).toBeGreaterThan(0)
+    // Right edge on the anchor: 640 - 100 = 540px.
+    expect(ops[0].x + ops[0].w).toBeCloseTo(pxToIn(540), 3)
+    expect(ops[0].x).toBeCloseTo(0, 3)
+  })
+
+  it("still gives a positive-width box to an anchor sitting on a canvas edge", () => {
+    for (const anchor of ["middle", "end"]) {
+      const ops = svgToOps(
+        parseSvg(`<text x="0" y="0" text-anchor="${anchor}" font-size="16">Bleed</text>`),
+      )
+      expect(ops[0].w).toBeGreaterThan(0)
+    }
   })
 
   it("ignores <defs> and other definition subtrees", () => {

@@ -1,4 +1,4 @@
-import { pxToIn, pxToPt, SLIDE_W_IN, CANVAS_W_PX } from "../../constants"
+import { pxToIn, pxToPt, SLIDE_W_IN } from "../../constants"
 import { isBold } from "../../svg/fonts"
 import { svgColorToHex } from "./color"
 import { elementOpacity } from "./style"
@@ -38,6 +38,63 @@ export interface TextOp {
 // sits roughly one ascent (≈0.8em) above it. Approximate — calibrate against a
 // real PPT render during stage 4 (whole-slide assembly).
 const ASCENT_RATIO = 0.8
+
+/**
+ * Floor on a text box's width. Only ever reached by an anchor sitting on (or
+ * outside) a canvas edge — a bleed/decor line, which has no room on one side
+ * by definition. A shape needs `a:ext cx > 0` to be a legal shape at all
+ * (`package-audit.ts`'s `invalid-shape-transform`), so `anchorTextBox` has to
+ * be total: every anchor, on-canvas or not, gets a box. The line itself is
+ * unaffected either way — `render.ts` exports text with `wrap:false`, so the
+ * box neither clips nor re-wraps it.
+ */
+const MIN_BOX_W_IN = 0.05
+
+/**
+ * The anchor a text box was built around: the point `align` pins the line to
+ * (its left edge, its center, or its right edge). Exact inverse of
+ * `anchorTextBox` below, which makes that function idempotent — and lets
+ * `svg2pptx/dispatch.ts` re-derive the box after it has flattened the
+ * element's inherited transforms onto it.
+ */
+function anchorOf(op: TextOp): number {
+  if (op.align === "right") return op.x + op.w
+  if (op.align === "center") return op.x + op.w / 2
+  return op.x
+}
+
+/**
+ * Give a text op the box its anchor deserves *in the frame it now sits in*:
+ * as much room as the slide can give on the side the line grows, with the
+ * anchoring edge (or center) exactly on the anchor.
+ *
+ * Why this is a separate step rather than part of `textToOp`: the width above
+ * is measured against the *canvas*, but a `<text>` element's own `x` is in
+ * whatever local space its ancestor `<g transform>`s define. `dispatch.ts`
+ * flattens those transforms by translating the finished op, which moves the
+ * anchor correctly but leaves the width measured against the wrong origin —
+ * and a group centered on its own content (`svg/components/cycle.tsx` puts
+ * the ring's center at 0,0, so half its labels sit at a *negative* local x)
+ * then produced `w <= 0` and a package-audit rejection of the whole export.
+ * The same failure reached the dumbbell chart once before by a different
+ * route (a mixed-sign series ran `vx()` off-canvas, see `chart-svg.tsx`'s
+ * domain comment) and was patched there, component-side; this is the second
+ * component to hit it, so the frame confusion is fixed here instead —
+ * `dispatch.ts` calls this once the op is in canvas coordinates, which is the
+ * only place that knows they are canvas coordinates.
+ */
+export function anchorTextBox(op: TextOp): TextOp {
+  const anchor = anchorOf(op)
+  if (op.align === "right") {
+    const w = Math.max(MIN_BOX_W_IN, anchor)
+    return { ...op, x: anchor - w, w }
+  }
+  if (op.align === "center") {
+    const half = Math.max(MIN_BOX_W_IN / 2, Math.min(anchor, SLIDE_W_IN - anchor))
+    return { ...op, x: anchor - half, w: 2 * half }
+  }
+  return { ...op, x: anchor, w: Math.max(MIN_BOX_W_IN, SLIDE_W_IN - anchor) }
+}
 
 function num(el: Element, name: string, fallback = 0): number {
   const v = el.getAttribute(name)
@@ -128,6 +185,13 @@ function buildRuns(el: Element, baseBold: boolean, baseItalic: boolean): TextRun
  * `package-audit.ts`) is the safety net for the case a future component
  * misses this and the rejection fires anyway: the message stays readable
  * instead of a multi-MB dump, regardless of how many shapes overflow.
+ *
+ * `anchorTextBox` above does not overturn any of that. Everything this
+ * paragraph refuses is a *judgment* about what coordinate a caller ought to
+ * have sent — which this layer cannot make, and which stays the component's
+ * to make. Which coordinate space the number it did send is written in is
+ * not a judgment: this layer is the only one that knows, since it is the one
+ * folding the transforms in.
  */
 export function textToOp(el: Element): TextOp {
   const fontSizePx = num(el, "font-size", 16)
@@ -136,35 +200,24 @@ export function textToOp(el: Element): TextOp {
   const yPx = num(el, "y")
 
   // Box placement: trust the SVG's pre-laid-out text — give a wide-enough box
-  // and let `align` anchor it, instead of measuring text width here.
-  let x: number
-  let w: number
-  if (align === "right") {
-    x = 0
-    w = pxToIn(xPx)
-  } else if (align === "center") {
-    const half = Math.min(xPx, CANVAS_W_PX - xPx)
-    x = pxToIn(xPx - half)
-    w = pxToIn(2 * half)
-  } else {
-    x = pxToIn(xPx)
-    w = SLIDE_W_IN - pxToIn(xPx)
-  }
-
-  const op: TextOp = {
+  // and let `align` anchor it, instead of measuring text width here. `xPx` is
+  // this element's own (possibly local) x, so the box below is only final for
+  // an untransformed element; `dispatch.ts` re-runs `anchorTextBox` once the
+  // op is in canvas coordinates.
+  const op: TextOp = anchorTextBox({
     kind: "text",
     runs: buildRuns(
       el,
       isBold(el.getAttribute("font-weight")),
       isItalic(el.getAttribute("font-style")),
     ),
-    x,
+    x: pxToIn(xPx),
     y: pxToIn(yPx - ASCENT_RATIO * fontSizePx),
-    w,
+    w: 0,
     h: pxToIn(fontSizePx * 1.2),
     fontSize: pxToPt(fontSizePx),
     align,
-  }
+  })
   const fontFace = firstFontFamily(el.getAttribute("font-family"))
   if (fontFace) op.fontFace = fontFace
   const fill = el.getAttribute("fill")

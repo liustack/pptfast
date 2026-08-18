@@ -389,6 +389,28 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // `ppt/slides/slide{1..5}.xml` are byte-identical — the *only* change
       // anywhere in the capture is that one attribute, on exactly the
       // Georgia-declared runs, exactly to `"Microsoft YaHei"`.
+      //
+      // All three `.pptx-zip.json` recaptured (cycle export fix, 2026-08-17
+      // — `svg2pptx/text.ts`'s `anchorTextBox`): a text box's width is
+      // measured against the canvas, but it used to be computed from the
+      // `<text>` element's *local* x, before `dispatch.ts` flattened the
+      // ancestor `<g transform>`s onto it — so every text inside a
+      // translated group got a box sized against the wrong origin, and a
+      // group centered on its own content produced a negative one. The box
+      // is now derived after the flattening. A text box's *anchor* (the
+      // edge or center `align` pins the line to) was already correct before
+      // this fix and is bit-for-bit unchanged by it — verified directly:
+      // across all 72 text shapes in these three fixtures the anchor moves
+      // by 0 EMU, so nothing renders anywhere different. What changed is
+      // only the box those anchors hang in: `a:off x` and `a:ext cx` on 39
+      // text shapes across 9 slides (`basic` slides 1/3/4/5,
+      // `scenarioBearing` 2/3/4, `annualReviewPreset` 3/4). Targeted diff,
+      // same discipline as every recapture above: normalizing away every
+      // `<a:off>`/`<a:ext>` attribute value makes old and new byte-
+      // identical everywhere, no non-text shape's geometry moved, and no
+      // text shape's `y`/`cy` moved either. `.svg.json`/`.audit.json`
+      // needed no recapture for any of the three — this fix lives entirely
+      // downstream of the SVG.
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)

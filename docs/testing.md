@@ -25,6 +25,11 @@ read_when:
    and the PPTX package-audit reader and rules (see "Package-audit hard gate"
    below).
    Snapshots pin rendered SVG/DrawingML output.
+   `src/pptx/examples-export.test.ts` renders every `examples/*.json` through
+   the full export chain, discovering them from disk rather than listing them —
+   the shipped examples are the first thing a new user runs, and before this
+   guard existed only `examples/basic.json` was rendered anywhere (e2e), which
+   let a broken example ship for two releases.
 2. **Node smoke** (`src/platform/node.smoke.test.ts`) — exercises the
    `installNodePlatform()` seam (linkedom DOM parsing, sharp re-encode) against
    real inputs, catching browser/Node DOM behavior drift early.
