@@ -269,8 +269,11 @@ so no layout file changes. A theme may also optionally declare
 ids already in that same page type's `layouts` entry, giving the new theme a
 structural personality rather than only a palette; see `docs/concepts.md`'s
 theme section and `docs/selection-and-seed.md` for the mechanics. Leaving it
-undeclared (the default) is a legitimate choice, not a lesser one — several
-built-ins do.
+undeclared (the default) is still a legitimate choice, not a lesser one, and
+several built-ins leave individual page types blank — but all 17 do declare a
+cover set, because a theme that declares nothing there picks its cover
+identically to every other silent theme, which is the sameness the field
+exists to break.
 
 See `docs/concepts.md` for the fuller theme/layout/component/narrative
 vocabulary this section assumes.

@@ -216,6 +216,38 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * `auditDeck` 复核零 low-contrast 发现。`LAYOUTS` 现在是十三主题不折不扣的
  * {@link FULL_LAYOUTS} 全集，四页型均无任何例外残留。
  */
+/**
+ * classroom 的结构身份，被 classroom 和 bloom 两个 theme id **共用同一个对象**
+ * （theme-structure-allocation wave，`structure-map.md` 会话 0 裁决 3）。
+ *
+ * 这是声明的同构，不是漏写。定稿分配表把 bloom 的四轴（heading-axis 左 /
+ * meta top-band / decor medium / whitespace medium）与 classroom 判成同一格，
+ * 而分配表的填表铁律是「任何两个主题不得四轴全同」——两家全同就意味着它们
+ * 本来就是同一个结构身份，差别只在色板。与其给 bloom 硬编一组它并不真的想要
+ * 的轴去满足查重脚本，不如把这层关系写成代码里的事实：bloom = classroom 的
+ * 换肤（palette preset），保留自己的 id、色板和 bloom-motif，结构行共享。
+ *
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「17 个 theme
+ * id、16 个结构身份」是本仓从此的正式口径，不是过渡态。
+ *
+ * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
+ * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
+ * 谁把其中一家的值改开，两条断言一起红。复制字面量做不到这件事——两份字面量
+ * 各自漂移时深等会红，但引用恒等这条更强的保证从一开始就不存在。
+ */
+const CLASSROOM_STRUCTURE: NonNullable<ThemeDefinition["layoutTendencies"]> = {
+  // cover `banner-title`：整幅深色横幅压住标题，正是一块板书的读法——先在顶
+  // 上拉一条横杠，再把今天的题目写进去。
+  // cover `tone-adaptive-header`：克制的自适应留白封面，`narrative/index.ts`
+  // 明确「从不出现在任何 strategy 的 identityTendencies 里」的三个万金油
+  // identity layout 之一——在默认 briefing 下它拿满额边际权重（max(3,1)=3），
+  // 是这一对里真正把 classroom/bloom 从盲主题默认序列上撬开的那一个。
+  // banner-title 单独声明会是空转（briefing.identityTendencies.cover 已经把它
+  // 锁在权重 3），但它是这个身份的真实主张，按 declaration-rebalance wave
+  // 裁定 1 的先例保留 + 追加而不是替换。
+  cover: ["banner-title", "tone-adaptive-header"],
+}
+
 const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif" | "layoutTendencies">> = {
   consulting: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
@@ -433,38 +465,89 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // enterprise（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+炸橘的
   // 高色彩版式组合，banner 横幅 baked 白字在 IKB #002FA7 上对比充足（无需
   // 排除 banner-heading）。
+  //
+  // cover 声明（theme-structure-allocation wave）：分配表给 enterprise 的四轴
+  // 是 左轴 / top-band / medium / tight，cover-picks = banner-title +
+  // split-diagonal。tight 那一档是关键——Swiss 网格的紧排，两个候选都是「先用
+  // 一块实心几何切开画面，再把标题压进去」的构图：
+  //   - `banner-title`：满宽深色横幅 + 横幅内标题，top-band 这一轴最直白的读法。
+  //     briefing.identityTendencies.cover 已经把它锁在权重 3，所以它单独声明是
+  //     空转；保留它是因为它确实是这个主题的母语，追加而非替换（declaration-
+  //     rebalance wave 裁定 1 的先例）。
+  //   - `split-diagonal`：IKB 色块以硬斜切线收边——正 IKB 的整块蓝配一道果断的
+  //     斜切，比横幅更紧、更有工业感。它不在 briefing 的 cover 集合里，
+  //     max(3,1)=3，是这一对里真正产生边际权重的那个。
   enterprise: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：IKB 方块秩序
     motif: "enterprise-motif",
+    layoutTendencies: {
+      cover: ["banner-title", "split-diagonal"],
+    },
   },
   // luxe（原 retail 黑金重定位，2026-07-10）：黑金深底 poster 家族，
   // readableOn 出深字。
+  //
+  // cover 声明（theme-structure-allocation wave）：luxe 与 heritage 曾是审计
+  // 实测出的「孪生对」——双双全盲，同 IR 同 seed 渲染出逐字节相同的结构。会话 0
+  // 裁决 1 判它们彻底分开、不砍不并，用四轴全岔根治：luxe = 居中 / bottom-right
+  // / light / airy（黑金请柬的大留白），heritage = 左轴 / bottom-left / medium /
+  // medium（藏书票的密排）。封面族也随之分开：
+  //   - `poster-center`：引首 + 居中大标题，中轴对称的请柬构图，airy 那一档的
+  //     天然归宿。briefing 已锁权重 3，单独声明空转，保留为真实主张。
+  //   - `fashion-masthead`：满版 primary 深底 + 超大报头 + 极简 meta 行，黑金
+  //     在这块满版底上正是它最贵的样子。不在 briefing 的 cover 集合里，
+  //     max(3,1)=3，是这一对里产生边际权重的那个。与 runway 共用同一构造：
+  //     runway 是 #0A0A0A 上的时装刊，luxe 是黑底烫金请柬——layout 零 baked
+  //     hex，全吃 ctx.colors，同一构图两种气质。
   luxe: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：烫金细线（原 P3「motif 可选」验证品，补齐）
     motif: "luxe-motif",
+    layoutTendencies: {
+      cover: ["poster-center", "fashion-masthead"],
+    },
   },
   // campaign（活力营销，2026-07-13 memphis 拆分 A）：深紫底多彩笔刷由专属
   // campaign-motif 承载。
+  //
+  // cover 声明（theme-structure-allocation wave）：分配表四轴 = 居中 /
+  // bottom-left / heavy / medium。heavy 是全表唯一的一档装饰权重（多彩笔刷
+  // 本来就是全表最重的 motif），所以封面构造反而要让位——把画面中轴让出来给
+  // motif，标题居中站上去：
+  //   - `poster-center`：引首 + 居中大标题，营销舞台的正面构图。briefing 已锁
+  //     权重 3，单独声明空转，保留为真实主张。
+  //   - `split-diagonal`：深紫色块以硬斜切线收边——笔刷的斜向笔势和这道斜切是
+  //     一路的。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实边际权重。
   campaign: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "campaign-motif",
+    layoutTendencies: {
+      cover: ["poster-center", "split-diagonal"],
+    },
   },
   // classroom（教学课堂，2026-07-13 第 13 主题）：莫兰迪灰调+平滑斑块手绘
   // 点线由专属 classroom-motif 承载。chapter 曾排除 fashion-chapter（W4 fix
   // round 新发现），post-v0.3 W8 fix round 随 readableOn 根因修复一起撤销
   // ——见上方 LAYOUTS 块注释。
+  // cover 声明（theme-structure-allocation wave）见 `CLASSROOM_STRUCTURE`
+  // 的文档注释——那个对象同时是 bloom 的结构行，两家共用一份引用。
   classroom: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "classroom-motif",
+    layoutTendencies: CLASSROOM_STRUCTURE,
   },
   // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：奶白底水彩晕染+植物细线由
   // 专属 bloom-motif 承载。chapter 曾排除 fashion-chapter，post-v0.3 W8 fix
   // round 撤销——见上方 LAYOUTS 块注释。
+  // bloom 的结构身份就是 classroom 的结构身份，共用同一个对象——**这是声明的
+  // 同构（palette preset），不是遗漏**。理由、红线和测试怎么钉，全写在
+  // `CLASSROOM_STRUCTURE` 的文档注释里。bloom 自己保留的是 id、雾紫杏粉色板
+  // 和 bloom-motif（motif 与 classroom 本就互为轮换候选）。
   bloom: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "bloom-motif",
+    layoutTendencies: CLASSROOM_STRUCTURE,
   },
   // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：宣纸/墨/朱砂/
   // 楷体靠 tokens + 专属 ink-motif。**v3 重设计（2026-08-18 第一期）**把
@@ -500,10 +583,23 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // heritage（第 8 主题，2026-07-10）：勃艮第×焦糖 putty 浅底混搭，酒红横幅
   // 上 baked 白字对比充足。chapter 曾排除 fashion-chapter，post-v0.3 W8 fix
   // round 撤销——见上方 LAYOUTS 块注释。
+  // cover 声明（theme-structure-allocation wave）：heritage 是上面 luxe 那条
+  // 注释里的孪生另一半，四轴取 左轴 / bottom-left / medium / medium 与 luxe
+  // 全岔。封面族也整族让开——luxe 走 poster/fashion，heritage 走 masthead/
+  // anchor，两家不再共用任何一个 cover id：
+  //   - `editorial-masthead`：顶部双规则线 + 衬线报头，藏书票和扉页的排印惯例，
+  //     勃艮第配焦糖正是这套排印的底色。不在 briefing 的 cover 集合里，
+  //     max(3,1)=3，真实边际权重。与 journal 共用同一构造（journal 是人文期刊
+  //     的黑白报头，heritage 是酒红典藏），layout 零 baked hex。
+  //   - `left-anchor`：左侧竖向色条 + 左上标题，密排那一路的起手式，bottom-left
+  //     的 meta 轴在这个构图里落得最自然。同样不在 briefing 里，真实边际权重。
   heritage: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：典藏纹饰（徽记/角花/页缘线）
     motif: "heritage-motif",
+    layoutTendencies: {
+      cover: ["editorial-masthead", "left-anchor"],
+    },
   },
   // pulse（医疗健康/生命科学，2026-07-28 themes-16 wave task T1，第 14 主题）：
   // 极浅薄荷白底+深青绿主色的清洁诊疗气质，细脉搏线+胶囊/细胞圆点簇由专属
@@ -576,7 +672,16 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "terra-motif",
     layoutTendencies: {
-      cover: ["tone-adaptive-header"],
+      // theme-structure-allocation wave 增补 `left-anchor`：分配表给 terra 的
+      // meta 轴是 bottom-left，而 tone-adaptive-header 的 meta 落在右下角——
+      // 单靠它一个，terra 的 meta 轴在封面上没有任何一个构造真的表达出来。
+      // left-anchor 的左侧竖条 + 左上标题 + 左下落款正好补上这一半，也让
+      // terra 的封面不再只有一张脸（tone-adaptive-header 是唯一候选时，抽签
+      // 结果恒定）。它同时是 consulting/academic/heritage 已声明的 id，但
+      // 这三家的 cover 集合与 terra 各不相同（consulting 配 banner-title、
+      // academic 单声明、heritage 配 editorial-masthead），四家的权重向量
+      // 两两不同。
+      cover: ["tone-adaptive-header", "left-anchor"],
       ending: ["tone-adaptive-ending"],
     },
   },
@@ -639,6 +744,18 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "ember-motif",
     layoutTendencies: {
+      // cover 声明（theme-structure-allocation wave，覆盖本条目上方注释里
+      // 「cover 轴不声明」的旧裁剪）：旧裁剪的理由是「按 seed 逐一试，cover
+      // 单声明只收敛到 banner-title / poster-center 两个可达结果，没有区分度
+      // 的声明是噪音」。那条理由针对的是「一枚固定 seed 上的序列会不会岔开」，
+      // 而分配表问的是另一个问题：这个主题的封面身份是什么，别人抽到它的时候
+      // 该看见什么。两个问题的答案可以不同，这里按分配表回答后者。
+      //   - `split-diagonal`：暖白底上一道火橙斜切——ember 的四轴是 居中 /
+      //     bottom-right / medium / medium，路演封面要的就是这道向上的斜势。
+      //     不在 briefing 的 cover 集合里，max(3,1)=3，真实边际权重。
+      //   - `poster-center`：引首 + 居中大标题，路演第一页的正面站位。briefing
+      //     已锁权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
+      cover: ["split-diagonal", "poster-center"],
       chapter: ["rail-chapter"],
       ending: ["constellation-ending"],
     },
@@ -695,6 +812,26 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "vermilion-motif",
     layoutTendencies: {
+      // cover 声明（theme-structure-allocation wave，覆盖本条目上方注释里
+      // 「cover 轴刻意不声明」的旧裁剪）。**这条声明在默认 briefing 下是彻底
+      // 空转的，而且是明知故犯**：banner-title 和 poster-center 恰好就是
+      // `briefing.identityTendencies.cover` 的两个成员，max(3,3)=3，vermilion
+      // 在默认叙事下的封面抽签与完全不声明逐字节相同。旧注释因此判它是噪音。
+      //
+      // 这一波改判，理由是问题换了：`layoutTendencies` 不只是「在默认 seed 上
+      // 把序列岔开」的旋钮，它也是这个主题的结构身份在代码里的唯一落点。定稿
+      // 分配表给 vermilion 的四轴是 居中 / top-band / medium / medium，
+      // cover-picks = banner-title + poster-center——红头文件的封面就是顶上一
+      // 条红横幅（banner-title）或者中轴居中的正式标题页（poster-center），
+      // 这是真话，不因为 briefing 碰巧也这么想就变成假话。
+      //
+      // 而且「空转」只对默认叙事成立：另外四个 strategy 的
+      // identityTendencies.cover 都不是这一对（pyramid = banner-title +
+      // left-anchor，storytelling = editorial-masthead + constellation，
+      // instructional = split-diagonal + banner-title，showcase = poster-center
+      // + fashion-masthead），vermilion 的声明在它们下面都产生真实边际权重。
+      // 代价写清楚：默认 briefing 的 deck 看不到任何变化。
+      cover: ["banner-title", "poster-center"],
       chapter: ["banner-chapter", "rail-chapter"],
       ending: ["rail-ending"],
     },
