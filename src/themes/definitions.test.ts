@@ -693,9 +693,14 @@ describe("registerTheme: unmeasured-font-width console.warn", () => {
   // 气质），SimSun 不在 `EXACT_TABLE_FOR` 的两张精确宽度表里（只有 Georgia
   // 和 Microsoft YaHei 有），所以 luxe 加入这份名单——与 ink 换楷体时同一
   // 条代价：标题宽度改由 class-average 包络估，保守一档。
-  it("regression: bloom/ink/journal/luxe/runway/vermilion's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
+  // 2026-08-19 暖纸组皮肤重设计按设计板的组内互检行「heritage 衬线、其余
+  // sans」调了本组四家的字体register：heritage 换上 `SimSun` 打头的藏书票
+  // 衬线，因此**加入**这份名单；vermilion 从 SimSun 换成雅黑无衬线，因此
+  // **退出**（它的标题从此走精确宽度表，不再是保守包络）。terra 从 Georgia
+  // 换成雅黑——两者都在精确宽度表里，名单不变。
+  it("regression: bloom/heritage/ink/journal/luxe/runway's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const nonExactHeadingBuiltins = new Set(["bloom", "ink", "journal", "luxe", "runway", "vermilion"])
+    const nonExactHeadingBuiltins = new Set(["bloom", "heritage", "ink", "journal", "luxe", "runway"])
     for (const id of CANONICAL_THEME_IDS) {
       const style = THEME_DEFINITIONS[id].style
       const headingFace = resolveFontFace(style.fonts.heading, "heading")

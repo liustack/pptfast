@@ -293,17 +293,21 @@ describe("ConstellationEnding", () => {
   // `colors.text`), not a shared neutral ink — see the layout's own
   // comment for why `accessibleInk`'s usual contract doesn't fit this call
   // site.
-  it("ember: the accent-colored period falls back to the heading's own colors.text ink (accent measures 1.57:1 against ember's own light ending background)", () => {
+  // 2026-08-19 暖纸组皮肤重设计换了 ember 的 accent/text 两枚 token
+  // （`#FFC145`→`#E8A13C`、`#26221E`→`#2E241E`）。回退路径本身不变：新
+  // accent 实测压 ending 背景 `#FBF5EE` 只有 2.02:1（旧值 1.57:1），仍在
+  // 3:1 大字门槛之下，句点照旧落回本句自己的 `colors.text` 墨。
+  it("ember: the accent-colored period falls back to the heading's own colors.text ink (accent measures 2.02:1 against ember's own light ending background)", () => {
     const ctx = buildCtx(resolveStyle("ember"), {})
     const slide: Slide = { type: "ending", heading: "Thank you.", components: [] } as Slide
     const markup = renderSvgMarkup(<ConstellationEnding ir={ir("ember", slide)} slide={slide} index={0} ctx={ctx} />)
     // Below the 3:1 floor against ember's real ending background — the
     // period must not keep the raw accent fill, and must match the
-    // sentence's own ink (#26221E), not a generic neutral dark.
-    expect(markup).not.toContain('<tspan fill="#FFC145">.</tspan>')
+    // sentence's own ink (#2E241E), not a generic neutral dark.
+    expect(markup).not.toContain('<tspan fill="#E8A13C">.</tspan>')
     expect(markup).not.toContain('<tspan fill="#0A0E14">.</tspan>')
-    expect(markup).toContain('<tspan fill="#26221E">.</tspan>')
-    expect(ctx.colors.text).toBe("#26221E")
+    expect(markup).toContain('<tspan fill="#2E241E">.</tspan>')
+    expect(ctx.colors.text).toBe("#2E241E")
   })
 
   // Themes whose accent already clears 3:1 against their own real ending

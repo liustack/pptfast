@@ -2,7 +2,7 @@ import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
-import { readableOn } from "../ink"
+import { accessibleOpacity, readableOn } from "../ink"
 
 /**
  * fashion-chapter layout（2026-07-10 时尚 runway 专属表达，纯新写）：
@@ -36,6 +36,16 @@ export function FashionChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const label = String(chNum).padStart(2, "0")
   const org = ir.meta.organization
   const fg = readableOn(ctx.colors.accent)
+  // 底部 org 行的 85% 不透明度会把 fg 往满版底混，混完可能跌破 19px 正文的
+  // 4.5:1——`accessibleOpacity` 正是为这一类「淡一档的次级文字」建的：混合
+  // 后仍达标就保留 0.85，否则退回全不透明（`ink.ts` 的同名函数注释）。
+  // 暖纸组皮肤重设计（2026-08-19）落地时实测：heritage 的新焦糖 accent 让
+  // 这行掉到 4.41:1、terra 的新赭石掉到 3.81:1，而 journal(4.34)/runway(4.06)
+  // 在本轮之前就已经在违例——满版 accent 的明度只要落在 readableOn 两墨的
+  // 交叠带附近，固定 0.85 就必然不够。改在这一处根治，四家的 finding 一并
+  // 消失，其余主题（混合后本就达标的）逐字节不变。
+  const ORG_FONT_SIZE = 19
+  const orgOpacity = accessibleOpacity(fg, ctx.colors.accent, ORG_FONT_SIZE, 0.85)
   // 水印色：前景与满版底的 22% 实色混合（导出安全，无 transparency 依赖）
   const watermark = mixHex(ctx.colors.accent, fg, 0.22)
 
@@ -105,9 +115,9 @@ export function FashionChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           x={56}
           y={676}
           fontFamily={ctx.fonts.body}
-          fontSize={19}
+          fontSize={ORG_FONT_SIZE}
           fill={fg}
-          fillOpacity={0.85}
+          fillOpacity={orgOpacity}
           letterSpacing={3}
           dominantBaseline="alphabetic"
         >

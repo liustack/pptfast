@@ -55,6 +55,25 @@ describe("fashion 家族（runway）", () => {
     expect(markup).not.toContain("data-bleed")
   })
 
+  // 2026-08-19 暖纸组皮肤重设计落地时实测到的既有缺陷：底部 org 行固定叠
+  // 0.85 不透明度，混到满版 accent 上就可能跌破 19px 正文的 4.5:1。runway
+  // 自己的正红 accent 混完只有 4.06:1（本轮之前就在违例，`deck-audit` 的
+  // low-contrast 逐次报出），journal 4.34:1 同理。改走 `accessibleOpacity`
+  // 之后，达标的主题保留 0.85、不达标的退回全不透明。
+  it("chapter：底部 org 行的 0.85 不透明度过 accessibleOpacity——混完不达标就退回全不透明", () => {
+    const deck = ir([chapter])
+    const markup = renderSvgMarkup(<FashionChapter ir={deck} slide={chapter} index={0} ctx={ctx} />)
+    // runway：白字 @0.85 混到正红上只有 4.06:1 → 退回 1
+    expect(markup).toMatch(/fill-opacity="1"[^>]*>时尚编辑部</)
+
+    // 达标的一家保留 0.85——academic 的 accent 上，深墨 @0.85 混完 5.28:1。
+    const academicCtx = buildCtx(resolveStyle("academic"), {})
+    const academicMarkup = renderSvgMarkup(
+      <FashionChapter ir={deck} slide={chapter} index={0} ctx={academicCtx} />,
+    )
+    expect(academicMarkup).toMatch(/fill-opacity="0.85"[^>]*>时尚编辑部/)
+  })
+
   it("ending：满版 primary 底 + heading 存在时不兜底", () => {
     const deck = ir([ending])
     const markup = renderSvgMarkup(<FashionEnding ir={deck} slide={ending} index={0} ctx={ctx} />)
