@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
-import { resolveStyle } from "../../themes"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { FashionMastheadCover } from "./cover-fashion-masthead"
 import { FashionChapter } from "./chapter-fashion-chapter"
 import { FashionEnding } from "./ending-fashion-ending"
@@ -16,6 +16,16 @@ const cover: Slide = { type: "cover", heading: "秋冬特辑", subheading: "解�
 const chapter: Slide = { type: "chapter", heading: "廓形的反叛", components: [] } as Slide
 const ending: Slide = { type: "ending", heading: "下期预告", subheading: "十月刊", components: [] } as Slide
 const endingBare: Slide = { type: "ending", components: [] } as Slide
+// 一个不可断词的长 token，`layoutSvgText` 只能靠缩字号塞下——17 家全部渲成
+// 21px，正好跨到 24px 大字号线以下，副题的 floor 由 3:1 翻成 4.5:1。
+const LONG_SUBHEADING =
+  "AntiDisestablishmentarianismAndPseudopseudohypoparathyroidismConsideredTogetherAsOneUnbrokenToken"
+const endingLongSub: Slide = {
+  type: "ending",
+  heading: "下期预告",
+  subheading: LONG_SUBHEADING,
+  components: [],
+} as Slide
 
 function ir(slides: Slide[]): PptxIR {
   return {
@@ -80,6 +90,69 @@ describe("fashion 家族（runway）", () => {
     expect(markup).toContain('width="1280" height="720" fill="#0A0A0A"')
     expect(markup).toContain("下期预告")
     expect(markup).not.toContain("Thank you")
+  })
+
+  // 与上面 chapter org 行同型的既有缺陷，这次是 ending 的两处：顶部 org 小字
+  // 固定叠 0.72、底部 meta 行固定叠 0.6，混到满版 primary 上都可能跌破正文的
+  // 4.5:1。17 家钉 fashion-ending 实测，8 家在违例——org 行 academic 4.24 /
+  // campaign 4.10 / bloom 3.77 / classroom 3.76 / pulse 3.98 / ember 3.44 /
+  // vermilion 4.14，meta 行再多一家 terra 3.75。两处各走 `accessibleOpacity`
+  // 之后，达标的保留原不透明度、不达标的退回全不透明。
+  it("ending：org 与 meta 两处不透明度各走 accessibleOpacity——按各自字号独立判定", () => {
+    const deck = ir([ending])
+    // runway：白字混到 #0A0A0A 上，org 10.20:1、meta 7.30:1，两处都保留原值
+    const markup = renderSvgMarkup(<FashionEnding ir={deck} slide={ending} index={0} ctx={ctx} />)
+    expect(markup).toMatch(/fill-opacity="0\.72"[^>]*letter-spacing="8"[^>]*>时尚编辑部</)
+    expect(markup).toMatch(/fill-opacity="0\.6"[^>]*letter-spacing="3"[^>]*>时尚编辑部 {4}· {4}2026-10</)
+
+    // ember：白字混到 #BC4620 上，org @0.72 只有 3.44:1、meta @0.6 只有
+    // 2.84:1，两处都退回全不透明
+    const emberMarkup = renderSvgMarkup(
+      <FashionEnding ir={deck} slide={ending} index={0} ctx={buildCtx(resolveStyle("ember"), {})} />,
+    )
+    expect(emberMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="8"[^>]*>时尚编辑部</)
+    expect(emberMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="3"[^>]*>时尚编辑部 {4}· {4}2026-10</)
+
+    // terra 是分辨用例：同一底色（#4D5D39）上 20px 的 org @0.72 混完 4.64:1
+    // 达标、19px 的 meta @0.6 混完只有 3.75:1 不达标——两处必须各判各的，
+    // 一处失守不该把另一处也一起顶满。
+    const terraMarkup = renderSvgMarkup(
+      <FashionEnding ir={deck} slide={ending} index={0} ctx={buildCtx(resolveStyle("terra"), {})} />,
+    )
+    expect(terraMarkup).toMatch(/fill-opacity="0\.72"[^>]*letter-spacing="8"[^>]*>时尚编辑部</)
+    expect(terraMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="3"[^>]*>时尚编辑部 {4}· {4}2026-10</)
+  })
+
+  // 副题的 0.72 是这一页第三处固定不透明度，今天不违例但会在长副题下爆：
+  // `layoutSvgText` 从 28px 起缩，短副题 17 家都留在 28px（>=24px，只需
+  // 3:1，最低的 ember 3.44 也过），长副题缩到 21px 就翻成 4.5:1，同一批
+  // 明度谷里的 7 家一起违例。所以量的必须是缩放后的 `subtitle.fontSize`，
+  // 不是 28 常量——与 meta 行量 `metaLine.fontSize` 是同一课。
+  it("ending：副题不透明度按 layoutSvgText 缩放后的实际字号判定，不按 28 常量", () => {
+    // 短副题：17 家都渲成 28px，走大字号的 3:1，全家保留 0.72（今天全矩阵
+    // 逐字节不变的那一半证据）
+    const shortDeck = ir([ending])
+    for (const themeId of CANONICAL_THEME_IDS) {
+      const markup = renderSvgMarkup(
+        <FashionEnding ir={shortDeck} slide={ending} index={0} ctx={buildCtx(resolveStyle(themeId), {})} />,
+      )
+      expect(markup, themeId).toMatch(/font-size="28"[^>]*fill-opacity="0\.72"[^>]*letter-spacing="4"/)
+    }
+
+    // 长副题：17 家都缩到 21px，floor 翻成 4.5:1，这 7 家混完不达标 → 退回
+    // 全不透明；其余 10 家仍达标 → 保留 0.72。名单就是 org 行那批明度谷主题
+    // （org 是 20px，本来就在 4.5:1 一侧，所以两处翻线的名单一致）。
+    const FLIPPED = ["academic", "campaign", "bloom", "classroom", "pulse", "ember", "vermilion"]
+    const longDeck = ir([endingLongSub])
+    for (const themeId of CANONICAL_THEME_IDS) {
+      const markup = renderSvgMarkup(
+        <FashionEnding ir={longDeck} slide={endingLongSub} index={0} ctx={buildCtx(resolveStyle(themeId), {})} />,
+      )
+      const expected = FLIPPED.includes(themeId) ? 'fill-opacity="1"' : 'fill-opacity="0.72"'
+      expect(markup, themeId).toMatch(
+        new RegExp(`font-size="21"[^>]*${expected.replace(".", "\\.")}[^>]*letter-spacing="4"`),
+      )
+    }
   })
 
   it("ending：heading 缺省时兜底「Thank you」（ending 家族兜底纪律，defect C 修复：原中文兜底「谢谢」改英文）", () => {
