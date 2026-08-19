@@ -25,7 +25,6 @@ import { resolveStyle } from "../../themes"
 import { renderSvgMarkup } from "../serialize"
 import { CampaignMotif } from "./motif-campaign-motif"
 import { ClassroomMotif } from "./motif-classroom-motif"
-import { BloomMotif } from "./motif-bloom-motif"
 
 function ir(themeId: string): PptxIR {
   return {
@@ -45,7 +44,10 @@ describe("decorative chartPalette-reading motifs are isolated from chart-palette
   it.each([
     ["campaign", CampaignMotif, coverSlide] as const,
     ["classroom", ClassroomMotif, coverSlide] as const,
-    ["bloom", BloomMotif, endingSlide] as const,
+    // 柔和组重设计（2026-08-20）后 bloom 是 classroom 的色板 preset，锚点
+    // motif 就是 `classroom-motif`——本行渲的是同一个组件、bloom 自己的
+    // tokens，覆盖没有减少（`motif-bloom-motif.tsx` 已随水彩色板一并删除）。
+    ["bloom", ClassroomMotif, endingSlide] as const,
   ])("%s: renders byte-identical markup regardless of chartPaletteOffset", (themeId, Motif, slide) => {
     const tokens = resolveStyle(themeId)
     const theIr = ir(themeId)

@@ -225,7 +225,12 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 而分配表的填表铁律是「任何两个主题不得四轴全同」——两家全同就意味着它们
  * 本来就是同一个结构身份，差别只在色板。与其给 bloom 硬编一组它并不真的想要
  * 的轴去满足查重脚本，不如把这层关系写成代码里的事实：bloom = classroom 的
- * 换肤（palette preset），保留自己的 id、色板和 bloom-motif，结构行共享。
+ * 换肤（palette preset），保留自己的 id 和色板，结构行共享。
+ *
+ * **柔和组皮肤重设计（2026-08-20）把这层关系落到了底**：bloom 的 token 对象
+ * 现在直接 spread `CLASSROOM_TOKENS`（`themes/bloom.ts`，只覆盖五个色值），
+ * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
+ * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
  * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「17 个 theme
  * id、16 个结构身份」是本仓从此的正式口径，不是过渡态。
@@ -542,8 +547,9 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       cover: ["poster-center", "split-diagonal"],
     },
   },
-  // classroom（教学课堂，2026-07-13 第 13 主题）：莫兰迪灰调+平滑斑块手绘
-  // 点线由专属 classroom-motif 承载。chapter 曾排除 fashion-chapter（W4 fix
+  // classroom（教学课堂，2026-07-13 第 13 主题）：讲义雾蓝 + 拍纸簿装饰由
+  // 专属 classroom-motif 承载（2026-08-20 柔和组重设计，同一个 motif 也是
+  // bloom 的锚点）。chapter 曾排除 fashion-chapter（W4 fix
   // round 新发现），post-v0.3 W8 fix round 随 readableOn 根因修复一起撤销
   // ——见上方 LAYOUTS 块注释。
   // cover 声明（theme-structure-allocation wave）见 `CLASSROOM_STRUCTURE`
@@ -553,16 +559,17 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     motif: "classroom-motif",
     layoutTendencies: CLASSROOM_STRUCTURE,
   },
-  // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：奶白底水彩晕染+植物细线由
-  // 专属 bloom-motif 承载。chapter 曾排除 fashion-chapter，post-v0.3 W8 fix
-  // round 撤销——见上方 LAYOUTS 块注释。
+  // bloom（柔美庆典，2026-07-13 memphis 拆分 B）：chapter 曾排除
+  // fashion-chapter，post-v0.3 W8 fix round 撤销——见上方 LAYOUTS 块注释。
   // bloom 的结构身份就是 classroom 的结构身份，共用同一个对象——**这是声明的
   // 同构（palette preset），不是遗漏**。理由、红线和测试怎么钉，全写在
-  // `CLASSROOM_STRUCTURE` 的文档注释里。bloom 自己保留的是 id、雾紫杏粉色板
-  // 和 bloom-motif（motif 与 classroom 本就互为轮换候选）。
+  // `CLASSROOM_STRUCTURE` 的文档注释里。
+  // motif 本轮（2026-08-20 柔和组）改指 `classroom-motif`：bloom 专属的
+  // 水彩 motif 随色板一起退役，preset 从此连装饰几何也是同一份，渲出来的是
+  // bloom 自己的樱粉色板。bloom 这个 theme id 永不删除的红线不变。
   bloom: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
-    motif: "bloom-motif",
+    motif: "classroom-motif",
     layoutTendencies: CLASSROOM_STRUCTURE,
   },
   // ink（水墨国风，2026-07-10 真创意子类②，用户点名例子）：宣纸/墨/朱砂/

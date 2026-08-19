@@ -228,7 +228,9 @@ describe("THEME_DEFINITIONS", () => {
       content: FULL_CONTENT,
       ending: FULL_ENDING,
     })
-    expect(THEME_DEFINITIONS.bloom.motif).toBe("bloom-motif")
+    // 2026-08-20 柔和组：bloom 的锚点改指 classroom 的 motif（色板 preset
+    // 从此连装饰几何也共用），专属 `bloom-motif` 文件已删。
+    expect(THEME_DEFINITIONS.bloom.motif).toBe("classroom-motif")
 
     expect(THEME_DEFINITIONS.ink.layouts).toEqual({
       cover: FULL_COVER,
@@ -698,9 +700,13 @@ describe("registerTheme: unmeasured-font-width console.warn", () => {
   // 衬线，因此**加入**这份名单；vermilion 从 SimSun 换成雅黑无衬线，因此
   // **退出**（它的标题从此走精确宽度表，不再是保守包络）。terra 从 Georgia
   // 换成雅黑——两者都在精确宽度表里，名单不变。
-  it("regression: bloom/heritage/ink/journal/luxe/runway's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
+  // 2026-08-20 柔和组皮肤重设计：bloom 成为 classroom 的色板 preset（token
+  // 对象直接 spread `CLASSROOM_TOKENS`），字体随之继承雅黑，宋体衬线报题
+  // 退役——bloom 因此**退出**这份名单，标题从保守包络改回精确宽度表
+  // （vermilion 在 gov-theme 波做过同一次移动）。
+  it("regression: heritage/ink/journal/luxe/runway's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const nonExactHeadingBuiltins = new Set(["bloom", "heritage", "ink", "journal", "luxe", "runway"])
+    const nonExactHeadingBuiltins = new Set(["heritage", "ink", "journal", "luxe", "runway"])
     for (const id of CANONICAL_THEME_IDS) {
       const style = THEME_DEFINITIONS[id].style
       const headingFace = resolveFontFace(style.fonts.heading, "heading")

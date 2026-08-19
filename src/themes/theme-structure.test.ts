@@ -114,10 +114,12 @@ describe("bloom is a declared palette preset of classroom, not a missing declara
     }
   })
 
-  it("bloom keeps its own id, palette and motif — the mirror is structural only", () => {
+  // 2026-08-20 柔和组皮肤重设计把镜像推到了底：motif 也归并了。bloom 保留
+  // 的只剩 id 和五个色值，其余（结构行、字体、圆角、motif 几何）全部同源。
+  it("bloom keeps its own id and palette — everything else, motif included, is classroom's", () => {
     expect(THEME_DEFINITIONS.bloom.id).toBe("bloom")
-    expect(THEME_DEFINITIONS.bloom.motif).toBe("bloom-motif")
-    expect(THEME_DEFINITIONS.classroom.motif).toBe("classroom-motif")
+    expect(THEME_DEFINITIONS.bloom.motif).toBe("classroom-motif")
+    expect(THEME_DEFINITIONS.classroom.motif).toBe(THEME_DEFINITIONS.bloom.motif)
     expect(THEME_DEFINITIONS.bloom.style.colors).not.toEqual(THEME_DEFINITIONS.classroom.style.colors)
   })
 })

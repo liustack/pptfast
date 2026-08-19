@@ -139,13 +139,17 @@ describe("fashion 家族（runway）", () => {
       expect(markup, themeId).toMatch(/font-size="28"[^>]*fill-opacity="0\.72"[^>]*letter-spacing="4"/)
     }
 
-    // 长副题：17 家都缩到 21px，floor 翻成 4.5:1，这 6 家混完不达标 → 退回
-    // 全不透明；其余 11 家仍达标 → 保留 0.72。名单是「明度谷」主题的实测
+    // 长副题：17 家都缩到 21px，floor 翻成 4.5:1，这 5 家混完不达标 → 退回
+    // 全不透明；其余 12 家仍达标 → 保留 0.72。名单是「明度谷」主题的实测
     // 集合，随 token 变动：冷调组把 academic 的绿加深（#006A4E → #0E6245）
-    // 后，白字 @0.72 在 21px 上过线，它退出了这份名单——这个数组钉的是
-    // 当前 token 下的实测结果，token 换血时它应当跟着换（合并语义冲突的
-    // 第一现场：两个各自全绿的分支在这里相遇）。
-    const FLIPPED = ["campaign", "bloom", "classroom", "pulse", "ember", "vermilion"]
+    // 后它退出过一次；柔和组（2026-08-20）把 campaign 的 primary 从品红
+    // #F0559E 翻成舞台暗紫 #23173A，白字 @0.72 在 21px 上重新过线，
+    // **campaign 也退出**。classroom/bloom 的 primary 换了色相但仍在明度谷
+    // 里（#4A6B8A / #92535E），留在名单上。逐主题实测工具：
+    // `.issues/2026-08-18-theme-redesign/skins/tools/probe-fashion-flip.mts`
+    // ——这个数组钉的是当前 token 下的实测结果，token 换血时它应当跟着换
+    // （合并语义冲突的第一现场：两个各自全绿的分支在这里相遇）。
+    const FLIPPED = ["bloom", "classroom", "pulse", "ember", "vermilion"]
     const longDeck = ir([endingLongSub])
     for (const themeId of CANONICAL_THEME_IDS) {
       const markup = renderSvgMarkup(

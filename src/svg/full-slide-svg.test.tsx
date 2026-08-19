@@ -238,12 +238,14 @@ describe("resolveOverrideBackgroundHex (post-v0.3 W8 fix round, backlog item 1)"
 // override — a layout that paints no panel of its own and relies on
 // `ctx.defaultBg` to pick readable ink (e.g. `chapter-rail-chapter.tsx`'s
 // `ink = readableOn(defaultBg)`) could measure contrast against a
-// background the slide never actually painted. classroom is the
-// demonstrator: its own chapter default (`tokens.defaultBackgrounds.chapter`,
-// "#6E8E9E", luminance ~0.251) sits in the luminance band where backlog
-// item 2's `readableOn` fix (`src/svg/ink.ts`) picks dark ink — a
-// deliberately much darker override color flips that pick to white,
-// proving the override is actually read, not just accepted and ignored.
+// background the slide never actually painted. classroom is still the
+// demonstrator, with the flip re-measured after the soft-group reskin
+// (2026-08-20): its chapter default (`tokens.defaultBackgrounds.chapter`)
+// moved from the old misty blue "#6E8E9E" (luminance ~0.251 — the dark-ink
+// side) to the deepened "#4A6B8A", which `readableOn` (`src/svg/ink.ts`)
+// resolves to **white** ink. So the flip that proves the override is really
+// read now runs the other way: a deliberately much *lighter* override color
+// flips that pick to dark ink.
 describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlog item 1)", () => {
   const classroomIr = (slide: Slide): PptxIR => ({
     version: "4",
@@ -271,16 +273,22 @@ describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlo
   it("invariant: a slide with no background override still picks the theme's own default-background ink (byte-identical to before this fix)", () => {
     const slide = railChapter()
     const markup = renderSvgMarkup(<FullSlideSvg ir={classroomIr(slide)} slide={slide} index={0} />)
-    // readableOn("#6E8E9E") — classroom's own tokens.defaultBackgrounds.chapter.
-    expect(headingFill(markup)).toBe(readableOn("#6E8E9E"))
-    expect(headingFill(markup)).toBe("#0A0E14")
+    // readableOn("#4A6B8A") — classroom's own tokens.defaultBackgrounds.chapter.
+    expect(headingFill(markup)).toBe(readableOn("#4A6B8A"))
+    expect(headingFill(markup)).toBe("#FFFFFF")
   })
 
   it("a color slide.background override changes the picked ink to match the real painted background, not the theme default", () => {
-    const slide = railChapter({ kind: "color", value: "#0A0A0C" }) // insight's own colors.bg — very dark
+    // A light override against classroom's now-white-ink chapter default:
+    // the pick has to flip to dark, which it only can if the override is
+    // really read. (Before the reskin this pushed the other way — a very dark
+    // override against a dark-ink default. The direction follows the theme's
+    // own token, the proof is the same.)
+    const slide = railChapter({ kind: "color", value: "#FAF7F2" }) // journal's own colors.bg — very light
     const markup = renderSvgMarkup(<FullSlideSvg ir={classroomIr(slide)} slide={slide} index={0} />)
-    expect(headingFill(markup)).toBe(readableOn("#0A0A0C"))
-    expect(headingFill(markup)).toBe("#FFFFFF")
+    expect(readableOn("#4A6B8A")).not.toBe(readableOn("#FAF7F2"))
+    expect(headingFill(markup)).toBe(readableOn("#FAF7F2"))
+    expect(headingFill(markup)).toBe("#0A0E14")
   })
 
   it("a gradient slide.background override resolves ctx.defaultBg via the midpoint blend, not the from stop (from and midpoint disagree here)", () => {
@@ -308,7 +316,7 @@ describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlo
     const { container } = render(<FullSlideSvg ir={doc} slide={slide} index={0} />)
     // classroom's own content default background, resolveBackgroundHex-reduced — unchanged scrim source.
     const scrim = Array.from(container.querySelectorAll("rect")).find(
-      (r) => r.getAttribute("fill") === "#F4F1EB" && Number(r.getAttribute("fill-opacity")) > 0.6,
+      (r) => r.getAttribute("fill") === "#ECF0F2" && Number(r.getAttribute("fill-opacity")) > 0.6,
     )
     expect(scrim).not.toBeUndefined()
   })

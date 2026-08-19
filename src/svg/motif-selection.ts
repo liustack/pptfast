@@ -55,8 +55,8 @@
  * | enterprise | enterprise-motif, banner-motif, rail-motif | enterprise's Swiss-grid IKB identity pairs only with the other minimal geometric-line motifs (banner's grid, rail's arc) — organic/wash/ornamental families would visibly clash with its industrial-design register |
  * | luxe | luxe-motif, heritage-motif, corner-ornament-motif | luxe/heritage/journal all draw from the same thin-ornamental-line family — luxe at the "gilt minimal" end, heritage at "classic emblem", journal at "print corner" |
  * | campaign | campaign-motif *(singleton)* | campaign's saturated multi-hue crayon/brush vocabulary has no sibling anywhere in the other 12 motifs — pairing it with grid lines, watercolor wash, or gold hairlines would break its "活力营销" identity rather than vary it, so it is deliberately left alone (candidate set of 1 — same-deck renders stay byte-identical to before this task, see `motif-selection.test.ts`'s byte-inertness block) |
- * | classroom | classroom-motif, bloom-motif | classroom's own header comment explicitly distinguishes its smooth organic blobs from bloom's watercolor texture, but both are still organic/soft-toned family members — the most-adjacent style match in the whole roster, close enough to rotate without breaking the "教学手账" register the way a grid or brush motif would. **Disclosure (Minor, review fix round)**: both `classroom-motif` and `bloom-motif` pre-date this task's own `return null` on `slide.type === "chapter"` (each file's own source, unrelated to candidacy — neither one draws any chapter decor even as its own theme's sole anchor) — classroom's chapter pages render with *no* motif candidate contributing decor regardless of which of the two the seed picks, same as before this task existed. Not a visibility bug (nothing rendered is not the same failure as something rendered invisibly, the Moderate finding this same fix round corrected for `banner-motif`/`rail-motif`) — just a pre-existing reduction in this theme's own candidate-rotation payoff worth naming plainly rather than leaving implicit. |
- * | bloom | bloom-motif, classroom-motif | mirror of classroom's pairing above — both organic, soft-toned, most-adjacent match. Same chapter-page disclosure as classroom's own entry above — both members of this pair are `return null` on chapter. |
+ * | classroom | classroom-motif *(singleton)* | soft-group reskin (2026-08-20): the pair this row used to name (`classroom-motif`, `bloom-motif`) no longer exists — `bloom-motif`'s watercolor vocabulary retired with bloom's own palette, and its file was deleted outright, because bloom became a declared palette preset of classroom (`themes/bloom.ts`) and no third theme ever borrowed it. What is left is one legal-pad vocabulary (top punch holes, a pencil dashed line, a paperclip arc) shared by the two themes that are now the same design in two palettes, so there is nothing left to rotate *between*. Chapter still draws nothing (`return null`) — classroom/bloom's chapter background is a full-bleed `primary` band and this motif's muted/accent inks measure 1.04-1.55:1 against it, which is invisible, not restrained. |
+ * | bloom | classroom-motif *(singleton)* | mirror of classroom's row above, and now literally the same motif: bloom is classroom's palette preset, so it draws classroom's geometry in bloom's own five colors. `MOTIF_CANDIDATES`'s anchor-first invariant still holds — `THEME_DEFINITIONS.bloom.motif` is `"classroom-motif"` too. |
  * | ink | ink-motif *(singleton)* | ink's calligraphy/seal-stamp/vertical-inscription vocabulary is the most culturally-specific motif in the set with no sibling family — any other motif substituted in would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (byte-identical, same rationale pattern as campaign) |
  * | heritage | heritage-motif, luxe-motif, corner-ornament-motif | heritage anchors the thin-ornamental-line family (classic emblem end), luxe (gilt minimal) and journal's corner ornament (print corner) are its closest siblings |
  * | pulse | pulse-motif *(singleton)* | themes-16 wave, task T1 (2026-07-28): pulse's thin ECG pulse-line + capsule/cell-dot vocabulary is its own new technique family with no sibling among the other 13 motifs (not organic-blob like classroom/bloom, not thin-ornamental-line like journal/heritage/luxe, not grid-geometry like consulting/enterprise) — pairing it with any existing motif would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/ink) |
@@ -109,18 +109,18 @@
  *    their own anchor theme's render is unchanged. Chart-palette rotation's
  *    own separate leak into this same "shared `ctx` token" hazard (`ctx
  *    .colors.chartPalette` briefly rotated in place, silently repainting
- *    `campaign-motif`/`classroom-motif`/`bloom-motif`'s *unrelated*
+ *    `campaign-motif`/`classroom-motif`'s *unrelated*
  *    decorative reads of that token) is `../chart-palette.ts`'s own
  *    "Consumption seam" section, not repeated here.
  *
  * `motif-candidate-contrast.test.ts`'s second sweep is the durable
  * regression net for defect class 2 — every candidate's own decor must clear
  * a small but nonzero visibility floor against its real background,
- * wherever it renders anything at all (`classroom-motif`/`bloom-motif`
- * `return null` on `chapter` entirely, pre-dating this task — see the
- * `classroom`/`bloom` table rows' own disclosure — correctly not flagged by
- * either sweep: nothing rendered is not the same failure as something
- * rendered invisibly). No candidate needed removal from this table — every
+ * wherever it renders anything at all (`classroom-motif` `return null`s on
+ * `chapter` entirely, pre-dating this task — see the `classroom`/`bloom`
+ * table rows' own disclosure — correctly not flagged by either sweep:
+ * nothing rendered is not the same failure as something rendered
+ * invisibly). No candidate needed removal from this table — every
  * fix landed at the motif's own consumption seam instead. Recorded here per
  * 控制者裁决 §4's re-pin discipline, so a future reviewer doesn't have to
  * re-derive "was this checked, and for which defect class" from git blame.
@@ -161,8 +161,8 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   enterprise: ["enterprise-motif", "banner-motif", "rail-motif"],
   luxe: ["luxe-motif", "heritage-motif", "corner-ornament-motif"],
   campaign: ["campaign-motif"],
-  classroom: ["classroom-motif", "bloom-motif"],
-  bloom: ["bloom-motif", "classroom-motif"],
+  classroom: ["classroom-motif"],
+  bloom: ["classroom-motif"],
   ink: ["ink-motif"],
   heritage: ["heritage-motif", "luxe-motif", "corner-ornament-motif"],
   pulse: ["pulse-motif"],
@@ -185,7 +185,8 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  *   pre-this-task behavior, so every theme outside the 13 builtins (and
  *   runway within them) renders byte-identically to before this module
  *   existed.
- * - A 1-member candidate set (`campaign`, `ink`): `weightedPickBySeed`
+ * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`, and
+ *   every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   always returns that single member regardless of seed/pageKey — also
  *   byte-identical to before this task (see `motif-selection.test.ts`'s
  *   byte-inertness block).
