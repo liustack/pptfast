@@ -497,6 +497,27 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // text shape's `y`/`cy` moved either. `.svg.json`/`.audit.json`
       // needed no recapture for any of the three — this fix lives entirely
       // downstream of the SVG.
+      //
+      // Only `basic.pptx-zip.json` recaptured (SVG group paint inheritance,
+      // 2026-08-20 — `svg2pptx/dispatch.ts`'s `walk`): the walk composed a
+      // `<g>`'s `transform` onto its descendants but not its paint, so a
+      // motif that painted its group and left its shapes bare exported
+      // colorless. `basic` runs the `consulting` theme, whose motif draws six
+      // ticks under `<g stroke={colors.muted} stroke-width="1.5">` and three
+      // steps under `<g fill={colors.primary}>`; those nine shapes are the
+      // whole diff, on the cover and the ending (the only two slides carrying
+      // the decoration). Targeted diff, same discipline as every recapture
+      // above — tag-by-tag over both slide parts, the *only* differences are
+      // six `<a:ln w="9525">`+`<a:srgbClr val="000000"/>` (the fabricated
+      // black `line.ts` fell back to) becoming `w="14288"`+`val="6B6B6B"`,
+      // and three `<a:noFill/>` becoming
+      // `<a:solidFill><a:srgbClr val="051C2C"/></a:solidFill>`. No shape
+      // moved, no text changed, no shape was added or dropped.
+      // `scenarioBearing`/`annualReviewPreset` (both `journal`, whose motif
+      // paints its leaves directly) stayed byte-identical and were not
+      // recaptured, and `.svg.json`/`.audit.json` needed no recapture for any
+      // of the three: the preview already drew these painted — that
+      // disagreement between preview and export is the defect this fixes.
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)

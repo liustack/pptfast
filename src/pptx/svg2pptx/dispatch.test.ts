@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
-import { svgToOps } from "./dispatch"
-import { pxToIn, SLIDE_W_IN } from "../../constants"
+import { svgToOps, type Op } from "./dispatch"
+import { pxToIn, pxToPt, SLIDE_W_IN } from "../../constants"
 
 function parseSvg(inner: string): Element {
   const doc = new DOMParser().parseFromString(
@@ -224,5 +224,189 @@ describe("data-blk propagation (wave-C S3)", () => {
   it("blockIndex 0 is stamped (loose-equality null check doesn't swallow a falsy-but-valid index)", () => {
     const ops = svgToOps(parseSvg(`<g data-blk="0"><rect x="0" y="0" width="1" height="1"/></g>`))
     expect(ops[0].blockIndex).toBe(0)
+  })
+})
+
+// SVG paints by *inheritance*: `fill`/`stroke`/`stroke-width`/`fill-opacity`/
+// `stroke-opacity`/`stroke-dasharray` set on a `<g>` apply to every descendant
+// that does not set its own, and `opacity` on a `<g>` composites the whole
+// subtree (so a child's own `opacity` multiplies with it rather than replacing
+// it). `walk` used to compose only `transform`, so a motif that painted its
+// group and left its shapes bare — pulse's cell rings, terra's contours,
+// ember's sparks, enterprise's ticks, rail's corners, vermilion's rays — came
+// out of the exporter colorless (or, for `<line>`, black, from `line.ts`'s own
+// `#000000` stroke default) while the browser preview showed it painted.
+describe("paint inheritance from containers", () => {
+  /**
+   * `Op` is a union and `TextOp` carries neither `fill` nor `line`, so these
+   * assertions read the painted shape through one narrowing helper rather
+   * than casting at every call site.
+   */
+  interface Painted {
+    fill?: { color: string; transparency?: number }
+    line?: { color: string; width: number; transparency?: number; dashType?: string }
+    gradientFill?: { kind: string }
+    color?: string
+    runs?: { text: string; fontSize?: number }[]
+  }
+  const paint = (op: Op | undefined): Painted => op as unknown as Painted
+
+  it("inherits a <g> fill onto a leaf that has none", () => {
+    const ops = svgToOps(parseSvg(`<g fill="#BC4620"><circle cx="10" cy="10" r="5"/></g>`))
+    expect(paint(ops[0]).fill).toEqual({ color: "BC4620" })
+  })
+
+  it("lets the leaf's own fill win over the inherited one", () => {
+    const ops = svgToOps(
+      parseSvg(`<g fill="#BC4620"><circle cx="10" cy="10" r="5" fill="#0A0B0C"/></g>`),
+    )
+    expect(paint(ops[0]).fill).toEqual({ color: "0A0B0C" })
+  })
+
+  it("inherits stroke and stroke-width onto a bare <circle>", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g fill="none" stroke="#3D9B82" stroke-width="1.2"><circle cx="50" cy="50" r="9"/></g>`,
+      ),
+    )
+    expect(paint(ops[0]).line).toEqual({ color: "3D9B82", width: pxToPt(1.2) })
+    // `fill="none"` inherits as "no fill", not as some black default.
+    expect(paint(ops[0]).fill).toBeUndefined()
+  })
+
+  it("inherits stroke onto a bare <line> instead of falling back to black", () => {
+    const ops = svgToOps(
+      parseSvg(`<g stroke="#A8861D" stroke-width="1.5"><line x1="0" y1="0" x2="96" y2="0"/></g>`),
+    )
+    expect(paint(ops[0]).line?.color).toBe("A8861D")
+    expect(paint(ops[0]).line?.width).toBeCloseTo(pxToPt(1.5), 6)
+  })
+
+  it("inherits stroke-dasharray onto a bare <line>", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g stroke="#A8861D" stroke-dasharray="6 4"><line x1="0" y1="0" x2="96" y2="0"/></g>`,
+      ),
+    )
+    expect(paint(ops[0]).line?.dashType).toBe("dash")
+  })
+
+  it("inherits fill-opacity and stroke-opacity onto a bare leaf", () => {
+    const filled = svgToOps(
+      parseSvg(
+        `<g fill="#E84F8A" fill-opacity="0.4"><rect x="0" y="0" width="10" height="10"/></g>`,
+      ),
+    )
+    expect(paint(filled[0]).fill).toEqual({ color: "E84F8A", transparency: 60 })
+    const stroked = svgToOps(
+      parseSvg(
+        `<g stroke="#E84F8A" stroke-opacity="0.4"><rect x="0" y="0" width="10" height="10"/></g>`,
+      ),
+    )
+    expect(paint(stroked[0]).line?.transparency).toBe(60)
+  })
+
+  it("resolves an inherited fill=url(#id) against the collected gradients", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<defs><linearGradient id="g"><stop offset="0" stop-color="#FFF"/></linearGradient></defs>` +
+          `<g fill="url(#g)"><rect x="0" y="0" width="10" height="10"/></g>`,
+      ),
+    )
+    expect(paint(ops[0]).gradientFill?.kind).toBe("linear")
+  })
+
+  it("overrides an outer <g>'s paint from an inner one, then reverts for later siblings", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g fill="#111111">` +
+          `<rect x="0" y="0" width="1" height="1"/>` +
+          `<g fill="#222222"><rect x="0" y="0" width="1" height="1"/></g>` +
+          `<rect x="0" y="0" width="1" height="1"/>` +
+          `</g>`,
+      ),
+    )
+    expect(ops.map((o) => paint(o).fill?.color)).toEqual(["111111", "222222", "111111"])
+  })
+
+  it("does not leak a <g>'s paint to siblings outside it", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g fill="#111111"><rect x="0" y="0" width="1" height="1"/></g>` +
+          `<rect x="0" y="0" width="1" height="1"/>`,
+      ),
+    )
+    expect(paint(ops[0]).fill).toEqual({ color: "111111" })
+    expect(paint(ops[1]).fill).toBeUndefined()
+  })
+
+  it("multiplies a group's opacity with the leaf's own rather than replacing it", () => {
+    const both = svgToOps(
+      parseSvg(`<g opacity="0.5"><circle cx="5" cy="5" r="5" fill="#000000" opacity="0.5"/></g>`),
+    )
+    expect(paint(both[0]).fill?.transparency).toBe(75)
+    const groupOnly = svgToOps(
+      parseSvg(`<g opacity="0.5"><circle cx="5" cy="5" r="5" fill="#000000"/></g>`),
+    )
+    expect(paint(groupOnly[0]).fill?.transparency).toBe(50)
+  })
+
+  it("compounds group opacity through nested containers", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g opacity="0.5"><g opacity="0.5"><circle cx="5" cy="5" r="5" fill="#000000"/></g></g>`,
+      ),
+    )
+    expect(paint(ops[0]).fill?.transparency).toBe(75)
+  })
+
+  it("applies a group's opacity to a <line>'s stroke transparency", () => {
+    const ops = svgToOps(
+      parseSvg(`<g stroke="#A8861D" opacity="0.5"><line x1="0" y1="0" x2="96" y2="0"/></g>`),
+    )
+    expect(paint(ops[0]).line?.transparency).toBe(50)
+  })
+
+  it("seeds inheritance from the root element it is handed, not just from inner <g>s", () => {
+    // `svgToOps` is handed a decoration subtree directly by the export probes,
+    // so the root's own paint has to count too.
+    const doc = new DOMParser().parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg"><g fill="#BC4620"><circle cx="5" cy="5" r="5"/></g></svg>`,
+      "image/svg+xml",
+    )
+    const group = doc.querySelector("g")
+    if (!group) throw new Error("no group parsed")
+    expect(paint(svgToOps(group)[0]).fill).toEqual({ color: "BC4620" })
+  })
+
+  it("leaves the source element untouched — inheritance is resolved on a copy", () => {
+    const root = parseSvg(`<g fill="#BC4620"><circle cx="5" cy="5" r="5"/></g>`)
+    svgToOps(root)
+    expect(root.querySelector("circle")?.hasAttribute("fill")).toBe(false)
+  })
+
+  it("still reads a <text>'s own fill when a container paints around it", () => {
+    const ops = svgToOps(
+      parseSvg(`<g fill="#BC4620"><text x="0" y="20" font-size="16" fill="#0A0B0C">Hi</text></g>`),
+    )
+    expect(paint(ops[0]).color).toBe("0A0B0C")
+  })
+
+  it("inherits a container fill as a <text>'s color when the text sets none", () => {
+    const ops = svgToOps(
+      parseSvg(`<g fill="#BC4620"><text x="0" y="20" font-size="16">Hi</text></g>`),
+    )
+    expect(paint(ops[0]).color).toBe("BC4620")
+  })
+
+  it("keeps a <text>'s tspan runs intact through the inheritance copy", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g fill="#BC4620"><text x="0" y="20" font-size="16">99.95<tspan font-size="10">%</tspan></text></g>`,
+      ),
+    )
+    const runs = paint(ops[0]).runs ?? []
+    expect(runs.map((r) => r.text)).toEqual(["99.95", "%"])
+    expect(runs[1]?.fontSize).toBeCloseTo(pxToPt(10), 6)
   })
 })
