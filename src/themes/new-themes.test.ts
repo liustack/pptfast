@@ -83,9 +83,13 @@ describe("terra tokens", () => {
     expect(t.id).toBe("terra")
   })
 
-  it("heading font resolves to Georgia (exact width table, earthy serif stack)", () => {
+  // Warm-group reskin (2026-08-19): the board's own cross-check line reads
+  // "heritage 衬线、其余 sans" — terra moved off Georgia's serif register onto
+  // the sans stack. Microsoft YaHei is the other of the only two faces with an
+  // exact width table, so the metric guarantee Georgia was picked for is kept.
+  it("heading font resolves to Microsoft YaHei (exact width table, sans stack per the warm-group board)", () => {
     expect(resolveFontFace(TERRA_TOKENS.fonts.heading, "heading")).toBe(
-      "Georgia",
+      "Microsoft YaHei",
     )
   })
 
@@ -135,9 +139,13 @@ describe("vermilion tokens", () => {
     expect(t.id).toBe("vermilion")
   })
 
-  it("heading font resolves to SimSun (the CJK-serif 汇报体 masthead — same precedent as journal/ink, no exact width table)", () => {
+  // Warm-group reskin (2026-08-19): the board's own cross-check line reads
+  // "heritage 衬线、其余 sans" — vermilion moved off SimSun's serif masthead
+  // onto the sans stack, which also gives it an exact width table for the
+  // first time (it leaves `definitions.test.ts`'s nonExactHeadingBuiltins).
+  it("heading font resolves to Microsoft YaHei (exact width table, sans stack per the warm-group board)", () => {
     expect(resolveFontFace(VERMILION_TOKENS.fonts.heading, "heading")).toBe(
-      "SimSun",
+      "Microsoft YaHei",
     )
   })
 
@@ -156,12 +164,15 @@ describe("vermilion tokens", () => {
   })
 
   it("chapter default background is the full-bleed primary vermilion (the signature 红底白字 section divider, white ink via readableOn)", () => {
-    expect(VERMILION_TOKENS.defaultBackgrounds.chapter).toEqual({ kind: "color", value: "#C8102E" })
+    // Read off the token rather than pinned to a literal: what this test is
+    // about is "chapter is the full-bleed primary", which has to survive a
+    // repalette (the warm-group reskin moved primary #C8102E → #B02318).
+    expect(VERMILION_TOKENS.defaultBackgrounds.chapter).toEqual({ kind: "color", value: VERMILION_TOKENS.colors.primary })
   })
 
   it("cover/content/ending default backgrounds stay the warm off-white (a red cover would fail the text/muted contrast floor — see the token file header)", () => {
     for (const slideType of ["cover", "content", "ending"] as const) {
-      expect(VERMILION_TOKENS.defaultBackgrounds[slideType]).toEqual({ kind: "color", value: "#FBF7F0" })
+      expect(VERMILION_TOKENS.defaultBackgrounds[slideType]).toEqual({ kind: "color", value: VERMILION_TOKENS.colors.bg })
     }
   })
 })

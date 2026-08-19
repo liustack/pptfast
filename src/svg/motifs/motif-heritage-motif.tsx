@@ -1,68 +1,124 @@
 import type { DecorProps } from "./types"
-import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * heritage-motif v2（2026-07-11 用户裁决重设计：v1 四角单弧
- * 「不好看」像随手括号，且与 chapter chrome / footer 多处碰撞）：典藏
- * 书籍装帧语言——扉页徽记 / 扉页双线框 / 书页缘竖线。
- * 构图变体（仅 cover）：a=顶部中央菱形双线徽记+两侧延伸线、b=四角
- * 焦糖角钉小菱形（v2.1：整框与 seed 随机的 split-diagonal 封面互斥——
- * 左半框被色块吞掉、框线穿斜切缘，渲染实拍裁掉。小型角元素对任何
- * 封面版式都安全）、c=左右页缘竖双线。
- * chapter 完全退让（memphis 先例：org + 上下 divider + 巨号数字已满）。
- * 弱档（content/ending）：右上小菱形双线（呼应徽记）——v1 底部中央线
- * y=690 漂在 content footer meta 带正中（用户截图实锤），废弃。
- * 纪律：零 theme id、零 hex，颜色来自 ctx（primary=勃艮第/accent=焦糖）。
+ * heritage-motif v3 —— 「藏书票纹饰」（2026-08-19 暖纸组皮肤重设计，设计源
+ * `.issues/2026-08-18-theme-redesign/skins/group2-warm-boards.dc.html` 的
+ * heritage 设计表，几何坐标逐条抄录，不派生）。
+ *
+ * 换掉的东西：v2 是三档 seed 变体（a 顶部中央菱形徽记 + 两侧延伸线 / b 四角
+ * 焦糖角钉大菱形 / c 左右页缘竖双线）+ 弱档右上小菱形，chapter 整个退让。
+ * 三档各画各的，没有一档撑得起主题识别；c 的左右页缘竖线正是本轮设计板
+ * 点名要清零的「左竖条」。v3 把这些零碎收成一件整的：一张藏书票的边饰。
+ *
+ * 画的三件东西（四种页型都画，恒位，无 seed 变体）：
+ *   - **顶缘双线**：y28 粗（2px）/ y36 细（0.75px），焦糖（accent），
+ *     x48→1232。报头的双规则线，藏书票和扉页的排印惯例。
+ *   - **顶部两角小角花**：左右各一枚 8×8 旋转 45° 的酒红（primary）方块，
+ *     中心 (60,16) / (1220,16)。v2 的四角大菱形（半径 9 的实心菱形，四角
+ *     全占）退役——它与 split-diagonal 封面的斜切缘、footer meta 带都碰过。
+ *   - **底缘细线带中点金菱**：y626 一条 1px 纸纹线（border），x96→1184，
+ *     线上中点 (640,626) 一枚 10×10 旋转 45° 的焦糖（accent）方块。
+ *
+ * chapter 不再退让：v2 退让的理由是「org + 上下 divider + 巨号数字已满」，
+ * 针对的是 v2 那枚画在版心顶部中央 (640,36-80) 的徽记。v3 的三件东西全部
+ * 走页缘带（y<48 与 y620-664），与 luxe v2 的金框走的是同一条边缘轨道
+ * ——那一轮已经实测过这条轨道离 chapter chrome 有余量。heritage 的
+ * chapter 默认底色本来就是纸色（不像 terra/vermilion/ember 的 chapter 是
+ * 整版 primary），纹饰压在纸上读得出来，没有「画了也看不见」的问题。
+ *
+ * 安全区（设计板上四条红虚线禁区）：标题区 (96,48,1040×122)、正文区
+ * (96,200,1040×420)、页脚 meta 带 (48,664,1184×44)、右下 logo 盒
+ * (1120,630,96×40)。
+ *   - 顶缘双线 y28/36 与两角角花（旋转后外接半径 8/2·√2 ≈ 5.66，y 10.3-21.7）
+ *     全部在标题区上沿 y48 之上。
+ *   - 底缘细线 y626 在右下 logo 盒上沿 y630 之上，让开 4px；线的中点金菱
+ *     （外接半径 10/2·√2 ≈ 7.07，y 618.9-633.1）虽然纵向压过 630，但它在
+ *     x640，离 logo 盒的 x1120-1216 有 480px，两者不相交。
+ *   - 三件东西的最低点 633.1 在页脚 meta 带上沿 y664 之上。
+ *   - 设计板的坐标一处未改——不同于 luxe v2 需要把框下边从 650 上移到
+ *     624，本设计板自己就把底缘线画在 626。`motif-heritage-motif.test.tsx`
+ *     逐条锁死这些数字。
+ *
+ * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线
+ * （装饰位置做内容感知会让 seed 的修订稳定性失效）。v2 的三档 seed 变体
+ * 因此一并删除，`cachedDeckSeed`/`pickBySeed` 的依赖也随之退出本文件。
+ *
+ * 纪律：零 theme id、零 hex，颜色只来自 ctx（accent = 焦糖、primary = 勃艮第、
+ * border = 纸纹线）。本 motif 同时是 journal / luxe 两家轮换候选集里的成员
+ * （`motif-selection.ts` 的 `MOTIF_CANDIDATES`），它们抽到本 motif 时画的是
+ * 各自的 token——luxe 的 primary 本轮已退成与底同黑，两枚角花在 luxe 的
+ * 黑底上因此几乎不可见（顶缘双线与金菱走 accent 香槟金，仍然可见，
+ * `motif-candidate-contrast.test.ts` 的可见度地板取每页最亮的一件，通过）。
  */
-export function HeritageMotif({ ir, slide, ctx }: DecorProps) {
-  const wine = ctx.colors.primary
+
+// ── 顶缘双线（报头双规则线） ────────────────────────────────────────────
+const RULE_X1 = 48
+const RULE_X2 = 1232
+const RULE_THICK_Y = 28
+const RULE_THICK_W = 2
+const RULE_THIN_Y = 36
+const RULE_THIN_W = 0.75
+
+// ── 顶部两角小角花 ──────────────────────────────────────────────────────
+const FLORET_SIZE = 8
+/** 两枚角花的中心。旋转 45° 用的也是这两个点。 */
+const FLORET_CENTERS: readonly [number, number][] = [
+  [60, 16],
+  [1220, 16],
+]
+
+// ── 底缘细线 + 中点金菱 ─────────────────────────────────────────────────
+const FOOT_X1 = 96
+const FOOT_X2 = 1184
+/**
+ * 底缘线。右下 logo 盒是 (1120,630,96×40)，626 让开它的上沿 4px——设计板
+ * 自己画的就是 626，本文件未改坐标。
+ */
+const FOOT_Y = 626
+const FOOT_W = 1
+const DIAMOND_SIZE = 10
+/** 金菱中心：底缘线的中点。 */
+const DIAMOND_CX = (FOOT_X1 + FOOT_X2) / 2
+const DIAMOND_CY = FOOT_Y
+
+export function HeritageMotif({ ctx }: DecorProps) {
   const caramel = ctx.colors.accent
-  if (slide.type === "chapter") return null
-  const variant = pickBySeed(cachedDeckSeed(ir), "heritage-decor", ["a", "b", "c"] as const)
+  const wine = ctx.colors.primary
+  const hairline = ctx.colors.border ?? ctx.colors.muted
 
-  if (slide.type !== "cover") {
-    // 弱档：右上小菱形双线徽记
-    return (
-      <>
-        <path d="M 1216 44 L 1230 58 L 1216 72 L 1202 58 Z" fill="none" stroke={wine} strokeWidth={1.2} opacity={0.55} />
-        <path d="M 1216 51 L 1223 58 L 1216 65 L 1209 58 Z" fill="none" stroke={caramel} strokeWidth={0.9} opacity={0.5} />
-      </>
-    )
-  }
-
-  if (variant === "b") {
-    // 四角焦糖角钉小菱形——焦糖在勃艮第色块和米底上都可见
-    const stud = (cx: number, cy: number) => `M ${cx} ${cy - 9} L ${cx + 9} ${cy} L ${cx} ${cy + 9} L ${cx - 9} ${cy} Z`
-    return (
-      <>
-        <path d={stud(56, 56)} fill={caramel} opacity={0.7} />
-        <path d={stud(1224, 56)} fill={caramel} opacity={0.7} />
-        <path d={stud(56, 664)} fill={caramel} opacity={0.7} />
-        <path d={stud(1224, 664)} fill={caramel} opacity={0.7} />
-      </>
-    )
-  }
-  if (variant === "c") {
-    return (
-      <>
-        {/* 左右缘竖双线（典籍页缘） */}
-        <path d="M 40 96 V 624 M 48 96 V 624" stroke={caramel} strokeWidth={1} fill="none" opacity={0.5} />
-        <path d="M 1232 96 V 624 M 1240 96 V 624" stroke={caramel} strokeWidth={1} fill="none" opacity={0.5} />
-      </>
-    )
-  }
-  // a：顶部中央菱形双线徽记 + 两侧延伸线
   return (
     <>
-      <path d="M 640 36 L 664 58 L 640 80 L 616 58 Z" fill="none" stroke={wine} strokeWidth={1.4} opacity={0.6} />
-      <path d="M 640 46 L 654 58 L 640 70 L 626 58 Z" fill="none" stroke={caramel} strokeWidth={1} opacity={0.5} />
-      {/* 两侧延伸线：两条 <line>，不用只走一根轴的 <path> — svg2pptx 会把
-          <path>（哪怕纯水平）转成 custGeom，包围盒零高度会被 package-audit
-          硬门的 invalid-shape-transform 规则拒绝（建这道门时发现，spec
-          §4.4）。真正的 <line> 走 svg2pptx/line.ts 的 prstGeom="line"，该
-          规则明确允许一根轴为零。 */}
-      <line x1={480} y1={58} x2={600} y2={58} stroke={caramel} strokeWidth={1} opacity={0.4} />
-      <line x1={680} y1={58} x2={800} y2={58} stroke={caramel} strokeWidth={1} opacity={0.4} />
+      {/* 顶缘双线。两条真正的 <line>，不用只走一根轴的 <path> — svg2pptx
+          会把 <path>（哪怕纯水平）转成 custGeom，包围盒零高度会被
+          package-audit 硬门的 invalid-shape-transform 规则拒绝（spec §4.4）。
+          <line> 走 svg2pptx/line.ts 的 prstGeom="line"，该规则明确允许一根
+          轴为零。 */}
+      <line x1={RULE_X1} y1={RULE_THICK_Y} x2={RULE_X2} y2={RULE_THICK_Y} stroke={caramel} strokeWidth={RULE_THICK_W} />
+      <line x1={RULE_X1} y1={RULE_THIN_Y} x2={RULE_X2} y2={RULE_THIN_Y} stroke={caramel} strokeWidth={RULE_THIN_W} />
+
+      {/* 顶部两角小角花 */}
+      {FLORET_CENTERS.map(([cx, cy]) => (
+        <rect
+          key={cx}
+          x={cx - FLORET_SIZE / 2}
+          y={cy - FLORET_SIZE / 2}
+          width={FLORET_SIZE}
+          height={FLORET_SIZE}
+          fill={wine}
+          transform={`rotate(45 ${cx} ${cy})`}
+        />
+      ))}
+
+      {/* 底缘细线 + 中点金菱 */}
+      <line x1={FOOT_X1} y1={FOOT_Y} x2={FOOT_X2} y2={FOOT_Y} stroke={hairline} strokeWidth={FOOT_W} />
+      <rect
+        x={DIAMOND_CX - DIAMOND_SIZE / 2}
+        y={DIAMOND_CY - DIAMOND_SIZE / 2}
+        width={DIAMOND_SIZE}
+        height={DIAMOND_SIZE}
+        fill={caramel}
+        transform={`rotate(45 ${DIAMOND_CX} ${DIAMOND_CY})`}
+      />
     </>
   )
 }

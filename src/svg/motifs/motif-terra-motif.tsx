@@ -1,153 +1,97 @@
 import type { DecorProps } from "./types"
-import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * terra-motif（themes-16 wave, task T2）：可持续/ESG 主题专属
- * 装饰语言——**等高线**（地形图细线簇：几条不等距、不规则的平滑闭合
- * 贝塞尔嵌套轮廓，避免画成规整同心圆——每层半径/相位都带扰动，读出
- * 山丘/台地的地形感）+ **叶脉**（单片叶轮廓：中脉+左右侧脉细线，象征
- * 生长）+ **种子点**（大小错落的实心圆点簇，疏落分布，象征播种/根系）。
- * 克制布置，参考 classroom-motif 的角落策略：cover/ending 强档（角落
- * 等高线簇 + 叶脉/种子点缀），content 极轻（单角小簇，无等高线），
- * chapter 完全退让——同 pulse-motif 的 chrome 碰撞判断：8 个 chapter
- * layout 都在整页满版 primary 色块上画巨幅居中标题（部分还带右下角
- * 编号水印/底部进度轨），可用净空本就零碎，不额外叠加装饰。
- * 颜色取 ctx.colors（primary/accent/chartPalette），零 baked hex。实色
- * path/circle + opacity（无渐变无 filter，预览/导出一致）。LCG 确定性
- * （cachedDeckSeed + pickBySeed，同 classroom-motif/pulse-motif 先例）。
+ * terra-motif v2 —— 「等高线」（2026-08-19 暖纸组皮肤重设计，设计源
+ * `.issues/2026-08-18-theme-redesign/skins/group2-warm-boards.dc.html` 的
+ * terra 设计表，几何坐标逐条抄录，不派生）。
+ *
+ * 换掉的东西：v1 是三档 seed 变体，每档都在两个角上摆「扰动闭合贝塞尔环
+ * 的嵌套簇」（`contourRing`/`contourCluster`，半径 170-210、4 层）+ 叶脉
+ * + 种子点簇，content 弱档另有一套。三样词汇同时在场、位置随 seed 跳，
+ * 读起来像三种装饰挤在一页上；那些大簇还是水彩晕染时代留下的满角构图。
+ * v2 只留两件，位置写死：
+ *   - **左下等高线簇**：三条不闭合的平缓等高线，x48→420，实际落在
+ *     y634-658 带内（设计板标注 y624-658，控制点 622 不在曲线上），
+ *     橄榄（primary）1.2px、整组 0.5 不透明。地形图的读法来自「几条平行
+ *     推进的缓线」，不是「几个同心圈」——v1 的闭合环反而读成靶子。
+ *   - **右缘种子点列**：x1252 上三枚 r2.5 的实心圆点，y64/96/128，
+ *     橄榄（primary）。播种/根系的意象，收到页缘只占一条窄带。
+ * 叶脉与水彩晕染一并退役（设计板 terra 的结构行是 light 档，「light 档
+ * 仅此两件」是板上原话）。
+ *
+ * chapter 继续完全退让（`return null`，v1 起就是如此，理由本轮更硬）：
+ * terra 的 chapter 默认底色是整版 primary 橄榄（`themes/terra.ts` 的
+ * `defaultBackgrounds.chapter`），而本 motif 两件东西的颜色都是 primary
+ * ——画上去就是橄榄压橄榄，不是「克制」而是「看不见」。八个 chapter
+ * layout 又都在这块整版色上画巨幅居中标题，可用净空本就零碎。两条理由
+ * 同向，chapter 不画。
+ *
+ * 安全区（设计板上四条红虚线禁区）：标题区 (96,48,1040×122)、正文区
+ * (96,200,1040×420)、页脚 meta 带 (48,664,1184×44)、右下 logo 盒
+ * (1120,630,96×40)。
+ *   - 等高线的最高点 ≈y634（三条曲线各自的极值逐条算过，见
+ *     `motif-terra-motif.test.tsx` 的实测断言），在正文区下沿 y620 之下；
+ *     最低点 y658，在页脚 meta 带上沿 y664 之上。
+ *   - 种子点 x1249.5-1254.5，在标题区右沿 x1136 与右上 logo 盒右沿 x1216
+ *     之外；y61.5-130.5 与标题区纵向重叠，但横向完全不相交。
+ *   - 设计板坐标一处未改。
+ *
+ * 已知且沿袭：`left-anchor` 封面在左侧画一块 512 宽的整幅 primary 色块
+ * （`cover-left-anchor.tsx` 的 `COVER_BLOCK_W`），terra 声明了这个 cover
+ * id，抽到它时左下等高线会落在同色块上而读不出来。这不是本轮引入的
+ * ——v1 的 `contourCluster(90, 700, …, primary, 0.16)` 落在同一片区域、
+ * 同样是 primary，行为一致。修它要么让 motif 知道当页选中了哪个 layout
+ * （内容感知，`inventory.md` 的确定性红线禁止），要么改 layout（本轮
+ * 「其余主题逐字节不变」的约束禁止），两条都越界，故照实记录、不改。
+ *
+ * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
+ * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
+ *
+ * 纪律：零 theme id、零 hex，颜色只来自 ctx（primary = 橄榄）。本 motif
+ * 是 terra 独占的单成员候选集（`motif-selection.ts` 的 `MOTIF_CANDIDATES`），
+ * 没有别的主题借用它。
  */
 
+// ── 左下等高线簇（三条平缓推进的地形线） ────────────────────────────────
 /**
- * 一层不规则闭合等高线：以 cx/cy 为中心、平均半径 r 的扰动闭合贝塞尔环。
- * phase 错开各层的凹凸位置，避免嵌套层读成规整同心圆。
+ * 设计板逐条抄录的三条二次贝塞尔折线。控制点上的 622/630/632 不落在曲线
+ * 上——曲线各自的实际最高点约 634/638/638（`motif-terra-motif.test.tsx`
+ * 用采样把这三个数字锁死，改动任何一个控制点都会红）。
  */
-function contourRing(cx: number, cy: number, r: number, phase: number): string {
-  const bumps = [1.08, 0.86, 1.14, 0.92, 1.05, 0.82, 1.1, 0.95]
-  const n = bumps.length
-  const pts: [number, number][] = []
-  for (let i = 0; i < n; i++) {
-    const angle = (i / n) * Math.PI * 2 + phase
-    const bumpIdx = (i + Math.round(phase * 2)) % n
-    const rr = r * bumps[bumpIdx]
-    pts.push([cx + Math.cos(angle) * rr, cy + Math.sin(angle) * rr * 0.62])
-  }
-  const f = (v: number) => Math.round(v * 10) / 10
-  let d = `M ${f(pts[0][0])} ${f(pts[0][1])}`
-  for (let i = 0; i < n; i++) {
-    const [x0, y0] = pts[i]
-    const [x1, y1] = pts[(i + 1) % n]
-    const mx = f((x0 + x1) / 2 + (y1 - y0) * 0.18)
-    const my = f((y0 + y1) / 2 - (x1 - x0) * 0.18)
-    d += ` Q ${mx} ${my} ${f(x1)} ${f(y1)}`
-  }
-  return `${d} Z`
-}
+const CONTOURS: readonly string[] = [
+  "M48,658 Q160,622 300,640 Q380,650 420,646",
+  "M48,650 Q150,630 270,644",
+  "M48,642 Q120,632 200,644",
+]
+const CONTOUR_STROKE = 1.2
+const CONTOUR_OPACITY = 0.5
 
-/** 等高线簇：`layers` 层嵌套扰动环，半径递减，共享中心。 */
-function contourCluster(cx: number, cy: number, rOuter: number, layers: number, color: string, baseOpacity: number) {
-  const rings = []
-  for (let i = 0; i < layers; i++) {
-    const r = rOuter * (1 - i * (0.62 / layers))
-    rings.push(
-      <path
-        key={i}
-        d={contourRing(cx, cy, r, i * 0.7)}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.4}
-        opacity={baseOpacity - i * 0.02}
-      />,
-    )
-  }
-  return <g>{rings}</g>
-}
+// ── 右缘种子点列 ────────────────────────────────────────────────────────
+const SEED_X = 1252
+const SEED_R = 2.5
+const SEED_YS: readonly number[] = [64, 96, 128]
 
-/** 单片叶脉：椭圆叶轮廓（细描边）+ 中脉 + 两对侧脉。 */
-function leafVein(cx: number, cy: number, len: number, angle: number, color: string, opacity: number) {
-  const w = len * 0.42
-  return (
-    <g transform={`rotate(${angle} ${cx} ${cy})`} opacity={opacity}>
-      <path
-        d={`M ${cx - len / 2} ${cy} Q ${cx - len * 0.2} ${cy - w} ${cx + len / 2} ${cy} Q ${cx - len * 0.2} ${cy + w} ${cx - len / 2} ${cy} Z`}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.4}
-      />
-      <path d={`M ${cx - len / 2} ${cy} L ${cx + len / 2} ${cy}`} stroke={color} strokeWidth={1.2} />
-      <path d={`M ${cx - len * 0.1} ${cy} L ${cx - len * 0.28} ${cy - w * 0.5}`} stroke={color} strokeWidth={1} />
-      <path d={`M ${cx - len * 0.1} ${cy} L ${cx - len * 0.28} ${cy + w * 0.5}`} stroke={color} strokeWidth={1} />
-    </g>
-  )
-}
+export function TerraMotif({ slide, ctx }: DecorProps) {
+  const olive = ctx.colors.primary
 
-/** 种子点簇：大小错落的实心圆点，疏落分布（播种/根系意象）。 */
-function seedCluster(x: number, y: number, color: string, opacity: number) {
-  const offsets: [number, number, number][] = [
-    [0, 0, 6],
-    [22, 10, 4],
-    [-16, 18, 5],
-    [10, -20, 3.5],
-    [-24, -8, 4.5],
-  ]
-  return (
-    <g>
-      {offsets.map(([dx, dy, r], i) => (
-        <circle key={i} cx={x + dx} cy={y + dy} r={r} fill={color} opacity={opacity} />
-      ))}
-    </g>
-  )
-}
-
-export function TerraMotif({ ir, slide, ctx }: DecorProps) {
-  const { primary, accent, chartPalette } = ctx.colors
-  const [, , wheat, slate] = chartPalette
-
-  // chapter 全部 8 个 layout 都在整页满版 primary 色块上画巨幅居中标题
-  // （部分还带右下角编号水印/底部进度轨），可用净空本就零碎——同
-  // pulse-motif/classroom-motif 的 chrome 碰撞判断，chapter 完全退让。
+  // chapter 是整版 primary 橄榄底，本 motif 两件东西也都是 primary——
+  // 画上去看不见（见文件头）。
   if (slide.type === "chapter") return null
 
-  if (slide.type === "content") {
-    // 弱档：右上角小等高线簇 + 左下角种子点，贴角低调，克制不抢正文区。
-    return (
-      <>
-        {contourCluster(1256, 30, 70, 2, wheat, 0.16)}
-        {seedCluster(30, 690, slate, 0.2)}
-      </>
-    )
-  }
-
-  const variant = pickBySeed(cachedDeckSeed(ir), "terra-decor", ["a", "b", "c"] as const)
-
-  if (variant === "b") {
-    // 左下角大等高线簇 + 右上角叶脉 + 种子点缀。
-    return (
-      <>
-        {contourCluster(90, 700, 210, 4, primary, 0.16)}
-        {seedCluster(220, 660, accent, 0.2)}
-        {leafVein(1210, 60, 110, -18, wheat, 0.24)}
-        {leafVein(1150, 110, 70, 30, slate, 0.2)}
-      </>
-    )
-  }
-  if (variant === "c") {
-    // 右下角大等高线簇 + 左上角叶脉 + 种子点缀。
-    return (
-      <>
-        {contourCluster(1190, 690, 210, 4, primary, 0.16)}
-        {seedCluster(1080, 640, accent, 0.2)}
-        {leafVein(70, 50, 110, 18, wheat, 0.24)}
-        {leafVein(130, 100, 70, -30, slate, 0.2)}
-      </>
-    )
-  }
-  // a：两角等高线簇（大小错落）+ 中段叶脉/种子点缀（cover/ending 主构图）。
   return (
     <>
-      {contourCluster(1240, 40, 170, 3, primary, 0.16)}
-      {leafVein(1180, 130, 90, -25, wheat, 0.22)}
-      {contourCluster(50, 700, 190, 4, accent, 0.14)}
-      {seedCluster(180, 660, slate, 0.2)}
+      {/* 左下等高线簇 */}
+      <g fill="none" stroke={olive} strokeWidth={CONTOUR_STROKE} opacity={CONTOUR_OPACITY}>
+        {CONTOURS.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
+      {/* 右缘种子点列 */}
+      <g fill={olive}>
+        {SEED_YS.map((cy) => (
+          <circle key={cy} cx={SEED_X} cy={cy} r={SEED_R} />
+        ))}
+      </g>
     </>
   )
 }

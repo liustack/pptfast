@@ -399,6 +399,34 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // prior pool-growth recaptures. `.audit.json` needed no recapture for
       // any of the three (findings stayed the empty array, confirmed by
       // computing `auditDeck` fresh against both the old and new goldens).
+      //
+      // Re-recaptured again (theme-redesign wave, warm group —
+      // `.issues/2026-08-18-theme-redesign/skins/group2-notes.md`):
+      // `heritage-motif` was redrawn from three seed variants (corner
+      // diamond studs / a centered emblem / page-edge vertical rules) into
+      // one fixed bookplate border. `journal` carries `heritage-motif` in
+      // its own rotation set (`@/svg/motif-selection`'s `MOTIF_CANDIDATES`
+      // — `["corner-ornament-motif", "heritage-motif", "rail-motif"]`), so
+      // the two `journal` fixtures here draw the new mark on whichever
+      // pages their seed picks it for. A real, intended decor change on a
+      // *borrowing* theme, not a migration regression — and the first
+      // recapture in this file caused by a motif rather than by layout
+      // selection.
+      //
+      // Targeted diff (`equiv-diff.mts`, the wave's own tool): the only
+      // difference anywhere is inside `<g data-decor="true">` — stripping
+      // that one group makes old and new byte-identical on every changed
+      // slide, so no text, geometry or chrome moved.
+      //   - `basic` (`consulting`): untouched. consulting does not carry
+      //     `heritage-motif` in its candidate set.
+      //   - `scenarioBearing` (`journal`): slides 0, 3, 4
+      //     (`ppt/slides/slide{1,4,5}.xml`).
+      //   - `annualReviewPreset` (`journal`): slide 0
+      //     (`ppt/slides/slide1.xml`).
+      // `.audit.json` needed no recapture for any of the three (findings
+      // stayed the empty array, confirmed by computing `auditDeck` fresh
+      // against both the old and new goldens) — decor is not text, and the
+      // new mark introduces no contrast or overflow defect.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
