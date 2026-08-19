@@ -125,9 +125,9 @@ describe("fashion 家族（runway）", () => {
 
   // 副题的 0.72 是这一页第三处固定不透明度，今天不违例但会在长副题下爆：
   // `layoutSvgText` 从 28px 起缩，短副题 17 家都留在 28px（>=24px，只需
-  // 3:1，最低的 ember 3.44 也过），长副题缩到 21px 就翻成 4.5:1，同一批
-  // 明度谷里的 7 家一起违例。所以量的必须是缩放后的 `subtitle.fontSize`，
-  // 不是 28 常量——与 meta 行量 `metaLine.fontSize` 是同一课。
+  // 3:1 全过），长副题缩到 21px 就翻成 4.5:1，明度谷里的主题一起违例。
+  // 所以量的必须是缩放后的 `subtitle.fontSize`，不是 28 常量——与 meta
+  // 行量 `metaLine.fontSize` 是同一课。
   it("ending：副题不透明度按 layoutSvgText 缩放后的实际字号判定，不按 28 常量", () => {
     // 短副题：17 家都渲成 28px，走大字号的 3:1，全家保留 0.72（今天全矩阵
     // 逐字节不变的那一半证据）
@@ -139,10 +139,13 @@ describe("fashion 家族（runway）", () => {
       expect(markup, themeId).toMatch(/font-size="28"[^>]*fill-opacity="0\.72"[^>]*letter-spacing="4"/)
     }
 
-    // 长副题：17 家都缩到 21px，floor 翻成 4.5:1，这 7 家混完不达标 → 退回
-    // 全不透明；其余 10 家仍达标 → 保留 0.72。名单就是 org 行那批明度谷主题
-    // （org 是 20px，本来就在 4.5:1 一侧，所以两处翻线的名单一致）。
-    const FLIPPED = ["academic", "campaign", "bloom", "classroom", "pulse", "ember", "vermilion"]
+    // 长副题：17 家都缩到 21px，floor 翻成 4.5:1，这 6 家混完不达标 → 退回
+    // 全不透明；其余 11 家仍达标 → 保留 0.72。名单是「明度谷」主题的实测
+    // 集合，随 token 变动：冷调组把 academic 的绿加深（#006A4E → #0E6245）
+    // 后，白字 @0.72 在 21px 上过线，它退出了这份名单——这个数组钉的是
+    // 当前 token 下的实测结果，token 换血时它应当跟着换（合并语义冲突的
+    // 第一现场：两个各自全绿的分支在这里相遇）。
+    const FLIPPED = ["campaign", "bloom", "classroom", "pulse", "ember", "vermilion"]
     const longDeck = ir([endingLongSub])
     for (const themeId of CANONICAL_THEME_IDS) {
       const markup = renderSvgMarkup(
