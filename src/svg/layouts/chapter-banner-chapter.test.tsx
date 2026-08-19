@@ -149,10 +149,14 @@ describe("BannerChapter", () => {
     expect(out).toContain(">01<")
   })
 
-  it("W4 fix round Critical C1：runway/enterprise 的 chapter 默认背景是纯白，标题/副标题不再是不可见的白字压白底", () => {
+  it("W4 fix round Critical C1：runway/enterprise 的 chapter 默认背景是近白，标题/副标题不再是不可见的白字压白底", () => {
+    // 冷调组皮肤重设计（2026-08-20）把 enterprise 的白墙从纯白压到
+    // #F7F7F4（纯白让给 surface），runway 仍是纯白——两家都还是「近白底」，
+    // 也就是本条修复的前提。逐家断言各自的真实值，不再共用一个字面量。
+    const CHAPTER_BG = { runway: "#FFFFFF", enterprise: "#F7F7F4" } as const
     for (const themeId of ["runway", "enterprise"] as const) {
       const ctx = chapterCtx(themeId)
-      expect(ctx.defaultBg).toBe("#FFFFFF")
+      expect(ctx.defaultBg).toBe(CHAPTER_BG[themeId])
       const deck = ir(themeId)
       const root = parseSvgRoot(
         `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<BannerChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)}</svg>`,

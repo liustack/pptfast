@@ -118,13 +118,17 @@ describe("RailChapter", () => {
     expect(out).toContain(">01<")
   })
 
-  it("W4 fix round Critical C1：runway/enterprise 的 chapter 默认背景是纯白，标题/副标题不再是不可见的白字压白底", () => {
+  it("W4 fix round Critical C1：runway/enterprise 的 chapter 默认背景是近白，标题/副标题不再是不可见的白字压白底", () => {
+    // Both themes' `defaultBackgrounds.chapter` is a near-white — runway's is
+    // literal #FFFFFF, enterprise's became #F7F7F4 when the cool-group skin
+    // redesign (2026-08-20) moved its gallery wall off pure white and handed
+    // pure white to `surface` instead. Assert each theme's real value (the
+    // fix's premise) before asserting the fix's effect, so a future token
+    // edit can't silently invalidate this test.
+    const CHAPTER_BG = { runway: "#FFFFFF", enterprise: "#F7F7F4" } as const
     for (const themeId of ["runway", "enterprise"] as const) {
       const ctx = chapterCtx(themeId)
-      // Both themes' defaultBackgrounds.chapter is literal #FFFFFF — assert
-      // that's still true (the fix's premise) before asserting the fix's
-      // effect, so a future token edit can't silently invalidate this test.
-      expect(ctx.defaultBg).toBe("#FFFFFF")
+      expect(ctx.defaultBg).toBe(CHAPTER_BG[themeId])
       const deck = ir(themeId)
       const root = parseSvgRoot(
         `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<RailChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)}</svg>`,

@@ -64,20 +64,21 @@ describe("RailEnding", () => {
     expect(out).toContain('width="280" height="240"')
     expect(out).toContain('width="140" height="120"')
 
-    // academic 自己的 primary/accent 用在角块上
-    expect(out).toContain("#006A4E")
-    expect(out).toContain("#00A878")
+    // academic 自己的 primary/accent 用在角块上（冷调组皮肤重设计换成祖母绿
+    // #0E6245 + 学者金 #A8861D，见 `themes/academic.ts` 的文件头）
+    expect(out).toContain("#0E6245")
+    expect(out).toContain("#A8861D")
 
-    // 版权行现在派生自 colors.muted（academic 的 #5D6B65 对真实渲染背景
-    // #FAFAF6 已经 5.34:1，clears B 层 3:1，metaInk 原样保留），挂
+    // 版权行现在派生自 colors.muted（academic 的 #62655B 对真实渲染背景
+    // #F5F3EC 实测 5.36:1，clears B 层 3:1，metaInk 原样保留），挂
     // data-contrast-tier="meta"。不再是独立于 muted 的孤儿色——副标题/联系
-    // 标签本来就已经用 #5D6B65，版权行现在与它们同色是预期结果，不是要
+    // 标签本来就已经用 #62655B，版权行现在与它们同色是预期结果，不是要
     // 排除的巧合。
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
     const copyrightText = Array.from(root.querySelectorAll("text")).find(
       (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
     )!
-    expect(copyrightText.getAttribute("fill")).toBe("#5D6B65")
+    expect(copyrightText.getAttribute("fill")).toBe("#62655B")
     expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 
@@ -97,16 +98,16 @@ describe("RailEnding", () => {
     expect(out).toContain("#24304A") // tech border，用在 hairline 上
 
     // academic 的烤死 token 值不得残留
-    expect(out).not.toContain("#006A4E")
-    expect(out).not.toContain("#00A878")
-    expect(out).not.toContain("#1A2421")
-    expect(out).not.toContain("#5D6B65")
-    expect(out).not.toContain("#D5D5CB")
+    expect(out).not.toContain("#0E6245")
+    expect(out).not.toContain("#A8861D")
+    expect(out).not.toContain("#23251F")
+    expect(out).not.toContain("#62655B")
+    expect(out).not.toContain("#DDD9C8")
 
     // 版权行派生自 tech 自己的 colors.muted（#93A5C0 对本例真正渲染到的底
     // colors.bg #0A0F1E 实测 7.622:1，压 ending 默认渐变更严的起点 #0E1630
     // 也有 7.128:1，clears B 层，metaInk 原样保留）——跟上一个测试
-    // academic 断言的 #5D6B65 不是同一个 hex，证明这是随主题派生，不是
+    // academic 断言的 #62655B 不是同一个 hex，证明这是随主题派生，不是
     // 跨主题固定不变的孤儿色。
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
     const copyrightText = Array.from(root.querySelectorAll("text")).find(

@@ -58,10 +58,11 @@ describe("LeftAnchorCover", () => {
     expect(out).toContain("0,720 0,520 200,720")
     // 白字例外：标题在色块上固定纯白，不是主题色
     expect(out).toContain('fill="#FFFFFF"')
-    // academic 自己的 primary 用在色块上
-    expect(out).toContain("#006A4E")
+    // academic 自己的 primary 用在色块上（冷调组皮肤重设计把祖母绿换成
+    // #0E6245，见 `themes/academic.ts` 的文件头）
+    expect(out).toContain("#0E6245")
     // 装饰豁免色原样保留、未被并入 primary——三角形在 academic 下仍然可见
-    // （与 primary 的 #006A4E 不同色，是它本该有的"深一号"视觉对比）
+    // （与 primary 的 #0E6245 不同色，是它本该有的"深一号"视觉对比）
     expect(out).toContain("#004C38")
   })
 
@@ -74,7 +75,7 @@ describe("LeftAnchorCover", () => {
     // 此前它们同值、一条断言就够，现在两个角色各锁一条。
     expect(out).toContain("#14294A") // tech primary，40% 宽通栏色块
     expect(out).toContain("#53E0D2") // tech accent，org 圆点
-    expect(out).not.toContain("#006A4E") // academic primary 不得残留
+    expect(out).not.toContain("#0E6245") // academic primary 不得残留
     // W4 fix round: 标题墨色由 readableOn(colors.primary) 挑，不是写死的纯白。
     // 当时 tech 的 primary 还是亮青（白字压上去只有 ~1.80:1），挑出来的是中性
     // 深墨；深底组重设计把 primary 换成深蓝（`themes/tech.ts`：「横幅重新承得
