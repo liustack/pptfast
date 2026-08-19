@@ -236,7 +236,7 @@ describe("QuoteStageContent", () => {
       <QuoteStageContent ir={ir("consulting", [zeroComponentSlide])} slide={zeroComponentSlide} index={0} ctx={ctx} />,
     )
     expect(out).toContain(ctx.colors.text)
-    expect(out).not.toContain("#E63946")
-    expect(out).not.toContain("#2A2A2E")
+    expect(out).not.toContain("#16202B") // insight primary
+    expect(out).not.toContain("#2A3440") // insight border
   })
 })

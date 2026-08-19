@@ -2,7 +2,7 @@ import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { metaInk } from "../ink"
+import { accessibleInk, metaInk } from "../ink"
 
 /**
  * banner-ending layout（spec §3.2）：org 圆点标 + 巨幅斜体主标题 + 中文
@@ -101,6 +101,13 @@ const ENDING_HEADING_LAST_BASELINE = 356
 const ENDING_TWO_LINE_SHIFT_MAX = 85
 const ENDING_TWO_LINE_DIVIDER_GAP = 128
 
+/**
+ * 2026-08-19（深底组皮肤重设计）：三处以 `colors.primary` 作**文字**色的
+ * 填充改走 `accessibleInk`，与 `cover-banner-title.tsx` 同一处改动、同一个
+ * 理由（深底组把 primary 重新定义成与底几乎同色的横幅/色块底色，本版式却
+ * 把它直接当页面底色上的文字用，三家大标题掉到 1.07-1.29:1）。
+ * `accessibleInk` 对本来就过线的配对是逐字节 no-op，其余 14 家不受影响。
+ */
 export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   // This layout paints no background panel of its own — the copyright
@@ -159,7 +166,7 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
             y="0"
             fontFamily={fonts.body}
             fontSize="32"
-            fill={colors.primary}
+            fill={accessibleInk(colors.primary, bg, 32)}
             letterSpacing="2"
             dominantBaseline="alphabetic"
           >
@@ -178,7 +185,7 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
           fontFamily={fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="500"
-          fill={colors.primary}
+          fill={accessibleInk(colors.primary, bg, heading.fontSize)}
           fontStyle="italic"
           dominantBaseline="alphabetic"
         >
@@ -230,7 +237,7 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
             y={dividerY + 90}
             fontFamily={fonts.body}
             fontSize="28"
-            fill={colors.primary}
+            fill={accessibleInk(colors.primary, bg, 28)}
             dominantBaseline="alphabetic"
           >
             {contactText}

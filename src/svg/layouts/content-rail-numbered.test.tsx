@@ -323,7 +323,7 @@ describe("RailNumberedContent", () => {
     expect(sub.textContent).not.toBe(CJK_LONG.repeat(2))
   })
 
-  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），徽章对比度自适应出深字", () => {
+  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），徽章对比度自适应出反白", () => {
     const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir("tech")
@@ -337,15 +337,16 @@ describe("RailNumberedContent", () => {
     expect(out).not.toContain("#5D6B65") // academic MUTED
     expect(out).not.toContain("#006A4E") // academic primary（回归锁，本函数未烤死但仍确认没有意外硬编码）
 
-    // W4 fix round: 徽章文字不再固定纯白——白字 on tech 亮青 primary
-    // （#2DD4E6）只有 ~1.80:1，全矩阵扫描确认精确 1.00:1（因为 audit 把徽章
-    // 误判到页面背景，见 full-matrix-contrast.test.ts 的 allowlist 说明。
-    // 真实渲染是 badge 自画的 primary 色块）。改用
-    // readableOn(colors.primary) 后 tech 落中性深墨。
+    // W4 fix round: 徽章文字墨色由 readableOn(colors.primary) 挑，不是写死的
+    // 纯白。当时 tech 的 primary 还是亮青，白字压上去只有 ~1.80:1（全矩阵扫描
+    // 一度报成精确 1.00:1，因为 audit 把徽章误判到页面背景，见
+    // full-matrix-contrast.test.ts 的 allowlist 说明；真实渲染是 badge 自画的
+    // primary 色块），挑出来的是中性深墨。深底组皮肤重设计（2026-08-19）把
+    // primary 换成深蓝 #14294A，同一个 readableOn 现在挑回纯白，实测 14.52:1。
     const expectedInk = readableOn(techTheme.colors.primary)
-    expect(expectedInk).toBe("#0A0E14")
+    expect(expectedInk).toBe("#FFFFFF")
     expect(out).toContain(`fill="${expectedInk}"`)
-    expect(out).not.toContain('fill="#FFFFFF"')
+    expect(out).not.toContain('fill="#0A0E14"') // 另一半墨色不得同时出现
     expect(ctx.colors.text).not.toBe("#FFFFFF")
 
     // ctx 确实按主题切换生效：heading 字体走 tech 的解析结果

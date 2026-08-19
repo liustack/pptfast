@@ -47,9 +47,9 @@ const irNoMeta = (theme: string, slide: Slide): PptxIR =>
 // Captured once from the (now-retired) legacy `BentoTechEnding` — locks the
 // byte-identical output the port preserved, without importing templates/.
 const ENDING_TECH_WITH_HEADING_MARKUP =
-  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#F2F6FA" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><rect x="610" y="420" width="60" height="3" fill="#2DD4E6"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#8A94A6" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
+  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#EAF1FA" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><rect x="610" y="420" width="60" height="3" fill="#53E0D2"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#93A5C0" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
 const ENDING_TECH_BARE_MARKUP =
-  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#F2F6FA" text-anchor="middle" dominant-baseline="alphabetic">Thank you<tspan fill="#2DD4E6">.</tspan></text><rect x="610" y="420" width="60" height="3" fill="#2DD4E6"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#8A94A6" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
+  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#EAF1FA" text-anchor="middle" dominant-baseline="alphabetic">Thank you<tspan fill="#53E0D2">.</tspan></text><rect x="610" y="420" width="60" height="3" fill="#53E0D2"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#93A5C0" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
 
 describe("ConstellationEnding", () => {
   it("tech tokens 下与旧 BentoTechEnding 输出逐字节一致（档位一，有 heading，不兜底）", () => {
@@ -76,7 +76,7 @@ describe("ConstellationEnding", () => {
     // 结尾句号拆成独立 accent 色 tspan，验证 tech 的 accent 值确实用上了。
     // defect C 修复：兜底文案的中文句号"。"改英文句号"."，splitTrailingPeriod
     // 泛化后两者都能拆分（见该函数注释），这里锁的是新值。
-    expect(next).toContain('<tspan fill="#2DD4E6">.</tspan>')
+    expect(next).toContain('<tspan fill="#53E0D2">.</tspan>')
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
@@ -85,8 +85,8 @@ describe("ConstellationEnding", () => {
     const out = renderSvgMarkup(<ConstellationEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
     expect(out).toContain("#051C2C") // consulting text
     expect(out).toContain("#FFC72C") // consulting accent
-    expect(out).not.toContain("#F2F6FA") // tech text 不得残留
-    expect(out).not.toContain("#2DD4E6") // tech accent 不得残留
+    expect(out).not.toContain("#EAF1FA") // tech text 不得残留
+    expect(out).not.toContain("#53E0D2") // tech accent 不得残留
   })
 
   it("renders markup that passes assertSubset (no forbidden elements)", () => {
@@ -214,7 +214,7 @@ describe("ConstellationEnding", () => {
         <ConstellationEnding ir={customDoc} slide={customSlide} index={0} ctx={ctx} />
       </svg>,
     )
-    expect(customMarkup).toContain('<tspan fill="#2DD4E6">.</tspan>')
+    expect(customMarkup).toContain('<tspan fill="#53E0D2">.</tspan>')
     const customRoot = parseSvgRoot(customMarkup)
     // bold-metrics fix (2026-07-24): round 1's class-average-plus-margin
     // model wrapped this heading to 2 lines ("Let's grow" / "together.");
@@ -309,7 +309,7 @@ describe("ConstellationEnding", () => {
   // Themes whose accent already clears 3:1 against their own real ending
   // background stay byte-identical — `accessibleInk` is a no-op there.
   // `tech` is already locked by this file's own "无 heading 时" test above
-  // (`<tspan fill="#2DD4E6">.</tspan>`); this adds a second, independently
+  // (`<tspan fill="#53E0D2">.</tspan>`); this adds a second, independently
   // measured no-op witness (`enterprise`, one of the 9 themes whose accent
   // already clears 3:1 against its own ending background — the full
   // pass/fail split across all 17 themes is measured and recorded in

@@ -82,13 +82,21 @@ describe("SideHighlightContent", () => {
   })
 
   it("panel ink adapts per theme (readableOn dual-ink pick, not a fixed white literal)", () => {
-    // tech's own colors.primary is a bright cyan — white text on it would
+    // campaign's own colors.primary is a bright pink — white text on it would
     // fail contrast, so readableOn must pick the dark neutral ink instead.
+    // (tech used to be this case back when its primary was a bright cyan; the
+    // 2026-08-19 dark-group reskin turned that primary into a deep navy, so
+    // tech now exercises the *other* half of the same two-ink pick below.)
+    const campaignIr = ir([chapter1, withSub])
+    campaignIr.theme = { id: "campaign" }
+    expect(render(campaignIr, withSub, 1)).toContain("#0A0E14")
+
+    // The white half of the same pick — deep navy panel, white ink (14.52:1).
     const techIr = ir([chapter1, withSub])
     techIr.theme = { id: "tech" }
-    const markup = render(techIr, withSub, 1)
-    // The dark neutral ink readableOn ever returns.
-    expect(markup).toContain("#0A0E14")
+    const techMarkup = render(techIr, withSub, 1)
+    expect(techMarkup).toContain("#FFFFFF")
+    expect(techMarkup).not.toContain("#0A0E14")
   })
 
   it("passes assertSubset (no forbidden elements) with and without components", () => {

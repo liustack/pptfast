@@ -44,15 +44,15 @@ describe("PosterCenterCover", () => {
     const out = renderSvgMarkup(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("创意提案")
     expect(out).toContain('text-anchor="middle"')
-    expect(out).toContain("#E63946") // RED 经 ctx.colors.primary 而来，与 creative primary 逐字节相同
-    expect(out).not.toContain("#D4A57C") // creative accent（暖棕）不应出现——RED 不映射到 accent
+    expect(out).toContain("#16202B") // RED 经 ctx.colors.primary 而来，与 insight primary 逐字节相同
+    expect(out).not.toContain("#F0A63C") // insight accent（终端琥珀）不应出现——RED 不映射到 accent
     expect(out).not.toContain("#666670") // META_MUTED 并入 muted 后不得残留
   })
   it("consulting tokens 下用 consulting 的 primary 色（token 化成立）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(<PosterCenterCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("#051C2C") // consulting primary
-    expect(out).not.toContain("#E63946") // creative primary 不得残留
+    expect(out).not.toContain("#16202B") // insight primary 不得残留
   })
 
   it("accent 短横条精确坐标(width=60/height=4)走 primary、副标题居中、底部合并 meta 行含组织/密级/日期", () => {

@@ -346,7 +346,7 @@ describe("BannerHeadingContent", () => {
     expect(markup).toContain("论据一")
   })
 
-  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），banner 标题对比度自适应出深字", () => {
+  it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex），banner 标题对比度自适应出反白", () => {
     const techTheme = resolveStyle("tech")
     const ctx = buildCtx(techTheme, {})
     const deck = ir([chapter1, bannerSlide])
@@ -362,12 +362,14 @@ describe("BannerHeadingContent", () => {
     expect(out).not.toContain("#6C6C6C")
     expect(out).not.toContain("#D5D5CB")
 
-    // W4 fix round: banner 标题不再固定纯白——design decision 8 的实测
-    // 发现白字 on tech 亮青 primary（#2DD4E6）只有 ~1.80:1（低于 3:1 大字
-    // 门槛），是全集放开新暴露的真实缺陷。改用 readableOn(colors.primary)
-    // 后 tech 落中性深墨（#0A0E14，对比度 ~10.75:1），不再出现纯白。
-    expect(out).toContain('fill="#0A0E14"')
-    expect(out).not.toContain('fill="#FFFFFF"')
+    // W4 fix round: banner 标题墨色由 readableOn(colors.primary) 挑，不是写死
+    // 的纯白。当时 tech 的 primary 还是亮青，白字压上去只有 ~1.80:1（低于 3:1
+    // 大字门槛），挑出来的是中性深墨；深底组皮肤重设计（2026-08-19）把 primary
+    // 换成深蓝 #14294A（`themes/tech.ts`：「横幅重新承得起反白」），同一个
+    // readableOn 现在挑回纯白，实测 14.52:1。断言锁的仍是「墨色由 readableOn
+    // 决定」，只是钉的值随 token 换了一边。
+    expect(out).toContain('fill="#FFFFFF"')
+    expect(out).not.toContain('fill="#0A0E14"') // 另一半墨色不得同时出现
     expect(ctx.colors.text).not.toBe("#FFFFFF")
 
     // ctx 确实按主题切换生效：标题字体走 tech 的解析结果

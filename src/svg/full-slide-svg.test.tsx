@@ -353,9 +353,19 @@ describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlo
     expect(subheadingText).toBeDefined()
     // Post-fix: ctx.defaultBg is the real painted scrim color, so
     // accessibleInk keeps the theme's own accent token instead of wrongly
-    // falling back to neutral ink (a pre-fix run returns readableOn's
-    // neutral pick here instead, never "#A67B45").
-    expect(subheadingText!.getAttribute("fill")).toBe("#A67B45")
+    // falling back to neutral ink.
+    //
+    // 2026-08-19 深底组皮肤重设计 changed luxe's accent to `#C6A15B`, which
+    // clears 4.5:1 against *both* the old-wrong source (`colors.surface`,
+    // now `#14110E`, 7.75:1) and the right one (the painted scrim, 8.19:1).
+    // So this render assertion no longer discriminates pre-fix from post-fix
+    // on its own — the two literal `contrastRatio` pins above are what keep
+    // the original defect on the record, and they are theme-independent
+    // arithmetic, so they stay true regardless of luxe's palette. Re-pointing
+    // the probe at another theme is not available: a sweep of all 17 builtins
+    // finds none whose accent still straddles 4.5:1 between its own surface
+    // and its own content background.
+    expect(subheadingText!.getAttribute("fill")).toBe("#C6A15B")
   })
 })
 

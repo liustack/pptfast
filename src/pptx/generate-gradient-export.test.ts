@@ -44,12 +44,17 @@ async function slideXml(blob: Blob): Promise<string> {
 }
 
 describe("generatePptxBlob real theme decor gradients", () => {
-  it("tech's full-page decor gradient field exports as a real a:gradFill", async () => {
-    const { generatePptxBlob } = await import("./generate")
-    const blob = await generatePptxBlob(makeIR("tech", [slide("content")]))
-    expect(await slideXml(blob)).toContain("a:gradFill")
-  }, 30000)
-
+  // tech 的满页 decor 渐变场已在 2026-08-19 深底组皮肤重设计里删除
+  // （`motif-constellation-motif.tsx` 的改动来历：那块 rect 把主题自己的
+  // `defaultBackgrounds` 整个遮死，装饰与背景的职责本轮分清），所以这里
+  // 原来那条「tech 的 decor 渐变导出为真实 a:gradFill」的用例没有主语了。
+  // 这与下面那条用例名里记的是同一类事——2026-07-12 insight 的 poster-motif
+  // 光晕被裁掉时，渐变导出链的 fixture 就从 decor 换到了图表渐变。
+  // 现在十七家 builtin 里已没有任何主题的 decor 或版式画 linearGradient
+  // （`motif-tone-adaptive-motif.tsx` 还有一个，但没有 builtin 主题用它；
+  // tone-adaptive 版式那条 2026 年已换成 scrim），渐变导出链由下面这条
+  // 图表渐变用例单独承担。背景渐变不算在内：`background.tsx` 刻意把它画成
+  // 24 条实心 rect，本就不会产出 a:gradFill。
   it("chart bar 渐变柱导出为真实 a:gradFill（2026-07-12 光晕移除后渐变链 fixture 换 chart——insight 的 poster-motif 光晕已按用户裁决删除，渐变导出链由图表渐变持续覆盖）", async () => {
     const { generatePptxBlob } = await import("./generate")
     const chartSlide: Slide = {

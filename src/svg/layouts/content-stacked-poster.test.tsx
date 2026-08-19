@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
+import { accessibleInk } from "../ink"
 import { resolveStyle } from "../../themes"
 import { measureComponent } from "../components"
 import { StackedPosterContent } from "./content-stacked-poster"
@@ -191,6 +192,15 @@ describe("StackedPosterContent", () => {
 
     // Section label (kicker replacement on the degrade path) is primary,
     // not muted — a different color role than the poster path's kicker.
+    //
+    // 2026-08-19 深底组皮肤重设计: the fill is now routed through
+    // `accessibleInk`, because insight's `primary` became a near-background
+    // ink (`#16202B` on a `#0F1216`-family ground, 1.05:1) once the design
+    // board redefined primary as a quiet banner/block ground. The assertion
+    // keeps naming the *role* rather than a literal so it still fails if the
+    // layout ever stops sourcing this label from `colors.primary`; for the
+    // 14 themes whose primary already clears the floor `accessibleInk`
+    // returns it untouched, so their rendered output is byte-identical.
     // Defect C regression lock (see the poster-path kicker test above): the
     // degrade path's own copy of the "Chapter NN · <section>" breadcrumb
     // must carry the same English prefix.
@@ -198,7 +208,11 @@ describe("StackedPosterContent", () => {
       (t.textContent ?? "").includes("第一章"),
     )!
     expect(sectionLabel.textContent).toBe("Chapter 01 · 第一章")
-    expect(sectionLabel.getAttribute("fill")).toBe(ctx.colors.primary)
+    expect(sectionLabel.getAttribute("fill")).toBe(
+      accessibleInk(ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, Number(sectionLabel.getAttribute("font-size"))),
+    )
+    // insight is one of the three themes where that call actually fires.
+    expect(sectionLabel.getAttribute("fill")).toBe("#FFFFFF")
 
     const topDivider = root.querySelector('line[y1="80"]')!
     expect(topDivider.getAttribute("stroke")).toBe(ctx.colors.border)
@@ -255,7 +269,7 @@ describe("StackedPosterContent", () => {
     expect(degradeOut).not.toContain("#666670")
   })
 
-  it("consulting tokens 下用 consulting 自己的 primary/text/muted/border，creative 烤死色不残留（token 化成立）", () => {
+  it("consulting tokens 下用 consulting 自己的 primary/text/muted/border，insight 烤死色不残留（token 化成立）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", [chapter1, oneComponentSlide])
     const out = renderSvgMarkup(<StackedPosterContent ir={deck} slide={oneComponentSlide} index={1} ctx={ctx} />)
@@ -263,18 +277,18 @@ describe("StackedPosterContent", () => {
     expect(out).toContain("#051C2C") // consulting primary（也是 text），accent 短横条 + 标题
     expect(out).toContain("#6B6B6B") // consulting muted，kicker（需要前置 chapter 才会渲染）
 
-    // creative 烤死的 hex 一律不得残留（含并入 muted 的孤儿色 META_MUTED）
-    expect(out).not.toContain("#E63946")
-    expect(out).not.toContain("#F5F5F5")
-    expect(out).not.toContain("#888892")
-    expect(out).not.toContain("#2A2A2E")
+    // insight 烤死的 hex 一律不得残留（含并入 muted 的孤儿色 META_MUTED）
+    expect(out).not.toContain("#16202B")
+    expect(out).not.toContain("#F2EFE8")
+    expect(out).not.toContain("#9AA7B4")
+    expect(out).not.toContain("#2A3440")
     expect(out).not.toContain("#666670")
 
     const degradeOut = renderSvgMarkup(
       <StackedPosterContent ir={ir("consulting", [threeComponentSlide])} slide={threeComponentSlide} index={0} ctx={ctx} />,
     )
     expect(degradeOut).toContain("#D5D5CB") // consulting border，降级路径的分隔线
-    expect(degradeOut).not.toContain("#2A2A2E")
+    expect(degradeOut).not.toContain("#2A3440")
   })
 
   it("1 scalable (chart) component: uniformly scales to fill the hero, capped at 1.3x", () => {

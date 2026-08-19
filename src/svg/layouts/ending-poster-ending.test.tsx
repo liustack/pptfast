@@ -72,10 +72,10 @@ describe("PosterEnding", () => {
     expect(out).toContain('text-anchor="middle"')
     expect(out).toContain('width="60" height="4"')
 
-    // RED 经 ctx.colors.primary 而来，与 creative primary 逐字节相同
-    expect(out).toContain("#E63946")
-    // creative accent（暖棕）不应出现——RED 不映射到 accent
-    expect(out).not.toContain("#D4A57C")
+    // RED 经 ctx.colors.primary 而来，与 insight primary 逐字节相同
+    expect(out).toContain("#16202B")
+    // insight accent（终端琥珀）不应出现——RED 不映射到 accent
+    expect(out).not.toContain("#F0A63C")
     // META_MUTED（#666670）已并入 muted，不得残留
     expect(out).not.toContain("#666670")
   })
@@ -91,11 +91,11 @@ describe("PosterEnding", () => {
     expect(out).toContain("#6B6B6B") // consulting muted，副标题/meta 行
     expect(out).toContain("#D5D5CB") // consulting border，分隔线
 
-    // creative 烤死的 hex 一律不得残留
-    expect(out).not.toContain("#E63946")
-    expect(out).not.toContain("#F5F5F5")
-    expect(out).not.toContain("#888892")
-    expect(out).not.toContain("#2A2A2E")
+    // insight 烤死的 hex 一律不得残留
+    expect(out).not.toContain("#16202B")
+    expect(out).not.toContain("#F2EFE8")
+    expect(out).not.toContain("#9AA7B4")
+    expect(out).not.toContain("#2A3440")
     expect(out).not.toContain("#666670")
   })
 

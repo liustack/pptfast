@@ -35,7 +35,7 @@ describe("SplitDiagonalCover", () => {
   it("tech tokens 下：色块颜色随 tokens 变化（证明零烤色）", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const out = renderSvgMarkup(<SplitDiagonalCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
-    expect(out).toContain("#2DD4E6") // tech primary
+    expect(out).toContain("#14294A") // tech primary
     expect(out).not.toContain("#006A4E") // academic primary 不得残留
   })
 

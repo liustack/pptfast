@@ -2,7 +2,7 @@ import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { metaInk } from "../ink"
+import { accessibleInk, metaInk } from "../ink"
 
 /**
  * rail-ending layout（spec §3.2）：左下角两块深浅同色系矩形（呼应
@@ -141,7 +141,7 @@ export function RailEnding({ ir, slide, ctx }: SvgTemplateProps) {
             y="0"
             fontFamily={fonts.body}
             fontSize="32"
-            fill={colors.primary}
+            fill={accessibleInk(colors.primary, bg, 32)}
             letterSpacing="2"
             dominantBaseline="alphabetic"
           >
