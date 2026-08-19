@@ -21,8 +21,7 @@ export type MotifId =
   | "banner-motif" | "rail-motif" | "poster-motif"
   | "constellation-motif" | "corner-ornament-motif" | "tone-adaptive-motif"
   | "campaign-motif" // 2026-07-13：多彩笔刷涂鸦（campaign 专属，memphis 拆分 A）
-  | "bloom-motif" // 2026-07-13：水彩晕染+植物细线（bloom 专属，memphis 拆分 B）
-  | "classroom-motif" // 2026-07-13：莫兰迪平滑斑块+手绘点线（classroom 专属，第 13 主题）
+  | "classroom-motif" // 2026-07-13：第 13 主题 classroom 专属；2026-08-20 柔和组重设计为「拍纸簿」（装订孔排+铅笔虚线+回形针），并成为 bloom 的锚点——bloom 是 classroom 的色板 preset，旧的 "bloom-motif"（水彩晕染）随之整个删除
   | "ink-motif" // 2026-07-10：古籍版框+印章+远山（ink 专属新表达）
   | "luxe-motif" // 2026-07-10 全覆盖：烫金细线（luxe 专属）
   | "enterprise-motif" // 2026-07-10 全覆盖：IKB 方块秩序（enterprise 专属）

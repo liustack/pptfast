@@ -28,8 +28,6 @@ import {
 } from "./deck-audit"
 import { STRESS_DECKS } from "./stress-fixtures"
 import { contrastRatio } from "../ink"
-import { measureTextUnits } from "../../lib/svg-text-layout"
-import { parseSvgRoot } from "../serialize"
 
 beforeAll(() => {
   installNodePlatform()
@@ -1761,7 +1759,11 @@ describe("findContrastIssues — decor/motif subtrees excluded from background-r
     const markup = renderSlideSvg(ir, 0)
     const regions = __collectBgRegions(markup)
     expect(regions).toHaveLength(2)
-    expect(regions.map((r) => r.fill).sort()).toEqual(["#3D2E78", "#F0559E"])
+    // 柔和组皮肤重设计（2026-08-20）换掉了 campaign 的色板：底色幕布深紫
+    // `#2A1E3F`，斜切色块走 `ctx.colors.primary` 的舞台暗紫 `#23173A`
+    // （旧值是 `#3D2E78` 与品红 `#F0559E`）。这里钉的是「两块、且都不来自
+    // motif」这件事，色值随主题走。
+    expect(regions.map((r) => r.fill).sort()).toEqual(["#23173A", "#2A1E3F"])
   })
 })
 
@@ -1923,35 +1925,37 @@ describe("findContrastIssues — text painted on a decor shape resolves against 
     expect(contrastRatio("#3A4E60", "#F7F7F2")).toBeCloseTo(8.01, 2)
   })
 
-  it("campaign: crayon-stroke <path>s stay out of attribution even where their bounding boxes cover the date and their opacity clears the gate", () => {
-    // The exclusion's original and still-valid case, pinned against a real
-    // render so it cannot rot into a vacuous assertion. This cover's motif
-    // draws crayon strokes whose `pathBoundingBox` covers the date run while
-    // the stroke ink itself is nowhere near it — the over-approximation
-    // `registersExactOutline` keeps out. The two assertions below are one
-    // argument: first that the trap is genuinely armed (at least one decor
-    // `<path>` both covers the run and clears `MIN_BG_OPACITY` — at the time
-    // of writing `#F0559E` at 0.828 and `#7FE0C3` at 0.644, against which the
-    // date's `#D5CFE8` would measure 2.14:1 and 1.04:1), then that the audit
-    // still reports nothing.
-    const ir = quarterly("campaign")
-    const root = parseSvgRoot(renderSlideSvg(ir, 0))
-    const decor = root.querySelector("[data-decor]")
-    expect(decor, "expected a <g data-decor> subtree on a campaign cover").toBeTruthy()
-    // The date run's own ink box, from the values the layout renders with:
-    // font-size 24, `text-anchor="end"` at x=1216, baseline 650.
-    const width = measureTextUnits("2026-08-15") * 24
-    const box = { x0: 1216 - width, x1: 1216, y0: 650 - 24 * 0.75, y1: 650 + 24 * 0.25 }
-    const armed = Array.from(decor!.querySelectorAll("path")).filter((path) => {
-      if (Number(path.getAttribute("opacity") ?? 1) < 0.5) return false
-      const bbox = __pathBoundingBox(path.getAttribute("d") ?? "")
-      if (!bbox) return false
-      return (
-        bbox.x <= box.x1 && bbox.x + bbox.w >= box.x0 && bbox.y <= box.y1 && bbox.y + bbox.h >= box.y0
-      )
-    })
-    expect(armed.length).toBeGreaterThan(0)
-    expect(contrastFindings(ir).filter((f) => f.page === 1)).toEqual([])
+  // 原本这条守卫是拿 campaign 的蜡笔条布陷阱的：一条 crayon `<path>` 的
+  // `pathBoundingBox` 盖住日期行、透明度也过 `MIN_BG_OPACITY`，于是「decor
+  // path 不参与归因」这条规则被真渲染真验了一次。**柔和组皮肤重设计
+  // （2026-08-20）把蜡笔条整族退役**（`motif-campaign-motif.tsx` 换成纸屑
+  // 场：40 枚 8×5 的斜方片，每一枚的包围盒都在页缘带里，够不着任何文字），
+  // 全 17 主题重扫一遍，**没有任何一家还能布上这个陷阱**
+  // （`.issues/2026-08-18-theme-redesign/skins/tools/probe-armed-decor.mts`：
+  // decor path 数 campaign 40 / terra 3 / ink·classroom·bloom 各 1、其余为
+  // 0，armed 全 0）。
+  //
+  // 与其让守卫烂成一句空断言（`armed.length > 0` 恒假就再也测不到规则本身），
+  // 改成合成标记直接钉规则的两面，比原来更严：同一块几何、同一个透明度，
+  // 走 `<path>` 必须不归因，走 `<rect>` 必须归因。第二条是防空转的那一半
+  // ——它一旦跟着变绿，说明整条归因链路断了，而不是规则生效了。
+  it("a decor <path> stays out of attribution where the identical <rect> geometry attributes (the rule's two sides, synthetic — campaign's crayon strokes retired with the soft-group reskin)", () => {
+    const textRun = '<text x="1216" y="650" text-anchor="end" font-size="24" fill="#D5CFE8">2026-08-15</text>'
+    const cover = (shape: string) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">` +
+      `<rect x="0" y="0" width="1280" height="720" fill="#2A1E3F"></rect>` +
+      `<g data-decor>${shape}</g>${textRun}</svg>`
+    // 一块盖住日期行的装饰几何：x1100-1240 / y600-680，透明度 0.9 过门。
+    const asPath = '<path d="M 1100 600 L 1240 600 L 1240 680 L 1100 680 Z" fill="#E84F8A" opacity="0.9"></path>'
+    const asRect = '<rect x="1100" y="600" width="140" height="80" fill="#E84F8A" opacity="0.9"></rect>'
+    // 陷阱确实是armed 的：这个配对真会跌破门槛。
+    expect(contrastRatio("#D5CFE8", "#E84F8A")).toBeLessThan(3)
+    // path：`registersExactOutline` 挡在门外，日期照旧压主题底色判定，无 finding。
+    expect(findContrastIssues(cover(asPath))).toEqual([])
+    // rect：同一块几何归因成功，报红——证明上一条不是链路断了。
+    const viaRect = findContrastIssues(cover(asRect))
+    expect(viaRect).toHaveLength(1)
+    expect(viaRect[0].background).toBe("#E84F8A")
   })
 })
 

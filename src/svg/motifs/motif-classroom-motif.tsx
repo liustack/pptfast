@@ -1,143 +1,138 @@
 import type { DecorProps } from "./types"
-import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * classroom-motif（2026-07-13 第 13 主题）：莫兰迪教学模板
- * 语言——**平滑有机斑块**（大圆润 blob，2-3 档灰调色错落，与 bloom 的
- * 水彩纹理刻意区分：参考图斑块是平滑无纹理的）+ **手绘小装饰**（点阵
- * /短线组/波浪线/空心圆线描——课堂手账气质）。
- * 构图变体（cover/ending 强档）：a=四角斑块群、b=左上+右下对角大斑、
- * c=顶部斑块带。chapter 完全退让（chrome 碰撞铁律）。content 弱档=
- * 右上+左下角小斑+一组点阵。
- * 颜色取 ctx.colors.chartPalette 莫兰迪四色（零 hex）。实色 path+
- * opacity（无渐变无 filter，预览/导出一致）。LCG 确定性。
+ * classroom-motif v2 —— 「拍纸簿」（2026-08-20 柔和组皮肤重设计，设计源
+ * `.issues/2026-08-18-theme-redesign/skins/group4-soft-boards.dc.html` 的
+ * `section#g4` classroom 设计表，几何坐标逐条抄录，不派生）。
+ *
+ * 换掉的东西：v1 是三档 seed 变体（a 四角斑块群 / b 对角大斑 / c 顶部斑块
+ * 带），每档在页面四角摆 6-8 团「平滑有机 blob」，再撒点阵、速写短线、手绘
+ * 波浪线、空心圈——一页最多 15 件装饰，四个角全占满。那是「莫兰迪贴纸」，
+ * 不是课堂。v2 只留三件，位置写死，全是一本拍纸簿上真有的东西：
+ *   - **顶缘装订孔排**：12 枚空心圆，`cx = 118 + i*96`、`cy24`、`r6`，
+ *     铅笔灰线描。活页夹打的孔，页面因此像是从本子上撕下来的一张。
+ *   - **底缘铅笔虚线**：x96→420 的一段虚线（`10 8` 虚实），横线簿最后一行
+ *     没写完的那道。板上写在 y640，实测后落到页缘 y712，见下。
+ *   - **右上回形针弧**：一枚陶土红回形针的线描（x1181-1230），整张纸上唯一
+ *     的暖色，正是批改笔的颜色。板上写在 y18-44，实测后上移 12px，见下。
+ * 斑块/点阵/波浪线/短线组整族退役——设计板 classroom 那格的原话是「恒位；
+ * 现状斑块水彩退役」，同一句也判了 bloom 的水彩（`motif-bloom-motif.tsx`
+ * 本轮整个删除，bloom 的 motif 锚点改指本文件）。
+ *
+ * chapter 完全退让（`return null`，v1 起就是如此，理由本轮补上实测）：
+ * classroom 的 chapter 默认底色是整版 primary 雾蓝（`themes/classroom.ts`
+ * 的 `defaultBackgrounds.chapter`），本 motif 三件东西走 muted（铅笔灰）与
+ * accent（陶土红）——压 primary 实测 1.08:1 与 1.41:1，画上去不是「克制」
+ * 而是「看不见」。bloom 作为色板 preset 同理：1.04:1 与 1.55:1。
+ *
+ * 安全区：板上四条红虚线是「意图」，实测排字外沿是「事实」
+ *
+ * 板上的四条红虚线禁区是标题区 (96,48,1040×122)、正文区 (96,200,1040×420)、
+ * 页脚 meta 带 (48,664,1184×44)、右下 logo 盒 (1120,630,96×40)。但把
+ * `LAYOUT_REGISTRY` 全部 41 个版式 + 主题 deck 十页在 classroom 上渲一遍逐条
+ * 量文字墨迹盒（工具：`.issues/2026-08-18-theme-redesign/skins/tools/
+ * text-margin-sweep.mts`，486 条文字、51 页），版式们真实的排字外沿比那四条
+ * 线宽得多——页面真正空着的四条边是 **y<34 / y>708.6 / x<56 / x>1224**：
+ *   - 最高的一行字顶在 y34（poster-chapter/roman-chapter 的右上引首）
+ *   - 最低的一行字底在 y708.6（image-bottom 的遮罩页脚）
+ *   - 最左 x56、最右 x1224（fashion 家族的 meta 行与 `brand-chrome.tsx`
+ *     自己的页脚两行）
+ * 于是板上三件东西里有两件要挪，逐条记：
+ *   1. **铅笔虚线 y640 → y712**。板上那条线正落在页脚注的行高里：`chrome-
+ *      geometry.ts` 的 `FOOTNOTE_BASELINE_Y = 648`，实测 13 个版式的脚注墨迹
+ *      盒（y628-664 一带）与它相交，等于拿铅笔把脚注划掉。x96-420 一处未改，
+ *      整条搬到 y712（墨迹 y711.25-712.75），在最低一行字之下、页缘之上——
+ *      「横线簿最后一行」的读法反而更准。同一条先例冷调组踩过：设计板把
+ *      academic 的点轨画在 y648，实测后整条搬去顶带。
+ *   2. **回形针上移 12px**（板上 y18-44 → y6-32）。板上位置与
+ *      poster-chapter/roman-chapter 的右上引首（x1092-1224、y34-60）重叠
+ *      44px 宽的一块。上移之后墨迹 y5.25-32.75，与实测顶沿 y34 留 1.25px。
+ *      x1180.25-1230.75 一处未改。回形针因此与装订孔排同高，读起来是「别在
+ *      打孔边上的一枚针」，比原来更像回事。
+ *   3. 装订孔排一处未改：墨迹 y17.4-30.6（含 0.6 半线宽）、x111.4-1180.6，
+ *      实测零碰撞。
+ * 三件东西对板上四条红虚线与 `brand-chrome.tsx` **四个** logo 位
+ * （tl/tr/bl/br，各 96×40）也全部清空，`motif-classroom-motif.test.tsx`
+ * 逐件量。
+ *
+ * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
+ * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
+ *
+ * **画笔属性一律写在叶子上，不挂 `<g>`**：导出侧 `svg2pptx/dispatch.ts` 的
+ * `walk` 只把 `transform` 往下合，`leafToOp` 只读叶子自己的 `fill`/`stroke`/
+ * `opacity`——挂在 `<g>` 上的画笔属性预览看得见、导出全丢。本轮实测过
+ * （`.issues/2026-08-18-theme-redesign/skins/tools/probe-group-inherit.mts`），
+ * 所以这里 12 枚孔各自带 `fill`/`stroke`/`stroke-width`，宁可啰嗦。
+ *
+ * 纪律：零 theme id、零 hex，颜色只来自 ctx（muted 铅笔灰 / accent 陶土
+ * 红）。**本轮起不再读 `chartPalette`**——v1 按固定下标解构那四格，图表
+ * 调色板一轮转就会悄悄改掉装饰色（`motif-chart-palette-isolation.test.tsx`
+ * 的文件头记着那次 Major，campaign/classroom/bloom 三家同时中招）。
+ * 本 motif 现在是 classroom 与 bloom 共用的唯一候选（`motif-selection.ts`
+ * 的 `MOTIF_CANDIDATES`），两家渲的是同一张几何、各自的色板。
  */
 
-/** 平滑有机 blob（三形状轮换，Catmull 风格闭合贝塞尔——刻意光滑）。 */
-function blobPath(cx: number, cy: number, r: number, s: number): string {
-  const f = (v: number) => Math.round(v * 10) / 10
-  if (s === 1)
-    return `M ${f(cx - r * 1.05)} ${f(cy + r * 0.15)} C ${f(cx - r)} ${f(cy - r * 0.65)} ${f(cx - r * 0.3)} ${f(cy - r * 1.1)} ${f(cx + r * 0.42)} ${f(cy - r * 0.82)} C ${f(cx + r * 1.02)} ${f(cy - r * 0.48)} ${f(cx + r * 0.98)} ${f(cy + r * 0.38)} ${f(cx + r * 0.55)} ${f(cy + r * 0.78)} C ${f(cx + r * 0.15)} ${f(cy + r * 1.12)} ${f(cx - r * 0.62)} ${f(cy + r * 0.92)} ${f(cx - r * 1.05)} ${f(cy + r * 0.15)} Z`
-  if (s === 2)
-    return `M ${f(cx - r * 0.88)} ${f(cy - r * 0.42)} C ${f(cx - r * 0.48)} ${f(cy - r * 1.05)} ${f(cx + r * 0.52)} ${f(cy - r)} ${f(cx + r * 0.92)} ${f(cy - r * 0.32)} C ${f(cx + r * 1.18)} ${f(cy + r * 0.18)} ${f(cx + r * 0.66)} ${f(cy + r * 0.72)} ${f(cx + r * 0.12)} ${f(cy + r * 0.92)} C ${f(cx - r * 0.48)} ${f(cy + r * 1.12)} ${f(cx - r * 1.1)} ${f(cy + r * 0.45)} ${f(cx - r * 0.88)} ${f(cy - r * 0.42)} Z`
-  return `M ${f(cx - r)} ${f(cy)} C ${f(cx - r)} ${f(cy - r * 0.85)} ${f(cx - r * 0.38)} ${f(cy - r * 1.08)} ${f(cx + r * 0.22)} ${f(cy - r * 0.92)} C ${f(cx + r * 0.82)} ${f(cy - r * 0.72)} ${f(cx + r * 1.08)} ${f(cy - r * 0.12)} ${f(cx + r * 0.88)} ${f(cy + r * 0.48)} C ${f(cx + r * 0.62)} ${f(cy + r * 1.02)} ${f(cx - r * 0.12)} ${f(cy + r * 1.05)} ${f(cx - r * 0.58)} ${f(cy + r * 0.78)} C ${f(cx - r * 1.05)} ${f(cy + r * 0.48)} ${f(cx - r)} ${f(cy + r * 0.28)} ${f(cx - r)} ${f(cy)} Z`
-}
+// ── 顶缘装订孔排 ────────────────────────────────────────────────────────
+const HOLE_COUNT = 12
+const HOLE_X0 = 118
+const HOLE_STEP = 96
+const HOLE_Y = 24
+const HOLE_R = 6
+const HOLE_STROKE = 1.2
 
-export function ClassroomMotif({ ir, slide, ctx }: DecorProps) {
-  const [blue, coral, sage, latte] = ctx.colors.chartPalette
+// ── 底缘铅笔虚线 ────────────────────────────────────────────────────────
+const PENCIL_X1 = 96
+const PENCIL_X2 = 420
+/** 板上写的是 y640，那正压在共享脚注行上（`FOOTNOTE_BASELINE_Y = 648`）。
+ * 实测后整条搬到页缘，推导见文件头。 */
+const PENCIL_Y = 712
+const PENCIL_STROKE = 1.5
+/** 虚实节奏照板（`10 8`）。走 `<line>` 而不是同轴 `<path>`：svg2pptx 把
+ * `<path>` 转成 custGeom，包围盒零高度会被 package-audit 的
+ * `invalid-shape-transform` 硬门拒收；真正的 `<line>` 走 `svg2pptx/line.ts`
+ * 的 `prstGeom="line"`，并且把 `stroke-dasharray` 映射成原生 `dashType`。 */
+const PENCIL_DASH = "10 8"
 
+// ── 右上回形针弧 ────────────────────────────────────────────────────────
+/** 一枚回形针的线描，包围盒 x1181-1230 / y6-32。板上画在 y18-44，与两个
+ * chapter 版式的右上引首重叠，实测后整体上移 12px，推导见文件头。 */
+const CLIP_PATH = "M1216,6 q14,0 14,13 q0,13 -14,13 l-26,0 q-9,0 -9,-9 q0,-9 9,-9 l22,0"
+const CLIP_STROKE = 1.5
+
+export function ClassroomMotif({ slide, ctx }: DecorProps) {
+  // chapter 是整版 primary 雾蓝底，本 motif 三件东西压上去 1.08-1.41:1
+  // ——看不见（见文件头）。
   if (slide.type === "chapter") return null
 
-  const blob = (cx: number, cy: number, r: number, color: string, o: number, s = 0) => (
-    <path d={blobPath(cx, cy, r, s)} fill={color} opacity={o} />
-  )
+  const pencil = ctx.colors.muted
+  const terracotta = ctx.colors.accent
 
-  /** 点阵（手账点点）：rows×cols 小圆点，斜向错位。 */
-  const dots = (x: number, y: number, rows: number, cols: number, color: string, o = 0.5) => {
-    const pts: React.ReactNode[] = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        pts.push(
-          <circle key={`${r}-${c}`} cx={x + c * 16 + r * 5} cy={y + r * 14} r={2.2} fill={color} opacity={o} />,
-        )
-      }
-    }
-    return <g>{pts}</g>
-  }
-
-  /** 短线组（手绘速写线）。 */
-  const ticks = (x: number, y: number, angle: number, color: string) => {
-    const a = (angle * Math.PI) / 180
-    const dx = Math.cos(a) * 14
-    const dy = Math.sin(a) * 14
-    return (
-      <g stroke={color} strokeWidth={2.4} strokeLinecap="round" opacity={0.55}>
-        <path d={`M ${x} ${y} l ${dx} ${dy}`} fill="none" />
-        <path d={`M ${x + 10} ${y - 6} l ${dx} ${dy}`} fill="none" />
-        <path d={`M ${x + 20} ${y - 12} l ${dx} ${dy}`} fill="none" />
-      </g>
-    )
-  }
-
-  /** 波浪线（手绘下划波浪）。 */
-  const squiggle = (x: number, y: number, n: number, color: string) => {
-    let d = `M ${x} ${y}`
-    for (let i = 0; i < n; i++) d += ` q 9 ${i % 2 === 0 ? -8 : 8} 18 0`
-    return <path d={d} stroke={color} strokeWidth={2.2} strokeLinecap="round" fill="none" opacity={0.6} />
-  }
-
-  /** 空心圆线描（手绘圈圈）。 */
-  const ring = (cx: number, cy: number, r: number, color: string, o = 0.5) => (
-    <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={2} opacity={o} />
-  )
-
-  if (slide.type === "content") {
-    // 弱档：右上小斑 + 左下小斑 + 一组点阵（贴角低调）
-    return (
-      <>
-        {blob(1246, 26, 90, sage, 0.35, 1)}
-        {blob(1280, 90, 60, coral, 0.25, 2)}
-        {blob(20, 700, 84, latte, 0.35, 0)}
-        {dots(1140, 92, 3, 4, blue, 0.4)}
-        {squiggle(60, 660, 3, coral)}
-      </>
-    )
-  }
-
-  const variant = pickBySeed(cachedDeckSeed(ir), "classroom-decor", ["a", "b", "c"] as const)
-
-  if (variant === "b") {
-    // 左上 + 右下对角大斑（错落两档）
-    return (
-      <>
-        {blob(70, 60, 190, blue, 0.3, 0)}
-        {blob(220, 10, 120, sage, 0.35, 2)}
-        {blob(20, 210, 90, coral, 0.28, 1)}
-        {blob(1210, 660, 200, coral, 0.3, 2)}
-        {blob(1060, 700, 120, latte, 0.4, 0)}
-        {blob(1268, 520, 84, sage, 0.32, 1)}
-        {dots(320, 130, 3, 5, blue, 0.4)}
-        {ticks(1000, 600, -35, coral)}
-        {squiggle(150, 260, 4, latte)}
-        {ring(1150, 480, 14, blue, 0.45)}
-      </>
-    )
-  }
-  if (variant === "c") {
-    // 顶部斑块带 + 左下点缀
-    return (
-      <>
-        {blob(140, -20, 150, sage, 0.35, 1)}
-        {blob(420, -50, 180, latte, 0.4, 0)}
-        {blob(760, -30, 150, coral, 0.26, 2)}
-        {blob(1080, -40, 170, blue, 0.28, 1)}
-        {blob(1272, 60, 80, coral, 0.3, 0)}
-        {blob(30, 690, 110, blue, 0.28, 2)}
-        {dots(880, 70, 2, 5, blue, 0.4)}
-        {squiggle(230, 100, 3, coral)}
-        {ticks(60, 600, -30, sage)}
-        {ring(1180, 150, 12, latte, 0.55)}
-      </>
-    )
-  }
-  // a：四角斑块群（参考图主构图——柔和环抱、中央留白）
   return (
     <>
-      {blob(60, 50, 160, sage, 0.35, 0)}
-      {blob(210, 0, 110, coral, 0.25, 2)}
-      {blob(1230, 40, 170, coral, 0.3, 1)}
-      {blob(1290, 170, 100, latte, 0.4, 0)}
-      {blob(50, 680, 170, latte, 0.42, 2)}
-      {blob(200, 730, 110, blue, 0.25, 1)}
-      {blob(1240, 680, 180, blue, 0.28, 0)}
-      {blob(1100, 730, 110, sage, 0.35, 2)}
-      {dots(300, 80, 3, 5, blue, 0.42)}
-      {dots(1000, 640, 2, 4, coral, 0.4)}
-      {squiggle(1090, 120, 3, blue)}
-      {squiggle(180, 640, 4, coral)}
-      {ticks(1180, 560, -35, sage)}
-      {ring(260, 170, 13, coral, 0.5)}
-      {ring(1050, 90, 10, latte, 0.55)}
+      {/* 顶缘装订孔排 */}
+      {Array.from({ length: HOLE_COUNT }, (_, i) => (
+        <circle
+          key={i}
+          cx={HOLE_X0 + i * HOLE_STEP}
+          cy={HOLE_Y}
+          r={HOLE_R}
+          fill="none"
+          stroke={pencil}
+          strokeWidth={HOLE_STROKE}
+        />
+      ))}
+      {/* 底缘铅笔虚线 */}
+      <line
+        x1={PENCIL_X1}
+        y1={PENCIL_Y}
+        x2={PENCIL_X2}
+        y2={PENCIL_Y}
+        stroke={pencil}
+        strokeWidth={PENCIL_STROKE}
+        strokeDasharray={PENCIL_DASH}
+      />
+      {/* 右上回形针弧 */}
+      <path d={CLIP_PATH} fill="none" stroke={terracotta} strokeWidth={CLIP_STROKE} />
     </>
   )
 }

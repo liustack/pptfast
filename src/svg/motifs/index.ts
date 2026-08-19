@@ -6,7 +6,6 @@ import { PosterMotif } from "./motif-poster-motif"
 import { ToneAdaptiveMotif } from "./motif-tone-adaptive-motif"
 import { ConstellationMotif } from "./motif-constellation-motif"
 import { CampaignMotif } from "./motif-campaign-motif"
-import { BloomMotif } from "./motif-bloom-motif"
 import { ClassroomMotif } from "./motif-classroom-motif"
 import { InkMotif } from "./motif-ink-motif"
 import { LuxeMotif } from "./motif-luxe-motif"
@@ -31,7 +30,6 @@ export const MOTIFS: Record<MotifId, Motif> = {
   "constellation-motif": ConstellationMotif,
   "tone-adaptive-motif": ToneAdaptiveMotif,
   "campaign-motif": CampaignMotif,
-  "bloom-motif": BloomMotif,
   "classroom-motif": ClassroomMotif,
   "ink-motif": InkMotif,
   "luxe-motif": LuxeMotif,

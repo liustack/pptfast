@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
+import { readableOn } from "../ink"
 import { SideHighlightContent } from "./content-side-highlight"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -82,14 +83,18 @@ describe("SideHighlightContent", () => {
   })
 
   it("panel ink adapts per theme (readableOn dual-ink pick, not a fixed white literal)", () => {
-    // campaign's own colors.primary is a bright pink — white text on it would
-    // fail contrast, so readableOn must pick the dark neutral ink instead.
-    // (tech used to be this case back when its primary was a bright cyan; the
-    // 2026-08-19 dark-group reskin turned that primary into a deep navy, so
-    // tech now exercises the *other* half of the same two-ink pick below.)
-    const campaignIr = ir([chapter1, withSub])
-    campaignIr.theme = { id: "campaign" }
-    expect(render(campaignIr, withSub, 1)).toContain("#0A0E14")
+    // The dark half of the two-ink pick: a light-enough panel where white
+    // text would fail, so readableOn must pick the dark neutral instead.
+    // The theme standing here has changed twice as reskins moved primaries —
+    // tech (bright cyan) until the 2026-08-19 dark-group round, campaign
+    // (bright pink #F0559E) until the 2026-08-20 soft-group round turned that
+    // primary into stage-dark #23173A. classroom's deepened misty blue
+    // #4A6B8A is the current light-enough panel; the assertion is the pick,
+    // not the theme.
+    const classroomIr = ir([chapter1, withSub])
+    classroomIr.theme = { id: "classroom" }
+    const classroomMarkup = render(classroomIr, withSub, 1)
+    expect(classroomMarkup).toContain(readableOn(resolveStyle("classroom").colors.primary))
 
     // The white half of the same pick — deep navy panel, white ink (14.52:1).
     const techIr = ir([chapter1, withSub])

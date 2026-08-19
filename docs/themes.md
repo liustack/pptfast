@@ -36,7 +36,7 @@ Every built-in points each page type at the full set of registered layouts. Ever
 
 What each theme *does* narrow is its preference: every built-in names the covers it leans toward, so two themes rendering the same deck under the same seed usually pick different covers. It stays a preference, not a lock — pin `slide.layout` when a cover has to be exactly one thing.
 
-`bloom` and `classroom` share one structure and differ in palette and decoration. Pick `bloom` for the soft violet and apricot, `classroom` for the misty blue; the same deck picks the same layouts under either. That makes 17 theme ids and 16 distinct structures.
+`bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 17 theme ids and 16 distinct designs.
 
 ## Your own brand
 

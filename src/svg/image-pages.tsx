@@ -8,6 +8,7 @@ import { DroppedContentMarker } from "./drop-marker"
 import { findImageComponent } from "./layouts/find-image"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
+import { accessibleInk } from "./ink"
 
 /**
  * 压图页与出血 split 页（图片排版 polish，2026-07-09 用户反馈驱动）。
@@ -15,6 +16,21 @@ import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
  * 模板文字色是各主题 baked 常量、无法反色，因此压图场景不走模板 Body，
  * 由这里的 bespoke 全页版式接管（BrandChrome/Decor 照常）——参考 ppt-master
  * 的压图页版式本就趋同：暗遮罩 + 白字大标题，主题个性保留在 accent 细节。
+ *
+ * **四处标题墨改走 `accessibleInk`（2026-08-20 柔和组皮肤重设计）**：本文件
+ * 的四个 bespoke 版式（image-split / image-top / image-bottom /
+ * image-annotate）都把标题直接刷成 `ctx.colors.primary`——一个 baked ink，
+ * 画在自己不控制明度的页底色上。这正是 W4 fix round 用 `ink.ts` 的
+ * `accessibleInk` 根治过的那枚缺陷，深底组（2026-08-19）又在另外四个共享
+ * 版式上修过一遍，这里是同型的第五处、当时漏掉的一处。
+ *
+ * 不是本轮才坏的：改动前实测 `auditDeck`，luxe（primary 压 bg 1.08:1）、
+ * insight（1.14）、tech（1.31）三家在这四个版式上各报 5 条 low-contrast，
+ * 一共十五条，早在本轮之前就在报。柔和组把 campaign 的 primary 从品红翻成
+ * 舞台暗紫（`themes/campaign.ts` 的逐条来历）之后，campaign 会成为第四家
+ * ——与其给它开例外，不如把这处共享版式的根因一起修掉：`accessibleInk`
+ * 在 primary 本就过线时逐字节不变（其余 13 家），过不了线时回落
+ * `readableOn` 的中性墨。全 17 主题实测见本轮报告。
  */
 const W = CANVAS_W_PX
 const H = CANVAS_H_PX
@@ -281,7 +297,7 @@ export function ImageSplitPage({
           fontSize={title.fontSize}
           fontWeight={600}
           fontFamily={ctx.fonts.heading}
-          fill={ctx.colors.primary}
+          fill={accessibleInk(ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, title.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -384,7 +400,7 @@ export function ImageTopPage({
           fontSize={title.fontSize}
           fontWeight={600}
           fontFamily={ctx.fonts.heading}
-          fill={ctx.colors.primary}
+          fill={accessibleInk(ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, title.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -506,7 +522,7 @@ export function ImageAnnotatePage({
           fontSize={title.fontSize}
           fontWeight={600}
           fontFamily={ctx.fonts.heading}
-          fill={ctx.colors.primary}
+          fill={accessibleInk(ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, title.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -708,7 +724,7 @@ export function ImageBottomPage({
           fontSize={title.fontSize}
           fontWeight={600}
           fontFamily={ctx.fonts.heading}
-          fill={ctx.colors.primary}
+          fill={accessibleInk(ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, title.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
