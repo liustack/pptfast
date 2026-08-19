@@ -329,7 +329,23 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // theme's own token comment names ("原 creative 改名...其实是
     // Bloomberg/Economist 财经信息图风").
     layoutTendencies: {
-      cover: ["poster-center"],
+      // `editorial-masthead` appended (inert-declaration fix, 2026-08-19).
+      // `poster-center` alone was a declaration a default deck could never
+      // see: it is one of `briefing.identityTendencies.cover`'s own two ids,
+      // so `Math.max(3, 3) = 3` and insight picked its cover exactly the way
+      // a theme declaring nothing does. The allocation table was drawn on
+      // structural grounds without checking it against the composition rule.
+      //
+      // `editorial-masthead` (verified absent from briefing's set, and pinned
+      // by this file's own guard) is the honest second id rather than a
+      // modulus escape: double rules across the top over a serif masthead is
+      // the ticker-and-rule furniture of a financial daily, which is the
+      // register insight's deep ground and running band already speak. It is
+      // journal's declared id too — journal is the black-and-white humanities
+      // masthead, insight is the same construction on a near-black field with
+      // a red accent, and the layout bakes no hex, so one composition carries
+      // two registers.
+      cover: ["poster-center", "editorial-masthead"],
       chapter: ["poster-chapter"],
       ending: ["poster-ending"],
     },
@@ -813,25 +829,30 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     motif: "vermilion-motif",
     layoutTendencies: {
       // cover 声明（theme-structure-allocation wave，覆盖本条目上方注释里
-      // 「cover 轴刻意不声明」的旧裁剪）。**这条声明在默认 briefing 下是彻底
-      // 空转的，而且是明知故犯**：banner-title 和 poster-center 恰好就是
-      // `briefing.identityTendencies.cover` 的两个成员，max(3,3)=3，vermilion
-      // 在默认叙事下的封面抽签与完全不声明逐字节相同。旧注释因此判它是噪音。
+      // 「cover 轴刻意不声明」的旧裁剪；第二个 id 由 inert-declaration fix
+      // 于 2026-08-19 修正）。
       //
-      // 这一波改判，理由是问题换了：`layoutTendencies` 不只是「在默认 seed 上
-      // 把序列岔开」的旋钮，它也是这个主题的结构身份在代码里的唯一落点。定稿
-      // 分配表给 vermilion 的四轴是 居中 / top-band / medium / medium，
-      // cover-picks = banner-title + poster-center——红头文件的封面就是顶上一
-      // 条红横幅（banner-title）或者中轴居中的正式标题页（poster-center），
-      // 这是真话，不因为 briefing 碰巧也这么想就变成假话。
+      // 分配表原本给的是 banner-title + poster-center，而这两个恰好就是
+      // `briefing.identityTendencies.cover` 的全部成员——`Math.max(3,3)=3`，
+      // 默认叙事下 vermilion 的封面抽签与完全不声明逐字节相同。这不是「弱
+      // 声明」，是穿着声明外衣的空声明。分配表按结构轴画的时候没有对照
+      // 合成规则核算，本次修正，并把这一整类写成守卫测试
+      // （`theme-structure.test.ts` 的「every structural identity names at
+      // least one cover id the default narrative does not already favor」）。
       //
-      // 而且「空转」只对默认叙事成立：另外四个 strategy 的
-      // identityTendencies.cover 都不是这一对（pyramid = banner-title +
-      // left-anchor，storytelling = editorial-masthead + constellation，
-      // instructional = split-diagonal + banner-title，showcase = poster-center
-      // + fashion-masthead），vermilion 的声明在它们下面都产生真实边际权重。
-      // 代价写清楚：默认 briefing 的 deck 看不到任何变化。
-      cover: ["banner-title", "poster-center"],
+      //   - `banner-title` 保留：顶上一条红横幅压住标题，红头文件的封面本来
+      //     就长这样，这是真话，不因为 briefing 也这么想就变成假话。按
+      //     declaration-rebalance wave 裁定 1 的先例，追加而不是替换。
+      //   - `tone-adaptive-header` 接上（实证不在 briefing 集合里，且是
+      //     `narrative/index.ts` 明确「从不出现在任何 strategy 的
+      //     identityTendencies 里」的万金油 identity layout——在**任何**叙事
+      //     下都拿满额边际权重，不只是默认这一档）：左上机构名、右上密级
+      //     徽标、近底一条规则线、右下日期。这正是一份公文抬头的物理顺序
+      //     ——发文机关在上，密级在侧，红线一道，成文日期落在右下角。
+      //     classroom 与 terra 也声明了它，但三家的 cover 集合各不相同
+      //     （classroom 配 banner-title、terra 配 left-anchor），权重向量
+      //     两两不同。
+      cover: ["banner-title", "tone-adaptive-header"],
       chapter: ["banner-chapter", "rail-chapter"],
       ending: ["rail-ending"],
     },

@@ -164,8 +164,13 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // sequences total (re-measured after vermilion landed — a real
     // resolveEffectiveLayoutId sweep of all 17 canonical themes, see
     // task-1-report.md). Re-measured after the theme-redesign wave made ink
-    // the 11th declaring theme: 11 + 1 = 12.
-    expect(distinct.size).toBe(12)
+    // the 11th declaring theme: 11 + 1 = 12. Re-measured again after the
+    // allocation wave gave the remaining six a cover and the inert-declaration
+    // fix pointed insight and vermilion at ids briefing does not already
+    // favor: 11. It went *down* by one because the fix retired a group rather
+    // than adding one — see the cover-weighting block below for why that is
+    // the right direction.
+    expect(distinct.size).toBe(11)
   })
 
   // Superseded assertion, kept as a comment because the reason it had to go
@@ -204,36 +209,50 @@ function effectiveCoverWeightSet(themeId: CanonicalThemeId): string {
 }
 
 describe("cover-axis divergence across the 16 structural identities", () => {
-  it("distinct cover sequences: 10, up from 8 before this wave (measured, seeds 1-40)", () => {
+  it("distinct cover sequences: 9 across the 16 identities (measured, seeds 1-40)", () => {
     const distinct = new Set(STRUCTURAL_IDENTITY_IDS.map((id) => JSON.stringify(coverSequence(id))))
-    // 8 was the real pre-wave number, re-measured against this exact fixture
-    // with the wave's `definitions.ts` edit stashed. It is written here as a
-    // literal rather than derived, so reverting the edit fails this test
-    // instead of quietly re-deriving its own new baseline.
-    expect(distinct.size).toBe(10)
+    // The measured chain on this exact fixture: 8 before the allocation wave,
+    // 10 after it, 9 after the inert-declaration fix. Each number is a
+    // literal, not a re-derivation, so reverting either edit fails here
+    // instead of quietly adopting its own new baseline.
+    //
+    // **The drop from 10 to 9 is the fix working, not a regression**, and the
+    // reason is worth reading before anyone "restores" it. One of those 10
+    // groups was insight and vermilion, and what those two had in common was
+    // that neither declaration did anything: both named only ids the default
+    // narrative already favors, so `Math.max(3, 3) = 3` and they resolved
+    // covers identically to a theme declaring nothing at all. It counted as a
+    // distinct sequence while being the absence of one. Pointing the two at
+    // real ids merges them into journal's and classroom's groups — a shared
+    // construction rendered through a different palette, which this codebase
+    // has always treated as two covers rather than one (heritage and journal
+    // already share `editorial-masthead`, runway and luxe `fashion-masthead`).
+    // Nine groups that all mean something beats ten where one means nothing.
+    expect(distinct.size).toBe(9)
   })
 
-  it("the blind cluster collapses: 8 of 16 identities used to pick their cover exactly the way an undeclared theme does, now 2 do", () => {
+  it("the blind cluster is gone: 8 of 16 identities used to pick their cover exactly the way an undeclared theme does, now none do", () => {
     // "Blind" has a precise meaning here: a theme whose *effective* cover
     // weighting is briefing's own set and nothing more, so the declaration
     // (or its absence) changes nothing a default-narrative deck can see.
     const blind = STRUCTURAL_IDENTITY_IDS.filter(
       (id) => effectiveCoverWeightSet(id) === JSON.stringify([...STRATEGY_DEFINITIONS.briefing.identityTendencies.cover].sort()),
     )
-    // Pre-wave that list was enterprise, insight, campaign, classroom, luxe,
-    // heritage, ember and vermilion — half the set, all picking covers
-    // identically. What is left is the two the allocation table assigned a
-    // pair drawn entirely from briefing's own ids.
-    expect(blind).toEqual(["insight", "vermilion"])
+    // Before the allocation wave this list was enterprise, insight, campaign,
+    // classroom, luxe, heritage, ember and vermilion — half the set, all
+    // picking covers identically. The wave took it to two (insight and
+    // vermilion, whose assigned pairs came entirely from briefing's own ids),
+    // and the inert-declaration fix took it to zero.
+    expect(blind).toEqual([])
   })
 
-  it("distinct cover weightings across the 16 identities: 10, up from 8", () => {
+  it("distinct cover weightings across the 16 identities: 9, every one of them a real preference", () => {
     const groups = new Map<string, string[]>()
     for (const id of STRUCTURAL_IDENTITY_IDS) {
       const key = effectiveCoverWeightSet(id)
       groups.set(key, [...(groups.get(key) ?? []), id])
     }
-    expect(groups.size).toBe(10)
+    expect(groups.size).toBe(9)
     // The largest remaining cluster, named rather than counted, so shrinking
     // it later is a visible edit to this test and not a silent improvement.
     // All four lean on `split-diagonal` over briefing's pair: enterprise's
@@ -245,23 +264,77 @@ describe("cover-axis divergence across the 16 structural identities", () => {
     expect(largest).toEqual(["enterprise", "campaign", "pulse", "ember"])
   })
 
-  // The honest cost of the settled allocation, pinned so it stays visible
-  // rather than being rediscovered later as a bug: insight and vermilion are
-  // each assigned a cover pair drawn entirely from
-  // `briefing.identityTendencies.cover`, so `Math.max(3, 3) = 3` and neither
-  // declaration moves anything under the default narrative. They are not
-  // dead everywhere — the other four strategies favor different cover ids, so
-  // the declaration does pull there — but a deck that names no narrative sees
-  // no change from either. Recorded as measurement, not excused.
-  it("insight and vermilion declare only ids briefing already favors, so their covers do not move under the default narrative", () => {
-    for (const id of ["insight", "vermilion"] as const) {
+  // ── The structural guard ──
+  //
+  // A cover declaration is only worth the line it takes if a default deck can
+  // see it. Because the strategy, beat and theme layers compose via
+  // `Math.max` rather than multiplying, a theme that names only ids the active
+  // strategy already favors adds nothing at all under that strategy —
+  // `max(3, 3) = 3`, the same weight an undeclared theme gets. That is not a
+  // weak declaration, it is an absent one wearing a declaration's clothes.
+  //
+  // The allocation table shipped with two of these (insight and vermilion,
+  // both assigned exactly `briefing.identityTendencies.cover`), and nothing
+  // caught it — the table was drawn on structural grounds without checking it
+  // against the composition rule. This test is that check, applied to the
+  // whole set rather than to the two ids that happened to trip it: every
+  // structural identity must name at least one cover id the *default*
+  // narrative does not already favor.
+  //
+  // Scoped to briefing on purpose. Briefing is what a deck with no `narrative`
+  // resolves to, so it is the only strategy where an inert declaration is
+  // invisible to the person who never opted into anything. Under the other
+  // four, a deck author has made a choice and a partial overlap is a
+  // legitimate way to agree with it.
+  it("every structural identity names at least one cover id the default narrative does not already favor", () => {
+    const briefingCovers = STRATEGY_DEFINITIONS.briefing.identityTendencies.cover
+    // Read from the strategy table, never inlined: hardcoding the pair here
+    // would let this test keep passing if briefing's own set were retuned,
+    // which is exactly the drift it exists to catch.
+    expect(briefingCovers.length, "briefing must actually favor something for this guard to mean anything").toBeGreaterThan(0)
+
+    const inert = STRUCTURAL_IDENTITY_IDS.filter((id) => {
       const own = THEME_DEFINITIONS[id].layoutTendencies?.cover ?? []
-      expect(own.every((coverId) => STRATEGY_DEFINITIONS.briefing.identityTendencies.cover.includes(coverId)), id).toBe(
-        true,
-      )
-    }
-    // ...and the two therefore still resolve the same covers as each other.
-    expect(coverSequence("insight")).toEqual(coverSequence("vermilion"))
+      return own.length > 0 && own.every((coverId) => briefingCovers.includes(coverId))
+    })
+    expect(
+      inert,
+      `these themes declare a cover preference that Math.max flattens to nothing under the default narrative — ` +
+        `add an id outside ${JSON.stringify(briefingCovers)} or drop the declaration`,
+    ).toEqual([])
+  })
+
+  // The same claim from the output side, so the guard cannot pass on a
+  // technicality about which ids appear in which array. The reference is a
+  // real resolver run with `themeTendencies` left off entirely — literally
+  // what this renderer draws for a theme that declares no cover preference —
+  // and no structural identity may reproduce it.
+  //
+  // Deliberately not anchored to some theme that "acts blind": that is how
+  // the original defect stayed invisible for a whole wave. insight and
+  // vermilion *were* the blind reference, so comparing them against each
+  // other proved nothing.
+  it("no structural identity resolves the cover sequence a theme with no declaration at all would", () => {
+    const blindCovers = Array.from({ length: 40 }, (_, i) =>
+      resolveLayoutId(
+        "cover",
+        THEME_DEFINITIONS.consulting.layouts,
+        i + 1,
+        "0", // `fixedSlides()`'s cover carries no `slide.id`, so its page key is its index
+        undefined,
+        "briefing", // what a deck naming no narrative resolves to
+        null, // first page, so adjacent anti-repetition has nothing to compare against
+        undefined,
+        undefined, // ← the whole point: no theme tendency
+      ),
+    )
+    const blindLike = STRUCTURAL_IDENTITY_IDS.filter(
+      (id) => JSON.stringify(coverSequence(id)) === JSON.stringify(blindCovers),
+    )
+    expect(
+      blindLike,
+      "these themes' covers are indistinguishable from declaring nothing at all",
+    ).toEqual([])
   })
 
   it("every cover id a theme declares is one this renderer can actually draw", () => {
@@ -481,6 +554,14 @@ const ALLOCATION_COVER_MOVES: Partial<Record<CanonicalThemeId, string[]>> = {
   heritage: ["split-diagonal", "constellation", "split-diagonal", "split-diagonal", "colophon"],
   terra: ["split-diagonal", "constellation", "split-diagonal", "split-diagonal", "colophon"],
   ember: ["poster-center", "split-diagonal", "constellation", "split-diagonal", "poster-center"],
+  // The third reshuffle, and the last in this release: the inert-declaration
+  // fix (2026-08-19) repointed these two at cover ids the default narrative
+  // does not already favor, so for the first time their declarations reach the
+  // picker at all. Measured blast radius, 17 themes × 40 seeds: 70 cover picks
+  // move, every one of them on these two, and nothing outside the cover slot
+  // moves for anyone.
+  insight: ["poster-center", "fashion-masthead", "constellation", "split-diagonal", "poster-center"],
+  vermilion: ["poster-center", "fashion-masthead", "constellation", "split-diagonal", "poster-center"],
 }
 
 describe("control-group byte identity (migration-period guard — deletable once the wave is trusted)", () => {
@@ -542,21 +623,11 @@ describe("allocation wave drift: the cover slot moved for eight themes and nothi
     }
   })
 
-  it("the nine themes the allocation did not re-weight keep their exact pre-wave cover picks", () => {
+  it("the seven themes neither edit re-weighted keep their exact pre-wave cover picks", () => {
     const untouched = CANONICAL_THEME_IDS.filter((id) => ALLOCATION_COVER_MOVES[id] === undefined)
     // Named explicitly so shrinking the move table can't silently shrink this
     // control group too — the two halves must add up to all 17.
-    expect(untouched).toEqual([
-      "consulting",
-      "academic",
-      "insight",
-      "ink",
-      "tech",
-      "runway",
-      "journal",
-      "pulse",
-      "vermilion",
-    ])
+    expect(untouched).toEqual(["consulting", "academic", "ink", "tech", "runway", "journal", "pulse"])
     for (const themeId of untouched) {
       for (const seed of FIXTURE_SEEDS) {
         expect(resolveSequence(themeId, seed)[0], `${themeId} seed=${seed}`).toBe(
@@ -723,13 +794,15 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: 53 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
+  it("sanity: 54 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
     // Was 36 before the allocation wave. The +17 are the cover ids the wave
     // added: enterprise/campaign/classroom/bloom/luxe/heritage 2 apiece (12,
     // all first declarations), plus terra +1, ember +2 and vermilion +2. The
-    // number is a tripwire, not a target — if it drifts, re-derive it from
+    // inert-declaration fix added one more: insight's cover grew from one id
+    // to two, while vermilion's stayed at two with one swapped. The number is
+    // a tripwire, not a target — if it drifts, re-derive it from
     // `definitions.ts` rather than editing it to match.
-    expect(combos).toHaveLength(53)
+    expect(combos).toHaveLength(54)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {
