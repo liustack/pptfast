@@ -117,6 +117,92 @@ function scaleOp(op: Op, sx: number, sy: number): Op {
   }
 }
 
+/**
+ * Presentation attributes that SVG *inherits* down the tree and that the leaf
+ * converters below actually read. A `<g>` carrying one of these paints every
+ * descendant that does not set its own — which is what the browser draws in
+ * the preview, so it is what the export has to reproduce.
+ *
+ * `opacity` is deliberately not in this list. It is not an inherited property
+ * but a group-compositing one: `<g opacity="0.5">` composites its whole
+ * subtree at 50%, and a child's own `opacity` *multiplies* with it instead of
+ * replacing it. It is carried separately, as `Paint.groupOpacity`.
+ *
+ * The text presentation attributes `text.ts` reads (`font-family`,
+ * `font-size`, `font-weight`, `font-style`, `text-anchor`) inherit in SVG too,
+ * and are left out on purpose: no container this renderer emits carries one —
+ * every `<text>` states its own — so adding them would be a behavior change
+ * with no case behind it. If a component ever paints type at the group level,
+ * this is the list to extend.
+ */
+const INHERITED_PAINT_ATTRS = [
+  "fill",
+  "fill-opacity",
+  "stroke",
+  "stroke-width",
+  "stroke-opacity",
+  "stroke-dasharray",
+] as const
+
+/** Paint an element inherits from its container chain. */
+interface Paint {
+  /** Nearest-ancestor value per attribute; a leaf's own attribute still wins. */
+  readonly attrs: ReadonlyMap<string, string>
+  /** Product of every ancestor container's `opacity` (1 when none carried it). */
+  readonly groupOpacity: number
+}
+
+const NO_PAINT: Paint = { attrs: new Map(), groupOpacity: 1 }
+
+/** An `opacity` attribute as a [0,1] factor; absent or unparseable reads as 1. */
+function opacityFactor(raw: string | null): number {
+  if (raw == null) return 1
+  const v = parseFloat(raw)
+  return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1
+}
+
+/** Fold a container's own paint onto what it inherited, for its children. */
+function inheritPaint(el: Element, parent: Paint): Paint {
+  let attrs: Map<string, string> | null = null
+  for (const name of INHERITED_PAINT_ATTRS) {
+    const value = el.getAttribute(name)
+    if (value == null) continue
+    attrs ??= new Map(parent.attrs)
+    attrs.set(name, value)
+  }
+  const factor = opacityFactor(el.getAttribute("opacity"))
+  if (attrs === null && factor === 1) return parent
+  return {
+    attrs: attrs ?? parent.attrs,
+    groupOpacity: parent.groupOpacity * factor,
+  }
+}
+
+/**
+ * The element a leaf converter should see: this leaf plus whatever paint it
+ * inherits and does not override. Returns the element itself when there is
+ * nothing to inherit, and otherwise resolves onto a *copy* — the converters
+ * take a plain `Element` and read it with `getAttribute`, and the caller's
+ * tree is not ours to rewrite (`svgToOps` is handed the same parsed document
+ * the preview came from).
+ */
+function withInheritedPaint(el: Element, paint: Paint): Element {
+  const inherited: [string, string][] = []
+  for (const [name, value] of paint.attrs) {
+    if (!el.hasAttribute(name)) inherited.push([name, value])
+  }
+  // Group opacity multiplies with the leaf's own rather than replacing it, so
+  // the leaf carrying its own `opacity` is no reason to skip the fold.
+  const own = opacityFactor(el.getAttribute("opacity"))
+  const effective = paint.groupOpacity * own
+  if (inherited.length === 0 && effective === own) return el
+
+  const view = el.cloneNode(true) as Element
+  for (const [name, value] of inherited) view.setAttribute(name, value)
+  if (effective !== own) view.setAttribute("opacity", String(effective))
+  return view
+}
+
 /** Convert a single leaf element to an op, or null if it isn't drawable. */
 function leafToOp(el: Element, gradients: ReadonlyMap<string, GradientDef>): Op | null {
   switch (el.tagName.toLowerCase()) {
@@ -146,6 +232,7 @@ function leafToOp(el: Element, gradients: ReadonlyMap<string, GradientDef>): Op 
 function walk(
   el: Element,
   parent: Matrix,
+  paint: Paint,
   out: Op[],
   gradients: ReadonlyMap<string, GradientDef>,
   blockIndex: number | undefined,
@@ -166,11 +253,16 @@ function walk(
   const ownBlockIndex = dataBlk != null ? Number(dataBlk) : blockIndex
 
   if (CONTAINER_TAGS.has(tag)) {
-    for (const child of Array.from(el.children)) walk(child, ctm, out, gradients, ownBlockIndex)
+    // Paint composes down the same way the transform above does: a container's
+    // own `fill`/`stroke`/… becomes the default for everything beneath it.
+    const childPaint = inheritPaint(el, paint)
+    for (const child of Array.from(el.children)) {
+      walk(child, ctm, childPaint, out, gradients, ownBlockIndex)
+    }
     return
   }
 
-  const op = leafToOp(el, gradients)
+  const op = leafToOp(withInheritedPaint(el, paint), gradients)
   if (!op) return
   // 本渲染器只发 translate/scale：先按矩阵对角项缩放局部几何，再平移到
   // 原点像。旋转/斜切不在受控子集内（出现时按未缩放处理并靠门测试拦截）。
@@ -187,8 +279,12 @@ function walk(
 
 /**
  * Walk an SVG element tree depth-first (document order) and convert every
- * drawable leaf into a pptxgenjs op, flattening inherited `<g>` translate
- * transforms into each leaf's coordinates.
+ * drawable leaf into a pptxgenjs op, flattening the two things a `<g>` hands
+ * its descendants into each leaf: the translate/scale transform, and the
+ * paint (`fill`/`stroke`/`stroke-width`/… — see `INHERITED_PAINT_ATTRS`).
+ *
+ * `root`'s own transform and paint count: this is called on a decoration
+ * subtree as readily as on a whole `<svg>`.
  *
  * Gradients are collected once up front from `<defs>` (`collectGradients`) so
  * any leaf's `fill="url(#id)"` can resolve regardless of document order.
@@ -196,6 +292,6 @@ function walk(
 export function svgToOps(root: Element): Op[] {
   const gradients = collectGradients(root)
   const out: Op[] = []
-  walk(root, IDENTITY, out, gradients, undefined)
+  walk(root, IDENTITY, NO_PAINT, out, gradients, undefined)
   return out
 }
