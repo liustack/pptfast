@@ -1878,22 +1878,49 @@ describe("findContrastIssues — text painted on a decor shape resolves against 
     expect(contrastFindings(quarterly("consulting")).filter((f) => f.page === 1)).toEqual([])
   })
 
-  it("consulting: a muted token that fails only against the decor square proves the square really is what the date resolves to", () => {
-    // The differential the test above can't show on its own. `#3A4E60`
-    // measures 2.02:1 against the decor square and 8.01:1 against the page
-    // background `#F7F7F2` — so a finding can only appear here if attribution
-    // reaches the square, and its reported background says which one it
-    // found. `theme.style` is a schema-legal deep-partial override (same
-    // mechanism the "low-contrast via a real style-token override" block
-    // below uses), not a test-only hook.
+  it("consulting: the decor square left the bottom-right slot entirely, so even a token that would fail against it finds nothing there", () => {
+    // This used to be the live differential for the two silences above:
+    // `#3A4E60` measures 2.02:1 against the decor square and 8.01:1 against
+    // the page background `#F7F7F2`, so a finding could only appear if
+    // attribution reached the square, and its reported background said
+    // which one it found. `theme.style` is a schema-legal deep-partial
+    // override (same mechanism the "low-contrast via a real style-token
+    // override" block below uses), not a test-only hook.
+    //
+    // 2026-08-20 (冷调组皮肤重设计): `enterprise-motif` — the motif all
+    // three of these consulting/tech cases actually render — was redrawn.
+    // Its 24px square at (1200, 624) is gone along with the rest of the
+    // seed-varied composition; the new fixed mark puts a top ruler, a
+    // stepped run of squares top-right and a single accent square at the
+    // lower left, and nothing at all in `tone-adaptive-header`'s
+    // bottom-right slot. So this differential can no longer be armed *by
+    // this motif*: the collision `.issues/2026-08-17-spatial-contract/
+    // design.md` §4 names is resolved here by the decoration vacating the
+    // slot, not by a color that happens to read well.
+    //
+    // Kept as a live regression net rather than deleted, and inverted into
+    // the assertion that is now true: with the worst-case token the date
+    // still finds *nothing* under it. A future motif edit that walks any
+    // opaque rect/circle back into that slot re-lands a finding here and
+    // fails this test. The attribution mechanism itself (an opaque decor
+    // `rect`/`circle` really does become the background a text run resolves
+    // against) stays pinned by the synthetic block above — see "attributes
+    // text to an opaque <circle> inside a <g data-decor> subtree" and
+    // "routes a gradient-filled <rect> inside <g data-decor> to
+    // pixel-audit" — which is where that proof always belonged, since it
+    // does not depend on any one theme's decoration staying put.
     const ir = quarterly("consulting", {
       theme: { id: "consulting", style: { colors: { muted: "#3A4E60" } } },
     })
     const dateFindings = contrastFindings(ir).filter(
       (f) => f.page === 1 && (f.detail as { text?: string }).text === "2026-08-15",
     )
-    expect(dateFindings).toHaveLength(1)
-    expect((dateFindings[0].detail as { background: string }).background).toBe("#051C2C")
+    expect(dateFindings).toEqual([])
+    // The arithmetic that used to make this differential meaningful, pinned
+    // so "no finding" can't be mistaken for "attribution went blind": the
+    // pairing would still fail if the square were under the run.
+    expect(contrastRatio("#3A4E60", "#051C2C")).toBeCloseTo(2.02, 2)
+    expect(contrastRatio("#3A4E60", "#F7F7F2")).toBeCloseTo(8.01, 2)
   })
 
   it("campaign: crayon-stroke <path>s stay out of attribution even where their bounding boxes cover the date and their opacity clears the gate", () => {

@@ -427,6 +427,33 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // stayed the empty array, confirmed by computing `auditDeck` fresh
       // against both the old and new goldens) — decor is not text, and the
       // new mark introduces no contrast or overflow defect.
+      //
+      // Re-recaptured again (theme-redesign wave, cool group —
+      // `.issues/2026-08-18-theme-redesign/skins/group3-notes.md`):
+      // `enterprise-motif` was redrawn from three seed variants (a 3x3
+      // square grid / a left edge bar plus a corner square / two diagonal
+      // squares) into one fixed mark — a top ruler with ticks, a stepped
+      // run of three squares top-right, and a single accent square at the
+      // lower left. `consulting` carries `enterprise-motif` in its own
+      // rotation set (`@/svg/motif-selection`'s `MOTIF_CANDIDATES` —
+      // `["banner-motif", "rail-motif", "enterprise-motif"]`), so the
+      // `basic` fixture draws the new mark on whichever pages its seed
+      // picks it for. Same posture as the warm group's `journal` recapture
+      // above: a real, intended decor change on a *borrowing* theme, not a
+      // migration regression.
+      //
+      // Targeted diff (`equiv-diff.mts`, the wave's own tool): the only
+      // difference anywhere is inside `<g data-decor="true">` — stripping
+      // that one group (nesting-aware, since a motif's own colour groups
+      // now live inside it) makes old and new byte-identical on every
+      // changed slide, so no text, geometry or chrome moved.
+      //   - `basic` (`consulting`): slides 0 and 4
+      //     (`ppt/slides/slide{1,5}.xml`).
+      //   - `scenarioBearing` / `annualReviewPreset` (`journal`):
+      //     untouched. journal does carry `rail-motif` — also redrawn this
+      //     wave — but neither fixture's seed picks it on any page.
+      // `.audit.json` needed no recapture for any of the three (findings
+      // stayed the empty array, recomputed fresh against both goldens).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

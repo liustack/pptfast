@@ -1,46 +1,28 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
-import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
-import { resolveStyle } from "../../themes"
-import type { StyleTokens } from "../../themes/tokens"
 import { assertSubset } from "../subset-validate"
+import { buildCtx } from "../full-slide-svg"
+import { resolveStyle } from "../../themes"
+import { FOOTNOTE_BASELINE_Y, FOOTER_DIVIDER_Y } from "../chrome-geometry"
 import { RailMotif } from "./motif-rail-motif"
 import type { PptxIR, Slide } from "@/ir"
-
-// Review fix round (P1 variety wave, task 2 — Moderate finding): the chapter
-// branch now derives its ink from `ctx.defaultBg` (`readableOn`, see the
-// source file's own doc comment) instead of a hard-coded white literal — a
-// bare `buildCtx(tokens, {})` call (as every fixture below used to make, for
-// every slide type indiscriminately) resolves `defaultBg` to `tokens.colors.bg`
-// unconditionally, which is academic's *cover/content* background
-// (`#FAFAF6`), never its actual chapter background (`#006A4E`). Production
-// (`full-slide-svg.tsx`) always resolves `defaultBg` per the slide's own
-// *actual* type; this helper mirrors that so these fixtures stay a faithful
-// simulation of production instead of accidentally exercising `readableOn`
-// against the wrong background.
-function ctxFor(tokens: StyleTokens, slideType: Slide["type"]): ReturnType<typeof buildCtx> {
-  const defaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slideType], tokens.colors.surface)
-  return buildCtx(tokens, {}, undefined, defaultBg)
-}
-
-// BrandChrome's bl/br brand logo bands (see templates/academic.test.tsx's
-// own LOGO_BANDS / "documents (not asserts false)" precedent) — the arc's
-// originating full circle is centered exactly on the page's bottom-right
-// corner, so it deliberately bleeds into BR_LOGO by construction.
-const BR_LOGO = { x: 1120, y: 630, w: 96, h: 40 }
-
-function rectsOverlap(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number },
-): boolean {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
-}
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
 const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
+/** chapter 不画；cover 与 content/ending 只差点轨的 x 锚。 */
+const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
+
+/** 设计板上的四条红虚线禁区。 */
+const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
+const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
+/** 默认（`br`）品牌 logo 盒，`brand-chrome.tsx` 的 `logoBox`；右上带同宽同高。 */
+const LOGO_BOX = { x: 1120, y: 630, w: 96, h: 40 }
+const TR_LOGO_BAND = { x: 1120, y: 48, w: 96, h: 40 }
+/** `cover-left-anchor.tsx` 的 `COVER_BLOCK_W`：左侧通高 primary 色块。 */
+const COVER_BLOCK_W = 512
 
 const ir = (theme: string): PptxIR =>
   ({
@@ -52,122 +34,191 @@ const ir = (theme: string): PptxIR =>
     slides: [coverSlide],
   }) as unknown as PptxIR
 
-// Literal markup fixed from `templates/academic.tsx`'s `BcgEmeraldDecor`
-// under academic tokens (captured once, pre-templates-deletion — see task
-// report) — this is what `toBe(legacy)` used to assert at runtime. Fixating
-// it here keeps the same byte-for-byte assertion strength without importing
-// the (soon-to-be-deleted) templates/ module.
-const EXPECTED_MOTIF: Record<string, string> = {
-  cover: "",
-  chapter: '<path d="M 1280,720 L 1280,460 A 260,260 0 0,0 1020,720 Z" fill="#FFFFFF" opacity="0.06"></path>',
-  content: '<path d="M 1280,720 L 1280,460 A 260,260 0 0,0 1020,720 Z" fill="#006A4E" opacity="0.06"></path>',
-  ending: '<path d="M 1280,720 L 1280,460 A 260,260 0 0,0 1020,720 Z" fill="#006A4E" opacity="0.06"></path>',
+function render(body: React.ReactElement | null): { markup: string; root: Element } {
+  const markup = renderSvgMarkup(
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      {body}
+    </svg>,
+  )
+  return { markup, root: parseSvgRoot(markup) }
 }
 
-describe("RailMotif", () => {
-  it.each([
-    ["cover", coverSlide],
-    ["chapter", chapterSlide],
-    ["content", contentSlide],
-    ["ending", endingSlide],
-  ] as const)(
-    "academic tokens 下 %s slide 输出与迁移前的 BcgEmeraldDecor 逐字节一致（档位一）",
-    (label, slide) => {
-      const ctx = ctxFor(resolveStyle("academic"), slide.type)
-      const deck = ir("academic")
+function draw(theme: string, slide: Slide) {
+  const ctx = buildCtx(resolveStyle(theme), {})
+  return { ...render(<RailMotif ir={ir(theme)} slide={slide} ctx={ctx} />), ctx }
+}
 
-      const next = renderSvgMarkup(<RailMotif ir={deck} slide={slide} ctx={ctx} />)
-      expect(next).toBe(EXPECTED_MOTIF[label])
-    },
-  )
+const num = (el: Element, a: string) => Number(el.getAttribute(a))
 
-  it("Decor body passes subset validation (no gradients, plain shapes)（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
-    const deck = ir("academic")
-    const markup = renderSvgMarkup(
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-        <RailMotif ir={deck} slide={contentSlide} ctx={ctx} />
-      </svg>,
-    )
-    const root = parseSvgRoot(markup)
-    expect(() => assertSubset(root)).not.toThrow()
-  })
-
-  // The arc's originating full circle is centered exactly on the page's
-  // bottom-right corner, so only its visible quarter-disc is drawn — its
-  // bounding box deliberately bleeds into BrandChrome's br logo band, same
-  // precedent as the badge/rail-node non-overlap checks above (a solid-fill
-  // area under an opaque logo loses no information, see
-  // templates/academic.test.tsx's own "documents (not asserts false)" case).
-  // Documented here, not silently skipped.
-  it("documents (not asserts false) that the arc overlaps the br logo band by design（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
-    const deck = ir("academic")
-    const markup = renderSvgMarkup(
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-        <RailMotif ir={deck} slide={contentSlide} ctx={ctx} />
-      </svg>,
-    )
-    const root = parseSvgRoot(markup)
-    expect(root.querySelector("path")).toBeTruthy()
-    const arcBox = { x: 1020, y: 460, w: 260, h: 260 } // bbox of the quarter-disc path
-    expect(rectsOverlap(arcBox, BR_LOGO)).toBe(true)
-  })
-
-  it("装饰几何：cover 不渲染任何 path，chapter/content/ending 各渲染一段同弧形 path（装饰未隐形）", () => {
-    const tokens = resolveStyle("academic")
-    const deck = ir("academic")
-
-    function renderMotif(slide: Slide): Element {
-      const ctx = ctxFor(tokens, slide.type)
-      const markup = renderSvgMarkup(
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-          <RailMotif ir={deck} slide={slide} ctx={ctx} />
-        </svg>,
-      )
-      return parseSvgRoot(markup)
+/**
+ * rail-motif v2「进度轨」（2026-08-20 冷调组皮肤重设计）。
+ * 设计源：`.issues/2026-08-18-theme-redesign/skins/group3-cool-boards.dc.html`
+ * 的 academic 设计表。本文件在本轮整体重写——v1 的四分之一圆盘（含它自己的
+ * `readableOn` 反白分支与 br logo 盒重叠说明）随圆盘一并退役。
+ */
+describe("RailMotif（进度轨）", () => {
+  it("cover/content/ending 各画五枚进度点 + 两条角标线", () => {
+    for (const slide of DRAWN_SLIDES) {
+      const { root } = draw("academic", slide)
+      expect(Array.from(root.querySelectorAll("circle")), `dots on ${slide.type}`).toHaveLength(5)
+      expect(Array.from(root.querySelectorAll("line")), `corner marks on ${slide.type}`).toHaveLength(2)
+      // v1 的圆盘是一段 path，v2 一段都不画。
+      expect(Array.from(root.querySelectorAll("path")), `no arc left on ${slide.type}`).toHaveLength(0)
     }
-
-    const coverRoot = renderMotif(coverSlide)
-    expect(coverRoot.querySelectorAll("path")).toHaveLength(0)
-
-    for (const slide of [chapterSlide, contentSlide, endingSlide]) {
-      const root = renderMotif(slide)
-      const paths = root.querySelectorAll("path")
-      expect(paths).toHaveLength(1)
-      // 弧形几何锚定在右下角：起点/终点坐标出现在 path data 里。
-      expect(paths[0].getAttribute("d")).toContain("1280,720")
-      // 装饰未隐形：opacity 是可见的低透明度，不是 0。
-      expect(paths[0].getAttribute("opacity")).toBe("0.06")
-    }
-
-    // chapter 分支用 readableOn(实际 chapter 背景)（primary 实心背景上
-    // primary 半透明会是无操作/完全隐形，见文件头"Review fix round"说明），
-    // content/ending 用 primary。academic 的 chapter 背景够暗，readableOn
-    // 在此解出纯白，与旧的白字硬编码字节一致。
-    const chapterFill = renderMotif(chapterSlide).querySelector("path")?.getAttribute("fill")
-    const contentFill = renderMotif(contentSlide).querySelector("path")?.getAttribute("fill")
-    const endingFill = renderMotif(endingSlide).querySelector("path")?.getAttribute("fill")
-    expect(chapterFill).toBe("#FFFFFF")
-    expect(contentFill).toBe(tokens.colors.primary)
-    expect(endingFill).toBe(tokens.colors.primary)
-    expect(contentFill).not.toBe(chapterFill)
   })
 
-  it("tech tokens 下用 tech 的 primary 驱动 content/ending 弧形色（证明 token 化成立，无 baked hex），chapter readableOn 在 tech 的深色渐变背景下同样解出纯白", () => {
-    const techTheme = resolveStyle("tech")
-    const deck = ir("tech")
+  it("chapter 完全退让——rail-chapter 自带点轨，且整版 primary 底上画 primary 等于看不见", () => {
+    const { root } = draw("academic", chapterSlide)
+    expect(root.children).toHaveLength(0)
+    expect(Array.from(root.querySelectorAll("circle"))).toHaveLength(0)
+    expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
+  })
 
-    const contentCtx = ctxFor(techTheme, "content")
-    const contentOut = renderSvgMarkup(<RailMotif ir={deck} slide={contentSlide} ctx={contentCtx} />)
-    expect(contentOut).toContain(contentCtx.colors.primary as string)
-    expect(contentOut).not.toContain("#006A4E") // academic 自己的 primary 烤死色不得残留
+  it("颜色一律读 token：点轨走 primary（首点实心、其余空心 1.5 描边），角标走 accent", () => {
+    const t = resolveStyle("academic")
+    const { root } = draw("academic", contentSlide)
+    const dots = Array.from(root.querySelectorAll("circle"))
+    expect(dots[0].getAttribute("fill")).toBe(t.colors.primary)
+    for (const d of dots.slice(1)) {
+      expect(d.getAttribute("fill")).toBe("none")
+      expect(d.getAttribute("stroke")).toBe(t.colors.primary)
+      expect(d.getAttribute("stroke-width")).toBe("1.5")
+    }
+    const cornerGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("stroke") === t.colors.accent)
+    expect(cornerGroup, "corner marks must read colors.accent").toBeTruthy()
+    expect(cornerGroup!.getAttribute("stroke-width")).toBe("1.5")
+  })
 
-    const chapterCtx = ctxFor(techTheme, "chapter")
-    const chapterOut = renderSvgMarkup(<RailMotif ir={deck} slide={chapterSlide} ctx={chapterCtx} />)
-    // readableOn(tech 的深色渐变 chapter 背景) 解出纯白。
-    expect(chapterOut).toContain('fill="#FFFFFF"')
-    expect(chapterCtx.colors.primary).not.toBe("#FFFFFF")
-    expect(chapterOut).not.toContain(chapterCtx.colors.primary as string)
+  it("点轨几何：默认锚 x106 起、间距 46、y30 上的五枚 r6", () => {
+    const { root } = draw("academic", contentSlide)
+    const dots = Array.from(root.querySelectorAll("circle")).map((c) => [num(c, "cx"), num(c, "cy"), num(c, "r")])
+    expect(dots).toEqual([
+      [106, 30, 6],
+      [152, 30, 6],
+      [198, 30, 6],
+      [244, 30, 6],
+      [290, 30, 6],
+    ])
+  })
+
+  it("cover 档整组让位到右板 x570 起（left-anchor 的通高色块盖不到）", () => {
+    const { root } = draw("academic", coverSlide)
+    const dots = Array.from(root.querySelectorAll("circle")).map((c) => [num(c, "cx"), num(c, "cy"), num(c, "r")])
+    expect(dots).toEqual([
+      [570, 30, 6],
+      [616, 30, 6],
+      [662, 30, 6],
+      [708, 30, 6],
+      [754, 30, 6],
+    ])
+    // 让位的全部意义：首点左沿必须在色块右沿之外，否则它会被色块整个盖掉。
+    expect(570 - 6).toBeGreaterThan(COVER_BLOCK_W)
+  })
+
+  it("角标几何：x1200/x1224 起、都止于 x1256 的两条线（y20 长、y30 短）", () => {
+    const { root } = draw("academic", coverSlide)
+    const marks = Array.from(root.querySelectorAll("line")).map((l) => [
+      num(l, "x1"),
+      num(l, "y1"),
+      num(l, "x2"),
+      num(l, "y2"),
+    ])
+    expect(marks).toEqual([
+      [1200, 20, 1256, 20],
+      [1224, 30, 1256, 30],
+    ])
+  })
+
+  /**
+   * 安全区守卫（设计板的四条红虚线逐条量）。把点轨或角标往下挪进标题区，
+   * 这一条立刻红。
+   */
+  it("安全区：点轨与角标整组在标题区上沿 y48 之上，够不到正文区", () => {
+    for (const slide of DRAWN_SLIDES) {
+      const { root } = draw("academic", slide)
+      for (const c of Array.from(root.querySelectorAll("circle"))) {
+        expect(num(c, "cy") + num(c, "r"), `dot dips into the title zone on ${slide.type}`).toBeLessThan(TITLE_ZONE.y)
+      }
+      for (const l of Array.from(root.querySelectorAll("line"))) {
+        expect(num(l, "y1")).toBeLessThan(TITLE_ZONE.y)
+        expect(num(l, "y2")).toBeLessThan(TITLE_ZONE.y)
+      }
+      expect(BODY_ZONE.y).toBeGreaterThan(TITLE_ZONE.y)
+    }
+  })
+
+  it("安全区：点轨够不到右上/右下 logo 盒的左沿，角标在标题区右沿之外、右上 logo 带之上", () => {
+    for (const slide of DRAWN_SLIDES) {
+      const { root } = draw("academic", slide)
+      for (const c of Array.from(root.querySelectorAll("circle"))) {
+        expect(num(c, "cx") + num(c, "r")).toBeLessThan(LOGO_BOX.x)
+      }
+      for (const l of Array.from(root.querySelectorAll("line"))) {
+        expect(num(l, "x1")).toBeGreaterThan(TITLE_ZONE.x + TITLE_ZONE.w)
+        // 角标横向与右上 logo 带（x1120-1216）有重叠，靠纵向让开：它整条
+        // 画在 y20-30，logo 带从 y48 起。
+        expect(num(l, "y1")).toBeLessThan(TR_LOGO_BAND.y)
+      }
+    }
+  })
+
+  /**
+   * 设计板把点轨放在 y648，而 y648 是本仓库所有脚注的共用基线
+   * （`chrome-geometry.ts` 的 `FOOTNOTE_BASELINE_Y`）——实测把点轨压在
+   * consulting 八个 content 版式的脚注下面（3.26:1）。这一条锁住「点轨不回
+   * 底带」：把 `DOT_Y` 改回 648 立刻红。
+   */
+  it("点轨不落在脚注基线与页脚带上（板上 y648 的实测撞位，本文件的偏离理由）", () => {
+    for (const slide of DRAWN_SLIDES) {
+      const { root } = draw("academic", slide)
+      for (const c of Array.from(root.querySelectorAll("circle"))) {
+        const bottom = num(c, "cy") + num(c, "r")
+        // 20px 是脚注的最大字号（`fitSvgLine` 的 fontSize 上限），字顶按字号估。
+        expect(bottom, "dot reaches the shared footnote baseline band").toBeLessThan(FOOTNOTE_BASELINE_Y - 20)
+        expect(bottom).toBeLessThan(FOOTER_DIVIDER_Y)
+      }
+    }
+  })
+
+  it("不画任何左竖条", () => {
+    for (const slide of DRAWN_SLIDES) {
+      const { root } = draw("academic", slide)
+      for (const r of Array.from(root.querySelectorAll("rect"))) {
+        expect(num(r, "width") < 40 && num(r, "height") > 30, `narrow-tall bar rendered: ${r.outerHTML}`).toBe(false)
+      }
+      for (const l of Array.from(root.querySelectorAll("line"))) {
+        const vertical = num(l, "x1") === num(l, "x2") && Math.abs(num(l, "y2") - num(l, "y1")) > 30
+        expect(vertical, `vertical bar rendered: ${l.outerHTML}`).toBe(false)
+      }
+    }
+  })
+
+  it("换一家 tokens 渲染时颜色跟着换，academic 的色一处不残留（零 hex 纪律的实证）", () => {
+    const consulting = resolveStyle("consulting")
+    const ctx = buildCtx(consulting, {})
+    const { markup } = render(<RailMotif ir={ir("consulting")} slide={contentSlide} ctx={ctx} />)
+    expect(markup).toContain(consulting.colors.primary)
+    expect(markup).toContain(consulting.colors.accent)
+    for (const hex of ["#F5F3EC", "#FCFBF6", "#0E6245", "#A8861D", "#23251F", "#62655B", "#DDD9C8"]) {
+      expect(markup, `academic token ${hex} leaked into the consulting render`).not.toContain(hex)
+    }
+  })
+
+  it("装饰位置写死：换 seed（filename）输出逐字节不变（v1 的三档 seed 变体已删）", () => {
+    const ctx = buildCtx(resolveStyle("academic"), {})
+    const markups = new Set(
+      Array.from({ length: 12 }, (_, i) =>
+        renderSvgMarkup(
+          <RailMotif ir={{ ...ir("academic"), filename: `probe-${i}.pptx` } as PptxIR} slide={contentSlide} ctx={ctx} />,
+        ),
+      ),
+    )
+    expect(markups.size).toBe(1)
+  })
+
+  it("Decor body passes subset validation", () => {
+    for (const slide of [...DRAWN_SLIDES, chapterSlide]) {
+      expect(() => assertSubset(draw("academic", slide).root)).not.toThrow()
+    }
   })
 })

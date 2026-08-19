@@ -324,7 +324,7 @@ describe("ConstellationEnding", () => {
     const markup = renderSvgMarkup(
       <ConstellationEnding ir={ir("enterprise", slide)} slide={slide} index={0} ctx={ctx} />,
     )
-    expect(markup).toContain('<tspan fill="#002FA7">.</tspan>')
+    expect(markup).toContain('<tspan fill="#E85D1F">.</tspan>')
   })
 
   // T2 review correction, controller-adjudicated: the fallback ink changed

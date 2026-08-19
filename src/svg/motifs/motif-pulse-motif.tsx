@@ -1,123 +1,84 @@
 import type { DecorProps } from "./types"
-import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * pulse-motif（themes-16 wave, task T1）：医疗健康主题专属装饰
- * 语言——**细脉搏线**（ECG 心跳线：贯穿的细折线，平直基线中夹一段
- * QRS 波形尖峰）+ **圆润胶囊/细胞圆点簇**（药丸形状 + 大小错落的圆点，
- * 部分空心描边像细胞膜）。克制布置，参考 classroom-motif 的角落策略：
- * cover/ending 强档（角落簇 + 一条横贯脉搏线），content 极轻（单角小簇，
- * 无脉搏线），chapter 完全退让（rail-chapter 自带底部进度点轨 + 巨幅居中
- * 标题压满整页主色块，可用空间已被正文区占满，同 classroom 的 chrome
- * 碰撞铁律判断——不叠加）。
- * 颜色取 ctx.colors（primary/accent/chartPalette），零 baked hex。实色
- * path/rect/circle + opacity（无渐变无 filter，预览/导出一致）。LCG 确定性
- * （cachedDeckSeed + pickBySeed，同 classroom-motif 先例）。
+ * pulse-motif v2 —— 「脉搏线」（2026-08-20 冷调组皮肤重设计，设计源
+ * `.issues/2026-08-18-theme-redesign/skins/group3-cool-boards.dc.html` 的
+ * pulse 设计表，几何坐标逐条抄录，不派生）。
+ *
+ * 换掉的东西：v1 是三档 seed 变体，每档在两个角上摆「胶囊（药丸形圆角矩形，
+ * 带旋转角）＋大小错落的细胞圆点/空心圈」，再加一条跨全宽、按 170px 周期
+ * 重复的 ECG 折线（`ecgPath`），content 另有一套弱档。心跳一页上响八次，
+ * 药丸横七竖八地飘在角落——那是「医疗元素堆料」，不是诊疗的清洁感。v2 只
+ * 留两件，位置写死：
+ *   - **顶缘一条极细心电线**：y30 的一条基线，x48→1232，只在近 x1060 处
+ *     搏一次（Q 谷 y42、R 峰 y18，尖峰限在 y18-42），其余全程平直。一整页
+ *     一次心搏，比八次更像心电图。
+ *   - **右缘细胞轮廓点簇**：x1245 上三枚空心圆（r9/r6/r4，y310/360/404），
+ *     细胞膜的线描，收到页缘只占一条窄带。
+ * 胶囊图形整族退役（设计板 pulse 的结构行是 light 档，「light 档仅此两件」
+ * 是板上原话）。两件都走 accent（浅青），v1 里 `chartPalette` 的天青/砂灰
+ * 取色一并退出——motif 读 `chartPalette` 是有先例的坑
+ * （`motif-chart-palette-isolation.test.tsx` 的文件头记着 campaign/
+ * classroom/bloom 三家被图表调色板轮转悄悄改色的那次 Major）。
+ *
+ * chapter 继续完全退让（`return null`，v1 起就是如此，理由本轮更硬）：
+ * pulse 的 chapter 默认底色是整版 primary 青绿（`themes/pulse.ts` 的
+ * `defaultBackgrounds.chapter`），而本 motif 两件东西都走 accent 浅青
+ * ——浅青压青绿实测 1.90:1，画上去不是「克制」而是「看不见」。八个 chapter
+ * layout 又都在这块整版色上画巨幅居中标题，可用净空本就零碎。两条理由
+ * 同向，chapter 不画。
+ *
+ * 安全区（设计板上四条红虚线禁区）：标题区 (96,48,1040×122)、正文区
+ * (96,200,1040×420)、页脚 meta 带 (48,664,1184×44)、右下 logo 盒
+ * (1120,630,96×40)。
+ *   - 心电线纵向极值 y18（R 峰）到 y42（Q 谷），整条在标题区上沿 y48 之上；
+ *     横向 x48-1232 从顶带下方穿过右上 logo 带（1120,48,96×40）的上方。
+ *   - 细胞圈 x1236-1254（最大一枚 r9），在标题区/正文区右沿 x1136 之外；
+ *     y301-408 与正文区纵向重叠，但横向完全不相交。
+ *   - 设计板坐标一处未改。
+ *
+ * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
+ * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
+ *
+ * 纪律：零 theme id、零 hex，颜色只来自 ctx（accent = 浅青）。本 motif 是
+ * pulse 独占的单成员候选集（`motif-selection.ts` 的 `MOTIF_CANDIDATES`），
+ * 没有别的主题借用它。
  */
 
-/** ECG 脉搏线：平直基线 + 周期性 QRS 尖峰（Q 小凹、R 主峰、S 回落），跨宽度 w 重复。 */
-function ecgPath(x: number, y: number, w: number, amp: number): string {
-  const period = 170
-  const beats = Math.max(1, Math.round(w / period))
-  let d = `M ${x} ${y}`
-  for (let i = 0; i < beats; i++) {
-    const bx = x + i * period
-    d += ` L ${bx + 42} ${y}`
-    d += ` L ${bx + 54} ${y + amp * 0.28}`
-    d += ` L ${bx + 66} ${y - amp}`
-    d += ` L ${bx + 78} ${y + amp * 1.15}`
-    d += ` L ${bx + 92} ${y}`
-    d += ` L ${bx + period} ${y}`
-  }
-  return d
-}
+// ── 顶缘心电线 ──────────────────────────────────────────────────────────
+/**
+ * 一条基线 + 近 x1060 处的一次心搏。设计板逐点抄录：平直段 y30，
+ * Q 谷 (1052,18)/R 峰 (1066,42) 的先后顺序按板上原样（先上冲后回落）。
+ */
+const ECG_POINTS = "48,30 1020,30 1040,30 1052,18 1066,42 1078,30 1232,30"
+const ECG_STROKE = 1.5
 
-/** 圆润胶囊（药丸形）：rx=h/2 全圆角矩形，可选旋转角度。 */
-function capsule(cx: number, cy: number, w: number, h: number, angle: number, color: string, opacity: number) {
-  return (
-    <rect
-      x={cx - w / 2}
-      y={cy - h / 2}
-      width={w}
-      height={h}
-      rx={h / 2}
-      ry={h / 2}
-      fill={color}
-      opacity={opacity}
-      transform={`rotate(${angle} ${cx} ${cy})`}
-    />
-  )
-}
+// ── 右缘细胞轮廓点簇 ────────────────────────────────────────────────────
+const CELL_X = 1245
+const CELLS: readonly { cy: number; r: number }[] = [
+  { cy: 310, r: 9 },
+  { cy: 360, r: 6 },
+  { cy: 404, r: 4 },
+]
+const CELL_STROKE = 1.2
 
-/** 实心细胞圆点。 */
-function cellDot(cx: number, cy: number, r: number, color: string, opacity: number) {
-  return <circle cx={cx} cy={cy} r={r} fill={color} opacity={opacity} />
-}
-
-/** 空心细胞圆点（细胞膜线描）。 */
-function cellRing(cx: number, cy: number, r: number, color: string, opacity: number) {
-  return <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={1.6} opacity={opacity} />
-}
-
-export function PulseMotif({ ir, slide, ctx }: DecorProps) {
-  const { primary, accent, chartPalette } = ctx.colors
-  const [, , sky, sand] = chartPalette
-
-  // chapter 全部 8 个 layout 都在整页满版 primary 色块上画巨幅居中标题
-  // （部分还带右下角编号水印/底部进度轨），可用净空本就零碎——同
-  // classroom-motif 的 chrome 碰撞判断，chapter 完全退让，不额外叠加装饰。
+export function PulseMotif({ slide, ctx }: DecorProps) {
+  // chapter 是整版 primary 青绿底，本 motif 两件东西都是 accent 浅青——
+  // 画上去看不见（见文件头）。
   if (slide.type === "chapter") return null
 
-  if (slide.type === "content") {
-    // 弱档：右上角小胶囊+细胞点簇，贴角低调，不设脉搏线（正文区优先）。
-    return (
-      <>
-        {capsule(1224, 40, 64, 24, -18, sky, 0.16)}
-        {cellDot(1272, 84, 10, accent, 0.18)}
-        {cellRing(1244, 100, 14, primary, 0.2)}
-        {cellDot(30, 686, 8, sand, 0.2)}
-      </>
-    )
-  }
+  const mint = ctx.colors.accent
 
-  const variant = pickBySeed(cachedDeckSeed(ir), "pulse-decor", ["a", "b", "c"] as const)
-
-  if (variant === "b") {
-    // 左下角胶囊簇 + 顶部横贯脉搏线（细，克制）。
-    return (
-      <>
-        <path d={ecgPath(0, 56, 1280, 14)} fill="none" stroke={primary} strokeWidth={2} strokeLinejoin="round" opacity={0.22} />
-        {capsule(70, 660, 96, 32, 20, primary, 0.14)}
-        {capsule(150, 700, 70, 26, -30, sky, 0.16)}
-        {cellDot(210, 640, 12, accent, 0.2)}
-        {cellRing(1200, 660, 20, sand, 0.24)}
-        {cellDot(1240, 700, 9, primary, 0.18)}
-      </>
-    )
-  }
-  if (variant === "c") {
-    // 右下角胶囊簇 + 底部横贯脉搏线。
-    return (
-      <>
-        <path d={ecgPath(0, 664, 1280, 12)} fill="none" stroke={accent} strokeWidth={2} strokeLinejoin="round" opacity={0.2} />
-        {capsule(1210, 70, 90, 30, -15, primary, 0.14)}
-        {capsule(1130, 30, 64, 24, 25, sand, 0.18)}
-        {cellDot(1250, 130, 11, sky, 0.2)}
-        {cellRing(60, 90, 18, primary, 0.2)}
-        {cellDot(24, 40, 8, accent, 0.2)}
-      </>
-    )
-  }
-  // a：两角胶囊/细胞簇 + 中段横贯脉搏线（cover/ending 主构图）。
   return (
     <>
-      <path d={ecgPath(0, 608, 1280, 15)} fill="none" stroke={primary} strokeWidth={2} strokeLinejoin="round" opacity={0.22} />
-      {capsule(1216, 54, 100, 32, -20, primary, 0.14)}
-      {cellDot(1264, 106, 12, accent, 0.2)}
-      {cellRing(1180, 96, 16, sky, 0.22)}
-      {capsule(64, 666, 76, 28, 18, sand, 0.18)}
-      {cellDot(30, 700, 9, primary, 0.2)}
-      {cellRing(150, 686, 14, accent, 0.2)}
+      {/* 顶缘心电线 */}
+      <polyline points={ECG_POINTS} fill="none" stroke={mint} strokeWidth={ECG_STROKE} />
+      {/* 右缘细胞轮廓点簇 */}
+      <g fill="none" stroke={mint} strokeWidth={CELL_STROKE}>
+        {CELLS.map((c) => (
+          <circle key={c.cy} cx={CELL_X} cy={c.cy} r={c.r} />
+        ))}
+      </g>
     </>
   )
 }

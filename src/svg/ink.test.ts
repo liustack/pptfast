@@ -6,7 +6,11 @@ import { accessibleInk, accessibleOpacity, contrastRatio, metaInk, readableOn, r
 // used to live in that layout's test file, now testing the shared
 // module directly.
 describe("readableOn", () => {
-  it("dark background (academic primary #006A4E) gets white ink", () => {
+  // `#006A4E` is academic's pre-cool-group primary (the theme moved to
+  // `#0E6245` in the 2026-08-20 skin redesign). Kept as a real measured
+  // fixture for `readableOn`'s own behaviour, not as a claim about today's
+  // token — same for the other `#006A4E`/`#FAFAF6` fixtures further down.
+  it("dark background (academic's pre-cool-group primary #006A4E) gets white ink", () => {
     expect(readableOn("#006A4E")).toBe("#FFFFFF")
   })
 
