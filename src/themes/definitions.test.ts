@@ -689,9 +689,13 @@ describe("registerTheme: unmeasured-font-width console.warn", () => {
   // resolve to a non-exact face, or (b) starts routing builtins through
   // `registerTheme`, fails loudly here instead of silently starting to spam
   // every consumer.
-  it("regression: bloom/ink/journal/runway/vermilion's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
+  // 2026-08-19 深底组皮肤重设计给 luxe 换了衬线标题（`SimSun` 打头，请柬
+  // 气质），SimSun 不在 `EXACT_TABLE_FOR` 的两张精确宽度表里（只有 Georgia
+  // 和 Microsoft YaHei 有），所以 luxe 加入这份名单——与 ink 换楷体时同一
+  // 条代价：标题宽度改由 class-average 包络估，保守一档。
+  it("regression: bloom/ink/journal/luxe/runway/vermilion's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const nonExactHeadingBuiltins = new Set(["bloom", "ink", "journal", "runway", "vermilion"])
+    const nonExactHeadingBuiltins = new Set(["bloom", "ink", "journal", "luxe", "runway", "vermilion"])
     for (const id of CANONICAL_THEME_IDS) {
       const style = THEME_DEFINITIONS[id].style
       const headingFace = resolveFontFace(style.fonts.heading, "heading")

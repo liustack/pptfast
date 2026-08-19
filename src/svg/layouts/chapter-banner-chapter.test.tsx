@@ -134,7 +134,7 @@ describe("BannerChapter", () => {
     const out = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
 
     // token 化成立：装饰线走 tech 的 accent，不是写死的 consulting YELLOW
-    expect(out).toContain("#2DD4E6") // tech accent
+    expect(out).toContain("#53E0D2") // tech accent
     expect(out).not.toContain("#FFC72C") // consulting accent 不得残留
     expect(out).not.toContain("#051C2C") // consulting primary 不得残留
 

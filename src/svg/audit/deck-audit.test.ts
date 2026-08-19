@@ -180,7 +180,19 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
     expect(svg).toContain("#6A737D")
   })
 
-  it("architecture.tsx's theme-derived primary-on-panel pairing is a rounding distance under 4.5:1 on insight", () => {
+  // 2026-08-19 深底组皮肤重设计把 insight 的 `primary` 从正红 `#E63946`
+  // 换成墨蓝 `#16202B`（设计稿把 primary 定义成让位给 accent 的色块底色）。
+  // 这处配对因此从「差一点点」变成「差很远」：原来是 `#E63946` 压面板约
+  // 4.4:1，现在是 `#16202B` 压 surface `#171C22` 的 1.04:1。
+  //
+  // 仍留在这个「已理解的既有低对比来源」块里，而不是升级成缺陷：本轮之前
+  // 它就已经是一条 low-contrast finding（这条断言本身就是证据），数量没有
+  // 新增。但根因值得写明——`architecture.tsx` 把 `colors.primary` 当**文字**
+  // 色用，而深底组重新定义后的 primary 是近乎背景色的色块底。同一根因的
+  // 另外两处（`cover-banner-title.tsx` / `ending-banner-ending.tsx`）本轮
+  // 已改走 `accessibleInk`，因为那两处是**新增**的 finding；这一处是既有的，
+  // 连同其余九个同样把 primary 当文字用的 component 一起留给下一棒裁决。
+  it("architecture.tsx's theme-derived primary-on-panel pairing is far under 4.5:1 on insight (1.04:1 since the dark-group redesign)", () => {
     const ir = deck("insight", [
       {
         type: "content",
@@ -189,7 +201,7 @@ describe("auditDeck — understood pre-existing low-contrast sources (not audit 
       },
     ])
     const contrast = auditDeck(ir).findings.filter((f) => f.code === "low-contrast")
-    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#E63946")).toBe(true)
+    expect(contrast.some((f) => (f.detail as { fill?: string })?.fill === "#16202B")).toBe(true)
   })
 })
 
@@ -1816,26 +1828,42 @@ describe("findContrastIssues — text painted on a decor shape resolves against 
     // consulting cases below, which still collide.
     expect(contrastFindings(quarterly("ink")).filter((f) => f.page === 1)).toEqual([])
     // Differential, so "no finding" can't be mistaken for "attribution went
-    // blind": the very same page still reports tech's collision (below), and
-    // ink's own seal fill would still fail if it were under the run —
+    // blind": ink's own seal fill would still fail if it were under the run —
     // `#686056` on `#C3272B` is the 1.07:1 that used to be reported here.
+    //
+    // 2026-08-19: this used to also point at tech's collision "below" as a
+    // live example on the same page. That example is gone — tech's `primary`
+    // (the fill of the decor square the date lands on) was redesigned from a
+    // bright cyan to a dark navy, which took the same geometric collision
+    // from 1.70:1 to 5.80:1. The collision still happens; it just reads fine
+    // now. See that test for the arithmetic.
     expect(contrastRatio("#686056", "#C3272B")).toBeCloseTo(1.073, 3)
   })
 
-  it("tech: the same cover slot reports ~1.70:1 against the motif's own corner square", () => {
-    // Same layout slot, different motif: a 24px `#2DD4E6` accent square at
-    // (1200, 624). Its bottom edge clears the date's baseline by 2px — an
-    // even narrower miss for a point test than ink's, and the same wrong
-    // answer before this fix. `.issues/2026-08-17-spatial-contract/design.md`
-    // §4 names the shared cause: four themes' motifs each land on the *same*
-    // bottom-right slot of this one cover layout, so this is the layout's
-    // defect, not any single motif's.
+  it("tech: the same cover slot now clears the floor against the motif's own corner square (1.70:1 -> 5.80:1)", () => {
+    // Same layout slot, same motif (`enterprise-motif`'s 24px square at
+    // (1200, 624), filled `colors.primary`), same geometric collision: its
+    // bottom edge clears the date's baseline by 2px.
+    // `.issues/2026-08-17-spatial-contract/design.md` §4 names the shared
+    // cause — four themes' motifs each land on the *same* bottom-right slot
+    // of this one cover layout, so this is the layout's defect, not any
+    // single motif's. That defect is untouched and still worth its own fix.
+    //
+    // What changed on 2026-08-19 is the color, not the geometry: 深底组皮肤
+    // 重设计 split tech's `primary` away from its `accent` (both used to be
+    // the same `#2DD4E6`) and made primary a dark navy `#14294A`. The date
+    // line is `colors.muted`, so the pairing went from muted-on-bright-cyan
+    // (1.70:1) to muted-on-dark-navy (5.80:1) and the honest verdict here is
+    // now silence.
     const findings = contrastFindings(quarterly("tech")).filter((f) => f.page === 1)
-    expect(findings).toHaveLength(1)
-    const detail = findings[0].detail as { text: string; background: string; ratio: number }
-    expect(detail.text).toBe("2026-08-15")
-    expect(detail.background).toBe("#2DD4E6")
-    expect(detail.ratio).toBeCloseTo(1.700, 3)
+    expect(findings).toEqual([])
+    // Pinned arithmetic, so "no finding" can't be mistaken for "attribution
+    // went blind" — the reason for the silence is a real measurement, and the
+    // old failing number is kept alongside it so a future token change that
+    // walks tech back under the floor is recognisable as a return, not a
+    // novelty.
+    expect(contrastRatio("#93A5C0", "#14294A")).toBeCloseTo(5.799, 3)
+    expect(contrastRatio("#8A94A6", "#2DD4E6")).toBeCloseTo(1.700, 3)
   })
 
   it("consulting: the same collision measures 3.26:1 against its decor square — a real pairing that clears the 3:1 floor, so no finding", () => {

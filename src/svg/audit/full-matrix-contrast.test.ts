@@ -447,13 +447,21 @@ describe("fashion-masthead meta line contrast (contrast-policy wave, metaInk mig
     })
   }
 
-  // insight is the one theme the pre-migration composite (`fg` at 60%
-  // opacity over `colors.primary`) measured under 3:1 (2.886:1) — a real,
-  // previously-uncaught defect the migration fixes, not a rendering
-  // regression. Pinned exactly (task-1-report.md's measurement) so a future
-  // token change to insight's `primary` that silently regresses this is
-  // caught here specifically, not just by the generic >=3 loop above.
-  it("insight: the pre-migration composite genuinely failed 3:1 (2.886:1) — metaInk corrects it to ~3.094:1, not just barely/accidentally", () => {
+  // History: insight used to be the one theme whose pre-migration composite
+  // (`fg` at 60% opacity over `colors.primary`) measured under 3:1 —
+  // 2.886:1, with `metaInk` correcting it to 3.094:1. That was a property of
+  // insight's old mid-tone red primary `#E63946`: a 92%-white ink over a
+  // mid-tone ground lands close to that ground.
+  //
+  // 2026-08-19 深底组皮肤重设计 moved insight's `primary` to the near-black
+  // `#16202B` (the design board defines primary as a quiet banner/block
+  // ground so `accent` can lead — see `themes/insight.ts`). A near-black
+  // ground puts insight in the same family as consulting/ink/journal, and the
+  // composite jumps to 6.72:1. This test keeps its original job — catch a
+  // silent regression in insight's `primary` by name rather than only
+  // through the generic >=3 loop above — and now pins the post-redesign
+  // numbers instead of the pre-redesign ones.
+  it("insight: the composite clears 3:1 with room (6.72:1) now that primary is near-black — pinned by name so a future primary change is caught here", () => {
     const ir = mastheadDeck("insight")
     const svg = renderSlideSvg(ir, 0)
     const root = parseSvgRoot(svg)
@@ -462,9 +470,9 @@ describe("fashion-masthead meta line contrast (contrast-policy wave, metaInk mig
     )!
     const fill = metaText.getAttribute("fill")
     const primary = THEME_DEFINITIONS.insight.style.colors.primary
-    expect(primary).toBe("#E63946")
-    expect(fill).toBe("#591d26")
-    expect(contrastRatio(fill!, primary)).toBeCloseTo(3.094, 2)
+    expect(primary).toBe("#16202B")
+    expect(contrastRatio(fill!, primary)).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(fill!, primary)).toBeCloseTo(6.72, 1)
   })
 })
 
@@ -534,24 +542,39 @@ describe("split-diagonal org kicker contrast (B-tier reclassification)", () => {
   // insight is the whole reason this block exists — pinned exactly so a
   // future recalibration of insight's `primary` that silently moves this
   // number is caught here by name, not just by the generic >=3 loop.
-  it("insight: the composite really does sit at 4.409:1 — under the 4.5:1 body floor it used to be graded against, comfortably over the 3:1 tier it belongs to", () => {
+  //
+  // Until 2026-08-19 insight's old red primary `#E63946` put this composite
+  // at 4.409:1 — inside the [3, 4.5) band, which is what made the B-tier
+  // reclassification necessary in the first place. 深底组皮肤重设计 moved
+  // `primary` to the near-black `#16202B`, and the composite went to
+  // 14.044:1. The reclassification is still the right call (it is what the
+  // kicker's *tier* is, not what one theme's numbers happen to be), but
+  // insight is no longer the theme that demonstrates the band.
+  it("insight: the composite now sits at 14.044:1 — the near-black primary took it clear of the [3, 4.5) band it used to demonstrate", () => {
     const primary = THEME_DEFINITIONS.insight.style.colors.primary
-    expect(primary).toBe("#E63946")
+    expect(primary).toBe("#16202B")
     const fill = kicker("insight").getAttribute("fill")!
-    expect(fill).toBe("#1c1118")
-    expect(contrastRatio(fill, primary)).toBeCloseTo(4.409, 3)
-    expect(contrastRatio(fill, primary)).toBeLessThan(4.5)
+    expect(fill).toBe("#ecedee")
+    expect(contrastRatio(fill, primary)).toBeCloseTo(14.044, 2)
   })
 
   // Scope pin: insight was the only theme that ever failed here, so the fix
   // must not read as "16 themes were quietly repaired too". Every other
   // theme already cleared 4.5:1 before the reclassification and still does.
-  it("insight was the only theme under the old 4.5:1 body floor — the other 16 were and remain above it", () => {
+  //
+  // 2026-08-19: the list is now empty. insight was the last member and it
+  // left by having its `primary` redesigned to a near-black (深底组皮肤重
+  // 设计), not by anything this block does. The assertion is kept — and kept
+  // as an exact list rather than a `toHaveLength(0)` — because its job is
+  // unchanged: say out loud which themes sit under the old body floor, so
+  // that a future token change putting one back in the band shows up here as
+  // a named diff instead of passing quietly.
+  it("no theme sits under the old 4.5:1 body floor — insight, the last one, left when its primary went near-black", () => {
     const below = CANONICAL_THEME_IDS.filter((themeId) => {
       const primary = THEME_DEFINITIONS[themeId].style.colors.primary
       return contrastRatio(blendOver(readableOn(primary), primary, 0.92), primary) < 4.5
     })
-    expect(below).toEqual(["insight"])
+    expect(below).toEqual([])
   })
 
   // Why `metaInk` is in the call at all, given it returns its input for all

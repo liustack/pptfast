@@ -63,7 +63,7 @@ describe("BannerTitleCover", () => {
   it("tech tokens 下用 tech 的色（证明 token 化成立，无 baked hex）", () => {
     const ctx = buildCtx(resolveStyle("tech"), {})
     const out = renderSvgMarkup(<BannerTitleCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
-    expect(out).toContain("#2DD4E6") // tech accent
+    expect(out).toContain("#53E0D2") // tech accent
     expect(out).not.toContain("#FFC72C") // consulting accent 不得残留
   })
 

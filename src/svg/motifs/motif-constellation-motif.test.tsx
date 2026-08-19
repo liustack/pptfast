@@ -11,212 +11,209 @@ const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } a
 const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
+const ALL_SLIDES = [coverSlide, chapterSlide, contentSlide, endingSlide]
 
-const bgImages: PptxIR["assets"]["images"] = {
-  bg: { src: "data:image/png;base64,iVBOR", alt: "背景" },
-}
-const coverWithColorBg: Slide = { ...coverSlide, background: { kind: "color", value: "#123456" } } as Slide
-const coverWithGradientBg: Slide = {
-  ...coverSlide,
-  background: { kind: "gradient", from: "#111111", to: "#222222" },
-} as Slide
-const coverWithAssetBg: Slide = {
-  ...coverSlide,
-  background: { kind: "asset", asset_id: "bg", fit: "cover" },
-} as Slide
-const coverWithBrokenAssetBg: Slide = {
-  ...coverSlide,
-  background: { kind: "asset", asset_id: "missing", fit: "cover" },
-} as Slide
+/** BrandChrome 的四个 logo 盒 + 设计稿的标题/正文禁区右缘。 */
+const LOGO_BR = { x: 1120, y: 630, w: 96, h: 40 }
+const BODY_ZONE_RIGHT = 96 + 1040 // 版心右缘 x1136
+const TITLE_ZONE_TOP = 48
 
-function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
-  return {
+const ir = (theme: string): PptxIR =>
+  ({
     version: "3",
-    filename: "deck.pptx",
+    filename: "x.pptx",
     theme: { id: theme },
     meta: {},
-    assets: { images },
+    assets: { images: {} },
     slides: [coverSlide],
-  } as unknown as PptxIR
-}
+  }) as unknown as PptxIR
 
-function render(body: React.ReactElement): Element {
+function render(body: React.ReactElement): { markup: string; root: Element } {
   const markup = renderSvgMarkup(
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
       {body}
     </svg>,
   )
-  return parseSvgRoot(markup)
+  return { markup, root: parseSvgRoot(markup) }
 }
 
-// BrandChrome's brand logo bands — same constants templates/tech.test.tsx
-// used to verify the ending signature motif never collides with the corner
-// logos.
-const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
-const TR_LOGO = { x: 1120, y: 48, w: 96, h: 40 }
-const BL_LOGO = { x: 64, y: 630, w: 96, h: 40 }
-const BR_LOGO = { x: 1120, y: 630, w: 96, h: 40 }
-const LOGO_BANDS = [TL_LOGO, TR_LOGO, BL_LOGO, BR_LOGO]
-
-function rectsOverlap(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number },
-): boolean {
-  return (
-    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
-  )
+function draw(theme: string, slide: Slide, deck?: Partial<PptxIR>) {
+  const ctx = buildCtx(resolveStyle(theme), {})
+  return { ...render(<ConstellationMotif ir={{ ...ir(theme), ...deck } as PptxIR} slide={slide} ctx={ctx} />), ctx }
 }
 
-// Captured once from the (now-retired) legacy `BentoTechDecor` — locks the
-// byte-identical output the port preserved, without importing templates/.
-// cover/chapter/content all render the same "gradient field only" markup —
-// Decor's output depends only on slide.type (for the ending-motif toggle),
-// nothing else slide-specific.
-const GRADIENT_ONLY_MARKUP =
-  '<defs><linearGradient id="decor-tech-field" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#04070E"></stop><stop offset="100%" stop-color="#0A1220"></stop></linearGradient></defs><rect x="0" y="0" width="1280" height="720" fill="url(#decor-tech-field)"></rect>'
-const GRADIENT_WITH_ENDING_MOTIF_MARKUP =
-  '<defs><linearGradient id="decor-tech-field" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#04070E"></stop><stop offset="100%" stop-color="#0A1220"></stop></linearGradient></defs><rect x="0" y="0" width="1280" height="720" fill="url(#decor-tech-field)"></rect><polyline points="1080,108 1140,140 1196,118" fill="none" stroke="#2DD4E6" stroke-width="1" stroke-opacity="0.25"></polyline><circle cx="1080" cy="108" r="3" fill="#2DD4E6"></circle><circle cx="1140" cy="140" r="3" fill="#2DD4E6"></circle><circle cx="1196" cy="118" r="3" fill="#2DD4E6"></circle>'
+const circles = (root: Element) => Array.from(root.querySelectorAll("circle"))
+/** 节点 = 有 fill 的圆；轨道弧 = fill="none" 的大圆。 */
+const nodes = (root: Element) => circles(root).filter((c) => c.getAttribute("fill") !== "none")
+const orbits = (root: Element) => circles(root).filter((c) => c.getAttribute("fill") === "none")
 
-// 档位判定：见 motif-constellation-motif.tsx 文件头"孤儿色归属裁决"——渐变两
-// 个 stop 色在 tech token 表里无精确匹配，判定为私有装饰常量保留，故 Decor
-// 段为**档位二・观感等价**（Content 段随本任务已提炼进 content-bento-panel.tsx，
-// 是档位一）。在 tech 自己的 tokens 下渲染输出恰好仍与旧 BentoTechDecor 逐
-// 字节相同（私有常量值本就原样保留，未做任何映射），故下面仍用固化的字面量
-// 常量锁死，同 motif-tone-adaptive-motif.tsx 先例的精神一致。
-describe("ConstellationMotif", () => {
-  it.each([
-    ["cover", coverSlide, GRADIENT_ONLY_MARKUP],
-    ["chapter", chapterSlide, GRADIENT_ONLY_MARKUP],
-    ["content", contentSlide, GRADIENT_ONLY_MARKUP],
-    ["ending", endingSlide, GRADIENT_WITH_ENDING_MOTIF_MARKUP],
-  ] as const)(
-    "tech tokens 下 %s slide（无显式背景）与旧 BentoTechDecor 输出逐字节一致",
-    (_label, slide, expected) => {
-      const ctx = buildCtx(resolveStyle("tech"), {})
-      const deck = ir("tech")
-
-      const next = renderSvgMarkup(<ConstellationMotif ir={deck} slide={slide} ctx={ctx} />)
-      expect(next).toBe(expected)
-    },
-  )
-
-  it("装饰几何：无显式背景时渲染 1 个 135° 对角渐变 + 1 个满页 rect，跨 slide.type 装饰未隐形", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
-    const deck = ir("tech")
-
-    for (const slide of [coverSlide, chapterSlide, contentSlide, endingSlide]) {
-      const root = render(<ConstellationMotif ir={deck} slide={slide} ctx={ctx} />)
-      const gradient = root.querySelector("linearGradient")
-      expect(gradient).not.toBeNull()
-      expect(gradient?.getAttribute("x1")).toBe("0")
-      expect(gradient?.getAttribute("y1")).toBe("0")
-      expect(gradient?.getAttribute("x2")).toBe("1")
-      expect(gradient?.getAttribute("y2")).toBe("1")
-
-      const stops = Array.from(root.querySelectorAll("stop"))
-      expect(stops).toHaveLength(2)
-      expect(stops[0]?.getAttribute("offset")).toBe("0%")
-      expect(stops[1]?.getAttribute("offset")).toBe("100%")
-      // 装饰未隐形：孤儿渐变色原样保留，跨 slide.type 稳定出现，且与
-      // ctx.colors.bg（活的 token）不同——证明这是独立于 bg 的固定装饰值。
-      expect(stops[0]?.getAttribute("stop-color")).toBe("#04070E")
-      expect(stops[1]?.getAttribute("stop-color")).toBe("#0A1220")
-      expect(stops[0]?.getAttribute("stop-color")).not.toBe(ctx.colors.bg)
-
-      const rect = root.querySelector("rect")
-      expect(rect).not.toBeNull()
-      expect(rect?.getAttribute("width")).toBe("1280")
-      expect(rect?.getAttribute("height")).toBe("720")
-      expect(rect?.getAttribute("fill")).toContain("url(#")
+/**
+ * constellation-motif v2「星座链」（2026-08-19 深底组皮肤重设计）。
+ * 设计源：`.issues/2026-08-18-theme-redesign/skins/group1-dark-boards.dc.html`
+ * 的 tech 设计表。
+ */
+describe("ConstellationMotif（星座链 v2）", () => {
+  it("不再画满页渐变场：无 defs / linearGradient / url(#) 填充，主题自己的背景不再被遮死", () => {
+    for (const slide of ALL_SLIDES) {
+      const { markup } = draw("tech", slide)
+      expect(markup).not.toContain("linearGradient")
+      expect(markup).not.toContain("<defs")
+      expect(markup).not.toContain("url(#")
+      // 也不再有任何满页 rect
+      expect(markup).not.toContain('width="1280"')
     }
   })
 
-  it("只有 ending 额外叠加 3 点签名星座（polyline + 3 circle，accent 色），cover/chapter/content 都没有", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
-    const deck = ir("tech")
-
-    for (const slide of [coverSlide, chapterSlide, contentSlide]) {
-      const root = render(<ConstellationMotif ir={deck} slide={slide} ctx={ctx} />)
-      expect(root.querySelectorAll("polyline")).toHaveLength(0)
-      expect(root.querySelectorAll("circle")).toHaveLength(0)
-    }
-
-    const endingRoot = render(<ConstellationMotif ir={deck} slide={endingSlide} ctx={ctx} />)
-    expect(endingRoot.querySelectorAll("polyline")).toHaveLength(1)
-    const dots = Array.from(endingRoot.querySelectorAll("circle"))
-    expect(dots).toHaveLength(3)
-    dots.forEach((d) => {
-      expect(d.getAttribute("r")).toBe("3")
-      expect(d.getAttribute("fill")).toBe(ctx.colors.accent)
-    })
-    const line = endingRoot.querySelector("polyline")!
-    expect(line.getAttribute("stroke")).toBe(ctx.colors.accent)
-    expect(line.getAttribute("stroke-opacity")).toBe("0.25")
+  it("两个旧的孤儿渐变 stop 常量随渐变场一并删除（本文件回到零 hex）", () => {
+    const { markup } = draw("tech", coverSlide)
+    expect(markup).not.toContain("#04070E")
+    expect(markup).not.toContain("#0A1220")
   })
 
-  it("ending's smaller signature motif sits clear of all four BrandChrome logo bands", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
-    const deck = ir("tech")
-    const root = render(<ConstellationMotif ir={deck} slide={endingSlide} ctx={ctx} />)
-    const dots = Array.from(root.querySelectorAll("circle"))
-    expect(dots).toHaveLength(3)
-    for (const dot of dots) {
-      const box = {
-        x: Number(dot.getAttribute("cx")) - 3,
-        y: Number(dot.getAttribute("cy")) - 3,
-        w: 6,
-        h: 6,
+  it("页面有显式背景时不再整块消失——该判断随渐变场一起删了（与 ink/luxe 等其余 motif 一致）", () => {
+    const withBg = {
+      slides: [coverSlide],
+    }
+    const bgSlide = { ...coverSlide, background: { kind: "color", value: "#123456" } } as Slide
+    const { root } = draw("tech", bgSlide, withBg)
+    expect(nodes(root).length).toBeGreaterThan(0)
+  })
+
+  it("四种页型都画右缘节点链：主链 + 三条支链，连线走 border", () => {
+    const tokens = resolveStyle("tech")
+    for (const slide of ALL_SLIDES) {
+      const { root } = draw("tech", slide)
+      const chains = Array.from(root.querySelectorAll("polyline"))
+      expect(chains).toHaveLength(4)
+      for (const c of chains) {
+        expect(c.getAttribute("stroke")).toBe(tokens.colors.border)
+        expect(c.getAttribute("fill")).toBe("none")
+        expect(c.getAttribute("stroke-width")).toBe("1.5")
       }
-      for (const band of LOGO_BANDS) {
-        expect(rectsOverlap(box, band)).toBe(false)
+      // 主链七个折点
+      expect(chains[0].getAttribute("points")!.trim().split(/\s+/)).toHaveLength(7)
+    }
+  })
+
+  it("节点分三档着色：accent / chartPalette[1] / chartPalette[2]，疏星走 muted", () => {
+    const t = resolveStyle("tech")
+    const { root } = draw("tech", contentSlide)
+    const fills = nodes(root).map((c) => c.getAttribute("fill"))
+    expect(fills.filter((f) => f === t.colors.accent).length).toBe(7) // 5 枚 + 2 圈辉光
+    expect(fills.filter((f) => f === t.colors.chartPalette[1]).length).toBe(5) // 4 枚 + 1 圈辉光
+    expect(fills.filter((f) => f === t.colors.chartPalette[2]).length).toBe(1)
+    expect(fills.filter((f) => f === t.colors.muted).length).toBe(4) // 顶带疏星
+  })
+
+  it("双轨道弧只进 cover / chapter，圆心在页外右上", () => {
+    for (const slide of [coverSlide, chapterSlide]) {
+      const { root } = draw("tech", slide)
+      const arcs = orbits(root)
+      expect(arcs).toHaveLength(2)
+      for (const a of arcs) {
+        expect(a.getAttribute("cx")).toBe("1420")
+        expect(a.getAttribute("cy")).toBe("140")
+        expect(a.getAttribute("stroke")).toBe(resolveStyle("tech").colors.border)
+      }
+      expect(arcs.map((a) => a.getAttribute("r"))).toEqual(["430", "310"])
+    }
+    for (const slide of [contentSlide, endingSlide]) {
+      expect(orbits(draw("tech", slide).root)).toHaveLength(0)
+    }
+  })
+
+  it("安全区：节点链整条在版心右缘 x1136 之外，且链底让开右下 logo 盒", () => {
+    const { root } = draw("tech", contentSlide)
+    const chainNodes = nodes(root).filter((c) => Number(c.getAttribute("cy")) > 40)
+    expect(chainNodes.length).toBeGreaterThan(0)
+    let lowest = 0
+    for (const c of chainNodes) {
+      const cx = Number(c.getAttribute("cx"))
+      const cy = Number(c.getAttribute("cy"))
+      const r = Number(c.getAttribute("r"))
+      expect(cx - r, `node at ${cx} reaches into the body zone`).toBeGreaterThan(BODY_ZONE_RIGHT)
+      lowest = Math.max(lowest, cy + r)
+    }
+    expect(lowest, "chain bottom must clear the br logo box").toBeLessThan(LOGO_BR.y)
+
+    // 连线折点同样全在版心之外
+    for (const pl of Array.from(root.querySelectorAll("polyline"))) {
+      for (const pair of pl.getAttribute("points")!.trim().split(/\s+/)) {
+        const [x, y] = pair.split(",").map(Number)
+        expect(x).toBeGreaterThan(BODY_ZONE_RIGHT)
+        expect(y + 1).toBeLessThan(LOGO_BR.y)
       }
     }
   })
 
-  it("hasExplicitBackground 三种显式背景（color/gradient/有效 asset）均跳过渲染，返回空 fragment（与旧 BentoTechDecor 逐字节等价）", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
-    const ctxWithImg = buildCtx(resolveStyle("tech"), bgImages)
-    const deckPlain = ir("tech")
-    const deckWithImg = ir("tech", bgImages)
-
-    for (const [slide, useCtx, deck] of [
-      [coverWithColorBg, ctx, deckPlain],
-      [coverWithGradientBg, ctx, deckPlain],
-      [coverWithAssetBg, ctxWithImg, deckWithImg],
-    ] as const) {
-      const next = renderSvgMarkup(<ConstellationMotif ir={deck} slide={slide} ctx={useCtx} />)
-      expect(next).toBe("")
-      expect(next).not.toContain("linearGradient")
-      expect(next).not.toContain("<rect")
+  it("安全区：顶带疏星压在标题区上沿之上", () => {
+    const { root } = draw("tech", contentSlide)
+    const stars = nodes(root).filter((c) => c.getAttribute("fill") === resolveStyle("tech").colors.muted)
+    expect(stars).toHaveLength(4)
+    for (const s of stars) {
+      expect(Number(s.getAttribute("cy")) + Number(s.getAttribute("r"))).toBeLessThan(TITLE_ZONE_TOP)
     }
   })
 
-  it("asset 背景解析失败（缺资源）时 hasExplicitBackground 仍判假，退回渲染渐变场——与旧 BentoTechDecor 行为一致", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
-    const deck = ir("tech")
-
-    const next = renderSvgMarkup(<ConstellationMotif ir={deck} slide={coverWithBrokenAssetBg} ctx={ctx} />)
-    expect(next).toBe(GRADIENT_ONLY_MARKUP)
-    expect(next).toContain("linearGradient")
+  it("换一家 tokens 渲染时颜色整体跟着换，tech 的色一处不残留（零 hex 纪律的实证）", () => {
+    const consulting = resolveStyle("consulting")
+    const ctx = buildCtx(consulting, {})
+    const { markup } = render(
+      <ConstellationMotif ir={ir("consulting")} slide={coverSlide} ctx={ctx} />,
+    )
+    expect(markup).toContain(consulting.colors.accent)
+    expect(markup).toContain(consulting.colors.border)
+    for (const hex of ["#0A0F1E", "#121A30", "#14294A", "#53E0D2", "#EAF1FA", "#93A5C0", "#24304A"]) {
+      expect(markup, `tech token ${hex} leaked into consulting render`).not.toContain(hex)
+    }
   })
 
-  it("Decor markup passes assertSubset (fill=url() resolves to a declared gradient)", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
-    const deck = ir("tech")
-    const root = render(<ConstellationMotif ir={deck} slide={coverSlide} ctx={ctx} />)
-    expect(() => assertSubset(root)).not.toThrow()
+  it("读 chartPalette 但不随 chartPaletteOffset 轮转（装饰不因页码变色）", () => {
+    const tokens = resolveStyle("tech")
+    const markups = new Set(
+      Array.from({ length: tokens.colors.chartPalette.length }, (_, offset) =>
+        renderSvgMarkup(
+          <ConstellationMotif
+            ir={ir("tech")}
+            slide={coverSlide}
+            ctx={buildCtx(tokens, {}, undefined, undefined, undefined, offset)}
+          />,
+        ),
+      ),
+    )
+    expect(markups.size).toBe(1)
   })
 
-  it("consulting tokens 下 ending 星座随主题走 ctx.colors.accent（证明真正 token 化），装饰性孤儿渐变色跨主题保持不变（未被并入任何 consulting token）", () => {
-    const consultingTheme = resolveStyle("consulting")
-    const ctx = buildCtx(consultingTheme, {})
-    const deck = ir("consulting")
-    const out = renderSvgMarkup(<ConstellationMotif ir={deck} slide={endingSlide} ctx={ctx} />)
+  it("装饰位置写死：换 seed（filename）输出逐字节不变", () => {
+    const ctx = buildCtx(resolveStyle("tech"), {})
+    const markups = new Set(
+      Array.from({ length: 12 }, (_, i) =>
+        renderSvgMarkup(
+          <ConstellationMotif
+            ir={{ ...ir("tech"), filename: `probe-${i}.pptx` } as PptxIR}
+            slide={coverSlide}
+            ctx={ctx}
+          />,
+        ),
+      ),
+    )
+    expect(markups.size).toBe(1)
+  })
 
-    expect(out).toContain(ctx.colors.accent as string) // consulting 的 accent 驱动 ending 星座
-    expect(ctx.colors.accent).not.toBe("#2DD4E6") // tech 自己的电光青 accent 不得残留
-    // 装饰豁免色是文件私有常量，不随主题变化——跨主题依然渲染同一对 hex
-    expect(out).toContain("#04070E")
-    expect(out).toContain("#0A1220")
+  it("不画任何左竖条", () => {
+    for (const slide of ALL_SLIDES) {
+      const { root } = draw("tech", slide)
+      for (const r of Array.from(root.querySelectorAll("rect"))) {
+        const w = Number(r.getAttribute("width"))
+        const h = Number(r.getAttribute("height"))
+        expect(w < 40 && h > 30, `narrow-tall bar rendered: ${r.outerHTML}`).toBe(false)
+      }
+    }
+  })
+
+  it("Decor body passes subset validation", () => {
+    for (const slide of ALL_SLIDES) {
+      expect(() => assertSubset(draw("tech", slide).root)).not.toThrow()
+    }
   })
 })

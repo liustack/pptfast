@@ -1,6 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { layoutSvgText } from "../../lib/svg-text-layout"
+import { accessibleInk } from "../ink"
 import { CONF_LABEL } from "../../lib/conf-labels"
 
 /**
@@ -16,8 +17,21 @@ import { CONF_LABEL } from "../../lib/conf-labels"
  * （68→96），不动 accent 条自身的 40/8。这是本文件与旧模板唯一的几何差异
  * ——cover-banner-title.test.tsx 里对旧模板的 toBe 逐字节断言相应改为观感
  * 等价断言（结构/文本/token 化仍锁），详见该测试文件注释。
+ *
+ * 2026-08-19（深底组皮肤重设计）：四处以 `colors.primary` 作**文字**色的
+ * 填充改走 `accessibleInk`。起因是深底组把 primary 从「亮色主色」改成
+ * 「与底几乎同色的横幅/色块底色」（设计稿的角色定义，见 `themes/tech.ts`
+ * 的「承 readableOn 反白」一条），本版式却把 primary 直接当页面底色上的
+ * 文字用——insight/tech/luxe 三家的大标题因此掉到 1.08-1.28:1。
+ * `accessibleInk` 对「本来就过线」的配对是逐字节 no-op（见其自身注释），
+ * 实测其余 14 家 primary 压各自背景 3.09-19.80:1，全部过 3:1，输出不变。
+ * 装饰用的 primary（标题下的短粗条、密级框描边）不动——那是色块与描边，
+ * 归 `motif-candidate-contrast.test.ts` 的装饰可见度地板管，不归文字对比度管。
  */
 export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
+  // 本版式不画自己的背景面板，文字直接压在页面级背景上——与
+  // ending-banner-ending.tsx 同一条 `ctx.defaultBg ?? colors.bg` 回退。
+  const pageBg = ctx.defaultBg ?? ctx.colors.bg
   const title = layoutSvgText(slide.heading, {
     maxWidth: 1088,
     fontSize: 84,
@@ -84,7 +98,7 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
             y="0"
             fontFamily={ctx.fonts.body}
             fontSize="32"
-            fill={ctx.colors.primary}
+            fill={accessibleInk(ctx.colors.primary, pageBg, 32)}
             letterSpacing="2"
             dominantBaseline="alphabetic"
           >
@@ -112,7 +126,7 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
             y="131"
             fontFamily={ctx.fonts.body}
             fontSize="26"
-            fill={ctx.colors.primary}
+            fill={accessibleInk(ctx.colors.primary, pageBg, 26)}
             textAnchor="middle"
             dominantBaseline="alphabetic"
           >
@@ -130,7 +144,7 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
           fontFamily={ctx.fonts.heading}
           fontSize={title.fontSize}
           fontWeight="600"
-          fill={ctx.colors.primary}
+          fill={accessibleInk(ctx.colors.primary, pageBg, title.fontSize)}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -180,7 +194,7 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
             fontSize="26"
             dominantBaseline="alphabetic"
           >
-            {authorText && <tspan fill={ctx.colors.primary}>{authorText}</tspan>}
+            {authorText && <tspan fill={accessibleInk(ctx.colors.primary, pageBg, 26)}>{authorText}</tspan>}
             {date && (
               <tspan fill={ctx.colors.muted}>{`${authorText ? "    ·    " : ""}${date}`}</tspan>
             )}

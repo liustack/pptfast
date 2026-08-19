@@ -45,9 +45,9 @@ const CJK_LONG =
 // Captured once from the (now-retired) legacy `BentoTechChapter` — locks the
 // byte-identical output the port preserved, without importing templates/.
 const CHAPTER_TECH_1_MARKUP =
-  '<text x="96" y="400" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="160" font-weight="700" fill="#2DD4E6" dominant-baseline="alphabetic">01</text><text x="320" y="392" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="56" font-weight="600" fill="#F2F6FA" dominant-baseline="alphabetic">第一部分：市场洞察</text><line x1="96" y1="560" x2="1184" y2="560" stroke="#2C3140" stroke-width="1.4"></line>'
+  '<text x="96" y="400" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="160" font-weight="700" fill="#53E0D2" dominant-baseline="alphabetic">01</text><text x="320" y="392" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="56" font-weight="600" fill="#EAF1FA" dominant-baseline="alphabetic">第一部分：市场洞察</text><line x1="96" y1="560" x2="1184" y2="560" stroke="#24304A" stroke-width="1.4"></line>'
 const CHAPTER_TECH_2_MARKUP =
-  '<text x="96" y="400" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="160" font-weight="700" fill="#2DD4E6" dominant-baseline="alphabetic">02</text><text x="320" y="392" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="56" font-weight="600" fill="#F2F6FA" dominant-baseline="alphabetic">第二部分：技术路线图</text><text x="320" y="448" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" fill="#8A94A6" dominant-baseline="alphabetic">面向 2027 的演进方向</text><line x1="96" y1="560" x2="1184" y2="560" stroke="#2C3140" stroke-width="1.4"></line>'
+  '<text x="96" y="400" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="160" font-weight="700" fill="#53E0D2" dominant-baseline="alphabetic">02</text><text x="320" y="392" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="56" font-weight="600" fill="#EAF1FA" dominant-baseline="alphabetic">第二部分：技术路线图</text><text x="320" y="448" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" fill="#93A5C0" dominant-baseline="alphabetic">面向 2027 的演进方向</text><line x1="96" y1="560" x2="1184" y2="560" stroke="#24304A" stroke-width="1.4"></line>'
 
 describe("ConstellationChapter", () => {
   it("tech tokens 下与旧 BentoTechChapter 输出逐字节一致（档位一，含章节序号）", () => {
@@ -74,7 +74,7 @@ describe("ConstellationChapter", () => {
       <ConstellationChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />,
     )
     expect(out).toContain("#FFC72C") // consulting accent
-    expect(out).not.toContain("#2DD4E6") // tech accent 不得残留
+    expect(out).not.toContain("#53E0D2") // tech accent 不得残留
   })
 
   it("renders markup that passes assertSubset (no forbidden elements)", () => {

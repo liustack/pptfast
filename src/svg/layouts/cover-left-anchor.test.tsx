@@ -65,21 +65,25 @@ describe("LeftAnchorCover", () => {
     expect(out).toContain("#004C38")
   })
 
-  it("tech tokens 下用 tech 的 primary/accent 色，标题对比度自适应出深字，装饰三角豁免跨主题保持不变（证明 token 化成立）", () => {
+  it("tech tokens 下用 tech 的 primary/accent 色，标题对比度自适应出反白，装饰三角豁免跨主题保持不变（证明 token 化成立）", () => {
     const techTokens = resolveStyle("tech")
     const ctx = buildCtx(techTokens, {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
 
-    expect(out).toContain("#2DD4E6") // tech primary === accent
+    // 深底组皮肤重设计（2026-08-19）把 tech 的 primary 与 accent 拆成两个色，
+    // 此前它们同值、一条断言就够，现在两个角色各锁一条。
+    expect(out).toContain("#14294A") // tech primary，40% 宽通栏色块
+    expect(out).toContain("#53E0D2") // tech accent，org 圆点
     expect(out).not.toContain("#006A4E") // academic primary 不得残留
-    // W4 fix round: 标题不再固定纯白——design decision 8 的实测发现白字 on
-    // tech 亮青 primary（#2DD4E6）只有 ~1.80:1，一度靠策展排除
-    // （COVER_WITHOUT_LEFT_ANCHOR）处理。改用 readableOn(colors.primary) 后
-    // tech 落中性深墨（#0A0E14，对比度 ~10.75:1），不再出现纯白。
+    // W4 fix round: 标题墨色由 readableOn(colors.primary) 挑，不是写死的纯白。
+    // 当时 tech 的 primary 还是亮青（白字压上去只有 ~1.80:1），挑出来的是中性
+    // 深墨；深底组重设计把 primary 换成深蓝（`themes/tech.ts`：「横幅重新承得
+    // 起反白」），同一个 readableOn 现在挑回纯白，实测 14.52:1。断言锁的仍是
+    // 「墨色由 readableOn 决定」，只是钉的值随 token 换了一边。
     const expectedInk = readableOn(techTokens.colors.primary)
-    expect(expectedInk).toBe("#0A0E14")
+    expect(expectedInk).toBe("#FFFFFF")
     expect(out).toContain(`fill="${expectedInk}"`)
-    expect(out).not.toContain('fill="#FFFFFF"')
+    expect(out).not.toContain('fill="#0A0E14"') // 另一半墨色不得同时出现
     // 装饰豁免色是文件私有常量，不随主题变化——跨主题依然渲染同一个 hex
     expect(out).toContain("#004C38")
   })

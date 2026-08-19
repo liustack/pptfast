@@ -106,7 +106,7 @@ describe("RailChapter", () => {
 
     // 白字例外：固定纯白，不随主题变化
     expect(out).toContain('fill="#FFFFFF"')
-    // tech 的 surface 是深色（#0A101C），若被误映射会让文字在深色背景上隐形
+    // tech 的 surface 是深色（#121A30），若被误映射会让文字在深色背景上隐形
     expect(ctx.colors.surface).not.toBe("#FFFFFF")
     expect(out).not.toContain(ctx.colors.surface as string)
     // academic 自己的烤死色不得残留（本函数本就不消费 ctx.colors，属于回归锁）

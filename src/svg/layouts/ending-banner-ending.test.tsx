@@ -91,8 +91,14 @@ describe("BannerEnding", () => {
       <BannerEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
     )
 
-    expect(out).toContain("#2DD4E6") // tech primary === accent，用在标题/org 圆点/分隔线上
-    expect(out).toContain("#8A94A6") // tech muted，用在副标题/联系标签上
+    // 深底组皮肤重设计（2026-08-19）把 primary 与 accent 拆成两个色，此前它们
+    // 同值、一条断言就够，现在两个角色各锁一条。同一轮把本版式三处「primary
+    // 当文字用」的填充改走 accessibleInk（见 ending-banner-ending.tsx 文件头），
+    // 深蓝 primary 压深底只有 1.x:1，标题/org 标签/联系值因此落到反白。
+    expect(out).toContain("#14294A") // tech primary，用在分隔线上
+    expect(out).toContain("#53E0D2") // tech accent，用在 org 圆点上
+    expect(out).toContain('fill="#FFFFFF"') // accessibleInk 兜出的反白，用在标题/org 标签/联系值上
+    expect(out).toContain("#93A5C0") // tech muted，用在副标题/联系标签上
 
     // consulting 的烤死 token 值不得残留
     expect(out).not.toContain("#051C2C")
@@ -100,15 +106,16 @@ describe("BannerEnding", () => {
     expect(out).not.toContain("#6C6C6C")
     expect(out).not.toContain("#D5D5CB")
 
-    // 版权行派生自 tech 自己的 colors.muted（#8A94A6 对 tech ending 背景
-    // #0D1526 已经 5.96:1，clears B 层，metaInk 原样保留）——跟上一个测试
+    // 版权行派生自 tech 自己的 colors.muted（#93A5C0 对本例真正渲染到的底
+    // colors.bg #0A0F1E 实测 7.622:1，压 ending 默认渐变更严的起点 #0E1630
+    // 也有 7.128:1，clears B 层，metaInk 原样保留）——跟上一个测试
     // consulting 断言的 #6B6B6B 不是同一个 hex，证明这是随主题派生，不是
     // 跨主题固定不变的孤儿色。
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
     const copyrightText = Array.from(root.querySelectorAll("text")).find(
       (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
     )!
-    expect(copyrightText.getAttribute("fill")).toBe("#8A94A6")
+    expect(copyrightText.getAttribute("fill")).toBe("#93A5C0")
     expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 
@@ -123,17 +130,19 @@ describe("BannerEnding", () => {
       <BannerEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
     )
 
-    expect(out).toContain("#E63946") // insight primary，用在标题/分隔线上
-    expect(out).toContain("#D4A57C") // insight accent，用在 org 圆点上
-    expect(out).toContain("#93939C") // insight muted，用在副标题/联系标签上
+    expect(out).toContain("#16202B") // insight primary，用在分隔线上
+    expect(out).toContain("#F0A63C") // insight accent，用在 org 圆点上
+    expect(out).toContain('fill="#FFFFFF"') // accessibleInk 兜出的反白，用在标题/org 标签/联系值上
+    expect(out).toContain("#9AA7B4") // insight muted，用在副标题/联系标签上
 
-    // 版权行派生自 insight 自己的 colors.muted（#93939C 对 insight ending
-    // 背景 #0A0A0C 实测 6.494:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
+    // 版权行派生自 insight 自己的 colors.muted（#9AA7B4 对本例真正渲染到的底
+    // colors.bg #0F1216 实测 7.654:1，压 ending 默认渐变更严的起点 #151B23
+    // 也有 7.058:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
     const copyrightText = Array.from(root.querySelectorAll("text")).find(
       (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
     )!
-    expect(copyrightText.getAttribute("fill")).toBe("#93939C")
+    expect(copyrightText.getAttribute("fill")).toBe("#9AA7B4")
     expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 
@@ -144,17 +153,18 @@ describe("BannerEnding", () => {
       <BannerEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
     )
 
-    expect(out).toContain("#D4B876") // luxe primary，用在标题/分隔线上
-    expect(out).toContain("#A67B45") // luxe accent，用在 org 圆点上
-    expect(out).toContain("#9C9386") // luxe muted，用在副标题/联系标签上
+    expect(out).toContain("#171310") // luxe primary，用在分隔线上
+    expect(out).toContain("#C6A15B") // luxe accent，用在 org 圆点上
+    expect(out).toContain('fill="#FFFFFF"') // accessibleInk 兜出的反白，用在标题/org 标签/联系值上
+    expect(out).toContain("#A89A82") // luxe muted，用在副标题/联系标签上
 
-    // 版权行派生自 luxe 自己的 colors.muted（#9C9386 对 luxe ending 背景
-    // #161310 实测 6.108:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
+    // 版权行派生自 luxe 自己的 colors.muted（#A89A82 对 luxe ending 背景
+    // #0B0908 实测 7.200:1，远超 B 层 3:1 门槛，metaInk 原样保留）。
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
     const copyrightText = Array.from(root.querySelectorAll("text")).find(
       (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
     )!
-    expect(copyrightText.getAttribute("fill")).toBe("#9C9386")
+    expect(copyrightText.getAttribute("fill")).toBe("#A89A82")
     expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 

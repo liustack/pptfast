@@ -1,70 +1,165 @@
 import type { DecorProps } from "./types"
-import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * poster-motif（spec §3.2，Wave 3 Task 20）：一个共享的角落
- * 径向渐变光晕（不透明中心 → 透明边缘的单一 gradient def，强弱两档全靠
- * `<circle>` 自身的 `opacity` 承载——svg2pptx 的 `withElementOpacity` 会在
- * 导出时把元素自身 opacity 折进每个 stop，等价于直接把 12%/6% 烤进 stop，
- * 省一份要保持同步的 gradient 定义）：
- *   - cover/chapter（"强"）：右上角，cx=1150 cy=80 r=420，opacity 0.12。
- *   - content/ending（"弱"，ending 与 content 同款）：同一 gradient 镜像到
- *     右下角，cx=1150 cy=640 r=300，opacity 0.06（cy 80→640 是跨页面纵向
- *     中心的镜像）。
- *   - Cover 额外（"另加"）在左下角叠一个小光点装饰——一个实心圆点 + 两圈
- *     纯描边的同心环；chapter 没有这个额外装饰，因为它只是 cover 专属的
- *     叠加物，不是第二档"强"元素。
- * 自 templates/creative.tsx 的 `EditorialDarkDecor`（846-885 行，Step A 用
- * `grep -n` 实测边界——比 brief 给出的 846-894（EOF）短，888-894 行是文件尾
- * `creativeTemplate` 导出对象，已按任务要求排除，不属于本函数体）提炼。
- * 随迁 helper：模块级私有常量 `GLOW_GRADIENT_ID`/`GLOW_MOTIF_CX`/
- * `GLOW_MOTIF_CY`（源文件 841-844 行，只被本函数消费，随函数体一并复制为
- * 本文件私有常量，不建公共 util）——纯几何/id 值，不是颜色，不进替换表。
+ * poster-motif —— insight 的「行情语汇」（2026-08-19 深底组皮肤重设计，
+ * 设计源 `.issues/2026-08-18-theme-redesign/skins/group1-dark-boards.dc.html`
+ * 的 insight 设计表，几何坐标逐条抄录，不派生）。
  *
- * 替换表（Step B，逐行核对函数体）：**无**——函数体内没有任何烤死的
- * 十六进制颜色常量，唯一出现的颜色表达式是 `ctx.colors.accent`，本就是
- * 直接消费 token（径向渐变的两个 stop 色、Cover 专属光点装饰的圆点/描边色
- * 均如此），从未烤死过。故无孤儿色，也没有需要做映射决策的替换。
+ * 换掉的东西：v2 只剩 cover 左下/右下一枚同心光点（三档 seed 变体），那是
+ * 「深底 + 左竖条 + 左上标题」时期的残留签名——一枚点既撑不起主题识别，也
+ * 与 insight 的财经语域没有关系。covers-review 把深底三家共用一张脸记成本轮
+ * 的反面基线，insight 的处方是把装饰整个换成行情屏的语汇：
  *
- * **档位一・逐字节等价**（函数区间内无烤死主题常量需要映射）。
+ *   - **顶缘行情带**（四种页型都画）：y28 / y42 两条横贯细线（border 色，
+ *     2px / 1px），线上五枚琥珀刻度齿（x128/368/608/848/1088，y24-32）。
+ *     行情屏顶部的刻度尺，也是这套语言里唯一「有节奏」的元素。
+ *   - **基线面积线**（四种页型都画）：页面下缘一道行情走线 + 12% 琥珀
+ *     面积填充，左起 x48。
+ *   - **幽灵季度水印**（仅 cover）：430px 的季度字样压在版心，5% 琥珀——
+ *     大到不像字、淡到不参与判读的一层底纹。字样从 `ir.meta.date` 推，
+ *     推不出就整块不画（见 `quarterLabel`）。
  *
- * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
+ * 安全区：四个内容区是标题区 (96,48,1040×122)、正文区 (96,200,1040×420)、
+ * 页脚 meta 带 (48,664,1184×44)、右下 logo 盒 (1120,630,96×40)。
+ *   - 行情带 y24-42 全程在标题区上沿 y48 之上。
+ *   - 基线面积线右端**在 x1100 收笔**（主会话裁定，设计稿原稿画到 x1232）：
+ *     原稿右端会从 logo 盒 (1120,630,96×40) 正中穿过去，x1100 让出 20px。
+ *     `motif-poster-motif.test.tsx` 锁死这条线——把右端改回 1232 测试立刻红。
+ *   - 面积填充 12% / 水印 5% 都低于 `deck-audit.ts` 的 `MIN_BG_OPACITY`
+ *     (0.5)，永远不会被当成某段文字的背景去判对比度（ink v3 一角残山的
+ *     同一条形式化说法）。
+ *
+ * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线
+ * （装饰位置做内容感知会让 seed 的修订稳定性失效）。v2 的三档 seed 变体
+ * 因此一并删除。
+ *
+ * 纪律：零 theme id、零 hex，颜色全部来自 ctx（border / accent 两个角色）。
  */
-const GLOW_MOTIF_CX = 200
-const GLOW_MOTIF_CY = 560
+
+// ── 顶缘行情带（设计稿坐标，逐条抄录） ──────────────────────────────────
+const BAND_X1 = 48
+const BAND_X2 = 1232
+const BAND_LINE_Y_TOP = 28
+const BAND_LINE_Y_BOTTOM = 42
+const BAND_STROKE_TOP = 2
+const BAND_STROKE_BOTTOM = 1
+/** 刻度齿：等距五枚，跨在 y28 那条线上（y24-32）。 */
+const TICK_XS = [128, 368, 608, 848, 1088]
+const TICK_Y1 = 24
+const TICK_Y2 = 32
+const TICK_STROKE = 2
+
+// ── 基线面积线 ──────────────────────────────────────────────────────────
+/**
+ * 走线折点（设计稿逐点抄录）。右端**止于 x1100**：设计稿原稿的最后两点
+ * (1170,590) 与 (1232,596) 会让走线从 logo 盒 (1120,630,96×40) 上方穿过并
+ * 一路画到页缘，主会话裁定提前收笔。收笔点 x1100 距 logo 盒左缘 x1120
+ * 留 20px。
+ */
+const BASELINE_POINTS: readonly (readonly [number, number])[] = [
+  [48, 642], [120, 646], [190, 634], [260, 640], [330, 622], [400, 632],
+  [470, 618], [540, 626], [610, 608], [680, 618], [750, 604], [820, 612],
+  [890, 598], [960, 608], [1030, 594], [1100, 602],
+]
+/** 面积填充的下缘（走线与它之间填 12% 琥珀）。 */
+const BASELINE_FLOOR = 656
+const BASELINE_STROKE = 2
+const BASELINE_LINE_OPACITY = 0.8
+const BASELINE_FILL_OPACITY = 0.12
+
+// ── 幽灵季度水印（仅 cover） ────────────────────────────────────────────
+const WATERMARK_X = 640
+const WATERMARK_Y = 560
+const WATERMARK_SIZE = 430
+const WATERMARK_WEIGHT = 700
+const WATERMARK_OPACITY = 0.05
 
 /**
- * 构图变体（2026-07-10 装饰多样性推广；2026-07-12 用户裁决**径向光晕
- * 全部移除**——预览里 0.06-0.12 透明度几乎不可见，导出后渐变在 Office
- * 渲染变实变硬非常难看，预览/导出观感不一致的装饰不留）：仅保留 cover
- * 同心光点签名（清晰的小元素，两端一致），a/c=左下、b=右下镜像。
- * chapter 的装饰由 roman-chapter 版式自带的圆弧承担，content/ending
- * 不画（正文页克制）。
+ * `ir.meta.date` → 季度字样（`Q1`…`Q4`），推不出就返回 undefined。
+ *
+ * 沿用 `motif-ink-motif.tsx` 的 `colophonDateGlyphs` 同一条纪律：`meta.date`
+ * 在 IR 里是自由字符串（schema 不约束格式），所以只认「四位年 + 非数字分隔
+ * + 一到两位月」这一种能确定读懂的形状，读不懂就整块不画。封面上印一个
+ * 猜错的季度，比不印季度糟得多——这也是设计稿里写死 "Q2" 不能照抄的原因。
  */
+function quarterLabel(date: string | undefined): string | undefined {
+  const m = /^(\d{4})\D+(\d{1,2})(?:\D|$)/.exec(date ?? "")
+  if (!m) return undefined
+  const month = Number(m[2])
+  if (month < 1 || month > 12) return undefined
+  return `Q${Math.floor((month - 1) / 3) + 1}`
+}
+
+const areaPath = (points: readonly (readonly [number, number])[]): string => {
+  const first = points[0]
+  const last = points[points.length - 1]
+  const mid = points.map(([x, y]) => `L ${x} ${y}`).join(" ")
+  return `M ${first[0]} ${BASELINE_FLOOR} ${mid} L ${last[0]} ${BASELINE_FLOOR} Z`
+}
+
 export function PosterMotif({ ir, slide, ctx }: DecorProps) {
   const { colors } = ctx
-  const variant = pickBySeed(cachedDeckSeed(ir), "poster-decor", ["a", "b", "c"] as const)
-  const dotCx = variant === "b" ? 1280 - GLOW_MOTIF_CX : GLOW_MOTIF_CX
+  const quarter = slide.type === "cover" ? quarterLabel(ir.meta.date) : undefined
 
-  if (slide.type !== "cover") return null
   return (
     <>
-      <circle cx={dotCx} cy={GLOW_MOTIF_CY} r="6" fill={colors.accent} />
-      <circle
-        cx={dotCx}
-        cy={GLOW_MOTIF_CY}
-        r="12"
-        fill="none"
-        stroke={colors.accent}
-        strokeOpacity="0.2"
+      {/* 幽灵季度水印：先画，压在所有行情语汇之下。5% 透明度远低于
+          MIN_BG_OPACITY(0.5)，不参与任何对比度判读。 */}
+      {quarter && (
+        <text
+          x={WATERMARK_X}
+          y={WATERMARK_Y}
+          fontFamily={ctx.fonts.heading}
+          fontSize={WATERMARK_SIZE}
+          fontWeight={WATERMARK_WEIGHT}
+          fill={colors.accent}
+          opacity={WATERMARK_OPACITY}
+          textAnchor="middle"
+        >
+          {quarter}
+        </text>
+      )}
+
+      {/* 顶缘行情带：双细线。用 <line> 不用 <path>——纯水平 <path> 会被
+          svg2pptx 转成包围盒零高度的 custGeom，package-audit 的
+          invalid-shape-transform 硬门拒收（luxe-motif 建这道门时的实测缺陷）。 */}
+      <line
+        x1={BAND_X1}
+        y1={BAND_LINE_Y_TOP}
+        x2={BAND_X2}
+        y2={BAND_LINE_Y_TOP}
+        stroke={colors.border}
+        strokeWidth={BAND_STROKE_TOP}
       />
-      <circle
-        cx={dotCx}
-        cy={GLOW_MOTIF_CY}
-        r="18"
+      <line
+        x1={BAND_X1}
+        y1={BAND_LINE_Y_BOTTOM}
+        x2={BAND_X2}
+        y2={BAND_LINE_Y_BOTTOM}
+        stroke={colors.border}
+        strokeWidth={BAND_STROKE_BOTTOM}
+      />
+      {/* 琥珀刻度齿（竖向 <line>，同上理由） */}
+      {TICK_XS.map((x) => (
+        <line
+          key={`tick-${x}`}
+          x1={x}
+          y1={TICK_Y1}
+          x2={x}
+          y2={TICK_Y2}
+          stroke={colors.accent}
+          strokeWidth={TICK_STROKE}
+        />
+      ))}
+
+      {/* 基线面积线：12% 填充 + 80% 走线 */}
+      <path d={areaPath(BASELINE_POINTS)} fill={colors.accent} opacity={BASELINE_FILL_OPACITY} />
+      <polyline
+        points={BASELINE_POINTS.map(([x, y]) => `${x},${y}`).join(" ")}
         fill="none"
         stroke={colors.accent}
-        strokeOpacity="0.08"
+        strokeWidth={BASELINE_STROKE}
+        opacity={BASELINE_LINE_OPACITY}
       />
     </>
   )

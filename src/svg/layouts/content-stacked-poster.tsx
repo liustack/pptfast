@@ -237,7 +237,7 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
           fontFamily={ctx.fonts.body}
           fontSize={sectionLabel.fontSize}
           fontWeight="600"
-          fill={ctx.colors.primary}
+          fill={accessibleInk(ctx.colors.primary, ctx.defaultBg ?? ctx.colors.bg, sectionLabel.fontSize)}
           letterSpacing="4"
           dominantBaseline="alphabetic"
         >

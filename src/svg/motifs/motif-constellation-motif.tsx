@@ -1,179 +1,188 @@
 import type { DecorProps } from "./types"
-import { cachedDeckSeed, pickBySeed } from "../variety"
 
 /**
- * constellation-motif（spec §3.2，Wave 3 Task 22，motif 段收尾）：
- * 全页 135° 对角深空渐变场，充当所有 slide.type 共用的默认底色纹理（同其余
- * 5 个已提炼 motif 的"渐变场 + hasExplicitBackground 跳过"骨架），Ending
- * 页型额外叠加一个小号 3 点星座签名 motif（Cover 自己的 9 点大星座画在
- * Cover 页型自己的函数体内，已在 Wave 1 Task 提炼为 `cover-constellation.tsx`，
- * 与本 Decor 无关，详见下方"关联但不随迁"一节）。自 templates/tech.tsx 的
- * `BentoTechDecor`
- * （1418-1459 行，Step A 用 `grep -n` 实测边界——与 brief 给出的 1418-1467
- * EOF 不同：1461 行起是空行 + eslint-disable 注释 + 文件尾 `TECH_TEMPLATES`
- * 导出对象，已按任务要求排除，不属于本函数体）提炼，随迁其依赖的
- * `hasExplicitBackground`（1405-1416 行，Step A 实测边界，私有复制，签名/
- * 实现原样不变，同 poster-motif.tsx / tone-adaptive-motif.tsx 等已提炼
- * motif 先例）与两个模块级私有常量：`GRADIENT_FIELD_ID`（1366 行，渐变 def
- * 的 id 字符串）、`ENDING_MOTIF_POINTS`（1389-1393 行，Ending 专属 3 点星座
- * 坐标几何，IR 无关的纯常量）。
+ * constellation-motif —— tech 的「星座链 v2」（2026-08-19 深底组皮肤重设计，
+ * 设计源 `.issues/2026-08-18-theme-redesign/skins/group1-dark-boards.dc.html`
+ * 的 tech 设计表，几何坐标逐条抄录，不派生）。
  *
- * 关联但不随迁：源文件另有 `COVER_MOTIF_POINTS`/`COVER_MOTIF_HERO_POINT`
- * （687-700 行）与三个不透明度/描边宽度常量，那些是 `BentoTechCover`（Cover
- * 页型的函数体，非 Decor）消费的星座几何——已在 Wave 1 Task 提炼
- * `cover-constellation.tsx` 时随迁为该文件私有常量（同名常量各自私有复制，
- * 两份拷贝不共享、不冲突，同 chapter-constellation-chapter.tsx 与本文件互不
- * 依赖的既有模式）。本文件与 `cover-constellation.tsx`/
- * `chapter-constellation-chapter.tsx` 均不互相 import——三者都不 import
- * `../templates/tech`。
+ * 删掉的两件东西，逐条交代去向，免得后来人当成漏搬：
+ *   - **满页对角渐变场**（`decor-tech-field` + 两个私有 stop 常量
+ *     `#04070E`/`#0A1220`）：删。这块 rect 盖在 `Background` 之上、整页
+ *     不透明，等于把主题自己的 `defaultBackgrounds` 遮死——tech 的渐变底
+ *     从来没被人看见过，改 `tech.ts` 的背景也不会有任何观感变化。本轮设计
+ *     稿把背景渐变（`#0E1630` → `#070B16`）明确划给 token，装饰只负责星
+ *     链，两边职责因此分清。顺带这也是本文件仅有的两处烤死 hex 的出处，
+ *     删掉后本文件回到「零 hex」纪律，不再需要 grep 门的豁免。
+ *   - **`hasExplicitBackground` 提前返回**：删。它存在的唯一理由是保护
+ *     slide 自带的背景不被上面那块满页 rect 盖掉（见其原注释）。rect 没了，
+ *     这个判断也就没有了保护对象——留着反而让 tech 成为唯一一个「页面有
+ *     自定义背景就整块装饰消失」的主题，而 ink / luxe / poster 等其余
+ *     motif 从来不做这个判断。cover/chapter 的整图接管本就由
+ *     `full-slide-svg.tsx` 的 `imageCoverTakeover` 拦在外面，不归 motif 管。
+ *   - **Ending 专属 3 点星座 + 三档 seed 变体**（`ENDING_MOTIF_POINTS`
+ *     a/b/c）：删。散点是本轮的反面基线本身——「满场随机散点」被设计稿
+ *     收编成下面这条固定的右缘节点链，四种页型同一份几何。
  *
- * 替换表（Step B）：Step A 对 1405-1459 行区间执行 Global Constraints 第 4
- * 条给出的 hex/主题 id 字符串扫描——命中 4 处，全部落在渐变 stop 的两个颜色
- * 字面量上（两个 stop 色各命中 2 次：一次在 1429-1430 行的行内注释引用，
- * 一次在 1432/1433 行的实际 `stopColor` 属性值——十六进制值本身不抄进
- * 本注释，避免污染本文件的 grep 清零门）。逐十六进制核对
- * `themes/tech.ts` 的 `colors` 全字段（bg/surface/primary/accent/text/
- * muted/border/chartPalette）：**均无精确匹配**——两个 stop 色都比
- * `colors.bg`（tech 自己的背景色）更深，是"渐变场"这一装饰性视觉效果的一部分，
- * 不对应 token 表里任何一个字段本来的角色（不是背景色本身，也不是描边/
- * 表面色）。
+ * v2 画的三件东西：
+ *   - **右缘节点链**（四种页型都画）：x1155-1230、y90-570 的一条折线主链
+ *     ＋三条支链，节点分三级（辉光大节点 / 中节点 / 小节点）。连线取
+ *     `colors.border`——设计稿色板角色表把 border 写成「连线同色，界格即
+ *     星轨」，界格与星轨同色是这套语言的一部分，不是巧合。
+ *   - **顶带疏星**（四种页型都画）：y14-26 上四枚 muted 小点。
+ *   - **双轨道弧**（仅 cover / chapter）：圆心在页外右上 (1420,140)，
+ *     r430 / r310 两道极淡的弧。
  *
- * 孤儿色归属裁决（按 brief 与 W1-1 归属框架，YAGNI——不新增 token 字段）：
- * 该渐变的语义是"给全页画一个固定深浅的深空对角渐变场"，两个端点色是绑定这
- * 个渐变效果本身的设计常量，不是"某个 token 字段的近似值"（比照
- * motif-tone-adaptive-motif.tsx 对 `BG_MIXED_6PCT_BLACK` 的同一归属框架
- * ①「渐变/混合底色装饰性 → 私有常量保留」，而非框架②「同角色近似 → 并入
- * surface/border」——这里甚至没有"同角色"的候选字段可并，两个 stop 色互相
- * 独立、都不是从 `ctx.colors` 某个值派生的，原样保留为本文件私有装饰常量最
- * 忠实于原设计意图）。若为这两个 stop 色新增专属 token 字段，只服务这一处
- * 渐变装饰、无其他消费点，成本明显高于保留私有常量——不新增。
+ * 安全区：四个内容区是标题区 (96,48,1040×122)、正文区 (96,200,1040×420)、
+ * 页脚 meta 带 (48,664,1184×44)、右下 logo 盒 (1120,630,96×40)。
+ *   - 节点链声明坐标 x >= 1155，正文/标题区右缘在 x1136，让开 19px；
+ *     链底最低一枚节点 (1190,570) 半径 3，着墨止于 y573，logo 盒上沿 y630，
+ *     让开 57px。`motif-constellation-motif.test.tsx` 锁这两条。
+ *   - 疏星 y <= 26（含半径），标题区上沿 y48 之上。
  *
- * **档位：Content 段（已随本任务提炼进 `content-bento-panel.tsx`）是档位
- * 一・逐字节等价（tech 是零烤色主题）；本 Decor 段因两个渐变孤儿色降级为
- * 档位二・观感等价**——断言退化为：跨 slide.type 装饰几何存在（渐变 def +
- * 满页 rect + Ending 的星座 polyline/circle）、孤儿色原样出现（装饰未隐形，
- * 而非被误删）、换一个"他主题" tokens 渲染时 `hasExplicitBackground` 逻辑与
- * `ctx.colors.accent`（Ending 星座颜色，真正 token 化）随主题切换，孤儿渐变
- * 色跨主题保持不变（未被并入任何字段）。
+ * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
  *
- * 纪律：本文件禁 theme id 字符串字面量——唯一豁免是上面点名并测试锁死的两个
- * 渐变 stop 私有装饰常量，grep 清零门预期恰好命中这两处（十六进制值本身不抄
- * 进本注释）。渐变 def 的 id 字符串原样保留源文件的 `decor-tech-field`（同
- * poster-motif.tsx 保留 `decor-creative-glow`、tone-adaptive-motif.tsx 保留
- * `decor-custom-field` 的先例：纯几何/id 值，不是颜色字面量，字符串里嵌了
- * 主题名子串但不是 grep 清零门检测的、独立加双引号包裹的那种精确匹配，不
- * 构成违规——若改名会破坏与旧 `BentoTechDecor` 的逐字节 `toBe` 断言，得不
- * 偿失）。
+ * 纪律：零 theme id、零 hex，颜色全部来自 ctx（accent / border / muted 三个
+ * 角色 + chartPalette 的第 2、3 位）。
  */
 
-/** Mirrors templates/custom.tsx's own `hasExplicitBackground` (same check)
- * — this theme's decor is the only other theme-decor that needs to know
- * whether the slide carries an explicit background override, to skip the
- * full-bleed decor gradient that would otherwise hide it. Any
- * override kind counts, not just `asset`: `color`/`gradient` are
- * schema-validated hex values that always render successfully in
- * background.tsx, so presence alone is enough; `asset` still requires
- * resolving to a loadable image — an errored/missing asset falls back to
- * background.tsx's own dark placeholder rect, which isn't a meaningful
- * override worth protecting from decor. Ported verbatim from
- * templates/tech.tsx（1405-1416 行），私有复制，签名/实现不变. */
-function hasExplicitBackground(
-  ir: DecorProps["ir"],
-  slide: DecorProps["slide"]
-): boolean {
-  const bg = slide.background
-  if (!bg) return false
-  if (bg.kind === "asset") {
-    const asset = ir.assets.images[bg.asset_id]
-    return !!(asset?.src && !asset.error)
-  }
-  return true
-}
-
-const GRADIENT_FIELD_ID = "decor-tech-field"
+// ── 右缘节点链（设计稿坐标，逐条抄录） ──────────────────────────────────
+/** 主链：从顶到底一路折下来的七个折点。 */
+const CHAIN_MAIN: readonly (readonly [number, number])[] = [
+  [1180, 90], [1230, 150], [1170, 230], [1215, 320], [1175, 420], [1225, 500], [1190, 570],
+]
+/** 三条支链：各从主链上一个折点岔出去一小段。 */
+const CHAIN_BRANCHES: readonly (readonly [number, number])[][] = [
+  [[1230, 150], [1160, 120]],
+  [[1215, 320], [1155, 280]],
+  [[1225, 500], [1160, 530]],
+]
+const CHAIN_STROKE = 1.5
 
 /**
- * Ending's small signature motif — 3 fixed points, all y >= 108 (clear of
- * BrandChrome's tr logo band at `y:48-88`). Uniform r=3 and a fainter line
- * (opacity 0.25) — deliberately quieter than Cover's own (larger) motif
- * since Ending still carries a heading/meta stack, not a mostly-empty hero
- * layout. Content dropped this motif outright (its top-right corner
- * collided with a long content-page title's reachable area — see the source
- * file's own historical S3d note); only Ending still shows it. Ported
- * verbatim from templates/tech.tsx（1389-1393 行）.
+ * 节点分三档着色，全部读 token：
+ *   - `accent`：主链的两枚辉光大节点（r7 光晕 + r4 实心）与两枚小节点。
+ *   - `chartPalette[1]`（冷序列第二位，蓝）：另一枚辉光节点 + 三枚小节点。
+ *   - `chartPalette[2]`（冷序列第三位，紫）：支链末端一枚。
+ * 图表与装饰同源是设计稿点名的意图（「节点/连线几何参数不动——色板角色化
+ * 后一次换装」），所以这里读 chartPalette 而不是另造两个 token。
+ * `ctx.colors.chartPalette` 本身不随 `chartPaletteOffset` 轮转（那次轮转
+ * 早已移出 `buildCtx`，见 `motif-chart-palette-isolation.test.tsx`），
+ * 所以读它不会让装饰随页码变色。
  */
-const ENDING_MOTIF_POINTS = [
-  { x: 1080, y: 108 },
-  { x: 1140, y: 140 },
-  { x: 1196, y: 118 },
-]
-// 构图变体（2026-07-10 装饰多样性推广）：b=四点 W 形、c=左上三点。
-const ENDING_MOTIF_POINTS_B = [
-  { x: 1052, y: 132 },
-  { x: 1104, y: 100 },
-  { x: 1156, y: 136 },
-  { x: 1208, y: 104 },
-]
-const ENDING_MOTIF_POINTS_C = [
-  { x: 96, y: 120 },
-  { x: 152, y: 96 },
-  { x: 204, y: 132 },
-]
-function endingPointsFor(variant: "a" | "b" | "c") {
-  return variant === "b" ? ENDING_MOTIF_POINTS_B : variant === "c" ? ENDING_MOTIF_POINTS_C : ENDING_MOTIF_POINTS
-}
+const NODES_ACCENT = [
+  { cx: 1180, cy: 90, glow: 7, r: 4 },
+  { cx: 1170, cy: 230, r: 3 },
+  { cx: 1160, cy: 120, r: 2.5 },
+  { cx: 1175, cy: 420, glow: 7, r: 4 },
+  { cx: 1190, cy: 570, r: 3 },
+] as const
+const NODES_COOL = [
+  { cx: 1230, cy: 150, r: 3 },
+  { cx: 1215, cy: 320, glow: 6, r: 4 },
+  { cx: 1155, cy: 280, r: 2.5 },
+  { cx: 1225, cy: 500, r: 3 },
+] as const
+const NODE_VIOLET = { cx: 1160, cy: 530, r: 2.5 } as const
+const GLOW_OPACITY_ACCENT = 0.25
+const GLOW_OPACITY_COOL = 0.3
 
-// Decoration-only gradient stops (see file header's "孤儿色归属裁决"):
-// a fixed dark diagonal field, deliberately darker than `colors.bg` in every
-// direction — not derived from any `ctx.colors` field. Deliberately NOT
-// mapped to any token — no field represents "bg but as a fixed dark diagonal
-// gradient", and there is no natural token candidate to merge into (unlike
-// motif-tone-adaptive-motif.tsx's `BG_MIXED_6PCT_BLACK`, which at least
-// shares `colors.bg` as its gradient *start*, this gradient's both stops are
-// independent literals). Ported verbatim from templates/tech.tsx (this pair
-// of literals is the file's one intentional, test-locked grep-gate
-// exemption).
-const GRADIENT_STOP_START = "#04070E"
-const GRADIENT_STOP_END = "#0A1220"
+// ── 顶带疏星 ────────────────────────────────────────────────────────────
+const SPARSE_STARS = [
+  { cx: 180, cy: 22, r: 2 },
+  { cx: 420, cy: 16, r: 2.5 },
+  { cx: 700, cy: 26, r: 2 },
+  { cx: 960, cy: 14, r: 2 },
+] as const
 
-export function ConstellationMotif({ ir, slide, ctx }: DecorProps) {
-  const variant = pickBySeed(cachedDeckSeed(ir), "constellation-decor", ["a", "b", "c"] as const)
-  const endingPoints = endingPointsFor(variant)
-  const withBg = hasExplicitBackground(ir, slide)
-  if (withBg) return <></>
+// ── 双轨道弧（仅 cover / chapter） ──────────────────────────────────────
+/**
+ * 圆心在页外右上角，只有左下一段弧扫进页面。
+ *
+ * 设计稿两道弧写的是 `#1B2742` / `#16203A`——都比 border `#24304A` 更暗，
+ * 不对应任何一个 token 角色。不新造 token（YAGNI，同 ink v3 的孤儿色归属
+ * 框架），改成 border 压在 bg 上的两档透明度：按设计稿三色逐通道解
+ * `bg + a×(border − bg) = 目标色`，外弧三通道解出 0.65/0.73/0.82（取 0.72），
+ * 内弧解出 0.46/0.52/0.64（取 0.52）。换 token 时两道弧跟着 border 走，
+ * 这正是「色板角色化后一次换装」要的性质。
+ */
+const ORBITS = [
+  { r: 430, opacity: 0.72 },
+  { r: 310, opacity: 0.52 },
+] as const
+const ORBIT_CX = 1420
+const ORBIT_CY = 140
+const ORBIT_STROKE = 1.5
 
-  // S3d: content no longer shows this motif — only Ending does now.
-  const showEndingMotif = slide.type === "ending"
+const polylinePoints = (pts: readonly (readonly [number, number])[]): string =>
+  pts.map(([x, y]) => `${x},${y}`).join(" ")
+
+export function ConstellationMotif({ slide, ctx }: DecorProps) {
+  const { colors } = ctx
+  const cool = colors.chartPalette[1] ?? colors.accent
+  const violet = colors.chartPalette[2] ?? colors.accent
+  const showOrbits = slide.type === "cover" || slide.type === "chapter"
 
   return (
     <>
-      <defs>
-        <linearGradient id={GRADIENT_FIELD_ID} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={GRADIENT_STOP_START} />
-          <stop offset="100%" stopColor={GRADIENT_STOP_END} />
-        </linearGradient>
-      </defs>
-      <rect
-        x="0"
-        y="0"
-        width="1280"
-        height="720"
-        fill={`url(#${GRADIENT_FIELD_ID})`}
-      />
-      {showEndingMotif && (
-        <>
-          <polyline
-            points={endingPoints.map((p) => `${p.x},${p.y}`).join(" ")}
+      {/* 双轨道弧：先画，压在星链之下 */}
+      {showOrbits &&
+        ORBITS.map((o) => (
+          <circle
+            key={`orbit-${o.r}`}
+            cx={ORBIT_CX}
+            cy={ORBIT_CY}
+            r={o.r}
             fill="none"
-            stroke={ctx.colors.accent}
-            strokeWidth="1"
-            strokeOpacity="0.25"
+            stroke={colors.border}
+            strokeWidth={ORBIT_STROKE}
+            opacity={o.opacity}
           />
-          {endingPoints.map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r="3" fill={ctx.colors.accent} />
-          ))}
-        </>
-      )}
+        ))}
+
+      {/* 节点连线：主链 + 三条支链 */}
+      <polyline
+        points={polylinePoints(CHAIN_MAIN)}
+        fill="none"
+        stroke={colors.border}
+        strokeWidth={CHAIN_STROKE}
+      />
+      {CHAIN_BRANCHES.map((branch, i) => (
+        <polyline
+          key={`branch-${i}`}
+          points={polylinePoints(branch)}
+          fill="none"
+          stroke={colors.border}
+          strokeWidth={CHAIN_STROKE}
+        />
+      ))}
+
+      {/* accent 档节点（含两枚辉光） */}
+      {NODES_ACCENT.map((n) => (
+        <g key={`node-a-${n.cx}-${n.cy}`}>
+          {"glow" in n && n.glow && (
+            <circle cx={n.cx} cy={n.cy} r={n.glow} fill={colors.accent} opacity={GLOW_OPACITY_ACCENT} />
+          )}
+          <circle cx={n.cx} cy={n.cy} r={n.r} fill={colors.accent} />
+        </g>
+      ))}
+
+      {/* 冷序列第二位（蓝）档节点（含一枚辉光） */}
+      {NODES_COOL.map((n) => (
+        <g key={`node-c-${n.cx}-${n.cy}`}>
+          {"glow" in n && n.glow && (
+            <circle cx={n.cx} cy={n.cy} r={n.glow} fill={cool} opacity={GLOW_OPACITY_COOL} />
+          )}
+          <circle cx={n.cx} cy={n.cy} r={n.r} fill={cool} />
+        </g>
+      ))}
+
+      {/* 支链末端的紫点 */}
+      <circle cx={NODE_VIOLET.cx} cy={NODE_VIOLET.cy} r={NODE_VIOLET.r} fill={violet} />
+
+      {/* 顶带疏星 */}
+      {SPARSE_STARS.map((s) => (
+        <circle key={`star-${s.cx}`} cx={s.cx} cy={s.cy} r={s.r} fill={colors.muted} />
+      ))}
     </>
   )
 }
