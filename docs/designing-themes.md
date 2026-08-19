@@ -70,3 +70,23 @@ no structural preference render identically under the same seed.
 - Page compositions: `src/svg/layouts/`
 - Rendered current output: `examples/previews/`
 - Vocabulary: `docs/concepts.md` (layout, component, motif, narrative)
+
+## The generalization bar
+
+Three rules govern how this vocabulary grows, in priority order when
+they conflict (stability first):
+
+1. **The model-facing surface is sacred.** Components, slide types and
+   the narrative vocabulary are what a small model has to write
+   reliably — that is why the IR exists. A new component enters only
+   when existing ones genuinely cannot express the content; prefer
+   making existing components more adaptive over minting new types.
+   Layouts, motifs and tokens are invisible to the model (selection is
+   compile-side), so they may grow freely.
+2. **The theme roster is finite.** Sixteen structural identities cover
+   the scenario space; a gap is filled by stretching an existing theme
+   (tokens, tendencies, motif), not by adding a seventeenth.
+3. **New render-side pieces must generalize.** A layout or motif joins
+   the shared pool, reads every color through the token pipeline, and
+   states which scenarios and themes it serves. A piece that serves a
+   single theme needs its own adjudication, not a quiet exception.
