@@ -6,7 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * rail-numbered content layout（spec §3.2，Wave 3 Task 18）：grammar break
@@ -90,7 +90,14 @@ const TITLE_MAX_W = 1000
 
 const CONTENT_X = 96
 const CONTENT_W = 1088
-const CONTENT_BOTTOM = 640
+const CONTENT_BOTTOM_BASE = 640
+// -> 620 with a footnote, the same shrink `banner-heading` (a flat 620) and
+// `split-band` (640 minus 20) already apply. Without it the content rect
+// floored at 640 while a 14px footnote's ink starts at 633.75, so the rect a
+// stretched component fills ran 6.25px *into* the footnote. Measured on
+// `layout--rail-numbered--zh` (4x raster): the body ink and the footnote ink
+// used to form one unbroken band down the page, and now read as two.
+const CONTENT_BOTTOM_FOOTNOTE_SHRINK = 20
 const CONTENT_GAP = 36 // gap between the title's last line and the content rect
 
 // Subheading: a 22px accent "so-what" sentence below the badge/title row.
@@ -160,11 +167,14 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
     : colors.primary
 
   const contentRectY = titleLastY + CONTENT_GAP + (subheading ? SUBHEADING_SLOT : 0)
+  const contentBottom = slide.footnote
+    ? CONTENT_BOTTOM_BASE - CONTENT_BOTTOM_FOOTNOTE_SHRINK
+    : CONTENT_BOTTOM_BASE
   const contentRect = {
     x: CONTENT_X,
     y: contentRectY,
     w: CONTENT_W,
-    h: Math.max(0, CONTENT_BOTTOM - contentRectY),
+    h: Math.max(0, contentBottom - contentRectY),
   }
 
   const footnote = slide.footnote
@@ -247,7 +257,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={CONTENT_X}
-          y={FOOTNOTE_BASELINE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

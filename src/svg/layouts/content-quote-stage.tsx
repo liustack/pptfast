@@ -4,7 +4,7 @@ import type { ContentRect } from "../layout"
 import { SvgContent } from "../svg-content"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * quote-stage content layout（quote-stage 波，Task T2 ——
@@ -81,8 +81,10 @@ const BODY_RECT_MAX_Y = 528
 // below it. At the previous 676 this baseline put the footnote's ascenders
 // straight through that rule and into the footer's own text row — the
 // visual review caught it in Chinese and mixed-script, where the taller ink
-// made the collision unmistakable.
-const FOOTNOTE_Y = FOOTNOTE_BASELINE_Y
+// made the collision unmistakable. The baseline now comes from
+// `footnoteBaselineFor`, which states that clearance as a gap from the rule
+// rather than as a coordinate: this layout's 16px footnote used to keep
+// only 12.25px of it, the smallest gap on the page by a wide margin.
 
 export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
@@ -180,7 +182,7 @@ export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={CENTER_X}
-          y={FOOTNOTE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           textAnchor="middle"
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}

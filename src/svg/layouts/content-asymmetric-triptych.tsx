@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * asymmetric-triptych content layout (P1 variety wave, task 4 — content-
@@ -266,7 +266,7 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x="96"
-          y={FOOTNOTE_BASELINE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

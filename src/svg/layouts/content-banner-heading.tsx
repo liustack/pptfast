@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * banner-heading content layout（spec §3.2，Wave 3 Task 19）：consulting
@@ -234,7 +234,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={BANNER_X}
-          y={FOOTNOTE_BASELINE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

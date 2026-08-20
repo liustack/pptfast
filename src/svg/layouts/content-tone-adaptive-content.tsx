@@ -7,6 +7,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * tone-adaptive-content layout（spec §3.2，Wave 3 Task 21）：custom 主题
@@ -461,11 +462,18 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
         ctx={ctx}
       />
 
-      {/* Footnote */}
+      {/* Footnote. One of the two survivors of the "footnote below the
+       * divider" family `chrome-geometry.ts` documents as retired: at y=688
+       * this 20px line rendered *under* the y=664 rule, ink 672.25 to
+       * 691.75, straight across the footer's own 20px text row (ink 684.25
+       * to 703.75) — measured on `layout--tone-adaptive-content--zh`, where
+       * the two strings printed on top of each other. The room was already
+       * reserved: `contentH = footnote ? 420 : 460` floors the content at
+       * y=600, and nothing was using the 44px above the rule. */}
       {slide.footnote && (
         <text
           x="64"
-          y="688"
+          y={footnoteBaselineFor(20)}
           fontFamily={fonts.body}
           fontSize="20"
           fill={colors.muted}

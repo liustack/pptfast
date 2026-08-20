@@ -6,6 +6,7 @@ import { measureTextUnits } from "../../lib/svg-text-layout"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { NarrowColumnContent } from "./content-narrow-column"
+import { footnoteBaselineFor } from "../chrome-geometry"
 import type { Component, PptxIR, Slide } from "@/ir"
 
 const CJK_LONG =
@@ -51,8 +52,17 @@ const ir = (theme: string, slides: Slide[] = [chapter, content]): PptxIR =>
 // 20px attribution line, and every layout-bespoke element (kicker,
 // heading, subheading, page number, footnote), are untouched, confirming
 // the diff is confined to the paragraph/bullets trio.
+// Footnote-clearance re-pin (2026-08-20): the column floor drops 20px when a
+// footnote is present (rect h 342 -> 322), so the two inner blocks close up
+// (348 -> 342, 508 -> 496), and the baseline goes 648 -> 644
+// (`footnoteBaselineFor(20)`). This layout's 20px footnote is the largest of
+// the ten, so it was the worst off both ways: 11.50px of real gap above the
+// divider, and an outright 7.75px overlap between its ink and a column that
+// floored at 640. All three blocks survive the tighter floor — 50 tokens
+// before, 50 after. `MAGAZINE_EXPECTED_BARE` has no footnote and does not
+// move.
 const MAGAZINE_EXPECTED =
-  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#D9D3C2" stroke-width="1.2"></line><text x="96" y="124" font-family="SimSun, Songti SC, STSong, serif" font-size="16" fill="#8C4A3C" font-style="italic" dominant-baseline="alphabetic">第一部分：市场洞察</text><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#26261F" dominant-baseline="alphabetic">窄栏叙事：从数据到洞察</text><text x="96" y="254" font-family="SimSun, Songti SC, STSong, serif" font-size="22" fill="#8C4A3C" font-style="italic" dominant-baseline="alphabetic"><tspan fill="#26261F" font-weight="700">核心结论</tspan><tspan fill="#8C4A3C">：留存率显著提升</tspan></text><g data-audit-rect="96,298,880,342"><g data-audit-box="96,298,880"><g transform="translate(96,298)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">本季度用户留存呈现持续上行趋势。</text></g></g><g data-audit-box="96,348,880"><g transform="translate(96,348)"><circle cx="5" cy="18.8" r="3" fill="#2C2C2A"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">留存率 +12%</text><circle cx="5" cy="60.8" r="3" fill="#2C2C2A"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">活跃时长 +8%</text><circle cx="5" cy="102.8" r="3" fill="#2C2C2A"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">流失率 -5%</text></g></g><g data-audit-box="96,508,880"><g transform="translate(96,508)"><text x="0" y="40" font-size="64" fill="#8C4A3C" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" dominant-baseline="alphabetic">“</text><text x="20" y="60" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" font-style="italic" fill="#26261F" dominant-baseline="alphabetic">增长的本质是留住已经信任你的人。</text><text x="20" y="97" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#626159" dominant-baseline="alphabetic">— 内部访谈</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#626159" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="96" y="648" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#626159" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
+  '<line x1="96" y1="88" x2="1184" y2="88" stroke="#D9D3C2" stroke-width="1.2"></line><text x="96" y="124" font-family="SimSun, Songti SC, STSong, serif" font-size="16" fill="#8C4A3C" font-style="italic" dominant-baseline="alphabetic">第一部分：市场洞察</text><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#26261F" dominant-baseline="alphabetic">窄栏叙事：从数据到洞察</text><text x="96" y="254" font-family="SimSun, Songti SC, STSong, serif" font-size="22" fill="#8C4A3C" font-style="italic" dominant-baseline="alphabetic"><tspan fill="#26261F" font-weight="700">核心结论</tspan><tspan fill="#8C4A3C">：留存率显著提升</tspan></text><g data-audit-rect="96,298,880,322"><g data-audit-box="96,298,880"><g transform="translate(96,298)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">本季度用户留存呈现持续上行趋势。</text></g></g><g data-audit-box="96,342,880"><g transform="translate(96,342)"><circle cx="5" cy="18.8" r="3" fill="#2C2C2A"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">留存率 +12%</text><circle cx="5" cy="60.8" r="3" fill="#2C2C2A"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">活跃时长 +8%</text><circle cx="5" cy="102.8" r="3" fill="#2C2C2A"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">流失率 -5%</text></g></g><g data-audit-box="96,496,880"><g transform="translate(96,496)"><text x="0" y="40" font-size="64" fill="#8C4A3C" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" dominant-baseline="alphabetic">“</text><text x="20" y="60" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" font-style="italic" fill="#26261F" dominant-baseline="alphabetic">增长的本质是留住已经信任你的人。</text><text x="20" y="97" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#626159" dominant-baseline="alphabetic">— 内部访谈</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#626159" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="96" y="644" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#626159" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
 
 const MAGAZINE_EXPECTED_BARE =
   '<line x1="96" y1="88" x2="1184" y2="88" stroke="#D9D3C2" stroke-width="1.2"></line><text x="96" y="190" font-family="SimSun, Songti SC, STSong, serif" font-size="60" font-weight="600" fill="#26261F" dominant-baseline="alphabetic">简报</text><g data-audit-rect="96,230,880,410"><g data-audit-box="96,372.88,880"><g transform="translate(96,372.88)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#26261F" dominant-baseline="alphabetic">一</text></g></g></g><text x="1184" y="628" font-family="SimSun, Songti SC, STSong, serif" font-size="64" fill="#626159" opacity="0.3" text-anchor="end" dominant-baseline="alphabetic">01</text>'
@@ -226,11 +236,17 @@ describe("NarrowColumnContent", () => {
       </svg>,
     )
     const root = parseSvgRoot(markup)
-    const footnoteEl = Array.from(root.querySelectorAll("text")).find((t) => t.getAttribute("y") === "648")
+    // Found by role, not by coordinate: the baseline is derived from the
+    // rendered size (`footnoteBaselineFor`), so pinning a y here would just
+    // re-break the moment a footnote shrinks.
+    const footnoteEl = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.getAttribute("font-style") === "italic" && (t.textContent ?? "").startsWith("数据来源"),
+    )
     expect(footnoteEl).toBeDefined()
     const fontSize = Number(footnoteEl!.getAttribute("font-size"))
     const text = footnoteEl!.textContent ?? ""
     expect(measureTextUnits(text) * fontSize).toBeLessThanOrEqual(980)
+    expect(Number(footnoteEl!.getAttribute("y"))).toBe(footnoteBaselineFor(fontSize))
   })
 
   describe("subheading (Task 5)", () => {

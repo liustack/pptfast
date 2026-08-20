@@ -11,7 +11,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * stacked-poster content layout（spec §3.2，Wave 3 Task 20）：creative
@@ -294,11 +294,20 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
         ctx={ctx}
       />
 
-      {/* Footnote */}
+      {/* Footnote. The degrade path is otherwise kept byte-identical (see
+       * this function's own doc comment), but its baseline was one of the
+       * two survivors of the "footnote below the divider" family
+       * `chrome-geometry.ts` documents as retired: at y=688 this 20px line
+       * rendered *under* the y=664 rule, ink 672.25 to 691.75, straight
+       * across the footer's own 20px text row (ink 684.25 to 703.75) —
+       * measured on `layout--tone-adaptive-content--zh`, which reaches this
+       * same construction through its own copy. The room was already
+       * reserved: `contentH = footnote ? 420 : 460` floors the content at
+       * y=600, and nothing was using the 44px above the rule. */}
       {slide.footnote && (
         <text
           x="56"
-          y="688"
+          y={footnoteBaselineFor(20)}
           fontFamily={ctx.fonts.body}
           fontSize="20"
           fill={ctx.colors.muted}
@@ -477,7 +486,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={CENTER_X}
-          y={FOOTNOTE_BASELINE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           textAnchor="middle"
           fontFamily={ctx.fonts.body}
           fontSize={footnote.fontSize}
