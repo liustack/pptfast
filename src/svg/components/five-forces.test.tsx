@@ -135,6 +135,151 @@ describe("five_forces component", () => {
     expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
   })
 
+  // Review round 3 re-filed the 2026-08-15 complaint ("圆点距标题 8.5px、距要
+  // 点 17px"): the dot meter still read as stuck to the underside of the
+  // title. Nothing pinned the header's vertical rhythm, so the constants
+  // could be (and were) raised without the render moving the way the raise
+  // claimed. These three assertions pin the rhythm itself, in panel-local
+  // coordinates read straight off the drawn attributes.
+  describe("intensity-header vertical rhythm", () => {
+    /** Title baseline, dot band and first item row of one panel, as drawn. */
+    function headerGeometry(force: string) {
+      const { container } = svg(fiveForces.render(basic, { x: 0, y: 0, w: 1000 }, ctx))
+      const rect = container.querySelector(`rect[data-force="${force}"]`)!
+      const panel = rect.parentElement!
+      const texts = Array.from(panel.querySelectorAll("text"))
+      const labelBaseline = Number(texts[0]!.getAttribute("y"))
+      const dot = panel.querySelector("[data-intensity-dot]")!
+      const dotR = Number(dot.getAttribute("r"))
+      const dotTop = Number(dot.getAttribute("cy")) - dotR
+      const itemFontSize = Number(texts[1]!.getAttribute("font-size"))
+      // `renderPanel` draws an item's baseline at `rowY + itemSize`.
+      const firstItemRowY = Number(texts[1]!.getAttribute("y")) - itemFontSize
+      return { labelBaseline, dotR, dotTop, dotBottom: dotTop + dotR * 2, firstItemRowY }
+    }
+
+    it("drops the dot meter a clear step below the title baseline, not half a dot below it", () => {
+      const g = headerGeometry("rivalry")
+      expect(g.dotTop - g.labelBaseline).toBe(16)
+    })
+
+    it("draws the marker inside the band panelLayout reserves for it — declared air is drawn air", () => {
+      // The reserved band is `gapLabelMarker + markerDotR * 2` below the
+      // title baseline (`panelLayout`'s `markerH`), and the item list starts
+      // `gapHeaderItems` after that band ends. Drawing the marker any higher
+      // than its own band top spends part of the title gap and leaves the
+      // slack at the bottom instead, which is exactly what the old
+      // `- markerDotR / 2` did.
+      const g = headerGeometry("rivalry")
+      expect(g.firstItemRowY - g.dotBottom).toBe(18)
+    })
+
+    it("separates the header from the items by more than the title separates from the dots", () => {
+      const g = headerGeometry("rivalry")
+      const withinHeader = g.dotTop - g.labelBaseline
+      const headerToItems = g.firstItemRowY - g.dotBottom
+      expect(headerToItems).toBeGreaterThan(withinHeader)
+    })
+
+    it("a panel without intensity keeps the same header-to-items air, measured from the title baseline", () => {
+      // `buyer_power` carries no intensity, so `markerH` is 0 and the items
+      // start `gapHeaderItems` straight off the title baseline. Pinned so a
+      // future raise can't move only the with-marker branch.
+      const { container } = svg(fiveForces.render(basic, { x: 0, y: 0, w: 1000 }, ctx))
+      const panel = container.querySelector('rect[data-force="buyer_power"]')!.parentElement!
+      const texts = Array.from(panel.querySelectorAll("text"))
+      const labelBaseline = Number(texts[0]!.getAttribute("y"))
+      const itemFontSize = Number(texts[1]!.getAttribute("font-size"))
+      const firstItemRowY = Number(texts[1]!.getAttribute("y")) - itemFontSize
+      expect(firstItemRowY - labelBaseline).toBe(18)
+    })
+
+    // The raise above costs 30px of natural height, and the one fixture
+    // already at the edge (full-matrix-contrast's schema-max sweep) could
+    // not pay it — it needed a font scale of 0.756 against a 0.792 floor,
+    // and 15.2px of item text spilled out of the content rect on all 17
+    // themes. Air is the only vertical term with no legibility obligation,
+    // so it is what an undersized box spends first.
+    describe("an undersized box spends air before it shrinks type", () => {
+      /** Header rhythm and item type size of one panel at a given box height. */
+      function atHeight(h: number) {
+        const { container } = svg(fiveForces.render(basic, { x: 0, y: 0, w: 1000, h }, ctx))
+        const panel = container.querySelector('rect[data-force="rivalry"]')!.parentElement!
+        const texts = Array.from(panel.querySelectorAll("text"))
+        const labelBaseline = Number(texts[0]!.getAttribute("y"))
+        const dot = panel.querySelector("[data-intensity-dot]")!
+        const dotR = Number(dot.getAttribute("r"))
+        const dotTop = Number(dot.getAttribute("cy")) - dotR
+        const itemSize = Number(texts[1]!.getAttribute("font-size"))
+        return {
+          itemSize,
+          labelSize: Number(texts[0]!.getAttribute("font-size")),
+          gapLabelMarker: dotTop - labelBaseline,
+          gapHeaderItems: Number(texts[1]!.getAttribute("y")) - itemSize - (dotTop + dotR * 2),
+        }
+      }
+
+      // Three governing row bands, each carrying an intensity marker, each
+      // holding 5px of marker gap and 5px of header gap above its tight
+      // value: the comfort the box has to be able to afford.
+      const COMFORT_SPAN = 30
+      const natural = fiveForces.measure(basic, 1000, ctx)
+
+      it("keeps the full comfortable rhythm when the box is exactly its natural height", () => {
+        const g = atHeight(natural)
+        expect(g.gapLabelMarker).toBe(16)
+        expect(g.gapHeaderItems).toBe(18)
+      })
+
+      it("gives the air back, and only the air, when the box is short by exactly the comfort span", () => {
+        const g = atHeight(natural - COMFORT_SPAN)
+        // Air fully spent: both gaps are back at their pre-2026-08-20 values…
+        expect(g.gapLabelMarker).toBe(11)
+        expect(g.gapHeaderItems).toBe(13)
+        // …and type has not been touched at all, which is the whole point.
+        expect(g.itemSize).toBe(12)
+        expect(g.labelSize).toBe(13.5)
+      })
+
+      it("slides the air part-way for a box short by less than the span — no cliff at natural height", () => {
+        const g = atHeight(natural - COMFORT_SPAN / 2)
+        expect(g.gapLabelMarker).toBeCloseTo(13.5, 5)
+        expect(g.gapHeaderItems).toBeCloseTo(15.5, 5)
+        expect(g.itemSize).toBe(12)
+      })
+
+      it("only then shrinks type, with the air already at its tight value", () => {
+        const g = atHeight(natural * 0.6)
+        expect(g.itemSize).toBeLessThan(12)
+        // Air is at tight and rides the same fontScale as everything else,
+        // so it never climbs back above the tight value while type is small.
+        expect(g.gapLabelMarker).toBeCloseTo(11 * (g.itemSize / 12), 5)
+      })
+
+      it("never shrinks type below the item-legibility floor, air spent or not", () => {
+        const g = atHeight(natural * 0.2)
+        expect(g.itemSize).toBeCloseTo(12 * (9.5 / 12), 5)
+      })
+    })
+
+    it("measure() budgets the header band it draws — every intensity panel's own reserved air", () => {
+      // Guards the other half of the same defect: the drawn rhythm above and
+      // the height `measure()` asks the layout engine for must move
+      // together, or the panels grow air the component never claimed.
+      const withoutMarkers = {
+        ...basic,
+        rivalry: { items: basic.rivalry.items },
+        new_entrants: { items: basic.new_entrants.items },
+        supplier_power: { items: basic.supplier_power.items },
+        substitutes: { items: basic.substitutes.items },
+      }
+      // Three of the five panels govern a row band (top / mid / bottom), so
+      // dropping every marker drops three reserved bands of
+      // `GAP_LABEL_MARKER + MARKER_DOT_R * 2` = 16 + 8.
+      expect(fiveForces.measure(basic, 1000, ctx) - fiveForces.measure(withoutMarkers, 1000, ctx)).toBe(24 * 3)
+    })
+  })
+
   it("marks an over-long item truncated (data-truncated) rather than silently dropping text", () => {
     const longItem = {
       ...basic,

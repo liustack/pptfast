@@ -38,24 +38,34 @@ type Intensity = "low" | "medium" | "high"
  * dedicated 13-theme schema-max sweep in `../audit/full-matrix-
  * contrast.test.ts` failed with bottom-band v-overflow/page-overflow
  * findings on every theme before this fix, verified during this task's own
- * red-first pass). `render` mirrors `bmc.tsx`'s exact two-stage fix: a
- * `fontScale` (< 1 only when `box.h` is short of the natural total, floored
- * at `MIN_FONT_SCALE`) shrinks every panel's font size/vertical rhythm
- * uniformly before geometry is derived, and a separate `growScale` (>= 1,
- * `swot.tsx`/`bmc.tsx`'s uncapped stretch idiom) grows the row bands when
- * `box.h` instead exceeds the natural total — the two never engage at once
- * (`box.h` is either short of natural, long, or exactly natural).
- * `MIN_FONT_SCALE` absorbs the dedicated 13-theme schema-max sweep cleanly
- * (verified: zero findings, "pest/five_forces schema-max content" describe
- * block). The one compound edge case it doesn't fully absorb — the same
+ * red-first pass). `render` extends `bmc.tsx`'s two-stage fix to three,
+ * cheapest concession first:
+ *
+ * 1. **Air** (`airScale`, 2026-08-20): the two header gaps slide from their
+ *    comfortable values toward their `_TIGHT` ones, by exactly as much as
+ *    `box.h` is short by and no more. Air carries no legibility obligation,
+ *    so it is what a tight box spends first — see `GAP_LABEL_MARKER_TIGHT`.
+ * 2. **Type** (`fontScale` < 1, floored at `MIN_FONT_SCALE`): still short
+ *    once the air is gone, so every panel's font size and vertical rhythm
+ *    shrink uniformly before geometry is derived.
+ * 3. **Stretch** (`growScale` >= 1, `swot.tsx`/`bmc.tsx`'s uncapped idiom):
+ *    grows the row bands when `box.h` instead exceeds the natural total.
+ *
+ * Stages 1-2 and stage 3 never engage at once (`box.h` is either short of
+ * natural, long, or exactly natural). Together they absorb the dedicated
+ * 13-theme schema-max sweep cleanly (verified: zero findings,
+ * "pest/five_forces schema-max content" describe block) — and with room to
+ * spare that the pre-2026-08-20 build did not have, since that sweep used
+ * to clear `MIN_FONT_SCALE`'s floor by one percent and now clears it on air
+ * alone. The one compound edge case still not fully absorbed — the same
  * residual `bmc.tsx`'s own header already names — is schema-max content
  * *and* a heading long enough to force a 2-line wrap *and* the narrowest
- * curated layout, all three at once (verified manually during this
- * task: a synthetic 34-char heading shrinks `narrow-column`'s content rect
- * enough to reintroduce a small bottom-band v-overflow even at the
- * font-scale floor; a realistic short heading does not reach it). Out of
- * this task's own scope, same discipline as bmc's residual — documented,
- * not chased.
+ * curated layout, all three at once (verified: a synthetic 55-char heading
+ * shrinks `narrow-column`'s content rect to 347px against a 425px floored
+ * natural, reintroducing a bottom-band v-overflow that neither air nor the
+ * font-scale floor can close; a realistic short heading does not reach it).
+ * Out of this task's own scope, same discipline as bmc's residual —
+ * documented, not chased.
  *
  * **Intensity marker** (task 1 scope item 2): a deterministic 3-dot meter —
  * filled-dot count = 1 (low) / 2 (medium) / 3 (high) out of 3, solid fill
@@ -107,9 +117,69 @@ const LABEL_SIZE_MIN = 10.5
  * enough room to read as its own line — and the header as a whole needs to
  * separate from the items more than it separates internally, or the three
  * elements read as one undifferentiated block.
+ *
+ * **Raised a second time on 2026-08-20** — the same complaint came back in
+ * review round 3, and re-measuring showed the 2026-08-15 pass had not moved
+ * the render at all in the direction it claimed. Two reasons, both now
+ * fixed:
+ *
+ * 1. The numbers were too small to begin with. Measured on the real
+ *    `component--five-forces--zh` page (browser `getBBox`, not estimates),
+ *    title-to-dot air was 5.8px against a panel that pads itself 10px at
+ *    the top — the dots read as belonging to the title's own line.
+ * 2. `renderPanel` then spent 2px of `GAP_LABEL_MARKER` back by drawing the
+ *    marker at `gapLabelMarker - markerDotR / 2`, i.e. half a dot higher
+ *    than the band `panelLayout` reserves for it. So the drawn air was
+ *    never the declared air, and the marker overhung the top of its own
+ *    reserved band by `markerDotR / 2` while leaving that much slack at the
+ *    bottom. The subtraction is gone: the marker's top now sits exactly
+ *    `gapLabelMarker` below the title baseline, which is what `contentH`
+ *    has always been budgeting for.
+ *
+ * These two constants are the vertical rhythm's only free variables, so
+ * they are also what `five-forces.test.tsx`'s "header rhythm" assertions
+ * pin — a panel's declared header band must match its drawn one, and the
+ * header must separate from the items by more than it separates
+ * internally. Raising these raises `measure()` by 10px per intensity-
+ * carrying panel (5 for the marker band, 5 for the header/items gap),
+ * i.e. +30px of natural component height for the three-row cross.
+ *
+ * That +30 is not free, which is what `_TIGHT` below is for.
  */
-const GAP_LABEL_MARKER = 11
-const GAP_HEADER_ITEMS = 13
+const GAP_LABEL_MARKER = 16
+const GAP_HEADER_ITEMS = 18
+
+/**
+ * The same two gaps, at the smallest values this component is willing to
+ * draw them — `render`'s undersized-box path collapses toward these before
+ * it touches type size.
+ *
+ * They are the pre-2026-08-20 values verbatim, which is the point: this
+ * component shipped at 11/13 for five days and the complaint against them
+ * was that they read cramped, not that they read broken. Cramped is the
+ * correct answer for a box that cannot afford comfortable.
+ *
+ * **Why air gives before type does.** The raise above cost real headroom
+ * on the one fixture that was already at the edge: the 13-theme schema-max
+ * sweep (`../audit/full-matrix-contrast.test.ts`, 5 items in all 5 panels
+ * on `narrow-column`, the narrowest curated content layout) fits its
+ * component into a 410px rect. At 11/13 the natural total was 512.5, so it
+ * needed a `fontScale` of 0.800 — clearing `MIN_FONT_SCALE`'s 0.792 floor
+ * by one percent. At 16/18 the natural total is 542.5 and the required
+ * scale is 0.756, i.e. under the floor, so the floor clamps and 15.2px of
+ * item text spills past the content rect on every one of the 17 themes.
+ *
+ * Shrinking type further is the wrong way to buy that back: `padTop`,
+ * `padBottom` and these two gaps are the only vertical terms carrying no
+ * legibility obligation at all, while `MIN_FONT_SCALE` exists precisely to
+ * say how small item text is allowed to get. So the shrink path spends air
+ * first and type second (`render`), and these constants are how far the
+ * air is allowed to be spent. A box that is short by less than the
+ * comfort span gets the air scaled part-way rather than dropped to the
+ * floor, so there is no cliff at exactly-natural height.
+ */
+const GAP_LABEL_MARKER_TIGHT = 11
+const GAP_HEADER_ITEMS_TIGHT = 13
 
 const ITEM_SIZE = 12
 const ITEM_SIZE_MIN = 9.5
@@ -184,6 +254,15 @@ interface PanelLayout {
  * proportion; `w`/`PAD_X`/`BULLET_INDENT` (the horizontal axis) are
  * untouched. At `fontScale === 1` every returned field reduces to this
  * file's nominal constants exactly — same as `bmc.tsx`'s `blockLayout`.
+ *
+ * `airScale` (default 1, comfortable) independently slides the two header
+ * gaps between their comfortable and `_TIGHT` values — 1 is comfortable, 0
+ * is tight, and `render` picks the largest value the box can pay for. It is
+ * a second axis rather than a second `fontScale` because it must be able to
+ * keep giving after `fontScale` has hit `MIN_FONT_SCALE`; see
+ * `GAP_LABEL_MARKER_TIGHT`. Both scales compose: the gaps are interpolated
+ * by `airScale` first, then scaled by `fontScale` like every other vertical
+ * term, so `airScale === 1` reduces to exactly the previous behaviour.
  */
 // `fontFamily` (bold-metrics fix, round 2, 2026-07-24): the rendered label
 // `<text>` declares `fontWeight="700"` in `ctx.fonts.heading` (`render`
@@ -197,6 +276,7 @@ function panelLayout(
   panel: { label?: string; intensity?: Intensity; items: string[] },
   w: number,
   fontScale: number = 1,
+  airScale: number = 1,
   fontFamily?: string,
 ): PanelLayout {
   const contentW = Math.max(1, w - PAD_X * 2)
@@ -205,8 +285,9 @@ function panelLayout(
   const itemLH = Math.round(itemSize * ITEM_LH_RATIO)
   const padTop = PAD_TOP * fontScale
   const padBottom = PAD_BOTTOM * fontScale
-  const gapLabelMarker = GAP_LABEL_MARKER * fontScale
-  const gapHeaderItems = GAP_HEADER_ITEMS * fontScale
+  const air = (tight: number, comfortable: number) => tight + (comfortable - tight) * airScale
+  const gapLabelMarker = air(GAP_LABEL_MARKER_TIGHT, GAP_LABEL_MARKER) * fontScale
+  const gapHeaderItems = air(GAP_HEADER_ITEMS_TIGHT, GAP_HEADER_ITEMS) * fontScale
   const itemGap = ITEM_GAP * fontScale
   const bulletR = BULLET_R * fontScale
   const markerDotR = MARKER_DOT_R * fontScale
@@ -258,13 +339,15 @@ interface CrossGeom {
   layouts: Record<ForceKey, PanelLayout>
 }
 
-/** Pure function of `component`'s own real content at width `w` and
- * `fontScale` (default 1) — the natural (unstretched) 3×3 cross geometry
- * `measure()` and `render()` both derive from, never a hardcoded ratio. */
+/** Pure function of `component`'s own real content at width `w`, `fontScale`
+ * and `airScale` (both default 1) — the natural (unstretched) 3×3 cross
+ * geometry `measure()` and `render()` both derive from, never a hardcoded
+ * ratio. */
 function crossGeom(
   component: FiveForcesComponent,
   w: number,
   fontScale: number = 1,
+  airScale: number = 1,
   fontFamily?: string,
 ): CrossGeom {
   const usableW = w - GAP * 2
@@ -273,11 +356,11 @@ function crossGeom(
   const centerW = usableW - leftW - rightW
 
   const layouts: Record<ForceKey, PanelLayout> = {
-    rivalry: panelLayout("rivalry", component.rivalry, centerW, fontScale, fontFamily),
-    new_entrants: panelLayout("new_entrants", component.new_entrants, centerW, fontScale, fontFamily),
-    supplier_power: panelLayout("supplier_power", component.supplier_power, leftW, fontScale, fontFamily),
-    buyer_power: panelLayout("buyer_power", component.buyer_power, rightW, fontScale, fontFamily),
-    substitutes: panelLayout("substitutes", component.substitutes, centerW, fontScale, fontFamily),
+    rivalry: panelLayout("rivalry", component.rivalry, centerW, fontScale, airScale, fontFamily),
+    new_entrants: panelLayout("new_entrants", component.new_entrants, centerW, fontScale, airScale, fontFamily),
+    supplier_power: panelLayout("supplier_power", component.supplier_power, leftW, fontScale, airScale, fontFamily),
+    buyer_power: panelLayout("buyer_power", component.buyer_power, rightW, fontScale, airScale, fontFamily),
+    substitutes: panelLayout("substitutes", component.substitutes, centerW, fontScale, airScale, fontFamily),
   }
 
   const topH = layouts.new_entrants.contentH
@@ -285,6 +368,12 @@ function crossGeom(
   const midH = Math.max(layouts.supplier_power.contentH, layouts.rivalry.contentH, layouts.buyer_power.contentH)
 
   return { leftW, centerW, rightW, topH, midH, bottomH, layouts }
+}
+
+/** The three governing row bands plus the two gaps between them — the one
+ * height number every stage of `render` compares against `box.h`. */
+function crossTotal(g: CrossGeom): number {
+  return g.topH + GAP + g.midH + GAP + g.bottomH
 }
 
 function renderIntensityMarker(
@@ -336,6 +425,13 @@ function renderPanel(
   const itemInk = accessibleInk(ctx.colors.text, panel, layout.itemSize)
   const labelBaseline = y + layout.padTop + layout.labelSize
   let cursorY = labelBaseline
+  // The marker's top edge, not its center — `renderIntensityMarker` takes a
+  // top-left origin and derives `cy` from it. Drawn air and declared air are
+  // the same number on purpose: `panelLayout`'s `markerH` reserves exactly
+  // `gapLabelMarker + markerDotR * 2` below the title baseline, so anything
+  // subtracted here would silently spend part of the gap the constant
+  // promises (it used to subtract `markerDotR / 2` — see GAP_LABEL_MARKER's
+  // own note).
   const markerRow =
     layout.intensity != null ? (
       <g key="marker">
@@ -343,7 +439,7 @@ function renderPanel(
           key,
           layout.intensity,
           x + PAD_X,
-          cursorY + layout.gapLabelMarker - layout.markerDotR / 2,
+          cursorY + layout.gapLabelMarker,
           token,
           layout.markerDotR,
           layout.markerDotGap,
@@ -395,26 +491,49 @@ function renderPanel(
 
 export const fiveForces: SvgComponent<FiveForcesComponent> = {
   measure(component, w) {
-    const { topH, midH, bottomH } = crossGeom(component, w)
-    return topH + GAP + midH + GAP + bottomH
+    return crossTotal(crossGeom(component, w))
   },
   render(component, box, ctx) {
-    const natural = crossGeom(component, box.w, 1, ctx.fonts.heading)
+    const natural = crossGeom(component, box.w, 1, 1, ctx.fonts.heading)
     const { leftW, centerW, rightW } = natural
-    const naturalTotal = natural.topH + GAP + natural.midH + GAP + natural.bottomH
+    const naturalTotal = crossTotal(natural)
     const totalH = box.h ?? naturalTotal
 
+    // ── Undersized box, stage 1 of 2: spend air ────────────────────────
+    // The two header gaps slide from comfortable toward `_TIGHT` by exactly
+    // as much as the box is short by, and no further — a box short by less
+    // than the comfort span keeps part of its air, so nothing snaps at
+    // exactly-natural height. Solving for `airScale` is plain linear
+    // interpolation because the two gaps are the only airScale-dependent
+    // term and each panel's `contentH` is linear in them; `tight` is only
+    // walked when the box is actually short, so the common (box >= natural)
+    // path still costs the one walk it always did.
+    // See `GAP_LABEL_MARKER_TIGHT` for why air is spent before type is.
+    let airScale = 1
+    let aired = natural
+    if (naturalTotal > 0 && totalH < naturalTotal) {
+      const tight = crossGeom(component, box.w, 1, 0, ctx.fonts.heading)
+      const tightTotal = crossTotal(tight)
+      const span = naturalTotal - tightTotal
+      airScale = span > 0 ? Math.min(1, Math.max(0, (totalH - tightTotal) / span)) : 0
+      aired = airScale === 0 ? tight : crossGeom(component, box.w, 1, airScale, ctx.fonts.heading)
+    }
+    const airedTotal = crossTotal(aired)
+
+    // ── Undersized box, stage 2 of 2: shrink type ──────────────────────
     // bench-driven fix round, defect F, ported from bmc.tsx — see file
-    // header. A box shorter than the natural total shrinks every panel's
-    // font size/vertical rhythm by the same proportion the box is short by,
+    // header. Still short after the air is gone, so every panel's font
+    // size/vertical rhythm shrinks by the proportion still missing,
     // floored at MIN_FONT_SCALE, instead of silently drawing past box.h. A
     // box at or above natural size keeps fontScale === 1 and reuses
-    // `natural` as-is rather than recomputing (`bmc.tsx`'s own "one walk"
-    // efficiency note).
-    const fontScale = naturalTotal > 0 && totalH < naturalTotal ? Math.max(MIN_FONT_SCALE, totalH / naturalTotal) : 1
-    const scaled = fontScale === 1 ? natural : crossGeom(component, box.w, fontScale, ctx.fonts.heading)
-    const { topH: scaledNatTop, midH: scaledNatMid, bottomH: scaledNatBottom, layouts } = scaled
-    const scaledNaturalTotal = scaledNatTop + GAP + scaledNatMid + GAP + scaledNatBottom
+    // `aired` as-is rather than recomputing (`bmc.tsx`'s own "one walk"
+    // efficiency note). Measured against the *air-spent* total, not the
+    // comfortable one, so the air already given back is not paid for twice
+    // in shrunken type.
+    const fontScale = airedTotal > 0 && totalH < airedTotal ? Math.max(MIN_FONT_SCALE, totalH / airedTotal) : 1
+    const scaled = fontScale === 1 ? aired : crossGeom(component, box.w, fontScale, airScale, ctx.fonts.heading)
+    const { topH: scaledNatTop, midH: scaledNatMid, layouts } = scaled
+    const scaledNaturalTotal = crossTotal(scaled)
     const finalTotalH = Math.max(scaledNaturalTotal, totalH)
 
     // Growth-only stretch (swot.tsx/bmc.tsx's own uncapped idiom): grows all
