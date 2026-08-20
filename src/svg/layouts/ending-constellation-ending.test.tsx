@@ -83,8 +83,8 @@ describe("ConstellationEnding", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", endingBare)
     const out = renderSvgMarkup(<ConstellationEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
-    expect(out).toContain("#051C2C") // consulting text
-    expect(out).toContain("#FFC72C") // consulting accent
+    expect(out).toContain("#1C1E23") // consulting text
+    expect(out).toContain("#F5C518") // consulting accent
     expect(out).not.toContain("#EAF1FA") // tech text 不得残留
     expect(out).not.toContain("#53E0D2") // tech accent 不得残留
   })

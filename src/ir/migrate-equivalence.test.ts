@@ -454,6 +454,27 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     wave — but neither fixture's seed picks it on any page.
       // `.audit.json` needed no recapture for any of the three (findings
       // stayed the empty array, recomputed fresh against both goldens).
+      //
+      // Re-recaptured again (theme-redesign wave, editorial group —
+      // `.issues/2026-08-18-theme-redesign/skins/group5-notes.md`): all
+      // three fixtures move this time, because all three are painted by a
+      // theme this group reskins — `basic` runs on `consulting`,
+      // `scenarioBearing` and `annualReviewPreset` on `journal`. Two things
+      // changed and nothing else: every colour token in those two themes,
+      // and the two motifs they anchor (`banner-motif` became three fixed
+      // annotation rules, `corner-ornament-motif` became masthead rules and
+      // stopped drawing corner brackets entirely).
+      //
+      // Targeted attribution (`.issues/2026-08-18-theme-redesign/skins/
+      // tools/equiv-recapture.mts`, this group's own tool): cut two things
+      // out of both the old and the new capture — the whole `<g data-decor>`
+      // subtree (nesting-aware), and the *value* of every `fill=`/`stroke=`
+      // attribute — and the two become byte-identical on all 15 slides of
+      // all three fixtures. So no text moved, no geometry deformed, and no
+      // element was added or dropped: the diff is paint and decor, which is
+      // exactly what a reskin is allowed to be. `.audit.json` needed no
+      // recapture for any of the three (findings stayed the empty array,
+      // recomputed fresh against both goldens).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

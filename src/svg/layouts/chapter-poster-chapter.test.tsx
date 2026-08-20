@@ -111,7 +111,7 @@ describe("PosterChapter", () => {
     const out = renderSvgMarkup(<PosterChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
 
     // token 化成立：章节数字走 consulting 的 primary，不是写死的 insight RED
-    expect(out).toContain("#051C2C") // consulting primary（也是 text）
+    expect(out).toContain("#1E2A4A") // consulting primary（编辑组换血后与 text 不再同值）
     expect(out).not.toContain("#16202B") // insight primary 不得残留
     expect(out).not.toContain("#F0A63C") // insight accent（终端琥珀）本就不该出现
     expect(out).not.toContain("#F2EFE8") // insight text 不得残留

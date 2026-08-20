@@ -125,7 +125,7 @@ describe("RailChapter", () => {
     // pure white to `surface` instead. Assert each theme's real value (the
     // fix's premise) before asserting the fix's effect, so a future token
     // edit can't silently invalidate this test.
-    const CHAPTER_BG = { runway: "#FFFFFF", enterprise: "#F7F7F4" } as const
+    const CHAPTER_BG = { runway: "#F2F0EB", enterprise: "#F7F7F4" } as const
     for (const themeId of ["runway", "enterprise"] as const) {
       const ctx = chapterCtx(themeId)
       expect(ctx.defaultBg).toBe(CHAPTER_BG[themeId])

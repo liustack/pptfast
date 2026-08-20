@@ -87,9 +87,10 @@ describe("PosterEnding", () => {
       <PosterEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
     )
 
-    expect(out).toContain("#051C2C") // consulting primary，短横条 + text
-    expect(out).toContain("#6B6B6B") // consulting muted，副标题/meta 行
-    expect(out).toContain("#D5D5CB") // consulting border，分隔线
+    expect(out).toContain("#1E2A4A") // consulting primary，短横条
+    expect(out).toContain("#1C1E23") // consulting text（编辑组换血后与 primary 拆开）
+    expect(out).toContain("#5B6069") // consulting muted，副标题/meta 行
+    expect(out).toContain("#DDDCD4") // consulting border，分隔线
 
     // insight 烤死的 hex 一律不得残留
     expect(out).not.toContain("#16202B")

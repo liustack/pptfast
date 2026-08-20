@@ -761,7 +761,7 @@ describe("motif candidate rotation (P1 variety wave, task 2)", () => {
 // value against the motif's own ctx-derived colors is needed to isolate
 // them.
 describe("chart palette phase rotation (P1 variety wave, task 2)", () => {
-  const RUNWAY_CHART_PALETTE = ["#0A0A0A", "#D80027", "#77787D", "#C9C9CC"]
+  const RUNWAY_CHART_PALETTE = ["#141414", "#B0483C", "#8A8A84", "#C4C0B4"]
 
   const pieSlide: Slide = {
     type: "content",

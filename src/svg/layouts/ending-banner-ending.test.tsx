@@ -70,17 +70,17 @@ describe("BannerEnding", () => {
     expect(out).toContain('x2="1184"')
 
     // consulting 自己的 primary/accent 用在标题/org 圆点上
-    expect(out).toContain("#051C2C")
-    expect(out).toContain("#FFC72C")
+    expect(out).toContain("#1E2A4A")
+    expect(out).toContain("#F5C518")
 
-    // 版权行现在派生自 colors.muted（consulting 的 #6B6B6B 对真实渲染背景
-    // #F7F7F2 已经 4.96:1，clears B 层 3:1，metaInk 原样保留），挂
+    // 版权行现在派生自 colors.muted（编辑组换血后 consulting 的 #5B6069
+    // 对真实渲染背景 #F7F6F2 是 5.85:1，clears B 层 3:1，metaInk 原样保留），挂
     // data-contrast-tier="meta"。不再是独立于 muted 的孤儿色。
     const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`)
     const copyrightText = Array.from(root.querySelectorAll("text")).find(
       (t) => t.textContent === "© 2026 维岚科技 保留所有权利",
     )!
-    expect(copyrightText.getAttribute("fill")).toBe("#6B6B6B")
+    expect(copyrightText.getAttribute("fill")).toBe("#5B6069")
     expect(copyrightText.getAttribute("data-contrast-tier")).toBe("meta")
   })
 

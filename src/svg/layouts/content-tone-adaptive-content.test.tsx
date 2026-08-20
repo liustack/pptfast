@@ -476,12 +476,12 @@ describe("ToneAdaptiveContent", () => {
     it("characterizes the pre-fix defect: consulting's raw accent fails the 22px kicker's required ratio against its own page background", () => {
       const tokens = resolveStyle("consulting")
       const ctx = buildCtx(tokens, {})
-      // Pins the exact number this fix's own commit message and the P1
-      // task 3 review both cite (~1.452:1) — independently recomputed here
-      // via the same contrastRatio the layout itself now guards with,
-      // not copied from either source.
+      // 原钉的是 1.452:1（旧 accent #FFC72C 压旧 bg #F7F7F2）。编辑组换血
+      // （2026-08-20）把一线黄压深半档、纸底收掉绿味，实测变成 1.507:1
+      // ——数字动了，缺陷性质没动：accent 依旧远在 22px kicker 的门槛之下，
+      // 这一档色本来就写明「只作色块与下划，永不承字」。
       const rawRatio = contrastRatio(tokens.colors.accent, ctx.defaultBg!)
-      expect(rawRatio).toBeCloseTo(1.452, 3)
+      expect(rawRatio).toBeCloseTo(1.507, 3)
       expect(rawRatio).toBeLessThan(requiredContrastRatio(22))
     })
 

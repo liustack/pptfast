@@ -34,9 +34,9 @@ const ir = (theme: string, slide: Slide): PptxIR =>
 // literals so this test no longer depends on the legacy `templates/magazine`
 // module (slated for deletion).
 const MAGAZINE_EXPECTED_WITH_HEADING =
-  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#1F1F1F" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#6E6259" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
+  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
 const MAGAZINE_EXPECTED_BARE =
-  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#1F1F1F" text-anchor="middle" dominant-baseline="alphabetic">Thank You</text><text x="640" y="396" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#6E6259" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">We appreciate your time.</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#6E6259" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
+  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">Thank You</text><text x="640" y="396" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#626159" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">We appreciate your time.</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
 
 describe("MastheadEnding", () => {
   it("magazine tokens 下与固化的基准 markup 逐字节一致（档位一，有 heading，不兜底副题，档案来自旧 EditorialSerifEnding）", () => {
@@ -63,10 +63,10 @@ describe("MastheadEnding", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting", endingWithHeading)
     const out = renderSvgMarkup(<MastheadEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />)
-    expect(out).toContain("#051C2C") // consulting text
-    expect(out).toContain("#6B6B6B") // consulting muted
-    expect(out).not.toContain("#1F1F1F") // magazine text 不得残留
-    expect(out).not.toContain("#6E6259") // magazine muted 不得残留
+    expect(out).toContain("#1C1E23") // consulting text
+    expect(out).toContain("#5B6069") // consulting muted
+    expect(out).not.toContain("#26261F") // journal text 不得残留
+    expect(out).not.toContain("#626159") // journal muted 不得残留
   })
 
   it("passes assertSubset (no forbidden elements)", () => {

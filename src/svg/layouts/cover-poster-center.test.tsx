@@ -51,7 +51,7 @@ describe("PosterCenterCover", () => {
   it("consulting tokens 下用 consulting 的 primary 色（token 化成立）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(<PosterCenterCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
-    expect(out).toContain("#051C2C") // consulting primary
+    expect(out).toContain("#1E2A4A") // consulting primary
     expect(out).not.toContain("#16202B") // insight primary 不得残留
   })
 
