@@ -608,6 +608,20 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // tightened gap ceiling) — those need a two-column page that degrades
       // or a multi-component stack with leftover, and none of the 15 slides
       // here is either.
+      //
+      // Re-recaptured again (visual review round 4, the floating-decor
+      // sweep -- bars that underline nothing are deleted library-wide).
+      // Only `scenarioBearing` moves, and the drift is exactly two deleted
+      // decorative rects, attributed token-by-token with the same tool as
+      // the motif-geometry recapture above (part-name sets identical,
+      // audit goldens byte-identical, `basic`/`annualReviewPreset`
+      // untouched):
+      //   - slide 2: poster-ending's 28x3 white bar (1032,564) -- floating
+      //     mid-air, 64px from any ink;
+      //   - slide 3: quote-stage's 48x3 bar (616,200) -- 160px of nothing
+      //     below it.
+      // One shape block leaves each affected PPTX slide; no text or other
+      // element moved a single EMU.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
