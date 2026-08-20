@@ -865,6 +865,29 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       ending: ["rail-ending"],
     },
   },
+  // crayon（蜡笔卡纸，2026-08-21 低龄教育，第 18 主题）：卡纸奶油底 + 蜡笔
+  // 四原色，页缘蜡笔描边由专属 crayon-motif 承载。结构行 L / top-band /
+  // heavy / medium，最近邻 classroom（L / top-band / medium / medium），
+  // 装饰浓度岔开——classroom 是拍纸簿的 medium，crayon 是满场 heavy 在密页
+  // 降成顶＋底半场。封面构造：
+  //   - `tone-adaptive-header`：克制的自适应留白封面，标题黑字写在卡纸上、
+  //     蓝带只到顶（封面样例自己的读法）。`narrative/index.ts` 明确「从不
+  //     出现在任何 strategy 的 identityTendencies 里」的万金油 identity
+  //     layout 之一，默认 briefing 下拿满额边际权重（max(3,1)=3），是这一
+  //     对里真正把 crayon 从盲主题默认序列上撬开的那一个。
+  //   - `banner-title`：整幅深色横幅压住标题，板书带的读法。briefing 已锁
+  //     权重 3，单独声明空转，保留为真实主张（declaration-rebalance wave
+  //     裁定 1 的追加先例）。写在第二个，3:1 软权重照现有写法，两个 id
+  //     都拿 TENDENCY_WEIGHT。
+  // layouts 仍是四页型全集（17 家无一收窄，heavy 身份用 motif 降档表达，
+  // 不靠策展砍 layout）。
+  crayon: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "crayon-motif",
+    layoutTendencies: {
+      cover: ["tone-adaptive-header", "banner-title"],
+    },
+  },
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(
