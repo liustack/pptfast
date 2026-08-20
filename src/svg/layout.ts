@@ -195,13 +195,23 @@ const STRETCH_CAP_RATIO = 1.7
 /** 剩余低于此值不做拉伸——与 SURPLUS_MIN_REMAINING 同值，保持「剩余 ≤80px
  * 时整个后处理链 byte-identical」的回归锁语义。 */
 const STRETCH_MIN_REMAINING = 80
+/** 拉伸这一趟至多吃掉列内剩余的这个份额，其余留给 distributeSurplus。
+ * 与 SURPLUS_SHARE 同值（沿用本文件既有写法：数字重写一遍，注释里挑明是
+ * 同一个数），两趟都只花掉自己看到的剩余的 60%，谁先跑都不会把版面吃干净。
+ * 没有上限时单个可伸展块独吞全部剩余（拉伸倍率直接顶到 STRETCH_CAP_RATIO），
+ * 卡壳内部撑出大片死空、卡与卡之间一 px 不长、末排卡片贴到页脚上
+ * （2026-08-19 评审 C 簇 3/4：188.5px 高的卡里只有 107px 内容，
+ * 末排卡底离脚注墨迹 3px）。 */
+const STRETCH_SHARE = 0.6
 
 /**
  * 卡片密度拉伸（2026-07-11 用户「带卡片的区块页面总是空腔」痛点）：布局
- * 成功后，把每列底部的剩余高度分给列内卡壳类 component（box.h = 测量高 +
- * 份额，封顶 STRETCH_CAP_RATIO×），列内后续 component 相应下移。剩余没吃完
- * 的部分留给 distributeSurplus 继续做间距呼吸。与 distributeSurplus 同款
- * 列条件：列首块必须贴 rect 顶（quote 居中版式不动）。
+ * 成功后，把每列底部剩余高度的 STRETCH_SHARE 分给列内卡壳类 component
+ * （box.h = 测量高 + 份额，封顶 STRETCH_CAP_RATIO×），列内后续 component
+ * 相应下移。份额之外的剩余留给 distributeSurplus 继续做间距呼吸——不设份额
+ * 上限时这一趟会把剩余吃干净，distributeSurplus 拿到的永远是 remaining = 0，
+ * 必然空转。与 distributeSurplus 同款列条件：列首块必须贴 rect 顶
+ * （quote 居中版式不动）。
  */
 function growStretchables(
   placed: PlacedComponent[],
@@ -227,7 +237,7 @@ function growStretchables(
     if (remaining <= STRETCH_MIN_REMAINING) continue
     const stretchIdxs = idxs.filter((i) => STRETCHABLE_TYPES.has(placed[i].component.type))
     if (stretchIdxs.length === 0) continue
-    const perComponent = remaining / stretchIdxs.length
+    const perComponent = (remaining * STRETCH_SHARE) / stretchIdxs.length
     let shift = 0
     for (const i of idxs) {
       const p = next[i]
@@ -319,6 +329,38 @@ function distributeSurplus(
 }
 
 /**
+ * Split whatever the gap-growing pass could not spend evenly above and below
+ * the stack instead of letting all of it sit under the last component.
+ *
+ * `distributeSurplus` caps each gap at `SURPLUS_GAP_CAP_RATIO`× its original
+ * size, so a stack with few gaps has almost nowhere to put a large leftover:
+ * the 2026-08-19 review's `two-column` pages (E cluster, p06) reached one
+ * gap and 169px of leftover, of which the cap allowed 25.5px — the other
+ * 143.5px, 23% of the page height, sat as one dead strip along the bottom
+ * while the ink stopped 72px above the rect's own middle.
+ *
+ * Applied only where `layoutContentFit` has already abandoned the
+ * arrangement the theme picked: at that point the placement is this
+ * function's own construction, not the layout's, so centering it cannot
+ * move a page that still renders in its chosen arrangement. Same two guards
+ * as the other two passes: an already-offset stack (`quote`) is left alone,
+ * and a leftover at or under `SURPLUS_MIN_REMAINING` is a no-op.
+ */
+function centerShortStack(
+  placed: PlacedComponent[],
+  rect: ContentRect,
+  ctx: ComponentCtx,
+): PlacedComponent[] {
+  if (placed.length === 0) return placed
+  const top = placed.reduce((min, p) => Math.min(min, p.box.y), Number.POSITIVE_INFINITY)
+  if (Math.abs(top - rect.y) > 0.5) return placed
+  const remaining = rect.y + rect.h - stackBottom(placed, ctx)
+  if (remaining <= SURPLUS_MIN_REMAINING) return placed
+  const shift = remaining / 2
+  return placed.map((p) => ({ ...p, box: { ...p.box, y: p.box.y + shift } }))
+}
+
+/**
  * Vertical overflow guard: retries `layoutContent` with progressively tighter
  * gaps, then — if the tightest gap still overflows — keeps only the components
  * whose bottom edge fits the rect and reports how many were dropped so the
@@ -382,13 +424,18 @@ export function layoutContentFit(
   const SPLITTING: readonly Arrangement[] = ["two_column", "image_focus", "aside"]
   if (arrangement && SPLITTING.includes(arrangement)) {
     const single = layoutContentFit("single", components, rect, ctx)
-    if (single.dropped === 0) return single
+    // The single stack was built to survive, not to fill: blocks measured
+    // for a full-width rect are usually much shorter there than the split
+    // they replaced, so this branch is exactly where a large leftover shows
+    // up. Center it rather than sink it.
+    if (single.dropped === 0) return { placed: centerShortStack(single.placed, rect, ctx), dropped: 0 }
   }
 
-  const placed = layoutContent(arrangement, components, rect, ctx, GAP_TIERS[GAP_TIERS.length - 1])
-  const kept = placed.filter(
-    (p) => p.box.y + measureComponent(p.component, p.box.w, ctx) <= rect.y + rect.h + 1,
-  )
+  const tightestGap = GAP_TIERS[GAP_TIERS.length - 1]
+  const placed = layoutContent(arrangement, components, rect, ctx, tightestGap)
+  const fits = (p: PlacedComponent) =>
+    p.box.y + measureComponent(p.component, p.box.w, ctx) <= rect.y + rect.h + 1
+  const kept = placed.filter(fits)
   // A slide degraded to nothing but the "+N more" marker is worse than
   // one with a single overflowing component — keep the first placed component even
   // if it alone doesn't fit the rect (upstream quality gates make this rare).
@@ -401,6 +448,32 @@ export function layoutContentFit(
     return {
       placed: [{ ...first, box: { ...first.box, h: Math.max(80, avail) } }],
       dropped: placed.length - 1,
+    }
+  }
+  // The `kept` filter only sieves — survivors stay in the column they were
+  // assigned. When a split arrangement loses one column outright (its blocks
+  // are the ones that did not fit the half width), what is left is content on
+  // one half of the page and nothing at all on the other: the "左侧空白" shape
+  // the 2026-08-19 review kept reading as a defect with no name (D cluster,
+  // 5b — `content-dropped` tells the reader two blocks are gone, nothing tells
+  // them half the page is empty). Restack the survivors as one full-width
+  // column, which is also the width they were originally measured for. Kept
+  // only if it costs nothing: a block whose height grows with its width (an
+  // `image`) can fail to fit the wider column, and losing more content to
+  // improve the shape is not a trade worth making.
+  const columnXs = new Set(placed.map((p) => p.box.x))
+  const survivingXs = new Set(kept.map((p) => p.box.x))
+  if (kept.length > 0 && columnXs.size > 1 && survivingXs.size < columnXs.size) {
+    const restacked = stackFrom(
+      kept.map((p) => p.component),
+      rect.x,
+      rect.y,
+      rect.w,
+      ctx,
+      tightestGap,
+    )
+    if (restacked.placed.every(fits)) {
+      return { placed: restacked.placed, dropped: placed.length - kept.length }
     }
   }
   return { placed: kept, dropped: placed.length - kept.length }
