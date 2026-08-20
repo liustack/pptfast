@@ -74,7 +74,7 @@ describe("SvgContent", () => {
     // the corner of a finished slide is a debug affordance no reader outside
     // this repo can act on.
     expect(markup).toMatch(/data-dropped="\d+"/)
-    expect(markup).not.toMatch(/\+\d+ more/)
+    expect(markup).not.toMatch(/\+\d+ …/)
   })
 
   it("annotates bespoke variants with the content rect", () => {

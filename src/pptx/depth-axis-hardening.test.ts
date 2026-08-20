@@ -41,7 +41,7 @@
 // all have a schema `.max()` bound (3-8) unlike kpi_cards, so a legal IR
 // can never drive their divisor past a safe count. Fixed with the same
 // idiom as the vertical family sweep: cap visible cards to what fits
-// box.w at a sane minimum width, "+N more"/data-dropped marker.
+// box.w at a sane minimum width, "+N …"/data-dropped marker.
 //
 // Runs the REAL generatePptx/generatePptxBlob/validateIr (src/api.ts) —
 // never a mock — the same production entry points the investigation's own

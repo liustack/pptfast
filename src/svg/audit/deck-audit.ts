@@ -2330,7 +2330,7 @@ function overlapFindings(markup: string, page: number, slideId: string | undefin
 // of the marker attributes the render chain now stamps at the point of
 // the cut — `data-truncated="1"` on a truncated `<text>` (`fitSvgLine`'s own
 // doc comment, `../../lib/svg-text-layout.ts`), `data-dropped="N"` on a
-// "+N more" marker (six render sites: `SvgContent`, `BigNumber`,
+// "+N …" marker (six render sites: `SvgContent`, `BigNumber`,
 // `AssertionEvidence`×2, `ImagePages`, `row-cards.tsx`'s own item-level
 // marker) — neither re-derives truncation/capacity logic here, so there is
 // exactly one place (the render chain itself) that decides what got cut.

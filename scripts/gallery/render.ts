@@ -107,7 +107,7 @@ const TABLE_META: Record<TableId, { label: string; question: string }> = {
   density: {
     label: "容量表",
     question:
-      "九个会掉内容的组件各一页，item 数灌到装不下——降级画出来的「+N more」和留下的那部分，能不能给客户看？这一表的机器发现是预期的，不是回退。",
+      "九个会掉内容的组件各一页，item 数灌到装不下——降级画出来的「+N …」和留下的那部分，能不能给客户看？这一表的机器发现是预期的，不是回退。",
   },
 }
 

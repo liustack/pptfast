@@ -693,7 +693,7 @@ describe("chart component — legend (n>=2 series)", () => {
     expect(truncated!.textContent!.length).toBeLessThan(longName.length)
   })
 
-  it("count overflow: more series than fit in one row drop the tail into a '+N more' marker, marked data-dropped", () => {
+  it("count overflow: more series than fit in one row drop the tail into a '+N …' marker, marked data-dropped", () => {
     const manySeries = Array.from({ length: 12 }, (_, i) => ({
       name: `S${i + 1}`,
       data: [{ x: "A", y: i + 1 }],
@@ -703,7 +703,7 @@ describe("chart component — legend (n>=2 series)", () => {
     const texts = legendTexts(container)
     const dropped = texts.find((t) => t.hasAttribute("data-dropped"))
     expect(dropped).toBeTruthy()
-    expect(dropped!.textContent).toMatch(/^\+\d+ more$/)
+    expect(dropped!.textContent).toMatch(/^\+\d+ …$/)
     const droppedCount = Number(dropped!.getAttribute("data-dropped"))
     expect(droppedCount).toBeGreaterThan(0)
     const nameEntries = texts.filter((t) => !t.hasAttribute("data-dropped"))

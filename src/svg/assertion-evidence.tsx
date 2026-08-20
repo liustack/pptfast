@@ -146,7 +146,7 @@ export function AssertionEvidence({
   // comparison/citation/timeline/row-cards/kpi/architecture each cap their
   // own "kept" unit at 1-2 lines too, same order of magnitude): one item
   // wrapped to bullets.tsx's own hardcoded `maxLines: 2` ceiling, plus its
-  // own "+N more" drop-pill immediately below it — every constant below is
+  // own "+N …" drop-pill immediately below it — every constant below is
   // copied from bullets.tsx's own `layoutItems`/`render` arithmetic (not
   // approximated), evaluated at `ctx.bodyFontPx` (the un-shrunk upper bound
   // bullets.tsx's own per-content font-fit starts from and can only shrink

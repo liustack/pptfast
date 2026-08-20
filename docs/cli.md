@@ -47,7 +47,7 @@ Six checks:
 - **low-contrast** — the WCAG luminance ratio between text and its resolved background.
 - **overlap** — two components' regions substantially colliding.
 - **content-truncated** — text the renderer had to cut short with an ellipsis to fit.
-- **content-dropped** — a card list trimmed to what fits (the slide shows a "+N more" line), or a whole component the page had no room for and left out with nothing on the page to say so.
+- **content-dropped** — a card list trimmed to what fits (the slide shows a "+N …" line), or a whole component the page had no room for and left out with nothing on the page to say so.
 
 Audit is advisory, not a hard gate. `validate` already rejects a structurally invalid or over-dense deck. Audit catches what a *valid* deck can still get wrong at render time: an author-chosen text color that sits too close to the background, two components whose combined content collides, a card list that had to drop an item.
 

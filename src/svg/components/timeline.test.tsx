@@ -177,7 +177,7 @@ describe("timeline component", () => {
         expect(dropped).toBeTruthy()
         const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
         expect(hiddenCount + circles.length).toBe(manyMilestones.length)
-        expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+        expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
 
         // Review fix (I1, sibling audit): the marker itself must stay
         // inside box.h too — a marker-excluding containment check is

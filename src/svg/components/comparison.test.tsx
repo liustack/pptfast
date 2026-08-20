@@ -309,7 +309,7 @@ describe("comparison 首列重复归一化（2026-07-10 无图矩阵真机病型
       expect(dropped).toBeTruthy()
       const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
       expect(hiddenCount).toBeGreaterThan(0)
-      expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+      expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
       expect(hiddenCount + dataRowLabelTexts.length).toBe(manyRowsComponent.rows.length)
 
       // Review fix (I1, sibling audit): the marker itself must stay inside

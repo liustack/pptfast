@@ -28,7 +28,7 @@ type DataTableColumn = DataTableComponent["columns"][number]
  *    见 docs/contrast-system.md「Ink selection」一节）——普通行文字没有
  *    自绘底色（表体本身不填色，booktabs 惯例，见 `comparison.tsx` 头
  *    注），直接用 `colors.text`，不套 accessibleInk。
- *  - **溢出兜底**：`box.h` 小于自然高度时按行截断 + 画「+N more」，
+ *  - **溢出兜底**：`box.h` 小于自然高度时按行截断 + 画「+N …」，
  *    `data-dropped` 标记——`comparison.tsx` 的 `render()` 同一套预算-截断
  *    算法，字段名换成 key 化的 columns/cells 而已。`stretchable: false`
  *    （traits），所以 `box.h` 只会来自 `layout.ts` 的兜底分支（"保留第一个
@@ -172,7 +172,7 @@ export const dataTable: SvgComponent<DataTableComponent> = {
     const naturalRowsH = (fullRowCount + 1) * ROW
     let visibleRowCount = fullRowCount
     if (naturalRowsH > truncBudget) {
-      // 预留 1 个 ROW 给表头、1 个 ROW 给「+N more」标记行本身——与
+      // 预留 1 个 ROW 给表头、1 个 ROW 给「+N …」标记行本身——与
       // comparison.tsx 的 `-2` 预留同一账法。下限钳到 1（"宁可只留一行也不
       // 要整页只剩一行 marker"，comparison.tsx/row-cards.tsx 共同先例）。
       visibleRowCount = Math.max(1, Math.min(fullRowCount, Math.floor(truncBudget / ROW) - 2))
@@ -306,7 +306,7 @@ export const dataTable: SvgComponent<DataTableComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hiddenRowCount} more`}
+            {`+${hiddenRowCount} …`}
           </text>
         )}
 

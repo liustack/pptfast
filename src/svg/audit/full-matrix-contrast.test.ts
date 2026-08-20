@@ -2664,7 +2664,7 @@ describe("chart legend contrast (R1 evidence wave, Task T2)", () => {
 
   // Overflow stress: enough series (long names, realistic magnitude) to
   // force both the per-name `data-truncated` fitSvgLine branch and the
-  // trailing "+N more" `data-dropped` marker (chart.tsx's own
+  // trailing "+N …" `data-dropped` marker (chart.tsx's own
   // `layoutChartLegend`) — the marker text is exactly as much "legend text
   // painted on the real background" as a name entry, so it needs the same
   // proof, not just the comfortable few-series case above.
@@ -2679,7 +2679,7 @@ describe("chart legend contrast (R1 evidence wave, Task T2)", () => {
   } as Slide
 
   for (const themeId of CANONICAL_THEME_IDS) {
-    it(`${themeId}: legend name-truncation and count-overflow ("+N more") text renders with zero auditDeck findings`, () => {
+    it(`${themeId}: legend name-truncation and count-overflow ("+N …") text renders with zero auditDeck findings`, () => {
       expect(auditFindings(deckFor(themeId, LEGEND_OVERFLOW_SLIDE))).toEqual([])
     })
   }

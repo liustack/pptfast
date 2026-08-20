@@ -2048,7 +2048,7 @@ describe("generatePptx content-drop gate (deep-review P1)", () => {
     expect(() => renderSlideSvg(v.ir!, 1)).not.toThrow()
   })
 
-  it("does not fire on a component's own visible '+N more' trim", async () => {
+  it("does not fire on a component's own visible '+N …' trim", async () => {
     // `bullets.tsx` caps its items to what `box.h` holds and *says so* on
     // the slide. The reader is not misled, so this stays an advisory audit
     // finding — blocking it here would make the gate unfalsifiable noise.

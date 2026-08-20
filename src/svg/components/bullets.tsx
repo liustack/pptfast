@@ -227,14 +227,14 @@ export const bullets: SvgComponent<BulletsComponent> = {
     // `box.h` is only ever set on this non-stretchable component type by
     // `layoutContentFit`'s overflow-defense branch, so its presence always
     // means "cap to this budget," never "stretch" (`row-cards.tsx` is the
-    // precedent for both this convention and the "+N more"/`data-dropped`
+    // precedent for both this convention and the "+N …"/`data-dropped`
     // marker below).
     const truncBudget = box.h ?? Number.POSITIVE_INFINITY
     // Marker's own font size/vertical reach (shared by the cutoff below and
     // the marker's own render further down — one derivation, not two copies
     // that could drift). Review fix (I1): the marker line itself needs
     // headroom reserved inside truncBudget, the same "reserve room for the
-    // +N more line" shape every sibling fix (comparison/citation/
+    // +N … line" shape every sibling fix (comparison/citation/
     // architecture/timeline) already uses — bullets.tsx (fixed first, in
     // this same task) originally cut items to fit truncBudget but then drew
     // the marker *below* that budget, past box.h.
@@ -295,7 +295,7 @@ export const bullets: SvgComponent<BulletsComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hidden} more`}
+            {`+${hidden} …`}
           </text>
         )}
       </g>

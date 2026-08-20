@@ -192,7 +192,7 @@ describe("BentoPanelContent", () => {
     expect(next).not.toContain("要点 6")
     // The drop is recorded for the audit, not painted — see svg-content.tsx.
     expect(next).toContain('data-dropped="1"')
-    expect(next).not.toContain("+1 more")
+    expect(next).not.toContain("+1 …")
   })
 
   it("consulting tokens 下用 consulting 自己的 surface/accent/text/muted（证明 token 化成立），tech 烤死色不残留", () => {

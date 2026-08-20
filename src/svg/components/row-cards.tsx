@@ -85,7 +85,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     const cardGap = CARD_GAP + gapGrow
     const perCardGrow = (grow - gapGrow * (layouts.length - 1)) / layouts.length
     // 截断预算（box.h < 测量高，layoutContentFit 单块超高兜底）：只画放
-    // 得下的卡，尾部自画「+N more」——存量超预算 deck 不再画出页外。
+    // 得下的卡，尾部自画「+N …」——存量超预算 deck 不再画出页外。
     const truncBudget =
       box.h != null && box.h < measuredH ? box.h - 20 : Number.POSITIVE_INFINITY
     let visible = component.items.length
@@ -125,7 +125,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
           // fixed here per Global Constraint 6/the I3 precedent rather than
           // routed around) used to add this gap unconditionally, including
           // after the *last* visible card — the acceptance loop never
-          // budgeted for that extra 14px, so the "+N more" marker below
+          // budgeted for that extra 14px, so the "+N …" marker below
           // (placed at `cursor + 14`) could land up to 8px past `box.h`,
           // outside the real overflow auditor's own tolerance. The marker
           // is meant to sit 14px below the last card's own shell, not
@@ -237,7 +237,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hidden} more`}
+            {`+${hidden} …`}
           </text>
         )}
       </g>

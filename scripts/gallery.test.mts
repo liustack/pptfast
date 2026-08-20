@@ -245,7 +245,7 @@ describe("gallery density table", () => {
     const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-density-"))
     const { svgs } = renderMatrix(jobs, outDir, "test")
 
-    const unmarked = [...svgs].filter(([, svg]) => !/\+\d+ more/.test(svg)).map(([id]) => id)
+    const unmarked = [...svgs].filter(([, svg]) => !/\+\d+ …/.test(svg)).map(([id]) => id)
     expect(unmarked, "these density pages fit after all — raise their item counts").toEqual([])
 
     // The failure mode that cost the first attempt at this table: the whole
@@ -268,11 +268,11 @@ describe("gallery density table", () => {
     const dir = join(fileURLToPath(new URL("..", import.meta.url)), "src/svg/components")
     const drawers = readdirSync(dir)
       .filter((f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))
-      .filter((f) => /\+\$\{[^}]+\} more`/.test(readFileSync(join(dir, f), "utf8")))
+      .filter((f) => /\+\$\{[^}]+\} …`/.test(readFileSync(join(dir, f), "utf8")))
 
     expect(
       Object.keys(DENSITY_BUILDERS).length,
-      `${drawers.length} components draw a "+N more" marker (${drawers.join(", ")}) but the density ` +
+      `${drawers.length} components draw a "+N …" marker (${drawers.join(", ")}) but the density ` +
         `table covers ${Object.keys(DENSITY_BUILDERS).length} — add a builder to DENSITY_BUILDERS`,
     ).toBe(drawers.length)
   })

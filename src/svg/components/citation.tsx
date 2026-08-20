@@ -36,7 +36,7 @@ export const citation: SvgComponent<CitationComponent> = {
     const naturalHeight = fullCount * ROW
     let visibleCount = fullCount
     if (naturalHeight > truncBudget) {
-      // Reserve 1 ROW inside the budget for the "+N more" marker line
+      // Reserve 1 ROW inside the budget for the "+N …" marker line
       // itself — same reservation shape row-cards.tsx's own
       // `truncBudget - 20` uses. Floored at 1 (row-cards.tsx's "never
       // render zero visible units" precedent).
@@ -92,7 +92,7 @@ export const citation: SvgComponent<CitationComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hiddenCount} more`}
+            {`+${hiddenCount} …`}
           </text>
         )}
       </g>

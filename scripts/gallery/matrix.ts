@@ -154,7 +154,7 @@ export function buildMatrix(
   }
 
   // ── Density table ──────────────────────────────────────────────────────
-  // One overfilled component per page, so the "+N more" degrade path the
+  // One overfilled component per page, so the "+N …" degrade path the
   // nine drop-capable components share gets looked at by a person. Kept as
   // its own table rather than mixed into the component table because it
   // answers a different question, and because its findings are the point

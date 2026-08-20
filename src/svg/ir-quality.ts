@@ -334,7 +334,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
     // `CAPACITY.bullets.countOverflowItems` 时，"优雅截断"已经不是对结果
     // 的诚实描述——render 层（`bullets.tsx`，同任务）现在会把渲染项数钳制
     // 到 box.h 并标记 `data-dropped`，不会再崩溃，但极端条目数会让绝大多数
-    // 内容悄悄消失在一行「+N more」里。阈值推导见 `capacity.ts`
+    // 内容悄悄消失在一行「+N …」里。阈值推导见 `capacity.ts`
     // `CAPACITY.bullets.countOverflowItems` 自己的注释。
     if (component.items.length > CAPACITY.bullets.countOverflowItems) {
       issues.push({
@@ -381,7 +381,7 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
   // citation/architecture) a render-time box.h cap + data-dropped marker,
   // the same "graceful landing" fix bullets.tsx got — but, unlike bullets,
   // zero pre-render editorial signal, so a weak model saw no warning before
-  // content silently dropped behind a "+N more" marker. Same dual-threshold
+  // content silently dropped behind a "+N …" marker. Same dual-threshold
   // *shape* as bullets_overflow/bullets_count_overflow above (warn at a
   // budget, error at an extreme ceiling), but unlike bullets_overflow (a
   // per-pacing PACING_BUDGETS number) both thresholds here come from
