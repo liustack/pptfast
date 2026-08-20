@@ -30,6 +30,26 @@ export interface StyleColors {
    * fill-only card unchanged.
    */
   cardStroke?: string;
+  /**
+   * Optional semantic-role colors — the "this is an error", "this is a
+   * caution", "this is a good result" trio that shared component renderers
+   * used to bake in as literal hexes (`callout`'s warn rule and icon in
+   * components/callout.tsx, `kpi_cards`' delta arrow in components/kpi.tsx).
+   * Same reasoning as `cardStroke` above: those renderers are shared across
+   * every theme and must stay theme-agnostic (no `if (themeId === ...)`
+   * branching), so a theme that wants its own red or green sets these tokens
+   * and the renderers read them through `resolveSemanticColor`
+   * (`src/svg/ink.ts`), which owns the fallback order.
+   *
+   * All three are omitted (`undefined`) by default, and an omitted role
+   * resolves to exactly the hex its renderers baked in before this channel
+   * existed — `#DC2626` for `danger`, `#16A34A` for `success`, and `warning`
+   * follows whatever `danger` resolves to. So a theme that sets none of them
+   * renders byte-for-byte as it did before the tokens were added.
+   */
+  danger?: string;
+  warning?: string;
+  success?: string;
 }
 
 export interface StyleFonts {

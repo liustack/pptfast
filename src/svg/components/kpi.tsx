@@ -4,7 +4,7 @@ import {
   measureTextUnits,
   truncateToUnits,
 } from "../../lib/svg-text-layout"
-import { accessibleInk, accessibleOpacity } from "../ink"
+import { accessibleInk, accessibleOpacity, resolveSemanticColor, type SemanticColorTokens } from "../ink"
 import { Icon } from "../icons"
 import type { RenderDef, SvgComponent } from "./types"
 
@@ -27,9 +27,15 @@ const CARD_H = 120
 // least one of up/down failing on every one of the 13 themes across the two
 // call sites combined, not just the journal/enterprise/luxe instances the
 // benchmark happened to name).
-export function deltaProps(delta: "up" | "down" | "flat") {
-  if (delta === "up") return { arrow: "↑", color: "#16A34A" }
-  if (delta === "down") return { arrow: "↓", color: "#DC2626" }
+//
+// The up/down colors are theme tokens now (`colors.success`/`colors.danger`),
+// resolved through `resolveSemanticColor` — hence the `colors` argument,
+// which both call sites fill with `ctx.colors`. A theme that declares neither
+// token resolves to the same `#16A34A`/`#DC2626` this function used to return
+// outright, so nothing moves until a theme opts in.
+export function deltaProps(delta: "up" | "down" | "flat", colors: SemanticColorTokens) {
+  if (delta === "up") return { arrow: "↑", color: resolveSemanticColor("success", colors) }
+  if (delta === "down") return { arrow: "↓", color: resolveSemanticColor("danger", colors) }
   return { arrow: "→", color: "" } // color filled by caller with ctx.colors.muted
 }
 
@@ -140,7 +146,7 @@ export const kpi: SvgComponent<KpiComponent> = {
       <g transform={`translate(${box.x},${box.y})`}>
         {component.items.map((item, i) => {
           const cardX = i * (cardW + GAP)
-          const dp = item.delta ? deltaProps(item.delta) : null
+          const dp = item.delta ? deltaProps(item.delta, ctx.colors) : null
           // Bench-driven fix round, defect B: `deltaProps` returns a raw
           // semantic hex (or "" for "flat", falling back to colors.muted)
           // with no idea what background it'll render on — this card's own

@@ -19,6 +19,8 @@
  * formula itself ever needs a fix.
  */
 
+import type { StyleColors } from "../themes/tokens"
+
 /**
  * `readableOn`'s tie-break-only fallback threshold (backlog item 2,
  * `.issues/notes/engineering-history.md` #2 — post-v0.3 W8 fix
@@ -134,6 +136,54 @@ export function accessibleInk(preferredFill: string, bgHex: string, fontSizePx: 
   return contrastRatio(preferredFill, bgHex) >= requiredContrastRatio(fontSizePx)
     ? preferredFill
     : readableOn(bgHex)
+}
+
+/**
+ * The meanings a shared component renderer can ask a theme to color: an
+ * error state (`danger`), a caution state (`warning`), a good result
+ * (`success`).
+ */
+export type SemanticRole = "danger" | "warning" | "success"
+
+/** The slice of a theme's palette `resolveSemanticColor` reads. */
+export type SemanticColorTokens = Pick<StyleColors, "danger" | "warning" | "success">
+
+/**
+ * The hexes every shared renderer hardcoded before `StyleColors` had
+ * semantic-role tokens (`callout.tsx`'s warn rule, `kpi.tsx`'s delta arrow).
+ * They stay the fallback so a theme that declares no semantic token renders
+ * byte-for-byte as it did — the `migrate-equivalence` goldens (kpi_cards) and
+ * every full-matrix contrast result depend on that.
+ */
+const SEMANTIC_DEFAULT_DANGER = "#DC2626"
+const SEMANTIC_DEFAULT_SUCCESS = "#16A34A"
+
+/**
+ * Which color this theme paints `role` in: its own token when it declares
+ * one, the built-in default hex otherwise.
+ *
+ * `warning` has no default of its own. Today's renderers paint the caution
+ * tier in the same red as the error tier (`callout`'s warn variant is a red
+ * alert), so an undeclared `warning` follows `danger` — a theme that names
+ * only `danger` recolors its whole alert family in one line, and a theme that
+ * wants a distinct caution color (an amber, say) names `warning` too.
+ *
+ * Returns the theme's raw color, with no contrast calibration: this function
+ * has no idea what surface the caller will paint it on. A caller rendering
+ * *text* in a semantic color wraps the result in `accessibleInk` against the
+ * background it actually paints (see `kpi.tsx`'s delta arrow). A caller
+ * painting a shape — `callout.tsx`'s 3px top rule and its icon stroke — uses
+ * the raw color, the same way it used the raw hardcoded hex.
+ */
+export function resolveSemanticColor(role: SemanticRole, colors: SemanticColorTokens): string {
+  switch (role) {
+    case "danger":
+      return colors.danger ?? SEMANTIC_DEFAULT_DANGER
+    case "success":
+      return colors.success ?? SEMANTIC_DEFAULT_SUCCESS
+    case "warning":
+      return colors.warning ?? colors.danger ?? SEMANTIC_DEFAULT_DANGER
+  }
 }
 
 /** Alpha-blend `fg` over `bg` (both opaque hex) — the "over" compositing a
