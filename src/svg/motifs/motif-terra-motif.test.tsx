@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
-import { TerraMotif } from "./motif-terra-motif"
+import { DECOR_CEILING, TerraMotif } from "./motif-terra-motif"
 import type { PptxIR, Slide } from "@/ir"
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
@@ -48,7 +48,7 @@ function draw(theme: string, slide: Slide) {
 const num = (el: Element, a: string) => Number(el.getAttribute(a))
 
 /**
- * 一条二次贝塞尔折线的纵向极值，沿路径密集采样求得（控制点上的 622/630/632
+ * 一条二次贝塞尔折线的纵向极值，沿路径密集采样求得（控制点上的 41/33/31
  * 不落在曲线上，所以不能直接读 `d` 里的数字）。
  */
 function pathYRange(d: string): { min: number; max: number } {
@@ -73,9 +73,10 @@ function pathYRange(d: string): { min: number; max: number } {
 }
 
 /**
- * terra-motif v2「等高线」（2026-08-19 暖纸组皮肤重设计）。
+ * terra-motif v3「等高线」（2026-08-19 暖纸组皮肤重设计；v3 = 2026-08-20
+ * 第四轮评审「装饰归背景」的返工：等高线镜像搬到左上的实测空带）。
  * 设计源：`.issues/2026-08-18-theme-redesign/skins/group2-warm-boards.dc.html`
- * 的 terra 设计表。本文件是本轮新建。
+ * 的 terra 设计表。
  */
 describe("TerraMotif（等高线）", () => {
   it("cover/content/ending 画同一张：三条等高线 + 三枚种子点", () => {
@@ -107,9 +108,9 @@ describe("TerraMotif（等高线）", () => {
     const { root } = draw("terra", coverSlide)
     const ds = Array.from(root.querySelectorAll("path")).map((p) => p.getAttribute("d")!)
     expect(ds).toEqual([
-      "M48,658 Q160,622 300,640 Q380,650 420,646",
-      "M48,650 Q150,630 270,644",
-      "M48,642 Q120,632 200,644",
+      "M48,5 Q160,41 300,23 Q380,13 420,17",
+      "M48,13 Q150,33 270,19",
+      "M48,21 Q120,31 200,19",
     ])
   })
 
@@ -124,15 +125,24 @@ describe("TerraMotif（等高线）", () => {
   })
 
   /**
-   * 安全区守卫（设计板的四条红虚线逐条量）。等高线的实际极值靠采样求，
-   * 不读 `d` 里的控制点——把任何一个控制点往上挪进正文区，这一条立刻红。
+   * v3 的核心守卫，替掉 v2 那条「落在 y620 与 y664 之间」。
+   *
+   * y620/y664 是设计意图，而 `text-margin-sweep` 实测那段空隙正是署名行与
+   * 脚注的地盘——v2 的等高线在那里压中 16 条文字（评审 terra p01
+   * 「左下角的装饰覆盖到了前景的文本」）。v3 把整组搬到实测空带 y<34。
+   * 极值靠采样求，不读 `d` 里的控制点——把任何一个控制点往下挪，这一条
+   * 立刻红。
    */
-  it("安全区：等高线整组落在正文区下沿 y620 与页脚 meta 带上沿 y664 之间", () => {
+  it("安全区：等高线整组（含 1.2px 描边）落在实测排字上沿 y34 之上，且不出页缘", () => {
     const { root } = draw("terra", coverSlide)
     for (const p of Array.from(root.querySelectorAll("path"))) {
       const { min, max } = pathYRange(p.getAttribute("d")!)
-      expect(min, `contour rises into the body zone: ${p.getAttribute("d")}`).toBeGreaterThan(BODY_ZONE.y + BODY_ZONE.h)
-      expect(max, `contour drops into the footer band: ${p.getAttribute("d")}`).toBeLessThan(FOOTER_ZONE.y)
+      expect(max + 0.6, `contour dips into the text column: ${p.getAttribute("d")}`).toBeLessThanOrEqual(DECOR_CEILING)
+      expect(min - 0.6, `contour runs off the top edge: ${p.getAttribute("d")}`).toBeGreaterThan(0)
+    }
+    // 四个内容区与四只 logo 盒的上沿都在 y48 或更低，整组因此一处不碰。
+    for (const zone of [TITLE_ZONE, BODY_ZONE, FOOTER_ZONE, LOGO_BOX]) {
+      expect(zone.y).toBeGreaterThanOrEqual(DECOR_CEILING)
     }
   })
 
