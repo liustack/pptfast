@@ -267,11 +267,11 @@ kbd {
   cursor: default;
 }
 .flag.sev { color: var(--rework); border-color: var(--rework); }
-/* A verdict recorded against a version of the page that no longer exists.
-   Verdicts persist across runs by design; this is what keeps a fixed page's
-   old judgement from reading as a live one. */
-.flag.stale { color: var(--limit); border-color: var(--limit); }
-.card.is-stale .stage { opacity: 0.55; }
+/* A verdict recorded against a version of the page that no longer exists is
+   auto-archived at load — the card returns to the unjudged state and only
+   this quiet chip records that an older judgement was filed away. The page
+   is current, so the slide is not dimmed. */
+.flag.stale { color: var(--ink-dim); border-color: var(--line); }
 /* A verdict whose page only changed color since it was made. Quieter than
    stale and the slide is not dimmed: the judgement still stands, the reviewer
    is only being told the palette moved under it. */
@@ -314,7 +314,7 @@ kbd {
     <option value="all">全部页面</option>
     <option value="any">机器有发现</option>
     <option value="clean">机器无发现</option>
-    <option value="stale">结论已过期</option>
+    <option value="stale">已归档旧结论</option>
     <option value="recolored">仅换肤</option>
   </select>
 
@@ -428,8 +428,31 @@ ${inlineRule(verdictFreshness)}
     if (page.fingerprint) { e.geo = page.fingerprint.geometry; e.col = page.fingerprint.color; }
   };
   const freshness = (id) => verdictFreshness(verdicts[id], pageById.get(id));
-  const isStale = (id) => freshness(id) === "stale";
   const isRecolored = (id) => freshness(id) === "recolored";
+
+  // A stale verdict was made about a page version that no longer exists —
+  // almost always because the flagged defect got fixed. Presenting it as a
+  // live judgement on every open forces the reviewer to re-dismiss the same
+  // ghosts. So on load, stale entries move out of the active store into an
+  // archive (nothing is destroyed; the "已归档旧结论" filter lists them),
+  // and the card returns to the unjudged state ready for a fresh look.
+  let archive = {};
+  try { archive = JSON.parse(localStorage.getItem(STORE_KEY + ":archive") || "{}"); } catch (_) { archive = {}; }
+  {
+    let moved = false;
+    for (const id of Object.keys(verdicts)) {
+      if (verdictFreshness(verdicts[id], pageById.get(id)) === "stale") {
+        archive[id] = { ...verdicts[id], archivedAt: new Date().toISOString() };
+        delete verdicts[id];
+        moved = true;
+      }
+    }
+    if (moved) {
+      try { localStorage.setItem(STORE_KEY + ":archive", JSON.stringify(archive)); } catch (_) { /* export remains the escape hatch */ }
+      save();
+    }
+  }
+  const isArchived = (id) => Boolean(archive[id]);
 
   function setVerdict(id, value) {
     const e = entry(id);
@@ -543,8 +566,8 @@ ${inlineRule(verdictFreshness)}
     // re-deriving them by eye. Placed under the verdict row so they inform
     // the judgement without pre-empting it.
     const flags = summarizeFindings(p.findings);
-    if (isStale(p.id)) {
-      flags.unshift({ code: "stale", label: "结论已过期", severe: false, mark: "stale" });
+    if (isArchived(p.id)) {
+      flags.unshift({ code: "stale", label: "旧结论已归档", severe: false, mark: "stale" });
     } else if (isRecolored(p.id)) {
       flags.unshift({ code: "recolored", label: "仅换肤", severe: false, mark: "recolored" });
     }
@@ -556,7 +579,7 @@ ${inlineRule(verdictFreshness)}
         chip.className = "flag" + (f.severe ? " sev" : "") + (f.mark ? " " + f.mark : "");
         chip.textContent = f.label;
         chip.title = f.mark === "stale"
-          ? "这条结论是对这一页的旧版本做出的，那一版已经不存在了 — 重新看一眼再决定"
+          ? "上一轮的结论是对这一页的旧版本做出的，那一版已经修掉了 — 旧结论收进档案，这一页等你重新看"
           : f.mark === "recolored"
           ? "这一页自上次评审以来只换了配色，几何没动 — 结论仍然有效，除非它本来就是在说颜色"
           : (p.findings || []).filter((x) => x.code === f.code).map((x) => x.message).join("\\n");
@@ -573,7 +596,6 @@ ${inlineRule(verdictFreshness)}
     const c = cards.get(id);
     if (!c) return;
     const v = (verdicts[id] || {}).verdict;
-    c.card.classList.toggle("is-stale", isStale(id));
     c.card.classList.toggle("is-pass", v === "pass");
     c.card.classList.toggle("is-limit", v === "limit");
     c.card.classList.toggle("is-rework", v === "rework");
@@ -631,7 +653,7 @@ ${inlineRule(verdictFreshness)}
       if (state.verdict === "none" ? Boolean(v) : v !== state.verdict) return false;
     }
     if (state.finding === "stale") {
-      if (!isStale(p.id)) return false;
+      if (!isArchived(p.id)) return false;
     } else if (state.finding === "recolored") {
       if (!isRecolored(p.id)) return false;
     } else if (state.finding !== "all") {
@@ -808,11 +830,9 @@ ${inlineRule(verdictFreshness)}
           verdict: verdicts[p.id].verdict || null,
           note: (verdicts[p.id].note || "").trim() || null,
           findings: (p.findings || []).map((f) => f.code),
-          // Set when this judgement was made about a version of the page
-          // that no longer exists. A reader acting on it would be fixing
-          // something already fixed, so it says so rather than staying
-          // indistinguishable from a live verdict.
-          ...(isStale(p.id) ? { stale: true } : {}),
+          // Stale verdicts never reach this export: they are auto-archived
+          // at load, so an active entry here is always about the page as it
+          // renders now.
           // Set when the page changed color and nothing else since. The
           // judgement still holds — unless it was about the color — so it
           // travels flagged rather than either dropped or silently passed on
