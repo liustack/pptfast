@@ -26,7 +26,9 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * Composition sketch (geometry, written before this file per the task
  * contract): text column x=96 w=435 (kicker/heading/subheading, then a
  * narrow `SvgContent` single-stack body) — visual column x=571 w=613,
- * y=72..640 (h=568, matching `side-highlight`'s own panel vertical span).
+ * y=72..640 (h=568, matching `side-highlight`'s own panel vertical span;
+ * on a header-only page that band tightens onto the height its component
+ * actually paints, keeping the same middle — see `textOnlyHeader`).
  * The 40px gap between them (571 - 96 - 435) keeps the two regions from
  * ever touching regardless of either one's own internal padding. This
  * geometry only holds when a real scalable component leads (see "Starved
@@ -120,6 +122,11 @@ const VISUAL_RIGHT = 1184
 const VISUAL_Y = 72
 const VISUAL_BOTTOM = 640
 const VISUAL_H = VISUAL_BOTTOM - VISUAL_Y // 568
+/** The one line both columns center on in the header-only case below —
+ * written once and read by the visual band and by the text block's own
+ * offset, so the two cannot drift apart the way two independently-derived
+ * midpoints can. */
+const VISUAL_CENTER_Y = VISUAL_Y + VISUAL_H / 2 // 356
 const VISUAL_RADIUS = 20
 
 // Co-equal case: a real scalable (image/chart) lead component fills the
@@ -175,10 +182,20 @@ const VISUAL_SCALE_CAP = 1
  * enlarged, so the scaled footprint can never cross into the adjacent text
  * column or past the page edge. Missing-asset degradation for an `image`
  * component happens inside `renderComponent`'s own dispatch (see file
- * header) — this function never renders a bare `<image>` itself. */
-function renderVisualComponent(component: Component, rect: ContentRect, ctx: ComponentCtx) {
+ * header) — this function never renders a bare `<image>` itself.
+ *
+ * `preMeasured` is the caller's own measurement of the same component at the
+ * same `rect.w` — the header-only band below sizes itself off that number, so
+ * it hands it over rather than letting the band and the thing standing in it
+ * come from two separate measurements. */
+function renderVisualComponent(
+  component: Component,
+  rect: ContentRect,
+  ctx: ComponentCtx,
+  preMeasured?: number,
+) {
   const auditRect = `${rect.x},${rect.y},${rect.w},${rect.h}`
-  const measured = measureComponent(component, rect.w, ctx)
+  const measured = preMeasured ?? measureComponent(component, rect.w, ctx)
   const scale = measured > 0 ? Math.min(rect.h / measured, VISUAL_SCALE_CAP) : 1
   const scaledW = rect.w * scale
   const scaledH = measured * scale
@@ -257,6 +274,13 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
   // shared center line. Only applies when the body is genuinely empty: with
   // any body content the stack must stay top-aligned so the body has the
   // full column height to grow into.
+  //
+  // Second pass (visual review round 3, E cluster p05): that center line was
+  // right but the visual column still *declared* the whole 568px band while
+  // painting only what its shrink-to-fit component measured, so an auditor
+  // reading `data-audit-rect` saw a half-empty region and the two columns
+  // took their middle from two separate expressions. The band below now
+  // tightens onto what it paints — see `visualBandH`.
   const textOnlyHeader = !starved && bodyComponents.length === 0 && !slide.footnote
 
   const kicker = section
@@ -299,14 +323,21 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
   const textBlockTop = kicker ? KICKER_Y - 17 : HEADING_BASELINE - heading.fontSize
   const textBlockBottom = subheading ? subheadingY : headingLastY
   const textShift = textOnlyHeader
-    ? Math.max(0, Math.round(VISUAL_Y + (VISUAL_H - (textBlockBottom - textBlockTop)) / 2 - textBlockTop))
+    ? Math.max(0, Math.round(VISUAL_CENTER_Y - (textBlockBottom - textBlockTop) / 2 - textBlockTop))
     : 0
   const subheadingBudget = subheading ? SUBHEADING_SLOT : 0
   const subheadingFill = subheading
     ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.accent
 
-  const bodyY = headingLastY + 40 + subheadingBudget
+  // Follows the text block it hangs under. `textShift` is 0 on every path
+  // but the header-only one, so this is the same coordinate as everywhere
+  // else — and in the header-only case the rect is no longer emitted at a
+  // coordinate the text above it stopped using. Without the shift the rect
+  // starts above the shifted heading and spans straight through it, harmless
+  // today only because that branch's body is empty by definition, and a live
+  // overlap the moment anyone loosens `textOnlyHeader`.
+  const bodyY = headingLastY + 40 + subheadingBudget + textShift
   const bodyBottom = slide.footnote ? 616 : 632
   const bodyRect: ContentRect = { x: TEXT_X, y: bodyY, w: TEXT_W, h: Math.max(120, bodyBottom - bodyY) }
 
@@ -314,9 +345,23 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
     ? fitSvgLine(slide.footnote, { maxWidth: TEXT_W, fontSize: 14, minFontSize: 11 })
     : null
 
+  // Header-only: the visual can only ever shrink to fit (VISUAL_SCALE_CAP),
+  // so a component that measures short of the full 568px band leaves the rest
+  // of it declared but never painted — 280px of it for a typical chart, a
+  // region `data-audit-rect` claims and no ink reaches. Hand the column the
+  // band it actually paints instead, hung symmetrically off `VISUAL_CENTER_Y`
+  // so the text block above shares that same line by construction rather than
+  // by two formulas happening to agree. Only the declared band moves: the
+  // component still lands where centering in the full band already put it,
+  // since both bands have the same middle.
+  const visualMeasured =
+    textOnlyHeader && visualComponent ? measureComponent(visualComponent, LEAD_VISUAL_W, ctx) : undefined
+  const visualBandH =
+    visualMeasured !== undefined && visualMeasured > 0 ? Math.min(visualMeasured, VISUAL_H) : VISUAL_H
+
   const visualRect: ContentRect = starved
     ? { x: STARVED_VISUAL_X, y: VISUAL_Y, w: STARVED_VISUAL_W, h: VISUAL_H }
-    : { x: LEAD_VISUAL_X, y: VISUAL_Y, w: LEAD_VISUAL_W, h: VISUAL_H }
+    : { x: LEAD_VISUAL_X, y: VISUAL_CENTER_Y - visualBandH / 2, w: LEAD_VISUAL_W, h: visualBandH }
 
   return (
     <>
@@ -398,7 +443,9 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
       {/* Visual column: unconditional, present regardless of slide.components
           (see file header) — a real scaled image/chart when the lead
           component supports it, a drawn placeholder otherwise. */}
-      {visualComponent ? renderVisualComponent(visualComponent, visualRect, ctx) : renderVisualPlaceholder(visualRect, ctx)}
+      {visualComponent
+        ? renderVisualComponent(visualComponent, visualRect, ctx, visualMeasured)
+        : renderVisualPlaceholder(visualRect, ctx)}
     </>
   )
 }
