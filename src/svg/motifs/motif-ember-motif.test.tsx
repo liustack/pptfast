@@ -96,20 +96,38 @@ describe("EmberMotif（上升火星）", () => {
     const t = resolveStyle("ember")
     const { root } = draw("ember", coverSlide)
     const p = parts(root)
+    // 横坐标由斜引线解出（见下一条测试），这里钉的是解出来的那一组值。
     expect(p.circles(t.colors.primary).map((c) => [num(c, "cx"), num(c, "cy"), num(c, "r")])).toEqual([
-      [1160, 560, 2.5],
-      [1185, 430, 3.5],
-      [1212, 290, 4.5],
-      [1238, 120, 6],
+      [1157.39, 560, 2.5],
+      [1181.42, 430, 3.5],
+      [1207.3, 290, 4.5],
+      [1238.72, 120, 6],
     ])
     expect(p.circles(t.colors.accent).map((c) => [num(c, "cx"), num(c, "cy"), num(c, "r")])).toEqual([
-      [1172, 495, 3],
-      [1198, 360, 4],
-      [1226, 205, 5],
+      [1169.41, 495, 3],
+      [1194.36, 360, 4],
+      [1223.01, 205, 5],
     ])
     // 自下而上（y 递减）时半径递增——「上升」的方向感就是这条单调性。
     const byHeight = p.allCircles.map((c) => [num(c, "cy"), num(c, "r")] as const).sort((a, b) => b[0] - a[0])
     for (let i = 1; i < byHeight.length; i++) expect(byHeight[i]![1]).toBeGreaterThan(byHeight[i - 1]![1])
+  })
+
+  /**
+   * 第四轮评审（ember p01）的返工点：用户原话「能不能让斜线串上圆点啊，
+   * 这样一会串上一会没串上，忽左忽右」。改前七枚圆心相对斜引线各偏右
+   * 0.7-4.7px，最下面那枚偏得比自己的半径还多。这条测试量的是「圆心落线」
+   * 本身，而不是七个抄来的横坐标——常量改了它依然成立，几何错了它当场红。
+   */
+  it("七枚火星的圆心严格落在斜引线上（第四轮评审：不许一会串上一会悬空）", () => {
+    const { root } = draw("ember", coverSlide)
+    const { guide, allCircles } = parts(root)
+    const [x1, y1, x2, y2] = [num(guide, "x1"), num(guide, "y1"), num(guide, "x2"), num(guide, "y2")]
+    for (const c of allCircles) {
+      const onLine = x1 + ((x2 - x1) * (num(c, "cy") - y1)) / (y2 - y1)
+      // 点到线的垂距（0.01 的坐标取整乘以线的水平/斜长比），远小于 1px 线宽。
+      expect(Math.abs(num(c, "cx") - onLine), `spark off the guide line: ${c.outerHTML}`).toBeLessThan(0.01)
+    }
   })
 
   it("斜引线几何：(1150,600) → (1245,86)；顶缘短线 x48→120 的 y14", () => {
