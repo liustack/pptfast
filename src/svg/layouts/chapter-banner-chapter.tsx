@@ -2,14 +2,40 @@ import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
-import { fitSvgLine } from "../../lib/svg-text-layout"
+import { fitSvgLine, measureTextUnits } from "../../lib/svg-text-layout"
 import { accessibleOpacity, readableOn } from "../ink"
+
+/**
+ * How far real ink falls below a baseline, per unit of font size.
+ *
+ * Measured on the font stacks this layout actually renders with, in a real
+ * browser, two ways that agree: an 8x supersampled raster of worst-case
+ * descender strings and canvas `actualBoundingBoxDescent`. The serif stacks
+ * (Georgia / Bower / KaiTi families) bottom out at 0.219 on Latin
+ * descenders and 0.167-0.171 on CJK; the sans stacks (YaHei / Inter
+ * families) at 0.213-0.215 and 0.107-0.109. 0.22 rounds the deepest of them
+ * up, so the air below is a floor rather than an average — the same
+ * discipline `chrome-geometry.ts`'s `FOOTNOTE_DESCENT_RATIO` states for the
+ * footnote it keeps off the footer divider.
+ */
+const INK_DESCENT_RATIO = 0.22
+
+/**
+ * Air between that ink and the rule, per unit of font size.
+ *
+ * Proportional, not flat: an underline belongs to its own type, so a 36px
+ * subheading and an 84px heading should read with the same air rather than
+ * the same pixels. Together with {@link INK_DESCENT_RATIO} the rule sits
+ * 0.33em under the baseline — ~6px of visible air under a 36px CJK line,
+ * ~12px under a Latin one that happens to carry no descender.
+ */
+const UNDERLINE_AIR_RATIO = 0.11
 
 /**
  * banner-chapter layout（spec §3.2）：巨幅居中章节号水印 + 主标题/副
  * 标题，压在整页通栏色块上（色块由 FullSlideSvg 按 theme 的
- * `defaultBackgrounds.chapter` 绘制，本文件不画背景），底部一条 accent 色短
- * 装饰线。自 templates/consulting.tsx 的 `MckinseyNavyChapter`（184-265
+ * `defaultBackgrounds.chapter` 绘制，本文件不画背景），末行文字下方一条
+ * accent 色下划线。自 templates/consulting.tsx 的 `MckinseyNavyChapter`（184-265
  * 行，非计划原文估计的 184-324——已按 Step A 用 `awk` 精确定位函数起止）
  * 提炼。无随迁 helper。
  *
@@ -62,14 +88,48 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const subheadingOpacity = subheading
     ? accessibleOpacity(ink, defaultBg, subheading.fontSize, 0.7)
     : 0.7
-  // The decorative hairline sits below whatever the chapter block ends
-  // with. It used to be pinned at `headingLastY + 48` unconditionally,
-  // which is 8px *above* the subheading's own baseline (+56) — so on any
-  // chapter page that carries a subheading, a 160px accent rule ran
-  // straight through the middle of that text and read as a strikethrough
-  // (visual review 2026-08-16: "客户洞察怎么画了个黄色删除线"). It only
-  // ever looked right on the subheading-less case it was measured against.
-  const hairlineY = subheading ? subheadingY + 30 : headingLastY + 48
+  // The accent rule underlines the line the chapter block ends with —
+  // the subheading when there is one, the last heading line otherwise.
+  //
+  // Two earlier shapes, both wrong. It was first pinned at
+  // `headingLastY + 48` unconditionally, which is 8px *above* the
+  // subheading's own baseline (+56), so on any chapter page carrying a
+  // subheading a 160px rule ran straight through the middle of that text
+  // and read as a strikethrough (visual review 2026-08-16: "客户洞察怎么画了
+  // 个黄色删除线"). Moving it to `subheadingY + 30` cleared the ink but left
+  // a fixed-width dash floating under the block — the same 160px whether
+  // the line above it was a 141px 「客户洞察」 or a 168px "Customers" (both
+  // ink widths measured off an 8x raster), near enough the text to read as
+  // an underline and too far below it to be one: 23.3px of air under the
+  // CJK line, 28.6px under the Latin one, because the offset was counted
+  // from the baseline while the ink below a baseline is script-dependent.
+  // The 2026-08-20 review read exactly that: 「这个线是不你想放文字下方的
+  // 啊？？？」
+  //
+  // So it is now an underline in fact: as wide as the line it belongs to,
+  // and offset from that line's baseline in units of its own font size, so
+  // zh/en/mixed all get the same optical air.
+  const underlined = subheading
+    ? {
+        text: subheading.text,
+        fontSize: subheading.fontSize,
+        baseline: subheadingY,
+        weight: { fontFamily: ctx.fonts.body, bold: false },
+      }
+    : {
+        text: heading.lines[heading.lines.length - 1] ?? "",
+        fontSize: heading.fontSize,
+        baseline: headingLastY,
+        // Matches `fitHeadingLines`'s own default for this call and the
+        // `fontWeight="600"` the heading actually renders at.
+        weight: { fontFamily: ctx.fonts.heading, bold: true },
+      }
+  const underlineHalfWidth = Math.round(
+    (measureTextUnits(underlined.text, underlined.weight) * underlined.fontSize) / 2,
+  )
+  const underlineY = Math.round(
+    underlined.baseline + underlined.fontSize * (INK_DESCENT_RATIO + UNDERLINE_AIR_RATIO),
+  )
 
   return (
     <>
@@ -123,16 +183,21 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         </text>
       )}
 
-      {/* Decorative hairline */}
-      <line
-        x1="560"
-        y1={hairlineY}
-        x2="720"
-        y2={hairlineY}
-        stroke={ctx.colors.accent}
-        strokeWidth="1.6"
-        opacity="0.6"
-      />
+      {/* Accent underline for the line the block ends with. A chapter page
+          with no text to underline gets no rule — a mark that belongs to
+          nothing is the decoration-for-decoration's-sake this layout is
+          being pulled back from. */}
+      {underlineHalfWidth > 0 && (
+        <line
+          x1={640 - underlineHalfWidth}
+          y1={underlineY}
+          x2={640 + underlineHalfWidth}
+          y2={underlineY}
+          stroke={ctx.colors.accent}
+          strokeWidth="1.6"
+          opacity="0.6"
+        />
+      )}
     </>
   )
 }
@@ -145,8 +210,8 @@ export function BannerChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {
   // chapter-banner-chapter.tsx: translucent watermark numeral, centered
-  // white heading/subheading over the primary color block, short
-  // decorative accent hairline.
+  // white heading/subheading over the primary color block, accent underline
+  // beneath the line the block ends with.
   id: "banner-chapter",
   kind: "archetype",
   slideTypes: ["chapter"],

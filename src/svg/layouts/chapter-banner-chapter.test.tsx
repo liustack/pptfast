@@ -50,18 +50,82 @@ const ir = (theme: string): PptxIR =>
 const LEGACY_CHAPTER1_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">01</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第一章：市场洞察</text><line x1="560" y1="452" x2="720" y2="452" stroke="#F5C518" stroke-width="1.6" opacity="0.6"></line>`
 const LEGACY_CHAPTER2_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第二章：战略选择与路径</text><text x="640" y="460" font-family="Georgia, Songti SC, STSong, serif" font-size="36" fill="#FFFFFF" opacity="0.7" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的三个决定</text><line x1="560" y1="490" x2="720" y2="490" stroke="#F5C518" stroke-width="1.6" opacity="0.6"></line>`
 
+// The accent rule is the one element that no longer matches the legacy
+// render — it was a fixed 160px dash at `x1=560 x2=720`, and it is now an
+// underline of the line the block ends with (see the layout's own comment
+// for the two review rounds that got it here). Everything else — watermark,
+// heading, subheading, and the rule's own stroke/opacity — is still expected
+// byte-for-byte, so the equivalence test compares the markup with the rule
+// element lifted out of both sides and asserts the new geometry separately.
+const RULE_RE = /<line[^>]*><\/line>/
+const withoutRule = (markup: string) => markup.replace(RULE_RE, "")
+const ruleOf = (markup: string) => markup.match(RULE_RE)?.[0] ?? ""
+
 describe("BannerChapter", () => {
-  it("consulting tokens 下与旧 MckinseyNavyChapter 输出逐字节一致（档位一，含多 chapter 序号）", () => {
+  it("consulting tokens 下除装饰线外与旧 MckinseyNavyChapter 输出逐字节一致（档位一，含多 chapter 序号）", () => {
     const ctx = chapterCtx("consulting")
     const deck = ir("consulting")
 
     const next1 = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
-    expect(next1).toBe(LEGACY_CHAPTER1_MARKUP)
+    expect(withoutRule(next1)).toBe(withoutRule(LEGACY_CHAPTER1_MARKUP))
     expect(next1).toContain(">01<")
 
     const next2 = renderSvgMarkup(<BannerChapter ir={deck} slide={chapter2} index={2} ctx={ctx} />)
-    expect(next2).toBe(LEGACY_CHAPTER2_MARKUP)
+    expect(withoutRule(next2)).toBe(withoutRule(LEGACY_CHAPTER2_MARKUP))
     expect(next2).toContain(">02<")
+
+    // Same stroke, same opacity, same accent token as the legacy dash — only
+    // its span and its baseline offset changed.
+    for (const rule of [ruleOf(next1), ruleOf(next2)]) {
+      expect(rule).toContain('stroke="#F5C518"')
+      expect(rule).toContain('stroke-width="1.6"')
+      expect(rule).toContain('opacity="0.6"')
+    }
+  })
+
+  it("装饰线是它上面那行字的下划线：宽度随该行文本，落点随该行字号", () => {
+    const ctx = chapterCtx("consulting")
+    const deck = ir("consulting")
+    const root = (slide: Slide, index: number) =>
+      parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(
+          <BannerChapter ir={deck} slide={slide} index={index} ctx={ctx} />,
+        )}</svg>`,
+      )
+
+    // With a subheading, the rule underlines the subheading: 「面向 2027 的三个
+    // 决定」 at 36px measures 358px wide, centered on the page's own 640 axis.
+    const withSub = root(chapter2, 2)
+    const subRule = withSub.querySelector("line")!
+    expect(Number(subRule.getAttribute("x1")) + Number(subRule.getAttribute("x2"))).toBe(1280)
+    expect(Number(subRule.getAttribute("x2")) - Number(subRule.getAttribute("x1"))).toBe(358)
+
+    // Without one, it underlines the last heading line instead — a wider
+    // line, 84px type, so a proportionally lower offset.
+    const noSub = root(chapter1, 0)
+    const headRule = noSub.querySelector("line")!
+    expect(Number(headRule.getAttribute("x1")) + Number(headRule.getAttribute("x2"))).toBe(1280)
+    expect(Number(headRule.getAttribute("x2")) - Number(headRule.getAttribute("x1"))).toBe(672)
+
+    // 0.33em below the baseline it belongs to — `INK_DESCENT_RATIO` (0.22,
+    // the deepest measured ink) plus `UNDERLINE_AIR_RATIO` (0.11 of air).
+    expect(Number(subRule.getAttribute("y1"))).toBe(Math.round(460 + 36 * 0.33))
+    expect(Number(headRule.getAttribute("y1"))).toBe(Math.round(404 + 84 * 0.33))
+  })
+
+  it("没有可下划的文字时不画装饰线", () => {
+    const ctx = chapterCtx("consulting")
+    const slide: Slide = { type: "chapter", heading: "", components: [] } as unknown as Slide
+    const deck: PptxIR = {
+      version: "3",
+      filename: "x.pptx",
+      theme: { id: "consulting" },
+      meta: {},
+      assets: { images: {} },
+      slides: [slide],
+    } as unknown as PptxIR
+    const markup = renderSvgMarkup(<BannerChapter ir={deck} slide={slide} index={0} ctx={ctx} />)
+    expect(markup).not.toContain("<line")
   })
 
   // 回填旧测试「Chapter positions subheading/hairline off a fixed single-line
@@ -83,18 +147,23 @@ describe("BannerChapter", () => {
       (t.textContent ?? "").includes("面向 2027 的三个决定"),
     )!
     expect(subheadingText.getAttribute("y")).toBe("460")
-    // The hairline used to be pinned at 452 — 8px *above* the subheading's
-    // own baseline of 460, so a 160px accent rule ran through the middle of
-    // that text and read as a strikethrough (visual review 2026-08-16:
-    // "客户洞察怎么画了个黄色删除线"). It only ever looked right on the
-    // subheading-less case it was measured against, which is why the number
-    // survived this long. It now sits below whatever the block ends with.
+    // The rule used to be pinned at 452 — 8px *above* the subheading's own
+    // baseline of 460, so a 160px accent rule ran through the middle of that
+    // text and read as a strikethrough (visual review 2026-08-16: "客户洞察
+    // 怎么画了个黄色删除线"). It only ever looked right on the subheading-less
+    // case it was measured against, which is why the number survived that
+    // long. 490 cleared the ink but floated the dash 23px below it; 472 is
+    // the underline the 2026-08-20 round asked for. The assertion that
+    // matters is the relationship, not the literal: the rule clears the
+    // deepest ink 36px type can put below its baseline (0.22em) and still
+    // sits close enough to belong to that line (under 0.5em).
     const hairline = root.querySelector("line")!
-    expect(hairline.getAttribute("y1")).toBe("490")
+    expect(hairline.getAttribute("y1")).toBe("472")
     expect(hairline.getAttribute("y1")).toBe(hairline.getAttribute("y2"))
-    expect(Number(hairline.getAttribute("y1"))).toBeGreaterThan(
-      Number(subheadingText.getAttribute("y")),
-    )
+    const subBaseline = Number(subheadingText.getAttribute("y"))
+    const subSize = Number(subheadingText.getAttribute("font-size"))
+    expect(Number(hairline.getAttribute("y1"))).toBeGreaterThan(subBaseline + subSize * 0.22)
+    expect(Number(hairline.getAttribute("y1"))).toBeLessThan(subBaseline + subSize * 0.5)
   })
 
   // 回填旧测试「Chapter shrinks a pathologically long heading onto <=2 lines

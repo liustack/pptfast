@@ -504,6 +504,33 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // any of the three (recomputed fresh against both goldens — a mark
       // that moves 16px down inside its own block introduces no geometry or
       // contrast finding).
+      //
+      // Only `basic` recaptured (visual review round 4, C — the chapter
+      // banner's accent rule, `../svg/layouts/chapter-banner-chapter.tsx`):
+      // that rule was a fixed 160px dash sitting under the block, near
+      // enough the text's width to read as an underline and too far below
+      // it to be one. It is now an underline in fact — as wide as the line
+      // it belongs to, offset from that line's baseline in units of its own
+      // font size. `basic`'s slide index 1 is the only `banner-chapter` page
+      // in any of the three fixtures, and it carries no subheading, so the
+      // rule underlines its heading "Why an IR" instead. Targeted
+      // attribution (token-by-token over both the SVG and every PPTX part,
+      // `.issues/2026-08-20-review-round-4/tools/equiv-underline-diff.mts`):
+      // token counts are identical everywhere, the PPTX part-name set is
+      // identical, and the *only* differing tokens anywhere are
+      //   - `basic`: SVG slide 1, that one `<line>` element (`x1` 560 -> 413,
+      //     `x2` 720 -> 867, `y` 452 -> 432 — stroke, width and accent token
+      //     all unchanged);
+      //   - `basic`: `ppt/slides/slide2.xml`, that same line's `<a:off>`
+      //     (5334000,4305300 -> 3933825,4114800) and `<a:ext>` (cx 1524000 ->
+      //     4324350).
+      // Every EMU value is exactly 9525 × the px it mirrors, so the export
+      // moved by precisely what the SVG moved by and nothing else drifted.
+      // `scenarioBearing`/`annualReviewPreset` are byte-identical and were
+      // not recaptured (neither lands on `banner-chapter`), and
+      // `.audit.json` needed no recapture for any of the three (recomputed
+      // fresh against the goldens — a decorative rule that changes span and
+      // offset introduces no geometry or contrast finding).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
