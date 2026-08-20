@@ -47,6 +47,31 @@ export interface SvgTextLayoutOptions extends TextWeightHint {
    * that never set this keeps its previous, unbounded-by-minPt search.
    */
   minPt?: number
+  /**
+   * Extra px the rendered `<text>` puts between characters (the SVG
+   * `letter-spacing` attribute), so the wrap budget can pay for it.
+   *
+   * `fitSvgLine` has had this option since the single-line kicker fix — see
+   * the `(charCount - 1) * letterSpacing` derivation in its body — but
+   * `layoutSvgText` did not, so every wrapping call site that rendered with
+   * tracking decided its line breaks against a budget that ignored it. The
+   * defect this closes: fashion-masthead's EN subtitle (71 chars at
+   * `letterSpacing={4}`) was judged to fit one 1168px line and rendered
+   * 1253.7px wide, running 29.7px off the 1280px page.
+   *
+   * Charged against the whole trimmed content, exactly like `fitSvgLine`:
+   * any single line holds at most `charCount` characters, so subtracting
+   * `(charCount - 1) * letterSpacing` from `maxWidth` up front bounds every
+   * line's real tracking, and the font size derived from that reduced width
+   * therefore cannot overflow (`units_i * fontSize + tracking_i <=
+   * (maxWidth - fullTracking) + fullTracking`). Conservative for multi-line
+   * text — a two-line wrap is charged both lines' tracking on each line —
+   * which errs toward a smaller font rather than toward overflow.
+   *
+   * Default `0`: the subtraction is then exactly zero, so every call site
+   * that omits it keeps byte-identical geometry.
+   */
+  letterSpacing?: number
 }
 
 export interface SvgTextLayout {
@@ -883,9 +908,19 @@ export function layoutSvgText(
     return { lines: [], fontSize: options.fontSize, lineHeight: 0, truncated: false }
   }
 
+  // Tracking budget (see `SvgTextLayoutOptions.letterSpacing`): `letter-spacing`
+  // is absolute px that does not scale with the font size, so it is paid out
+  // of `maxWidth` up front rather than folded into the per-character unit
+  // weights. `availableWidth` then drives both the wrap budget and the fitted
+  // font size — the two places `maxWidth` was read. Exactly `maxWidth` when
+  // the option is omitted.
+  const letterSpacing = options.letterSpacing ?? 0
+  const spacingBudget = Math.max(0, Array.from(content).length - 1) * letterSpacing
+  const availableWidth = Math.max(0, options.maxWidth - spacingBudget)
+
   const fontSizeFor = (ls: string[]): number => {
     const longest = Math.max(...ls.map((l) => measureTextUnits(l, weight)), 1)
-    return Math.max(1, Math.min(options.fontSize, Math.floor(options.maxWidth / longest)))
+    return Math.max(1, Math.min(options.fontSize, Math.floor(availableWidth / longest)))
   }
 
   // Legacy search: byte-identical to this function's pre-task-R2-retry-
@@ -895,7 +930,7 @@ export function layoutSvgText(
   // whichever call actually produced `legacyLines` (pre-merge), so
   // `attempt.hadSplit` below reflects *that* candidate, not merely the
   // first one tried.
-  const baseUnits = options.maxWidth / options.fontSize
+  const baseUnits = availableWidth / options.fontSize
   let maxUnits = baseUnits
   let attempt = wrapWithUnits(content, maxUnits, weight)
   const minSplitFreeUnits = attempt.minSplitFreeUnits // content-invariant, see WrapResult

@@ -180,3 +180,93 @@ describe("cover-fashion-masthead — bold-metrics fix red-first (user-reported c
     })
   })
 })
+
+// Round-3 review, D cluster: `layout--fashion-masthead--en` ran off the page.
+// The subtitle renders with `letterSpacing={4}`, but was sized by a
+// `layoutSvgText` call that had no letter-spacing option at all, so the wrap
+// decision was made against a budget that ignored 70 gaps × 4px = 280px. The
+// browser's own getBBox on the gallery page measured the rendered line at
+// 1253.7px wide, right edge 1309.7 — 29.7px past the 1280px page.
+//
+// The corpus string below is verbatim the EN gallery subheading that produced
+// that measurement (`scripts/gallery/corpus/lexicon.ts`), so this test moves
+// when the real repro moves.
+describe("cover-fashion-masthead — letter-spacing wrap budget (round-3 D-cluster overflow)", () => {
+  const EN_SUBHEADING = "Growth quality in predictive maintenance and where the second half goes"
+  const SUBTITLE_MAX_W = 1168
+  const SUBTITLE_X = 56
+  const PAGE_W = 1280
+
+  function coverIrWithSubheading(theme: string): PptxIR {
+    return {
+      version: "3",
+      filename: "x.pptx",
+      theme: { id: theme },
+      meta: { organization: "Strategy & Operations", date: "July 2026", confidentiality: "internal" },
+      assets: { images: {} },
+      slides: [{ type: "cover", heading: "Q2 2026 Business Review", subheading: EN_SUBHEADING, components: [] }],
+    } as unknown as PptxIR
+  }
+
+  /** Real rendered width: glyph estimate at the fitted size, plus the tracking the SVG attribute actually paints. */
+  function renderedWidth(el: Element): number {
+    const text = el.textContent ?? ""
+    const fontSize = Number(el.getAttribute("font-size"))
+    const spacing = Number(el.getAttribute("letter-spacing") ?? 0)
+    return measureTextUnits(text) * fontSize + Math.max(0, Array.from(text).length - 1) * spacing
+  }
+
+  function subtitleLines(theme: string): Element[] {
+    const ctx = buildCtx(resolveStyle(theme), {})
+    const ir = coverIrWithSubheading(theme)
+    const out = renderSvgMarkup(<FashionMastheadCover ir={ir} slide={ir.slides[0]} index={0} ctx={ctx} />)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`)
+    return Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("letter-spacing") === "4")
+  }
+
+  it("every subtitle line stays inside its declared 1168px budget once its own tracking is counted", () => {
+    const lines = subtitleLines("consulting")
+    expect(lines.length).toBeGreaterThan(0)
+    for (const line of lines) {
+      expect(renderedWidth(line)).toBeLessThanOrEqual(SUBTITLE_MAX_W + 1) // +1: float slack, heading-fit.test.ts's convention
+    }
+  })
+
+  it("and therefore inside the 1280px page — the finding as the reviewer saw it", () => {
+    for (const line of subtitleLines("consulting")) {
+      expect(SUBTITLE_X + renderedWidth(line)).toBeLessThanOrEqual(PAGE_W)
+    }
+  })
+
+  it("re-wraps rather than dropping text: the whole subheading still renders", () => {
+    const lines = subtitleLines("consulting")
+    expect(lines.map((l) => l.textContent).join(" ")).toBe(EN_SUBHEADING)
+    expect(lines.length).toBeLessThanOrEqual(2) // the call site's own maxLines
+  })
+
+  it("does not over-shrink: the subtitle keeps its declared 30px size", () => {
+    for (const line of subtitleLines("consulting")) {
+      expect(Number(line.getAttribute("font-size"))).toBe(30)
+    }
+  })
+
+  it("holds across heading faces (the budget is tracking, not face, driven)", () => {
+    for (const theme of ["campaign", "ink", "academic"]) {
+      const lines = subtitleLines(theme)
+      expect(lines.length, theme).toBeGreaterThan(0)
+      for (const line of lines) {
+        expect(SUBTITLE_X + renderedWidth(line), theme).toBeLessThanOrEqual(PAGE_W)
+      }
+    }
+  })
+
+  it("the meta line budgets its own 3px tracking too (same blind spot, same page)", () => {
+    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ir = coverIrWithSubheading("consulting")
+    const out = renderSvgMarkup(<FashionMastheadCover ir={ir} slide={ir.slides[0]} index={0} ctx={ctx} />)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`)
+    const meta = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("letter-spacing") === "3")
+    expect(meta).toHaveLength(1)
+    expect(renderedWidth(meta[0])).toBeLessThanOrEqual(1100 + 1) // the call site's own maxWidth
+  })
+})

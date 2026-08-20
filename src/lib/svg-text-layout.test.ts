@@ -179,6 +179,67 @@ describe("fitSvgLine", () => {
   })
 })
 
+describe("layoutSvgText letterSpacing (wrap budget)", () => {
+  // Red-first for the round-3 review's fashion-masthead finding:
+  // `cover-fashion-masthead.tsx` renders its subtitle with
+  // `letterSpacing={4}` but sized it through a `layoutSvgText` call that had
+  // no way to hear about that tracking, so this 71-character EN subtitle was
+  // judged to fit one 1168px line and rendered 1253.7px wide — right edge
+  // 1309.7 on a 1280px page. `fitSvgLine` had budgeted tracking for single
+  // lines since the kicker fix; the wrapping sibling had not.
+  const EN_SUBTITLE = "Growth quality in predictive maintenance and where the second half goes"
+  const realWidth = (line: string, fontSize: number, letterSpacing: number): number =>
+    measureTextUnits(line) * fontSize + Math.max(0, Array.from(line).length - 1) * letterSpacing
+
+  it("without the budget, the call site's own numbers reproduce the overflow (the red this fix answers)", () => {
+    const blind = layoutSvgText(EN_SUBTITLE, { maxWidth: 1168, fontSize: 30, maxLines: 2, lineHeightRatio: 1.3 })
+    expect(blind.lines).toHaveLength(1)
+    // The estimator alone says it fits; add the tracking the render actually
+    // paints and the same line is over budget — the exact blind spot.
+    expect(measureTextUnits(blind.lines[0]) * blind.fontSize).toBeLessThanOrEqual(1168)
+    expect(realWidth(blind.lines[0], blind.fontSize, 4)).toBeGreaterThan(1168)
+  })
+
+  it("budgets the tracking so every wrapped line fits its declared maxWidth", () => {
+    const fitted = layoutSvgText(EN_SUBTITLE, {
+      maxWidth: 1168,
+      fontSize: 30,
+      maxLines: 2,
+      lineHeightRatio: 1.3,
+      letterSpacing: 4,
+    })
+    expect(fitted.lines.length).toBeGreaterThan(0)
+    expect(fitted.lines.length).toBeLessThanOrEqual(2)
+    for (const line of fitted.lines) {
+      expect(realWidth(line, fitted.fontSize, 4)).toBeLessThanOrEqual(1168)
+    }
+    // Content survives the fix — a narrower budget must re-wrap, not drop text.
+    expect(fitted.lines.join(" ")).toBe(EN_SUBTITLE)
+  })
+
+  it("pays for the tracking out of the font size when the text cannot wrap (maxLines: 1)", () => {
+    const withoutSpacing = layoutSvgText("一二三四五六七八九十", { maxWidth: 200, fontSize: 20, maxLines: 1 })
+    const withSpacing = layoutSvgText("一二三四五六七八九十", {
+      maxWidth: 200,
+      fontSize: 20,
+      maxLines: 1,
+      letterSpacing: 4,
+    })
+    expect(withSpacing.fontSize).toBeLessThan(withoutSpacing.fontSize)
+    expect(realWidth(withSpacing.lines[0], withSpacing.fontSize, 4)).toBeLessThanOrEqual(200)
+  })
+
+  it("is a no-op when letterSpacing is omitted or zero (existing callers unaffected)", () => {
+    const opts = { maxWidth: 1088, fontSize: 92, maxLines: 2 } as const
+    const withDefault = layoutSvgText("平台架构演进 — 从单体到云原生的技术实践（紫蓝渐变背景）", opts)
+    const explicitZero = layoutSvgText("平台架构演进 — 从单体到云原生的技术实践（紫蓝渐变背景）", {
+      ...opts,
+      letterSpacing: 0,
+    })
+    expect(explicitZero).toEqual(withDefault)
+  })
+})
+
 describe("layoutSvgText balanceLines (widow avoidance)", () => {
   // 用户复验 backlog#3：emerald 封面「年度战略回顾」在 360px/64px 下贪心断行成
   // 「年度战略回」+「顾」——孤字末行。balanceLines 按 total/N 预算重排为 3+3。

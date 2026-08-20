@@ -46,11 +46,18 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const bandY = titleLastY + 48
   const BAND_H = 14
 
+  // 副题带 4px 字距渲染（下方 `letterSpacing={SUBTITLE_LETTER_SPACING}`），
+  // 字距是不随字号缩放的绝对 px，必须进折行预算。与 cover-fashion-masthead
+  // 的副题同型同病：不进预算的话英文语料被判「一行放得下 1168px」，实测
+  // 右缘 1259.1，越出自己声明的 1168 盒（右缘 1224）35.1px——只是恰好还没
+  // 冲出 1280px 页面，所以三轮人评把它读成了误报。
+  const SUBTITLE_LETTER_SPACING = 4
   const subtitle = layoutSvgText(slide.subheading || "", {
     maxWidth: 1168,
     fontSize: 28,
     maxLines: 2,
     lineHeightRatio: 1.3,
+    letterSpacing: SUBTITLE_LETTER_SPACING,
   })
   const subtitleY = bandY + BAND_H + 54
   // 副题同型：固定叠 0.72，但字号是 `layoutSvgText` 缩出来的（28 起），
@@ -124,7 +131,7 @@ export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
           fontSize={subtitle.fontSize}
           fill={fg}
           fillOpacity={subtitleOpacity}
-          letterSpacing={4}
+          letterSpacing={SUBTITLE_LETTER_SPACING}
           dominantBaseline="alphabetic"
         >
           {line}
