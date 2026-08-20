@@ -3,6 +3,7 @@ import {
   fitSvgLine,
   measureTextUnits,
   truncateToUnits,
+  type TextWeightHint,
 } from "../../lib/svg-text-layout"
 import { accessibleInk, accessibleOpacity, resolveSemanticColor, type SemanticColorTokens } from "../ink"
 import { Icon } from "../icons"
@@ -39,21 +40,110 @@ export function deltaProps(delta: "up" | "down" | "flat", colors: SemanticColorT
   return { arrow: "→", color: "" } // color filled by caller with ctx.colors.muted
 }
 
-// Exported for tech.tsx's `renderKpiCardBody` — same value/unit width
-// split technique (see the comment at its call site below), reused verbatim
-// so the two KPI renderers can't drift on this overflow-safety math.
+/**
+ * The type scale the value line is rendered at, handed to
+ * `splitKpiValueWidths` so it can reason about the size the value will
+ * actually come out at. This file's own card uses `CARD_VALUE_SCALE`;
+ * `content-bento-panel.tsx` passes its own, larger one.
+ */
+export interface KpiValueScale {
+  /** Design size of the value text (`fitSvgLine`'s `fontSize`). */
+  readonly fontSize: number
+  /** Floor `fitSvgLine` shrinks to before it starts cutting characters. */
+  readonly minFontSize: number
+  /** The unit tspan's size as a fraction of the fitted value size. */
+  readonly unitRatio: number
+  /** Font stack the value and unit render in — both are bold. */
+  readonly fontFamily?: string
+}
+
+const CARD_VALUE_SCALE: KpiValueScale = { fontSize: 40, minFontSize: 22, unitRatio: 0.45 }
+
+// Exported for content-bento-panel.tsx's `renderKpiCardBody` — same
+// value/unit width split technique (see the comment at its call site below),
+// reused verbatim so the two KPI renderers can't drift on this
+// overflow-safety math.
+//
+// Value first (review round 3, D-cluster 5a). The split used to be flatly
+// proportional to each side's character count, which reads well until the
+// unit is the longer string: `value="5"` / `unit="weeks"` on the gallery's
+// 123px two-column card gave the number 13px and the suffix 70px, and the
+// card came out as "…weeks" — the number itself gone, which is not a
+// truncation but a rewrite of the datum. `102k units` came out as `1…units`
+// on the same page. The number is the payload and the unit is a suffix, so
+// the unit is what gives way: first abbreviated, then dropped outright, and
+// only once the number cannot fit even at its own floor size does it start
+// shrinking itself (leading digits first, the significant ones).
+//
+// The proportional share is kept as-is wherever it already renders the
+// number, because it is not arbitrary — it is what keeps the *overflow
+// auditor* quiet. That auditor measures a `<text>`'s whole textContent
+// (value + unit tspan concatenated) at the outer element's font-size,
+// blind to the unit tspan rendering smaller, so the proportional share is
+// exactly the largest value budget whose auditor estimate still fits the
+// card. Widening the value's share therefore has to buy that width from the
+// unit's *text*, not just from its budget — which is what the fallback
+// below does, at the `unitRatio` exchange rate the auditor's own blindness
+// implies.
 export function splitKpiValueWidths(
   value: string,
   unit: string | undefined,
   availableWidth: number,
+  scale: KpiValueScale = CARD_VALUE_SCALE,
 ): { valueMaxWidth: number; unitMaxWidth: number } {
-  const valueUnits = measureTextUnits(value)
   const unitUnits = unit ? measureTextUnits(unit) : 0
-  const valueMaxWidth =
-    unitUnits > 0 && valueUnits > 0
-      ? Math.floor((availableWidth * valueUnits) / (valueUnits + unitUnits))
-      : availableWidth
-  return { valueMaxWidth, unitMaxWidth: availableWidth - valueMaxWidth }
+  const valueUnits = measureTextUnits(value)
+  // Nothing to split: one side or the other has no ink of its own.
+  if (unitUnits <= 0 || valueUnits <= 0) return { valueMaxWidth: availableWidth, unitMaxWidth: 0 }
+
+  const sharedValueW = Math.floor((availableWidth * valueUnits) / (valueUnits + unitUnits))
+  // Whether that share renders the number is decided with the *same*
+  // measurement `fitSvgLine` will use on it below — bold, in the heading
+  // face. Measuring the split itself that way instead would move the
+  // proportional share on every card that carries a unit, including the
+  // ones that render fine today, so the two ruler settings stay as they
+  // are: unweighted to divide the line, weighted to judge the result.
+  const ink: TextWeightHint = { bold: true, fontFamily: scale.fontFamily }
+  const valueInkUnits = measureTextUnits(value, ink)
+  if (Math.floor(sharedValueW / valueInkUnits) >= scale.minFontSize) {
+    return { valueMaxWidth: sharedValueW, unitMaxWidth: availableWidth - sharedValueW }
+  }
+
+  // The number would lose characters. Take the room back from the unit: it
+  // may keep whatever is left over once the value has the width it renders
+  // at, converted at the `unitRatio` the auditor charges unit glyphs at.
+  // Zero is a legitimate answer — a unit that has no room left is dropped
+  // rather than drawn as a stub (`fitKpiUnit` below).
+  const unitInkUnits = measureTextUnits(unit!, ink)
+  const valueInkW = Math.min(valueInkUnits * scale.fontSize, availableWidth)
+  const unitWanted = Math.ceil(unitInkUnits * Math.round(scale.fontSize * scale.unitRatio))
+  const unitMaxWidth = Math.max(
+    0,
+    Math.min(unitWanted, scale.unitRatio * (availableWidth - valueInkW)),
+  )
+  return { valueMaxWidth: availableWidth - unitMaxWidth, unitMaxWidth }
+}
+
+/**
+ * The unit tspan's text, or `null` when it has no room worth drawing.
+ *
+ * Shared with `content-bento-panel.tsx` for the same reason
+ * `splitKpiValueWidths` is. The `null` cases are what the value-first split
+ * above made reachable: a unit can now be squeezed down to nothing, and both
+ * degenerate results read badly glued to a number — an empty tspan is a
+ * stray empty run in the exported OOXML, and a lone "…" after a figure reads
+ * as a truncated *number* ("5…"), which is the very misreading this whole
+ * fix exists to prevent.
+ */
+export function fitKpiUnit(
+  unit: string | undefined,
+  unitMaxWidth: number,
+  unitFontSize: number,
+  fontFamily?: string,
+): string | null {
+  if (!unit) return null
+  const fitted = truncateToUnits(unit, unitMaxWidth / unitFontSize, { bold: true, fontFamily })
+  return fitted === "" || fitted === "…" ? null : fitted
 }
 
 /**
@@ -100,8 +190,30 @@ function baseCardH(component: KpiComponent): number {
  * visible cards to fill the freed-up space, and mark the drop with the
  * same "+N more"/`data-dropped` convention (row-cards.tsx's precedent,
  * adapted to a horizontal trailing slot instead of a line below).
+ *
+ * The floor itself is a *readability* floor, not the 80px anti-crash one it
+ * started as (review round 3, D-cluster 5a's second half). 80px only ever
+ * asked "will this produce a negative-width shape?", so a 528px column
+ * holding four 123px cards sailed past it and drew four cards nobody could
+ * read — every label cut to one word, and two of the four numbers gone. 160
+ * asks the question that matters and still answers the old one a fortiori,
+ * being twice as wide.
+ *
+ * Where 160 comes from, measured rather than guessed. A card spends 20px of
+ * padding on each side (`cardX + 20` starts every line, `cardW - 40` budgets
+ * every width below), so 160 leaves a 120px text column. The label is what
+ * runs out of room first: it renders at 16px and `fitSvgLine` may take it
+ * down to 12px before it starts cutting characters, so 120px buys
+ * 120 / 12 = 10 units of `measureTextUnits` — 10 CJK characters, or about 19
+ * Latin ones — with no ellipsis. Against the gallery's own twelve metric
+ * labels (zh 5.0-8.0 units, en 6.6-11.4) that renders nine of them whole and
+ * leaves the three longest English ones with ~19 characters, where the
+ * pre-change 10-across density row (84px cards, a 44px column) left them 7.
+ * The value line clears the same bar with room to spare: the widest gallery value
+ * ("102k", 2.45 units) wants 54px at its own 22px floor and its unit
+ * ("units") another 26px at the matching 10px — 80px of the 120.
  */
-const MIN_CARD_W = 80
+const MIN_READABLE_CARD_W = 160
 /** Reserved horizontal slot (px) for the "+N more" marker text itself,
  * plus one `GAP` before it — sized generously for a 3-4 digit count
  * ("+9999 more") at the marker's own 13px font, never a source of the
@@ -109,14 +221,14 @@ const MIN_CARD_W = 80
 const MARKER_RESERVE_W = 90
 
 /**
- * How many leading items fit `box.w` at `MIN_CARD_W` once `MARKER_RESERVE_W`
- * (+ one more `GAP`) is set aside for the "+N more" marker — at least 1,
- * matching every other component in this task's family sweep ("never
- * render zero visible units, even in a near-zero box").
+ * How many leading items fit `box.w` at `MIN_READABLE_CARD_W` once
+ * `MARKER_RESERVE_W` (+ one more `GAP`) is set aside for the "+N more"
+ * marker — at least 1, matching every other component in this task's family
+ * sweep ("never render zero visible units, even in a near-zero box").
  */
 function visibleCardCount(fullCount: number, boxW: number): number {
   const effectiveW = boxW - MARKER_RESERVE_W - GAP
-  const visible = Math.floor((effectiveW + GAP) / (MIN_CARD_W + GAP))
+  const visible = Math.floor((effectiveW + GAP) / (MIN_READABLE_CARD_W + GAP))
   return Math.max(1, Math.min(fullCount, visible))
 }
 
@@ -126,11 +238,12 @@ export const kpi: SvgComponent<KpiComponent> = {
   },
   render(rawComponent, box, ctx) {
     const fullCount = rawComponent.items.length
-    // Only cap when the *full* set would actually breach MIN_CARD_W — a
-    // deck within any realistic item count reflows through the exact same
-    // formula it always has (byte-identical no-op on the common path).
+    // Only cap when the *full* set would actually breach
+    // MIN_READABLE_CARD_W — a row whose cards already clear it reflows
+    // through the exact same formula it always has (byte-identical no-op on
+    // the common path).
     const naturalCardW = (box.w - GAP * (fullCount - 1)) / fullCount
-    const visible = naturalCardW < MIN_CARD_W ? visibleCardCount(fullCount, box.w) : fullCount
+    const visible = naturalCardW < MIN_READABLE_CARD_W ? visibleCardCount(fullCount, box.w) : fullCount
     const hidden = fullCount - visible
     const component = hidden > 0 ? { ...rawComponent, items: rawComponent.items.slice(0, visible) } : rawComponent
     const n = component.items.length
@@ -168,18 +281,21 @@ export const kpi: SvgComponent<KpiComponent> = {
           // the value's width budget is shrunk in proportion to how much of
           // the combined text the unit accounts for, instead of a flat
           // pixel reserve, to keep the auditor's (over)estimate inside the
-          // card. The unit itself has no length limit from the schema, so
-          // its actual rendered text is separately truncated to fit the
-          // width share it was allotted at its own (smaller) font size —
-          // together the two bounds keep the card from overflowing at any
-          // value/unit length.
+          // card — and the number keeps that budget ahead of the unit when
+          // the two cannot both have it (see `splitKpiValueWidths`). The
+          // unit itself has no length limit from the schema, so its actual
+          // rendered text is separately truncated to fit the width share it
+          // was allotted at its own (smaller) font size — together the two
+          // bounds keep the card from overflowing at any value/unit length.
           const valueStr = String(item.value)
           const unit = dedupeKpiUnit(valueStr, item.unit)
           const availableWidth = cardW - 40
+          const valueScale: KpiValueScale = { ...CARD_VALUE_SCALE, fontFamily: ctx.fonts.heading }
           const { valueMaxWidth, unitMaxWidth } = splitKpiValueWidths(
             valueStr,
             unit,
             availableWidth,
+            valueScale,
           )
           // bold-metrics fix (2026-07-24): this text renders `fontWeight=
           // "bold"` in `ctx.fonts.heading` below — audit-baseline.test.ts's
@@ -193,15 +309,13 @@ export const kpi: SvgComponent<KpiComponent> = {
           // correction.
           const fittedValue = fitSvgLine(valueStr, {
             maxWidth: valueMaxWidth,
-            fontSize: 40,
-            minFontSize: 22,
+            fontSize: valueScale.fontSize,
+            minFontSize: valueScale.minFontSize,
             bold: true,
             fontFamily: ctx.fonts.heading,
           })
-          const unitFontSize = Math.round(fittedValue.fontSize * 0.45)
-          const fittedUnit = unit
-            ? truncateToUnits(unit, unitMaxWidth / unitFontSize, { bold: true, fontFamily: ctx.fonts.heading })
-            : null
+          const unitFontSize = Math.round(fittedValue.fontSize * valueScale.unitRatio)
+          const fittedUnit = fitKpiUnit(unit, unitMaxWidth, unitFontSize, ctx.fonts.heading)
           const fittedLabel = fitSvgLine(item.label, {
             maxWidth: cardW - 40,
             fontSize: 16,

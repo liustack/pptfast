@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { kpi } from "./kpi"
+import { kpi, splitKpiValueWidths } from "./kpi"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../full-slide-svg"
@@ -381,5 +382,158 @@ describe("kpi_cards box.w-aware horizontal cap (graceful landing)", () => {
     const { container } = svg(kpi.render(manyComponent, { x: 0, y: 0, w: 100000 }, ctx))
     expect(container.querySelector("[data-dropped]")).toBeNull()
     expect(container.querySelectorAll("rect").length).toBe(manyItems.length)
+  })
+})
+
+// Review round 3, D-cluster 5a ("the number itself got eaten"): the width
+// split between a KPI's value and its unit used to hand each of them a share
+// of the card proportional to its own character count, so `value="5"` /
+// `unit="weeks"` gave the number 13px and the suffix 70px — and the card
+// rendered "…weeks", with no number on it at all. The reviewer saw it on the
+// gallery's own `layout--two-column--en` page, on two of its four cards.
+describe("kpi value/unit width split puts the number first", () => {
+  /** One card alone in a `cardW`-wide box — the row never degrades at n=1. */
+  function oneCard(item: { value: string; unit?: string; label: string }, cardW: number) {
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: [item] }, { x: 0, y: 0, w: cardW }, ctx),
+    )
+    const valueText = Array.from(container.querySelectorAll("text")).find(
+      (t) => t.getAttribute("y") === "58",
+    )!
+    const tspan = valueText.querySelector("tspan")
+    return {
+      container,
+      valueText,
+      // The value's own characters, without the unit tspan's.
+      value: Array.from(valueText.childNodes)
+        .filter((n) => n.nodeType === 3)
+        .map((n) => n.textContent)
+        .join(""),
+      valueFontSize: Number(valueText.getAttribute("font-size")),
+      valueTruncated: valueText.getAttribute("data-truncated") === "1",
+      unit: tspan ? tspan.textContent : null,
+    }
+  }
+
+  it("keeps the whole number and abbreviates a long unit instead of the other way round", () => {
+    // Pre-fix this rendered an empty value element next to a 24-character
+    // unit: the proportional split gave the number 4px of a 260px line,
+    // because the unit had 33 characters to the number's one.
+    const card = oneCard(
+      {
+        value: "9",
+        unit: "非常非常非常非常非常非常非常非常非常非常长的单位文字说明超长内容单位",
+        label: "短标签",
+      },
+      300,
+    )
+    expect(card.value).toBe("9")
+    expect(card.valueTruncated).toBe(false)
+    expect(card.valueFontSize).toBe(40)
+    expect(card.unit).toMatch(/…$/)
+    expect(card.unit!.length).toBeLessThan(10)
+  })
+
+  it("lets the unit step aside entirely rather than let the number lose a digit", () => {
+    // The reviewer's own case, at the reviewer's own geometry: the gallery's
+    // two-column right rail drew four cards 123px wide, i.e. an 83px text
+    // line. Pre-fix: "…" for the number, and a full "weeks" beside it.
+    const card = oneCard({ value: "5", unit: "weeks", label: "Average delivery time" }, 123)
+    expect(card.value).toBe("5")
+    expect(card.valueTruncated).toBe(false)
+    expect(card.unit).toBeNull()
+  })
+
+  it("never leaves a bare ellipsis where the unit was — it reads as part of the number", () => {
+    const card = oneCard({ value: "5", unit: "weeks", label: "Average delivery time" }, 84)
+    expect(card.value).toBe("5")
+    expect(card.unit).toBeNull()
+  })
+
+  it("cuts the number itself only as a last resort, and cuts it from the small end", () => {
+    // A 16-character figure in a 140px card cannot be rendered whole at any
+    // legible size, so this is the one case where the number does lose
+    // characters — at its floor size, from the tail, so the digits that
+    // carry the magnitude survive. The unit is long gone by then.
+    const card = oneCard({ value: "1,234,567,890.99", unit: "元", label: "短标签" }, 140)
+    expect(card.value).toBe("1,234,…")
+    expect(card.valueFontSize).toBe(22)
+    expect(card.unit).toBeNull()
+  })
+
+  it("leaves a card with room for both exactly where it was", () => {
+    // The common path: a full-width row of four, every value and every unit
+    // spelled out in full. The font sizes are the ones this row rendered
+    // before the value-first change, character for character — a card with
+    // room for both must not move at all.
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 1088 }, ctx),
+    )
+    expect(container.querySelector("[data-dropped]")).toBeNull()
+    expect(container.querySelector("[data-truncated]")).toBeNull()
+    const valueTexts = Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("y") === "58",
+    )
+    expect(valueTexts.map((t) => t.getAttribute("font-size"))).toEqual(["39", "40", "40", "40"])
+    expect(valueTexts.map((t) => t.textContent)).toEqual(["102kunits", "91%", "88%", "5weeks"])
+  })
+
+  it("hands back the same width split as before wherever the value already fits", () => {
+    // Stated as the pre-change formula rather than as literal pixels, so the
+    // pin survives a text-metric recalibration but not a change of policy:
+    // as long as the value's share is large enough to render it, the split
+    // is the one this component always used.
+    for (const [value, unit, availableWidth] of [
+      ["102k", "units", 220],
+      ["91", "%", 220],
+      ["5", "weeks", 220],
+      ["1,234,567,890.99", "件", 260],
+      ["24%", "pts", 500],
+    ] as const) {
+      const valueUnits = measureTextUnits(value)
+      const unitUnits = measureTextUnits(unit)
+      const valueMaxWidth = Math.floor((availableWidth * valueUnits) / (valueUnits + unitUnits))
+      expect(splitKpiValueWidths(value, unit, availableWidth), `${value} ${unit}`).toEqual({
+        valueMaxWidth,
+        unitMaxWidth: availableWidth - valueMaxWidth,
+      })
+    }
+  })
+})
+
+const METRICS = [
+  { value: "102k", unit: "units", label: "Connected equipment" },
+  { value: "91", unit: "%", label: "Renewal rate" },
+  { value: "88", unit: "%", label: "Prediction accuracy" },
+  { value: "5", unit: "weeks", label: "Average delivery time" },
+]
+
+describe("kpi readability floor", () => {
+  it("degrades a column too narrow to read into fewer, readable cards plus a marker", () => {
+    // The gallery's two-column right rail: 528px for four cards is 123px
+    // each, which clears the old 80px anti-crash floor and so degraded
+    // nothing — it just drew four cards nobody could read.
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 528 }, ctx),
+    )
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects.length).toBe(2)
+    for (const r of rects) expect(Number(r.getAttribute("width"))).toBeGreaterThanOrEqual(160)
+    expect(container.querySelector("[data-dropped]")!.getAttribute("data-dropped")).toBe("2")
+  })
+
+  it("does not degrade a row whose cards already clear the floor", () => {
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 1088 }, ctx),
+    )
+    expect(container.querySelectorAll("rect").length).toBe(4)
+    expect(container.querySelector("[data-dropped]")).toBeNull()
+  })
+
+  it("still draws one card when the box cannot hold even a single readable one", () => {
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 120 }, ctx),
+    )
+    expect(container.querySelectorAll("rect").length).toBe(1)
   })
 })
