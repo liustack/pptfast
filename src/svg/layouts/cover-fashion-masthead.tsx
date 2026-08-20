@@ -86,18 +86,32 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
   const bandY = titleLastY + 52
   const BAND_H = 20
 
+  // 副题带 4px 字距渲染（下方 `letterSpacing={4}`），字距是不随字号缩放的
+  // 绝对 px，必须进折行预算：不进的话 71 字符的英文副题被判「一行放得下
+  // 1168px」，实际画出 1253.7px，右缘 1309.7 冲出 1280px 页面 29.7px。
+  const SUBTITLE_LETTER_SPACING = 4
   const subtitle = layoutSvgText(slide.subheading || "", {
     maxWidth: 1168,
     fontSize: 30,
     maxLines: 2,
     lineHeightRatio: 1.3,
+    letterSpacing: SUBTITLE_LETTER_SPACING,
   })
   const subtitleY = bandY + BAND_H + 58
 
+  // 同一个盲区的第二处：meta 行也带字距渲染。`fitSvgLine` 早就有这个参数，
+  // 这里一直没传。当前语料下传不传逐字节相同（434 页画廊实测零差异），
+  // 但长机构名 + 密级 + 日期 + 版本拼出来的长 meta 行会越界，先补上。
+  const META_LETTER_SPACING = 3
   const metaParts = [org, confLabel, date, version].filter((v): v is string => Boolean(v))
   const metaLine =
     metaParts.length > 0
-      ? fitSvgLine(metaParts.join("    ·    "), { maxWidth: 1100, fontSize: 19, minFontSize: 14 })
+      ? fitSvgLine(metaParts.join("    ·    "), {
+          maxWidth: 1100,
+          fontSize: 19,
+          minFontSize: 14,
+          letterSpacing: META_LETTER_SPACING,
+        })
       : null
   // B-tier meta line ink (see file header's "底部 meta 行颜色" section for
   // the full derivation): this layout paints its own full-bleed
@@ -166,7 +180,7 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
           fontSize={subtitle.fontSize}
           fill={fg}
           fillOpacity={0.72}
-          letterSpacing={4}
+          letterSpacing={SUBTITLE_LETTER_SPACING}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -189,7 +203,7 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
           fontSize={metaLine.fontSize}
           fill={metaFill}
           textAnchor="middle"
-          letterSpacing={3}
+          letterSpacing={META_LETTER_SPACING}
           dominantBaseline="alphabetic"
         >
           {metaLine.text}

@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import { FashionMastheadCover } from "./cover-fashion-masthead"
 import { FashionChapter } from "./chapter-fashion-chapter"
 import { FashionEnding } from "./ending-fashion-ending"
@@ -139,7 +140,7 @@ describe("fashion 家族（runway）", () => {
       expect(markup, themeId).toMatch(/font-size="28"[^>]*fill-opacity="0\.72"[^>]*letter-spacing="4"/)
     }
 
-    // 长副题：17 家都缩到 21px，floor 翻成 4.5:1，这 5 家混完不达标 → 退回
+    // 长副题：17 家都缩到 14px，floor 翻成 4.5:1，这 5 家混完不达标 → 退回
     // 全不透明；其余 12 家仍达标 → 保留 0.72。名单是「明度谷」主题的实测
     // 集合，随 token 变动：冷调组把 academic 的绿加深（#006A4E → #0E6245）
     // 后它退出过一次；柔和组（2026-08-20）把 campaign 的 primary 从品红
@@ -149,6 +150,14 @@ describe("fashion 家族（runway）", () => {
     // `.issues/2026-08-18-theme-redesign/skins/tools/probe-fashion-flip.mts`
     // ——这个数组钉的是当前 token 下的实测结果，token 换血时它应当跟着换
     // （合并语义冲突的第一现场：两个各自全绿的分支在这里相遇）。
+    //
+    // 字号从 21 降到 14（字距折行预算，2026-08-20）：这条 97 字符不可断词
+    // 的 token 渲染时带 4px 字距，96 个间隙吃掉 384px，`layoutSvgText` 现在
+    // 把这笔钱从 1168px 预算里先扣掉再定字号（`SvgTextLayoutOptions.letterSpacing`）。
+    // 实测 14×units + 384 = 1162.7 ≤ 1168，修前的 21px 实际画出 1259.1，
+    // 越出这个盒子 35.1px。**这条测试要判的那件事没变**：21 和 14 同在 24px
+    // 大字号线以下，floor 都是 4.5:1，FLIPPED 名单逐个主题实测前后完全一致，
+    // 动的只是那个被扣款扣小了的字号常量。
     const FLIPPED = ["bloom", "classroom", "pulse", "ember", "vermilion"]
     const longDeck = ir([endingLongSub])
     for (const themeId of CANONICAL_THEME_IDS) {
@@ -157,7 +166,7 @@ describe("fashion 家族（runway）", () => {
       )
       const expected = FLIPPED.includes(themeId) ? 'fill-opacity="1"' : 'fill-opacity="0.72"'
       expect(markup, themeId).toMatch(
-        new RegExp(`font-size="21"[^>]*${expected.replace(".", "\\.")}[^>]*letter-spacing="4"`),
+        new RegExp(`font-size="14"[^>]*${expected.replace(".", "\\.")}[^>]*letter-spacing="4"`),
       )
     }
   })
@@ -166,6 +175,45 @@ describe("fashion 家族（runway）", () => {
     const deck = ir([endingBare])
     const markup = renderSvgMarkup(<FashionEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
     expect(markup).toContain("Thank you")
+  })
+
+  // 三轮人评 D 簇 · fashion-ending 的字距折行预算（2026-08-20）
+  //
+  // 与 cover-fashion-masthead 同型同病：副题带 `letterSpacing={4}` 渲染，
+  // 却由一个听不见字距的 `layoutSvgText` 定字号，于是英文语料被判「一行放
+  // 得下 1168px」。浏览器真 getBBox 量到右缘 1259.1，越出自己声明的 1168
+  // 盒（x=56 起，右缘 1224）35.1px——只是恰好还剩 20.9px 没冲出 1280px 页
+  // 面，所以这条一度被读成误报。判「出页」确实不成立，判「越盒」成立。
+  //
+  // 语料是画廊 EN 版式表 `layout--fashion-ending--en` 的原话，测试跟着真
+  // 复现走。
+  it("ending：副题字距进折行预算，每一行都留在自己声明的 1168px 盒里", () => {
+    const EN_SUBHEADING = "Renewals and accuracy both improved — quarter quality ran ahead of plan"
+    const SUBTITLE_MAX_W = 1168
+    const SUBTITLE_X = 56
+    const enEnding = {
+      type: "ending",
+      heading: "Second-Half Priorities",
+      subheading: EN_SUBHEADING,
+      components: [],
+    } as Slide
+    const markup = renderSvgMarkup(<FashionEnding ir={ir([enEnding])} slide={enEnding} index={0} ctx={ctx} />)
+    const root = parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${markup}</svg>`)
+    const lines = Array.from(root.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("letter-spacing") === "4",
+    )
+    expect(lines.length).toBeGreaterThan(0)
+    expect(lines.length).toBeLessThanOrEqual(2) // 调用点自己的 maxLines
+    for (const line of lines) {
+      const text = line.textContent ?? ""
+      const fontSize = Number(line.getAttribute("font-size"))
+      // 真实渲染宽度 = 字形估算 × 字号 + SVG 属性真画出来的那笔字距
+      const width = measureTextUnits(text) * fontSize + Math.max(0, Array.from(text).length - 1) * 4
+      expect(width).toBeLessThanOrEqual(SUBTITLE_MAX_W + 1) // +1：浮点余量，沿用 heading-fit.test.ts 的约定
+      expect(SUBTITLE_X + width).toBeLessThanOrEqual(1280)
+    }
+    // 收窄预算只能重新折行，不能把内容吃掉
+    expect(lines.map((l) => l.textContent).join(" ")).toBe(EN_SUBHEADING)
   })
 
   it("三版式输出均在可导出 SVG 子集内", () => {
