@@ -22,7 +22,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `assemble <dir\|name> [-o <file>]` | Materialize a deck project directory into a single IR JSON file |
 | `disassemble <ir.json> -o <dir>` | Split an IR JSON file into a deck project directory |
 | `schema [--style \| --spec]` | Print the IR JSON Schema (or the style-override schema, or the deck spec schema) |
-| `themes [--json]` | List the 17 built-in themes |
+| `themes [--json]` | List the 18 built-in themes |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | Extract brand colors and fonts from a `.thmx`/`.potx`/`.pptx` into a theme file, entirely locally (see [Themes](./themes.md#your-own-brand)) |
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
 | `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`), never gated on placeholder pages |
@@ -127,6 +127,6 @@ The skill wraps this loop for an agent ([`skills/pptfast/SKILL.md`](../skills/pp
 ## More
 
 - [`ir.md`](./ir.md) — what goes in the IR, narratives, layout selection, deck projects.
-- [`themes.md`](./themes.md) — the 17 built-in themes, brand extraction, style overrides.
+- [`themes.md`](./themes.md) — the 18 built-in themes, brand extraction, style overrides.
 - [`concepts.md`](./concepts.md) — the theme/layout/component/narrative model.
 - [`deck-projects.md`](./deck-projects.md) — the deck project format in depth.

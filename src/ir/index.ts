@@ -101,6 +101,7 @@ export const BUILTIN_THEME_IDS = [
   "terra",
   "ember",
   "vermilion",
+  "crayon",
 ] as const
 
 const Hex = z.string().regex(/^#[0-9A-Fa-f]{3,8}$/)

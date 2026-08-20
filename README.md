@@ -93,7 +93,7 @@ The commands you will reach for most:
 | `preview <target> -o <dir> [--html]` | One SVG per slide, plus a self-contained review page |
 | `serve <target>` | Live preview that reloads on every change, with reviewer annotations |
 | `audit <target>` | Geometry review: overflow, out-of-bounds, low contrast, overlap |
-| `themes` | List the 17 built-in themes |
+| `themes` | List the 18 built-in themes |
 | `doctor` | Check the install: runtime, skill copies, optional capabilities, self-test render |
 
 Full reference: [`docs/cli.md`](./docs/cli.md).
