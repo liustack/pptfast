@@ -475,6 +475,35 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // exactly what a reskin is allowed to be. `.audit.json` needed no
       // recapture for any of the three (findings stayed the empty array,
       // recomputed fresh against both goldens).
+      //
+      // Re-recaptured again (visual review round 3, C6 — the quote mark's
+      // baseline, `.issues/2026-08-19-review-round-3/diagnosis.md`): the
+      // decorative open-quote mark's baseline was a hand-tuned 40 justified
+      // by a comment that guessed where the glyph's ink stops (0.42em above
+      // its own baseline). The guess was wrong — rasterizing U+201C at 64px
+      // on every theme's resolved body stack reads 0.48 to 0.55 — so the
+      // mark's ink ended a full body line (30.5px measured) above the text
+      // it opens. `MARK_BASELINE` is now derived from the measured ratio and
+      // lands on 56, and the review's own page measures 15px of air instead
+      // of 31px.
+      //
+      // Only the mark's own `<text>` moves: `measure()` never reads that
+      // baseline, so the block's height, its position in the layout, and
+      // every body/attribution baseline are untouched. Targeted attribution
+      // (`.issues/2026-08-20-quote-mark-baseline/tools/equiv-quote-diff.mts`,
+      // this wave's own tool — token-by-token over both the SVG and the
+      // PPTX parts): token counts are identical everywhere, the PPTX part-
+      // name set is identical, and the *only* differing token anywhere is
+      //   - `scenarioBearing`: SVG slide 1 (`y="40"` -> `y="56"`) and
+      //     `ppt/slides/slide2.xml` (one `<a:off>` y, 3119247 -> 3271647);
+      //   - `annualReviewPreset`: SVG slide 3 (same attribute) and
+      //     `ppt/slides/slide4.xml` (one `<a:off>` y, 2703767 -> 2856167).
+      // Both EMU deltas are 152400 = exactly the 16px the baseline moved
+      // (9525 EMU per px at this canvas). `basic` has no quote component and
+      // was not recaptured at all, and `.audit.json` needed no recapture for
+      // any of the three (recomputed fresh against both goldens — a mark
+      // that moves 16px down inside its own block introduces no geometry or
+      // contrast finding).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
