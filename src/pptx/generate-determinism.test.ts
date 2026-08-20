@@ -66,7 +66,7 @@ describe("generatePptxBlob whole-file byte determinism", () => {
     const blobB = await generatePptxBlob(ir)
 
     expect(await sha256(blobB)).toBe(await sha256(blobA))
-  }, 15000)
+  })
 
   it("the same IR renders to a byte-identical .pptx across a real >=2s gap (crosses the DOS timestamp's 2-second granularity boundary)", async () => {
     const { generatePptxBlob } = await import("./generate")
@@ -77,5 +77,5 @@ describe("generatePptxBlob whole-file byte determinism", () => {
     const blobB = await generatePptxBlob(ir)
 
     expect(await sha256(blobB)).toBe(await sha256(blobA))
-  }, 15000)
+  })
 })
