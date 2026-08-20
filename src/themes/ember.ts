@@ -62,6 +62,9 @@ export const EMBER_TOKENS: StyleTokens = {
     text: "#2E241E", // 炭墨（13.98:1）
     muted: "#6E6156", // 烬灰（5.53:1）
     border: "#E8DCCB", // 暖沙线
+    danger: "#A62617", // 余烬红（7.10:1）——比火橙 primary 更深更红
+    warning: "#A85A16", // 焦琥珀（4.99:1），与 accent 琥珀拉开明度
+    success: "#4A7538", // 苔藓绿（5.31:1），暖调压得住火
     chartPalette: ["#BC4620", "#E8A13C", "#3E7CB1", "#756B5E"], // 火橙/琥珀/天蓝/烬灰
   },
   // Microsoft YaHei first (not Verdana/Segoe UI): resolveFontFace picks the

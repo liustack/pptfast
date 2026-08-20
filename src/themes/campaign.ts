@@ -53,6 +53,9 @@ export const CAMPAIGN_TOKENS: StyleTokens = {
     text: "#F6F2F9", // 灯光白（14.00:1）
     muted: "#B3A6C7", // 幕影紫灰（6.78:1）
     border: "#4A3A66", // 幕缝线
+    danger: "#F07764", // 追光珊瑚（压 surface 4.81:1）——暗紫幕布上要够亮
+    warning: "#F0B429", // 鎏金，纸屑四色之一（7.20:1）
+    success: "#9BE36D", // 荧绿，纸屑四色之一（8.69:1）
     chartPalette: ["#E84F8A", "#F0B429", "#4FC1E9", "#9BE36D"], // 洋红/鎏金/天青/荧绿=纸屑四色
   },
   fonts: {

@@ -186,12 +186,25 @@ describe("callout semantic color tokens", () => {
     }
   })
 
-  it("regression lock: no canonical theme declares one yet, so every warn callout still renders #DC2626", () => {
+  // Visual review round 4 (2026-08-20): "为啥这个提醒长卡片上边框总是红色啊，
+  // 无论主题什么配色，这个总是红色" — the same `#DC2626` on all 17 themes was
+  // the defect, not the top rule itself. Every canonical theme now names its
+  // own caution color, so the built-in fallback is unreachable from a
+  // built-in theme and only a custom/brand-extracted theme can still land on
+  // it. Both halves are asserted: the rule follows the theme, and no two
+  // themes share a value (a copy-paste that recolored 17 files to the same
+  // hex would pass the first half alone).
+  it("regression lock: every canonical theme paints its own caution color, never the built-in default", () => {
+    const seen = new Map<string, string>()
     for (const id of CANONICAL_THEME_IDS) {
-      expect(warnColors(buildCtx(resolveStyle(id), {})), id).toEqual({
-        rule: "#DC2626",
-        icon: "#DC2626",
-      })
+      const style = resolveStyle(id)
+      const expected = style.colors.warning ?? style.colors.danger
+      expect(expected, `${id} declares no semantic caution color`).toBeTruthy()
+      expect(expected, `${id} still carries the built-in fallback red`).not.toBe("#DC2626")
+      expect(warnColors(buildCtx(style, {})), id).toEqual({ rule: expected, icon: expected })
+      const owner = seen.get(expected!)
+      expect(owner, `${id} reuses ${owner}'s caution color ${expected}`).toBeUndefined()
+      seen.set(expected!, id)
     }
   })
 })

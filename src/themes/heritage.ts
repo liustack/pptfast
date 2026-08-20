@@ -53,6 +53,9 @@ export const HERITAGE_TOKENS: StyleTokens = {
     text: "#2E2119", // 烟褐墨（13.40:1）
     muted: "#6F5F51", // 旧墨注脚（5.26:1）
     border: "#DCCDB8", // 纸纹线
+    danger: "#A32A22", // 古籍朱（6.70:1）——比勃艮第 primary 更红更亮，才叫得响
+    warning: "#9A6120", // 焦糖压深（4.75:1）
+    success: "#3F6647", // 瓶绿（6.09:1），旧纸上的沉绿
     chartPalette: ["#8A2A38", "#B8742C", "#3F5361", "#7C6A4A"], // 酒红/焦糖/墨蓝/橄榄褐
   },
   fonts: {

@@ -31,9 +31,11 @@ const CARD_H = 120
 //
 // The up/down colors are theme tokens now (`colors.success`/`colors.danger`),
 // resolved through `resolveSemanticColor` — hence the `colors` argument,
-// which both call sites fill with `ctx.colors`. A theme that declares neither
-// token resolves to the same `#16A34A`/`#DC2626` this function used to return
-// outright, so nothing moves until a theme opts in.
+// which both call sites fill with `ctx.colors`. All 17 built-in themes name
+// their own pair, each calibrated to clear 4.5:1 on that theme's own card
+// surface so the `accessibleInk` wrap below keeps it instead of demoting it
+// to neutral ink; a theme that declares neither still resolves to the same
+// `#16A34A`/`#DC2626` this function used to return outright.
 export function deltaProps(delta: "up" | "down" | "flat", colors: SemanticColorTokens) {
   if (delta === "up") return { arrow: "↑", color: resolveSemanticColor("success", colors) }
   if (delta === "down") return { arrow: "↓", color: resolveSemanticColor("danger", colors) }

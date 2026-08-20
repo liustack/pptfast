@@ -41,11 +41,21 @@ export interface StyleColors {
    * and the renderers read them through `resolveSemanticColor`
    * (`src/svg/ink.ts`), which owns the fallback order.
    *
-   * All three are omitted (`undefined`) by default, and an omitted role
-   * resolves to exactly the hex its renderers baked in before this channel
-   * existed — `#DC2626` for `danger`, `#16A34A` for `success`, and `warning`
-   * follows whatever `danger` resolves to. So a theme that sets none of them
-   * renders byte-for-byte as it did before the tokens were added.
+   * All three are optional on the type, and an omitted role resolves to
+   * exactly the hex its renderers baked in before this channel existed —
+   * `#DC2626` for `danger`, `#16A34A` for `success`, and `warning` follows
+   * whatever `danger` resolves to. So a theme that sets none of them renders
+   * byte-for-byte as it did before the tokens were added.
+   *
+   * Every one of the 17 built-in themes does set all three (visual review
+   * round 4 ruled that the alert color must belong to the theme's own
+   * palette, not be one universal red), so in practice only a `--theme-file`
+   * brand theme reaches the fallbacks. `danger` and `success` are calibrated
+   * to clear 4.5:1 on their own theme's `surface` — they render as the kpi
+   * delta arrow's *text*, which `accessibleInk` would otherwise demote to
+   * neutral ink — while `warning` only has to clear the 3:1 non-text floor,
+   * since `callout` paints it as a rule and an icon. Both floors are pinned
+   * in `svg/audit/full-matrix-contrast.test.ts`.
    */
   danger?: string;
   warning?: string;

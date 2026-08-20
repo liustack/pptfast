@@ -28,12 +28,19 @@ the codebase owns fidelity.
    of these survive conversion to native editable PowerPoint shapes
    (`src/pptx/svg2pptx/` is far stricter than a browser).
 3. **A small named palette.** Every color states its role: background /
-   panel / body / heading / accent / muted. Body-on-background contrast
-   >= 4.5:1, large headings >= 3:1, footer meta >= 3:1. The audit
-   enforces these floors mechanically (`docs/contrast-system.md`), and
-   since the decor-attribution fix it measures text against the
-   decoration it is actually painted on — a design cannot pass by
-   letting text sit on a stamp and grading it against the page.
+   panel / body / heading / accent / muted, plus the three semantic roles
+   — alert (`danger`), caution (`warning`), good result (`success`).
+   Body-on-background contrast >= 4.5:1, large headings >= 3:1, footer
+   meta >= 3:1. The audit enforces these floors mechanically
+   (`docs/contrast-system.md`), and since the decor-attribution fix it
+   measures text against the decoration it is actually painted on — a
+   design cannot pass by letting text sit on a stamp and grading it
+   against the page. The semantic three are the theme's own colors, not a
+   universal red/amber/green: a design that leaves them out inherits a
+   generic red that will not belong to it. `danger` and `success` must
+   clear 4.5:1 on the theme's `surface` (they render as the kpi delta
+   arrow's text); `warning` only has to clear 3:1, since it is painted as
+   a rule and an icon.
 4. **Fonts express intent only** (serif/sans, weight, size rhythm).
    Never depend on a specific commercial font being present.
 5. **Decoration keeps out of four content regions**: the heading area,

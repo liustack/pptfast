@@ -81,6 +81,9 @@ export const RUNWAY_TOKENS: StyleTokens = {
     text: "#191919", // 正文黑（15.44:1）
     muted: "#646460", // 石灰（5.22:1）——照板上自标的 5:1 压深，见文件头
     border: "#DCD9D0", // 细栏线
+    danger: "#A32017", // 绯红压深（7.18:1）
+    warning: "#8F6A21", // 烟草金（4.69:1）
+    success: "#4A6B3F", // 橄榄绿（5.75:1）
     cardStroke: "#DCD9D0", // 米白底浅卡靠描边区分
     chartPalette: ["#141414", "#B0483C", "#8A8A84", "#C4C0B4"], // 黑/绯红/石灰/亚麻（末格仅底纹）
   },

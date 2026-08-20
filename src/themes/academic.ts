@@ -57,6 +57,9 @@ export const ACADEMIC_TOKENS: StyleTokens = {
     text: "#23251F", // 油墨黑（13.95:1）
     muted: "#62655B", // 铅笔灰（5.36:1）
     border: "#DDD9C8", // 稿纸格线
+    danger: "#9E2B25", // 朱批红（压 surface 7.17:1，可作正文级）
+    warning: "#9C5A18", // 焦茶褐——学者金压到能承线的重量（5.21:1）
+    success: "#16704F", // 祖母绿一档亮（5.85:1），与 primary 同族
     chartPalette: ["#0E6245", "#A8861D", "#3F5B8C", "#8A8471"], // 祖母绿/学者金/靛青/卵石灰
   },
   fonts: {

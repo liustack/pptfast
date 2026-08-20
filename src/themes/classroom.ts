@@ -65,6 +65,9 @@ export const CLASSROOM_TOKENS: StyleTokens = {
     text: "#23282E", // 钢笔墨（12.95:1）
     muted: "#5A6470", // 铅笔灰（5.24:1）
     border: "#D3DBE0", // 横线簿格线
+    danger: "#A04A38", // 批改笔压深（5.73:1）——比 accent 陶土更红更重
+    warning: "#9A7318", // 砂黄压深（4.18:1），与陶土 accent 分家
+    success: "#55704A", // 鼠尾草压深（5.32:1）
     chartPalette: ["#4A6B8A", "#B96A5E", "#7A8B6F", "#988054"], // 雾蓝/陶土/鼠尾草/砂黄
   },
   fonts: {

@@ -48,6 +48,9 @@ export const TECH_TOKENS: StyleTokens = {
     text: "#EAF1FA", // 冷白
     muted: "#93A5C0", // 舱灰注脚（压 bg 7.62:1，压渐变起点 7.13:1）
     border: "#24304A", // 界格即星轨（motif 连线同色）
+    danger: "#FF6B7D", // 警示玫红（压 surface 6.29:1）——冷板上不用橙红
+    warning: "#FFC14D", // 警示琥珀，与 chartPalette 同一枚（10.68:1）
+    success: "#4BD98A", // 薄荷绿（9.53:1），与青瓷 accent 同一冷序列
     chartPalette: ["#53E0D2", "#5B8CFF", "#9A7CFF", "#FFC14D"], // 冷序列三位 + 警示琥珀
   },
   fonts: {
