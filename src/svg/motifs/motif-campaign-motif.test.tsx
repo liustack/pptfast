@@ -5,7 +5,7 @@ import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { PACING_BUDGETS } from "@/narrative"
-import { CampaignMotif, CHIP_REACH, CONFETTI_COUNT, CONFETTI_HALF_FIELD_COUNT } from "./motif-campaign-motif"
+import { CampaignMotif, CONFETTI_COUNT, CONFETTI_HALF_FIELD_COUNT, PIECE_REACH } from "./motif-campaign-motif"
 import type { Component, PptxIR, Slide } from "@/ir"
 
 const para = (text: string): Component => ({ type: "paragraph", text }) as Component
@@ -43,12 +43,12 @@ const TEXT_ENVELOPE = { top: 34, bottom: 708.6, left: 56, right: 1224 } as const
 
 /** 三条带的取样窗（与 motif 源同源，这里独立复述一遍当契约钉住）。 */
 const BANDS = [
-  { name: "top", x: [48, 1232], y: [10, 28] },
-  { name: "left", x: [20, 50], y: [40, 655] },
-  { name: "right", x: [1230, 1262], y: [40, 655] },
+  { name: "top", x: [48, 1232], y: [10, 27] },
+  { name: "left", x: [20, 48], y: [40, 655] },
+  { name: "right", x: [1232, 1264], y: [40, 655] },
 ] as const
 /** 与 motif 源同一个数：两处各写一遍就会各自漂。 */
-const REACH = CHIP_REACH
+const REACH = PIECE_REACH
 
 const ir = (theme: string, filename = "x.pptx"): PptxIR =>
   ({
@@ -100,10 +100,29 @@ function pieceBoxes(root: Element): { kind: string; box: Box }[] {
 const intersects = (b: Box, z: { x: number; y: number; w: number; h: number }) =>
   b.x0 < z.x + z.w && b.x1 > z.x && b.y0 < z.y + z.h && b.y1 > z.y
 
+/** 一组数的变异系数（标准差 / 均值）——用来量「疏密」而不是「多少」。 */
+function coefficientOfVariation(xs: readonly number[]): number {
+  const mean = xs.reduce((s, x) => s + x, 0) / xs.length
+  const sd = Math.sqrt(xs.reduce((s, x) => s + (x - mean) ** 2, 0) / xs.length)
+  return sd / mean
+}
+
+/** 同一条 LCG 撒同样枚数的均布参照场，间距的变异系数当基线用。 */
+function uniformGapCv(n: number, lo: number, hi: number): number {
+  let s = 7 >>> 0
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) >>> 0
+    return s / 4294967296
+  }
+  const xs = Array.from({ length: n }, () => lo + rnd() * (hi - lo)).sort((a, b) => a - b)
+  return coefficientOfVariation(xs.slice(1).map((x, i) => x - xs[i]!))
+}
+
 /**
- * campaign-motif v5「纸屑场」（2026-08-20 柔和组皮肤重设计）。
+ * campaign-motif v6「纸屑场」（2026-08-20 柔和组皮肤重设计；v6 = 同日第四轮
+ * 评审「纸屑太机械」的返工：同一条 LCG，撒得不再匀）。
  * 设计源：`.issues/2026-08-18-theme-redesign/skins/group4-soft-boards.dc.html`
- * 的 `section#g4` campaign 设计表。本文件是本轮新建。
+ * 的 `section#g4` campaign 设计表。
  */
 describe("CampaignMotif（纸屑场）", () => {
   it("满场 120 枚，任务书的「装饰点数百级」硬指标", () => {
@@ -125,18 +144,77 @@ describe("CampaignMotif（纸屑场）", () => {
     for (const el of Array.from(root.querySelectorAll("circle, path"))) {
       const fill = el.getAttribute("fill")!
       counts.set(fill, (counts.get(fill) ?? 0) + 1)
-      expect(el.getAttribute("opacity")).toBe("0.9")
     }
     expect([...counts.keys()].sort()).toEqual([...t.colors.chartPalette].sort())
     for (const c of t.colors.chartPalette) expect(counts.get(c), c).toBe(30)
   })
 
-  it("蜡笔条整族退役：没有一枚纸屑宽过 10px（v4 的笔画宽 42-96px）", () => {
+  it("蜡笔条整族退役：没有一枚纸屑超出单枚外扩的两倍（v4 的笔画宽 42-96px）", () => {
     const { root } = draw("campaign", coverSlide)
     for (const { box } of pieceBoxes(root)) {
-      expect(box.x1 - box.x0, `piece too wide: ${JSON.stringify(box)}`).toBeLessThanOrEqual(10)
-      expect(box.y1 - box.y0, `piece too tall: ${JSON.stringify(box)}`).toBeLessThanOrEqual(10)
+      expect(box.x1 - box.x0, `piece too wide: ${JSON.stringify(box)}`).toBeLessThanOrEqual(2 * REACH)
+      expect(box.y1 - box.y0, `piece too tall: ${JSON.stringify(box)}`).toBeLessThanOrEqual(2 * REACH)
     }
+  })
+
+  // ── v6：撒得不再匀 ────────────────────────────────────────────────────
+  /**
+   * 评审 campaign p03 的原话是「这些撒花的装饰太机械了，没有灵动的感觉」。
+   * 病灶是处处一样：v5 的位置带内均布、尺寸只在一档窄区间线性取、斜方片
+   * 一律 ±45°、透明度整场恒定 0.9。这一组是那条裁定的守卫——四项里任何
+   * 一项退回 v5 的写法都会红。
+   */
+  describe("疏密节奏与逐枚变化（v6 返工的守卫）", () => {
+    it("顶带的间距比均布参照场更不齐（有团有空档，不是一条等距点线）", () => {
+      const { root } = draw("campaign", coverSlide)
+      const xs = pieceBoxes(root)
+        .filter(({ box }) => box.y1 <= TEXT_ENVELOPE.top)
+        .map(({ box }) => (box.x0 + box.x1) / 2)
+        .sort((a, b) => a - b)
+      expect(xs).toHaveLength(CONFETTI_HALF_FIELD_COUNT)
+      const cv = coefficientOfVariation(xs.slice(1).map((x, i) => x - xs[i]!))
+      expect(cv, "top band reads as an evenly spaced row").toBeGreaterThan(uniformGapCv(xs.length, 48, 1232) * 1.2)
+      // 团与团之间读得出空档：最大间距至少是均值的四倍。
+      const gaps = xs.slice(1).map((x, i) => x - xs[i]!)
+      const mean = gaps.reduce((s, g) => s + g, 0) / gaps.length
+      expect(Math.max(...gaps)).toBeGreaterThan(mean * 4)
+    })
+
+    it("圆点半径拉开且偏小：至少 20 档不同，多数在区间下半", () => {
+      const { root } = draw("campaign", coverSlide)
+      const radii = Array.from(root.querySelectorAll("circle")).map((c) => num(c, "r"))
+      expect(new Set(radii).size).toBeGreaterThanOrEqual(20)
+      const lo = Math.min(...radii)
+      const hi = Math.max(...radii)
+      expect(hi - lo, "dot sizes still sit in one narrow band").toBeGreaterThan(3)
+      const small = radii.filter((r) => r < lo + (hi - lo) / 2).length
+      expect(small / radii.length, "square-law sampling should keep most dots small").toBeGreaterThan(0.5)
+    })
+
+    /**
+     * v5 的转角只在 ±45° 之间取，8×5 的方片在那个区间里包围盒**永远宽 >= 高**
+     * （45° 时正好 1:1，0° 时 1.6:1）。所以「存在一枚立着的片」就是 v5 与 v6
+     * 的分水岭：把转角收回 ±45°，下面第二条立刻红。
+     */
+    it("斜方片转角放开到整圈：既有横躺的也有立着的", () => {
+      const { root } = draw("campaign", coverSlide)
+      const ratios = Array.from(root.querySelectorAll("path")).map((p) => {
+        const nums = p.getAttribute("d")!.match(/-?[\d.]+/g)!.map(Number)
+        const xs = nums.filter((_, i) => i % 2 === 0)
+        const ys = nums.filter((_, i) => i % 2 === 1)
+        return (Math.max(...xs) - Math.min(...xs)) / (Math.max(...ys) - Math.min(...ys))
+      })
+      expect(Math.max(...ratios), "no chip lies flat").toBeGreaterThan(1.3)
+      expect(Math.min(...ratios), "no chip stands upright — angles are still clamped to ±45°").toBeLessThan(0.8)
+    })
+
+    it("透明度逐枚取（远近层次），不再是整场一个 0.9", () => {
+      const { root } = draw("campaign", coverSlide)
+      const ops = Array.from(root.querySelectorAll("circle, path")).map((el) => num(el, "opacity"))
+      expect(new Set(ops).size).toBeGreaterThan(20)
+      expect(Math.min(...ops)).toBeGreaterThanOrEqual(0.45)
+      expect(Math.max(...ops)).toBeLessThanOrEqual(1)
+    })
   })
 
   it("chapter 完全退让（巨幅居中标题 + 章节号水印的活动范围就是页缘）", () => {
@@ -196,7 +274,7 @@ describe("CampaignMotif（纸屑场）", () => {
     it("半场留下的是顶带：左右两条竖带整条让开", () => {
       const { root } = draw("campaign", dense)
       for (const { box } of pieceBoxes(root)) {
-        expect(box.y1, `piece outside the top band: ${JSON.stringify(box)}`).toBeLessThanOrEqual(28 + REACH)
+        expect(box.y1, `piece outside the top band: ${JSON.stringify(box)}`).toBeLessThanOrEqual(BANDS[0].y[1] + REACH)
       }
     })
 
