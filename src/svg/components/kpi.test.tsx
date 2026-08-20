@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { kpi, splitKpiValueWidths } from "./kpi"
+import { kpi, rowValueFontSize, splitKpiValueWidths } from "./kpi"
 import { measureTextUnits } from "../../lib/svg-text-layout"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
@@ -467,9 +467,14 @@ describe("kpi value/unit width split puts the number first", () => {
 
   it("leaves a card with room for both exactly where it was", () => {
     // The common path: a full-width row of four, every value and every unit
-    // spelled out in full. The font sizes are the ones this row rendered
-    // before the value-first change, character for character — a card with
-    // room for both must not move at all.
+    // spelled out in full. Nothing is dropped, nothing is truncated, and
+    // every character survives — which is what the value-first change was
+    // about.
+    //
+    // The four sizes were "39, 40, 40, 40" until review round 4's
+    // row-uniform rule: "102k units" needs 39 in this width and the row now
+    // follows its tightest card rather than letting one number sit a point
+    // smaller than its neighbours (see "kpi row-uniform value size").
     const { container } = svg(
       kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 1088 }, ctx),
     )
@@ -478,7 +483,7 @@ describe("kpi value/unit width split puts the number first", () => {
     const valueTexts = Array.from(container.querySelectorAll("text")).filter(
       (t) => t.getAttribute("y") === "58",
     )
-    expect(valueTexts.map((t) => t.getAttribute("font-size"))).toEqual(["39", "40", "40", "40"])
+    expect(valueTexts.map((t) => t.getAttribute("font-size"))).toEqual(["39", "39", "39", "39"])
     expect(valueTexts.map((t) => t.textContent)).toEqual(["102kunits", "91%", "88%", "5weeks"])
   })
 
@@ -539,5 +544,68 @@ describe("kpi readability floor", () => {
       kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 120 }, ctx),
     )
     expect(container.querySelectorAll("rect").length).toBe(1)
+  })
+})
+
+// Review round 4, J's re-check finding 3: the gallery's own
+// `layout--two-column--en` drew "102k" at 29px next to "91" at 40px. Each
+// card was fitting its own number in isolation, so the card whose unit ate
+// the most width shrank alone and the row read as two different type
+// scales side by side. A row of KPI cards is one comparison, and a
+// comparison whose figures are set at different sizes says the big one
+// matters more.
+describe("kpi row-uniform value size", () => {
+  /** Every rendered value's font-size, left to right. */
+  function valueSizes(component: Parameters<typeof kpi.render>[0], w: number): number[] {
+    const { container } = svg(kpi.render(component, { x: 0, y: 0, w }, ctx))
+    return Array.from(container.querySelectorAll("text[font-weight='bold']")).map((t) =>
+      Number(t.getAttribute("font-size")),
+    )
+  }
+
+  it("sets every value in one row at the same size", () => {
+    // The reviewer's own page: a 528px rail, which degrades to the two
+    // leading cards — "102k units" and "91 %".
+    const sizes = valueSizes({ type: "kpi_cards", items: METRICS }, 528)
+    expect(sizes).toHaveLength(2)
+    expect(new Set(sizes).size).toBe(1)
+  })
+
+  it("takes the smallest size the row can all state its number at, not the largest", () => {
+    const sizes = valueSizes({ type: "kpi_cards", items: METRICS }, 528)
+    // Whatever the tightest card needs is what the row gets: rendering the
+    // row at the roomiest card's size would push the tight one into
+    // truncation, which loses a digit rather than a few points of type.
+    const alone = valueSizes({ type: "kpi_cards", items: [METRICS[0]!] }, (528 - 90 - 16 - 16) / 2)
+    expect(alone[0]).toBeLessThan(40)
+    expect(sizes).toEqual([alone[0], alone[0]])
+  })
+
+  it("leaves a row whose cards all fit at the design size exactly where it was", () => {
+    const sizes = valueSizes(
+      { type: "kpi_cards", items: [{ value: "13", label: "a" }, { value: "28", label: "b" }] },
+      1120,
+    )
+    expect(sizes).toEqual([40, 40])
+  })
+
+  it("scales every unit tspan off the shared size, so the suffixes match too", () => {
+    const { container } = svg(kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 528 }, ctx))
+    const values = Array.from(container.querySelectorAll("text[font-weight='bold']"))
+    const unitSizes = values.map((t) => Number(t.querySelector("tspan")!.getAttribute("font-size")))
+    expect(new Set(unitSizes).size).toBe(1)
+    expect(unitSizes[0]).toBe(Math.round(Number(values[0]!.getAttribute("font-size")) * 0.45))
+  })
+
+  it("rowValueFontSize is decided by the row's own content and geometry alone", () => {
+    const scale = { fontSize: 40, minFontSize: 22, unitRatio: 0.45 }
+    const items = METRICS.slice(0, 2)
+    expect(rowValueFontSize(items, 162, scale)).toBe(rowValueFontSize(items, 162, scale))
+    // A wider card lets the tight number back up to the design size.
+    expect(rowValueFontSize(items, 1000, scale)).toBe(40)
+    expect(rowValueFontSize(items, 162, scale)).toBeLessThan(40)
+    // Never below the scale's own floor — that is `fitSvgLine`'s job, not
+    // this function's.
+    expect(rowValueFontSize(items, 10, scale)).toBe(22)
   })
 })

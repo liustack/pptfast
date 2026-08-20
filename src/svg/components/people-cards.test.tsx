@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { assertSubset } from "../subset-validate"
 import { parseSvgRoot } from "../serialize"
 import { auditSvgMarkup } from "../audit/svg-audit"
+import { BLOCK_GAP } from "../layout"
 import { readableOn } from "../ink"
 import { deriveInitials } from "./people-initials"
 import { peopleCards } from "./people-cards"
@@ -272,5 +273,58 @@ describe("people_cards component", () => {
     const shells = Array.from(container.querySelectorAll("rect"))
     const bottoms = shells.map((r) => Number(r.getAttribute("y")) + Number(r.getAttribute("height")))
     expect(Math.max(...bottoms)).toBeCloseTo(h, 5)
+  })
+})
+
+// Review round 4, J's re-check finding 4: on the gallery's own
+// `component--people-cards--mixed` the "现状盘点" label sat 22px below the
+// paragraph above it and 32px above the cards it names. Read by proximity —
+// which is how a reader assigns a label to a group, without deciding to —
+// the label belonged to the paragraph. The band's growth (previous round)
+// was landing entirely between the label and its own cards, which is the
+// one place it must not go.
+describe("people-cards title belongs to the group below it", () => {
+  function titleGeometry(w: number, h?: number) {
+    const { container } = svg(
+      peopleCards.render(component9, { x: 0, y: 0, w, ...(h != null ? { h } : {}) }, ctx),
+    )
+    const title = Array.from(container.querySelectorAll("text")).find(
+      (t) => t.textContent === "Speaker Lineup",
+    )!
+    const baseline = Number(title.getAttribute("y"))
+    const fontSize = Number(title.getAttribute("font-size"))
+    const cardTop = Number(
+      container.querySelector("[data-audit-box]")!.getAttribute("data-audit-box")!.split(",")[1],
+    )
+    return { baseline, fontSize, below: cardTop - baseline, aboveInsideBox: baseline - fontSize }
+  }
+
+  it("holds the label one short, fixed step above its own cards, however hard the page stretches", () => {
+    const measuredH = peopleCards.measure(component9, 1200, ctx)
+    const natural = titleGeometry(1200)
+    const stretched = titleGeometry(1200, measuredH + 120)
+    expect(natural.below).toBe(12)
+    expect(stretched.below).toBe(natural.below)
+  })
+
+  it("spends the band's growth on the space above the label instead", () => {
+    const measuredH = peopleCards.measure(component9, 1200, ctx)
+    const natural = titleGeometry(1200)
+    const stretched = titleGeometry(1200, measuredH + 120)
+    // The band still takes its capped quarter of the increment — that part
+    // is unchanged. What moved is which side of the label it lands on.
+    expect(stretched.aboveInsideBox - natural.aboveInsideBox).toBe(16)
+  })
+
+  it("leaves the label nearer its cards than the block above it, by a margin a reader can see", () => {
+    // The component cannot see what precedes it, so the gap above is the
+    // layout's own smallest stacking gap plus whatever the band holds over
+    // the label. A layout with room to spare only widens that gap further,
+    // so the tightest possible page is the one worth pinning.
+    const measuredH = peopleCards.measure(component9, 1200, ctx)
+    for (const h of [undefined, measuredH + 40, measuredH + 120]) {
+      const { below, aboveInsideBox } = titleGeometry(1200, h)
+      expect(BLOCK_GAP + aboveInsideBox).toBeGreaterThanOrEqual(1.5 * below)
+    }
   })
 })
