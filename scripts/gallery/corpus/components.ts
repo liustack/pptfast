@@ -70,7 +70,7 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
   chart: (lex) => ({
     type: "chart",
     chart_type: "bar",
-    axes: { x_title: lex.periods[0], y_title: lex.metrics[0]!.label, show_grid: true },
+    axes: { x_title: lex.periodAxis, y_title: lex.metrics[0]!.label, show_grid: true },
     series: [
       { name: lex.labels[8]!, data: slice(lex.periods, 4).map((p, i) => ({ x: p, y: 42 + i * 11 })) },
       { name: lex.labels[9]!, data: slice(lex.periods, 4).map((p, i) => ({ x: p, y: 30 + i * 6 })) },
@@ -110,8 +110,8 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
 
   heatmap: (lex) => ({
     type: "heatmap",
-    x_title: lex.periods[0],
-    y_title: lex.labels[8],
+    x_title: lex.periodAxis,
+    y_title: lex.segmentAxis,
     x_labels: slice(lex.periods, 4),
     y_labels: slice(lex.labels, 4, 8),
     values: [
@@ -387,7 +387,7 @@ export const CHART_VARIANTS: Record<string, (lex: Lexicon) => Component> = {
   "chart · line": (lex) => ({
     type: "chart",
     chart_type: "line",
-    axes: { x_title: lex.periods[0], y_title: lex.metrics[2]!.label, show_grid: true },
+    axes: { x_title: lex.periodAxis, y_title: lex.metrics[2]!.label, show_grid: true },
     series: [
       { name: lex.labels[8]!, data: slice(lex.periods, 5).map((x, i) => ({ x, y: 58 + i * 8 })) },
       { name: lex.labels[9]!, data: slice(lex.periods, 5).map((x, i) => ({ x, y: 71 + i * 4 })) },
@@ -397,7 +397,7 @@ export const CHART_VARIANTS: Record<string, (lex: Lexicon) => Component> = {
   "chart · area": (lex) => ({
     type: "chart",
     chart_type: "area",
-    axes: { x_title: lex.periods[0], y_title: lex.metrics[0]!.label, show_grid: true },
+    axes: { x_title: lex.periodAxis, y_title: lex.metrics[0]!.label, show_grid: true },
     series: [{ name: lex.labels[8]!, data: slice(lex.periods, 5).map((x, i) => ({ x, y: 30 + i * i * 4 })) }],
   }),
 
@@ -501,7 +501,7 @@ export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
   chart: (lex) => ({
     type: "chart",
     chart_type: "line",
-    axes: { x_title: lex.periods[0], y_title: lex.metrics[2]!.label, show_grid: true },
+    axes: { x_title: lex.periodAxis, y_title: lex.metrics[2]!.label, show_grid: true },
     series: slice(lex.labels, 10).map((name, i) => ({
       name,
       data: slice(lex.periods, 5).map((x, j) => ({ x, y: 40 + ((i * 7 + j * 11) % 45) })),

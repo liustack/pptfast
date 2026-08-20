@@ -100,6 +100,23 @@ export interface Lexicon {
   readonly stages: Pool
   /** Time period labels, in order — at least 5. */
   readonly periods: Pool
+  /**
+   * The name of the dimension `periods` measures — "季度"/"Quarter", not
+   * "第一季度"/"Q1".
+   *
+   * An axis title says what the axis *is*; a tick says where you are on it.
+   * The corpus used to hand `periods[0]` to every chart's `x_title`, so the
+   * gallery's own pages repeated their first tick under the axis and a
+   * reviewer could not tell a corpus mistake from a renderer one (review
+   * round 4, `theme--ember--zh--p05`).
+   */
+  readonly periodAxis: string
+  /**
+   * The name of the dimension the segment labels (`labels[8]` onward — the
+   * ones the corpus uses as chart series and heatmap rows) belong to.
+   * Same rule as `periodAxis`: the dimension, never one of its members.
+   */
+  readonly segmentAxis: string
   /** Organization names — at least 12 (logo wall needs up to 12). */
   readonly orgs: Pool
   /** Named people with roles. */
@@ -263,6 +280,8 @@ const zh: Lexicon = {
 
   stages: ["需求确认", "现场勘测", "设备接入", "模型调优", "试运行", "验收交付"],
   periods: ["第一季度", "第二季度", "第三季度", "第四季度", "明年上半年"],
+  periodAxis: "季度",
+  segmentAxis: "行业",
 
   orgs: [
     "临江重工",
@@ -485,6 +504,8 @@ const en: Lexicon = {
 
   stages: ["Scoping", "Site survey", "Onboarding", "Model tuning", "Pilot run", "Acceptance"],
   periods: ["Q1", "Q2", "Q3", "Q4", "H1 next year"],
+  periodAxis: "Quarter",
+  segmentAxis: "Industry",
 
   orgs: [
     "Linjiang Heavy",
@@ -707,6 +728,8 @@ const mixed: Lexicon = {
 
   stages: ["方案评审", "Terraform 重构", "Staging 迁移", "Canary 灰度", "全量切换", "ECS 下线"],
   periods: ["Q3 第 1 月", "Q3 第 2 月", "Q3 第 3 月", "Q4 第 1 月", "Q4 第 2 月"],
+  periodAxis: "月份",
+  segmentAxis: "平台组件",
 
   orgs: [
     "Linjiang Heavy 临江重工",

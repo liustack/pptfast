@@ -20,7 +20,7 @@
 
 import { describe, expect, it } from "vitest"
 import { listThemes } from "@/api"
-import { COMPONENT_TYPES } from "@/ir"
+import { COMPONENT_TYPES, type Component } from "@/ir"
 import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS } from "./gallery/corpus/components"
 import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
@@ -129,6 +129,54 @@ describe("gallery corpus", () => {
     // Verdicts are keyed by these ids and must survive a re-run after a
     // renderer change, so nothing run-specific may leak into them.
     expect(first.every((id) => /^[a-z0-9-]+$/.test(id))).toBe(true)
+  })
+})
+
+// Review round 4, J's re-check finding 5: `theme--ember--zh--p05` labelled
+// its x axis "第一季度" — the name of the first bar, not the name of the
+// dimension. The corpus was feeding a tick where an axis title belongs, on
+// every chart that declared one, in all three language tracks. A reviewer
+// looking at that page cannot tell a corpus mistake from a renderer one,
+// which is exactly the confusion this corpus exists to remove.
+describe("gallery corpus content", () => {
+  /** Axis titles a component declares — the name of a dimension. */
+  function axisTitles(c: Component): string[] {
+    const out: (string | undefined)[] = []
+    if (c.type === "chart") out.push(c.axes?.x_title, c.axes?.y_title)
+    if (c.type === "heatmap" || c.type === "matrix") out.push(c.x_title, c.y_title)
+    return out.filter((s): s is string => !!s)
+  }
+
+  /** Every value that gets drawn *on* those axes — ticks and series names. */
+  function tickLabels(c: Component): string[] {
+    if (c.type === "chart") {
+      return c.series.flatMap((s) => [s.name ?? "", ...s.data.map((d) => String(d.x))])
+    }
+    if (c.type === "heatmap") return [...(c.x_labels ?? []), ...(c.y_labels ?? [])]
+    if (c.type === "matrix") return c.items.flatMap((i) => [i.title, i.tag ?? ""])
+    return []
+  }
+
+  it("names the dimension in an axis title, never repeats one of that axis's own ticks", () => {
+    // Prefixed rather than merged: the three tables key several builders by
+    // the same name ("chart"), and a plain spread would silently drop two of
+    // the three from the sweep.
+    const builders = [
+      ...Object.entries(COMPONENT_BUILDERS).map(([k, v]) => [`component/${k}`, v] as const),
+      ...Object.entries(CHART_VARIANTS).map(([k, v]) => [`variant/${k}`, v] as const),
+      ...Object.entries(DENSITY_BUILDERS).map(([k, v]) => [`density/${k}`, v] as const),
+    ]
+    const clashes: string[] = []
+    for (const language of LANGUAGE_IDS) {
+      for (const [name, build] of builders) {
+        const component = build(LEXICONS[language])
+        const ticks = new Set(tickLabels(component).filter(Boolean))
+        for (const title of axisTitles(component)) {
+          if (ticks.has(title)) clashes.push(`${name} (${language}): axis title "${title}" is also a tick`)
+        }
+      }
+    }
+    expect(clashes).toEqual([])
   })
 })
 
