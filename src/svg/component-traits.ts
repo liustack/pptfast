@@ -282,9 +282,9 @@ export const EVIDENCE_TYPES = [
  * `assertion_evidence` arrangement branches, so a full-body component wins
  * regardless of what `arrangement` happens to be set to): the whole content
  * rect is handed straight to the component's own `render`, bypassing
- * `layoutContentFit`'s column stacking. The component then fills `box.h`
- * itself using the box.h-aware uniform-stretch idiom `matrix.tsx`'s
- * `render` already
+ * `layoutContentFit`'s column stacking and the lone-block 38% golden
+ * placement. The component then fills `box.h` itself using the box.h-aware
+ * uniform-stretch idiom `matrix.tsx`'s `render` already
  * established (no `STRETCH_CAP_RATIO` ceiling — that cap exists for
  * `growStretchables`' card-density heuristic, which a full-body component
  * never goes through).

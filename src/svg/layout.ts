@@ -341,6 +341,52 @@ function distributeSurplus(
 }
 
 /**
+ * Share of a block's leftover height that settles *above* it — the golden
+ * position (2026-08-21 user ruling, fourth review round). 38% over the block,
+ * 62% under it.
+ *
+ * The number itself is the 2026-07-10 ruling's, restored: it was right, and
+ * the thing that made pages read as "一盘沙" was never this offset but the
+ * gaps *inside* the block, which `SURPLUS_GAP_CAP_RATIO` now holds to 1.5x.
+ * Both extremes have been tried and refused — a block centered in its rect
+ * ("居中死", the 50% version) hangs away from the heading it belongs under,
+ * and a block flush with the rect's top ("顶死", 0%) welds it to that
+ * heading with the whole page's air behind it. 38% is the optically centered
+ * position: more room below than above, which is what "下可空上不空" asks
+ * for once the members are already gathered.
+ */
+export const GOLDEN_TOP_SHARE = 0.38
+
+/**
+ * Move a finished placement, whole, into the golden position: every box
+ * shifts down by the same `GOLDEN_TOP_SHARE` of the height left over under
+ * the stack. Gaps, widths and stretched heights are untouched — this pass
+ * only decides where the assembled block stands, never how it is built.
+ *
+ * Left alone (same references back, so a caller can compare by identity):
+ *  - an empty placement
+ *  - a stack whose first box is not flush with the rect's top edge. Two
+ *    kinds arrive that way: `quote`, which centers itself because the author
+ *    asked for that composition by name, and a stack that has already been
+ *    settled — which is what makes a second call a no-op rather than a
+ *    second 38%.
+ *  - a stack with nothing left over (it already reaches the rect's bottom)
+ */
+export function settleToGolden(
+  placed: PlacedComponent[],
+  rect: ContentRect,
+  ctx: ComponentCtx,
+): PlacedComponent[] {
+  if (placed.length === 0) return placed
+  const top = placed.reduce((min, p) => Math.min(min, p.box.y), Number.POSITIVE_INFINITY)
+  if (Math.abs(top - rect.y) > 0.5) return placed
+  const remaining = rect.y + rect.h - stackBottom(placed, ctx)
+  if (remaining <= 0) return placed
+  const shift = remaining * GOLDEN_TOP_SHARE
+  return placed.map((p) => ({ ...p, box: { ...p.box, y: p.box.y + shift } }))
+}
+
+/**
  * Vertical overflow guard: retries `layoutContent` with progressively tighter
  * gaps, then — if the tightest gap still overflows — keeps only the components
  * whose bottom edge fits the rect and reports how many were dropped so the
@@ -350,7 +396,9 @@ function distributeSurplus(
  *
  * On success, hands the placement through `distributeSurplus` so any leftover
  * space below a short stack gets spent as gap growth rather than sitting
- * dead at the bottom (wave-B S4) — callers (`SvgContent`, `BigNumber`,
+ * dead at the bottom (wave-B S4), and then — for a stack of two or more —
+ * through `settleToGolden`, which sets that assembled block down 38% of the
+ * way into whatever space is still left. Callers (`SvgContent`, `BigNumber`,
  * `AssertionEvidence`) render/annotate straight from the returned boxes, so
  * the audit annotations follow automatically.
  */
@@ -381,12 +429,25 @@ export function layoutContentFit(
         components.length >= 2 &&
         placed.some((p) => COLUMN_SPANNING_TYPES.has(p.component.type))
       ) {
-        return { placed, dropped: 0 }
+        // Its internal spacing stays untouched for the reason above; the
+        // whole row still gets set down at the golden position, which moves
+        // every section by the same amount and so cannot pull two of them
+        // apart.
+        return { placed: settleToGolden(placed, rect, ctx), dropped: 0 }
       }
       // 先做卡片密度拉伸（吃大头），剩余交给间距呼吸
       const grown = growStretchables(placed, rect, ctx)
       const grownBottom = grown === placed ? bottom : stackBottom(grown, ctx)
-      return { placed: distributeSurplus(grown, rect, gap, grownBottom), dropped: 0 }
+      const spaced = distributeSurplus(grown, rect, gap, grownBottom)
+      // Gather the members first (stretch, then gaps), then set the whole
+      // block down at the golden position — but only when there is a block
+      // of two or more to set down. A lone component's vertical placement
+      // belongs to whoever owns the region: `SvgContent` settles a page's
+      // one block itself, while this same call also fills a page's
+      // *sub*-region (an image takeover's caption column, `big_number`'s
+      // support stack), where settling each one-block region by its own
+      // leftover would tilt regions that are meant to share a top edge.
+      return { placed: spaced.length >= 2 ? settleToGolden(spaced, rect, ctx) : spaced, dropped: 0 }
     }
   }
   // Before giving up and dropping content: a column-splitting arrangement
@@ -407,11 +468,15 @@ export function layoutContentFit(
     // The single stack was built to survive, not to fill: blocks measured
     // for a full-width rect are usually much shorter there than the split
     // they replaced, so this branch is exactly where a large leftover shows
-    // up. It sinks, whole, to the bottom — the 2026-08-20 gravity ruling
-    // ("页面的下方可以空，但不要上方空"). A short-lived earlier answer split
-    // that leftover evenly above and below instead; on academic p06 that
-    // pushed the first card 106px clear of the rule line it hangs under,
-    // which is the defect the ruling names, not the fix for it.
+    // up. It gets the same golden placement as any other stack — the retry
+    // above already ran it through `settleToGolden`, so 38% of that leftover
+    // is above the block and 62% below, and this branch needs no notion of
+    // its own about where a stack belongs.
+    //
+    // Two earlier answers here, both refused by the same person: splitting
+    // the leftover evenly (academic p06 sat 106px clear of the rule line it
+    // hangs under) and sinking all of it (the same page welded to that line,
+    // 0px). Measured at 38%: 61px.
     if (single.dropped === 0) return single
   }
 

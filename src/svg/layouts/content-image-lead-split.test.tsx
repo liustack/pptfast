@@ -399,26 +399,30 @@ describe("ImageLeadSplitContent determinism", () => {
 })
 
 describe("ImageLeadSplitContent header-only balance", () => {
-  it("starts the text block at the top even when the body is empty", () => {
-    // Two earlier answers to "这个页面为什么左侧全空白" pushed this block down
-    // to share a center line with the visual column. The 2026-08-20
-    // vertical-gravity ruling reverses that: "页面的下方可以空，但不要上方
-    // 空". On ember p05 the centered pair left ~220px of the text column and
-    // ~140px of the visual column empty above the ink — the top of the page
-    // blank and its content bunched around the middle.
+  it("hangs the text block off the visual column's line when the body is empty", () => {
+    // Visual review 2026-08-15: a single-chart page kept the 60/40 split but
+    // top-aligned a two-line heading in the 435px column, leaving ~450px of
+    // dead space under it beside the chart — read as content having gone
+    // missing ("这个页面为什么左侧全空白" / "主体为什么不居中"). A wave that
+    // top-aligned both columns instead reproduced exactly that shape and was
+    // refused; the two share a line again, and the line itself is at the
+    // golden position (see below).
     const deck = ir([chartOnly])
     const { root } = render(deck, chartOnly)
     const headings = Array.from(root.querySelectorAll("text")).filter(
       (t) => t.textContent && chartOnly.heading!.includes(t.textContent.slice(0, 4)),
     )
     expect(headings.length).toBeGreaterThan(0)
-    expect(Number(headings[0]!.getAttribute("y"))).toBe(150)
+    const firstBaseline = Number(headings[0]!.getAttribute("y"))
+    // A top-aligned heading would sit at the 150 baseline; this one sits
+    // well below it, on the band's own line.
+    expect(firstBaseline).toBeGreaterThan(250)
+    expect(firstBaseline).toBeLessThan(430)
   })
 
-  it("puts the header-only page's text block at the same baseline as a page with a body", () => {
-    // The empty body is no longer a special vertical case at all: both land
-    // on the layout's own HEADING_BASELINE, so there is only one answer to
-    // "where does the heading go" left in the file.
+  it("leaves the text block top-aligned as soon as the body carries anything", () => {
+    // With body content the stack must keep the full column height to grow
+    // into, so the shared line is strictly the empty-body case.
     const withBody = render(ir([chartLead]), chartLead)
     const headerOnly = render(ir([chartOnly]), chartOnly)
     const firstHeadingY = (r: ReturnType<typeof render>) =>
@@ -426,7 +430,7 @@ describe("ImageLeadSplitContent header-only balance", () => {
         .filter((t) => t.getAttribute("font-weight") === "700")
         .map((t) => Number(t.getAttribute("y")))[0]
     expect(firstHeadingY(withBody)).toBe(150)
-    expect(firstHeadingY(headerOnly)).toBe(150)
+    expect(firstHeadingY(headerOnly)).toBeGreaterThan(150)
   })
 
   // Visual review round 3, E cluster p05: the visual column declared the
@@ -451,7 +455,7 @@ describe("ImageLeadSplitContent header-only balance", () => {
     expect(declared.h).toBeLessThan(568)
   })
 
-  it("starts both columns on the content area's top edge, and leaves the dead strip under them", () => {
+  it("hangs both columns off one line and puts that line at the golden position", () => {
     const { root } = render(ir([chartOnly]), chartOnly)
     const visual = Array.from(root.querySelectorAll("g[data-audit-rect]")).find(
       (g) => parseAudit(g.getAttribute("data-audit-rect")).x !== 96,
@@ -467,21 +471,23 @@ describe("ImageLeadSplitContent header-only balance", () => {
       ? Number(kicker.getAttribute("y")) - Number(kicker.getAttribute("font-size"))
       : Number(headings[0]!.getAttribute("y")) - headingSize
     const blockBottom = Number(headings[headings.length - 1]!.getAttribute("y"))
-    // Both columns hang off the same top edge: the band at 72, the text at
-    // its own first ascender (112 with no kicker, 79 with one) — one heading
-    // line's worth of it, not a third of the page. And everything the page
-    // does not use is below the ink, not above it.
-    expect(band.y).toBe(72)
-    expect(blockTop).toBeLessThan(150) // the layout's own HEADING_BASELINE
-    expect(640 - Math.max(blockBottom, band.y + band.h!)).toBeGreaterThan(100)
+    const textCenter = (blockTop + blockBottom) / 2
+    // One line for both columns — not two formulas that happen to agree.
+    // Within the whole-pixel rounding `textShift` applies.
+    expect(Math.abs(textCenter - (band.y + band.h! / 2))).toBeLessThanOrEqual(0.5)
+    // And the line stands at the golden position inside the 72..640 slot:
+    // 38% of the slack above the band, 62% under it.
+    expect(band.y).toBeCloseTo(72 + (568 - band.h!) * 0.38, 5)
+    expect(640 - (band.y + band.h!)).toBeGreaterThan(band.y - 72)
   })
 
-  it("stands a short visual on the slot's top edge on a page that does carry a body", () => {
+  it("stands a short visual at the golden position inside the full slot when the page carries a body", () => {
     // The header-only page's band is tightened onto its own component, so
-    // top-flush and centered look the same there. This is the case that
-    // tells them apart: a full 568px slot with a shorter visual in it. Under
-    // the old centering the chart floated with a band of nothing above it,
-    // which is the shape the gravity ruling names.
+    // every placement rule looks the same there. This is the case that tells
+    // them apart: a full 568px slot with a shorter visual in it. Centered,
+    // the chart floated with an equal band of nothing above and below it;
+    // top-flush, it was welded to the slot's upper edge. Golden splits that
+    // room 38/62.
     const { root } = render(ir([chartLead]), chartLead)
     const visual = Array.from(root.querySelectorAll("g[data-audit-rect]")).find(
       (g) => parseAudit(g.getAttribute("data-audit-rect")).x !== 96,
@@ -490,14 +496,16 @@ describe("ImageLeadSplitContent header-only balance", () => {
     const painted = parseAudit(visual.querySelector("g[data-audit-box]")!.getAttribute("data-audit-box"))
     expect(declared.h).toBe(568) // the untightened slot, body present
     expect(painted.h).toBeLessThan(568) // shrink-to-fit left room over
-    expect(painted.y).toBe(declared.y) // and that room is all underneath
+    const above = painted.y - declared.y
+    const below = declared.y + declared.h! - (painted.y + painted.h!)
+    expect(above / (above + below)).toBeCloseTo(0.38, 5)
   })
 
   it("hangs the body rect under the heading, not through it", () => {
-    // The rect and the heading used to come from two coordinates that could
-    // drift apart (the heading carried a vertical shift the rect did not).
-    // With nothing shifting either, they cannot — but the ordering is what
-    // the page depends on, so it stays pinned.
+    // The empty-body rect was once emitted at y=231 while the heading it
+    // hangs under had been shifted to 371 — it spanned its own heading.
+    // Harmless while the branch guarantees an empty body, a live overlap the
+    // moment that guard is loosened, so the ordering stays pinned.
     const { root } = render(ir([chartOnly]), chartOnly)
     const textRect = Array.from(root.querySelectorAll("g[data-audit-rect]"))
       .map((g) => parseAudit(g.getAttribute("data-audit-rect")))
