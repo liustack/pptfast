@@ -12,12 +12,33 @@ import type { DecorProps } from "./types"
  *   - **顶缘装订孔排**：12 枚空心圆，`cx = 118 + i*96`、`cy24`、`r6`，
  *     铅笔灰线描。活页夹打的孔，页面因此像是从本子上撕下来的一张。
  *   - **底缘铅笔虚线**：x96→420 的一段虚线（`10 8` 虚实），横线簿最后一行
- *     没写完的那道。板上写在 y640，实测后落到页缘 y712，见下。
- *   - **右上回形针弧**：一枚陶土红回形针的线描（x1181-1230），整张纸上唯一
- *     的暖色，正是批改笔的颜色。板上写在 y18-44，实测后上移 12px，见下。
+ *     没写完的那道。板上写在 y640，实测后落到页缘 y712，见下。**只在没有
+ *     页脚的页上画**（2026-08-20 第四轮评审，见下）。
+ *   - ~~右上回形针弧~~：2026-08-20 第四轮评审删除，见下。
  * 斑块/点阵/波浪线/短线组整族退役——设计板 classroom 那格的原话是「恒位；
  * 现状斑块水彩退役」，同一句也判了 bloom 的水彩（`motif-bloom-motif.tsx`
  * 本轮整个删除，bloom 的 motif 锚点改指本文件）。
+ *
+ * ## 第四轮评审的两处返工（2026-08-20，bloom p01 / p03）
+ *
+ * 1. **回形针删除**。用户原话：「顶部那个绿色别针一样的是什么东西，跟空心
+ *    圆挤在一起干什么，非常难看。」两件东西确实是贴着的：最后一枚装订孔
+ *    的墨迹右缘在 x1180.6，回形针的左缘在 x1180.25——它们在同一条顶带上
+ *    重叠着排，读起来不是「别在打孔边上的一枚针」，而是两个零件挤在一角。
+ *    位置写死不能内容感知，挪去别处又只是把同一个问题换个角落，所以整件
+ *    删掉：留下的十二枚孔本来就是一条完整的节奏，少一枚针不缺什么。
+ *    accent（陶土红/bloom 的绿）因此退出本 motif，全件只剩铅笔灰一色。
+ * 2. **铅笔虚线只在无页脚的页上画**。用户原话：「底部那个虚线是干什么用
+ *    的，放这里太拥挤了，空的页面放放还差不多，这个有 footer 的页面还放，
+ *    太拥挤不好看了。」页脚 meta 行的基线在 y700（`brand-chrome.tsx`），
+ *    虚线在 y712，两者只隔七八个 px——有页脚的页上它就是贴着字排的第二条
+ *    横线。本轮按 `slide.type` 分档：只有 cover / ending 画（chapter 本来
+ *    就整档退让）。`brand-chrome.tsx` 的 `showFooter` 是
+ *    `slide.type === "content"` 再减去几种整页抑制页脚的通栏图版式，所以
+ *    「非 content」是「无页脚」的一个保守子集——被减掉的那几种恰好是底部
+ *    铺满图的页，虚线画上去只会更糟。这是页型分档，不是内容感知：同一
+ *    页型永远同一张，`slide.type` 与 seed 无关（同 `motif-rail-motif.tsx`
+ *    按 cover 二选一锚点的先例）。
  *
  * chapter 完全退让（`return null`，v1 起就是如此，理由本轮补上实测）：
  * classroom 的 chapter 默认底色是整版 primary 雾蓝（`themes/classroom.ts`
@@ -37,21 +58,19 @@ import type { DecorProps } from "./types"
  *   - 最低的一行字底在 y708.6（image-bottom 的遮罩页脚）
  *   - 最左 x56、最右 x1224（fashion 家族的 meta 行与 `brand-chrome.tsx`
  *     自己的页脚两行）
- * 于是板上三件东西里有两件要挪，逐条记：
+ * 于是板上三件东西里有两件要挪，逐条记（第 2 条随回形针一并作废，留档）：
  *   1. **铅笔虚线 y640 → y712**。板上那条线正落在页脚注的行高里：`chrome-
  *      geometry.ts` 的 `FOOTNOTE_BASELINE_Y = 648`，实测 13 个版式的脚注墨迹
  *      盒（y628-664 一带）与它相交，等于拿铅笔把脚注划掉。x96-420 一处未改，
  *      整条搬到 y712（墨迹 y711.25-712.75），在最低一行字之下、页缘之上——
  *      「横线簿最后一行」的读法反而更准。同一条先例冷调组踩过：设计板把
  *      academic 的点轨画在 y648，实测后整条搬去顶带。
- *   2. **回形针上移 12px**（板上 y18-44 → y6-32）。板上位置与
- *      poster-chapter/roman-chapter 的右上引首（x1092-1224、y34-60）重叠
- *      44px 宽的一块。上移之后墨迹 y5.25-32.75，与实测顶沿 y34 留 1.25px。
- *      x1180.25-1230.75 一处未改。回形针因此与装订孔排同高，读起来是「别在
- *      打孔边上的一枚针」，比原来更像回事。
+ *   2. ~~回形针上移 12px~~（板上 y18-44 → y6-32）。件已删除，见上。上移
+ *      的原因留档：板上位置与 poster-chapter/roman-chapter 的右上引首
+ *      （x1092-1224、y34-60）重叠 44px 宽的一块。
  *   3. 装订孔排一处未改：墨迹 y17.4-30.6（含 0.6 半线宽）、x111.4-1180.6，
  *      实测零碰撞。
- * 三件东西对板上四条红虚线与 `brand-chrome.tsx` **四个** logo 位
+ * 两件东西对板上四条红虚线与 `brand-chrome.tsx` **四个** logo 位
  * （tl/tr/bl/br，各 96×40）也全部清空，`motif-classroom-motif.test.tsx`
  * 逐件量。
  *
@@ -64,8 +83,8 @@ import type { DecorProps } from "./types"
  * （`.issues/2026-08-18-theme-redesign/skins/tools/probe-group-inherit.mts`），
  * 所以这里 12 枚孔各自带 `fill`/`stroke`/`stroke-width`，宁可啰嗦。
  *
- * 纪律：零 theme id、零 hex，颜色只来自 ctx（muted 铅笔灰 / accent 陶土
- * 红）。**本轮起不再读 `chartPalette`**——v1 按固定下标解构那四格，图表
+ * 纪律：零 theme id、零 hex，颜色只来自 ctx（muted 铅笔灰；回形针删除后
+ * accent 不再出现在本 motif 里）。**本轮起不再读 `chartPalette`**——v1 按固定下标解构那四格，图表
  * 调色板一轮转就会悄悄改掉装饰色（`motif-chart-palette-isolation.test.tsx`
  * 的文件头记着那次 Major，campaign/classroom/bloom 三家同时中招）。
  * 本 motif 现在是 classroom 与 bloom 共用的唯一候选（`motif-selection.ts`
@@ -93,19 +112,15 @@ const PENCIL_STROKE = 1.5
  * 的 `prstGeom="line"`，并且把 `stroke-dasharray` 映射成原生 `dashType`。 */
 const PENCIL_DASH = "10 8"
 
-// ── 右上回形针弧 ────────────────────────────────────────────────────────
-/** 一枚回形针的线描，包围盒 x1181-1230 / y6-32。板上画在 y18-44，与两个
- * chapter 版式的右上引首重叠，实测后整体上移 12px，推导见文件头。 */
-const CLIP_PATH = "M1216,6 q14,0 14,13 q0,13 -14,13 l-26,0 q-9,0 -9,-9 q0,-9 9,-9 l22,0"
-const CLIP_STROKE = 1.5
-
 export function ClassroomMotif({ slide, ctx }: DecorProps) {
-  // chapter 是整版 primary 雾蓝底，本 motif 三件东西压上去 1.08-1.41:1
+  // chapter 是整版 primary 雾蓝底，本 motif 的孔与虚线压上去 1.08-1.41:1
   // ——看不见（见文件头）。
   if (slide.type === "chapter") return null
 
   const pencil = ctx.colors.muted
-  const terracotta = ctx.colors.accent
+  // 有页脚的页（content）不画底缘虚线：它会贴着页脚 meta 行排成第二条
+  // 横线（第四轮评审 bloom p03，推导见文件头）。
+  const drawPencil = slide.type !== "content"
 
   return (
     <>
@@ -121,18 +136,18 @@ export function ClassroomMotif({ slide, ctx }: DecorProps) {
           strokeWidth={HOLE_STROKE}
         />
       ))}
-      {/* 底缘铅笔虚线 */}
-      <line
-        x1={PENCIL_X1}
-        y1={PENCIL_Y}
-        x2={PENCIL_X2}
-        y2={PENCIL_Y}
-        stroke={pencil}
-        strokeWidth={PENCIL_STROKE}
-        strokeDasharray={PENCIL_DASH}
-      />
-      {/* 右上回形针弧 */}
-      <path d={CLIP_PATH} fill="none" stroke={terracotta} strokeWidth={CLIP_STROKE} />
+      {/* 底缘铅笔虚线——只在没有页脚的页上 */}
+      {drawPencil && (
+        <line
+          x1={PENCIL_X1}
+          y1={PENCIL_Y}
+          x2={PENCIL_X2}
+          y2={PENCIL_Y}
+          stroke={pencil}
+          strokeWidth={PENCIL_STROKE}
+          strokeDasharray={PENCIL_DASH}
+        />
+      )}
     </>
   )
 }
