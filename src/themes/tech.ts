@@ -17,9 +17,18 @@ import type { StyleTokens } from "./tokens";
  *     舱灰，跟着蓝黑底一起偏蓝。
  *   - `border` `#2C3140` → `#24304A`：界格即星轨——motif 的节点连线取的就是
  *     这个角色，界格与装饰同色是这套语言的一部分。
- *   - `chartPalette` 从 5 色（青/绿/橙/紫/灰）收成 4 色冷序列 + 一个告警位：
- *     青 / 蓝 / 紫 / 警示琥珀。灰色 `#4A5568` 在深底上本就接近隐形，删。
+ *   - `chartPalette` 从 5 色（青/绿/橙/紫/灰）收成 4 色：青 / 蓝 / 紫 /
+ *     薄荷绿。灰色 `#4A5568` 在深底上本就接近隐形，删。
  *     motif 的节点也从这条色序取蓝/紫两位，图表与装饰同源。
+ *     **第四格在第四轮评审里换掉了：警示琥珀 `#FFC14D` → 薄荷绿
+ *     `#4BD98A`**（压 bg 10.54:1、压渐变起点 9.86:1）。原因是用户把蓝配橙
+ *     定为禁忌（原话在 enterprise p09/p10），而琥珀在这张全冷的表里正是
+ *     唯一一枚暖色，四系列图上它就贴着蓝与紫。换成薄荷绿之后整条色序真的
+ *     全冷了——设计板本来写的就是「4 色冷序列」，只是当时给第四格挂了个
+ *     告警位的名分。实测这一格还是四色里两两 ΔE 最大的选择（最近的一格
+ *     ΔE 35.8，色盲模拟最近 ΔE 34.3，都优于霓虹粉/兰紫的候选）。
+ *     `warning` 仍是 `#FFC14D`（值未动），但它从此只作警示图标与线，
+ *     不再兼任图表第四色。
  *   - `defaultBackgrounds` 四页型统一成设计稿的对角渐变（`#0E1630` →
  *     `#070B16`，封面样例的 `techbg`）。此前 content 与其余三型用的是两组
  *     不同的渐变，设计稿只给一组，不再自造差异。
@@ -30,8 +39,8 @@ import type { StyleTokens } from "./tokens";
  * 压 `bg` `#0A0F1E` 则为 text 16.78:1、muted 7.62:1、accent 11.78:1。
  * 设计板自查写的 muted 6.5:1 低于实测 7.62:1，以实测为准。
  *
- * 装饰见 `src/svg/motifs/motif-constellation-motif.tsx`（星座链 v2：右缘
- * 节点链 + 顶带疏星 + cover/chapter 双轨道弧）。
+ * 装饰见 `src/svg/motifs/motif-constellation-motif.tsx`（星座链 v3：右缘
+ * 空带里的节点链 + 顶带疏星，双轨道弧已退役，四种页型同一份几何）。
  */
 export const TECH_TOKENS: StyleTokens = {
   id: "tech",
@@ -49,9 +58,9 @@ export const TECH_TOKENS: StyleTokens = {
     muted: "#93A5C0", // 舱灰注脚（压 bg 7.62:1，压渐变起点 7.13:1）
     border: "#24304A", // 界格即星轨（motif 连线同色）
     danger: "#FF6B7D", // 警示玫红（压 surface 6.29:1）——冷板上不用橙红
-    warning: "#FFC14D", // 警示琥珀，与 chartPalette 同一枚（10.68:1）
+    warning: "#FFC14D", // 警示琥珀（压 surface 10.68:1）——第四轮起不再兼任 chartPalette 第四色
     success: "#4BD98A", // 薄荷绿（9.53:1），与青瓷 accent 同一冷序列
-    chartPalette: ["#53E0D2", "#5B8CFF", "#9A7CFF", "#FFC14D"], // 冷序列三位 + 警示琥珀
+    chartPalette: ["#53E0D2", "#5B8CFF", "#9A7CFF", "#4BD98A"], // 青/蓝/紫/薄荷绿，整条冷序列
   },
   fonts: {
     // Microsoft YaHei 前置：导出的 pptx 单字体无法回退，纯拉丁 sans 无 CJK

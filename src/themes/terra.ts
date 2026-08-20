@@ -52,8 +52,8 @@ import type { StyleTokens } from "./tokens";
  *   - chapter 底色取 primary（同 academic/consulting/pulse 先例），白字对
  *     primary 7.14:1，`readableOn` 自适应两墨取优后稳态可读。
  *
- * 装饰见 `src/svg/motifs/motif-terra-motif.tsx`（等高线：左下等高线簇 +
- * 右缘种子点列）。
+ * 装饰见 `src/svg/motifs/motif-terra-motif.tsx`（等高线 v3：左上顶缘的
+ * 等高线簇 + 右缘种子点列，chapter 整版橄榄底上完全不画）。
  */
 export const TERRA_TOKENS: StyleTokens = {
   id: "terra",

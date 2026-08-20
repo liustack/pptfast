@@ -38,12 +38,22 @@ import type { StyleTokens } from "./tokens";
  *     实测压 bg 5.92 / 3.12 / 3.88 / 3.52:1，四格全过 3.0 装饰线。旧表的
  *     琥珀 `#F4A259` 随 accent 一并退役（暖色不再出场），砂灰 `#B8AD98`
  *     压新底只有 2.06:1，是旧四色里唯一读不出来的一格。
+ *     **第四轮评审把第四格也换了：警示褐 `#B9722F` → 墨蓝灰 `#2E4257`
+ *     9.54:1**。两条理由：①用户把蓝配橙定为禁忌（原话在 enterprise
+ *     p09/p10），而警示褐与静脉蓝 `#4A7FB5` 正是同表相邻的橙与蓝；
+ *     ②这一格本来就跟本主题自己的规矩打架——上面 `accent` 那条白纸黑字写着
+ *     「pulse 从此全程冷配角，暖色一律不出场」，四色里却留着一格暖褐。
+ *     换成墨蓝灰之后，四格明度台阶反而更整齐（Lab L 27 / 40 / 52 / 58），
+ *     彼此最近的一格 ΔE 30.9、色盲模拟最近 ΔE 19.8。
+ *     告警这件事从此只由 `warning` 一格承担（值未动，仍是 `#B9722F`），
+ *     不再兼任图表的第四色。
  *
  * 对比度实测（本仓库 `svg/audit/deck-audit.ts` 的 `contrastRatio`，压 `bg`
  * `#F2F7F4`）：primary 5.92:1、accent 3.12:1、text 13.56:1、muted 5.14:1
- * （压 surface 5.45:1）、chart 青绿 5.92 / 浅青 3.12 / 静脉蓝 3.88 / 警示褐
- * 3.52。设计板自查写的 5.5 / 3.1 / 13 / 5 / 5.5·3.1·4·3.5 与实测同向
- * （静脉蓝一格实测 3.88 略低于板上 4，仍过 3.0 装饰线），以实测为准。
+ * （压 surface 5.45:1）、chart 青绿 5.92 / 浅青 3.12 / 静脉蓝 3.88 / 墨蓝灰
+ * 9.54。设计板自查写的 5.5 / 3.1 / 13 / 5 / 5.5·3.1·4·3.5 与实测同向
+ * （静脉蓝一格实测 3.88 略低于板上 4，仍过 3.0 装饰线），以实测为准
+ * （chart 第四格已不是板上的警示褐，见上）。
  *   - chapter 底色取 primary（同 academic/consulting/terra 先例），白字对
  *     primary 6.41:1，`readableOn` 自适应两墨取优后稳态可读。
  *
@@ -61,9 +71,9 @@ export const PULSE_TOKENS: StyleTokens = {
     muted: "#5A6C66", // 手术服灰（5.14:1），校准记录见文件头注释
     border: "#D5E2DC", // 病历线
     danger: "#B3282B", // 诊室红（6.32:1）
-    warning: "#B9722F", // 警示褐，与 chartPalette 同一枚（3.73:1，只作线与图标）
+    warning: "#B9722F", // 警示褐（压 surface 3.73:1，只作线与图标）——第四轮起不再兼任 chartPalette 第四色
     success: "#157A52", // 青绿偏绿（5.22:1），与 primary 同族
-    chartPalette: ["#0E6B5C", "#3D9B82", "#4A7FB5", "#B9722F"], // 青绿/浅青/静脉蓝/警示褐
+    chartPalette: ["#0E6B5C", "#3D9B82", "#4A7FB5", "#2E4257"], // 青绿/浅青/静脉蓝/墨蓝灰
   },
   // Microsoft YaHei first (not Segoe UI): resolveFontFace picks the first
   // SAFE_FONTS match, and only Georgia/Microsoft YaHei carry an exact
