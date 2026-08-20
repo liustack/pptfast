@@ -29,7 +29,7 @@ const ir = (theme: string): PptxIR =>
 // the component and copying its output if this layout's markup ever
 // intentionally changes.
 const MAGAZINE_EXPECTED =
-  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="92" font-weight="600" fill="#1F1F1F" text-anchor="middle" dominant-baseline="alphabetic">数据驱动的增长引擎</text><line x1="560" y1="396" x2="720" y2="396" stroke="#C0392B" stroke-width="1.6"></line><text x="640" y="448" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#6E6259" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的技术路线图</text><text x="640" y="656" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#6E6259" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">测试实验室    ·    2026-07</text>'
+  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="92" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">数据驱动的增长引擎</text><line x1="560" y1="396" x2="720" y2="396" stroke="#8C4A3C" stroke-width="1.6"></line><text x="640" y="448" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#626159" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的技术路线图</text><text x="640" y="656" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">测试实验室    ·    2026-07</text>'
 
 describe("EditorialMastheadCover", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，档案来自旧 EditorialSerifCover）", () => {
@@ -41,8 +41,8 @@ describe("EditorialMastheadCover", () => {
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(<EditorialMastheadCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
-    expect(out).toContain("#FFC72C") // consulting accent
-    expect(out).not.toContain("#C0392B") // magazine accent 不得残留
+    expect(out).toContain("#F5C518") // consulting accent
+    expect(out).not.toContain("#8C4A3C") // journal accent 不得残留
   })
 
   it("passes assertSubset (no forbidden elements)", () => {

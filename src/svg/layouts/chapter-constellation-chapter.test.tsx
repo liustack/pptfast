@@ -73,7 +73,7 @@ describe("ConstellationChapter", () => {
     const out = renderSvgMarkup(
       <ConstellationChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />,
     )
-    expect(out).toContain("#FFC72C") // consulting accent
+    expect(out).toContain("#F5C518") // consulting accent
     expect(out).not.toContain("#53E0D2") // tech accent 不得残留
   })
 

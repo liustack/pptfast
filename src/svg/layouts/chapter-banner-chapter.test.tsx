@@ -47,8 +47,8 @@ const ir = (theme: string): PptxIR =>
 // Captured verbatim from the legacy `MckinseyNavyChapter` (templates/consulting.tsx)
 // for these exact fixtures before templates/ was deleted — see P2 Task 26
 // dependency-break note (same pattern as cover-banner-title.test.tsx).
-const LEGACY_CHAPTER1_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">01</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第一章：市场洞察</text><line x1="560" y1="452" x2="720" y2="452" stroke="#FFC72C" stroke-width="1.6" opacity="0.6"></line>`
-const LEGACY_CHAPTER2_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第二章：战略选择与路径</text><text x="640" y="460" font-family="Georgia, Songti SC, STSong, serif" font-size="36" fill="#FFFFFF" opacity="0.7" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的三个决定</text><line x1="560" y1="490" x2="720" y2="490" stroke="#FFC72C" stroke-width="1.6" opacity="0.6"></line>`
+const LEGACY_CHAPTER1_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">01</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第一章：市场洞察</text><line x1="560" y1="452" x2="720" y2="452" stroke="#F5C518" stroke-width="1.6" opacity="0.6"></line>`
+const LEGACY_CHAPTER2_MARKUP = `<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.05" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="640" y="404" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第二章：战略选择与路径</text><text x="640" y="460" font-family="Georgia, Songti SC, STSong, serif" font-size="36" fill="#FFFFFF" opacity="0.7" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的三个决定</text><line x1="560" y1="490" x2="720" y2="490" stroke="#F5C518" stroke-width="1.6" opacity="0.6"></line>`
 
 describe("BannerChapter", () => {
   it("consulting tokens 下与旧 MckinseyNavyChapter 输出逐字节一致（档位一，含多 chapter 序号）", () => {
@@ -153,7 +153,7 @@ describe("BannerChapter", () => {
     // 冷调组皮肤重设计（2026-08-20）把 enterprise 的白墙从纯白压到
     // #F7F7F4（纯白让给 surface），runway 仍是纯白——两家都还是「近白底」，
     // 也就是本条修复的前提。逐家断言各自的真实值，不再共用一个字面量。
-    const CHAPTER_BG = { runway: "#FFFFFF", enterprise: "#F7F7F4" } as const
+    const CHAPTER_BG = { runway: "#F2F0EB", enterprise: "#F7F7F4" } as const
     for (const themeId of ["runway", "enterprise"] as const) {
       const ctx = chapterCtx(themeId)
       expect(ctx.defaultBg).toBe(CHAPTER_BG[themeId])

@@ -45,23 +45,23 @@ describe("fashion 家族（runway）", () => {
     const deck = ir([cover])
     const markup = renderSvgMarkup(<FashionMastheadCover ir={deck} slide={cover} index={0} ctx={ctx} />)
     // 满版黑底
-    expect(markup).toContain('width="1280" height="720" fill="#0A0A0A"')
+    expect(markup).toContain('width="1280" height="720" fill="#141414"')
     // 黑底上报头是白字（readableOn）
     expect(markup).toContain('fill="#FFFFFF"')
     expect(markup).toContain("秋冬特辑")
     // accent 满宽色带
-    expect(markup).toContain('width="1168" height="20" fill="#D80027"')
+    expect(markup).toContain('width="1168" height="20" fill="#B0483C"')
   })
 
   it("chapter：满版 accent 色块 + 右对齐实色混合水印（导出安全：不出血不半透明）", () => {
     const deck = ir([chapter])
     const markup = renderSvgMarkup(<FashionChapter ir={deck} slide={chapter} index={0} ctx={ctx} />)
-    expect(markup).toContain('width="1280" height="720" fill="#D80027"')
+    expect(markup).toContain('width="1280" height="720" fill="#B0483C"')
     expect(markup).toContain("CHAPTER 01")
     // 水印：anchor=end 贴右缘（svg2pptx 右对齐文本框宽度充裕不裁字）
     expect(markup).toMatch(/text-anchor="end"[^>]*>01</)
-    // 实色混合（#D80027 与 #FFFFFF 的 22%）而非 fillOpacity 半透明
-    expect(markup).toContain('fill="#E13857"')
+    // 实色混合（#B0483C 与 #FFFFFF 的 22%）而非 fillOpacity 半透明
+    expect(markup).toContain('fill="#C17067"')
     expect(markup).not.toContain("data-bleed")
   })
 
@@ -87,7 +87,7 @@ describe("fashion 家族（runway）", () => {
   it("ending：满版 primary 底 + heading 存在时不兜底", () => {
     const deck = ir([ending])
     const markup = renderSvgMarkup(<FashionEnding ir={deck} slide={ending} index={0} ctx={ctx} />)
-    expect(markup).toContain('width="1280" height="720" fill="#0A0A0A"')
+    expect(markup).toContain('width="1280" height="720" fill="#141414"')
     expect(markup).toContain("下期预告")
     expect(markup).not.toContain("Thank you")
   })

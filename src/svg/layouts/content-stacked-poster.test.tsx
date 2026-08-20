@@ -274,8 +274,9 @@ describe("StackedPosterContent", () => {
     const deck = ir("consulting", [chapter1, oneComponentSlide])
     const out = renderSvgMarkup(<StackedPosterContent ir={deck} slide={oneComponentSlide} index={1} ctx={ctx} />)
 
-    expect(out).toContain("#051C2C") // consulting primary（也是 text），accent 短横条 + 标题
-    expect(out).toContain("#6B6B6B") // consulting muted，kicker（需要前置 chapter 才会渲染）
+    expect(out).toContain("#1E2A4A") // consulting primary，accent 短横条
+    expect(out).toContain("#1C1E23") // consulting text，标题（编辑组换血后与 primary 拆开）
+    expect(out).toContain("#5B6069") // consulting muted，kicker（需要前置 chapter 才会渲染）
 
     // insight 烤死的 hex 一律不得残留（含并入 muted 的孤儿色 META_MUTED）
     expect(out).not.toContain("#16202B")
@@ -287,7 +288,7 @@ describe("StackedPosterContent", () => {
     const degradeOut = renderSvgMarkup(
       <StackedPosterContent ir={ir("consulting", [threeComponentSlide])} slide={threeComponentSlide} index={0} ctx={ctx} />,
     )
-    expect(degradeOut).toContain("#D5D5CB") // consulting border，降级路径的分隔线
+    expect(degradeOut).toContain("#DDDCD4") // consulting border，降级路径的分隔线
     expect(degradeOut).not.toContain("#2A3440")
   })
 

@@ -2,48 +2,45 @@
 import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
-import { buildCtx, resolveBackgroundHex } from "../full-slide-svg"
+import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
-import type { StyleTokens } from "../../themes/tokens"
+import { contrastRatio } from "../ink"
 import { BannerMotif } from "./motif-banner-motif"
 import type { PptxIR, Slide } from "@/ir"
-
-// Review fix round (P1 variety wave, task 2 — Moderate finding): the chapter
-// branch now derives its ink from `ctx.defaultBg` (`readableOn`, see the
-// source file's own doc comment) instead of a hard-coded white literal — a
-// bare `buildCtx(tokens, {})` call (as every fixture below used to make, for
-// every slide type indiscriminately) resolves `defaultBg` to `tokens.colors.bg`
-// unconditionally, which is consulting's *cover/content* background
-// (`#F7F7F2`), never its actual chapter background (`#051C2C`). Production
-// (`full-slide-svg.tsx`) always resolves `defaultBg` per the slide's own
-// *actual* type; this helper mirrors that so these fixtures stay a faithful
-// simulation of production instead of accidentally exercising `readableOn`
-// against the wrong background.
-function ctxFor(tokens: StyleTokens, slideType: Slide["type"]): ReturnType<typeof buildCtx> {
-  const defaultBg = resolveBackgroundHex(tokens.defaultBackgrounds[slideType], tokens.colors.surface)
-  return buildCtx(tokens, {}, undefined, defaultBg)
-}
-
-// BrandChrome's brand logo bands (see templates/consulting.test.tsx's own
-// LOGO_BANDS block) — re-declared here (self-contained, no cross-import from
-// the legacy test file) for the logo-avoidance backfill below.
-const TL_LOGO = { x: 64, y: 48, w: 96, h: 40 }
-const TR_LOGO = { x: 1120, y: 48, w: 96, h: 40 }
-const BL_LOGO = { x: 64, y: 630, w: 96, h: 40 }
-const BR_LOGO = { x: 1120, y: 630, w: 96, h: 40 }
-const LOGO_BANDS = [TL_LOGO, TR_LOGO, BL_LOGO, BR_LOGO]
-
-function rectsOverlap(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number },
-): boolean {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
-}
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
 const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
+/** chapter 不画（整版 primary 底），其余三档画同一张。 */
+const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
+
+/** 本 motif 的三家消费者：锚点 + `MOTIF_CANDIDATES` 里借它的两家。 */
+const CONSUMERS = ["consulting", "academic", "enterprise"] as const
+
+/** 设计板上的四条红虚线禁区。 */
+const BOARD_ZONES = {
+  title: { x: 96, y: 48, w: 1040, h: 122 },
+  body: { x: 96, y: 200, w: 1040, h: 420 },
+  footerMeta: { x: 48, y: 664, w: 1184, h: 44 },
+  brLogo: { x: 1120, y: 630, w: 96, h: 40 },
+} as const
+
+/** `brand-chrome.tsx` 的四个 logo 位（`brand.position` 四选一），各 96×40。 */
+const LOGO_BOXES = [
+  { x: 64, y: 48, w: 96, h: 40 },
+  { x: 1120, y: 48, w: 96, h: 40 },
+  { x: 64, y: 630, w: 96, h: 40 },
+  { x: 1120, y: 630, w: 96, h: 40 },
+] as const
+
+/**
+ * 全版式 + 主题 deck 十页在 consulting/academic/enterprise 三家上实测出来的
+ * 排字外沿（工具：`.issues/2026-08-18-theme-redesign/skins/tools/
+ * text-margin-sweep.mts`，非 chapter 页 1376 条文字）。板上的四条红虚线是
+ * 意图，这四个数是事实——推导写在 `motif-banner-motif.tsx` 的文件头。
+ */
+const TEXT_ENVELOPE = { top: 40, bottom: 709.5, left: 56, right: 1224 } as const
 
 const ir = (theme: string): PptxIR =>
   ({
@@ -55,140 +52,235 @@ const ir = (theme: string): PptxIR =>
     slides: [coverSlide],
   }) as unknown as PptxIR
 
-// Captured verbatim from the legacy `MckinseyNavyDecor` (templates/consulting.tsx)
-// for these exact fixtures before templates/ was deleted — see P2 Task 26
-// dependency-break note (same pattern as cover-banner-title.test.tsx).
-// content/ending render nothing (MckinseyNavyDecor returns null for those
-// slide types — see source's 2026-07-08 accent-band deletion ruling), so
-// their legacy markup is the empty string.
-const LEGACY_MOTIF_MARKUP: Record<string, string> = {
-  cover: `<line x1="128" y1="100" x2="128" y2="620" stroke="#D5D5CB" stroke-width="1" stroke-opacity="0.25"></line><line x1="384" y1="100" x2="384" y2="620" stroke="#D5D5CB" stroke-width="1" stroke-opacity="0.25"></line><line x1="640" y1="100" x2="640" y2="620" stroke="#D5D5CB" stroke-width="1" stroke-opacity="0.25"></line><line x1="896" y1="100" x2="896" y2="620" stroke="#D5D5CB" stroke-width="1" stroke-opacity="0.25"></line><line x1="1152" y1="100" x2="1152" y2="620" stroke="#D5D5CB" stroke-width="1" stroke-opacity="0.25"></line><line x1="0" y1="120" x2="1280" y2="120" stroke="#D5D5CB" stroke-width="1" stroke-opacity="0.25"></line><line x1="0" y1="600" x2="1280" y2="600" stroke="#D5D5CB" stroke-width="1" stroke-opacity="0.25"></line>`,
-  chapter: `<line x1="128" y1="100" x2="128" y2="620" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.05"></line><line x1="384" y1="100" x2="384" y2="620" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.05"></line><line x1="640" y1="100" x2="640" y2="620" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.05"></line><line x1="896" y1="100" x2="896" y2="620" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.05"></line><line x1="1152" y1="100" x2="1152" y2="620" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.05"></line><line x1="0" y1="120" x2="1280" y2="120" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.05"></line><line x1="0" y1="600" x2="1280" y2="600" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.05"></line>`,
-  content: "",
-  ending: "",
+function render(body: React.ReactElement | null): { markup: string; root: Element } {
+  const markup = renderSvgMarkup(
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      {body}
+    </svg>,
+  )
+  return { markup, root: parseSvgRoot(markup) }
 }
 
-describe("BannerMotif", () => {
-  it.each([
-    ["cover", coverSlide],
-    ["chapter", chapterSlide],
-    ["content", contentSlide],
-    ["ending", endingSlide],
-  ] as const)(
-    "consulting tokens 下 %s slide 与旧 MckinseyNavyDecor 输出逐字节一致（档位一）",
-    (label, slide) => {
-      const ctx = ctxFor(resolveStyle("consulting"), slide.type)
-      const deck = ir("consulting")
+function draw(theme: string, slide: Slide) {
+  const ctx = buildCtx(resolveStyle(theme), {})
+  return { ...render(<BannerMotif ir={ir(theme)} slide={slide} ctx={ctx} />), ctx }
+}
 
-      const next = renderSvgMarkup(<BannerMotif ir={deck} slide={slide} ctx={ctx} />)
-      expect(next).toBe(LEGACY_MOTIF_MARKUP[label])
-    },
-  )
+const num = (el: Element, a: string) => Number(el.getAttribute(a))
 
-  it("装饰几何：cover/chapter 各渲染 5 条竖线 + 2 条横线的极淡网格（跳过标题带的第 3 条候选横线），content/ending 无任何装饰（跨 slide.type 验证装饰未被误删或误增）", () => {
+interface Box {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+/** 三件东西各自的墨迹盒（线含半线宽）。 */
+function inkBoxes(root: Element): { label: string; box: Box }[] {
+  const out: { label: string; box: Box }[] = []
+  const lines = Array.from(root.querySelectorAll("line"))
+  for (const l of lines) {
+    const half = num(l, "stroke-width") / 2
+    out.push({
+      label: num(l, "y1") < 100 ? "top-rule" : "page-rule",
+      box: {
+        x0: Math.min(num(l, "x1"), num(l, "x2")) - half,
+        x1: Math.max(num(l, "x1"), num(l, "x2")) + half,
+        y0: Math.min(num(l, "y1"), num(l, "y2")) - half,
+        y1: Math.max(num(l, "y1"), num(l, "y2")) + half,
+      },
+    })
+  }
+  for (const r of Array.from(root.querySelectorAll("rect"))) {
+    out.push({
+      label: "highlight",
+      box: {
+        x0: num(r, "x"),
+        y0: num(r, "y"),
+        x1: num(r, "x") + num(r, "width"),
+        y1: num(r, "y") + num(r, "height"),
+      },
+    })
+  }
+  return out
+}
+
+const intersects = (b: Box, z: { x: number; y: number; w: number; h: number }) =>
+  b.x0 < z.x + z.w && b.x1 > z.x && b.y0 < z.y + z.h && b.y1 > z.y
+
+/**
+ * banner-motif v2「批注线」（2026-08-20 编辑组皮肤重设计）。
+ * 设计源：`.issues/2026-08-18-theme-redesign/skins/group5-editorial-boards
+ * .dc.html` 的 `section#g5` consulting 设计表。本文件是本轮新建。
+ */
+describe("BannerMotif（批注线）", () => {
+  it("cover/content/ending 画同一张：顶缘细线 + 左上黄色高亮块 + 底缘页码线", () => {
+    for (const slide of DRAWN_SLIDES) {
+      const { root } = draw("consulting", slide)
+      expect(Array.from(root.querySelectorAll("line")), `rules on ${slide.type}`).toHaveLength(2)
+      expect(Array.from(root.querySelectorAll("rect")), `highlight on ${slide.type}`).toHaveLength(1)
+      // v1 的五竖线 + 两通栏横线网格底纹整族退役：三档都只剩两条线。
+      expect(Array.from(root.querySelectorAll("polyline, path, circle")), `v1 leftovers on ${slide.type}`).toHaveLength(0)
+    }
+  })
+
+  it("三档输出完全相同——v1 的 cover/chapter 强档与 content/ending 空档之分已取消", () => {
+    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("consulting", slide).markup))
+    expect(markups.size).toBe(1)
+  })
+
+  it("chapter 完全退让——两条线走 primary，consulting/academic 的 chapter 底就是各自的 primary，实测 1.00:1", () => {
+    for (const theme of ["consulting", "academic"] as const) {
+      const t = resolveStyle(theme)
+      const { root } = draw(theme, chapterSlide)
+      expect(root.children, `${theme} chapter draws nothing`).toHaveLength(0)
+      // 退让的实测依据，而不是「感觉太淡」。
+      const chapterBg = t.defaultBackgrounds.chapter
+      expect(chapterBg.kind).toBe("color")
+      expect(contrastRatio(t.colors.primary, (chapterBg as { value: string }).value)).toBeCloseTo(1, 2)
+    }
+  })
+
+  it("颜色一律读 token：两条线走 primary、高亮块走 accent，线宽 1.5 / 2", () => {
+    const t = resolveStyle("consulting")
+    const { root } = draw("consulting", coverSlide)
+    const [top, page] = Array.from(root.querySelectorAll("line"))
+    expect(top!.getAttribute("stroke")).toBe(t.colors.primary)
+    expect(top!.getAttribute("stroke-width")).toBe("1.5")
+    expect(page!.getAttribute("stroke")).toBe(t.colors.primary)
+    expect(page!.getAttribute("stroke-width")).toBe("2")
+    expect(root.querySelector("rect")!.getAttribute("fill")).toBe(t.colors.accent)
+  })
+
+  it("顶缘细线与高亮块几何：线 x48→1232 @y32，黄块 x48-116 / y26-38，黄块压在线上", () => {
+    const { root } = draw("consulting", coverSlide)
+    const top = root.querySelector("line")!
+    expect([num(top, "x1"), num(top, "y1"), num(top, "x2"), num(top, "y2")]).toEqual([48, 32, 1232, 32])
+    const r = root.querySelector("rect")!
+    expect([num(r, "x"), num(r, "y"), num(r, "width"), num(r, "height")]).toEqual([48, 26, 68, 12])
+    // 画序：先线后块——荧光笔盖住规矩线，不是并排（板上的画法）。
+    const kids = Array.from(root.children)
+    expect(kids.indexOf(top)).toBeLessThan(kids.indexOf(r))
+  })
+
+  it("页码线几何：x96→160，落在页缘 y712（板上的 y648 正是共享脚注基线，且整条在左下 logo 盒里）", () => {
+    const { root } = draw("consulting", coverSlide)
+    const page = Array.from(root.querySelectorAll("line"))[1]!
+    expect([num(page, "x1"), num(page, "y1"), num(page, "x2"), num(page, "y2")]).toEqual([96, 712, 160, 712])
+    // 板上原值就是踩坑的那个值，钉在这里免得有人「改回板上」。
+    expect(num(page, "y1")).not.toBe(648)
+  })
+
+  /** 安全区守卫：板上四条红虚线 + 四个 logo 位 + 实测排字外沿，逐件量。 */
+  it("安全区：三件装饰都不进板上四条红虚线禁区", () => {
+    const { root } = draw("consulting", coverSlide)
+    for (const { label, box } of inkBoxes(root)) {
+      for (const [name, zone] of Object.entries(BOARD_ZONES)) {
+        expect(intersects(box, zone), `${label} enters the ${name} zone`).toBe(false)
+      }
+    }
+  })
+
+  it("安全区：三件装饰都不进 brand-chrome 的四个 logo 位（tl/tr/bl/br）", () => {
+    const { root } = draw("consulting", coverSlide)
+    for (const { label, box } of inkBoxes(root)) {
+      for (const zone of LOGO_BOXES) {
+        expect(intersects(box, zone), `${label} enters the logo box at ${zone.x},${zone.y}`).toBe(false)
+      }
+    }
+  })
+
+  it("安全区：三件装饰全部落在实测排字外沿之外（y<40 顶带 / y>709.5 底带）", () => {
+    const { root } = draw("consulting", coverSlide)
+    for (const { label, box } of inkBoxes(root)) {
+      const outside = box.y1 <= TEXT_ENVELOPE.top || box.y0 >= TEXT_ENVELOPE.bottom
+      expect(outside, `${label} sits inside the measured text envelope: ${JSON.stringify(box)}`).toBe(true)
+    }
+  })
+
+  it("不画任何左竖条（编辑组板上的组内互检：左竖条 0 处）", () => {
+    for (const theme of CONSUMERS) {
+      for (const slide of DRAWN_SLIDES) {
+        const { root } = draw(theme, slide)
+        for (const r of Array.from(root.querySelectorAll("rect"))) {
+          expect(num(r, "width") < 40 && num(r, "height") > 30, `narrow-tall bar rendered: ${r.outerHTML}`).toBe(false)
+        }
+        for (const l of Array.from(root.querySelectorAll("line"))) {
+          const vertical = num(l, "x1") === num(l, "x2") && Math.abs(num(l, "y2") - num(l, "y1")) > 30
+          expect(vertical, `vertical bar rendered: ${l.outerHTML}`).toBe(false)
+        }
+      }
+    }
+  })
+
+  it("画笔属性写在叶子上，不挂 <g>——导出侧的既有惯例", () => {
+    const { root } = draw("consulting", coverSlide)
+    for (const g of Array.from(root.querySelectorAll("g"))) {
+      for (const attr of ["fill", "stroke", "opacity", "stroke-width"]) {
+        expect(g.getAttribute(attr), `<g> carries ${attr}`).toBeNull()
+      }
+    }
+    for (const el of Array.from(root.querySelectorAll("line"))) {
+      expect(el.getAttribute("stroke"), "line has no own stroke").toBeTruthy()
+      expect(el.getAttribute("stroke-width"), "line has no own stroke-width").toBeTruthy()
+    }
+    expect(root.querySelector("rect")!.getAttribute("fill")).toBeTruthy()
+  })
+
+  it("motif 不读 chartPalette——图表调色板轮转改不动它一个字节", () => {
     const tokens = resolveStyle("consulting")
-    const deck = ir("consulting")
-
-    function renderMotif(slide: Slide): Element {
-      const ctx = ctxFor(tokens, slide.type)
-      const markup = renderSvgMarkup(
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-          <BannerMotif ir={deck} slide={slide} ctx={ctx} />
-        </svg>,
-      )
-      return parseSvgRoot(markup)
-    }
-
-    for (const slide of [coverSlide, chapterSlide]) {
-      const root = renderMotif(slide)
-      const lines = Array.from(root.querySelectorAll("line"))
-      const verticals = lines.filter((l) => l.getAttribute("x1") === l.getAttribute("x2"))
-      const horizontals = lines.filter((l) => l.getAttribute("y1") === l.getAttribute("y2"))
-      expect(verticals.map((l) => l.getAttribute("x1")).sort((a, b) => Number(a) - Number(b))).toEqual([
-        "128", "384", "640", "896", "1152",
-      ])
-      // 360（120/360/600 候选里的中间值）落在 y 300-480 标题带内，必须被过滤。
-      expect(horizontals.map((l) => l.getAttribute("y1")).sort((a, b) => Number(a) - Number(b))).toEqual([
-        "120", "600",
-      ])
-      expect(root.querySelector("rect")).toBeNull()
-    }
-
-    for (const slide of [contentSlide, endingSlide]) {
-      const root = renderMotif(slide)
-      expect(root.querySelector("line")).toBeNull()
-      expect(root.querySelector("rect")).toBeNull()
-    }
-
-    // cover 用 border token 描边，chapter（默认深色 primary 背景）改用
-    // readableOn(实际 chapter 背景) 描边——同一份网格几何，两种描边色，产品
-    // 逻辑不同，不是取巧凑数。consulting 的 chapter 背景是深色 primary，
-    // readableOn 在此仍解出纯白，与旧的白字硬编码字节一致。
-    const coverStroke = renderMotif(coverSlide).querySelector("line")?.getAttribute("stroke")
-    const chapterStroke = renderMotif(chapterSlide).querySelector("line")?.getAttribute("stroke")
-    expect(coverStroke).toBe(tokens.colors.border ?? tokens.colors.muted)
-    expect(chapterStroke).toBe("#FFFFFF")
-    expect(coverStroke).not.toBe(chapterStroke)
-    expect(renderMotif(coverSlide).querySelector("line")?.getAttribute("stroke-opacity")).toBe("0.25")
-    expect(renderMotif(chapterSlide).querySelector("line")?.getAttribute("stroke-opacity")).toBe("0.05")
-  })
-
-  it("tech tokens 下用 tech 的 border（缺省则 muted）驱动 cover 网格描边色（证明 token 化成立，无 baked hex），chapter readableOn 在 tech 的深色渐变背景下同样解出纯白", () => {
-    const techTheme = resolveStyle("tech")
-    const deck = ir("tech")
-
-    const coverCtx = ctxFor(techTheme, "cover")
-    const coverOut = renderSvgMarkup(<BannerMotif ir={deck} slide={coverSlide} ctx={coverCtx} />)
-    const expectedStroke = coverCtx.colors.border ?? coverCtx.colors.muted
-    expect(coverOut).toContain(expectedStroke as string)
-    // consulting 自己的 DIVIDER 烤死色不得残留
-    expect(coverOut).not.toContain("#D5D5CB")
-
-    const chapterCtx = ctxFor(techTheme, "chapter")
-    const chapterOut = renderSvgMarkup(<BannerMotif ir={deck} slide={chapterSlide} ctx={chapterCtx} />)
-    // readableOn(tech 的深色渐变 chapter 背景) 解出纯白——与 consulting 的深色
-    // chapter 背景同一结论，不是巧合固定值：两个主题的 chapter 背景都够暗，
-    // readableOn 的两枚候选墨色里白墨稳赢。
-    expect(chapterOut).toContain('stroke="#FFFFFF"')
-    expect(expectedStroke).not.toBe("#FFFFFF")
-    expect(chapterOut).not.toContain(`stroke="${expectedStroke}"`)
-  })
-
-  // 回填旧测试「the grid (verticals clipped to y 100-620) sits clear of the
-  // four logo bands」（旧文件 consulting.test.tsx L628-641）。
-  it("网格线（竖线截取在 y 100-620）与四个 logo 带互不重叠", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
-    const deck = ir("consulting")
-    const markup = renderSvgMarkup(
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-        <BannerMotif ir={deck} slide={coverSlide} ctx={ctx} />
-      </svg>,
+    const markups = new Set(
+      tokens.colors.chartPalette.map((_, offset) =>
+        renderSvgMarkup(
+          <BannerMotif
+            ir={ir("consulting")}
+            slide={coverSlide}
+            ctx={buildCtx(tokens, {}, undefined, undefined, undefined, offset)}
+          />,
+        ),
+      ),
     )
-    const root = parseSvgRoot(markup)
-    for (const l of Array.from(root.querySelectorAll("line"))) {
-      const box = {
-        x: Math.min(Number(l.getAttribute("x1")), Number(l.getAttribute("x2"))),
-        y: Math.min(Number(l.getAttribute("y1")), Number(l.getAttribute("y2"))),
-        w: Math.abs(Number(l.getAttribute("x2")) - Number(l.getAttribute("x1"))) || 1,
-        h: Math.abs(Number(l.getAttribute("y2")) - Number(l.getAttribute("y1"))) || 1,
-      }
-      for (const band of LOGO_BANDS) {
-        expect(rectsOverlap(box, band)).toBe(false)
+    expect(markups.size).toBe(1)
+    // 前两格与 primary/accent 同值（板上「chart 首两格即结构色」），所以
+    // 要钉的是只属于图表的那两格在装饰里一次都不出现。
+    const chartOnly = tokens.colors.chartPalette.filter(
+      (c) => c !== tokens.colors.primary && c !== tokens.colors.accent,
+    )
+    expect(chartOnly.length).toBeGreaterThan(0)
+    const markup = renderSvgMarkup(
+      <BannerMotif ir={ir("consulting")} slide={coverSlide} ctx={buildCtx(tokens, {})} />,
+    )
+    for (const hex of chartOnly) expect(markup, `chart-only ${hex} painted by the motif`).not.toContain(hex)
+  })
+
+  it("换一家 tokens 渲染时颜色跟着换，consulting 的色一处不残留（零 hex 纪律的实证）", () => {
+    const enterprise = resolveStyle("enterprise")
+    const ctx = buildCtx(enterprise, {})
+    const { markup } = render(<BannerMotif ir={ir("enterprise")} slide={coverSlide} ctx={ctx} />)
+    expect(markup).toContain(enterprise.colors.primary)
+    expect(markup).toContain(enterprise.colors.accent)
+    for (const hex of ["#1E2A4A", "#F5C518", "#F7F6F2", "#1C1E23", "#5B6069", "#DDDCD4"]) {
+      expect(markup, `consulting token ${hex} leaked into the enterprise render`).not.toContain(hex)
+    }
+  })
+
+  it("装饰位置写死：换 seed（filename）输出逐字节不变（v1 的三档 seed 变体已删）", () => {
+    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const markups = new Set(
+      Array.from({ length: 12 }, (_, i) =>
+        renderSvgMarkup(
+          <BannerMotif ir={{ ...ir("consulting"), filename: `probe-${i}.pptx` } as PptxIR} slide={coverSlide} ctx={ctx} />,
+        ),
+      ),
+    )
+    expect(markups.size).toBe(1)
+  })
+
+  it("Decor body passes subset validation（三家消费者各一遍）", () => {
+    for (const theme of CONSUMERS) {
+      for (const slide of [...DRAWN_SLIDES, chapterSlide]) {
+        expect(() => assertSubset(draw(theme, slide).root)).not.toThrow()
       }
     }
-  })
-
-  // 回填旧测试「Decor body passes subset validation」（旧文件
-  // consulting.test.tsx L643-646）。
-  it("Decor 输出通过 subset validation", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
-    const deck = ir("consulting")
-    const markup = renderSvgMarkup(
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-        <BannerMotif ir={deck} slide={coverSlide} ctx={ctx} />
-      </svg>,
-    )
-    const root = parseSvgRoot(markup)
-    expect(() => assertSubset(root)).not.toThrow()
   })
 })

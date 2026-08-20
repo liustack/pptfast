@@ -63,7 +63,7 @@ describe("ConstellationCover", () => {
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(<ConstellationCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
-    expect(out).toContain("#FFC72C") // consulting accent
+    expect(out).toContain("#F5C518") // consulting accent
     expect(out).not.toContain("#53E0D2") // tech accent 不得残留
   })
 

@@ -46,9 +46,9 @@ const ir = (theme: string, slides: Slide[] = [chapter1, content, chapter2]): Ppt
 // chapter2 @ index 2 above) — pinned as literals so this test no longer
 // depends on the legacy `templates/magazine` module (slated for deletion).
 const MAGAZINE_EXPECTED_1 =
-  '<line x1="96" y1="200" x2="1184" y2="200" stroke="#E4DCD0" stroke-width="1.4"></line><text x="1184" y="640" font-family="SimSun, Songti SC, STSong, serif" font-size="220" font-weight="700" fill="#C0392B" opacity="0.12" text-anchor="end" dominant-baseline="alphabetic">01</text><text x="96" y="380" font-family="SimSun, Songti SC, STSong, serif" font-size="64" font-weight="600" fill="#1F1F1F" dominant-baseline="alphabetic">第一部分：市场洞察</text><line x1="96" y1="520" x2="1184" y2="520" stroke="#E4DCD0" stroke-width="1.4"></line>'
+  '<line x1="96" y1="200" x2="1184" y2="200" stroke="#D9D3C2" stroke-width="1.4"></line><text x="1184" y="640" font-family="SimSun, Songti SC, STSong, serif" font-size="220" font-weight="700" fill="#8C4A3C" opacity="0.12" text-anchor="end" dominant-baseline="alphabetic">01</text><text x="96" y="380" font-family="SimSun, Songti SC, STSong, serif" font-size="64" font-weight="600" fill="#26261F" dominant-baseline="alphabetic">第一部分：市场洞察</text><line x1="96" y1="520" x2="1184" y2="520" stroke="#D9D3C2" stroke-width="1.4"></line>'
 const MAGAZINE_EXPECTED_2 =
-  '<line x1="96" y1="200" x2="1184" y2="200" stroke="#E4DCD0" stroke-width="1.4"></line><text x="1184" y="640" font-family="SimSun, Songti SC, STSong, serif" font-size="220" font-weight="700" fill="#C0392B" opacity="0.12" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="96" y="380" font-family="SimSun, Songti SC, STSong, serif" font-size="64" font-weight="600" fill="#1F1F1F" dominant-baseline="alphabetic">第二部分：技术路线图</text><text x="96" y="428" font-family="SimSun, Songti SC, STSong, serif" font-size="24" fill="#6E6259" font-style="italic" dominant-baseline="alphabetic">面向 2027 的演进方向</text><line x1="96" y1="520" x2="1184" y2="520" stroke="#E4DCD0" stroke-width="1.4"></line>'
+  '<line x1="96" y1="200" x2="1184" y2="200" stroke="#D9D3C2" stroke-width="1.4"></line><text x="1184" y="640" font-family="SimSun, Songti SC, STSong, serif" font-size="220" font-weight="700" fill="#8C4A3C" opacity="0.12" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="96" y="380" font-family="SimSun, Songti SC, STSong, serif" font-size="64" font-weight="600" fill="#26261F" dominant-baseline="alphabetic">第二部分：技术路线图</text><text x="96" y="428" font-family="SimSun, Songti SC, STSong, serif" font-size="24" fill="#626159" font-style="italic" dominant-baseline="alphabetic">面向 2027 的演进方向</text><line x1="96" y1="520" x2="1184" y2="520" stroke="#D9D3C2" stroke-width="1.4"></line>'
 
 describe("MastheadChapter", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，含章节序号，档案来自旧 EditorialSerifChapter）", () => {
@@ -68,16 +68,18 @@ describe("MastheadChapter", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const deck = ir("consulting")
     const out = renderSvgMarkup(<MastheadChapter ir={deck} slide={chapter1} index={0} ctx={ctx} />)
-    expect(out).toContain("#FFC72C") // consulting accent
-    expect(out).not.toContain("#C0392B") // magazine accent 不得残留
+    expect(out).toContain("#F5C518") // consulting accent
+    expect(out).not.toContain("#8C4A3C") // journal accent 不得残留
   })
 
-  it("W4 fix round：consulting 的 colors.text 与自己的 chapter 默认背景撞色（#051C2C on #051C2C），标题/副标题不再是不可见的深字压深底（design decision 8 台账 #1，策展排除已撤销）", () => {
+  it("W4 fix round：consulting 的 colors.text/muted 压自己的 chapter 默认底都读不出来（1.18:1 / 2.24:1），标题与副标题双双退回反白（design decision 8 台账 #1）", () => {
     const ctx = chapterCtx("consulting")
-    // The collision the design-decision-8 exclusion was originally about —
-    // still true, this fix doesn't touch either token.
-    expect(ctx.defaultBg).toBe("#051C2C")
-    expect(resolveStyle("consulting").colors.text).toBe("#051C2C")
+    // 编辑组换血（2026-08-20）之前这里是「同色压同色」：text 与 chapter 底
+    // 都是 #051C2C。换血把 text（#1C1E23）与 primary/chapter 底（#1E2A4A）
+    // 拆成两个值，所以「撞色」这个说法不再字面成立——但两个都还是近黑压近
+    // 藏青，实测 1.18:1，`accessibleInk` 照样退回反白，本条断言的结论不变。
+    expect(ctx.defaultBg).toBe("#1E2A4A")
+    expect(resolveStyle("consulting").colors.text).toBe("#1C1E23")
 
     const deck = ir("consulting")
     const root = parseSvgRoot(
@@ -89,15 +91,15 @@ describe("MastheadChapter", () => {
     const subheading = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("面向 2027 的演进方向"),
     )!
-    // Heading falls back to readableOn's neutral white ink (colors.text
-    // itself is the same color as the background, so it could never have
-    // passed). Subheading uses colors.muted, a *different* token that
-    // already clears the ratio against this background on its own — no
-    // fallback needed, same accessibleInk no-op-when-already-passing
-    // behavior every other call site in this fix round relies on.
-    const consultingTokens = resolveStyle("consulting")
+    // 标题退回 readableOn 的中性白（1.18:1，怎么都过不了）。副标题本轮
+    // 起也退回反白：编辑组把纸面脚注灰压深（#6B6B6B → #5B6069）、chapter
+    // 底提亮偏蓝（#051C2C → #1E2A4A），muted 压这块底从 3.26:1 掉到
+    // 2.24:1，24px 副题的 3:1 大字门槛因此失守，`accessibleInk` 接手。
+    // 这是本轮 consulting 在 chapter 上唯一一处观感变化，且是往可读的方向
+    // 变——两个 token 各自为纸面而调，压满版藏青时由 accessibleInk 兜底，
+    // 正是这个 helper 存在的理由。
     expect(heading.getAttribute("fill")).toBe("#FFFFFF")
-    expect(subheading.getAttribute("fill")).toBe(consultingTokens.colors.muted)
+    expect(subheading.getAttribute("fill")).toBe("#FFFFFF")
   })
 
   it("W4 fix round：journal（本文件唯一 pre-W4 策展主题）的标题/副标题保持 colors.text/colors.muted 原值不变（既有 pinned 渲染的逐字节不变性）", () => {
