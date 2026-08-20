@@ -483,9 +483,10 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       ending: ["masthead-ending", "poster-ending"],
     },
   },
-  // enterprise（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+炸橘的
-  // 高色彩版式组合，banner 横幅 baked 白字在 IKB #002FA7 上对比充足（无需
-  // 排除 banner-heading）。
+  // enterprise（原 custom→gallery 二次返工，2026-07-10）：白墙+正 IKB+accent
+  // 的高色彩版式组合，banner 横幅 baked 白字在 IKB #002FA7 上对比充足（无需
+  // 排除 banner-heading）。（accent 当时是炸橘，第四轮评审换成工业蓝，蓝配橙
+  // 入禁忌——见 `themes/enterprise.ts` 的文件头。版式选择不受影响。）
   //
   // cover 声明（theme-structure-allocation wave）：分配表给 enterprise 的四轴
   // 是 左轴 / top-band / medium / tight，cover-picks = banner-title +

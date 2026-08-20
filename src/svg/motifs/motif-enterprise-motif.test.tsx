@@ -54,11 +54,11 @@ const num = (el: Element, a: string) => Number(el.getAttribute(a))
  * 的 enterprise 设计表。本文件是本轮新建。
  */
 describe("EnterpriseMotif（方块秩序）", () => {
-  it("cover/content/ending 画同一张：尺身一条 + 六枚齿 + 三枚方块阶 + 一枚炸橘方块", () => {
+  it("cover/content/ending 画同一张：尺身一条 + 六枚齿 + 三枚方块阶 + 一枚 accent 方块", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("enterprise", slide)
       expect(Array.from(root.querySelectorAll("line")), `ruler on ${slide.type}`).toHaveLength(7) // 尺身 1 + 齿 6
-      expect(Array.from(root.querySelectorAll("rect")), `squares on ${slide.type}`).toHaveLength(4) // 阶 3 + 炸橘 1
+      expect(Array.from(root.querySelectorAll("rect")), `squares on ${slide.type}`).toHaveLength(4) // 阶 3 + accent 1
     }
   })
 
@@ -74,7 +74,7 @@ describe("EnterpriseMotif（方块秩序）", () => {
     expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：尺身 border、齿 muted、方块阶 primary、炸橘方块 accent", () => {
+  it("颜色一律读 token：尺身 border、齿 muted、方块阶 primary、左下方块 accent", () => {
     const t = resolveStyle("enterprise")
     const { root } = draw("enterprise", coverSlide)
     const rule = Array.from(root.querySelectorAll("line")).find((l) => num(l, "x1") !== num(l, "x2"))!
@@ -122,7 +122,7 @@ describe("EnterpriseMotif（方块秩序）", () => {
     ])
   })
 
-  it("方块阶与炸橘方块几何：三枚递减方块底边同在 y40，炸橘一枚在 x60,y626", () => {
+  it("方块阶与 accent 方块几何：三枚递减方块底边同在 y40，accent 一枚在 x60,y626", () => {
     const { root } = draw("enterprise", coverSlide)
     const rects = Array.from(root.querySelectorAll("rect")).map((r) => [
       num(r, "x"),
@@ -159,7 +159,7 @@ describe("EnterpriseMotif（方块秩序）", () => {
     }
   })
 
-  it("安全区：炸橘方块在正文区左沿之外、下沿之下，且在页脚 meta 带与右下 logo 盒之外", () => {
+  it("安全区：accent 方块在正文区左沿之外、下沿之下，且在页脚 meta 带与右下 logo 盒之外", () => {
     const { root } = draw("enterprise", coverSlide)
     const spark = Array.from(root.querySelectorAll("rect")).at(-1)!
     expect(num(spark, "x") + num(spark, "width")).toBeLessThan(BODY_ZONE.x)
@@ -187,7 +187,7 @@ describe("EnterpriseMotif（方块秩序）", () => {
     const { markup } = render(<EnterpriseMotif ir={ir("tech")} slide={coverSlide} ctx={ctx} />)
     expect(markup).toContain(tech.colors.primary)
     expect(markup).toContain(tech.colors.accent)
-    for (const hex of ["#F7F7F4", "#0032A0", "#E85D1F", "#17181A", "#5C6066", "#DEE0DB"]) {
+    for (const hex of ["#F7F7F4", "#0032A0", "#2F6FBF", "#17181A", "#5C6066", "#DEE0DB"]) {
       expect(markup, `enterprise token ${hex} leaked into the tech render`).not.toContain(hex)
     }
   })
