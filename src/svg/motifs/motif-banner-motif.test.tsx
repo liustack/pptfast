@@ -75,30 +75,18 @@ interface Box {
   y1: number
 }
 
-/** 三件东西各自的墨迹盒（线含半线宽）。 */
+/** 两段线各自的墨迹盒（含半线宽）。 */
 function inkBoxes(root: Element): { label: string; box: Box }[] {
   const out: { label: string; box: Box }[] = []
-  const lines = Array.from(root.querySelectorAll("line"))
-  for (const l of lines) {
+  for (const l of Array.from(root.querySelectorAll("line"))) {
     const half = num(l, "stroke-width") / 2
     out.push({
-      label: num(l, "y1") < 100 ? "top-rule" : "page-rule",
+      label: num(l, "x1") < 96 ? "lead-rule" : "top-rule",
       box: {
         x0: Math.min(num(l, "x1"), num(l, "x2")) - half,
         x1: Math.max(num(l, "x1"), num(l, "x2")) + half,
         y0: Math.min(num(l, "y1"), num(l, "y2")) - half,
         y1: Math.max(num(l, "y1"), num(l, "y2")) + half,
-      },
-    })
-  }
-  for (const r of Array.from(root.querySelectorAll("rect"))) {
-    out.push({
-      label: "highlight",
-      box: {
-        x0: num(r, "x"),
-        y0: num(r, "y"),
-        x1: num(r, "x") + num(r, "width"),
-        y1: num(r, "y") + num(r, "height"),
       },
     })
   }
@@ -114,13 +102,36 @@ const intersects = (b: Box, z: { x: number; y: number; w: number; h: number }) =
  * .dc.html` 的 `section#g5` consulting 设计表。本文件是本轮新建。
  */
 describe("BannerMotif（批注线）", () => {
-  it("cover/content/ending 画同一张：顶缘细线 + 左上黄色高亮块 + 底缘页码线", () => {
+  it("cover/content/ending 画同一张：顶缘规矩线的两段，别的什么都没有", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("consulting", slide)
       expect(Array.from(root.querySelectorAll("line")), `rules on ${slide.type}`).toHaveLength(2)
-      expect(Array.from(root.querySelectorAll("rect")), `highlight on ${slide.type}`).toHaveLength(1)
-      // v1 的五竖线 + 两通栏横线网格底纹整族退役：三档都只剩两条线。
+      // 第四轮评审删掉的两件：黄色高亮块（唯一的 rect）与底缘页码线。
+      expect(Array.from(root.querySelectorAll("rect")), `highlight block back on ${slide.type}`).toHaveLength(0)
+      // v1 的五竖线 + 两通栏横线网格底纹整族退役。
       expect(Array.from(root.querySelectorAll("polyline, path, circle")), `v1 leftovers on ${slide.type}`).toHaveLength(0)
+    }
+  })
+
+  /**
+   * 第四轮评审（academic p01/p09）的返工点。用户原话：「底部那个无意义的
+   * 装饰绿色横线是什么，很奇怪」「如果你要高亮文字，就画在要高亮的具体
+   * 文字底部，画在这里不伦不类」。装饰位置写死、不读内容，所以它永远
+   * 高亮不到任何一个真的关键词——干脆不装高亮，也不留那条什么都没划到的
+   * 短划线。这条钉的是「底带一件不剩、页面上没有任何短划线」。
+   */
+  it("底带空无一物：页码线已删，全页不留任何短于半幅的横划线", () => {
+    for (const theme of CONSUMERS) {
+      for (const slide of DRAWN_SLIDES) {
+        const { root } = draw(theme, slide)
+        for (const { label, box } of inkBoxes(root)) {
+          expect(box.y0, `${label} still sits in the bottom band`).toBeLessThan(100)
+          // 两段线首尾相接成一条通栏线，单独一段短划线不算数——量的是整条。
+          expect(box.x1 - box.x0, `${label} is a stray short dash`).toBeGreaterThan(0)
+        }
+        const xs = inkBoxes(root).flatMap(({ box }) => [box.x0, box.x1])
+        expect(Math.max(...xs) - Math.min(...xs), "the rule no longer spans the page").toBeGreaterThan(1000)
+      }
     }
   })
 
@@ -141,38 +152,29 @@ describe("BannerMotif（批注线）", () => {
     }
   })
 
-  it("颜色一律读 token：两条线走 primary、高亮块走 accent，线宽 1.5 / 2", () => {
+  it("颜色一律读 token：通栏一段走 primary、起手一段走 accent，两段同宽 1.5", () => {
     const t = resolveStyle("consulting")
     const { root } = draw("consulting", coverSlide)
-    const [top, page] = Array.from(root.querySelectorAll("line"))
+    const [top, lead] = Array.from(root.querySelectorAll("line"))
     expect(top!.getAttribute("stroke")).toBe(t.colors.primary)
-    expect(top!.getAttribute("stroke-width")).toBe("1.5")
-    expect(page!.getAttribute("stroke")).toBe(t.colors.primary)
-    expect(page!.getAttribute("stroke-width")).toBe("2")
-    expect(root.querySelector("rect")!.getAttribute("fill")).toBe(t.colors.accent)
+    expect(lead!.getAttribute("stroke")).toBe(t.colors.accent)
+    for (const l of [top!, lead!]) expect(l.getAttribute("stroke-width")).toBe("1.5")
   })
 
-  it("顶缘细线与高亮块几何：线 x48→1232 @y32，黄块 x48-116 / y26-38，黄块压在线上", () => {
+  it("顶缘规矩线几何：accent 段 x48→116、primary 段 x116→1232，同在 y32 首尾相接", () => {
     const { root } = draw("consulting", coverSlide)
-    const top = root.querySelector("line")!
-    expect([num(top, "x1"), num(top, "y1"), num(top, "x2"), num(top, "y2")]).toEqual([48, 32, 1232, 32])
-    const r = root.querySelector("rect")!
-    expect([num(r, "x"), num(r, "y"), num(r, "width"), num(r, "height")]).toEqual([48, 26, 68, 12])
-    // 画序：先线后块——荧光笔盖住规矩线，不是并排（板上的画法）。
-    const kids = Array.from(root.children)
-    expect(kids.indexOf(top)).toBeLessThan(kids.indexOf(r))
-  })
-
-  it("页码线几何：x96→160，落在页缘 y712（板上的 y648 正是共享脚注基线，且整条在左下 logo 盒里）", () => {
-    const { root } = draw("consulting", coverSlide)
-    const page = Array.from(root.querySelectorAll("line"))[1]!
-    expect([num(page, "x1"), num(page, "y1"), num(page, "x2"), num(page, "y2")]).toEqual([96, 712, 160, 712])
-    // 板上原值就是踩坑的那个值，钉在这里免得有人「改回板上」。
-    expect(num(page, "y1")).not.toBe(648)
+    const [top, lead] = Array.from(root.querySelectorAll("line"))
+    expect([num(top!, "x1"), num(top!, "y1"), num(top!, "x2"), num(top!, "y2")]).toEqual([116, 32, 1232, 32])
+    expect([num(lead!, "x1"), num(lead!, "y1"), num(lead!, "x2"), num(lead!, "y2")]).toEqual([48, 32, 116, 32])
+    // 首尾相接：同一条 y、共用端点 x116，既不留缝也不叠画（butt cap）。
+    expect(num(lead!, "x2")).toBe(num(top!, "x1"))
+    expect(num(lead!, "y1")).toBe(num(top!, "y1"))
+    // 起手段的长度照搬原来那枚黄色高亮块的 68px 宽。
+    expect(num(lead!, "x2") - num(lead!, "x1")).toBe(68)
   })
 
   /** 安全区守卫：板上四条红虚线 + 四个 logo 位 + 实测排字外沿，逐件量。 */
-  it("安全区：三件装饰都不进板上四条红虚线禁区", () => {
+  it("安全区：两段线都不进板上四条红虚线禁区", () => {
     const { root } = draw("consulting", coverSlide)
     for (const { label, box } of inkBoxes(root)) {
       for (const [name, zone] of Object.entries(BOARD_ZONES)) {
@@ -181,7 +183,7 @@ describe("BannerMotif（批注线）", () => {
     }
   })
 
-  it("安全区：三件装饰都不进 brand-chrome 的四个 logo 位（tl/tr/bl/br）", () => {
+  it("安全区：两段线都不进 brand-chrome 的四个 logo 位（tl/tr/bl/br）", () => {
     const { root } = draw("consulting", coverSlide)
     for (const { label, box } of inkBoxes(root)) {
       for (const zone of LOGO_BOXES) {
@@ -190,7 +192,7 @@ describe("BannerMotif（批注线）", () => {
     }
   })
 
-  it("安全区：三件装饰全部落在实测排字外沿之外（y<40 顶带 / y>709.5 底带）", () => {
+  it("安全区：两段线全部落在实测排字外沿之外（y<40 顶带 / y>709.5 底带）", () => {
     const { root } = draw("consulting", coverSlide)
     for (const { label, box } of inkBoxes(root)) {
       const outside = box.y1 <= TEXT_ENVELOPE.top || box.y0 >= TEXT_ENVELOPE.bottom
@@ -224,7 +226,6 @@ describe("BannerMotif（批注线）", () => {
       expect(el.getAttribute("stroke"), "line has no own stroke").toBeTruthy()
       expect(el.getAttribute("stroke-width"), "line has no own stroke-width").toBeTruthy()
     }
-    expect(root.querySelector("rect")!.getAttribute("fill")).toBeTruthy()
   })
 
   it("motif 不读 chartPalette——图表调色板轮转改不动它一个字节", () => {
