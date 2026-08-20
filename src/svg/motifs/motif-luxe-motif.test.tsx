@@ -92,11 +92,11 @@ describe("LuxeMotif（请柬金框）", () => {
     expect(markup).not.toContain(t.colors.primary)
   })
 
-  it("外框几何：36,28 起，右缘 1244", () => {
+  it("外框几何：36,24 起，右缘 1244", () => {
     const { root } = draw("luxe", coverSlide)
     const { outer, num } = frames(root)
     expect(num(outer, "x")).toBe(36)
-    expect(num(outer, "y")).toBe(28)
+    expect(num(outer, "y")).toBe(24)
     expect(num(outer, "x") + num(outer, "width")).toBe(1244)
   })
 
@@ -113,11 +113,24 @@ describe("LuxeMotif（请柬金框）", () => {
     expect(outerBottom).toBeLessThan(LOGO_BANDS[3].y)
     expect(outerBottom).toBeLessThan(LOGO_BANDS[2].y)
 
-    // 内框跟着错位：四边一律内缩 10，下边因此落在 614
+    // 内框跟着错位：四边一律内缩 10，上边落在 34，下边落在 614
     expect(num(inner, "x")).toBe(46)
-    expect(num(inner, "y")).toBe(38)
+    expect(num(inner, "y")).toBe(34)
     expect(num(inner, "x") + num(inner, "width")).toBe(1234)
     expect(num(inner, "y") + num(inner, "height")).toBe(614)
+  })
+
+  /**
+   * 安全区守卫（2026-08-20 第四轮评审，批 2 波 H）。上一条只核对了外框上边
+   * 与金菱对标题区上沿的净空，漏了内缩 10px 的内框。它落在 y38 时离页面
+   * 顶行 kicker 的 em 框顶（正是 TITLE_ZONE.y = 48）只剩 9.6px，用户在
+   * heritage p09 上点名的就是这条线。把 FRAME_Y 改回 28 这条立刻红。
+   */
+  it("安全区：内框上边也要给标题区留出 >=12px 光学净空，不只外框", () => {
+    const { root } = draw("luxe", coverSlide)
+    const { inner, num } = frames(root)
+    const innerInkBottom = num(inner, "y") + Number(inner.getAttribute("stroke-width")) / 2
+    expect(TITLE_ZONE.y - innerInkBottom).toBeGreaterThanOrEqual(12)
   })
 
   it("安全区：左右两轨在版心之外，上边与金菱压在标题区上沿之上", () => {

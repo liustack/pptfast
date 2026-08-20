@@ -33,10 +33,15 @@ const ir = (theme: string, slide: Slide): PptxIR =>
 // Captured from MastheadEnding (magazine tokens, fixtures above) — pinned as
 // literals so this test no longer depends on the legacy `templates/magazine`
 // module (slated for deletion).
+// Meta re-pin (2026-08-20, 批 2 波 H): one token in each literal, the meta
+// baseline, 640 -> 660. At 640 the meta's em box started at 627 and sat on
+// top of two motifs' footer ornaments — heritage's y626 rule and its centre
+// diamond, luxe's y624 frame edge. See the layout's own `META_BASELINE` for
+// the derivation. Heading and subheading are untouched.
 const MAGAZINE_EXPECTED_WITH_HEADING =
-  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
+  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><text x="640" y="660" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
 const MAGAZINE_EXPECTED_BARE =
-  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">Thank You</text><text x="640" y="396" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#626159" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">We appreciate your time.</text><text x="640" y="640" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
+  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="76" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">Thank You</text><text x="640" y="396" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#626159" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">We appreciate your time.</text><text x="640" y="660" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">维岚科技    ·    2026-07-09</text>'
 
 describe("MastheadEnding", () => {
   it("magazine tokens 下与固化的基准 markup 逐字节一致（档位一，有 heading，不兜底副题，档案来自旧 EditorialSerifEnding）", () => {
@@ -57,6 +62,33 @@ describe("MastheadEnding", () => {
     expect(next).toBe(MAGAZINE_EXPECTED_BARE)
     expect(next).toContain("Thank You")
     expect(next).toContain("We appreciate your time.")
+  })
+
+  /**
+   * 页脚呼吸感（2026-08-20 第四轮评审，批 2 波 H）。ending 页不画 BrandChrome
+   * 的页脚，底部那条带子归 motif：与本版式配对的两家里，heritage 的底缘线
+   * 在 y626、线上金菱旋转后最低点 633.07，luxe 的金框下边在 y624。meta 行
+   * 基线原是 640（em 框顶 627），正压在金菱上。把基线改回 640 这条立刻红。
+   */
+  it("底部 meta 行给 motif 的页脚装饰让开 >=12px（em 框顶不早于 645）", () => {
+    /** 与本版式配对的 motif 里，页脚装饰的最低墨点（heritage 的中点金菱）。 */
+    const FOOTER_ORNAMENT_INK_BOTTOM = 633.07
+    const ctx = buildCtx(resolveStyle("journal"), {})
+    const deck = ir("journal", endingWithHeading)
+    const root = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${renderSvgMarkup(
+        <MastheadEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
+      )}</svg>`,
+    )
+    const meta = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("维岚科技"),
+    )!
+    const emTop = Number(meta.getAttribute("y")) - Number(meta.getAttribute("font-size"))
+    expect(emTop - FOOTER_ORNAMENT_INK_BOTTOM).toBeGreaterThanOrEqual(12)
+    // 让路不能让出页面：字的墨底仍在版面内，且不比同族 masthead 封面的
+    // meta 行（基线 656）低太多
+    const inkBottom = Number(meta.getAttribute("y")) + Number(meta.getAttribute("font-size")) * 0.12
+    expect(inkBottom).toBeLessThanOrEqual(680)
   })
 
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
@@ -155,7 +187,7 @@ describe("MastheadEnding", () => {
       )!
       expect(oneLineHeading.getAttribute("y")).toBe("340")
 
-      // Subheading baseline (headingLastY+56=396) and the fixed y=640 meta
+      // Subheading baseline (headingLastY+56=396) and the fixed y=660 meta
       // line are both untouched by line count.
       const twoLineSub = twoLineRoot.querySelector('text[font-style="italic"]')!
       const oneLineSub = oneLineRoot.querySelector('text[font-style="italic"]')!

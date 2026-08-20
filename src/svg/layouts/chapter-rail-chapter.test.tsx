@@ -50,10 +50,16 @@ const ir = (theme: string): PptxIR =>
 // throwaway render — see task report) — this is what `toBe(legacy)` used to
 // assert at runtime. Fixating it here keeps the same byte-for-byte assertion
 // strength without importing the (soon-to-be-deleted) templates/ module.
+// Subheading re-pin (2026-08-20, 批 2 波 H): one token in EXPECTED_CHAPTER2,
+// the subheading baseline, 438 -> 452. The archived 438 came from a flat
+// `headingLastY + 46`, which under this layout's 84px heading left 6px of
+// ink between title and subtitle — the "副标题贴大标题" the review reported
+// on `theme--ink--zh--p02`. See the layout's own `subheadingDrop` for the
+// derivation. Everything else, EXPECTED_CHAPTER1 included, is untouched.
 const EXPECTED_CHAPTER1 =
   '<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.06" text-anchor="end" dominant-baseline="alphabetic">01</text><text x="640" y="392" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第一部分：研究背景</text><line x1="620" y1="600" x2="660" y2="600" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1.6"></line><circle cx="620" cy="600" r="7" fill="#FFFFFF" fill-opacity="1"></circle><circle cx="660" cy="600" r="5" fill="#FFFFFF" fill-opacity="0.35"></circle>'
 const EXPECTED_CHAPTER2 =
-  '<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.06" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="640" y="392" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第二部分：方法与证据</text><text x="640" y="438" font-family="Georgia, Songti SC, STSong, serif" font-size="34" fill="#FFFFFF" opacity="0.7" text-anchor="middle" font-style="italic" dominant-baseline="alphabetic">面向可复现的实证研究</text><line x1="620" y1="600" x2="660" y2="600" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1.6"></line><circle cx="620" cy="600" r="5" fill="#FFFFFF" fill-opacity="0.35"></circle><circle cx="660" cy="600" r="7" fill="#FFFFFF" fill-opacity="1"></circle>'
+  '<text x="1224" y="650" font-family="Georgia, Songti SC, STSong, serif" font-size="260" font-weight="700" fill="#FFFFFF" opacity="0.06" text-anchor="end" dominant-baseline="alphabetic">02</text><text x="640" y="392" font-family="Georgia, Songti SC, STSong, serif" font-size="84" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">第二部分：方法与证据</text><text x="640" y="452" font-family="Georgia, Songti SC, STSong, serif" font-size="34" fill="#FFFFFF" opacity="0.7" text-anchor="middle" font-style="italic" dominant-baseline="alphabetic">面向可复现的实证研究</text><line x1="620" y1="600" x2="660" y2="600" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1.6"></line><circle cx="620" cy="600" r="5" fill="#FFFFFF" fill-opacity="0.35"></circle><circle cx="660" cy="600" r="7" fill="#FFFFFF" fill-opacity="1"></circle>'
 
 describe("RailChapter", () => {
   it("academic tokens 下输出与迁移前的 BCGEmeraldChapter 逐字节一致（档位一，含多 chapter 序号）", () => {
@@ -96,6 +102,59 @@ describe("RailChapter", () => {
       expect(fontSize).toBeGreaterThanOrEqual(40)
     }
     expect(headingTexts.every((t) => t.textContent !== CJK_LONG)).toBe(true)
+  })
+
+  /**
+   * 标题簇呼吸感（2026-08-20 第四轮评审，批 2 波 H）。退休的定值 `+46` 在
+   * 本版式的 84px 标题下只留 6px 墨隙。这条按墨（不是按 em 框）量净空，
+   * 与 `chrome-geometry.ts` 的 footnote 净空同一套约定。标题收缩时净空跟着
+   * 收缩但不塌，所以两档都测。把 `subheadingDrop` 换回定值 46 这条立刻红。
+   */
+  it("副标题与大标题之间留出与字号成比例的墨隙（84px 标题 >=16px，收缩后仍 >=8px）", () => {
+    const INK_DESCENT = 0.12
+    const INK_ASCENT = 0.88
+    const ctx = chapterCtx("academic")
+
+    const inkGap = (slide: Slide, deck: PptxIR, index: number) => {
+      const root = parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${renderSvgMarkup(
+          <RailChapter ir={deck} slide={slide} index={index} ctx={ctx} />,
+        )}</svg>`,
+      )
+      const texts = Array.from(root.querySelectorAll("text"))
+      const headings = texts.filter((t) => t.getAttribute("font-weight") === "600")
+      const sub = texts.find((t) => t.getAttribute("font-style") === "italic")!
+      const last = headings[headings.length - 1]!
+      const headSize = Number(last.getAttribute("font-size"))
+      const subSize = Number(sub.getAttribute("font-size"))
+      const headInkBottom = Number(last.getAttribute("y")) + headSize * INK_DESCENT
+      const subInkTop = Number(sub.getAttribute("y")) - subSize * INK_ASCENT
+      return { gap: subInkTop - headInkBottom, headSize }
+    }
+
+    const nominal = inkGap(chapter2, ir("academic"), 2)
+    expect(nominal.headSize).toBe(84)
+    expect(nominal.gap).toBeGreaterThanOrEqual(16)
+
+    const longSlide: Slide = {
+      type: "chapter",
+      heading: CJK_LONG,
+      subheading: "面向可复现的实证研究",
+      components: [],
+    } as Slide
+    const longDeck = {
+      version: "3",
+      filename: "x.pptx",
+      theme: { id: "academic" },
+      meta: {},
+      assets: { images: {} },
+      slides: [longSlide],
+    } as unknown as PptxIR
+    const shrunk = inkGap(longSlide, longDeck, 0)
+    expect(shrunk.headSize).toBeLessThan(84)
+    expect(shrunk.gap).toBeGreaterThanOrEqual(8)
+    // 比例关系：标题小了，墨隙跟着小，不是一个与字号无关的定值
+    expect(shrunk.gap).toBeLessThan(nominal.gap)
   })
 
   it("tech tokens 下白字例外跨主题稳定（不被 tech 的 colors.surface/primary 替换——见文件头'逐字节陷阱'说明）", () => {

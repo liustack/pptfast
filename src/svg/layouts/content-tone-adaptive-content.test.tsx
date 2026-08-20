@@ -33,8 +33,14 @@ const CJK_LONG =
 // `layout--tone-adaptive-content--zh`, which renders this branch. The
 // content rect is untouched: `contentH = footnote ? 420 : 460` had already
 // floored it at 600 and reserved the room nothing was using.
+// Kicker re-pin (2026-08-20, 批 2 波 H): one more token, the kicker
+// baseline, 62 -> 70. At 62 the kicker's em box started at y=40, eight
+// pixels inside the band every motif draws in — measured against ten of the
+// seventeen themes' decoration in the theme gallery. See the layout's own
+// `KICKER_BASELINE` for the derivation. Heading and everything below it are
+// untouched.
 const EXPECTED_CONTENT_NO_BG =
-  '<text x="64" y="62" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#3F3F46" letter-spacing="2" dominant-baseline="alphabetic">Chapter 01 · 第一部分：产品概览</text><text x="64" y="130" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="46" font-weight="700" fill="#18181B" dominant-baseline="alphabetic">双色态：从纸面到屏幕</text><text x="64" y="172" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#3F3F46" dominant-baseline="alphabetic"><tspan fill="#18181B" font-weight="700">核心结论</tspan><tspan fill="#3F3F46">：适配任意底色</tspan></text><line x1="64" y1="208" x2="112" y2="208" stroke="#3F3F46" stroke-width="4"></line><line x1="112" y1="208" x2="1216" y2="208" stroke="#E4E4E7" stroke-width="1.6"></line><g data-audit-rect="64,226,1152,374"><g data-audit-box="64,226,1152"><g transform="translate(64,226)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">本节演示 custom 主题的双色态排版。</text></g></g><g data-audit-box="64,300,1152"><g transform="translate(64,300)"><circle cx="5" cy="18.8" r="3" fill="#18181B"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">无背景图走墨色文字</text><circle cx="5" cy="60.8" r="3" fill="#18181B"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">有背景图走浮动白卡</text><circle cx="5" cy="102.8" r="3" fill="#18181B"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">两者色语义一致</text></g></g></g><text x="64" y="644" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
+  '<text x="64" y="70" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#3F3F46" letter-spacing="2" dominant-baseline="alphabetic">Chapter 01 · 第一部分：产品概览</text><text x="64" y="130" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="46" font-weight="700" fill="#18181B" dominant-baseline="alphabetic">双色态：从纸面到屏幕</text><text x="64" y="172" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#3F3F46" dominant-baseline="alphabetic"><tspan fill="#18181B" font-weight="700">核心结论</tspan><tspan fill="#3F3F46">：适配任意底色</tspan></text><line x1="64" y1="208" x2="112" y2="208" stroke="#3F3F46" stroke-width="4"></line><line x1="112" y1="208" x2="1216" y2="208" stroke="#E4E4E7" stroke-width="1.6"></line><g data-audit-rect="64,226,1152,374"><g data-audit-box="64,226,1152"><g transform="translate(64,226)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">本节演示 custom 主题的双色态排版。</text></g></g><g data-audit-box="64,300,1152"><g transform="translate(64,300)"><circle cx="5" cy="18.8" r="3" fill="#18181B"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">无背景图走墨色文字</text><circle cx="5" cy="60.8" r="3" fill="#18181B"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">有背景图走浮动白卡</text><circle cx="5" cy="102.8" r="3" fill="#18181B"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">两者色语义一致</text></g></g></g><text x="64" y="644" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>'
 const EXPECTED_CONTENT_WITH_BG =
   '<rect x="48" y="44" width="1184" height="632" rx="14" fill="#FFFFFF"></rect><text x="92" y="104" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#3F3F46" letter-spacing="2" dominant-baseline="alphabetic">Chapter 01 · 第一部分：产品概览</text><text x="92" y="168" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="44" font-weight="700" fill="#18181B" dominant-baseline="alphabetic">双色态：从纸面到屏幕</text><text x="92" y="210" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#3F3F46" dominant-baseline="alphabetic"><tspan fill="#18181B" font-weight="700">核心结论</tspan><tspan fill="#3F3F46">：适配任意底色</tspan></text><line x1="92" y1="244" x2="140" y2="244" stroke="#3F3F46" stroke-width="4"></line><line x1="140" y1="244" x2="1188" y2="244" stroke="#E4E4E7" stroke-width="1.6"></line><g data-audit-rect="92,262,1096,354"><g data-audit-box="92,262,1096"><g transform="translate(92,262)"><text x="0" y="24" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">本节演示 custom 主题的双色态排版。</text></g></g><g data-audit-box="92,336,1096"><g transform="translate(92,336)"><circle cx="5" cy="18.8" r="3" fill="#18181B"></circle><text x="26" y="26" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">无背景图走墨色文字</text><circle cx="5" cy="60.8" r="3" fill="#18181B"></circle><text x="26" y="68" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">有背景图走浮动白卡</text><circle cx="5" cy="102.8" r="3" fill="#18181B"></circle><text x="26" y="110" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" dominant-baseline="alphabetic">两者色语义一致</text></g></g></g><text x="92" y="636" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="20" fill="#71717A" dominant-baseline="alphabetic">Internal  ·  ACME  ·  v1</text>'
 const EXPECTED_CONTENT_BARE_NO_BG =
@@ -117,6 +123,40 @@ describe("ToneAdaptiveContent", () => {
       expect(next).toContain(`fill="${ctxWithImg.colors.text}"`)
       expect(next).toContain("双色态：从纸面到屏幕")
     })
+  })
+
+  /**
+   * kicker 让出装饰带（2026-08-20 第四轮评审，批 2 波 H）。48 是每个 motif
+   * 自己的安全区注释都写着的那条线：标题区上沿 (96,48,1040×122)，装饰只在
+   * 它之上画。kicker 的 em 框顶原本落在 40，比这条线还高 8px，于是十七家主题
+   * 里有十家的这行字贴上了顶部装饰（heritage/luxe 的框内线 1.6px、journal/
+   * luxe 的报头细线 3.6px、consulting 的圆点 4.0px、insight 的刻度 7.0px）。
+   * 把 kicker 基线改回 62 这条立刻红。
+   */
+  it("kicker 的 em 框顶不进标题区上沿以上的装饰带（无背景图分支）", () => {
+    const TITLE_ZONE_TOP = 48
+    const ctx = buildCtx(LEGACY_CUSTOM_TOKENS, {})
+    const deck = ir("custom")
+    const root = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${renderSvgMarkup(
+        <ToneAdaptiveContent ir={deck} slide={content} index={1} ctx={ctx} />,
+      )}</svg>`,
+    )
+    const kicker = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").startsWith("Chapter 01"),
+    )!
+    const emTop = Number(kicker.getAttribute("y")) - Number(kicker.getAttribute("font-size"))
+    expect(emTop).toBeGreaterThanOrEqual(TITLE_ZONE_TOP)
+
+    // 下方的标题不动，两者仍是一组：em 框之间不小于本版式标题与副标题之间
+    // 已有的那口气（46px 标题 + 22px 副标题 = 9.88px）
+    const heading = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.getAttribute("font-weight") === "700",
+    )!
+    expect(heading.getAttribute("y")).toBe("130")
+    const headingEmTop = 130 - Number(heading.getAttribute("font-size"))
+    const kickerEmBottom = Number(kicker.getAttribute("y")) + Number(kicker.getAttribute("font-size")) * 0.22
+    expect(headingEmTop - kickerEmBottom).toBeGreaterThanOrEqual(9)
   })
 
   it("单块 slide（无 subheading/footnote/kicker）两分支输出锁定", () => {

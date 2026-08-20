@@ -109,6 +109,11 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * 需的 4.5:1。补齐同一套守卫：无背景图分支传 `ctx.defaultBg ?? colors.bg`（同
  * subheading 先例），`withBg` 分支传卡片自身的 `"#FFFFFF"`（同 heading/footer
  * 先例）。达标主题原样返回，逐字节不变。
+ *
+ * kicker 让出装饰带（2026-08-20 第四轮评审，批 2 波 H）：无背景图分支的
+ * section label 基线从定值 62 改为 `KICKER_BASELINE`，推导见该常量自身的
+ * 注释。有背景图分支不动：那一支的 kicker 画在自画白卡里（卡顶 y44、kicker
+ * 基线 104），装饰在卡之下，本就没有这层碰撞。
  */
 
 /** Check whether the slide has a valid background image asset. Ported
@@ -127,6 +132,37 @@ function hasBgImage(
  * heading divider. Pure geometry (not a color), copied verbatim as a private
  * constant — not a candidate for the replacement table. */
 const TITLE_BAR_LEN = 48
+
+/**
+ * Top of the heading region — the line every motif's own safe-zone note
+ * names as the edge decoration must stay above (`(96,48,1040×122)`), and
+ * therefore the line the topmost *content* on a page must stay below.
+ */
+const TITLE_ZONE_TOP = 48
+
+/** Nominal kicker size. The fitted size only ever shrinks from here. */
+const KICKER_FONT_SIZE = 22
+
+/**
+ * Kicker baseline in the no-background branch.
+ *
+ * Was a flat `62`, which put the kicker's em box top at `62 - 22 = 40` —
+ * eight pixels *inside* the band every motif in `src/svg/motifs/` treats as
+ * its own. Measured on the 2026-08-20 theme gallery, ten of the seventeen
+ * themes ran this line within 11px of the decoration above it, four of them
+ * within 4px: heritage/luxe's frame inner rule (1.6px, the "Chapter 01 这行
+ * 太靠近容器的框的上边缘" the review reported on `theme--heritage--zh--p09`),
+ * journal/luxe's masthead hairline (3.6px), consulting's dot (4.0px), and
+ * insight's tick marks (7.0px, the `theme--insight--zh--p09` report).
+ *
+ * Seating the em box exactly on `TITLE_ZONE_TOP` hands the whole decoration
+ * band back to the motifs and fixes all ten at once. Below it the heading's
+ * own em box starts at 84, so the kicker keeps 9.2px — the same air this
+ * layout already spends between its 46px heading and its 22px subheading
+ * (9.9px), which is the right relationship: kicker and heading are one
+ * group, and the decoration above them is not.
+ */
+const KICKER_BASELINE = TITLE_ZONE_TOP + KICKER_FONT_SIZE
 
 export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
@@ -333,7 +369,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
   const sectionLabel = rawSectionLabel
     ? fitSvgLine(rawSectionLabel, {
         maxWidth: 1152,
-        fontSize: 22,
+        fontSize: KICKER_FONT_SIZE,
         minFontSize: 12,
         letterSpacing: 2,
       })
@@ -392,7 +428,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
         <text
           data-truncated={sectionLabel.truncated ? "1" : undefined}
           x="64"
-          y="62"
+          y={KICKER_BASELINE}
           fontFamily={fonts.heading}
           fontSize={sectionLabel.fontSize}
           fill={sectionLabelFill}

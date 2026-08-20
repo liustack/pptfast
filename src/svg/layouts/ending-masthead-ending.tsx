@@ -27,8 +27,32 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
  * 原文本就是不同措辞（正式/随意两级），译文延续这一区分，不直译成同一句
  * "Thank you." 让大小标题重复。
  *
+ * 页脚呼吸感修复（2026-08-20 第四轮评审，批 2 波 H）：底部 meta 行的基线从
+ * 定值 640 下移到 `META_BASELINE`，推导见该常量自身的注释。
+ *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
+
+/** 底部那行 org / contact / date 的字号。 */
+const META_FONT_SIZE = 13
+
+/**
+ * 底部 meta 行的基线。
+ *
+ * 原是 640，也就是 em 框顶落在 627，正压在两个 motif 的页脚装饰上：
+ * heritage 的底缘线 y626 与线上那枚 10×10 金菱（旋转后最低点 633.07，横向
+ * 就骑在 x640 这行居中文字的正中），luxe 的金框下边 y624。2026-08-20 评审
+ * 在 `theme--heritage--zh--p10` 上报的「太靠近分割线了」量出来是 0px。
+ *
+ * ending 页不画 BrandChrome 的页脚，640 以下整整 80px 无人认领，所以让路的
+ * 是文字：660 让 em 框顶落在 647，离 heritage 的金菱最低点 13.9px、离 luxe
+ * 的框下边 22.3px，离页面底缘仍有 57px。这个数落在同族版式的既有区间里
+ * （`editorial-masthead` 封面的同款 meta 行在 656，`constellation` 封面在
+ * 660），不是新开的坐标。右下 logo 盒 (1120,630,96×40) 与这行居中文字横向
+ * 不相交。
+ */
+const META_BASELINE = 660
+
 export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
 
@@ -96,9 +120,9 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
       {metaParts.length > 0 && (
         <text
           x="640"
-          y="640"
+          y={META_BASELINE}
           fontFamily={fonts.body}
-          fontSize="13"
+          fontSize={META_FONT_SIZE}
           fill={colors.muted}
           letterSpacing="2"
           textAnchor="middle"
