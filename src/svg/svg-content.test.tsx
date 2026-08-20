@@ -92,7 +92,12 @@ describe("SvgContent", () => {
   })
 })
 
-it("vertically centers a lone component within the content rect", () => {
+it("keeps a lone component flush with the content rect's top edge", () => {
+  // Vertical gravity (2026-08-20 user ruling): "页面的下方可以空，但不要上方
+  // 空". A lone block used to be pushed 38% of the leftover down the rect,
+  // which put a strip of nothing between the heading and the only thing on
+  // the page — 111px of it on heritage p07's banner layout. The leftover
+  // belongs under the block, not over it.
   const markup = renderToStaticMarkup(
     <svg>
       <SvgContent
@@ -102,15 +107,13 @@ it("vertically centers a lone component within the content rect", () => {
       />
     </svg>,
   )
-  const m = /data-audit-box="96,([\d.]+),1088"/.exec(markup)
-  expect(m).not.toBeNull()
-  expect(Number(m?.[1])).toBeGreaterThan(200)
+  expect(markup).toContain('data-audit-box="96,176,1088"')
 })
 
 // Structure-components wave task 1, decision 1: a full-body component
 // (`swot`/`bmc`, `FULL_BODY_TYPES`) as the slide's sole component gets the
 // whole content rect handed to it verbatim — no `layoutContentFit` column
-// stacking, no 38% golden vertical offset.
+// stacking at all.
 describe("SvgContent full-body components (structure-components wave task 1)", () => {
   const swotComponent: Component = {
     type: "swot",
@@ -120,7 +123,7 @@ describe("SvgContent full-body components (structure-components wave task 1)", (
     threats: ["威胁一"],
   } as Component
 
-  it("hands the entire rect (h included) to the sole full-body component, bypassing the golden offset", () => {
+  it("hands the entire rect (h included) to the sole full-body component, bypassing the stacking pass", () => {
     const markup = renderToStaticMarkup(
       <svg>
         <SvgContent components={[swotComponent]} rect={{ x: 96, y: 176, w: 1088, h: 424 }} ctx={ctx} />
@@ -128,9 +131,9 @@ describe("SvgContent full-body components (structure-components wave task 1)", (
     )
     expect(markup).toContain('data-audit-rect="96,176,1088,424"')
     expect(markup).toContain('data-audit-box="96,176,1088"')
-    // No dy offset — the component's own <g> children translate straight to
-    // rect.y (176), never a golden-position-shifted y like the lone-component
-    // bullets case above (which lands well past 200).
+    // The component's own <g> children translate straight to rect.y (176)
+    // and it fills the rect's whole height, so it never reaches the drop
+    // path's "+N" marker.
     expect(markup).not.toContain("未展示")
   })
 
@@ -176,16 +179,18 @@ describe("SvgContent full-body components (structure-components wave task 1)", (
     const markup = renderToStaticMarkup(
       <svg>
         <SvgContent
-          components={[{ type: "bullets", items: ["仅此一块"], style: "default" }]}
+          components={[{ type: "kpi_cards", items: [{ value: "9", label: "x" }] }]}
           rect={{ x: 96, y: 176, w: 1088, h: 424 }}
           ctx={ctx}
         />
       </svg>,
     )
-    // The pre-existing golden-offset behavior (asserted above, "vertically
-    // centers a lone component") is untouched for non-full-body types.
-    const m = /data-audit-box="96,([\d.]+),1088"/.exec(markup)
-    expect(Number(m?.[1])).toBeGreaterThan(200)
+    // `kpi_cards` is stretchable but not full-body, so it goes through the
+    // stacking pass and its card stops at the stretch ceiling (1.7 x its
+    // 120px measure = 204). The full-body branch would have handed it the
+    // rect's own 424 instead — the one number that tells the two apart.
+    expect(markup).toContain('height="204"')
+    expect(markup).not.toContain('height="424"')
   })
 })
 
@@ -206,12 +211,12 @@ it("surplus-grown component y is identical between the audit annotation and the 
       <SvgContent components={twoKpis} rect={{ x: 0, y: 0, w: 400, h: 500 }} ctx={ctx} />
     </svg>,
   )
-  // The second component's audit box must report the grown y (233.2 —
+  // The second component's audit box must report the grown y (217.2 —
   // stretch spends its 60% share first, +73.2 per kpi, then the gap pass
-  // adds its capped 24; see layout.test.ts's arithmetic).
-  expect(markup).toContain('data-audit-box="0,233.2,400"')
+  // adds the 8 its 1.5x ceiling allows — see layout.test.ts's arithmetic).
+  expect(markup).toContain('data-audit-box="0,217.2,400"')
   // And the component's own rendered translate must carry that exact same y —
   // "rendering the annotation" (not a parallel, possibly-diverging value).
-  expect(markup).toContain("translate(0,233.2)")
+  expect(markup).toContain("translate(0,217.2)")
   expect(markup).not.toContain('data-audit-box="0,136,400"')
 })

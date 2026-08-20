@@ -399,43 +399,41 @@ describe("ImageLeadSplitContent determinism", () => {
 })
 
 describe("ImageLeadSplitContent header-only balance", () => {
-  it("centers the text block against the visual column when the body is empty", () => {
-    // Visual review 2026-08-15: a single-chart page kept the 60/40 split but
-    // top-aligned a two-line heading in the 435px column, leaving ~450px of
-    // dead space under it beside a full-height chart — read as content
-    // having gone missing ("这个页面为什么左侧全空白" / "主体为什么不居中").
-    // The fix moves the text down to share a center line with the visual;
-    // no width changes, so the layout keeps its own skeleton.
+  it("starts the text block at the top even when the body is empty", () => {
+    // Two earlier answers to "这个页面为什么左侧全空白" pushed this block down
+    // to share a center line with the visual column. The 2026-08-20
+    // vertical-gravity ruling reverses that: "页面的下方可以空，但不要上方
+    // 空". On ember p05 the centered pair left ~220px of the text column and
+    // ~140px of the visual column empty above the ink — the top of the page
+    // blank and its content bunched around the middle.
     const deck = ir([chartOnly])
     const { root } = render(deck, chartOnly)
     const headings = Array.from(root.querySelectorAll("text")).filter(
       (t) => t.textContent && chartOnly.heading!.includes(t.textContent.slice(0, 4)),
     )
     expect(headings.length).toBeGreaterThan(0)
-    const firstBaseline = Number(headings[0]!.getAttribute("y"))
-    // The visual column spans y=72..640, so its center is 356. A top-aligned
-    // heading would sit at the 150 baseline; the centered one sits well
-    // below that and near the column's own middle.
-    expect(firstBaseline).toBeGreaterThan(250)
-    expect(firstBaseline).toBeLessThan(430)
-  })
-
-  it("leaves the text block top-aligned as soon as the body carries anything", () => {
-    // With body content the stack must keep the full column height to grow
-    // into, so the centering is strictly the empty-body case.
-    const deck = ir([chartLead])
-    const { root } = render(deck, chartLead)
-    const headings = Array.from(root.querySelectorAll("text")).filter(
-      (t) => t.textContent && chartLead.heading!.includes(t.textContent.slice(0, 4)),
-    )
     expect(Number(headings[0]!.getAttribute("y"))).toBe(150)
   })
 
-  // Visual review round 3, E cluster p05: the center line above was right,
-  // but the visual column went on declaring the full 568px band while its
-  // shrink-to-fit-only component painted 288 of it — a region
-  // `data-audit-rect` claimed and no ink ever reached, and a second,
-  // independent expression for the same middle.
+  it("puts the header-only page's text block at the same baseline as a page with a body", () => {
+    // The empty body is no longer a special vertical case at all: both land
+    // on the layout's own HEADING_BASELINE, so there is only one answer to
+    // "where does the heading go" left in the file.
+    const withBody = render(ir([chartLead]), chartLead)
+    const headerOnly = render(ir([chartOnly]), chartOnly)
+    const firstHeadingY = (r: ReturnType<typeof render>) =>
+      Array.from(r.root.querySelectorAll("text"))
+        .filter((t) => t.getAttribute("font-weight") === "700")
+        .map((t) => Number(t.getAttribute("y")))[0]
+    expect(firstHeadingY(withBody)).toBe(150)
+    expect(firstHeadingY(headerOnly)).toBe(150)
+  })
+
+  // Visual review round 3, E cluster p05: the visual column declared the
+  // full 568px band while its shrink-to-fit-only component painted 288 of
+  // it — a region `data-audit-rect` claimed and no ink ever reached. That
+  // half of the round-3 fix survives the gravity ruling. Only the midpoint
+  // the band used to hang off is gone.
   it("declares only the band it paints when the body is empty", () => {
     const { root } = render(ir([chartOnly]), chartOnly)
     const visual = Array.from(root.querySelectorAll("g[data-audit-rect]")).find(
@@ -453,7 +451,7 @@ describe("ImageLeadSplitContent header-only balance", () => {
     expect(declared.h).toBeLessThan(568)
   })
 
-  it("hangs both columns off one center line, not two agreeing formulas", () => {
+  it("starts both columns on the content area's top edge, and leaves the dead strip under them", () => {
     const { root } = render(ir([chartOnly]), chartOnly)
     const visual = Array.from(root.querySelectorAll("g[data-audit-rect]")).find(
       (g) => parseAudit(g.getAttribute("data-audit-rect")).x !== 96,
@@ -462,23 +460,44 @@ describe("ImageLeadSplitContent header-only balance", () => {
     const texts = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("x") === "96")
     const headings = texts.filter((t) => t.getAttribute("font-weight") === "700")
     const kicker = texts.find((t) => t.getAttribute("letter-spacing") === "2")
-    // The block the layout centers runs from the kicker's ascender (or the
-    // heading's own, with no kicker) down to the last baseline it uses.
+    // The text block runs from the kicker's ascender (or the heading's own,
+    // with no kicker) down to the last baseline it uses.
     const headingSize = Number(headings[0]!.getAttribute("font-size"))
     const blockTop = kicker
       ? Number(kicker.getAttribute("y")) - Number(kicker.getAttribute("font-size"))
       : Number(headings[0]!.getAttribute("y")) - headingSize
     const blockBottom = Number(headings[headings.length - 1]!.getAttribute("y"))
-    const textCenter = (blockTop + blockBottom) / 2
-    // Within the whole-pixel rounding `textShift` applies.
-    expect(Math.abs(textCenter - (band.y + band.h! / 2))).toBeLessThanOrEqual(0.5)
+    // Both columns hang off the same top edge: the band at 72, the text at
+    // its own first ascender (112 with no kicker, 79 with one) — one heading
+    // line's worth of it, not a third of the page. And everything the page
+    // does not use is below the ink, not above it.
+    expect(band.y).toBe(72)
+    expect(blockTop).toBeLessThan(150) // the layout's own HEADING_BASELINE
+    expect(640 - Math.max(blockBottom, band.y + band.h!)).toBeGreaterThan(100)
   })
 
-  it("moves the body rect down with the text block instead of leaving it at the unshifted coordinate", () => {
-    // The empty-body rect used to be emitted at y=231 while the heading it
-    // hangs under had been pushed to 371 — it spanned its own heading.
-    // Harmless while the branch guarantees an empty body, a live overlap the
-    // moment that guard is loosened.
+  it("stands a short visual on the slot's top edge on a page that does carry a body", () => {
+    // The header-only page's band is tightened onto its own component, so
+    // top-flush and centered look the same there. This is the case that
+    // tells them apart: a full 568px slot with a shorter visual in it. Under
+    // the old centering the chart floated with a band of nothing above it,
+    // which is the shape the gravity ruling names.
+    const { root } = render(ir([chartLead]), chartLead)
+    const visual = Array.from(root.querySelectorAll("g[data-audit-rect]")).find(
+      (g) => parseAudit(g.getAttribute("data-audit-rect")).x !== 96,
+    )!
+    const declared = parseAudit(visual.getAttribute("data-audit-rect"))
+    const painted = parseAudit(visual.querySelector("g[data-audit-box]")!.getAttribute("data-audit-box"))
+    expect(declared.h).toBe(568) // the untightened slot, body present
+    expect(painted.h).toBeLessThan(568) // shrink-to-fit left room over
+    expect(painted.y).toBe(declared.y) // and that room is all underneath
+  })
+
+  it("hangs the body rect under the heading, not through it", () => {
+    // The rect and the heading used to come from two coordinates that could
+    // drift apart (the heading carried a vertical shift the rect did not).
+    // With nothing shifting either, they cannot — but the ordering is what
+    // the page depends on, so it stays pinned.
     const { root } = render(ir([chartOnly]), chartOnly)
     const textRect = Array.from(root.querySelectorAll("g[data-audit-rect]"))
       .map((g) => parseAudit(g.getAttribute("data-audit-rect")))

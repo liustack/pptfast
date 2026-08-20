@@ -263,14 +263,26 @@ function growStretchables(
 const SURPLUS_MIN_REMAINING = 80
 /** Share of the leftover space spent growing gaps; the rest sinks to the bottom. */
 const SURPLUS_SHARE = 0.6
-/** A gap may grow by at most this many times its original (pre-surplus) size. */
+/**
+ * A gap ends up at most this many times its original (pre-surplus) size.
+ * Same "final size, not added size" reading as `STRETCH_CAP_RATIO` above,
+ * and the same `× (RATIO - 1)` arithmetic below.
+ *
+ * Tightened by the 2026-08-20 vertical-gravity ruling. This number used to
+ * mean "may grow by 1.5x again", which let a 16px gap end up at 40. A gap
+ * stretched to two and a half times its designed size stops reading as
+ * space between two parts of one block and starts reading as a page that
+ * has come apart ("像一盘沙"). At 1.5 that same gap tops out at 24, and the
+ * space this ceiling declines is not handed to some other gap: it falls to
+ * the bottom of the page, which is the side the ruling allows to be empty.
+ */
 const SURPLUS_GAP_CAP_RATIO = 1.5
 
 /**
  * "Breathing room, not falling apart" (wave-B S4): once a working gap tier
  * lays every component out top-aligned, a short slide can leave a large dead
  * strip below the last component. Spend `SURPLUS_SHARE` of that leftover growing
- * the gaps *between* components — evenly, capped so no single gap balloons past
+ * the gaps *between* components — evenly, capped so no single gap ends up past
  * `SURPLUS_GAP_CAP_RATIO`× its original size — and leave the rest as bottom
  * margin.
  *
@@ -313,7 +325,7 @@ function distributeSurplus(
 
   const perGapIncrement = Math.min(
     (remaining * SURPLUS_SHARE) / totalGaps,
-    gap * SURPLUS_GAP_CAP_RATIO,
+    gap * (SURPLUS_GAP_CAP_RATIO - 1),
   )
 
   const shiftByIndex = new Map<number, number>()
@@ -326,38 +338,6 @@ function distributeSurplus(
     const shift = shiftByIndex.get(i)
     return shift ? { ...p, box: { ...p.box, y: p.box.y + shift } } : p
   })
-}
-
-/**
- * Split whatever the gap-growing pass could not spend evenly above and below
- * the stack instead of letting all of it sit under the last component.
- *
- * `distributeSurplus` caps each gap at `SURPLUS_GAP_CAP_RATIO`× its original
- * size, so a stack with few gaps has almost nowhere to put a large leftover:
- * the 2026-08-19 review's `two-column` pages (E cluster, p06) reached one
- * gap and 169px of leftover, of which the cap allowed 25.5px — the other
- * 143.5px, 23% of the page height, sat as one dead strip along the bottom
- * while the ink stopped 72px above the rect's own middle.
- *
- * Applied only where `layoutContentFit` has already abandoned the
- * arrangement the theme picked: at that point the placement is this
- * function's own construction, not the layout's, so centering it cannot
- * move a page that still renders in its chosen arrangement. Same two guards
- * as the other two passes: an already-offset stack (`quote`) is left alone,
- * and a leftover at or under `SURPLUS_MIN_REMAINING` is a no-op.
- */
-function centerShortStack(
-  placed: PlacedComponent[],
-  rect: ContentRect,
-  ctx: ComponentCtx,
-): PlacedComponent[] {
-  if (placed.length === 0) return placed
-  const top = placed.reduce((min, p) => Math.min(min, p.box.y), Number.POSITIVE_INFINITY)
-  if (Math.abs(top - rect.y) > 0.5) return placed
-  const remaining = rect.y + rect.h - stackBottom(placed, ctx)
-  if (remaining <= SURPLUS_MIN_REMAINING) return placed
-  const shift = remaining / 2
-  return placed.map((p) => ({ ...p, box: { ...p.box, y: p.box.y + shift } }))
 }
 
 /**
@@ -427,8 +407,12 @@ export function layoutContentFit(
     // The single stack was built to survive, not to fill: blocks measured
     // for a full-width rect are usually much shorter there than the split
     // they replaced, so this branch is exactly where a large leftover shows
-    // up. Center it rather than sink it.
-    if (single.dropped === 0) return { placed: centerShortStack(single.placed, rect, ctx), dropped: 0 }
+    // up. It sinks, whole, to the bottom — the 2026-08-20 gravity ruling
+    // ("页面的下方可以空，但不要上方空"). A short-lived earlier answer split
+    // that leftover evenly above and below instead; on academic p06 that
+    // pushed the first card 106px clear of the rule line it hangs under,
+    // which is the defect the ruling names, not the fix for it.
+    if (single.dropped === 0) return single
   }
 
   const tightestGap = GAP_TIERS[GAP_TIERS.length - 1]

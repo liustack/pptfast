@@ -1,6 +1,6 @@
 import type { Component } from "@/ir"
 import type { ComponentCtx } from "./components/types"
-import { measureComponent, renderComponent } from "./components"
+import { renderComponent } from "./components"
 import { asideSplit, layoutContentFit, type ContentRect, type Arrangement } from "./layout"
 import { AssertionEvidence } from "./assertion-evidence"
 import { BigNumber } from "./big-number"
@@ -29,10 +29,11 @@ export function SvgContent({ arrangement, components, rect, ctx }: SvgContentPro
   // here with one of these has exactly one component, so `components.length
   // === 1` is enough to identify the case without re-checking exclusivity —
   // hand the component the whole rect verbatim (`h: rect.h`, matching
-  // `matrix.tsx`'s own box.h-aware fill idiom) and skip both
-  // `layoutContentFit`'s column-stacking and the lone-component 38% golden
-  // vertical offset below entirely. Checked *before* the `big_number`/
-  // `assertion_evidence` arrangement branches so a full-body component wins
+  // `matrix.tsx`'s own box.h-aware fill idiom) rather than routing it
+  // through `layoutContentFit`'s column-stacking — a component that fills
+  // the rect by itself has no leftover for the stacking pass to place.
+  // Checked *before* the `big_number`/`assertion_evidence`
+  // arrangement branches so a full-body component wins
   // regardless of whatever `arrangement` a slide happens to carry (those two
   // branches assume ordinary stackable components — e.g. `big_number` hunts
   // for a `kpi_cards` sibling that will never exist on a full-body slide).
@@ -62,18 +63,21 @@ export function SvgContent({ arrangement, components, rect, ctx }: SvgContentPro
     )
   }
   const { placed, dropped } = layoutContentFit(arrangement, components, rect, ctx)
-  // 单块页（一张图/一张表占整页）垂直分布：38% 黄金位（2026-07-10 用户
-  // 裁决）——50% 居中时矮块在高内容区里上下各悬 150px+，标题与内容断裂
-  // 感明显（无图矩阵真机审出的跨主题共性）。重心偏上贴近标题，底部自然
-  // 留白。
-  let dy = 0
-  if (placed.length === 1 && dropped === 0) {
-    // 黄金位偏移必须按拉伸后的实际高度算（box.h 由 growStretchables 分配）
-    // ——按原始测量高算会与拉伸叠加把块底顶出 rect（2026-07-11 用户截图
-    // 实锤：6 宫格/长卡单块页穿 footer 分割线）。拉满时 dy 自然归零。
-    const h = placed[0].box.h ?? measureComponent(placed[0].component, placed[0].box.w, ctx)
-    dy = Math.max(0, (rect.h - h) * 0.38)
-  }
+  // Every placed box is rendered at the y the layout gave it. A lone block
+  // on an otherwise empty content rect is no exception: it starts at the
+  // rect's top and the leftover stays under it (2026-08-20 user ruling,
+  // 「页面的下方可以空，但不要上方空」).
+  //
+  // This used to push a lone block 38% of the leftover down the rect (the
+  // 2026-07-10 ruling, itself a retreat from centering it at 50% because
+  // "标题与内容断裂感明显"). Same complaint, half-treated: on the
+  // banner-heading layout that left 105px between the banner and heritage
+  // p07's table, 122px before ink p09's quote, with ink p04 and insight p07
+  // the same shape. A reader met a filled banner, then a band of nothing,
+  // then the page's only block. 38% made the 50% version less bad. 0 is
+  // what fixes it, and the empty strip that lands at the foot of the page
+  // is the side the ruling says may be empty.
+  //
   // aside 版式的侧栏分隔竖线（几何与 layoutContent 同源 asideSplit）。
   //
   // Read off the *actual* placement, not the requested arrangement: since
@@ -99,8 +103,8 @@ export function SvgContent({ arrangement, components, rect, ctx }: SvgContentPro
         />
       )}
       {placed.map((p, i) => (
-        <g key={i} data-audit-box={`${p.box.x},${p.box.y + dy},${p.box.w}`}>
-          {renderComponent(p.component, { ...p.box, y: p.box.y + dy }, ctx)}
+        <g key={i} data-audit-box={`${p.box.x},${p.box.y},${p.box.w}`}>
+          {renderComponent(p.component, p.box, ctx)}
         </g>
       ))}
       {/* Recorded, never painted — and the export refuses to ship it.
