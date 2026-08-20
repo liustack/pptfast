@@ -7,6 +7,7 @@ import { accessibleInk } from "../ink"
 import { resolveStyle } from "../../themes"
 import { measureComponent } from "../components"
 import { StackedPosterContent } from "./content-stacked-poster"
+import { footnoteBaselineFor } from "../chrome-geometry"
 import type { PptxIR, Slide } from "@/ir"
 
 const CJK_LONG =
@@ -256,7 +257,7 @@ describe("StackedPosterContent", () => {
     const { markup: posterOut, root: posterRoot } = render(
       <StackedPosterContent ir={ir("insight", [posterFootnoteSlide])} slide={posterFootnoteSlide} index={0} ctx={ctx} />,
     )
-    const posterFootnote = posterRoot.querySelector("text[y='648']")!
+    const posterFootnote = posterRoot.querySelector(`text[y='${footnoteBaselineFor(20)}']`)!
     expect(posterFootnote.getAttribute("fill")).toBe(ctx.colors.muted)
     expect(posterOut).not.toContain("#666670")
 
@@ -264,7 +265,7 @@ describe("StackedPosterContent", () => {
     const { markup: degradeOut, root: degradeRoot } = render(
       <StackedPosterContent ir={ir("insight", [degradeFootnoteSlide])} slide={degradeFootnoteSlide} index={0} ctx={ctx} />,
     )
-    const degradeFootnote = degradeRoot.querySelector("text[y='688']")!
+    const degradeFootnote = degradeRoot.querySelector(`text[y='${footnoteBaselineFor(20)}']`)!
     expect(degradeFootnote.getAttribute("fill")).toBe(ctx.colors.muted)
     expect(degradeOut).not.toContain("#666670")
   })
@@ -334,7 +335,7 @@ describe("StackedPosterContent", () => {
     expect(box.x).toBeGreaterThanOrEqual(54)
   })
 
-  it("1 component + footnote: hero rect shrinks to bottom=600, leaving room above the y=648 footnote", () => {
+  it("1 component + footnote: hero rect shrinks to bottom=600, leaving room above the footnote's own baseline", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = { ...oneComponentSlide, footnote: "数据来源：内部审计" } as Slide
     const { root } = render(<StackedPosterContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />)
@@ -348,7 +349,8 @@ describe("StackedPosterContent", () => {
     const footnote = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("数据来源"),
     )!
-    expect(footnote.getAttribute("y")).toBe("648")
+    const fontSize = Number(footnote.getAttribute("font-size"))
+    expect(Number(footnote.getAttribute("y"))).toBe(footnoteBaselineFor(fontSize))
   })
 
   it("2 components + footnote: strip bottom shrinks to 600 while the hero/divider split (520) stays put", () => {

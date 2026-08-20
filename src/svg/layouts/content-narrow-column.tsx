@@ -6,7 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * narrow-column content layout（spec §3.2，Wave 3 Task 17）：trades the
@@ -49,7 +49,11 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
   // but the big page number below.
   const COLUMN_X = 96
   const COLUMN_W = 880
-  const COLUMN_BOTTOM = 640
+  // 620 with a footnote, the same 20px shrink `banner-heading` (a flat 620),
+  // `split-band` and `rail-numbered` apply. Without it the column floored at
+  // 640 while this layout's 20px footnote — the largest of the ten — starts
+  // its ink at 628.25, so the two overlapped by 7.75px outright.
+  const COLUMN_BOTTOM = slide.footnote ? 620 : 640
 
   const heading = fitHeadingLines(slide.heading, {
     maxWidth: COLUMN_W,
@@ -206,7 +210,7 @@ export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps)
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x="96"
-          y={FOOTNOTE_BASELINE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

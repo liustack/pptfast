@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * quiet-frame content layout (P1 variety wave, task 4 — content-pool
@@ -196,7 +196,7 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={CENTER_X}
-          y={FOOTNOTE_BASELINE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           textAnchor="middle"
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}

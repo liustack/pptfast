@@ -4,7 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
-import { FOOTNOTE_BASELINE_Y, FOOTER_DIVIDER_Y } from "../chrome-geometry"
+import { footnoteBaselineFor, FOOTER_DIVIDER_Y } from "../chrome-geometry"
 import { RailMotif } from "./motif-rail-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -163,10 +163,11 @@ describe("RailMotif（进度轨）", () => {
   })
 
   /**
-   * 设计板把点轨放在 y648，而 y648 是本仓库所有脚注的共用基线
-   * （`chrome-geometry.ts` 的 `FOOTNOTE_BASELINE_Y`）——实测把点轨压在
+   * 设计板把点轨放在 y648，而底带那一行是本仓库所有脚注的共用基线
+   * （`chrome-geometry.ts` 的 `footnoteBaselineFor`）——实测把点轨压在
    * consulting 八个 content 版式的脚注下面（3.26:1）。这一条锁住「点轨不回
-   * 底带」：把 `DOT_Y` 改回 648 立刻红。
+   * 底带」：把 `DOT_Y` 改回 648 立刻红。基线不再是一个定值，最大字号的
+   * 脚注坐得最高，所以用它当上界。
    */
   it("点轨不落在脚注基线与页脚带上（板上 y648 的实测撞位，本文件的偏离理由）", () => {
     for (const slide of DRAWN_SLIDES) {
@@ -174,7 +175,9 @@ describe("RailMotif（进度轨）", () => {
       for (const c of Array.from(root.querySelectorAll("circle"))) {
         const bottom = num(c, "cy") + num(c, "r")
         // 20px 是脚注的最大字号（`fitSvgLine` 的 fontSize 上限），字顶按字号估。
-        expect(bottom, "dot reaches the shared footnote baseline band").toBeLessThan(FOOTNOTE_BASELINE_Y - 20)
+        expect(bottom, "dot reaches the shared footnote baseline band").toBeLessThan(
+          footnoteBaselineFor(20) - 20,
+        )
         expect(bottom).toBeLessThan(FOOTER_DIVIDER_Y)
       }
     }

@@ -6,7 +6,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, accessibleOpacity, readableOn } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * side-highlight content layout (P1 variety wave, task 4 — content-pool
@@ -212,7 +212,7 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={BODY_X}
-          y={FOOTNOTE_BASELINE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}

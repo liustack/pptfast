@@ -7,7 +7,7 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { FOOTNOTE_BASELINE_Y } from "../chrome-geometry"
+import { footnoteBaselineFor } from "../chrome-geometry"
 
 /**
  * split-band content layout (content-layout expansion wave, task T2 —
@@ -166,7 +166,6 @@ const BODY_GAP = 16
 const BODY_Y = HEADER_H + BODY_GAP // 240
 const BODY_BOTTOM_BASE = 640
 const BODY_BOTTOM_FOOTNOTE_SHRINK = 20 // -> 620 with a footnote
-const FOOTNOTE_Y = FOOTNOTE_BASELINE_Y
 
 function hasTlLogo(ir: PptxIR): boolean {
   const { brand, assets } = ir
@@ -275,7 +274,7 @@ export function SplitBandContent({ ir, slide, index, ctx }: SvgTemplateProps) {
         <text
           data-truncated={footnote.truncated ? "1" : undefined}
           x={TEXT_X}
-          y={FOOTNOTE_Y}
+          y={footnoteBaselineFor(footnote.fontSize)}
           fontFamily={fonts.body}
           fontSize={footnote.fontSize}
           fill={colors.muted}
