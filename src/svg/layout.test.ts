@@ -169,38 +169,38 @@ describe("layoutContentFit", () => {
     expect(placed.length).toBeGreaterThanOrEqual(1)
   })
 
-  it("centers the degraded single column's leftover instead of sinking all of it to the bottom", () => {
-    // Visual review 2026-08-19 (E cluster, p06): blocks measured for a
-    // full-width rect are much shorter there than in the split they replaced,
-    // so this branch is exactly where a large leftover turns up. Both other
-    // passes decline it — nothing here is stretchable, and one gap can only
-    // absorb 1.5x its own size — and the remainder used to sit as one dead
-    // strip along the bottom, 23% of the page height on the pages the review
-    // flagged.
+  it("keeps the degraded single column flush with the rect's top and leaves every unspent pixel at the bottom", () => {
+    // Vertical gravity (2026-08-20 user ruling): the bottom of a page may be
+    // empty, the top may not. The degrade branch used to split its leftover
+    // evenly above and below the stack, which bought a tidy bottom margin by
+    // hanging the whole stack away from the heading it belongs under
+    // (academic p06: 106px of nothing between the rule line and the first
+    // card). The stack now starts where the rect starts and the leftover
+    // sinks, whole, to the bottom.
     const components = [paragraphComponent(4), bulletsComponent(["甲"])]
     const splitRect: ContentRect = { x: 0, y: 0, w: 800, h: 400 }
     const { placed, dropped } = layoutContentFit("two_column", components, splitRect, ctx)
     expect(dropped).toBe(0)
-    // The single retry itself lands them at 0 and 244 (204 + a gap grown to
-    // its 24px cap), ending at 304 with 96 left over. That 96 is split in
-    // half: 48 above, 48 below.
-    expect(placed[0].box.y).toBeCloseTo(48, 5)
-    expect(placed[1].box.y).toBeCloseTo(292, 5)
-    const top = placed[0].box.y
+    // The single retry lands them at 0 and 228 (204 + a 16px gap grown by
+    // the 8px its 1.5x ceiling allows). Nothing shifts after that.
+    expect(placed[0].box.y).toBe(0)
+    expect(placed[1].box.y).toBeCloseTo(228, 5)
     const bottom = splitRect.h - (placed[1].box.y + measureComponent(placed[1].component, 800, ctx))
-    expect(top).toBeCloseTo(bottom, 5)
+    expect(bottom).toBeGreaterThan(80) // all of it, under the stack
   })
 
-  it("leaves a non-degraded placement's leftover exactly where it was — centering is the degrade branch's alone", () => {
+  it("puts the degraded and the non-degraded placement at the same coordinates", () => {
     // The same two blocks asked for `single` outright never reach the
-    // degrade branch, so they stay flush with the rect's top edge. This is
-    // the pin that keeps `centerShortStack` from quietly becoming a
-    // whole-renderer change: every page that still renders in the
-    // arrangement its theme chose keeps its geometry byte for byte.
+    // degrade branch. Both paths top-pack, so both now agree — the pin that
+    // keeps the degrade branch from growing a second, private notion of
+    // where a stack belongs.
     const components = [paragraphComponent(4), bulletsComponent(["甲"])]
-    const { placed } = layoutContentFit("single", components, { x: 0, y: 0, w: 800, h: 400 }, ctx)
+    const rect400: ContentRect = { x: 0, y: 0, w: 800, h: 400 }
+    const { placed } = layoutContentFit("single", components, rect400, ctx)
     expect(placed[0].box.y).toBe(0)
-    expect(placed[1].box.y).toBe(244)
+    expect(placed[1].box.y).toBeCloseTo(228, 5)
+    const degraded = layoutContentFit("two_column", components, rect400, ctx)
+    expect(degraded.placed.map((p) => p.box.y)).toEqual(placed.map((p) => p.box.y))
   })
 
   it("restacks the survivors as one column when the drop pass empties a whole column", () => {
@@ -282,7 +282,7 @@ describe("layoutContentFit surplus distribution", () => {
     return { type: "kpi_cards", items: [{ value: "1", label }] }
   }
 
-  it("two components + large remaining: the stretch pass takes its 60% share, the gap pass then grows the single gap to its 1.5x cap, and only what neither could spend sinks to the bottom", () => {
+  it("two components + large remaining: the stretch pass takes its 60% share, the gap pass then grows the single gap to its 1.5x ceiling, and only what neither could spend sinks to the bottom", () => {
     const components = [kpiComponent("a"), kpiComponent("b")]
     const fitRect: ContentRect = { x: 0, y: 0, w: 400, h: 500 }
     const { placed, dropped } = layoutContentFit(undefined, components, fitRect, ctx)
@@ -298,14 +298,16 @@ describe("layoutContentFit surplus distribution", () => {
     // The 97.6 the stretch pass deliberately left behind is over the 80px
     // surplus threshold, so the gap pass now has something to do instead of
     // being handed a remaining of zero. Its share (97.6 * 0.6 = 58.56) is
-    // more than the per-gap cap allows, so the single gap grows by exactly
-    // 1.5 * 16 = 24 and the second component lands at 209.2 + 24 = 233.2.
-    expect(placed[1].box.y).toBeCloseTo(233.2, 5)
-    expect(placed[1].box.y - (placed[0].box.y + 193.2)).toBeCloseTo(40, 5)
-    // What neither pass could spend — 73.6 — is what still sinks to the
-    // bottom, in place of the 244 that used to go entirely into card
-    // interiors while the gap between them stayed at its original 16.
-    expect(fitRect.h - (placed[1].box.y + 193.2)).toBeCloseTo(73.6, 5)
+    // far more than the ceiling allows: a gap ends up at most 1.5x its
+    // original size, so this one grows by 8 to 24 and the second component
+    // lands at 209.2 + 8 = 217.2. Two components 24px apart still read as
+    // one block, where the 40px the old 2.5x ceiling produced read as two.
+    expect(placed[1].box.y).toBeCloseTo(217.2, 5)
+    expect(placed[1].box.y - (placed[0].box.y + 193.2)).toBeCloseTo(24, 5)
+    // What neither pass could spend — 89.6 — is what sinks to the bottom,
+    // where the 2026-08-20 gravity ruling wants it: the page's lower edge
+    // may be empty, the space between its parts may not.
+    expect(fitRect.h - (placed[1].box.y + 193.2)).toBeCloseTo(89.6, 5)
   })
 
   it("remaining <= 80px: byte-identical to the pre-surplus stack (regression lock)", () => {
@@ -367,7 +369,7 @@ describe("layoutContentFit surplus distribution", () => {
     const withFootnote: ContentRect = { x: 0, y: 0, w: 400, h: 330 }
     const full = layoutContentFit(undefined, components, noFootnote, ctx)
     const shrunk = layoutContentFit(undefined, components, withFootnote, ctx)
-    expect(full.placed[1].box.y).toBeCloseTo(233.2, 5) // grown (see first test in this component)
+    expect(full.placed[1].box.y).toBeCloseTo(217.2, 5) // grown (see first test in this component)
     expect(shrunk.placed[1].box.y).toBe(136) // untouched
     expect(shrunk.placed[1].box.y + KPI_H).toBeLessThanOrEqual(withFootnote.h)
   })
@@ -389,11 +391,12 @@ describe("layoutContentFit surplus distribution", () => {
     // Each column's own remaining (244) hands its two kpis the 60% share
     // (+73.2 each, box.h 193.2). The gap pass then works off the global
     // post-stretch remaining (97.6) over both columns' gaps (2): its share
-    // per gap, 29.28, is over the 1.5x cap, so both gaps grow by the same
-    // 24 and both second components land at 233.2 — the point of the test
-    // is that the two columns stay level, which they do at either number.
+    // per gap, 29.28, is over the 1.5x ceiling, so both gaps grow by the
+    // same 8 and both second components land at 217.2 — the point of the
+    // test is that the two columns stay level, which they do at either
+    // number.
     expect(left[1].box.y).toBe(right[1].box.y)
-    expect(left[1].box.y).toBeCloseTo(233.2, 5)
+    expect(left[1].box.y).toBeCloseTo(217.2, 5)
     for (const p of [...left, ...right]) expect(p.box.h).toBeCloseTo(193.2, 5)
   })
 
@@ -420,8 +423,11 @@ describe("layoutContentFit surplus distribution", () => {
     const fitRect: ContentRect = { x: 0, y: 0, w: 1000, h: 500 }
     const { placed } = layoutContentFit(undefined, [verdict, kpiComponent("body")], fitRect, ctx)
 
+    // The verdict measures 70, so the kpi's untouched coordinate is 86. The
+    // stretch pass grows the kpi to its 1.7x per-card ceiling (204) without
+    // moving it, then the gap pass adds the 8px the 1.5x gap ceiling allows.
     expect(placed[1].box.h).toBe(204)
-    expect(placed[1].box.y).toBe(110)
+    expect(placed[1].box.y).toBe(94)
   })
 
   it("kpi_focus: the hoisted kpi row and the rest-stack below it count as one column (the boundary gap grows too)", () => {

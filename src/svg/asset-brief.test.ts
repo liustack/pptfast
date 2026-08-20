@@ -68,11 +68,14 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     expect(item.missing).toBe(true) // no assets.images entry was supplied
     // x/y measured off the real render, not copied from the layout's own
     // geometry-sketch doc comment ("y=72..640" describes the 568px-tall
-    // *slot*, not the 307px-tall image's position within it — the renderer
-    // centers the capped-height image inside that slot, landing at y=203;
-    // asserting the actual output here, not the slot bounds, is exactly the
-    // 裁定 1 discipline this test exists to pin).
-    expect(item.frame).toEqual({ x: 571, y: 203, w: 613, h: 307, aspect: "2:1" })
+    // *slot*, not the 307px-tall image's position within it). Since the
+    // 2026-08-20 vertical-gravity ruling the renderer hangs a capped-height
+    // visual off the slot's top edge rather than its middle, so the frame
+    // starts at 72 and the 261px it does not use is under it — it used to
+    // land at 203 with half that gap above. Asserting the actual output
+    // here, not the slot bounds, is exactly the 裁定 1 discipline this test
+    // exists to pin: the height is still the image's own, not the slot's.
+    expect(item.frame).toEqual({ x: 571, y: 72, w: 613, h: 307, aspect: "2:1" })
     expect(item.suggested_pixels).toEqual({ w: 1226, h: 614 })
   })
 
@@ -83,7 +86,7 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     const item = brief.items[0]!
     expect(item.missing).toBe(false)
     expect(item.rendered).toBe(true)
-    expect(item.frame).toEqual({ x: 571, y: 203, w: 613, h: 307, aspect: "2:1" })
+    expect(item.frame).toEqual({ x: 571, y: 72, w: 613, h: 307, aspect: "2:1" })
   })
 
   it("never mutates the input ir (dummy injection is a render-only in-memory copy)", () => {
