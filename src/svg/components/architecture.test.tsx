@@ -265,7 +265,7 @@ describe("architecture component", () => {
       expect(dropped).toBeTruthy()
       const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
       expect(hiddenCount + rects.length).toBe(manyLayers.length)
-      expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+      expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
 
       // Review fix (I1, sibling audit): the marker itself must stay inside
       // box.h too, not just the rects — a marker-excluding containment

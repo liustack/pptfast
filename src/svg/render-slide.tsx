@@ -20,7 +20,7 @@ export interface SlideRender {
    * How many content blocks the layout dropped *without the slide saying
    * so* — the sum of every `data-dropped-silent` marker in this slide's
    * markup (`DroppedContentMarker`, emitted at `layoutContentFit`'s drop
-   * path). A component's own "+N more" line carries `data-dropped` but not
+   * path). A component's own "+N …" line carries `data-dropped` but not
    * this one: the reader can see that cut, so it stays an advisory `audit`
    * finding rather than a blocked export.
    */

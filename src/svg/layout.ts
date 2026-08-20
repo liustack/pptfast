@@ -441,7 +441,7 @@ export function layoutContentFit(
   // if it alone doesn't fit the rect (upstream quality gates make this rare).
   // 保留块带上剩余可用高（box.h < 测量高 = 截断预算，2026-07-11 存量
   // deck 5 项长卡画出页外实锤）：可分割块（row_cards）据此块内截断并
-  // 自画「+N more」，不感知 box.h 的块行为不变（照旧溢出渲染）。
+  // 自画「+N …」，不感知 box.h 的块行为不变（照旧溢出渲染）。
   if (kept.length === 0 && placed.length > 0) {
     const first = placed[0]
     const avail = rect.y + rect.h - first.box.y

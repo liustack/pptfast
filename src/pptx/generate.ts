@@ -50,7 +50,7 @@ interface DroppedPage {
  * run nobody was obliged to make.
  *
  * Scoped to the silent kind on purpose. A component that trims its own
- * items still paints "+N more" on the slide (`components/bullets.tsx`,
+ * items still paints "+N …" on the slide (`components/bullets.tsx`,
  * `data-table.tsx`, `timeline.tsx`) — the reader is told, the deck is not
  * pretending to be complete, and `docs/concepts.md` already adjudicated
  * that case as graceful degradation plus an advisory audit finding. This

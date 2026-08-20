@@ -230,7 +230,7 @@ export const comparison: SvgComponent<ComparisonComponent> = {
     const naturalHeight = (fullRowCount + 1) * ROW // header + every data row, ignoring box.h
     let visibleRowCount = fullRowCount
     if (naturalHeight > truncBudget) {
-      // Reserve 1 ROW for the header row and 1 ROW for the "+N more"
+      // Reserve 1 ROW for the header row and 1 ROW for the "+N …"
       // marker line itself inside the budget — same reservation shape
       // row-cards.tsx's own `truncBudget - 20` uses for its marker text.
       // Floored at 1 visible row (row-cards.tsx's "never render zero
@@ -372,7 +372,7 @@ export const comparison: SvgComponent<ComparisonComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hiddenRowCount} more`}
+            {`+${hiddenRowCount} …`}
           </text>
         )}
       </g>

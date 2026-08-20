@@ -162,7 +162,7 @@ describe("data_table component", () => {
       expect(texts).toContain("Row 11")
     })
 
-    it("truncates rows and renders a data-dropped '+N more' marker when box.h is smaller than natural height", () => {
+    it("truncates rows and renders a data-dropped '+N …' marker when box.h is smaller than natural height", () => {
       const { container } = svg(dataTable.render(manyRows, { x: 0, y: 0, w: 900, h: 150 }, ctx))
       const marker = container.querySelector("[data-dropped]")
       expect(marker).toBeTruthy()

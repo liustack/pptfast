@@ -136,7 +136,7 @@ const LEGEND_ENTRY_TRAILING_GAP = 18
  * how many entries fit a given width is `floor(availW / LEGEND_SLOT_W)`,
  * and any individual name too long for its own slot shrinks/truncates via
  * `fitSvgLine` rather than growing the slot. Entries beyond that count drop
- * into one trailing "+N more" slot instead of shrinking every slot further
+ * into one trailing "+N …" slot instead of shrinking every slot further
  * — the same "fixed reserved footprint, content adapts to it" contract
  * `measure()`'s own x_title/y_title bands already use.
  */
@@ -158,7 +158,7 @@ type LegendSlot = {
  * Lays out a chart's legend entries (chart-model.ts's `ChartModel.legend`,
  * already in input series order) against `availW` px: how many whole slots
  * fit, each visible entry's own fitted (shrunk/truncated) name, and how many
- * trailing entries got dropped into a "+N more" marker instead. Pure
+ * trailing entries got dropped into a "+N …" marker instead. Pure
  * function of `legend`/`availW` — no rendering, mirrors this file's own
  * `fitYAxisTitle`'s "compute the fit, let the caller draw it" shape.
  */
@@ -380,7 +380,7 @@ export const chart: SvgComponent<ChartComponent> = {
                 fontFamily={ctx.fonts.body}
                 dominantBaseline="alphabetic"
               >
-                {`+${legendLayout.droppedCount} more`}
+                {`+${legendLayout.droppedCount} …`}
               </text>
             )}
           </g>

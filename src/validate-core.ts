@@ -150,8 +150,8 @@ function describeQualityIssue(issue: QualityIssue): string {
       // render-side box.h cap (bullets.tsx, same task) will still land the
       // file successfully, but "graceful truncation" stops describing the
       // outcome honestly — most of the content would silently vanish
-      // behind a single "+N more" marker.
-      return `bullet list has far too many items (over ${CAPACITY.bullets.countOverflowItems}) — most would silently drop behind a "+N more" marker rather than render; trim it substantially or split into multiple slides`
+      // behind a single "+N …" marker.
+      return `bullet list has far too many items (over ${CAPACITY.bullets.countOverflowItems}) — most would silently drop behind a "+N …" marker rather than render; trim it substantially or split into multiple slides`
     case "bullet_item_long": {
       const b = issue.bulletsBudget
       return b
@@ -186,15 +186,15 @@ function describeQualityIssue(issue: QualityIssue): string {
     case "comparison_overflow":
       return `comparison table has too many rows (over ${CAPACITY.comparison.warnRows}) — trim it or split into multiple slides`
     case "comparison_count_overflow":
-      return `comparison table has far too many rows (over ${CAPACITY.comparison.errorRows}) — most would silently drop behind a "+N more" marker rather than render, trim it substantially or split into multiple slides`
+      return `comparison table has far too many rows (over ${CAPACITY.comparison.errorRows}) — most would silently drop behind a "+N …" marker rather than render, trim it substantially or split into multiple slides`
     case "citation_overflow":
       return `citation list has too many sources (over ${CAPACITY.citation.warnSources}) — trim it or split into multiple slides`
     case "citation_count_overflow":
-      return `citation list has far too many sources (over ${CAPACITY.citation.errorSources}) — most would silently drop behind a "+N more" marker rather than render, trim it substantially or split into multiple slides`
+      return `citation list has far too many sources (over ${CAPACITY.citation.errorSources}) — most would silently drop behind a "+N …" marker rather than render, trim it substantially or split into multiple slides`
     case "architecture_overflow":
       return `architecture diagram has too many layers (over ${CAPACITY.architecture.warnLayers}) — trim it or split into multiple slides`
     case "architecture_count_overflow":
-      return `architecture diagram has far too many layers (over ${CAPACITY.architecture.errorLayers}) — most would silently drop behind a "+N more" marker rather than render, trim it substantially or split into multiple slides`
+      return `architecture diagram has far too many layers (over ${CAPACITY.architecture.errorLayers}) — most would silently drop behind a "+N …" marker rather than render, trim it substantially or split into multiple slides`
     case "big_number_no_kpi":
       return "big_number arrangement is missing a kpi_cards component"
     case "chart_axes_ignored": {

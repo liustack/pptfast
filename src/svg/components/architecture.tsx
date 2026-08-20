@@ -36,7 +36,7 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
     const naturalHeight = fullCount * (LAYER_H + GAP) - GAP
     let visibleCount = fullCount
     if (naturalHeight > truncBudget) {
-      // Reserve room for the "+N more" marker line itself, one LAYER_H
+      // Reserve room for the "+N …" marker line itself, one LAYER_H
       // worth, inside the budget — same reservation shape row-cards.tsx's
       // own `truncBudget - 20` uses. Floored at 1 (row-cards.tsx's "never
       // render zero visible units" precedent).
@@ -117,7 +117,7 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hiddenCount} more`}
+            {`+${hiddenCount} …`}
           </text>
         )}
       </g>

@@ -261,7 +261,7 @@ export function componentPage(
  * does not fit alongside its neighbours, and a component's own truncation
  * budget only applies once nothing at all fits — so an overfilled component
  * sharing a page with the component table's lead-in paragraph gets deleted
- * at the slide level and never reaches its own "+N more" branch. Measured
+ * at the slide level and never reaches its own "+N …" branch. Measured
  * with the lead-in in place: every component that overflows vertically was
  * deleted whole, and 15 of these 27 pages rendered the lead-in and nothing
  * else. Solo hands the component the entire content rect, and the only way

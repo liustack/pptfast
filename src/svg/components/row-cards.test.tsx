@@ -40,7 +40,7 @@ describe("row_cards truncation-budget marker geometry (R1 evidence wave, Task T3
   // cards (N-1 gaps for N cards — matches measure()'s own formula), but the
   // render loop used to add a trailing CARD_GAP after *every* card
   // including the last one (`cursor += shellH + CARD_GAP`, unconditional)
-  // before placing the "+N more" marker 14px below `cursor` — an extra,
+  // before placing the "+N …" marker 14px below `cursor` — an extra,
   // uncounted CARD_GAP (14px) the acceptance loop never budgeted for.
   // Worst case the marker's baseline could land up to `box.h + 8`, past the
   // real overflow auditor's own tolerance (`TOL = 6`, svg-audit.ts).
@@ -49,7 +49,7 @@ describe("row_cards truncation-budget marker geometry (R1 evidence wave, Task T3
   // so this test doesn't depend on today's exact cardH/CARD_GAP arithmetic
   // — any box.h that forces truncation must leave the marker inside the
   // real v-overflow auditor's tolerance.
-  it("the '+N more' marker never v-overflows its declared rect, for every box.h that forces truncation", () => {
+  it("the '+N …' marker never v-overflows its declared rect, for every box.h that forces truncation", () => {
     const w = 640
     const component = { type: "row_cards" as const, items: DENSE_ITEMS }
     const natural = rowCards.measure(component, w, ctx)
@@ -73,11 +73,11 @@ describe("row_cards truncation-budget marker geometry (R1 evidence wave, Task T3
       )
       if (!markup.includes("data-dropped")) continue // this box.h didn't force truncation — skip
       exercisedAtLeastOneTruncation = true
-      // Scoped to the "+N more" marker specifically, not every v-overflow
+      // Scoped to the "+N …" marker specifically, not every v-overflow
       // finding — a card's own text can independently overflow for
       // unrelated reasons (font-fit edge cases) this test isn't about.
       const markerOverflow = auditSvgMarkup(markup).filter(
-        (i) => i.kind === "v-overflow" && i.text.includes("more"),
+        (i) => i.kind === "v-overflow" && /^\+\d+ …$/.test(i.text),
       )
       expect(markerOverflow, `box.h=${h} produced a marker v-overflow: ${JSON.stringify(markerOverflow)}`).toEqual([])
     }

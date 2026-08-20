@@ -188,7 +188,7 @@ function baseCardH(component: KpiComponent): number {
  * citation/architecture/timeline — same task): cap the number of rendered
  * cards to what fits `box.w` at a sane minimum card width, reflow the
  * visible cards to fill the freed-up space, and mark the drop with the
- * same "+N more"/`data-dropped` convention (row-cards.tsx's precedent,
+ * same "+N …"/`data-dropped` convention (row-cards.tsx's precedent,
  * adapted to a horizontal trailing slot instead of a line below).
  *
  * The floor itself is a *readability* floor, not the 80px anti-crash one it
@@ -214,7 +214,7 @@ function baseCardH(component: KpiComponent): number {
  * ("units") another 26px at the matching 10px — 80px of the 120.
  */
 const MIN_READABLE_CARD_W = 160
-/** Reserved horizontal slot (px) for the "+N more" marker text itself,
+/** Reserved horizontal slot (px) for the "+N …" marker text itself,
  * plus one `GAP` before it — sized generously for a 3-4 digit count
  * ("+9999 more") at the marker's own 13px font, never a source of the
  * marker itself overflowing `box.w`. */
@@ -222,7 +222,7 @@ const MARKER_RESERVE_W = 90
 
 /**
  * How many leading items fit `box.w` at `MIN_READABLE_CARD_W` once
- * `MARKER_RESERVE_W` (+ one more `GAP`) is set aside for the "+N more"
+ * `MARKER_RESERVE_W` (+ one more `GAP`) is set aside for the "+N …"
  * marker — at least 1, matching every other component in this task's family
  * sweep ("never render zero visible units, even in a near-zero box").
  */
@@ -430,7 +430,7 @@ export const kpi: SvgComponent<KpiComponent> = {
             fontFamily={ctx.fonts.body}
             dominantBaseline="alphabetic"
           >
-            {`+${hidden} more`}
+            {`+${hidden} …`}
           </text>
         )}
       </g>

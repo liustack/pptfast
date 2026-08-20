@@ -106,7 +106,7 @@ pptfast render deck-dir/ -o deck.pptx
 pptfast audit deck-dir/
 ```
 
-零 token、零方差——它离屏渲染每一页，检查溢出（overflow）、越界（out-of-bounds）、低对比度（low-contrast）、重叠（overlap）、内容截断（content-truncated，省略号截掉了真实文字）、内容丢失（content-dropped，一个「+N more」标记隐藏了某个条目或整个 component），发现问题就 exit 1（干净则是 0）。每条 finding 都标出所在页面（和 id），并带一个修法。修那一页被标出的内容——和处理 `validate` 报错一样遵循「重组，不要删除」的纪律——然后单独重跑一次 `pptfast audit deck-dir/`（不用重新渲染）直到 exit 0。这是这份 deck 的视觉 QA。不要用肉眼看截图来代替它。
+零 token、零方差——它离屏渲染每一页，检查溢出（overflow）、越界（out-of-bounds）、低对比度（low-contrast）、重叠（overlap）、内容截断（content-truncated，省略号截掉了真实文字）、内容丢失（content-dropped，一个「+N …」标记隐藏了某个条目或整个 component），发现问题就 exit 1（干净则是 0）。每条 finding 都标出所在页面（和 id），并带一个修法。修那一页被标出的内容——和处理 `validate` 报错一样遵循「重组，不要删除」的纪律——然后单独重跑一次 `pptfast audit deck-dir/`（不用重新渲染）直到 exit 0。这是这份 deck 的视觉 QA。不要用肉眼看截图来代替它。
 
 如果有页面用了 cover/chapter 照片背景，加上 `--pixels`——它会把该页光栅化并采样真实像素，抓住文字直接压在一张没有遮罩的照片上的情况，这是上面纯 SVG 检查唯一看不到的一种。
 

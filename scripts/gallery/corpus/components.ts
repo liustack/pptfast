@@ -462,7 +462,7 @@ const CARD_ICONS = ["layers", "cpu", "database", "globe", "target", "gauge"] as 
  * Deliberately over-capacity instances — the one place in this corpus that
  * breaks the "ordinary case" rule at the top of this file, on purpose.
  *
- * Nine components share one degrade path: keep what fits, draw a "+N more"
+ * Nine components share one degrade path: keep what fits, draw a "+N …"
  * line for the rest, set `data-dropped`. Nobody had ever looked at it. The
  * ordinary corpus tops out at five bullets and the marker needs twelve, so
  * all 434 review pages missed it by design, and the one review verdict that

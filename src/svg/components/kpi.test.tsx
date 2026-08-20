@@ -360,7 +360,7 @@ describe("kpi_cards box.w-aware horizontal cap (graceful landing)", () => {
     const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
     expect(hiddenCount).toBeGreaterThan(0)
     expect(hiddenCount + rects.length).toBe(manyItems.length)
-    expect(dropped!.textContent).toBe(`+${hiddenCount} more`)
+    expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
   })
 
   it("still renders at least one card even when box.w is far smaller than a single card's minimum width", () => {

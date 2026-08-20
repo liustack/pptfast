@@ -576,7 +576,7 @@ console.log("old-command hard-fail leg OK (scenarios / schema --plan / plan vali
 //    directly against real widths before writing this fixture: a full-width
 //    single column needs ~676px for 6 items, well past any real content
 //    rect's ~380-471px range, see docs/concepts.md's capacity section) to
-//    trip `content-dropped` via row-cards.tsx's own item-level "+N more"
+//    trip `content-dropped` via row-cards.tsx's own item-level "+N …"
 //    marker, and a page with a verdict_banner carrying far more text than its
 //    fixed 18px/2-line budget can hold to trip `content-truncated`.
 console.log("--- audit leg ---")
