@@ -407,6 +407,13 @@ export function FullSlideSvg({
           slide.beat,
           themeDef.layoutTendencies?.[slide.type],
         )
+  // A layout that opens with its own full-bleed colour field hides the theme
+  // background completely, and painting one under the other is not free: a
+  // browser antialiases the SVG viewport clip whenever the mounted slide's box
+  // misses the device pixel grid, so the covered colour survives in the edge
+  // column and reads as a pale hairline down the page. See
+  // `LayoutDefinition.paintsOwnBackground` (`./layouts/registry.ts`).
+  const layoutPaintsBackground = pageLayout ? getLayout(pageLayout.id)?.paintsOwnBackground === true : false
 
   return (
     <svg
@@ -415,7 +422,9 @@ export function FullSlideSvg({
       className={className}
       preserveAspectRatio={preserveAspectRatio}
     >
-      <Background spec={bgSpec} images={ir.assets.images} autoScrimColor={autoScrimColor} />
+      {!layoutPaintsBackground && (
+        <Background spec={bgSpec} images={ir.assets.images} autoScrimColor={autoScrimColor} />
+      )}
       {Decor && !imageCoverTakeover && (
         <g data-decor>
           <Decor ir={ir} slide={slide} ctx={ctx} />

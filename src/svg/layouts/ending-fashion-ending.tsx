@@ -170,6 +170,7 @@ export const layoutDef: LayoutDefinition = {
   // meta line.
   id: "fashion-ending",
   kind: "archetype",
+  paintsOwnBackground: true,
   slideTypes: ["ending"],
   slots: [
     { name: "kicker", accepts: [] },

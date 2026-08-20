@@ -140,6 +140,7 @@ export const layoutDef: LayoutDefinition = {
   // rule. No subheading render.
   id: "fashion-chapter",
   kind: "archetype",
+  paintsOwnBackground: true,
   slideTypes: ["chapter"],
   slots: [
     { name: "kicker", accepts: [] },
