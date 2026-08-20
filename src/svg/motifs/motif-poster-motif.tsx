@@ -13,8 +13,9 @@ import type { DecorProps } from "./types"
  *   - **顶缘行情带**（四种页型都画）：y28 / y42 两条横贯细线（border 色，
  *     2px / 1px），线上五枚琥珀刻度齿（x128/368/608/848/1088，y24-32）。
  *     行情屏顶部的刻度尺，也是这套语言里唯一「有节奏」的元素。
- *   - **基线面积线**（四种页型都画）：页面下缘一道行情走线 + 12% 琥珀
- *     面积填充，左起 x48。
+ *   - **基线面积线**（四种页型都画）：页面下缘一道行情走线 + 琥珀面积填充，
+ *     左起 x48。两档不透明度是 2026-08-21 变淡波按实测定的，见
+ *     `BASELINE_LINE_OPACITY`。
  *   - **幽灵季度水印**（仅 cover）：430px 的季度字样压在版心，5% 琥珀——
  *     大到不像字、淡到不参与判读的一层底纹。字样从 `ir.meta.date` 推，
  *     推不出就整块不画（见 `quarterLabel`）。
@@ -25,7 +26,7 @@ import type { DecorProps } from "./types"
  *   - 基线面积线右端**在 x1100 收笔**（主会话裁定，设计稿原稿画到 x1232）：
  *     原稿右端会从 logo 盒 (1120,630,96×40) 正中穿过去，x1100 让出 20px。
  *     `motif-poster-motif.test.tsx` 锁死这条线——把右端改回 1232 测试立刻红。
- *   - 面积填充 12% / 水印 5% 都低于 `deck-audit.ts` 的 `MIN_BG_OPACITY`
+ *   - 面积填充 8% / 水印 5% 都低于 `deck-audit.ts` 的 `MIN_BG_OPACITY`
  *     (0.5)，永远不会被当成某段文字的背景去判对比度（ink v3 一角残山的
  *     同一条形式化说法）。
  *
@@ -43,6 +44,20 @@ const BAND_LINE_Y_TOP = 28
 const BAND_LINE_Y_BOTTOM = 42
 const BAND_STROKE_TOP = 2
 const BAND_STROKE_BOTTOM = 1
+/**
+ * 下沿细线的退底档（2026-08-21 变淡波）。上沿 2px 那条一处不改。
+ *
+ * 下沿这条穿过 `poster-chapter` / `roman-chapter` 的 kicker：kicker 22px
+ * 基线 y56，CJK 字身约 y37-56，线在 y41.5-42.5，实测从字的上三分之一横穿
+ * 过去，读起来是删除线（墨盒扫掠工具扫三语料 153 页命中 6 页，全部是这两个
+ * chapter 版式，工具见本文件末尾注明的路径）。
+ *
+ * 按设计裁定「装饰与文字抢主次时只降透明度、位置一 px 不动」处理。0.45 是
+ * 实测挑的：border 压 bg 满不透明是 1.435:1，本主题最安静的一条结构线，
+ * 0.45 把它降到 1.157:1，仍看得出是成对细线的下面那条，压在字上时不再抢
+ * 读。上沿线与琥珀刻度齿全语料零相交，原样保留。
+ */
+const BAND_BOTTOM_OPACITY = 0.45
 /** 刻度齿：等距五枚，跨在 y28 那条线上（y24-32）。 */
 const TICK_XS = [128, 368, 608, 848, 1088]
 const TICK_Y1 = 24
@@ -61,11 +76,30 @@ const BASELINE_POINTS: readonly (readonly [number, number])[] = [
   [470, 618], [540, 626], [610, 608], [680, 618], [750, 604], [820, 612],
   [890, 598], [960, 608], [1030, 594], [1100, 602],
 ]
-/** 面积填充的下缘（走线与它之间填 12% 琥珀）。 */
+/** 面积填充的下缘（走线与它之间填琥珀）。 */
 const BASELINE_FLOOR = 656
 const BASELINE_STROKE = 2
-const BASELINE_LINE_OPACITY = 0.8
-const BASELINE_FILL_OPACITY = 0.12
+/**
+ * 走线 0.8 → 0.25、面积填充 0.12 → 0.08（2026-08-21 变淡波）。折点一个不改。
+ *
+ * y594-656 这条带不是空的：署名、脚注、页脚 meta 都落在这里。墨盒扫掠工具
+ * （`.issues/2026-08-21-restore-design-decor/tools/decor-ink-sweep.mts`）扫
+ * 三语料 153 页，走线压中 52 页的正文墨盒、面积填充压中 74 页，封面的
+ * 「陈砚清 · 首席技术官 · Internal · 2026 年 7 月」是其中一处。曾经有一波
+ * 把整套语汇搬到顶缘 y8-28 去躲，被设计裁定推翻：板上的位置是设计的一部分，
+ * 装饰与文字抢主次时只许变淡。
+ *
+ * 0.25 是实测挑的：琥珀压 insight 底色满不透明是 8.8:1，0.8 档 **6.0:1**——
+ * 高过 4.5:1 的正文地板，那条走线当时确实是在跟字抢读。0.25 落到 1.65:1，
+ * 与本主题 border 细线的 1.44:1 同一档，2px 的走线在深底上照样看得清。
+ * 面积填充跟着降到 0.08（1.14:1），免得走线一淡下来、这片填充反倒成了
+ * 这套语汇里最响的一件，把行情走线读成一块实心色带。
+ *
+ * 两个值都远低于 `deck-audit.ts` 的 `MIN_BG_OPACITY` (0.5)，不参与任何
+ * 对比度判读。
+ */
+const BASELINE_LINE_OPACITY = 0.25
+const BASELINE_FILL_OPACITY = 0.08
 
 // ── 幽灵季度水印（仅 cover） ────────────────────────────────────────────
 const WATERMARK_X = 640
@@ -138,6 +172,7 @@ export function PosterMotif({ ir, slide, ctx }: DecorProps) {
         y2={BAND_LINE_Y_BOTTOM}
         stroke={colors.border}
         strokeWidth={BAND_STROKE_BOTTOM}
+        opacity={BAND_BOTTOM_OPACITY}
       />
       {/* 琥珀刻度齿（竖向 <line>，同上理由） */}
       {TICK_XS.map((x) => (
@@ -152,7 +187,7 @@ export function PosterMotif({ ir, slide, ctx }: DecorProps) {
         />
       ))}
 
-      {/* 基线面积线：12% 填充 + 80% 走线 */}
+      {/* 基线面积线：填充 + 走线，两档都是退底值（见 BASELINE_LINE_OPACITY） */}
       <path d={areaPath(BASELINE_POINTS)} fill={colors.accent} opacity={BASELINE_FILL_OPACITY} />
       <polyline
         points={BASELINE_POINTS.map(([x, y]) => `${x},${y}`).join(" ")}

@@ -27,7 +27,8 @@ import type { DecorProps } from "./types"
  *   - **右缘节点链**（四种页型都画）：x1155-1230、y90-570 的一条折线主链
  *     ＋三条支链，节点分三级（辉光大节点 / 中节点 / 小节点）。连线取
  *     `colors.border`——设计稿色板角色表把 border 写成「连线同色，界格即
- *     星轨」，界格与星轨同色是这套语言的一部分，不是巧合。
+ *     星轨」，界格与星轨同色是这套语言的一部分，不是巧合。节点自 2026-08-21
+ *     的变淡波起整档乘一个退底系数，几何一 px 不动，见 `NODE_INK_OPACITY`。
  *   - **顶带疏星**（四种页型都画）：y14-26 上四枚 muted 小点。
  *   - **双轨道弧**（仅 cover / chapter）：圆心在页外右上 (1420,140)，
  *     r430 / r310 两道极淡的弧。
@@ -85,6 +86,24 @@ const NODES_COOL = [
 const NODE_VIOLET = { cx: 1160, cy: 530, r: 2.5 } as const
 const GLOW_OPACITY_ACCENT = 0.25
 const GLOW_OPACITY_COOL = 0.3
+/**
+ * 节点整档的退底系数（2026-08-21 变淡波）。位置一 px 不动，只降不透明度。
+ *
+ * 墨盒扫掠工具扫三语料 153 页的实测
+ * （`.issues/2026-08-21-restore-design-decor/tools/decor-ink-sweep.mts`）：
+ * 连线用的是 border，压在 tech 底色上是 1.43:1，本主题最安静的一条结构线，
+ * 本来就是背景。节点不是：accent 满不透明是 **11.59:1**，比正文 16.5:1 只低一档，
+ * 冷序列两色也有 5.9:1，全都在正文的判读区间里。「星轨进前景」说的正是
+ * 这几枚点，而不是它们的位置。
+ *
+ * 0.45 把三档节点分别压到 2.79 / 2.66 / 2.67:1：都在 4.5:1 的正文地板以下，
+ * 一眼看过去先读文字后读星链，而 r2.5-7 的小圆点在深底上仍清清楚楚。辉光
+ * halo 同乘这个系数，节点与自己 halo 的强弱关系保持不变。
+ *
+ * 连线、顶带疏星、双轨道弧都不动：疏星全语料零相交，双轨道弧是 border 的
+ * 0.72/0.52 两档（1.26 / 1.17:1），比连线还淡。
+ */
+const NODE_INK_OPACITY = 0.45
 
 // ── 顶带疏星 ────────────────────────────────────────────────────────────
 const SPARSE_STARS = [
@@ -160,9 +179,15 @@ export function ConstellationMotif({ slide, ctx }: DecorProps) {
       {NODES_ACCENT.map((n) => (
         <g key={`node-a-${n.cx}-${n.cy}`}>
           {"glow" in n && n.glow && (
-            <circle cx={n.cx} cy={n.cy} r={n.glow} fill={colors.accent} opacity={GLOW_OPACITY_ACCENT} />
+            <circle
+              cx={n.cx}
+              cy={n.cy}
+              r={n.glow}
+              fill={colors.accent}
+              opacity={GLOW_OPACITY_ACCENT * NODE_INK_OPACITY}
+            />
           )}
-          <circle cx={n.cx} cy={n.cy} r={n.r} fill={colors.accent} />
+          <circle cx={n.cx} cy={n.cy} r={n.r} fill={colors.accent} opacity={NODE_INK_OPACITY} />
         </g>
       ))}
 
@@ -170,14 +195,20 @@ export function ConstellationMotif({ slide, ctx }: DecorProps) {
       {NODES_COOL.map((n) => (
         <g key={`node-c-${n.cx}-${n.cy}`}>
           {"glow" in n && n.glow && (
-            <circle cx={n.cx} cy={n.cy} r={n.glow} fill={cool} opacity={GLOW_OPACITY_COOL} />
+            <circle cx={n.cx} cy={n.cy} r={n.glow} fill={cool} opacity={GLOW_OPACITY_COOL * NODE_INK_OPACITY} />
           )}
-          <circle cx={n.cx} cy={n.cy} r={n.r} fill={cool} />
+          <circle cx={n.cx} cy={n.cy} r={n.r} fill={cool} opacity={NODE_INK_OPACITY} />
         </g>
       ))}
 
       {/* 支链末端的紫点 */}
-      <circle cx={NODE_VIOLET.cx} cy={NODE_VIOLET.cy} r={NODE_VIOLET.r} fill={violet} />
+      <circle
+        cx={NODE_VIOLET.cx}
+        cy={NODE_VIOLET.cy}
+        r={NODE_VIOLET.r}
+        fill={violet}
+        opacity={NODE_INK_OPACITY}
+      />
 
       {/* 顶带疏星 */}
       {SPARSE_STARS.map((s) => (

@@ -92,13 +92,18 @@ describe("TerraMotif（等高线）", () => {
     expect(Array.from(root.querySelectorAll("circle"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：等高线与种子点都走 primary，等高线 0.5 不透明", () => {
+  /**
+   * 2026-08-21 变淡波把等高线从 0.5 降到 0.25（1.43:1，与本主题 border 细线
+   * 同档），几何一 px 不动——y634-658 这条带压着 49/41/40 页的正文墨盒，
+   * 处方是变淡而不是搬位置。种子点零相交，仍是满不透明。
+   */
+  it("颜色一律读 token：等高线与种子点都走 primary，等高线 0.25 退底档", () => {
     const t = resolveStyle("terra")
     const { root } = draw("terra", coverSlide)
     const group = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("fill") === "none")!
     expect(group.getAttribute("stroke")).toBe(t.colors.primary)
     expect(group.getAttribute("stroke-width")).toBe("1.2")
-    expect(group.getAttribute("opacity")).toBe("0.5")
+    expect(group.getAttribute("opacity")).toBe("0.25")
     const seedGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("fill") === t.colors.primary)!
     expect(seedGroup).toBeTruthy()
   })

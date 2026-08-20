@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
+import { contrastRatio } from "../audit/deck-audit"
 import { PosterMotif } from "./motif-poster-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -99,17 +100,73 @@ describe("PosterMotif（行情语汇）", () => {
     }
   })
 
-  it("四种页型都画基线面积线：面积 12% + 走线 80%，都走 accent", () => {
+  /**
+   * 2026-08-21 变淡波把这两档从 0.12/0.8 降到 0.08/0.25，几何一 px 不动。
+   * 走线原来的 0.8 档压在 insight 底色上是 6.0:1，高过 4.5:1 的正文地板——
+   * 它当时确实在跟署名/脚注抢读（实测 52 页）。新值把两档钉在这里，改回去
+   * 立刻红。
+   */
+  it("四种页型都画基线面积线：面积 8% + 走线 25%（退底档），都走 accent", () => {
     const tokens = resolveStyle("insight")
     for (const slide of ALL_SLIDES) {
       const { root } = draw("insight", slide)
       const area = root.querySelector("path")!
       expect(area.getAttribute("fill")).toBe(tokens.colors.accent)
-      expect(area.getAttribute("opacity")).toBe("0.12")
+      expect(area.getAttribute("opacity")).toBe("0.08")
       const line = root.querySelector("polyline")!
       expect(line.getAttribute("stroke")).toBe(tokens.colors.accent)
-      expect(line.getAttribute("opacity")).toBe("0.8")
+      expect(line.getAttribute("opacity")).toBe("0.25")
       expect(line.getAttribute("fill")).toBe("none")
+      // 走线要压得住署名，但不能压没：面积填充必须比走线更淡，否则整条
+      // 行情走线会读成一块实心色带。
+      expect(Number(area.getAttribute("opacity"))).toBeLessThan(Number(line.getAttribute("opacity")))
+    }
+  })
+
+  /**
+   * 「压字检测」：走线与署名/脚注同处 y594-656，所以它混出来的颜色压在页面
+   * 底色上，必须低于 4.5:1 的正文地板——高过这条线，它读起来就是另一段正文
+   * 而不是背景。把 `BASELINE_LINE_OPACITY` 改回 0.8（6.0:1）这条立刻红。
+   */
+  it("压字检测：走线混色后的对比度低于 4.5:1 的正文地板", () => {
+    const t = resolveStyle("insight")
+    const { root } = draw("insight", coverSlide)
+    const bg = t.defaultBackgrounds.cover
+    const ground = bg.kind === "gradient" ? bg.from : t.colors.bg
+    const hex = (s: string) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16))
+    const blend = (fg: string, a: number) => {
+      const f = hex(fg)
+      const b = hex(ground)
+      return "#" + f.map((c, i) => Math.round(c * a + b[i]! * (1 - a)).toString(16).padStart(2, "0")).join("")
+    }
+    const line = root.querySelector("polyline")!
+    const area = root.querySelector("path")!
+    const lineRatio = contrastRatio(blend(line.getAttribute("stroke")!, Number(line.getAttribute("opacity"))), ground)
+    const areaRatio = contrastRatio(blend(area.getAttribute("fill")!, Number(area.getAttribute("opacity"))), ground)
+    // Body ink on the same ground is the other end of the scale — the point
+    // of the fade is the gap between these two numbers.
+    const inkRatio = contrastRatio(t.colors.text, ground)
+    expect(lineRatio).toBeLessThan(4.5)
+    expect(areaRatio).toBeLessThan(lineRatio)
+    expect(inkRatio).toBeGreaterThan(4.5)
+  })
+
+  /**
+   * 顶缘双线里只有下沿那条降了档（1.435:1 → 1.157:1）：它横穿
+   * `poster-chapter`/`roman-chapter` 的 kicker 字身上三分之一，全语料 153 页
+   * 命中 6 页。上沿 2px 那条与五枚琥珀刻度齿零相交，一处不改。
+   */
+  it("顶缘双线只有下沿一条带退底不透明度，上沿与刻度齿保持满不透明", () => {
+    for (const slide of ALL_SLIDES) {
+      const { root } = draw("insight", slide)
+      const lines = Array.from(root.querySelectorAll("line"))
+      const top = lines.find((l) => l.getAttribute("y1") === "28")!
+      const bottom = lines.find((l) => l.getAttribute("y1") === "42")!
+      expect(top.getAttribute("opacity")).toBe(null)
+      expect(bottom.getAttribute("opacity")).toBe("0.45")
+      for (const t of lines.filter((l) => l.getAttribute("y1") === "24")) {
+        expect(t.getAttribute("opacity")).toBe(null)
+      }
     }
   })
 

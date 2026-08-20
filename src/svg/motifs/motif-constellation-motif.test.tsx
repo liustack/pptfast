@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
+import { contrastRatio } from "../audit/deck-audit"
 import { ConstellationMotif } from "./motif-constellation-motif"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -103,6 +104,57 @@ describe("ConstellationMotif（星座链 v2）", () => {
     expect(fills.filter((f) => f === t.colors.chartPalette[1]).length).toBe(5) // 4 枚 + 1 圈辉光
     expect(fills.filter((f) => f === t.colors.chartPalette[2]).length).toBe(1)
     expect(fills.filter((f) => f === t.colors.muted).length).toBe(4) // 顶带疏星
+  })
+
+  /**
+   * 2026-08-21 变淡波：节点整档乘 0.45，几何一 px 不动。accent 满不透明压在
+   * tech 底色上是 11.6:1、冷序列两色 5.9:1，都落在正文的判读区间里——「星轨
+   * 进前景」说的是这几枚点。0.45 之后三档分别是 2.79 / 2.66 / 2.67:1，全在
+   * 4.5:1 的正文地板以下。辉光同乘该系数，节点与自己 halo 的强弱关系不变。
+   * 连线（border，1.43:1）与顶带疏星（零相交）不动。
+   */
+  it("节点整档退底 0.45（辉光同乘），连线与疏星保持原样", () => {
+    const t = resolveStyle("tech")
+    const { root } = draw("tech", contentSlide)
+    const solid = nodes(root).filter(
+      (c) => c.getAttribute("fill") !== t.colors.muted && Number(c.getAttribute("r")) <= 4,
+    )
+    expect(solid.length).toBe(10)
+    for (const c of solid) expect(c.getAttribute("opacity")).toBe("0.45")
+    const glows = nodes(root).filter((c) => Number(c.getAttribute("r")) >= 6)
+    expect(glows.map((c) => c.getAttribute("opacity")).sort()).toEqual(["0.1125", "0.1125", "0.135"])
+    for (const s of nodes(root).filter((c) => c.getAttribute("fill") === t.colors.muted)) {
+      expect(s.getAttribute("opacity")).toBe(null)
+    }
+    for (const l of Array.from(root.querySelectorAll("polyline"))) {
+      expect(l.getAttribute("opacity")).toBe(null)
+    }
+  })
+
+  /**
+   * 「压字检测」：节点混色后压在页面底色上必须低于 4.5:1 的正文地板。
+   * 把 `NODE_INK_OPACITY` 改回 1 这条立刻红（accent 11.6:1）。
+   */
+  it("压字检测：三档节点混色后都低于 4.5:1 的正文地板，正文自己远在其上", () => {
+    const t = resolveStyle("tech")
+    const bg = t.defaultBackgrounds.content
+    const ground = bg.kind === "gradient" ? bg.from : t.colors.bg
+    const hex = (s: string) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16))
+    const blend = (fg: string, a: number) => {
+      const f = hex(fg)
+      const b = hex(ground)
+      return "#" + f.map((c, i) => Math.round(c * a + b[i]! * (1 - a)).toString(16).padStart(2, "0")).join("")
+    }
+    const { root } = draw("tech", contentSlide)
+    const discs = nodes(root).filter(
+      (c) => c.getAttribute("fill") !== t.colors.muted && Number(c.getAttribute("r")) <= 4,
+    )
+    expect(discs.length).toBeGreaterThan(0)
+    for (const c of discs) {
+      const ratio = contrastRatio(blend(c.getAttribute("fill")!, Number(c.getAttribute("opacity"))), ground)
+      expect(ratio).toBeLessThan(4.5)
+    }
+    expect(contrastRatio(t.colors.text, ground)).toBeGreaterThan(4.5)
   })
 
   it("双轨道弧只进 cover / chapter，圆心在页外右上", () => {
