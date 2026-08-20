@@ -47,9 +47,9 @@ const irNoMeta = (theme: string, slide: Slide): PptxIR =>
 // Captured once from the (now-retired) legacy `BentoTechEnding` — locks the
 // byte-identical output the port preserved, without importing templates/.
 const ENDING_TECH_WITH_HEADING_MARKUP =
-  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#EAF1FA" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#93A5C0" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
+  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#EAF1FA" text-anchor="middle" dominant-baseline="alphabetic">感谢聆听</text><rect x="610" y="420" width="60" height="3" fill="#53E0D2"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#93A5C0" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
 const ENDING_TECH_BARE_MARKUP =
-  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#EAF1FA" text-anchor="middle" dominant-baseline="alphabetic">Thank you<tspan fill="#53E0D2">.</tspan></text><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#93A5C0" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
+  '<text x="640" y="330" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="88" font-weight="700" fill="#EAF1FA" text-anchor="middle" dominant-baseline="alphabetic">Thank you<tspan fill="#53E0D2">.</tspan></text><rect x="610" y="420" width="60" height="3" fill="#53E0D2"></rect><text x="640" y="463" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#93A5C0" text-anchor="middle" dominant-baseline="alphabetic">维岚科技</text>'
 
 describe("ConstellationEnding", () => {
   it("tech tokens 下与旧 BentoTechEnding 输出逐字节一致（档位一，有 heading，不兜底）", () => {
@@ -84,9 +84,7 @@ describe("ConstellationEnding", () => {
     const deck = ir("consulting", endingBare)
     const out = renderSvgMarkup(<ConstellationEnding ir={deck} slide={endingBare} index={0} ctx={ctx} />)
     expect(out).toContain("#1C1E23") // consulting text
-    // consulting accent 在本页已无载体：短横条删了（2026-08-20 悬空装饰
-    // 清扫），兜底句号那颗 tspan 的 accent 又被 accessibleInk 判定压不过
-    // 底色、回落成中性墨。tech 的两枚烤色一律不得残留。
+    expect(out).toContain("#F5C518") // consulting accent
     expect(out).not.toContain("#EAF1FA") // tech text 不得残留
     expect(out).not.toContain("#53E0D2") // tech accent 不得残留
   })
@@ -104,11 +102,10 @@ describe("ConstellationEnding", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("centers the heading and shows card-less meta text only when meta exists", () => {
+  it("centers the heading and shows a signature bar + card-less meta text only when meta exists", () => {
     // Post-launch revision: the old bordered/filled meta "card" is gone —
     // replaced by a plain 60x3 accent bar (no card) plus bare centered meta
-    // text. 2026-08-20 悬空装饰清扫又拿掉了那条短横条本身：它离上面的副题
-    // 68px、离下面的 meta 43px，两头都不贴。剩下的就是裸的居中 meta 文字。
+    // text.
     const slide: Slide = { type: "ending", heading: "谢谢", components: [] } as Slide
     const ctx = buildCtx(resolveStyle("tech"), {})
 
@@ -124,8 +121,13 @@ describe("ConstellationEnding", () => {
     expect(heading.getAttribute("text-anchor")).toBe("middle")
     expect(heading.getAttribute("x")).toBe("640")
 
-    // No <rect> at all: no card, and no signature bar either.
-    expect(Array.from(rootWithMeta.querySelectorAll("rect"))).toHaveLength(0)
+    // Exactly one <rect> in this fixture (no subheading): the 60x3 accent
+    // signature bar — no card-shaped rect anywhere.
+    const rects = Array.from(rootWithMeta.querySelectorAll("rect"))
+    expect(rects).toHaveLength(1)
+    expect(rects[0].getAttribute("width")).toBe("60")
+    expect(rects[0].getAttribute("height")).toBe("3")
+    expect(rects[0].getAttribute("fill")).toBe(ctx.colors.accent)
 
     const docNoMeta = irNoMeta("tech", slide)
     const markupNoMeta = renderSvgMarkup(
@@ -133,8 +135,8 @@ describe("ConstellationEnding", () => {
         <ConstellationEnding ir={docNoMeta} slide={slide} index={0} ctx={ctx} />
       </svg>,
     )
-    // No org/contact/date → the meta block is omitted entirely — no <rect>
-    // and no stray text.
+    // No org/contact/date → the signature bar is omitted entirely too (no
+    // orphaned decorative bar with nothing under it) — no <rect> at all.
     const rootNoMeta = parseSvgRoot(markupNoMeta)
     expect(rootNoMeta.querySelectorAll("rect")).toHaveLength(0)
   })

@@ -98,17 +98,17 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
   if (contactText) metaLines.push(contactText)
   if (metaLines.length === 0 && date) metaLines.push(date)
 
-  // 曾在这里画一条 60x3 的居中「签名条」，2026-08-20 悬空装饰清扫删掉：
-  // 它离上面的副题 68px、离下面的 meta 43px，两头都不贴，纯装饰。
-  // 落点算式原样保留，meta 块的位置一格不动。
-  const META_ANCHOR_Y = Math.max(
+  const BAR_W = 60
+  const BAR_H = 3
+  const BAR_X = 640 - BAR_W / 2
+  const BAR_Y = Math.max(
     420,
     headingLastY + 68,
     subheading ? subheadingY + 68 : 0
   )
   const META_GAP = 40
   const META_LINE_HEIGHT = 22
-  const metaFirstBaselineY = META_ANCHOR_Y + 3 + META_GAP
+  const metaFirstBaselineY = BAR_Y + BAR_H + META_GAP
 
   return (
     <>
@@ -212,10 +212,18 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
         </text>
       )}
 
-      {/* Meta text is omitted entirely when the deck carries no
-          organization, contact, or date. */}
+      {/* Signature bar + meta text are omitted entirely (no orphaned bar,
+          no empty card) when the deck carries no organization, contact, or
+          date. */}
       {metaLines.length > 0 && (
         <>
+          <rect
+            x={BAR_X}
+            y={BAR_Y}
+            width={BAR_W}
+            height={BAR_H}
+            fill={colors.accent}
+          />
           {metaLines.map((line, i) => (
             <text
               key={i}

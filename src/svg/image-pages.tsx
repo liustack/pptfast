@@ -175,7 +175,7 @@ const SPLIT_IMG_H = H
 
 /**
  * image_split 出血版式：左列全高出血大图（页顶到页底、贴左缘，无框线），
- * 右栏 kicker + 大标题 + 副题 + components 的排印层次。
+ * 右栏 kicker + 大标题 + accent 短线 + 副题 + components 的排印层次。
  * 无 image 块时回落 null（调用方走模板正常路径）。
  */
 export function ImageSplitPage({
@@ -221,10 +221,9 @@ export function ImageSplitPage({
   const kickerY = cursor
   cursor += 46
   const titleY = cursor + title.lineHeight - 12
-  // 标题与副题之间的空气。曾经中间还有一条 72x4 的 accent 短条，它距标题
-  // 墨底 21px、距副题 30px，两头都不贴（2026-08-20 悬空装饰清扫删掉）——
-  // 间距原样保留，副题以下一格不动。
-  cursor += title.lines.length * title.lineHeight + 18 + 30
+  cursor += title.lines.length * title.lineHeight + 18
+  const ruleY = cursor
+  cursor += 30
   const subY = cursor + 6
   if (sub.lines.length) cursor += sub.lines.length * sub.lineHeight + 24
   const componentsTop = cursor + 8
@@ -304,6 +303,7 @@ export function ImageSplitPage({
           {line}
         </text>
       ))}
+      <rect x={textX} y={ruleY} width={72} height={4} fill={ctx.colors.accent} />
       {sub.lines.map((line, i) => (
         <text
           key={i}
@@ -736,9 +736,9 @@ export function ImageBottomPage({
   const captionBottom = hasMetaFooter ? H - 40 : H
   let cursor = 96
   const titleY = cursor + title.lineHeight - 10
-  // 同 ImageSplitPage：曾经这里居中画一条 84x4 的 accent 短条，标题也是居中
-  // 的，短条落在标题正中而不是任何一个词底下（2026-08-20 悬空装饰清扫删掉）。
-  cursor += title.lines.length * title.lineHeight + 14 + 26
+  cursor += title.lines.length * title.lineHeight + 14
+  const ruleY = cursor
+  cursor += 26
   const subY = cursor + 4
   if (sub.lines.length) cursor += sub.lines.length * sub.lineHeight + 18
   const componentsTop = cursor + 6
@@ -777,6 +777,7 @@ export function ImageBottomPage({
           {line}
         </text>
       ))}
+      <rect x={W / 2 - 42} y={ruleY} width={84} height={4} fill={ctx.colors.accent} />
       {sub.lines.map((line, i) => (
         <text
           key={i}

@@ -14,8 +14,8 @@ const endingSlide: Slide = { type: "ending", components: [] } as Slide
 /** chapter 不画（整版 primary 火橙底），其余三档画同一张。 */
 const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
 
-/** 设计板上的四条红虚线禁区（标题区 96,48,1040x122 已无件可量：顶缘短线
- * 在 2026-08-20 悬空装饰清扫里删了，右缘整组靠 x 让开正文区）。 */
+/** 设计板上的四条红虚线禁区。 */
+const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
 const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
 /** 默认（`br`）品牌 logo 盒，`brand-chrome.tsx` 的 `logoBox`；右上盒同尺寸。 */
 const LOGO_BOX = { x: 1120, y: 630, w: 96, h: 40 }
@@ -54,8 +54,7 @@ function parts(root: Element) {
     Array.from(groups.find((g) => g.getAttribute("fill") === fill)?.querySelectorAll("circle") ?? [])
   return {
     guide: lines.find((l) => num(l, "x1") !== num(l, "x2") && num(l, "y1") !== num(l, "y2"))!,
-    /** 水平短线。2026-08-20 悬空装饰清扫之后应当一条都没有。 */
-    horizontals: lines.filter((l) => num(l, "y1") === num(l, "y2")),
+    tick: lines.find((l) => num(l, "y1") === num(l, "y2"))!,
     circles,
     allCircles: Array.from(root.querySelectorAll("circle")),
   }
@@ -67,11 +66,12 @@ function parts(root: Element) {
  * 的 ember 设计表。本文件是本轮新建。
  */
 describe("EmberMotif（上升火星）", () => {
-  it("cover/content/ending 画同一张：斜引线 + 七枚火星", () => {
+  it("cover/content/ending 画同一张：斜引线 + 七枚火星 + 顶缘短线", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("ember", slide)
       const p = parts(root)
       expect(p.guide, `no guide line on ${slide.type}`).toBeTruthy()
+      expect(p.tick, `no top tick on ${slide.type}`).toBeTruthy()
       expect(p.allCircles, `wrong spark count on ${slide.type}`).toHaveLength(7)
     }
   })
@@ -82,13 +82,14 @@ describe("EmberMotif（上升火星）", () => {
     expect(Array.from(root.querySelectorAll("circle"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：四枚火星 primary、三枚 accent、斜引线 border", () => {
+  it("颜色一律读 token：四枚火星 primary、三枚 accent、斜引线 border、顶缘短线 primary", () => {
     const t = resolveStyle("ember")
     const { root } = draw("ember", coverSlide)
     const p = parts(root)
     expect(p.circles(t.colors.primary)).toHaveLength(4)
     expect(p.circles(t.colors.accent)).toHaveLength(3)
     expect(p.guide.getAttribute("stroke")).toBe(t.colors.border)
+    expect(p.tick.getAttribute("stroke")).toBe(t.colors.primary)
   })
 
   it("点列几何：自下而上渐大，火橙与琥珀相间", () => {
@@ -129,10 +130,11 @@ describe("EmberMotif（上升火星）", () => {
     }
   })
 
-  it("斜引线几何：(1150,600) → (1245,86)", () => {
+  it("斜引线几何：(1150,600) → (1245,86)；顶缘短线 x48→120 的 y14", () => {
     const { root } = draw("ember", coverSlide)
-    const { guide } = parts(root)
+    const { guide, tick } = parts(root)
     expect([num(guide, "x1"), num(guide, "y1"), num(guide, "x2"), num(guide, "y2")]).toEqual([1150, 600, 1245, 86])
+    expect([num(tick, "x1"), num(tick, "y1"), num(tick, "x2"), num(tick, "y2")]).toEqual([48, 14, 120, 14])
   })
 
   /** 安全区守卫（设计板的四条红虚线逐条量）。 */
@@ -164,13 +166,9 @@ describe("EmberMotif（上升火星）", () => {
     }
   })
 
-  // 2026-08-20 悬空装饰清扫：左上角那条 (48,14)→(120,14) 的火橙短线删了，
-  // 它不贴任何文字、不落在任何词上。这条测试把「不许再长回来」钉住。
-  it("不画悬空短划线：整张 motif 里没有一条水平线", () => {
-    for (const slide of DRAWN_SLIDES) {
-      const { root } = draw("ember", slide)
-      expect(parts(root).horizontals, `horizontal tick on ${slide.type}`).toHaveLength(0)
-    }
+  it("安全区：顶缘短线在标题区上沿 y48 之上", () => {
+    const { root } = draw("ember", coverSlide)
+    expect(num(parts(root).tick, "y1")).toBeLessThan(TITLE_ZONE.y)
   })
 
   it("不画任何左竖条", () => {

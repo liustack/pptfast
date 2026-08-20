@@ -43,11 +43,8 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
     HEADING_LAST_BASELINE - Math.max(0, title.lines.length - 1) * title.lineHeight
   const headingLastY = HEADING_LAST_BASELINE
 
-  // 曾是一条固定 160px 的居中「下划线」的落点。它离 92px 大标题的字底
-  // 56px，宽度又与标题实际墨宽无关，落下去谁也没划到——2026-08-20 悬空装饰
-  // 清扫删掉（真正会量字宽的下划线见 chapter-banner-chapter.tsx）。
-  const subtitleAnchorY = headingLastY + 56
-  const subtitleY = subtitleAnchorY + 52
+  const underlineY = headingLastY + 56
+  const subtitleY = underlineY + 52
 
   const subtitle = slide.subheading
     ? fitSvgLine(slide.subheading, { maxWidth: 900, fontSize: 28, minFontSize: 16 })
@@ -71,6 +68,15 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
           {line}
         </text>
       ))}
+
+      <line
+        x1="560"
+        y1={underlineY}
+        x2="720"
+        y2={underlineY}
+        stroke={colors.accent}
+        strokeWidth="1.6"
+      />
 
       {subtitle && (
         <text
