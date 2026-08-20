@@ -20,10 +20,15 @@ import { fitHeadingLines } from "../heading-fit"
 import {
   fitSvgLine,
   measureTextUnits,
-  truncateToUnits,
 } from "../../lib/svg-text-layout"
 import { Icon } from "../icons"
-import { dedupeKpiUnit, deltaProps, splitKpiValueWidths } from "../components/kpi"
+import {
+  dedupeKpiUnit,
+  deltaProps,
+  fitKpiUnit,
+  splitKpiValueWidths,
+  type KpiValueScale,
+} from "../components/kpi"
 import { iconCardContentHeight, renderIconCardBody } from "../components/icon-cards"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
@@ -157,6 +162,10 @@ const BENTO_KPI_VALUE_SIZE = 56
 const BENTO_KPI_VALUE_MIN_SIZE = 20
 const BENTO_KPI_LABEL_SIZE = 16
 const BENTO_KPI_LABEL_MIN_SIZE = 11
+/** The unit tspan's size as a fraction of the fitted value size — the same
+ * ratio `components/kpi.tsx`'s row card uses, named here because the shared
+ * width split needs it too. */
+const BENTO_KPI_UNIT_RATIO = 0.45
 const BENTO_KPI_DELTA_SIZE = 16
 // Baseline-to-baseline distance from the value to the label — a real
 // line-gap, not the label's own font-size. Regression fix (pre-Task-2): the
@@ -310,15 +319,21 @@ function renderKpiCardBody(
   // `splitKpiValueWidths`, see components/kpi.tsx): the overflow auditor
   // measures a <text>'s whole textContent at the outer element's font-size,
   // so the value's width budget is shrunk in proportion to the unit's share
-  // of the combined text instead of a flat pixel reserve.
+  // of the combined text instead of a flat pixel reserve — and where the two
+  // cannot both fit, the number keeps its budget and the unit gives way.
+  // The scale is this cell's own (56/20, not the row card's 40/22), so the
+  // shared function judges "would this shrink the number past legibility?"
+  // against the size the number will really render at here.
   const valueStr = String(item.value)
   // 冗余单位去重（同 components/kpi.tsx：value 已含 unit 结尾时丢弃，防 "35%%"）。
   const unit = dedupeKpiUnit(valueStr, item.unit)
-  const { valueMaxWidth, unitMaxWidth } = splitKpiValueWidths(
-    valueStr,
-    unit,
-    innerW
-  )
+  const valueScale: KpiValueScale = {
+    fontSize: valueSize,
+    minFontSize: BENTO_KPI_VALUE_MIN_SIZE,
+    unitRatio: BENTO_KPI_UNIT_RATIO,
+    fontFamily: ctx.fonts.heading,
+  }
+  const { valueMaxWidth, unitMaxWidth } = splitKpiValueWidths(valueStr, unit, innerW, valueScale)
   // bold-metrics fix (2026-07-24): same defect class as components/kpi.tsx's
   // own value text (see that file's identical fix and comment) — this text
   // renders `fontWeight="bold"` in `ctx.fonts.heading` below, and
@@ -330,10 +345,8 @@ function renderKpiCardBody(
     bold: true,
     fontFamily: ctx.fonts.heading,
   })
-  const unitFontSize = Math.round(fittedValue.fontSize * 0.45)
-  const fittedUnit = unit
-    ? truncateToUnits(unit, unitMaxWidth / unitFontSize, { bold: true, fontFamily: ctx.fonts.heading })
-    : null
+  const unitFontSize = Math.round(fittedValue.fontSize * BENTO_KPI_UNIT_RATIO)
+  const fittedUnit = fitKpiUnit(unit, unitMaxWidth, unitFontSize, ctx.fonts.heading)
   const fittedLabel = fitSvgLine(item.label, {
     maxWidth: innerW,
     fontSize: BENTO_KPI_LABEL_SIZE,
