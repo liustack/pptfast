@@ -573,6 +573,41 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     masthead's double rule — x 96→48, x2 1184→1232, one `<line>`
       //     per affected slide, and the matching single `<a:off>`/`<a:ext>`
       //     pair per PPTX slide (457200 = 48px, cx 11277600 = 1184px).
+      //
+      // Re-recaptured again (visual review round 4, the vertical-gravity
+      // wave — 用户裁定「页面的下方可以空，但不要上方空」). A slide whose
+      // content area holds exactly one component used to have that
+      // component pushed 38% of the leftover height down the rect
+      // (`../svg/svg-content.tsx`, a 2026-07-10 answer to the same
+      // complaint at 50%). On the review's own pages that put 105-122px of
+      // nothing between the heading band and the only thing on the slide.
+      // The block now starts at the content rect's top and the leftover
+      // sits under it.
+      //
+      // Every changed slide in these three fixtures is such a page, so the
+      // diff is one number per slide. Targeted attribution, same discipline
+      // as every recapture above (token-by-token over both the SVG and
+      // every PPTX part, `.issues/2026-08-20-review-round-4/tools/
+      // equiv-gravity-diff.mts`): token counts identical everywhere, PPTX
+      // part-name sets identical, audit goldens byte-identical for all
+      // three, and the *only* differing tokens anywhere are one
+      // `data-audit-box` y plus the `translate` that renders it, with the
+      // matching `<a:off>` y values in the PPTX:
+      //   - `basic` (consulting): SVG slides 2 (288.3 -> 161) and 3
+      //     (314.48 -> 240); `ppt/slides/slide{3,4}.xml`.
+      //   - `scenarioBearing` (journal): SVG slides 1 (338.68 -> 230), 2
+      //     (286.14 -> 190) and 3 (330.6 -> 228);
+      //     `ppt/slides/slide{2,3,4}.xml`.
+      //   - `annualReviewPreset` (journal): SVG slides 2 (305.86 -> 231)
+      //     and 3 (295.06 -> 186); `ppt/slides/slide{3,4}.xml`.
+      // Each PPTX delta is exactly 9525 EMU × the px its SVG counterpart
+      // moved (basic slide 2: -1212533 EMU = -127.3px), and a slide's
+      // several `<a:off>`s all move by that same amount because they are
+      // the parts of one block travelling together. No golden slide reaches
+      // this wave's other two changes (the degraded-split top-pack and the
+      // tightened gap ceiling) — those need a two-column page that degrades
+      // or a multi-component stack with leftover, and none of the 15 slides
+      // here is either.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
