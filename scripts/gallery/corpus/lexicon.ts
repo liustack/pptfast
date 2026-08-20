@@ -59,6 +59,19 @@ export interface Lexicon {
 
   /** Full prose paragraph, the length a real body paragraph runs. */
   readonly paragraph: string
+  /**
+   * The same argument at the length a *narrow* text column holds.
+   *
+   * A full-bleed image takeover leaves its prose a column roughly half the
+   * page wide and a third of it tall — `image-split` gives 564x238, seven
+   * lines of body text. `paragraph` is written for a full content rect and
+   * runs 536 characters in English, thirteen lines, so the renderer
+   * correctly truncates it and the review table ends up showing the
+   * degrade path instead of the layout. Every track is sized against the
+   * tightest of those columns, so no track truncates and none of them
+   * looks half-empty either.
+   */
+  readonly shortParagraph: string
   /** Complete sentences, one clause of argument each — at least 10. */
   readonly sentences: Pool
   /**
@@ -161,6 +174,9 @@ const zh: Lexicon = {
 
   paragraph:
     "本季度设备接入量首次突破十万台，同比增长六成七，其中新增部分有将近一半来自存量客户的产线扩容，而不是新签。这个结构说明产品在已验证场景里的复制成本正在下降，但也意味着增长的天花板取决于我们能否打开新的行业场景。冶金和化工两个行业的验证已经完成，风电的现场条件比预期复杂，取数链路还需要一个季度的打磨。",
+
+  shortParagraph:
+    "本季度设备接入量首次突破十万台，同比增长六成七，其中将近一半来自存量客户的产线扩容，而不是新签。这个结构说明产品在已验证场景里的复制成本正在下降，但天花板仍取决于能否打开新的行业场景。冶金和化工的验证已经完成，风电的现场条件比预期复杂，取数链路还要一个季度。",
 
   sentences: [
     "续约率回升到百分之九十一，是过去六个季度的最高点。",
@@ -381,6 +397,9 @@ const en: Lexicon = {
   paragraph:
     "Connected equipment passed one hundred thousand units this quarter, up sixty-seven percent year over year, and close to half of that growth came from existing customers expanding onto new production lines rather than from new logos. That mix tells us the cost of replicating the product inside a proven setting is falling, but it also means our ceiling depends on opening new industry settings. Metallurgy and chemicals are validated; wind turbines turned out to be harder on site, and the data path there needs another quarter of work.",
 
+  shortParagraph:
+    "Connected equipment passed one hundred thousand units this quarter, up sixty-seven percent year over year. Close to half of that growth came from existing customers expanding onto new production lines rather than from new logos.",
+
   sentences: [
     "Renewal rate recovered to ninety-one percent, the highest in six quarters.",
     "New bookings grew twenty-three percent, but three accounts contributed sixty percent of that.",
@@ -599,6 +618,9 @@ const mixed: Lexicon = {
 
   paragraph:
     "现有 ECS 自建部署的伸缩窗口是 12 分钟，而业务侧的 SLO 要求 90 秒内完成扩容，这中间的差距靠加机器填不平。迁到 Kubernetes 之后，HPA 配合预热的 warm pool 可以把 P95 扩容时间压到 40 秒左右，代价是我们要重建整套 observability：Prometheus 抓指标、Loki 收日志、Tempo 做 trace，三件事都得在灰度之前跑通，否则出问题时连排查入口都没有。",
+
+  shortParagraph:
+    "现有 ECS 自建部署的伸缩窗口是 12 分钟，而业务侧的 SLO 要求 90 秒内完成扩容，这中间的差距靠加机器填不平。迁到 Kubernetes 之后，HPA 配合预热的 warm pool 可以把 P95 压到 40 秒左右，代价是要重建整套 observability。",
 
   sentences: [
     "现有 ECS 部署的扩容窗口是 12 分钟，业务 SLO 要求 90 秒。",
