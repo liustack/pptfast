@@ -217,13 +217,39 @@ describe("gallery page", () => {
     // Every SVG payload is full of `<`. If any of it survived unescaped
     // inside the JSON script blocks, the browser would end the block at the
     // first `</...>` and the page would come up blank.
-    const blocks = html.match(/<script id="(?:manifest|svg)-data"[^>]*>([\s\S]*?)<\/script>/g) ?? []
-    expect(blocks.length).toBe(2)
+    const blocks = html.match(/<script id="(?:manifest|svg|edge)-data"[^>]*>([\s\S]*?)<\/script>/g) ?? []
+    expect(blocks.length).toBe(3)
     for (const block of blocks) {
       const body = block.slice(block.indexOf(">") + 1, block.lastIndexOf("<"))
       expect(body.includes("<")).toBe(false)
       expect(() => JSON.parse(body.replace(/\\u003c/g, "<"))).not.toThrow()
     }
+  }, 60_000)
+
+  it("carries a paint for the box under every page it can name one for", async () => {
+    // A stage left its own neutral grey survives in the slide's antialiased
+    // edge column and reads as a pale line down the page — see
+    // `src/lib/slide-edge.ts`. Reported against five pages of the 2026-08-20
+    // review, on three unrelated themes.
+    const { renderMatrix } = await import("./gallery/render")
+    const { mkdtempSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+
+    const jobs = buildMatrix(themeIds, await assets(), { only: "theme", themeLanguage: "zh" })
+    const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-edge-"))
+    const { manifest, svgs } = renderMatrix(jobs, outDir, "test")
+    const html = buildGalleryHtml(manifest, svgs)
+
+    const block = /<script id="edge-data"[^>]*>([\s\S]*?)<\/script>/.exec(html)![1]!
+    const edges = JSON.parse(block.replace(/\\u003c/g, "<")) as Record<string, string>
+    // Every theme page has a colour or a gradient behind it; none is a photo.
+    expect(Object.keys(edges).sort()).toEqual(manifest.pages.map((p) => p.id).sort())
+    for (const [id, value] of Object.entries(edges)) {
+      expect(value, id).toMatch(/^(#[0-9A-Fa-f]{6}|linear-gradient\()/)
+    }
+    // The stage is repainted on mount, not left on the stylesheet's neutral.
+    expect(html).toContain('container.style.background = EDGES[id] || ""')
   }, 60_000)
 })
 
