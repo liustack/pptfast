@@ -144,13 +144,16 @@ describe("heatmap component", () => {
   })
 
   describe("x_title/y_title (chart.axes fitting idiom reused)", () => {
-    const withTitles = { ...basic, x_title: "Quarter", y_title: "Region" }
+    // y_title is CJK here, the one script that still earns the stacked
+    // character column — see the "Latin y_title" block below and
+    // `lib/text-script.ts` for the rule.
+    const withTitles = { ...basic, x_title: "Quarter", y_title: "区域" }
 
     it("renders x_title and a per-char stacked y_title", () => {
       const { container } = svg(heatmap.render(withTitles, { x: 0, y: 0, w: 900, h: 300 }, ctx))
       const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
       expect(texts.some((t) => t?.includes("Quarter") && t?.includes("→"))).toBe(true)
-      expect(texts.filter((t) => "Region".includes(t ?? "\x00")).length).toBeGreaterThanOrEqual(4)
+      expect(texts.filter((t) => "区域".includes(t ?? "\x00")).length).toBeGreaterThanOrEqual(2)
     })
 
     it("measure() grows when x_title/y_title are present vs absent", () => {
@@ -174,6 +177,106 @@ describe("heatmap component", () => {
         t.textContent?.includes("超长坐标轴标题"),
       )
       expect(xTitleText?.getAttribute("data-truncated")).toBe("1")
+    })
+  })
+
+  // 2026-08-20 review, `component--heatmap--mixed`: the mixed-language corpus
+  // page's y_title is "Tempo", and it rendered as T/e/m/p/o stacked down the
+  // left band — "非常难看", and unreadable as a word. Latin y_titles now take
+  // one horizontal line in a band above x_title's instead; CJK keeps the
+  // column (the block above pins that half).
+  describe("Latin y_title renders horizontally, never as a letter column", () => {
+    const reported = { ...basic, x_title: "Q3 第 1 月", y_title: "Tempo" }
+
+    function stackedChars(container: Element) {
+      // The character column is the only thing in this component that renders
+      // one glyph per centered <text> — column headers are centered too, so
+      // match on single-character content as well.
+      return Array.from(container.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("text-anchor") === "middle" && (t.textContent ?? "").length === 1,
+      )
+    }
+
+    it("renders the whole word on one <text>, with no character split anywhere", () => {
+      const { container } = svg(heatmap.render(reported, { x: 0, y: 0, w: 900, h: 300 }, ctx))
+      const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+      expect(texts.some((t) => t?.includes("Tempo"))).toBe(true)
+      // Not one of "T"/"e"/"m"/"p"/"o" appears as a standalone text node.
+      expect(stackedChars(container).map((t) => t.textContent)).not.toContain("T")
+      expect(stackedChars(container).map((t) => t.textContent)).not.toContain("o")
+    })
+
+    it("gives the grid the left band back — the row-label column starts at box.x", () => {
+      const withLatin = svg(heatmap.render(reported, { x: 40, y: 0, w: 900, h: 300 }, ctx))
+      const noYTitle = svg(
+        heatmap.render({ ...reported, y_title: undefined }, { x: 40, y: 0, w: 900, h: 300 }, ctx),
+      )
+      const firstCellX = (r: ReturnType<typeof svg>) =>
+        r.container.querySelector("rect")!.getAttribute("x")
+      // Horizontal placement costs height, not width: the grid lands exactly
+      // where it would with no y_title at all.
+      expect(firstCellX(withLatin)).toBe(firstCellX(noYTitle))
+    })
+
+    it("keeps the left band for a CJK y_title — the grid shifts right", () => {
+      const cjk = { ...reported, y_title: "区域" }
+      const withCjk = svg(heatmap.render(cjk, { x: 40, y: 0, w: 900, h: 300 }, ctx))
+      const noYTitle = svg(
+        heatmap.render({ ...cjk, y_title: undefined }, { x: 40, y: 0, w: 900, h: 300 }, ctx),
+      )
+      const cellX = (r: ReturnType<typeof svg>) =>
+        Number(r.container.querySelector("rect")!.getAttribute("x"))
+      expect(cellX(withCjk)).toBeGreaterThan(cellX(noYTitle))
+    })
+
+    it("measure() reports the horizontal band it actually renders, and render() stays inside it", () => {
+      const box = { x: 0, y: 0, w: 900 }
+      const measured = heatmap.measure(reported, box.w, ctx)
+      const noYTitle = heatmap.measure({ ...reported, y_title: undefined }, box.w, ctx)
+      // The band is a fixed height, so the growth is the band and nothing
+      // else — and it does not depend on how long the title is.
+      expect(measured - noYTitle).toBe(24)
+      expect(heatmap.measure({ ...reported, y_title: "A far longer axis name" }, box.w, ctx)).toBe(
+        measured,
+      )
+
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">{heatmap.render(reported, box, ctx)}</svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const texts = Array.from(root.querySelectorAll("text"))
+      const yTitle = texts.find((t) => t.textContent?.includes("Tempo"))!
+      const xTitle = texts.find((t) => t.textContent?.includes("Q3 第 1 月"))!
+      // The two captions sit in their own bands, y above x — not sharing one
+      // line and not overlapping.
+      expect(Number(yTitle.getAttribute("y"))).toBeLessThan(Number(xTitle.getAttribute("y")))
+      // The grid's own first cell starts below both.
+      const firstCellY = Number(root.querySelector("rect")!.getAttribute("y"))
+      expect(firstCellY).toBeGreaterThan(Number(xTitle.getAttribute("y")))
+    })
+
+    it("fits an egregiously long Latin y_title inside its declared box, truncation-marked", () => {
+      const egregious = { ...reported, y_title: "Rolling twelve-month ".repeat(8) }
+      const box = { x: 60, y: 200, w: 560 }
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+          <g data-audit-box={`${box.x},${box.y},${box.w}`}>{heatmap.render(egregious, box, ctx)}</g>
+        </svg>,
+      )
+      expect(auditSvgMarkup(markup).filter((i) => i.kind === "h-overflow")).toEqual([])
+      const root = parseSvgRoot(markup)
+      const yTitleText = Array.from(root.querySelectorAll("text")).find((t) =>
+        t.textContent?.includes("Rolling twelve-month"),
+      )
+      expect(yTitleText?.getAttribute("data-truncated")).toBe("1")
+    })
+
+    it("sends a mixed-script y_title horizontal too — no majority vote", () => {
+      const mixed = { ...reported, y_title: "K8s 托管" }
+      const { container } = svg(heatmap.render(mixed, { x: 0, y: 0, w: 900, h: 300 }, ctx))
+      const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+      expect(texts.some((t) => t?.includes("K8s 托管"))).toBe(true)
+      expect(stackedChars(container).map((t) => t.textContent)).not.toContain("K")
     })
   })
 

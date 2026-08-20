@@ -269,9 +269,12 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     expect(withLongerTitleH).toBe(withTitleH)
   })
 
-  it("measure() does not grow for y_title alone (it reserves width inside box.w, not height)", () => {
+  it("measure() does not grow for a stacked y_title alone (it reserves width inside box.w, not height)", () => {
+    // CJK, the script that still earns the stacked character column — a
+    // Latin y_title takes a horizontal band above the plot instead and does
+    // grow measure(), pinned in the "Latin y_title" block below.
     const base = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
-    const withYTitle = { ...base, axes: { y_title: "Revenue ($K)" } }
+    const withYTitle = { ...base, axes: { y_title: "营业收入" } }
     expect(chart.measure(withYTitle, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
   })
 
@@ -287,7 +290,7 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       type: "chart" as const,
       chart_type: "bar" as const,
       series: barSeries,
-      axes: { x_title: "Quarter", y_title: "USD" },
+      axes: { x_title: "Quarter", y_title: "美元" },
     }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = Array.from(container.querySelectorAll("text"))
@@ -296,9 +299,9 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     expect(xTitle?.getAttribute("data-truncated")).toBeNull()
 
     // y_title is stacked one character per <text> node (matrix.tsx's own
-    // vertical-title idiom, adapted) — every character of "USD" must appear.
-    const yChars = texts.filter((t) => ["U", "S", "D"].includes(t.textContent ?? ""))
-    expect(yChars.length).toBeGreaterThanOrEqual(3)
+    // vertical-title idiom, adapted) — every character of "美元" must appear.
+    const yChars = texts.filter((t) => ["美", "元"].includes(t.textContent ?? ""))
+    expect(yChars.length).toBeGreaterThanOrEqual(2)
   })
 
   it("renders x_title for bar direction=horizontal too (bar-horizontal is AXES_APPLICABLE via chart_type 'bar')", () => {
@@ -319,12 +322,12 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       type: "chart" as const,
       chart_type: "line" as const,
       series: [{ name: "Trend", data: [{ x: 1, y: 10 }, { x: 2, y: 30 }] }],
-      axes: { x_title: "Month", y_title: "Value" },
+      axes: { x_title: "Month", y_title: "数值" },
     }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
     expect(texts).toContain("Month")
-    expect(texts.filter((t) => ["V", "a", "l", "u", "e"].includes(t ?? "")).length).toBeGreaterThanOrEqual(5)
+    expect(texts.filter((t) => ["数", "值"].includes(t ?? "")).length).toBeGreaterThanOrEqual(2)
   })
 
   // F1 (review round, moderate defect): a line chart's first-point value
@@ -341,12 +344,15 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       type: "chart" as const,
       chart_type: "line" as const,
       series: [{ name: "Trend", data: [{ x: "Jan", y: 50 }, { x: "Feb", y: 100 }] }],
-      axes: { y_title: "Value" },
+      // CJK: the side band this test is about only exists for a stacked
+      // y_title now — a Latin one takes a horizontal band above the plot and
+      // has no side gutter to keep clear of anything.
+      axes: { y_title: "数值" },
     }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = Array.from(container.querySelectorAll("text"))
     const yTitleXs = texts
-      .filter((t) => ["V", "a", "l", "u", "e"].includes(t.textContent ?? ""))
+      .filter((t) => ["数", "值"].includes(t.textContent ?? ""))
       .map((t) => Number(t.getAttribute("x")))
     expect(new Set(yTitleXs).size).toBe(1) // all stacked chars share one column x
     const yTitleX = yTitleXs[0]!
@@ -384,12 +390,12 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       chart_type: "bar" as const,
       direction: "horizontal" as const,
       series: [{ name: "Revenue", data: [{ x: longLabel, y: 100 }, { x: "Short", y: 50 }] }],
-      axes: { y_title: "Category" },
+      axes: { y_title: "类别" }, // CJK — see the sibling F1 test's own note
     }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = Array.from(container.querySelectorAll("text"))
     const yTitleX = Number(
-      texts.find((t) => t.textContent === "C" && t.getAttribute("text-anchor") === "middle")!.getAttribute("x"),
+      texts.find((t) => t.textContent === "类" && t.getAttribute("text-anchor") === "middle")!.getAttribute("x"),
     )
     const rowLabel = texts.find((t) => t.getAttribute("font-weight") === "600")!
     expect(rowLabel.getAttribute("data-truncated")).toBe("1") // confirms it hit the full-width fit budget
@@ -400,6 +406,102 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     const anchorX = Number(rowLabel.getAttribute("x"))
     const inferredX0 = anchorX - 110
     expect(inferredX0 - yTitleX).toBeGreaterThanOrEqual(15)
+  })
+
+  // 2026-08-20 review ruled Latin words may not be split into a letter
+  // column (`component--heatmap--mixed`, `component--matrix--en`). chart.tsx
+  // carried the same idiom — the English corpus page rendered its y_title
+  // "Connected equipment" as a column of single letters, truncated to a
+  // "…" halfway down. It now takes one horizontal line above the plot, the
+  // placement charts in Latin-script publications use for a y-axis caption.
+  describe("Latin y_title renders horizontally above the plot, never as a letter column", () => {
+    const latin = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      series: barSeries,
+      axes: { x_title: "Quarter", y_title: "Connected equipment" },
+    }
+
+    function stackedChars(container: Element) {
+      return Array.from(container.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("text-anchor") === "middle" && (t.textContent ?? "").length === 1,
+      )
+    }
+
+    it("renders the whole phrase on one <text>, with no letter split anywhere", () => {
+      const { container } = svg(chart.render(latin, box, ctx))
+      const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+      expect(texts).toContain("Connected equipment")
+      expect(stackedChars(container)).toHaveLength(0)
+    })
+
+    it("gives the plot the side gutter back — bars start where they would with no y_title", () => {
+      const noYTitle = { ...latin, axes: { x_title: "Quarter" } }
+      const barX = (component: typeof latin | typeof noYTitle) =>
+        svg(chart.render(component, box, ctx)).container.querySelector("rect")!.getAttribute("x")
+      expect(barX(latin)).toBe(barX(noYTitle))
+      // ...while a CJK y_title still buys the side band, unchanged.
+      const cjk = { ...latin, axes: { x_title: "Quarter", y_title: "设备联网量" } }
+      expect(Number(barX(cjk))).toBeGreaterThan(Number(barX(latin)))
+    })
+
+    it("measure() grows by the horizontal band — the one case a y_title costs height", () => {
+      const noYTitle = { ...latin, axes: { x_title: "Quarter" } }
+      expect(chart.measure(latin, 1120, ctx) - chart.measure(noYTitle, 1120, ctx)).toBe(22)
+      // Fixed band, not proportional to the title's own length.
+      expect(
+        chart.measure({ ...latin, axes: { x_title: "Quarter", y_title: "A".repeat(80) } }, 1120, ctx),
+      ).toBe(chart.measure(latin, 1120, ctx))
+    })
+
+    it("pushes the plot and every band below it down by exactly that band", () => {
+      const noYTitle = { ...latin, axes: { x_title: "Quarter" } }
+      const bandTop = (component: typeof latin | typeof noYTitle, selector: string) =>
+        Number(
+          Array.from(svg(chart.render(component, box, ctx)).container.querySelectorAll(selector))
+            .map((el) => Number(el.getAttribute("y")))
+            .reduce((a, b) => Math.min(a, b)),
+        )
+      // The bars' own top edge and the x_title's baseline both shift by the
+      // band, so nothing below the plot silently overlaps what is above it.
+      expect(bandTop(latin, "rect") - bandTop(noYTitle, "rect")).toBe(22)
+      const xTitleY = (component: typeof latin | typeof noYTitle) =>
+        Number(
+          Array.from(svg(chart.render(component, box, ctx)).container.querySelectorAll("text"))
+            .find((t) => t.textContent === "Quarter")!
+            .getAttribute("y"),
+        )
+      expect(xTitleY(latin) - xTitleY(noYTitle)).toBe(22)
+      // And the y_title's own baseline sits above the plot, not in it.
+      const yTitle = Array.from(
+        svg(chart.render(latin, box, ctx)).container.querySelectorAll("text"),
+      ).find((t) => t.textContent === "Connected equipment")!
+      expect(Number(yTitle.getAttribute("y"))).toBeLessThan(bandTop(latin, "rect"))
+    })
+
+    it("fits an egregiously long Latin y_title, truncation-marked rather than overflowing", () => {
+      const egregious = {
+        ...latin,
+        axes: { y_title: "Connected equipment across every validated industry setting ".repeat(4) },
+      }
+      const { container } = svg(chart.render(egregious, box, ctx))
+      const yTitle = Array.from(container.querySelectorAll("text")).find((t) =>
+        t.textContent?.startsWith("Connected equipment"),
+      )!
+      expect(yTitle.getAttribute("data-truncated")).toBe("1")
+      expect(yTitle.textContent?.endsWith("…")).toBe(true)
+    })
+
+    it("still reserves nothing at all on a non-applicable chart_type (pie)", () => {
+      const pie = {
+        type: "chart" as const,
+        chart_type: "pie" as const,
+        series: [{ name: "Market", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }],
+      }
+      expect(chart.measure({ ...pie, axes: { y_title: "Share" } }, 1120, ctx)).toBe(
+        chart.measure(pie, 1120, ctx),
+      )
+    })
   })
 
   it("does not render axes titles on a non-applicable chart_type (pie) even when axes is set — field is honestly ignored, not silently accepted", () => {

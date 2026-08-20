@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { stacksVertically } from "../../lib/text-script"
 import { rotateChartPalette } from "../chart-palette"
 import { accessibleInk } from "../ink"
 import { buildChartModel } from "./chart-model"
@@ -214,6 +215,21 @@ const AXES_Y_TITLE_W = AXES_Y_TITLE_BAND_W + AXES_Y_TITLE_GAP
 /** Baseline-to-baseline vertical step for y_title's stacked characters —
  * mirrors matrix.tsx's Y_TITLE_CHAR_ADVANCE (AXIS_SIZE + 2). */
 const AXES_Y_CHAR_ADVANCE = AXES_TITLE_SIZE + 2
+/**
+ * Height of the band a *horizontal* y_title takes, above the plot — the
+ * placement a Latin (or any other non-square-script) y_title gets instead of
+ * the character column, see `lib/text-script.ts` for the rule and the review
+ * finding behind it. Left-aligned above the axis it names, which is where
+ * charts in Latin-script publications put a y-axis caption; the band's own
+ * baseline sits at `AXES_TITLE_SIZE + 4` inside it.
+ *
+ * The horizontal treatment trades the side band for a top band — a chart
+ * whose y_title takes this path gets its full `box.w` back for the plot,
+ * pays `AXES_Y_TITLE_TOP_H` of height instead, and `measure()` reports the
+ * difference honestly (this is the one case where a y_title grows the
+ * component's reported height at all).
+ */
+const AXES_Y_TITLE_TOP_H = 22
 
 /**
  * Max characters whose stacked column fits within `availH` px — adapted from
@@ -243,11 +259,41 @@ function fitYAxisTitle(text: string, availH: number): { chars: string[]; truncat
   return { chars: [...kept, "…"], truncated: true }
 }
 
+/**
+ * Which of the two y_title treatments this chart's own axes earn: the
+ * character column down a left band (`stacked`, CJK and the other square
+ * scripts), or one horizontal line in a band above the plot (`stacked ===
+ * false`, Latin and every other alphabetic script). matrix.tsx's
+ * `yTitlePlacement`, adapted to this file's own constants. Reads the same
+ * `axesApplicable` gate `render()` does, so a y_title on a non-applicable
+ * chart_type (pie/funnel/dumbbell) reserves nothing at all, exactly as
+ * before.
+ */
+function yTitlePlacement(component: ChartComponent): {
+  stacked: boolean
+  bandW: number
+  topH: number
+} {
+  const yTitle = axesApplicable(component) ? component.axes?.y_title : undefined
+  if (!yTitle) return { stacked: false, bandW: 0, topH: 0 }
+  const stacked = stacksVertically(yTitle)
+  return {
+    stacked,
+    bandW: stacked ? AXES_Y_TITLE_W : 0,
+    topH: stacked ? 0 : AXES_Y_TITLE_TOP_H,
+  }
+}
+
 export const chart: SvgComponent<ChartComponent> = {
   measure(component) {
     const hasXTitle = axesApplicable(component) && !!component.axes?.x_title
     const hasLegend = legendApplicable(component)
-    return CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0) + (hasLegend ? LEGEND_BAND_H : 0)
+    // A stacked y_title still costs no height — it reserves width inside
+    // box.w. A horizontal one costs height instead, and says so here.
+    const yTitleTopH = yTitlePlacement(component).topH
+    return (
+      yTitleTopH + CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0) + (hasLegend ? LEGEND_BAND_H : 0)
+    )
   },
   render(component, box, ctx) {
     const renderer = resolveRenderer(component)
@@ -256,14 +302,28 @@ export const chart: SvgComponent<ChartComponent> = {
     // the field is honestly ignored rather than partially/silently honored.
     const axes = axesApplicable(component) ? component.axes : undefined
     const hasXTitle = !!axes?.x_title
-    const hasYTitle = !!axes?.y_title
-    const yTitleW = hasYTitle ? AXES_Y_TITLE_W : 0
+    const yTitle = yTitlePlacement(component)
+    const yTitleW = yTitle.bandW
     const plotW = box.w - yTitleW
+    // The plot's own top edge inside this group. Zero for every chart whose
+    // y_title stacks (or has none at all), which is what keeps those renders
+    // byte-identical to before; a horizontal y_title pushes the plot down by
+    // its band and every band below the plot follows.
+    const plotTop = yTitle.topH
 
     const xTitleFit = hasXTitle
       ? fitSvgLine(axes!.x_title!, { maxWidth: plotW, fontSize: AXES_TITLE_SIZE, minFontSize: 9 })
       : null
-    const yTitleFit = hasYTitle ? fitYAxisTitle(axes!.y_title!, CHART_H) : null
+    // y_title, horizontal form: one fitted line above the plot, left-aligned
+    // on the axis it names. No arrow suffix here, unlike matrix/heatmap —
+    // this file's x_title renders *below* the plot and centered, so position
+    // alone already says which caption belongs to which axis.
+    const yTitleLineFit =
+      axes?.y_title && !yTitle.stacked
+        ? fitSvgLine(axes.y_title, { maxWidth: box.w, fontSize: AXES_TITLE_SIZE, minFontSize: 9 })
+        : null
+    const yTitleFit =
+      axes?.y_title && yTitle.stacked ? fitYAxisTitle(axes.y_title, CHART_H) : null
     const yStackSpan = yTitleFit ? Math.max(0, yTitleFit.chars.length - 1) * AXES_Y_CHAR_ADVANCE : 0
     const yFirstBaselineY = (CHART_H - yStackSpan) / 2
     // P1 variety wave, task 2 (review fix round, Major finding): rotation
@@ -283,7 +343,7 @@ export const chart: SvgComponent<ChartComponent> = {
     // pure no-op (renders nothing, `legendTop`/layout unused) whenever it
     // doesn't apply.
     const hasLegend = legendApplicable(component)
-    const legendTop = CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0)
+    const legendTop = plotTop + CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0)
     const legendLayout = hasLegend ? layoutChartLegend(buildChartModel(component.series).legend, plotW) : null
     const legendBg = ctx.defaultBg ?? ctx.colors.bg
 
@@ -293,7 +353,7 @@ export const chart: SvgComponent<ChartComponent> = {
           component.series,
           palette,
           yTitleW,
-          0,
+          plotTop,
           plotW,
           CHART_H,
           ctx.colors.muted,
@@ -308,11 +368,24 @@ export const chart: SvgComponent<ChartComponent> = {
           // `ChartRenderFn`'s own `bgHex` doc comment.
           legendBg,
         )}
+        {yTitleLineFit ? (
+          <text
+            data-truncated={yTitleLineFit.truncated ? "1" : undefined}
+            x={0}
+            y={AXES_TITLE_SIZE + 4}
+            fontSize={yTitleLineFit.fontSize}
+            fill={ctx.colors.muted}
+            fontFamily={ctx.fonts.body}
+            dominantBaseline="alphabetic"
+          >
+            {yTitleLineFit.text}
+          </text>
+        ) : null}
         {xTitleFit ? (
           <text
             data-truncated={xTitleFit.truncated ? "1" : undefined}
             x={yTitleW + plotW / 2}
-            y={CHART_H + AXES_X_TITLE_H - 6}
+            y={plotTop + CHART_H + AXES_X_TITLE_H - 6}
             textAnchor="middle"
             fontSize={xTitleFit.fontSize}
             fill={ctx.colors.muted}

@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { stacksVertically } from "../../lib/text-script"
 import { mixHex } from "./color-mix"
 import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
@@ -18,6 +19,22 @@ const PAD_TOP = 16
 const CARD_RADIUS = 8
 const X_TITLE_H = 30
 const Y_TITLE_W = 34
+/**
+ * Height of the band a *horizontal* y_title takes, sitting above x_title's
+ * own band — the placement a Latin (or any non-square-script) y_title gets
+ * instead of the character column, see `stacksVertically`'s own doc comment
+ * for the review finding. Its own baseline sits at `AXIS_SIZE + 4` inside
+ * the band, the same offset x_title uses inside `X_TITLE_H`; the band is
+ * shorter than `X_TITLE_H` because what follows it is another axis caption
+ * rather than content.
+ *
+ * A dedicated band rather than a share of x_title's: the two captions would
+ * otherwise contend for one line, and the loser is whichever one `fitSvgLine`
+ * shrinks — on a matrix, `gridX0` collapses to 0 once the vertical band is
+ * gone, so x_title starts at the component's own left edge and there is no
+ * horizontal room left beside it at all.
+ */
+const Y_TITLE_TOP_H = 24
 const TITLE_SIZE = 17
 const TITLE_LH = Math.round(TITLE_SIZE * 1.35)
 const TAG_SIZE = 13
@@ -119,10 +136,30 @@ function cellLayout(item: MatrixItem, cardW: number, fontFamily?: string): CellL
   return { title, tag, contentH }
 }
 
+/**
+ * Which of the two y_title treatments this component's own content earns:
+ * the character column down a left band (`stacked`, CJK and the other square
+ * scripts), or one horizontal line in a band above the grid (`stacked ===
+ * false`, Latin and every other alphabetic script — see
+ * `lib/text-script.ts`). Derived here, inside `gridGeom`'s own callee, so
+ * `measure()` and `render()` cannot disagree about which treatment a given
+ * title gets: the branch is read off the content, never passed in.
+ */
+function yTitlePlacement(component: MatrixComponent): {
+  stacked: boolean
+  bandW: number
+  topH: number
+} {
+  if (!component.y_title) return { stacked: false, bandW: 0, topH: 0 }
+  const stacked = stacksVertically(component.y_title)
+  return { stacked, bandW: stacked ? Y_TITLE_W : 0, topH: stacked ? 0 : Y_TITLE_TOP_H }
+}
+
 function gridGeom(component: MatrixComponent, w: number) {
   const cols = component.cols
   const rows = Math.ceil(component.items.length / cols)
-  const gridX0 = component.y_title ? Y_TITLE_W : 0
+  const yTitle = yTitlePlacement(component)
+  const gridX0 = yTitle.bandW
   const gridW = w - gridX0
   const cardW = (gridW - CARD_GAP * (cols - 1)) / cols
   const contentH = Math.max(
@@ -131,13 +168,13 @@ function gridGeom(component: MatrixComponent, w: number) {
   )
   const cardH = PAD_TOP + contentH + PAD_BOTTOM
   const gridH = rows * cardH + (rows - 1) * CARD_GAP
-  const yTitleH = component.y_title ? yTitleStackHeight(Array.from(component.y_title).length) : 0
-  return { cols, rows, gridX0, cardW, cardH, gridH, yTitleH }
+  const yTitleH = yTitle.stacked ? yTitleStackHeight(Array.from(component.y_title!).length) : 0
+  return { cols, rows, gridX0, cardW, cardH, gridH, yTitleH, yTitle }
 }
 
 export const matrix: SvgComponent<MatrixComponent> = {
   measure(component, w) {
-    const { gridH, yTitleH } = gridGeom(component, w)
+    const { gridH, yTitleH, yTitle } = gridGeom(component, w)
     // y_title's real vertical extent enters the reported footprint (not just
     // the card grid's own height) so upstream layout allocates room for it
     // and the audit's data-audit-box actually covers it — previously this
@@ -146,11 +183,21 @@ export const matrix: SvgComponent<MatrixComponent> = {
     // edge with neither layout nor the audit ever noticing. A no-op
     // (`Math.max` picks `gridH`) whenever y_title is short enough to fit
     // inside the grid's own height already, which is the common case.
-    return (component.x_title ? X_TITLE_H : 0) + Math.max(gridH, yTitleH)
+    //
+    // `yTitle.topH` is the other half of the same honesty: a horizontal
+    // y_title costs height instead of width, so it enters the footprint
+    // here exactly the way the x_title band does. Exactly one of the two
+    // terms is ever non-zero (`yTitlePlacement` picks one treatment).
+    return yTitle.topH + (component.x_title ? X_TITLE_H : 0) + Math.max(gridH, yTitleH)
   },
   render(component, box, ctx) {
-    const { cols, rows, gridX0, cardW, cardH, gridH, yTitleH } = gridGeom(component, box.w)
-    const gridTop = box.y + (component.x_title ? X_TITLE_H : 0)
+    const { cols, rows, gridX0, cardW, cardH, gridH, yTitleH, yTitle } = gridGeom(component, box.w)
+    // Every band above the grid, in the order they stack: a horizontal
+    // y_title (when the title is not one of the square scripts), then
+    // x_title. `topBandsH` is what `measure()` reports minus its grid term,
+    // so the two stay in step by construction.
+    const topBandsH = yTitle.topH + (component.x_title ? X_TITLE_H : 0)
+    const gridTop = box.y + topBandsH
     // 按 box.h 把每行卡等分拉伸（内容顶对齐），铺满可用高。Two different
     // "total height" semantics meet here, and X_TITLE_H must come off
     // exactly once — off whichever one of them actually includes it:
@@ -173,11 +220,15 @@ export const matrix: SvgComponent<MatrixComponent> = {
     //    y_title="Investment Level", 16 chars): measure() correctly
     //    allocated enough room, but this same subtraction applied a second
     //    time to the fallback spuriously truncated it to "Investment Le…".
+    //    (That English repro no longer reaches the stacked path at all —
+    //    a Latin y_title takes the horizontal band now — so the regression
+    //    test carrying it forward uses a 16-character Chinese title.)
+    //
+    // `topBandsH` is the sum of every band above the grid, so a horizontal
+    // y_title's own band joins the same subtraction rather than opening a
+    // second way to get this wrong.
     const measuredFallbackH = Math.max(gridH, yTitleH)
-    const availGridH =
-      box.h !== undefined
-        ? box.h - (component.x_title ? X_TITLE_H : 0)
-        : measuredFallbackH
+    const availGridH = box.h !== undefined ? box.h - topBandsH : measuredFallbackH
     const rowH = Math.max(cardH, (availGridH - (rows - 1) * CARD_GAP) / rows)
     const r = ctx.shape?.radius ?? CARD_RADIUS
     // x_title free-text fit (borrow-wave Task 4 follow-up, docs/contrast-
@@ -195,6 +246,22 @@ export const matrix: SvgComponent<MatrixComponent> = {
           minFontSize: 10,
         })
       : null
+    // y_title, horizontal form: one fitted line across the component's full
+    // width, in its own band above x_title's. The "  ↑" suffix is x_title's
+    // own "  →" idiom mirrored — the pair of arrows is what tells a reader
+    // which caption names which axis, now that both sit stacked and
+    // left-aligned above the grid rather than one beside it. It reads as
+    // "this names the vertical axis", the direction the axis is drawn in,
+    // not as a claim about which end of it holds the larger value (nothing
+    // in the IR says which end does).
+    const yTitleLineFit =
+      component.y_title && !yTitle.stacked
+        ? fitSvgLine(`${component.y_title}  ↑`, {
+            maxWidth: box.w,
+            fontSize: AXIS_SIZE,
+            minFontSize: 10,
+          })
+        : null
     // y_title vertical fit: cap the stacked-character column to availGridH —
     // the exact same available-height value the card rows above stretch
     // into — so a long y_title can never stack past the grid's own bottom
@@ -206,14 +273,30 @@ export const matrix: SvgComponent<MatrixComponent> = {
     // layout.ts's last-resort "keep the first overflowing component" path,
     // which sets box.h below the component's own measured height on
     // purpose).
-    const yTitleFit = component.y_title ? fitYTitleStack(component.y_title, availGridH) : null
+    const yTitleFit =
+      component.y_title && yTitle.stacked
+        ? fitYTitleStack(component.y_title, availGridH)
+        : null
     return (
       <g>
+        {yTitleLineFit ? (
+          <text
+            data-truncated={yTitleLineFit.truncated ? "1" : undefined}
+            x={box.x}
+            y={box.y + AXIS_SIZE + 4}
+            fontSize={yTitleLineFit.fontSize}
+            fill={ctx.colors.muted}
+            fontFamily={ctx.fonts.body}
+            dominantBaseline="alphabetic"
+          >
+            {yTitleLineFit.text}
+          </text>
+        ) : null}
         {xTitleFit ? (
           <text
             data-truncated={xTitleFit.truncated ? "1" : undefined}
             x={box.x + gridX0}
-            y={box.y + AXIS_SIZE + 4}
+            y={box.y + yTitle.topH + AXIS_SIZE + 4}
             fontSize={xTitleFit.fontSize}
             fill={ctx.colors.muted}
             fontFamily={ctx.fonts.body}
