@@ -11,21 +11,58 @@ type QuoteComponent = Extract<Component, { type: "quote" }>
  *
  * The mark is set at {@link MARK_FONT_SIZE} on a baseline of
  * {@link MARK_BASELINE}, and a quotation glyph carries its ink high in the
- * em box — visible ink runs roughly from the top of the box down to a third
- * of the way to the baseline, so the mark stops well above its own
- * baseline. Reserving the *baseline* plus a gap (the pre-2026-08-15
- * behaviour: zone 60 against a baseline of 44) therefore left the mark
- * floating far above the text it opens, which the visual review flagged on
- * every quote page it saw.
+ * em box — visible ink runs roughly from the top of the box down to
+ * halfway to the baseline, so the mark stops well above its own baseline.
+ * Reserving the *baseline* plus a gap (the pre-2026-08-15 behaviour: zone
+ * 60 against a baseline of 44) therefore left the mark floating far above
+ * the text it opens, which the visual review flagged on every quote page
+ * it saw.
  *
- * Sized off the mark's ink rather than its baseline: the ink ends near
- * `MARK_BASELINE - MARK_FONT_SIZE * 0.42`, and this leaves a deliberate
- * ~14px of air under it before the first line's ascender.
+ * The zone is sized off the mark's ink rather than its baseline, and the
+ * mark's baseline is derived from that same ink (see
+ * {@link MARK_INK_DEPTH_RATIO}) rather than hand-tuned.
  */
 const MARK_FONT_SIZE = 64
-const MARK_BASELINE = 40
 const QUOTE_ZONE = 34
 const BODY_FONT_SIZE = 26
+
+/**
+ * Where the open-quote glyph's ink stops above its own baseline, as a
+ * fraction of {@link MARK_FONT_SIZE}.
+ *
+ * Measured, not guessed — the earlier 0.42 in this comment was a guess and
+ * was wrong by half a line. Rasterizing U+201C at 64px on every registered
+ * theme's resolved body stack and reading back the ink rows gives 0.48 on
+ * the serif stack (Georgia) and 0.55 on the CJK-first stacks (Microsoft
+ * YaHei falling back to PingFang SC), with a Chromium render of the real
+ * quote page reading 0.50 at whole-pixel resolution. 0.49 is that spread's
+ * middle.
+ */
+const MARK_INK_DEPTH_RATIO = 0.49
+
+/**
+ * Where a body line's ink starts above its baseline, as a fraction of
+ * {@link BODY_FONT_SIZE}. Measured the same way: a 26px italic body line
+ * puts its ink top 21px above the baseline.
+ */
+const BODY_INK_ASCENT_RATIO = 0.81
+
+/** Optical air left between the mark's ink and the first body line's ink. */
+const MARK_TO_BODY_AIR = 14
+
+/**
+ * Ink-derived, so changing either font size can no longer leave the mark
+ * hanging: from the first body line's ink top, walk up the air, then down
+ * to where the mark's own ink stops. Lands on 56 at today's sizes — the
+ * per-font spread above puts the real air at 15px on the serif stack and
+ * 18px on the CJK-first ones, both well inside the one line it used to be.
+ * Whole pixels only: `measure()` and every body/attribution baseline are
+ * integers, and a fractional mark baseline would be the only non-integer
+ * coordinate this component emits.
+ */
+const MARK_BASELINE = Math.round(
+  QUOTE_ZONE + BODY_FONT_SIZE * (1 - BODY_INK_ASCENT_RATIO) - MARK_TO_BODY_AIR + MARK_FONT_SIZE * MARK_INK_DEPTH_RATIO,
+)
 const BODY_LINE_RATIO = 1.35
 const BODY_INDENT = 20
 const ATTR_FONT_SIZE = 20
