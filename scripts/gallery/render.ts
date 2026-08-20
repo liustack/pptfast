@@ -59,8 +59,13 @@ export interface ManifestPage {
    * full round of re-diagnosis before the pages themselves were checked.
    * Comparing this against the hash recorded alongside the verdict is what
    * tells a live judgement from a stale one.
+   *
+   * Kept alongside `fingerprint` so verdicts recorded before the two-part
+   * split still have something to compare against — see `verdictFreshness`.
    */
   readonly hash: string
+  /** The same page, hashed in two halves. See `splitPaint`. */
+  readonly fingerprint: PageFingerprint
 }
 
 export interface ManifestTable {
@@ -71,7 +76,13 @@ export interface ManifestTable {
 }
 
 export interface Manifest {
-  readonly manifestVersion: 1
+  /**
+   * 2 since pages carry `fingerprint` alongside `hash`. A v1 reader still
+   * works — the new field is additive and `hash` kept its meaning — but a
+   * verdict recorded against a v1 manifest cannot tell a recolor from a
+   * redraw, and `verdictFreshness` needs to know which kind it is holding.
+   */
+  readonly manifestVersion: 2
   readonly generator: string
   readonly pptfastVersion: string
   readonly generatedAt: string
@@ -116,6 +127,86 @@ function fingerprint(markup: string): string {
   return (h >>> 0).toString(36)
 }
 
+export interface PageFingerprint {
+  /** The markup with every paint value blanked — shape, text and type only. */
+  readonly geometry: string
+  /** Only the paint values, in document order — exactly what the shape half drops. */
+  readonly color: string
+}
+
+/** A page that never rendered has nothing to fingerprint. */
+const EMPTY_FINGERPRINT: PageFingerprint = { geometry: "", color: "" }
+
+/**
+ * Attributes that carry paint rather than shape.
+ *
+ * Deliberately a list of what this renderer actually emits (`fill`, `stroke`,
+ * `opacity`, `fill-opacity`, `stroke-opacity`, `stop-color`, plus
+ * `data-contrast-tier`, which records which ink a contrast escalation picked)
+ * with room for the obvious siblings. `stroke-width`, `stroke-dasharray` and
+ * the whole font family stay out of it: a thicker rule moves ink, a redder one
+ * does not.
+ */
+const PAINT_ATTR =
+  /(\s)(fill-opacity|stroke-opacity|stop-opacity|flood-opacity|stop-color|flood-color|lighting-color|data-contrast-tier|fill|stroke|opacity|color)="([^"]*)"/g
+
+/**
+ * Split one page's markup into a shape half and a paint half.
+ *
+ * A theme redesign rewrites every color in the corpus and moves no layout,
+ * which under a single whole-markup hash invalidated every verdict at once:
+ * the 2026-08-19 round came back with seven of thirty judgements marked stale
+ * that a human then re-made by hand, all of them about geometry that had not
+ * moved. Hashing the two halves separately is what lets a re-run say "only
+ * the paint changed" and keep those judgements alive.
+ *
+ * The attribute *name* stays in the shape half and only its value is blanked,
+ * so a recolor that adds paint where there was none still reads as a shape
+ * change — it is one.
+ *
+ * Known limit: this is a string transform over markup, so a slide whose own
+ * *text* contains something shaped like `fill="red"` (a code component
+ * quoting SVG) has that text counted as paint. Both halves still come from
+ * the same bytes, so nothing can read as unchanged when it changed — the
+ * worst case is a content edit reported as a recolor.
+ */
+export function splitPaint(markup: string): PageFingerprint {
+  const paint: string[] = []
+  const shape = markup.replace(PAINT_ATTR, (_m, space: string, name: string, value: string) => {
+    paint.push(`${name}=${value}`)
+    return `${space}${name}=""`
+  })
+  return { geometry: fingerprint(shape), color: fingerprint(paint.join(";")) }
+}
+
+/**
+ * How much of a recorded verdict still applies to the page as it renders now.
+ *
+ * Self-contained on purpose: `html.ts` ships this function's own source into
+ * the review page instead of restating the rule there, so what the reviewer
+ * sees and what is tested here cannot drift apart. No module references, no
+ * TS-only constructs — the same discipline `src/svg/audit/browser-audit.ts`
+ * documents for its own in-page function.
+ *
+ * `entry` is a stored verdict, `page` is its manifest entry as rendered now.
+ */
+export function verdictFreshness(
+  entry: { hash?: string; geo?: string; col?: string } | undefined,
+  page: { hash?: string; fingerprint?: { geometry: string; color: string } } | undefined,
+): "fresh" | "recolored" | "stale" {
+  if (!entry || !page) return "fresh"
+  const now = page.fingerprint
+  // A verdict recorded before the split carries one whole-markup hash and no
+  // way to tell a recolor from a redraw. It keeps the old all-or-nothing rule
+  // rather than being quietly upgraded to a claim its data cannot support.
+  if (!entry.geo || !now || !now.geometry) {
+    if (!entry.hash || !page.hash) return "fresh"
+    return entry.hash === page.hash ? "fresh" : "stale"
+  }
+  if (entry.geo !== now.geometry) return "stale"
+  return entry.col === now.color ? "fresh" : "recolored"
+}
+
 export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersion: string): RenderResult {
   const pagesDir = join(outDir, "pages")
   mkdirSync(pagesDir, { recursive: true })
@@ -126,7 +217,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
   const auditErrors: string[] = []
 
   for (const job of jobs) {
-    const base: Omit<ManifestPage, "file" | "skipped" | "hash"> = {
+    const base: Omit<ManifestPage, "file" | "skipped" | "hash" | "fingerprint"> = {
       id: job.id,
       table: job.table,
       subject: job.subject,
@@ -146,7 +237,12 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     // as if it were a legitimate render.
     const v = validateIr(job.ir)
     if (!v.ok) {
-      pages.push({ ...base, hash: "", skipped: `IR rejected: ${v.errors.map((e) => `${e.path}: ${e.message}`).join("; ")}` })
+      pages.push({
+        ...base,
+        hash: "",
+        fingerprint: EMPTY_FINGERPRINT,
+        skipped: `IR rejected: ${v.errors.map((e) => `${e.path}: ${e.message}`).join("; ")}`,
+      })
       continue
     }
 
@@ -154,7 +250,12 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     try {
       svg = renderSlideSvg(v.ir!, job.slideIndex)
     } catch (error) {
-      pages.push({ ...base, hash: "", skipped: `render threw: ${error instanceof Error ? error.message : String(error)}` })
+      pages.push({
+        ...base,
+        hash: "",
+        fingerprint: EMPTY_FINGERPRINT,
+        skipped: `render threw: ${error instanceof Error ? error.message : String(error)}`,
+      })
       continue
     }
 
@@ -184,7 +285,13 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     }
     const findings = deckFindings.get(job.slideIndex + 1) ?? []
 
-    pages.push({ ...base, file, hash: fingerprint(svg), ...(findings.length > 0 ? { findings } : {}) })
+    pages.push({
+      ...base,
+      file,
+      hash: fingerprint(svg),
+      fingerprint: splitPaint(svg),
+      ...(findings.length > 0 ? { findings } : {}),
+    })
   }
 
   const tables: ManifestTable[] = (["theme", "layout", "component", "density"] as const)
@@ -197,7 +304,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     .filter((t) => t.pages.length > 0)
 
   const manifest: Manifest = {
-    manifestVersion: 1,
+    manifestVersion: 2,
     generator: "pptfast gallery",
     pptfastVersion,
     generatedAt: new Date().toISOString(),

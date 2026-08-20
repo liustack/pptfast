@@ -101,6 +101,26 @@ describe("gallery corpus", () => {
     expect(manifest.pages.length).toBe(jobs.length)
   }, 120_000)
 
+  it("fingerprints every rendered page in both halves", async () => {
+    // Verdicts are stamped with these, and a page that shipped without them
+    // would quietly fall back to the old all-or-nothing staleness rule —
+    // which is exactly what the split exists to retire.
+    const { renderMatrix } = await import("./gallery/render")
+    const { mkdtempSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+
+    const jobs = buildMatrix(themeIds, await assets(), { only: "component", languages: ["zh"] })
+    const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-fp-"))
+    const { manifest } = renderMatrix(jobs, outDir, "test")
+
+    const unfingerprinted = manifest.pages
+      .filter((p) => !p.skipped)
+      .filter((p) => !p.fingerprint?.geometry || !p.fingerprint?.color)
+      .map((p) => p.id)
+    expect(unfingerprinted).toEqual([])
+  }, 60_000)
+
   it("gives every page a stable id derived from its identity, not its position", async () => {
     const first = buildMatrix(themeIds, await assets()).map((j) => j.id)
     const second = buildMatrix(themeIds, await assets()).map((j) => j.id)
@@ -159,6 +179,28 @@ describe("gallery page", () => {
     for (const source of scripts) {
       expect(() => new vm.Script(source)).not.toThrow()
     }
+  }, 60_000)
+
+  it("carries the shared freshness rule in a form the browser can run", async () => {
+    // The rule that decides stale / recolored / fresh lives in render.ts and
+    // is shipped into the page as source, so the reviewer and the tests can
+    // never be running two different versions of it. Two ways that breaks
+    // silently: esbuild's keepNames wrapper, which references a helper only
+    // Node has, and the function simply not arriving.
+    const { renderMatrix } = await import("./gallery/render")
+    const { mkdtempSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+
+    const jobs = buildMatrix(themeIds, await assets(), { only: "component", languages: ["zh"] })
+    const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-rule-"))
+    const { manifest, svgs } = renderMatrix(jobs, outDir, "test")
+    const html = buildGalleryHtml(manifest, svgs)
+
+    expect(html).toContain("function verdictFreshness")
+    expect(html).toContain('"recolored"')
+    const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!).join("\n")
+    expect(script).not.toContain("__name(")
   }, 60_000)
 
   it("escapes the payload so no embedded content can close the script block", async () => {

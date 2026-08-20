@@ -178,6 +178,29 @@ plus a note; judgements persist in `localStorage` and export as
 `verdicts.json`, keyed by page ids derived from identity rather than
 position so they survive a re-run.
 
+Surviving a re-run raises the question of whether a judgement still applies,
+which is what the page fingerprint answers. It comes in two halves
+(`splitPaint`, `scripts/gallery/render.ts`): a shape hash over the markup with
+every paint value blanked, and a paint hash over exactly those values. A
+verdict is stamped with both when it is written, and a later run reads them
+back through one rule (`verdictFreshness`, shipped into the page as source so
+the reviewer and the tests cannot be running different versions of it):
+
+| shape | paint | the page says | the verdict |
+| --- | --- | --- | --- |
+| same | same | nothing | live |
+| same | changed | 仅换肤 | live — the slide is not dimmed |
+| changed | either | 结论已过期 | re-look before acting on it |
+
+That middle row is the point. A theme redesign rewrites every color in the
+corpus and moves no layout: under the old single whole-markup hash it
+invalidated every verdict at once, and the 2026-08-19 round handed back seven
+of thirty marked stale that a human then re-made by hand, all of them about
+geometry that had not moved. Verdicts written before the split carry one hash
+and no way to tell the two apart, so they keep the old all-or-nothing rule
+until they are re-stamped — `manifest.json` is at `manifestVersion: 2` and the
+exported payload at `pptfast-gallery-verdicts/3`, both additive.
+
 The corpus (`scripts/gallery/corpus/`) is deliberately **not**
 `src/svg/audit/stress-fixtures.ts` — those decks are pathological on
 purpose. This one is ordinary, plausible content at the length a real
