@@ -43,6 +43,13 @@ import { accessibleOpacity, readableOn } from "../ink"
  * 替换表：无——本函数不消费任何 token 字段，唯一颜色输入是上面的
  * `readableOn(ctx.defaultBg)` 自适应结果与装饰元素的纯白字面量。
  *
+ * 标题簇呼吸感修复（2026-08-20 第四轮评审，批 2 波 H）：副标题基线原是
+ * `headingLastY + 46` 这个与字号无关的定值，在本版式实际渲染的 84px 标题下
+ * 只留 6px 墨隙（用户在 `theme--ink--zh--p02` 上点名"副标题距离上面的大标题
+ * 那么近"）。定值换成 `subheadingDrop()` 这个纯函数，推导见它自身的注释。
+ * 本条属共享版式（bloom/campaign/classroom/enterprise/heritage/ink/luxe/
+ * tech/terra 九家 chapter 页共用），修一次九家同时受益，不是 ink 专属补丁。
+ *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量——唯一豁免是水印/进度轨/进度点
  * 三类装饰元素的纯白字面量（代码里的 3 处 `fill`/`stroke`），grep 清零门
  * 预期恰好命中这 3 处（heading/subheading 两处已改为 `readableOn` 调用，不
@@ -55,6 +62,45 @@ import { accessibleOpacity, readableOn } from "../ink"
 // constants rather than staying module-level in the shared templates file.
 const CH_DOT_Y = 600
 const CH_DOT_SPACING = 40
+
+/** How far a CJK glyph's ink falls below its baseline, per unit of font size. */
+const INK_DESCENT = 0.12
+/** How far a CJK glyph's ink rises above its baseline, per unit of font size. */
+const INK_ASCENT = 0.88
+/**
+ * Blank space between the heading's lowest ink and the subheading's highest,
+ * as a fraction of the heading size — the gap scales with the type it
+ * separates, so a heading shrunk to `minPt` does not keep an 84px title's
+ * air under it.
+ */
+const SUBHEADING_BREATH = 0.24
+
+/**
+ * Distance from the heading's last baseline down to the subheading's.
+ *
+ * The number the retired fixed `+46` only worked at one size, and worked at
+ * none of the ones this layout actually renders. At the nominal 84px
+ * heading / 34px subheading it left 46 - 0.12*84 - 0.88*34 = **6.0px** of
+ * ink between the two — the "副标题贴大标题" the 2026-08-20 review reported
+ * on `theme--ink--zh--p02` — because 46 is barely half the heading's own
+ * 91px line box: the subtitle's baseline was landing *inside* the title's
+ * line. The sibling `banner-chapter`, same 84px heading, spends 56 and
+ * lands at 14.2px.
+ *
+ * Stated as a relationship instead of a coordinate: heading descent +
+ * breathing room + subheading ascent. At the nominal sizes that is
+ * 10 + 20 + 30 = 60 (20.0px of ink between the two, against banner-chapter's
+ * 14.2 and masthead-chapter's 19.2); at a heading shrunk to the 40px floor
+ * with an 18px subheading it is 5 + 10 + 16 = 31, where the old flat 46
+ * would have opened a 25px hole under a 40px title.
+ */
+function subheadingDrop(headingSize: number, subheadingSize: number): number {
+  return (
+    Math.round(headingSize * INK_DESCENT) +
+    Math.round(headingSize * SUBHEADING_BREATH) +
+    Math.round(subheadingSize * INK_ASCENT)
+  )
+}
 
 export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const chNum = chapterNumberFor(ir.slides, index)
@@ -79,7 +125,9 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const subheading = slide.subheading
     ? fitSvgLine(slide.subheading, { maxWidth: 1088, fontSize: 34, minFontSize: 18 })
     : null
-  const subheadingY = headingLastY + 46
+  const subheadingY = subheading
+    ? headingLastY + subheadingDrop(heading.fontSize, subheading.fontSize)
+    : headingLastY
   // Dimmed subheading tier (0.7 opacity for visual hierarchy under the
   // heading) — W4 fix round: classroom's chapter background (#6E8E9E) gives
   // `ink` only 3.48:1 at full opacity to begin with (comfortably >=3, but
