@@ -1,5 +1,5 @@
 /**
- * Expands the two review tables into a flat, ordered list of render jobs.
+ * Expands the review tables into a flat, ordered list of render jobs.
  *
  * Also the place the coverage promise is enforced: if the IR grows a
  * component type or the registry grows a layout and nobody teaches this
@@ -11,11 +11,11 @@
 
 import { COMPONENT_TYPES, type PptxIR } from "@/ir"
 import { LAYOUT_REGISTRY } from "@/svg/layouts/registry"
-import { CHART_VARIANTS, COMPONENT_BUILDERS } from "./corpus/components"
-import { BASELINE_THEME, componentPage, layoutPage, themeDeck, type CorpusAssets } from "./corpus/decks"
+import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS } from "./corpus/components"
+import { BASELINE_THEME, componentPage, densityPage, layoutPage, themeDeck, type CorpusAssets } from "./corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./corpus/lexicon"
 
-export type TableId = "theme" | "layout" | "component"
+export type TableId = "theme" | "layout" | "component" | "density"
 
 export interface Job {
   /** Stable, filename-safe page id — also the key verdicts are recorded against. */
@@ -46,7 +46,7 @@ function safe(s: string): string {
 }
 
 export interface MatrixOptions {
-  /** Languages for the layout and component tables. */
+  /** Languages for the layout, component and density tables. */
   readonly languages?: readonly LanguageId[]
   /**
    * Language for the theme table. The source issue attaches the
@@ -139,6 +139,36 @@ export function buildMatrix(
         push({
           id: `component--${safe(componentId)}--${language}`,
           table: "component",
+          subject: componentId,
+          language,
+          theme: BASELINE_THEME,
+          page: 1,
+          pageCount: 1,
+          slideType: "content",
+          heading: ir.slides[0]!.heading ?? "",
+          ir,
+          slideIndex: 0,
+        })
+      }
+    }
+  }
+
+  // ── Density table ──────────────────────────────────────────────────────
+  // One overfilled component per page, so the "+N more" degrade path the
+  // nine drop-capable components share gets looked at by a person. Kept as
+  // its own table rather than mixed into the component table because it
+  // answers a different question, and because its findings are the point
+  // rather than a regression — a reviewer scanning the component table for
+  // `content-dropped` should not have to skip nine pages that are supposed
+  // to drop content.
+  if (!opts.only || opts.only === "density") {
+    for (const [componentId, build] of Object.entries(DENSITY_BUILDERS).sort(([a], [b]) => a.localeCompare(b))) {
+      for (const language of languages) {
+        const lex = LEXICONS[language]
+        const ir = densityPage(componentId, build!, lex, assets[language])
+        push({
+          id: `density--${safe(componentId)}--${language}`,
+          table: "density",
           subject: componentId,
           language,
           theme: BASELINE_THEME,

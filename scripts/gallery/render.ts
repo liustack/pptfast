@@ -93,6 +93,11 @@ const TABLE_META: Record<TableId, { label: string; question: string }> = {
     label: "组件表",
     question: "固定基准主题，每个组件一页，三种语料各跑一遍——这个组件画出来能不能看？",
   },
+  density: {
+    label: "容量表",
+    question:
+      "九个会掉内容的组件各一页，item 数灌到装不下——降级画出来的「+N more」和留下的那部分，能不能给客户看？这一表的机器发现是预期的，不是回退。",
+  },
 }
 
 export interface RenderResult {
@@ -182,7 +187,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     pages.push({ ...base, file, hash: fingerprint(svg), ...(findings.length > 0 ? { findings } : {}) })
   }
 
-  const tables: ManifestTable[] = (["theme", "layout", "component"] as const)
+  const tables: ManifestTable[] = (["theme", "layout", "component", "density"] as const)
     .map((id) => ({
       id,
       label: TABLE_META[id].label,

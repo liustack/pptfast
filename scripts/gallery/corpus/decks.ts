@@ -8,6 +8,12 @@
  * layout implicitly — every page in the second table carries an explicit
  * `layout` pin, because auto-selection reshuffling between runs would make
  * the review non-reproducible.
+ *
+ * A third page shape was added later: the density table (`densityPage`),
+ * which asks what the nine drop-capable components look like once the
+ * content does not fit. Every other page in this file is sized so it does
+ * fit — that is the whole point of the two tables above, and the reason
+ * the degrade path needed a table of its own to be seen at all.
  */
 
 import type { Component, PptxIR, Slide } from "@/ir"
@@ -161,8 +167,17 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
     return [b.bullets!(lex), b.kpi_cards!(lex)]
   }
 
+  // Same lesson as the two-column branch above, one slot shape further on.
+  // An image takeover spends most of the page on the picture and leaves the
+  // prose a narrow column — `image-split` gives it 564x238, seven lines.
+  // `lex.paragraph` is written for a full content rect and runs thirteen
+  // lines in English, so the renderer truncated it and covered the page in
+  // an ellipsis: `image-split--{en,mixed}`, `image-top--en` and
+  // `image-bottom--en` were all showing the degrade path rather than the
+  // layout. `lex.shortParagraph` is the same argument at the length the
+  // narrow column holds.
   const pool: Component[] = wantsImage(def)
-    ? [b.image!(lex), b.paragraph!(lex), b.bullets!(lex), b.callout!(lex)]
+    ? [b.image!(lex), { type: "paragraph", text: lex.shortParagraph }, b.bullets!(lex), b.callout!(lex)]
     : [b.paragraph!(lex), b.bullets!(lex), b.kpi_cards!(lex), b.callout!(lex)]
   return pool.slice(0, Math.min(capacity, 3))
 }
@@ -233,4 +248,40 @@ export function componentPage(
   }
   const safeId = componentId.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")
   return deckShell(lex, assets, BASELINE_THEME, `component-${safeId}-${lex.id}`, [slide])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Density table — one deliberately over-capacity component per page
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * One overfilled component (`DENSITY_BUILDERS`), alone on the page.
+ *
+ * Alone is the whole trick. `layoutContentFit` drops a block whole when it
+ * does not fit alongside its neighbours, and a component's own truncation
+ * budget only applies once nothing at all fits — so an overfilled component
+ * sharing a page with the component table's lead-in paragraph gets deleted
+ * at the slide level and never reaches its own "+N more" branch. Measured
+ * with the lead-in in place: every component that overflows vertically was
+ * deleted whole, and 15 of these 27 pages rendered the lead-in and nothing
+ * else. Solo hands the component the entire content rect, and the only way
+ * left to fit is the one this table exists to show.
+ *
+ * The footnote stays because a real slide has one, and because it is part
+ * of what squeezes the rect.
+ */
+export function densityPage(
+  componentId: string,
+  build: (lex: Lexicon) => Component,
+  lex: Lexicon,
+  assets: CorpusAssets,
+): PptxIR {
+  const slide: Slide = {
+    type: "content",
+    heading: lex.headings[9]!,
+    components: [build(lex)],
+    footnote: lex.sources[2]!.label,
+  }
+  const safeId = componentId.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")
+  return deckShell(lex, assets, BASELINE_THEME, `density-${safeId}-${lex.id}`, [slide])
 }

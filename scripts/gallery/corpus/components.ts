@@ -269,9 +269,15 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
     ],
   }),
 
+  // `columns` carries the *data* column headers only — the renderer puts an
+  // empty header over the row-label column itself (`comparison.tsx`'s
+  // `headerTitles`). This used to lead with an extra `""`, which handed the
+  // renderer five headers for four columns and shifted every one of them a
+  // column to the right on all twenty comparison pages: the first two data
+  // columns had no header at all and the last header hung over nothing.
   comparison: (lex) => ({
     type: "comparison",
-    columns: ["", lex.labels[8]!, lex.labels[9]!, lex.labels[10]!],
+    columns: [lex.labels[8]!, lex.labels[9]!, lex.labels[10]!],
     rows: slice(lex.phrases, 4).map((label, i) => ({
       label,
       cells: [lex.periods[i % 4]!, lex.labels[(i + 12) % lex.labels.length]!, lex.periods[(i + 1) % 4]!],
@@ -446,5 +452,126 @@ export const CHART_VARIANTS: Record<string, (lex: Lexicon) => Component> = {
     chart_type: "gauge",
     gauge: { min: 0, max: 100 },
     series: [{ name: lex.metrics[1]!.label, data: [{ x: lex.metrics[1]!.label, y: 91 }] }],
+  }),
+}
+
+/** Icons for the over-capacity cards, cycled — one per card, none repeated. */
+const CARD_ICONS = ["layers", "cpu", "database", "globe", "target", "gauge"] as const
+
+/**
+ * Deliberately over-capacity instances — the one place in this corpus that
+ * breaks the "ordinary case" rule at the top of this file, on purpose.
+ *
+ * Nine components share one degrade path: keep what fits, draw a "+N more"
+ * line for the rest, set `data-dropped`. Nobody had ever looked at it. The
+ * ordinary corpus tops out at five bullets and the marker needs twelve, so
+ * all 434 review pages missed it by design, and the one review verdict that
+ * did complain about the marker named a page that has never drawn one.
+ *
+ * Counts land a few items past each component's own threshold: far enough
+ * that the marker is certain, close enough that the page still reads as a
+ * real slide somebody overfilled. Genuinely pathological input stays where
+ * it belongs, in `src/svg/audit/stress-fixtures.ts` — this is the ordinary
+ * author writing one list too long, which is how the branch is actually
+ * reached in the field.
+ *
+ * Two counts are capped by the schema rather than by taste: `row_cards`
+ * accepts at most 6 items and `data_table` at most 12 rows, and both drop
+ * content well before those ceilings.
+ */
+export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
+  architecture: (lex) => ({
+    type: "architecture",
+    direction: "top_down",
+    layers: [...lex.chapters, ...lex.stages].slice(0, 8).map((title, i) => ({
+      title,
+      items: slice(lex.labels, 4, i * 4),
+    })),
+  }),
+
+  bullets: (lex) => ({
+    type: "bullets",
+    items: [...slice(lex.bullets, 6), ...slice(lex.phrases, 10)],
+    style: "default",
+  }),
+
+  // A chart drops legend *entries*, not data, and one entry is one series —
+  // so this needs many series rather than many points. Ten regions on one
+  // line chart is the ordinary way an author gets there.
+  chart: (lex) => ({
+    type: "chart",
+    chart_type: "line",
+    axes: { x_title: lex.periods[0], y_title: lex.metrics[2]!.label, show_grid: true },
+    series: slice(lex.labels, 10).map((name, i) => ({
+      name,
+      data: slice(lex.periods, 5).map((x, j) => ({ x, y: 40 + ((i * 7 + j * 11) % 45) })),
+    })),
+  }),
+
+  citation: (lex) => ({
+    type: "citation",
+    sources: [...slice(lex.orgs, 12), ...slice(lex.phrases, 8)].map((label, i) => ({
+      label,
+      ref: lex.periods[i % lex.periods.length]!,
+    })),
+  }),
+
+  comparison: (lex) => ({
+    type: "comparison",
+    columns: [lex.labels[8]!, lex.labels[9]!, lex.labels[10]!],
+    rows: slice(lex.phrases, 12).map((label, i) => ({
+      label,
+      cells: [lex.periods[i % 4]!, lex.labels[(i + 12) % lex.labels.length]!, lex.periods[(i + 1) % 4]!],
+    })),
+  }),
+
+  data_table: (lex) => ({
+    type: "data_table",
+    columns: [
+      { key: "seg", label: lex.labels[8]!, align: "left" },
+      { key: "q1", label: lex.periods[0]!, align: "right" },
+      { key: "q2", label: lex.periods[1]!, align: "right" },
+      { key: "yoy", label: lex.metrics[1]!.label, align: "right" },
+    ],
+    rows: slice(lex.labels, 12).map((seg, i) => ({
+      cells: { seg, q1: 402 + i * 97, q2: 431 + i * 111, yoy: `${i % 4 === 2 ? "-" : "+"}${4 + i}.${i % 10}%` },
+    })),
+    source: lex.sources[0]!.label,
+  }),
+
+  kpi_cards: (lex) => ({
+    type: "kpi_cards",
+    items: slice(lex.labels, 12).map((label, i) => ({
+      value: String(28 + i * 6),
+      unit: "%",
+      label,
+      icon: "trending-up" as const,
+      delta: (["up", "down", "flat"] as const)[i % 3]!,
+    })),
+  }),
+
+  row_cards: (lex) => ({
+    type: "row_cards",
+    items: slice(lex.phrases, 6).map((title, i) => ({
+      icon: CARD_ICONS[i % CARD_ICONS.length]!,
+      title,
+      text: lex.sentences[i % lex.sentences.length]!,
+      sub: lex.periods[i % lex.periods.length],
+      highlight: i === 0,
+    })),
+  }),
+
+  // Vertical, unlike the component table's horizontal one: only the
+  // vertical arrangement stacks a row per milestone, and only a stack can
+  // run out of height and drop the tail.
+  timeline: (lex) => ({
+    type: "timeline",
+    layout: "vertical",
+    milestones: slice(lex.phrases, 12).map((title, i) => ({
+      date: lex.periods[i % lex.periods.length]!,
+      title,
+      desc: lex.labels[i % lex.labels.length],
+      highlight: i === 2,
+    })),
   }),
 }

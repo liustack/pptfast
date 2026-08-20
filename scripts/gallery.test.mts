@@ -21,7 +21,7 @@
 import { describe, expect, it } from "vitest"
 import { listThemes } from "@/api"
 import { COMPONENT_TYPES } from "@/ir"
-import { CHART_VARIANTS, COMPONENT_BUILDERS } from "./gallery/corpus/components"
+import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS } from "./gallery/corpus/components"
 import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
@@ -183,4 +183,55 @@ describe("gallery page", () => {
       expect(() => JSON.parse(body.replace(/\\u003c/g, "<"))).not.toThrow()
     }
   }, 60_000)
+})
+
+// The density table exists because nine components share a "keep what fits,
+// mark the rest" branch that no gallery page had ever drawn: the ordinary
+// corpus tops out at five bullets and the marker needs twelve, so 434 review
+// pages missed it by construction and one review verdict about the marker
+// ended up naming a page that never had one. That blind spot closes only
+// while these pages keep reaching the branch, and nothing about them says so
+// on inspection — a threshold moving by a few pixels puts it back silently.
+describe("gallery density table", () => {
+  it("draws a drop marker on every page", async () => {
+    const { renderMatrix } = await import("./gallery/render")
+    const { mkdtempSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+
+    const jobs = buildMatrix(themeIds, await assets(), { only: "density" })
+    const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-density-"))
+    const { svgs } = renderMatrix(jobs, outDir, "test")
+
+    const unmarked = [...svgs].filter(([, svg]) => !/\+\d+ more/.test(svg)).map(([id]) => id)
+    expect(unmarked, "these density pages fit after all — raise their item counts").toEqual([])
+
+    // The failure mode that cost the first attempt at this table: the whole
+    // component overflows, `layoutContentFit` deletes the block rather than
+    // handing it a budget to clip into, and the page renders its chrome and
+    // nothing else. That reads as a drop too, but it is the slide-level one,
+    // not the component-level branch these pages are here to show.
+    const swallowed = [...svgs].filter(([, svg]) => svg.includes("data-dropped-silent")).map(([id]) => id)
+    expect(swallowed, "the component was dropped whole instead of clipping itself").toEqual([])
+  }, 60_000)
+
+  it("covers every component that can draw a drop marker", async () => {
+    const { readFileSync, readdirSync } = await import("node:fs")
+    const { join } = await import("node:path")
+    const { fileURLToPath } = await import("node:url")
+
+    // Counted from the renderers rather than from a list kept here by hand:
+    // a tenth component growing the same branch must fail this, or it joins
+    // the review unseen exactly the way the first nine did.
+    const dir = join(fileURLToPath(new URL("..", import.meta.url)), "src/svg/components")
+    const drawers = readdirSync(dir)
+      .filter((f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))
+      .filter((f) => /\+\$\{[^}]+\} more`/.test(readFileSync(join(dir, f), "utf8")))
+
+    expect(
+      Object.keys(DENSITY_BUILDERS).length,
+      `${drawers.length} components draw a "+N more" marker (${drawers.join(", ")}) but the density ` +
+        `table covers ${Object.keys(DENSITY_BUILDERS).length} — add a builder to DENSITY_BUILDERS`,
+    ).toBe(drawers.length)
+  })
 })
