@@ -350,3 +350,72 @@ describe("comparison 首列重复归一化（2026-07-10 无图矩阵真机病型
     })
   })
 })
+
+describe("comparison 空首列表头归一化（2026-08-19 gallery 重渲：20 页表头整排右移一列）", () => {
+  // 作者在 columns 里替标签列先塞了一个空表头，于是表头比数据列多出一格。
+  // 归一化之前「冶金」压在「华东」那一列上，第一列数据头顶没有表头，
+  // 「风电」悬在一个没有数据的第五列。
+  const blankLeadComponent = {
+    type: "comparison" as const,
+    columns: ["", "冶金", "化工", "风电"],
+    rows: [
+      { label: "华东", cells: ["第一季度", "增长 12%", "第二季度"] },
+      { label: "华南", cells: ["第三季度", "持平", "第四季度"] },
+    ],
+  }
+
+  const xByText = (container: HTMLElement) => {
+    const map = new Map<string, number>()
+    for (const t of Array.from(container.querySelectorAll("text"))) {
+      map.set(t.textContent ?? "", Number(t.getAttribute("x")))
+    }
+    return map
+  }
+
+  it("丢掉空的首个表头，每个表头回到自己那一列数据的正上方", () => {
+    const { container } = render(
+      <svg>{comparison.render(blankLeadComponent, { x: 96, y: 176, w: 1088 }, ctx)}</svg>,
+    )
+    const x = xByText(container)
+    expect(x.get("冶金")).toBe(x.get("第一季度"))
+    expect(x.get("化工")).toBe(x.get("增长 12%"))
+    expect(x.get("风电")).toBe(x.get("第二季度"))
+    // 最后一个表头不再悬在没有数据的空列上：它的 x 不超过最右一列数据
+    expect(x.get("风电")!).toBeLessThanOrEqual(x.get("第四季度")!)
+  })
+
+  it("cells 与 columns 等长时不归一（作者真要的空表头，本来就对齐）", () => {
+    const intentionalBlank = {
+      type: "comparison" as const,
+      columns: ["", "我们", "竞品"],
+      rows: [{ label: "价格", cells: ["基准", "低 15%", "高 4%"] }],
+    }
+    const { container } = render(
+      <svg>{comparison.render(intentionalBlank, { x: 0, y: 0, w: 1088 }, ctx)}</svg>,
+    )
+    const x = xByText(container)
+    // 三列数据全部画出，表头压在后两列上
+    expect(x.get("基准")).toBeDefined()
+    expect(x.get("我们")).toBe(x.get("低 15%"))
+    expect(x.get("竞品")).toBe(x.get("高 4%"))
+  })
+
+  it("两种笔误叠在一起时先丢空表头，再走首列重复归一化", () => {
+    const both = {
+      type: "comparison" as const,
+      columns: ["", "维度", "我们", "竞品"],
+      rows: [
+        { label: "价格", cells: ["价格", "低 15%", "基准"] },
+        { label: "性能", cells: ["性能", "提升 30%", "基准"] },
+      ],
+    }
+    const { container } = render(
+      <svg>{comparison.render(both, { x: 0, y: 0, w: 1120 }, ctx)}</svg>,
+    )
+    const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+    expect(texts.filter((t) => t === "价格")).toHaveLength(1)
+    const x = xByText(container)
+    expect(x.get("维度")).toBe(x.get("价格"))
+    expect(x.get("我们")).toBe(x.get("低 15%"))
+  })
+})

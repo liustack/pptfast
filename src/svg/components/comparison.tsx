@@ -54,6 +54,29 @@ function dedupeLabelColumn(component: ComparisonComponent): {
 }
 
 /**
+ * 空首列表头归一化（2026-08-19 gallery 重渲抓到，20 页全中：
+ * `component--comparison--{zh,en,mixed}` 加 `theme--*--zh--p07` 十七个主题）。
+ * 约定见 headerTitles：`columns` 只放数据列的表头，标签列那个空表头由
+ * headerTitles 自己补。作者（或弱模型）先替标签列手写一个空字符串时，
+ * 表头就比数据列多出一格，整排右移一列——第一列数据头顶没有表头，
+ * 最后一个表头悬在一个没有数据的空列上。
+ *
+ * 与 dedupeLabelColumn 同族的笔误，保守程度也照抄：只有每一行的 cells
+ * 都恰好比 columns 少一格（丢掉这个空表头之后逐列严丝合缝）才归一。
+ * cells 与 columns 等长时表头本来就对齐，那个空表头是作者真要的空表头。
+ * 行长参差时丢一格也补不回来。两种都原样渲染。
+ */
+function dropBlankLeadingHeader(component: ComparisonComponent): ComparisonComponent {
+  const offByOne =
+    component.columns.length > 0 &&
+    component.columns[0].trim() === "" &&
+    component.rows.length > 0 &&
+    component.rows.every((r) => r.cells.length === component.columns.length - 1)
+  if (!offByOne) return component
+  return { ...component, columns: component.columns.slice(1) }
+}
+
+/**
  * Gather all text values for a given logical column index.
  * Column 0 = row labels. Column 1..n = cells[i-1].
  */
@@ -186,7 +209,11 @@ export const comparison: SvgComponent<ComparisonComponent> = {
   },
 
   render(rawComponent, box, ctx) {
-    const { labelHeader, component: dedupedComponent } = dedupeLabelColumn(rawComponent)
+    // 先丢多余的空首表头，再判首列重复：两种笔误叠在一起时，只有空表头
+    // 已经丢掉，dedupeLabelColumn 的「cells 与 columns 等长」判据才成立。
+    const { labelHeader, component: dedupedComponent } = dedupeLabelColumn(
+      dropBlankLeadingHeader(rawComponent),
+    )
 
     // Vertical graceful landing (P0 hardening, robustness deep-review D1,
     // family-sweep sibling of bullets.tsx): `rows` has no schema ceiling
