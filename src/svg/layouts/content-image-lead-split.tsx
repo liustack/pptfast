@@ -1,7 +1,7 @@
 import type { Component } from "@/ir"
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
-import type { ContentRect } from "../layout"
+import { GOLDEN_TOP_SHARE, type ContentRect } from "../layout"
 import type { ComponentCtx } from "../components/types"
 import { SvgContent } from "../svg-content"
 import { SCALABLE_TYPES } from "../component-traits"
@@ -28,7 +28,9 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * narrow `SvgContent` single-stack body) — visual column x=571 w=613,
  * y=72..640 (h=568, matching `side-highlight`'s own panel vertical span;
  * on a header-only page that band tightens onto the height its component
- * actually paints, keeping the same top edge — see `textOnlyHeader`).
+ * actually paints and stands at the golden position inside the slot, with
+ * the text column beside it hung from that same line — see
+ * `textOnlyHeader`).
  * The 40px gap between them (571 - 96 - 435) keeps the two regions from
  * ever touching regardless of either one's own internal padding. This
  * geometry only holds when a real scalable component leads (see "Starved
@@ -78,10 +80,10 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  * flush against the page's right content edge on one side and a 40px gap
  * from the text column on the other, so scaling up would either bleed past
  * the canvas or straight into the heading/body text. `VISUAL_SCALE_CAP` is
- * therefore 1 (shrink-to-fit only, horizontally centered and top-flush
- * within the slot, never enlarged) — the same measure-and-scale math, a
- * narrower cap chosen for a column with no bleed room, not a rewritten
- * technique.
+ * therefore 1 (shrink-to-fit only, horizontally centered and set at the
+ * golden position vertically, never enlarged) — the same measure-and-scale
+ * math, a narrower cap chosen for a column with no bleed room, not a
+ * rewritten technique.
  *
  * Beat/strategy tendency assignment (decided in the plan's T3 integration
  * task, once `split-band` also landed; the beat rationale was strengthened
@@ -124,6 +126,15 @@ const VISUAL_Y = 72
 const VISUAL_BOTTOM = 640
 const VISUAL_H = VISUAL_BOTTOM - VISUAL_Y // 568
 const VISUAL_RADIUS = 20
+
+/** Where a band of `h` px stands inside the visual slot: the golden position
+ * (`GOLDEN_TOP_SHARE` of the slack above it, the rest below), the same rule
+ * `SvgContent` places a page's own block by.
+ *
+ * Written once and read by the visual band, by the component standing in it
+ * and by the text block's own offset, so the three cannot drift apart the
+ * way independently-derived coordinates do. */
+const goldenBandY = (h: number) => VISUAL_Y + Math.max(0, VISUAL_H - h) * GOLDEN_TOP_SHARE
 
 // Co-equal case: a real scalable (image/chart) lead component fills the
 // visual column, so the unconditional 60/40 split holds at its full ratio.
@@ -175,18 +186,19 @@ const VISUAL_SCALE_CAP = 1
 
 /** Render `component` (already known to be a `SCALABLE_TYPES` member) into
  * `rect`, uniformly scaled to fit *within* it — horizontally centered,
- * vertically flush with the slot's top edge — and never enlarged, so the
- * scaled footprint can never cross into the adjacent text column or past
- * the page edge. Missing-asset degradation for an `image` component happens
- * inside `renderComponent`'s own dispatch (see file header) — this function
- * never renders a bare `<image>` itself.
+ * vertically at the golden position — and never enlarged, so the scaled
+ * footprint can never cross into the adjacent text column or past the page
+ * edge. Missing-asset degradation for an `image` component happens inside
+ * `renderComponent`'s own dispatch (see file header) — this function never
+ * renders a bare `<image>` itself.
  *
- * Top-flush, not vertically centered (2026-08-20 vertical-gravity ruling —
- * "页面的下方可以空，但不要上方空"): a shrink-to-fit-only visual routinely
- * measures short of its 568px slot, and centering that shortfall hung the
- * page's one picture below a band of nothing while the text column beside
- * it started at the top. Horizontal centering stays — gravity has a
- * direction, and it is not sideways.
+ * Golden, not centered and not top-flush (2026-08-21 ruling): a
+ * shrink-to-fit-only visual routinely measures short of its 568px slot.
+ * Centering that shortfall hung the picture below a band of nothing;
+ * flushing it to the top welded it to the page's upper edge with all the
+ * air below. It takes 38% of the slack above and leaves 62% under, the same
+ * proportion every other block on a page is set by. Horizontal centering
+ * stays — gravity has a direction, and it is not sideways.
  *
  * `preMeasured` is the caller's own measurement of the same component at the
  * same `rect.w` — the header-only band below sizes itself off that number, so
@@ -204,7 +216,7 @@ function renderVisualComponent(
   const scaledW = rect.w * scale
   const scaledH = measured * scale
   const offsetX = rect.x + (rect.w - scaledW) / 2
-  const offsetY = rect.y
+  const offsetY = rect.y + Math.max(0, rect.h - scaledH) * GOLDEN_TOP_SHARE
   return (
     <g data-audit-rect={auditRect}>
       <g data-audit-box={`${offsetX},${offsetY},${scaledW},${scaledH}`}>
@@ -266,24 +278,26 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
   // The mirror of the starved case (visual review 2026-08-15): a real
   // scalable lead, but *nothing* in the body — a single-chart page is the
   // common shape. The 60/40 geometry is right here (that is the layout's
-  // whole premise), and the page's leftover height is real either way. The
-  // only question this flag settles is what the visual column *declares*.
+  // whole premise), but a two-line heading pinned to the top of the narrow
+  // column beside a shorter visual reads as content having gone missing
+  // rather than as a composition ("这个页面为什么左侧全空白" / "主体为什么
+  // 不居中").
   //
-  // Two earlier answers, both since overruled. The first pushed the text
-  // block down to share a center line with the visual column. The second
-  // kept that line but tightened the declared band onto the ink it paints.
-  // The 2026-08-20 vertical-gravity ruling ("页面的下方可以空，但不要上方
-  // 空") takes the centering back out: on ember p05 the pair of them left
-  // the top ~220px of the text column and ~140px of the visual column
-  // empty, with the whole page's content bunched around its middle. Both
-  // columns now start at the content area's top and the dead strip lands
-  // under them, where the ruling puts it.
+  // Fixed without changing any width — the column stays 435px, so the
+  // layout keeps the distinct skeleton the pool's diversity test tracks.
+  // The two protagonists line up on one line instead: `goldenBandY` puts
+  // the visual band at the golden position inside the slot, and the text
+  // block hangs from that band's own middle. Only applies when the body is
+  // genuinely empty: with any body content the stack must stay top-aligned
+  // so the body has the full column height to grow into.
   //
-  // What survives from the second pass is the part that was never about
-  // centering: a shrink-to-fit-only visual measures short of the 568px
-  // band, and declaring 568 while painting 288 tells an auditor reading
+  // Round 3 added the part that was never about the shared line: a
+  // shrink-to-fit-only visual measures short of the 568px band, and
+  // declaring 568 while painting 288 tells an auditor reading
   // `data-audit-rect` there is a half-empty region here. With an empty body
-  // the band tightens onto what it paints — see `visualBandH`.
+  // the band tightens onto what it paints — see `visualBandH`. A wave in
+  // between top-flushed both columns and was refused: it left ember p05's
+  // chart welded to the page's upper edge with 280px of nothing beneath it.
   const textOnlyHeader = !starved && bodyComponents.length === 0 && !slide.footnote
 
   const kicker = section
@@ -318,16 +332,45 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
     : null
   const subheadingY = headingLastY + 42
 
+  // Header-only: the visual can only ever shrink to fit (VISUAL_SCALE_CAP),
+  // so a component that measures short of the full 568px band leaves the rest
+  // of it declared but never painted — 280px of it for a typical chart, a
+  // region `data-audit-rect` claims and no ink reaches. Hand the column the
+  // band it actually paints instead, standing at `goldenBandY` — the same
+  // expression the text block below takes its own line from, so the two
+  // cannot come from two formulas that happen to agree today.
+  const visualMeasured =
+    textOnlyHeader && visualComponent ? measureComponent(visualComponent, LEAD_VISUAL_W, ctx) : undefined
+  const visualBandH =
+    visualMeasured !== undefined && visualMeasured > 0 ? Math.min(visualMeasured, VISUAL_H) : VISUAL_H
+  const visualBandY = goldenBandY(visualBandH)
+
+  // Vertical offset applied to the whole text block in the header-only case
+  // above. The block runs from the kicker's ascender down to the last
+  // baseline it actually uses; centering that span on the visual band's own
+  // middle puts the two columns on one line. Never negative — a tall block
+  // stays where it is rather than being pushed off the top of the page.
+  const textBlockTop = kicker ? KICKER_Y - 17 : HEADING_BASELINE - heading.fontSize
+  const textBlockBottom = subheading ? subheadingY : headingLastY
+  const textShift = textOnlyHeader
+    ? Math.max(
+        0,
+        Math.round(visualBandY + visualBandH / 2 - (textBlockBottom - textBlockTop) / 2 - textBlockTop),
+      )
+    : 0
   const subheadingBudget = subheading ? SUBHEADING_SLOT : 0
   const subheadingFill = subheading
     ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.accent
 
-  // Follows the text block it hangs under. One coordinate on every path now
-  // that nothing shifts the heading block vertically — the header-only case
-  // used to need its own term here, and the rect drifting out from under
-  // its own heading was the bug that term existed to prevent.
-  const bodyY = headingLastY + 40 + subheadingBudget
+  // Follows the text block it hangs under. `textShift` is 0 on every path
+  // but the header-only one, so this is the same coordinate as everywhere
+  // else — and in the header-only case the rect is no longer emitted at a
+  // coordinate the text above it stopped using. Without the shift the rect
+  // starts above the shifted heading and spans straight through it, harmless
+  // today only because that branch's body is empty by definition, and a live
+  // overlap the moment anyone loosens `textOnlyHeader`.
+  const bodyY = headingLastY + 40 + subheadingBudget + textShift
   const bodyBottom = slide.footnote ? 616 : 632
   const bodyRect: ContentRect = { x: TEXT_X, y: bodyY, w: TEXT_W, h: Math.max(120, bodyBottom - bodyY) }
 
@@ -335,21 +378,14 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
     ? fitSvgLine(slide.footnote, { maxWidth: TEXT_W, fontSize: 14, minFontSize: 11 })
     : null
 
-  // Header-only: the visual can only ever shrink to fit (VISUAL_SCALE_CAP),
-  // so a component that measures short of the full 568px band leaves the rest
-  // of it declared but never painted — 280px of it for a typical chart, a
-  // region `data-audit-rect` claims and no ink reaches. Hand the column the
-  // band it actually paints instead. Both bands start at `VISUAL_Y`, and the
-  // component inside is top-flush, so the declared band and the painted one
-  // now share an edge rather than a midpoint.
-  const visualMeasured =
-    textOnlyHeader && visualComponent ? measureComponent(visualComponent, LEAD_VISUAL_W, ctx) : undefined
-  const visualBandH =
-    visualMeasured !== undefined && visualMeasured > 0 ? Math.min(visualMeasured, VISUAL_H) : VISUAL_H
-
+  // Declared band and painted ink coincide by construction: the band stands
+  // at `visualBandY` and `renderVisualComponent` sets its own scaled
+  // footprint at the golden position inside whatever band it is handed —
+  // which, for a band already tightened onto that footprint, is the band's
+  // own top edge.
   const visualRect: ContentRect = starved
     ? { x: STARVED_VISUAL_X, y: VISUAL_Y, w: STARVED_VISUAL_W, h: VISUAL_H }
-    : { x: LEAD_VISUAL_X, y: VISUAL_Y, w: LEAD_VISUAL_W, h: visualBandH }
+    : { x: LEAD_VISUAL_X, y: visualBandY, w: LEAD_VISUAL_W, h: visualBandH }
 
   return (
     <>
@@ -357,7 +393,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
         <text
           data-truncated={kicker.truncated ? "1" : undefined}
           x={TEXT_X}
-          y={KICKER_Y}
+          y={KICKER_Y + textShift}
           fontFamily={fonts.body}
           fontSize={kicker.fontSize}
           fill={colors.muted}
@@ -373,7 +409,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
           key={i}
           data-truncated={heading.truncated && i === heading.lines.length - 1 ? "1" : undefined}
           x={TEXT_X}
-          y={HEADING_BASELINE + i * heading.lineHeight}
+          y={HEADING_BASELINE + textShift + i * heading.lineHeight}
           fontFamily={fonts.heading}
           fontSize={heading.fontSize}
           fontWeight="700"
@@ -387,7 +423,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
       {subheading && (
         <text
           x={TEXT_X}
-          y={subheadingY}
+          y={subheadingY + textShift}
           fontFamily={fonts.body}
           fontSize={subheading.fontSize}
           fill={subheadingFill}

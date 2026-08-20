@@ -68,14 +68,15 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     expect(item.missing).toBe(true) // no assets.images entry was supplied
     // x/y measured off the real render, not copied from the layout's own
     // geometry-sketch doc comment ("y=72..640" describes the 568px-tall
-    // *slot*, not the 307px-tall image's position within it). Since the
-    // 2026-08-20 vertical-gravity ruling the renderer hangs a capped-height
-    // visual off the slot's top edge rather than its middle, so the frame
-    // starts at 72 and the 261px it does not use is under it — it used to
-    // land at 203 with half that gap above. Asserting the actual output
-    // here, not the slot bounds, is exactly the 裁定 1 discipline this test
-    // exists to pin: the height is still the image's own, not the slot's.
-    expect(item.frame).toEqual({ x: 571, y: 72, w: 613, h: 307, aspect: "2:1" })
+    // *slot*, not the 307px-tall image's position within it). The renderer
+    // stands a capped-height visual at the golden position inside that slot
+    // (2026-08-21 ruling), so of the 261px the image does not use, 99 sit
+    // above it and 162 below: y=171. It landed at 203 when the slot was
+    // split evenly and at 72 during the top-aligned wave. Asserting the
+    // actual output here, not the slot bounds, is exactly the 裁定 1
+    // discipline this test exists to pin: the height is still the image's
+    // own, not the slot's.
+    expect(item.frame).toEqual({ x: 571, y: 171, w: 613, h: 307, aspect: "2:1" })
     expect(item.suggested_pixels).toEqual({ w: 1226, h: 614 })
   })
 
@@ -86,7 +87,7 @@ describe("buildAssetBrief — probe fixture (real render, not a copied constant)
     const item = brief.items[0]!
     expect(item.missing).toBe(false)
     expect(item.rendered).toBe(true)
-    expect(item.frame).toEqual({ x: 571, y: 72, w: 613, h: 307, aspect: "2:1" })
+    expect(item.frame).toEqual({ x: 571, y: 171, w: 613, h: 307, aspect: "2:1" })
   })
 
   it("never mutates the input ir (dummy injection is a render-only in-memory copy)", () => {
