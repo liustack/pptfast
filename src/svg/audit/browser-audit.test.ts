@@ -151,7 +151,7 @@ describe("collectBBoxOverflows", () => {
     // esbuild's keepNames `__name(...)` calls, so we can't observe the
     // artifact by calling collectBBoxOverflows.toString() from inside a
     // vitest test — but `pnpm exec tsx` (used by
-    // scripts/pptx-browser-audit.mts, the actual consumer of this
+    // scripts/gallery/bbox.ts, the actual consumer of this
     // serializer) runs esbuild with `keepNames: true` baked in, which
     // rewrites every nested named function inside collectBBoxOverflows's
     // body (parseTranslate/parseNums/visit) to append a

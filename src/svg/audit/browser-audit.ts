@@ -4,15 +4,16 @@
  * box — same-source blind spot: an estimation bug can hide layout bugs from
  * itself. This module trades the estimate for the browser's own
  * `SVGGraphicsElement.getBBox()`, so it must run inside an actual page
- * (Chrome 103-class, per `docs/browser-compat.md`), not jsdom.
+ * (Chrome 103-class), not jsdom.
  *
  * `collectBBoxOverflows` is designed to be shipped into that page verbatim:
- * `scripts/pptx-browser-audit.mts` embeds `collectBBoxOverflows.toString()`
- * in generated HTML and calls it from an inline `<script>`. That means the
- * function body must be self-contained — no closures over module-level
- * imports/consts, no TS-only runtime constructs (enums, parameter
- * properties, `as const` assertions relying on erased types) — plain
- * ES2020 that still works after esbuild/tsx strips the type annotations.
+ * `scripts/gallery/bbox.ts` embeds `collectBBoxOverflows.toString()` in a
+ * generated HTML harness and calls it from an inline `<script>`, driving it
+ * over every page `pnpm gallery --bbox` just rendered. That means the function
+ * body must be self-contained — no closures over module-level imports/consts,
+ * no TS-only runtime constructs (enums, parameter properties, `as const`
+ * assertions relying on erased types) — plain ES2020 that still works after
+ * esbuild/tsx strips the type annotations.
  */
 
 /**
@@ -154,7 +155,7 @@ export function collectBBoxOverflows(root: SVGSVGElement, tol: number): string[]
 
 /**
  * Extract `collectBBoxOverflows` as a string ready to embed verbatim in a
- * generated HTML page (see `scripts/pptx-browser-audit.mts`).
+ * generated HTML page (see `scripts/gallery/bbox.ts`).
  *
  * `tsx` (and Vite's esbuild-based dev/test transforms) run with esbuild's
  * `keepNames: true`, which rewrites every named function/const declaration

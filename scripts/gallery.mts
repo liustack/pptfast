@@ -12,6 +12,12 @@
  *   pnpm gallery --only=theme           # one table
  *   pnpm gallery --languages=zh,en      # narrow the language axis
  *   pnpm gallery --out=/tmp/g           # somewhere else
+ *   pnpm gallery --bbox                 # + a real-browser geometry pass
+ *
+ * `--bbox` is the only flag that needs anything outside this repo (a
+ * Playwright install — see `gallery/bbox.ts`). It is opt-in precisely so
+ * `pnpm check`, which runs this same matrix on every commit, never needs a
+ * browser.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
@@ -54,6 +60,13 @@ const languagesRaw = flag("languages")
 const languages = languagesRaw ? (languagesRaw.split(",").map((s) => s.trim()) as LanguageId[]) : LANGUAGE_IDS
 for (const lang of languages) {
   if (!LANGUAGE_IDS.includes(lang)) fail(`unknown language "${lang}" — expected one of ${LANGUAGE_IDS.join(", ")}`)
+}
+
+const bboxRaw = flag("bbox")
+const bboxFloorRaw = flag("bbox-floor")
+const bboxFloor = bboxFloorRaw ? Number(bboxFloorRaw) : undefined
+if (bboxFloorRaw !== undefined && (!Number.isFinite(bboxFloor) || bboxFloor! < 0)) {
+  fail(`--bbox-floor must be a non-negative number of px (got "${bboxFloorRaw}")`)
 }
 
 const themeLanguageRaw = flag("theme-language")
@@ -103,4 +116,25 @@ if (failures.length > 0) {
   for (const p of failures.slice(0, 20)) console.error(`  - ${p.id}: ${p.skipped}`)
   if (failures.length > 20) console.error(`  … and ${failures.length - 20} more (see manifest.json)`)
   process.exitCode = 1
+}
+
+// Imported here rather than at the top of the file: this module pulls in a
+// browser driver, and the ordinary `pnpm gallery` run — the one `pnpm check`
+// exercises through `gallery.test.mts` — must not touch it at all.
+if (bboxRaw !== undefined) {
+  const { auditBBoxes, formatBBoxReport, writeBBoxReport } = await import("./gallery/bbox")
+  let progress = ""
+  const report = await auditBBoxes(svgs, {
+    floor: bboxFloor,
+    log: (m) => {
+      // One rewritten line, not one line per batch — the useful output is the
+      // findings, and a dozen progress lines would push them off the screen.
+      progress = m
+      if (process.stdout.isTTY) process.stdout.write(`\r${m}`)
+    },
+  })
+  if (process.stdout.isTTY && progress) process.stdout.write("\n")
+  console.log(formatBBoxReport(report))
+  console.log(`gallery: bbox report written to ${writeBBoxReport(report, outDir)}`)
+  if (report.defects.length > 0) process.exitCode = 1
 }

@@ -6,6 +6,7 @@ read_when:
   - export XML structure changed
   - validating the installed DSH plugin
   - reviewing how themes/layouts/components actually look (`pnpm gallery`)
+  - a text box measured by the estimator disagrees with what a browser draws (`pnpm gallery --bbox`)
 ---
 
 # Testing
@@ -188,6 +189,45 @@ renderer change that breaks a corpus page fails there rather than turning up
 as a hole partway through a review sitting. It also fails if a component
 type gains no corpus builder — silently dropping a component off the table
 would let the review sign off on something nobody looked at.
+
+### Real-geometry pass (`--bbox`)
+
+Every other automated check measures text with `measureTextUnits`, the same
+estimator the layout code uses to decide what fits. When that estimate is
+wrong, the layout and the audit are wrong together and agree with each other.
+`--bbox` breaks the tie by mounting each rendered page in a real browser and
+asking it for `getBBox()`:
+
+```bash
+pnpm gallery --bbox                 # + a real-browser geometry pass
+pnpm gallery --bbox --bbox-floor=4  # loosen the fixed part of the slack
+```
+
+It needs Playwright, which this repo deliberately does **not** depend on —
+`pnpm check` runs the same matrix on every commit and must never pull a
+browser. Install it into the checkout (`pnpm add -D playwright && pnpm exec
+playwright install chromium`) or point `PPTFAST_PLAYWRIGHT` at an existing
+install; a machine with Google Chrome needs no download at all. Results are
+written to `.gallery/bbox.json` and depend on the fonts installed on the
+machine, the same caveat the PowerPoint output carries.
+
+Each measured overflow lands in one of three buckets
+(`scripts/gallery/bbox.ts`):
+
+- **measurement slack** — `getBBox()` reports the *ink* box while the declared
+  boxes are laid out against advance widths, and the disagreement accumulates
+  along a line. So the horizontal allowance is proportional (1% of the box,
+  2px floor, 8px cap) rather than flat: on the 461-page corpus one cause — a
+  full-width Chinese serif line — measures 3px past a 435px column and 6px
+  past a 1088px one, and a flat threshold would call the first clean and the
+  second a defect. Nothing accumulates down a baseline, so vertical overflow
+  is judged against the flat floor alone.
+- **designed bleed** — `scripts/gallery/bbox-exemptions.ts`, keyed on layout
+  *plus* the text allowed to bleed, so a real defect landing on the same page
+  still gets reported. Kept there rather than as a `data-bleed` attribute
+  because marking it in the renderer would move bytes that committed goldens
+  and preview files pin.
+- **defect** — everything else. Reported, and the run exits non-zero.
 
 Background and the reasoning behind how the matrix is cut:
 `.issues/2026-08-15-release-readiness/spec.md`.
