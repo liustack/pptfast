@@ -10,9 +10,21 @@ type RowCardsComponent = Extract<Component, { type: "row_cards" }>
  * 全宽横向长卡列表（2026-07-11 用户借鉴学术贡献一览页）：每项一张全宽
  * 卡——左编号圆圈 + 可选图标 + 标题 + 主/次两级描述，highlight 项 accent
  * 描边强调。3-6 项纵向堆叠，适合每项信息量较大的枚举（成果一览/贡献
- * 清单/议题列表）。可拉伸（box.h 均分给各卡，内容居中）。
+ * 清单/议题列表）。可拉伸（box.h 增量先分一份给卡间距，其余均分给各卡，
+ * 内容居中）。
  */
 const CARD_GAP = 14
+/** Share of the density-stretch increment spent widening the gaps *between*
+ * cards rather than the card shells. The shells split their share into top
+ * and bottom padding, so growth that all goes there makes every card emptier
+ * inside while the cards stay exactly as close to each other as before — the
+ * 2026-08-19 review read that as "太拥挤" on a page where each 133px card
+ * held 69px of content and 99px of blank separated two card edges only 14px
+ * apart. Eyes read the edges, not the text. */
+const CARD_GAP_GROW_SHARE = 0.3
+/** …and no gap grows past this multiple of its own natural size, so the list
+ * never falls apart into unrelated cards. */
+const CARD_GAP_GROW_CAP_RATIO = 0.6
 const PAD_Y = 16
 const NUM_CX = 46
 const NUM_R = 19
@@ -61,8 +73,17 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     const layouts = component.items.map((item) => cardLayout(item, box.w))
     const measuredH =
       layouts.reduce((s, l) => s + l.cardH, 0) + (layouts.length - 1) * CARD_GAP
-    // 密度拉伸：box.h 增量均分给各卡，内容组卡内垂直居中
-    const perCardGrow = Math.max(0, ((box.h ?? measuredH) - measuredH) / layouts.length)
+    // 密度拉伸：box.h 增量按比例分成两份——一份长卡间距，其余均分给各卡壳
+    //（内容组卡内垂直居中）。截断路径上 box.h < measuredH，grow = 0，
+    // gapGrow = 0，卡间距原样是 CARD_GAP，下面那条验收循环的账不变。
+    const grow = Math.max(0, (box.h ?? measuredH) - measuredH)
+    const gaps = Math.max(1, layouts.length - 1)
+    const gapGrow =
+      layouts.length > 1
+        ? Math.min((grow * CARD_GAP_GROW_SHARE) / gaps, CARD_GAP * CARD_GAP_GROW_CAP_RATIO)
+        : 0
+    const cardGap = CARD_GAP + gapGrow
+    const perCardGrow = (grow - gapGrow * (layouts.length - 1)) / layouts.length
     // 截断预算（box.h < 测量高，layoutContentFit 单块超高兜底）：只画放
     // 得下的卡，尾部自画「+N more」——存量超预算 deck 不再画出页外。
     const truncBudget =
@@ -72,7 +93,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
       let acc = 0
       visible = 0
       for (const l of layouts) {
-        const next = acc + (visible > 0 ? CARD_GAP : 0) + l.cardH
+        const next = acc + (visible > 0 ? cardGap : 0) + l.cardH
         if (next > truncBudget) break
         acc = next
         visible++
@@ -97,7 +118,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
           const { title, text, sub, contentH, cardH } = layouts[i]
           const shellH = cardH + perCardGrow
           const cardY = cursor
-          // CARD_GAP only *between* cards (N-1 gaps for N cards) — matches
+          // The gap goes only *between* cards (N-1 gaps for N cards) — matches
           // the acceptance loop above and measure()'s own formula exactly.
           // A fix-round bug (R1 evidence wave, Task T3 review — a real,
           // production-reachable defect a stress-fixture reshuffle exposed,
@@ -110,7 +131,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
           // is meant to sit 14px below the last card's own shell, not
           // 14px below "last card + one more unnecessary gap" — see
           // row-cards.test.tsx's sweep for the regression pin.
-          cursor += shellH + (i < visibleItems.length - 1 ? CARD_GAP : 0)
+          cursor += shellH + (i < visibleItems.length - 1 ? cardGap : 0)
           const hl = Boolean(item.highlight)
           const contentTop = cardY + (shellH - contentH) / 2
           const numCy = cardY + shellH / 2

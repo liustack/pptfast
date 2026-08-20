@@ -78,7 +78,24 @@ const TITLE_MIN_FONT_SIZE = 12
 // two as one glued block ("标题距离卡片太近了，没有呼吸感"). 36 leaves the
 // title its own line of air, the same relationship cycle.tsx's band
 // already has at its larger type size.
+//
+// 36 is the *natural* band — what `measure()` reserves. It stopped being
+// enough as soon as the layout stretched the cards: `box.h` growth used to
+// go entirely into the card shells, which split it into top and bottom
+// padding, so a page with 163px of leftover gave every card ~40px of extra
+// internal air while the band stayed at 36 and the title's own clearance
+// stayed at 20. The 2026-08-19 review read the result as "标题贴卡片" — a
+// relative measurement: the tightest air on the page was directly under the
+// title, at a third of what the cards had inside them. So the band takes a
+// share of that growth too (see `TITLE_BAND_GROW_SHARE` at the render site).
 const TITLE_BAND = 36
+/** Share of the density-stretch increment that widens the title's band
+ * rather than the card shells, so the title's clearance scales with the
+ * cards' internal padding instead of staying frozen at the natural 20px. */
+const TITLE_BAND_GROW_SHARE = 0.25
+/** Ceiling on that widening — past this the title stops reading as a label
+ * on the grid below it and starts floating on its own. */
+const TITLE_BAND_MAX_GROW = 16
 
 interface PersonCardLayout {
   name: { text: string; fontSize: number; truncated: boolean }
@@ -216,10 +233,16 @@ export const peopleCards: SvgComponent<PeopleCardsComponent> = {
     const hasTitle = !!component.title?.trim()
     const titleBand = hasTitle ? TITLE_BAND : 0
     // 密度拉伸（box.h 由布局分配）：每行卡壳均分增量，内容组垂直居中——同
-    // icon-cards.tsx render() 的 perRowGrow/contentShift 写法。title band
-    // is a fixed reservation, not part of the stretch pool.
+    // icon-cards.tsx render() 的 perRowGrow/contentShift 写法。增量先按
+    // TITLE_BAND_GROW_SHARE 切一小块给 title band（有 title 时），其余才进
+    // 卡壳池：band 曾是纯固定预留，卡片越长它越显得贴。
     const measuredH = titleBand + rows * cardH + (rows - 1) * GAP
-    const perRowGrow = Math.max(0, ((box.h ?? measuredH) - measuredH) / rows)
+    const grow = Math.max(0, (box.h ?? measuredH) - measuredH)
+    const bandGrow = hasTitle
+      ? Math.min(grow * TITLE_BAND_GROW_SHARE, TITLE_BAND_MAX_GROW)
+      : 0
+    const grownTitleBand = titleBand + bandGrow
+    const perRowGrow = (grow - bandGrow) / rows
     const shellH = cardH + perRowGrow
     const contentShift = perRowGrow / 2
     const palette = ctx.colors.chartPalette
@@ -251,7 +274,7 @@ export const peopleCards: SvgComponent<PeopleCardsComponent> = {
           })()}
         {component.people.map((person, i) => {
           const cardX = (i % cols) * (cardW + GAP)
-          const cardY = titleBand + Math.floor(i / cols) * (shellH + GAP)
+          const cardY = grownTitleBand + Math.floor(i / cols) * (shellH + GAP)
           const { name, role, org } = layoutPersonCard(person, contentW)
           const badgeCx = cardX + cardW / 2
           const badgeCy = cardY + PAD_TOP + contentShift + BADGE_R

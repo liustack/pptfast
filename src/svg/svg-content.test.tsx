@@ -206,11 +206,12 @@ it("surplus-grown component y is identical between the audit annotation and the 
       <SvgContent components={twoKpis} rect={{ x: 0, y: 0, w: 400, h: 500 }} ctx={ctx} />
     </svg>,
   )
-  // The second component's audit box must report the grown y (220 — stretch
-  // grants each kpi the capped +84 first; see layout.test.ts's arithmetic).
-  expect(markup).toContain('data-audit-box="0,220,400"')
+  // The second component's audit box must report the grown y (233.2 —
+  // stretch spends its 60% share first, +73.2 per kpi, then the gap pass
+  // adds its capped 24; see layout.test.ts's arithmetic).
+  expect(markup).toContain('data-audit-box="0,233.2,400"')
   // And the component's own rendered translate must carry that exact same y —
   // "rendering the annotation" (not a parallel, possibly-diverging value).
-  expect(markup).toContain("translate(0,220)")
+  expect(markup).toContain("translate(0,233.2)")
   expect(markup).not.toContain('data-audit-box="0,136,400"')
 })

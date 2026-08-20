@@ -231,4 +231,46 @@ describe("people_cards component", () => {
     expect(heights[0]).toBeGreaterThan(0)
     expect(new Set(heights.map((h) => Math.round(h))).size).toBe(1)
   })
+
+  // Visual review 2026-08-19 (C cluster, 3): the band used to be a pure
+  // fixed reservation, so a stretched page gave every card ~40px of extra
+  // internal padding while the title kept its natural 20px of clearance —
+  // the tightest air on the page ended up directly under the title, at a
+  // third of what the cards had inside them.
+  function firstCardTop(component: typeof component9, w: number, h?: number): number {
+    const { container } = svg(peopleCards.render(component, { x: 0, y: 0, w, ...(h != null ? { h } : {}) }, ctx))
+    const box = container.querySelector("[data-audit-box]")!.getAttribute("data-audit-box")!
+    return Number(box.split(",")[1])
+  }
+
+  it("density stretch: the title band takes a share of the increment instead of staying frozen", () => {
+    const measuredH = peopleCards.measure(component9, 1200, ctx)
+    const natural = firstCardTop(component9, 1200)
+    // The natural band: baseline at 16, first card at 36.
+    expect(natural).toBe(36)
+    // A 40px increment gives the band a quarter of it, under the 16px cap.
+    expect(firstCardTop(component9, 1200, measuredH + 40)).toBeCloseTo(36 + 10, 5)
+    // A 120px increment would hand it 30 — the cap holds it to 16.
+    expect(firstCardTop(component9, 1200, measuredH + 120)).toBeCloseTo(36 + 16, 5)
+  })
+
+  it("density stretch: an untitled component gives the whole increment to the cards", () => {
+    // No band exists to widen, so nothing is withheld from the shells and
+    // the first card still starts at the group's own origin.
+    const measuredH = peopleCards.measure(component12, 1200, ctx)
+    expect(firstCardTop(component12 as typeof component9, 1200, measuredH + 120)).toBe(0)
+  })
+
+  it("density stretch: band growth plus shell growth still fills box.h exactly", () => {
+    // The band's share is taken *out of* the shell pool, never added on top
+    // of it — otherwise the grid would render past the box the layout gave
+    // it, which is how a card ends up 3px from the footnote.
+    const w = 1200
+    const measuredH = peopleCards.measure(component9, w, ctx)
+    const h = measuredH + 120
+    const { container } = svg(peopleCards.render(component9, { x: 0, y: 0, w, h }, ctx))
+    const shells = Array.from(container.querySelectorAll("rect"))
+    const bottoms = shells.map((r) => Number(r.getAttribute("y")) + Number(r.getAttribute("height")))
+    expect(Math.max(...bottoms)).toBeCloseTo(h, 5)
+  })
 })
