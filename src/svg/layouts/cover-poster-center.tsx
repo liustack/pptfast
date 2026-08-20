@@ -32,6 +32,12 @@ import { CONF_LABEL } from "../../lib/conf-labels"
 /** Center-x of the 1280-wide canvas — every poster-mode element anchors here. */
 const CENTER_X = 640
 
+/** Short hairline under the title: the *only* decorative accent-weight
+ * element on this page — a pure decoration, never a text color, per the
+ * poster grammar. */
+const ACCENT_BAR_W = 60
+const ACCENT_BAR_H = 4
+
 export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
   const org = ir.meta.organization
   const date = ir.meta.date
@@ -60,10 +66,8 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
   const COVER_TITLE_Y = 280
   const titleLastY = COVER_TITLE_Y + Math.max(0, title.lines.length - 1) * title.lineHeight
 
-  // 曾是标题下短横条的落点（+56→+70，2026-07-10 导出审计：导出端字体回退
-  // 行高更高，56 时字底压线）。横条本身在 2026-08-20 悬空装饰清扫里删掉了
-  // ——它悬在标题与副题正中，谁也没贴——留下的这个锚点继续定副题的位置。
-  const subtitleAnchorY = titleLastY + 70
+  // +56→+70（2026-07-10 导出审计：导出端字体回退行高更高，56 时字底压线）
+  const accentY = titleLastY + 70
 
   const subtitle = layoutSvgText(slide.subheading || "", {
     maxWidth: 900,
@@ -71,7 +75,7 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 2,
     lineHeightRatio: 1.2,
   })
-  const subtitleY = subtitleAnchorY + 64
+  const subtitleY = accentY + 64
   const subtitleLastY =
     subtitleY + Math.max(0, subtitle.lines.length - 1) * subtitle.lineHeight
 
@@ -109,6 +113,15 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
           {line}
         </text>
       ))}
+
+      <rect
+        x={CENTER_X - ACCENT_BAR_W / 2}
+        y={accentY}
+        width={ACCENT_BAR_W}
+        height={ACCENT_BAR_H}
+        rx="2"
+        fill={ctx.colors.primary}
+      />
 
       {subtitle.lines.map((line, i) => (
         <text

@@ -191,6 +191,14 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
           >
             {slide.subheading}
           </text>
+          <line
+            x1="56"
+            y1={subY + 34}
+            x2="216"
+            y2={subY + 34}
+            stroke={ctx.colors.border}
+            strokeWidth="1.4"
+          />
         </>
       )}
     </>

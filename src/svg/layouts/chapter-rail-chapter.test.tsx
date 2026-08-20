@@ -209,4 +209,32 @@ describe("RailChapter", () => {
       expect(subheading.getAttribute("fill")).toBe("#0A0E14")
     }
   })
+
+  it("单章节 deck 不画进度点：轨道本来就跳过，孤点跟着藏（2026-08-20 评审的 ink p02 白点）", () => {
+    const ctx = chapterCtx("ink")
+    const solo: PptxIR = {
+      version: "3",
+      filename: "x.pptx",
+      theme: { id: "ink" },
+      meta: {},
+      assets: { images: {} },
+      slides: [chapter1, content],
+    } as unknown as PptxIR
+    const root = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<RailChapter ir={solo} slide={chapter1} index={0} ctx={ctx} />)}</svg>`,
+    )
+    // The track line was already gated on `totalChapters > 1`; the dots were
+    // not, so a one-chapter deck used to keep exactly one r=7 white dot at
+    // (640,600) with nothing under it.
+    expect(root.querySelectorAll("circle").length).toBe(0)
+    expect(root.querySelectorAll("line").length).toBe(0)
+
+    // Two chapters still draw the full row (the gate is about "1 of 1"
+    // indicating nothing, not about dropping the vocabulary).
+    const pair = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(<RailChapter ir={ir("ink")} slide={chapter1} index={0} ctx={ctx} />)}</svg>`,
+    )
+    expect(pair.querySelectorAll("circle").length).toBe(2)
+    expect(pair.querySelectorAll("line").length).toBe(1)
+  })
 })

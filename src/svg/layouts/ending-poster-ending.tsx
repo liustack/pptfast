@@ -50,6 +50,10 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 /** Center-x of the 1280-wide canvas — every poster-mode element anchors here. */
 const CENTER_X = 640
 
+/** 短横条尺寸：本页唯一的 accent 色装饰元素，纯粹是分隔用途，从不作为文字色。 */
+const ACCENT_BAR_W = 60
+const ACCENT_BAR_H = 4
+
 export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const org = ir.meta.organization
   const contact = ir.meta.contact
@@ -75,10 +79,8 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
     Math.max(0, heading.lines.length - 1) * heading.lineHeight
   const headingLastY = HEADING_LAST_BASELINE
 
-  // 曾是 accent 短横条的落点（+40→+54，2026-07-10 导出审计：同
-  // cover-poster-center 的压线修正）。横条在 2026-08-20 悬空装饰清扫里删掉
-  // ——它悬在大标题与副题正中——锚点留着继续定副题与其下整条链路。
-  const subheadingAnchorY = headingLastY + 64
+  // +40→+54（2026-07-10 导出审计：同 cover-poster-center 的压线修正）
+  const accentY = headingLastY + 64
 
   // 兜底只服务完全默认的 ending 页：仅 slide.heading 也缺省时才连带兜底副标题。
   const subheading = fitSvgLine(slide.subheading || (slide.heading ? "" : "Questions & Discussion"), {
@@ -86,7 +88,7 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
     fontSize: 40,
     minFontSize: 20,
   })
-  const subheadingY = subheadingAnchorY + 64
+  const subheadingY = accentY + 64
   const dividerY = subheadingY + 56
 
   const contactText = [author?.name, contact?.email].filter(Boolean).join(" · ")
@@ -123,6 +125,17 @@ export function PosterEnding({ ir, slide, ctx }: SvgTemplateProps) {
           {line}
         </text>
       ))}
+
+      {/* Accent hairline (AccentBar helper inlined, same treatment as
+          cover-poster-center.tsx) */}
+      <rect
+        x={CENTER_X - ACCENT_BAR_W / 2}
+        y={accentY}
+        width={ACCENT_BAR_W}
+        height={ACCENT_BAR_H}
+        rx="2"
+        fill={ctx.colors.primary}
+      />
 
       {/* Subheading */}
       {subheading.text && (

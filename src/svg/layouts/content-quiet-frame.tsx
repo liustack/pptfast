@@ -83,10 +83,10 @@ const HEADING_BASELINE = 180
 const SUBHEADING_FONT_SIZE = 22
 const SUBHEADING_MIN_FONT_SIZE = 16
 
-/** Heading/subheading baseline -> content rect top. Was two hops (a 20px
- * gap down to a short centred accent rule, then 28px more); the rule is
- * gone (2026-08-20 floating-decoration sweep) and the sum is unchanged. */
-const CONTENT_GAP = 48
+const RULE_W = 48
+const RULE_H = 3
+const RULE_GAP = 20
+const CONTENT_GAP = 28
 
 export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
@@ -117,7 +117,8 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     ? accessibleInk(colors.accent, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.accent
 
-  const contentY = (subheading ? subheadingY : headingLastY) + CONTENT_GAP
+  const ruleY = (subheading ? subheadingY : headingLastY) + RULE_GAP
+  const contentY = ruleY + CONTENT_GAP
   const contentBottom = slide.footnote ? 600 : 620
   const contentH = Math.max(120, contentBottom - contentY)
   // Single-component symmetry fix (see file header): narrow + re-center the
@@ -183,6 +184,11 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
           {renderEmphasisTspans(subheading.segments, { accent: colors.text, baseFill: subheadingFill, fontWeight: "700" })}
         </text>
       )}
+
+      {/* Centered accent hairline — the frame's only decoration, deliberately
+          short (RULE_W) and centered, unlike every other layout's
+          full-width or left-anchored rule. */}
+      <rect x={CENTER_X - RULE_W / 2} y={ruleY} width={RULE_W} height={RULE_H} rx={1.5} fill={colors.accent} />
 
       <SvgContent arrangement={slide.arrangement} components={slide.components} rect={contentRect} ctx={ctx} />
 

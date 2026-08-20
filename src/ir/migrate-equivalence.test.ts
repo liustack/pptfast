@@ -611,17 +611,35 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //
       // Re-recaptured again (visual review round 4, the floating-decor
       // sweep -- bars that underline nothing are deleted library-wide).
-      // Only `scenarioBearing` moves, and the drift is exactly two deleted
+      // Only `scenarioBearing` moved, and the drift was exactly two deleted
       // decorative rects, attributed token-by-token with the same tool as
       // the motif-geometry recapture above (part-name sets identical,
       // audit goldens byte-identical, `basic`/`annualReviewPreset`
       // untouched):
-      //   - slide 2: poster-ending's 28x3 white bar (1032,564) -- floating
-      //     mid-air, 64px from any ink;
-      //   - slide 3: quote-stage's 48x3 bar (616,200) -- 160px of nothing
-      //     below it.
-      // One shape block leaves each affected PPTX slide; no text or other
+      //   - slide 2: poster-ending's 28x3 white bar (1032,564);
+      //   - slide 3: quote-stage's 48x3 bar (616,200).
+      // One shape block left each affected PPTX slide; no text or other
       // element moved a single EMU.
+      //
+      // **Rolled back** (2026-08-21): the review that ordered the sweep also
+      // ruled the sweep went too far -- those bars are part of the design
+      // board's own vocabulary, and decoration that competes with text is to
+      // be faded into the background, never deleted or moved. Both rects are
+      // back, so these two goldens are byte-identical to their pre-sweep
+      // capture again (restored from that commit, not re-captured: the same
+      // tool reports the two rects returning and nothing else, and
+      // `git diff` against the pre-sweep blobs is empty). The fade wave that
+      // follows only lowers opacity on motifs none of these three fixture
+      // decks draws, so it moves no golden byte at all.
+      //
+      // Re-recaptured again (decor restoration, 2026-08-21 -- the
+      // floating-decor sweep's deletions were overturned on review; the
+      // boards' ornaments return to their designed places and fade only
+      // where they overlap ink). Drift is the exact mirror of the sweep's
+      // recapture above: `scenarioBearing` slides 2/3 regain the two
+      // decorative rects, one shape block per affected PPTX slide, and
+      // nothing else moves an EMU. `basic`/`annualReviewPreset` and all
+      // three audit goldens are byte-identical.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

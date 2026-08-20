@@ -148,7 +148,8 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   // which left exactly one white dot floating at (640,600) with no track
   // under it and nothing to compare itself to — the "meaningless dot" the
   // 2026-08-20 review pointed at on ink p02. A progress indicator that can
-  // only ever show "1 of 1" indicates nothing, so the whole row goes.
+  // only ever show "1 of 1" indicates nothing, so the dot hides with its
+  // track.
   const showDots = totalChapters > 1
   const dotsWidth = Math.max(0, totalChapters - 1) * CH_DOT_SPACING
   const dotsStartX = 640 - dotsWidth / 2

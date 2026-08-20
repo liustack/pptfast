@@ -4,7 +4,8 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
-import { DECOR_CEILING, PosterMotif } from "./motif-poster-motif"
+import { contrastRatio } from "../audit/deck-audit"
+import { PosterMotif } from "./motif-poster-motif"
 import type { PptxIR, Slide } from "@/ir"
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
@@ -21,12 +22,7 @@ const LOGO_BANDS = [
   { x: 1120, y: 630, w: 96, h: 40 },
 ]
 /** 设计稿的四个内容区（红虚线禁区）。 */
-const CONTENT_ZONES = [
-  { x: 96, y: 48, w: 1040, h: 122 }, // 标题区
-  { x: 96, y: 200, w: 1040, h: 420 }, // 正文区
-  { x: 48, y: 664, w: 1184, h: 44 }, // 页脚 meta 带
-  { x: 1120, y: 630, w: 96, h: 40 }, // 右下 logo 盒
-]
+const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
 
 function rectsOverlap(
   a: { x: number; y: number; w: number; h: number },
@@ -69,27 +65,19 @@ function polylinePoints(root: Element): [number, number][] {
     .map((p) => p.split(",").map(Number) as [number, number])
 }
 
-/** 一笔线状装饰的着墨下沿（含描边半宽）。 */
-function lineInkBottom(el: Element): number {
-  const stroke = Number(el.getAttribute("stroke-width") ?? 1)
-  const y = Math.max(Number(el.getAttribute("y1")), Number(el.getAttribute("y2")))
-  return y + stroke / 2
-}
-
 /**
- * poster-motif v4「行情语汇」（2026-08-19 深底组皮肤重设计；v4 = 2026-08-20
- * 第四轮评审「装饰归背景」的返工，整套语汇搬进 y<34 的顶缘空带）。
+ * poster-motif v3「行情语汇」（2026-08-19 深底组皮肤重设计）。
  * 设计源：`.issues/2026-08-18-theme-redesign/skins/group1-dark-boards.dc.html`
  * 的 insight 设计表。
  */
 describe("PosterMotif（行情语汇）", () => {
-  it("四种页型都画顶缘行情带：上檐 y8 与行情轴 y28 走 border，五枚刻度齿走 accent", () => {
+  it("四种页型都画顶缘行情带：y28/y42 双细线走 border，五枚刻度齿走 accent", () => {
     const tokens = resolveStyle("insight")
     for (const slide of ALL_SLIDES) {
       const { root } = draw("insight", slide)
       const lines = Array.from(root.querySelectorAll("line"))
       const band = lines.filter((l) => l.getAttribute("x1") === "48")
-      expect(band.map((l) => l.getAttribute("y1")).sort()).toEqual(["28", "8"])
+      expect(band.map((l) => l.getAttribute("y1")).sort()).toEqual(["28", "42"])
       for (const l of band) {
         expect(l.getAttribute("stroke")).toBe(tokens.colors.border)
         expect(l.getAttribute("x2")).toBe("1232")
@@ -103,76 +91,123 @@ describe("PosterMotif（行情语汇）", () => {
     }
   })
 
-  /**
-   * v4 的核心守卫，替掉 v3 那条「右端止于 x1100 让开 logo 盒」的局部微调。
-   *
-   * v3 把基线走线画在 y594-656，`text-margin-sweep` 实测压中 40 条文字，
-   * 第二条带线（y42）另压 4 条——评审的「折线图跟文本交叉，分不清主次」
-   * 与「本季度概览跟分割线交叉」都出在这里。v4 的处置是位置而不是浓淡：
-   * 整套线状装饰收进实测空带 y<34。把任何一笔搬回下半页，这条立刻红。
-   */
-  it("线状装饰整体压在实测文字上沿之上（着墨 <= 34），四个内容区与四只 logo 盒一处不碰", () => {
-    for (const slide of ALL_SLIDES) {
-      const { root } = draw("insight", slide)
-
-      for (const l of Array.from(root.querySelectorAll("line"))) {
-        expect(lineInkBottom(l), `line ${l.outerHTML} dips below the measured text ceiling`).toBeLessThanOrEqual(
-          DECOR_CEILING,
-        )
-      }
-      const pts = polylinePoints(root)
-      const walkBottom = Math.max(...pts.map(([, y]) => y)) + 1 // 2px 描边的半宽
-      expect(walkBottom).toBeLessThanOrEqual(DECOR_CEILING)
-
-      // 走线 + 面积填充的整块着墨盒（面积闭合到行情轴 y28）。
-      const inkBox = {
-        x: Math.min(...pts.map(([x]) => x)) - 1,
-        y: Math.min(...pts.map(([, y]) => y)) - 1,
-        w: Math.max(...pts.map(([x]) => x)) - Math.min(...pts.map(([x]) => x)) + 2,
-        h: 28 - Math.min(...pts.map(([, y]) => y)) + 2,
-      }
-      for (const zone of [...CONTENT_ZONES, ...LOGO_BANDS]) {
-        expect(rectsOverlap(inkBox, zone), `ticker ink overlaps ${JSON.stringify(zone)}`).toBe(false)
-      }
-      // 带线与刻度齿同样对四只 logo 盒安全（着墨 <= 34，盒子最上沿 y48）。
-      for (const band of LOGO_BANDS) {
-        expect(rectsOverlap({ x: 48, y: 7, w: 1184, h: DECOR_CEILING - 7 }, band)).toBe(false)
-      }
+  it("行情带整条压在标题区上沿之上（y<=42+描边，不进 96,48,1040×122）", () => {
+    const { root } = draw("insight", contentSlide)
+    for (const l of Array.from(root.querySelectorAll("line"))) {
+      const y = Math.max(Number(l.getAttribute("y1")), Number(l.getAttribute("y2")))
+      const stroke = Number(l.getAttribute("stroke-width") ?? 1)
+      expect(y + stroke / 2).toBeLessThan(TITLE_ZONE.y)
     }
   })
 
-  it("四种页型都画行情走线：面积 12% + 走线 80%，都走 accent", () => {
+  /**
+   * 2026-08-21 变淡波把这两档从 0.12/0.8 降到 0.08/0.25，几何一 px 不动。
+   * 走线原来的 0.8 档压在 insight 底色上是 6.0:1，高过 4.5:1 的正文地板——
+   * 它当时确实在跟署名/脚注抢读（实测 52 页）。新值把两档钉在这里，改回去
+   * 立刻红。
+   */
+  it("四种页型都画基线面积线：面积 8% + 走线 25%（退底档），都走 accent", () => {
     const tokens = resolveStyle("insight")
     for (const slide of ALL_SLIDES) {
       const { root } = draw("insight", slide)
       const area = root.querySelector("path")!
       expect(area.getAttribute("fill")).toBe(tokens.colors.accent)
-      expect(area.getAttribute("opacity")).toBe("0.12")
+      expect(area.getAttribute("opacity")).toBe("0.08")
       const line = root.querySelector("polyline")!
       expect(line.getAttribute("stroke")).toBe(tokens.colors.accent)
-      expect(line.getAttribute("opacity")).toBe("0.8")
+      expect(line.getAttribute("opacity")).toBe("0.25")
       expect(line.getAttribute("fill")).toBe("none")
+      // 走线要压得住署名，但不能压没：面积填充必须比走线更淡，否则整条
+      // 行情走线会读成一块实心色带。
+      expect(Number(area.getAttribute("opacity"))).toBeLessThan(Number(line.getAttribute("opacity")))
     }
   })
 
   /**
-   * 「给谁对齐」的答案：走线两端与两条带线共用页面自己的外边距
-   * （x48/x1232 = 页脚 meta 带 48,664,1184×44 的左右缘），面积填充闭合到
-   * 行情轴 y28。三样东西因此落在同一张网格上，而不是半空里的一个数字。
+   * 「压字检测」：走线与署名/脚注同处 y594-656，所以它混出来的颜色压在页面
+   * 底色上，必须低于 4.5:1 的正文地板——高过这条线，它读起来就是另一段正文
+   * 而不是背景。把 `BASELINE_LINE_OPACITY` 改回 0.8（6.0:1）这条立刻红。
    */
-  it("走线两端落在页面外边距 x48/x1232 上，面积闭合到行情轴 y28", () => {
+  it("压字检测：走线混色后的对比度低于 4.5:1 的正文地板", () => {
+    const t = resolveStyle("insight")
+    const { root } = draw("insight", coverSlide)
+    const bg = t.defaultBackgrounds.cover
+    const ground = bg.kind === "gradient" ? bg.from : t.colors.bg
+    const hex = (s: string) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16))
+    const blend = (fg: string, a: number) => {
+      const f = hex(fg)
+      const b = hex(ground)
+      return "#" + f.map((c, i) => Math.round(c * a + b[i]! * (1 - a)).toString(16).padStart(2, "0")).join("")
+    }
+    const line = root.querySelector("polyline")!
+    const area = root.querySelector("path")!
+    const lineRatio = contrastRatio(blend(line.getAttribute("stroke")!, Number(line.getAttribute("opacity"))), ground)
+    const areaRatio = contrastRatio(blend(area.getAttribute("fill")!, Number(area.getAttribute("opacity"))), ground)
+    // Body ink on the same ground is the other end of the scale — the point
+    // of the fade is the gap between these two numbers.
+    const inkRatio = contrastRatio(t.colors.text, ground)
+    expect(lineRatio).toBeLessThan(4.5)
+    expect(areaRatio).toBeLessThan(lineRatio)
+    expect(inkRatio).toBeGreaterThan(4.5)
+  })
+
+  /**
+   * 顶缘双线里只有下沿那条降了档（1.435:1 → 1.157:1）：它横穿
+   * `poster-chapter`/`roman-chapter` 的 kicker 字身上三分之一，全语料 153 页
+   * 命中 6 页。上沿 2px 那条与五枚琥珀刻度齿零相交，一处不改。
+   */
+  it("顶缘双线只有下沿一条带退底不透明度，上沿与刻度齿保持满不透明", () => {
+    for (const slide of ALL_SLIDES) {
+      const { root } = draw("insight", slide)
+      const lines = Array.from(root.querySelectorAll("line"))
+      const top = lines.find((l) => l.getAttribute("y1") === "28")!
+      const bottom = lines.find((l) => l.getAttribute("y1") === "42")!
+      expect(top.getAttribute("opacity")).toBe(null)
+      expect(bottom.getAttribute("opacity")).toBe("0.45")
+      for (const t of lines.filter((l) => l.getAttribute("y1") === "24")) {
+        expect(t.getAttribute("opacity")).toBe(null)
+      }
+    }
+  })
+
+  /**
+   * 安全区守卫（主会话裁定的两处微调之一）。设计稿原稿把走线画到 x1232，
+   * 会从 logo 盒 (1120,630,96×40) 上方穿过并一路顶到页缘；裁定提前在
+   * x1100 收笔。把 `BASELINE_POINTS` 的右端改回 1170/1232 这条立刻红。
+   */
+  it("安全区微调：基线走线右端止于 x1100，让开右下 logo 盒", () => {
     const { root } = draw("insight", contentSlide)
     const pts = polylinePoints(root)
-    expect(pts[0][0]).toBe(48)
-    expect(pts[pts.length - 1][0]).toBe(1232)
+    const maxX = Math.max(...pts.map(([x]) => x))
+    expect(maxX).toBe(1100)
+    expect(maxX).toBeLessThan(LOGO_BANDS[3].x)
 
+    // 走线整体（连同 2px 描边与面积填充）不与**右下** logo 盒相交。
+    //
+    // 只判右下这一个，不是偷懒：`brand.position` 缺省就是 `"br"`，一份 deck
+    // 只画一个 logo 盒，设计稿的红虚线禁区图里画出来的也正是 (1120,630,96×40)
+    // 这一个。裁定要解决的就是它——原稿走线画到 x1232 会从它正中穿过去。
+    //
+    // 记在这里免得后来人以为漏judgement：这条线是设计稿点名的「全宽」基线，
+    // 左端起于 x48，所以一份把 logo 配到**左下**（`position: "bl"`,
+    // 64,630,96×40）的 deck，logo 会压在这条线 12% 面积填充的尾巴上。
+    // 那是 deck 侧的配置选择，不在本轮裁定范围内；真要躲开就得放弃「全宽」，
+    // 属于设计改动而不是安全区微调。
+    const minY = Math.min(...pts.map(([, y]) => y))
+    const inkBox = { x: pts[0][0] - 1, y: minY - 1, w: maxX - pts[0][0] + 2, h: 656 - minY + 2 }
+    expect(rectsOverlap(inkBox, LOGO_BANDS[3]), "baseline ink overlaps the default br logo band").toBe(false)
+    // 顶缘行情带则对四个位置都安全（y<=42，四个盒子最上沿是 y48）。
+    for (const band of LOGO_BANDS) {
+      expect(rectsOverlap({ x: 48, y: 23, w: 1184, h: 20 }, band)).toBe(false)
+    }
+  })
+
+  it("面积填充闭合到 y656，且首末点与走线两端一致（面积与走线同一组折点）", () => {
+    const { root } = draw("insight", contentSlide)
+    const pts = polylinePoints(root)
     const d = root.querySelector("path")!.getAttribute("d")!
-    expect(d.startsWith(`M ${pts[0][0]} 28`)).toBe(true)
-    expect(d.endsWith(`L ${pts[pts.length - 1][0]} 28 Z`)).toBe(true)
-
-    const axis = Array.from(root.querySelectorAll("line")).find((l) => l.getAttribute("y1") === "28")!
-    expect(axis.getAttribute("x1")).toBe(String(pts[0][0]))
-    expect(axis.getAttribute("x2")).toBe(String(pts[pts.length - 1][0]))
+    expect(d.startsWith(`M ${pts[0][0]} 656`)).toBe(true)
+    expect(d.endsWith(`L ${pts[pts.length - 1][0]} 656 Z`)).toBe(true)
   })
 
   describe("幽灵季度水印", () => {

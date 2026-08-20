@@ -4,7 +4,8 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
-import { ConstellationMotif, DECOR_CEILING, TEXT_RIGHT_EDGE } from "./motif-constellation-motif"
+import { contrastRatio } from "../audit/deck-audit"
+import { ConstellationMotif } from "./motif-constellation-motif"
 import type { PptxIR, Slide } from "@/ir"
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
@@ -13,15 +14,10 @@ const contentSlide: Slide = { type: "content", heading: "内容", components: []
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
 const ALL_SLIDES = [coverSlide, chapterSlide, contentSlide, endingSlide]
 
-/** BrandChrome 的四个 logo 盒（brand-chrome.tsx 的 logoBox）。 */
-const LOGO_BANDS = [
-  { x: 64, y: 48, w: 96, h: 40 },
-  { x: 1120, y: 48, w: 96, h: 40 },
-  { x: 64, y: 630, w: 96, h: 40 },
-  { x: 1120, y: 630, w: 96, h: 40 },
-]
-/** 页面右缘：链的着墨不许出去。 */
-const CANVAS_RIGHT = 1280
+/** BrandChrome 的四个 logo 盒 + 设计稿的标题/正文禁区右缘。 */
+const LOGO_BR = { x: 1120, y: 630, w: 96, h: 40 }
+const BODY_ZONE_RIGHT = 96 + 1040 // 版心右缘 x1136
+const TITLE_ZONE_TOP = 48
 
 const ir = (theme: string): PptxIR =>
   ({
@@ -53,13 +49,11 @@ const nodes = (root: Element) => circles(root).filter((c) => c.getAttribute("fil
 const orbits = (root: Element) => circles(root).filter((c) => c.getAttribute("fill") === "none")
 
 /**
- * constellation-motif v3「星座链」（2026-08-19 深底组皮肤重设计；v3 =
- * 2026-08-20 第四轮评审「装饰归背景」的返工：链退到实测空带 x>1224，
- * 双轨道弧退役）。
+ * constellation-motif v2「星座链」（2026-08-19 深底组皮肤重设计）。
  * 设计源：`.issues/2026-08-18-theme-redesign/skins/group1-dark-boards.dc.html`
  * 的 tech 设计表。
  */
-describe("ConstellationMotif（星座链 v3）", () => {
+describe("ConstellationMotif（星座链 v2）", () => {
   it("不再画满页渐变场：无 defs / linearGradient / url(#) 填充，主题自己的背景不再被遮死", () => {
     for (const slide of ALL_SLIDES) {
       const { markup } = draw("tech", slide)
@@ -113,58 +107,103 @@ describe("ConstellationMotif（星座链 v3）", () => {
   })
 
   /**
-   * v3 返工：双轨道弧退役。它的左端探到 x990/x1110，`text-margin-sweep`
-   * 实测它在 cover/chapter 上扫过标题区里的真文字；而 56px 宽的右缘空带
-   * 塞不下两道 r>300 的同心弧，所以是删不是搬（见 motif 文件头）。
+   * 2026-08-21 变淡波：节点整档乘 0.45，几何一 px 不动。accent 满不透明压在
+   * tech 底色上是 11.6:1、冷序列两色 5.9:1，都落在正文的判读区间里——「星轨
+   * 进前景」说的是这几枚点。0.45 之后三档分别是 2.79 / 2.66 / 2.67:1，全在
+   * 4.5:1 的正文地板以下。辉光同乘该系数，节点与自己 halo 的强弱关系不变。
+   * 连线（border，1.43:1）与顶带疏星（零相交）不动。
    */
-  it("双轨道弧退役：四种页型都不再有 fill=none 的大圆", () => {
-    for (const slide of ALL_SLIDES) {
+  it("节点整档退底 0.45（辉光同乘），连线与疏星保持原样", () => {
+    const t = resolveStyle("tech")
+    const { root } = draw("tech", contentSlide)
+    const solid = nodes(root).filter(
+      (c) => c.getAttribute("fill") !== t.colors.muted && Number(c.getAttribute("r")) <= 4,
+    )
+    expect(solid.length).toBe(10)
+    for (const c of solid) expect(c.getAttribute("opacity")).toBe("0.45")
+    const glows = nodes(root).filter((c) => Number(c.getAttribute("r")) >= 6)
+    expect(glows.map((c) => c.getAttribute("opacity")).sort()).toEqual(["0.1125", "0.1125", "0.135"])
+    for (const s of nodes(root).filter((c) => c.getAttribute("fill") === t.colors.muted)) {
+      expect(s.getAttribute("opacity")).toBe(null)
+    }
+    for (const l of Array.from(root.querySelectorAll("polyline"))) {
+      expect(l.getAttribute("opacity")).toBe(null)
+    }
+  })
+
+  /**
+   * 「压字检测」：节点混色后压在页面底色上必须低于 4.5:1 的正文地板。
+   * 把 `NODE_INK_OPACITY` 改回 1 这条立刻红（accent 11.6:1）。
+   */
+  it("压字检测：三档节点混色后都低于 4.5:1 的正文地板，正文自己远在其上", () => {
+    const t = resolveStyle("tech")
+    const bg = t.defaultBackgrounds.content
+    const ground = bg.kind === "gradient" ? bg.from : t.colors.bg
+    const hex = (s: string) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16))
+    const blend = (fg: string, a: number) => {
+      const f = hex(fg)
+      const b = hex(ground)
+      return "#" + f.map((c, i) => Math.round(c * a + b[i]! * (1 - a)).toString(16).padStart(2, "0")).join("")
+    }
+    const { root } = draw("tech", contentSlide)
+    const discs = nodes(root).filter(
+      (c) => c.getAttribute("fill") !== t.colors.muted && Number(c.getAttribute("r")) <= 4,
+    )
+    expect(discs.length).toBeGreaterThan(0)
+    for (const c of discs) {
+      const ratio = contrastRatio(blend(c.getAttribute("fill")!, Number(c.getAttribute("opacity"))), ground)
+      expect(ratio).toBeLessThan(4.5)
+    }
+    expect(contrastRatio(t.colors.text, ground)).toBeGreaterThan(4.5)
+  })
+
+  it("双轨道弧只进 cover / chapter，圆心在页外右上", () => {
+    for (const slide of [coverSlide, chapterSlide]) {
+      const { root } = draw("tech", slide)
+      const arcs = orbits(root)
+      expect(arcs).toHaveLength(2)
+      for (const a of arcs) {
+        expect(a.getAttribute("cx")).toBe("1420")
+        expect(a.getAttribute("cy")).toBe("140")
+        expect(a.getAttribute("stroke")).toBe(resolveStyle("tech").colors.border)
+      }
+      expect(arcs.map((a) => a.getAttribute("r"))).toEqual(["430", "310"])
+    }
+    for (const slide of [contentSlide, endingSlide]) {
       expect(orbits(draw("tech", slide).root)).toHaveLength(0)
     }
   })
 
-  it("四种页型渲出同一份几何（不再分页型——弧退役后没有页型分支了）", () => {
-    const markups = new Set(ALL_SLIDES.map((slide) => draw("tech", slide).markup))
-    expect(markups.size).toBe(1)
-  })
-
-  /**
-   * v3 的核心守卫，替掉 v2 那条「在版心右缘 x1136 之外」。
-   *
-   * x1136 是设计意图，版式们真实的排字外沿是**实测**的 x1224
-   * （`brand-chrome.tsx` 右对齐的页脚两行）。v2 的链声明 x>=1155，正落在
-   * 两者之间，`text-margin-sweep` 实测压中 26 条文字——评审 tech p05
-   * 「星轨连线呈现到前景中」就是它。把任一节点搬回 x1224 以内，这条立刻红。
-   */
-  it("安全区：节点链整条在实测排字右沿 x1224 之外，且不出页缘", () => {
+  it("安全区：节点链整条在版心右缘 x1136 之外，且链底让开右下 logo 盒", () => {
     const { root } = draw("tech", contentSlide)
-    const chainNodes = nodes(root).filter((c) => Number(c.getAttribute("cy")) > DECOR_CEILING)
+    const chainNodes = nodes(root).filter((c) => Number(c.getAttribute("cy")) > 40)
     expect(chainNodes.length).toBeGreaterThan(0)
+    let lowest = 0
     for (const c of chainNodes) {
       const cx = Number(c.getAttribute("cx"))
+      const cy = Number(c.getAttribute("cy"))
       const r = Number(c.getAttribute("r"))
-      expect(cx - r, `node at ${cx} reaches into the measured text column`).toBeGreaterThan(TEXT_RIGHT_EDGE)
-      expect(cx + r, `node at ${cx} runs off the canvas`).toBeLessThan(CANVAS_RIGHT)
+      expect(cx - r, `node at ${cx} reaches into the body zone`).toBeGreaterThan(BODY_ZONE_RIGHT)
+      lowest = Math.max(lowest, cy + r)
     }
+    expect(lowest, "chain bottom must clear the br logo box").toBeLessThan(LOGO_BR.y)
 
-    // 连线折点同样全在实测排字右沿之外，四只 logo 盒因此一并让开。
+    // 连线折点同样全在版心之外
     for (const pl of Array.from(root.querySelectorAll("polyline"))) {
       for (const pair of pl.getAttribute("points")!.trim().split(/\s+/)) {
-        const [x] = pair.split(",").map(Number)
-        expect(x).toBeGreaterThan(TEXT_RIGHT_EDGE)
+        const [x, y] = pair.split(",").map(Number)
+        expect(x).toBeGreaterThan(BODY_ZONE_RIGHT)
+        expect(y + 1).toBeLessThan(LOGO_BR.y)
       }
-    }
-    for (const band of LOGO_BANDS) {
-      expect(band.x + band.w, `logo band ${band.x} overlaps the chain column`).toBeLessThanOrEqual(TEXT_RIGHT_EDGE)
     }
   })
 
-  it("安全区：顶带疏星压在实测排字上沿 y34 之上", () => {
+  it("安全区：顶带疏星压在标题区上沿之上", () => {
     const { root } = draw("tech", contentSlide)
     const stars = nodes(root).filter((c) => c.getAttribute("fill") === resolveStyle("tech").colors.muted)
     expect(stars).toHaveLength(4)
     for (const s of stars) {
-      expect(Number(s.getAttribute("cy")) + Number(s.getAttribute("r"))).toBeLessThan(DECOR_CEILING)
+      expect(Number(s.getAttribute("cy")) + Number(s.getAttribute("r"))).toBeLessThan(TITLE_ZONE_TOP)
     }
   })
 

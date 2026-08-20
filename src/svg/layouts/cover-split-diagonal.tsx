@@ -75,9 +75,7 @@ export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
   const TITLE_Y = 300
   const titleLastY = TITLE_Y + Math.max(0, title.lines.length - 1) * title.lineHeight
 
-  // 曾是 accent 短条的落点。76px 大标题的字底到它有 29px，副题又在它下面
-  // 44px——两头都不贴（2026-08-20 悬空装饰清扫删掉），锚点留着定副题。
-  const subtitleAnchorY = titleLastY + 40
+  const accentY = titleLastY + 40
 
   const subtitle = layoutSvgText(slide.subheading || "", {
     maxWidth: TITLE_MAX_W,
@@ -85,7 +83,7 @@ export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 2,
     lineHeightRatio: 1.25,
   })
-  const subtitleY = subtitleAnchorY + 44
+  const subtitleY = accentY + 44
 
   const metaParts = [org, confLabel, date, authorText, version].filter(
     (v): v is string => Boolean(v),
@@ -143,6 +141,9 @@ export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
           {line}
         </text>
       ))}
+
+      {/* accent 短条 */}
+      <rect x={TITLE_X} y={accentY} width={72} height={5} fill={ctx.colors.primary} />
 
       {/* 副题 */}
       {subtitle.lines.map((line, i) => (

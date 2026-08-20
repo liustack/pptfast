@@ -1,51 +1,32 @@
 import type { DecorProps } from "./types"
 
 /**
- * poster-motif v4 —— insight 的「行情语汇」（2026-08-19 深底组皮肤重设计，
+ * poster-motif —— insight 的「行情语汇」（2026-08-19 深底组皮肤重设计，
  * 设计源 `.issues/2026-08-18-theme-redesign/skins/group1-dark-boards.dc.html`
- * 的 insight 设计表；v4 是 2026-08-20 第四轮评审「装饰归背景」的返工）。
+ * 的 insight 设计表，几何坐标逐条抄录，不派生）。
  *
  * 换掉的东西：v2 只剩 cover 左下/右下一枚同心光点（三档 seed 变体），那是
  * 「深底 + 左竖条 + 左上标题」时期的残留签名——一枚点既撑不起主题识别，也
  * 与 insight 的财经语域没有关系。covers-review 把深底三家共用一张脸记成本轮
- * 的反面基线，insight 的处方是把装饰整个换成行情屏的语汇。
+ * 的反面基线，insight 的处方是把装饰整个换成行情屏的语汇：
  *
- * ## v4 返工：整套行情语汇搬进页面顶缘
- *
- * 用户对 insight p01 / p10 与 tech p01（tech 借本 motif）的原话是「折线图完全
- * 给文本交叉，分不清主次」「也看不出来它到底是给谁对齐的」。两句都成立，
- * 而且都是位置问题，不是浓淡问题：
- *
- *   - v3 的基线走线画在 y594-656，那正是各版式署名行、脚注、页脚 meta 的
- *     地盘。用 `text-margin-sweep` 把 insight 的全部 41 个版式 + 主题十页逐条
- *     量文字墨迹盒（477 条），这条走线压中 **40 条**：封面署名、ending 署名、
- *     poster-center 的页脚串、各内容页的脚注……几乎每一页都压。
- *   - v3 的第二条带线画在 y42，压中 **4 条**（`本季度概览` 这类居左引首行的
- *     墨迹上沿在 y40，poster-chapter/roman-chapter 的右上引首在 y34）——
- *     评审 insight p07「本季度概览都跟分割线交叉了」说的就是它。
- *
- * 同一次扫掠给出页面真正空着的四条边：**y<34 / x<56 / x>1224 / y>715**。
- * 于是 v4 把整套行情语汇收进顶缘那条 y<34 的空带，一件不留在下半页：
- *
- *   - **顶缘行情带**（四种页型都画）：上檐细线 y8（1px）+ 行情轴 y28（2px），
- *     两条都是 border 色、都从 x48 走到 x1232。x48/x1232 是页面自己的外边距
- *     （页脚 meta 带 48,664,1184×44 的左右缘），走线与轴因此对齐在页面网格上
- *     ——这是「给谁对齐」的答案。
- *   - **行情走线**（四种页型都画）：16 个折点在上檐与轴之间起伏（y11-25），
- *     两端各自落在 x48 / x1232 的边距上；12% 琥珀面积填充闭合到**行情轴
- *     y28**，轴就是这条走线的基线，不再是半空里的一个数字。
- *   - **刻度齿**（四种页型都画）：五枚琥珀齿骑在轴上（y24-32，x128/368/608/
- *     848/1088），下缘 y32 仍在 y34 之上。
+ *   - **顶缘行情带**（四种页型都画）：y28 / y42 两条横贯细线（border 色，
+ *     2px / 1px），线上五枚琥珀刻度齿（x128/368/608/848/1088，y24-32）。
+ *     行情屏顶部的刻度尺，也是这套语言里唯一「有节奏」的元素。
+ *   - **基线面积线**（四种页型都画）：页面下缘一道行情走线 + 琥珀面积填充，
+ *     左起 x48。两档不透明度是 2026-08-21 变淡波按实测定的，见
+ *     `BASELINE_LINE_OPACITY`。
  *   - **幽灵季度水印**（仅 cover）：430px 的季度字样压在版心，5% 琥珀——
  *     大到不像字、淡到不参与判读的一层底纹。字样从 `ir.meta.date` 推，
  *     推不出就整块不画（见 `quarterLabel`）。
  *
  * 安全区：四个内容区是标题区 (96,48,1040×122)、正文区 (96,200,1040×420)、
  * 页脚 meta 带 (48,664,1184×44)、右下 logo 盒 (1120,630,96×40)。
- *   - 线状部分的着墨全段落在 y7.5-32，四个内容区与 `brand-chrome.tsx` 的四只
- *     logo 盒（y48 起）全部在它之下。`motif-poster-motif.test.tsx` 把
- *     {@link DECOR_CEILING} 这条上限逐元素钉死。
- *   - 面积填充 12% / 水印 5% 都低于 `deck-audit.ts` 的 `MIN_BG_OPACITY`
+ *   - 行情带 y24-42 全程在标题区上沿 y48 之上。
+ *   - 基线面积线右端**在 x1100 收笔**（主会话裁定，设计稿原稿画到 x1232）：
+ *     原稿右端会从 logo 盒 (1120,630,96×40) 正中穿过去，x1100 让出 20px。
+ *     `motif-poster-motif.test.tsx` 锁死这条线——把右端改回 1232 测试立刻红。
+ *   - 面积填充 8% / 水印 5% 都低于 `deck-audit.ts` 的 `MIN_BG_OPACITY`
  *     (0.5)，永远不会被当成某段文字的背景去判对比度（ink v3 一角残山的
  *     同一条形式化说法）。
  *
@@ -56,46 +37,69 @@ import type { DecorProps } from "./types"
  * 纪律：零 theme id、零 hex，颜色全部来自 ctx（border / accent 两个角色）。
  */
 
-/**
- * 线状装饰的着墨下限：本 motif 的每一笔（含描边半宽）都必须在此之上。
- *
- * 34 不是设计意图而是实测——`text-margin-sweep` 在 insight 与 tech（两家共用
- * 本 motif）各自的 477 / 480 条文字墨迹盒里，最高的一行顶在 y34
- * （poster-chapter / roman-chapter 的右上引首）。测试读这个常量，不复述
- * 字面量。水印不受此约束：它是 5% 的整版底纹，不是线。
- */
-export const DECOR_CEILING = 34
-
-// ── 顶缘行情带 ──────────────────────────────────────────────────────────
-/** 两条带线的左右端点 = 页面外边距，走线也用同一对数字。 */
+// ── 顶缘行情带（设计稿坐标，逐条抄录） ──────────────────────────────────
 const BAND_X1 = 48
 const BAND_X2 = 1232
-/** 上檐细线。 */
-const BAND_CAP_Y = 8
-const BAND_CAP_STROKE = 1
-/** 行情轴：走线的基线，也是面积填充的底。 */
-const BAND_AXIS_Y = 28
-const BAND_AXIS_STROKE = 2
-/** 刻度齿：等距五枚，骑在行情轴上（y24-32）。 */
+const BAND_LINE_Y_TOP = 28
+const BAND_LINE_Y_BOTTOM = 42
+const BAND_STROKE_TOP = 2
+const BAND_STROKE_BOTTOM = 1
+/**
+ * 下沿细线的退底档（2026-08-21 变淡波）。上沿 2px 那条一处不改。
+ *
+ * 下沿这条穿过 `poster-chapter` / `roman-chapter` 的 kicker：kicker 22px
+ * 基线 y56，CJK 字身约 y37-56，线在 y41.5-42.5，实测从字的上三分之一横穿
+ * 过去，读起来是删除线（墨盒扫掠工具扫三语料 153 页命中 6 页，全部是这两个
+ * chapter 版式，工具见本文件末尾注明的路径）。
+ *
+ * 按设计裁定「装饰与文字抢主次时只降透明度、位置一 px 不动」处理。0.45 是
+ * 实测挑的：border 压 bg 满不透明是 1.435:1，本主题最安静的一条结构线，
+ * 0.45 把它降到 1.157:1，仍看得出是成对细线的下面那条，压在字上时不再抢
+ * 读。上沿线与琥珀刻度齿全语料零相交，原样保留。
+ */
+const BAND_BOTTOM_OPACITY = 0.45
+/** 刻度齿：等距五枚，跨在 y28 那条线上（y24-32）。 */
 const TICK_XS = [128, 368, 608, 848, 1088]
 const TICK_Y1 = 24
 const TICK_Y2 = 32
 const TICK_STROKE = 2
 
-// ── 行情走线 ────────────────────────────────────────────────────────────
+// ── 基线面积线 ──────────────────────────────────────────────────────────
 /**
- * 16 个折点，横向等距铺满 x48→x1232（步长 1184/15，取整），纵向在上檐
- * (y8) 与行情轴 (y28) 之间的 y11-25 起伏。走势沿用 v3 的「左低右高」，
- * 那是行情屏语汇里唯一有方向的一笔。
+ * 走线折点（设计稿逐点抄录）。右端**止于 x1100**：设计稿原稿的最后两点
+ * (1170,590) 与 (1232,596) 会让走线从 logo 盒 (1120,630,96×40) 上方穿过并
+ * 一路画到页缘，主会话裁定提前收笔。收笔点 x1100 距 logo 盒左缘 x1120
+ * 留 20px。
  */
-const TICKER_POINTS: readonly (readonly [number, number])[] = [
-  [48, 24], [127, 25], [206, 22], [285, 23], [364, 18], [443, 21],
-  [522, 17], [601, 19], [679, 15], [758, 17], [837, 14], [916, 16],
-  [995, 12], [1074, 15], [1153, 11], [1232, 13],
+const BASELINE_POINTS: readonly (readonly [number, number])[] = [
+  [48, 642], [120, 646], [190, 634], [260, 640], [330, 622], [400, 632],
+  [470, 618], [540, 626], [610, 608], [680, 618], [750, 604], [820, 612],
+  [890, 598], [960, 608], [1030, 594], [1100, 602],
 ]
-const TICKER_STROKE = 2
-const TICKER_LINE_OPACITY = 0.8
-const TICKER_FILL_OPACITY = 0.12
+/** 面积填充的下缘（走线与它之间填琥珀）。 */
+const BASELINE_FLOOR = 656
+const BASELINE_STROKE = 2
+/**
+ * 走线 0.8 → 0.25、面积填充 0.12 → 0.08（2026-08-21 变淡波）。折点一个不改。
+ *
+ * y594-656 这条带不是空的：署名、脚注、页脚 meta 都落在这里。墨盒扫掠工具
+ * （`.issues/2026-08-21-restore-design-decor/tools/decor-ink-sweep.mts`）扫
+ * 三语料 153 页，走线压中 52 页的正文墨盒、面积填充压中 74 页，封面的
+ * 「陈砚清 · 首席技术官 · Internal · 2026 年 7 月」是其中一处。曾经有一波
+ * 把整套语汇搬到顶缘 y8-28 去躲，被设计裁定推翻：板上的位置是设计的一部分，
+ * 装饰与文字抢主次时只许变淡。
+ *
+ * 0.25 是实测挑的：琥珀压 insight 底色满不透明是 8.8:1，0.8 档 **6.0:1**——
+ * 高过 4.5:1 的正文地板，那条走线当时确实是在跟字抢读。0.25 落到 1.65:1，
+ * 与本主题 border 细线的 1.44:1 同一档，2px 的走线在深底上照样看得清。
+ * 面积填充跟着降到 0.08（1.14:1），免得走线一淡下来、这片填充反倒成了
+ * 这套语汇里最响的一件，把行情走线读成一块实心色带。
+ *
+ * 两个值都远低于 `deck-audit.ts` 的 `MIN_BG_OPACITY` (0.5)，不参与任何
+ * 对比度判读。
+ */
+const BASELINE_LINE_OPACITY = 0.25
+const BASELINE_FILL_OPACITY = 0.08
 
 // ── 幽灵季度水印（仅 cover） ────────────────────────────────────────────
 const WATERMARK_X = 640
@@ -120,12 +124,11 @@ function quarterLabel(date: string | undefined): string | undefined {
   return `Q${Math.floor((month - 1) / 3) + 1}`
 }
 
-/** 走线与行情轴之间的闭合面积。 */
 const areaPath = (points: readonly (readonly [number, number])[]): string => {
   const first = points[0]
   const last = points[points.length - 1]
   const mid = points.map(([x, y]) => `L ${x} ${y}`).join(" ")
-  return `M ${first[0]} ${BAND_AXIS_Y} ${mid} L ${last[0]} ${BAND_AXIS_Y} Z`
+  return `M ${first[0]} ${BASELINE_FLOOR} ${mid} L ${last[0]} ${BASELINE_FLOOR} Z`
 }
 
 export function PosterMotif({ ir, slide, ctx }: DecorProps) {
@@ -151,35 +154,25 @@ export function PosterMotif({ ir, slide, ctx }: DecorProps) {
         </text>
       )}
 
-      {/* 行情走线：12% 面积填充闭合到行情轴，再叠 80% 走线。先于带线画，
-          带线因此压在填充之上，轴读起来是走线的基线。 */}
-      <path d={areaPath(TICKER_POINTS)} fill={colors.accent} opacity={TICKER_FILL_OPACITY} />
-      <polyline
-        points={TICKER_POINTS.map(([x, y]) => `${x},${y}`).join(" ")}
-        fill="none"
-        stroke={colors.accent}
-        strokeWidth={TICKER_STROKE}
-        opacity={TICKER_LINE_OPACITY}
-      />
-
-      {/* 顶缘行情带：上檐细线 + 行情轴。用 <line> 不用 <path>——纯水平
-          <path> 会被 svg2pptx 转成包围盒零高度的 custGeom，package-audit 的
+      {/* 顶缘行情带：双细线。用 <line> 不用 <path>——纯水平 <path> 会被
+          svg2pptx 转成包围盒零高度的 custGeom，package-audit 的
           invalid-shape-transform 硬门拒收（luxe-motif 建这道门时的实测缺陷）。 */}
       <line
         x1={BAND_X1}
-        y1={BAND_CAP_Y}
+        y1={BAND_LINE_Y_TOP}
         x2={BAND_X2}
-        y2={BAND_CAP_Y}
+        y2={BAND_LINE_Y_TOP}
         stroke={colors.border}
-        strokeWidth={BAND_CAP_STROKE}
+        strokeWidth={BAND_STROKE_TOP}
       />
       <line
         x1={BAND_X1}
-        y1={BAND_AXIS_Y}
+        y1={BAND_LINE_Y_BOTTOM}
         x2={BAND_X2}
-        y2={BAND_AXIS_Y}
+        y2={BAND_LINE_Y_BOTTOM}
         stroke={colors.border}
-        strokeWidth={BAND_AXIS_STROKE}
+        strokeWidth={BAND_STROKE_BOTTOM}
+        opacity={BAND_BOTTOM_OPACITY}
       />
       {/* 琥珀刻度齿（竖向 <line>，同上理由） */}
       {TICK_XS.map((x) => (
@@ -193,6 +186,16 @@ export function PosterMotif({ ir, slide, ctx }: DecorProps) {
           strokeWidth={TICK_STROKE}
         />
       ))}
+
+      {/* 基线面积线：填充 + 走线，两档都是退底值（见 BASELINE_LINE_OPACITY） */}
+      <path d={areaPath(BASELINE_POINTS)} fill={colors.accent} opacity={BASELINE_FILL_OPACITY} />
+      <polyline
+        points={BASELINE_POINTS.map(([x, y]) => `${x},${y}`).join(" ")}
+        fill="none"
+        stroke={colors.accent}
+        strokeWidth={BASELINE_STROKE}
+        opacity={BASELINE_LINE_OPACITY}
+      />
     </>
   )
 }

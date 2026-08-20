@@ -121,17 +121,15 @@ describe("StackedPosterContent", () => {
     expect(kicker.textContent).toBe("Chapter 01 · 第一章")
     expect(kicker.getAttribute("fill")).toBe(ctx.colors.muted)
 
-    // 2026-08-20 悬空装饰清扫：kicker 下那条 y=104 的 60x4 短横条删了。它的
-    // 上方 section label 只在本页有 section 时才出现，没有就整条孤悬在大标题
-    // 上方；即使出现，它也是居中落在标题正中而不是任何一个词底下。
-    expect(
-      Array.from(root.querySelectorAll("rect")).find(
-        (r) => r.getAttribute("y") === "104" && r.getAttribute("width") === "60",
-      ),
-    ).toBeUndefined()
+    // Accent hairline (AccentBar inlined): the only primary-filled element.
+    const accentBar = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("y") === "104" && r.getAttribute("width") === "60",
+    )!
+    expect(accentBar.getAttribute("fill")).toBe(ctx.colors.primary)
+    expect(accentBar.getAttribute("x")).toBe("610") // centered: 640 - 60/2
 
-    // 短横条退役之后 primary 在这条 poster 路径上不再有任何载体——正文与
-    // 标题一律不拿 primary 当字色。
+    // Accent hairline is the *only* primary-filled element — no text uses
+    // primary as a text color on the poster path.
     const primaryTexts = Array.from(root.querySelectorAll("text")).filter(
       (t) => t.getAttribute("fill") === ctx.colors.primary,
     )
@@ -277,9 +275,7 @@ describe("StackedPosterContent", () => {
     const deck = ir("consulting", [chapter1, oneComponentSlide])
     const out = renderSvgMarkup(<StackedPosterContent ir={deck} slide={oneComponentSlide} index={1} ctx={ctx} />)
 
-    // consulting primary（#1E2A4A）在本页已无载体：它唯一的用处是那条被
-    // 2026-08-20 悬空装饰清扫删掉的短横条。
-    expect(out).not.toContain("#1E2A4A")
+    expect(out).toContain("#1E2A4A") // consulting primary，accent 短横条
     expect(out).toContain("#1C1E23") // consulting text，标题（编辑组换血后与 primary 拆开）
     expect(out).toContain("#5B6069") // consulting muted，kicker（需要前置 chapter 才会渲染）
 
@@ -416,7 +412,7 @@ describe("StackedPosterContent", () => {
     ).not.toThrow()
   })
 
-  it("hero/strip rects stay clear of all four BrandChrome logo bands", () => {
+  it("kicker accent bar and hero/strip rects stay clear of all four BrandChrome logo bands", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
@@ -430,11 +426,21 @@ describe("StackedPosterContent", () => {
       <StackedPosterContent ir={ir("insight", [chapter1, slide])} slide={slide} index={1} ctx={ctx} />,
     )
 
+    const accentBar = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("y") === "104" && r.getAttribute("width") === "60",
+    )!
+    const accentBox = {
+      x: Number(accentBar.getAttribute("x")),
+      y: Number(accentBar.getAttribute("y")),
+      w: Number(accentBar.getAttribute("width")),
+      h: Number(accentBar.getAttribute("height")),
+    }
     const rects = Array.from(root.querySelectorAll("g[data-audit-rect]")).map((g) => {
       const b = parseAudit(g.getAttribute("data-audit-rect"))
       return { x: b.x, y: b.y, w: b.w, h: b.h ?? 0 }
     })
     for (const band of LOGO_BANDS) {
+      expect(rectsOverlap(accentBox, band)).toBe(false)
       for (const r of rects) {
         expect(rectsOverlap(r, band)).toBe(false)
       }

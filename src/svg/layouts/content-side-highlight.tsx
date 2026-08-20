@@ -154,6 +154,7 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
   const orgOpacity = accessibleOpacity(badgeInk, colors.primary, ORG_FONT_SIZE, 0.85)
   const watermark = String(chNum).padStart(2, "0")
   const watermarkCy = PANEL_Y + PANEL_H * 0.5
+  const ruleY = PANEL_BOTTOM - 76
   const org = ir.meta.organization
     ? fitSvgLine(ir.meta.organization, { maxWidth: PANEL_W - PANEL_PAD * 2, fontSize: ORG_FONT_SIZE, minFontSize: 10 })
     : null
@@ -253,6 +254,8 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
       >
         {watermark}
       </text>
+
+      <rect x={PANEL_X + PANEL_PAD} y={ruleY} width={28} height={3} fill={badgeInk} opacity={0.4} />
 
       {org && (
         <text
