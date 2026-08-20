@@ -13,8 +13,6 @@ import type { DecorProps } from "./types"
  *     （primary）与琥珀（accent）相间——primary 四枚在 y560/430/290/120
  *     （r2.5/3.5/4.5/6），accent 三枚插在 y495/360/205（r3/4/5）。实色
  *     不透明，不再靠 0.03 的余烬撑数量。横坐标不再逐枚手抄，见下。
- *   - **顶缘一枚斜引线**：(48,14)→(120,14) 的 2px 火橙短线，左上角一记
- *     起手，与右缘的上升轨迹对角呼应。
  *   - **右缘斜引线**：(1150,600)→(1245,86) 的 1px 暖沙线（border），
  *     火星骑在它上面攀升——轨迹本身画出来，方向感才不用靠读者脑补。
  *
@@ -50,9 +48,12 @@ import type { DecorProps } from "./types"
  *     （右上 logo 盒下沿）处的横坐标 ≈1244.6，在该盒右沿 x1216 之外，
  *     最靠上的一枚火星 (1238.72,120,r6) 也在 y88 之下、x1216 之外——右上
  *     logo 盒四边都不相交，最右缘 x1244.72 仍在页内。
- *   - 顶缘斜引线 y14 在标题区上沿 y48 之上。
- *   - 设计板坐标只改了点列的 x 一处（改成由斜引线解出，见上），y、半径、
- *     件数与两条引线一处未改。
+ *   - 设计板坐标只改了点列的 x 一处（改成由斜引线解出，见上），y、半径与
+ *     右缘那条引线一处未改。
+ *
+ * 2026-08-20 悬空装饰清扫又删掉一件：左上角那条 (48,14)→(120,14) 的 2px
+ * 火橙短线。它孤悬在页角，不贴任何文字、不落在任何词上，与右缘轨迹的
+ * 「对角呼应」只在设计板上成立，落到真页面上就是一记无着落的短划。
  *
  * 已知且照实记录：设计板的 ember 封面样例里，火星是骑在 `split-diagonal`
  * 的火橙楔形面上、沿斜边内侧攀升的（板上原话「楔形属 layout 件」）。楔形
@@ -102,12 +103,6 @@ const ACCENT_SPARKS: readonly [number, number][] = [
   [205, 5],
 ]
 
-// ── 顶缘斜引线（左上角的起手） ──────────────────────────────────────────
-const TICK_X1 = 48
-const TICK_X2 = 120
-const TICK_Y = 14
-const TICK_STROKE = 2
-
 export function EmberMotif({ slide, ctx }: DecorProps) {
   const fire = ctx.colors.primary
   const amber = ctx.colors.accent
@@ -134,9 +129,6 @@ export function EmberMotif({ slide, ctx }: DecorProps) {
           <circle key={cy} cx={guideXAt(cy)} cy={cy} r={r} />
         ))}
       </g>
-
-      {/* 顶缘斜引线 */}
-      <line x1={TICK_X1} y1={TICK_Y} x2={TICK_X2} y2={TICK_Y} stroke={fire} strokeWidth={TICK_STROKE} />
     </>
   )
 }

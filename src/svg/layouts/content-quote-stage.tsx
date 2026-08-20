@@ -44,19 +44,9 @@ import { footnoteBaselineFor } from "../chrome-geometry"
 
 const CENTER_X = 640
 
-// Quote-page anchor: a short centered accent hairline above the heading —
-// the page's only decoration, same idiom as stacked-poster/fashion-masthead's
-// own accent bars (a short primary-filled rect, never a text color).
-// ACCENT_BAR_Y sits a full 160px above TITLE_Y's baseline (not just a
-// nominal gap): a real render at layoutDef.headingFit.fontSize found CJK
-// glyphs with a tall upper element (e.g. "终") reach noticeably above the generic
-// ascender estimate, close enough to a tighter gap to visibly clip through
-// the bar — this value is empirically verified clear (`.e2e-out/quote-stage`
-// human-check renders, quote-stage wave task T2), not just calculated.
-const ACCENT_BAR_Y = 140
-const ACCENT_BAR_W = 56
-const ACCENT_BAR_H = 4
-
+// 2026-08-20 悬空装饰清扫：这里曾有一条 56x4 的居中 accent 短条，落在
+// y=140，离它下面的大标题基线整整 160px，上面什么都没有——名副其实的悬空
+// 装饰，删掉。标题以下的排布一格未动。
 const TITLE_Y = 300 // first-line baseline anchor
 
 const ANNOTATION_GAP = 64 // heading's last line -> subheading annotation
@@ -128,15 +118,6 @@ export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
 
   return (
     <>
-      <rect
-        x={CENTER_X - ACCENT_BAR_W / 2}
-        y={ACCENT_BAR_Y}
-        width={ACCENT_BAR_W}
-        height={ACCENT_BAR_H}
-        rx={2}
-        fill={colors.primary}
-      />
-
       {/* Heading: the page's entire main visual — oversized, centered. */}
       {heading.lines.map((line, i) => (
         <text

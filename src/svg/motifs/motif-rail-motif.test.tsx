@@ -57,13 +57,22 @@ const num = (el: Element, a: string) => Number(el.getAttribute(a))
  * `readableOn` 反白分支与 br logo 盒重叠说明）随圆盘一并退役。
  */
 describe("RailMotif（进度轨）", () => {
-  it("cover/content/ending 各画五枚进度点 + 两条角标线", () => {
+  it("cover/content/ending 各画五枚进度点，别的一件不画", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("academic", slide)
       expect(Array.from(root.querySelectorAll("circle")), `dots on ${slide.type}`).toHaveLength(5)
-      expect(Array.from(root.querySelectorAll("line")), `corner marks on ${slide.type}`).toHaveLength(2)
       // v1 的圆盘是一段 path，v2 一段都不画。
       expect(Array.from(root.querySelectorAll("path")), `no arc left on ${slide.type}`).toHaveLength(0)
+    }
+  })
+
+  // 2026-08-20 悬空装饰清扫：右上角那两条 x1200-1256 / x1224-1256 的 accent
+  // 短线删了。它们悬在页角，不贴任何文字、不落在任何词上，而这个 motif 被
+  // consulting / journal / enterprise 三家借用，全库 276 页都在画。
+  it("不画悬空短划线：整张 motif 里一条 line 都没有", () => {
+    for (const slide of DRAWN_SLIDES) {
+      const { root } = draw("academic", slide)
+      expect(Array.from(root.querySelectorAll("line")), `corner mark on ${slide.type}`).toHaveLength(0)
     }
   })
 
@@ -74,7 +83,7 @@ describe("RailMotif（进度轨）", () => {
     expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：点轨走 primary（首点实心、其余空心 1.5 描边），角标走 accent", () => {
+  it("颜色一律读 token：点轨走 primary（首点实心、其余空心 1.5 描边）", () => {
     const t = resolveStyle("academic")
     const { root } = draw("academic", contentSlide)
     const dots = Array.from(root.querySelectorAll("circle"))
@@ -84,9 +93,6 @@ describe("RailMotif（进度轨）", () => {
       expect(d.getAttribute("stroke")).toBe(t.colors.primary)
       expect(d.getAttribute("stroke-width")).toBe("1.5")
     }
-    const cornerGroup = Array.from(root.querySelectorAll("g")).find((g) => g.getAttribute("stroke") === t.colors.accent)
-    expect(cornerGroup, "corner marks must read colors.accent").toBeTruthy()
-    expect(cornerGroup!.getAttribute("stroke-width")).toBe("1.5")
   })
 
   it("点轨几何：默认锚 x106 起、间距 46、y30 上的五枚 r6", () => {
@@ -115,39 +121,21 @@ describe("RailMotif（进度轨）", () => {
     expect(570 - 6).toBeGreaterThan(COVER_BLOCK_W)
   })
 
-  it("角标几何：x1200/x1224 起、都止于 x1256 的两条线（y20 长、y30 短）", () => {
-    const { root } = draw("academic", coverSlide)
-    const marks = Array.from(root.querySelectorAll("line")).map((l) => [
-      num(l, "x1"),
-      num(l, "y1"),
-      num(l, "x2"),
-      num(l, "y2"),
-    ])
-    expect(marks).toEqual([
-      [1200, 20, 1256, 20],
-      [1224, 30, 1256, 30],
-    ])
-  })
-
   /**
    * 安全区守卫（设计板的四条红虚线逐条量）。把点轨或角标往下挪进标题区，
    * 这一条立刻红。
    */
-  it("安全区：点轨与角标整组在标题区上沿 y48 之上，够不到正文区", () => {
+  it("安全区：点轨在标题区上沿 y48 之上，够不到正文区", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("academic", slide)
       for (const c of Array.from(root.querySelectorAll("circle"))) {
         expect(num(c, "cy") + num(c, "r"), `dot dips into the title zone on ${slide.type}`).toBeLessThan(TITLE_ZONE.y)
       }
-      for (const l of Array.from(root.querySelectorAll("line"))) {
-        expect(num(l, "y1")).toBeLessThan(TITLE_ZONE.y)
-        expect(num(l, "y2")).toBeLessThan(TITLE_ZONE.y)
-      }
       expect(BODY_ZONE.y).toBeGreaterThan(TITLE_ZONE.y)
     }
   })
 
-  it("安全区：点轨够不到右上/右下 logo 盒的左沿，角标在标题区右沿之外、右上 logo 带之上", () => {
+  it("安全区：点轨够不到右上/右下 logo 盒的左沿", () => {
     for (const slide of DRAWN_SLIDES) {
       const { root } = draw("academic", slide)
       for (const c of Array.from(root.querySelectorAll("circle"))) {
@@ -201,7 +189,6 @@ describe("RailMotif（进度轨）", () => {
     const ctx = buildCtx(consulting, {})
     const { markup } = render(<RailMotif ir={ir("consulting")} slide={contentSlide} ctx={ctx} />)
     expect(markup).toContain(consulting.colors.primary)
-    expect(markup).toContain(consulting.colors.accent)
     for (const hex of ["#F5F3EC", "#FCFBF6", "#0E6245", "#A8861D", "#23251F", "#62655B", "#DDD9C8"]) {
       expect(markup, `academic token ${hex} leaked into the consulting render`).not.toContain(hex)
     }

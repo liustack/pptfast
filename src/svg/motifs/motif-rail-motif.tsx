@@ -11,16 +11,16 @@ import type { DecorProps } from "./types"
  * 变体分别贴在右下/左下/右上角，chapter 用 `readableOn` 反白、其余用
  * primary，一律 0.06 不透明。一整块低透明度的大圆盘在页角，既不是学术的
  * 语言，也和 `rail-chapter`/`rail-ending` 自带的底部进度点轨对不上话。
- * v2 换成这个家族本来就在说的话——进度，只留两件，位置写死：
+ * v2 换成这个家族本来就在说的话——进度，位置写死。v2 上是两件，2026-08-20
+ * 的悬空装饰清扫删掉了其中的右上角标（x1200-1256 两条 accent 短线，不贴任何
+ * 文字、不落在任何词上），只剩下这一件：
  *   - **进度点轨**：五枚 r6 的点，第一枚实心、后四枚空心描边（primary），
  *     间距 46。章节推进的具象，与 `chapter-rail-chapter.tsx` 自带的
  *     `CH_DOT_*` 点轨同一个读法。设计板把它放在底带 y648，本文件放在顶带
  *     y30——理由见 `DOT_Y` 自己的注释（那条 y648 正是本仓库所有脚注的共用
  *     基线，实测撞了八个版式）。
- *   - **右上双线角标**：x1200-1256 的两条短线（y20 长、y30 短，accent），
- *     期刊页眉的角记号。
- * 「light 档仅此两件」是设计板上的原话。两件同在顶带之后，读起来是一整条
- * 页眉饰带，而不是对角两处零件。
+ * 设计板原话是「light 档仅此两件」。角标退役之后只剩点轨一件，顶带上的读法
+ * 从「一整条页眉饰带」收成「一处进度记号」，页角回到全空。
  *
  * ## 两档锚点（都写死，不做内容感知）
  *
@@ -47,16 +47,15 @@ import type { DecorProps } from "./types"
  *   - 点轨 y24-36，在标题区上沿 y48 之上；默认锚横向 x100-296、cover 锚
  *     x564-760，两档都够不到 `brand-chrome.tsx` 右上 logo 带（1120,48,
  *     96×40）与右下 logo 盒的左沿 x1120。
- *   - 角标 x1200-1256、y20-30，同在标题区上沿之上、右上 logo 带上方。
  *   - 设计板坐标只改了点轨的 y 一处（见 `DOT_Y`），x 与件数一处未改。
  *
  * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
  * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
  *
- * 纪律：零 theme id、零 hex，颜色只来自 ctx（primary = 点轨、accent = 角标）。
+ * 纪律：零 theme id、零 hex，颜色只来自 ctx（primary = 点轨）。
  * 借用网（`motif-selection.ts` 的 `MOTIF_CANDIDATES`）：consulting / journal /
  * enterprise 三家的候选集里都有本 motif，抽到时画的是它们自己 token 下的
- * 进度轨与角标——本轮换语汇，这三家抽中本 motif 的页跟着换装，逐页归因见
+ * 进度轨——本轮换语汇，这三家抽中本 motif 的页跟着换装，逐页归因见
  * 冷调组报告。
  */
 
@@ -83,14 +82,6 @@ const DOT_X_DEFAULT = 106
 const DOT_X_COVER = 570
 const DOT_STROKE = 1.5
 
-// ── 右上双线角标 ────────────────────────────────────────────────────────
-const CORNER_X2 = 1256
-const CORNER_MARKS: readonly { x1: number; y: number }[] = [
-  { x1: 1200, y: 20 },
-  { x1: 1224, y: 30 },
-]
-const CORNER_STROKE = 1.5
-
 export function RailMotif({ slide, ctx }: DecorProps) {
   // chapter 完全退让（见文件头：重影 + 同色不可见 + 净空零碎）。
   if (slide.type === "chapter") return null
@@ -106,12 +97,6 @@ export function RailMotif({ slide, ctx }: DecorProps) {
         <circle cx={dots[0]} cy={DOT_Y} r={DOT_R} fill={ink} />
         {dots.slice(1).map((cx) => (
           <circle key={cx} cx={cx} cy={DOT_Y} r={DOT_R} fill="none" stroke={ink} strokeWidth={DOT_STROKE} />
-        ))}
-      </g>
-      {/* 右上双线角标 */}
-      <g stroke={ctx.colors.accent} strokeWidth={CORNER_STROKE}>
-        {CORNER_MARKS.map((m) => (
-          <line key={m.y} x1={m.x1} y1={m.y} x2={CORNER_X2} y2={m.y} />
         ))}
       </g>
     </>

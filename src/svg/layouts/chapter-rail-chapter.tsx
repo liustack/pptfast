@@ -141,9 +141,15 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     ? accessibleOpacity(ink, defaultBg, subheading.fontSize, 0.7)
     : 0.7
 
-  // Horizontal chapter-progress dot row, centered under the heading. Single-
-  // chapter decks collapse to one dot at the midpoint and skip the track line
-  // (nothing to show progress "along").
+  // Horizontal chapter-progress dot row, centered under the heading.
+  //
+  // A single-chapter deck draws none of it. The track line was already
+  // skipped there (nothing to show progress "along"), but the dots were not,
+  // which left exactly one white dot floating at (640,600) with no track
+  // under it and nothing to compare itself to — the "meaningless dot" the
+  // 2026-08-20 review pointed at on ink p02. A progress indicator that can
+  // only ever show "1 of 1" indicates nothing, so the whole row goes.
+  const showDots = totalChapters > 1
   const dotsWidth = Math.max(0, totalChapters - 1) * CH_DOT_SPACING
   const dotsStartX = 640 - dotsWidth / 2
 
@@ -195,28 +201,30 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         </text>
       )}
 
-      {/* Horizontal chapter-progress dots */}
-      {totalChapters > 1 && (
-        <line
-          x1={dotsStartX}
-          y1={CH_DOT_Y}
-          x2={dotsStartX + dotsWidth}
-          y2={CH_DOT_Y}
-          stroke="#FFFFFF"
-          strokeOpacity="0.3"
-          strokeWidth="1.6"
-        />
+      {/* Horizontal chapter-progress track + dots (multi-chapter decks only) */}
+      {showDots && (
+        <>
+          <line
+            x1={dotsStartX}
+            y1={CH_DOT_Y}
+            x2={dotsStartX + dotsWidth}
+            y2={CH_DOT_Y}
+            stroke="#FFFFFF"
+            strokeOpacity="0.3"
+            strokeWidth="1.6"
+          />
+          {Array.from({ length: totalChapters }, (_, i) => i + 1).map((n) => (
+            <circle
+              key={n}
+              cx={dotsStartX + (n - 1) * CH_DOT_SPACING}
+              cy={CH_DOT_Y}
+              r={n === chNum ? 7 : 5}
+              fill="#FFFFFF"
+              fillOpacity={n === chNum ? 1 : 0.35}
+            />
+          ))}
+        </>
       )}
-      {Array.from({ length: totalChapters }, (_, i) => i + 1).map((n) => (
-        <circle
-          key={n}
-          cx={dotsStartX + (n - 1) * CH_DOT_SPACING}
-          cy={CH_DOT_Y}
-          r={n === chNum ? 7 : 5}
-          fill="#FFFFFF"
-          fillOpacity={n === chNum ? 1 : 0.35}
-        />
-      ))}
     </>
   )
 }

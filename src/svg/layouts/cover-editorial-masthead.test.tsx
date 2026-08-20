@@ -29,7 +29,7 @@ const ir = (theme: string): PptxIR =>
 // the component and copying its output if this layout's markup ever
 // intentionally changes.
 const MAGAZINE_EXPECTED =
-  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="92" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">数据驱动的增长引擎</text><line x1="560" y1="396" x2="720" y2="396" stroke="#8C4A3C" stroke-width="1.6"></line><text x="640" y="448" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#626159" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的技术路线图</text><text x="640" y="656" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">测试实验室    ·    2026-07</text>'
+  '<text x="640" y="340" font-family="SimSun, Songti SC, STSong, serif" font-size="92" font-weight="600" fill="#26261F" text-anchor="middle" dominant-baseline="alphabetic">数据驱动的增长引擎</text><text x="640" y="448" font-family="SimSun, Songti SC, STSong, serif" font-size="28" fill="#626159" font-style="italic" text-anchor="middle" dominant-baseline="alphabetic">面向 2027 的技术路线图</text><text x="640" y="656" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="13" fill="#626159" letter-spacing="2" text-anchor="middle" dominant-baseline="alphabetic">测试实验室    ·    2026-07</text>'
 
 describe("EditorialMastheadCover", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，档案来自旧 EditorialSerifCover）", () => {
@@ -41,7 +41,10 @@ describe("EditorialMastheadCover", () => {
   it("consulting tokens 下用 consulting 的色（证明 token 化成立，无 baked hex）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const out = renderSvgMarkup(<EditorialMastheadCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
-    expect(out).toContain("#F5C518") // consulting accent
+    expect(out).toContain(resolveStyle("consulting").colors.text)
+    // 那条固定 160px 的居中「下划线」是本页唯一读 colors.accent 的件，
+    // 2026-08-20 悬空装饰清扫删掉后 accent 在本页不再有载体。
+    expect(out).not.toContain("#F5C518") // consulting accent
     expect(out).not.toContain("#8C4A3C") // journal accent 不得残留
   })
 
@@ -57,7 +60,7 @@ describe("EditorialMastheadCover", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("centers the serif hero title and draws the accent underline beneath it", () => {
+  it("centers the serif hero title and draws no rule beneath it", () => {
     const ctx = buildCtx(resolveStyle("journal"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -72,11 +75,9 @@ describe("EditorialMastheadCover", () => {
     expect(heading.getAttribute("x")).toBe("640")
     expect(heading.getAttribute("font-family")).toBe(ctx.fonts.heading)
 
-    const underline = Array.from(root.querySelectorAll("line")).find(
-      (l) => l.getAttribute("stroke") === ctx.colors.accent,
-    )
-    expect(underline).toBeDefined()
-    expect(underline!.getAttribute("x1")).toBe("560")
-    expect(underline!.getAttribute("x2")).toBe("720")
+    // 2026-08-20 悬空装饰清扫：标题下 56px 处那条固定 160px 的横线删了。
+    // 它宽度写死，与标题实际墨宽无关，落下去谁也没划到——真正会量字宽的
+    // 下划线见 chapter-banner-chapter.tsx。
+    expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
   })
 })
