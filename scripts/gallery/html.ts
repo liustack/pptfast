@@ -22,7 +22,20 @@
  */
 
 import { namespaceSvgIds, svgIdPrefix } from "@/lib/svg-ids"
-import type { Manifest } from "./render"
+import { verdictFreshness, type Manifest } from "./render"
+
+/**
+ * Embed a function's own source in the page's script block.
+ *
+ * `tsx` and Vite run esbuild with `keepNames: true`, which appends a
+ * `__name(fn, "fn")` call after every named declaration — referencing a
+ * helper that exists in the Node module scope and nowhere in a standalone
+ * page. Stripping it is what makes the embedded copy actually runnable, the
+ * same problem `serializePageFunction` solves for the browser audit.
+ */
+function inlineRule(fn: (...args: never[]) => unknown): string {
+  return fn.toString().replace(/__name\([^)]*\);?/g, "")
+}
 
 /** Escape for embedding arbitrary text inside an HTML text node/attribute. */
 function esc(s: string): string {
@@ -250,6 +263,10 @@ kbd {
    old judgement from reading as a live one. */
 .flag.stale { color: var(--limit); border-color: var(--limit); }
 .card.is-stale .stage { opacity: 0.55; }
+/* A verdict whose page only changed color since it was made. Quieter than
+   stale and the slide is not dimmed: the judgement still stands, the reviewer
+   is only being told the palette moved under it. */
+.flag.recolored { color: var(--ink-dim); border-color: var(--line); }
 .findings-list { margin: 0; padding: 0 0 0 16px; font-size: 12px; color: var(--ink-dim); max-height: 84px; overflow-y: auto; }
 .findings-list li { margin: 2px 0; }
 .viewer-bar .findings-list { flex: 1 1 260px; }
@@ -289,6 +306,7 @@ kbd {
     <option value="any">机器有发现</option>
     <option value="clean">机器无发现</option>
     <option value="stale">结论已过期</option>
+    <option value="recolored">仅换肤</option>
   </select>
 
   <input type="search" id="search" placeholder="搜标题或 id" aria-label="搜索">
@@ -340,6 +358,12 @@ kbd {
   const MANIFEST = JSON.parse(document.getElementById("manifest-data").textContent);
   const SVGS = JSON.parse(document.getElementById("svg-data").textContent);
   const STORE_KEY = "pptfast-gallery-verdicts-v1";
+
+  // Shipped in as source rather than restated here, so the rule the reviewer
+  // sees is byte-for-byte the one render.test.mts tests. See its own doc
+  // comment in render.ts for why it is written to survive toString().
+${inlineRule(verdictFreshness)}
+
   const VERDICT_LABELS = { pass: "通过", limit: "限制使用", rework: "返工" };
   // Short Chinese labels for the auditor's codes, plus which ones are worth
   // drawing in the alarm color. Truncation and dropped content mean the
@@ -379,19 +403,22 @@ kbd {
 
   const entry = (id) => verdicts[id] || (verdicts[id] = {});
 
-  // Every write stamps the page's current fingerprint. That is what makes a
+  // Every write stamps the page's current fingerprints. That is what makes a
   // later run able to say "this judgement was made about a page that has
-  // since changed" instead of presenting it as current.
+  // since changed" instead of presenting it as current — and, since the
+  // fingerprint comes in two halves, to tell a redrawn page from a recolored
+  // one. The whole-markup hash is still written too, so a verdict exported
+  // from here stays readable by anything holding the older single-hash shape.
   const pageById = new Map(MANIFEST.pages.map((p) => [p.id, p]));
   const stampHash = (id, e) => {
     const page = pageById.get(id);
-    if (page) e.hash = page.hash;
+    if (!page) return;
+    e.hash = page.hash;
+    if (page.fingerprint) { e.geo = page.fingerprint.geometry; e.col = page.fingerprint.color; }
   };
-  const isStale = (id) => {
-    const e = verdicts[id];
-    const page = pageById.get(id);
-    return Boolean(e && e.hash && page && page.hash && e.hash !== page.hash);
-  };
+  const freshness = (id) => verdictFreshness(verdicts[id], pageById.get(id));
+  const isStale = (id) => freshness(id) === "stale";
+  const isRecolored = (id) => freshness(id) === "recolored";
 
   function setVerdict(id, value) {
     const e = entry(id);
@@ -499,17 +526,21 @@ kbd {
     // the judgement without pre-empting it.
     const flags = summarizeFindings(p.findings);
     if (isStale(p.id)) {
-      flags.unshift({ code: "stale", label: "结论已过期", severe: false, stale: true });
+      flags.unshift({ code: "stale", label: "结论已过期", severe: false, mark: "stale" });
+    } else if (isRecolored(p.id)) {
+      flags.unshift({ code: "recolored", label: "仅换肤", severe: false, mark: "recolored" });
     }
     if (flags.length > 0) {
       const row = document.createElement("div");
       row.className = "flags";
       for (const f of flags) {
         const chip = document.createElement("span");
-        chip.className = "flag" + (f.severe ? " sev" : "") + (f.stale ? " stale" : "");
+        chip.className = "flag" + (f.severe ? " sev" : "") + (f.mark ? " " + f.mark : "");
         chip.textContent = f.label;
-        chip.title = f.stale
+        chip.title = f.mark === "stale"
           ? "这条结论是对这一页的旧版本做出的，那一版已经不存在了 — 重新看一眼再决定"
+          : f.mark === "recolored"
+          ? "这一页自上次评审以来只换了配色，几何没动 — 结论仍然有效，除非它本来就是在说颜色"
           : (p.findings || []).filter((x) => x.code === f.code).map((x) => x.message).join("\\n");
         row.appendChild(chip);
       }
@@ -583,6 +614,8 @@ kbd {
     }
     if (state.finding === "stale") {
       if (!isStale(p.id)) return false;
+    } else if (state.finding === "recolored") {
+      if (!isRecolored(p.id)) return false;
     } else if (state.finding !== "all") {
       const has = (p.findings || []).length > 0;
       if (state.finding === "any" ? !has : has) return false;
@@ -738,7 +771,9 @@ kbd {
   document.getElementById("export").addEventListener("click", async () => {
     const btn = document.getElementById("export");
     const payload = {
-      schema: "pptfast-gallery-verdicts/2",
+      // 3 since a verdict can now come back marked "recolored" instead of
+      // only "stale". A reader of /2 sees the same fields it always did.
+      schema: "pptfast-gallery-verdicts/3",
       pptfastVersion: MANIFEST.pptfastVersion,
       renderedAt: MANIFEST.generatedAt,
       total: MANIFEST.pages.length,
@@ -759,6 +794,11 @@ kbd {
           // something already fixed, so it says so rather than staying
           // indistinguishable from a live verdict.
           ...(isStale(p.id) ? { stale: true } : {}),
+          // Set when the page changed color and nothing else since. The
+          // judgement still holds — unless it was about the color — so it
+          // travels flagged rather than either dropped or silently passed on
+          // as untouched.
+          ...(isRecolored(p.id) ? { recolored: true } : {}),
         })),
     };
     const text = JSON.stringify(payload, null, 2);
@@ -773,7 +813,11 @@ kbd {
       await navigator.clipboard.writeText(text);
       const n = payload.verdicts.length;
       const stale = payload.verdicts.filter((v) => v.stale).length;
-      flash(stale > 0 ? "已复制 " + n + " 条（" + stale + " 条已过期）" : "已复制 " + n + " 条");
+      const recolored = payload.verdicts.filter((v) => v.recolored).length;
+      const notes = [];
+      if (stale > 0) notes.push(stale + " 条已过期");
+      if (recolored > 0) notes.push(recolored + " 条仅换肤");
+      flash(notes.length > 0 ? "已复制 " + n + " 条（" + notes.join("，") + "）" : "已复制 " + n + " 条");
       return;
     } catch (_) {
       // Clipboard API unavailable or permission-denied (some browsers gate
