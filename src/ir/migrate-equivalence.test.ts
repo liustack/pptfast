@@ -553,6 +553,26 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // any of the three — a *higher*-contrast fill can only remove
       // low-contrast findings, and this one had none to begin with (verified
       // by recomputing `auditDeck` fresh against both goldens).
+      //
+      // Re-recaptured again (visual review round 4, the motif-geometry wave
+      // — banner and corner-ornament are the two motifs the fixtures'
+      // themes consume). All three fixtures move, every diff attributed
+      // token-by-token (`.issues/2026-08-20-review-round-4/tools/
+      // equiv-motif-diff.mts`, part-name sets identical, audit goldens
+      // byte-identical for all three):
+      //   - `basic` (consulting, banner motif) slides 2/3: the floating
+      //     64px bottom dash is deleted and the yellow block becomes the
+      //     top rule's own accent head — three elements out (full-width
+      //     rule, 68×12 block, bottom dash), two in (accent 48→116 +
+      //     primary 116→1232 at the same y/width). Token delta -2 per
+      //     slide is exactly one net element's open+close pair; PPTX
+      //     `slide3/4.xml` lose one net shape (-24 tokens) and the rule's
+      //     `<a:off>` x moves 457200 → 1104900 EMU = 48px → 116px.
+      //   - `scenarioBearing`/`annualReviewPreset` (journal,
+      //     corner-ornament): the footer rule stretches to match the
+      //     masthead's double rule — x 96→48, x2 1184→1232, one `<line>`
+      //     per affected slide, and the matching single `<a:off>`/`<a:ext>`
+      //     pair per PPTX slide (457200 = 48px, cx 11277600 = 1184px).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
