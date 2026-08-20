@@ -81,8 +81,8 @@ describe("resolveMotifId — byte-inertness for the themes this task must not di
     }
   })
 
-  it("a 1-member candidate set (campaign, ink) always resolves to its own anchor regardless of seed or pageKey", () => {
-    for (const themeId of ["campaign", "ink"] as const) {
+  it("a 1-member candidate set (campaign, ink, arena) always resolves to its own anchor regardless of seed or pageKey", () => {
+    for (const themeId of ["campaign", "ink", "arena"] as const) {
       for (let seed = 0; seed < 20; seed++) {
         const ir = makeIR([contentSlide("p0"), contentSlide("p1"), contentSlide("p2")], themeId, seed)
         for (let i = 0; i < ir.slides.length; i++) {

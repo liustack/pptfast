@@ -125,6 +125,10 @@ const ADJUDICATED: Record<string, string> = {
     "而且 motif-campaign-motif 直接把这四色当纸屑用（每色 30 枚，有测试钉住），" +
     "动它等于重画整个主题的装饰。两条边界值也都在带缘（41.9 对 40 一线，" +
     "196 对 195 一线）。若用户后续点名，这里就是要改的那一格。",
+  arena:
+    "电金 #FFD84D 与冰蓝 #4DC3FF：这张表是电光绿/品红/冰蓝/电金，红蓝对抗" +
+    "加一块金牌位，胜负语义入图，不是「蓝与橙二选一」的配色故事。电金是" +
+    "奖牌位，冰蓝是蓝队，设计板写死了这四格。若用户后续点名，这里就是要改的那一格。",
 }
 
 describe("chart palette: no vivid orange beside a vivid blue (round-4 taboo)", () => {
