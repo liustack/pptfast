@@ -149,6 +149,52 @@ export function fitKpiUnit(
 }
 
 /**
+ * The one type size every card in a row sets its number at: the smallest
+ * size at which *all* of them still state their number in full.
+ *
+ * Review round 4, finding 3. Each card used to fit its own value in
+ * isolation, and `splitKpiValueWidths` hands each one a different width
+ * budget (the unit's share depends on how long that card's unit is), so
+ * the card with the greediest unit shrank alone: the gallery's
+ * `layout--two-column--en` set "102k" at 29px beside "91" at 40px. A row
+ * of KPI cards is one comparison, and a comparison whose figures are set
+ * at two different sizes tells the reader the big one counts for more.
+ *
+ * Smallest rather than largest, because the alternative loses data: the
+ * tight card's budget is what it is, and setting it at the roomy card's
+ * size would push it into `fitSvgLine`'s truncate branch, which cuts
+ * digits off the number. A few points of type is the cheaper currency.
+ *
+ * Pure, and decided by nothing but the row's own content and the width
+ * every card in it gets — the same two inputs the render below already
+ * has in hand. `availableWidth` is the per-card *text* column (the card
+ * width less its padding), identical for every card in a row by
+ * construction. The value-first split and the readability floor are
+ * untouched: this only picks the size, never the widths.
+ */
+export function rowValueFontSize(
+  items: readonly { value: string | number; unit?: string }[],
+  availableWidth: number,
+  scale: KpiValueScale = CARD_VALUE_SCALE,
+): number {
+  let smallest = scale.fontSize
+  for (const item of items) {
+    const value = String(item.value)
+    const unit = dedupeKpiUnit(value, item.unit)
+    const { valueMaxWidth } = splitKpiValueWidths(value, unit, availableWidth, scale)
+    const { fontSize } = fitSvgLine(value, {
+      maxWidth: valueMaxWidth,
+      fontSize: scale.fontSize,
+      minFontSize: scale.minFontSize,
+      bold: true,
+      fontFamily: scale.fontFamily,
+    })
+    if (fontSize < smallest) smallest = fontSize
+  }
+  return smallest
+}
+
+/**
  * 弱模型冗余单位去重（2026-07-10 无图矩阵真机抓到：tech 4/4、magazine 1/4
  * KPI 卡渲成「35%%」）：模型常把 "35%" 填进 value 后又把 "%" 填进 unit，
  * 拼接即重复。value 已以 unit 结尾时丢弃 unit。导出供 bento KPI 卡
@@ -257,6 +303,12 @@ export const kpi: SvgComponent<KpiComponent> = {
     // 密度拉伸（box.h 由布局分配）：卡片撑到分配高度，内容组垂直居中
     const cardH = Math.max(measured, box.h ?? measured)
     const contentShift = (cardH - measured) / 2
+    // Row-level, not per-card: every card in this row is the same width, so
+    // its text column and the type size its number is set at are the row's
+    // property rather than each card's (see `rowValueFontSize`).
+    const availableWidth = cardW - 40
+    const valueScale: KpiValueScale = { ...CARD_VALUE_SCALE, fontFamily: ctx.fonts.heading }
+    const rowFontSize = rowValueFontSize(component.items, availableWidth, valueScale)
     return (
       <g transform={`translate(${box.x},${box.y})`}>
         {component.items.map((item, i) => {
@@ -291,8 +343,6 @@ export const kpi: SvgComponent<KpiComponent> = {
           // bounds keep the card from overflowing at any value/unit length.
           const valueStr = String(item.value)
           const unit = dedupeKpiUnit(valueStr, item.unit)
-          const availableWidth = cardW - 40
-          const valueScale: KpiValueScale = { ...CARD_VALUE_SCALE, fontFamily: ctx.fonts.heading }
           const { valueMaxWidth, unitMaxWidth } = splitKpiValueWidths(
             valueStr,
             unit,
@@ -309,9 +359,16 @@ export const kpi: SvgComponent<KpiComponent> = {
           // `<text>`'s bold (SVG tspans inherit `font-weight` unless
           // overridden), so its own truncation budget needs the same
           // correction.
+          //
+          // `fontSize` is the row's shared size, not the design size — the
+          // ceiling this card's number is set at is whatever the whole row
+          // can agree on (`rowValueFontSize`). Handing `fitSvgLine` a
+          // smaller ceiling can only ever make the line fit more easily, so
+          // the card that *set* the row's size renders exactly as it did
+          // before and no card is pushed into truncation by the change.
           const fittedValue = fitSvgLine(valueStr, {
             maxWidth: valueMaxWidth,
-            fontSize: valueScale.fontSize,
+            fontSize: rowFontSize,
             minFontSize: valueScale.minFontSize,
             bold: true,
             fontFamily: ctx.fonts.heading,
