@@ -151,9 +151,13 @@ export type SemanticColorTokens = Pick<StyleColors, "danger" | "warning" | "succ
 /**
  * The hexes every shared renderer hardcoded before `StyleColors` had
  * semantic-role tokens (`callout.tsx`'s warn rule, `kpi.tsx`'s delta arrow).
- * They stay the fallback so a theme that declares no semantic token renders
- * byte-for-byte as it did — the `migrate-equivalence` goldens (kpi_cards) and
- * every full-matrix contrast result depend on that.
+ *
+ * All 17 built-in themes now name their own three (visual review round 4:
+ * "无论主题什么配色，这个总是红色"), so these two are reachable only from a
+ * theme that declares none — a `--theme-file` brand theme or a
+ * `brand extract` result, neither of which has a semantic channel yet. They
+ * stay exactly as they were so such a theme keeps rendering byte-for-byte as
+ * it did.
  */
 const SEMANTIC_DEFAULT_DANGER = "#DC2626"
 const SEMANTIC_DEFAULT_SUCCESS = "#16A34A"

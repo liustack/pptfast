@@ -60,6 +60,9 @@ export const PULSE_TOKENS: StyleTokens = {
     text: "#1E2B27", // 墨绿黑（13.56:1）
     muted: "#5A6C66", // 手术服灰（5.14:1），校准记录见文件头注释
     border: "#D5E2DC", // 病历线
+    danger: "#B3282B", // 诊室红（6.32:1）
+    warning: "#B9722F", // 警示褐，与 chartPalette 同一枚（3.73:1，只作线与图标）
+    success: "#157A52", // 青绿偏绿（5.22:1），与 primary 同族
     chartPalette: ["#0E6B5C", "#3D9B82", "#4A7FB5", "#B9722F"], // 青绿/浅青/静脉蓝/警示褐
   },
   // Microsoft YaHei first (not Segoe UI): resolveFontFace picks the first

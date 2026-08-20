@@ -57,6 +57,9 @@ export const LUXE_TOKENS: StyleTokens = {
     text: "#F5EFE3", // 象牙白
     muted: "#A89A82", // 旧金注脚（7.20:1）
     border: "#2E2822", // 暗檀分隔
+    danger: "#CB6055", // 石榴红（压 surface 4.79:1）——丝绒黑上要够亮
+    warning: "#E29234", // 炙金（7.52:1），比香槟金 accent 更饱和
+    success: "#6FA98A", // 翡翠（6.91:1）
     chartPalette: ["#C6A15B", "#E5DAC2", "#8C6F45", "#77808E"], // 香槟 / 象牙纱 / 古铜 / 灰蓝
   },
   fonts: {

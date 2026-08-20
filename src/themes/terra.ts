@@ -65,6 +65,9 @@ export const TERRA_TOKENS: StyleTokens = {
     text: "#2B2A22", // 腐殖土墨（11.91:1）
     muted: "#656155", // 干草灰（5.11:1），校准记录见文件头注释
     border: "#D8D0BC", // 沙纹线
+    danger: "#9E3A1F", // 陶红（6.15:1）——比赭石 accent 更红更深
+    warning: "#96661C", // 深土黄（4.49:1）
+    success: "#456B36", // 叶绿（5.56:1），橄榄 primary 提饱和
     chartPalette: ["#4D5D39", "#B25E38", "#3E6B63", "#8C7B54"], // 橄榄/赭石/深湖/沙褐
   },
   // Microsoft YaHei first: resolveFontFace picks the first SAFE_FONTS match,

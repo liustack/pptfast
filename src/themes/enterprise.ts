@@ -70,6 +70,9 @@ export const ENTERPRISE_TOKENS: StyleTokens = {
     text: "#17181A", // 硬黑（16.55:1），工业铭牌
     muted: "#5C6066", // 机械灰（5.89:1）
     border: "#DEE0DB", // 网格线
+    danger: "#C0231A", // 信号红（6.01:1）——瑞士工业的警示色
+    warning: "#A85F00", // 深琥珀（4.88:1）——刻意压暗，不与炸橘 accent 混
+    success: "#0F7355", // 工业青绿（5.83:1），与 chart 的工业青同族
     cardStroke: "#E4E6E1", // 板上未给，按旧 cardStroke↔border 关系平移（见文件头）
     chartPalette: ["#0032A0", "#E85D1F", "#0E7C86", "#7A7F87"], // IKB/炸橘/工业青/机灰
   },

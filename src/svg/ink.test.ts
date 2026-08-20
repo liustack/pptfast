@@ -220,17 +220,24 @@ describe("resolveSemanticColor", () => {
     expect(resolveSemanticColor("danger", { success: "#0B5D2E" })).toBe(LEGACY_DANGER)
   })
 
-  // The hard constraint this token channel ships under: no built-in theme
-  // declares a semantic color yet, so all 17 must resolve to the legacy
-  // hexes and render exactly as they did. This goes red the moment a theme
-  // declares one without the deliberate golden re-capture that change needs
+  // The channel shipped with all 17 themes still on the legacy hexes; visual
+  // review round 4 ("无论主题什么配色，这个总是红色") is what filled them in.
+  // So the lock is now the mirror image of the one it replaces: every
+  // canonical theme resolves to a color of its own, and the two legacy hexes
+  // are unreachable from a built-in. What it still guards is the same thing —
+  // a theme silently drifting onto or off a semantic color without the
+  // deliberate golden re-capture that change needs
   // (`src/ir/migrate-equivalence.test.ts` covers kpi_cards).
-  it("regression lock: every canonical theme still resolves to the pre-token hexes", () => {
+  it("regression lock: every canonical theme resolves to its own hexes, never the fallbacks", () => {
     for (const id of CANONICAL_THEME_IDS) {
       const { colors } = resolveStyle(id)
-      expect(resolveSemanticColor("danger", colors), id).toBe(LEGACY_DANGER)
-      expect(resolveSemanticColor("warning", colors), id).toBe(LEGACY_DANGER)
-      expect(resolveSemanticColor("success", colors), id).toBe(LEGACY_SUCCESS)
+      for (const role of ["danger", "warning", "success"] as const) {
+        expect(colors[role], `${id}.colors.${role} is undeclared`).toBeTruthy()
+        expect(resolveSemanticColor(role, colors), `${id} ${role}`).toBe(colors[role])
+      }
+      expect(resolveSemanticColor("danger", colors), id).not.toBe(LEGACY_DANGER)
+      expect(resolveSemanticColor("warning", colors), id).not.toBe(LEGACY_DANGER)
+      expect(resolveSemanticColor("success", colors), id).not.toBe(LEGACY_SUCCESS)
     }
   })
 })

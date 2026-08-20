@@ -68,7 +68,15 @@ import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { LAYOUT_REGISTRY } from "../layouts/registry"
 import { resolveBackgroundHex } from "../full-slide-svg"
-import { blendOver, contrastRatio, metaInk, readableOn, requiredContrastRatio } from "../ink"
+import {
+  accessibleInk,
+  blendOver,
+  contrastRatio,
+  metaInk,
+  readableOn,
+  requiredContrastRatio,
+  resolveSemanticColor,
+} from "../ink"
 import { parseSvgRoot } from "../serialize"
 import { mixHex } from "../components/color-mix"
 import { BAND_OPACITY } from "../components/sankey"
@@ -1109,6 +1117,63 @@ describe("colors.muted contrast (post-v0.3 W8 fix round, backlog item 5a)", () =
         (f) => f.code === "low-contrast" && (f.detail as { fill?: string } | undefined)?.fill === muted,
       )
       expect(mutedFindings).toEqual([])
+    })
+  }
+})
+
+// Dedicated semantic-color lock (visual review round 4, 2026-08-20: "无论
+// 主题什么配色，这个总是红色" — every theme's callout painted the same
+// `#DC2626`). All 17 themes now name `danger`/`warning`/`success`
+// themselves, and those three land on exactly two kinds of surface, which
+// is why this block measures against `colors.surface` and nothing else:
+//   - a painted shape — `callout.tsx`'s 3px top rule and its stroked icon,
+//     both drawn straight onto the callout's own `colors.surface` card with
+//     no `accessibleInk` calibration in the way (see `resolveSemanticColor`'s
+//     doc comment on why a shape wants the raw color). WCAG 1.4.11's 3:1
+//     non-text floor is the real bar there.
+//   - 20px text — `kpi.tsx`'s and `content-bento-panel.tsx`'s delta arrow,
+//     which *is* wrapped in `accessibleInk` against the same
+//     `colors.surface`. That wrapper never renders anything unreadable, so
+//     a too-dim `danger`/`success` fails silently instead: the arrow drops
+//     the theme's color for neutral ink and the theme's own palette
+//     disappears from the page. Hence the 4.5:1 floor on those two, asserted
+//     through `accessibleInk` itself rather than a bare ratio, so the pin
+//     tracks the calibration the renderer actually performs.
+// `warning` is deliberately held to 3:1, not 4.5:1: no renderer paints it as
+// text today, and several themes' caution tier is an amber whose 4.5:1
+// weight on paper stock is a mud brown (pulse's own `警示褐` measures
+// 3.73:1). If a renderer ever paints `warning` as text it must go through
+// `accessibleInk` like the delta arrow does, and this pin should tighten
+// with it.
+describe("semantic colors follow the theme (visual review round 4)", () => {
+  const SHAPE_FLOOR = 3
+  for (const themeId of CANONICAL_THEME_IDS) {
+    const style = THEME_DEFINITIONS[themeId].style
+    const surface = style.colors.surface
+
+    it(`${themeId}: declares all three semantic roles itself, never the built-in fallback`, () => {
+      for (const role of ["danger", "warning", "success"] as const) {
+        expect(style.colors[role], `${themeId}.colors.${role}`).toBeTruthy()
+      }
+      expect(style.colors.danger).not.toBe("#DC2626")
+      expect(style.colors.warning).not.toBe("#DC2626")
+      expect(style.colors.success).not.toBe("#16A34A")
+    })
+
+    it(`${themeId}: every semantic color clears the 3:1 non-text floor on its own card surface`, () => {
+      for (const role of ["danger", "warning", "success"] as const) {
+        const hex = resolveSemanticColor(role, style.colors)
+        expect(contrastRatio(hex, surface), `${themeId} ${role} ${hex} on surface ${surface}`).toBeGreaterThanOrEqual(
+          SHAPE_FLOOR,
+        )
+      }
+    })
+
+    it(`${themeId}: danger/success survive the delta arrow's own accessibleInk pass`, () => {
+      for (const role of ["danger", "success"] as const) {
+        const hex = resolveSemanticColor(role, style.colors)
+        expect(accessibleInk(hex, surface, 20), `${themeId} ${role} ${hex} demoted to neutral ink`).toBe(hex)
+      }
     })
   }
 })

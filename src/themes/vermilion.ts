@@ -71,6 +71,9 @@ export const VERMILION_TOKENS: StyleTokens = {
     text: "#33231C", // 公文墨（13.14:1）
     muted: "#6E5B4B", // 档案灰（5.63:1）
     border: "#E0D2B8", // 案卷线
+    danger: "#8C1810", // 深朱（8.79:1）——比正红 primary 更沉，警示压得住
+    warning: "#8E6A18", // 金压深（4.69:1；accent 的 2.26:1 连装饰线都过不了）
+    success: "#4C6B3C", // 松绿压深（5.70:1）
     chartPalette: ["#B02318", "#C79A3B", "#4A5C6E", "#66754F"], // 正红/金/靛灰/松绿
   },
   // Microsoft YaHei first: resolveFontFace picks the first SAFE_FONTS match,

@@ -1,7 +1,8 @@
 import { CLASSROOM_TOKENS } from "./classroom";
 import type { StyleTokens } from "./tokens";
 
-/** bloom 自己的五个色值——preset 与 classroom 的**全部**差异就是这五行。 */
+/** bloom 自己的色板——preset 与 classroom 的**全部**差异就是这五行加下面
+ * 那三枚语义色。 */
 const BG = "#F5EDEA"; // 樱粉纸
 const SURFACE = "#FCF8F6"; // 樱粉纸白
 const PRIMARY = "#92535E"; // 干玫瑰（压 bg 5.02:1，白字 5.80:1）
@@ -18,7 +19,8 @@ const BORDER = "#DCC9C4"; // 横线簿格线的粉调
  * `section#g4`）：bloom 从此是 classroom 的色板 preset，全仓首例。**
  *
  * 「preset」在这里是字面意思，不是修辞：本对象直接 spread
- * {@link CLASSROOM_TOKENS}，只覆盖 `id`、五个色值、以及由这五个色值推导出来
+ * {@link CLASSROOM_TOKENS}，只覆盖 `id`、五个色值、三枚语义色（`danger`/
+ * `warning`/`success`，第四轮评审后各主题自填）、以及由那五个色值推导出来
  * 的 `defaultBackgrounds`。字体、圆角/间距、`text`/`muted`/`chartPalette`
  * 全部继承——不是「抄成一样」，是同一份值。结构行早就已经是共用同一个对象了
  * （`definitions.ts` 的 `CLASSROOM_STRUCTURE`，theme-structure-allocation
@@ -48,7 +50,8 @@ const BORDER = "#DCC9C4"; // 横线簿格线的粉调
  * 对比度实测（`svg/ink.ts` 的 `contrastRatio`，压 `bg` `#F5EDEA`）：
  * primary 5.02:1、accent 3.24:1、text 12.86:1、muted 5.21:1（压 surface
  * 5.70:1）、chart 雾蓝 4.83 / 陶土 3.44 / 鼠尾草 3.16 / 砂黄 3.28。
- * chapter 底取 primary，白字压 primary 5.80:1。
+ * chapter 底取 primary，白字压 primary 5.80:1。三枚语义色压 `surface`：
+ * danger 7.73:1、warning 4.47:1、success 5.09:1。
  *
  * **一处偏离设计板 hex（板上数字赢）**：板上 primary 写的是 `#9E5A66`，
  * 自标 5:1，实测压 bg 只有 **4.43:1**——跌破正文 4.5:1 门槛（primary 在
@@ -67,6 +70,9 @@ export const BLOOM_TOKENS: StyleTokens = {
     primary: PRIMARY,
     accent: ACCENT,
     border: BORDER,
+    danger: "#8C2E3E", // 深芍药红（压 surface 7.73:1）
+    warning: "#A3652C", // 金盏花（4.47:1）——花园语系的警戒色
+    success: "#4E7355", // 叶绿（5.09:1），苔绿 accent 压深一档
   },
   // 结构与 classroom 逐字段相同（cover/content/ending 取 bg，chapter 取
   // primary），值是 bloom 自己的——preset 的可见半边。

@@ -47,6 +47,9 @@ export const INSIGHT_TOKENS: StyleTokens = {
     text: "#F2EFE8", // 暖纸白
     muted: "#9AA7B4", // 青灰注脚（压 bg 7.65:1，压渐变起点 7.06:1）
     border: "#2A3440", // 行情表格线
+    danger: "#D95D4E", // 跌红，与 chartPalette 同一枚（压 surface 4.59:1）
+    warning: "#E0863A", // 深琥珀（6.23:1），与终端琥珀 accent 拉开一档
+    success: "#2FA97C", // 涨绿，与 chartPalette 同一枚（5.78:1）
     chartPalette: ["#F0A63C", "#2FA97C", "#D95D4E", "#7E93A8"], // 琥珀 / 涨绿 / 跌红 / 中性青灰
   },
   fonts: {

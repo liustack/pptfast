@@ -41,6 +41,9 @@ export const INK_TOKENS: StyleTokens = {
     text: "#262421",
     muted: "#686056", // post-v0.3 W8 fix round补测（backlog 5a，content-matrix 色调混合格底色缺口，task-2 审校发现）：明度再下调校准 4.5:1（原 #756C60 为首轮校准值，更早为 #8A8071，保色相/饱和度）。v3 换底后复测 5.54:1，仍过线，不动。
     border: "#DCD2BD",
+    danger: "#9E1B1E", // 银朱（7.60:1）——比朱砂 accent 更沉
+    warning: "#A05A22", // 赭石（5.02:1）——传统颜料，与朱砂分家
+    success: "#2F6B4A", // 石绿（6.01:1）
     chartPalette: ["#1F1C18", "#C3272B", "#8A8071", "#B5A36F"],
   },
   fonts: {

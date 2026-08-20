@@ -5,7 +5,8 @@
 // 的 `section#g4`）。
 //
 // 「preset」在这里不是修辞：`themes/bloom.ts` 直接 spread `CLASSROOM_TOKENS`，
-// 只覆盖 `id`、五个色值、以及由这五个色值推导的 `defaultBackgrounds`。
+// 只覆盖 `id`、五个色值、三枚语义色、以及由那五个色值推导的
+// `defaultBackgrounds`。
 // `theme-structure.test.ts` 已经从**声明侧**钉住了结构行（同一个
 // `layoutTendencies` 对象引用 + 深等 + 逐 seed 同版式序列）。本文件补的是
 // **渲染侧**那一半，也是一个人真正会看见的那一半：把两家的色板从渲出来的
@@ -26,8 +27,14 @@ installNodePlatform()
 const CLASSROOM = resolveStyle("classroom")
 const BLOOM = resolveStyle("bloom")
 
-/** 只属于 bloom 的五个色值——preset 与 classroom 的**全部**差异。 */
-const PRESET_KEYS = ["bg", "surface", "primary", "accent", "border"] as const
+/**
+ * 只属于 bloom 的色值——preset 与 classroom 的**全部**差异。
+ *
+ * 后三枚是语义色（第四轮评审裁定「警示色不得全主题一律红」之后，17 个主题
+ * 逐个自填）。它们与前五个同属色板：两家的骨架必须仍然逐字节相同，而值必须
+ * 各是各的——bloom 的警戒色是花园语系的金盏花，classroom 的是砂黄。
+ */
+const PRESET_KEYS = ["bg", "surface", "primary", "accent", "border", "danger", "warning", "success"] as const
 
 const slides: Slide[] = [
   { type: "cover", heading: "岭原智能 2026 年第二季度业务评审", subheading: "设备预测性维护业务的增长质量", components: [] },
@@ -71,6 +78,9 @@ function stripPalette(markup: string, theme: string): string {
     [t.colors.text, "<text>"],
     [t.colors.muted, "<muted>"],
     [t.colors.border ?? "", "<border>"],
+    [t.colors.danger ?? "", "<danger>"],
+    [t.colors.warning ?? "", "<warning>"],
+    [t.colors.success ?? "", "<success>"],
     ...t.colors.chartPalette.map((c, i) => [c, `<chart${i}>`] as [string, string]),
   ]
   let out = markup
@@ -96,7 +106,7 @@ describe("bloom 是 classroom 的色板 preset（渲染侧）", () => {
     }
   })
 
-  it("色板五值是 bloom 自己的，其余色值与 classroom 同源（同一份值）", () => {
+  it("色板八值是 bloom 自己的，其余色值与 classroom 同源（同一份值）", () => {
     for (const key of PRESET_KEYS) {
       expect(BLOOM.colors[key], `${key} should be bloom's own`).not.toBe(CLASSROOM.colors[key])
     }

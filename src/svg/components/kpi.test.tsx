@@ -206,19 +206,23 @@ describe("kpi semantic color tokens", () => {
     expect(deltaFills(themed)[0]).toBe("#0A0E14")
   })
 
-  it("regression lock: every canonical theme still paints the pre-token hexes through the same guard", () => {
-    // The legacy hexes are spelled out here, not read back from the token
-    // channel, so this fails if a theme declares a semantic color or if a
-    // default drifts — either of which needs a deliberate re-capture of the
-    // `migrate-equivalence` goldens (they cover kpi_cards).
+  it("regression lock: every canonical theme paints its own semantic hexes, and none of them is demoted", () => {
+    // Visual review round 4 turned this lock around. It used to spell out
+    // the legacy `#16A34A`/`#DC2626` and assert no theme had moved off them;
+    // all 17 now name their own, so it asserts the arrows carry the theme's
+    // token *undemoted* — every value is calibrated to clear 4.5:1 on its own
+    // card surface, which `full-matrix-contrast.test.ts` pins independently.
+    // A theme that lands a too-dim green here fails loudly instead of
+    // silently rendering neutral ink, and any drift needs a deliberate
+    // re-capture of the `migrate-equivalence` goldens (they cover kpi_cards).
     for (const id of CANONICAL_THEME_IDS) {
       const themeCtx = buildCtx(resolveStyle(id), {})
-      const surface = themeCtx.colors.surface
-      expect(deltaFills(themeCtx), id).toEqual([
-        accessibleInk("#16A34A", surface, 20),
-        accessibleInk("#DC2626", surface, 20),
-        themeCtx.colors.muted,
-      ])
+      const { success, danger, muted, surface } = themeCtx.colors
+      expect(success, `${id} declares no success color`).toBeTruthy()
+      expect(danger, `${id} declares no danger color`).toBeTruthy()
+      expect(deltaFills(themeCtx), id).toEqual([success, danger, muted])
+      expect(accessibleInk(success!, surface, 20), `${id} success demoted`).toBe(success)
+      expect(accessibleInk(danger!, surface, 20), `${id} danger demoted`).toBe(danger)
     }
   })
 })

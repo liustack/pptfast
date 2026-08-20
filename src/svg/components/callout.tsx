@@ -57,11 +57,19 @@ function lay(text: string, w: number, fontSize: number) {
 /**
  * The `warn` variant's red is a theme token, not a baked hex: a theme sets
  * `colors.warning` (or `colors.danger` for the whole alert family) and this
- * card's top rule and icon follow it. A theme that declares neither resolves
- * to the same `#DC2626` this function used to return outright — see
- * `resolveSemanticColor`'s own doc comment for the fallback order and for why
- * the raw color, not an `accessibleInk`-calibrated one, is what a painted
- * shape wants.
+ * card's top rule and icon follow it. All 17 built-in themes name their own
+ * caution color (visual review round 4: "为啥这个提醒长卡片上边框总是红色啊，
+ * 无论主题什么配色，这个总是红色"), so the top rule is ink's vermilion on
+ * `ink`, marigold on `bloom`, stage gold on `campaign`. A theme that declares
+ * neither token resolves to the same `#DC2626` this function used to return
+ * outright — see `resolveSemanticColor`'s own doc comment for the fallback
+ * order and for why the raw color, not an `accessibleInk`-calibrated one, is
+ * what a painted shape wants.
+ *
+ * The three variants stay apart by color *and* by icon: `info` takes
+ * `primary`, `tip` takes `accent`, `warn` takes the caution color, and each
+ * theme's caution color is picked to sit clear of its own accent (see each
+ * `themes/<id>.ts`'s inline note on the token).
  */
 function accentColor(
   variant: CalloutComponent["variant"],

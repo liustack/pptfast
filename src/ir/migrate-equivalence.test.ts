@@ -531,6 +531,28 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // `.audit.json` needed no recapture for any of the three (recomputed
       // fresh against the goldens — a decorative rule that changes span and
       // offset introduces no geometry or contrast finding).
+      //
+      // Re-recaptured again (visual review round 4, the semantic-color wave
+      // — "无论主题什么配色，这个总是红色"): all 17 themes now name their own
+      // `danger`/`warning`/`success` instead of inheriting the built-in
+      // `#DC2626`/`#16A34A`. Only `annualReviewPreset` moves, and only where
+      // the *old* default was already being thrown away: `#16A34A` measured
+      // 3.30:1 on journal's own card surface, so `kpi.tsx`'s `accessibleInk`
+      // had been demoting both up-delta arrows to neutral `#0A0E14`.
+      // Journal's own moss green (`#48664A`, 5.88:1 on that surface) clears
+      // the bar, so the arrows keep the theme color instead. Targeted
+      // attribution, same discipline as every recapture above (token-by-token
+      // over both the SVG and the PPTX parts): token counts identical
+      // everywhere, PPTX part-name set identical, and the *only* differing
+      // tokens anywhere are the two arrow glyphs — SVG slide index 2's two
+      // `fill="#0A0E14"` -> `fill="#48664A"` and the matching two
+      // `<a:srgbClr val>` in `ppt/slides/slide3.xml`. `basic` (consulting)
+      // and `scenarioBearing` (journal) stayed byte-identical and were not
+      // recaptured: neither carries a `delta` on any kpi card, and no fixture
+      // here has a `callout` at all. `.audit.json` needed no recapture for
+      // any of the three — a *higher*-contrast fill can only remove
+      // low-contrast findings, and this one had none to begin with (verified
+      // by recomputing `auditDeck` fresh against both goldens).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
