@@ -84,14 +84,11 @@ import { footnoteBaselineFor } from "../chrome-geometry"
 /** Center-x of the 1280-wide canvas — every poster-mode element anchors here. */
 const CENTER_X = 640
 
-/** Accent short hairline (AccentBar helper inlined): the *only* place accent
- * primary red is used outside the degrade path's section label — a pure
- * decoration, never a text color, per the poster grammar. */
-const ACCENT_BAR_W = 60
-const ACCENT_BAR_H = 4
-
+// 2026-08-20 悬空装饰清扫：这里曾有一条 60x4 的居中 accent 短条（y=104），
+// 代码自己的注释写着「pure decoration」。它上面的 section label 只在本页有
+// section 时才出现，没有 section 时短条就孤零零地悬在大标题上方；即使有，
+// 它也是居中落在标题正中而不是任何一个词底下。删掉。
 const SECTION_LABEL_Y = 88
-const ACCENT_Y = 104
 const TITLE_Y = 184
 const HERO_X = 190
 const HERO_W = 900
@@ -419,18 +416,6 @@ export function StackedPosterContent(props: SvgTemplateProps) {
           {sectionLabel.text}
         </text>
       )}
-
-      {/* Kicker: accent hairline (AccentBar helper inlined) — pure
-          decoration, replaces the old text kicker's accent color entirely
-          (accent red is used nowhere else on this poster path). */}
-      <rect
-        x={CENTER_X - ACCENT_BAR_W / 2}
-        y={ACCENT_Y}
-        width={ACCENT_BAR_W}
-        height={ACCENT_BAR_H}
-        rx="2"
-        fill={ctx.colors.primary}
-      />
 
       {/* Centered 800-weight title */}
       {heading.lines.map((line, i) => (

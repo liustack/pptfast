@@ -1884,13 +1884,15 @@ describe("brand extract + --theme-file + deck theme.json", () => {
     ).join("")
     // The extracted brand colors must land in the DrawingML — hex appears
     // uppercase without "#" (same assertion shape as e2e's --style leg).
-    // This minimal 2-slide deck's selected layouts paint the accent token
-    // (source accent2) and the derived muted (#666666, the mixHex walk's
-    // first step clearing 4.5:1 against both white bg and the E7E6E6
-    // surface) — primary (accent1) has no paint site on these two layouts,
-    // so it is asserted at the theme-file level in the extract test above.
-    expect(slideXml).toContain(DEFAULT_THMX_COLORS.accent2)
+    // This minimal 2-slide deck's selected layouts paint the derived muted
+    // (#666666, the mixHex walk's first step clearing 4.5:1 against both
+    // white bg and the E7E6E6 surface). Neither primary (accent1) nor accent
+    // (accent2) has a paint site left on these two layouts — accent's only
+    // one was a short decorative bar, deleted in the 2026-08-20
+    // floating-decoration sweep — so both are asserted at the theme-file
+    // level in the extract test above instead.
     expect(slideXml).toContain("666666")
+    expect(slideXml).not.toContain(DEFAULT_THMX_COLORS.accent2)
   })
 
   it("--theme-file registers the theme but an explicit --theme still wins the selection", async () => {

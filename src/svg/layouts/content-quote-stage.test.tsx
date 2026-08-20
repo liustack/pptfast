@@ -86,15 +86,17 @@ describe("QuoteStageContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("accent hairline is the only primary-filled element; heading uses colors.text, never accent, unwrapped (no accessibleInk needed)", () => {
+  it("nothing on this page is filled with primary; heading uses colors.text, never accent, unwrapped (no accessibleInk needed)", () => {
     const ctx = buildCtx(resolveStyle("insight"), {})
     const { root } = render(
       <QuoteStageContent ir={ir("insight", [zeroComponentSlide])} slide={zeroComponentSlide} index={0} ctx={ctx} />,
     )
-    const accentBar = Array.from(root.querySelectorAll("rect")).find(
-      (r) => r.getAttribute("fill") === ctx.colors.primary,
-    )!
-    expect(accentBar).toBeTruthy()
+    // 2026-08-20 悬空装饰清扫：y=140 那条 56x4 的居中短横条删了——它下面是
+    // 整整 160px 空气才轮到大标题，上面什么都没有，标准的悬空装饰。它是本页
+    // 唯一读 primary 的件，删掉之后 primary 在本页一处不剩。
+    expect(
+      Array.from(root.querySelectorAll("rect")).filter((r) => r.getAttribute("fill") === ctx.colors.primary),
+    ).toHaveLength(0)
     const primaryTexts = Array.from(root.querySelectorAll("text")).filter(
       (t) => t.getAttribute("fill") === ctx.colors.primary,
     )

@@ -68,12 +68,15 @@ describe("PosterEnding", () => {
     expect(out).toContain("李雷")
     expect(out).toContain("© 2026 维岚科技 保留所有权利")
 
-    // 结构性锚点：居中标题/副标题/meta 均 text-anchor middle，短横条是 rect
+    // 结构性锚点：居中标题/副标题/meta 均 text-anchor middle。
     expect(out).toContain('text-anchor="middle"')
-    expect(out).toContain('width="60" height="4"')
+    // 2026-08-20 悬空装饰清扫：标题与副题正中那条 60x4 的 accent 短横条删了，
+    // 它上下各空 64px，两头都不贴。
+    expect(out).not.toContain('width="60" height="4"')
 
-    // RED 经 ctx.colors.primary 而来，与 insight primary 逐字节相同
-    expect(out).toContain("#16202B")
+    // 短横条是这一页唯一读 colors.primary 的件，它删掉之后 primary 在本页
+    // 不再有载体（2026-08-20 悬空装饰清扫）——RED 仍然不映射到 accent。
+    expect(out).not.toContain("#16202B")
     // insight accent（终端琥珀）不应出现——RED 不映射到 accent
     expect(out).not.toContain("#F0A63C")
     // META_MUTED（#666670）已并入 muted，不得残留
@@ -87,7 +90,6 @@ describe("PosterEnding", () => {
       <PosterEnding ir={deck} slide={endingWithHeading} index={0} ctx={ctx} />,
     )
 
-    expect(out).toContain("#1E2A4A") // consulting primary，短横条
     expect(out).toContain("#1C1E23") // consulting text（编辑组换血后与 primary 拆开）
     expect(out).toContain("#5B6069") // consulting muted，副标题/meta 行
     expect(out).toContain("#DDDCD4") // consulting border，分隔线
@@ -193,18 +195,14 @@ describe("PosterEnding", () => {
       )!
       expect(oneLineHeading.getAttribute("y")).toBe("424")
 
-      const twoLineAccentBar = Array.from(twoLineRoot.querySelectorAll("rect")).find(
-        (r) => r.getAttribute("width") === "60" && r.getAttribute("height") === "4",
-      )!
-      const oneLineAccentBar = Array.from(oneLineRoot.querySelectorAll("rect")).find(
-        (r) => r.getAttribute("width") === "60" && r.getAttribute("height") === "4",
-      )!
-      expect(twoLineAccentBar.getAttribute("y")).toBe(oneLineAccentBar.getAttribute("y"))
-      // Accent bar must not sit inside the second line's own glyph span —
-      // the reported bug (accent bar piercing the second line's glyphs).
-      // CJK glyph descent ≈ baseline + 0.12*fontSize: lastY(424) +
-      // round(0.12*150) = 424+18 = 442.
-      expect(Number(twoLineAccentBar.getAttribute("y"))).toBeGreaterThanOrEqual(414)
+      // The accent bar this assertion used to anchor on is gone (2026-08-20
+      // floating-decoration sweep). What it was really pinning — that the
+      // whole chain below the heading is line-count-independent — is now
+      // pinned on the divider rule, which sits at the far end of that chain.
+      const dividerY = (root: Element) =>
+        Array.from(root.querySelectorAll("line"))[0]?.getAttribute("y1")
+      expect(dividerY(oneLineRoot)).toBeTruthy()
+      expect(dividerY(twoLineRoot)).toBe(dividerY(oneLineRoot))
     })
 
     it("user-reported repro heading ('从今天开始，用声明式管理你的集群') renders with the whole downstream chain within the page", () => {
