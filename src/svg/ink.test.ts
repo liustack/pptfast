@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { accessibleInk, accessibleOpacity, contrastRatio, metaInk, readableOn, requiredContrastRatio } from "./ink"
+import { accessibleInk, accessibleOpacity, contrastRatio, metaInk, readableOn, requiredContrastRatio, resolveSemanticColor } from "./ink"
+import { CANONICAL_THEME_IDS, resolveStyle } from "../themes"
 
 // `readableOn`'s own behavior is unchanged by the W4 fix-round extraction
 // out of `cover-split-diagonal.tsx` — these are the same assertions that
@@ -182,6 +183,54 @@ describe("metaInk", () => {
         const out = metaInk(pref, bg)
         expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(3)
       }
+    }
+  })
+})
+
+describe("resolveSemanticColor", () => {
+  // The hexes `callout.tsx` and `kpi.tsx` hardcoded before `StyleColors`
+  // grew semantic-role tokens. Spelled out here rather than imported from
+  // the module under test, so a typo in either default fails this file
+  // instead of agreeing with itself.
+  const LEGACY_DANGER = "#DC2626"
+  const LEGACY_SUCCESS = "#16A34A"
+
+  it("falls back to the pre-token hexes when a theme declares nothing", () => {
+    expect(resolveSemanticColor("danger", {})).toBe(LEGACY_DANGER)
+    expect(resolveSemanticColor("success", {})).toBe(LEGACY_SUCCESS)
+  })
+
+  it("resolves an undeclared warning to whatever danger resolves to", () => {
+    // The caution tier has no default of its own: today's renderers paint it
+    // in the same red as the error tier, so a theme naming only `danger`
+    // recolors its whole alert family in one line.
+    expect(resolveSemanticColor("warning", {})).toBe(LEGACY_DANGER)
+    expect(resolveSemanticColor("warning", { danger: "#7A0B12" })).toBe("#7A0B12")
+  })
+
+  it("prefers a declared token over the fallback, per role", () => {
+    const colors = { danger: "#7A0B12", warning: "#8A5A00", success: "#0B5D2E" }
+    expect(resolveSemanticColor("danger", colors)).toBe("#7A0B12")
+    expect(resolveSemanticColor("warning", colors)).toBe("#8A5A00")
+    expect(resolveSemanticColor("success", colors)).toBe("#0B5D2E")
+  })
+
+  it("declaring one role leaves the others on their fallbacks", () => {
+    expect(resolveSemanticColor("success", { danger: "#7A0B12" })).toBe(LEGACY_SUCCESS)
+    expect(resolveSemanticColor("danger", { success: "#0B5D2E" })).toBe(LEGACY_DANGER)
+  })
+
+  // The hard constraint this token channel ships under: no built-in theme
+  // declares a semantic color yet, so all 17 must resolve to the legacy
+  // hexes and render exactly as they did. This goes red the moment a theme
+  // declares one without the deliberate golden re-capture that change needs
+  // (`src/ir/migrate-equivalence.test.ts` covers kpi_cards).
+  it("regression lock: every canonical theme still resolves to the pre-token hexes", () => {
+    for (const id of CANONICAL_THEME_IDS) {
+      const { colors } = resolveStyle(id)
+      expect(resolveSemanticColor("danger", colors), id).toBe(LEGACY_DANGER)
+      expect(resolveSemanticColor("warning", colors), id).toBe(LEGACY_DANGER)
+      expect(resolveSemanticColor("success", colors), id).toBe(LEGACY_SUCCESS)
     }
   })
 })

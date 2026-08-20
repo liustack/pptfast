@@ -140,6 +140,62 @@ describe("callout card stroke (Task 5d)", () => {
   })
 })
 
+describe("callout semantic color tokens", () => {
+  const warn = { type: "callout" as const, variant: "warn" as const, text: "警告" }
+
+  /** The variant rule (rect 0, only its top 3px stay visible) and the icon
+   * are the two places the variant color lands. */
+  function warnColors(themeCtx: ComponentCtx) {
+    const { container } = svg(callout.render(warn, { x: 0, y: 0, w: 800 }, themeCtx))
+    return {
+      rule: container.querySelectorAll("rect")[0].getAttribute("fill"),
+      icon: container.querySelector("path")?.getAttribute("stroke"),
+    }
+  }
+
+  it("paints the pre-token red when the theme declares no semantic color", () => {
+    expect(warnColors(ctx)).toEqual({ rule: "#DC2626", icon: "#DC2626" })
+  })
+
+  it("follows colors.danger — the whole alert family in one token", () => {
+    const themed: ComponentCtx = { ...ctx, colors: { ...ctx.colors, danger: "#7A0B12" } }
+    expect(warnColors(themed)).toEqual({ rule: "#7A0B12", icon: "#7A0B12" })
+  })
+
+  it("lets colors.warning split the caution tier off from the error tier", () => {
+    const themed: ComponentCtx = {
+      ...ctx,
+      colors: { ...ctx.colors, danger: "#7A0B12", warning: "#8A5A00" },
+    }
+    expect(warnColors(themed)).toEqual({ rule: "#8A5A00", icon: "#8A5A00" })
+  })
+
+  it("leaves info and tip on primary/accent — a semantic token moves nothing else", () => {
+    const themed: ComponentCtx = {
+      ...ctx,
+      colors: { ...ctx.colors, danger: "#7A0B12", warning: "#8A5A00", success: "#0B5D2E" },
+    }
+    for (const [variant, expected] of [
+      ["info", "#006A4E"],
+      ["tip", "#00A878"],
+    ] as const) {
+      const { container } = svg(
+        callout.render({ type: "callout", variant, text: "测试" }, { x: 0, y: 0, w: 800 }, themed),
+      )
+      expect(container.querySelectorAll("rect")[0].getAttribute("fill")).toBe(expected)
+    }
+  })
+
+  it("regression lock: no canonical theme declares one yet, so every warn callout still renders #DC2626", () => {
+    for (const id of CANONICAL_THEME_IDS) {
+      expect(warnColors(buildCtx(resolveStyle(id), {})), id).toEqual({
+        rule: "#DC2626",
+        icon: "#DC2626",
+      })
+    }
+  })
+})
+
 describe("callout component emphasis", () => {
   it("renders unmarked text with no tspan wrapper", () => {
     const plain = { type: "callout" as const, variant: "info" as const, text: "没有强调标记的提示文本" }

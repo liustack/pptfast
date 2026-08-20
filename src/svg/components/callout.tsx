@@ -2,6 +2,7 @@ import type { Component } from "@/ir"
 import { Icon } from "../icons"
 import { layoutSvgText } from "../../lib/svg-text-layout"
 import { parseEmphasis, renderEmphasisTspans, sliceEmphasisForLines, stripEmphasis } from "../emphasis"
+import { resolveSemanticColor, type SemanticColorTokens } from "../ink"
 import type { RenderDef, SvgComponent } from "./types"
 
 type CalloutComponent = Extract<Component, { type: "callout" }>
@@ -53,8 +54,20 @@ function lay(text: string, w: number, fontSize: number) {
   })
 }
 
-function accentColor(variant: CalloutComponent["variant"], ctx: { colors: { primary: string; accent: string } }): string {
-  if (variant === "warn") return "#DC2626"
+/**
+ * The `warn` variant's red is a theme token, not a baked hex: a theme sets
+ * `colors.warning` (or `colors.danger` for the whole alert family) and this
+ * card's top rule and icon follow it. A theme that declares neither resolves
+ * to the same `#DC2626` this function used to return outright — see
+ * `resolveSemanticColor`'s own doc comment for the fallback order and for why
+ * the raw color, not an `accessibleInk`-calibrated one, is what a painted
+ * shape wants.
+ */
+function accentColor(
+  variant: CalloutComponent["variant"],
+  ctx: { colors: SemanticColorTokens & { primary: string; accent: string } },
+): string {
+  if (variant === "warn") return resolveSemanticColor("warning", ctx.colors)
   if (variant === "tip") return ctx.colors.accent
   return ctx.colors.primary
 }

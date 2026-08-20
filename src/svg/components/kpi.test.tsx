@@ -6,6 +6,7 @@ import { kpi } from "./kpi"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../full-slide-svg"
+import { accessibleInk } from "../ink"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -169,6 +170,55 @@ describe("kpi component", () => {
     expect(unitTspan.textContent!.length).toBeLessThan(
       longUnitComponent.items[0].unit.length,
     )
+  })
+})
+
+describe("kpi semantic color tokens", () => {
+  /** Delta arrows render at y=36, one per card, in item order: up, down, flat. */
+  function deltaFills(themeCtx: ComponentCtx) {
+    const { container } = svg(kpi.render(component, { x: 80, y: 200, w: 1120 }, themeCtx))
+    return Array.from(container.querySelectorAll("text"))
+      .filter((t) => t.getAttribute("y") === "36")
+      .map((t) => t.getAttribute("fill"))
+  }
+
+  it("follows colors.success / colors.danger for the up and down arrows", () => {
+    // Both tokens clear the 20px arrow's 4.5:1 floor against this suite's
+    // `colors.surface` (#F4F4F4) — 10.13:1 and 7.29:1, measured — so
+    // `accessibleInk` keeps them verbatim and the assertion reads the token
+    // itself rather than a fallback ink.
+    const themed: ComponentCtx = {
+      ...ctx,
+      colors: { ...ctx.colors, danger: "#7A0B12", success: "#0B5D2E" },
+    }
+    const [up, down, flat] = deltaFills(themed)
+    expect(up).toBe("#0B5D2E")
+    expect(down).toBe("#7A0B12")
+    // "flat" carries no semantic meaning to color, so it stays on muted.
+    expect(flat).toBe(ctx.colors.muted)
+  })
+
+  it("still hands the token to accessibleInk, which overrides one that fails on this surface", () => {
+    // A token is a theme's preference, not a license to render illegibly:
+    // #34D399 measures 1.83:1 against #F4F4F4, so the guard still fires.
+    const themed: ComponentCtx = { ...ctx, colors: { ...ctx.colors, success: "#34D399" } }
+    expect(deltaFills(themed)[0]).toBe("#0A0E14")
+  })
+
+  it("regression lock: every canonical theme still paints the pre-token hexes through the same guard", () => {
+    // The legacy hexes are spelled out here, not read back from the token
+    // channel, so this fails if a theme declares a semantic color or if a
+    // default drifts — either of which needs a deliberate re-capture of the
+    // `migrate-equivalence` goldens (they cover kpi_cards).
+    for (const id of CANONICAL_THEME_IDS) {
+      const themeCtx = buildCtx(resolveStyle(id), {})
+      const surface = themeCtx.colors.surface
+      expect(deltaFills(themeCtx), id).toEqual([
+        accessibleInk("#16A34A", surface, 20),
+        accessibleInk("#DC2626", surface, 20),
+        themeCtx.colors.muted,
+      ])
+    }
   })
 })
 

@@ -294,7 +294,7 @@ function renderKpiCardBody(
   const offsetY = Math.max(0, (budgetH - kpiContentHeight(hasIcon, hero)) / 2)
   const innerY = box.y + BENTO_CARD_TOP_PAD + offsetY
 
-  const dp = item.delta ? deltaProps(item.delta) : null
+  const dp = item.delta ? deltaProps(item.delta, ctx.colors) : null
   // Bench-driven fix round, defect B: same unguarded `dp.color` pattern as
   // kpi.tsx's own row-layout delta arrow (see that file's `deltaProps` doc
   // comment for the full defect — a real, theme-independent one, found
