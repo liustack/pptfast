@@ -430,4 +430,63 @@ describe("ImageLeadSplitContent header-only balance", () => {
     )
     expect(Number(headings[0]!.getAttribute("y"))).toBe(150)
   })
+
+  // Visual review round 3, E cluster p05: the center line above was right,
+  // but the visual column went on declaring the full 568px band while its
+  // shrink-to-fit-only component painted 288 of it — a region
+  // `data-audit-rect` claimed and no ink ever reached, and a second,
+  // independent expression for the same middle.
+  it("declares only the band it paints when the body is empty", () => {
+    const { root } = render(ir([chartOnly]), chartOnly)
+    const visual = Array.from(root.querySelectorAll("g[data-audit-rect]")).find(
+      (g) => parseAudit(g.getAttribute("data-audit-rect")).x !== 96,
+    )!
+    const declared = parseAudit(visual.getAttribute("data-audit-rect"))
+    const painted = parseAudit(visual.querySelector("g[data-audit-box]")!.getAttribute("data-audit-box"))
+    expect(painted.h).toBeGreaterThan(0)
+    expect(declared.y).toBe(painted.y)
+    expect(declared.h).toBe(painted.h)
+    // Tightened vertically only — the 60/40 split's own widths are what the
+    // pool's skeleton-diversity test tracks and must not move.
+    expect(declared.x).toBe(571)
+    expect(declared.w).toBe(613)
+    expect(declared.h).toBeLessThan(568)
+  })
+
+  it("hangs both columns off one center line, not two agreeing formulas", () => {
+    const { root } = render(ir([chartOnly]), chartOnly)
+    const visual = Array.from(root.querySelectorAll("g[data-audit-rect]")).find(
+      (g) => parseAudit(g.getAttribute("data-audit-rect")).x !== 96,
+    )!
+    const band = parseAudit(visual.getAttribute("data-audit-rect"))
+    const texts = Array.from(root.querySelectorAll("text")).filter((t) => t.getAttribute("x") === "96")
+    const headings = texts.filter((t) => t.getAttribute("font-weight") === "700")
+    const kicker = texts.find((t) => t.getAttribute("letter-spacing") === "2")
+    // The block the layout centers runs from the kicker's ascender (or the
+    // heading's own, with no kicker) down to the last baseline it uses.
+    const headingSize = Number(headings[0]!.getAttribute("font-size"))
+    const blockTop = kicker
+      ? Number(kicker.getAttribute("y")) - Number(kicker.getAttribute("font-size"))
+      : Number(headings[0]!.getAttribute("y")) - headingSize
+    const blockBottom = Number(headings[headings.length - 1]!.getAttribute("y"))
+    const textCenter = (blockTop + blockBottom) / 2
+    // Within the whole-pixel rounding `textShift` applies.
+    expect(Math.abs(textCenter - (band.y + band.h! / 2))).toBeLessThanOrEqual(0.5)
+  })
+
+  it("moves the body rect down with the text block instead of leaving it at the unshifted coordinate", () => {
+    // The empty-body rect used to be emitted at y=231 while the heading it
+    // hangs under had been pushed to 371 — it spanned its own heading.
+    // Harmless while the branch guarantees an empty body, a live overlap the
+    // moment that guard is loosened.
+    const { root } = render(ir([chartOnly]), chartOnly)
+    const textRect = Array.from(root.querySelectorAll("g[data-audit-rect]"))
+      .map((g) => parseAudit(g.getAttribute("data-audit-rect")))
+      .find((r) => r.x === 96)!
+    const headings = Array.from(root.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("font-weight") === "700",
+    )
+    const lastBaseline = Number(headings[headings.length - 1]!.getAttribute("y"))
+    expect(textRect.y).toBeGreaterThan(lastBaseline)
+  })
 })
