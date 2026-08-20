@@ -831,3 +831,53 @@ describe("chart palette phase rotation (P1 variety wave, task 2)", () => {
     expect(fillsFor(0)).toEqual(fillsFor(1))
   })
 })
+
+describe("layouts that paint their own full-bleed field (LayoutDefinition.paintsOwnBackground)", () => {
+  const mkIr = (theme: string, slide: Slide): PptxIR =>
+    ({
+      version: "4",
+      filename: "m.pptx",
+      theme: { id: theme },
+      meta: {},
+      assets: { images: {} },
+      slides: [slide],
+    }) as unknown as PptxIR
+
+  /** Every rect covering the whole canvas, in paint order. */
+  const fullBleedFills = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("rect"))
+      .filter(
+        (r) =>
+          Number(r.getAttribute("x") ?? 0) <= 0 &&
+          Number(r.getAttribute("y") ?? 0) <= 0 &&
+          Number(r.getAttribute("width") ?? 0) >= 1280 &&
+          Number(r.getAttribute("height") ?? 0) >= 720,
+      )
+      .map((r) => r.getAttribute("fill"))
+
+  // Two full-bleed rects of different colours share one canvas edge, and a
+  // browser antialiases the SVG viewport clip whenever the mounted slide's box
+  // misses the device pixel grid — so the covered colour survives in the edge
+  // column as a pale hairline. `ink`'s cover was reported for exactly that in
+  // the 2026-08-20 review.
+  const CASES = [
+    ["fashion-masthead", "cover"],
+    ["fashion-chapter", "chapter"],
+    ["fashion-ending", "ending"],
+  ] as const
+
+  for (const [layout, type] of CASES) {
+    it(`${layout} is the only full-bleed paint on the page`, () => {
+      const slide = { type, heading: "标题", layout, components: [] } as unknown as Slide
+      const { container } = render(<FullSlideSvg ir={mkIr("ink", slide)} slide={slide} index={0} />)
+      expect(container.querySelector(`[data-archetype="${layout}"]`)).not.toBeNull()
+      expect(fullBleedFills(container)).toHaveLength(1)
+    })
+  }
+
+  it("an ordinary layout still gets the theme background under it", () => {
+    const slide = { type: "cover", heading: "标题", layout: "poster-center", components: [] } as unknown as Slide
+    const { container } = render(<FullSlideSvg ir={mkIr("ink", slide)} slide={slide} index={0} />)
+    expect(fullBleedFills(container)).toContain("#F7F2E7")
+  })
+})

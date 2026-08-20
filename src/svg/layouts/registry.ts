@@ -256,6 +256,28 @@ export interface LayoutDefinition {
    */
   pinOnly?: boolean
   /**
+   * This layout opens by painting its own full-bleed colour field over the
+   * whole canvas, so the theme background underneath it is never seen —
+   * `FullSlideSvg` (`../full-slide-svg.tsx`) skips `Background` entirely for
+   * such a layout.
+   *
+   * Not an optimisation. Two full-bleed rects of different colours stacked on
+   * the same canvas edge leave a visible defect: a browser clips every shape
+   * to the SVG viewport, and that clip is antialiased whenever the mounted
+   * slide's box does not land on whole device pixels (it almost never does).
+   * The lower rect therefore survives in the boundary column at roughly a
+   * fifth of its strength, and a cream page under a near-black field reads as
+   * a pale one-to-two pixel line down the page edge — reported against
+   * `ink`'s cover in the 2026-08-20 review. Painting only the field the
+   * reader actually sees removes the colour that was leaking. See
+   * `../../lib/slide-edge.ts` for the other half of the same defect, on the
+   * chrome side of the SVG.
+   *
+   * `undefined` (every layout but the three `fashion-*` members) means the
+   * ordinary arrangement: `Background` paints, the layout draws on top of it.
+   */
+  paintsOwnBackground?: boolean
+  /**
    * Heading-overflow hard-error parameters (quote-stage wave, T2 fix round —
    * `.issues/2026-07-28-quote-stage/task-2-report.md`'s fix-report addendum):
    * when set, `ir-quality.ts`'s `checkSlide` runs `fitHeadingLines(slide

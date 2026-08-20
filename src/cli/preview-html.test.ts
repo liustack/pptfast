@@ -457,3 +457,38 @@ describe("buildPreviewHtml — annotations + export (notes+preview wave, task 2)
     expect(body).toContain("pos >= 0 && pos < total")
   })
 })
+
+describe("buildPreviewHtml — the box under the slide (`../lib/slide-edge.ts`)", () => {
+  const painted = (label: string, fill: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">` +
+    `<rect x="0" y="0" width="1280" height="720" fill="${fill}"></rect><text>${label}</text></svg>`
+
+  it("paints the stage and every thumbnail slot in their slide's own edge colour", () => {
+    const html = buildPreviewHtml({
+      title: "deck",
+      slides: [
+        slide({ index: 0, svg: painted("a", "#1F1C18") }),
+        slide({ index: 1, svg: painted("b", "#F7F2E7") }),
+      ],
+    })
+    // The first slide starts on the stage, so its colour is in the static markup.
+    expect(html).toContain(`<div id="pf-stage" style="background:#1F1C18">`)
+    expect(html).toContain(`<span class="pf-thumb-slot" id="pf-slot-0" style="background:#1F1C18">`)
+    expect(html).toContain(`<span class="pf-thumb-slot" id="pf-slot-1" style="background:#F7F2E7">`)
+    // …and each slide carries its own colour so the stage can be repainted
+    // when that slide is brought forward.
+    expect(html).toContain(`data-edge="#1F1C18"`)
+    expect(html).toContain(`data-edge="#F7F2E7"`)
+    const body = /<script>([\s\S]*?)<\/script>\s*<\/body>/.exec(html)![1]!
+    expect(body).toContain("stage.style.background = nextSlide.getAttribute('data-edge')")
+  })
+
+  it("leaves the box its own neutral when the slide's edge has no single colour", () => {
+    const photo =
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">` +
+      `<image href="data:image/png;base64,AAA" x="0" y="0" width="1280" height="720"></image></svg>`
+    const html = buildPreviewHtml({ title: "deck", slides: [slide({ index: 0, svg: photo })] })
+    expect(html).toContain(`<div id="pf-stage">`)
+    expect(html).not.toContain("data-edge=")
+  })
+})

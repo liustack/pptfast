@@ -17,20 +17,40 @@
 // which `resolveLayoutId`'s `weightedPickBySeed` samples from
 // positionally — a silent reorder would not fail typecheck or most tests,
 // but would silently redistribute deterministic seed-based layout picks).
+//
+// The comparison is restricted to the fields the capture actually holds.
+// `LayoutDefinition` has grown optional metadata since (`narrativesOnly`,
+// `pinOnly`, `headingFit`, `paintsOwnBackground`), and a layout that sets one
+// of those is not a layout the migration changed — it is a later, deliberate
+// decision that this fixture was never a record of. Comparing whole objects
+// made the first such decision look like a migration defect and would have
+// been answered by re-recording a file whose entire value is that it was
+// captured *before* the migration and never touched again. Removals and
+// changes to captured fields still fail, which is the thing this guard is
+// here to catch.
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { LAYOUT_REGISTRY } from "./registry"
 
 const fixture = JSON.parse(
   readFileSync(new URL("./__fixtures__/pre-migration-layout-registry.json", import.meta.url), "utf-8"),
-) as { order: string[]; registry: Record<string, unknown> }
+) as { order: string[]; registry: Record<string, Record<string, unknown>> }
+
+/** `live`, cut down to the keys `captured` has — nothing else is this guard's business. */
+function capturedFieldsOf(live: Record<string, unknown>, captured: Record<string, unknown>) {
+  return Object.fromEntries(Object.keys(captured).map((k) => [k, live[k]]))
+}
 
 describe("LAYOUT_REGISTRY migration guard (registry.ts aggregator conversion, T1d)", () => {
   it("key insertion order is byte-identical to the pre-migration registry", () => {
     expect(Object.keys(LAYOUT_REGISTRY)).toEqual(fixture.order)
   })
 
-  it("every definition is deep-equal to its pre-migration counterpart", () => {
-    expect(LAYOUT_REGISTRY).toEqual(fixture.registry)
+  it("every captured field is deep-equal to its pre-migration counterpart", () => {
+    const live = LAYOUT_REGISTRY as unknown as Record<string, Record<string, unknown>>
+    for (const [id, captured] of Object.entries(fixture.registry)) {
+      expect(live[id], id).toBeDefined()
+      expect(capturedFieldsOf(live[id]!, captured), id).toEqual(captured)
+    }
   })
 })

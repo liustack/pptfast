@@ -21,6 +21,7 @@
  * cross-wire each other's gradients.
  */
 
+import { slideEdgeFill } from "@/lib/slide-edge"
 import { namespaceSvgIds, svgIdPrefix } from "@/lib/svg-ids"
 import { verdictFreshness, type Manifest } from "./render"
 
@@ -65,8 +66,16 @@ export function buildGalleryHtml(manifest: Manifest, svgs: ReadonlyMap<string, s
   // (see `src/lib/svg-ids.ts`). Doing it at build time is the same transform
   // `preview --html` applies, and it keeps the client script to mounting.
   const svgRecord: Record<string, string> = {}
+  // What each stage should be painted with while the slide sits on it — see
+  // `src/lib/slide-edge.ts` for why a neutral grey behind the slide surfaces
+  // as a pale hairline down the page edge.
+  const edgeRecord: Record<string, string> = {}
   let seq = 0
-  for (const [id, markup] of svgs) svgRecord[id] = namespaceSvgIds(markup, svgIdPrefix(seq++))
+  for (const [id, markup] of svgs) {
+    svgRecord[id] = namespaceSvgIds(markup, svgIdPrefix(seq++))
+    const edge = slideEdgeFill(markup)
+    if (edge) edgeRecord[id] = edge
+  }
 
   const themes = [...new Set(manifest.pages.map((p) => p.theme))].sort()
   const languages = [...new Set(manifest.pages.map((p) => p.language))]
@@ -352,11 +361,13 @@ kbd {
 
 <script id="manifest-data" type="application/json">${jsonScript(manifest)}</script>
 <script id="svg-data" type="application/json">${jsonScript(svgRecord)}</script>
+<script id="edge-data" type="application/json">${jsonScript(edgeRecord)}</script>
 <script>
 (() => {
   "use strict";
   const MANIFEST = JSON.parse(document.getElementById("manifest-data").textContent);
   const SVGS = JSON.parse(document.getElementById("svg-data").textContent);
+  const EDGES = JSON.parse(document.getElementById("edge-data").textContent);
   const STORE_KEY = "pptfast-gallery-verdicts-v1";
 
   // Shipped in as source rather than restated here, so the rule the reviewer
@@ -444,10 +455,17 @@ ${inlineRule(verdictFreshness)}
   // one duplicate this scheme allows, and it is safe by construction rather
   // than by luck: both copies are the same document, so every colliding id
   // resolves to a byte-identical definition.
+  //
+  // The stage is repainted in the slide's own edge colour on the way in. A
+  // stage box rarely lands on whole device pixels, and whatever is painted
+  // under the slide survives in the boundary column as a one-to-two pixel
+  // strip — a neutral grey there reads as a pale line down the page edge.
+  // See src/lib/slide-edge.ts.
   function mountSvg(container, id) {
     const markup = SVGS[id];
     if (!markup) return false;
     container.innerHTML = markup;
+    container.style.background = EDGES[id] || "";
     return true;
   }
 
@@ -685,6 +703,7 @@ ${inlineRule(verdictFreshness)}
     const p = visible[viewerIndex];
     if (!p) return;
     frame.textContent = "";
+    frame.style.background = "";
     if (p.skipped) {
       const s = document.createElement("div");
       s.className = "skip";

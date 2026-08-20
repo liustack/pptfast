@@ -224,6 +224,7 @@ export const layoutDef: LayoutDefinition = {
   // rule above the masthead heading, accent color band, subheading, meta.
   id: "fashion-masthead",
   kind: "archetype",
+  paintsOwnBackground: true,
   slideTypes: ["cover"],
   slots: [
     { name: "kicker", accepts: [] },

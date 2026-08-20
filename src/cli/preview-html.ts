@@ -170,6 +170,7 @@ export interface PreviewHtmlInput {
   checks?: PreviewHtmlChecks
 }
 
+import { slideEdgeFill } from "../lib/slide-edge"
 import { namespaceSvgIds, svgIdPrefix } from "../lib/svg-ids"
 
 function escapeHtml(s: string): string {
@@ -230,7 +231,22 @@ function slideNode(slide: PreviewHtmlSlideInput, findingCount: number): string {
   // slide resolves against an earlier slide's definition of the same id.
   // See `../lib/svg-ids.ts` for the defect this prevents.
   const svg = namespaceSvgIds(slide.svg, svgIdPrefix(slide.index))
-  return `<div class="pf-slide" id="pf-slide-${slide.index}" data-index="${slide.index}"${idAttr}>${badge}${fBadge}${svg}</div>`
+  // What the box under this slide must be painted with while the slide sits
+  // on it. `<script>` reads it back on every stage change; the thumbnail slot
+  // gets the same value as a static inline style. Leaving the box its own
+  // neutral grey leaves a pale hairline down the page edge — see
+  // `../lib/slide-edge.ts` for the measurement.
+  const edgeAttr = edgeAttribute(slide, "data-edge")
+  return `<div class="pf-slide" id="pf-slide-${slide.index}" data-index="${slide.index}"${idAttr}${edgeAttr}>${badge}${fBadge}${svg}</div>`
+}
+
+/** ` data-edge="#1F1C18"` or ` style="background:#1F1C18"`, and `""` when the
+ *  slide's edge has no single answer (a photo background) and the box should
+ *  keep whatever neutral it already had. */
+function edgeAttribute(slide: PreviewHtmlSlideInput, name: "data-edge" | "style"): string {
+  const edge = slideEdgeFill(slide.svg)
+  if (!edge) return ""
+  return ` ${name}="${escapeHtml(name === "style" ? `background:${edge}` : edge)}"`
 }
 
 /** `"slide 3 · content · p-body · unfilled"` — shared by the thumbnail
@@ -273,7 +289,7 @@ function thumbButton(slide: PreviewHtmlSlideInput, isActive: boolean, slotConten
   return (
     `<button type="button" class="pf-thumb${isActive ? " pf-thumb-active" : ""}" id="pf-thumb-${slide.index}" ` +
     `data-index="${slide.index}" title="${description}" aria-label="${description}">` +
-    `<span class="pf-thumb-slot" id="pf-slot-${slide.index}">${slotContent}</span>` +
+    `<span class="pf-thumb-slot" id="pf-slot-${slide.index}"${edgeAttribute(slide, "style")}>${slotContent}</span>` +
     `<span class="pf-thumb-label">${positionLabel(slide)}</span>` +
     `${badge}${fBadge}</button>`
   )
@@ -433,6 +449,7 @@ const JS = `
     var prevThumb = thumbEl(current)
     if (prevThumb) prevThumb.classList.remove('pf-thumb-active')
     stage.appendChild(nextSlide)
+    stage.style.background = nextSlide.getAttribute('data-edge') || ''
     nextThumb.classList.add('pf-thumb-active')
     nextThumb.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     current = i
@@ -550,6 +567,9 @@ export function buildPreviewHtml(input: PreviewHtmlInput): string {
   const countFor = (slide: PreviewHtmlSlideInput) => findingsByPage.get(slide.index + 1)?.length ?? 0
 
   const stageSlide = total > 0 ? slideNode(slides[0]!, countFor(slides[0]!)) : ""
+  // The first slide starts on the stage, so its edge paint has to be in the
+  // static markup — `<script>` only repaints from the next change onward.
+  const stageEdge = total > 0 ? edgeAttribute(slides[0]!, "style") : ""
   const thumbs = slides
     .map((s, i) => thumbButton(s, i === 0, i === 0 ? "" : slideNode(s, countFor(s)), countFor(s)))
     .join("")
@@ -610,7 +630,7 @@ ${checksLine}
 <button type="button" data-surround="dark" aria-pressed="false">Dark</button>
 </div>
 </header>
-<div id="pf-stage-wrap"><div id="pf-stage">${stageSlide}</div>${sideHtml}</div>
+<div id="pf-stage-wrap"><div id="pf-stage"${stageEdge}>${stageSlide}</div>${sideHtml}</div>
 <nav id="pf-filmstrip" aria-label="slides">${thumbs}</nav>
 ${findingsDataScript}
 <script>${JS}</script>
