@@ -36,13 +36,20 @@ import type { StyleTokens } from "./tokens";
  *   - `text` `#26221E` → `#2E241E`：炭墨，13.98:1。
  *   - `muted` `#6E6259` → `#6E6156`：烬灰，5.53:1，仍清 4.5:1 正文门槛。
  *   - `border` `#F0DEC5` → `#E8DCCB`：暖沙线。
- *   - `chartPalette`：火橙 / 琥珀 / 天蓝对照 / 烬灰。旧表的藏青 `#2B3A55`
- *     压 bg 11.08:1，在一张暖表里黑得像另一套配色；换成天蓝 `#3E7CB1`
- *     4.11:1——增长图要有一个冷色说真话，但它得和火橙同属一张表。
+ *   - `chartPalette`：火橙 / 琥珀 / 余烬紫 / 烬灰。沿革两步：旧表的藏青
+ *     `#2B3A55` 压 bg 11.08:1，在一张暖表里黑得像另一套配色，先换成天蓝
+ *     `#3E7CB1` 4.11:1（当时的理由是「增长图要有一个冷色说真话」）。
+ *     **第四轮评审推翻了这一格**：用户把蓝配橙定为禁忌（原话在
+ *     enterprise p09/p10：「不要蓝配橙，超级丑」），而 ember 是暖调主题，
+ *     天蓝在这张表里正是那个外来的蓝。换成余烬紫 `#6B3F5C` 7.79:1——
+ *     炭火熄灭时橙→红→紫灰的那一档，仍在暖色语系内。
+ *     不选深苔绿的原因是实测而非口味：绿与火橙 `#BC4620` 在红绿色盲
+ *     （protanopia）模拟下 ΔE 只有 6-12，两根柱子会糊成一根；余烬紫最近的
+ *     一格是烬灰，deuteranopia ΔE 20.8 / protanopia 26.8，安全。
  *
  * 对比度实测（本仓库 `svg/audit/deck-audit.ts` 的 `contrastRatio`，压 `bg`
  * `#FBF5EE`）：primary 4.81:1、accent 2.02:1、text 13.98:1、muted 5.53:1、
- * chart 火橙 4.81:1 / 琥珀 2.02:1 / 天蓝 4.11:1 / 烬灰 4.82:1；白字压
+ * chart 火橙 4.81:1 / 琥珀 2.02:1 / 余烬紫 7.79:1 / 烬灰 4.82:1；白字压
  * primary 5.20:1、near-black 墨压 primary 3.72:1（`readableOn` 取白字）。
  * 设计板自查写的 accent 3 / chart 3·4·4.5 高于实测，**以实测为准**：
  * accent 2.02:1 未达 3.0 装饰门槛，因此只给点与线、不承字——这条纪律与
@@ -65,7 +72,7 @@ export const EMBER_TOKENS: StyleTokens = {
     danger: "#A62617", // 余烬红（7.10:1）——比火橙 primary 更深更红
     warning: "#A85A16", // 焦琥珀（4.99:1），与 accent 琥珀拉开明度
     success: "#4A7538", // 苔藓绿（5.31:1），暖调压得住火
-    chartPalette: ["#BC4620", "#E8A13C", "#3E7CB1", "#756B5E"], // 火橙/琥珀/天蓝/烬灰
+    chartPalette: ["#BC4620", "#E8A13C", "#6B3F5C", "#756B5E"], // 火橙/琥珀/余烬紫/烬灰
   },
   // Microsoft YaHei first (not Verdana/Segoe UI): resolveFontFace picks the
   // first SAFE_FONTS match, and only Georgia/Microsoft YaHei carry an exact

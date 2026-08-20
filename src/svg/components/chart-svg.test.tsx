@@ -240,8 +240,10 @@ describe("renderLine — endpoint emphasis and area gradient", () => {
 })
 
 describe("gridlines", () => {
-  it("renders exactly 3 horizontal reference lines for a bar chart, none on the baseline", () => {
-    const { container } = svg(renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+  it("renders exactly 3 horizontal reference lines for an opted-in bar chart, none on the baseline", () => {
+    const { container } = svg(
+      renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, true),
+    )
     const lines = Array.from(container.querySelectorAll("line"))
     expect(lines).toHaveLength(3)
     for (const line of lines) {
@@ -264,7 +266,9 @@ describe("gridlines", () => {
   })
 
   it("divides the plot height into quarters (25% / 50% / 75%)", () => {
-    const { container } = svg(renderBar(seriesOf(10, 20), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    const { container } = svg(
+      renderBar(seriesOf(10, 20), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, true),
+    )
     const ys = Array.from(container.querySelectorAll("line"))
       .map((l) => Number(l.getAttribute("y1")))
       .sort((a, b) => a - b)
@@ -275,25 +279,81 @@ describe("gridlines", () => {
     ])
   })
 
-  // `axes.show_grid` wiring (chart-axes feature): bar/line already drew these
-  // 3 reference lines unconditionally — the new trailing `showGrid` param
-  // must default to `true` so every existing call site (all of the above,
-  // and chart.tsx whenever `axes` is absent) stays byte-identical, and only
-  // an explicit `false` suppresses them.
-  it("renderBar: an explicit showGrid=false suppresses the reference lines", () => {
+  // `axes.show_grid` wiring, post-round-4: the bar family defaults **off**
+  // (every bar already carries its own value label, so a horizontal ruler is
+  // duplicate ink — `renderBar`'s own `showGrid` doc comment has the user
+  // verdict behind it), line/area/scatter default **on** (they label only
+  // endpoints, or nothing at all, so the lines are the reading aid). Either
+  // way the flag is a live two-way toggle, not a dead one.
+  it("renderBar: showGrid omitted draws no reference lines (round-4 default)", () => {
+    const { container } = svg(
+      renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    expect(container.querySelectorAll("line")).toHaveLength(0)
+  })
+
+  it("renderBar: an explicit showGrid=false also suppresses them (same as omitted)", () => {
     const { container } = svg(
       renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, false),
     )
     expect(container.querySelectorAll("line")).toHaveLength(0)
   })
 
-  it("renderBar: showGrid omitted or explicit true both keep the pre-existing default-on behavior", () => {
-    const omitted = svg(renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
-    const explicitTrue = svg(
+  it("renderBar: an explicit showGrid=true opts the reference lines back in", () => {
+    const { container } = svg(
       renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT, true),
     )
-    expect(omitted.container.querySelectorAll("line")).toHaveLength(3)
-    expect(explicitTrue.container.querySelectorAll("line")).toHaveLength(3)
+    expect(container.querySelectorAll("line")).toHaveLength(3)
+  })
+
+  it("renderBar: every bar carries its own value label, which is why the lines can go", () => {
+    const { container } = svg(
+      renderBar(seriesOf(10, 20, 15), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+    )
+    const values = Array.from(container.querySelectorAll("text"))
+      .filter((t) => t.getAttribute("fill") === TEXT)
+      .map((t) => t.textContent)
+    expect(values).toEqual(["10", "20", "15"])
+  })
+
+  it("renderLine/renderArea/renderScatter keep the lines on by default — they label no interior value", () => {
+    const lineSeries: ChartSeries[] = [
+      { name: "Trend", data: [{ x: "a", y: 1 }, { x: "b", y: 2 }, { x: "c", y: 3 }] },
+    ]
+    expect(
+      svg(renderLine(lineSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT)).container.querySelectorAll(
+        "line",
+      ),
+    ).toHaveLength(3)
+    expect(
+      svg(renderArea(lineSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT)).container.querySelectorAll(
+        "line",
+      ),
+    ).toHaveLength(3)
+    const scatterSeries: ChartSeries[] = [
+      { name: "Points", data: [{ x: 1, y: 4 }, { x: 2, y: 9 }, { x: 3, y: 6 }] },
+    ]
+    expect(
+      svg(
+        renderScatter(scatterSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
+      ).container.querySelectorAll("line"),
+    ).toHaveLength(3)
+    // The evidence behind that asymmetry: an area chart prints no value text
+    // at all, and a line chart prints only its first/last point.
+    const areaValues = Array.from(
+      svg(renderArea(lineSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT)).container.querySelectorAll(
+        "text",
+      ),
+    ).filter((t) => t.getAttribute("fill") === TEXT)
+    expect(areaValues).toHaveLength(0)
+    const lineValues = Array.from(
+      svg(renderLine(lineSeries, PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT)).container.querySelectorAll(
+        "text",
+      ),
+    )
+      .filter((t) => t.getAttribute("fill") === TEXT)
+      .map((t) => t.textContent)
+    expect(lineValues).toEqual(["1", "3"])
   })
 
   it("renderLine: an explicit showGrid=false suppresses the reference lines", () => {

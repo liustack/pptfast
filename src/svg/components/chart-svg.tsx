@@ -356,14 +356,26 @@ export function renderBar(
   textColor: string,
   accentColor: string,
   /**
-   * `axes.show_grid` wiring (chart-axes feature): this component already
-   * drew the 3 reference lines below unconditionally, so the default stays
-   * `true` — every pre-feature call site (this file's own tests, `chart.tsx`
-   * whenever `axes` is absent or `show_grid` is unset) renders byte-identical
-   * output. Only an explicit `false` (author opts out via `axes.show_grid`)
-   * suppresses them.
+   * `axes.show_grid` wiring (chart-axes feature). Default **`false`** since
+   * the round-4 review (`journal p05`, user's own words: 很多柱状图，其实可以
+   * 不要横线的，简单点反而更好看). The reference lines used to be on
+   * unconditionally, and on a bar chart they are redundant ink: this renderer
+   * prints the value above **every** bar (the `<text>` next to each `<rect>`
+   * below), so nothing on the page needs a horizontal ruler to be read — the
+   * lines only cut across the bars they were meant to help measure.
+   *
+   * `renderBarHorizontal` already defaulted to `false` for its own reasons
+   * and labels every bar the same way, so the whole bar family now agrees.
+   * `renderLine`/`renderArea`/`renderScatter` keep the default **on**: line
+   * labels only its first/last point, area labels none, scatter labels only
+   * the two x-extents — there the gridlines are the only way to read an
+   * interior value, so removing them would cost real information rather than
+   * remove duplicate ink.
+   *
+   * Still a live opt-in either way: an author who wants the lines back sets
+   * `axes.show_grid: true`.
    */
-  showGrid = true,
+  showGrid = false,
 ): ReactElement {
   // R1 evidence wave, Task T2: category union + shared domain replace the
   // old series[0]-only walk (`points = series[0]?.data`) and the old
@@ -489,9 +501,11 @@ export function renderLine(
   mutedColor: string,
   textColor: string,
   accentColor: string,
-  /** `axes.show_grid` wiring — see `renderBar`'s own doc comment on this
-   * same parameter for the default-true rationale (this component already
-   * drew the reference lines unconditionally too). */
+  /** `axes.show_grid` wiring — default **on**, unlike `renderBar`'s (which
+   * the round-4 review turned off, see its own doc comment on this same
+   * parameter). A line chart labels only each series' first and last point,
+   * so every interior value is read off its height alone: the reference
+   * lines here are the reading aid, not duplicate ink. */
   showGrid = true,
 ): ReactElement {
   // R1 evidence wave, Task T2: every series now aligns to one shared
@@ -937,12 +951,12 @@ export function renderBarHorizontal(
   textColor: string,
   accentColor: string,
   /**
-   * `axes.show_grid` wiring — unlike `renderBar`/`renderLine`, this
-   * component never drew gridlines before this feature (no pre-existing
-   * always-on behavior to preserve), so the default is `false`: a new
-   * opt-in, only rendered when an author explicitly sets
-   * `axes.show_grid: true`. Every pre-feature call site (this file's own
-   * tests) omits the arg and stays gridline-free.
+   * `axes.show_grid` wiring — default `false`. This component never drew
+   * gridlines in the first place (no pre-existing always-on behavior to
+   * preserve), and since the round-4 review `renderBar` agrees with it for
+   * the reason spelled out on that function's own `showGrid` parameter:
+   * both bar directions print the value beside every bar, so a reference
+   * ruler adds nothing. Only an explicit `axes.show_grid: true` draws them.
    */
   showGrid = false,
   _component?: ChartInput,
@@ -1185,6 +1199,11 @@ export function renderScatter(
   mutedColor: string,
   _textColor: string,
   _accentColor: string,
+  /** `axes.show_grid` wiring — default **on**, for the same reason
+   * `renderLine` keeps it: a scatter prints no per-point value at all (only
+   * the two x-extent labels below), so the reference lines are the only way
+   * to read a point's height. See `renderBar`'s own `showGrid` doc comment
+   * for why the bar family goes the other way. */
   showGrid = true,
   _component?: ChartInput,
 ): ReactElement {
@@ -1285,6 +1304,11 @@ export function renderArea(
   mutedColor: string,
   _textColor: string,
   _accentColor: string,
+  /** `axes.show_grid` wiring — default **on**, same reason as `renderLine`
+   * (whose plot surface this reuses): an area chart prints no value labels
+   * at all, so the reference lines carry the whole reading job. See
+   * `renderBar`'s own `showGrid` doc comment for the bar family's opposite
+   * default. */
   showGrid = true,
   _component?: ChartInput,
 ): ReactElement {

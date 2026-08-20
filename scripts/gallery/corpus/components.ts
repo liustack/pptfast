@@ -67,10 +67,16 @@ export const COMPONENT_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
     })),
   }),
 
+  // No `show_grid` here: a bar chart's house default is gridline-free
+  // (round-4 review, `journal p05` — every bar already prints its value, see
+  // `renderBar`'s own `showGrid` doc comment), and this page is the one the
+  // gallery review actually looks at. The `line`/`area` variants below still
+  // pass `show_grid: true` — matching their own default, and stating it so
+  // the contrast between the two families is visible in the corpus itself.
   chart: (lex) => ({
     type: "chart",
     chart_type: "bar",
-    axes: { x_title: lex.periodAxis, y_title: lex.metrics[0]!.label, show_grid: true },
+    axes: { x_title: lex.periodAxis, y_title: lex.metrics[0]!.label },
     series: [
       { name: lex.labels[8]!, data: slice(lex.periods, 4).map((p, i) => ({ x: p, y: 42 + i * 11 })) },
       { name: lex.labels[9]!, data: slice(lex.periods, 4).map((p, i) => ({ x: p, y: 30 + i * 6 })) },

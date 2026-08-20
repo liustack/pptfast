@@ -34,8 +34,9 @@ import type { StyleTokens } from "./tokens";
  * text 16.35:1、muted 7.65:1、accent 9.14:1。
  * 设计板自查写的 muted 7.8:1 略高于实测 7.65:1，以实测为准，仍远高于 4.5:1。
  *
- * 装饰见 `src/svg/motifs/motif-poster-motif.tsx`（行情语汇：顶缘行情带 +
- * 基线面积线 + 封面幽灵季度水印）。
+ * 装饰见 `src/svg/motifs/motif-poster-motif.tsx`（行情语汇 v4：整套收进顶缘
+ * y<34 空带——上檐线 + 行情轴 + 骑在轴上的走线与刻度齿，另加封面幽灵季度
+ * 水印，下半页一件不留）。
  */
 export const INSIGHT_TOKENS: StyleTokens = {
   id: "insight",

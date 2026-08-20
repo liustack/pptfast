@@ -542,34 +542,42 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     }
   })
 
-  it("show_grid=false suppresses the bar chart's existing gridlines", () => {
-    const component = {
-      type: "chart" as const,
-      chart_type: "bar" as const,
-      series: barSeries,
-      axes: { show_grid: false },
+  // Round-4 review (`journal p05`): a bar chart draws no gridlines unless the
+  // author asks for them. `renderBar`'s own `showGrid` doc comment carries
+  // the reasoning — every bar already prints its value, so the reference
+  // lines were duplicate ink cutting across the bars.
+  it("a bar chart draws no gridlines by default, with or without an axes key", () => {
+    const bare = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
+    const withOtherAxes = { ...bare, axes: { x_title: "Quarter" } }
+    const withFalse = { ...bare, axes: { show_grid: false } }
+    for (const component of [bare, withOtherAxes, withFalse]) {
+      expect(svg(chart.render(component, box, ctx)).container.querySelectorAll("line")).toHaveLength(
+        0,
+      )
     }
-    const { container } = svg(chart.render(component, box, ctx))
-    expect(container.querySelectorAll("line")).toHaveLength(0)
   })
 
-  it("show_grid omitted or true keeps the bar chart's pre-existing gridlines (byte-identical default)", () => {
+  it("show_grid=true opts a bar chart's gridlines back in (a live toggle, not a dead one)", () => {
     const withTrue = {
       type: "chart" as const,
       chart_type: "bar" as const,
       series: barSeries,
       axes: { show_grid: true },
     }
-    const withUndefined = {
-      type: "chart" as const,
-      chart_type: "bar" as const,
-      series: barSeries,
-      axes: { x_title: "Quarter" },
-    }
     expect(svg(chart.render(withTrue, box, ctx)).container.querySelectorAll("line")).toHaveLength(3)
-    expect(
-      svg(chart.render(withUndefined, box, ctx)).container.querySelectorAll("line"),
-    ).toHaveLength(3)
+  })
+
+  it("a line chart keeps its gridlines by default — only bar lost them", () => {
+    const lineComponent = {
+      type: "chart" as const,
+      chart_type: "line" as const,
+      series: barSeries,
+    }
+    expect(svg(chart.render(lineComponent, box, ctx)).container.querySelectorAll("line")).toHaveLength(
+      3,
+    )
+    const suppressed = { ...lineComponent, axes: { show_grid: false } }
+    expect(svg(chart.render(suppressed, box, ctx)).container.querySelectorAll("line")).toHaveLength(0)
   })
 
   it("show_grid=true renders new vertical gridlines on bar-horizontal (a real opt-in, not a dead toggle)", () => {
