@@ -229,7 +229,7 @@ describe("matrix component", () => {
       // Reviewer's exact repro: tech theme, content-bento-panel layout
       // (which never sets a child's box.h — `renderCell` calls
       // `renderComponent(component, { x, y, w }, ctx)` with no `h` field),
-      // x_title="Customer Demand", y_title="Investment Level" (16 chars),
+      // x_title="客户需求水平", y_title="资产投入水平强度评估" (16 chars),
       // 2x2 grid, no tags. The fit-round-1 fallback
       // (`measuredFallbackH = Math.max(gridH, yTitleH)`) already mirrors
       // measure()'s own X_TITLE_H-exclusive second term, but the render()
@@ -237,13 +237,20 @@ describe("matrix component", () => {
       // a second time whenever box.h was undefined — which is every real
       // production path for matrix (it isn't in `STRETCHABLE_TYPES`, and
       // bento-panel never sets box.h either) — silently shrinking the
-      // y_title budget by X_TITLE_H (30px) and truncating "Investment
-      // Level" down to "Investment Le…" even though measure() had already
-      // allocated enough room for the whole title.
+      // y_title budget by X_TITLE_H (30px) and truncating the last
+      // characters off even though measure() had already allocated enough
+      // room for the whole title.
+      //
+      // The repro's titles were originally the reviewer's own English pair
+      // ("Customer Demand"/"Investment Level"). They are Chinese here for
+      // one reason: a Latin y_title no longer stacks at all (2026-08-20
+      // review — see the "Latin y_title" block below), so an English fixture
+      // can no longer exercise the stacked path this regression guards. Same
+      // character count (16), same geometry, same defect.
       const bentoLikeComponent = {
         type: "matrix" as const,
-        x_title: "Customer Demand",
-        y_title: "Investment Level",
+        x_title: "客户需求水平",
+        y_title: "资产投入水平强度评估资产投入水平",
         cols: 2 as const,
         items: [
           { title: "Rural nodes", tone: "neutral" as const },
@@ -262,7 +269,7 @@ describe("matrix component", () => {
       const yTexts = yTitleTexts(root)
 
       // Every character survives -- no truncation.
-      expect(yTexts.map((t) => t.textContent).join("")).toBe("Investment Level")
+      expect(yTexts.map((t) => t.textContent).join("")).toBe(bentoLikeComponent.y_title)
       expect(yTexts.every((t) => !t.hasAttribute("data-truncated"))).toBe(true)
 
       // The rendered stack's own extent matches what measure() allocated
@@ -356,6 +363,110 @@ describe("matrix component", () => {
       const yTexts = yTitleTexts(root)
       expect(yTexts.map((t) => t.textContent).join("")).toBe(sixCells.y_title)
       expect(yTexts.every((t) => !t.hasAttribute("data-truncated"))).toBe(true)
+    })
+  })
+
+  // 2026-08-20 review, `component--matrix--en`: the English corpus page's
+  // y_title is "Customers", and it rendered as C/u/s/t/o/m/e/r/s down the
+  // left band — "非常难看. 英文和中文不一样，中文可以，但英文单词不适合拆成
+  // 字母这种竖立排版的". Latin y_titles now take one horizontal line in a
+  // band above x_title's; the "y_title vertical fit" block above pins that
+  // CJK keeps the column.
+  describe("Latin y_title renders horizontally, never as a letter column", () => {
+    /** The character column's own selector — `textAnchor="middle"` is what
+     * only the stacked y_title renders with in this component (item
+     * title/tag, x_title and the horizontal y_title are all left-aligned). */
+    function stackedYTitleChars(root: Element) {
+      return Array.from(root.querySelectorAll("text")).filter(
+        (t) => t.getAttribute("text-anchor") === "middle",
+      )
+    }
+
+    const reported = {
+      type: "matrix" as const,
+      x_title: "Performance",
+      y_title: "Customers",
+      cols: 3 as const,
+      items: [
+        { title: "Line expansion in existing accounts", tag: "Q1", tone: "accent" as const },
+        { title: "Standardized onboarding templates", tag: "Q2", tone: "neutral" as const },
+        { title: "In-house inference compute", tag: "Q3", tone: "info" as const },
+      ],
+    }
+
+    it("renders the whole word on one <text>, with no character split anywhere", () => {
+      const { container } = svg(matrix.render(reported, { x: 0, y: 0, w: 900 }, ctx))
+      const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+      expect(texts.some((t) => t?.includes("Customers"))).toBe(true)
+      // `yTitleTexts` is the character column's own selector (the only
+      // centered text this component renders) — it must now be empty.
+      expect(stackedYTitleChars(container)).toHaveLength(0)
+    })
+
+    it("gives the grid the left band back — cards start at box.x", () => {
+      const cardX = (component: Parameters<typeof matrix.render>[0]) =>
+        svg(matrix.render(component, { x: 60, y: 0, w: 900 }, ctx))
+          .container.querySelector("rect")!
+          .getAttribute("x")
+      // Horizontal placement costs height, not width: the grid lands exactly
+      // where it would with no y_title at all.
+      expect(cardX(reported)).toBe(cardX({ ...reported, y_title: undefined }))
+      // ...whereas a CJK title still buys its side band and pushes the grid
+      // right, unchanged from before.
+      expect(Number(cardX({ ...reported, y_title: "客户洞察" }))).toBeGreaterThan(
+        Number(cardX(reported)),
+      )
+    })
+
+    it("measure() reports the horizontal band it renders, at a fixed height regardless of title length", () => {
+      const measured = matrix.measure(reported, 900, ctx)
+      const noYTitle = matrix.measure({ ...reported, y_title: undefined }, 900, ctx)
+      expect(measured - noYTitle).toBe(24)
+      expect(
+        matrix.measure({ ...reported, y_title: "A far longer vertical axis name" }, 900, ctx),
+      ).toBe(measured)
+    })
+
+    it("stacks the two captions in their own bands, y above x, above the grid", () => {
+      const box = { x: 0, y: 0, w: 900 }
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">{matrix.render(reported, box, ctx)}</svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const texts = Array.from(root.querySelectorAll("text"))
+      const yTitle = texts.find((t) => t.textContent?.includes("Customers"))!
+      const xTitle = texts.find((t) => t.textContent?.includes("Performance"))!
+      expect(Number(yTitle.getAttribute("y"))).toBeLessThan(Number(xTitle.getAttribute("y")))
+      // Both arrows present, one per axis — that pairing is what says which
+      // caption names which axis now that neither one sits beside its axis.
+      expect(yTitle.textContent).toContain("↑")
+      expect(xTitle.textContent).toContain("→")
+      const firstCardY = Number(root.querySelector("rect")!.getAttribute("y"))
+      expect(firstCardY).toBeGreaterThan(Number(xTitle.getAttribute("y")))
+    })
+
+    it("fits an egregiously long Latin y_title inside its declared box, truncation-marked", () => {
+      const egregious = { ...reported, y_title: "Rolling twelve-month cohort ".repeat(8) }
+      const box = { x: 60, y: 200, w: 560 }
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+          <g data-audit-box={`${box.x},${box.y},${box.w}`}>{matrix.render(egregious, box, ctx)}</g>
+        </svg>,
+      )
+      expect(auditSvgMarkup(markup).filter((i) => i.kind === "h-overflow")).toEqual([])
+      const root = parseSvgRoot(markup)
+      const yTitleText = Array.from(root.querySelectorAll("text")).find((t) =>
+        t.textContent?.includes("Rolling twelve-month"),
+      )
+      expect(yTitleText?.getAttribute("data-truncated")).toBe("1")
+    })
+
+    it("sends a mixed-script y_title horizontal too — no majority vote", () => {
+      const mixed = { ...reported, y_title: "K8s 托管" }
+      const { container } = svg(matrix.render(mixed, { x: 0, y: 0, w: 900 }, ctx))
+      const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+      expect(texts.some((t) => t?.includes("K8s 托管"))).toBe(true)
+      expect(stackedYTitleChars(container)).toHaveLength(0)
     })
   })
 })
