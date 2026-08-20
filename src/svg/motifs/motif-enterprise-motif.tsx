@@ -16,8 +16,14 @@ import type { DecorProps } from "./types"
  *     Swiss 网格的露出，一把量画面的尺子。
  *   - **右上 IKB 方块阶**：x1150/1188/1218 上三枚递减方块（28/20/14），
  *     底边对齐 y40，primary 实色。秩序的具象，不是装饰花纹。
- *   - **左缘下方一枚炸橘方块**：x60,y626 的 16×16（accent）。全页唯一的
- *     暖色，蓝橘对撞的那一撞。
+ *   - **左缘下方一枚 accent 方块**：x60,y626 的 16×16（accent）。方块阶在
+ *     右上收尾，这一枚在对角把网格重新开一次口。
+ *     v2 落地时它是炸橘，enterprise 全页唯一的暖色，蓝橘对撞的那一撞；
+ *     **第四轮评审把那一撞否了**（用户 p10「不要蓝配橙，超级丑」，p09 同
+ *     判词），`ENTERPRISE_TOKENS.accent` 因此从炸橘换成工业蓝 `#2F6FBF`。
+ *     本文件读的一直是 `ctx.colors.accent`，所以那次换色一行代码没改到
+ *     这里，坐标更是一处未动——记在这里只是免得下一个人看到「炸橘」两个字
+ *     去找一支已经不存在的暖色。
  * 弱档（content/ending 画得更少）一并取消——三件本来就轻，再分档只会让
  * 同一套语汇在页与页之间闪烁。
  *
@@ -32,14 +38,14 @@ import type { DecorProps } from "./types"
  *   - 刻度尺整组 y30-42，在标题区上沿 y48 之上；横向止于 x1120，正好让开
  *     `brand-chrome.tsx` 右上 logo 带（1120,48,96×40）的左沿。
  *   - 方块阶 x1150-1232、y12-40，在标题区右沿 x1136 之外、上沿 y48 之上。
- *   - 炸橘方块 x60-76、y626-642，在正文区左沿 x96 之外、下沿 y620 之下，
+ *   - accent 方块 x60-76、y626-642，在正文区左沿 x96 之外、下沿 y620 之下，
  *     页脚 meta 带上沿 y664 之上，离右下 logo 盒一整页宽。
  *   - 设计板坐标一处未改。
  *
  * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
  * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
  *
- * 纪律：零 theme id、零 hex，颜色只来自 ctx（primary = IKB、accent = 炸橘、
+ * 纪律：零 theme id、零 hex，颜色只来自 ctx（primary = IKB、accent = 工业蓝、
  * border = 尺身、muted = 齿）。设计板给刻度齿标的是 `#7A7F87`——那是
  * enterprise `chartPalette` 的第四格（机灰）。本文件改读 `muted`：motif 读
  * `chartPalette` 是有先例的坑（`motif-chart-palette-isolation.test.tsx` 的
@@ -75,7 +81,7 @@ const STEPS: readonly { x: number; y: number; size: number }[] = [
   { x: 1218, y: 26, size: 14 },
 ]
 
-// ── 左缘下方一枚炸橘方块 ────────────────────────────────────────────────
+// ── 左缘下方一枚 accent 方块 ───────────────────────────────────────────
 const SPARK = { x: 60, y: 626, size: 16 }
 
 export function EnterpriseMotif({ slide, ctx }: DecorProps) {
@@ -101,7 +107,7 @@ export function EnterpriseMotif({ slide, ctx }: DecorProps) {
           <rect key={s.x} x={s.x} y={s.y} width={s.size} height={s.size} />
         ))}
       </g>
-      {/* 左缘下方一枚炸橘方块 */}
+      {/* 左缘下方一枚 accent 方块 */}
       <rect x={SPARK.x} y={SPARK.y} width={SPARK.size} height={SPARK.size} fill={ctx.colors.accent} />
     </>
   )
