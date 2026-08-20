@@ -191,12 +191,19 @@ describe("CornerOrnamentMotif（报头双线）", () => {
     expect([num(thin!, "x1"), num(thin!, "y1"), num(thin!, "x2"), num(thin!, "y2")]).toEqual([48, 32, 1232, 32])
   })
 
-  it("底缘单线几何：x96→1184，落在页缘 y712（板上的 y640 横穿共享脚注行，实测 86 条碰撞）", () => {
+  it("底缘单线几何：与报头双线同宽的 x48→1232，落在页缘 y712（板上的 y640 横穿共享脚注行，实测 86 条碰撞）", () => {
     const { root } = draw("journal", coverSlide)
-    const foot = Array.from(root.querySelectorAll("line"))[2]!
-    expect([num(foot, "x1"), num(foot, "y1"), num(foot, "x2"), num(foot, "y2")]).toEqual([96, 712, 1184, 712])
+    const [thick, thin, foot] = Array.from(root.querySelectorAll("line"))
+    expect([num(foot!, "x1"), num(foot!, "y1"), num(foot!, "x2"), num(foot!, "y2")]).toEqual([48, 712, 1232, 712])
     // 板上原值就是踩坑的那个值，钉在这里免得有人「改回板上」。
-    expect(num(foot, "y1")).not.toBe(640)
+    expect(num(foot!, "y1")).not.toBe(640)
+    // 第四轮评审（journal p03/p04）的返工点：用户原话「最底部的黑色横线
+    // 为什么那么短，视觉上感觉兜不住上面的内容啊」。收口的条件是与报头
+    // 双线两端对齐，而不是「比原来长一点」——所以钉的是相等，不是长度。
+    for (const head of [thick!, thin!]) {
+      expect(num(foot!, "x1"), "foot rule no longer starts with the masthead").toBe(num(head, "x1"))
+      expect(num(foot!, "x2"), "foot rule no longer ends with the masthead").toBe(num(head, "x2"))
+    }
   })
 
   it("期号：字样从 meta.date 推，居中 x640、基线 y706（板上 y646 实测 44 条碰撞），落在新底线正上方", () => {
