@@ -84,3 +84,71 @@ describe("row_cards truncation-budget marker geometry (R1 evidence wave, Task T3
     expect(exercisedAtLeastOneTruncation).toBe(true)
   })
 })
+
+// Visual review 2026-08-19 (C cluster, 4): the density-stretch increment
+// used to go entirely into the card shells, which split it into top and
+// bottom padding. Cards got emptier inside while staying exactly as close
+// to each other as before — a page where each 133px card held 69px of
+// content and two card edges sat 14px apart read as "太拥挤" even though
+// most of the page was blank. Eyes read the edges, not the text.
+describe("row_cards density-stretch split between shells and gaps", () => {
+  const ITEMS = Array.from({ length: 3 }, (_, i) => ({
+    title: `事项 ${i + 1}`,
+    text: "本季度通过精细化运营实现增长",
+    sub: "补充说明",
+  }))
+  const component = { type: "row_cards" as const, items: ITEMS }
+  const W = 640
+
+  /** Card shell tops and heights, read off the render's own annotations. */
+  function shells(h?: number) {
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+        {rowCards.render(component, { x: 0, y: 0, w: W, ...(h != null ? { h } : {}) }, ctx)}
+      </svg>,
+    )
+    const tops = [...markup.matchAll(/data-audit-box="0,([\d.]+),640"/g)].map((m) => Number(m[1]))
+    const heights = [...markup.matchAll(/<rect x="0" y="[\d.]+" width="640" height="([\d.]+)"/g)].map((m) =>
+      Number(m[1]),
+    )
+    return { tops, heights }
+  }
+
+  it("at the natural height nothing grows: every gap is the plain CARD_GAP", () => {
+    const { tops, heights } = shells()
+    expect(tops).toHaveLength(3)
+    expect(tops[1] - (tops[0] + heights[0])).toBeCloseTo(14, 5)
+    expect(tops[2] - (tops[1] + heights[1])).toBeCloseTo(14, 5)
+  })
+
+  it("a stretched box.h widens the gaps as well as the shells", () => {
+    const natural = rowCards.measure(component, W, ctx)
+    const naturalHeights = shells().heights
+    const grow = 90
+    const { tops, heights } = shells(natural + grow)
+    // 30% of the increment shared across the 2 gaps would be 13.5 each,
+    // over the ceiling of 0.6 * CARD_GAP — so the ceiling binds and every
+    // gap grows by exactly 8.4, from 14 to 22.4.
+    expect(tops[1] - (tops[0] + heights[0])).toBeCloseTo(22.4, 5)
+    expect(tops[2] - (tops[1] + heights[1])).toBeCloseTo(22.4, 5)
+    // The shells split what is left: (90 - 8.4 * 2) / 3 per card.
+    for (let i = 0; i < 3; i++) expect(heights[i] - naturalHeights[i]).toBeCloseTo((90 - 8.4 * 2) / 3, 5)
+  })
+
+  it("a small increment stays under the gap ceiling, so the share decides instead", () => {
+    const natural = rowCards.measure(component, W, ctx)
+    const naturalHeights = shells().heights
+    const grow = 30
+    const { tops, heights } = shells(natural + grow)
+    // 30 * 0.3 / 2 = 4.5 per gap, under the 8.4 ceiling.
+    expect(tops[1] - (tops[0] + heights[0])).toBeCloseTo(18.5, 5)
+    expect(heights[0] - naturalHeights[0]).toBeCloseTo((30 - 4.5 * 2) / 3, 5)
+  })
+
+  it("gap growth comes out of the shell pool, so the stack still ends exactly at box.h", () => {
+    const natural = rowCards.measure(component, W, ctx)
+    const h = natural + 90
+    const { tops, heights } = shells(h)
+    expect(tops[2] + heights[2]).toBeCloseTo(h, 5)
+  })
+})
