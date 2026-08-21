@@ -715,6 +715,27 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `scenarioBearing`: SVG slide 0 (cover) loses the empty `<text
       //     x="1216" y="650">`. PPTX `slide1.xml` goes 11 -> 10 shapes.
       //   - `annualReviewPreset`: identical drift, same 11 -> 10.
+      // Re-recaptured (board-cover-fidelity wave, 2026-08-22 — cover pool
+      // 9 -> 13). Same sampler-denominator mechanism as the colophon recapture
+      // above. Exactly one slide changed in two of the three (index 0, the
+      // cover). `annualReviewPreset` did not move. `.audit.json` needed no
+      // recapture (findings stayed the empty array):
+      //   - `basic` (`consulting`): `left-anchor` -> `editorial-masthead`.
+      //   - `scenarioBearing` (`journal`): `tone-adaptive-header` ->
+      //     `left-anchor`.
+      //
+      // Re-recaptured (board-cover-fidelity × second-front merge, 2026-08-22).
+      // Union of the two recapture rings above: cover pool 9→13 plus the five
+      // cover locks, and second-front's chapter / content / ending fills.
+      // Targeted diff against both parents. No unrelated geometry drift:
+      //   - `basic` (`consulting`): cover stays this branch's
+      //     `editorial-masthead` (HEAD, pool growth). Chapter / content take
+      //     main's `masthead-chapter` / `split-band` / `bento-panel`
+      //     (second-front). Pinned `banner-ending` unchanged. Cover change
+      //     did not trigger adjacent anti-repetition on the chapter slot.
+      //   - `scenarioBearing` / `annualReviewPreset`: live pipeline matched
+      //     the auto-merged goldens byte-for-byte. Not recaptured.
+      // `.audit.json` needed no recapture (findings stayed the empty array).
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
@@ -807,6 +828,13 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // PPTX parts that differ are exactly the matching 1-indexed slides
       // (`basic` slide2/3/4.xml, `scenarioBearing` slide3/4.xml,
       // `annualReviewPreset` slide3.xml).
+      //
+      // Same merge recapture as the SVG ring above. `basic` PPTX parts that
+      // differ vs each parent are exactly the matching 1-indexed slides:
+      // slide1.xml equals HEAD (cover `editorial-masthead`), slide2/3/4.xml
+      // equal main (chapter / content). File-name set unchanged.
+      // `scenarioBearing` / `annualReviewPreset` auto-merged files matched
+      // the live pipeline and were not recaptured.
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)

@@ -122,10 +122,21 @@ they conflict (stability first):
    making existing components more adaptive over minting new types.
    Layouts, motifs and tokens are invisible to the model (selection is
    compile-side), so they may grow freely.
-2. **The theme roster is finite.** Sixteen structural identities cover
-   the scenario space; a gap is filled by stretching an existing theme
-   (tokens, tendencies, motif), not by adding a seventeenth.
-3. **New render-side pieces must generalize.** A layout or motif joins
-   the shared pool, reads every color through the token pipeline, and
-   states which scenarios and themes it serves. A piece that serves a
-   single theme needs its own adjudication, not a quiet exception.
+2. **Cover, chapter, and ending are the theme's face.** The roster is
+   25 theme ids and 24 structural identities (`bloom` is a classroom
+   recolor). When a Claude Design board exists for that page type, the
+   theme's `layouts` set for that type narrows to the board construction
+   (one layout, or the pair the board names). That set is a lock. Soft
+   weights cannot keep a cover identical. A theme whose board has not
+   yet drawn chapter or ending keeps today's set on those types until
+   the next design pass locks them. Content pages still pick from the
+   allocation table.
+3. **The shared pool still exists.** A new layout or motif still joins
+   the pool, still reads every color through tokens, and still states
+   which scenarios it serves. It is not a private file for one theme.
+   Joining the pool does not mean every theme auto-picks it. A theme
+   with a board lock on that page type will not draw a neighbor from
+   the pool. Reuse an existing layout (tokens like typeScale / radius /
+   gapScale) when the board's composition already lives in the pool. A
+   composition the pool cannot draw becomes a new shared layout, then
+   the originating theme locks to it.

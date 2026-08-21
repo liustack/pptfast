@@ -8,6 +8,10 @@ import { EditorialMastheadCover } from "./cover-editorial-masthead"
 import { ToneAdaptiveHeaderCover } from "./cover-tone-adaptive-header"
 import { FashionMastheadCover } from "./cover-fashion-masthead"
 import { ColophonCover } from "./cover-colophon"
+import { InstitutionalBlockCover } from "./cover-institutional-block"
+import { MemoHeadCover } from "./cover-memo-head"
+import { BoardHeadCover } from "./cover-board-head"
+import { BillHeadCover } from "./cover-bill-head"
 
 export type { CoverLayout, CoverLayoutId } from "./types"
 
@@ -23,4 +27,8 @@ export const COVER_LAYOUTS: Record<CoverLayoutId, CoverLayout> = {
   "fashion-masthead": FashionMastheadCover,
   "split-diagonal": SplitDiagonalCover,
   colophon: ColophonCover,
+  "institutional-block": InstitutionalBlockCover,
+  "memo-head": MemoHeadCover,
+  "board-head": BoardHeadCover,
+  "bill-head": BillHeadCover,
 }

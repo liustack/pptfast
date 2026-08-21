@@ -154,7 +154,7 @@ describe("absent motifs are identity values, not holes (runway per definitions.t
 // ── 1. Divergence test ──
 
 describe("cross-theme layout divergence (the plan's core defect)", () => {
-  it("resolves NOT-all-identical layout sequences across the 22 canonical theme ids for a fixed IR + fixed seed", () => {
+  it("resolves NOT-all-identical layout sequences across the 25 canonical theme ids for a fixed IR + fixed seed", () => {
     const sequences = CANONICAL_THEME_IDS.map((id) => resolveSequence(id, 1))
     const distinct = new Set(sequences.map((seq) => JSON.stringify(seq)))
     // Pre-wave (commit 709605a, before T1/T2 landed): all 13 themes' `layouts`
@@ -190,10 +190,18 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // vermilion cover-weight cluster, count stays 11. playbill (same day)
     // shares luxe's poster-center / fashion-masthead cover pair, count stays
     // 11.
+    // Re-measured after the board-cover-fidelity cover lock (2026-08-22):
+    // 16 distinct whole-deck sequences at seed 1 across 25 theme ids.
     // Second-front wave (2026-08-22): filling chapter / content / ending for
     // all 24 identities lifts the whole-sequence count from 11 to 23. The
     // one remaining collision at this fixture/seed is enterprise / classroom
     // (accepted, recorded in the second-front block below).
+    // Union tree (board-cover-fidelity × second-front, 2026-08-22): re-measured
+    // from the merged definitions.ts, 23 at seed 1 across 25 theme ids.
+    // bloom mirrors classroom, and enterprise collides with classroom on this
+    // fixture/seed, so three ids share one sequence. 16 (cover-lock-only tree)
+    // and 23 (second-front-only tree) both stay in this chain as the two
+    // pre-merge measurements.
     expect(distinct.size).toBe(23)
   })
 
@@ -214,12 +222,13 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
 // ── 1a. Cover-axis allocation measurement (theme-structure-allocation wave) ──
 //
 // The wave's own acceptance metric, measured the same way the theme-structure
-// wave measured its own: one fixed IR, fixed seeds, resolved across the 16
+// wave measured its own: one fixed IR, fixed seeds, resolved across the 24
 // structural identities, counting how many genuinely different cover
 // behaviours come out. The historical chain on the whole-sequence axis was
-// 1 -> 7 (13 themes, theme-structure wave) -> 12 (today, 17 themes). This
-// block measures the cover slot specifically, because that is the only slot
-// this wave touches.
+// 1 -> 7 (13 themes, theme-structure wave) -> 12 (17 themes). Re-measured
+// after the board-cover-fidelity cover lock: 16 at seed 1 across 25 theme
+// ids. Union tree (board-cover-fidelity × second-front): 23 at seed 1.
+// This block measures the cover slot specifically.
 
 /** The 40-seed cover pick sequence for `themeId` — one seed is not enough to separate two weightings that happen to agree on it. */
 function coverSequence(themeId: string, seedCount = 40): (string | null)[] {
@@ -232,15 +241,20 @@ function effectiveCoverWeightSet(themeId: CanonicalThemeId): string {
   return JSON.stringify([...new Set([...own, ...STRATEGY_DEFINITIONS.briefing.identityTendencies.cover])].sort())
 }
 
-describe("cover-axis divergence across the 21 structural identities", () => {
-  it("distinct cover sequences: 9 across the 21 identities (measured, seeds 1-40)", () => {
+describe("cover-axis divergence across the 24 structural identities", () => {
+  it("distinct cover sequences: 14 across the 24 identities (measured, seeds 1-40)", () => {
     const distinct = new Set(STRUCTURAL_IDENTITY_IDS.map((id) => JSON.stringify(coverSequence(id))))
     // The measured chain on this exact fixture: 8 before the allocation wave,
     // 10 after it, 9 after the inert-declaration fix, 10 once swiss landed
     // (2026-08-21 wave7: left-anchor + split-diagonal is a new cover-weight
-    // pair, not a join into an existing group). Each number is a literal, not
-    // a re-derivation, so reverting either edit fails here instead of quietly
-    // adopting its own new baseline.
+    // pair, not a join into an existing group), then 14 after the
+    // board-cover-fidelity cover lock (2026-08-22, seeds 1-40, 24 structural
+    // identities). Union tree (board-cover-fidelity × second-front, 2026-08-22):
+    // re-measured, still 14. Second-front promised not to retouch cover
+    // tendencies. The five locks and the 9→13 pool growth are this branch's
+    // contribution, already in the 14. Each number is a literal, not a
+    // re-derivation, so reverting the lock fails here instead of quietly
+    // adopting a new baseline.
     //
     // **The drop from 10 to 9 is the fix working, not a regression**, and the
     // reason is worth reading before anyone "restores" it. One of those 10
@@ -256,16 +270,20 @@ describe("cover-axis divergence across the 21 structural identities", () => {
     // Nine groups that all mean something beats ten where one means nothing.
     // swiss then adds a tenth that also means something: left-anchor +
     // split-diagonal, neither of which briefing already favors.
-    expect(distinct.size).toBe(10)
+    expect(distinct.size).toBe(14)
   })
 
   it("the blind cluster is gone: 8 of 16 identities used to pick their cover exactly the way an undeclared theme does, now none do", () => {
     // "Blind" has a precise meaning here: a theme whose *effective* cover
     // weighting is briefing's own set and nothing more, so the declaration
     // (or its absence) changes nothing a default-narrative deck can see.
-    const blind = STRUCTURAL_IDENTITY_IDS.filter(
-      (id) => effectiveCoverWeightSet(id) === JSON.stringify([...STRATEGY_DEFINITIONS.briefing.identityTendencies.cover].sort()),
-    )
+    const blind = STRUCTURAL_IDENTITY_IDS.filter((id) => {
+      if (THEME_DEFINITIONS[id].layouts.cover.length === 1) return false
+      return (
+        effectiveCoverWeightSet(id) ===
+        JSON.stringify([...STRATEGY_DEFINITIONS.briefing.identityTendencies.cover].sort())
+      )
+    })
     // Before the allocation wave this list was enterprise, insight, campaign,
     // classroom, luxe, heritage, ember and vermilion — half the set, all
     // picking covers identically. The wave took it to two (insight and
@@ -274,13 +292,13 @@ describe("cover-axis divergence across the 21 structural identities", () => {
     expect(blind).toEqual([])
   })
 
-  it("distinct cover weightings across the 21 identities: 9, every one of them a real preference", () => {
+  it("distinct cover weightings across the 24 identities: 14, every one of them a real preference", () => {
     const groups = new Map<string, string[]>()
     for (const id of STRUCTURAL_IDENTITY_IDS) {
       const key = effectiveCoverWeightSet(id)
       groups.set(key, [...(groups.get(key) ?? []), id])
     }
-    expect(groups.size).toBe(10)
+    expect(groups.size).toBe(14)
     // The largest remaining cluster, named rather than counted, so shrinking
     // it later is a visible edit to this test and not a silent improvement.
     // All five lean on `split-diagonal` over briefing's pair: enterprise's
@@ -323,6 +341,11 @@ describe("cover-axis divergence across the 21 structural identities", () => {
 
     const inert = STRUCTURAL_IDENTITY_IDS.filter((id) => {
       const own = THEME_DEFINITIONS[id].layoutTendencies?.cover ?? []
+      // A singleton cover pool is a hard lock (layouts.cover narrowing), not
+      // a soft weight. The Math.max no-op this guard catches cannot fire
+      // when the picker has only one candidate. stage reuses poster-center
+      // that way (board-cover-fidelity wave, first use of cover narrowing).
+      if (THEME_DEFINITIONS[id].layouts.cover.length === 1) return false
       return own.length > 0 && own.every((coverId) => briefingCovers.includes(coverId))
     })
     expect(
@@ -618,21 +641,48 @@ const ALLOCATION_COVER_MOVES: Partial<Record<CanonicalThemeId, string[]>> = {
   vermilion: ["poster-center", "fashion-masthead", "constellation", "split-diagonal", "poster-center"],
 }
 
+/**
+ * Cover-slot drift from the board-cover-fidelity wave (2026-08-22): cover
+ * pool 9 -> 13. Same sampler-denominator mechanism as colophon (`hash %
+ * totalWeight` lands on a different candidate). Measured live against this
+ * file's fixture at seeds 1-5, 17 allocation-era themes. The fixture files
+ * stay a record of a past state. They are not recaptured.
+ */
+const FIDELITY_WAVE_COVER_PICKS: Record<string, string[]> = {
+  consulting: ["left-anchor", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  enterprise: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  academic: ["left-anchor", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  insight: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  campaign: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  bloom: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  classroom: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  ink: ["memo-head", "tone-adaptive-header", "poster-center", "fashion-masthead", "fashion-masthead"],
+  tech: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  runway: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  journal: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  luxe: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  heritage: ["memo-head", "constellation", "poster-center", "editorial-masthead", "editorial-masthead"],
+  pulse: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  terra: ["memo-head", "constellation", "poster-center", "editorial-masthead", "tone-adaptive-header"],
+  ember: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+  vermilion: ["constellation", "banner-title", "left-anchor", "left-anchor", "banner-title"],
+}
+
 describe("control-group byte identity (migration-period guard — deletable once the wave is trusted)", () => {
   it("the 709605a fixture covers exactly the six themes this wave took off the blind list, plus ink — which the theme-redesign wave moved to the declared side first", () => {
     expect(Object.keys(preWaveFixture).sort()).toEqual([...NEWLY_DECLARED_THEME_IDS, "ink"].sort())
   })
 
-  it("covers of the six formerly-blind themes still match the allocation-wave record — second-front does not touch the cover slot", () => {
+  it("covers of the six formerly-blind themes follow the fidelity-wave table, not the allocation-wave record", () => {
     // The original claim ("every non-cover page still matches 709605a") was
     // true while only covers moved. Second-front is the wave that moves
-    // chapter / content / ending, so that half is superseded. The remaining
-    // claim, and the one this wave still makes, is that the cover slot of
-    // these six stays on the allocation-wave picks.
+    // chapter / content / ending, so that half is superseded. Second-front
+    // itself did not retouch cover *tendencies*. Live cover *picks* on this
+    // merge tree follow the board-cover-fidelity table (pool 9→13).
     for (const themeId of NEWLY_DECLARED_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
         expect(resolveSequence(themeId, seed)[0], `${themeId} seed=${seed}`).toBe(
-          ALLOCATION_COVER_MOVES[themeId]?.[FIXTURE_SEEDS.indexOf(seed)],
+          FIDELITY_WAVE_COVER_PICKS[themeId]?.[FIXTURE_SEEDS.indexOf(seed)],
         )
       }
     }
@@ -643,9 +693,10 @@ describe("control-group byte identity (migration-period guard — deletable once
     // cover and content. Second-front now also declares its chapter and
     // ending, so the stay-put claim on those two page types is superseded.
     // Cover still lands on the new construction for at least some seeds,
-    // which is the whole point of declaring it, and is the slot this wave
-    // promises not to retouch.
-    expect(FIXTURE_SEEDS.map((seed) => resolveSequence("ink", seed)[0])).toContain("colophon")
+    // which is the whole point of declaring it. Fixture seeds 1-5 on this
+    // merge tree miss colophon (pool 9→13 hops those five onto other covers).
+    // The 40-seed sweep still hits it.
+    expect(Array.from({ length: 40 }, (_, i) => resolveSequence("ink", i + 1)[0])).toContain("colophon")
   })
 })
 
@@ -665,7 +716,7 @@ const ALLOCATION_ERA_THEME_IDS = CANONICAL_THEME_IDS.filter(
   (id) => !POST_ALLOCATION_THEME_IDS.includes(id),
 )
 
-describe("allocation wave drift: cover-slot record still holds after second-front", () => {
+describe("allocation wave drift: cover-slot record after second-front, then the fidelity-wave pool growth", () => {
   it("the pre-allocation fixture covers the 17 themes that existed when it was captured, at 5 seeds", () => {
     expect(Object.keys(preAllocationFixture).sort()).toEqual([...ALLOCATION_ERA_THEME_IDS].sort())
     for (const themeId of ALLOCATION_ERA_THEME_IDS) {
@@ -673,33 +724,28 @@ describe("allocation wave drift: cover-slot record still holds after second-fron
     }
   })
 
-  it("the cover slot of all 17 allocation-era themes still matches the recorded post-allocation covers — second-front did not move it", () => {
+  it("the cover slot of all 17 allocation-era themes follows the fidelity-wave table (pool 9→13). Second-front did not retouch cover tendencies", () => {
     // Original claim ("no page other than the cover moved") was the
     // allocation wave's own blast-radius pin. Second-front is the wave that
-    // moves the other three page types, so that half is superseded. Rewrite
-    // (proposal option A): keep asserting the cover slot, which this wave
-    // promises not to touch.
+    // moves the other three page types, so that half is superseded.
+    // Second-front still promises not to retouch cover *tendencies*. Live
+    // cover *picks* on this merge tree are the board-cover-fidelity table.
     for (const themeId of ALLOCATION_ERA_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
-        const expected =
-          ALLOCATION_COVER_MOVES[themeId]?.[FIXTURE_SEEDS.indexOf(seed)] ??
-          preAllocationFixture[themeId]?.[String(seed)]?.[0]
-        expect(resolveSequence(themeId, seed)[0], `${themeId} seed=${seed}`).toBe(expected)
+        expect(resolveSequence(themeId, seed)[0], `${themeId} seed=${seed}`).toBe(
+          FIDELITY_WAVE_COVER_PICKS[themeId]?.[FIXTURE_SEEDS.indexOf(seed)],
+        )
       }
     }
   })
 
-  it("the seven themes neither edit re-weighted keep their exact pre-wave cover picks", () => {
+  it("the seven themes the allocation wave left alone now match the fidelity-wave cover picks (pool 9 -> 13)", () => {
     const untouched = ALLOCATION_ERA_THEME_IDS.filter((id) => ALLOCATION_COVER_MOVES[id] === undefined)
-    // Named explicitly so shrinking the move table can't silently shrink this
-    // control group too — the two halves must add up to the 17 themes this
-    // fixture captured (crayon, arena, museum, stage, and playbill landed
-    // later, out of this wave's scope).
     expect(untouched).toEqual(["consulting", "academic", "ink", "tech", "runway", "journal", "pulse"])
     for (const themeId of untouched) {
       for (const seed of FIXTURE_SEEDS) {
         expect(resolveSequence(themeId, seed)[0], `${themeId} seed=${seed}`).toBe(
-          preAllocationFixture[themeId]?.[String(seed)]?.[0],
+          FIDELITY_WAVE_COVER_PICKS[themeId]?.[FIXTURE_SEEDS.indexOf(seed)],
         )
       }
     }
@@ -726,29 +772,33 @@ describe("allocation wave drift: cover-slot record still holds after second-fron
         } else {
           expect(afterInk, `${themeId} seed=${seed} was undisturbed by the ink wave`).toBe(at709605a)
         }
-        // Hop 2, blind -> declared: per theme, because that is the point.
-        const now = resolveSequence(themeId, seed)[0]
-        expect(now, `${themeId} seed=${seed} after the allocation wave`).toBe(
+        // Hop 2, blind -> declared: recorded in ALLOCATION_COVER_MOVES against
+        // the post-ink capture. Live picks moved again on hop 3.
+        expect(
           ALLOCATION_COVER_MOVES[themeId]?.[FIXTURE_SEEDS.indexOf(seed)],
+          `${themeId} seed=${seed} allocation hop`,
+        ).toBeDefined()
+        // Hop 3, pool 9 -> 13: live pick.
+        const now = resolveSequence(themeId, seed)[0]
+        expect(now, `${themeId} seed=${seed} after the fidelity-wave pool growth`).toBe(
+          FIDELITY_WAVE_COVER_PICKS[themeId]?.[FIXTURE_SEEDS.indexOf(seed)],
         )
       }
     }
   })
 
-  it("the eight it did re-weight moved to exactly the recorded covers, and every one of them really is a move", () => {
-    for (const [themeId, expected] of Object.entries(ALLOCATION_COVER_MOVES) as [CanonicalThemeId, string[]][]) {
+  it("the eight the allocation wave re-weighted now match the fidelity-wave cover picks, and allocation itself was a real move", () => {
+    for (const [themeId, allocated] of Object.entries(ALLOCATION_COVER_MOVES) as [CanonicalThemeId, string[]][]) {
       FIXTURE_SEEDS.forEach((seed, i) => {
         const before = preAllocationFixture[themeId]?.[String(seed)]?.[0]
         const now = resolveSequence(themeId, seed)[0]
-        expect(now, `${themeId} seed=${seed}`).toBe(expected[i])
-        // Both halves, so the table cannot quietly describe a no-op: at least
-        // one seed per theme has to differ from the captured pre-wave pick.
+        expect(now, `${themeId} seed=${seed}`).toBe(FIDELITY_WAVE_COVER_PICKS[themeId]?.[i])
         expect(typeof before).toBe("string")
       })
       const moved = FIXTURE_SEEDS.filter(
-        (seed, i) => preAllocationFixture[themeId]?.[String(seed)]?.[0] !== expected[i],
+        (seed, i) => preAllocationFixture[themeId]?.[String(seed)]?.[0] !== allocated[i],
       )
-      expect(moved.length, `${themeId} moved on no seed at all`).toBeGreaterThan(0)
+      expect(moved.length, `${themeId} allocated on no seed at all`).toBeGreaterThan(0)
     }
   })
 })
@@ -757,7 +807,11 @@ describe("allocation wave drift: cover-slot record still holds after second-fron
 //
 // Guard option A: a new fixture records the pre-wave sequences, the old two
 // fixtures are not recaptured, and this block pins what moved. Cover is the
-// one slot this wave promises not to touch.
+// one slot second-front itself promised not to touch. On this merge tree the
+// cover *picks* still move, because board-cover-fidelity grew the shared
+// pool 9→13 and locked five covers. The recorded non-cover moves are the
+// second-front claim that still holds. Historical fixture files stay as
+// records of a past state. They are never recaptured.
 
 const PRE_SECOND_FRONT_NON_COVER: Partial<
   Record<CanonicalThemeId, Partial<Record<"chapter" | "content" | "ending", readonly string[]>>>
@@ -792,26 +846,44 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     }
   })
 
-  it("cover slot is byte-identical to the pre-second-front capture for every theme at every recorded seed", () => {
+  it("cover picks vs the pre-second-front capture: the fidelity wave moved the pool, seven leftover (theme, seed) pairs still match", () => {
+    // Second-front did not retouch cover *tendencies*. Cover *picks* on this
+    // merge tree still move because board-cover-fidelity grew the shared
+    // pool 9→13 and locked five wave7 covers. 118 of 125 recorded cover
+    // slots hop. The seven leftovers are named so a later pool change is a
+    // visible edit, not a silent baseline drift.
+    const leftover: [string, number][] = []
     for (const themeId of CANONICAL_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
-        expect(resolveSequence(themeId, seed)[0], `${themeId} seed=${seed}`).toBe(
-          preSecondFrontFixture[themeId]?.[String(seed)]?.[0],
-        )
+        if (resolveSequence(themeId, seed)[0] === preSecondFrontFixture[themeId]?.[String(seed)]?.[0]) {
+          leftover.push([themeId, seed])
+        }
       }
     }
+    expect(leftover).toEqual([
+      ["consulting", 3],
+      ["academic", 3],
+      ["ink", 2],
+      ["heritage", 2],
+      ["terra", 2],
+      ["stage", 1],
+      ["stage", 5],
+    ])
   })
 
-  it("every recorded move lands exactly, and every unlisted page is untouched", () => {
+  it("every recorded second-front non-cover move still lands, and every unlisted non-cover page stays put", () => {
+    // Cover is the fidelity-wave slot (asserted above). Adjacent
+    // anti-repetition did not cascade into chapter / content / ending on
+    // this fixture: every recorded second-front move still holds, and no
+    // extra non-cover hop appeared.
     for (const themeId of CANONICAL_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
         const now = resolveSequence(themeId, seed)
         const pre = preSecondFrontFixture[themeId]?.[String(seed)]
         expect(pre, `${themeId} seed=${seed} missing from fixture`).toBeDefined()
-        for (let i = 0; i < now.length; i++) {
+        for (let i = 1; i < now.length; i++) {
           const recorded = SECOND_FRONT_MOVES[themeId]?.[String(seed)]?.[String(i)]
           if (recorded) {
-            expect(i, `${themeId} seed=${seed} moved the cover slot`).not.toBe(0)
             expect(pre![i], `${themeId} seed=${seed} page ${i} from`).toBe(recorded.from)
             expect(now[i], `${themeId} seed=${seed} page ${i} to`).toBe(recorded.to)
           } else {
@@ -868,6 +940,12 @@ describe("second-front wave: chapter / content / ending allocation", () => {
   })
 
   it("seed=1 distinct 7-page sequences: 23/24, residual collision is enterprise / classroom", () => {
+    // Union tree (board-cover-fidelity × second-front, 2026-08-22): re-measured,
+    // still 23/24. enterprise and classroom share this fixture/seed's 7-page
+    // sequence. They do not share a structural identity (different cover
+    // weight sets, different chapter / content / ending cells). A shared
+    // construction through two palettes is two covers, which is why the
+    // table allows the collision.
     const sequences = STRUCTURAL_IDENTITY_IDS.map((id) => ({ id, seq: JSON.stringify(resolveSequence(id, 1)) }))
     const groups = new Map<string, string[]>()
     for (const { id, seq } of sequences) groups.set(seq, [...(groups.get(seq) ?? []), id])
@@ -877,6 +955,9 @@ describe("second-front wave: chapter / content / ending allocation", () => {
   })
 
   it("seeds 1-40: 24/24 distinct sequence-bundles, slot diversity chapter 18 / content 19 / ending 14", () => {
+    // Union tree re-measured: the 40-seed bundle still separates all 24
+    // identities. Slot diversity is unchanged from the second-front-only
+    // tree (cover lock does not retouch these three axes).
     const over40 = new Set(
       STRUCTURAL_IDENTITY_IDS.map((id) =>
         JSON.stringify(Array.from({ length: 40 }, (_, i) => resolveSequence(id, i + 1))),
@@ -895,8 +976,11 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     expect(slotCount(6)).toBe(14)
   })
 
-  it("playbill still curates the full layout set on every page type — tendencies compress probability, they do not narrow the pool", () => {
-    expect(THEME_DEFINITIONS.playbill.layouts).toEqual(THEME_DEFINITIONS.consulting.layouts)
+  it("playbill locks cover to bill-head. chapter / content / ending stay the full set — tendencies compress probability, they do not replace a lock", () => {
+    expect(THEME_DEFINITIONS.playbill.layouts.cover).toEqual(["bill-head"])
+    expect(THEME_DEFINITIONS.playbill.layouts.chapter).toEqual(THEME_DEFINITIONS.consulting.layouts.chapter)
+    expect(THEME_DEFINITIONS.playbill.layouts.content).toEqual(THEME_DEFINITIONS.consulting.layouts.content)
+    expect(THEME_DEFINITIONS.playbill.layouts.ending).toEqual(THEME_DEFINITIONS.consulting.layouts.ending)
     expect(THEME_DEFINITIONS.playbill.layoutTendencies?.content).toEqual([
       "split-band",
       "stacked-poster",
@@ -911,13 +995,13 @@ describe("second-front wave: chapter / content / ending allocation", () => {
 // `registerTheme` guard already establish this at *declaration* time (a
 // tendency naming an id outside the theme's own `layouts[slideType]` set
 // throws at registration). This block is the *selection-time* complement:
-// given a real, deliberately narrowed `layouts` set (every builtin theme
-// today curates the full layout set for all four page types —
-// `definitions.test.ts`'s own "全集放开基线" pin — so this narrowing is
-// synthetic, exercising the boundary itself rather than a real theme), no
-// combination of strategy/beat/theme weighting — even a themeTendencies
-// entry that maximally favors one member — ever produces a pick outside
-// that narrowed pool, across a wide seed/strategy/beat sweep.
+// given a real, deliberately narrowed `layouts` set (five seventh-wave
+// themes now lock cover in production. This fixture still narrows all
+// four page types so the boundary is exercised on every axis, not only
+// the live cover locks), no combination of strategy/beat/theme weighting,
+// even a themeTendencies entry that maximally favors one member, ever
+// produces a pick outside that narrowed pool, across a wide
+// seed/strategy/beat sweep.
 describe("hard boundary: a narrowed layouts set still gates every pick, regardless of tendency weighting", () => {
   const NARROWED_LAYOUTS: ThemeDefinition["layouts"] = {
     cover: ["banner-title", "poster-center"],
@@ -1014,7 +1098,7 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: 152 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
+  it("sanity: 147 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
     // Was 36 before the allocation wave. The +17 are the cover ids the wave
     // added: enterprise/campaign/classroom/bloom/luxe/heritage 2 apiece (12,
     // all first declarations), plus terra +1, ember +2 and vermilion +2. The
@@ -1026,27 +1110,27 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     // (poster-center / editorial-masthead), 58 → 60. stage (same day, keynote
     // black field) adds two cover ids (poster-center / tone-adaptive-header),
     // 60 → 62. lecture (same day, chalkboard night school) adds two cover
-    // ids (banner-title / tone-adaptive-header), 62 → 64. The number is a
-    // tripwire, not a target — if it drifts, re-derive it from
-    // `definitions.ts` rather than editing it to match.
-    // 60 → 62. swiss (2026-08-21 wave7) adds two cover ids (left-anchor /
-    // split-diagonal), 62 → 64. The number is a tripwire, not a target — if
-    // it drifts, re-derive it from `definitions.ts` rather than editing it
-    // to match.
-    // 60 → 62. memo (same day, typewriter decision memo) adds two cover ids
-    // (banner-title / editorial-masthead), 62 → 64. The number is a
-    // 60 → 62. playbill (same day, 荧光嗓门) adds two cover ids
-    // (poster-center / fashion-masthead), 62 → 64. The number is a
-    // tripwire, not a target — if it drifts, re-derive it from
-    // `definitions.ts` rather than editing it to match.
+    // ids (banner-title / tone-adaptive-header), 62 → 64. swiss (2026-08-21
+    // wave7) adds two cover ids (left-anchor / split-diagonal), 64 → 66.
+    // memo (same day, typewriter decision memo) adds two cover ids
+    // (banner-title / editorial-masthead), 66 → 68. playbill (same day,
+    // 荧光嗓门) adds two cover ids (poster-center / fashion-masthead),
+    // 68 → 70.
+    // board-cover-fidelity wave (2026-08-22): five wave7 themes each drop
+    // from two cover ids to one (the locked board construction), 70 → 65
+    // on the cover-lock-only tree.
     // Second-front wave (2026-08-22) fills chapter / content / ending for
     // every structural identity, so the forced-audit set grows from 70 to
-    // 152 (25 theme ids × their cover + chapter + ending tendency ids).
-    // Content tendencies are not in this block: the original T2 gap was
-    // identity-page geometry under pathological heading/meta, and content
-    // pages already have a separate stress corpus. The number is a
-    // tripwire — if it drifts, re-derive it from `definitions.ts`.
-    expect(combos).toHaveLength(152)
+    // 152 on the second-front-only tree (25 theme ids × their cover +
+    // chapter + ending tendency ids).
+    // Union tree (board-cover-fidelity × second-front, 2026-08-22): re-derived
+    // from the merged definitions.ts, 147. Five locked covers drop one id
+    // each from the 152, and the chapter / ending fills stay. Content
+    // tendencies are not in this block: the original T2 gap was identity-page
+    // geometry under pathological heading/meta, and content pages already
+    // have a separate stress corpus. The number is a tripwire. If it drifts,
+    // re-derive it from `definitions.ts`.
+    expect(combos).toHaveLength(147)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {

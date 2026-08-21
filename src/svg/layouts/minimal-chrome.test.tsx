@@ -6,6 +6,7 @@ import { checkIrQuality } from "../ir-quality"
 import { parseSvgRoot } from "../serialize"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { resolveEffectiveLayoutId } from "../layout-selection"
+import { LAYOUT_REGISTRY } from "./registry"
 import { FOOTER_DIVIDER_Y } from "../chrome-geometry"
 
 const LOGO_SRC =
@@ -184,8 +185,9 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
       seed: 1,
       slides,
     } as PptxIR
-    expect(slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))).toEqual([
-      "poster-center",
+    const ids = slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))
+    expect(ids).toEqual([
+      "left-anchor",
       "constellation-chapter",
       "narrow-column",
       "split-band",
@@ -193,6 +195,11 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
       "two-column",
       "tone-adaptive-ending",
     ])
+    for (const id of ids) {
+      expect(id).toBeTruthy()
+      if (!id) continue
+      expect(LAYOUT_REGISTRY[id]?.pinOnly, id).toBeFalsy()
+    }
   })
 
   it("never auto-selects statement / pull-quote / verse-chapter / speech layouts across a seed spread", () => {

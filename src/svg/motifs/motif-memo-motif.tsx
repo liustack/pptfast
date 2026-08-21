@@ -3,7 +3,9 @@ import { accessibleInk } from "../ink"
 
 /**
  * memo-motif —— 「打字机眉行」（2026-08-21 wave7 memo，设计源
- * `theme-wave7/Memo.dc.html`）。light 档，四页型同一张，单锚不借用。
+ * `theme-wave7/Memo.dc.html`）。light 档，单锚不借用。封面整片退让给
+ * `memo-head` 版式（板上的 MEMORANDUM + 双线是封面公文头，不是页缘装饰）。
+ * 章节 / 内容 / 收尾仍画这一张。
  *
  * 画的两件东西（恒位，无 seed 变体）：
  *   - **顶缘红双线**：3px y26 + 1px y32，印章红（accent），x48→1232。
@@ -56,7 +58,11 @@ const EYEBROW_FONT_SIZE = 12
 const EYEBROW_LETTER_SPACING = 6
 const EYEBROW_WEIGHT = 700
 
-export function MemoMotif({ ctx }: DecorProps) {
+export function MemoMotif({ slide, ctx }: DecorProps) {
+  // cover 让位给 memo-head：板上的 MEMORANDUM + 双线是封面公文头，不是页缘
+  // 装饰。版式按板面坐标画那一份，motif 再画顶缘那一份就会叠成两行。
+  // 内容 / 章节 / 收尾仍走页缘（playbill 在 chapter 退让的同一写法）。
+  if (slide.type === "cover") return null
   const ink = ctx.colors.accent
   const bg = ctx.defaultBg ?? ctx.colors.bg
 

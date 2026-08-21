@@ -1,6 +1,6 @@
 /**
  * Layout registry (W2 task 1, spec §3/§6/§8): an explicit, statically-checked
- * description of what the render chain's 36 standard layouts + 4
+ * description of what the render chain's 47 standard layouts + 4
  * page-level image takeovers already draw. This is a metadata layer only —
  * it formalizes today's implicit page structure (layout JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
@@ -82,6 +82,10 @@ import { layoutDef as coverToneAdaptiveHeader } from "./cover-tone-adaptive-head
 import { layoutDef as coverFashionMasthead } from "./cover-fashion-masthead"
 import { layoutDef as coverSplitDiagonal } from "./cover-split-diagonal"
 import { layoutDef as coverColophon } from "./cover-colophon"
+import { layoutDef as coverInstitutionalBlock } from "./cover-institutional-block"
+import { layoutDef as coverMemoHead } from "./cover-memo-head"
+import { layoutDef as coverBoardHead } from "./cover-board-head"
+import { layoutDef as coverBillHead } from "./cover-bill-head"
 
 import { layoutDef as chapterMastheadChapter } from "./chapter-masthead-chapter"
 import { layoutDef as chapterConstellationChapter } from "./chapter-constellation-chapter"
@@ -383,9 +387,10 @@ export function excludePinOnly<T extends { pinOnly?: boolean }>(defs: readonly T
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Cover layouts (9, theme-redesign wave 2026-08-18: 8 -> 9 — colophon, a
-// left-axis single-column construction with a reserved right-edge corridor,
-// see `cover-colophon.tsx`'s own composition header) — cover/chapter/ending
+// Cover layouts (13, board-cover-fidelity wave 2026-08-22: 9 -> 13 —
+// institutional-block / memo-head / board-head / bill-head, four board
+// constructions that were not in the pool. Appended after colophon, same
+// position discipline every earlier pool growth used) — cover/chapter/ending
 // never read `slide.components`
 // (inventory headline finding — see each layout's own `layoutDef`
 // comment for the file-by-file confirmation), so none of them declare a
@@ -407,6 +412,14 @@ const COVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   // samples positionally, so a new member goes on the end rather than in the
   // middle of the existing ones.
   [coverColophon.id]: coverColophon,
+  // Board-cover-fidelity wave (2026-08-22, cover pool 9 -> 13): appended at
+  // the end of the cover group. Key insertion order is what
+  // `weightedPickBySeed` samples positionally, so new members go on the end
+  // rather than in the middle of the existing ones.
+  [coverInstitutionalBlock.id]: coverInstitutionalBlock,
+  [coverMemoHead.id]: coverMemoHead,
+  [coverBoardHead.id]: coverBoardHead,
+  [coverBillHead.id]: coverBillHead,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -590,7 +603,7 @@ const TAKEOVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 43 standard layouts + 4 takeover layouts, keyed by id (`kind`
+/** All 47 standard layouts + 4 takeover layouts, keyed by id (`kind`
  *  still spells the standard tier `"archetype"` — a wire-format fossil, see
  *  {@link LayoutDefinition.kind}). */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {

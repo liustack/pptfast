@@ -100,6 +100,11 @@ describe("THEME_DEFINITIONS", () => {
     // (it feeds `weightedPickBySeed`'s positional sampling), so this list is
     // re-推 by hand against that file, not derived.
     "colophon",
+    // board-cover-fidelity wave (2026-08-22): cover pool 9 -> 13.
+    "institutional-block",
+    "memo-head",
+    "board-head",
+    "bill-head",
   ]
   const FULL_CHAPTER = [
     "masthead-chapter",
@@ -256,6 +261,46 @@ describe("THEME_DEFINITIONS", () => {
       ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.heritage.motif).toBe("heritage-motif")
+  })
+
+  it("wave7 five themes narrow layouts.cover to the board construction (first use of cover narrowing)", () => {
+    expect(THEME_DEFINITIONS.stage.layouts.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.lecture.layouts.cover).toEqual(["board-head"])
+    expect(THEME_DEFINITIONS.swiss.layouts.cover).toEqual(["institutional-block"])
+    expect(THEME_DEFINITIONS.memo.layouts.cover).toEqual(["memo-head"])
+    expect(THEME_DEFINITIONS.playbill.layouts.cover).toEqual(["bill-head"])
+    // Cover lock is the board construction. Second-front fills chapter /
+    // content / ending as soft preference over the still-full pools.
+    expect(THEME_DEFINITIONS.stage.layoutTendencies).toEqual({
+      cover: ["poster-center"],
+      chapter: ["constellation-chapter", "tone-adaptive-chapter"],
+      content: ["quiet-frame", "side-highlight"],
+      ending: ["masthead-ending", "fashion-ending"],
+    })
+    expect(THEME_DEFINITIONS.lecture.layoutTendencies).toEqual({
+      cover: ["board-head"],
+      chapter: ["banner-chapter", "tone-adaptive-chapter"],
+      content: ["rail-numbered", "bento-panel"],
+      ending: ["banner-ending", "constellation-ending", "masthead-ending"],
+    })
+    expect(THEME_DEFINITIONS.swiss.layoutTendencies).toEqual({
+      cover: ["institutional-block"],
+      chapter: ["constellation-chapter", "poster-chapter"],
+      content: ["two-column", "split-band"],
+      ending: ["tone-adaptive-ending", "rail-ending", "masthead-ending"],
+    })
+    expect(THEME_DEFINITIONS.memo.layoutTendencies).toEqual({
+      cover: ["memo-head"],
+      chapter: ["masthead-chapter", "banner-chapter"],
+      content: ["narrow-column", "tone-adaptive-content"],
+      ending: ["banner-ending", "masthead-ending", "tone-adaptive-ending"],
+    })
+    expect(THEME_DEFINITIONS.playbill.layoutTendencies).toEqual({
+      cover: ["bill-head"],
+      chapter: ["fashion-chapter", "poster-chapter"],
+      content: ["split-band", "stacked-poster", "banner-heading"],
+      ending: ["fashion-ending", "poster-ending"],
+    })
   })
 
   it("未知 id 经 resolveThemeId 回落 consulting 的主题定义（含 layouts/motif），原 manifest 取值函数回落断言迁移", () => {

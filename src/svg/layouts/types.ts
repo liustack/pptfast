@@ -34,6 +34,14 @@ export type CoverLayoutId =
   // 主题重设计第一期（2026-08-18，cover 池 8 -> 9）：左轴单栏 + 引首块，
   // 内容右边界收在 x1180 给右缘落款列让路——见 cover-colophon.tsx 的文件头。
   | "colophon"
+  // 第七波封面保真（2026-08-22，cover 池 9 -> 13）：四家板面构图在池里不存在，
+  // 按构造进共享池。institutional-block = 左置巨字+签名块，memo-head =
+  // MEMORANDUM 眉行+红双线+末词下划，board-head = 左轴板书+粉笔弧，
+  // bill-head = 出血巨字+底粗线。stage 复用 poster-center，不另开 id。
+  | "institutional-block"
+  | "memo-head"
+  | "board-head"
+  | "bill-head"
 
 // Wave 2（chapter/ending）新增 id：每主题 1 个（命名见 Wave 2 任务表）
 export type ChapterLayoutId =
