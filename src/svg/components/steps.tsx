@@ -3,6 +3,8 @@ import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, truncateToUnits } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
+import { resolveComponentForm } from "./form-assignments"
+import { measureArrowSteps, renderArrowSteps } from "./forms/arrow-steps"
 
 type StepsComponent = Extract<Component, { type: "steps" }>
 type StepItem = StepsComponent["items"][number]
@@ -323,19 +325,19 @@ function renderVertical(component: StepsComponent, box: ComponentBox, ctx: Compo
   )
 }
 
-export const steps: SvgComponent<StepsComponent> = {
-  measure(component, w) {
-    const n = component.items.length
-    if (needsVerticalLayout(n, w)) {
-      return n * verticalRowGeometry(component, w).rowH
-    }
-    return cardGeometry(component, w).cardH
-  },
-  render(component, box, ctx) {
-    const n = component.items.length
-    if (needsVerticalLayout(n, box.w)) {
-      return renderVertical(component, box, ctx)
-    }
+function measureDefault(component: StepsComponent, w: number): number {
+  const n = component.items.length
+  if (needsVerticalLayout(n, w)) {
+    return n * verticalRowGeometry(component, w).rowH
+  }
+  return cardGeometry(component, w).cardH
+}
+
+function renderDefault(component: StepsComponent, box: ComponentBox, ctx: ComponentCtx): React.ReactElement {
+  const n = component.items.length
+  if (needsVerticalLayout(n, box.w)) {
+    return renderVertical(component, box, ctx)
+  }
     const { cardW, contentW, cardH } = cardGeometry(component, box.w)
     return (
       <g transform={`translate(${box.x},${box.y})`}>
@@ -367,6 +369,22 @@ export const steps: SvgComponent<StepsComponent> = {
         })}
       </g>
     )
+}
+
+export const steps: SvgComponent<StepsComponent> = {
+  measure(component, w, ctx) {
+    const assignment = resolveComponentForm("steps", ctx.themeId)
+    if (assignment?.form === "arrow_steps") {
+      return measureArrowSteps(component, w, ctx, assignment.knobs ?? {})
+    }
+    return measureDefault(component, w)
+  },
+  render(component, box, ctx) {
+    const assignment = resolveComponentForm("steps", ctx.themeId)
+    if (assignment?.form === "arrow_steps") {
+      return renderArrowSteps(component, box, ctx, assignment.knobs ?? {})
+    }
+    return renderDefault(component, box, ctx)
   },
 }
 

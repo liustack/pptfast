@@ -8,6 +8,8 @@ import { steps } from "./steps"
 import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../full-slide-svg"
+import { resolveComponentForm } from "./form-assignments"
+import { readableOn } from "../ink"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -233,12 +235,14 @@ describe("steps card stroke (fix wave, T5 follow-up)", () => {
     })
   })
 
-  it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
+  it("regression lock: unassigned themes keep the cardStroke contract — assigned arrow_steps themes are skipped", () => {
     for (const id of CANONICAL_THEME_IDS) {
+      if (resolveComponentForm("steps", id)) continue
       const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(steps.render(threeSteps, { x: 0, y: 0, w: 1088 }, themeCtx))
       const card = cardRects(container)[0]
-      if (id === "enterprise" || id === "runway") {
+      expect(card).toBeTruthy()
+      if (themeCtx.colors.cardStroke) {
         expect(card.getAttribute("stroke")).toBe(themeCtx.colors.cardStroke)
       } else {
         expect(card.getAttribute("stroke")).toBeNull()
@@ -403,5 +407,124 @@ describe("steps component: text overflow fallback", () => {
       expect(width).toBeLessThanOrEqual(contentW + 1)
     }
     expect(bodyTexts.some((t) => (t.textContent ?? "").endsWith("…"))).toBe(true)
+  })
+})
+
+function stepsFormMarkup(node: React.ReactElement) {
+  return renderSvgMarkup(<svg xmlns="http://www.w3.org/2000/svg">{node}</svg>)
+}
+
+describe("arrow_steps form", () => {
+  const box = { x: 0, y: 0, w: 1088, h: 360 }
+  const three = threeSteps
+
+  it("runway: chevron paths, circle-outline badges with 01/02/03, title on the arrow, text as the footnote", () => {
+    const themeCtx = buildCtx(resolveStyle("runway"), {})
+    const { container } = svg(steps.render(three, box, themeCtx))
+    const arrows = Array.from(container.querySelectorAll("path")).filter(
+      (p) => p.getAttribute("fill") === themeCtx.colors.accent,
+    )
+    expect(arrows).toHaveLength(3)
+    expect(container.querySelectorAll("circle")).toHaveLength(3)
+    const digits = Array.from(container.querySelectorAll("text")).filter((t) => /^\d{2}$/.test(t.textContent ?? ""))
+    expect(digits.map((t) => t.textContent)).toEqual(["01", "02", "03"])
+    for (const item of three.items) {
+      expect(container.textContent).toContain(item.title)
+      expect(container.textContent).toContain(item.text)
+    }
+    const title = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === three.items[0].title)!
+    expect(title.getAttribute("fill")).toBe(readableOn(themeCtx.colors.accent))
+    const titleY = Number(title.getAttribute("y"))
+    const foot = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === three.items[0].text)!
+    expect(Number(foot.getAttribute("y"))).toBeGreaterThan(titleY)
+    expect(container.querySelectorAll("rect").length === 0 || container.querySelectorAll('rect[rx="8"]').length === 0).toBe(
+      true,
+    )
+  })
+
+  it("enterprise: notch paths and square-solid badges, fill from primary token", () => {
+    const themeCtx = buildCtx(resolveStyle("enterprise"), {})
+    const { container } = svg(steps.render(three, box, themeCtx))
+    const arrows = Array.from(container.querySelectorAll("path")).filter(
+      (p) => p.getAttribute("fill") === themeCtx.colors.primary,
+    )
+    expect(arrows).toHaveLength(3)
+    expect(container.querySelectorAll("circle")).toHaveLength(0)
+    const badges = Array.from(container.querySelectorAll("rect"))
+    expect(badges.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it("pulse: slope arrows, solid circle badges, pulseLine path, no invented third copy layer", () => {
+    const themeCtx = buildCtx(resolveStyle("pulse"), {})
+    const { container } = svg(steps.render(three, box, themeCtx))
+    const filled = Array.from(container.querySelectorAll("path")).filter((p) => p.getAttribute("fill") && p.getAttribute("fill") !== "none")
+    expect(filled.length).toBeGreaterThanOrEqual(3)
+    expect(container.querySelectorAll("circle").length).toBeGreaterThanOrEqual(3)
+    const pulse = Array.from(container.querySelectorAll("path")).find(
+      (p) => p.getAttribute("fill") === "none" || p.getAttribute("fill") === null,
+    )
+    expect(pulse).toBeTruthy()
+    const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent ?? "")
+    for (const t of texts) {
+      const ok =
+        /^\d{2}$/.test(t) ||
+        three.items.some((item) => item.title.includes(t) || item.text.includes(t) || t.includes(item.title) || t.includes(item.text.slice(0, 4)))
+      expect(ok).toBe(true)
+    }
+  })
+
+  it("narrow width stacks the same arrows instead of falling back to the card face", () => {
+    const themeCtx = buildCtx(resolveStyle("runway"), {})
+    const narrow = { x: 0, y: 0, w: 600, h: 900 }
+    const { container } = svg(steps.render(fiveSteps, narrow, themeCtx))
+    expect(Array.from(container.querySelectorAll("rect")).filter((r) => r.getAttribute("rx") === "8")).toHaveLength(0)
+    const arrows = Array.from(container.querySelectorAll("path")).filter(
+      (p) => p.getAttribute("fill") === themeCtx.colors.accent,
+    )
+    expect(arrows).toHaveLength(5)
+    const ys = arrows.map((p) => Number((p.getAttribute("d") ?? "").match(/M [\d.]+ ([\d.]+)/)?.[1] ?? 0))
+    expect(ys[4]).toBeGreaterThan(ys[0] + 40)
+  })
+
+  it("consulting (unassigned) markup is byte-identical to the default face", () => {
+    const withId = buildCtx(resolveStyle("consulting"), {})
+    const withoutId = { ...withId, themeId: undefined }
+    expect(stepsFormMarkup(steps.render(three, { x: 80, y: 100, w: 1088 }, withId))).toBe(
+      stepsFormMarkup(steps.render(three, { x: 80, y: 100, w: 1088 }, withoutId)),
+    )
+  })
+
+  it("n=2 and n=5 stay inside the box, and the tree is subset-safe", () => {
+    const themeCtx = buildCtx(resolveStyle("runway"), {})
+    for (const ir of [
+      { type: "steps" as const, items: [step("甲", "说明甲"), step("乙", "说明乙")] },
+      fiveSteps,
+    ]) {
+      const h = Math.max(steps.measure(ir, box.w, themeCtx), 420)
+      const node = steps.render(ir, { x: 0, y: 0, w: 1088, h }, themeCtx)
+      const markup = stepsFormMarkup(node)
+      const root = parseSvgRoot(markup)
+      expect(() => assertSubset(root)).not.toThrow()
+      for (const el of Array.from(root.querySelectorAll("rect, circle"))) {
+        if (el.tagName.toLowerCase() === "circle") {
+          const cx = Number(el.getAttribute("cx"))
+          const cy = Number(el.getAttribute("cy"))
+          const r = Number(el.getAttribute("r"))
+          expect(cx - r).toBeGreaterThanOrEqual(-2)
+          expect(cy - r).toBeGreaterThanOrEqual(-2)
+          expect(cx + r).toBeLessThanOrEqual(1088 + 2)
+          expect(cy + r).toBeLessThanOrEqual(h + 2)
+        } else {
+          const x = Number(el.getAttribute("x") ?? 0)
+          const y = Number(el.getAttribute("y") ?? 0)
+          const w = Number(el.getAttribute("width") ?? 0)
+          const hh = Number(el.getAttribute("height") ?? 0)
+          expect(x).toBeGreaterThanOrEqual(-2)
+          expect(y).toBeGreaterThanOrEqual(-2)
+          expect(x + w).toBeLessThanOrEqual(1088 + 2)
+          expect(y + hh).toBeLessThanOrEqual(h + 2)
+        }
+      }
+    }
   })
 })
