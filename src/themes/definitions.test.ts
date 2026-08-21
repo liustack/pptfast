@@ -711,6 +711,7 @@ describe("registerTheme: unmeasured-font-width console.warn", () => {
   // 退役——bloom 因此**退出**这份名单，标题从保守包络改回精确宽度表
   // （vermilion 在 gov-theme 波做过同一次移动）。
   it("regression: heritage/ink/journal/lecture/luxe/memo/museum/runway's heading has no exact table, every builtin's body does — but builtins never call registerTheme, so this never reaches console.warn", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const nonExactHeadingBuiltins = new Set(["heritage", "ink", "journal", "lecture", "luxe", "memo", "museum", "runway"])
     for (const id of CANONICAL_THEME_IDS) {
       const style = THEME_DEFINITIONS[id].style

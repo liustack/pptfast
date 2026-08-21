@@ -69,6 +69,7 @@
  * | lecture | lecture-motif *(singleton)* | 2026-08-21: lecture's 26px-inset 1px chalk-tray frame is its own new technique family — a single dark groove, not luxe's double gilt invitation frame, not ink's colophon-and-seal rail. Pairing either in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena). |
  * | swiss | swiss-motif *(singleton)* | 2026-08-21 wave7: swiss's 12px top edge bar + three right-margin ticks is its own new technique family — a page-edge stamp, not vermilion's gold-rule file header, not enterprise's IKB square steps, not tech's constellation chain. Pairing any of those in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena) |
  * | memo | memo-motif *(singleton)* | 2026-08-21: memo's typewriter double-rule + MEMORANDUM eyebrow is its own new technique family — stamp-red lines and a Latin mono decorative word, never a fill. Journal's masthead rules and heritage's bookplate rules sit in the same printed-line neighbourhood, but both already rotate with each other and with luxe; pairing either in would collapse memo into the editorial-print cluster it was designed to leave. Stays a candidate set of 1 (same rationale pattern as vermilion/ink). |
+ * | playbill | playbill-motif *(singleton)* | 2026-08-21: playbill's single clockwise-4° black patch (top-right, no glyphs) is its own new technique family — a hard graphic ticket stamp, not campaign's confetti, not vermilion's gold rays, not crayon's doodle stickers. Pairing any of those in would read as a mismatched skin rather than a variation. Stays a candidate set of 1. |
  *
  * `tone-adaptive-motif` — the 13th registered motif — is
  * deliberately absent from every candidate set above: its own source header
@@ -186,6 +187,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   lecture: ["lecture-motif"],
   swiss: ["swiss-motif"],
   memo: ["memo-motif"],
+  playbill: ["playbill-motif"],
 }
 
 /**

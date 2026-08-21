@@ -81,15 +81,15 @@ const NEWLY_DECLARED_THEME_IDS = ["enterprise", "campaign", "bloom", "classroom"
 /**
  * `bloom` shares one `layoutTendencies` object with `classroom` on purpose
  * (`definitions.ts`'s `CLASSROOM_STRUCTURE`), so the set of distinct
- * *structural* identities is 21, not 22. Every count in this file that is
+ * *structural* identities is 24, not 25. Every count in this file that is
  * about structure rather than about theme ids is measured over this list.
  */
 const STRUCTURAL_IDENTITY_IDS = CANONICAL_THEME_IDS.filter((id) => id !== "bloom")
 
-it("sanity: all 22 theme ids now declare layoutTendencies, and they resolve to 21 distinct structural identities (bloom mirrors classroom) — if this drifts, the numbers this file pins below must be re-measured, not silently kept", () => {
-  expect(DECLARED_THEME_IDS).toHaveLength(22)
+it("sanity: all 25 theme ids now declare layoutTendencies, and they resolve to 24 distinct structural identities (bloom mirrors classroom) — if this drifts, the numbers this file pins below must be re-measured, not silently kept", () => {
+  expect(DECLARED_THEME_IDS).toHaveLength(25)
   expect(UNDECLARED_THEME_IDS).toEqual([])
-  expect(STRUCTURAL_IDENTITY_IDS).toHaveLength(21)
+  expect(STRUCTURAL_IDENTITY_IDS).toHaveLength(24)
 })
 
 // ── bloom's declared mirror (structure-map.md 会话 0 裁决 3) ──
@@ -145,7 +145,7 @@ describe("absent motifs are identity values, not holes (runway per definitions.t
   it("every other theme does declare one — the no-motif trio is settled, not a gap list", () => {
     const withMotif = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].motif !== undefined)
     expect(withMotif).toEqual(CANONICAL_THEME_IDS.filter((id) => id !== "runway" && id !== "museum" && id !== "stage"))
-    expect(withMotif).toHaveLength(19)
+    expect(withMotif).toHaveLength(22)
   })
 })
 
@@ -185,6 +185,9 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // vermilion cover-weight cluster, count stays 11. memo (same day) joins
     // the journal / insight / museum editorial-masthead cover-weight
     // cluster, count stays 11.
+    // vermilion cover-weight cluster, count stays 11. playbill (same day)
+    // shares luxe's poster-center / fashion-masthead cover pair, count stays
+    // 11.
     expect(distinct.size).toBe(11)
   })
 
@@ -224,7 +227,7 @@ function effectiveCoverWeightSet(themeId: CanonicalThemeId): string {
 }
 
 describe("cover-axis divergence across the 21 structural identities", () => {
-  it("distinct cover sequences: 10 across the 21 identities (measured, seeds 1-40)", () => {
+  it("distinct cover sequences: 9 across the 21 identities (measured, seeds 1-40)", () => {
     const distinct = new Set(STRUCTURAL_IDENTITY_IDS.map((id) => JSON.stringify(coverSequence(id))))
     // The measured chain on this exact fixture: 8 before the allocation wave,
     // 10 after it, 9 after the inert-declaration fix, 10 once swiss landed
@@ -265,7 +268,7 @@ describe("cover-axis divergence across the 21 structural identities", () => {
     expect(blind).toEqual([])
   })
 
-  it("distinct cover weightings across the 21 identities: 10, every one of them a real preference", () => {
+  it("distinct cover weightings across the 21 identities: 9, every one of them a real preference", () => {
     const groups = new Map<string, string[]>()
     for (const id of STRUCTURAL_IDENTITY_IDS) {
       const key = effectiveCoverWeightSet(id)
@@ -629,7 +632,7 @@ describe("control-group byte identity (migration-period guard — deletable once
  * control-group tests skip these rather than recapturing the fixture file
  * (its whole meaning is a record of a past state).
  */
-const POST_ALLOCATION_THEME_IDS: readonly CanonicalThemeId[] = ["crayon", "arena", "museum", "stage", "lecture", "swiss", "memo"]
+const POST_ALLOCATION_THEME_IDS: readonly CanonicalThemeId[] = ["crayon", "arena", "museum", "stage", "lecture", "swiss", "memo", "playbill"]
 const ALLOCATION_ERA_THEME_IDS = CANONICAL_THEME_IDS.filter(
   (id) => !POST_ALLOCATION_THEME_IDS.includes(id),
 )
@@ -656,8 +659,8 @@ describe("allocation wave drift: the cover slot moved for eight themes and nothi
     const untouched = ALLOCATION_ERA_THEME_IDS.filter((id) => ALLOCATION_COVER_MOVES[id] === undefined)
     // Named explicitly so shrinking the move table can't silently shrink this
     // control group too — the two halves must add up to the 17 themes this
-    // fixture captured (crayon, arena, and museum landed later, out of this
-    // wave's scope. stage joined the same list in 2026-08-21.).
+    // fixture captured (crayon, arena, museum, stage, and playbill landed
+    // later, out of this wave's scope).
     expect(untouched).toEqual(["consulting", "academic", "ink", "tech", "runway", "journal", "pulse"])
     for (const themeId of untouched) {
       for (const seed of FIXTURE_SEEDS) {
@@ -825,7 +828,7 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: 64 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
+  it("sanity: 70 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
     // Was 36 before the allocation wave. The +17 are the cover ids the wave
     // added: enterprise/campaign/classroom/bloom/luxe/heritage 2 apiece (12,
     // all first declarations), plus terra +1, ember +2 and vermilion +2. The
@@ -846,9 +849,11 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     // to match.
     // 60 → 62. memo (same day, typewriter decision memo) adds two cover ids
     // (banner-title / editorial-masthead), 62 → 64. The number is a
+    // 60 → 62. playbill (same day, 荧光嗓门) adds two cover ids
+    // (poster-center / fashion-masthead), 62 → 64. The number is a
     // tripwire, not a target — if it drifts, re-derive it from
     // `definitions.ts` rather than editing it to match.
-    expect(combos).toHaveLength(64)
+    expect(combos).toHaveLength(70)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {

@@ -18,6 +18,7 @@ import { SWISS_TOKENS } from "./swiss"
 import { MEMO_TOKENS } from "./memo"
 import { HERITAGE_TOKENS } from "./heritage"
 import { THEME_DEFINITIONS } from "./definitions"
+import { PLAYBILL_TOKENS } from "./playbill"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -569,5 +570,73 @@ describe("memo vs heritage vs vermilion (warm-paper / red-family split)", () => 
     expect(MEMO_TOKENS.colors.accent).not.toBe(VERMILION_TOKENS.colors.primary)
     expect(MEMO_TOKENS.colors.primary).not.toBe(VERMILION_TOKENS.colors.primary)
     expect(HERITAGE_TOKENS.colors.accent).toBe("#B8742C")
+  })
+})
+
+// playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字。Same
+// shape-only assertions as the blocks above — registry wiring is covered
+// separately by themes/index.test.ts.
+describe("playbill tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = PLAYBILL_TOKENS
+    expect(t.id).toBe("playbill")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, extra-bold sans)", () => {
+    expect(resolveFontFace(PLAYBILL_TOKENS.fonts.heading, "heading")).toBe("Microsoft YaHei")
+  })
+
+  it("body font resolves to Microsoft YaHei (exact width table)", () => {
+    expect(resolveFontFace(PLAYBILL_TOKENS.fonts.body, "body")).toBe("Microsoft YaHei")
+  })
+
+  it("does not set an accentPool (single, restrained kraft-ochre accent)", () => {
+    expect(PLAYBILL_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 0 (ticket-stock square) and gapScale is 1 (medium)", () => {
+    expect(PLAYBILL_TOKENS.shape?.radius).toBe(0)
+    expect(PLAYBILL_TOKENS.shape?.gapScale).toBe(1)
+  })
+
+  it("typeScale is 1.3 — poster-grade display type (wired at merge once the mechanism landed)", () => {
+    expect(PLAYBILL_TOKENS.shape?.typeScale).toBe(1.3)
+  })
+
+  it("four page types share the fluorescent yellow ground (the page is the decoration)", () => {
+    for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
+      expect(PLAYBILL_TOKENS.defaultBackgrounds[slideType]).toEqual({
+        kind: "color",
+        value: PLAYBILL_TOKENS.colors.bg,
+      })
+    }
+  })
+
+  it("bg is the warehouse's only fluorescent yellow, distinct from crayon's chart sunflower", () => {
+    expect(PLAYBILL_TOKENS.colors.bg).toBe("#F4DD1B")
+    expect(PLAYBILL_TOKENS.colors.chartPalette).not.toContain("#F5B700")
+    expect(PLAYBILL_TOKENS.colors.chartPalette).not.toContain("#F4DD1B")
+  })
+
+  it("primary and text are the same hard black, and black-on-yellow clears 12:1", () => {
+    expect(PLAYBILL_TOKENS.colors.primary).toBe("#131313")
+    expect(PLAYBILL_TOKENS.colors.text).toBe("#131313")
+    expect(contrastRatio(PLAYBILL_TOKENS.colors.primary, PLAYBILL_TOKENS.colors.bg)).toBeGreaterThanOrEqual(12)
+  })
+
+  it("accent is kraft ochre, not the hard black and not crayon's sunflower", () => {
+    expect(PLAYBILL_TOKENS.colors.accent).toBe("#8B6914")
+    expect(PLAYBILL_TOKENS.colors.accent).not.toBe(PLAYBILL_TOKENS.colors.primary)
+    expect(PLAYBILL_TOKENS.colors.accent).not.toBe("#F5B700")
+  })
+
+  it("semantic trio is derived from the yellow-paper register and clears the surface floors", () => {
+    const { danger, warning, success, surface } = PLAYBILL_TOKENS.colors
+    expect(danger).toBe("#8C1810")
+    expect(warning).toBe("#7A5A18")
+    expect(success).toBe("#3D5A32")
+    expect(contrastRatio(danger!, surface)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(success!, surface)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(warning!, surface)).toBeGreaterThanOrEqual(3)
   })
 })
