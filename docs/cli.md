@@ -14,7 +14,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 
 | Command | Does |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content]` | Validate + render to a `.pptx` |
+| `render <target> [-o <out.pptx>] [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content] [--no-git-ignore]` | Validate + render to a `.pptx`. Without `-o`, writes `<project>/.pptfast/<deck>/<deck>.pptx` |
 | `validate <target>` | Check the IR, print page-scoped errors and advisory warnings |
 | `audit <target> [--json] [--pixels]` | Deterministic geometry review, exits 1 when it finds anything (see [Auditing](#auditing)) |
 | `asset-brief <target> [--json]` | Image-generation brief for every `image` component (see [Asset briefs](#asset-briefs)) |
@@ -25,7 +25,7 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `themes [--json]` | List the built-in themes |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | Extract brand colors and fonts from a `.thmx`/`.potx`/`.pptx` into a theme file, entirely locally (see [Themes](./themes.md#your-own-brand)) |
 | `narratives [--json]` | List named narrative presets (strategy/pacing/audience axes + theme recommendations) |
-| `preview <target> -o <dir> [--html]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`), never gated on placeholder pages |
+| `preview <target> [-o <dir>] [--html] [--no-git-ignore]` | Render each slide to a standalone SVG (`--html` also writes a self-contained `preview.html`), never gated on placeholder pages. Without `-o`, writes `<project>/.pptfast/<deck>/` |
 | `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes |
 | `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call |
 | `init` | Scaffold `pptfast.config.json` |
@@ -33,6 +33,8 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
 `--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`.
+
+Omit `-o` and `render`/`preview` write under `.pptfast/<deck>/` at the project root (the directory that holds `pptfast.config.json`, or cwd if there is no project config). The command always prints the absolute path. The first time that directory is created, the CLI appends `.pptfast/` to `.git/info/exclude` so the artifacts stay local. `--no-git-ignore` skips that. A project config `outDir` replaces `.pptfast` wholesale and also skips the exclude line. An explicit `-o` still wins, and that path is never pruned or ignored on the tool's behalf.
 
 `render` refuses to hand you a file that is quietly incomplete. A deck with unfilled placeholder pages needs `--draft`. A deck where a page holds more than its content area can fit — so the layout leaves blocks out, with nothing on the slide to tell a reader — needs `--allow-dropped-content`; the error names the pages and how many blocks each lost. Shortening the page or splitting it in two is the real fix, and `audit` will point at the same pages. Both flags are for the case where you already know and want the file anyway. Neither gate touches `preview` or `serve` — looking at work in progress is what those are for.
 
@@ -82,15 +84,16 @@ pptfast asset-brief my-deck/
 
 `pptfast doctor [--json]` diagnoses the install on this machine. It reads local state only: nothing is written, no network call is made, and there are no credentials to inspect, because there is nothing to configure.
 
-Five checks, in the order the report prints them:
+Six sections, in the order the report prints them:
 
 - **Installed skill copies.** An installed skill is a *copy* — [`INSTALL.md`](../INSTALL.md) step 2 copies the folder into the harness's skill directory, and that copy keeps its install-time launcher forever. Upgrading the CLI never touches it, so a machine can sit on a months-old version while `pptfast --version` reports something much newer. Doctor scans `~/.claude/skills`, `~/.codex/skills`, and `~/.agents/skills` (Pi and OpenCode both read the last one) for a `pptfast/` folder, reads the `PINNED` version out of each copy's `scripts/run.sh`, and names any copy behind the running CLI as stale, with the clone-and-copy line that refreshes it in place ([`INSTALL.md`](../INSTALL.md) step 2's own command, aimed at that copy). Finding no copy at all is normal, not a problem: on dsh the skill ships inside the plugin, and the CLI works on its own. A copy with no `run.sh`, or a `run.sh` with no `PINNED` line, is reported as "version unknown" rather than failing the scan.
 - **DSH plugin.** When `~/.dsh/` exists, every profile directory under `~/.dsh/profiles/` is checked for `@liustack/pptfast` — read from the profile's own `node_modules` (what would really load), falling back to the version its `package.json` declares. A profile behind the CLI gets the pinned install command, `npx -y @deepseek-ai/dsh plugin --profile <profile> add @liustack/pptfast@<version>`, the version named on purpose because dsh installs through a pnpm that holds back fresh releases and silently resolves `@latest` to an older one. No `~/.dsh/` means the check does not apply, which is not the same as failing it.
 - **Runtime.** Node against the `engines` floor (22.19), plus Bun's own version when running under Bun.
 - **Optional capabilities.** Whether `sharp` is importable and whether `soffice` is on PATH. Without sharp, preview rasterization and `audit --pixels` are unavailable — plain SVG preview and `.pptx` rendering are unaffected. Without soffice, the PDF export path is unavailable, likewise with no effect on the main flow.
 - **Self-test render.** A tiny built-in deck goes through the real pipeline in memory — validate, render a slide to SVG, generate the `.pptx` bytes — with nothing written to disk. The report says how many milliseconds it took. Every other check is an observation about the environment; this one proves the thing actually works.
+- **Workspace artifacts.** The project root doctor resolved from cwd, the absolute `.pptfast/` (or configured `outDir`) path, and whether git already ignores it. Informational: it never fails the run and never writes an exclude line.
 
-The exit code is `1` only for a hard failure: a Node below the floor, or a self-test render that did not complete. Skill drift, a stale dsh plugin, and missing optional capabilities are warnings and still exit `0` — the main write-IR → validate → render flow keeps working through all of them. `--json` prints the full structured report (`skills.copies[]`, `dsh.profiles[]`, `capabilities[]`, `selfTest`, and the `errors`/`warnings` arrays the exit code is derived from).
+The exit code is `1` only for a hard failure: a Node below the floor, or a self-test render that did not complete. Skill drift, a stale dsh plugin, and missing optional capabilities are warnings and still exit `0` — the main write-IR → validate → render flow keeps working through all of them. `--json` prints the full structured report (`skills.copies[]`, `dsh.profiles[]`, `capabilities[]`, `selfTest`, `workspace`, and the `errors`/`warnings` arrays the exit code is derived from).
 
 ```bash
 pptfast doctor

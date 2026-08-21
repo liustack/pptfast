@@ -1,7 +1,9 @@
 // @vitest-environment node
+import { execFile as execFileCb } from "node:child_process"
 import { mkdir, mkdtemp, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
+import { promisify } from "node:util"
 import JSZip from "jszip"
 import { afterAll, afterEach, describe, expect, it, beforeAll } from "vitest"
 import { installNodePlatform } from "@/platform/node"
@@ -25,6 +27,8 @@ import {
   runThemes,
   runValidate,
 } from "./commands"
+
+const execFile = promisify(execFileCb)
 
 // 1x1 红色 PNG
 const PNG_1PX = Buffer.from(
@@ -1965,5 +1969,123 @@ describe("brand extract + --theme-file + deck theme.json", () => {
     await writeFile(join(deckDir, "theme.json"), JSON.stringify({ id: "x" }))
     await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
     await expect(runValidate(deckDir)).rejects.toThrow(/invalid theme file .*theme\.json/)
+  })
+})
+
+describe("workspace artifacts (default -o)", () => {
+  async function freshCwd(): Promise<string> {
+    return mkdtemp(join(tmpdir(), "pptfast-ws-cmd-"))
+  }
+
+  it("render without -o writes <cwd>/.pptfast/<slug>/<slug>.pptx and prints the absolute path", async () => {
+    const cwd = await freshCwd()
+    await writeFile(join(cwd, "q3-review.json"), JSON.stringify(VALID_IR))
+    const expected = join(cwd, ".pptfast", "q3-review", "q3-review.pptx")
+    const msg = await runRender(join(cwd, "q3-review.json"), { cwd, gitIgnore: false })
+    expect(msg).toContain(expected)
+    const bytes = await readFile(expected)
+    expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK")
+  })
+
+  it("preview without -o writes the per-slide SVGs under <cwd>/.pptfast/<slug>/", async () => {
+    const cwd = await freshCwd()
+    await writeFile(join(cwd, "hello.json"), JSON.stringify(VALID_IR))
+    const outDir = join(cwd, ".pptfast", "hello")
+    const msg = await runPreview(join(cwd, "hello.json"), undefined, { cwd, gitIgnore: false, htmlOut: true })
+    expect(msg).toContain(join(outDir, "preview.html"))
+    expect((await readdir(outDir)).sort()).toEqual([
+      "001-cover.svg",
+      "002-content.svg",
+      "manifest.json",
+      "preview.html",
+    ])
+  })
+
+  it("anchors at the project config's directory when cwd is nested", async () => {
+    const root = await freshCwd()
+    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ theme: "tech" }))
+    const nested = join(root, "nested")
+    await mkdir(nested)
+    await writeFile(join(nested, "hello.json"), JSON.stringify(VALID_IR))
+    await runRender(join(nested, "hello.json"), { cwd: nested, gitIgnore: false })
+    await expect(stat(join(root, ".pptfast", "hello", "hello.pptx"))).resolves.toBeDefined()
+    await expect(stat(join(nested, ".pptfast"))).rejects.toThrow()
+  })
+
+  it("resolves project outDir against the config file, and skips git ignore", async () => {
+    const root = await freshCwd()
+    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ outDir: "artifacts" }))
+    await writeFile(join(root, "hello.json"), JSON.stringify(VALID_IR))
+    const msg = await runRender(join(root, "hello.json"), {
+      cwd: root,
+      runGit: async () => {
+        throw new Error("git should not run when outDir is configured")
+      },
+    })
+    const expected = join(root, "artifacts", "hello", "hello.pptx")
+    expect(msg).toContain(expected)
+    await expect(stat(expected)).resolves.toBeDefined()
+  })
+
+  it("an explicit -o never creates .pptfast and never prunes that directory", async () => {
+    const cwd = await freshCwd()
+    await writeFile(join(cwd, "hello.json"), JSON.stringify(VALID_IR))
+    const out = join(cwd, "custom")
+    await mkdir(out)
+    await writeFile(join(out, "006-content.svg"), "<svg/>")
+    await writeFile(join(out, "notes.txt"), "keep")
+    await runPreview(join(cwd, "hello.json"), out, { cwd })
+    expect((await readdir(out)).sort()).toEqual(["001-cover.svg", "002-content.svg", "006-content.svg", "notes.txt"])
+    await expect(stat(join(cwd, ".pptfast"))).rejects.toThrow()
+  })
+
+  it("default-path preview prunes leftover NNN-<type>.svg files and leaves other names", async () => {
+    const cwd = await freshCwd()
+    const three = {
+      ...VALID_IR,
+      filename: "wide",
+      slides: [
+        ...VALID_IR.slides,
+        { type: "content", heading: "More", components: [{ type: "paragraph", text: "third" }] },
+      ],
+    }
+    await writeFile(join(cwd, "wide.json"), JSON.stringify(three))
+    await runPreview(join(cwd, "wide.json"), undefined, { cwd, gitIgnore: false })
+    const outDir = join(cwd, ".pptfast", "wide")
+    expect((await readdir(outDir)).sort()).toEqual(["001-cover.svg", "002-content.svg", "003-content.svg"])
+    await writeFile(join(outDir, "notes.txt"), "keep")
+    await writeFile(join(cwd, "wide.json"), JSON.stringify(VALID_IR))
+    await runPreview(join(cwd, "wide.json"), undefined, { cwd, gitIgnore: false })
+    expect((await readdir(outDir)).sort()).toEqual(["001-cover.svg", "002-content.svg", "notes.txt"])
+  })
+
+  it("resolves a relative -o against opts.cwd, not process.cwd()", async () => {
+    const cwd = await freshCwd()
+    await writeFile(join(cwd, "hello.json"), JSON.stringify(VALID_IR))
+    const msg = await runRender(join(cwd, "hello.json"), { output: "relative.pptx", cwd })
+    expect(msg).toContain(join(cwd, "relative.pptx"))
+    await expect(stat(join(cwd, "relative.pptx"))).resolves.toBeDefined()
+  })
+
+  it("a deck project directory uses the directory name as the slug", async () => {
+    const cwd = await freshCwd()
+    const deckDir = join(cwd, "launch-deck")
+    await mkdir(join(deckDir, "pages"), { recursive: true })
+    await writeFile(join(deckDir, "deck.spec.json"), JSON.stringify(makeDeckPlan()))
+    await runRender(deckDir, { cwd, gitIgnore: false, draft: true })
+    await expect(stat(join(cwd, ".pptfast", "launch-deck", "launch-deck.pptx"))).resolves.toBeDefined()
+  })
+
+  it("first default-path render in a git repo appends .pptfast/ to the local exclude file", async () => {
+    const cwd = await freshCwd()
+    await execFile("git", ["init", "-q"], { cwd })
+    await writeFile(join(cwd, "hello.json"), JSON.stringify(VALID_IR))
+    const msg = await runRender(join(cwd, "hello.json"), { cwd })
+    expect(msg).toMatch(/note: added \.pptfast\//)
+    expect(msg).toContain("gitignore is untouched")
+    const exclude = await readFile(join(cwd, ".git", "info", "exclude"), "utf8")
+    expect(exclude).toMatch(/(^|\n)\.pptfast\/\n/)
+    const again = await runRender(join(cwd, "hello.json"), { cwd })
+    expect(again).not.toContain("note: added")
   })
 })

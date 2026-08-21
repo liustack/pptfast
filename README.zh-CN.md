@@ -89,8 +89,8 @@ pptfast preview deck.json -o out/svgs                   # 每页一张 SVG，供
 | 命令 | 作用 |
 |---|---|
 | `validate <target>` | 校验 IR，每条报错都带页码 |
-| `render <target> -o <out.pptx> [--theme <id>]` | 渲染出 `.pptx` |
-| `preview <target> -o <dir> [--html]` | 每页一张 SVG，外加一个自包含的审阅页 |
+| `render <target> [-o <out.pptx>] [--theme <id>]` | 渲染出 `.pptx`。省略 `-o` 则写到 `.pptfast/<deck>/<deck>.pptx` |
+| `preview <target> [-o <dir>] [--html]` | 每页一张 SVG，外加一个自包含的审阅页。省略 `-o` 则写到 `.pptfast/<deck>/` |
 | `serve <target>` | 随改动自动刷新的实时预览，带批注面板 |
 | `audit <target>` | 几何审查：溢出、越界、低对比度、重叠 |
 | `themes` | 列出 21 套内置主题（22 个 id） |

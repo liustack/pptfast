@@ -39,7 +39,7 @@ program
   .command("render")
   .description("Render an IR JSON file, deck project directory, or bare deck name to a .pptx")
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
-  .requiredOption("-o, --output <file>", "output .pptx path")
+  .option("-o, --output <file>", "output .pptx path (default: .pptfast/<deck>/<deck>.pptx under the project root)")
   .option("--theme <id>", "override the deck theme (see `pptfast themes`)")
   .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) and render with it")
   .option("--style <path>", "style overrides JSON re-coloring the theme (see `pptfast schema --style`)")
@@ -48,16 +48,18 @@ program
     "--allow-dropped-content",
     "export anyway when a page holds more than fits and the layout drops blocks (skip the content-drop gate)",
   )
+  .option("--no-git-ignore", "do not add .pptfast/ to this repository's local exclude file")
   .action(
     async (
       target: string,
       opts: {
-        output: string
+        output?: string
         theme?: string
         themeFile?: string
         style?: string
         draft?: boolean
         allowDroppedContent?: boolean
+        gitIgnore?: boolean
       },
     ) => {
       try {
@@ -69,6 +71,8 @@ program
             stylePath: opts.style,
             draft: opts.draft,
             allowDroppedContent: opts.allowDroppedContent,
+            gitIgnore: opts.gitIgnore,
+            cwd: process.cwd(),
           }),
         )
       } catch (e) {
@@ -267,12 +271,20 @@ program
   .command("preview")
   .description("Render each slide to an SVG file for visual self-check")
   .argument("<target>", "IR JSON file, deck project directory, or bare name under ~/.pptfast/decks")
-  .requiredOption("-o, --output <dir>", "output directory")
+  .option("-o, --output <dir>", "output directory (default: .pptfast/<deck>/ under the project root)")
   .option("--html", "also write a self-contained preview.html (all slides inlined — thumbnail strip, keyboard navigation) for human review")
   .option("--theme-file <path>", "load a custom theme file (see `pptfast brand extract`) and preview with it")
-  .action(async (target: string, opts: { output: string; html?: boolean; themeFile?: string }) => {
+  .option("--no-git-ignore", "do not add .pptfast/ to this repository's local exclude file")
+  .action(async (target: string, opts: { output?: string; html?: boolean; themeFile?: string; gitIgnore?: boolean }) => {
     try {
-      console.log(await runPreview(target, opts.output, { htmlOut: opts.html, themeFilePath: opts.themeFile }))
+      console.log(
+        await runPreview(target, opts.output, {
+          htmlOut: opts.html,
+          themeFilePath: opts.themeFile,
+          gitIgnore: opts.gitIgnore,
+          cwd: process.cwd(),
+        }),
+      )
     } catch (e) {
       fail(e)
     }

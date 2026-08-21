@@ -143,6 +143,13 @@ describe("findConfig", () => {
     const hit = await findConfig(root)
     expect(hit?.config).toEqual({ decksDir: "/team/decks" })
   })
+
+  it("reads outDir from a project pptfast.config.json (workspace-artifacts wave)", async () => {
+    const root = await tmp()
+    await writeFile(join(root, "pptfast.config.json"), JSON.stringify({ outDir: "artifacts" }))
+    const hit = await findConfig(root)
+    expect(hit?.config.outDir).toBe("artifacts")
+  })
 })
 
 describe("findUserConfig (W5 task 5: four-layer chain, user layer)", () => {
@@ -218,5 +225,13 @@ describe("findUserConfig (W5 task 5: four-layer chain, user layer)", () => {
     await writeFile(join(home, "config.json"), JSON.stringify({ decksDir: "/team/decks" }))
     const hit = await findUserConfig()
     expect(hit?.config).toEqual({ decksDir: "/team/decks" })
+  })
+
+  it("rejects outDir at the user layer (artifact root is a project property)", async () => {
+    const home = await tmp()
+    process.env.PPTFAST_HOME = home
+    const configPath = join(home, "config.json")
+    await writeFile(configPath, JSON.stringify({ outDir: "artifacts" }))
+    await expect(findUserConfig()).rejects.toThrow(new Error(`invalid ${configPath}:\n(root): Unrecognized key: "outDir"`))
   })
 })

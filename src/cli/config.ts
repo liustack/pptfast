@@ -35,12 +35,25 @@ import { userConfigPath } from "./home"
  * computes the already-resolved absolute path before handing it down to
  * `./deck-dir.ts`'s `resolveDeckTarget` / `./home.ts`'s `decksRoot`, neither
  * of which knows there are two possible bases, only the final one.
+ *
+ * `outDir` (workspace-artifacts wave): where `render`/`preview` write when
+ * the caller passes no `-o`. Default `.pptfast` under this config file's own
+ * directory (`../cli/workspace.ts`'s `WORKSPACE_DIRNAME`); a relative value
+ * here resolves against that same directory, an absolute one passes through.
+ * Setting it at all is also the opt-out from the automatic git-exclude line
+ * — a project that names its own artifact directory has already decided how
+ * that directory is tracked (`prepareWorkspaceDir`). Project layer only, on
+ * purpose: an artifact root is a property of *this project's* working tree,
+ * not of the user's identity, so it deliberately has no counterpart in
+ * {@link UserConfigSchema} below — a user-level `outDir` would collapse every
+ * project's artifacts into one directory.
  */
 const ConfigSchema = z
   .object({
     theme: z.string().optional(),
     style: StyleOverrideSchema.optional(),
     decksDir: z.string().optional(),
+    outDir: z.string().optional(),
   })
   .strict()
 
@@ -49,11 +62,13 @@ export type PptfastConfig = z.infer<typeof ConfigSchema>
 /**
  * User-level config schema (spec §7's four-layer chain — the layer between
  * project config and the artifact's own value): the same three deck-default
- * fields as {@link ConfigSchema} (`theme`/`style`/`decksDir`) — `decksDir`
- * is no longer project-config-free as of W5 task 6 (see {@link ConfigSchema}'s
- * own doc comment on that field), but the two layers still resolve it
- * against different bases: this user layer always resolves against
- * `pptfastHome()` (`./home.ts`'s `decksRoot`, this layer's one fixed
+ * fields as {@link ConfigSchema} (`theme`/`style`/`decksDir`). `outDir` is
+ * deliberately absent — an artifact root belongs to this working tree, not
+ * to the user's identity (see {@link ConfigSchema}'s own `outDir` comment).
+ * `decksDir` is no longer project-config-free as of W5 task 6 (see
+ * {@link ConfigSchema}'s own doc comment on that field), but the two layers
+ * still resolve it against different bases: this user layer always resolves
+ * against `pptfastHome()` (`./home.ts`'s `decksRoot`, this layer's one fixed
  * location), the project layer against the project config file's own
  * directory. Declared as its own flat object literal rather than
  * `ConfigSchema.extend(...)` — a shape this small is not worth taking on

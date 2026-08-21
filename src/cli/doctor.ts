@@ -16,7 +16,9 @@ import { delimiter, join } from "node:path"
 import { formatIssues, generatePptx, renderSlideSvg, validateIr } from "../api"
 import { isMissingModuleError } from "../platform/node"
 import { VERSION } from "../version"
+import { findConfig } from "./config"
 import { compareVersions, PACKAGE_NAME } from "./update"
+import { inspectWorkspace, type GitIgnoreStatus, type GitRunner } from "./workspace"
 
 /** The lowest Node this release supports — mirrors package.json `engines.node`
  *  (`doctor.test.ts` asserts the two stay in step, the same way
@@ -134,6 +136,15 @@ export interface DoctorSelfTest {
   error?: string
 }
 
+/** Where `render`/`preview` write when `-o` is omitted, from the cwd doctor
+ *  was invoked in. Informational only — never a warning or an error. */
+export interface DoctorWorkspace {
+  anchor: string
+  root: string
+  configured: boolean
+  ignore: GitIgnoreStatus
+}
+
 export interface DoctorReport {
   /** The running CLI's version — every drift comparison below is against it. */
   version: string
@@ -142,6 +153,7 @@ export interface DoctorReport {
   dsh: DoctorDsh
   capabilities: DoctorCapability[]
   selfTest: DoctorSelfTest
+  workspace: DoctorWorkspace
   /** Hard failures: the only thing that makes `pptfast doctor` exit non-zero. */
   errors: DoctorFinding[]
   /** Worth fixing, never fatal — a stale skill copy or a missing optional
@@ -161,6 +173,12 @@ export interface DoctorInput {
    *  — overridable so the below-the-floor path is testable on a machine that
    *  is, by definition, running a supported Node. */
   nodeVersion?: string
+  /** Working directory the workspace-artifacts line is resolved from.
+   *  Defaults to `process.cwd()`. Injectable so tests do not report the
+   *  repository they happen to be running in. */
+  cwd?: string
+  /** Injectable git runner for the workspace ignore probe. */
+  runGit?: GitRunner
 }
 
 /** `PINNED="0.18.0"` out of a launcher's text — the exact line
@@ -421,12 +439,20 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
   const env = input.env ?? process.env
   const nodeVersion = input.nodeVersion ?? process.version
 
-  const [skills, dsh, capabilities, selfTest] = await Promise.all([
+  const cwd = input.cwd ?? process.cwd()
+  const [skills, dsh, capabilities, selfTest, projectHit] = await Promise.all([
     scanSkillCopies(home, version),
     inspectDsh(home, version),
     inspectCapabilities(env),
     runSelfTest(),
+    findConfig(cwd),
   ])
+  const workspace = await inspectWorkspace({
+    cwd,
+    projectConfigPath: projectHit?.path,
+    outDir: projectHit?.config.outDir,
+    runGit: input.runGit,
+  })
 
   // An unparsable version string can never prove the runtime is too old, so it
   // passes rather than hard-failing a run over a string this cannot read.
@@ -493,7 +519,7 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
     }
   }
 
-  return { version, runtime, skills, dsh, capabilities, selfTest, errors, warnings }
+  return { version, runtime, skills, dsh, capabilities, selfTest, workspace, errors, warnings }
 }
 
 function mark(state: "ok" | "warn" | "fail" | "n/a"): string {
@@ -567,6 +593,24 @@ export function renderDoctorReport(report: DoctorReport): string {
       ? `  ${mark("ok")} ${report.selfTest.slides} slides validated, rendered, and packed into ${report.selfTest.bytes} bytes in ${report.selfTest.elapsedMs}ms`
       : `  ${mark("fail")} failed after ${report.selfTest.elapsedMs}ms: ${report.selfTest.error}`,
   )
+  lines.push("")
+
+  lines.push("Workspace artifacts (where render/preview write when -o is omitted)")
+  lines.push(`  ${mark("ok")} anchor ${report.workspace.anchor}`)
+  lines.push(
+    report.workspace.configured
+      ? `  ${mark("ok")} output ${report.workspace.root} (from pptfast.config.json outDir)`
+      : `  ${mark("ok")} output ${report.workspace.root}`,
+  )
+  if (report.workspace.ignore === "ignored") {
+    lines.push(`  ${mark("ok")} git-ignored`)
+  } else if (report.workspace.ignore === "not-ignored") {
+    lines.push(`  ${mark("n/a")} not git-ignored — the first render will add a local exclude line`)
+  } else if (report.workspace.ignore === "skipped") {
+    lines.push(`  ${mark("n/a")} git-ignore skipped (outDir is set in pptfast.config.json)`)
+  } else {
+    lines.push(`  ${mark("n/a")} not a git repository`)
+  }
   lines.push("")
 
   lines.push(

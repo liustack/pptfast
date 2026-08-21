@@ -1,8 +1,8 @@
 ---
-summary: 'Deck project directory layout, the six-phase CLI workflow, the live `pptfast serve` preview loop, the `pptfast asset-brief` image-generation brief, placeholder/--draft semantics, locked fields, the boundary-page render surface, and the four-layer config/home directory scheme'
+summary: 'Deck project directory layout, the six-phase CLI workflow, the live `pptfast serve` preview loop, the `pptfast asset-brief` image-generation brief, placeholder/--draft semantics, locked fields, the boundary-page render surface, the four-layer config/home directory scheme, and workspace `.pptfast/` artifacts'
 read_when:
   - authoring or debugging a deck project directory (deck.spec.json + pages/ + assets/)
-  - touching src/spec, src/cli/deck-dir.ts, src/cli/home.ts, src/cli/config.ts, or src/cli/serve.ts
+  - touching src/spec, src/cli/deck-dir.ts, src/cli/home.ts, src/cli/config.ts, src/cli/workspace.ts, or src/cli/serve.ts
   - a placeholder/--draft, orphan-file, or locked-field error needs tracing
   - a cover/chapter/ending page's components or footnote go missing at render, or you need to know which fields a page type actually renders
   - deciding whether a revision-loop change belongs to the download form (`preview --html`) or the live form (`serve`)
@@ -63,7 +63,26 @@ A spec page with no matching `pages/<id>.json` file assembles into `{ placeholde
 
 `pptfastHome()` (`src/cli/home.ts:17-19`) is `$PPTFAST_HOME` or `~/.pptfast`, read fresh every call — one predictable dotdir (same posture as `.ssh`/`.npmrc`/`~/.claude`), not a per-OS XDG/AppData split. `decksRoot()` (same file, line 40-42) is `$PPTFAST_HOME/decks` by default, where a bare deck name resolves (`pptfast render my-deck -o out.pptx`) when no local file/directory of that name exists. `userConfigPath()` is `$PPTFAST_HOME/config.json`.
 
-Four-layer precedence, highest wins: **CLI flag** > **project config** (`pptfast.config.json`, found by walking up from cwd — `findConfig`, `src/cli/config.ts:121-132`) > **user config** (`~/.pptfast/config.json`, `findUserConfig`, same file) > **the artifact's own value** (an authored IR's `theme`, or the schema's `consulting` default). Both config layers can set `decksDir` to redirect bare-name resolution — project's resolves against that config file's own directory (for a team that wants deck projects checked into the repo), user's against `pptfastHome()`. `theme`/`style` values aren't validated against the installed set at file-read time — only once, at whichever layer actually wins (`applyDeckConfig`, `src/cli/commands.ts`).
+Four-layer precedence, highest wins: **CLI flag** > **project config** (`pptfast.config.json`, found by walking up from cwd — `findConfig`, `src/cli/config.ts:121-132`) > **user config** (`~/.pptfast/config.json`, `findUserConfig`, same file) > **the artifact's own value** (an authored IR's `theme`, or the schema's `consulting` default). Both config layers can set `decksDir` to redirect bare-name resolution — project's resolves against that config file's own directory (for a team that wants deck projects checked into the repo), user's against `pptfastHome()`. `theme`/`style` values aren't validated against the installed set at file-read time — only once, at whichever layer actually wins (`applyDeckConfig`, `src/cli/commands.ts`). Project config also accepts `outDir`, the artifact root `render`/`preview` use when `-o` is omitted (default `.pptfast` under that config file). There is no user-layer `outDir`: an artifact directory is a property of this working tree.
+
+## Workspace artifacts (`.pptfast/`)
+
+`render` and `preview` write here when `-o` is omitted (`src/cli/workspace.ts`):
+
+```
+<anchor>/.pptfast/
+  <deck-slug>/
+    preview.html
+    manifest.json
+    001-cover.svg
+    <deck-slug>.pptx
+```
+
+The anchor is the directory of the nearest `pptfast.config.json`, else cwd. The slug is the deck directory name, or the IR filename without its extension. Only regenerable output lives here. `deck.spec.json`, `pages/`, `assets/`, `theme.json`, `pptfast.config.json`, and assemble's `deck.json` stay where they already are.
+
+On a default-path preview, leftover files matching `^\d{3}-[a-z-]+\.svg$` in that deck directory are deleted first, so a shorter deck does not leave orphan SVGs. An explicit `-o` is never pruned.
+
+The first time the CLI creates `.pptfast/` it appends `.pptfast/` to `.git/info/exclude` (via `git rev-parse --git-common-dir`, so a worktree writes the main repo's exclude). It never edits the shared `.gitignore`. `--no-git-ignore`, or a project `outDir`, skips that step. DSH previews stay under `~/.pptfast/previews/` and do not copy into the workspace.
 
 ## Disassemble
 

@@ -14,7 +14,7 @@ read_when:
 
 | 命令 | 作用 |
 |---|---|
-| `render <target> -o <out.pptx> [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content]` | 校验并渲染成 `.pptx` |
+| `render <target> [-o <out.pptx>] [--theme <id>] [--theme-file <file>] [--style <file>] [--draft] [--allow-dropped-content] [--no-git-ignore]` | 校验并渲染成 `.pptx`。不传 `-o` 时写到 `<项目>/.pptfast/<deck>/<deck>.pptx` |
 | `validate <target>` | 校验 IR，输出带页码的错误信息与提示性警告 |
 | `audit <target> [--json] [--pixels]` | 确定性几何审查，发现问题 exit 1（见[审查](#审查)） |
 | `asset-brief <target> [--json]` | 为每个 `image` 组件生成一份配图简报（见[配图简报](#配图简报)） |
@@ -25,7 +25,7 @@ read_when:
 | `themes [--json]` | 列出 21 套内置主题（22 个 id） |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见[主题](./themes.zh-CN.md#你自己的品牌)） |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
-| `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`），永远不受占位页拦截 |
+| `preview <target> [-o <dir>] [--html] [--no-git-ignore]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`），永远不受占位页拦截。不传 `-o` 时写到 `<项目>/.pptfast/<deck>/` |
 | `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新 |
 | `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`，确定性转换，不调模型 |
 | `init` | 生成 `pptfast.config.json` 模板 |
@@ -33,6 +33,8 @@ read_when:
 | `check-update` / `self-update` | 检查 npm 上的新版本 / 更新全局安装 |
 
 `--theme-file` 在 `render`、`validate`、`audit`、`preview`、`serve` 上都可用。
+
+省略 `-o` 时，`render` / `preview` 把产物写到项目根下的 `.pptfast/<deck>/`（项目根是 `pptfast.config.json` 所在目录，找不到配置就用 cwd）。命令每次都打印绝对路径。第一次创建该目录时，CLI 会把 `.pptfast/` 追加进 `.git/info/exclude`，产物留在本地。`--no-git-ignore` 跳过这一步。项目配置里的 `outDir` 会整体替换 `.pptfast`，同时也跳过 exclude。显式的 `-o` 永远优先，那个路径既不清扫，也不代写忽略。
 
 `render` 不会把一份悄悄缺内容的文件交给你。deck 里有未填的占位页时，要加 `--draft`。某一页装的内容超过内容区容量、版面只能丢掉放不下的块，而页面上没有任何提示时，要加 `--allow-dropped-content`，报错会写清哪几页各丢了几块。真正的修法是把这一页缩短或拆成两页，`audit` 会指向同样这几页。这两个开关是给「我知道，我就要这份文件」的场合用的。两道闸门都不影响 `preview` 和 `serve`：看半成品正是它们的用途。
 
@@ -82,15 +84,16 @@ pptfast asset-brief my-deck/
 
 `pptfast doctor [--json]` 体检本机的安装状况。它只读本地状态：不写任何文件，不发任何网络请求，也没有凭据可查，因为本来就没有需要配置的东西。
 
-五项检查，报告按这个顺序输出：
+六段内容，报告按这个顺序输出：
 
 - **已安装的 skill 副本。** 装好的 skill 是一份*拷贝*：[`INSTALL.md`](../INSTALL.md) 第 2 步把整个文件夹复制进 harness 的 skill 目录，那份拷贝就永远停在复制当天的启动器上。升级 CLI 不会碰它，于是 `pptfast --version` 报着新版本，机器上的副本却可能停在几个月前。doctor 会扫 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills`（Pi 和 OpenCode 都读最后这个）下有没有 `pptfast/` 文件夹，从每份副本的 `scripts/run.sh` 里读出 `PINNED` 版本，落后于当前 CLI 的标为 stale，并给出就地覆盖它的那一条 clone + copy（就是 [`INSTALL.md`](../INSTALL.md) 第 2 步的命令，指向那份副本）。一份副本都没找到是正常状态，不是问题：dsh 上 skill 随插件一起发，CLI 本身也能单独用。副本里没有 `run.sh`、或者 `run.sh` 里没有 `PINNED` 行，报成「版本未知」，而不是让扫描失败。
 - **DSH 插件。** `~/.dsh/` 存在时，逐个检查 `~/.dsh/profiles/` 下的每个 profile 有没有装 `@liustack/pptfast`，版本优先从该 profile 自己的 `node_modules` 里读（那才是真正会被加载的那份），读不到再退回它 `package.json` 里声明的版本。落后于当前 CLI 的 profile 会给出带版本号的安装命令 `npx -y @deepseek-ai/dsh plugin --profile <profile> add @liustack/pptfast@<version>`：版本是故意写死的，因为 dsh 走的 pnpm 会压住 24 小时内发布的版本，`@latest` 会被悄悄解析成一个更旧的版本。没有 `~/.dsh/` 就是这项不适用，跟没通过不是一回事。
 - **运行时。** Node 版本对照 `engines` 下限（22.19）；跑在 Bun 上时额外报出 Bun 自己的版本。
 - **可选能力。** `sharp` 能不能 import、`soffice` 在不在 PATH 上。没有 sharp，预览光栅化和 `audit --pixels` 用不了，纯 SVG 预览和 `.pptx` 渲染不受影响。没有 soffice，PDF 导出这条路用不了，同样不影响主流程。
-- **自检渲染。** 一份内置的小 deck 走一遍真实管线，全程在内存里：校验、渲染一页 SVG、生成 `.pptx` 字节，不落盘。报告里带耗时毫秒数。其余四项都是在观察环境，这一项直接证明东西是能用的。
+- **自检渲染。** 一份内置的小 deck 走一遍真实管线，全程在内存里：校验、渲染一页 SVG、生成 `.pptx` 字节，不落盘。报告里带耗时毫秒数。其余几项都是在观察环境，这一项直接证明东西是能用的。
+- **工作区产物。** 从 cwd 解析出的项目根、`.pptfast/`（或配置的 `outDir`）的绝对路径、git 是否已经忽略它。只报告，不因此失败，也不写 exclude。
 
-exit code 只有硬失败才是 `1`：Node 低于下限，或自检渲染没跑通。skill 副本落后、dsh 插件落后、可选能力缺失都算 warning，仍然 exit `0`，因为写 IR → validate → render 这条主流程在这些情况下照样能走完。`--json` 输出完整的结构化报告（`skills.copies[]`、`dsh.profiles[]`、`capabilities[]`、`selfTest`，以及 exit code 所依据的 `errors`/`warnings` 两个数组）。
+exit code 只有硬失败才是 `1`：Node 低于下限，或自检渲染没跑通。skill 副本落后、dsh 插件落后、可选能力缺失都算 warning，仍然 exit `0`，因为写 IR → validate → render 这条主流程在这些情况下照样能走完。`--json` 输出完整的结构化报告（`skills.copies[]`、`dsh.profiles[]`、`capabilities[]`、`selfTest`、`workspace`，以及 exit code 所依据的 `errors`/`warnings` 两个数组）。
 
 ```bash
 pptfast doctor
