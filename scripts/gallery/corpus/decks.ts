@@ -124,7 +124,9 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
 function bodyCapacity(def: LayoutDefinition): number {
   const counted = def.slots.filter((s) => typeof s.capacity === "number")
   if (counted.length === 0) return 2
-  return Math.max(1, Math.min(...counted.map((s) => s.capacity!)))
+  // A declared 0 is a real value (mono-bleed's body slot accepts nothing) —
+  // clamping it up to 1 authors a page validate-core rejects outright.
+  return Math.max(0, Math.min(...counted.map((s) => s.capacity!)))
 }
 
 function wantsImage(def: LayoutDefinition): boolean {
@@ -149,6 +151,18 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
   // One source, not the corpus' full three: the slot is ~80px tall and a
   // three-entry citation does not fit, which showed up as dropped content
   // on every quote-stage page.
+  if (capacity === 0) return []
+
+  // stat-hero's one slot is the hero itself: fed a citation, the heading has
+  // to carry the 180px hero figure and the corpus' long English heading
+  // overruns the render-safety floor. Author the page as intended — a KPI
+  // whose value is the hero — so the heading drops to the caption row.
+  if (def.id === "stat-hero") {
+    const kpi = b.kpi_cards!(lex) as Component & { items?: unknown[] }
+    if (Array.isArray(kpi.items)) kpi.items = kpi.items.slice(0, 1)
+    return [kpi]
+  }
+
   if (capacity <= 1) {
     const s = lex.sources[0]!
     return [{ type: "citation", sources: [{ label: s.label, ref: s.ref }] }]
@@ -198,7 +212,10 @@ export function layoutPage(layoutId: string, lex: Lexicon, assets: CorpusAssets)
           : {
               type: "content",
               layout: layoutId,
-              heading: lex.headings[7]!,
+              // stat-hero's heading is a hero caption capped at two short
+              // lines — the corpus' default row overruns its render-safety
+              // floor in English. headings[11] is each lexicon's shortest.
+              heading: def.id === "stat-hero" ? lex.headings[11]! : lex.headings[7]!,
               components: bodyFor(def, lex),
               footnote: lex.sources[1]!.label,
               ...(def.kind === "takeover" ? { image_side: "right" as const } : {}),
