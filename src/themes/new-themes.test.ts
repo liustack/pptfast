@@ -12,9 +12,6 @@ import { CRAYON_TOKENS } from "./crayon"
 import { ARENA_TOKENS } from "./arena"
 import { MUSEUM_TOKENS } from "./museum"
 import { STAGE_TOKENS } from "./stage"
-import { LECTURE_TOKENS } from "./lecture"
-import { CANONICAL_THEME_IDS, THEME_STYLES } from "./index"
-import { contrastRatio } from "../svg/ink"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -386,13 +383,6 @@ function rgbDist(a: [number, number, number], b: [number, number, number]): numb
 
 function hslSat(hex: string): number {
   const [r0, g0, b0] = hexRgb(hex)
-function hexToRgb(hex: string): [number, number, number] {
-  const v = parseInt(hex.slice(1), 16)
-  return [(v >> 16) & 255, (v >> 8) & 255, v & 255]
-}
-
-function hueSatL(hex: string): { hue: number; sat: number; l: number } {
-  const [r0, g0, b0] = hexToRgb(hex)
   const r = r0 / 255
   const g = g0 / 255
   const b = b0 / 255
@@ -400,44 +390,10 @@ function hueSatL(hex: string): { hue: number; sat: number; l: number } {
   const min = Math.min(r, g, b)
   const l = (max + min) / 2
   const d = max - min
-<<<<<<< HEAD
   if (d === 0) return 0
   return l > 0.5 ? d / (2 - max - min) : d / (max + min)
 }
-=======
-  if (d === 0) return { hue: 0, sat: 0, l }
-  const sat = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-  let hue: number
-  if (max === r) hue = (g - b) / d + (g < b ? 6 : 0)
-  else if (max === g) hue = (b - r) / d + 2
-  else hue = (r - g) / d + 4
-  return { hue: hue * 60, sat, l }
-}
 
-/** CIE76 ΔE, same Lab path as `chart-palette-taboo.test.ts`. */
-function deltaE(a: string, b: string): number {
-  const toLab = (hex: string) => {
-    const lin = hexToRgb(hex).map((c) => {
-      const s = c / 255
-      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-    }) as [number, number, number]
-    const [r, g, bl] = lin
-    const X = (0.4124564 * r + 0.3575761 * g + 0.1804375 * bl) / 0.95047
-    const Y = 0.2126729 * r + 0.7151522 * g + 0.072175 * bl
-    const Z = (0.0193339 * r + 0.119192 * g + 0.9503041 * bl) / 1.08883
-    const f = (t: number) => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116)
-    const fx = f(X)
-    const fy = f(Y)
-    const fz = f(Z)
-    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)] as const
-  }
-  const x = toLab(a)
-  const y = toLab(b)
-  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2])
-}
-
-// lecture（黑板夜校，2026-08-21）：墨绿板面 + 衬线 + 黄粉笔。Same
-// shape-only assertions as the blocks above — registry wiring is covered
 // separately by themes/index.test.ts.
 describe("lecture tokens", () => {
   it("satisfies the StyleTokens shape", () => {
@@ -537,4 +493,3 @@ describe("lecture tokens", () => {
     expect(otherDarkGreen).toEqual([])
   })
 })
->>>>>>> feat/theme-lecture
