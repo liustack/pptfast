@@ -736,6 +736,19 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `scenarioBearing` / `annualReviewPreset`: live pipeline matched
       //     the auto-merged goldens byte-for-byte. Not recaptured.
       // `.audit.json` needed no recapture (findings stayed the empty array).
+      //
+      // Re-recaptured (board-cover-restore wave 1, 2026-08-22). Cover pool
+      // 13→19 plus nine board-face locks. Exactly one slide changed in each
+      // of the three (index 0, the cover). `.audit.json` needed no recapture
+      // (findings stayed the empty array):
+      //   - `basic` (`consulting`): `editorial-masthead` -> `verdict-index`
+      //     (cover lock).
+      //   - `scenarioBearing` (`journal`): `left-anchor` ->
+      //     `institutional-block` (pool denominator).
+      //   - `annualReviewPreset` (`journal`): `tone-adaptive-header` ->
+      //     `memo-head` (pool denominator).
+      // No non-cover slide moved. Cover change did not trigger adjacent
+      // anti-repetition on the chapter slot.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

@@ -117,7 +117,10 @@ export const ENTERPRISE_TOKENS: StyleTokens = {
     heading: ["Microsoft YaHei", "Helvetica Neue", "Arial", "system-ui"],
     body: ["Microsoft YaHei", "Helvetica Neue", "Arial", "system-ui"],
   },
-  shape: { radius: 8 }, // 企业圆润（spec 提案）
+  shape: {
+    radius: 8, // 企业圆润（spec 提案）
+    cover: { textAnchor: "start", bandY: 256, bandH: 220, bandMark: true },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#F7F7F4" },
     chapter: { kind: "color", value: "#F7F7F4" },

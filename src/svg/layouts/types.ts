@@ -42,6 +42,18 @@ export type CoverLayoutId =
   | "memo-head"
   | "board-head"
   | "bill-head"
+  // 封面还原第一波（2026-08-22，cover 池 13 -> 19）：六家板面构图在池里
+  // 不存在，按构造进共享池。verdict-index = 结论句+强调色块+编号论据，
+  // band-title = 通栏色带承反白标题，header-band = 顶栏只承 meta、标题落纸面，
+  // paper-masthead = 纸底巨号+右缘年份一字一行，horizon-wedge = 底缘缓坡楔，
+  // corner-wedge = 右下角三角楔。单 signer 坐标写在文件常量里，共用构造的
+  // 对齐/带高/峰点走 `style.shape.cover`，零 theme id。
+  | "verdict-index"
+  | "band-title"
+  | "header-band"
+  | "paper-masthead"
+  | "horizon-wedge"
+  | "corner-wedge"
 
 // Wave 2（chapter/ending）新增 id：每主题 1 个（命名见 Wave 2 任务表）
 export type ChapterLayoutId =

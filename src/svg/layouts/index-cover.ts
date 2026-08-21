@@ -12,6 +12,12 @@ import { InstitutionalBlockCover } from "./cover-institutional-block"
 import { MemoHeadCover } from "./cover-memo-head"
 import { BoardHeadCover } from "./cover-board-head"
 import { BillHeadCover } from "./cover-bill-head"
+import { VerdictIndexCover } from "./cover-verdict-index"
+import { BandTitleCover } from "./cover-band-title"
+import { HeaderBandCover } from "./cover-header-band"
+import { PaperMastheadCover } from "./cover-paper-masthead"
+import { HorizonWedgeCover } from "./cover-horizon-wedge"
+import { CornerWedgeCover } from "./cover-corner-wedge"
 
 export type { CoverLayout, CoverLayoutId } from "./types"
 
@@ -31,4 +37,10 @@ export const COVER_LAYOUTS: Record<CoverLayoutId, CoverLayout> = {
   "memo-head": MemoHeadCover,
   "board-head": BoardHeadCover,
   "bill-head": BillHeadCover,
+  "verdict-index": VerdictIndexCover,
+  "band-title": BandTitleCover,
+  "header-band": HeaderBandCover,
+  "paper-masthead": PaperMastheadCover,
+  "horizon-wedge": HorizonWedgeCover,
+  "corner-wedge": CornerWedgeCover,
 }

@@ -54,13 +54,11 @@ import type { DecorProps } from "./types"
  *   - 设计板坐标只改了点列的 x 一处（改成由斜引线解出，见上），y、半径、
  *     件数与两条引线一处未改。
  *
- * 已知且照实记录：设计板的 ember 封面样例里，火星是骑在 `split-diagonal`
- * 的火橙楔形面上、沿斜边内侧攀升的（板上原话「楔形属 layout 件」）。楔形
- * 由 `cover-split-diagonal.tsx` 画，本 motif 不碰 layout；motif 的点列因此
- * 走恒位的右缘轨道，抽到 split-diagonal 封面时会压在楔形上（primary 点
- * 压 primary 楔形不可见，accent/border 仍可见）。让点列避开楔形要么让
- * motif 知道当页选中了哪个 layout（内容感知，`inventory.md` 的确定性红线
- * 禁止），要么改 layout（本轮「其余主题逐字节不变」的约束禁止）。
+ * 封面页火星改骑 `corner-wedge` 的斜边：(820,720)→(1280,120)，沿内法线
+ * 往楔内偏，落在楔面内侧。浅色四枚走 `colors.bg`（板上纸色压火橙楔）。
+ * primary 压 primary 会消失，这不是内容页右缘那套取色。内容页和收尾页仍走
+ * 右缘轨道 (1150,600)→(1245,86)，避免火星穿过正文区。chapter 继续完全退让。
+ * 读的是 `slide.type`，不是当页选中了哪个 layout。
  *
  * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
  * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
@@ -70,25 +68,38 @@ import type { DecorProps } from "./types"
  * （`motif-selection.ts` 的 `MOTIF_CANDIDATES`），没有别的主题借用它。
  */
 
-// ── 右缘斜引线（火星攀升的轨道） ────────────────────────────────────────
-const GUIDE_FROM: readonly [number, number] = [1150, 600]
-const GUIDE_TO: readonly [number, number] = [1245, 86]
+// ── 斜引线（火星攀升的轨道） ────────────────────────────────────────
+const CONTENT_GUIDE_FROM: readonly [number, number] = [1150, 600]
+const CONTENT_GUIDE_TO: readonly [number, number] = [1245, 86]
+const COVER_GUIDE_FROM: readonly [number, number] = [820, 720]
+const COVER_GUIDE_TO: readonly [number, number] = [1280, 120]
+/** Inset along the inward normal so cover sparks sit on the wedge face, not on the cut. */
+const COVER_INSET = 18
 const GUIDE_STROKE = 1
 
-// ── 右缘上升点列（自下而上渐大，火橙与琥珀相间，圆心一律落在斜引线上） ──
-/**
- * 斜引线在高度 cy 处的横坐标。两枚端点是常量，所以这里解出来的也是常量
- * ——把「圆心落线」交给几何，而不是逐枚手抄坐标（推导见文件头）。
- * 保留两位小数：整数会把最大的一枚拉出线外 0.4px，四舍五入到 0.01 之后
- * 偏差小于线宽的百分之一，肉眼与导出都读作正落线上。
- */
-function guideXAt(cy: number): number {
-  const [x1, y1] = GUIDE_FROM
-  const [x2, y2] = GUIDE_TO
+type Guide = readonly [number, number]
+
+function guideXAt(cy: number, from: Guide, to: Guide): number {
+  const [x1, y1] = from
+  const [x2, y2] = to
   return Math.round((x1 + ((x2 - x1) * (cy - y1)) / (y2 - y1)) * 100) / 100
 }
 
-/** 火橙（primary）四枚，`[cy, r]`——cx 由 `guideXAt` 解出。 */
+/** Cover sparks sit a few px along the inward normal, into the wedge. */
+function sparkCx(cy: number, r: number, cover: boolean): number {
+  if (!cover) return guideXAt(cy, CONTENT_GUIDE_FROM, CONTENT_GUIDE_TO)
+  const x = guideXAt(cy, COVER_GUIDE_FROM, COVER_GUIDE_TO)
+  const [x1, y1] = COVER_GUIDE_FROM
+  const [x2, y2] = COVER_GUIDE_TO
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len = Math.hypot(dx, dy)
+  const nx = -dy / len
+  const cx = x + nx * COVER_INSET
+  return Math.round(Math.min(cx, 1280 - r - 0.5) * 100) / 100
+}
+
+/** 火橙（primary）四枚，内容/收尾右缘轨道。`[cy, r]`，cx 由 `guideXAt` 解出。 */
 const PRIMARY_SPARKS: readonly [number, number][] = [
   [560, 2.5],
   [430, 3.5],
@@ -100,6 +111,21 @@ const ACCENT_SPARKS: readonly [number, number][] = [
   [495, 3],
   [360, 4],
   [205, 5],
+]
+/**
+ * 封面楔面点列：y 抄板面沿斜边那串，不沿用右缘轨道的峰点 y120。
+ * 浅色四枚走纸色（板上 `#FBF5EE` 压火橙楔，primary 压 primary 会消失）。
+ */
+const COVER_PAPER_SPARKS: readonly [number, number][] = [
+  [560, 3],
+  [470, 4],
+  [380, 5],
+  [290, 6],
+]
+const COVER_ACCENT_SPARKS: readonly [number, number][] = [
+  [515, 3.5],
+  [425, 4.5],
+  [335, 5.5],
 ]
 
 // ── 顶缘斜引线（左上角的起手） ──────────────────────────────────────────
@@ -116,22 +142,29 @@ export function EmberMotif({ slide, ctx }: DecorProps) {
   // chapter 是整版 primary 火橙底——四枚 primary 火星直接消失（见文件头）。
   if (slide.type === "chapter") return null
 
+  const cover = slide.type === "cover"
+  const from = cover ? COVER_GUIDE_FROM : CONTENT_GUIDE_FROM
+  const to = cover ? COVER_GUIDE_TO : CONTENT_GUIDE_TO
+  const paper = ctx.colors.bg
+  const lightSparks = cover ? COVER_PAPER_SPARKS : PRIMARY_SPARKS
+  const darkSparks = cover ? COVER_ACCENT_SPARKS : ACCENT_SPARKS
+
   return (
     <>
-      {/* 右缘斜引线。真正的 <line>，不用 <path> — svg2pptx 会把 <path> 转成
+      {/* 斜引线。真正的 <line>，不用 <path> — svg2pptx 会把 <path> 转成
           custGeom，走 prstGeom="line" 才是 package-audit 硬门认的形状
           （spec §4.4）。 */}
-      <line x1={GUIDE_FROM[0]} y1={GUIDE_FROM[1]} x2={GUIDE_TO[0]} y2={GUIDE_TO[1]} stroke={sand} strokeWidth={GUIDE_STROKE} />
+      <line x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} stroke={sand} strokeWidth={GUIDE_STROKE} />
 
-      {/* 右缘上升点列 */}
-      <g fill={fire}>
-        {PRIMARY_SPARKS.map(([cy, r]) => (
-          <circle key={cy} cx={guideXAt(cy)} cy={cy} r={r} />
+      {/* 上升点列。封面骑楔面斜边并内偏，浅色四枚走纸色。内容/收尾仍走右缘轨道。 */}
+      <g fill={cover ? paper : fire}>
+        {lightSparks.map(([cy, r]) => (
+          <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} />
         ))}
       </g>
       <g fill={amber}>
-        {ACCENT_SPARKS.map(([cy, r]) => (
-          <circle key={cy} cx={guideXAt(cy)} cy={cy} r={r} />
+        {darkSparks.map(([cy, r]) => (
+          <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} />
         ))}
       </g>
 

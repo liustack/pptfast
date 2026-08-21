@@ -87,7 +87,11 @@ export const EMBER_TOKENS: StyleTokens = {
     heading: ["Microsoft YaHei", "Verdana", "Segoe UI", "Helvetica Neue", "Arial", "system-ui"],
     body: ["Microsoft YaHei", "Verdana", "Segoe UI", "Helvetica Neue", "Arial", "system-ui"],
   },
-  shape: { radius: 10, gapScale: 1 }, // 友好圆润（创业路演的亲和感，介于 pulse 的 8 与更方正的既有主题之间）
+  shape: {
+    radius: 10,
+    gapScale: 1, // 友好圆润（创业路演的亲和感，介于 pulse 的 8 与更方正的既有主题之间）
+    cover: { textAnchor: "start", wedgePeakY: 120, wedgeStartX: 820, metaInWedge: true },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#FBF5EE" },
     chapter: { kind: "color", value: "#BC4620" },

@@ -99,6 +99,27 @@ export interface StyleShape {
    * `[0.8, 1.6]`.
    */
   typeScale?: number
+  /**
+   * Optional cover-layout knobs. Layouts read these. They never branch on
+   * theme id. Omit every field and the layout uses its own file constants
+   * (`band-title`: y=260, h=200, start, no mark, no wave.
+   * `corner-wedge`: peakY=340, startX=980, middle, meta on paper).
+   * Not part of `StyleOverrideSchema`. IR overrides stay
+   * `{ radius, gapScale, typeScale }`.
+   */
+  cover?: {
+    textAnchor?: "start" | "middle"
+    bandY?: number
+    bandH?: number
+    /** Small accent square on the band (enterprise). */
+    bandMark?: boolean
+    /** Accent q-curve under the band (classroom). */
+    bandWave?: boolean
+    wedgePeakY?: number
+    wedgeStartX?: number
+    /** Meta in readableOn(primary) inside the wedge (ember). */
+    metaInWedge?: boolean
+  }
 }
 
 /**

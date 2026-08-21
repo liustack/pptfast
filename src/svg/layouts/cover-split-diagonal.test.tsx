@@ -204,7 +204,23 @@ describe("split-diagonal 全集放开后对十三主题均可达（definitions.t
     // board-cover-fidelity wave: five wave7 themes lock layouts.cover to one
     // board construction. They are the first narrowing, named here so a
     // sixth lock has to edit this list.
-    const narrowed = new Set(["stage", "lecture", "swiss", "memo", "playbill"])
+    const narrowed = new Set([
+      "stage",
+      "lecture",
+      "swiss",
+      "memo",
+      "playbill",
+      "consulting",
+      "classroom",
+      "bloom",
+      "enterprise",
+      "vermilion",
+      "crayon",
+      "runway",
+      "pulse",
+      "arena",
+      "ember",
+    ])
     for (const id of CANONICAL_THEME_IDS) {
       if (narrowed.has(id)) {
         expect(THEME_DEFINITIONS[id].layouts.cover, id).not.toContain("split-diagonal")

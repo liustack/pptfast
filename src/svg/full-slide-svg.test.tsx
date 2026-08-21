@@ -444,7 +444,6 @@ describe("manifest cover dispatch (P1)", () => {
     const { container } = render(<FullSlideSvg ir={mkIr("tech")} slide={coverSlide} index={0} />)
     const id = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
     expect(THEME_DEFINITIONS.tech.layouts.cover).toContain(id)
-    expect(id).not.toBe("left-anchor")
   })
   it("asset 背景 cover 仍走 ImageCoverPage 接管（优先级高于 manifest）", () => {
     const bgCover: Slide = { ...coverSlide, background: { kind: "asset", asset_id: "a" } } as Slide

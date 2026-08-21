@@ -1,6 +1,6 @@
 /**
  * Layout registry (W2 task 1, spec §3/§6/§8): an explicit, statically-checked
- * description of what the render chain's 47 standard layouts + 4
+ * description of what the render chain's 53 standard layouts + 4
  * page-level image takeovers already draw. This is a metadata layer only —
  * it formalizes today's implicit page structure (layout JSX + the
  * FullSlideSvg takeover dispatch) into named `slots`, it does not change any
@@ -86,6 +86,12 @@ import { layoutDef as coverInstitutionalBlock } from "./cover-institutional-bloc
 import { layoutDef as coverMemoHead } from "./cover-memo-head"
 import { layoutDef as coverBoardHead } from "./cover-board-head"
 import { layoutDef as coverBillHead } from "./cover-bill-head"
+import { layoutDef as coverVerdictIndex } from "./cover-verdict-index"
+import { layoutDef as coverBandTitle } from "./cover-band-title"
+import { layoutDef as coverHeaderBand } from "./cover-header-band"
+import { layoutDef as coverPaperMasthead } from "./cover-paper-masthead"
+import { layoutDef as coverHorizonWedge } from "./cover-horizon-wedge"
+import { layoutDef as coverCornerWedge } from "./cover-corner-wedge"
 
 import { layoutDef as chapterMastheadChapter } from "./chapter-masthead-chapter"
 import { layoutDef as chapterConstellationChapter } from "./chapter-constellation-chapter"
@@ -289,6 +295,15 @@ export interface LayoutDefinition {
    */
   paintsOwnBackground?: boolean
   /**
+   * Emit the theme motif *after* this layout, so decoration can sit on a
+   * field the layout itself just painted. The default order is motif then
+   * layout: motifs stay behind type. A lower-right wedge covers that
+   * behind-layer, so sparks riding the hypotenuse would vanish inside the
+   * fill. Opt in only for layouts whose board construction puts motif
+   * pieces on a layout-painted face.
+   */
+  motifOverLayout?: boolean
+  /**
    * Heading-overflow hard-error parameters (quote-stage wave, T2 fix round —
    * `.issues/2026-07-28-quote-stage/task-2-report.md`'s fix-report addendum):
    * when set, `ir-quality.ts`'s `checkSlide` runs `fitHeadingLines(slide
@@ -420,6 +435,16 @@ const COVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [coverMemoHead.id]: coverMemoHead,
   [coverBoardHead.id]: coverBoardHead,
   [coverBillHead.id]: coverBillHead,
+  // Board-cover-restore wave 1 (2026-08-22, cover pool 13 -> 19): appended
+  // at the end of the cover group. Key insertion order is what
+  // `weightedPickBySeed` samples positionally, so new members go on the end
+  // rather than in the middle of the existing ones.
+  [coverVerdictIndex.id]: coverVerdictIndex,
+  [coverBandTitle.id]: coverBandTitle,
+  [coverHeaderBand.id]: coverHeaderBand,
+  [coverPaperMasthead.id]: coverPaperMasthead,
+  [coverHorizonWedge.id]: coverHorizonWedge,
+  [coverCornerWedge.id]: coverCornerWedge,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -603,7 +628,7 @@ const TAKEOVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 47 standard layouts + 4 takeover layouts, keyed by id (`kind`
+/** All 53 standard layouts + 4 takeover layouts, keyed by id (`kind`
  *  still spells the standard tier `"archetype"` — a wire-format fossil, see
  *  {@link LayoutDefinition.kind}). */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {

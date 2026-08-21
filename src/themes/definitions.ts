@@ -241,16 +241,10 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * 各自漂移时深等会红，但引用恒等这条更强的保证从一开始就不存在。
  */
 const CLASSROOM_STRUCTURE: NonNullable<ThemeDefinition["layoutTendencies"]> = {
-  // cover `banner-title`：整幅深色横幅压住标题，正是一块板书的读法——先在顶
-  // 上拉一条横杠，再把今天的题目写进去。
-  // cover `tone-adaptive-header`：克制的自适应留白封面，`narrative/index.ts`
-  // 明确「从不出现在任何 strategy 的 identityTendencies 里」的三个万金油
-  // identity layout 之一——在默认 briefing 下它拿满额边际权重（max(3,1)=3），
-  // 是这一对里真正把 classroom/bloom 从盲主题默认序列上撬开的那一个。
-  // banner-title 单独声明会是空转（briefing.identityTendencies.cover 已经把它
-  // 锁在权重 3），但它是这个身份的真实主张，按 declaration-rebalance wave
-  // 裁定 1 的先例保留 + 追加而不是替换。
-  cover: ["banner-title", "tone-adaptive-header"],
+  // cover `band-title`：通栏雾蓝板书带承反白标题，陶土波浪在带下。板上那张
+  // 脸，硬锁。banner-title / tone-adaptive-header 那对注释是错的——池里的
+  // banner-title 不画通栏带。
+  cover: ["band-title"],
   // Second-front wave (2026-08-22)，四轴 L / top-band / medium / medium：
   // - chapter `masthead-chapter` + `tone-adaptive-chapter`：一条横线加一个
   //   标题就是板书的断章，角落水印是讲义的第二档。后者不在 briefing 的
@@ -263,6 +257,14 @@ const CLASSROOM_STRUCTURE: NonNullable<ThemeDefinition["layoutTendencies"]> = {
   chapter: ["masthead-chapter", "tone-adaptive-chapter"],
   content: ["rail-numbered", "tone-adaptive-content"],
   ending: ["tone-adaptive-ending", "masthead-ending"],
+}
+
+/** classroom / bloom share one layouts object the same way they share CLASSROOM_STRUCTURE. */
+const CLASSROOM_LAYOUTS: ThemeDefinition["layouts"] = {
+  cover: ["band-title"],
+  chapter: FULL_LAYOUTS.chapter,
+  content: FULL_LAYOUTS.content,
+  ending: FULL_LAYOUTS.ending,
 }
 
 /**
@@ -306,7 +308,7 @@ const CLASSROOM_STRUCTURE: NonNullable<ThemeDefinition["layoutTendencies"]> = {
  */
 const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif" | "layoutTendencies">> = {
   consulting: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["verdict-index"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "banner-motif",
     // Theme-structure wave, task T2: consulting's own motif is
     // `banner-motif`, and `banner-title`/`banner-chapter`/`banner-ending`
@@ -381,7 +383,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     //   真实拉力来自 `split-band`，`banner-heading` 是按裁定 1 保留的真实主张。
     // - ending 三元集不动（declaration-rebalance wave 的成果）。
     layoutTendencies: {
-      cover: ["banner-title", "left-anchor"],
+      cover: ["verdict-index"],
       chapter: ["banner-chapter", "poster-chapter"],
       content: ["banner-heading", "split-band"],
       ending: ["banner-ending", "rail-ending", "tone-adaptive-ending"],
@@ -487,7 +489,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // fashion-masthead/fashion-chapter/fashion-ending 是 runway 专属新表达。
   // journal 与其共享 masthead 报头家族但 tokens 气质大变。
   runway: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["paper-masthead"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // motif 刻意不配（2026-07-10 全覆盖时曾加「时尚编辑标记」，两版均被
     // 用户裁难看后撤销）：runway 的语言=满版色块+超大排印+留白，排印至上是
     // 终审裁决——十三主题中唯一留空 motif 的一个。
@@ -497,7 +499,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // its own, this layout family is runway's only structural signature
     // beyond token colors.
     layoutTendencies: {
-      cover: ["fashion-masthead"],
+      cover: ["paper-masthead"],
       // Second-front wave (2026-08-22)，四轴 L / bottom-left / none / airy：
       // - chapter `masthead-chapter` 追加：fashion 家族是它唯一的结构签名
       //   （无 motif），双细线给它一张不那么响的第二脸。`masthead-chapter`
@@ -617,11 +619,11 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     斜切，比横幅更紧、更有工业感。它不在 briefing 的 cover 集合里，
   //     max(3,1)=3，是这一对里真正产生边际权重的那个。
   enterprise: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["band-title"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：IKB 方块秩序
     motif: "enterprise-motif",
     layoutTendencies: {
-      cover: ["banner-title", "split-diagonal"],
+      cover: ["band-title"],
       // Second-front wave (2026-08-22)，四轴 L / top-band / medium / tight：
       // - chapter `constellation-chapter` + `banner-chapter`：IKB 方块秩序
       //   在断章上读作左侧巨号加底部细线，或整版蓝压白字。两个 id 里
@@ -707,7 +709,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // cover 声明（theme-structure-allocation wave）见 `CLASSROOM_STRUCTURE`
   // 的文档注释——那个对象同时是 bloom 的结构行，两家共用一份引用。
   classroom: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: CLASSROOM_LAYOUTS,
     motif: "classroom-motif",
     layoutTendencies: CLASSROOM_STRUCTURE,
   },
@@ -720,7 +722,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 水彩 motif 随色板一起退役，preset 从此连装饰几何也是同一份，渲出来的是
   // bloom 自己的樱粉色板。bloom 这个 theme id 永不删除的红线不变。
   bloom: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: CLASSROOM_LAYOUTS,
     motif: "classroom-motif",
     layoutTendencies: CLASSROOM_STRUCTURE,
   },
@@ -827,12 +829,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // ending 全部 448 组合验证，仅 160 组不与既有 6 个声明主题碰撞）——上面
   // 三选是其中同时兼顾气质贴合、strategy 零/低重合、且实测通过的一组。
   pulse: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["horizon-wedge"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "pulse-motif",
     layoutTendencies: {
-      cover: ["split-diagonal"],
+      cover: ["horizon-wedge"],
       // Second-front wave (2026-08-22)。四轴按提案 1.3 重建，不当仓内事实：
-      // L / top-band / light / medium（封面 `split-diagonal` 左轴，pulse-motif
+      // L / top-band / light / medium（封面 `horizon-wedge` 底缘缓坡，pulse-motif
       // v2 顶缘一条心电线，`gapScale` 1）。与 academic 的反推值全同。
       // - chapter `rail-chapter` 追加：点轨读作疗程推进，与顶缘那一条心电线
       //   同一句话。既有 `tone-adaptive-chapter` 是万金油，这一格本来就有
@@ -962,21 +964,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 声明主题（含 pulse/terra）逐一比对均不同，也不与 7 个未声明主题共享的
   // 默认序列相同。
   ember: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["corner-wedge"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "ember-motif",
     layoutTendencies: {
-      // cover 声明（theme-structure-allocation wave，覆盖本条目上方注释里
-      // 「cover 轴不声明」的旧裁剪）：旧裁剪的理由是「按 seed 逐一试，cover
-      // 单声明只收敛到 banner-title / poster-center 两个可达结果，没有区分度
-      // 的声明是噪音」。那条理由针对的是「一枚固定 seed 上的序列会不会岔开」，
-      // 而分配表问的是另一个问题：这个主题的封面身份是什么，别人抽到它的时候
-      // 该看见什么。两个问题的答案可以不同，这里按分配表回答后者。
-      //   - `split-diagonal`：暖白底上一道火橙斜切——ember 的四轴是 居中 /
-      //     bottom-right / medium / medium，路演封面要的就是这道向上的斜势。
-      //     不在 briefing 的 cover 集合里，max(3,1)=3，真实边际权重。
-      //   - `poster-center`：引首 + 居中大标题，路演第一页的正面站位。briefing
-      //     已锁权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
-      cover: ["split-diagonal", "poster-center"],
+      // cover 硬锁 `corner-wedge`。板上是右下火橙角楔，标题留左纸面，meta
+      // 反白入楔。`split-diagonal` 是全高侧栏，画不出这只角楔。
+      cover: ["corner-wedge"],
       // Second-front wave (2026-08-22)，四轴 C / bottom-right / medium / medium：
       // - chapter 三元集：保留已声明的里程碑点轨，追加满版断言横幅与序号断章
       //   （后者与已声明的 `constellation-ending` 首尾同族）。三元集是 chapter
@@ -1040,7 +1033,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 9 个既有声明主题（含 pulse/terra/ember）逐一比对均不同，也不与 7 个未声明
   // 主题共享的默认序列相同（派生结果见 task-1-report.md）。
   vermilion: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["band-title"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "vermilion-motif",
     layoutTendencies: {
       // cover 声明（theme-structure-allocation wave，覆盖本条目上方注释里
@@ -1067,7 +1060,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       //     classroom 与 terra 也声明了它，但三家的 cover 集合各不相同
       //     （classroom 配 banner-title、terra 配 left-anchor），权重向量
       //     两两不同。
-      cover: ["banner-title", "tone-adaptive-header"],
+      cover: ["band-title"],
       // Second-front wave (2026-08-22)，四轴 C / top-band / medium / medium：
       // - chapter 保持不动（banner + rail 已是汇报体的签名）。
       // - content `rail-numbered` + `split-band`：通栏头带正是红头文件那一条
@@ -1096,10 +1089,10 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // layouts 仍是四页型全集（各家无一收窄，heavy 身份用 motif 降档表达，
   // 不靠策展砍 layout）。
   crayon: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["header-band"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "crayon-motif",
     layoutTendencies: {
-      cover: ["tone-adaptive-header", "banner-title"],
+      cover: ["header-band"],
       // Second-front wave (2026-08-22)，四轴 L / top-band / heavy / medium：
       // - chapter `fashion-chapter` + `tone-adaptive-chapter`：满版原色断章加
       //   角落水印，heavy 的量在色不在件。后者是万金油 id。
@@ -1114,20 +1107,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   },
   // arena（竞技场紫黑，2026-08-21 场景审计 #27 第六组新主题·娱乐电竞）：紫黑灯灭 + 电光绿 HUD，由专属
   // arena-motif 承载。结构行 center / bottom-left / heavy / tight，最近邻
-  // campaign（C/BL/heavy/medium），岔在留白轴。封面构造 split-diagonal /
-  // poster-center（3:1 软权重，照现有写法）：
-  //   - `split-diagonal`：品红斜楔自右下切入是这个 layout 的几何，arena 的
-  //     封面样例就是它。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实
-  //     边际权重。
-  //   - `poster-center`：引首 + 居中大标题，开赛前一秒的正面站位。briefing
-  //     已锁权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
-  // chapter / ending 不声明：heavy 装饰把页缘占满，章节与收尾走通用池，
-  // 不靠再声明一个与 campaign 同形的轴去硬凑区分度。
+  // campaign（C/BL/heavy/medium），岔在留白轴。封面硬锁 `corner-wedge`：
+  // 板上是居中标题加右下品红角楔。`split-diagonal` 是全高侧栏，不是这只楔。
   arena: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["corner-wedge"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "arena-motif",
     layoutTendencies: {
-      cover: ["split-diagonal", "poster-center"],
+      cover: ["corner-wedge"],
       // Second-front wave (2026-08-22)，四轴 C / bottom-left / heavy / tight：
       // 覆盖本条目上方「chapter / ending 不声明」的旧裁剪。
       // - chapter `banner-chapter` + `fashion-chapter`：两式满版（整版紫黑压

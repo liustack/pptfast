@@ -341,7 +341,7 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
  * Boundary-page render-surface hard gate (bench-driven fixes wave, defect
  * D): `cover`, `chapter`, and `ending` slides can never render `components`
  * or `footnote` — every layout in all three families
- * (`src/svg/layouts/index-{chapter,ending}.ts`'s registries, the 13 cover
+ * (`src/svg/layouts/index-{chapter,ending}.ts`'s registries, the 19 cover
  * layouts `index.ts` re-exports, plus the background-asset
  * `ImageCoverPage` takeover that intercepts cover/chapter before any
  * layout runs, `src/svg/image-pages.tsx` — `full-slide-svg.tsx`'s
@@ -360,7 +360,7 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
  * reason `subheading` is deliberately absent from `cover`/`chapter`/
  * `ending`'s rule below despite the benchmark evidence that first flagged
  * this defect suspecting it might belong: `subheading` renders
- * unconditionally on all 13 cover layouts, on 5 of `chapter`'s 9 (all but
+ * unconditionally on all 19 cover layouts, on 5 of `chapter`'s 9 (all but
  * `fashion-chapter`/`poster-chapter`/`tone-adaptive-chapter`), and on 6 of
  * `ending`'s 7 (all but `tone-adaptive-ending`) — gating any of those at
  * the type level would be a false positive for the majority layout that

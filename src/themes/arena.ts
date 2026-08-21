@@ -59,7 +59,11 @@ export const ARENA_TOKENS: StyleTokens = {
     heading: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "system-ui"],
     body: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "system-ui"],
   },
-  shape: { radius: 10, gapScale: 0.9 }, // HUD 卡片圆角 + tight 留白（比 campaign 的 1.0 再收一档）
+  shape: {
+    radius: 10,
+    gapScale: 0.9, // HUD 卡片圆角 + tight 留白（比 campaign 的 1.0 再收一档）
+    cover: { textAnchor: "middle", wedgePeakY: 340, wedgeStartX: 980 },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#120B22" },
     chapter: { kind: "color", value: "#120B22" },

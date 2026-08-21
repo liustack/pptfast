@@ -5,14 +5,15 @@ import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { EmberMotif } from "./motif-ember-motif"
+import { renderSlideSvg } from "../../api"
 import type { PptxIR, Slide } from "@/ir"
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
 const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
-/** chapter 不画（整版 primary 火橙底），其余三档画同一张。 */
-const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
+/** chapter 不画。content/ending 走右缘轨道。cover 改骑楔面斜边。 */
+const BODY_SLIDES = [contentSlide, endingSlide]
 
 /** 设计板上的四条红虚线禁区。 */
 const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
@@ -66,14 +67,16 @@ function parts(root: Element) {
  * 的 ember 设计表。本文件是本轮新建。
  */
 describe("EmberMotif（上升火星）", () => {
-  it("cover/content/ending 画同一张：斜引线 + 七枚火星 + 顶缘短线", () => {
-    for (const slide of DRAWN_SLIDES) {
+  it("cover/content/ending 都画斜引线 + 七枚火星 + 顶缘短线。封面几何不同于内容/收尾", () => {
+    for (const slide of [...BODY_SLIDES, coverSlide]) {
       const { root } = draw("ember", slide)
       const p = parts(root)
       expect(p.guide, `no guide line on ${slide.type}`).toBeTruthy()
       expect(p.tick, `no top tick on ${slide.type}`).toBeTruthy()
       expect(p.allCircles, `wrong spark count on ${slide.type}`).toHaveLength(7)
     }
+    expect(draw("ember", coverSlide).markup).not.toBe(draw("ember", contentSlide).markup)
+    expect(draw("ember", contentSlide).markup).toBe(draw("ember", endingSlide).markup)
   })
 
   it("chapter 完全退让——整版 primary 火橙底上四枚 primary 火星直接消失", () => {
@@ -82,21 +85,26 @@ describe("EmberMotif（上升火星）", () => {
     expect(Array.from(root.querySelectorAll("circle"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：四枚火星 primary、三枚 accent、斜引线 border、顶缘短线 primary", () => {
+  it("颜色一律读 token：内容页四枚 primary 三枚 accent。封面浅色四枚走纸色，避免压在楔上消失", () => {
     const t = resolveStyle("ember")
-    const { root } = draw("ember", coverSlide)
-    const p = parts(root)
-    expect(p.circles(t.colors.primary)).toHaveLength(4)
-    expect(p.circles(t.colors.accent)).toHaveLength(3)
-    expect(p.guide.getAttribute("stroke")).toBe(t.colors.border)
-    expect(p.tick.getAttribute("stroke")).toBe(t.colors.primary)
+    const body = parts(draw("ember", contentSlide).root)
+    expect(body.circles(t.colors.primary)).toHaveLength(4)
+    expect(body.circles(t.colors.accent)).toHaveLength(3)
+    expect(body.guide.getAttribute("stroke")).toBe(t.colors.border)
+    expect(body.tick.getAttribute("stroke")).toBe(t.colors.primary)
+
+    const cover = parts(draw("ember", coverSlide).root)
+    expect(cover.circles(t.colors.bg)).toHaveLength(4)
+    expect(cover.circles(t.colors.accent)).toHaveLength(3)
+    expect(cover.circles(t.colors.primary)).toHaveLength(0)
+    expect(cover.guide.getAttribute("stroke")).toBe(t.colors.border)
+    expect(cover.tick.getAttribute("stroke")).toBe(t.colors.primary)
   })
 
-  it("点列几何：自下而上渐大，火橙与琥珀相间", () => {
+  it("点列几何（内容/收尾）：自下而上渐大，火橙与琥珀相间，落在右缘轨道上", () => {
     const t = resolveStyle("ember")
-    const { root } = draw("ember", coverSlide)
+    const { root } = draw("ember", contentSlide)
     const p = parts(root)
-    // 横坐标由斜引线解出（见下一条测试），这里钉的是解出来的那一组值。
     expect(p.circles(t.colors.primary).map((c) => [num(c, "cx"), num(c, "cy"), num(c, "r")])).toEqual([
       [1157.39, 560, 2.5],
       [1181.42, 430, 3.5],
@@ -108,7 +116,6 @@ describe("EmberMotif（上升火星）", () => {
       [1194.36, 360, 4],
       [1223.01, 205, 5],
     ])
-    // 自下而上（y 递减）时半径递增——「上升」的方向感就是这条单调性。
     const byHeight = p.allCircles.map((c) => [num(c, "cy"), num(c, "r")] as const).sort((a, b) => b[0] - a[0])
     for (let i = 1; i < byHeight.length; i++) expect(byHeight[i]![1]).toBeGreaterThan(byHeight[i - 1]![1])
   })
@@ -119,27 +126,62 @@ describe("EmberMotif（上升火星）", () => {
    * 0.7-4.7px，最下面那枚偏得比自己的半径还多。这条测试量的是「圆心落线」
    * 本身，而不是七个抄来的横坐标——常量改了它依然成立，几何错了它当场红。
    */
-  it("七枚火星的圆心严格落在斜引线上（第四轮评审：不许一会串上一会悬空）", () => {
-    const { root } = draw("ember", coverSlide)
+  it("内容/收尾：七枚火星的圆心严格落在右缘斜引线上", () => {
+    const { root } = draw("ember", contentSlide)
     const { guide, allCircles } = parts(root)
     const [x1, y1, x2, y2] = [num(guide, "x1"), num(guide, "y1"), num(guide, "x2"), num(guide, "y2")]
     for (const c of allCircles) {
       const onLine = x1 + ((x2 - x1) * (num(c, "cy") - y1)) / (y2 - y1)
-      // 点到线的垂距（0.01 的坐标取整乘以线的水平/斜长比），远小于 1px 线宽。
       expect(Math.abs(num(c, "cx") - onLine), `spark off the guide line: ${c.outerHTML}`).toBeLessThan(0.01)
     }
   })
 
-  it("斜引线几何：(1150,600) → (1245,86)；顶缘短线 x48→120 的 y14", () => {
+  it("封面整页渲染：火星在楔面 path 之后，才能骑在火橙面上", () => {
+    const svg = renderSlideSvg(
+      {
+        version: "4",
+        filename: "ember-cover.pptx",
+        theme: { id: "ember" },
+        meta: {},
+        assets: { images: {} },
+        slides: [{ type: "cover", heading: "封面", components: [] }],
+      } as unknown as PptxIR,
+      0,
+    )
+    const wedge = svg.indexOf('data-archetype="corner-wedge"')
+    const lastDecor = svg.lastIndexOf("data-decor")
+    expect(wedge).toBeGreaterThan(0)
+    expect(lastDecor).toBeGreaterThan(wedge)
+    expect(svg.lastIndexOf("<circle")).toBeGreaterThan(svg.indexOf("M820,720"))
+  })
+
+  it("封面：斜引线是楔面斜边 (820,720)→(1280,120)，火星沿内法线偏进楔内", () => {
     const { root } = draw("ember", coverSlide)
+    const { guide, allCircles, tick } = parts(root)
+    expect([num(guide, "x1"), num(guide, "y1"), num(guide, "x2"), num(guide, "y2")]).toEqual([820, 720, 1280, 120])
+    expect([num(tick, "x1"), num(tick, "y1"), num(tick, "x2"), num(tick, "y2")]).toEqual([48, 14, 120, 14])
+    const [x1, y1, x2, y2] = [num(guide, "x1"), num(guide, "y1"), num(guide, "x2"), num(guide, "y2")]
+    for (const c of allCircles) {
+      const onLine = x1 + ((x2 - x1) * (num(c, "cy") - y1)) / (y2 - y1)
+      const cx = num(c, "cx")
+      const r = num(c, "r")
+      expect(cx + r, `cover spark must stay on the canvas: ${c.outerHTML}`).toBeLessThanOrEqual(1280)
+      if (num(c, "cy") > 120) {
+        expect(cx, `cover spark should sit to the right of the hypotenuse: ${c.outerHTML}`).toBeGreaterThan(onLine - 0.01)
+      }
+    }
+  })
+
+  it("内容/收尾斜引线几何仍是 (1150,600) → (1245,86)；顶缘短线 x48→120 的 y14", () => {
+    const { root } = draw("ember", contentSlide)
     const { guide, tick } = parts(root)
     expect([num(guide, "x1"), num(guide, "y1"), num(guide, "x2"), num(guide, "y2")]).toEqual([1150, 600, 1245, 86])
     expect([num(tick, "x1"), num(tick, "y1"), num(tick, "x2"), num(tick, "y2")]).toEqual([48, 14, 120, 14])
   })
 
   /** 安全区守卫（设计板的四条红虚线逐条量）。 */
-  it("安全区：右缘整组在正文区右沿 x1136 之外", () => {
-    const { root } = draw("ember", coverSlide)
+  it("安全区：内容/收尾右缘整组在正文区右沿 x1136 之外", () => {
+    const { root } = draw("ember", contentSlide)
     const { guide, allCircles } = parts(root)
     expect(Math.min(num(guide, "x1"), num(guide, "x2"))).toBeGreaterThan(BODY_ZONE.x + BODY_ZONE.w)
     for (const c of allCircles) {
@@ -149,8 +191,8 @@ describe("EmberMotif（上升火星）", () => {
     }
   })
 
-  it("安全区：斜引线不进右下 logo 盒，也不进右上 logo 盒", () => {
-    const { root } = draw("ember", coverSlide)
+  it("安全区：内容/收尾斜引线不进右下 logo 盒，也不进右上 logo 盒", () => {
+    const { root } = draw("ember", contentSlide)
     const { guide, allCircles } = parts(root)
     // 下端 y600 在右下 logo 盒上沿 y630 之上。
     expect(Math.max(num(guide, "y1"), num(guide, "y2"))).toBeLessThan(LOGO_BOX.y)
@@ -172,7 +214,7 @@ describe("EmberMotif（上升火星）", () => {
   })
 
   it("不画任何左竖条", () => {
-    for (const slide of DRAWN_SLIDES) {
+    for (const slide of [...BODY_SLIDES, coverSlide]) {
       const { root } = draw("ember", slide)
       for (const l of Array.from(root.querySelectorAll("line"))) {
         const vertical = num(l, "x1") === num(l, "x2") && Math.abs(num(l, "y2") - num(l, "y1")) > 30
@@ -188,8 +230,9 @@ describe("EmberMotif（上升火星）", () => {
     const terra = resolveStyle("terra")
     const ctx = buildCtx(terra, {})
     const { markup } = render(<EmberMotif ir={ir("terra")} slide={coverSlide} ctx={ctx} />)
-    expect(markup).toContain(terra.colors.primary)
+    expect(markup).toContain(terra.colors.bg)
     expect(markup).toContain(terra.colors.accent)
+    expect(markup).toContain(terra.colors.primary)
     for (const hex of ["#FBF5EE", "#FFFDF9", "#BC4620", "#E8A13C", "#2E241E", "#6E6156", "#E8DCCB"]) {
       expect(markup, `ember token ${hex} leaked into the terra render`).not.toContain(hex)
     }
@@ -208,7 +251,7 @@ describe("EmberMotif（上升火星）", () => {
   })
 
   it("Decor body passes subset validation", () => {
-    for (const slide of [...DRAWN_SLIDES, chapterSlide]) {
+    for (const slide of [...BODY_SLIDES, coverSlide, chapterSlide]) {
       expect(() => assertSubset(draw("ember", slide).root)).not.toThrow()
     }
   })

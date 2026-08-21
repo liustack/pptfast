@@ -37,6 +37,9 @@ import type { DecorProps } from "./types"
  *     y301-408 与正文区纵向重叠，但横向完全不相交。
  *   - 设计板坐标一处未改。
  *
+ * 封面页不画顶缘心电线：`horizon-wedge` 已经在楔面走了一条折线，两条心搏
+ * 叠在一页上。细胞圈仍画。内容页和收尾页保持心电线 + 细胞。chapter 仍退让。
+ *
  * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
  * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
  *
@@ -68,11 +71,12 @@ export function PulseMotif({ slide, ctx }: DecorProps) {
   if (slide.type === "chapter") return null
 
   const mint = ctx.colors.accent
+  const cover = slide.type === "cover"
 
   return (
     <>
-      {/* 顶缘心电线 */}
-      <polyline points={ECG_POINTS} fill="none" stroke={mint} strokeWidth={ECG_STROKE} />
+      {/* 顶缘心电线。封面让给 horizon-wedge 楔面那条折线，避免两条心搏。 */}
+      {!cover && <polyline points={ECG_POINTS} fill="none" stroke={mint} strokeWidth={ECG_STROKE} />}
       {/* 右缘细胞轮廓点簇 */}
       <g fill="none" stroke={mint} strokeWidth={CELL_STROKE}>
         {CELLS.map((c) => (

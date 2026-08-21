@@ -88,7 +88,11 @@ export const VERMILION_TOKENS: StyleTokens = {
     heading: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "Arial", "system-ui"],
     body: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "Arial", "system-ui"],
   },
-  shape: { radius: 2, gapScale: 1 }, // 庄重利落（方正克制，汇报体不求圆润）
+  shape: {
+    radius: 2,
+    gapScale: 1, // 庄重利落（方正克制，汇报体不求圆润）
+    cover: { textAnchor: "middle", bandY: 272, bandH: 196 },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#F6EFE3" }, // 浅底（红身份来自结构型 layout + motif，见文件头背景裁定）
     chapter: { kind: "color", value: "#B02318" }, // 正红整版（白字走 readableOn，chapter 被对比度地板豁免）
