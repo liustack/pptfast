@@ -54,10 +54,11 @@ describe("SvgContent", () => {
       </svg>,
     )
     expect(markup).toContain('data-audit-rect="96,176,1088,424"')
-    // The two blocks are set down together at the golden position, so the
-    // first box reports 276.32 rather than the rect's own top — the
-    // annotation follows the placement, which is what this test pins.
-    expect(markup).toContain('data-audit-box="96,276.32,1088"')
+    // The two blocks are set down together. Leftover is large enough that
+    // the golden-top cap binds, so the first box reports 208 (rect.y 176 +
+    // two block-gaps) rather than the uncapped 276.32. The annotation
+    // follows the placement, which is what this test pins.
+    expect(markup).toContain('data-audit-box="96,208,1088"')
   })
 
   it("records dropped components for the audit without painting anything the reader can see", () => {
@@ -95,13 +96,13 @@ describe("SvgContent", () => {
   })
 })
 
-it("sets a lone component down at the golden position — 38% of the rect's leftover above it", () => {
-  // The 2026-07-10 ruling, restored on 2026-08-21 after both extremes were
-  // tried and refused: centering a lone block hung 150px+ of nothing above
-  // *and* below it, and pinning it to the rect's top edge welded it to the
-  // heading with the whole page's air behind it ("99% 页面不能看"). The
-  // block measures 38 here, so of the 386 left over 146.32 goes above it
-  // and 239.68 below.
+it("sets a lone short component down by at most one heading-body beat, not 38% of a tall leftover", () => {
+  // 上不空优先 (2026-08-21, fifth review): a lone short block in a tall
+  // content rect used to take 38% of leftover as top air — 146px here —
+  // and read as a second island under the heading. The 38% share still
+  // applies when leftover is small. When leftover is huge, extra air
+  // above the block caps at two designed block-gaps (32) and the rest
+  // sinks below.
   const markup = renderToStaticMarkup(
     <svg>
       <SvgContent
@@ -111,7 +112,8 @@ it("sets a lone component down at the golden position — 38% of the rect's left
       />
     </svg>,
   )
-  expect(markup).toContain('data-audit-box="96,314.32,1088"')
+  expect(markup).toContain('data-audit-box="96,208,1088"')
+  expect(markup).not.toContain('data-audit-box="96,314.32,1088"')
 })
 
 // Structure-components wave task 1, decision 1: a full-body component
@@ -137,7 +139,7 @@ describe("SvgContent full-body components (structure-components wave task 1)", (
     expect(markup).toContain('data-audit-box="96,176,1088"')
     // No settle — the component's own <g> children translate straight to
     // rect.y (176), never to a golden-position y like the lone-component
-    // bullets case above (which lands at 314.32). It fills the rect's whole
+    // bullets case above (which lands at 208). It fills the rect's whole
     // height, so it never reaches the drop path's "+N" marker either.
     expect(markup).not.toContain("未展示")
   })
@@ -217,12 +219,12 @@ it("surplus-grown component y is identical between the audit annotation and the 
     </svg>,
   )
   // The second component's audit box must report the grown *and settled* y
-  // (251.248 — stretch spends its 60% share first, +73.2 per kpi, the gap
+  // (249.2 — stretch spends its 60% share first, +73.2 per kpi, the gap
   // pass adds the 8 its 1.5x ceiling allows, and the assembled block is
-  // then set down by 34.048 — see layout.test.ts's arithmetic).
-  expect(markup).toContain('data-audit-box="0,251.248,400"')
+  // then set down by the 32px cap rather than 34.048 — see layout.test.ts).
+  expect(markup).toContain('data-audit-box="0,249.2,400"')
   // And the component's own rendered translate must carry that exact same y —
   // "rendering the annotation" (not a parallel, possibly-diverging value).
-  expect(markup).toContain("translate(0,251.248)")
+  expect(markup).toContain("translate(0,249.2)")
   expect(markup).not.toContain('data-audit-box="0,136,400"')
 })

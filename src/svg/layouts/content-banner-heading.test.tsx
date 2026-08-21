@@ -8,6 +8,7 @@ import { accessibleInk, readableOn } from "../ink"
 import { BannerHeadingContent } from "./content-banner-heading"
 import type { PptxIR, Slide } from "@/ir"
 import { FOOTER_DIVIDER_Y, footnoteBaselineFor } from "../chrome-geometry"
+import { BLOCK_GAP } from "../layout"
 
 // BrandChrome's brand logo bands (see templates/consulting.test.tsx's own
 // LOGO_BANDS block) — re-declared here (self-contained, no cross-import from
@@ -75,22 +76,21 @@ function ir(
 // 648 this page kept 12.50px of real gap (4x raster,
 // `layout--banner-heading--zh`), which the 2026-08-19 review filed as the
 // footnote sitting on the rule rather than above it.
-// Golden-placement re-pin (2026-08-21): two tokens per block — a
-// `data-audit-box` and the `translate` that renders it. Token counts
-// unchanged, no element added, dropped, or resized. This is the layout the
-// review complained about by name (heritage p07, ink p04/p09, insight p07:
-// a filled banner, then a strip of nothing, then the page's only block).
-//   - `LEGACY_BANNER_MARKUP`/`_NOLOGO`/`_TLLOGO`: paragraph 230 -> 301.44,
-//     bullets 288 -> 359.44. Both by the same 71.44, so the two stay 58
-//     apart — the gap keeps the 1.5x ceiling the previous wave gave it
-//     (24px, down from the 40 the old 2.5x allowed), and only the assembled
-//     block moves, taking 38% of the 188 left under it.
-//   - `LEGACY_LONG_MARKUP`: the lone block 236 -> 369, which is where it
-//     sat before the top-aligned wave — 38% of its rect's leftover above it.
-const LEGACY_BANNER_MARKUP = `<text x="96" y="52" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="72" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="127" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="184" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,230,1088,390"><g data-audit-box="96,301.44,1088"><g transform="translate(96,301.44)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,359.44,1088"><g transform="translate(96,359.44)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>`
-const LEGACY_LONG_MARKUP = `<rect x="96" y="72" width="1088" height="132" rx="4" fill="#1E2A4A"></rect><text x="120" y="130.5" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及</text><text x="120" y="167.5" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">跨可用区容灾演练的完整落地路径说明</text><g data-audit-rect="96,236,1088,384"><g data-audit-box="96,369,1088"><g transform="translate(96,369)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">支撑论据。</text></g></g></g>`
-const LEGACY_NOLOGO_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg"><text x="96" y="52" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="72" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="127" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="184" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,230,1088,390"><g data-audit-box="96,301.44,1088"><g transform="translate(96,301.44)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,359.44,1088"><g transform="translate(96,359.44)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text></svg>`
-const LEGACY_TLLOGO_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg"><text x="176" y="52" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="72" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="127" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="184" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,230,1088,390"><g data-audit-box="96,301.44,1088"><g transform="translate(96,301.44)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,359.44,1088"><g transform="translate(96,359.44)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text></svg>`
+// Rhythm re-pin (2026-08-21, fifth review): kicker/banner sit 8px lower
+// (em box on TITLE_ZONE_TOP 48, banner keeps the 20px kicker gap) and the
+// gathered body follows the banner under the golden-top cap instead of
+// taking 38% of a tall leftover. Token counts unchanged. Every differing
+// token is a y / height / translate y. No x, no element added or dropped.
+//   - chrome: kicker 52->60, banner 72->80, heading 127->135, subheading
+//     184->192, content rect 230->238 (h 390->382).
+//   - body: paragraph 301.44->270, bullets 359.44->328. Both by the same
+//     31.44, so the pair stays 58 apart (the 1.5x gap ceiling).
+//   - `LEGACY_LONG_MARKUP`: banner 72->80, heading lines +8, rect 236->244
+//     (h 384->376), lone block 369->276 (rect.y + the 32px cap).
+const LEGACY_BANNER_MARKUP = `<text x="96" y="60" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="80" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="135" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="192" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,238,1088,382"><g data-audit-box="96,270,1088"><g transform="translate(96,270)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,328,1088"><g transform="translate(96,328)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text>`
+const LEGACY_LONG_MARKUP = `<rect x="96" y="80" width="1088" height="132" rx="4" fill="#1E2A4A"></rect><text x="120" y="138.5" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">微服务架构下的分布式事务一致性保障机制与补偿策略设计规范以及</text><text x="120" y="175.5" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">跨可用区容灾演练的完整落地路径说明</text><g data-audit-rect="96,244,1088,376"><g data-audit-box="96,276,1088"><g transform="translate(96,276)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">支撑论据。</text></g></g></g>`
+const LEGACY_NOLOGO_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg"><text x="96" y="60" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="80" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="135" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="192" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,238,1088,382"><g data-audit-box="96,270,1088"><g transform="translate(96,270)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,328,1088"><g transform="translate(96,328)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text></svg>`
+const LEGACY_TLLOGO_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg"><text x="176" y="60" font-family="Georgia, Songti SC, STSong, serif" font-size="12" fill="#5B6069" letter-spacing="4" dominant-baseline="alphabetic">第一部分：研究背景</text><rect x="96" y="80" width="1088" height="88" rx="4" fill="#1E2A4A"></rect><text x="120" y="135" font-family="Georgia, Songti SC, STSong, serif" font-size="34" font-weight="600" fill="#FFFFFF" dominant-baseline="alphabetic">结论先行：断言横幅</text><text x="96" y="192" font-family="Georgia, Songti SC, STSong, serif" font-size="22" fill="#1E2A4A" dominant-baseline="alphabetic"><tspan fill="#1C1E23" font-weight="700">核心结论</tspan><tspan fill="#1E2A4A">：证据链完整</tspan></text><g data-audit-rect="96,238,1088,382"><g data-audit-box="96,270,1088"><g transform="translate(96,270)"><text x="0" y="24" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">本节陈述关键论断。</text></g></g><g data-audit-box="96,328,1088"><g transform="translate(96,328)"><circle cx="5" cy="18.8" r="3" fill="#1E2A4A"></circle><text x="26" y="26" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据一</text><circle cx="5" cy="60.8" r="3" fill="#1E2A4A"></circle><text x="26" y="68" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据二</text><circle cx="5" cy="102.8" r="3" fill="#1E2A4A"></circle><text x="26" y="110" font-family="Georgia, Songti SC, STSong, serif" font-size="24" fill="#1C1E23" dominant-baseline="alphabetic">论据三</text></g></g></g><text x="96" y="645" font-family="Georgia, Songti SC, STSong, serif" font-size="14" fill="#5B6069" font-style="italic" dominant-baseline="alphabetic">数据来源：内部埋点，2026Q2</text></svg>`
 
 describe("BannerHeadingContent", () => {
   it("consulting tokens 下与旧 MckinseyNavyContent 输出逐字节一致（档位一，含单/双行 banner、subheading、footnote、跨章节 kicker）", () => {
@@ -219,18 +219,18 @@ describe("BannerHeadingContent", () => {
     const longRoot = render(longHeadingSlide)
 
     const shortBanner = Array.from(shortRoot.querySelectorAll("rect")).find(
-      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "72",
+      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "80",
     )!
     const longBanner = Array.from(longRoot.querySelectorAll("rect")).find(
-      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "72",
+      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "80",
     )!
     expect(shortBanner.getAttribute("height")).toBe("88")
     expect(longBanner.getAttribute("height")).toBe("132") // wraps to 2 lines
 
     const shortContentY = contentRectY(shortRoot)
     const longContentY = contentRectY(longRoot)
-    expect(shortContentY).toBe(160 + 32) // 1-line banner bottom (160) + gap
-    expect(longContentY).toBe(204 + 32) // 2-line banner bottom (204) + gap
+    expect(shortContentY).toBe(168 + 32) // 1-line banner bottom (168) + gap
+    expect(longContentY).toBe(212 + 32) // 2-line banner bottom (212) + gap
     expect(longContentY).toBeGreaterThan(shortContentY)
   })
 
@@ -286,7 +286,7 @@ describe("BannerHeadingContent", () => {
     )
     const root = parseSvgRoot(markup)
     const banner = Array.from(root.querySelectorAll("rect")).find(
-      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "72",
+      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "80",
     )!
     const bannerBox = {
       x: Number(banner.getAttribute("x")),
@@ -346,7 +346,7 @@ describe("BannerHeadingContent", () => {
     const root = parseSvgRoot(markup)
 
     const banner = Array.from(root.querySelectorAll("rect")).find(
-      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "72",
+      (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "80",
     )!
     expect(banner).toBeTruthy()
     expect(banner.getAttribute("width")).toBe("1088")
@@ -360,9 +360,9 @@ describe("BannerHeadingContent", () => {
     expect(heading.getAttribute("x")).toBe("120")
     // 回填旧测试「Content renders a full-width assertion banner with a white
     // heading inside it」（旧文件 consulting.test.tsx L95-125）对 baseline
-    // 垂直居中值的显式断言：单行 34px 标题的基线 y=127（72 + 88/2 +
+    // 垂直居中值的显式断言：单行 34px 标题的基线 y=135（80 + 88/2 +
     // round(34*0.32)）。
-    expect(heading.getAttribute("y")).toBe("127")
+    expect(heading.getAttribute("y")).toBe("135")
 
     // Content components below the banner, not inside a foreignObject.
     expect(markup).not.toContain("foreignObject")
@@ -415,5 +415,98 @@ describe("BannerHeadingContent", () => {
       const expectedSubheadingInk = accessibleInk(tokens.colors.primary, ctx.defaultBg as string, 22)
       expect(out).toContain(`fill="${expectedSubheadingInk}"`)
     }
+  })
+
+  it("seats the kicker em box on the title-zone top (y=48), matching heading-family top breathing", () => {
+    const TITLE_ZONE_TOP = 48
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const deck = ir([chapter1, bannerSlide])
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <BannerHeadingContent ir={deck} slide={bannerSlide} index={1} ctx={ctx} />
+      </svg>,
+    )
+    const root = parseSvgRoot(markup)
+    const kicker = Array.from(root.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("第一部分"),
+    )!
+    const emTop = Number(kicker.getAttribute("y")) - Number(kicker.getAttribute("font-size"))
+    expect(emTop).toBeGreaterThanOrEqual(TITLE_ZONE_TOP)
+    expect(emTop).toBe(TITLE_ZONE_TOP)
+  })
+
+  it("keeps a lone table following the banner instead of hanging as a second island", () => {
+    const ctx = buildCtx({ ...resolveStyle("consulting"), shape: undefined }, {})
+    const tableSlide: Slide = {
+      type: "content",
+      heading: "本季度经营结果好于预期",
+      components: [
+        {
+          type: "data_table",
+          columns: [
+            { key: "m", label: "指标" },
+            { key: "q1", label: "Q1" },
+            { key: "q2", label: "Q2" },
+          ],
+          rows: [
+            { cells: { m: "收入", q1: "1.2亿", q2: "1.4亿" } },
+            { cells: { m: "毛利", q1: "38%", q2: "41%" } },
+            { cells: { m: "净利", q1: "0.18亿", q2: "0.22亿" } },
+          ],
+        },
+      ],
+    } as Slide
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <BannerHeadingContent ir={ir([tableSlide])} slide={tableSlide} index={0} ctx={ctx} />
+      </svg>,
+    )
+    const root = parseSvgRoot(markup)
+    const banner = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("x") === "96" && Number(r.getAttribute("width")) === 1088,
+    )!
+    const bannerBottom = Number(banner.getAttribute("y")) + Number(banner.getAttribute("height"))
+    const box = root.querySelector("g[data-audit-box]")!
+    const bodyY = Number(box.getAttribute("data-audit-box")!.split(",")[1])
+    const headingBodyGap = BLOCK_GAP * 2
+    const cap = BLOCK_GAP * 2
+    expect(bodyY - bannerBottom).toBeLessThanOrEqual(headingBodyGap + cap)
+  })
+
+  it("scales the banner-to-body gap with gapScale", () => {
+    const tight = buildCtx({ ...resolveStyle("consulting"), shape: { gapScale: 0.8 } }, {})
+    const airy = buildCtx({ ...resolveStyle("consulting"), shape: { gapScale: 1.3 } }, {})
+    const tableSlide: Slide = {
+      type: "content",
+      heading: "本季度经营结果好于预期",
+      components: [
+        {
+          type: "data_table",
+          columns: [
+            { key: "m", label: "指标" },
+            { key: "q1", label: "Q1" },
+          ],
+          rows: [{ cells: { m: "收入", q1: "1.2亿" } }],
+        },
+      ],
+    } as Slide
+
+    function contentRectY(ctx: ReturnType<typeof buildCtx>): number {
+      const markup = renderSvgMarkup(
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <BannerHeadingContent ir={ir([tableSlide])} slide={tableSlide} index={0} ctx={ctx} />
+        </svg>,
+      )
+      const root = parseSvgRoot(markup)
+      const g = Array.from(root.querySelectorAll("g")).find((el) =>
+        el.getAttribute("data-audit-rect")?.startsWith("96,"),
+      )!
+      return Number(g.getAttribute("data-audit-rect")!.split(",")[1])
+    }
+
+    expect(contentRectY(airy)).toBeGreaterThan(contentRectY(tight))
+    expect(contentRectY(airy) - contentRectY(tight)).toBe(
+      Math.round(BLOCK_GAP * 2 * 1.3) - Math.round(BLOCK_GAP * 2 * 0.8),
+    )
   })
 })

@@ -358,10 +358,29 @@ function distributeSurplus(
 export const GOLDEN_TOP_SHARE = 0.38
 
 /**
+ * How many designed block-gaps of air `settleToGolden` may place above a
+ * gathered block. One heading-to-body beat. Beyond this, leftover sinks
+ * below (下可空) so a short block cannot hang as a second island under
+ * the heading chrome that already occupies the page's top.
+ *
+ * Linked to `gapScale` through `goldenTopCap` (scale 1 → 32, 1.1 → 35,
+ * 1.3 → 42). The 38% share still applies when leftover is small enough
+ * that 38% sits inside this cap.
+ */
+export const GOLDEN_TOP_CAP_GAPS = 2
+
+/** Ceiling on the air `settleToGolden` may add above a gathered block. */
+export function goldenTopCap(ctx: ComponentCtx): number {
+  return Math.round(BLOCK_GAP * GOLDEN_TOP_CAP_GAPS * (ctx.shape?.gapScale ?? 1))
+}
+
+/**
  * Move a finished placement, whole, into the golden position: every box
  * shifts down by the same `GOLDEN_TOP_SHARE` of the height left over under
- * the stack. Gaps, widths and stretched heights are untouched — this pass
- * only decides where the assembled block stands, never how it is built.
+ * the stack, capped at `goldenTopCap` so a tall leftover cannot open an
+ * island between the heading and the body. Gaps, widths and stretched
+ * heights are untouched — this pass only decides where the assembled
+ * block stands, never how it is built.
  *
  * Left alone (same references back, so a caller can compare by identity):
  *  - an empty placement
@@ -382,7 +401,7 @@ export function settleToGolden(
   if (Math.abs(top - rect.y) > 0.5) return placed
   const remaining = rect.y + rect.h - stackBottom(placed, ctx)
   if (remaining <= 0) return placed
-  const shift = remaining * GOLDEN_TOP_SHARE
+  const shift = Math.min(remaining * GOLDEN_TOP_SHARE, goldenTopCap(ctx))
   return placed.map((p) => ({ ...p, box: { ...p.box, y: p.box.y + shift } }))
 }
 
@@ -398,9 +417,11 @@ export function settleToGolden(
  * space below a short stack gets spent as gap growth rather than sitting
  * dead at the bottom (wave-B S4), and then — for a stack of two or more —
  * through `settleToGolden`, which sets that assembled block down 38% of the
- * way into whatever space is still left. Callers (`SvgContent`, `BigNumber`,
- * `AssertionEvidence`) render/annotate straight from the returned boxes, so
- * the audit annotations follow automatically.
+ * way into whatever space is still left, capped at one heading-to-body beat
+ * so a tall leftover cannot split heading and body into two islands.
+ * Callers (`SvgContent`, `BigNumber`, `AssertionEvidence`) render/annotate
+ * straight from the returned boxes, so the audit annotations follow
+ * automatically.
  */
 export function layoutContentFit(
   arrangement: Arrangement | undefined,

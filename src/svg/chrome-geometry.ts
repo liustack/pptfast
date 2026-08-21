@@ -1,14 +1,24 @@
 /**
- * Fixed y coordinates of the slide's bottom chrome.
+ * Shared chrome geometry: the title-zone top edge and the footer rule.
  *
  * A leaf module on purpose: it imports nothing. These constants are needed
- * by `./brand-chrome.tsx` (which draws the divider) *and* by every layout
- * that places a footnote above it, and `brand-chrome` itself reaches the
+ * by `./brand-chrome.tsx` (which draws the divider) *and* by layouts that
+ * place a kicker or a footnote, and `brand-chrome` itself reaches the
  * theme registry, which reaches the layout registry, which reaches the
  * layouts — so a layout importing back into `brand-chrome` closes a
  * cycle that leaves the layout registry half-built at module-init time.
  * Shared geometry with no behaviour lives here instead.
  */
+
+/**
+ * Top of the heading region. Every motif's safe-zone note names this line
+ * as the edge decoration must stay above (`(96,48,1040×122)` in
+ * `docs/designing-themes.md`), so the topmost content on a page (a kicker's
+ * em-box top) sits on or below it. `tone-adaptive-content` already seats
+ * its 22px kicker here. `banner-heading`'s 12px kicker used to start at
+ * y=40, eight pixels inside the band.
+ */
+export const TITLE_ZONE_TOP = 48
 
 /** The hairline `BrandChrome` draws across the bottom of every slide. */
 export const FOOTER_DIVIDER_Y = 664
