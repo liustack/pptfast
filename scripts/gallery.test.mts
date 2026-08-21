@@ -265,6 +265,38 @@ describe("gallery layout table corpus", () => {
     expect(typesOf("bento-panel")).toEqual(expect.arrayContaining(["kpi_cards", "icon_cards"]))
     expect(typesOf("stacked-poster")).toContain("image")
   })
+
+  it("varies the first body type across the two-compact layout family", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout", languages: ["zh"] })
+    const twoCompact = [
+      "two-column",
+      "narrow-column",
+      "rail-numbered",
+      "banner-heading",
+      "tone-adaptive-content",
+      "quiet-frame",
+      "side-highlight",
+      "split-band",
+    ]
+    const leads = twoCompact.map((layoutId) => {
+      const job = jobs.find((j) => j.subject === layoutId && j.language === "zh")
+      expect(job, layoutId).toBeTruthy()
+      return job!.ir.slides[0]!.components[0]!.type
+    })
+    expect(new Set(leads).size, `leads: ${leads.join(", ")}`).toBeGreaterThanOrEqual(4)
+  })
+
+  it("gives image-split, image-top, and image-bottom different secondary types", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout", languages: ["zh"] })
+    const secondaries = (["image-split", "image-top", "image-bottom"] as const).map((layoutId) => {
+      const job = jobs.find((j) => j.subject === layoutId && j.language === "zh")
+      expect(job, layoutId).toBeTruthy()
+      const types = job!.ir.slides[0]!.components.map((c) => c.type)
+      expect(types[0], layoutId).toBe("image")
+      return types[1]
+    })
+    expect(new Set(secondaries).size, `secondaries: ${secondaries.join(", ")}`).toBe(3)
+  })
 })
 
 describe("gallery corpus", () => {

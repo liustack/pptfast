@@ -131,6 +131,11 @@ function wantsImage(def: LayoutDefinition): boolean {
   return def.slots.some((s) => s.name === "image" || s.name === "hero" || s.name === "lead")
 }
 
+function shortCitation(lex: Lexicon): Component {
+  const s = lex.sources[0]!
+  return { type: "citation", sources: [{ label: s.label, ref: s.ref }] }
+}
+
 /**
  * Body components for a content page under a given layout, filled up to the
  * layout's declared capacity and no further. Overfilling would make the
@@ -175,38 +180,50 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
     return [kpi, icons]
   }
   if (def.id === "stacked-poster") {
-    return [b.image!(lex), { type: "paragraph", text: lex.shortParagraph }]
+    // The 108px caption strip under the poster hero cannot hold
+    // shortParagraph. A one-source citation fits the strip, so the page
+    // stays on the two-block poster path instead of dropping the body.
+    return [b.image!(lex), shortCitation(lex)]
+  }
+  if (def.id === "quote-stage") return [shortCitation(lex)]
+  if (def.id === "statement") return [{ type: "paragraph", text: lex.shortParagraph }]
+
+  if (capacity <= 1) return [shortCitation(lex)]
+
+  const shortParagraph: Component = { type: "paragraph", text: lex.shortParagraph }
+
+  // Per-layout bodies. Same capacity intent as before (two compact blocks
+  // for the two-column-ish family, image plus a short companion for
+  // takeovers) but different types, so paging the table is not eight
+  // copies of bullets+kpi.
+  const bodies: Record<string, Component[]> = {
+    "two-column": (() => {
+      // Four KPI cards in a half-width column fall under MIN_READABLE_CARD_W
+      // and draw a +N marker. Two cards still read as a kpi pair.
+      const kpi = b.kpi_cards!(lex)
+      if (kpi.type === "kpi_cards") kpi.items = kpi.items.slice(0, 2)
+      return [b.bullets!(lex), kpi]
+    })(),
+    "narrow-column": [b.callout!(lex), b.numbered_cards!(lex)],
+    "rail-numbered": [b.steps!(lex), shortCitation(lex)],
+    "banner-heading": [b.icon_cards!(lex), b.bullets!(lex)],
+    "tone-adaptive-content": [b.quote!(lex), b.kpi_cards!(lex)],
+    "quiet-frame": [b.tag_row!(lex), b.callout!(lex)],
+    "side-highlight": [b.bullets!(lex), b.verdict_banner!(lex)],
+    "split-band": [b.icon_cards!(lex), shortCitation(lex)],
+    "asymmetric-triptych": [b.image!(lex), b.quote!(lex)],
+    "image-lead-split": [b.image!(lex), shortParagraph, b.callout!(lex)],
+    "image-split": [b.image!(lex), b.bullets!(lex), shortParagraph],
+    "image-top": [b.image!(lex), b.callout!(lex), shortParagraph],
+    "image-bottom": [b.image!(lex), b.quote!(lex), shortParagraph],
+    "image-annotate": [b.image!(lex), b.bullets!(lex)],
   }
 
-  if (capacity <= 1) {
-    const s = lex.sources[0]!
-    return [{ type: "citation", sources: [{ label: s.label, ref: s.ref }] }]
-  }
+  const mapped = bodies[def.id]
+  if (mapped) return capacity < mapped.length ? mapped.slice(0, capacity) : mapped
 
-  // Two-column layouts split the body's height between columns but declare
-  // capacity per slot, so a block sized for a full-width rect does not fit
-  // a half-width one. When it doesn't, `layoutContentFit` drops it whole
-  // (its truncation budget only applies when nothing at all fits), and the
-  // page renders as one column of content beside an empty one — which is
-  // what the first review round saw. Compact blocks, and only two of them,
-  // are what a two-column page actually holds.
-  const splitsColumns =
-    def.arrangements === "all" || (Array.isArray(def.arrangements) && def.arrangements.includes("two_column"))
-  if (splitsColumns && !wantsImage(def)) {
-    return [b.bullets!(lex), b.kpi_cards!(lex)]
-  }
-
-  // Same lesson as the two-column branch above, one slot shape further on.
-  // An image takeover spends most of the page on the picture and leaves the
-  // prose a narrow column — `image-split` gives it 564x238, seven lines.
-  // `lex.paragraph` is written for a full content rect and runs thirteen
-  // lines in English, so the renderer truncated it and covered the page in
-  // an ellipsis: `image-split--{en,mixed}`, `image-top--en` and
-  // `image-bottom--en` were all showing the degrade path rather than the
-  // layout. `lex.shortParagraph` is the same argument at the length the
-  // narrow column holds.
   const pool: Component[] = wantsImage(def)
-    ? [b.image!(lex), { type: "paragraph", text: lex.shortParagraph }, b.bullets!(lex), b.callout!(lex)]
+    ? [b.image!(lex), shortParagraph, b.bullets!(lex), b.callout!(lex)]
     : [b.paragraph!(lex), b.bullets!(lex), b.kpi_cards!(lex), b.callout!(lex)]
   return pool.slice(0, Math.min(capacity, 3))
 }
