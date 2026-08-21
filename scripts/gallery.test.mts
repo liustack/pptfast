@@ -27,7 +27,7 @@ import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
 import { assertFullCoverage, buildMatrix, SPEECH_LAYOUT_IDS } from "./gallery/matrix"
-import { themeOffersSparse } from "@/themes/definitions"
+import { THEME_DEFINITIONS, themeOffersSparse } from "@/themes/definitions"
 import { installNodePlatform } from "@/platform/node"
 
 // `renderMatrix` audits every page it renders, and the auditor parses SVG
@@ -103,14 +103,14 @@ describe("gallery coverage", () => {
     expect(stage).toContain("statement")
     expect(stage).not.toContain("one-evidence")
 
-    expect(subjects("consulting").sort()).toEqual([...SPEECH_LAYOUT_IDS].sort())
+    expect(subjects("consulting").sort()).toEqual([...THEME_DEFINITIONS.consulting.sparseLayouts!].sort())
 
     const derived = themeIds.reduce(
       (n, themeId) => n + SPEECH_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length,
       0,
     )
     expect(jobs).toHaveLength(derived)
-    expect(derived).toBe(92)
+    expect(derived).toBe(72)
   })
 })
 

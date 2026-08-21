@@ -4,6 +4,7 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
+import { accessibleInk } from "../ink"
 import { StatementContent, layoutDef } from "./content-statement"
 import type { PptxIR, Slide } from "@/ir"
 
@@ -53,9 +54,9 @@ describe("layoutDef", () => {
 
 describe("StatementContent", () => {
   it("CJK verse: centered italic heading, weight 500, colors.text, no accent bar", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = buildCtx(resolveStyle("crayon"), {})
     const { markup, root } = render(
-      <StatementContent ir={ir("consulting", [zeroSlide])} slide={zeroSlide} index={0} ctx={ctx} />,
+      <StatementContent ir={ir("crayon", [zeroSlide])} slide={zeroSlide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain(CJK_VERSE)
     const heading = Array.from(root.querySelectorAll("text")).find((t) =>
@@ -81,11 +82,11 @@ describe("StatementContent", () => {
   })
 
   it("mixed long heading shrinks/wraps to at most 4 lines and never dumps the raw source verbatim", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(resolveStyle("crayon"), {})
     const extreme = `${CJK_LONG}${CJK_LONG}${MIXED_LONG}`
     const slide: Slide = { type: "content", layout: "statement", heading: extreme, components: [] } as Slide
     const { markup, root } = render(
-      <StatementContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatementContent ir={ir("crayon", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(() => assertSubset(root)).not.toThrow()
     const headingTexts = Array.from(root.querySelectorAll("text")).filter(
@@ -97,13 +98,13 @@ describe("StatementContent", () => {
   })
 
   it("1 quote component renders as a small accent attribution, not a card", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(resolveStyle("crayon"), {})
     const slide: Slide = {
       ...zeroSlide,
       components: [{ type: "quote", text: "unused body", attribution: "Irene Pepperberg" }],
     } as Slide
     const { markup, root } = render(
-      <StatementContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatementContent ir={ir("crayon", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain("IRENE PEPPERBERG")
     expect(markup).not.toContain("unused body")
@@ -111,7 +112,9 @@ describe("StatementContent", () => {
     const attr = Array.from(root.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("PEPPERBERG"),
     )!
-    expect(attr.getAttribute("fill")).toBe(ctx.colors.accent)
+    expect(attr.getAttribute("fill")).toBe(
+      accessibleInk(ctx.colors.accent, ctx.defaultBg ?? ctx.colors.bg, Number(attr.getAttribute("font-size"))),
+    )
     expect(Number(attr.getAttribute("font-size"))).toBeLessThanOrEqual(13)
   })
 
@@ -130,7 +133,7 @@ describe("StatementContent", () => {
     const out = renderSvgMarkup(
       <StatementContent ir={ir("consulting", [zeroSlide])} slide={zeroSlide} index={0} ctx={ctx} />,
     )
-    expect(out).toContain(ctx.colors.text)
+    expect(out).toContain(ctx.colors.primary)
     expect(out).not.toContain("#0B0908")
     expect(out).not.toContain("#C6A15B")
   })

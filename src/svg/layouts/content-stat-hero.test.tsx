@@ -46,7 +46,7 @@ describe("layoutDef", () => {
 
 describe("StatHeroContent", () => {
   it("kpi value is the giant number, heading is the caption, source is kpi.source", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = buildCtx(resolveStyle("crayon"), {})
     const slide: Slide = {
       type: "content",
       layout: "stat-hero",
@@ -59,7 +59,7 @@ describe("StatHeroContent", () => {
       ],
     } as Slide
     const { markup, root } = render(
-      <StatHeroContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatHeroContent ir={ir("crayon", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain("95.7")
     expect(markup).toContain("%")
@@ -74,7 +74,7 @@ describe("StatHeroContent", () => {
   })
 
   it("heading is the hero when there is no kpi", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = buildCtx(resolveStyle("crayon"), {})
     const slide: Slide = {
       type: "content",
       layout: "stat-hero",
@@ -84,7 +84,7 @@ describe("StatHeroContent", () => {
       components: [],
     } as Slide
     const { markup, root } = render(
-      <StatHeroContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatHeroContent ir={ir("crayon", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain(CJK_STAT)
     expect(markup).toContain("迁徙路径上的种群规模")
@@ -107,11 +107,11 @@ describe("StatHeroContent", () => {
   })
 
   it("mixed long heading shrinks/wraps to at most 2 lines and never dumps the raw source verbatim", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(resolveStyle("crayon"), {})
     const extreme = `${CJK_LONG}${CJK_LONG}${MIXED_LONG}`
     const slide: Slide = { type: "content", layout: "stat-hero", heading: extreme, components: [] } as Slide
     const { markup, root } = render(
-      <StatHeroContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatHeroContent ir={ir("crayon", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(() => assertSubset(root)).not.toThrow()
     const heroTexts = Array.from(root.querySelectorAll("text")).filter(

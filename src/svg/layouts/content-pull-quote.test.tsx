@@ -106,10 +106,10 @@ describe("PullQuoteContent", () => {
   })
 
   it("empty meta fields degrade: no kicker, no attribution, no body, heading remains", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = { type: "content", layout: "pull-quote", heading: CJK_QUOTE, components: [] } as Slide
     const { root } = render(
-      <PullQuoteContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <PullQuoteContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     const texts = Array.from(root.querySelectorAll("text"))
     expect(texts.some((t) => (t.textContent ?? "").includes("鹦鹉"))).toBe(true)
@@ -117,7 +117,7 @@ describe("PullQuoteContent", () => {
   })
 
   it("pathologically long heading wraps to at most 4 italic lines", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = {
       type: "content",
       layout: "pull-quote",
@@ -125,7 +125,7 @@ describe("PullQuoteContent", () => {
       components: [],
     } as Slide
     const { root } = render(
-      <PullQuoteContent ir={ir("academic", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <PullQuoteContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     const headingTexts = Array.from(root.querySelectorAll("text")).filter(
       (t) => t.getAttribute("font-style") === "italic",

@@ -7,6 +7,16 @@ import * as playbill from "./playbill"
 import * as museum from "./museum"
 import * as luxe from "./luxe"
 import * as ink from "./ink"
+import * as consulting from "./consulting"
+import * as insight from "./insight"
+import * as tech from "./tech"
+import * as heritage from "./heritage"
+import * as vermilion from "./vermilion"
+import * as journal from "./journal"
+import * as campaign from "./campaign"
+import * as arena from "./arena"
+import * as terra from "./terra"
+import * as academic from "./academic"
 
 export type SparseLayoutId = Extract<
   ContentLayoutId,
@@ -59,6 +69,56 @@ export const FACES: Partial<Record<string, FaceMap>> = {
     statement: ink.statement,
     "stat-hero": ink.statHero,
     "pull-quote": ink.pullQuote,
+  },
+  consulting: {
+    statement: consulting.statement,
+    "stat-hero": consulting.statHero,
+    "one-evidence": consulting.oneEvidence,
+  },
+  insight: {
+    statement: insight.statement,
+    "stat-hero": insight.statHero,
+    "pull-quote": insight.pullQuote,
+  },
+  tech: {
+    "stat-hero": tech.statHero,
+    statement: tech.statement,
+    "one-evidence": tech.oneEvidence,
+  },
+  heritage: {
+    "pull-quote": heritage.pullQuote,
+    statement: heritage.statement,
+    "stat-hero": heritage.statHero,
+  },
+  vermilion: {
+    statement: vermilion.statement,
+    "stat-hero": vermilion.statHero,
+    "one-evidence": vermilion.oneEvidence,
+  },
+  journal: {
+    "pull-quote": journal.pullQuote,
+    "stat-hero": journal.statHero,
+    statement: journal.statement,
+  },
+  campaign: {
+    statement: campaign.statement,
+    "stat-hero": campaign.statHero,
+    "one-evidence": campaign.oneEvidence,
+  },
+  arena: {
+    "stat-hero": arena.statHero,
+    statement: arena.statement,
+    "one-evidence": arena.oneEvidence,
+  },
+  terra: {
+    statement: terra.statement,
+    "stat-hero": terra.statHero,
+    "one-evidence": terra.oneEvidence,
+  },
+  academic: {
+    "pull-quote": academic.pullQuote,
+    "stat-hero": academic.statHero,
+    statement: academic.statement,
   },
 }
 

@@ -871,9 +871,9 @@ describe("layouts that paint their own full-bleed field (LayoutDefinition.paints
     it(`${layout} is the only full-bleed paint on the page`, () => {
       const slide = { type, heading: "标题", layout, components: [] } as unknown as Slide
       // ink does not offer mono-bleed (boarded faces are statement /
-      // stat-hero / pull-quote). consulting omits the offer list and still
-      // honours the pin, which is what this paintsOwnBackground check needs.
-      const theme = layout === "mono-bleed" ? "consulting" : "ink"
+      // stat-hero / pull-quote). playbill does, and its face still paints
+      // one full-bleed field, which is what this paintsOwnBackground check needs.
+      const theme = layout === "mono-bleed" ? "playbill" : "ink"
       const { container } = render(<FullSlideSvg ir={mkIr(theme, slide)} slide={slide} index={0} />)
       expect(container.querySelector(`[data-archetype="${layout}"]`)).not.toBeNull()
       expect(fullBleedFills(container)).toHaveLength(1)

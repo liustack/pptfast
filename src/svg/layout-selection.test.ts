@@ -1419,7 +1419,7 @@ describe("unoffered sparse pins warn and fall back", () => {
     expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("statement")
   })
 
-  it("consulting + statement: no warning, still statement (omitted list still offers)", () => {
+  it("consulting + statement: no warning, still statement", () => {
     const slide: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
     const ir = makeIR([slide], "consulting")
     const v = validateIr(ir)

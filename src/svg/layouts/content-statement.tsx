@@ -8,7 +8,7 @@ import { latinUpper, statementAttribution, trackingPx } from "./minimal-shared"
 import { sparseFace } from "./sparse/registry"
 
 /**
- * 待第二批设计稿锁定
+ * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
  * statement 通用脸：整页就是 heading 的 2–4 行诗行 / 金句。`pinOnly` +
  * `chrome: "none"`——只能被 `slide.layout: "statement"` 点名，不进自动池。

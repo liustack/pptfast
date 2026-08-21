@@ -8,7 +8,7 @@ import { heroCaption, heroSource, heroUnit, heroValue, latinUpper, trackingPx } 
 import { sparseFace } from "./sparse/registry"
 
 /**
- * 待第二批设计稿锁定
+ * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
  * stat-hero 通用脸：整页只落地一个数字或短语。`pinOnly` + `chrome: "none"`。
  * 和 `arrangement: big_number` 的差别是这一页没有标题槽、没有下方配角、

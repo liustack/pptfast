@@ -61,14 +61,14 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
     expect(root.querySelector("g[data-decor]")).not.toBeNull()
   })
 
-  it("pull-quote skips chrome on consulting (light) the same way", () => {
+  it("pull-quote skips chrome on heritage (light) the same way", () => {
     const slide: Slide = {
       type: "content",
       layout: "pull-quote",
       heading: "A parrot never forgets a face.",
       components: [{ type: "paragraph", text: "Alex could count to six." }],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
+    const markup = renderSlideSvg(chromeDeck("heritage", [slide]), 0)
     expect(markup).toContain("parrot")
     assertNoBrandChrome(markup)
   })
@@ -122,7 +122,7 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
       heading: "把灯关掉",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
+    const markup = renderSlideSvg(chromeDeck("playbill", [slide]), 0)
     expect(markup).toContain("把灯关掉")
     assertNoBrandChrome(markup)
   })

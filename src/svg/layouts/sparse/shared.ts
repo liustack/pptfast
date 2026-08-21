@@ -8,6 +8,19 @@ export function pad2(n: number): string {
   return String(n).padStart(2, "0")
 }
 
+/**
+ * Four-digit year + non-digit separator + 1–2 digit month.
+ * Same shape as motif-poster-motif's `quarterLabel`. Unreadable dates
+ * return undefined so a guessed quarter never prints.
+ */
+export function yearQuarter(date: string | undefined): { year: string; quarter: string } | undefined {
+  const m = /^(\d{4})\D+(\d{1,2})(?:\D|$)/.exec(date ?? "")
+  if (!m) return undefined
+  const month = Number(m[2])
+  if (month < 1 || month > 12) return undefined
+  return { year: m[1], quarter: `Q${Math.floor((month - 1) / 3) + 1}` }
+}
+
 export function splitTrailingPercent(value: string): { body: string; percent: boolean } {
   const trimmed = value.trim()
   if (trimmed.endsWith("%")) return { body: trimmed.slice(0, -1), percent: true }

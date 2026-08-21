@@ -9,7 +9,7 @@ import { renderFittedEvidence } from "./fitted-evidence"
 import { sparseFace } from "./sparse/registry"
 
 /**
- * 待第二批设计稿锁定
+ * 未注册的 (themeId, layoutId) 与自定义主题仍走此脸。
  *
  * one-evidence 通用脸：整句断言 + 独占一张图或一个表。`pinOnly` +
  * `chrome: "none"`。容量 1，超过走既有 `pin_only_over_capacity`。品牌页脚 /
