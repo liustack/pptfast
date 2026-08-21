@@ -2,6 +2,7 @@ import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
+import { showsDocumentMeta } from "../document-meta"
 
 /**
  * masthead-ending layout（spec §3.2）：居中大标题 + 斜体副标题 + 底部一行
@@ -80,7 +81,7 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const org = ir.meta.organization
   const contact = ir.meta.contact
   const contactText = contact ? [contact.name, contact.email].filter(Boolean).join(" · ") : null
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const metaParts = [org, contactText, date].filter((v): v is string => Boolean(v))
 
   return (

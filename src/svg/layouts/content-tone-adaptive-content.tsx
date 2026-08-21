@@ -5,6 +5,7 @@ import { chapterNumberFor, sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { showsDocumentMeta } from "../document-meta"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../chrome-geometry"
@@ -351,7 +352,7 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
           dominantBaseline="alphabetic"
         >
           {[
-            ir.meta.confidentiality
+            showsDocumentMeta(ir) && ir.meta.confidentiality
               ? CONF_LABEL[ir.meta.confidentiality]
               : null,
             ir.meta.organization,

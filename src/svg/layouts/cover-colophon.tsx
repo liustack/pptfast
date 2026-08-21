@@ -3,6 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { showsDocumentMeta } from "../document-meta"
 import { accessibleInk, metaInk } from "../ink"
 
 /**
@@ -83,7 +84,7 @@ export function ColophonCover({ ir, slide, ctx }: SvgTemplateProps) {
   const bg = ctx.defaultBg ?? colors.bg
 
   const org = ir.meta.organization
-  const conf = ir.meta.confidentiality
+  const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
   const author = ir.meta.authors?.[0]
   const authorText = author ? [author.name, author.role].filter(Boolean).join(" · ") : null
@@ -128,7 +129,12 @@ export function ColophonCover({ ir, slide, ctx }: SvgTemplateProps) {
       })
     : null
 
-  const footerParts = [authorText, confLabel, ir.meta.date, ir.meta.version].filter(
+  const footerParts = [
+    authorText,
+    confLabel,
+    showsDocumentMeta(ir) ? ir.meta.date : undefined,
+    ir.meta.version,
+  ].filter(
     (v): v is string => Boolean(v),
   )
   const footer =

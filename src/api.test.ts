@@ -2056,6 +2056,58 @@ describe("generatePptx", () => {
     expect(coverSvg).toContain("Pitch")
   })
 
+  it("omitted chrome leaves confidentiality and date off the cover, chrome full paints them", () => {
+    const base = {
+      version: "4",
+      filename: "meta-hide",
+      theme: { id: "consulting" },
+      meta: {
+        organization: "ACME",
+        date: "2026-08-15",
+        confidentiality: "internal" as const,
+        authors: [{ name: "Ada", role: "Lead" }],
+      },
+      slides: [
+        { type: "cover", heading: "Pitch", layout: "tone-adaptive-header" },
+        {
+          type: "content",
+          heading: "The point",
+          layout: "quiet-frame",
+          components: [{ type: "paragraph", text: "Say it." }],
+        },
+      ],
+    }
+    const omitted = validateIr(base)
+    expect(omitted.ok).toBe(true)
+    const cover = renderSlideSvg(omitted.ir!, 0)
+    expect(cover).toContain("ACME")
+    expect(cover).toContain("Ada")
+    expect(cover).toContain("Lead")
+    expect(cover).not.toContain("Internal")
+    expect(cover).not.toContain("2026-08-15")
+
+    for (const chrome of ["cover-only", "minimal"] as const) {
+      const v = validateIr({ ...base, chrome })
+      expect(v.ok).toBe(true)
+      const svg = renderSlideSvg(v.ir!, 0)
+      expect(svg, chrome).not.toContain("Internal")
+      expect(svg, chrome).not.toContain("2026-08-15")
+      expect(svg, chrome).toContain("ACME")
+      expect(svg, chrome).toContain("Ada")
+    }
+
+    const full = validateIr({ ...base, chrome: "full" })
+    expect(full.ok).toBe(true)
+    const fullCover = renderSlideSvg(full.ir!, 0)
+    expect(fullCover).toContain("Internal")
+    expect(fullCover).toContain("2026-08-15")
+    expect(fullCover).toContain("ACME")
+    expect(fullCover).toContain("Ada")
+    const fullContent = renderSlideSvg(full.ir!, 1)
+    expect(fullContent).toContain("2026-08-15")
+    expect(fullContent).toContain("Internal")
+  })
+
   it("validates and renders a cover-only talk deck to pptx", async () => {
     const talk = {
       version: "4",
@@ -2483,5 +2535,6 @@ describe("irJsonSchema", () => {
     expect(json).toContain("cover-only")
     expect(json).toContain("minimal")
     expect(json).toContain('Omitted equals \\"cover-only\\"')
+    expect(json).toContain("confidentiality and date")
   })
 })

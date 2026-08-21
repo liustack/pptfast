@@ -67,6 +67,7 @@ describe("PosterCenterCover", () => {
       version: "3",
       filename: "deck.pptx",
       theme: { id: "insight" },
+      chrome: "full",
       meta: { organization: "DarkCo", confidentiality: "internal", version: "v2", date: "2026" },
       assets: { images: {} },
       slides: [fullSlide],

@@ -56,10 +56,13 @@ function deckShell(lex: Lexicon, assets: CorpusAssets, themeId: string, filename
     version: "4",
     filename,
     theme: { id: themeId },
-    // Meta drives cover chrome (organization line, author credits, date,
-    // confidentiality mark), so it is filled rather than left default.
-    // Deck chrome stays omitted: the gallery is the new default, content
-    // and ending pages have no footer rule, meta, or logo.
+    // Meta drives the cover's own rows (organization line, author credits),
+    // so it is filled rather than left default. Deck chrome stays omitted:
+    // the gallery is the new default, so content and ending pages have no
+    // footer rule, meta, or logo, and `date`/`confidentiality` below stay
+    // off the canvas even though they are set — that is exactly what a
+    // reviewer needs to see. `chrome: "full"` is the read posture that
+    // paints them (`src/svg/document-meta.ts`).
     meta: {
       organization: lex.author,
       authors: lex.people.slice(0, 2).map((p) => ({ name: p.name, role: p.role, org: p.org })),

@@ -685,6 +685,36 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     one shape each.
       //   - `annualReviewPreset`: SVG slides 2/3 (content) lose the rule
       //     only. PPTX `slide{3,4}.xml` lose one shape each.
+      //
+      // Re-recaptured (meta default hide, 2026-08-21 — confidentiality and
+      // date on cover/ending meta rows paint only under chrome:"full").
+      // Drift is the date leaving the cover, nothing else. Only `basic`
+      // moved: it is the one fixture that carries `meta.date`, and its
+      // cover (`left-anchor`) had a divider plus a date tspan as the whole
+      // meta row. Stripping that line (`<line x1="576" y1="328">`) and the
+      // date text (`<text x="576" y="372">` / `2026-07-17`) from the old
+      // capture makes old and new byte-identical. `scenarioBearing` and
+      // `annualReviewPreset` carry no date or confidentiality, so they
+      // stayed byte-identical and were not recaptured. All three
+      // `.audit.json` goldens stayed byte-identical. PPTX part-name sets
+      // stayed identical. Shape-count delta matches the SVG pair 1:1:
+      //   - `basic`: SVG slide 0 (cover) loses the divider and the date
+      //     tspan. PPTX `slide1.xml` loses two shapes.
+      //
+      // Re-recaptured once more in the same change (empty-meta-cell guard —
+      // `tone-adaptive-header`'s bottom-right cell now goes unrendered when
+      // it has nothing to say, instead of emitting an empty `<text>`). Drift
+      // is that one element, nothing else. `scenarioBearing` and
+      // `annualReviewPreset` moved this time: both pick
+      // `tone-adaptive-header` for their cover and carry no `meta.version`,
+      // so with the date gone their cell was empty. `basic` (left-anchor
+      // cover) did not move. All three `.audit.json` goldens stayed
+      // byte-identical. PPTX part-name sets stayed identical. The
+      // shape-count delta is the point of the guard — an empty `<text>` is
+      // not free, `svg2pptx`'s `textToOp` exports it as a real shape:
+      //   - `scenarioBearing`: SVG slide 0 (cover) loses the empty `<text
+      //     x="1216" y="650">`. PPTX `slide1.xml` goes 11 -> 10 shapes.
+      //   - `annualReviewPreset`: identical drift, same 11 -> 10.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

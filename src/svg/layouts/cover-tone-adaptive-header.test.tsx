@@ -25,9 +25,9 @@ const CJK_LONG =
 // that equivalence was verified via `toBe` before this migration, per the
 // "无 CRITICAL 发现" report.
 const EXPECTED_COVER_NO_BG =
-  '<text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" letter-spacing="3" dominant-baseline="alphabetic">ACME</text><g><rect x="1086" y="50" width="130" height="44" rx="6" fill="none" stroke="#18181B" stroke-width="2" stroke-opacity="1"></rect><text x="1151" y="79" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#18181B" text-anchor="middle" dominant-baseline="alphabetic">Internal</text></g><text x="64" y="392" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="92" font-weight="700" fill="#18181B" letter-spacing="-2" dominant-baseline="alphabetic">年度战略回顾</text><text x="64" y="450" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="34" fill="#71717A" opacity="1" dominant-baseline="alphabetic">增长与韧性</text><line x1="64" y1="600" x2="1216" y2="600" stroke="#E4E4E7" stroke-opacity="1" stroke-width="1.6"></line><text x="64" y="650" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" fill="#18181B" dominant-baseline="alphabetic">张三 · 分析师</text><text x="1216" y="650" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#71717A" text-anchor="end" dominant-baseline="alphabetic">2026 · v1</text>'
+  '<text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#71717A" opacity="1" letter-spacing="3" dominant-baseline="alphabetic">ACME</text><text x="64" y="392" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="92" font-weight="700" fill="#18181B" letter-spacing="-2" dominant-baseline="alphabetic">年度战略回顾</text><text x="64" y="450" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="34" fill="#71717A" opacity="1" dominant-baseline="alphabetic">增长与韧性</text><line x1="64" y1="600" x2="1216" y2="600" stroke="#E4E4E7" stroke-opacity="1" stroke-width="1.6"></line><text x="64" y="650" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="26" fill="#18181B" dominant-baseline="alphabetic">张三 · 分析师</text><text x="1216" y="650" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#71717A" text-anchor="end" dominant-baseline="alphabetic">v1</text>'
 const EXPECTED_COVER_WITH_BG =
-  '<rect width="1280" height="720" fill="#000000" opacity="0.38"></rect><text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.8" letter-spacing="3" dominant-baseline="alphabetic">ACME</text><g><rect x="1086" y="50" width="130" height="44" rx="6" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.6"></rect><text x="1151" y="79" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" dominant-baseline="alphabetic">Internal</text></g><text x="64" y="520" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="92" font-weight="700" fill="#FFFFFF" letter-spacing="-2" dominant-baseline="alphabetic">年度战略回顾</text><text x="64" y="578" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="34" fill="#FFFFFF" opacity="0.82" dominant-baseline="alphabetic">增长与韧性</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#FFFFFF" opacity="0.7" dominant-baseline="alphabetic">张三 · 分析师  ·  2026  ·  v1</text>'
+  '<rect width="1280" height="720" fill="#000000" opacity="0.38"></rect><text x="64" y="74" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.8" letter-spacing="3" dominant-baseline="alphabetic">ACME</text><text x="64" y="520" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="92" font-weight="700" fill="#FFFFFF" letter-spacing="-2" dominant-baseline="alphabetic">年度战略回顾</text><text x="64" y="578" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="34" fill="#FFFFFF" opacity="0.82" dominant-baseline="alphabetic">增长与韧性</text><text x="64" y="684" font-family="Microsoft YaHei, PingFang SC, Helvetica Neue, sans-serif" font-size="24" fill="#FFFFFF" opacity="0.7" dominant-baseline="alphabetic">张三 · 分析师  ·  v1</text>'
 
 const slide: Slide = {
   type: "cover",
@@ -44,7 +44,7 @@ const bgSlide: Slide = {
   background: { kind: "asset", asset_id: "bg", fit: "cover" },
 } as Slide
 
-function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
+function ir(theme: string, images: PptxIR["assets"]["images"] = {}, chrome?: PptxIR["chrome"]): PptxIR {
   return {
     version: "3",
     filename: "deck.pptx",
@@ -58,6 +58,7 @@ function ir(theme: string, images: PptxIR["assets"]["images"] = {}): PptxIR {
     },
     assets: { images },
     slides: [slide],
+    ...(chrome !== undefined ? { chrome } : {}),
   } as unknown as PptxIR
 }
 
@@ -133,7 +134,7 @@ describe("ToneAdaptiveHeaderCover", () => {
   it("tech tokens 下（无背景图）用 tech 的 primary/text/muted/border 色，custom 自己的烤色不再出现（证明真正 token 化）", () => {
     const tokens = resolveStyle("tech")
     const ctx = buildCtx(tokens, {})
-    const doc = ir("tech")
+    const doc = ir("tech", {}, "full")
     const out = renderSvgMarkup(
       <ToneAdaptiveHeaderCover ir={doc} slide={slide} index={0} ctx={ctx} />,
     )
@@ -169,5 +170,24 @@ describe("ToneAdaptiveHeaderCover", () => {
     expect(out).not.toContain(ctxWithImg.colors.primary)
     expect(out).not.toContain(ctxWithImg.colors.muted)
     expect(out).not.toContain(ctxWithImg.colors.border)
+  })
+
+  // date 只在 chrome:"full" 下有值，没有 version 的演讲 deck 会让右下角 meta
+  // 单元格空掉。svg2pptx 的 textToOp 对空 runs 照样产出一只文本框，所以这格
+  // 必须整个不画，而不是画一个空的。
+  it("右下角 meta 无内容时不画空 <text>（省略 chrome + 无 version）", () => {
+    const tokens = resolveStyle("tech")
+    const ctx = buildCtx(tokens, {})
+    const doc = ir("tech")
+    const bare: PptxIR = {
+      ...doc,
+      meta: { ...doc.meta, version: undefined },
+    }
+    const out = renderSvgMarkup(
+      <ToneAdaptiveHeaderCover ir={bare} slide={slide} index={0} ctx={ctx} />,
+    )
+    expect(out).not.toMatch(/<text[^>]*><\/text>/)
+    expect(out).toContain("张三 · 分析师")
+    expect(out).toContain('y1="600"')
   })
 })

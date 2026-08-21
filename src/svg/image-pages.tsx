@@ -10,6 +10,7 @@ import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
 import { scaleTypePx } from "./heading-fit"
 import { accessibleInk } from "./ink"
+import { showsDocumentMeta } from "./document-meta"
 
 /**
  * 压图页与出血 split 页（图片排版 polish，2026-07-09 用户反馈驱动）。
@@ -64,7 +65,7 @@ export function ImageCoverPage({
   const accent = ctx.colors.accent
   const isChapter = slide.type === "chapter"
   const org = ir.meta.organization
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
 
   const title = layoutSvgText(slide.heading, {
     maxWidth: 1030,

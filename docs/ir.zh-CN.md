@@ -23,7 +23,7 @@ IR 是一份描述整份 PPT 内容的 JSON 文件：有哪些页、每页上有
 - `theme`：`id` 加可选的 `style`/`brand` 覆盖。
 - `meta` 与 `assets`。
 - `brand`：logo 位置。
-- `chrome`：品牌页脚和 logo 出现在哪些页。`"cover-only"` 只留 logo 在 cover 和 chapter 页，content 和 ending 页不画页脚细线、meta 和 logo。`"full"` 是显式声明，内容页画出页脚和 logo。`"minimal"` 关掉内容页的页脚细线和 meta，logo 留下。省略等于 `"cover-only"`。版式 `chrome: "none"` 仍优先。主题 motif 不受这个字段影响。演讲 deck 省略该字段。阅读 deck 写 `"full"`。
+- `chrome`：品牌页脚和 logo 出现在哪些页。`"cover-only"` 只留 logo 在 cover 和 chapter 页，content 和 ending 页不画页脚细线、meta 和 logo。`"full"` 是显式声明，内容页画出页脚和 logo，密级和日期也上封面和收束页的 meta 行。其余姿态即使 `meta` 里写了这两项也不画。`"minimal"` 关掉内容页的页脚细线和 meta，logo 留下。省略等于 `"cover-only"`。版式 `chrome: "none"` 仍优先。主题 motif 不受这个字段影响。演讲 deck 省略该字段。阅读 deck 写 `"full"`。
 - `slides`：必填，有序。
 
 除 `slides` 外都可省略，且都有合理默认值。

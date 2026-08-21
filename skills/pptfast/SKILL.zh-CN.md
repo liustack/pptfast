@@ -263,7 +263,7 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 - 讲稿写进 `slide.notes`。`render` 导出成原生 PowerPoint 演讲者备注（View → Notes，演讲者视图可见）。讲稿从不画到画布上。
 - spec 和 IR 不要写 `chrome`。省略的缺省已经让内容页和收束页不画页脚细线、meta 和 logo。
 
-阅读 deck 按 pacing 预算写。写 `chrome: "full"`，让内容页带上品牌页脚（`meta.confidentiality` 为 `confidential` 或 `restricted`，或文件需要机构落款时，同样写 `"full"`）。某一页真的只剩一句话时，仍然可以钉极简版式。
+阅读 deck 按 pacing 预算写。写 `chrome: "full"`，让内容页带上品牌页脚（`meta.confidentiality` 为 `confidential` 或 `restricted`，或文件需要机构落款时，同样写 `"full"`）。读件声明 full 时密级和日期上封面，其余场合不出现。某一页真的只剩一句话时，仍然可以钉极简版式。
 
 ### 容量
 

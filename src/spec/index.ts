@@ -149,7 +149,8 @@ export const DeckSpecSchema = z
      * cannot drift. Optional, no default: omitted stays unset and assemble
      * does not write `"cover-only"` into the IR. The renderer treats that
      * as `"cover-only"`. Talk decks omit the field. Read decks write `"full"`.
-     * Layout `chrome: "none"` still wins at render.
+     * `"full"` also paints confidentiality and date on cover and ending meta
+     * rows. Layout `chrome: "none"` still wins at render.
      */
     chrome: DeckChromeSchema.optional(),
     pages: z.array(PageSpecSchema),

@@ -3,6 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { contrastRatio, requiredContrastRatio } from "../ink"
+import { showsDocumentMeta } from "../document-meta"
 
 /**
  * constellation-ending layout（spec §3.2）：底部收束的大号"Thank you."式
@@ -92,7 +93,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const contactText = contact
     ? [contact.name, contact.email].filter(Boolean).join(" · ")
     : null
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
 
   const metaLines: string[] = []
   if (org) metaLines.push(org)

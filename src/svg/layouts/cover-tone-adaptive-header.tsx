@@ -3,6 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { scaleTypePx } from "../heading-fit"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { showsDocumentMeta } from "../document-meta"
 
 /**
  * tone-adaptive-header cover layout（spec §3.2）：全宽版式——顶部 org 标签 +
@@ -78,14 +79,19 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
   const borderOpacity = withBg ? 0.18 : 1
 
   const org = ir.meta.organization
-  const conf = ir.meta.confidentiality
+  const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
   const author = ir.meta.authors?.[0]
   const authorText = author
     ? [author.name, author.role].filter(Boolean).join(" · ")
     : null
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const version = ir.meta.version
+  // 右侧 meta 单元格：date 现在只在 chrome:"full" 下有值，没有 version 的
+  // 演讲 deck 会让这格空掉。空 `<text>` 在 svg2pptx 里照样变成一只空文本框
+  // （`textToOp` 对空 runs 不返回 null），所以这里按 authorText 的写法同样
+  // 守空。
+  const rightMeta = [date, version].filter(Boolean).join(" · ")
 
   const title = layoutSvgText(slide.heading || "", {
     maxWidth: 1120,
@@ -224,17 +230,19 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
               {authorText}
             </text>
           )}
-          <text
-            x="1216"
-            y="650"
-            fontFamily={fonts.body}
-            fontSize="24"
-            fill={colors.muted}
-            textAnchor="end"
-            dominantBaseline="alphabetic"
-          >
-            {[date, version].filter(Boolean).join(" · ")}
-          </text>
+          {rightMeta && (
+            <text
+              x="1216"
+              y="650"
+              fontFamily={fonts.body}
+              fontSize="24"
+              fill={colors.muted}
+              textAnchor="end"
+              dominantBaseline="alphabetic"
+            >
+              {rightMeta}
+            </text>
+          )}
         </>
       )}
 

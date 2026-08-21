@@ -3,6 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { showsDocumentMeta } from "../document-meta"
 
 /**
  * constellation cover layout（spec §3.2）：底锚英雄标题 + 右侧半区的 9 点
@@ -55,9 +56,9 @@ const COVER_MOTIF_HERO_POINT = COVER_MOTIF_POINTS[COVER_MOTIF_POINTS.length - 1]
 export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const org = ir.meta.organization
-  const conf = ir.meta.confidentiality
+  const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const metaParts = [confLabel, date].filter((v): v is string => Boolean(v))
 
   const title = fitHeadingLines(slide.heading, {
