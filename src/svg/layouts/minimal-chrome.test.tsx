@@ -1,0 +1,268 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from "vitest"
+import { BUILTIN_THEME_IDS, type PptxIR, type Slide } from "@/ir"
+import { renderSlideSvg, validateIr } from "../../api"
+import { checkIrQuality } from "../ir-quality"
+import { parseSvgRoot } from "../serialize"
+import { THEME_DEFINITIONS } from "../../themes/definitions"
+import { resolveEffectiveLayoutId } from "../layout-selection"
+import { FOOTER_DIVIDER_Y } from "../chrome-geometry"
+
+const LOGO_SRC =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+function chromeDeck(theme: string, slides: Slide[]): PptxIR {
+  return {
+    version: "4",
+    filename: "minimal-chrome.pptx",
+    theme: { id: theme },
+    meta: { organization: "ACME", date: "2026", version: "v1" },
+    brand: { logo_asset_id: "logo", position: "br" },
+    assets: { images: { logo: { src: LOGO_SRC, alt: "logo" } } },
+    seed: 1,
+    slides,
+  } as PptxIR
+}
+
+function assertNoBrandChrome(markup: string) {
+  const root = parseSvgRoot(markup)
+  expect(root.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).toBeNull()
+  expect(markup).not.toContain("ACME")
+  expect(root.querySelector("g[data-decor]")).toBeNull()
+  expect(root.querySelector("image")).toBeNull()
+}
+
+describe("layout-declared chrome:none (editorial-verse wave)", () => {
+  it("statement skips footer rule, footer meta, logo, and motif on luxe", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "statement",
+      heading: "记得的事会变成下个世纪的天气",
+      components: [],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    expect(markup).toContain("下个世纪")
+    assertNoBrandChrome(markup)
+  })
+
+  it("pull-quote skips chrome on consulting (light) the same way", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "pull-quote",
+      heading: "A parrot never forgets a face.",
+      components: [{ type: "paragraph", text: "Alex could count to six." }],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
+    expect(markup).toContain("parrot")
+    assertNoBrandChrome(markup)
+  })
+
+  it("verse-chapter skips logo and motif (chapter already has no footer)", () => {
+    const slide: Slide = {
+      type: "chapter",
+      layout: "verse-chapter",
+      heading: "羽毛下的智识",
+      components: [],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    expect(markup).toContain("羽毛下的智识")
+    assertNoBrandChrome(markup)
+  })
+
+  it("quote-stage still draws footer meta and motif (negative control)", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "quote-stage",
+      heading: "简洁是最终的复杂",
+      components: [],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    const root = parseSvgRoot(markup)
+    expect(root.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).not.toBeNull()
+    expect(markup).toContain("ACME")
+    expect(root.querySelector("g[data-decor]")).not.toBeNull()
+    expect(root.querySelector("image")).not.toBeNull()
+  })
+})
+
+describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
+  const AUTO_CONTENT = [
+    "narrow-column",
+    "two-column",
+    "rail-numbered",
+    "banner-heading",
+    "stacked-poster",
+    "bento-panel",
+    "tone-adaptive-content",
+    "side-highlight",
+    "asymmetric-triptych",
+    "quiet-frame",
+    "image-lead-split",
+    "split-band",
+  ]
+
+  it("consulting's auto content pool is the 12-id set, and no built-in theme lists a pinOnly editorial-verse id", () => {
+    expect([...THEME_DEFINITIONS.consulting.layouts.content]).toEqual(AUTO_CONTENT)
+    for (const id of BUILTIN_THEME_IDS) {
+      expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("statement")
+      expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("pull-quote")
+      expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("quote-stage")
+      expect(THEME_DEFINITIONS[id].layouts.chapter, id).not.toContain("verse-chapter")
+    }
+  })
+
+  it("consulting seed=1 control-group sequence is byte-identical to before these layouts existed", () => {
+    const slides: Slide[] = [
+      { type: "cover", heading: "Q3 Strategy Review", components: [] },
+      { type: "chapter", heading: "Chapter One: Market Landscape", components: [] },
+      { type: "content", heading: "Key Findings", components: [{ type: "paragraph", text: "x" }] },
+      {
+        type: "content",
+        heading: "Supporting Data",
+        arrangement: "two_column",
+        components: [
+          { type: "bullets", items: ["a", "b"] },
+          { type: "bullets", items: ["c", "d"] },
+        ],
+      },
+      { type: "chapter", heading: "Chapter Two: Recommendations", components: [] },
+      { type: "content", heading: "Next Steps", components: [{ type: "bullets", items: ["1", "2", "3"] }] },
+      { type: "ending", heading: "Thank You", components: [] },
+    ] as Slide[]
+    const doc = {
+      version: "4",
+      filename: "theme-structure-fixture.pptx",
+      theme: { id: "consulting" },
+      meta: {},
+      assets: { images: {} },
+      seed: 1,
+      slides,
+    } as PptxIR
+    expect(slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))).toEqual([
+      "poster-center",
+      "fashion-chapter",
+      "tone-adaptive-content",
+      "split-band",
+      "rail-chapter",
+      "banner-heading",
+      "tone-adaptive-ending",
+    ])
+  })
+
+  it("never auto-selects statement / pull-quote / verse-chapter across a seed spread", () => {
+    const slide: Slide = { type: "content", heading: "x", components: [{ type: "paragraph", text: "y" }] } as Slide
+    for (let seed = 0; seed < 40; seed++) {
+      const doc = { ...chromeDeck("consulting", [slide]), seed } as PptxIR
+      const picked = resolveEffectiveLayoutId(doc, slide, 0)
+      expect(picked).not.toBe("statement")
+      expect(picked).not.toBe("pull-quote")
+      expect(picked).not.toBe("verse-chapter")
+    }
+  })
+})
+
+describe("sparse pages are not density-blocked", () => {
+  it("statement with 0 components (two-line heading) has no density warning", () => {
+    const doc = chromeDeck("consulting", [
+      {
+        type: "content",
+        layout: "statement",
+        heading: "记得的事\n会变成天气",
+        components: [],
+      } as Slide,
+    ])
+    expect(checkIrQuality(doc).filter((i) => i.code === "density")).toEqual([])
+  })
+
+  it("pull-quote with 1 paragraph has no density warning", () => {
+    const doc = chromeDeck("consulting", [
+      {
+        type: "content",
+        layout: "pull-quote",
+        heading: "一句引言",
+        components: [{ type: "paragraph", text: "一段散文。" }],
+      } as Slide,
+    ])
+    expect(checkIrQuality(doc).filter((i) => i.code === "density")).toEqual([])
+  })
+})
+
+describe("schema / validate accept the three new layout ids", () => {
+  it("validateIr accepts an explicit pin of each new id", () => {
+    const cover: Slide = { type: "cover", heading: "封面", components: [] } as Slide
+    const statement: Slide = {
+      type: "content",
+      layout: "statement",
+      heading: "金句",
+      components: [],
+    } as Slide
+    const pull: Slide = {
+      type: "content",
+      layout: "pull-quote",
+      heading: "引言",
+      components: [{ type: "quote", text: "q", attribution: "a" }],
+    } as Slide
+    const verse: Slide = {
+      type: "chapter",
+      layout: "verse-chapter",
+      heading: "章首",
+      components: [],
+    } as Slide
+    const v = validateIr(chromeDeck("consulting", [cover, statement, pull, verse]))
+    expect(v.ok, JSON.stringify(v.errors)).toBe(true)
+  })
+
+  it("verse-chapter still cannot carry a footnote (existing chapter boundary)", () => {
+    const v = validateIr(
+      chromeDeck("consulting", [
+        {
+          type: "chapter",
+          layout: "verse-chapter",
+          heading: "章首",
+          footnote: "不该出现",
+          components: [],
+        } as Slide,
+      ]),
+    )
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes("footnote"))).toBe(true)
+  })
+})
+
+describe("19-theme smoke: each new layout renders on every built-in theme", () => {
+  const light = "consulting"
+  const dark = "luxe"
+  it.each([...BUILTIN_THEME_IDS])("%s renders statement, pull-quote, and verse-chapter without throwing", (themeId) => {
+    const statement: Slide = {
+      type: "content",
+      layout: "statement",
+      heading: "记得的事会变成下个世纪的天气",
+      components: [],
+    } as Slide
+    const pull: Slide = {
+      type: "content",
+      layout: "pull-quote",
+      heading: "鹦鹉从不忘记一张它决定去爱的脸",
+      subheading: "佩珀伯格",
+      components: [{ type: "paragraph", text: "亚历克斯能数到六。" }],
+    } as Slide
+    const verse: Slide = {
+      type: "chapter",
+      layout: "verse-chapter",
+      heading: "羽毛下的智识",
+      components: [],
+    } as Slide
+    const doc = chromeDeck(themeId, [statement, pull, verse])
+    const a = renderSlideSvg(doc, 0)
+    const b = renderSlideSvg(doc, 1)
+    const c = renderSlideSvg(doc, 2)
+    expect(a).toContain("下个世纪")
+    expect(b).toContain("鹦鹉")
+    expect(c).toContain("羽毛下的智识")
+    if (themeId === light || themeId === dark) {
+      assertNoBrandChrome(a)
+      assertNoBrandChrome(b)
+      assertNoBrandChrome(c)
+    }
+  })
+})

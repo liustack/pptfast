@@ -427,6 +427,9 @@ describe("registerTheme", () => {
     // default content pool must not silently regain quote-stage if the
     // filter above ever broke.
     expect(def.layouts.content).not.toContain("quote-stage")
+    expect(def.layouts.content).not.toContain("statement")
+    expect(def.layouts.content).not.toContain("pull-quote")
+    expect(def.layouts.chapter).not.toContain("verse-chapter")
   })
 
   it("curating only one slide type leaves the other three at their full-set default (explicit narrowing coexists with the new default)", () => {
@@ -434,9 +437,9 @@ describe("registerTheme", () => {
     const def = getThemeDefinition("acme")
     expect(def.layouts.content).toEqual(["two-column", "narrow-column"])
     for (const slideType of ["cover", "chapter", "ending"] as const) {
-      const expected = layoutsForSlideType(slideType)
-        .filter((l) => l.kind === "archetype")
-        .map((l) => l.id)
+      const expected = excludePinOnly(layoutsForSlideType(slideType).filter((l) => l.kind === "archetype")).map(
+        (l) => l.id,
+      )
       expect(def.layouts[slideType]).toEqual(expected)
     }
   })

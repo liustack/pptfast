@@ -86,7 +86,7 @@ pptfast assemble deck-dir/     # materializes deck.json — catches structural d
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见下文「Quote-stage」）。
+把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage`、`statement`、`pull-quote`、`verse-chapter` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见下文「Pin-only 版式」）。
 
 ### Phase 4 — 渲染
 
@@ -237,9 +237,17 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 
 给任何 `asset_id` 还没有真实文件的 `image` component 生成美术之前，先跑一遍 `pptfast asset-brief <target>`——它会真的渲染一遍 deck，报告每个图片位实际的渲染框（不是版式的名义槽位尺寸）、带安全区说明的裁切模式、建议的生成像素、主题色板，以及一段可直接粘贴的提示词。宽高比和色调对上了，生成的图片摆上去才会显得是设计好的，而不是被拉伸、裁错或跑色。
 
-### Quote-stage（金句页）
+### Pin-only 版式
 
-`quote-stage` 是一个 pin-only 版式：它从不出现在自动选型里，只能通过在 content 页面显式设置 `layout: "quote-stage"` 来钉住使用。用它来承载真正的论断或金句时刻——一句简短有力的标题作为整页唯一的主视觉，最多再配一个短小的附注 component（出处、署名，或一句补充）。绝不要把它钉在信息密集的页面上：它声明的容量是 1，超出这个数字 `validate` 会硬报错，不同于普通版式钉住超容量时只给警告。0 个 component 同样是合法的 quote-stage 页面——一句纯粹的金句不需要附注。
+这些版式从不出现在自动选型里。每次要用都得显式设置 `layout`。pin-only 的 content 版式超出声明容量时 `validate` 会硬报错（普通版式钉住超容量只给警告）。
+
+`quote-stage` 是 content 页上的论断页：一句短而有力的标题是整页主视觉，最多再配一个短附注 component（出处、署名、一句补充）。0 个 component 合法。这一页仍会画主题的品牌页脚和 motif。
+
+`statement` 是 content 页上的整页诗行或金句。标题 2–4 行斜体、字重 500，没有短棒。最多一个 component，渲成出处小字（quote / paragraph / citation），不走卡片。可选 kicker 来自上一章。品牌页脚、logo、主题 motif 都不画。
+
+`pull-quote` 是 content 页上的居中引言：可选章节眉、斜体大引言、出处小字，再加一段 muted 散文。出处优先 quote 的 `attribution`，否则 `subheading`。正文只接受一个 paragraph。品牌页脚、logo、主题 motif 都不画。
+
+`verse-chapter` 是居中诗行章首（`type: "chapter"`）。tracking 章号眉、两行标题、可选斜体副题。没有水印大数字，没有 body，没有 footnote，chapter 页的既有边界照旧。logo 和主题 motif 都不画。
 
 ### 容量
 

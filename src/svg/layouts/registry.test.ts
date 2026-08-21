@@ -9,6 +9,7 @@ import {
   filterByNarrativesOnly,
   getLayout,
   LAYOUT_REGISTRY,
+  layoutOmitsChrome,
   layoutsForSlideType,
   type LayoutDefinition,
   type SlideType,
@@ -43,7 +44,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
     }
   }
 
-  it("has exactly 37 layout-kind entries, all traceable to one of the four real registries (theme-redesign wave: cover 8 -> 9, colophon)", () => {
+  it("has exactly 40 layout-kind entries, all traceable to one of the four real registries (editorial-verse wave: 37 -> 40, statement/pull-quote/verse-chapter)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_LAYOUTS),
       ...Object.keys(CHAPTER_LAYOUTS),
@@ -51,7 +52,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
       ...Object.keys(ENDING_LAYOUTS),
     ])
     const layoutEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(layoutEntries).toHaveLength(37)
+    expect(layoutEntries).toHaveLength(40)
     for (const entry of layoutEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real layout id`).toBe(true)
     }
@@ -156,7 +157,7 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
 
   it("the remaining content layouts' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3; P1 variety wave task 4's three new layouts join at the same flat default — see registry.ts's CONTENT_LAYOUT_DEFS header comment) — except bento-panel (6, its own grid capacity, asserted separately above) and quote-stage (1, a deliberate authoring contract, not a geometric flat-default — see that layout's own registry.ts derivation comment, quote-stage wave task T2)", () => {
     for (const id of Object.keys(CONTENT_LAYOUTS)) {
-      if (id === "bento-panel" || id === "quote-stage") continue
+      if (id === "bento-panel" || id === "quote-stage" || id === "statement" || id === "pull-quote") continue
       const body = LAYOUT_REGISTRY[id].slots.find((s) => s.name === "body")
       expect(body?.capacity, `"${id}" body slot should carry capacity 4`).toBe(4)
     }
@@ -165,6 +166,11 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
   it("quote-stage's body slot carries capacity 1 (quote-stage wave, task T2 — a deliberate authoring contract for its single attribution/footnote annotation slot, not a geometric flat-default)", () => {
     const body = LAYOUT_REGISTRY["quote-stage"].slots.find((s) => s.name === "body")
     expect(body?.capacity).toBe(1)
+  })
+
+  it("statement and pull-quote body slots carry capacity 1 (editorial-verse wave — attribution/prose annotation, not a geometric flat-default)", () => {
+    expect(LAYOUT_REGISTRY["statement"].slots.find((s) => s.name === "body")?.capacity).toBe(1)
+    expect(LAYOUT_REGISTRY["pull-quote"].slots.find((s) => s.name === "body")?.capacity).toBe(1)
   })
 })
 
@@ -187,18 +193,19 @@ describe("layoutsForSlideType", () => {
     for (const l of covers) expect(l.slideTypes).toContain("cover")
   })
 
-  it("cover/chapter/ending each resolve to exactly their 7, 8 or 9 layouts (no takeovers)", () => {
+  it("cover/chapter/ending each resolve to exactly their 9, 9 or 7 layouts (no takeovers)", () => {
     // cover grew 8 -> 9 in the theme-redesign wave (colophon).
+    // chapter grew 8 -> 9 in the editorial-verse wave (verse-chapter, pinOnly).
     expect(layoutsForSlideType("cover")).toHaveLength(9)
-    expect(layoutsForSlideType("chapter")).toHaveLength(8)
+    expect(layoutsForSlideType("chapter")).toHaveLength(9)
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 13 layouts and the 4 takeovers (quote-stage wave task T2: content 12 -> 13 — quote-stage, pptfast's first pinOnly member; layoutsForSlideType reads slideTypes only, unaffected by pinOnly, which only gates auto-selection pool construction — see LayoutDefinition.pinOnly's own doc comment)", () => {
+  it("content includes both the 15 layouts and the 4 takeovers (editorial-verse wave: content 13 -> 15 — statement + pull-quote, both pinOnly; layoutsForSlideType reads slideTypes only, unaffected by pinOnly)", () => {
     const contents = layoutsForSlideType("content")
-    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(13)
+    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(15)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
-    expect(contents).toHaveLength(17)
+    expect(contents).toHaveLength(19)
   })
 })
 
@@ -271,13 +278,38 @@ describe("excludePinOnly (quote-stage wave, task T1's pinOnly tier)", () => {
     expect(excludePinOnly(defs).map((d) => d.id)).toEqual(["unset", "not-pinned", "also-kept"])
   })
 
-  it("real LAYOUT_REGISTRY entries: exactly quote-stage sets pinOnly (quote-stage wave, task T2 — its first real consumer; task T1 originally landed this mechanism ahead of any real member, mirroring narrativesOnly's own W4 design decision 5, but that posture only held until T2)", () => {
+  it("real LAYOUT_REGISTRY entries: quote-stage and the three editorial-verse layouts set pinOnly", () => {
+    const pinOnlyIds = new Set(["quote-stage", "statement", "pull-quote", "verse-chapter"])
     for (const def of Object.values(LAYOUT_REGISTRY)) {
-      if (def.id === "quote-stage") {
+      if (pinOnlyIds.has(def.id)) {
         expect(def.pinOnly, `"${def.id}" should set pinOnly`).toBe(true)
       } else {
         expect(def.pinOnly, `"${def.id}" unexpectedly sets pinOnly`).toBeUndefined()
       }
+    }
+  })
+})
+
+describe("layout chrome declaration (editorial-verse wave)", () => {
+  it("layoutOmitsChrome is true only for chrome: none members", () => {
+    expect(layoutOmitsChrome("statement")).toBe(true)
+    expect(layoutOmitsChrome("pull-quote")).toBe(true)
+    expect(layoutOmitsChrome("verse-chapter")).toBe(true)
+    expect(layoutOmitsChrome("quote-stage")).toBe(false)
+    expect(layoutOmitsChrome("two-column")).toBe(false)
+    expect(layoutOmitsChrome(undefined)).toBe(false)
+  })
+
+  it("statement, pull-quote, and verse-chapter declare chrome: none", () => {
+    for (const id of ["statement", "pull-quote", "verse-chapter"] as const) {
+      expect(LAYOUT_REGISTRY[id].chrome, id).toBe("none")
+    }
+  })
+
+  it("every other registry entry leaves chrome unset (ordinary brand chrome + motif)", () => {
+    for (const def of Object.values(LAYOUT_REGISTRY)) {
+      if (def.id === "statement" || def.id === "pull-quote" || def.id === "verse-chapter") continue
+      expect(def.chrome, `"${def.id}" unexpectedly sets chrome`).toBeUndefined()
     }
   })
 })

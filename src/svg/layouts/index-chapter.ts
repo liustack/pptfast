@@ -7,6 +7,7 @@ import { PosterChapter } from "./chapter-poster-chapter"
 import { RomanChapter } from "./chapter-roman-chapter"
 import { ToneAdaptiveChapter } from "./chapter-tone-adaptive-chapter"
 import { FashionChapter } from "./chapter-fashion-chapter"
+import { VerseChapter } from "./chapter-verse-chapter"
 
 export type { ChapterLayout, ChapterLayoutId } from "./types"
 
@@ -22,4 +23,5 @@ export const CHAPTER_LAYOUTS: Record<ChapterLayoutId, ChapterLayout> = {
   "roman-chapter": RomanChapter,
   "tone-adaptive-chapter": ToneAdaptiveChapter,
   "fashion-chapter": FashionChapter,
+  "verse-chapter": VerseChapter,
 }

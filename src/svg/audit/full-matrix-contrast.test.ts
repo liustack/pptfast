@@ -647,8 +647,9 @@ describe("pin-only matrix contrast/overflow regression net (quote-stage wave, ta
         const bodyCapacity = layoutDef.slots.find((s) => s.name === "body")?.capacity ?? 0
 
         it(`${layout} at 0 components (a pure quote)`, () => {
+          const slideType = layoutDef.slideTypes[0] ?? "content"
           const slide: Slide = {
-            type: "content",
+            type: slideType,
             heading: HEADING,
             subheading: SUBHEADING,
             layout,
@@ -659,12 +660,13 @@ describe("pin-only matrix contrast/overflow regression net (quote-stage wave, ta
         })
 
         it(`${layout} at its own declared capacity (${bodyCapacity} component${bodyCapacity === 1 ? "" : "s"})`, () => {
+          const slideType = layoutDef.slideTypes[0] ?? "content"
           const slide: Slide = {
-            type: "content",
+            type: slideType,
             heading: HEADING,
             subheading: SUBHEADING,
             layout,
-            components: CONTENT_BODY.slice(0, bodyCapacity),
+            components: slideType === "content" ? CONTENT_BODY.slice(0, bodyCapacity) : [],
           } as Slide
           const findings = auditFindings(deckFor(themeId, slide)).filter((f) => !isAllowlisted(themeId, layout, f))
           expect(findings.map(findingSummary)).toEqual([])
