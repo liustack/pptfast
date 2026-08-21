@@ -7,7 +7,8 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { footnoteBaselineFor } from "../chrome-geometry"
+import { footnoteBaselineFor, TITLE_ZONE_TOP } from "../chrome-geometry"
+import { BLOCK_GAP } from "../layout"
 
 /**
  * banner-heading content layout（spec §3.2，Wave 3 Task 19）：consulting
@@ -57,28 +58,39 @@ import { footnoteBaselineFor } from "../chrome-geometry"
  */
 
 const BANNER_X = 96
-const BANNER_Y = 72
 const BANNER_W = 1088
 const BANNER_H_1LINE = 88
 const BANNER_H_2LINE = 132
 const BANNER_RADIUS = 4
 const BANNER_TITLE_X = 120
-// Baseline vertical-centering fudge: for a single line at the nominal 34px
-// heading size this yields a baseline of 72 + 88/2 + round(34*0.32) = 127,
-// matching the spec's fixed reference point, while staying proportional if
-// the heading shrinks toward its 22px floor on pathologically long titles.
 const BANNER_BASELINE_FUDGE_RATIO = 0.32
 const CONTENT_RECT_BOTTOM = 620
 
-// Kicker (section-name label) sits above the banner, fully inside
-// BrandChrome's tl/tr logo bands' y-range (48-88) regardless of BANNER_Y.
+// Kicker (section-name label) sits above the banner. Em-box top is
+// `TITLE_ZONE_TOP` (48), the same line `tone-adaptive-content` seats its
+// kicker on and every motif treats as the decoration band's lower edge.
+// Was a flat 52 (em top 40), eight pixels inside that band — on luxe the
+// gold inner frame at y=34 left 6px of air and read as glued to the page
+// top. Baseline = 48 + 12 = 60. The 20px kicker-to-banner gap is the
+// same beat the old 52/72 pair spent, so BANNER_Y follows to 80.
+const KICKER_FONT_SIZE = 12
+const KICKER_Y = TITLE_ZONE_TOP + KICKER_FONT_SIZE
+const BANNER_KICKER_GAP = 20
+const BANNER_Y = KICKER_Y + BANNER_KICKER_GAP
+
+// Baseline vertical-centering fudge: for a single line at the nominal 34px
+// heading size this yields a baseline of 80 + 88/2 + round(34*0.32) = 135,
+// staying proportional if the heading shrinks toward its 22px floor on
+// pathologically long titles.
+
 // `brand.logo_asset_id` is unset (no image at all) unless a deck explicitly
 // opts a logo into `position: "tl"` — so `hasTlLogo` mirrors BrandChrome's
 // own `logo?.src && !logo.error` gate to check the *real* IR instead of
 // assuming the worst: align with the banner's own left edge (BANNER_X)
 // whenever no tl logo actually resolves, and only fall back to the sideways
-// dodge (x=176) when one genuinely does.
-const KICKER_Y = 52
+// dodge (x=176) when one genuinely does. Kicker and banner still sit inside
+// BrandChrome's tl/tr logo bands' y-range (48-88). The banner fill is
+// allowed to touch those corners (solid color, no text).
 
 function hasTlLogo(ir: PptxIR): boolean {
   const { brand, assets } = ir
@@ -109,7 +121,12 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
   const kickerX = hasTlLogo(ir) ? 176 : BANNER_X
   const kickerMaxW = 1120 - 16 - kickerX
   const kicker = section
-    ? fitSvgLine(section, { maxWidth: kickerMaxW, fontSize: 12, minFontSize: 9, letterSpacing: 4 })
+    ? fitSvgLine(section, {
+        maxWidth: kickerMaxW,
+        fontSize: KICKER_FONT_SIZE,
+        minFontSize: 9,
+        letterSpacing: 4,
+      })
     : null
 
   const heading = fitHeadingLines(slide.heading, {
@@ -150,7 +167,12 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
     ? accessibleInk(colors.primary, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.primary
 
-  const contentRectY = bannerBottom + 32 + (subheading ? SUBHEADING_SLOT : 0)
+  // Heading-to-body beat: two designed block-gaps, scaled by the theme's
+  // gapScale (1 → 32, 1.1 → 35, 1.3 → 42). The body then sits in this rect
+  // under `settleToGolden`, whose own top-air cap is the same beat, so a
+  // lone table follows the banner instead of hanging mid-page.
+  const headingBodyGap = Math.round(BLOCK_GAP * 2 * (ctx.shape?.gapScale ?? 1))
+  const contentRectY = bannerBottom + headingBodyGap + (subheading ? SUBHEADING_SLOT : 0)
   const contentRect = {
     x: BANNER_X,
     y: contentRectY,
