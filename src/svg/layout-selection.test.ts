@@ -888,6 +888,8 @@ describe("resolveEffectiveLayoutId", () => {
       undefined,
       "briefing", // resolveNarrative(undefined) -> general -> briefing
       null, // first slide, no previous
+      undefined,
+      THEME_DEFINITIONS.academic.layoutTendencies?.content,
     )
     expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe(expected)
   })
@@ -1132,27 +1134,22 @@ describe("render parity with FullSlideSvg", () => {
   // multi-page collision, at index>0, run through the same render-parity
   // check as every case above.
   it("multi-page deck, index>0 anti-repetition swap-to-runner-up: resolveEffectiveLayoutId still matches the actual rendered data-archetype", () => {
-    // Seed 1 (content-layout expansion wave, task T2 re-pin — content
-    // pool grew 11 -> 12 (split-band), reweighting every hash-interval
-    // boundary again, so seed 3's old collision (T1's own re-pin) stopped
-    // colliding; re-found by brute-force search over this exact 2-page
-    // academic fixture, same method as T1's own re-pin and
-    // plan/revision-stability.test.ts's seed comments): page 0 auto-picks
-    // "two-column" (pageKey "0", no previous — unchanged from T1's pin, a
-    // happy coincidence of the search, not preserved on purpose), and page
-    // 1's own raw weighted pick (pageKey "1", before anti-repetition) is
-    // *also* "two-column" — so W4 design decision 4's redraw fires and
-    // lands on "asymmetric-triptych", the new deterministic runner-up
-    // (academic's content pool now has 12 members, never empty).
+    // Seed 1 used to collide here (content-layout expansion wave, task T2
+    // re-pin after the pool grew 11 -> 12). Second-front reweighted
+    // academic's content pool (`rail-numbered` + `narrow-column`), so seed
+    // 1 no longer collides. Seed 10 is the first seed where page 0 and
+    // page 1's raw pick both land on `rail-numbered`, so the redraw still
+    // fires. Re-found by brute-force search over this exact 2-page
+    // academic fixture, same method as T1's own re-pin.
     const slides: Slide[] = [
       { type: "content", heading: "Page 0", components: [{ type: "paragraph", text: "x" }] },
       { type: "content", heading: "Page 1", components: [{ type: "paragraph", text: "x" }] },
     ]
-    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 1 }
+    const ir: PptxIR = { ...makeIR(slides, "academic"), seed: 10 }
 
     // Page 0: no previous page, ordinary auto-pick — sanity baseline for
     // what page 1 would collide with.
-    expect(resolveEffectiveLayoutId(ir, slides[0], 0)).toBe("two-column")
+    expect(resolveEffectiveLayoutId(ir, slides[0], 0)).toBe("rail-numbered")
 
     // Page 1: the actual point of this test. Render parity on the one page
     // where the swap-to-runner-up branch is live.
@@ -1170,19 +1167,21 @@ describe("render parity with FullSlideSvg", () => {
     const unswappedRawPick = resolveLayoutId(
       "content",
       THEME_DEFINITIONS.academic.layouts,
-      1,
+      10,
       "1",
       undefined,
       resolveIrStrategy(ir),
       null,
+      undefined,
+      THEME_DEFINITIONS.academic.layoutTendencies?.content,
     )
     // The raw pick collides with page 0's own resolved id — this is the
     // actual collision the redraw exists to break.
-    expect(unswappedRawPick).toBe("two-column")
+    expect(unswappedRawPick).toBe("rail-numbered")
     // The real (redrawn) resolution differs from that raw pick — the redraw
-    // branch, not some other code path, is what produced "asymmetric-triptych".
+    // branch, not some other code path, is what produced "narrow-column".
     expect(resolved).not.toBe(unswappedRawPick)
-    expect(resolved).toBe("asymmetric-triptych")
+    expect(resolved).toBe("narrow-column")
   })
 
   it("a takeover or image-cover bypass never renders [data-archetype] (the layout branch is correctly skipped both sides)", () => {

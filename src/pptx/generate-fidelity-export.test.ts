@@ -311,7 +311,10 @@ const ONE_PX_PNG =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
 
 function contentSlide(heading: string, components: Component[]): Slide {
-  return { type: "content", heading, components }
+  // Pin a dense-but-roomy layout. This file is about rasterization, not
+  // auto-pick, and consulting's second-front content tendencies would
+  // otherwise land a tight layout that drops a block on one of these pages.
+  return { type: "content", heading, layout: "two-column", components }
 }
 
 /** A rich deck covering every registered component type, with

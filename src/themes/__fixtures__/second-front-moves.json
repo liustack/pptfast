@@ -1,0 +1,2638 @@
+{
+  "consulting": {
+    "1": {
+      "1": {
+        "from": "fashion-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "quiet-frame"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "asymmetric-triptych"
+      },
+      "4": {
+        "from": "banner-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "banner-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "bento-panel"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "poster-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    }
+  },
+  "enterprise": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "rail-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "banner-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "academic": {
+    "1": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "narrow-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "side-highlight"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    }
+  },
+  "insight": {
+    "1": {
+      "1": {
+        "from": "fashion-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "bento-panel"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "rail-ending"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "bento-panel"
+      },
+      "6": {
+        "from": "poster-ending",
+        "to": "banner-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "poster-chapter"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "poster-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "poster-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "campaign": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "fashion-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "fashion-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "rail-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "rail-chapter"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "fashion-chapter"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "bloom": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "classroom": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "ink": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "roman-chapter"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "poster-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "poster-chapter"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "roman-chapter"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "tech": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "image-lead-split"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "bento-panel"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "banner-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "bento-panel"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      }
+    }
+  },
+  "runway": {
+    "1": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "rail-numbered"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "bento-panel"
+      },
+      "6": {
+        "from": "poster-ending",
+        "to": "fashion-ending"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "stacked-poster"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "banner-ending"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "banner-heading"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "side-highlight",
+        "to": "bento-panel"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "side-highlight"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "journal": {
+    "1": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "narrow-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "side-highlight"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    }
+  },
+  "luxe": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "quiet-frame"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "fashion-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "bento-panel"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "poster-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "banner-chapter"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "heritage": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "asymmetric-triptych"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "asymmetric-triptych"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "rail-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "poster-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "pulse": {
+    "1": {
+      "1": {
+        "from": "fashion-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "quiet-frame"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "asymmetric-triptych"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "poster-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "terra": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "poster-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "quiet-frame"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "rail-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "asymmetric-triptych"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      },
+      "6": {
+        "from": "tone-adaptive-ending",
+        "to": "banner-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "ember": {
+    "1": {
+      "1": {
+        "from": "fashion-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "banner-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "rail-ending"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "4": {
+        "from": "banner-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "banner-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "vermilion": {
+    "1": {
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    },
+    "2": {
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "quiet-frame"
+      }
+    },
+    "3": {
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "asymmetric-triptych"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "bento-panel"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      }
+    },
+    "5": {
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      }
+    }
+  },
+  "crayon": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "fashion-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "poster-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "poster-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "fashion-chapter"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "arena": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "image-lead-split"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "bento-panel"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "fashion-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "banner-chapter"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "fashion-chapter"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "museum": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "rail-numbered"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "banner-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "stacked-poster"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "asymmetric-triptych"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "stage": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "quiet-frame"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "tone-adaptive-content"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "bento-panel"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "lecture": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "banner-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "tone-adaptive-content"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "banner-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "swiss": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "narrow-column"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "narrow-column"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "quiet-frame"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "rail-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "asymmetric-triptych"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "narrow-column"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "bento-panel"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "asymmetric-triptych"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "split-band"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "constellation-ending"
+      }
+    }
+  },
+  "memo": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "fashion-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "asymmetric-triptych"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "rail-numbered"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "tone-adaptive-content"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "poster-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "stacked-poster"
+      },
+      "3": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "constellation-chapter"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "masthead-ending"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "rail-numbered"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "banner-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "side-highlight",
+        "to": "tone-adaptive-content"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "rail-numbered",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "banner-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "tone-adaptive-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "side-highlight"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "two-column"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "masthead-ending"
+      }
+    }
+  },
+  "playbill": {
+    "1": {
+      "1": {
+        "from": "masthead-chapter",
+        "to": "constellation-chapter"
+      },
+      "2": {
+        "from": "tone-adaptive-content",
+        "to": "image-lead-split"
+      },
+      "3": {
+        "from": "split-band",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "side-highlight"
+      },
+      "6": {
+        "from": "masthead-ending",
+        "to": "fashion-ending"
+      }
+    },
+    "2": {
+      "1": {
+        "from": "tone-adaptive-chapter",
+        "to": "rail-chapter"
+      },
+      "2": {
+        "from": "asymmetric-triptych",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "rail-chapter",
+        "to": "fashion-chapter"
+      }
+    },
+    "3": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "masthead-chapter"
+      },
+      "2": {
+        "from": "two-column",
+        "to": "banner-heading"
+      },
+      "3": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "4": {
+        "from": "roman-chapter",
+        "to": "constellation-chapter"
+      },
+      "5": {
+        "from": "image-lead-split",
+        "to": "stacked-poster"
+      },
+      "6": {
+        "from": "banner-ending",
+        "to": "poster-ending"
+      }
+    },
+    "4": {
+      "1": {
+        "from": "constellation-chapter",
+        "to": "poster-chapter"
+      },
+      "3": {
+        "from": "rail-numbered",
+        "to": "banner-heading"
+      },
+      "4": {
+        "from": "tone-adaptive-chapter",
+        "to": "fashion-chapter"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "tone-adaptive-ending"
+      }
+    },
+    "5": {
+      "1": {
+        "from": "rail-chapter",
+        "to": "poster-chapter"
+      },
+      "3": {
+        "from": "tone-adaptive-content",
+        "to": "quiet-frame"
+      },
+      "4": {
+        "from": "poster-chapter",
+        "to": "masthead-chapter"
+      },
+      "5": {
+        "from": "banner-heading",
+        "to": "rail-numbered"
+      },
+      "6": {
+        "from": "fashion-ending",
+        "to": "constellation-ending"
+      }
+    }
+  }
+}

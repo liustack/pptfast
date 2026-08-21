@@ -157,7 +157,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     }
   })
 
-  it("consulting seed=1 control-group sequence is byte-identical to before these layouts existed", () => {
+  it("consulting seed=1 auto-pick sequence never lands on a pinOnly layout", () => {
     const slides: Slide[] = [
       { type: "cover", heading: "Q3 Strategy Review", components: [] },
       { type: "chapter", heading: "Chapter One: Market Landscape", components: [] },
@@ -186,11 +186,11 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     } as PptxIR
     expect(slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))).toEqual([
       "poster-center",
-      "fashion-chapter",
-      "tone-adaptive-content",
+      "constellation-chapter",
+      "narrow-column",
       "split-band",
-      "rail-chapter",
-      "banner-heading",
+      "poster-chapter",
+      "two-column",
       "tone-adaptive-ending",
     ])
   })

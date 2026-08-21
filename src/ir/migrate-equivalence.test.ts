@@ -779,6 +779,34 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // recaptured, and `.svg.json`/`.audit.json` needed no recapture for any
       // of the three: the preview already drew these painted — that
       // disagreement between preview and export is the defect this fixes.
+      //
+      // Re-recaptured (second-front wave, 2026-08-22 —
+      // `.issues/2026-08-21-content-allocation/`): every structural identity
+      // gained chapter / content / ending tendencies. Unpinned non-cover
+      // pages on these three fixtures therefore auto-pick differently — a
+      // real, intended selection-behavior change, not a migration
+      // regression. Same "reweighting a pool a fixed seed's hash lands in
+      // can flip an auto-pick" posture as the declaration-rebalance and
+      // content-pool recaptures above. Cover is the slot this wave promises
+      // not to touch, and every pinned ending stays put. Targeted diff
+      // against the pre-recapture goldens:
+      //   - `basic` (`consulting`): slide 1 chapter `banner-chapter` ->
+      //     `masthead-chapter`, slides 2-3 content `rail-numbered` ->
+      //     `split-band` and `split-band` -> `bento-panel`. Cover and the
+      //     pinned `banner-ending` unchanged.
+      //   - `scenarioBearing` (`journal`): slides 2-3 content
+      //     `side-highlight` -> `banner-heading` and `quiet-frame` ->
+      //     `side-highlight`. Cover, the first content page, and ending
+      //     unchanged (journal's chapter/ending tendencies were already
+      //     live).
+      //   - `annualReviewPreset` (`journal`): slide 2 content
+      //     `image-lead-split` -> `stacked-poster`. Cover, chapter, quote
+      //     content, and the pinned ending unchanged.
+      // `.audit.json` needed no recapture for any of the three (findings
+      // stayed the empty array). `.pptx-zip.json` file-name sets unchanged.
+      // PPTX parts that differ are exactly the matching 1-indexed slides
+      // (`basic` slide2/3/4.xml, `scenarioBearing` slide3/4.xml,
+      // `annualReviewPreset` slide3.xml).
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)
