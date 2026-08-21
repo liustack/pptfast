@@ -252,13 +252,14 @@ These layouts never appear through auto-selection. Set `layout` explicitly every
 
 A talk deck is spoken in the room (a keynote, a pitch, a lecture, a live walkthrough). A read deck is paged through after the speaker leaves (a report, a leave-behind, a weekly brief, a board pack the room will read). The tell: the user is presenting, asks for speaker notes, or says the slides sit behind a talk. If the file has to stand alone, it is a read deck.
 
-This is not a new `pacing` value. The enum stays `dense` / `balanced` / `spacious`. The contract is pin-only layouts plus `notes`.
+This is not a new `pacing` value. The enum stays `dense` / `balanced` / `spacious`. The contract is pin-only layouts, `notes`, and deck `chrome`.
 
 On a talk deck:
 
 - Climax, quote, and evidence pages pin a sparse pin-only layout. Name it: `statement`, `pull-quote`, `verse-chapter`. Same wave, still landing: `stat-hero`, `one-evidence`, `mono-bleed`. Pin those too once `pptfast schema` lists them. Do not leave those pages to auto-selection.
 - Tighten every page's on-slide budget past even `spacious`. Heading is the visual. At most one body component on a pinned sparse page (a source line, a single number, a single chart or table). Zero bullets on those pages. Split instead of stacking.
 - The spoken script goes in `slide.notes`. `render` exports it as native PowerPoint speaker notes (View → Notes, Presenter View). Never draw the script onto the canvas.
+- Write `chrome: "cover-only"` on the spec and the IR. A read deck omits the field. Do not write `cover-only` when `meta.confidentiality` is `confidential` or `restricted`.
 
 On a read deck, write to the pacing budget. A pin-only sparse layout is still the right pin when a page truly is one sentence.
 

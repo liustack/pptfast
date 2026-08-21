@@ -301,6 +301,25 @@ export const BrandSchema = z
   })
   .strict()
 
+/**
+ * Deck-level brand-chrome posture. Omitted equals `"full"` (today's footer
+ * rule, meta, and logo). The schema never bakes a default: writing `"full"`
+ * back into a parsed IR would rewrite every existing deck.
+ *
+ * `"cover-only"` keeps BrandChrome on cover and chapter pages and drops the
+ * footer rule, meta, and logo on content and ending pages. `"minimal"` drops
+ * the content-page footer rule and meta but keeps the logo. Layout-declared
+ * `chrome: "none"` still wins. Theme motifs are not this field.
+ *
+ * Shared with `DeckSpecSchema` (`src/spec/index.ts`) so the spec and IR
+ * cannot drift on the enum.
+ */
+export const DECK_CHROME_VALUES = ["full", "cover-only", "minimal"] as const
+export type DeckChrome = (typeof DECK_CHROME_VALUES)[number]
+export const DeckChromeSchema = z.enum(DECK_CHROME_VALUES).describe(
+  'Where the brand footer and logo appear. Omitted equals "full" (today\'s footer and logo). "cover-only" keeps them on cover and chapter pages and drops the footer rule, meta, and logo on content and ending pages. "minimal" drops the content-page footer rule and meta but keeps the logo. Layout chrome:"none" still wins. Theme motifs are unaffected. Talk decks write "cover-only". Read decks omit the field.',
+)
+
 // ── Components（37 种）──
 
 const ComponentSchema = z.discriminatedUnion("type", [
@@ -557,6 +576,13 @@ export const PptxIRSchema = z
     meta: MetaSchema.default({}),
     assets: AssetsSchema.default({ images: {} }),
     brand: BrandSchema.optional(),
+    /**
+     * Where the brand footer and logo appear. Optional, no default: omitted
+     * stays `undefined` and the renderer treats that as `"full"`, so existing
+     * decks that never mention the field parse and render byte-identically.
+     * See {@link DeckChromeSchema}.
+     */
+    chrome: DeckChromeSchema.optional(),
     // 修订稳定性 seed（W5 由 assemble 从 plan 注入，W4 消费做取样选型）。与
     // variety.ts 的内容哈希 deckSeed 正交、互不影响——缺省时 W4 前的选型/
     // 渲染行为不变。

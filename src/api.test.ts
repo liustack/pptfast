@@ -1987,7 +1987,32 @@ describe("generatePptx", () => {
   it("throws PptfastError with per-page details for invalid input", async () => {
     await expect(generatePptx({ nope: true })).rejects.toThrow(/invalid IR/)
   })
+
+  it("validates and renders a cover-only talk deck to pptx", async () => {
+    const talk = {
+      version: "4",
+      filename: "talk-chrome",
+      theme: { id: "consulting" },
+      chrome: "cover-only",
+      meta: { organization: "ACME", date: "2026" },
+      slides: [
+        { type: "cover", heading: "Pitch" },
+        { type: "content", heading: "The point", layout: "quiet-frame", components: [{ type: "paragraph", text: "Say it." }] },
+        { type: "ending", heading: "Thanks" },
+      ],
+    }
+    const v = validateIr(talk)
+    expect(v.ok).toBe(true)
+    expect(v.ir?.chrome).toBe("cover-only")
+    const contentSvg = renderSlideSvg(v.ir!, 1)
+    expect(contentSvg).not.toContain('y1="664"')
+    expect(contentSvg).not.toContain("ACME")
+    const bytes = await generatePptx(talk)
+    expect(bytes.length).toBeGreaterThan(10_000)
+    expect([bytes[0], bytes[1]]).toEqual([0x50, 0x4b])
+  })
 })
+
 
 describe("generatePptx draft gate (W5 task 1)", () => {
   const withPlaceholder = {
@@ -2379,5 +2404,11 @@ describe("irJsonSchema", () => {
     const json = JSON.stringify(irJsonSchema())
     expect(json).toContain("One short, nominal label")
     expect(json).toContain("Not a sentence and not a described item")
+  })
+
+  it("surfaces the deck chrome enum (full / cover-only / minimal)", () => {
+    const json = JSON.stringify(irJsonSchema())
+    expect(json).toContain("cover-only")
+    expect(json).toContain("minimal")
   })
 })

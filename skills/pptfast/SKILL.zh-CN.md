@@ -254,13 +254,14 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 
 演讲 deck 是人在场讲的（发布会、路演、讲座、当面走查）。阅读 deck 是人走后自己翻的（报告、会后转发、周报、会上自己读的董事会材料）。判据：用户要现场讲、要演讲者备注、或者说幻灯片是讲稿后面的那一层，就是演讲 deck。文件必须自己把话说完，就是阅读 deck。
 
-这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名和 `notes` 分流实现。
+这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名、`notes` 和 deck `chrome` 分流实现。
 
 演讲 deck：
 
 - 高潮页、金句页、证据页，显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`。同波次、并行落地中：`stat-hero`、`one-evidence`、`mono-bleed`。`pptfast schema` 里出现后同样钉。不要把这些页交给自动选型。
 - 每一页的正文预算比 `spacious` 更紧。标题就是主视觉。钉住的极简页最多一个 body component（一行出处、一个数字、一张图或一张表）。这些页零 bullet。装不下就拆页。
 - 讲稿写进 `slide.notes`。`render` 导出成原生 PowerPoint 演讲者备注（View → Notes，演讲者视图可见）。讲稿从不画到画布上。
+- spec 和 IR 写 `chrome: "cover-only"`。阅读 deck 省略该字段。`meta.confidentiality` 为 `confidential` 或 `restricted` 时不要写 `cover-only`。
 
 阅读 deck 按 pacing 预算写。某一页真的只剩一句话时，仍然可以钉极简版式。
 

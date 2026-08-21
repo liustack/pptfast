@@ -114,3 +114,98 @@ describe("BrandChrome footer meta suppression (brand.suppressFooterMeta, ink v3)
     expect(container.textContent).toContain("ACME")
   })
 })
+
+const LOGO_SRC =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+const coverSlide: Slide = { type: "cover", heading: "封面", components: [] }
+const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] }
+const endingSlide: Slide = { type: "ending", heading: "收束", components: [] }
+const statementSlide: Slide = {
+  type: "content",
+  layout: "statement",
+  heading: "一句就够",
+  components: [],
+}
+
+function branded(slides: Slide[], chrome?: PptxIR["chrome"]): PptxIR {
+  const base = ir("consulting", slides)
+  return {
+    ...base,
+    brand: { logo_asset_id: "logo", position: "br" },
+    assets: {
+      images: {
+        ...base.assets.images,
+        logo: { src: LOGO_SRC, alt: "logo" },
+      },
+    },
+    ...(chrome !== undefined ? { chrome } : {}),
+  }
+}
+
+describe("deck chrome posture (BrandChrome gate)", () => {
+  it("omitted chrome still draws the content footer rule, meta, and logo", () => {
+    const doc = branded([plainContentSlide])
+    const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
+    expect(container.querySelector("line")).not.toBeNull()
+    expect(container.textContent).toContain("ACME")
+    expect(container.querySelector("image")).not.toBeNull()
+  })
+
+  it("explicit chrome full matches the omitted path on a content page", () => {
+    const omitted = branded([plainContentSlide])
+    const full = branded([plainContentSlide], "full")
+    const a = svg(<BrandChrome ir={omitted} slide={plainContentSlide} ctx={ctx} />).container.innerHTML
+    const b = svg(<BrandChrome ir={full} slide={plainContentSlide} ctx={ctx} />).container.innerHTML
+    expect(a).toBe(b)
+  })
+
+  it("cover-only drops footer rule, meta, and logo on a content page", () => {
+    const doc = branded([plainContentSlide], "cover-only")
+    const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
+    expect(container.querySelector("line")).toBeNull()
+    expect(container.textContent).not.toContain("ACME")
+    expect(container.querySelector("image")).toBeNull()
+  })
+
+  it("cover-only keeps the logo on cover and chapter pages", () => {
+    const doc = branded([coverSlide, chapterSlide], "cover-only")
+    for (const slide of [coverSlide, chapterSlide]) {
+      const { container } = svg(<BrandChrome ir={doc} slide={slide} ctx={ctx} />)
+      expect(container.querySelector("image"), slide.type).not.toBeNull()
+      expect(container.querySelector("line"), slide.type).toBeNull()
+    }
+  })
+
+  it("cover-only drops the logo on an ending page", () => {
+    const doc = branded([endingSlide], "cover-only")
+    const { container } = svg(<BrandChrome ir={doc} slide={endingSlide} ctx={ctx} />)
+    expect(container.querySelector("image")).toBeNull()
+    expect(container.querySelector("line")).toBeNull()
+    expect(container.textContent).not.toContain("ACME")
+  })
+
+  it("layout chrome:none still wins under chrome full", () => {
+    const doc = branded([statementSlide], "full")
+    const { container } = svg(<BrandChrome ir={doc} slide={statementSlide} ctx={ctx} />)
+    expect(container.querySelector("line")).toBeNull()
+    expect(container.querySelector("image")).toBeNull()
+    expect(container.textContent).not.toContain("ACME")
+  })
+
+  it("cover-only stacked on layout chrome:none stays empty (no conflict)", () => {
+    const doc = branded([statementSlide], "cover-only")
+    const { container } = svg(<BrandChrome ir={doc} slide={statementSlide} ctx={ctx} />)
+    expect(container.querySelector("line")).toBeNull()
+    expect(container.querySelector("image")).toBeNull()
+    expect(container.textContent).not.toContain("ACME")
+  })
+
+  it("minimal drops the content footer rule and meta but keeps the logo", () => {
+    const doc = branded([plainContentSlide], "minimal")
+    const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
+    expect(container.querySelector("line")).toBeNull()
+    expect(container.textContent).not.toContain("ACME")
+    expect(container.querySelector("image")).not.toBeNull()
+  })
+})

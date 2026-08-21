@@ -29,7 +29,7 @@
  */
 import { z } from "zod"
 import { PptfastError } from "../errors"
-import { BEAT_VALUES, BrandSchema, COMPONENT_TYPES, MetaSchema, NarrativeProfileInputSchema } from "../ir"
+import { BEAT_VALUES, BrandSchema, COMPONENT_TYPES, DeckChromeSchema, MetaSchema, NarrativeProfileInputSchema } from "../ir"
 import {
   normalizeNarrativeShape,
   resolveNarrative,
@@ -143,6 +143,14 @@ export const DeckSpecSchema = z
      *  object") — consumed by `BrandChrome` (`src/svg/brand-chrome.tsx`) for
      *  the deck's logo image and corner position. */
     brand: BrandSchema.optional(),
+    /**
+     * Where the brand footer and logo appear — reused verbatim from the IR's
+     * own `chrome` field (`DeckChromeSchema`, `../ir`) so the spec and IR
+     * cannot drift. Optional, no default: omitted stays unset and assemble
+     * does not write `"full"` into the IR. Talk decks write `"cover-only"`.
+     * Read decks omit the field. Layout `chrome: "none"` still wins at render.
+     */
+    chrome: DeckChromeSchema.optional(),
     pages: z.array(PageSpecSchema),
   })
   .strict()

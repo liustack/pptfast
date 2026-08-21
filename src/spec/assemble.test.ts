@@ -278,6 +278,16 @@ describe("assembleDeck", () => {
       expect(ir.brand).toEqual({ logo_asset_id: "logo-1", position: "tl" })
     })
 
+    it("passes chrome through into ir.chrome when the spec sets it", () => {
+      const { ir } = assembleDeck(makePlan({ chrome: "cover-only" }), {})
+      expect(ir.chrome).toBe("cover-only")
+    })
+
+    it("omits ir.chrome when the spec omits chrome (no baked full default)", () => {
+      const { ir } = assembleDeck(makePlan(), {})
+      expect(ir.chrome).toBeUndefined()
+    })
+
     it("lets IR schema defaults handle theme/filename/meta when the spec omits them", () => {
       const minimal = {
         narrative: { pacing: "spacious" },
@@ -683,6 +693,41 @@ describe("round trip: assembleDeck(disassembleDeck(ir)) reproduces slide content
     expect(reassembled.narrative).toEqual(original.narrative)
     expect(reassembled.seed).toBe(original.seed)
     expect(reassembled.brand).toEqual(original.brand)
+  })
+
+  it("round-trips an explicit chrome posture and still omits it when the IR never set one", () => {
+    const withChrome = PptxIRSchema.parse({
+      version: "4",
+      filename: "talk-deck",
+      theme: { id: "consulting" },
+      narrative: { pacing: "spacious" },
+      chrome: "cover-only",
+      slides: [
+        { id: "p-cover", type: "cover", heading: "Cover" },
+        { id: "p-body", type: "content", heading: "Body" },
+        { id: "p-body-2", type: "content", heading: "Body 2" },
+        { id: "p-ending", type: "ending", heading: "End" },
+      ],
+    })
+    const { spec, pages } = disassembleDeck(withChrome)
+    expect(spec.chrome).toBe("cover-only")
+    const { ir: reassembled } = assembleDeck(spec, pages)
+    expect(reassembled.chrome).toBe("cover-only")
+
+    const omitted = PptxIRSchema.parse({
+      version: "4",
+      theme: { id: "consulting" },
+      narrative: { pacing: "spacious" },
+      slides: [
+        { id: "p-cover", type: "cover", heading: "Cover" },
+        { id: "p-body", type: "content", heading: "Body" },
+        { id: "p-body-2", type: "content", heading: "Body 2" },
+        { id: "p-ending", type: "ending", heading: "End" },
+      ],
+    })
+    const back = disassembleDeck(omitted)
+    expect(back.spec.chrome).toBeUndefined()
+    expect(assembleDeck(back.spec, back.pages).ir.chrome).toBeUndefined()
   })
 
   it("round-trips a deck whose slides omit id entirely (positional synthesis both ways)", () => {

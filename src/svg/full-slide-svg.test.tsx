@@ -882,3 +882,28 @@ describe("layouts that paint their own full-bleed field (LayoutDefinition.paints
     expect(fullBleedFills(container)).toContain("#F7F2E7")
   })
 })
+
+describe("deck chrome posture vs theme motif", () => {
+  const pinnedContent: Slide = {
+    type: "content",
+    layout: "quiet-frame",
+    heading: "三大支柱",
+    components: [{ type: "paragraph", text: "我们围绕三个方向推进。" }],
+  }
+
+  it("cover-only leaves the theme motif on a content page (motif is not brand chrome)", () => {
+    const doc: PptxIR = { ...ir([pinnedContent]), chrome: "cover-only" }
+    const { container } = render(<FullSlideSvg ir={doc} slide={pinnedContent} index={0} />)
+    expect(container.querySelector("[data-decor]")).not.toBeNull()
+    expect(container.textContent).toContain("三大支柱")
+    expect(container.querySelector('line[y1="664"]')).toBeNull()
+  })
+
+  it("omitted chrome and explicit full serialize to the same content-page SVG", () => {
+    const omitted = ir([pinnedContent])
+    const full: PptxIR = { ...omitted, chrome: "full" }
+    const a = renderSvgMarkup(<FullSlideSvg ir={omitted} slide={pinnedContent} index={0} />)
+    const b = renderSvgMarkup(<FullSlideSvg ir={full} slide={pinnedContent} index={0} />)
+    expect(a).toBe(b)
+  })
+})
