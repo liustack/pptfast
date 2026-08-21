@@ -38,6 +38,7 @@ import {
   EVIDENCE_TYPES,
   FULL_BODY_TYPES,
   PASSTHROUGH_SHELL_TYPES,
+  pickEvidence,
   SCALABLE_TYPES,
   SELF_VISUAL_TYPES,
   STRETCHABLE_TYPES,
@@ -192,6 +193,26 @@ describe("PASSTHROUGH_SHELL_TYPES equivalence (was content-bento-panel.tsx:134-1
     const current = [...preRefactor, "data_table", "cycle"]
     expect(new Set(PASSTHROUGH_SHELL_TYPES)).toEqual(new Set(current))
     expect(PASSTHROUGH_SHELL_TYPES.size).toBe(current.length)
+  })
+})
+
+describe("pickEvidence (assertion_evidence + one-evidence share this)", () => {
+  it("returns undefined on an empty list and on types that are not evidence", () => {
+    expect(pickEvidence([])).toBeUndefined()
+    expect(pickEvidence([{ type: "paragraph", text: "x" }])).toBeUndefined()
+  })
+
+  it("picks chart over image over kpi_cards, matching EVIDENCE_TYPES order", () => {
+    const image = { type: "image" as const, asset_id: "img", fit: "cover" as const }
+    const chart = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      series: [{ name: "S", data: [{ x: "A", y: 1 }] }],
+    }
+    const kpi = { type: "kpi_cards" as const, items: [{ value: "1", label: "n" }] }
+    expect(pickEvidence([image, chart, kpi])).toBe(chart)
+    expect(pickEvidence([kpi, image])).toBe(image)
+    expect(pickEvidence([kpi])).toBe(kpi)
   })
 })
 

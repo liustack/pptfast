@@ -69,6 +69,48 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
     assertNoBrandChrome(markup)
   })
 
+  it("stat-hero skips chrome on museum (dark)", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "stat-hero",
+      heading: "3.2 亿",
+      components: [],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("museum", [slide]), 0)
+    expect(markup).toContain("3.2")
+    assertNoBrandChrome(markup)
+  })
+
+  it("one-evidence skips chrome on consulting (light)", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "one-evidence",
+      heading: "迁徙路线在十年里缩短了四成",
+      components: [
+        {
+          type: "chart",
+          chart_type: "bar",
+          series: [{ name: "S", data: [{ x: "A", y: 10 }, { x: "B", y: 20 }] }],
+        },
+      ],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
+    expect(markup).toContain("迁徙路线")
+    assertNoBrandChrome(markup)
+  })
+
+  it("mono-bleed skips chrome and paints its own primary field", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "mono-bleed",
+      heading: "把灯关掉",
+      components: [],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    expect(markup).toContain("把灯关掉")
+    assertNoBrandChrome(markup)
+  })
+
   it("quote-stage still draws footer meta and motif (negative control)", () => {
     const slide: Slide = {
       type: "content",
@@ -107,6 +149,9 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
       expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("statement")
       expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("pull-quote")
       expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("quote-stage")
+      expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("stat-hero")
+      expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("one-evidence")
+      expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("mono-bleed")
       expect(THEME_DEFINITIONS[id].layouts.chapter, id).not.toContain("verse-chapter")
     }
   })
@@ -149,7 +194,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     ])
   })
 
-  it("never auto-selects statement / pull-quote / verse-chapter across a seed spread", () => {
+  it("never auto-selects statement / pull-quote / verse-chapter / speech layouts across a seed spread", () => {
     const slide: Slide = { type: "content", heading: "x", components: [{ type: "paragraph", text: "y" }] } as Slide
     for (let seed = 0; seed < 40; seed++) {
       const doc = { ...chromeDeck("consulting", [slide]), seed } as PptxIR
@@ -157,6 +202,9 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
       expect(picked).not.toBe("statement")
       expect(picked).not.toBe("pull-quote")
       expect(picked).not.toBe("verse-chapter")
+      expect(picked).not.toBe("stat-hero")
+      expect(picked).not.toBe("one-evidence")
+      expect(picked).not.toBe("mono-bleed")
     }
   })
 })
@@ -185,6 +233,20 @@ describe("sparse pages are not density-blocked", () => {
     ])
     expect(checkIrQuality(doc).filter((i) => i.code === "density")).toEqual([])
   })
+
+  it("stat-hero with 0 components has no density warning", () => {
+    const doc = chromeDeck("consulting", [
+      { type: "content", layout: "stat-hero", heading: "95.7%", components: [] } as Slide,
+    ])
+    expect(checkIrQuality(doc).filter((i) => i.code === "density")).toEqual([])
+  })
+
+  it("mono-bleed with 0 components has no density warning", () => {
+    const doc = chromeDeck("consulting", [
+      { type: "content", layout: "mono-bleed", heading: "把灯关掉", components: [] } as Slide,
+    ])
+    expect(checkIrQuality(doc).filter((i) => i.code === "density")).toEqual([])
+  })
 })
 
 describe("schema / validate accept the three new layout ids", () => {
@@ -208,7 +270,31 @@ describe("schema / validate accept the three new layout ids", () => {
       heading: "章首",
       components: [],
     } as Slide
-    const v = validateIr(chromeDeck("consulting", [cover, statement, pull, verse]))
+    const stat: Slide = {
+      type: "content",
+      layout: "stat-hero",
+      heading: "95.7%",
+      components: [],
+    } as Slide
+    const evidence: Slide = {
+      type: "content",
+      layout: "one-evidence",
+      heading: "迁徙路线在十年里缩短了四成",
+      components: [
+        {
+          type: "chart",
+          chart_type: "bar",
+          series: [{ name: "S", data: [{ x: "A", y: 10 }, { x: "B", y: 20 }] }],
+        },
+      ],
+    } as Slide
+    const bleed: Slide = {
+      type: "content",
+      layout: "mono-bleed",
+      heading: "把灯关掉",
+      components: [],
+    } as Slide
+    const v = validateIr(chromeDeck("consulting", [cover, statement, pull, verse, stat, evidence, bleed]))
     expect(v.ok, JSON.stringify(v.errors)).toBe(true)
   })
 
@@ -232,7 +318,7 @@ describe("schema / validate accept the three new layout ids", () => {
 describe("19-theme smoke: each new layout renders on every built-in theme", () => {
   const light = "consulting"
   const dark = "luxe"
-  it.each([...BUILTIN_THEME_IDS])("%s renders statement, pull-quote, and verse-chapter without throwing", (themeId) => {
+  it.each([...BUILTIN_THEME_IDS])("%s renders statement, pull-quote, verse-chapter, and the three speech layouts without throwing", (themeId) => {
     const statement: Slide = {
       type: "content",
       layout: "statement",
@@ -252,17 +338,50 @@ describe("19-theme smoke: each new layout renders on every built-in theme", () =
       heading: "羽毛下的智识",
       components: [],
     } as Slide
-    const doc = chromeDeck(themeId, [statement, pull, verse])
+    const stat: Slide = {
+      type: "content",
+      layout: "stat-hero",
+      heading: "3.2 亿",
+      components: [],
+    } as Slide
+    const evidence: Slide = {
+      type: "content",
+      layout: "one-evidence",
+      heading: "迁徙路线在十年里缩短了四成",
+      components: [
+        {
+          type: "chart",
+          chart_type: "bar",
+          series: [{ name: "S", data: [{ x: "A", y: 10 }, { x: "B", y: 20 }] }],
+        },
+      ],
+    } as Slide
+    const bleed: Slide = {
+      type: "content",
+      layout: "mono-bleed",
+      heading: "把灯关掉",
+      components: [],
+    } as Slide
+    const doc = chromeDeck(themeId, [statement, pull, verse, stat, evidence, bleed])
     const a = renderSlideSvg(doc, 0)
     const b = renderSlideSvg(doc, 1)
     const c = renderSlideSvg(doc, 2)
+    const d = renderSlideSvg(doc, 3)
+    const e = renderSlideSvg(doc, 4)
+    const f = renderSlideSvg(doc, 5)
     expect(a).toContain("下个世纪")
     expect(b).toContain("鹦鹉")
     expect(c).toContain("羽毛下的智识")
+    expect(d).toContain("3.2")
+    expect(e).toContain("迁徙路线")
+    expect(f).toContain("把灯关掉")
     if (themeId === light || themeId === dark) {
       assertNoBrandChrome(a)
       assertNoBrandChrome(b)
       assertNoBrandChrome(c)
+      assertNoBrandChrome(d)
+      assertNoBrandChrome(e)
+      assertNoBrandChrome(f)
     }
   })
 })

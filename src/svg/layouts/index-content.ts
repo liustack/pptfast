@@ -14,6 +14,9 @@ import { SplitBandContent } from "./content-split-band"
 import { QuoteStageContent } from "./content-quote-stage"
 import { StatementContent } from "./content-statement"
 import { PullQuoteContent } from "./content-pull-quote"
+import { StatHeroContent } from "./content-stat-hero"
+import { OneEvidenceContent } from "./content-one-evidence"
+import { MonoBleedContent } from "./content-mono-bleed"
 
 export type { ContentLayout, ContentLayoutId } from "./types"
 
@@ -32,6 +35,8 @@ export type { ContentLayout, ContentLayoutId } from "./types"
 // 措辞由 T3 收尾）。
 // editorial-verse wave：再加 statement / pull-quote 两个 pinOnly，自动池仍是
 // 12，"12 auto-selectable + 3 pin-only"。
+// speech-layouts wave：再加 stat-hero / one-evidence / mono-bleed 三个
+// pinOnly，自动池仍是 12，"12 auto-selectable + 6 pin-only"。
 export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "narrow-column": NarrowColumnContent,
   "two-column": TwoColumnContent,
@@ -48,4 +53,7 @@ export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "quote-stage": QuoteStageContent,
   statement: StatementContent,
   "pull-quote": PullQuoteContent,
+  "stat-hero": StatHeroContent,
+  "one-evidence": OneEvidenceContent,
+  "mono-bleed": MonoBleedContent,
 }

@@ -44,7 +44,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
     }
   }
 
-  it("has exactly 40 layout-kind entries, all traceable to one of the four real registries (editorial-verse wave: 37 -> 40, statement/pull-quote/verse-chapter)", () => {
+  it("has exactly 43 layout-kind entries, all traceable to one of the four real registries (speech-layouts wave: 40 -> 43, stat-hero/one-evidence/mono-bleed)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_LAYOUTS),
       ...Object.keys(CHAPTER_LAYOUTS),
@@ -52,7 +52,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
       ...Object.keys(ENDING_LAYOUTS),
     ])
     const layoutEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(layoutEntries).toHaveLength(40)
+    expect(layoutEntries).toHaveLength(43)
     for (const entry of layoutEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real layout id`).toBe(true)
     }
@@ -157,7 +157,16 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
 
   it("the remaining content layouts' body slots carry capacity 4 (W2 task 5 — the registry's own geometric number, unchanged by W3; P1 variety wave task 4's three new layouts join at the same flat default — see registry.ts's CONTENT_LAYOUT_DEFS header comment) — except bento-panel (6, its own grid capacity, asserted separately above) and quote-stage (1, a deliberate authoring contract, not a geometric flat-default — see that layout's own registry.ts derivation comment, quote-stage wave task T2)", () => {
     for (const id of Object.keys(CONTENT_LAYOUTS)) {
-      if (id === "bento-panel" || id === "quote-stage" || id === "statement" || id === "pull-quote") continue
+      if (
+        id === "bento-panel" ||
+        id === "quote-stage" ||
+        id === "statement" ||
+        id === "pull-quote" ||
+        id === "stat-hero" ||
+        id === "one-evidence" ||
+        id === "mono-bleed"
+      )
+        continue
       const body = LAYOUT_REGISTRY[id].slots.find((s) => s.name === "body")
       expect(body?.capacity, `"${id}" body slot should carry capacity 4`).toBe(4)
     }
@@ -171,6 +180,12 @@ describe("capacity metadata: only where the inventory gives hard numbers", () =>
   it("statement and pull-quote body slots carry capacity 1 (editorial-verse wave — attribution/prose annotation, not a geometric flat-default)", () => {
     expect(LAYOUT_REGISTRY["statement"].slots.find((s) => s.name === "body")?.capacity).toBe(1)
     expect(LAYOUT_REGISTRY["pull-quote"].slots.find((s) => s.name === "body")?.capacity).toBe(1)
+  })
+
+  it("speech-layout body capacities: stat-hero 1, one-evidence 1, mono-bleed 0", () => {
+    expect(LAYOUT_REGISTRY["stat-hero"].slots.find((s) => s.name === "body")?.capacity).toBe(1)
+    expect(LAYOUT_REGISTRY["one-evidence"].slots.find((s) => s.name === "body")?.capacity).toBe(1)
+    expect(LAYOUT_REGISTRY["mono-bleed"].slots.find((s) => s.name === "body")?.capacity).toBe(0)
   })
 })
 
@@ -201,11 +216,11 @@ describe("layoutsForSlideType", () => {
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 15 layouts and the 4 takeovers (editorial-verse wave: content 13 -> 15 — statement + pull-quote, both pinOnly; layoutsForSlideType reads slideTypes only, unaffected by pinOnly)", () => {
+  it("content includes both the 18 layouts and the 4 takeovers (speech-layouts wave: content 15 -> 18 — stat-hero + one-evidence + mono-bleed, all pinOnly; layoutsForSlideType reads slideTypes only, unaffected by pinOnly)", () => {
     const contents = layoutsForSlideType("content")
-    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(15)
+    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(18)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
-    expect(contents).toHaveLength(19)
+    expect(contents).toHaveLength(22)
   })
 })
 
@@ -279,7 +294,15 @@ describe("excludePinOnly (quote-stage wave, task T1's pinOnly tier)", () => {
   })
 
   it("real LAYOUT_REGISTRY entries: quote-stage and the three editorial-verse layouts set pinOnly", () => {
-    const pinOnlyIds = new Set(["quote-stage", "statement", "pull-quote", "verse-chapter"])
+    const pinOnlyIds = new Set([
+      "quote-stage",
+      "statement",
+      "pull-quote",
+      "verse-chapter",
+      "stat-hero",
+      "one-evidence",
+      "mono-bleed",
+    ])
     for (const def of Object.values(LAYOUT_REGISTRY)) {
       if (pinOnlyIds.has(def.id)) {
         expect(def.pinOnly, `"${def.id}" should set pinOnly`).toBe(true)
@@ -295,20 +318,38 @@ describe("layout chrome declaration (editorial-verse wave)", () => {
     expect(layoutOmitsChrome("statement")).toBe(true)
     expect(layoutOmitsChrome("pull-quote")).toBe(true)
     expect(layoutOmitsChrome("verse-chapter")).toBe(true)
+    expect(layoutOmitsChrome("stat-hero")).toBe(true)
+    expect(layoutOmitsChrome("one-evidence")).toBe(true)
+    expect(layoutOmitsChrome("mono-bleed")).toBe(true)
     expect(layoutOmitsChrome("quote-stage")).toBe(false)
     expect(layoutOmitsChrome("two-column")).toBe(false)
     expect(layoutOmitsChrome(undefined)).toBe(false)
   })
 
-  it("statement, pull-quote, and verse-chapter declare chrome: none", () => {
-    for (const id of ["statement", "pull-quote", "verse-chapter"] as const) {
+  it("chrome-free pinOnly members declare chrome: none", () => {
+    for (const id of [
+      "statement",
+      "pull-quote",
+      "verse-chapter",
+      "stat-hero",
+      "one-evidence",
+      "mono-bleed",
+    ] as const) {
       expect(LAYOUT_REGISTRY[id].chrome, id).toBe("none")
     }
   })
 
   it("every other registry entry leaves chrome unset (ordinary brand chrome + motif)", () => {
+    const chromeNone = new Set([
+      "statement",
+      "pull-quote",
+      "verse-chapter",
+      "stat-hero",
+      "one-evidence",
+      "mono-bleed",
+    ])
     for (const def of Object.values(LAYOUT_REGISTRY)) {
-      if (def.id === "statement" || def.id === "pull-quote" || def.id === "verse-chapter") continue
+      if (chromeNone.has(def.id)) continue
       expect(def.chrome, `"${def.id}" unexpectedly sets chrome`).toBeUndefined()
     }
   })

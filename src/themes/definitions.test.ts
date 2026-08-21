@@ -429,6 +429,9 @@ describe("registerTheme", () => {
     expect(def.layouts.content).not.toContain("quote-stage")
     expect(def.layouts.content).not.toContain("statement")
     expect(def.layouts.content).not.toContain("pull-quote")
+    expect(def.layouts.content).not.toContain("stat-hero")
+    expect(def.layouts.content).not.toContain("one-evidence")
+    expect(def.layouts.content).not.toContain("mono-bleed")
     expect(def.layouts.chapter).not.toContain("verse-chapter")
   })
 

@@ -116,6 +116,9 @@ import { layoutDef as contentSplitBand } from "./content-split-band"
 import { layoutDef as contentQuoteStage } from "./content-quote-stage"
 import { layoutDef as contentStatement } from "./content-statement"
 import { layoutDef as contentPullQuote } from "./content-pull-quote"
+import { layoutDef as contentStatHero } from "./content-stat-hero"
+import { layoutDef as contentOneEvidence } from "./content-one-evidence"
+import { layoutDef as contentMonoBleed } from "./content-mono-bleed"
 
 import {
   imageSplitLayoutDef,
@@ -276,8 +279,9 @@ export interface LayoutDefinition {
    * `../../lib/slide-edge.ts` for the other half of the same defect, on the
    * chrome side of the SVG.
    *
-   * `undefined` (every layout but the three `fashion-*` members) means the
-   * ordinary arrangement: `Background` paints, the layout draws on top of it.
+   * `undefined` (every layout but the three `fashion-*` members and
+   * `mono-bleed`) means the ordinary arrangement: `Background` paints, the
+   * layout draws on top of it.
    */
   paintsOwnBackground?: boolean
   /**
@@ -328,8 +332,9 @@ export interface LayoutDefinition {
    * `docs/designing-themes.md` does not apply: the whole 1280×720 canvas
    * is the layout's, there is no reserved footer strip to keep clear of.
    *
-   * `undefined` (every layout except the editorial-verse members
-   * `statement` / `pull-quote` / `verse-chapter`) means ordinary chrome:
+   * `undefined` (every layout except the chrome-free pinOnly members
+   * `statement` / `pull-quote` / `verse-chapter` / `stat-hero` /
+   * `one-evidence` / `mono-bleed`) means ordinary chrome:
    * `BrandChrome` and the theme motif paint as they do today. `"default"`
    * is accepted as an explicit spelling of that same ordinary path.
    *
@@ -559,6 +564,9 @@ const CONTENT_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [contentQuoteStage.id]: contentQuoteStage,
   [contentStatement.id]: contentStatement,
   [contentPullQuote.id]: contentPullQuote,
+  [contentStatHero.id]: contentStatHero,
+  [contentOneEvidence.id]: contentOneEvidence,
+  [contentMonoBleed.id]: contentMonoBleed,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -582,7 +590,7 @@ const TAKEOVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 40 standard layouts + 4 takeover layouts, keyed by id (`kind`
+/** All 43 standard layouts + 4 takeover layouts, keyed by id (`kind`
  *  still spells the standard tier `"archetype"` — a wire-format fossil, see
  *  {@link LayoutDefinition.kind}). */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {

@@ -360,6 +360,44 @@ describe("checkIrQuality", () => {
       expect(codes(issues)).toContain("density")
       expect(codes(issues)).not.toContain("pin_only_over_capacity")
     })
+
+    it("pinning one-evidence (capacity 1) with 2 components is a hard error", () => {
+      const ir = makeIR([
+        { type: "content", heading: "断言", layout: "one-evidence", components: paragraphs(2) },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("pin_only_over_capacity")
+      const found = issues.find((i) => i.code === "pin_only_over_capacity")!
+      expect(found.severity).toBe("error")
+      expect(found.pinOnlyCapacity).toEqual({ layoutId: "one-evidence", capacity: 1, componentCount: 2 })
+    })
+
+    it("pinning one-evidence with exactly 1 component passes clean of that error", () => {
+      const ir = makeIR([
+        { type: "content", heading: "断言", layout: "one-evidence", components: paragraphs(1) },
+      ])
+      expect(codes(checkIrQuality(ir))).not.toContain("pin_only_over_capacity")
+    })
+
+    it("pinning mono-bleed (capacity 0) with 1 component is a hard error", () => {
+      const ir = makeIR([
+        { type: "content", heading: "把灯关掉", layout: "mono-bleed", components: paragraphs(1) },
+      ])
+      const issues = checkIrQuality(ir)
+      expect(codes(issues)).toContain("pin_only_over_capacity")
+      expect(issues.find((i) => i.code === "pin_only_over_capacity")!.pinOnlyCapacity).toEqual({
+        layoutId: "mono-bleed",
+        capacity: 0,
+        componentCount: 1,
+      })
+    })
+
+    it("pinning stat-hero with 2 components is a hard error", () => {
+      const ir = makeIR([
+        { type: "content", heading: "95.7%", layout: "stat-hero", components: paragraphs(2) },
+      ])
+      expect(codes(checkIrQuality(ir))).toContain("pin_only_over_capacity")
+    })
   })
 
   // ── quote-stage heading width-limit hard error (quote-stage wave, task T2) ──

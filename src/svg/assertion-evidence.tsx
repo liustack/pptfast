@@ -1,7 +1,7 @@
 import { Fragment } from "react"
 import type { Component } from "@/ir"
 import type { ComponentCtx } from "./components/types"
-import { EVIDENCE_TYPES } from "./component-traits"
+import { pickEvidence } from "./component-traits"
 import { renderComponent, measureComponent } from "./components"
 import { BLOCK_GAP, layoutContentFit, type ContentRect } from "./layout"
 import { DroppedContentMarker } from "./drop-marker"
@@ -72,12 +72,7 @@ export function AssertionEvidence({
     return <></>
   }
 
-  // Find the first evidence component by priority.
-  let evidence: Component | undefined
-  for (const t of EVIDENCE_TYPES) {
-    evidence = components.find((b) => b.type === t)
-    if (evidence) break
-  }
+  const evidence = pickEvidence(components)
 
   // No recognised evidence type — fall back to normal single-column layout.
   if (!evidence) {
