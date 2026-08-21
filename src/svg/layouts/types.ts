@@ -75,3 +75,9 @@ export type ContentLayoutId =
   // Neither enters the auto-pick pool.
   | "statement"
   | "pull-quote"
+  // speech-layouts wave: three more pinOnly content members (stat-hero =
+  // whole-page number, one-evidence = assertion + one visual, mono-bleed =
+  // full-bleed primary field). None enter the auto-pick pool.
+  | "stat-hero"
+  | "one-evidence"
+  | "mono-bleed"

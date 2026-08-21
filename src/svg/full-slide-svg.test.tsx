@@ -864,6 +864,7 @@ describe("layouts that paint their own full-bleed field (LayoutDefinition.paints
     ["fashion-masthead", "cover"],
     ["fashion-chapter", "chapter"],
     ["fashion-ending", "ending"],
+    ["mono-bleed", "content"],
   ] as const
 
   for (const [layout, type] of CASES) {

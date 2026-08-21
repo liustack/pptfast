@@ -272,6 +272,20 @@ export const EVIDENCE_TYPES = [
 ] as const satisfies readonly ComponentType[]
 
 /**
+ * First evidence component in `EVIDENCE_TYPES` priority order, or
+ * `undefined` when the slide has none of those types. Shared by the
+ * `assertion_evidence` arrangement and the pin-only `one-evidence` layout
+ * so the two cannot drift.
+ */
+export function pickEvidence(components: readonly Component[]): Component | undefined {
+  for (const t of EVIDENCE_TYPES) {
+    const found = components.find((b) => b.type === t)
+    if (found) return found
+  }
+  return undefined
+}
+
+/**
  * "满幅" (full-body) component: a type meant to own an entire content rect by
  * itself rather than stack alongside sibling components — `swot`'s 2×2
  * quadrant grid, `bmc`'s nine-block canvas, `pest`'s 2×2 macro-environment
