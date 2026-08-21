@@ -62,7 +62,11 @@ export const CAMPAIGN_TOKENS: StyleTokens = {
     heading: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "system-ui"],
     body: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "system-ui"],
   },
-  shape: { radius: 10, gapScale: 1.0 }, // 活力圆润（tech 同档）
+  shape: {
+    radius: 10,
+    gapScale: 1.0, // 活力圆润（tech 同档）
+    cover: { showKicker: true, barFill: "accent", metaPlacement: "bottom-left" },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#2A1E3F" },
     chapter: { kind: "color", value: "#2A1E3F" },

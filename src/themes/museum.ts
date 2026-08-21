@@ -63,7 +63,11 @@ export const MUSEUM_TOKENS: StyleTokens = {
     heading: ["SimSun", "宋体", "Songti SC", "STSong", "serif"],
     body: ["Microsoft YaHei", "Helvetica Neue", "Arial", "system-ui"],
   },
-  shape: { radius: 0, gapScale: 1.3 }, // 展签直角 + airy 厅堂留白（ink 同档）
+  shape: {
+    radius: 0,
+    gapScale: 1.3, // 展签直角 + airy 厅堂留白（ink 同档）
+    cover: { metaPlacement: "top" },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#211A12" },
     chapter: { kind: "color", value: "#211A12" },

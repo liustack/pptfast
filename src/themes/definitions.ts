@@ -390,7 +390,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     },
   },
   insight: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock poster-center.
+    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "poster-motif",
     // Theme-structure wave, task T2: insight's own motif is `poster-motif`,
     // and `poster-center`/`poster-chapter`/`poster-ending` are verbatim
@@ -416,7 +417,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       // masthead, insight is the same construction on a near-black field with
       // a red accent, and the layout bakes no hex, so one composition carries
       // two registers.
-      cover: ["poster-center", "editorial-masthead"],
+      cover: ["poster-center"],
       // Second-front wave (2026-08-22)，四轴 C / top-band / light / tight：
       // - chapter `tone-adaptive-chapter` 追加：居中标题 + 一枚角落水印、零其它
       //   装饰。巨号加细线是行情屏的分区，这一枚给它第二张脸。它是
@@ -434,7 +435,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     },
   },
   academic: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock left-anchor.
+    layouts: { cover: ["left-anchor"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "rail-motif",
     // Theme-structure wave, task T2: academic's own motif is `rail-motif`,
     // and `left-anchor`/`rail-chapter`/`rail-ending` are verbatim
@@ -461,7 +463,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     },
   },
   tech: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock constellation.
+    layouts: { cover: ["constellation"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "constellation-motif",
     // Theme-structure wave, task T2: tech's own motif is
     // `constellation-motif`, and `constellation`/`constellation-chapter`/
@@ -515,7 +518,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   },
   // journal（人文期刊，原 magazine 改名）：masthead 报头家族，角饰是人文感。
   journal: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock editorial-masthead.
+    layouts: { cover: ["editorial-masthead"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "corner-ornament-motif",
     // Theme-structure wave, task T2: journal's own motif is
     // `corner-ornament-motif` (editorial ornamentation), and
@@ -653,11 +657,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     runway 是 #0A0A0A 上的时装刊，luxe 是黑底烫金请柬——layout 零 baked
   //     hex，全吃 ctx.colors，同一构图两种气质。
   luxe: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock poster-center.
+    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：烫金细线（原 P3「motif 可选」验证品，补齐）
     motif: "luxe-motif",
     layoutTendencies: {
-      cover: ["poster-center", "fashion-masthead"],
+      cover: ["poster-center"],
       // Second-front wave (2026-08-22)，四轴 C / bottom-right / light / airy：
       // - chapter `roman-chapter` + `banner-chapter`：请柬用罗马数字分节，
       //   整版黑底压金字是另一张脸。两个 id 都不在 briefing 的 chapter
@@ -684,10 +689,11 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //   - `split-diagonal`：深紫色块以硬斜切线收边——笔刷的斜向笔势和这道斜切是
   //     一路的。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实边际权重。
   campaign: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock poster-center.
+    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "campaign-motif",
     layoutTendencies: {
-      cover: ["poster-center", "split-diagonal"],
+      cover: ["poster-center"],
       // Second-front wave (2026-08-22)，四轴 C / bottom-left / heavy / medium：
       // - chapter `fashion-chapter` + `rail-chapter`：满版强调色断章接笔刷的
       //   斜势，居中巨标压整版色是舞台正面。两个 id 都不在 briefing 的
@@ -750,10 +756,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     推到二期（decisions.md），在它们落地之前，从通用池里硬挑一个 id 只是
   //     为了填表，不是结构判断。
   ink: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock colophon
+    // (ink 1a geometry already frozen). Drop fashion-masthead from cover
+    // tendencies. Second face is full-bleed ink and fights the colophon rail.
+    layouts: { cover: ["colophon"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "ink-motif",
     layoutTendencies: {
-      cover: ["colophon", "fashion-masthead"],
+      cover: ["colophon"],
       // Second-front wave (2026-08-22)，四轴 L / side-rail / light / airy：
       // 覆盖本条目上方「chapter / ending 本期不声明」的旧裁剪。content 保持
       // 已声明的 quiet-frame 加窄栏。
@@ -781,11 +790,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //   - `left-anchor`：左侧竖向色条 + 左上标题，密排那一路的起手式，bottom-left
   //     的 meta 轴在这个构图里落得最自然。同样不在 briefing 里，真实边际权重。
   heritage: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock
+    // editorial-masthead. Drop left-anchor from cover tendencies.
+    layouts: { cover: ["editorial-masthead"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-07-10 motif 全覆盖：典藏纹饰（徽记/角花/页缘线）
     motif: "heritage-motif",
     layoutTendencies: {
-      cover: ["editorial-masthead", "left-anchor"],
+      cover: ["editorial-masthead"],
       // Second-front wave (2026-08-22)，四轴 L / bottom-left / medium / medium：
       // - chapter `masthead-chapter` + `roman-chapter`：藏书票的分节是罗马数字
       //   与文武线。前者与 briefing 重合，真实边际来自罗马数字。
@@ -878,7 +889,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 已经与其余 7 个既有声明主题（含 pulse）逐一比对均不同，也不与 7 个未声明
   // 主题共享的默认序列相同，chapter 轴不需要额外声明来撑区分度。
   terra: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock tone-adaptive-header.
+    layouts: { cover: ["tone-adaptive-header"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "terra-motif",
     layoutTendencies: {
       // theme-structure-allocation wave 增补 `left-anchor`：分配表给 terra 的
@@ -890,7 +902,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       // 这三家的 cover 集合与 terra 各不相同（consulting 配 banner-title、
       // academic 单声明、heritage 配 editorial-masthead），四家的权重向量
       // 两两不同。
-      cover: ["tone-adaptive-header", "left-anchor"],
+      cover: ["tone-adaptive-header"],
       // Second-front wave (2026-08-22)。覆盖本条目上方「chapter 轴刻意不声明」
       // 的旧裁剪。四轴按提案 1.3 重建，不当仓内事实：L / bottom-left / light /
       // medium（`definitions.ts` 明写 meta 轴是 bottom-left，terra-motif v2
@@ -1141,9 +1153,11 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // chapter / ending / content 不声明：身份靠封面 + light motif + airy
   // gapScale，不靠再声明一个与 insight 同形的轴去硬凑区分度。
   museum: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // board-cover-restore wave 2 (parameter gap, no new ids): lock poster-center.
+    // editorial-masthead is the second face, deferred.
+    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     layoutTendencies: {
-      cover: ["poster-center", "editorial-masthead"],
+      cover: ["poster-center"],
       // Second-front wave (2026-08-22)，四轴 C / top-band / none / airy：
       // 覆盖本条目上方「chapter / ending / content 不声明」的旧裁剪。
       // - chapter `masthead-chapter` + `poster-chapter`：双细线与展签编号。

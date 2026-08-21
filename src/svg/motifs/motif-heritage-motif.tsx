@@ -44,11 +44,12 @@ import type { DecorProps } from "./types"
  * 因此一并删除，`cachedDeckSeed`/`pickBySeed` 的依赖也随之退出本文件。
  *
  * 纪律：零 theme id、零 hex，颜色只来自 ctx（accent = 焦糖、primary = 勃艮第、
- * border = 纸纹线）。本 motif 同时是 journal / luxe 两家轮换候选集里的成员
- * （`motif-selection.ts` 的 `MOTIF_CANDIDATES`），它们抽到本 motif 时画的是
- * 各自的 token——luxe 的 primary 本轮已退成与底同黑，两枚角花在 luxe 的
- * 黑底上因此几乎不可见（顶缘双线与金菱走 accent 香槟金，仍然可见，
- * `motif-candidate-contrast.test.ts` 的可见度地板取每页最亮的一件，通过）。
+ * border = 纸纹线）。board-cover-restore wave 2 把 heritage / journal / luxe
+ * 的候选集都钉成各自的封面板 motif，本文件不再被那两家轮换抽中。
+ *
+ * 封面另加一枚 60×76 藏书票章（外框 (1150,96)，内缩 6px，中心一枚 16×16
+ * 焦糖菱），只在 cover 上画。外框走 primary（酒红），内框与中心菱走 accent。
+ * 顶双线 / 角花 / 底菱四种页型都保留。
  */
 
 // ── 顶缘双线（报头双规则线） ────────────────────────────────────────────
@@ -81,7 +82,16 @@ const DIAMOND_SIZE = 10
 const DIAMOND_CX = (FOOT_X1 + FOOT_X2) / 2
 const DIAMOND_CY = FOOT_Y
 
-export function HeritageMotif({ ctx }: DecorProps) {
+const STAMP_X = 1150
+const STAMP_Y = 96
+const STAMP_W = 60
+const STAMP_H = 76
+const STAMP_INSET = 6
+const STAMP_DIAMOND = 16
+const STAMP_CX = STAMP_X + STAMP_W / 2
+const STAMP_CY = STAMP_Y + STAMP_H / 2
+
+export function HeritageMotif({ slide, ctx }: DecorProps) {
   const caramel = ctx.colors.accent
   const wine = ctx.colors.primary
   const hairline = ctx.colors.border ?? ctx.colors.muted
@@ -119,6 +129,37 @@ export function HeritageMotif({ ctx }: DecorProps) {
         fill={caramel}
         transform={`rotate(45 ${DIAMOND_CX} ${DIAMOND_CY})`}
       />
+
+      {slide.type === "cover" && (
+        <>
+          <rect
+            x={STAMP_X}
+            y={STAMP_Y}
+            width={STAMP_W}
+            height={STAMP_H}
+            fill="none"
+            stroke={wine}
+            strokeWidth={1.2}
+          />
+          <rect
+            x={STAMP_X + STAMP_INSET}
+            y={STAMP_Y + STAMP_INSET}
+            width={STAMP_W - STAMP_INSET * 2}
+            height={STAMP_H - STAMP_INSET * 2}
+            fill="none"
+            stroke={caramel}
+            strokeWidth={0.75}
+          />
+          <rect
+            x={STAMP_CX - STAMP_DIAMOND / 2}
+            y={STAMP_CY - STAMP_DIAMOND / 2}
+            width={STAMP_DIAMOND}
+            height={STAMP_DIAMOND}
+            fill={caramel}
+            transform={`rotate(45 ${STAMP_CX} ${STAMP_CY})`}
+          />
+        </>
+      )}
     </>
   )
 }

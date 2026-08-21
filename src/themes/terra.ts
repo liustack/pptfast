@@ -81,7 +81,11 @@ export const TERRA_TOKENS: StyleTokens = {
     heading: ["Microsoft YaHei", "Helvetica Neue", "Arial", "system-ui"],
     body: ["Microsoft YaHei", "Helvetica Neue", "Arial", "system-ui"],
   },
-  shape: { radius: 4, gapScale: 1 }, // 朴实无华（ESG 年报/可持续报告的克制感）
+  shape: {
+    radius: 4,
+    gapScale: 1, // 朴实无华（ESG 年报/可持续报告的克制感）
+    cover: { titleSize: 64, hideRightMeta: true },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#EFE9DC" },
     chapter: { kind: "color", value: "#4D5D39" },

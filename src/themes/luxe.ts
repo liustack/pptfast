@@ -68,7 +68,11 @@ export const LUXE_TOKENS: StyleTokens = {
     heading: ["SimSun", "宋体", "Songti SC", "STSong", "serif"],
     body: ["Microsoft YaHei", "Helvetica Neue", "Arial", "system-ui"],
   },
-  shape: { radius: 0, gapScale: 1.1 }, // 黑金直角凌厉+呼吸感（spec 提案，2026-07-10）
+  shape: {
+    radius: 0,
+    gapScale: 1.1, // 黑金直角凌厉+呼吸感（spec 提案，2026-07-10）
+    cover: { metaPlacement: "bottom-right" },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#0B0908" },
     chapter: { kind: "color", value: "#0B0908" },

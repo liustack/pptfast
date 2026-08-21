@@ -76,7 +76,11 @@ export const TECH_TOKENS: StyleTokens = {
     ],
     mono: ["Consolas", "Courier New"],
   },
-  shape: { radius: 10, gapScale: 1 }, // bento 圆润（科技卡片感）
+  shape: {
+    radius: 10,
+    gapScale: 1, // bento 圆润（科技卡片感）
+    cover: { titleBottomAnchor: false, ruleStyle: "star-chain" },
+  },
   defaultBackgrounds: {
     cover: { kind: "gradient", from: "#0E1630", to: "#070B16", direction: "diagonal" },
     chapter: { kind: "gradient", from: "#0E1630", to: "#070B16", direction: "diagonal" },

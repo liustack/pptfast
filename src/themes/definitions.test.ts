@@ -149,78 +149,21 @@ describe("THEME_DEFINITIONS", () => {
     "tone-adaptive-ending",
     "fashion-ending",
   ]
-  it("W4 全集放开基线 + post-v0.3 W8 fix round：未硬锁封面的主题四页型仍为各页型全集", () => {
-    expect(THEME_DEFINITIONS.insight.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
+  it("W4 全集放开基线：chapter/content/ending stay full. every builtin now locks cover", () => {
+    expect(__fullLayoutSet("cover")).toEqual(FULL_COVER)
+    for (const id of CANONICAL_THEME_IDS) {
+      expect(THEME_DEFINITIONS[id].layouts.cover.length, `${id}.cover is a singleton lock`).toBe(1)
+      expect(THEME_DEFINITIONS[id].layouts.chapter, `${id}.chapter`).toEqual(FULL_CHAPTER)
+      expect(THEME_DEFINITIONS[id].layouts.content, `${id}.content`).toEqual(FULL_CONTENT)
+      expect(THEME_DEFINITIONS[id].layouts.ending, `${id}.ending`).toEqual(FULL_ENDING)
+    }
     expect(THEME_DEFINITIONS.insight.motif).toBe("poster-motif")
-
-    expect(THEME_DEFINITIONS.academic.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
     expect(THEME_DEFINITIONS.academic.motif).toBe("rail-motif")
-
-    expect(THEME_DEFINITIONS.tech.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
     expect(THEME_DEFINITIONS.tech.motif).toBe("constellation-motif")
-
-    expect(THEME_DEFINITIONS.journal.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
     expect(THEME_DEFINITIONS.journal.motif).toBe("corner-ornament-motif")
-
-    expect(THEME_DEFINITIONS.luxe.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
     expect(THEME_DEFINITIONS.luxe.motif).toBe("luxe-motif")
-
-    expect(THEME_DEFINITIONS.campaign.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
     expect(THEME_DEFINITIONS.campaign.motif).toBe("campaign-motif")
-
-    expect(THEME_DEFINITIONS.ink.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
     expect(THEME_DEFINITIONS.ink.motif).toBe("ink-motif")
-    // ink v3（2026-08-18 主题重设计第一期）：策展集仍是四页型全集——本期加的
-    // 是 layoutTendencies（软权重），不是 layouts 的收窄，两者是不同的机制。
-    expect(THEME_DEFINITIONS.ink.layoutTendencies).toEqual({
-      cover: ["colophon", "fashion-masthead"],
-      chapter: ["roman-chapter", "tone-adaptive-chapter"],
-      content: ["quiet-frame", "narrow-column"],
-      ending: ["tone-adaptive-ending", "poster-ending"],
-    })
-
-    // heritage：同上，chapter 排除已撤销。
-    expect(THEME_DEFINITIONS.heritage.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
     expect(THEME_DEFINITIONS.heritage.motif).toBe("heritage-motif")
   })
 
@@ -298,6 +241,45 @@ describe("THEME_DEFINITIONS", () => {
 
     expect(THEME_DEFINITIONS.ember.layouts.cover).toEqual(["corner-wedge"])
     expect(THEME_DEFINITIONS.ember.layoutTendencies?.cover).toEqual(["corner-wedge"])
+  })
+
+  it("board-cover-restore wave 2: ten themes lock layouts.cover to the board face", () => {
+    expect(THEME_DEFINITIONS.academic.layouts.cover).toEqual(["left-anchor"])
+    expect(THEME_DEFINITIONS.academic.layoutTendencies?.cover).toEqual(["left-anchor"])
+
+    expect(THEME_DEFINITIONS.campaign.layouts.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.campaign.layoutTendencies?.cover).toEqual(["poster-center"])
+
+    expect(THEME_DEFINITIONS.insight.layouts.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.insight.layoutTendencies?.cover).toEqual(["poster-center"])
+
+    expect(THEME_DEFINITIONS.tech.layouts.cover).toEqual(["constellation"])
+    expect(THEME_DEFINITIONS.tech.layoutTendencies?.cover).toEqual(["constellation"])
+
+    expect(THEME_DEFINITIONS.luxe.layouts.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.luxe.layoutTendencies?.cover).toEqual(["poster-center"])
+
+    expect(THEME_DEFINITIONS.journal.layouts.cover).toEqual(["editorial-masthead"])
+    expect(THEME_DEFINITIONS.journal.layoutTendencies?.cover).toEqual(["editorial-masthead"])
+
+    expect(THEME_DEFINITIONS.ink.layouts.cover).toEqual(["colophon"])
+    expect(THEME_DEFINITIONS.ink.layoutTendencies?.cover).toEqual(["colophon"])
+    expect(THEME_DEFINITIONS.ink.layoutTendencies).toEqual({
+      cover: ["colophon"],
+      chapter: ["roman-chapter", "tone-adaptive-chapter"],
+      content: ["quiet-frame", "narrow-column"],
+      ending: ["tone-adaptive-ending", "poster-ending"],
+    })
+
+    expect(THEME_DEFINITIONS.museum.layouts.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.museum.layoutTendencies?.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.museum.motif).toBeUndefined()
+
+    expect(THEME_DEFINITIONS.terra.layouts.cover).toEqual(["tone-adaptive-header"])
+    expect(THEME_DEFINITIONS.terra.layoutTendencies?.cover).toEqual(["tone-adaptive-header"])
+
+    expect(THEME_DEFINITIONS.heritage.layouts.cover).toEqual(["editorial-masthead"])
+    expect(THEME_DEFINITIONS.heritage.layoutTendencies?.cover).toEqual(["editorial-masthead"])
   })
 
   it("未知 id 经 resolveThemeId 回落 consulting 的主题定义（含 layouts/motif），原 manifest 取值函数回落断言迁移", () => {
