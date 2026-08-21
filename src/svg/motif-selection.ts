@@ -66,6 +66,7 @@
  * | vermilion | vermilion-motif *(singleton)* | gov-theme wave (2026-08-06): vermilion's flag-ribbon-arc + gold-ray-fan vocabulary is its own new technique family — a filled tapering ribbon along an ascending bezier plus a radiating thin-line ray fan, reading as ceremonial "提气/庄重" official-report identity. Not a static blob/ornament, not a grid/glow, not ember's fading particle trail — no existing motif reads as a compatible sibling, and its deliberately-restrained CJK-official register would clash with any of the other 16. Stays a candidate set of 1 (same rationale pattern as pulse/terra/ember/campaign/ink) |
  * | crayon | crayon-motif *(singleton)* | kids-education theme (2026-08-21): crayon's crayon-smear edge + sun doodle + rainbow dashes + star-sticker vocabulary is its own new technique family — a heavy page-edge crayon stroke, not campaign's confetti field, not classroom's legal-pad punch holes. Pairing it with either would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/classroom/ink). |
  * | arena | arena-motif *(singleton)* | 2026-08-21: arena's HUD-bracket + speed-line vocabulary is its own new technique family — corner brackets, 45° edge streaks, a segmented energy bar. Campaign's confetti and tech's constellation chain are the nearest neighbours by scene, not by mark, so pairing either in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion) |
+ * | memo | memo-motif *(singleton)* | 2026-08-21: memo's typewriter double-rule + MEMORANDUM eyebrow is its own new technique family — stamp-red lines and a Latin mono decorative word, never a fill. Journal's masthead rules and heritage's bookplate rules sit in the same printed-line neighbourhood, but both already rotate with each other and with luxe; pairing either in would collapse memo into the editorial-print cluster it was designed to leave. Stays a candidate set of 1 (same rationale pattern as vermilion/ink). |
  *
  * `tone-adaptive-motif` — the 13th registered motif — is
  * deliberately absent from every candidate set above: its own source header
@@ -180,6 +181,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   vermilion: ["vermilion-motif"],
   crayon: ["crayon-motif"],
   arena: ["arena-motif"],
+  memo: ["memo-motif"],
 }
 
 /**
@@ -197,7 +199,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  *   two none identities within them) renders byte-identically to before
  *   this module existed.
  * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`,
- *   crayon, arena, and every themes-16/gov-theme singleton): `weightedPickBySeed`
+ *   crayon, arena, memo, and every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   always returns that single member regardless of seed/pageKey — also
  *   byte-identical to before this task (see `motif-selection.test.ts`'s
  *   byte-inertness block).
