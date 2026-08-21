@@ -198,7 +198,7 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
 }
 
 /** One page pinned onto one layout, typed to whatever that layout accepts. */
-export function layoutPage(layoutId: string, lex: Lexicon, assets: CorpusAssets): PptxIR {
+export function layoutPage(layoutId: string, lex: Lexicon, assets: CorpusAssets, themeId: string = BASELINE_THEME): PptxIR {
   const def = LAYOUT_REGISTRY[layoutId]
   if (!def) throw new Error(`unknown layout id: ${layoutId}`)
   const slideType = def.slideTypes[0]!
@@ -228,7 +228,7 @@ export function layoutPage(layoutId: string, lex: Lexicon, assets: CorpusAssets)
     slide.components = [COMPONENT_BUILDERS.image!(lex), ...slide.components].slice(0, 2)
   }
 
-  return deckShell(lex, assets, BASELINE_THEME, `layout-${layoutId}-${lex.id}`, [slide])
+  return deckShell(lex, assets, themeId, `layout-${layoutId}-${themeId === BASELINE_THEME ? lex.id : `${themeId}-${lex.id}`}`, [slide])
 }
 
 // ─────────────────────────────────────────────────────────────────────────

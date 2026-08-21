@@ -52,7 +52,7 @@ const outDir = resolve(ROOT, flag("out") || ".gallery")
 
 const onlyRaw = flag("only")
 const only = onlyRaw as TableId | undefined
-if (onlyRaw !== undefined && !["theme", "layout", "component", "density"].includes(onlyRaw)) {
+if (onlyRaw !== undefined && !["theme", "layout", "component", "density", "speech"].includes(onlyRaw)) {
   fail(`--only must be one of theme, layout, component, density (got "${onlyRaw}")`)
 }
 
