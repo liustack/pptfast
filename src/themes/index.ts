@@ -22,9 +22,10 @@ import { CRAYON_TOKENS } from "./crayon";
 import { ARENA_TOKENS } from "./arena";
 import { MUSEUM_TOKENS } from "./museum";
 import { STAGE_TOKENS } from "./stage";
+import { SWISS_TOKENS } from "./swiss";
 
 /**
- * The 21 canonical theme ids, registered/renderable（产品口径 20 套主题：
+ * The 22 canonical theme ids, registered/renderable（产品口径 21 套主题：
  * bloom 已并入 classroom 作纯换色 preset，id 因兼容保留）。场景化命名：对外 theme.id
  * 按内容场景命名（consulting Business Consulting / enterprise Enterprise /
  * academic Academic / insight Financial Insight / campaign Marketing Campaign /
@@ -38,7 +39,8 @@ import { STAGE_TOKENS } from "./stage";
  * 蜡笔卡纸 / arena Esports & Entertainment——娱乐电竞·竞技场紫黑 /
  * museum Museum——博物·棕黑厅堂衬线铜金，2026-08-21 鹦鹉站气质立项 /
  * stage Keynote Stage——黑场·无框发布会演讲，2026-08-21 huashu 风格库
- * Top 5 第 3，结构身份 19 → 20）。pptfast 是独立分叉，无存量 deck
+ * Top 5 第 3 / swiss Swiss Institutional——冷白制度，机构年报 / 政策汇报 /
+ * 审计交付，2026-08-21 wave7，结构身份 20 → 21）。pptfast 是独立分叉，无存量 deck
  * 兼容包袱，不维护 legacy id 映射表（resolveThemeId 对未知 id 一律回落
  * consulting）。
  */
@@ -64,6 +66,7 @@ export const CANONICAL_THEME_IDS = [
   "arena",
   "museum",
   "stage",
+  "swiss",
 ] as const;
 
 export type CanonicalThemeId = (typeof CANONICAL_THEME_IDS)[number];
@@ -91,6 +94,7 @@ export const THEME_LABELS: Record<CanonicalThemeId, string> = {
   arena: "Esports & Entertainment",
   museum: "Museum",
   stage: "Keynote Stage",
+  swiss: "Swiss Institutional",
 };
 
 /** Map any theme id onto a canonical, registered theme id. Unknown ids fall back to consulting. */
@@ -122,6 +126,7 @@ export const THEME_STYLES: Record<CanonicalThemeId, StyleTokens> = {
   arena: ARENA_TOKENS,
   museum: MUSEUM_TOKENS,
   stage: STAGE_TOKENS,
+  swiss: SWISS_TOKENS,
 };
 
 /**

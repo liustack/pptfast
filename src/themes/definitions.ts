@@ -232,8 +232,8 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
  * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「21 个 theme
- * id、20 个结构身份」是本仓从此的正式口径，不是过渡态。
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「22 个 theme
+ * id、21 个结构身份」是本仓从此的正式口径，不是过渡态。
  *
  * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
  * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
@@ -943,6 +943,27 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 不是漏写（theme-structure.test.ts 把两家一起钉成合法例外）。
     layoutTendencies: {
       cover: ["poster-center", "tone-adaptive-header"],
+    },
+  },
+  // swiss（冷白制度，2026-08-21 wave7）：冷白纸 + 硬黑即正文即色块 + 瑞士红
+  // 成边，由专属 swiss-motif 承载。结构行 L / bottom-right / light / tight，
+  // 最近邻 tech（L / BR / medium / tight），岔在装饰轴。consulting 是报告腔、
+  // vermilion 是公文腔、swiss 是制度腔，三家不是换色。封面构造 left-anchor /
+  // split-diagonal（3:1 软权重，照现有写法）：
+  //   - `left-anchor`：左侧 40% 硬黑色块 + 左上标题，制度年报的起手式。色块
+  //     走 primary 硬黑，不走瑞士红（红成边纪律：红永不承字成横幅）。不在
+  //     briefing 的 cover 集合里，max(3,1)=3，产生真实边际权重。
+  //   - `split-diagonal`：硬黑斜切切开冷白纸。同样不在 briefing 集合里，
+  //     满额边际权重。enterprise / campaign / pulse / ember / arena 也靠
+  //     split-diagonal，swiss 配的是 left-anchor 而不是 poster-center /
+  //     banner-title，权重向量与那五家都不同。
+  // chapter / ending / content 不声明：身份靠封面 + light motif + tight
+  // gapScale，不靠再声明一个与 tech 同形的轴去硬凑区分度。
+  swiss: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "swiss-motif",
+    layoutTendencies: {
+      cover: ["left-anchor", "split-diagonal"],
     },
   },
 }

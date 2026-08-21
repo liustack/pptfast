@@ -10,6 +10,7 @@ import { CRAYON_TOKENS } from "./crayon"
 import { ARENA_TOKENS } from "./arena"
 import { MUSEUM_TOKENS } from "./museum"
 import { STAGE_TOKENS } from "./stage"
+import { SWISS_TOKENS } from "./swiss"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -333,5 +334,54 @@ describe("stage tokens", () => {
   it("ground is cool charcoal, not luxe true-black", () => {
     expect(STAGE_TOKENS.colors.bg).toBe("#141C22")
     expect(STAGE_TOKENS.colors.bg).not.toBe("#0B0908")
+  })
+})
+
+// swiss（冷白制度，2026-08-21 wave7）：冷白纸 + 硬黑即正文即色块 + 瑞士红成边。
+// Same shape-only assertions as the blocks above. Registry wiring is covered
+// separately by themes/index.test.ts.
+describe("swiss tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = SWISS_TOKENS
+    expect(t.id).toBe("swiss")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, Archivo 900 sans landing)", () => {
+    expect(resolveFontFace(SWISS_TOKENS.fonts.heading, "heading")).toBe("Microsoft YaHei")
+  })
+
+  it("body font resolves to Microsoft YaHei (exact width table)", () => {
+    expect(resolveFontFace(SWISS_TOKENS.fonts.body, "body")).toBe("Microsoft YaHei")
+  })
+
+  it("does not set an accentPool (single, restrained Swiss-red accent)", () => {
+    expect(SWISS_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 0 (institutional square) and gapScale is 1 (tight, same as tech)", () => {
+    expect(SWISS_TOKENS.shape?.radius).toBe(0)
+    expect(SWISS_TOKENS.shape?.gapScale).toBe(1)
+  })
+
+  it("cover/content/ending stay on the cold-white paper, chapter is the hard-black bleed", () => {
+    expect(SWISS_TOKENS.defaultBackgrounds.cover).toEqual({ kind: "color", value: SWISS_TOKENS.colors.bg })
+    expect(SWISS_TOKENS.defaultBackgrounds.content).toEqual({ kind: "color", value: SWISS_TOKENS.colors.bg })
+    expect(SWISS_TOKENS.defaultBackgrounds.ending).toEqual({ kind: "color", value: SWISS_TOKENS.colors.bg })
+    expect(SWISS_TOKENS.defaultBackgrounds.chapter).toEqual({ kind: "color", value: SWISS_TOKENS.colors.primary })
+  })
+
+  it("primary is the hard black that is both body ink and the color block", () => {
+    expect(SWISS_TOKENS.colors.primary).toBe("#101010")
+    expect(SWISS_TOKENS.colors.text).toBe("#101010")
+  })
+
+  it("accent is Swiss-red as an edge, not vermilion's face red or memo's line red", () => {
+    expect(SWISS_TOKENS.colors.accent).toBe("#D7282F")
+    expect(SWISS_TOKENS.colors.accent).not.toBe("#B02318")
+    expect(SWISS_TOKENS.colors.accent).not.toBe("#A63A2B")
+  })
+
+  it("chartPalette is red / black / mid-gray / cool blue-gray, no orange", () => {
+    expect(SWISS_TOKENS.colors.chartPalette).toEqual(["#D7282F", "#101010", "#5F5F5C", "#4A7A8A"])
   })
 })
