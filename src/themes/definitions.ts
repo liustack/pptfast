@@ -232,8 +232,8 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
  * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「21 个 theme
- * id、20 个结构身份」是本仓从此的正式口径，不是过渡态。
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「22 个 theme
+ * id、21 个结构身份」是本仓从此的正式口径，不是过渡态。
  *
  * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
  * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
@@ -943,6 +943,24 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 不是漏写（theme-structure.test.ts 把两家一起钉成合法例外）。
     layoutTendencies: {
       cover: ["poster-center", "tone-adaptive-header"],
+    },
+  },
+  // lecture（黑板夜校，2026-08-21）：墨绿板面 + 衬线 + 黄粉笔，粉笔槽细框
+  // 由专属 lecture-motif 承载。结构行 L / top-band / light / tight，最近邻
+  // enterprise（L / top / medium / tight），岔装饰轴——enterprise 是 IKB
+  // 方块秩序的 medium，lecture 是 26px 内缩细框的 light。封面构造：
+  //   - `banner-title`：整幅深色横幅压住标题，板上的板书带读法。briefing
+  //     已锁权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
+  //   - `tone-adaptive-header`：克制的自适应留白封面，夜校第二脸。不在
+  //     briefing 的 cover 集合里，max(3,1)=3，产生真实边际权重。
+  // chapter / ending / content 不声明：身份靠封面 + light 细框 + tight
+  // gapScale，不靠再声明一个与 classroom 同形的轴去硬凑区分度。classroom
+  // 是白日讲义纸，lecture 是夜校黑板，同一对封面 id、两张底。
+  lecture: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "lecture-motif",
+    layoutTendencies: {
+      cover: ["banner-title", "tone-adaptive-header"],
     },
   },
 }
