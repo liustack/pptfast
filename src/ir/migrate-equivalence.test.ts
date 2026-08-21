@@ -649,6 +649,26 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // confirming old and new captures are byte-identical otherwise. All
       // three `.audit.json` goldens stayed byte-identical (no finding
       // appeared or vanished); cover/chapter/ending slides did not move.
+      //
+      // Re-recaptured (chrome default flip, 2026-08-21 — omitted deck chrome
+      // now equals cover-only, so content pages drop the BrandChrome footer
+      // rule, meta, and logo). Drift is the footer trio leaving, nothing
+      // else. Verified with a temporary recapture script: stripping the
+      // footer rule (`<line x1="56" y1="664" x2="1224">`), the meta row
+      // (`<text y="700">`), and the logo box from the old capture makes old
+      // and new byte-identical on every changed slide. Cover, chapter, and
+      // ending slides did not move (none of these fixtures carry a brand
+      // logo, so ending's cover-only skip is a no-op). All three
+      // `.audit.json` goldens stayed byte-identical. PPTX part-name sets
+      // stayed identical. Shape-count delta matches the SVG trio 1:1:
+      //   - `basic`: SVG slides 2/3 (content) lose the rule plus two meta
+      //     texts (`2026-07-17` / `pptfast`). PPTX `slide{3,4}.xml` lose
+      //     three shapes each (14->11, 18->15).
+      //   - `scenarioBearing`: SVG slides 1/2/3 (content) lose the rule
+      //     only (this fixture has no meta). PPTX `slide{2,3,4}.xml` lose
+      //     one shape each.
+      //   - `annualReviewPreset`: SVG slides 2/3 (content) lose the rule
+      //     only. PPTX `slide{3,4}.xml` lose one shape each.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

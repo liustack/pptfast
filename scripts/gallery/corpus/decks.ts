@@ -56,9 +56,10 @@ function deckShell(lex: Lexicon, assets: CorpusAssets, themeId: string, filename
     version: "4",
     filename,
     theme: { id: themeId },
-    // Meta drives the cover/ending chrome (organization line, author
-    // credits, date, confidentiality mark), so it is filled rather than
-    // left default — that chrome is part of what is under review.
+    // Meta drives cover chrome (organization line, author credits, date,
+    // confidentiality mark), so it is filled rather than left default.
+    // Deck chrome stays omitted: the gallery is the new default, content
+    // and ending pages have no footer rule, meta, or logo.
     meta: {
       organization: lex.author,
       authors: lex.people.slice(0, 2).map((p) => ({ name: p.name, role: p.role, org: p.org })),

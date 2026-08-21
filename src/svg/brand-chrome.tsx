@@ -27,11 +27,12 @@ export function BrandChrome({
   // are already gone globally. Distinct from image-split/image-bottom,
   // which only suppress or restyle the footer while still drawing a logo.
   if (layoutOmitsChrome(slide.layout)) return null
-  // Deck-level chrome posture. Omitted = "full" = today's footer + logo.
-  // cover-only: content and ending skip the whole fragment (rule, meta, logo).
-  // Cover and chapter keep today's chrome. Layout chrome:none already returned
-  // above and still wins. Motif is painted by FullSlideSvg, not this fragment.
-  const posture = ir.chrome ?? "full"
+  // Deck-level chrome posture. Omitted = "cover-only": cover and chapter keep
+  // the brand logo, content and ending skip the whole fragment (rule, meta,
+  // logo). "full" is the explicit declaration that draws the content-page
+  // footer. Layout chrome:none already returned above and still wins. Motif
+  // is painted by FullSlideSvg, not this fragment.
+  const posture = ir.chrome ?? "cover-only"
   if (posture === "cover-only" && (slide.type === "content" || slide.type === "ending")) {
     return null
   }

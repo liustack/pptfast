@@ -44,7 +44,7 @@ describe("FullSlideSvg", () => {
     expect(container.textContent).toContain("年度战略回顾")
   })
 
-  it("renders content components and footer chrome for a content slide", () => {
+  it("renders content components for a content slide (omitted chrome draws no footer)", () => {
     const doc = ir([contentSlide])
     const { container } = render(
       <FullSlideSvg ir={doc} slide={contentSlide} index={0} />,
@@ -54,6 +54,7 @@ describe("FullSlideSvg", () => {
     expect(container.querySelectorAll("circle").length).toBeGreaterThanOrEqual(3)
     // 页码已删（2026-07-09 用户裁决）：页脚不再出现 x / y
     expect(container.textContent).not.toContain("1 / 1")
+    expect(container.querySelector('line[y1="664"]')).toBeNull()
   })
 
   it("serializes to an export-safe svg that round-trips to ops", () => {
@@ -899,11 +900,18 @@ describe("deck chrome posture vs theme motif", () => {
     expect(container.querySelector('line[y1="664"]')).toBeNull()
   })
 
-  it("omitted chrome and explicit full serialize to the same content-page SVG", () => {
+  it("omitted chrome and explicit cover-only serialize to the same content-page SVG", () => {
     const omitted = ir([pinnedContent])
-    const full: PptxIR = { ...omitted, chrome: "full" }
+    const coverOnly: PptxIR = { ...omitted, chrome: "cover-only" }
     const a = renderSvgMarkup(<FullSlideSvg ir={omitted} slide={pinnedContent} index={0} />)
-    const b = renderSvgMarkup(<FullSlideSvg ir={full} slide={pinnedContent} index={0} />)
+    const b = renderSvgMarkup(<FullSlideSvg ir={coverOnly} slide={pinnedContent} index={0} />)
     expect(a).toBe(b)
+  })
+
+  it("explicit chrome full still draws the content-page footer rule", () => {
+    const full: PptxIR = { ...ir([pinnedContent]), chrome: "full" }
+    const markup = renderSvgMarkup(<FullSlideSvg ir={full} slide={pinnedContent} index={0} />)
+    expect(markup).toContain('y1="664"')
+    expect(markup).toContain("ACME")
   })
 })

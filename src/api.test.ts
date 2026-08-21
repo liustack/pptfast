@@ -2034,6 +2034,28 @@ describe("generatePptx", () => {
     await expect(generatePptx({ nope: true })).rejects.toThrow(/invalid IR/)
   })
 
+  it("omitted chrome matches cover-only: content page drops the footer rule and org", () => {
+    const omitted = {
+      version: "4",
+      filename: "omit-chrome",
+      theme: { id: "consulting" },
+      meta: { organization: "ACME", date: "2026" },
+      slides: [
+        { type: "cover", heading: "Pitch" },
+        { type: "content", heading: "The point", layout: "quiet-frame", components: [{ type: "paragraph", text: "Say it." }] },
+        { type: "ending", heading: "Thanks" },
+      ],
+    }
+    const v = validateIr(omitted)
+    expect(v.ok).toBe(true)
+    expect(v.ir?.chrome).toBeUndefined()
+    const contentSvg = renderSlideSvg(v.ir!, 1)
+    expect(contentSvg).not.toContain('y1="664"')
+    expect(contentSvg).not.toContain("ACME")
+    const coverSvg = renderSlideSvg(v.ir!, 0)
+    expect(coverSvg).toContain("Pitch")
+  })
+
   it("validates and renders a cover-only talk deck to pptx", async () => {
     const talk = {
       version: "4",
@@ -2456,5 +2478,6 @@ describe("irJsonSchema", () => {
     const json = JSON.stringify(irJsonSchema())
     expect(json).toContain("cover-only")
     expect(json).toContain("minimal")
+    expect(json).toContain('Omitted equals \\"cover-only\\"')
   })
 })

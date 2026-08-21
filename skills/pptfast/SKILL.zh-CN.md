@@ -261,9 +261,9 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 - 高潮页、金句页、证据页，显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`。同波次、并行落地中：`stat-hero`、`one-evidence`、`mono-bleed`。`pptfast schema` 里出现后同样钉。不要把这些页交给自动选型。
 - 每一页的正文预算比 `spacious` 更紧。标题就是主视觉。钉住的极简页最多一个 body component（一行出处、一个数字、一张图或一张表）。这些页零 bullet。装不下就拆页。
 - 讲稿写进 `slide.notes`。`render` 导出成原生 PowerPoint 演讲者备注（View → Notes，演讲者视图可见）。讲稿从不画到画布上。
-- spec 和 IR 写 `chrome: "cover-only"`。阅读 deck 省略该字段。`meta.confidentiality` 为 `confidential` 或 `restricted` 时不要写 `cover-only`。
+- spec 和 IR 不要写 `chrome`。省略的缺省已经让内容页和收束页不画页脚细线、meta 和 logo。
 
-阅读 deck 按 pacing 预算写。某一页真的只剩一句话时，仍然可以钉极简版式。
+阅读 deck 按 pacing 预算写。写 `chrome: "full"`，让内容页带上品牌页脚（`meta.confidentiality` 为 `confidential` 或 `restricted`，或文件需要机构落款时，同样写 `"full"`）。某一页真的只剩一句话时，仍然可以钉极简版式。
 
 ### 容量
 

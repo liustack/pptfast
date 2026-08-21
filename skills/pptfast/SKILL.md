@@ -259,9 +259,9 @@ On a talk deck:
 - Climax, quote, and evidence pages pin a sparse pin-only layout. Name it: `statement`, `pull-quote`, `verse-chapter`. Same wave, still landing: `stat-hero`, `one-evidence`, `mono-bleed`. Pin those too once `pptfast schema` lists them. Do not leave those pages to auto-selection.
 - Tighten every page's on-slide budget past even `spacious`. Heading is the visual. At most one body component on a pinned sparse page (a source line, a single number, a single chart or table). Zero bullets on those pages. Split instead of stacking.
 - The spoken script goes in `slide.notes`. `render` exports it as native PowerPoint speaker notes (View → Notes, Presenter View). Never draw the script onto the canvas.
-- Write `chrome: "cover-only"` on the spec and the IR. A read deck omits the field. Do not write `cover-only` when `meta.confidentiality` is `confidential` or `restricted`.
+- Leave `chrome` off the spec and the IR. The omitted default already drops the footer rule, meta, and logo on content and ending pages.
 
-On a read deck, write to the pacing budget. A pin-only sparse layout is still the right pin when a page truly is one sentence.
+On a read deck, write to the pacing budget. Write `chrome: "full"` so content pages carry the brand footer (and write it whenever `meta.confidentiality` is `confidential` or `restricted`, or the file needs an organization colophon). A pin-only sparse layout is still the right pin when a page truly is one sentence.
 
 ### Capacity
 

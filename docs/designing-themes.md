@@ -44,10 +44,12 @@ the codebase owns fidelity.
 4. **Fonts express intent only** (serif/sans, weight, size rhythm).
    Never depend on a specific commercial font being present.
 5. **Decoration keeps out of five content regions**: the heading area,
-   the body area, the footer meta strip, the bottom-right logo box
-   (96×40 at x1120 y630), and the full-width band at y620-664. That
-   fifth band is where the cover meta line, chart-source footnotes, and
-   the logo box actually live. Solid thick strokes or fills that can
+   the body area, the footer meta strip (content pages under explicit
+   `chrome: "full"`), the bottom-right logo box (96×40 at x1120 y630,
+   on cover and chapter pages, and on content pages under `"full"` or
+   `"minimal"`), and the full-width band at y620-664. That fifth band
+   is where the cover meta line, chart-source footnotes, and the logo
+   box actually live. Solid thick strokes or fills that can
    cut through text stay out of it. Hairlines (≤1.5px) and decoration
    faded to background level are exempt, provided body ink over the
    decoration-on-background composite still clears 4.5:1 (measure with

@@ -303,14 +303,15 @@ export const BrandSchema = z
   .strict()
 
 /**
- * Deck-level brand-chrome posture. Omitted equals `"full"` (today's footer
- * rule, meta, and logo). The schema never bakes a default: writing `"full"`
+ * Deck-level brand-chrome posture. Omitted equals `"cover-only"` (cover and
+ * chapter keep the brand logo, content and ending drop the footer rule,
+ * meta, and logo). The schema never bakes a default: writing `"cover-only"`
  * back into a parsed IR would rewrite every existing deck.
  *
- * `"cover-only"` keeps BrandChrome on cover and chapter pages and drops the
- * footer rule, meta, and logo on content and ending pages. `"minimal"` drops
- * the content-page footer rule and meta but keeps the logo. Layout-declared
- * `chrome: "none"` still wins. Theme motifs are not this field.
+ * `"full"` is the explicit declaration that draws the content-page footer
+ * rule, meta, and logo. `"minimal"` drops the content-page footer rule and
+ * meta but keeps the logo. Layout-declared `chrome: "none"` still wins.
+ * Theme motifs are not this field.
  *
  * Shared with `DeckSpecSchema` (`src/spec/index.ts`) so the spec and IR
  * cannot drift on the enum.
@@ -318,7 +319,7 @@ export const BrandSchema = z
 export const DECK_CHROME_VALUES = ["full", "cover-only", "minimal"] as const
 export type DeckChrome = (typeof DECK_CHROME_VALUES)[number]
 export const DeckChromeSchema = z.enum(DECK_CHROME_VALUES).describe(
-  'Where the brand footer and logo appear. Omitted equals "full" (today\'s footer and logo). "cover-only" keeps them on cover and chapter pages and drops the footer rule, meta, and logo on content and ending pages. "minimal" drops the content-page footer rule and meta but keeps the logo. Layout chrome:"none" still wins. Theme motifs are unaffected. Talk decks write "cover-only". Read decks omit the field.',
+  'Where the brand footer and logo appear. Omitted equals "cover-only": cover and chapter pages keep the brand logo, content and ending pages drop the footer rule, meta, and logo. "full" is the explicit declaration that draws the content-page footer and logo. "minimal" drops the content-page footer rule and meta but keeps the logo. Layout chrome:"none" still wins. Theme motifs are unaffected. Talk decks omit the field. Read decks write "full".',
 )
 
 // ── Components（37 种）──
@@ -579,8 +580,9 @@ export const PptxIRSchema = z
     brand: BrandSchema.optional(),
     /**
      * Where the brand footer and logo appear. Optional, no default: omitted
-     * stays `undefined` and the renderer treats that as `"full"`, so existing
-     * decks that never mention the field parse and render byte-identically.
+     * stays `undefined` and the renderer treats that as `"cover-only"`, so a
+     * deck that never mentions the field gets a clean content page. Write
+     * `"full"` to draw the footer rule, meta, and logo on content pages.
      * See {@link DeckChromeSchema}.
      */
     chrome: DeckChromeSchema.optional(),
