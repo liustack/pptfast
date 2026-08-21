@@ -1,10 +1,13 @@
+import type { ReactElement } from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, measureTextUnits } from "../../lib/svg-text-layout"
+import { stacksVertically } from "../../lib/text-script"
 import { rotateChartPalette } from "../chart-palette"
 import { accessibleInk } from "../ink"
 import { buildChartModel } from "./chart-model"
 import type { RenderDef, SvgComponent } from "./types"
 import {
+  CARTESIAN_LABEL_BOTTOM_PAD,
   renderArea,
   renderBar,
   renderBarHorizontal,
@@ -85,11 +88,14 @@ function resolveRenderer(component: ChartComponent): ChartRenderFn {
  * ticks already name the axis ("第一季度" does not need a second "季度"
  * caption underneath). The IR field stays so existing decks keep
  * validating. This renderer simply does not paint it and does not reserve
- * a band for it. y_title still renders (as a header-row unit caption) and
- * show_grid still toggles the reference lines. ir-quality.ts's
- * `chart_axes_ignored` warning still keys off this same applicability set:
- * a pie with `axes.x_title` still warns, a bar with `axes.x_title` does
- * not, even though the bar does not paint that string.
+ * a band for it. y_title still renders: on cartesian vertical-value charts
+ * (bar / line / scatter / area) as a left-side caption (CJK stacked, Latin
+ * rotated -90°). `bar` + `direction: "horizontal"` keeps the header-row
+ * caption — its left band is row labels, not a value axis, so this round
+ * does not move it. show_grid still toggles the reference lines.
+ * ir-quality.ts's `chart_axes_ignored` warning still keys off this same
+ * applicability set: a pie with `axes.x_title` still warns, a bar with
+ * `axes.x_title` does not, even though the bar does not paint that string.
  */
 const AXES_APPLICABLE_TYPES: ReadonlySet<ChartComponent["chart_type"]> = new Set([
   "bar",
@@ -123,21 +129,35 @@ function legendApplicable(component: ChartComponent): boolean {
 }
 
 /**
- * Header row (label-tuning A, 2026-08). y_title (unit caption, left) and
- * the legend (right) share one band above the plot. The 52px reservation
- * and the 16px text baseline are taken from LabelTuning.dc.html: the plot
- * group is translated down by 52 relative to a header baseline at 16, which
- * is what keeps the tallest bar's value label ≥ 24px clear of the header
- * ink (a collision the design pass hit once with the legend parked on the
- * header without moving the plot).
+ * Header row (label-tuning A, 2026-08). The legend (right) sits in this
+ * band above the plot. y_title used to share it as a left-side unit
+ * caption. Cartesian vertical-value charts now park y_title in a left
+ * sidebar instead, so the header appears only when a legend is present
+ * (or, for `bar_horizontal`, when y_title is still the header caption).
+ * The 52px reservation and the 16px text baseline are taken from
+ * LabelTuning.dc.html: the plot group is translated down by 52 relative
+ * to a header baseline at 16, which is what keeps the tallest bar's value
+ * label ≥ 24px clear of the header ink.
  */
 const HEADER_ROW_H = 52
 const HEADER_BASELINE_Y = 16
-/** y_title in the header — 12px muted, always a single horizontal line. */
+/** y_title in the header — 12px muted, only `bar_horizontal` still uses this. */
 const HEADER_TITLE_SIZE = 12
 const HEADER_TITLE_MIN_SIZE = 9
-/** Gap (px) between the y_title's right edge and the legend's left edge. */
+/** Gap (px) between a header y_title's right edge and the legend's left edge. */
 const HEADER_LEGEND_GAP = 16
+
+/**
+ * Fixed left sidebar for a cartesian vertical-value y_title (微调 C).
+ * The visual mock's 11px gutter was too tight. Reserved only when a
+ * y_title is present. Absent y_title keeps today's full-width plot.
+ */
+const Y_TITLE_SIDEBAR_W = 36
+/** CJK stack and Latin rotate both paint at 14px muted. */
+const Y_TITLE_SIZE = 14
+const Y_TITLE_MIN_SIZE = 9
+/** CJK stacked-character baseline-to-baseline pitch (visual mock). */
+const Y_TITLE_PITCH = 18
 
 /** Legend swatch (px, square) — LabelTuning.dc.html keeps the 10px chip. */
 const LEGEND_SWATCH_SIZE = 10
@@ -250,14 +270,102 @@ function hasYTitle(component: ChartComponent): boolean {
   return axesApplicable(component) && !!component.axes?.y_title
 }
 
+/**
+ * `bar` + `direction: "horizontal"` has a value axis that runs left-to-right.
+ * Its left band is row labels, not a y-value gutter, so this round does not
+ * steal a sidebar there.
+ */
+function isHorizontalBar(component: ChartComponent): boolean {
+  return component.chart_type === "bar" && component.direction === "horizontal"
+}
+
+function hasYTitleSidebar(component: ChartComponent): boolean {
+  return hasYTitle(component) && !isHorizontalBar(component)
+}
+
 function hasHeaderRow(component: ChartComponent): boolean {
-  return hasYTitle(component) || legendApplicable(component)
+  return legendApplicable(component) || (isHorizontalBar(component) && hasYTitle(component))
+}
+
+function fitYTitleStack(text: string, maxChars: number): { chars: string[]; truncated: boolean } {
+  const chars = Array.from(text)
+  if (chars.length === 0) return { chars, truncated: false }
+  if (chars.length <= maxChars) return { chars, truncated: false }
+  const kept = chars.slice(0, Math.max(0, maxChars - 1))
+  return { chars: [...kept, "…"], truncated: true }
+}
+
+function renderVerticalYTitle(
+  title: string,
+  sidebarW: number,
+  plotTop: number,
+  plotH: number,
+  mutedColor: string,
+  bodyFace: string,
+): ReactElement {
+  const baseline = plotTop + plotH - CARTESIAN_LABEL_BOTTOM_PAD
+  const titleX = sidebarW / 2
+  const minFirstY = Y_TITLE_SIZE * 0.8
+  const availH = Math.max(Y_TITLE_SIZE, baseline - minFirstY)
+
+  if (stacksVertically(title)) {
+    const maxChars = Math.max(
+      1,
+      Math.floor((availH - Y_TITLE_SIZE * 0.25) / Y_TITLE_PITCH) + 1,
+    )
+    const fitted = fitYTitleStack(title, maxChars)
+    const lastY = baseline
+    const firstY = lastY - (fitted.chars.length - 1) * Y_TITLE_PITCH
+    return (
+      <>
+        {fitted.chars.map((chr, i) => (
+          <text
+            key={i}
+            data-truncated={fitted.truncated && i === fitted.chars.length - 1 ? "1" : undefined}
+            x={titleX}
+            y={firstY + i * Y_TITLE_PITCH}
+            textAnchor="middle"
+            fontSize={Y_TITLE_SIZE}
+            fill={mutedColor}
+            fontFamily={bodyFace}
+            dominantBaseline="alphabetic"
+          >
+            {chr}
+          </text>
+        ))}
+      </>
+    )
+  }
+
+  const fitted = fitSvgLine(title, {
+    maxWidth: availH,
+    fontSize: Y_TITLE_SIZE,
+    minFontSize: Y_TITLE_MIN_SIZE,
+    fontFamily: bodyFace,
+  })
+  return (
+    <text
+      data-truncated={fitted.truncated ? "1" : undefined}
+      x={titleX}
+      y={baseline}
+      textAnchor="start"
+      fontSize={fitted.fontSize}
+      fill={mutedColor}
+      fontFamily={bodyFace}
+      dominantBaseline="alphabetic"
+      transform={`rotate(-90 ${titleX} ${baseline})`}
+    >
+      {fitted.text}
+    </text>
+  )
 }
 
 export const chart: SvgComponent<ChartComponent> = {
   measure(component) {
     // x_title no longer reserves a band (accepted, not drawn). The header
-    // row is a single 52px reservation shared by y_title and the legend.
+    // row is a single 52px reservation for the legend (and for
+    // bar_horizontal's remaining header y_title). A cartesian y_title takes
+    // a left sidebar, not height.
     return (hasHeaderRow(component) ? HEADER_ROW_H : 0) + CHART_H
   },
   render(component, box, ctx) {
@@ -267,7 +375,9 @@ export const chart: SvgComponent<ChartComponent> = {
     // the field is honestly ignored rather than partially/silently honored.
     const axes = axesApplicable(component) ? component.axes : undefined
     const plotTop = hasHeaderRow(component) ? HEADER_ROW_H : 0
-    const plotW = box.w
+    const sidebarW = hasYTitleSidebar(component) ? Y_TITLE_SIDEBAR_W : 0
+    const plotX = sidebarW
+    const plotW = box.w - sidebarW
 
     // P1 variety wave, task 2 (review fix round, Major finding): rotation
     // happens *here*, at the one place this palette actually feeds a chart
@@ -282,24 +392,28 @@ export const chart: SvgComponent<ChartComponent> = {
 
     const hasLegend = legendApplicable(component)
     const yTitleRaw = axes?.y_title
-    const yTitleNaturalW = yTitleRaw
-      ? measureTextUnits(yTitleRaw, { fontFamily: bodyFace }) * HEADER_TITLE_SIZE
+    const yTitleInHeader = isHorizontalBar(component) && !!yTitleRaw
+    const yTitleNaturalW = yTitleInHeader
+      ? measureTextUnits(yTitleRaw!, { fontFamily: bodyFace }) * HEADER_TITLE_SIZE
       : 0
 
+    const headerW = box.w
     let legendLayout = hasLegend
-      ? layoutChartLegend(buildChartModel(component.series).legend, plotW, bodyFace)
+      ? layoutChartLegend(buildChartModel(component.series).legend, headerW, bodyFace)
       : null
-    let legendLeft = legendLayout ? plotW - legendLayout.groupW : plotW
-    if (yTitleRaw && legendLayout && legendLeft < yTitleNaturalW + HEADER_LEGEND_GAP) {
-      const avail = Math.max(0, plotW - yTitleNaturalW - HEADER_LEGEND_GAP)
+    let legendLeft = legendLayout ? headerW - legendLayout.groupW : headerW
+    if (yTitleInHeader && legendLayout && legendLeft < yTitleNaturalW + HEADER_LEGEND_GAP) {
+      const avail = Math.max(0, headerW - yTitleNaturalW - HEADER_LEGEND_GAP)
       legendLayout = layoutChartLegend(buildChartModel(component.series).legend, avail, bodyFace)
-      legendLeft = plotW - legendLayout.groupW
+      legendLeft = headerW - legendLayout.groupW
     }
-    const yTitleMaxW = legendLayout
-      ? Math.max(0, legendLeft - HEADER_LEGEND_GAP)
-      : plotW
-    const yTitleFit = yTitleRaw
-      ? fitSvgLine(yTitleRaw, {
+    const yTitleMaxW = yTitleInHeader
+      ? legendLayout
+        ? Math.max(0, legendLeft - HEADER_LEGEND_GAP)
+        : headerW
+      : 0
+    const yTitleFit = yTitleInHeader
+      ? fitSvgLine(yTitleRaw!, {
           maxWidth: yTitleMaxW,
           fontSize: HEADER_TITLE_SIZE,
           minFontSize: HEADER_TITLE_MIN_SIZE,
@@ -314,7 +428,7 @@ export const chart: SvgComponent<ChartComponent> = {
         {renderer(
           component.series,
           palette,
-          0,
+          plotX,
           plotTop,
           plotW,
           CHART_H,
@@ -330,6 +444,16 @@ export const chart: SvgComponent<ChartComponent> = {
           // `ChartRenderFn`'s own `bgHex` doc comment.
           legendBg,
         )}
+        {hasYTitleSidebar(component) && yTitleRaw
+          ? renderVerticalYTitle(
+              yTitleRaw,
+              sidebarW,
+              plotTop,
+              CHART_H,
+              ctx.colors.muted,
+              bodyFace,
+            )
+          : null}
         {yTitleFit ? (
           <text
             data-truncated={yTitleFit.truncated ? "1" : undefined}

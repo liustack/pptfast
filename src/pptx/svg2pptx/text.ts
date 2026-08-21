@@ -30,6 +30,13 @@ export interface TextOp {
   color?: string
   transparency?: number
   align: "left" | "center" | "right"
+  /**
+   * Degrees clockwise, matching pptxgenjs `addText` `rotate`. Set by
+   * `svg2pptx/dispatch.ts` when this leaf's CTM carries a rotation (cartesian
+   * y-titles emit `rotate(-90 …)`). Absent on every unrotated text op, so
+   * the default export path stays byte-identical.
+   */
+  rotate?: number
   /** Set by `svg2pptx/dispatch.ts` when this leaf lives under a `data-blk`-tagged `<g>` (wave-C S3, `elements === "auto"` only). */
   blockIndex?: number
 }

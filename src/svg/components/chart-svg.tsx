@@ -81,8 +81,14 @@ const VALUE_LABEL_GAP = 9
 const LABEL_FONT_SIZE = 11
 /** Space (px) reserved at the top of `h` for value labels above the plot. */
 const LABEL_TOP_PAD = 14
-/** Space (px) reserved at the bottom of `h` for category labels below the plot. */
-const LABEL_BOTTOM_PAD = 18
+/**
+ * Space (px) reserved at the bottom of `h` for category labels below the plot.
+ * Exported so `chart.tsx` can sit a vertical y-title's block bottom on the
+ * same value-axis baseline the cartesian renderers use for bar bottoms
+ * (`plotTop + plotH` = `y0 + h - LABEL_BOTTOM_PAD`).
+ */
+export const CARTESIAN_LABEL_BOTTOM_PAD = 18
+const LABEL_BOTTOM_PAD = CARTESIAN_LABEL_BOTTOM_PAD
 
 /**
  * Ceiling (px) for any single ratio-based chart geometry value —

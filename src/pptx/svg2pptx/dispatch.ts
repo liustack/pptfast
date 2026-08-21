@@ -1,4 +1,5 @@
 import { pxToIn } from "../../constants"
+import { measureTextUnits } from "../../lib/svg-text-layout"
 import { rectToOp, type ShapeOp } from "./rect"
 import { circleToOp, ellipseToOp, type EllipseOp } from "./ellipse"
 import { anchorTextBox, textToOp, type TextOp } from "./text"
@@ -11,6 +12,8 @@ import {
   multiply,
   applyPoint,
   parseTransform,
+  rotationDeg,
+  matrixScale,
   type Matrix,
 } from "./transform"
 
@@ -48,7 +51,9 @@ function translateOp<T extends Op>(op: T, dx: number, dy: number): T {
 /**
  * Apply a uniform-ish scale to an op's local geometry (icons emit
  * `translate(...) scale(...)`——此前 scale 在叶子被丢弃，图标始终按 24px
- * 原始坐标渲染)。仅处理无旋转矩阵（本渲染器只发 translate/scale）。
+ * 原始坐标渲染)。仅处理无旋转矩阵。Rotated text takes
+ * `positionRotatedText` instead, so this path never sees a (0,0) scale
+ * from `rotate(-90)`.
  */
 function scaleOp(op: Op, sx: number, sy: number): Op {
   if (sx === 1 && sy === 1) return op
@@ -264,17 +269,75 @@ function walk(
 
   const op = leafToOp(withInheritedPaint(el, paint), gradients)
   if (!op) return
-  // 本渲染器只发 translate/scale：先按矩阵对角项缩放局部几何，再平移到
-  // 原点像。旋转/斜切不在受控子集内（出现时按未缩放处理并靠门测试拦截）。
-  const origin = applyPoint(ctm, 0, 0)
-  let positioned = translateOp(scaleOp(op, ctm[0], ctm[3]), pxToIn(origin.x), pxToIn(origin.y))
-  // A text box's width is measured against the canvas, so it is only right
-  // once the op is *in* canvas coordinates — which is here, and nowhere
-  // earlier (`textToOp` sees this element's local x and nothing else). Every
-  // other op kind carries real local geometry that the scale+translate above
-  // already maps correctly. See `anchorTextBox`'s own doc comment.
-  if (positioned.kind === "text") positioned = anchorTextBox(positioned)
+  // 本渲染器只发 translate/scale，加上 cartesian y-title 的 rotate(-90) 文本。
+  // 非文本叶子上的旋转/斜切仍不在受控子集内（出现时按未缩放处理）。
+  let positioned: Op
+  if (op.kind === "text" && Math.abs(rotationDeg(ctm)) > 0.5) {
+    positioned = positionRotatedText(op, el, ctm)
+  } else {
+    const origin = applyPoint(ctm, 0, 0)
+    positioned = translateOp(scaleOp(op, ctm[0], ctm[3]), pxToIn(origin.x), pxToIn(origin.y))
+    // A text box's width is measured against the canvas, so it is only right
+    // once the op is *in* canvas coordinates — which is here, and nowhere
+    // earlier (`textToOp` sees this element's local x and nothing else). Every
+    // other op kind carries real local geometry that the scale+translate above
+    // already maps correctly. See `anchorTextBox`'s own doc comment.
+    if (positioned.kind === "text") positioned = anchorTextBox(positioned)
+  }
   out.push(ownBlockIndex != null ? { ...positioned, blockIndex: ownBlockIndex } : positioned)
+}
+
+/**
+ * Map a rotated `<text>` to a tight pptxgenjs box plus `rotate`.
+ *
+ * The default walk scales by the CTM diagonal (`ctm[0]`, `ctm[3]`). A
+ * `rotate(-90)` matrix has zeros on that diagonal, so that path would
+ * collapse the text to a zero-size box. pptxgenjs rotates around the box
+ * *center*, clockwise, so this rebuilds a tight unrotated box whose center
+ * lands the SVG baseline-start anchor at the right canvas point after a
+ * 270° rotation (SVG -90°). Other angles snap to the same 90°-grid and
+ * reuse that construction. The wide `anchorTextBox` is skipped: rotating a
+ * slide-wide box around its center would throw the caption across the page.
+ */
+function positionRotatedText(op: TextOp, el: Element, ctm: Matrix): TextOp {
+  const localX = Number(el.getAttribute("x") ?? 0) || 0
+  const localY = Number(el.getAttribute("y") ?? 0) || 0
+  const fontSizePx = Number(el.getAttribute("font-size") ?? 16) || 16
+  const anchor = applyPoint(ctm, localX, localY)
+  const scale = matrixScale(ctm) || 1
+  const svgDeg = rotationDeg(ctm)
+  // SVG and OOXML share a y-down canvas, so the SVG angle maps onto
+  // pptxgenjs clockwise `rotate` without a sign flip. -90° (up the page)
+  // becomes 270°.
+  let rotate = ((svgDeg % 360) + 360) % 360
+  if (Math.abs(rotate - 270) < 0.5) rotate = 270
+  else if (Math.abs(rotate - 90) < 0.5) rotate = 90
+  else if (rotate < 0.5 || Math.abs(rotate - 360) < 0.5) rotate = 0
+
+  const text = op.runs.map((r) => r.text).join("")
+  const units = measureTextUnits(text, {
+    fontFamily: op.fontFace,
+    bold: op.runs.some((r) => r.bold),
+  })
+  const wPx = Math.max(1, units * fontSizePx * scale)
+  const hPx = Math.max(1, fontSizePx * 1.2 * scale)
+  // Matches `text.ts`'s ASCENT_RATIO: alphabetic baseline sits ~0.8em below
+  // the box top. 270° clockwise around the box center maps (dx, dy) → (dy, -dx),
+  // so the unrotated left-baseline lands on `anchor` when the center sits
+  // (h/2 - ascent) to the right of it and w/2 above it.
+  const ascent = 0.8 * fontSizePx * scale
+  const centerX = rotate === 270 ? anchor.x + (hPx / 2 - ascent) : anchor.x
+  const centerY = rotate === 270 ? anchor.y - wPx / 2 : anchor.y
+  return {
+    ...op,
+    x: pxToIn(centerX - wPx / 2),
+    y: pxToIn(centerY - hPx / 2),
+    w: pxToIn(wPx),
+    h: pxToIn(hPx),
+    fontSize: op.fontSize * scale,
+    rotate: rotate || undefined,
+    align: "left",
+  }
 }
 
 /**

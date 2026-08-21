@@ -3,21 +3,21 @@
  * top-to-bottom column of single characters?
  *
  * Three components render a vertical-axis title (`matrix.tsx`, `heatmap.tsx`,
- * `chart.tsx`), and all three did it the same way — one `<text>` node per
- * character, stacked down a narrow left band. That is ordinary typography for
- * Chinese, Japanese and Korean, whose glyphs are square and carry meaning one
- * at a time. It is not typography at all for a Latin word: "Tempo" comes out
- * as T/e/m/p/o down the page, and a reader has to reassemble the word letter
- * by letter (2026-08-20 review, `component--heatmap--mixed` and
- * `component--matrix--en`). Latin sets its vertical axis titles as one
- * horizontal line instead — which is what the three components now do when
- * this returns false.
+ * `chart.tsx`). CJK still stacks one `<text>` node per character down a
+ * narrow left band. That is ordinary typography for Chinese, Japanese and
+ * Korean, whose glyphs are square and carry meaning one at a time. It is
+ * not typography at all for a Latin word: "Tempo" comes out as T/e/m/p/o
+ * down the page, and a reader has to reassemble the word letter by letter
+ * (2026-08-20 review, `component--heatmap--mixed` and
+ * `component--matrix--en`). When this returns false, matrix and heatmap
+ * keep the title as one horizontal line. Chart rotates the whole string
+ * -90° (Western y-axis convention) instead — never a Latin letter column.
  *
  * The rule is content-driven and total: same string in, same answer out, no
  * locale, config or seed involved, so a deck's axis titles look the same on
  * every machine and across every revision.
  *
- * **Mixed-script labels go horizontal.** The test is an allowlist over every
+ * **Mixed-script labels do not stack.** The test is an allowlist over every
  * character, not a majority vote over the string: one Latin run inside an
  * otherwise-Chinese label ("K8s 托管") is exactly the defect — a majority rule
  * would still shatter "K8s" into K/8/s while calling the label Chinese. The
