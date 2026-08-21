@@ -363,11 +363,13 @@ export const GOLDEN_TOP_SHARE = 0.38
  * below (下可空) so a short block cannot hang as a second island under
  * the heading chrome that already occupies the page's top.
  *
- * Linked to `gapScale` through `goldenTopCap` (scale 1 → 32, 1.1 → 35,
- * 1.3 → 42). The 38% share still applies when leftover is small enough
- * that 38% sits inside this cap.
+ * Linked to `gapScale` through `goldenTopCap` (scale 1 → 16, 1.1 → 18,
+ * 1.3 → 21). The 38% share still applies when leftover is small enough
+ * that 38% sits inside this cap. Two gaps (the 2026-08-21 first cap)
+ * still left ~94px of ink between a banner and a lone table header.
+ * Sixth review (same day) tightens the beat to one.
  */
-export const GOLDEN_TOP_CAP_GAPS = 2
+export const GOLDEN_TOP_CAP_GAPS = 1
 
 /** Ceiling on the air `settleToGolden` may add above a gathered block. */
 export function goldenTopCap(ctx: ComponentCtx): number {
