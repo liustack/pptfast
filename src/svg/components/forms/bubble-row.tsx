@@ -117,7 +117,7 @@ function layout(component: KpiComponent, w: number) {
   const xs = placed.xs.map((x) => x * scale)
   const maxR = r.reduce((m, x) => Math.max(m, x), 0)
   const anySource = component.items.some((it) => it.source)
-  const anyUnder = r.some((x) => x < 46)
+  const anyUnder = true
   const naturalH = PAD * 2 + maxR * 2 + (anyUnder ? UNDER_LABEL : 8) + (anySource ? SOURCE_BAND : 0)
   return { ranked, r, xs, maxR, anySource, anyUnder, naturalH }
 }
@@ -154,7 +154,15 @@ export function renderBubbleRow(
         const cx = cx0 + L.xs[d.rank]!
         const p = paint(d.rank, d.index, knobs, ctx)
         const value = String(d.item.value)
-        const valueSize = Math.min(r * 0.42, 40)
+        const innerW = Math.max(8, r * 1.4)
+        const valueFit = fitSvgLine(value, {
+          maxWidth: innerW,
+          fontSize: Math.min(r * 0.42, 40),
+          minFontSize: 8,
+          bold: true,
+          fontFamily: ctx.fonts.heading,
+        })
+        const valueSize = valueFit.fontSize
         const inside = r >= 46
         const valueInk = accessibleInk(
           p.fill === ctx.colors.accent
@@ -164,13 +172,11 @@ export function renderBubbleRow(
           valueSize,
         )
         const label = fitSvgLine(d.item.label, {
-          maxWidth: Math.max(24, inside ? r * 1.5 : r * 2.2),
+          maxWidth: Math.max(120, r * 2.6),
           fontSize: inside ? 14 : 12,
           minFontSize: 9,
         })
-        const labelInk = inside
-          ? accessibleInk(readableOn(p.inkBg), p.inkBg, label.fontSize)
-          : accessibleInk(ctx.colors.muted, pageBg, label.fontSize)
+        const labelInk = accessibleInk(ctx.colors.muted, pageBg, label.fontSize)
         const source = d.item.source
           ? fitSvgLine(d.item.source, {
               maxWidth: Math.max(40, r * 2.4),
@@ -208,12 +214,12 @@ export function renderBubbleRow(
               fontFamily={ctx.fonts.heading}
               dominantBaseline="alphabetic"
             >
-              {value}
+              {valueFit.text}
             </text>
             <text
               data-truncated={label.truncated ? "1" : undefined}
               x={cx}
-              y={inside ? cy + valueSize * 0.7 : cy + r + 14}
+              y={cy + r + 14}
               textAnchor="middle"
               fontSize={label.fontSize}
               fill={labelInk}
@@ -226,7 +232,7 @@ export function renderBubbleRow(
               <text
                 data-truncated={source.truncated ? "1" : undefined}
                 x={cx}
-                y={inside ? cy + r + 16 : cy + r + 30}
+                y={cy + r + 30}
                 textAnchor="middle"
                 fontSize={source.fontSize}
                 fill={accessibleInk(ctx.colors.muted, pageBg, source.fontSize)}

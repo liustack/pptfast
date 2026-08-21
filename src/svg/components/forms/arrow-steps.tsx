@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText } from "../../../lib/svg-text-layout"
+import { fitSvgLine } from "../../../lib/svg-text-layout"
+import { wrapClip } from "./clip-text"
 import { mixHex } from "../color-mix"
 import { readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
@@ -12,6 +13,7 @@ const MIN_ARROW_W = 180
 const THRESHOLD_GAP = 40
 const GAP = 20
 const ARROW_H = 100
+const ARROW_H_VERTICAL = 52
 const BADGE_R = 22
 const TITLE_SIZE = 18
 const FOOT_SIZE = 14
@@ -58,19 +60,19 @@ function padIndex(i: number): string {
   return String(i + 1).padStart(2, "0")
 }
 
-function footnoteH(text: string, maxWidth: number, fontFamily: string): number {
-  const laid = layoutSvgText(text, {
+function footnoteH(text: string, maxWidth: number, fontFamily: string, maxLines: number): number {
+  const laid = wrapClip(text, {
     maxWidth,
     fontSize: FOOT_SIZE,
-    maxLines: 3,
+    maxLines,
     lineHeightRatio: 1.35,
     fontFamily,
   })
   return laid.lines.length * laid.lineHeight
 }
 
-function itemFootH(component: StepsComponent, slotW: number, fontFamily: string): number {
-  return Math.max(FOOT_SIZE, ...component.items.map((item) => footnoteH(item.text, slotW, fontFamily)))
+function itemFootH(component: StepsComponent, slotW: number, fontFamily: string, maxLines: number): number {
+  return Math.max(FOOT_SIZE, ...component.items.map((item) => footnoteH(item.text, slotW, fontFamily, maxLines)))
 }
 
 export function measureArrowSteps(
@@ -82,10 +84,12 @@ export function measureArrowSteps(
   const n = component.items.length
   const vertical = needsVertical(n, w)
   const slotW = vertical ? w : (w - GAP * (n - 1)) / n
-  const foot = itemFootH(component, Math.max(1, slotW), ctx.fonts.body)
+  const footLines = vertical ? 2 : 3
+  const foot = itemFootH(component, Math.max(1, slotW), ctx.fonts.body, footLines)
   const pulse = knobs.pulseLine ? 28 : 0
-  if (vertical) return n * (ARROW_H + FOOT_GAP + foot + GAP) - GAP + pulse
-  return ARROW_H + FOOT_GAP + foot + pulse
+  const arrowH = vertical ? ARROW_H_VERTICAL : ARROW_H
+  if (vertical) return n * (arrowH + FOOT_GAP + foot + GAP) - GAP + pulse
+  return arrowH + FOOT_GAP + foot + pulse
 }
 
 function renderBadge(
@@ -173,17 +177,32 @@ export function renderArrowSteps(
   const slotW = vertical ? box.w : (box.w - GAP * (n - 1)) / n
   const fill = arrowFill(knobs, ctx)
   const ink = readableOn(fill)
-  const footH = itemFootH(component, Math.max(1, slotW), ctx.fonts.body)
-  const stride = ARROW_H + FOOT_GAP + footH + (vertical ? GAP : 0)
+  const footLines = vertical ? 2 : 3
+  const footH = itemFootH(component, Math.max(1, slotW), ctx.fonts.body, footLines)
+  const arrowH = vertical ? ARROW_H_VERTICAL : ARROW_H
+  const stride = arrowH + FOOT_GAP + footH + (vertical ? GAP : 0)
   const titleMaxW = Math.max(1, slotW - BADGE_R * 2 - 28)
+  const budget = box.h ?? Number.POSITIVE_INFINITY
+  let visible = n
+  if (vertical && Number.isFinite(budget)) {
+    visible = 0
+    for (let i = 0; i < n; i++) {
+      const bottom = i * stride + arrowH + FOOT_GAP + footH
+      if (bottom > budget - 18 && visible >= 1) break
+      visible = i + 1
+    }
+    visible = Math.max(1, visible)
+  }
+  const hidden = n - visible
+  const shown = component.items.slice(0, visible)
 
   return (
     <g transform={`translate(${box.x},${box.y})`}>
-      {component.items.map((item, i) => {
+      {shown.map((item, i) => {
         const x = vertical ? 0 : i * (slotW + GAP)
         const y = vertical ? i * stride : 0
         const cx = x + BADGE_R
-        const cy = y + ARROW_H / 2
+        const cy = y + arrowH / 2
         const title = fitSvgLine(item.title, {
           maxWidth: titleMaxW,
           fontSize: TITLE_SIZE,
@@ -191,18 +210,18 @@ export function renderArrowSteps(
           bold: true,
           fontFamily: ctx.fonts.heading,
         })
-        const foot = layoutSvgText(item.text, {
+        const foot = wrapClip(item.text, {
           maxWidth: Math.max(1, slotW),
           fontSize: FOOT_SIZE,
-          maxLines: 3,
+          maxLines: footLines,
           lineHeightRatio: 1.35,
           fontFamily: ctx.fonts.body,
         })
         const titleX = x + BADGE_R * 2 + 10
         return (
           <g key={i}>
-            <path d={arrowD(knobs, x, y, slotW, ARROW_H)} fill={fill} />
-            {renderBadge(knobs, cx, cy, x, y, ARROW_H, i, fill, ctx)}
+            <path d={arrowD(knobs, x, y, slotW, arrowH)} fill={fill} />
+            {renderBadge(knobs, cx, cy, x, y, arrowH, i, fill, ctx)}
             <text
               data-truncated={title.truncated ? "1" : undefined}
               x={titleX}
@@ -219,7 +238,7 @@ export function renderArrowSteps(
               <text
                 key={li}
                 x={x}
-                y={y + ARROW_H + FOOT_GAP + (li + 1) * foot.lineHeight}
+                y={y + arrowH + FOOT_GAP + (li + 1) * foot.lineHeight}
                 fontSize={foot.fontSize}
                 fill={ctx.colors.muted}
                 fontFamily={ctx.fonts.body}
@@ -231,10 +250,24 @@ export function renderArrowSteps(
           </g>
         )
       })}
+      {hidden > 0 ? (
+        <text
+          data-dropped={hidden}
+          x={box.w}
+          y={Math.min(budget - 4, visible * stride - (vertical ? GAP : 0) + 14)}
+          textAnchor="end"
+          fontSize={13}
+          fill={ctx.colors.muted}
+          fontFamily={ctx.fonts.body}
+          dominantBaseline="alphabetic"
+        >
+          {`+${hidden} …`}
+        </text>
+      ) : null}
       {knobs.pulseLine ? (
         <path
           d={(() => {
-            const y = vertical ? n * stride - GAP + 16 : ARROW_H + FOOT_GAP + footH + 16
+            const y = vertical ? n * stride - GAP + 16 : arrowH + FOOT_GAP + footH + 16
             const mid = box.w * 0.32
             return `M 0 ${y} L ${mid} ${y} L ${mid + 12} ${y - 16} L ${mid + 28} ${y + 16} L ${mid + 40} ${y} L ${box.w} ${y}`
           })()}

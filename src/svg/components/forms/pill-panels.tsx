@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText } from "../../../lib/svg-text-layout"
+import { fitSvgLine } from "../../../lib/svg-text-layout"
+import { wrapClip } from "./clip-text"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
@@ -32,7 +33,7 @@ function panelGeometry(n: number, w: number) {
 }
 
 function cellLayout(text: string, maxWidth: number, fontFamily: string) {
-  return layoutSvgText(text, {
+  return wrapClip(text, {
     maxWidth,
     fontSize: CELL_SIZE,
     maxLines: 3,
@@ -179,17 +180,29 @@ export function renderPillPanels(
               return (
                 <g key={ri}>
                   {label ? (
+                    (() => {
+                      const fitted = fitSvgLine(label, {
+                        maxWidth: bodyW,
+                        fontSize: LABEL_SIZE,
+                        minFontSize: 9,
+                        bold: true,
+                        fontFamily: ctx.fonts.body,
+                      })
+                      return (
                     <text
+                      data-truncated={fitted.truncated ? "1" : undefined}
                       x={x + PAD}
                       y={blockY + LABEL_SIZE}
-                      fontSize={LABEL_SIZE}
-                      fill={accessibleInk(ctx.colors.muted, pageBg, LABEL_SIZE)}
+                      fontSize={fitted.fontSize}
+                      fill={accessibleInk(ctx.colors.muted, pageBg, fitted.fontSize)}
                       fontFamily={ctx.fonts.body}
                       fontWeight="bold"
                       dominantBaseline="alphabetic"
                     >
-                      {label}
+                      {fitted.text}
                     </text>
+                      )
+                    })()
                   ) : null}
                   {laid.lines.map((line, li) => (
                     <text

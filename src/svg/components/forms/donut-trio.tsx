@@ -124,8 +124,16 @@ export function renderDonutTrio(
         const arc = hot ? danger : defaultArc
         const d = t != null && t > 0 ? donutArcPath(cx, cy, G.r, t) : ""
         const { head, tail } = splitValue(String(item.value), item.unit)
-        const valueSize = Math.min(40, G.r * 0.55)
-        const unitSize = Math.round(valueSize * 0.5)
+        const innerW = Math.max(8, (G.r - G.strokeW) * 1.35)
+        const rawValue = tail ? `${head}${tail}` : head
+        const valueFit = fitSvgLine(rawValue, {
+          maxWidth: innerW,
+          fontSize: Math.min(40, G.r * 0.55),
+          minFontSize: 8,
+          bold: true,
+          fontFamily: ctx.fonts.heading,
+        })
+        const valueSize = valueFit.fontSize
         const valueInk = hot ? accessibleInk(danger, pageBg, valueSize) : accessibleInk(arc, pageBg, valueSize)
         const label = fitSvgLine(item.label, {
           maxWidth: G.cellW - 16,
@@ -172,12 +180,7 @@ export function renderDonutTrio(
               fontFamily={ctx.fonts.heading}
               dominantBaseline="alphabetic"
             >
-              {head}
-              {tail != null ? (
-                <tspan fontSize={unitSize} fill={accessibleInk(ctx.colors.muted, pageBg, unitSize)}>
-                  {tail}
-                </tspan>
-              ) : null}
+              {valueFit.text}
             </text>
             <text
               data-truncated={label.truncated ? "1" : undefined}

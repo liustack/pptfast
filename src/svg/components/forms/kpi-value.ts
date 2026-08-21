@@ -16,7 +16,11 @@ export function parseKpiNumber(value: string): number | null {
   const cleaned = value.replace(/,/g, "").trim()
   if (cleaned === "") return null
   const n = Number.parseFloat(cleaned)
-  return Number.isFinite(n) ? n : null
+  if (Number.isFinite(n)) return n
+  const m = cleaned.match(/[-+]?\d+(?:\.\d+)?/)
+  if (!m) return null
+  const fallback = Number.parseFloat(m[0])
+  return Number.isFinite(fallback) ? fallback : null
 }
 
 /**

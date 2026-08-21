@@ -1,5 +1,6 @@
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText } from "../../../lib/svg-text-layout"
+import { fitSvgLine } from "../../../lib/svg-text-layout"
+import { wrapClip } from "./clip-text"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
@@ -22,10 +23,14 @@ function pillRx(knobs: FormKnobs, pillH: number): number {
 function layoutPills(n: number, w: number, knobs: FormKnobs, hHint?: number) {
   const stagger = knobs.stagger === true
   const staggerSpan = stagger ? STAGGER_X : 0
-  const pillH = Math.min(
+  let pillH = Math.min(
     76,
     Math.max(48, (STACK_CAP - Math.max(n - 1, 0) * PILL_GAP) / Math.max(n, 1)),
   )
+  if (hHint != null && n > 0) {
+    const fitted = (hHint - PAD * 2 - Math.max(n - 1, 0) * PILL_GAP) / n
+    if (Number.isFinite(fitted)) pillH = Math.min(pillH, Math.max(36, fitted))
+  }
   const stackH = n <= 0 ? 0 : n * pillH + (n - 1) * PILL_GAP
   const leftSize = Math.max(
     88,
@@ -122,7 +127,7 @@ export function renderNumberedPills(
           fontFamily: ctx.fonts.heading,
         })
         const body = showText && item.text
-          ? layoutSvgText(item.text, {
+          ? wrapClip(item.text, {
               maxWidth: textW,
               fontSize: 13,
               maxLines: 1,

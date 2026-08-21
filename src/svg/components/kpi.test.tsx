@@ -10,7 +10,7 @@ import { buildCtx } from "../full-slide-svg"
 import { accessibleInk } from "../ink"
 import { resolveComponentForm } from "./form-assignments"
 import { donutArcPath } from "./forms/donut-trio"
-import { parseKpiRatio } from "./forms/kpi-value"
+import { parseKpiNumber, parseKpiRatio } from "./forms/kpi-value"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 
@@ -657,6 +657,7 @@ describe("parseKpiRatio", () => {
     expect(parseKpiRatio("99.7%")).toBeCloseTo(0.997)
     expect(parseKpiRatio("1,234")).toBeNull()
     expect(parseKpiRatio("128", "台")).toBeNull()
+    expect(parseKpiNumber("$142")).toBe(142)
   })
 })
 
