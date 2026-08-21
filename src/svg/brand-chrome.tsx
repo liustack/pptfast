@@ -4,6 +4,7 @@ import { CONF_LABEL } from "../lib/conf-labels"
 import { resolveBrand } from "../themes/definitions"
 import { cachedDeckSeed, pickBySeed } from "./variety"
 import { FOOTER_DIVIDER_Y } from "./chrome-geometry"
+import { layoutOmitsChrome } from "./layouts/registry"
 
 /**
  * Shared footer/logo chrome as an SVG fragment. Ported from MasterFrame so the
@@ -21,6 +22,11 @@ export function BrandChrome({
   ctx: ComponentCtx
 }) {
   const { meta, brand, assets } = ir
+  // Layout-declared chrome:none (editorial-verse pinOnly members): skip
+  // the whole fragment — footer rule, footer meta, and logo. Page numbers
+  // are already gone globally. Distinct from image-split/image-bottom,
+  // which only suppress or restyle the footer while still drawing a logo.
+  if (layoutOmitsChrome(slide.layout)) return null
   const conf = meta.confidentiality
   const org = meta.organization
   const version = meta.version

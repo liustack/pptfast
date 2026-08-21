@@ -41,6 +41,7 @@ export type ChapterLayoutId =
   | "constellation-chapter" | "masthead-chapter" | "tone-adaptive-chapter"
   | "fashion-chapter" // 2026-07-10：时尚 magazine 满版色块出血大号（新表达）
   | "roman-chapter" // 2026-07-12：财经罗马数字+圆环光晕（新表达，insight 先挂）
+  | "verse-chapter" // editorial-verse wave: pinOnly centered verse as chapter open
 export type EndingLayoutId =
   | "banner-ending" | "rail-ending" | "poster-ending"
   | "constellation-ending" | "masthead-ending" | "tone-adaptive-ending"
@@ -69,3 +70,8 @@ export type ContentLayoutId =
   // — a single-heading "金句" page, capacity-1 body — see the file's own
   // composition-sketch header.
   | "quote-stage"
+  // editorial-verse wave: two more pinOnly content members (statement =
+  // whole-page verse, pull-quote = centered quote + attribution + prose).
+  // Neither enters the auto-pick pool.
+  | "statement"
+  | "pull-quote"

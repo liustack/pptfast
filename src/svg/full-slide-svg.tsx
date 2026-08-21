@@ -19,7 +19,7 @@ import {
 } from "./image-pages"
 import { findImageComponent } from "./layouts/find-image"
 import { gradientBands } from "./gradient-bands"
-import { getLayout } from "./layouts/registry"
+import { getLayout, layoutOmitsChrome } from "./layouts/registry"
 import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { COVER_LAYOUTS } from "./layouts/index-cover"
 import { CHAPTER_LAYOUTS } from "./layouts/index-chapter"
@@ -414,6 +414,12 @@ export function FullSlideSvg({
   // column and reads as a pale hairline down the page. See
   // `LayoutDefinition.paintsOwnBackground` (`./layouts/registry.ts`).
   const layoutPaintsBackground = pageLayout ? getLayout(pageLayout.id)?.paintsOwnBackground === true : false
+  // Layout-declared chrome:none (editorial-verse pinOnly members) skips
+  // BrandChrome as a whole (footer rule/meta, logo) and the theme motif.
+  // slide.decor, when the author sets it, still draws. Resolved layout id
+  // wins. The pin itself is the other source, so a pinOnly page whose
+  // resolvePageLayout somehow missed still honors the declaration.
+  const skipChrome = layoutOmitsChrome(pageLayout?.id) || layoutOmitsChrome(slide.layout)
 
   return (
     <svg
@@ -425,7 +431,7 @@ export function FullSlideSvg({
       {!layoutPaintsBackground && (
         <Background spec={bgSpec} images={ir.assets.images} autoScrimColor={autoScrimColor} />
       )}
-      {Decor && !imageCoverTakeover && (
+      {Decor && !imageCoverTakeover && !skipChrome && (
         <g data-decor>
           <Decor ir={ir} slide={slide} ctx={ctx} />
         </g>
@@ -456,7 +462,7 @@ export function FullSlideSvg({
       ) : null /* 不可达：非 takeover 时 resolvePageLayout 恒命中（十三主题四页型
         allowed 全非空，definitions.test「Wave 5 前置门」锁死）。空集才返回 null，
         渲空白而非崩溃是防御性兜底，正常运行不会到这里。 */}
-      <BrandChrome ir={ir} slide={slide} ctx={ctx} />
+      {!skipChrome && <BrandChrome ir={ir} slide={slide} ctx={ctx} />}
     </svg>
   )
 }

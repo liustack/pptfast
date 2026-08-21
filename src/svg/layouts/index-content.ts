@@ -12,6 +12,8 @@ import { QuietFrameContent } from "./content-quiet-frame"
 import { ImageLeadSplitContent } from "./content-image-lead-split"
 import { SplitBandContent } from "./content-split-band"
 import { QuoteStageContent } from "./content-quote-stage"
+import { StatementContent } from "./content-statement"
+import { PullQuoteContent } from "./content-pull-quote"
 
 export type { ContentLayout, ContentLayoutId } from "./types"
 
@@ -28,6 +30,8 @@ export type { ContentLayout, ContentLayoutId } from "./types"
 // `pinOnly`（见 registry.ts 的 `LayoutDefinition.pinOnly`），不进任何主题的
 // 自动选型池，"12 auto-selectable + 1 pin-only" 而不是简单的 "13"（SKILL/docs
 // 措辞由 T3 收尾）。
+// editorial-verse wave：再加 statement / pull-quote 两个 pinOnly，自动池仍是
+// 12，"12 auto-selectable + 3 pin-only"。
 export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "narrow-column": NarrowColumnContent,
   "two-column": TwoColumnContent,
@@ -42,4 +46,6 @@ export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "image-lead-split": ImageLeadSplitContent,
   "split-band": SplitBandContent,
   "quote-stage": QuoteStageContent,
+  statement: StatementContent,
+  "pull-quote": PullQuoteContent,
 }

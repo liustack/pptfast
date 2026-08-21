@@ -91,6 +91,7 @@ import { layoutDef as chapterPosterChapter } from "./chapter-poster-chapter"
 import { layoutDef as chapterRomanChapter } from "./chapter-roman-chapter"
 import { layoutDef as chapterToneAdaptiveChapter } from "./chapter-tone-adaptive-chapter"
 import { layoutDef as chapterFashionChapter } from "./chapter-fashion-chapter"
+import { layoutDef as chapterVerseChapter } from "./chapter-verse-chapter"
 
 import { layoutDef as endingMastheadEnding } from "./ending-masthead-ending"
 import { layoutDef as endingConstellationEnding } from "./ending-constellation-ending"
@@ -113,6 +114,8 @@ import { layoutDef as contentQuietFrame } from "./content-quiet-frame"
 import { layoutDef as contentImageLeadSplit } from "./content-image-lead-split"
 import { layoutDef as contentSplitBand } from "./content-split-band"
 import { layoutDef as contentQuoteStage } from "./content-quote-stage"
+import { layoutDef as contentStatement } from "./content-statement"
+import { layoutDef as contentPullQuote } from "./content-pull-quote"
 
 import {
   imageSplitLayoutDef,
@@ -309,7 +312,41 @@ export interface LayoutDefinition {
     fontSize: number
     maxLines?: number
     minPt?: number
+    /** Passed through to `fitHeadingLines`. Default there is `true` (heading
+     *  as bold). Editorial-verse layouts set `false` so validate's overflow
+     *  check uses the same width model the render path does (weight 400–500). */
+    bold?: boolean
+    lineHeightRatio?: number
   }
+  /**
+   * Brand-chrome posture this layout declares (editorial-verse wave).
+   *
+   * `"none"`: `FullSlideSvg` skips `BrandChrome` entirely (footer rule,
+   * footer meta, logo — page numbers were already removed globally) and
+   * does not paint the theme motif. `slide.decor`, when the author sets it
+   * explicitly, still draws. The fifth-band decoration safe-zone in
+   * `docs/designing-themes.md` does not apply: the whole 1280×720 canvas
+   * is the layout's, there is no reserved footer strip to keep clear of.
+   *
+   * `undefined` (every layout except the editorial-verse members
+   * `statement` / `pull-quote` / `verse-chapter`) means ordinary chrome:
+   * `BrandChrome` and the theme motif paint as they do today. `"default"`
+   * is accepted as an explicit spelling of that same ordinary path.
+   *
+   * This is a layout-level declaration, not a slide-level IR field. A
+   * page gets it only by pinning this layout (`pinOnly` members of the
+   * editorial-verse set all set `"none"`). Existing decks that never pin
+   * those ids are byte-identical.
+   */
+  chrome?: "default" | "none"
+}
+
+/**
+ * True when the named layout declares `chrome: "none"`. `undefined` id or
+ * a layout that omits the field (the ordinary path) returns false.
+ */
+export function layoutOmitsChrome(id: string | undefined): boolean {
+  return id !== undefined && getLayout(id)?.chrome === "none"
 }
 
 /**
@@ -381,6 +418,7 @@ const CHAPTER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [chapterRomanChapter.id]: chapterRomanChapter,
   [chapterToneAdaptiveChapter.id]: chapterToneAdaptiveChapter,
   [chapterFashionChapter.id]: chapterFashionChapter,
+  [chapterVerseChapter.id]: chapterVerseChapter,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -519,6 +557,8 @@ const CONTENT_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [contentImageLeadSplit.id]: contentImageLeadSplit,
   [contentSplitBand.id]: contentSplitBand,
   [contentQuoteStage.id]: contentQuoteStage,
+  [contentStatement.id]: contentStatement,
+  [contentPullQuote.id]: contentPullQuote,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -542,7 +582,7 @@ const TAKEOVER_LAYOUT_DEFS: Record<string, LayoutDefinition> = {
   [imageAnnotateLayoutDef.id]: imageAnnotateLayoutDef,
 }
 
-/** All 36 standard layouts + 4 takeover layouts, keyed by id (`kind`
+/** All 40 standard layouts + 4 takeover layouts, keyed by id (`kind`
  *  still spells the standard tier `"archetype"` — a wire-format fossil, see
  *  {@link LayoutDefinition.kind}). */
 export const LAYOUT_REGISTRY: Record<string, LayoutDefinition> = {

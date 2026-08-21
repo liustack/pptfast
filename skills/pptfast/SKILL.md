@@ -84,7 +84,7 @@ pptfast assemble deck-dir/     # materializes deck.json — catches structural d
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-Fix whatever either command reports as an error and re-run until both print `OK`. `validate` can print `OK` alongside `warning:` lines (e.g. a long heading or a dense slide) — tighten those too when practical, they read better, but they do not block. Only an error stops `OK` from printing. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked — a `pinOnly` layout like `quote-stage` needs this pin every single time, since it never comes up through auto-selection at all (see Quote-stage below).
+Fix whatever either command reports as an error and re-run until both print `OK`. `validate` can print `OK` alongside `warning:` lines (e.g. a long heading or a dense slide) — tighten those too when practical, they read better, but they do not block. Only an error stops `OK` from printing. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked — a `pinOnly` layout like `quote-stage`, `statement`, `pull-quote`, or `verse-chapter` needs this pin every single time, since it never comes up through auto-selection at all (see Pin-only layouts below).
 
 ### Phase 4 — Render
 
@@ -235,9 +235,17 @@ Declare images once in `assets.images` and reference them by `asset_id` — doub
 
 Before generating art for any `image` component whose `asset_id` still has no real file behind it, run `pptfast asset-brief <target>` — it renders the deck for real and reports each slot's actual frame (not the layout's nominal slot size), crop mode with a safe-zone note, suggested generation pixels, the theme's palette, and a paste-ready prompt. Matching the reported aspect ratio and palette is what makes a generated image look intentional once it's placed instead of stretched, cropped wrong, or off-tone.
 
-### Quote-stage
+### Pin-only layouts
 
-`quote-stage` is a pin-only layout: it never appears through auto-selection, only by setting `layout: "quote-stage"` explicitly on a content page. Reach for it for a genuine thesis or quote moment — one short, powerful heading carrying the entire page as its sole visual, with at most one short attribution component alongside it (a source, a name, a one-line follow-up). Never pin it onto a dense page: its declared capacity is 1, and `validate` hard-errors on anything above that, unlike an ordinary layout pinned over capacity, which only warns. Zero components is a legitimate quote-stage page too — a pure quote needs no attribution.
+These layouts never appear through auto-selection. Set `layout` explicitly every time you want one. `validate` hard-errors if a pin-only content layout carries more components than its declared capacity (an ordinary layout pinned over capacity only warns).
+
+`quote-stage` is a thesis page on a content slide: one short, powerful heading is the entire visual, with at most one short attribution component (a source, a name, a one-line follow-up). Zero components is legitimate — a pure quote needs no attribution. This one still draws the theme's brand footer and motif.
+
+`statement` is a whole-page verse or epigram on a content slide. The heading is 2–4 italic lines, weight 500, no accent bar. At most one component, rendered as a small source line (quote / paragraph / citation), never as a card. Optional kicker from the preceding chapter. Brand footer, logo, and theme motif stay off.
+
+`pull-quote` is a centered quotation page on a content slide: optional chapter kicker, italic heading, small source line, then one muted paragraph. Source comes from a quote component's `attribution` when present, otherwise `subheading`. The paragraph is the only body. Brand footer, logo, and theme motif stay off.
+
+`verse-chapter` is a centered verse as a chapter open (`type: "chapter"`). Tracking chapter-index kicker, 2-line heading, optional italic subheading. No watermark numeral, no body, no footnote — the usual chapter boundary still applies. Logo and theme motif stay off.
 
 ### Capacity
 
