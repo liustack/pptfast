@@ -105,14 +105,6 @@ export function BandTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
       })
     : null
 
-  const leftMeta = org
-    ? fitSvgLine(org, {
-        maxWidth: 720,
-        fontSize: META_SIZE,
-        minFontSize: 12,
-        fontFamily: fonts.body,
-      })
-    : null
   const rightParts = [confLabel, date].filter((v): v is string => Boolean(v))
   const rightMeta =
     rightParts.length > 0
@@ -140,20 +132,8 @@ export function BandTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
 
   return (
     <>
-      {leftMeta && (
-        <text
-          data-contrast-tier="meta"
-          data-truncated={leftMeta.truncated ? "1" : undefined}
-          x={META_LEFT_X}
-          y={META_Y}
-          fontFamily={fonts.body}
-          fontSize={leftMeta.fontSize}
-          fill={paperMeta}
-          dominantBaseline="alphabetic"
-        >
-          {leftMeta.text}
-        </text>
-      )}
+      {/* org 只出现一次：带上沿 kicker 已承了它，顶栏左位不重复
+          （2026-08-22 目检抓的重复缺陷），顶栏只留右侧密级·日期。 */}
       {rightMeta && (
         <text
           data-contrast-tier="meta"
