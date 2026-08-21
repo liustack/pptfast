@@ -3,6 +3,11 @@ import { describe, it, expect } from "vitest"
 import { render } from "@testing-library/react"
 import { comparison } from "./comparison"
 import type { ComponentCtx } from "./types"
+import { renderSvgMarkup, parseSvgRoot } from "../serialize"
+import { assertSubset } from "../subset-validate"
+import { resolveStyle } from "../../themes"
+import { buildCtx } from "../full-slide-svg"
+import { readableOn } from "../ink"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -417,5 +422,167 @@ describe("comparison 空首列表头归一化（2026-08-19 gallery 重渲：20 �
     const x = xByText(container)
     expect(x.get("维度")).toBe(x.get("价格"))
     expect(x.get("我们")).toBe(x.get("低 15%"))
+  })
+})
+
+function formMarkup(node: React.ReactElement) {
+  return renderSvgMarkup(<svg xmlns="http://www.w3.org/2000/svg">{node}</svg>)
+}
+
+function assertRectImageInBox(root: Element, box: { w: number; h: number }) {
+  const slack = 2
+  for (const el of Array.from(root.querySelectorAll("rect, image"))) {
+    const x = Number(el.getAttribute("x") ?? 0)
+    const y = Number(el.getAttribute("y") ?? 0)
+    const w = Number(el.getAttribute("width") ?? 0)
+    const h = Number(el.getAttribute("height") ?? 0)
+    expect(x).toBeGreaterThanOrEqual(-slack)
+    expect(y).toBeGreaterThanOrEqual(-slack)
+    expect(x + w).toBeLessThanOrEqual(box.w + slack)
+    expect(y + h).toBeLessThanOrEqual(box.h + slack)
+  }
+}
+
+describe("pill_panels form", () => {
+  const box = { x: 0, y: 0, w: 1088, h: 420 }
+  const twoCol = {
+    type: "comparison" as const,
+    columns: ["稳妥线：单线试点", "进取线：全线并行"],
+    rows: [
+      { label: "节奏", cells: ["先押一条产线，九十天出对照数据", "三条线同月接入，共享一套模型底座"] },
+      { label: "代价", cells: ["慢一个季度，但每一步都有数", "前期投入翻倍，回本提前两个月"] },
+    ],
+  }
+
+  it("consulting: one pill per columns[] entry, pill sits on the frame top edge, first accent then primary", () => {
+    const themeCtx = buildCtx(resolveStyle("consulting"), {})
+    const { container } = svg(comparison.render(twoCol, box, themeCtx))
+    const frames = Array.from(container.querySelectorAll("rect")).filter((r) => r.getAttribute("stroke-dasharray"))
+    const pills = Array.from(container.querySelectorAll("rect")).filter((r) => {
+      const fill = r.getAttribute("fill")
+      return fill === themeCtx.colors.accent || fill === themeCtx.colors.primary
+    })
+    expect(pills).toHaveLength(2)
+    expect(frames).toHaveLength(2)
+    expect(pills[0].getAttribute("fill")).toBe(themeCtx.colors.accent)
+    expect(pills[1].getAttribute("fill")).toBe(themeCtx.colors.primary)
+    pills.forEach((pill, i) => {
+      const py = Number(pill.getAttribute("y"))
+      const ph = Number(pill.getAttribute("height"))
+      const fy = Number(frames[i].getAttribute("y"))
+      expect(py).toBeLessThan(fy)
+      expect(py + ph).toBeGreaterThan(fy)
+      expect(Number(pill.getAttribute("rx"))).toBeCloseTo(ph / 2)
+    })
+    const title0 = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === twoCol.columns[0])
+    expect(title0?.getAttribute("fill")).toBe(readableOn(themeCtx.colors.accent))
+    expect(container.textContent).toContain("先押一条产线，九十天出对照数据")
+    expect(container.textContent).toContain("节奏")
+  })
+
+  it("vermilion: solid frames, accent-all pills, L corner marks in accent", () => {
+    const themeCtx = buildCtx(resolveStyle("vermilion"), {})
+    const { container } = svg(comparison.render(twoCol, box, themeCtx))
+    const pills = Array.from(container.querySelectorAll("rect")).filter(
+      (r) => r.getAttribute("fill") === themeCtx.colors.accent,
+    )
+    expect(pills).toHaveLength(2)
+    const frames = Array.from(container.querySelectorAll("rect")).filter(
+      (r) => r.getAttribute("fill") === themeCtx.colors.surface,
+    )
+    expect(frames.length).toBeGreaterThanOrEqual(2)
+    frames.forEach((f) => {
+      expect(f.getAttribute("stroke")).toBe(themeCtx.colors.border)
+      expect(f.getAttribute("stroke-dasharray")).toBeNull()
+    })
+    const marks = Array.from(container.querySelectorAll("path")).filter(
+      (p) => p.getAttribute("stroke") === themeCtx.colors.accent,
+    )
+    expect(marks.length).toBeGreaterThanOrEqual(2)
+    expect(marks[0].getAttribute("d") ?? "").toMatch(/L /)
+  })
+
+  it("ember: no frame stroke, soft pill radius, accent-all fill from tokens", () => {
+    const themeCtx = buildCtx(resolveStyle("ember"), {})
+    const { container } = svg(comparison.render(twoCol, box, themeCtx))
+    const pills = Array.from(container.querySelectorAll("rect")).filter(
+      (r) => r.getAttribute("fill") === themeCtx.colors.accent,
+    )
+    expect(pills).toHaveLength(2)
+    pills.forEach((p) => {
+      expect(Number(p.getAttribute("rx"))).toBe(themeCtx.shape?.radius ?? 10)
+    })
+    const frames = Array.from(container.querySelectorAll("rect")).filter(
+      (r) => r.getAttribute("fill") === themeCtx.colors.surface,
+    )
+    frames.forEach((f) => {
+      expect(f.getAttribute("stroke")).toBeNull()
+      expect(f.getAttribute("stroke-dasharray")).toBeNull()
+    })
+  })
+
+  it("3+ columns stay a single row of panels sharing box.w", () => {
+    const three = {
+      type: "comparison" as const,
+      columns: ["甲", "乙", "丙"],
+      rows: [{ label: "项", cells: ["一", "二", "三"] }],
+    }
+    const themeCtx = buildCtx(resolveStyle("consulting"), {})
+    const { container } = svg(comparison.render(three, box, themeCtx))
+    const frames = Array.from(container.querySelectorAll("rect")).filter((r) => r.getAttribute("stroke-dasharray"))
+    expect(frames).toHaveLength(3)
+    const xs = frames.map((f) => Number(f.getAttribute("x"))).sort((a, b) => a - b)
+    expect(xs[0]).toBeCloseTo(0, 0)
+    const last = frames.reduce((a, b) =>
+      Number(a.getAttribute("x")) > Number(b.getAttribute("x")) ? a : b,
+    )
+    expect(Number(last.getAttribute("x")) + Number(last.getAttribute("width"))).toBeCloseTo(box.w, 0)
+    frames.forEach((f) => expect(Number(f.getAttribute("y"))).toBe(Number(frames[0].getAttribute("y"))))
+  })
+
+  it("tech (unassigned contrast) markup is byte-identical to the default face", () => {
+    const withId = buildCtx(resolveStyle("tech"), {})
+    const withoutId = { ...withId, themeId: undefined }
+    expect(formMarkup(comparison.render(component, { x: 80, y: 100, w: 1000 }, withId))).toBe(
+      formMarkup(comparison.render(component, { x: 80, y: 100, w: 1000 }, withoutId)),
+    )
+  })
+
+  it("n=1 and n=4 panels stay inside the box, and the tree is subset-safe", () => {
+    const themeCtx = buildCtx(resolveStyle("consulting"), {})
+    for (const cols of [["只一列"], ["A", "B", "C", "D"]]) {
+      const ir = {
+        type: "comparison" as const,
+        columns: cols,
+        rows: [{ label: "行", cells: cols.map((_, i) => `cell${i}`) }],
+      }
+      const node = comparison.render(ir, box, themeCtx)
+      const markup = formMarkup(node)
+      const root = parseSvgRoot(markup)
+      expect(() => assertSubset(root)).not.toThrow()
+      assertRectImageInBox(root, box)
+    }
+  })
+
+  it("box.h truncates body rows and marks the drop with +N …", () => {
+    const many = {
+      type: "comparison" as const,
+      columns: ["甲", "乙"],
+      rows: Array.from({ length: 20 }, (_, i) => ({
+        label: `row ${i}`,
+        cells: [`a${i}`, `b${i}`],
+      })),
+    }
+    const themeCtx = buildCtx(resolveStyle("consulting"), {})
+    const tight = { x: 0, y: 0, w: 1088, h: 220 }
+    const { container } = svg(comparison.render(many, tight, themeCtx))
+    const labels = Array.from(container.querySelectorAll("text")).filter((t) =>
+      (t.textContent ?? "").startsWith("row "),
+    )
+    expect(labels.length).toBeGreaterThan(0)
+    expect(labels.length).toBeLessThan(20)
+    const dropped = container.querySelector("[data-dropped]")
+    expect(dropped).toBeTruthy()
+    expect(dropped!.textContent).toMatch(/^\+\d+ …$/)
   })
 })
