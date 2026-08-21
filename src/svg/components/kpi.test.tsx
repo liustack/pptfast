@@ -8,6 +8,11 @@ import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../full-slide-svg"
 import { accessibleInk } from "../ink"
+import { resolveComponentForm } from "./form-assignments"
+import { donutArcPath } from "./forms/donut-trio"
+import { parseKpiRatio } from "./forms/kpi-value"
+import { renderSvgMarkup, parseSvgRoot } from "../serialize"
+import { assertSubset } from "../subset-validate"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -216,6 +221,7 @@ describe("kpi semantic color tokens", () => {
     // silently rendering neutral ink, and any drift needs a deliberate
     // re-capture of the `migrate-equivalence` goldens (they cover kpi_cards).
     for (const id of CANONICAL_THEME_IDS) {
+      if (resolveComponentForm("kpi_cards", id)) continue
       const themeCtx = buildCtx(resolveStyle(id), {})
       const { success, danger, muted, surface } = themeCtx.colors
       expect(success, `${id} declares no success color`).toBeTruthy()
@@ -250,6 +256,7 @@ describe("kpi card stroke (Task 5d)", () => {
 
   it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
     for (const id of CANONICAL_THEME_IDS) {
+      if (resolveComponentForm("kpi_cards", id)) continue
       const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(kpi.render(component, { x: 0, y: 0, w: 1120 }, themeCtx))
       const rect = container.querySelector("rect")!
@@ -609,3 +616,231 @@ describe("kpi row-uniform value size", () => {
     expect(rowValueFontSize(items, 10, scale)).toBe(22)
   })
 })
+
+function themeCtx(id: string): ComponentCtx {
+  return buildCtx(resolveStyle(id), {})
+}
+
+function parseArcEnd(d: string): { ex: number; ey: number; large: number } {
+  const m = /A\s+[\d.]+\s+[\d.]+\s+0\s+(\d)\s+1\s+([\d.-]+)\s+([\d.-]+)/.exec(d)
+  if (!m) throw new Error(`not an arc path: ${d}`)
+  return { large: Number(m[1]), ex: Number(m[2]), ey: Number(m[3]) }
+}
+
+function assertInsideBox(container: HTMLElement, w: number, h: number, slop = 2) {
+  for (const c of Array.from(container.querySelectorAll("circle"))) {
+    const cx = Number(c.getAttribute("cx"))
+    const cy = Number(c.getAttribute("cy"))
+    const r = Number(c.getAttribute("r"))
+    expect(cx - r).toBeGreaterThanOrEqual(-slop)
+    expect(cx + r).toBeLessThanOrEqual(w + slop)
+    expect(cy - r).toBeGreaterThanOrEqual(-slop)
+    expect(cy + r).toBeLessThanOrEqual(h + slop)
+  }
+}
+
+const RATES = {
+  type: "kpi_cards" as const,
+  items: [
+    { value: "86%", label: "预测命中率", source: "提前 48 小时以上" },
+    { value: "72%", label: "工单闭环率" },
+    { value: "29%", label: "误报占比" },
+  ],
+}
+
+describe("parseKpiRatio", () => {
+  it("reads percents, unit %, 0..1, 1..100, and refuses counts above 100", () => {
+    expect(parseKpiRatio("86%")).toBeCloseTo(0.86)
+    expect(parseKpiRatio("72", "%")).toBeCloseTo(0.72)
+    expect(parseKpiRatio("0.5")).toBe(0.5)
+    expect(parseKpiRatio("50")).toBe(0.5)
+    expect(parseKpiRatio("99.7%")).toBeCloseTo(0.997)
+    expect(parseKpiRatio("1,234")).toBeNull()
+    expect(parseKpiRatio("128", "台")).toBeNull()
+  })
+})
+
+describe("donut_trio", () => {
+  it("locks the 86/72/29 arc endpoints within 0.6px of the 12-o'clock clockwise formula", () => {
+    const r = 95
+    const d86 = donutArcPath(280, 330, r, 0.86)
+    const d72 = donutArcPath(640, 330, r, 0.72)
+    const d29 = donutArcPath(1000, 330, r, 0.29)
+    const a86 = parseArcEnd(d86)
+    const a72 = parseArcEnd(d72)
+    const a29 = parseArcEnd(d29)
+    expect(Math.abs(a86.ex - 206.8)).toBeLessThanOrEqual(0.6)
+    expect(Math.abs(a86.ey - 269.4)).toBeLessThanOrEqual(0.6)
+    expect(a86.large).toBe(1)
+    expect(Math.abs(a72.ex - 546.7)).toBeLessThanOrEqual(0.6)
+    expect(Math.abs(a72.ey - 347.8)).toBeLessThanOrEqual(0.6)
+    expect(a72.large).toBe(1)
+    expect(Math.abs(a29.ex - 1092.0)).toBeLessThanOrEqual(0.6)
+    expect(Math.abs(a29.ey - 353.6)).toBeLessThanOrEqual(0.6)
+    expect(a29.large).toBe(0)
+    expect(donutArcPath(0, 0, 10, 0)).toBe("")
+  })
+
+  it("luxe: one track circle and one A path per item, arc in the accent token", () => {
+    const luxe = themeCtx("luxe")
+    const { container } = svg(kpi.render(RATES, { x: 0, y: 0, w: 1120 }, luxe))
+    expect(container.querySelectorAll("circle")).toHaveLength(3)
+    const arcs = Array.from(container.querySelectorAll("path")).filter((p) =>
+      (p.getAttribute("d") ?? "").includes("A"),
+    )
+    expect(arcs).toHaveLength(3)
+    arcs.forEach((p) => {
+      expect(p.getAttribute("stroke")).toBe(luxe.colors.accent)
+      expect(p.getAttribute("fill")).toBe("none")
+    })
+    expect(container.textContent).toContain("86")
+    expect(container.textContent).toContain("预测命中率")
+    expect(container.textContent).toContain("提前 48 小时以上")
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">{kpi.render(RATES, { x: 0, y: 0, w: 1120 }, luxe)}</svg>,
+    )
+    expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
+  })
+
+  it("swiss dangerOnMin paints the smallest parsed ratio in colors.danger", () => {
+    const swiss = themeCtx("swiss")
+    const { container } = svg(kpi.render(RATES, { x: 0, y: 0, w: 1120 }, swiss))
+    const arcs = Array.from(container.querySelectorAll("path")).filter((p) =>
+      (p.getAttribute("d") ?? "").includes("A"),
+    )
+    const danger = swiss.colors.danger
+    const hot = arcs.filter((p) => p.getAttribute("stroke") === danger)
+    expect(hot).toHaveLength(1)
+    const end = parseArcEnd(hot[0]!.getAttribute("d")!)
+    expect(end.large).toBe(0)
+  })
+
+  it("does not invent an icon when IR has none, and omits the arc for a count above 100", () => {
+    const luxe = themeCtx("luxe")
+    const counts = {
+      type: "kpi_cards" as const,
+      items: [{ value: "128", unit: "台", label: "设备总数" }],
+    }
+    const markup = renderToStaticMarkup(<svg>{kpi.render(counts, { x: 0, y: 0, w: 400 }, luxe)}</svg>)
+    expect(markup).not.toContain("scale(")
+    expect((markup.match(/<path /g) ?? []).length).toBe(0)
+    expect(markup).toContain("128")
+  })
+
+  it("n=2 and n=8 stay inside the box", () => {
+    const luxe = themeCtx("luxe")
+    for (const n of [2, 8]) {
+      const component = {
+        type: "kpi_cards" as const,
+        items: Array.from({ length: n }, (_, i) => ({
+          value: `${80 - i * 7}%`,
+          label: `指标${i + 1}`,
+        })),
+      }
+      const w = 1088
+      const h = kpi.measure(component, w, luxe)
+      const { container } = svg(kpi.render(component, { x: 0, y: 0, w, h }, luxe))
+      assertInsideBox(container, w, h)
+    }
+  })
+})
+
+describe("bubble_row", () => {
+  const bubbles = {
+    type: "kpi_cards" as const,
+    items: [
+      { value: "41%", label: "四号线" },
+      { value: "92%", label: "三号线", source: "全点位接入" },
+      { value: "68%", label: "二号线" },
+      { value: "74%", label: "一号线" },
+      { value: "35%", label: "五号线" },
+    ],
+  }
+
+  it("insight: champion is the largest circle at center, 2nd left, 3rd right, no baseline", () => {
+    const insight = themeCtx("insight")
+    const w = 1120
+    const { container } = svg(kpi.render(bubbles, { x: 0, y: 0, w }, insight))
+    const circles = Array.from(container.querySelectorAll("circle")).sort(
+      (a, b) => Number(b.getAttribute("r")) - Number(a.getAttribute("r")),
+    )
+    expect(circles.length).toBe(5)
+    const champ = circles[0]!
+    expect(Number(champ.getAttribute("cx"))).toBeCloseTo(w / 2, 0)
+    expect(champ.getAttribute("fill")).toBe(insight.colors.accent)
+    expect(Number(circles[1]!.getAttribute("cx"))).toBeLessThan(Number(champ.getAttribute("cx")))
+    expect(Number(circles[2]!.getAttribute("cx"))).toBeGreaterThan(Number(champ.getAttribute("cx")))
+    expect(container.querySelectorAll("line")).toHaveLength(0)
+    expect(container.textContent).toContain("92%")
+    expect(container.textContent).toContain("全点位接入")
+    expect(container.textContent).not.toContain("三号线是样板")
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg">{kpi.render(bubbles, { x: 0, y: 0, w }, insight)}</svg>,
+    )
+    expect(() => assertSubset(parseSvgRoot(markup))).not.toThrow()
+  })
+
+  it("crayon paletteStroke uses chartPalette tokens, not a horizontal baseline", () => {
+    const crayon = themeCtx("crayon")
+    const { container } = svg(kpi.render(bubbles, { x: 0, y: 0, w: 1120 }, crayon))
+    const circles = Array.from(container.querySelectorAll("circle"))
+    const strokes = circles.map((c) => c.getAttribute("stroke")).filter((s): s is string => Boolean(s))
+    expect(strokes.length).toBe(5)
+    for (const s of strokes) {
+      expect(crayon.colors.chartPalette).toContain(s)
+    }
+    expect(container.querySelectorAll("line")).toHaveLength(0)
+  })
+
+  it("unparseable values get the min radius and sit on the outside, stable on index", () => {
+    const insight = themeCtx("insight")
+    const mixed = {
+      type: "kpi_cards" as const,
+      items: [
+        { value: "n/a", label: "甲" },
+        { value: "40%", label: "乙" },
+        { value: "n/a", label: "丙" },
+      ],
+    }
+    const w = 900
+    const { container } = svg(kpi.render(mixed, { x: 0, y: 0, w }, insight))
+    const circles = Array.from(container.querySelectorAll("circle"))
+    const byR = [...circles].sort((a, b) => Number(b.getAttribute("r")) - Number(a.getAttribute("r")))
+    expect(Number(byR[0]!.getAttribute("r"))).toBeGreaterThan(Number(byR[1]!.getAttribute("r")))
+    const cx0 = w / 2
+    const outer = [...circles].sort(
+      (a, b) =>
+        Math.abs(Number(b.getAttribute("cx")) - cx0) - Math.abs(Number(a.getAttribute("cx")) - cx0),
+    )
+    expect(Number(outer[0]!.getAttribute("r"))).toBeLessThanOrEqual(Number(byR[0]!.getAttribute("r")))
+  })
+
+  it("n=2 and n=8 stay inside the box", () => {
+    const insight = themeCtx("insight")
+    for (const n of [2, 8]) {
+      const component = {
+        type: "kpi_cards" as const,
+        items: Array.from({ length: n }, (_, i) => ({
+          value: `${90 - i * 8}%`,
+          label: `线${i + 1}`,
+        })),
+      }
+      const w = 1088
+      const h = kpi.measure(component, w, insight)
+      const { container } = svg(kpi.render(component, { x: 0, y: 0, w, h }, insight))
+      assertInsideBox(container, w, h)
+    }
+  })
+})
+
+describe("kpi_cards unassigned theme equals the default face", () => {
+  it("consulting (unassigned) markup equals the same tokens with themeId omitted", () => {
+    const consulting = themeCtx("consulting")
+    const noId: ComponentCtx = { ...consulting, themeId: undefined }
+    const box = { x: 80, y: 200, w: 1120 }
+    expect(renderToStaticMarkup(<svg>{kpi.render(component, box, consulting)}</svg>)).toBe(
+      renderToStaticMarkup(<svg>{kpi.render(component, box, noId)}</svg>),
+    )
+  })
+})
+
