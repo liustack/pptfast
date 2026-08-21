@@ -18,6 +18,7 @@ const ir = (theme: string): PptxIR =>
     version: "3",
     filename: "x.pptx",
     theme: { id: theme },
+    chrome: "full",
     meta: { organization: "测试实验室", date: "2026-07" },
     assets: { images: {} },
     slides: [slide],

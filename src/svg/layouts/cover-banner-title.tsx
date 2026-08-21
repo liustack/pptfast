@@ -4,6 +4,7 @@ import { layoutSvgText } from "../../lib/svg-text-layout"
 import { scaleTypePx } from "../heading-fit"
 import { accessibleInk } from "../ink"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { showsDocumentMeta } from "../document-meta"
 
 /**
  * banner-title cover layout（spec §3.2）：结论横幅式封面——org 圆点标、
@@ -72,13 +73,13 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
   const subtitleY = titleLastY + 96
 
   const org = ir.meta.organization
-  const conf = ir.meta.confidentiality
+  const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
   const author = ir.meta.authors?.[0]
   const authorText = author
     ? [author.name, author.role].filter(Boolean).join(" · ")
     : null
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const version = ir.meta.version
 
   const metaDividerY =

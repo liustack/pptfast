@@ -261,7 +261,7 @@ On a talk deck:
 - The spoken script goes in `slide.notes`. `render` exports it as native PowerPoint speaker notes (View → Notes, Presenter View). Never draw the script onto the canvas.
 - Leave `chrome` off the spec and the IR. The omitted default already drops the footer rule, meta, and logo on content and ending pages.
 
-On a read deck, write to the pacing budget. Write `chrome: "full"` so content pages carry the brand footer (and write it whenever `meta.confidentiality` is `confidential` or `restricted`, or the file needs an organization colophon). A pin-only sparse layout is still the right pin when a page truly is one sentence.
+On a read deck, write to the pacing budget. Write `chrome: "full"` so content pages carry the brand footer (and write it whenever `meta.confidentiality` is `confidential` or `restricted`, or the file needs an organization colophon). Confidentiality and date then also appear on the cover. They stay off every other posture. A pin-only sparse layout is still the right pin when a page truly is one sentence.
 
 ### Capacity
 

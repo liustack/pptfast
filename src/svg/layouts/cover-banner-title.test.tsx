@@ -7,8 +7,16 @@ import { BannerTitleCover } from "./cover-banner-title"
 import type { PptxIR, Slide } from "@/ir"
 
 const slide: Slide = { type: "cover", heading: "年度战略回顾", subheading: "面向 2027 的三个决定", components: [] } as Slide
-const ir = (theme: string): PptxIR =>
-  ({ version: "3", filename: "x.pptx", theme: { id: theme }, meta: { organization: "测试部", date: "2026-07" }, assets: { images: {} }, slides: [slide] }) as unknown as PptxIR
+const ir = (theme: string, chrome?: PptxIR["chrome"]): PptxIR =>
+  ({
+    version: "3",
+    filename: "x.pptx",
+    theme: { id: theme },
+    meta: { organization: "测试部", date: "2026-07" },
+    assets: { images: {} },
+    slides: [slide],
+    ...(chrome !== undefined ? { chrome } : {}),
+  }) as unknown as PptxIR
 
 // Captured verbatim from the legacy `MckinseyNavyCover` (templates/consulting.tsx)
 // for this exact fixture (consulting tokens, org="测试部", date="2026-07") before
@@ -41,7 +49,7 @@ describe("BannerTitleCover", () => {
   it("consulting tokens 下与旧 MckinseyNavyCover 观感等价（2026-07-09 有意偏离旧模板修叠压 bug，不再逐字节锁）", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const legacy = LEGACY_COVER_MARKUP
-    const next = renderSvgMarkup(<BannerTitleCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />)
+    const next = renderSvgMarkup(<BannerTitleCover ir={ir("consulting", "full")} slide={slide} index={0} ctx={ctx} />)
 
     // 结构一致：同样数量的每种 SVG 元素标签（org 圆点、confidentiality 徽标
     // 分支未触发、标题行、accent 条、副题行、meta 分隔线/文本，一个不多一个
@@ -71,7 +79,7 @@ describe("BannerTitleCover", () => {
     const ctx = buildCtx(resolveStyle("consulting"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-        <BannerTitleCover ir={ir("consulting")} slide={slide} index={0} ctx={ctx} />
+        <BannerTitleCover ir={ir("consulting", "full")} slide={slide} index={0} ctx={ctx} />
       </svg>,
     )
     const root = parseSvgRoot(markup)

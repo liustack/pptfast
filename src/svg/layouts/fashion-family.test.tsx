@@ -104,7 +104,7 @@ describe("fashion 家族（runway）", () => {
     // runway：白字混到 #0A0A0A 上，org 10.20:1、meta 7.30:1，两处都保留原值
     const markup = renderSvgMarkup(<FashionEnding ir={deck} slide={ending} index={0} ctx={ctx} />)
     expect(markup).toMatch(/fill-opacity="0\.72"[^>]*letter-spacing="8"[^>]*>时尚编辑部</)
-    expect(markup).toMatch(/fill-opacity="0\.6"[^>]*letter-spacing="3"[^>]*>时尚编辑部 {4}· {4}2026-10</)
+    expect(markup).toMatch(/fill-opacity="0\.6"[^>]*letter-spacing="3"[^>]*>时尚编辑部</)
 
     // ember：白字混到 #BC4620 上，org @0.72 只有 3.44:1、meta @0.6 只有
     // 2.84:1，两处都退回全不透明
@@ -112,7 +112,7 @@ describe("fashion 家族（runway）", () => {
       <FashionEnding ir={deck} slide={ending} index={0} ctx={buildCtx(resolveStyle("ember"), {})} />,
     )
     expect(emberMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="8"[^>]*>时尚编辑部</)
-    expect(emberMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="3"[^>]*>时尚编辑部 {4}· {4}2026-10</)
+    expect(emberMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="3"[^>]*>时尚编辑部</)
 
     // terra 是分辨用例：同一底色（#4D5D39）上 20px 的 org @0.72 混完 4.64:1
     // 达标、19px 的 meta @0.6 混完只有 3.75:1 不达标——两处必须各判各的，
@@ -121,7 +121,7 @@ describe("fashion 家族（runway）", () => {
       <FashionEnding ir={deck} slide={ending} index={0} ctx={buildCtx(resolveStyle("terra"), {})} />,
     )
     expect(terraMarkup).toMatch(/fill-opacity="0\.72"[^>]*letter-spacing="8"[^>]*>时尚编辑部</)
-    expect(terraMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="3"[^>]*>时尚编辑部 {4}· {4}2026-10</)
+    expect(terraMarkup).toMatch(/fill-opacity="1"[^>]*letter-spacing="3"[^>]*>时尚编辑部</)
   })
 
   // 副题的 0.72 是这一页第三处固定不透明度，今天不违例但会在长副题下爆：

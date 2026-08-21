@@ -3,6 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { showsDocumentMeta } from "../document-meta"
 
 /**
  * editorial-masthead cover layout（spec §3.2）：居中报头式标题 + 短下划线
@@ -23,9 +24,9 @@ import { CONF_LABEL } from "../../lib/conf-labels"
 export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const org = ir.meta.organization
-  const conf = ir.meta.confidentiality
+  const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const metaParts = [org, date, confLabel].filter((v): v is string => Boolean(v))
 
   // Last-line-anchored: whether the title wraps to 1 or 2 lines, its final

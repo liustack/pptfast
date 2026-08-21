@@ -3,6 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { accessibleOpacity, readableOn } from "../ink"
+import { showsDocumentMeta } from "../document-meta"
 
 /**
  * fashion-ending layout（2026-07-10 时尚 runway 专属表达，纯新写）：
@@ -14,7 +15,7 @@ import { accessibleOpacity, readableOn } from "../ink"
  */
 export function FashionEnding({ ir, slide, ctx }: SvgTemplateProps) {
   const org = ir.meta.organization
-  const date = ir.meta.date
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const fg = readableOn(ctx.colors.primary)
   // 顶部 org 小字与底部 meta 行各自固定叠 0.72 / 0.6 不透明度，混到满版
   // primary 底上就可能跌破正文的 4.5:1——`chapter-fashion-chapter.tsx` 的

@@ -3,6 +3,7 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
+import { showsDocumentMeta } from "../document-meta"
 import { blendOver, metaInk, readableOn } from "../ink"
 
 /**
@@ -51,8 +52,8 @@ const TITLE_MAX_W = 1280 - TITLE_X - 96
 
 export function SplitDiagonalCover({ ir, slide, ctx }: SvgTemplateProps) {
   const org = ir.meta.organization
-  const date = ir.meta.date
-  const conf = ir.meta.confidentiality
+  const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
+  const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
   const author = ir.meta.authors?.[0]
   const authorText = author ? [author.name, author.role].filter(Boolean).join(" · ") : null

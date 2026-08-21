@@ -23,7 +23,7 @@ A deck (`PptxIR`) carries:
 - `theme` — an `id` plus optional `style`/`brand` overrides.
 - `meta` and `assets`.
 - `brand` — logo placement.
-- `chrome` — where the brand footer and logo appear: `"cover-only"` (keep the brand logo on cover and chapter pages, drop the footer rule, meta, and logo on content and ending pages), `"full"` (draw the content-page footer and logo), or `"minimal"` (drop the content-page footer rule and meta, keep the logo). Omitted equals `"cover-only"`. Layout `chrome: "none"` still wins. Theme motifs are unaffected. Talk decks omit the field. Read decks write `"full"`.
+- `chrome` — where the brand footer and logo appear: `"cover-only"` (keep the brand logo on cover and chapter pages, drop the footer rule, meta, and logo on content and ending pages), `"full"` (draw the content-page footer and logo, and paint confidentiality and date on cover and ending meta rows), or `"minimal"` (drop the content-page footer rule and meta, keep the logo). Omitted equals `"cover-only"`. Other postures leave confidentiality and date off the canvas even when `meta` carries them. Layout `chrome: "none"` still wins. Theme motifs are unaffected. Talk decks omit the field. Read decks write `"full"`.
 - `slides` — required, ordered.
 
 Everything but `slides` is optional and has a sensible default.
