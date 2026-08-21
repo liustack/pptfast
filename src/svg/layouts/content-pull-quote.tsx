@@ -5,11 +5,14 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import { latinUpper, pullQuoteAttribution, pullQuoteBody, trackingPx } from "./minimal-shared"
+import { sparseFace } from "./sparse/registry"
 
 /**
- * pull-quote content layout（极简版式波）：居中引言页。章节眉 + 大引言 +
- * 出处小字 + 一段散文。`pinOnly` + `chrome: "none"`。不自己铺暗底，暗不暗
- * 由主题 `colors.bg` / `slide.background` 决定。
+ * 待第二批设计稿锁定
+ *
+ * pull-quote 通用脸：居中引言页。章节眉 + 大引言 + 出处小字 + 一段散文。
+ * `pinOnly` + `chrome: "none"`。不自己铺暗底，暗不暗由主题 `colors.bg` /
+ * `slide.background` 决定。品牌页脚 / logo 不画。motif 仍画。
  *
  * 出处优先 quote 组件的 attribution，否则 subheading。正文只接受一个
  * paragraph，走 layoutSvgText，不走 SvgContent 卡片。
@@ -32,7 +35,13 @@ const BODY_GAP = 50
 const BODY_MAX_LINES = 6
 const BODY_LINE_RATIO = 1.8
 
-export function PullQuoteContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+export function PullQuoteContent(props: SvgTemplateProps) {
+  const Face = sparseFace("pull-quote", props.ir.theme.id)
+  if (Face) return Face(props)
+  return GenericPullQuoteContent(props)
+}
+
+function GenericPullQuoteContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const defaultBg = ctx.defaultBg ?? colors.bg
 
@@ -154,9 +163,9 @@ export function PullQuoteContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 export const layoutDef = {
   // content-pull-quote.tsx: a pinOnly centered-quote page. Kicker (section
   // name) + italic heading + accent attribution + one muted paragraph.
-  // chrome: "none" skips brand footer, logo, page numbers, and the theme
-  // motif. The fifth-band decoration safe-zone does not apply — the whole
-  // canvas is the layout's.
+  // chrome: "none" skips brand footer, logo, and page numbers. The theme
+  // motif still paints. The fifth-band decoration safe-zone does not apply
+  // — the whole canvas is the layout's.
   id: "pull-quote",
   kind: "archetype",
   pinOnly: true,

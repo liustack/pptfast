@@ -5,11 +5,14 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 import { latinUpper, statementAttribution, trackingPx } from "./minimal-shared"
+import { sparseFace } from "./sparse/registry"
 
 /**
- * statement content layout（极简版式波）：整页就是 heading 的 2–4 行诗行 /
- * 金句。`pinOnly` + `chrome: "none"`——只能被 `slide.layout: "statement"`
- * 点名，不进自动池。品牌页脚 / logo / 页码 / 主题 motif 一律不画。
+ * 待第二批设计稿锁定
+ *
+ * statement 通用脸：整页就是 heading 的 2–4 行诗行 / 金句。`pinOnly` +
+ * `chrome: "none"`——只能被 `slide.layout: "statement"` 点名，不进自动池。
+ * 品牌页脚 / logo / 页码一律不画。motif 仍画。
  *
  * 和 quote-stage 的差别不是「再居中一点」：字重 500 斜体（禁止 800），
  * 无短棒，标签语法（tracking 眉 + 出处小字），0 组件合法，1 个组件只渲成
@@ -28,7 +31,13 @@ const KICKER_TRACKING_EM = 0.35
 const ATTR_TRACKING_EM = 0.2
 const ATTR_GAP = 56
 
-export function StatementContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+export function StatementContent(props: SvgTemplateProps) {
+  const Face = sparseFace("statement", props.ir.theme.id)
+  if (Face) return Face(props)
+  return GenericStatementContent(props)
+}
+
+function GenericStatementContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const defaultBg = ctx.defaultBg ?? colors.bg
 
@@ -121,8 +130,8 @@ export const layoutDef = {
   // content-statement.tsx: a pinOnly editorial-verse page. Heading is the
   // whole visual (2–4 italic lines, weight 500). Capacity-1 body is an
   // attribution caption, never a card. chrome: "none" skips brand footer,
-  // logo, page numbers, and the theme motif. The fifth-band decoration
-  // safe-zone does not apply — the whole canvas is the layout's.
+  // logo, and page numbers. The theme motif still paints. The fifth-band
+  // decoration safe-zone does not apply — the whole canvas is the layout's.
   id: "statement",
   kind: "archetype",
   pinOnly: true,

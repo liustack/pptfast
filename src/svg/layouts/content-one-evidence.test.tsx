@@ -96,7 +96,7 @@ describe("OneEvidenceContent", () => {
   })
 
   it("picks chart over image when both are present (shared pickEvidence order)", () => {
-    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = {
       type: "content",
       layout: "one-evidence",
@@ -104,14 +104,14 @@ describe("OneEvidenceContent", () => {
       components: [{ type: "image", asset_id: "img1", fit: "cover" }, BAR_CHART],
     } as Slide
     const { root } = render(
-      <OneEvidenceContent ir={ir("luxe", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <OneEvidenceContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(root.querySelectorAll("rect").length).toBeGreaterThan(0)
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("English claim renders on museum without a crash", () => {
-    const ctx = buildCtx(resolveStyle("museum"), {})
+  it("English claim renders on academic without a crash", () => {
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = {
       type: "content",
       layout: "one-evidence",
@@ -119,7 +119,7 @@ describe("OneEvidenceContent", () => {
       components: [BAR_CHART],
     } as Slide
     const { markup, root } = render(
-      <OneEvidenceContent ir={ir("museum", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <OneEvidenceContent ir={ir("academic", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain("corridor")
     expect(() => assertSubset(root)).not.toThrow()

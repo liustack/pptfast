@@ -82,3 +82,59 @@ export function pullQuoteBody(slide: Slide): string | undefined {
   }
   return undefined
 }
+
+type KpiItem = { value: string; unit?: string; label: string; source?: string }
+
+function kpiHero(slide: Slide): KpiItem | undefined {
+  const component = slide.components[0]
+  if (component?.type === "kpi_cards" && component.items.length > 0) {
+    return component.items[0]
+  }
+  return undefined
+}
+
+/** Hero numeral for `stat-hero`: kpi_cards[0].value, else the heading. */
+export function heroValue(slide: Slide): string {
+  const kpi = kpiHero(slide)
+  const fromKpi = kpi?.value.trim()
+  if (fromKpi) return fromKpi
+  return slide.heading?.trim() ?? ""
+}
+
+export function heroUnit(slide: Slide): string | undefined {
+  const unit = kpiHero(slide)?.unit?.trim()
+  return unit || undefined
+}
+
+export function heroCaption(slide: Slide): string | undefined {
+  const kpi = kpiHero(slide)
+  if (kpi) {
+    const heading = slide.heading?.trim()
+    if (heading && heading !== kpi.value.trim()) return heading
+    const label = kpi.label.trim()
+    return label || undefined
+  }
+  return slide.subheading?.trim() || undefined
+}
+
+export function heroSource(slide: Slide): string | undefined {
+  const kpi = kpiHero(slide)
+  const fromKpi = kpi?.source?.trim()
+  if (fromKpi) return fromKpi
+  const component = slide.components[0]
+  if (!kpi && component?.type === "citation") {
+    const label = component.sources[0]?.label?.trim()
+    if (label) return label
+  }
+  if (!kpi && component?.type === "paragraph") {
+    const text = component.text.trim()
+    if (text) return text
+  }
+  const footnote = slide.footnote?.trim()
+  if (footnote) return footnote
+  if (kpi) {
+    const sub = slide.subheading?.trim()
+    if (sub) return sub
+  }
+  return undefined
+}

@@ -416,10 +416,10 @@ export function FullSlideSvg({
   const layoutPaintsBackground = pageLayout ? getLayout(pageLayout.id)?.paintsOwnBackground === true : false
   const motifOverLayout = pageLayout ? getLayout(pageLayout.id)?.motifOverLayout === true : false
   // Layout-declared chrome:none (editorial-verse pinOnly members) skips
-  // BrandChrome as a whole (footer rule/meta, logo) and the theme motif.
-  // slide.decor, when the author sets it, still draws. Resolved layout id
-  // wins. The pin itself is the other source, so a pinOnly page whose
-  // resolvePageLayout somehow missed still honors the declaration.
+  // BrandChrome as a whole (footer rule/meta, logo). The theme motif still
+  // paints. slide.decor, when the author sets it, still draws. Resolved
+  // layout id wins. The pin itself is the other source, so a pinOnly page
+  // whose resolvePageLayout somehow missed still honors the declaration.
   const skipChrome = layoutOmitsChrome(pageLayout?.id) || layoutOmitsChrome(slide.layout)
 
   return (
@@ -432,7 +432,7 @@ export function FullSlideSvg({
       {!layoutPaintsBackground && (
         <Background spec={bgSpec} images={ir.assets.images} autoScrimColor={autoScrimColor} />
       )}
-      {Decor && !imageCoverTakeover && !skipChrome && !motifOverLayout && (
+      {Decor && !imageCoverTakeover && !motifOverLayout && (
         <g data-decor>
           <Decor ir={ir} slide={slide} ctx={ctx} />
         </g>
@@ -463,7 +463,7 @@ export function FullSlideSvg({
       ) : null /* 不可达：非 takeover 时 resolvePageLayout 恒命中（十三主题四页型
         allowed 全非空，definitions.test「Wave 5 前置门」锁死）。空集才返回 null，
         渲空白而非崩溃是防御性兜底，正常运行不会到这里。 */}
-      {Decor && !imageCoverTakeover && !skipChrome && motifOverLayout && (
+      {Decor && !imageCoverTakeover && motifOverLayout && (
         <g data-decor>
           <Decor ir={ir} slide={slide} ctx={ctx} />
         </g>

@@ -53,9 +53,9 @@ describe("layoutDef", () => {
 
 describe("StatementContent", () => {
   it("CJK verse: centered italic heading, weight 500, colors.text, no accent bar", () => {
-    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const { markup, root } = render(
-      <StatementContent ir={ir("luxe", [zeroSlide])} slide={zeroSlide} index={0} ctx={ctx} />,
+      <StatementContent ir={ir("consulting", [zeroSlide])} slide={zeroSlide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain(CJK_VERSE)
     const heading = Array.from(root.querySelectorAll("text")).find((t) =>
@@ -97,13 +97,13 @@ describe("StatementContent", () => {
   })
 
   it("1 quote component renders as a small accent attribution, not a card", () => {
-    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       ...zeroSlide,
       components: [{ type: "quote", text: "unused body", attribution: "Irene Pepperberg" }],
     } as Slide
     const { markup, root } = render(
-      <StatementContent ir={ir("luxe", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatementContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain("IRENE PEPPERBERG")
     expect(markup).not.toContain("unused body")

@@ -241,6 +241,15 @@ const ALLOWLIST: readonly AllowlistEntry[] = [
     rationale:
       "true finding, collision pending theme redesign, see .issues/2026-08-17-spatial-contract. This layout's org/date meta chrome shares its bottom-right (and, on some motif rolls, top-left) corner with whatever the theme's motif draws there, and the motif has no way to know the layout claimed it — that design doc's §4 traces it to the layout's slot, not to any one motif, and its §6.2 puts the fix in the layout/motif contract rather than in the audit. The audit's own job here is finished the moment it stops reporting these as clean: before fix/decor-contrast-attribution it measured the ink cover's date at 5.44:1 against a page background the seal completely covers, where the real pairing is 1.07:1. Registered rather than silenced, and deliberately not fixed by nudging coordinates — that would hide the collision instead of the theme redesign resolving it.",
   },
+  {
+    theme: "arena",
+    layout: "stat-hero",
+    fill: "#A79FC4",
+    ratioMin: 1.5,
+    ratioMax: 2.0,
+    rationale:
+      "pin-only pages now paint the theme motif (sparse climax faces need it). Arena's generic stat-hero source line sits in the fifth band on a spark (#52F2A8, 1.74:1). Batch 2 gives arena its own face. Generic source coordinates stay put so unboarded themes keep their previous type.",
+  },
   // The rail-numbered entry that used to live here (audit-tool false
   // positive: the badge rect's 2,048px^2 area sitting below
   // MIN_BG_REGION_AREA made findContrastIssues fall back to the *page*

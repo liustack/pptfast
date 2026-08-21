@@ -46,7 +46,7 @@ describe("layoutDef", () => {
 
 describe("PullQuoteContent", () => {
   it("CJK quote: italic heading, accent attribution from quote component, muted paragraph body", () => {
-    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const chapter: Slide = { type: "chapter", heading: "第六章 · 羽毛下的智识", components: [] } as Slide
     const slide: Slide = {
       type: "content",
@@ -58,7 +58,7 @@ describe("PullQuoteContent", () => {
       subheading: "佩珀伯格",
     } as Slide
     const { markup, root } = render(
-      <PullQuoteContent ir={ir("luxe", [chapter, slide])} slide={slide} index={1} ctx={ctx} />,
+      <PullQuoteContent ir={ir("consulting", [chapter, slide])} slide={slide} index={1} ctx={ctx} />,
     )
     expect(markup).toContain(CJK_QUOTE)
     expect(markup).toContain("佩珀伯格")
@@ -117,7 +117,7 @@ describe("PullQuoteContent", () => {
   })
 
   it("pathologically long heading wraps to at most 4 italic lines", () => {
-    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = {
       type: "content",
       layout: "pull-quote",
@@ -125,7 +125,7 @@ describe("PullQuoteContent", () => {
       components: [],
     } as Slide
     const { root } = render(
-      <PullQuoteContent ir={ir("luxe", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <PullQuoteContent ir={ir("academic", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     const headingTexts = Array.from(root.querySelectorAll("text")).filter(
       (t) => t.getAttribute("font-style") === "italic",

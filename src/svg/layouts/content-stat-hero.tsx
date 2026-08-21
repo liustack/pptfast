@@ -1,16 +1,18 @@
-import type { Slide } from "@/ir"
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { sectionNameFor } from "../../lib/derive"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
-import { latinUpper, trackingPx } from "./minimal-shared"
+import { heroCaption, heroSource, heroUnit, heroValue, latinUpper, trackingPx } from "./minimal-shared"
+import { sparseFace } from "./sparse/registry"
 
 /**
- * stat-hero content layout（演讲极简波）：整页只落地一个数字或短语。
- * `pinOnly` + `chrome: "none"`。和 `arrangement: big_number` 的差别是这一页
- * 没有标题槽、没有下方配角、没有页脚，四周空到只剩这一件事。
+ * 待第二批设计稿锁定
+ *
+ * stat-hero 通用脸：整页只落地一个数字或短语。`pinOnly` + `chrome: "none"`。
+ * 和 `arrangement: big_number` 的差别是这一页没有标题槽、没有下方配角、
+ * 没有页脚，四周空到只剩这一件事。品牌页脚 / logo 不画。motif 仍画。
  *
  * 数字优先 kpi_cards 第一项的 value（单位单独一行），否则 heading 自己就是
  * 英雄位。说明一行来自 heading（有 kpi 时）或 subheading。出处来自
@@ -35,62 +37,13 @@ const CAPTION_GAP = 40
 const CAPTION_MAX_LINES = 2
 const CAPTION_LINE_RATIO = 1.25
 
-type KpiItem = { value: string; unit?: string; label: string; source?: string }
-
-function kpiHero(slide: Slide): KpiItem | undefined {
-  const component = slide.components[0]
-  if (component?.type === "kpi_cards" && component.items.length > 0) {
-    return component.items[0]
-  }
-  return undefined
+export function StatHeroContent(props: SvgTemplateProps) {
+  const Face = sparseFace("stat-hero", props.ir.theme.id)
+  if (Face) return Face(props)
+  return GenericStatHeroContent(props)
 }
 
-function heroValue(slide: Slide): string {
-  const kpi = kpiHero(slide)
-  const fromKpi = kpi?.value.trim()
-  if (fromKpi) return fromKpi
-  return slide.heading?.trim() ?? ""
-}
-
-function heroUnit(slide: Slide): string | undefined {
-  const unit = kpiHero(slide)?.unit?.trim()
-  return unit || undefined
-}
-
-function heroCaption(slide: Slide): string | undefined {
-  const kpi = kpiHero(slide)
-  if (kpi) {
-    const heading = slide.heading?.trim()
-    if (heading && heading !== kpi.value.trim()) return heading
-    const label = kpi.label.trim()
-    return label || undefined
-  }
-  return slide.subheading?.trim() || undefined
-}
-
-function heroSource(slide: Slide): string | undefined {
-  const kpi = kpiHero(slide)
-  const fromKpi = kpi?.source?.trim()
-  if (fromKpi) return fromKpi
-  const component = slide.components[0]
-  if (!kpi && component?.type === "citation") {
-    const label = component.sources[0]?.label?.trim()
-    if (label) return label
-  }
-  if (!kpi && component?.type === "paragraph") {
-    const text = component.text.trim()
-    if (text) return text
-  }
-  const footnote = slide.footnote?.trim()
-  if (footnote) return footnote
-  if (kpi) {
-    const sub = slide.subheading?.trim()
-    if (sub) return sub
-  }
-  return undefined
-}
-
-export function StatHeroContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+function GenericStatHeroContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const defaultBg = ctx.defaultBg ?? colors.bg
 
@@ -228,9 +181,9 @@ export function StatHeroContent({ ir, slide, index, ctx }: SvgTemplateProps) {
 export const layoutDef = {
   // content-stat-hero.tsx: a pinOnly whole-page number. Hero value from
   // kpi_cards[0] or the heading, one caption line, optional source.
-  // chrome: "none" skips brand footer, logo, page numbers, and the theme
-  // motif. The fifth-band decoration safe-zone does not apply — the whole
-  // canvas is the layout's.
+  // chrome: "none" skips brand footer, logo, and page numbers. The theme
+  // motif still paints. The fifth-band decoration safe-zone does not apply
+  // — the whole canvas is the layout's.
   id: "stat-hero",
   kind: "archetype",
   pinOnly: true,

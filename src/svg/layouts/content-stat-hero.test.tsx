@@ -74,7 +74,7 @@ describe("StatHeroContent", () => {
   })
 
   it("heading is the hero when there is no kpi", () => {
-    const ctx = buildCtx(resolveStyle("luxe"), {})
+    const ctx = buildCtx(resolveStyle("consulting"), {})
     const slide: Slide = {
       type: "content",
       layout: "stat-hero",
@@ -84,7 +84,7 @@ describe("StatHeroContent", () => {
       components: [],
     } as Slide
     const { markup, root } = render(
-      <StatHeroContent ir={ir("luxe", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatHeroContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain(CJK_STAT)
     expect(markup).toContain("迁徙路径上的种群规模")
@@ -123,10 +123,10 @@ describe("StatHeroContent", () => {
   })
 
   it("empty meta fields degrade: no empty text node, hero still renders", () => {
-    const ctx = buildCtx(resolveStyle("museum"), {})
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = { type: "content", layout: "stat-hero", heading: CJK_STAT, components: [] } as Slide
     const { root } = render(
-      <StatHeroContent ir={ir("museum", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <StatHeroContent ir={ir("academic", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     const texts = Array.from(root.querySelectorAll("text"))
     expect(texts.every((t) => (t.textContent ?? "").trim().length > 0)).toBe(true)
