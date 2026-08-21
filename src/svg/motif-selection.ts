@@ -18,13 +18,16 @@
  * ## Candidate-set design (the content decision, argued per theme below)
  *
  * `MOTIF_CANDIDATES` is keyed by `CanonicalThemeId` and deliberately a
- * `Partial` — `runway` and `stage` have no entry at all (not an empty
- * array): both themes' `THEME_DEFINITIONS[id].motif` is `undefined` by
- * settled design. runway is typography-only ("排印至上", tried with a motif
- * twice and reverted both times). stage is the undecorated black field
+ * `Partial` — `runway`, `museum`, `stage`, and `playbill` have no entry at
+ * all (not an empty array): those themes' `THEME_DEFINITIONS[id].motif` is
+ * `undefined` by settled design. runway is typography-only ("排印至上",
+ * tried with a motif twice and reverted both times). museum's corner pins
+ * were struck (2026-08-21). stage is the undecorated black field
  * (2026-08-21, 无框黑场 — a frame of any weight would read as luxe /
- * museum's cousin). There is nothing to rotate for a theme with no motif
- * to begin with.
+ * museum's cousin). playbill's empty ticket chip was struck (2026-08-21:
+ * the board's patch carried a date, motif may not carry content, an empty
+ * block is decoration-for-decoration's-sake). There is nothing to rotate
+ * for a theme with no motif to begin with.
  *
  * Every other candidate set's **first element is always that theme's own
  * pre-existing anchor motif** (`THEME_DEFINITIONS[id].motif`, locked by
@@ -51,7 +54,9 @@
  * | academic | rail-motif, banner-motif, corner-ornament-motif | a progress track pairs with the other two quiet-line members (banner's annotation rules) and one scholarly-print mark (journal's masthead rules) — academic's register tolerates print tradition but not organic softness or brush color. Both siblings were redrawn by the editorial-group reskin (2026-08-20); the id `corner-ornament-motif` no longer draws corner ornaments at all — read that file, not its name. |
  * | tech | constellation-motif, poster-motif, enterprise-motif | tech's own gradient-field glow (constellation) pairs with insight's sibling glow family, plus enterprise's precise grid for the "engineered" register — never organic/hand-drawn, which would undercut the precision identity |
  * | runway | *(none — settled decision, see module doc above)* | typography-only is the adjudicated look; no candidate set |
+ * | museum | *(none — corner decor struck, 2026-08-21)* | identity in palette and serif type; no candidate set |
  * | stage | *(none — undecorated black field, 2026-08-21)* | 无框 is the identity; no candidate set |
+ * | playbill | *(none — empty ticket chip struck, 2026-08-21)* | heavy lives in the yellow field and typeScale 1.3, not a sticker; no candidate set |
  * | journal | corner-ornament-motif, heritage-motif, rail-motif | journal/heritage/luxe share a "thin printed line" family (see luxe's own entry below) — after the editorial-group reskin (2026-08-20) journal sits at the "masthead rules" end and heritage at "classic emblem", the two split by line discipline rather than by corner vs. edge (journal runs its rules full width, heritage breaks its double rule around a seal); rail's progress track is the third, plain-geometry option |
  * | enterprise | enterprise-motif, banner-motif, rail-motif | enterprise's Swiss-grid IKB identity pairs only with the other minimal geometric-line motifs (banner's grid, rail's arc) — organic/wash/ornamental families would visibly clash with its industrial-design register |
  * | luxe | luxe-motif, heritage-motif, corner-ornament-motif | luxe/heritage/journal all draw from the same thin-printed-line family — luxe at the "gilt minimal" end, heritage at "classic emblem", journal at "masthead rules" (retitled by the editorial-group reskin, 2026-08-20) |
@@ -69,7 +74,6 @@
  * | lecture | lecture-motif *(singleton)* | 2026-08-21: lecture's 26px-inset 1px chalk-tray frame is its own new technique family — a single dark groove, not luxe's double gilt invitation frame, not ink's colophon-and-seal rail. Pairing either in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena). |
  * | swiss | swiss-motif *(singleton)* | 2026-08-21 wave7: swiss's 12px top edge bar + three right-margin ticks is its own new technique family — a page-edge stamp, not vermilion's gold-rule file header, not enterprise's IKB square steps, not tech's constellation chain. Pairing any of those in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena) |
  * | memo | memo-motif *(singleton)* | 2026-08-21: memo's typewriter double-rule + MEMORANDUM eyebrow is its own new technique family — stamp-red lines and a Latin mono decorative word, never a fill. Journal's masthead rules and heritage's bookplate rules sit in the same printed-line neighbourhood, but both already rotate with each other and with luxe; pairing either in would collapse memo into the editorial-print cluster it was designed to leave. Stays a candidate set of 1 (same rationale pattern as vermilion/ink). |
- * | playbill | playbill-motif *(singleton)* | 2026-08-21: playbill's single clockwise-4° black patch (top-right, no glyphs) is its own new technique family — a hard graphic ticket stamp, not campaign's confetti, not vermilion's gold rays, not crayon's doodle stickers. Pairing any of those in would read as a mismatched skin rather than a variation. Stays a candidate set of 1. |
  *
  * `tone-adaptive-motif` — the 13th registered motif — is
  * deliberately absent from every candidate set above: its own source header
@@ -161,15 +165,15 @@ export const MOTIF_BASE_WEIGHT = 1
  * Theme → 2-3 style-compatible motif candidates, anchor (the theme's own
  * pre-existing `THEME_DEFINITIONS[id].motif`) always first. See this
  * module's own header comment for the full rationale table. `Partial`:
- * `runway` and `stage` have no entry (their own motif is `undefined` by
- * settled design, nothing to rotate).
+ * `runway`, `museum`, `stage`, and `playbill` have no entry (their own
+ * motif is `undefined` by settled design, nothing to rotate).
  */
 export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId[]>> = {
   consulting: ["banner-motif", "rail-motif", "enterprise-motif"],
   insight: ["poster-motif", "constellation-motif"],
   academic: ["rail-motif", "banner-motif", "corner-ornament-motif"],
   tech: ["constellation-motif", "poster-motif", "enterprise-motif"],
-  // runway, stage: intentionally absent — see module header.
+  // runway, museum, stage, playbill: intentionally absent — see module header.
   journal: ["corner-ornament-motif", "heritage-motif", "rail-motif"],
   enterprise: ["enterprise-motif", "banner-motif", "rail-motif"],
   luxe: ["luxe-motif", "heritage-motif", "corner-ornament-motif"],
@@ -187,7 +191,6 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   lecture: ["lecture-motif"],
   swiss: ["swiss-motif"],
   memo: ["memo-motif"],
-  playbill: ["playbill-motif"],
 }
 
 /**
@@ -199,11 +202,11 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  * that want to know a page's pick without re-deriving the salt logic.
  *
  * - `ir.theme.id` has no entry in {@link MOTIF_CANDIDATES} (a registered/
- *   custom theme, an unrecognized id, or `runway` / `stage`): falls back to
- *   `getThemeDefinition(ir.theme.id).motif` directly — the exact
- *   pre-this-task behavior, so every theme outside the builtins (and the
- *   two none identities within them) renders byte-identically to before
- *   this module existed.
+ *   custom theme, an unrecognized id, or `runway` / `museum` / `stage` /
+ *   `playbill`): falls back to `getThemeDefinition(ir.theme.id).motif`
+ *   directly — the exact pre-this-task behavior, so every theme outside the
+ *   builtins (and the four none identities within them) renders
+ *   byte-identically to before this module existed.
  * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`,
  *   crayon, arena, lecture, and every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   crayon, arena, memo, and every themes-16/gov-theme singleton): `weightedPickBySeed`

@@ -131,7 +131,7 @@ describe("bloom is a declared palette preset of classroom, not a missing declara
 // writes that down as `decoration-weight: none`, the only `none` in the
 // table. Pinned here so a future "fill in the missing motif" tidy-up has to
 // argue with a failing test instead of a blank field.
-describe("absent motifs are identity values, not holes (runway per definitions.ts:317, museum per the 2026-08-21 corner-decor strike-down)", () => {
+describe("absent motifs are identity values, not holes (runway per definitions.ts:317, museum per the 2026-08-21 corner-decor strike-down, playbill per the empty-chip strike-down)", () => {
   it("runway and museum declare no motif", () => {
     expect(THEME_DEFINITIONS.runway.motif).toBeUndefined()
     expect(THEME_DEFINITIONS.museum.motif).toBeUndefined()
@@ -142,10 +142,16 @@ describe("absent motifs are identity values, not holes (runway per definitions.t
     expect(THEME_DEFINITIONS.stage.motif).toBeUndefined()
   })
 
-  it("every other theme does declare one — the no-motif trio is settled, not a gap list", () => {
+  it("playbill declares no motif — empty ticket chip struck, heavy lives in the yellow field and typeScale", () => {
+    expect(THEME_DEFINITIONS.playbill.motif).toBeUndefined()
+  })
+
+  it("every other theme does declare one — the no-motif quartet is settled, not a gap list", () => {
     const withMotif = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].motif !== undefined)
-    expect(withMotif).toEqual(CANONICAL_THEME_IDS.filter((id) => id !== "runway" && id !== "museum" && id !== "stage"))
-    expect(withMotif).toHaveLength(22)
+    expect(withMotif).toEqual(
+      CANONICAL_THEME_IDS.filter((id) => id !== "runway" && id !== "museum" && id !== "stage" && id !== "playbill"),
+    )
+    expect(withMotif).toHaveLength(21)
   })
 })
 

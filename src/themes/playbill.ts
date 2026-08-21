@@ -11,7 +11,8 @@ import type { StyleTokens } from "./tokens";
  *
  * 四轴 C / top-band / heavy / medium。最近邻 vermilion（C / top-band /
  * medium / medium），岔在装饰轴。heavy 的量在字重与满版底色，零粒子零
- * 贴纸。motif 只有右上一方小黑贴片，heavy 不必然等于 motif 重。
+ * 贴纸。无 motif：板上斜黑贴片带着日期，落地成空块后被裁。heavy 不必然
+ * 等于 motif 重。
  *
  * 逐条来历（设计板 `Playbill.dc.html`，本仓库 `svg/ink.ts` 的
  * `contrastRatio` 压 `bg` `#F4DD1B` 实测）：
@@ -39,11 +40,10 @@ import type { StyleTokens } from "./tokens";
  * 字体：heading 特粗 sans，Microsoft YaHei 打头（板上 900 落地为加粗，
  * 导出走粗/不粗两档）。body 同族。圆角 0 + gapScale 1（medium 留白档）。
  *
- * 装饰见 `../svg/motifs/motif-playbill-motif.tsx`（右上黑贴片斜 4°，
- * 贴片内无字符。板上底部 5px 粗收场线不进 motif）。
+ * 无 motif。板上底部 5px 粗收场线也不画（落在 y620-664 第五带）。
  *
  * 可拉伸性：荧光黄即参数（音乐节目单可把 bg 收到暖金 `#E8C40A`，招募
- * 海报可把 primary 收到纯黑 `#0A0A0A`）。贴片几何不动。
+ * 海报可把 primary 收到纯黑 `#0A0A0A`）。
  */
 export const PLAYBILL_TOKENS: StyleTokens = {
   id: "playbill",

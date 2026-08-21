@@ -1005,12 +1005,15 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       cover: ["banner-title", "editorial-masthead"],
     },
   },
-  // playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字，由专属
-  // playbill-motif 承载右上小黑贴片。结构行 C / top-band / heavy / medium，
-  // 最近邻 vermilion（C / top-band / medium / medium），岔在装饰轴。
-  // **heavy 的量在字重与满版底色，零粒子零贴纸**——heavy 不必然等于 motif
-  // 重。装饰只有一枚小贴片，密页无需降档。封面构造 poster-center /
-  // fashion-masthead（3:1 软权重，照现有写法）：
+  // playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字。
+  // **无 motif**——设计板上右上斜黑贴片带着日期文字，motif 红线不许携带
+  // 内容，落地成空块后触犯「反对为装饰而装饰」，用户终审裁撤（2026-08-21）。
+  // heavy 身份由满版荧光黄与 typeScale 1.3 字重承担，不靠贴纸。装饰浓度
+  // none（runway / museum / stage 之后第四家）。
+  // **heavy 不必然等于 motif 重**：本主题把这条写成正式裁决。结构行 C /
+  // top-band / heavy / medium，最近邻 vermilion（C / top-band / medium /
+  // medium），岔在装饰轴：vermilion 有绸带 motif，playbill 是满版黄纸。
+  // 封面构造 poster-center / fashion-masthead（3:1 软权重，照现有写法）：
   //   - `poster-center`：开演前的正面站位，黄纸上特粗黑字。briefing 已锁
   //     权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
   //   - `fashion-masthead`：满版 primary 硬黑 + 超大报头，黑底黄字反贴的
@@ -1021,7 +1024,9 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // layouts 仍是四页型全集。定位 10 页内活动件（宣发 / 招募 / 节目单）。
   playbill: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
-    motif: "playbill-motif",
+    // motif 刻意不配：空贴片已裁。heavy 在满版黄与字重。照 runway /
+    // museum / stage 先例留空，不是漏写（theme-structure.test.ts 把四家
+    // 一起钉成合法例外）。
     layoutTendencies: {
       cover: ["poster-center", "fashion-masthead"],
     },
