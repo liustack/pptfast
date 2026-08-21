@@ -138,6 +138,22 @@ describe("renderOp", () => {
     })
   })
 
+  it("passes a text op's rotate through to addText", () => {
+    const slide = recorder()
+    renderOp(slide, {
+      kind: "text",
+      runs: [{ text: "Revenue" }],
+      x: 1,
+      y: 2,
+      w: 1.5,
+      h: 0.2,
+      fontSize: 10.5,
+      align: "left",
+      rotate: 270,
+    } as Op)
+    expect(slide.calls[0].args[1]).toMatchObject({ rotate: 270 })
+  })
+
   it("renders an image op via addImage", () => {
     const slide = recorder()
     renderOp(slide, {

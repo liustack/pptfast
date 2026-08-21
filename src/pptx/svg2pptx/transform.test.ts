@@ -4,6 +4,7 @@ import {
   multiply,
   applyPoint,
   parseTransform,
+  rotationDeg,
   type Matrix,
 } from "./transform"
 
@@ -87,6 +88,11 @@ describe("parseTransform", () => {
     // rotate 90° CCW: (1,0) -> (0,1)
     expect(p.x).toBeCloseTo(0, 10)
     expect(p.y).toBeCloseTo(1, 10)
+  })
+
+  it("reads rotate(-90) as -90° for the cartesian y-title mapping", () => {
+    expect(rotationDeg(parseTransform("rotate(-90)"))).toBeCloseTo(-90, 10)
+    expect(rotationDeg(parseTransform("rotate(-90, 18, 222)"))).toBeCloseTo(-90, 10)
   })
 
   it("parses rotate(90,2,2) around center (2,2)", () => {

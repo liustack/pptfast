@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest"
 import { svgToOps, type Op } from "./dispatch"
-import { pxToIn, pxToPt, SLIDE_W_IN } from "../../constants"
+import { pxToIn, pxToPt, PX_PER_IN, SLIDE_W_IN } from "../../constants"
 
 function parseSvg(inner: string): Element {
   const doc = new DOMParser().parseFromString(
@@ -408,5 +408,43 @@ describe("paint inheritance from containers", () => {
     const runs = paint(ops[0]).runs ?? []
     expect(runs.map((r) => r.text)).toEqual(["99.95", "%"])
     expect(runs[1]?.fontSize).toBeCloseTo(pxToPt(10), 6)
+  })
+})
+
+describe("rotated text leaves (cartesian y-title)", () => {
+  it("keeps a rotate(-90) text as a positive-size box with a 270° pptx rotation, not a zeroed scale", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g transform="translate(96,52)"><text x="18" y="222" font-size="14" text-anchor="start" transform="rotate(-90 18 222)">Revenue</text></g>`,
+      ),
+    )
+    expect(ops).toHaveLength(1)
+    expect(ops[0].kind).toBe("text")
+    const text = ops[0] as Extract<Op, { kind: "text" }>
+    expect(text.w).toBeGreaterThan(0)
+    expect(text.h).toBeGreaterThan(0)
+    expect(text.rotate).toBe(270)
+    expect(text.runs[0]?.text).toBe("Revenue")
+  })
+
+  it("places the 270° box so the SVG left-baseline lands on the canvas anchor", () => {
+    const ops = svgToOps(
+      parseSvg(
+        `<g transform="translate(96,52)"><text x="18" y="222" font-size="14" text-anchor="start" transform="rotate(-90 18 222)">Revenue</text></g>`,
+      ),
+    )
+    const text = ops[0] as Extract<Op, { kind: "text" }>
+    expect(text.rotate).toBe(270)
+    const cx = (text.x + text.w / 2) * PX_PER_IN
+    const cy = (text.y + text.h / 2) * PX_PER_IN
+    const wPx = text.w * PX_PER_IN
+    const hPx = text.h * PX_PER_IN
+    // Matches text.ts ASCENT_RATIO: alphabetic baseline is ~0.8em below the box top.
+    const ascent = 0.8 * 14
+    // pptxgenjs/OOXML rotate 270° clockwise around the box center: (dx, dy) → (dy, -dx).
+    const left = -wPx / 2
+    const baseline = -hPx / 2 + ascent
+    expect(cx + baseline).toBeCloseTo(96 + 18, 5)
+    expect(cy + -left).toBeCloseTo(52 + 222, 5)
   })
 })

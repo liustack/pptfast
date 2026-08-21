@@ -53,6 +53,16 @@ export function applyPoint(
   }
 }
 
+/** SVG counterclockwise rotation of `m`, in degrees (atan2 of the x-axis image). */
+export function rotationDeg(m: Matrix): number {
+  return (Math.atan2(m[1], m[0]) * 180) / Math.PI
+}
+
+/** Uniform-ish scale of `m` (length of the transformed x-axis). */
+export function matrixScale(m: Matrix): number {
+  return Math.hypot(m[0], m[1])
+}
+
 // ---------------------------------------------------------------------------
 // Parsing helpers
 // ---------------------------------------------------------------------------
