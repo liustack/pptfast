@@ -23,11 +23,11 @@ import { listThemes } from "@/api"
 import { COMPONENT_TYPES, type Component } from "@/ir"
 import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "./gallery/corpus/components"
 import { resolveComponentForm } from "@/svg/components/form-assignments"
-import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
+import { BASELINE_THEME, corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
-import { assertFullCoverage, buildMatrix, SPEECH_LAYOUT_IDS } from "./gallery/matrix"
-import { themeOffersSparse } from "@/themes/definitions"
+import { assertFullCoverage, buildMatrix } from "./gallery/matrix"
+import { SPARSE_LAYOUT_IDS, themeOffersSparse } from "@/themes/definitions"
 import { installNodePlatform } from "@/platform/node"
 
 // `renderMatrix` audits every page it renders, and the auditor parses SVG
@@ -91,9 +91,10 @@ describe("gallery coverage", () => {
     expect(() => assertFullCoverage(themeIds, themeIds.length + 1)).toThrow(/expected/)
   })
 
-  it("speech table skips sparse pins a theme does not offer", async () => {
-    const jobs = buildMatrix(themeIds, await assets(), { only: "speech" })
-    const subjects = (themeId: string) => jobs.filter((j) => j.theme === themeId).map((j) => j.subject)
+  it("layout table expands sparse layouts only on themes that offer them", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout" })
+    const sparse = jobs.filter((j) => (SPARSE_LAYOUT_IDS as readonly string[]).includes(j.subject))
+    const subjects = (themeId: string) => sparse.filter((j) => j.theme === themeId).map((j) => j.subject)
 
     expect(subjects("crayon")).toEqual([])
     expect(subjects("classroom")).toEqual([])
@@ -103,14 +104,18 @@ describe("gallery coverage", () => {
     expect(stage).toContain("statement")
     expect(stage).not.toContain("one-evidence")
 
-    expect(subjects("consulting").sort()).toEqual([...SPEECH_LAYOUT_IDS].sort())
+    expect([...new Set(subjects("consulting"))].sort()).toEqual([...SPARSE_LAYOUT_IDS].sort())
 
-    const derived = themeIds.reduce(
-      (n, themeId) => n + SPEECH_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length,
-      0,
-    )
-    expect(jobs).toHaveLength(derived)
-    expect(derived).toBe(92)
+    const derived = themeIds.reduce((n, themeId) => {
+      const offered = SPARSE_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length
+      return n + offered * (themeId === BASELINE_THEME ? LANGUAGE_IDS.length : 1)
+    }, 0)
+    expect(sparse).toHaveLength(derived)
+  })
+
+  it("emits only the theme, layout, component, and density tables", async () => {
+    const jobs = buildMatrix(themeIds, await assets())
+    expect([...new Set(jobs.map((j) => j.table))].sort()).toEqual(["component", "density", "layout", "theme"])
   })
 })
 
