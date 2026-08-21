@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { AUDIENCE_VALUES, PACING_VALUES, STRATEGY_VALUES } from "./ir/narrative-values"
+import { NARRATIVE_PRESETS } from "./narrative"
 import { FULL_BODY_TYPES } from "./svg/component-traits"
 
 // This test is NOT under skills/pptfast/ (where the files it guards live)
@@ -237,6 +239,116 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(zh).toContain("slide.notes")
     expect(en).toContain('chrome: "full"')
     expect(zh).toContain('chrome: "full"')
+  })
+
+  it("both files ask the narrative interview with the same closed option ids, the same ★ defaults, and the same gate block", () => {
+    // The interview is the one place the skill hands a closed vocabulary to
+    // the user instead of to the model, so a translation that quietly grew a
+    // fifth Q2 option, moved a ★, or dropped the gate block would give
+    // Chinese-reading harnesses a different interview. Option ids are
+    // language-invariant (they are IR enum values or fixed composite ids) —
+    // the prose around them stays free, same as every other test here.
+    const sectionAfter = (text: string, heading: RegExp): string => {
+      const m = text.match(heading)
+      expect(m, `heading ${heading} missing`).toBeTruthy()
+      const rest = text.slice(m!.index! + m![0].length)
+      const next = rest.search(/^##+ /m)
+      return next === -1 ? rest : rest.slice(0, next)
+    }
+    // One question per line, options separated by " · ". An option's id is
+    // the first backtick token of its segment — later backticks on the same
+    // segment are the axis values it writes (`talk-pyramid` → `pyramid`),
+    // which are prose, not things the user picks.
+    const questionOptions = (section: string, n: number): { ids: string[]; starred: string[] } => {
+      const line = section.match(new RegExp(`^\\*\\*Q${n}[^\\n]*$`, "m"))
+      expect(line, `Q${n} line missing from the interview section`).toBeTruthy()
+      const ids: string[] = []
+      const starred: string[] = []
+      for (const segment of line![0].split(" · ")) {
+        const id = segment.match(/`([^`]+)`/)?.[1]
+        expect(id, `Q${n} has an option segment with no backticked id: ${segment}`).toBeTruthy()
+        ids.push(id!)
+        if (segment.includes("★")) starred.push(id!)
+      }
+      return { ids, starred }
+    }
+    const en = sectionAfter(read(EN_REL), /^### Narrative interview \(at most one round\)$/m)
+    const zh = sectionAfter(read(ZH_REL), /^### 叙事访谈（最多一轮）$/m)
+
+    // ★ pins the pitch shape (customer × talk-pyramid × spacious) plus
+    // builtin theme. Empty-workspace interviews must land there, named as
+    // a default, not as a reading of the room.
+    for (const [n, expected, starred] of [
+      [1, [...AUDIENCE_VALUES], "customer"],
+      [2, ["talk-pyramid", "talk-showcase", "read-brief", "teach"], "talk-pyramid"],
+      [3, [...PACING_VALUES], "spacious"],
+      [4, ["extract", "builtin", "later"], "builtin"],
+    ] as const) {
+      const enQ = questionOptions(en, n)
+      const zhQ = questionOptions(zh, n)
+      // Set comparison against the closed list: the interview orders its
+      // options by what reads best (★ first on Q3), not by the enum's order.
+      expect(
+        [...enQ.ids].sort(),
+        `SKILL.md Q${n} option ids drifted from the closed list`,
+      ).toEqual([...expected].sort())
+      expect(zhQ.ids, `SKILL.zh-CN.md Q${n} option ids diverge from SKILL.md`).toEqual(enQ.ids)
+      expect(enQ.starred, `SKILL.md Q${n} ★ default drifted off the pitch-form table`).toEqual([starred])
+      expect(zhQ.starred, `Q${n}'s ★ default moved between EN and ZH`).toEqual(enQ.starred)
+    }
+
+    // Every strategy the engine knows has to be reachable from the
+    // interview — four through Q2, `storytelling` through derivation.
+    for (const strategy of STRATEGY_VALUES) {
+      expect(en, `SKILL.md interview never mentions strategy ${strategy}`).toContain(`\`${strategy}\``)
+      expect(zh, `SKILL.zh-CN.md interview never mentions strategy ${strategy}`).toContain(`\`${strategy}\``)
+    }
+
+    // The lookup must name every preset. Check by `id` inclusion, not by
+    // walking every backtick token: the NARRATIVE_INTERVIEW fence is a
+    // verbatim block, and naive pairing across it inverts later captures.
+    for (const id of Object.keys(NARRATIVE_PRESETS)) {
+      expect(en, `SKILL.md's interview lookup never names preset ${id}`).toContain(`\`${id}\``)
+      expect(zh, `SKILL.zh-CN.md's interview lookup never names preset ${id}`).toContain(`\`${id}\``)
+    }
+
+    // The anti-self-answer gate: a fixed block the agent prints, and a ban on
+    // touching spec files while any axis is still `?`. Both halves, verbatim,
+    // in both files.
+    const gate = "NARRATIVE_INTERVIEW\naudience: ?\ntell: ?\npacing: ?\nbrand: ?"
+    expect(en, "SKILL.md lost the NARRATIVE_INTERVIEW gate block").toContain(gate)
+    expect(zh, "SKILL.zh-CN.md lost the NARRATIVE_INTERVIEW gate block").toContain(gate)
+    for (const section of [en, zh]) {
+      expect(section, "the gate must name deck.spec.json as the thing that stays unwritten").toContain("deck.spec.json")
+      expect(section, "the interview must still forbid the agent from answering its own questions").toMatch(
+        /Do not fill them in|不要自己填/,
+      )
+      expect(section, "an unmanned run must still print the filled block").toContain("(no user in this run)")
+    }
+
+    expect(en, "★ must be named as a default, not as a read of the room").toContain(
+      "name the ★ option as a default, not as a read",
+    )
+    expect(zh, "★ must be named as a default, not as a read of the room").toContain(
+      "把 ★ 点明成默认，不是对用户处境的读数",
+    )
+    expect(en, "typeScale stays off the spec").toContain("Do not write `typeScale` onto `deck.spec.json`")
+    expect(zh, "typeScale stays off the spec").toContain("不要在 `deck.spec.json` 上写 `typeScale`")
+    expect(en, "Q1's review condition belongs in a maintainer comment").toMatch(/<!--[\s\S]*?delete Q1[\s\S]*?-->/)
+    expect(zh, "Q1's review condition belongs in a maintainer comment").toMatch(/<!--[\s\S]*?删掉 Q1[\s\S]*?-->/)
+  })
+
+  it("both files scan the workspace before asking, refuse a typeScale spec field, and do not name an external shaping skill", () => {
+    const en = read(EN_REL)
+    const zh = read(ZH_REL)
+    expect(en).toContain("Also scan the workspace before asking anyone anything")
+    expect(zh).toContain("动手问人之前，先扫工作区")
+    expect(en).toContain("Do not invent a `typeScale` field on the spec")
+    expect(zh).toContain("不要在 spec 上发明 `typeScale` 字段")
+    expect(en).toContain("Write the confirmed `narrative`, `theme`, and `chrome`")
+    expect(zh).toContain("立刻把确认下来的 `narrative`、`theme`、`chrome` 写进")
+    expect(en, "the skill must not name shaping").not.toMatch(/shaping/i)
+    expect(zh, "the skill must not name shaping").not.toMatch(/shaping/i)
   })
 
   it("both files have the same number of ### Phase N sections", () => {
