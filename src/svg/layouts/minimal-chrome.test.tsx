@@ -6,6 +6,7 @@ import { checkIrQuality } from "../ir-quality"
 import { parseSvgRoot } from "../serialize"
 import { THEME_DEFINITIONS } from "../../themes/definitions"
 import { resolveEffectiveLayoutId } from "../layout-selection"
+import { LAYOUT_REGISTRY } from "./registry"
 import { FOOTER_DIVIDER_Y } from "../chrome-geometry"
 
 const LOGO_SRC =
@@ -157,7 +158,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     }
   })
 
-  it("consulting seed=1 control-group sequence is byte-identical to before these layouts existed", () => {
+  it("consulting seed=1 auto-pick sequence never lands on a pinOnly layout", () => {
     const slides: Slide[] = [
       { type: "cover", heading: "Q3 Strategy Review", components: [] },
       { type: "chapter", heading: "Chapter One: Market Landscape", components: [] },
@@ -184,15 +185,21 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
       seed: 1,
       slides,
     } as PptxIR
-    expect(slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))).toEqual([
+    const ids = slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))
+    expect(ids).toEqual([
       "left-anchor",
-      "fashion-chapter",
-      "tone-adaptive-content",
+      "constellation-chapter",
+      "narrow-column",
       "split-band",
-      "rail-chapter",
-      "banner-heading",
+      "poster-chapter",
+      "two-column",
       "tone-adaptive-ending",
     ])
+    for (const id of ids) {
+      expect(id).toBeTruthy()
+      if (!id) continue
+      expect(LAYOUT_REGISTRY[id]?.pinOnly, id).toBeFalsy()
+    }
   })
 
   it("never auto-selects statement / pull-quote / verse-chapter / speech layouts across a seed spread", () => {

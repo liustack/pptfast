@@ -195,6 +195,7 @@ function overflowShapeContentSlide(): Slide {
   return {
     type: "content",
     heading: "多形状 id 碰撞回归",
+    layout: "two-column",
     components: [
       { type: "paragraph", text: "开场段落，占一个 fade 块。" }, // component 0 → fade
       {
