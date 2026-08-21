@@ -11,7 +11,7 @@
 
 import { COMPONENT_TYPES, type PptxIR } from "@/ir"
 import { LAYOUT_REGISTRY } from "@/svg/layouts/registry"
-import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS } from "./corpus/components"
+import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "./corpus/components"
 import { BASELINE_THEME, componentPage, densityPage, layoutPage, themeDeck, type CorpusAssets } from "./corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./corpus/lexicon"
 
@@ -173,6 +173,26 @@ export function buildMatrix(
           subject: componentId,
           language,
           theme: BASELINE_THEME,
+          page: 1,
+          pageCount: 1,
+          slideType: "content",
+          heading: ir.slides[0]!.heading ?? "",
+          ir,
+          slideIndex: 0,
+        })
+      }
+    }
+
+    for (const variant of FORM_VARIANTS) {
+      for (const language of languages) {
+        const lex = LEXICONS[language]
+        const ir = componentPage(variant.id, variant.build, lex, assets[language], variant.theme, { solo: true })
+        push({
+          id: `component--${safe(variant.id)}--${language}`,
+          table: "component",
+          subject: variant.id,
+          language,
+          theme: variant.theme,
           page: 1,
           pageCount: 1,
           slideType: "content",

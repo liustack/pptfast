@@ -21,7 +21,8 @@
 import { describe, expect, it } from "vitest"
 import { listThemes } from "@/api"
 import { COMPONENT_TYPES, type Component } from "@/ir"
-import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS } from "./gallery/corpus/components"
+import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "./gallery/corpus/components"
+import { resolveComponentForm } from "@/svg/components/form-assignments"
 import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
@@ -59,6 +60,14 @@ describe("gallery coverage", () => {
     const declared = new Set(COMPONENT_TYPES)
     const stale = Object.keys(COMPONENT_BUILDERS).filter((t) => !declared.has(t))
     expect(stale).toEqual([])
+  })
+
+  it("assigns each form-variant page a theme that actually owns that form", () => {
+    for (const variant of FORM_VARIANTS) {
+      const component = variant.build(LEXICONS.zh)
+      const assignment = resolveComponentForm(component.type, variant.theme)
+      expect(assignment, `${variant.id} on ${variant.theme}`).toBeTruthy()
+    }
   })
 
   it("covers every chart_type, which one `chart` builder alone would not", () => {

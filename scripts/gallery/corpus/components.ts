@@ -461,6 +461,36 @@ export const CHART_VARIANTS: Record<string, (lex: Lexicon) => Component> = {
   }),
 }
 
+/**
+ * Theme-assigned component forms. Same IR type as the default row, a
+ * different theme so the new face shows. Solo on the page: these drawings
+ * are larger than the default cards, and a lead-in paragraph would crowd
+ * them off the content rect. First assigned theme per form (campaign ×
+ * cycle is hub_spoke).
+ */
+export interface FormVariant {
+  readonly id: string
+  readonly theme: string
+  readonly build: (lex: Lexicon) => Component
+}
+
+export const FORM_VARIANTS: readonly FormVariant[] = [
+  { id: "icon_cards · icon columns", theme: "terra", build: (lex) => COMPONENT_BUILDERS.icon_cards!(lex) },
+  { id: "icon_cards · badge cards", theme: "tech", build: (lex) => COMPONENT_BUILDERS.icon_cards!(lex) },
+  { id: "icon_cards · outline grid", theme: "academic", build: (lex) => COMPONENT_BUILDERS.icon_cards!(lex) },
+  { id: "cycle · loop", theme: "museum", build: (lex) => COMPONENT_BUILDERS.cycle!(lex) },
+  { id: "cycle · hub spoke", theme: "insight", build: (lex) => COMPONENT_BUILDERS.cycle!(lex) },
+  { id: "cycle · petal wheel", theme: "tech", build: (lex) => COMPONENT_BUILDERS.cycle!(lex) },
+  { id: "numbered_cards · pills", theme: "pulse", build: (lex) => COMPONENT_BUILDERS.numbered_cards!(lex) },
+  { id: "numbered_cards · hex cluster", theme: "tech", build: (lex) => COMPONENT_BUILDERS.numbered_cards!(lex) },
+  { id: "kpi_cards · donut trio", theme: "luxe", build: (lex) => COMPONENT_BUILDERS.kpi_cards!(lex) },
+  { id: "kpi_cards · bubble row", theme: "insight", build: (lex) => COMPONENT_BUILDERS.kpi_cards!(lex) },
+  { id: "comparison · pill panels", theme: "vermilion", build: (lex) => COMPONENT_BUILDERS.comparison!(lex) },
+  { id: "steps · arrow band", theme: "runway", build: (lex) => COMPONENT_BUILDERS.steps!(lex) },
+  { id: "timeline · vertical nodes", theme: "stage", build: (lex) => COMPONENT_BUILDERS.timeline!(lex) },
+  { id: "image_grid · numbered photos", theme: "museum", build: (lex) => COMPONENT_BUILDERS.image_grid!(lex) },
+]
+
 /** Icons for the over-capacity cards, cycled — one per card, none repeated. */
 const CARD_ICONS = ["layers", "cpu", "database", "globe", "target", "gauge"] as const
 
