@@ -1,6 +1,8 @@
 import type { Component } from "@/ir"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
+import { resolveComponentForm } from "./form-assignments"
+import { measureNumberedPhotos, renderNumberedPhotos } from "./forms/numbered-photos"
 
 type ImageGridComponent = Extract<Component, { type: "image_grid" }>
 
@@ -126,11 +128,11 @@ function renderCell({
   )
 }
 
-export const imageGrid: SvgComponent<ImageGridComponent> = {
-  measure(component, w) {
-    return gridImageAreaH(component, w) + (captionsVisible(component) ? CAPTION_H : 0)
-  },
-  render(component, box, ctx) {
+function measureDefault(component: ImageGridComponent, w: number): number {
+  return gridImageAreaH(component, w) + (captionsVisible(component) ? CAPTION_H : 0)
+}
+
+function renderDefault(component: ImageGridComponent, box: Parameters<SvgComponent<ImageGridComponent>["render"]>[1], ctx: ComponentCtx) {
     const areaH = gridImageAreaH(component, box.w)
     const cells = gridCells(component.items.length, component.emphasis, box.w, areaH)
     return (
@@ -179,6 +181,22 @@ export const imageGrid: SvgComponent<ImageGridComponent> = {
         })}
       </g>
     )
+}
+
+export const imageGrid: SvgComponent<ImageGridComponent> = {
+  measure(component, w, ctx) {
+    const assignment = resolveComponentForm("image_grid", ctx.themeId)
+    if (assignment?.form === "numbered_photos") {
+      return measureNumberedPhotos(component, w, ctx, assignment.knobs ?? {})
+    }
+    return measureDefault(component, w)
+  },
+  render(component, box, ctx) {
+    const assignment = resolveComponentForm("image_grid", ctx.themeId)
+    if (assignment?.form === "numbered_photos") {
+      return renderNumberedPhotos(component, box, ctx, assignment.knobs ?? {})
+    }
+    return renderDefault(component, box, ctx)
   },
 }
 
