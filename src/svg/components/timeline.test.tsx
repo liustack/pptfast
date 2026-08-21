@@ -4,6 +4,10 @@ import { render } from "@testing-library/react"
 import { timeline } from "./timeline"
 import type { ComponentCtx } from "./types"
 import { contrastRatio } from "../ink"
+import { renderSvgMarkup, parseSvgRoot } from "../serialize"
+import { assertSubset } from "../subset-validate"
+import { resolveStyle } from "../../themes"
+import { buildCtx } from "../full-slide-svg"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -213,5 +217,144 @@ describe("timeline component", () => {
         expect(container.querySelector("[data-dropped]")).toBeNull()
       })
     })
+  })
+})
+
+function timelineMarkup(node: React.ReactElement) {
+  return renderSvgMarkup(<svg xmlns="http://www.w3.org/2000/svg">{node}</svg>)
+}
+
+describe("vert_timeline form", () => {
+  const box = { x: 0, y: 0, w: 1088, h: 420 }
+  const dated = {
+    type: "timeline" as const,
+    layout: "horizontal" as const,
+    milestones: [
+      { date: "2024-01", title: "接传感", desc: "两周布点，电工班只管接电走线。" },
+      { date: "2024-06", title: "试运行", desc: "告警只进班组群，误报按周复盘。" },
+      { date: "2024-12", title: "全接管", desc: "纸质巡检表留档三个月后退役。", highlight: true },
+    ],
+  }
+
+  it("stage: hairline vertical axis, outline circles, numbers, dates still render", () => {
+    const themeCtx = buildCtx(resolveStyle("stage"), {})
+    const { container } = svg(timeline.render(dated, box, themeCtx))
+    const axis = container.querySelector("line")
+    expect(axis).toBeTruthy()
+    expect(axis?.getAttribute("x1")).toBe(axis?.getAttribute("x2"))
+    expect(Number(axis?.getAttribute("stroke-width"))).toBeLessThanOrEqual(1.5)
+    expect(axis?.getAttribute("stroke-dasharray")).toBeNull()
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles).toHaveLength(3)
+    circles.forEach((c) => {
+      expect(c.getAttribute("fill")).toBe(themeCtx.colors.bg)
+      expect(c.getAttribute("stroke")).toBeTruthy()
+    })
+    expect(container.textContent).toContain("2024-01")
+    expect(container.textContent).toContain("接传感")
+    expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "1")).toBe(true)
+  })
+
+  it("assigned themes use vert_timeline even when layout is horizontal", () => {
+    const themeCtx = buildCtx(resolveStyle("stage"), {})
+    const { container } = svg(timeline.render({ ...dated, layout: "horizontal" }, box, themeCtx))
+    const line = container.querySelector("line")
+    expect(line?.getAttribute("x1")).toBe(line?.getAttribute("x2"))
+    expect(line?.getAttribute("y1")).not.toBe(line?.getAttribute("y2"))
+  })
+
+  it("memo: dashed axis, STEP stamp with letterSpacing, Chinese titles have none", () => {
+    const themeCtx = buildCtx(resolveStyle("memo"), {})
+    const { container } = svg(timeline.render(dated, box, themeCtx))
+    const axis = container.querySelector("line")
+    expect(axis?.getAttribute("stroke-dasharray")).toBeTruthy()
+    const stamps = Array.from(container.querySelectorAll("rect"))
+    expect(stamps).toHaveLength(3)
+    const stepLabels = Array.from(container.querySelectorAll("text")).filter((t) => t.textContent === "STEP")
+    expect(stepLabels).toHaveLength(3)
+    stepLabels.forEach((t) => {
+      expect(t.getAttribute("letter-spacing")).toBeTruthy()
+      expect(t.getAttribute("font-family")).toBe(themeCtx.fonts.mono)
+    })
+    const zh = Array.from(container.querySelectorAll("text")).filter((t) => t.textContent === "接传感")
+    expect(zh[0].getAttribute("letter-spacing")).toBeNull()
+  })
+
+  it("classroom: dashed axis, filled number circles, waveFirst under the first title", () => {
+    const themeCtx = buildCtx(resolveStyle("classroom"), {})
+    const { container } = svg(timeline.render(dated, box, themeCtx))
+    const axis = container.querySelector("line")
+    expect(axis?.getAttribute("stroke-dasharray")).toBeTruthy()
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles).toHaveLength(3)
+    expect(circles[0].getAttribute("fill")).toBe(themeCtx.colors.primary)
+    const wave = container.querySelector("path")
+    expect(wave).toBeTruthy()
+    expect(wave?.getAttribute("stroke")).toBe(themeCtx.colors.accent)
+    expect(wave?.getAttribute("d") ?? "").toMatch(/[Qq]/)
+  })
+
+  it("consulting with no layout stays the horizontal default face", () => {
+    const themeCtx = buildCtx(resolveStyle("consulting"), {})
+    const { container } = svg(timeline.render(component, box, themeCtx))
+    const line = container.querySelector("line")
+    expect(line?.getAttribute("y1")).toBe(line?.getAttribute("y2"))
+    expect(line?.getAttribute("x1")).not.toBe(line?.getAttribute("x2"))
+  })
+
+  it("consulting + layout vertical keeps the existing renderVertical face", () => {
+    const themeCtx = buildCtx(resolveStyle("consulting"), {})
+    const vertical = { ...component, layout: "vertical" as const }
+    const { container } = svg(timeline.render(vertical, { x: 0, y: 0, w: 800 }, themeCtx))
+    const circles = Array.from(container.querySelectorAll("circle"))
+    expect(circles).toHaveLength(3)
+    circles.forEach((c) => {
+      expect(c.getAttribute("fill")).toBe(themeCtx.colors.primary)
+      expect(c.getAttribute("stroke")).toBeNull()
+    })
+    expect(container.querySelectorAll("rect")).toHaveLength(0)
+    expect(container.textContent).not.toContain("STEP")
+  })
+
+  it("consulting (unassigned) markup is byte-identical to the default face", () => {
+    const withId = buildCtx(resolveStyle("consulting"), {})
+    const withoutId = { ...withId, themeId: undefined }
+    expect(timelineMarkup(timeline.render(component, { x: 80, y: 100, w: 1000 }, withId))).toBe(
+      timelineMarkup(timeline.render(component, { x: 80, y: 100, w: 1000 }, withoutId)),
+    )
+  })
+
+  it("n min/max stay in box, subset-safe, and box.h reuses +N overflow", () => {
+    const themeCtx = buildCtx(resolveStyle("stage"), {})
+    const two = { type: "timeline" as const, milestones: dated.milestones.slice(0, 2) }
+    const eight = {
+      type: "timeline" as const,
+      milestones: Array.from({ length: 8 }, (_, i) => ({
+        date: `Q${i}`,
+        title: `节点${i}`,
+        desc: "说明",
+      })),
+    }
+    for (const ir of [two, eight]) {
+      const h = Math.max(timeline.measure(ir, box.w, themeCtx), 420)
+      const markup = timelineMarkup(timeline.render(ir, { x: 0, y: 0, w: 1088, h }, themeCtx))
+      const root = parseSvgRoot(markup)
+      expect(() => assertSubset(root)).not.toThrow()
+      for (const c of Array.from(root.querySelectorAll("circle"))) {
+        const cy = Number(c.getAttribute("cy"))
+        const r = Number(c.getAttribute("r"))
+        expect(cy + r).toBeLessThanOrEqual(h + 2)
+        expect(cy - r).toBeGreaterThanOrEqual(-2)
+      }
+    }
+    const many = {
+      type: "timeline" as const,
+      milestones: Array.from({ length: 40 }, (_, i) => ({ date: `Q${i}`, title: `M${i}` })),
+    }
+    const { container } = svg(timeline.render(many, { x: 0, y: 0, w: 1088, h: 240 }, themeCtx))
+    const dropped = container.querySelector("[data-dropped]")
+    expect(dropped).toBeTruthy()
+    expect(dropped!.textContent).toMatch(/^\+\d+ …$/)
+    expect(Number(dropped!.getAttribute("y"))).toBeLessThanOrEqual(240)
   })
 })
