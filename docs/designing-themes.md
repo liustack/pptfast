@@ -79,12 +79,15 @@ scale. Recoloring the same composition is the failure mode this document
 exists to prevent: themes that declare no structural preference render
 identically under the same seed.
 
-The product runs two tracks from here. Built-in themes trade breadth for
-identity: cover, chapter, and ending lock to their board-designed
-layouts, content pages follow the allocation table, and each theme must
-fully cover its declared scenario. Brand-restoration decks trade the
-other way: they may draw on a wider set of layouts, components, and
-decoration to reproduce a client's visual identity.
+The product runs two tracks from here, each owning its own object set —
+the layouts, components, and decoration used across cover, chapter,
+ending, and content pages. **Brand-generic objects** belong to the
+brand-restoration track: it keeps growing that set and keeps sharpening
+how faithfully a client's visual identity is reproduced. **Theme-locked
+objects** belong to the built-in theme track: cover, chapter, and ending
+lock to their board-designed layouts, content pages follow the
+allocation table, each theme must fully cover its declared scenario, and
+existing themes are revisited (and new ones added) over time.
 
 Token levers on `style.shape` change rhythm without forking a layout:
 `radius` (corners), `gapScale` (block spacing), and `typeScale` (heading
