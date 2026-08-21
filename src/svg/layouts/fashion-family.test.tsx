@@ -158,7 +158,7 @@ describe("fashion 家族（runway）", () => {
     // 越出这个盒子 35.1px。**这条测试要判的那件事没变**：21 和 14 同在 24px
     // 大字号线以下，floor 都是 4.5:1，FLIPPED 名单逐个主题实测前后完全一致，
     // 动的只是那个被扣款扣小了的字号常量。
-    const FLIPPED = ["bloom", "classroom", "pulse", "ember", "vermilion"]
+    const FLIPPED = ["bloom", "classroom", "pulse", "ember", "vermilion", "crayon"]
     const longDeck = ir([endingLongSub])
     for (const themeId of CANONICAL_THEME_IDS) {
       const markup = renderSvgMarkup(

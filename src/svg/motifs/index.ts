@@ -15,6 +15,8 @@ import { PulseMotif } from "./motif-pulse-motif"
 import { TerraMotif } from "./motif-terra-motif"
 import { EmberMotif } from "./motif-ember-motif"
 import { VermilionMotif } from "./motif-vermilion-motif"
+import { CrayonMotif } from "./motif-crayon-motif"
+import { ArenaMotif } from "./motif-arena-motif"
 
 export type { Motif, MotifId } from "./types"
 
@@ -39,4 +41,6 @@ export const MOTIFS: Record<MotifId, Motif> = {
   "terra-motif": TerraMotif,
   "ember-motif": EmberMotif,
   "vermilion-motif": VermilionMotif,
+  "crayon-motif": CrayonMotif,
+  "arena-motif": ArenaMotif,
 }

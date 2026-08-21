@@ -81,15 +81,15 @@ const NEWLY_DECLARED_THEME_IDS = ["enterprise", "campaign", "bloom", "classroom"
 /**
  * `bloom` shares one `layoutTendencies` object with `classroom` on purpose
  * (`definitions.ts`'s `CLASSROOM_STRUCTURE`), so the set of distinct
- * *structural* identities is 16, not 17. Every count in this file that is
+ * *structural* identities is 18, not 19. Every count in this file that is
  * about structure rather than about theme ids is measured over this list.
  */
 const STRUCTURAL_IDENTITY_IDS = CANONICAL_THEME_IDS.filter((id) => id !== "bloom")
 
-it("sanity: all 17 themes now declare layoutTendencies, and they resolve to 16 distinct structural identities (bloom mirrors classroom) — if this drifts, the numbers this file pins below must be re-measured, not silently kept", () => {
-  expect(DECLARED_THEME_IDS).toHaveLength(17)
+it("sanity: all 19 theme ids now declare layoutTendencies, and they resolve to 18 distinct structural identities (bloom mirrors classroom) — if this drifts, the numbers this file pins below must be re-measured, not silently kept", () => {
+  expect(DECLARED_THEME_IDS).toHaveLength(19)
   expect(UNDECLARED_THEME_IDS).toEqual([])
-  expect(STRUCTURAL_IDENTITY_IDS).toHaveLength(16)
+  expect(STRUCTURAL_IDENTITY_IDS).toHaveLength(18)
 })
 
 // ── bloom's declared mirror (structure-map.md 会话 0 裁决 3) ──
@@ -139,14 +139,14 @@ describe("runway's motif === undefined is an identity value (definitions.ts:317'
   it("every other theme does declare one — runway is the single exception, not one of several gaps", () => {
     const withMotif = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].motif !== undefined)
     expect(withMotif).toEqual(CANONICAL_THEME_IDS.filter((id) => id !== "runway"))
-    expect(withMotif).toHaveLength(16)
+    expect(withMotif).toHaveLength(18)
   })
 })
 
 // ── 1. Divergence test ──
 
 describe("cross-theme layout divergence (the plan's core defect)", () => {
-  it("resolves NOT-all-identical layout sequences across the 17 canonical themes for a fixed IR + fixed seed", () => {
+  it("resolves NOT-all-identical layout sequences across the 19 canonical theme ids for a fixed IR + fixed seed", () => {
     const sequences = CANONICAL_THEME_IDS.map((id) => resolveSequence(id, 1))
     const distinct = new Set(sequences.map((seq) => JSON.stringify(seq)))
     // Pre-wave (commit 709605a, before T1/T2 landed): all 13 themes' `layouts`
@@ -210,8 +210,8 @@ function effectiveCoverWeightSet(themeId: CanonicalThemeId): string {
   return JSON.stringify([...new Set([...own, ...STRATEGY_DEFINITIONS.briefing.identityTendencies.cover])].sort())
 }
 
-describe("cover-axis divergence across the 16 structural identities", () => {
-  it("distinct cover sequences: 9 across the 16 identities (measured, seeds 1-40)", () => {
+describe("cover-axis divergence across the 18 structural identities", () => {
+  it("distinct cover sequences: 9 across the 18 identities (measured, seeds 1-40)", () => {
     const distinct = new Set(STRUCTURAL_IDENTITY_IDS.map((id) => JSON.stringify(coverSequence(id))))
     // The measured chain on this exact fixture: 8 before the allocation wave,
     // 10 after it, 9 after the inert-declaration fix. Each number is a
@@ -248,7 +248,7 @@ describe("cover-axis divergence across the 16 structural identities", () => {
     expect(blind).toEqual([])
   })
 
-  it("distinct cover weightings across the 16 identities: 9, every one of them a real preference", () => {
+  it("distinct cover weightings across the 18 identities: 9, every one of them a real preference", () => {
     const groups = new Map<string, string[]>()
     for (const id of STRUCTURAL_IDENTITY_IDS) {
       const key = effectiveCoverWeightSet(id)
@@ -257,13 +257,13 @@ describe("cover-axis divergence across the 16 structural identities", () => {
     expect(groups.size).toBe(9)
     // The largest remaining cluster, named rather than counted, so shrinking
     // it later is a visible edit to this test and not a silent improvement.
-    // All four lean on `split-diagonal` over briefing's pair: enterprise's
-    // Swiss cut, campaign's brush stroke, pulse's ECG spike and ember's rising
-    // slash are four readings of the same diagonal, which is a legitimate
-    // shared construction — it is the four-axis table, not the cover pool,
-    // that keeps them apart.
+    // All five lean on `split-diagonal` over briefing's pair: enterprise's
+    // Swiss cut, campaign's brush stroke, pulse's ECG spike, ember's rising
+    // slash and arena's HUD wedge are five readings of the same diagonal,
+    // which is a legitimate shared construction — it is the four-axis table,
+    // not the cover pool, that keeps them apart.
     const largest = [...groups.values()].sort((a, b) => b.length - a.length)[0]!
-    expect(largest).toEqual(["enterprise", "campaign", "pulse", "ember"])
+    expect(largest).toEqual(["enterprise", "campaign", "pulse", "ember", "arena"])
   })
 
   // ── The structural guard ──
@@ -607,16 +607,26 @@ describe("control-group byte identity (migration-period guard — deletable once
 // if the wave overreached: nothing outside the cover slot moved for anyone,
 // the nine themes the allocation left alone kept their covers exactly, and
 // the eight it re-weighted landed on exactly the recorded picks.
+/**
+ * Themes added after the allocation-wave fixture was captured. Historical
+ * control-group tests skip these rather than recapturing the fixture file
+ * (its whole meaning is a record of a past state).
+ */
+const POST_ALLOCATION_THEME_IDS: readonly CanonicalThemeId[] = ["crayon", "arena"]
+const ALLOCATION_ERA_THEME_IDS = CANONICAL_THEME_IDS.filter(
+  (id) => !POST_ALLOCATION_THEME_IDS.includes(id),
+)
+
 describe("allocation wave drift: the cover slot moved for eight themes and nothing else moved for anyone", () => {
-  it("the pre-allocation fixture covers all 17 themes at 5 seeds", () => {
-    expect(Object.keys(preAllocationFixture).sort()).toEqual([...CANONICAL_THEME_IDS].sort())
-    for (const themeId of CANONICAL_THEME_IDS) {
+  it("the pre-allocation fixture covers the 17 themes that existed when it was captured, at 5 seeds", () => {
+    expect(Object.keys(preAllocationFixture).sort()).toEqual([...ALLOCATION_ERA_THEME_IDS].sort())
+    for (const themeId of ALLOCATION_ERA_THEME_IDS) {
       expect(Object.keys(preAllocationFixture[themeId]!).sort(), themeId).toEqual(["1", "2", "3", "4", "5"])
     }
   })
 
-  it("no page other than the cover moved, for any of the 17 themes — zero content displaced outside the slot this wave declares", () => {
-    for (const themeId of CANONICAL_THEME_IDS) {
+  it("no page other than the cover moved, for any of the 17 themes then in the roster — zero content displaced outside the slot this wave declares", () => {
+    for (const themeId of ALLOCATION_ERA_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
         expect(resolveSequence(themeId, seed).slice(1), `${themeId} seed=${seed}`).toEqual(
           preAllocationFixture[themeId]?.[String(seed)]?.slice(1),
@@ -626,9 +636,10 @@ describe("allocation wave drift: the cover slot moved for eight themes and nothi
   })
 
   it("the seven themes neither edit re-weighted keep their exact pre-wave cover picks", () => {
-    const untouched = CANONICAL_THEME_IDS.filter((id) => ALLOCATION_COVER_MOVES[id] === undefined)
+    const untouched = ALLOCATION_ERA_THEME_IDS.filter((id) => ALLOCATION_COVER_MOVES[id] === undefined)
     // Named explicitly so shrinking the move table can't silently shrink this
-    // control group too — the two halves must add up to all 17.
+    // control group too — the two halves must add up to the 17 themes this
+    // fixture captured (crayon and arena landed later, out of this wave's scope).
     expect(untouched).toEqual(["consulting", "academic", "ink", "tech", "runway", "journal", "pulse"])
     for (const themeId of untouched) {
       for (const seed of FIXTURE_SEEDS) {
@@ -796,15 +807,17 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: 54 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
+  it("sanity: 58 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
     // Was 36 before the allocation wave. The +17 are the cover ids the wave
     // added: enterprise/campaign/classroom/bloom/luxe/heritage 2 apiece (12,
     // all first declarations), plus terra +1, ember +2 and vermilion +2. The
     // inert-declaration fix added one more: insight's cover grew from one id
-    // to two, while vermilion's stayed at two with one swapped. The number is
-    // a tripwire, not a target — if it drifts, re-derive it from
-    // `definitions.ts` rather than editing it to match.
-    expect(combos).toHaveLength(54)
+    // to two, while vermilion's stayed at two with one swapped. The sixth
+    // wave (2026-08-21) adds two cover ids for crayon (tone-adaptive-header /
+    // banner-title) and two for arena (split-diagonal / poster-center),
+    // 54 → 58. The number is a tripwire, not a target — if it drifts,
+    // re-derive it from `definitions.ts` rather than editing it to match.
+    expect(combos).toHaveLength(58)
   })
 
   for (const { themeId, slideType, layoutId } of combos) {
