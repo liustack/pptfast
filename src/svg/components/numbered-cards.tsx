@@ -1,6 +1,9 @@
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { accessibleInk, accessibleOpacity } from "../ink"
+import { resolveComponentForm } from "./form-assignments"
+import { measureHexCluster, renderHexCluster } from "./forms/hex-cluster"
+import { measureNumberedPills, renderNumberedPills } from "./forms/numbered-pills"
 import type { ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
@@ -82,10 +85,24 @@ function rowHeights(component: NumberedCardsComponent, w: number, _ctx: Componen
 
 export const numberedCards: SvgComponent<NumberedCardsComponent> = {
   measure(component, w, ctx) {
+    const assignment = resolveComponentForm("numbered_cards", ctx.themeId)
+    if (assignment?.form === "numbered_pills") {
+      return measureNumberedPills(component, w, ctx, assignment.knobs ?? {})
+    }
+    if (assignment?.form === "hex_cluster") {
+      return measureHexCluster(component, w, ctx, assignment.knobs ?? {})
+    }
     const heights = rowHeights(component, w, ctx)
     return heights.reduce((sum, h) => sum + h, 0) + (heights.length - 1) * ROW_GAP
   },
   render(component, box, ctx) {
+    const assignment = resolveComponentForm("numbered_cards", ctx.themeId)
+    if (assignment?.form === "numbered_pills") {
+      return renderNumberedPills(component, box, ctx, assignment.knobs ?? {})
+    }
+    if (assignment?.form === "hex_cluster") {
+      return renderHexCluster(component, box, ctx, assignment.knobs ?? {})
+    }
     const { cols, contentW, cellW } = grid(component, box.w)
     const heights = rowHeights(component, box.w, ctx)
     return (
