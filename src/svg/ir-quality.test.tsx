@@ -337,6 +337,18 @@ describe("checkIrQuality", () => {
       expect(codes(checkIrQuality(ir))).not.toContain("pin_only_over_capacity")
     })
 
+    it.each(["statement", "pull-quote"] as const)(
+      "pinning %s (capacity 1) with 2 components is a hard error",
+      (layoutId) => {
+        const ir = makeIR([{ type: "content", heading: "金句", layout: layoutId, components: paragraphs(2) }])
+        const issues = checkIrQuality(ir)
+        expect(codes(issues)).toContain("pin_only_over_capacity")
+        const found = issues.find((i) => i.code === "pin_only_over_capacity")!
+        expect(found.severity).toBe("error")
+        expect(found.pinOnlyCapacity).toEqual({ layoutId, capacity: 1, componentCount: 2 })
+      },
+    )
+
     it("regression: pinning an ordinary (non-pinOnly) layout over its own declared capacity still only warns density, never this new error", () => {
       // two-column's body capacity is 4 (registry.ts) — 5 components pins it
       // over capacity, same shape as quote-stage's own over-capacity case

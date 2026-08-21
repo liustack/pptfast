@@ -68,6 +68,7 @@ Never write IR or a spec from memory of a previous session or from this file —
 Propose and confirm before writing any page content:
 
 - Narrative first: pick a named preset (or override individual axes) from `narratives` output that matches the deck's purpose and audience — this is a decision layer above theme, not a visual choice
+- Talk vs. read next: if this deck is spoken in the room, follow the Talk-density contract below when you pin layouts and write `notes`. `pacing` does not grow a fourth value for this
 - Theme id next, from the chosen narrative's `themeRecommendations` (or pick from `themes` output to match the deck's tone if none fit — a recommendation, never a constraint). If the user supplied a company template, extract it into a custom theme first — see Brand themes below
 - Draft `deck.spec.json`: one entry per page (`id`, `type`, `heading`, optionally `beat`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`
 - Run `pptfast spec validate deck.spec.json` and fix whatever it reports until it prints `OK` — the hard gates (boundary pages, heading length, beat rotation, page count vs. pacing) all fire here, before a single page is written
@@ -77,14 +78,14 @@ Propose and confirm before writing any page content:
 
 ### Phase 3 — Fill pages in batches of at most 4, validate immediately
 
-For each page in the confirmed spec, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes` — never `type`/`heading`, those are locked by the spec). Remember Phase 1's boundary-page rule while drafting `cover`/`chapter`/`ending` pages — do not give them `components` or `footnote` and then have to move it. `notes` is speaker notes prose for whoever presents the deck — writing a good speaking script is a model strength, so draft it whenever the page's content calls for a spoken walkthrough beyond what's on the slide.
+For each page in the confirmed spec, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes` — never `type`/`heading`, those are locked by the spec). Remember Phase 1's boundary-page rule while drafting `cover`/`chapter`/`ending` pages — do not give them `components` or `footnote` and then have to move it. `notes` is speaker notes prose for whoever presents the deck — writing a good speaking script is a model strength, so draft it whenever the page's content calls for a spoken walkthrough beyond what's on the slide. On a talk deck this is required, not optional (Talk-density contract).
 
 ```bash
 pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken spec
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-Fix whatever either command reports as an error and re-run until both print `OK`. `validate` can print `OK` alongside `warning:` lines (e.g. a long heading or a dense slide) — tighten those too when practical, they read better, but they do not block. Only an error stops `OK` from printing. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked — a `pinOnly` layout like `quote-stage`, `statement`, `pull-quote`, or `verse-chapter` needs this pin every single time, since it never comes up through auto-selection at all (see Pin-only layouts below).
+Fix whatever either command reports as an error and re-run until both print `OK`. `validate` can print `OK` alongside `warning:` lines (e.g. a long heading or a dense slide) — tighten those too when practical, they read better, but they do not block. Only an error stops `OK` from printing. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked — a `pinOnly` layout like `quote-stage`, `statement`, `pull-quote`, or `verse-chapter` needs this pin every single time, since it never comes up through auto-selection at all (see Pin-only layouts below). On a talk deck those pins are the default for climax, quote, and evidence pages (see Talk-density contract).
 
 ### Phase 4 — Render
 
@@ -246,6 +247,20 @@ These layouts never appear through auto-selection. Set `layout` explicitly every
 `pull-quote` is a centered quotation page on a content slide: optional chapter kicker, italic heading, small source line, then one muted paragraph. Source comes from a quote component's `attribution` when present, otherwise `subheading`. The paragraph is the only body. Brand footer, logo, and theme motif stay off.
 
 `verse-chapter` is a centered verse as a chapter open (`type: "chapter"`). Tracking chapter-index kicker, 2-line heading, optional italic subheading. No watermark numeral, no body, no footnote — the usual chapter boundary still applies. Logo and theme motif stay off.
+
+### Talk-density contract
+
+A talk deck is spoken in the room (a keynote, a pitch, a lecture, a live walkthrough). A read deck is paged through after the speaker leaves (a report, a leave-behind, a weekly brief, a board pack the room will read). The tell: the user is presenting, asks for speaker notes, or says the slides sit behind a talk. If the file has to stand alone, it is a read deck.
+
+This is not a new `pacing` value. The enum stays `dense` / `balanced` / `spacious`. The contract is pin-only layouts plus `notes`.
+
+On a talk deck:
+
+- Climax, quote, and evidence pages pin a sparse pin-only layout. Name it: `statement`, `pull-quote`, `verse-chapter`. Same wave, still landing: `stat-hero`, `one-evidence`, `mono-bleed`. Pin those too once `pptfast schema` lists them. Do not leave those pages to auto-selection.
+- Tighten every page's on-slide budget past even `spacious`. Heading is the visual. At most one body component on a pinned sparse page (a source line, a single number, a single chart or table). Zero bullets on those pages. Split instead of stacking.
+- The spoken script goes in `slide.notes`. `render` exports it as native PowerPoint speaker notes (View → Notes, Presenter View). Never draw the script onto the canvas.
+
+On a read deck, write to the pacing budget. A pin-only sparse layout is still the right pin when a page truly is one sentence.
 
 ### Capacity
 

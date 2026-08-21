@@ -1004,6 +1004,47 @@ describe("pin_only_over_capacity end-to-end via validateIr (quote-stage wave, ta
     expect(v.ok).toBe(true)
   })
 
+  it("pinning statement with 2 components hard-blocks validateIr, naming the layout id and both numbers", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "金句",
+          layout: "statement",
+          components: [
+            { type: "paragraph", text: "a" },
+            { type: "paragraph", text: "b" },
+          ],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(
+      v.errors.some(
+        (e) => e.message.includes('"statement"') && e.message.includes("at most 1") && e.message.includes("has 2"),
+      ),
+    ).toBe(true)
+  })
+
+  it("pinning verse-chapter with components still hard-rejects as a chapter boundary (no body slot, so pin_only_over_capacity does not apply)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        {
+          type: "chapter",
+          heading: "章首",
+          layout: "verse-chapter",
+          components: [{ type: "paragraph", text: "should not be here" }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(false)
+    expect(v.errors.some((e) => e.message.includes('"chapter" slides do not render components'))).toBe(true)
+    expect(v.errors.every((e) => !e.message.includes("pinned layout"))).toBe(true)
+  })
+
   it("regression: pinning an ordinary (non-pinOnly) layout over its own capacity keeps ok:true with only a density warning — the new hard error never fires for it", () => {
     const v = validateIr({
       ...raw,

@@ -216,6 +216,27 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     }
   })
 
+  it("both files name the same six sparse pin-only ids in the Talk-density contract", () => {
+    const sectionAfter = (text: string, heading: RegExp): string => {
+      const m = text.match(heading)
+      expect(m, `heading ${heading} missing`).toBeTruthy()
+      const rest = text.slice(m!.index! + m![0].length)
+      const next = rest.search(/^##+ /m)
+      return next === -1 ? rest : rest.slice(0, next)
+    }
+    const ids = ["statement", "pull-quote", "verse-chapter", "stat-hero", "one-evidence", "mono-bleed"] as const
+    const en = sectionAfter(read(EN_REL), /^### Talk-density contract$/m)
+    const zh = sectionAfter(read(ZH_REL), /^### 演讲密度合同$/m)
+    for (const id of ids) {
+      expect(en, `SKILL.md Talk-density contract missing ${id}`).toContain(`\`${id}\``)
+      expect(zh, `SKILL.zh-CN.md 演讲密度合同 missing ${id}`).toContain(`\`${id}\``)
+    }
+    expect(en).toMatch(/not a new `pacing`/)
+    expect(zh).toMatch(/不是新的 `pacing`/)
+    expect(en).toContain("slide.notes")
+    expect(zh).toContain("slide.notes")
+  })
+
   it("both files have the same number of ### Phase N sections", () => {
     const phaseHeadings = (text: string) => text.match(/^### Phase \d+/gm) ?? []
     const en = phaseHeadings(read(EN_REL))

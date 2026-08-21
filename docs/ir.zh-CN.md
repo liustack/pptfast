@@ -40,7 +40,7 @@ IR 是一份描述整份 PPT 内容的 JSON 文件：有哪些页、每页上有
 - `arrangement`：content 页正文的排布方式，例如 `two_column`、`kpi_focus`。
 - `components`：填充页面的带类型单元（`bullets`、`kpi_cards`、`image`、`chart` 等）。
 
-任意 slide 还可以设置稳定的 `id`（spec 的页面和校验报错都靠它引用）、`placeholder: true`（还没有内容的占位页，由 `assemble` 为 spec 里没人填写的页面注入，内容质量检查会跳过它，`render` 也会因它拒绝导出，除非加 `--draft`），以及 `notes`（同义词 `note`/`speaker_notes`/`speakerNotes`），导出为原生 PowerPoint 演讲者备注。备注只给主讲人自己看，不会画到幻灯片画布上，也不计入任何版式容量。
+任意 slide 还可以设置稳定的 `id`（spec 的页面和校验报错都靠它引用）、`placeholder: true`（还没有内容的占位页，由 `assemble` 为 spec 里没人填写的页面注入，内容质量检查会跳过它，`render` 也会因它拒绝导出，除非加 `--draft`），以及 `notes`（同义词 `note`/`speaker_notes`/`speakerNotes`），导出为原生 PowerPoint 演讲者备注。备注只给主讲人自己看，不会画到幻灯片画布上，也不计入任何版式容量。演讲 deck 的讲稿写进 `notes`。agent 操作手册里的演讲密度合同（`skills/pptfast/SKILL.md`）是这条规则。
 
 ## 会漂移的字段名
 

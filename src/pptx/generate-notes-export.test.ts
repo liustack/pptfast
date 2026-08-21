@@ -42,6 +42,22 @@ async function sha256(blob: Blob): Promise<string> {
 }
 
 describe("generatePptxBlob speaker notes export", () => {
+  it("a statement page with notes still exports a notesSlide carrying that text", async () => {
+    const { generatePptxBlob } = await import("./generate")
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Stay hungry",
+        layout: "statement",
+        components: [],
+        notes: "pause. then the next slide is the product.",
+      },
+    ])
+    const blob = await generatePptxBlob(ir)
+    const notesXml = await zipEntry(blob, "ppt/notesSlides/notesSlide1.xml")
+    expect(notesXml).toContain("pause. then the next slide is the product.")
+  })
+
   it("a slide's notes field exports as native PowerPoint speaker notes text", async () => {
     const { generatePptxBlob } = await import("./generate")
     const ir = makeIR([
