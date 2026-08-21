@@ -70,11 +70,21 @@ the codebase owns fidelity.
 
 ## What distinguishes a theme
 
-Structure, not palette. A redesign must differ from the current theme in
-at least two of: heading axis (left/center/right), meta placement,
-decoration language, whitespace scale. Recoloring the same composition
-is the failure mode this document exists to prevent: themes that declare
-no structural preference render identically under the same seed.
+A theme's identity is the whole of its layouts, components, decoration,
+and palette together — palette alone is one quarter of it (user ruling,
+2026-08-22, `.issues/2026-08-22-anti-generalization-ruling/`). A redesign
+must differ from the current theme in at least two of: heading axis
+(left/center/right), meta placement, decoration language, whitespace
+scale. Recoloring the same composition is the failure mode this document
+exists to prevent: themes that declare no structural preference render
+identically under the same seed.
+
+The product runs two tracks from here. Built-in themes trade breadth for
+identity: cover, chapter, and ending lock to their board-designed
+layouts, content pages follow the allocation table, and each theme must
+fully cover its declared scenario. Brand-restoration decks trade the
+other way: they may draw on a wider set of layouts, components, and
+decoration to reproduce a client's visual identity.
 
 Token levers on `style.shape` change rhythm without forking a layout:
 `radius` (corners), `gapScale` (block spacing), and `typeScale` (heading
