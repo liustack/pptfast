@@ -308,6 +308,8 @@ pptfast render deck-dir/     # theme.json 自动装载。在 deck.spec.json 里�
 
 查询词：短而具体的名词，英文 2 到 4 个词（`office desk`、`wind farm`）。中文只作变体，不要当唯一查询。不要加情绪或画质词（`beautiful`、`4k`、`cinematic`）。不要写负向词（`not office`、`no people`）。
 
+搜索顺序是 Pexels，有 key 再 Pixabay，然后 Openverse（cc0/pdm，commercial 过滤）。
+
 ```bash
 pptfast config set pexels.apiKey
 pptfast images search "office desk" --orientation landscape
@@ -318,11 +320,20 @@ pptfast images search "office desk" --orientation landscape
 ```bash
 pptfast images fetch pexels:123 --deck <dir> --as hero
 pptfast images list --deck <dir>
+pptfast images generate --deck <dir> --as <asset_id>
+```
+
+本地生图默认关闭，要显式打开：
+
+```bash
+pptfast config set images.generators.grok.enabled true
+pptfast config set images.generators.codex.enabled true
+pptfast config set images.generators.antigravity.enabled true
 ```
 
 文件落在 `.pptfast/<deck>/assets/<asset_id>.jpg`，旁边是 sidecar。页面用这个 `asset_id` 引用。不要为了「重跑」整目录删掉 `.pptfast/`，已钉的图会一起没。
 
-没有 key：槽位保持 `missing`（灰框）。不要编一张图。不要刮网页。这一版不要用 Unsplash 或 Openverse。这是本机客户端，用用户自己的 key 去拉。幻灯里商用可以。不要把原图单独转卖。署名打在终端，默认不印在画面上。
+没有 key：槽位保持 `missing`（灰框）。不要编一张图。不要刮网页。不要用 Unsplash。这是本机客户端，用用户自己的 key 去拉。幻灯里商用可以。不要把原图单独转卖。署名打在终端，默认不印在画面上。
 
 ### Pin-only 版式
 
