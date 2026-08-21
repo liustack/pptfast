@@ -5,8 +5,10 @@ is the procedure. Follow it in order. Every step is safe to run again, and
 every step names what to do when it fails. Commands are POSIX shell (macOS or
 Linux). A Windows note follows each block that needs one.
 
-There is nothing to configure. pptfast renders entirely locally: no API key,
-no account, no engine to set up, no network calls at render time. The only
+There is nothing to configure to render a PPTX. pptfast renders entirely
+locally: no API key, no account, no engine to set up, no network calls at
+render time. Optional stock-photo search (`pptfast images search`) needs the
+user's own Pexels key (`pptfast config set pexels.apiKey`). The only
 prerequisite is Node 22.19+ (or Bun).
 
 ## Step 0: are you inside DeepSeek Harness (dsh)?

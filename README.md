@@ -22,7 +22,7 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@liustack/pptfast?style=flat-square" alt="Node.js"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/Not%20backed%20by-Y%20Combinator-FF6600?style=flat-square&logo=ycombinator&logoColor=white" alt="Not backed by Y Combinator">
-  <img src="https://img.shields.io/badge/no%20API%20key-needed-4c1?style=flat-square" alt="No API key needed">
+  <img src="https://img.shields.io/badge/no%20API%20key-to%20render-4c1?style=flat-square" alt="No API key to render">
 </p>
 
 ## Talk to us
@@ -39,7 +39,7 @@ Issues are welcome any time. [Open one](https://github.com/liustack/pptfast/issu
 
 **🔁 Revisions without describing everything again.** One command opens a preview page in your browser: page through it, write your notes right on the slides, and your AI picks them up and fixes them. The page refreshes itself as each revision lands.
 
-**🔒 No account, no API key, no network.** Install it and it works. Node 22.19+ or Bun is all you need on the machine.
+**🔒 No account, no API key to render, no network at render time.** Install it and it works. Node 22.19+ or Bun is all you need on the machine. Optional stock-photo search uses the user's own Pexels key.
 
 ## Install
 
@@ -47,7 +47,7 @@ Issues are welcome any time. [Open one](https://github.com/liustack/pptfast/issu
 
 > Install the pptfast deck skill following https://raw.githubusercontent.com/liustack/pptfast/main/INSTALL.md, then run the health check and tell me the result.
 
-There is no step 2. Your AI puts the skill folder where your harness reads it, and the skill brings its own version-pinned launcher, so there is no CLI to install by hand. pptfast renders entirely locally: no API key, no account, nothing to configure. The only prerequisite is Node 22.19+ (or Bun).
+There is no step 2. Your AI puts the skill folder where your harness reads it, and the skill brings its own version-pinned launcher, so there is no CLI to install by hand. pptfast renders a PPTX entirely locally: no API key, no account, nothing to configure for render. Optional stock-photo search needs the user's own Pexels key. The only prerequisite is Node 22.19+ (or Bun).
 
 **On DeepSeek Harness, it is one command instead.** pptfast is a native DSH plugin there, not a skill folder:
 

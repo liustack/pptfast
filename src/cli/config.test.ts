@@ -48,6 +48,15 @@ describe("findConfig", () => {
     expect(hit?.config.theme).toBe("tech")
   })
 
+  it("rejects images at the project layer (API keys do not belong in a repo file)", async () => {
+    const root = await tmp()
+    const configPath = join(root, "pptfast.config.json")
+    await writeFile(configPath, JSON.stringify({ images: { pexels: { apiKey: "TESTPEXELSKEY99" } } }))
+    await expect(findConfig(root)).rejects.toThrow(
+      new Error(`invalid ${configPath}:\n(root): Unrecognized key: "images"`),
+    )
+  })
+
   it("rejects unknown keys with the config path in the message", async () => {
     const root = await tmp()
     const configPath = join(root, "pptfast.config.json")
@@ -233,5 +242,16 @@ describe("findUserConfig (W5 task 5: four-layer chain, user layer)", () => {
     const configPath = join(home, "config.json")
     await writeFile(configPath, JSON.stringify({ outDir: "artifacts" }))
     await expect(findUserConfig()).rejects.toThrow(new Error(`invalid ${configPath}:\n(root): Unrecognized key: "outDir"`))
+  })
+
+  it("accepts images.pexels.apiKey at the user layer", async () => {
+    const home = await tmp()
+    process.env.PPTFAST_HOME = home
+    await writeFile(
+      join(home, "config.json"),
+      JSON.stringify({ images: { pexels: { apiKey: "TESTPEXELSKEY99" } } }),
+    )
+    const hit = await findUserConfig()
+    expect(hit?.config.images?.pexels?.apiKey).toBe("TESTPEXELSKEY99")
   })
 })

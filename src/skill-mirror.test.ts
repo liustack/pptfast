@@ -139,6 +139,26 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     ).toEqual({ missingFromCode: [], missingFromDocs: [] })
   })
 
+  it("both files carry the stock-photos section with the same CLI command lines", () => {
+    const sectionAfter = (text: string, heading: RegExp): string => {
+      const m = text.match(heading)
+      expect(m, `heading ${heading} missing`).toBeTruthy()
+      const rest = text.slice(m!.index! + m![0].length)
+      const next = rest.search(/^##+ /m)
+      return next === -1 ? rest : rest.slice(0, next)
+    }
+    const commands = (section: string) =>
+      [...section.matchAll(/^pptfast .+$/gm)].map((mm) => mm[0].replace(/\s+#.*$/, "").trimEnd())
+    const en = sectionAfter(read(EN_REL), /^### Stock photos$/m)
+    const zh = sectionAfter(read(ZH_REL), /^### 图库配图$/m)
+    expect(commands(en).length, "SKILL.md stock-photos section has no pptfast command lines").toBeGreaterThan(0)
+    expect(commands(zh), "stock-photos sections' pptfast command lines diverge between EN and ZH").toEqual(commands(en))
+    expect(en).toContain("pptfast asset-brief")
+    expect(en).toContain("pptfast images search")
+    expect(en).toContain("pptfast images fetch")
+    expect(en).toContain("pptfast config set pexels.apiKey")
+  })
+
   it("both files carry the Brand-themes section with the same CLI command lines", () => {
     // brand-extract wave review noted this section's EN/ZH parity was
     // unguarded. Structural guard: both sections exist, and every backtick

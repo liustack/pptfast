@@ -1,22 +1,27 @@
 // `pptfast doctor`: diagnose this machine's install without a single network
-// call. pptfast is zero-config and fully local — no API key, no engine, no
-// account — so there is no credential layer to inspect here. What can actually
-// go wrong is: an installed skill copy frozen at an old version, a dsh plugin
-// left behind, a Node below the floor, a missing optional capability, or a
-// broken render chain. Each of those gets its own check below.
+// call. Rendering a PPTX is still zero-config and fully local. Optional
+// stock-photo search reads Pexels/Pixabay keys from `$PPTFAST_HOME/config.json`
+// or the env, and this report says whether those keys are present and where
+// they came from — never the values. What can actually go wrong is: an
+// installed skill copy frozen at an old version, a dsh plugin left behind, a
+// Node below the floor, a missing optional capability, a broken render chain,
+// or a user config file that is group/other-readable. Each of those gets its
+// own check below.
 //
 // The split is deliberate (ported from modlens's own doctor): buildDoctorReport
 // produces a structured report and never prints, renderDoctorReport turns that
 // report into text. `--json` hands the structure straight through, and the
 // tests assert against the structure instead of scraping formatted output.
-import { constants } from "node:fs"
+import { constants, lstatSync } from "node:fs"
 import { access, readFile, readdir } from "node:fs/promises"
 import { homedir } from "node:os"
 import { delimiter, join } from "node:path"
 import { formatIssues, generatePptx, renderSlideSvg, validateIr } from "../api"
 import { isMissingModuleError } from "../platform/node"
 import { VERSION } from "../version"
-import { findConfig } from "./config"
+import { findConfig, findUserConfig } from "./config"
+import { userConfigPath } from "./home"
+import { resolveImageKeys, type ImageProviderId, type KeySource } from "./image-config"
 import { compareVersions, PACKAGE_NAME } from "./update"
 import { inspectWorkspace, type GitIgnoreStatus, type GitRunner } from "./workspace"
 
@@ -145,6 +150,21 @@ export interface DoctorWorkspace {
   ignore: GitIgnoreStatus
 }
 
+export interface DoctorImageProvider {
+  provider: ImageProviderId
+  present: boolean
+  source: KeySource | null
+}
+
+export interface DoctorImages {
+  configPath: string
+  configExists: boolean
+  /** True when POSIX bits say group or other can read the file. Always false
+   *  on Windows (`typeof process.getuid !== "function"`). */
+  groupOrOtherReadable: boolean
+  providers: DoctorImageProvider[]
+}
+
 export interface DoctorReport {
   /** The running CLI's version — every drift comparison below is against it. */
   version: string
@@ -154,6 +174,7 @@ export interface DoctorReport {
   capabilities: DoctorCapability[]
   selfTest: DoctorSelfTest
   workspace: DoctorWorkspace
+  images: DoctorImages
   /** Hard failures: the only thing that makes `pptfast doctor` exit non-zero. */
   errors: DoctorFinding[]
   /** Worth fixing, never fatal — a stale skill copy or a missing optional
@@ -395,6 +416,38 @@ async function inspectCapabilities(env: NodeJS.ProcessEnv): Promise<DoctorCapabi
   return capabilities
 }
 
+function posixBitsApply(): boolean {
+  return typeof process.getuid === "function"
+}
+
+export async function inspectImages(env: NodeJS.ProcessEnv): Promise<DoctorImages> {
+  const configPath = userConfigPath()
+  let configExists = false
+  let groupOrOtherReadable = false
+  try {
+    const st = lstatSync(configPath)
+    configExists = true
+    if (posixBitsApply() && !st.isSymbolicLink()) {
+      groupOrOtherReadable = (st.mode & 0o077) !== 0
+    }
+  } catch {
+    configExists = false
+  }
+  let file: Awaited<ReturnType<typeof findUserConfig>> = null
+  try {
+    file = await findUserConfig()
+  } catch {
+    file = null
+  }
+  const keys = resolveImageKeys({ file: file?.config ?? null, env })
+  const providers: DoctorImageProvider[] = (["pexels", "pixabay"] as const).map((provider) => ({
+    provider,
+    present: Boolean(keys[provider].apiKey),
+    source: keys[provider].source,
+  }))
+  return { configPath, configExists, groupOrOtherReadable, providers }
+}
+
 /**
  * Push a tiny built-in deck through the real pipeline — validate, render one
  * slide to SVG, generate the .pptx bytes — entirely in memory, nothing written
@@ -440,12 +493,13 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
   const nodeVersion = input.nodeVersion ?? process.version
 
   const cwd = input.cwd ?? process.cwd()
-  const [skills, dsh, capabilities, selfTest, projectHit] = await Promise.all([
+  const [skills, dsh, capabilities, selfTest, projectHit, images] = await Promise.all([
     scanSkillCopies(home, version),
     inspectDsh(home, version),
     inspectCapabilities(env),
     runSelfTest(),
     findConfig(cwd),
+    inspectImages(env),
   ])
   const workspace = await inspectWorkspace({
     cwd,
@@ -519,7 +573,19 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
     }
   }
 
-  return { version, runtime, skills, dsh, capabilities, selfTest, workspace, errors, warnings }
+  // Missing stock-photo keys stay in the Images section as `[-]`, not in
+  // `warnings`. Rendering PPTX does not need them, so they must not steal
+  // the "pptfast is healthy" line. A group/other-readable config file is
+  // the one images finding that is a real warning.
+  if (images.groupOrOtherReadable) {
+    warnings.push({
+      check: "images",
+      message: `${images.configPath} is group/other-readable — API keys should be mode 0600`,
+      fix: `chmod 600 ${images.configPath}`,
+    })
+  }
+
+  return { version, runtime, skills, dsh, capabilities, selfTest, workspace, images, errors, warnings }
 }
 
 function mark(state: "ok" | "warn" | "fail" | "n/a"): string {
@@ -610,6 +676,20 @@ export function renderDoctorReport(report: DoctorReport): string {
     lines.push(`  ${mark("n/a")} git-ignore skipped (outDir is set in pptfast.config.json)`)
   } else {
     lines.push(`  ${mark("n/a")} not a git repository`)
+  }
+  lines.push("")
+
+  lines.push("Images (optional stock-photo search — rendering PPTX still needs no credentials)")
+  lines.push(`  ${mark("ok")} config ${report.images.configPath}${report.images.configExists ? "" : " (missing)"}`)
+  if (report.images.groupOrOtherReadable) {
+    lines.push(`  ${mark("warn")} file is group/other-readable — chmod 600`)
+  }
+  for (const provider of report.images.providers) {
+    if (provider.present) {
+      lines.push(`  ${mark("ok")} ${provider.provider}: present (${provider.source})`)
+    } else {
+      lines.push(`  ${mark("n/a")} ${provider.provider}: missing — pptfast config set ${provider.provider}.apiKey`)
+    }
   }
   lines.push("")
 

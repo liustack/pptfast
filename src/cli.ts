@@ -17,7 +17,9 @@ import {
   runThemes,
   runValidate,
 } from "./cli/commands"
+import { runConfigSet, runConfigShow } from "./cli/config-cmd"
 import { runDoctor } from "./cli/doctor"
+import { runImagesFetch, runImagesList, runImagesSearch } from "./cli/images"
 import { DEFAULT_PORT, runServe } from "./cli/serve"
 import { checkForUpdate, createSelfUpdater } from "./cli/update"
 import { VERSION } from "./version"
@@ -254,6 +256,89 @@ program
   .description("Removed — use `pptfast narratives` instead")
   .action(() => {
     fail(new Error("`pptfast scenarios` has been renamed to `pptfast narratives` — run `pptfast narratives` instead"))
+  })
+
+const config = program.command("config").description("User-level settings (API keys for optional stock-photo search)")
+config
+  .command("set <key> [value]")
+  .description("Set a user config value. Omit the value for an apiKey to enter it at a hidden prompt")
+  .action(async (key: string, value: string | undefined) => {
+    try {
+      console.log(await runConfigSet(key, value))
+    } catch (e) {
+      fail(e)
+    }
+  })
+config
+  .command("show")
+  .description("Show the effective user config (API keys masked)")
+  .action(async () => {
+    try {
+      console.log(await runConfigShow())
+    } catch (e) {
+      fail(e)
+    }
+  })
+
+function parsePositiveInt(raw: string, flag: string): number {
+  if (!/^[0-9]+$/.test(raw)) {
+    fail(new Error(`invalid ${flag} "${raw}" — expected a positive integer`))
+  }
+  return Number(raw)
+}
+
+const images = program.command("images").description("Search and pin stock photos into workspace assets")
+images
+  .command("search <query>")
+  .description("Search Pexels (Pixabay if Pexels returns nothing) and print attribution lines")
+  .option("--orientation <orientation>", "landscape, portrait, or square")
+  .option("--color <color>", "color name or hex for the search API")
+  .option("--min-width <px>", "client-side minimum width in pixels")
+  .option("--min-height <px>", "client-side minimum height in pixels")
+  .action(
+    async (
+      query: string,
+      opts: { orientation?: string; color?: string; minWidth?: string; minHeight?: string },
+    ) => {
+      try {
+        console.log(
+          await runImagesSearch(query, {
+            orientation: opts.orientation,
+            color: opts.color,
+            minWidth: opts.minWidth !== undefined ? parsePositiveInt(opts.minWidth, "--min-width") : undefined,
+            minHeight: opts.minHeight !== undefined ? parsePositiveInt(opts.minHeight, "--min-height") : undefined,
+          }),
+        )
+      } catch (e) {
+        fail(e)
+      }
+    },
+  )
+images
+  .command("fetch <ref>")
+  .description("Download a photo (pexels:<id> or pixabay:<id>) into .pptfast/<deck>/assets/")
+  .requiredOption("--deck <dir>", "deck project directory, path, or bare name")
+  .requiredOption("--as <asset_id>", "local asset id (filename without extension)")
+  .option("--query <text>", "search query that produced this pick (stored in the sidecar)")
+  .action(async (ref: string, opts: { deck: string; as: string; query?: string }) => {
+    try {
+      console.log(
+        await runImagesFetch(ref, { deck: opts.deck, as: opts.as, query: opts.query, cwd: process.cwd() }),
+      )
+    } catch (e) {
+      fail(e)
+    }
+  })
+images
+  .command("list")
+  .description("List pinned stock photos for a deck")
+  .requiredOption("--deck <dir>", "deck project directory, path, or bare name")
+  .action(async (opts: { deck: string }) => {
+    try {
+      console.log(await runImagesList({ deck: opts.deck, cwd: process.cwd() }))
+    } catch (e) {
+      fail(e)
+    }
   })
 
 program
