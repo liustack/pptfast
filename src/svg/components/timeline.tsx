@@ -3,6 +3,8 @@ import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
 import { accessibleInk } from "../ink"
+import { resolveComponentForm } from "./form-assignments"
+import { measureVertTimeline, renderVertTimeline } from "./forms/vert-timeline"
 
 type TimelineComponent = Extract<Component, { type: "timeline" }>
 
@@ -251,18 +253,30 @@ function renderVertical(
   )
 }
 
+function measureDefault(component: TimelineComponent, w: number): number {
+  if (component.layout === "vertical") {
+    const rows = verticalLayout(component, w)
+    const total = rows.reduce((sum, r) => sum + r.rowH + V_ROW_GAP, V_TOP_PAD)
+    return total - V_ROW_GAP + BOTTOM_PAD
+  }
+  const rows = milestoneLayout(component, w)
+  const maxBelow = rows.reduce((mx, r) => Math.max(mx, r.belowH), 48)
+  return AXIS_Y + maxBelow + BOTTOM_PAD
+}
+
 export const timeline: SvgComponent<TimelineComponent> = {
-  measure(component, w, _ctx: ComponentCtx) {
-    if (component.layout === "vertical") {
-      const rows = verticalLayout(component, w)
-      const total = rows.reduce((sum, r) => sum + r.rowH + V_ROW_GAP, V_TOP_PAD)
-      return total - V_ROW_GAP + BOTTOM_PAD
+  measure(component, w, ctx) {
+    const assignment = resolveComponentForm("timeline", ctx.themeId)
+    if (assignment?.form === "vert_timeline") {
+      return measureVertTimeline(component, w, ctx, assignment.knobs ?? {})
     }
-    const rows = milestoneLayout(component, w)
-    const maxBelow = rows.reduce((mx, r) => Math.max(mx, r.belowH), 48)
-    return AXIS_Y + maxBelow + BOTTOM_PAD
+    return measureDefault(component, w)
   },
   render(component, box, ctx) {
+    const assignment = resolveComponentForm("timeline", ctx.themeId)
+    if (assignment?.form === "vert_timeline") {
+      return renderVertTimeline(component, box, ctx, assignment.knobs ?? {})
+    }
     if (component.layout === "vertical") return renderVertical(component, box, ctx)
     const rows = milestoneLayout(component, box.w)
     return (

@@ -251,9 +251,11 @@ export function componentPage(
   build: (lex: Lexicon) => Component,
   lex: Lexicon,
   assets: CorpusAssets,
+  themeId: string = BASELINE_THEME,
+  opts: { solo?: boolean } = {},
 ): PptxIR {
   const component = build(lex)
-  const solo = FULL_BODY_TYPES.has(component.type)
+  const solo = opts.solo ?? FULL_BODY_TYPES.has(component.type)
 
   // A one-sentence lead-in, not the full corpus paragraph. The paragraph
   // runs long enough in English that it consumed the content rect and the
@@ -268,7 +270,7 @@ export function componentPage(
     footnote: solo ? undefined : lex.sources[2]!.label,
   }
   const safeId = componentId.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")
-  return deckShell(lex, assets, BASELINE_THEME, `component-${safeId}-${lex.id}`, [slide])
+  return deckShell(lex, assets, themeId, `component-${safeId}-${lex.id}`, [slide])
 }
 
 // ─────────────────────────────────────────────────────────────────────────

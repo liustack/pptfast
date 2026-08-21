@@ -7,6 +7,9 @@ import {
 } from "../../lib/svg-text-layout"
 import { accessibleInk, accessibleOpacity, resolveSemanticColor, type SemanticColorTokens } from "../ink"
 import { Icon } from "../icons"
+import { resolveComponentForm } from "./form-assignments"
+import { measureBubbleRow, renderBubbleRow } from "./forms/bubble-row"
+import { measureDonutTrio, renderDonutTrio } from "./forms/donut-trio"
 import type { RenderDef, SvgComponent } from "./types"
 
 type KpiComponent = Extract<Component, { type: "kpi_cards" }>
@@ -281,10 +284,24 @@ function visibleCardCount(fullCount: number, boxW: number): number {
 }
 
 export const kpi: SvgComponent<KpiComponent> = {
-  measure(component) {
+  measure(component, w, ctx) {
+    const assignment = resolveComponentForm("kpi_cards", ctx.themeId)
+    if (assignment?.form === "donut_trio") {
+      return measureDonutTrio(component, w, ctx, assignment.knobs ?? {})
+    }
+    if (assignment?.form === "bubble_row") {
+      return measureBubbleRow(component, w, ctx, assignment.knobs ?? {})
+    }
     return baseCardH(component)
   },
   render(rawComponent, box, ctx) {
+    const assignment = resolveComponentForm("kpi_cards", ctx.themeId)
+    if (assignment?.form === "donut_trio") {
+      return renderDonutTrio(rawComponent, box, ctx, assignment.knobs ?? {})
+    }
+    if (assignment?.form === "bubble_row") {
+      return renderBubbleRow(rawComponent, box, ctx, assignment.knobs ?? {})
+    }
     const fullCount = rawComponent.items.length
     // Only cap when the *full* set would actually breach
     // MIN_READABLE_CARD_W — a row whose cards already clear it reflows

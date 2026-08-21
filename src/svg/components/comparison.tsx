@@ -1,6 +1,8 @@
 import { Fragment } from "react"
 import type { Component } from "@/ir"
 import { measureTextUnits, type TextWeightHint } from "../../lib/svg-text-layout"
+import { resolveComponentForm } from "./form-assignments"
+import { measurePillPanels, renderPillPanels } from "./forms/pill-panels"
 import type { RenderDef, SvgComponent } from "./types"
 
 type ComparisonComponent = Extract<Component, { type: "comparison" }>
@@ -203,12 +205,11 @@ function truncate(text: string, colW: number, fontSize: number, weight?: TextWei
   return result + ellipsis
 }
 
-export const comparison: SvgComponent<ComparisonComponent> = {
-  measure(component) {
-    return (component.rows.length + 1) * ROW
-  },
+function measureDefault(component: ComparisonComponent): number {
+  return (component.rows.length + 1) * ROW
+}
 
-  render(rawComponent, box, ctx) {
+function renderDefault(rawComponent: ComparisonComponent, box: Parameters<SvgComponent<ComparisonComponent>["render"]>[1], ctx: Parameters<SvgComponent<ComparisonComponent>["render"]>[2]) {
     // 先丢多余的空首表头，再判首列重复：两种笔误叠在一起时，只有空表头
     // 已经丢掉，dedupeLabelColumn 的「cells 与 columns 等长」判据才成立。
     const { labelHeader, component: dedupedComponent } = dedupeLabelColumn(
@@ -377,6 +378,24 @@ export const comparison: SvgComponent<ComparisonComponent> = {
         )}
       </g>
     )
+}
+
+export const comparison: SvgComponent<ComparisonComponent> = {
+  measure(component, w, ctx) {
+    const assignment = resolveComponentForm("comparison", ctx.themeId)
+    if (assignment?.form === "pill_panels") {
+      const { component: normalized } = dedupeLabelColumn(dropBlankLeadingHeader(component))
+      return measurePillPanels(normalized, w, ctx, assignment.knobs ?? {})
+    }
+    return measureDefault(component)
+  },
+  render(component, box, ctx) {
+    const assignment = resolveComponentForm("comparison", ctx.themeId)
+    if (assignment?.form === "pill_panels") {
+      const { component: normalized } = dedupeLabelColumn(dropBlankLeadingHeader(component))
+      return renderPillPanels(normalized, box, ctx, assignment.knobs ?? {})
+    }
+    return renderDefault(component, box, ctx)
   },
 }
 

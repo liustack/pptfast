@@ -6,6 +6,10 @@ import {
   truncateToUnits,
 } from "../../lib/svg-text-layout"
 import { Icon } from "../icons"
+import { resolveComponentForm } from "./form-assignments"
+import { measureBadgeCards, renderBadgeCards } from "./forms/badge-cards"
+import { measureIconColumns, renderIconColumns } from "./forms/icon-columns"
+import { measureOutlineGrid, renderOutlineGrid } from "./forms/outline-grid"
 import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type IconCardsComponent = Extract<Component, { type: "icon_cards" }>
@@ -198,54 +202,86 @@ function cardGeometry(component: IconCardsComponent, w: number) {
   return { cols, rows, cardW, contentW, cardH }
 }
 
+function measureDefault(component: IconCardsComponent, w: number): number {
+  const { rows, cardH } = cardGeometry(component, w)
+  return rows * cardH + (rows - 1) * GAP
+}
+
+function renderDefault(
+  component: IconCardsComponent,
+  box: ComponentBox,
+  ctx: ComponentCtx,
+): React.ReactElement {
+  const { cols, rows, cardW, contentW, cardH } = cardGeometry(component, box.w)
+  // 密度拉伸（box.h 由布局分配）：每行卡壳均分增量，内容组垂直居中
+  const measuredH = rows * cardH + (rows - 1) * GAP
+  const perRowGrow = Math.max(0, ((box.h ?? measuredH) - measuredH) / rows)
+  const shellH = cardH + perRowGrow
+  const contentShift = perRowGrow / 2
+  return (
+    <g transform={`translate(${box.x},${box.y})`}>
+      {component.items.map((item, i) => {
+        const cardX = (i % cols) * (cardW + GAP)
+        const cardY = Math.floor(i / cols) * (shellH + GAP)
+        return (
+          <g key={i} data-audit-box={`${box.x + cardX},${box.y + cardY},${cardW}`}>
+            <rect
+              x={cardX}
+              y={cardY}
+              width={cardW}
+              height={shellH}
+              rx={ctx.shape?.radius ?? CARD_RADIUS}
+              fill={ctx.colors.surface}
+              {...(ctx.colors.cardStroke
+                ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 }
+                : {})}
+            />
+            <rect
+              x={cardX + PAD_X}
+              y={cardY}
+              width={ACCENT_W}
+              height={ACCENT_H}
+              rx={1.5}
+              fill={ctx.colors.accent}
+            />
+            {renderIconCardBody(
+              item,
+              { x: cardX + PAD_X, y: cardY + PAD_TOP + contentShift, w: contentW },
+              ctx
+            )}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 export const iconCards: SvgComponent<IconCardsComponent> = {
-  measure(component, w) {
-    const { rows, cardH } = cardGeometry(component, w)
-    return rows * cardH + (rows - 1) * GAP
+  measure(component, w, ctx) {
+    const assignment = resolveComponentForm("icon_cards", ctx.themeId)
+    switch (assignment?.form) {
+      case "icon_columns":
+        return measureIconColumns(component, w, ctx, assignment.knobs ?? {})
+      case "badge_cards":
+        return measureBadgeCards(component, w, ctx, assignment.knobs ?? {})
+      case "outline_grid":
+        return measureOutlineGrid(component, w, ctx, assignment.knobs ?? {})
+      default:
+        return measureDefault(component, w)
+    }
   },
   render(component, box, ctx) {
-    const { cols, rows, cardW, contentW, cardH } = cardGeometry(component, box.w)
-    // 密度拉伸（box.h 由布局分配）：每行卡壳均分增量，内容组垂直居中
-    const measuredH = rows * cardH + (rows - 1) * GAP
-    const perRowGrow = Math.max(0, ((box.h ?? measuredH) - measuredH) / rows)
-    const shellH = cardH + perRowGrow
-    const contentShift = perRowGrow / 2
-    return (
-      <g transform={`translate(${box.x},${box.y})`}>
-        {component.items.map((item, i) => {
-          const cardX = (i % cols) * (cardW + GAP)
-          const cardY = Math.floor(i / cols) * (shellH + GAP)
-          return (
-            <g key={i} data-audit-box={`${box.x + cardX},${box.y + cardY},${cardW}`}>
-              <rect
-                x={cardX}
-                y={cardY}
-                width={cardW}
-                height={shellH}
-                rx={ctx.shape?.radius ?? CARD_RADIUS}
-                fill={ctx.colors.surface}
-                {...(ctx.colors.cardStroke
-                  ? { stroke: ctx.colors.cardStroke, strokeWidth: 1 }
-                  : {})}
-              />
-              <rect
-                x={cardX + PAD_X}
-                y={cardY}
-                width={ACCENT_W}
-                height={ACCENT_H}
-                rx={1.5}
-                fill={ctx.colors.accent}
-              />
-              {renderIconCardBody(
-                item,
-                { x: cardX + PAD_X, y: cardY + PAD_TOP + contentShift, w: contentW },
-                ctx
-              )}
-            </g>
-          )
-        })}
-      </g>
-    )
+    const assignment = resolveComponentForm("icon_cards", ctx.themeId)
+    switch (assignment?.form) {
+      case "icon_columns":
+        return renderIconColumns(component, box, ctx, assignment.knobs ?? {})
+      case "badge_cards":
+        return renderBadgeCards(component, box, ctx, assignment.knobs ?? {})
+      case "outline_grid":
+        return renderOutlineGrid(component, box, ctx, assignment.knobs ?? {})
+      default:
+        return renderDefault(component, box, ctx)
+    }
   },
 }
 
