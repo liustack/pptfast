@@ -18,14 +18,13 @@
  * ## Candidate-set design (the content decision, argued per theme below)
  *
  * `MOTIF_CANDIDATES` is keyed by `CanonicalThemeId` and deliberately a
- * `Partial` — `runway`, `museum`, `stage`, and `playbill` have no entry at
+ * `Partial` — `runway`, `museum`, and `stage` have no entry at
  * all (not an empty array): those themes' `THEME_DEFINITIONS[id].motif` is
  * `undefined` by settled design. runway is typography-only ("排印至上",
  * tried with a motif twice and reverted both times). museum's corner pins
  * were struck (2026-08-21). stage is the undecorated black field
  * (2026-08-21, 无框黑场 — a frame of any weight would read as luxe /
- * museum's cousin). playbill's empty ticket chip was struck (2026-08-21:
- * the board's patch carried a date, motif may not carry content, an empty
+ * museum's cousin).
  * block is decoration-for-decoration's-sake). There is nothing to rotate
  * for a theme with no motif to begin with.
  *
@@ -56,7 +55,7 @@
  * | runway | *(none — settled decision, see module doc above)* | typography-only is the adjudicated look; no candidate set |
  * | museum | *(none — corner decor struck, 2026-08-21)* | identity in palette and serif type; no candidate set |
  * | stage | *(none — undecorated black field, 2026-08-21)* | 无框 is the identity; no candidate set |
- * | playbill | *(none — empty ticket chip struck, 2026-08-21)* | heavy lives in the yellow field and typeScale 1.3, not a sticker; no candidate set |
+ * | playbill | playbill-motif *(singleton)* | 2026-08-22 restored by user verdict: the date chip (meta.date-driven, absent-date = no chip) is part of the board design; no sibling family shares a ticket-chip vocabulary |
  * | journal | corner-ornament-motif, heritage-motif, rail-motif | journal/heritage/luxe share a "thin printed line" family (see luxe's own entry below) — after the editorial-group reskin (2026-08-20) journal sits at the "masthead rules" end and heritage at "classic emblem", the two split by line discipline rather than by corner vs. edge (journal runs its rules full width, heritage breaks its double rule around a seal); rail's progress track is the third, plain-geometry option |
  * | enterprise | enterprise-motif, banner-motif, rail-motif | enterprise's Swiss-grid IKB identity pairs only with the other minimal geometric-line motifs (banner's grid, rail's arc) — organic/wash/ornamental families would visibly clash with its industrial-design register |
  * | luxe | luxe-motif, heritage-motif, corner-ornament-motif | luxe/heritage/journal all draw from the same thin-printed-line family — luxe at the "gilt minimal" end, heritage at "classic emblem", journal at "masthead rules" (retitled by the editorial-group reskin, 2026-08-20) |
@@ -191,6 +190,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   lecture: ["lecture-motif"],
   swiss: ["swiss-motif"],
   memo: ["memo-motif"],
+  playbill: ["playbill-motif"],
 }
 
 /**

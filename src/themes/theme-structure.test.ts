@@ -137,16 +137,12 @@ describe("absent motifs are identity values, not holes (runway per definitions.t
     expect(THEME_DEFINITIONS.stage.motif).toBeUndefined()
   })
 
-  it("playbill declares no motif — empty ticket chip struck, heavy lives in the yellow field and typeScale", () => {
-    expect(THEME_DEFINITIONS.playbill.motif).toBeUndefined()
-  })
-
-  it("every other theme does declare one — the no-motif quartet is settled, not a gap list", () => {
+  it("every other theme does declare one — the no-motif trio is settled, not a gap list", () => {
     const withMotif = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].motif !== undefined)
     expect(withMotif).toEqual(
-      CANONICAL_THEME_IDS.filter((id) => id !== "runway" && id !== "museum" && id !== "stage" && id !== "playbill"),
+      CANONICAL_THEME_IDS.filter((id) => id !== "runway" && id !== "museum" && id !== "stage"),
     )
-    expect(withMotif).toHaveLength(21)
+    expect(withMotif).toHaveLength(22)
   })
 })
 
