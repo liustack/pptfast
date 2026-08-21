@@ -18,13 +18,13 @@
  * ## Candidate-set design (the content decision, argued per theme below)
  *
  * `MOTIF_CANDIDATES` is keyed by `CanonicalThemeId` and deliberately a
- * `Partial` — `runway` has no entry at all (not an empty array): its own
- * `THEME_DEFINITIONS.runway.motif` is `undefined` by a settled,
- * user-adjudicated design decision ("排印至上", `definitions.ts`'s own
- * comment — typography-only was tried with a motif twice and reverted both
- * times). There is nothing to rotate for a theme with no motif to begin
- * with, and reopening that call is out of this task's scope (控制者裁决 §5:
- * "settled decisions 不重启辩论").
+ * `Partial` — `runway` and `stage` have no entry at all (not an empty
+ * array): both themes' `THEME_DEFINITIONS[id].motif` is `undefined` by
+ * settled design. runway is typography-only ("排印至上", tried with a motif
+ * twice and reverted both times). stage is the undecorated black field
+ * (2026-08-21, 无框黑场 — a frame of any weight would read as luxe /
+ * museum's cousin). There is nothing to rotate for a theme with no motif
+ * to begin with.
  *
  * Every other candidate set's **first element is always that theme's own
  * pre-existing anchor motif** (`THEME_DEFINITIONS[id].motif`, locked by
@@ -51,6 +51,7 @@
  * | academic | rail-motif, banner-motif, corner-ornament-motif | a progress track pairs with the other two quiet-line members (banner's annotation rules) and one scholarly-print mark (journal's masthead rules) — academic's register tolerates print tradition but not organic softness or brush color. Both siblings were redrawn by the editorial-group reskin (2026-08-20); the id `corner-ornament-motif` no longer draws corner ornaments at all — read that file, not its name. |
  * | tech | constellation-motif, poster-motif, enterprise-motif | tech's own gradient-field glow (constellation) pairs with insight's sibling glow family, plus enterprise's precise grid for the "engineered" register — never organic/hand-drawn, which would undercut the precision identity |
  * | runway | *(none — settled decision, see module doc above)* | typography-only is the adjudicated look; no candidate set |
+ * | stage | *(none — undecorated black field, 2026-08-21)* | 无框 is the identity; no candidate set |
  * | journal | corner-ornament-motif, heritage-motif, rail-motif | journal/heritage/luxe share a "thin printed line" family (see luxe's own entry below) — after the editorial-group reskin (2026-08-20) journal sits at the "masthead rules" end and heritage at "classic emblem", the two split by line discipline rather than by corner vs. edge (journal runs its rules full width, heritage breaks its double rule around a seal); rail's progress track is the third, plain-geometry option |
  * | enterprise | enterprise-motif, banner-motif, rail-motif | enterprise's Swiss-grid IKB identity pairs only with the other minimal geometric-line motifs (banner's grid, rail's arc) — organic/wash/ornamental families would visibly clash with its industrial-design register |
  * | luxe | luxe-motif, heritage-motif, corner-ornament-motif | luxe/heritage/journal all draw from the same thin-printed-line family — luxe at the "gilt minimal" end, heritage at "classic emblem", journal at "masthead rules" (retitled by the editorial-group reskin, 2026-08-20) |
@@ -157,15 +158,15 @@ export const MOTIF_BASE_WEIGHT = 1
  * Theme → 2-3 style-compatible motif candidates, anchor (the theme's own
  * pre-existing `THEME_DEFINITIONS[id].motif`) always first. See this
  * module's own header comment for the full rationale table. `Partial`:
- * `runway` has no entry (its own motif is `undefined` by settled design
- * decision, nothing to rotate).
+ * `runway` and `stage` have no entry (their own motif is `undefined` by
+ * settled design, nothing to rotate).
  */
 export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId[]>> = {
   consulting: ["banner-motif", "rail-motif", "enterprise-motif"],
   insight: ["poster-motif", "constellation-motif"],
   academic: ["rail-motif", "banner-motif", "corner-ornament-motif"],
   tech: ["constellation-motif", "poster-motif", "enterprise-motif"],
-  // runway: intentionally absent — see module header.
+  // runway, stage: intentionally absent — see module header.
   journal: ["corner-ornament-motif", "heritage-motif", "rail-motif"],
   enterprise: ["enterprise-motif", "banner-motif", "rail-motif"],
   luxe: ["luxe-motif", "heritage-motif", "corner-ornament-motif"],
@@ -192,11 +193,11 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  * that want to know a page's pick without re-deriving the salt logic.
  *
  * - `ir.theme.id` has no entry in {@link MOTIF_CANDIDATES} (a registered/
- *   custom theme, an unrecognized id, or `runway`): falls back to
+ *   custom theme, an unrecognized id, or `runway` / `stage`): falls back to
  *   `getThemeDefinition(ir.theme.id).motif` directly — the exact
- *   pre-this-task behavior, so every theme outside the 13 builtins (and
- *   runway within them) renders byte-identically to before this module
- *   existed.
+ *   pre-this-task behavior, so every theme outside the builtins (and the
+ *   two none identities within them) renders byte-identically to before
+ *   this module existed.
  * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`,
  *   crayon, arena, museum, and every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   always returns that single member regardless of seed/pageKey — also

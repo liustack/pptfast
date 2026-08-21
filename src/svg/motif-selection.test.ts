@@ -21,10 +21,10 @@ function makeIR(slides: Slide[], themeId: string, seed?: number): PptxIR {
 const contentSlide = (id: string): Slide => ({ type: "content", id, heading: id, components: [] }) as Slide
 
 describe("MOTIF_CANDIDATES (P1 variety wave, task 2 — table shape)", () => {
-  it("every canonical theme except runway has a non-empty candidate set", () => {
+  it("every canonical theme except runway and stage has a non-empty candidate set", () => {
     for (const id of CANONICAL_THEME_IDS) {
-      if (id === "runway") {
-        expect(MOTIF_CANDIDATES[id], "runway is the settled no-motif theme — must stay absent, not an empty array").toBeUndefined()
+      if (id === "runway" || id === "stage") {
+        expect(MOTIF_CANDIDATES[id], `${id} is a settled no-motif theme — must stay absent, not an empty array`).toBeUndefined()
         continue
       }
       const candidates = MOTIF_CANDIDATES[id]
@@ -77,6 +77,13 @@ describe("resolveMotifId — byte-inertness for the themes this task must not di
   it("runway (no motif, settled decision) resolves to undefined for every seed", () => {
     for (let seed = 0; seed < 20; seed++) {
       const ir = makeIR([contentSlide("p0")], "runway", seed)
+      expect(resolveMotifId(ir, ir.slides[0]!, 0)).toBeUndefined()
+    }
+  })
+
+  it("stage (undecorated black field) resolves to undefined for every seed", () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const ir = makeIR([contentSlide("p0")], "stage", seed)
       expect(resolveMotifId(ir, ir.slides[0]!, 0)).toBeUndefined()
     }
   })
