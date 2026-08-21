@@ -243,7 +243,9 @@ describe("THEME_DEFINITIONS", () => {
     // 是 layoutTendencies（软权重），不是 layouts 的收窄，两者是不同的机制。
     expect(THEME_DEFINITIONS.ink.layoutTendencies).toEqual({
       cover: ["colophon", "fashion-masthead"],
+      chapter: ["roman-chapter", "tone-adaptive-chapter"],
       content: ["quiet-frame", "narrow-column"],
+      ending: ["tone-adaptive-ending", "poster-ending"],
     })
 
     // heritage：同上，chapter 排除已撤销。
