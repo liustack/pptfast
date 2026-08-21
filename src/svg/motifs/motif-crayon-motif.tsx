@@ -16,7 +16,12 @@ import type { DecorProps } from "./types"
  *     贴纸数量是参数。
  *   - **底带彩虹短划**：y644，x 从 96 起 24 段，每段 `x1=96+i*46 → x2=x1+26`，
  *     strokeWidth 5，圆头 linecap，四色轮换 `chartPalette`。板上止于
- *     x≈1180。
+ *     x≈1180。第五保护带（`docs/designing-themes.md` 第 5 条 y620-664）
+ *     落地后走减淡档 {@link DASH_OPACITY}（0.3）：几何一字不改，每根
+ *     `<line>` 叶子自带 opacity（导出侧 `svg2pptx` 只读叶子属性，挂 `<g>`
+ *     会丢）。准入是正文墨压在「四色划各自叠在 bg 上的合成色」上四格都
+ *     ≥4.5:1，`motif-crayon-motif.test.tsx` 用 `contrastRatio` 锁死。
+ *     cover 仍撤底带，减淡也是删除线观感。
  *   - **左下角一颗橘红星贴纸**：板上路径从 `(56,628)` 起笔（星顶），填
  *     accent。标签写的 x56,y636 是这颗星的位置，不是另一个坐标。
  *
@@ -24,9 +29,9 @@ import type { DecorProps } from "./types"
  *
  * 板上 24 段划到 x1180，其中 i=22、i=23 的墨迹（含圆头半宽 2.5px）横穿
  * `brand-chrome.tsx` 的右下 logo 盒 (1120,630,96×40)——正是
- * `docs/designing-themes.md` 第 5 条四内容区的第四个。campaign 的底带纸屑
- * 整条退役是同一条先例。这里少画末两段、前 22 段坐标一字不改，24 段的
- * 节奏和四色轮换都还在，只是右缘在 logo 盒左沿停住。
+ * `docs/designing-themes.md` 第 5 条五个保护区里的右下 logo 盒。campaign
+ * 的底带纸屑整条退役是同一条先例。这里少画末两段、前 22 段坐标一字不改，
+ * 24 段的节奏和四色轮换都还在，只是右缘在 logo 盒左沿停住。
  *
  * 左下星贴纸会擦到可选的左下 logo 盒 (64,630,96×40) 大约 6px。第 5 条点名
  * 的是右下那只，左下放星是板上自己画的，不挪。
@@ -53,13 +58,14 @@ import type { DecorProps } from "./types"
  *
  * crayon 声明的封面构造之一 `tone-adaptive-header` 在无背景图模式下把
  * 作者行画在 x64 y650 基线、日期行右对齐 y650（`cover-tone-adaptive-header
- * .tsx`），墨迹带约 y624-656——第 5 条的页脚 meta 带从 y664 才起，保护不到
- * 这一行。彩虹划的墨迹 y641.5-646.5 正好横穿这行字（structure-map 点名的
+ * .tsx`），墨迹带约 y624-656——正是第 5 条新增的 y620-664 第五保护带。
+ * 彩虹划的墨迹 y641.5-646.5 正好横穿这行字（structure-map 点名的
  * 「tone-adaptive 底槽撞位」，五案里第四案），星贴纸也压住作者行起笔。
- * motif 不许感知当页选中的 layout（terra 板的确定性红线），所以照 terra
- * 「chapter 整页退让」的同一模式按页型处理：cover 撤底带，顶波浪与三枚
- * 贴纸保留。板上封面样例的 meta 行画在彩虹划上方，与仓库 layout 的实际
- * 坐标不符，以仓库为准。
+ * 减淡档把划退到底色级，但 meta 行横贯全宽，淡划仍是删除线观感，所以
+ * cover 继续撤底带。motif 不许感知当页选中的 layout（terra 板的确定性
+ * 红线），所以照 terra「chapter 整页退让」的同一模式按页型处理：cover
+ * 撤底带，顶波浪与三枚贴纸保留。板上封面样例的 meta 行画在彩虹划上方，
+ * 与仓库 layout 的实际坐标不符，以仓库为准。
  *
  * 纪律：零 theme id、零 hex。波浪走 primary，星走 accent，贴纸与彩虹划走
  * `chartPalette`（`chartPaletteOffset` 是 ctx 上的独立字段、不改
@@ -109,6 +115,12 @@ const DASH_X0 = 96
 const DASH_STEP = 46
 const DASH_LEN = 26
 const DASH_STROKE = 5
+/**
+ * 第五保护带减淡档。几何一字不改，只把 5px 实色划退到底色级。
+ * 准入：正文墨压在四色划叠 bg 的合成色上四格都 ≥4.5:1，见
+ * `motif-crayon-motif.test.tsx`。
+ */
+const DASH_OPACITY = 0.3
 /** 板上的段数。末两段让开右下 logo 盒，实际落笔见 {@link dashDrawn}。 */
 const DASH_COUNT = 24
 
@@ -181,6 +193,7 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
             stroke={palette[i % 4]}
             strokeWidth={DASH_STROKE}
             strokeLinecap="round"
+            opacity={DASH_OPACITY}
           />
         ))}
       {bottomBand && !halfField && <path d={STAR_D} fill={orange} />}

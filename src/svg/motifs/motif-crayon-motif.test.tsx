@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
+import { contrastRatio, blendOver } from "../ink"
 import { resolveStyle } from "../../themes"
 import { PACING_BUDGETS } from "@/narrative"
 import { CrayonMotif, CRAYON_DASH_DRAWN } from "./motif-crayon-motif"
@@ -173,9 +174,35 @@ describe("CrayonMotif（蜡笔描边）", () => {
       expect(l.getAttribute("stroke")).toBe(t.colors.chartPalette[i % 4])
       expect(l.getAttribute("stroke-width")).toBe("5")
       expect(l.getAttribute("stroke-linecap")).toBe("round")
+      expect(l.getAttribute("opacity"), "dash opacity lives on the <line> leaf").toBe("0.3")
     }
     const last = dashes[dashes.length - 1]!
     expect(num(last, "x2") + num(last, "stroke-width") / 2).toBeLessThan(BOARD_ZONES.brLogo.x)
+  })
+
+  /**
+   * 第五保护带准入：正文墨压在「四色划各自叠在 bg 上的合成色」上，四格都
+   * ≥4.5:1。opacity 拿掉或改回 1，蓝/橘/绿三格立刻红（黄格满不透明也过）。
+   */
+  it("彩虹划减淡档：正文墨压在四色划叠 bg 的合成色上，四格都 ≥4.5:1", () => {
+    const t = resolveStyle("crayon")
+    const { root } = draw("crayon", contentSlide)
+    const { dashes } = parts(root)
+    const seen = new Set<string>()
+    for (const l of dashes) {
+      const stroke = l.getAttribute("stroke")!
+      const opacityAttr = l.getAttribute("opacity")
+      expect(opacityAttr, `dash@${l.getAttribute("x1")} missing leaf opacity`).not.toBeNull()
+      const opacity = Number(opacityAttr)
+      const composite = blendOver(stroke, t.colors.bg, opacity)
+      const ratio = contrastRatio(t.colors.text, composite)
+      expect(
+        ratio,
+        `${stroke} @ ${opacity} composites to ${composite} (${ratio.toFixed(2)}:1)`,
+      ).toBeGreaterThanOrEqual(4.5)
+      seen.add(stroke)
+    }
+    expect([...seen]).toEqual(t.colors.chartPalette)
   })
 
   it("左下星贴纸走 accent，板上路径从 (56,628) 起笔", () => {
@@ -290,11 +317,13 @@ describe("CrayonMotif（蜡笔描边）", () => {
     }
   })
 
-  it("画笔属性写在叶子上，不挂 <g>——导出侧只读叶子自己的 fill/stroke", () => {
-    const { root } = draw("crayon", coverSlide)
-    for (const g of Array.from(root.querySelectorAll("g"))) {
-      for (const attr of ["fill", "stroke", "opacity"]) {
-        expect(g.getAttribute(attr), `<g> carries ${attr}, which svg2pptx drops`).toBeNull()
+  it("画笔属性写在叶子上，不挂 <g>——导出侧只读叶子自己的 fill/stroke/opacity", () => {
+    for (const slide of [coverSlide, contentSlide]) {
+      const { root } = draw("crayon", slide)
+      for (const g of Array.from(root.querySelectorAll("g"))) {
+        for (const attr of ["fill", "stroke", "opacity"]) {
+          expect(g.getAttribute(attr), `<g> on ${slide.type} carries ${attr}, which svg2pptx drops`).toBeNull()
+        }
       }
     }
   })
