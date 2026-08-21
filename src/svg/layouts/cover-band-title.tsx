@@ -40,7 +40,6 @@ const KICKER_GAP = 26
 const KICKER_SIZE = 18
 const KICKER_TRACKING_EM = 0.22
 const META_Y = 56
-const META_LEFT_X = 64
 const META_RIGHT_X = 1108
 const META_SIZE = 16
 const MARK_SIZE = 26
