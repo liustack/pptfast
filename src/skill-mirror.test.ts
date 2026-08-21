@@ -239,7 +239,6 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(zh).toContain('chrome: "cover-only"')
   })
 
-
   it("both files have the same number of ### Phase N sections", () => {
     const phaseHeadings = (text: string) => text.match(/^### Phase \d+/gm) ?? []
     const en = phaseHeadings(read(EN_REL))

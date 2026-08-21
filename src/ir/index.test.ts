@@ -1922,7 +1922,7 @@ describe("theme.style override", () => {
 })
 
 describe("deck chrome posture", () => {
-  it("is omittable — chrome stays undefined, no default is baked in by the schema", () => {
+  it("is omittable: chrome stays undefined, no default is baked in by the schema", () => {
     const r = parsePptxIR(minimal())
     expect(r.success).toBe(true)
     if (r.success) expect(r.data.chrome).toBeUndefined()

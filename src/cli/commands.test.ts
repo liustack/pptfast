@@ -772,7 +772,7 @@ describe("runSchema --spec", () => {
   it("prints the deck spec schema", () => {
     const s = JSON.parse(runSchema("spec")) as { properties?: Record<string, unknown> }
     expect(Object.keys(s.properties ?? {})).toEqual(
-      expect.arrayContaining(["version", "narrative", "theme", "pages"]),
+      expect.arrayContaining(["version", "narrative", "theme", "brand", "chrome", "pages"]),
     )
   })
 })

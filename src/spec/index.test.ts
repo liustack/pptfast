@@ -151,7 +151,6 @@ describe("DeckSpecSchema / validateSpec structural pass", () => {
     expect(formatSpecIssues(r.errors)).toMatch(/chrome/)
   })
 
-
   it("rejects unknown page-level keys (strict)", () => {
     const r = validateSpec(makePlan([cover(), content("p-body", { notAField: true }), ending()]))
     expect(r.ok).toBe(false)

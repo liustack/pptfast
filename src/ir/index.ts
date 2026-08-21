@@ -1,5 +1,5 @@
 /**
- * The v4 IR schema root: theme/meta/assets/brand/background/slide/narrative
+ * The v4 IR schema root: theme/meta/assets/brand/chrome/background/slide/narrative
  * and the top-level `PptxIRSchema` a deck document parses against
  * (`parsePptxIR`). The frozen v3 shape lives in `./legacy-v3.ts`, kept only
  * for `migrateIrV3ToV4`'s input parsing (spec §9.3).
@@ -26,7 +26,7 @@
  *
  * The rest of this module — everything outside the `// ── Components` section
  * — is unrelated to the component-domain split and was never in its scope:
- * background/theme/meta/assets/brand/slide/narrative and the top-level
+ * background/theme/meta/assets/brand/chrome/slide/narrative and the top-level
  * `PptxIRSchema` are genuinely this file's own content, not aggregated from
  * elsewhere.
  */

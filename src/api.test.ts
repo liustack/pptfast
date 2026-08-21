@@ -2013,7 +2013,6 @@ describe("generatePptx", () => {
   })
 })
 
-
 describe("generatePptx draft gate (W5 task 1)", () => {
   const withPlaceholder = {
     ...raw,
