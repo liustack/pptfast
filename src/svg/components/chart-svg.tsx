@@ -56,9 +56,29 @@ export type ChartRenderFn = (
   bgHex?: string,
 ) => ReactElement
 
-/** Label font size (px) for category/value labels on bar and line charts. */
+/**
+ * Category tick size (px) on cartesian plots (bar / line / area / scatter
+ * extent labels). Label-tuning A (2026-08): 11 → 13, still `muted`.
+ */
+const CATEGORY_FONT_SIZE = 13
+const CATEGORY_MIN_FONT_SIZE = 8
+/**
+ * Value-label size/weight on bar tops and line endpoints. Label-tuning A:
+ * 11px muted → 13px / 600 / `text` (the ctx text token, never a series color).
+ */
+const VALUE_FONT_SIZE = 13
+const VALUE_FONT_WEIGHT = 600
+/**
+ * Gap (px) from a vertical bar's top edge to the value label's alphabetic
+ * baseline. Was 4; the LabelTuning.dc.html artboard pins ~9.
+ */
+const VALUE_LABEL_GAP = 9
+/**
+ * 11px leftover used by dumbbell's "from" value and the gauge caption —
+ * those subtypes never drew the cartesian tick/value pair this tuning
+ * restyles, so they keep their own established size.
+ */
 const LABEL_FONT_SIZE = 11
-const LABEL_MIN_FONT_SIZE = 8
 /** Space (px) reserved at the top of `h` for value labels above the plot. */
 const LABEL_TOP_PAD = 14
 /** Space (px) reserved at the bottom of `h` for category labels below the plot. */
@@ -427,8 +447,8 @@ export function renderBar(
         const perBarW = n <= 1 ? usableW : Math.max(1, (usableW - (n - 1) * BAR_GROUP_EDGE_GAP) / n)
         const category = fitSvgLine(String(cat.x), {
           maxWidth: usableW,
-          fontSize: LABEL_FONT_SIZE,
-          minFontSize: LABEL_MIN_FONT_SIZE,
+          fontSize: CATEGORY_FONT_SIZE,
+          minFontSize: CATEGORY_MIN_FONT_SIZE,
         })
         const barElements: ReactElement[] = []
         for (const s of model.series) {
@@ -460,10 +480,11 @@ export function renderBar(
             <text
               key={`v-${s.seriesIndex}`}
               x={barX + perBarW / 2}
-              y={barY - 4}
+              y={barY - VALUE_LABEL_GAP}
               textAnchor="middle"
-              fontSize={LABEL_FONT_SIZE}
-              fill={isSingle ? textColor : mutedColor}
+              fontSize={VALUE_FONT_SIZE}
+              fontWeight={VALUE_FONT_WEIGHT}
+              fill={textColor}
               dominantBaseline="alphabetic"
             >
               {value}
@@ -609,8 +630,8 @@ export function renderLine(
               categories.map((cat, i) => {
                 const category = fitSvgLine(String(cat.x), {
                   maxWidth: categoryMaxWidth,
-                  fontSize: LABEL_FONT_SIZE,
-                  minFontSize: LABEL_MIN_FONT_SIZE,
+                  fontSize: CATEGORY_FONT_SIZE,
+                  minFontSize: CATEGORY_MIN_FONT_SIZE,
                 })
                 return (
                   <text
@@ -638,7 +659,8 @@ export function renderLine(
                 x={first.x}
                 y={first.y - 6}
                 textAnchor={edgeAnchor(first.i, categories.length)}
-                fontSize={LABEL_FONT_SIZE}
+                fontSize={VALUE_FONT_SIZE}
+                fontWeight={VALUE_FONT_WEIGHT}
                 fill={textColor}
                 dominantBaseline="alphabetic"
               >
@@ -650,7 +672,8 @@ export function renderLine(
                 x={last.x}
                 y={last.y - 6}
                 textAnchor={edgeAnchor(last.i, categories.length)}
-                fontSize={LABEL_FONT_SIZE}
+                fontSize={VALUE_FONT_SIZE}
+                fontWeight={VALUE_FONT_WEIGHT}
                 fill={textColor}
                 dominantBaseline="alphabetic"
               >
@@ -960,11 +983,8 @@ export function renderBarHorizontal(
    */
   showGrid = false,
   _component?: ChartInput,
-  bgHex?: string,
+  _bgHex?: string,
 ): ReactElement {
-  // Value labels sit on the page background, so the accent has to clear a
-  // contrast floor here — see `ChartRenderFn`'s `bgHex` doc comment.
-  const accentInk = bgHex ? accessibleInk(accentColor, bgHex, 11) : accentColor
   // R1 evidence wave, Task T2 — same category-union/shared-domain wiring as
   // `renderBar`, mirrored onto the perpendicular axis (rows instead of
   // columns, `horizontalBarExtent` instead of `verticalBarExtent`). This
@@ -1039,9 +1059,9 @@ export function renderBarHorizontal(
               key={`v-${s.seriesIndex}`}
               x={barX + barW + 8}
               y={barY + perBarH / 2 + 4}
-              fontSize={12.5}
-              fontWeight="bold"
-              fill={isSingle ? (isMax ? accentInk : mutedColor) : mutedColor}
+              fontSize={VALUE_FONT_SIZE}
+              fontWeight={VALUE_FONT_WEIGHT}
+              fill={textColor}
               dominantBaseline="alphabetic"
             >
               {value}
@@ -1272,11 +1292,11 @@ export function renderScatter(
           surface, it does not invent a second axis system. */}
       {xsAll.length > 0 && (
         <>
-          <text x={x0} y={y0 + h - 4} textAnchor="start" fontSize={LABEL_FONT_SIZE} fill={mutedColor} dominantBaseline="alphabetic">
+          <text x={x0} y={y0 + h - 4} textAnchor="start" fontSize={CATEGORY_FONT_SIZE} fill={mutedColor} dominantBaseline="alphabetic">
             {String(xMin)}
           </text>
           {xMax !== xMin && (
-            <text x={x0 + w} y={y0 + h - 4} textAnchor="end" fontSize={LABEL_FONT_SIZE} fill={mutedColor} dominantBaseline="alphabetic">
+            <text x={x0 + w} y={y0 + h - 4} textAnchor="end" fontSize={CATEGORY_FONT_SIZE} fill={mutedColor} dominantBaseline="alphabetic">
               {String(xMax)}
             </text>
           )}
@@ -1367,8 +1387,8 @@ export function renderArea(
               categories.map((cat, i) => {
                 const category = fitSvgLine(String(cat.x), {
                   maxWidth: categoryMaxWidth,
-                  fontSize: LABEL_FONT_SIZE,
-                  minFontSize: LABEL_MIN_FONT_SIZE,
+                  fontSize: CATEGORY_FONT_SIZE,
+                  minFontSize: CATEGORY_MIN_FONT_SIZE,
                 })
                 return (
                   <text

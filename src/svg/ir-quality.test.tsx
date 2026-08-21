@@ -1156,9 +1156,11 @@ describe("checkIrQuality", () => {
   // shared (both files document why — a pure quality-check module vs. a
   // React SVG renderer, same precedent as gantt.tsx's `vx`). A local
   // duplicate can silently drift, and a drift here would make this warning
-  // lie about what actually renders: either a chart_type would render axes
-  // titles with no visibility into "this type isn't fully supported", or a
-  // chart_type would warn "ignored" while quietly rendering them anyway.
+  // lie about what actually renders: either a chart_type would render a
+  // y_title with no visibility into "this type isn't fully supported", or a
+  // chart_type would warn "ignored" while quietly rendering one anyway.
+  // (x_title is accepted and not drawn on applicable types — label-tuning A —
+  // so the probe string is y_title.)
   // Pins agreement behaviorally (chart.render's real output vs.
   // checkIrQuality's real finding) rather than reaching into either file's
   // private constants, so it also catches a bug in either applicability
@@ -1180,7 +1182,7 @@ describe("checkIrQuality", () => {
     const box = { x: 0, y: 0, w: 1120 }
     const ALL_CHART_TYPES = ["bar", "line", "pie", "funnel", "dumbbell"] as const
 
-    it.each(ALL_CHART_TYPES)("chart_type=%s: chart.tsx renders x_title iff ir-quality.ts does NOT warn chart_axes_ignored", (chart_type) => {
+    it.each(ALL_CHART_TYPES)("chart_type=%s: chart.tsx renders y_title iff ir-quality.ts does NOT warn chart_axes_ignored", (chart_type) => {
       const series =
         chart_type === "dumbbell"
           ? [
@@ -1188,7 +1190,8 @@ describe("checkIrQuality", () => {
               { name: "To", data: [{ x: "A", y: 20 }] },
             ]
           : [{ name: "S1", data: [{ x: "A", y: 40 }, { x: "B", y: 60 }] }]
-      const component = { type: "chart" as const, chart_type, axes: { x_title: "Probe" }, series }
+      // Probe is y_title (x_title is accepted and not drawn — label-tuning A).
+      const component = { type: "chart" as const, chart_type, axes: { y_title: "Probe" }, series }
 
       const markup = renderSvgMarkup(
         <svg xmlns="http://www.w3.org/2000/svg">{chart.render(component, box, ctx)}</svg>,

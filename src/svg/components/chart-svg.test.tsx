@@ -102,7 +102,7 @@ describe("renderBar — gradient bars", () => {
     }
   })
 
-  it("does not alter existing category/value labels", () => {
+  it("paints value labels at 13px / 600 / text, 9px above the bar top, and category ticks at 13px muted", () => {
     const { container } = svg(
       renderBar(seriesOf(100, 200), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT),
     )
@@ -112,6 +112,15 @@ describe("renderBar — gradient bars", () => {
     const values = texts.filter((t) => t.getAttribute("fill") === TEXT)
     expect(categories.map((t) => t.textContent)).toEqual(["C0", "C1"])
     expect(values.map((t) => t.textContent)).toEqual(["100", "200"])
+    const rects = Array.from(container.querySelectorAll("rect"))
+    values.forEach((t, i) => {
+      expect(t.getAttribute("font-size")).toBe("13")
+      expect(t.getAttribute("font-weight")).toBe("600")
+      expect(Number(rects[i]!.getAttribute("y")) - Number(t.getAttribute("y"))).toBe(9)
+    })
+    for (const t of categories) {
+      expect(t.getAttribute("font-size")).toBe("13")
+    }
   })
 })
 
@@ -582,7 +591,7 @@ describe("renderDumbbell — value-label width fitting (from.y/to.y)", () => {
     const toLabel = texts.find((t) => t.textContent === "128")
     expect(fromLabel).toBeTruthy()
     expect(toLabel).toBeTruthy()
-    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(11) // LABEL_FONT_SIZE, unchanged
+    expect(Number(fromLabel!.getAttribute("font-size"))).toBe(11) // dumbbell "from" keeps the pre-tuning 11px
     expect(Number(toLabel!.getAttribute("font-size"))).toBe(12.5) // unchanged
     expect(fromLabel!.getAttribute("data-truncated")).toBeNull()
     expect(toLabel!.getAttribute("data-truncated")).toBeNull()

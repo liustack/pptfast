@@ -1,6 +1,5 @@
 import type { Component } from "@/ir"
-import { fitSvgLine } from "../../lib/svg-text-layout"
-import { stacksVertically } from "../../lib/text-script"
+import { fitSvgLine, measureTextUnits } from "../../lib/svg-text-layout"
 import { rotateChartPalette } from "../chart-palette"
 import { accessibleInk } from "../ink"
 import { buildChartModel } from "./chart-model"
@@ -81,6 +80,16 @@ function resolveRenderer(component: ChartComponent): ChartRenderFn {
  * module and this one is a React SVG renderer, same "small local list +
  * comment" precedent gantt.tsx's `vx` primitive already set rather than
  * reaching across files for two entries).
+ *
+ * **x_title is accepted and not drawn (label-tuning A, 2026-08).** Category
+ * ticks already name the axis ("第一季度" does not need a second "季度"
+ * caption underneath). The IR field stays so existing decks keep
+ * validating. This renderer simply does not paint it and does not reserve
+ * a band for it. y_title still renders (as a header-row unit caption) and
+ * show_grid still toggles the reference lines. ir-quality.ts's
+ * `chart_axes_ignored` warning still keys off this same applicability set:
+ * a pie with `axes.x_title` still warns, a bar with `axes.x_title` does
+ * not, even though the bar does not paint that string.
  */
 const AXES_APPLICABLE_TYPES: ReadonlySet<ChartComponent["chart_type"]> = new Set([
   "bar",
@@ -113,187 +122,143 @@ function legendApplicable(component: ChartComponent): boolean {
   return axesApplicable(component) && component.series.length >= 2
 }
 
-/** Legend swatch (px, square) — small enough to read as a color chip
- * alongside an 11px name, not so large it unbalances a single-line band. */
+/**
+ * Header row (label-tuning A, 2026-08). y_title (unit caption, left) and
+ * the legend (right) share one band above the plot. The 52px reservation
+ * and the 16px text baseline are taken from LabelTuning.dc.html: the plot
+ * group is translated down by 52 relative to a header baseline at 16, which
+ * is what keeps the tallest bar's value label ≥ 24px clear of the header
+ * ink (a collision the design pass hit once with the legend parked on the
+ * header without moving the plot).
+ */
+const HEADER_ROW_H = 52
+const HEADER_BASELINE_Y = 16
+/** y_title in the header — 12px muted, always a single horizontal line. */
+const HEADER_TITLE_SIZE = 12
+const HEADER_TITLE_MIN_SIZE = 9
+/** Gap (px) between the y_title's right edge and the legend's left edge. */
+const HEADER_LEGEND_GAP = 16
+
+/** Legend swatch (px, square) — LabelTuning.dc.html keeps the 10px chip. */
 const LEGEND_SWATCH_SIZE = 10
-/** Legend name font size (px) — matches chart-svg.tsx's own LABEL_FONT_SIZE
- * (bar/line category & value labels), so legend text reads at the same
- * visual weight as the chart content it describes. */
-const LEGEND_FONT_SIZE = 11
+/** Legend name font size (px) — 11 → 12 to match the header unit caption. */
+const LEGEND_FONT_SIZE = 12
 const LEGEND_MIN_FONT_SIZE = 9
 /** Per-entry name budget (px) before `fitSvgLine` shrinks/truncates it. */
 const LEGEND_NAME_MAX_W = 96
 /** Gap (px) between a swatch and its own name. */
 const LEGEND_SWATCH_GAP = 6
-/** Gap (px) after one entry's name before the next entry's swatch starts —
- * keeps adjacent entries visually separated at any name length (fitSvgLine
- * caps the name at LEGEND_NAME_MAX_W, so this trailing gap is never eaten
- * by overflow text). */
-const LEGEND_ENTRY_TRAILING_GAP = 18
-/** One legend entry's fixed pixel slot: swatch + gap + name budget +
- * trailing gap. A coarse, deterministic budget — same "approximate, not a
- * real per-character canvas measurement" style `maxYAxisChars`/
- * `fitHeadingLines` already use throughout this codebase — not an exact fit:
- * how many entries fit a given width is `floor(availW / LEGEND_SLOT_W)`,
- * and any individual name too long for its own slot shrinks/truncates via
- * `fitSvgLine` rather than growing the slot. Entries beyond that count drop
- * into one trailing "+N …" slot instead of shrinking every slot further
- * — the same "fixed reserved footprint, content adapts to it" contract
- * `measure()`'s own x_title/y_title bands already use.
+/**
+ * Minimum swatch-to-swatch pitch (px). LabelTuning.dc.html starts two
+ * 2-character CJK names 72px apart and grows the slot when the fitted name
+ * is wider than that.
  */
-const LEGEND_SLOT_W = LEGEND_SWATCH_SIZE + LEGEND_SWATCH_GAP + LEGEND_NAME_MAX_W + LEGEND_ENTRY_TRAILING_GAP
-/** Band height (px) reserved below the plot (and below x_title's own band,
- * if also present) for the legend row — mirrors AXES_X_TITLE_H's "reserve a
- * fixed band, add it to measure() only when the content that needs it is
- * actually present" pattern. */
-const LEGEND_BAND_H = 26
+const LEGEND_ENTRY_PITCH = 72
 
 type LegendSlot = {
   seriesIndex: number
   colorIndex: number
   slotX: number
   fitted: ReturnType<typeof fitSvgLine>
+  width: number
+}
+
+function droppedMarkerText(n: number): string {
+  return `+${n} …`
+}
+
+function legendNameWidth(
+  fitted: ReturnType<typeof fitSvgLine>,
+  fontFamily: string,
+): number {
+  return measureTextUnits(fitted.text, { fontFamily }) * fitted.fontSize
 }
 
 /**
  * Lays out a chart's legend entries (chart-model.ts's `ChartModel.legend`,
- * already in input series order) against `availW` px: how many whole slots
- * fit, each visible entry's own fitted (shrunk/truncated) name, and how many
- * trailing entries got dropped into a "+N …" marker instead. Pure
- * function of `legend`/`availW` — no rendering, mirrors this file's own
- * `fitYAxisTitle`'s "compute the fit, let the caller draw it" shape.
+ * already in input series order) against `availW` px. Slots pack left to
+ * right with a ≥72px swatch-to-swatch pitch (or the fitted name width when
+ * that is larger). The caller right-aligns the group by offsetting
+ * `slotX` with `availW - groupW`. Entries that do not fit drop into one
+ * trailing "+N …" marker.
  */
 function layoutChartLegend(
   legend: ReturnType<typeof buildChartModel>["legend"],
   availW: number,
-): { slots: LegendSlot[]; droppedCount: number } {
-  const maxVisible = Math.max(1, Math.floor(availW / LEGEND_SLOT_W))
-  const showCount = legend.length <= maxVisible ? legend.length : Math.max(0, maxVisible - 1)
-  const slots: LegendSlot[] = legend.slice(0, showCount).map((entry, idx) => ({
-    seriesIndex: entry.seriesIndex,
-    colorIndex: entry.colorIndex,
-    slotX: idx * LEGEND_SLOT_W,
-    fitted: fitSvgLine(entry.name, {
+  fontFamily: string,
+): { slots: LegendSlot[]; droppedCount: number; groupW: number; droppedX: number } {
+  const prepared = legend.map((entry) => {
+    const fitted = fitSvgLine(entry.name, {
       maxWidth: LEGEND_NAME_MAX_W,
       fontSize: LEGEND_FONT_SIZE,
       minFontSize: LEGEND_MIN_FONT_SIZE,
-    }),
-  }))
-  return { slots, droppedCount: legend.length - showCount }
-}
+      fontFamily,
+    })
+    return {
+      seriesIndex: entry.seriesIndex,
+      colorIndex: entry.colorIndex,
+      fitted,
+      width: LEGEND_SWATCH_SIZE + LEGEND_SWATCH_GAP + legendNameWidth(fitted, fontFamily),
+    }
+  })
 
-/** Font size (px) for both x_title and y_title. */
-const AXES_TITLE_SIZE = 11
-/** Band height (px) reserved below the CHART_H plot for x_title — added to
- * measure()'s reported footprint only when x_title is actually present on an
- * applicable type (gantt.tsx's AXIS_BAND_H/hasAxisLabels precedent: reserve
- * only when present, never unconditionally). */
-const AXES_X_TITLE_H = 22
-/** Width (px) of the y_title's own stacked-character column — characters are
- * centered within this band (unchanged visual width — only the total gutter
- * fed to the plot's x-origin grows, see AXES_Y_TITLE_W below). */
-const AXES_Y_TITLE_BAND_W = 20
-/**
- * Pure clearance (px) between the y_title band and the plot's left edge
- * (review round F1 fix). Without this, the plot's x0 sat flush at the
- * band's own width with zero margin — a first-point value label (line
- * chart, text-anchor="start") or a maximally-fitted row label
- * (bar-horizontal, text-anchor="end", capped to BAR_H_LABEL_W) can both
- * render with ink starting exactly at that boundary, only ~5px from the
- * y_title band's own rightmost glyph ink (measured on a real render: a line
- * chart whose first point lands near CHART_H's vertical midband, where the
- * value label's y coordinate falls inside the y_title stack's own vertical
- * span too). A single glyph at AXES_TITLE_SIZE is at most ~1em wide, so
- * this gap keeps the two regions apart by construction — not merely
- * unlikely to touch for whatever content a given deck happens to author.
- */
-const AXES_Y_TITLE_GAP = 10
-/** Total width (px) reserved out of box.w for y_title — band + gap — fed as
- * the plot's x0/plotW when y_title is present (matrix.tsx's Y_TITLE_W idiom,
- * widened by AXES_Y_TITLE_GAP above). */
-const AXES_Y_TITLE_W = AXES_Y_TITLE_BAND_W + AXES_Y_TITLE_GAP
-/** Baseline-to-baseline vertical step for y_title's stacked characters —
- * mirrors matrix.tsx's Y_TITLE_CHAR_ADVANCE (AXIS_SIZE + 2). */
-const AXES_Y_CHAR_ADVANCE = AXES_TITLE_SIZE + 2
-/**
- * Height of the band a *horizontal* y_title takes, above the plot — the
- * placement a Latin (or any other non-square-script) y_title gets instead of
- * the character column, see `lib/text-script.ts` for the rule and the review
- * finding behind it. Left-aligned above the axis it names, which is where
- * charts in Latin-script publications put a y-axis caption; the band's own
- * baseline sits at `AXES_TITLE_SIZE + 4` inside it.
- *
- * The horizontal treatment trades the side band for a top band — a chart
- * whose y_title takes this path gets its full `box.w` back for the plot,
- * pays `AXES_Y_TITLE_TOP_H` of height instead, and `measure()` reports the
- * difference honestly (this is the one case where a y_title grows the
- * component's reported height at all).
- */
-const AXES_Y_TITLE_TOP_H = 22
+  const pitchAfter = (width: number) => Math.max(LEGEND_ENTRY_PITCH, width)
 
-/**
- * Max characters whose stacked column fits within `availH` px — adapted from
- * matrix.tsx's `maxYTitleChars`, simplified: this file's CHART_H is a fixed
- * constant (chart.tsx never reads box.h, unlike matrix's box.h-stretched
- * grid), so there is no box.h-inclusive-vs-exclusive ambiguity to reconcile
- * here the way matrix.tsx's own render() had to (see that file's
- * d79d750 fix comment on `availGridH`) — `availH` is always exactly CHART_H.
- */
-function maxYAxisChars(availH: number): number {
-  return Math.max(1, Math.floor((availH - AXES_TITLE_SIZE * 0.25) / AXES_Y_CHAR_ADVANCE))
-}
-
-/**
- * Caps y_title's character stack to what `availH` can actually hold,
- * truncating with the same `data-truncated="1"` marker convention every
- * other fitted field in this codebase uses (matrix.tsx's own
- * `fitYTitleStack`, x_title below) — the last kept slot becomes "…" so the
- * marker always lands on a real rendered `<text>` node.
- */
-function fitYAxisTitle(text: string, availH: number): { chars: string[]; truncated: boolean } {
-  const chars = Array.from(text)
-  if (chars.length === 0) return { chars, truncated: false }
-  const maxChars = maxYAxisChars(availH)
-  if (chars.length <= maxChars) return { chars, truncated: false }
-  const kept = chars.slice(0, Math.max(0, maxChars - 1))
-  return { chars: [...kept, "…"], truncated: true }
-}
-
-/**
- * Which of the two y_title treatments this chart's own axes earn: the
- * character column down a left band (`stacked`, CJK and the other square
- * scripts), or one horizontal line in a band above the plot (`stacked ===
- * false`, Latin and every other alphabetic script). matrix.tsx's
- * `yTitlePlacement`, adapted to this file's own constants. Reads the same
- * `axesApplicable` gate `render()` does, so a y_title on a non-applicable
- * chart_type (pie/funnel/dumbbell) reserves nothing at all, exactly as
- * before.
- */
-function yTitlePlacement(component: ChartComponent): {
-  stacked: boolean
-  bandW: number
-  topH: number
-} {
-  const yTitle = axesApplicable(component) ? component.axes?.y_title : undefined
-  if (!yTitle) return { stacked: false, bandW: 0, topH: 0 }
-  const stacked = stacksVertically(yTitle)
-  return {
-    stacked,
-    bandW: stacked ? AXES_Y_TITLE_W : 0,
-    topH: stacked ? 0 : AXES_Y_TITLE_TOP_H,
+  function pack(count: number, droppedCount: number) {
+    const slots: LegendSlot[] = []
+    for (let i = 0; i < count; i++) {
+      const e = prepared[i]!
+      const slotX = i === 0 ? 0 : slots[i - 1]!.slotX + pitchAfter(prepared[i - 1]!.width)
+      slots.push({
+        seriesIndex: e.seriesIndex,
+        colorIndex: e.colorIndex,
+        slotX,
+        fitted: e.fitted,
+        width: e.width,
+      })
+    }
+    if (count === 0) {
+      const markerW =
+        droppedCount > 0
+          ? measureTextUnits(droppedMarkerText(droppedCount), { fontFamily }) * LEGEND_FONT_SIZE
+          : 0
+      return { slots, groupW: markerW, droppedX: 0 }
+    }
+    const last = slots[count - 1]!
+    if (droppedCount > 0) {
+      const droppedX = last.slotX + pitchAfter(last.width)
+      const markerW =
+        measureTextUnits(droppedMarkerText(droppedCount), { fontFamily }) * LEGEND_FONT_SIZE
+      return { slots, groupW: droppedX + markerW, droppedX }
+    }
+    return { slots, groupW: last.slotX + last.width, droppedX: last.slotX + last.width }
   }
+
+  let visible = prepared.length
+  while (visible >= 0) {
+    const droppedCount = prepared.length - visible
+    const packed = pack(visible, droppedCount)
+    if (packed.groupW <= availW || visible === 0) {
+      return { ...packed, droppedCount }
+    }
+    visible -= 1
+  }
+  return { slots: [], droppedCount: prepared.length, groupW: 0, droppedX: 0 }
+}
+
+function hasYTitle(component: ChartComponent): boolean {
+  return axesApplicable(component) && !!component.axes?.y_title
+}
+
+function hasHeaderRow(component: ChartComponent): boolean {
+  return hasYTitle(component) || legendApplicable(component)
 }
 
 export const chart: SvgComponent<ChartComponent> = {
   measure(component) {
-    const hasXTitle = axesApplicable(component) && !!component.axes?.x_title
-    const hasLegend = legendApplicable(component)
-    // A stacked y_title still costs no height — it reserves width inside
-    // box.w. A horizontal one costs height instead, and says so here.
-    const yTitleTopH = yTitlePlacement(component).topH
-    return (
-      yTitleTopH + CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0) + (hasLegend ? LEGEND_BAND_H : 0)
-    )
+    // x_title no longer reserves a band (accepted, not drawn). The header
+    // row is a single 52px reservation shared by y_title and the legend.
+    return (hasHeaderRow(component) ? HEADER_ROW_H : 0) + CHART_H
   },
   render(component, box, ctx) {
     const renderer = resolveRenderer(component)
@@ -301,31 +266,9 @@ export const chart: SvgComponent<ChartComponent> = {
     // (pie/funnel/dumbbell) `axes` is read as if it were entirely absent, so
     // the field is honestly ignored rather than partially/silently honored.
     const axes = axesApplicable(component) ? component.axes : undefined
-    const hasXTitle = !!axes?.x_title
-    const yTitle = yTitlePlacement(component)
-    const yTitleW = yTitle.bandW
-    const plotW = box.w - yTitleW
-    // The plot's own top edge inside this group. Zero for every chart whose
-    // y_title stacks (or has none at all), which is what keeps those renders
-    // byte-identical to before; a horizontal y_title pushes the plot down by
-    // its band and every band below the plot follows.
-    const plotTop = yTitle.topH
+    const plotTop = hasHeaderRow(component) ? HEADER_ROW_H : 0
+    const plotW = box.w
 
-    const xTitleFit = hasXTitle
-      ? fitSvgLine(axes!.x_title!, { maxWidth: plotW, fontSize: AXES_TITLE_SIZE, minFontSize: 9 })
-      : null
-    // y_title, horizontal form: one fitted line above the plot, left-aligned
-    // on the axis it names. No arrow suffix here, unlike matrix/heatmap —
-    // this file's x_title renders *below* the plot and centered, so position
-    // alone already says which caption belongs to which axis.
-    const yTitleLineFit =
-      axes?.y_title && !yTitle.stacked
-        ? fitSvgLine(axes.y_title, { maxWidth: box.w, fontSize: AXES_TITLE_SIZE, minFontSize: 9 })
-        : null
-    const yTitleFit =
-      axes?.y_title && yTitle.stacked ? fitYAxisTitle(axes.y_title, CHART_H) : null
-    const yStackSpan = yTitleFit ? Math.max(0, yTitleFit.chars.length - 1) * AXES_Y_CHAR_ADVANCE : 0
-    const yFirstBaselineY = (CHART_H - yStackSpan) / 2
     // P1 variety wave, task 2 (review fix round, Major finding): rotation
     // happens *here*, at the one place this palette actually feeds a chart
     // — not in `ctx.colors.chartPalette` itself, which several motifs also
@@ -334,25 +277,44 @@ export const chart: SvgComponent<ChartComponent> = {
     // undefined/0 rotates to a same-values copy (`rotateChartPalette`'s own
     // doc comment) — a byte-identical multiset either way.
     const palette = rotateChartPalette(ctx.colors.chartPalette, ctx.chartPaletteOffset ?? 0)
-
-    // Legend (R1 evidence wave, Task T2): same "compute a model, render
-    // below the plot in a reserved band" shape as x_title/y_title just
-    // above — `legendApplicable` (never for a single series, never for
-    // pie/donut/funnel/dumbbell) gates it off entirely for every
-    // byte-compat-pinned or byte-compat-boundary case, so this block is a
-    // pure no-op (renders nothing, `legendTop`/layout unused) whenever it
-    // doesn't apply.
-    const hasLegend = legendApplicable(component)
-    const legendTop = plotTop + CHART_H + (hasXTitle ? AXES_X_TITLE_H : 0)
-    const legendLayout = hasLegend ? layoutChartLegend(buildChartModel(component.series).legend, plotW) : null
     const legendBg = ctx.defaultBg ?? ctx.colors.bg
+    const bodyFace = ctx.fonts.body
+
+    const hasLegend = legendApplicable(component)
+    const yTitleRaw = axes?.y_title
+    const yTitleNaturalW = yTitleRaw
+      ? measureTextUnits(yTitleRaw, { fontFamily: bodyFace }) * HEADER_TITLE_SIZE
+      : 0
+
+    let legendLayout = hasLegend
+      ? layoutChartLegend(buildChartModel(component.series).legend, plotW, bodyFace)
+      : null
+    let legendLeft = legendLayout ? plotW - legendLayout.groupW : plotW
+    if (yTitleRaw && legendLayout && legendLeft < yTitleNaturalW + HEADER_LEGEND_GAP) {
+      const avail = Math.max(0, plotW - yTitleNaturalW - HEADER_LEGEND_GAP)
+      legendLayout = layoutChartLegend(buildChartModel(component.series).legend, avail, bodyFace)
+      legendLeft = plotW - legendLayout.groupW
+    }
+    const yTitleMaxW = legendLayout
+      ? Math.max(0, legendLeft - HEADER_LEGEND_GAP)
+      : plotW
+    const yTitleFit = yTitleRaw
+      ? fitSvgLine(yTitleRaw, {
+          maxWidth: yTitleMaxW,
+          fontSize: HEADER_TITLE_SIZE,
+          minFontSize: HEADER_TITLE_MIN_SIZE,
+          fontFamily: bodyFace,
+        })
+      : null
+
+    const swatchY = HEADER_BASELINE_Y - LEGEND_SWATCH_SIZE
 
     return (
       <g transform={`translate(${box.x},${box.y})`}>
         {renderer(
           component.series,
           palette,
-          yTitleW,
+          0,
           plotTop,
           plotW,
           CHART_H,
@@ -368,57 +330,23 @@ export const chart: SvgComponent<ChartComponent> = {
           // `ChartRenderFn`'s own `bgHex` doc comment.
           legendBg,
         )}
-        {yTitleLineFit ? (
+        {yTitleFit ? (
           <text
-            data-truncated={yTitleLineFit.truncated ? "1" : undefined}
+            data-truncated={yTitleFit.truncated ? "1" : undefined}
             x={0}
-            y={AXES_TITLE_SIZE + 4}
-            fontSize={yTitleLineFit.fontSize}
+            y={HEADER_BASELINE_Y}
+            fontSize={yTitleFit.fontSize}
             fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
+            fontFamily={bodyFace}
             dominantBaseline="alphabetic"
           >
-            {yTitleLineFit.text}
+            {yTitleFit.text}
           </text>
         ) : null}
-        {xTitleFit ? (
-          <text
-            data-truncated={xTitleFit.truncated ? "1" : undefined}
-            x={yTitleW + plotW / 2}
-            y={plotTop + CHART_H + AXES_X_TITLE_H - 6}
-            textAnchor="middle"
-            fontSize={xTitleFit.fontSize}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {xTitleFit.text}
-          </text>
-        ) : null}
-        {yTitleFit
-          ? yTitleFit.chars.map((chr, i) => (
-              <text
-                key={i}
-                data-truncated={
-                  yTitleFit!.truncated && i === yTitleFit!.chars.length - 1 ? "1" : undefined
-                }
-                x={AXES_Y_TITLE_BAND_W / 2}
-                y={yFirstBaselineY + i * AXES_Y_CHAR_ADVANCE}
-                textAnchor="middle"
-                fontSize={AXES_TITLE_SIZE}
-                fill={ctx.colors.muted}
-                fontFamily={ctx.fonts.body}
-                dominantBaseline="alphabetic"
-              >
-                {chr}
-              </text>
-            ))
-          : null}
         {legendLayout ? (
           <g>
             {legendLayout.slots.map((slot) => {
-              const swatchX = yTitleW + slot.slotX
-              const swatchY = legendTop + (LEGEND_BAND_H - LEGEND_SWATCH_SIZE) / 2
+              const swatchX = legendLeft + slot.slotX
               const nameFill = accessibleInk(ctx.colors.muted, legendBg, slot.fitted.fontSize)
               return (
                 <g key={slot.seriesIndex}>
@@ -432,10 +360,10 @@ export const chart: SvgComponent<ChartComponent> = {
                   <text
                     data-truncated={slot.fitted.truncated ? "1" : undefined}
                     x={swatchX + LEGEND_SWATCH_SIZE + LEGEND_SWATCH_GAP}
-                    y={legendTop + LEGEND_BAND_H - 8}
+                    y={HEADER_BASELINE_Y}
                     fontSize={slot.fitted.fontSize}
                     fill={nameFill}
-                    fontFamily={ctx.fonts.body}
+                    fontFamily={bodyFace}
                     dominantBaseline="alphabetic"
                   >
                     {slot.fitted.text}
@@ -446,14 +374,14 @@ export const chart: SvgComponent<ChartComponent> = {
             {legendLayout.droppedCount > 0 && (
               <text
                 data-dropped={legendLayout.droppedCount}
-                x={yTitleW + legendLayout.slots.length * LEGEND_SLOT_W}
-                y={legendTop + LEGEND_BAND_H - 8}
+                x={legendLeft + legendLayout.droppedX}
+                y={HEADER_BASELINE_Y}
                 fontSize={LEGEND_FONT_SIZE}
                 fill={accessibleInk(ctx.colors.muted, legendBg, LEGEND_FONT_SIZE)}
-                fontFamily={ctx.fonts.body}
+                fontFamily={bodyFace}
                 dominantBaseline="alphabetic"
               >
-                {`+${legendLayout.droppedCount} …`}
+                {droppedMarkerText(legendLayout.droppedCount)}
               </text>
             )}
           </g>
