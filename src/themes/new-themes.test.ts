@@ -12,6 +12,8 @@ import { CRAYON_TOKENS } from "./crayon"
 import { ARENA_TOKENS } from "./arena"
 import { MUSEUM_TOKENS } from "./museum"
 import { STAGE_TOKENS } from "./stage"
+import { LECTURE_TOKENS } from "./lecture"
+import { CANONICAL_THEME_IDS, THEME_STYLES } from "./index"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -394,102 +396,31 @@ function hslSat(hex: string): number {
   return l > 0.5 ? d / (2 - max - min) : d / (max + min)
 }
 
-// separately by themes/index.test.ts.
-describe("lecture tokens", () => {
-  it("satisfies the StyleTokens shape", () => {
-    const t: StyleTokens = LECTURE_TOKENS
-    expect(t.id).toBe("lecture")
-  })
+function hexToRgb(hex: string): [number, number, number] {
+  const v = parseInt(hex.slice(1), 16)
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255]
+}
 
-  it("heading font resolves to SimSun (CJK serif, journal/heritage/luxe/museum precedent, no tofu on export)", () => {
-    expect(resolveFontFace(LECTURE_TOKENS.fonts.heading, "heading")).toBe("SimSun")
-  })
+function hueSatL(hex: string): { hue: number; sat: number; l: number }
 
-  it("body font resolves to Microsoft YaHei (exact width table)", () => {
-    expect(resolveFontFace(LECTURE_TOKENS.fonts.body, "body")).toBe("Microsoft YaHei")
-  })
-
-  it("does not set an accentPool (single, restrained chalk-yellow accent)", () => {
-    expect(LECTURE_TOKENS.colors.accentPool).toBeUndefined()
-  })
-
-  it("shape.radius is 0 (chalkboard square) and gapScale is 0.9 (tight)", () => {
-    expect(LECTURE_TOKENS.shape?.radius).toBe(0)
-    expect(LECTURE_TOKENS.shape?.gapScale).toBe(0.9)
-  })
-
-  it("four page types share the green-board ground (chapter is not a primary bleed)", () => {
-    for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
-      expect(LECTURE_TOKENS.defaultBackgrounds[slideType]).toEqual({
-        kind: "color",
-        value: LECTURE_TOKENS.colors.bg,
-      })
-    }
-  })
-
-  it("accent is chalk yellow, not luxe champagne / museum brass", () => {
-    expect(LECTURE_TOKENS.colors.accent).toBe("#E9C46A")
-    expect(LECTURE_TOKENS.colors.accent).not.toBe("#C6A15B")
-    expect(LECTURE_TOKENS.colors.accent).not.toBe("#BE7A28")
-    const lecture = hueSatL("#E9C46A")
-    const luxe = hueSatL("#C6A15B")
-    const museum = hueSatL("#BE7A28")
-    expect(lecture.l).toBeGreaterThan(luxe.l)
-    expect(lecture.l).toBeGreaterThan(museum.l)
-    expect(deltaE("#E9C46A", "#C6A15B")).toBeGreaterThan(14)
-    expect(deltaE("#E9C46A", "#BE7A28")).toBeGreaterThan(25)
-  })
-
-  it("body tokens clear the contrast floors on the green board", () => {
-    const { bg, surface, text, muted, accent } = LECTURE_TOKENS.colors
-    expect(contrastRatio(text, bg)).toBeGreaterThanOrEqual(4.5)
-    expect(contrastRatio(muted, bg)).toBeGreaterThanOrEqual(4.5)
-    expect(contrastRatio(muted, surface)).toBeGreaterThanOrEqual(4.5)
-    expect(contrastRatio(accent, bg)).toBeGreaterThanOrEqual(3)
-  })
-
-  it("semantic three clear the floors on surface (danger/success ≥4.5, warning ≥3)", () => {
-    const { surface, danger, warning, success } = LECTURE_TOKENS.colors
-    expect(danger).toBeDefined()
-    expect(warning).toBeDefined()
-    expect(success).toBeDefined()
-    expect(contrastRatio(danger!, surface)).toBeGreaterThanOrEqual(4.5)
-    expect(contrastRatio(success!, surface)).toBeGreaterThanOrEqual(4.5)
-    expect(contrastRatio(warning!, surface)).toBeGreaterThanOrEqual(3)
-  })
-
-  it("chart four-swatch set is chalk-white / chalk-yellow / grey-blue / terracotta, each ≥3:1 on bg", () => {
-    expect(LECTURE_TOKENS.colors.chartPalette).toEqual(["#EFF3EC", "#E9C46A", "#8A9EAA", "#C47A68"])
-    for (const hex of LECTURE_TOKENS.colors.chartPalette) {
-      expect(contrastRatio(hex, LECTURE_TOKENS.colors.bg), hex).toBeGreaterThanOrEqual(3)
-    }
-  })
-
-  it("is the only dark green ground in the roster (thumbnail independence vs the nearest dark five)", () => {
-    const lectureBg = LECTURE_TOKENS.colors.bg
-    expect(lectureBg).toBe("#1C2823")
-    const self = hueSatL(lectureBg)
-    expect(self.hue).toBeGreaterThan(140)
-    expect(self.hue).toBeLessThan(170)
-    expect(self.l).toBeLessThan(0.2)
-
-    const darkNeighbors = {
-      stage: "#141C22",
-      museum: "#211A12",
-      insight: "#0F1216",
-      luxe: "#0B0908",
-      tech: "#0A0F1E",
-      arena: "#120B22",
-    } as const
-    for (const [id, hex] of Object.entries(darkNeighbors)) {
-      expect(deltaE(lectureBg, hex), `${id} ${hex} sits on lecture's green board`).toBeGreaterThan(9)
-    }
-
-    const otherDarkGreen = CANONICAL_THEME_IDS.filter((id) => {
-      if (id === "lecture") return false
-      const hsl = hueSatL(THEME_STYLES[id].colors.bg)
-      return hsl.hue >= 90 && hsl.hue <= 170 && hsl.l < 0.3
-    })
-    expect(otherDarkGreen).toEqual([])
-  })
-})
+/** CIE76 ΔE, same Lab path as `chart-palette-taboo.test.ts`. */
+function deltaE(a: string, b: string): number {
+  const toLab = (hex: string) => {
+    const lin = hexToRgb(hex).map((c) => {
+      const s = c / 255
+      return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+    }) as [number, number, number]
+    const [r, g, bl] = lin
+    const X = (0.4124564 * r + 0.3575761 * g + 0.1804375 * bl) / 0.95047
+    const Y = 0.2126729 * r + 0.7151522 * g + 0.072175 * bl
+    const Z = (0.0193339 * r + 0.119192 * g + 0.9503041 * bl) / 1.08883
+    const f = (t: number) => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116)
+    const fx = f(X)
+    const fy = f(Y)
+    const fz = f(Z)
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)] as const
+  }
+  const x = toLab(a)
+  const y = toLab(b)
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2])
+}
