@@ -232,8 +232,8 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
  * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「19 个 theme
- * id、18 个结构身份」是本仓从此的正式口径，不是过渡态。
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「20 个 theme
+ * id、19 个结构身份」是本仓从此的正式口径，不是过渡态。
  *
  * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
  * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
@@ -904,6 +904,24 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     motif: "arena-motif",
     layoutTendencies: {
       cover: ["split-diagonal", "poster-center"],
+    },
+  },
+  // museum（博物，2026-08-21 鹦鹉站气质立项）：棕黑厅堂 + 衬线 + 展签铜金，
+  // 由专属 museum-motif 承载。结构行 C / top-band / light / airy，最近邻
+  // insight（C / top-band / light / tight），岔在留白轴。封面构造
+  // poster-center / editorial-masthead（与 insight 同构图，insight 是夜刊、
+  // museum 是展厅，layout 零 baked hex）：
+  //   - `poster-center`：展览开幕的正面站位。briefing 已锁权重 3，单独声明
+  //     空转，保留为真实主张（裁定 1 的追加先例）。
+  //   - `editorial-masthead`：衬线报头，目录册封面。不在 briefing 的 cover
+  //     集合里，max(3,1)=3，产生真实边际权重。
+  // chapter / ending / content 不声明：身份靠封面 + light motif + airy
+  // gapScale，不靠再声明一个与 insight 同形的轴去硬凑区分度。
+  museum: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "museum-motif",
+    layoutTendencies: {
+      cover: ["poster-center", "editorial-masthead"],
     },
   },
 }

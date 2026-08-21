@@ -1,5 +1,5 @@
 ---
-summary: 'The 18 built-in themes, extracting your own brand from a PowerPoint template, and style overrides via CLI flag, IR, or project config'
+summary: 'The 19 built-in themes (20 ids), extracting your own brand from a PowerPoint template, and style overrides via CLI flag, IR, or project config'
 read_when:
   - picking a theme, or looking up a theme id
   - making the output look like your own company (`pptfast brand extract`)
@@ -8,7 +8,7 @@ read_when:
 
 # Themes
 
-A theme bundles a style (design tokens), a brand (identity chrome: logo, footer, page number), and a layout set for each page type. There are 18 built-ins — 19 theme ids, since `bloom` is a pure recolor of `classroom`.
+A theme bundles a style (design tokens), a brand (identity chrome: logo, footer, page number), and a layout set for each page type. There are 19 built-ins — 20 theme ids, since `bloom` is a pure recolor of `classroom`.
 
 | id | label |
 |---|---|
@@ -31,6 +31,7 @@ A theme bundles a style (design tokens), a brand (identity chrome: logo, footer,
 | `vermilion` | Official Report |
 | `crayon` | Kids Education |
 | `arena` | Esports & Entertainment |
+| `museum` | Museum |
 
 `pptfast themes [--json]` prints the same list from the installed version.
 
@@ -38,7 +39,7 @@ Every built-in points each page type at the full set of registered layouts. Ever
 
 What each theme *does* narrow is its preference: every built-in names the covers it leans toward, so two themes rendering the same deck under the same seed usually pick different covers. It stays a preference, not a lock — pin `slide.layout` when a cover has to be exactly one thing.
 
-`bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 19 theme ids and 18 distinct designs.
+`bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 20 theme ids and 19 distinct designs.
 
 ## Your own brand
 
