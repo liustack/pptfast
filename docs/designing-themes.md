@@ -43,12 +43,24 @@ the codebase owns fidelity.
    a rule and an icon.
 4. **Fonts express intent only** (serif/sans, weight, size rhythm).
    Never depend on a specific commercial font being present.
-5. **Decoration keeps out of four content regions**: the heading area,
-   the body area, the footer meta strip, and the bottom-right logo box
-   (96×40 at x1120 y630). Decoration positions are fixed by design —
-   never derived from where the content happens to sit, because seeded
-   layout stability promises that editing one page's text moves nothing
-   else.
+5. **Decoration keeps out of five content regions**: the heading area,
+   the body area, the footer meta strip, the bottom-right logo box
+   (96×40 at x1120 y630), and the full-width band at y620-664. That
+   fifth band is where the cover meta line, chart-source footnotes, and
+   the logo box actually live. Solid thick strokes or fills that can
+   cut through text stay out of it. Hairlines (≤1.5px) and decoration
+   faded to background level are exempt, provided body ink over the
+   decoration-on-background composite still clears 4.5:1 (measure with
+   this repo's `contrastRatio`). Terra's contours, insight's full-width
+   baseline area line, and heritage's foot rule already live there and
+   pass. Heritage's gold diamond does not meet either exemption — it is
+   a 10×10 solid at the rule's midpoint that predates this rule and
+   stands as a grandfathered pinpoint exception, not a precedent for
+   new solid pieces. Crayon crossed this band twice on
+   2026-08-21, once through cover meta and once through a chart
+   footnote. Decoration positions are fixed by design, never derived
+   from where the content happens to sit, because seeded layout
+   stability promises that editing one page's text moves nothing else.
 6. **One artboard per page type** — cover / chapter / content / ending —
    and content at two densities: sparse (few blocks, generous
    whitespace) and full (four content blocks, the geometric maximum for
