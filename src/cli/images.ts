@@ -1,8 +1,8 @@
 /**
- * `pptfast images search|fetch|list` — Pexels first, Pixabay as empty-result
- * fallback, then Openverse (cc0/pdm). Downloads land in
- * `.pptfast/<deck>/assets/` with a sidecar. Inject `fetch` (and
- * `resizeToJpeg`) so tests never touch the network.
+ * `pptfast images search|fetch|list|generate` — Pexels first, Pixabay as
+ * empty-result fallback, then Openverse (cc0/pdm). Local generators pin
+ * through the same sidecar path. Inject `fetch` / `resizeToJpeg` / `run`
+ * so tests never touch the network or spawn real CLIs.
  */
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -746,8 +746,6 @@ export async function runImagesGenerate(opts: ImagesGenerateOptions): Promise<st
   }
 
   const { assetsDir } = await resolveDeckWorkspace(opts.deck, cwd)
-  const jpgPath = join(assetsDir, `${opts.as}.jpg`)
-  const jsonPath = join(assetsDir, `${opts.as}.json`)
   const workdir = await mkdtemp(join(tmpdir(), "pptfast-gen-"))
   const dest = join(workdir, "generated.jpg")
   const run = opts.run ?? defaultProcessRunner
@@ -790,10 +788,6 @@ export async function runImagesGenerate(opts: ImagesGenerateOptions): Promise<st
       )
     }
     throw new PptfastError(`All image generators failed: ${attempts.join("; ")}`)
-  } catch (e) {
-    await unlink(jpgPath).catch(() => undefined)
-    await unlink(jsonPath).catch(() => undefined)
-    throw e
   } finally {
     await rm(workdir, { recursive: true, force: true })
   }

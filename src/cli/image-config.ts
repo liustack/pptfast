@@ -413,6 +413,6 @@ export function missingKeysError(kind: "pexels" | "pixabay"): PptfastError {
     )
   }
   return new PptfastError(
-    `Stock-photo search needs a Pexels API key. Apply at ${pexelsApplyUrl()}, then run \`pptfast config set pexels.apiKey\`.`,
+    `Pexels is not configured. Apply at ${pexelsApplyUrl()}, then run \`pptfast config set pexels.apiKey\`.`,
   )
 }

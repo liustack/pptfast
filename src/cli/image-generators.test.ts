@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { chmodSync } from "node:fs"
-import { mkdtemp, readFile, readdir, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -192,6 +192,43 @@ describe("runImagesGenerate", () => {
       return true
     })
     expect(await pathExists(join(cwd, ".pptfast", "demo-deck", "assets", "hero.jpg"))).toBe(false)
+  })
+
+  it("does not delete a pre-existing pin when every generator fails", async () => {
+    await tmpHome()
+    await persistUserConfigValue(["images", "generators", "grok", "enabled"], true)
+    await fakeBin("grok")
+    const cwd = await mkdtemp(join(tmpdir(), "pptfast-gen-keep-"))
+    const assets = join(cwd, ".pptfast", "demo-deck", "assets")
+    await mkdir(assets, { recursive: true })
+    await writeFile(join(assets, "hero.jpg"), JPEG_TINY)
+    await writeFile(
+      join(assets, "hero.json"),
+      `${JSON.stringify({
+        provider: "pexels",
+        photo_id: "123",
+        license: "Pexels License",
+        author: "Jane",
+        page_url: "https://www.pexels.com/photo/office-desk-123/",
+      })}\n`,
+    )
+    await expect(
+      runImagesGenerate({
+        deck: join(cwd, "demo-deck"),
+        as: "hero",
+        cwd,
+        prompt: "a desk",
+        run: async (req) => {
+          if (req.args.includes("--version")) return { code: 0, stdout: "1.0.0\n", stderr: "" }
+          return { code: 1, stdout: "", stderr: "grok failed" }
+        },
+        resizeToJpeg: async (bytes) => bytes,
+      }),
+    ).rejects.toThrow(/All image generators failed/)
+    expect(await readFile(join(assets, "hero.jpg"))).toEqual(JPEG_TINY)
+    const sidecar = JSON.parse(await readFile(join(assets, "hero.json"), "utf8")) as { provider: string; photo_id: string }
+    expect(sidecar.provider).toBe("pexels")
+    expect(sidecar.photo_id).toBe("123")
   })
 
   it("uses the injected resolvePrompt when --prompt is omitted", async () => {
