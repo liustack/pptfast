@@ -468,6 +468,24 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
     }
   }
 
+  // chart_line_too_many_series: dataviz's 8-series ceiling
+  // (`CAPACITY.chart.lineSeriesAdvisoryMax`). A line chart past that is
+  // still legal IR and still renders — the legend's "+N …" drop is an
+  // authoring problem, not a renderer rescue. Warn only, never a hard
+  // error. Bar/area/scatter keep their own series count (grouped bars
+  // and scatter groups do not share this hairball).
+  for (const component of slide.components) {
+    if (component.type !== "chart" || component.chart_type !== "line") continue
+    if (component.series.length > CAPACITY.chart.lineSeriesAdvisoryMax) {
+      issues.push({
+        slide: index,
+        severity: "warn",
+        code: "chart_line_too_many_series",
+        message: `折线图系列数过多（>${CAPACITY.chart.lineSeriesAdvisoryMax}），建议拆分或归并`,
+      })
+    }
+  }
+
   // data_table_missing_cell (R1 evidence wave, Task T3 — the plan's
   // lenient-revision contract): `cells` has no length floor per row, so a
   // row omitting one of `columns`' declared keys is schema-legal —

@@ -10,8 +10,11 @@
  * down the page, and a reader has to reassemble the word letter by letter
  * (2026-08-20 review, `component--heatmap--mixed` and
  * `component--matrix--en`). When this returns false, matrix and heatmap
- * keep the title as one horizontal line. Chart rotates the whole string
- * -90° (Western y-axis convention) instead — never a Latin letter column.
+ * keep the title as one horizontal line. Chart sends a Latin or digit
+ * y-title back to the header row — rotating the whole string is still
+ * vertical type and is forbidden. The svg2pptx rotate path stays for
+ * other scenes. Chart additionally refuses ASCII digits even when this
+ * function would allow them to ride along with a square script.
  *
  * The rule is content-driven and total: same string in, same answer out, no
  * locale, config or seed involved, so a deck's axis titles look the same on

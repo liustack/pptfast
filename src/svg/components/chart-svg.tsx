@@ -143,6 +143,18 @@ const GRIDLINE_COUNT = 3
 const ENDPOINT_DOT_R = 4
 const ENDPOINT_RING_R = 8
 const ENDPOINT_RING_OPACITY = 0.3
+/**
+ * Last series count at which a line chart still paints first/last value
+ * labels. Dataviz discipline: labels have to be selective. When many
+ * series share the same left and right edges, those numbers stack into
+ * an ink blot (author screenshot, 20-series density corpus, 2026-08).
+ * Past this count the legend carries identity and the endpoint numbers
+ * come off. Endpoint dots stay.
+ *
+ * Source: Few, *Show Me the Numbers* (selective labeling) and Tufte's
+ * "erase non-data-ink" — colliding labels are worse than no labels.
+ */
+const LINE_ENDPOINT_LABEL_MAX_SERIES = 4
 /** Line-under-curve area fill: alpha at the line (top) fading to fully
  * transparent at the baseline (bottom). */
 const AREA_FILL_TOP_ALPHA = 0.2
@@ -547,6 +559,7 @@ export function renderLine(
   const model = buildChartModel(series)
   const { categories, domain } = model
   const n = model.series.length
+  const showEndpointValues = n <= LINE_ENDPOINT_LABEL_MAX_SERIES
   const plotTop = y0 + LABEL_TOP_PAD
   const plotH = Math.max(0, h - LABEL_TOP_PAD - LABEL_BOTTOM_PAD)
   // `zeroAxisRatio(domain)` is exactly `0` whenever `domain.min === 0`
@@ -659,8 +672,11 @@ export function renderLine(
                 "Endpoints" now means the first/last *non-null* point (a
                 trailing/leading gap has no coordinate to be first or last
                 at), but the edge-anchor direction still reads off that
-                point's real position in the shared category axis. */}
-            {first && (
+                point's real position in the shared category axis.
+                Dropped entirely past LINE_ENDPOINT_LABEL_MAX_SERIES: the
+                numbers collide into an ink blot, so the legend carries
+                identity instead. */}
+            {showEndpointValues && first && (
               <text
                 x={first.x}
                 y={first.y - 6}
@@ -673,7 +689,7 @@ export function renderLine(
                 {first.value}
               </text>
             )}
-            {last && last !== first && (
+            {showEndpointValues && last && last !== first && (
               <text
                 x={last.x}
                 y={last.y - 6}

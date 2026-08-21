@@ -264,12 +264,16 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     expect(chart.measure(withLongerTitle, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
   })
 
-  it("measure() does not grow for a y_title — the caption takes a left sidebar, not height", () => {
+  it("measure() does not grow for a CJK y_title — the caption takes a left sidebar, not height", () => {
     const base = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
     const withCjk = { ...base, axes: { y_title: "营业收入" } }
-    const withLatin = { ...base, axes: { y_title: "Revenue" } }
     expect(chart.measure(withCjk, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
-    expect(chart.measure(withLatin, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
+  })
+
+  it("measure() grows by the header row for a Latin y_title — the caption returns to the header", () => {
+    const base = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
+    const withLatin = { ...base, axes: { y_title: "Revenue" } }
+    expect(chart.measure(withLatin, 1120, ctx)).toBe(chart.measure(base, 1120, ctx) + 52)
   })
 
   it("measure() ignores axes on a non-applicable chart_type (pie)", () => {
@@ -343,7 +347,7 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     expect(chart.measure(xTitleOnly, 1120, ctx)).toBe(chart.measure(noAxes, 1120, ctx))
   })
 
-  describe("y_title is a left-side caption for every script, never a Latin letter column", () => {
+  describe("y_title: CJK stacks on the left, Latin and digits return to the header", () => {
     const latin = {
       type: "chart" as const,
       chart_type: "bar" as const,
@@ -351,31 +355,40 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       axes: { x_title: "Quarter", y_title: "Connected equipment" },
     }
 
-    it("renders the whole Latin phrase on one <text>, with no letter split anywhere", () => {
+    it("renders the whole Latin phrase on one <text> in the header, with no letter split and no rotate", () => {
       const { container } = svg(chart.render(latin, box, ctx))
-      const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
-      expect(texts).toContain("Connected equipment")
-      expect(texts).not.toContain("Quarter")
+      const texts = Array.from(container.querySelectorAll("text"))
+      const yTitle = texts.find((t) => t.textContent === "Connected equipment")
+      expect(yTitle).toBeTruthy()
+      expect(texts.map((t) => t.textContent)).not.toContain("Quarter")
+      expect(texts.filter((t) => t.textContent === "C" || t.textContent === "o")).toHaveLength(0)
+      expect(yTitle!.getAttribute("y")).toBe("16")
+      expect(yTitle!.getAttribute("x")).toBe("0")
+      expect(yTitle!.getAttribute("font-size")).toBe("12")
+      expect(yTitle!.getAttribute("fill")).toBe(ctx.colors.muted)
+      expect(yTitle!.getAttribute("transform")).toBeNull()
     })
 
-    it("gives CJK and Latin the same 36px sidebar — bars start further right than a no-title chart", () => {
+    it("gives CJK a 36px sidebar and leaves Latin on the full-width plot", () => {
       const noYTitle = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
       const barX = (component: typeof latin | typeof noYTitle) =>
         Number(svg(chart.render(component, box, ctx)).container.querySelector("rect")!.getAttribute("x"))
-      expect(barX(latin) - barX(noYTitle)).toBe(36)
+      expect(barX(latin)).toBe(barX(noYTitle))
       const cjk = { ...latin, axes: { y_title: "设备联网量" } }
-      expect(barX(cjk)).toBe(barX(latin))
+      expect(barX(cjk) - barX(noYTitle)).toBe(36)
     })
 
-    it("measure() stays flat for a y_title — a sidebar, not a band proportional to title length", () => {
+    it("measure() stays flat for a CJK y_title and grows a fixed header for a Latin one", () => {
       const noYTitle = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
-      expect(chart.measure(latin, 1120, ctx)).toBe(chart.measure(noYTitle, 1120, ctx))
+      const cjk = { ...latin, axes: { y_title: "设备联网量" } }
+      expect(chart.measure(cjk, 1120, ctx)).toBe(chart.measure(noYTitle, 1120, ctx))
+      expect(chart.measure(latin, 1120, ctx)).toBe(chart.measure(noYTitle, 1120, ctx) + 52)
       expect(
         chart.measure({ ...latin, axes: { y_title: "A".repeat(80) } }, 1120, ctx),
       ).toBe(chart.measure(latin, 1120, ctx))
     })
 
-    it("does not push the plot down for a y_title alone, and the Latin caption sits on the bar baseline", () => {
+    it("pushes the plot down for a Latin y_title alone, and sits the caption on the header baseline", () => {
       const noYTitle = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
       const bandTop = (component: typeof latin | typeof noYTitle) =>
         Number(
@@ -383,17 +396,11 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
             .map((el) => Number(el.getAttribute("y")))
             .reduce((a, b) => Math.min(a, b)),
         )
-      expect(bandTop(latin)).toBe(bandTop(noYTitle))
+      expect(bandTop(latin) - bandTop(noYTitle)).toBe(52)
       const yTitle = Array.from(
         svg(chart.render(latin, box, ctx)).container.querySelectorAll("text"),
       ).find((t) => t.textContent === "Connected equipment")!
-      const bars = Array.from(
-        svg(chart.render(latin, box, ctx)).container.querySelectorAll("rect"),
-      ).filter((r) => Number(r.getAttribute("width")) !== 10)
-      const baseline = Math.max(
-        ...bars.map((r) => Number(r.getAttribute("y")) + Number(r.getAttribute("height"))),
-      )
-      expect(Number(yTitle.getAttribute("y"))).toBe(baseline)
+      expect(Number(yTitle.getAttribute("y"))).toBe(16)
     })
 
     it("fits an egregiously long Latin y_title, truncation-marked rather than overflowing", () => {
@@ -407,6 +414,8 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       )!
       expect(yTitle.getAttribute("data-truncated")).toBe("1")
       expect(yTitle.textContent?.endsWith("…")).toBe(true)
+      expect(yTitle.getAttribute("transform")).toBeNull()
+      expect(yTitle.getAttribute("y")).toBe("16")
     })
 
     it("still reserves nothing at all on a non-applicable chart_type (pie)", () => {
@@ -837,7 +846,7 @@ describe("chart component — chart-depth subtypes (scatter / area / donut / gau
     expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "62")).toBe(true)
   })
 
-  it("scatter and area are axes-applicable: measure() does not grow for a y_title (x_title no longer reserves height)", () => {
+  it("scatter and area are axes-applicable: measure() does not grow for a CJK y_title (x_title no longer reserves height)", () => {
     for (const chart_type of ["scatter", "area"] as const) {
       const series =
         chart_type === "scatter"
@@ -845,7 +854,7 @@ describe("chart component — chart-depth subtypes (scatter / area / donut / gau
           : [{ name: "S", data: [{ x: "Q1", y: 2 }, { x: "Q2", y: 4 }] }]
       const base = { type: "chart" as const, chart_type, series }
       const withX = { ...base, axes: { x_title: "Axis" } }
-      const withY = { ...base, axes: { y_title: "Value" } }
+      const withY = { ...base, axes: { y_title: "数值" } }
       expect(chart.measure(withX, 1120, ctx), chart_type).toBe(chart.measure(base, 1120, ctx))
       expect(chart.measure(withY, 1120, ctx), chart_type).toBe(chart.measure(base, 1120, ctx))
     }
@@ -1013,11 +1022,13 @@ describe("chart component — label-tuning A (header row for legend, no x_title)
   })
 })
 
-// Vertical y-title (微调 C). Cartesian vertical-value charts (bar / line /
-// area / scatter) park the unit caption on the plot's left, not in the
-// header. CJK stacks one character per line. Latin/mixed rotate as one
-// string. bar_horizontal keeps the header caption — its left band is row
-// labels, not a value axis.
+// Vertical y-title (微调 C, then Latin fallback). Cartesian vertical-value
+// charts (bar / line / area / scatter) park a *pure CJK* unit caption on
+// the plot's left, one character per line. A title that carries Latin or
+// digits goes back to the header row (left, with the legend on the right).
+// Rotating the whole Latin string is still vertical type and is forbidden.
+// bar_horizontal keeps the header caption — its left band is row labels,
+// not a value axis.
 describe("chart component — vertical y-title (cartesian value axis)", () => {
   const barSeries = [
     { name: "Revenue", data: [{ x: "Q1", y: 100 }, { x: "Q2", y: 200 }] },
@@ -1086,13 +1097,17 @@ describe("chart component — vertical y-title (cartesian value axis)", () => {
     expect(Number(barOf(titledOne).getAttribute("x"))).toBe(40)
   })
 
-  it("does not grow measure() for a y_title alone — the sidebar takes width, not height", () => {
+  it("does not grow measure() for a CJK y_title alone — the sidebar takes width, not height", () => {
     const base = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
     expect(chart.measure({ ...base, axes: { y_title: cjkTitle } }, 1120, ctx)).toBe(
       chart.measure(base, 1120, ctx),
     )
+  })
+
+  it("grows measure() by the header row for a Latin y_title alone", () => {
+    const base = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
     expect(chart.measure({ ...base, axes: { y_title: latinTitle } }, 1120, ctx)).toBe(
-      chart.measure(base, 1120, ctx),
+      chart.measure(base, 1120, ctx) + 52,
     )
   })
 
@@ -1118,7 +1133,7 @@ describe("chart component — vertical y-title (cartesian value axis)", () => {
     expect(chart.measure(grouped, 1120, ctx)).toBe(292)
   })
 
-  it("rotates a Latin y_title as one string at -90°, never a letter column, block-bottom on the bar baseline", () => {
+  it("puts a Latin y_title in the header as one string, never a letter column and never rotated", () => {
     const component = {
       type: "chart" as const,
       chart_type: "bar" as const,
@@ -1130,14 +1145,14 @@ describe("chart component — vertical y-title (cartesian value axis)", () => {
     const yTitle = texts.find((t) => t.textContent === latinTitle)
     expect(yTitle).toBeTruthy()
     expect(texts.filter((t) => t.textContent === "C" || t.textContent === "o")).toHaveLength(0)
-    expect(yTitle!.getAttribute("font-size")).toBe("14")
+    expect(yTitle!.getAttribute("font-size")).toBe("12")
     expect(yTitle!.getAttribute("fill")).toBe(ctx.colors.muted)
-    const transform = yTitle!.getAttribute("transform") ?? ""
-    expect(transform).toMatch(/rotate\(\s*-90/)
-    expect(Number(yTitle!.getAttribute("y"))).toBe(plotBaseline(container))
+    expect(yTitle!.getAttribute("transform")).toBeNull()
+    expect(yTitle!.getAttribute("y")).toBe("16")
+    expect(yTitle!.getAttribute("x")).toBe("0")
   })
 
-  it("rotates a mixed-script y_title as one string — no majority vote, no Latin letter column", () => {
+  it("puts a mixed-script y_title in the header as one string — no majority vote, no rotate", () => {
     const component = {
       type: "chart" as const,
       chart_type: "bar" as const,
@@ -1147,10 +1162,48 @@ describe("chart component — vertical y-title (cartesian value axis)", () => {
     const { container } = svg(chart.render(component, box, ctx))
     const yTitle = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "K8s 托管")
     expect(yTitle).toBeTruthy()
-    expect(yTitle!.getAttribute("transform") ?? "").toMatch(/rotate\(\s*-90/)
+    expect(yTitle!.getAttribute("transform")).toBeNull()
+    expect(yTitle!.getAttribute("y")).toBe("16")
     expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "K")).toBe(
       false,
     )
+  })
+
+  it("puts a CJK y_title that carries ASCII digits in the header, not on the stacked sidebar", () => {
+    const component = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      series: barSeries,
+      axes: { y_title: "营收2024" },
+    }
+    const { container } = svg(chart.render(component, box, ctx))
+    const yTitle = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "营收2024")
+    expect(yTitle).toBeTruthy()
+    expect(yTitle!.getAttribute("y")).toBe("16")
+    expect(yTitle!.getAttribute("transform")).toBeNull()
+    expect(yTitleChars(container, "营收2024")).toHaveLength(0)
+  })
+
+  it("shares the header row: Latin y_title left, legend right", () => {
+    const grouped = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      axes: { y_title: latinTitle },
+      series: [
+        { name: "冶金", data: [{ x: "Q1", y: 42 }, { x: "Q2", y: 53 }] },
+        { name: "化工", data: [{ x: "Q1", y: 30 }, { x: "Q2", y: 36 }] },
+      ],
+    }
+    const { container } = svg(chart.render(grouped, box, ctx))
+    const yTitle = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === latinTitle)!
+    const names = Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.textContent === "冶金" || t.textContent === "化工",
+    )
+    expect(yTitle.getAttribute("y")).toBe("16")
+    expect(yTitle.getAttribute("x")).toBe("0")
+    for (const t of names) expect(t.getAttribute("y")).toBe("16")
+    expect(Number(names[0]!.getAttribute("x"))).toBeGreaterThan(Number(yTitle.getAttribute("x")))
+    expect(chart.measure(grouped, 1120, ctx)).toBe(292)
   })
 
   it("leaves bar_horizontal y_title in the header — the left band is row labels, not a value axis", () => {
@@ -1210,7 +1263,8 @@ describe("chart component — vertical y-title (cartesian value axis)", () => {
     )!
     expect(yTitle.getAttribute("data-truncated")).toBe("1")
     expect(yTitle.textContent?.endsWith("…")).toBe(true)
-    expect(yTitle.getAttribute("transform") ?? "").toMatch(/rotate\(\s*-90/)
+    expect(yTitle.getAttribute("transform")).toBeNull()
+    expect(yTitle.getAttribute("y")).toBe("16")
   })
 
   it("applies the vertical y_title to line, area, and scatter the same way", () => {

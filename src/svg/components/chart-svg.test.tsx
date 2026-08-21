@@ -248,6 +248,46 @@ describe("renderLine — endpoint emphasis and area gradient", () => {
   })
 })
 
+/**
+ * Endpoint value labels on a line chart. Dataviz discipline: labels have to
+ * be selective. Four series is the last count whose first/last numbers can
+ * sit without stacking into an ink blot (author screenshot, 20-series
+ * density corpus). Past that, the legend carries identity and the numbers
+ * come off. Endpoint dots stay.
+ */
+function lineSeriesCount(n: number): ChartSeries[] {
+  return Array.from({ length: n }, (_, i) => ({
+    name: `S${i}`,
+    data: [
+      { x: "A", y: 10 + i },
+      { x: "B", y: 20 + i },
+    ],
+  }))
+}
+
+function endpointValueTexts(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll("text"))
+    .filter(
+      (t) => t.getAttribute("fill") === TEXT && t.getAttribute("font-weight") === "600",
+    )
+    .map((t) => t.textContent ?? "")
+}
+
+describe("renderLine — endpoint value labels drop when series collide", () => {
+  it("keeps first/last value labels at 4 series", () => {
+    const { container } = svg(renderLine(lineSeriesCount(4), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(endpointValueTexts(container).sort()).toEqual(["10", "11", "12", "13", "20", "21", "22", "23"])
+    expect(container.querySelectorAll('circle[r="4"]')).toHaveLength(4)
+  })
+
+  it("drops every endpoint value label at 5 series, and leaves the dots", () => {
+    const { container } = svg(renderLine(lineSeriesCount(5), PALETTE, 0, 0, W, H, MUTED, TEXT, ACCENT))
+    expect(endpointValueTexts(container)).toEqual([])
+    expect(container.querySelectorAll("polyline")).toHaveLength(5)
+    expect(container.querySelectorAll('circle[r="4"]')).toHaveLength(5)
+  })
+})
+
 describe("gridlines", () => {
   it("renders exactly 3 horizontal reference lines for an opted-in bar chart, none on the baseline", () => {
     const { container } = svg(
