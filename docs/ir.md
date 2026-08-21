@@ -40,7 +40,7 @@ Each slide has:
 - `arrangement` — how a content slide's body is laid out, for example `two_column` or `kpi_focus`.
 - `components` — the typed units that fill the page (`bullets`, `kpi_cards`, `image`, `chart`, …).
 
-Any slide may also set a stable `id` (what spec pages and validation errors reference it by), `placeholder: true` (a page with no content yet — injected by `assemble` for a spec page nobody has filled in, skipped by content-quality checks, and blocking `render` unless `--draft`), and `notes` (aliases `note`/`speaker_notes`/`speakerNotes`), which exports as a native PowerPoint speaker note. Notes are for the presenter's own view: never drawn on the slide canvas, never counted toward layout capacity.
+Any slide may also set a stable `id` (what spec pages and validation errors reference it by), `placeholder: true` (a page with no content yet — injected by `assemble` for a spec page nobody has filled in, skipped by content-quality checks, and blocking `render` unless `--draft`), and `notes` (aliases `note`/`speaker_notes`/`speakerNotes`), which exports as a native PowerPoint speaker note. Notes are for the presenter's own view: never drawn on the slide canvas, never counted toward layout capacity. On a talk deck the spoken script belongs in `notes`. The agent playbook's Talk-density contract (`skills/pptfast/SKILL.md`) is the rule.
 
 ## Field names that drift
 

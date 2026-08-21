@@ -70,6 +70,7 @@ pptfast themes --json      # built-in themes (id + label)
 写任何页面内容之前，先提议并确认：
 
 - 先定 narrative：从 `narratives` 输出里挑一个匹配这份 deck 目的与受众的具名预设（或单独覆盖某几条轴）——这是位于 theme 之上的一层决策，不是视觉选择
+- 再定演讲还是阅读：如果这份 deck 是人在场讲的，钉版式和写 `notes` 时走下方「演讲密度合同」。`pacing` 不会为此多出第四档
 - 再定 theme id：从选定 narrative 的 `themeRecommendations` 里挑（如果都不合适，就从 `themes` 输出里挑一个贴合这份 deck 调性的——这只是推荐，从不构成约束）。如果用户提供了公司模板，先抽成自定义 theme——见下方「品牌主题」
 - 起草 `deck.spec.json`：每页一条记录（`id`、`type`、`heading`，可选加 `beat`/`focus`/`summary`）——以 `cover` 开篇，以 `ending` 收尾，中间的每一页都是 `content` 或 `chapter`
 - 跑 `pptfast spec validate deck.spec.json`，把它报出的问题都修掉，直到打印 `OK`——边界页、标题长度、beat 轮换、页数是否匹配 pacing 这些硬门都在这一步触发，早于任何一页正文的写作
@@ -79,14 +80,14 @@ pptfast themes --json      # built-in themes (id + label)
 
 ### Phase 3 — 分批填页面（每批至多 4 页），随填随 validate
 
-对已确认 spec 里的每一页，写一个 `pages/<page-id>.json` 存放它的内容（`components`，以及可选的 `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes`——绝不写 `type`/`heading`，这两个字段被 spec 锁定）。撰写 `cover`/`chapter`/`ending` 页面时记住 Phase 1 的边界页规则——不要先给它们塞 `components` 或 `footnote`，然后再回头搬走。`notes` 是给主讲人看的演讲稿——写一份好的讲稿是模型的强项，只要页面内容需要一段超出幻灯片本身的口头讲解，就应该动笔写。
+对已确认 spec 里的每一页，写一个 `pages/<page-id>.json` 存放它的内容（`components`，以及可选的 `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes`——绝不写 `type`/`heading`，这两个字段被 spec 锁定）。撰写 `cover`/`chapter`/`ending` 页面时记住 Phase 1 的边界页规则——不要先给它们塞 `components` 或 `footnote`，然后再回头搬走。`notes` 是给主讲人看的演讲稿——写一份好的讲稿是模型的强项，只要页面内容需要一段超出幻灯片本身的口头讲解，就应该动笔写。演讲 deck 上这一步是必做，不是可选项（演讲密度合同）。
 
 ```bash
 pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken spec
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage`、`statement`、`pull-quote`、`verse-chapter` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见下文「Pin-only 版式」）。
+把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage`、`statement`、`pull-quote`、`verse-chapter` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见下文「Pin-only 版式」）。演讲 deck 上，高潮页、金句页、证据页默认就要钉（见「演讲密度合同」）。
 
 ### Phase 4 — 渲染
 
@@ -248,6 +249,20 @@ pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.s
 `pull-quote` 是 content 页上的居中引言：可选章节眉、斜体大引言、出处小字，再加一段 muted 散文。出处优先 quote 的 `attribution`，否则 `subheading`。正文只接受一个 paragraph。品牌页脚、logo、主题 motif 都不画。
 
 `verse-chapter` 是居中诗行章首（`type: "chapter"`）。tracking 章号眉、两行标题、可选斜体副题。没有水印大数字，没有 body，没有 footnote，chapter 页的既有边界照旧。logo 和主题 motif 都不画。
+
+### 演讲密度合同
+
+演讲 deck 是人在场讲的（发布会、路演、讲座、当面走查）。阅读 deck 是人走后自己翻的（报告、会后转发、周报、会上自己读的董事会材料）。判据：用户要现场讲、要演讲者备注、或者说幻灯片是讲稿后面的那一层，就是演讲 deck。文件必须自己把话说完，就是阅读 deck。
+
+这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名和 `notes` 分流实现。
+
+演讲 deck：
+
+- 高潮页、金句页、证据页，显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`。同波次、并行落地中：`stat-hero`、`one-evidence`、`mono-bleed`。`pptfast schema` 里出现后同样钉。不要把这些页交给自动选型。
+- 每一页的正文预算比 `spacious` 更紧。标题就是主视觉。钉住的极简页最多一个 body component（一行出处、一个数字、一张图或一张表）。这些页零 bullet。装不下就拆页。
+- 讲稿写进 `slide.notes`。`render` 导出成原生 PowerPoint 演讲者备注（View → Notes，演讲者视图可见）。讲稿从不画到画布上。
+
+阅读 deck 按 pacing 预算写。某一页真的只剩一句话时，仍然可以钉极简版式。
 
 ### 容量
 
