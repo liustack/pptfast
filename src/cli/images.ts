@@ -251,7 +251,10 @@ async function searchPixabay(
 
 function formatHits(hits: SearchHit[]): string {
   return hits
-    .map((hit) => `${hit.id}  ${hit.width}x${hit.height}  ${hit.author}  ${hit.license}\n  ${hit.attribution}\n  ${hit.pageUrl}`)
+    .map((hit) => {
+      const thumb = hit.thumb ? `\n  ${hit.thumb}` : ""
+      return `${hit.id}  ${hit.width}x${hit.height}  ${hit.author}  ${hit.license}${thumb}\n  ${hit.attribution}\n  ${hit.pageUrl}`
+    })
     .join("\n")
 }
 

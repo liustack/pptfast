@@ -78,6 +78,7 @@ describe("runImagesSearch", () => {
     })
     expect(urls.some((u) => u.includes("pixabay.com"))).toBe(false)
     expect(out).toContain("pexels:123")
+    expect(out).toContain("https://images.pexels.com/photos/123/medium.jpg")
     expect(out).toContain("Photo by Jane on Pexels")
     expect(out).toContain("https://www.pexels.com/photo/office-desk-123/")
     expect(out).not.toContain("api.pexels.com")
@@ -104,6 +105,7 @@ describe("runImagesSearch", () => {
     expect(urls.some((u) => u.startsWith("https://api.pexels.com/v1/search"))).toBe(true)
     expect(urls.some((u) => u.startsWith("https://pixabay.com/api/"))).toBe(true)
     expect(out).toContain("pixabay:456")
+    expect(out).toContain("https://cdn.pixabay.com/photo/preview.jpg")
     expect(out).toContain("Photo by Bob on Pixabay")
     expect(out).toContain("https://pixabay.com/photos/office-456/")
     expect(out).not.toContain("TESTPIXABAYKEY99")
@@ -187,6 +189,7 @@ describe("runImagesFetch", () => {
       deck,
       as: "hero",
       cwd,
+      query: "office desk",
       fetch: fetchImpl,
       resizeToJpeg: resize,
       now: () => new Date("2026-08-22T00:00:00.000Z"),
@@ -202,6 +205,7 @@ describe("runImagesFetch", () => {
     expect(sidecar.page_url).toBe("https://www.pexels.com/photo/office-desk-123/")
     expect(sidecar.license).toBe("Pexels License")
     expect(sidecar.downloaded_at).toBe("2026-08-22T00:00:00.000Z")
+    expect(sidecar.query).toBe("office desk")
     expect(sidecar).not.toHaveProperty("apiKey")
     expect(sidecar).not.toHaveProperty("key")
     expect(JSON.stringify(sidecar)).not.toContain("TESTPEXELSKEY99")

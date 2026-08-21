@@ -319,9 +319,12 @@ images
   .description("Download a photo (pexels:<id> or pixabay:<id>) into .pptfast/<deck>/assets/")
   .requiredOption("--deck <dir>", "deck project directory, path, or bare name")
   .requiredOption("--as <asset_id>", "local asset id (filename without extension)")
-  .action(async (ref: string, opts: { deck: string; as: string }) => {
+  .option("--query <text>", "search query that produced this pick (stored in the sidecar)")
+  .action(async (ref: string, opts: { deck: string; as: string; query?: string }) => {
     try {
-      console.log(await runImagesFetch(ref, { deck: opts.deck, as: opts.as, cwd: process.cwd() }))
+      console.log(
+        await runImagesFetch(ref, { deck: opts.deck, as: opts.as, query: opts.query, cwd: process.cwd() }),
+      )
     } catch (e) {
       fail(e)
     }
