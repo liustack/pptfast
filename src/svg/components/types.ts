@@ -114,6 +114,17 @@ export interface ComponentCtx {
    * task's) never set it.
    */
   chartPaletteOffset?: number
+  /**
+   * Theme id used to look up a component form assignment
+   * (`./form-assignments.ts`'s `resolveComponentForm`). Omitted means
+   * "no form assignment, current face" — the component renderer keeps
+   * today's default markup. Production `buildCtx` always sets this from
+   * `tokens.id` (`StyleTokens.id` is already the theme id). Hand-built
+   * test ctx objects that skip it keep the default renderer, so existing
+   * component-level tests stay on the current face until a later commit
+   * wires dispatch.
+   */
+  themeId?: string
 }
 
 /**
