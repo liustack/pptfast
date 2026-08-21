@@ -1,7 +1,7 @@
 /**
  * Turns the corpus into whole decks — the two tables `D2` settled on.
  *
- * Theme table: every theme runs the same nine-page deck, so a reviewer
+ * Theme table: every theme runs the same ten-page deck, so a reviewer
  * comparing two themes is looking at one variable. Layout/component table:
  * one page each, pinned, on a fixed baseline theme, so a reviewer comparing
  * two layouts is likewise looking at one variable. Nothing here picks a
@@ -80,14 +80,14 @@ function deckShell(lex: Lexicon, assets: CorpusAssets, themeId: string, filename
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Theme table — one nine-page deck, rendered once per theme
+// Theme table — one ten-page deck, rendered once per theme
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * The nine pages a real deck actually contains, in the order it contains
- * them: an opening, a section break, and the body shapes that carry most
- * of the weight in practice — an argument in prose, headline numbers, a
- * chart, a comparison, a picture, a pull quote — then a close.
+ * The ten pages a real deck actually contains, in the order it contains
+ * them: an opening, a section break, seven content pages each led by a
+ * different component, then a close. The seven lead types are the ones
+ * whose theme-owned forms would otherwise never appear on this table.
  *
  * Layouts are left unpinned here on purpose. This table asks "does this
  * theme look good doing its own thing", and its own thing includes which
@@ -98,23 +98,18 @@ export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): 
   const slides: Slide[] = [
     { type: "cover", heading: lex.deckTitle, subheading: lex.deckSubtitle, components: [] },
     { type: "chapter", heading: lex.chapters[0]!, subheading: lex.kickers[0], components: [] },
-    {
-      // A full paragraph *and* five bullets is more than one content rect
-      // holds, and the deck audit reported the overflow on all 17 themes —
-      // the corpus authoring the page badly, not the themes failing. Three
-      // bullets under the paragraph is what a real page of this shape
-      // carries.
-      type: "content",
-      heading: lex.headings[0]!,
-      components: [b.paragraph!(lex), { type: "bullets", items: lex.bullets.slice(0, 3), style: "default" }],
-      footnote: lex.sources[0]!.label,
-    },
+    { type: "content", heading: lex.headings[3]!, components: [b.icon_cards!(lex)] },
     { type: "content", heading: lex.headings[1]!, components: [b.kpi_cards!(lex)] },
     { type: "content", heading: lex.headings[2]!, components: [b.chart!(lex)] },
-    { type: "content", heading: lex.headings[3]!, components: [b.steps!(lex), b.callout!(lex)] },
-    { type: "content", heading: lex.headings[4]!, components: [b.comparison!(lex)] },
-    { type: "content", heading: lex.headings[5]!, components: [b.image!(lex), b.paragraph!(lex)] },
-    { type: "content", heading: lex.headings[6]!, components: [b.quote!(lex)] },
+    {
+      type: "content",
+      heading: lex.headings[0]!,
+      components: [b.data_table!(lex)],
+      footnote: lex.sources[0]!.label,
+    },
+    { type: "content", heading: lex.headings[6]!, components: [b.timeline!(lex)] },
+    { type: "content", heading: lex.headings[5]!, components: [b.comparison!(lex)] },
+    { type: "content", heading: lex.headings[12]!, components: [b.cycle!(lex)] },
     { type: "ending", heading: lex.chapters[5]!, subheading: lex.verdicts.positive, components: [] },
   ]
   return deckShell(lex, assets, themeId, `theme-${themeId}-${lex.id}`, slides)
@@ -165,6 +160,23 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
     const kpi = b.kpi_cards!(lex) as Component & { items?: unknown[] }
     if (Array.isArray(kpi.items)) kpi.items = kpi.items.slice(0, 1)
     return [kpi]
+  }
+
+  // Sparse and a few ordinary layouts have a body slot whose declared
+  // capacity is the wrong signal: citation is the capacity-1 default, but
+  // these pages draw a quote, a chart, a bento grid, or a hero+strip. Match
+  // the layout's own comments rather than broadening the default.
+  if (def.id === "pull-quote") return [b.quote!(lex)]
+  if (def.id === "one-evidence") return [b.chart!(lex)]
+  if (def.id === "bento-panel") {
+    const kpi = b.kpi_cards!(lex)
+    const icons = b.icon_cards!(lex)
+    if (kpi.type === "kpi_cards") kpi.items = kpi.items.slice(0, 3)
+    if (icons.type === "icon_cards") icons.items = icons.items.slice(0, 3)
+    return [kpi, icons]
+  }
+  if (def.id === "stacked-poster") {
+    return [b.image!(lex), { type: "paragraph", text: lex.shortParagraph }]
   }
 
   if (capacity <= 1) {

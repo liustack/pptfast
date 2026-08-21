@@ -185,6 +185,7 @@ const zh: Lexicon = {
     "三条产品线的资源分配需要重新排序",
     "客户成功团队的响应时间已达行业前列",
     "下半年的三项确定性投入",
+    "从告警派发到工单闭环，现场仍接不住完整一圈",
   ],
 
   kickers: ["经营分析", "客户洞察", "产品进展", "风险提示", "资源规划", "结论"],
@@ -409,6 +410,7 @@ const en: Lexicon = {
     "Three product lines are competing for one delivery team",
     "Customer success response times now lead the category",
     "Three commitments for the second half",
+    "The loop from alert dispatch to a closed work order still breaks in the field",
   ],
 
   kickers: ["Performance", "Customers", "Product", "Risk", "Resourcing", "Conclusion"],
@@ -633,6 +635,7 @@ const mixed: Lexicon = {
     "镜像构建从 Jenkins 迁到 GitHub Actions 的收益",
     "on-call 轮值与 runbook 的补齐进度",
     "Q3 需要冻结的三件事",
+    "Canary 切流到 rollback 的演练还没有形成闭环",
   ],
 
   kickers: ["Why now", "现状盘点", "目标架构", "风险 & rollback", "成本测算", "排期"],

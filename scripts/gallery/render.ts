@@ -94,20 +94,16 @@ export interface Manifest {
 const TABLE_META: Record<TableId, { label: string; question: string }> = {
   theme: {
     label: "主题表",
-    question: "同一套九页 deck 跑遍每个主题——这个主题好不好看？",
+    question: "同一套十页 deck 跑遍每个主题——这个主题好不好看？",
   },
   layout: {
     label: "版式表",
-    question: "固定基准主题，每个版式一页，三种语料各跑一遍——这个版式在真实内容下站不站得住？",
+    question:
+      "普通版式钉在基准主题上三种语料各跑一遍，稀排版式按有资格的主题展开——这个版式在真实内容下站不站得住？",
   },
   component: {
     label: "组件表",
     question: "固定基准主题，每个组件一页，三种语料各跑一遍——这个组件画出来能不能看？",
-  },
-  speech: {
-    label: "演讲版式表",
-    question:
-      "六个只能显式钉住的免 chrome 演讲版式 × 每个主题，中文语料——极简页在这家 token 下立不立得住？主题表永远不会展示它们，这里是唯一的审查位。",
   },
   density: {
     label: "容量表",
@@ -299,7 +295,7 @@ export function renderMatrix(jobs: readonly Job[], outDir: string, pptfastVersio
     })
   }
 
-  const tables: ManifestTable[] = (["theme", "layout", "component", "density", "speech"] as const)
+  const tables: ManifestTable[] = (["theme", "layout", "component", "density"] as const)
     .map((id) => ({
       id,
       label: TABLE_META[id].label,

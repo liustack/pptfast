@@ -23,11 +23,11 @@ import { listThemes } from "@/api"
 import { COMPONENT_TYPES, type Component } from "@/ir"
 import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "./gallery/corpus/components"
 import { resolveComponentForm } from "@/svg/components/form-assignments"
-import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
+import { BASELINE_THEME, corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
-import { assertFullCoverage, buildMatrix, SPEECH_LAYOUT_IDS } from "./gallery/matrix"
-import { THEME_DEFINITIONS, themeOffersSparse } from "@/themes/definitions"
+import { assertFullCoverage, buildMatrix } from "./gallery/matrix"
+import { SPARSE_LAYOUT_IDS, THEME_DEFINITIONS, themeOffersSparse } from "@/themes/definitions"
 import { installNodePlatform } from "@/platform/node"
 
 // `renderMatrix` audits every page it renders, and the auditor parses SVG
@@ -91,9 +91,10 @@ describe("gallery coverage", () => {
     expect(() => assertFullCoverage(themeIds, themeIds.length + 1)).toThrow(/expected/)
   })
 
-  it("speech table skips sparse pins a theme does not offer", async () => {
-    const jobs = buildMatrix(themeIds, await assets(), { only: "speech" })
-    const subjects = (themeId: string) => jobs.filter((j) => j.theme === themeId).map((j) => j.subject)
+  it("layout table expands sparse layouts only on themes that offer them", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout" })
+    const sparse = jobs.filter((j) => (SPARSE_LAYOUT_IDS as readonly string[]).includes(j.subject))
+    const subjects = (themeId: string) => sparse.filter((j) => j.theme === themeId).map((j) => j.subject)
 
     expect(subjects("crayon")).toEqual([])
     expect(subjects("classroom")).toEqual([])
@@ -103,14 +104,69 @@ describe("gallery coverage", () => {
     expect(stage).toContain("statement")
     expect(stage).not.toContain("one-evidence")
 
-    expect(subjects("consulting").sort()).toEqual([...THEME_DEFINITIONS.consulting.sparseLayouts!].sort())
+    expect([...new Set(subjects("consulting"))].sort()).toEqual([...THEME_DEFINITIONS.consulting.sparseLayouts!].sort())
 
-    const derived = themeIds.reduce(
-      (n, themeId) => n + SPEECH_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length,
-      0,
-    )
-    expect(jobs).toHaveLength(derived)
-    expect(derived).toBe(72)
+    const derived = themeIds.reduce((n, themeId) => {
+      const offered = SPARSE_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length
+      return n + offered * (themeId === BASELINE_THEME ? LANGUAGE_IDS.length : 1)
+    }, 0)
+    expect(sparse).toHaveLength(derived)
+  })
+
+  it("emits only the theme, layout, component, and density tables", async () => {
+    const jobs = buildMatrix(themeIds, await assets())
+    expect([...new Set(jobs.map((j) => j.table))].sort()).toEqual(["component", "density", "layout", "theme"])
+  })
+})
+
+const THEME_CONTENT_TYPES = ["icon_cards", "kpi_cards", "chart", "data_table", "timeline", "comparison", "cycle"] as const
+
+describe("gallery theme table corpus", () => {
+  it("runs the same ten-page deck on every theme, rotating seven content components", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const expectedTypes = new Set<string>(THEME_CONTENT_TYPES)
+    let firstTypes: string[] | undefined
+
+    for (const themeId of themeIds) {
+      const pages = jobs.filter((j) => j.subject === themeId).sort((a, b) => a.page - b.page)
+      expect(pages, themeId).toHaveLength(10)
+      expect(pages.map((p) => p.slideType)).toEqual([
+        "cover",
+        "chapter",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "ending",
+      ])
+
+      const content = pages.filter((p) => p.slideType === "content")
+      const types = content.map((p) => p.ir.slides[p.slideIndex]!.components[0]!.type)
+      expect(new Set(types).size, themeId).toBe(THEME_CONTENT_TYPES.length)
+      expect(new Set(types), themeId).toEqual(expectedTypes)
+
+      firstTypes ??= types
+      expect(types, themeId).toEqual(firstTypes)
+    }
+  })
+})
+
+describe("gallery layout table corpus", () => {
+  it("authors bodies that match what those layouts actually draw", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout", languages: ["zh"] })
+    const typesOf = (layoutId: string): string[] => {
+      const job = jobs.find((j) => j.subject === layoutId && j.language === "zh")
+      expect(job, layoutId).toBeTruthy()
+      return job!.ir.slides[0]!.components.map((c) => c.type)
+    }
+
+    expect(typesOf("pull-quote")).toContain("quote")
+    expect(typesOf("one-evidence")).toContain("chart")
+    expect(typesOf("bento-panel")).toEqual(expect.arrayContaining(["kpi_cards", "icon_cards"]))
+    expect(typesOf("stacked-poster")).toContain("image")
   })
 })
 
