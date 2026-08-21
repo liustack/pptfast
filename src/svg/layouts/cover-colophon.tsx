@@ -94,6 +94,7 @@ export function ColophonCover({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: TITLE_MAX_LINES,
     minPt: TITLE_MIN_PT,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const titleLastY = TITLE_FIRST_BASELINE + Math.max(0, title.lines.length - 1) * title.lineHeight
 

@@ -59,6 +59,7 @@ export function OneEvidenceContent({ slide, ctx }: SvgTemplateProps) {
   const heading = fitHeadingLines(slide.heading, {
     ...layoutDef.headingFit,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
 
   const evidence = pickEvidence(slide.components) ?? slide.components[0]

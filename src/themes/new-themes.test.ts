@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest"
 import { resolveFontFace } from "../svg/fonts"
+import { contrastRatio } from "../svg/ink"
 import { TECH_TOKENS } from "./tech"
 import { JOURNAL_TOKENS } from "./journal"
+import { LUXE_TOKENS } from "./luxe"
 import { PULSE_TOKENS } from "./pulse"
 import { TERRA_TOKENS } from "./terra"
 import { EMBER_TOKENS } from "./ember"
@@ -288,7 +290,7 @@ describe("museum tokens", () => {
   })
 })
 
-// stage（黑场，2026-08-21）：青灰黑 + sans + 冰蓝聚光，无 motif。Same
+// stage（黑场 v2b，2026-08-21）：冷玄黑 + sans + 哑银，无 motif。Same
 // shape-only assertions as the blocks above — registry wiring is covered
 // separately by themes/index.test.ts.
 describe("stage tokens", () => {
@@ -305,16 +307,17 @@ describe("stage tokens", () => {
     expect(resolveFontFace(STAGE_TOKENS.fonts.body, "body")).toBe("Microsoft YaHei")
   })
 
-  it("does not set an accentPool (single, restrained ice-spotlight accent)", () => {
+  it("does not set an accentPool (single, restrained dull-silver accent)", () => {
     expect(STAGE_TOKENS.colors.accentPool).toBeUndefined()
   })
 
-  it("shape.radius is 0 (keynote square) and gapScale is 1.3 (airy black field)", () => {
+  it("shape.radius is 0, gapScale is 1.3, typeScale is 1.5", () => {
     expect(STAGE_TOKENS.shape?.radius).toBe(0)
     expect(STAGE_TOKENS.shape?.gapScale).toBe(1.3)
+    expect(STAGE_TOKENS.shape?.typeScale).toBe(1.5)
   })
 
-  it("four page types share the cool-black ground (chapter is not a primary bleed)", () => {
+  it("four page types share the cold xuan-black ground (chapter is not a primary bleed)", () => {
     for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
       expect(STAGE_TOKENS.defaultBackgrounds[slideType]).toEqual({
         kind: "color",
@@ -323,15 +326,70 @@ describe("stage tokens", () => {
     }
   })
 
-  it("accent is ice spotlight, not luxe champagne / museum brass / insight amber", () => {
-    expect(STAGE_TOKENS.colors.accent).toBe("#6BB7E8")
-    expect(STAGE_TOKENS.colors.accent).not.toBe("#C6A15B")
-    expect(STAGE_TOKENS.colors.accent).not.toBe("#BE7A28")
-    expect(STAGE_TOKENS.colors.accent).not.toBe("#F0A63C")
+  it("retires v1 ice-blue and stays a metal-gray monotone", () => {
+    const dumped = JSON.stringify(STAGE_TOKENS.colors)
+    expect(dumped).not.toContain("6BB7E8")
+    expect(dumped).not.toContain("141C22")
+    expect(STAGE_TOKENS.colors.accent).toBe("#C4BFB6")
+    expect(STAGE_TOKENS.colors.bg).toBe("#0F0F12")
+    expect(STAGE_TOKENS.colors.text).toBe("#F3EFE7")
+    expect(STAGE_TOKENS.colors.muted).toBe("#B0A694")
+    expect(STAGE_TOKENS.colors.border).toBe("#4A463F")
+    expect(STAGE_TOKENS.colors.chartPalette).toEqual(["#C4BFB6", "#B8A888", "#6F6A61", "#8A96A2"])
+    for (const hex of STAGE_TOKENS.colors.chartPalette) {
+      expect(hslSat(hex), hex).toBeLessThan(0.3)
+    }
   })
 
-  it("ground is cool charcoal, not luxe true-black", () => {
-    expect(STAGE_TOKENS.colors.bg).toBe("#141C22")
-    expect(STAGE_TOKENS.colors.bg).not.toBe("#0B0908")
+  it("clears the contrast floors the audit actually enforces", () => {
+    const { colors } = STAGE_TOKENS
+    expect(contrastRatio(colors.text, colors.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(colors.muted, colors.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(colors.accent, colors.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(colors.danger!, colors.surface)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(colors.success!, colors.surface)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(colors.warning!, colors.surface)).toBeGreaterThanOrEqual(3)
+    for (const hex of colors.chartPalette) {
+      expect(contrastRatio(hex, colors.bg), hex).toBeGreaterThanOrEqual(3)
+      expect(contrastRatio(hex, colors.surface), hex).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it("splits from luxe on ground distance, heading face, and accent family", () => {
+    const stageBg = hexRgb(STAGE_TOKENS.colors.bg)
+    const luxeBg = hexRgb(LUXE_TOKENS.colors.bg)
+    expect(STAGE_TOKENS.colors.bg).not.toBe(LUXE_TOKENS.colors.bg)
+    expect(rgbDist(stageBg, luxeBg)).toBeGreaterThan(10)
+    expect(stageBg[2]).toBeGreaterThanOrEqual(stageBg[0])
+    expect(luxeBg[0]).toBeGreaterThan(luxeBg[2])
+
+    expect(resolveFontFace(STAGE_TOKENS.fonts.heading, "heading")).toBe("Microsoft YaHei")
+    expect(resolveFontFace(LUXE_TOKENS.fonts.heading, "heading")).toBe("SimSun")
+
+    expect(STAGE_TOKENS.colors.accent).not.toBe(LUXE_TOKENS.colors.accent)
+    expect(hslSat(STAGE_TOKENS.colors.accent)).toBeLessThan(0.2)
+    expect(hslSat(LUXE_TOKENS.colors.accent)).toBeGreaterThan(0.4)
   })
 })
+
+function hexRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+function rgbDist(a: [number, number, number], b: [number, number, number]): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+}
+
+function hslSat(hex: string): number {
+  const [r0, g0, b0] = hexRgb(hex)
+  const r = r0 / 255
+  const g = g0 / 255
+  const b = b0 / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  if (d === 0) return 0
+  return l > 0.5 ? d / (2 - max - min) : d / (max + min)
+}

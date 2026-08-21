@@ -38,6 +38,7 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 48,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const titleY =
     HEADING_LAST_BASELINE - Math.max(0, title.lines.length - 1) * title.lineHeight

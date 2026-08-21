@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
-import { fitHeadingLines } from "../heading-fit"
+import { fitHeadingLines, scaleTypePx } from "../heading-fit"
 import { accessibleOpacity, readableOn } from "../ink"
 
 /**
@@ -55,6 +55,7 @@ export function FashionChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 30,
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
 
   return (
@@ -68,7 +69,7 @@ export function FashionChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         x={1224}
         y={560}
         fontFamily={ctx.fonts.heading}
-        fontSize={420}
+        fontSize={scaleTypePx(420, ctx.shape?.typeScale)}
         fontWeight="900"
         fill={watermark}
         textAnchor="end"

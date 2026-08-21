@@ -925,8 +925,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       cover: ["poster-center", "editorial-masthead"],
     },
   },
-  // stage（黑场，2026-08-21 huashu 风格库 Top 5 第 3）：青灰黑 + sans +
-  // 冰蓝聚光，**无 motif**。结构行 C / bottom-right / none / airy，最近邻
+  // stage（黑场，2026-08-21 huashu 风格库 Top 5 第 3）：冷玄黑 + sans +
+  // 哑银，**无 motif**。结构行 C / bottom-right / none / airy，最近邻
   // luxe（C / bottom-right / light / airy），岔在 decor 轴——无框对请柬框。
   // runway 已占 L / bottom-left / none / airy，heading 与 meta 都岔开。
   // 封面构造 poster-center / tone-adaptive-header（新的封面权重族）：

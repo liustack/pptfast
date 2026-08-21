@@ -78,6 +78,7 @@ const StyleTokensFileSchema = z
       .object({
         radius: z.number().min(0).max(32).optional(),
         gapScale: z.number().min(0.8).max(1.3).optional(),
+        typeScale: z.number().min(0.5).max(2).optional(),
       })
       .strict()
       .optional(),

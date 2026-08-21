@@ -1,6 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { layoutSvgText } from "../../lib/svg-text-layout"
+import { scaleTypePx } from "../heading-fit"
 import { accessibleInk } from "../ink"
 import { CONF_LABEL } from "../../lib/conf-labels"
 
@@ -34,7 +35,7 @@ export function BannerTitleCover({ ir, slide, ctx }: SvgTemplateProps) {
   const pageBg = ctx.defaultBg ?? ctx.colors.bg
   const title = layoutSvgText(slide.heading, {
     maxWidth: 1088,
-    fontSize: 84,
+    fontSize: scaleTypePx(84, ctx.shape?.typeScale),
     maxLines: 2,
     lineHeightRatio: 1.08,
     // bold-metrics fix (2026-07-24): this layout renders its heading

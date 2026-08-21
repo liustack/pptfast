@@ -76,6 +76,14 @@ decoration language, whitespace scale. Recoloring the same composition
 is the failure mode this document exists to prevent: themes that declare
 no structural preference render identically under the same seed.
 
+Token levers on `style.shape` change rhythm without forking a layout:
+`radius` (corners), `gapScale` (block spacing), and `typeScale` (heading
+and display size on cover, chapter, ending, and pin-only speech pages,
+applied before heading-fit shrinks to the box. Body, meta, kicker,
+footnote, and content-page titles that share the page with a body stack
+stay put. Omit `typeScale` and every layout renders exactly as it does
+today).
+
 ## Deliverables per theme
 
 - 5-6 artboards: cover, chapter, content ×2 densities, ending, and

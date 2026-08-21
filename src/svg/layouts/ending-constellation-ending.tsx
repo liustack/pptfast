@@ -70,6 +70,7 @@ export function ConstellationEnding({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 44,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingY =
     HEADING_LAST_BASELINE -

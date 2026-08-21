@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
-import { fitHeadingLines } from "../heading-fit"
+import { fitHeadingLines, scaleTypePx } from "../heading-fit"
 import { accessibleInk } from "../ink"
 
 /**
@@ -64,6 +64,7 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 28,
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   // 章节数字基线 400、字号 224，下伸部至 ~463px。标题起点须留出
   // 显式间距（含导出 ascent 近似 ±20px 缓冲），否则数字与标题叠压。
@@ -71,6 +72,7 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const headingLastY =
     headingY + Math.max(0, heading.lines.length - 1) * heading.lineHeight
   const dividerY = headingLastY + 110
+  const numberPx = scaleTypePx(224, ctx.shape?.typeScale)
 
   return (
     <>
@@ -105,9 +107,9 @@ export function PosterChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         x="56"
         y="400"
         fontFamily={ctx.fonts.heading}
-        fontSize="224"
+        fontSize={numberPx}
         fontWeight="800"
-        fill={accessibleInk(ctx.colors.primary, defaultBg, 224)}
+        fill={accessibleInk(ctx.colors.primary, defaultBg, numberPx)}
         letterSpacing="-8"
         dominantBaseline="alphabetic"
       >

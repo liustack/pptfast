@@ -41,6 +41,7 @@ export function VerseChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
   const heading = fitHeadingLines(slide.heading, {
     ...layoutDef.headingFit,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const titleLastY = TITLE_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight
 
