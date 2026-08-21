@@ -50,7 +50,8 @@ describe("decorative chartPalette-reading motifs are isolated from chart-palette
     // motif 就是 `classroom-motif`——本行渲的是同一个组件、bloom 自己的
     // tokens，覆盖没有减少（`motif-bloom-motif.tsx` 已随水彩色板一并删除）。
     ["bloom", ClassroomMotif, endingSlide] as const,
-    ["crayon", CrayonMotif, coverSlide] as const,
+    // cover 撤底带且太阳让位，不再读 chartPalette。ending 才有太阳芯与彩虹划。
+    ["crayon", CrayonMotif, endingSlide] as const,
     ["arena", ArenaMotif, coverSlide] as const,
   ])("%s: renders byte-identical markup regardless of chartPaletteOffset", (themeId, Motif, slide) => {
     const tokens = resolveStyle(themeId)
