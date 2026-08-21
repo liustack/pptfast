@@ -232,8 +232,8 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
  * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「21 个 theme
- * id、20 个结构身份」是本仓从此的正式口径，不是过渡态。
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「22 个 theme
+ * id、21 个结构身份」是本仓从此的正式口径，不是过渡态。
  *
  * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
  * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
@@ -943,6 +943,27 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 不是漏写（theme-structure.test.ts 把两家一起钉成合法例外）。
     layoutTendencies: {
       cover: ["poster-center", "tone-adaptive-header"],
+    },
+  },
+  // playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字，由专属
+  // playbill-motif 承载右上小黑贴片。结构行 C / top-band / heavy / medium，
+  // 最近邻 vermilion（C / top-band / medium / medium），岔在装饰轴。
+  // **heavy 的量在字重与满版底色，零粒子零贴纸**——heavy 不必然等于 motif
+  // 重。装饰只有一枚小贴片，密页无需降档。封面构造 poster-center /
+  // fashion-masthead（3:1 软权重，照现有写法）：
+  //   - `poster-center`：开演前的正面站位，黄纸上特粗黑字。briefing 已锁
+  //     权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
+  //   - `fashion-masthead`：满版 primary 硬黑 + 超大报头，黑底黄字反贴的
+  //     第二张脸。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实边际
+  //     权重。与 luxe / runway 共用同一构造，layout 零 baked hex。
+  // chapter / ending / content 不声明：身份靠封面 + 满版黄 + 特粗字，不靠
+  // 再声明一个与 vermilion 同形的轴去硬凑区分度。
+  // layouts 仍是四页型全集。定位 10 页内活动件（宣发 / 招募 / 节目单）。
+  playbill: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "playbill-motif",
+    layoutTendencies: {
+      cover: ["poster-center", "fashion-masthead"],
     },
   },
 }
