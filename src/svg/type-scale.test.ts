@@ -61,6 +61,28 @@ describe("typeScale omitted is a byte-identical no-op", () => {
       expect(one, id).toBe(omitted)
     }
   })
+
+  it("built-in themes other than stage omit typeScale", () => {
+    for (const id of CANONICAL_THEME_IDS) {
+      if (id === "stage") {
+        expect(THEME_STYLES[id].shape?.typeScale).toBe(1.5)
+      } else {
+        expect(THEME_STYLES[id].shape?.typeScale, id).toBeUndefined()
+      }
+    }
+  })
+
+  it("stage's declared typeScale 1.5 matches an explicit override of 1.5", () => {
+    const omitted = renderSlideSvg(coverIr("stage", "战略"), 0)
+    const explicit = renderSlideSvg(coverIr("stage", "战略", { shape: { typeScale: 1.5 } }), 0)
+    expect(explicit).toBe(omitted)
+  })
+
+  it("stage cover heading is 1.5× the same page forced to typeScale 1", () => {
+    const scaled = renderSlideSvg(coverIr("stage", "战略"), 0)
+    const unscaled = renderSlideSvg(coverIr("stage", "战略", { shape: { typeScale: 1 } }), 0)
+    expect(fontSizeFor(scaled, "战略")).toBe(Math.round(fontSizeFor(unscaled, "战略") * 1.5))
+  })
 })
 
 describe("typeScale multiplies heading/display size before fit", () => {

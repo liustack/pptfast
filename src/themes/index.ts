@@ -37,7 +37,7 @@ import { STAGE_TOKENS } from "./stage";
  * 第一个从立项即以中文语域为主的主题 / crayon Kids Education——低龄教育
  * 蜡笔卡纸 / arena Esports & Entertainment——娱乐电竞·竞技场紫黑 /
  * museum Museum——博物·棕黑厅堂衬线铜金，2026-08-21 鹦鹉站气质立项 /
- * stage Keynote Stage——黑场·无框发布会演讲，2026-08-21 huashu 风格库
+ * stage Keynote Stage——黑场·冷玄黑无框发布会演讲，2026-08-21 huashu 风格库
  * Top 5 第 3，结构身份 19 → 20）。pptfast 是独立分叉，无存量 deck
  * 兼容包袱，不维护 legacy id 映射表（resolveThemeId 对未知 id 一律回落
  * consulting）。
