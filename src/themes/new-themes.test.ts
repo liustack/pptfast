@@ -440,6 +440,16 @@ describe("lecture tokens", () => {
     expect(contrastRatio(accent, bg)).toBeGreaterThanOrEqual(3)
   })
 
+  it("semantic three clear the floors on surface (danger/success ≥4.5, warning ≥3)", () => {
+    const { surface, danger, warning, success } = LECTURE_TOKENS.colors
+    expect(danger).toBeDefined()
+    expect(warning).toBeDefined()
+    expect(success).toBeDefined()
+    expect(contrastRatio(danger!, surface)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(success!, surface)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(warning!, surface)).toBeGreaterThanOrEqual(3)
+  })
+
   it("chart four-swatch set is chalk-white / chalk-yellow / grey-blue / terracotta, each ≥3:1 on bg", () => {
     expect(LECTURE_TOKENS.colors.chartPalette).toEqual(["#EFF3EC", "#E9C46A", "#8A9EAA", "#C47A68"])
     for (const hex of LECTURE_TOKENS.colors.chartPalette) {
