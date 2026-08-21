@@ -208,8 +208,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  *   builtins (and the four none identities within them) renders
  *   byte-identically to before this module existed.
  * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`,
- *   crayon, arena, lecture, and every themes-16/gov-theme singleton): `weightedPickBySeed`
- *   crayon, arena, memo, and every themes-16/gov-theme singleton): `weightedPickBySeed`
+ *   crayon, arena, lecture, swiss, memo, and every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   always returns that single member regardless of seed/pageKey — also
  *   byte-identical to before this task (see `motif-selection.test.ts`'s
  *   byte-inertness block).

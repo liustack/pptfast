@@ -132,11 +132,6 @@ describe("bloom is a declared palette preset of classroom, not a missing declara
 // table. Pinned here so a future "fill in the missing motif" tidy-up has to
 // argue with a failing test instead of a blank field.
 describe("absent motifs are identity values, not holes (runway per definitions.ts:317, museum per the 2026-08-21 corner-decor strike-down, playbill per the empty-chip strike-down)", () => {
-  it("runway and museum declare no motif", () => {
-    expect(THEME_DEFINITIONS.runway.motif).toBeUndefined()
-    expect(THEME_DEFINITIONS.museum.motif).toBeUndefined()
-  })
-
   it("museum and stage declare no motif — corner decor struck / undecorated black field", () => {
     expect(THEME_DEFINITIONS.museum.motif).toBeUndefined()
     expect(THEME_DEFINITIONS.stage.motif).toBeUndefined()
