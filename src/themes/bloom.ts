@@ -44,7 +44,7 @@ const BORDER = "#DCC9C4"; // 横线簿格线的粉调
  *     已查）。留一个没人渲的注册项不是保守，是死代码。
  *
  * **红线不变：bloom 这个 theme id 永不删除**（既有 deck 里写着它）。
- * 「20 个 theme id、19 个结构身份」的口径也不变，只是现在连 motif 和字体
+ * 「21 个 theme id、20 个结构身份」的口径也不变，只是现在连 motif 和字体
  * 也一并镜像了。
  *
  * 对比度实测（`svg/ink.ts` 的 `contrastRatio`，压 `bg` `#F5EDEA`）：

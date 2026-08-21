@@ -9,6 +9,7 @@ import { VERMILION_TOKENS } from "./vermilion"
 import { CRAYON_TOKENS } from "./crayon"
 import { ARENA_TOKENS } from "./arena"
 import { MUSEUM_TOKENS } from "./museum"
+import { STAGE_TOKENS } from "./stage"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -284,5 +285,53 @@ describe("museum tokens", () => {
   it("accent is plaque brass, not luxe champagne", () => {
     expect(MUSEUM_TOKENS.colors.accent).toBe("#BE7A28")
     expect(MUSEUM_TOKENS.colors.accent).not.toBe("#C6A15B")
+  })
+})
+
+// stage（黑场，2026-08-21）：青灰黑 + sans + 冰蓝聚光，无 motif。Same
+// shape-only assertions as the blocks above — registry wiring is covered
+// separately by themes/index.test.ts.
+describe("stage tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = STAGE_TOKENS
+    expect(t.id).toBe("stage")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, keynote sans)", () => {
+    expect(resolveFontFace(STAGE_TOKENS.fonts.heading, "heading")).toBe("Microsoft YaHei")
+  })
+
+  it("body font resolves to Microsoft YaHei (exact width table)", () => {
+    expect(resolveFontFace(STAGE_TOKENS.fonts.body, "body")).toBe("Microsoft YaHei")
+  })
+
+  it("does not set an accentPool (single, restrained ice-spotlight accent)", () => {
+    expect(STAGE_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 0 (keynote square) and gapScale is 1.3 (airy black field)", () => {
+    expect(STAGE_TOKENS.shape?.radius).toBe(0)
+    expect(STAGE_TOKENS.shape?.gapScale).toBe(1.3)
+  })
+
+  it("four page types share the cool-black ground (chapter is not a primary bleed)", () => {
+    for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
+      expect(STAGE_TOKENS.defaultBackgrounds[slideType]).toEqual({
+        kind: "color",
+        value: STAGE_TOKENS.colors.bg,
+      })
+    }
+  })
+
+  it("accent is ice spotlight, not luxe champagne / museum brass / insight amber", () => {
+    expect(STAGE_TOKENS.colors.accent).toBe("#6BB7E8")
+    expect(STAGE_TOKENS.colors.accent).not.toBe("#C6A15B")
+    expect(STAGE_TOKENS.colors.accent).not.toBe("#BE7A28")
+    expect(STAGE_TOKENS.colors.accent).not.toBe("#F0A63C")
+  })
+
+  it("ground is cool charcoal, not luxe true-black", () => {
+    expect(STAGE_TOKENS.colors.bg).toBe("#141C22")
+    expect(STAGE_TOKENS.colors.bg).not.toBe("#0B0908")
   })
 })

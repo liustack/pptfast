@@ -232,8 +232,8 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
  * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「20 个 theme
- * id、19 个结构身份」是本仓从此的正式口径，不是过渡态。
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「21 个 theme
+ * id、20 个结构身份」是本仓从此的正式口径，不是过渡态。
  *
  * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
  * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
@@ -923,6 +923,26 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     layoutTendencies: {
       cover: ["poster-center", "editorial-masthead"],
+    },
+  },
+  // stage（黑场，2026-08-21 huashu 风格库 Top 5 第 3）：青灰黑 + sans +
+  // 冰蓝聚光，**无 motif**。结构行 C / bottom-right / none / airy，最近邻
+  // luxe（C / bottom-right / light / airy），岔在 decor 轴——无框对请柬框。
+  // runway 已占 L / bottom-left / none / airy，heading 与 meta 都岔开。
+  // 封面构造 poster-center / tone-adaptive-header（新的封面权重族）：
+  //   - `poster-center`：发布会开幕的正面站位。briefing 已锁权重 3，单独
+  //     声明空转，保留为真实主张（裁定 1 的追加先例）。
+  //   - `tone-adaptive-header`：空场第二脸，meta 落右下。不在 briefing 的
+  //     cover 集合里，max(3,1)=3，产生真实边际权重。
+  // chapter / ending / content 不声明：身份靠封面 + none + airy gapScale。
+  // statement 是 pinOnly，不进倾向池。
+  stage: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // motif 刻意不配：无框就是身份。runway 是「大片排印」的 none，stage
+    // 是「黑场」的 none，用 heading / meta 两轴分开。照 runway 先例留空，
+    // 不是漏写（theme-structure.test.ts 把两家一起钉成合法例外）。
+    layoutTendencies: {
+      cover: ["poster-center", "tone-adaptive-header"],
     },
   },
 }
