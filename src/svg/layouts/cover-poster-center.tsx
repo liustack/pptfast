@@ -4,6 +4,8 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { showsDocumentMeta } from "../document-meta"
+import { accessibleInk } from "../ink"
+import { hasCjk, latinUpper, trackingPx } from "./minimal-shared"
 
 /**
  * poster-center cover layout（spec §3.2）：全居中"海报"式封面——超大居中标题、
@@ -38,6 +40,12 @@ const CENTER_X = 640
  * poster grammar. */
 const ACCENT_BAR_W = 60
 const ACCENT_BAR_H = 4
+const KICKER_SIZE = 18
+const KICKER_TRACKING_EM = 0.22
+const KICKER_PREFERRED_Y = 252
+const META_TOP_Y = 56
+const META_BOTTOM_LEFT = { x: 48, y: 700 }
+const META_BOTTOM_RIGHT = { x: 1208, y: 684 }
 
 export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
   const org = ir.meta.organization
@@ -49,6 +57,11 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
     ? [author.name, author.role].filter(Boolean).join(" · ")
     : null
   const version = ir.meta.version
+  const cover = ctx.shape?.cover
+  const showKicker = cover?.showKicker === true
+  const barFill = cover?.barFill === "accent" ? ctx.colors.accent : ctx.colors.primary
+  const metaPlacement = cover?.metaPlacement ?? "center"
+  const pageBg = ctx.defaultBg ?? ctx.colors.bg
 
   const title = fitHeadingLines(slide.heading, {
     maxWidth: 1100,
@@ -81,23 +94,66 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
   const subtitleLastY =
     subtitleY + Math.max(0, subtitle.lines.length - 1) * subtitle.lineHeight
 
-  const metaParts = [org, confLabel, date, authorText, version].filter(
+  const kickerSrc = showKicker && org ? (hasCjk(org) ? org : latinUpper(org)) : null
+  const kickerTracking = kickerSrc && !hasCjk(kickerSrc) ? trackingPx(KICKER_SIZE, KICKER_TRACKING_EM) : undefined
+  const kicker = kickerSrc
+    ? fitSvgLine(kickerSrc, {
+        maxWidth: 900,
+        fontSize: KICKER_SIZE,
+        minFontSize: 12,
+        letterSpacing: kickerTracking,
+        fontFamily: ctx.fonts.body,
+      })
+    : null
+  const titleGlyphTop = COVER_TITLE_Y - Math.round(title.fontSize * 0.75)
+  const kickerY =
+    kicker && KICKER_PREFERRED_Y + 2 < titleGlyphTop
+      ? KICKER_PREFERRED_Y
+      : titleGlyphTop - 16
+  const kickerFill = accessibleInk(ctx.colors.accent, pageBg, KICKER_SIZE)
+
+  const topMetaParts = [org, confLabel, date].filter((v): v is string => Boolean(v))
+  const bodyMetaParts = [showKicker ? undefined : org, confLabel, date, authorText, version].filter(
     (v): v is string => Boolean(v),
   )
+  const metaParts = metaPlacement === "none" ? [] : metaPlacement === "top" ? topMetaParts : bodyMetaParts
   const metaLine =
     metaParts.length > 0
       ? fitSvgLine(metaParts.join("    ·    "), {
-          maxWidth: 900,
+          maxWidth: metaPlacement === "bottom-right" || metaPlacement === "bottom-left" ? 700 : 900,
           fontSize: 20,
           minFontSize: 14,
         })
       : null
   // Bottom meta line: fixed at 650 for the common case, pushed down only if a
   // long (2-line) title + 2-line subtitle combo would otherwise run into it.
-  const metaY = Math.max(650, subtitleLastY + 56)
+  const metaPos =
+    metaPlacement === "bottom-left"
+      ? { x: META_BOTTOM_LEFT.x, y: META_BOTTOM_LEFT.y, anchor: "start" as const }
+      : metaPlacement === "bottom-right"
+        ? { x: META_BOTTOM_RIGHT.x, y: META_BOTTOM_RIGHT.y, anchor: "end" as const }
+        : metaPlacement === "top"
+          ? { x: 96, y: META_TOP_Y, anchor: "start" as const }
+          : { x: CENTER_X, y: Math.max(650, subtitleLastY + 56), anchor: "middle" as const }
 
   return (
     <>
+      {kicker && (
+        <text
+          data-truncated={kicker.truncated ? "1" : undefined}
+          x={CENTER_X}
+          y={kickerY}
+          textAnchor="middle"
+          fontFamily={ctx.fonts.body}
+          fontSize={kicker.fontSize}
+          fill={kickerFill}
+          letterSpacing={kickerTracking}
+          dominantBaseline="alphabetic"
+        >
+          {kicker.text}
+        </text>
+      )}
+
       {title.lines.map((line, i) => (
         <text
           key={i}
@@ -122,7 +178,7 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
         width={ACCENT_BAR_W}
         height={ACCENT_BAR_H}
         rx="2"
-        fill={ctx.colors.primary}
+        fill={barFill}
       />
 
       {subtitle.lines.map((line, i) => (
@@ -144,9 +200,9 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
       {metaLine && (
         <text
           data-truncated={metaLine.truncated ? "1" : undefined}
-          x={CENTER_X}
-          y={metaY}
-          textAnchor="middle"
+          x={metaPos.x}
+          y={metaPos.y}
+          textAnchor={metaPos.anchor}
           fontFamily={ctx.fonts.body}
           fontSize={metaLine.fontSize}
           fill={ctx.colors.muted}
@@ -167,8 +223,9 @@ export function PosterCenterCover({ ir, slide, ctx }: SvgTemplateProps) {
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {
-  // cover-poster-center.tsx: fully centered "poster" — no kicker (org is
-  // folded into the single bottom meta line, not a standalone label).
+  // cover-poster-center.tsx: fully centered "poster". Optional kicker and
+  // metaPlacement knobs. Default: no kicker, org folded into the bottom
+  // meta line.
   id: "poster-center",
   kind: "archetype",
   slideTypes: ["cover"],

@@ -64,7 +64,11 @@ export const HERITAGE_TOKENS: StyleTokens = {
     heading: ["SimSun", "宋体", "Songti SC", "STSong", "serif"],
     body: ["Microsoft YaHei", "Helvetica Neue", "Arial", "system-ui"],
   },
-  shape: { radius: 4, gapScale: 1.05 }, // 传统装帧微圆+沉稳
+  shape: {
+    radius: 4,
+    gapScale: 1.05, // 传统装帧微圆+沉稳
+    cover: { textAnchor: "start" },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#F4EDE2" },
     chapter: { kind: "color", value: "#F4EDE2" },

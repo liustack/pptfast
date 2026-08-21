@@ -197,36 +197,13 @@ describe("SplitDiagonalCover", () => {
   })
 })
 
-// W4 全集放开后，cover 页型在未收窄的主题里含 split-diagonal。board-cover-
-// fidelity 波五家 wave7 主题锁死 layouts.cover，是第一次动用收窄。
-describe("split-diagonal 全集放开后对十三主题均可达（definitions.test.ts 持有逐主题钉值基线）", () => {
-  it("every canonical theme that still curates the full cover set includes split-diagonal", () => {
-    // board-cover-fidelity wave: five wave7 themes lock layouts.cover to one
-    // board construction. They are the first narrowing, named here so a
-    // sixth lock has to edit this list.
-    const narrowed = new Set([
-      "stage",
-      "lecture",
-      "swiss",
-      "memo",
-      "playbill",
-      "consulting",
-      "classroom",
-      "bloom",
-      "enterprise",
-      "vermilion",
-      "crayon",
-      "runway",
-      "pulse",
-      "arena",
-      "ember",
-    ])
+// board-cover-restore wave 2: every builtin locks layouts.cover. split-diagonal
+// stays in the shared pool. It is no longer in any theme's curated cover set.
+describe("split-diagonal is in the pool, not in any builtin cover lock", () => {
+  it("no canonical theme still curates the full cover set. every cover lock is a singleton", () => {
     for (const id of CANONICAL_THEME_IDS) {
-      if (narrowed.has(id)) {
-        expect(THEME_DEFINITIONS[id].layouts.cover, id).not.toContain("split-diagonal")
-        continue
-      }
-      expect(THEME_DEFINITIONS[id].layouts.cover, id).toContain("split-diagonal")
+      expect(THEME_DEFINITIONS[id].layouts.cover, id).toHaveLength(1)
+      expect(THEME_DEFINITIONS[id].layouts.cover, id).not.toContain("split-diagonal")
     }
   })
 })

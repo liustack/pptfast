@@ -8,8 +8,9 @@ import { accessibleInk } from "../ink"
  *
  * **文件名与 motif id 未改，画的东西整个换了**——id 是注册表键
  * （`motifs/index.ts` 的 `MOTIFS`、`motif-selection.ts` 的
- * `MOTIF_CANDIDATES`、`definitions.ts` 的锚点），改名会牵动四家主题的候选
- * 集与一批测试；前四组换血时（rail/banner/poster/constellation/heritage…）
+ * `MOTIF_CANDIDATES`、`definitions.ts` 的锚点），改名会牵动注册表与测试。
+ * board-cover-restore wave 2 把 journal 钉成单成员，academic / luxe /
+ * heritage 不再轮换到这里。前四组换血时（rail/banner/poster/constellation/heritage…）
  * 一律留 id 换画，本轮照办。读这个 id 时请以本文件为准，不要按字面理解成
  * 「角花」。
  *

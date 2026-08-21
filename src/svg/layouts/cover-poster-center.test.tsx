@@ -6,6 +6,15 @@ import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { PosterCenterCover } from "./cover-poster-center"
 import type { PptxIR, Slide } from "@/ir"
+import type { StyleTokens } from "../../themes/tokens"
+import { accessibleInk } from "../ink"
+
+function tokensWithoutCover(themeId: string): StyleTokens {
+  const tokens = resolveStyle(themeId)
+  if (!tokens.shape?.cover) return tokens
+  const { cover: _omit, ...shape } = tokens.shape
+  return { ...tokens, shape }
+}
 
 const slide: Slide = { type: "cover", heading: "创意提案", subheading: "一次品牌焕新实验", components: [] } as Slide
 const ir = (theme: string): PptxIR =>
@@ -40,7 +49,7 @@ function render(body: React.ReactElement): { markup: string; root: Element } {
 
 describe("PosterCenterCover", () => {
   it("creative tokens 下标题居中、短横条走 primary（RED≡primary）且无旧 baked hex 残留（观感等价档）", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(tokensWithoutCover("insight"), {})
     const out = renderSvgMarkup(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("创意提案")
     expect(out).toContain('text-anchor="middle"')
@@ -56,7 +65,7 @@ describe("PosterCenterCover", () => {
   })
 
   it("accent 短横条精确坐标(width=60/height=4)走 primary、副标题居中、底部合并 meta 行含组织/密级/日期", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(tokensWithoutCover("insight"), {})
     const fullSlide: Slide = {
       type: "cover",
       heading: "年度财务报告",
@@ -99,7 +108,7 @@ describe("PosterCenterCover", () => {
   })
 
   it("Cover 元素避开四角 BrandChrome logo 条带", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(tokensWithoutCover("insight"), {})
     const { root } = render(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     const accentBar = Array.from(root.querySelectorAll("rect")).find(
       (r) => r.getAttribute("width") === "60" && r.getAttribute("height") === "4",
@@ -116,8 +125,111 @@ describe("PosterCenterCover", () => {
   })
 
   it("Cover 页通过 subset 校验", () => {
-    const ctx = buildCtx(resolveStyle("insight"), {})
+    const ctx = buildCtx(tokensWithoutCover("insight"), {})
     const { root } = render(<PosterCenterCover ir={ir("insight")} slide={slide} index={0} ctx={ctx} />)
     expect(() => assertSubset(root)).not.toThrow()
+  })
+})
+
+const FULL_META: PptxIR["meta"] = {
+  organization: "岭原智能",
+  authors: [{ name: "陈砚清", role: "首席技术官" }],
+  date: "2026 年 7 月",
+  confidentiality: "internal",
+}
+
+function fullIr(themeId: string): PptxIR {
+  return {
+    version: "4",
+    filename: "deck.pptx",
+    theme: { id: themeId },
+    chrome: "full",
+    meta: FULL_META,
+    assets: { images: {} },
+    slides: [slide],
+  } as unknown as PptxIR
+}
+
+function renderCover(
+  themeId: string,
+  cover?: NonNullable<StyleTokens["shape"]>["cover"],
+  s: Slide = slide,
+) {
+  const tokens = resolveStyle(themeId)
+  const shaped: StyleTokens = { ...tokens, shape: { ...tokens.shape, cover: { ...tokens.shape?.cover, ...cover } } }
+  const ctx = buildCtx(shaped, {})
+  const doc = fullIr(themeId)
+  const { markup, root } = render(<PosterCenterCover ir={doc} slide={s} index={0} ctx={ctx} />)
+  return { markup, root, tokens, ctx }
+}
+
+function bar(root: Element) {
+  return Array.from(root.querySelectorAll("rect")).find(
+    (r) => r.getAttribute("width") === "60" && r.getAttribute("height") === "4",
+  )!
+}
+
+describe("PosterCenterCover — cover knobs (board-cover-restore wave 2)", () => {
+  it("default: primary bar, no kicker, centered meta", () => {
+    const { root, tokens } = renderCover("stage")
+    expect(bar(root).getAttribute("fill")).toBe(tokens.colors.primary)
+    const texts = Array.from(root.querySelectorAll("text"))
+    const kickers = texts.filter((t) => t.textContent === "岭原智能" && t.getAttribute("y") !== texts.find((x) => (x.textContent ?? "").includes("岭原智能") && Number(x.getAttribute("y")) >= 600)?.getAttribute("y"))
+    const meta = texts.find((t) => (t.textContent ?? "").includes("岭原智能") && Number(t.getAttribute("y")) >= 600)!
+    expect(meta.getAttribute("text-anchor")).toBe("middle")
+    expect(meta.getAttribute("x")).toBe("640")
+    expect(kickers.every((k) => Number(k.getAttribute("y")) >= 600) || texts.filter((t) => t.textContent === "岭原智能").length === 1).toBe(true)
+  })
+
+  it("campaign knobs: kicker present, bar fill accent, meta start + left", () => {
+    const knobs = { showKicker: true, barFill: "accent" as const, metaPlacement: "bottom-left" as const }
+    const { root, tokens, ctx } = renderCover("campaign", knobs)
+    expect(bar(root).getAttribute("fill")).toBe(tokens.colors.accent)
+    const kicker = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "岭原智能" && Number(t.getAttribute("y")) < 280,
+    )!
+    expect(kicker).toBeTruthy()
+    expect(kicker.getAttribute("fill")).toBe(
+      accessibleInk(tokens.colors.accent, ctx.defaultBg ?? tokens.colors.bg, Number(kicker.getAttribute("font-size"))),
+    )
+    const meta = Array.from(root.querySelectorAll("text")).find((t) => Number(t.getAttribute("y")) >= 680)!
+    expect(meta.getAttribute("text-anchor")).toBe("start")
+    expect(meta.getAttribute("x")).toBe("48")
+    expect(Number(meta.getAttribute("y"))).toBeGreaterThanOrEqual(664)
+    expect(rectsOverlap(
+      { x: 48, y: Number(meta.getAttribute("y")) - 20, w: 200, h: 24 },
+      BL_LOGO,
+    )).toBe(false)
+  })
+
+  it("insight knobs: no bottom meta at y650, org appears once at top", () => {
+    const { root } = renderCover("insight", { metaPlacement: "top" })
+    const orgRuns = Array.from(root.querySelectorAll("text")).filter((t) => (t.textContent ?? "").includes("岭原智能"))
+    expect(orgRuns).toHaveLength(1)
+    expect(Number(orgRuns[0]!.getAttribute("y"))).toBeLessThan(100)
+    expect(orgRuns[0]!.getAttribute("y")).toBe("56")
+    const bottomMeta = Array.from(root.querySelectorAll("text")).find((t) => Number(t.getAttribute("y")) >= 640)
+    expect(bottomMeta).toBeUndefined()
+  })
+
+  it("luxe knobs: meta end-anchored right, below the frame, clear of the logo box", () => {
+    const { root } = renderCover("luxe", { metaPlacement: "bottom-right" })
+    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("岭原智能"))!
+    expect(meta.getAttribute("text-anchor")).toBe("end")
+    expect(meta.getAttribute("x")).toBe("1208")
+    const y = Number(meta.getAttribute("y"))
+    expect(y).toBeGreaterThanOrEqual(624)
+    expect(y).toBe(684)
+    // Baseline sits below the logo box (y630-670). Horizontal overlap with
+    // x1120-1216 is fine: the two do not share y.
+    expect(y).toBeGreaterThan(BR_LOGO.y + BR_LOGO.h)
+  })
+
+  it("museum knobs: meta at top", () => {
+    const { root } = renderCover("museum", { metaPlacement: "top" })
+    const meta = Array.from(root.querySelectorAll("text")).find((t) => (t.textContent ?? "").includes("岭原智能"))!
+    expect(Number(meta.getAttribute("y"))).toBeLessThan(100)
+    expect(meta.getAttribute("y")).toBe("56")
+    expect(meta.getAttribute("text-anchor")).toBe("start")
   })
 })

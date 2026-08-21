@@ -7,7 +7,15 @@ import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
 import { FullSlideSvg } from "./full-slide-svg"
 import { getLayout, LAYOUT_REGISTRY, layoutsForSlideType } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
-import { __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
+import { __fullLayoutSet, __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
+
+/** Full auto-pick pools. academic.layouts.cover is now a singleton lock. */
+const FULL_IDENTITY_LAYOUTS: ThemeDefinition["layouts"] = {
+  cover: __fullLayoutSet("cover"),
+  chapter: __fullLayoutSet("chapter"),
+  content: __fullLayoutSet("content"),
+  ending: __fullLayoutSet("ending"),
+}
 import {
   resolveLayoutId,
   resolveEffectiveLayoutBodyCapacity,
@@ -568,7 +576,7 @@ describe("resolveLayoutId", () => {
       for (let i = 0; i < N; i++) {
         const picked = resolveLayoutId(
           "cover",
-          THEME_DEFINITIONS.academic.layouts,
+          FULL_IDENTITY_LAYOUTS,
           i,
           String(i),
           undefined,
@@ -667,7 +675,7 @@ describe("resolveLayoutId", () => {
           for (let seed = 0; seed < 15; seed++) {
             const withoutBeat = resolveLayoutId(
               slideType,
-              THEME_DEFINITIONS.academic.layouts,
+              FULL_IDENTITY_LAYOUTS,
               seed,
               String(seed),
               undefined,
@@ -677,7 +685,7 @@ describe("resolveLayoutId", () => {
             for (const beat of beats) {
               const withBeat = resolveLayoutId(
                 slideType,
-                THEME_DEFINITIONS.academic.layouts,
+                FULL_IDENTITY_LAYOUTS,
                 seed,
                 String(seed),
                 undefined,
@@ -710,7 +718,7 @@ describe("resolveLayoutId", () => {
       for (let i = 0; i < N; i++) {
         const picked = resolveLayoutId(
           "cover",
-          THEME_DEFINITIONS.academic.layouts,
+          FULL_IDENTITY_LAYOUTS,
           i,
           String(i),
           undefined,
@@ -762,16 +770,24 @@ describe("resolveLayoutId", () => {
 
 describe("resolveEffectiveLayoutId", () => {
   it("a deck's narrative strategy reaches identity-page selection end-to-end: a cover picked under pyramid differs from the same seed's pick under storytelling, for at least one seed in a spread (P1 variety wave, task 3)", () => {
+    registerTheme({
+      id: "full-cover-fixture",
+      style: THEME_DEFINITIONS.academic.style,
+      brand: {},
+      tags: [],
+      layouts: FULL_IDENTITY_LAYOUTS,
+    })
     let sawADifference = false
     for (let seed = 0; seed < 30; seed++) {
       const slide: Slide = { type: "cover", heading: "x", components: [] }
-      const irPyramid: PptxIR = { ...makeIR([slide], "academic"), seed, narrative: { strategy: "pyramid" } }
-      const irStorytelling: PptxIR = { ...makeIR([slide], "academic"), seed, narrative: { strategy: "storytelling" } }
+      const irPyramid: PptxIR = { ...makeIR([slide], "full-cover-fixture"), seed, narrative: { strategy: "pyramid" } }
+      const irStorytelling: PptxIR = { ...makeIR([slide], "full-cover-fixture"), seed, narrative: { strategy: "storytelling" } }
       if (resolveEffectiveLayoutId(irPyramid, slide, 0) !== resolveEffectiveLayoutId(irStorytelling, slide, 0)) {
         sawADifference = true
         break
       }
     }
+    __resetRegisteredThemes()
     expect(sawADifference).toBe(true)
   })
 
@@ -1233,7 +1249,7 @@ describe("render parity with FullSlideSvg", () => {
         brand: {},
         tags: [],
         layouts: {
-          cover: THEME_DEFINITIONS.academic.layouts.cover,
+          cover: FULL_IDENTITY_LAYOUTS.cover,
           chapter: THEME_DEFINITIONS.academic.layouts.chapter,
           content: CONTENT_LAYOUT_IDS,
           ending: THEME_DEFINITIONS.academic.layouts.ending,

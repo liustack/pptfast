@@ -78,7 +78,11 @@ export const JOURNAL_TOKENS: StyleTokens = {
     body: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "Arial", "system-ui"],
     mono: ["Consolas", "Courier New"],
   },
-  shape: { radius: 6, gapScale: 1.1 }, // 期刊温和+杂志留白
+  shape: {
+    radius: 6,
+    gapScale: 1.1, // 期刊温和+杂志留白
+    cover: { showKicker: true },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#EFEBE1" },
     chapter: { kind: "color", value: "#EFEBE1" },

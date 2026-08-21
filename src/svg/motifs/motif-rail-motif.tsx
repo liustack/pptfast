@@ -54,10 +54,9 @@ import type { DecorProps } from "./types"
  * v1 的三档 seed 变体因此删除，`cachedDeckSeed`/`pickBySeed` 依赖退出本文件。
  *
  * 纪律：零 theme id、零 hex，颜色只来自 ctx（primary = 点轨、accent = 角标）。
- * 借用网（`motif-selection.ts` 的 `MOTIF_CANDIDATES`）：consulting / journal /
- * enterprise 三家的候选集里都有本 motif，抽到时画的是它们自己 token 下的
- * 进度轨与角标——本轮换语汇，这三家抽中本 motif 的页跟着换装，逐页归因见
- * 冷调组报告。
+ * 借用网（`motif-selection.ts` 的 `MOTIF_CANDIDATES`）：academic 是锚点且
+ * board-cover-restore wave 2 已钉成单成员。consulting / enterprise 仍借本
+ * motif。journal 不再轮换到这里。
  */
 
 // ── 顶带进度点轨 ────────────────────────────────────────────────────────

@@ -8,6 +8,29 @@ import { fitHeadingLines } from "../heading-fit"
 import { readableOn } from "../ink"
 import { LeftAnchorCover } from "./cover-left-anchor"
 import type { PptxIR, Slide } from "@/ir"
+import type { StyleTokens } from "../../themes/tokens"
+import { accessibleInk } from "../ink"
+
+function tokensWithoutCover(themeId: string): StyleTokens {
+  const tokens = resolveStyle(themeId)
+  if (!tokens.shape?.cover) return tokens
+  const { cover: _omit, ...shape } = tokens.shape
+  return { ...tokens, shape }
+}
+
+function renderCover(
+  themeId: string,
+  s: Slide = slide,
+  cover?: NonNullable<StyleTokens["shape"]>["cover"],
+  doc?: PptxIR,
+) {
+  const tokens = resolveStyle(themeId)
+  const shaped: StyleTokens = { ...tokens, shape: { ...tokens.shape, cover: { ...tokens.shape?.cover, ...cover } } }
+  const ctx = buildCtx(shaped, {})
+  const irDoc = doc ?? ir(themeId)
+  const out = renderSvgMarkup(<LeftAnchorCover ir={irDoc} slide={s} index={0} ctx={ctx} />)
+  return { out, root: parseSvgRoot(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`), tokens }
+}
 
 // BrandChrome's brand logo bands (see templates/academic.test.tsx's own
 // LOGO_BANDS) — the confidentiality badge sits top-right (y=104, not 64,
@@ -48,7 +71,7 @@ const ir = (theme: string): PptxIR =>
 // hex（同白字例外一样）跨主题稳定出现，而非逐字节 toBe。
 describe("LeftAnchorCover", () => {
   it("academic tokens 下渲染左侧色块 + 白字标题 + 未隐形的装饰三角（TRIANGLE_DEEP）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const ctx = buildCtx(tokensWithoutCover("academic"), {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
 
     // 标题文本存在
@@ -90,7 +113,7 @@ describe("LeftAnchorCover", () => {
   })
 
   it("academic tokens 下标题仍是纯白——readableOn 对当前既有策展主题（academic 是本文件唯一 pre-W4 owner）产出与旧硬编码逐字节相同的结果", () => {
-    const academicTokens = resolveStyle("academic")
+    const academicTokens = tokensWithoutCover("academic")
     const ctx = buildCtx(academicTokens, {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
     expect(readableOn(academicTokens.colors.primary)).toBe("#FFFFFF")
@@ -98,7 +121,7 @@ describe("LeftAnchorCover", () => {
   })
 
   it("org 文本渲染在右侧白面板（translate(576,168)），Cover body 通过 subset validation（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const ctx = buildCtx(tokensWithoutCover("academic"), {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
     expect(out).toContain("测试所")
 
@@ -118,7 +141,7 @@ describe("LeftAnchorCover", () => {
 
     it("wraps to 3 lines and shrinks to fontSize=47 — matches fitHeadingLines(maxWidth=360) directly", () => {
       const reportedSlide: Slide = { type: "cover", heading: REPORTED_HEADING, components: [] } as Slide
-      const ctx = buildCtx(resolveStyle("academic"), {})
+      const ctx = buildCtx(tokensWithoutCover("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={reportedSlide} index={0} ctx={ctx} />,
       )
@@ -158,7 +181,7 @@ describe("LeftAnchorCover", () => {
       const longer =
         "DSpark：让大规模语言模型推理速度提升 60-85% 的关键工程突破与实践路径"
       const longerSlide: Slide = { type: "cover", heading: longer, components: [] } as Slide
-      const ctx = buildCtx(resolveStyle("academic"), {})
+      const ctx = buildCtx(tokensWithoutCover("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={longerSlide} index={0} ctx={ctx} />,
       )
@@ -202,7 +225,7 @@ describe("LeftAnchorCover", () => {
       const RUN = "Brandxxxxxxxxxxxxxxx"
       const literalPin = `${RUN}：让工程团队将大模型推理性能提升`
       const literalSlide: Slide = { type: "cover", heading: literalPin, components: [] } as Slide
-      const ctx = buildCtx(resolveStyle("academic"), {})
+      const ctx = buildCtx(tokensWithoutCover("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={literalSlide} index={0} ctx={ctx} />,
       )
@@ -236,7 +259,7 @@ describe("LeftAnchorCover", () => {
       const RUN = "Brandxxxxxxxxxxx"
       const heading16 = `${RUN}：让工程团队将大模型推理性能提升`
       const slide16: Slide = { type: "cover", heading: heading16, components: [] } as Slide
-      const ctx = buildCtx(resolveStyle("academic"), {})
+      const ctx = buildCtx(tokensWithoutCover("academic"), {})
       const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide16} index={0} ctx={ctx} />)
       const root = parseSvgRoot(
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,
@@ -267,7 +290,7 @@ describe("LeftAnchorCover", () => {
       const RUN = "OpenAPIGateway"
       const fusedHeading = "统一接入层OpenAPIGateway让跨团队协作效率显著提升"
       const fusedSlide: Slide = { type: "cover", heading: fusedHeading, components: [] } as Slide
-      const ctx = buildCtx(resolveStyle("academic"), {})
+      const ctx = buildCtx(tokensWithoutCover("academic"), {})
       const out = renderSvgMarkup(
         <LeftAnchorCover ir={ir("academic")} slide={fusedSlide} index={0} ctx={ctx} />,
       )
@@ -298,7 +321,7 @@ describe("LeftAnchorCover", () => {
   })
 
   it("confidentiality 徽标 (1064,104,120,48) 避让 BrandChrome 四个 logo 带（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const ctx = buildCtx(tokensWithoutCover("academic"), {})
     const deck: PptxIR = {
       version: "3",
       filename: "x.pptx",
@@ -341,7 +364,7 @@ describe("LeftAnchorCover", () => {
   // templates/academic.test.tsx's own "documents (not asserts false)" case).
   // Documented here, not silently skipped.
   it("documents (not asserts false) that the corner triangle overlaps the bl logo band by design（迁移自 academic.test.tsx）", () => {
-    const ctx = buildCtx(resolveStyle("academic"), {})
+    const ctx = buildCtx(tokensWithoutCover("academic"), {})
     const out = renderSvgMarkup(<LeftAnchorCover ir={ir("academic")} slide={slide} index={0} ctx={ctx} />)
     const root = parseSvgRoot(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">${out}</svg>`,
@@ -350,5 +373,43 @@ describe("LeftAnchorCover", () => {
     expect(triangle).toBeTruthy()
     const triangleBox = { x: 0, y: 520, w: 200, h: 200 } // bbox of "0,720 0,520 200,720"
     expect(rectsOverlap(triangleBox, BL_LOGO)).toBe(true)
+  })
+})
+
+describe("LeftAnchorCover — cover knobs (board-cover-restore wave 2)", () => {
+  const ACADEMIC_KNOBS = {
+    showCornerTriangle: false,
+    titleBlockAlign: "upper" as const,
+    showInBlockKicker: true,
+  }
+
+  it("default still draws the corner triangle and vertically centers the title", () => {
+    const { root } = renderCover("consulting")
+    const triangle = root.querySelector("polygon")
+    expect(triangle?.getAttribute("points")).toBe("0,720 0,520 200,720")
+    const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "创新前沿")!
+    expect(Number(title.getAttribute("y"))).toBeGreaterThan(340)
+  })
+
+  it("academic knobs: no triangle, first title baseline 340, in-block kicker, no right-panel org duplicate", () => {
+    const { root, tokens } = renderCover("academic", slide, ACADEMIC_KNOBS)
+    expect(root.querySelector("polygon")).toBeNull()
+    const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "创新前沿")!
+    expect(title.getAttribute("y")).toBe("340")
+    const kicker = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "测试所")!
+    expect(kicker.getAttribute("y")).toBe("250")
+    expect(kicker.getAttribute("x")).toBe("64")
+    expect(kicker.getAttribute("fill")).toBe(accessibleInk(tokens.colors.accent, tokens.colors.primary, Number(kicker.getAttribute("font-size"))))
+    expect(kicker.getAttribute("letter-spacing")).toBeNull()
+    const orgGroup = Array.from(root.querySelectorAll("g")).find((g) =>
+      g.getAttribute("transform")?.startsWith("translate(576,"),
+    )
+    expect(orgGroup).toBeUndefined()
+    expect(root.querySelectorAll("circle")).toHaveLength(0)
+  })
+
+  it("does not draw progress dots in the layout", () => {
+    const { root } = renderCover("academic", slide, ACADEMIC_KNOBS)
+    expect(root.querySelectorAll("circle")).toHaveLength(0)
   })
 })

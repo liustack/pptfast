@@ -49,21 +49,21 @@
  * | theme | candidates (anchor first) | rationale |
  * |---|---|---|
  * | consulting | banner-motif, rail-motif, enterprise-motif | all three are quiet line/geometry marks with zero organic curve or saturated color — matches consulting's buttoned-up register; the wider organic/wash/bold-brush families are excluded outright, not merely under-weighted. Editorial-group reskin (2026-08-20): `banner-motif`'s own vocabulary changed from a faint line grid to three fixed annotation rules (a top hairline, a highlighter block, a page-number rule) — same quiet-line family, so this row's rationale still holds, but the *look* the two borrowers inherit is new. See `motifs/motif-banner-motif.tsx`. |
- * | insight | poster-motif, constellation-motif | both are atmosphere-generating gradient fields (a corner glow vs. a diagonal deep-space field) rather than literal line ornaments — insight's own "EditorialDarkDecor" lineage is about ambient depth, not iconography, so the sibling stays in the same glow family |
- * | academic | rail-motif, banner-motif, corner-ornament-motif | a progress track pairs with the other two quiet-line members (banner's annotation rules) and one scholarly-print mark (journal's masthead rules) — academic's register tolerates print tradition but not organic softness or brush color. Both siblings were redrawn by the editorial-group reskin (2026-08-20); the id `corner-ornament-motif` no longer draws corner ornaments at all — read that file, not its name. |
- * | tech | constellation-motif, poster-motif, enterprise-motif | tech's own gradient-field glow (constellation) pairs with insight's sibling glow family, plus enterprise's precise grid for the "engineered" register — never organic/hand-drawn, which would undercut the precision identity |
+ * | insight | poster-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif so gallery p01 cannot draw constellation's sibling glow. Ruling: built-in theme decoration is locked. |
+ * | academic | rail-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif so gallery p01 cannot draw banner or journal's masthead rules. Ruling: built-in theme decoration is locked. |
+ * | tech | constellation-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif so gallery p01 cannot draw poster ticker or enterprise's grid. Ruling: built-in theme decoration is locked. |
  * | runway | *(none — settled decision, see module doc above)* | typography-only is the adjudicated look; no candidate set |
  * | museum | *(none — corner decor struck, 2026-08-21)* | identity in palette and serif type; no candidate set |
  * | stage | *(none — undecorated black field, 2026-08-21)* | 无框 is the identity; no candidate set |
  * | playbill | playbill-motif *(singleton)* | 2026-08-22 restored by user verdict: the date chip (meta.date-driven, absent-date = no chip) is part of the board design; no sibling family shares a ticket-chip vocabulary |
- * | journal | corner-ornament-motif, heritage-motif, rail-motif | journal/heritage/luxe share a "thin printed line" family (see luxe's own entry below) — after the editorial-group reskin (2026-08-20) journal sits at the "masthead rules" end and heritage at "classic emblem", the two split by line discipline rather than by corner vs. edge (journal runs its rules full width, heritage breaks its double rule around a seal); rail's progress track is the third, plain-geometry option |
+ * | journal | corner-ornament-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif (masthead rules + issue number) so gallery p01 cannot draw heritage's bookplate or rail. Ruling: built-in theme decoration is locked. |
  * | enterprise | enterprise-motif, banner-motif, rail-motif | enterprise's Swiss-grid IKB identity pairs only with the other minimal geometric-line motifs (banner's grid, rail's arc) — organic/wash/ornamental families would visibly clash with its industrial-design register |
- * | luxe | luxe-motif, heritage-motif, corner-ornament-motif | luxe/heritage/journal all draw from the same thin-printed-line family — luxe at the "gilt minimal" end, heritage at "classic emblem", journal at "masthead rules" (retitled by the editorial-group reskin, 2026-08-20) |
+ * | luxe | luxe-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif (gilt invitation frame) so gallery p01 cannot draw heritage florets or journal's masthead rules. Ruling: built-in theme decoration is locked. |
  * | campaign | campaign-motif *(singleton)* | campaign's saturated multi-hue crayon/brush vocabulary has no sibling anywhere in the other 12 motifs — pairing it with grid lines, watercolor wash, or gold hairlines would break its "活力营销" identity rather than vary it, so it is deliberately left alone (candidate set of 1 — same-deck renders stay byte-identical to before this task, see `motif-selection.test.ts`'s byte-inertness block) |
  * | classroom | classroom-motif *(singleton)* | soft-group reskin (2026-08-20): the pair this row used to name (`classroom-motif`, `bloom-motif`) no longer exists — `bloom-motif`'s watercolor vocabulary retired with bloom's own palette, and its file was deleted outright, because bloom became a declared palette preset of classroom (`themes/bloom.ts`) and no third theme ever borrowed it. What is left is one legal-pad vocabulary (top punch holes, a pencil dashed line, a paperclip arc) shared by the two themes that are now the same design in two palettes, so there is nothing left to rotate *between*. Chapter still draws nothing (`return null`) — classroom/bloom's chapter background is a full-bleed `primary` band and this motif's muted/accent inks measure 1.04-1.55:1 against it, which is invisible, not restrained. |
  * | bloom | classroom-motif *(singleton)* | mirror of classroom's row above, and now literally the same motif: bloom is classroom's palette preset, so it draws classroom's geometry in bloom's own five colors. `MOTIF_CANDIDATES`'s anchor-first invariant still holds — `THEME_DEFINITIONS.bloom.motif` is `"classroom-motif"` too. |
  * | ink | ink-motif *(singleton)* | ink's calligraphy/seal-stamp/vertical-inscription vocabulary is the most culturally-specific motif in the set with no sibling family — any other motif substituted in would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (byte-identical, same rationale pattern as campaign) |
- * | heritage | heritage-motif, luxe-motif, corner-ornament-motif | heritage anchors the thin-printed-line family (classic emblem end), luxe (gilt minimal) and journal's masthead rules are its closest siblings. The editorial-group reskin (2026-08-20) handed the corner-ornament vocabulary itself to heritage — journal stopped drawing corner brackets, so the two no longer share a mark, only a register. |
+ * | heritage | heritage-motif *(singleton)* | board-cover-restore wave 2 (2026-08-22): locked to the cover-board motif (bookplate rules + cover stamp) so gallery p01 cannot draw luxe's gilt frame. Ruling: built-in theme decoration is locked. |
  * | pulse | pulse-motif *(singleton)* | themes-16 wave, task T1 (2026-07-28): pulse's thin ECG pulse-line + capsule/cell-dot vocabulary is its own new technique family with no sibling among the other 13 motifs (not organic-blob like classroom/bloom, not thin-ornamental-line like journal/heritage/luxe, not grid-geometry like consulting/enterprise) — pairing it with any existing motif would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/ink) |
  * | terra | terra-motif *(singleton)* | themes-16 wave, task T2 (2026-07-28): terra's topographic contour-line + leaf-vein/seed-dot vocabulary is its own new technique family — closer to classroom/bloom's organic register than to any grid or ornamental-line family, but its lines are irregular *closed terrain rings* (a land/growth reading), not smooth color blobs or watercolor wash, so pairing it with classroom/bloom would still read as a mismatched skin. Stays a candidate set of 1 (same rationale pattern as pulse/campaign/ink) |
  * | ember | ember-motif *(singleton)* | themes-16 wave, task T3 (2026-07-28): ember's rising-spark-particle vocabulary (dots fading along an ascending bezier arc) is its own new technique family — a directional motion mark, not a static blob/ornament/grid/glow like any of the other 15 motifs, so no existing motif reads as a compatible sibling. Stays a candidate set of 1 (same rationale pattern as pulse/terra/campaign/ink) |
@@ -169,18 +169,18 @@ export const MOTIF_BASE_WEIGHT = 1
  */
 export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId[]>> = {
   consulting: ["banner-motif", "rail-motif", "enterprise-motif"],
-  insight: ["poster-motif", "constellation-motif"],
-  academic: ["rail-motif", "banner-motif", "corner-ornament-motif"],
-  tech: ["constellation-motif", "poster-motif", "enterprise-motif"],
-  // runway, museum, stage, playbill: intentionally absent — see module header.
-  journal: ["corner-ornament-motif", "heritage-motif", "rail-motif"],
+  insight: ["poster-motif"],
+  academic: ["rail-motif"],
+  tech: ["constellation-motif"],
+  // runway, museum, stage: intentionally absent — see module header.
+  journal: ["corner-ornament-motif"],
   enterprise: ["enterprise-motif", "banner-motif", "rail-motif"],
-  luxe: ["luxe-motif", "heritage-motif", "corner-ornament-motif"],
+  luxe: ["luxe-motif"],
   campaign: ["campaign-motif"],
   classroom: ["classroom-motif"],
   bloom: ["classroom-motif"],
   ink: ["ink-motif"],
-  heritage: ["heritage-motif", "luxe-motif", "corner-ornament-motif"],
+  heritage: ["heritage-motif"],
   pulse: ["pulse-motif"],
   terra: ["terra-motif"],
   ember: ["ember-motif"],
@@ -208,7 +208,8 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  *   builtins (and the four none identities within them) renders
  *   byte-identically to before this module existed.
  * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`,
- *   crayon, arena, lecture, swiss, memo, and every themes-16/gov-theme singleton): `weightedPickBySeed`
+ *   crayon, arena, lecture, swiss, memo, academic, insight, tech, luxe,
+ *   journal, heritage, and every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   always returns that single member regardless of seed/pageKey — also
  *   byte-identical to before this task (see `motif-selection.test.ts`'s
  *   byte-inertness block).

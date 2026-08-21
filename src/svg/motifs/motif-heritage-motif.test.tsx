@@ -19,6 +19,7 @@ const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
 const FOOTER_ZONE = { x: 48, y: 664, w: 1184, h: 44 }
 /** 默认（`br`）品牌 logo 盒，`brand-chrome.tsx` 的 `logoBox`。 */
 const LOGO_BOX = { x: 1120, y: 630, w: 96, h: 40 }
+const TR_LOGO = { x: 1120, y: 48, w: 96, h: 40 }
 
 const ir = (theme: string): PptxIR =>
   ({
@@ -218,6 +219,36 @@ describe("HeritageMotif（藏书票纹饰）", () => {
   it("Decor body passes subset validation", () => {
     for (const slide of ALL_SLIDES) {
       expect(() => assertSubset(draw("heritage", slide).root)).not.toThrow()
+    }
+  })
+
+  it("cover-only bookplate stamp: 60×76 outer frame at (1150, 96), wine stroke, caramel inner + diamond", () => {
+    const { root, ctx } = draw("heritage", coverSlide)
+    const stamp = Array.from(root.querySelectorAll("rect")).filter((r) => num(r, "width") === 60 && num(r, "height") === 76)
+    expect(stamp).toHaveLength(1)
+    expect(num(stamp[0]!, "x")).toBe(1150)
+    expect(num(stamp[0]!, "y")).toBe(96)
+    expect(stamp[0]!.getAttribute("fill")).toBe("none")
+    expect(stamp[0]!.getAttribute("stroke")).toBe(ctx.colors.primary)
+    const inner = Array.from(root.querySelectorAll("rect")).find((r) => num(r, "width") === 48 && num(r, "height") === 64)!
+    expect(num(inner, "x")).toBe(1156)
+    expect(num(inner, "y")).toBe(102)
+    expect(inner.getAttribute("fill")).toBe("none")
+    expect(inner.getAttribute("stroke")).toBe(ctx.colors.accent)
+    const gem = Array.from(root.querySelectorAll("rect")).find((r) => num(r, "width") === 16)!
+    expect(gem.getAttribute("fill")).toBe(ctx.colors.accent)
+    expect(num(gem, "x") + 8).toBe(1180)
+    expect(num(gem, "y") + 8).toBe(134)
+    expect(num(stamp[0]!, "y")).toBeGreaterThan(TR_LOGO.y + TR_LOGO.h)
+    expect(num(stamp[0]!, "x")).toBeGreaterThan(TITLE_ZONE.x + TITLE_ZONE.w)
+    expect(num(stamp[0]!, "y") + num(stamp[0]!, "height")).toBeLessThan(BODY_ZONE.y)
+  })
+
+  it("other page types do not grow a stamp", () => {
+    for (const slide of [chapterSlide, contentSlide, endingSlide]) {
+      const { root } = draw("heritage", slide)
+      const stamp = Array.from(root.querySelectorAll("rect")).filter((r) => num(r, "width") === 60 && num(r, "height") === 76)
+      expect(stamp, `stamp leaked onto ${slide.type}`).toHaveLength(0)
     }
   })
 })

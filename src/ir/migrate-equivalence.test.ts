@@ -749,6 +749,23 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     `memo-head` (pool denominator).
       // No non-cover slide moved. Cover change did not trigger adjacent
       // anti-repetition on the chapter slot.
+      //
+      // Re-recaptured (board-cover-restore wave 2, 2026-08-22). Ten cover
+      // locks plus cover knobs / motif singletons. `.audit.json` needed no
+      // recapture (findings stayed the empty array):
+      //   - `basic` (`consulting`): untouched. consulting was locked in
+      //     wave 1, and this wave does not change shared layout defaults
+      //     or consulting's motif set.
+      //   - `scenarioBearing` (`journal`): slides 0, 3, 4. Cover
+      //     `institutional-block` -> `editorial-masthead` (cover lock).
+      //     Slides 3 and 4 keep their layout ids (`side-highlight`,
+      //     `constellation-ending`) but always draw `corner-ornament-motif`
+      //     now that journal's candidate set is a singleton (they previously
+      //     could rotate onto heritage-motif or rail-motif). Journal cover
+      //     also grows the kicker row from `shape.cover.showKicker`.
+      //   - `annualReviewPreset` (`journal`): slide 0. Cover `memo-head` ->
+      //     `editorial-masthead` (cover lock) plus the same kicker / motif
+      //     singleton. Non-cover pages unchanged.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

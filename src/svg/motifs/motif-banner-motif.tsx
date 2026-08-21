@@ -17,7 +17,8 @@ import type { DecorProps } from "./types"
  *
  * ## 第四轮评审砍掉的两件（2026-08-20，academic p01/p09）
  *
- * 本 motif 的锚点主题是 consulting，academic 与 enterprise 借用。用户在
+ * 本 motif 的锚点主题是 consulting，enterprise 借用（academic 已在
+ * board-cover-restore wave 2 钉成 `rail-motif` 单成员）。用户在
  * academic 上逐条点名（academic 的 primary 是祖母绿，所以原话说的是绿线）：
  *   - p01：「底部那个无意义的装饰绿色横线是什么，很奇怪，不仅没起到装饰
  *     作用，反而让人奇怪。顶部那个绿色横线也是。」

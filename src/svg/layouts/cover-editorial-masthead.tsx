@@ -4,6 +4,8 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { showsDocumentMeta } from "../document-meta"
+import { accessibleInk } from "../ink"
+import { hasCjk, latinUpper, trackingPx } from "./minimal-shared"
 
 /**
  * editorial-masthead cover layout（spec §3.2）：居中报头式标题 + 短下划线
@@ -21,13 +23,25 @@ import { showsDocumentMeta } from "../document-meta"
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
+const KICKER_SIZE = 16
+const KICKER_TRACKING_EM = 0.22
+const KICKER_PREFERRED_Y = 252
+
 export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
+  const cover = ctx.shape?.cover
+  const textAnchor = cover?.textAnchor ?? "middle"
+  const centered = textAnchor === "middle"
+  const titleX = centered ? 640 : 96
+  const underlineX1 = centered ? 560 : 96
+  const underlineX2 = centered ? 720 : 240
+  const showKicker = cover?.showKicker === true
+  const pageBg = ctx.defaultBg ?? colors.bg
   const org = ir.meta.organization
   const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
   const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
-  const metaParts = [org, date, confLabel].filter((v): v is string => Boolean(v))
+  const metaParts = [showKicker ? undefined : org, date, confLabel].filter((v): v is string => Boolean(v))
 
   // Last-line-anchored: whether the title wraps to 1 or 2 lines, its final
   // baseline always lands on 340 so the underline/subtitle/meta stack below
@@ -52,19 +66,51 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
     ? fitSvgLine(slide.subheading, { maxWidth: 900, fontSize: 28, minFontSize: 16 })
     : null
 
+  const kickerSrc = showKicker && org ? (hasCjk(org) ? org : latinUpper(org)) : null
+  const kickerTracking = kickerSrc && !hasCjk(kickerSrc) ? trackingPx(KICKER_SIZE, KICKER_TRACKING_EM) : undefined
+  const kicker = kickerSrc
+    ? fitSvgLine(kickerSrc, {
+        maxWidth: 900,
+        fontSize: KICKER_SIZE,
+        minFontSize: 12,
+        letterSpacing: kickerTracking,
+        fontFamily: fonts.body,
+      })
+    : null
+  const titleGlyphTop = titleY - Math.round(title.fontSize * 0.75)
+  const kickerY =
+    kicker && KICKER_PREFERRED_Y + 2 < titleGlyphTop ? KICKER_PREFERRED_Y : titleGlyphTop - 16
+  const kickerFill = accessibleInk(colors.accent, pageBg, KICKER_SIZE)
+
   return (
     <>
+      {kicker && (
+        <text
+          data-truncated={kicker.truncated ? "1" : undefined}
+          x={titleX}
+          y={kickerY}
+          fontFamily={fonts.body}
+          fontSize={kicker.fontSize}
+          fill={kickerFill}
+          letterSpacing={kickerTracking}
+          textAnchor={textAnchor}
+          dominantBaseline="alphabetic"
+        >
+          {kicker.text}
+        </text>
+      )}
+
       {title.lines.map((line, i) => (
         <text
           key={i}
           data-truncated={title.truncated && i === title.lines.length - 1 ? "1" : undefined}
-          x="640"
+          x={titleX}
           y={titleY + i * title.lineHeight}
           fontFamily={fonts.heading}
           fontSize={title.fontSize}
           fontWeight="600"
           fill={colors.text}
-          textAnchor="middle"
+          textAnchor={textAnchor}
           dominantBaseline="alphabetic"
         >
           {line}
@@ -72,9 +118,9 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
       ))}
 
       <line
-        x1="560"
+        x1={underlineX1}
         y1={underlineY}
-        x2="720"
+        x2={underlineX2}
         y2={underlineY}
         stroke={colors.accent}
         strokeWidth="1.6"
@@ -83,13 +129,13 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
       {subtitle && (
         <text
           data-truncated={subtitle.truncated ? "1" : undefined}
-          x="640"
+          x={titleX}
           y={subtitleY}
           fontFamily={fonts.heading}
           fontSize={subtitle.fontSize}
           fill={colors.muted}
           fontStyle="italic"
-          textAnchor="middle"
+          textAnchor={textAnchor}
           dominantBaseline="alphabetic"
         >
           {subtitle.text}
@@ -98,13 +144,13 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
 
       {metaParts.length > 0 && (
         <text
-          x="640"
+          x={titleX}
           y="656"
           fontFamily={fonts.body}
           fontSize="13"
           fill={colors.muted}
           letterSpacing="2"
-          textAnchor="middle"
+          textAnchor={textAnchor}
           dominantBaseline="alphabetic"
         >
           {metaParts.join("    ·    ")}
@@ -121,9 +167,9 @@ export function EditorialMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
 // cycle with the registry aggregator (which value-imports this export) — see
 // registry.ts's slot-`accepts` convention doc for what `[]` means.
 export const layoutDef: LayoutDefinition = {
-  // cover-editorial-masthead.tsx: centered masthead heading + short
-  // underline + italic subheading + single merged org/date/conf meta line.
-  // No standalone kicker.
+  // cover-editorial-masthead.tsx: masthead heading + short underline +
+  // italic subheading + merged org/date/conf meta. Optional kicker and
+  // textAnchor knobs. Default: middle, no kicker.
   id: "editorial-masthead",
   kind: "archetype",
   slideTypes: ["cover"],

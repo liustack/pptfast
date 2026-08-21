@@ -103,7 +103,12 @@ export interface StyleShape {
    * Optional cover-layout knobs. Layouts read these. They never branch on
    * theme id. Omit every field and the layout uses its own file constants
    * (`band-title`: y=260, h=200, start, no mark, no wave.
-   * `corner-wedge`: peakY=340, startX=980, middle, meta on paper).
+   * `corner-wedge`: peakY=340, startX=980, middle, meta on paper.
+   * `poster-center`: no kicker, primary bar, centered meta.
+   * `left-anchor`: corner triangle on, title vertically centered.
+   * `constellation`: last line on y520, 84×4 bar.
+   * `tone-adaptive-header`: title 92, right-bottom date shown.
+   * `editorial-masthead`: middle anchor, no kicker).
    * Not part of `StyleOverrideSchema`. IR overrides stay
    * `{ radius, gapScale, typeScale }`.
    */
@@ -119,6 +124,26 @@ export interface StyleShape {
     wedgeStartX?: number
     /** Meta in readableOn(primary) inside the wedge (ember). */
     metaInWedge?: boolean
+    /** Independent kicker row above the title. Default false. poster-center + editorial-masthead. */
+    showKicker?: boolean
+    /** Short bar fill. Default "primary". poster-center. */
+    barFill?: "primary" | "accent"
+    /** Merged meta placement. Default "center". poster-center. */
+    metaPlacement?: "center" | "bottom-left" | "bottom-right" | "top" | "none"
+    /** Corner triangle on the color block. Default true. left-anchor. */
+    showCornerTriangle?: boolean
+    /** Title vertical alignment inside the block. Default "center". left-anchor. */
+    titleBlockAlign?: "center" | "upper"
+    /** Org as in-block kicker. Default false. left-anchor. */
+    showInBlockKicker?: boolean
+    /** Pin last title line to y520. Default true. constellation. */
+    titleBottomAnchor?: boolean
+    /** Rule under the title. Default "bar". constellation. */
+    ruleStyle?: "bar" | "star-chain"
+    /** Cover title size in px. Default 92. tone-adaptive-header. */
+    titleSize?: number
+    /** Hide the right-bottom date/version slot. Default false. tone-adaptive-header. */
+    hideRightMeta?: boolean
   }
 }
 

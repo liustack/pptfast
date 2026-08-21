@@ -18,7 +18,7 @@ export function latinUpper(text: string): string {
   return text.replace(/[A-Za-z]+/g, (run) => run.toUpperCase())
 }
 
-function hasCjk(text: string): boolean {
+export function hasCjk(text: string): boolean {
   return /[\u3400-\u9fff]/.test(text)
 }
 

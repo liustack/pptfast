@@ -21,6 +21,15 @@ function makeIR(slides: Slide[], themeId: string, seed?: number): PptxIR {
 const contentSlide = (id: string): Slide => ({ type: "content", id, heading: id, components: [] }) as Slide
 
 describe("MOTIF_CANDIDATES (P1 variety wave, task 2 — table shape)", () => {
+  it("board-cover-restore wave 2: six themes lock MOTIF_CANDIDATES to the cover-board motif", () => {
+    expect(MOTIF_CANDIDATES.academic).toEqual(["rail-motif"])
+    expect(MOTIF_CANDIDATES.insight).toEqual(["poster-motif"])
+    expect(MOTIF_CANDIDATES.tech).toEqual(["constellation-motif"])
+    expect(MOTIF_CANDIDATES.luxe).toEqual(["luxe-motif"])
+    expect(MOTIF_CANDIDATES.journal).toEqual(["corner-ornament-motif"])
+    expect(MOTIF_CANDIDATES.heritage).toEqual(["heritage-motif"])
+  })
+
   it("every canonical theme except the settled no-motif trio (runway, museum, stage) has a non-empty candidate set", () => {
     for (const id of CANONICAL_THEME_IDS) {
       if (id === "runway" || id === "museum" || id === "stage") {
@@ -95,8 +104,23 @@ describe("resolveMotifId — byte-inertness for the themes this task must not di
     }
   })
 
-  it("a 1-member candidate set (campaign, ink, crayon, arena, lecture, swiss, memo, playbill) always resolves to its own anchor regardless of seed or pageKey", () => {
-    for (const themeId of ["campaign", "ink", "crayon", "arena", "lecture", "swiss", "memo", "playbill"] as const) {
+  it("a 1-member candidate set (campaign, ink, crayon, arena, lecture, swiss, memo, playbill, plus wave-2 cover locks) always resolves to its own anchor regardless of seed or pageKey", () => {
+    for (const themeId of [
+      "campaign",
+      "ink",
+      "crayon",
+      "arena",
+      "lecture",
+      "swiss",
+      "memo",
+      "playbill",
+      "academic",
+      "insight",
+      "tech",
+      "luxe",
+      "journal",
+      "heritage",
+    ] as const) {
       for (let seed = 0; seed < 20; seed++) {
         const ir = makeIR([contentSlide("p0"), contentSlide("p1"), contentSlide("p2")], themeId, seed)
         for (let i = 0; i < ir.slides.length; i++) {

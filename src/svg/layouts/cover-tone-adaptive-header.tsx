@@ -70,6 +70,7 @@ function hasBgImage(
 
 export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
+  const cover = ctx.shape?.cover
   const withBg = hasBgImage(ir, slide)
   // INK 语境映射（见文件头「替换表」）：文字填色 → text，强调/描边 → primary。
   const textFg = withBg ? "#FFFFFF" : colors.text
@@ -93,9 +94,11 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
   // 守空。
   const rightMeta = [date, version].filter(Boolean).join(" · ")
 
+  const titleSize = cover?.titleSize ?? 92
+  const hideRightMeta = cover?.hideRightMeta === true
   const title = layoutSvgText(slide.heading || "", {
     maxWidth: 1120,
-    fontSize: scaleTypePx(92, ctx.shape?.typeScale),
+    fontSize: scaleTypePx(titleSize, ctx.shape?.typeScale),
     maxLines: 2,
     lineHeightRatio: 1.08,
     // bold-metrics fix (2026-07-24): this layout renders its heading
@@ -230,7 +233,7 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
               {authorText}
             </text>
           )}
-          {rightMeta && (
+          {rightMeta && !hideRightMeta && (
             <text
               x="1216"
               y="650"

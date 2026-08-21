@@ -6,6 +6,14 @@ import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { ConstellationCover } from "./cover-constellation"
 import type { PptxIR, Slide } from "@/ir"
+import type { StyleTokens } from "../../themes/tokens"
+
+function tokensWithoutCover(themeId: string): StyleTokens {
+  const tokens = resolveStyle(themeId)
+  if (!tokens.shape?.cover) return tokens
+  const { cover: _omit, ...shape } = tokens.shape
+  return { ...tokens, shape }
+}
 
 const slide: Slide = {
   type: "cover",
@@ -56,7 +64,7 @@ function rectsOverlap(
 
 describe("ConstellationCover", () => {
   it("tech tokens 下与旧 BentoTechCover 输出逐字节一致（档位一）", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
+    const ctx = buildCtx(tokensWithoutCover("tech"), {})
     const next = renderSvgMarkup(<ConstellationCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />)
     expect(next).toBe(COVER_TECH_MARKUP)
   })
@@ -69,7 +77,7 @@ describe("ConstellationCover", () => {
   })
 
   it("renders markup that passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
+    const ctx = buildCtx(tokensWithoutCover("tech"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <ConstellationCover ir={ir("tech")} slide={slide} index={0} ctx={ctx} />
@@ -81,7 +89,7 @@ describe("ConstellationCover", () => {
   })
 
   it("signature motif is a 9-node constellation (varying radii) with a glow on the largest node — no 2x2 corner badge", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
+    const ctx = buildCtx(tokensWithoutCover("tech"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
         <ConstellationCover ir={ir("tech")} slide={minimalSlide} index={0} ctx={ctx} />
@@ -116,7 +124,7 @@ describe("ConstellationCover", () => {
   })
 
   it("the motif (including its largest node's glow) sits clear of all four BrandChrome logo bands", () => {
-    const ctx = buildCtx(resolveStyle("tech"), {})
+    const ctx = buildCtx(tokensWithoutCover("tech"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
         <ConstellationCover ir={ir("tech")} slide={minimalSlide} index={0} ctx={ctx} />
@@ -137,5 +145,58 @@ describe("ConstellationCover", () => {
         expect(rectsOverlap(box, band)).toBe(false)
       }
     }
+  })
+})
+
+function renderConstellation(
+  themeId: string,
+  cover?: NonNullable<StyleTokens["shape"]>["cover"],
+  s: Slide = slide,
+) {
+  const tokens = resolveStyle(themeId)
+  const shaped: StyleTokens = { ...tokens, shape: { ...tokens.shape, cover: { ...tokens.shape?.cover, ...cover } } }
+  const ctx = buildCtx(shaped, {})
+  const markup = renderSvgMarkup(
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+      <ConstellationCover ir={ir(themeId)} slide={s} index={0} ctx={ctx} />
+    </svg>,
+  )
+  return { root: parseSvgRoot(markup), tokens, markup }
+}
+
+describe("ConstellationCover — cover knobs (board-cover-restore wave 2)", () => {
+  it("default keeps last line on y520 and the 84×4 bar plus 9-point", () => {
+    const { root } = renderConstellation("consulting")
+    const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "数据驱动的增长引擎")!
+    expect(title.getAttribute("y")).toBe("520")
+    const rule = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("width") === "84" && r.getAttribute("height") === "4",
+    )
+    expect(rule).toBeTruthy()
+    const dots = Array.from(root.querySelectorAll("circle")).filter((c) => c.getAttribute("fill") !== "none")
+    expect(dots).toHaveLength(9)
+  })
+
+  it("tech knobs: last line not 520, no 84×4 bar, four-dot chain present, 9-point still present", () => {
+    const { root } = renderConstellation("tech", { titleBottomAnchor: false, ruleStyle: "star-chain" })
+    const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "数据驱动的增长引擎")!
+    expect(title.getAttribute("y")).not.toBe("520")
+    expect(Number(title.getAttribute("y"))).toBeGreaterThanOrEqual(340)
+    expect(Number(title.getAttribute("y"))).toBeLessThanOrEqual(380)
+    const bar = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("width") === "84" && r.getAttribute("height") === "4",
+    )
+    expect(bar).toBeUndefined()
+    const polylines = Array.from(root.querySelectorAll("polyline"))
+    expect(polylines.some((p) => (p.getAttribute("points") ?? "").startsWith("700,300"))).toBe(true)
+    const chain = polylines.find((p) => (p.getAttribute("points") ?? "").startsWith("96,"))
+    expect(chain).toBeTruthy()
+    const chainDots = Array.from(root.querySelectorAll("circle")).filter((c) => {
+      const cx = Number(c.getAttribute("cx"))
+      return cx >= 96 && cx <= 200 && c.getAttribute("fill") !== "none"
+    })
+    expect(chainDots).toHaveLength(4)
+    const nine = Array.from(root.querySelectorAll("circle")).filter((c) => Number(c.getAttribute("cx")) >= 700)
+    expect(nine.length).toBeGreaterThanOrEqual(9)
   })
 })
