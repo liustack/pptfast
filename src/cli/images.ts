@@ -1,7 +1,8 @@
 /**
  * `pptfast images search|fetch|list` — Pexels first, Pixabay as empty-result
- * fallback. Downloads land in `.pptfast/<deck>/assets/` with a sidecar.
- * Inject `fetch` (and `resizeToJpeg`) so tests never touch the network.
+ * fallback, then Openverse (cc0/pdm). Downloads land in
+ * `.pptfast/<deck>/assets/` with a sidecar. Inject `fetch` (and
+ * `resizeToJpeg`) so tests never touch the network.
  */
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
@@ -12,7 +13,14 @@ import { VERSION } from "../version"
 import type * as Sharp from "sharp"
 import { findConfig, findUserConfig } from "./config"
 import { assertSafeFileSegment, ASSETS_DIRNAME, isDeckDirectory, pathExists, resolveDeckTarget } from "./deck-dir"
-import { missingKeysError, resolveImageKeys, type ImageProviderId, type ResolvedImageKeys } from "./image-config"
+import {
+  knownSecretsFrom,
+  missingKeysError,
+  resolveImageKeys,
+  type ImageProviderId,
+  type ResolvedImageKeys,
+} from "./image-config"
+import { defaultSleep, loadOpenverseDetail, searchOpenverse, type SleepFn } from "./image-openverse"
 import { redactSecrets } from "./redact"
 import { resolveWorkspaceLocation, type WorkspaceLocation } from "./workspace"
 
@@ -24,12 +32,16 @@ export type ResizeToJpeg = (bytes: Buffer, maxLongEdge: number) => Promise<Buffe
 
 export interface StockSidecar {
   provider: ImageProviderId
-  photo_id: string
+  photo_id?: string
   license: string
-  author: string
-  page_url: string
+  author?: string
+  page_url?: string
+  attribution?: string
+  source?: string
   query?: string
-  downloaded_at: string
+  prompt?: string
+  downloaded_at?: string
+  generated_at?: string
 }
 
 export interface SearchHit {
@@ -43,6 +55,7 @@ export interface SearchHit {
   license: string
   pageUrl: string
   attribution: string
+  source?: string
 }
 
 export interface ImagesSearchOptions {
@@ -52,6 +65,7 @@ export interface ImagesSearchOptions {
   minHeight?: number
   fetch?: typeof fetch
   env?: NodeJS.ProcessEnv
+  sleep?: SleepFn
 }
 
 export interface ImagesFetchOptions {
@@ -63,6 +77,7 @@ export interface ImagesFetchOptions {
   resizeToJpeg?: ResizeToJpeg
   env?: NodeJS.ProcessEnv
   now?: () => Date
+  sleep?: SleepFn
 }
 
 export interface ImagesListOptions {
@@ -253,9 +268,23 @@ function formatHits(hits: SearchHit[]): string {
   return hits
     .map((hit) => {
       const thumb = hit.thumb ? `\n  ${hit.thumb}` : ""
-      return `${hit.id}  ${hit.width}x${hit.height}  ${hit.author}  ${hit.license}${thumb}\n  ${hit.attribution}\n  ${hit.pageUrl}`
+      const source = hit.source ? `  ${hit.source}` : ""
+      return `${hit.id}  ${hit.width}x${hit.height}  ${hit.author}  ${hit.license}${source}${thumb}\n  ${hit.attribution}\n  ${hit.pageUrl}`
     })
     .join("\n")
+}
+
+function openverseNotes(anonymous: boolean, pixabaySkipped: boolean): string[] {
+  const lines = ["Openverse does not verify individual licenses. Results are filtered to cc0/pdm."]
+  if (anonymous) {
+    lines.push(
+      "Anonymous Openverse quota is very low. Set credentials with `pptfast config set openverse.clientId` and `pptfast config set openverse.clientSecret`.",
+    )
+  }
+  if (pixabaySkipped) {
+    lines.push("Pixabay is unconfigured — pptfast config set pixabay.apiKey")
+  }
+  return lines
 }
 
 export async function runImagesSearch(query: string, opts: ImagesSearchOptions = {}): Promise<string> {
@@ -263,26 +292,56 @@ export async function runImagesSearch(query: string, opts: ImagesSearchOptions =
   if (q === "") throw new PptfastError("search query must not be empty")
   const env = opts.env ?? process.env
   const keys = await loadKeys(env)
-  const secrets = [keys.pexels.apiKey, keys.pixabay.apiKey].filter((k): k is string => typeof k === "string" && k.length >= 6)
+  const secrets = knownSecretsFrom(keys)
   const fetchImpl = opts.fetch ?? globalThis.fetch
-  if (!keys.pexels.apiKey && !keys.pixabay.apiKey) throw missingKeysError("none")
-  if (!keys.pexels.apiKey) throw missingKeysError("pexels")
+  const sleep = opts.sleep ?? defaultSleep
 
-  const pexelsHits = await searchPexels(q, keys.pexels.apiKey, opts, fetchImpl, secrets)
-  if (pexelsHits.length > 0) return formatHits(pexelsHits)
-
-  if (!keys.pixabay.apiKey) {
-    return "No photos found.\nPixabay is unconfigured — pptfast config set pixabay.apiKey"
+  if (keys.pexels.apiKey) {
+    const pexelsHits = await searchPexels(q, keys.pexels.apiKey, opts, fetchImpl, secrets)
+    if (pexelsHits.length > 0) return formatHits(pexelsHits)
   }
-  const pixabayHits = await searchPixabay(q, keys.pixabay.apiKey, opts, fetchImpl, secrets)
-  if (pixabayHits.length === 0) return "No photos found."
-  return formatHits(pixabayHits)
+
+  if (keys.pixabay.apiKey) {
+    const pixabayHits = await searchPixabay(q, keys.pixabay.apiKey, opts, fetchImpl, secrets)
+    if (pixabayHits.length > 0) return formatHits(pixabayHits)
+  }
+
+  const orientation = parseOrientation(opts.orientation)
+  const ovHits = await searchOpenverse({
+    query: q,
+    orientation,
+    minWidth: opts.minWidth,
+    minHeight: opts.minHeight,
+    clientId: keys.openverse.ready ? keys.openverse.clientId : undefined,
+    clientSecret: keys.openverse.ready ? keys.openverse.clientSecret : undefined,
+    fetch: fetchImpl,
+    secrets,
+    sleep,
+  })
+  const notes = openverseNotes(!keys.openverse.ready, !keys.pixabay.apiKey)
+  if (ovHits.length === 0) {
+    return ["No photos found.", ...notes].join("\n")
+  }
+  const hits: SearchHit[] = ovHits.map((hit) => ({
+    id: `openverse:${hit.id}`,
+    provider: "openverse",
+    photoId: hit.id,
+    thumb: hit.thumbnail,
+    width: hit.width,
+    height: hit.height,
+    author: hit.creator,
+    license: hit.license,
+    pageUrl: hit.foreignLandingUrl,
+    attribution: hit.attribution,
+    source: hit.source,
+  }))
+  return [...notes, formatHits(hits)].join("\n")
 }
 
 function parsePhotoRef(ref: string): { provider: ImageProviderId; photoId: string } {
-  const m = /^(pexels|pixabay):(.+)$/.exec(ref.trim())
+  const m = /^(pexels|pixabay|openverse):(.+)$/.exec(ref.trim())
   if (!m) {
-    throw new PptfastError(`invalid photo ref "${ref}" — expected pexels:<id> or pixabay:<id>`)
+    throw new PptfastError(`invalid photo ref "${ref}" — expected pexels:<id>, pixabay:<id>, or openverse:<id>`)
   }
   const photoId = m[2]!.trim()
   if (photoId === "" || photoId.includes("/") || photoId.includes("\\") || photoId.includes("..")) {
@@ -394,6 +453,8 @@ interface PhotoMeta {
   fallbackUrl?: string
   width?: number
   height?: number
+  attribution?: string
+  source?: string
 }
 
 async function loadPexelsPhoto(photoId: string, apiKey: string, fetchImpl: FetchImpl, secrets: string[]): Promise<PhotoMeta> {
@@ -445,17 +506,23 @@ async function readSidecar(path: string): Promise<StockSidecar | null> {
     const raw = JSON.parse(await readFile(path, "utf8")) as unknown
     const rec = asRecord(raw)
     if (!rec) return null
-    const provider = rec.provider === "pexels" || rec.provider === "pixabay" ? rec.provider : null
+    const provider =
+      rec.provider === "pexels" || rec.provider === "pixabay" || rec.provider === "openverse" ? rec.provider : null
+    if (!provider) return null
     const photoId = asString(rec.photo_id)
-    if (!provider || !photoId) return null
+    if (provider !== "openverse" && !photoId) return null
     return {
       provider,
       photo_id: photoId,
       license: asString(rec.license) ?? "",
-      author: asString(rec.author) ?? "",
-      page_url: asString(rec.page_url) ?? "",
+      author: asString(rec.author),
+      page_url: asString(rec.page_url),
+      attribution: asString(rec.attribution),
+      source: asString(rec.source),
       query: asString(rec.query),
-      downloaded_at: asString(rec.downloaded_at) ?? "",
+      prompt: asString(rec.prompt),
+      downloaded_at: asString(rec.downloaded_at),
+      generated_at: asString(rec.generated_at),
     }
   } catch {
     return null
@@ -468,9 +535,11 @@ export async function runImagesFetch(ref: string, opts: ImagesFetchOptions): Pro
   const cwd = opts.cwd ?? process.cwd()
   const env = opts.env ?? process.env
   const keys = await loadKeys(env)
-  const secrets = [keys.pexels.apiKey, keys.pixabay.apiKey].filter((k): k is string => typeof k === "string" && k.length >= 6)
-  const apiKey = keys[provider].apiKey
-  if (!apiKey) throw missingKeysError(provider === "pexels" ? "pexels" : "pixabay")
+  const secrets = knownSecretsFrom(keys)
+  if (provider !== "openverse") {
+    const apiKey = keys[provider].apiKey
+    if (!apiKey) throw missingKeysError(provider)
+  }
 
   const { assetsDir } = await resolveDeckWorkspace(opts.deck, cwd)
   const jpgPath = join(assetsDir, `${opts.as}.jpg`)
@@ -483,10 +552,36 @@ export async function runImagesFetch(ref: string, opts: ImagesFetchOptions): Pro
   }
 
   const fetchImpl = opts.fetch ?? globalThis.fetch
-  const meta =
-    provider === "pexels"
-      ? await loadPexelsPhoto(photoId, apiKey, fetchImpl, secrets)
-      : await loadPixabayPhoto(photoId, apiKey, fetchImpl, secrets)
+  const sleep = opts.sleep ?? defaultSleep
+  let meta: PhotoMeta
+  if (provider === "openverse") {
+    const hit = await loadOpenverseDetail(
+      photoId,
+      {
+        clientId: keys.openverse.ready ? keys.openverse.clientId : undefined,
+        clientSecret: keys.openverse.ready ? keys.openverse.clientSecret : undefined,
+      },
+      fetchImpl,
+      secrets,
+      sleep,
+    )
+    meta = {
+      author: hit.creator,
+      pageUrl: hit.foreignLandingUrl,
+      license: hit.license,
+      downloadUrl: hit.url,
+      width: hit.width,
+      height: hit.height,
+      attribution: hit.attribution,
+      source: hit.source,
+    }
+  } else {
+    const apiKey = keys[provider].apiKey!
+    meta =
+      provider === "pexels"
+        ? await loadPexelsPhoto(photoId, apiKey, fetchImpl, secrets)
+        : await loadPixabayPhoto(photoId, apiKey, fetchImpl, secrets)
+  }
 
   let bytes: Buffer
   try {
@@ -514,8 +609,10 @@ export async function runImagesFetch(ref: string, opts: ImagesFetchOptions): Pro
     downloaded_at: (opts.now ?? (() => new Date()))().toISOString(),
   }
   if (opts.query) sidecar.query = opts.query
+  if (meta.attribution) sidecar.attribution = meta.attribution
+  if (meta.source) sidecar.source = meta.source
   const json = JSON.stringify(sidecar, null, 2) + "\n"
-  if (/"apiKey"\s*:/.test(json) || /"key"\s*:/.test(json)) {
+  if (/"apiKey"\s*:/.test(json) || /"key"\s*:/.test(json) || /"clientSecret"\s*:/.test(json)) {
     throw new PptfastError("internal error: sidecar would have contained a key field")
   }
   await writeFile(jsonPath, json)
@@ -537,7 +634,9 @@ export async function runImagesList(opts: ImagesListOptions): Promise<string> {
     const sidecar = await readSidecar(join(assetsDir, name))
     if (!sidecar) continue
     const assetId = name.slice(0, -".json".length)
-    lines.push(`${assetId}  ${sidecar.provider}:${sidecar.photo_id}  ${sidecar.author}  ${sidecar.page_url}`)
+    const id = sidecar.photo_id ? `${sidecar.provider}:${sidecar.photo_id}` : sidecar.provider
+    const rest = [sidecar.author, sidecar.license, sidecar.page_url ?? sidecar.generated_at].filter(Boolean)
+    lines.push(`${assetId}  ${id}  ${rest.join("  ")}`)
   }
   return lines.length === 0 ? "No pinned stock photos." : lines.join("\n")
 }

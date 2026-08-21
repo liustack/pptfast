@@ -261,7 +261,7 @@ program
 const config = program.command("config").description("User-level settings (API keys for optional stock-photo search)")
 config
   .command("set <key> [value]")
-  .description("Set a user config value. Omit the value for an apiKey to enter it at a hidden prompt")
+  .description("Set a user config value. Omit the value for an apiKey or clientSecret to enter it at a hidden prompt")
   .action(async (key: string, value: string | undefined) => {
     try {
       console.log(await runConfigSet(key, value))
@@ -290,7 +290,7 @@ function parsePositiveInt(raw: string, flag: string): number {
 const images = program.command("images").description("Search and pin stock photos into workspace assets")
 images
   .command("search <query>")
-  .description("Search Pexels (Pixabay if Pexels returns nothing) and print attribution lines")
+  .description("Search Pexels, then Pixabay, then Openverse (cc0/pdm) and print attribution lines")
   .option("--orientation <orientation>", "landscape, portrait, or square")
   .option("--color <color>", "color name or hex for the search API")
   .option("--min-width <px>", "client-side minimum width in pixels")
@@ -316,7 +316,7 @@ images
   )
 images
   .command("fetch <ref>")
-  .description("Download a photo (pexels:<id> or pixabay:<id>) into .pptfast/<deck>/assets/")
+  .description("Download a photo (pexels:<id>, pixabay:<id>, or openverse:<id>) into .pptfast/<deck>/assets/")
   .requiredOption("--deck <dir>", "deck project directory, path, or bare name")
   .requiredOption("--as <asset_id>", "local asset id (filename without extension)")
   .option("--query <text>", "search query that produced this pick (stored in the sidecar)")

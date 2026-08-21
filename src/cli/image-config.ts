@@ -1,9 +1,9 @@
 /**
- * User-level stock-image API keys. Stored in `$PPTFAST_HOME/config.json`
+ * User-level stock-image credentials. Stored in `$PPTFAST_HOME/config.json`
  * under `images`, never in a project `pptfast.config.json`. Whole-source
  * per provider: if the file names `images.pexels` (even as `{}`), the env
- * var is ignored for Pexels. Same for Pixabay. Never mix env + file for one
- * provider.
+ * var is ignored for Pexels. Same for Pixabay and Openverse. Never mix
+ * env + file for one provider.
  */
 import { chmodSync, lstatSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
@@ -13,6 +13,8 @@ import { pptfastHome, userConfigPath } from "./home"
 
 export const PEXELS_ENV = "PPTFAST_PEXELS_API_KEY"
 export const PIXABAY_ENV = "PPTFAST_PIXABAY_API_KEY"
+export const OPENVERSE_CLIENT_ID_ENV = "PPTFAST_OPENVERSE_CLIENT_ID"
+export const OPENVERSE_CLIENT_SECRET_ENV = "PPTFAST_OPENVERSE_CLIENT_SECRET"
 
 export const ImageProviderConfigSchema = z
   .object({
@@ -20,20 +22,30 @@ export const ImageProviderConfigSchema = z
   })
   .strict()
 
+export const OpenverseConfigSchema = z
+  .object({
+    clientId: z.string().optional(),
+    clientSecret: z.string().optional(),
+  })
+  .strict()
+
 export const ImagesConfigSchema = z
   .object({
     pexels: ImageProviderConfigSchema.optional(),
     pixabay: ImageProviderConfigSchema.optional(),
+    openverse: OpenverseConfigSchema.optional(),
   })
   .strict()
 
-export type ImageProviderId = "pexels" | "pixabay"
+export type ImageApiKeyProviderId = "pexels" | "pixabay"
+export type ImageProviderId = ImageApiKeyProviderId | "openverse"
 export type KeySource = "file" | "env"
 
 export interface ImageUserConfig {
   images?: {
     pexels?: { apiKey?: string }
     pixabay?: { apiKey?: string }
+    openverse?: { clientId?: string; clientSecret?: string }
   }
 }
 
@@ -43,19 +55,54 @@ export interface ResolvedImageKey {
   namedInFile: boolean
 }
 
+export interface ResolvedOpenverse {
+  clientId: string | undefined
+  clientSecret: string | undefined
+  source: KeySource | null
+  namedInFile: boolean
+  /** Both clientId and clientSecret resolved from the same source. */
+  ready: boolean
+}
+
 export interface ResolvedImageKeys {
   pexels: ResolvedImageKey
   pixabay: ResolvedImageKey
+  openverse: ResolvedOpenverse
 }
 
-const PROVIDERS: ImageProviderId[] = ["pexels", "pixabay"]
-const ENV_BY_PROVIDER: Record<ImageProviderId, string> = {
+export type PersistableConfigValue = string | boolean | number | string[]
+
+const API_KEY_PROVIDERS: ImageApiKeyProviderId[] = ["pexels", "pixabay"]
+const ENV_BY_PROVIDER: Record<ImageApiKeyProviderId, string> = {
   pexels: PEXELS_ENV,
   pixabay: PIXABAY_ENV,
 }
 
 const FORBIDDEN_SEGMENTS = new Set(["__proto__", "constructor", "prototype"])
-const CLI_KEYS = new Set(["pexels.apiKey", "pixabay.apiKey"])
+
+export interface CliConfigKey {
+  cliKey: string
+  path: string[]
+  omitValue: boolean
+  secret: boolean
+}
+
+const CLI_KEYS: Record<string, CliConfigKey> = {
+  "pexels.apiKey": { cliKey: "pexels.apiKey", path: ["images", "pexels", "apiKey"], omitValue: true, secret: true },
+  "pixabay.apiKey": { cliKey: "pixabay.apiKey", path: ["images", "pixabay", "apiKey"], omitValue: true, secret: true },
+  "openverse.clientId": {
+    cliKey: "openverse.clientId",
+    path: ["images", "openverse", "clientId"],
+    omitValue: false,
+    secret: true,
+  },
+  "openverse.clientSecret": {
+    cliKey: "openverse.clientSecret",
+    path: ["images", "openverse", "clientSecret"],
+    omitValue: true,
+    secret: true,
+  },
+}
 
 export function maskKey(value: string): string {
   if (value.length <= 8) return "****"
@@ -70,33 +117,51 @@ export function assertSafeConfigKeyPath(key: string): void {
   }
 }
 
-export function parseCliImageKey(key: string): { provider: ImageProviderId; field: "apiKey" } {
+export function parseCliConfigKey(key: string): CliConfigKey {
   assertSafeConfigKeyPath(key)
-  if (!CLI_KEYS.has(key)) {
-    throw new PptfastError(`unknown config key "${key}" — expected pexels.apiKey or pixabay.apiKey`)
+  const hit = CLI_KEYS[key]
+  if (!hit) {
+    throw new PptfastError(
+      `unknown config key "${key}" — expected pexels.apiKey, pixabay.apiKey, openverse.clientId, or openverse.clientSecret`,
+    )
   }
-  const provider = key.split(".")[0] as ImageProviderId
-  return { provider, field: "apiKey" }
+  return hit
 }
 
 export function providerNamedInFile(file: ImageUserConfig | null | undefined, provider: ImageProviderId): boolean {
   return file?.images?.[provider] !== undefined
 }
 
+function nonempty(value: unknown): string | undefined {
+  return typeof value === "string" && value !== "" ? value : undefined
+}
+
 function resolveOne(
   file: ImageUserConfig | null | undefined,
   env: NodeJS.ProcessEnv,
-  provider: ImageProviderId,
+  provider: ImageApiKeyProviderId,
 ): ResolvedImageKey {
   const namedInFile = providerNamedInFile(file, provider)
   if (namedInFile) {
-    const apiKey = file?.images?.[provider]?.apiKey
-    const present = typeof apiKey === "string" && apiKey !== ""
-    return { apiKey: present ? apiKey : undefined, source: present ? "file" : null, namedInFile: true }
+    const apiKey = nonempty(file?.images?.[provider]?.apiKey)
+    return { apiKey, source: apiKey ? "file" : null, namedInFile: true }
   }
-  const fromEnv = env[ENV_BY_PROVIDER[provider]]
-  const present = typeof fromEnv === "string" && fromEnv !== ""
-  return { apiKey: present ? fromEnv : undefined, source: present ? "env" : null, namedInFile: false }
+  const apiKey = nonempty(env[ENV_BY_PROVIDER[provider]])
+  return { apiKey, source: apiKey ? "env" : null, namedInFile: false }
+}
+
+function resolveOpenverse(file: ImageUserConfig | null | undefined, env: NodeJS.ProcessEnv): ResolvedOpenverse {
+  const namedInFile = providerNamedInFile(file, "openverse")
+  if (namedInFile) {
+    const clientId = nonempty(file?.images?.openverse?.clientId)
+    const clientSecret = nonempty(file?.images?.openverse?.clientSecret)
+    const ready = Boolean(clientId && clientSecret)
+    return { clientId, clientSecret, source: ready ? "file" : null, namedInFile: true, ready }
+  }
+  const clientId = nonempty(env[OPENVERSE_CLIENT_ID_ENV])
+  const clientSecret = nonempty(env[OPENVERSE_CLIENT_SECRET_ENV])
+  const ready = Boolean(clientId && clientSecret)
+  return { clientId, clientSecret, source: ready ? "env" : null, namedInFile: false, ready }
 }
 
 export function resolveImageKeys(opts: { file?: ImageUserConfig | null; env?: NodeJS.ProcessEnv } = {}): ResolvedImageKeys {
@@ -105,11 +170,20 @@ export function resolveImageKeys(opts: { file?: ImageUserConfig | null; env?: No
   return {
     pexels: resolveOne(file, env, "pexels"),
     pixabay: resolveOne(file, env, "pixabay"),
+    openverse: resolveOpenverse(file, env),
   }
 }
 
 export function knownSecretsFrom(keys: ResolvedImageKeys): string[] {
-  return PROVIDERS.map((p) => keys[p].apiKey).filter((k): k is string => typeof k === "string" && k.length >= 6)
+  const secrets: string[] = []
+  for (const provider of API_KEY_PROVIDERS) {
+    const apiKey = keys[provider].apiKey
+    if (apiKey && apiKey.length >= 6) secrets.push(apiKey)
+  }
+  const { clientId, clientSecret } = keys.openverse
+  if (clientSecret && clientSecret.length >= 6) secrets.push(clientSecret)
+  if (clientId && clientId.length >= 6) secrets.push(clientId)
+  return secrets
 }
 
 function assertNotSymlink(path: string): void {
@@ -153,28 +227,44 @@ async function readRawUserConfig(): Promise<Record<string, unknown>> {
   return raw as Record<string, unknown>
 }
 
-export async function persistImageApiKey(provider: ImageProviderId, apiKey: string): Promise<string> {
-  const path = userConfigPath()
-  assertNotSymlink(path)
-  const raw = await readRawUserConfig()
-  const images = asPlainObject(raw.images)
-  const providerCfg = asPlainObject(images[provider])
-  if (apiKey === "") {
-    delete providerCfg.apiKey
-  } else {
-    providerCfg.apiKey = apiKey
+export async function persistUserConfigValue(path: string[], value: PersistableConfigValue | ""): Promise<string> {
+  for (const segment of path) {
+    if (FORBIDDEN_SEGMENTS.has(segment) || segment === "") {
+      throw new PptfastError(`refusing to set "${path.join(".")}": "${segment}" is not a valid config key`)
+    }
   }
-  images[provider] = providerCfg
-  raw.images = images
+  if (path.length === 0) {
+    throw new PptfastError("refusing to set an empty config path")
+  }
+  const filePath = userConfigPath()
+  assertNotSymlink(filePath)
+  const raw = await readRawUserConfig()
+  let cursor: Record<string, unknown> = raw
+  for (let i = 0; i < path.length - 1; i++) {
+    const segment = path[i]!
+    const next = asPlainObject(cursor[segment])
+    cursor[segment] = next
+    cursor = next
+  }
+  const leaf = path[path.length - 1]!
+  if (value === "") {
+    delete cursor[leaf]
+  } else {
+    cursor[leaf] = value
+  }
   await mkdir(pptfastHome(), { recursive: true })
   const text = JSON.stringify(raw, null, 2) + "\n"
-  await writeFile(path, text, { encoding: "utf8", mode: 0o600 })
+  await writeFile(filePath, text, { encoding: "utf8", mode: 0o600 })
   try {
-    chmodSync(path, 0o600)
+    chmodSync(filePath, 0o600)
   } catch {
     // platforms without POSIX permission bits
   }
-  return path
+  return filePath
+}
+
+export async function persistImageApiKey(provider: ImageApiKeyProviderId, apiKey: string): Promise<string> {
+  return persistUserConfigValue(["images", provider, "apiKey"], apiKey)
 }
 
 export function pexelsApplyUrl(): string {
@@ -185,19 +275,14 @@ export function pixabayApplyUrl(): string {
   return "https://pixabay.com/api/docs/"
 }
 
-/** Hard-fail copy when search has no Pexels key (and optionally no keys at all). */
-export function missingKeysError(kind: "none" | "pexels" | "pixabay"): PptfastError {
+/** Hard-fail copy when fetch needs a Pexels or Pixabay key that is missing. */
+export function missingKeysError(kind: "pexels" | "pixabay"): PptfastError {
   if (kind === "pixabay") {
     return new PptfastError(
-      `Pixabay is not configured. Apply at ${pixabayApplyUrl()}, then run \`pptfast config set pixabay.apiKey\`. Keyless sources are a later version, not this one.`,
-    )
-  }
-  if (kind === "pexels") {
-    return new PptfastError(
-      `Stock-photo search needs a Pexels API key. Apply at ${pexelsApplyUrl()}, then run \`pptfast config set pexels.apiKey\`. Keyless sources are a later version, not this one.`,
+      `Pixabay is not configured. Apply at ${pixabayApplyUrl()}, then run \`pptfast config set pixabay.apiKey\`.`,
     )
   }
   return new PptfastError(
-    `Stock-photo search needs a Pexels API key (Pixabay is an empty-result fallback). Apply at ${pexelsApplyUrl()} and ${pixabayApplyUrl()}, then run \`pptfast config set pexels.apiKey\` and \`pptfast config set pixabay.apiKey\`. Keyless sources are a later version, not this one.`,
+    `Stock-photo search needs a Pexels API key. Apply at ${pexelsApplyUrl()}, then run \`pptfast config set pexels.apiKey\`.`,
   )
 }

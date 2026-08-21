@@ -6,6 +6,7 @@
  */
 
 const KEY_QUERY = /([?&](?:api_)?key=)[^&\s"'<>]*/gi
+const CLIENT_SECRET_QUERY = /(client_secret=)[^&\s"'<>]*/gi
 
 export function redactSecrets(text: string, knownSecrets: string[] = []): string {
   let out = text
@@ -14,5 +15,6 @@ export function redactSecrets(text: string, knownSecrets: string[] = []): string
     out = out.split(secret).join("[redacted]")
   }
   out = out.replace(KEY_QUERY, "$1[redacted]")
+  out = out.replace(CLIENT_SECRET_QUERY, "$1[redacted]")
   return out
 }

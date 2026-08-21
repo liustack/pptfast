@@ -1,8 +1,8 @@
 // `pptfast doctor`: diagnose this machine's install without a single network
 // call. Rendering a PPTX is still zero-config and fully local. Optional
-// stock-photo search reads Pexels/Pixabay keys from `$PPTFAST_HOME/config.json`
-// or the env, and this report says whether those keys are present and where
-// they came from — never the values. What can actually go wrong is: an
+// stock-photo search reads Pexels/Pixabay/Openverse credentials from
+// `$PPTFAST_HOME/config.json` or the env, and this report says whether those
+// keys are present and where they came from — never the values. What can actually go wrong is: an
 // installed skill copy frozen at an old version, a dsh plugin left behind, a
 // Node below the floor, a missing optional capability, a broken render chain,
 // or a user config file that is group/other-readable. Each of those gets its
@@ -445,6 +445,11 @@ export async function inspectImages(env: NodeJS.ProcessEnv): Promise<DoctorImage
     present: Boolean(keys[provider].apiKey),
     source: keys[provider].source,
   }))
+  providers.push({
+    provider: "openverse",
+    present: keys.openverse.ready,
+    source: keys.openverse.ready ? keys.openverse.source : null,
+  })
   return { configPath, configExists, groupOrOtherReadable, providers }
 }
 
@@ -687,6 +692,8 @@ export function renderDoctorReport(report: DoctorReport): string {
   for (const provider of report.images.providers) {
     if (provider.present) {
       lines.push(`  ${mark("ok")} ${provider.provider}: present (${provider.source})`)
+    } else if (provider.provider === "openverse") {
+      lines.push(`  ${mark("n/a")} openverse: missing — pptfast config set openverse.clientId`)
     } else {
       lines.push(`  ${mark("n/a")} ${provider.provider}: missing — pptfast config set ${provider.provider}.apiKey`)
     }
