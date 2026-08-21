@@ -88,8 +88,15 @@ describe("resolveMotifId — byte-inertness for the themes this task must not di
     }
   })
 
-  it("a 1-member candidate set (campaign, ink, crayon, arena, museum) always resolves to its own anchor regardless of seed or pageKey", () => {
-    for (const themeId of ["campaign", "ink", "crayon", "arena", "museum"] as const) {
+  it("museum (corner decor struck) resolves to undefined for every seed", () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const ir = makeIR([contentSlide("p0")], "museum", seed)
+      expect(resolveMotifId(ir, ir.slides[0]!, 0)).toBeUndefined()
+    }
+  })
+
+  it("a 1-member candidate set (campaign, ink, crayon, arena, lecture, swiss, memo, playbill) always resolves to its own anchor regardless of seed or pageKey", () => {
+    for (const themeId of ["campaign", "ink", "crayon", "arena", "lecture", "swiss", "memo", "playbill"] as const) {
       for (let seed = 0; seed < 20; seed++) {
         const ir = makeIR([contentSlide("p0"), contentSlide("p1"), contentSlide("p2")], themeId, seed)
         for (let i = 0; i < ir.slides.length; i++) {

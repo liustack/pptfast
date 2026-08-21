@@ -105,6 +105,10 @@ export const BUILTIN_THEME_IDS = [
   "arena",
   "museum",
   "stage",
+  "lecture",
+  "swiss",
+  "memo",
+  "playbill",
 ] as const
 
 const Hex = z.string().regex(/^#[0-9A-Fa-f]{3,8}$/)
@@ -140,8 +144,8 @@ const BackgroundSpecSchema = z.discriminatedUnion("kind", [
  * Style-token override (theme.style): deep-partial palette/fonts/shape
  * merged over the built-in theme (see themes/index.ts resolveStyle). Scope is
  * deliberately palette-level (spec §11): no defaultBackgrounds or manifest
- * overrides. gapScale range mirrors the documented sane range in
- * themes/tokens.ts StyleShape.
+ * overrides. gapScale / typeScale ranges mirror the documented sane ranges
+ * in themes/tokens.ts StyleShape.
  */
 export const StyleOverrideSchema = z
   .object({
@@ -173,6 +177,7 @@ export const StyleOverrideSchema = z
       .object({
         radius: z.number().min(0).max(32).optional(),
         gapScale: z.number().min(0.8).max(1.3).optional(),
+        typeScale: z.number().min(0.5).max(2).optional(),
       })
       .strict()
       .optional(),

@@ -8,6 +8,7 @@ import { DroppedContentMarker } from "./drop-marker"
 import { findImageComponent } from "./layouts/find-image"
 import { CANVAS_W_PX, CANVAS_H_PX } from "../constants"
 import { layoutSvgText, fitSvgLine } from "../lib/svg-text-layout"
+import { scaleTypePx } from "./heading-fit"
 import { accessibleInk } from "./ink"
 
 /**
@@ -67,7 +68,7 @@ export function ImageCoverPage({
 
   const title = layoutSvgText(slide.heading, {
     maxWidth: 1030,
-    fontSize: isChapter ? 60 : 68,
+    fontSize: scaleTypePx(isChapter ? 60 : 68, ctx.shape?.typeScale),
     maxLines: 2,
     lineHeightRatio: 1.12,
   })
@@ -207,7 +208,7 @@ export function ImageSplitPage({
   // 被 700 合成加粗抹掉衬线特征——降字重提字号保气势
   const title = layoutSvgText(slide.heading, {
     maxWidth: SPLIT_TEXT_W,
-    fontSize: 44,
+    fontSize: scaleTypePx(44, ctx.shape?.typeScale),
     maxLines: 3,
     lineHeightRatio: 1.18,
   })
@@ -353,7 +354,7 @@ export function ImageTopPage({
 
   const title = layoutSvgText(slide.heading, {
     maxWidth: W - BAND_PAD_X * 2 - 120,
-    fontSize: 30,
+    fontSize: scaleTypePx(30, ctx.shape?.typeScale),
     maxLines: 1,
     lineHeightRatio: 1.2,
   })
@@ -497,7 +498,7 @@ export function ImageAnnotatePage({
   const bg = ctx.defaultBg ?? ctx.colors.bg
   const title = layoutSvgText(slide.heading, {
     maxWidth: ANN_CONTENT_W,
-    fontSize: 34,
+    fontSize: scaleTypePx(34, ctx.shape?.typeScale),
     maxLines: 2,
     lineHeightRatio: 1.2,
   })
@@ -717,7 +718,7 @@ export function ImageBottomPage({
 
   const title = layoutSvgText(slide.heading, {
     maxWidth: 900,
-    fontSize: 44,
+    fontSize: scaleTypePx(44, ctx.shape?.typeScale),
     maxLines: 2,
     lineHeightRatio: 1.15,
   })

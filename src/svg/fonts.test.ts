@@ -65,9 +65,10 @@ describe("resolveFontStack", () => {
 // recognize, and the negatives it must not.
 describe("isMonoFontFamily", () => {
   it("recognizes every resolveFontStack('mono', ...) output, regardless of which SAFE_FONTS mono face resolved", () => {
-    // Every theme in this repo omits `fonts.mono` or lists Consolas first
-    // (fonts.ts's own file header), so this is the value `ctx.fonts.mono`
-    // actually holds in every shipped deck today.
+    // Most themes omit `fonts.mono` or list Consolas first, so the empty
+    // stack still resolves to Consolas. memo lists Courier New first
+    // (typewriter eyebrow). Both must be recognized — the role decides
+    // the width model, not the specific face name.
     expect(isMonoFontFamily(resolveFontStack([], "mono"))).toBe(true)
     // A hypothetical theme whose stack resolves to a *different* SAFE_FONTS
     // mono member must still be recognized — the role decides the width

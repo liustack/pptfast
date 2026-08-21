@@ -12,7 +12,7 @@ import type { StyleColors, StyleShape } from "../../themes/tokens"
 export interface ComponentCtx {
   colors: StyleColors
   fonts: { heading: string; body: string; mono: string }
-  /** 主题细节 shape token（radius/gapScale），缺省=各消费点 baked 值。 */
+  /** 主题细节 shape token（radius/gapScale/typeScale），缺省=各消费点 baked 值。 */
   shape?: StyleShape
   /** Resolved asset map (from `ir.assets.images`) for image-bearing components. */
   images?: Record<string, { src: string; alt?: string }>

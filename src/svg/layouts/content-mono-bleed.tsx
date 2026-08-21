@@ -27,6 +27,7 @@ export function MonoBleedContent({ slide, ctx }: SvgTemplateProps) {
   const heading = fitHeadingLines(slide.heading, {
     ...layoutDef.headingFit,
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const titleLastY = TITLE_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight
 

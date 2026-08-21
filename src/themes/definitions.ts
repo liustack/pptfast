@@ -232,8 +232,8 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
  * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「21 个 theme
- * id、20 个结构身份」是本仓从此的正式口径，不是过渡态。
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「22 个 theme
+ * id、21 个结构身份」是本仓从此的正式口径，不是过渡态。
  *
  * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
  * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
@@ -925,8 +925,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       cover: ["poster-center", "editorial-masthead"],
     },
   },
-  // stage（黑场，2026-08-21 huashu 风格库 Top 5 第 3）：青灰黑 + sans +
-  // 冰蓝聚光，**无 motif**。结构行 C / bottom-right / none / airy，最近邻
+  // stage（黑场，2026-08-21 huashu 风格库 Top 5 第 3）：冷玄黑 + sans +
+  // 哑银，**无 motif**。结构行 C / bottom-right / none / airy，最近邻
   // luxe（C / bottom-right / light / airy），岔在 decor 轴——无框对请柬框。
   // runway 已占 L / bottom-left / none / airy，heading 与 meta 都岔开。
   // 封面构造 poster-center / tone-adaptive-header（新的封面权重族）：
@@ -943,6 +943,87 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // 不是漏写（theme-structure.test.ts 把两家一起钉成合法例外）。
     layoutTendencies: {
       cover: ["poster-center", "tone-adaptive-header"],
+    },
+  },
+  // lecture（黑板夜校，2026-08-21）：墨绿板面 + 衬线 + 黄粉笔，粉笔槽细框
+  // 由专属 lecture-motif 承载。结构行 L / top-band / light / tight，最近邻
+  // enterprise（L / top / medium / tight），岔装饰轴——enterprise 是 IKB
+  // 方块秩序的 medium，lecture 是 26px 内缩细框的 light。封面构造：
+  //   - `banner-title`：整幅深色横幅压住标题，板上的板书带读法。briefing
+  //     已锁权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
+  //   - `tone-adaptive-header`：克制的自适应留白封面，夜校第二脸。不在
+  //     briefing 的 cover 集合里，max(3,1)=3，产生真实边际权重。
+  // chapter / ending / content 不声明：身份靠封面 + light 细框 + tight
+  // gapScale，不靠再声明一个与 classroom 同形的轴去硬凑区分度。classroom
+  // 是白日讲义纸，lecture 是夜校黑板，同一对封面 id、两张底。
+  lecture: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "lecture-motif",
+    layoutTendencies: {
+      cover: ["banner-title", "tone-adaptive-header"],
+    },
+  },
+  // swiss（冷白制度，2026-08-21 wave7）：冷白纸 + 硬黑即正文即色块 + 瑞士红
+  // 成边，由专属 swiss-motif 承载。结构行 L / bottom-right / light / tight，
+  // 最近邻 tech（L / BR / medium / tight），岔在装饰轴。consulting 是报告腔、
+  // vermilion 是公文腔、swiss 是制度腔，三家不是换色。封面构造 left-anchor /
+  // split-diagonal（3:1 软权重，照现有写法）：
+  //   - `left-anchor`：左侧 40% 硬黑色块 + 左上标题，制度年报的起手式。色块
+  //     走 primary 硬黑，不走瑞士红（红成边纪律：红永不承字成横幅）。不在
+  //     briefing 的 cover 集合里，max(3,1)=3，产生真实边际权重。
+  //   - `split-diagonal`：硬黑斜切切开冷白纸。同样不在 briefing 集合里，
+  //     满额边际权重。enterprise / campaign / pulse / ember / arena 也靠
+  //     split-diagonal，swiss 配的是 left-anchor 而不是 poster-center /
+  //     banner-title，权重向量与那五家都不同。
+  // chapter / ending / content 不声明：身份靠封面 + light motif + tight
+  // gapScale，不靠再声明一个与 tech 同形的轴去硬凑区分度。
+  swiss: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "swiss-motif",
+    layoutTendencies: {
+      cover: ["left-anchor", "split-diagonal"],
+    },
+  },
+  // memo（打字机决定，2026-08-21 wave7）：便笺纸 + 宋体标题 + 印章红双线。
+  // 结构行 L / bottom-left / light / tight，最近邻 consulting
+  // （L / BL / light / medium），岔留白轴。红成线不成面，与 vermilion
+  // 红条承白字、heritage 藏书票衬线分家。封面构造 banner-title /
+  // editorial-masthead：
+  //   - `banner-title`：备忘录的断言横幅。briefing 已锁权重 3，单独声明
+  //     空转，保留为真实主张（裁定 1 的追加先例）。横幅吃的是 ink
+  //     primary，不是印章红（红永不成面）。
+  //   - `editorial-masthead`：报头双线构图，和 motif 的打字机双线同一套
+  //     排印。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实边际
+  //     权重。journal / heritage / insight / museum 也声明了它，但五家
+  //     的 cover 集合并不全同（memo 配 banner-title）。
+  // chapter / ending / content 不声明：身份靠封面 + light motif + tight
+  // gapScale。chrome 仍归 deck 声明，不在本行绑定。
+  memo: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "memo-motif",
+    layoutTendencies: {
+      cover: ["banner-title", "editorial-masthead"],
+    },
+  },
+  // playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字，由专属
+  // playbill-motif 承载右上小黑贴片。结构行 C / top-band / heavy / medium，
+  // 最近邻 vermilion（C / top-band / medium / medium），岔在装饰轴。
+  // **heavy 的量在字重与满版底色，零粒子零贴纸**——heavy 不必然等于 motif
+  // 重。装饰只有一枚小贴片，密页无需降档。封面构造 poster-center /
+  // fashion-masthead（3:1 软权重，照现有写法）：
+  //   - `poster-center`：开演前的正面站位，黄纸上特粗黑字。briefing 已锁
+  //     权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
+  //   - `fashion-masthead`：满版 primary 硬黑 + 超大报头，黑底黄字反贴的
+  //     第二张脸。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实边际
+  //     权重。与 luxe / runway 共用同一构造，layout 零 baked hex。
+  // chapter / ending / content 不声明：身份靠封面 + 满版黄 + 特粗字，不靠
+  // 再声明一个与 vermilion 同形的轴去硬凑区分度。
+  // layouts 仍是四页型全集。定位 10 页内活动件（宣发 / 招募 / 节目单）。
+  playbill: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "playbill-motif",
+    layoutTendencies: {
+      cover: ["poster-center", "fashion-masthead"],
     },
   },
 }

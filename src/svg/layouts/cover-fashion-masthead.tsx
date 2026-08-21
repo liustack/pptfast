@@ -78,6 +78,7 @@ export function FashionMastheadCover({ ir, slide, ctx }: SvgTemplateProps) {
     // (root-cause.md: "Components Demo" on the consulting theme) — see
     // this fix's red-first test in cover-fashion-masthead.test.tsx.
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const TITLE_Y = 330
   const titleLastY = TITLE_Y + Math.max(0, title.lines.length - 1) * title.lineHeight

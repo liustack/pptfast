@@ -18,6 +18,7 @@ import { measureTextUnits } from "../lib/svg-text-layout"
 // must stay clear of.
 import { fitHeadingLines } from "./heading-fit"
 import { buildChartModel } from "./components/chart-model"
+import { resolveStyle } from "../themes"
 
 export type QualityIssue = {
   slide: number
@@ -296,7 +297,8 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
     // opt into this same error tier simply by declaring its own
     // `headingFit` — no change needed here.
     if (pinnedDef?.headingFit && slide.heading) {
-      const fit = fitHeadingLines(slide.heading, pinnedDef.headingFit)
+      const typeScale = resolveStyle(ir.theme.id, ir.theme.style).shape?.typeScale
+      const fit = fitHeadingLines(slide.heading, { ...pinnedDef.headingFit, typeScale })
       if (fit.truncated) {
         issues.push({
           slide: index,

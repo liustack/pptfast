@@ -2336,13 +2336,17 @@ describe("checkAssetReferences: dangling asset_id warning (Task 2, borrow wave â
 })
 
 describe("listThemes", () => {
-  it("lists 21 canonical themes with labels and color tokens", () => {
+  it("lists 25 canonical themes with labels and color tokens", () => {
     const themes = listThemes()
-    expect(themes).toHaveLength(21)
+    expect(themes).toHaveLength(25)
     expect(themes.map((t) => t.id)).toContain("consulting")
     expect(themes.map((t) => t.id)).toContain("crayon")
     expect(themes.map((t) => t.id)).toContain("museum")
     expect(themes.map((t) => t.id)).toContain("stage")
+    expect(themes.map((t) => t.id)).toContain("lecture")
+    expect(themes.map((t) => t.id)).toContain("swiss")
+    expect(themes.map((t) => t.id)).toContain("memo")
+    expect(themes.map((t) => t.id)).toContain("playbill")
     for (const t of themes) {
       expect(t.label.length).toBeGreaterThan(0)
       expect(Object.keys(t.colors).length).toBeGreaterThan(0)

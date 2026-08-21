@@ -1,5 +1,5 @@
 ---
-summary: 'The 20 built-in themes (21 ids), extracting your own brand from a PowerPoint template, and style overrides via CLI flag, IR, or project config'
+summary: 'The 24 built-in themes, extracting your own brand from a PowerPoint template, and style overrides via CLI flag, IR, or project config'
 read_when:
   - picking a theme, or looking up a theme id
   - making the output look like your own company (`pptfast brand extract`)
@@ -8,7 +8,7 @@ read_when:
 
 # Themes
 
-A theme bundles a style (design tokens), a brand (identity chrome: logo, footer, page number), and a layout set for each page type. There are 20 built-ins — 21 theme ids, since `bloom` is a pure recolor of `classroom`.
+A theme bundles a style (design tokens), a brand (identity chrome: logo, footer, page number), and a layout set for each page type. There are 24 built-ins — 25 theme ids, since `bloom` is a pure recolor of `classroom`.
 
 | id | label |
 |---|---|
@@ -33,6 +33,10 @@ A theme bundles a style (design tokens), a brand (identity chrome: logo, footer,
 | `arena` | Esports & Entertainment |
 | `museum` | Museum |
 | `stage` | Keynote Stage |
+| `lecture` | Lecture Hall |
+| `swiss` | Swiss Institutional |
+| `memo` | Decision Memo |
+| `playbill` | Playbill |
 
 `pptfast themes [--json]` prints the same list from the installed version.
 
@@ -40,7 +44,9 @@ Every built-in points each page type at the full set of registered layouts. Ever
 
 What each theme *does* narrow is its preference: every built-in names the covers it leans toward, so two themes rendering the same deck under the same seed usually pick different covers. It stays a preference, not a lock — pin `slide.layout` when a cover has to be exactly one thing.
 
-`bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 21 theme ids and 20 distinct designs.
+`bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 25 theme ids and 24 distinct designs.
+
+`memo` is the reading-document end of the spectrum: a typewriter decision memo (stamp-red rules, never a red fill). It pairs naturally with deck `chrome: "full"` so the footer, page numbers, and organization line stay on the leave-behind. The pairing is a note, not an engine lock — `chrome` still belongs to the deck.
 
 ## Your own brand
 

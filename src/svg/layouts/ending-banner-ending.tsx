@@ -135,6 +135,7 @@ export function BannerEnding({ ir, slide, ctx }: SvgTemplateProps) {
     // over-corrected for a weight it never actually exports as.
     bold: false,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const isTwoLine = heading.lines.length > 1
   const headingY = isTwoLine

@@ -1,6 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
+import { scaleTypePx } from "../heading-fit"
 import { CONF_LABEL } from "../../lib/conf-labels"
 
 /**
@@ -88,7 +89,7 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
 
   const title = layoutSvgText(slide.heading || "", {
     maxWidth: 1120,
-    fontSize: 92,
+    fontSize: scaleTypePx(92, ctx.shape?.typeScale),
     maxLines: 2,
     lineHeightRatio: 1.08,
     // bold-metrics fix (2026-07-24): this layout renders its heading
