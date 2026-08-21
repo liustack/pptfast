@@ -896,10 +896,31 @@ async function readRecord(root, id) {
   return record
 }
 
-/** Run the packaged CLI, resolving with its combined output. */
+function resolveCliCommand() {
+  if (process.versions.electron) {
+    return process.env.npm_node_execpath || 'node'
+  }
+  return process.execPath
+}
+
+function cliChildEnv() {
+  return { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+}
+
+/** Run the packaged CLI, resolving with its combined output.
+ *
+ * GitHub issue #1: two libvips in one Electron process crash the renderer.
+ * The plugin must never import() the CLI. Electron's process.execPath is not
+ * a Node binary, so the child is a real node when inside Electron, and
+ * ELECTRON_RUN_AS_NODE is always set so an Electron fallback cannot boot as
+ * an app.
+ */
 function runCli(cliPath, args, signal) {
   return new Promise((resolve_, reject) => {
-    const child = spawn(process.execPath, [cliPath, ...args], { stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(resolveCliCommand(), [cliPath, ...args], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: cliChildEnv(),
+    })
     let stdout = ''
     let stderr = ''
     child.stdout.on('data', (d) => {
@@ -1870,4 +1891,6 @@ export const __testing = {
   PreviewExpired,
   PreviewUnreadable,
   PreviewDamaged,
+  resolveCliCommand,
+  cliChildEnv,
 }
