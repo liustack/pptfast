@@ -326,7 +326,7 @@ export const BrandSchema = z
 export const DECK_CHROME_VALUES = ["full", "cover-only", "minimal"] as const
 export type DeckChrome = (typeof DECK_CHROME_VALUES)[number]
 export const DeckChromeSchema = z.enum(DECK_CHROME_VALUES).describe(
-  'Where the brand footer and logo appear. Omitted equals "cover-only": cover and chapter pages keep the brand logo, content and ending pages drop the footer rule, meta, and logo. "full" is the explicit declaration that draws the content-page footer and logo, and that paints confidentiality and date on cover and ending meta rows. Other postures leave those two fields off the canvas even when meta carries them. "minimal" drops the content-page footer rule and meta but keeps the logo. Layout chrome:"none" still wins. Theme motifs are unaffected. Talk decks omit the field. Read decks write "full".',
+  'Where the brand footer and logo appear. Omitted equals "cover-only": cover and chapter pages keep the brand logo, content and ending pages drop the footer rule, meta, and logo. "full" is the explicit declaration that draws the content-page footer and logo, and that paints confidentiality and date on cover and ending meta rows. Other postures leave those two fields off the canvas even when meta carries them. "minimal" drops the content-page footer rule and meta but keeps the logo. Layout chrome:"none" still wins. Theme motifs are unaffected. Write "full" only when every content page needs the brand footer.',
 )
 
 // ── Components（37 种）──

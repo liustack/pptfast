@@ -23,7 +23,7 @@ A deck (`PptxIR`) carries:
 - `theme` — an `id` plus optional `style`/`brand` overrides.
 - `meta` and `assets`.
 - `brand` — logo placement.
-- `chrome` — where the brand footer and logo appear: `"cover-only"` (keep the brand logo on cover and chapter pages, drop the footer rule, meta, and logo on content and ending pages), `"full"` (draw the content-page footer and logo, and paint confidentiality and date on cover and ending meta rows), or `"minimal"` (drop the content-page footer rule and meta, keep the logo). Omitted equals `"cover-only"`. Other postures leave confidentiality and date off the canvas even when `meta` carries them. Layout `chrome: "none"` still wins. Theme motifs are unaffected. Talk decks omit the field. Read decks write `"full"`.
+- `chrome` — where the brand footer and logo appear: `"cover-only"` (keep the brand logo on cover and chapter pages, drop the footer rule, meta, and logo on content and ending pages), `"full"` (draw the content-page footer and logo, and paint confidentiality and date on cover and ending meta rows), or `"minimal"` (drop the content-page footer rule and meta, keep the logo). Omitted equals `"cover-only"`. Other postures leave confidentiality and date off the canvas even when `meta` carries them. Layout `chrome: "none"` still wins. Theme motifs are unaffected. Omitted by default. Write `"full"` only when every content page needs the brand footer.
 - `slides` — required, ordered.
 
 Everything but `slides` is optional and has a sensible default.
@@ -41,7 +41,7 @@ Each slide has:
 - `arrangement` — how a content slide's body is laid out, for example `two_column` or `kpi_focus`.
 - `components` — the typed units that fill the page (`bullets`, `kpi_cards`, `image`, `chart`, …).
 
-Any slide may also set a stable `id` (what spec pages and validation errors reference it by), `placeholder: true` (a page with no content yet — injected by `assemble` for a spec page nobody has filled in, skipped by content-quality checks, and blocking `render` unless `--draft`), and `notes` (aliases `note`/`speaker_notes`/`speakerNotes`), which exports as a native PowerPoint speaker note. Notes are for the presenter's own view: never drawn on the slide canvas, never counted toward layout capacity. On a talk deck the spoken script belongs in `notes`. The agent playbook's Talk-density contract (`skills/pptfast/SKILL.md`) is the rule.
+Any slide may also set a stable `id` (what spec pages and validation errors reference it by), `placeholder: true` (a page with no content yet — injected by `assemble` for a spec page nobody has filled in, skipped by content-quality checks, and blocking `render` unless `--draft`), and `notes` (aliases `note`/`speaker_notes`/`speakerNotes`), which exports as a native PowerPoint speaker note. Notes are for the presenter's own view: never drawn on the slide canvas, never counted toward layout capacity. The spoken script belongs in `notes`. The agent playbook's Sparse-page contract (`skills/pptfast/SKILL.md`) is the rule. If the file must stand alone as a document, put the extra words in notes or use a PDF.
 
 ## Field names that drift
 

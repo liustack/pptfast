@@ -87,8 +87,8 @@ export function ToneAdaptiveHeaderCover({ ir, slide, ctx }: SvgTemplateProps) {
     : null
   const date = showsDocumentMeta(ir) ? ir.meta.date : undefined
   const version = ir.meta.version
-  // 右侧 meta 单元格：date 现在只在 chrome:"full" 下有值，没有 version 的
-  // 演讲 deck 会让这格空掉。空 `<text>` 在 svg2pptx 里照样变成一只空文本框
+  // 右侧 meta 单元格：date 现在只在 chrome:"full" 下有值。省略 chrome 且
+  // 没有 version 时这格会空掉。空 `<text>` 在 svg2pptx 里照样变成一只空文本框
   // （`textToOp` 对空 runs 不返回 null），所以这里按 authorText 的写法同样
   // 守空。
   const rightMeta = [date, version].filter(Boolean).join(" · ")

@@ -61,7 +61,7 @@ function deckShell(lex: Lexicon, assets: CorpusAssets, themeId: string, filename
     // the gallery is the new default, so content and ending pages have no
     // footer rule, meta, or logo, and `date`/`confidentiality` below stay
     // off the canvas even though they are set — that is exactly what a
-    // reviewer needs to see. `chrome: "full"` is the read posture that
+    // reviewer needs to see. `chrome: "full"` is the explicit declaration that
     // paints them (`src/svg/document-meta.ts`).
     meta: {
       organization: lex.author,

@@ -50,7 +50,7 @@ pptfast themes --json      # built-in themes (id + label)
 
 - 已有确认过的 `deck.spec.json` 已经锁死 narrative、theme、chrome。不要重做访谈。后续请求走阶段六
 - 已有 `theme.json`、项目 `pptfast.config.json` 钉死的 theme、用户点名的 theme id、或用户递来的 `.thmx` / `.potx` / 带品牌 `.pptx`，都是品牌信号。抽取或沿用。不要再问有没有模板
-- 请求原文已经点名受众、讲件/读件、论证方式或疏密，这一轴就算推导出来了。不要再问
+- 请求原文已经点名受众、论证方式或疏密，这一轴就算推导出来了。不要再问
 
 品牌信号回答的是这份 deck 长什么样，从来不回答它该怎么论证。把「这家公司的配色像咨询公司」读成一种叙事，是把推断当事实抬上来，一份没人选过的论证形状就是这样上台的。
 
@@ -78,10 +78,10 @@ pptfast themes --json      # built-in themes (id + label)
 写任何页面内容之前，先提议并确认。
 
 - 先锁定叙事包：具名预设（或显式三轴）、theme id、chrome 姿态、以及 typeScale 档（封面 / 章 / 演讲页标题有多大：`regular` 省略/1，`display` 1.3，`hero` 1.5）。这是位于 theme 之上的一层决策，不是视觉选择。任一轴仍未知且用户在场时，走下方「叙事访谈」。这种情况下不要自己静默挑一个预设
-- 讲件还是读件在访谈里判定（或从请求推导）。如果是人在场讲的，钉版式和写 `notes` 时走下方「演讲密度合同」。`pacing` 不会为此多出第四档
+- 疏密（留白还是铺满）在访谈里判定（或从请求推导）。钉高潮页、金句页、证据页版式和写 `notes` 时走下方「稀排页合同」。`pacing` 不会为此多出第四档
 - 再定 theme id：从 `narratives --json` 里该预设的 `themeRecommendations` 取（如果都不合适，就从 `themes` 输出里挑一个贴合这份 deck 调性的。这只是推荐，从不构成约束）。访谈的品牌问如果返回了模板，先抽成自定义 theme，见下方「品牌主题」
 - 用户一点头，立刻把确认下来的 `narrative`、`theme`、`chrome` 写进 `deck.spec.json`，再起草任何一页。不要把答案留在对话里，等页面写完再凭记忆补
-- 起草 `deck.spec.json`：每页一条记录（`id`、`type`、`heading`，可选加 `beat`/`focus`/`summary`）——以 `cover` 开篇，以 `ending` 收尾，中间的每一页都是 `content` 或 `chapter`。三轴与某个预设完全相等时，`narrative` 写预设 id 字符串，否则写 `{strategy, pacing, audience}`。不要写 `{id, pacing}` 这种混形。讲件省略 `chrome`。读件写 `chrome: "full"`（`meta.confidentiality` 为 `confidential` 或 `restricted` 时同样写 `"full"`）。不要在 spec 上发明 `typeScale` 字段，那个字段不存在。档是推荐。只有跳过 spec、直接写 IR 时，才允许把 `theme.style.shape.typeScale` 写进 IR
+- 起草 `deck.spec.json`：每页一条记录（`id`、`type`、`heading`，可选加 `beat`/`focus`/`summary`）——以 `cover` 开篇，以 `ending` 收尾，中间的每一页都是 `content` 或 `chapter`。三轴与某个预设完全相等时，`narrative` 写预设 id 字符串，否则写 `{strategy, pacing, audience}`。不要写 `{id, pacing}` 这种混形。默认省略 `chrome`。只有每一页内容页都需要品牌页脚时才写 `chrome: "full"`（`meta.confidentiality` 为 `confidential` 或 `restricted` 时同样写 `"full"`）。不要在 spec 上发明 `typeScale` 字段，那个字段不存在。档是推荐。只有跳过 spec、直接写 IR 时，才允许把 `theme.style.shape.typeScale` 写进 IR
 - 跑 `pptfast spec validate deck.spec.json`，把它报出的问题都修掉，直到打印 `OK`——边界页、标题长度、beat 轮换、页数是否匹配 pacing 这些硬门都在这一步触发，早于任何一页正文的写作
 - `spec validate` 打印 `OK` 之后，在 `deck.spec.json` 里设一个 `seed`（任意整数）以保证修订稳定——现在就写一个，或者在阶段三跑一次 `pptfast assemble`，把它打印出的 `generated seed …` 值抄进 spec。没有固化的 seed，之后改一页的标题就可能打乱其余每一页自动选出的 layout
 
@@ -89,11 +89,11 @@ pptfast themes --json      # built-in themes (id + label)
 
 ### 叙事访谈（最多一轮）
 
-用户在场，且受众、讲件/读件 / strategy、pacing 任一轴仍未知时，把所有未决的问放进**一条**消息转达给人，然后停。不要自己填。不要说「我按常见情况先选」。宿主有选择题工具就用它，选项原文照传。
+用户在场，且受众、怎么讲 / strategy、pacing 任一轴仍未知时，把所有未决的问放进**一条**消息转达给人，然后停。不要自己填。不要说「我按常见情况先选」。宿主有选择题工具就用它，选项原文照传。
 
-这条消息开头先写一句话，说出你打算建的这份 deck：给谁、你在不在场、每页多满、哪个主题、页脚开还是关。这句话只能用请求和工作区真说过的东西搭。缺信号的地方就说缺，并把 ★ 点明成默认，不是对用户处境的读数。不要把默认打扮成结论。这句话和选项里都不要出现 `pyramid`、`spacious`、`executive` 这类轴名。结尾给三条出路：不改就说「就这样」，要改就挑选项，或者说「都不对」。
+这条消息开头先写一句话，说出你打算建的这份 deck：给谁、论证怎么讲、每页多满、哪个主题、页脚开还是关。这句话只能用请求和工作区真说过的东西搭。缺信号的地方就说缺，并把 ★ 点明成默认，不是对用户处境的读数。不要把默认打扮成结论。这句话和选项里都不要出现 `pyramid`、`spacious`、`executive` 这类轴名。结尾给三条出路：不改就说「就这样」，要改就挑选项，或者说「都不对」。
 
-整段跳过访谈（零问）：已有确认过的 spec。用户说跳过问题、直接生成或批量。这一轮里根本没有人。请求已经同时锁定受众、讲件或读件加 strategy、疏密。完整 brief 仍要在写 spec 之前甩一句叙事包。那是原来的 spec 确认，不是第二轮访谈。
+整段跳过访谈（零问）：已有确认过的 spec。用户说跳过问题、直接生成或批量。这一轮里根本没有人。请求已经同时锁定受众、论证方式、疏密。完整 brief 仍要在写 spec 之前甩一句叙事包。那是原来的 spec 确认，不是第二轮访谈。
 
 没有选择题工具，不等于没有用户。普通文本对话里用户是在场的：问题就是整条消息，停照旧。只有真的没有人的运行（CI、批量、无对话脚本）才免掉这次停顿，而且仍要把包、一句理由、一句改口条件写进可见输出，然后按包继续。事后用户任何一条反对都重开这个决定，改完重跑 `spec validate`。
 
@@ -105,7 +105,7 @@ pptfast themes --json      # built-in themes (id + label)
 
 **Q1 这页是讲给谁的？** `executive` 董事会 / 高管（结论先行） · `technical` 会核对数字的技术同事 · `customer` ★ 客户、买家、路演现场 · `public` 公开或不特定。
 
-**Q2 你想怎么讲这件事？** 这一问才是这份 deck 的读法，Q1 和 Q3 只是把它调准。`talk-pyramid` ★ 人在场讲，一页一个结论（讲件，`pyramid`） · `talk-showcase` 人在场讲，一页一个画面或数字（讲件，`showcase`） · `read-brief` 人走后自己把文件读完（读件，`briefing`） · `teach` 按步骤教（`instructional`）。年报 / 品牌片 / 情境到解决的说法直接推导 `storytelling`，不要把它加成第五选项。
+**Q2 你想怎么讲这件事？** 这一问才是这份 deck 的读法，Q1 和 Q3 只是把它调准。`talk-pyramid` ★ 一页一个结论（`pyramid`） · `talk-showcase` 一页一个画面或数字（`showcase`） · `read-brief` 一页铺满证据（`briefing`） · `teach` 按步骤教（`instructional`）。年报 / 品牌片 / 情境到解决的说法直接推导 `storytelling`，不要把它加成第五选项。
 
 **Q3 页上要留白还是铺满？** `spacious` ★ 留白，一页少字 · `balanced` 普通疏密 · `dense` 铺满证据，页自己把话说完。
 
@@ -126,13 +126,13 @@ brand: ?
 用户回复之后，立刻给一个推荐包和一个第二候选，一句理由，一句改口条件，然后等确认：
 
 `推荐：<预设或三轴> × <theme> × chrome 省略|full × typeScale regular|display|hero`
-`改口条件：<一句>`。最常见的一条：这份其实会被转发而不是被讲，那就翻成读件。
+`改口条件：<一句>`。最常见的一条：这份会在没有主讲人的情况下被转发，把多出来的字写进 notes，或者建议改用 PDF，不要把幻灯片塞满。
 
-查表（theme = `narratives --json` 里该预设 `themeRecommendations` 的第一项。写三轴对象时改取最靠近预设的名单）。讲件省略 `chrome`。读件写 `chrome: "full"`。`customer` + `talk-pyramid` + `spacious` → `pitch` / 省略 / display。`executive` + `talk-pyramid` + `spacious` → `boardroom-report` / 省略 / display。`customer` + `talk-showcase` + `spacious` → `product-launch` / 省略 / display。`technical` + `teach` + `balanced` → `training` / 省略 / regular。`technical` + `read-brief` + `dense` → `weekly-brief` / full / regular。`executive` + `read-brief` + `dense` → 三轴 `{pyramid, dense, executive}` / full / regular，theme 取 `boardroom-report`。`public` + storytelling + `balanced` → `annual-review` / full / regular。其余写三轴对象，最靠近预设：`pyramid`+`executive` → `boardroom-report`，`pyramid`+`customer` → `pitch`，`showcase` → `product-launch`，`instructional` → `training`，`briefing`+`dense` → `weekly-brief`，`storytelling` → `annual-review`，否则 `general`。
+查表（theme = `narratives --json` 里该预设 `themeRecommendations` 的第一项。写三轴对象时改取最靠近预设的名单）。默认省略该字段。`meta.confidentiality` 为 `confidential` 或 `restricted`，或每一页内容页都需要品牌页脚时，才写 `"full"`。`customer` + `talk-pyramid` + `spacious` → `pitch` / 省略 / display。`executive` + `talk-pyramid` + `spacious` → `boardroom-report` / 省略 / display。`customer` + `talk-showcase` + `spacious` → `product-launch` / 省略 / display。`technical` + `teach` + `balanced` → `training` / 省略 / regular。`technical` + `read-brief` + `dense` → `weekly-brief` / 省略 / regular。`executive` + `read-brief` + `dense` → 三轴 `{pyramid, dense, executive}` / 省略 / regular，theme 取 `boardroom-report`。`public` + storytelling + `balanced` → `annual-review` / 省略 / regular。其余写三轴对象，最靠近预设：`pyramid`+`executive` → `boardroom-report`，`pyramid`+`customer` → `pitch`，`showcase` → `product-launch`，`instructional` → `training`，`briefing`+`dense` → `weekly-brief`，`storytelling` → `annual-review`，否则 `general`。
 
-typeScale 档：读件、`dense` 或 `balanced` 用 `regular`。讲件且 `spacious` 用 `display`。`hero` 只出现在把 theme 换成 `stage` 的那种换皮上。不要为了把标题加大，把董事会 deck 改成 `stage`。不要在 `deck.spec.json` 上写 `typeScale`。不要为了一个 deck 去改仓库根上的 `pptfast.config.json`。跳过 spec、直接写 IR 时，非 `regular` 的档可以写成 `theme.style.shape.typeScale` 1.3 或 1.5。
+typeScale 档：`dense` 或 `balanced` 用 `regular`。`spacious` 用 `display`。`hero` 只出现在把 theme 换成 `stage` 的那种换皮上。不要为了把标题加大，把董事会 deck 改成 `stage`。不要在 `deck.spec.json` 上写 `typeScale`。不要为了一个 deck 去改仓库根上的 `pptfast.config.json`。跳过 spec、直接写 IR 时，非 `regular` 的档可以写成 `theme.style.shape.typeScale` 1.3 或 1.5。
 
-第二候选跟着推荐包一起抛，事先准备，而且必须在机制上不同：讲件↔读件对翻（chrome 和 pacing 跟着翻），或者换由什么领头论证（`pitch` ↔ `product-launch`，`training` ↔ 同样内容的密页讲义）。同样三根轴换个主题是换皮，不算候选，只在用户否的是皮时才给，并说清叙事没动。讲件 showcase 想要更大标题时，`stage` × `hero` 属于这种换皮。不要三轴一起翻。
+第二候选跟着推荐包一起抛，事先准备，而且必须在机制上不同：翻疏密（`spacious` ↔ `dense`，type-scale 跟着翻），或者换由什么领头论证（`pitch` ↔ `product-launch`，`training` ↔ 同样内容的密页讲义）。同样三根轴换个主题是换皮，不算候选，只在用户否的是皮时才给，并说清叙事没动。showcase 想要更大标题时，`stage` × `hero` 属于这种换皮。不要三轴一起翻。
 
 这一轮只定三根叙事轴，不负责判断这件事该不该做成 deck。那个更大的问题还开着，就直说，让用户先答，再定 spec。
 
@@ -140,14 +140,14 @@ typeScale 档：读件、`dense` 或 `balanced` 用 `regular`。讲件且 `spaci
 
 ### Phase 3 — 分批填页面（每批至多 4 页），随填随 validate
 
-对已确认 spec 里的每一页，写一个 `pages/<page-id>.json` 存放它的内容（`components`，以及可选的 `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes`——绝不写 `type`/`heading`，这两个字段被 spec 锁定）。撰写 `cover`/`chapter`/`ending` 页面时记住 Phase 1 的边界页规则——不要先给它们塞 `components` 或 `footnote`，然后再回头搬走。`notes` 是给主讲人看的演讲稿——写一份好的讲稿是模型的强项，只要页面内容需要一段超出幻灯片本身的口头讲解，就应该动笔写。演讲 deck 上这一步是必做，不是可选项（演讲密度合同）。
+对已确认 spec 里的每一页，写一个 `pages/<page-id>.json` 存放它的内容（`components`，以及可选的 `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes`——绝不写 `type`/`heading`，这两个字段被 spec 锁定）。撰写 `cover`/`chapter`/`ending` 页面时记住 Phase 1 的边界页规则——不要先给它们塞 `components` 或 `footnote`，然后再回头搬走。`notes` 是给主讲人看的演讲稿——写一份好的讲稿是模型的强项。只要页面需要一段超出幻灯片本身的口头讲解，就起草 `notes`（稀排页合同）。这是默认动作，不是可选项。
 
 ```bash
 pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken spec
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage`、`statement`、`pull-quote`、`verse-chapter` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见下文「Pin-only 版式」）。演讲 deck 上，高潮页、金句页、证据页默认就要钉（见「演讲密度合同」）。
+把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage`、`statement`、`pull-quote`、`verse-chapter` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见下文「Pin-only 版式」）。高潮页、金句页、证据页默认就要钉（见「稀排页合同」）。
 
 ### Phase 4 — 渲染
 
@@ -314,20 +314,21 @@ pptfast render deck-dir/     # theme.json 自动装载。在 deck.spec.json 里�
 
 `verse-chapter` 是居中诗行章首（`type: "chapter"`）。tracking 章号眉、两行标题、可选斜体副题。没有水印大数字，没有 body，没有 footnote，chapter 页的既有边界照旧。logo 和主题 motif 都不画。
 
-### 演讲密度合同
+### 稀排页合同
 
-演讲 deck 是人在场讲的（发布会、路演、讲座、当面走查）。阅读 deck 是人走后自己翻的（报告、会后转发、周报、会上自己读的董事会材料）。判据：用户要现场讲、要演讲者备注、或者说幻灯片是讲稿后面的那一层，就是演讲 deck。文件必须自己把话说完，就是阅读 deck。
+一份 deck 是拿来讲的。幻灯片装不下的字写进 `slide.notes`。如果文件必须作为文档独立站住，建议用 PDF，不要把画布塞满。
 
-这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名、`notes` 和 deck `chrome` 分流实现。
+这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名、`notes` 和 deck `chrome` 实现。
 
-演讲 deck：
+任何一份 deck 的高潮页、金句页、证据页，都显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`、`stat-hero`、`one-evidence`、`mono-bleed`。不要把这些页交给自动选型。某一页真的只剩一句话时，即使 pacing 是 `dense` 也仍然钉。
 
-- 高潮页、金句页、证据页，显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`。同波次、并行落地中：`stat-hero`、`one-evidence`、`mono-bleed`。`pptfast schema` 里出现后同样钉。不要把这些页交给自动选型。
-- 每一页的正文预算比 `spacious` 更紧。标题就是主视觉。钉住的极简页最多一个 body component（一行出处、一个数字、一张图或一张表）。这些页零 bullet。装不下就拆页。
-- 讲稿写进 `slide.notes`。`render` 导出成原生 PowerPoint 演讲者备注（View → Notes，演讲者视图可见）。讲稿从不画到画布上。
-- spec 和 IR 不要写 `chrome`。省略的缺省已经让内容页和收束页不画页脚细线、meta 和 logo。
+访谈或请求选了 `spacious`：收紧页上预算。标题就是主视觉。钉住的极简页最多一个 body component（一行出处、一个数字、一张图或一张表）。这些页零 bullet。装不下就拆页。
 
-阅读 deck 按 pacing 预算写。写 `chrome: "full"`，让内容页带上品牌页脚（`meta.confidentiality` 为 `confidential` 或 `restricted`，或文件需要机构落款时，同样写 `"full"`）。读件声明 full 时密级和日期上封面，其余场合不出现。某一页真的只剩一句话时，仍然可以钉极简版式。
+`balanced` 或 `dense`：按 pacing 预算写。某一页是一句话、一个数字、一句引语或一条证据时，仍然钉极简版式。
+
+讲稿写进 `slide.notes`。`render` 导出成原生 PowerPoint 演讲者备注（View → Notes，演讲者视图可见）。讲稿从不画到画布上。
+
+spec 和 IR 不要写 `chrome`，除非每一页内容页都需要品牌页脚。`meta.confidentiality` 为 `confidential` 或 `restricted`，或文件需要机构落款时，写 `chrome: "full"`。密级和日期随后出现在封面。其余姿态不出现。
 
 ### 容量
 

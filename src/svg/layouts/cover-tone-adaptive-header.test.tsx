@@ -172,8 +172,8 @@ describe("ToneAdaptiveHeaderCover", () => {
     expect(out).not.toContain(ctxWithImg.colors.border)
   })
 
-  // date 只在 chrome:"full" 下有值，没有 version 的演讲 deck 会让右下角 meta
-  // 单元格空掉。svg2pptx 的 textToOp 对空 runs 照样产出一只文本框，所以这格
+  // date 只在 chrome:"full" 下有值。省略 chrome 且没有 version 时右下角 meta
+  // 单元格会空掉。svg2pptx 的 textToOp 对空 runs 照样产出一只文本框，所以这格
   // 必须整个不画，而不是画一个空的。
   it("右下角 meta 无内容时不画空 <text>（省略 chrome + 无 version）", () => {
     const tokens = resolveStyle("tech")

@@ -47,8 +47,8 @@ import { PLAYBILL_TOKENS } from "./playbill";
  * stage Keynote Stage——黑场·无框发布会演讲，2026-08-21 huashu 风格库
  * Top 5 第 3 / swiss Swiss Institutional——冷白制度，机构年报 / 政策汇报 /
  * 审计交付，2026-08-21 wave7，结构身份 20 → 21）。pptfast 是独立分叉，无存量 deck
- * Top 5 第 3，结构身份 19 → 20 / memo Decision Memo——打字机决定，读件
- * 光谱端点，结构身份 20 → 21）。pptfast 是独立分叉，无存量 deck
+ * Top 5 第 3，结构身份 19 → 20 / memo Decision Memo——打字机决定，备忘录，
+ * 结构身份 20 → 21）。pptfast 是独立分叉，无存量 deck
  * Top 5 第 3 / playbill Playbill——荧光嗓门·活动宣发节目单，2026-08-21
  * 第七波，结构身份 20 → 21）。pptfast 是独立分叉，无存量 deck
  * 兼容包袱，不维护 legacy id 映射表（resolveThemeId 对未知 id 一律回落
