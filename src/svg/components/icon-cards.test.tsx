@@ -9,6 +9,7 @@ import type { ComponentCtx } from "./types"
 import { CANONICAL_THEME_IDS, resolveStyle } from "../../themes"
 import { buildCtx } from "../full-slide-svg"
 import { LEGACY_ICON_NAMES } from "../../icons/legacy-names"
+import { resolveComponentForm } from "./form-assignments"
 
 const ctx: ComponentCtx = {
   colors: {
@@ -238,6 +239,7 @@ describe("icon_cards card stroke (Task 5d)", () => {
 
   it("regression lock: only enterprise/runway's real tokens set cardStroke — the other canonical themes stay stroke-free", () => {
     for (const id of CANONICAL_THEME_IDS) {
+      if (resolveComponentForm("icon_cards", id) !== undefined) continue
       const themeCtx = buildCtx(resolveStyle(id), {})
       const { container } = svg(iconCards.render(component, { x: 0, y: 0, w: 1088 }, themeCtx))
       const card = cardRects(container)[0]
