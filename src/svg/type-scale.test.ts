@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest"
 import type { PptxIR, StyleOverride } from "@/ir"
 import { renderSlideSvg, validateIr } from "../api"
 import { CANONICAL_THEME_IDS, THEME_STYLES } from "../themes"
+import { THEME_DEFINITIONS, __resetRegisteredThemes, registerTheme } from "../themes/definitions"
 import { fitHeadingLines, scaleTypePx } from "./heading-fit"
 
 function coverIr(themeId: string, heading: string, style?: StyleOverride): PptxIR {
@@ -140,20 +141,30 @@ describe("typeScale multiplies heading/display size before fit", () => {
   })
 
   it("a statement heading is display type and does grow", () => {
-    const ir = (typeScale?: number) => {
-      const v = validateIr({
-        version: "4",
-        filename: "type-scale.pptx",
-        theme: { id: "consulting", style: typeScale ? { shape: { typeScale } } : undefined },
-        meta: {},
-        assets: { images: {} },
-        slides: [{ type: "content", heading: "灯灭", layout: "statement" }],
-      })
-      if (!v.ok) throw new Error(v.errors.map((e) => e.message).join("\n"))
-      return v.ir!
+    registerTheme({
+      id: "acme-type-scale",
+      style: THEME_DEFINITIONS.consulting.style,
+      brand: {},
+      tags: [],
+    })
+    try {
+      const ir = (typeScale?: number) => {
+        const v = validateIr({
+          version: "4",
+          filename: "type-scale.pptx",
+          theme: { id: "acme-type-scale", style: typeScale ? { shape: { typeScale } } : undefined },
+          meta: {},
+          assets: { images: {} },
+          slides: [{ type: "content", heading: "灯灭", layout: "statement" }],
+        })
+        if (!v.ok) throw new Error(v.errors.map((e) => e.message).join("\n"))
+        return v.ir!
+      }
+      const baseSvg = renderSlideSvg(ir(), 0)
+      const scaledSvg = renderSlideSvg(ir(1.5), 0)
+      expect(fontSizeFor(scaledSvg, "灯灭")).toBe(Math.round(fontSizeFor(baseSvg, "灯灭") * 1.5))
+    } finally {
+      __resetRegisteredThemes()
     }
-    const baseSvg = renderSlideSvg(ir(), 0)
-    const scaledSvg = renderSlideSvg(ir(1.5), 0)
-    expect(fontSizeFor(scaledSvg, "灯灭")).toBe(Math.round(fontSizeFor(baseSvg, "灯灭") * 1.5))
   })
 })

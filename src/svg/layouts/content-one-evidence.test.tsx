@@ -70,7 +70,7 @@ describe("layoutDef", () => {
 
 describe("OneEvidenceContent", () => {
   it("CJK claim is left-aligned, chart is the evidence, y-title stacks on the plot's left", () => {
-    const ctx = buildCtx(resolveStyle("consulting"), {})
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = {
       type: "content",
       layout: "one-evidence",
@@ -79,7 +79,7 @@ describe("OneEvidenceContent", () => {
       components: [BAR_CHART],
     } as Slide
     const { markup, root } = render(
-      <OneEvidenceContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <OneEvidenceContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain(CJK_CLAIM)
     expect(markup).toContain(">万</text>")

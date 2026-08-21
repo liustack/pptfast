@@ -34,13 +34,13 @@ describe("sparseFace dispatch", () => {
   it("looks up by (themeId, layoutId) and misses fall through to undefined", () => {
     expect(sparseFace("statement", "stage")).toBeTypeOf("function")
     expect(sparseFace("statement", "lecture")).toBeTypeOf("function")
-    expect(sparseFace("statement", "consulting")).toBeUndefined()
+    expect(sparseFace("statement", "consulting")).toBeTypeOf("function")
     expect(sparseFace("one-evidence", "stage")).toBeUndefined()
     expect(sparseFace("mono-bleed", "luxe")).toBeUndefined()
     expect(sparseFace("statement", undefined)).toBeUndefined()
   })
 
-  it("the same statement IR is centered on stage, left on lecture, italic 500 on consulting", () => {
+  it("the same statement IR is centered on stage, left on lecture, italic 500 on crayon", () => {
     const slide: Slide = { type: "content", layout: "statement", heading: VERSE, components: [] } as Slide
 
     const stageCtx = buildCtx(resolveStyle("stage"), {})
@@ -63,6 +63,17 @@ describe("sparseFace dispatch", () => {
     )!
     expect(lectureHeading.getAttribute("x")).toBe("120")
 
+    const crayonCtx = buildCtx(resolveStyle("crayon"), {})
+    const crayonRoot = render(
+      <StatementContent ir={ir("crayon", [slide])} slide={slide} index={0} ctx={crayonCtx} />,
+    )
+    const crayonHeading = Array.from(crayonRoot.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("设备不会"),
+    )!
+    expect(crayonHeading.getAttribute("x")).toBe("640")
+    expect(crayonHeading.getAttribute("font-style")).toBe("italic")
+    expect(crayonHeading.getAttribute("font-weight")).toBe("500")
+
     const consultingCtx = buildCtx(resolveStyle("consulting"), {})
     const consultingRoot = render(
       <StatementContent ir={ir("consulting", [slide])} slide={slide} index={0} ctx={consultingCtx} />,
@@ -70,9 +81,9 @@ describe("sparseFace dispatch", () => {
     const consultingHeading = Array.from(consultingRoot.querySelectorAll("text")).find((t) =>
       (t.textContent ?? "").includes("设备不会"),
     )!
-    expect(consultingHeading.getAttribute("x")).toBe("640")
-    expect(consultingHeading.getAttribute("font-style")).toBe("italic")
-    expect(consultingHeading.getAttribute("font-weight")).toBe("500")
+    expect(consultingHeading.getAttribute("x")).toBe("96")
+    expect(consultingHeading.getAttribute("font-weight")).toBe("700")
+    expect(consultingHeading.getAttribute("font-style")).not.toBe("italic")
   })
 
   it("an unregistered pair (stage, one-evidence) keeps the generic face", () => {
