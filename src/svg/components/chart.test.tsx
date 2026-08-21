@@ -173,13 +173,13 @@ describe("chart component", () => {
       series: [{ name: "S1", data: [{ x: longLabel, y: 10 }] }],
     }
     // A single bar spans the whole 1120px box — a 24-char CJK label at the
-    // default 11px would be far wider than that, so fitSvgLine must shrink
+    // default 13px would be far wider than that, so fitSvgLine must shrink
     // it down to (or truncate it at) the configured minimum font size.
     const { container } = svg(chart.render(component, box, ctx))
     const category = Array.from(container.querySelectorAll("text")).find(
       (t) => t.getAttribute("fill") === ctx.colors.muted,
     )!
-    expect(Number(category.getAttribute("font-size"))).toBeLessThanOrEqual(11)
+    expect(Number(category.getAttribute("font-size"))).toBeLessThanOrEqual(13)
     expect(Number(category.getAttribute("font-size"))).toBeGreaterThanOrEqual(8)
   })
 
@@ -256,26 +256,22 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     { name: "Revenue", data: [{ x: "Q1", y: 100 }, { x: "Q2", y: 200 }] },
   ]
 
-  it("measure() grows by a fixed extra amount when x_title is present on an applicable type (bar)", () => {
+  it("measure() does not grow for x_title — the field is accepted and not drawn (label-tuning A)", () => {
     const base = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
     const withTitle = { ...base, axes: { x_title: "Quarter" } }
     const withLongerTitle = { ...base, axes: { x_title: "A Much Longer Quarter Axis Title" } }
-    const baseH = chart.measure(base, 1120, ctx)
-    const withTitleH = chart.measure(withTitle, 1120, ctx)
-    const withLongerTitleH = chart.measure(withLongerTitle, 1120, ctx)
-    expect(withTitleH).toBeGreaterThan(baseH)
-    // The reserved band is a fixed height, not proportional to title length —
-    // fitSvgLine shrinks/truncates the title to fit inside it instead.
-    expect(withLongerTitleH).toBe(withTitleH)
+    expect(chart.measure(withTitle, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
+    expect(chart.measure(withLongerTitle, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
   })
 
-  it("measure() does not grow for a stacked y_title alone (it reserves width inside box.w, not height)", () => {
-    // CJK, the script that still earns the stacked character column — a
-    // Latin y_title takes a horizontal band above the plot instead and does
-    // grow measure(), pinned in the "Latin y_title" block below.
+  it("measure() grows by the header-row height for a y_title, CJK and Latin alike (no stacked side band)", () => {
     const base = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
-    const withYTitle = { ...base, axes: { y_title: "营业收入" } }
-    expect(chart.measure(withYTitle, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
+    const withCjk = { ...base, axes: { y_title: "营业收入" } }
+    const withLatin = { ...base, axes: { y_title: "Revenue" } }
+    const deltaCjk = chart.measure(withCjk, 1120, ctx) - chart.measure(base, 1120, ctx)
+    const deltaLatin = chart.measure(withLatin, 1120, ctx) - chart.measure(base, 1120, ctx)
+    expect(deltaCjk).toBe(52)
+    expect(deltaLatin).toBe(52)
   })
 
   it("measure() ignores axes on a non-applicable chart_type (pie)", () => {
@@ -285,7 +281,7 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     expect(chart.measure(withAxes, 1120, ctx)).toBe(chart.measure(base, 1120, ctx))
   })
 
-  it("renders x_title fitted below the plot and y_title stacked beside it, for a bar chart", () => {
+  it("does not render x_title, and paints y_title as one horizontal header line (never a stacked column)", () => {
     const component = {
       type: "chart" as const,
       chart_type: "bar" as const,
@@ -294,17 +290,15 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = Array.from(container.querySelectorAll("text"))
-    const xTitle = texts.find((t) => t.textContent === "Quarter")
-    expect(xTitle).toBeTruthy()
-    expect(xTitle?.getAttribute("data-truncated")).toBeNull()
-
-    // y_title is stacked one character per <text> node (matrix.tsx's own
-    // vertical-title idiom, adapted) — every character of "美元" must appear.
-    const yChars = texts.filter((t) => ["美", "元"].includes(t.textContent ?? ""))
-    expect(yChars.length).toBeGreaterThanOrEqual(2)
+    expect(texts.find((t) => t.textContent === "Quarter")).toBeUndefined()
+    const yTitle = texts.find((t) => t.textContent === "美元")
+    expect(yTitle).toBeTruthy()
+    expect(yTitle?.getAttribute("font-size")).toBe("12")
+    expect(yTitle?.getAttribute("fill")).toBe(ctx.colors.muted)
+    expect(texts.filter((t) => t.textContent === "美" || t.textContent === "元")).toHaveLength(0)
   })
 
-  it("renders x_title for bar direction=horizontal too (bar-horizontal is AXES_APPLICABLE via chart_type 'bar')", () => {
+  it("does not render x_title for bar direction=horizontal either (still AXES_APPLICABLE, still not drawn)", () => {
     const component = {
       type: "chart" as const,
       chart_type: "bar" as const,
@@ -314,10 +308,10 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
-    expect(texts).toContain("Amount")
+    expect(texts).not.toContain("Amount")
   })
 
-  it("renders x_title/y_title for a line chart", () => {
+  it("renders y_title as one horizontal header line on a line chart, and does not paint x_title", () => {
     const component = {
       type: "chart" as const,
       chart_type: "line" as const,
@@ -326,95 +320,33 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     }
     const { container } = svg(chart.render(component, box, ctx))
     const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
-    expect(texts).toContain("Month")
-    expect(texts.filter((t) => ["数", "值"].includes(t ?? "")).length).toBeGreaterThanOrEqual(2)
+    expect(texts).not.toContain("Month")
+    expect(texts).toContain("数值")
+    expect(texts.filter((t) => t === "数" || t === "值")).toHaveLength(0)
   })
 
-  // F1 (review round, moderate defect): a line chart's first-point value
-  // label could render with its ink flush against the y_title band — a real
-  // render measured only ~10px between the y_title's own character center
-  // and the plot's x0 (roughly half a glyph-width of true clearance),
-  // reproduced by a first point landing near CHART_H's vertical midband
-  // (data y:[50,100] — first=50 is exactly half of max=100). Fixed
-  // structurally: the plot's x-origin now shifts right by the y_title band
-  // width *plus* a dedicated gap, not just the band width alone, so the two
-  // regions cannot become geometrically adjacent regardless of content.
-  it("reserves a real horizontal gap between the y_title band and the plot — line chart, reviewer's exact repro (low-but-midband first point)", () => {
-    const component = {
-      type: "chart" as const,
-      chart_type: "line" as const,
-      series: [{ name: "Trend", data: [{ x: "Jan", y: 50 }, { x: "Feb", y: 100 }] }],
-      // CJK: the side band this test is about only exists for a stacked
-      // y_title now — a Latin one takes a horizontal band above the plot and
-      // has no side gutter to keep clear of anything.
-      axes: { y_title: "数值" },
-    }
-    const { container } = svg(chart.render(component, box, ctx))
-    const texts = Array.from(container.querySelectorAll("text"))
-    const yTitleXs = texts
-      .filter((t) => ["数", "值"].includes(t.textContent ?? ""))
-      .map((t) => Number(t.getAttribute("x")))
-    expect(new Set(yTitleXs).size).toBe(1) // all stacked chars share one column x
-    const yTitleX = yTitleXs[0]!
-
-    // The first point's own value label ("50", text-anchor="start") sits at
-    // the plot's x0 — the tightest point any plotted content ever gets to
-    // the y_title band.
-    const firstValueLabel = texts.find((t) => t.textContent === "50")!
-    const plotX0 = Number(firstValueLabel.getAttribute("x"))
-
-    // A single glyph at AXES_TITLE_SIZE (11px) is at most ~11px wide, so a
-    // centered character's own ink never reaches past yTitleX + 5.5px — a
-    // >=15px gap from yTitleX to plotX0 leaves real, content-independent
-    // clearance rather than a coincidental non-overlap for this one string.
-    // (Pre-fix this measured exactly 10px on a real render — this threshold
-    // fails against the pre-fix reservation and passes post-fix.)
-    expect(plotX0 - yTitleX).toBeGreaterThanOrEqual(15)
+  it("a CJK y_title no longer steals a side band — bars keep the same x/width as a no-title chart and only shift down by the header row", () => {
+    const noAxes = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
+    const withYTitle = { ...noAxes, axes: { y_title: "数值" } }
+    const base = svg(chart.render(noAxes, box, ctx)).container.querySelector("rect")!
+    const titled = svg(chart.render(withYTitle, box, ctx)).container.querySelector("rect")!
+    expect(titled.getAttribute("x")).toBe(base.getAttribute("x"))
+    expect(titled.getAttribute("width")).toBe(base.getAttribute("width"))
+    expect(Number(titled.getAttribute("y")) - Number(base.getAttribute("y"))).toBe(52)
   })
 
-  it("x_title-only decks do not gain the y_title gutter — the plot stays flush at box.x (byte-identical to no-axes)", () => {
+  it("x_title-only decks do not shift or grow the plot — the field is accepted and not drawn", () => {
     const noAxes = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
     const xTitleOnly = { ...noAxes, axes: { x_title: "Quarter" } }
     const rectsBase = svg(chart.render(noAxes, box, ctx)).container.querySelectorAll("rect")
     const rectsXTitle = svg(chart.render(xTitleOnly, box, ctx)).container.querySelectorAll("rect")
-    // Same bar geometry (x/width) in both — the x_title band only adds
-    // height below the plot, it must not shift or narrow the plot itself.
     expect(rectsXTitle[0]!.getAttribute("x")).toBe(rectsBase[0]!.getAttribute("x"))
     expect(rectsXTitle[0]!.getAttribute("width")).toBe(rectsBase[0]!.getAttribute("width"))
+    expect(rectsXTitle[0]!.getAttribute("y")).toBe(rectsBase[0]!.getAttribute("y"))
+    expect(chart.measure(xTitleOnly, 1120, ctx)).toBe(chart.measure(noAxes, 1120, ctx))
   })
 
-  it("reserves the same real gap for bar-horizontal's row labels against the y_title band (F1 — verified for bar-horizontal too)", () => {
-    const longLabel = "A Very Long Row Label That Forces The Full Fitted Width Budget"
-    const component = {
-      type: "chart" as const,
-      chart_type: "bar" as const,
-      direction: "horizontal" as const,
-      series: [{ name: "Revenue", data: [{ x: longLabel, y: 100 }, { x: "Short", y: 50 }] }],
-      axes: { y_title: "类别" }, // CJK — see the sibling F1 test's own note
-    }
-    const { container } = svg(chart.render(component, box, ctx))
-    const texts = Array.from(container.querySelectorAll("text"))
-    const yTitleX = Number(
-      texts.find((t) => t.textContent === "类" && t.getAttribute("text-anchor") === "middle")!.getAttribute("x"),
-    )
-    const rowLabel = texts.find((t) => t.getAttribute("font-weight") === "600")!
-    expect(rowLabel.getAttribute("data-truncated")).toBe("1") // confirms it hit the full-width fit budget
-    // BAR_H_LABEL_W is 110 (chart-svg.tsx) — the label's text-anchor="end"
-    // point sits at x0 + 110, so x0 = anchorX - 110 regardless of the gap's
-    // value — this infers the real plot x0 the same way the label's own
-    // worst-case (maximally fitted) left edge would land on it.
-    const anchorX = Number(rowLabel.getAttribute("x"))
-    const inferredX0 = anchorX - 110
-    expect(inferredX0 - yTitleX).toBeGreaterThanOrEqual(15)
-  })
-
-  // 2026-08-20 review ruled Latin words may not be split into a letter
-  // column (`component--heatmap--mixed`, `component--matrix--en`). chart.tsx
-  // carried the same idiom — the English corpus page rendered its y_title
-  // "Connected equipment" as a column of single letters, truncated to a
-  // "…" halfway down. It now takes one horizontal line above the plot, the
-  // placement charts in Latin-script publications use for a y-axis caption.
-  describe("Latin y_title renders horizontally above the plot, never as a letter column", () => {
+  describe("y_title renders as one header-row line for every script, never a letter column", () => {
     const latin = {
       type: "chart" as const,
       chart_type: "bar" as const,
@@ -422,61 +354,44 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
       axes: { x_title: "Quarter", y_title: "Connected equipment" },
     }
 
-    function stackedChars(container: Element) {
-      return Array.from(container.querySelectorAll("text")).filter(
-        (t) => t.getAttribute("text-anchor") === "middle" && (t.textContent ?? "").length === 1,
-      )
-    }
-
-    it("renders the whole phrase on one <text>, with no letter split anywhere", () => {
+    it("renders the whole Latin phrase on one <text>, with no letter split anywhere", () => {
       const { container } = svg(chart.render(latin, box, ctx))
       const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
       expect(texts).toContain("Connected equipment")
-      expect(stackedChars(container)).toHaveLength(0)
+      expect(texts).not.toContain("Quarter")
     })
 
-    it("gives the plot the side gutter back — bars start where they would with no y_title", () => {
-      const noYTitle = { ...latin, axes: { x_title: "Quarter" } }
+    it("gives CJK the same header treatment — bars start where they would with no y_title", () => {
+      const noYTitle = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
       const barX = (component: typeof latin | typeof noYTitle) =>
         svg(chart.render(component, box, ctx)).container.querySelector("rect")!.getAttribute("x")
       expect(barX(latin)).toBe(barX(noYTitle))
-      // ...while a CJK y_title still buys the side band, unchanged.
-      const cjk = { ...latin, axes: { x_title: "Quarter", y_title: "设备联网量" } }
-      expect(Number(barX(cjk))).toBeGreaterThan(Number(barX(latin)))
+      const cjk = { ...latin, axes: { y_title: "设备联网量" } }
+      expect(barX(cjk)).toBe(barX(latin))
     })
 
-    it("measure() grows by the horizontal band — the one case a y_title costs height", () => {
-      const noYTitle = { ...latin, axes: { x_title: "Quarter" } }
-      expect(chart.measure(latin, 1120, ctx) - chart.measure(noYTitle, 1120, ctx)).toBe(22)
-      // Fixed band, not proportional to the title's own length.
+    it("measure() grows by the header row — a fixed band, not proportional to title length", () => {
+      const noYTitle = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
+      expect(chart.measure(latin, 1120, ctx) - chart.measure(noYTitle, 1120, ctx)).toBe(52)
       expect(
-        chart.measure({ ...latin, axes: { x_title: "Quarter", y_title: "A".repeat(80) } }, 1120, ctx),
+        chart.measure({ ...latin, axes: { y_title: "A".repeat(80) } }, 1120, ctx),
       ).toBe(chart.measure(latin, 1120, ctx))
     })
 
-    it("pushes the plot and every band below it down by exactly that band", () => {
-      const noYTitle = { ...latin, axes: { x_title: "Quarter" } }
-      const bandTop = (component: typeof latin | typeof noYTitle, selector: string) =>
+    it("pushes the plot down by exactly the header row, and the y_title sits above the bars", () => {
+      const noYTitle = { type: "chart" as const, chart_type: "bar" as const, series: barSeries }
+      const bandTop = (component: typeof latin | typeof noYTitle) =>
         Number(
-          Array.from(svg(chart.render(component, box, ctx)).container.querySelectorAll(selector))
+          Array.from(svg(chart.render(component, box, ctx)).container.querySelectorAll("rect"))
             .map((el) => Number(el.getAttribute("y")))
             .reduce((a, b) => Math.min(a, b)),
         )
-      // The bars' own top edge and the x_title's baseline both shift by the
-      // band, so nothing below the plot silently overlaps what is above it.
-      expect(bandTop(latin, "rect") - bandTop(noYTitle, "rect")).toBe(22)
-      const xTitleY = (component: typeof latin | typeof noYTitle) =>
-        Number(
-          Array.from(svg(chart.render(component, box, ctx)).container.querySelectorAll("text"))
-            .find((t) => t.textContent === "Quarter")!
-            .getAttribute("y"),
-        )
-      expect(xTitleY(latin) - xTitleY(noYTitle)).toBe(22)
-      // And the y_title's own baseline sits above the plot, not in it.
+      expect(bandTop(latin) - bandTop(noYTitle)).toBe(52)
       const yTitle = Array.from(
         svg(chart.render(latin, box, ctx)).container.querySelectorAll("text"),
       ).find((t) => t.textContent === "Connected equipment")!
-      expect(Number(yTitle.getAttribute("y"))).toBeLessThan(bandTop(latin, "rect"))
+      expect(Number(yTitle.getAttribute("y"))).toBe(16)
+      expect(Number(yTitle.getAttribute("y"))).toBeLessThan(bandTop(latin))
     })
 
     it("fits an egregiously long Latin y_title, truncation-marked rather than overflowing", () => {
@@ -605,16 +520,13 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     expect(chart.measure(withoutAxesKey, 1120, ctx)).toBe(chart.measure(withEmptyAxes, 1120, ctx))
   })
 
-  it("fits an egregiously long x_title within its declared box instead of overflowing it, truncating with data-truncated (real-render h-overflow oracle)", () => {
+  it("an egregiously long x_title is not painted at all, and the plot still does not overflow", () => {
     const egregious = {
       type: "chart" as const,
       chart_type: "bar" as const,
       series: barSeries,
       axes: { x_title: "超长坐标轴标题".repeat(12) },
     }
-    // A narrow 300px box (vs. the shared 1120px `box`) — 84 CJK chars at
-    // fontSize 11 fits comfortably inside 1120px with room to spare, so it
-    // wouldn't actually exercise the truncate branch there.
     const narrowBox = { x: 60, y: 200, w: 300 }
     const h = chart.measure(egregious, narrowBox.w, ctx)
     const markup = renderSvgMarkup(
@@ -634,22 +546,25 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     const xTitleText = Array.from(root.querySelectorAll("text")).find((t) =>
       t.textContent?.includes("超长坐标轴标题"),
     )
-    expect(xTitleText).toBeTruthy()
-    expect(xTitleText?.getAttribute("data-truncated")).toBe("1")
+    expect(xTitleText).toBeUndefined()
   })
 
-  it("caps an egregiously long y_title's stacked-character column within its available height, truncating with data-truncated", () => {
+  it("fits an egregiously long y_title on the header row, truncation-marked rather than stacked", () => {
     const egregious = {
       type: "chart" as const,
       chart_type: "bar" as const,
       series: barSeries,
       axes: { y_title: "超长坐标轴标题".repeat(12) },
     }
-    const h = chart.measure(egregious, box.w, ctx)
+    const narrowBox = { x: 60, y: 200, w: 300 }
+    const h = chart.measure(egregious, narrowBox.w, ctx)
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
-        <g data-audit-box={`${box.x},${box.y},${box.w}`} data-audit-rect={`${box.x},${box.y},${box.w},${h}`}>
-          {chart.render(egregious, box, ctx)}
+        <g
+          data-audit-box={`${narrowBox.x},${narrowBox.y},${narrowBox.w}`}
+          data-audit-rect={`${narrowBox.x},${narrowBox.y},${narrowBox.w},${h}`}
+        >
+          {chart.render(egregious, narrowBox, ctx)}
         </g>
       </svg>,
     )
@@ -659,7 +574,8 @@ describe("chart component — axes (x_title/y_title/show_grid)", () => {
     const root = parseSvgRoot(markup)
     const truncatedNodes = Array.from(root.querySelectorAll('text[data-truncated="1"]'))
     expect(truncatedNodes.length).toBeGreaterThanOrEqual(1)
-    expect(truncatedNodes.some((t) => t.textContent === "…")).toBe(true)
+    expect(truncatedNodes.some((t) => t.textContent?.includes("超长坐标轴标题"))).toBe(true)
+    expect(truncatedNodes.some((t) => t.textContent === "超")).toBe(false)
   })
 
   it("renders only svg2pptx-subset primitives with axes present", () => {
@@ -804,7 +720,9 @@ describe("chart component — legend (n>=2 series)", () => {
   })
 
   it("count overflow: more series than fit in one row drop the tail into a '+N …' marker, marked data-dropped", () => {
-    const manySeries = Array.from({ length: 12 }, (_, i) => ({
+    // Header-row packing starts at 72px per short name, so a 1120px plot
+    // holds ~15 of these. 24 is enough to force the "+N …" drop.
+    const manySeries = Array.from({ length: 24 }, (_, i) => ({
       name: `S${i + 1}`,
       data: [{ x: "A", y: i + 1 }],
     }))
@@ -823,7 +741,7 @@ describe("chart component — legend (n>=2 series)", () => {
 
   it("audit-visibility: deck-audit reads both the truncated name and the dropped-count marker as content-truncated/content-dropped findings", () => {
     const longName = "A Very Long Series Name That Overflows The Legend Slot Width Budget Easily And Then Some"
-    const manySeries = Array.from({ length: 12 }, (_, i) => ({
+    const manySeries = Array.from({ length: 24 }, (_, i) => ({
       name: i === 0 ? longName : `S${i + 1}`,
       data: [{ x: "A", y: i + 1 }],
     }))
@@ -917,15 +835,17 @@ describe("chart component — chart-depth subtypes (scatter / area / donut / gau
     expect(Array.from(container.querySelectorAll("text")).some((t) => t.textContent === "62")).toBe(true)
   })
 
-  it("scatter and area are axes-applicable: measure() grows for an x_title (like bar/line)", () => {
+  it("scatter and area are axes-applicable: measure() grows for a y_title (x_title no longer reserves height)", () => {
     for (const chart_type of ["scatter", "area"] as const) {
       const series =
         chart_type === "scatter"
           ? [{ name: "S", data: [{ x: 1, y: 2 }, { x: 3, y: 4 }] }]
           : [{ name: "S", data: [{ x: "Q1", y: 2 }, { x: "Q2", y: 4 }] }]
       const base = { type: "chart" as const, chart_type, series }
-      const withTitle = { ...base, axes: { x_title: "Axis" } }
-      expect(chart.measure(withTitle, 1120, ctx), chart_type).toBeGreaterThan(chart.measure(base, 1120, ctx))
+      const withX = { ...base, axes: { x_title: "Axis" } }
+      const withY = { ...base, axes: { y_title: "Value" } }
+      expect(chart.measure(withX, 1120, ctx), chart_type).toBe(chart.measure(base, 1120, ctx))
+      expect(chart.measure(withY, 1120, ctx), chart_type).toBe(chart.measure(base, 1120, ctx) + 52)
     }
   })
 
@@ -972,5 +892,120 @@ describe("chart component — chart-depth subtypes (scatter / area / donut / gau
       const markup = renderSvgMarkup(<svg xmlns="http://www.w3.org/2000/svg">{chart.render(component, box, ctx)}</svg>)
       expect(() => assertSubset(parseSvgRoot(markup)), component.chart_type).not.toThrow()
     }
+  })
+})
+
+describe("chart component — label-tuning A (header row, no stacked y_title, no x_title)", () => {
+  const groupedBar = {
+    type: "chart" as const,
+    chart_type: "bar" as const,
+    axes: { x_title: "季度", y_title: "接入设备总量" },
+    series: [
+      {
+        name: "冶金",
+        data: [
+          { x: "第一季度", y: 42 },
+          { x: "第二季度", y: 53 },
+          { x: "第三季度", y: 64 },
+          { x: "第四季度", y: 75 },
+        ],
+      },
+      {
+        name: "化工",
+        data: [
+          { x: "第一季度", y: 30 },
+          { x: "第二季度", y: 36 },
+          { x: "第三季度", y: 42 },
+          { x: "第四季度", y: 48 },
+        ],
+      },
+    ],
+  }
+
+  function headerTexts(container: HTMLElement) {
+    return Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("font-family") === ctx.fonts.body,
+    )
+  }
+
+  it("reserves a 52px header row when y_title or a legend is present, never both stacked", () => {
+    const oneSeries = {
+      type: "chart" as const,
+      chart_type: "bar" as const,
+      series: [groupedBar.series[0]!],
+    }
+    expect(chart.measure(oneSeries, 1120, ctx)).toBe(240)
+    expect(chart.measure({ ...oneSeries, axes: { y_title: "接入设备总量" } }, 1120, ctx)).toBe(292)
+    expect(chart.measure(groupedBar, 1120, ctx)).toBe(292)
+    const twoSeriesNoAxes = { type: "chart" as const, chart_type: "bar" as const, series: groupedBar.series }
+    expect(chart.measure(twoSeriesNoAxes, 1120, ctx)).toBe(292)
+  })
+
+  it("does not paint x_title even when the field is set", () => {
+    const { container } = svg(chart.render(groupedBar, box, ctx))
+    const texts = Array.from(container.querySelectorAll("text")).map((t) => t.textContent)
+    expect(texts).not.toContain("季度")
+  })
+
+  it("paints y_title as one 12px muted header line, never a per-character stack", () => {
+    const { container } = svg(chart.render(groupedBar, box, ctx))
+    const yTitle = headerTexts(container).find((t) => t.textContent === "接入设备总量")
+    expect(yTitle).toBeTruthy()
+    expect(yTitle!.getAttribute("font-size")).toBe("12")
+    expect(yTitle!.getAttribute("fill")).toBe(ctx.colors.muted)
+    expect(yTitle!.getAttribute("y")).toBe("16")
+    const stacked = Array.from(container.querySelectorAll("text")).filter((t) =>
+      ["接", "入", "设", "备", "总", "量"].includes(t.textContent ?? ""),
+    )
+    expect(stacked).toHaveLength(0)
+  })
+
+  it("places the legend on the same header row, right-aligned, 12px muted", () => {
+    const { container } = svg(chart.render(groupedBar, box, ctx))
+    const names = headerTexts(container).filter((t) => t.textContent === "冶金" || t.textContent === "化工")
+    expect(names.map((t) => t.textContent)).toEqual(["冶金", "化工"])
+    for (const t of names) {
+      expect(t.getAttribute("y")).toBe("16")
+      expect(t.getAttribute("font-size")).toBe("12")
+    }
+    const swatches = Array.from(container.querySelectorAll("rect")).filter(
+      (r) => Number(r.getAttribute("width")) === 10 && Number(r.getAttribute("height")) === 10,
+    )
+    expect(swatches).toHaveLength(2)
+    for (const s of swatches) {
+      expect(Number(s.getAttribute("y"))).toBe(6)
+    }
+    expect(Number(swatches[1]!.getAttribute("x"))).toBeGreaterThan(Number(swatches[0]!.getAttribute("x")))
+    expect(Number(names[1]!.getAttribute("x"))).toBeGreaterThan(Number(names[0]!.getAttribute("x")))
+    const rightEdge = box.w
+    const lastNameRight =
+      Number(names[1]!.getAttribute("x")) +
+      (names[1]!.textContent!.length * Number(names[1]!.getAttribute("font-size")))
+    expect(lastNameRight).toBeLessThanOrEqual(rightEdge + 1)
+  })
+
+  it("keeps the tallest bar's value label ≥ 24px below the header baseline (legend must not sit on the peak)", () => {
+    const { container } = svg(chart.render(groupedBar, box, ctx))
+    const headerY = 16
+    const valueLabels = Array.from(container.querySelectorAll("text")).filter(
+      (t) => t.getAttribute("font-weight") === "600" && t.getAttribute("fill") === ctx.colors.text,
+    )
+    expect(valueLabels.length).toBeGreaterThan(0)
+    const peakY = Math.min(...valueLabels.map((t) => Number(t.getAttribute("y"))))
+    expect(peakY - headerY).toBeGreaterThanOrEqual(24)
+    const peak = valueLabels.find((t) => t.textContent === "75")!
+    expect(Number(peak.getAttribute("y"))).toBe(peakY)
+  })
+
+  it("paints cartesian value labels at 13px / 600 / text, and category ticks at 13px muted", () => {
+    const { container } = svg(chart.render(groupedBar, box, ctx))
+    const seventyFive = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "75")!
+    expect(seventyFive.getAttribute("font-size")).toBe("13")
+    expect(seventyFive.getAttribute("font-weight")).toBe("600")
+    expect(seventyFive.getAttribute("fill")).toBe(ctx.colors.text)
+    const category = Array.from(container.querySelectorAll("text")).find((t) => t.textContent === "第四季度")!
+    expect(Number(category.getAttribute("font-size"))).toBe(13)
+    expect(category.getAttribute("fill")).toBe(ctx.colors.muted)
+    expect(category.getAttribute("font-weight")).toBeNull()
   })
 })

@@ -185,10 +185,10 @@ export function zeroAxisRatio(domain: ChartDomain): number {
  * deliberately does NOT decide per-entry truncation or an overload "+N
  * more" drop. Both require knowing the legend's available pixel width,
  * which this pure data module never receives (no `w`/`h`, no theme, no
- * font metrics) — Task T2 measures each `name` with `fitSvgLine` against
- * its own layout box and decides how many entries fit, exactly as
- * `chart.tsx`'s axis-title fitting already does for other text. This
- * module's contribution is only the ordered, complete list to fit against.
+ * font metrics) — `chart.tsx` lays the list out as a right-aligned header
+ * row (label-tuning A, 2026-08), measuring each `name` with `fitSvgLine`
+ * against its own slot. This module's contribution is only the ordered,
+ * complete list to fit against.
  */
 export type LegendEntry = {
   seriesIndex: number

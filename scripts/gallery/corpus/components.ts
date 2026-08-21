@@ -502,13 +502,14 @@ export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
   }),
 
   // A chart drops legend *entries*, not data, and one entry is one series —
-  // so this needs many series rather than many points. Ten regions on one
-  // line chart is the ordinary way an author gets there.
+  // so this needs many series rather than many points. The header-row
+  // legend packs at ~72px per short name, so a content-width plot holds
+  // around fifteen. Labels plus orgs lands a few past that.
   chart: (lex) => ({
     type: "chart",
     chart_type: "line",
     axes: { x_title: lex.periodAxis, y_title: lex.metrics[2]!.label, show_grid: true },
-    series: slice(lex.labels, 10).map((name, i) => ({
+    series: [...lex.labels, ...slice(lex.orgs, 8)].map((name, i) => ({
       name,
       data: slice(lex.periods, 5).map((x, j) => ({ x, y: 40 + ((i * 7 + j * 11) % 45) })),
     })),
