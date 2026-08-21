@@ -640,6 +640,15 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // decorative rects, one shape block per affected PPTX slide, and
       // nothing else moves an EMU. `basic`/`annualReviewPreset` and all
       // three audit goldens are byte-identical.
+      // Re-recaptured (golden-air cap, 2026-08-21 — `layout.ts` caps the
+      // gathered block's golden top offset at two block-gaps so heading and
+      // body stay one block; see fix/banner-heading-rhythm). Drift is
+      // vertical-only: content slides of all three decks move their body
+      // block up (y/height/translate-y and the audit-rect rows that mirror
+      // them), verified by normalizing every vertical attribute and
+      // confirming old and new captures are byte-identical otherwise. All
+      // three `.audit.json` goldens stayed byte-identical (no finding
+      // appeared or vanished); cover/chapter/ending slides did not move.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
