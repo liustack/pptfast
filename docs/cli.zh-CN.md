@@ -22,7 +22,7 @@ read_when:
 | `assemble <dir\|name> [-o <file>]` | 把 deck 项目目录合并成单个 IR JSON 文件 |
 | `disassemble <ir.json> -o <dir>` | 把 IR JSON 文件拆成 deck 项目目录 |
 | `schema [--style \| --spec]` | 输出 IR 的 JSON Schema（或 style 覆盖 schema，或 deck spec schema） |
-| `themes [--json]` | 列出 18 个内置主题 |
+| `themes [--json]` | 列出 19 套内置主题（20 个 id） |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见[主题](./themes.zh-CN.md#你自己的品牌)） |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> -o <dir> [--html]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`），永远不受占位页拦截 |
@@ -127,6 +127,6 @@ pptfast doctor
 ## 延伸
 
 - [`ir.zh-CN.md`](./ir.zh-CN.md)：IR 里写什么、叙事、版式选型、deck 项目。
-- [`themes.zh-CN.md`](./themes.zh-CN.md)：18 个内置主题、品牌抽取、style 覆盖。
+- [`themes.zh-CN.md`](./themes.zh-CN.md)：19 套内置主题（20 个 id）、品牌抽取、style 覆盖。
 - [`concepts.md`](./concepts.md)：theme/layout/component/narrative 概念模型（英文）。
 - [`deck-projects.md`](./deck-projects.md)：deck 项目格式详解（英文）。

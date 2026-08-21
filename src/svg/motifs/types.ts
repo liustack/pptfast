@@ -32,3 +32,4 @@ export type MotifId =
   | "vermilion-motif" // 2026-08-06 gov-theme wave：旗帜感绸带弧线 + 金色光芒细线（vermilion 专属，第 17 主题；刻意不用政治符号）
   | "crayon-motif" // 2026-08-21：蜡笔描边（顶缘涂边 + 太阳涂鸦 + 底带彩虹划 + 左下星，crayon 专属，单锚不借用）
   | "arena-motif" // 2026-08-21：HUD 括弧＋速度线（arena 专属，单锚不借用。密页降档撤速度线，只留括弧与底能量条）
+  | "museum-motif" // 2026-08-21：展签细框 + 角标 tick + 标本针点（museum 专属，单锚不借用。light 档，四页型同一张）

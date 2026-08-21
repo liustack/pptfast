@@ -8,6 +8,7 @@ import { EMBER_TOKENS } from "./ember"
 import { VERMILION_TOKENS } from "./vermilion"
 import { CRAYON_TOKENS } from "./crayon"
 import { ARENA_TOKENS } from "./arena"
+import { MUSEUM_TOKENS } from "./museum"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -242,5 +243,46 @@ describe("arena tokens", () => {
 
   it("does not set an accentPool (single, restrained electric-green accent)", () => {
     expect(ARENA_TOKENS.colors.accentPool).toBeUndefined()
+  })
+})
+
+// museum（博物，2026-08-21）：棕黑厅堂 + 衬线 + 展签铜金。Same shape-only
+// assertions as the blocks above — registry wiring is covered separately by
+// themes/index.test.ts.
+describe("museum tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = MUSEUM_TOKENS
+    expect(t.id).toBe("museum")
+  })
+
+  it("heading font resolves to SimSun (CJK serif, journal/heritage/luxe precedent, no tofu on export)", () => {
+    expect(resolveFontFace(MUSEUM_TOKENS.fonts.heading, "heading")).toBe("SimSun")
+  })
+
+  it("body font resolves to Microsoft YaHei (exact width table)", () => {
+    expect(resolveFontFace(MUSEUM_TOKENS.fonts.body, "body")).toBe("Microsoft YaHei")
+  })
+
+  it("does not set an accentPool (single, restrained plaque-brass accent)", () => {
+    expect(MUSEUM_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 0 (label-plaque square) and gapScale is 1.3 (airy hall)", () => {
+    expect(MUSEUM_TOKENS.shape?.radius).toBe(0)
+    expect(MUSEUM_TOKENS.shape?.gapScale).toBe(1.3)
+  })
+
+  it("four page types share the umber hall ground (chapter is not a primary bleed)", () => {
+    for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
+      expect(MUSEUM_TOKENS.defaultBackgrounds[slideType]).toEqual({
+        kind: "color",
+        value: MUSEUM_TOKENS.colors.bg,
+      })
+    }
+  })
+
+  it("accent is plaque brass, not luxe champagne", () => {
+    expect(MUSEUM_TOKENS.colors.accent).toBe("#BE7A28")
+    expect(MUSEUM_TOKENS.colors.accent).not.toBe("#C6A15B")
   })
 })

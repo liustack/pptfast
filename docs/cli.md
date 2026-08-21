@@ -127,6 +127,6 @@ The skill wraps this loop for an agent ([`skills/pptfast/SKILL.md`](../skills/pp
 ## More
 
 - [`ir.md`](./ir.md) — what goes in the IR, narratives, layout selection, deck projects.
-- [`themes.md`](./themes.md) — the 18 built-in themes, brand extraction, style overrides.
+- [`themes.md`](./themes.md) — the 19 built-in themes (20 ids), brand extraction, style overrides.
 - [`concepts.md`](./concepts.md) — the theme/layout/component/narrative model.
 - [`deck-projects.md`](./deck-projects.md) — the deck project format in depth.

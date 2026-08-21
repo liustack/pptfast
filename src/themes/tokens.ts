@@ -47,7 +47,7 @@ export interface StyleColors {
    * whatever `danger` resolves to. So a theme that sets none of them renders
    * byte-for-byte as it did before the tokens were added.
    *
-   * Every one of the 17 built-in themes does set all three (visual review
+   * Every one of the 20 built-in themes does set all three (visual review
    * round 4 ruled that the alert color must belong to the theme's own
    * palette, not be one universal red), so in practice only a `--theme-file`
    * brand theme reaches the fallbacks. `danger` and `success` are calibrated

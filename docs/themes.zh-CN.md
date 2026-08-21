@@ -1,5 +1,5 @@
 ---
-summary: '18 个内置主题、从 PowerPoint 模板抽取自家品牌，以及通过 CLI flag、IR、项目配置做 style 覆盖'
+summary: '19 套内置主题（20 个 id）、从 PowerPoint 模板抽取自家品牌，以及通过 CLI flag、IR、项目配置做 style 覆盖'
 read_when:
   - 挑主题，或查某个主题 id
   - 想让产出看起来像自己公司（`pptfast brand extract`）
@@ -8,7 +8,7 @@ read_when:
 
 # 主题
 
-主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素：logo、页脚、页码）与每个页型各自的版式集合。内置 18 套（19 个 id，`bloom` 是 `classroom` 的纯换色）。
+主题（theme）打包了 style（设计 tokens）、brand（品牌标识元素：logo、页脚、页码）与每个页型各自的版式集合。内置 19 套（20 个 id，`bloom` 是 `classroom` 的纯换色）。
 
 | id | label |
 |---|---|
@@ -31,6 +31,7 @@ read_when:
 | `vermilion` | Official Report |
 | `crayon` | Kids Education |
 | `arena` | Esports & Entertainment |
+| `museum` | Museum（博物） |
 
 `pptfast themes [--json]` 会从你装的这一版里打印同一份清单。
 
@@ -38,7 +39,7 @@ read_when:
 
 主题收窄的不是集合，是偏好：每个内置主题都写明了自己偏向哪几个封面，所以同一份 deck、同一个 seed，换个主题通常会抽到不一样的封面。偏好不是锁定，封面必须是某一个时，在这一页上写 `slide.layout` 钉死。
 
-`bloom` 就是换了五个色值的 `classroom`，别的一处不差：结构、字体、圆角、装饰几何全部相同，只是渲成自己的色板。想要樱粉纸和干玫瑰选 `bloom`，想要雾蓝讲义纸选 `classroom`，同一份 deck 在两者下抽到的版式相同。所以是 19 个主题 id、18 套设计。
+`bloom` 就是换了五个色值的 `classroom`，别的一处不差：结构、字体、圆角、装饰几何全部相同，只是渲成自己的色板。想要樱粉纸和干玫瑰选 `bloom`，想要雾蓝讲义纸选 `classroom`，同一份 deck 在两者下抽到的版式相同。所以是 20 个主题 id、19 套设计。
 
 ## 你自己的品牌
 
