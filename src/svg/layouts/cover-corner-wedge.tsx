@@ -240,7 +240,8 @@ export function CornerWedgeCover({ ir, slide, ctx }: SvgTemplateProps) {
 export const layoutDef: LayoutDefinition = {
   // cover-corner-wedge.tsx: lower-right triangular wedge plus a brighter
   // overlay slash inset from the hypotenuse. Title alignment and peak come
-  // from style.shape.cover. Overlay always on.
+  // from style.shape.cover. Overlay always on. Motif paints after the
+  // layout so sparks / HUD can sit on the wedge face.
   id: "corner-wedge",
   kind: "archetype",
   slideTypes: ["cover"],
@@ -250,4 +251,5 @@ export const layoutDef: LayoutDefinition = {
     { name: "subheading", accepts: [] },
     { name: "meta", accepts: [] },
   ],
+  motifOverLayout: true,
 }

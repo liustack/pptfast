@@ -5,6 +5,7 @@ import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { EmberMotif } from "./motif-ember-motif"
+import { renderSlideSvg } from "../../api"
 import type { PptxIR, Slide } from "@/ir"
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
@@ -84,14 +85,20 @@ describe("EmberMotif（上升火星）", () => {
     expect(Array.from(root.querySelectorAll("circle"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：四枚火星 primary、三枚 accent、斜引线 border、顶缘短线 primary", () => {
+  it("颜色一律读 token：内容页四枚 primary 三枚 accent。封面浅色四枚走纸色，避免压在楔上消失", () => {
     const t = resolveStyle("ember")
-    const { root } = draw("ember", coverSlide)
-    const p = parts(root)
-    expect(p.circles(t.colors.primary)).toHaveLength(4)
-    expect(p.circles(t.colors.accent)).toHaveLength(3)
-    expect(p.guide.getAttribute("stroke")).toBe(t.colors.border)
-    expect(p.tick.getAttribute("stroke")).toBe(t.colors.primary)
+    const body = parts(draw("ember", contentSlide).root)
+    expect(body.circles(t.colors.primary)).toHaveLength(4)
+    expect(body.circles(t.colors.accent)).toHaveLength(3)
+    expect(body.guide.getAttribute("stroke")).toBe(t.colors.border)
+    expect(body.tick.getAttribute("stroke")).toBe(t.colors.primary)
+
+    const cover = parts(draw("ember", coverSlide).root)
+    expect(cover.circles(t.colors.bg)).toHaveLength(4)
+    expect(cover.circles(t.colors.accent)).toHaveLength(3)
+    expect(cover.circles(t.colors.primary)).toHaveLength(0)
+    expect(cover.guide.getAttribute("stroke")).toBe(t.colors.border)
+    expect(cover.tick.getAttribute("stroke")).toBe(t.colors.primary)
   })
 
   it("点列几何（内容/收尾）：自下而上渐大，火橙与琥珀相间，落在右缘轨道上", () => {
@@ -127,6 +134,25 @@ describe("EmberMotif（上升火星）", () => {
       const onLine = x1 + ((x2 - x1) * (num(c, "cy") - y1)) / (y2 - y1)
       expect(Math.abs(num(c, "cx") - onLine), `spark off the guide line: ${c.outerHTML}`).toBeLessThan(0.01)
     }
+  })
+
+  it("封面整页渲染：火星在楔面 path 之后，才能骑在火橙面上", () => {
+    const svg = renderSlideSvg(
+      {
+        version: "4",
+        filename: "ember-cover.pptx",
+        theme: { id: "ember" },
+        meta: {},
+        assets: { images: {} },
+        slides: [{ type: "cover", heading: "封面", components: [] }],
+      } as unknown as PptxIR,
+      0,
+    )
+    const wedge = svg.indexOf('data-archetype="corner-wedge"')
+    const lastDecor = svg.lastIndexOf("data-decor")
+    expect(wedge).toBeGreaterThan(0)
+    expect(lastDecor).toBeGreaterThan(wedge)
+    expect(svg.lastIndexOf("<circle")).toBeGreaterThan(svg.indexOf("M820,720"))
   })
 
   it("封面：斜引线是楔面斜边 (820,720)→(1280,120)，火星沿内法线偏进楔内", () => {
@@ -204,8 +230,9 @@ describe("EmberMotif（上升火星）", () => {
     const terra = resolveStyle("terra")
     const ctx = buildCtx(terra, {})
     const { markup } = render(<EmberMotif ir={ir("terra")} slide={coverSlide} ctx={ctx} />)
-    expect(markup).toContain(terra.colors.primary)
+    expect(markup).toContain(terra.colors.bg)
     expect(markup).toContain(terra.colors.accent)
+    expect(markup).toContain(terra.colors.primary)
     for (const hex of ["#FBF5EE", "#FFFDF9", "#BC4620", "#E8A13C", "#2E241E", "#6E6156", "#E8DCCB"]) {
       expect(markup, `ember token ${hex} leaked into the terra render`).not.toContain(hex)
     }

@@ -55,8 +55,9 @@ import type { DecorProps } from "./types"
  *     件数与两条引线一处未改。
  *
  * 封面页火星改骑 `corner-wedge` 的斜边：(820,720)→(1280,120)，沿内法线
- * 往楔内偏几像素，落在楔面内侧而不是纸面上。内容页和收尾页仍走右缘轨道
- * (1150,600)→(1245,86)，避免火星穿过正文区。chapter 继续完全退让。
+ * 往楔内偏，落在楔面内侧。浅色四枚走 `colors.bg`（板上纸色压火橙楔）。
+ * primary 压 primary 会消失，这不是内容页右缘那套取色。内容页和收尾页仍走
+ * 右缘轨道 (1150,600)→(1245,86)，避免火星穿过正文区。chapter 继续完全退让。
  * 读的是 `slide.type`，不是当页选中了哪个 layout。
  *
  * 位置全部写死，不读内容、不随 seed 变——`inventory.md` 的确定性红线。
@@ -72,7 +73,8 @@ const CONTENT_GUIDE_FROM: readonly [number, number] = [1150, 600]
 const CONTENT_GUIDE_TO: readonly [number, number] = [1245, 86]
 const COVER_GUIDE_FROM: readonly [number, number] = [820, 720]
 const COVER_GUIDE_TO: readonly [number, number] = [1280, 120]
-const COVER_INSET = 6
+/** Inset along the inward normal so cover sparks sit on the wedge face, not on the cut. */
+const COVER_INSET = 18
 const GUIDE_STROKE = 1
 
 type Guide = readonly [number, number]
@@ -97,7 +99,7 @@ function sparkCx(cy: number, r: number, cover: boolean): number {
   return Math.round(Math.min(cx, 1280 - r - 0.5) * 100) / 100
 }
 
-/** 火橙（primary）四枚，`[cy, r]`——cx 由 `guideXAt` 解出。 */
+/** 火橙（primary）四枚，内容/收尾右缘轨道。`[cy, r]`，cx 由 `guideXAt` 解出。 */
 const PRIMARY_SPARKS: readonly [number, number][] = [
   [560, 2.5],
   [430, 3.5],
@@ -109,6 +111,21 @@ const ACCENT_SPARKS: readonly [number, number][] = [
   [495, 3],
   [360, 4],
   [205, 5],
+]
+/**
+ * 封面楔面点列：y 抄板面沿斜边那串，不沿用右缘轨道的峰点 y120。
+ * 浅色四枚走纸色（板上 `#FBF5EE` 压火橙楔，primary 压 primary 会消失）。
+ */
+const COVER_PAPER_SPARKS: readonly [number, number][] = [
+  [560, 3],
+  [470, 4],
+  [380, 5],
+  [290, 6],
+]
+const COVER_ACCENT_SPARKS: readonly [number, number][] = [
+  [515, 3.5],
+  [425, 4.5],
+  [335, 5.5],
 ]
 
 // ── 顶缘斜引线（左上角的起手） ──────────────────────────────────────────
@@ -128,6 +145,9 @@ export function EmberMotif({ slide, ctx }: DecorProps) {
   const cover = slide.type === "cover"
   const from = cover ? COVER_GUIDE_FROM : CONTENT_GUIDE_FROM
   const to = cover ? COVER_GUIDE_TO : CONTENT_GUIDE_TO
+  const paper = ctx.colors.bg
+  const lightSparks = cover ? COVER_PAPER_SPARKS : PRIMARY_SPARKS
+  const darkSparks = cover ? COVER_ACCENT_SPARKS : ACCENT_SPARKS
 
   return (
     <>
@@ -136,14 +156,14 @@ export function EmberMotif({ slide, ctx }: DecorProps) {
           （spec §4.4）。 */}
       <line x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} stroke={sand} strokeWidth={GUIDE_STROKE} />
 
-      {/* 上升点列。封面骑楔面斜边并内偏，内容/收尾仍走右缘轨道。 */}
-      <g fill={fire}>
-        {PRIMARY_SPARKS.map(([cy, r]) => (
+      {/* 上升点列。封面骑楔面斜边并内偏，浅色四枚走纸色。内容/收尾仍走右缘轨道。 */}
+      <g fill={cover ? paper : fire}>
+        {lightSparks.map(([cy, r]) => (
           <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} />
         ))}
       </g>
       <g fill={amber}>
-        {ACCENT_SPARKS.map(([cy, r]) => (
+        {darkSparks.map(([cy, r]) => (
           <circle key={cy} cx={sparkCx(cy, r, cover)} cy={cy} r={r} />
         ))}
       </g>

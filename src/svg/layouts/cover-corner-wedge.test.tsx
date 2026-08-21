@@ -102,6 +102,7 @@ describe("cover-corner-wedge — shared pool", () => {
     expect(layoutDef.id).toBe("corner-wedge")
     expect(layoutDef.kind).toBe("archetype")
     expect(layoutDef.slideTypes).toEqual(["cover"])
+    expect(layoutDef.motifOverLayout).toBe(true)
   })
 
   it("every text run clears its contrast tier against the field it sits on", () => {
