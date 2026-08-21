@@ -2,18 +2,21 @@ import { PACING_BUDGETS } from "@/narrative"
 import type { DecorProps } from "./types"
 
 /**
- * crayon-motif —— 「蜡笔描边」（2026-08-21 低龄教育主题，设计源
- * `design-project/skin-boards.html` 的 crayon 板，几何坐标逐条抄录）。
+ * crayon-motif —— 「蜡笔描边」（2026-08-21 低龄教育主题。顶饰同日定稿换成
+ * 蜡笔涂边 + 太阳涂鸦，设计源画布 `EdgeShading.dc.html` 与
+ * `SunDoodle.dc.html`，几何坐标逐条抄录）。
  *
  * 一盒蜡笔画在卡纸上。heavy 的量全部堆在页缘带，不进场内。四件东西，位置
  * 写死，不读内容、不随 seed 变：
- *   - **顶缘手绘波浪蜡笔线**：`M48,26` 起 14 段二次贝塞尔，控制点偏置
- *     {@link WAVE_AMP}（板上 `q40,±10`）。二次曲线的实际振幅是偏置的一半
- *     （y26±5），加上 3px 线宽后墨迹大约 y19.5-32.5，正是板上写的
- *     「y26±6」。蜡笔蓝（primary），横贯到 x1168。振幅是参数。
- *   - **顶带右侧三枚圆贴纸**：`(1150,28)` / `(1188,28)` / `(1226,28)`，
- *     r11，黄 / 绿 / 橘红（`chartPalette[3,2,1]`）。y16-40 那一条带。
- *     贴纸数量是参数。
+ *   - **顶缘蜡笔涂边**：页顶 y0-14 的 primary 蓝填充多边形，下缘手涂不齐。
+ *     板上公式 `12 + 3.5*sin(x/97) + 2.5*sin(x/41) + 2`，每 40px 采样，y
+ *     钉到 1 位小数，写成模块级常量 {@link EDGE_POINTS}（输入零随机、两次
+ *     渲染逐字节同）。opacity 0.9，叶子自带。其上 5 道 bg 色斜向留白划痕：
+ *     x140 起每 260px 一道，(x, 1.5) → (x+26, 13)，宽 2.2、opacity 0.55。
+ *   - **右上太阳涂鸦**：圆心 (1188,27)。主圈 r12 描边 3.2 走 accent，底下
+ *     错位 (1189.5,28.5) r12 描边 2.6 opacity 0.35 的回笔圈，芯 r5.5 填
+ *     向日黄（chartPalette[3]）。8 根光芒从 r18 到 r27、起始角偏 0.18rad、
+ *     宽 3 圆头 accent。模块级常量生成，零随机。
  *   - **底带彩虹短划**：y644，x 从 96 起 24 段，每段 `x1=96+i*46 → x2=x1+26`，
  *     strokeWidth 5，圆头 linecap，四色轮换 `chartPalette`。板上止于
  *     x≈1180。第五保护带（`docs/designing-themes.md` 第 5 条 y620-664）
@@ -38,11 +41,11 @@ import type { DecorProps } from "./types"
  *
  * ## heavy 档降档：判据只钉 IR 结构层
  *
- * 板上密页样例原话：「装饰只剩顶波浪＋底彩虹划——密页自动降为『顶＋底』
- * 半场，贴纸撤场」。判据是这一页的组件数量（{@link HALF_FIELD_COMPONENTS}），
- * 一个纯 IR 结构量，`slide.components.length` 一个属性读到底。降档形态是
- * 贴纸与星星撤场，波浪与彩虹划留下——不是 campaign 那种「满场 120 枚砍成
- * 顶带 60 枚」的一半点数，是「页缘两带还在、贴上去的零件撤掉」。
+ * 定稿密页形态：太阳与星撤场，涂边与淡彩虹划留下。对应旧规则里「贴纸撤场」
+ * 的位置。判据是这一页的组件数量（{@link HALF_FIELD_COMPONENTS}），一个纯
+ * IR 结构量，`slide.components.length` 一个属性读到底。不是 campaign 那种
+ * 「满场 120 枚砍成顶带 60 枚」的一半点数，是「页缘两带还在、贴上去的零件
+ * 撤掉」。
  *
  * **不许读渲染后的文字几何**（标题占几行、正文缩到几号字、有没有溢出）。
  * 理由与 `motif-campaign-motif.tsx` 同一段：motif 画在正文之前，读测量缓存
@@ -51,10 +54,10 @@ import type { DecorProps } from "./types"
  *
  * chapter 完全退让（`return null`）：crayon 的 chapter 默认底色是整版
  * primary 蜡笔蓝（`themes/crayon.ts` 的 `defaultBackgrounds.chapter`），
- * 波浪走 primary（蓝压蓝，看不见），贴纸与星星压在八个 chapter layout
- * 的巨幅居中标题活动范围上。三件失效、一件抢戏，chapter 不画。
+ * 涂边走 primary（蓝压蓝，看不见），太阳压在八个 chapter layout 的巨幅居中
+ * 标题活动范围上。两件失效、一件抢戏，chapter 不画。
  *
- * ## 偏离设计板：cover 撤底带（彩虹划＋星）
+ * ## 偏离设计板：cover 撤底带（彩虹划＋星）且太阳让位
  *
  * crayon 声明的封面构造之一 `tone-adaptive-header` 在无背景图模式下把
  * 作者行画在 x64 y650 基线、日期行右对齐 y650（`cover-tone-adaptive-header
@@ -64,50 +67,82 @@ import type { DecorProps } from "./types"
  * 减淡档把划退到底色级，但 meta 行横贯全宽，淡划仍是删除线观感，所以
  * cover 继续撤底带。motif 不许感知当页选中的 layout（terra 板的确定性
  * 红线），所以照 terra「chapter 整页退让」的同一模式按页型处理：cover
- * 撤底带，顶波浪与三枚贴纸保留。板上封面样例的 meta 行画在彩虹划上方，
- * 与仓库 layout 的实际坐标不符，以仓库为准。
+ * 撤底带。板上封面样例的 meta 行画在彩虹划上方，与仓库 layout 的实际
+ * 坐标不符，以仓库为准。
  *
- * 纪律：零 theme id、零 hex。波浪走 primary，星走 accent，贴纸与彩虹划走
- * `chartPalette`（`chartPaletteOffset` 是 ctx 上的独立字段、不改
- * `colors.chartPalette` 本身，`motif-chart-palette-isolation.test.tsx`
- * 钉着这条）。画笔属性一律写在叶子上不挂 `<g>`——导出侧
- * `svg2pptx/dispatch.ts` 的 `leafToOp` 只读叶子自己的 `fill`/`stroke`/
- * `opacity`，挂在组上预览看得见、导出全丢。
+ * 涂边 y0-14（最深采样 y18.9）压不到 tone-adaptive-header 顶部 org 标签
+ * （x64 y74 基线、字号 22，可视顶约 y52，中间空 33px）。banner-title 的
+ * org 圆点标在 translate(96,136)，更低。
+ *
+ * 太阳外缘约 x1160-1216、y0-55。标题区 (96,48,1040×122) 右沿是 x1136，
+ * 太阳在其右侧外（空隙约 24px）。banner-title 密级徽标在 (1058,100,126×48)，
+ * 顶沿 y100 在太阳下缘 y55 之下，不撞。tone-adaptive-header 密级徽标在
+ * (1086,50,130×44)，顶沿 y50 与太阳两根下光芒（y49.2 / y53.6，线宽 3）
+ * 相交。motif 不许感知当页选中的 layout，按页型整颗太阳撤场：cover 不画
+ * 太阳。banner-title 本不撞，同一条页型规则一并让出。
+ *
+ * 纪律：零 theme id、零 hex。涂边走 primary，划痕走 bg，太阳圈与光芒走
+ * accent，芯走 chartPalette[3]，星走 accent，彩虹划走 chartPalette
+ * （`chartPaletteOffset` 是 ctx 上的独立字段、不改 `colors.chartPalette`
+ * 本身，`motif-chart-palette-isolation.test.tsx` 钉着这条）。画笔属性一律
+ * 写在叶子上不挂 `<g>`——导出侧 `svg2pptx/dispatch.ts` 的 `leafToOp` 只读
+ * 叶子自己的 `fill`/`stroke`/`opacity`，挂在组上预览看得见、导出全丢。
  *
  * 红线：任何形态的粗平左竖条禁止出现。
  *
- * 可拉伸性：四色蜡笔即参数；波浪振幅、贴纸数量是 motif 参数，heavy→medium
- * 只减贴纸与彩虹划密度，几何不动。向日黄永不承字（token 角色注释里写死）。
+ * 可拉伸性：四色蜡笔即参数。向日黄永不承字（token 角色注释里写死）。
  */
 
-// ── 顶缘手绘波浪 ────────────────────────────────────────────────────────
-const WAVE_X0 = 48
-const WAVE_Y = 26
-/** 二次贝塞尔控制点的纵向偏置。实际振幅是它的一半（对称二次曲线在 t=0.5
- * 落到偏置/2），板上 `q40,±10` 抄到这里。 */
-const WAVE_AMP = 10
-const WAVE_LEN = 80
-const WAVE_CYCLES = 14
-const WAVE_STROKE = 3
-
-function wavePath(amp: number): string {
-  let d = `M${WAVE_X0},${WAVE_Y}`
-  for (let i = 0; i < WAVE_CYCLES; i++) {
-    const sign = i % 2 === 0 ? -1 : 1
-    d += ` q${WAVE_LEN / 2},${sign * amp} ${WAVE_LEN},0`
-  }
-  return d
+// ── 顶缘蜡笔涂边 ────────────────────────────────────────────────────────
+/** 板上公式 `12 + 3.5*sin(x/97) + 2.5*sin(x/41) + 2`，y 钉到 1 位小数。 */
+function edgeY(x: number): string {
+  return (12 + 3.5 * Math.sin(x / 97) + 2.5 * Math.sin(x / 41) + 2).toFixed(1)
 }
 
-const WAVE_D = wavePath(WAVE_AMP)
+const EDGE_SAMPLES: string[] = []
+for (let x = 1280; x >= 0; x -= 40) {
+  EDGE_SAMPLES.push(`${x},${edgeY(x)}`)
+}
 
-// ── 顶带右侧三枚圆贴纸 ──────────────────────────────────────────────────
-const STICKERS: readonly { cx: number; cy: number; paletteIndex: number }[] = [
-  { cx: 1150, cy: 28, paletteIndex: 3 },
-  { cx: 1188, cy: 28, paletteIndex: 2 },
-  { cx: 1226, cy: 28, paletteIndex: 1 },
-]
-const STICKER_R = 11
+/** 模块级一次生成。输入零随机，两次渲染逐字节同。 */
+const EDGE_POINTS = `0,0 1280,0 ${EDGE_SAMPLES.join(" ")}`
+const EDGE_OPACITY = 0.9
+
+const SCRATCH_XS = [140, 400, 660, 920, 1180] as const
+const SCRATCH_Y1 = 1.5
+const SCRATCH_Y2 = 13
+const SCRATCH_DX = 26
+const SCRATCH_STROKE = 2.2
+const SCRATCH_OPACITY = 0.55
+
+// ── 右上太阳涂鸦 ────────────────────────────────────────────────────────
+const SUN_CX = 1188
+const SUN_CY = 27
+const SUN_R = 12
+const SUN_STROKE = 3.2
+const SUN_GHOST_CX = 1189.5
+const SUN_GHOST_CY = 28.5
+const SUN_GHOST_STROKE = 2.6
+const SUN_GHOST_OPACITY = 0.35
+const SUN_CORE_R = 5.5
+const SUN_RAY_INNER = 18
+const SUN_RAY_OUTER = 27
+const SUN_RAY_START = 0.18
+const SUN_RAY_STROKE = 3
+
+function round1(n: number): number {
+  return Number(n.toFixed(1))
+}
+
+const SUN_RAYS = Array.from({ length: 8 }, (_, i) => {
+  const a = SUN_RAY_START + (i * Math.PI) / 4
+  return {
+    x1: round1(SUN_CX + SUN_RAY_INNER * Math.cos(a)),
+    y1: round1(SUN_CY + SUN_RAY_INNER * Math.sin(a)),
+    x2: round1(SUN_CX + SUN_RAY_OUTER * Math.cos(a)),
+    y2: round1(SUN_CY + SUN_RAY_OUTER * Math.sin(a)),
+  }
+})
 
 // ── 底带彩虹短划 ────────────────────────────────────────────────────────
 const DASH_Y = 644
@@ -148,7 +183,7 @@ export const CRAYON_DASH_DRAWN = DASHES.length
 const STAR_D = "M56,628 l4,10 10,1 -7,7 2,10 -9,-5 -9,5 2,-10 -7,-7 10,-1 z"
 
 /**
- * 半场降档判据：一页的组件数到这个数就撤贴纸与星星。取
+ * 半场降档判据：一页的组件数到这个数就撤太阳与星星。取
  * `PACING_BUDGETS.dense.maxComponentsPerSlide`——全仓自己的「最密一档每页
  * 块数上限」，不另造一个魔数。到了这个数，页面已经是内容说了算的一页，
  * 装饰把贴上去的零件让出来。
@@ -156,32 +191,65 @@ const STAR_D = "M56,628 l4,10 10,1 -7,7 2,10 -9,-5 -9,5 2,-10 -7,-7 10,-1 z"
 const HALF_FIELD_COMPONENTS = PACING_BUDGETS.dense.maxComponentsPerSlide
 
 export function CrayonMotif({ slide, ctx }: DecorProps) {
-  // chapter 是整版 primary 蜡笔蓝底，波浪消失、贴纸与巨幅标题抢面
+  // chapter 是整版 primary 蜡笔蓝底，涂边消失、太阳与巨幅标题抢面
   // （见文件头）。
   if (slide.type === "chapter") return null
 
   const palette = ctx.colors.chartPalette
   const blue = ctx.colors.primary
   const orange = ctx.colors.accent
+  const paper = ctx.colors.bg
   // 半场降档：判据只读 IR 结构层的组件数量，绝不读渲染后的文字几何。
   const halfField = slide.components.length >= HALF_FIELD_COMPONENTS
   // cover 撤底带：tone-adaptive-header 封面的作者/日期行画在 y624-656，
   // 彩虹划与星会横穿它（见文件头「cover 撤底带」一节）。
   const bottomBand = slide.type !== "cover"
+  // cover 太阳让位：tone-adaptive-header 密级徽标与太阳下光芒相交
+  // （见文件头）。motif 不感知 layout，按页型整颗撤场。
+  const sun = slide.type !== "cover" && !halfField
 
   return (
     <>
-      <path
-        d={WAVE_D}
-        fill="none"
-        stroke={blue}
-        strokeWidth={WAVE_STROKE}
-        strokeLinecap="round"
-      />
-      {!halfField &&
-        STICKERS.map((s) => (
-          <circle key={s.cx} cx={s.cx} cy={s.cy} r={STICKER_R} fill={palette[s.paletteIndex]} />
-        ))}
+      <polygon points={EDGE_POINTS} fill={blue} opacity={EDGE_OPACITY} />
+      {SCRATCH_XS.map((x) => (
+        <line
+          key={x}
+          x1={x}
+          y1={SCRATCH_Y1}
+          x2={x + SCRATCH_DX}
+          y2={SCRATCH_Y2}
+          stroke={paper}
+          strokeWidth={SCRATCH_STROKE}
+          opacity={SCRATCH_OPACITY}
+        />
+      ))}
+      {sun && (
+        <>
+          <circle
+            cx={SUN_GHOST_CX}
+            cy={SUN_GHOST_CY}
+            r={SUN_R}
+            fill="none"
+            stroke={orange}
+            strokeWidth={SUN_GHOST_STROKE}
+            opacity={SUN_GHOST_OPACITY}
+          />
+          <circle cx={SUN_CX} cy={SUN_CY} r={SUN_R} fill="none" stroke={orange} strokeWidth={SUN_STROKE} />
+          <circle cx={SUN_CX} cy={SUN_CY} r={SUN_CORE_R} fill={palette[3]} />
+          {SUN_RAYS.map((r) => (
+            <line
+              key={`${r.x1},${r.y1}`}
+              x1={r.x1}
+              y1={r.y1}
+              x2={r.x2}
+              y2={r.y2}
+              stroke={orange}
+              strokeWidth={SUN_RAY_STROKE}
+              strokeLinecap="round"
+            />
+          ))}
+        </>
+      )}
       {bottomBand &&
         DASHES.map((i) => (
           <line

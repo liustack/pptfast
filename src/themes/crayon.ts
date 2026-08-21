@@ -20,7 +20,7 @@ import type { StyleTokens } from "./tokens";
  *   - `primary` `#2B59C3`：蜡笔蓝。压 bg 实测 5.91:1（板 5.8:1），白字压
  *     primary 6.33:1（板 4.7:1）——板书带承白字。
  *   - `accent` `#E4572E`：蜡笔橘红。压 bg 实测 3.44:1（板 3.9:1）。角色写死：
- *     只给贴纸、波浪线与一个强调词，不作大段正文。
+ *     只给太阳涂鸦、星贴纸与一个强调词，不作大段正文。
  *   - `text` `#2E2A25`：蜡笔黑，不是纯黑。13.30:1（板 13:1）。
  *   - `muted` `#6E655A`：铅笔灰。5.34:1（板 5.2:1），压 surface 5.62:1。
  *   - `border` `#F1E3C8`：卡纸折线。
@@ -44,12 +44,11 @@ import type { StyleTokens } from "./tokens";
  * Microsoft YaHei）。圆角 12 + gapScale 1.1，全主题最圆润档（课堂亲和那一档），
  * 蜡笔卡纸要的就是这个圆。
  *
- * 装饰见 `../svg/motifs/motif-crayon-motif.tsx`（蜡笔描边：顶缘手绘波浪 +
- * 顶带三枚圆贴纸 + 底带彩虹短划 + 左下角星贴纸。密页降为顶波浪＋底彩虹划）。
+ * 装饰见 `../svg/motifs/motif-crayon-motif.tsx`（蜡笔描边：顶缘蜡笔涂边 +
+ * 右上太阳涂鸦 + 底带彩虹短划 + 左下角星贴纸。密页降为顶涂边＋底彩虹划）。
  *
  * 可拉伸性：四色蜡笔即参数（K12 学科课换学科色组、亲子活动 bg 可提饱和至
- * `#FFF1D6`）；波浪振幅、贴纸数量是 motif 参数，heavy→medium 只减贴纸与
- * 彩虹划密度，几何不动。向日黄永不承字。
+ * `#FFF1D6`）。heavy→medium 只撤太阳与星，涂边与彩虹划几何不动。向日黄永不承字。
  */
 export const CRAYON_TOKENS: StyleTokens = {
   id: "crayon",
@@ -57,7 +56,7 @@ export const CRAYON_TOKENS: StyleTokens = {
     bg: "#FFF6E9", // 卡纸奶油——暖黄段，与 classroom 雾蓝 / bloom 樱粉隔开色温
     surface: "#FFFDF6", // 图画纸白
     primary: "#2B59C3", // 蜡笔蓝（压 bg 5.91:1，白字 6.33:1）——板书带承白字
-    accent: "#E4572E", // 蜡笔橘红（3.44:1）——只给贴纸、波浪线与一个强调词
+    accent: "#E4572E", // 蜡笔橘红（3.44:1）——只给太阳涂鸦、星贴纸与一个强调词
     text: "#2E2A25", // 蜡笔黑（13.30:1），不是纯黑
     muted: "#6E655A", // 铅笔灰（5.34:1）
     border: "#F1E3C8", // 卡纸折线
