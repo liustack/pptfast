@@ -109,6 +109,7 @@ export function StatHeroContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const heading = fitHeadingLines(value, {
     ...layoutDef.headingFit,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const titleLastY = VALUE_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight
 

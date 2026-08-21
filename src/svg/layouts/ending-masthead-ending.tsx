@@ -63,6 +63,7 @@ export function MastheadEnding({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 36,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingY =
     HEADING_LAST_BASELINE - Math.max(0, heading.lines.length - 1) * heading.lineHeight

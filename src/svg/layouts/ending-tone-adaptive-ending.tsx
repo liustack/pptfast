@@ -100,6 +100,7 @@ export function ToneAdaptiveEnding({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 40,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   // Last-line-anchored（S3b addendum, 2026-07-07，机械搬运自源函数注释）：锚
   // 定标题末行基线，使分隔线/联系/版权链条的 y 不随行数变化。

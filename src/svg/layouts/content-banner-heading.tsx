@@ -135,6 +135,7 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
     maxLines: 2,
     minPt: 22,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const bannerH = heading.lines.length > 1 ? BANNER_H_2LINE : BANNER_H_1LINE
   const bannerBottom = BANNER_Y + bannerH

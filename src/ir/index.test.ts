@@ -1899,7 +1899,7 @@ describe("theme.style override", () => {
       style: {
         colors: { primary: "#0B5FFF", chartPalette: ["#111111", "#222222"] },
         fonts: { heading: ["Inter"] },
-        shape: { radius: 10, gapScale: 1.1 },
+        shape: { radius: 10, gapScale: 1.1, typeScale: 1.5 },
       },
     }
     expect(parsePptxIR(d).success).toBe(true)
@@ -1917,6 +1917,11 @@ describe("theme.style override", () => {
   it("rejects gapScale outside the documented range", () => {
     const d: any = minimal()
     d.theme = { id: "consulting", style: { shape: { gapScale: 2 } } }
+    expect(parsePptxIR(d).success).toBe(false)
+  })
+  it("rejects typeScale outside the documented range", () => {
+    const d: any = minimal()
+    d.theme = { id: "consulting", style: { shape: { typeScale: 3 } } }
     expect(parsePptxIR(d).success).toBe(false)
   })
 })

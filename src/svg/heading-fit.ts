@@ -46,14 +46,26 @@ export function visualUnits(text: string): number {
 }
 
 /**
+ * Apply `StyleShape.typeScale` to a heading/display px (or pt) size *before*
+ * fit. Omitted or `1` leaves `px` untouched so existing call sites stay
+ * byte-identical. `minPt` is the caller's job and is never scaled here.
+ */
+export function scaleTypePx(px: number, typeScale?: number): number {
+  if (typeScale == null || typeScale === 1) return px
+  return Math.round(px * typeScale)
+}
+
+/**
  * Largest font size (pt, clamped to [minPt, maxPt]) at which `text` fits within
  * `widthIn` inches across `lines` line(s). 1pt ≈ 1/72 in; one em ≈ fontSize pt.
+ * `typeScale` multiplies `maxPt` first. `minPt` stays the unscaled floor.
  */
 export function fitHeadingPt(
   text: string,
-  opts: { widthIn: number; maxPt: number; minPt?: number; lines?: number },
+  opts: { widthIn: number; maxPt: number; minPt?: number; lines?: number; typeScale?: number },
 ): number {
-  const { widthIn, maxPt, minPt = 28, lines = 1 } = opts
+  const { widthIn, minPt = 28, lines = 1 } = opts
+  const maxPt = scaleTypePx(opts.maxPt, opts.typeScale)
   const u = visualUnits(text)
   if (u <= 0) return maxPt
   const pt = Math.floor((72 * widthIn * lines) / u)
@@ -72,6 +84,11 @@ export function fitHeadingPt(
  * Uses `measureTextUnits`'s CJK weighting (via `layoutSvgText`), the same
  * model the overflow auditor uses, so the returned layout is guaranteed to
  * fit `maxWidth` regardless of whether the `minPt` floor was honored.
+ *
+ * `typeScale` (`StyleShape.typeScale`) multiplies `fontSize` first, then
+ * this function still shrinks to the box. `minPt` is not scaled: it is the
+ * overflow floor, not a second design size. Omit `typeScale` (or pass `1`)
+ * and the result is byte-identical to the pre-typeScale call.
  */
 export function fitHeadingLines(
   text: string | undefined,
@@ -81,9 +98,12 @@ export function fitHeadingLines(
     maxLines?: number
     minPt?: number
     lineHeightRatio?: number
+    /** Heading/display multiplier. Applied to `fontSize` before fit. */
+    typeScale?: number
   } & TextWeightHint,
 ): SvgTextLayout {
-  const { maxWidth, fontSize, maxLines = 2, minPt = 28, lineHeightRatio, fontFamily } = opts
+  const { maxWidth, maxLines = 2, minPt = 28, lineHeightRatio, fontFamily } = opts
+  const fontSize = scaleTypePx(opts.fontSize, opts.typeScale)
   // bold-metrics fix (2026-07-24): default flipped to `true`, not `false`.
   // root-cause.md S5: 50/52 layout `fontWeight` declarations across
   // src/svg/layouts/*.tsx are >=600 (96%) -- this is the primary heading

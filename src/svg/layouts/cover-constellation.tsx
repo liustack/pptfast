@@ -66,6 +66,7 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 44,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   // Bottom-anchored hero title: the *last* line always sits on baseline 520
   // regardless of 1 vs. 2 lines, so the meta row below it never moves.

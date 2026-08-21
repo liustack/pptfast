@@ -319,6 +319,7 @@ export function ImageLeadSplitContent({ ir, slide, index, ctx }: SvgTemplateProp
     maxLines: 3,
     minPt: 22,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingLastY =
     HEADING_BASELINE + Math.max(0, heading.lines.length - 1) * heading.lineHeight

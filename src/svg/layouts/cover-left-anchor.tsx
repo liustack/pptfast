@@ -94,6 +94,7 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
     maxLines: 3,
     minPt: 32,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const titleFudge = Math.round(title.fontSize * BASELINE_FUDGE_RATIO)
   const titleFirstY =

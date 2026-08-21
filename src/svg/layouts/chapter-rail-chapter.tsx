@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
-import { fitHeadingLines } from "../heading-fit"
+import { fitHeadingLines, scaleTypePx } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleOpacity, readableOn } from "../ink"
 
@@ -118,6 +118,7 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 40,
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingY = heading.lines.length > 1 ? 352 : 392
   const headingLastY =
@@ -160,7 +161,7 @@ export function RailChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         x="1224"
         y="650"
         fontFamily={ctx.fonts.heading}
-        fontSize="260"
+        fontSize={scaleTypePx(260, ctx.shape?.typeScale)}
         fontWeight="700"
         fill="#FFFFFF"
         opacity="0.06"

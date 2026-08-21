@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
-import { fitHeadingLines } from "../heading-fit"
+import { fitHeadingLines, scaleTypePx } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 
@@ -57,6 +57,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
     maxLines: 2,
     minPt: 28,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingLastY =
     HEADING_BASELINE +
@@ -69,6 +70,7 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
       })
     : null
   const subheadingY = headingLastY + 56
+  const numberPx = scaleTypePx(160, ctx.shape?.typeScale)
 
   return (
     <>
@@ -79,9 +81,9 @@ export function ConstellationChapter({ ir, slide, index, ctx }: SvgTemplateProps
         x="96"
         y={NUMBER_BASELINE}
         fontFamily={fonts.heading}
-        fontSize="160"
+        fontSize={numberPx}
         fontWeight="700"
-        fill={accessibleInk(numberColor, defaultBg, 160)}
+        fill={accessibleInk(numberColor, defaultBg, numberPx)}
         dominantBaseline="alphabetic"
       >
         {label}

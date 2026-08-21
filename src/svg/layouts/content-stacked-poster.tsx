@@ -202,6 +202,7 @@ function renderStackedContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     // over-corrected for a weight it never actually exports as.
     bold: false,
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingExtra = Math.max(0, heading.lines.length - 1) * heading.lineHeight
   const headingLastY = 150 + headingExtra
@@ -331,6 +332,7 @@ export function StackedPosterContent(props: SvgTemplateProps) {
     maxLines: 2,
     minPt: 36,
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const titleLastY = TITLE_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight
 

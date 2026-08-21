@@ -13,7 +13,14 @@ describe("theme.style override merging", () => {
     expect(t.colors.chartPalette).toEqual(["#111111"])
     expect(t.fonts.heading).toEqual(["Inter"])
     expect(t.shape?.radius).toBe(10)
+    expect(t.shape?.typeScale).toBeUndefined()
     expect(t.colors.bg).toBe(resolveStyle("consulting").colors.bg)
+  })
+
+  it("merges typeScale over the base theme shape", () => {
+    const t = resolveStyle("consulting", { shape: { typeScale: 1.5 } })
+    expect(t.shape?.typeScale).toBe(1.5)
+    expect(t.shape?.radius).toBe(resolveStyle("consulting").shape?.radius)
   })
 
   it("no style keeps the identical base reference (zero-cost default)", () => {

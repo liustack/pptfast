@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
-import { fitHeadingLines } from "../heading-fit"
+import { fitHeadingLines, scaleTypePx } from "../heading-fit"
 import { cachedDeckSeed, pickBySeed } from "../variety"
 import { accessibleInk } from "../ink"
 
@@ -82,6 +82,7 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 32,
     fontFamily: ctx.fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingY = 388
   const headingLastY = headingY + Math.max(0, heading.lines.length - 1) * heading.lineHeight
@@ -151,7 +152,7 @@ export function RomanChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         x="56"
         y="264"
         fontFamily={ctx.fonts.heading}
-        fontSize="176"
+        fontSize={scaleTypePx(176, ctx.shape?.typeScale)}
         fontWeight="800"
         fill={romanInk}
         dominantBaseline="alphabetic"

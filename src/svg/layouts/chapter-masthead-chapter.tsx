@@ -1,7 +1,7 @@
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
 import { chapterNumberFor } from "../../lib/derive"
-import { fitHeadingLines } from "../heading-fit"
+import { fitHeadingLines, scaleTypePx } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
 
@@ -57,6 +57,7 @@ export function MastheadChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 36,
     fontFamily: fonts.heading,
+    typeScale: ctx.shape?.typeScale,
   })
   const headingLastY =
     HEADING_BASELINE + Math.max(0, heading.lines.length - 1) * heading.lineHeight
@@ -83,7 +84,7 @@ export function MastheadChapter({ ir, slide, index, ctx }: SvgTemplateProps) {
         x="1184"
         y={NUMBER_BASELINE}
         fontFamily={fonts.heading}
-        fontSize="220"
+        fontSize={scaleTypePx(220, ctx.shape?.typeScale)}
         fontWeight="700"
         fill={colors.accent}
         opacity="0.12"
