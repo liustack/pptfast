@@ -29,7 +29,11 @@ Every command that takes a `<target>` accepts the same three forms: an IR JSON f
 | `serve <target> [--port 4400] [--no-open]` | Live-preview server: the same review page as `preview --html`, auto-reloading on source changes |
 | `migrate <input> -o <output>` | Convert a v3 IR file to v4, or a `deck.plan.json` project directory to `deck.spec.json` — deterministic, no model call |
 | `init` | Scaffold `pptfast.config.json` |
-| `doctor [--json]` | Diagnose this machine's install: skill copies, dsh plugin, runtime, optional capabilities, self-test render (see [Doctor](#doctor)) |
+| `config set <key> [value]` / `config show` | Store Pexels/Pixabay API keys in `$PPTFAST_HOME/config.json`. Omit the value for an apiKey to enter it hidden. `show` masks keys and labels `(file)` / `(env)` |
+| `images search <query> [--orientation] [--color] [--min-width] [--min-height]` | Search Pexels (Pixabay if Pexels returns nothing). Prints attribution lines |
+| `images fetch <provider>:<id> --deck <dir> --as <asset_id>` | Download a photo into `.pptfast/<deck>/assets/` with a sidecar |
+| `images list --deck <dir>` | List pinned stock photos for a deck |
+| `doctor [--json]` | Diagnose this machine's install: skill copies, dsh plugin, runtime, optional capabilities, self-test render, and whether stock-photo keys are present (see [Doctor](#doctor)) |
 | `check-update` / `self-update` | Check npm for a newer release / update the global install |
 
 `--theme-file` works on `render`, `validate`, `audit`, `preview`, and `serve`.
@@ -82,9 +86,9 @@ pptfast asset-brief my-deck/
 
 ## Doctor
 
-`pptfast doctor [--json]` diagnoses the install on this machine. It reads local state only: nothing is written, no network call is made, and there are no credentials to inspect, because there is nothing to configure.
+`pptfast doctor [--json]` diagnoses the install on this machine. It reads local state only: nothing is written, no network call is made. Rendering a PPTX still needs no credentials. The images section reports whether Pexels/Pixabay keys are present and whether they came from the file or the env. It never prints the value.
 
-Six sections, in the order the report prints them:
+Seven sections, in the order the report prints them:
 
 - **Installed skill copies.** An installed skill is a *copy* — [`INSTALL.md`](../INSTALL.md) step 2 copies the folder into the harness's skill directory, and that copy keeps its install-time launcher forever. Upgrading the CLI never touches it, so a machine can sit on a months-old version while `pptfast --version` reports something much newer. Doctor scans `~/.claude/skills`, `~/.codex/skills`, and `~/.agents/skills` (Pi and OpenCode both read the last one) for a `pptfast/` folder, reads the `PINNED` version out of each copy's `scripts/run.sh`, and names any copy behind the running CLI as stale, with the clone-and-copy line that refreshes it in place ([`INSTALL.md`](../INSTALL.md) step 2's own command, aimed at that copy). Finding no copy at all is normal, not a problem: on dsh the skill ships inside the plugin, and the CLI works on its own. A copy with no `run.sh`, or a `run.sh` with no `PINNED` line, is reported as "version unknown" rather than failing the scan.
 - **DSH plugin.** When `~/.dsh/` exists, every profile directory under `~/.dsh/profiles/` is checked for `@liustack/pptfast` — read from the profile's own `node_modules` (what would really load), falling back to the version its `package.json` declares. A profile behind the CLI gets the pinned install command, `npx -y @deepseek-ai/dsh plugin --profile <profile> add @liustack/pptfast@<version>`, the version named on purpose because dsh installs through a pnpm that holds back fresh releases and silently resolves `@latest` to an older one. No `~/.dsh/` means the check does not apply, which is not the same as failing it.
@@ -92,8 +96,9 @@ Six sections, in the order the report prints them:
 - **Optional capabilities.** Whether `sharp` is importable and whether `soffice` is on PATH. Without sharp, preview rasterization and `audit --pixels` are unavailable — plain SVG preview and `.pptx` rendering are unaffected. Without soffice, the PDF export path is unavailable, likewise with no effect on the main flow.
 - **Self-test render.** A tiny built-in deck goes through the real pipeline in memory — validate, render a slide to SVG, generate the `.pptx` bytes — with nothing written to disk. The report says how many milliseconds it took. Every other check is an observation about the environment; this one proves the thing actually works.
 - **Workspace artifacts.** The project root doctor resolved from cwd, the absolute `.pptfast/` (or configured `outDir`) path, and whether git already ignores it. Informational: it never fails the run and never writes an exclude line.
+- **Images.** Optional stock-photo search. Each provider is present or missing, with source `(file)` / `(env)`. Missing keys are warnings, never a hard error. On POSIX, a user config file that is group/other-readable is a warning (`chmod 600`). The value is never printed.
 
-The exit code is `1` only for a hard failure: a Node below the floor, or a self-test render that did not complete. Skill drift, a stale dsh plugin, and missing optional capabilities are warnings and still exit `0` — the main write-IR → validate → render flow keeps working through all of them. `--json` prints the full structured report (`skills.copies[]`, `dsh.profiles[]`, `capabilities[]`, `selfTest`, `workspace`, and the `errors`/`warnings` arrays the exit code is derived from).
+The exit code is `1` only for a hard failure: a Node below the floor, or a self-test render that did not complete. Skill drift, a stale dsh plugin, missing optional capabilities, and missing stock-photo keys are warnings and still exit `0` — the main write-IR → validate → render flow keeps working through all of them. `--json` prints the full structured report (`skills.copies[]`, `dsh.profiles[]`, `capabilities[]`, `selfTest`, `workspace`, `images`, and the `errors`/`warnings` arrays the exit code is derived from).
 
 ```bash
 pptfast doctor

@@ -302,6 +302,28 @@ pptfast render deck-dir/     # theme.json 自动装载。在 deck.spec.json 里�
 
 给任何 `asset_id` 还没有真实文件的 `image` component 生成美术之前，先跑一遍 `pptfast asset-brief <target>`——它会真的渲染一遍 deck，报告每个图片位实际的渲染框（不是版式的名义槽位尺寸）、带安全区说明的裁切模式、建议的生成像素、主题色板，以及一段可直接粘贴的提示词。宽高比和色调对上了，生成的图片摆上去才会显得是设计好的，而不是被拉伸、裁错或跑色。
 
+### 图库配图
+
+先跑 `pptfast asset-brief <target>`，拿到真实框、裁切和色板。
+
+查询词：短而具体的名词，英文 2 到 4 个词（`office desk`、`wind farm`）。中文只作变体，不要当唯一查询。不要加情绪或画质词（`beautiful`、`4k`、`cinematic`）。不要写负向词（`not office`、`no people`）。
+
+```bash
+pptfast config set pexels.apiKey
+pptfast images search "office desk" --orientation landscape
+```
+
+不要自动收第一条。人（或视觉模型）从大约 8 张缩略图里挑。然后下载：
+
+```bash
+pptfast images fetch pexels:123 --deck <dir> --as hero
+pptfast images list --deck <dir>
+```
+
+文件落在 `.pptfast/<deck>/assets/<asset_id>.jpg`，旁边是 sidecar。页面用这个 `asset_id` 引用。不要为了「重跑」整目录删掉 `.pptfast/`，已钉的图会一起没。
+
+没有 key：槽位保持 `missing`（灰框）。不要编一张图。不要刮网页。这一版不要用 Unsplash 或 Openverse。这是本机客户端，用用户自己的 key 去拉。幻灯里商用可以。不要把原图单独转卖。署名打在终端，默认不印在画面上。
+
 ### Pin-only 版式
 
 这些版式从不出现在自动选型里。每次要用都得显式设置 `layout`。pin-only 的 content 版式超出声明容量时 `validate` 会硬报错（普通版式钉住超容量只给警告）。
