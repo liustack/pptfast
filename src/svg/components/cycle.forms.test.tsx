@@ -173,6 +173,40 @@ describe("cycle forms: CycleLoop", () => {
     expect(container.querySelectorAll("marker").length).toBe(0)
   })
 
+  it("museum 3–4 char CJK node labels wrap instead of ellipsizing 试运行", () => {
+    const ctx = themed("museum")
+    const ir = {
+      type: "cycle" as const,
+      title: "产品进展",
+      items: [
+        { label: "需求确认", description: "对齐范围与验收口径" },
+        { label: "现场勘测", description: "核对安装点位" },
+        { label: "设备接入", description: "完成现场接线" },
+        { label: "模型调优", description: "压低误报占比" },
+        { label: "试运行", description: "小流量观察误报" },
+      ],
+    }
+    const box = { x: 96, y: 186, w: 632 }
+    const { container } = svg(cycle.render(ir, box, ctx))
+    const nodeTexts = Array.from(container.querySelectorAll("[data-audit-box] text"))
+    const runHits = nodeTexts.filter((t) => /试|运|行/.test(t.textContent ?? ""))
+    expect(runHits.length).toBeGreaterThan(0)
+    const joined = runHits.map((t) => t.textContent ?? "").join("")
+    expect(joined).toContain("试")
+    expect(joined).toContain("运")
+    expect(joined).toContain("行")
+    expect(joined).not.toMatch(/试…/)
+    for (const t of runHits) {
+      expect(Number(t.getAttribute("font-size")), `"${t.textContent}"`).toBeGreaterThanOrEqual(20)
+    }
+    const descHits = Array.from(container.querySelectorAll("text")).filter((t) =>
+      (t.textContent ?? "").includes("小流量"),
+    )
+    for (const t of descHits) {
+      expect(Number(t.getAttribute("font-size")), `"${t.textContent}"`).toBeGreaterThanOrEqual(15)
+    }
+  })
+
   it("journal: dotted ring path", () => {
     const ctx = themed("journal")
     const { container } = svg(cycle.render(four, { x: 80, y: 80, w: 1088 }, ctx))

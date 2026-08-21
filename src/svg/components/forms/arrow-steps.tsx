@@ -1,11 +1,11 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine } from "../../../lib/svg-text-layout"
 import { wrapClip } from "./clip-text"
 import { mixHex } from "../color-mix"
 import { readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import { FORM_BODY_FLOOR, FORM_TITLE_FLOOR, fitFormTitleLine } from "./legibility"
 
 type StepsComponent = Extract<Component, { type: "steps" }>
 
@@ -15,8 +15,8 @@ const GAP = 20
 const ARROW_H = 100
 const ARROW_H_VERTICAL = 52
 const BADGE_R = 22
-const TITLE_SIZE = 18
-const FOOT_SIZE = 14
+const TITLE_SIZE = FORM_TITLE_FLOOR
+const FOOT_SIZE = FORM_BODY_FLOOR
 const FOOT_GAP = 14
 
 function needsVertical(n: number, w: number): boolean {
@@ -64,6 +64,7 @@ function footnoteH(text: string, maxWidth: number, fontFamily: string, maxLines:
   const laid = wrapClip(text, {
     maxWidth,
     fontSize: FOOT_SIZE,
+    minPt: FORM_BODY_FLOOR,
     maxLines,
     lineHeightRatio: 1.35,
     fontFamily,
@@ -203,16 +204,15 @@ export function renderArrowSteps(
         const y = vertical ? i * stride : 0
         const cx = x + BADGE_R
         const cy = y + arrowH / 2
-        const title = fitSvgLine(item.title, {
+        const title = fitFormTitleLine(item.title, {
           maxWidth: titleMaxW,
           fontSize: TITLE_SIZE,
-          minFontSize: 12,
-          bold: true,
           fontFamily: ctx.fonts.heading,
         })
         const foot = wrapClip(item.text, {
           maxWidth: Math.max(1, slotW),
           fontSize: FOOT_SIZE,
+          minPt: FORM_BODY_FLOOR,
           maxLines: footLines,
           lineHeightRatio: 1.35,
           fontFamily: ctx.fonts.body,

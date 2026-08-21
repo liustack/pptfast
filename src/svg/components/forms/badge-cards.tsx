@@ -1,14 +1,18 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import {
-  fitSvgLine,
-  layoutSvgText,
-  truncateToUnits,
-} from "../../../lib/svg-text-layout"
 import { Icon } from "../../icons"
 import { readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import {
+  boardTypeScale,
+  fillCardType,
+  formGridCols,
+  formLineHeight,
+  layoutFormBody,
+  layoutFormTitle,
+  linesThatFit,
+} from "./legibility"
 
 type IconCardsComponent = Extract<Component, { type: "icon_cards" }>
 type IconCardItem = IconCardsComponent["items"][number]
@@ -17,41 +21,36 @@ const GAP = 16
 const PAD_X = 20
 const PAD_BOTTOM = 16
 const INNER_GAP = 10
-const TITLE_FONT_SIZE = 22
-const TITLE_MIN_FONT_SIZE = 14
 const TITLE_LINE_HEIGHT_RATIO = 1.4
-const TEXT_FONT_SIZE = 16
 const TEXT_LINE_HEIGHT_RATIO = 1.4
-const TEXT_MAX_LINES = 2
 const GAP_TITLE_TEXT = 8
 
-function colsOf(n: number): number {
-  return n <= 4 ? n : 3
-}
-
-function layoutItemText(item: IconCardItem, contentW: number, ctx: ComponentCtx) {
-  const title = fitSvgLine(item.title, {
+function layoutItemText(
+  item: IconCardItem,
+  contentW: number,
+  ctx: ComponentCtx,
+  titleSize: number,
+  bodySize: number,
+  titleMaxLines: number,
+  bodyMaxLines: number,
+) {
+  const title = layoutFormTitle(item.title, {
     maxWidth: contentW,
-    fontSize: TITLE_FONT_SIZE,
-    minFontSize: TITLE_MIN_FONT_SIZE,
-    bold: true,
+    fontSize: titleSize,
     fontFamily: ctx.fonts.heading,
+    maxLines: Math.max(1, titleMaxLines),
   })
-  const wrapped = layoutSvgText(item.text, {
-    maxWidth: contentW,
-    fontSize: TEXT_FONT_SIZE,
-    maxLines: TEXT_MAX_LINES,
-    lineHeightRatio: TEXT_LINE_HEIGHT_RATIO,
-    fontFamily: ctx.fonts.body,
-  })
-  const maxUnits = contentW / wrapped.fontSize
-  return {
-    title,
-    text: {
-      ...wrapped,
-      lines: wrapped.lines.map((line) => truncateToUnits(line, maxUnits)),
-    },
-  }
+  const text =
+    bodyMaxLines > 0
+      ? layoutFormBody(item.text, {
+          maxWidth: contentW,
+          fontSize: bodySize,
+          maxLines: bodyMaxLines,
+          lineHeightRatio: TEXT_LINE_HEIGHT_RATIO,
+          fontFamily: ctx.fonts.body,
+        })
+      : { lines: [] as string[], fontSize: bodySize, lineHeight: 0, truncated: false }
+  return { title, text }
 }
 
 function shellRadius(knobs: FormKnobs, ctx: ComponentCtx): number {
@@ -61,8 +60,17 @@ function shellRadius(knobs: FormKnobs, ctx: ComponentCtx): number {
   return 0
 }
 
-function badgeRadius(cardW: number): number {
-  return Math.round(Math.min(44, Math.max(28, cardW * 0.14)))
+function badgeRadius(cardW: number, rows: number, boxH?: number): number {
+  const preferred = Math.round(Math.min(44, Math.max(28, cardW * 0.14)))
+  if (rows < 2 || boxH == null) return preferred
+  const minContent =
+    formLineHeight(20, TITLE_LINE_HEIGHT_RATIO) +
+    GAP_TITLE_TEXT +
+    2 * formLineHeight(15, TEXT_LINE_HEIGHT_RATIO)
+  const maxR =
+    (boxH - GAP * (rows - 1) - rows * (INNER_GAP + minContent + PAD_BOTTOM)) / (2 * rows)
+  if (!Number.isFinite(maxR)) return preferred
+  return Math.round(Math.min(preferred, Math.max(20, maxR)))
 }
 
 function renderGlyph(
@@ -92,24 +100,60 @@ function geometry(
   boxH?: number,
 ) {
   const n = component.items.length
-  const cols = colsOf(n)
+  const cols = formGridCols(n)
   const rows = Math.ceil(n / cols)
   const cardW = (w - GAP * (cols - 1)) / cols
-  const badgeR = badgeRadius(cardW)
+  const badgeR = badgeRadius(cardW, rows, boxH)
   const contentW = Math.max(24, cardW - PAD_X * 2)
-  const layouts = component.items.map((item) => layoutItemText(item, contentW, ctx))
-  const titleLineHeight = Math.round(TITLE_FONT_SIZE * TITLE_LINE_HEIGHT_RATIO)
-  const contentH = Math.max(
-    ...layouts.map(
-      (layout) =>
-        titleLineHeight +
-        GAP_TITLE_TEXT +
-        layout.text.lines.length * layout.text.lineHeight,
+  const slotH =
+    boxH != null ? Math.max(1, (boxH - GAP * (rows - 1)) / rows - badgeR) : undefined
+  const start = boardTypeScale(cardW, slotH)
+  const naturalInner =
+    formLineHeight(start.title) +
+    GAP_TITLE_TEXT +
+    2 * formLineHeight(start.body)
+  const naturalCardH = badgeR + INNER_GAP + naturalInner + PAD_BOTTOM
+  const naturalMeasured = rows * (badgeR + naturalCardH) + (rows - 1) * GAP
+  const cardH =
+    boxH === undefined
+      ? naturalCardH
+      : Math.max(1, (boxH - GAP * (rows - 1)) / rows - badgeR)
+  const innerH = Math.max(1, cardH - badgeR - INNER_GAP - PAD_BOTTOM)
+  const filled = fillCardType({
+    innerH,
+    contentW,
+    titleSize: start.title,
+    bodySize: start.body,
+    gap: GAP_TITLE_TEXT,
+    longestBody: component.items.map((it) => it.text).sort((a, b) => b.length - a.length)[0],
+    titles: component.items.map((it) => it.title),
+    fonts: { heading: ctx.fonts.heading, body: ctx.fonts.body },
+    titleLhRatio: TITLE_LINE_HEIGHT_RATIO,
+    bodyLhRatio: TEXT_LINE_HEIGHT_RATIO,
+  })
+  const fit = linesThatFit({
+    innerH,
+    titleSize: filled.titleSize,
+    bodySize: filled.bodySize,
+    gap: GAP_TITLE_TEXT,
+    titleMax: 2,
+    bodyMax: Math.max(2, filled.bodyMaxLines),
+  })
+  const layouts = component.items.map((item) =>
+    layoutItemText(
+      item,
+      contentW,
+      ctx,
+      filled.titleSize,
+      filled.bodySize,
+      fit.titleMaxLines,
+      fit.bodyMaxLines,
     ),
   )
-  const naturalCardH = badgeR + INNER_GAP + contentH + PAD_BOTTOM
-  const measuredH = rows * (badgeR + naturalCardH) + (rows - 1) * GAP
-  const grow = boxH === undefined ? 0 : Math.max(0, (boxH - measuredH) / rows)
+  const measuredH =
+    boxH === undefined
+      ? naturalMeasured
+      : rows * (badgeR + cardH) + (rows - 1) * GAP
   return {
     cols,
     rows,
@@ -117,9 +161,8 @@ function geometry(
     badgeR,
     contentW,
     layouts,
-    titleLineHeight,
-    cardH: naturalCardH + grow,
-    measuredH,
+    cardH,
+    measuredH: boxH === undefined ? measuredH : Math.min(boxH, measuredH),
   }
 }
 
@@ -157,13 +200,13 @@ export function renderBadgeCards(
         const cx = cardX + g.cardW / 2
         const layout = g.layouts[i]!
         const blockH =
-          g.titleLineHeight +
+          layout.title.lines.length * layout.title.lineHeight +
           GAP_TITLE_TEXT +
           layout.text.lines.length * layout.text.lineHeight
         const innerTop = cardY + g.badgeR + INNER_GAP
         const innerH = g.cardH - g.badgeR - INNER_GAP - PAD_BOTTOM
         const blockTop = innerTop + Math.max(0, (innerH - blockH) / 2)
-        const textTop = blockTop + g.titleLineHeight + GAP_TITLE_TEXT
+        const textTop = blockTop + layout.title.lines.length * layout.title.lineHeight + GAP_TITLE_TEXT
         return (
           <g
             key={i}
@@ -198,19 +241,22 @@ export function renderBadgeCards(
               iconSize,
               iconColor,
             )}
-            <text
-              data-truncated={layout.title.truncated ? "1" : undefined}
-              x={cx}
-              y={blockTop + layout.title.fontSize}
-              textAnchor="middle"
-              fontSize={layout.title.fontSize}
-              fontWeight="700"
-              fill={ctx.colors.text}
-              fontFamily={ctx.fonts.heading}
-              dominantBaseline="alphabetic"
-            >
-              {layout.title.text}
-            </text>
+            {layout.title.lines.map((line, li) => (
+              <text
+                key={`t-${li}`}
+                data-truncated={layout.title.truncated && li === layout.title.lines.length - 1 ? "1" : undefined}
+                x={cx}
+                y={blockTop + li * layout.title.lineHeight + layout.title.fontSize}
+                textAnchor="middle"
+                fontSize={layout.title.fontSize}
+                fontWeight="700"
+                fill={ctx.colors.text}
+                fontFamily={ctx.fonts.heading}
+                dominantBaseline="alphabetic"
+              >
+                {line}
+              </text>
+            ))}
             {layout.text.lines.map((line, li) => (
               <text
                 key={li}

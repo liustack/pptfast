@@ -1,10 +1,16 @@
 import type { ReactElement } from "react"
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText, truncateToUnits } from "../../../lib/svg-text-layout"
 import { mixHex } from "../color-mix"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import {
+  FORM_BODY_FLOOR,
+  FORM_TITLE_FLOOR,
+  fitFormLine,
+  layoutFormBody,
+  layoutFormTitle,
+} from "./legibility"
 
 type CycleComponent = Extract<Component, { type: "cycle" }>
 
@@ -168,14 +174,11 @@ export function renderPetalWheel(
       />
       {title
         ? (() => {
-            const layout = layoutSvgText(title, {
+            const layout = layoutFormTitle(title, {
               maxWidth: hubR * 1.55,
-              fontSize: Math.max(11, Math.round(20 * scale)),
+              fontSize: Math.max(FORM_TITLE_FLOOR, Math.round(20 * scale)),
               maxLines: 2,
-              lineHeightRatio: 1.15,
-              bold: true,
               fontFamily: ctx.fonts.heading,
-              minPt: 10,
             })
             const totalH = layout.lines.length * layout.lineHeight
             const top = oy - totalH / 2
@@ -205,29 +208,30 @@ export function renderPetalWheel(
         const x = ox + Math.cos(mid) * lr
         const y = oy + Math.sin(mid) * lr
         const chord = 2 * lr * Math.sin(Math.PI / n)
-        const fit = fitSvgLine(item.label, {
-          maxWidth: Math.max(18, chord * 0.72),
-          fontSize: Math.max(9, Math.round(12 * scale)),
-          minFontSize: 8,
+        const layout = layoutFormTitle(item.label, {
+          maxWidth: Math.max(2 * FORM_TITLE_FLOOR, Math.min(chord * 0.72, 2.2 * FORM_TITLE_FLOOR)),
+          fontSize: Math.max(FORM_TITLE_FLOOR, Math.round(20 * scale)),
+          maxLines: 2,
           fontFamily: ctx.fonts.body,
         })
         const fill = petalFill(ctx, petalAlt, i)
-        return (
+        const totalH = layout.lines.length * layout.lineHeight
+        const top = y - totalH / 2
+        return layout.lines.map((line, li) => (
           <text
-            key={`petal-label-${i}`}
-            data-truncated={fit.truncated ? "1" : undefined}
+            key={`petal-label-${i}-${li}`}
+            data-truncated={layout.truncated && li === layout.lines.length - 1 ? "1" : undefined}
             x={x}
-            y={y}
+            y={top + li * layout.lineHeight + layout.fontSize * 0.85}
             textAnchor="middle"
-            dominantBaseline="middle"
             fontFamily={ctx.fonts.body}
-            fontSize={fit.fontSize}
+            fontSize={layout.fontSize}
             fontWeight="600"
             fill={readableOn(fill)}
           >
-            {fit.text}
+            {line}
           </text>
-        )
+        ))
       })}
       {callouts.map((c) => {
         const item = component.items[c.i]!
@@ -239,26 +243,24 @@ export function renderPetalWheel(
         const tx = c.side === "left" ? ox - outer - CALL_GAP * scale : ox + outer + CALL_GAP * scale
         const anchor = c.side === "left" ? "end" : "start"
         const maxWidth = CALL_W * scale - 4
-        const labelFit = fitSvgLine(item.label, {
+        const labelFit = fitFormLine(item.label, {
           maxWidth,
-          fontSize: Math.max(11, Math.round(16 * scale)),
-          minFontSize: 10,
+          fontSize: Math.max(FORM_TITLE_FLOOR, Math.round(16 * scale)),
+          floor: FORM_TITLE_FLOOR,
           bold: true,
           fontFamily: ctx.fonts.body,
         })
         const desc = item.description?.trim()
         const descLayout = desc
-          ? layoutSvgText(desc, {
+          ? layoutFormBody(desc, {
               maxWidth,
-              fontSize: Math.max(9, Math.round(13 * scale)),
+              fontSize: Math.max(FORM_BODY_FLOOR, Math.round(13 * scale)),
               maxLines: 1,
               lineHeightRatio: 1.25,
               fontFamily: ctx.fonts.body,
             })
           : null
-        const descLine = descLayout
-          ? truncateToUnits(descLayout.lines[0] ?? "", maxWidth / descLayout.fontSize)
-          : ""
+        const descLine = descLayout?.lines[0] ?? ""
         const blockH = labelFit.fontSize + (descLine ? descLayout!.lineHeight : 0)
         const labelY = cy - blockH / 2 + labelFit.fontSize * 0.9
         const descY = labelY + (descLayout ? descLayout.lineHeight : 0)
