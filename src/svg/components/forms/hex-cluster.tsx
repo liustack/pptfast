@@ -1,9 +1,9 @@
 import type { Component } from "@/ir"
-import { fitSvgLine, layoutSvgText } from "../../../lib/svg-text-layout"
 import { mixHex } from "../color-mix"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import { FORM_BODY_FLOOR, FORM_TITLE_FLOOR, layoutFormBody, layoutFormTitle } from "./legibility"
 
 type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
 
@@ -105,7 +105,7 @@ function clusterFit(n: number, w: number, h: number) {
   const bw = Math.max(maxX - minX, 0.001)
   const bh = Math.max(maxY - minY, 0.001)
   const inset = PAD + STROKE_W / 2
-  const size = Math.max(18, Math.min((w - inset * 2) / bw, (h - inset * 2) / bh))
+  const size = Math.max(48, Math.min((w - inset * 2) / bw, (h - inset * 2) / bh))
   const usedW = bw * size
   const usedH = bh * size + inset * 2
   const ox = (w - usedW) / 2 - minX * size
@@ -164,27 +164,44 @@ export function renderHexCluster(
         const cy = g.oy + local.y
         const fill = cellFill(i, n, knobs, ctx)
         const num = String(i + 1).padStart(2, "0")
-        const numSize = Math.min(34, g.size * 0.38)
-        const titleSize = Math.min(16, g.size * 0.18)
-        const contentW = Math.max(12, g.size * SQRT3 * 0.62)
-        const title = fitSvgLine(item.title, {
+        const equatorH = Math.max(FORM_TITLE_FLOOR * 2, g.size - 6)
+        const contentW = Math.max(FORM_TITLE_FLOOR, g.size * SQRT3 * 0.55)
+        const title = layoutFormTitle(item.title, {
           maxWidth: contentW,
-          fontSize: titleSize,
-          minFontSize: 9,
-          bold: true,
+          fontSize: FORM_TITLE_FLOOR,
           fontFamily: ctx.fonts.heading,
+          maxLines: 2,
         })
-        const body = item.text && g.size > 70
-          ? layoutSvgText(item.text, {
+        const titleH =
+          title.lines.length === 0
+            ? 0
+            : (title.lines.length - 1) * title.lineHeight + title.fontSize
+        const numTitleGap = titleH > 0 ? 4 : 0
+        let numSize = Math.max(FORM_BODY_FLOOR, Math.min(34, g.size * 0.38))
+        const numBudget = equatorH - titleH - numTitleGap
+        if (numBudget >= FORM_BODY_FLOOR) numSize = Math.min(numSize, numBudget)
+        const used = numSize + numTitleGap + titleH
+        const leftover = equatorH - used
+        const bodyGap = 4
+        const body = item.text && leftover >= FORM_BODY_FLOOR * 1.25 + bodyGap
+          ? layoutFormBody(item.text, {
               maxWidth: contentW,
-              fontSize: Math.min(12, titleSize * 0.85),
-              maxLines: 1,
+              fontSize: FORM_BODY_FLOOR,
+              maxLines: leftover >= FORM_BODY_FLOOR * 2.4 + bodyGap ? 2 : 1,
               lineHeightRatio: 1.25,
+              fontFamily: ctx.fonts.body,
             })
           : null
+        const bodyH = body
+          ? (body.lines.length - 1) * body.lineHeight + body.fontSize
+          : 0
+        const stackH = used + (body ? bodyGap + bodyH : 0)
+        const stackTop = cy - stackH / 2
         const ink = accessibleInk(readableOn(fill), fill, numSize)
         const titleInk = accessibleInk(readableOn(fill), fill, title.fontSize)
-        const numY = body ? cy - 8 : cy - 2
+        const numY = stackTop + numSize / 2
+        const titleTop = stackTop + numSize + numTitleGap
+        const bodyTop = titleTop + titleH + (body ? bodyGap : 0)
         return (
           <g key={i}>
             <polygon
@@ -206,25 +223,28 @@ export function renderHexCluster(
             >
               {num}
             </text>
-            <text
-              data-truncated={title.truncated ? "1" : undefined}
-              x={cx}
-              y={numY + numSize * 0.55 + title.fontSize}
-              textAnchor="middle"
-              fontSize={title.fontSize}
-              fontWeight="bold"
-              fill={titleInk}
-              fontFamily={ctx.fonts.heading}
-              dominantBaseline="alphabetic"
-            >
-              {title.text}
-            </text>
+            {title.lines.map((line, li) => (
+              <text
+                key={`t-${li}`}
+                data-truncated={title.truncated && li === title.lines.length - 1 ? "1" : undefined}
+                x={cx}
+                y={titleTop + li * title.lineHeight + title.fontSize}
+                textAnchor="middle"
+                fontSize={title.fontSize}
+                fontWeight="bold"
+                fill={titleInk}
+                fontFamily={ctx.fonts.heading}
+                dominantBaseline="alphabetic"
+              >
+                {line}
+              </text>
+            ))}
             {body
               ? body.lines.map((line, li) => (
                   <text
                     key={li}
                     x={cx}
-                    y={numY + numSize * 0.55 + title.fontSize + 4 + (li + 1) * body.lineHeight}
+                    y={bodyTop + li * body.lineHeight + body.fontSize}
                     textAnchor="middle"
                     fontSize={body.fontSize}
                     fill={accessibleInk(readableOn(fill), fill, body.fontSize)}

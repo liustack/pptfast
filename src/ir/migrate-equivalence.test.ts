@@ -771,6 +771,14 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // kpi_cards, 1-indexed slide 3) changes. Cover, chapter, quote, and
       // ending stay byte-identical. `.audit.json` needed no recapture
       // (findings stayed the empty array). PPTX only `ppt/slides/slide3.xml`.
+      //
+      // Recaptured (forms-legibility, 2026-08-22). bubble_row keeps value
+      // and label type at 15px (R_MIN so r*0.42 clears that floor) and
+      // sits labels on one baseline under the cluster so they do not
+      // paint across a neighbor bubble. Only annualReviewPreset slide 2
+      // (journal kpi_cards) moves. Cover, chapter, quote, and ending stay
+      // byte-identical. `.audit.json` findings stay []. PPTX only
+      // `ppt/slides/slide3.xml`.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))

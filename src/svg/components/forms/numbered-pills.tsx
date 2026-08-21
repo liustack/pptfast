@@ -1,9 +1,9 @@
 import type { Component } from "@/ir"
-import { fitSvgLine } from "../../../lib/svg-text-layout"
 import { wrapClip } from "./clip-text"
 import { accessibleInk, readableOn } from "../../ink"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import { FORM_BODY_FLOOR, FORM_TITLE_FLOOR, fitFormTitleLine } from "./legibility"
 
 type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
 
@@ -13,6 +13,8 @@ const PILL_GAP = 14
 const PAD = 6
 const STACK_CAP = 440
 const BASELINE_FUDGE = 0.35
+const TITLE_PILL_MIN = 52
+const BODY_PILL_MIN = 72
 
 function pillRx(knobs: FormKnobs, pillH: number): number {
   if (knobs.radius === "square") return 0
@@ -24,12 +26,12 @@ function layoutPills(n: number, w: number, knobs: FormKnobs, hHint?: number) {
   const stagger = knobs.stagger === true
   const staggerSpan = stagger ? STAGGER_X : 0
   let pillH = Math.min(
-    76,
-    Math.max(48, (STACK_CAP - Math.max(n - 1, 0) * PILL_GAP) / Math.max(n, 1)),
+    88,
+    Math.max(BODY_PILL_MIN, (STACK_CAP - Math.max(n - 1, 0) * PILL_GAP) / Math.max(n, 1)),
   )
   if (hHint != null && n > 0) {
     const fitted = (hHint - PAD * 2 - Math.max(n - 1, 0) * PILL_GAP) / n
-    if (Number.isFinite(fitted)) pillH = Math.min(pillH, Math.max(36, fitted))
+    if (Number.isFinite(fitted)) pillH = Math.min(pillH, Math.max(TITLE_PILL_MIN, fitted))
   }
   const stackH = n <= 0 ? 0 : n * pillH + (n - 1) * PILL_GAP
   const leftSize = Math.max(
@@ -83,7 +85,7 @@ export function renderNumberedPills(
   const surface = ctx.colors.surface
   const border = ctx.colors.border ?? ctx.colors.muted
   const rx = pillRx(knobs, L.pillH)
-  const showText = L.pillH >= 62
+  const showText = L.pillH >= BODY_PILL_MIN - 4
 
   return (
     <g transform={`translate(${box.x},${box.y})`}>
@@ -119,19 +121,19 @@ export function renderNumberedPills(
           : readableOn(squareBadge ? ctx.colors.primary : ctx.colors.accent)
         const textX = (squareBadge ? pillX + L.pillH : badgeCx + badgeR) + 14
         const textW = Math.max(24, pillX + L.pillW - textX - 14)
-        const title = fitSvgLine(item.title, {
+        const title = fitFormTitleLine(item.title, {
           maxWidth: textW,
-          fontSize: 18,
-          minFontSize: 12,
-          bold: true,
+          fontSize: FORM_TITLE_FLOOR,
           fontFamily: ctx.fonts.heading,
         })
         const body = showText && item.text
           ? wrapClip(item.text, {
               maxWidth: textW,
-              fontSize: 13,
+              fontSize: FORM_BODY_FLOOR,
+              minPt: FORM_BODY_FLOOR,
               maxLines: 1,
               lineHeightRatio: 1.3,
+              fontFamily: ctx.fonts.body,
             })
           : null
         const titleY = body

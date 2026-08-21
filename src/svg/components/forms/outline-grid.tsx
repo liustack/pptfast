@@ -1,56 +1,55 @@
 import type React from "react"
 import type { Component } from "@/ir"
-import {
-  fitSvgLine,
-  layoutSvgText,
-  truncateToUnits,
-} from "../../../lib/svg-text-layout"
 import { Icon } from "../../icons"
 import type { FormKnobs } from "../form-assignments"
 import type { ComponentBox, ComponentCtx } from "../types"
+import {
+  boardTypeScale,
+  fillCardType,
+  formGridCols,
+  formLineHeight,
+  layoutFormBody,
+  layoutFormTitle,
+  linesThatFit,
+} from "./legibility"
 
 type IconCardsComponent = Extract<Component, { type: "icon_cards" }>
 type IconCardItem = IconCardsComponent["items"][number]
 
 const GAP = 16
 const PAD = 18
-const TITLE_FONT_SIZE = 21
-const TITLE_MIN_FONT_SIZE = 14
 const TITLE_LINE_HEIGHT_RATIO = 1.4
-const TEXT_FONT_SIZE = 15
 const TEXT_LINE_HEIGHT_RATIO = 1.4
-const TEXT_MAX_LINES = 2
 const GAP_ICON_TITLE = 14
 const GAP_TITLE_TEXT = 8
 const ICON_SIZE = 32
 
-function colsOf(n: number): number {
-  return n <= 4 ? n : 3
-}
-
-function layoutItemText(item: IconCardItem, contentW: number, ctx: ComponentCtx) {
-  const title = fitSvgLine(item.title, {
+function layoutItemText(
+  item: IconCardItem,
+  contentW: number,
+  ctx: ComponentCtx,
+  titleSize: number,
+  bodySize: number,
+  titleMaxLines: number,
+  bodyMaxLines: number,
+) {
+  const title = layoutFormTitle(item.title, {
     maxWidth: contentW,
-    fontSize: TITLE_FONT_SIZE,
-    minFontSize: TITLE_MIN_FONT_SIZE,
-    bold: true,
+    fontSize: titleSize,
     fontFamily: ctx.fonts.heading,
+    maxLines: Math.max(1, titleMaxLines),
   })
-  const wrapped = layoutSvgText(item.text, {
-    maxWidth: contentW,
-    fontSize: TEXT_FONT_SIZE,
-    maxLines: TEXT_MAX_LINES,
-    lineHeightRatio: TEXT_LINE_HEIGHT_RATIO,
-    fontFamily: ctx.fonts.body,
-  })
-  const maxUnits = contentW / wrapped.fontSize
-  return {
-    title,
-    text: {
-      ...wrapped,
-      lines: wrapped.lines.map((line) => truncateToUnits(line, maxUnits)),
-    },
-  }
+  const text =
+    bodyMaxLines > 0
+      ? layoutFormBody(item.text, {
+          maxWidth: contentW,
+          fontSize: bodySize,
+          maxLines: bodyMaxLines,
+          lineHeightRatio: TEXT_LINE_HEIGHT_RATIO,
+          fontFamily: ctx.fonts.body,
+        })
+      : { lines: [] as string[], fontSize: bodySize, lineHeight: 0, truncated: false }
+  return { title, text }
 }
 
 function shellRadius(knobs: FormKnobs, ctx: ComponentCtx): number {
@@ -104,15 +103,13 @@ function renderGlyph(
   return <Icon name={name} x={x} y={y} size={size} color={color} />
 }
 
-function stackHeight(item: IconCardItem, contentW: number, ctx: ComponentCtx): number {
-  const titleLineHeight = Math.round(TITLE_FONT_SIZE * TITLE_LINE_HEIGHT_RATIO)
-  const { text } = layoutItemText(item, contentW, ctx)
+function blockHeight(layout: ReturnType<typeof layoutItemText>): number {
   return (
     ICON_SIZE +
     GAP_ICON_TITLE +
-    titleLineHeight +
+    layout.title.lines.length * layout.title.lineHeight +
     GAP_TITLE_TEXT +
-    text.lines.length * text.lineHeight
+    layout.text.lines.length * layout.text.lineHeight
   )
 }
 
@@ -123,25 +120,66 @@ function geometry(
   boxH?: number,
 ) {
   const n = component.items.length
-  const cols = colsOf(n)
+  const cols = formGridCols(n)
   const rows = Math.ceil(n / cols)
   const cellW = (w - GAP * (cols - 1)) / cols
   const contentW = Math.max(24, cellW - PAD * 2)
-  const layouts = component.items.map((item) => layoutItemText(item, contentW, ctx))
-  const titleLineHeight = Math.round(TITLE_FONT_SIZE * TITLE_LINE_HEIGHT_RATIO)
-  const naturalCellH =
-    PAD * 2 +
-    Math.max(...component.items.map((item) => stackHeight(item, contentW, ctx)))
-  const measuredH = rows * naturalCellH + (rows - 1) * GAP
-  const grow = boxH === undefined ? 0 : Math.max(0, (boxH - measuredH) / rows)
+  const slotH = boxH != null ? Math.max(1, (boxH - GAP * (rows - 1)) / rows) : undefined
+  const start = boardTypeScale(cellW, slotH)
+  const extraAbove = ICON_SIZE + GAP_ICON_TITLE
+  const naturalInner =
+    extraAbove +
+    formLineHeight(start.title) +
+    GAP_TITLE_TEXT +
+    2 * formLineHeight(start.body)
+  const naturalCellH = PAD * 2 + naturalInner
+  const naturalMeasured = rows * naturalCellH + (rows - 1) * GAP
+  const cellH =
+    boxH === undefined
+      ? naturalCellH
+      : Math.max(1, (boxH - GAP * (rows - 1)) / rows)
+  const innerH = Math.max(1, cellH - PAD * 2)
+  const filled = fillCardType({
+    innerH,
+    contentW,
+    titleSize: start.title,
+    bodySize: start.body,
+    gap: GAP_TITLE_TEXT,
+    extraAbove,
+    longestBody: component.items.map((it) => it.text).sort((a, b) => b.length - a.length)[0],
+    titles: component.items.map((it) => it.title),
+    fonts: { heading: ctx.fonts.heading, body: ctx.fonts.body },
+    titleLhRatio: TITLE_LINE_HEIGHT_RATIO,
+    bodyLhRatio: TEXT_LINE_HEIGHT_RATIO,
+  })
+  const fit = linesThatFit({
+    innerH,
+    titleSize: filled.titleSize,
+    bodySize: filled.bodySize,
+    gap: GAP_TITLE_TEXT,
+    extraAbove,
+    titleMax: 2,
+    bodyMax: Math.max(2, filled.bodyMaxLines),
+  })
+  const layouts = component.items.map((item) =>
+    layoutItemText(
+      item,
+      contentW,
+      ctx,
+      filled.titleSize,
+      filled.bodySize,
+      fit.titleMaxLines,
+      fit.bodyMaxLines,
+    ),
+  )
+  const measuredH = boxH === undefined ? naturalMeasured : Math.min(boxH, rows * cellH + (rows - 1) * GAP)
   return {
     cols,
     rows,
     cellW,
     contentW,
     layouts,
-    titleLineHeight,
-    cellH: naturalCellH + grow,
+    cellH,
     measuredH,
   }
 }
@@ -177,15 +215,11 @@ export function renderOutlineGrid(
         const cellY = row * rowPitch
         const cx = cellX + g.cellW / 2
         const layout = g.layouts[i]!
-        const blockH =
-          ICON_SIZE +
-          GAP_ICON_TITLE +
-          g.titleLineHeight +
-          GAP_TITLE_TEXT +
-          layout.text.lines.length * layout.text.lineHeight
+        const blockH = blockHeight(layout)
         const blockTop = cellY + (g.cellH - blockH) / 2
         const titleTop = blockTop + ICON_SIZE + GAP_ICON_TITLE
-        const textTop = titleTop + g.titleLineHeight + GAP_TITLE_TEXT
+        const textTop =
+          titleTop + layout.title.lines.length * layout.title.lineHeight + GAP_TITLE_TEXT
         return (
           <g
             key={i}
@@ -208,19 +242,22 @@ export function renderOutlineGrid(
               ICON_SIZE,
               ink,
             )}
-            <text
-              data-truncated={layout.title.truncated ? "1" : undefined}
-              x={cx}
-              y={titleTop + layout.title.fontSize}
-              textAnchor="middle"
-              fontSize={layout.title.fontSize}
-              fontWeight="700"
-              fill={ctx.colors.text}
-              fontFamily={ctx.fonts.heading}
-              dominantBaseline="alphabetic"
-            >
-              {layout.title.text}
-            </text>
+            {layout.title.lines.map((line, li) => (
+              <text
+                key={`t-${li}`}
+                data-truncated={layout.title.truncated && li === layout.title.lines.length - 1 ? "1" : undefined}
+                x={cx}
+                y={titleTop + li * layout.title.lineHeight + layout.title.fontSize}
+                textAnchor="middle"
+                fontSize={layout.title.fontSize}
+                fontWeight="700"
+                fill={ctx.colors.text}
+                fontFamily={ctx.fonts.heading}
+                dominantBaseline="alphabetic"
+              >
+                {line}
+              </text>
+            ))}
             {layout.text.lines.map((line, li) => (
               <text
                 key={li}

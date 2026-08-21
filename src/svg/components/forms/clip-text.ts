@@ -14,6 +14,7 @@ export function wrapClip(
     lineHeightRatio?: number
     fontFamily?: string
     bold?: boolean
+    minPt?: number
   },
 ) {
   const weight: TextWeightHint = { fontFamily: opts.fontFamily, bold: opts.bold }
@@ -24,10 +25,15 @@ export function wrapClip(
     lineHeightRatio: opts.lineHeightRatio ?? 1.35,
     fontFamily: opts.fontFamily,
     bold: opts.bold,
+    minPt: opts.minPt,
   })
-  const maxUnits = opts.maxWidth / wrapped.fontSize
+  const fontSize =
+    opts.minPt != null ? Math.max(wrapped.fontSize, opts.minPt) : wrapped.fontSize
+  const maxUnits = opts.maxWidth / fontSize
   return {
     ...wrapped,
+    fontSize,
+    lineHeight: Math.round(fontSize * (opts.lineHeightRatio ?? 1.35)),
     lines: wrapped.lines.map((line) => truncateToUnits(line, maxUnits, weight)),
   }
 }
