@@ -1024,9 +1024,9 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // layouts 仍是四页型全集。定位 10 页内活动件（宣发 / 招募 / 节目单）。
   playbill: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
-    // motif 刻意不配：空贴片已裁。heavy 在满版黄与字重。照 runway /
-    // museum / stage 先例留空，不是漏写（theme-structure.test.ts 把四家
-    // 一起钉成合法例外）。
+    // 2026-08-22 用户终审还原日期贴片：motif 读 meta.date，无日期整片
+    // 不画（journal 期号先例）。heavy 的主体仍在满版黄与字重。
+    motif: "playbill-motif",
     layoutTendencies: {
       cover: ["poster-center", "fashion-masthead"],
     },

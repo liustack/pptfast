@@ -598,8 +598,8 @@ describe("playbill tokens", () => {
     expect(t.id).toBe("playbill")
   })
 
-  it("declares no motif — the empty ticket chip was struck", () => {
-    expect(THEME_DEFINITIONS.playbill.motif).toBeUndefined()
+  it("motif is the restored date chip (meta.date-driven, 2026-08-22 user verdict)", () => {
+    expect(THEME_DEFINITIONS.playbill.motif).toBe("playbill-motif")
   })
 
   it("heading font resolves to Microsoft YaHei (exact width table, extra-bold sans)", () => {

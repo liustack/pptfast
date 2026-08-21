@@ -35,3 +35,4 @@ export type MotifId =
   | "lecture-motif" // 2026-08-21：粉笔槽细框（lecture 专属，单锚。26px 内缩 1px 走 border，黄粉笔弧不进 motif）
   | "swiss-motif" // 2026-08-21 wave7：顶边 12px 红条 + 右缘三格灰刻度（swiss 专属，单锚不借用。板上整高裸格线不进 motif）
   | "memo-motif" // 2026-08-21：顶部红双线 + Latin 等宽眉字 MEMORANDUM（memo 专属，单锚不借用。红只成线与字）
+  | "playbill-motif" // 2026-08-22 还原：右上日期贴片（读 meta.date，无日期整片不画；journal 期号先例）
