@@ -48,7 +48,7 @@ Also scan the workspace before asking anyone anything. Facts the files can answe
 
 - An existing confirmed `deck.spec.json` already locks narrative, theme, and chrome. Do not re-interview. Route follow-ups through phase 6.
 - A `theme.json`, a pinned `pptfast.config.json` theme, a user-named theme id, or a supplied `.thmx` / `.potx` / branded `.pptx` is a brand signal. Extract or honor it. Do not ask whether a template exists.
-- Request text that already names the audience, talk-vs-read, argument style, or density has derived that axis. Do not re-ask it.
+- Request text that already names the audience, argument style, or density has derived that axis. Do not re-ask it.
 
 A brand signal answers what the deck should look like, never how it should argue. Turning "this company's palette looks like a consulting firm" into a narrative is a guess wearing a fact's clothes, and it is how a deck ends up arguing in a shape nobody chose.
 
@@ -76,10 +76,10 @@ A brand signal answers what the deck should look like, never how it should argue
 Propose and confirm before writing any page content.
 
 - Lock a narrative package first: named preset (or explicit axes), theme id, chrome posture, and a type-scale band (how large cover / chapter / speech headings render: `regular` omit/1, `display` 1.3, `hero` 1.5). This is a decision layer above theme, not a visual choice. Use the Narrative interview below when any axis is still unknown and a user is present. Do not silently pick a preset in that case.
-- Talk vs. read is decided in that interview (or derived). On a talk deck follow the Talk-density contract below when you pin layouts and write `notes`. `pacing` does not grow a fourth value for this.
+- Density (leave air vs pack the page) is decided in that interview (or derived). Follow the Sparse-page contract below when you pin climax, quote, and evidence layouts and write `notes`. `pacing` does not grow a fourth value for this.
 - Theme id comes from the chosen narrative's `themeRecommendations` in `narratives --json` (or from `themes` output if none fit — a recommendation, never a constraint). If the interview's brand question returned a template, extract it first — see Brand themes below.
 - Write the confirmed `narrative`, `theme`, and `chrome` into `deck.spec.json` as soon as the user agrees, before drafting any page. Do not hold them in the conversation and reconstruct them once pages exist.
-- Draft `deck.spec.json`: one entry per page (`id`, `type`, `heading`, optionally `beat`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`. Write `narrative` as a preset id string when the three axes match a preset exactly, otherwise as `{strategy, pacing, audience}`. Never write `{id, pacing}` mixed shapes. Omit `chrome` on a talk deck. Write `chrome: "full"` on a read deck (and whenever `meta.confidentiality` is `confidential` or `restricted`). Do not invent a `typeScale` field on the spec — it does not exist. The band is a recommendation. Only a bare IR (spec skipped) may put `theme.style.shape.typeScale` on the IR itself.
+- Draft `deck.spec.json`: one entry per page (`id`, `type`, `heading`, optionally `beat`/`focus`/`summary`) — opens on `cover`, closes on `ending`, everything in between is `content` or `chapter`. Write `narrative` as a preset id string when the three axes match a preset exactly, otherwise as `{strategy, pacing, audience}`. Never write `{id, pacing}` mixed shapes. Omit `chrome` by default. Write `chrome: "full"` only when every content page needs the brand footer (and whenever `meta.confidentiality` is `confidential` or `restricted`). Do not invent a `typeScale` field on the spec — it does not exist. The band is a recommendation. Only a bare IR (spec skipped) may put `theme.style.shape.typeScale` on the IR itself.
 - Run `pptfast spec validate deck.spec.json` and fix whatever it reports until it prints `OK` — the hard gates (boundary pages, heading length, beat rotation, page count vs. pacing) all fire here, before a single page is written
 - Once `spec validate` prints `OK`, set a `seed` (any integer) in `deck.spec.json` for revision stability — write one now, or run `pptfast assemble` once in phase 3 and copy the `generated seed …` value it prints into the spec. Without a persisted seed, editing one page's heading later can reshuffle every other page's auto-picked layout
 
@@ -87,11 +87,11 @@ Propose and confirm before writing any page content.
 
 ### Narrative interview (at most one round)
 
-When a user is present and any of audience, talk-vs-read / strategy, or pacing is still unknown, relay the unresolved questions below in **one** message, then stop. Do not fill them in. Do not say "I'll assume". If the harness has a multiple-choice question tool, use it and pass the options verbatim.
+When a user is present and any of audience, how it is told / strategy, or pacing is still unknown, relay the unresolved questions below in **one** message, then stop. Do not fill them in. Do not say "I'll assume". If the harness has a multiple-choice question tool, use it and pass the options verbatim.
 
-Open that message with one sentence naming the deck you are about to build: who it is for, whether you will be in the room, how full a page runs, which theme, footer on or off. Build that sentence only out of what the request and the workspace actually said. Where a signal is missing, say it is missing and name the ★ option as a default, not as a read of their situation. Never dress a default as a conclusion about their meeting. Keep axis names (`pyramid`, `spacious`, `executive`) out of that sentence and out of the options. Close the message with the three ways out: take it as-is, change an option, or say none of these fit.
+Open that message with one sentence naming the deck you are about to build: who it is for, how the argument is told, how full a page runs, which theme, footer on or off. Build that sentence only out of what the request and the workspace actually said. Where a signal is missing, say it is missing and name the ★ option as a default, not as a read of their situation. Never dress a default as a conclusion about their meeting. Keep axis names (`pyramid`, `spacious`, `executive`) out of that sentence and out of the options. Close the message with the three ways out: take it as-is, change an option, or say none of these fit.
 
-Skip the whole interview (zero questions) when: a confirmed spec already exists; the user said to skip questions / just generate / batch; there is nobody in this run at all; or the request already locks audience, talk-vs-read plus strategy, and density. A complete brief still gets a one-line narrative package before you write the spec — that is the existing spec confirmation, not a second interview round.
+Skip the whole interview (zero questions) when: a confirmed spec already exists; the user said to skip questions / just generate / batch; there is nobody in this run at all; or the request already locks audience, argument style, and density. A complete brief still gets a one-line narrative package before you write the spec — that is the existing spec confirmation, not a second interview round.
 
 Having no multiple-choice tool is not the same as having no user. In a plain conversation the user is present: the questions are the entire message and the stop still applies. Only a run with nobody in it (CI, batch, a script with no conversation) skips the pause, and there you still put the package, the reason, and what would change it in the visible output, then proceed on it. A later objection reopens the choice, and you re-run `spec validate` after changing it.
 
@@ -103,7 +103,7 @@ If the user skips an option, answers "anything", or replies off-list: fill the m
 
 **Q1 — Who is this for?** `executive` board / VP (conclusion first) · `technical` engineers who will check the numbers · `customer` ★ buyers, users, a pitch room · `public` mixed or public.
 
-**Q2 — How should it be told?** This is the reading of the deck; Q1 and Q3 only tune it. `talk-pyramid` ★ spoken in the room, one conclusion per page (talk, `pyramid`) · `talk-showcase` spoken, one image or number per page (talk, `showcase`) · `read-brief` a file people read after you leave (read, `briefing`) · `teach` a training walkthrough (`instructional`). Derive `storytelling` from 年报 / brand-film / situation-to-resolution language. Do not add it as a fifth option.
+**Q2 — How should it be told?** This is the reading of the deck. Q1 and Q3 only tune it. `talk-pyramid` ★ one conclusion per page (`pyramid`) · `talk-showcase` one image or number per page (`showcase`) · `read-brief` a packed brief, evidence first (`briefing`) · `teach` a training walkthrough (`instructional`). Derive `storytelling` from 年报 / brand-film / situation-to-resolution language. Do not add it as a fifth option.
 
 **Q3 — Sparse or packed?** `spacious` ★ leave air, few words per page · `balanced` a normal mix · `dense` pack the evidence, the page stands alone.
 
@@ -124,13 +124,13 @@ The block is the gate, not your self-discipline: while any line still reads `?`,
 After the reply, emit one package and one backup, one sentence of reason, one clause for what would change it, then wait for confirmation:
 
 `recommend: <preset-or-axes> × <theme> × chrome omit|full × typeScale regular|display|hero`
-`what would change it: <one clause>` — most often: this gets forwarded instead of presented, which flips it to a read deck.
+`what would change it: <one clause>` — most often: this will be forwarded without a speaker, so put the extra words in notes, or recommend a PDF instead of packing the slide.
 
-Lookup (theme = first `themeRecommendations` entry from `narratives --json` for that preset, or for the nearest preset when writing axes). Talk → omit `chrome`. Read → `chrome: "full"`. `customer` + `talk-pyramid` + `spacious` → `pitch` / omit / display. `executive` + `talk-pyramid` + `spacious` → `boardroom-report` / omit / display. `customer` + `talk-showcase` + `spacious` → `product-launch` / omit / display. `technical` + `teach` + `balanced` → `training` / omit / regular. `technical` + `read-brief` + `dense` → `weekly-brief` / full / regular. `executive` + `read-brief` + `dense` → axes `{pyramid, dense, executive}` / full / regular, theme from `boardroom-report`. `public` + storytelling + `balanced` → `annual-review` / full / regular. Else write the axes object and take the nearest preset's theme list: `pyramid`+`executive` → `boardroom-report`, `pyramid`+`customer` → `pitch`, `showcase` → `product-launch`, `instructional` → `training`, `briefing`+`dense` → `weekly-brief`, `storytelling` → `annual-review`, else `general`.
+Lookup (theme = first `themeRecommendations` entry from `narratives --json` for that preset, or for the nearest preset when writing axes). Omit the field by default. Write `"full"` when `meta.confidentiality` is `confidential` or `restricted`, or every content page needs the brand footer. `customer` + `talk-pyramid` + `spacious` → `pitch` / omit / display. `executive` + `talk-pyramid` + `spacious` → `boardroom-report` / omit / display. `customer` + `talk-showcase` + `spacious` → `product-launch` / omit / display. `technical` + `teach` + `balanced` → `training` / omit / regular. `technical` + `read-brief` + `dense` → `weekly-brief` / omit / regular. `executive` + `read-brief` + `dense` → axes `{pyramid, dense, executive}` / omit / regular, theme from `boardroom-report`. `public` + storytelling + `balanced` → `annual-review` / omit / regular. Else write the axes object and take the nearest preset's theme list: `pyramid`+`executive` → `boardroom-report`, `pyramid`+`customer` → `pitch`, `showcase` → `product-launch`, `instructional` → `training`, `briefing`+`dense` → `weekly-brief`, `storytelling` → `annual-review`, else `general`.
 
-Type-scale band: `regular` when read, `dense`, or `balanced`. `display` when talk and `spacious`. `hero` only on a repaint that switches the theme to `stage`. Do not retarget a boardroom deck to `stage` just to enlarge titles. Do not write `typeScale` onto `deck.spec.json`. Do not edit a repo-root `pptfast.config.json` for one deck. On a bare IR (spec skipped) a non-`regular` band may be written as `theme.style.shape.typeScale` 1.3 or 1.5.
+Type-scale band: `regular` when `dense` or `balanced`. `display` when `spacious`. `hero` only on a repaint that switches the theme to `stage`. Do not retarget a boardroom deck to `stage` just to enlarge titles. Do not write `typeScale` onto `deck.spec.json`. Do not edit a repo-root `pptfast.config.json` for one deck. On a bare IR (spec skipped) a non-`regular` band may be written as `theme.style.shape.typeScale` 1.3 or 1.5.
 
-The second candidate ships with the package, prepared in advance, and it has to differ in mechanism: flip talk↔read (chrome and pacing follow), or flip what leads the argument (`pitch` ↔ `product-launch`, `training` ↔ the same material as a dense handout). The same three axes in a different theme is a repaint, not a candidate — offer that only when the user rejected the look, and say the narrative did not move. `stage` × `hero` is the repaint for a talk showcase that wanted bigger titles. Do not flip all three axes at once.
+The second candidate ships with the package, prepared in advance, and it has to differ in mechanism: flip density (`spacious` ↔ `dense`, type-scale follows), or flip what leads the argument (`pitch` ↔ `product-launch`, `training` ↔ the same material as a dense handout). The same three axes in a different theme is a repaint, not a candidate — offer that only when the user rejected the look, and say the narrative did not move. `stage` × `hero` is the repaint for a showcase that wanted bigger titles. Do not flip all three axes at once.
 
 This interview settles the three narrative axes, not whether the request should be a deck at all. If that larger question is open, say so plainly and let the user answer it before you spec.
 
@@ -138,14 +138,14 @@ A very small deck may still skip the spec file and write a single IR. It may not
 
 ### Phase 3 — Fill pages in batches of at most 4, validate immediately
 
-For each page in the confirmed spec, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes` — never `type`/`heading`, those are locked by the spec). Remember Phase 1's boundary-page rule while drafting `cover`/`chapter`/`ending` pages — do not give them `components` or `footnote` and then have to move it. `notes` is speaker notes prose for whoever presents the deck — writing a good speaking script is a model strength, so draft it whenever the page's content calls for a spoken walkthrough beyond what's on the slide. On a talk deck this is required, not optional (Talk-density contract).
+For each page in the confirmed spec, write `pages/<page-id>.json` with its content (`components`, and optionally `layout`/`arrangement`/`background`/`image_side`/`footnote`/`notes` — never `type`/`heading`, those are locked by the spec). Remember Phase 1's boundary-page rule while drafting `cover`/`chapter`/`ending` pages — do not give them `components` or `footnote` and then have to move it. `notes` is speaker notes prose for whoever presents the deck — writing a good speaking script is a model strength. Draft `notes` whenever the page needs a spoken walkthrough beyond what is on the slide (Sparse-page contract). That is the default, not optional.
 
 ```bash
 pptfast assemble deck-dir/     # materializes deck.json — catches structural drift: orphan page files, locked-field violations, a broken spec
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-Fix whatever either command reports as an error and re-run until both print `OK`. `validate` can print `OK` alongside `warning:` lines (e.g. a long heading or a dense slide) — tighten those too when practical, they read better, but they do not block. Only an error stops `OK` from printing. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked — a `pinOnly` layout like `quote-stage`, `statement`, `pull-quote`, or `verse-chapter` needs this pin every single time, since it never comes up through auto-selection at all (see Pin-only layouts below). On a talk deck those pins are the default for climax, quote, and evidence pages (see Talk-density contract).
+Fix whatever either command reports as an error and re-run until both print `OK`. `validate` can print `OK` alongside `warning:` lines (e.g. a long heading or a dense slide) — tighten those too when practical, they read better, but they do not block. Only an error stops `OK` from printing. A spec page with no page file yet is a placeholder (heading only) — assemble and validate both accept that. Leaving some pages as placeholders between batches is normal, not an error. `assemble` also prints `note: N layouts auto-selected into deck.json` whenever a page's `layout` was left to auto-selection — informational, not an error. Pin `layout` in a page file only when a specific pick needs to be locked — a `pinOnly` layout like `quote-stage`, `statement`, `pull-quote`, or `verse-chapter` needs this pin every single time, since it never comes up through auto-selection at all (see Pin-only layouts below). Climax, quote, and evidence pages pin those by default (see Sparse-page contract).
 
 ### Phase 4 — Render
 
@@ -312,20 +312,21 @@ These layouts never appear through auto-selection. Set `layout` explicitly every
 
 `verse-chapter` is a centered verse as a chapter open (`type: "chapter"`). Tracking chapter-index kicker, 2-line heading, optional italic subheading. No watermark numeral, no body, no footnote — the usual chapter boundary still applies. Logo and theme motif stay off.
 
-### Talk-density contract
+### Sparse-page contract
 
-A talk deck is spoken in the room (a keynote, a pitch, a lecture, a live walkthrough). A read deck is paged through after the speaker leaves (a report, a leave-behind, a weekly brief, a board pack the room will read). The tell: the user is presenting, asks for speaker notes, or says the slides sit behind a talk. If the file has to stand alone, it is a read deck.
+A deck is for speaking. Extra words that will not fit on the slide go in `slide.notes`. If the file must stand alone as a document, recommend a PDF rather than packing the canvas.
 
 This is not a new `pacing` value. The enum stays `dense` / `balanced` / `spacious`. The contract is pin-only layouts, `notes`, and deck `chrome`.
 
-On a talk deck:
+Climax, quote, and evidence pages on any deck pin a sparse pin-only layout. Name it: `statement`, `pull-quote`, `verse-chapter`, `stat-hero`, `one-evidence`, `mono-bleed`. Do not leave those pages to auto-selection. A page that truly is one sentence still gets this pin even when pacing is `dense`.
 
-- Climax, quote, and evidence pages pin a sparse pin-only layout. Name it: `statement`, `pull-quote`, `verse-chapter`. Same wave, still landing: `stat-hero`, `one-evidence`, `mono-bleed`. Pin those too once `pptfast schema` lists them. Do not leave those pages to auto-selection.
-- Tighten every page's on-slide budget past even `spacious`. Heading is the visual. At most one body component on a pinned sparse page (a source line, a single number, a single chart or table). Zero bullets on those pages. Split instead of stacking.
-- The spoken script goes in `slide.notes`. `render` exports it as native PowerPoint speaker notes (View → Notes, Presenter View). Never draw the script onto the canvas.
-- Leave `chrome` off the spec and the IR. The omitted default already drops the footer rule, meta, and logo on content and ending pages.
+When the interview or request chose `spacious`: tighten the on-slide budget. Heading is the visual. At most one body component on a pinned sparse page (a source line, a single number, a single chart or table). Zero bullets on those pages. Split instead of stacking.
 
-On a read deck, write to the pacing budget. Write `chrome: "full"` so content pages carry the brand footer (and write it whenever `meta.confidentiality` is `confidential` or `restricted`, or the file needs an organization colophon). Confidentiality and date then also appear on the cover. They stay off every other posture. A pin-only sparse layout is still the right pin when a page truly is one sentence.
+When `balanced` or `dense`: write to the pacing budget. Still pin a sparse layout when a page is one sentence, one number, one quote, or one piece of evidence.
+
+The spoken script goes in `slide.notes`. `render` exports it as native PowerPoint speaker notes (View → Notes, Presenter View). Never draw the script onto the canvas.
+
+Leave `chrome` off the spec and the IR unless every content page needs the brand footer. Write `chrome: "full"` whenever `meta.confidentiality` is `confidential` or `restricted`, or the file needs an organization colophon. Confidentiality and date then appear on the cover. They stay off every other posture.
 
 ### Capacity
 

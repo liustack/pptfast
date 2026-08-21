@@ -46,7 +46,7 @@ Layouts still live in the shared pool. A lock is how a theme uses the pool, not 
 
 `bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 25 theme ids and 24 distinct designs.
 
-`memo` is the reading-document end of the spectrum: a typewriter decision memo (stamp-red rules, never a red fill). It pairs naturally with deck `chrome: "full"` so the footer, page numbers, and organization line stay on the leave-behind. The pairing is a note, not an engine lock — `chrome` still belongs to the deck.
+`memo` is a typewriter decision memo (stamp-red rules, never a red fill). It pairs naturally with deck `chrome: "full"` so the footer, page numbers, and organization line stay on the page. The pairing is a note, not an engine lock. `chrome` still belongs to the deck.
 
 ## Your own brand
 

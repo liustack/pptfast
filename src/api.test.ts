@@ -2108,7 +2108,7 @@ describe("generatePptx", () => {
     expect(fullContent).toContain("Internal")
   })
 
-  it("validates and renders a cover-only talk deck to pptx", async () => {
+  it("validates and renders a cover-only deck to pptx", async () => {
     const talk = {
       version: "4",
       filename: "talk-chrome",

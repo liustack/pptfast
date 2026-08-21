@@ -3,11 +3,10 @@ import type { StyleTokens } from "./tokens";
 /**
  * memo（打字机决定）——2026-08-21 新增第 22 个 theme id（第 21 个结构身份。
  * bloom 仍是 classroom 的换色）。性格：这不是讨论，是已经写下的决定。
- * 目标场景：决策通报、会后 leave-behind、政策落地。读件光谱的端点：
- * 页脚、页码、机构名这些 chrome 在一份给人带走的备忘录上是该在的，
- * 与 deck 声明 `chrome: "full"` 天然搭配。引擎不绑定 chrome（chrome 仍
- * 归 deck 声明，本主题的 `brand` 是空对象），只在本注释与 `docs/themes`
- * 写明这份搭配。
+ * 目标场景：决策通报、会后 leave-behind、政策落地。页脚、页码、
+ * 机构名这些 chrome 在一份给人带走的备忘录上是该在的，与 deck 声明
+ * `chrome: "full"` 天然搭配。搭配写在本注释与 `docs/themes`，引擎不绑定
+ * （chrome 仍归 deck 声明，本主题的 `brand` 是空对象）。
  *
  * 暖纸三家分家（纸色 + 红怎么用 + 字族）：
  *   - heritage 灰本白 `#F4EDE2` + 藏书票衬线，motif 是顶缘焦糖双线断口嵌章。
