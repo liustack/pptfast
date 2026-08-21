@@ -138,6 +138,19 @@ describe("DeckSpecSchema / validateSpec structural pass", () => {
     expect(r.ok).toBe(false)
   })
 
+  it("accepts deck chrome full / cover-only / minimal, and omits the field when unset", () => {
+    expect(expectOk(minimalValidPlan()).chrome).toBeUndefined()
+    expect(expectOk(minimalValidPlan({ chrome: "full" })).chrome).toBe("full")
+    expect(expectOk(minimalValidPlan({ chrome: "cover-only" })).chrome).toBe("cover-only")
+    expect(expectOk(minimalValidPlan({ chrome: "minimal" })).chrome).toBe("minimal")
+  })
+
+  it("rejects an unknown chrome value", () => {
+    const r = validateSpec(minimalValidPlan({ chrome: "none" }))
+    expect(r.ok).toBe(false)
+    expect(formatSpecIssues(r.errors)).toMatch(/chrome/)
+  })
+
   it("rejects unknown page-level keys (strict)", () => {
     const r = validateSpec(makePlan([cover(), content("p-body", { notAField: true }), ending()]))
     expect(r.ok).toBe(false)
@@ -645,7 +658,7 @@ describe("specJsonSchema", () => {
     expect(schema).toHaveProperty("$schema")
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties)).toEqual(
-      expect.arrayContaining(["version", "narrative", "theme", "filename", "seed", "meta", "pages"]),
+      expect.arrayContaining(["version", "narrative", "theme", "filename", "seed", "meta", "brand", "chrome", "pages"]),
     )
   })
 

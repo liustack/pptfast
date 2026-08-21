@@ -27,6 +27,14 @@ export function BrandChrome({
   // are already gone globally. Distinct from image-split/image-bottom,
   // which only suppress or restyle the footer while still drawing a logo.
   if (layoutOmitsChrome(slide.layout)) return null
+  // Deck-level chrome posture. Omitted = "full" = today's footer + logo.
+  // cover-only: content and ending skip the whole fragment (rule, meta, logo).
+  // Cover and chapter keep today's chrome. Layout chrome:none already returned
+  // above and still wins. Motif is painted by FullSlideSvg, not this fragment.
+  const posture = ir.chrome ?? "full"
+  if (posture === "cover-only" && (slide.type === "content" || slide.type === "ending")) {
+    return null
+  }
   const conf = meta.confidentiality
   const org = meta.organization
   const version = meta.version
@@ -69,10 +77,18 @@ export function BrandChrome({
   const imageBottomBleed =
     slide.layout === "image-bottom" && slide.components.some((b) => b.type === "image")
 
+  const hideFooterByPosture = posture === "minimal"
   const showFooter =
-    slide.type === "content" && !cardBgSuppressesFooter && !imageSplitBleed && !imageBottomBleed
+    slide.type === "content" &&
+    !cardBgSuppressesFooter &&
+    !imageSplitBleed &&
+    !imageBottomBleed &&
+    !hideFooterByPosture
   const showOverlayFooter =
-    slide.type === "content" && imageBottomBleed && Boolean(conf || org || version || date)
+    slide.type === "content" &&
+    imageBottomBleed &&
+    Boolean(conf || org || version || date) &&
+    !hideFooterByPosture
 
   return (
     <>

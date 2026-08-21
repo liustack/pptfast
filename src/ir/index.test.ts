@@ -1920,3 +1920,27 @@ describe("theme.style override", () => {
     expect(parsePptxIR(d).success).toBe(false)
   })
 })
+
+describe("deck chrome posture", () => {
+  it("is omittable: chrome stays undefined, no default is baked in by the schema", () => {
+    const r = parsePptxIR(minimal())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.chrome).toBeUndefined()
+  })
+
+  it.each(["full", "cover-only", "minimal"] as const)("accepts chrome %s", (chrome) => {
+    const d: any = minimal()
+    d.chrome = chrome
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.chrome).toBe(chrome)
+  })
+
+  it("rejects an unknown chrome value (typo, not omission)", () => {
+    const d: any = minimal()
+    d.chrome = "none"
+    const r = parsePptxIR(d)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/chrome/)
+  })
+})
