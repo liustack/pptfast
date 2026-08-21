@@ -53,17 +53,12 @@ function fontSizeFor(svg: string, text: string): number {
 }
 
 describe("typeScale omitted is a byte-identical no-op", () => {
-  it("every built-in theme's poster-center cover matches an explicit typeScale of 1", () => {
+  it("every built-in theme that omits typeScale matches an explicit typeScale of 1", () => {
     for (const id of CANONICAL_THEME_IDS) {
+      if (THEME_STYLES[id].shape?.typeScale != null) continue
       const omitted = renderSlideSvg(coverIr(id, "战略"), 0)
       const one = renderSlideSvg(coverIr(id, "战略", { shape: { typeScale: 1 } }), 0)
       expect(one, id).toBe(omitted)
-    }
-  })
-
-  it("built-in themes that omit typeScale do not declare the field", () => {
-    for (const id of CANONICAL_THEME_IDS) {
-      expect(THEME_STYLES[id].shape?.typeScale, id).toBeUndefined()
     }
   })
 })
@@ -112,11 +107,29 @@ describe("typeScale multiplies heading/display size before fit", () => {
     expect(fontSizeFor(scaledSvg, "战略")).toBe(Math.round(fontSizeFor(baseSvg, "战略") * 1.5))
   })
 
-  it("body paragraph and footnote sizes do not move", () => {
+  it("body paragraph, footnote, and a content-page title do not move", () => {
     const baseSvg = renderSlideSvg(contentIr(), 0)
     const scaledSvg = renderSlideSvg(contentIr({ shape: { typeScale: 1.5 } }), 0)
     expect(fontSizeFor(scaledSvg, "原字号。")).toBe(fontSizeFor(baseSvg, "原字号。"))
     expect(fontSizeFor(scaledSvg, "来源：内部调研")).toBe(fontSizeFor(baseSvg, "来源：内部调研"))
-    expect(fontSizeFor(scaledSvg, "发现")).toBe(Math.round(fontSizeFor(baseSvg, "发现") * 1.5))
+    expect(fontSizeFor(scaledSvg, "发现")).toBe(fontSizeFor(baseSvg, "发现"))
+  })
+
+  it("a statement heading is display type and does grow", () => {
+    const ir = (typeScale?: number) => {
+      const v = validateIr({
+        version: "4",
+        filename: "type-scale.pptx",
+        theme: { id: "consulting", style: typeScale ? { shape: { typeScale } } : undefined },
+        meta: {},
+        assets: { images: {} },
+        slides: [{ type: "content", heading: "灯灭", layout: "statement" }],
+      })
+      if (!v.ok) throw new Error(v.errors.map((e) => e.message).join("\n"))
+      return v.ir!
+    }
+    const baseSvg = renderSlideSvg(ir(), 0)
+    const scaledSvg = renderSlideSvg(ir(1.5), 0)
+    expect(fontSizeFor(scaledSvg, "灯灭")).toBe(Math.round(fontSizeFor(baseSvg, "灯灭") * 1.5))
   })
 })

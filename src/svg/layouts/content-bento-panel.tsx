@@ -749,7 +749,6 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 24,
     fontFamily: fonts.heading,
-    typeScale: ctx.shape?.typeScale,
   })
   const headingLastY =
     HEADING_BASELINE +

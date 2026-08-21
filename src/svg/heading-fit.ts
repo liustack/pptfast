@@ -89,6 +89,11 @@ export function fitHeadingPt(
  * this function still shrinks to the box. `minPt` is not scaled: it is the
  * overflow floor, not a second design size. Omit `typeScale` (or pass `1`)
  * and the result is byte-identical to the pre-typeScale call.
+ *
+ * Cover, chapter, ending, and the pin-only speech layouts (statement,
+ * pull-quote, quote-stage, stat-hero, one-evidence, mono-bleed) pass the
+ * token through. Content layouts that share the page with a body stack
+ * omit it, so a 1.5× display theme does not eat the density budget.
  */
 export function fitHeadingLines(
   text: string | undefined,

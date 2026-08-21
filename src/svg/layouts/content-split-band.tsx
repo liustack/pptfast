@@ -191,7 +191,6 @@ export function SplitBandContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     maxLines: 2,
     minPt: 26,
     fontFamily: fonts.heading,
-    typeScale: ctx.shape?.typeScale,
   })
   const headingLastY = HEADING_BASELINE + Math.max(0, heading.lines.length - 1) * heading.lineHeight
 

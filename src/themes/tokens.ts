@@ -90,10 +90,13 @@ export interface StyleShape {
   /**
    * Heading and display size multiplier. Applied to the layout's designed
    * max size *before* heading-fit shrinks to the box (`fitHeadingLines` /
-   * `fitHeadingPt`, `src/svg/heading-fit.ts`). Body, meta, kicker, and
-   * footnote sizes are untouched. Omit (or `1`) for a byte-identical no-op.
-   * Fit still owns the floor: `minPt` is not scaled, so a long title still
-   * shrinks instead of overflowing. Suggested range `[0.8, 1.6]`.
+   * `fitHeadingPt`, `src/svg/heading-fit.ts`). Cover, chapter, ending, and
+   * pin-only speech pages pass it through. Content layouts that share the
+   * page with a body stack omit it, so density still holds. Body, meta,
+   * kicker, and footnote sizes are untouched. Omit (or `1`) for a
+   * byte-identical no-op. Fit still owns the floor: `minPt` is not scaled,
+   * so a long title still shrinks instead of overflowing. Suggested range
+   * `[0.8, 1.6]`.
    */
   typeScale?: number
 }
