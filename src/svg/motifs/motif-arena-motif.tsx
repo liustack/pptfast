@@ -23,8 +23,8 @@ import type { DecorProps } from "./types"
  *
  * 判据只钉 IR 结构层：`slide.components.length >= PACING_BUDGETS.dense.maxComponentsPerSlide`
  * （全仓自己的「最密一档每页块数上限」）。到了这个数，速度线束撤场，只留
- * 四角括弧＋底能量条。内容区 1040×420 内零装饰像素（满场也成立，降档把侧带
- * 也让出来）。
+ * 四角括弧＋底能量条（注脚页再撤能量条，见下「让位」）。内容区 1040×420
+ * 内零装饰像素（满场也成立，降档把侧带也让出来）。
  *
  * 不许读渲染后的文字几何。理由同 `motif-campaign-motif.tsx`：motif 画在正文
  * 之前，读文字几何会让两次渲染拿到不同值，违反「同 IR 同 seed 两次渲染必须
@@ -44,7 +44,39 @@ import type { DecorProps } from "./types"
  *   - 左速度线 x28-80，正文左沿 x96 以左。右速度线 x1200-1252，正文右沿
  *     x1136 以右，最低点 y600 在 logo 盒上沿 y630 之上。
  *   - 能量条 y648-656，正文区下沿 y620 之下、页脚带上沿 y664 之上，右端
- *     x399 在 logo 盒 x1120 以左。
+ *     x399 在 logo 盒 x1120 以左。四保护区过了，但这段空隙正是第五文字带
+ *     （见下「让位」）。
+ *
+ * ## 让位：第五文字带（cover 撤能量条 / 注脚页撤能量条）
+ *
+ * y620-664 是一条设计板上没圈进四保护区的文字带。住在里面的有两类字：
+ *   - 封面构造的 meta 行。`cover-poster-center.tsx` 基线
+ *     `Math.max(650, subtitleLastY + 56)`，字号 20，字身约 y624-656。
+ *     `cover-split-diagonal.tsx` 基线 662、字号 19，从 x596 起排，纵跨会
+ *     擦到 y648-656，横向上在能量条右端 x399 以右，这一张其实不撞。arena
+ *     的封面候选就是这两张。motif 不许感知当页选中的 layout（terra 板的
+ *     确定性红线），所以照 crayon「cover 撤底带」、terra「chapter 整页退让」
+ *     的同一模式按页型处理：cover 一律撤能量条。四角 HUD 括弧与左右速度线
+ *     不在这条带里，不动。
+ *   - 图表来源注脚。基线由 `chrome-geometry.ts` 的 `footnoteBaselineFor`
+ *     从 `FOOTER_DIVIDER_Y = 664` 减净空得出：14px 在 645，20px 在 644，
+ *     字身落到约 y630-650。绝大多数 layout 从 x96 起排（`banner-heading`
+ *     的 `BANNER_X`、`narrow-column`、`bento-panel`），与能量条
+ *     x96-399 重叠。
+ *
+ * 能量条是带内实色粗件（y648 高 8，8 段实色 rect）。电光绿不减淡，用让位。
+ *
+ * 注脚出现与否可在 IR 结构层判定：`slide.footnote` 有真值，各 content
+ * layout 就画这条注脚（`{slide.footnote && …}`，与 `validate-core.ts` 的
+ * 边界页硬闸互证：cover/chapter/ending 根本不渲染 footnote）。判据只读这
+ * 个字段有无，不读字符串长度，不读渲染后文字几何，纪律照 crayon 密页降档
+ * 同款。`two-column` 是唯一不画注脚的 content layout。motif 读不到选中的
+ * layout，有字段就撤，两栏页会多撤一次，宁过勿漏。
+ *
+ * 组件级 `data_table.source` / `kpi_cards[].source` 画在组件盒里，不是
+ * 第五文字带，不撤。
+ *
+ * 密页降档继续只撤速度线。注脚页叠加密页时两条让位各自生效。
  *
  * 设计红线：任何形态的「粗平左竖条」禁止出现。括弧的短竖边只有 24px，
  * 不是一条轨。
@@ -114,6 +146,9 @@ export function ArenaMotif({ slide, ctx }: DecorProps) {
   const dim = ctx.colors.border ?? ctx.colors.primary
   // 半场降档：判据只读 IR 结构层的组件数量，绝不读渲染后的文字几何。
   const halfField = slide.components.length >= HALF_FIELD_COMPONENTS
+  // cover 撤能量条：第五文字带住着封面 meta 行。注脚页撤能量条：IR 结构层
+  // `slide.footnote` 有真值即本页会画来源注脚（见文件头「让位」一节）。
+  const energyBar = slide.type !== "cover" && !slide.footnote
 
   return (
     <>
@@ -134,16 +169,18 @@ export function ArenaMotif({ slide, ctx }: DecorProps) {
               opacity={l.opacity}
             />
           ))}
-      {Array.from({ length: ENERGY_COUNT }, (_, i) => (
-        <rect
-          key={i}
-          x={ENERGY_X0 + i * ENERGY_STEP}
-          y={ENERGY_Y}
-          width={ENERGY_W}
-          height={ENERGY_H}
-          fill={i < ENERGY_LIT ? green : dim}
-        />
-      ))}
+      {energyBar
+        ? Array.from({ length: ENERGY_COUNT }, (_, i) => (
+            <rect
+              key={i}
+              x={ENERGY_X0 + i * ENERGY_STEP}
+              y={ENERGY_Y}
+              width={ENERGY_W}
+              height={ENERGY_H}
+              fill={i < ENERGY_LIT ? green : dim}
+            />
+          ))
+        : null}
     </>
   )
 }

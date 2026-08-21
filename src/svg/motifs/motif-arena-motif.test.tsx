@@ -84,13 +84,20 @@ function rectBox(r: Element): Box {
  * 设计源：`design-project/skin-boards` 的 arena 板，几何坐标逐条抄录。
  */
 describe("ArenaMotif（HUD 括弧＋速度线）", () => {
-  it("cover/content/ending 画同一张：四角括弧 + 十道速度线 + 八段能量条", () => {
-    for (const slide of DRAWN_SLIDES) {
+  it("content/ending 画全家福：四角括弧 + 十道速度线 + 八段能量条", () => {
+    for (const slide of [contentSlide, endingSlide]) {
       const { root } = draw(slide)
       expect(Array.from(root.querySelectorAll("path")), `brackets on ${slide.type}`).toHaveLength(4)
       expect(Array.from(root.querySelectorAll("line")), `speed lines on ${slide.type}`).toHaveLength(10)
       expect(Array.from(root.querySelectorAll("rect")), `energy on ${slide.type}`).toHaveLength(8)
     }
+  })
+
+  it("cover 撤能量条：第五文字带住着封面 meta 行，括弧与速度线留下", () => {
+    const { root } = draw(coverSlide)
+    expect(Array.from(root.querySelectorAll("path"))).toHaveLength(4)
+    expect(Array.from(root.querySelectorAll("line"))).toHaveLength(10)
+    expect(Array.from(root.querySelectorAll("rect"))).toHaveLength(0)
   })
 
   it("chapter 完全退让——巨幅居中标题 + 章节号水印的活动范围就是页缘", () => {
@@ -133,7 +140,7 @@ describe("ArenaMotif（HUD 括弧＋速度线）", () => {
   })
 
   it("底能量条几何：y648，x=96+i*39，宽 30 高 8，正好 8 段", () => {
-    const { root } = draw(coverSlide)
+    const { root } = draw(contentSlide)
     const rects = Array.from(root.querySelectorAll("rect"))
     expect(rects).toHaveLength(8)
     rects.forEach((r, i) => {
@@ -146,7 +153,7 @@ describe("ArenaMotif（HUD 括弧＋速度线）", () => {
 
   it("颜色一律读 token：括弧与绿速度线/前五段能量条走 accent，品红速度线走 chartPalette[1]，后三段能量条走 border", () => {
     const t = ARENA_TOKENS
-    const { root } = draw(coverSlide)
+    const { root } = draw(contentSlide)
     for (const p of Array.from(root.querySelectorAll("path"))) {
       expect(p.getAttribute("stroke")).toBe(t.colors.accent)
     }
@@ -208,9 +215,9 @@ describe("ArenaMotif（HUD 括弧＋速度线）", () => {
         expect(draw(long).markup).toBe(draw(short).markup)
       })
 
-      it("同结构不同页型：cover/content/ending 输出逐字节相同", () => {
+      it("同结构不同页型：content/ending 输出逐字节相同（cover 是声明的撤能量条档，不是文字几何的函数）", () => {
         const markups = new Set(
-          (["cover", "content", "ending"] as const).map((type) => draw(slideOf(type, [para("同一段")])).markup),
+          (["content", "ending"] as const).map((type) => draw(slideOf(type, [para("同一段")])).markup),
         )
         expect(markups.size).toBe(1)
       })
@@ -222,27 +229,105 @@ describe("ArenaMotif（HUD 括弧＋速度线）", () => {
     })
   })
 
+  describe("第五文字带让位（cover 撤能量条 / 注脚页撤能量条）", () => {
+    const withNote = { ...contentSlide, footnote: "来源：内部经营数据" } as Slide
+    const emptyNote = { ...contentSlide, footnote: "" } as Slide
+    const longNote = {
+      ...contentSlide,
+      footnote:
+        "来源：这一行故意写得很长很长很长，长到足以把注脚自动缩字号与截断逻辑整个跑一遍，但字段有无始终是同一个真值。",
+    } as Slide
+    const tableSource = slideOf("content", [
+      {
+        type: "data_table",
+        columns: [
+          { key: "a", label: "甲" },
+          { key: "b", label: "乙" },
+        ],
+        rows: [{ cells: { a: "1", b: "2" } }],
+        source: "来源：表格自己的脚注",
+      } as Component,
+    ])
+
+    it("有 slide.footnote：能量条撤场，括弧与速度线留下", () => {
+      const { root } = draw(withNote)
+      expect(Array.from(root.querySelectorAll("path"))).toHaveLength(4)
+      expect(Array.from(root.querySelectorAll("line"))).toHaveLength(10)
+      expect(Array.from(root.querySelectorAll("rect"))).toHaveLength(0)
+    })
+
+    it("无 footnote 字段：能量条留下（反例）", () => {
+      expect(draw(contentSlide).root.querySelectorAll("rect")).toHaveLength(8)
+    })
+
+    it("空串 footnote 与缺省同：能量条留下（与渲染侧 slide.footnote && 对齐）", () => {
+      expect(draw(emptyNote).root.querySelectorAll("rect")).toHaveLength(8)
+      expect(draw(emptyNote).markup).toBe(draw(contentSlide).markup)
+    })
+
+    it("同有 footnote 不同文案：输出逐字节相同（判据不读文字几何）", () => {
+      expect(draw(longNote).markup).toBe(draw(withNote).markup)
+    })
+
+    it("组件级 data_table.source 不撤能量条（表内小字，不是第五文字带）", () => {
+      expect(draw(tableSource).root.querySelectorAll("rect")).toHaveLength(8)
+      expect(draw(tableSource).root.querySelectorAll("line")).toHaveLength(10)
+    })
+
+    it("密页叠加注脚：速度线与能量条都撤，括弧留下", () => {
+      const threshold = PACING_BUDGETS.dense.maxComponentsPerSlide
+      const denseNoted = {
+        ...slideOf(
+          "content",
+          Array.from({ length: threshold }, (_, i) => para(`第 ${i} 段`)),
+        ),
+        footnote: "来源：密页",
+      } as Slide
+      const { root } = draw(denseNoted)
+      expect(Array.from(root.querySelectorAll("path"))).toHaveLength(4)
+      expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
+      expect(Array.from(root.querySelectorAll("rect"))).toHaveLength(0)
+    })
+
+    it("cover 与同结构 content 只差能量条：括弧与速度线逐字节相同", () => {
+      const cover = draw(slideOf("cover", [para("同一段")]))
+      const content = draw(slideOf("content", [para("同一段")]))
+      expect(Array.from(cover.root.querySelectorAll("path")).map((p) => p.getAttribute("d"))).toEqual(
+        Array.from(content.root.querySelectorAll("path")).map((p) => p.getAttribute("d")),
+      )
+      expect(Array.from(cover.root.querySelectorAll("line")).map((l) => l.outerHTML)).toEqual(
+        Array.from(content.root.querySelectorAll("line")).map((l) => l.outerHTML),
+      )
+      expect(cover.root.querySelectorAll("rect")).toHaveLength(0)
+      expect(content.root.querySelectorAll("rect")).toHaveLength(8)
+    })
+  })
+
   it("安全区：满场装饰不进板上四条红虚线禁区", () => {
-    const { root } = draw(coverSlide)
-    const boxes = [
-      ...Array.from(root.querySelectorAll("path")).map((p) => pathBox(p.getAttribute("d")!)),
-      ...Array.from(root.querySelectorAll("line")).map(lineBox),
-      ...Array.from(root.querySelectorAll("rect")).map(rectBox),
-    ]
-    for (const box of boxes) {
-      for (const [name, zone] of Object.entries({
-        title: TITLE_ZONE,
-        body: BODY_ZONE,
-        footer: FOOTER_ZONE,
-        brLogo: LOGO_BOX,
-      })) {
-        expect(intersects(box, zone), `piece enters the ${name} zone: ${JSON.stringify(box)}`).toBe(false)
+    for (const slide of [contentSlide, coverSlide]) {
+      const { root } = draw(slide)
+      const boxes = [
+        ...Array.from(root.querySelectorAll("path")).map((p) => pathBox(p.getAttribute("d")!)),
+        ...Array.from(root.querySelectorAll("line")).map(lineBox),
+        ...Array.from(root.querySelectorAll("rect")).map(rectBox),
+      ]
+      for (const box of boxes) {
+        for (const [name, zone] of Object.entries({
+          title: TITLE_ZONE,
+          body: BODY_ZONE,
+          footer: FOOTER_ZONE,
+          brLogo: LOGO_BOX,
+        })) {
+          expect(intersects(box, zone), `${slide.type} piece enters the ${name} zone: ${JSON.stringify(box)}`).toBe(
+            false,
+          )
+        }
       }
     }
   })
 
   it("不画任何粗平左竖条", () => {
-    const { root } = draw(coverSlide)
+    const { root } = draw(contentSlide)
     for (const l of Array.from(root.querySelectorAll("line"))) {
       const vertical = num(l, "x1") === num(l, "x2") && Math.abs(num(l, "y2") - num(l, "y1")) > 30
       expect(vertical, `vertical bar rendered: ${l.outerHTML}`).toBe(false)
@@ -271,7 +356,7 @@ describe("ArenaMotif（HUD 括弧＋速度线）", () => {
   it("换一家 tokens 渲染时颜色跟着换，arena 的色一处不残留（零 hex 纪律的实证）", () => {
     const heritage = resolveStyle("heritage")
     const ctx = buildCtx(heritage, {})
-    const { markup } = render(<ArenaMotif ir={ir("heritage")} slide={coverSlide} ctx={ctx} />)
+    const { markup } = render(<ArenaMotif ir={ir("heritage")} slide={contentSlide} ctx={ctx} />)
     expect(markup).toContain(heritage.colors.accent)
     expect(markup).toContain(heritage.colors.border)
     expect(markup).toContain(heritage.colors.chartPalette[1])
