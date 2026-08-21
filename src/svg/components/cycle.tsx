@@ -1,7 +1,12 @@
+import type { ReactElement } from "react"
 import type { Component } from "@/ir"
 import { fitSvgLine, layoutSvgText, truncateToUnits } from "../../lib/svg-text-layout"
 import { readableOn } from "../ink"
-import type { RenderDef, SvgComponent } from "./types"
+import { resolveComponentForm } from "./form-assignments"
+import { measureCycleLoop, renderCycleLoop } from "./forms/cycle-loop"
+import { measureHubSpoke, renderHubSpoke } from "./forms/hub-spoke"
+import { measurePetalWheel, renderPetalWheel } from "./forms/petal-wheel"
+import type { ComponentBox, ComponentCtx, RenderDef, SvgComponent } from "./types"
 
 type CycleComponent = Extract<Component, { type: "cycle" }>
 type CycleItem = CycleComponent["items"][number]
@@ -209,15 +214,14 @@ function fitDescription(text: string, scale: number, fontFamily: string) {
   return { ...wrapped, lines, truncated }
 }
 
-export const cycle: SvgComponent<CycleComponent> = {
-  measure(component, w) {
-    const g = resolveGeometry(component, w)
-    const halfExtent = g.ringR + NODE_R + (anyHasDescription(component) ? GAP_NODE_DESC + Math.max(DESC_W, g.descBlockH) : 0)
-    const localHeight = 2 * halfExtent + (g.hasTitle ? TITLE_BAND : 0)
-    return localHeight * g.scale
-  },
+function measureDefault(component: CycleComponent, w: number): number {
+  const g = resolveGeometry(component, w)
+  const halfExtent = g.ringR + NODE_R + (anyHasDescription(component) ? GAP_NODE_DESC + Math.max(DESC_W, g.descBlockH) : 0)
+  const localHeight = 2 * halfExtent + (g.hasTitle ? TITLE_BAND : 0)
+  return localHeight * g.scale
+}
 
-  render(component, box, ctx) {
+function renderDefault(component: CycleComponent, box: ComponentBox, ctx: ComponentCtx): ReactElement {
     const g = resolveGeometry(component, box.w)
     const { n, ringR, scale } = g
     // Horizontal centering, same idiom as flowchart.tsx's `dx`: the local
@@ -378,6 +382,25 @@ export const cycle: SvgComponent<CycleComponent> = {
           })()}
       </g>
     )
+}
+
+export const cycle: SvgComponent<CycleComponent> = {
+  measure(component, w, ctx) {
+    const assignment = resolveComponentForm("cycle", ctx.themeId)
+    const knobs = assignment?.knobs ?? {}
+    if (assignment?.form === "cycle_loop") return measureCycleLoop(component, w, ctx, knobs)
+    if (assignment?.form === "hub_spoke") return measureHubSpoke(component, w, ctx, knobs)
+    if (assignment?.form === "petal_wheel") return measurePetalWheel(component, w, ctx, knobs)
+    return measureDefault(component, w)
+  },
+
+  render(component, box, ctx) {
+    const assignment = resolveComponentForm("cycle", ctx.themeId)
+    const knobs = assignment?.knobs ?? {}
+    if (assignment?.form === "cycle_loop") return renderCycleLoop(component, box, ctx, knobs)
+    if (assignment?.form === "hub_spoke") return renderHubSpoke(component, box, ctx, knobs)
+    if (assignment?.form === "petal_wheel") return renderPetalWheel(component, box, ctx, knobs)
+    return renderDefault(component, box, ctx)
   },
 }
 
