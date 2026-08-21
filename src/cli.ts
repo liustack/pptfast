@@ -17,6 +17,7 @@ import {
   runThemes,
   runValidate,
 } from "./cli/commands"
+import { runConfigSet, runConfigShow } from "./cli/config-cmd"
 import { runDoctor } from "./cli/doctor"
 import { DEFAULT_PORT, runServe } from "./cli/serve"
 import { checkForUpdate, createSelfUpdater } from "./cli/update"
@@ -254,6 +255,28 @@ program
   .description("Removed — use `pptfast narratives` instead")
   .action(() => {
     fail(new Error("`pptfast scenarios` has been renamed to `pptfast narratives` — run `pptfast narratives` instead"))
+  })
+
+const config = program.command("config").description("User-level settings (API keys for optional stock-photo search)")
+config
+  .command("set <key> [value]")
+  .description("Set a user config value. Omit the value for an apiKey to enter it at a hidden prompt")
+  .action(async (key: string, value: string | undefined) => {
+    try {
+      console.log(await runConfigSet(key, value))
+    } catch (e) {
+      fail(e)
+    }
+  })
+config
+  .command("show")
+  .description("Show the effective user config (API keys masked)")
+  .action(async () => {
+    try {
+      console.log(await runConfigShow())
+    } catch (e) {
+      fail(e)
+    }
   })
 
 program

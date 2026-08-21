@@ -2,8 +2,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { readFileSync } from "node:fs"
-import { beforeAll, describe, expect, it } from "vitest"
+import { chmodSync, readFileSync } from "node:fs"
+import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import {
   buildDoctorReport,
@@ -24,9 +24,26 @@ beforeAll(() => {
 
 const CURRENT = "0.18.0"
 
-/** A fake home, so no test ever reads the machine's real `~`. */
+const originalPptfastHome = process.env.PPTFAST_HOME
+const originalPexels = process.env.PPTFAST_PEXELS_API_KEY
+const originalPixabay = process.env.PPTFAST_PIXABAY_API_KEY
+
+afterEach(() => {
+  if (originalPptfastHome === undefined) delete process.env.PPTFAST_HOME
+  else process.env.PPTFAST_HOME = originalPptfastHome
+  if (originalPexels === undefined) delete process.env.PPTFAST_PEXELS_API_KEY
+  else process.env.PPTFAST_PEXELS_API_KEY = originalPexels
+  if (originalPixabay === undefined) delete process.env.PPTFAST_PIXABAY_API_KEY
+  else process.env.PPTFAST_PIXABAY_API_KEY = originalPixabay
+})
+
+/** A fake home, so no test ever reads the machine's real `~` or `~/.pptfast`. */
 async function makeHome(): Promise<string> {
-  return mkdtemp(join(tmpdir(), "pptfast-doctor-home-"))
+  const dir = await mkdtemp(join(tmpdir(), "pptfast-doctor-home-"))
+  process.env.PPTFAST_HOME = dir
+  delete process.env.PPTFAST_PEXELS_API_KEY
+  delete process.env.PPTFAST_PIXABAY_API_KEY
+  return dir
 }
 
 /** Write a skill copy into `<home>/<relative>/pptfast`, with `pinned` stamped
@@ -440,6 +457,49 @@ describe("runDoctor: workspace artifacts line", () => {
     } finally {
       await rm(home, { recursive: true, force: true })
       await rm(cwd, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("runDoctor: images", () => {
+  it("treats missing keys as warnings, never errors, and never prints a key value", async () => {
+    const home = await makeHome()
+    try {
+      await writeFile(
+        join(home, "config.json"),
+        JSON.stringify({ images: { pexels: { apiKey: "FILESECRET99" } } }),
+      )
+      const report = await buildDoctorReport({ home, env: { PATH: "" }, version: CURRENT })
+      expect(report.errors).toEqual([])
+      const { output, hasErrors } = await runDoctor({ home, env: { PATH: "" }, version: CURRENT })
+      expect(hasErrors).toBe(false)
+      expect(output).toContain("Images")
+      expect(output).toContain("pexels: present (file)")
+      expect(output).toContain("pixabay: missing")
+      expect(output).not.toContain("FILESECRET99")
+      expect(JSON.stringify(report.images)).not.toContain("FILESECRET99")
+      expect(report.images.providers.find((p) => p.provider === "pexels")?.present).toBe(true)
+      expect(report.warnings.some((w) => w.check === "images" && /pixabay/.test(w.message))).toBe(true)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it("warns when the config file is group/other-readable on POSIX", async () => {
+    if (typeof process.getuid !== "function") return
+    const home = await makeHome()
+    try {
+      const path = join(home, "config.json")
+      await writeFile(path, JSON.stringify({ images: { pexels: { apiKey: "FILESECRET99" } } }), { mode: 0o644 })
+      chmodSync(path, 0o644)
+      const report = await buildDoctorReport({ home, env: { PATH: "" }, version: CURRENT })
+      expect(report.images.groupOrOtherReadable).toBe(true)
+      expect(report.errors).toEqual([])
+      const rendered = renderDoctorReport(report)
+      expect(rendered).toContain("group/other-readable")
+      expect(rendered).not.toContain("FILESECRET99")
+    } finally {
+      await rm(home, { recursive: true, force: true })
     }
   })
 })
