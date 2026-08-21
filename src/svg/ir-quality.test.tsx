@@ -410,6 +410,14 @@ describe("checkIrQuality", () => {
       ])
       expect(codes(checkIrQuality(ir))).toContain("pin_only_over_capacity")
     })
+
+    it("an unoffered sparse pin does not fire pin_only_over_capacity (render falls back)", () => {
+      const ir = makeIR(
+        [{ type: "content", heading: "断言", layout: "statement", components: paragraphs(2) }],
+        "crayon",
+      )
+      expect(codes(checkIrQuality(ir))).not.toContain("pin_only_over_capacity")
+    })
   })
 
   // ── quote-stage heading width-limit hard error (quote-stage wave, task T2) ──

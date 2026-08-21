@@ -19,6 +19,7 @@ import { measureTextUnits } from "../lib/svg-text-layout"
 import { fitHeadingLines } from "./heading-fit"
 import { buildChartModel } from "./components/chart-model"
 import { resolveStyle } from "../themes"
+import { effectiveRequestedLayout } from "../themes/definitions"
 
 export type QualityIssue = {
   slide: number
@@ -241,8 +242,9 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
   // below, is metadata-driven). Both checks only look at the pinned
   // layout's own declared `LayoutDefinition` fields now — no layout id
   // appears in either condition.
-  if (slide.layout !== undefined) {
-    const pinnedDef = getLayout(slide.layout)
+  const effectivePin = effectiveRequestedLayout(ir.theme.id, slide.layout)
+  if (effectivePin !== undefined) {
+    const pinnedDef = getLayout(effectivePin)
 
     // pin-only over-capacity hard error (quote-stage wave, task T2, 裁定 2):
     // an explicit pin onto a `pinOnly` layout (`registry.ts`'s
@@ -264,9 +266,9 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
         slide: index,
         severity: "error",
         code: "pin_only_over_capacity",
-        message: `钉住的版式 "${slide.layout}" 容量为 ${pinnedCapacity}，当前有 ${slide.components.length} 个组件，超出容量——请拆分内容或去掉钉住`,
+        message: `钉住的版式 "${effectivePin}" 容量为 ${pinnedCapacity}，当前有 ${slide.components.length} 个组件，超出容量——请拆分内容或去掉钉住`,
         pinOnlyCapacity: {
-          layoutId: slide.layout,
+          layoutId: effectivePin,
           capacity: pinnedCapacity,
           componentCount: slide.components.length,
         },
@@ -304,8 +306,8 @@ function checkSlide(ir: PptxIR, slide: Slide, index: number, resolvedAxes: Narra
           slide: index,
           severity: "error",
           code: "pinned_heading_overflow",
-          message: `钉住的版式 "${slide.layout}" 正文过长，缩小到最低字号仍会被截断——请精简正文或拆分为多页`,
-          pinnedHeadingOverflow: { layoutId: slide.layout },
+          message: `钉住的版式 "${effectivePin}" 正文过长，缩小到最低字号仍会被截断——请精简正文或拆分为多页`,
+          pinnedHeadingOverflow: { layoutId: effectivePin },
         })
       }
     }

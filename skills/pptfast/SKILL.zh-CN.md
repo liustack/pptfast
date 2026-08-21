@@ -308,11 +308,11 @@ pptfast render deck-dir/     # theme.json 自动装载。在 deck.spec.json 里�
 
 `quote-stage` 是 content 页上的论断页：一句短而有力的标题是整页主视觉，最多再配一个短附注 component（出处、署名、一句补充）。0 个 component 合法。这一页仍会画主题的品牌页脚和 motif。
 
-`statement` 是 content 页上的整页诗行或金句。标题 2–4 行斜体、字重 500，没有短棒。最多一个 component，渲成出处小字（quote / paragraph / citation），不走卡片。可选 kicker 来自上一章。品牌页脚、logo、主题 motif 都不画。
+`statement` 是 content 页上的整页诗行或金句。最多一个 component，渲成出处小字（quote / paragraph / citation），不走卡片。可选 kicker 来自上一章。品牌页脚和 logo 不画。主题 motif 仍画。脸是主题专属的（已定稿的主题不是通用斜体 500 行）。
 
-`pull-quote` 是 content 页上的居中引言：可选章节眉、斜体大引言、出处小字，再加一段 muted 散文。出处优先 quote 的 `attribution`，否则 `subheading`。正文只接受一个 paragraph。品牌页脚、logo、主题 motif 都不画。
+`pull-quote` 是 content 页上的引言页：标题、出处小字、可选 muted 散文。出处优先 quote 的 `attribution`，否则 `subheading`。品牌页脚和 logo 不画。主题 motif 仍画。
 
-`verse-chapter` 是居中诗行章首（`type: "chapter"`）。tracking 章号眉、两行标题、可选斜体副题。没有水印大数字，没有 body，没有 footnote，chapter 页的既有边界照旧。logo 和主题 motif 都不画。
+`verse-chapter` 是居中诗行章首（`type: "chapter"`）。tracking 章号眉、两行标题、可选斜体副题。没有水印大数字，没有 body，没有 footnote，chapter 页的既有边界照旧。logo 不画。主题 motif 仍画。
 
 ### 稀排页合同
 
@@ -320,7 +320,7 @@ pptfast render deck-dir/     # theme.json 自动装载。在 deck.spec.json 里�
 
 这不是新的 `pacing` 档。枚举仍是 `dense` / `balanced` / `spacious`。合同靠版式点名、`notes` 和 deck `chrome` 实现。
 
-任何一份 deck 的高潮页、金句页、证据页，都显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`、`stat-hero`、`one-evidence`、`mono-bleed`。不要把这些页交给自动选型。某一页真的只剩一句话时，即使 pacing 是 `dense` 也仍然钉。
+高潮页、金句页、证据页，在主题提供这些版式时显式钉 pinOnly 极简版式。点名：`statement`、`pull-quote`、`verse-chapter`、`stat-hero`、`one-evidence`、`mono-bleed`。不要把这些页交给自动选型。某一页真的只剩一句话时，即使 pacing 是 `dense` 也仍然钉。crayon、classroom（含 bloom）、enterprise、pulse、runway、ember 不提供这些版式。如果 `validate` 警告这个钉子不是该主题提供的稀排页，就去掉钉子，改写普通内容页。
 
 访谈或请求选了 `spacious`：收紧页上预算。标题就是主视觉。钉住的极简页最多一个 body component（一行出处、一个数字、一张图或一张表）。这些页零 bullet。装不下就拆页。
 
