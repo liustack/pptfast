@@ -7,6 +7,7 @@ import { TERRA_TOKENS } from "./terra"
 import { EMBER_TOKENS } from "./ember"
 import { VERMILION_TOKENS } from "./vermilion"
 import { CRAYON_TOKENS } from "./crayon"
+import { ARENA_TOKENS } from "./arena"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -178,7 +179,7 @@ describe("vermilion tokens", () => {
   })
 })
 
-// kids-education theme (2026-08-21): crayon is the 18th built-in theme
+// sixth-wave themes (2026-08-21, scene audit #27): crayon
 // (蜡笔卡纸 — K12 / 兴趣班 / 亲子). Same shape-only assertions as the blocks
 // above — registry wiring (CANONICAL_THEME_IDS/THEME_STYLES/BUILTIN_THEME_IDS)
 // is covered separately by themes/index.test.ts and svg/legacy-theme-mapping.test.tsx.
@@ -220,5 +221,26 @@ describe("crayon tokens", () => {
 
   it("chartPalette fourth swatch is sunflower yellow, which never carries text", () => {
     expect(CRAYON_TOKENS.colors.chartPalette[3]).toBe("#F5B700")
+  })
+})
+
+// sixth-wave themes (2026-08-21, scene audit #27): arena (娱乐电竞 ·
+// 竞技场紫黑). Same shape-only assertions as the blocks above — registry
+// wiring (CANONICAL_THEME_IDS/THEME_STYLES/BUILTIN_THEME_IDS) is covered
+// separately by themes/index.test.ts.
+describe("arena tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = ARENA_TOKENS
+    expect(t.id).toBe("arena")
+  })
+
+  it("heading font resolves to Microsoft YaHei (exact width table, CJK-safe sans)", () => {
+    expect(resolveFontFace(ARENA_TOKENS.fonts.heading, "heading")).toBe(
+      "Microsoft YaHei",
+    )
+  })
+
+  it("does not set an accentPool (single, restrained electric-green accent)", () => {
+    expect(ARENA_TOKENS.colors.accentPool).toBeUndefined()
   })
 })

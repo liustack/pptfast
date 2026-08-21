@@ -130,6 +130,10 @@ const ADJUDICATED: Record<string, string> = {
     "橘红/草绿/黄），色相绕满蜡笔盒，不是「蓝与橙二选一」的配色故事。向日黄" +
     "写死仅色块永不承字（1.68:1），motif-crayon-motif 的彩虹短划与圆贴纸直接" +
     "按这四色轮换。动它等于重画整个主题的装饰。",
+  arena:
+    "电金 #FFD84D 与冰蓝 #4DC3FF：这张表是电光绿/品红/冰蓝/电金，红蓝对抗" +
+    "加一块金牌位，胜负语义入图，不是「蓝与橙二选一」的配色故事。电金是" +
+    "奖牌位，冰蓝是蓝队，设计板写死了这四格。若用户后续点名，这里就是要改的那一格。",
 }
 
 describe("chart palette: no vivid orange beside a vivid blue (round-4 taboo)", () => {

@@ -232,8 +232,8 @@ const BRANDS: Partial<Record<CanonicalThemeId, BrandConfig>> = {
  * motif 锚点也改指 `classroom-motif`（专属 `bloom-motif` 整个删除）。两家从此
  * 真的只差色板——结构行、字体、圆角、motif 几何全部同源。
  *
- * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「17 个 theme
- * id、16 个结构身份」是本仓从此的正式口径，不是过渡态。
+ * 红线：bloom 这个 theme id 永不删除（既有 deck 里写着它）。所以「19 个 theme
+ * id、18 个结构身份」是本仓从此的正式口径，不是过渡态。
  *
  * 用同一个对象引用而不是复制字面量，是为了让「同构」这件事有一个测试能真的
  * 抓住：`definitions.test.ts` 用 `toBe`（引用恒等）+ `toEqual`（深等）双钉，
@@ -865,7 +865,7 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       ending: ["rail-ending"],
     },
   },
-  // crayon（蜡笔卡纸，2026-08-21 低龄教育，第 18 主题）：卡纸奶油底 + 蜡笔
+  // crayon（蜡笔卡纸，2026-08-21 场景审计 #27 第六组新主题·低龄教育）：卡纸奶油底 + 蜡笔
   // 四原色，页缘蜡笔描边由专属 crayon-motif 承载。结构行 L / top-band /
   // heavy / medium，最近邻 classroom（L / top-band / medium / medium），
   // 装饰浓度岔开——classroom 是拍纸簿的 medium，crayon 是满场 heavy 在密页
@@ -879,13 +879,31 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     权重 3，单独声明空转，保留为真实主张（declaration-rebalance wave
   //     裁定 1 的追加先例）。写在第二个，3:1 软权重照现有写法，两个 id
   //     都拿 TENDENCY_WEIGHT。
-  // layouts 仍是四页型全集（17 家无一收窄，heavy 身份用 motif 降档表达，
+  // layouts 仍是四页型全集（各家无一收窄，heavy 身份用 motif 降档表达，
   // 不靠策展砍 layout）。
   crayon: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "crayon-motif",
     layoutTendencies: {
       cover: ["tone-adaptive-header", "banner-title"],
+    },
+  },
+  // arena（竞技场紫黑，2026-08-21 场景审计 #27 第六组新主题·娱乐电竞）：紫黑灯灭 + 电光绿 HUD，由专属
+  // arena-motif 承载。结构行 center / bottom-left / heavy / tight，最近邻
+  // campaign（C/BL/heavy/medium），岔在留白轴。封面构造 split-diagonal /
+  // poster-center（3:1 软权重，照现有写法）：
+  //   - `split-diagonal`：品红斜楔自右下切入是这个 layout 的几何，arena 的
+  //     封面样例就是它。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实
+  //     边际权重。
+  //   - `poster-center`：引首 + 居中大标题，开赛前一秒的正面站位。briefing
+  //     已锁权重 3，单独声明空转，保留为真实主张（裁定 1 的追加先例）。
+  // chapter / ending 不声明：heavy 装饰把页缘占满，章节与收尾走通用池，
+  // 不靠再声明一个与 campaign 同形的轴去硬凑区分度。
+  arena: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "arena-motif",
+    layoutTendencies: {
+      cover: ["split-diagonal", "poster-center"],
     },
   },
 }

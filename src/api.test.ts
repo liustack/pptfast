@@ -2203,9 +2203,9 @@ describe("checkAssetReferences: dangling asset_id warning (Task 2, borrow wave â
 })
 
 describe("listThemes", () => {
-  it("lists 18 canonical themes with labels and color tokens", () => {
+  it("lists 19 canonical themes with labels and color tokens", () => {
     const themes = listThemes()
-    expect(themes).toHaveLength(18)
+    expect(themes).toHaveLength(19)
     expect(themes.map((t) => t.id)).toContain("consulting")
     expect(themes.map((t) => t.id)).toContain("crayon")
     for (const t of themes) {
