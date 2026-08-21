@@ -573,15 +573,10 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
     }
   }
 
-  for (const provider of images.providers) {
-    if (!provider.present) {
-      warnings.push({
-        check: "images",
-        message: `${provider.provider} API key missing — optional stock-photo search is unavailable`,
-        fix: `pptfast config set ${provider.provider}.apiKey`,
-      })
-    }
-  }
+  // Missing stock-photo keys stay in the Images section as `[-]`, not in
+  // `warnings`. Rendering PPTX does not need them, so they must not steal
+  // the "pptfast is healthy" line. A group/other-readable config file is
+  // the one images finding that is a real warning.
   if (images.groupOrOtherReadable) {
     warnings.push({
       check: "images",
@@ -693,8 +688,7 @@ export function renderDoctorReport(report: DoctorReport): string {
     if (provider.present) {
       lines.push(`  ${mark("ok")} ${provider.provider}: present (${provider.source})`)
     } else {
-      lines.push(`  ${mark("warn")} ${provider.provider}: missing`)
-      lines.push(`      fix: pptfast config set ${provider.provider}.apiKey`)
+      lines.push(`  ${mark("n/a")} ${provider.provider}: missing — pptfast config set ${provider.provider}.apiKey`)
     }
   }
   lines.push("")

@@ -462,15 +462,15 @@ describe("runDoctor: workspace artifacts line", () => {
 })
 
 describe("runDoctor: images", () => {
-  it("treats missing keys as warnings, never errors, and never prints a key value", async () => {
+  it("treats missing keys as info, never errors, and never prints a key value", async () => {
     const home = await makeHome()
     try {
-      await writeFile(
-        join(home, "config.json"),
-        JSON.stringify({ images: { pexels: { apiKey: "FILESECRET99" } } }),
-      )
+      const configPath = join(home, "config.json")
+      await writeFile(configPath, JSON.stringify({ images: { pexels: { apiKey: "FILESECRET99" } } }))
+      if (typeof process.getuid === "function") chmodSync(configPath, 0o600)
       const report = await buildDoctorReport({ home, env: { PATH: "" }, version: CURRENT })
       expect(report.errors).toEqual([])
+      expect(report.warnings.some((w) => w.check === "images")).toBe(false)
       const { output, hasErrors } = await runDoctor({ home, env: { PATH: "" }, version: CURRENT })
       expect(hasErrors).toBe(false)
       expect(output).toContain("Images")
@@ -479,7 +479,6 @@ describe("runDoctor: images", () => {
       expect(output).not.toContain("FILESECRET99")
       expect(JSON.stringify(report.images)).not.toContain("FILESECRET99")
       expect(report.images.providers.find((p) => p.provider === "pexels")?.present).toBe(true)
-      expect(report.warnings.some((w) => w.check === "images" && /pixabay/.test(w.message))).toBe(true)
     } finally {
       await rm(home, { recursive: true, force: true })
     }
