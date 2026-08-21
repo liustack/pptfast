@@ -105,8 +105,8 @@ function allBoxes(root: Element): { label: string; box: Box }[] {
  * 设计源：`design-project/skin-boards.html` 的 crayon 板。
  */
 describe("CrayonMotif（蜡笔描边）", () => {
-  it("cover/content/ending 画同一张：顶波浪 + 三枚贴纸 + 彩虹划 + 左下星", () => {
-    for (const slide of DRAWN_SLIDES) {
+  it("content/ending 画全家福：顶波浪 + 三枚贴纸 + 彩虹划 + 左下星", () => {
+    for (const slide of [contentSlide, endingSlide]) {
       const { root } = draw("crayon", slide)
       const p = parts(root)
       expect(p.wave, `no wave on ${slide.type}`).toBeTruthy()
@@ -114,6 +114,15 @@ describe("CrayonMotif（蜡笔描边）", () => {
       expect(p.dashes, `wrong dash count on ${slide.type}`).toHaveLength(CRAYON_DASH_DRAWN)
       expect(p.star, `no star on ${slide.type}`).toBeTruthy()
     }
+  })
+
+  it("cover 撤底带：tone-adaptive-header 封面的作者/日期行画在 y624-656，彩虹划与星让位，波浪与贴纸留下", () => {
+    const { root } = draw("crayon", coverSlide)
+    const p = parts(root)
+    expect(p.wave).toBeTruthy()
+    expect(p.stickers).toHaveLength(3)
+    expect(p.dashes).toHaveLength(0)
+    expect(p.star).toBeUndefined()
   })
 
   it("chapter 完全退让——整版 primary 蜡笔蓝底上波浪消失、贴纸与巨幅标题抢面", () => {
@@ -152,7 +161,7 @@ describe("CrayonMotif（蜡笔描边）", () => {
 
   it("彩虹短划：y644，x1=96+i*46 长 26，圆头 5px，四色轮换，末两段让开右下 logo 盒", () => {
     const t = resolveStyle("crayon")
-    const { root } = draw("crayon", coverSlide)
+    const { root } = draw("crayon", contentSlide)
     const { dashes } = parts(root)
     expect(CRAYON_DASH_DRAWN).toBe(22)
     expect(dashes).toHaveLength(22)
@@ -171,15 +180,15 @@ describe("CrayonMotif（蜡笔描边）", () => {
 
   it("左下星贴纸走 accent，板上路径从 (56,628) 起笔", () => {
     const t = resolveStyle("crayon")
-    const { root } = draw("crayon", coverSlide)
+    const { root } = draw("crayon", contentSlide)
     const { star } = parts(root)
     expect(star).toBeTruthy()
     expect(star!.getAttribute("fill")).toBe(t.colors.accent)
     expect(star!.getAttribute("d")?.startsWith("M56,628")).toBe(true)
   })
 
-  it("chapter 之外三档在同一页结构下画同一张", () => {
-    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("crayon", slide).markup))
+  it("content/ending 在同一页结构下画同一张（cover 另有撤底带档）", () => {
+    const markups = new Set([contentSlide, endingSlide].map((slide) => draw("crayon", slide).markup))
     expect(markups.size).toBe(1)
   })
 
@@ -247,9 +256,9 @@ describe("CrayonMotif（蜡笔描边）", () => {
         expect(draw("crayon", long).markup).toBe(draw("crayon", short).markup)
       })
 
-      it("同结构不同页型：cover/content/ending 输出逐字节相同", () => {
+      it("同结构不同页型：content/ending 输出逐字节相同（cover 是声明的撤底带档，不是文字几何的函数）", () => {
         const markups = new Set(
-          (["cover", "content", "ending"] as const).map((type) => draw("crayon", slideOf(type, [para("同一段")])).markup),
+          (["content", "ending"] as const).map((type) => draw("crayon", slideOf(type, [para("同一段")])).markup),
         )
         expect(markups.size).toBe(1)
       })
@@ -262,11 +271,13 @@ describe("CrayonMotif（蜡笔描边）", () => {
   })
 
   it("安全区：全部装饰不进板上四条红虚线禁区", () => {
-    const { root } = draw("crayon", coverSlide)
+    for (const slide of [contentSlide, coverSlide]) {
+    const { root } = draw("crayon", slide)
     for (const { label, box } of allBoxes(root)) {
       for (const [name, zone] of Object.entries(BOARD_ZONES)) {
         expect(intersects(box, zone), `${label} enters the ${name} zone: ${JSON.stringify(box)}`).toBe(false)
       }
+    }
     }
   })
 

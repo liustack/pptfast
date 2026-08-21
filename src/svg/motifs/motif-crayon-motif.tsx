@@ -49,6 +49,18 @@ import type { DecorProps } from "./types"
  * 波浪走 primary（蓝压蓝，看不见），贴纸与星星压在八个 chapter layout
  * 的巨幅居中标题活动范围上。三件失效、一件抢戏，chapter 不画。
  *
+ * ## 偏离设计板：cover 撤底带（彩虹划＋星）
+ *
+ * crayon 声明的封面构造之一 `tone-adaptive-header` 在无背景图模式下把
+ * 作者行画在 x64 y650 基线、日期行右对齐 y650（`cover-tone-adaptive-header
+ * .tsx`），墨迹带约 y624-656——第 5 条的页脚 meta 带从 y664 才起，保护不到
+ * 这一行。彩虹划的墨迹 y641.5-646.5 正好横穿这行字（structure-map 点名的
+ * 「tone-adaptive 底槽撞位」，五案里第四案），星贴纸也压住作者行起笔。
+ * motif 不许感知当页选中的 layout（terra 板的确定性红线），所以照 terra
+ * 「chapter 整页退让」的同一模式按页型处理：cover 撤底带，顶波浪与三枚
+ * 贴纸保留。板上封面样例的 meta 行画在彩虹划上方，与仓库 layout 的实际
+ * 坐标不符，以仓库为准。
+ *
  * 纪律：零 theme id、零 hex。波浪走 primary，星走 accent，贴纸与彩虹划走
  * `chartPalette`（`chartPaletteOffset` 是 ctx 上的独立字段、不改
  * `colors.chartPalette` 本身，`motif-chart-palette-isolation.test.tsx`
@@ -141,6 +153,9 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
   const orange = ctx.colors.accent
   // 半场降档：判据只读 IR 结构层的组件数量，绝不读渲染后的文字几何。
   const halfField = slide.components.length >= HALF_FIELD_COMPONENTS
+  // cover 撤底带：tone-adaptive-header 封面的作者/日期行画在 y624-656，
+  // 彩虹划与星会横穿它（见文件头「cover 撤底带」一节）。
+  const bottomBand = slide.type !== "cover"
 
   return (
     <>
@@ -155,19 +170,20 @@ export function CrayonMotif({ slide, ctx }: DecorProps) {
         STICKERS.map((s) => (
           <circle key={s.cx} cx={s.cx} cy={s.cy} r={STICKER_R} fill={palette[s.paletteIndex]} />
         ))}
-      {DASHES.map((i) => (
-        <line
-          key={i}
-          x1={DASH_X0 + i * DASH_STEP}
-          y1={DASH_Y}
-          x2={DASH_X0 + i * DASH_STEP + DASH_LEN}
-          y2={DASH_Y}
-          stroke={palette[i % 4]}
-          strokeWidth={DASH_STROKE}
-          strokeLinecap="round"
-        />
-      ))}
-      {!halfField && <path d={STAR_D} fill={orange} />}
+      {bottomBand &&
+        DASHES.map((i) => (
+          <line
+            key={i}
+            x1={DASH_X0 + i * DASH_STEP}
+            y1={DASH_Y}
+            x2={DASH_X0 + i * DASH_STEP + DASH_LEN}
+            y2={DASH_Y}
+            stroke={palette[i % 4]}
+            strokeWidth={DASH_STROKE}
+            strokeLinecap="round"
+          />
+        ))}
+      {bottomBand && !halfField && <path d={STAR_D} fill={orange} />}
     </>
   )
 }
