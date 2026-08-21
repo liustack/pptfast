@@ -12,8 +12,8 @@ const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } a
 const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
-/** chapter 不画（整版 primary 底），其余三档画同一张。 */
-const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
+/** chapter 不画（整版 primary 底）。content/ending 画 ECG+细胞。cover 只画细胞。 */
+const BODY_SLIDES = [contentSlide, endingSlide]
 
 /** 设计板上的四条红虚线禁区。 */
 const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
@@ -62,19 +62,21 @@ function points(el: Element): [number, number][] {
  * 的 pulse 设计表。本文件是本轮新建。
  */
 describe("PulseMotif（脉搏线）", () => {
-  it("cover/content/ending 画同一张：一条心电线 + 三枚细胞圈", () => {
-    for (const slide of DRAWN_SLIDES) {
+  it("content/ending 画一条心电线 + 三枚细胞圈。封面只留细胞，顶缘心电线让给楔面折线", () => {
+    for (const slide of BODY_SLIDES) {
       const { root } = draw("pulse", slide)
       expect(Array.from(root.querySelectorAll("polyline")), `ecg on ${slide.type}`).toHaveLength(1)
       expect(Array.from(root.querySelectorAll("circle")), `cells on ${slide.type}`).toHaveLength(3)
-      // 胶囊（圆角矩形）整族退役。
       expect(Array.from(root.querySelectorAll("rect")), `capsules retired on ${slide.type}`).toHaveLength(0)
     }
+    const { root: coverRoot } = draw("pulse", coverSlide)
+    expect(Array.from(coverRoot.querySelectorAll("polyline")), "no top ECG on cover").toHaveLength(0)
+    expect(Array.from(coverRoot.querySelectorAll("circle")), "cells stay on cover").toHaveLength(3)
   })
 
-  it("三档输出完全相同——v1 的 content 弱档（角落胶囊簇、无脉搏线）已取消", () => {
-    const markups = new Set(DRAWN_SLIDES.map((slide) => draw("pulse", slide).markup))
-    expect(markups.size).toBe(1)
+  it("content 与 ending 输出完全相同。封面不再与它们逐字节相同", () => {
+    expect(draw("pulse", contentSlide).markup).toBe(draw("pulse", endingSlide).markup)
+    expect(draw("pulse", coverSlide).markup).not.toBe(draw("pulse", contentSlide).markup)
   })
 
   it("chapter 完全退让——整版 primary 青绿底上画 accent 浅青实测 1.90:1，看不见", () => {
@@ -88,7 +90,7 @@ describe("PulseMotif（脉搏线）", () => {
 
   it("颜色一律读 token：心电线与细胞圈都走 accent（浅青），线宽 1.5 / 1.2", () => {
     const t = resolveStyle("pulse")
-    const { root } = draw("pulse", coverSlide)
+    const { root } = draw("pulse", contentSlide)
     const ecg = root.querySelector("polyline")!
     expect(ecg.getAttribute("stroke")).toBe(t.colors.accent)
     expect(ecg.getAttribute("fill")).toBe("none")
@@ -115,7 +117,7 @@ describe("PulseMotif（脉搏线）", () => {
   })
 
   it("心电线几何：x48→1232 的基线 y30，全页只搏一次（尖峰限 y18-42）", () => {
-    const { root } = draw("pulse", coverSlide)
+    const { root } = draw("pulse", contentSlide)
     const pts = points(root.querySelector("polyline")!)
     expect(pts).toEqual([
       [48, 30],
@@ -145,7 +147,7 @@ describe("PulseMotif（脉搏线）", () => {
 
   /** 安全区守卫（设计板的四条红虚线逐条量）。 */
   it("安全区：心电线整条在标题区上沿 y48 之上", () => {
-    const { root } = draw("pulse", coverSlide)
+    const { root } = draw("pulse", contentSlide)
     const ys = points(root.querySelector("polyline")!).map(([, y]) => y)
     expect(Math.max(...ys)).toBeLessThan(TITLE_ZONE.y)
   })
@@ -160,7 +162,7 @@ describe("PulseMotif（脉搏线）", () => {
   })
 
   it("不画任何左竖条", () => {
-    for (const slide of DRAWN_SLIDES) {
+    for (const slide of [...BODY_SLIDES, coverSlide]) {
       const { root } = draw("pulse", slide)
       for (const r of Array.from(root.querySelectorAll("rect"))) {
         expect(num(r, "width") < 40 && num(r, "height") > 30, `narrow-tall bar rendered: ${r.outerHTML}`).toBe(false)
@@ -195,7 +197,7 @@ describe("PulseMotif（脉搏线）", () => {
   })
 
   it("Decor body passes subset validation", () => {
-    for (const slide of [...DRAWN_SLIDES, chapterSlide]) {
+    for (const slide of [...BODY_SLIDES, coverSlide, chapterSlide]) {
       expect(() => assertSubset(draw("pulse", slide).root)).not.toThrow()
     }
   })

@@ -74,7 +74,11 @@ export const CLASSROOM_TOKENS: StyleTokens = {
     heading: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "system-ui"],
     body: ["Microsoft YaHei", "PingFang SC", "Helvetica Neue", "system-ui"],
   },
-  shape: { radius: 12, gapScale: 1.1 }, // 全主题最圆润档（课堂亲和）+呼吸感
+  shape: {
+    radius: 12,
+    gapScale: 1.1, // 全主题最圆润档（课堂亲和）+呼吸感
+    cover: { textAnchor: "start", bandY: 260, bandH: 200, bandWave: true },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#ECF0F2" },
     // chapter 走 primary 雾蓝底（rail-chapter 标题是白字，academic 同款

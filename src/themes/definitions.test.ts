@@ -105,6 +105,13 @@ describe("THEME_DEFINITIONS", () => {
     "memo-head",
     "board-head",
     "bill-head",
+    // board-cover-restore wave 1 (2026-08-22): cover pool 13 -> 19.
+    "verdict-index",
+    "band-title",
+    "header-band",
+    "paper-masthead",
+    "horizon-wedge",
+    "corner-wedge",
   ]
   const FULL_CHAPTER = [
     "masthead-chapter",
@@ -142,15 +149,7 @@ describe("THEME_DEFINITIONS", () => {
     "tone-adaptive-ending",
     "fashion-ending",
   ]
-  it("W4 全集放开基线 + post-v0.3 W8 fix round：十三主题四页型全部为各页型全集，无任何例外残留", () => {
-    expect(THEME_DEFINITIONS.consulting.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
-    expect(THEME_DEFINITIONS.consulting.motif).toBe("banner-motif")
-
+  it("W4 全集放开基线 + post-v0.3 W8 fix round：未硬锁封面的主题四页型仍为各页型全集", () => {
     expect(THEME_DEFINITIONS.insight.layouts).toEqual({
       cover: FULL_COVER,
       chapter: FULL_CHAPTER,
@@ -175,15 +174,6 @@ describe("THEME_DEFINITIONS", () => {
     })
     expect(THEME_DEFINITIONS.tech.motif).toBe("constellation-motif")
 
-    // runway：唯一留空 motif 的主题（排印至上的终审裁决，见 definitions.ts 注释）。
-    expect(THEME_DEFINITIONS.runway.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
-    expect(THEME_DEFINITIONS.runway.motif).toBeUndefined()
-
     expect(THEME_DEFINITIONS.journal.layouts).toEqual({
       cover: FULL_COVER,
       chapter: FULL_CHAPTER,
@@ -191,14 +181,6 @@ describe("THEME_DEFINITIONS", () => {
       ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.journal.motif).toBe("corner-ornament-motif")
-
-    expect(THEME_DEFINITIONS.enterprise.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
-    expect(THEME_DEFINITIONS.enterprise.motif).toBe("enterprise-motif")
 
     expect(THEME_DEFINITIONS.luxe.layouts).toEqual({
       cover: FULL_COVER,
@@ -215,27 +197,6 @@ describe("THEME_DEFINITIONS", () => {
       ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.campaign.motif).toBe("campaign-motif")
-
-    // classroom：W4 fix round 曾排除 fashion-chapter，post-v0.3 W8 fix round
-    // 随 readableOn 根因修复撤销（backlog item 2）——现为纯 FULL_CHAPTER。
-    expect(THEME_DEFINITIONS.classroom.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
-    expect(THEME_DEFINITIONS.classroom.motif).toBe("classroom-motif")
-
-    // bloom：同上，chapter 排除已撤销。
-    expect(THEME_DEFINITIONS.bloom.layouts).toEqual({
-      cover: FULL_COVER,
-      chapter: FULL_CHAPTER,
-      content: FULL_CONTENT,
-      ending: FULL_ENDING,
-    })
-    // 2026-08-20 柔和组：bloom 的锚点改指 classroom 的 motif（色板 preset
-    // 从此连装饰几何也共用），专属 `bloom-motif` 文件已删。
-    expect(THEME_DEFINITIONS.bloom.motif).toBe("classroom-motif")
 
     expect(THEME_DEFINITIONS.ink.layouts).toEqual({
       cover: FULL_COVER,
@@ -301,6 +262,42 @@ describe("THEME_DEFINITIONS", () => {
       content: ["split-band", "stacked-poster", "banner-heading"],
       ending: ["fashion-ending", "poster-ending"],
     })
+  })
+
+  it("board-cover-restore wave 1: nine themes lock layouts.cover to the board face", () => {
+    expect(THEME_DEFINITIONS.consulting.layouts.cover).toEqual(["verdict-index"])
+    expect(THEME_DEFINITIONS.consulting.layoutTendencies?.cover).toEqual(["verdict-index"])
+    expect(THEME_DEFINITIONS.consulting.motif).toBe("banner-motif")
+
+    expect(THEME_DEFINITIONS.classroom.layouts.cover).toEqual(["band-title"])
+    expect(THEME_DEFINITIONS.bloom.layouts.cover).toEqual(["band-title"])
+    expect(THEME_DEFINITIONS.bloom.layouts).toBe(THEME_DEFINITIONS.classroom.layouts)
+    expect(THEME_DEFINITIONS.bloom.layoutTendencies).toBe(THEME_DEFINITIONS.classroom.layoutTendencies)
+    expect(THEME_DEFINITIONS.classroom.motif).toBe("classroom-motif")
+    expect(THEME_DEFINITIONS.bloom.motif).toBe("classroom-motif")
+
+    expect(THEME_DEFINITIONS.enterprise.layouts.cover).toEqual(["band-title"])
+    expect(THEME_DEFINITIONS.enterprise.layoutTendencies?.cover).toEqual(["band-title"])
+    expect(THEME_DEFINITIONS.enterprise.motif).toBe("enterprise-motif")
+
+    expect(THEME_DEFINITIONS.vermilion.layouts.cover).toEqual(["band-title"])
+    expect(THEME_DEFINITIONS.vermilion.layoutTendencies?.cover).toEqual(["band-title"])
+
+    expect(THEME_DEFINITIONS.crayon.layouts.cover).toEqual(["header-band"])
+    expect(THEME_DEFINITIONS.crayon.layoutTendencies?.cover).toEqual(["header-band"])
+
+    expect(THEME_DEFINITIONS.runway.layouts.cover).toEqual(["paper-masthead"])
+    expect(THEME_DEFINITIONS.runway.layoutTendencies?.cover).toEqual(["paper-masthead"])
+    expect(THEME_DEFINITIONS.runway.motif).toBeUndefined()
+
+    expect(THEME_DEFINITIONS.pulse.layouts.cover).toEqual(["horizon-wedge"])
+    expect(THEME_DEFINITIONS.pulse.layoutTendencies?.cover).toEqual(["horizon-wedge"])
+
+    expect(THEME_DEFINITIONS.arena.layouts.cover).toEqual(["corner-wedge"])
+    expect(THEME_DEFINITIONS.arena.layoutTendencies?.cover).toEqual(["corner-wedge"])
+
+    expect(THEME_DEFINITIONS.ember.layouts.cover).toEqual(["corner-wedge"])
+    expect(THEME_DEFINITIONS.ember.layoutTendencies?.cover).toEqual(["corner-wedge"])
   })
 
   it("未知 id 经 resolveThemeId 回落 consulting 的主题定义（含 layouts/motif），原 manifest 取值函数回落断言迁移", () => {
