@@ -20,13 +20,15 @@ import type { DecorProps } from "./types"
  *     贴片不看 `ir.chrome`
  *
  * 几何：150×34 方片绕 (1136, 25) 顺时针 4°（对齐板上 CSS `rotate(4deg)`）。
- * 方片四角在模块加载时算成一条闭合 path——导出侧 `svg2pptx/dispatch.ts`
- * 对 `<rect transform>` 的旋转不在受控子集内，path 不受此限。贴片内的
+ * 方片四角在模块加载时烘焙成 `<polygon points>`——导出侧 `svg2pptx/dispatch.ts`
+ * 对 `<rect transform>` 的旋转不在受控子集内，烘焙顶点的 polygon 不受此限，
+ * 且审计的压字归因把 polygon 当精确轮廓（fix/audit-polygon-attribution），
+ * 贴片里的日期字会正确判给黑贴而不是页面黄底。贴片内的
  * 日期字用 `<text transform="rotate(4 …)">`：文本旋转导出路径已在图表
  * 竖排标题波落地（`svg2pptx/text.ts` 的 `rotate` 字段），4° 在支持面内。
  *
  * AABB 约 x1059-1213、y5-45：在标题区 (96,48,1040×122) 上方、右上
- * logo 盒 (1120,48,96×40) 顶沿之上、五个保护区全不进。四页型同一张；
+ * logo 盒 (1120,48,96×40) 顶沿之上、五个保护区全不进。cover / content / ending 三页型同一张（chapter 让位，见下）；
  * fashion-masthead 满版 primary 盖住贴片是黑压黑，不是漏画。
  *
  * 密页不降档：装饰只有这一枚顶带贴片，碰不到内容区，判据都不设
@@ -67,13 +69,16 @@ function patchPath(cx: number, cy: number, deg: number): string {
     [hw, hh],
     [-hw, hh],
   ]
-  const pts = corners.map(([lx, ly]) => `${round1(cx + lx * ca - ly * sa)} ${round1(cy + lx * sa + ly * ca)}`)
-  return `M ${pts[0]} L ${pts[1]} L ${pts[2]} L ${pts[3]} Z`
+  return corners.map(([lx, ly]) => `${round1(cx + lx * ca - ly * sa)},${round1(cy + lx * sa + ly * ca)}`).join(" ")
 }
 
-export const PLAYBILL_PATCH_D = patchPath(PATCH_CX, PATCH_CY, PATCH_DEG)
+export const PLAYBILL_PATCH_POINTS = patchPath(PATCH_CX, PATCH_CY, PATCH_DEG)
 
-export function PlaybillMotif({ ir, ctx }: DecorProps) {
+export function PlaybillMotif({ ir, slide, ctx }: DecorProps) {
+  // chapter 让位（crayon 封面让位同款先例）：poster-chapter / roman-chapter
+  // 把机构字画在右上，与贴片区 (x1059-1213, y5-45) 真实相压（加宽后的
+  // 归因审计实测 2.94:1）。motif 不感知当页 layout，按页型整片退让。
+  if (slide.type === "chapter") return null
   const date = ir.meta.date
   if (!date) return null
   const fitted = fitSvgLine(date, {
@@ -84,7 +89,7 @@ export function PlaybillMotif({ ir, ctx }: DecorProps) {
   })
   return (
     <>
-      <path d={PLAYBILL_PATCH_D} fill={ctx.colors.primary} />
+      <polygon points={PLAYBILL_PATCH_POINTS} fill={ctx.colors.primary} />
       <text
         x={PATCH_CX}
         y={PATCH_CY + fitted.fontSize * 0.35}

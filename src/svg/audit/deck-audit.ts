@@ -1006,6 +1006,40 @@ function pathBoundingBoxByTokenMinMax(d: string): { x: number; y: number; w: num
  * mirroring `pathBoundingBox`'s own "never crash, caller skips
  * registration" contract for the equivalent case.
  */
+/** `points` 属性解析成顶点表：与 {@link polygonBoundingBox} 同一分词规则。 */
+function polygonPoints(pointsAttr: string): [number, number][] | null {
+  const nums = pointsAttr
+    .trim()
+    .split(/[\s,]+/)
+    .filter((tok) => tok !== "")
+    .map(Number)
+  if (nums.length < 6 || nums.length % 2 !== 0 || nums.some((n) => !Number.isFinite(n))) return null
+  const pts: [number, number][] = []
+  for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i]!, nums[i + 1]!])
+  return pts
+}
+
+/**
+ * `<polygon>` 的精确轮廓（fix/audit-polygon-attribution）：直边多边形的
+ * painted outline 就是它自己的边，even-odd 射线法即精确包含判定——不像
+ * `<path>` 要解曲线。这让 motif 里烘焙顶点的斜贴片（playbill 日期贴）能
+ * 作为压字归因候选，而不是把字判给页面底色。
+ */
+function polygonShape(pts: readonly [number, number][], fill: string | null): PaintedShape {
+  return {
+    fill,
+    contains: (px, py) => {
+      let inside = false
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const [xi, yi] = pts[i]!
+        const [xj, yj] = pts[j]!
+        if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside
+      }
+      return inside
+    },
+  }
+}
+
 function polygonBoundingBox(pointsAttr: string): { x: number; y: number; w: number; h: number } | null {
   const nums = pointsAttr
     .trim()
@@ -1591,7 +1625,7 @@ function hasUnmodelledTransform(el: Element): boolean {
  * in `hasUnmodelledTransform` above.
  */
 function registersExactOutline(tag: string): boolean {
-  return tag === "rect" || tag === "circle" || tag === "ellipse"
+  return tag === "rect" || tag === "circle" || tag === "ellipse" || tag === "polygon"
 }
 
 function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: BgRegion[]; imageBackedRuns: ImageBackedTextRun[] } {
@@ -1762,6 +1796,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       // emit `<path>`), so it stays `null` there — falls straight through to
       // `rectShape`'s AABB below, same as every other non-wedge shape.
       let localWedge: Sector | null = null
+      let localPolyPts: [number, number][] | null = null
       if (tag === "path") {
         const dAttr = el.getAttribute("d") ?? ""
         const bbox = pathBoundingBox(dAttr)
@@ -1773,6 +1808,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         }
         localWedge = parseWedgePath(dAttr)
       } else if (tag === "polygon") {
+        localPolyPts = polygonPoints(el.getAttribute("points") ?? "")
         // sweep2 T4: `<polygon>` joins the registration gate here (it used
         // to dispatch to nothing at all — see `findContrastIssues`'s own
         // doc comment for the misattribution that left, `renderLine`'s
@@ -1809,8 +1845,8 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       // `mayAttribute` — see `findContrastIssues`'s own doc comment: a decor
       // shape is an attribution candidate only when the containment test
       // registered for it is its painted outline (`registersExactOutline` +
-      // `hasUnmodelledTransform`). `image`/`path`/`polygon` never satisfy
-      // that, so inside a decor subtree this whole block is unreachable for
+      // `hasUnmodelledTransform`). `image`/`path` never satisfy
+      // that (`polygon` joined the exact set in fix/audit-polygon-attribution), so inside a decor subtree this whole block is unreachable for
       // them — identical to the blanket exclusion it replaces.
       if (mayAttribute) {
         if (tag === "image") {
@@ -1868,6 +1904,15 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
                   resolvedFill,
                 ),
               )
+            } else if (tag === "polygon" && localPolyPts && resolvedFill !== null) {
+              // 实色 polygon：精确轮廓注册（压字归因可用）。
+              paintedShapes.push(
+                polygonShape(localPolyPts.map(([px, py]) => [ax + px * as, ay + py * as] as [number, number]), resolvedFill),
+              )
+            } else if (tag === "polygon" && resolvedFill === null && inDecorSubtree) {
+              // 渐变 polygon 在装饰子树里维持加宽前的整体排除——
+              // deck-audit.test 的 decor-exclusion 契约。子树外走下方
+              // bbox + fill:null 的像素审计路由（task R3 的既有行为）。
             } else {
               paintedShapes.push(
                 rectShape(absX, absY, w, h, resolvedFill, localRx * as, localRy * as),
