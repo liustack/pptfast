@@ -166,4 +166,9 @@ describe("slugify", () => {
     expect(slugify("")).toBe("brand")
     expect(slugify("***")).toBe("brand")
   })
+
+  it("uses the caller-supplied fallback (workspace deck names want 'deck')", () => {
+    expect(slugify("季度回顾", "deck")).toBe("deck")
+    expect(slugify("***", "deck")).toBe("deck")
+  })
 })

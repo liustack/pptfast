@@ -1,8 +1,9 @@
 /** End-to-end: CLI renders the examples, output must be a well-formed pptx.
  *  Requires `pnpm build` first (wired via the `e2e` npm script). */
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
 import JSZip from "jszip"
 import type * as Sharp from "sharp"
 
@@ -1092,5 +1093,43 @@ if (existsSync(overflowOutPath)) {
   throw new Error("e2e: dual-threshold leg — render must not write a file when validate hard-blocks")
 }
 console.log("dual-threshold bullet-overflow render leg OK (exit 1, no file written)")
+
+// workspace-artifacts wave: omit -o, land under <cwd>/.pptfast/<slug>/, print
+// the absolute path. Run in os.tmpdir() so this repo's exclude file is not
+// touched (the cwd here is a git worktree).
+console.log("--- workspace default-path leg ---")
+const ws = mkdtempSync(join(tmpdir(), "pptfast-e2e-ws-"))
+copyFileSync("examples/basic.json", join(ws, "hello.json"))
+const cli = resolve("dist/cli.js")
+const wsRender = execFileSync("node", [cli, "render", "hello.json"], { cwd: ws, encoding: "utf8" })
+const wsPptx = join(ws, ".pptfast", "hello", "hello.pptx")
+if (!existsSync(wsPptx)) {
+  throw new Error(`e2e: workspace default-path leg — expected ${wsPptx} after render without -o`)
+}
+if (!wsRender.includes(wsPptx)) {
+  throw new Error(`e2e: workspace default-path leg — render did not print the absolute path ${wsPptx}, got: ${wsRender}`)
+}
+const wsPreview = execFileSync("node", [cli, "preview", "hello.json", "--html"], { cwd: ws, encoding: "utf8" })
+const wsDir = join(ws, ".pptfast", "hello")
+const wsFiles = readdirSync(wsDir).sort()
+const expectedWsFiles = [
+  "001-cover.svg",
+  "002-chapter.svg",
+  "003-content.svg",
+  "004-content.svg",
+  "005-ending.svg",
+  "hello.pptx",
+  "manifest.json",
+  "preview.html",
+]
+if (wsFiles.join(",") !== expectedWsFiles.join(",")) {
+  throw new Error(`e2e: workspace default-path leg — expected ${expectedWsFiles.join(", ")}, got ${wsFiles.join(", ")}`)
+}
+const wsHtml = join(wsDir, "preview.html")
+if (!wsPreview.includes(wsHtml)) {
+  throw new Error(`e2e: workspace default-path leg — preview did not print ${wsHtml}, got: ${wsPreview}`)
+}
+rmSync(ws, { recursive: true, force: true })
+console.log(`workspace default-path leg OK (${wsDir} tree: ${wsFiles.join(", ")})`)
 
 console.log("e2e OK")

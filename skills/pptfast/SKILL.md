@@ -90,8 +90,10 @@ Fix whatever either command reports as an error and re-run until both print `OK`
 ### Phase 4 — Render
 
 ```bash
-pptfast render deck-dir/ -o deck.pptx
+pptfast render deck-dir/
 ```
+
+The `.pptx` lands in `.pptfast/<deck>/`. The command prints the absolute path. Report that line to the user.
 
 `--theme <id>` overrides the deck theme without editing the spec. `--style <path>` layers a style-token override on top (re-color without forking a theme, schema: `pptfast schema --style`). Render refuses a deck with unfilled placeholder pages unless you add `--draft` — reach for that only when the user explicitly wants a look before every page is done. It also refuses a deck where a page holds more than fits, so the layout left blocks out with nothing on the slide to say so: the error names the pages and how many blocks each lost. Fix it by shortening that page or splitting it in two, and re-render — `--allow-dropped-content` ships the file with the content missing, so only pass it if the user says to.
 
@@ -110,16 +112,18 @@ Zero-token, zero-variance — it renders each page off-screen and checks overflo
 If any page has a cover/chapter photo background, add `--pixels` — it rasterizes the page and samples real pixels to catch text sitting directly on an unscrimmed photo, the one case the SVG-only checks above can't see.
 
 ```bash
-pptfast preview deck-dir/ -o preview/ --html
+pptfast preview deck-dir/ --html
 ```
 
-Writes one standalone SVG per slide plus a self-contained `preview.html`, never gated on placeholder pages. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks — hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal — a deck with any placeholder page shows a one-line "audit skipped" notice instead. `preview.html` is read-only: it shows the deck, it never edits it. When the reviewer wants something changed, they tell you in the conversation — a screenshot of the page in question is the fastest way for both of you — and you route it through phase 6.
+Writes one standalone SVG per slide plus a self-contained `preview.html` into `.pptfast/<deck>/`, never gated on placeholder pages. The command prints the absolute path. Report that line to the user. Read a few SVGs yourself (they are plain text files) to sanity-check layout and density before delivering, especially for image-heavy decks. Hand `preview.html` (thumbnail strip, keyboard navigation, placeholder badges) to the user for their own look instead. When every page is filled, `preview.html` also overlays the same `audit` findings (per-page badges + a findings panel) so the reviewer sees them without a terminal. A deck with any placeholder page shows a one-line "audit skipped" notice instead. `preview.html` is read-only: it shows the deck, it never edits it. When the reviewer wants something changed, they tell you in the conversation. A screenshot of the page in question is the fastest way for both of you, and you route it through phase 6.
 
 ### Showing the deck to the user
 
-How you hand a deck over depends on what the harness can render, and the two options are not equivalent — take the first one that is available.
+How you hand a deck over depends on what the harness can render. Take the first one that applies.
 
-**If a `pptfast_preview` tool exists, call it.** It renders the deck and puts a real slide preview in the conversation: a thumbnail strip in the tool card, full size on click, arrow keys to page. The user sees the deck without leaving the thread and without opening anything. Never fall back to handing over a URL when this tool is present — that is the experience it was built to replace. The tool reports only a summary line back to you (page count, audit state); that is deliberate, the deck itself goes to the user's screen, not into your context.
+**If a `pptfast_preview` tool exists, call it.** It renders the deck and puts a real slide preview in the conversation: a thumbnail strip in the tool card, full size on click, arrow keys to page. The user sees the deck without leaving the thread and without opening anything. Never fall back to handing over a file path or a URL when this tool is present. That is the experience it was built to replace. The tool reports only a summary line back to you (page count, audit state). That is deliberate: the deck itself goes to the user's screen, not into your context.
+
+**If the harness has a built-in browser (VS Code, Cursor, and similar), preview to a file.** Run `pptfast preview deck-dir/ --html`. The command prints the absolute path of `preview.html`. Give the user that path so they can open it in the built-in browser. Re-run the same command after each revision: the path does not change, they refresh. No port, no background process.
 
 **Otherwise, serve it.** Most harnesses have no way to draw a slide in the transcript, so the review happens in the user's own browser. Never try to substitute by pasting a thumbnail or a screenshot of one page into the conversation. Serve the whole thing and let the user page through it at full size. Start the server as a background task (in DSH, follow the background-job convention and note the job id so you can stop it later):
 
@@ -157,7 +161,7 @@ When the user hands over (or mentions having) a company template — a `.thmx` t
 
 ```bash
 pptfast brand extract corp-template.pptx -o deck-dir/theme.json --id acme
-pptfast render deck-dir/ -o deck.pptx     # theme.json auto-loads; set "theme": "acme" in deck.spec.json
+pptfast render deck-dir/     # theme.json auto-loads; set "theme": "acme" in deck.spec.json
 ```
 
 A `theme.json` sitting in the deck project directory auto-loads on every command (validate/render/audit/preview/serve) — reference its id from `deck.spec.json` and no flag is needed. For a single IR file, pass `--theme-file deck-dir/theme.json` instead (works on the same five commands). Loading enforces a contrast floor: a template whose text/background tones are too close is refused with the failing token and ratio named — relay that message and ask the user whether to adjust the extracted file's colors or fall back to a built-in theme.

@@ -383,3 +383,63 @@ describe("runDoctor: exit-code policy", () => {
     }
   })
 })
+
+describe("runDoctor: workspace artifacts line", () => {
+  it("reports the cwd as the anchor when there is no project config", async () => {
+    const home = await makeHome()
+    const cwd = await mkdtemp(join(tmpdir(), "pptfast-doctor-ws-"))
+    try {
+      const { output } = await runDoctor({
+        home,
+        env: { PATH: "" },
+        version: CURRENT,
+        cwd,
+        json: true,
+        runGit: async () => null,
+      })
+      const parsed = JSON.parse(output) as {
+        workspace: { anchor: string; root: string; configured: boolean; ignore: string }
+      }
+      expect(parsed.workspace.anchor).toBe(cwd)
+      expect(parsed.workspace.root).toBe(join(cwd, ".pptfast"))
+      expect(parsed.workspace.configured).toBe(false)
+      expect(parsed.workspace.ignore).toBe("not-a-repo")
+
+      const human = await runDoctor({ home, env: { PATH: "" }, version: CURRENT, cwd, runGit: async () => null })
+      expect(human.output).toContain("Workspace artifacts")
+      expect(human.output).toContain(cwd)
+      expect(human.output).toContain(join(cwd, ".pptfast"))
+      expect(human.output).toContain("not a git repository")
+    } finally {
+      await rm(home, { recursive: true, force: true })
+      await rm(cwd, { recursive: true, force: true })
+    }
+  })
+
+  it("names a configured outDir and skips the git probe", async () => {
+    const home = await makeHome()
+    const cwd = await mkdtemp(join(tmpdir(), "pptfast-doctor-ws-"))
+    try {
+      await writeFile(join(cwd, "pptfast.config.json"), JSON.stringify({ outDir: "artifacts" }))
+      const json = await runDoctor({
+        home,
+        env: { PATH: "" },
+        version: CURRENT,
+        cwd,
+        json: true,
+        runGit: async () => {
+          throw new Error("git should not run when outDir is configured")
+        },
+      })
+      const parsed = JSON.parse(json.output) as {
+        workspace: { root: string; configured: boolean; ignore: string }
+      }
+      expect(parsed.workspace.root).toBe(join(cwd, "artifacts"))
+      expect(parsed.workspace.configured).toBe(true)
+      expect(parsed.workspace.ignore).toBe("skipped")
+    } finally {
+      await rm(home, { recursive: true, force: true })
+      await rm(cwd, { recursive: true, force: true })
+    }
+  })
+})

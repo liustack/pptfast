@@ -89,8 +89,8 @@ The commands you will reach for most:
 | Command | Does |
 |---|---|
 | `validate <target>` | Check the IR, with page numbers on every error |
-| `render <target> -o <out.pptx> [--theme <id>]` | Render a `.pptx` |
-| `preview <target> -o <dir> [--html]` | One SVG per slide, plus a self-contained review page |
+| `render <target> [-o <out.pptx>] [--theme <id>]` | Render a `.pptx`. Omit `-o` to write `.pptfast/<deck>/<deck>.pptx` |
+| `preview <target> [-o <dir>] [--html]` | One SVG per slide, plus a self-contained review page. Omit `-o` to write `.pptfast/<deck>/` |
 | `serve <target>` | Live preview that reloads on every change, with reviewer annotations |
 | `audit <target>` | Geometry review: overflow, out-of-bounds, low contrast, overlap |
 | `themes` | List the built-in themes |

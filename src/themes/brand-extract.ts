@@ -258,14 +258,18 @@ function buildFontStack(extracted: string | undefined): string[] {
 /** Lower-cases, replaces every run of non-alphanumeric characters with a
  *  single hyphen, and trims leading/trailing hyphens — a plain, dependency-free
  *  slug (no new package for one string transform). Empty input (or input
- *  that's entirely non-alphanumeric) falls back to `"brand"` rather than
- *  producing an empty/invalid theme id. */
-export function slugify(input: string): string {
+ *  that's entirely non-alphanumeric — a CJK-only deck name reduces to nothing
+ *  here) falls back to `fallback` rather than producing an empty/invalid
+ *  identifier. The fallback is a parameter because this function now serves
+ *  two callers whose empty-input answer differs: a brand theme id (`"brand"`,
+ *  the default) and a workspace deck directory name (`"deck"`,
+ *  `../cli/workspace.ts`). */
+export function slugify(input: string, fallback = "brand"): string {
   const slug = input
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-  return slug || "brand"
+  return slug || fallback
 }
 
 /**

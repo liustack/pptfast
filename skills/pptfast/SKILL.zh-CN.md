@@ -92,8 +92,10 @@ pptfast validate deck-dir/     # content-quality gate: heading length, density, 
 ### Phase 4 — 渲染
 
 ```bash
-pptfast render deck-dir/ -o deck.pptx
+pptfast render deck-dir/
 ```
+
+`.pptx` 落在 `.pptfast/<deck>/`。命令会打印绝对路径，把那一行报给用户。
 
 `--theme <id>` 在不改动 spec 的前提下覆盖 deck 的 theme。`--style <path>` 在其上叠加一层 style-token 覆盖（不用分叉 theme 就能重新配色，schema 见 `pptfast schema --style`）。deck 里还有未填的占位页时，render 会拒绝导出，除非加上 `--draft`——只有当用户明确想在所有页面都写完之前先看一眼时，才用它。某一页装不下、版面丢掉了放不下的块而页面上毫无提示时，render 同样拒绝导出，报错会写清哪几页各丢了几块。正确做法是把那一页缩短或拆成两页再重新渲染，`--allow-dropped-content` 会带着缺失的内容出片，只有用户明确要求时才用。
 
@@ -112,18 +114,20 @@ pptfast audit deck-dir/
 如果有页面用了 cover/chapter 照片背景，加上 `--pixels`——它会把该页光栅化并采样真实像素，抓住文字直接压在一张没有遮罩的照片上的情况，这是上面纯 SVG 检查唯一看不到的一种。
 
 ```bash
-pptfast preview deck-dir/ -o preview/ --html
+pptfast preview deck-dir/ --html
 ```
 
-为每张 slide 各写一个独立 SVG，外加一个自包含的 `preview.html`，永远不受占位页拦截。交付之前自己读几个 SVG（它们就是纯文本文件），核对 layout 与密度是否合理，图片较多的 deck 尤其要看——把 `preview.html`（缩略图条、键盘翻页、占位页角标）交给用户自己看，而不是代替这一步。所有页面都填完时，`preview.html` 还会叠加同一份 `audit` 检查结果（每页一个角标 + 一个 findings 面板），让审查者不用打开终端就能看到问题——deck 里如果还有占位页，则改为显示一行「audit skipped」的提示。`preview.html` 是只读的：它只负责把 deck 呈现出来，从不改动它。审查者想改什么，直接在对话里告诉你——把那一页截图发给你是最快的交接方式——你再走阶段六处理。
+为每张 slide 各写一个独立 SVG，外加一个自包含的 `preview.html`，都落在 `.pptfast/<deck>/`，永远不受占位页拦截。命令会打印绝对路径，把那一行报给用户。交付之前自己读几个 SVG（它们就是纯文本文件），核对 layout 与密度是否合理，图片较多的 deck 尤其要看。把 `preview.html`（缩略图条、键盘翻页、占位页角标）交给用户自己看，而不是代替这一步。所有页面都填完时，`preview.html` 还会叠加同一份 `audit` 检查结果（每页一个角标 + 一个 findings 面板），让审查者不用打开终端就能看到问题。deck 里如果还有占位页，则改为显示一行「audit skipped」的提示。`preview.html` 是只读的：它只负责把 deck 呈现出来，从不改动它。审查者想改什么，直接在对话里告诉你。把那一页截图发给你是最快的交接方式，你再走阶段六处理。
 
 ### 把 deck 拿给用户看
 
-怎么交付取决于 harness 能画什么，两条路不等价——**有第一条就用第一条**。
+怎么交付取决于 harness 能画什么。按下面的顺序，用第一条成立的。
 
-**如果存在 `pptfast_preview` 工具，就调它。** 它渲染完直接把幻灯片预览放进对话：卡片里是缩略图条，点开看全尺寸，方向键翻页。用户不用离开对话，也不用打开任何东西。**这个工具在场时绝不要退回去甩一个 URL 给用户**——它就是为了取代那个体验才存在的。工具只回给你一行摘要（页数、审计状态），这是刻意的：deck 去用户屏幕，不进你的上下文。
+**如果存在 `pptfast_preview` 工具，就调它。** 它渲染完直接把幻灯片预览放进对话：卡片里是缩略图条，点开看全尺寸，方向键翻页。用户不用离开对话，也不用打开任何东西。**这个工具在场时绝不要退回去甩一个文件路径或 URL 给用户**。它就是为了取代那个体验才存在的。工具只回给你一行摘要（页数、审计状态），这是刻意的：deck 去用户屏幕，不进你的上下文。
 
-**没有这个工具就起服务。** 大多数 harness 没办法在对话里画出一页幻灯片，审阅就发生在用户自己的浏览器里。绝不要用「贴一张缩略图或某一页的截图」来代替。把整份 deck 服务出去，让用户全尺寸自己翻。启动服务（在 DSH 里遵循后台任务的规矩，记下 job id，方便之后停掉）：
+**如果 harness 有内置浏览器（VS Code、Cursor 一类），就预览成文件。** 跑 `pptfast preview deck-dir/ --html`。命令会打印 `preview.html` 的绝对路径，把那条路径给用户，让他在内置浏览器里打开。每轮修订后重跑同一条命令，路径不变，用户刷新即可。不占端口，不留常驻进程。
+
+**否则就起服务。** 大多数 harness 没办法在对话里画出一页幻灯片，审阅就发生在用户自己的浏览器里。绝不要用「贴一张缩略图或某一页的截图」来代替。把整份 deck 服务出去，让用户全尺寸自己翻。启动服务（在 DSH 里遵循后台任务的规矩，记下 job id，方便之后停掉）：
 
 ```bash
 pptfast serve deck-dir/ --no-open
@@ -159,7 +163,7 @@ pptfast serve deck-dir/ --no-open
 
 ```bash
 pptfast brand extract corp-template.pptx -o deck-dir/theme.json --id acme
-pptfast render deck-dir/ -o deck.pptx     # theme.json 自动装载；在 deck.spec.json 里写 "theme": "acme"
+pptfast render deck-dir/     # theme.json 自动装载。在 deck.spec.json 里写 "theme": "acme"
 ```
 
 放在 deck 项目目录里的 `theme.json` 会在每条命令（validate/render/audit/preview/serve）上自动装载——在 `deck.spec.json` 里引用它的 id 即可，不需要任何 flag。单个 IR 文件则改用 `--theme-file deck-dir/theme.json`（同样五条命令都支持）。装载时会执行对比度底线检查：文字与背景色过于接近的模板会被拒绝，错误信息里写明是哪个 token、比值是多少——把这条信息转告用户，问 TA 是想调整抽出文件里的颜色，还是退回内置 theme。

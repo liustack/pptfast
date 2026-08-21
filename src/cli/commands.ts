@@ -42,6 +42,12 @@ import {
 import { loadIrFile, resolveLocalAssets } from "./load-ir"
 import { buildPreviewHtml } from "./preview-html"
 import { buildPreviewManifest } from "./preview-manifest"
+import {
+  prepareWorkspaceDir,
+  pruneRenderedSvgs,
+  resolveWorkspaceLocation,
+  type GitRunner,
+} from "./workspace"
 
 /** `findUserConfig()`'s own return shape, named here so it can be threaded as
  *  a parameter (`loadDeckTarget`/`applyDeckConfig` below) instead of each
@@ -256,11 +262,11 @@ export async function applyDeckConfig(
  *
  * `resolvedTarget` (serve wave, task S1) is the absolute path `target` itself
  * resolved to — the deck directory (`isDir: true`) or the single IR file
- * (`isDir: false`). Unused by `runValidate`/`runRender`/`runAudit`, which
- * only ever destructure `raw`/`baseDir`(/`isDir`) — it exists so
- * `buildDeckPreview` below can hand it to `createServeServer` (`./serve.ts`)
- * as the exact path to `fs.watch`, without that module re-deriving the same
- * bare-name/`decksDir` resolution a second time.
+ * (`isDir: false`). `runRender`/`runPreview` use it as the slug source when
+ * `-o` is omitted (workspace-artifacts wave). `buildDeckPreview` hands it to
+ * `createServeServer` (`./serve.ts`) as the exact path to `fs.watch`, without
+ * that module re-deriving the same bare-name/`decksDir` resolution a second
+ * time.
  */
 async function loadDeckTarget(
   arg: string,
@@ -283,12 +289,25 @@ async function loadDeckTarget(
 }
 
 export interface RenderOptions {
-  output: string
+  /** `-o <file>`. Optional (workspace-artifacts wave): omitted, the deck
+   *  renders to `<anchor>/.pptfast/<slug>/<slug>.pptx` — see
+   *  {@link resolveWorkspaceLocation} (`./workspace.ts`) for how the anchor
+   *  and slug are derived. A relative value resolves against `cwd`, and the
+   *  workspace default is never consulted: an explicit path is always the
+   *  final word, and nothing gets created or ignored on its behalf. */
+  output?: string
   theme?: string
   /** `--theme-file <path>` — see `applyDeckConfig`'s own `themeFilePath` doc comment. */
   themeFilePath?: string
   stylePath?: string
   cwd?: string
+  /** `--no-git-ignore` sets this false: skip the one-time
+   *  `.git/info/exclude` line the workspace default would otherwise add
+   *  (`prepareWorkspaceDir`, `./workspace.ts`). No effect when `-o` is given
+   *  — that path never touches the workspace at all. */
+  gitIgnore?: boolean
+  /** Injectable git runner for tests. Production leaves this unset. */
+  runGit?: GitRunner
   /** Skip the unfilled-placeholder-pages gate (W5 task 1) — see `generatePptx` in `../api`. */
   draft?: boolean
   /** Skip the content-drop gate — see `checkContentDropGate` in `../pptx/generate`. */
@@ -318,7 +337,7 @@ export interface RenderOptions {
 export async function runRender(irPath: string, opts: RenderOptions): Promise<string> {
   const cwd = opts.cwd ?? process.cwd()
   const [projectHit, userHit] = await Promise.all([findConfig(cwd), findUserConfig()])
-  const { raw, baseDir } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
+  const { raw, baseDir, isDir, resolvedTarget } = await loadDeckTarget(irPath, cwd, projectHit, userHit)
   await applyDeckConfig(raw, {
     theme: opts.theme,
     themeFilePath: opts.themeFilePath,
@@ -334,10 +353,27 @@ export async function runRender(irPath: string, opts: RenderOptions): Promise<st
     draft: opts.draft,
     allowDroppedContent: opts.allowDroppedContent,
   })
-  await mkdir(dirname(resolve(opts.output)), { recursive: true })
-  await writeFile(opts.output, bytes)
-  const ok = `wrote ${opts.output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`
-  const notes = [warningsNote(v.warnings), normalizedNote(v.normalized)].filter((n): n is string => n !== undefined)
+  const extraNotes: string[] = []
+  let output: string
+  if (opts.output !== undefined) {
+    output = resolve(cwd, opts.output)
+    await mkdir(dirname(output), { recursive: true })
+  } else {
+    const location = resolveWorkspaceLocation({
+      cwd,
+      projectConfigPath: projectHit?.path,
+      outDir: projectHit?.config.outDir,
+      target: resolvedTarget,
+      isDir,
+    })
+    extraNotes.push(...(await prepareWorkspaceDir(location, { gitIgnore: opts.gitIgnore, runGit: opts.runGit })))
+    output = join(location.dir, `${location.slug}.pptx`)
+  }
+  await writeFile(output, bytes)
+  const ok = `wrote ${output} (${v.ir!.slides.length} slides, ${bytes.length} bytes)`
+  const notes = [...extraNotes, warningsNote(v.warnings), normalizedNote(v.normalized)].filter(
+    (n): n is string => n !== undefined,
+  )
   return notes.length > 0 ? `${ok}\n${notes.join("\n")}` : ok
 }
 
@@ -864,6 +900,10 @@ export async function runInit(cwd = process.cwd()): Promise<string> {
 
 export interface PreviewOptions {
   cwd?: string
+  /** `--no-git-ignore` sets this false. No effect when `-o` is given. */
+  gitIgnore?: boolean
+  /** Injectable git runner for tests. Production leaves this unset. */
+  runGit?: GitRunner
   /** `--theme-file <path>` — see `applyDeckConfig`'s own `themeFilePath` doc comment. */
   themeFilePath?: string
   /** `--html` (v0.3 W7 task 1, spec §7 workflow ⑤): also write a
@@ -1032,30 +1072,55 @@ export async function buildDeckPreview(
  * function's own job is now purely the CLI-facing shell around them —
  * writing each rendered SVG to `outDir`, conditionally writing
  * `preview.html`, and assembling the human-readable summary line. `outDir`
- * is only created once assemble/validate/render has already succeeded
- * (`renderDeckSlides` runs first) — a target that fails to resolve or
- * validate never leaves behind an empty `outDir` it was never able to fill,
- * the same "don't create output for a call that's about to fail" posture
- * `runDisassemble`'s own path-traversal guard already established elsewhere
- * in this file.
+ * is optional (workspace-artifacts wave): omitted, the files land in
+ * `<anchor>/.pptfast/<slug>/`, and matching `NNN-<type>.svg` leftovers from
+ * a previous run of the same deck are pruned first. An explicit `-o` is
+ * resolved against `cwd` and is never pruned — that directory may be
+ * anything. The directory is only created once assemble/validate/render has
+ * already succeeded (`renderDeckSlides` runs first) — a target that fails
+ * to resolve or validate never leaves behind an empty directory it was
+ * never able to fill, the same "don't create output for a call that's about
+ * to fail" posture `runDisassemble`'s own path-traversal guard already
+ * established elsewhere in this file.
  */
-export async function runPreview(irPath: string, outDir: string, opts: PreviewOptions = {}): Promise<string> {
-  const { ir, svgs, normalized } = await renderDeckSlides(irPath, { cwd: opts.cwd, themeFilePath: opts.themeFilePath })
+export async function runPreview(irPath: string, outDir?: string, opts: PreviewOptions = {}): Promise<string> {
+  const cwd = opts.cwd ?? process.cwd()
+  const { ir, svgs, normalized, isDir, resolvedTarget } = await renderDeckSlides(irPath, {
+    cwd,
+    themeFilePath: opts.themeFilePath,
+  })
   // After render, not before (S1 review carry) — see this function's own doc comment.
-  await mkdir(outDir, { recursive: true })
+  const extraNotes: string[] = []
+  let resolvedOut: string
+  if (outDir !== undefined) {
+    resolvedOut = resolve(cwd, outDir)
+    await mkdir(resolvedOut, { recursive: true })
+  } else {
+    const projectHit = await findConfig(cwd)
+    const location = resolveWorkspaceLocation({
+      cwd,
+      projectConfigPath: projectHit?.path,
+      outDir: projectHit?.config.outDir,
+      target: resolvedTarget,
+      isDir,
+    })
+    extraNotes.push(...(await prepareWorkspaceDir(location, { gitIgnore: opts.gitIgnore, runGit: opts.runGit })))
+    await pruneRenderedSvgs(location.dir)
+    resolvedOut = location.dir
+  }
   const svgNames: string[] = []
   for (let i = 0; i < ir.slides.length; i++) {
     const name = `${String(i + 1).padStart(3, "0")}-${ir.slides[i]!.type}.svg`
     svgNames.push(name)
-    await writeFile(join(outDir, name), svgs[i]!)
+    await writeFile(join(resolvedOut, name), svgs[i]!)
   }
-  const ok = `wrote ${ir.slides.length} SVG files to ${outDir}`
-  const notes: string[] = []
+  const ok = `wrote ${ir.slides.length} SVG files to ${resolvedOut}`
+  const notes: string[] = [...extraNotes]
   const aliasNote = normalizedNote(normalized)
   if (aliasNote) notes.push(aliasNote)
   if (opts.htmlOut) {
     const { html, findings, checks } = buildDeckAuditAndHtml(ir, svgs)
-    const htmlPath = join(outDir, "preview.html")
+    const htmlPath = join(resolvedOut, "preview.html")
     await writeFile(htmlPath, html)
 
     // The machine-readable half of the same bundle (`./preview-manifest.ts`).
@@ -1082,7 +1147,7 @@ export async function runPreview(irPath: string, outDir: string, opts: PreviewOp
         ? "audit skipped — deck has unfilled placeholder pages"
         : undefined,
     })
-    const manifestPath = join(outDir, "manifest.json")
+    const manifestPath = join(resolvedOut, "manifest.json")
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
 
     notes.push(`note: wrote self-contained preview to ${htmlPath}`)
