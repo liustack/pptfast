@@ -44,7 +44,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
     }
   }
 
-  it("has exactly 43 layout-kind entries, all traceable to one of the four real registries (speech-layouts wave: 40 -> 43, stat-hero/one-evidence/mono-bleed)", () => {
+  it("has exactly 47 layout-kind entries, all traceable to one of the four real registries (board-cover-fidelity wave: 43 -> 47, institutional-block/memo-head/board-head/bill-head)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_LAYOUTS),
       ...Object.keys(CHAPTER_LAYOUTS),
@@ -52,7 +52,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
       ...Object.keys(ENDING_LAYOUTS),
     ])
     const layoutEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(layoutEntries).toHaveLength(43)
+    expect(layoutEntries).toHaveLength(47)
     for (const entry of layoutEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real layout id`).toBe(true)
     }
@@ -209,9 +209,10 @@ describe("layoutsForSlideType", () => {
   })
 
   it("cover/chapter/ending each resolve to exactly their 9, 9 or 7 layouts (no takeovers)", () => {
-    // cover grew 8 -> 9 in the theme-redesign wave (colophon).
-    // chapter grew 8 -> 9 in the editorial-verse wave (verse-chapter, pinOnly).
-    expect(layoutsForSlideType("cover")).toHaveLength(9)
+    // cover grew 9 -> 13 in the board-cover-fidelity wave (institutional-block,
+    // memo-head, board-head, bill-head). chapter grew 8 -> 9 in the
+    // editorial-verse wave (verse-chapter, pinOnly).
+    expect(layoutsForSlideType("cover")).toHaveLength(13)
     expect(layoutsForSlideType("chapter")).toHaveLength(9)
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })

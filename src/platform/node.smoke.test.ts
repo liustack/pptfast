@@ -10,7 +10,7 @@ const ir = PptxIRSchema.parse({
   filename: "smoke",
   theme: { id: "consulting" },
   slides: [
-    { type: "cover", heading: "pptfast smoke", subheading: "node render path" },
+    { type: "cover", heading: "pptfast smoke", subheading: "node render path", layout: "banner-title" },
     { type: "content", heading: "Bullets", components: [{ type: "bullets", items: ["one", "two", "three"] }] },
     { type: "ending", heading: "Thanks" },
   ],

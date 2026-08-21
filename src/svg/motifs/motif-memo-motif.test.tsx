@@ -63,8 +63,14 @@ function parts(root: Element) {
 }
 
 describe("MemoMotif（打字机眉行）", () => {
-  it("四种页型都画：顶缘红双线 + MEMORANDUM 眉字", () => {
-    for (const slide of ALL_SLIDES) {
+  it("封面整片不画：公文头改由 memo-head 版式承担", () => {
+    const { root } = draw("memo", coverSlide)
+    expect(root.querySelectorAll("line")).toHaveLength(0)
+    expect(root.querySelectorAll("text")).toHaveLength(0)
+  })
+
+  it("章节/内容/收尾仍画顶缘红双线 + MEMORANDUM 眉字", () => {
+    for (const slide of [chapterSlide, contentSlide, endingSlide]) {
       const { root } = draw("memo", slide)
       const p = parts(root)
       expect(p.thickRule, `no thick rule on ${slide.type}`).toBeTruthy()
@@ -75,7 +81,7 @@ describe("MemoMotif（打字机眉行）", () => {
 
   it("颜色一律读 token：双线与眉字走 accent", () => {
     const t = resolveStyle("memo")
-    const { root } = draw("memo", coverSlide)
+    const { root } = draw("memo", contentSlide)
     const p = parts(root)
     expect(p.thickRule.getAttribute("stroke")).toBe(t.colors.accent)
     expect(p.thinRule.getAttribute("stroke")).toBe(t.colors.accent)
@@ -85,7 +91,7 @@ describe("MemoMotif（打字机眉行）", () => {
   it("换一家 tokens 渲染时颜色跟着换，memo 的色一处不残留", () => {
     const journal = resolveStyle("journal")
     const ctx = buildCtx(journal, {})
-    const { markup } = render(<MemoMotif ir={ir("journal")} slide={coverSlide} ctx={ctx} />)
+    const { markup } = render(<MemoMotif ir={ir("journal")} slide={contentSlide} ctx={ctx} />)
     expect(markup).toContain(journal.colors.accent)
     for (const hex of ["#F6F1E7", "#FBF8F1", "#A63A2B", "#675E51", "#E4DFD2"]) {
       expect(markup, `memo token ${hex} leaked into the journal render`).not.toContain(hex)
@@ -93,7 +99,7 @@ describe("MemoMotif（打字机眉行）", () => {
   })
 
   it("顶缘双线几何：x48→1232，粗线 3px y26 / 细线 1px y32", () => {
-    const { root } = draw("memo", coverSlide)
+    const { root } = draw("memo", contentSlide)
     const { thickRule, thinRule } = parts(root)
     for (const l of [thickRule, thinRule]) {
       expect(num(l, "x1")).toBe(48)
@@ -105,7 +111,7 @@ describe("MemoMotif（打字机眉行）", () => {
 
   it("眉字是 MEMORANDUM，等宽、加粗、落在双线上方", () => {
     const t = resolveStyle("memo")
-    const { root } = draw("memo", coverSlide)
+    const { root } = draw("memo", contentSlide)
     const { eyebrow } = parts(root)
     expect(eyebrow.textContent).toBe("MEMORANDUM")
     expect(eyebrow.getAttribute("font-family")).toBe(resolveFontStack(t.fonts.mono ?? [], "mono"))
@@ -131,7 +137,7 @@ describe("MemoMotif（打字机眉行）", () => {
   })
 
   it("安全区：双线与眉字全在标题区上沿 y48 之上，不进第五带，不碰两个 logo 盒", () => {
-    const { root } = draw("memo", coverSlide)
+    const { root } = draw("memo", contentSlide)
     const { thickRule, thinRule, eyebrow } = parts(root)
     expect(num(thickRule, "y1")).toBeLessThan(TITLE_ZONE.y)
     expect(num(thinRule, "y1")).toBeLessThan(TITLE_ZONE.y)
@@ -184,7 +190,7 @@ describe("MemoMotif（打字机眉行）", () => {
 
 describe("memo vs heritage vs vermilion（字族用法分家）", () => {
   it("三家顶缘双线不是同一张几何：memo 3px@y26，heritage 2px@y28，vermilion 金线 2px@y22", () => {
-    const memo = parts(draw("memo", coverSlide).root)
+    const memo = parts(draw("memo", contentSlide).root)
     const heritageCtx = buildCtx(resolveStyle("heritage"), {})
     const vermilionCtx = buildCtx(resolveStyle("vermilion"), {})
     const heritageRoot = render(<HeritageMotif ir={ir("heritage")} slide={coverSlide} ctx={heritageCtx} />).root
@@ -203,7 +209,7 @@ describe("memo vs heritage vs vermilion（字族用法分家）", () => {
   })
 
   it("只有 memo 在顶缘写下 MEMORANDUM，heritage 是角花，vermilion chapter 整页退让", () => {
-    expect(parts(draw("memo", coverSlide).root).eyebrow).toBeTruthy()
+    expect(parts(draw("memo", contentSlide).root).eyebrow).toBeTruthy()
     const heritageCtx = buildCtx(resolveStyle("heritage"), {})
     const heritageRoot = render(<HeritageMotif ir={ir("heritage")} slide={coverSlide} ctx={heritageCtx} />).root
     expect(heritageRoot.querySelector("text")).toBeNull()

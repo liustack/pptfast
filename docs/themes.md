@@ -40,9 +40,9 @@ A theme bundles a style (design tokens), a brand (identity chrome: logo, footer,
 
 `pptfast themes [--json]` prints the same list from the installed version.
 
-Every built-in points each page type at the full set of registered layouts. Every layout adapts its text color to the theme's actual background, so the full set stays readable everywhere. Narrowing that set is a theme author's deliberate choice, and none of them narrows anything today.
+Every built-in points each page type at the full set of registered layouts, except five covers that were locked to a board construction. Every layout adapts its text color to the theme's actual background, so the full set stays readable everywhere. Narrowing that set is a theme author's deliberate choice. `stage`, `lecture`, `swiss`, `memo`, and `playbill` use it on `layouts.cover` so the design-board composition is the cover you get, not a recolored neighbor from the pool.
 
-What each theme *does* narrow is its preference: every built-in names the covers it leans toward, so two themes rendering the same deck under the same seed usually pick different covers. It stays a preference, not a lock — pin `slide.layout` when a cover has to be exactly one thing.
+What every other theme narrows is its preference: it names the covers it leans toward, so two themes rendering the same deck under the same seed usually pick different covers. That stays a preference, not a lock — pin `slide.layout` when a cover has to be exactly one thing. The five above already locked the pool, so the preference and the pool are the same id.
 
 `bloom` is `classroom` with five colors swapped — and nothing else. Same structure, same fonts, same corner radius, same decoration geometry, drawn in its own palette. Pick `bloom` for the cherry-blossom paper and dry rose, `classroom` for the misty-blue lecture paper; the same deck picks the same layouts under either. That makes 25 theme ids and 24 distinct designs.
 

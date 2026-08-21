@@ -937,12 +937,15 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // chapter / ending / content 不声明：身份靠封面 + none + airy gapScale。
   // statement 是 pinOnly，不进倾向池。
   stage: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // 第七波封面保真：板面是居中巨字海报。构图已被 poster-center 覆盖
+    // （typeScale 1.5 把 100px 提到展示级）。收窄 cover 池，软倾向保不住
+    // 「一模一样」。docs/themes.md 写明的作者主动权，首次动用。
+    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // motif 刻意不配：无框就是身份。runway 是「大片排印」的 none，stage
     // 是「黑场」的 none，用 heading / meta 两轴分开。照 runway 先例留空，
     // 不是漏写（theme-structure.test.ts 把两家一起钉成合法例外）。
     layoutTendencies: {
-      cover: ["poster-center", "tone-adaptive-header"],
+      cover: ["poster-center"],
     },
   },
   // lecture（黑板夜校，2026-08-21）：墨绿板面 + 衬线 + 黄粉笔，粉笔槽细框
@@ -957,10 +960,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // gapScale，不靠再声明一个与 classroom 同形的轴去硬凑区分度。classroom
   // 是白日讲义纸，lecture 是夜校黑板，同一对封面 id、两张底。
   lecture: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // 第七波封面保真：板面是左轴板书，池里没有这个构造，新建 board-head
+    // 进共享池并收窄 cover。粉笔槽细框仍走 lecture-motif。
+    layouts: { cover: ["board-head"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "lecture-motif",
     layoutTendencies: {
-      cover: ["banner-title", "tone-adaptive-header"],
+      cover: ["board-head"],
     },
   },
   // swiss（冷白制度，2026-08-21 wave7）：冷白纸 + 硬黑即正文即色块 + 瑞士红
@@ -978,10 +983,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // chapter / ending / content 不声明：身份靠封面 + light motif + tight
   // gapScale，不靠再声明一个与 tech 同形的轴去硬凑区分度。
   swiss: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // 第七波封面保真：板面是红边 + 左置巨黑字 + 签名块，池里没有这个构造。
+    // 新建 institutional-block 进共享池并收窄 cover。顶边红条仍走 swiss-motif。
+    layouts: { cover: ["institutional-block"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "swiss-motif",
     layoutTendencies: {
-      cover: ["left-anchor", "split-diagonal"],
+      cover: ["institutional-block"],
     },
   },
   // memo（打字机决定，2026-08-21 wave7）：便笺纸 + 宋体标题 + 印章红双线。
@@ -999,10 +1006,12 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // chapter / ending / content 不声明：身份靠封面 + light motif + tight
   // gapScale。chrome 仍归 deck 声明，不在本行绑定。
   memo: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // 第七波封面保真：板面是 MEMORANDUM 眉行 + 红双线 + 标题末词下划。
+    // 新建 memo-head 进共享池并收窄 cover。motif 在封面退让，避免双份公文头。
+    layouts: { cover: ["memo-head"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     motif: "memo-motif",
     layoutTendencies: {
-      cover: ["banner-title", "editorial-masthead"],
+      cover: ["memo-head"],
     },
   },
   // playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字。
@@ -1023,12 +1032,14 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 再声明一个与 vermilion 同形的轴去硬凑区分度。
   // layouts 仍是四页型全集。定位 10 页内活动件（宣发 / 招募 / 节目单）。
   playbill: {
-    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // 第七波封面保真：板面是出血巨字 + 底粗线，池里没有这个构造。新建
+    // bill-head 进共享池并收窄 cover。日期贴片仍走 playbill-motif，版式不画。
+    layouts: { cover: ["bill-head"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
     // 2026-08-22 用户终审还原日期贴片：motif 读 meta.date，无日期整片
     // 不画（journal 期号先例）。heavy 的主体仍在满版黄与字重。
     motif: "playbill-motif",
     layoutTendencies: {
-      cover: ["poster-center", "fashion-masthead"],
+      cover: ["bill-head"],
     },
   },
 }

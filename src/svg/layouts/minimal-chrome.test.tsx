@@ -185,7 +185,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
       slides,
     } as PptxIR
     expect(slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))).toEqual([
-      "poster-center",
+      "left-anchor",
       "fashion-chapter",
       "tone-adaptive-content",
       "split-band",

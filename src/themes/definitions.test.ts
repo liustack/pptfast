@@ -100,6 +100,11 @@ describe("THEME_DEFINITIONS", () => {
     // (it feeds `weightedPickBySeed`'s positional sampling), so this list is
     // re-推 by hand against that file, not derived.
     "colophon",
+    // board-cover-fidelity wave (2026-08-22): cover pool 9 -> 13.
+    "institutional-block",
+    "memo-head",
+    "board-head",
+    "bill-head",
   ]
   const FULL_CHAPTER = [
     "masthead-chapter",
@@ -254,6 +259,19 @@ describe("THEME_DEFINITIONS", () => {
       ending: FULL_ENDING,
     })
     expect(THEME_DEFINITIONS.heritage.motif).toBe("heritage-motif")
+  })
+
+  it("wave7 five themes narrow layouts.cover to the board construction (first use of cover narrowing)", () => {
+    expect(THEME_DEFINITIONS.stage.layouts.cover).toEqual(["poster-center"])
+    expect(THEME_DEFINITIONS.lecture.layouts.cover).toEqual(["board-head"])
+    expect(THEME_DEFINITIONS.swiss.layouts.cover).toEqual(["institutional-block"])
+    expect(THEME_DEFINITIONS.memo.layouts.cover).toEqual(["memo-head"])
+    expect(THEME_DEFINITIONS.playbill.layouts.cover).toEqual(["bill-head"])
+    expect(THEME_DEFINITIONS.stage.layoutTendencies).toEqual({ cover: ["poster-center"] })
+    expect(THEME_DEFINITIONS.lecture.layoutTendencies).toEqual({ cover: ["board-head"] })
+    expect(THEME_DEFINITIONS.swiss.layoutTendencies).toEqual({ cover: ["institutional-block"] })
+    expect(THEME_DEFINITIONS.memo.layoutTendencies).toEqual({ cover: ["memo-head"] })
+    expect(THEME_DEFINITIONS.playbill.layoutTendencies).toEqual({ cover: ["bill-head"] })
   })
 
   it("未知 id 经 resolveThemeId 回落 consulting 的主题定义（含 layouts/motif），原 manifest 取值函数回落断言迁移", () => {

@@ -715,6 +715,14 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `scenarioBearing`: SVG slide 0 (cover) loses the empty `<text
       //     x="1216" y="650">`. PPTX `slide1.xml` goes 11 -> 10 shapes.
       //   - `annualReviewPreset`: identical drift, same 11 -> 10.
+      // Re-recaptured (board-cover-fidelity wave, 2026-08-22 — cover pool
+      // 9 -> 13). Same sampler-denominator mechanism as the colophon recapture
+      // above. Exactly one slide changed in two of the three (index 0, the
+      // cover). `annualReviewPreset` did not move. `.audit.json` needed no
+      // recapture (findings stayed the empty array):
+      //   - `basic` (`consulting`): `left-anchor` -> `editorial-masthead`.
+      //   - `scenarioBearing` (`journal`): `tone-adaptive-header` ->
+      //     `left-anchor`.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
