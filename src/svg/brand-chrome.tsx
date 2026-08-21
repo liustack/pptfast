@@ -1,7 +1,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import type { ComponentCtx } from "./components/types"
 import { CONF_LABEL } from "../lib/conf-labels"
-import { resolveBrand } from "../themes/definitions"
+import { effectiveRequestedLayout, resolveBrand } from "../themes/definitions"
 import { cachedDeckSeed, pickBySeed } from "./variety"
 import { FOOTER_DIVIDER_Y } from "./chrome-geometry"
 import { layoutOmitsChrome } from "./layouts/registry"
@@ -26,7 +26,10 @@ export function BrandChrome({
   // the whole fragment — footer rule, footer meta, and logo. Page numbers
   // are already gone globally. Distinct from image-split/image-bottom,
   // which only suppress or restyle the footer while still drawing a logo.
-  if (layoutOmitsChrome(slide.layout)) return null
+  // Honour the *offered* pin, not a discarded sparse pin: crayon +
+  // statement falls back to a regular content layout and still paints
+  // this fragment under chrome:full. Consulting + statement still skips.
+  if (layoutOmitsChrome(effectiveRequestedLayout(ir.theme.id, slide.layout))) return null
   // Deck-level chrome posture. Omitted = "cover-only": cover and chapter keep
   // the brand logo, content and ending skip the whole fragment (rule, meta,
   // logo). "full" is the explicit declaration that draws the content-page

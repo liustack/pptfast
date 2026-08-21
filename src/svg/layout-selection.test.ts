@@ -7,6 +7,8 @@ import { STRATEGY_DEFINITIONS, type Strategy } from "@/narrative"
 import { FullSlideSvg } from "./full-slide-svg"
 import { getLayout, LAYOUT_REGISTRY, layoutsForSlideType } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
+import { validateIr } from "../api"
+import { FOOTER_DIVIDER_Y } from "./chrome-geometry"
 import { __fullLayoutSet, __resetRegisteredThemes, registerTheme, THEME_DEFINITIONS, type ThemeDefinition } from "../themes/definitions"
 
 /** Full auto-pick pools. academic.layouts.cover is now a singleton lock. */
@@ -1126,14 +1128,34 @@ describe("render parity with FullSlideSvg", () => {
       themeId: "academic",
       slide: { type: "content", heading: "x", beat: "dense", components: [{ type: "paragraph", text: "x" }] },
     },
+    {
+      label: "crayon content, unoffered statement pin falls back",
+      themeId: "crayon",
+      slide: { type: "content", heading: "x", layout: "statement", components: [] },
+    },
   ]
 
   for (const c of layoutPathCases) {
     it(`${c.label}: resolveEffectiveLayoutId matches the actual rendered data-archetype`, () => {
       const ir = makeIR([c.slide], c.themeId)
-      expect(resolveEffectiveLayoutId(ir, c.slide, 0)).toBe(renderedLayoutId(ir, c.slide, 0))
+      const resolved = resolveEffectiveLayoutId(ir, c.slide, 0)
+      expect(resolved).toBe(renderedLayoutId(ir, c.slide, 0))
+      if (c.themeId === "crayon" && c.slide.layout === "statement") {
+        expect(resolved).not.toBe("statement")
+      }
     })
   }
+
+  it("crayon + statement + chrome full paints brand chrome on the fallback content layout", () => {
+    const slide: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
+    const ir: PptxIR = { ...makeIR([slide], "crayon"), chrome: "full", meta: { organization: "ACME" } }
+    const { container } = render(createElement(FullSlideSvg, { ir, slide, index: 0 }))
+    const archetype = container.querySelector("[data-archetype]")?.getAttribute("data-archetype")
+    expect(archetype).not.toBe("statement")
+    expect(THEME_DEFINITIONS.crayon.layouts.content).toContain(archetype)
+    expect(container.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).not.toBeNull()
+    expect(container.textContent).toContain("ACME")
+  })
 
   // Backlog item 3 (`.issues/notes/engineering-history.md` #3): every
   // case above is a single-page deck at index 0, where
@@ -1332,5 +1354,117 @@ describe("render parity with FullSlideSvg", () => {
         resolveLayoutId("content", layouts, 1, "0", PIN_ONLY_TEST_ID, "briefing", null),
       ).toBe(PIN_ONLY_TEST_ID)
     })
+  })
+})
+
+function isSparseOfferWarning(message: string, layoutId: string, slideType: string): boolean {
+  return (
+    message.includes(`layout "${layoutId}" is not a sparse page this theme offers`) &&
+    message.includes(`falling back to a regular ${slideType} layout`)
+  )
+}
+
+function assertNonPinOnlyPoolMember(themeId: keyof typeof THEME_DEFINITIONS, slideType: "content" | "chapter", picked: string | null) {
+  expect(picked).toBeTruthy()
+  expect(THEME_DEFINITIONS[themeId].layouts[slideType]).toContain(picked)
+  expect(__fullLayoutSet(slideType)).toContain(picked)
+  expect(getLayout(picked!)?.pinOnly).toBeFalsy()
+}
+
+describe("unoffered sparse pins warn and fall back", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  it("crayon + statement: ok true, warning, fallback to a non-pinOnly content layout", () => {
+    const slide: Slide = {
+      type: "content",
+      id: "p-climax",
+      layout: "statement",
+      heading: "One line is enough",
+      components: [],
+    }
+    const ir = makeIR([slide], "crayon")
+    const v = validateIr(ir)
+    expect(v.ok).toBe(true)
+    const warning = v.warnings?.find((w) => isSparseOfferWarning(w.message, "statement", "content"))
+    expect(warning).toMatchObject({ path: "slides.0.layout", page: 1, slideId: "p-climax" })
+    const picked = resolveEffectiveLayoutId(ir, slide, 0)
+    expect(picked).not.toBe("statement")
+    assertNonPinOnlyPoolMember("crayon", "content", picked)
+  })
+
+  it("stage + one-evidence (not in stage's faces): warning and fallback, not one-evidence", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "one-evidence",
+      heading: "The route shortened",
+      components: [{ type: "paragraph", text: "a" }],
+    }
+    const ir = makeIR([slide], "stage")
+    const v = validateIr(ir)
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => isSparseOfferWarning(w.message, "one-evidence", "content"))).toBe(true)
+    const picked = resolveEffectiveLayoutId(ir, slide, 0)
+    expect(picked).not.toBe("one-evidence")
+    assertNonPinOnlyPoolMember("stage", "content", picked)
+  })
+
+  it("stage + statement: no warning, still statement", () => {
+    const slide: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
+    const ir = makeIR([slide], "stage")
+    const v = validateIr(ir)
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("not a sparse page"))).toBeFalsy()
+    expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("statement")
+  })
+
+  it("consulting + statement: no warning, still statement (omitted list still offers)", () => {
+    const slide: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
+    const ir = makeIR([slide], "consulting")
+    const v = validateIr(ir)
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("not a sparse page"))).toBeFalsy()
+    expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("statement")
+  })
+
+  it("classroom and bloom both refuse statement and verse-chapter", () => {
+    for (const themeId of ["classroom", "bloom"] as const) {
+      const statement: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
+      const verse: Slide = { type: "chapter", layout: "verse-chapter", heading: "Chapter", components: [] }
+      const statementIr = makeIR([statement], themeId)
+      const verseIr = makeIR([verse], themeId)
+      const statementV = validateIr(statementIr)
+      const verseV = validateIr(verseIr)
+      expect(statementV.ok, themeId).toBe(true)
+      expect(verseV.ok, themeId).toBe(true)
+      expect(statementV.warnings?.some((w) => isSparseOfferWarning(w.message, "statement", "content")), themeId).toBe(
+        true,
+      )
+      expect(verseV.warnings?.some((w) => isSparseOfferWarning(w.message, "verse-chapter", "chapter")), themeId).toBe(
+        true,
+      )
+      const statementPicked = resolveEffectiveLayoutId(statementIr, statement, 0)
+      const versePicked = resolveEffectiveLayoutId(verseIr, verse, 0)
+      expect(statementPicked, themeId).not.toBe("statement")
+      expect(versePicked, themeId).not.toBe("verse-chapter")
+      assertNonPinOnlyPoolMember(themeId, "content", statementPicked)
+      assertNonPinOnlyPoolMember(themeId, "chapter", versePicked)
+    }
+  })
+
+  it("a custom registered theme with omitted sparseLayouts still honours statement with no warning", () => {
+    registerTheme({
+      id: "acme-omitted-sparse",
+      style: THEME_DEFINITIONS.consulting.style,
+      brand: {},
+      tags: [],
+    })
+    const slide: Slide = { type: "content", layout: "statement", heading: "One line is enough", components: [] }
+    const ir = makeIR([slide], "acme-omitted-sparse")
+    const v = validateIr(ir)
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("not a sparse page"))).toBeFalsy()
+    expect(resolveEffectiveLayoutId(ir, slide, 0)).toBe("statement")
   })
 })

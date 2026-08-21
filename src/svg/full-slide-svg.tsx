@@ -20,7 +20,7 @@ import {
 import { findImageComponent } from "./layouts/find-image"
 import { gradientBands } from "./gradient-bands"
 import { getLayout, layoutOmitsChrome } from "./layouts/registry"
-import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
+import { effectiveRequestedLayout, getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { COVER_LAYOUTS } from "./layouts/index-cover"
 import { CHAPTER_LAYOUTS } from "./layouts/index-chapter"
 import { CONTENT_LAYOUTS } from "./layouts/index-content"
@@ -393,6 +393,7 @@ export function FullSlideSvg({
   const pageKey = slide.id ?? String(index)
   const strategy = resolveIrStrategy(ir)
   const previousEffectiveLayoutId = index > 0 ? resolveEffectiveLayoutId(ir, ir.slides[index - 1], index - 1) : null
+  const requestedLayout = effectiveRequestedLayout(ir.theme.id, slide.layout)
   const pageLayout =
     imageCoverTakeover || splitTakeover
       ? null
@@ -401,7 +402,7 @@ export function FullSlideSvg({
           themeDef.layouts,
           cachedDeckSeed(ir),
           pageKey,
-          slide.layout,
+          requestedLayout,
           strategy,
           previousEffectiveLayoutId,
           slide.beat,
@@ -418,9 +419,11 @@ export function FullSlideSvg({
   // Layout-declared chrome:none (editorial-verse pinOnly members) skips
   // BrandChrome as a whole (footer rule/meta, logo). The theme motif still
   // paints. slide.decor, when the author sets it, still draws. Resolved
-  // layout id wins. The pin itself is the other source, so a pinOnly page
-  // whose resolvePageLayout somehow missed still honors the declaration.
-  const skipChrome = layoutOmitsChrome(pageLayout?.id) || layoutOmitsChrome(slide.layout)
+  // layout id wins. The *offered* pin is the other source, so a pinOnly
+  // page whose resolvePageLayout somehow missed still honors the
+  // declaration — but an unoffered sparse pin has already been stripped,
+  // and the fallback regular layout keeps ordinary chrome.
+  const skipChrome = layoutOmitsChrome(pageLayout?.id) || layoutOmitsChrome(requestedLayout)
 
   return (
     <svg

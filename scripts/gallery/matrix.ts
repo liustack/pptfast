@@ -11,6 +11,7 @@
 
 import { COMPONENT_TYPES, type PptxIR } from "@/ir"
 import { LAYOUT_REGISTRY } from "@/svg/layouts/registry"
+import { SPARSE_LAYOUT_IDS, themeOffersSparse } from "@/themes/definitions"
 import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS } from "./corpus/components"
 import { BASELINE_THEME, componentPage, densityPage, layoutPage, themeDeck, type CorpusAssets } from "./corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./corpus/lexicon"
@@ -18,7 +19,7 @@ import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./corpus/lexicon"
 export type TableId = "theme" | "layout" | "component" | "density" | "speech"
 
 /** The pinOnly chrome-free speech/minimal layouts (never auto-picked, so only this table shows them). */
-export const SPEECH_LAYOUT_IDS = ["statement", "pull-quote", "verse-chapter", "stat-hero", "one-evidence", "mono-bleed"] as const
+export const SPEECH_LAYOUT_IDS = SPARSE_LAYOUT_IDS
 
 export interface Job {
   /** Stable, filename-safe page id — also the key verdicts are recorded against. */
@@ -106,13 +107,15 @@ export function buildMatrix(
   // ── Speech-layout table ────────────────────────────────────────────────
   // The six pinOnly chrome-free layouts never enter the auto pool, so the
   // theme table can never show them — this slice is the only place a
-  // reviewer sees "pinned minimal layout × every theme". zh corpus only:
-  // the layout table already covers the three-corpus fit question on the
-  // baseline theme; here the question is token generalization.
+  // reviewer sees a pinned sparse layout on a theme that offers it
+  // (`themeOffersSparse`). zh corpus only: the layout table already covers
+  // the three-corpus fit question on the baseline theme; here the question
+  // is token generalization.
   if (!opts.only || opts.only === "speech") {
     const lex = LEXICONS[themeLanguage]
     for (const layoutId of SPEECH_LAYOUT_IDS) {
       for (const themeId of themeIds) {
+        if (!themeOffersSparse(themeId, layoutId)) continue
         const ir = layoutPage(layoutId, lex, assets[themeLanguage], themeId)
         push({
           id: `speech--${safe(layoutId)}--${safe(themeId)}--${themeLanguage}`,

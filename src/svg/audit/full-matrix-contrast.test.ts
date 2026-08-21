@@ -65,7 +65,7 @@ import { renderSlideSvg } from "../../api"
 import { auditDeck, type AuditFinding } from "./deck-audit"
 import { installNodePlatform } from "../../platform/node"
 import { CANONICAL_THEME_IDS, type CanonicalThemeId } from "../../themes"
-import { THEME_DEFINITIONS } from "../../themes/definitions"
+import { SPARSE_LAYOUT_IDS, THEME_DEFINITIONS, themeOffersSparse } from "../../themes/definitions"
 import { LAYOUT_REGISTRY } from "../layouts/registry"
 import { resolveBackgroundHex } from "../full-slide-svg"
 import {
@@ -654,6 +654,14 @@ describe("pin-only matrix contrast/overflow regression net (quote-stage wave, ta
       for (const layoutDef of PIN_ONLY_LAYOUTS) {
         const layout = layoutDef.id
         const bodyCapacity = layoutDef.slots.find((s) => s.name === "body")?.capacity ?? 0
+        // A sparse pin this theme does not offer falls back to a regular
+        // content/chapter layout. This net is about the pinOnly face itself.
+        if (
+          (SPARSE_LAYOUT_IDS as readonly string[]).includes(layout) &&
+          !themeOffersSparse(themeId, layout)
+        ) {
+          continue
+        }
 
         it(`${layout} at 0 components (a pure quote)`, () => {
           const slideType = layoutDef.slideTypes[0] ?? "content"

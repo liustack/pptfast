@@ -4,7 +4,7 @@ import { BUILTIN_THEME_IDS, type PptxIR, type Slide } from "@/ir"
 import { renderSlideSvg, validateIr } from "../../api"
 import { checkIrQuality } from "../ir-quality"
 import { parseSvgRoot } from "../serialize"
-import { THEME_DEFINITIONS } from "../../themes/definitions"
+import { THEME_DEFINITIONS, themeOffersSparse } from "../../themes/definitions"
 import { resolveEffectiveLayoutId } from "../layout-selection"
 import { LAYOUT_REGISTRY } from "./registry"
 import { FOOTER_DIVIDER_Y } from "../chrome-geometry"
@@ -398,13 +398,15 @@ describe("19-theme smoke: each new layout renders on every built-in theme", () =
     expect(textOf(d)).toContain("3.2")
     expect(textOf(e)).toContain("迁徙路线")
     expect(textOf(f)).toContain("把灯关掉")
+    // consulting still offers every sparse id (omitted list). luxe only
+    // offers its boarded faces plus verse-chapter. Unoffered pins fall
+    // back to a regular layout and keep ordinary chrome.
     if (themeId === light || themeId === dark) {
-      assertNoBrandChrome(a)
-      assertNoBrandChrome(b)
-      assertNoBrandChrome(c)
-      assertNoBrandChrome(d)
-      assertNoBrandChrome(e)
-      assertNoBrandChrome(f)
+      const markups = [a, b, c, d, e, f]
+      const layoutIds = ["statement", "pull-quote", "verse-chapter", "stat-hero", "one-evidence", "mono-bleed"]
+      for (let i = 0; i < layoutIds.length; i++) {
+        if (themeOffersSparse(themeId, layoutIds[i]!)) assertNoBrandChrome(markups[i]!)
+      }
     }
   })
 })

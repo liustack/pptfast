@@ -28,7 +28,7 @@ import { FULL_BODY_TYPES } from "./svg/component-traits"
 import { checkIrQuality, type QualityIssue } from "./svg/ir-quality"
 import { getLayout, layoutsForSlideType } from "./svg/layouts/registry"
 import { CANONICAL_THEME_IDS, THEME_LABELS, THEME_STYLES } from "./themes"
-import { getInstalledThemeIds } from "./themes/definitions"
+import { getInstalledThemeIds, SPARSE_LAYOUT_IDS, themeOffersSparse } from "./themes/definitions"
 
 export interface ValidationIssue {
   path: string
@@ -42,7 +42,7 @@ export interface ValidationIssue {
    * that true. Set by every page-scoped issue producer
    * ({@link checkLayoutApplicability}, {@link checkBoundaryPageContent},
    * the content-quality-gate translation in {@link validateIr},
-   * {@link checkDuplicateSlideIds})
+   * {@link checkDuplicateSlideIds}, {@link checkUnofferedSparsePins})
    * when the slide in question has an `id` — absent when the slide has
    * none (bare, pre-W5 IR) or the issue is deck-level, not scoped to any
    * single slide. {@link formatIssues} appends it in parens after the page
@@ -304,6 +304,31 @@ function checkLayoutApplicability(ir: PptxIR): ValidationIssue[] {
     }
   })
   return errors
+}
+
+/**
+ * Unoffered sparse-pin warning (sparse climax wave, phase 2): an explicit
+ * `slide.layout` naming one of the six sparse ids that this theme does not
+ * offer. Same path/page/slideId shape as {@link checkLayoutApplicability},
+ * but a warning, not an error — `ok` stays true and render strips the pin
+ * (`effectiveRequestedLayout`) so auto-pick runs on the ordinary content
+ * or chapter pool. The id is still a real layout, so this does not fail
+ * applicability, and it is not a `checkIrQuality` error.
+ */
+function checkUnofferedSparsePins(ir: PptxIR): ValidationIssue[] {
+  const warnings: ValidationIssue[] = []
+  ir.slides.forEach((slide, i) => {
+    if (slide.layout === undefined) return
+    if (!(SPARSE_LAYOUT_IDS as readonly string[]).includes(slide.layout)) return
+    if (themeOffersSparse(ir.theme.id, slide.layout)) return
+    warnings.push({
+      path: `slides.${i}.layout`,
+      page: i + 1,
+      ...(slide.id !== undefined ? { slideId: slide.id } : {}),
+      message: `layout "${slide.layout}" is not a sparse page this theme offers — falling back to a regular ${slide.type} layout`,
+    })
+  })
+  return warnings
 }
 
 /**
@@ -837,7 +862,8 @@ export function validateIr(input: unknown): ValidateResult {
   // a clean one's.
   const warnFindings = quality.filter((issue) => issue.severity === "warn").map(toIssue)
   const assetRefWarnings = checkAssetReferences(r.data)
-  const allWarnings = [...warnFindings, ...assetRefWarnings]
+  const sparseOfferWarnings = checkUnofferedSparsePins(r.data)
+  const allWarnings = [...warnFindings, ...assetRefWarnings, ...sparseOfferWarnings]
   const warnings = allWarnings.length > 0 ? allWarnings : undefined
   const errorFindings = quality.filter((issue) => issue.severity === "error")
   if (errorFindings.length > 0) {

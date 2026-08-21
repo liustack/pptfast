@@ -19,7 +19,7 @@
 import type { PptxIR, Slide } from "@/ir"
 import { STRATEGY_DEFINITIONS, resolveNarrative, type NarrativeProfile, type Strategy } from "@/narrative"
 import { resolveStyle } from "../themes"
-import { getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
+import { effectiveRequestedLayout, getThemeDefinition, type ThemeDefinition } from "../themes/definitions"
 import { findImageComponent } from "./layouts/find-image"
 import { excludePinOnly, filterByNarrativesOnly, getLayout } from "./layouts/registry"
 import { cachedDeckSeed, weightedPickBySeed } from "./variety"
@@ -499,7 +499,7 @@ function resolveOneEffectiveLayoutId(
     themeDef.layouts,
     seed,
     pageKey,
-    slide.layout,
+    effectiveRequestedLayout(ir.theme.id, slide.layout),
     strategy,
     previousEffectiveLayoutId,
     slide.beat,

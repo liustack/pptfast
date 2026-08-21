@@ -19,7 +19,7 @@ type FaceMap = Partial<Record<SparseLayoutId, ContentLayout>>
  * `(themeId, layoutId)` → theme face. Theme ids live only in this table.
  * Unregistered pairs fall through to the generic face in content-*.tsx.
  */
-const FACES: Partial<Record<string, FaceMap>> = {
+export const FACES: Partial<Record<string, FaceMap>> = {
   stage: {
     statement: stage.statement,
     "stat-hero": stage.statHero,

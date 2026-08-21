@@ -104,6 +104,11 @@ describe("bloom is a declared palette preset of classroom, not a missing declara
     expect(THEME_DEFINITIONS.bloom.layoutTendencies).toBe(THEME_DEFINITIONS.classroom.layoutTendencies)
   })
 
+  it("classroom and bloom both offer no sparse climax pages", () => {
+    expect(THEME_DEFINITIONS.classroom.sparseLayouts).toEqual([])
+    expect(THEME_DEFINITIONS.bloom.sparseLayouts).toEqual([])
+  })
+
   it("...and that object still holds the value the allocation table assigned, now with the second-front chapter/content/ending row on the same shared object", () => {
     expect(THEME_DEFINITIONS.bloom.layoutTendencies).toEqual({
       cover: ["band-title"],
