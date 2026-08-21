@@ -9,11 +9,9 @@
  * `layout` pin, because auto-selection reshuffling between runs would make
  * the review non-reproducible.
  *
- * A third page shape was added later: the density table (`densityPage`),
- * which asks what the nine drop-capable components look like once the
- * content does not fit. Every other page in this file is sized so it does
- * fit — that is the whole point of the two tables above, and the reason
- * the degrade path needed a table of its own to be seen at all.
+ * A third page shape was added later: the full-load table (`densityPage`),
+ * which fills each of nine components to the largest count that still
+ * fits. Every page in this file is sized so it does fit.
  */
 
 import type { Component, PptxIR, Slide } from "@/ir"
@@ -286,21 +284,17 @@ export function componentPage(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Density table — one deliberately over-capacity component per page
+// Full-load table — one component filled to its geometric ceiling per page
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * One overfilled component (`DENSITY_BUILDERS`), alone on the page.
+ * One full-load component (`DENSITY_BUILDERS`), alone on the page.
  *
  * Alone is the whole trick. `layoutContentFit` drops a block whole when it
- * does not fit alongside its neighbours, and a component's own truncation
- * budget only applies once nothing at all fits — so an overfilled component
- * sharing a page with the component table's lead-in paragraph gets deleted
- * at the slide level and never reaches its own "+N …" branch. Measured
- * with the lead-in in place: every component that overflows vertically was
- * deleted whole, and 15 of these 27 pages rendered the lead-in and nothing
- * else. Solo hands the component the entire content rect, and the only way
- * left to fit is the one this table exists to show.
+ * does not fit alongside its neighbours, so sharing a page with the
+ * component table's lead-in paragraph would delete the component at the
+ * slide level. Solo hands it the entire content rect. The counts in
+ * `DENSITY_BUILDERS` are the largest that still fit that rect.
  *
  * The footnote stays because a real slide has one, and because it is part
  * of what squeezes the rect.

@@ -389,15 +389,13 @@ describe("gallery page", () => {
   }, 60_000)
 })
 
-// The density table exists because nine components share a "keep what fits,
-// mark the rest" branch that no gallery page had ever drawn: the ordinary
-// corpus tops out at five bullets and the marker needs twelve, so 434 review
-// pages missed it by construction and one review verdict about the marker
-// ended up naming a page that never had one. That blind spot closes only
-// while these pages keep reaching the branch, and nothing about them says so
-// on inspection — a threshold moving by a few pixels puts it back silently.
+// The full-load table (满载表) fills each of nine components to the largest
+// count that still fits the consulting density page. Authoring cuts or
+// splits content. These pages must not draw a "+N …" marker or drop the
+// block whole. A tenth component that grows a marker branch still fails
+// the coverage test below until a builder is added.
 describe("gallery density table", () => {
-  it("draws a drop marker on every page", async () => {
+  it("renders every page at full load, with no drop marker and no silent drop", async () => {
     const { renderMatrix } = await import("./gallery/render")
     const { mkdtempSync } = await import("node:fs")
     const { tmpdir } = await import("node:os")
@@ -407,16 +405,11 @@ describe("gallery density table", () => {
     const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-density-"))
     const { svgs } = renderMatrix(jobs, outDir, "test")
 
-    const unmarked = [...svgs].filter(([, svg]) => !/\+\d+ …/.test(svg)).map(([id]) => id)
-    expect(unmarked, "these density pages fit after all — raise their item counts").toEqual([])
+    const marked = [...svgs].filter(([, svg]) => /\+\d+ …/.test(svg)).map(([id]) => id)
+    expect(marked, "these full-load pages still draw a +N marker. lower their item counts").toEqual([])
 
-    // The failure mode that cost the first attempt at this table: the whole
-    // component overflows, `layoutContentFit` deletes the block rather than
-    // handing it a budget to clip into, and the page renders its chrome and
-    // nothing else. That reads as a drop too, but it is the slide-level one,
-    // not the component-level branch these pages are here to show.
     const swallowed = [...svgs].filter(([, svg]) => svg.includes("data-dropped-silent")).map(([id]) => id)
-    expect(swallowed, "the component was dropped whole instead of clipping itself").toEqual([])
+    expect(swallowed, "the component was dropped whole instead of fitting").toEqual([])
   }, 60_000)
 
   it("covers every component that can draw a drop marker", async () => {

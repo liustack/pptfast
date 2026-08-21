@@ -106,9 +106,8 @@ const TABLE_META: Record<TableId, { label: string; question: string }> = {
     question: "固定基准主题，每个组件一页，三种语料各跑一遍——这个组件画出来能不能看？",
   },
   density: {
-    label: "容量表",
-    question:
-      "九个会掉内容的组件各一页，item 数灌到装不下——降级画出来的「+N …」和留下的那部分，能不能给客户看？这一表的机器发现是预期的，不是回退。",
+    label: "满载表",
+    question: "九个组件各一页，条目数打满容量上限但不超——这一页是满载、不溢出的状态。",
   },
 }
 

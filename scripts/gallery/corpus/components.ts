@@ -491,77 +491,80 @@ export const FORM_VARIANTS: readonly FormVariant[] = [
   { id: "image_grid · numbered photos", theme: "museum", build: (lex) => COMPONENT_BUILDERS.image_grid!(lex) },
 ]
 
-/** Icons for the over-capacity cards, cycled — one per card, none repeated. */
+/** Icons for the full-load cards, cycled. One per card, none repeated. */
 const CARD_ICONS = ["layers", "cpu", "database", "globe", "target", "gauge"] as const
 
 /**
- * Deliberately over-capacity instances — the one place in this corpus that
- * breaks the "ordinary case" rule at the top of this file, on purpose.
+ * Full-load instances for the 满载表. Each builder is the largest count
+ * that still renders on a consulting `densityPage` with no "+N …" marker
+ * and without the block being dropped whole. Counts were measured with a
+ * probe (zh first, then en and mixed still fit). One item past the listed
+ * count re-introduces the marker on at least the English track.
  *
- * Nine components share one degrade path: keep what fits, draw a "+N …"
- * line for the rest, set `data-dropped`. Nobody had ever looked at it. The
- * ordinary corpus tops out at five bullets and the marker needs twelve, so
- * all 434 review pages missed it by design, and the one review verdict that
- * did complain about the marker named a page that has never drawn one.
- *
- * Counts land a few items past each component's own threshold: far enough
- * that the marker is certain, close enough that the page still reads as a
- * real slide somebody overfilled. Genuinely pathological input stays where
- * it belongs, in `src/svg/audit/stress-fixtures.ts` — this is the ordinary
- * author writing one list too long, which is how the branch is actually
- * reached in the field.
- *
- * Two counts are capped by the schema rather than by taste: `row_cards`
- * accepts at most 6 items and `data_table` at most 12 rows, and both drop
- * content well before those ceilings.
+ * These pages exist so a reviewer can see a component filled to its
+ * geometric ceiling, not past it. Authoring cuts or splits content. The
+ * ordinary corpus at the top of this file stays ordinary.
  */
 export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
+  // 4 layers. architecture.tsx `LAYER_H + GAP = 84`. CAPACITY.warnLayers=3
+  // is the 277px worst-case editorial number, not consulting's taller
+  // content rect. Probe on consulting densityPage. 5 layers marks on en.
   architecture: (lex) => ({
     type: "architecture",
     direction: "top_down",
-    layers: [...lex.chapters, ...lex.stages].slice(0, 8).map((title, i) => ({
+    layers: [...lex.chapters, ...lex.stages].slice(0, 4).map((title, i) => ({
       title,
       items: slice(lex.labels, 4, i * 4),
     })),
   }),
 
+  // 9 items. bullets.tsx height-budget visible count. Probe on consulting
+  // densityPage. 10 items marks on en.
   bullets: (lex) => ({
     type: "bullets",
-    items: [...slice(lex.bullets, 6), ...slice(lex.phrases, 10)],
+    items: [...slice(lex.bullets, 6), ...slice(lex.phrases, 3)],
     style: "default",
   }),
 
-  // A chart drops legend *entries*, not data, and one entry is one series —
-  // so this needs many series rather than many points. The header-row
-  // legend packs at ~72px per short name, so a content-width plot holds
-  // around fifteen. Labels plus orgs lands a few past that.
+  // 12 series. chart.tsx `LEGEND_ENTRY_PITCH = 72`. Editorial
+  // CAPACITY.chart.lineSeriesAdvisoryMax = 8 is not the geometric ceiling.
+  // Probe on consulting densityPage. 13 series marks on en.
   chart: (lex) => ({
     type: "chart",
     chart_type: "line",
     axes: { x_title: lex.periodAxis, y_title: lex.metrics[2]!.label, show_grid: true },
-    series: [...lex.labels, ...slice(lex.orgs, 8)].map((name, i) => ({
+    series: [...lex.labels, ...lex.orgs].slice(0, 12).map((name, i) => ({
       name,
       data: slice(lex.periods, 5).map((x, j) => ({ x, y: 40 + ((i * 7 + j * 11) % 45) })),
     })),
   }),
 
+  // 14 sources. citation.tsx `ROW = 28`. CAPACITY.warnSources=9 is the
+  // 277px worst-case editorial number. Probe on consulting densityPage.
+  // 15 sources marks on en.
   citation: (lex) => ({
     type: "citation",
-    sources: [...slice(lex.orgs, 12), ...slice(lex.phrases, 8)].map((label, i) => ({
+    sources: [...slice(lex.orgs, 12), ...slice(lex.phrases, 2)].map((label, i) => ({
       label,
       ref: lex.periods[i % lex.periods.length]!,
     })),
   }),
 
+  // 6 rows. comparison.tsx `ROW = 44` including header. CAPACITY.warnRows=5
+  // is the 277px worst-case editorial number. Probe on consulting
+  // densityPage. 7 rows marks on en.
   comparison: (lex) => ({
     type: "comparison",
     columns: [lex.labels[8]!, lex.labels[9]!, lex.labels[10]!],
-    rows: slice(lex.phrases, 12).map((label, i) => ({
+    rows: slice(lex.phrases, 6).map((label, i) => ({
       label,
       cells: [lex.periods[i % 4]!, lex.labels[(i + 12) % lex.labels.length]!, lex.periods[(i + 1) % 4]!],
     })),
   }),
 
+  // 7 rows. Schema `.max(12)` in ir/components/data-table.ts. data-table.tsx
+  // `ROW = 44`. Probe on consulting densityPage. 8 rows marks on en, well
+  // before the schema ceiling.
   data_table: (lex) => ({
     type: "data_table",
     columns: [
@@ -570,15 +573,18 @@ export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
       { key: "q2", label: lex.periods[1]!, align: "right" },
       { key: "yoy", label: lex.metrics[1]!.label, align: "right" },
     ],
-    rows: slice(lex.labels, 12).map((seg, i) => ({
+    rows: slice(lex.labels, 7).map((seg, i) => ({
       cells: { seg, q1: 402 + i * 97, q2: 431 + i * 111, yoy: `${i % 4 === 2 ? "-" : "+"}${4 + i}.${i % 10}%` },
     })),
     source: lex.sources[0]!.label,
   }),
 
+  // 6 cards. kpi.tsx `MIN_READABLE_CARD_W = 160`, `GAP = 16`. Marker when
+  // `naturalCardW < 160`. Probe on consulting densityPage. 7 cards marks
+  // on every language track.
   kpi_cards: (lex) => ({
     type: "kpi_cards",
-    items: slice(lex.labels, 12).map((label, i) => ({
+    items: slice(lex.labels, 6).map((label, i) => ({
       value: String(28 + i * 6),
       unit: "%",
       label,
@@ -587,9 +593,12 @@ export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
     })),
   }),
 
+  // 3 cards. Schema `.min(3).max(6)` in ir/components/row-cards.ts. Probe
+  // on consulting densityPage. 4 cards marks on en (taller wrap). Schema
+  // still allows 6.
   row_cards: (lex) => ({
     type: "row_cards",
-    items: slice(lex.phrases, 6).map((title, i) => ({
+    items: slice(lex.phrases, 3).map((title, i) => ({
       icon: CARD_ICONS[i % CARD_ICONS.length]!,
       title,
       text: lex.sentences[i % lex.sentences.length]!,
@@ -598,13 +607,13 @@ export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
     })),
   }),
 
-  // Vertical, unlike the component table's horizontal one: only the
-  // vertical arrangement stacks a row per milestone, and only a stack can
-  // run out of height and drop the tail.
+  // 5 milestones, vertical. The component table uses horizontal. Only a
+  // vertical stack runs out of height. timeline.tsx height-budget visible
+  // count. Probe on consulting densityPage. 6 milestones marks on en.
   timeline: (lex) => ({
     type: "timeline",
     layout: "vertical",
-    milestones: slice(lex.phrases, 12).map((title, i) => ({
+    milestones: slice(lex.phrases, 5).map((title, i) => ({
       date: lex.periods[i % lex.periods.length]!,
       title,
       desc: lex.labels[i % lex.labels.length],
