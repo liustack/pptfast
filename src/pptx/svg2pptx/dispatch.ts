@@ -269,7 +269,8 @@ function walk(
 
   const op = leafToOp(withInheritedPaint(el, paint), gradients)
   if (!op) return
-  // 本渲染器只发 translate/scale，加上 cartesian y-title 的 rotate(-90) 文本。
+  // 本渲染器只发 translate/scale。Rotated text still takes the dedicated
+  // path below (kept after cartesian y-titles stopped emitting rotate(-90)).
   // 非文本叶子上的旋转/斜切仍不在受控子集内（出现时按未缩放处理）。
   let positioned: Op
   if (op.kind === "text" && Math.abs(rotationDeg(ctm)) > 0.5) {

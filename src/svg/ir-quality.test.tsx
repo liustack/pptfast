@@ -1369,6 +1369,61 @@ describe("checkIrQuality", () => {
     expect(issue?.chartDuplicateCategory).toEqual({ seriesName: "Q1 Actuals", x: "East" })
   })
 
+  // ── chart_line_too_many_series ──
+  // Dataviz's 8-series ceiling (CAPACITY.chart.lineSeriesAdvisoryMax). A
+  // line chart past that is still legal IR and still renders — the legend
+  // drops overflow into "+N …" rather than the renderer refusing. This is
+  // the editorial warning that the authoring problem exists, warn-only.
+
+  function nSeries(n: number) {
+    return Array.from({ length: n }, (_, i) => ({
+      name: `S${i}`,
+      data: [
+        { x: "A", y: i + 1 },
+        { x: "B", y: i + 2 },
+      ],
+    }))
+  }
+
+  it("warns when a line chart has more than 8 series", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Trend",
+        components: [{ type: "chart", chart_type: "line", series: nSeries(9) }],
+      },
+    ])
+    const issue = checkIrQuality(ir).find((i) => i.code === "chart_line_too_many_series")
+    expect(issue).toBeTruthy()
+    expect(issue?.severity).toBe("warn")
+    expect(issue?.message).toMatch(/8/)
+    expect(issue?.message).toMatch(/拆分|归并/)
+  })
+
+  it("does NOT warn at 8 line series (the last count inside the ceiling)", () => {
+    const ir = makeIR([
+      {
+        type: "content",
+        heading: "Trend",
+        components: [{ type: "chart", chart_type: "line", series: nSeries(8) }],
+      },
+    ])
+    expect(codes(checkIrQuality(ir))).not.toContain("chart_line_too_many_series")
+  })
+
+  it("does NOT warn for a bar or area chart with the same many series — the ceiling is line-only", () => {
+    for (const chart_type of ["bar", "area"] as const) {
+      const ir = makeIR([
+        {
+          type: "content",
+          heading: "Trend",
+          components: [{ type: "chart", chart_type, series: nSeries(9) }],
+        },
+      ])
+      expect(codes(checkIrQuality(ir)), chart_type).not.toContain("chart_line_too_many_series")
+    }
+  })
+
   // ── data_table_missing_cell (R1 evidence wave, Task T3) ──
   // data-table.ts's schema tolerates a row whose `cells` omits one of
   // `columns`' declared keys (renders empty, never a parse error) — this is

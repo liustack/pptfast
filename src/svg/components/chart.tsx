@@ -89,10 +89,12 @@ function resolveRenderer(component: ChartComponent): ChartRenderFn {
  * caption underneath). The IR field stays so existing decks keep
  * validating. This renderer simply does not paint it and does not reserve
  * a band for it. y_title still renders: on cartesian vertical-value charts
- * (bar / line / scatter / area) as a left-side caption (CJK stacked, Latin
- * rotated -90°). `bar` + `direction: "horizontal"` keeps the header-row
- * caption — its left band is row labels, not a value axis, so this round
- * does not move it. show_grid still toggles the reference lines.
+ * (bar / line / scatter / area) a *pure CJK* title stacks on the left
+ * (one character per line). A title that carries Latin or ASCII digits
+ * returns to the header row — rotating the whole string is still vertical
+ * type and is forbidden. `bar` + `direction: "horizontal"` keeps the
+ * header-row caption for every script — its left band is row labels, not
+ * a value axis. show_grid still toggles the reference lines.
  * ir-quality.ts's `chart_axes_ignored` warning still keys off this same
  * applicability set: a pie with `axes.x_title` still warns, a bar with
  * `axes.x_title` does not, even though the bar does not paint that string.
@@ -130,18 +132,18 @@ function legendApplicable(component: ChartComponent): boolean {
 
 /**
  * Header row (label-tuning A, 2026-08). The legend (right) sits in this
- * band above the plot. y_title used to share it as a left-side unit
- * caption. Cartesian vertical-value charts now park y_title in a left
- * sidebar instead, so the header appears only when a legend is present
- * (or, for `bar_horizontal`, when y_title is still the header caption).
- * The 52px reservation and the 16px text baseline are taken from
- * LabelTuning.dc.html: the plot group is translated down by 52 relative
- * to a header baseline at 16, which is what keeps the tallest bar's value
- * label ≥ 24px clear of the header ink.
+ * band above the plot. A Latin/digit y_title shares it as a left-side
+ * unit caption. A pure CJK cartesian y_title parks in a left sidebar
+ * instead, so the header appears when a legend is present, when the
+ * y_title is not a CJK column, or, for `bar_horizontal`, when y_title
+ * is the header caption. The 52px reservation and the 16px text baseline
+ * are taken from LabelTuning.dc.html: the plot group is translated down
+ * by 52 relative to a header baseline at 16, which is what keeps the
+ * tallest bar's value label ≥ 24px clear of the header ink.
  */
 const HEADER_ROW_H = 52
 const HEADER_BASELINE_Y = 16
-/** y_title in the header — 12px muted, only `bar_horizontal` still uses this. */
+/** y_title in the header — 12px muted. */
 const HEADER_TITLE_SIZE = 12
 const HEADER_TITLE_MIN_SIZE = 9
 /** Gap (px) between a header y_title's right edge and the legend's left edge. */
@@ -149,13 +151,13 @@ const HEADER_LEGEND_GAP = 16
 
 /**
  * Fixed left sidebar for a cartesian vertical-value y_title (微调 C).
- * The visual mock's 11px gutter was too tight. Reserved only when a
- * y_title is present. Absent y_title keeps today's full-width plot.
+ * Reserved only when a *pure CJK* y_title is present. Absent y_title,
+ * and any title that carries Latin or digits, keeps today's full-width
+ * plot (the latter uses the header row instead).
  */
 const Y_TITLE_SIDEBAR_W = 36
-/** CJK stack and Latin rotate both paint at 14px muted. */
+/** CJK stacked y-title paints at 14px muted. */
 const Y_TITLE_SIZE = 14
-const Y_TITLE_MIN_SIZE = 9
 /** CJK stacked-character baseline-to-baseline pitch (visual mock). */
 const Y_TITLE_PITCH = 18
 
@@ -279,12 +281,31 @@ function isHorizontalBar(component: ChartComponent): boolean {
   return component.chart_type === "bar" && component.direction === "horizontal"
 }
 
+/**
+ * Pure CJK (square scripts + CJK punctuation/whitespace) may stack as a
+ * column. Latin, mixed script, and ASCII digits go horizontal: rotating
+ * the whole string is still vertical type, which the design taboo list
+ * forbids. `stacksVertically` already refuses Latin. The extra digit
+ * check is the chart-side rule (a title that carries Latin or digits
+ * always returns to the header row).
+ */
+function yTitleStacksAsColumn(title: string): boolean {
+  return stacksVertically(title) && !/[0-9A-Za-z]/.test(title)
+}
+
 function hasYTitleSidebar(component: ChartComponent): boolean {
-  return hasYTitle(component) && !isHorizontalBar(component)
+  const title = component.axes?.y_title
+  return hasYTitle(component) && !isHorizontalBar(component) && !!title && yTitleStacksAsColumn(title)
+}
+
+function yTitleGoesInHeader(component: ChartComponent): boolean {
+  const title = component.axes?.y_title
+  if (!hasYTitle(component) || !title) return false
+  return isHorizontalBar(component) || !yTitleStacksAsColumn(title)
 }
 
 function hasHeaderRow(component: ChartComponent): boolean {
-  return legendApplicable(component) || (isHorizontalBar(component) && hasYTitle(component))
+  return legendApplicable(component) || yTitleGoesInHeader(component)
 }
 
 function fitYTitleStack(text: string, maxChars: number): { chars: string[]; truncated: boolean } {
@@ -307,65 +328,40 @@ function renderVerticalYTitle(
   const titleX = sidebarW / 2
   const minFirstY = Y_TITLE_SIZE * 0.8
   const availH = Math.max(Y_TITLE_SIZE, baseline - minFirstY)
-
-  if (stacksVertically(title)) {
-    const maxChars = Math.max(
-      1,
-      Math.floor((availH - Y_TITLE_SIZE * 0.25) / Y_TITLE_PITCH) + 1,
-    )
-    const fitted = fitYTitleStack(title, maxChars)
-    const lastY = baseline
-    const firstY = lastY - (fitted.chars.length - 1) * Y_TITLE_PITCH
-    return (
-      <>
-        {fitted.chars.map((chr, i) => (
-          <text
-            key={i}
-            data-truncated={fitted.truncated && i === fitted.chars.length - 1 ? "1" : undefined}
-            x={titleX}
-            y={firstY + i * Y_TITLE_PITCH}
-            textAnchor="middle"
-            fontSize={Y_TITLE_SIZE}
-            fill={mutedColor}
-            fontFamily={bodyFace}
-            dominantBaseline="alphabetic"
-          >
-            {chr}
-          </text>
-        ))}
-      </>
-    )
-  }
-
-  const fitted = fitSvgLine(title, {
-    maxWidth: availH,
-    fontSize: Y_TITLE_SIZE,
-    minFontSize: Y_TITLE_MIN_SIZE,
-    fontFamily: bodyFace,
-  })
+  const maxChars = Math.max(
+    1,
+    Math.floor((availH - Y_TITLE_SIZE * 0.25) / Y_TITLE_PITCH) + 1,
+  )
+  const fitted = fitYTitleStack(title, maxChars)
+  const lastY = baseline
+  const firstY = lastY - (fitted.chars.length - 1) * Y_TITLE_PITCH
   return (
-    <text
-      data-truncated={fitted.truncated ? "1" : undefined}
-      x={titleX}
-      y={baseline}
-      textAnchor="start"
-      fontSize={fitted.fontSize}
-      fill={mutedColor}
-      fontFamily={bodyFace}
-      dominantBaseline="alphabetic"
-      transform={`rotate(-90 ${titleX} ${baseline})`}
-    >
-      {fitted.text}
-    </text>
+    <>
+      {fitted.chars.map((chr, i) => (
+        <text
+          key={i}
+          data-truncated={fitted.truncated && i === fitted.chars.length - 1 ? "1" : undefined}
+          x={titleX}
+          y={firstY + i * Y_TITLE_PITCH}
+          textAnchor="middle"
+          fontSize={Y_TITLE_SIZE}
+          fill={mutedColor}
+          fontFamily={bodyFace}
+          dominantBaseline="alphabetic"
+        >
+          {chr}
+        </text>
+      ))}
+    </>
   )
 }
 
 export const chart: SvgComponent<ChartComponent> = {
   measure(component) {
     // x_title no longer reserves a band (accepted, not drawn). The header
-    // row is a single 52px reservation for the legend (and for
-    // bar_horizontal's remaining header y_title). A cartesian y_title takes
-    // a left sidebar, not height.
+    // row is a single 52px reservation for the legend and for any y_title
+    // that is not a CJK column (Latin/digits, or bar_horizontal). A pure
+    // CJK cartesian y_title takes a left sidebar, not height.
     return (hasHeaderRow(component) ? HEADER_ROW_H : 0) + CHART_H
   },
   render(component, box, ctx) {
@@ -392,7 +388,7 @@ export const chart: SvgComponent<ChartComponent> = {
 
     const hasLegend = legendApplicable(component)
     const yTitleRaw = axes?.y_title
-    const yTitleInHeader = isHorizontalBar(component) && !!yTitleRaw
+    const yTitleInHeader = yTitleGoesInHeader(component)
     const yTitleNaturalW = yTitleInHeader
       ? measureTextUnits(yTitleRaw!, { fontFamily: bodyFace }) * HEADER_TITLE_SIZE
       : 0

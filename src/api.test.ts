@@ -1283,6 +1283,52 @@ describe("describeQualityIssue: chart_duplicate_category English message (R1 evi
   })
 })
 
+describe("describeQualityIssue: chart_line_too_many_series English message", () => {
+  const manyLineSeries = Array.from({ length: 9 }, (_, i) => ({
+    name: `S${i}`,
+    data: [
+      { x: "A", y: i + 1 },
+      { x: "B", y: i + 2 },
+    ],
+  }))
+
+  it("names the 8-series ceiling and stays ok:true (warn, not error)", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Trend",
+          components: [{ type: "chart", chart_type: "line", series: manyLineSeries }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    const warning = v.warnings?.find((w) => w.message.includes("series"))
+    expect(warning).toBeTruthy()
+    expect(warning?.message).toMatch(/8/)
+    expect(warning?.message).toMatch(/line/)
+    expect(warning?.message).not.toMatch(/[一-鿿]/)
+  })
+
+  it("does NOT fire at 8 line series", () => {
+    const v = validateIr({
+      ...raw,
+      slides: [
+        raw.slides[0],
+        {
+          type: "content",
+          heading: "Trend",
+          components: [{ type: "chart", chart_type: "line", series: manyLineSeries.slice(0, 8) }],
+        },
+      ],
+    })
+    expect(v.ok).toBe(true)
+    expect(v.warnings?.some((w) => w.message.includes("too many series")) ?? false).toBe(false)
+  })
+})
+
 describe("describeQualityIssue: data_table_missing_cell English message (R1 evidence wave, Task T3)", () => {
   // data-table.ts's schema tolerates a row whose `cells` omits one of
   // `columns`' declared keys (the lenient half of the plan's revised

@@ -217,6 +217,10 @@ function describeQualityIssue(issue: QualityIssue): string {
         ? `chart series "${d.seriesName}" has a duplicate category "${d.x}" — only the first occurrence is kept, later ones are dropped`
         : "a chart series has a duplicate category value — only the first occurrence is kept, later ones are dropped"
     }
+    case "chart_line_too_many_series":
+      // Dataviz's 8-series ceiling (CAPACITY.chart.lineSeriesAdvisoryMax).
+      // Warn only — the chart still renders. Suggest splitting or grouping.
+      return `line chart has too many series (over ${CAPACITY.chart.lineSeriesAdvisoryMax}) — split it or group the series`
     case "data_table_missing_cell": {
       // R1 evidence wave, Task T3: a data_table row's `cells` omits one of
       // `columns`' declared keys — schema-legal (the lenient half of the

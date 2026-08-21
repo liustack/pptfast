@@ -606,4 +606,13 @@ export const CAPACITY = {
    * 字号逐行截断超宽内容，最多 2 行，不依赖这里的字数估算兜底安全。
    */
   verdictBanner: { textMaxUnits: 126 },
+  /**
+   * Line-chart series count. Editorial, not geometric: dataviz's usual
+   * 8-series ceiling (Few, *Show Me the Numbers*; the common 5–8 series
+   * rule of thumb). Past this, a line chart stops being readable as a
+   * comparison — the legend drops overflow into "+N …" and the plot
+   * becomes a hairball. ir-quality.ts warns. Render still lands. The
+   * authoring problem is not rescued here.
+   */
+  chart: { lineSeriesAdvisoryMax: 8 },
 } as const
