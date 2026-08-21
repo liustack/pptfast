@@ -235,8 +235,8 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(zh).toMatch(/不是新的 `pacing`/)
     expect(en).toContain("slide.notes")
     expect(zh).toContain("slide.notes")
-    expect(en).toContain('chrome: "cover-only"')
-    expect(zh).toContain('chrome: "cover-only"')
+    expect(en).toContain('chrome: "full"')
+    expect(zh).toContain('chrome: "full"')
   })
 
   it("both files have the same number of ### Phase N sections", () => {

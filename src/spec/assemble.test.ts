@@ -283,7 +283,7 @@ describe("assembleDeck", () => {
       expect(ir.chrome).toBe("cover-only")
     })
 
-    it("omits ir.chrome when the spec omits chrome (no baked full default)", () => {
+    it("omits ir.chrome when the spec omits chrome (no baked default)", () => {
       const { ir } = assembleDeck(makePlan(), {})
       expect(ir.chrome).toBeUndefined()
     })

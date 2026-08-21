@@ -1871,7 +1871,7 @@ describe("brand extract + --theme-file + deck theme.json", () => {
     const src = await writeFixtureTemplate(d)
     const themeOut = join(d, "acme.theme.json")
     await runBrandExtract(src, { output: themeOut })
-    await writeFile(join(d, "deck.json"), JSON.stringify(VALID_IR))
+    await writeFile(join(d, "deck.json"), JSON.stringify({ ...VALID_IR, chrome: "full" }))
     const pptxOut = join(d, "branded.pptx")
     await runRender(join(d, "deck.json"), { output: pptxOut, themeFilePath: themeOut })
     const zip2 = await JSZip.loadAsync(await readFile(pptxOut))
@@ -1887,8 +1887,11 @@ describe("brand extract + --theme-file + deck theme.json", () => {
     // This minimal 2-slide deck's selected layouts paint the accent token
     // (source accent2) and the derived muted (#666666, the mixHex walk's
     // first step clearing 4.5:1 against both white bg and the E7E6E6
-    // surface) — primary (accent1) has no paint site on these two layouts,
-    // so it is asserted at the theme-file level in the extract test above.
+    // surface). Muted's paint site on this deck is the content-page footer
+    // rule, so the IR writes chrome:"full" (the omitted default is now
+    // cover-only and would drop that rule). Primary (accent1) has no paint
+    // site on these two layouts, so it is asserted at the theme-file level
+    // in the extract test above.
     expect(slideXml).toContain(DEFAULT_THMX_COLORS.accent2)
     expect(slideXml).toContain("666666")
   })

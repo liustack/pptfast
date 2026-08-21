@@ -20,7 +20,7 @@
  */
 export const TITLE_ZONE_TOP = 48
 
-/** The hairline `BrandChrome` draws across the bottom of every slide. */
+/** The hairline `BrandChrome` draws across the bottom of content slides when deck chrome is explicit `"full"`. */
 export const FOOTER_DIVIDER_Y = 664
 
 /**

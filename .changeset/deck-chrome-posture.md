@@ -2,4 +2,4 @@
 "@liustack/pptfast": minor
 ---
 
-Deck-level `chrome` posture (`full` / `cover-only` / `minimal`). Omitted equals today's `full` footer and logo. Talk decks write `cover-only` so content and ending pages drop the brand footer, meta, and logo. Cover and chapter pages keep them. Layout `chrome: "none"` still wins.
+Deck-level `chrome` posture (`full` / `cover-only` / `minimal`). Omitted equals `cover-only`: cover and chapter pages keep the brand logo, content and ending pages drop the footer rule, meta, and logo. Write `chrome: "full"` when a read deck needs the content-page footer. Layout `chrome: "none"` still wins.

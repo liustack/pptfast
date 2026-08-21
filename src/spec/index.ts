@@ -147,8 +147,9 @@ export const DeckSpecSchema = z
      * Where the brand footer and logo appear — reused verbatim from the IR's
      * own `chrome` field (`DeckChromeSchema`, `../ir`) so the spec and IR
      * cannot drift. Optional, no default: omitted stays unset and assemble
-     * does not write `"full"` into the IR. Talk decks write `"cover-only"`.
-     * Read decks omit the field. Layout `chrome: "none"` still wins at render.
+     * does not write `"cover-only"` into the IR. The renderer treats that
+     * as `"cover-only"`. Talk decks omit the field. Read decks write `"full"`.
+     * Layout `chrome: "none"` still wins at render.
      */
     chrome: DeckChromeSchema.optional(),
     pages: z.array(PageSpecSchema),

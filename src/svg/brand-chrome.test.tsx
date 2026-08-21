@@ -20,7 +20,7 @@ const ctx: ComponentCtx = {
   bodyFontPx: 24, // balanced default — this suite doesn't exercise body-text sizing
 }
 
-function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
+function ir(themeId: PptxIR["theme"]["id"], slides: Slide[], chrome?: PptxIR["chrome"]): PptxIR {
   return {
     version: "4",
     filename: "deck.pptx",
@@ -30,6 +30,7 @@ function ir(themeId: PptxIR["theme"]["id"], slides: Slide[]): PptxIR {
       images: { bg: { src: "data:image/png;base64,iVBOR", alt: "背景" } },
     },
     slides,
+    ...(chrome !== undefined ? { chrome } : {}),
   }
 }
 
@@ -46,7 +47,7 @@ function svg(node: React.ReactElement) {
 
 describe("BrandChrome footer suppression (W1: theme brand.suppressFooterOnCardContent via resolveBrand)", () => {
   it("enterprise 主题：content 页 + 卡片背景图 → 页脚整体消失（theme brand 驱动）", () => {
-    const doc = ir("enterprise", [cardBgContentSlide])
+    const doc = ir("enterprise", [cardBgContentSlide], "full")
     const { container } = svg(<BrandChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
     expect(container.querySelector("line")).toBeNull()
     expect(container.textContent).not.toContain("ACME")
@@ -56,7 +57,7 @@ describe("BrandChrome footer suppression (W1: theme brand.suppressFooterOnCardCo
   it.each(["consulting", "insight", "academic", "tech", "journal"] as const)(
     "%s 主题：同样的 content 页 + 卡片背景图 → 页脚正常显示（未设 brand.suppressFooterOnCardContent，不受影响）",
     (themeId) => {
-      const doc = ir(themeId, [cardBgContentSlide])
+      const doc = ir(themeId, [cardBgContentSlide], "full")
       const { container } = svg(<BrandChrome ir={doc} slide={cardBgContentSlide} ctx={ctx} />)
       expect(container.querySelector("line")).not.toBeNull()
       expect(container.textContent).toContain("ACME")
@@ -82,7 +83,7 @@ const plainContentSlide: Slide = {
 
 describe("BrandChrome footer meta suppression (brand.suppressFooterMeta, ink v3)", () => {
   it("ink 主题：content 页页脚不排 meta 文字（org/密级/版本/日期全部交给落款列）", () => {
-    const doc = ir("ink", [plainContentSlide])
+    const doc = ir("ink", [plainContentSlide], "full")
     const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
     expect(container.textContent).not.toContain("ACME")
     expect(container.textContent).not.toContain("v1")
@@ -96,7 +97,7 @@ describe("BrandChrome footer meta suppression (brand.suppressFooterMeta, ink v3)
   it.each(["consulting", "insight", "academic", "tech", "journal", "enterprise"] as const)(
     "%s 主题：同一页页脚 meta 照排（未设 suppressFooterMeta，逐字节不受影响）",
     (themeId) => {
-      const doc = ir(themeId, [plainContentSlide])
+      const doc = ir(themeId, [plainContentSlide], "full")
       const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
       expect(container.textContent).toContain("ACME")
       expect(container.textContent).toContain("v1")
@@ -105,7 +106,7 @@ describe("BrandChrome footer meta suppression (brand.suppressFooterMeta, ink v3)
   )
 
   it("IR 级 brand override 能把 ink 的抑制关掉（resolveBrand 的浅合并，override 胜出）", () => {
-    const doc = ir("ink", [plainContentSlide])
+    const doc = ir("ink", [plainContentSlide], "full")
     const withOverride: PptxIR = {
       ...doc,
       theme: { id: "ink", brand: { suppressFooterMeta: false } },
@@ -144,20 +145,45 @@ function branded(slides: Slide[], chrome?: PptxIR["chrome"]): PptxIR {
 }
 
 describe("deck chrome posture (BrandChrome gate)", () => {
-  it("omitted chrome still draws the content footer rule, meta, and logo", () => {
+  it("omitted chrome drops footer rule, meta, and logo on a content page", () => {
     const doc = branded([plainContentSlide])
+    const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
+    expect(container.querySelector("line")).toBeNull()
+    expect(container.textContent).not.toContain("ACME")
+    expect(container.querySelector("image")).toBeNull()
+  })
+
+  it("explicit chrome cover-only matches the omitted path on a content page", () => {
+    const omitted = branded([plainContentSlide])
+    const coverOnly = branded([plainContentSlide], "cover-only")
+    const a = svg(<BrandChrome ir={omitted} slide={plainContentSlide} ctx={ctx} />).container.innerHTML
+    const b = svg(<BrandChrome ir={coverOnly} slide={plainContentSlide} ctx={ctx} />).container.innerHTML
+    expect(a).toBe(b)
+  })
+
+  it("explicit chrome full still draws the content footer rule, meta, and logo", () => {
+    const doc = branded([plainContentSlide], "full")
     const { container } = svg(<BrandChrome ir={doc} slide={plainContentSlide} ctx={ctx} />)
     expect(container.querySelector("line")).not.toBeNull()
     expect(container.textContent).toContain("ACME")
     expect(container.querySelector("image")).not.toBeNull()
   })
 
-  it("explicit chrome full matches the omitted path on a content page", () => {
-    const omitted = branded([plainContentSlide])
-    const full = branded([plainContentSlide], "full")
-    const a = svg(<BrandChrome ir={omitted} slide={plainContentSlide} ctx={ctx} />).container.innerHTML
-    const b = svg(<BrandChrome ir={full} slide={plainContentSlide} ctx={ctx} />).container.innerHTML
-    expect(a).toBe(b)
+  it("omitted chrome keeps the logo on cover and chapter pages", () => {
+    const doc = branded([coverSlide, chapterSlide])
+    for (const slide of [coverSlide, chapterSlide]) {
+      const { container } = svg(<BrandChrome ir={doc} slide={slide} ctx={ctx} />)
+      expect(container.querySelector("image"), slide.type).not.toBeNull()
+      expect(container.querySelector("line"), slide.type).toBeNull()
+    }
+  })
+
+  it("omitted chrome drops the logo on an ending page", () => {
+    const doc = branded([endingSlide])
+    const { container } = svg(<BrandChrome ir={doc} slide={endingSlide} ctx={ctx} />)
+    expect(container.querySelector("image")).toBeNull()
+    expect(container.querySelector("line")).toBeNull()
+    expect(container.textContent).not.toContain("ACME")
   })
 
   it("cover-only drops footer rule, meta, and logo on a content page", () => {

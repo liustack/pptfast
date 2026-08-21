@@ -226,8 +226,8 @@ const LOCKED_KEYS = ["type", "heading"] as const
  *    exactly like a bare hand-authored IR that never mentions theme at all —
  *    not a value this function needs to know). `chrome` is the same omit
  *    posture: a spec that never sets it produces an IR that never sets it,
- *    and the renderer treats that as `"full"`. This function must not infer
- *    chrome from narrative — that would drop the footer on old `pitch` specs.
+ *    and the renderer treats that as `"cover-only"`. This function must not
+ *    infer chrome from narrative.
  * 7. Seed: `spec.seed` present → passed through, `generatedSeed` stays
  *    `undefined` on the result. Absent → {@link generateSeed} derives one
  *    from `filename` + the spec's own ordered page-id list (never page
