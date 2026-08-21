@@ -509,13 +509,13 @@ describe("resolveLayoutId", () => {
         )
         if (picked === "left-anchor") hits++
       }
-      // Weights over the 13-id cover pool: banner-title/poster-center=3 each
+      // Weights over the 19-id cover pool: banner-title/poster-center=3 each
       // (strategy only, briefing's own identityTendencies.cover, 6 total),
-      // left-anchor=3 (theme only), the remaining 10 ids=1 each — total
-      // 3+3+3+10=19, left-anchor share = 3/19 ≈ 0.158.
+      // left-anchor=3 (theme only), the remaining 16 ids=1 each — total
+      // 3+3+3+16=25, left-anchor share = 3/25 = 0.12.
       const share = hits / N
-      expect(share).toBeGreaterThan(0.12)
-      expect(share).toBeLessThan(0.22)
+      expect(share).toBeGreaterThan(0.08)
+      expect(share).toBeLessThan(0.18)
     })
 
     it("deterministic: repeated resolution with identical inputs (including themeTendencies) yields identical picks", () => {
@@ -548,19 +548,19 @@ describe("resolveLayoutId", () => {
   // ── identity-page strategy weighting (P1 variety wave, task 3) ──
   // cover/chapter/ending used to be uniformly sampled (no strategy signal
   // ever reached them). academic's identity pools are each the full
-  // registry set (13 cover / 9 chapter / 7 ending — `layoutsForSlideType`,
+  // registry set (19 cover / 9 chapter / 7 ending — `layoutsForSlideType`,
   // asserted below rather than hardcoded so a future layout-pool
   // expansion can't silently desync this file's own algebra).
 
   describe("identity-page strategy weighting", () => {
     it("a strategy's cover identityTendencies members are picked more often than non-members (N=5000, algebra-derived bounds)", () => {
       // pyramid.identityTendencies.cover = [banner-title, left-anchor], 2
-      // members at weight 3 against a full 13-id cover pool (the other 11 at
-      // weight 1): total = 2*3 + 11*1 = 17, expected combined tendency share
-      // = 6/17 ≈ 0.353. (Was 9 ids / 6 of 13 ≈ 0.462, before the
-      // board-cover-fidelity wave registered four more covers.)
+      // members at weight 3 against a full 19-id cover pool (the other 17 at
+      // weight 1): total = 2*3 + 17*1 = 23, expected combined tendency share
+      // = 6/23 ≈ 0.261. (Was 13 ids / 6 of 17 ≈ 0.353, before the
+      // board-cover-restore wave registered six more covers.)
       const coverPool = layoutsForSlideType("cover").length
-      expect(coverPool).toBe(13)
+      expect(coverPool).toBe(19)
       const tendencyIds = STRATEGY_DEFINITIONS.pyramid.identityTendencies.cover
       expect(tendencyIds.length).toBe(2)
       const N = 5000
@@ -578,8 +578,8 @@ describe("resolveLayoutId", () => {
         if (tendencyIds.includes(picked)) hits++
       }
       const share = hits / N
-      expect(share).toBeGreaterThan(0.28)
-      expect(share).toBeLessThan(0.45)
+      expect(share).toBeGreaterThan(0.20)
+      expect(share).toBeLessThan(0.35)
     })
 
     it("a strategy's chapter identityTendencies members are picked more often than non-members (N=5000)", () => {
@@ -719,11 +719,11 @@ describe("resolveLayoutId", () => {
         )!
         if (briefingCoverIds.includes(picked)) hits++
       }
-      // Uniform sampling on a 13-id cover pool would give 2/13 ≈ 0.154.
-      // Weighted briefing (2 members at ×3, 11 at ×1) gives 6/17 ≈ 0.353.
+      // Uniform sampling on a 19-id cover pool would give 2/19 ≈ 0.105.
+      // Weighted briefing (2 members at ×3, 17 at ×1) gives 6/23 ≈ 0.261.
       const share = hits / N
-      expect(share).toBeGreaterThan(0.28)
-      expect(share).toBeLessThan(0.45)
+      expect(share).toBeGreaterThan(0.20)
+      expect(share).toBeLessThan(0.35)
     })
   })
 

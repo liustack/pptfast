@@ -44,7 +44,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
     }
   }
 
-  it("has exactly 47 layout-kind entries, all traceable to one of the four real registries (board-cover-fidelity wave: 43 -> 47, institutional-block/memo-head/board-head/bill-head)", () => {
+  it("has exactly 53 layout-kind entries, all traceable to one of the four real registries (board-cover-restore wave 1: 47 -> 53)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_LAYOUTS),
       ...Object.keys(CHAPTER_LAYOUTS),
@@ -52,7 +52,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
       ...Object.keys(ENDING_LAYOUTS),
     ])
     const layoutEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(layoutEntries).toHaveLength(47)
+    expect(layoutEntries).toHaveLength(53)
     for (const entry of layoutEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real layout id`).toBe(true)
     }
@@ -98,6 +98,13 @@ describe("content family: body slot + declared arrangements", () => {
       if (slideType === "content") continue
       for (const id of Object.keys(registry)) {
         const entry = LAYOUT_REGISTRY[id]
+        // verdict-index reads the first bullets component as numbered
+        // arguments. Empty components stay legal (capacity 1, zero drawn).
+        if (id === "verdict-index") {
+          expect(entry.slots.some((s) => s.name === "body")).toBe(true)
+          expect(entry.arrangements).toBeUndefined()
+          continue
+        }
         expect(
           entry.slots.some((s) => s.name === "body"),
           `${slideType} layout "${id}" should not declare a body slot`,
@@ -208,11 +215,10 @@ describe("layoutsForSlideType", () => {
     for (const l of covers) expect(l.slideTypes).toContain("cover")
   })
 
-  it("cover/chapter/ending each resolve to exactly their 9, 9 or 7 layouts (no takeovers)", () => {
-    // cover grew 9 -> 13 in the board-cover-fidelity wave (institutional-block,
-    // memo-head, board-head, bill-head). chapter grew 8 -> 9 in the
-    // editorial-verse wave (verse-chapter, pinOnly).
-    expect(layoutsForSlideType("cover")).toHaveLength(13)
+  it("cover/chapter/ending each resolve to exactly their 19, 9 or 7 layouts (no takeovers)", () => {
+    // cover grew 13 -> 19 in board-cover-restore wave 1. chapter grew 8 -> 9
+    // in the editorial-verse wave (verse-chapter, pinOnly).
+    expect(layoutsForSlideType("cover")).toHaveLength(19)
     expect(layoutsForSlideType("chapter")).toHaveLength(9)
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })

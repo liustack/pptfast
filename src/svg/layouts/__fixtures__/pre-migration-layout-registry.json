@@ -13,6 +13,12 @@
     "memo-head",
     "board-head",
     "bill-head",
+    "verdict-index",
+    "band-title",
+    "header-band",
+    "paper-masthead",
+    "horizon-wedge",
+    "corner-wedge",
     "masthead-chapter",
     "constellation-chapter",
     "rail-chapter",
@@ -1240,6 +1246,72 @@
           "accepts": [],
           "name": "rule"
         }
+      ]
+    },
+    "verdict-index": {
+      "id": "verdict-index",
+      "kind": "archetype",
+      "slideTypes": ["cover"],
+      "slots": [
+        { "name": "kicker", "accepts": [] },
+        { "name": "heading", "accepts": [] },
+        { "name": "subheading", "accepts": [] },
+        { "name": "body", "accepts": ["bullets"], "capacity": 1 },
+        { "name": "meta", "accepts": [] }
+      ]
+    },
+    "band-title": {
+      "id": "band-title",
+      "kind": "archetype",
+      "slideTypes": ["cover"],
+      "slots": [
+        { "name": "kicker", "accepts": [] },
+        { "name": "heading", "accepts": [] },
+        { "name": "subheading", "accepts": [] },
+        { "name": "meta", "accepts": [] }
+      ]
+    },
+    "header-band": {
+      "id": "header-band",
+      "kind": "archetype",
+      "slideTypes": ["cover"],
+      "slots": [
+        { "name": "meta", "accepts": [] },
+        { "name": "heading", "accepts": [] },
+        { "name": "subheading", "accepts": [] }
+      ]
+    },
+    "paper-masthead": {
+      "id": "paper-masthead",
+      "kind": "archetype",
+      "slideTypes": ["cover"],
+      "slots": [
+        { "name": "kicker", "accepts": [] },
+        { "name": "heading", "accepts": [] },
+        { "name": "subheading", "accepts": [] },
+        { "name": "meta", "accepts": [] }
+      ]
+    },
+    "horizon-wedge": {
+      "id": "horizon-wedge",
+      "kind": "archetype",
+      "slideTypes": ["cover"],
+      "slots": [
+        { "name": "kicker", "accepts": [] },
+        { "name": "heading", "accepts": [] },
+        { "name": "subheading", "accepts": [] },
+        { "name": "meta", "accepts": [] }
+      ]
+    },
+    "corner-wedge": {
+      "id": "corner-wedge",
+      "kind": "archetype",
+      "slideTypes": ["cover"],
+      "slots": [
+        { "name": "kicker", "accepts": [] },
+        { "name": "heading", "accepts": [] },
+        { "name": "subheading", "accepts": [] },
+        { "name": "meta", "accepts": [] }
       ]
     },
     "two-column": {
