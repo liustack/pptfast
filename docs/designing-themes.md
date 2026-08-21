@@ -52,8 +52,11 @@ the codebase owns fidelity.
    faded to background level are exempt, provided body ink over the
    decoration-on-background composite still clears 4.5:1 (measure with
    this repo's `contrastRatio`). Terra's contours, insight's full-width
-   baseline area line, and heritage's foot rule with its gold diamond
-   already live there and pass. Crayon crossed this band twice on
+   baseline area line, and heritage's foot rule already live there and
+   pass. Heritage's gold diamond does not meet either exemption — it is
+   a 10×10 solid at the rule's midpoint that predates this rule and
+   stands as a grandfathered pinpoint exception, not a precedent for
+   new solid pieces. Crayon crossed this band twice on
    2026-08-21, once through cover meta and once through a chart
    footnote. Decoration positions are fixed by design, never derived
    from where the content happens to sit, because seeded layout
