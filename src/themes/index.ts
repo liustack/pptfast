@@ -23,6 +23,7 @@ import { ARENA_TOKENS } from "./arena";
 import { MUSEUM_TOKENS } from "./museum";
 import { STAGE_TOKENS } from "./stage";
 import { LECTURE_TOKENS } from "./lecture";
+import { SWISS_TOKENS } from "./swiss";
 
 /**
  * The 22 canonical theme ids, registered/renderable（产品口径 21 套主题：
@@ -41,6 +42,9 @@ import { LECTURE_TOKENS } from "./lecture";
  * stage Keynote Stage——黑场·冷玄黑无框发布会演讲，2026-08-21 huashu 风格库
  * Top 5 第 3，结构身份 19 → 20 / lecture Lecture Hall——黑板夜校，2026-08-21
  * 大学/成人课程夜校板，结构身份 20 → 21）。pptfast 是独立分叉，无存量 deck
+ * stage Keynote Stage——黑场·无框发布会演讲，2026-08-21 huashu 风格库
+ * Top 5 第 3 / swiss Swiss Institutional——冷白制度，机构年报 / 政策汇报 /
+ * 审计交付，2026-08-21 wave7，结构身份 20 → 21）。pptfast 是独立分叉，无存量 deck
  * 兼容包袱，不维护 legacy id 映射表（resolveThemeId 对未知 id 一律回落
  * consulting）。
  */
@@ -67,6 +71,7 @@ export const CANONICAL_THEME_IDS = [
   "museum",
   "stage",
   "lecture",
+  "swiss",
 ] as const;
 
 export type CanonicalThemeId = (typeof CANONICAL_THEME_IDS)[number];
@@ -95,6 +100,7 @@ export const THEME_LABELS: Record<CanonicalThemeId, string> = {
   museum: "Museum",
   stage: "Keynote Stage",
   lecture: "Lecture Hall",
+  swiss: "Swiss Institutional",
 };
 
 /** Map any theme id onto a canonical, registered theme id. Unknown ids fall back to consulting. */
@@ -127,6 +133,7 @@ export const THEME_STYLES: Record<CanonicalThemeId, StyleTokens> = {
   museum: MUSEUM_TOKENS,
   stage: STAGE_TOKENS,
   lecture: LECTURE_TOKENS,
+  swiss: SWISS_TOKENS,
 };
 
 /**

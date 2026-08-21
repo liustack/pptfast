@@ -34,6 +34,7 @@ A theme bundles a style (design tokens), a brand (identity chrome: logo, footer,
 | `museum` | Museum |
 | `stage` | Keynote Stage |
 | `lecture` | Lecture Hall |
+| `swiss` | Swiss Institutional |
 
 `pptfast themes [--json]` prints the same list from the installed version.
 

@@ -2344,6 +2344,7 @@ describe("listThemes", () => {
     expect(themes.map((t) => t.id)).toContain("museum")
     expect(themes.map((t) => t.id)).toContain("stage")
     expect(themes.map((t) => t.id)).toContain("lecture")
+    expect(themes.map((t) => t.id)).toContain("swiss")
     for (const t of themes) {
       expect(t.label.length).toBeGreaterThan(0)
       expect(Object.keys(t.colors).length).toBeGreaterThan(0)

@@ -34,6 +34,7 @@ read_when:
 | `museum` | Museum（博物） |
 | `stage` | Keynote Stage（黑场） |
 | `lecture` | Lecture Hall（黑板夜校） |
+| `swiss` | Swiss Institutional（冷白制度） |
 
 `pptfast themes [--json]` 会从你装的这一版里打印同一份清单。
 

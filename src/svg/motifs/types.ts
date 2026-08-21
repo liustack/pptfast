@@ -33,3 +33,4 @@ export type MotifId =
   | "crayon-motif" // 2026-08-21：蜡笔描边（顶缘涂边 + 太阳涂鸦 + 底带彩虹划 + 左下星，crayon 专属，单锚不借用）
   | "arena-motif" // 2026-08-21：HUD 括弧＋速度线（arena 专属，单锚不借用。密页降档撤速度线，只留括弧与底能量条）
   | "lecture-motif" // 2026-08-21：粉笔槽细框（lecture 专属，单锚。26px 内缩 1px 走 border，黄粉笔弧不进 motif）
+  | "swiss-motif" // 2026-08-21 wave7：顶边 12px 红条 + 右缘三格灰刻度（swiss 专属，单锚不借用。板上整高裸格线不进 motif）

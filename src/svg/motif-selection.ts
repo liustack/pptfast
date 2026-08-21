@@ -67,6 +67,7 @@
  * | crayon | crayon-motif *(singleton)* | kids-education theme (2026-08-21): crayon's crayon-smear edge + sun doodle + rainbow dashes + star-sticker vocabulary is its own new technique family — a heavy page-edge crayon stroke, not campaign's confetti field, not classroom's legal-pad punch holes. Pairing it with either would read as a mismatched skin rather than a variation, so it stays a candidate set of 1 (same rationale pattern as campaign/classroom/ink). |
  * | arena | arena-motif *(singleton)* | 2026-08-21: arena's HUD-bracket + speed-line vocabulary is its own new technique family — corner brackets, 45° edge streaks, a segmented energy bar. Campaign's confetti and tech's constellation chain are the nearest neighbours by scene, not by mark, so pairing either in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion) |
  * | lecture | lecture-motif *(singleton)* | 2026-08-21: lecture's 26px-inset 1px chalk-tray frame is its own new technique family — a single dark groove, not luxe's double gilt invitation frame, not ink's colophon-and-seal rail. Pairing either in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena). |
+ * | swiss | swiss-motif *(singleton)* | 2026-08-21 wave7: swiss's 12px top edge bar + three right-margin ticks is its own new technique family — a page-edge stamp, not vermilion's gold-rule file header, not enterprise's IKB square steps, not tech's constellation chain. Pairing any of those in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena) |
  *
  * `tone-adaptive-motif` — the 13th registered motif — is
  * deliberately absent from every candidate set above: its own source header
@@ -182,6 +183,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   crayon: ["crayon-motif"],
   arena: ["arena-motif"],
   lecture: ["lecture-motif"],
+  swiss: ["swiss-motif"],
 }
 
 /**

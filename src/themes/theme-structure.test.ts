@@ -221,12 +221,14 @@ function effectiveCoverWeightSet(themeId: CanonicalThemeId): string {
 }
 
 describe("cover-axis divergence across the 21 structural identities", () => {
-  it("distinct cover sequences: 9 across the 21 identities (measured, seeds 1-40)", () => {
+  it("distinct cover sequences: 10 across the 21 identities (measured, seeds 1-40)", () => {
     const distinct = new Set(STRUCTURAL_IDENTITY_IDS.map((id) => JSON.stringify(coverSequence(id))))
     // The measured chain on this exact fixture: 8 before the allocation wave,
-    // 10 after it, 9 after the inert-declaration fix. Each number is a
-    // literal, not a re-derivation, so reverting either edit fails here
-    // instead of quietly adopting its own new baseline.
+    // 10 after it, 9 after the inert-declaration fix, 10 once swiss landed
+    // (2026-08-21 wave7: left-anchor + split-diagonal is a new cover-weight
+    // pair, not a join into an existing group). Each number is a literal, not
+    // a re-derivation, so reverting either edit fails here instead of quietly
+    // adopting its own new baseline.
     //
     // **The drop from 10 to 9 is the fix working, not a regression**, and the
     // reason is worth reading before anyone "restores" it. One of those 10
@@ -240,7 +242,9 @@ describe("cover-axis divergence across the 21 structural identities", () => {
     // has always treated as two covers rather than one (heritage and journal
     // already share `editorial-masthead`, runway and luxe `fashion-masthead`).
     // Nine groups that all mean something beats ten where one means nothing.
-    expect(distinct.size).toBe(9)
+    // swiss then adds a tenth that also means something: left-anchor +
+    // split-diagonal, neither of which briefing already favors.
+    expect(distinct.size).toBe(10)
   })
 
   it("the blind cluster is gone: 8 of 16 identities used to pick their cover exactly the way an undeclared theme does, now none do", () => {
@@ -258,13 +262,13 @@ describe("cover-axis divergence across the 21 structural identities", () => {
     expect(blind).toEqual([])
   })
 
-  it("distinct cover weightings across the 21 identities: 9, every one of them a real preference", () => {
+  it("distinct cover weightings across the 21 identities: 10, every one of them a real preference", () => {
     const groups = new Map<string, string[]>()
     for (const id of STRUCTURAL_IDENTITY_IDS) {
       const key = effectiveCoverWeightSet(id)
       groups.set(key, [...(groups.get(key) ?? []), id])
     }
-    expect(groups.size).toBe(9)
+    expect(groups.size).toBe(10)
     // The largest remaining cluster, named rather than counted, so shrinking
     // it later is a visible edit to this test and not a silent improvement.
     // All five lean on `split-diagonal` over briefing's pair: enterprise's
@@ -622,7 +626,7 @@ describe("control-group byte identity (migration-period guard — deletable once
  * control-group tests skip these rather than recapturing the fixture file
  * (its whole meaning is a record of a past state).
  */
-const POST_ALLOCATION_THEME_IDS: readonly CanonicalThemeId[] = ["crayon", "arena", "museum", "stage", "lecture"]
+const POST_ALLOCATION_THEME_IDS: readonly CanonicalThemeId[] = ["crayon", "arena", "museum", "stage", "lecture", "swiss"]
 const ALLOCATION_ERA_THEME_IDS = CANONICAL_THEME_IDS.filter(
   (id) => !POST_ALLOCATION_THEME_IDS.includes(id),
 )
@@ -833,6 +837,10 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     // ids (banner-title / tone-adaptive-header), 62 → 64. The number is a
     // tripwire, not a target — if it drifts, re-derive it from
     // `definitions.ts` rather than editing it to match.
+    // 60 → 62. swiss (2026-08-21 wave7) adds two cover ids (left-anchor /
+    // split-diagonal), 62 → 64. The number is a tripwire, not a target — if
+    // it drifts, re-derive it from `definitions.ts` rather than editing it
+    // to match.
     expect(combos).toHaveLength(64)
   })
 
