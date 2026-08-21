@@ -2,9 +2,12 @@ import { PptfastError } from "../errors"
 import { findUserConfig } from "./config"
 import { userConfigPath } from "./home"
 import {
+  GENERATOR_IDS,
   maskKey,
   parseCliConfigKey,
+  parseCliConfigValue,
   persistUserConfigValue,
+  resolveGenerators,
   resolveImageKeys,
 } from "./image-config"
 import { readSecret, type SecretInputIo } from "./secret-input"
@@ -28,14 +31,16 @@ export async function runConfigSet(key: string, value: string | undefined, opts:
     const read = opts.readSecret ?? readSecret
     resolved = await read(`${key} (input hidden): `, opts.io)
   }
-  const path = await persistUserConfigValue(parsed.path, resolved)
+  const stored = parseCliConfigValue(parsed, resolved)
+  const path = await persistUserConfigValue(parsed.path, stored)
   return `Saved ${key} to ${path}`
 }
 
 export async function runConfigShow(opts: { env?: NodeJS.ProcessEnv } = {}): Promise<string> {
   const path = userConfigPath()
   const hit = await findUserConfig()
-  const keys = resolveImageKeys({ file: hit?.config ?? null, env: opts.env ?? process.env })
+  const file = hit?.config ?? null
+  const keys = resolveImageKeys({ file, env: opts.env ?? process.env })
   const lines = [`User config: ${path}`, ""]
   for (const provider of ["pexels", "pixabay"] as const) {
     const label = `${provider}.apiKey`
@@ -53,5 +58,14 @@ export async function runConfigShow(opts: { env?: NodeJS.ProcessEnv } = {}): Pro
   else lines.push("openverse.clientId  missing")
   if (ov.clientSecret) lines.push(`openverse.clientSecret  ${maskKey(ov.clientSecret)}${ovSrc}`)
   else lines.push("openverse.clientSecret  missing")
+
+  const gens = resolveGenerators({ file })
+  lines.push("")
+  for (const id of GENERATOR_IDS) {
+    lines.push(`images.generators.${id}.enabled  ${gens.enabled[id] ? "true" : "false"}`)
+  }
+  const rawGens = file?.images?.generators
+  if (rawGens?.order) lines.push(`images.generators.order  ${rawGens.order.join(",")}`)
+  if (rawGens?.timeoutMs !== undefined) lines.push(`images.generators.timeoutMs  ${rawGens.timeoutMs}`)
   return lines.join("\n")
 }

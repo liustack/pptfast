@@ -29,16 +29,33 @@ export const OpenverseConfigSchema = z
   })
   .strict()
 
+export const GENERATOR_IDS = ["grok", "codex", "antigravity"] as const
+export type GeneratorId = (typeof GENERATOR_IDS)[number]
+export const DEFAULT_GENERATOR_ORDER: GeneratorId[] = ["grok", "codex", "antigravity"]
+export const DEFAULT_GENERATOR_TIMEOUT_MS = 180000
+
+export const GeneratorFlagsSchema = z.object({ enabled: z.boolean().optional() }).strict()
+export const GeneratorsConfigSchema = z
+  .object({
+    grok: GeneratorFlagsSchema.optional(),
+    codex: GeneratorFlagsSchema.optional(),
+    antigravity: GeneratorFlagsSchema.optional(),
+    order: z.array(z.enum(GENERATOR_IDS)).optional(),
+    timeoutMs: z.number().int().positive().optional(),
+  })
+  .strict()
+
 export const ImagesConfigSchema = z
   .object({
     pexels: ImageProviderConfigSchema.optional(),
     pixabay: ImageProviderConfigSchema.optional(),
     openverse: OpenverseConfigSchema.optional(),
+    generators: GeneratorsConfigSchema.optional(),
   })
   .strict()
 
 export type ImageApiKeyProviderId = "pexels" | "pixabay"
-export type ImageProviderId = ImageApiKeyProviderId | "openverse"
+export type ImageProviderId = ImageApiKeyProviderId | "openverse" | GeneratorId
 export type KeySource = "file" | "env"
 
 export interface ImageUserConfig {
@@ -46,6 +63,13 @@ export interface ImageUserConfig {
     pexels?: { apiKey?: string }
     pixabay?: { apiKey?: string }
     openverse?: { clientId?: string; clientSecret?: string }
+    generators?: {
+      grok?: { enabled?: boolean }
+      codex?: { enabled?: boolean }
+      antigravity?: { enabled?: boolean }
+      order?: GeneratorId[]
+      timeoutMs?: number
+    }
   }
 }
 
@@ -80,27 +104,79 @@ const ENV_BY_PROVIDER: Record<ImageApiKeyProviderId, string> = {
 
 const FORBIDDEN_SEGMENTS = new Set(["__proto__", "constructor", "prototype"])
 
+export type CliValueKind = "string" | "boolean" | "order" | "timeoutMs"
+
 export interface CliConfigKey {
   cliKey: string
   path: string[]
   omitValue: boolean
   secret: boolean
+  kind: CliValueKind
 }
 
 const CLI_KEYS: Record<string, CliConfigKey> = {
-  "pexels.apiKey": { cliKey: "pexels.apiKey", path: ["images", "pexels", "apiKey"], omitValue: true, secret: true },
-  "pixabay.apiKey": { cliKey: "pixabay.apiKey", path: ["images", "pixabay", "apiKey"], omitValue: true, secret: true },
+  "pexels.apiKey": {
+    cliKey: "pexels.apiKey",
+    path: ["images", "pexels", "apiKey"],
+    omitValue: true,
+    secret: true,
+    kind: "string",
+  },
+  "pixabay.apiKey": {
+    cliKey: "pixabay.apiKey",
+    path: ["images", "pixabay", "apiKey"],
+    omitValue: true,
+    secret: true,
+    kind: "string",
+  },
   "openverse.clientId": {
     cliKey: "openverse.clientId",
     path: ["images", "openverse", "clientId"],
     omitValue: false,
     secret: true,
+    kind: "string",
   },
   "openverse.clientSecret": {
     cliKey: "openverse.clientSecret",
     path: ["images", "openverse", "clientSecret"],
     omitValue: true,
     secret: true,
+    kind: "string",
+  },
+  "images.generators.grok.enabled": {
+    cliKey: "images.generators.grok.enabled",
+    path: ["images", "generators", "grok", "enabled"],
+    omitValue: false,
+    secret: false,
+    kind: "boolean",
+  },
+  "images.generators.codex.enabled": {
+    cliKey: "images.generators.codex.enabled",
+    path: ["images", "generators", "codex", "enabled"],
+    omitValue: false,
+    secret: false,
+    kind: "boolean",
+  },
+  "images.generators.antigravity.enabled": {
+    cliKey: "images.generators.antigravity.enabled",
+    path: ["images", "generators", "antigravity", "enabled"],
+    omitValue: false,
+    secret: false,
+    kind: "boolean",
+  },
+  "images.generators.order": {
+    cliKey: "images.generators.order",
+    path: ["images", "generators", "order"],
+    omitValue: false,
+    secret: false,
+    kind: "order",
+  },
+  "images.generators.timeoutMs": {
+    cliKey: "images.generators.timeoutMs",
+    path: ["images", "generators", "timeoutMs"],
+    omitValue: false,
+    secret: false,
+    kind: "timeoutMs",
   },
 }
 
@@ -122,13 +198,16 @@ export function parseCliConfigKey(key: string): CliConfigKey {
   const hit = CLI_KEYS[key]
   if (!hit) {
     throw new PptfastError(
-      `unknown config key "${key}" — expected pexels.apiKey, pixabay.apiKey, openverse.clientId, or openverse.clientSecret`,
+      `unknown config key "${key}" — expected pexels.apiKey, pixabay.apiKey, openverse.clientId, openverse.clientSecret, or images.generators.*`,
     )
   }
   return hit
 }
 
-export function providerNamedInFile(file: ImageUserConfig | null | undefined, provider: ImageProviderId): boolean {
+export function providerNamedInFile(
+  file: ImageUserConfig | null | undefined,
+  provider: ImageApiKeyProviderId | "openverse",
+): boolean {
   return file?.images?.[provider] !== undefined
 }
 
@@ -172,6 +251,57 @@ export function resolveImageKeys(opts: { file?: ImageUserConfig | null; env?: No
     pixabay: resolveOne(file, env, "pixabay"),
     openverse: resolveOpenverse(file, env),
   }
+}
+
+export interface ResolvedGenerators {
+  enabled: Record<GeneratorId, boolean>
+  order: GeneratorId[]
+  timeoutMs: number
+}
+
+export function resolveGenerators(opts: { file?: ImageUserConfig | null } = {}): ResolvedGenerators {
+  const g = opts.file?.images?.generators
+  const order = g?.order && g.order.length > 0 ? g.order : DEFAULT_GENERATOR_ORDER
+  return {
+    enabled: {
+      grok: g?.grok?.enabled === true,
+      codex: g?.codex?.enabled === true,
+      antigravity: g?.antigravity?.enabled === true,
+    },
+    order,
+    timeoutMs: typeof g?.timeoutMs === "number" && g.timeoutMs > 0 ? g.timeoutMs : DEFAULT_GENERATOR_TIMEOUT_MS,
+  }
+}
+
+export function parseCliConfigValue(parsed: CliConfigKey, raw: string): PersistableConfigValue {
+  if (parsed.kind === "boolean") {
+    const v = raw.trim().toLowerCase()
+    if (v !== "true" && v !== "false") {
+      throw new PptfastError(`${parsed.cliKey} must be true or false`)
+    }
+    return v === "true"
+  }
+  if (parsed.kind === "order") {
+    const names = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== "")
+    const unknown = names.find((n) => !(GENERATOR_IDS as readonly string[]).includes(n))
+    if (unknown) {
+      throw new PptfastError(`unknown generator "${unknown}" — expected grok, codex, or antigravity`)
+    }
+    if (names.length === 0) {
+      throw new PptfastError("images.generators.order must not be empty")
+    }
+    return names
+  }
+  if (parsed.kind === "timeoutMs") {
+    if (!/^[0-9]+$/.test(raw.trim()) || Number(raw) <= 0) {
+      throw new PptfastError(`${parsed.cliKey} must be a positive integer`)
+    }
+    return Number(raw)
+  }
+  return raw
 }
 
 export function knownSecretsFrom(keys: ResolvedImageKeys): string[] {

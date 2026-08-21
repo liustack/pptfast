@@ -241,6 +241,49 @@ describe("persistImageApiKey", () => {
   })
 })
 
+describe("generator config keys", () => {
+  it("writes images.generators.grok.enabled as a JSON boolean, show prints true unmasked, file 0600", async () => {
+    const home = await tmpHome()
+    const message = await runConfigSet("images.generators.grok.enabled", "true")
+    expect(message).toContain("Saved images.generators.grok.enabled")
+    const path = join(home, "config.json")
+    const parsed = JSON.parse(await readFile(path, "utf8")) as {
+      images: { generators: { grok: { enabled: boolean } } }
+    }
+    expect(parsed.images.generators.grok.enabled).toBe(true)
+    expect(typeof parsed.images.generators.grok.enabled).toBe("boolean")
+    if (process.platform !== "win32") {
+      const { stat } = await import("node:fs/promises")
+      expect((await stat(path)).mode & 0o777).toBe(0o600)
+    }
+    const out = await runConfigShow()
+    expect(out).toContain("images.generators.grok.enabled  true")
+    expect(out).not.toContain("****")
+  })
+
+  it("stores order as a string array and rejects unknown names", async () => {
+    const home = await tmpHome()
+    await runConfigSet("images.generators.order", "codex,grok")
+    const parsed = JSON.parse(await readFile(join(home, "config.json"), "utf8")) as {
+      images: { generators: { order: string[] } }
+    }
+    expect(parsed.images.generators.order).toEqual(["codex", "grok"])
+    const out = await runConfigShow()
+    expect(out).toContain("images.generators.order  codex,grok")
+    await expect(runConfigSet("images.generators.order", "codex,nope")).rejects.toThrow(/unknown/)
+  })
+
+  it("stores timeoutMs as a positive integer", async () => {
+    const home = await tmpHome()
+    await runConfigSet("images.generators.timeoutMs", "120000")
+    const parsed = JSON.parse(await readFile(join(home, "config.json"), "utf8")) as {
+      images: { generators: { timeoutMs: number } }
+    }
+    expect(parsed.images.generators.timeoutMs).toBe(120000)
+    await expect(runConfigSet("images.generators.timeoutMs", "0")).rejects.toThrow(/positive/)
+  })
+})
+
 describe("persistUserConfigValue", () => {
   it("writes a nested Openverse clientId and clears it with an empty string", async () => {
     const home = await tmpHome()

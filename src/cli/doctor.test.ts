@@ -493,6 +493,51 @@ describe("runDoctor: images", () => {
     }
   })
 
+  it("probes a fake grok on PATH as found and disabled by default, without leaking secrets", async () => {
+    const home = await makeHome()
+    const binDir = await mkdtemp(join(tmpdir(), "pptfast-doctor-bin-"))
+    await writeFile(join(binDir, "grok"), "#!/bin/sh\nexit 0\n")
+    chmodSync(join(binDir, "grok"), 0o755)
+    const versionRuns: string[] = []
+    try {
+      const report = await buildDoctorReport({
+        home,
+        env: { PATH: binDir },
+        version: CURRENT,
+        runProcess: async (req) => {
+          versionRuns.push(`${req.command} ${req.args.join(" ")}`)
+          expect(req.timeoutMs).toBe(2000)
+          return { code: 0, stdout: "grok 1.0.5 (5115b46bc909)\n", stderr: "" }
+        },
+      })
+      const grok = report.generators.find((g) => g.id === "grok")
+      expect(grok?.found).toBe(true)
+      expect(grok?.enabled).toBe(false)
+      expect(grok?.version).toBe("1.0.5")
+      expect(grok?.bin).toContain("grok")
+      expect(report.warnings.some((w) => w.check === "generators")).toBe(false)
+      expect(report.errors).toEqual([])
+      const { output, hasErrors } = await runDoctor({
+        home,
+        env: { PATH: binDir },
+        version: CURRENT,
+        json: true,
+        runProcess: async () => ({ code: 0, stdout: "grok 1.0.5 (5115b46bc909)\n", stderr: "" }),
+      })
+      expect(hasErrors).toBe(false)
+      expect(output).toContain("generators")
+      expect(output).not.toContain("FILESECRET99")
+      const rendered = renderDoctorReport(report)
+      expect(rendered).toContain("Image generators")
+      expect(rendered).toContain("disabled")
+      expect(rendered).toContain("pptfast config set images.generators.grok.enabled true")
+      expect(versionRuns.some((l) => l.endsWith("--version"))).toBe(true)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+      await rm(binDir, { recursive: true, force: true })
+    }
+  })
+
   it("reports Openverse present only when both clientId and clientSecret resolve", async () => {
     const home = await makeHome()
     try {

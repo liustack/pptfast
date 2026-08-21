@@ -19,7 +19,7 @@ import {
 } from "./cli/commands"
 import { runConfigSet, runConfigShow } from "./cli/config-cmd"
 import { runDoctor } from "./cli/doctor"
-import { runImagesFetch, runImagesList, runImagesSearch } from "./cli/images"
+import { runImagesFetch, runImagesGenerate, runImagesList, runImagesSearch } from "./cli/images"
 import { DEFAULT_PORT, runServe } from "./cli/serve"
 import { checkForUpdate, createSelfUpdater } from "./cli/update"
 import { VERSION } from "./version"
@@ -336,6 +336,21 @@ images
   .action(async (opts: { deck: string }) => {
     try {
       console.log(await runImagesList({ deck: opts.deck, cwd: process.cwd() }))
+    } catch (e) {
+      fail(e)
+    }
+  })
+images
+  .command("generate")
+  .description("Generate an image with a local CLI (grok, codex, or antigravity) and pin it")
+  .requiredOption("--deck <dir>", "deck project directory, path, or bare name")
+  .requiredOption("--as <asset_id>", "local asset id (filename without extension)")
+  .option("--prompt <text>", "image prompt (otherwise taken from asset-brief)")
+  .action(async (opts: { deck: string; as: string; prompt?: string }) => {
+    try {
+      console.log(
+        await runImagesGenerate({ deck: opts.deck, as: opts.as, prompt: opts.prompt, cwd: process.cwd() }),
+      )
     } catch (e) {
       fail(e)
     }

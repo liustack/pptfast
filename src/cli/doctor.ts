@@ -21,7 +21,8 @@ import { isMissingModuleError } from "../platform/node"
 import { VERSION } from "../version"
 import { findConfig, findUserConfig } from "./config"
 import { userConfigPath } from "./home"
-import { resolveImageKeys, type ImageProviderId, type KeySource } from "./image-config"
+import { resolveGenerators, resolveImageKeys, type GeneratorId, type ImageProviderId, type KeySource } from "./image-config"
+import { probeGenerators, type ProcessRunner } from "./image-generators"
 import { compareVersions, PACKAGE_NAME } from "./update"
 import { inspectWorkspace, type GitIgnoreStatus, type GitRunner } from "./workspace"
 
@@ -165,6 +166,14 @@ export interface DoctorImages {
   providers: DoctorImageProvider[]
 }
 
+export interface DoctorGenerator {
+  id: GeneratorId
+  found: boolean
+  bin: string | null
+  version: string | null
+  enabled: boolean
+}
+
 export interface DoctorReport {
   /** The running CLI's version — every drift comparison below is against it. */
   version: string
@@ -175,6 +184,7 @@ export interface DoctorReport {
   selfTest: DoctorSelfTest
   workspace: DoctorWorkspace
   images: DoctorImages
+  generators: DoctorGenerator[]
   /** Hard failures: the only thing that makes `pptfast doctor` exit non-zero. */
   errors: DoctorFinding[]
   /** Worth fixing, never fatal — a stale skill copy or a missing optional
@@ -200,6 +210,8 @@ export interface DoctorInput {
   cwd?: string
   /** Injectable git runner for the workspace ignore probe. */
   runGit?: GitRunner
+  /** Injectable process runner for generator `--version` probes. */
+  runProcess?: ProcessRunner
 }
 
 /** `PINNED="0.18.0"` out of a launcher's text — the exact line
@@ -453,6 +465,17 @@ export async function inspectImages(env: NodeJS.ProcessEnv): Promise<DoctorImage
   return { configPath, configExists, groupOrOtherReadable, providers }
 }
 
+export async function inspectGenerators(env: NodeJS.ProcessEnv, run?: ProcessRunner): Promise<DoctorGenerator[]> {
+  let file: Awaited<ReturnType<typeof findUserConfig>> = null
+  try {
+    file = await findUserConfig()
+  } catch {
+    file = null
+  }
+  const flags = resolveGenerators({ file: file?.config ?? null })
+  return probeGenerators({ env, run, enabled: flags.enabled })
+}
+
 /**
  * Push a tiny built-in deck through the real pipeline — validate, render one
  * slide to SVG, generate the .pptx bytes — entirely in memory, nothing written
@@ -498,13 +521,14 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
   const nodeVersion = input.nodeVersion ?? process.version
 
   const cwd = input.cwd ?? process.cwd()
-  const [skills, dsh, capabilities, selfTest, projectHit, images] = await Promise.all([
+  const [skills, dsh, capabilities, selfTest, projectHit, images, generators] = await Promise.all([
     scanSkillCopies(home, version),
     inspectDsh(home, version),
     inspectCapabilities(env),
     runSelfTest(),
     findConfig(cwd),
     inspectImages(env),
+    inspectGenerators(env, input.runProcess),
   ])
   const workspace = await inspectWorkspace({
     cwd,
@@ -590,7 +614,7 @@ export async function buildDoctorReport(input: DoctorInput = {}): Promise<Doctor
     })
   }
 
-  return { version, runtime, skills, dsh, capabilities, selfTest, workspace, images, errors, warnings }
+  return { version, runtime, skills, dsh, capabilities, selfTest, workspace, images, generators, errors, warnings }
 }
 
 function mark(state: "ok" | "warn" | "fail" | "n/a"): string {
@@ -697,6 +721,19 @@ export function renderDoctorReport(report: DoctorReport): string {
     } else {
       lines.push(`  ${mark("n/a")} ${provider.provider}: missing — pptfast config set ${provider.provider}.apiKey`)
     }
+  }
+  lines.push("")
+
+  lines.push("Image generators (optional, off until enabled)")
+  for (const gen of report.generators) {
+    if (!gen.found) {
+      lines.push(`  ${mark("n/a")} ${gen.id}: not found`)
+      continue
+    }
+    const ver = gen.version ? `, ${gen.version}` : ""
+    const state = gen.enabled ? "enabled" : "disabled"
+    const hint = gen.enabled ? "" : ` — pptfast config set images.generators.${gen.id}.enabled true`
+    lines.push(`  ${mark("ok")} ${gen.id}: found (${gen.bin}${ver}) ${state}${hint}`)
   }
   lines.push("")
 
