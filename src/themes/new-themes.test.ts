@@ -15,6 +15,9 @@ import { STAGE_TOKENS } from "./stage"
 import { LECTURE_TOKENS } from "./lecture"
 import { CANONICAL_THEME_IDS, THEME_STYLES } from "./index"
 import { SWISS_TOKENS } from "./swiss"
+import { MEMO_TOKENS } from "./memo"
+import { HERITAGE_TOKENS } from "./heritage"
+import { THEME_DEFINITIONS } from "./definitions"
 import type { StyleTokens } from "./tokens"
 
 // Task 1 of the theme redesign landed only the token objects here; Task 5
@@ -471,5 +474,100 @@ describe("swiss tokens", () => {
 
   it("chartPalette is red / black / mid-gray / cool blue-gray, no orange", () => {
     expect(SWISS_TOKENS.colors.chartPalette).toEqual(["#D7282F", "#101010", "#5F5F5C", "#4A7A8A"])
+  })
+})
+
+// memo（打字机决定，2026-08-21）：便笺纸 + 宋体 + 印章红成线。Same
+// shape-only assertions as the blocks above — registry wiring is covered
+// separately by themes/index.test.ts.
+describe("memo tokens", () => {
+  it("satisfies the StyleTokens shape", () => {
+    const t: StyleTokens = MEMO_TOKENS
+    expect(t.id).toBe("memo")
+  })
+
+  it("heading font resolves to SimSun (CJK serif, journal/heritage/museum precedent, no tofu on export)", () => {
+    expect(resolveFontFace(MEMO_TOKENS.fonts.heading, "heading")).toBe("SimSun")
+  })
+
+  it("body font resolves to Microsoft YaHei (exact width table)", () => {
+    expect(resolveFontFace(MEMO_TOKENS.fonts.body, "body")).toBe("Microsoft YaHei")
+  })
+
+  it("mono font resolves to Courier New (typewriter Latin, SAFE_FONTS stand-in for the board's Courier Prime)", () => {
+    expect(resolveFontFace(MEMO_TOKENS.fonts.mono ?? [], "mono")).toBe("Courier New")
+  })
+
+  it("does not set an accentPool (single, restrained stamp-red accent)", () => {
+    expect(MEMO_TOKENS.colors.accentPool).toBeUndefined()
+  })
+
+  it("shape.radius is 2 (restrained report) and gapScale is 0.9 (tight, one notch under consulting)", () => {
+    expect(MEMO_TOKENS.shape?.radius).toBe(2)
+    expect(MEMO_TOKENS.shape?.gapScale).toBe(0.9)
+  })
+
+  it("four page types share the memo-paper ground (chapter is not a primary bleed)", () => {
+    for (const slideType of ["cover", "chapter", "content", "ending"] as const) {
+      expect(MEMO_TOKENS.defaultBackgrounds[slideType]).toEqual({
+        kind: "color",
+        value: MEMO_TOKENS.colors.bg,
+      })
+    }
+  })
+
+  it("accent is stamp red for lines and type, never the fill red vermilion uses", () => {
+    expect(MEMO_TOKENS.colors.accent).toBe("#A63A2B")
+    expect(MEMO_TOKENS.colors.primary).toBe(MEMO_TOKENS.colors.text)
+    expect(MEMO_TOKENS.colors.primary).not.toBe(MEMO_TOKENS.colors.accent)
+    expect(MEMO_TOKENS.colors.accent).not.toBe(VERMILION_TOKENS.colors.primary)
+  })
+
+  it("does not bind chrome on the theme — pairing with chrome:full is a docs note, not an engine lock", () => {
+    expect(THEME_DEFINITIONS.memo.brand).toEqual({})
+  })
+})
+
+describe("memo vs heritage vs vermilion (warm-paper / red-family split)", () => {
+  it("three papers stay distinct", () => {
+    expect(MEMO_TOKENS.colors.bg).toBe("#F6F1E7")
+    expect(HERITAGE_TOKENS.colors.bg).toBe("#F4EDE2")
+    expect(VERMILION_TOKENS.colors.bg).toBe("#F6EFE3")
+    expect(new Set([MEMO_TOKENS.colors.bg, HERITAGE_TOKENS.colors.bg, VERMILION_TOKENS.colors.bg]).size).toBe(3)
+  })
+
+  it("heading: memo and heritage are SimSun serif, vermilion is YaHei sans (red banner carrying white type)", () => {
+    expect(resolveFontFace(MEMO_TOKENS.fonts.heading, "heading")).toBe("SimSun")
+    expect(resolveFontFace(HERITAGE_TOKENS.fonts.heading, "heading")).toBe("SimSun")
+    expect(resolveFontFace(VERMILION_TOKENS.fonts.heading, "heading")).toBe("Microsoft YaHei")
+  })
+
+  it("only memo carries a typewriter mono stack headed by Courier New", () => {
+    expect(resolveFontFace(MEMO_TOKENS.fonts.mono ?? [], "mono")).toBe("Courier New")
+    expect(HERITAGE_TOKENS.fonts.mono).toBeUndefined()
+    expect(VERMILION_TOKENS.fonts.mono).toBeUndefined()
+  })
+
+  it("vermilion chapter is a primary-red bleed, memo and heritage stay on paper", () => {
+    expect(VERMILION_TOKENS.defaultBackgrounds.chapter).toEqual({
+      kind: "color",
+      value: VERMILION_TOKENS.colors.primary,
+    })
+    expect(MEMO_TOKENS.defaultBackgrounds.chapter).toEqual({
+      kind: "color",
+      value: MEMO_TOKENS.colors.bg,
+    })
+    expect(HERITAGE_TOKENS.defaultBackgrounds.chapter).toEqual({
+      kind: "color",
+      value: HERITAGE_TOKENS.colors.bg,
+    })
+  })
+
+  it("red three-family: vermilion fill red, memo line red, neither shares the other's hex", () => {
+    expect(VERMILION_TOKENS.colors.primary).toBe("#B02318")
+    expect(MEMO_TOKENS.colors.accent).toBe("#A63A2B")
+    expect(MEMO_TOKENS.colors.accent).not.toBe(VERMILION_TOKENS.colors.primary)
+    expect(MEMO_TOKENS.colors.primary).not.toBe(VERMILION_TOKENS.colors.primary)
+    expect(HERITAGE_TOKENS.colors.accent).toBe("#B8742C")
   })
 })

@@ -19,6 +19,7 @@ import { CrayonMotif } from "./motif-crayon-motif"
 import { ArenaMotif } from "./motif-arena-motif"
 import { LectureMotif } from "./motif-lecture-motif"
 import { SwissMotif } from "./motif-swiss-motif"
+import { MemoMotif } from "./motif-memo-motif"
 
 export type { Motif, MotifId } from "./types"
 
@@ -47,4 +48,5 @@ export const MOTIFS: Record<MotifId, Motif> = {
   "arena-motif": ArenaMotif,
   "lecture-motif": LectureMotif,
   "swiss-motif": SwissMotif,
+  "memo-motif": MemoMotif,
 }

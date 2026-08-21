@@ -182,6 +182,9 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // took), so the count stays 11. stage (same day) joins the classroom /
     // vermilion cover-weight cluster, count stays 11. lecture (same day)
     // takes classroom's cover pair, count stays 11.
+    // vermilion cover-weight cluster, count stays 11. memo (same day) joins
+    // the journal / insight / museum editorial-masthead cover-weight
+    // cluster, count stays 11.
     expect(distinct.size).toBe(11)
   })
 
@@ -626,7 +629,7 @@ describe("control-group byte identity (migration-period guard — deletable once
  * control-group tests skip these rather than recapturing the fixture file
  * (its whole meaning is a record of a past state).
  */
-const POST_ALLOCATION_THEME_IDS: readonly CanonicalThemeId[] = ["crayon", "arena", "museum", "stage", "lecture", "swiss"]
+const POST_ALLOCATION_THEME_IDS: readonly CanonicalThemeId[] = ["crayon", "arena", "museum", "stage", "lecture", "swiss", "memo"]
 const ALLOCATION_ERA_THEME_IDS = CANONICAL_THEME_IDS.filter(
   (id) => !POST_ALLOCATION_THEME_IDS.includes(id),
 )
@@ -841,6 +844,10 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     // split-diagonal), 62 → 64. The number is a tripwire, not a target — if
     // it drifts, re-derive it from `definitions.ts` rather than editing it
     // to match.
+    // 60 → 62. memo (same day, typewriter decision memo) adds two cover ids
+    // (banner-title / editorial-masthead), 62 → 64. The number is a
+    // tripwire, not a target — if it drifts, re-derive it from
+    // `definitions.ts` rather than editing it to match.
     expect(combos).toHaveLength(64)
   })
 

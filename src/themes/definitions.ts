@@ -984,6 +984,27 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       cover: ["left-anchor", "split-diagonal"],
     },
   },
+  // memo（打字机决定，2026-08-21 wave7）：便笺纸 + 宋体标题 + 印章红双线。
+  // 结构行 L / bottom-left / light / tight，最近邻 consulting
+  // （L / BL / light / medium），岔留白轴。红成线不成面，与 vermilion
+  // 红条承白字、heritage 藏书票衬线分家。封面构造 banner-title /
+  // editorial-masthead：
+  //   - `banner-title`：备忘录的断言横幅。briefing 已锁权重 3，单独声明
+  //     空转，保留为真实主张（裁定 1 的追加先例）。横幅吃的是 ink
+  //     primary，不是印章红（红永不成面）。
+  //   - `editorial-masthead`：报头双线构图，和 motif 的打字机双线同一套
+  //     排印。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实边际
+  //     权重。journal / heritage / insight / museum 也声明了它，但五家
+  //     的 cover 集合并不全同（memo 配 banner-title）。
+  // chapter / ending / content 不声明：身份靠封面 + light motif + tight
+  // gapScale。chrome 仍归 deck 声明，不在本行绑定。
+  memo: {
+    layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    motif: "memo-motif",
+    layoutTendencies: {
+      cover: ["banner-title", "editorial-masthead"],
+    },
+  },
 }
 
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(

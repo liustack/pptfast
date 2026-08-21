@@ -68,6 +68,7 @@
  * | arena | arena-motif *(singleton)* | 2026-08-21: arena's HUD-bracket + speed-line vocabulary is its own new technique family — corner brackets, 45° edge streaks, a segmented energy bar. Campaign's confetti and tech's constellation chain are the nearest neighbours by scene, not by mark, so pairing either in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion) |
  * | lecture | lecture-motif *(singleton)* | 2026-08-21: lecture's 26px-inset 1px chalk-tray frame is its own new technique family — a single dark groove, not luxe's double gilt invitation frame, not ink's colophon-and-seal rail. Pairing either in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena). |
  * | swiss | swiss-motif *(singleton)* | 2026-08-21 wave7: swiss's 12px top edge bar + three right-margin ticks is its own new technique family — a page-edge stamp, not vermilion's gold-rule file header, not enterprise's IKB square steps, not tech's constellation chain. Pairing any of those in would read as a mismatched skin rather than a variation. Stays a candidate set of 1 (same rationale pattern as campaign/ink/pulse/terra/ember/vermilion/crayon/arena) |
+ * | memo | memo-motif *(singleton)* | 2026-08-21: memo's typewriter double-rule + MEMORANDUM eyebrow is its own new technique family — stamp-red lines and a Latin mono decorative word, never a fill. Journal's masthead rules and heritage's bookplate rules sit in the same printed-line neighbourhood, but both already rotate with each other and with luxe; pairing either in would collapse memo into the editorial-print cluster it was designed to leave. Stays a candidate set of 1 (same rationale pattern as vermilion/ink). |
  *
  * `tone-adaptive-motif` — the 13th registered motif — is
  * deliberately absent from every candidate set above: its own source header
@@ -184,6 +185,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
   arena: ["arena-motif"],
   lecture: ["lecture-motif"],
   swiss: ["swiss-motif"],
+  memo: ["memo-motif"],
 }
 
 /**
@@ -202,6 +204,7 @@ export const MOTIF_CANDIDATES: Partial<Record<CanonicalThemeId, readonly MotifId
  *   this module existed.
  * - A 1-member candidate set (`campaign`, `ink`, `classroom`, `bloom`,
  *   crayon, arena, lecture, and every themes-16/gov-theme singleton): `weightedPickBySeed`
+ *   crayon, arena, memo, and every themes-16/gov-theme singleton): `weightedPickBySeed`
  *   always returns that single member regardless of seed/pageKey — also
  *   byte-identical to before this task (see `motif-selection.test.ts`'s
  *   byte-inertness block).
