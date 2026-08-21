@@ -78,6 +78,24 @@ describe("resolveLocalAssets", () => {
     await expect(resolveLocalAssets(ir, "/nowhere")).rejects.toThrow(/missing\.png/)
   })
 
+  it("falls back to the workspace assets dir when the relative src is missing under baseDir", async () => {
+    installNodePlatform()
+    const dir = await mkdtemp(join(tmpdir(), "pptfast-"))
+    const workspace = join(dir, ".pptfast", "deck", "assets")
+    const { mkdir } = await import("node:fs/promises")
+    await mkdir(workspace, { recursive: true })
+    await writeFile(join(workspace, "hero.png"), PNG_1PX)
+    const ir = PptxIRSchema.parse({
+      version: "4",
+      filename: "t",
+      theme: { id: "consulting" },
+      assets: { images: { hero: { src: "hero.png" } } },
+      slides: [{ type: "cover", heading: "x" }],
+    })
+    await resolveLocalAssets(ir, join(dir, "elsewhere"), workspace)
+    expect(ir.assets.images.hero?.src.startsWith("data:image/png;base64,")).toBe(true)
+  })
+
   // Task 2 (borrow wave, D3): magic-byte sniffing for local files, the
   // Node-only counterpart to api.ts's checkAssetBytes (which only sees
   // already-inlined data: URIs). Three probes below are dr/d-robustness.md's

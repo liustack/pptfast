@@ -155,6 +155,16 @@ describe("pruneRenderedSvgs", () => {
   it("returns 0 for a missing directory", async () => {
     expect(await pruneRenderedSvgs(join(await trackedTmp(), "nope"))).toBe(0)
   })
+
+  it("leaves workspace stock assets (jpg + sidecar) in place", async () => {
+    const dir = await trackedTmp()
+    await mkdir(join(dir, "assets"), { recursive: true })
+    await writeFile(join(dir, "001-cover.svg"), "<svg/>")
+    await writeFile(join(dir, "assets", "foo.jpg"), "jpeg-bytes")
+    await writeFile(join(dir, "assets", "foo.json"), "{}")
+    expect(await pruneRenderedSvgs(dir)).toBe(1)
+    expect((await readdir(join(dir, "assets"))).sort()).toEqual(["foo.jpg", "foo.json"])
+  })
 })
 
 describe("ensureGitIgnored (the four holes)", () => {

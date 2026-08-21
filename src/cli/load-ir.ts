@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises"
-import { extname, isAbsolute, resolve } from "node:path"
+import { basename, extname, isAbsolute, resolve } from "node:path"
 import { PptfastError } from "../errors"
 import type { PptxIR } from "../ir"
 import { FORMAT_BY_MIME, MIME_BY_SNIFFED_FORMAT, sniffImageFormat } from "../ir/asset-sniff"
@@ -80,7 +80,22 @@ export async function loadIrFile(irPath: string, kind = "IR"): Promise<unknown> 
  * already harmless, and a genuinely corrupt one surfaces as sharp's own
  * decode error.
  */
-export async function resolveLocalAssets(ir: PptxIR, baseDir: string): Promise<void> {
+async function readFromWorkspace(src: string, workspaceAssetsDir: string): Promise<Buffer | null> {
+  const candidates = [resolve(workspaceAssetsDir, src), resolve(workspaceAssetsDir, basename(src))]
+  const seen = new Set<string>()
+  for (const candidate of candidates) {
+    if (seen.has(candidate)) continue
+    seen.add(candidate)
+    try {
+      return await readFile(candidate)
+    } catch {
+      continue
+    }
+  }
+  return null
+}
+
+export async function resolveLocalAssets(ir: PptxIR, baseDir: string, workspaceAssetsDir?: string): Promise<void> {
   for (const [name, asset] of Object.entries(ir.assets.images)) {
     const src = asset.src
     if (src.startsWith("data:") || /^https?:\/\//.test(src)) continue
@@ -89,7 +104,11 @@ export async function resolveLocalAssets(ir: PptxIR, baseDir: string): Promise<v
     try {
       bytes = await readFile(abs)
     } catch {
-      throw new PptfastError(`asset "${name}": cannot read image file ${abs} (from src "${src}")`)
+      const fallback = workspaceAssetsDir && !isAbsolute(src) ? await readFromWorkspace(src, workspaceAssetsDir) : null
+      if (!fallback) {
+        throw new PptfastError(`asset "${name}": cannot read image file ${abs} (from src "${src}")`)
+      }
+      bytes = fallback
     }
     if (bytes.length === 0) {
       throw new PptfastError(`asset "${name}": image file ${abs} is zero bytes — re-export or re-select the file`)

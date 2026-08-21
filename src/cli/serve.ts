@@ -69,7 +69,9 @@ import { platform as osPlatform } from "node:os"
 import { join } from "node:path"
 import { PptfastError } from "../errors"
 import { buildDeckPreview } from "./commands"
+import { findConfig } from "./config"
 import { ASSETS_DIRNAME, PAGES_DIRNAME, SPEC_FILENAME } from "./deck-dir"
+import { resolveWorkspaceLocation } from "./workspace"
 
 /** `pptfast serve`'s own default (spec-plan.md §2's worked example,
  *  `pptfast serve <target> [--port 4400] [--no-open]`) — never
@@ -126,9 +128,11 @@ export interface ServeHandle {
  *  given `buildDeckPreview`'s own `resolvedTarget`/`isDir` for it — see this
  *  module's own doc comment for why these three (deck-dir mode) or this one
  *  (bare-IR mode) are the whole watch surface. */
-function watchRoots(resolvedTarget: string, isDir: boolean): string[] {
-  if (!isDir) return [resolvedTarget]
-  return [join(resolvedTarget, SPEC_FILENAME), join(resolvedTarget, PAGES_DIRNAME), join(resolvedTarget, ASSETS_DIRNAME)]
+function watchRoots(resolvedTarget: string, isDir: boolean, extra: string[] = []): string[] {
+  const roots = isDir
+    ? [join(resolvedTarget, SPEC_FILENAME), join(resolvedTarget, PAGES_DIRNAME), join(resolvedTarget, ASSETS_DIRNAME)]
+    : [resolvedTarget]
+  return [...roots, ...extra]
 }
 
 /** Marker on the injected `<script>` element (task S2: "serve 模式检测（注入的
@@ -355,8 +359,20 @@ export async function createServeServer(options: ServeOptions): Promise<ServeHan
     }, DEBOUNCE_MS)
   }
 
+  const projectHit = await findConfig(cwd)
+  const workspaceAssets = join(
+    resolveWorkspaceLocation({
+      cwd,
+      projectConfigPath: projectHit?.path,
+      outDir: projectHit?.config.outDir,
+      target: initial.resolvedTarget,
+      isDir: initial.isDir,
+    }).dir,
+    ASSETS_DIRNAME,
+  )
+
   const watchers: FSWatcher[] = []
-  for (const path of watchRoots(initial.resolvedTarget, initial.isDir)) {
+  for (const path of watchRoots(initial.resolvedTarget, initial.isDir, [workspaceAssets])) {
     try {
       watchers.push(watch(path, () => scheduleRebuild()))
     } catch (e) {
