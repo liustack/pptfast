@@ -3,9 +3,11 @@ import {
   layoutContent,
   layoutContentFit,
   settleToGolden,
+  goldenTopCap,
   COLUMN_GAP,
   BLOCK_GAP,
   GOLDEN_TOP_SHARE,
+  GOLDEN_TOP_CAP_GAPS,
   type ContentRect,
 } from "./layout"
 import { measureComponent } from "./components"
@@ -183,17 +185,17 @@ describe("layoutContentFit", () => {
     // line it belongs under; dropping the whole leftover to the bottom
     // welded that card to the same line ("99% 页面不能看"). The golden
     // 38% share is the 2026-08-21 ruling. The fifth review capped that
-    // share at two block-gaps so a 112px leftover cannot spend 42px of air
-    // between heading and body: 38% of 112 is 42.56, the cap is 32.
+    // share at one block-gap so a 112px leftover cannot spend 42px of air
+    // between heading and body: 38% of 112 is 42.56, the cap is 16.
     const components = [paragraphComponent(4), bulletsComponent(["甲"])]
     const splitRect: ContentRect = { x: 0, y: 0, w: 800, h: 400 }
     const { placed, dropped } = layoutContentFit("two_column", components, splitRect, ctx)
     expect(dropped).toBe(0)
     // The single retry lands them at 0 and 228 (204 + a 16px gap grown by
     // the 8px its 1.5x ceiling allows), 112px short of the rect's bottom.
-    // Both boxes then move down by the same 32 — the cap, not 42.56.
-    expect(placed[0].box.y).toBe(BLOCK_GAP * 2)
-    expect(placed[1].box.y).toBe(228 + BLOCK_GAP * 2)
+    // Both boxes then move down by the same 16 — the cap, not 42.56.
+    expect(placed[0].box.y).toBe(BLOCK_GAP)
+    expect(placed[1].box.y).toBe(228 + BLOCK_GAP)
     expect(placed[1].box.y - placed[0].box.y).toBeCloseTo(228, 5) // one block, moved whole
   })
 
@@ -205,8 +207,8 @@ describe("layoutContentFit", () => {
     const components = [paragraphComponent(4), bulletsComponent(["甲"])]
     const rect400: ContentRect = { x: 0, y: 0, w: 800, h: 400 }
     const { placed } = layoutContentFit("single", components, rect400, ctx)
-    expect(placed[0].box.y).toBe(BLOCK_GAP * 2)
-    expect(placed[1].box.y).toBe(228 + BLOCK_GAP * 2)
+    expect(placed[0].box.y).toBe(BLOCK_GAP)
+    expect(placed[1].box.y).toBe(228 + BLOCK_GAP)
     const degraded = layoutContentFit("two_column", components, rect400, ctx)
     expect(degraded.placed.map((p) => p.box.y)).toEqual(placed.map((p) => p.box.y))
   })
@@ -312,15 +314,15 @@ describe("layoutContentFit surplus distribution", () => {
     expect(placed[1].box.y - placed[0].box.y).toBeCloseTo(217.2, 5)
     expect(placed[1].box.y - (placed[0].box.y + 193.2)).toBeCloseTo(24, 5)
     // What neither pass could spend — 89.6 — is the space the assembled
-    // block is then set down into. 38% of 89.6 is 34.048, which sits just
-    // over the two-gap cap (32), so the cap binds and the extra 2.048
+    // block is then set down into. 38% of 89.6 is 34.048, which sits over
+    // the one-gap cap (16), so the cap binds and the extra 18.048
     // sinks below.
-    expect(placed[0].box.y).toBe(BLOCK_GAP * 2)
-    expect(placed[1].box.y).toBeCloseTo(217.2 + BLOCK_GAP * 2, 5)
-    expect(fitRect.h - (placed[1].box.y + 193.2)).toBeCloseTo(89.6 - BLOCK_GAP * 2, 5)
+    expect(placed[0].box.y).toBe(BLOCK_GAP)
+    expect(placed[1].box.y).toBeCloseTo(217.2 + BLOCK_GAP, 5)
+    expect(fitRect.h - (placed[1].box.y + 193.2)).toBeCloseTo(89.6 - BLOCK_GAP, 5)
   })
 
-  it("remaining <= 80px: the spacing passes both no-op and the block is placed by the golden share alone", () => {
+  it("remaining <= 80px: the spacing passes both no-op and the block is placed by the cap", () => {
     const components = [kpiComponent("a"), kpiComponent("b")]
     // stackBottom = 256; h=336 leaves remaining exactly at the 80px
     // boundary — both spacing passes require remaining > 80 to trigger, so
@@ -329,10 +331,10 @@ describe("layoutContentFit surplus distribution", () => {
     const { placed } = layoutContentFit(undefined, components, fitRect, ctx)
     expect(placed[1].box.y - placed[0].box.y).toBe(136)
     expect(placed[0].box.h).toBeUndefined()
-    // Placement has no such threshold: 38% of the 80px goes above the pair.
-    // A block does not belong at the rect's top edge merely because the page
-    // is tight, and no threshold means no jump at the boundary.
-    expect(placed[0].box.y).toBeCloseTo(30.4, 5)
+    // 38% of the 80px is 30.4, which now sits over the one-gap cap, so the
+    // cap binds. A block still does not belong at the rect's top edge merely
+    // because the page is tight.
+    expect(placed[0].box.y).toBe(BLOCK_GAP)
   })
 
   it("single-component page: the stacking pass leaves a lone block where it is — its page places it (SvgContent)", () => {
@@ -392,13 +394,14 @@ describe("layoutContentFit surplus distribution", () => {
     const noFootnote: ContentRect = { x: 0, y: 0, w: 400, h: 500 }
     // A footnote carving ~170px off the bottom drops remaining to 74px —
     // under the threshold, so neither spacing pass runs and the pair keeps
-    // its designed 16px gap; only the golden placement moves it (74 * 0.38).
+    // its designed 16px gap. 38% of 74 is 28.12, over the one-gap cap, so
+    // the cap binds.
     const withFootnote: ContentRect = { x: 0, y: 0, w: 400, h: 330 }
     const full = layoutContentFit(undefined, components, noFootnote, ctx)
     const shrunk = layoutContentFit(undefined, components, withFootnote, ctx)
-    expect(full.placed[1].box.y).toBeCloseTo(217.2 + BLOCK_GAP * 2, 5) // grown (see first test in this component)
+    expect(full.placed[1].box.y).toBeCloseTo(217.2 + BLOCK_GAP, 5) // grown (see first test in this component)
     expect(shrunk.placed[1].box.y - shrunk.placed[0].box.y).toBe(136) // gap untouched
-    expect(shrunk.placed[0].box.y).toBeCloseTo(74 * 0.38, 5)
+    expect(shrunk.placed[0].box.y).toBe(BLOCK_GAP)
     // The point of the test: the block cannot be settled past the bottom it
     // was measured against, footnote or no footnote.
     expect(shrunk.placed[1].box.y + KPI_H).toBeLessThanOrEqual(withFootnote.h)
@@ -410,11 +413,11 @@ describe("layoutContentFit surplus distribution", () => {
     const { placed } = layoutContentFit("two_column", components, fitRect, ctx)
     // Each card takes its capped stretch (120 -> 204); with no gap to grow,
     // the 396 still left would have spent 38% (150.48) above both cards.
-    // That is the island. The cap holds the pair 32px under the rect top,
+    // That is the island. The cap holds the pair 16px under the rect top,
     // level with each other before and after: the settle is one shift for
     // the whole page, not a number each column works out for itself.
     expect(placed[0].box.y).toBe(placed[1].box.y)
-    expect(placed[0].box.y).toBe(BLOCK_GAP * 2)
+    expect(placed[0].box.y).toBe(BLOCK_GAP)
   })
 
   it("two_column with two components per side: each column's own gap grows by the same global increment", () => {
@@ -428,11 +431,11 @@ describe("layoutContentFit surplus distribution", () => {
     // post-stretch remaining (97.6) over both columns' gaps (2): its share
     // per gap, 29.28, is over the 1.5x ceiling, so both gaps grow by the
     // same 8, and the 89.6 nobody spent would put 34.048 above the whole
-    // thing. The cap holds that to 32, so both second components land at
-    // 249.2 — the point of the test is that the two columns stay level.
+    // thing. The cap holds that to 16, so both second components land at
+    // 233.2 — the point of the test is that the two columns stay level.
     expect(left[1].box.y).toBe(right[1].box.y)
     expect(left[0].box.y).toBe(right[0].box.y)
-    expect(left[1].box.y).toBeCloseTo(217.2 + BLOCK_GAP * 2, 5)
+    expect(left[1].box.y).toBeCloseTo(217.2 + BLOCK_GAP, 5)
     for (const p of [...left, ...right]) expect(p.box.h).toBeCloseTo(193.2, 5)
   })
 
@@ -462,11 +465,11 @@ describe("layoutContentFit surplus distribution", () => {
     // The verdict measures 70, so the kpi's untouched coordinate is 86. The
     // stretch pass grows the kpi to its 1.7x per-card ceiling (204) without
     // moving it, then the gap pass adds the 8px the 1.5x gap ceiling allows,
-    // putting the kpi 94 below the verdict. The 202 left under the pair is
-    // then split 38/62 around it.
+    // putting the kpi 94 below the verdict. 38% of the 202 left under the
+    // pair is 76.76, over the one-gap cap, so the cap binds.
     expect(placed[1].box.h).toBe(204)
     expect(placed[1].box.y - placed[0].box.y).toBeCloseTo(94, 5)
-    expect(placed[0].box.y).toBe(BLOCK_GAP * 2)
+    expect(placed[0].box.y).toBe(BLOCK_GAP)
   })
 
   it("kpi_focus: the hoisted kpi row and the rest-stack below it count as one column (the boundary gap grows too)", () => {
@@ -478,9 +481,9 @@ describe("layoutContentFit surplus distribution", () => {
     // remaining = 400 - 236 = 164; only the kpi is stretchable — it takes
     // the capped +84 (h 120 -> 204), putting the image 220 below it. The
     // post-stretch leftover (400 - 320 = 80) is at the surplus threshold,
-    // so gap-growing no-ops and the placement spends it: 30.4 above.
+    // so gap-growing no-ops. 38% of 80 is 30.4, over the one-gap cap.
     expect(placed[0].box.h).toBe(204)
-    expect(placed[0].box.y).toBeCloseTo(30.4, 5)
+    expect(placed[0].box.y).toBe(BLOCK_GAP)
     expect(placed[1].box.y - placed[0].box.y).toBe(220)
   })
 
@@ -499,24 +502,29 @@ describe("layoutContentFit surplus distribution", () => {
 })
 
 describe("settleToGolden top-air cap (上不空优先)", () => {
+  it("caps at one designed block-gap at gapScale 1 (sixth review: two gaps still read as an island)", () => {
+    expect(GOLDEN_TOP_CAP_GAPS).toBe(1)
+    expect(goldenTopCap(ctx)).toBe(BLOCK_GAP)
+  })
+
   it("caps the air above a short block so leftover cannot open an island under the heading", () => {
     const placed = [{ component: kpi, box: { x: 0, y: 192, w: 400 } }]
     const fitRect: ContentRect = { x: 0, y: 192, w: 400, h: 428 }
     const next = settleToGolden(placed, fitRect, ctx)
     // leftover = 428 - 120 = 308. Uncapped 38% is 117, the island the
     // 2026-08-21 share opened between heading chrome and a lone short
-    // block. Two designed block-gaps (32) is one more heading-to-body beat.
-    const cap = BLOCK_GAP * 2
+    // block. One designed block-gap is the heading-to-body beat.
+    const cap = BLOCK_GAP
     expect(next[0].box.y - fitRect.y).toBe(cap)
     expect(next[0].box.y - fitRect.y).toBeLessThan(308 * GOLDEN_TOP_SHARE)
   })
 
   it("still spends 38% of leftover when that share sits inside the cap", () => {
     const placed = [{ component: kpi, box: { x: 0, y: 0, w: 400 } }]
-    const fitRect: ContentRect = { x: 0, y: 0, w: 400, h: 200 }
+    const fitRect: ContentRect = { x: 0, y: 0, w: 400, h: 155 }
     const next = settleToGolden(placed, fitRect, ctx)
-    const leftover = 200 - 120
-    expect(leftover * GOLDEN_TOP_SHARE).toBeLessThan(BLOCK_GAP * 2)
+    const leftover = 155 - 120
+    expect(leftover * GOLDEN_TOP_SHARE).toBeLessThan(BLOCK_GAP)
     expect(next[0].box.y).toBeCloseTo(leftover * GOLDEN_TOP_SHARE, 5)
   })
 
@@ -525,7 +533,7 @@ describe("settleToGolden top-air cap (上不空优先)", () => {
     const fitRect: ContentRect = { x: 0, y: 192, w: 400, h: 428 }
     const airy = { ...ctx, shape: { gapScale: 1.3 } }
     const next = settleToGolden(placed, fitRect, airy)
-    expect(next[0].box.y - fitRect.y).toBe(Math.round(BLOCK_GAP * 2 * 1.3))
+    expect(next[0].box.y - fitRect.y).toBe(Math.round(BLOCK_GAP * 1.3))
   })
 
   it("moves a gathered pair as one when the cap binds, leaving their internal gap untouched", () => {
@@ -536,6 +544,6 @@ describe("settleToGolden top-air cap (上不空优先)", () => {
     const fitRect: ContentRect = { x: 0, y: 0, w: 400, h: 500 }
     const next = settleToGolden(placed, fitRect, ctx)
     expect(next[1].box.y - next[0].box.y).toBe(136)
-    expect(next[0].box.y).toBe(BLOCK_GAP * 2)
+    expect(next[0].box.y).toBe(BLOCK_GAP)
   })
 })

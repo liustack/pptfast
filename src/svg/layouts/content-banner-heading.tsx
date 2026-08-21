@@ -8,7 +8,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
 import { footnoteBaselineFor, TITLE_ZONE_TOP } from "../chrome-geometry"
-import { BLOCK_GAP } from "../layout"
+import { goldenTopCap } from "../layout"
 
 /**
  * banner-heading content layout（spec §3.2，Wave 3 Task 19）：consulting
@@ -167,11 +167,12 @@ export function BannerHeadingContent({ ir, slide, index, ctx }: SvgTemplateProps
     ? accessibleInk(colors.primary, ctx.defaultBg ?? colors.bg, subheading.fontSize)
     : colors.primary
 
-  // Heading-to-body beat: two designed block-gaps, scaled by the theme's
-  // gapScale (1 → 32, 1.1 → 35, 1.3 → 42). The body then sits in this rect
-  // under `settleToGolden`, whose own top-air cap is the same beat, so a
-  // lone table follows the banner instead of hanging mid-page.
-  const headingBodyGap = Math.round(BLOCK_GAP * 2 * (ctx.shape?.gapScale ?? 1))
+  // Heading-to-body beat: one designed block-gap, scaled by the theme's
+  // gapScale (1 → 16, 1.1 → 18, 1.3 → 21). Same number `settleToGolden`
+  // uses as its top-air cap, so a lone table follows the banner instead of
+  // hanging mid-page. Two gaps still left ~94px of ink on a single-table
+  // page (sixth review, 2026-08-21).
+  const headingBodyGap = goldenTopCap(ctx)
   const contentRectY = bannerBottom + headingBodyGap + (subheading ? SUBHEADING_SLOT : 0)
   const contentRect = {
     x: BANNER_X,

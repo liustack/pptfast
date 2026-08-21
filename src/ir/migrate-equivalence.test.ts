@@ -650,6 +650,22 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // three `.audit.json` goldens stayed byte-identical (no finding
       // appeared or vanished); cover/chapter/ending slides did not move.
       //
+      // Re-recaptured (golden-air cap tightened, 2026-08-21 — `layout.ts`
+      // drops the gathered-block top offset from two block-gaps to one, so
+      // a banner-heading single-table page lands in the 40-60px ink band).
+      // Drift is vertical-only again: content slides of all three decks
+      // move their body block up by the cap delta. Verified by normalizing
+      // every vertical attribute (`y`/`y1`/`y2`/`cy`/`height`/`translate`
+      // y, `data-audit-box`/`data-audit-rect` y/h, PPTX `a:off y`/`a:ext
+      // cy`) and confirming old and new captures are byte-identical
+      // otherwise. PPTX part-name sets stayed identical. All three
+      // `.audit.json` goldens stayed byte-identical. Cover/chapter/ending
+      // slides did not move (`basic` 0/1/4, `scenarioBearing` 0/4,
+      // `annualReviewPreset` 0/1/4). Content slides that moved:
+      //   - `basic`: SVG slides 2/3. PPTX two slide parts, vertical-only.
+      //   - `scenarioBearing`: SVG slides 1/2/3. PPTX three slide parts.
+      //   - `annualReviewPreset`: SVG slides 2/3. PPTX two slide parts.
+      //
       // Re-recaptured (chrome default flip, 2026-08-21 — omitted deck chrome
       // now equals cover-only, so content pages drop the BrandChrome footer
       // rule, meta, and logo). Drift is the footer trio leaving, nothing

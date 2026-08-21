@@ -589,13 +589,17 @@ describe("memo vs heritage vs vermilion (warm-paper / red-family split)", () => 
   })
 })
 
-// playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字。Same
-// shape-only assertions as the blocks above — registry wiring is covered
-// separately by themes/index.test.ts.
+// playbill（荧光嗓门，2026-08-21 第七波）：荧光黄整版 + 硬黑特粗字，无 motif。
+// Same shape-only assertions as the blocks above — registry wiring is
+// covered separately by themes/index.test.ts.
 describe("playbill tokens", () => {
   it("satisfies the StyleTokens shape", () => {
     const t: StyleTokens = PLAYBILL_TOKENS
     expect(t.id).toBe("playbill")
+  })
+
+  it("declares no motif — the empty ticket chip was struck", () => {
+    expect(THEME_DEFINITIONS.playbill.motif).toBeUndefined()
   })
 
   it("heading font resolves to Microsoft YaHei (exact width table, extra-bold sans)", () => {

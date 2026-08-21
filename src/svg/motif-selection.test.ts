@@ -21,9 +21,9 @@ function makeIR(slides: Slide[], themeId: string, seed?: number): PptxIR {
 const contentSlide = (id: string): Slide => ({ type: "content", id, heading: id, components: [] }) as Slide
 
 describe("MOTIF_CANDIDATES (P1 variety wave, task 2 — table shape)", () => {
-  it("every canonical theme except the settled no-motif trio (runway, museum, stage) has a non-empty candidate set", () => {
+  it("every canonical theme except the settled no-motif quartet (runway, museum, stage, playbill) has a non-empty candidate set", () => {
     for (const id of CANONICAL_THEME_IDS) {
-      if (id === "runway" || id === "museum" || id === "stage") {
+      if (id === "runway" || id === "museum" || id === "stage" || id === "playbill") {
         expect(MOTIF_CANDIDATES[id], `${id} is a settled no-motif theme — must stay absent, not an empty array`).toBeUndefined()
         continue
       }
@@ -95,8 +95,15 @@ describe("resolveMotifId — byte-inertness for the themes this task must not di
     }
   })
 
-  it("a 1-member candidate set (campaign, ink, crayon, arena, lecture, swiss, memo, playbill) always resolves to its own anchor regardless of seed or pageKey", () => {
-    for (const themeId of ["campaign", "ink", "crayon", "arena", "lecture", "swiss", "memo", "playbill"] as const) {
+  it("playbill (empty ticket chip struck) resolves to undefined for every seed", () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const ir = makeIR([contentSlide("p0")], "playbill", seed)
+      expect(resolveMotifId(ir, ir.slides[0]!, 0)).toBeUndefined()
+    }
+  })
+
+  it("a 1-member candidate set (campaign, ink, crayon, arena, lecture, swiss, memo) always resolves to its own anchor regardless of seed or pageKey", () => {
+    for (const themeId of ["campaign", "ink", "crayon", "arena", "lecture", "swiss", "memo"] as const) {
       for (let seed = 0; seed < 20; seed++) {
         const ir = makeIR([contentSlide("p0"), contentSlide("p1"), contentSlide("p2")], themeId, seed)
         for (let i = 0; i < ir.slides.length; i++) {
