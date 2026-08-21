@@ -53,8 +53,20 @@ const COVER_MOTIF_POINTS = [
  * extra concentric glow rings. Ported verbatim from templates/tech.tsx（700 行）. */
 const COVER_MOTIF_HERO_POINT = COVER_MOTIF_POINTS[COVER_MOTIF_POINTS.length - 1]
 
+const TITLE_BASELINE = 520
+const TITLE_UNANCHORED_Y = 360
+const STAR_CHAIN = [
+  { x: 96, r: 2 },
+  { x: 124, r: 2.5 },
+  { x: 152, r: 2 },
+  { x: 180, r: 2.5 },
+] as const
+
 export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
+  const cover = ctx.shape?.cover
+  const titleBottomAnchor = cover?.titleBottomAnchor !== false
+  const ruleStyle = cover?.ruleStyle ?? "bar"
   const org = ir.meta.organization
   const conf = showsDocumentMeta(ir) ? ir.meta.confidentiality : undefined
   const confLabel = conf ? CONF_LABEL[conf] : null
@@ -71,9 +83,14 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
   })
   // Bottom-anchored hero title: the *last* line always sits on baseline 520
   // regardless of 1 vs. 2 lines, so the meta row below it never moves.
-  const TITLE_BASELINE = 520
-  const titleY =
-    TITLE_BASELINE - Math.max(0, title.lines.length - 1) * title.lineHeight
+  // `titleBottomAnchor === false` lifts the first line to a board-like hero
+  // (~y360) and lets the bar / star-chain / subtitle follow that block.
+  const titleY = titleBottomAnchor
+    ? TITLE_BASELINE - Math.max(0, title.lines.length - 1) * title.lineHeight
+    : TITLE_UNANCHORED_Y
+  const titleLastY = titleY + Math.max(0, title.lines.length - 1) * title.lineHeight
+  const ruleY = titleLastY + 28
+  const subtitleY = titleLastY + 76
 
   const subtitle = slide.subheading
     ? fitSvgLine(slide.subheading, {
@@ -100,15 +117,30 @@ export function ConstellationCover({ ir, slide, ctx }: SvgTemplateProps) {
         </text>
       )}
 
-      {/* Subtitle sits directly under the title — accent short bar + subtitle.
+      {/* Subtitle sits directly under the title — accent short bar or a
+          four-dot star-chain + subtitle.
           Layering: kicker → [constellation zone] → title → bar → subtitle → meta. */}
+      {ruleStyle === "star-chain" && (
+        <>
+          <polyline
+            points={STAR_CHAIN.map((p) => `${p.x},${ruleY}`).join(" ")}
+            fill="none"
+            stroke={colors.accent}
+            strokeWidth="1"
+            strokeOpacity="0.25"
+          />
+          {STAR_CHAIN.map((p) => (
+            <circle key={p.x} cx={p.x} cy={ruleY} r={p.r} fill={colors.accent} />
+          ))}
+        </>
+      )}
       {subtitle && (
         <>
-          <rect x="96" y="548" width="84" height="4" fill={colors.accent} />
+          {ruleStyle === "bar" && <rect x="96" y={ruleY} width="84" height="4" fill={colors.accent} />}
           <text
             data-truncated={subtitle.truncated ? "1" : undefined}
             x="96"
-            y="596"
+            y={subtitleY}
             fontFamily={fonts.body}
             fontSize={subtitle.fontSize}
             fill={colors.muted}

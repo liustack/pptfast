@@ -6,6 +6,14 @@ import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
 import { EditorialMastheadCover } from "./cover-editorial-masthead"
 import type { PptxIR, Slide } from "@/ir"
+import type { StyleTokens } from "../../themes/tokens"
+
+function tokensWithoutCover(themeId: string): StyleTokens {
+  const tokens = resolveStyle(themeId)
+  if (!tokens.shape?.cover) return tokens
+  const { cover: _omit, ...shape } = tokens.shape
+  return { ...tokens, shape }
+}
 
 const slide: Slide = {
   type: "cover",
@@ -34,7 +42,7 @@ const MAGAZINE_EXPECTED =
 
 describe("EditorialMastheadCover", () => {
   it("magazine tokens 下输出与固化的基准 markup 逐字节一致（档位一，档案来自旧 EditorialSerifCover）", () => {
-    const ctx = buildCtx(resolveStyle("journal"), {})
+    const ctx = buildCtx(tokensWithoutCover("journal"), {})
     const next = renderSvgMarkup(<EditorialMastheadCover ir={ir("journal")} slide={slide} index={0} ctx={ctx} />)
     expect(next).toBe(MAGAZINE_EXPECTED)
   })
@@ -47,7 +55,7 @@ describe("EditorialMastheadCover", () => {
   })
 
   it("passes assertSubset (no forbidden elements)", () => {
-    const ctx = buildCtx(resolveStyle("journal"), {})
+    const ctx = buildCtx(tokensWithoutCover("journal"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <EditorialMastheadCover ir={ir("journal")} slide={slide} index={0} ctx={ctx} />
@@ -59,7 +67,7 @@ describe("EditorialMastheadCover", () => {
   })
 
   it("centers the serif hero title and draws the accent underline beneath it", () => {
-    const ctx = buildCtx(resolveStyle("journal"), {})
+    const ctx = buildCtx(tokensWithoutCover("journal"), {})
     const markup = renderSvgMarkup(
       <svg xmlns="http://www.w3.org/2000/svg">
         <EditorialMastheadCover ir={ir("journal")} slide={slide} index={0} ctx={ctx} />
@@ -79,5 +87,43 @@ describe("EditorialMastheadCover", () => {
     expect(underline).toBeDefined()
     expect(underline!.getAttribute("x1")).toBe("560")
     expect(underline!.getAttribute("x2")).toBe("720")
+  })
+})
+
+function renderMasthead(
+  themeId: string,
+  cover?: NonNullable<StyleTokens["shape"]>["cover"],
+) {
+  const tokens = resolveStyle(themeId)
+  const shaped: StyleTokens = { ...tokens, shape: { ...tokens.shape, cover: { ...tokens.shape?.cover, ...cover } } }
+  const ctx = buildCtx(shaped, {})
+  const markup = renderSvgMarkup(
+    <svg xmlns="http://www.w3.org/2000/svg">
+      <EditorialMastheadCover ir={ir(themeId)} slide={slide} index={0} ctx={ctx} />
+    </svg>,
+  )
+  return { root: parseSvgRoot(markup), tokens, ctx, markup }
+}
+
+describe("EditorialMastheadCover — cover knobs (board-cover-restore wave 2)", () => {
+  it("heritage start: title x=96, underline 96-240", () => {
+    const { root } = renderMasthead("heritage", { textAnchor: "start" })
+    const heading = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "数据驱动的增长引擎",
+    )!
+    expect(heading.getAttribute("x")).toBe("96")
+    expect(heading.getAttribute("text-anchor")).toBe("start")
+    const underline = root.querySelector("line")!
+    expect(underline.getAttribute("x1")).toBe("96")
+    expect(underline.getAttribute("x2")).toBe("240")
+  })
+
+  it("journal kicker present when showKicker is on", () => {
+    const { root } = renderMasthead("journal", { showKicker: true })
+    const kicker = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.textContent === "测试实验室" && Number(t.getAttribute("y")) < 340,
+    )!
+    expect(kicker).toBeTruthy()
+    expect(Number(kicker.getAttribute("y"))).toBeLessThan(340)
   })
 })

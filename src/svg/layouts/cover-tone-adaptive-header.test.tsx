@@ -7,6 +7,7 @@ import { resolveStyle } from "../../themes"
 import { ToneAdaptiveHeaderCover } from "./cover-tone-adaptive-header"
 import type { PptxIR, Slide } from "@/ir"
 import { LEGACY_CUSTOM_TOKENS } from "./legacy-custom-tokens"
+import type { StyleTokens } from "../../themes/tokens"
 
 function wrap(el: React.ReactElement): React.ReactElement {
   return <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">{el}</svg>
@@ -189,5 +190,44 @@ describe("ToneAdaptiveHeaderCover", () => {
     expect(out).not.toMatch(/<text[^>]*><\/text>/)
     expect(out).toContain("张三 · 分析师")
     expect(out).toContain('y1="600"')
+  })
+})
+
+function renderTone(
+  themeId: string,
+  cover?: NonNullable<StyleTokens["shape"]>["cover"],
+  chrome: PptxIR["chrome"] = "full",
+) {
+  const tokens = resolveStyle(themeId)
+  const shaped: StyleTokens = { ...tokens, shape: { ...tokens.shape, cover: { ...tokens.shape?.cover, ...cover } } }
+  const ctx = buildCtx(shaped, {})
+  const doc = ir(themeId, {}, chrome)
+  const markup = renderSvgMarkup(
+    wrap(<ToneAdaptiveHeaderCover ir={doc} slide={slide} index={0} ctx={ctx} />),
+  )
+  return { root: parseSvgRoot(markup), tokens, markup }
+}
+
+describe("ToneAdaptiveHeaderCover — cover knobs (board-cover-restore wave 2)", () => {
+  it("default title is 92 and the right-bottom date is drawn under chrome full", () => {
+    const { root } = renderTone("consulting")
+    const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "年度战略回顾")!
+    expect(title.getAttribute("font-size")).toBe("92")
+    const right = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.getAttribute("text-anchor") === "end" && t.getAttribute("x") === "1216",
+    )
+    expect(right).toBeTruthy()
+    expect(right!.textContent).toMatch(/2026|v1/)
+  })
+
+  it("terra knobs: font-size 64 and no right-bottom date text when date is in meta with chrome full", () => {
+    const { root } = renderTone("terra", { titleSize: 64, hideRightMeta: true }, "full")
+    const title = Array.from(root.querySelectorAll("text")).find((t) => t.textContent === "年度战略回顾")!
+    expect(title.getAttribute("font-size")).toBe("64")
+    const right = Array.from(root.querySelectorAll("text")).find(
+      (t) => t.getAttribute("text-anchor") === "end" && t.getAttribute("x") === "1216",
+    )
+    expect(right).toBeUndefined()
+    expect(Array.from(root.querySelectorAll("text")).some((t) => t.textContent === "张三 · 分析师")).toBe(true)
   })
 })

@@ -4,7 +4,8 @@ import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { CONF_LABEL } from "../../lib/conf-labels"
 import { showsDocumentMeta } from "../document-meta"
-import { readableOn } from "../ink"
+import { accessibleInk, readableOn } from "../ink"
+import { hasCjk, latinUpper, trackingPx } from "./minimal-shared"
 
 /**
  * left-anchor cover layout（spec §3.2）：左侧 40%宽通栏色块 + 右侧留白面板——
@@ -82,8 +83,17 @@ const BASELINE_FUDGE_RATIO = 0.32
 // fix-record). Ported verbatim from templates/academic.tsx.
 const TRIANGLE_DEEP = "#004C38"
 
+const IN_BLOCK_KICKER_Y = 250
+const IN_BLOCK_KICKER_SIZE = 16
+const IN_BLOCK_KICKER_TRACKING_EM = 0.22
+const TITLE_UPPER_FIRST_Y = 340
+
 export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
+  const cover = ctx.shape?.cover
+  const showCornerTriangle = cover?.showCornerTriangle !== false
+  const titleUpper = cover?.titleBlockAlign === "upper"
+  const showInBlockKicker = cover?.showInBlockKicker === true
 
   // Narrow (420px) in-block column: a CJK title routinely wraps to 2-3 lines
   // at hero scale, and the block runs the full 720px page height so there's
@@ -98,10 +108,11 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
     typeScale: ctx.shape?.typeScale,
   })
   const titleFudge = Math.round(title.fontSize * BASELINE_FUDGE_RATIO)
-  const titleFirstY =
-    COVER_BLOCK_CENTER_Y -
-    ((title.lines.length - 1) * title.lineHeight) / 2 +
-    titleFudge
+  const titleFirstY = titleUpper
+    ? TITLE_UPPER_FIRST_Y
+    : COVER_BLOCK_CENTER_Y -
+      ((title.lines.length - 1) * title.lineHeight) / 2 +
+      titleFudge
 
   const subtitle = layoutSvgText(slide.subheading, {
     maxWidth: COVER_RIGHT_MAX_W,
@@ -153,6 +164,19 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
     subtitle.lines.length > 0 ? subtitleLastY + subtitle.lineHeight + 24 : orgY + 56
   const metaTextY = metaDividerY + 44
 
+  const kickerSrc = showInBlockKicker && org ? (hasCjk(org) ? org : latinUpper(org)) : null
+  const kickerTracking = kickerSrc && !hasCjk(kickerSrc) ? trackingPx(IN_BLOCK_KICKER_SIZE, IN_BLOCK_KICKER_TRACKING_EM) : undefined
+  const kicker = kickerSrc
+    ? fitSvgLine(kickerSrc, {
+        maxWidth: COVER_TITLE_MAX_W,
+        fontSize: IN_BLOCK_KICKER_SIZE,
+        minFontSize: 12,
+        letterSpacing: kickerTracking,
+        fontFamily: fonts.body,
+      })
+    : null
+  const kickerFill = accessibleInk(colors.accent, colors.primary, IN_BLOCK_KICKER_SIZE)
+
   return (
     <>
       {/* Left 40%-width primary color block, full page height */}
@@ -164,7 +188,7 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
           must paint *after* the block above to actually show (a decor-slot
           shape at this position would be painted over by the opaque block,
           which always renders after Decor). */}
-      <polygon points="0,720 0,520 200,720" fill={TRIANGLE_DEEP} />
+      {showCornerTriangle && <polygon points="0,720 0,520 200,720" fill={TRIANGLE_DEEP} />}
 
       {/* Heading set inside the block — contrast-adaptive ink off the
           block's own primary fill (see file header's "白字例外"/W4 fix
@@ -185,23 +209,41 @@ export function LeftAnchorCover({ ir, slide, ctx }: SvgTemplateProps) {
         </text>
       ))}
 
-      {/* Right panel: org label */}
-      <g transform={`translate(${COVER_RIGHT_X}, ${orgY})`}>
-        <circle cx="12" cy="-12" r="12" fill={colors.accent} />
-        {org && (
-          <text
-            x="48"
-            y="0"
-            fontFamily={fonts.body}
-            fontSize="32"
-            fill={colors.text}
-            letterSpacing="2"
-            dominantBaseline="alphabetic"
-          >
-            {org}
-          </text>
-        )}
-      </g>
+      {kicker && (
+        <text
+          data-truncated={kicker.truncated ? "1" : undefined}
+          x={COVER_TITLE_X}
+          y={IN_BLOCK_KICKER_Y}
+          fontFamily={fonts.body}
+          fontSize={kicker.fontSize}
+          fill={kickerFill}
+          letterSpacing={kickerTracking}
+          dominantBaseline="alphabetic"
+        >
+          {kicker.text}
+        </text>
+      )}
+
+      {/* Right panel: org label. Hidden when the in-block kicker already
+          carries org, so the name is not printed twice. */}
+      {!showInBlockKicker && (
+        <g transform={`translate(${COVER_RIGHT_X}, ${orgY})`}>
+          <circle cx="12" cy="-12" r="12" fill={colors.accent} />
+          {org && (
+            <text
+              x="48"
+              y="0"
+              fontFamily={fonts.body}
+              fontSize="32"
+              fill={colors.text}
+              letterSpacing="2"
+              dominantBaseline="alphabetic"
+            >
+              {org}
+            </text>
+          )}
+        </g>
+      )}
 
       {/* Confidentiality badge (top right, over the white panel). y=104 keeps
           it clear of BrandChrome's tr logo band (x 1120-1216, y 48-88) —
