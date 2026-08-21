@@ -4,7 +4,7 @@ import { BUILTIN_THEME_IDS, type PptxIR, type Slide } from "@/ir"
 import { renderSlideSvg, validateIr } from "../../api"
 import { checkIrQuality } from "../ir-quality"
 import { parseSvgRoot } from "../serialize"
-import { THEME_DEFINITIONS } from "../../themes/definitions"
+import { THEME_DEFINITIONS, themeOffersSparse } from "../../themes/definitions"
 import { resolveEffectiveLayoutId } from "../layout-selection"
 import { LAYOUT_REGISTRY } from "./registry"
 import { FOOTER_DIVIDER_Y } from "../chrome-geometry"
@@ -30,21 +30,35 @@ function assertNoBrandChrome(markup: string) {
   const root = parseSvgRoot(markup)
   expect(root.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).toBeNull()
   expect(markup).not.toContain("ACME")
-  expect(root.querySelector("g[data-decor]")).toBeNull()
   expect(root.querySelector("image")).toBeNull()
 }
 
 describe("layout-declared chrome:none (editorial-verse wave)", () => {
-  it("statement skips footer rule, footer meta, logo, and motif on luxe", () => {
+  it("statement skips footer rule, footer meta, and logo on consulting", () => {
     const slide: Slide = {
       type: "content",
       layout: "statement",
       heading: "记得的事会变成下个世纪的天气",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
     expect(markup).toContain("下个世纪")
     assertNoBrandChrome(markup)
+  })
+
+  it("statement on lecture still paints the theme motif while skipping the footer", () => {
+    const slide: Slide = {
+      type: "content",
+      layout: "statement",
+      heading: "记得的事会变成下个世纪的天气",
+      components: [],
+    } as Slide
+    const markup = renderSlideSvg(chromeDeck("lecture", [slide]), 0)
+    const root = parseSvgRoot(markup)
+    expect(root.querySelector(`line[y1="${FOOTER_DIVIDER_Y}"]`)).toBeNull()
+    expect(markup).not.toContain("ACME")
+    expect(root.querySelector("image")).toBeNull()
+    expect(root.querySelector("g[data-decor]")).not.toBeNull()
   })
 
   it("pull-quote skips chrome on consulting (light) the same way", () => {
@@ -59,26 +73,26 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
     assertNoBrandChrome(markup)
   })
 
-  it("verse-chapter skips logo and motif (chapter already has no footer)", () => {
+  it("verse-chapter skips logo (chapter already has no footer)", () => {
     const slide: Slide = {
       type: "chapter",
       layout: "verse-chapter",
       heading: "羽毛下的智识",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
     expect(markup).toContain("羽毛下的智识")
     assertNoBrandChrome(markup)
   })
 
-  it("stat-hero skips chrome on museum (dark)", () => {
+  it("stat-hero skips chrome on insight (dark)", () => {
     const slide: Slide = {
       type: "content",
       layout: "stat-hero",
       heading: "3.2 亿",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("museum", [slide]), 0)
+    const markup = renderSlideSvg(chromeDeck("insight", [slide]), 0)
     expect(markup).toContain("3.2")
     assertNoBrandChrome(markup)
   })
@@ -108,7 +122,7 @@ describe("layout-declared chrome:none (editorial-verse wave)", () => {
       heading: "把灯关掉",
       components: [],
     } as Slide
-    const markup = renderSlideSvg(chromeDeck("luxe", [slide]), 0)
+    const markup = renderSlideSvg(chromeDeck("consulting", [slide]), 0)
     expect(markup).toContain("把灯关掉")
     assertNoBrandChrome(markup)
   })
@@ -377,19 +391,22 @@ describe("19-theme smoke: each new layout renders on every built-in theme", () =
     const d = renderSlideSvg(doc, 3)
     const e = renderSlideSvg(doc, 4)
     const f = renderSlideSvg(doc, 5)
-    expect(a).toContain("下个世纪")
-    expect(b).toContain("鹦鹉")
-    expect(c).toContain("羽毛下的智识")
-    expect(d).toContain("3.2")
-    expect(e).toContain("迁徙路线")
-    expect(f).toContain("把灯关掉")
+    const textOf = (markup: string) => parseSvgRoot(markup).textContent ?? ""
+    expect(textOf(a)).toContain("下个世纪")
+    expect(textOf(b)).toContain("鹦鹉")
+    expect(textOf(c)).toContain("羽毛下的智识")
+    expect(textOf(d)).toContain("3.2")
+    expect(textOf(e)).toContain("迁徙路线")
+    expect(textOf(f)).toContain("把灯关掉")
+    // consulting still offers every sparse id (omitted list). luxe only
+    // offers its boarded faces plus verse-chapter. Unoffered pins fall
+    // back to a regular layout and keep ordinary chrome.
     if (themeId === light || themeId === dark) {
-      assertNoBrandChrome(a)
-      assertNoBrandChrome(b)
-      assertNoBrandChrome(c)
-      assertNoBrandChrome(d)
-      assertNoBrandChrome(e)
-      assertNoBrandChrome(f)
+      const markups = [a, b, c, d, e, f]
+      const layoutIds = ["statement", "pull-quote", "verse-chapter", "stat-hero", "one-evidence", "mono-bleed"]
+      for (let i = 0; i < layoutIds.length; i++) {
+        if (themeOffersSparse(themeId, layoutIds[i]!)) assertNoBrandChrome(markups[i]!)
+      }
     }
   })
 })

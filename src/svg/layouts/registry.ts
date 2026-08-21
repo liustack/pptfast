@@ -345,8 +345,8 @@ export interface LayoutDefinition {
    * Brand-chrome posture this layout declares (editorial-verse wave).
    *
    * `"none"`: `FullSlideSvg` skips `BrandChrome` entirely (footer rule,
-   * footer meta, logo — page numbers were already removed globally) and
-   * does not paint the theme motif. `slide.decor`, when the author sets it
+   * footer meta, logo — page numbers were already removed globally). The
+   * theme motif still paints. `slide.decor`, when the author sets it
    * explicitly, still draws. The fifth-band decoration safe-zone in
    * `docs/designing-themes.md` does not apply: the whole 1280×720 canvas
    * is the layout's, there is no reserved footer strip to keep clear of.

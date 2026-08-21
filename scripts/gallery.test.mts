@@ -25,7 +25,8 @@ import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS } from "./gallery/
 import { corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
-import { assertFullCoverage, buildMatrix } from "./gallery/matrix"
+import { assertFullCoverage, buildMatrix, SPEECH_LAYOUT_IDS } from "./gallery/matrix"
+import { themeOffersSparse } from "@/themes/definitions"
 import { installNodePlatform } from "@/platform/node"
 
 // `renderMatrix` audits every page it renders, and the auditor parses SVG
@@ -79,6 +80,28 @@ describe("gallery coverage", () => {
 
   it("refuses to build a gallery whose theme count drifted from what the review claims", () => {
     expect(() => assertFullCoverage(themeIds, themeIds.length + 1)).toThrow(/expected/)
+  })
+
+  it("speech table skips sparse pins a theme does not offer", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "speech" })
+    const subjects = (themeId: string) => jobs.filter((j) => j.theme === themeId).map((j) => j.subject)
+
+    expect(subjects("crayon")).toEqual([])
+    expect(subjects("classroom")).toEqual([])
+    expect(subjects("bloom")).toEqual([])
+
+    const stage = subjects("stage")
+    expect(stage).toContain("statement")
+    expect(stage).not.toContain("one-evidence")
+
+    expect(subjects("consulting").sort()).toEqual([...SPEECH_LAYOUT_IDS].sort())
+
+    const derived = themeIds.reduce(
+      (n, themeId) => n + SPEECH_LAYOUT_IDS.filter((layoutId) => themeOffersSparse(themeId, layoutId)).length,
+      0,
+    )
+    expect(jobs).toHaveLength(derived)
+    expect(derived).toBe(92)
   })
 })
 

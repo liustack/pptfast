@@ -74,11 +74,11 @@ describe("MonoBleedContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("English heading renders on luxe against luxe primary, not consulting navy", () => {
-    const ctx = buildCtx(resolveStyle("luxe"), {})
+  it("English heading renders on academic against academic primary, not consulting navy", () => {
+    const ctx = buildCtx(resolveStyle("academic"), {})
     const slide: Slide = { type: "content", layout: "mono-bleed", heading: EN_LINE, components: [] } as Slide
     const { markup, root } = render(
-      <MonoBleedContent ir={ir("luxe", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <MonoBleedContent ir={ir("academic", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(markup).toContain("lights")
     expect(root.querySelector("rect")?.getAttribute("fill")).toBe(ctx.colors.primary)
@@ -86,11 +86,11 @@ describe("MonoBleedContent", () => {
     expect(() => assertSubset(root)).not.toThrow()
   })
 
-  it("museum primary field is not luxe champagne gold", () => {
-    const ctx = buildCtx(resolveStyle("museum"), {})
+  it("insight primary field is not luxe champagne gold", () => {
+    const ctx = buildCtx(resolveStyle("insight"), {})
     const slide: Slide = { type: "content", layout: "mono-bleed", heading: CJK_LINE, components: [] } as Slide
     const { markup, root } = render(
-      <MonoBleedContent ir={ir("museum", [slide])} slide={slide} index={0} ctx={ctx} />,
+      <MonoBleedContent ir={ir("insight", [slide])} slide={slide} index={0} ctx={ctx} />,
     )
     expect(root.querySelector("rect")?.getAttribute("fill")).toBe(ctx.colors.primary)
     expect(markup).not.toContain("#C6A15B")

@@ -91,6 +91,37 @@ export interface ThemeDefinition {
    * this field existed.
    */
   layoutTendencies?: Partial<Record<Slide["type"], readonly string[]>>
+  /**
+   * Which sparse climax pins this theme is willing to honour. This is not a
+   * curated auto-pick pool: pinOnly sparse ids never enter `layouts[slideType]`
+   * (`fullLayoutSet` / `excludePinOnly` already drop them), so a list here
+   * does not make `resolveLayoutId` sample them. It is the offer table for
+   * an explicit `slide.layout` pin — the only road that can ever reach a
+   * sparse page.
+   *
+   * **Three shapes, none of them a defaulted array:**
+   * - omitted / `undefined`: this theme offers every id in
+   *   {@link SPARSE_LAYOUT_IDS}. Builtins that have not boarded a face still
+   *   render the generic content face (`sparseFace` miss → `content-*.tsx`).
+   *   Custom themes registered via {@link registerTheme} get the same
+   *   omitted-means-all contract; do not default the field to `[]` or the
+   *   six-id list on the way in (`getThemeDefinition` round-trips the
+   *   registration object).
+   * - `[]`: this theme offers none. An explicit pin of any sparse id warns
+   *   at `validateIr` (`ok` stays true) and render falls back to auto-pick
+   *   from the ordinary content (or chapter, for `verse-chapter`) pool.
+   * - a list: only those ids. A listed id must be one of the six sparse
+   *   ids (`registerTheme` throws {@link PptfastError} otherwise). It does
+   *   **not** have to sit in `layouts[slideType]` — those pools exclude
+   *   pinOnly members by construction.
+   *
+   * {@link themeOffersSparse} is the only offer check. Renderers must not
+   * branch on theme id. A pin this theme does not offer is stripped
+   * (`effectiveRequestedLayout`) *before* `resolveLayoutId`'s pin
+   * short-circuit, so fallback reuses the existing auto-pick path instead
+   * of teaching selection about this table.
+   */
+  sparseLayouts?: readonly string[]
 }
 
 /**
@@ -1332,6 +1363,49 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   },
 }
 
+/**
+ * The six pinOnly sparse climax layouts. One list, reused by
+ * {@link themeOffersSparse}, {@link registerTheme}'s validation, and the
+ * gallery speech table (`SPEECH_LAYOUT_IDS` re-exports this). Do not
+ * hand-copy the six names into those call sites.
+ */
+export const SPARSE_LAYOUT_IDS = [
+  "statement",
+  "pull-quote",
+  "verse-chapter",
+  "stat-hero",
+  "one-evidence",
+  "mono-bleed",
+] as const
+
+const NO_SPARSE: readonly string[] = []
+
+/**
+ * Per-theme sparse offer table, projected onto {@link THEME_DEFINITIONS}
+ * below. Kept off the `LAYOUTS` literals so cover-lock tests that pin
+ * `layoutTendencies` object identity (`bloom` `toBe` `classroom`) stay
+ * untouched. Omitted keys stay `undefined` through the projection (offer
+ * every sparse id). `[]` offers none. A list is the three boarded content
+ * faces in `FACES` insertion order, then `verse-chapter`.
+ */
+const SPARSE_LAYOUTS: Partial<Record<CanonicalThemeId, readonly string[]>> = {
+  crayon: NO_SPARSE,
+  classroom: NO_SPARSE,
+  bloom: NO_SPARSE,
+  enterprise: NO_SPARSE,
+  pulse: NO_SPARSE,
+  runway: NO_SPARSE,
+  ember: NO_SPARSE,
+  stage: ["statement", "stat-hero", "pull-quote", "verse-chapter"],
+  lecture: ["statement", "stat-hero", "one-evidence", "verse-chapter"],
+  swiss: ["stat-hero", "statement", "one-evidence", "verse-chapter"],
+  memo: ["pull-quote", "stat-hero", "statement", "verse-chapter"],
+  playbill: ["statement", "stat-hero", "mono-bleed", "verse-chapter"],
+  museum: ["statement", "one-evidence", "stat-hero", "verse-chapter"],
+  luxe: ["pull-quote", "stat-hero", "statement", "verse-chapter"],
+  ink: ["statement", "stat-hero", "pull-quote", "verse-chapter"],
+}
+
 export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Object.fromEntries(
   CANONICAL_THEME_IDS.map((id) => [
     id,
@@ -1349,6 +1423,7 @@ export const THEME_DEFINITIONS: Record<CanonicalThemeId, ThemeDefinition> = Obje
       // of also requiring a matching edit here, and `tsc` would have caught
       // the omission had this projection itself been forgotten.
       layoutTendencies: LAYOUTS[id].layoutTendencies,
+      sparseLayouts: SPARSE_LAYOUTS[id],
     },
   ]),
 ) as unknown as Record<CanonicalThemeId, ThemeDefinition>
@@ -1539,6 +1614,9 @@ export type ThemeRegistration = Omit<ThemeDefinition, "layouts"> & {
  *   {@link CONTRAST_FLOOR} against a {@link CONTRAST_CHECKED_SLIDE_TYPES}
  *   slide type's own resolved default background — see
  *   {@link assertContrastFloor}'s own doc comment.
+ * - `sparseLayouts`, when present, may be empty (offers none) or a list of
+ *   {@link SPARSE_LAYOUT_IDS} members. A listed non-sparse id throws. The
+ *   field is not defaulted when omitted (`undefined` = offer all six).
  *
  * Also `console.warn`s (never throws) once for each of `style.fonts.heading`/
  * `style.fonts.body` that resolves to a face with no exact width table — see
@@ -1605,6 +1683,21 @@ export function registerTheme(def: ThemeRegistration): void {
       }
     }
   }
+  // Offer table for explicit sparse pins, not an auto-pick pool. A listed
+  // id must be one of the six sparse climax layouts. It does not have to
+  // sit in `layouts[slideType]` (those pools exclude pinOnly members).
+  // Empty array is legal (offers none). Omitted stays undefined — do not
+  // default it to an array, `getThemeDefinition` round-trips the
+  // registration object.
+  if (def.sparseLayouts !== undefined) {
+    for (const id of def.sparseLayouts) {
+      if (!(SPARSE_LAYOUT_IDS as readonly string[]).includes(id)) {
+        throw new PptfastError(
+          `theme "${def.id}" sparseLayouts references "${id}", which is not a sparse climax layout — allowed: ${SPARSE_LAYOUT_IDS.join(", ")}`,
+        )
+      }
+    }
+  }
   // Soft checks last, only once every hard check above has confirmed this
   // registration will actually succeed — a registration that goes on to
   // throw (bad layout id, etc.) never warns for an unrelated font choice.
@@ -1628,6 +1721,44 @@ export function getInstalledThemeIds(): readonly string[] {
  */
 export function getThemeDefinition(id: string): ThemeDefinition {
   return REGISTERED_THEMES.get(id) ?? THEME_DEFINITIONS[resolveThemeId(id)]
+}
+
+/**
+ * Whether `themeId` is willing to honour an explicit pin of `layoutId` as a
+ * sparse climax page. Reads the definition via {@link getThemeDefinition} so
+ * a registered custom theme participates the same way as a builtin.
+ *
+ * - `layoutId` not in {@link SPARSE_LAYOUT_IDS}: `false`
+ * - `sparseLayouts` omitted / `undefined`: `true` (offers all six)
+ * - `sparseLayouts` is `[]`: `false`
+ * - otherwise `sparseLayouts.includes(layoutId)`
+ *
+ * The only offer check. Do not put theme-id switches in renderers.
+ */
+export function themeOffersSparse(themeId: string, layoutId: string): boolean {
+  if (!(SPARSE_LAYOUT_IDS as readonly string[]).includes(layoutId)) return false
+  const offered = getThemeDefinition(themeId).sparseLayouts
+  if (offered === undefined) return true
+  return offered.includes(layoutId)
+}
+
+/**
+ * Strip an unoffered sparse pin to `undefined` so `resolveLayoutId`'s pin
+ * short-circuit does not fire and auto-pick runs on the ordinary content /
+ * chapter pool. Non-sparse pins (including takeovers) and offered sparse
+ * pins pass through unchanged. Shared by `resolveOneEffectiveLayoutId` and
+ * `FullSlideSvg`'s `resolvePageLayout` wrapper so validate and render cannot
+ * drift. Not exported from `src/index.ts`.
+ */
+export function effectiveRequestedLayout(themeId: string, requested: string | undefined): string | undefined {
+  if (
+    requested !== undefined &&
+    (SPARSE_LAYOUT_IDS as readonly string[]).includes(requested) &&
+    !themeOffersSparse(themeId, requested)
+  ) {
+    return undefined
+  }
+  return requested
 }
 
 /**

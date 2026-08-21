@@ -3,11 +3,14 @@ import type { LayoutDefinition } from "./registry"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleOpacity, readableOn } from "../ink"
+import { sparseFace } from "./sparse/registry"
 
 /**
- * mono-bleed content layout（演讲极简波）：满版品牌色，字当图。
- * `pinOnly` + `chrome: "none"` + `paintsOwnBackground`。整页 fill 是
- * `colors.primary`，字色走 `readableOn`。需要字就写 heading，容量 0。
+ * 待第二批设计稿锁定
+ *
+ * mono-bleed 通用脸：满版品牌色，字当图。`pinOnly` + `chrome: "none"` +
+ * `paintsOwnBackground`。整页 fill 是 `colors.primary`，字色走 `readableOn`。
+ * 需要字就写 heading，容量 0。品牌页脚 / logo 不画。motif 仍画。
  *
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量（readableOn 中性黑白豁免），
  * 颜色全部来自 ctx。
@@ -20,7 +23,13 @@ const SUB_SIZE = 20
 const SUB_GAP = 48
 const SUB_OPACITY = 0.72
 
-export function MonoBleedContent({ slide, ctx }: SvgTemplateProps) {
+export function MonoBleedContent(props: SvgTemplateProps) {
+  const Face = sparseFace("mono-bleed", props.ir.theme.id)
+  if (Face) return Face(props)
+  return GenericMonoBleedContent(props)
+}
+
+function GenericMonoBleedContent({ slide, ctx }: SvgTemplateProps) {
   const field = ctx.colors.primary
   const fg = readableOn(field)
 
@@ -88,8 +97,9 @@ export const layoutDef = {
   // content-mono-bleed.tsx: a pinOnly full-bleed primary field with inverted
   // type. Capacity 0 (write the words in heading). paintsOwnBackground so
   // FullSlideSvg does not paint the theme bg underneath. chrome: "none"
-  // skips brand footer, logo, and the theme motif. The fifth-band
-  // decoration safe-zone does not apply — the whole canvas is the layout's.
+  // skips brand footer and logo. The theme motif still paints. The
+  // fifth-band decoration safe-zone does not apply — the whole canvas is
+  // the layout's.
   id: "mono-bleed",
   kind: "archetype",
   pinOnly: true,

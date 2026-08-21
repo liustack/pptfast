@@ -1,18 +1,19 @@
-import type { Component } from "@/ir"
 import type { SvgTemplateProps } from "./types"
 import type { LayoutDefinition } from "./registry"
-import type { ComponentCtx } from "../components/types"
 import type { ContentRect } from "../layout"
-import { GOLDEN_TOP_SHARE } from "../layout"
 import { pickEvidence } from "../component-traits"
-import { measureComponent, renderComponent } from "../components"
 import { fitHeadingLines } from "../heading-fit"
 import { fitSvgLine } from "../../lib/svg-text-layout"
 import { accessibleInk } from "../ink"
+import { renderFittedEvidence } from "./fitted-evidence"
+import { sparseFace } from "./sparse/registry"
 
 /**
- * one-evidence content layout（演讲极简波）：整句断言 + 独占一张图或一个表。
- * `pinOnly` + `chrome: "none"`。容量 1，超过走既有 `pin_only_over_capacity`。
+ * 待第二批设计稿锁定
+ *
+ * one-evidence 通用脸：整句断言 + 独占一张图或一个表。`pinOnly` +
+ * `chrome: "none"`。容量 1，超过走既有 `pin_only_over_capacity`。品牌页脚 /
+ * logo 不画。motif 仍画。
  * 证据挑选复用 `pickEvidence`（和 `assertion_evidence` 同一份优先级），没有
  * 命中证据类型时退回唯一组件。等比缩小以适配剩余框，不放大。
  *
@@ -28,31 +29,14 @@ const EVIDENCE_W = 960
 const EVIDENCE_BOTTOM = 640
 const FOOTNOTE_Y = 656
 const FOOTNOTE_SIZE = 12
-const SCALE_CAP = 1
 
-function renderFittedEvidence(
-  component: Component,
-  rect: ContentRect,
-  ctx: ComponentCtx,
-) {
-  const measured = measureComponent(component, rect.w, ctx)
-  const scale = measured > 0 ? Math.min(rect.h / measured, SCALE_CAP) : 1
-  const scaledW = rect.w * scale
-  const scaledH = measured * scale
-  const offsetX = rect.x + (rect.w - scaledW) / 2
-  const offsetY = rect.y + Math.max(0, rect.h - scaledH) * GOLDEN_TOP_SHARE
-  return (
-    <g data-audit-rect={`${rect.x},${rect.y},${rect.w},${rect.h}`}>
-      <g data-audit-box={`${offsetX},${offsetY},${scaledW},${scaledH}`}>
-        <g transform={`translate(${offsetX},${offsetY}) scale(${scale})`}>
-          {renderComponent(component, { x: 0, y: 0, w: rect.w }, ctx)}
-        </g>
-      </g>
-    </g>
-  )
+export function OneEvidenceContent(props: SvgTemplateProps) {
+  const Face = sparseFace("one-evidence", props.ir.theme.id)
+  if (Face) return Face(props)
+  return GenericOneEvidenceContent(props)
 }
 
-export function OneEvidenceContent({ slide, ctx }: SvgTemplateProps) {
+function GenericOneEvidenceContent({ slide, ctx }: SvgTemplateProps) {
   const { colors, fonts } = ctx
   const defaultBg = ctx.defaultBg ?? colors.bg
 
@@ -120,9 +104,9 @@ export const layoutDef = {
   // content-one-evidence.tsx: a pinOnly assertion + single evidence page.
   // Heading is a full-sentence claim. Body capacity 1 is the evidence
   // (chart / table / image / whatever pickEvidence returns, else the sole
-  // component). chrome: "none" skips brand footer, logo, and the theme
-  // motif. The fifth-band decoration safe-zone does not apply — the whole
-  // canvas is the layout's.
+  // component). chrome: "none" skips brand footer and logo. The theme motif
+  // still paints. The fifth-band decoration safe-zone does not apply — the
+  // whole canvas is the layout's.
   id: "one-evidence",
   kind: "archetype",
   pinOnly: true,

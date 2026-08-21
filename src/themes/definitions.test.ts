@@ -8,10 +8,13 @@ import {
   getThemeDefinition,
   registerTheme,
   resolveBrand,
+  SPARSE_LAYOUT_IDS,
   THEME_DEFINITIONS,
+  themeOffersSparse,
   type ThemeDefinition,
   type ThemeRegistration,
 } from "./definitions"
+import { FACES } from "../svg/layouts/sparse/registry"
 import { COVER_LAYOUTS } from "../svg/layouts/index-cover"
 import { CHAPTER_LAYOUTS } from "../svg/layouts/index-chapter"
 import { CONTENT_LAYOUTS } from "../svg/layouts/index-content"
@@ -866,5 +869,106 @@ describe("pinOnly layout tier: registerTheme still legally allows curating a pin
       registerTheme(testTheme({ id: "acme-pin-only", layouts: { content: [PIN_ONLY_TEST_ID, "two-column"] } })),
     ).not.toThrow()
     expect(getThemeDefinition("acme-pin-only").layouts.content).toContain(PIN_ONLY_TEST_ID)
+  })
+})
+
+const EMPTY_SPARSE_THEME_IDS = ["crayon", "classroom", "bloom", "enterprise", "pulse", "runway", "ember"] as const
+const OMITTED_SPARSE_THEME_IDS = [
+  "consulting",
+  "insight",
+  "academic",
+  "tech",
+  "journal",
+  "campaign",
+  "heritage",
+  "terra",
+  "vermilion",
+  "arena",
+] as const
+
+describe("sparseLayouts offer table", () => {
+  it("boarded themes list Object.keys(FACES) plus verse-chapter, in that order", () => {
+    const boarded = Object.keys(FACES)
+    expect(boarded.length).toBeGreaterThan(0)
+    for (const id of boarded) {
+      expect(THEME_DEFINITIONS[id as keyof typeof THEME_DEFINITIONS].sparseLayouts).toEqual([
+        ...Object.keys(FACES[id]!),
+        "verse-chapter",
+      ])
+    }
+  })
+
+  it("the seven no-sparse themes declare an empty offer list", () => {
+    for (const id of EMPTY_SPARSE_THEME_IDS) {
+      expect(THEME_DEFINITIONS[id].sparseLayouts, id).toEqual([])
+    }
+  })
+
+  it("the ten unboarded builtins omit sparseLayouts (undefined = offer every sparse id)", () => {
+    for (const id of OMITTED_SPARSE_THEME_IDS) {
+      expect(THEME_DEFINITIONS[id].sparseLayouts, id).toBeUndefined()
+    }
+  })
+
+  it("every canonical theme id sits in exactly one of boarded / empty / omitted", () => {
+    const boarded = Object.keys(FACES)
+    expect(new Set([...boarded, ...EMPTY_SPARSE_THEME_IDS, ...OMITTED_SPARSE_THEME_IDS]).size).toBe(
+      CANONICAL_THEME_IDS.length,
+    )
+    expect(boarded.length + EMPTY_SPARSE_THEME_IDS.length + OMITTED_SPARSE_THEME_IDS.length).toBe(
+      CANONICAL_THEME_IDS.length,
+    )
+  })
+
+  it("themeOffersSparse matches the offer table", () => {
+    expect(themeOffersSparse("crayon", "statement")).toBe(false)
+    expect(themeOffersSparse("stage", "statement")).toBe(true)
+    expect(themeOffersSparse("stage", "one-evidence")).toBe(false)
+    expect(themeOffersSparse("consulting", "statement")).toBe(true)
+    expect(themeOffersSparse("consulting", "two-column")).toBe(false)
+    for (const layoutId of SPARSE_LAYOUT_IDS) {
+      expect(themeOffersSparse("classroom", layoutId), `classroom/${layoutId}`).toBe(false)
+      expect(themeOffersSparse("bloom", layoutId), `bloom/${layoutId}`).toBe(false)
+    }
+  })
+})
+
+describe("registerTheme: sparseLayouts", () => {
+  afterEach(() => {
+    __resetRegisteredThemes()
+  })
+
+  it("accepts an empty array (offers none)", () => {
+    registerTheme(testTheme({ id: "acme-no-sparse", sparseLayouts: [] }))
+    expect(getThemeDefinition("acme-no-sparse").sparseLayouts).toEqual([])
+    expect(themeOffersSparse("acme-no-sparse", "statement")).toBe(false)
+  })
+
+  it("accepts listed sparse ids and round-trips them on getThemeDefinition", () => {
+    registerTheme(testTheme({ id: "acme-listed-sparse", sparseLayouts: ["statement", "verse-chapter"] }))
+    expect(getThemeDefinition("acme-listed-sparse").sparseLayouts).toEqual(["statement", "verse-chapter"])
+    expect(themeOffersSparse("acme-listed-sparse", "statement")).toBe(true)
+    expect(themeOffersSparse("acme-listed-sparse", "verse-chapter")).toBe(true)
+    expect(themeOffersSparse("acme-listed-sparse", "stat-hero")).toBe(false)
+  })
+
+  it("rejects a listed non-sparse id, naming the bad id and the allowed list", () => {
+    expect(() => registerTheme(testTheme({ id: "acme-bad-sparse", sparseLayouts: ["two-column"] }))).toThrow(
+      /sparseLayouts.*"two-column".*statement.*pull-quote.*verse-chapter.*stat-hero.*one-evidence.*mono-bleed/,
+    )
+  })
+
+  it("rejects an unknown id the same way", () => {
+    expect(() => registerTheme(testTheme({ id: "acme-unknown-sparse", sparseLayouts: ["not-a-layout"] }))).toThrow(
+      /sparseLayouts.*"not-a-layout"/,
+    )
+  })
+
+  it("omitted sparseLayouts still offers all six (the field stays undefined, not defaulted to an array)", () => {
+    registerTheme(testTheme({ id: "acme-omit-sparse" }))
+    expect(getThemeDefinition("acme-omit-sparse").sparseLayouts).toBeUndefined()
+    for (const layoutId of SPARSE_LAYOUT_IDS) {
+      expect(themeOffersSparse("acme-omit-sparse", layoutId)).toBe(true)
+    }
   })
 })
