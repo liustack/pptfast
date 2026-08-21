@@ -94,7 +94,8 @@ export interface Manifest {
 const TABLE_META: Record<TableId, { label: string; question: string }> = {
   theme: {
     label: "主题表",
-    question: "同一套十页 deck 跑遍每个主题——这个主题好不好看？",
+    question:
+      "每个主题仍是十页（封面/章节/七页内容/结尾），七个内容页按固定分配表轮换组件——这个主题好不好看？",
   },
   layout: {
     label: "版式表",

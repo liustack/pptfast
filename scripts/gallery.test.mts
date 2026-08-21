@@ -22,7 +22,8 @@ import { describe, expect, it } from "vitest"
 import { listThemes } from "@/api"
 import { COMPONENT_TYPES, type Component } from "@/ir"
 import { CHART_VARIANTS, COMPONENT_BUILDERS, DENSITY_BUILDERS, FORM_VARIANTS } from "./gallery/corpus/components"
-import { resolveComponentForm } from "@/svg/components/form-assignments"
+import { THEME_TABLE_REQUIRED_SURFACES } from "./gallery/corpus/theme-slots"
+import { COMPONENT_FORMS, resolveComponentForm } from "@/svg/components/form-assignments"
 import { BASELINE_THEME, corpusAssets, type CorpusAssets } from "./gallery/corpus/decks"
 import { LANGUAGE_IDS, LEXICONS, type LanguageId } from "./gallery/corpus/lexicon"
 import { buildGalleryHtml } from "./gallery/html"
@@ -119,13 +120,63 @@ describe("gallery coverage", () => {
   })
 })
 
-const THEME_CONTENT_TYPES = ["icon_cards", "kpi_cards", "chart", "data_table", "timeline", "comparison", "cycle"] as const
+const THEME_CHART_SURFACES = [
+  "chart:bar",
+  "chart:bar-horizontal",
+  "chart:line",
+  "chart:area",
+  "chart:pie",
+  "chart:donut",
+  "chart:funnel",
+  "chart:dumbbell",
+  "chart:scatter",
+  "chart:gauge",
+] as const
+
+function leadComponent(job: { ir: { slides: { components: Component[] }[] }; slideIndex: number }): Component | undefined {
+  return job.ir.slides[job.slideIndex]!.components[0]
+}
+
+function chartSurfaceId(c: Extract<Component, { type: "chart" }>): string {
+  if (c.chart_type === "bar" && c.direction === "horizontal") return "chart:bar-horizontal"
+  return `chart:${c.chart_type}`
+}
+
+function themeTableSurfaces(
+  jobs: Array<{
+    slideType: string
+    theme: string
+    ir: { slides: { components: Component[] }[] }
+    slideIndex: number
+  }>,
+): string[] {
+  const surfaces = new Set<string>()
+  for (const job of jobs) {
+    if (job.slideType !== "content") continue
+    const c = leadComponent(job)
+    if (!c) continue
+    surfaces.add(c.type)
+    if (c.type === "chart") surfaces.add(chartSurfaceId(c))
+    const form = resolveComponentForm(c.type, job.theme)?.form
+    if (form) surfaces.add(`form:${form}`)
+  }
+  return [...surfaces].sort()
+}
 
 describe("gallery theme table corpus", () => {
-  it("runs the same ten-page deck on every theme, rotating seven content components", async () => {
+  it("keeps the coverage list aligned with IR types, chart surfaces, and forms", () => {
+    const expected = [
+      ...COMPONENT_TYPES,
+      ...THEME_CHART_SURFACES,
+      ...COMPONENT_FORMS.map((f) => `form:${f}`),
+    ].sort()
+    const listed = [...THEME_TABLE_REQUIRED_SURFACES].sort()
+    expect(listed).toEqual(expected)
+    expect(new Set(THEME_TABLE_REQUIRED_SURFACES).size).toBe(THEME_TABLE_REQUIRED_SURFACES.length)
+  })
+
+  it("runs a ten-page deck on every theme, with seven unique content leads", async () => {
     const jobs = buildMatrix(themeIds, await assets(), { only: "theme" })
-    const expectedTypes = new Set<string>(THEME_CONTENT_TYPES)
-    let firstTypes: string[] | undefined
 
     for (const themeId of themeIds) {
       const pages = jobs.filter((j) => j.subject === themeId).sort((a, b) => a.page - b.page)
@@ -144,13 +195,59 @@ describe("gallery theme table corpus", () => {
       ])
 
       const content = pages.filter((p) => p.slideType === "content")
-      const types = content.map((p) => p.ir.slides[p.slideIndex]!.components[0]!.type)
-      expect(new Set(types).size, themeId).toBe(THEME_CONTENT_TYPES.length)
-      expect(new Set(types), themeId).toEqual(expectedTypes)
-
-      firstTypes ??= types
-      expect(types, themeId).toEqual(firstTypes)
+      const types = content.map((p) => leadComponent(p)!.type)
+      expect(new Set(types).size, themeId).toBe(7)
     }
+  })
+
+  it("covers every required surface at least once across the 25×7 union", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const drawn = themeTableSurfaces(jobs)
+    const required = [...THEME_TABLE_REQUIRED_SURFACES].sort()
+    const missing = required.filter((s) => !drawn.includes(s))
+    const extra = drawn.filter((s) => !(THEME_TABLE_REQUIRED_SURFACES as readonly string[]).includes(s))
+    expect(missing, `missing surfaces: ${missing.join(", ")}`).toEqual([])
+    expect(extra, `stale surfaces: ${extra.join(", ")}`).toEqual([])
+    expect(drawn).toEqual(required)
+
+    const types = new Set<string>(jobs.filter((j) => j.slideType === "content").map((j) => leadComponent(j)!.type))
+    for (const type of COMPONENT_TYPES) {
+      expect(types.has(type), type).toBe(true)
+    }
+
+    const charts = new Set(
+      jobs
+        .filter((j) => j.slideType === "content")
+        .map((j) => leadComponent(j))
+        .filter((c): c is Extract<Component, { type: "chart" }> => c?.type === "chart")
+        .map(chartSurfaceId),
+    )
+    for (const surface of THEME_CHART_SURFACES) {
+      expect(charts.has(surface), surface).toBe(true)
+    }
+
+    const forms = new Set(
+      jobs
+        .filter((j) => j.slideType === "content")
+        .map((j) => {
+          const c = leadComponent(j)
+          return c ? resolveComponentForm(c.type, j.theme)?.form : undefined
+        })
+        .filter((f): f is (typeof COMPONENT_FORMS)[number] => f !== undefined),
+    )
+    for (const form of COMPONENT_FORMS) {
+      expect(forms.has(form), form).toBe(true)
+    }
+  })
+
+  it("assigns the same lead types on a second buildMatrix call", async () => {
+    const first = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const second = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const typesOf = (jobs: typeof first) =>
+      jobs
+        .filter((j) => j.slideType === "content")
+        .map((j) => `${j.subject}:${j.page}:${leadComponent(j)!.type}`)
+    expect(typesOf(second)).toEqual(typesOf(first))
   })
 })
 

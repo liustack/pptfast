@@ -1,8 +1,8 @@
 /**
  * Turns the corpus into whole decks — the two tables `D2` settled on.
  *
- * Theme table: every theme runs the same ten-page deck, so a reviewer
- * comparing two themes is looking at one variable. Layout/component table:
+ * Theme table: every theme runs a ten-page deck of the same shape, with
+ * content leads rotating from a fixed assignment table. Layout/component table:
  * one page each, pinned, on a fixed baseline theme, so a reviewer comparing
  * two layouts is likewise looking at one variable. Nothing here picks a
  * layout implicitly — every page in the second table carries an explicit
@@ -20,6 +20,7 @@ import { LAYOUT_REGISTRY, type LayoutDefinition } from "@/svg/layouts/registry"
 import { COMPONENT_BUILDERS, LOGO_ASSETS, PHOTO_ASSETS, SCREENSHOT_ASSET } from "./components"
 import type { Lexicon } from "./lexicon"
 import { placeholderImage, placeholderLogo, placeholderScreenshot } from "./placeholders"
+import { THEME_CONTENT_SLOTS, buildThemeSlot } from "./theme-slots"
 
 /** The theme held fixed while layouts and components are under review. */
 export const BASELINE_THEME = "consulting"
@@ -84,30 +85,30 @@ function deckShell(lex: Lexicon, assets: CorpusAssets, themeId: string, filename
 /**
  * The ten pages a real deck actually contains, in the order it contains
  * them: an opening, a section break, seven content pages each led by a
- * different component, then a close. The seven lead types are the ones
- * whose theme-owned forms would otherwise never appear on this table.
+ * different component (looked up in `THEME_CONTENT_SLOTS`), then a close.
  *
  * Layouts are left unpinned here on purpose. This table asks "does this
  * theme look good doing its own thing", and its own thing includes which
  * layout it reaches for. The `seed` on the deck keeps that choice stable.
  */
 export function themeDeck(themeId: string, lex: Lexicon, assets: CorpusAssets): PptxIR {
-  const b = COMPONENT_BUILDERS
+  const slots = THEME_CONTENT_SLOTS[themeId]
+  if (!slots || slots.length !== 7) {
+    throw new Error(`theme table has no 7-slot assignment for ${themeId}`)
+  }
+  const content: Slide[] = slots.map((spec, i) => {
+    const component = buildThemeSlot(spec, lex)
+    return {
+      type: "content" as const,
+      heading: lex.headings[i]!,
+      components: [component],
+      ...(component.type === "data_table" ? { footnote: lex.sources[0]!.label } : {}),
+    }
+  })
   const slides: Slide[] = [
     { type: "cover", heading: lex.deckTitle, subheading: lex.deckSubtitle, components: [] },
     { type: "chapter", heading: lex.chapters[0]!, subheading: lex.kickers[0], components: [] },
-    { type: "content", heading: lex.headings[3]!, components: [b.icon_cards!(lex)] },
-    { type: "content", heading: lex.headings[1]!, components: [b.kpi_cards!(lex)] },
-    { type: "content", heading: lex.headings[2]!, components: [b.chart!(lex)] },
-    {
-      type: "content",
-      heading: lex.headings[0]!,
-      components: [b.data_table!(lex)],
-      footnote: lex.sources[0]!.label,
-    },
-    { type: "content", heading: lex.headings[6]!, components: [b.timeline!(lex)] },
-    { type: "content", heading: lex.headings[5]!, components: [b.comparison!(lex)] },
-    { type: "content", heading: lex.headings[12]!, components: [b.cycle!(lex)] },
+    ...content,
     { type: "ending", heading: lex.chapters[5]!, subheading: lex.verdicts.positive, components: [] },
   ]
   return deckShell(lex, assets, themeId, `theme-${themeId}-${lex.id}`, slides)
