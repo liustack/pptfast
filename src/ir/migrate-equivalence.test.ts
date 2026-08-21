@@ -766,6 +766,11 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //   - `annualReviewPreset` (`journal`): slide 0. Cover `memo-head` ->
       //     `editorial-masthead` (cover lock) plus the same kicker / motif
       //     singleton. Non-cover pages unchanged.
+      // Recaptured (component-forms-w1, 2026-08-22). journal is assigned
+      // the bubble-row kpi face. Only annualReviewPreset slide 2 (content
+      // kpi_cards, 1-indexed slide 3) changes. Cover, chapter, quote, and
+      // ending stay byte-identical. `.audit.json` needed no recapture
+      // (findings stayed the empty array). PPTX only `ppt/slides/slide3.xml`.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
