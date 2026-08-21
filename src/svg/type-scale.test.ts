@@ -62,10 +62,12 @@ describe("typeScale omitted is a byte-identical no-op", () => {
     }
   })
 
-  it("built-in themes other than stage omit typeScale", () => {
+  it("built-in themes other than stage (1.5) and playbill (1.3) omit typeScale", () => {
     for (const id of CANONICAL_THEME_IDS) {
       if (id === "stage") {
         expect(THEME_STYLES[id].shape?.typeScale).toBe(1.5)
+      } else if (id === "playbill") {
+        expect(THEME_STYLES[id].shape?.typeScale).toBe(1.3)
       } else {
         expect(THEME_STYLES[id].shape?.typeScale, id).toBeUndefined()
       }
