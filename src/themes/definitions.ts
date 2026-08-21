@@ -906,8 +906,10 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       cover: ["split-diagonal", "poster-center"],
     },
   },
-  // museum（博物，2026-08-21 鹦鹉站气质立项）：棕黑厅堂 + 衬线 + 展签铜金，
-  // 由专属 museum-motif 承载。结构行 C / top-band / light / airy，最近邻
+  // museum（博物，2026-08-21 鹦鹉站气质立项）：棕黑厅堂 + 衬线 + 展签铜金。
+  // 无 motif——落地版的展签框 + 四角针点被用户终审裁撤（2026-08-21：四角
+  // 装饰「没必要，也太丑」），气质全部由色板与衬线排印承担，装饰浓度为
+  // none（runway 先例之后第二家）。结构行 C / top-band / none / airy，最近邻
   // insight（C / top-band / light / tight），岔在留白轴。封面构造
   // poster-center / editorial-masthead（与 insight 同构图，insight 是夜刊、
   // museum 是展厅，layout 零 baked hex）：
@@ -919,7 +921,6 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // gapScale，不靠再声明一个与 insight 同形的轴去硬凑区分度。
   museum: {
     layouts: { cover: FULL_LAYOUTS.cover, chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
-    motif: "museum-motif",
     layoutTendencies: {
       cover: ["poster-center", "editorial-masthead"],
     },

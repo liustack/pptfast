@@ -131,15 +131,16 @@ describe("bloom is a declared palette preset of classroom, not a missing declara
 // writes that down as `decoration-weight: none`, the only `none` in the
 // table. Pinned here so a future "fill in the missing motif" tidy-up has to
 // argue with a failing test instead of a blank field.
-describe("runway's motif === undefined is an identity value (definitions.ts:317's standing ruling)", () => {
-  it("runway declares no motif", () => {
+describe("absent motifs are identity values, not holes (runway per definitions.ts:317, museum per the 2026-08-21 corner-decor strike-down)", () => {
+  it("runway and museum declare no motif", () => {
     expect(THEME_DEFINITIONS.runway.motif).toBeUndefined()
+    expect(THEME_DEFINITIONS.museum.motif).toBeUndefined()
   })
 
-  it("every other theme does declare one — runway is the single exception, not one of several gaps", () => {
+  it("every other theme does declare one — the no-motif pair is settled, not one of several gaps", () => {
     const withMotif = CANONICAL_THEME_IDS.filter((id) => THEME_DEFINITIONS[id].motif !== undefined)
-    expect(withMotif).toEqual(CANONICAL_THEME_IDS.filter((id) => id !== "runway"))
-    expect(withMotif).toHaveLength(19)
+    expect(withMotif).toEqual(CANONICAL_THEME_IDS.filter((id) => id !== "runway" && id !== "museum"))
+    expect(withMotif).toHaveLength(18)
   })
 })
 
