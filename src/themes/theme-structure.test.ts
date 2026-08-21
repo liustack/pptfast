@@ -149,7 +149,7 @@ describe("absent motifs are identity values, not holes (runway per definitions.t
 // ── 1. Divergence test ──
 
 describe("cross-theme layout divergence (the plan's core defect)", () => {
-  it("resolves NOT-all-identical layout sequences across the 22 canonical theme ids for a fixed IR + fixed seed", () => {
+  it("resolves NOT-all-identical layout sequences across the 25 canonical theme ids for a fixed IR + fixed seed", () => {
     const sequences = CANONICAL_THEME_IDS.map((id) => resolveSequence(id, 1))
     const distinct = new Set(sequences.map((seq) => JSON.stringify(seq)))
     // Pre-wave (commit 709605a, before T1/T2 landed): all 13 themes' `layouts`
@@ -185,6 +185,8 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // vermilion cover-weight cluster, count stays 11. playbill (same day)
     // shares luxe's poster-center / fashion-masthead cover pair, count stays
     // 11.
+    // Re-measured after the board-cover-fidelity cover lock (2026-08-22):
+    // 16 distinct whole-deck sequences at seed 1 across 25 theme ids.
     expect(distinct.size).toBe(16)
   })
 
@@ -205,12 +207,12 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
 // ── 1a. Cover-axis allocation measurement (theme-structure-allocation wave) ──
 //
 // The wave's own acceptance metric, measured the same way the theme-structure
-// wave measured its own: one fixed IR, fixed seeds, resolved across the 16
+// wave measured its own: one fixed IR, fixed seeds, resolved across the 24
 // structural identities, counting how many genuinely different cover
 // behaviours come out. The historical chain on the whole-sequence axis was
-// 1 -> 7 (13 themes, theme-structure wave) -> 12 (today, 17 themes). This
-// block measures the cover slot specifically, because that is the only slot
-// this wave touches.
+// 1 -> 7 (13 themes, theme-structure wave) -> 12 (17 themes). Re-measured
+// after the board-cover-fidelity cover lock: 16 at seed 1 across 25 theme
+// ids. This block measures the cover slot specifically.
 
 /** The 40-seed cover pick sequence for `themeId` — one seed is not enough to separate two weightings that happen to agree on it. */
 function coverSequence(themeId: string, seedCount = 40): (string | null)[] {
@@ -223,15 +225,17 @@ function effectiveCoverWeightSet(themeId: CanonicalThemeId): string {
   return JSON.stringify([...new Set([...own, ...STRATEGY_DEFINITIONS.briefing.identityTendencies.cover])].sort())
 }
 
-describe("cover-axis divergence across the 21 structural identities", () => {
-  it("distinct cover sequences: 9 across the 21 identities (measured, seeds 1-40)", () => {
+describe("cover-axis divergence across the 24 structural identities", () => {
+  it("distinct cover sequences: 14 across the 24 identities (measured, seeds 1-40)", () => {
     const distinct = new Set(STRUCTURAL_IDENTITY_IDS.map((id) => JSON.stringify(coverSequence(id))))
     // The measured chain on this exact fixture: 8 before the allocation wave,
     // 10 after it, 9 after the inert-declaration fix, 10 once swiss landed
     // (2026-08-21 wave7: left-anchor + split-diagonal is a new cover-weight
-    // pair, not a join into an existing group). Each number is a literal, not
-    // a re-derivation, so reverting either edit fails here instead of quietly
-    // adopting its own new baseline.
+    // pair, not a join into an existing group), then 14 after the
+    // board-cover-fidelity cover lock (2026-08-22, seeds 1-40, 24 structural
+    // identities). Each number is a literal, not a re-derivation, so
+    // reverting the lock fails here instead of quietly adopting a new
+    // baseline.
     //
     // **The drop from 10 to 9 is the fix working, not a regression**, and the
     // reason is worth reading before anyone "restores" it. One of those 10
@@ -269,7 +273,7 @@ describe("cover-axis divergence across the 21 structural identities", () => {
     expect(blind).toEqual([])
   })
 
-  it("distinct cover weightings across the 21 identities: 9, every one of them a real preference", () => {
+  it("distinct cover weightings across the 24 identities: 14, every one of them a real preference", () => {
     const groups = new Map<string, string[]>()
     for (const id of STRUCTURAL_IDENTITY_IDS) {
       const key = effectiveCoverWeightSet(id)
@@ -758,13 +762,13 @@ describe("allocation wave drift: the cover slot moved for eight themes and nothi
 // `registerTheme` guard already establish this at *declaration* time (a
 // tendency naming an id outside the theme's own `layouts[slideType]` set
 // throws at registration). This block is the *selection-time* complement:
-// given a real, deliberately narrowed `layouts` set (every builtin theme
-// today curates the full layout set for all four page types —
-// `definitions.test.ts`'s own "全集放开基线" pin — so this narrowing is
-// synthetic, exercising the boundary itself rather than a real theme), no
-// combination of strategy/beat/theme weighting — even a themeTendencies
-// entry that maximally favors one member — ever produces a pick outside
-// that narrowed pool, across a wide seed/strategy/beat sweep.
+// given a real, deliberately narrowed `layouts` set (five seventh-wave
+// themes now lock cover in production. This fixture still narrows all
+// four page types so the boundary is exercised on every axis, not only
+// the live cover locks), no combination of strategy/beat/theme weighting,
+// even a themeTendencies entry that maximally favors one member, ever
+// produces a pick outside that narrowed pool, across a wide
+// seed/strategy/beat sweep.
 describe("hard boundary: a narrowed layouts set still gates every pick, regardless of tendency weighting", () => {
   const NARROWED_LAYOUTS: ThemeDefinition["layouts"] = {
     cover: ["banner-title", "poster-center"],
@@ -861,7 +865,7 @@ describe("forced theme-tendency × stress-content geometry audit (closes the T2 
     }
   }
 
-  it("sanity: 70 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
+  it("sanity: 65 declared theme×layout combinations exist to force-audit — every id every theme leans toward on cover/chapter/ending, rendered with pathological content", () => {
     // Was 36 before the allocation wave. The +17 are the cover ids the wave
     // added: enterprise/campaign/classroom/bloom/luxe/heritage 2 apiece (12,
     // all first declarations), plus terra +1, ember +2 and vermilion +2. The

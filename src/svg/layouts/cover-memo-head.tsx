@@ -28,7 +28,8 @@ import { accessibleInk, metaInk } from "../ink"
  *      最后一词（有空格按空格切，CJK 无空格取末两字）。
  *   3. 板上 `<br>` 强制两行。短标题按宽度折，不另造换行字段。
  *   4. Latin 眉行 0.6em 字距预览保留，svg2pptx 不映射 letter-spacing，
- *      导出变紧。
+ *      导出变紧。板上把空格写进「M E M O R A N D U M」再加 0.6em，
+ *      引擎不把空格烤进字符串，只走 letter-spacing。
  */
 
 const EYEBROW = "MEMORANDUM"

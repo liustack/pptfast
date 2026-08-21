@@ -341,7 +341,7 @@ function checkFullBodyExclusivity(ir: PptxIR): ValidationIssue[] {
  * Boundary-page render-surface hard gate (bench-driven fixes wave, defect
  * D): `cover`, `chapter`, and `ending` slides can never render `components`
  * or `footnote` — every layout in all three families
- * (`src/svg/layouts/index-{chapter,ending}.ts`'s registries, the 8 cover
+ * (`src/svg/layouts/index-{chapter,ending}.ts`'s registries, the 13 cover
  * layouts `index.ts` re-exports, plus the background-asset
  * `ImageCoverPage` takeover that intercepts cover/chapter before any
  * layout runs, `src/svg/image-pages.tsx` — `full-slide-svg.tsx`'s
