@@ -119,6 +119,57 @@ describe("gallery coverage", () => {
   })
 })
 
+const THEME_CONTENT_TYPES = ["icon_cards", "kpi_cards", "chart", "data_table", "timeline", "comparison", "cycle"] as const
+
+describe("gallery theme table corpus", () => {
+  it("runs the same ten-page deck on every theme, rotating seven content components", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "theme" })
+    const expectedTypes = new Set<string>(THEME_CONTENT_TYPES)
+    let firstTypes: string[] | undefined
+
+    for (const themeId of themeIds) {
+      const pages = jobs.filter((j) => j.subject === themeId).sort((a, b) => a.page - b.page)
+      expect(pages, themeId).toHaveLength(10)
+      expect(pages.map((p) => p.slideType)).toEqual([
+        "cover",
+        "chapter",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "content",
+        "ending",
+      ])
+
+      const content = pages.filter((p) => p.slideType === "content")
+      const types = content.map((p) => p.ir.slides[p.slideIndex]!.components[0]!.type)
+      expect(new Set(types).size, themeId).toBe(THEME_CONTENT_TYPES.length)
+      expect(new Set(types), themeId).toEqual(expectedTypes)
+
+      firstTypes ??= types
+      expect(types, themeId).toEqual(firstTypes)
+    }
+  })
+})
+
+describe("gallery layout table corpus", () => {
+  it("authors bodies that match what those layouts actually draw", async () => {
+    const jobs = buildMatrix(themeIds, await assets(), { only: "layout", languages: ["zh"] })
+    const typesOf = (layoutId: string): string[] => {
+      const job = jobs.find((j) => j.subject === layoutId && j.theme === BASELINE_THEME && j.language === "zh")
+      expect(job, layoutId).toBeTruthy()
+      return job!.ir.slides[0]!.components.map((c) => c.type)
+    }
+
+    expect(typesOf("pull-quote")).toContain("quote")
+    expect(typesOf("one-evidence")).toContain("chart")
+    expect(typesOf("bento-panel")).toEqual(expect.arrayContaining(["kpi_cards", "icon_cards"]))
+    expect(typesOf("stacked-poster")).toContain("image")
+  })
+})
+
 describe("gallery corpus", () => {
   it("renders every page in every table through the real render chain", async () => {
     // Deliberately the whole matrix, not a sample: a corpus page that stops
