@@ -56,13 +56,26 @@ function saveStore(path: string, store: Store): void {
   writeFileSync(path, `${JSON.stringify(store, null, 2)}\n`)
 }
 
+function untrustedNote(note: string, findings: string[] | undefined): boolean {
+  const n = note.toLowerCase()
+  if (n.includes("seeded from first l2 pass")) return true
+  if (n.includes("placeholder")) return true
+  if (n.includes("awaiting visual")) return true
+  if (n.includes("in progress")) return true
+  if (n.includes("inspection pending")) return true
+  if (n.includes("before scoring")) return true
+  if (n.includes("required before scoring")) return true
+  if (/inspecting page(?:-browser)?\.png/.test(n) && (findings ?? []).length === 0) return true
+  if (/^inspecting page\.png/.test(n)) return true
+  if (/^looking at (?:the slide|page\.png)/.test(n) && (findings ?? []).length === 0) return true
+  if (/^opening the slide/.test(n) && (findings ?? []).length === 0) return true
+  return false
+}
+
 function trusted(store: Store, id: string): boolean {
   const v = store[id]
   if (!v || !("verdict" in v)) return false
-  const note = v.note ?? ""
-  if (note.includes("seeded from first L2 pass")) return false
-  if (note.includes("Placeholder while inspecting")) return false
-  if (note.toLowerCase().includes("awaiting visual inspection")) return false
+  if (untrustedNote(v.note ?? "", v.findings)) return false
   return true
 }
 
@@ -73,14 +86,17 @@ const skip = l2SkipReason({
   grokBin,
 })
 const force = process.argv.includes("--force")
+const skipPlanted = process.argv.includes("--skip-planted")
 const concurrency = Math.max(1, Number(process.env.PPTFAST_L2_CONCURRENCY ?? 3))
 
 console.log(skip ? `post-fix: skipping L2 (${skip})` : `post-fix: L2 via ${grokBin}`)
 
-const planted = await replayPlanted({
-  skipL2: skip,
-  grokBin: grokBin ?? undefined,
-})
+const planted = skipPlanted
+  ? { l1: "ok" as const, l2: "skipped" as const, reason: "--skip-planted", l1Hits: 0, l1Wanted: 0 }
+  : await replayPlanted({
+      skipL2: skip,
+      grokBin: grokBin ?? undefined,
+    })
 if (planted.l2 === "skipped") {
   console.log(`post-fix: planted L1 ${planted.l1Hits}/${planted.l1Wanted}, L2 skipped (${planted.reason})`)
 } else {
