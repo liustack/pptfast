@@ -16,7 +16,7 @@ pptfast assemble deck-dir/     # materializes deck.json — catches structural d
 pptfast validate deck-dir/     # content-quality gate: heading length, density, bullets budget (warnings) + unknown theme, boundary-page content, and a bullet item past render-safety (hard errors)
 ```
 
-把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage`、`statement`、`pull-quote`、`verse-chapter` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见 `references/layouts.md`）。高潮页、金句页、证据页默认就要钉（见 `references/layouts.md`）。
+把两个命令报出的错误都修掉，重新跑，直到两者都打印 `OK`。`validate` 可能在打印 `OK` 的同时带着 `warning:` 行（比如标题太长、某页太密）——条件允许时也应该收紧，读起来会更好，但它们不拦渲染。只有 error 才会让 `OK` 打印不出来。spec 里某一页如果还没有对应的页面文件，就是一个占位页（只有标题）——assemble 和 validate 都接受这种情况。分批之间留一些占位页是正常状态，不是错误。只要某一页的 `layout` 被留给自动选型，`assemble` 也会打印 `note: N layouts auto-selected into deck.json`——这只是提示，不是错误。只有当某个具体选型结果需要被锁定时，才在页面文件里显式钉死 `layout`——像 `quote-stage`、`statement`、`pull-quote`、`verse-chapter`、`stat-hero`、`one-evidence`、`mono-bleed` 这种 `pinOnly` 版式每次都需要这个钉子，因为它从来不会通过自动选型出现（见 `references/layouts.md`）。高潮页、金句页、证据页默认就要钉（见 `references/layouts.md`）。
 
 ### Phase 4 — 渲染
 
@@ -38,7 +38,7 @@ pptfast render deck-dir/
 pptfast audit deck-dir/
 ```
 
-零 token、零方差——它离屏渲染每一页，检查溢出（overflow）、越界（out-of-bounds）、低对比度（low-contrast）、重叠（overlap）、内容截断（content-truncated，省略号截掉了真实文字）、内容丢失（content-dropped，一个「+N …」标记隐藏了某个条目或整个 component），发现问题就 exit 1（干净则是 0）。每条 finding 都标出所在页面（和 id），并带一个修法。修那一页被标出的内容——和处理 `validate` 报错一样遵循「重组，不要删除」的纪律——然后单独重跑一次 `pptfast audit deck-dir/`（不用重新渲染）直到 exit 0。这是这份 deck 的视觉 QA。不要用肉眼看截图来代替它。
+零 token、零方差——它离屏渲染每一页，检查溢出（overflow）、越界（out-of-bounds）、低对比度（low-contrast）、重叠（overlap）、内容截断（content-truncated，省略号截掉了真实文字）、内容丢失（content-dropped，某个条目或整个 component 被静默截掉，SVG 里标成 data-dropped），发现问题就 exit 1（干净则是 0）。每条 finding 都标出所在页面（和 id），并带一个修法。修那一页被标出的内容——和处理 `validate` 报错一样遵循「重组，不要删除」的纪律——然后单独重跑一次 `pptfast audit deck-dir/`（不用重新渲染）直到 exit 0。这是这份 deck 的视觉 QA。不要用肉眼看截图来代替它。
 
 如果有页面用了 cover/chapter 照片背景，加上 `--pixels`——它会把该页光栅化并采样真实像素，抓住文字直接压在一张没有遮罩的照片上的情况，这是上面纯 SVG 检查唯一看不到的一种。
 

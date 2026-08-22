@@ -161,15 +161,21 @@ pnpm gallery --only=layout      # one table
 pnpm gallery --languages=zh,en  # narrow the language axis
 ```
 
-It renders two tables through the real chain (`validateIr` →
+It renders four tables through the real chain (`validateIr` →
 `renderSlideSvg`, the same two calls `render`/`preview` make — no
 gallery-specific rendering branch exists, and promotional images are meant
-to come from what passes review here):
+to come from what passes review here). `evals/gallery/hashes.json` pins
+674 pages (`gallery-page-v2`):
 
-- **主题表** — all 17 themes running one identical nine-page deck, so two
-  themes differ by exactly one variable
-- **版式表 / 组件表** — every layout and every component on one baseline
-  theme, each in Chinese, English and mixed-script content
+- **主题表** — all 24 themes running one identical ten-page deck (cover +
+  chapter + 7 content + ending), so two themes differ by exactly one
+  variable (240 pages)
+- **版式表** — every layout on one baseline theme, Chinese, English and
+  mixed-script content (227 pages)
+- **组件表** — every component on one baseline theme, each in Chinese,
+  English and mixed-script content (180 pages)
+- **满载表** — nine components filled to capacity without overflowing
+  (27 pages)
 
 Output is `.gallery/`: per-page SVGs, a machine-readable `manifest.json`,
 and a self-contained `index.html` that can be double-clicked offline. In
@@ -240,7 +246,7 @@ Each measured overflow lands in one of three buckets
 - **measurement slack** — `getBBox()` reports the *ink* box while the declared
   boxes are laid out against advance widths, and the disagreement accumulates
   along a line. So the horizontal allowance is proportional (1% of the box,
-  2px floor, 8px cap) rather than flat: on the 461-page corpus one cause — a
+  2px floor, 8px cap) rather than flat: on an earlier 461-page corpus one cause — a
   full-width Chinese serif line — measures 3px past a 435px column and 6px
   past a 1088px one, and a flat threshold would call the first clean and the
   second a defect. Nothing accumulates down a baseline, so vertical overflow
@@ -258,9 +264,9 @@ Background and the reasoning behind how the matrix is cut:
 ### Automated visual audit (`pnpm evals:gallery`)
 
 `pnpm evals:gallery` is the agent audit over the same matrix. L1 is a
-zero-model geometry pass (overflow, overlap, edge-stick, font-size,
-overflow markers, Latin vertical type). L2 is grok vision against
-`evals/gallery/rubric/`.
+zero-model geometry pass (overflow, out-of-bounds, overlap, strikethrough,
+edge-stick, font-size, overflow markers, Latin vertical type). L2 is grok
+vision against `evals/gallery/rubric/`.
 Default mode is incremental: re-render, diff `evals/gallery/hashes.json`
 (`gallery-page-v2`), and audit `changed ∪ added`. `--full` audits every
 page. `--l1-only` skips L2. L2 is also skipped when `CI=true` or grok is

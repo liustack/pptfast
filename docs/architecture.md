@@ -18,7 +18,7 @@ another (layout code stays style-agnostic).
 |---|---|---|
 | Content model | IR (zod schema, semantic components) | `src/ir/` |
 | 2D layout | layout registry (standard layouts + image takeovers) + components + capacity tables + seeded variety | `src/svg/` |
-| Visual style | style tokens + theme definitions (curated layout sets + motif + optional per-page-type layout tendencies, 17 built-in themes) | `src/themes/` |
+| Visual style | style tokens + theme definitions (curated layout sets + motif + optional per-page-type layout tendencies, 24 built-in themes) | `src/themes/` |
 | Time-based interaction | `meta.animation` in the IR → slide transition / element entrance patches | `src/pptx/` |
 | Narrative | narrative axes (strategy × pacing × audience, named presets) resolving editorial discipline, plus a first-class spec artifact (`deck.spec.json` — locked page order/type/heading, strategy-aware hard gates via `spec validate`) that `assembleDeck`/`disassembleDeck` materialize to and from IR, driving a six-phase spec→fill skill methodology for slide sequencing | `src/spec/`, `src/narrative/`, `skills/` |
 
@@ -169,12 +169,12 @@ collected into one big literal table. Two registries/aggregators consume
 these domain files by importing and combining them, never by holding the
 content themselves:
 
-- **A layout definition lives with its implementation.** Each of the 33
+- **A layout definition lives with its implementation.** Each of the 51
   single-layout files exports `layoutDef: LayoutDefinition` at the
   bottom of its own `src/svg/layouts/<name>.tsx` file, beside the JSX
   that draws it (`src/svg/image-pages.tsx` — one level above `layouts/` — exports 4 uniquely-named ones instead,
   since one file implements all 4 image takeovers and they can't share the
-  bare `layoutDef` name the 33 single-layout files use). `src/svg/layouts/registry.ts`
+  bare `layoutDef` name the 51 single-layout files use). `src/svg/layouts/registry.ts`
   imports every one and assembles `LAYOUT_REGISTRY` from them — "take one
   layout away whole" is a single-file operation, not a two-file
   archaeology dig.
@@ -250,17 +250,19 @@ automatically — add a `BRANDS` entry there only if the theme needs
 non-default brand frame. A new theme also needs a `layouts` entry in
 `LAYOUTS` (`src/themes/definitions.ts`) — that record stays total over
 `CanonicalThemeId`, so a missing entry fails to compile. Each of the four
-page types defaults to `FULL_LAYOUTS.<type>` (every registered layout for
-that type), and as of the post-v0.3 W8 fix round **all 17 built-ins point
-every page type there** — the last three chapter-only curation exclusions
-(classroom/heritage excluding `fashion-chapter`, an artifact of
-`readableOn`'s old fixed-luminance threshold) were reverted once `src/svg/ink.ts`'s
-real dual-ink contrast comparison confirmed all three clear 3:1 without the
-exclusion (`src/themes/definitions.ts:121-146` has the full history). Narrowing
-a page type below the full set is still supported and stays a deliberate
-curation act, not a requirement — see `docs/contrast-system.md` for why a
-narrowing usually turns out to be a contrast bug in disguise rather than a
-real design constraint. The SDK registration seam (`registerTheme`,
+page types defaults to `FULL_LAYOUTS.<type>` (every registered auto-selectable
+layout for that type). The post-v0.3 W8 fix round reverted the last three
+chapter-only curation exclusions (classroom/heritage excluding
+`fashion-chapter`, an artifact of `readableOn`'s old fixed-luminance
+threshold) once `src/svg/ink.ts`'s real dual-ink contrast comparison
+confirmed all three clear 3:1 without the exclusion
+(`src/themes/definitions.ts` has the full history). Covers now lock to Claude
+Design board faces. Chapter and ending stay the full registered set until
+those boards exist. Content auto-pool is 10 ids (`side-highlight` retired).
+Narrowing a page type below the full set is still supported and stays a
+deliberate curation act, not a requirement — see `docs/contrast-system.md`
+for why a narrowing usually turns out to be a contrast bug in disguise rather
+than a real design constraint. The SDK registration seam (`registerTheme`,
 same file) mirrors the full-set default: its `layouts` argument, and each of
 its four page-type entries, are independently optional and fall back to the
 same full set when omitted. Layouts and components read only from tokens,
@@ -269,11 +271,11 @@ so no layout file changes. A theme may also optionally declare
 ids already in that same page type's `layouts` entry, giving the new theme a
 structural personality rather than only a palette; see `docs/concepts.md`'s
 theme section and `docs/selection-and-seed.md` for the mechanics. Leaving it
-undeclared (the default) is still a legitimate choice, not a lesser one, and
-several built-ins leave individual page types blank — but all 17 do declare a
-cover set, because a theme that declares nothing there picks its cover
-identically to every other silent theme, which is the sameness the field
-exists to break.
+undeclared (the default) is still a legitimate choice for a custom theme, not
+a lesser one — but all 24 built-ins declare a cover set, because a theme that
+declares nothing there picks its cover identically to every other silent
+theme, which is the sameness the field exists to break. Every builtin locks
+that cover set to its board face.
 
 See `docs/concepts.md` for the fuller theme/layout/component/narrative
 vocabulary this section assumes.

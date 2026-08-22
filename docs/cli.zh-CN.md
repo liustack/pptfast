@@ -22,12 +22,12 @@ read_when:
 | `assemble <dir\|name> [-o <file>]` | 把 deck 项目目录合并成单个 IR JSON 文件 |
 | `disassemble <ir.json> -o <dir>` | 把 IR JSON 文件拆成 deck 项目目录 |
 | `schema [--style \| --spec]` | 输出 IR 的 JSON Schema（或 style 覆盖 schema，或 deck spec schema） |
-| `themes [--json]` | 列出 21 套内置主题（22 个 id） |
+| `themes [--json]` | 列出 24 套内置主题（24 个 id） |
 | `brand extract <file> -o <out.theme.json> [--id] [--label]` | 从 `.thmx`/`.potx`/`.pptx` 本地抽取品牌配色与字体生成主题文件（见[主题](./themes.zh-CN.md#你自己的品牌)） |
 | `narratives [--json]` | 列出具名叙事预设（strategy/pacing/audience 轴 + theme 推荐） |
 | `preview <target> [-o <dir>] [--html] [--no-git-ignore]` | 逐页渲染为独立 SVG（`--html` 额外写出一个自包含的 `preview.html`），永远不受占位页拦截。不传 `-o` 时写到 `<项目>/.pptfast/<deck>/` |
 | `serve <target> [--port 4400] [--no-open]` | 实时预览服务：与 `preview --html` 同款审阅页，源文件变化自动刷新 |
-| `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`，确定性转换，不调模型 |
+| `migrate <input> -o <output>` | 把 v3 IR 文件转成 v4，并把 chrome 改写成 branding、bloom 改写成 classroom、logo_wall 改写成 image_grid，或把 `deck.plan.json` 项目目录转成 `deck.spec.json`。确定性转换，不调模型 |
 | `init` | 生成 `pptfast.config.json` 模板 |
 | `config set <key> [value]` / `config show` | 把 Pexels/Pixabay/Openverse 凭据和生图开关存进 `$PPTFAST_HOME/config.json`。省略 apiKey 或 clientSecret 的 value 则隐藏输入。`show` 掩码秘密并标 `(file)` / `(env)` |
 | `images search <query> [--orientation] [--color] [--min-width] [--min-height]` | 搜 Pexels，有 key 再 Pixabay，然后 Openverse（cc0/pdm）。打印署名行 |
@@ -53,8 +53,8 @@ read_when:
 - **越界**：内容超出页面边缘。
 - **低对比度**：文字与其所在背景的 WCAG 相对亮度对比度不达标。
 - **重叠**：两个组件的区域大面积相交。
-- **内容截断**：渲染器为适配版面用省略号截断了文字。
-- **内容丢失**：一张卡片列表被截断到放得下的条数（页面上会显示「+N 更多」），或者整个组件放不下被整块丢掉、页面上没有任何痕迹。
+- **内容截断**：渲染器为适配版面用省略号截断了文字（`data-truncated="1"`）。
+- **内容丢失**：一张卡片列表被截断到放得下的条数，或者整个组件放不下被整块丢掉。渲染器打上静默的 `data-dropped`（页级还有 `data-dropped-silent`），页面上不出现「+N 更多」。
 
 audit 是建议性工具，不是硬门。结构非法或密度超标的 deck 由 `validate` 拦下，audit 抓的是一份*合法* deck 在渲染层仍可能出现的问题：作者选了一个贴近背景色的文字颜色、两个组件的内容恰好撞在一起、一张卡片列表放不下丢了一条。
 
@@ -137,6 +137,6 @@ pptfast doctor
 ## 延伸
 
 - [`ir.zh-CN.md`](./ir.zh-CN.md)：IR 里写什么、叙事、版式选型、deck 项目。
-- [`themes.zh-CN.md`](./themes.zh-CN.md)：21 套内置主题（22 个 id）、品牌抽取、style 覆盖。
+- [`themes.zh-CN.md`](./themes.zh-CN.md)：24 套内置主题（24 个 id）、品牌抽取、style 覆盖。
 - [`concepts.md`](./concepts.md)：theme/layout/component/narrative 概念模型（英文）。
 - [`deck-projects.md`](./deck-projects.md)：deck 项目格式详解（英文）。

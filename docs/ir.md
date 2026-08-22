@@ -68,7 +68,7 @@ Mixing one in with another component fails `validate` instead of silently droppi
 
 The v4 IR schema is frozen as of 0.4.0. Future evolution is additive only: new optional fields, new enum members. Any breaking change ships under a new top-level `version` value, with the same reject-and-migrate treatment v3 got.
 
-`pptfast migrate <v3-file.json> -o <out.json>` converts a v3 file to v4 deterministically — field renames only, so theme, layout selection, content budgets, and visual output all stay the same. The sibling `deck.plan.json` → `deck.spec.json` conversion is under [Deck projects](#deck-projects).
+`pptfast migrate <v3-file.json> -o <out.json>` converts a v3 file to v4 deterministically — field renames, plus the v4 leftover rewrites `chrome` → `branding`, `bloom` → `classroom`, and `logo_wall` → `image_grid`. The sibling `deck.plan.json` → `deck.spec.json` conversion is under [Deck projects](#deck-projects).
 
 ## Narratives
 
@@ -98,12 +98,12 @@ Bullets shrink below their tier's baseline to fit when needed, down to a 14px fl
 
 When a slide omits `layout`, pptfast resolves one in four deterministic steps:
 
-1. The page type's full registry pool.
-2. Narrowed to the theme's layout set for that page type (the full set by default — see [Themes](./themes.md)).
-3. The narrative's `strategy` upweights (×3) a handful of content-layout ids that suit it, everything else stays at a ×1 floor. Cover, chapter, and ending pages are never weighted this way: their character comes from the theme.
+1. The page type's registered archetype pool, minus pin-only layouts.
+2. Narrowed to the theme's `layouts` set for that page type (covers lock to a board face. Content defaults to the 10-id auto set. lecture and luxe drop `banner-heading` / `split-band` / `stacked-poster` — see [Themes](./themes.md)).
+3. Soft weights via `Math.max`: the narrative `strategy`'s `layoutTendencies` (content) or `identityTendencies` (cover/chapter/ending), an optional slide `beat`, and the theme's `layoutTendencies`. Favored ids ×3, everything else ×1. Cover, chapter, and ending pages are weighted via `identityTendencies`.
 4. A seeded weighted pick, swapped deterministically to the runner-up when it would repeat the immediately preceding slide's layout.
 
-An explicit `layout` wins and skips all four steps. Whether the content fits is flagged separately by `validate`'s density gate, never by selection — so editing a page's content cannot silently flip its layout.
+An explicit `layout` skips those steps, except an unoffered sparse climax pin (`SPARSE_LAYOUT_IDS`): `effectiveRequestedLayout` strips it, auto-pick runs, `validate` warns, and `ok` stays true. `quote-stage` is pin-only but not sparse. Whether the content fits is flagged separately by `validate`'s density gate, never by selection — so editing a page's content cannot silently flip its layout.
 
 The pick is fully deterministic: the same IR always resolves the same way, so preview and the final render never disagree. Staying stable *across revisions* — editing one page without reshuffling every other page's auto-pick — additionally needs a persisted `seed`, resolved in this order:
 

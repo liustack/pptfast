@@ -159,8 +159,10 @@ they conflict (stability first):
    (one layout, or the pair the board names). That set is a lock. Soft
    weights cannot keep a cover identical. A theme whose board has not
    yet drawn chapter or ending keeps today's set on those types until
-   the next design pass locks them. Content pages still pick from the
-   allocation table.
+   the next design pass locks them. Content pages pick from the
+   auto-selectable set, weighted by the allocation table, and a theme
+   may narrow that set (lecture and luxe drop the top-title / top-image
+   layouts).
 3. **The shared pool still exists.** A new layout or motif still joins
    the pool, still reads every color through tokens, and still states
    which scenarios it serves. It is not a private file for one theme.
