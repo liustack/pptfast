@@ -167,7 +167,9 @@ describe("cross-theme layout divergence (the plan's core defect)", () => {
     // ids here).
     // Board-cover-restore wave 2 (2026-08-22): ten more cover locks. Re-measured
     // at seed 1: still 23. The enterprise / classroom collision is unchanged.
-    expect(distinct.size).toBe(23)
+    // side-highlight retirement (2026-08-22): auto content pool 11 -> 10
+    // reweights sampling. Re-measured 24 at seed 1, that collision is gone.
+    expect(distinct.size).toBe(24)
   })
 
   // Superseded assertion, kept as a comment because the reason it had to go
@@ -559,6 +561,16 @@ const GALLERY_R2_CONTENT_MOVES = JSON.parse(
   readFileSync(path.join(__fixtureDir, "__fixtures__/gallery-r2-content-moves.json"), "utf-8"),
 ) as Record<string, Record<string, Record<string, { from: string | null; to: string | null }>>>
 
+/**
+ * Fifth hop: `side-highlight` retired from the auto content pool (11 -> 10).
+ * Tendency replacements and the framed/consulting named lists stay as r2
+ * left them, minus this id. Cover, chapter, and ending are absent from
+ * every row. Historical JSON above is not recaptured.
+ */
+const SIDE_HIGHLIGHT_RETIRE_MOVES = JSON.parse(
+  readFileSync(path.join(__fixtureDir, "__fixtures__/side-highlight-retire-moves.json"), "utf-8"),
+) as Record<string, Record<string, Record<string, { from: string | null; to: string | null }>>>
+
 const FIXTURE_SEEDS = [1, 2, 3, 4, 5]
 
 /**
@@ -943,11 +955,11 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     ])
   })
 
-  it("every recorded second-front non-cover move still lands, then gallery r2 content hops, and every unlisted non-cover page stays put", () => {
+  it("every recorded second-front non-cover move still lands, then gallery r2 content hops, then side-highlight-retire hops, and every unlisted non-cover page stays put", () => {
     // Chain: pre-second-front + SECOND_FRONT_MOVES + GALLERY_R2_CONTENT_MOVES
-    // = now. Cover is the restore-wave slot (asserted above). Chapter and
-    // ending did not move on this hop. Content moves because the auto pool
-    // shrank 12 -> 11 and three themes narrowed their own sets.
+    // + SIDE_HIGHLIGHT_RETIRE_MOVES = now. Cover is the restore-wave slot
+    // (asserted above). Chapter and ending did not move on this hop. Content
+    // moves because the auto pool shrank 11 -> 10.
     for (const themeId of CANONICAL_THEME_IDS) {
       for (const seed of FIXTURE_SEEDS) {
         const now = resolveSequence(themeId, seed)
@@ -962,11 +974,17 @@ describe("second-front wave: chapter / content / ending allocation", () => {
           const r2 = GALLERY_R2_CONTENT_MOVES[themeId]?.[String(seed)]?.[String(i)]
           if (r2) {
             expect(afterSecond, `${themeId} seed=${seed} page ${i} r2 from`).toBe(r2.from)
-            expect(now[i], `${themeId} seed=${seed} page ${i} r2 to`).toBe(r2.to)
+          }
+          const afterR2 = r2 ? r2.to : afterSecond
+          const retire = SIDE_HIGHLIGHT_RETIRE_MOVES[themeId]?.[String(seed)]?.[String(i)]
+          if (retire) {
+            expect(afterR2, `${themeId} seed=${seed} page ${i} retire from`).toBe(retire.from)
+            expect(now[i], `${themeId} seed=${seed} page ${i} retire to`).toBe(retire.to)
           } else {
-            expect(now[i], `${themeId} seed=${seed} page ${i} should be untouched after r2`).toBe(afterSecond)
+            expect(now[i], `${themeId} seed=${seed} page ${i} should be untouched after retire`).toBe(afterR2)
           }
           expect(now[i], `${themeId} seed=${seed} page ${i} retired id`).not.toBe("image-lead-split")
+          expect(now[i], `${themeId} seed=${seed} page ${i} retired id`).not.toBe("side-highlight")
         }
       }
     }
@@ -981,6 +999,17 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     }
     expect([...pages].sort()).toEqual(["2", "3", "5"])
     expect(Object.keys(GALLERY_R2_CONTENT_MOVES).sort()).toEqual([...CANONICAL_THEME_IDS].sort())
+  })
+
+  it("side-highlight retire hops are content pages only (indices 2/3/5), never cover/chapter/ending", () => {
+    const pages = new Set<string>()
+    for (const seeds of Object.values(SIDE_HIGHLIGHT_RETIRE_MOVES)) {
+      for (const hops of Object.values(seeds)) {
+        for (const page of Object.keys(hops)) pages.add(page)
+      }
+    }
+    expect([...pages].sort()).toEqual(["2", "3", "5"])
+    expect(Object.keys(SIDE_HIGHLIGHT_RETIRE_MOVES).sort()).toEqual([...CANONICAL_THEME_IDS].sort())
   })
 
   it("no two structural identities share a chapter, content, or ending tendency set", () => {
@@ -1028,26 +1057,25 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     expect(dropped).toEqual([])
   })
 
-  it("seed=1 distinct 7-page sequences: 23/24, residual collision is enterprise / classroom", () => {
-    // Union tree (board-cover-fidelity × second-front, 2026-08-22): re-measured,
-    // still 23/24. Board-cover-restore wave 2 (2026-08-22): still 23/24.
-    // enterprise and classroom share this fixture/seed's 7-page
-    // sequence. They do not share a structural identity (different cover
-    // weight sets, different chapter / content / ending cells). A shared
-    // construction through two palettes is two covers, which is why the
-    // table allows the collision.
+  it("seed=1 distinct 7-page sequences: 24/24", () => {
+    // Union tree (board-cover-fidelity × second-front, 2026-08-22): 23/24,
+    // residual collision enterprise / classroom. Board-cover-restore wave 2
+    // still 23/24. side-highlight retirement (2026-08-22) shrinks the auto
+    // content pool 11 -> 10 and reweights sampling: re-measured 24/24, that
+    // seed=1 collision is gone.
     const sequences = STRUCTURAL_IDENTITY_IDS.map((id) => ({ id, seq: JSON.stringify(resolveSequence(id, 1)) }))
     const groups = new Map<string, string[]>()
     for (const { id, seq } of sequences) groups.set(seq, [...(groups.get(seq) ?? []), id])
-    expect(groups.size).toBe(23)
+    expect(groups.size).toBe(24)
     const collisions = [...groups.values()].filter((v) => v.length > 1)
-    expect(collisions).toEqual([["enterprise", "classroom"]])
+    expect(collisions).toEqual([])
   })
 
-  it("seeds 1-40: 24/24 distinct sequence-bundles, slot diversity chapter 18 / content 21 / ending 14", () => {
+  it("seeds 1-40: 24/24 distinct sequence-bundles, slot diversity chapter 18 / content 19 / ending 14", () => {
     // Union tree re-measured: the 40-seed bundle still separates all 24
     // identities. Gallery r2 (pool 11 + lecture/luxe/consulting content
-    // narrowing) lifts content-slot diversity 19 -> 21. Chapter 18 and
+    // narrowing) lifted content-slot diversity 19 -> 21. side-highlight
+    // retirement (pool 11 -> 10) drops it 21 -> 19. Chapter 18 and
     // ending 14 stay put: those pools did not change.
     const over40 = new Set(
       STRUCTURAL_IDENTITY_IDS.map((id) =>
@@ -1062,7 +1090,7 @@ describe("second-front wave: chapter / content / ending allocation", () => {
         ),
       ).size
     expect(slotCount(1)).toBe(18)
-    expect(slotCount(2)).toBe(21)
+    expect(slotCount(2)).toBe(19)
     expect(slotCount(4)).toBe(18)
     expect(slotCount(6)).toBe(14)
   })
@@ -1091,22 +1119,24 @@ describe("second-front wave: chapter / content / ending allocation", () => {
     ])
   })
 
-  it("lecture and luxe drop top-title / top-image content layouts, consulting drops side-highlight, none of those ids leak into live picks", () => {
+  it("lecture and luxe drop top-title / top-image content layouts, side-highlight is globally retired, none of those ids leak into live picks", () => {
     const framedDropped = ["banner-heading", "split-band", "stacked-poster"] as const
     for (const id of framedDropped) {
       expect(THEME_DEFINITIONS.lecture.layouts.content, `lecture still offers ${id}`).not.toContain(id)
       expect(THEME_DEFINITIONS.luxe.layouts.content, `luxe still offers ${id}`).not.toContain(id)
     }
     expect(THEME_DEFINITIONS.consulting.layouts.content).not.toContain("side-highlight")
-    expect(THEME_DEFINITIONS.playbill.layouts.content).toContain("side-highlight")
+    expect(THEME_DEFINITIONS.playbill.layouts.content).not.toContain("side-highlight")
     for (let seed = 1; seed <= 40; seed++) {
       const lecture = resolveSequence("lecture", seed)
       const luxe = resolveSequence("luxe", seed)
       const consulting = resolveSequence("consulting", seed)
+      const playbill = resolveSequence("playbill", seed)
       for (const page of [2, 3, 5]) {
         expect(framedDropped, `lecture seed=${seed} page ${page}`).not.toContain(lecture[page])
         expect(framedDropped, `luxe seed=${seed} page ${page}`).not.toContain(luxe[page])
         expect(consulting[page], `consulting seed=${seed} page ${page}`).not.toBe("side-highlight")
+        expect(playbill[page], `playbill seed=${seed} page ${page}`).not.toBe("side-highlight")
       }
     }
   })

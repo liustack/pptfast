@@ -6,7 +6,6 @@ import { BannerHeadingContent } from "./content-banner-heading"
 import { StackedPosterContent } from "./content-stacked-poster"
 import { ToneAdaptiveContent } from "./content-tone-adaptive-content"
 import { BentoPanelContent } from "./content-bento-panel"
-import { SideHighlightContent } from "./content-side-highlight"
 import { AsymmetricTriptychContent } from "./content-asymmetric-triptych"
 import { QuietFrameContent } from "./content-quiet-frame"
 import { SplitBandContent } from "./content-split-band"
@@ -27,8 +26,9 @@ export type { ContentLayout, ContentLayoutId } from "./types"
 // Content-layout expansion wave, task T2：新增 split-band。
 // quote-stage / editorial-verse / speech-layouts waves：pinOnly members
 // (quote-stage, statement, pull-quote, stat-hero, one-evidence, mono-bleed).
-// Gallery r2 D10 retired image-lead-split. Auto-selectable content pool is
-// 11, plus 6 pin-only.
+// Gallery r2 D10 retired image-lead-split. This change retires
+// side-highlight. Auto-selectable content pool is 10, plus 6 pin-only
+// (17 registered -> 16).
 export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "narrow-column": NarrowColumnContent,
   "two-column": TwoColumnContent,
@@ -37,7 +37,6 @@ export const CONTENT_LAYOUTS: Record<ContentLayoutId, ContentLayout> = {
   "stacked-poster": StackedPosterContent,
   "bento-panel": BentoPanelContent,
   "tone-adaptive-content": ToneAdaptiveContent,
-  "side-highlight": SideHighlightContent,
   "asymmetric-triptych": AsymmetricTriptychContent,
   "quiet-frame": QuietFrameContent,
   "split-band": SplitBandContent,

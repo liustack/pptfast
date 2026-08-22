@@ -221,13 +221,14 @@ describe("assigned themes on pinned rail-numbered", () => {
 })
 
 describe("gallery theme-table rail-numbered pages", () => {
-  it("insight zh slide 6 is side-highlight, not a rail-numbered false positive", async () => {
+  it("insight zh slide 6 is narrow-column after side-highlight retired, not a rail-numbered false positive", async () => {
     const assets = await corpusAssets(LEXICONS.zh)
     const ir = themeDeck("insight", LEXICONS.zh, assets)
     expect(ir.slides[6]?.type).toBe("content")
     const svg = renderSlideSvg(ir, 6)
     const root = parseSvgRoot(svg)
-    expect(root.querySelector('[data-archetype="side-highlight"]')).toBeTruthy()
+    expect(root.querySelector('[data-archetype="side-highlight"]')).toBeNull()
+    expect(root.querySelector('[data-archetype="narrow-column"]')).toBeTruthy()
     expect(isRailNumbered(root)).toBe(false)
     expect(findRailBadge(root)).toBeNull()
   })

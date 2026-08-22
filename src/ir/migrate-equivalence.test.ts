@@ -874,6 +874,22 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     the goldens byte-for-byte. Not recaptured (neither lands
       //     rail-numbered).
       // `.audit.json` needed no recapture (findings stayed the empty array).
+      //
+      // Recaptured (side-highlight retirement, 2026-08-22). Auto content
+      // pool 11 -> 10. Same sampler-denominator effect as D10. Cover,
+      // chapter, and pinned endings stay byte-identical. `.audit.json`
+      // needed no recapture (findings stayed the empty array).
+      //   - `basic` (`consulting`): live pipeline matched the goldens
+      //     byte-for-byte. Not recaptured (consulting's named list already
+      //     omitted side-highlight).
+      //   - `scenarioBearing` (`journal`): slides 1, 2, 3 (content)
+      //     `two-column` -> `narrow-column`, `stacked-poster` ->
+      //     `bento-panel`, `narrow-column` -> `quiet-frame`. Cover and
+      //     ending stay byte-identical.
+      //   - `annualReviewPreset` (`journal`): slides 2 and 3 (content)
+      //     `narrow-column` -> `quiet-frame`, `bento-panel` ->
+      //     `tone-adaptive-content`. Cover, chapter, and the pinned ending
+      //     stay byte-identical.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
@@ -990,6 +1006,17 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // cx` 11277600→10477500, each exactly 84px × 9525 EMU, so the right
       // edge stays put. `scenarioBearing` / `annualReviewPreset` live
       // pipeline matched the goldens byte-for-byte. Not recaptured.
+      //
+      // Recaptured (side-highlight retirement, 2026-08-22). File-name set
+      // unchanged. PPTX parts that move are the 1-indexed matches of the
+      // SVG content slides whose layout id moved.
+      //   - `basic`: live pipeline matched the goldens byte-for-byte. Not
+      //     recaptured.
+      //   - `scenarioBearing`: `ppt/slides/slide2.xml`, `slide3.xml`,
+      //     `slide4.xml`.
+      //   - `annualReviewPreset`: `ppt/slides/slide3.xml` (SVG slide 2).
+      //     SVG slide 3 (`bento-panel` -> `tone-adaptive-content`) did not
+      //     change exported geometry on this fixture.
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)

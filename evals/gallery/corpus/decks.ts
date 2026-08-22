@@ -243,7 +243,6 @@ function bodyFor(def: LayoutDefinition, lex: Lexicon): Component[] {
     "banner-heading": [b.icon_cards!(lex), b.bullets!(lex)],
     "tone-adaptive-content": [b.quote!(lex), b.kpi_cards!(lex)],
     "quiet-frame": [b.tag_row!(lex), b.callout!(lex)],
-    "side-highlight": [b.bullets!(lex), b.verdict_banner!(lex)],
     "split-band": [b.icon_cards!(lex), shortCitation(lex)],
     "asymmetric-triptych": [b.image!(lex), b.quote!(lex)],
     "image-split": [b.image!(lex), b.bullets!(lex), shortParagraph],

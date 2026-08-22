@@ -44,7 +44,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
     }
   }
 
-  it("has exactly 52 layout-kind entries, all traceable to one of the four real registries (gallery r2 D10: 53 -> 52, image-lead-split retired)", () => {
+  it("has exactly 51 layout-kind entries, all traceable to one of the four real registries (side-highlight retired: 52 -> 51, after gallery r2 D10's 53 -> 52)", () => {
     const knownIds = new Set([
       ...Object.keys(COVER_LAYOUTS),
       ...Object.keys(CHAPTER_LAYOUTS),
@@ -52,7 +52,7 @@ describe("LAYOUT_REGISTRY completeness (layout ids)", () => {
       ...Object.keys(ENDING_LAYOUTS),
     ])
     const layoutEntries = Object.values(LAYOUT_REGISTRY).filter((e) => e.kind === "archetype")
-    expect(layoutEntries).toHaveLength(52)
+    expect(layoutEntries).toHaveLength(51)
     for (const entry of layoutEntries) {
       expect(knownIds.has(entry.id), `"${entry.id}" is not a real layout id`).toBe(true)
     }
@@ -130,14 +130,13 @@ describe("content family: body slot + declared arrangements", () => {
     expect(LAYOUT_REGISTRY["stacked-poster"].arrangements).toBe("all")
   })
 
-  it("the remaining seven arrangement-respecting layouts declare arrangements: \"all\" (P1 variety wave task 4 adds side-highlight/quiet-frame to the five pre-existing members)", () => {
+  it("the remaining six arrangement-respecting layouts declare arrangements: \"all\" (P1 variety wave task 4 added quiet-frame to the five pre-existing members, side-highlight retired)", () => {
     for (const id of [
       "banner-heading",
       "narrow-column",
       "rail-numbered",
       "tone-adaptive-content",
       "stacked-poster",
-      "side-highlight",
       "quiet-frame",
     ]) {
       expect(LAYOUT_REGISTRY[id].arrangements).toBe("all")
@@ -223,11 +222,11 @@ describe("layoutsForSlideType", () => {
     expect(layoutsForSlideType("ending")).toHaveLength(7)
   })
 
-  it("content includes both the 17 layouts and the 4 takeovers (gallery r2 D10 retired image-lead-split, 18 -> 17)", () => {
+  it("content includes both the 16 layouts and the 4 takeovers (side-highlight retired, 17 -> 16, after gallery r2 D10's 18 -> 17)", () => {
     const contents = layoutsForSlideType("content")
-    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(17)
+    expect(contents.filter((l) => l.kind === "archetype")).toHaveLength(16)
     expect(contents.filter((l) => l.kind === "takeover")).toHaveLength(4)
-    expect(contents).toHaveLength(21)
+    expect(contents).toHaveLength(20)
   })
 })
 

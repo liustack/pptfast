@@ -109,7 +109,7 @@ import { tryContentHeadingTreatment } from "../heading-treatments/render"
  * `readableOn`/`accessibleInk` (mechanism reused verbatim, not invented —
  * 控制器裁定 3 forbids a new contrast mechanism): `header`'s fill is
  * `colors.primary` (the same bleed-fill-needs-contrast-safety case
- * `banner-heading`/`side-highlight` already established), so heading text
+ * `banner-heading` already established), so heading text
  * uses `readableOn(colors.primary)` (banner-heading's own exact call
  * shape) and kicker/subheading use `accessibleInk(preferredFill,
  * colors.primary, fontSize)` (keeps the theme's own muted/accent token

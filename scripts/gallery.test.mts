@@ -274,7 +274,6 @@ describe("gallery layout table corpus", () => {
       "banner-heading",
       "tone-adaptive-content",
       "quiet-frame",
-      "side-highlight",
       "split-band",
     ]
     const leads = twoCompact.map((layoutId) => {
