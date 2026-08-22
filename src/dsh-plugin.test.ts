@@ -150,6 +150,7 @@ describe("dsh plugin bundle manifest", () => {
     expect(pkg.files).toContain("cordis.patch.yml")
     // the plugin reads SKILL.md at runtime from the installed package
     expect(pkg.files).toContain("skills/pptfast/SKILL.md")
+    expect(pkg.files).toContain("skills/pptfast/references")
     expect(pkg.keywords).toEqual(expect.arrayContaining(["dsh", "dsh-plugin"]))
   })
 
