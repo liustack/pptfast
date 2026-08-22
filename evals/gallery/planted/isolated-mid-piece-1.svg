@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <g data-depth="bg">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+  <g data-depth="mid">
+    <path d="M 1080 560 h 18 v 18" fill="none" stroke="#777777" stroke-width="2" opacity="0.2"/>
+  </g>
+  <g data-depth="fg">
+    <text x="96" y="132" font-family="Arial, sans-serif" font-size="40" font-weight="700" fill="#191919">Quarterly signal</text>
+    <rect x="96" y="190" width="720" height="280" fill="#F4F4F2"/>
+  </g>
+</svg>

@@ -1,4 +1,4 @@
-import type React from "react"
+import { Fragment, type ReactElement, type ReactNode } from "react"
 import type { BackgroundSpec, Component, PptxIR, Slide } from "@/ir"
 import { PACING_BUDGETS, resolveNarrative, type Strategy, type NarrativeProfile } from "@/narrative"
 import type { StyleTokens } from "../themes/tokens"
@@ -30,6 +30,8 @@ import { resolveMotifId } from "./motif-selection"
 import { resolveChartPaletteOffset } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
 import { resolveLayoutId, resolveEffectiveLayoutId, resolveIrStrategy } from "./layout-selection"
+import { partitionSvgDepth, type SvgDepthLayers } from "./depth-contract/partition"
+import { enforceMidgroundContract, resolveMidgroundBackground } from "./depth-contract/safety"
 
 /**
  * Reduce a `BackgroundSpec` to one representative hex color — a color spec
@@ -208,7 +210,7 @@ export interface FullSlideSvgProps {
 }
 
 /** 四页型 layout 共用同一签名（layouts/types.ts 逐个定义但结构相同）。 */
-type PageLayout = (p: SvgTemplateProps) => React.ReactElement
+type PageLayout = (p: SvgTemplateProps) => ReactElement
 
 /** `slide.type` → 该页型的 layout 注册表（Wave 1-3 各自建的四张表）。 */
 const PAGE_LAYOUT_REGISTRIES: Record<Slide["type"], Record<string, PageLayout>> = {
@@ -416,7 +418,6 @@ export function FullSlideSvg({
   // column and reads as a pale hairline down the page. See
   // `LayoutDefinition.paintsOwnBackground` (`./layouts/registry.ts`).
   const layoutPaintsBackground = pageLayout ? getLayout(pageLayout.id)?.paintsOwnBackground === true : false
-  const motifOverLayout = pageLayout ? getLayout(pageLayout.id)?.motifOverLayout === true : false
   // Layout-declared branding:none (editorial-verse pinOnly members) skips
   // Branding as a whole (footer rule/meta, logo). The theme motif still
   // paints. slide.decor, when the author sets it, still draws. Resolved
@@ -426,6 +427,56 @@ export function FullSlideSvg({
   // and the fallback regular layout keeps ordinary branding.
   const skipBranding = layoutOmitsBranding(pageLayout?.id) || layoutOmitsBranding(requestedLayout)
 
+  let pageBody: ReactNode = null
+  if (imageCoverTakeover) {
+    pageBody = ImageCoverPage({ ir, slide, index, ctx })
+  } else if (splitTakeover && slide.layout === "image-top") {
+    pageBody = ImageTopPage({ ir, slide, ctx })
+  } else if (splitTakeover && slide.layout === "image-bottom") {
+    pageBody = ImageBottomPage({ ir, slide, ctx })
+  } else if (splitTakeover && slide.layout === "image-annotate") {
+    pageBody = ImageAnnotatePage({ ir, slide, ctx })
+  } else if (splitTakeover) {
+    pageBody = ImageSplitPage({ ir, slide, ctx })
+  } else if (pageLayout) {
+    pageBody = pageLayout.Component({ ir, slide, index, ctx })
+  }
+  const bodyDepth: SvgDepthLayers = partitionSvgDepth(pageBody, { slideType: slide.type })
+  const keyedBody = (depth: keyof SvgDepthLayers) =>
+    bodyDepth[depth].map((node, nodeIndex) => (
+      <Fragment key={`body-${depth}-${nodeIndex}`}>{node}</Fragment>
+    ))
+  const foregroundBody = pageLayout ? (
+    <g data-archetype={pageLayout.id}>{keyedBody("fg")}</g>
+  ) : (
+    keyedBody("fg")
+  )
+  const branding = skipBranding ? null : <Branding ir={ir} slide={slide} ctx={ctx} />
+  const foreground = (
+    <>
+      {foregroundBody}
+      {branding}
+    </>
+  )
+  const midground = (
+    <>
+      {Decor && !imageCoverTakeover && (
+        <g data-decor>
+          <Decor ir={ir} slide={slide} ctx={ctx} />
+        </g>
+      )}
+      <SlideDecor ir={ir} slide={slide} index={index} ctx={ctx} />
+      {keyedBody("mid")}
+    </>
+  )
+  const midgroundBackground = resolveMidgroundBackground(keyedBody("bg"), defaultBg)
+  const safeMidground = enforceMidgroundContract({
+    midground,
+    foreground,
+    background: midgroundBackground,
+    colors: tokens.colors,
+  })
+
   return (
     <svg
       viewBox={`0 0 ${CANVAS_W_PX} ${CANVAS_H_PX}`}
@@ -433,46 +484,21 @@ export function FullSlideSvg({
       className={className}
       preserveAspectRatio={preserveAspectRatio}
     >
-      {!layoutPaintsBackground && (
-        <Background spec={bgSpec} images={ir.assets.images} autoScrimColor={autoScrimColor} />
-      )}
-      {Decor && !imageCoverTakeover && !motifOverLayout && (
-        <g data-decor>
-          <Decor ir={ir} slide={slide} ctx={ctx} />
-        </g>
-      )}
-      <SlideDecor ir={ir} slide={slide} index={index} ctx={ctx} />
-      {imageCoverTakeover ? (
-        <ImageCoverPage ir={ir} slide={slide} index={index} ctx={ctx} />
-      ) : splitTakeover && slide.layout === "image-top" ? (
-        <ImageTopPage ir={ir} slide={slide} ctx={ctx} />
-      ) : splitTakeover && slide.layout === "image-bottom" ? (
-        <ImageBottomPage ir={ir} slide={slide} ctx={ctx} />
-      ) : splitTakeover && slide.layout === "image-annotate" ? (
-        <ImageAnnotatePage ir={ir} slide={slide} ctx={ctx} />
-      ) : splitTakeover ? (
-        <ImageSplitPage ir={ir} slide={slide} ctx={ctx} />
-      ) : pageLayout ? (
-        /* `data-archetype` is a wire-format fossil. The vocabulary merged into
-           "layout" — archetype was the second name for the same thing — but this
-           attribute name stays put, because it is emitted into every rendered
-           SVG: the committed goldens (`src/ir/__fixtures__/equivalence-golden/
-           *.svg.json`), the checked-in previews (`examples/previews/*.svg`), and
-           the render-side tests that read the id back out all depend on the exact
-           bytes. Renaming it to `data-layout` is its own change, with a targeted
-           diff and a deliberate re-record of those artifacts. */
-        <g data-archetype={pageLayout.id}>
-          <pageLayout.Component ir={ir} slide={slide} index={index} ctx={ctx} />
-        </g>
-      ) : null /* 不可达：非 takeover 时 resolvePageLayout 恒命中（十三主题四页型
-        allowed 全非空，definitions.test「Wave 5 前置门」锁死）。空集才返回 null，
-        渲空白而非崩溃是防御性兜底，正常运行不会到这里。 */}
-      {Decor && !imageCoverTakeover && motifOverLayout && (
-        <g data-decor>
-          <Decor ir={ir} slide={slide} ctx={ctx} />
-        </g>
-      )}
-      {!skipBranding && <Branding ir={ir} slide={slide} ctx={ctx} />}
+      <g data-depth="bg">
+        {!layoutPaintsBackground && (
+          <Background spec={bgSpec} images={ir.assets.images} autoScrimColor={autoScrimColor} />
+        )}
+        {keyedBody("bg")}
+      </g>
+      <g data-depth="mid">
+        {safeMidground}
+      </g>
+      <g data-depth="fg">
+        {/* `data-archetype` is a wire-format fossil. The vocabulary merged into
+            "layout". The attribute remains the stable layout identifier in
+            rendered SVG while the depth engine owns paint order. */}
+        {foreground}
+      </g>
     </svg>
   )
 }

@@ -161,6 +161,62 @@ describe("auditL1 planted defects", () => {
     )
     expect(classifyL1(auditL1(svg))).toEqual(classifyL1(auditL1(svg)))
   })
+
+  it("flags a midground group painted after foreground as depth-contract", () => {
+    const svg = wrap(
+      `<g data-depth="bg"><rect width="1280" height="720" fill="#FFFFFF"/></g>` +
+        `<g data-depth="fg"><text x="96" y="120" font-size="32">主体</text></g>` +
+        `<g data-depth="mid"><line x1="80" y1="680" x2="1200" y2="680" stroke="#999999" opacity="0.2"/></g>`,
+    )
+    expect(codes(svg)).toContain("depth-contract")
+  })
+
+  it("flags midground paint at or above the shared contrast ceiling", () => {
+    const svg = wrap(
+      `<g data-depth="bg"><rect width="1280" height="720" fill="#FFFFFF"/></g>` +
+        `<g data-depth="mid"><rect x="100" y="100" width="80" height="60" fill="#000000"/></g>` +
+        `<g data-depth="fg"></g>`,
+    )
+    expect(codes(svg)).toContain("depth-contract")
+  })
+
+  it("accepts ordered layers whose midground paint stays below the shared ceiling", () => {
+    const svg = wrap(
+      `<g data-depth="bg"><rect width="1280" height="720" fill="#FFFFFF"/></g>` +
+        `<g data-depth="mid"><line x1="80" y1="680" x2="1200" y2="680" stroke="#999999" opacity="0.2"/></g>` +
+        `<g data-depth="fg"><text x="96" y="120" font-size="32">主体</text></g>`,
+    )
+    expect(codes(svg)).not.toContain("depth-contract")
+  })
+
+  it("flags a midground ghost label whose glyph box bleeds off canvas", () => {
+    const svg = wrap(
+      `<g data-depth="bg"><rect width="1280" height="720" fill="#FFFFFF"/></g>` +
+        `<g data-depth="mid"><text x="1260" y="700" font-size="160" fill="#999999" opacity="0.1" data-bleed="true">09</text></g>` +
+        `<g data-depth="fg"></g>`,
+    )
+    expect(codes(svg)).toContain("mid-text-bleed")
+  })
+
+  it("flags an isolated small stroked midground piece", () => {
+    const svg = wrap(
+      `<g data-depth="bg"><rect width="1280" height="720" fill="#FFFFFF"/></g>` +
+        `<g data-depth="mid"><path d="M 100 100 h 16 v 16" fill="none" stroke="#999999" opacity="0.2"/></g>` +
+        `<g data-depth="fg"></g>`,
+    )
+    expect(codes(svg)).toContain("isolated-mid-piece")
+  })
+
+  it("accepts a small midground tick attached to a structural rule", () => {
+    const svg = wrap(
+      `<g data-depth="bg"><rect width="1280" height="720" fill="#FFFFFF"/></g>` +
+        `<g data-depth="mid">` +
+        `<line x1="40" y1="100" x2="100" y2="100" stroke="#999999" opacity="0.2"/>` +
+        `<path d="M 100 100 h 16 v 16" fill="none" stroke="#999999" opacity="0.2"/>` +
+        `</g><g data-depth="fg"></g>`,
+    )
+    expect(codes(svg)).not.toContain("isolated-mid-piece")
+  })
 })
 
 describe("planted L1 regression", () => {

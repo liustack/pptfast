@@ -137,7 +137,7 @@ describe("EmberMotif（上升火星）", () => {
     }
   })
 
-  it("封面整页渲染：火星在楔面 path 之后，才能骑在火橙面上", () => {
+  it("封面整页渲染：火星固定进入 mid，角楔主体固定进入 fg", () => {
     const svg = renderSlideSvg(
       {
         version: "4",
@@ -149,11 +149,13 @@ describe("EmberMotif（上升火星）", () => {
       } as unknown as PptxIR,
       0,
     )
-    const wedge = svg.indexOf('data-archetype="corner-wedge"')
-    const lastDecor = svg.lastIndexOf("data-decor")
-    expect(wedge).toBeGreaterThan(0)
-    expect(lastDecor).toBeGreaterThan(wedge)
-    expect(svg.lastIndexOf("<circle")).toBeGreaterThan(svg.indexOf("M820,720"))
+    const root = parseSvgRoot(svg)
+    const groups = Array.from(root.querySelectorAll("g[data-depth]"))
+    const mid = groups.find((group) => group.getAttribute("data-depth") === "mid")!
+    const fg = groups.find((group) => group.getAttribute("data-depth") === "fg")!
+    expect(mid.querySelector("[data-decor] circle")).not.toBeNull()
+    expect(fg.querySelector('[data-archetype="corner-wedge"] path')).not.toBeNull()
+    expect(Array.from(root.children).indexOf(mid)).toBeLessThan(Array.from(root.children).indexOf(fg))
   })
 
   it("封面：斜引线是楔面斜边 (820,720)→(1280,120)，火星沿内法线偏进楔内", () => {

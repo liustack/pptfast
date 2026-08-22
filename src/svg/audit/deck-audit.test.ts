@@ -679,6 +679,19 @@ describe("findContrastIssues — low-contrast", () => {
     expect(findContrastIssues(markup)).toEqual([])
   })
 
+  it("leaves midground text to the depth-contract ceiling instead of applying foreground legibility floors", () => {
+    const mid = page(
+      BG,
+      `<g data-depth="mid"><text x="96" y="200" font-size="20" fill="#A9A9A9">ghost issue</text></g>`,
+    )
+    const foreground = page(
+      BG,
+      `<g data-depth="fg"><text x="96" y="200" font-size="20" fill="#A9A9A9">body issue</text></g>`,
+    )
+    expect(findContrastIssues(mid)).toEqual([])
+    expect(findContrastIssues(foreground)).toHaveLength(1)
+  })
+
   it("blends fill-opacity into the effective color instead of ignoring it", () => {
     // fill="#051C2C" (theme text ink, high contrast alone) at fill-opacity
     // 0.5 over a near-identical background must be judged on the *blended*

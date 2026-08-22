@@ -15,6 +15,7 @@
  * mark that is not wrapped fails the budget instead of hiding.
  */
 
+import type { StyleColors } from "../../themes/tokens"
 import { blendOver, contrastRatio } from "../ink"
 
 export const MAX_DECOR_PIECES = 3
@@ -29,6 +30,14 @@ export const CONTENT_DECOR_CONTRAST_CEILING = 3
 
 /** Stay visible. Hairlines and already-quiet tokens can sit near 1. */
 export const CONTENT_DECOR_CONTRAST_FLOOR = 1.05
+
+/**
+ * The global lower bound for a theme's midground saturation ceiling. The
+ * value keeps a restrained color presence instead of forcing every theme
+ * to neutral gray. A theme whose own muted structural ink is more
+ * saturated keeps that higher ceiling.
+ */
+export const MIDGROUND_SATURATION_FLOOR = 0.35
 
 const PAINTED_TAGS = new Set(["rect", "circle", "ellipse", "line", "polyline", "polygon", "path"])
 
@@ -63,6 +72,108 @@ export function leafOpacity(el: Element): number {
     n = n.parentElement
   }
   return o
+}
+
+/** Effective fill or stroke alpha after inherited and group opacity. */
+export function effectivePaintOpacity(el: Element, kind: "fill" | "stroke"): number {
+  let groupOpacity = 1
+  let paintOpacity: number | null = null
+  let n: Element | null = el
+  while (n && n.tagName.toLowerCase() !== "svg") {
+    const opacity = n.getAttribute("opacity")
+    if (opacity !== null && opacity !== "") groupOpacity *= Number(opacity)
+    if (paintOpacity === null) {
+      const local = n.getAttribute(`${kind}-opacity`)
+      if (local !== null && local !== "") paintOpacity = Number(local)
+    }
+    n = n.parentElement
+  }
+  return groupOpacity * (paintOpacity ?? 1)
+}
+
+interface Hsl {
+  h: number
+  s: number
+  l: number
+}
+
+function parseHexRgb(hex: string): [number, number, number] | null {
+  let raw = hex.trim().replace(/^#/, "")
+  if (raw.length === 3) raw = [...raw].map((char) => char + char).join("")
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return null
+  const value = Number.parseInt(raw, 16)
+  return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255]
+}
+
+function rgbToHsl([r, g, b]: [number, number, number]): Hsl {
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const delta = max - min
+  const l = (max + min) / 2
+  if (delta === 0) return { h: 0, s: 0, l }
+  const s = delta / (1 - Math.abs(2 * l - 1))
+  const h =
+    max === r
+      ? 60 * (((g - b) / delta) % 6)
+      : max === g
+        ? 60 * ((b - r) / delta + 2)
+        : 60 * ((r - g) / delta + 4)
+  return { h: h < 0 ? h + 360 : h, s, l }
+}
+
+function hslToHex({ h, s, l }: Hsl): string {
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const hp = h / 60
+  const x = c * (1 - Math.abs((hp % 2) - 1))
+  const [r1, g1, b1] =
+    hp < 1
+      ? [c, x, 0]
+      : hp < 2
+        ? [x, c, 0]
+        : hp < 3
+          ? [0, c, x]
+          : hp < 4
+            ? [0, x, c]
+            : hp < 5
+              ? [x, 0, c]
+              : [c, 0, x]
+  const m = l - c / 2
+  const channel = (value: number) => Math.round((value + m) * 255).toString(16).padStart(2, "0")
+  return `#${channel(r1)}${channel(g1)}${channel(b1)}`.toUpperCase()
+}
+
+export function hexSaturation(hex: string): number {
+  const rgb = parseHexRgb(hex)
+  return rgb ? rgbToHsl(rgb).s : 0
+}
+
+export function capHexSaturation(hex: string, ceiling: number): string {
+  const rgb = parseHexRgb(hex)
+  if (!rgb) return hex
+  const hsl = rgbToHsl(rgb)
+  if (hsl.s <= ceiling) return hex
+  let low = 0
+  let high = ceiling
+  let capped = hslToHex({ ...hsl, s: low })
+  for (let index = 0; index < 16; index++) {
+    const saturation = (low + high) / 2
+    const candidate = hslToHex({ ...hsl, s: saturation })
+    if (hexSaturation(candidate) <= ceiling) {
+      low = saturation
+      capped = candidate
+    } else {
+      high = saturation
+    }
+  }
+  return capped
+}
+
+export function midgroundSaturationCeiling(colors: Pick<StyleColors, "muted" | "border">): number {
+  return Math.max(
+    MIDGROUND_SATURATION_FLOOR,
+    hexSaturation(colors.muted),
+    colors.border ? hexSaturation(colors.border) : 0,
+  )
 }
 
 /** Fill if the leaf paints a fill, otherwise stroke. Null when the leaf is a no-paint spacer. */

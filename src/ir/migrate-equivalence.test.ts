@@ -890,6 +890,21 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       //     `narrow-column` -> `quiet-frame`, `bento-panel` ->
       //     `tone-adaptive-content`. Cover, chapter, and the pinned ending
       //     stay byte-identical.
+      // Recaptured (three-layer depth contract, 2026-08-23). Every SVG now
+      // carries the required bg, mid, and fg groups, so all fifteen SVG
+      // strings change even when their leaves paint identical pixels.
+      // Midground leaves also move before foreground leaves. The shared
+      // safety pass adds explicit paint opacity, caps motif saturation and
+      // contrast, moves basic's rail-numbered ghost fully inside the page,
+      // and omits basic's split-band ghost where it intersects foreground
+      // cards. No authored text or foreground component geometry changes.
+      //
+      // The depth groups themselves do not export as PowerPoint shapes.
+      // PPTX changes therefore stay limited to the safety-pass effects.
+      // All five slide parts change in basic and scenarioBearing. In
+      // annualReviewPreset, slides 1, 3, 4, and 5 change while its chapter
+      // slide remains export-identical. Part-name sets stay identical. All
+      // three audit goldens remain byte-identical with no new findings.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
