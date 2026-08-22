@@ -104,15 +104,25 @@ function findRailBadge(root: Element): Box | null {
     (r) => r.x === BADGE_X && r.y === BADGE_Y && r.w === BADGE_W && r.h === BADGE_H,
   )
   if (painted) return { ...painted, label: "badge" }
+  // Gallery sankey/kpi values like "1.5" match /^\d+\.\d+$/ and must not
+  // be treated as the {chapter}.{n} rail badge. Only a badge-sized rect
+  // in the badge slot counts. Never return the decimal label itself.
   const label = walkTextBoxes(root).find((t) => BADGE_LABEL.test(t.label))
   if (!label) return null
-  const nearby = walkRects(root).find((r) => aabbIntersect(r, label) && r.w >= 40 && r.h >= 20 && r.h <= 40)
-  return nearby ? { ...nearby, label: "badge" } : { ...label, label: "badge-label" }
+  const nearby = walkRects(root).find(
+    (r) =>
+      aabbIntersect(r, label) &&
+      r.w >= 40 &&
+      r.w <= 80 &&
+      r.h >= 20 &&
+      r.h <= 40 &&
+      Math.abs(r.x - BADGE_X) <= 8,
+  )
+  return nearby ? { ...nearby, label: "badge" } : null
 }
 
 function isRailNumbered(root: Element): boolean {
-  if (root.querySelector('[data-archetype="rail-numbered"]')) return true
-  return findRailBadge(root) !== null
+  return root.querySelector('[data-archetype="rail-numbered"]') !== null
 }
 
 function titleBoxes(texts: Box[], heading: string): Box[] {
@@ -211,6 +221,17 @@ describe("assigned themes on pinned rail-numbered", () => {
 })
 
 describe("gallery theme-table rail-numbered pages", () => {
+  it("insight zh slide 6 is side-highlight, not a rail-numbered false positive", async () => {
+    const assets = await corpusAssets(LEXICONS.zh)
+    const ir = themeDeck("insight", LEXICONS.zh, assets)
+    expect(ir.slides[6]?.type).toBe("content")
+    const svg = renderSlideSvg(ir, 6)
+    const root = parseSvgRoot(svg)
+    expect(root.querySelector('[data-archetype="side-highlight"]')).toBeTruthy()
+    expect(isRailNumbered(root)).toBe(false)
+    expect(findRailBadge(root)).toBeNull()
+  })
+
   it("every themeDeck content page that paints the badge stays clear", async () => {
     const assets = await corpusAssets(LEXICONS.zh)
     const dirty: string[] = []
