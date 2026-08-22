@@ -7,8 +7,18 @@ import { assertSubset } from "./subset-validate"
 import { svgToOps } from "../pptx/svg2pptx/dispatch"
 import { MOTIFS } from "./motifs"
 import { THEME_DEFINITIONS } from "../themes/definitions"
-import { accessibleInk, contrastRatio, readableOn } from "./ink"
+import { accessibleInk, blendOver, contrastRatio, readableOn } from "./ink"
 import { resolveStyle } from "../themes"
+import {
+  CONTENT_DECOR_CONTRAST_CEILING,
+  effectivePaintOpacity,
+  hexSaturation,
+  leafPaint,
+  midgroundSaturationCeiling,
+  paintedLeaves,
+} from "./motifs/decor-budget"
+import { textInkBox } from "./depth-contract/geometry"
+import { resolveMotifId } from "./motif-selection"
 import type { PptxIR, Slide } from "@/ir"
 
 function ir(slides: Slide[]): PptxIR {
@@ -79,6 +89,58 @@ describe("FullSlideSvg", () => {
     expect(container.querySelector('[data-archetype="masthead-chapter"]')).not.toBeNull()
     expect(ghost?.closest("[data-depth]")?.getAttribute("data-depth")).toBe("mid")
     expect(heading?.closest("[data-depth]")?.getAttribute("data-depth")).toBe("fg")
+  })
+
+  it("enforces the shared contrast and saturation ceilings on final midground paint", () => {
+    const slide: Slide = { type: "cover", heading: "封面", components: [] }
+    const doc: PptxIR = { ...ir([slide]), theme: { id: "ember" } }
+    const { container } = render(<FullSlideSvg ir={doc} slide={slide} index={0} />)
+    const tokens = resolveStyle("ember")
+    const ground = resolveBackgroundHex(tokens.defaultBackgrounds.cover, tokens.colors.surface)
+    const mid = container.querySelector('[data-depth="mid"]')!
+    const leaves = paintedLeaves(mid).filter((leaf) => leafPaint(leaf) !== null)
+
+    expect(leaves.length).toBeGreaterThan(0)
+    for (const leaf of leaves) {
+      const paint = leafPaint(leaf)!
+      const opacity = effectivePaintOpacity(leaf, paint.kind)
+      expect(hexSaturation(paint.color), leaf.outerHTML).toBeLessThanOrEqual(
+        midgroundSaturationCeiling(tokens.colors) + 0.001,
+      )
+      expect(contrastRatio(blendOver(paint.color, ground, opacity), ground), leaf.outerHTML).toBeLessThan(
+        CONTENT_DECOR_CONTRAST_CEILING,
+      )
+    }
+  })
+
+  it("brings a consulting ghost index fully inside the canvas and removes its bleed exemption", () => {
+    const chapter: Slide = { type: "chapter", heading: "第一部分", components: [] }
+    const content: Slide = {
+      type: "content",
+      heading: "市场洞察",
+      layout: "rail-numbered",
+      components: [{ type: "paragraph", text: "正文" }],
+    }
+    const doc: PptxIR = { ...ir([chapter, content]), theme: { id: "consulting" } }
+    const { container } = render(<FullSlideSvg ir={doc} slide={content} index={1} />)
+    const ghost = Array.from(container.querySelectorAll('[data-depth="mid"] text')).find(
+      (text) => text.textContent === "01" && Number(text.getAttribute("font-size")) >= 200,
+    )!
+    const box = textInkBox({
+      content: ghost.textContent ?? "",
+      x: Number(ghost.getAttribute("x")),
+      y: Number(ghost.getAttribute("y")),
+      fontSize: Number(ghost.getAttribute("font-size")),
+      fontFamily: ghost.getAttribute("font-family") ?? "",
+      fontWeight: ghost.getAttribute("font-weight"),
+      textAnchor: ghost.getAttribute("text-anchor") ?? "start",
+    })
+
+    expect(ghost.hasAttribute("data-bleed")).toBe(false)
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.y).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.w).toBeLessThanOrEqual(1280)
+    expect(box.y + box.h).toBeLessThanOrEqual(720)
   })
 
   it("renders content components for a content slide (omitted branding draws no footer)", () => {
@@ -756,9 +818,16 @@ describe("motif candidate rotation (P1 variety wave, task 2)", () => {
     }
   })
 
-  it("campaign (1-member candidate set): which motif renders never varies by pageKey at a fixed seed — unaffected by this task's per-pageKey selection layer (campaign-motif's own internal composition variant is separately seed-driven, not pageKey-driven, and predates this task)", () => {
-    const markups = new Set(Array.from({ length: 10 }, (_, i) => decorMarkup("campaign", `page-${i}`, 99)))
-    expect(markups.size).toBe(1)
+  it("campaign (1-member candidate set): the selected motif id never varies by pageKey at a fixed seed", () => {
+    const ids = new Set(
+      Array.from({ length: 10 }, (_, i) => {
+        const doc: PptxIR = { ...ir([]), theme: { id: "campaign" }, seed: 99 } as PptxIR
+        const slide: Slide = { type: "content", id: `page-${i}`, heading: "x", components: [] } as Slide
+        doc.slides = [slide]
+        return resolveMotifId(doc, slide, 0)
+      }),
+    )
+    expect(ids).toEqual(new Set(["campaign-motif"]))
   })
 
   // Review fix round (Major finding): the pre-fix `chartPaletteOffset`
@@ -773,7 +842,20 @@ describe("motif candidate rotation (P1 variety wave, task 2)", () => {
   // covers the same seam at the unit level, this covers it end-to-end
   // through the real render entry point).
   it("campaign: decor markup is byte-identical across a seed sweep at a fixed pageKey — chart-palette rotation must not leak into decorative color choice", () => {
-    const markups = new Set(Array.from({ length: 20 }, (_, seed) => decorMarkup("campaign", "same-page", seed)))
+    const markups = new Set(
+      Array.from({ length: 20 }, (_, seed) => {
+        const doc: PptxIR = { ...ir([]), theme: { id: "campaign" }, seed } as PptxIR
+        const slide: Slide = {
+          type: "content",
+          id: "same-page",
+          heading: "x",
+          layout: "two-column",
+          components: [],
+        } as Slide
+        doc.slides = [slide]
+        return render(<FullSlideSvg ir={doc} slide={slide} index={0} />).container.querySelector("[data-decor]")?.innerHTML
+      }),
+    )
     expect(markups.size, "campaign decor varied across seeds at a fixed pageKey").toBe(1)
   })
 

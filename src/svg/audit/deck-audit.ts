@@ -1722,6 +1722,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     fillOpacity: number,
     opacityProduct: number,
     inDecor: boolean,
+    inMidground: boolean,
     underUnmodelledTransform: boolean,
     inheritedTx: number | null,
     inheritedTy: number | null,
@@ -1761,6 +1762,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     // (subtree exclusion, not just this node), same "sticky" accumulation
     // pattern as `currentOpacityProduct` above.
     const inDecorSubtree = inDecor || el.getAttribute("data-decor") !== null
+    const inMidgroundSubtree = inMidground || el.getAttribute("data-depth") === "mid"
     // Same sticky-subtree accumulation as `inDecorSubtree`: a rotated `<g>`
     // taints every descendant's geometry, not only its own (see
     // `hasUnmodelledTransform` — `motif-terra-motif.tsx`'s `leafVein()` is
@@ -2000,7 +2002,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
       currentTy = ty
 
       const content = directText(el)
-      if (content) {
+      if (content && !inMidgroundSubtree) {
         const pairedPadFill = resolveCandidateFill(el.getAttribute("data-emphasis-pad-fill"))
         const explicitPadBackground = typeof pairedPadFill === "string" ? pairedPadFill : null
         const background = explicitPadBackground ?? backgroundAt(tx, ty)
@@ -2107,6 +2109,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
         currentFillOpacity,
         currentOpacityProduct,
         inDecorSubtree,
+        inMidgroundSubtree,
         unmodelledTransformHere,
         currentTx,
         currentTy,
@@ -2116,7 +2119,7 @@ function runContrastWalk(markup: string): { issues: ContrastIssue[]; regions: Bg
     }
   }
 
-  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, false, null, null, "start", null)
+  visit(root, 0, 0, 1, DEFAULT_FILL, DEFAULT_FONT_SIZE, 1, 1, false, false, false, null, null, "start", null)
   return { issues, regions, imageBackedRuns }
 }
 

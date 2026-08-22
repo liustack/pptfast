@@ -31,6 +31,7 @@ import { resolveChartPaletteOffset } from "./chart-palette"
 import { cachedDeckSeed } from "./variety"
 import { resolveLayoutId, resolveEffectiveLayoutId, resolveIrStrategy } from "./layout-selection"
 import { partitionSvgDepth, type SvgDepthLayers } from "./depth-contract/partition"
+import { enforceMidgroundContract, resolveMidgroundBackground } from "./depth-contract/safety"
 
 /**
  * Reduce a `BackgroundSpec` to one representative hex color — a color spec
@@ -445,6 +446,36 @@ export function FullSlideSvg({
     bodyDepth[depth].map((node, nodeIndex) => (
       <Fragment key={`body-${depth}-${nodeIndex}`}>{node}</Fragment>
     ))
+  const foregroundBody = pageLayout ? (
+    <g data-archetype={pageLayout.id}>{keyedBody("fg")}</g>
+  ) : (
+    keyedBody("fg")
+  )
+  const branding = skipBranding ? null : <Branding ir={ir} slide={slide} ctx={ctx} />
+  const foreground = (
+    <>
+      {foregroundBody}
+      {branding}
+    </>
+  )
+  const midground = (
+    <>
+      {Decor && !imageCoverTakeover && (
+        <g data-decor>
+          <Decor ir={ir} slide={slide} ctx={ctx} />
+        </g>
+      )}
+      <SlideDecor ir={ir} slide={slide} index={index} ctx={ctx} />
+      {keyedBody("mid")}
+    </>
+  )
+  const midgroundBackground = resolveMidgroundBackground(keyedBody("bg"), defaultBg)
+  const safeMidground = enforceMidgroundContract({
+    midground,
+    foreground,
+    background: midgroundBackground,
+    colors: tokens.colors,
+  })
 
   return (
     <svg
@@ -460,24 +491,13 @@ export function FullSlideSvg({
         {keyedBody("bg")}
       </g>
       <g data-depth="mid">
-        {Decor && !imageCoverTakeover && (
-          <g data-decor>
-            <Decor ir={ir} slide={slide} ctx={ctx} />
-          </g>
-        )}
-        <SlideDecor ir={ir} slide={slide} index={index} ctx={ctx} />
-        {keyedBody("mid")}
+        {safeMidground}
       </g>
       <g data-depth="fg">
-        {pageLayout ? (
-          /* `data-archetype` is a wire-format fossil. The vocabulary merged into
-             "layout". The attribute remains the stable layout identifier in
-             rendered SVG while the depth engine owns paint order. */
-          <g data-archetype={pageLayout.id}>{keyedBody("fg")}</g>
-        ) : (
-          keyedBody("fg")
-        )}
-        {!skipBranding && <Branding ir={ir} slide={slide} ctx={ctx} />}
+        {/* `data-archetype` is a wire-format fossil. The vocabulary merged into
+            "layout". The attribute remains the stable layout identifier in
+            rendered SVG while the depth engine owns paint order. */}
+        {foreground}
       </g>
     </svg>
   )
