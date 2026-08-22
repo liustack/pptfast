@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest"
 import { render } from "@testing-library/react"
-import { FullSlideSvg, resolveOverrideBackgroundHex } from "./full-slide-svg"
+import { FullSlideSvg, resolveBackgroundHex, resolveOverrideBackgroundHex } from "./full-slide-svg"
 import { renderSvgMarkup, parseSvgRoot } from "./serialize"
 import { assertSubset } from "./subset-validate"
 import { svgToOps } from "../pptx/svg2pptx/dispatch"
 import { MOTIFS } from "./motifs"
 import { THEME_DEFINITIONS } from "../themes/definitions"
-import { contrastRatio, readableOn } from "./ink"
+import { accessibleInk, contrastRatio, readableOn } from "./ink"
+import { resolveStyle } from "../themes"
 import type { PptxIR, Slide } from "@/ir"
 
 function ir(slides: Slide[]): PptxIR {
@@ -351,7 +352,7 @@ describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlo
     const doc: PptxIR = {
       version: "4",
       filename: "deck.pptx",
-      theme: { id: "luxe" },
+      theme: { id: "classroom" },
       meta: {},
       assets: { images: { bg1: { src: "data:image/png;base64,AAAA" } } },
       slides: [slide],
@@ -370,11 +371,12 @@ describe("ctx.defaultBg prefers slide.background (post-v0.3 W8 fix round, backlo
     // So this render assertion no longer discriminates pre-fix from post-fix
     // on its own — the two literal `contrastRatio` pins above are what keep
     // the original defect on the record, and they are theme-independent
-    // arithmetic, so they stay true regardless of luxe's palette. Re-pointing
-    // the probe at another theme is not available: a sweep of all 17 builtins
-    // finds none whose accent still straddles 4.5:1 between its own surface
-    // and its own content background.
-    expect(subheadingText!.getAttribute("fill")).toBe("#C6A15B")
+    // arithmetic, so they stay true regardless of luxe's palette. The live
+    // probe uses classroom (unassigned, so the native narrow-column
+    // subheading still consumes accessibleInk(accent, ctx.defaultBg)).
+    const tokens = resolveStyle("classroom")
+    const scrim = resolveBackgroundHex(tokens.defaultBackgrounds.content, tokens.colors.bg)
+    expect(subheadingText!.getAttribute("fill")).toBe(accessibleInk(tokens.colors.accent, scrim, 22))
   })
 })
 

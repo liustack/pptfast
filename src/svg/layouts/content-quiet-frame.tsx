@@ -8,6 +8,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
 
 /**
@@ -90,6 +91,7 @@ const RULE_GAP = 20
 const CONTENT_GAP = 28
 
 export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
   const kicker = section
@@ -136,6 +138,35 @@ export function QuietFrameContent({ ir, slide, index, ctx }: SvgTemplateProps) {
   const footnote = slide.footnote
     ? fitSvgLine(slide.footnote, { maxWidth: FRAME_W, fontSize: 14, minFontSize: 11 })
     : null
+
+  if (treated) {
+    const y = treated.contentRect.y
+    const h = Math.max(120, contentBottom - y)
+    const treatedRect = isSingleOrdinaryComponent
+      ? { x: CENTER_X - SINGLE_COMPONENT_W / 2, y, w: SINGLE_COMPONENT_W, h }
+      : { x: FRAME_X, y, w: FRAME_W, h }
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent arrangement={slide.arrangement} components={slide.components} rect={treatedRect} ctx={ctx} />
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x={CENTER_X}
+            y={footnoteBaselineFor(footnote.fontSize)}
+            textAnchor="middle"
+            fontFamily={fonts.body}
+            fontSize={footnote.fontSize}
+            fill={colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+      </>
+    )
+  }
 
   return (
     <>

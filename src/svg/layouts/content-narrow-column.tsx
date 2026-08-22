@@ -7,6 +7,7 @@ import { fitSvgLine } from "../../lib/svg-text-layout"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 
 /**
  * narrow-column content layout（spec §3.2，Wave 3 Task 17）：trades the
@@ -38,6 +39,59 @@ import { footnoteBaselineFor } from "../branding-geometry"
  * 纪律：本文件禁 theme id、禁颜色 hex 字面量。
  */
 export function NarrowColumnContent({ ir, slide, index, ctx }: SvgTemplateProps) {
+  const treated = tryContentHeadingTreatment({ ir, slide, index, ctx })
+  if (treated) {
+    const { colors, fonts } = ctx
+    const COLUMN_X = 96
+    const COLUMN_W = 880
+    const COLUMN_BOTTOM = slide.footnote ? 620 : 640
+    const x = treated.contentRect.x > COLUMN_X ? treated.contentRect.x : COLUMN_X
+    const w = x > COLUMN_X ? COLUMN_X + COLUMN_W - x : COLUMN_W
+    const y = treated.contentRect.y
+    const columnH = Math.max(0, COLUMN_BOTTOM - y)
+    const pageLabel = String(index + 1).padStart(2, "0")
+    const footnote = slide.footnote
+      ? fitSvgLine(slide.footnote, { maxWidth: 980, fontSize: 20, minFontSize: 13 })
+      : null
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent
+          arrangement={slide.arrangement}
+          components={slide.components}
+          rect={{ x, y, w, h: columnH }}
+          ctx={ctx}
+        />
+        <text
+          x="1184"
+          y="628"
+          fontFamily={fonts.heading}
+          fontSize="64"
+          fill={colors.muted}
+          opacity="0.3"
+          textAnchor="end"
+          dominantBaseline="alphabetic"
+        >
+          {pageLabel}
+        </text>
+        {footnote && (
+          <text
+            data-truncated={footnote.truncated ? "1" : undefined}
+            x="96"
+            y={footnoteBaselineFor(footnote.fontSize)}
+            fontFamily={fonts.body}
+            fontSize={footnote.fontSize}
+            fill={colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {footnote.text}
+          </text>
+        )}
+      </>
+    )
+  }
+
   const { colors, fonts } = ctx
   const section = sectionNameFor(ir.slides, index)
 

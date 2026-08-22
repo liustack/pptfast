@@ -811,6 +811,55 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // empty array, pagesAudited 5).
       // basic / scenarioBearing live pipeline matched the r1 goldens
       // byte-for-byte. Not recaptured.
+      //
+      // Recaptured (heading-treatments, 2026-08-22). Content-page heading
+      // chrome is a render-side assignment table. IR is unchanged. Cover,
+      // chapter, and ending do not pick a content treatment, so those
+      // slides of `basic` stay byte-identical (index 0 cover, 1 chapter,
+      // 4 ending pinned banner-ending). Content slides of assigned themes
+      // move. Targeted SVG diff:
+      //   - `basic` (`consulting`, has a chapter so GhostIndex lands):
+      //     slides 2 and 3 (content) move. Cover, chapter, ending same.
+      //   - `scenarioBearing` (`journal`, no chapter in the fixture).
+      //     Baseline does not require a chapter, so content pages still
+      //     pick Baseline. Slides 1, 2, 3 (content) move. Cover and
+      //     ending same.
+      //   - `annualReviewPreset` (`journal`, has a chapter): slides 2
+      //     and 3 (content) move. Cover, chapter, ending same.
+      //
+      // Recaptured (gallery-review-r2 × heading-treatments merge, 2026-08-22).
+      // Live pipeline on the merge tree. Two parent waves only. Cover,
+      // chapter, and ending do not pick a content treatment. `.audit.json`
+      // needed no recapture (findings stayed the empty array, pagesAudited 5).
+      // Targeted SVG diff against both parents:
+      //   - `basic` (`consulting`, GhostIndex, has a chapter):
+      //     vs r2: slides 2 and 3 (content) move. Same layout ids
+      //     (`rail-numbered`, `split-band`). GhostIndex bleed numeral
+      //     (x=1300 y=212 fs=230) plus title y=128. Cover, chapter,
+      //     ending stay byte-identical.
+      //     vs main: slides 2 and 3 also change layout (`split-band` to
+      //     `rail-numbered`, `bento-panel` to `split-band`) from r2's
+      //     image-lead-split retirement and consulting pool narrow.
+      //     Cover and ending SVG gain named `data-decor-piece` tags
+      //     (ruler, ikb-steps, spark) from r2 motif cap. Chapter same.
+      //   - `scenarioBearing` (`journal`, Baseline, no chapter in the
+      //     fixture, Baseline still lands):
+      //     vs r2: slides 1, 2, 3 (content) move. Same layout ids
+      //     (`two-column`, `stacked-poster`, `narrow-column`). Native
+      //     heading y=150/184/190 becomes Baseline title y=132 fs=40.
+      //     Cover and ending stay byte-identical.
+      //     vs main: slides 1, 2, 3 also change layout (`narrow-column`
+      //     to `two-column`, `banner-heading` to `stacked-poster`,
+      //     `side-highlight` to `narrow-column`) from r2 selection.
+      //     Cover and ending SVG gain named motif pieces (masthead, foot).
+      //   - `annualReviewPreset` (`journal`, Baseline, has a chapter):
+      //     vs r2: slides 2 and 3 (content) move. Same layout ids
+      //     (`narrow-column`, `bento-panel`). Baseline title y=132 plus
+      //     journal right slot. Cover, chapter, ending stay byte-identical.
+      //     vs main: slides 2 and 3 also change layout (`stacked-poster`
+      //     to `narrow-column`, `asymmetric-triptych` to `bento-panel`)
+      //     from r2 selection. Cover and ending SVG gain named motif
+      //     pieces. Chapter same.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
@@ -910,6 +959,16 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // equal main (chapter / content). File-name set unchanged.
       // `scenarioBearing` / `annualReviewPreset` auto-merged files matched
       // the live pipeline and were not recaptured.
+      //
+      // Recaptured (gallery-review-r2 × heading-treatments merge, 2026-08-22).
+      // PPTX parts that move are the 1-indexed matches of the SVG content
+      // slides. File-name set unchanged (43 parts). Cover and ending PPTX
+      // stay byte-identical to both parents (the r2 motif SVG diff on those
+      // pages is `data-decor-piece` naming, not exported geometry).
+      //   - `basic`: `ppt/slides/slide3.xml` and `slide4.xml`.
+      //   - `scenarioBearing`: `ppt/slides/slide2.xml`, `slide3.xml`,
+      //     `slide4.xml`.
+      //   - `annualReviewPreset`: `ppt/slides/slide3.xml` and `slide4.xml`.
       it("exports a PPTX byte-identical (docProps/core.xml timestamp excluded) to the base-commit capture", async () => {
         const goldenZipMap = readGoldenJson<Record<string, string>>(`${name}.pptx-zip`)
         const blob = await generatePptxBlob(v4)

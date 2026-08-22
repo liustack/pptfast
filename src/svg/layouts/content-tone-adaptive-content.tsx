@@ -9,6 +9,7 @@ import { showsDocumentMeta } from "../document-meta"
 import { fitEmphasisLine, renderEmphasisTspans } from "../emphasis"
 import { accessibleInk } from "../ink"
 import { footnoteBaselineFor } from "../branding-geometry"
+import { tryContentHeadingTreatment } from "../heading-treatments/render"
 import { FRAMED_CONTENT_BOTTOM } from "./framed-content-bottom"
 
 /**
@@ -170,6 +171,101 @@ export function ToneAdaptiveContent({ ir, slide, index, ctx }: SvgTemplateProps)
   const { colors, fonts } = ctx
   const withBg = hasBgImage(ir, slide)
   const section = sectionNameFor(ir.slides, index)
+  const chromeCtx = withBg ? { ...ctx, defaultBg: "#FFFFFF" } : ctx
+  const cardCtx = withBg
+    ? {
+        ...ctx,
+        defaultBg: "#FFFFFF",
+        colors: {
+          ...colors,
+          text: accessibleInk(colors.text, "#FFFFFF", ctx.bodyFontPx),
+          muted: accessibleInk(colors.muted, "#FFFFFF", ctx.bodyFontPx),
+        },
+      }
+    : ctx
+  const treated = tryContentHeadingTreatment({
+    ir,
+    slide,
+    index,
+    ctx: chromeCtx,
+  })
+
+  if (treated) {
+    if (withBg) {
+      const footerFill = accessibleInk(colors.muted, "#FFFFFF", 20)
+      return (
+        <>
+          <rect
+            x="48"
+            y="44"
+            width="1184"
+            height="632"
+            rx={ctx.shape?.radius ?? 14}
+            fill="#FFFFFF"
+          />
+          {treated.chrome}
+          <SvgContent
+            arrangement={slide.arrangement}
+            components={slide.components}
+            rect={{
+              x: treated.contentRect.x,
+              y: treated.contentRect.y,
+              w: treated.contentRect.w,
+              h: Math.max(120, treated.contentRect.h),
+            }}
+            ctx={cardCtx}
+          />
+          <text
+            x="92"
+            y="636"
+            fontFamily={fonts.body}
+            fontSize="20"
+            fill={footerFill}
+            dominantBaseline="alphabetic"
+          >
+            {[
+              showsDocumentMeta(ir) && ir.meta.confidentiality
+                ? CONF_LABEL[ir.meta.confidentiality]
+                : null,
+              ir.meta.organization,
+              ir.meta.version,
+            ]
+              .filter(Boolean)
+              .join("  ·  ")}
+          </text>
+        </>
+      )
+    }
+    return (
+      <>
+        {treated.chrome}
+        <SvgContent
+          arrangement={slide.arrangement}
+          components={slide.components}
+          rect={{
+            x: treated.contentRect.x,
+            y: treated.contentRect.y,
+            w: treated.contentRect.w,
+            h: Math.max(120, treated.contentRect.h),
+          }}
+          ctx={ctx}
+        />
+        {slide.footnote && (
+          <text
+            x="64"
+            y={footnoteBaselineFor(20)}
+            fontFamily={fonts.body}
+            fontSize="20"
+            fill={colors.muted}
+            fontStyle="italic"
+            dominantBaseline="alphabetic"
+          >
+            {slide.footnote}
+          </text>
+        )}
+      </>
+    )
+  }
   const chNum = chapterNumberFor(ir.slides, index)
   const rawSectionLabel = section
     ? `Chapter ${String(chNum).padStart(2, "0")} · ${section}`

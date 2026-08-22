@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { join, relative } from "node:path"
 
 import { AUDIENCE_VALUES, PACING_VALUES, STRATEGY_VALUES } from "./ir/narrative-values"
 import { NARRATIVE_PRESETS } from "./narrative"
@@ -10,11 +10,24 @@ import { FULL_BODY_TYPES } from "./svg/component-traits"
 // and `tests/bench/**/*.test.{ts,tsx}` — nothing under skills/ is currently
 // wired into any test runner. Rather than teach vitest a new include glob
 // for a single file, this lives in src/ (which is already scanned) and reads
-// the two skill files by repo-relative path.
+// the skill files and their reference booklets by repo-relative path.
 
 const ROOT = process.cwd()
-const EN_REL = "skills/pptfast/SKILL.md"
-const ZH_REL = "skills/pptfast/SKILL.zh-CN.md"
+const SKILL_ROOT_REL = "skills/pptfast"
+const EN_REL = `${SKILL_ROOT_REL}/SKILL.md`
+const ZH_REL = `${SKILL_ROOT_REL}/SKILL.zh-CN.md`
+const REF = (name: string) => `${SKILL_ROOT_REL}/references/${name}`
+
+const EXPECTED_EN_REL = [
+  "SKILL.md",
+  "references/spec.md",
+  "references/layouts.md",
+  "references/components.md",
+  "references/density.md",
+  "references/branding.md",
+  "references/images.md",
+  "references/validate.md",
+] as const
 
 function read(rel: string): string {
   return readFileSync(join(ROOT, rel), "utf8")
@@ -26,9 +39,71 @@ function frontmatter(text: string): string {
   return m[1]!
 }
 
+/** `wc -l` semantics: a trailing newline does not add a line. Empty → 0. */
+function wcL(text: string): number {
+  if (text.length === 0) return 0
+  const body = text.endsWith("\n") ? text.slice(0, -1) : text
+  return body.split("\n").length
+}
+
+function linesOf(text: string): string[] {
+  if (text.length === 0) return []
+  const body = text.endsWith("\n") ? text.slice(0, -1) : text
+  return body.split("\n")
+}
+
+function consecutivePipeRowCount(text: string, headerPrefix: string): number {
+  const lines = linesOf(text)
+  const start = lines.findIndex((l) => l.startsWith(headerPrefix))
+  if (start === -1) throw new Error(`table header not found: ${JSON.stringify(headerPrefix)}`)
+  let n = 0
+  for (let i = start; i < lines.length; i++) {
+    if (!lines[i]!.startsWith("|")) break
+    n++
+  }
+  return n
+}
+
+function posixRel(from: string, to: string): string {
+  return relative(from, to).split("\\").join("/")
+}
+
+function listSkillMarkdown(): { abs: string; rel: string }[] {
+  const root = join(ROOT, SKILL_ROOT_REL)
+  const out: { abs: string; rel: string }[] = []
+  const walk = (dir: string) => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      const abs = join(dir, ent.name)
+      if (ent.isDirectory()) walk(abs)
+      else if (ent.isFile() && ent.name.endsWith(".md")) {
+        out.push({ abs, rel: posixRel(root, abs) })
+      }
+    }
+  }
+  walk(root)
+  return out.sort((a, b) => a.rel.localeCompare(b.rel))
+}
+
+function zhSiblingRel(enRel: string): string {
+  if (!enRel.endsWith(".md")) throw new Error(`not a markdown path: ${enRel}`)
+  return `${enRel.slice(0, -".md".length)}.zh-CN.md`
+}
+
+function sectionAfter(text: string, heading: RegExp, nextHeading = /^##+ /m): string {
+  const m = text.match(heading)
+  expect(m, `heading ${heading} missing`).toBeTruthy()
+  const rest = text.slice(m!.index! + m![0].length)
+  const next = rest.search(nextHeading)
+  return next === -1 ? rest : rest.slice(0, next)
+}
+
+function pptfastCommands(section: string): string[] {
+  return [...section.matchAll(/^pptfast .+$/gm)].map((mm) => mm[0].replace(/\s+#.*$/, "").trimEnd())
+}
+
 /**
  * Pull the "Use" column (3rd `|`-delimited cell) out of every data row of
- * the "### Component selection" table, then collect every backtick-quoted
+ * the "## Component selection" table, then collect every backtick-quoted
  * token in it, in document order. Table rows are found by filtering to
  * lines starting with "|" right after the section heading — the
  * disambiguation prose that follows the table never starts a line with
@@ -89,9 +164,54 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     ).not.toMatch(/^name:/m)
   })
 
+  it("every English skill markdown file has a ZH sibling, and the discovered EN set is closed", () => {
+    const files = listSkillMarkdown()
+    const en = files.filter((f) => !f.rel.endsWith(".zh-CN.md"))
+    const discovered = en.map((f) => f.rel).sort()
+    const expected = [...EXPECTED_EN_REL].sort()
+    const unexpected = discovered.filter((rel) => !EXPECTED_EN_REL.includes(rel as (typeof EXPECTED_EN_REL)[number]))
+    const missing = expected.filter((rel) => !discovered.includes(rel))
+    expect(
+      { unexpected, missing },
+      "discovered English markdown under skills/pptfast/ is not the documented set",
+    ).toEqual({ unexpected: [], missing: [] })
+
+    for (const file of en) {
+      const siblingRel = zhSiblingRel(file.rel)
+      const siblingAbs = join(ROOT, SKILL_ROOT_REL, siblingRel)
+      expect(existsSync(siblingAbs), `missing ZH sibling ${SKILL_ROOT_REL}/${siblingRel}`).toBe(true)
+    }
+  })
+
+  it("every ZH skill markdown file is a reading mirror (mirror_of, no name:), and no EN references file registers a skill", () => {
+    const files = listSkillMarkdown()
+    for (const file of files) {
+      const text = readFileSync(file.abs, "utf8")
+      if (file.rel.endsWith(".zh-CN.md")) {
+        const fm = frontmatter(text)
+        expect(fm, `${file.rel} must declare mirror_of:`).toMatch(/^mirror_of:/m)
+        expect(fm, `${file.rel} must NOT have a name: frontmatter field`).not.toMatch(/^name:/m)
+      } else if (file.rel.startsWith("references/")) {
+        expect(text, `${file.rel} must NOT have a name: field`).not.toMatch(/^name:/m)
+      }
+    }
+  })
+
+  it("SKILL.md stays within the slim-playbook line budget", () => {
+    expect(wcL(read(EN_REL)), "SKILL.md exceeded 120 lines (wc -l semantics)").toBeLessThanOrEqual(120)
+  })
+
+  it("the component-selection table stays within 40 lines and matches ZH row count", () => {
+    const enN = consecutivePipeRowCount(read(EN_REL), "| Content shape")
+    const zhN = consecutivePipeRowCount(read(ZH_REL), "| 内容形态")
+    expect(enN, "SKILL.md component table missing").toBeGreaterThan(0)
+    expect(enN, "SKILL.md component table exceeded 40 lines").toBeLessThanOrEqual(40)
+    expect(zhN, "ZH component table row count diverged from EN").toBe(enN)
+  })
+
   it("the component-selection table's Use column lists the same backtick-quoted ids in the same order in both files", () => {
-    const en = componentSelectionUseTokens(read(EN_REL), "### Component selection")
-    const zh = componentSelectionUseTokens(read(ZH_REL), "### 组件选型")
+    const en = componentSelectionUseTokens(read(EN_REL), "## Component selection")
+    const zh = componentSelectionUseTokens(read(ZH_REL), "## 组件选型")
 
     if (JSON.stringify(en) !== JSON.stringify(zh)) {
       const max = Math.max(en.length, zh.length)
@@ -108,25 +228,26 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
   })
 
   it("both files declare the same 8 full-body component types, in both the slash-list and comma-list sentences", () => {
-    const en = read(EN_REL)
-    const zh = read(ZH_REL)
+    const enDecl = fullBodyDeclarationIds(read(REF("components.md")), " are *full-body*")
+    const zhDecl = fullBodyDeclarationIds(read(REF("components.zh-CN.md")), " 是「满幅」")
+    const enEnum = fullBodyEnumerationIds(read(REF("density.md")), "sharing it: ", ".")
+    const zhEnum = fullBodyEnumerationIds(read(REF("density.zh-CN.md")), "而不是与其他组件共享：", "。")
 
-    const enDecl = fullBodyDeclarationIds(en, " are *full-body*")
-    const zhDecl = fullBodyDeclarationIds(zh, " 是「满幅」")
-    const enEnum = fullBodyEnumerationIds(en, "sharing it: ", ".")
-    const zhEnum = fullBodyEnumerationIds(zh, "共享：", "。")
-
-    // internal consistency: each file's own two sentences must agree
-    expect(new Set(enEnum), "SKILL.md's two full-body sentences disagree with each other").toEqual(new Set(enDecl))
-    expect(new Set(zhEnum), "SKILL.zh-CN.md's two full-body sentences disagree with each other").toEqual(
-      new Set(zhDecl),
+    // internal consistency: the slash list (components.md) and the enum
+    // (density.md) must agree, in both languages.
+    expect(new Set(enEnum), "references/density.md's full-body enum disagrees with references/components.md's slash list").toEqual(
+      new Set(enDecl),
     )
+    expect(
+      new Set(zhEnum),
+      "references/density.zh-CN.md's full-body enum disagrees with references/components.zh-CN.md's slash list",
+    ).toEqual(new Set(zhDecl))
 
     const missingFromZh = enDecl.filter((id) => !zhDecl.includes(id))
     const missingFromEn = zhDecl.filter((id) => !enDecl.includes(id))
     expect(
       { missingFromZh, missingFromEn },
-      "full-body component type list drifted between SKILL.md and SKILL.zh-CN.md",
+      "full-body component type list drifted between references/components.md and references/components.zh-CN.md",
     ).toEqual({ missingFromZh: [], missingFromEn: [] })
 
     // cross-check against the actual code: a new/removed full-body type
@@ -135,24 +256,17 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     const missingFromDocs = [...FULL_BODY_TYPES].filter((id) => !enDecl.includes(id))
     expect(
       { missingFromCode, missingFromDocs },
-      "SKILL.md's declared full-body list no longer matches FULL_BODY_TYPES in src/svg/component-traits.ts",
+      "references/components.md's declared full-body list no longer matches FULL_BODY_TYPES in src/svg/component-traits.ts",
     ).toEqual({ missingFromCode: [], missingFromDocs: [] })
   })
 
   it("both files carry the stock-photos section with the same CLI command lines", () => {
-    const sectionAfter = (text: string, heading: RegExp): string => {
-      const m = text.match(heading)
-      expect(m, `heading ${heading} missing`).toBeTruthy()
-      const rest = text.slice(m!.index! + m![0].length)
-      const next = rest.search(/^##+ /m)
-      return next === -1 ? rest : rest.slice(0, next)
-    }
-    const commands = (section: string) =>
-      [...section.matchAll(/^pptfast .+$/gm)].map((mm) => mm[0].replace(/\s+#.*$/, "").trimEnd())
-    const en = sectionAfter(read(EN_REL), /^### Stock photos$/m)
-    const zh = sectionAfter(read(ZH_REL), /^### 图库配图$/m)
-    expect(commands(en).length, "SKILL.md stock-photos section has no pptfast command lines").toBeGreaterThan(0)
-    expect(commands(zh), "stock-photos sections' pptfast command lines diverge between EN and ZH").toEqual(commands(en))
+    const en = sectionAfter(read(REF("images.md")), /^### Stock photos$/m)
+    const zh = sectionAfter(read(REF("images.zh-CN.md")), /^### 图库配图$/m)
+    expect(pptfastCommands(en).length, "references/images.md stock-photos section has no pptfast command lines").toBeGreaterThan(0)
+    expect(pptfastCommands(zh), "stock-photos sections' pptfast command lines diverge between EN and ZH").toEqual(
+      pptfastCommands(en),
+    )
     expect(en).toContain("pptfast asset-brief")
     expect(en).toContain("pptfast images search")
     expect(en).toContain("pptfast images fetch")
@@ -166,22 +280,12 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     // unguarded. Structural guard: both sections exist, and every backtick
     // `pptfast …` command line inside them matches verbatim (commands are
     // language-invariant; prose stays free per this file's philosophy).
-    const sectionAfter = (text: string, heading: RegExp): string => {
-      const m = text.match(heading)
-      expect(m, `heading ${heading} missing`).toBeTruthy()
-      const start = m!.index! + m![0].length
-      const rest = text.slice(start)
-      const next = rest.search(/^## /m)
-      return next === -1 ? rest : rest.slice(0, next)
-    }
     // Commands live in ```bash fenced blocks (not inline backticks) — match
     // whole command lines; trailing per-line comments are language-variant
     // prose, so strip them before comparing.
-    const commands = (section: string) =>
-      [...section.matchAll(/^pptfast .+$/gm)].map((m) => m[0].replace(/\s+#.*$/, "").trimEnd())
-    const en = commands(sectionAfter(read(EN_REL), /^## Brand themes[^\n]*$/m))
-    const zh = commands(sectionAfter(read(ZH_REL), /^## 品牌主题[^\n]*$/m))
-    expect(en.length, "SKILL.md Brand-themes section has no pptfast command lines").toBeGreaterThan(0)
+    const en = pptfastCommands(sectionAfter(read(REF("branding.md")), /^## Brand themes[^\n]*$/m, /^## /m))
+    const zh = pptfastCommands(sectionAfter(read(REF("branding.zh-CN.md")), /^## 品牌主题[^\n]*$/m, /^## /m))
+    expect(en.length, "references/branding.md Brand-themes section has no pptfast command lines").toBeGreaterThan(0)
     expect(zh, "Brand-themes sections' pptfast command lines diverge between EN and ZH").toEqual(en)
   })
 
@@ -190,19 +294,10 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     // loop (`serve --no-open`, report the URL, read the annotations back,
     // stop the job) must exist in both files with identical command lines
     // — same structural guard as the Brand-themes test above.
-    const sectionAfter = (text: string, heading: RegExp): string => {
-      const m = text.match(heading)
-      expect(m, `heading ${heading} missing`).toBeTruthy()
-      const rest = text.slice(m!.index! + m![0].length)
-      const next = rest.search(/^##+ /m)
-      return next === -1 ? rest : rest.slice(0, next)
-    }
-    const commands = (section: string) =>
-      [...section.matchAll(/^pptfast .+$/gm)].map((mm) => mm[0].replace(/\s+#.*$/, "").trimEnd())
-    const en = sectionAfter(read(EN_REL), /^### Showing the deck to the user$/m)
-    const zh = sectionAfter(read(ZH_REL), /^### 把 deck 拿给用户看$/m)
-    expect(commands(en).length, "SKILL.md serve section has no pptfast command lines").toBeGreaterThan(0)
-    expect(commands(zh), "serve sections' pptfast command lines diverge between EN and ZH").toEqual(commands(en))
+    const en = sectionAfter(read(REF("validate.md")), /^### Showing the deck to the user$/m)
+    const zh = sectionAfter(read(REF("validate.zh-CN.md")), /^### 把 deck 拿给用户看$/m)
+    expect(pptfastCommands(en).length, "references/validate.md serve section has no pptfast command lines").toBeGreaterThan(0)
+    expect(pptfastCommands(zh), "serve sections' pptfast command lines diverge between EN and ZH").toEqual(pptfastCommands(en))
     for (const section of [en, zh]) {
       // The tool comes first where it exists, and the fallback still has to
       // carry its own discipline — both halves are pinned, in both languages.
@@ -241,26 +336,21 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
   })
 
   it("both files name the same six sparse pin-only ids in the Sparse-page contract", () => {
-    const sectionAfter = (text: string, heading: RegExp): string => {
-      const m = text.match(heading)
-      expect(m, `heading ${heading} missing`).toBeTruthy()
-      const rest = text.slice(m!.index! + m![0].length)
-      const next = rest.search(/^##+ /m)
-      return next === -1 ? rest : rest.slice(0, next)
-    }
     const ids = ["statement", "pull-quote", "verse-chapter", "stat-hero", "one-evidence", "mono-bleed"] as const
-    const en = sectionAfter(read(EN_REL), /^### Sparse-page contract$/m)
-    const zh = sectionAfter(read(ZH_REL), /^### 稀排页合同$/m)
+    const en = sectionAfter(read(REF("layouts.md")), /^### Sparse-page contract$/m)
+    const zh = sectionAfter(read(REF("layouts.zh-CN.md")), /^### 稀排页合同$/m)
     for (const id of ids) {
-      expect(en, `SKILL.md Sparse-page contract missing ${id}`).toContain(`\`${id}\``)
-      expect(zh, `SKILL.zh-CN.md 稀排页合同 missing ${id}`).toContain(`\`${id}\``)
+      expect(en, `references/layouts.md Sparse-page contract missing ${id}`).toContain(`\`${id}\``)
+      expect(zh, `references/layouts.zh-CN.md 稀排页合同 missing ${id}`).toContain(`\`${id}\``)
     }
     expect(en).toMatch(/not a new `pacing`/)
     expect(zh).toMatch(/不是新的 `pacing`/)
     expect(en).toContain("slide.notes")
     expect(zh).toContain("slide.notes")
-    expect(en).toContain('branding: "full"')
-    expect(zh).toContain('branding: "full"')
+    expect(en, "branding: \"full\" moved out of layouts.md").not.toContain('branding: "full"')
+    expect(zh, "branding: \"full\" moved out of layouts.zh-CN.md").not.toContain('branding: "full"')
+    expect(read(REF("branding.md"))).toContain('branding: "full"')
+    expect(read(REF("branding.zh-CN.md"))).toContain('branding: "full"')
   })
 
   it("both files ask the narrative interview with the same closed option ids, the same ★ defaults, and the same gate block", () => {
@@ -270,13 +360,6 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     // Chinese-reading harnesses a different interview. Option ids are
     // language-invariant (they are IR enum values or fixed composite ids) —
     // the prose around them stays free, same as every other test here.
-    const sectionAfter = (text: string, heading: RegExp): string => {
-      const m = text.match(heading)
-      expect(m, `heading ${heading} missing`).toBeTruthy()
-      const rest = text.slice(m!.index! + m![0].length)
-      const next = rest.search(/^##+ /m)
-      return next === -1 ? rest : rest.slice(0, next)
-    }
     // One question per line, options separated by " · ". An option's id is
     // the first backtick token of its segment — later backticks on the same
     // segment are the axis values it writes (`talk-pyramid` → `pyramid`),
@@ -294,8 +377,8 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
       }
       return { ids, starred }
     }
-    const en = sectionAfter(read(EN_REL), /^### Narrative interview \(at most one round\)$/m)
-    const zh = sectionAfter(read(ZH_REL), /^### 叙事访谈（最多一轮）$/m)
+    const en = sectionAfter(read(REF("spec.md")), /^### Narrative interview \(at most one round\)$/m)
+    const zh = sectionAfter(read(REF("spec.zh-CN.md")), /^### 叙事访谈（最多一轮）$/m)
 
     // ★ pins the pitch shape (customer × talk-pyramid × spacious) plus
     // builtin theme. Empty-workspace interviews must land there, named as
@@ -312,34 +395,34 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
       // options by what reads best (★ first on Q3), not by the enum's order.
       expect(
         [...enQ.ids].sort(),
-        `SKILL.md Q${n} option ids drifted from the closed list`,
+        `references/spec.md Q${n} option ids drifted from the closed list`,
       ).toEqual([...expected].sort())
-      expect(zhQ.ids, `SKILL.zh-CN.md Q${n} option ids diverge from SKILL.md`).toEqual(enQ.ids)
-      expect(enQ.starred, `SKILL.md Q${n} ★ default drifted off the pitch-form table`).toEqual([starred])
+      expect(zhQ.ids, `references/spec.zh-CN.md Q${n} option ids diverge from EN`).toEqual(enQ.ids)
+      expect(enQ.starred, `references/spec.md Q${n} ★ default drifted off the pitch-form table`).toEqual([starred])
       expect(zhQ.starred, `Q${n}'s ★ default moved between EN and ZH`).toEqual(enQ.starred)
     }
 
     // Every strategy the engine knows has to be reachable from the
     // interview — four through Q2, `storytelling` through derivation.
     for (const strategy of STRATEGY_VALUES) {
-      expect(en, `SKILL.md interview never mentions strategy ${strategy}`).toContain(`\`${strategy}\``)
-      expect(zh, `SKILL.zh-CN.md interview never mentions strategy ${strategy}`).toContain(`\`${strategy}\``)
+      expect(en, `references/spec.md interview never mentions strategy ${strategy}`).toContain(`\`${strategy}\``)
+      expect(zh, `references/spec.zh-CN.md interview never mentions strategy ${strategy}`).toContain(`\`${strategy}\``)
     }
 
     // The lookup must name every preset. Check by `id` inclusion, not by
     // walking every backtick token: the NARRATIVE_INTERVIEW fence is a
     // verbatim block, and naive pairing across it inverts later captures.
     for (const id of Object.keys(NARRATIVE_PRESETS)) {
-      expect(en, `SKILL.md's interview lookup never names preset ${id}`).toContain(`\`${id}\``)
-      expect(zh, `SKILL.zh-CN.md's interview lookup never names preset ${id}`).toContain(`\`${id}\``)
+      expect(en, `references/spec.md's interview lookup never names preset ${id}`).toContain(`\`${id}\``)
+      expect(zh, `references/spec.zh-CN.md's interview lookup never names preset ${id}`).toContain(`\`${id}\``)
     }
 
     // The anti-self-answer gate: a fixed block the agent prints, and a ban on
     // touching spec files while any axis is still `?`. Both halves, verbatim,
     // in both files.
     const gate = "NARRATIVE_INTERVIEW\naudience: ?\ntell: ?\npacing: ?\nbrand: ?"
-    expect(en, "SKILL.md lost the NARRATIVE_INTERVIEW gate block").toContain(gate)
-    expect(zh, "SKILL.zh-CN.md lost the NARRATIVE_INTERVIEW gate block").toContain(gate)
+    expect(en, "references/spec.md lost the NARRATIVE_INTERVIEW gate block").toContain(gate)
+    expect(zh, "references/spec.zh-CN.md lost the NARRATIVE_INTERVIEW gate block").toContain(gate)
     for (const section of [en, zh]) {
       expect(section, "the gate must name deck.spec.json as the thing that stays unwritten").toContain("deck.spec.json")
       expect(section, "the interview must still forbid the agent from answering its own questions").toMatch(
@@ -360,28 +443,47 @@ describe("SKILL.zh-CN.md mirrors SKILL.md (skill-zh-cn drift guard)", () => {
     expect(zh, "Q1's review condition belongs in a maintainer comment").toMatch(/<!--[\s\S]*?删掉 Q1[\s\S]*?-->/)
   })
 
-  it("both files scan the workspace before asking, refuse a typeScale spec field, and do not name an external shaping skill", () => {
+  it("both SKILL files scan the workspace before asking and do not name an external shaping skill", () => {
     const en = read(EN_REL)
     const zh = read(ZH_REL)
     expect(en).toContain("Also scan the workspace before asking anyone anything")
     expect(zh).toContain("动手问人之前，先扫工作区")
-    expect(en).toContain("Do not invent a `typeScale` field on the spec")
-    expect(zh).toContain("不要在 spec 上发明 `typeScale` 字段")
-    expect(en).toContain("Write the confirmed `narrative`, `theme`, and `branding`")
-    expect(zh).toContain("立刻把确认下来的 `narrative`、`theme`、`branding` 写进")
     expect(en, "the skill must not name shaping").not.toMatch(/shaping/i)
     expect(zh, "the skill must not name shaping").not.toMatch(/shaping/i)
   })
 
-  it("both files have the same number of ### Phase N sections", () => {
-    const phaseHeadings = (text: string) => text.match(/^### Phase \d+/gm) ?? []
-    const en = phaseHeadings(read(EN_REL))
-    const zh = phaseHeadings(read(ZH_REL))
-    expect(en.length, "SKILL.md has no ### Phase N sections — did the heading style change?").toBeGreaterThan(0)
-    expect(
-      zh.length,
-      `SKILL.zh-CN.md has ${zh.length} "### Phase N" sections, SKILL.md has ${en.length} — ` +
-        `phase headings must keep the literal "Phase N" marker so the two files stay comparable`,
-    ).toBe(en.length)
+  it("both spec booklets refuse a typeScale spec field and write confirmed narrative/theme/branding immediately", () => {
+    const en = read(REF("spec.md"))
+    const zh = read(REF("spec.zh-CN.md"))
+    expect(en).toContain("Do not invent a `typeScale` field on the spec")
+    expect(zh).toContain("不要在 spec 上发明 `typeScale` 字段")
+    expect(en).toContain("Write the confirmed `narrative`, `theme`, and `branding`")
+    expect(zh).toContain("立刻把确认下来的 `narrative`、`theme`、`branding` 写进")
+  })
+
+  it("every reference booklet has a read-when trigger, and SKILL.md indexes all of them", () => {
+    const names = ["spec", "layouts", "components", "density", "branding", "images", "validate"] as const
+    const enSkill = read(EN_REL)
+    const zhSkill = read(ZH_REL)
+    for (const name of names) {
+      expect(read(REF(`${name}.md`)), `${name}.md missing Read this when`).toMatch(/^# .+\n\nRead this when /)
+      expect(read(REF(`${name}.zh-CN.md`)), `${name}.zh-CN.md missing 何时读`).toMatch(/何时读：/)
+      expect(enSkill, `SKILL.md does not index references/${name}.md`).toContain(`references/${name}.md`)
+      expect(zhSkill, `SKILL.zh-CN.md does not index references/${name}.md`).toContain(`references/${name}.md`)
+    }
+  })
+
+  it("slim SKILL files name the interview → spec → pages → validate → audit → render loop", () => {
+    const en = read(EN_REL)
+    const zh = read(ZH_REL)
+    expect(en).toContain("Interview → spec → pages → validate → audit → render")
+    expect(zh).toContain("访谈 → spec → pages → validate → audit → render")
+    for (const step of ["interview", "spec", "pages", "validate", "audit", "render"] as const) {
+      expect(en.toLowerCase(), `SKILL.md missing workflow step ${step}`).toContain(step)
+    }
+    expect(zh, "SKILL.zh-CN.md missing workflow step 访谈").toContain("访谈")
+    for (const step of ["spec", "pages", "validate", "audit", "render"] as const) {
+      expect(zh, `SKILL.zh-CN.md missing workflow step ${step}`).toContain(step)
+    }
   })
 })
