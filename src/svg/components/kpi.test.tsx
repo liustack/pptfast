@@ -340,7 +340,9 @@ describe("kpi_cards box.w-aware horizontal cap (graceful landing)", () => {
   const manyComponent = { type: "kpi_cards" as const, items: manyItems }
 
   it("caps rendered cards to what box.w can hold at a sane minimum width, marks the drop with data-dropped, and keeps every card and the marker within box.w", () => {
-    const box = { x: 0, y: 0, w: 1088 }
+    // One row of 120px cards: wrapping would otherwise show every item and
+    // this case would stop covering the height-clip drop.
+    const box = { x: 0, y: 0, w: 1088, h: 120 }
     const { container } = svg(kpi.render(manyComponent, box, ctx))
     const rects = Array.from(container.querySelectorAll("rect"))
     expect(rects.length).toBeGreaterThan(0)
@@ -371,7 +373,7 @@ describe("kpi_cards box.w-aware horizontal cap (graceful landing)", () => {
     const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
     expect(hiddenCount).toBeGreaterThan(0)
     expect(hiddenCount + rects.length).toBe(manyItems.length)
-    expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
+    expect((dropped!.textContent ?? "").trim()).toBe("")
   })
 
   it("still renders at least one card even when box.w is far smaller than a single card's minimum width", () => {
@@ -525,17 +527,44 @@ const METRICS = [
 ]
 
 describe("kpi readability floor", () => {
-  it("degrades a column too narrow to read into fewer, readable cards plus a marker", () => {
-    // The gallery's two-column right rail: 528px for four cards is 123px
-    // each, which clears the old 80px anti-crash floor and so degraded
-    // nothing — it just drew four cards nobody could read.
+  it("wraps a 528px four-card rail onto a second row instead of dropping the last value", () => {
+    // Two-column right rail: 528px holds three 160px cards in one row.
+    // Item 12: the fourth value still has to show, so it wraps (3+1), each
+    // cell still at the readability floor.
     const { container } = svg(
       kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 528 }, ctx),
     )
     const rects = Array.from(container.querySelectorAll("rect"))
-    expect(rects.length).toBe(2)
+    expect(rects.length).toBe(4)
     for (const r of rects) expect(Number(r.getAttribute("width"))).toBeGreaterThanOrEqual(160)
-    expect(container.querySelector("[data-dropped]")!.getAttribute("data-dropped")).toBe("2")
+    expect(container.querySelector("[data-dropped]")).toBeNull()
+  })
+
+  it("measures one-row height at full width and two-row height at 528px for four cards", () => {
+    const four = { type: "kpi_cards" as const, items: METRICS }
+    expect(kpi.measure(four, 1088, ctx)).toBe(120)
+    expect(kpi.measure(four, 528, ctx)).toBe(256)
+  })
+
+  it("places the leftover fourth card on row 2 at the same width as the first row, not stretched", () => {
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 528 }, ctx),
+    )
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects).toHaveLength(4)
+    const widths = rects.map((r) => Number(r.getAttribute("width")))
+    expect(Number(rects[3]!.getAttribute("y"))).toBeCloseTo(120 + 16, 5)
+    expect(widths[3]).toBe(widths[0])
+    expect(widths[3]).toBeLessThan(528)
+  })
+
+  it("still drops when box.h cannot hold another row", () => {
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 528, h: 120 }, ctx),
+    )
+    const rects = Array.from(container.querySelectorAll("rect"))
+    expect(rects.length).toBe(3)
+    expect(container.querySelector("[data-dropped]")!.getAttribute("data-dropped")).toBe("1")
   })
 
   it("does not degrade a row whose cards already clear the floor", () => {
@@ -548,7 +577,7 @@ describe("kpi readability floor", () => {
 
   it("still draws one card when the box cannot hold even a single readable one", () => {
     const { container } = svg(
-      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 120 }, ctx),
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 120, h: 120 }, ctx),
     )
     expect(container.querySelectorAll("rect").length).toBe(1)
   })
@@ -571,10 +600,8 @@ describe("kpi row-uniform value size", () => {
   }
 
   it("sets every value in one row at the same size", () => {
-    // The reviewer's own page: a 528px rail, which degrades to the two
-    // leading cards — "102k units" and "91 %".
     const sizes = valueSizes({ type: "kpi_cards", items: METRICS }, 528)
-    expect(sizes).toHaveLength(2)
+    expect(sizes).toHaveLength(4)
     expect(new Set(sizes).size).toBe(1)
   })
 
@@ -583,9 +610,10 @@ describe("kpi row-uniform value size", () => {
     // Whatever the tightest card needs is what the row gets: rendering the
     // row at the roomiest card's size would push the tight one into
     // truncation, which loses a digit rather than a few points of type.
-    const alone = valueSizes({ type: "kpi_cards", items: [METRICS[0]!] }, (528 - 90 - 16 - 16) / 2)
+    const cardW = (528 - 16 * 2) / 3
+    const alone = valueSizes({ type: "kpi_cards", items: [METRICS[0]!] }, cardW)
     expect(alone[0]).toBeLessThan(40)
-    expect(sizes).toEqual([alone[0], alone[0]])
+    expect(sizes).toEqual([alone[0], alone[0], alone[0], alone[0]])
   })
 
   it("leaves a row whose cards all fit at the design size exactly where it was", () => {
@@ -597,7 +625,9 @@ describe("kpi row-uniform value size", () => {
   })
 
   it("scales every unit tspan off the shared size, so the suffixes match too", () => {
-    const { container } = svg(kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 528 }, ctx))
+    const { container } = svg(
+      kpi.render({ type: "kpi_cards", items: METRICS }, { x: 0, y: 0, w: 528, h: 120 }, ctx),
+    )
     const values = Array.from(container.querySelectorAll("text[font-weight='bold']"))
     const unitSizes = values.map((t) => Number(t.querySelector("tspan")!.getAttribute("font-size")))
     expect(new Set(unitSizes).size).toBe(1)

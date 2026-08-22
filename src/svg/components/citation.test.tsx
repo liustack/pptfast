@@ -143,7 +143,7 @@ describe("citation component", () => {
       expect(dropped).toBeTruthy()
       const hiddenCount = Number(dropped!.getAttribute("data-dropped"))
       expect(hiddenCount + nonMarker.length).toBe(manySources.length)
-      expect(dropped!.textContent).toBe(`+${hiddenCount} …`)
+      expect((dropped!.textContent ?? "").trim()).toBe("")
     })
 
     it("still renders at least one source even when box.h is far smaller than a single row", () => {

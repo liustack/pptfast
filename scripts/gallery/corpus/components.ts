@@ -498,8 +498,8 @@ const CARD_ICONS = ["layers", "cpu", "database", "globe", "target", "gauge"] as 
  * Deliberately over-capacity instances — the one place in this corpus that
  * breaks the "ordinary case" rule at the top of this file, on purpose.
  *
- * Nine components share one degrade path: keep what fits, draw a "+N …"
- * line for the rest, set `data-dropped`. Nobody had ever looked at it. The
+ * Nine components share one degrade path: keep what fits, stamp a silent
+ * `data-dropped` on the rest. Nobody had ever looked at it. The
  * ordinary corpus tops out at five bullets and the marker needs twelve, so
  * all 434 review pages missed it by design, and the one review verdict that
  * did complain about the marker named a page that has never drawn one.
@@ -578,7 +578,7 @@ export const DENSITY_BUILDERS: Record<string, (lex: Lexicon) => Component> = {
 
   kpi_cards: (lex) => ({
     type: "kpi_cards",
-    items: slice(lex.labels, 12).map((label, i) => ({
+    items: slice(lex.labels, 24).map((label, i) => ({
       value: String(28 + i * 6),
       unit: "%",
       label,

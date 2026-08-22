@@ -11,10 +11,6 @@ function nodeAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n
 }
 
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n))
-}
-
 const MAX_H = 400
 const MAX_UPSCALE = 1.12
 const PAD = 8
@@ -128,10 +124,20 @@ function resolveHub(component: CycleComponent, w: number): HubGeom {
 }
 
 function spokeEnd(ox: number, oy: number, cap: Capsule): { x: number; y: number } {
-  return {
-    x: clamp(ox, cap.x, cap.x + cap.w),
-    y: clamp(oy, cap.y, cap.y + cap.h),
+  const r = cap.h / 2
+  const x0 = cap.x + r
+  const x1 = cap.x + cap.w - r
+  const cy = cap.y + r
+  if (ox >= x0 && ox <= x1) {
+    const top = cap.y
+    const bot = cap.y + cap.h
+    return { x: ox, y: Math.abs(oy - top) < Math.abs(oy - bot) ? top : bot }
   }
+  const ccx = ox < x0 ? x0 : x1
+  const vx = ox - ccx
+  const vy = oy - cy
+  const len = Math.hypot(vx, vy) || 1
+  return { x: ccx + (vx / len) * r, y: cy + (vy / len) * r }
 }
 
 function badgeGlyph(i: number, solidHub: boolean): string {

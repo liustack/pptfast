@@ -175,7 +175,7 @@ export const dataTable: SvgComponent<DataTableComponent> = {
       // 预留 1 个 ROW 给表头、1 个 ROW 给「+N …」标记行本身——与
       // comparison.tsx 的 `-2` 预留同一账法。下限钳到 1（"宁可只留一行也不
       // 要整页只剩一行 marker"，comparison.tsx/row-cards.tsx 共同先例）。
-      visibleRowCount = Math.max(1, Math.min(fullRowCount, Math.floor(truncBudget / ROW) - 2))
+      visibleRowCount = Math.max(1, Math.min(fullRowCount, Math.floor(truncBudget / ROW) - 1))
     }
     const hiddenRowCount = fullRowCount - visibleRowCount
     const rows = hiddenRowCount > 0 ? component.rows.slice(0, visibleRowCount) : component.rows
@@ -194,7 +194,7 @@ export const dataTable: SvgComponent<DataTableComponent> = {
       }),
     )
 
-    const tableBottomY = totalRows * ROW + (hiddenRowCount > 0 ? 24 : 0)
+    const tableBottomY = totalRows * ROW
     const sourceFit = component.source
       ? fitSvgLine(component.source, {
           maxWidth: box.w,
@@ -295,20 +295,7 @@ export const dataTable: SvgComponent<DataTableComponent> = {
           )
         })}
 
-        {hiddenRowCount > 0 && (
-          <text
-            data-dropped={hiddenRowCount}
-            x={box.w}
-            y={totalRows * ROW + 20}
-            textAnchor="end"
-            fontSize={13}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${hiddenRowCount} …`}
-          </text>
-        )}
+        {hiddenRowCount > 0 && <g data-dropped={hiddenRowCount} />}
 
         {sourceFit ? (
           <text

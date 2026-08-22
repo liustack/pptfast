@@ -188,7 +188,7 @@ export function renderArrowSteps(
     visible = 0
     for (let i = 0; i < n; i++) {
       const bottom = i * stride + arrowH + FOOT_GAP + footH
-      if (bottom > budget - 18 && visible >= 1) break
+      if (bottom > budget && visible >= 1) break
       visible = i + 1
     }
     visible = Math.max(1, visible)
@@ -250,20 +250,7 @@ export function renderArrowSteps(
           </g>
         )
       })}
-      {hidden > 0 ? (
-        <text
-          data-dropped={hidden}
-          x={box.w}
-          y={Math.min(budget - 4, visible * stride - (vertical ? GAP : 0) + 14)}
-          textAnchor="end"
-          fontSize={13}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${hidden} …`}
-        </text>
-      ) : null}
+      {hidden > 0 ? <g data-dropped={hidden} /> : null}
       {knobs.pulseLine ? (
         <path
           d={(() => {

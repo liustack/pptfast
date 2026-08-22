@@ -340,6 +340,10 @@ describe("gallery page", () => {
 // ended up naming a page that never had one. That blind spot closes only
 // while these pages keep reaching the branch, and nothing about them says so
 // on inspection — a threshold moving by a few pixels puts it back silently.
+//
+// Gallery review r1 retired the painted "+N …" copy (debug voice on a
+// customer slide). The branch is now a silent `data-dropped` attribute:
+// audit still sees the drop, the page does not print maintainer vocabulary.
 describe("gallery density table", () => {
   it("draws a drop marker on every page", async () => {
     const { renderMatrix } = await import("./gallery/render")
@@ -351,7 +355,7 @@ describe("gallery density table", () => {
     const outDir = mkdtempSync(join(tmpdir(), "pptfast-gallery-density-"))
     const { svgs } = renderMatrix(jobs, outDir, "test")
 
-    const unmarked = [...svgs].filter(([, svg]) => !/\+\d+ …/.test(svg)).map(([id]) => id)
+    const unmarked = [...svgs].filter(([, svg]) => !/data-dropped="[1-9]/.test(svg)).map(([id]) => id)
     expect(unmarked, "these density pages fit after all — raise their item counts").toEqual([])
 
     // The failure mode that cost the first attempt at this table: the whole
@@ -374,11 +378,11 @@ describe("gallery density table", () => {
     const dir = join(fileURLToPath(new URL("..", import.meta.url)), "src/svg/components")
     const drawers = readdirSync(dir)
       .filter((f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))
-      .filter((f) => /\+\$\{[^}]+\} …`/.test(readFileSync(join(dir, f), "utf8")))
+      .filter((f) => /data-dropped=\{/.test(readFileSync(join(dir, f), "utf8")))
 
     expect(
       Object.keys(DENSITY_BUILDERS).length,
-      `${drawers.length} components draw a "+N …" marker (${drawers.join(", ")}) but the density ` +
+      `${drawers.length} components draw a data-dropped marker (${drawers.join(", ")}) but the density ` +
         `table covers ${Object.keys(DENSITY_BUILDERS).length} — add a builder to DENSITY_BUILDERS`,
     ).toBe(drawers.length)
   })

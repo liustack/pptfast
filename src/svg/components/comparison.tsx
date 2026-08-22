@@ -231,13 +231,10 @@ function renderDefault(rawComponent: ComparisonComponent, box: Parameters<SvgCom
     const naturalHeight = (fullRowCount + 1) * ROW // header + every data row, ignoring box.h
     let visibleRowCount = fullRowCount
     if (naturalHeight > truncBudget) {
-      // Reserve 1 ROW for the header row and 1 ROW for the "+N …"
-      // marker line itself inside the budget — same reservation shape
-      // row-cards.tsx's own `truncBudget - 20` uses for its marker text.
-      // Floored at 1 visible row (row-cards.tsx's "never render zero
-      // visible units" precedent), even when the budget can't truly fit
-      // even one — an honestly-labeled overflow beats an empty table.
-      visibleRowCount = Math.max(1, Math.min(fullRowCount, Math.floor(truncBudget / ROW) - 2))
+      // Reserve 1 ROW for the header. Truncation is silent (`data-dropped`
+      // only). Floored at 1 visible row (row-cards.tsx's "never render zero
+      // visible units" precedent).
+      visibleRowCount = Math.max(1, Math.min(fullRowCount, Math.floor(truncBudget / ROW) - 1))
     }
     const hiddenRowCount = fullRowCount - visibleRowCount
     const component =
@@ -362,20 +359,7 @@ function renderDefault(rawComponent: ComparisonComponent, box: Parameters<SvgCom
             </Fragment>
           )
         })}
-        {hiddenRowCount > 0 && (
-          <text
-            data-dropped={hiddenRowCount}
-            x={box.w}
-            y={totalRows * ROW + 20}
-            textAnchor="end"
-            fontSize={13}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${hiddenRowCount} …`}
-          </text>
-        )}
+        {hiddenRowCount > 0 && <g data-dropped={hiddenRowCount} />}
       </g>
     )
 }

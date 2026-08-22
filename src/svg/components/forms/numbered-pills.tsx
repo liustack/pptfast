@@ -14,10 +14,9 @@ const PAD = 6
 const STACK_CAP = 440
 const BASELINE_FUDGE = 0.35
 
-function pillRx(knobs: FormKnobs, pillH: number): number {
+function pillRx(knobs: FormKnobs, pillH: number, ctx: ComponentCtx): number {
   if (knobs.radius === "square") return 0
-  if (knobs.radius === "soft") return 12
-  return pillH / 2
+  return ctx.shape?.radius ?? (knobs.radius === "soft" ? 12 : pillH / 2)
 }
 
 function layoutPills(n: number, w: number, knobs: FormKnobs, hHint?: number) {
@@ -82,7 +81,7 @@ export function renderNumberedPills(
   const pillsLeft = leftX + L.leftSize + COL_GAP
   const surface = ctx.colors.surface
   const border = ctx.colors.border ?? ctx.colors.muted
-  const rx = pillRx(knobs, L.pillH)
+  const rx = pillRx(knobs, L.pillH, ctx)
   const showText = L.pillH >= 62
 
   return (

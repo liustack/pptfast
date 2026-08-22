@@ -10,9 +10,11 @@ type NumberedCardsComponent = Extract<Component, { type: "numbered_cards" }>
 
 /**
  * 编号网格列表（2026-07-11 用户借鉴编辑部大数字目录页）：自动编号
- * 01..N，无卡壳设计——每格左缘细竖线 + accent 大编号 + title 粗体 +
+ * 01..N，无卡壳设计——每格顶边细线 + accent 大编号 + title 粗体 +
  * text/sub 两级描述。≤4 项单行 n 列，5-8 项两行 ceil(n/2) 列。
+ * 左缘竖线已禁（gallery review 2026-08-22）：改顶边 hairline。
  */
+const TOP_RULE_H = 3
 const COL_GAP = 28
 const ROW_GAP = 36
 const INDENT = 22
@@ -112,7 +114,6 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
           const col = i % cols
           const cellX = col * (cellW + COL_GAP)
           const cellY = heights.slice(0, row).reduce((s, h) => s + h + ROW_GAP, 0)
-          const cellH = heights[row]
           const { title, text, sub } = cellLayout(item, contentW, ctx.fonts.heading)
           const num = String(i + 1).padStart(2, "0")
           const numBaseline = cellY + NUM_SIZE
@@ -120,24 +121,21 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
           const textTop = cellY + NUM_BLOCK_H + TITLE_BLOCK_H
           return (
             <g key={i}>
-              {/* 左缘细竖线（贯穿格高） */}
-              <line
-                x1={cellX + 1}
-                y1={cellY + 4}
-                x2={cellX + 1}
-                y2={cellY + cellH - CELL_PAD_BOTTOM}
-                stroke={ctx.colors.accent}
-                strokeWidth={2}
-                opacity={0.65}
+              <rect
+                x={cellX}
+                y={cellY}
+                width={cellW}
+                height={TOP_RULE_H}
+                fill={ctx.colors.accent}
               />
               {/* Bench-driven fix round, defect B: this component paints no
-                  card/panel of its own (only the thin accent left-edge
-                  rule), so the big digit sits directly on the page's
-                  ambient default background — `ctx.defaultBg ?? colors.bg`,
-                  same fallback every other card-less component in this
-                  codebase uses. `colors.accent` unwrapped measured <3:1 on
-                  classroom (2.09:1) and academic (2.92:1, a near-miss) once
-                  actually re-measured against a real render (not assumed) —
+                  card/panel of its own (only the thin accent top hairline),
+                  so the big digit sits directly on the page's ambient
+                  default background — `ctx.defaultBg ?? colors.bg`, same
+                  fallback every other card-less component in this codebase
+                  uses. `colors.accent` unwrapped measured <3:1 on classroom
+                  (2.09:1) and academic (2.92:1, a near-miss) once actually
+                  re-measured against a real render (not assumed) —
                   `accessibleInk` keeps `colors.accent` on every other theme,
                   byte-identical. */}
               <text
@@ -194,7 +192,7 @@ export const numberedCards: SvgComponent<NumberedCardsComponent> = {
                   // routed — pinned as a known gap in
                   // `full-matrix-contrast.test.ts` by commit c523994 before
                   // this fix landed): this cell paints no background of its
-                  // own (only the accent left-edge rule above), so `sub`
+                  // own (only the accent top hairline above), so `sub`
                   // sits directly on the page background like `text` above
                   // it — `ctx.defaultBg ?? ctx.colors.bg`, the same fallback
                   // `chapter-rail-chapter.tsx`/`chapter-banner-chapter.tsx`

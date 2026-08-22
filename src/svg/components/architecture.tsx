@@ -42,7 +42,7 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
       // render zero visible units" precedent).
       visibleCount = Math.max(
         1,
-        Math.min(fullCount, Math.floor((truncBudget - LAYER_H + GAP) / (LAYER_H + GAP))),
+        Math.min(fullCount, Math.floor((truncBudget + GAP) / (LAYER_H + GAP))),
       )
     }
     const hiddenCount = fullCount - visibleCount
@@ -106,20 +106,7 @@ export const architecture: SvgComponent<ArchitectureComponent> = {
             </g>
           )
         })}
-        {hiddenCount > 0 && (
-          <text
-            data-dropped={hiddenCount}
-            x={box.w}
-            y={component.layers.length * (LAYER_H + GAP) - GAP + 20}
-            textAnchor="end"
-            fontSize={13}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${hiddenCount} …`}
-          </text>
-        )}
+        {hiddenCount > 0 && <g data-dropped={hiddenCount} />}
       </g>
     )
   },

@@ -152,3 +152,27 @@ describe("row_cards density-stretch split between shells and gaps", () => {
     expect(tops[2] + heights[2]).toBeCloseTo(h, 5)
   })
 })
+
+describe("row_cards title-to-source air", () => {
+  it("leaves a readable gap between the title baseline and the source line", () => {
+    const component = {
+      type: "row_cards" as const,
+      items: [
+        { title: "事项标题", sub: "来源说明" },
+        { title: "第二事项", sub: "另一来源" },
+        { title: "第三事项", sub: "第三来源" },
+      ],
+    }
+    const markup = renderSvgMarkup(
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+        {rowCards.render(component, { x: 0, y: 0, w: 640 }, ctx)}
+      </svg>,
+    )
+    const doc = new DOMParser().parseFromString(markup, "image/svg+xml")
+    const texts = [...doc.querySelectorAll("text")]
+    const title = texts.find((t) => t.textContent === "事项标题")!
+    const source = texts.find((t) => t.textContent === "来源说明")!
+    const gap = Number(source.getAttribute("y")) - Number(title.getAttribute("y"))
+    expect(gap).toBeGreaterThanOrEqual(30)
+  })
+})

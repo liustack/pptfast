@@ -160,7 +160,7 @@ describe("five_forces component", () => {
 
     it("drops the dot meter a clear step below the title baseline, not half a dot below it", () => {
       const g = headerGeometry("rivalry")
-      expect(g.dotTop - g.labelBaseline).toBe(16)
+      expect(g.dotTop - g.labelBaseline).toBe(22)
     })
 
     it("draws the marker inside the band panelLayout reserves for it — declared air is drawn air", () => {
@@ -171,7 +171,7 @@ describe("five_forces component", () => {
       // slack at the bottom instead, which is exactly what the old
       // `- markerDotR / 2` did.
       const g = headerGeometry("rivalry")
-      expect(g.firstItemRowY - g.dotBottom).toBe(18)
+      expect(g.firstItemRowY - g.dotBottom).toBe(24)
     })
 
     it("separates the header from the items by more than the title separates from the dots", () => {
@@ -191,7 +191,7 @@ describe("five_forces component", () => {
       const labelBaseline = Number(texts[0]!.getAttribute("y"))
       const itemFontSize = Number(texts[1]!.getAttribute("font-size"))
       const firstItemRowY = Number(texts[1]!.getAttribute("y")) - itemFontSize
-      expect(firstItemRowY - labelBaseline).toBe(18)
+      expect(firstItemRowY - labelBaseline).toBe(24)
     })
 
     // The raise above costs 30px of natural height, and the one fixture
@@ -220,15 +220,15 @@ describe("five_forces component", () => {
       }
 
       // Three governing row bands, each carrying an intensity marker, each
-      // holding 5px of marker gap and 5px of header gap above its tight
+      // holding 11px of marker gap and 11px of header gap above its tight
       // value: the comfort the box has to be able to afford.
-      const COMFORT_SPAN = 30
+      const COMFORT_SPAN = 66
       const natural = fiveForces.measure(basic, 1000, ctx)
 
       it("keeps the full comfortable rhythm when the box is exactly its natural height", () => {
         const g = atHeight(natural)
-        expect(g.gapLabelMarker).toBe(16)
-        expect(g.gapHeaderItems).toBe(18)
+        expect(g.gapLabelMarker).toBe(22)
+        expect(g.gapHeaderItems).toBe(24)
       })
 
       it("gives the air back, and only the air, when the box is short by exactly the comfort span", () => {
@@ -243,8 +243,8 @@ describe("five_forces component", () => {
 
       it("slides the air part-way for a box short by less than the span — no cliff at natural height", () => {
         const g = atHeight(natural - COMFORT_SPAN / 2)
-        expect(g.gapLabelMarker).toBeCloseTo(13.5, 5)
-        expect(g.gapHeaderItems).toBeCloseTo(15.5, 5)
+        expect(g.gapLabelMarker).toBeCloseTo(16.5, 5)
+        expect(g.gapHeaderItems).toBeCloseTo(18.5, 5)
         expect(g.itemSize).toBe(12)
       })
 
@@ -275,8 +275,8 @@ describe("five_forces component", () => {
       }
       // Three of the five panels govern a row band (top / mid / bottom), so
       // dropping every marker drops three reserved bands of
-      // `GAP_LABEL_MARKER + MARKER_DOT_R * 2` = 16 + 8.
-      expect(fiveForces.measure(basic, 1000, ctx) - fiveForces.measure(withoutMarkers, 1000, ctx)).toBe(24 * 3)
+      // `GAP_LABEL_MARKER + MARKER_DOT_R * 2` = 22 + 8.
+      expect(fiveForces.measure(basic, 1000, ctx) - fiveForces.measure(withoutMarkers, 1000, ctx)).toBe(30 * 3)
     })
   })
 

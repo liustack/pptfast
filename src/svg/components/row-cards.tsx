@@ -33,6 +33,9 @@ const TITLE_SIZE = 19
 const TEXT_SIZE = 15
 const SUB_SIZE = 13.5
 const TITLE_LH = 26
+/** Extra air under the title before text/source, so the source line is
+ * not glued to the title (gallery review 2026-08-22). */
+const GAP_TITLE_NEXT = 8
 const ICON_SIZE = 20
 
 function cardLayout(item: RowCardsComponent["items"][number], w: number) {
@@ -56,6 +59,7 @@ function cardLayout(item: RowCardsComponent["items"][number], w: number) {
     : null
   const contentH =
     TITLE_LH +
+    GAP_TITLE_NEXT +
     (text ? text.lines.length * text.lineHeight + 2 : 0) +
     (sub ? Math.round(SUB_SIZE * 1.5) : 0)
   const cardH = PAD_Y * 2 + Math.max(NUM_R * 2, contentH)
@@ -87,7 +91,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
     // 截断预算（box.h < 测量高，layoutContentFit 单块超高兜底）：只画放
     // 得下的卡，尾部自画「+N …」——存量超预算 deck 不再画出页外。
     const truncBudget =
-      box.h != null && box.h < measuredH ? box.h - 20 : Number.POSITIVE_INFINITY
+      box.h != null && box.h < measuredH ? box.h : Number.POSITIVE_INFINITY
     let visible = component.items.length
     if (truncBudget !== Number.POSITIVE_INFINITY) {
       let acc = 0
@@ -136,7 +140,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
           const contentTop = cardY + (shellH - contentH) / 2
           const numCy = cardY + shellH / 2
           const titleBaseline = contentTop + TITLE_SIZE
-          const textTop = contentTop + TITLE_LH
+          const textTop = contentTop + TITLE_LH + GAP_TITLE_NEXT
           return (
             <g key={i} data-audit-box={`${box.x},${box.y + cardY},${box.w}`}>
               <rect
@@ -226,20 +230,7 @@ export const rowCards: SvgComponent<RowCardsComponent> = {
             </g>
           )
         })}
-        {hidden > 0 && (
-          <text
-            data-dropped={hidden}
-            x={box.w}
-            y={cursor + 14}
-            textAnchor="end"
-            fontSize={13}
-            fill={ctx.colors.muted}
-            fontFamily={ctx.fonts.body}
-            dominantBaseline="alphabetic"
-          >
-            {`+${hidden} …`}
-          </text>
-        )}
+        {hidden > 0 && <g data-dropped={hidden} />}
       </g>
     )
   },

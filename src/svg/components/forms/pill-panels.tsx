@@ -11,13 +11,11 @@ type ComparisonComponent = Extract<Component, { type: "comparison" }>
 const PILL_H = 48
 const GAP = 24
 const PAD = 18
-const MARKER_RESERVE = 20
 const LABEL_SIZE = 13
 const CELL_SIZE = 16
 
-function pillRx(knobs: FormKnobs, pillH: number, ctx: ComponentCtx): number {
+function pillRx(knobs: FormKnobs, _pillH: number, ctx: ComponentCtx): number {
   if (knobs.radius === "square") return 0
-  if (knobs.radius === "round") return pillH / 2
   return ctx.shape?.radius ?? 8
 }
 
@@ -67,7 +65,7 @@ function visibleRowCount(
   let visible = 0
   for (let i = 0; i < rows.length; i++) {
     const h = rowHeight(rows[i], bodyW, fontFamily)
-    if (cursor + h > truncBudget - MARKER_RESERVE && visible >= 1) break
+    if (cursor + h > truncBudget && visible >= 1) break
     cursor += h
     visible = i + 1
   }
@@ -224,20 +222,7 @@ export function renderPillPanels(
           </g>
         )
       })}
-      {hidden > 0 && (
-        <text
-          data-dropped={hidden}
-          x={box.w}
-          y={Math.min(totalH - 4, frameY + frameH - 6)}
-          textAnchor="end"
-          fontSize={13}
-          fill={ctx.colors.muted}
-          fontFamily={ctx.fonts.body}
-          dominantBaseline="alphabetic"
-        >
-          {`+${hidden} …`}
-        </text>
-      )}
+      {hidden > 0 && <g data-dropped={hidden} />}
     </g>
   )
 }

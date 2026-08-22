@@ -88,12 +88,17 @@ function assertInsideBox(container: HTMLElement, w: number, h: number, slop = 2)
 }
 
 describe("numbered_cards default face (no themeId)", () => {
-  it("paints an accent left rule and padded 01 numbers", () => {
+  it("paints a top hairline per cell and padded 01 numbers, never a left-edge bar", () => {
     const { container } = svg(numberedCards.render(four, { x: 80, y: 100, w: 1088 }, ctx))
-    const lines = container.querySelectorAll("line")
-    expect(lines).toHaveLength(4)
-    lines.forEach((line) => {
-      expect(line.getAttribute("stroke")).toBe(ctx.colors.accent)
+    expect(container.querySelectorAll("line")).toHaveLength(0)
+    const hairlines = [...container.querySelectorAll("rect")].filter(
+      (r) => Number(r.getAttribute("height")) <= 3,
+    )
+    expect(hairlines).toHaveLength(4)
+    hairlines.forEach((bar) => {
+      expect(bar.getAttribute("fill")).toBe(ctx.colors.accent)
+      expect(Number(bar.getAttribute("width"))).toBeGreaterThan(12)
+      expect(Number(bar.getAttribute("height"))).toBeGreaterThanOrEqual(2)
     })
     const nums = Array.from(container.querySelectorAll("text")).filter((t) =>
       /^\d{2}$/.test(t.textContent ?? ""),
@@ -128,7 +133,10 @@ describe("numbered_pills", () => {
     expect(large.getAttribute("fill")).toBe(pulse.colors.primary)
     const pills = pillRects(container)
     expect(pills).toHaveLength(4)
-    pills.forEach((p) => expect(p.getAttribute("fill")).toBe(pulse.colors.surface))
+    pills.forEach((p) => {
+      expect(p.getAttribute("fill")).toBe(pulse.colors.surface)
+      expect(Number(p.getAttribute("rx"))).toBe(pulse.shape?.radius ?? 8)
+    })
     const xs = pills.map((p) => Number(p.getAttribute("x")))
     expect(xs[0]).not.toBe(xs[xs.length - 1])
     expect(container.textContent).toContain("04")
