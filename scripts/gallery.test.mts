@@ -41,7 +41,7 @@ const themeIds = listThemes()
   .map((t) => t.id)
   .sort()
 
-/** Built once — rasterizing the placeholders is the slow part. */
+/** Built once — loading the committed JPEG fixtures is the slow part. */
 let cached: Record<LanguageId, CorpusAssets> | undefined
 async function assets(): Promise<Record<LanguageId, CorpusAssets>> {
   if (!cached) {

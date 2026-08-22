@@ -1,0 +1,9 @@
+{
+  "prompt": "Documentary photograph of a gray metal industrial onboarding cabinet standing on a steel production line floor, cable glands and small status LEDs on the door, heavy mill equipment receding behind it, mixed sodium and LED overhead factory light, slight off-center composition with a visible horizon of machinery, no logos, no readable text, realistic photo, 3:2.",
+  "generator": "grok",
+  "model": "imagine",
+  "date": "2026-08-22",
+  "source": "local grok Imagine",
+  "width": 1248,
+  "height": 832
+}

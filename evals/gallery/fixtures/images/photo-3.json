@@ -1,0 +1,9 @@
+{
+  "prompt": "Documentary photograph of an operations control room at night, a wide video wall of industrial SCADA monitors glowing blue-green, two operators seated in the middle distance, dark room lit only by the screens, realistic photo, no readable UI text, no brand logos, 3:2.",
+  "generator": "grok",
+  "model": "imagine",
+  "date": "2026-08-22",
+  "source": "local grok Imagine",
+  "width": 1248,
+  "height": 832
+}
