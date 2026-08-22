@@ -155,7 +155,10 @@ function partitionNode(node: ReactNode, options: PartitionOptions): SvgDepthLaye
 
   const declaredDepth = node.props["data-depth"]
   if (declaredDepth === "bg" || declaredDepth === "mid" || declaredDepth === "fg") {
-    push(layers, declaredDepth, node)
+    // Routing hint only. The page-level wrappers in FullSlideSvg own the
+    // three `data-depth` groups. Leaving the hint on the routed node makes
+    // L1 see four-plus groups and fail the exact bg/mid/fg contract.
+    push(layers, declaredDepth, cloneElement(node, { "data-depth": undefined }))
     return layers
   }
   if (node.props["data-decor"] !== undefined) {

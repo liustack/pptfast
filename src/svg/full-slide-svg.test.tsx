@@ -91,11 +91,29 @@ describe("FullSlideSvg", () => {
     expect(heading?.closest("[data-depth]")?.getAttribute("data-depth")).toBe("fg")
   })
 
+  it("strips layout-declared data-depth after routing so the page keeps exactly three groups", () => {
+    const chapter: Slide = {
+      type: "chapter",
+      heading: "第一部分：市场洞察",
+      layout: "ghost-rule-chapter",
+      components: [],
+    }
+    const doc: PptxIR = { ...ir([chapter]), theme: { id: "consulting" } }
+    const { container } = render(<FullSlideSvg ir={doc} slide={chapter} index={0} />)
+    const depths = Array.from(container.querySelectorAll("[data-depth]")).map((el) => el.getAttribute("data-depth"))
+    expect(depths).toEqual(["bg", "mid", "fg"])
+    const ghost = Array.from(container.querySelectorAll("text")).find(
+      (text) => text.textContent === "01" && Number(text.getAttribute("font-size")) >= 140,
+    )
+    expect(ghost?.hasAttribute("data-depth")).toBe(false)
+    expect(ghost?.closest("[data-depth]")?.getAttribute("data-depth")).toBe("mid")
+  })
+
   it("enforces the shared contrast and saturation ceilings on final midground paint", () => {
     const slide: Slide = { type: "cover", heading: "封面", components: [] }
-    const doc: PptxIR = { ...ir([slide]), theme: { id: "ember" } }
+    const doc: PptxIR = { ...ir([slide]), theme: { id: "consulting" } }
     const { container } = render(<FullSlideSvg ir={doc} slide={slide} index={0} />)
-    const tokens = resolveStyle("ember")
+    const tokens = resolveStyle("consulting")
     const ground = resolveBackgroundHex(tokens.defaultBackgrounds.cover, tokens.colors.surface)
     const mid = container.querySelector('[data-depth="mid"]')!
     const leaves = paintedLeaves(mid).filter((leaf) => leafPaint(leaf) !== null)
