@@ -261,7 +261,7 @@ describe("S3b: title-bottom vs subheading-top gap stays >=14px (shared helper, s
       const root = render(contentLayout({ ir: ir("consulting", [slide]), slide, index: 0, ctx }))
 
       const banner = Array.from(root.querySelectorAll("rect")).find(
-        (r) => r.getAttribute("x") === "96" && r.getAttribute("y") === "80",
+        (r) => r.getAttribute("x") === "96" && Number(r.getAttribute("width")) === 1088,
       )!
       const bannerBottom = Number(banner.getAttribute("y")) + Number(banner.getAttribute("height"))
       const subheadingY = Number(textByContent(root, SUBHEADING).getAttribute("y"))

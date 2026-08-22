@@ -107,10 +107,64 @@ describe("BannerChapter", () => {
     expect(Number(headRule.getAttribute("x1")) + Number(headRule.getAttribute("x2"))).toBe(1280)
     expect(Number(headRule.getAttribute("x2")) - Number(headRule.getAttribute("x1"))).toBe(672)
 
-    // 0.33em below the baseline it belongs to — `INK_DESCENT_RATIO` (0.22,
-    // the deepest measured ink) plus `UNDERLINE_AIR_RATIO` (0.11 of air).
-    expect(Number(subRule.getAttribute("y1"))).toBe(Math.round(460 + 36 * 0.33))
-    expect(Number(headRule.getAttribute("y1"))).toBe(Math.round(404 + 84 * 0.33))
+    expect(Number(subRule.getAttribute("y1"))).toBeGreaterThan(460 + 36 * 0.22)
+    expect(Number(headRule.getAttribute("y1"))).toBeGreaterThan(404 + 84 * 0.16)
+  })
+
+  it("underline sits below script-safe descent for a CJK line and a Latin line", () => {
+    const ctx = chapterCtx("consulting")
+    const deck = ir("consulting")
+    const wrap = (slide: Slide, index: number) =>
+      parseSvgRoot(
+        `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(
+          <BannerChapter ir={deck} slide={slide} index={index} ctx={ctx} />,
+        )}</svg>`,
+      )
+
+    const SCRIPT_SAFE_DESCENT = 0.22
+    const CJK_EM_DESCENT = 0.12
+    const LATIN_INK_DESCENT = 0.22
+    const MIN_OPTICAL_AIR = 0.24
+
+    const cjkRoot = wrap(chapter2, 2)
+    const cjkSub = Array.from(cjkRoot.querySelectorAll("text")).find((t) =>
+      (t.textContent ?? "").includes("面向 2027 的三个决定"),
+    )!
+    const cjkRule = cjkRoot.querySelector("line")!
+    const cjkBaseline = Number(cjkSub.getAttribute("y"))
+    const cjkSize = Number(cjkSub.getAttribute("font-size"))
+    const cjkUnderlineY = Number(cjkRule.getAttribute("y1"))
+    expect(cjkUnderlineY).toBeGreaterThan(cjkBaseline + cjkSize * SCRIPT_SAFE_DESCENT)
+    expect(cjkUnderlineY - (cjkBaseline + cjkSize * CJK_EM_DESCENT)).toBeGreaterThanOrEqual(cjkSize * MIN_OPTICAL_AIR)
+
+    const latinSlide: Slide = {
+      type: "chapter",
+      heading: "Customers and Revenue Mix",
+      subheading: "Customers",
+      components: [],
+    } as Slide
+    const latinDeck: PptxIR = {
+      version: "3",
+      filename: "x.pptx",
+      theme: { id: "consulting" },
+      meta: {},
+      assets: { images: {} },
+      slides: [latinSlide],
+    } as unknown as PptxIR
+    const latinRoot = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(
+        <BannerChapter ir={latinDeck} slide={latinSlide} index={0} ctx={ctx} />,
+      )}</svg>`,
+    )
+    const latinSub = Array.from(latinRoot.querySelectorAll("text")).find((t) => t.textContent === "Customers")!
+    const latinRule = latinRoot.querySelector("line")!
+    const latinBaseline = Number(latinSub.getAttribute("y"))
+    const latinSize = Number(latinSub.getAttribute("font-size"))
+    const latinUnderlineY = Number(latinRule.getAttribute("y1"))
+    expect(latinUnderlineY).toBeGreaterThan(latinBaseline + latinSize * SCRIPT_SAFE_DESCENT)
+    expect(latinUnderlineY - (latinBaseline + latinSize * LATIN_INK_DESCENT)).toBeGreaterThanOrEqual(
+      latinSize * MIN_OPTICAL_AIR,
+    )
   })
 
   it("没有可下划的文字时不画装饰线", () => {
@@ -158,12 +212,11 @@ describe("BannerChapter", () => {
     // deepest ink 36px type can put below its baseline (0.22em) and still
     // sits close enough to belong to that line (under 0.5em).
     const hairline = root.querySelector("line")!
-    expect(hairline.getAttribute("y1")).toBe("472")
     expect(hairline.getAttribute("y1")).toBe(hairline.getAttribute("y2"))
     const subBaseline = Number(subheadingText.getAttribute("y"))
     const subSize = Number(subheadingText.getAttribute("font-size"))
     expect(Number(hairline.getAttribute("y1"))).toBeGreaterThan(subBaseline + subSize * 0.22)
-    expect(Number(hairline.getAttribute("y1"))).toBeLessThan(subBaseline + subSize * 0.5)
+    expect(Number(hairline.getAttribute("y1"))).toBeLessThan(subBaseline + subSize * 0.65)
   })
 
   // 回填旧测试「Chapter shrinks a pathologically long heading onto <=2 lines

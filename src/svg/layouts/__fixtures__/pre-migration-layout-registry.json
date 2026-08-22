@@ -871,7 +871,8 @@
         "maxWidth": 1000,
         "fontSize": 92,
         "maxLines": 4,
-        "minPt": 36
+        "minPt": 36,
+        "lineHeightRatio": 1.25
       }
     },
     "colophon": {

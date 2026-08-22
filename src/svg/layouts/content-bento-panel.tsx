@@ -489,7 +489,7 @@ function renderKpiCard(
         y={box.y}
         width={box.w}
         height={box.h}
-        rx={BENTO_CARD_RADIUS}
+        rx={ctx.shape?.radius ?? BENTO_CARD_RADIUS}
         fill={colors.surface}
         stroke={colors.accent}
         strokeOpacity={BENTO_CARD_STROKE_OPACITY}
@@ -557,7 +557,7 @@ function renderIconCard(
         y={box.y}
         width={box.w}
         height={box.h}
-        rx={BENTO_CARD_RADIUS}
+        rx={ctx.shape?.radius ?? BENTO_CARD_RADIUS}
         fill={colors.surface}
         stroke={colors.accent}
         strokeOpacity={BENTO_CARD_STROKE_OPACITY}
@@ -704,7 +704,7 @@ function renderCell(
           y={box.y}
           width={box.w}
           height={box.h}
-          rx={BENTO_CARD_RADIUS}
+          rx={ctx.shape?.radius ?? BENTO_CARD_RADIUS}
           fill={colors.surface}
           stroke={colors.accent}
           strokeOpacity={BENTO_CARD_STROKE_OPACITY}
@@ -786,7 +786,7 @@ export function BentoPanelContent({ ir, slide, index, ctx }: SvgTemplateProps) {
     x: 96,
     y: headingLastY + 36 + subheadingBudget,
     w: 1088,
-    h: Math.max(0, 640 - (headingLastY + 36 + subheadingBudget)),
+    h: Math.max(0, 620 - (headingLastY + 36 + subheadingBudget)),
   }
 
   // Explode kpi_cards components into one bento tile per item *before* the grid

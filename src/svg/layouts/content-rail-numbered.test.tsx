@@ -248,6 +248,33 @@ describe("RailNumberedContent", () => {
     expect(Number(labelBig?.getAttribute("font-size"))).toBeGreaterThanOrEqual(10)
   })
 
+  it("number badge radius follows shape.radius", () => {
+    const tokens = resolveStyle("vermilion")
+    const ctx = buildCtx(tokens, {})
+    const slide: Slide = {
+      type: "content",
+      heading: "编号导轨",
+      components: [{ type: "paragraph", text: "正文。" }],
+    } as Slide
+    const doc: PptxIR = {
+      version: "3",
+      filename: "x.pptx",
+      theme: { id: "vermilion" },
+      meta: {},
+      assets: { images: {} },
+      slides: [slide],
+    } as unknown as PptxIR
+    const root = parseSvgRoot(
+      `<svg xmlns="http://www.w3.org/2000/svg">${renderSvgMarkup(
+        <RailNumberedContent ir={doc} slide={slide} index={0} ctx={ctx} />,
+      )}</svg>`,
+    )
+    const badge = Array.from(root.querySelectorAll("rect")).find(
+      (r) => r.getAttribute("width") === "64" && r.getAttribute("height") === "32",
+    )!
+    expect(badge.getAttribute("rx")).toBe(String(tokens.shape?.radius))
+  })
+
   it("Content body passes subset validation（迁移自 academic.test.tsx）", () => {
     const ctx = buildCtx({ ...resolveStyle("academic"), shape: undefined }, {})
     const slide: Slide = {

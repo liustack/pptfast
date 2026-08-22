@@ -216,7 +216,7 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
         y={topRect.y}
         width={topRect.w}
         height={topRect.h}
-        rx={PANEL_RADIUS}
+        rx={ctx.shape?.radius ?? PANEL_RADIUS}
         fill="none"
         stroke={colors.border ?? colors.muted}
         strokeOpacity={0.45}
@@ -234,7 +234,7 @@ export function AsymmetricTriptychContent({ ir, slide, index, ctx }: SvgTemplate
             y={bottomRect.y}
             width={bottomRect.w}
             height={bottomRect.h}
-            rx={PANEL_RADIUS}
+            rx={ctx.shape?.radius ?? PANEL_RADIUS}
             fill="none"
             stroke={colors.border ?? colors.muted}
             strokeOpacity={0.45}

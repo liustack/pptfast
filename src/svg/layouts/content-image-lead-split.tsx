@@ -238,15 +238,16 @@ function renderVisualPlaceholder(rect: ContentRect, ctx: ComponentCtx) {
   const cx = rect.x + rect.w / 2
   const cy = rect.y + rect.h / 2
   const r = Math.min(rect.w, rect.h) * 0.22
+  const radius = ctx.shape?.radius ?? VISUAL_RADIUS
   return (
     <g data-audit-rect={`${rect.x},${rect.y},${rect.w},${rect.h}`}>
-      <rect x={rect.x} y={rect.y} width={rect.w} height={rect.h} rx={VISUAL_RADIUS} fill={colors.surface} />
+      <rect x={rect.x} y={rect.y} width={rect.w} height={rect.h} rx={radius} fill={colors.surface} />
       <rect
         x={rect.x + 0.5}
         y={rect.y + 0.5}
         width={rect.w - 1}
         height={rect.h - 1}
-        rx={VISUAL_RADIUS}
+        rx={radius}
         fill="none"
         stroke={colors.border ?? colors.muted}
         strokeWidth={1}

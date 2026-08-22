@@ -58,24 +58,15 @@ const ACCENT_BAR_W = 56
 const ACCENT_BAR_H = 4
 
 const TITLE_Y = 300 // first-line baseline anchor
+const HEADING_LINE_HEIGHT_RATIO = 1.25
 
 const ANNOTATION_GAP = 64 // heading's last line -> subheading annotation
-const BODY_GAP = 56 // (subheading, or heading's last line) -> body slot
+const CITATION_AIR = 36 // last heading ink -> citation box
 const BODY_RECT_W = 760
 const BODY_RECT_H = 80
-// Defensive ceiling so the body rect's own declared `data-audit-box` never
-// runs off the page bottom for a pathologically tall (4-line) heading — a
-// heading long enough to actually need this room is exactly the case
-// `ir-quality.ts`'s `pinned_heading_overflow` hard error blocks before
-// it ever reaches render through the normal validate -> render CLI path;
-// this ceiling only protects the *direct* render call
-// `audit-baseline.test.ts` exercises (that fixture deliberately bypasses
-// validate — see its own file header).
-// Lowered from 616 on 2026-08-15: at 616 the body rect's own bottom edge
-// (616 + 80) reached 696, i.e. past the brand chrome's footer divider at
-// y=664, so a body block that used its full height collided with the
-// footer. 528 keeps the rect's bottom at 608, clear of the footnote below.
-const BODY_RECT_MAX_Y = 528
+const LATIN_DESCENT_RATIO = 0.22
+const CITATION_BOTTOM_LIMIT = 608
+const HEADING_BAR_AIR = 24
 
 // Above the brand chrome's footer divider (`brand-chrome.tsx`, y=664), not
 // below it. At the previous 676 this baseline put the footnote's ascenders
@@ -97,11 +88,32 @@ export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
   // `fontFamily` is supplied here rather than on the shared object: it comes
   // from this layout's render `ctx`, which the validate-side check has no
   // access to (and deliberately doesn't need — see that check's own comment).
-  const heading = fitHeadingLines(slide.heading, {
+  const minPt = layoutDef.headingFit.minPt ?? 36
+  const fitOpts = {
     ...layoutDef.headingFit,
+    lineHeightRatio: HEADING_LINE_HEIGHT_RATIO,
     fontFamily: fonts.heading,
     typeScale: ctx.shape?.typeScale,
-  })
+  }
+  let heading = fitHeadingLines(slide.heading, fitOpts)
+  const hasBody = slide.components.length > 0
+  const lastInkBottom = (h: typeof heading) => {
+    const lastY = TITLE_Y + Math.max(0, h.lines.length - 1) * h.lineHeight
+    return lastY + h.fontSize * LATIN_DESCENT_RATIO
+  }
+  const headingFits = (h: typeof heading) => {
+    const emTop = TITLE_Y - h.fontSize * 0.88
+    if (emTop < ACCENT_BAR_Y + ACCENT_BAR_H + HEADING_BAR_AIR) return false
+    if (!hasBody) return lastInkBottom(h) <= 640
+    return lastInkBottom(h) + CITATION_AIR + BODY_RECT_H <= CITATION_BOTTOM_LIMIT
+  }
+  let fontSize = heading.fontSize
+  let maxLines = layoutDef.headingFit.maxLines ?? 4
+  while (!headingFits(heading) && (fontSize > minPt || maxLines > 1)) {
+    if (fontSize > minPt) fontSize = Math.max(minPt, fontSize - 4)
+    else maxLines -= 1
+    heading = fitHeadingLines(slide.heading, { ...fitOpts, fontSize, maxLines, minPt })
+  }
   const titleLastY = TITLE_Y + Math.max(0, heading.lines.length - 1) * heading.lineHeight
 
   // Subheading, when present, is an annotation (small, muted) — not the
@@ -115,7 +127,11 @@ export function QuoteStageContent({ slide, ctx }: SvgTemplateProps) {
     : null
   const subheadingY = titleLastY + ANNOTATION_GAP
 
-  const bodyY = Math.min((subheading ? subheadingY : titleLastY) + BODY_GAP, BODY_RECT_MAX_Y)
+  const citationTop = lastInkBottom(heading) + CITATION_AIR
+  const bodyY = Math.min(
+    subheading ? subheadingY + 24 : citationTop,
+    CITATION_BOTTOM_LIMIT - BODY_RECT_H,
+  )
   const bodyRect: ContentRect = {
     x: CENTER_X - BODY_RECT_W / 2,
     y: bodyY,
@@ -234,5 +250,6 @@ export const layoutDef = {
     fontSize: 92,
     maxLines: 4,
     minPt: 36,
+    lineHeightRatio: HEADING_LINE_HEIGHT_RATIO,
   },
 } satisfies LayoutDefinition

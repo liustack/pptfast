@@ -193,7 +193,7 @@ export function RailNumberedContent({ ir, slide, index, ctx }: SvgTemplateProps)
         y={BADGE_Y}
         width={BADGE_W}
         height={BADGE_H}
-        rx={BADGE_RADIUS}
+        rx={ctx.shape?.radius ?? BADGE_RADIUS}
         fill={colors.primary}
       />
       <text

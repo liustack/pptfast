@@ -224,7 +224,7 @@ export function SideHighlightContent({ ir, slide, index, ctx }: SvgTemplateProps
       )}
 
       {/* Persistent highlight panel — see file header, unconditional. */}
-      <rect x={PANEL_X} y={PANEL_Y} width={PANEL_W} height={PANEL_H} rx={PANEL_RADIUS} fill={colors.primary} />
+      <rect x={PANEL_X} y={PANEL_Y} width={PANEL_W} height={PANEL_H} rx={ctx.shape?.radius ?? PANEL_RADIUS} fill={colors.primary} />
 
       <text
         data-truncated={badge.truncated ? "1" : undefined}
