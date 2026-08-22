@@ -771,6 +771,18 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // kpi_cards, 1-indexed slide 3) changes. Cover, chapter, quote, and
       // ending stay byte-identical. `.audit.json` needed no recapture
       // (findings stayed the empty array). PPTX only `ppt/slides/slide3.xml`.
+      //
+      // Recaptured (gallery review r1, 2026-08-22). Intended visual
+      // geometry, not a migration regression. `.audit.json` needed no
+      // recapture (findings stayed the empty array). Targeted diff:
+      //   - `basic` (`consulting`): slide 3 `bento-panel` content rect
+      //     454→434 (bottom 640→620) and card `rx` 6→2 (`shape.radius`).
+      //     PPTX `ppt/slides/slide4.xml`.
+      //   - `scenarioBearing` (`journal`): slide 1 quote mark baseline
+      //     56→64, slide 2 `banner-heading` banner y 80→92, slide 3
+      //     `side-highlight` panel `rx` 12→6. PPTX slides 2/3/4.xml.
+      //   - `annualReviewPreset` (`journal`): slide 3 quote mark baseline
+      //     56→64. PPTX `ppt/slides/slide4.xml`.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
