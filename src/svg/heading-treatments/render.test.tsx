@@ -209,16 +209,17 @@ describe("baseline insight", () => {
     expect(hair.getAttribute("fill")).toBe(colors.border)
   })
 
-  it("enhanced: sub right-aligned, contentRect stays 210", () => {
+  it("enhanced: sub right-aligned as a short phrase, contentRect stays 210", () => {
     const { treated, colors } = withChapter("insight", { subheading: SUB })
     expect(treated!.contentRect.y).toBe(210)
     const root = rootOf(treated!.chrome)
-    const sub = textContaining(root, SUB)
-    expect(num(sub, "x")).toBe(1184)
-    expect(num(sub, "y")).toBe(132)
-    expect(sub.getAttribute("text-anchor")).toBe("end")
-    expect(num(sub, "font-size")).toBe(16)
-    expect(sub.getAttribute("fill")).toBe(colors.accent)
+    const sub = texts(root).find((t) => num(t, "x") === 1184 && num(t, "y") === 132)
+    expect(sub).toBeTruthy()
+    expect(sub!.getAttribute("text-anchor")).toBe("end")
+    expect(num(sub!, "font-size")).toBeLessThanOrEqual(16)
+    expect(sub!.getAttribute("fill")).toBe(colors.accent)
+    expect((sub!.textContent ?? "").length).toBeGreaterThan(0)
+    expect((sub!.textContent ?? "").length).toBeLessThan(SUB.length)
   })
 
   it("no-title: no anchor, contentRect y=64", () => {

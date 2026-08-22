@@ -7,7 +7,7 @@ import { hasCjk } from "../layouts/minimal-shared"
 import { stacksVertically } from "../../lib/text-script"
 import { parseEmphasis } from "../emphasis"
 import { accessibleInk, readableOn } from "../ink"
-import { layoutSvgText } from "../../lib/svg-text-layout"
+import { fitSvgLine, layoutSvgText } from "../../lib/svg-text-layout"
 import { fitHeadingLines } from "../heading-fit"
 import {
   resolveHeadingTreatment,
@@ -303,6 +303,9 @@ function renderBaseline(args: RenderArgs): { chrome: ReactNode; contentRect: Con
   const rightSlot = args.knobs.rightSlot ?? "none"
   const journalEnhanced = rule === "double-tone" && hasSub
   const insightSide = rule === "hairline" && hasSub
+  const sidePhrase = insightSide
+    ? fitSvgLine(args.subheading, { maxWidth: 200, fontSize: 16, minFontSize: 16, fontFamily: fonts.body })
+    : null
   const title = fitTitle(args.heading, 40, 1088, fonts.heading)
   const lift = extraTitleY(title)
   const contentY = (journalEnhanced ? 248 : 210) + lift
@@ -328,17 +331,17 @@ function renderBaseline(args: RenderArgs): { chrome: ReactNode; contentRect: Con
             {line}
           </text>
         ))}
-        {insightSide && (
+        {sidePhrase && (
           <text
             x={1184}
             y={132}
-            fontSize={16}
+            fontSize={sidePhrase.fontSize}
             fontFamily={fonts.body}
-            fill={ink(colors.accent, args.ctx, 16)}
+            fill={ink(colors.accent, args.ctx, sidePhrase.fontSize)}
             textAnchor="end"
             dominantBaseline="alphabetic"
           >
-            {args.subheading}
+            {sidePhrase.text}
           </text>
         )}
         {numero && (
