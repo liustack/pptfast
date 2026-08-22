@@ -206,14 +206,12 @@ export function buildMatrix(
     }
   }
 
-  // ── Density table ──────────────────────────────────────────────────────
-  // One overfilled component per page, so the "+N …" degrade path the
-  // nine drop-capable components share gets looked at by a person. Kept as
-  // its own table rather than mixed into the component table because it
-  // answers a different question, and because its findings are the point
-  // rather than a regression — a reviewer scanning the component table for
-  // `content-dropped` should not have to skip nine pages that are supposed
-  // to drop content.
+  // ── Full-load table (id stays "density") ───────────────────────────────
+  // One component per page, filled to the largest count that still fits.
+  // Kept as its own table rather than mixed into the component table
+  // because it answers a different question (full load, not the ordinary
+  // case). Table id stays "density" so `--only=density` and job ids
+  // `density--…` keep working.
   if (!opts.only || opts.only === "density") {
     for (const [componentId, build] of Object.entries(DENSITY_BUILDERS).sort(([a], [b]) => a.localeCompare(b))) {
       for (const language of languages) {
