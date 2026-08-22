@@ -2,7 +2,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { chmodSync, readFileSync } from "node:fs"
+import { chmodSync, existsSync, readFileSync } from "node:fs"
 import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import {
@@ -14,6 +14,7 @@ import {
   runDoctor,
   runSelfTest,
   scanSkillCopies,
+  SKILL_COPY_FILES,
 } from "./doctor"
 
 // The self-test render goes through the real pipeline, which needs the Node
@@ -113,6 +114,13 @@ describe("readPinnedVersion", () => {
 })
 
 describe("scanSkillCopies", () => {
+  it("every SKILL_COPY_FILES path exists in the repo skill folder", () => {
+    const root = join(process.cwd(), "skills", "pptfast")
+    for (const rel of SKILL_COPY_FILES) {
+      expect(existsSync(join(root, rel)), `missing skills/pptfast/${rel}`).toBe(true)
+    }
+  })
+
   it("finds a copy in every documented skill root and reads its pin", async () => {
     const home = await makeHome()
     try {
@@ -184,6 +192,39 @@ describe("scanSkillCopies", () => {
       expect(skills.copies).toEqual([])
       expect(skills.scanned).toHaveLength(3)
       expect(skills.scanned[0]).toContain(".claude")
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it("warns when a current pin is missing the references booklets, without calling it stale", async () => {
+    const home = await makeHome()
+    try {
+      const copyDir = await writeSkillCopy(home, ".claude/skills", CURRENT)
+      await writeFile(join(copyDir, "SKILL.md"), "# pptfast\n")
+      await writeFile(join(copyDir, "SKILL.zh-CN.md"), "# pptfast\n")
+      await writeFile(join(copyDir, "scripts", "run.ps1"), "# stub\n")
+      const [copy] = (await scanSkillCopies(home, CURRENT)).copies
+      expect(copy).toMatchObject({ pinned: CURRENT, stale: false })
+      expect(copy!.missing.length).toBeGreaterThan(0)
+      expect(copy!.missing.every((rel) => rel.startsWith("references/"))).toBe(true)
+      expect(copy!.missing).toContain("references/spec.md")
+      expect(copy!.missing).not.toContain("SKILL.md")
+      expect(copy!.missing).not.toContain("scripts/run.sh")
+      expect(copy!.missing).not.toContain("scripts/run.ps1")
+
+      const report = await buildDoctorReport({ home, env: { PATH: "" }, version: CURRENT })
+      const warning = report.warnings.find((w) => w.check === "skill copy")
+      expect(warning?.message).toContain(copyDir)
+      expect(warning?.message).toMatch(/references/)
+      expect(copy.stale).toBe(false)
+
+      const rendered = renderDoctorReport(report)
+      expect(rendered).toContain("[!]")
+      expect(rendered).toContain("references/spec.md")
+      expect(rendered).toContain(
+        "git clone --depth 1 https://github.com/liustack/pptfast.git /tmp/pptfast-src && cp -R /tmp/pptfast-src/skills/pptfast/. ",
+      )
     } finally {
       await rm(home, { recursive: true, force: true })
     }
