@@ -8,7 +8,7 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import { installNodePlatform } from "@/platform/node"
 import type { ProcessRun, ProcessRunner } from "@/cli/image-generators"
-import { l2SkipReason, judgeL2 } from "./l2"
+import { l2SkipReason, judgeL2, parseL2Stdout } from "./l2"
 import { parseEvalArgs } from "./args"
 import { auditL1 } from "./l1"
 
@@ -72,6 +72,28 @@ describe("parseEvalArgs", () => {
   })
 })
 
+describe("parseL2Stdout", () => {
+  it("reads grok --json-schema wrapped structuredOutput", () => {
+    const wrapped = JSON.stringify({
+      text: JSON.stringify({ verdict: "limit", note: "maybe", findings: ["text"] }),
+      stopReason: "end_turn",
+      structuredOutput: {
+        id: PAGE.id,
+        table: PAGE.table,
+        subject: PAGE.subject,
+        language: PAGE.language,
+        theme: PAGE.theme,
+        page: PAGE.page,
+        verdict: "rework",
+        note: "wrapped",
+        findings: ["taboo"],
+        source: "l2",
+      },
+    })
+    expect(parseL2Stdout(wrapped, PAGE)).toMatchObject({ verdict: "rework", note: "wrapped", source: "l2" })
+  })
+})
+
 describe("judgeL2", () => {
   it("calls grok with the vision contract and never spawns a real process", async () => {
     const calls: ProcessRun[] = []
@@ -112,7 +134,8 @@ describe("judgeL2", () => {
     expect(args).toContain("--permission-mode")
     expect(args).toContain("bypassPermissions")
     expect(args).toContain("--max-turns")
-    expect(args).toContain("8")
+    expect(args).toContain("16")
+    expect(args).toContain("--no-subagents")
     expect(args).toContain("--json-schema")
     expect(readFileSync(join(workdir, "page.png")).length).toBeGreaterThan(0)
     expect(readdirSync(join(workdir, "rubric")).some((f) => f.endsWith(".md"))).toBe(true)

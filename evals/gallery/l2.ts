@@ -3,7 +3,7 @@
  * ProcessRunner is injectable so unit tests never spawn grok.
  */
 
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -54,7 +54,7 @@ export interface L2Verdict extends GalleryPageMeta {
 }
 
 const DEFAULT_RUBRIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "rubric")
-const GROK_TIMEOUT_MS = 180_000
+const GROK_TIMEOUT_MS = 480_000
 const CROWDED = new Set(["overflow", "overlap"])
 
 export function l2SkipReason(opts: { ci: boolean; l1Only: boolean; grokBin: string | null }): string | null {
@@ -64,23 +64,34 @@ export function l2SkipReason(opts: { ci: boolean; l1Only: boolean; grokBin: stri
   return null
 }
 
-function copyRubric(srcDir: string, destDir: string): string[] {
+function copyRubric(srcDir: string, destDir: string): { names: string[]; combined: string } {
   mkdirSync(destDir, { recursive: true })
-  const names = readdirSync(srcDir).filter((f) => f.endsWith(".md"))
-  for (const name of names) copyFileSync(join(srcDir, name), join(destDir, name))
-  return names
+  const names = readdirSync(srcDir).filter((f) => f.endsWith(".md")).sort()
+  const chunks: string[] = []
+  for (const name of names) {
+    copyFileSync(join(srcDir, name), join(destDir, name))
+    chunks.push(`# ${name}\n\n${readFileSync(join(srcDir, name), "utf8").trim()}`)
+  }
+  const combined = `${chunks.join("\n\n")}\n`
+  writeFileSync(join(destDir, "ALL.md"), combined)
+  return { names, combined }
 }
 
-function buildPrompt(page: GalleryPageMeta, l1: L1Result, rubricFiles: string[], hasBrowserPng: boolean): string {
+function buildPrompt(
+  page: GalleryPageMeta,
+  l1: L1Result,
+  rubric: { names: string[]; combined: string },
+  hasBrowserPng: boolean,
+): string {
   const l1Lines =
     l1.findings.length === 0
       ? "L1 reported no geometry findings."
       : `L1 findings:\n${l1.findings.map((f) => `- ${f.code}: ${f.message}`).join("\n")}`
   return [
     "You are auditing one pptfast gallery slide against a written rubric.",
-    "Read page.png in this working directory.",
-    hasBrowserPng ? "Also read page-browser.png (a real-browser screenshot of the same SVG)." : "",
-    `Read every markdown file in rubric/ (${rubricFiles.join(", ")}). Rules are in Chinese. Decide in structured JSON.`,
+    "Read page.png in this working directory (and page-browser.png if present). Then output the JSON.",
+    hasBrowserPng ? "page-browser.png is a real-browser screenshot of the same SVG." : "",
+    "The rubric is inlined below. Do not spend turns re-reading rubric files.",
     `Page id: ${page.id}`,
     `table=${page.table} subject=${page.subject} language=${page.language} theme=${page.theme} page=${page.page}`,
     l1Lines,
@@ -90,6 +101,9 @@ function buildPrompt(page: GalleryPageMeta, l1: L1Result, rubricFiles: string[],
     "findings: short English codes (taboo, gravity, text, breathing, theme-independence, or L1 codes).",
     "note: one or two sentences naming the broken rule.",
     'source must be "l2". Extra fields confidence and rubricHits are allowed.',
+    "",
+    "## Rubric",
+    rubric.combined,
   ]
     .filter(Boolean)
     .join("\n")
@@ -117,7 +131,7 @@ function asVerdict(value: unknown, fallback: GalleryPageMeta): L2Verdict | null 
     if (Array.isArray(v.rubricHits)) out.rubricHits = v.rubricHits.map((x) => String(x))
     return out
   }
-  for (const key of ["result", "output", "data", "message"]) {
+  for (const key of ["structuredOutput", "result", "output", "data", "message", "text"]) {
     const inner = v[key]
     if (typeof inner === "string") {
       try {
@@ -184,8 +198,8 @@ export async function judgeL2(input: JudgeL2Input): Promise<L2Verdict> {
     else playwrightSkip = browser.skipReason
   }
 
-  const rubricFiles = copyRubric(rubricDir, join(workdir, "rubric"))
-  const prompt = buildPrompt(input.page, input.l1, rubricFiles, crowded && !playwrightSkip)
+  const rubric = copyRubric(rubricDir, join(workdir, "rubric"))
+  const prompt = buildPrompt(input.page, input.l1, rubric, crowded && !playwrightSkip)
   const result = await run({
     command: grokBin,
     args: [
@@ -195,8 +209,9 @@ export async function judgeL2(input: JudgeL2Input): Promise<L2Verdict> {
       workdir,
       "--permission-mode",
       "bypassPermissions",
+      "--no-subagents",
       "--max-turns",
-      "8",
+      "16",
       "--json-schema",
       JSON.stringify(L2_JSON_SCHEMA),
     ],
