@@ -1,5 +1,5 @@
 {
-  "prompt": "Photograph filling the frame with a single large computer monitor showing a dark industrial operations dashboard, charts and maps slightly out of focus so no letters are readable, cool screen light, no brand frame, realistic photo of a display, 16:9.",
+  "prompt": "Full-bleed view of a modern SaaS analytics dashboard filling the entire frame, light grey canvas with teal KPI cards, a line chart, and a map-like panel, all slightly out of focus so no letters are readable. Soft even lighting, clean product-interface look with no device bezel and no physical monitor frame, 16:9.",
   "generator": "grok",
   "model": "imagine",
   "date": "2026-08-22",
