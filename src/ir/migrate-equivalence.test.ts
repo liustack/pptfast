@@ -811,6 +811,21 @@ describe("v3 → v4 migration equivalence (task 1 hard gate, spec §10/§12)", (
       // empty array, pagesAudited 5).
       // basic / scenarioBearing live pipeline matched the r1 goldens
       // byte-for-byte. Not recaptured.
+      //
+      // Recaptured (heading-treatments, 2026-08-22). Content-page heading
+      // chrome is a render-side assignment table. IR is unchanged. Cover,
+      // chapter, and ending do not pick a content treatment, so those
+      // slides of `basic` stay byte-identical (index 0 cover, 1 chapter,
+      // 4 ending pinned banner-ending). Content slides of assigned themes
+      // move. Targeted SVG diff:
+      //   - `basic` (`consulting`, has a chapter so GhostIndex lands):
+      //     slides 2 and 3 (content) move. Cover, chapter, ending same.
+      //   - `scenarioBearing` (`journal`, no chapter in the fixture).
+      //     Baseline does not require a chapter, so content pages still
+      //     pick Baseline. Slides 1, 2, 3 (content) move. Cover and
+      //     ending same.
+      //   - `annualReviewPreset` (`journal`, has a chapter): slides 2
+      //     and 3 (content) move. Cover, chapter, ending same.
       it("renders SVG byte-identical to the base-commit (pre-rename) capture, slide for slide", () => {
         const goldenSvgs = readGoldenJson<string[]>(`${name}.svg`)
         const migratedSvgs = v4.slides.map((_, i) => renderSlideSvg(v4, i))
