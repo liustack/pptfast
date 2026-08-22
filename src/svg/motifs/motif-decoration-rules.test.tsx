@@ -118,7 +118,7 @@ describe("B2 decoration is always background on content pages", () => {
   })
 
   it("content-page motif paints stay visible (not deleted by the fade)", () => {
-    for (const id of ["constellation-motif", "ember-motif"] as const) {
+    for (const id of ["constellation-motif"] as const) {
       const { root, defaultBg } = drawMotif(id, "content")
       const leaves = paintedLeaves(root)
       expect(leaves.length, `${id} vanished on content`).toBeGreaterThan(0)

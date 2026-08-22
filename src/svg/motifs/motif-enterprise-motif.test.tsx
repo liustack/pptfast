@@ -4,23 +4,15 @@ import { renderSvgMarkup, parseSvgRoot } from "../serialize"
 import { assertSubset } from "../subset-validate"
 import { buildCtx } from "../full-slide-svg"
 import { resolveStyle } from "../../themes"
+import { readableOn } from "../ink"
 import { EnterpriseMotif } from "./motif-enterprise-motif"
+import { countDecorPieces, DECOR_PIECE_ATTR, MAX_DECOR_PIECES } from "./decor-budget"
 import type { PptxIR, Slide } from "@/ir"
 
 const coverSlide: Slide = { type: "cover", heading: "封面", components: [] } as Slide
 const chapterSlide: Slide = { type: "chapter", heading: "章节", components: [] } as Slide
 const contentSlide: Slide = { type: "content", heading: "内容", components: [] } as Slide
 const endingSlide: Slide = { type: "ending", components: [] } as Slide
-/** chapter 不画，其余三档画同一张（v1 的强/弱档已取消）。 */
-const DRAWN_SLIDES = [coverSlide, contentSlide, endingSlide]
-
-/** 设计板上的四条红虚线禁区。 */
-const TITLE_ZONE = { x: 96, y: 48, w: 1040, h: 122 }
-const BODY_ZONE = { x: 96, y: 200, w: 1040, h: 420 }
-const FOOTER_ZONE = { x: 48, y: 664, w: 1184, h: 44 }
-/** 默认（`br`）品牌 logo 盒，`branding.tsx` 的 `logoBox`；右上带同宽同高。 */
-const LOGO_BOX = { x: 1120, y: 630, w: 96, h: 40 }
-const TR_LOGO_BAND = { x: 1120, y: 48, w: 96, h: 40 }
 
 const ir = (theme: string): PptxIR =>
   ({
@@ -49,43 +41,78 @@ function draw(theme: string, slide: Slide) {
 const num = (el: Element, a: string) => Number(el.getAttribute(a))
 
 /**
- * enterprise-motif v2「方块秩序」（2026-08-20 冷调组皮肤重设计）。
- * 设计源：`.issues/2026-08-18-theme-redesign/skins/group3-cool-boards.dc.html`
- * 的 enterprise 设计表。本文件是本轮新建。
+ * enterprise-motif v3「方块秩序」（第八波制度板对账）。
  */
-describe("EnterpriseMotif（方块秩序）", () => {
-  it("cover/content/ending 画同一张：尺身一条 + 六枚齿 + 三枚方块阶 + 一枚 accent 方块", () => {
-    for (const slide of DRAWN_SLIDES) {
-      const { root } = draw("enterprise", slide)
-      expect(Array.from(root.querySelectorAll("line")), `ruler on ${slide.type}`).toHaveLength(7) // 尺身 1 + 齿 6
-      expect(Array.from(root.querySelectorAll("rect")), `squares on ${slide.type}`).toHaveLength(4) // 阶 3 + accent 1
-    }
+describe("EnterpriseMotif（方块秩序 v3）", () => {
+  it("cover 只画右上三枚方块阶，不画刻度尺，不画左下 accent 方块", () => {
+    const { root } = draw("enterprise", coverSlide)
+    expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
+    expect(Array.from(root.querySelectorAll("rect"))).toHaveLength(3)
+    expect(root.querySelector(`[${DECOR_PIECE_ATTR}="ikb-steps"]`)).toBeTruthy()
+    expect(root.querySelector(`[${DECOR_PIECE_ATTR}="spark"]`)).toBeNull()
+    expect(root.querySelector(`[${DECOR_PIECE_ATTR}="ruler"]`)).toBeNull()
   })
 
-  it("cover/ending 输出完全相同。内容页退底，件数不变", () => {
-    expect(draw("enterprise", coverSlide).markup).toBe(draw("enterprise", endingSlide).markup)
-    expect(draw("enterprise", contentSlide).root.querySelectorAll("line")).toHaveLength(7)
-    expect(draw("enterprise", contentSlide).root.querySelectorAll("rect")).toHaveLength(4)
+  it("cover 方块阶几何与板上一致，opacity 0.28（第三枚再半档）", () => {
+    const { root, ctx } = draw("enterprise", coverSlide)
+    const ink = readableOn(ctx.colors.primary)
+    const rects = Array.from(root.querySelectorAll("rect"))
+    expect(rects.map((r) => [num(r, "x"), num(r, "y"), num(r, "width"), num(r, "height")])).toEqual([
+      [1120, 64, 26, 26],
+      [1154, 98, 26, 26],
+      [1086, 98, 26, 26],
+    ])
+    for (const r of rects) expect(r.getAttribute("fill")).toBe(ink)
+    expect(Number(rects[0]?.getAttribute("opacity"))).toBe(0.28)
+    expect(Number(rects[1]?.getAttribute("opacity"))).toBe(0.28)
+    expect(Number(rects[2]?.getAttribute("opacity"))).toBeCloseTo(0.14)
   })
 
-  it("chapter 完全退让——顶带正是 chapter 版式摆 org 行与分隔线的地方", () => {
+  it("chapter 浅底画顶缘刻度尺，不画方块阶、不画孤立 accent", () => {
     const { root } = draw("enterprise", chapterSlide)
-    expect(root.children).toHaveLength(0)
+    expect(Array.from(root.querySelectorAll("line"))).toHaveLength(7)
+    expect(Array.from(root.querySelectorAll("rect"))).toHaveLength(0)
+    expect(root.querySelector(`[${DECOR_PIECE_ATTR}="ruler"]`)).toBeTruthy()
+  })
+
+  it("ending 完全退让", () => {
+    const { root } = draw("enterprise", endingSlide)
     expect(Array.from(root.querySelectorAll("rect"))).toHaveLength(0)
     expect(Array.from(root.querySelectorAll("line"))).toHaveLength(0)
   })
 
-  it("颜色一律读 token：尺身 border、齿 muted、方块阶 primary、左下方块 accent", () => {
+  it("content 画尺 + 三枚递减方块阶，不画左下 accent", () => {
+    const { root } = draw("enterprise", contentSlide)
+    expect(Array.from(root.querySelectorAll("line"))).toHaveLength(7)
+    expect(Array.from(root.querySelectorAll("rect"))).toHaveLength(3)
+    expect(root.querySelector(`[${DECOR_PIECE_ATTR}="spark"]`)).toBeNull()
+  })
+
+  it("content 方块阶仍是 v2 几何：三枚递减方块底边同在 y40", () => {
+    const { root } = draw("enterprise", contentSlide)
+    const rects = Array.from(root.querySelectorAll("rect")).map((r) => [
+      num(r, "x"),
+      num(r, "y"),
+      num(r, "width"),
+      num(r, "height"),
+    ])
+    expect(rects).toEqual([
+      [1150, 12, 28, 28],
+      [1188, 20, 20, 20],
+      [1218, 26, 14, 14],
+    ])
+    for (const [, y, , h] of rects) expect(y + h).toBe(40)
+  })
+
+  it("颜色一律读 token：尺身 border、齿 muted、content 方块阶 primary", () => {
     const t = resolveStyle("enterprise")
-    const { root } = draw("enterprise", coverSlide)
+    const { root } = draw("enterprise", contentSlide)
     const rule = Array.from(root.querySelectorAll("line")).find((l) => num(l, "x1") !== num(l, "x2"))!
     expect(rule.getAttribute("stroke")).toBe(t.colors.border)
     const ticks = Array.from(root.querySelectorAll("line")).filter((l) => l.getAttribute("stroke") === t.colors.muted)
     expect(ticks, "ticks must read colors.muted").toHaveLength(6)
     const steps = Array.from(root.querySelectorAll("rect")).filter((r) => r.getAttribute("fill") === t.colors.primary)
     expect(steps, "square steps must read colors.primary").toHaveLength(3)
-    const spark = Array.from(root.querySelectorAll("rect")).find((r) => r.getAttribute("fill") === t.colors.accent)
-    expect(spark, "the single spark square must read colors.accent").toBeTruthy()
   })
 
   it("motif 不读 chartPalette——图表调色板轮转改不动它一个字节", () => {
@@ -104,8 +131,8 @@ describe("EnterpriseMotif（方块秩序）", () => {
     expect(markups.size).toBe(1)
   })
 
-  it("刻度尺几何：y36 一条 x48→1120 的尺身，六枚齿两长四短、等距 214", () => {
-    const { root } = draw("enterprise", coverSlide)
+  it("chapter 刻度尺几何：y36 一条 x48→1120 的尺身，六枚齿两长四短、等距 214", () => {
+    const { root } = draw("enterprise", chapterSlide)
     const lines = Array.from(root.querySelectorAll("line")).map((l) => [
       num(l, "x1"),
       num(l, "y1"),
@@ -123,56 +150,11 @@ describe("EnterpriseMotif（方块秩序）", () => {
     ])
   })
 
-  it("方块阶与 accent 方块几何：三枚递减方块底边同在 y40，accent 一枚在 x60,y626", () => {
-    const { root } = draw("enterprise", coverSlide)
-    const rects = Array.from(root.querySelectorAll("rect")).map((r) => [
-      num(r, "x"),
-      num(r, "y"),
-      num(r, "width"),
-      num(r, "height"),
-    ])
-    expect(rects).toEqual([
-      [1150, 12, 28, 28],
-      [1188, 20, 20, 20],
-      [1218, 26, 14, 14],
-      [60, 626, 16, 16],
-    ])
-    for (const [, y, , h] of rects.slice(0, 3)) expect(y + h).toBe(40)
-  })
-
-  /** 安全区守卫（设计板的四条红虚线逐条量）。 */
-  it("安全区：刻度尺与方块阶整组在标题区上沿 y48 之上", () => {
-    const { root } = draw("enterprise", coverSlide)
-    for (const l of Array.from(root.querySelectorAll("line"))) {
-      expect(Math.max(num(l, "y1"), num(l, "y2"))).toBeLessThan(TITLE_ZONE.y)
-    }
-    for (const r of Array.from(root.querySelectorAll("rect")).slice(0, 3)) {
-      expect(num(r, "y") + num(r, "height")).toBeLessThanOrEqual(TITLE_ZONE.y)
-    }
-  })
-
-  it("安全区：尺身止于右上 logo 带左沿，方块阶在标题区右沿之外", () => {
-    const { root } = draw("enterprise", coverSlide)
-    const rule = Array.from(root.querySelectorAll("line"))[0]
-    expect(num(rule, "x2")).toBeLessThanOrEqual(TR_LOGO_BAND.x)
-    for (const r of Array.from(root.querySelectorAll("rect")).slice(0, 3)) {
-      expect(num(r, "x")).toBeGreaterThan(TITLE_ZONE.x + TITLE_ZONE.w)
-    }
-  })
-
-  it("安全区：accent 方块在正文区左沿之外、下沿之下，且在页脚 meta 带与右下 logo 盒之外", () => {
-    const { root } = draw("enterprise", coverSlide)
-    const spark = Array.from(root.querySelectorAll("rect")).at(-1)!
-    expect(num(spark, "x") + num(spark, "width")).toBeLessThan(BODY_ZONE.x)
-    expect(num(spark, "y")).toBeGreaterThan(BODY_ZONE.y + BODY_ZONE.h)
-    expect(num(spark, "y") + num(spark, "height")).toBeLessThan(FOOTER_ZONE.y)
-    expect(num(spark, "x") + num(spark, "width")).toBeLessThan(LOGO_BOX.x)
-  })
-
-  it("不画任何左竖条——v1 的 variant b（x0,y180 的 6×360 竖条）已退役", () => {
-    for (const slide of DRAWN_SLIDES) {
+  it("没有左下 16×16 孤立方块，也没有左竖条", () => {
+    for (const slide of [coverSlide, chapterSlide, contentSlide, endingSlide]) {
       const { root } = draw("enterprise", slide)
       for (const r of Array.from(root.querySelectorAll("rect"))) {
+        expect([num(r, "x"), num(r, "y"), num(r, "width"), num(r, "height")]).not.toEqual([60, 626, 16, 16])
         expect(num(r, "width") < 40 && num(r, "height") > 30, `narrow-tall bar rendered: ${r.outerHTML}`).toBe(false)
       }
       for (const l of Array.from(root.querySelectorAll("line"))) {
@@ -182,18 +164,27 @@ describe("EnterpriseMotif（方块秩序）", () => {
     }
   })
 
-  it("换一家 tokens 渲染时颜色跟着换，enterprise 的色一处不残留（零 hex 纪律的实证）", () => {
+  it("每一页件数不超过预算，且每组叶子都包在 data-decor-piece 里", () => {
+    for (const slide of [coverSlide, chapterSlide, contentSlide, endingSlide]) {
+      const { root } = draw("enterprise", slide)
+      expect(countDecorPieces(root)).toBeLessThanOrEqual(MAX_DECOR_PIECES)
+      for (const el of Array.from(root.querySelectorAll("rect,line"))) {
+        expect(el.closest(`[${DECOR_PIECE_ATTR}]`), el.outerHTML).toBeTruthy()
+      }
+    }
+  })
+
+  it("换一家 tokens 渲染时颜色跟着换，enterprise 的色一处不残留", () => {
     const tech = resolveStyle("tech")
     const ctx = buildCtx(tech, {})
-    const { markup } = render(<EnterpriseMotif ir={ir("tech")} slide={coverSlide} ctx={ctx} />)
+    const { markup } = render(<EnterpriseMotif ir={ir("tech")} slide={contentSlide} ctx={ctx} />)
     expect(markup).toContain(tech.colors.primary)
-    expect(markup).toContain(tech.colors.accent)
     for (const hex of ["#F7F7F4", "#0032A0", "#2F6FBF", "#17181A", "#5C6066", "#DEE0DB"]) {
       expect(markup, `enterprise token ${hex} leaked into the tech render`).not.toContain(hex)
     }
   })
 
-  it("装饰位置写死：换 seed（filename）输出逐字节不变（v1 的三档 seed 变体已删）", () => {
+  it("装饰位置写死：换 seed（filename）输出逐字节不变", () => {
     const ctx = buildCtx(resolveStyle("enterprise"), {})
     const markups = new Set(
       Array.from({ length: 12 }, (_, i) =>
@@ -209,8 +200,24 @@ describe("EnterpriseMotif（方块秩序）", () => {
     expect(markups.size).toBe(1)
   })
 
+  it("cover 方块阶整组落在画布内，且在标题主块（y348）之上", () => {
+    const { root } = draw("enterprise", coverSlide)
+    for (const r of Array.from(root.querySelectorAll("rect"))) {
+      expect(num(r, "x")).toBeGreaterThanOrEqual(0)
+      expect(num(r, "x") + num(r, "width")).toBeLessThanOrEqual(1280)
+      expect(num(r, "y") + num(r, "height")).toBeLessThan(348)
+    }
+  })
+
+  it("不画幽灵序号，中景没有出血大字", () => {
+    for (const slide of [coverSlide, chapterSlide, contentSlide, endingSlide]) {
+      const { root } = draw("enterprise", slide)
+      expect(Array.from(root.querySelectorAll("text"))).toHaveLength(0)
+    }
+  })
+
   it("Decor body passes subset validation", () => {
-    for (const slide of [...DRAWN_SLIDES, chapterSlide]) {
+    for (const slide of [coverSlide, chapterSlide, contentSlide, endingSlide]) {
       expect(() => assertSubset(draw("enterprise", slide).root)).not.toThrow()
     }
   })

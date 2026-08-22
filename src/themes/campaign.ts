@@ -40,8 +40,8 @@ import type { StyleTokens } from "./tokens";
  * 色块底，不是画在 bg 上的字。画在 primary 上的字由 `readableOn`/
  * `accessibleInk` 自适应取墨（白字 16.73:1）。
  *
- * 装饰见 `../svg/motifs/motif-campaign-motif.tsx`（纸屑场：页缘四带环场、
- * 圆点＋斜方片两形制、四色轮换、共 120 点，固定 seed 的 LCG）。
+ * 装饰见 `../svg/motifs/motif-campaign-motif.tsx`（右上一簇纸屑，最多三枚
+ * 斜方片，opacity 0.5，避字。封面口号左齐走 poster-center 的 textAnchor start）。
  */
 export const CAMPAIGN_TOKENS: StyleTokens = {
   id: "campaign",
@@ -65,7 +65,7 @@ export const CAMPAIGN_TOKENS: StyleTokens = {
   shape: {
     radius: 10,
     gapScale: 1.0, // 活力圆润（tech 同档）
-    cover: { showKicker: true, barFill: "accent", metaPlacement: "bottom-left" },
+    cover: { showKicker: true, barFill: "accent", metaPlacement: "bottom-left", textAnchor: "start" },
   },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#2A1E3F" },

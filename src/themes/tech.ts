@@ -3,8 +3,9 @@ import type { StyleTokens } from "./tokens";
 /**
  * **深底组皮肤重设计（2026-08-19，`.issues/2026-08-18-theme-redesign/skins/`
  * 的 `group1-dark-boards.dc.html` 色板角色表 + 封面样例）**：深底三家共用
- * 一张脸是本轮的反面基线，tech 的处方是往深空工程走——蓝黑底配青瓷青光，
- * 装饰从「满场随机散点」收编成右缘星座节点链。逐条来历：
+ * 一张脸是本轮的反面基线，tech 的处方是往深空工程走——蓝黑底配青瓷青光。
+ * 第八波把右缘星座链退役，装饰改成顶缘细规线（border）+ 内容页青点睛。
+ * 色板本身不动。逐条来历：
  *   - `bg` `#060A13` → `#0A0F1E`：近黑 → 蓝黑深空。与 insight 的暖黑拉开
  *     色温，三家并排时第一眼就能分开。
  *   - `surface` `#0A101C` → `#121A30`：舱内面板蓝，抬升一档（bento 卡底）。
@@ -39,8 +40,9 @@ import type { StyleTokens } from "./tokens";
  * 压 `bg` `#0A0F1E` 则为 text 16.78:1、muted 7.62:1、accent 11.78:1。
  * 设计板自查写的 muted 6.5:1 低于实测 7.62:1，以实测为准。
  *
- * 装饰见 `src/svg/motifs/motif-constellation-motif.tsx`（星座链 v3：右缘
- * 空带里的节点链 + 顶带疏星，双轨道弧已退役，四种页型同一份几何）。
+ * 装饰见 `src/svg/motifs/motif-constellation-motif.tsx`（第八波：星座链与
+ * 碎点退役，改为顶缘细规线，border，永不亮色。内容页青点睛必须骑在线上。
+ * chapter 退让，空心序号与底规青段归 `stroke-index-chapter`）。
  */
 export const TECH_TOKENS: StyleTokens = {
   id: "tech",
@@ -56,7 +58,7 @@ export const TECH_TOKENS: StyleTokens = {
     accent: "#53E0D2", // 青瓷青光
     text: "#EAF1FA", // 冷白
     muted: "#93A5C0", // 舱灰注脚（压 bg 7.62:1，压渐变起点 7.13:1）
-    border: "#24304A", // 界格即星轨（motif 连线同色）
+    border: "#24304A", // 界格即规线（motif 细规同色，永不亮色）
     danger: "#FF6B7D", // 警示玫红（压 surface 6.29:1）——冷板上不用橙红
     warning: "#FFC14D", // 警示琥珀（压 surface 10.68:1）——第四轮起不再兼任 chartPalette 第四色
     success: "#4BD98A", // 薄荷绿（9.53:1），与青瓷 accent 同一冷序列

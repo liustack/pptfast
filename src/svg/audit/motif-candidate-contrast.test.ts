@@ -17,6 +17,14 @@
 // pre-existing anchor, already exercised by the pre-P1 `full-matrix-
 // contrast.test.ts` sweep every day since it was written).
 //
+// Wave 8 board lock (2026-08-22): consulting and enterprise, the last
+// multi-member sets, are now single-member (`banner-motif` /
+// `enterprise-motif`). `MULTI_CANDIDATE_THEMES` is therefore empty. The
+// per-candidate contrast sweep and the decor-visibility loop skip on an
+// empty array. The remaining job of this file is to nail that every
+// registered set stays length 1, and that runway / museum / stage stay
+// absent.
+//
 // Result of this sweep (recorded per 控制者裁决 §4's re-pin discipline, so a
 // future reviewer doesn't have to re-derive "was this checked" from git
 // blame): zero candidates removed. Every non-anchor candidate in
@@ -104,8 +112,8 @@ function findSeedFor(themeId: string, target: string): number {
 const MULTI_CANDIDATE_THEMES = CANONICAL_THEME_IDS.filter((id) => (MOTIF_CANDIDATES[id]?.length ?? 0) > 1)
 
 describe("motif candidate contrast sweep (P1 variety wave, task 2)", () => {
-  it("has at least one multi-candidate theme to exercise (sanity check on the fixture set itself)", () => {
-    expect(MULTI_CANDIDATE_THEMES.length).toBeGreaterThan(0)
+  it("has no multi-candidate theme after wave8 board locks", () => {
+    expect(MULTI_CANDIDATE_THEMES).toEqual([])
   })
 
   for (const themeId of MULTI_CANDIDATE_THEMES) {
@@ -224,6 +232,16 @@ function shapeColor(el: Element): string | null {
 const DECOR_SHAPE_SELECTOR = "line, path, rect, circle, ellipse"
 
 describe("motif candidate decor-visibility guard (P1 variety wave, task 2 — review fix round)", () => {
+  it("wave8 pins every registered motif candidate set to a single member", () => {
+    expect(MULTI_CANDIDATE_THEMES).toEqual([])
+    for (const [themeId, candidates] of Object.entries(MOTIF_CANDIDATES)) {
+      expect(candidates.length, themeId).toBe(1)
+    }
+    expect(MOTIF_CANDIDATES.runway).toBeUndefined()
+    expect(MOTIF_CANDIDATES.museum).toBeUndefined()
+    expect(MOTIF_CANDIDATES.stage).toBeUndefined()
+  })
+
   for (const themeId of MULTI_CANDIDATE_THEMES) {
     const candidates = MOTIF_CANDIDATES[themeId]!
     const tokens = resolveStyle(themeId)

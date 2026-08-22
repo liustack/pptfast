@@ -16,11 +16,11 @@ import type { StyleTokens } from "./tokens";
  *   - `primary` `#E63946` → `#16202B`：正红 → 墨蓝。红色横幅在深底上抢走
  *     所有注意力，accent 反而没了位置；primary 退成墨蓝色块，让琥珀唱主角。
  *   - `accent` `#D4A57C` → `#F0A63C`：奶茶褐 → 终端琥珀。琥珀是行情屏的
- *     行业记忆色，也是这套装饰语言（刻度齿 / 基线面积线）的唯一着色。
+ *     行业记忆色，也是封面巨号与章节 SECTION 眉的着色。装饰线改走 border。
  *   - `text` `#F5F5F5` → `#F2EFE8`：冷白 → 暖纸白，跟着底色的色温走。
  *   - `muted` `#93939C` → `#9AA7B4`：中性灰 → 青灰，注脚也进色温体系。
- *   - `border` `#2A2A2E` → `#2A3440`：行情表格线，暗而可辨；motif 顶缘
- *     双细线取的就是这个角色。
+ *   - `border` `#2A2A2E` → `#2A3440`：行情表格线，暗而可辨。motif 底缘暗线
+ *     取的就是这个角色。
  *   - `chartPalette` 全换：琥珀主序 + 涨绿 + 跌红 + 中性青灰——财经图表的
  *     涨跌语义直接进色序，不再是「红/褐/灰/白」的无语义排列。
  *   - `defaultBackgrounds` 四页型从纯色改成竖向渐变（`#151B23` → `#0C1016`，
@@ -34,9 +34,9 @@ import type { StyleTokens } from "./tokens";
  * text 16.35:1、muted 7.65:1、accent 9.14:1。
  * 设计板自查写的 muted 7.8:1 略高于实测 7.65:1，以实测为准，仍远高于 4.5:1。
  *
- * 装饰见 `src/svg/motifs/motif-poster-motif.tsx`（行情语汇 v4：整套收进顶缘
- * y<34 空带——上檐线 + 行情轴 + 骑在轴上的走线与刻度齿，另加封面幽灵季度
- * 水印，下半页一件不留）。
+ * 装饰见 `src/svg/motifs/motif-poster-motif.tsx`（行情语汇 第八波：顶缘
+ * 行情带与封面幽灵季字退役，只留底缘暗线，stroke 走 border。章节幽灵序号
+ * 改由 `ghost-section-chapter` 画，整字落在画布内）。
  */
 export const INSIGHT_TOKENS: StyleTokens = {
   id: "insight",

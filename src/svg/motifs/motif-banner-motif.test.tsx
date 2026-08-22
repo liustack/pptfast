@@ -284,4 +284,12 @@ describe("BannerMotif（批注线）", () => {
       }
     }
   })
+
+  it("wave8 consulting lock: one named piece, no second yellow block, no ghost numeral", () => {
+    const { root } = draw("consulting", coverSlide)
+    expect(root.querySelectorAll("[data-decor-piece]")).toHaveLength(1)
+    expect(root.querySelectorAll("rect")).toHaveLength(0)
+    expect(root.querySelectorAll("text")).toHaveLength(0)
+    expect(root.querySelectorAll("[data-decor-piece] line").length).toBeGreaterThan(0)
+  })
 })

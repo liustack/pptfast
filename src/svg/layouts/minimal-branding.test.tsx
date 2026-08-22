@@ -157,7 +157,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     "split-band",
   ]
 
-  it("consulting's auto content pool is the 11-id set, and no built-in theme lists a pinOnly editorial-verse id", () => {
+  it("consulting's auto content pool is the 10-id set, and no built-in theme lists a pinOnly editorial-verse id", () => {
     expect([...THEME_DEFINITIONS.consulting.layouts.content]).toEqual(AUTO_CONTENT)
     for (const id of BUILTIN_THEME_IDS) {
       expect(THEME_DEFINITIONS[id].layouts.content, id).not.toContain("statement")
@@ -170,7 +170,7 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     }
   })
 
-  it("consulting seed=1 auto-pick sequence never lands on a pinOnly layout", () => {
+  it("consulting seed=1 auto-pick sequence uses board-locked cover/chapter/ending and auto content", () => {
     const slides: Slide[] = [
       { type: "cover", heading: "Q3 Strategy Review", components: [] },
       { type: "chapter", heading: "Chapter One: Market Landscape", components: [] },
@@ -200,16 +200,19 @@ describe("pinOnly auto-pool: editorial-verse ids never enter selection", () => {
     const ids = slides.map((slide, i) => resolveEffectiveLayoutId(doc, slide, i))
     expect(ids).toEqual([
       "verdict-index",
-      "constellation-chapter",
+      "ghost-rule-chapter",
       "tone-adaptive-content",
       "split-band",
-      "poster-chapter",
+      "ghost-rule-chapter",
       "banner-heading",
-      "tone-adaptive-ending",
+      "action-pad-ending",
     ])
-    for (const id of ids) {
+    const identityTypes = new Set(["cover", "chapter", "ending"])
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i]
       expect(id).toBeTruthy()
       if (!id) continue
+      if (identityTypes.has(slides[i]!.type)) continue
       expect(LAYOUT_REGISTRY[id]?.pinOnly, id).toBeFalsy()
     }
   })

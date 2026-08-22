@@ -48,6 +48,10 @@ import type { StyleTokens } from "./tokens";
  * + 左上黄色高亮块 + 底缘页码线）——consulting 的锚点 motif 是
  * `banner-motif`，academic / enterprise 两家在各自的候选集里也借它，本轮
  * 换血因此波及那两家的借用页（归因见编辑组报告）。
+ *
+ * 第八波（2026-08-22）：封面锁 `verdict-index`，用 `shape.cover` 的
+ * verdict* knobs 把几何收到板上（kicker y150、标题 y304/60、论据
+ * y560/592、底线 y640、落款 y676）。色板本轮不动。
  */
 export const CONSULTING_TOKENS: StyleTokens = {
   id: "consulting",
@@ -70,7 +74,19 @@ export const CONSULTING_TOKENS: StyleTokens = {
     heading: ["Bower", "Georgia", "Source Han Serif SC", "serif"],
     body: ["Bower", "Georgia", "Source Han Serif SC", "serif"],
   },
-  shape: { radius: 2, gapScale: 1 }, // 微圆克制（咨询报告利落，全推广批次 2026-07-10）
+  shape: {
+    radius: 2,
+    gapScale: 1, // 微圆克制（咨询报告利落，全推广批次 2026-07-10）
+    cover: {
+      verdictTitleY: 304,
+      verdictTitleSize: 60,
+      verdictKickerY: 150,
+      verdictColNumY: 560,
+      verdictColBodyY: 592,
+      verdictFootY: 676,
+      verdictFootRule: true,
+    },
+  },
   defaultBackgrounds: {
     cover: { kind: "color", value: "#F7F6F2" },
     chapter: { kind: "color", value: "#1E2A4A" },

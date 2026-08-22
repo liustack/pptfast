@@ -30,6 +30,11 @@ describe("MOTIF_CANDIDATES (P1 variety wave, task 2 — table shape)", () => {
     expect(MOTIF_CANDIDATES.heritage).toEqual(["heritage-motif"])
   })
 
+  it("wave 8 batch 1: consulting and enterprise lock MOTIF_CANDIDATES to a singleton", () => {
+    expect(MOTIF_CANDIDATES.consulting).toEqual(["banner-motif"])
+    expect(MOTIF_CANDIDATES.enterprise).toEqual(["enterprise-motif"])
+  })
+
   it("every canonical theme except the settled no-motif trio (runway, museum, stage) has a non-empty candidate set", () => {
     for (const id of CANONICAL_THEME_IDS) {
       if (id === "runway" || id === "museum" || id === "stage") {
@@ -159,8 +164,8 @@ describe("resolveMotifId — byte-inertness for the themes this task must not di
 describe("resolveMotifId — anchor plurality and cross-page variety (multi-candidate themes)", () => {
   const MULTI_CANDIDATE_THEMES = CANONICAL_THEME_IDS.filter((id) => (MOTIF_CANDIDATES[id]?.length ?? 0) > 1)
 
-  it("has at least one multi-candidate theme to exercise (sanity check on the fixture set itself)", () => {
-    expect(MULTI_CANDIDATE_THEMES.length).toBeGreaterThan(0)
+  it("wave 8 batch 1: every motif-bearing builtin is a singleton (board-locked decoration)", () => {
+    expect(MULTI_CANDIDATE_THEMES).toEqual([])
   })
 
   it.each(MULTI_CANDIDATE_THEMES)(

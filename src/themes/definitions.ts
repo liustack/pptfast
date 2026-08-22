@@ -363,7 +363,7 @@ const CLASSROOM_LAYOUTS: ThemeDefinition["layouts"] = {
  */
 const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif" | "layoutTendencies">> = {
   consulting: {
-    layouts: { cover: ["verdict-index"], chapter: FULL_LAYOUTS.chapter, content: CONSULTING_CONTENT_LAYOUTS, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["verdict-index"], chapter: ["ghost-rule-chapter"], content: CONSULTING_CONTENT_LAYOUTS, ending: ["action-pad-ending"] },
     motif: "banner-motif",
     // Theme-structure wave, task T2: consulting's own motif is
     // `banner-motif`, and `banner-title`/`banner-chapter`/`banner-ending`
@@ -439,14 +439,14 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // - ending 三元集不动（declaration-rebalance wave 的成果）。
     layoutTendencies: {
       cover: ["verdict-index"],
-      chapter: ["banner-chapter", "poster-chapter"],
-      content: ["banner-heading", "split-band"],
-      ending: ["banner-ending", "rail-ending", "tone-adaptive-ending"],
+      chapter: ["ghost-rule-chapter"],
+      content: ["two-column", "split-band", "banner-heading"],
+      ending: ["action-pad-ending"],
     },
   },
   insight: {
-    // board-cover-restore wave 2 (parameter gap, no new ids): lock poster-center.
-    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // Wave 8 batch 1: lock the board faces.
+    layouts: { cover: ["stat-cover"], chapter: ["ghost-section-chapter"], content: FULL_LAYOUTS.content, ending: ["close-word-ending"] },
     motif: "poster-motif",
     // Theme-structure wave, task T2: insight's own motif is `poster-motif`,
     // and `poster-center`/`poster-chapter`/`poster-ending` are verbatim
@@ -472,21 +472,10 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
       // masthead, insight is the same construction on a near-black field with
       // a red accent, and the layout bakes no hex, so one composition carries
       // two registers.
-      cover: ["poster-center"],
-      // Second-front wave (2026-08-22)，四轴 C / top-band / light / tight：
-      // - chapter `tone-adaptive-chapter` 追加：居中标题 + 一枚角落水印、零其它
-      //   装饰。巨号加细线是行情屏的分区，这一枚给它第二张脸。它是
-      //   `narrative/index.ts` 明确「从不出现在任何 strategy 的
-      //   identityTendencies 里」的万金油 id，在任何叙事下都拿满额边际权重，
-      //   也是把 insight 从盲序列上撬开的那一个。
-      // - content `bento-panel` + `asymmetric-triptych`：六格拼盘 + 主栏加
-      //   两块次级面板，tight 档要的密度。两个 id 都不在 `briefing` 的
-      //   content 偏好里。
-      // - ending `constellation-ending` 追加：居中「Thank you.」+ accent 句号 +
-      //   短签名条，干脆自信，与居中海报式的 `poster-ending` 同属居中收尾。
-      chapter: ["poster-chapter", "tone-adaptive-chapter"],
-      content: ["bento-panel", "asymmetric-triptych"],
-      ending: ["poster-ending", "constellation-ending"],
+      cover: ["stat-cover"],
+      chapter: ["ghost-section-chapter"],
+      content: ["bento-panel", "two-column"],
+      ending: ["close-word-ending"],
     },
   },
   academic: {
@@ -518,8 +507,8 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     },
   },
   tech: {
-    // board-cover-restore wave 2 (parameter gap, no new ids): lock constellation.
-    layouts: { cover: ["constellation"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    // Wave 8 batch 1: lock the board faces.
+    layouts: { cover: ["type-rule-cover"], chapter: ["stroke-index-chapter"], content: FULL_LAYOUTS.content, ending: ["rule-close-ending"] },
     motif: "constellation-motif",
     // Theme-structure wave, task T2: tech's own motif is
     // `constellation-motif`, and `constellation`/`constellation-chapter`/
@@ -527,20 +516,10 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
     // predecessor render code (`BentoTechCover`/`Chapter`/`Ending`) — this
     // theme's native visual family, not a borrowed one.
     layoutTendencies: {
-      cover: ["constellation"],
-      // Second-front wave (2026-08-22)，四轴 L / bottom-right / medium / tight：
-      // - chapter `rail-chapter` 追加：`constellation-chapter` 今天是空声明
-      //   （它正是 briefing 自己偏好的 id，max(3,3)=3），进度轨读作路线图，
-      //   把它变成真声明。与 2026-08-19 修掉的 insight / vermilion 封面空转
-      //   是同一枚缺陷，只是没人查过 chapter 轴。
-      // - content `bento-panel` + `split-band`：拼盘加通栏头带，tight 那一档
-      //   的密度。两个 id 都不在 briefing 的 content 偏好里。
-      // - ending `banner-ending` 追加：签名条加联系页。`banner-ending` 已在
-      //   briefing 的 ending 偏好里，这一格的真实边际仍来自既有的
-      //   `constellation-ending`，联系页是按裁定 1 保留的真实主张。
-      chapter: ["constellation-chapter", "rail-chapter"],
-      content: ["bento-panel", "split-band"],
-      ending: ["constellation-ending", "banner-ending"],
+      cover: ["type-rule-cover"],
+      chapter: ["stroke-index-chapter"],
+      content: ["bento-panel", "rail-numbered", "split-band"],
+      ending: ["rule-close-ending"],
     },
   },
   // runway（时尚杂志，2026-07-10 拆分）：冲击力=超大排印+满版色块（检索背书），
@@ -678,22 +657,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //     斜切，比横幅更紧、更有工业感。它不在 briefing 的 cover 集合里，
   //     max(3,1)=3，是这一对里真正产生边际权重的那个。
   enterprise: {
-    layouts: { cover: ["band-title"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
-    // 2026-07-10 motif 全覆盖：IKB 方块秩序
+    layouts: { cover: ["ikb-field-cover"], chapter: ["block-numeral-chapter"], content: FULL_LAYOUTS.content, ending: ["signoff-ending"] },
     motif: "enterprise-motif",
     layoutTendencies: {
-      cover: ["band-title"],
-      // Second-front wave (2026-08-22)，四轴 L / top-band / medium / tight：
-      // - chapter `constellation-chapter` + `banner-chapter`：IKB 方块秩序
-      //   在断章上读作左侧巨号加底部细线，或整版蓝压白字。两个 id 里
-      //   `constellation-chapter` 与 briefing 重合，真实边际来自满版断言。
-      // - content `bento-panel` + `two-column`：content 就是方块本身（拼盘
-      //   + 双栏）。后者与 briefing 重合，真实拉力来自拼盘。
-      // - ending `rail-ending` + `constellation-ending`：角落色块接同一套
-      //   几何。两个 id 都不在 briefing 的 ending 偏好里。
-      chapter: ["constellation-chapter", "banner-chapter"],
-      content: ["bento-panel", "two-column"],
-      ending: ["rail-ending", "constellation-ending"],
+      cover: ["ikb-field-cover"],
+      chapter: ["block-numeral-chapter"],
+      content: ["rail-numbered", "two-column", "bento-panel"],
+      ending: ["signoff-ending"],
     },
   },
   // luxe（原 retail 黑金重定位，2026-07-10）：黑金深底 poster 家族，
@@ -744,22 +714,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   //   - `split-diagonal`：深紫色块以硬斜切线收边——笔刷的斜向笔势和这道斜切是
   //     一路的。不在 briefing 的 cover 集合里，max(3,1)=3，产生真实边际权重。
   campaign: {
-    // board-cover-restore wave 2 (parameter gap, no new ids): lock poster-center.
-    layouts: { cover: ["poster-center"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["poster-center"], chapter: ["act-chapter"], content: FULL_LAYOUTS.content, ending: ["pill-cta-ending"] },
     motif: "campaign-motif",
     layoutTendencies: {
       cover: ["poster-center"],
-      // Second-front wave (2026-08-22)，四轴 C / bottom-left / heavy / medium：
-      // - chapter `fashion-chapter` + `rail-chapter`：满版强调色断章接笔刷的
-      //   斜势，居中巨标压整版色是舞台正面。两个 id 都不在 briefing 的
-      //   chapter 偏好里。
-      // - content `stacked-poster` + `split-band`：主视觉压顶加通栏色带，重拳
-      //   配对。两个 id 都不在 briefing 的 content 偏好里。
-      // - ending `fashion-ending` + `constellation-ending`：满版收官加签名条。
-      //   两个 id 都不在 briefing 的 ending 偏好里。
-      chapter: ["fashion-chapter", "rail-chapter"],
+      chapter: ["act-chapter"],
       content: ["stacked-poster", "split-band"],
-      ending: ["fashion-ending", "constellation-ending"],
+      ending: ["pill-cta-ending"],
     },
   },
   // classroom（教学课堂，2026-07-13 第 13 主题）：讲义雾蓝 + 拍纸簿装饰由
@@ -1016,24 +977,13 @@ const LAYOUTS: Record<CanonicalThemeId, Pick<ThemeDefinition, "layouts" | "motif
   // 声明主题（含 pulse/terra）逐一比对均不同，也不与 7 个未声明主题共享的
   // 默认序列相同。
   ember: {
-    layouts: { cover: ["corner-wedge"], chapter: FULL_LAYOUTS.chapter, content: FULL_LAYOUTS.content, ending: FULL_LAYOUTS.ending },
+    layouts: { cover: ["corner-wedge"], chapter: ["ember-index-chapter"], content: FULL_LAYOUTS.content, ending: ["ask-ending"] },
     motif: "ember-motif",
     layoutTendencies: {
-      // cover 硬锁 `corner-wedge`。板上是右下火橙角楔，标题留左纸面，meta
-      // 反白入楔。`split-diagonal` 是全高侧栏，画不出这只角楔。
       cover: ["corner-wedge"],
-      // Second-front wave (2026-08-22)，四轴 C / bottom-right / medium / medium：
-      // - chapter 三元集：保留已声明的里程碑点轨，追加满版断言横幅与序号断章
-      //   （后者与已声明的 `constellation-ending` 首尾同族）。三元集是 chapter
-      //   池排不开时的让位追加，不是三份主张。三个 id 里 `constellation-chapter`
-      //   与 briefing 重合，另外两个有真实边际。
-      // - content `stacked-poster` + `banner-heading`：主视觉加断言横幅。后者
-      //   与 briefing 重合，真实拉力来自主视觉。
-      // - ending `tone-adaptive-ending` 追加：既有签名条加最素的落款。后者是
-      //   万金油 id。
-      chapter: ["rail-chapter", "banner-chapter", "constellation-chapter"],
-      content: ["stacked-poster", "banner-heading"],
-      ending: ["constellation-ending", "tone-adaptive-ending"],
+      chapter: ["ember-index-chapter"],
+      content: ["bento-panel", "two-column", "stacked-poster"],
+      ending: ["ask-ending"],
     },
   },
   // vermilion（庄重公务汇报，2026-08-06 gov-theme wave，第 17 主题）：暖米白底
